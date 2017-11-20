@@ -1,0 +1,9 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: terrorjack/meikyu:ghc-8.3.20171120
+    steps:
+      - checkout
+      - run: |
+          stack --no-terminal build --haddock --test --no-run-tests

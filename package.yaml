@@ -1,0 +1,27 @@
+name: asterius
+version: 0.0.1
+category: Compiler
+stability: alpha
+maintainer: Shao Cheng <astrohavoc@gmail.com>
+copyright: (c) 2017 Shao Cheng
+license: BSD3
+github: TerrorJack/asterius
+
+extra-source-files:
+  - CHANGELOG.md
+  - LICENSE
+  - README.md
+
+custom-setup:
+  dependencies:
+    - base >= 4.11 && < 5
+    - Cabal >= 2.1 && < 2.2
+
+ghc-options: -Wall
+
+dependencies:
+  - base >= 4.11 && < 5
+  - ghc >= 8.3 && < 8.4
+
+library:
+  source-dirs: src
