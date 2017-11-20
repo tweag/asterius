@@ -1,0 +1,46 @@
+name: hbinaryen
+version: 0.0.1
+category: Compiler
+stability: alpha
+maintainer: Shao Cheng <astrohavoc@gmail.com>
+copyright: (c) 2018 Tweag I/O
+license: BSD3
+github: tweag/asterius
+
+extra-source-files:
+  - binaryen/**/**
+  - cbits/**/**
+  - CHANGELOG.md
+  - LICENSE
+  - README.md
+
+flags:
+  system-binaryen:
+    description: Link with system-wide binaryen instead of building the bundled version.
+    default: false
+    manual: false
+
+custom-setup:
+  dependencies:
+    - base
+    - Cabal
+    - directory
+    - filepath
+
+ghc-options: -Wall
+
+dependencies:
+  - base
+
+library:
+  source-dirs: src
+
+tests:
+  hbinaryen-test:
+    source-dirs: test
+    main: hbinaryen-test.hs
+    dependencies:
+      - hbinaryen
+      - vector
+    other-extensions:
+      - OverloadedLists

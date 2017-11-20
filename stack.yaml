@@ -1,1 +1,21 @@
-resolver: ghc-8.3.20171120
+resolver: ghc-8.5
+allow-newer: true
+flags:
+  hashable:
+    integer-gmp: false
+extra-deps:
+  - async-2.2.1
+  - cereal-0.5.5.0
+  - clock-0.7.2
+  - extra-1.6.4
+  - hashable-1.2.6.1
+  - primitive-0.6.3.0
+  - unliftio-0.2.4.0
+  - unliftio-core-0.1.1.0
+  - unordered-containers-0.2.9.0
+  - vector-0.12.0.1
+packages:
+  - asterius
+  - cereal-utils
+  - hbinaryen
+  - wasm-toolkit

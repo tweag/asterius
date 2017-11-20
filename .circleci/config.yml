@@ -1,9 +1,41 @@
 version: 2
+
 jobs:
-  build:
+  ghc-head:
     docker:
-      - image: terrorjack/meikyu:ghc-8.3.20171120
+      - image: terrorjack/meikyu:ghc-head
     steps:
       - checkout
+      - restore_cache:
+          key: stack-work-registerised-gen7-
       - run: |
-          stack --no-terminal build --haddock --test --no-run-tests
+          apk add --no-cache --no-progress \
+              autoconf \
+              cmake \
+              g++ \
+              make \
+              nodejs-current \
+              sed
+          MAKEFLAGS=-j4 stack --no-terminal build --test --no-run-tests
+          mv /root/.stack/programs /tmp/
+      - save_cache:
+          key: stack-work-registerised-gen7-{{ .BuildNum }}
+          paths:
+            - /root/.stack
+            - .stack-work
+            - asterius/.stack-work
+            - cereal-utils/.stack-work
+            - hbinaryen/.stack-work
+            - wasm-toolkit/.stack-work
+            - asterius/.lbi.buildinfo
+      - run: |
+          mv /tmp/programs /root/.stack/
+          stack --no-terminal test hbinaryen:hbinaryen-test
+          stack --no-terminal test asterius:fact-dump
+          stack --no-terminal test asterius:ahc-boot
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - ghc-head

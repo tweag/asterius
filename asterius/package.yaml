@@ -1,0 +1,81 @@
+name: asterius
+version: 0.0.1
+category: Compiler
+stability: alpha
+maintainer: Shao Cheng <astrohavoc@gmail.com>
+copyright: (c) 2018 Tweag I/O
+license: BSD3
+github: tweag/asterius
+
+extra-source-files:
+  - CHANGELOG.md
+  - LICENSE
+  - README.md
+  - test/fact-dump/fact.hs
+
+data-files:
+  - boot-libs/**/**
+  - boot.sh
+
+custom-setup:
+  dependencies:
+    - base
+    - binary
+    - Cabal
+
+ghc-options: -Wall
+
+dependencies:
+  - base
+  - binary
+  - bytestring
+  - Cabal
+  - cereal
+  - cereal-utils
+  - containers
+  - directory
+  - extra
+  - filepath
+  - ghc
+  - hashable
+  - hbinaryen
+  - process
+  - template-haskell
+  - unliftio
+  - unordered-containers
+  - vector
+
+library:
+  source-dirs: src
+  other-modules: Paths_asterius
+  other-extensions:
+    - GADTs
+    - GeneralizedNewtypeDeriving
+    - LambdaCase
+    - MagicHash
+    - NamedFieldPuns
+    - OverloadedStrings
+    - RecordWildCards
+    - ScopedTypeVariables
+    - StrictData
+    - TemplateHaskell
+
+executables:
+  ahc:
+    source-dirs: app
+    main: ahc.hs
+    dependencies:
+      - asterius
+
+tests:
+  ahc-boot:
+    source-dirs: test
+    main: ahc-boot.hs
+    dependencies:
+      - asterius
+
+  fact-dump:
+    source-dirs: test
+    main: fact-dump.hs
+    dependencies:
+      - asterius
