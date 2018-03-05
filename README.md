@@ -1,8 +1,8 @@
-# `asterius`
+# Asterius: A Haskell to WebAssembly compiler
 
 [![CircleCI](https://circleci.com/gh/tweag/asterius/tree/master.svg?style=shield)](https://circleci.com/gh/tweag/asterius/tree/master)
 
-A Haskell to WebAssembly compiler. Work in progress. This work is currently funded by Tweag I/O.
+A Haskell to WebAssembly compiler. Project status: **pre-alpha**.
 
 What's already present:
 
@@ -37,3 +37,13 @@ Windows users need to run it in an `mingw-w64` Win64 shell. `stack` takes care o
 ## Differences from [WebGHC](https://webghc.github.io/)
 
 * Doesn't depend on Emscripten/LLVM. There is no plan to port the C runtime and support C libraries, at least for now.
+
+## Sponsors
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+[![Tweag I/O](http://i.imgur.com/0HK8X4y.png)](http://tweag.io)
+
+Asterius is maintained by [Tweag I/O](http://tweag.io/).
+
+Have questions? Need help? Tweet at
+[@tweagio](http://twitter.com/tweagio).
