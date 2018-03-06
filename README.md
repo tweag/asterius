@@ -22,6 +22,8 @@ What comes next:
   enough primops & libc stubs for an MVP(Minimum Viable Product).
 * A test suite for the generated WebAssembly code.
 
+See [`ROADMAP.md`](ROADMAP.md) for a more detailed roadmap.
+
 ## Building
 
 Assumes x64 platform, only tested on Linux for now. Dependencies:
