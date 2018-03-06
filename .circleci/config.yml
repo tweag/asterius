@@ -1,13 +1,13 @@
 version: 2
 
 jobs:
-  ghc-head:
+  build:
     docker:
       - image: terrorjack/meikyu:ghc-head
     steps:
       - checkout
       - restore_cache:
-          key: stack-work-registerised-gen7-
+          key: stack-work-
       - run: |
           apk add --no-cache --no-progress \
               autoconf \
@@ -19,7 +19,7 @@ jobs:
           MAKEFLAGS=-j4 stack --no-terminal build --test --no-run-tests
           mv /root/.stack/programs /tmp/
       - save_cache:
-          key: stack-work-registerised-gen7-{{ .BuildNum }}
+          key: stack-work-{{ .BuildNum }}
           paths:
             - /root/.stack
             - .stack-work
@@ -33,9 +33,3 @@ jobs:
           stack --no-terminal test hbinaryen:hbinaryen-test
           stack --no-terminal test asterius:fact-dump
           stack --no-terminal test asterius:ahc-boot
-
-workflows:
-  version: 2
-  build:
-    jobs:
-      - ghc-head
