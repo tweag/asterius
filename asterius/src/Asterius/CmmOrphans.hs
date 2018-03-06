@@ -11,6 +11,7 @@ import CLabel
 import Cmm
 import CoreSyn
 import CostCentre
+import CostCentreState
 import Data.IORef
 import DynFlags
 import ForeignCall
@@ -70,7 +71,10 @@ instance Show ModuleName where
 
 deriving instance Show Module
 
-deriving instance Show IsCafCC
+instance Show CostCentreIndex where
+  show = show . unCostCentreIndex
+
+deriving instance Show CCFlavour
 
 deriving instance Show CostCentre
 
