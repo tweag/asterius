@@ -28,6 +28,7 @@ The purpose of M1 is to ship an MVP(Minimum Viable Product).
 ### P2 features
 
 * A test suite which uses Node.js/Headless Chrome to test the generated WebAssembly modules.
+* A separate `inline-javascript` package to provide quasi-quoters for evaluating JavaScript embedded in Haskell, useful for the test suite.
 * A build system based on nix/bazel instead of docker for developers on Linux/Mac.
 * Fix Windows support, set up AppVeyor for testing the project itself/building the custom ghc bindist required for the project.
 
