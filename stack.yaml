@@ -8,9 +8,11 @@ extra-deps:
   - cereal-0.5.5.0
   - clock-0.7.2
   - extra-1.6.4
-  - hashable-1.2.6.1
+  - hashable-1.2.7.0
+  - haskell-lexer-1.0.1
+  - pretty-show-1.7
   - primitive-0.6.3.0
-  - unliftio-0.2.4.0
+  - unliftio-0.2.5.0
   - unliftio-core-0.1.1.0
   - unordered-containers-0.2.9.0
   - vector-0.12.0.1

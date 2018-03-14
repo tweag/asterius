@@ -5,10 +5,10 @@ import qualified Data.ByteString.Lazy as LBS
 import Distribution.Simple.Compiler
 import GHC
 import System.Directory
-import System.Environment.Blank
-import System.IO
-import System.Process
-import UnliftIO.Exception
+import System.IO (openBinaryTempFile)
+import UnliftIO
+import UnliftIO.Environment
+import UnliftIO.Process
 
 main :: IO ()
 main = do
@@ -44,6 +44,6 @@ main = do
         (\(p, _) -> removeFile p) $ \(p, h) -> do
         LBS.hPut h $ encode oa
         hClose h
-        setEnv "ASTERIUS_ORIGINAL_ARGS_PATH" p True
+        setEnv "ASTERIUS_ORIGINAL_ARGS_PATH" p
         callProcess ghc nargs
     _ -> callProcess ghc nargs

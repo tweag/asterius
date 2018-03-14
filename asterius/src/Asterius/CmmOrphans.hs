@@ -22,8 +22,8 @@ import Name
 import Outputable
 import System.IO.Unsafe
 
-dynFlagsRef :: IORef DynFlags
 {-# NOINLINE dynFlagsRef #-}
+dynFlagsRef :: IORef DynFlags
 dynFlagsRef = unsafePerformIO $ newIORef unsafeGlobalDynFlags
 
 setDynFlagsRef :: DynFlags -> IO ()
@@ -67,7 +67,7 @@ deriving instance
 deriving instance Show CmmTickScope
 
 instance Show ModuleName where
-  show = fakeShow "ModuleName"
+  show = moduleNameString
 
 deriving instance Show Module
 

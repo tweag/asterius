@@ -2,7 +2,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
+{-# OPTIONS_GHC -Wno-orphans -Wno-unused-top-binds #-}
 
 module Language.WebAssembly.IR
   ( ValueType(..)

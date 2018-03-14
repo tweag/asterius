@@ -39,7 +39,7 @@ dependencies:
   - ghc
   - hashable
   - hbinaryen
-  - process
+  - pretty-show
   - template-haskell
   - unliftio
   - unordered-containers

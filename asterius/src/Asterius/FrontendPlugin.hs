@@ -14,7 +14,6 @@ import Asterius.Unexported
 import Bindings.Binaryen.Raw
 import Control.Monad
 import Data.Binary
-import Data.IORef
 import Data.List.Extra
 import qualified Data.Serialize.Cereal.Utils as C
 import DriverPhases
@@ -25,10 +24,10 @@ import Hooks
 import PipelineMonad
 import qualified Stream
 import System.Directory
-import System.Environment.Blank
 import System.FilePath
-import System.Process
-import UnliftIO.Exception
+import UnliftIO
+import UnliftIO.Environment
+import UnliftIO.Process
 
 data OriginalArgs = OriginalArgs
   { args :: [String]
@@ -65,7 +64,7 @@ frontendPlugin =
           liftIO $ print c_BinaryenTypeInt64
           OriginalArgs {..} <-
             liftIO $ do
-              Just p <- getEnv "ASTERIUS_ORIGINAL_ARGS_PATH"
+              p <- getEnv "ASTERIUS_ORIGINAL_ARGS_PATH"
               decodeFile p
           if all isHaskellishTarget targets
             then do
@@ -73,7 +72,7 @@ frontendPlugin =
                 liftIO $ do
                   already_run_set_ref <- newIORef emptyModuleSet
                   obj_map_ref <- newIORef emptyModuleEnv
-                  Just obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
+                  obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
                   let obj_fn Module {..} =
                         obj_topdir </> unitIdString moduleUnitId </>
                         foldr1

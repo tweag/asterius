@@ -10,11 +10,11 @@ module Asterius.Boot
 import Asterius.BuildInfo
 import Data.List.Extra
 import System.Directory
-import System.Environment.Blank
 import System.Exit
 import System.FilePath.Posix
-import System.Process
-import UnliftIO.Exception
+import UnliftIO
+import UnliftIO.Environment
+import UnliftIO.Process
 
 data BootArgs = BootArgs
   { bootDir :: FilePath
