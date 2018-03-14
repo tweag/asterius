@@ -9,13 +9,11 @@ module Asterius.FrontendPlugin
 
 import Asterius.BuildInfo
 import Asterius.CmmOrphans
-import Asterius.IR
 import Asterius.Unexported
 import Bindings.Binaryen.Raw
 import Control.Monad
 import Data.Binary
 import Data.List.Extra
-import qualified Data.Serialize.Cereal.Utils as C
 import DriverPhases
 import DriverPipeline
 import GHC
@@ -25,6 +23,7 @@ import PipelineMonad
 import qualified Stream
 import System.Directory
 import System.FilePath
+import Text.Show.Pretty
 import UnliftIO
 import UnliftIO.Environment
 import UnliftIO.Process
@@ -146,15 +145,10 @@ frontendPlugin =
                                           setDynFlagsRef dflags
                                           rawcmms_list <-
                                             concat <$> Stream.collect rawcmms
-                                          obj_put C.encodeFile key $
-                                            foldl'
-                                              (\tot b ->
-                                                 toAModule dflags b <> tot)
-                                              mempty
-                                              rawcmms_list
-                                          am <- obj_get C.decodeFile key
-                                          print
-                                            (moduleName key, length $ show am)
+                                          obj_put writeFile key $
+                                            ppShow rawcmms_list
+                                          am <- obj_get readFile key
+                                          print (moduleName key, length am)
                                         return
                                           (RealPhase next_phase, outputFilename)
                                   _ -> runPhase phase_plus input_fn dflags
