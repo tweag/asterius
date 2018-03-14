@@ -17,7 +17,7 @@ import Data.List.Extra
 import DriverPhases
 import DriverPipeline
 import GHC
-import GhcPlugins hiding ((<>))
+import GhcPlugins
 import Hooks
 import PipelineMonad
 import qualified Stream
@@ -67,37 +67,26 @@ frontendPlugin =
               decodeFile p
           if all isHaskellishTarget targets
             then do
-              (already_run_query, obj_get, obj_put) <-
+              (already_run_query, _ :: (FilePath -> IO String) -> Module -> IO String, obj_put :: (FilePath -> String -> IO ()) -> Module -> String -> IO ()) <-
                 liftIO $ do
                   already_run_set_ref <- newIORef emptyModuleSet
-                  obj_map_ref <- newIORef emptyModuleEnv
                   obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
                   let obj_fn Module {..} =
                         obj_topdir </> unitIdString moduleUnitId </>
                         foldr1
                           (</>)
                           (wordsBy (== '.') (moduleNameString moduleName)) <.>
-                        "asterius_o"
+                        "ddump-cmm-raw-ast"
                   pure
                     ( \k ->
                         liftIO $
                         atomicModifyIORef' already_run_set_ref $ \s ->
                           (extendModuleSet s k, k `elemModuleSet` s)
-                    , \f k -> do
-                        m' <- readIORef obj_map_ref
-                        case lookupModuleEnv m' k of
-                          Just v -> pure v
-                          _ -> do
-                            v <- f (obj_fn k)
-                            atomicModifyIORef' obj_map_ref $ \m ->
-                              (extendModuleEnv m k v, ())
-                            pure v
+                    , \f k -> f (obj_fn k)
                     , \f k v -> do
                         let fn = obj_fn k
                         createDirectoryIfMissing True $ takeDirectory fn
-                        f fn v
-                        atomicModifyIORef' obj_map_ref $ \m ->
-                          (extendModuleEnv m k v, ()))
+                        f fn v)
               dflags' <- getSessionDynFlags
               void $
                 setSessionDynFlags
@@ -147,8 +136,6 @@ frontendPlugin =
                                             concat <$> Stream.collect rawcmms
                                           obj_put writeFile key $
                                             ppShow rawcmms_list
-                                          am <- obj_get readFile key
-                                          print (moduleName key, length am)
                                         return
                                           (RealPhase next_phase, outputFilename)
                                   _ -> runPhase phase_plus input_fn dflags

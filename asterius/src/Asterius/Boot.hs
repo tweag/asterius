@@ -9,7 +9,6 @@ module Asterius.Boot
 
 import Asterius.BuildInfo
 import Data.List.Extra
-import System.Directory
 import System.Exit
 import System.FilePath.Posix
 import UnliftIO
@@ -22,10 +21,7 @@ data BootArgs = BootArgs
   }
 
 bootTmpDir :: BootArgs -> FilePath
-bootTmpDir BootArgs {..} = bootDir </> ".tmp"
-
-withBootTmpDir :: BootArgs -> IO r -> IO r
-withBootTmpDir args cont = finally cont $ removePathForcibly $ bootTmpDir args
+bootTmpDir BootArgs {..} = bootDir </> "dist"
 
 bootCreateProcess :: BootArgs -> IO CreateProcess
 bootCreateProcess args@BootArgs {..} = do
@@ -55,14 +51,13 @@ bootCreateProcess args@BootArgs {..} = do
 bootQuiet :: BootArgs -> IO (ExitCode, String, String)
 bootQuiet args = do
   cp' <- bootCreateProcess args
-  withBootTmpDir args $ readCreateProcessWithExitCode cp' ""
+  readCreateProcessWithExitCode cp' ""
 
 boot :: BootArgs -> IO ()
 boot args = do
   cp' <- bootCreateProcess args
-  withBootTmpDir args $
-    withCreateProcess cp' $ \_ _ _ ph -> do
-      ec <- waitForProcess ph
-      case ec of
-        ExitFailure _ -> throwString "boot failure"
-        _ -> pure ()
+  withCreateProcess cp' $ \_ _ _ ph -> do
+    ec <- waitForProcess ph
+    case ec of
+      ExitFailure _ -> throwString "boot failure"
+      _ -> pure ()

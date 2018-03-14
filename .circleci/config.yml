@@ -4,6 +4,9 @@ jobs:
   build:
     docker:
       - image: terrorjack/meikyu:ghc-head
+    environment:
+      MAKEFLAGS: -j4
+      XZ_OPT: -9
     steps:
       - checkout
       - restore_cache:
@@ -12,12 +15,21 @@ jobs:
           apk add --no-cache --no-progress \
               autoconf \
               cmake \
+              coreutils \
+              findutils \
               g++ \
               make \
               nodejs-current \
-              sed
-          MAKEFLAGS=-j4 stack --no-terminal build --test --no-run-tests
-          mv /root/.stack/programs /tmp/
+              sed \
+              xz
+          stack --no-terminal test hbinaryen:hbinaryen-test
+          stack --no-terminal test asterius:fact-dump
+          stack --no-terminal test asterius:ahc-boot
+          cd /tmp/asterius/.boot
+          find . -name '*.ddump-*' | tar -cJf /tmp/asterius_boot.tar.xz -T -
+          rm -rf /root/.stack/programs
+      - store_artifacts:
+          path: /tmp/asterius_boot.tar.xz
       - save_cache:
           key: stack-work-{{ .BuildNum }}
           paths:
@@ -28,8 +40,3 @@ jobs:
             - hbinaryen/.stack-work
             - wasm-toolkit/.stack-work
             - asterius/.lbi.buildinfo
-      - run: |
-          mv /tmp/programs /root/.stack/
-          stack --no-terminal test hbinaryen:hbinaryen-test
-          stack --no-terminal test asterius:fact-dump
-          stack --no-terminal test asterius:ahc-boot
