@@ -26,7 +26,7 @@ jobs:
           stack --no-terminal test asterius:fact-dump
           stack --no-terminal test asterius:ahc-boot
           cd /tmp/asterius/.boot
-          find . -name '*.ddump-*' | tar -cJf /tmp/asterius_boot.tar.xz -T -
+          tar -cJf /tmp/asterius_boot.tar.xz asterius_lib dist
           rm -rf /root/.stack/programs
       - store_artifacts:
           path: /tmp/asterius_boot.tar.xz
