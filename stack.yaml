@@ -8,6 +8,7 @@ extra-deps:
   - cereal-0.5.5.0
   - clock-0.7.2
   - extra-1.6.4
+  - happy-1.19.9
   - hashable-1.2.7.0
   - haskell-lexer-1.0.1
   - pretty-show-1.7
