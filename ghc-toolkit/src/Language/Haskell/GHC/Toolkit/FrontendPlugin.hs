@@ -8,7 +8,6 @@ import Control.Monad
 import Data.List
 import DriverPhases
 import DriverPipeline
-import Exception
 import GHC
 import GhcPlugins
 import Hooks
@@ -23,12 +22,14 @@ frontendPluginFromCompiler init_c =
         \_ targets -> do
           let (hs_targets, non_hs_targets) =
                 partition isHaskellishTarget targets
-          env <- getSession
           if null hs_targets
-            then liftIO $
-                 catch (oneShot env StopLn targets) $ \(_ :: SomeException) ->
-                   void $ traverse (compileFile env StopLn) targets
+            then do
+              dflags <- getSessionDynFlags
+              void $ setSessionDynFlags dflags {ghcLink = NoLink}
+              env <- getSession
+              liftIO $ oneShot env StopLn targets
             else do
+              env <- getSession
               c <- init_c
               rp <- liftIO $ runPhaseWithCompiler c
               o_files <-
