@@ -15,15 +15,21 @@ extra-source-files:
 data-files:
   - boot-libs/**/**
 
+custom-setup:
+  dependencies:
+    - base
+    - binary
+    - Cabal
+
 ghc-options: -Wall
 
 dependencies:
   - base
+  - binary
+  - Cabal
   - containers
-  - directory
   - filepath
   - ghc
-  - process
   - template-haskell
 
 library:

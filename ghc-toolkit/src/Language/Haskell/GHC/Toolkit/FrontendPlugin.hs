@@ -29,9 +29,9 @@ frontendPluginFromCompiler init_c =
               env <- getSession
               liftIO $ oneShot env StopLn targets
             else do
-              env <- getSession
               c <- init_c
               rp <- liftIO $ runPhaseWithCompiler c
+              env <- getSession
               o_files <-
                 liftIO $ traverse (compileFile env StopLn) non_hs_targets
               dflags <- getSessionDynFlags
@@ -45,5 +45,5 @@ frontendPluginFromCompiler init_c =
               traverse (uncurry GHC.guessTarget) hs_targets >>= setTargets
               ok_flag <- load LoadAllTargets
               when (failed ok_flag) $
-                liftIO $ throwGhcExceptionIO $ Panic "GHC.load returned failed."
+                liftIO $ throwGhcExceptionIO $ Panic "GHC.load returned Failed."
     }
