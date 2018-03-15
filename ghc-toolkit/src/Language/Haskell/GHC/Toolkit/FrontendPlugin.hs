@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Language.Haskell.GHC.Toolkit.FrontendPlugin
   ( frontendPluginFromCompiler
   ) where
@@ -6,6 +8,7 @@ import Control.Monad
 import Data.List
 import DriverPhases
 import DriverPipeline
+import Exception
 import GHC
 import GhcPlugins
 import Hooks
@@ -22,7 +25,9 @@ frontendPluginFromCompiler init_c =
                 partition isHaskellishTarget targets
           env <- getSession
           if null hs_targets
-            then liftIO (oneShot env StopLn targets)
+            then liftIO $
+                 catch (oneShot env StopLn targets) $ \(_ :: SomeException) ->
+                   void $ traverse (compileFile env StopLn) targets
             else do
               c <- init_c
               rp <- liftIO $ runPhaseWithCompiler c

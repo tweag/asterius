@@ -32,5 +32,6 @@ library:
   other-extensions:
     - NamedFieldPuns
     - RecordWildCards
+    - ScopedTypeVariables
     - StrictData
     - TemplateHaskell
