@@ -8,6 +8,7 @@ module Language.Haskell.GHC.Toolkit.Compiler
 
 import Cmm
 import HscTypes
+import PipelineMonad
 import StgSyn
 
 data IR = IR
@@ -17,7 +18,7 @@ data IR = IR
   }
 
 newtype Compiler = Compiler
-  { withIR :: ModSummary -> IR -> IO ()
+  { withIR :: ModSummary -> IR -> CompPipeline ()
   }
 
 defaultCompiler :: Compiler
