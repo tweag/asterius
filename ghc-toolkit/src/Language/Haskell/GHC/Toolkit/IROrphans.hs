@@ -7,20 +7,30 @@ module Language.Haskell.GHC.Toolkit.IROrphans
   ( setDynFlagsRef
   ) where
 
+import BasicTypes
 import CLabel
 import Cmm
+import CoAxiom
 import CoreSyn
 import CostCentre
 import CostCentreState
 import Data.IORef
+import DataCon
 import DynFlags
 import ForeignCall
 import Hoopl.Block
 import Hoopl.Graph
+import Literal
 import Module
 import Name
 import Outputable
+import PrimOp
+import StgSyn
 import System.IO.Unsafe
+import Text.Show.Functions ()
+import TyCoRep
+import TyCon
+import Var
 
 {-# NOINLINE dynFlagsRef #-}
 dynFlagsRef :: IORef DynFlags
@@ -36,6 +46,93 @@ fakeShow tag val =
     pure $
       "(" ++
       tag ++ " " ++ show (showSDoc dflags $ pprCode AsmStyle $ ppr val) ++ ")"
+
+deriving instance Show FunctionOrData
+
+deriving instance
+         (Show tyvar, Show argf) => Show (TyVarBndr tyvar argf)
+
+instance Show Var where
+  show = fakeShow "Var"
+
+instance Show TyCon where
+  show = fakeShow "TyCon"
+
+deriving instance Show ArgFlag
+
+deriving instance Show TyLit
+
+deriving instance Show Role
+
+deriving instance Show CoAxBranch
+
+instance Show (Branches br) where
+  show = show . fromBranches
+
+deriving instance Show (CoAxiom br)
+
+deriving instance Show UnivCoProvenance
+
+deriving instance Show CoAxiomRule
+
+deriving instance Show LeftOrRight
+
+instance Show a => Show (IORef a) where
+  show = show . unsafePerformIO . readIORef
+
+deriving instance Show CoercionHole
+
+deriving instance Show Coercion
+
+deriving instance Show Type
+
+deriving instance Show Literal
+
+deriving instance Show occ => Show (GenStgArg occ)
+
+instance Show DataCon where
+  show = fakeShow "DataCon"
+
+deriving instance Show PrimOpVecCat
+
+deriving instance Show PrimOp
+
+deriving instance Show PrimCall
+
+deriving instance Show CCallTarget
+
+deriving instance Show CCallSpec
+
+deriving instance Show ForeignCall
+
+deriving instance Show StgOp
+
+deriving instance Show AltType
+
+deriving instance Show AltCon
+
+deriving instance
+         (Show bndr, Show occ) => Show (GenStgExpr bndr occ)
+
+instance Show CostCentreStack where
+  show = fakeShow "CostCentreStack"
+
+instance Show StgBinderInfo where
+  show sbi =
+    if satCallsOnly sbi
+      then "SatCallsOnly"
+      else "NoStgBinderInfo"
+
+deriving instance Show UpdateFlag
+
+deriving instance
+         (Show bndr, Show occ) => Show (GenStgRhs bndr occ)
+
+deriving instance
+         (Show bndr, Show occ) => Show (GenStgBinding bndr occ)
+
+deriving instance
+         (Show bndr, Show occ) => Show (GenStgTopBinding bndr occ)
 
 instance Show Name where
   show = fakeShow "Name"

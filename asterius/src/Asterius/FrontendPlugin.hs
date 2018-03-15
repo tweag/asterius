@@ -26,6 +26,6 @@ frontendPlugin =
       let obj_fn =
             obj_topdir </> unitIdString moduleUnitId </>
             foldr1 (</>) (wordsBy (== '.') (moduleNameString moduleName)) <.>
-            "ddump-cmm-raw-ast"
+            "ddump-stg-ast"
       createDirectoryIfMissing True $ takeDirectory obj_fn
-      writeFile obj_fn $ ppShow cmmRaw
+      writeFile obj_fn $ ppShow stg
