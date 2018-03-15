@@ -9,7 +9,7 @@ module Asterius.Boot
 
 import Asterius.BuildInfo
 import Data.List.Extra
-import Language.Haskell.GHC.Toolkit.BootLibs
+import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath)
 import System.Exit
 import System.FilePath.Posix
 import UnliftIO

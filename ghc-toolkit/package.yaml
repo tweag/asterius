@@ -20,8 +20,10 @@ ghc-options: -Wall
 dependencies:
   - base
   - containers
+  - directory
   - filepath
   - ghc
+  - process
   - template-haskell
 
 library:
