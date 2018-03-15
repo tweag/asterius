@@ -12,6 +12,9 @@ extra-source-files:
   - LICENSE
   - README.md
 
+data-files:
+  - boot-libs/**/**
+
 ghc-options: -Wall
 
 dependencies:
@@ -19,12 +22,15 @@ dependencies:
   - containers
   - filepath
   - ghc
+  - template-haskell
 
 library:
   source-dirs: src
   other-modules:
-    - Language.Haskell.GHC.Toolkit.Internals
+    - Language.Haskell.GHC.Toolkit.GHCUnexported
+    - Paths_ghc_toolkit
   other-extensions:
     - NamedFieldPuns
     - RecordWildCards
     - StrictData
+    - TemplateHaskell

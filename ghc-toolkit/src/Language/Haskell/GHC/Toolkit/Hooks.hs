@@ -11,7 +11,7 @@ import DynFlags
 import Hooks
 import HscTypes
 import Language.Haskell.GHC.Toolkit.Compiler
-import Language.Haskell.GHC.Toolkit.Internals
+import Language.Haskell.GHC.Toolkit.GHCUnexported
 import Module
 import PipelineMonad
 

@@ -5,6 +5,8 @@ $ASTERIUS_CP_PATH `$ASTERIUS_GHC_PATH --print-libdir`/package.conf.d/rts.conf $A
 $ASTERIUS_GHCPKG_PATH --package-db=$ASTERIUS_BOOT_DIR/package.conf.d recache
 $ASTERIUS_MKDIR_PATH -p $ASTERIUS_TMP_DIR
 
+$ASTERIUS_MKDIR_PATH -p boot-libs
+$ASTERIUS_CP_PATH -r $ASTERIUS_BOOT_LIBS_DIR/ghc-prim $ASTERIUS_BOOT_LIBS_DIR/integer-simple $ASTERIUS_BOOT_LIBS_DIR/base boot-libs/
 cd boot-libs
 
 $ASTERIUS_GHC_PATH ghc-prim/Setup.hs -no-keep-hi-files -no-keep-o-files -o $ASTERIUS_TMP_DIR/Setup

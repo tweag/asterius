@@ -1,7 +1,7 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
-module Language.Haskell.GHC.Toolkit.Internals where
+module Language.Haskell.GHC.Toolkit.GHCUnexported where
 
 import Cmm
 import CmmBuildInfoTables

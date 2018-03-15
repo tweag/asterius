@@ -9,6 +9,7 @@ module Asterius.Boot
 
 import Asterius.BuildInfo
 import Data.List.Extra
+import Language.Haskell.GHC.Toolkit.BootLibs
 import System.Exit
 import System.FilePath.Posix
 import UnliftIO
@@ -33,6 +34,7 @@ bootCreateProcess args@BootArgs {..} = do
       , env =
           Just $
           ("ASTERIUS_BOOT_DIR", bootDir') :
+          ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath) :
           ("ASTERIUS_LIB_DIR", bootDir' </> "asterius_lib") :
           ("ASTERIUS_TMP_DIR", bootTmpDir args) :
           ("ASTERIUS_GHC_PATH", ghc) :
