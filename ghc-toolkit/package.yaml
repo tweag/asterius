@@ -45,4 +45,5 @@ library:
     - StandaloneDeriving
     - StrictData
     - TemplateHaskell
+    - UnboxedTuples
     - UndecidableInstances
