@@ -15,8 +15,8 @@ import Language.Haskell.GHC.Toolkit.GHCUnexported
 import Module
 import PipelineMonad
 
-hooksFromCompiler :: Compiler ctx -> ctx -> IO Hooks
-hooksFromCompiler (Compiler c) ctx = do
+hooksFromCompiler :: Compiler -> IO Hooks
+hooksFromCompiler c = do
   first_run_modules <- newIORef emptyModuleSet
   pure
     emptyHooks
@@ -46,8 +46,8 @@ hooksFromCompiler (Compiler c) ctx = do
                       mapM (uncurry (compileForeign hsc_env')) foreign_files
                     setForeignOs (maybe [] return stub_o ++ foreign_os)
                     liftIO $
-                      c
-                        ctx
+                      withIR
+                        c
                         mod_summary
                         IR {core = cgguts, stg = _stg, cmmRaw = _cmmRaw}
                     pure (RealPhase next_phase, outputFilename)

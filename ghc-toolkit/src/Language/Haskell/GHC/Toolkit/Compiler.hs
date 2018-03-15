@@ -3,6 +3,7 @@
 module Language.Haskell.GHC.Toolkit.Compiler
   ( IR(..)
   , Compiler(..)
+  , defaultCompiler
   ) where
 
 import Cmm
@@ -15,6 +16,9 @@ data IR = IR
   , cmmRaw :: [RawCmmDecl]
   }
 
-newtype Compiler ctx = Compiler
-  { runCompiler :: ctx -> ModSummary -> IR -> IO ()
+newtype Compiler = Compiler
+  { withIR :: ModSummary -> IR -> IO ()
   }
+
+defaultCompiler :: Compiler
+defaultCompiler = Compiler {withIR = \_ _ -> pure ()}
