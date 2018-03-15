@@ -2,7 +2,7 @@ name: cereal-utils
 version: 0.0.1
 category: Data
 stability: alpha
-maintainer: Shao Cheng <astrohavoc@gmail.com>
+maintainer: Shao Cheng <cheng.shao@tweag.io>
 copyright: (c) 2018 Tweag I/O
 license: BSD3
 github: tweag/asterius

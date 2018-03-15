@@ -20,5 +20,6 @@ extra-deps:
 packages:
   - asterius
   - cereal-utils
+  - ghc-toolkit
   - hbinaryen
   - wasm-toolkit

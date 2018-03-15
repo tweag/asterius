@@ -10,7 +10,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: stack-work-
+          key: stack-work-gen2-
       - run: |
           apk add --no-cache --no-progress \
               autoconf \
@@ -31,12 +31,13 @@ jobs:
       - store_artifacts:
           path: /tmp/asterius_boot.tar.xz
       - save_cache:
-          key: stack-work-{{ .BuildNum }}
+          key: stack-work-gen2-{{ .BuildNum }}
           paths:
             - /root/.stack
             - .stack-work
             - asterius/.stack-work
             - cereal-utils/.stack-work
+            - ghc-toolkit/.stack-work
             - hbinaryen/.stack-work
             - wasm-toolkit/.stack-work
             - asterius/.lbi.buildinfo

@@ -10,7 +10,7 @@ main = do
     BootArgs
       { bootDir = bootdir
       , configureOptions =
-          "--ghc-option=-keep-s-files --ghc-option=-ddump-to-file --ghc-option=-ddump-asm --ghc-option=-ddump-cmm-raw --ghc-option=-ddump-stg --ghc-option=-ddump-simpl --ghc-option=-ddump-splices"
+          "--ghc-option=-ddump-to-file --ghc-option=-ddump-asm --ghc-option=-ddump-cmm-raw --ghc-option=-ddump-stg --ghc-option=-ddump-simpl --ghc-option=-ddump-splices"
       , buildOptions = ""
       , installOptions = ""
       }

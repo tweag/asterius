@@ -1,4 +1,4 @@
-name: wasm-toolkit
+name: ghc-toolkit
 version: 0.0.1
 category: Compiler
 stability: alpha
@@ -16,16 +16,7 @@ ghc-options: -Wall
 
 dependencies:
   - base
-  - bytestring
-  - cereal
-  - cereal-utils
-  - ghc-prim
-  - hashable
-  - hbinaryen
-  - vector
+  - ghc
 
 library:
   source-dirs: src
-  other-extensions:
-    - MagicHash
-    - UnboxedTuples
