@@ -23,7 +23,6 @@ module Asterius.IR
   , toAModule
   ) where
 
-import Asterius.CmmOrphans ()
 import CLabel
 import Cmm
 import CmmSwitch
@@ -41,6 +40,7 @@ import Hoopl.Block
 import Hoopl.Collections
 import Hoopl.Graph
 import Hoopl.Label
+import Language.Haskell.GHC.Toolkit.IROrphans ()
 import Outputable hiding ((<>))
 import Unique
 

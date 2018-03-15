@@ -38,8 +38,11 @@ library:
     - Language.Haskell.GHC.Toolkit.GHCUnexported
     - Paths_ghc_toolkit
   other-extensions:
+    - GADTs
     - NamedFieldPuns
     - RecordWildCards
     - ScopedTypeVariables
+    - StandaloneDeriving
     - StrictData
     - TemplateHaskell
+    - UndecidableInstances

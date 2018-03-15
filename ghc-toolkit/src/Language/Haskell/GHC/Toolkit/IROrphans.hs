@@ -3,7 +3,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Asterius.CmmOrphans
+module Language.Haskell.GHC.Toolkit.IROrphans
   ( setDynFlagsRef
   ) where
 

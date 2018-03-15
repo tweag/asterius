@@ -5,12 +5,12 @@ module Asterius.FrontendPlugin
   ( frontendPlugin
   ) where
 
-import Asterius.CmmOrphans ()
 import Data.List.Extra
 import GHC
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
+import Language.Haskell.GHC.Toolkit.IROrphans ()
 import System.Directory
 import System.FilePath
 import Text.Show.Pretty
