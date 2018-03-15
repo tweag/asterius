@@ -16,7 +16,15 @@ ghc-options: -Wall
 
 dependencies:
   - base
+  - containers
+  - filepath
   - ghc
 
 library:
   source-dirs: src
+  other-modules:
+    - Language.Haskell.GHC.Toolkit.Internals
+  other-extensions:
+    - NamedFieldPuns
+    - RecordWildCards
+    - StrictData
