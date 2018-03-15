@@ -11,6 +11,7 @@ import BasicTypes
 import CLabel
 import Cmm
 import CoAxiom
+import Control.Monad.IO.Class
 import CoreSyn
 import CostCentre
 import CostCentreState
@@ -20,6 +21,8 @@ import DynFlags
 import ForeignCall
 import Hoopl.Block
 import Hoopl.Graph
+import HscTypes
+import Language.Haskell.GHC.Toolkit.Compiler
 import Literal
 import Module
 import Name
@@ -36,8 +39,8 @@ import Var
 dynFlagsRef :: IORef DynFlags
 dynFlagsRef = unsafePerformIO $ newIORef unsafeGlobalDynFlags
 
-setDynFlagsRef :: DynFlags -> IO ()
-setDynFlagsRef = writeIORef dynFlagsRef
+setDynFlagsRef :: MonadIO m => DynFlags -> m ()
+setDynFlagsRef = liftIO . writeIORef dynFlagsRef
 
 fakeShow :: Outputable a => String -> a -> String
 fakeShow tag val =
@@ -46,6 +49,31 @@ fakeShow tag val =
     pure $
       "(" ++
       tag ++ " " ++ show (showSDoc dflags $ pprCode AsmStyle $ ppr val) ++ ")"
+
+deriving instance Show IR
+
+instance Outputable SDoc where
+  ppr = id
+
+instance Show SDoc where
+  show = fakeShow "SDoc"
+
+deriving instance Show ForeignStubs
+
+deriving instance Show InstalledUnitId
+
+deriving instance Show HpcInfo
+
+instance Show ModBreaks where
+  show = const "ModBreaks"
+
+deriving instance Show SptEntry
+
+deriving instance Show CgGuts
+
+deriving instance Show b => Show (Expr b)
+
+deriving instance Show b => Show (Bind b)
 
 deriving instance Show FunctionOrData
 

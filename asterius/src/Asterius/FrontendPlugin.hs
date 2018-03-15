@@ -28,4 +28,4 @@ frontendPlugin =
             foldr1 (</>) (wordsBy (== '.') (moduleNameString moduleName)) <.>
             "ddump-stg-ast"
       createDirectoryIfMissing True $ takeDirectory obj_fn
-      writeFile obj_fn $ ppShow stg
+      writeFile obj_fn $ ppShow core
