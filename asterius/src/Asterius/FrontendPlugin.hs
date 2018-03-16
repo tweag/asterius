@@ -5,6 +5,7 @@ module Asterius.FrontendPlugin
   ( frontendPlugin
   ) where
 
+import Data.Foldable
 import Data.List.Extra
 import GHC
 import GhcPlugins
@@ -14,7 +15,6 @@ import Language.Haskell.GHC.Toolkit.IROrphans ()
 import System.Directory
 import System.FilePath
 import Text.Show.Pretty
-import UnliftIO
 import UnliftIO.Environment
 
 frontendPlugin :: FrontendPlugin
@@ -33,7 +33,7 @@ frontendPlugin =
                         (wordsBy (== '.') (moduleNameString moduleName)) <.>
                       ext
                 createDirectoryIfMissing True $ takeDirectory $ obj_fn ""
-                forConcurrently_
+                for_
                   [ ("core", ppShow core)
                   , ("stg", ppShow stg)
                   , ("cmm", ppShow cmm)
