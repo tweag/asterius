@@ -49,10 +49,13 @@ run Config {..} targets =
             mod_map_ref <- newIORef M.empty
             h <-
               hooksFromCompiler $
-              Compiler $ \ModSummary {..} ir ->
-                liftIO $
-                atomicModifyIORef' mod_map_ref $ \mod_map ->
-                  (M.insert ms_mod ir mod_map, ())
+              defaultCompiler
+                { withIR =
+                    \ModSummary {..} ir ->
+                      liftIO $
+                      atomicModifyIORef' mod_map_ref $ \mod_map ->
+                        (M.insert ms_mod ir mod_map, ())
+                }
             pure (h, liftIO $ readIORef mod_map_ref)
         void $ setSessionDynFlags dflags' {ghcMode = CompManager, hooks = h}
         traverse (`guessTarget` Nothing) targets >>= setTargets

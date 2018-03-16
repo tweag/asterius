@@ -1,1 +1,1 @@
-# CHANGELOG for asterius
+# CHANGELOG for `asterius`

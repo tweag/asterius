@@ -3,6 +3,7 @@
 
 module Language.Haskell.GHC.Toolkit.GHCUnexported where
 
+import Avail
 import Cmm
 import CmmBuildInfoTables
 import CmmInfo
@@ -20,8 +21,15 @@ import DriverPhases
 import DriverPipeline
 import DynFlags
 import ErrUtils
+import FastString
 import FileCleanup
+import GHC.Fingerprint.Type
 import Hooks
+import HsDecls
+import HsDoc
+import HsDumpAst
+import HsExtension
+import HsImpExp
 import HscMain
 import HscTypes
 import Module
@@ -31,19 +39,87 @@ import PipelineMonad
 import Platform
 import ProfInit
 import SimplStg
+import SrcLoc
 import StgCmm
 import StgSyn
 import qualified Stream
 import Stream (Stream)
 import SysTools
 import System.FilePath
+import TcBackpack
 import TcRnTypes
 import TyCon
 import UniqSupply
 
-genericHscFrontend' :: ModSummary -> Hsc FrontendResult
-genericHscFrontend' mod_summary
-    = FrontendTypecheck `fmap` hscFileFrontEnd mod_summary
+genericHscFrontend' :: (ModSummary -> HsParsedModule -> Hsc HsParsedModule) -> ModSummary -> Hsc FrontendResult
+genericHscFrontend' p mod_summary
+    = FrontendTypecheck `fmap` hscFileFrontEnd' p mod_summary
+
+hscFileFrontEnd' :: (ModSummary -> HsParsedModule -> Hsc HsParsedModule) -> ModSummary -> Hsc TcGblEnv
+hscFileFrontEnd' p mod_summary = hscTypecheck p False mod_summary Nothing
+
+hscTypecheck :: (ModSummary -> HsParsedModule -> Hsc HsParsedModule)
+             -> Bool -- ^ Keep renamed source?
+             -> ModSummary -> Maybe HsParsedModule
+             -> Hsc TcGblEnv
+hscTypecheck p keep_rn mod_summary mb_rdr_module = do
+    tc_result <- hscTypecheck' p keep_rn mod_summary mb_rdr_module
+    _ <- extract_renamed_stuff tc_result
+    return tc_result
+
+type RenamedStuff =
+        (Maybe (HsGroup GhcRn, [LImportDecl GhcRn], Maybe [(LIE GhcRn, Avails)],
+                Maybe LHsDocString))
+
+extract_renamed_stuff :: TcGblEnv -> Hsc (TcGblEnv, RenamedStuff)
+extract_renamed_stuff tc_result = do
+
+    -- This 'do' is in the Maybe monad!
+    let rn_info = do decl <- tcg_rn_decls tc_result
+                     let imports = tcg_rn_imports tc_result
+                         exports = tcg_rn_exports tc_result
+                         doc_hdr = tcg_doc_hdr tc_result
+                     return (decl,imports,exports,doc_hdr)
+
+    dflags <- getDynFlags
+    liftIO $ dumpIfSet_dyn dflags Opt_D_dump_rn_ast "Renamer" $
+                           showAstData NoBlankSrcSpan rn_info
+
+    return (tc_result, rn_info)
+
+hscTypecheck' :: (ModSummary -> HsParsedModule -> Hsc HsParsedModule)
+              -> Bool -- ^ Keep renamed source?
+              -> ModSummary -> Maybe HsParsedModule
+              -> Hsc TcGblEnv
+hscTypecheck' p keep_rn mod_summary mb_rdr_module = do
+    hsc_env <- getHscEnv
+    let hsc_src = ms_hsc_src mod_summary
+        dflags = hsc_dflags hsc_env
+        outer_mod = ms_mod mod_summary
+        mod_name = moduleName outer_mod
+        outer_mod' = mkModule (thisPackage dflags) mod_name
+        inner_mod = canonicalizeHomeModule dflags mod_name
+        src_filename  = ms_hspp_file mod_summary
+        real_loc = realSrcLocSpan $ mkRealSrcLoc (mkFastString src_filename) 1 1
+    if hsc_src == HsigFile && not (isHoleModule inner_mod)
+        then ioMsgMaybe $ tcRnInstantiateSignature hsc_env outer_mod' real_loc
+        else
+         do hpm <- case mb_rdr_module of
+                    Just hpm -> return hpm
+                    Nothing -> hscParse' mod_summary >>= p mod_summary
+            tc_result0 <- tcRnModule' mod_summary keep_rn hpm
+            if hsc_src == HsigFile
+                then do (iface, _, _) <- liftIO $ hscSimpleIface hsc_env tc_result0 Nothing
+                        ioMsgMaybe $
+                            tcRnMergeSignatures hsc_env hpm tc_result0 iface
+                else return tc_result0
+
+hscSimpleIface :: HscEnv
+               -> TcGblEnv
+               -> Maybe Fingerprint
+               -> IO (ModIface, Bool, ModDetails)
+hscSimpleIface hsc_env tc_result mb_old_iface
+    = runHsc hsc_env $ hscSimpleIface' tc_result mb_old_iface
 
 compileForeign :: HscEnv -> ForeignSrcLang -> FilePath -> IO FilePath
 compileForeign hsc_env lang stub_c = do

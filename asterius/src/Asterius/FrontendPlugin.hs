@@ -21,12 +21,18 @@ frontendPlugin =
   frontendPluginFromCompiler $ do
     obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
     pure $
-      Compiler $ \ModSummary {ms_mod = Module {..}} IR {..} ->
-        liftIO $ do
-          let obj_fn =
-                obj_topdir </> unitIdString moduleUnitId </>
-                foldr1 (</>) (wordsBy (== '.') (moduleNameString moduleName)) <.>
-                "ddump-cmm-raw-ast"
-          createDirectoryIfMissing True $ takeDirectory obj_fn
-          writeFile obj_fn $ ppShow cmmRaw
-          putStrLn $ "Compiler invoked for: " ++ show ms_mod
+      defaultCompiler
+        { withIR =
+            \ModSummary {ms_mod = Module {..}} IR {..} ->
+              liftIO $ do
+                let obj_fn ext =
+                      obj_topdir </> unitIdString moduleUnitId </>
+                      foldr1
+                        (</>)
+                        (wordsBy (== '.') (moduleNameString moduleName)) <.>
+                      ext
+                createDirectoryIfMissing True $ takeDirectory $ obj_fn ""
+                writeFile (obj_fn "ddump-core-ast") $ ppShow core
+                writeFile (obj_fn "ddump-stg-ast") $ ppShow stg
+                writeFile (obj_fn "ddump-cmm-raw-ast") $ ppShow cmmRaw
+        }

@@ -22,7 +22,7 @@ What comes next:
   enough primops & libc stubs for an MVP(Minimum Viable Product).
 * A test suite for the generated WebAssembly code.
 
-See [`ROADMAP.md`](ROADMAP.md) for a more detailed roadmap.
+See [`ROADMAP.md`](ROADMAP.md) for a more detailed roadmap. The haddock documentation of the `master` branch is available [here](https://tweag.github.io/asterius/index.html).
 
 ## Building
 

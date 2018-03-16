@@ -23,11 +23,25 @@ hooksFromCompiler c =
     pure $
       emptyHooks
         { hscFrontendHook =
-            Just $ \mod_summary@ModSummary {..} -> do
-              r@(FrontendTypecheck tc_env) <- genericHscFrontend' mod_summary
+            Just $ \mod_summary -> do
+              let ms_mod0 = ms_mod mod_summary
+              r@(FrontendTypecheck tc_env) <-
+                genericHscFrontend'
+                  (\mod_summary' p -> do
+                     r <- patch c mod_summary' p
+                     liftIO $
+                       atomicModifyIORef' tc_map $ \m ->
+                         ( extendModuleEnv
+                             m
+                             (ms_mod mod_summary')
+                             (p, undefined)
+                         , ())
+                     pure r)
+                  mod_summary
               liftIO $
                 atomicModifyIORef' tc_map $ \m ->
-                  (extendModuleEnv m ms_mod tc_env, ())
+                  let Just (p, _) = m `lookupModuleEnv` ms_mod0
+                   in (extendModuleEnv m ms_mod0 (p, tc_env), ())
               pure r
         , runPhaseHook =
             Just $ \phase_plus input_fn dflags ->
@@ -38,7 +52,7 @@ hooksFromCompiler c =
                     atomicModifyIORef' tc_map $ \m ->
                       (m `delModuleEnv` ms_mod, m `lookupModuleEnv` ms_mod)
                   case m_tc of
-                    Just tc -> do
+                    Just (p, tc) -> do
                       let hsc_lang = hscTarget dflags
                           next_phase =
                             hscPostBackendPhase dflags src_flavour hsc_lang
@@ -56,7 +70,8 @@ hooksFromCompiler c =
                         c
                         mod_summary
                         IR
-                          { typeChecked = tc
+                          { parsed = p
+                          , typeChecked = tc
                           , core = cgguts
                           , stg = _stg
                           , cmmRaw = _cmmRaw

@@ -2,7 +2,9 @@
 
 module Language.Haskell.GHC.Toolkit.Compiler
   ( IR(..)
-  , Compiler(..)
+  , Compiler
+  , patch
+  , withIR
   , defaultCompiler
   ) where
 
@@ -13,15 +15,17 @@ import StgSyn
 import TcRnTypes
 
 data IR = IR
-  { typeChecked :: TcGblEnv
+  { parsed :: HsParsedModule
+  , typeChecked :: TcGblEnv
   , core :: CgGuts
   , stg :: [StgTopBinding]
   , cmmRaw :: [RawCmmDecl]
   }
 
-newtype Compiler = Compiler
-  { withIR :: ModSummary -> IR -> CompPipeline ()
+data Compiler = Compiler
+  { patch :: ModSummary -> HsParsedModule -> Hsc HsParsedModule
+  , withIR :: ModSummary -> IR -> CompPipeline ()
   }
 
 defaultCompiler :: Compiler
-defaultCompiler = Compiler {withIR = \_ _ -> pure ()}
+defaultCompiler = Compiler {patch = const pure, withIR = \_ _ -> pure ()}
