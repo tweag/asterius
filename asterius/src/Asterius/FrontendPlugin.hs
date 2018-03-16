@@ -34,9 +34,9 @@ frontendPlugin =
                       ext
                 createDirectoryIfMissing True $ takeDirectory $ obj_fn ""
                 for_
-                  [ ("core", ppShow core)
+                  [ ("simpl", ppShow core)
                   , ("stg", ppShow stg)
                   , ("cmm", ppShow cmm)
                   , ("cmm-raw", ppShow cmmRaw)
-                  ] $ \(e, s) -> writeFile (obj_fn $ "ddump-" ++ e ++ "-ast") s
+                  ] $ \(e, s) -> writeFile (obj_fn $ "dump-" ++ e ++ "-ast") s
         }

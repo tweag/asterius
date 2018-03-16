@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -176,16 +177,18 @@ deriving instance Show CmmStatics
 
 deriving instance Show t => Show (MaybeO ex t)
 
-deriving instance
-         (Show (block n C C), Show (block n C O), Show (block n O C),
-          Show (block n O O)) =>
-         Show (Graph' block n e x)
+instance Show (n O O) => Show (Block n O O) where
+  show = show . blockToList
+
+instance (Show (n C O), Show (n O O), Show (n O C)) => Show (Block n C C) where
+  show (BlockCC h b t) =
+    "BlockCC (" ++ show h ++ ") (" ++ show b ++ ") (" ++ show t ++ ")"
+
+instance (Show (n C O), Show (n O O), Show (n O C)) => Show (Graph n C C) where
+  show (GMany NothingO lm NothingO) = show $ bodyList lm
 
 deriving instance
-         (Show (n C O), Show (n O C), Show (n O O)) => Show (Block n e x)
-
-deriving instance
-         (Show (n C O), Show (n O C), Show (n O O)) => Show (GenCmmGraph n)
+         (Show (n C O), Show (n O O), Show (n O C)) => Show (GenCmmGraph n)
 
 deriving instance Show CmmTickScope
 

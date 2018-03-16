@@ -38,6 +38,7 @@ library:
     - Language.Haskell.GHC.Toolkit.GHCUnexported
     - Paths_ghc_toolkit
   other-extensions:
+    - FlexibleInstances
     - GADTs
     - NamedFieldPuns
     - RecordWildCards
