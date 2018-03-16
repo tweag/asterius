@@ -10,7 +10,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: stack-work-gen3-
+          key: stack-work-gen4-
       - run: |
           apk add --no-cache --no-progress \
               autoconf \
@@ -28,7 +28,8 @@ jobs:
           if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
           then
             export PREV_DIR=`pwd`
-            cd `stack path --local-doc-root`
+            cp -r `stack path --local-doc-root` /tmp/
+            cd /tmp/doc
             touch .nojekyll
             git init
             git config user.email "cheng.shao@tweag.io"
@@ -46,7 +47,7 @@ jobs:
       - store_artifacts:
           path: /tmp/asterius_boot.tar.xz
       - save_cache:
-          key: stack-work-gen3-{{ .BuildNum }}
+          key: stack-work-gen4-{{ .BuildNum }}
           paths:
             - /root/.stack
             - .stack-work
