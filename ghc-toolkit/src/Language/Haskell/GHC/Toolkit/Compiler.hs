@@ -19,6 +19,7 @@ data IR = IR
   , typeChecked :: TcGblEnv
   , core :: CgGuts
   , stg :: [StgTopBinding]
+  , cmm :: [CmmDecl]
   , cmmRaw :: [RawCmmDecl]
   }
 

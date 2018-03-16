@@ -14,6 +14,7 @@ import Language.Haskell.GHC.Toolkit.IROrphans ()
 import System.Directory
 import System.FilePath
 import Text.Show.Pretty
+import UnliftIO
 import UnliftIO.Environment
 
 frontendPlugin :: FrontendPlugin
@@ -32,7 +33,10 @@ frontendPlugin =
                         (wordsBy (== '.') (moduleNameString moduleName)) <.>
                       ext
                 createDirectoryIfMissing True $ takeDirectory $ obj_fn ""
-                writeFile (obj_fn "ddump-core-ast") $ ppShow core
-                writeFile (obj_fn "ddump-stg-ast") $ ppShow stg
-                writeFile (obj_fn "ddump-cmm-raw-ast") $ ppShow cmmRaw
+                forConcurrently_
+                  [ ("core", ppShow core)
+                  , ("stg", ppShow stg)
+                  , ("cmm", ppShow cmm)
+                  , ("cmm-raw", ppShow cmmRaw)
+                  ] $ \(e, s) -> writeFile (obj_fn $ "ddump-" ++ e ++ "-ast") s
         }

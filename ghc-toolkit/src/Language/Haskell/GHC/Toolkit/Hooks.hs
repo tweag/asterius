@@ -58,7 +58,7 @@ hooksFromCompiler c =
                             hscPostBackendPhase dflags src_flavour hsc_lang
                       output_fn <- phaseOutputFilename next_phase
                       PipeState {hsc_env = hsc_env'} <- getPipeState
-                      (outputFilename, mStub, foreign_files, _stg, _cmmRaw) <-
+                      (outputFilename, mStub, foreign_files, _stg, _cmm, _cmmRaw) <-
                         liftIO $
                         hscGenHardCode' hsc_env' cgguts mod_summary output_fn
                       stub_o <- liftIO (mapM (compileStub hsc_env') mStub)
@@ -74,6 +74,7 @@ hooksFromCompiler c =
                           , typeChecked = tc
                           , core = cgguts
                           , stg = _stg
+                          , cmm = _cmm
                           , cmmRaw = _cmmRaw
                           }
                       pure (RealPhase next_phase, outputFilename)

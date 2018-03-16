@@ -294,7 +294,7 @@ runHookedPhase pp input dflags =
   lookupHook runPhaseHook runPhase dflags pp input dflags
 
 hscGenHardCode' :: HscEnv -> CgGuts -> ModSummary -> FilePath
-               -> IO (FilePath, Maybe FilePath, [(ForeignSrcLang, FilePath)], [StgTopBinding], [RawCmmDecl])
+               -> IO (FilePath, Maybe FilePath, [(ForeignSrcLang, FilePath)], [StgTopBinding], [CmmDecl], [RawCmmDecl])
                -- ^ @Just f@ <=> _stub.c is f
 hscGenHardCode' hsc_env cgguts mod_summary output_filename = do
         let CgGuts{ -- This is the last use of the ModGuts in a compilation.
@@ -343,6 +343,8 @@ hscGenHardCode' hsc_env cgguts mod_summary output_filename = do
                                 cost_centre_info
                                 stg_binds hpc_info
 
+            cmms_list <- concat <$> Stream.collect cmms
+
             ------------------  Code output -----------------------
             rawcmms0 <- {-# SCC "cmmToRawCmm" #-}
                       cmmToRawCmm dflags cmms
@@ -358,7 +360,7 @@ hscGenHardCode' hsc_env cgguts mod_summary output_filename = do
                 <- {-# SCC "codeOutput" #-}
                   codeOutput dflags this_mod output_filename location
                   foreign_stubs foreign_files dependencies rawcmms1
-            return (output_filename, stub_c_exists, foreign_fps, stg_binds, rawcmms_list)
+            return (output_filename, stub_c_exists, foreign_fps, stg_binds, cmms_list, rawcmms_list)
 
 doCodeGen   :: HscEnv -> Module -> [TyCon]
             -> CollectedCCs

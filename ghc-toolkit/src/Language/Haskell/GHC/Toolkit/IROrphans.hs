@@ -27,6 +27,7 @@ import Module
 import Name
 import Outputable
 import PrimOp
+import SMRep
 import StgSyn
 import System.IO.Unsafe
 import Text.Show.Functions ()
@@ -227,3 +228,22 @@ deriving instance Show (CmmNode e x)
 
 deriving instance
          (Show d, Show h, Show g) => Show (GenCmmDecl d h g)
+
+deriving instance Show ArgDescr
+
+deriving instance Show ClosureTypeInfo
+
+deriving instance Show SMRep
+
+deriving instance Show ProfilingInfo
+
+instance Show StgHalfWord where
+  show = show . fromStgHalfWord
+
+deriving instance Show C_SRT
+
+deriving instance Show CmmInfoTable
+
+deriving instance Show CmmStackInfo
+
+deriving instance Show CmmTopInfo
