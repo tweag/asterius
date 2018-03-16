@@ -37,8 +37,13 @@ import qualified Stream
 import Stream (Stream)
 import SysTools
 import System.FilePath
+import TcRnTypes
 import TyCon
 import UniqSupply
+
+genericHscFrontend' :: ModSummary -> Hsc FrontendResult
+genericHscFrontend' mod_summary
+    = FrontendTypecheck `fmap` hscFileFrontEnd mod_summary
 
 compileForeign :: HscEnv -> ForeignSrcLang -> FilePath -> IO FilePath
 compileForeign hsc_env lang stub_c = do

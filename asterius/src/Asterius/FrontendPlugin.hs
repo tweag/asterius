@@ -18,14 +18,15 @@ import UnliftIO.Environment
 
 frontendPlugin :: FrontendPlugin
 frontendPlugin =
-  frontendPluginFromCompiler $
-  pure $
-  Compiler $ \ModSummary {ms_mod = Module {..}} IR {..} ->
-    liftIO $ do
-      obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
-      let obj_fn =
-            obj_topdir </> unitIdString moduleUnitId </>
-            foldr1 (</>) (wordsBy (== '.') (moduleNameString moduleName)) <.>
-            "ddump-stg-ast"
-      createDirectoryIfMissing True $ takeDirectory obj_fn
-      writeFile obj_fn $ ppShow core
+  frontendPluginFromCompiler $ do
+    obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
+    pure $
+      Compiler $ \ModSummary {ms_mod = Module {..}} IR {..} ->
+        liftIO $ do
+          let obj_fn =
+                obj_topdir </> unitIdString moduleUnitId </>
+                foldr1 (</>) (wordsBy (== '.') (moduleNameString moduleName)) <.>
+                "ddump-cmm-raw-ast"
+          createDirectoryIfMissing True $ takeDirectory obj_fn
+          writeFile obj_fn $ ppShow cmmRaw
+          putStrLn $ "Compiler invoked for: " ++ show ms_mod

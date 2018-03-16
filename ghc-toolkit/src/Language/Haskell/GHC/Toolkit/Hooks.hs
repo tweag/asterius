@@ -1,51 +1,67 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Language.Haskell.GHC.Toolkit.Hooks
-  ( runPhaseWithCompiler
+  ( hooksFromCompiler
   ) where
 
 import Control.Monad.IO.Class
 import Data.IORef
 import DriverPipeline
 import DynFlags
+import Hooks
 import HscTypes
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.GHCUnexported
 import Module
 import PipelineMonad
+import TcRnTypes
 
-runPhaseWithCompiler ::
-     MonadIO m
-  => Compiler
-  -> m (PhasePlus -> FilePath -> DynFlags -> CompPipeline (PhasePlus, FilePath))
-runPhaseWithCompiler c =
+hooksFromCompiler :: MonadIO m => Compiler -> m Hooks
+hooksFromCompiler c =
   liftIO $ do
-    first_run_modules <- newIORef emptyModuleSet
-    pure $ \phase_plus input_fn dflags ->
-      case phase_plus of
-        HscOut src_flavour _ (HscRecomp cgguts mod_summary@ModSummary {..}) -> do
-          first_run <-
-            liftIO $
-            atomicModifyIORef' first_run_modules $ \s ->
-              if elemModuleSet ms_mod s
-                then (delModuleSet s ms_mod, False)
-                else (extendModuleSet s ms_mod, True)
-          if first_run
-            then do
-              let hsc_lang = hscTarget dflags
-                  next_phase = hscPostBackendPhase dflags src_flavour hsc_lang
-              output_fn <- phaseOutputFilename next_phase
-              PipeState {hsc_env = hsc_env'} <- getPipeState
-              (outputFilename, mStub, foreign_files, _stg, _cmmRaw) <-
-                liftIO $ hscGenHardCode' hsc_env' cgguts mod_summary output_fn
-              stub_o <- liftIO (mapM (compileStub hsc_env') mStub)
-              foreign_os <-
-                liftIO $ mapM (uncurry (compileForeign hsc_env')) foreign_files
-              setForeignOs (maybe [] return stub_o ++ foreign_os)
-              withIR
-                c
-                mod_summary
-                IR {core = cgguts, stg = _stg, cmmRaw = _cmmRaw}
-              pure (RealPhase next_phase, outputFilename)
-            else runPhase phase_plus input_fn dflags
-        _ -> runPhase phase_plus input_fn dflags
+    tc_map <- newIORef emptyModuleEnv
+    pure $
+      emptyHooks
+        { hscFrontendHook =
+            Just $ \mod_summary@ModSummary {..} -> do
+              r@(FrontendTypecheck tc_env) <- genericHscFrontend' mod_summary
+              liftIO $
+                atomicModifyIORef' tc_map $ \m ->
+                  (extendModuleEnv m ms_mod tc_env, ())
+              pure r
+        , runPhaseHook =
+            Just $ \phase_plus input_fn dflags ->
+              case phase_plus of
+                HscOut src_flavour _ (HscRecomp cgguts mod_summary@ModSummary {..}) -> do
+                  m_tc <-
+                    liftIO $
+                    atomicModifyIORef' tc_map $ \m ->
+                      (m `delModuleEnv` ms_mod, m `lookupModuleEnv` ms_mod)
+                  case m_tc of
+                    Just tc -> do
+                      let hsc_lang = hscTarget dflags
+                          next_phase =
+                            hscPostBackendPhase dflags src_flavour hsc_lang
+                      output_fn <- phaseOutputFilename next_phase
+                      PipeState {hsc_env = hsc_env'} <- getPipeState
+                      (outputFilename, mStub, foreign_files, _stg, _cmmRaw) <-
+                        liftIO $
+                        hscGenHardCode' hsc_env' cgguts mod_summary output_fn
+                      stub_o <- liftIO (mapM (compileStub hsc_env') mStub)
+                      foreign_os <-
+                        liftIO $
+                        mapM (uncurry (compileForeign hsc_env')) foreign_files
+                      setForeignOs (maybe [] return stub_o ++ foreign_os)
+                      withIR
+                        c
+                        mod_summary
+                        IR
+                          { typeChecked = tc
+                          , core = cgguts
+                          , stg = _stg
+                          , cmmRaw = _cmmRaw
+                          }
+                      pure (RealPhase next_phase, outputFilename)
+                    _ -> runPhase phase_plus input_fn dflags
+                _ -> runPhase phase_plus input_fn dflags
+        }

@@ -10,7 +10,6 @@ import DriverPhases
 import DriverPipeline
 import GHC
 import GhcPlugins
-import Hooks
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 import Panic
@@ -30,7 +29,7 @@ frontendPluginFromCompiler init_c =
               liftIO $ oneShot env StopLn targets
             else do
               c <- init_c
-              rp <- liftIO $ runPhaseWithCompiler c
+              h <- liftIO $ hooksFromCompiler c
               env <- getSession
               o_files <-
                 liftIO $ traverse (compileFile env StopLn) non_hs_targets
@@ -40,7 +39,7 @@ frontendPluginFromCompiler init_c =
                   dflags
                     { ghcMode = CompManager
                     , ldInputs = map (FileOption "") o_files ++ ldInputs dflags
-                    , hooks = emptyHooks {runPhaseHook = Just rp}
+                    , hooks = h
                     }
               traverse (uncurry GHC.guessTarget) hs_targets >>= setTargets
               ok_flag <- load LoadAllTargets

@@ -10,9 +10,11 @@ import Cmm
 import HscTypes
 import PipelineMonad
 import StgSyn
+import TcRnTypes
 
 data IR = IR
-  { core :: CgGuts
+  { typeChecked :: TcGblEnv
+  , core :: CgGuts
   , stg :: [StgTopBinding]
   , cmmRaw :: [RawCmmDecl]
   }

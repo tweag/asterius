@@ -22,7 +22,6 @@ import ForeignCall
 import Hoopl.Block
 import Hoopl.Graph
 import HscTypes
-import Language.Haskell.GHC.Toolkit.Compiler
 import Literal
 import Module
 import Name
@@ -49,8 +48,6 @@ fakeShow tag val =
     pure $
       "(" ++
       tag ++ " " ++ show (showSDoc dflags $ pprCode AsmStyle $ ppr val) ++ ")"
-
-deriving instance Show IR
 
 instance Outputable SDoc where
   ppr = id
