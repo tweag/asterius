@@ -33,6 +33,7 @@ dependencies:
   - directory
   - filepath
   - ghc
+  - process
 
 library:
   source-dirs: src
