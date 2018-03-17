@@ -30,6 +30,7 @@ dependencies:
   - binary
   - Cabal
   - containers
+  - directory
   - filepath
   - ghc
 

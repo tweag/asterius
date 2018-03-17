@@ -15,7 +15,7 @@ main = do
                , "-plugin-package"
                , "asterius"
                ] ++
-               case registrationPackageDB pkgDbStack of
+               case registrationPackageDB packageDBStack of
                  GlobalPackageDB -> ["-global-package-db"]
                  UserPackageDB -> ["-user-package-db"]
                  SpecificPackageDB p -> ["-package-db", p]

@@ -19,8 +19,8 @@ data-files:
 custom-setup:
   dependencies:
     - base
-    - binary
     - Cabal
+    - ghc-toolkit
 
 ghc-options: -Wall
 

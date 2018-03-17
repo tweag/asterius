@@ -4,5 +4,3 @@ cereal-utils.cabal
 ghc-toolkit.cabal
 hbinaryen.cabal
 wasm-toolkit.cabal
-.pkg_descr.buildinfo
-.lbi.buildinfo

@@ -1,17 +1,14 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
-import Data.Binary
 import Distribution.Simple
-import Distribution.Simple.Program
+import Language.Haskell.GHC.Toolkit.GenPaths
 
 main :: IO ()
 main =
-  defaultMainWithHooks
-    simpleUserHooks
-      { hookedPrograms = map simpleProgram ["mkdir", "cp", "node", "sed", "sh"]
-      , postConf =
-          \args flags pkg_descr lbi -> do
-            encodeFile ".lbi.buildinfo" lbi
-            postConf simpleUserHooks args flags pkg_descr lbi
+  defaultMainWithHooks $
+  genPaths
+    GenPathsOptions
+      { targetModuleName = "BuildInfo_asterius"
+      , extraPrograms = ["mkdir", "cp", "node", "sed", "sh"]
       }
+    simpleUserHooks
