@@ -184,7 +184,8 @@ instance (Show (n C O), Show (n O O), Show (n O C)) => Show (Block n C C) where
   show (BlockCC h b t) =
     "BlockCC (" ++ show h ++ ") (" ++ show b ++ ") (" ++ show t ++ ")"
 
-instance (Show (n C O), Show (n O O), Show (n O C)) => Show (Graph n C C) where
+instance (Show (block n C C), Show (n C O), Show (n O O), Show (n O C)) =>
+         Show (Graph' block n C C) where
   show (GMany NothingO lm NothingO) = show $ bodyList lm
 
 deriving instance
@@ -193,9 +194,11 @@ deriving instance
 deriving instance Show CmmTickScope
 
 instance Show ModuleName where
-  show = moduleNameString
+  show = show . moduleNameString
 
-deriving instance Show Module
+instance Show Module where
+  show (Module u m) =
+    "Module \"" ++ unitIdString u ++ "\" \"" ++ moduleNameString m ++ "\""
 
 instance Show CostCentreIndex where
   show = show . unCostCentreIndex

@@ -2,7 +2,8 @@
 {-# LANGUAGE UnboxedTuples #-}
 
 module Language.Haskell.GHC.Toolkit.Run
-  ( Config(..)
+  ( Config
+  , ghcFlags
   , defaultConfig
   , run
   ) where

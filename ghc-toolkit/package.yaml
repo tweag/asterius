@@ -18,8 +18,10 @@ data-files:
 custom-setup:
   dependencies:
     - base
-    - binary
     - Cabal
+    - containers
+    - directory
+    - filepath
 
 ghc-options: -Wall
 
@@ -30,13 +32,11 @@ dependencies:
   - containers
   - filepath
   - ghc
-  - template-haskell
 
 library:
   source-dirs: src
   other-modules:
     - Language.Haskell.GHC.Toolkit.GHCUnexported
-    - Paths_ghc_toolkit
   other-extensions:
     - FlexibleInstances
     - GADTs
@@ -45,6 +45,5 @@ library:
     - ScopedTypeVariables
     - StandaloneDeriving
     - StrictData
-    - TemplateHaskell
     - UnboxedTuples
     - UndecidableInstances
