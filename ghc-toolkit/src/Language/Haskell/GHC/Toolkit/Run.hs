@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 module Language.Haskell.GHC.Toolkit.Run
@@ -15,13 +16,14 @@ import Data.IORef
 import qualified Data.Map.Strict as M
 import DynFlags
 import GHC
-import Language.Haskell.GHC.Toolkit.BuildInfo
+import qualified Language.Haskell.GHC.Toolkit.BuildInfo as BI
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 import Panic
 
-newtype Config = Config
+data Config = Config
   { ghcFlags :: [String]
+  , ghcLibDir :: FilePath
   }
 
 defaultConfig :: Config
@@ -34,6 +36,7 @@ defaultConfig =
         , "-no-keep-hi-files"
         , "-no-keep-o-files"
         ]
+    , ghcLibDir = BI.ghcLibDir
     }
 
 run :: MonadIO m => Config -> [String] -> m (M.Map Module IR)
