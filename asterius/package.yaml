@@ -38,7 +38,7 @@ dependencies:
   - ghc
   - ghc-toolkit
   - hashable
-  - hbinaryen
+  - binaryen
   - pretty-show
   - template-haskell
   - unliftio

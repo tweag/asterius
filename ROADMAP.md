@@ -22,8 +22,8 @@ The purpose of M1 is to ship an MVP(Minimum Viable Product).
 
 ### P1 features
 
-* A separate `hbinaryen` package to provide raw bindings to the `binaryen` project.
-* A separate `wasm-toolkit` package to provide a Haskellish IR wrapping `hbinaryen`, also providing simple utilities like simulating tail-calls, linking multiple modules, eliminating dead code, etc.
+* A separate `binaryen` package to provide raw bindings to the `binaryen` project.
+* A separate `wasm-toolkit` package to provide a Haskellish IR wrapping `binaryen`, also providing simple utilities like simulating tail-calls, linking multiple modules, eliminating dead code, etc.
 
 ### P2 features
 

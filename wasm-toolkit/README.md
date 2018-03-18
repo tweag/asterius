@@ -1,3 +1,3 @@
 # `wasm-toolkit`
 
-High-level toolkit for working with WebAssembly, based on `hbinaryen`.
+High-level toolkit for working with WebAssembly, based on `binaryen`.

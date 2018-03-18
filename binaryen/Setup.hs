@@ -40,10 +40,10 @@ main =
                 let pkg_descr = packageDescription g_pkg_descr
                     binaryen_builddir = absBuildDir </> "binaryen"
                     cbits_builddir = absBuildDir </> "cbits"
-                    hbinaryen_installdirs =
+                    binaryen_installdirs =
                       absoluteInstallDirs pkg_descr lbi NoCopyDest
-                    hbinaryen_libdir = libdir hbinaryen_installdirs
-                    hbinaryen_bindir = bindir hbinaryen_installdirs
+                    binaryen_libdir = libdir binaryen_installdirs
+                    binaryen_bindir = bindir binaryen_installdirs
                     run prog args stdin_s =
                       let Just conf_prog = lookupProgram prog (withPrograms lbi)
                        in runProgramInvocation
@@ -55,8 +55,8 @@ main =
                 for_
                   [ binaryen_builddir
                   , cbits_builddir
-                  , hbinaryen_libdir
-                  , hbinaryen_bindir
+                  , binaryen_libdir
+                  , binaryen_bindir
                   ] $
                   createDirectoryIfMissing True
                 withCurrentDirectory binaryen_builddir $
@@ -86,7 +86,7 @@ main =
                 run arProgram ["-M"] $
                   concat $
                   [ "create " ++
-                    hbinaryen_libdir </> "libHShbinaryen-binaryen.a" ++ "\n"
+                    binaryen_libdir </> "libHSbinaryen-binaryen.a" ++ "\n"
                   ] ++
                   [ "addlib " ++ binaryen_builddir </> "lib" </> l ++ "\n"
                   | l <- binaryen_libs
@@ -101,8 +101,8 @@ main =
                         updatePackageDescription
                           ( Just
                               emptyBuildInfo
-                                { extraLibs = ["HShbinaryen-binaryen", "stdc++"]
-                                , extraLibDirs = [hbinaryen_libdir]
+                                { extraLibs = ["HSbinaryen-binaryen", "stdc++"]
+                                , extraLibDirs = [binaryen_libdir]
                                 }
                           , []) $
                         localPkgDescr lbi

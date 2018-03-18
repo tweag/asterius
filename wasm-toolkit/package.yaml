@@ -21,7 +21,7 @@ dependencies:
   - cereal-utils
   - ghc-prim
   - hashable
-  - hbinaryen
+  - binaryen
   - vector
 
 library:

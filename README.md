@@ -9,7 +9,7 @@ What's already present:
 * A framework that hijacks the normal `ghc` pipeline and retrieves an
   in-memory representation of raw Cmm.
 * A test suite for booting that compiles `ghc-prim`, `integer-simple` and `base`.
-* Complete raw Haskell bindings of `binaryen`, in the `hbinaryen` package.
+* Complete raw Haskell bindings of `binaryen`, in the `binaryen` package.
 * A serializable IR, roughly mapping to `binaryen` IR.
 
 Currently working on:

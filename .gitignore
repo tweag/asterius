@@ -2,5 +2,5 @@
 asterius.cabal
 cereal-utils.cabal
 ghc-toolkit.cabal
-hbinaryen.cabal
+binaryen.cabal
 wasm-toolkit.cabal

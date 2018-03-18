@@ -10,7 +10,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: stack-work-gen6-
+          key: stack-work-gen7-
       - run: |
           apk add --no-cache --no-progress \
               autoconf \
@@ -22,7 +22,7 @@ jobs:
               nodejs-current \
               sed \
               xz
-          stack --no-terminal test --haddock hbinaryen:hbinaryen-test
+          stack --no-terminal test --haddock binaryen:binaryen-test
           stack --no-terminal test --haddock asterius:fact-dump
           stack --no-terminal test --haddock asterius:ahc-boot
           if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
@@ -41,18 +41,18 @@ jobs:
             cd $PREV_DIR
             unset PREV_DIR
           fi
-          cd /tmp/asterius/.boot
-          tar -cJf /tmp/asterius_boot.tar.xz asterius_lib dist
+          cd /tmp
+          tar -cJf /tmp/asterius_boot.tar.xz asterius/.boot
           rm -rf /root/.stack/programs
       - store_artifacts:
           path: /tmp/asterius_boot.tar.xz
       - save_cache:
-          key: stack-work-gen6-{{ .BuildNum }}
+          key: stack-work-gen7-{{ .BuildNum }}
           paths:
             - /root/.stack
             - .stack-work
             - asterius/.stack-work
             - cereal-utils/.stack-work
             - ghc-toolkit/.stack-work
-            - hbinaryen/.stack-work
+            - binaryen/.stack-work
             - wasm-toolkit/.stack-work

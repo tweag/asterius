@@ -21,5 +21,5 @@ packages:
   - asterius
   - cereal-utils
   - ghc-toolkit
-  - hbinaryen
+  - binaryen
   - wasm-toolkit

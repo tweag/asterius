@@ -1,4 +1,4 @@
-name: hbinaryen
+name: binaryen
 version: 0.0.1
 category: Compiler
 stability: alpha
@@ -36,11 +36,11 @@ library:
   source-dirs: src
 
 tests:
-  hbinaryen-test:
+  binaryen-test:
     source-dirs: test
-    main: hbinaryen-test.hs
+    main: binaryen-test.hs
     dependencies:
-      - hbinaryen
+      - binaryen
       - vector
     other-extensions:
       - OverloadedLists
