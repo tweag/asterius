@@ -44,7 +44,6 @@ library:
     - GADTs
     - NamedFieldPuns
     - RecordWildCards
-    - ScopedTypeVariables
     - StandaloneDeriving
     - StrictData
     - UnboxedTuples

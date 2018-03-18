@@ -9,4 +9,4 @@ main = do
   pwd <- getCurrentDirectory
   let test_path = pwd </> "test" </> "fact-dump"
   setEnv "ASTERIUS_LIB_DIR" test_path
-  withCurrentDirectory test_path $ callProcess ahc ["--make", "fact.hs"]
+  withCurrentDirectory test_path $ callProcess ahc ["--make", "Fact.hs"]

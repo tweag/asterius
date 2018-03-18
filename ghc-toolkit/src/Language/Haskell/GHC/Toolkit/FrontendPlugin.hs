@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 module Language.Haskell.GHC.Toolkit.FrontendPlugin
   ( frontendPluginFromCompiler
   ) where
