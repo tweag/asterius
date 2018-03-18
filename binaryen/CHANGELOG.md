@@ -1,1 +1,1 @@
-# CHANGELOG for binaryen
+# CHANGELOG for `binaryen`

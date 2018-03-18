@@ -1,7 +1,7 @@
 version: 2
 
 jobs:
-  build:
+  asterius:
     docker:
       - image: terrorjack/meikyu:ghc-head
     environment:
@@ -22,7 +22,6 @@ jobs:
               nodejs-current \
               sed \
               xz
-          stack --no-terminal test --haddock binaryen:binaryen-test
           stack --no-terminal test --haddock asterius:fact-dump
           stack --no-terminal test --haddock asterius:ahc-boot
           if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
@@ -56,3 +55,43 @@ jobs:
             - ghc-toolkit/.stack-work
             - binaryen/.stack-work
             - wasm-toolkit/.stack-work
+
+  binaryen:
+    docker:
+      - image: terrorjack/vanilla:haskell
+    environment:
+      - MAKEFLAGS: -j4
+    steps:
+      - checkout
+      - restore_cache:
+          key: binaryen-stack-work
+      - run: stack --resolver nightly test binaryen:binaryen-test
+      - save_cache:
+          key: binaryen-stack-work-{{ .BuildNum }}
+          paths:
+            - /root/.stack
+            - .stack-work
+            - binaryen/.stack-work
+
+  ghc-toolkit:
+    docker:
+      - image: terrorjack/vanilla:haskell
+    steps:
+      - checkout
+      - restore_cache:
+          key: ghc-toolkit-stack-work
+      - run: stack --resolver ghc-8.4.1 build --flag ghc-toolkit:-build-orphans
+      - save_cache:
+          key: ghc-toolkit-stack-work-{{ .BuildNum }}
+          paths:
+            - /root/.stack
+            - .stack-work
+            - ghc-toolkit/.stack-work
+
+workflows:
+  version: 2
+  build:
+    jobs:
+      - asterius
+      - binaryen
+      - ghc-toolkit
