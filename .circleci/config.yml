@@ -65,7 +65,7 @@ jobs:
       - checkout
       - restore_cache:
           key: binaryen-stack-work
-      - run: stack --resolver nightly test binaryen:binaryen-test
+      - run: stack --no-terminal --resolver ghc-8.4.1 test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
       - save_cache:
           key: binaryen-stack-work-{{ .BuildNum }}
           paths:
@@ -80,7 +80,7 @@ jobs:
       - checkout
       - restore_cache:
           key: ghc-toolkit-stack-work
-      - run: stack --resolver ghc-8.4.1 build --flag ghc-toolkit:-build-orphans
+      - run: stack --no-terminal --resolver ghc-8.4.1 build --haddock --flag hashable:integer-gmp --flag ghc-toolkit:-build-orphans ghc-toolkit
       - save_cache:
           key: ghc-toolkit-stack-work-{{ .BuildNum }}
           paths:
