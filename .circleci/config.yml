@@ -65,7 +65,7 @@ jobs:
       - checkout
       - restore_cache:
           key: binaryen-stack-work
-      - run: stack --no-terminal --resolver ghc-8.4.1 test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
+      - run: stack --no-terminal --resolver ghc-8.4.1 --nix-packages "cmake gcc gnumake" test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
       - save_cache:
           key: binaryen-stack-work-{{ .BuildNum }}
           paths:
