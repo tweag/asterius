@@ -15,7 +15,6 @@ build_script:
   - copy %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\ghc-8.4.1.installed %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025.installed
   - stack --no-terminal --resolver ghc-8.4.1 exec pacman -- -S autoconf coreutils make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc sed --needed --noconfirm --noprogressbar
   - stack --no-terminal --resolver ghc-8.4.1 test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
-  - stack --no-terminal --resolver ghc-8.4.1 build --haddock --flag hashable:integer-gmp --flag ghc-toolkit:-build-orphans ghc-toolkit
   - stack --no-terminal --resolver ghc-8.4.1 exec --no-ghc-package-path sh -- -e ghc-toolkit/test/boot.sh
 
 test: off
