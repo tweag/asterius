@@ -4,7 +4,6 @@ module Asterius.BuildInfo
   , mkdir
   , cp
   , node
-  , sed
   , sh
   , ghcLibDir
   , ahc

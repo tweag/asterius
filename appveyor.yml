@@ -2,19 +2,17 @@ version: 0.0.1.{build}
 
 shallow_clone: true
 
-cache:
-  - "%APPDATA%\\stack"
-  - .stack-work
-  - "binaryen\\.stack-work"
-  - "ghc-toolkit\\.stack-work"
+environment:
+  MAKEFLAGS: -j4
 
 build_script:
   - choco install haskell-stack
-  - stack --no-terminal --resolver ghc-8.4.1 --skip-msys setup > NUL
+  - stack --no-terminal --skip-msys setup > NUL
   - mklink /D %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025 C:\\msys64
-  - copy %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\ghc-8.4.1.installed %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025.installed
-  - stack --no-terminal --resolver ghc-8.4.1 exec pacman -- -S autoconf coreutils make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc sed --needed --noconfirm --noprogressbar
-  - stack --no-terminal --resolver ghc-8.4.1 test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
-  - stack --no-terminal --resolver ghc-8.4.1 exec --no-ghc-package-path sh -- -e ghc-toolkit/test/boot.sh
+  - copy %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\ghc-8.5.20180308.installed %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025.installed
+  - stack --no-terminal exec pacman -- -S autoconf coreutils make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-gmp --needed --noconfirm --noprogressbar
+  - stack --no-terminal test binaryen:binaryen-test
+  - stack --no-terminal test asterius:fact-dump
+  - stack --no-terminal test asterius:ahc-boot
 
 test: off

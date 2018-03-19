@@ -9,6 +9,6 @@ main =
   genPaths
     GenPathsOptions
       { targetModuleName = "BuildInfo_asterius"
-      , extraPrograms = ["mkdir", "cp", "node", "sed", "sh"]
+      , extraPrograms = ["mkdir", "cp", "node", "sh"]
       }
     simpleUserHooks

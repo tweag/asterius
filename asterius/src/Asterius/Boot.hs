@@ -42,7 +42,6 @@ bootCreateProcess args@BootArgs {..} = do
           ("ASTERIUS_AHC_PATH", ahc) :
           ("ASTERIUS_MKDIR_PATH", mkdir) :
           ("ASTERIUS_CP_PATH", cp) :
-          ("ASTERIUS_SED_PATH", sed) :
           ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
           ("ASTERIUS_BUILD_OPTIONS", buildOptions) :
           ("ASTERIUS_INSTALL_OPTIONS", installOptions) :

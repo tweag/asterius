@@ -25,3 +25,9 @@ packages:
   - ghc-toolkit
   - binaryen
   - wasm-toolkit
+setup-info:
+  ghc:
+    windows64:
+      8.5.20180308:
+        url: https://felis.sapiens.moe/ghc-8.5.20180308-x86_64-unknown-mingw32.tar.xz
+        sha256: 3a079c820043eb41b5d31be3ed97824ecd918fb77788547a4ed324da9bb9f6b1

@@ -1,6 +1,7 @@
 # Asterius: A Haskell to WebAssembly compiler
 
 [![CircleCI](https://circleci.com/gh/tweag/asterius/tree/master.svg?style=shield)](https://circleci.com/gh/tweag/asterius/tree/master)
+[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/tweag/asterius?branch=master&svg=true)](https://ci.appveyor.com/project/TerrorJack/asterius?branch=master)
 
 A Haskell to WebAssembly compiler. Project status: **pre-alpha**.
 
@@ -36,11 +37,10 @@ Assumes x64 platform, only tested on Linux for now. Dependencies:
 
 Simply run `stack build asterius`. Set `MAKEFLAGS=-j8` to pass flags to `make` for parallel building of `binaryen`. Run `stack test asterius:ahc-boot` to test if booting works.
 
-Windows users need to run it in an `mingw-w64` Win64 shell. `stack` takes care of installing/launching it by default.
-
 ## Differences with [WebGHC](https://webghc.github.io/)
 
 * Doesn't depend on Emscripten/LLVM. There is no plan to port the C runtime and support C libraries, at least for now.
+* Windows is supported.
 
 ## Sponsors
 

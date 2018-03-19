@@ -20,7 +20,6 @@ jobs:
               g++ \
               make \
               nodejs-current \
-              sed \
               xz
           stack --no-terminal test --haddock asterius:fact-dump
           stack --no-terminal test --haddock asterius:ahc-boot
@@ -82,7 +81,7 @@ jobs:
           key: ghc-toolkit-stack-work
       - run: |
           stack --no-terminal --resolver ghc-8.4.1 build --haddock --flag hashable:integer-gmp --flag ghc-toolkit:-build-orphans ghc-toolkit
-          stack --no-terminal --resolver ghc-8.4.1 --nix-packages "autoconf coreutils gmp gnused" exec --no-ghc-package-path sh -- -e ghc-toolkit/test/boot.sh
+          stack --no-terminal --resolver ghc-8.4.1 --nix-packages "autoconf coreutils gmp" exec --no-ghc-package-path sh -- -e ghc-toolkit/test/boot.sh
       - save_cache:
           key: ghc-toolkit-stack-work-{{ .BuildNum }}
           paths:
