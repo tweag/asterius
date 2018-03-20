@@ -23,12 +23,6 @@ custom-setup:
     - directory
     - filepath
 
-flags:
-  build-orphans:
-    description: Build Language.Haskell.GHC.Toolkit.IROrphans. Breaks compatibility with ghc-8.4.1.
-    default: false
-    manual: false
-
 ghc-options: -Wall
 
 dependencies:
@@ -43,38 +37,14 @@ dependencies:
 
 library:
   source-dirs: src
-  when:
-    - condition: flag(build-orphans)
-      then:
-        exposed-modules:
-          - Language.Haskell.GHC.Toolkit.BuildInfo
-          - Language.Haskell.GHC.Toolkit.Compiler
-          - Language.Haskell.GHC.Toolkit.FakeGHC
-          - Language.Haskell.GHC.Toolkit.FrontendPlugin
-          - Language.Haskell.GHC.Toolkit.GenPaths
-          - Language.Haskell.GHC.Toolkit.Hooks
-          - Language.Haskell.GHC.Toolkit.IROrphans
-          - Language.Haskell.GHC.Toolkit.Run
-        other-extensions:
-          - FlexibleInstances
-          - GADTs
-          - NamedFieldPuns
-          - RecordWildCards
-          - StandaloneDeriving
-          - StrictData
-          - UnboxedTuples
-          - UndecidableInstances
-      else:
-        exposed-modules:
-          - Language.Haskell.GHC.Toolkit.BuildInfo
-          - Language.Haskell.GHC.Toolkit.Compiler
-          - Language.Haskell.GHC.Toolkit.FakeGHC
-          - Language.Haskell.GHC.Toolkit.FrontendPlugin
-          - Language.Haskell.GHC.Toolkit.GenPaths
-          - Language.Haskell.GHC.Toolkit.Hooks
-          - Language.Haskell.GHC.Toolkit.Run
-        other-extensions:
-          - NamedFieldPuns
-          - RecordWildCards
-          - StrictData
-          - UnboxedTuples
+  other-modules:
+    - Language.Haskell.GHC.Toolkit.GHCUnexported
+  other-extensions:
+    - FlexibleInstances
+    - GADTs
+    - NamedFieldPuns
+    - RecordWildCards
+    - StandaloneDeriving
+    - StrictData
+    - UnboxedTuples
+    - UndecidableInstances

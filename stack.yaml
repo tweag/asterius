@@ -1,8 +1,6 @@
 resolver: ghc-8.5
 allow-newer: true
 flags:
-  ghc-toolkit:
-    build-orphans: true
   hashable:
     integer-gmp: false
 extra-deps:

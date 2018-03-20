@@ -4,7 +4,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
-module Language.Haskell.GHC.Toolkit.IROrphans
+module Language.Haskell.GHC.Toolkit.Orphans.Show
   ( setDynFlagsRef
   ) where
 

@@ -40,7 +40,7 @@ import Hoopl.Block
 import Hoopl.Collections
 import Hoopl.Graph
 import Hoopl.Label
-import Language.Haskell.GHC.Toolkit.IROrphans ()
+import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Outputable hiding ((<>))
 import Unique
 

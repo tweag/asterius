@@ -11,7 +11,7 @@ import GHC
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
-import Language.Haskell.GHC.Toolkit.IROrphans ()
+import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import System.Directory
 import System.FilePath
 import Text.Show.Pretty

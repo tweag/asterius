@@ -77,17 +77,8 @@ jobs:
       - image: terrorjack/vanilla:haskell
     steps:
       - checkout
-      - restore_cache:
-          key: ghc-toolkit-stack-work
       - run: |
-          stack --no-terminal --resolver ghc-8.4.1 build --haddock --flag hashable:integer-gmp --flag ghc-toolkit:-build-orphans ghc-toolkit
           stack --no-terminal --resolver ghc-8.4.1 --nix-packages "autoconf coreutils gmp" exec --no-ghc-package-path sh -- -e ghc-toolkit/test/boot.sh
-      - save_cache:
-          key: ghc-toolkit-stack-work-{{ .BuildNum }}
-          paths:
-            - /root/.stack
-            - .stack-work
-            - ghc-toolkit/.stack-work
 
 workflows:
   version: 2
