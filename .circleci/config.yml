@@ -14,7 +14,7 @@ jobs:
       - run: |
           nix-env -iA \
             nixpkgs.autoconf \
-            nixpkgs.binutils \
+            nixpkgs.binutils_nogold \
             nixpkgs.cmake \
             nixpkgs.coreutils \
             nixpkgs.findutils \
