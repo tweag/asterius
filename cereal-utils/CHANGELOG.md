@@ -1,1 +1,0 @@
-# CHANGELOG for `cereal-utils`

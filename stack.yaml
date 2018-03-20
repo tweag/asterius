@@ -19,7 +19,6 @@ extra-deps:
   - vector-0.12.0.1
 packages:
   - asterius
-  - cereal-utils
   - ghc-toolkit
   - binaryen
   - wasm-toolkit

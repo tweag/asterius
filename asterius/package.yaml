@@ -29,8 +29,6 @@ dependencies:
   - binary
   - bytestring
   - Cabal
-  - cereal
-  - cereal-utils
   - containers
   - directory
   - extra
@@ -44,6 +42,7 @@ dependencies:
   - unliftio
   - unordered-containers
   - vector
+  - wasm-toolkit
 
 library:
   source-dirs: src

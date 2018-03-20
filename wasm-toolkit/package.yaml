@@ -18,7 +18,6 @@ dependencies:
   - base
   - bytestring
   - cereal
-  - cereal-utils
   - ghc-prim
   - hashable
   - binaryen
