@@ -3,24 +3,24 @@ version: 2
 jobs:
   asterius:
     docker:
-      - image: terrorjack/meikyu:ghc-head
+      - image: terrorjack/ghc-asterius
     environment:
       MAKEFLAGS: -j4
       XZ_OPT: -9
     steps:
       - checkout
       - restore_cache:
-          key: stack-work-gen7-
+          key: stack-work-gen8-
       - run: |
-          apk add --no-cache --no-progress \
-              autoconf \
-              cmake \
-              coreutils \
-              findutils \
-              g++ \
-              make \
-              nodejs-current \
-              xz
+          nix-env -iA \
+            nixpkgs.autoconf \
+            nixpkgs.cmake \
+            nixpkgs.coreutils \
+            nixpkgs.findutils \
+            nixpkgs.gcc \
+            nixpkgs.gnumake \
+            nixpkgs.lzma \
+            nixpkgs.nodejs-9_x
           stack --no-terminal test --haddock asterius:fact-dump
           stack --no-terminal test --haddock asterius:ahc-boot
           if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
@@ -41,11 +41,10 @@ jobs:
           fi
           cd /tmp
           tar -cJf /tmp/asterius_boot.tar.xz asterius/.boot
-          rm -rf /root/.stack/programs
       - store_artifacts:
           path: /tmp/asterius_boot.tar.xz
       - save_cache:
-          key: stack-work-gen7-{{ .BuildNum }}
+          key: stack-work-gen8-{{ .BuildNum }}
           paths:
             - /root/.stack
             - .stack-work

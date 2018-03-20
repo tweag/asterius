@@ -27,13 +27,21 @@ See [`ROADMAP.md`](ROADMAP.md) for a more detailed roadmap. The haddock document
 
 ## Building
 
-Assumes x64 platform, only tested on Linux for now. Dependencies:
+Assumes x64 platform, tested on Linux and Windows.
+
+`asterius` requires a build of recent `ghc-head` which uses `integer-simple` and disables tables-next-to-code. On Linux, you can either:
+
+* `docker pull terrorjack/ghc-asterius`. This is a Nix-based build environment, with `stack` and `ghc-head` already installed. It's used for our CircleCI test suite.
+* Build `nixpkgs.haskell.compiler.ghcAsterius`. The relevant Nix expressions can be found [here](https://github.com/TerrorJack/nixpkgs/tree/wip-ghc-asterius), they are not merged into upstream `nixpkgs` yet.
+
+On Windows, a manually built `ghc-head` binary dist is available. It's already contained in [`stack.yaml`](stack.yaml), so for Windows users a plain `stack build` should work out of the box. (keep in mind that `haddock` is not enabled for the Windows build)
+
+Extra dependencies:
 
 * `cmake`/`make`/`g++`: For building in-tree [`binaryen`](https://github.com/WebAssembly/binaryen)
-* `autoconf`/`sed`: For booting `ghc-prim`/`base`
+* `autoconf`: For booting `ghc-prim`/`base`
 * `nodejs`: For running tests
-* `ghc-head` built with `TABLES_NEXT_TO_CODE` disabled and integer library set to `integer-simple`. Get one via `docker pull terrorjack/meikyu:ghc-head`
-* `stack`. `cabal` users need to run `hpack` first.
+* `stack`
 
 Simply run `stack build asterius`. Set `MAKEFLAGS=-j8` to pass flags to `make` for parallel building of `binaryen`. Run `stack test asterius:ahc-boot` to test if booting works.
 
