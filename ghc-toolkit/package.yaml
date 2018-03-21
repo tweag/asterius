@@ -42,6 +42,7 @@ library:
   other-extensions:
     - FlexibleInstances
     - GADTs
+    - LambdaCase
     - NamedFieldPuns
     - RecordWildCards
     - StandaloneDeriving
