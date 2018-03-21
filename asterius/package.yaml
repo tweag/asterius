@@ -31,7 +31,6 @@ dependencies:
   - Cabal
   - containers
   - directory
-  - extra
   - filepath
   - ghc
   - ghc-toolkit

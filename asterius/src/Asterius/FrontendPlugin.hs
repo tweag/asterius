@@ -23,7 +23,7 @@ frontendPlugin =
         newStore
           StoreConfig
             { storeTopDir = obj_topdir
-            , objectExt = "ddump-cmm-raw-ast"
+            , objectExt = "txt"
             , cacheObject = True
             , rawRead = readFile
             , rawWrite = writeFile
@@ -33,7 +33,7 @@ frontendPlugin =
         { withIR =
             \ModSummary {..} IR {..} ->
               liftIO $ do
-                objectWrite ms_mod $ ppShow cmmRaw
+                objectWrite ms_mod $ show $ length $ ppShow cmmRaw
                 s <- objectRead ms_mod
-                print (ms_mod, length s)
+                print (ms_mod, s)
         }
