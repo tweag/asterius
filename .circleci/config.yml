@@ -9,8 +9,6 @@ jobs:
       XZ_OPT: -9
     steps:
       - checkout
-      - restore_cache:
-          key: stack-work-gen8-
       - run: |
           nix-env -iA \
             nixpkgs.autoconf \
@@ -44,15 +42,6 @@ jobs:
           tar -cJf /tmp/asterius_boot.tar.xz asterius/.boot
       - store_artifacts:
           path: /tmp/asterius_boot.tar.xz
-      - save_cache:
-          key: stack-work-gen8-{{ .BuildNum }}
-          paths:
-            - /root/.stack
-            - .stack-work
-            - asterius/.stack-work
-            - ghc-toolkit/.stack-work
-            - binaryen/.stack-work
-            - wasm-toolkit/.stack-work
 
   binaryen:
     docker:
