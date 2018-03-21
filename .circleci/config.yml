@@ -71,18 +71,9 @@ jobs:
             - .stack-work
             - binaryen/.stack-work
 
-  ghc-toolkit:
-    docker:
-      - image: terrorjack/vanilla:haskell
-    steps:
-      - checkout
-      - run: |
-          stack --no-terminal --resolver ghc-8.4.1 --nix-packages "autoconf coreutils gmp" exec --no-ghc-package-path sh -- -e ghc-toolkit/test/boot.sh
-
 workflows:
   version: 2
   build:
     jobs:
       - asterius
       - binaryen
-      - ghc-toolkit
