@@ -53,7 +53,7 @@ Simply run `stack build asterius`. Set `MAKEFLAGS=-j8` to pass flags to `make` f
 ## Sponsors
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-[![Tweag I/O](https://www.tweag.io/img/tweag-small.png)](http://tweag.io)
+[<img src="https://www.tweag.io/img/tweag-med.png" height="65">](http://tweag.io)
 
 Asterius is maintained by [Tweag I/O](http://tweag.io/).
 
