@@ -1,7 +1,8 @@
+{-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
 
-module Language.WebAssembly.Marshal
+module Language.WebAssembly.Internals
   ( withSBS
   , withSV
   ) where

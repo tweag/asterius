@@ -21,10 +21,21 @@ dependencies:
   - ghc-prim
   - hashable
   - binaryen
+  - unliftio
+  - unordered-containers
   - vector
 
 library:
   source-dirs: src
+  other-modules:
+    - Language.WebAssembly.Internals
   other-extensions:
+    - ConstraintKinds
+    - DeriveGeneric
+    - FlexibleContexts
     - MagicHash
+    - PolyKinds
+    - StrictData
+    - TypeFamilies
     - UnboxedTuples
+    - UndecidableInstances
