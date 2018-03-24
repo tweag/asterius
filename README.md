@@ -34,7 +34,7 @@ Assumes x64 platform, tested on Linux and Windows.
 * `docker pull terrorjack/ghc-asterius`. This is a Nix-based build environment, with `stack` and `ghc-head` already installed. It's used for our CircleCI test suite.
 * Build `nixpkgs.haskell.compiler.ghcAsterius`. The relevant Nix expressions can be found [here](https://github.com/TerrorJack/nixpkgs/tree/wip-ghc-asterius), they are not merged into upstream `nixpkgs` yet.
 
-On Windows, a manually built `ghc-head` binary dist is available. It's already contained in [`stack.yaml`](stack.yaml), so for Windows users a plain `stack build` should work out of the box. (keep in mind that `haddock` is not enabled for the Windows build)
+On Windows, a manually built `ghc-head` binary dist is available. It's already contained in [`stack.yaml`](stack.yaml), so for Windows users a plain `stack build` should work out of the box.
 
 Extra dependencies:
 
