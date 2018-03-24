@@ -11,6 +11,7 @@
 module Language.WebAssembly.IR
   ( SymbolSpec(..)
   , ConstraintSymbolSpec
+  , HashSymbolSpec
   , SerializeSymbolSpec
   , Module(..)
   , Static(..)
@@ -32,17 +33,22 @@ import GHC.Generics
 import Language.WebAssembly.Internals ()
 
 class SymbolSpec spec where
+  type ModuleSymbol spec
   type StaticSymbol spec
   type FunctionSymbol spec
   type BlockSymbol spec
 
 type ConstraintSymbolSpec (c :: Type -> Constraint) spec
-   = (c (StaticSymbol spec), c (FunctionSymbol spec), c (BlockSymbol spec))
+   = ( c (ModuleSymbol spec)
+     , c (StaticSymbol spec)
+     , c (FunctionSymbol spec)
+     , c (BlockSymbol spec))
+
+type HashSymbolSpec spec
+   = (ConstraintSymbolSpec Eq spec, ConstraintSymbolSpec Hashable spec)
 
 type SerializeSymbolSpec spec
-   = ( ConstraintSymbolSpec Eq spec
-     , ConstraintSymbolSpec Hashable spec
-     , ConstraintSymbolSpec Serialize spec)
+   = (HashSymbolSpec spec, ConstraintSymbolSpec Serialize spec)
 
 data Module spec = Module
   { statics :: HM.HashMap (StaticSymbol spec) (Static spec)

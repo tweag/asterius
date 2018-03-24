@@ -16,11 +16,12 @@ ghc-options: -Wall
 
 dependencies:
   - base
+  - binaryen
   - bytestring
   - cereal
   - ghc-prim
   - hashable
-  - binaryen
+  - mtl
   - unliftio
   - unordered-containers
   - vector
