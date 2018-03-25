@@ -37,7 +37,6 @@ library:
     - FlexibleContexts
     - MagicHash
     - PolyKinds
-    - ScopedTypeVariables
     - StrictData
     - TypeFamilies
     - UnboxedTuples

@@ -1,10 +1,7 @@
 {-# LANGUAGE ConstraintKinds #-}
-{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -14,9 +11,6 @@
 module Language.WebAssembly.IR
   ( IRSpec(..)
   , ConstraintSymbolSpec
-  , HashSymbolSpec
-  , SerializeSymbolSpec
-  , IRSpecWitness(..)
   , Module(..)
   , Static(..)
   , StaticElement(..)
@@ -36,39 +30,23 @@ import Data.Word
 import GHC.Generics
 import Language.WebAssembly.Internals ()
 
-class IRSpec spec where
+class ( ConstraintSymbolSpec Show spec
+      , ConstraintSymbolSpec Eq spec
+      , ConstraintSymbolSpec Hashable spec
+      , ConstraintSymbolSpec Serialize spec
+      ) =>
+      IRSpec spec
+  where
   type ModuleSymbol spec
   type StaticSymbol spec
   type FunctionSymbol spec
   type BlockSymbol spec
-  irSpecWitness :: IRSpecWitness spec
-  default irSpecWitness :: ( ConstraintSymbolSpec Show spec
-                           , ConstraintSymbolSpec Eq spec
-                           , ConstraintSymbolSpec Hashable spec
-                           , ConstraintSymbolSpec Serialize spec
-    ) =>
-    IRSpecWitness spec
-  irSpecWitness = IRSpecWitness
 
 type ConstraintSymbolSpec (c :: Type -> Constraint) spec
    = ( c (ModuleSymbol spec)
      , c (StaticSymbol spec)
      , c (FunctionSymbol spec)
      , c (BlockSymbol spec))
-
-type HashSymbolSpec spec
-   = (ConstraintSymbolSpec Eq spec, ConstraintSymbolSpec Hashable spec)
-
-type SerializeSymbolSpec spec
-   = (HashSymbolSpec spec, ConstraintSymbolSpec Serialize spec)
-
-data IRSpecWitness spec =
-  ( ConstraintSymbolSpec Show spec
-  , ConstraintSymbolSpec Eq spec
-  , ConstraintSymbolSpec Hashable spec
-  , ConstraintSymbolSpec Serialize spec
-  ) =>
-  IRSpecWitness
 
 data Module spec = Module
   { statics :: HM.HashMap (StaticSymbol spec) (Static spec)
@@ -80,7 +58,7 @@ deriving instance
 
 deriving instance Generic (Module spec)
 
-instance SerializeSymbolSpec spec => Serialize (Module spec)
+instance IRSpec spec => Serialize (Module spec)
 
 data Static spec = Static
   { align :: Int
@@ -92,7 +70,7 @@ deriving instance
 
 deriving instance Generic (Static spec)
 
-instance SerializeSymbolSpec spec => Serialize (Static spec)
+instance IRSpec spec => Serialize (Static spec)
 
 data StaticElement spec
   = Uninitialized Int
@@ -105,7 +83,7 @@ deriving instance
 
 deriving instance Generic (StaticElement spec)
 
-instance SerializeSymbolSpec spec => Serialize (StaticElement spec)
+instance IRSpec spec => Serialize (StaticElement spec)
 
 data Function spec = Function
   { entryBlock :: BlockSymbol spec
@@ -117,7 +95,7 @@ deriving instance
 
 deriving instance Generic (Function spec)
 
-instance SerializeSymbolSpec spec => Serialize (Function spec)
+instance IRSpec spec => Serialize (Function spec)
 
 data Block spec = Block
   { body :: Expression spec
@@ -129,7 +107,7 @@ deriving instance
 
 deriving instance Generic (Block spec)
 
-instance SerializeSymbolSpec spec => Serialize (Block spec)
+instance IRSpec spec => Serialize (Block spec)
 
 data Expression spec =
   ExpressionStub
@@ -139,7 +117,7 @@ deriving instance
 
 deriving instance Generic (Expression spec)
 
-instance SerializeSymbolSpec spec => Serialize (Expression spec)
+instance IRSpec spec => Serialize (Expression spec)
 
 data Branch spec
   = CondBranch { cond :: Expression spec
@@ -154,7 +132,7 @@ deriving instance
 
 deriving instance Generic (Branch spec)
 
-instance SerializeSymbolSpec spec => Serialize (Branch spec)
+instance IRSpec spec => Serialize (Branch spec)
 
 instance (Eq k, Hashable k, Serialize k, Serialize v) =>
          Serialize (HM.HashMap k v) where

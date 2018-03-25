@@ -28,7 +28,7 @@ deriving instance
 
 deriving instance Generic (ModuleMap spec)
 
-instance SerializeSymbolSpec spec => Serialize (ModuleMap spec)
+instance IRSpec spec => Serialize (ModuleMap spec)
 
 data SanCheckErrorContext spec =
   SanCheckErrorContext (ModuleMap spec)
@@ -54,7 +54,7 @@ deriving instance
          ConstraintSymbolSpec Show spec => Show (SanCheckError spec)
 
 addModule ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -65,7 +65,7 @@ addModule mod_map mod_sym mod_rec = do
   pure ModuleMap {unModuleMap = HM.insert mod_sym mod_rec $ unModuleMap mod_map}
 
 sanCheckStatics ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -75,7 +75,7 @@ sanCheckStatics mod_map mod_sym mod_rec =
   uncurry $ sanCheckStatic mod_map mod_sym mod_rec
 
 sanCheckStatic ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -90,7 +90,7 @@ sanCheckStatic mod_map mod_sym mod_rec static_name static_rec = do
     sanCheckStaticElement mod_map mod_sym mod_rec static_name
 
 sanCheckStaticElement ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -108,7 +108,7 @@ sanCheckStaticElement mod_map mod_sym mod_rec static_name static_element = do
     _ -> pure ()
 
 sanCheckFunctions ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -118,7 +118,7 @@ sanCheckFunctions mod_map mod_sym mod_rec =
   uncurry $ sanCheckFunction mod_map mod_sym mod_rec
 
 sanCheckFunction ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -132,7 +132,7 @@ sanCheckFunction mod_map mod_sym mod_rec func_sym func_rec = do
   sanCheckBlocks mod_map mod_sym mod_rec func_sym func_rec
 
 sanCheckBlocks ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -144,7 +144,7 @@ sanCheckBlocks mod_map mod_sym mod_rec func_sym func_rec =
   uncurry $ sanCheckBlock mod_map mod_sym mod_rec func_sym func_rec
 
 sanCheckBlock ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -166,7 +166,7 @@ sanCheckBlock mod_map mod_sym mod_rec func_sym func_rec block_sym block_rec = do
   sanCheckBranch mod_map mod_sym mod_rec func_sym func_rec block_sym block_rec
 
 sanCheckExpression ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -179,7 +179,7 @@ sanCheckExpression ::
 sanCheckExpression _ _ _ _ _ _ _ _ = pure ()
 
 sanCheckBranch ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -191,7 +191,7 @@ sanCheckBranch ::
 sanCheckBranch _ _ _ _ _ _ _ = pure ()
 
 sanCheckStaticSymbol ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
@@ -207,7 +207,7 @@ sanCheckStaticSymbol mod_map mod_sym mod_rec static_sym =
     static_sym
 
 sanCheckFunctionSymbol ::
-     (MonadError (SanCheckError spec) m, HashSymbolSpec spec)
+     (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
