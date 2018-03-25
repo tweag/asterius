@@ -22,7 +22,7 @@ jobs:
             nixpkgs.nodejs-9_x
           stack --no-terminal test --haddock asterius:fact-dump
           stack --no-terminal test --haddock asterius:ahc-boot
-          if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
+          if [ $CIRCLE_PROJECT_USERNAME == "tweag" ]
           then
             export PREV_DIR=`pwd`
             cp -r `stack path --local-doc-root` /tmp/

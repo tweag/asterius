@@ -9,7 +9,7 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Language.WebAssembly.IR
-  ( SymbolSpec(..)
+  ( IRSpec(..)
   , ConstraintSymbolSpec
   , HashSymbolSpec
   , SerializeSymbolSpec
@@ -32,7 +32,7 @@ import Data.Word
 import GHC.Generics
 import Language.WebAssembly.Internals ()
 
-class SymbolSpec spec where
+class IRSpec spec where
   type ModuleSymbol spec
   type StaticSymbol spec
   type FunctionSymbol spec
@@ -138,13 +138,21 @@ instance SerializeSymbolSpec spec => Serialize (Branch spec)
 
 instance (Eq k, Hashable k, Serialize k, Serialize v) =>
          Serialize (HM.HashMap k v) where
+  {-# INLINE put #-}
   put = put . HM.toList
+  {-# INLINE get #-}
   get = HM.fromList <$> get
 
 instance Serialize a => Serialize (V.Vector a) where
-  put = put . V.toList
-  get = V.fromList <$> get
+  {-# INLINE put #-}
+  put v = put (V.length v) *> V.mapM_ put v
+  {-# INLINE get #-}
+  get = do
+    len <- get
+    V.replicateM len get
 
 instance Serialize SBS.ShortByteString where
-  put = put . SBS.fromShort
-  get = SBS.toShort <$> get
+  {-# INLINE put #-}
+  put sbs = put (SBS.length sbs) *> putShortByteString sbs
+  {-# INLINE get #-}
+  get = get >>= getShortByteString
