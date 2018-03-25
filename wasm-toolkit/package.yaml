@@ -32,10 +32,12 @@ library:
     - Language.WebAssembly.Internals
   other-extensions:
     - ConstraintKinds
+    - DefaultSignatures
     - DeriveGeneric
     - FlexibleContexts
     - MagicHash
     - PolyKinds
+    - ScopedTypeVariables
     - StrictData
     - TypeFamilies
     - UnboxedTuples

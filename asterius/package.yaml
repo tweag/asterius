@@ -29,6 +29,7 @@ dependencies:
   - binary
   - bytestring
   - Cabal
+  - cereal
   - containers
   - directory
   - filepath
@@ -47,6 +48,7 @@ library:
   source-dirs: src
   other-modules: Paths_asterius
   other-extensions:
+    - DeriveGeneric
     - GADTs
     - GeneralizedNewtypeDeriving
     - LambdaCase
@@ -55,8 +57,10 @@ library:
     - OverloadedStrings
     - RecordWildCards
     - ScopedTypeVariables
+    - StandaloneDeriving
     - StrictData
     - TemplateHaskell
+    - TypeFamilies
 
 executables:
   ahc:

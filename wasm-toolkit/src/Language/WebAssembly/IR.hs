@@ -1,7 +1,10 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -13,6 +16,7 @@ module Language.WebAssembly.IR
   , ConstraintSymbolSpec
   , HashSymbolSpec
   , SerializeSymbolSpec
+  , IRSpecWitness(..)
   , Module(..)
   , Static(..)
   , StaticElement(..)
@@ -37,6 +41,14 @@ class IRSpec spec where
   type StaticSymbol spec
   type FunctionSymbol spec
   type BlockSymbol spec
+  irSpecWitness :: IRSpecWitness spec
+  default irSpecWitness :: ( ConstraintSymbolSpec Show spec
+                           , ConstraintSymbolSpec Eq spec
+                           , ConstraintSymbolSpec Hashable spec
+                           , ConstraintSymbolSpec Serialize spec
+    ) =>
+    IRSpecWitness spec
+  irSpecWitness = IRSpecWitness
 
 type ConstraintSymbolSpec (c :: Type -> Constraint) spec
    = ( c (ModuleSymbol spec)
@@ -49,6 +61,14 @@ type HashSymbolSpec spec
 
 type SerializeSymbolSpec spec
    = (HashSymbolSpec spec, ConstraintSymbolSpec Serialize spec)
+
+data IRSpecWitness spec =
+  ( ConstraintSymbolSpec Show spec
+  , ConstraintSymbolSpec Eq spec
+  , ConstraintSymbolSpec Hashable spec
+  , ConstraintSymbolSpec Serialize spec
+  ) =>
+  IRSpecWitness
 
 data Module spec = Module
   { statics :: HM.HashMap (StaticSymbol spec) (Static spec)
