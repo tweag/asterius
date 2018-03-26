@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
@@ -22,6 +24,7 @@ import qualified Data.ByteString.Short as SBS
 import Data.Hashable
 import Data.Serialize
 import Data.Traversable
+import GHC.Exts
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.WebAssembly.IR
@@ -109,7 +112,19 @@ marshalCmmData ::
   => GHC.CLabel
   -> [GHC.CmmStatic]
   -> m (Module AsteriusIR)
-marshalCmmData = undefined
+marshalCmmData sym ss = do
+  ses <- for ss marshalCmmStatic
+  pure
+    mempty
+      {statics = [(undefined, Static {align = 8, elements = fromList ses})]}
+
+marshalCmmStatic ::
+     MonadError MarshalError m => GHC.CmmStatic -> m (StaticElement AsteriusIR)
+marshalCmmStatic s =
+  case s of
+    GHC.CmmStaticLit lit -> undefined
+    GHC.CmmUninitialised len -> pure $ Uninitialized len
+    GHC.CmmString ws -> pure $ BufferElement $ SBS.pack ws <> "\0"
 
 marshalCmmProc ::
      MonadError MarshalError m
