@@ -24,6 +24,6 @@ packages:
 setup-info:
   ghc:
     windows64:
-      8.5.20180323:
+      8.5.20180326:
         url: https://felis.sapiens.moe/ghc-8.5.20180326-x86_64-unknown-mingw32.tar.xz
         sha256: 043c2b606f5348be3db1475caa997352aa40741cb898cc53686ef703c1ff0ae0
