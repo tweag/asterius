@@ -3,7 +3,7 @@
 [![CircleCI](https://circleci.com/gh/tweag/asterius/tree/master.svg?style=shield)](https://circleci.com/gh/tweag/asterius/tree/master)
 [![AppVeyor](https://ci.appveyor.com/api/projects/status/github/tweag/asterius?branch=master&svg=true)](https://ci.appveyor.com/project/TerrorJack/asterius?branch=master)
 
-A Haskell to WebAssembly compiler. Project status: **pre-alpha**.
+A Haskell to WebAssembly compiler. Project status: **pre-alpha**, in active development, still takes time before an initial example works.
 
 What's already present:
 
