@@ -639,6 +639,48 @@ indexWord32Array# a1 a2 = (GHC.Prim.indexWord32Array#) a1 a2
 {-# NOINLINE indexWord64Array# #-}
 indexWord64Array# :: ByteArray# -> Int# -> Word#
 indexWord64Array# a1 a2 = (GHC.Prim.indexWord64Array#) a1 a2
+{-# NOINLINE indexWord8ArrayAsChar# #-}
+indexWord8ArrayAsChar# :: ByteArray# -> Int# -> Char#
+indexWord8ArrayAsChar# a1 a2 = (GHC.Prim.indexWord8ArrayAsChar#) a1 a2
+{-# NOINLINE indexWord8ArrayAsWideChar# #-}
+indexWord8ArrayAsWideChar# :: ByteArray# -> Int# -> Char#
+indexWord8ArrayAsWideChar# a1 a2 = (GHC.Prim.indexWord8ArrayAsWideChar#) a1 a2
+{-# NOINLINE indexWord8ArrayAsAddr# #-}
+indexWord8ArrayAsAddr# :: ByteArray# -> Int# -> Addr#
+indexWord8ArrayAsAddr# a1 a2 = (GHC.Prim.indexWord8ArrayAsAddr#) a1 a2
+{-# NOINLINE indexWord8ArrayAsFloat# #-}
+indexWord8ArrayAsFloat# :: ByteArray# -> Int# -> Float#
+indexWord8ArrayAsFloat# a1 a2 = (GHC.Prim.indexWord8ArrayAsFloat#) a1 a2
+{-# NOINLINE indexWord8ArrayAsDouble# #-}
+indexWord8ArrayAsDouble# :: ByteArray# -> Int# -> Double#
+indexWord8ArrayAsDouble# a1 a2 = (GHC.Prim.indexWord8ArrayAsDouble#) a1 a2
+{-# NOINLINE indexWord8ArrayAsStablePtr# #-}
+indexWord8ArrayAsStablePtr# :: ByteArray# -> Int# -> StablePtr# a
+indexWord8ArrayAsStablePtr# a1 a2 = (GHC.Prim.indexWord8ArrayAsStablePtr#) a1 a2
+{-# NOINLINE indexWord8ArrayAsInt16# #-}
+indexWord8ArrayAsInt16# :: ByteArray# -> Int# -> Int#
+indexWord8ArrayAsInt16# a1 a2 = (GHC.Prim.indexWord8ArrayAsInt16#) a1 a2
+{-# NOINLINE indexWord8ArrayAsInt32# #-}
+indexWord8ArrayAsInt32# :: ByteArray# -> Int# -> Int#
+indexWord8ArrayAsInt32# a1 a2 = (GHC.Prim.indexWord8ArrayAsInt32#) a1 a2
+{-# NOINLINE indexWord8ArrayAsInt64# #-}
+indexWord8ArrayAsInt64# :: ByteArray# -> Int# -> Int#
+indexWord8ArrayAsInt64# a1 a2 = (GHC.Prim.indexWord8ArrayAsInt64#) a1 a2
+{-# NOINLINE indexWord8ArrayAsInt# #-}
+indexWord8ArrayAsInt# :: ByteArray# -> Int# -> Int#
+indexWord8ArrayAsInt# a1 a2 = (GHC.Prim.indexWord8ArrayAsInt#) a1 a2
+{-# NOINLINE indexWord8ArrayAsWord16# #-}
+indexWord8ArrayAsWord16# :: ByteArray# -> Int# -> Word#
+indexWord8ArrayAsWord16# a1 a2 = (GHC.Prim.indexWord8ArrayAsWord16#) a1 a2
+{-# NOINLINE indexWord8ArrayAsWord32# #-}
+indexWord8ArrayAsWord32# :: ByteArray# -> Int# -> Word#
+indexWord8ArrayAsWord32# a1 a2 = (GHC.Prim.indexWord8ArrayAsWord32#) a1 a2
+{-# NOINLINE indexWord8ArrayAsWord64# #-}
+indexWord8ArrayAsWord64# :: ByteArray# -> Int# -> Word#
+indexWord8ArrayAsWord64# a1 a2 = (GHC.Prim.indexWord8ArrayAsWord64#) a1 a2
+{-# NOINLINE indexWord8ArrayAsWord# #-}
+indexWord8ArrayAsWord# :: ByteArray# -> Int# -> Word#
+indexWord8ArrayAsWord# a1 a2 = (GHC.Prim.indexWord8ArrayAsWord#) a1 a2
 {-# NOINLINE readCharArray# #-}
 readCharArray# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Char# #)
 readCharArray# a1 a2 a3 = (GHC.Prim.readCharArray#) a1 a2 a3
@@ -687,6 +729,48 @@ readWord32Array# a1 a2 a3 = (GHC.Prim.readWord32Array#) a1 a2 a3
 {-# NOINLINE readWord64Array# #-}
 readWord64Array# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Word# #)
 readWord64Array# a1 a2 a3 = (GHC.Prim.readWord64Array#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsChar# #-}
+readWord8ArrayAsChar# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Char# #)
+readWord8ArrayAsChar# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsChar#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsWideChar# #-}
+readWord8ArrayAsWideChar# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Char# #)
+readWord8ArrayAsWideChar# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsWideChar#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsAddr# #-}
+readWord8ArrayAsAddr# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Addr# #)
+readWord8ArrayAsAddr# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsAddr#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsFloat# #-}
+readWord8ArrayAsFloat# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Float# #)
+readWord8ArrayAsFloat# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsFloat#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsDouble# #-}
+readWord8ArrayAsDouble# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Double# #)
+readWord8ArrayAsDouble# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsDouble#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsStablePtr# #-}
+readWord8ArrayAsStablePtr# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,StablePtr# a #)
+readWord8ArrayAsStablePtr# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsStablePtr#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsInt16# #-}
+readWord8ArrayAsInt16# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Int# #)
+readWord8ArrayAsInt16# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsInt16#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsInt32# #-}
+readWord8ArrayAsInt32# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Int# #)
+readWord8ArrayAsInt32# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsInt32#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsInt64# #-}
+readWord8ArrayAsInt64# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Int# #)
+readWord8ArrayAsInt64# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsInt64#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsInt# #-}
+readWord8ArrayAsInt# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Int# #)
+readWord8ArrayAsInt# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsInt#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsWord16# #-}
+readWord8ArrayAsWord16# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Word# #)
+readWord8ArrayAsWord16# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsWord16#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsWord32# #-}
+readWord8ArrayAsWord32# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Word# #)
+readWord8ArrayAsWord32# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsWord32#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsWord64# #-}
+readWord8ArrayAsWord64# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Word# #)
+readWord8ArrayAsWord64# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsWord64#) a1 a2 a3
+{-# NOINLINE readWord8ArrayAsWord# #-}
+readWord8ArrayAsWord# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Word# #)
+readWord8ArrayAsWord# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsWord#) a1 a2 a3
 {-# NOINLINE writeCharArray# #-}
 writeCharArray# :: MutableByteArray# s -> Int# -> Char# -> State# s -> State# s
 writeCharArray# a1 a2 a3 a4 = (GHC.Prim.writeCharArray#) a1 a2 a3 a4
@@ -735,6 +819,48 @@ writeWord32Array# a1 a2 a3 a4 = (GHC.Prim.writeWord32Array#) a1 a2 a3 a4
 {-# NOINLINE writeWord64Array# #-}
 writeWord64Array# :: MutableByteArray# s -> Int# -> Word# -> State# s -> State# s
 writeWord64Array# a1 a2 a3 a4 = (GHC.Prim.writeWord64Array#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsChar# #-}
+writeWord8ArrayAsChar# :: MutableByteArray# s -> Int# -> Char# -> State# s -> State# s
+writeWord8ArrayAsChar# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsChar#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsWideChar# #-}
+writeWord8ArrayAsWideChar# :: MutableByteArray# s -> Int# -> Char# -> State# s -> State# s
+writeWord8ArrayAsWideChar# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsWideChar#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsAddr# #-}
+writeWord8ArrayAsAddr# :: MutableByteArray# s -> Int# -> Addr# -> State# s -> State# s
+writeWord8ArrayAsAddr# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsAddr#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsFloat# #-}
+writeWord8ArrayAsFloat# :: MutableByteArray# s -> Int# -> Float# -> State# s -> State# s
+writeWord8ArrayAsFloat# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsFloat#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsDouble# #-}
+writeWord8ArrayAsDouble# :: MutableByteArray# s -> Int# -> Double# -> State# s -> State# s
+writeWord8ArrayAsDouble# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsDouble#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsStablePtr# #-}
+writeWord8ArrayAsStablePtr# :: MutableByteArray# s -> Int# -> StablePtr# a -> State# s -> State# s
+writeWord8ArrayAsStablePtr# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsStablePtr#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsInt16# #-}
+writeWord8ArrayAsInt16# :: MutableByteArray# s -> Int# -> Int# -> State# s -> State# s
+writeWord8ArrayAsInt16# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsInt16#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsInt32# #-}
+writeWord8ArrayAsInt32# :: MutableByteArray# s -> Int# -> Int# -> State# s -> State# s
+writeWord8ArrayAsInt32# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsInt32#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsInt64# #-}
+writeWord8ArrayAsInt64# :: MutableByteArray# s -> Int# -> Int# -> State# s -> State# s
+writeWord8ArrayAsInt64# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsInt64#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsInt# #-}
+writeWord8ArrayAsInt# :: MutableByteArray# s -> Int# -> Int# -> State# s -> State# s
+writeWord8ArrayAsInt# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsInt#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsWord16# #-}
+writeWord8ArrayAsWord16# :: MutableByteArray# s -> Int# -> Word# -> State# s -> State# s
+writeWord8ArrayAsWord16# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsWord16#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsWord32# #-}
+writeWord8ArrayAsWord32# :: MutableByteArray# s -> Int# -> Word# -> State# s -> State# s
+writeWord8ArrayAsWord32# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsWord32#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsWord64# #-}
+writeWord8ArrayAsWord64# :: MutableByteArray# s -> Int# -> Word# -> State# s -> State# s
+writeWord8ArrayAsWord64# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsWord64#) a1 a2 a3 a4
+{-# NOINLINE writeWord8ArrayAsWord# #-}
+writeWord8ArrayAsWord# :: MutableByteArray# s -> Int# -> Word# -> State# s -> State# s
+writeWord8ArrayAsWord# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsWord#) a1 a2 a3 a4
 {-# NOINLINE compareByteArrays# #-}
 compareByteArrays# :: ByteArray# -> Int# -> ByteArray# -> Int# -> Int# -> Int#
 compareByteArrays# a1 a2 a3 a4 a5 = (GHC.Prim.compareByteArrays#) a1 a2 a3 a4 a5
@@ -1277,6 +1403,12 @@ traceEvent# a1 a2 = (GHC.Prim.traceEvent#) a1 a2
 {-# NOINLINE traceMarker# #-}
 traceMarker# :: Addr# -> State# s -> State# s
 traceMarker# a1 a2 = (GHC.Prim.traceMarker#) a1 a2
+{-# NOINLINE getThreadAllocationCounter# #-}
+getThreadAllocationCounter# :: State# (RealWorld) -> (# State# (RealWorld),Int# #)
+getThreadAllocationCounter# a1 = (GHC.Prim.getThreadAllocationCounter#) a1
+{-# NOINLINE setThreadAllocationCounter# #-}
+setThreadAllocationCounter# :: Int# -> State# (RealWorld) -> State# (RealWorld)
+setThreadAllocationCounter# a1 a2 = (GHC.Prim.setThreadAllocationCounter#) a1 a2
 {-# NOINLINE prefetchByteArray3# #-}
 prefetchByteArray3# :: ByteArray# -> Int# -> State# s -> State# s
 prefetchByteArray3# a1 a2 a3 = (GHC.Prim.prefetchByteArray3#) a1 a2 a3
