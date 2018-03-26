@@ -1,4 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -9,13 +11,17 @@ module Asterius.IR
   , FuncSym(..)
   , BlockSym(..)
   , AsteriusIR
+  , MarshalError(..)
   , marshalIR
   ) where
 
+import qualified CLabel as GHC
+import qualified Cmm as GHC
+import Control.Monad.Except
 import qualified Data.ByteString.Short as SBS
 import Data.Hashable
 import Data.Serialize
-import qualified GHC
+import Data.Traversable
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.WebAssembly.IR
@@ -83,5 +89,31 @@ instance IRSpec AsteriusIR where
   type FunctionSymbol AsteriusIR = FuncSym
   type BlockSymbol AsteriusIR = BlockSym
 
-marshalIR :: GHC.ModSummary -> IR -> Module AsteriusIR
-marshalIR = undefined
+data MarshalError =
+  MarshalError
+
+deriving instance Show MarshalError
+
+marshalIR :: MonadError MarshalError m => IR -> m (Module AsteriusIR)
+marshalIR IR {..} = mconcat <$> for cmmRaw marshalRawCmmDecl
+
+marshalRawCmmDecl ::
+     MonadError MarshalError m => GHC.RawCmmDecl -> m (Module AsteriusIR)
+marshalRawCmmDecl decl =
+  case decl of
+    GHC.CmmData _ (GHC.Statics sym ss) -> marshalCmmData sym ss
+    GHC.CmmProc _ sym _ graph -> marshalCmmProc sym graph
+
+marshalCmmData ::
+     MonadError MarshalError m
+  => GHC.CLabel
+  -> [GHC.CmmStatic]
+  -> m (Module AsteriusIR)
+marshalCmmData = undefined
+
+marshalCmmProc ::
+     MonadError MarshalError m
+  => GHC.CLabel
+  -> GHC.CmmGraph
+  -> m (Module AsteriusIR)
+marshalCmmProc = undefined

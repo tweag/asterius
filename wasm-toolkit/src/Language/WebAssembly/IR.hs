@@ -53,6 +53,18 @@ data Module spec = Module
   , functions :: HM.HashMap (FunctionSymbol spec) (Function spec)
   }
 
+instance IRSpec spec => Semigroup (Module spec) where
+  {-# INLINE (<>) #-}
+  m0 <> m1 =
+    Module
+      { statics = statics m0 <> statics m1
+      , functions = functions m0 <> functions m1
+      }
+
+instance IRSpec spec => Monoid (Module spec) where
+  {-# INLINE mempty #-}
+  mempty = Module {statics = mempty, functions = mempty}
+
 deriving instance
          ConstraintSymbolSpec Show spec => Show (Module spec)
 

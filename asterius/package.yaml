@@ -27,6 +27,7 @@ ghc-options: -Wall
 dependencies:
   - base
   - binary
+  - binaryen
   - bytestring
   - Cabal
   - cereal
@@ -36,7 +37,7 @@ dependencies:
   - ghc
   - ghc-toolkit
   - hashable
-  - binaryen
+  - mtl
   - pretty-show
   - template-haskell
   - unliftio
@@ -49,6 +50,7 @@ library:
   other-modules: Paths_asterius
   other-extensions:
     - DeriveGeneric
+    - FlexibleContexts
     - GADTs
     - GeneralizedNewtypeDeriving
     - LambdaCase
