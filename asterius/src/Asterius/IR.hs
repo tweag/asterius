@@ -21,9 +21,11 @@ import qualified Cmm as GHC
 import Control.Monad.Except
 import qualified Data.ByteString.Short as SBS
 import Data.Hashable
+import Data.Int
 import Data.Serialize
 import Data.String
 import Data.Traversable
+import Data.Word
 import GHC.Exts
 import GHC.Generics
 import qualified HscTypes as GHC
@@ -83,7 +85,8 @@ instance IRSpec AsteriusIR where
   type BlockSymbol AsteriusIR = BlockSym
 
 data MarshalError =
-  MarshalError
+  UnsupportedStaticElement ModSym
+                           GHC.CmmLit
 
 deriving instance Show MarshalError
 
@@ -130,6 +133,30 @@ marshalCmmStatic mod_sym static_rec =
   case static_rec of
     GHC.CmmStaticLit lit ->
       case lit of
+        GHC.CmmInt i GHC.W8 ->
+          pure $
+          BufferElement $
+          if i < 0
+            then encodeStorable (fromIntegral i :: Int8)
+            else encodeStorable (fromIntegral i :: Word8)
+        GHC.CmmInt i GHC.W16 ->
+          pure $
+          BufferElement $
+          if i < 0
+            then encodeStorable (fromIntegral i :: Int16)
+            else encodeStorable (fromIntegral i :: Word16)
+        GHC.CmmInt i GHC.W32 ->
+          pure $
+          BufferElement $
+          if i < 0
+            then encodeStorable (fromIntegral i :: Int32)
+            else encodeStorable (fromIntegral i :: Word32)
+        GHC.CmmInt i GHC.W64 ->
+          pure $
+          BufferElement $
+          if i < 0
+            then encodeStorable (fromIntegral i :: Int64)
+            else encodeStorable (fromIntegral i :: Word64)
         GHC.CmmFloat f GHC.W32 ->
           pure $ BufferElement $ encodeStorable (fromRational f :: Float)
         GHC.CmmFloat f GHC.W64 ->
@@ -138,7 +165,7 @@ marshalCmmStatic mod_sym static_rec =
           pure $ SymbolElement $ EntrySym mod_sym $ encodeCLabel cl
         GHC.CmmLabelOff cl offset ->
           pure $ SymbolOffElement (EntrySym mod_sym $ encodeCLabel cl) offset
-        _ -> undefined
+        _ -> throwError $ UnsupportedStaticElement mod_sym lit
     GHC.CmmUninitialised len -> pure $ Uninitialized len
     GHC.CmmString ws -> pure $ BufferElement $ SBS.pack ws <> "\0"
 
