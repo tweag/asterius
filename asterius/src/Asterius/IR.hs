@@ -22,11 +22,16 @@ import Control.Monad.Except
 import qualified Data.ByteString.Short as SBS
 import Data.Hashable
 import Data.Serialize
+import Data.String
 import Data.Traversable
 import GHC.Exts
 import GHC.Generics
+import qualified HscTypes as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
+import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Language.WebAssembly.IR
+import Language.WebAssembly.Internals
+import qualified Module as GHC
 
 newtype ModSym =
   ModSym SBS.ShortByteString
@@ -82,38 +87,68 @@ data MarshalError =
 
 deriving instance Show MarshalError
 
-marshalIR :: MonadError MarshalError m => IR -> m (Module AsteriusIR)
-marshalIR IR {..} = mconcat <$> for cmmRaw marshalRawCmmDecl
+marshalIR ::
+     MonadError MarshalError m => GHC.ModSummary -> IR -> m (Module AsteriusIR)
+marshalIR GHC.ModSummary {..} IR {..} =
+  fmap mconcat $
+  for cmmRaw $
+  marshalRawCmmDecl $ ModSym $ fromString $ GHC.moduleStableString ms_mod
 
 marshalRawCmmDecl ::
-     MonadError MarshalError m => GHC.RawCmmDecl -> m (Module AsteriusIR)
-marshalRawCmmDecl decl =
+     MonadError MarshalError m
+  => ModSym
+  -> GHC.RawCmmDecl
+  -> m (Module AsteriusIR)
+marshalRawCmmDecl mod_sym decl =
   case decl of
-    GHC.CmmData _ (GHC.Statics sym ss) -> marshalCmmData sym ss
-    GHC.CmmProc _ sym _ graph -> marshalCmmProc sym graph
+    GHC.CmmData _ (GHC.Statics static_sym ss) ->
+      marshalCmmData mod_sym static_sym ss
+    GHC.CmmProc _ func_sym _ graph -> marshalCmmProc mod_sym func_sym graph
 
 marshalCmmData ::
      MonadError MarshalError m
-  => GHC.CLabel
+  => ModSym
+  -> GHC.CLabel
   -> [GHC.CmmStatic]
   -> m (Module AsteriusIR)
-marshalCmmData sym ss = do
-  ses <- for ss marshalCmmStatic
+marshalCmmData mod_sym static_sym ss = do
+  ses <- for ss $ marshalCmmStatic mod_sym
   pure
     mempty
-      {statics = [(undefined, Static {align = 8, elements = fromList ses})]}
+      { statics =
+          [ ( EntrySym mod_sym (encodeCLabel static_sym)
+            , Static {align = 8, elements = fromList ses})
+          ]
+      }
 
 marshalCmmStatic ::
-     MonadError MarshalError m => GHC.CmmStatic -> m (StaticElement AsteriusIR)
-marshalCmmStatic s =
-  case s of
-    GHC.CmmStaticLit lit -> undefined
+     MonadError MarshalError m
+  => ModSym
+  -> GHC.CmmStatic
+  -> m (StaticElement AsteriusIR)
+marshalCmmStatic mod_sym static_rec =
+  case static_rec of
+    GHC.CmmStaticLit lit ->
+      case lit of
+        GHC.CmmFloat f GHC.W32 ->
+          pure $ BufferElement $ encodeStorable (fromRational f :: Float)
+        GHC.CmmFloat f GHC.W64 ->
+          pure $ BufferElement $ encodeStorable (fromRational f :: Double)
+        GHC.CmmLabel cl ->
+          pure $ SymbolElement $ EntrySym mod_sym $ encodeCLabel cl
+        GHC.CmmLabelOff cl offset ->
+          pure $ SymbolOffElement (EntrySym mod_sym $ encodeCLabel cl) offset
+        _ -> undefined
     GHC.CmmUninitialised len -> pure $ Uninitialized len
     GHC.CmmString ws -> pure $ BufferElement $ SBS.pack ws <> "\0"
 
 marshalCmmProc ::
      MonadError MarshalError m
-  => GHC.CLabel
+  => ModSym
+  -> GHC.CLabel
   -> GHC.CmmGraph
   -> m (Module AsteriusIR)
-marshalCmmProc = undefined
+marshalCmmProc _ _ _ = undefined
+
+encodeCLabel :: GHC.CLabel -> SBS.ShortByteString
+encodeCLabel = fromString . show

@@ -6,13 +6,14 @@
 module Language.WebAssembly.Internals
   ( withSBS
   , withSV
-  , peekSBS
+  , encodeStorable
   ) where
 
 import qualified Data.ByteString.Short.Internal as SBS
 import qualified Data.Vector.Storable as SV
 import GHC.Exts
 import GHC.Types
+import System.IO.Unsafe
 import UnliftIO
 import UnliftIO.Foreign
 
@@ -49,10 +50,10 @@ withSV v cont =
          v
          (\p -> (\buf len -> u (cont buf len)) p (fromIntegral (SV.length v))))
 
-{-# INLINEABLE peekSBS #-}
-peekSBS :: (MonadIO m, Storable a) => a -> m SBS.ShortByteString
-peekSBS a =
-  liftIO
+{-# INLINEABLE encodeStorable #-}
+encodeStorable :: Storable a => a -> SBS.ShortByteString
+encodeStorable a =
+  unsafeDupablePerformIO
     (alloca
        (\buf@(Ptr addr) -> do
           poke buf a
