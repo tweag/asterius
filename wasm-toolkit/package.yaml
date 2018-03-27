@@ -28,9 +28,8 @@ dependencies:
 
 library:
   source-dirs: src
-  other-modules:
-    - Language.WebAssembly.Internals
   other-extensions:
+    - BangPatterns
     - ConstraintKinds
     - DefaultSignatures
     - DeriveGeneric
