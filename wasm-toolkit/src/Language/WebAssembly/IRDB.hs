@@ -23,8 +23,7 @@ newtype ModuleMap spec = ModuleMap
   { unModuleMap :: HM.HashMap (ModuleSymbol spec) (Module spec)
   }
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (ModuleMap spec)
+deriving instance IRSpec spec => Show (ModuleMap spec)
 
 deriving instance Generic (ModuleMap spec)
 
@@ -35,23 +34,19 @@ data SanCheckErrorContext spec =
                        (ModuleSymbol spec)
                        (Module spec)
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (SanCheckErrorContext spec)
+deriving instance IRSpec spec => Show (SanCheckErrorContext spec)
 
 data SanCheckError spec
   = StaticAlignmentError (SanCheckErrorContext spec)
-                         (StaticSymbol spec)
+                         (EntrySymbol spec)
   | UninitializedStaticError (SanCheckErrorContext spec)
-                             (StaticSymbol spec)
-  | UnresolvedStaticSymbolError (SanCheckErrorContext spec)
-                                (StaticSymbol spec)
-  | UnresolvedFunctionSymbolError (SanCheckErrorContext spec)
-                                  (FunctionSymbol spec)
+                             (EntrySymbol spec)
+  | UnresolvedEntrySymbolError (SanCheckErrorContext spec)
+                               (EntrySymbol spec)
   | UnresolvedEntryBlockError (SanCheckErrorContext spec)
-                              (FunctionSymbol spec)
+                              (EntrySymbol spec)
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (SanCheckError spec)
+deriving instance IRSpec spec => Show (SanCheckError spec)
 
 addModule ::
      (MonadError (SanCheckError spec) m, IRSpec spec)
@@ -79,7 +74,7 @@ sanCheckStatic ::
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
-  -> StaticSymbol spec
+  -> EntrySymbol spec
   -> Static spec
   -> m ()
 sanCheckStatic mod_map mod_sym mod_rec static_name static_rec = do
@@ -94,7 +89,7 @@ sanCheckStaticElement ::
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
-  -> StaticSymbol spec
+  -> EntrySymbol spec
   -> StaticElement spec
   -> m ()
 sanCheckStaticElement mod_map mod_sym mod_rec static_name static_element = do
@@ -102,9 +97,7 @@ sanCheckStaticElement mod_map mod_sym mod_rec static_name static_element = do
   case static_element of
     Uninitialized size ->
       unless (size >= 0) $ throwError $ UninitializedStaticError cxt static_name
-    StaticSymbolElement sym -> sanCheckStaticSymbol mod_map mod_sym mod_rec sym
-    FunctionSymbolElement sym ->
-      sanCheckFunctionSymbol mod_map mod_sym mod_rec sym
+    SymbolElement sym -> sanCheckEntrySymbol mod_map mod_sym mod_rec sym
     _ -> pure ()
 
 sanCheckFunctions ::
@@ -122,7 +115,7 @@ sanCheckFunction ::
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
-  -> FunctionSymbol spec
+  -> EntrySymbol spec
   -> Function spec
   -> m ()
 sanCheckFunction mod_map mod_sym mod_rec func_sym func_rec = do
@@ -136,7 +129,7 @@ sanCheckBlocks ::
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
-  -> FunctionSymbol spec
+  -> EntrySymbol spec
   -> Function spec
   -> m ()
 sanCheckBlocks mod_map mod_sym mod_rec func_sym func_rec =
@@ -148,7 +141,7 @@ sanCheckBlock ::
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
-  -> FunctionSymbol spec
+  -> EntrySymbol spec
   -> Function spec
   -> BlockSymbol spec
   -> Block spec
@@ -170,7 +163,7 @@ sanCheckExpression ::
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
-  -> FunctionSymbol spec
+  -> EntrySymbol spec
   -> Function spec
   -> BlockSymbol spec
   -> Block spec
@@ -183,41 +176,27 @@ sanCheckBranch ::
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
-  -> FunctionSymbol spec
+  -> EntrySymbol spec
   -> Function spec
   -> BlockSymbol spec
   -> Block spec
   -> m ()
 sanCheckBranch _ _ _ _ _ _ _ = pure ()
 
-sanCheckStaticSymbol ::
+sanCheckEntrySymbol ::
      (MonadError (SanCheckError spec) m, IRSpec spec)
   => ModuleMap spec
   -> ModuleSymbol spec
   -> Module spec
-  -> StaticSymbol spec
+  -> EntrySymbol spec
   -> m ()
-sanCheckStaticSymbol mod_map mod_sym mod_rec static_sym =
+sanCheckEntrySymbol mod_map mod_sym mod_rec entry_sym =
   unless
-    (HM.member static_sym (statics mod_rec) ||
-     any (HM.member static_sym . statics) (unModuleMap mod_map)) $
+    (any
+       (\m ->
+          HM.member entry_sym (statics m) || HM.member entry_sym (functions m))
+       (mod_rec : HM.elems (unModuleMap mod_map))) $
   throwError $
-  UnresolvedStaticSymbolError
+  UnresolvedEntrySymbolError
     (SanCheckErrorContext mod_map mod_sym mod_rec)
-    static_sym
-
-sanCheckFunctionSymbol ::
-     (MonadError (SanCheckError spec) m, IRSpec spec)
-  => ModuleMap spec
-  -> ModuleSymbol spec
-  -> Module spec
-  -> FunctionSymbol spec
-  -> m ()
-sanCheckFunctionSymbol mod_map mod_sym mod_rec func_sym =
-  unless
-    (HM.member func_sym (functions mod_rec) ||
-     any (HM.member func_sym . functions) (unModuleMap mod_map)) $
-  throwError $
-  UnresolvedFunctionSymbolError
-    (SanCheckErrorContext mod_map mod_sym mod_rec)
-    func_sym
+    entry_sym

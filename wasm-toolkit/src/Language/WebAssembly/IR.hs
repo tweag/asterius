@@ -38,19 +38,15 @@ class ( ConstraintSymbolSpec Show spec
       IRSpec spec
   where
   type ModuleSymbol spec
-  type StaticSymbol spec
-  type FunctionSymbol spec
+  type EntrySymbol spec
   type BlockSymbol spec
 
 type ConstraintSymbolSpec (c :: Type -> Constraint) spec
-   = ( c (ModuleSymbol spec)
-     , c (StaticSymbol spec)
-     , c (FunctionSymbol spec)
-     , c (BlockSymbol spec))
+   = (c (ModuleSymbol spec), c (EntrySymbol spec), c (BlockSymbol spec))
 
 data Module spec = Module
-  { statics :: HM.HashMap (StaticSymbol spec) (Static spec)
-  , functions :: HM.HashMap (FunctionSymbol spec) (Function spec)
+  { statics :: HM.HashMap (EntrySymbol spec) (Static spec)
+  , functions :: HM.HashMap (EntrySymbol spec) (Function spec)
   }
 
 instance IRSpec spec => Semigroup (Module spec) where
@@ -65,8 +61,7 @@ instance IRSpec spec => Monoid (Module spec) where
   {-# INLINE mempty #-}
   mempty = Module {statics = mempty, functions = mempty}
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (Module spec)
+deriving instance IRSpec spec => Show (Module spec)
 
 deriving instance Generic (Module spec)
 
@@ -77,8 +72,7 @@ data Static spec = Static
   , elements :: V.Vector (StaticElement spec)
   }
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (Static spec)
+deriving instance IRSpec spec => Show (Static spec)
 
 deriving instance Generic (Static spec)
 
@@ -87,11 +81,11 @@ instance IRSpec spec => Serialize (Static spec)
 data StaticElement spec
   = Uninitialized Int
   | BufferElement SBS.ShortByteString
-  | StaticSymbolElement (StaticSymbol spec)
-  | FunctionSymbolElement (FunctionSymbol spec)
+  | SymbolElement (EntrySymbol spec)
+  | SymbolOffElement (EntrySymbol spec)
+                     Int
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (StaticElement spec)
+deriving instance IRSpec spec => Show (StaticElement spec)
 
 deriving instance Generic (StaticElement spec)
 
@@ -102,8 +96,7 @@ data Function spec = Function
   , blocks :: HM.HashMap (BlockSymbol spec) (Block spec)
   }
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (Function spec)
+deriving instance IRSpec spec => Show (Function spec)
 
 deriving instance Generic (Function spec)
 
@@ -114,8 +107,7 @@ data Block spec = Block
   , branch :: Branch spec
   }
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (Block spec)
+deriving instance IRSpec spec => Show (Block spec)
 
 deriving instance Generic (Block spec)
 
@@ -124,8 +116,7 @@ instance IRSpec spec => Serialize (Block spec)
 data Expression spec =
   ExpressionStub
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (Expression spec)
+deriving instance IRSpec spec => Show (Expression spec)
 
 deriving instance Generic (Expression spec)
 
@@ -139,8 +130,7 @@ data Branch spec
                  , destMap :: HM.HashMap Word64 (BlockSymbol spec) }
   | CallBranch { callee :: Expression spec }
 
-deriving instance
-         ConstraintSymbolSpec Show spec => Show (Branch spec)
+deriving instance IRSpec spec => Show (Branch spec)
 
 deriving instance Generic (Branch spec)
 

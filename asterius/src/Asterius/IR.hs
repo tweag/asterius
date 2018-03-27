@@ -9,8 +9,7 @@
 
 module Asterius.IR
   ( ModSym(..)
-  , StaticSym(..)
-  , FuncSym(..)
+  , EntrySym(..)
   , BlockSym(..)
   , AsteriusIR
   , MarshalError(..)
@@ -42,36 +41,23 @@ instance Hashable ModSym
 
 instance Serialize ModSym
 
-data StaticSym =
-  StaticSym ModSym
-            SBS.ShortByteString
+data EntrySym =
+  EntrySym ModSym
+           SBS.ShortByteString
 
-deriving instance Show StaticSym
+deriving instance Show EntrySym
 
-deriving instance Eq StaticSym
+deriving instance Eq EntrySym
 
-deriving instance Generic StaticSym
+deriving instance Generic EntrySym
 
-instance Hashable StaticSym
+instance Hashable EntrySym
 
-instance Serialize StaticSym
-
-data FuncSym =
-  FuncSym ModSym
-          SBS.ShortByteString
-
-deriving instance Show FuncSym
-
-deriving instance Eq FuncSym
-
-deriving instance Generic FuncSym
-
-instance Hashable FuncSym
-
-instance Serialize FuncSym
+instance Serialize EntrySym
 
 data BlockSym =
-  BlockSym FuncSym
+  BlockSym ModSym
+           EntrySym
            Int
 
 deriving instance Show BlockSym
@@ -88,8 +74,7 @@ data AsteriusIR
 
 instance IRSpec AsteriusIR where
   type ModuleSymbol AsteriusIR = ModSym
-  type StaticSymbol AsteriusIR = StaticSym
-  type FunctionSymbol AsteriusIR = FuncSym
+  type EntrySymbol AsteriusIR = EntrySym
   type BlockSymbol AsteriusIR = BlockSym
 
 data MarshalError =
