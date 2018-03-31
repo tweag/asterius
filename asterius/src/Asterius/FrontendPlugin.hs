@@ -5,12 +5,13 @@ module Asterius.FrontendPlugin
   ( frontendPlugin
   ) where
 
+import Asterius.IR
+import Control.Monad.Except
 import GHC
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import Language.Haskell.GHC.Toolkit.ObjectStore
-import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import System.Environment
 import Text.Show.Pretty
 
@@ -31,9 +32,8 @@ frontendPlugin =
     pure $
       defaultCompiler
         { withIR =
-            \ModSummary {..} IR {..} ->
-              liftIO $ do
-                objectWrite ms_mod $ show $ length $ ppShow cmmRaw
-                s <- objectRead ms_mod
-                print (ms_mod, s)
+            \mod_summary@ModSummary {..} ir ->
+              liftIO $
+              objectWrite ms_mod $
+              show $ length $ ppShow $ runExcept $ marshalIR mod_summary ir
         }

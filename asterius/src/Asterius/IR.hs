@@ -28,12 +28,18 @@ import Data.Traversable
 import Data.Word
 import GHC.Exts
 import GHC.Generics
+import qualified Hoopl.Block as GHC
+import qualified Hoopl.Collections as GHC
+import qualified Hoopl.Graph as GHC
+import qualified Hoopl.Label as GHC
 import qualified HscTypes as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Language.WebAssembly.IR
 import Language.WebAssembly.Internals
 import qualified Module as GHC
+import qualified Unique as GHC
+import UnliftIO.Foreign
 
 newtype ModSym =
   ModSym SBS.ShortByteString
@@ -158,9 +164,9 @@ marshalCmmStatic mod_sym static_rec =
             then encodeStorable (fromIntegral i :: Int64)
             else encodeStorable (fromIntegral i :: Word64)
         GHC.CmmFloat f GHC.W32 ->
-          pure $ BufferElement $ encodeStorable (fromRational f :: Float)
+          pure $ BufferElement $ encodeStorable (fromRational f :: CFloat)
         GHC.CmmFloat f GHC.W64 ->
-          pure $ BufferElement $ encodeStorable (fromRational f :: Double)
+          pure $ BufferElement $ encodeStorable (fromRational f :: CDouble)
         GHC.CmmLabel cl ->
           pure $ SymbolElement $ EntrySym mod_sym $ encodeCLabel cl
         GHC.CmmLabelOff cl offset ->
@@ -175,7 +181,67 @@ marshalCmmProc ::
   -> GHC.CLabel
   -> GHC.CmmGraph
   -> m (Module AsteriusIR)
-marshalCmmProc _ _ _ = undefined
+marshalCmmProc mod_sym func_sym GHC.CmmGraph {..} = do
+  bs <-
+    for (GHC.mapToList g_body) $ \(l, b) -> do
+      r <- marshalCmmBlock mod_sym entry_sym b
+      pure (encodeLabel mod_sym entry_sym l, r)
+  pure
+    mempty
+      { functions =
+          [ ( entry_sym
+            , Function
+                { entryBlock = encodeLabel mod_sym entry_sym g_entry
+                , blocks = fromList bs
+                })
+          ]
+      }
+  where
+    entry_sym = EntrySym mod_sym $ encodeCLabel func_sym
+    GHC.GMany GHC.NothingO g_body GHC.NothingO = g_graph
+
+marshalCmmBlock ::
+     MonadError MarshalError m
+  => ModSym
+  -> EntrySym
+  -> GHC.Block GHC.CmmNode GHC.C GHC.C
+  -> m (Block AsteriusIR)
+marshalCmmBlock mod_sym func_sym (GHC.BlockCC (GHC.CmmEntry _ _) proc_nodes exit_node) = do
+  e <- marshalCmmInstrs proc_nodes
+  br <- marshalCmmBranch mod_sym func_sym exit_node
+  pure Block {body = e, branch = br}
+
+marshalCmmInstrs ::
+     MonadError MarshalError m
+  => GHC.Block GHC.CmmNode GHC.O GHC.O
+  -> m (Expression AsteriusIR)
+marshalCmmInstrs _ = pure ExpressionStub
+
+marshalCmmBranch ::
+     MonadError MarshalError m
+  => ModSym
+  -> EntrySym
+  -> GHC.CmmNode GHC.O GHC.C
+  -> m (Branch AsteriusIR)
+marshalCmmBranch mod_sym func_sym exit_node =
+  case exit_node of
+    GHC.CmmBranch l -> pure UncondBranch {dest = encodeLabel mod_sym func_sym l}
+    GHC.CmmCondBranch {..} ->
+      pure
+        CondBranch
+          { cond = ExpressionStub
+          , trueDest = encodeLabel mod_sym func_sym cml_true
+          , falseDest = encodeLabel mod_sym func_sym cml_false
+          }
+    GHC.CmmSwitch _ _ ->
+      pure
+        SwitchBranch {switch = ExpressionStub, defDest = Nothing, destMap = []}
+    GHC.CmmCall {..} -> pure CallBranch {callee = ExpressionStub}
+    GHC.CmmForeignCall {} -> pure ForeignCallStub
 
 encodeCLabel :: GHC.CLabel -> SBS.ShortByteString
 encodeCLabel = fromString . show
+
+encodeLabel :: ModSym -> EntrySym -> GHC.Label -> BlockSym
+encodeLabel mod_sym entry_sym =
+  BlockSym mod_sym entry_sym . GHC.getKey . GHC.getUnique

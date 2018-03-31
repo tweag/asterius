@@ -123,12 +123,14 @@ deriving instance Generic (Expression spec)
 instance IRSpec spec => Serialize (Expression spec)
 
 data Branch spec
-  = CondBranch { cond :: Expression spec
+  = UncondBranch { dest :: BlockSymbol spec }
+  | CondBranch { cond :: Expression spec
                , trueDest, falseDest :: BlockSymbol spec }
   | SwitchBranch { switch :: Expression spec
-                 , defDest :: BlockSymbol spec
+                 , defDest :: Maybe (BlockSymbol spec)
                  , destMap :: HM.HashMap Word64 (BlockSymbol spec) }
   | CallBranch { callee :: Expression spec }
+  | ForeignCallStub
 
 deriving instance IRSpec spec => Show (Branch spec)
 
