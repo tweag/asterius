@@ -12,9 +12,12 @@ jobs:
       - run: |
           export PREV_DIR=`pwd`
           cd /tmp
-          git clone https://github.com/TerrorJack/nixpkgs.git
-          cd nixpkgs
-          git checkout 13d7b918194d3607fc082a1254e091799dbfcba9
+          nix-env -iA \
+            nixpkgs.curlFull \
+            nixpkgs.unzip
+          curl -L https://github.com/TerrorJack/nixpkgs/archive/13d7b918194d3607fc082a1254e091799dbfcba9.zip -o nixpkgs.zip
+          unzip -q nixpkgs.zip
+          cd nixpkgs-13d7b918194d3607fc082a1254e091799dbfcba9/
           nix-env -f . -iA haskell.compiler.ghcAsterius --option extra-binary-caches https://canis.sapiens.moe/
           cd $PREV_DIR
           unset PREV_DIR
