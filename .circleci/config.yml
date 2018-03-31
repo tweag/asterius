@@ -3,13 +3,22 @@ version: 2
 jobs:
   asterius:
     docker:
-      - image: terrorjack/ghc-asterius
+      - image: terrorjack/vanilla:circleci
     environment:
       MAKEFLAGS: -j4
       XZ_OPT: -9
     steps:
       - checkout
       - run: |
+          export PREV_DIR=`pwd`
+          cd /tmp
+          git clone https://github.com/TerrorJack/nixpkgs.git
+          cd nixpkgs
+          git checkout 13d7b918194d3607fc082a1254e091799dbfcba9
+          nix-env -f . -iA haskell.compiler.ghcAsterius --option extra-binary-caches https://canis.sapiens.moe/
+          cd $PREV_DIR
+          unset PREV_DIR
+
           nix-env -iA \
             nixpkgs.autoconf \
             nixpkgs.binutils_nogold \
@@ -19,13 +28,14 @@ jobs:
             nixpkgs.gcc \
             nixpkgs.gnumake \
             nixpkgs.lzma \
-            nixpkgs.nodejs-9_x
-          stack --no-terminal test --haddock asterius:fact-dump
-          stack --no-terminal test --haddock asterius:ahc-boot
+            nixpkgs.nodejs-9_x \
+            nixpkgs.stack
+          stack --no-terminal --system-ghc test --haddock asterius:fact-dump
+          stack --no-terminal --system-ghc test --haddock asterius:ahc-boot
           if [ $CIRCLE_PROJECT_USERNAME == "tweag" ]
           then
             export PREV_DIR=`pwd`
-            cp -r `stack path --local-doc-root` /tmp/
+            cp -r `stack --no-terminal --system-ghc path --local-doc-root` /tmp/
             cd /tmp/doc
             touch .nojekyll
             git init
