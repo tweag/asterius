@@ -27,9 +27,9 @@ See [`ROADMAP.md`](ROADMAP.md) for a more detailed roadmap. The haddock document
 
 ## Building
 
-Assumes x64 platform, tested on Linux and Windows.
+Tested on Linux x64 and Windows x64.
 
-`asterius` requires a build of recent `ghc-head` which uses `integer-simple` and disables tables-next-to-code. On Linux, you can use `haskell.compiler.ghcAsterius`. The relevant Nix expressions can be found [here](https://github.com/TerrorJack/nixpkgs/tree/13d7b918194d3607fc082a1254e091799dbfcba9). There is a binary cache available at `https://canis.sapiens.moe/`. (Not signed at the moment)
+`asterius` requires a build of recent `ghc-head` which uses `integer-simple` and disables tables-next-to-code. On Linux, you can use `haskell.compiler.ghcAsterius`. The relevant Nix expressions can be found [here](https://github.com/TerrorJack/nixpkgs/tree/4cc8c2955fe132c3c780cdce41746ea77fcfe687). There is a binary cache available at `https://canis.sapiens.moe/`. (Not signed at the moment)
 
 On Windows, a manually built `ghc-head` binary dist is available. It's already contained in [`stack.yaml`](stack.yaml), so for Windows users a plain `stack build` should work out of the box.
 

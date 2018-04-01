@@ -7,6 +7,7 @@ jobs:
     environment:
       MAKEFLAGS: -j4
       XZ_OPT: -9
+      NIXPKGS_REV: 4cc8c2955fe132c3c780cdce41746ea77fcfe687
     steps:
       - checkout
       - run: |
@@ -15,9 +16,9 @@ jobs:
           nix-env -iA \
             nixpkgs.curlFull \
             nixpkgs.unzip
-          curl -L https://github.com/TerrorJack/nixpkgs/archive/13d7b918194d3607fc082a1254e091799dbfcba9.zip -o nixpkgs.zip
-          unzip -q nixpkgs.zip
-          cd nixpkgs-13d7b918194d3607fc082a1254e091799dbfcba9/
+          curl -L https://github.com/TerrorJack/nixpkgs/archive/$NIXPKGS_REV.zip -o nixpkgs-$NIXPKGS_REV.zip
+          unzip -q nixpkgs-$NIXPKGS_REV.zip
+          cd nixpkgs-$NIXPKGS_REV
           nix-env -f . -iA haskell.compiler.ghcAsterius --option require-sigs false --option extra-binary-caches https://canis.sapiens.moe/
           cd $PREV_DIR
           unset PREV_DIR
