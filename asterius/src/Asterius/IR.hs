@@ -250,9 +250,11 @@ marshalCmmBranch mod_sym func_sym exit_node =
           , trueDest = encodeLabel mod_sym func_sym cml_true
           , falseDest = encodeLabel mod_sym func_sym cml_false
           }
-    GHC.CmmSwitch _ _ ->
+    GHC.CmmSwitch _ _ -> do
+      MarshalContext {..} <- ask
       pure
-        SwitchBranch {switch = ExpressionStub, defDest = undefined, dests = []}
+        SwitchBranch
+          {switch = ExpressionStub, defDest = unreachableBlock, dests = []}
     GHC.CmmCall {..} -> pure CallBranch {callee = ExpressionStub}
     GHC.CmmForeignCall {} -> pure ForeignCallStub
 
