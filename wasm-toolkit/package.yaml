@@ -22,6 +22,7 @@ dependencies:
   - ghc-prim
   - hashable
   - mtl
+  - primitive
   - unliftio
   - unordered-containers
   - vector
@@ -29,7 +30,6 @@ dependencies:
 library:
   source-dirs: src
   other-extensions:
-    - BangPatterns
     - ConstraintKinds
     - DefaultSignatures
     - DeriveGeneric

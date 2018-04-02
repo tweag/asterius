@@ -39,7 +39,6 @@ import Language.WebAssembly.IR
 import Language.WebAssembly.Internals
 import qualified Module as GHC
 import qualified Unique as GHC
-import UnliftIO.Foreign
 
 newtype ModSym =
   ModSym SBS.ShortByteString
@@ -143,30 +142,30 @@ marshalCmmStatic mod_sym static_rec =
           pure $
           BufferElement $
           if i < 0
-            then encodeStorable (fromIntegral i :: Int8)
-            else encodeStorable (fromIntegral i :: Word8)
+            then encodePrim (fromIntegral i :: Int8)
+            else encodePrim (fromIntegral i :: Word8)
         GHC.CmmInt i GHC.W16 ->
           pure $
           BufferElement $
           if i < 0
-            then encodeStorable (fromIntegral i :: Int16)
-            else encodeStorable (fromIntegral i :: Word16)
+            then encodePrim (fromIntegral i :: Int16)
+            else encodePrim (fromIntegral i :: Word16)
         GHC.CmmInt i GHC.W32 ->
           pure $
           BufferElement $
           if i < 0
-            then encodeStorable (fromIntegral i :: Int32)
-            else encodeStorable (fromIntegral i :: Word32)
+            then encodePrim (fromIntegral i :: Int32)
+            else encodePrim (fromIntegral i :: Word32)
         GHC.CmmInt i GHC.W64 ->
           pure $
           BufferElement $
           if i < 0
-            then encodeStorable (fromIntegral i :: Int64)
-            else encodeStorable (fromIntegral i :: Word64)
+            then encodePrim (fromIntegral i :: Int64)
+            else encodePrim (fromIntegral i :: Word64)
         GHC.CmmFloat f GHC.W32 ->
-          pure $ BufferElement $ encodeStorable (fromRational f :: CFloat)
+          pure $ BufferElement $ encodePrim (fromRational f :: Float)
         GHC.CmmFloat f GHC.W64 ->
-          pure $ BufferElement $ encodeStorable (fromRational f :: CDouble)
+          pure $ BufferElement $ encodePrim (fromRational f :: Double)
         GHC.CmmLabel cl ->
           pure $ SymbolElement $ EntrySym mod_sym $ encodeCLabel cl
         GHC.CmmLabelOff cl offset ->

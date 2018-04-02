@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
@@ -6,14 +5,18 @@
 module Language.WebAssembly.Internals
   ( withSBS
   , withSV
-  , encodeStorable
+  , encodePrim
+  , reinterpretCast
   ) where
 
+import Control.Monad.ST.Strict
 import qualified Data.ByteString.Short.Internal as SBS
+import Data.Primitive (Prim)
+import qualified Data.Primitive as P
+import Data.Primitive.ByteArray
 import qualified Data.Vector.Storable as SV
 import GHC.Exts
 import GHC.Types
-import System.IO.Unsafe
 import UnliftIO
 import UnliftIO.Foreign
 
@@ -50,20 +53,19 @@ withSV v cont =
          v
          (\p -> (\buf len -> u (cont buf len)) p (fromIntegral (SV.length v))))
 
-{-# INLINEABLE encodeStorable #-}
-encodeStorable :: Storable a => a -> SBS.ShortByteString
-encodeStorable a =
-  unsafeDupablePerformIO
-    (alloca
-       (\buf@(Ptr addr) -> do
-          poke buf a
-          IO
-            (\s0 ->
-               case newByteArray# l s0 of
-                 (# s1, mba #) ->
-                   case copyAddrToByteArray# addr mba 0# l s1 of
-                     s2 ->
-                       case unsafeFreezeByteArray# mba s2 of
-                         (# s3, ba #) -> (# s3, SBS.SBS ba #))))
-  where
-    !(I# l) = sizeOf a
+{-# INLINEABLE encodePrim #-}
+encodePrim :: Prim a => a -> SBS.ShortByteString
+encodePrim a =
+  runST
+    (do mba <- newByteArray (P.sizeOf a)
+        writeByteArray mba 0 a
+        ByteArray ba <- unsafeFreezeByteArray mba
+        pure (SBS.SBS ba))
+
+{-# INLINEABLE reinterpretCast #-}
+reinterpretCast :: (Prim a, Prim b) => a -> b
+reinterpretCast a =
+  runST
+    (do mba <- newByteArray (P.sizeOf a)
+        writeByteArray mba 0 a
+        readByteArray mba 0)
