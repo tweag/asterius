@@ -26,7 +26,6 @@ import Data.Hashable
 import Data.Kind
 import Data.Serialize
 import qualified Data.Vector as V
-import Data.Word
 import GHC.Generics
 import Language.WebAssembly.Internals ()
 
@@ -127,8 +126,8 @@ data Branch spec
   | CondBranch { cond :: Expression spec
                , trueDest, falseDest :: BlockSymbol spec }
   | SwitchBranch { switch :: Expression spec
-                 , defDest :: Maybe (BlockSymbol spec)
-                 , destMap :: HM.HashMap Word64 (BlockSymbol spec) }
+                 , defDest :: BlockSymbol spec
+                 , dests :: V.Vector (BlockSymbol spec) }
   | CallBranch { callee :: Expression spec }
   | ForeignCallStub
 

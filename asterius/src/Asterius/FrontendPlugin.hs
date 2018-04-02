@@ -7,6 +7,7 @@ module Asterius.FrontendPlugin
 
 import Asterius.IR
 import Control.Monad.Except
+import Control.Monad.Reader
 import GHC
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
@@ -35,5 +36,7 @@ frontendPlugin =
             \mod_summary@ModSummary {..} ir ->
               liftIO $
               objectWrite ms_mod $
-              show $ length $ ppShow $ runExcept $ marshalIR mod_summary ir
+              ppShow $
+              runExcept $
+              flip runReaderT defaultMarshalContext $ marshalIR mod_summary ir
         }

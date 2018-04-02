@@ -13,12 +13,16 @@ module Asterius.IR
   , BlockSym(..)
   , AsteriusIR
   , MarshalError(..)
+  , MarshalContext
+  , unreachableBlock
+  , defaultMarshalContext
   , marshalIR
   ) where
 
 import qualified CLabel as GHC
 import qualified Cmm as GHC
 import Control.Monad.Except
+import Control.Monad.Reader
 import qualified Data.ByteString.Short as SBS
 import Data.Hashable
 import Data.Int
@@ -95,15 +99,29 @@ data MarshalError =
 
 deriving instance Show MarshalError
 
+newtype MarshalContext = MarshalContext
+  { unreachableBlock :: BlockSymbol AsteriusIR
+  }
+
+deriving instance Show MarshalContext
+
+defaultMarshalContext :: MarshalContext
+defaultMarshalContext =
+  MarshalContext
+    {unreachableBlock = BlockSym (ModSym "") (EntrySym (ModSym "") "") maxBound}
+
 marshalIR ::
-     MonadError MarshalError m => GHC.ModSummary -> IR -> m (Module AsteriusIR)
+     (MonadReader MarshalContext m, MonadError MarshalError m)
+  => GHC.ModSummary
+  -> IR
+  -> m (Module AsteriusIR)
 marshalIR GHC.ModSummary {..} IR {..} =
   fmap mconcat $
   for cmmRaw $
   marshalRawCmmDecl $ ModSym $ fromString $ GHC.moduleStableString ms_mod
 
 marshalRawCmmDecl ::
-     MonadError MarshalError m
+     (MonadReader MarshalContext m, MonadError MarshalError m)
   => ModSym
   -> GHC.RawCmmDecl
   -> m (Module AsteriusIR)
@@ -114,7 +132,7 @@ marshalRawCmmDecl mod_sym decl =
     GHC.CmmProc _ func_sym _ graph -> marshalCmmProc mod_sym func_sym graph
 
 marshalCmmData ::
-     MonadError MarshalError m
+     (MonadReader MarshalContext m, MonadError MarshalError m)
   => ModSym
   -> GHC.CLabel
   -> [GHC.CmmStatic]
@@ -130,7 +148,7 @@ marshalCmmData mod_sym static_sym ss = do
       }
 
 marshalCmmStatic ::
-     MonadError MarshalError m
+     (MonadReader MarshalContext m, MonadError MarshalError m)
   => ModSym
   -> GHC.CmmStatic
   -> m (StaticElement AsteriusIR)
@@ -175,7 +193,7 @@ marshalCmmStatic mod_sym static_rec =
     GHC.CmmString ws -> pure $ BufferElement $ SBS.pack ws <> "\0"
 
 marshalCmmProc ::
-     MonadError MarshalError m
+     (MonadReader MarshalContext m, MonadError MarshalError m)
   => ModSym
   -> GHC.CLabel
   -> GHC.CmmGraph
@@ -200,7 +218,7 @@ marshalCmmProc mod_sym func_sym GHC.CmmGraph {..} = do
     GHC.GMany GHC.NothingO g_body GHC.NothingO = g_graph
 
 marshalCmmBlock ::
-     MonadError MarshalError m
+     (MonadReader MarshalContext m, MonadError MarshalError m)
   => ModSym
   -> EntrySym
   -> GHC.Block GHC.CmmNode GHC.C GHC.C
@@ -211,13 +229,13 @@ marshalCmmBlock mod_sym func_sym (GHC.BlockCC (GHC.CmmEntry _ _) proc_nodes exit
   pure Block {body = e, branch = br}
 
 marshalCmmInstrs ::
-     MonadError MarshalError m
+     (MonadReader MarshalContext m, MonadError MarshalError m)
   => GHC.Block GHC.CmmNode GHC.O GHC.O
   -> m (Expression AsteriusIR)
 marshalCmmInstrs _ = pure ExpressionStub
 
 marshalCmmBranch ::
-     MonadError MarshalError m
+     (MonadReader MarshalContext m, MonadError MarshalError m)
   => ModSym
   -> EntrySym
   -> GHC.CmmNode GHC.O GHC.C
@@ -234,7 +252,7 @@ marshalCmmBranch mod_sym func_sym exit_node =
           }
     GHC.CmmSwitch _ _ ->
       pure
-        SwitchBranch {switch = ExpressionStub, defDest = Nothing, destMap = []}
+        SwitchBranch {switch = ExpressionStub, defDest = undefined, dests = []}
     GHC.CmmCall {..} -> pure CallBranch {callee = ExpressionStub}
     GHC.CmmForeignCall {} -> pure ForeignCallStub
 
