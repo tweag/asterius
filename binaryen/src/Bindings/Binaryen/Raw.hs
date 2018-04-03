@@ -151,10 +151,10 @@ foreign import ccall unsafe "BinaryenConstInt64" c_BinaryenConstInt64
   :: BinaryenModuleRef -> Int64 -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenConstFloat32" c_BinaryenConstFloat32
-  :: BinaryenModuleRef -> CFloat -> IO BinaryenExpressionRef
+  :: BinaryenModuleRef -> Float -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenConstFloat64" c_BinaryenConstFloat64
-  :: BinaryenModuleRef -> CDouble -> IO BinaryenExpressionRef
+  :: BinaryenModuleRef -> Double -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenConstFloat32Bits" c_BinaryenConstFloat32Bits
   :: BinaryenModuleRef -> Int32 -> IO BinaryenExpressionRef

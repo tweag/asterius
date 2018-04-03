@@ -33,6 +33,7 @@ library:
     - ConstraintKinds
     - DefaultSignatures
     - DeriveGeneric
+    - DuplicateRecordFields
     - FlexibleContexts
     - MagicHash
     - PolyKinds
@@ -40,3 +41,13 @@ library:
     - TypeFamilies
     - UnboxedTuples
     - UndecidableInstances
+
+tests:
+  nir-test:
+    source-dirs: test
+    main: nir-test.hs
+    dependencies:
+      - wasm-toolkit
+    other-extensions:
+      - OverloadedLists
+      - OverloadedStrings
