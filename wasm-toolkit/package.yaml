@@ -32,6 +32,7 @@ library:
   other-extensions:
     - ConstraintKinds
     - DefaultSignatures
+    - DeriveDataTypeable
     - DeriveGeneric
     - DuplicateRecordFields
     - FlexibleContexts

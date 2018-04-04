@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -14,6 +15,7 @@ module Language.WebAssembly.NIR
 
 import Bindings.Binaryen.Raw
 import qualified Data.ByteString.Short as SBS
+import Data.Data
 import Data.Serialize
 import qualified Data.Vector as V
 import GHC.Generics
@@ -28,13 +30,13 @@ data ValueType
   | F32
   | F64
   | Auto
-  deriving (Show, Generic)
+  deriving (Show, Generic, Data)
 
 data FunctionType = FunctionType
   { name :: SBS.ShortByteString
   , returnType :: ValueType
   , paramTypes :: V.Vector ValueType
-  } deriving (Show, Generic)
+  } deriving (Show, Generic, Data)
 
 instance Serialize FunctionType
 
@@ -58,10 +60,11 @@ data Expression
   | Switch { names :: V.Vector SBS.ShortByteString
            , defaultName :: SBS.ShortByteString
            , condition, value :: Expression }
-  | GetLocal { index :: BinaryenIndex, localType :: ValueType }
+  | GetLocal { index :: BinaryenIndex
+             , localType :: ValueType }
   | Return { value :: Expression }
   | Null
-  deriving (Show, Generic)
+  deriving (Show, Generic, Data)
 
 instance Serialize Expression
 
@@ -70,7 +73,7 @@ data Function = Function
   , functionType :: FunctionType
   , varTypes :: V.Vector ValueType
   , body :: Expression
-  } deriving (Show, Generic)
+  } deriving (Show, Generic, Data)
 
 instance Serialize Function
 
