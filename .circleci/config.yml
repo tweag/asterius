@@ -36,6 +36,7 @@ jobs:
           cd $PREV_DIR
           unset PREV_DIR
 
+          stack --no-terminal --system-ghc test --haddock wasm-toolkit:nir-test
           stack --no-terminal --system-ghc test --haddock asterius:fact-dump
           stack --no-terminal --system-ghc test --haddock asterius:ahc-boot
           if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
