@@ -1,0 +1,6 @@
+site_name: Asterius
+site_url: https://tweag.github.io/asterius
+repo_url: https://github.com/tweag/asterius
+pages:
+  - 'Introduction': 'index.md'
+theme: readthedocs

@@ -11,11 +11,24 @@ jobs:
     steps:
       - checkout
       - run: |
+          nix-channel --update
+          nix-env -iA \
+            nixpkgs.autoconf \
+            nixpkgs.binutils_nogold \
+            nixpkgs.cmake \
+            nixpkgs.coreutils \
+            nixpkgs.curlFull \
+            nixpkgs.findutils \
+            nixpkgs.gcc \
+            nixpkgs.gnumake \
+            nixpkgs.lzma \
+            nixpkgs.mkdocs \
+            nixpkgs.nodejs-9_x \
+            nixpkgs.stack \
+            nixpkgs.unzip
+
           export PREV_DIR=`pwd`
           cd /tmp
-          nix-env -iA \
-            nixpkgs.curlFull \
-            nixpkgs.unzip
           curl -L https://github.com/TerrorJack/nixpkgs/archive/$NIXPKGS_REV.zip -o nixpkgs-$NIXPKGS_REV.zip
           unzip -q nixpkgs-$NIXPKGS_REV.zip
           cd nixpkgs-$NIXPKGS_REV
@@ -23,31 +36,22 @@ jobs:
           cd $PREV_DIR
           unset PREV_DIR
 
-          nix-env -iA \
-            nixpkgs.autoconf \
-            nixpkgs.binutils_nogold \
-            nixpkgs.cmake \
-            nixpkgs.coreutils \
-            nixpkgs.findutils \
-            nixpkgs.gcc \
-            nixpkgs.gnumake \
-            nixpkgs.lzma \
-            nixpkgs.nodejs-9_x \
-            nixpkgs.stack
           stack --no-terminal --system-ghc test --haddock asterius:fact-dump
           stack --no-terminal --system-ghc test --haddock asterius:ahc-boot
-          if [ $CIRCLE_PROJECT_USERNAME == "tweag" ]
+          if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
           then
             export PREV_DIR=`pwd`
-            cp -r `stack --no-terminal --system-ghc path --local-doc-root` /tmp/
-            cd /tmp/doc
+            mkdocs build
+            cp -r site /tmp/
+            cp -r `stack --no-terminal --system-ghc path --local-doc-root` /tmp/site/haddock
+            cd /tmp/site
             touch .nojekyll
             git init
             git config user.email "cheng.shao@tweag.io"
             git config user.name "Shao Cheng"
             git checkout -b gh-pages
             git add --all
-            git commit -q --message="Haddock documentation of tweag/asterius@$CIRCLE_SHA1"
+            git commit -q --message="Documentation of tweag/asterius@$CIRCLE_SHA1"
             git push https://TerrorJack:$GH_TOKEN@github.com/tweag/asterius.git gh-pages --force
             cd $PREV_DIR
             unset PREV_DIR
@@ -64,15 +68,7 @@ jobs:
       - MAKEFLAGS: -j4
     steps:
       - checkout
-      - restore_cache:
-          key: binaryen-stack-work
       - run: stack --no-terminal --resolver ghc-8.4.1 --nix-packages "cmake gcc gnumake" test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
-      - save_cache:
-          key: binaryen-stack-work-{{ .BuildNum }}
-          paths:
-            - /root/.stack
-            - .stack-work
-            - binaryen/.stack-work
 
 workflows:
   version: 2

@@ -4,3 +4,4 @@ cereal-utils.cabal
 ghc-toolkit.cabal
 binaryen.cabal
 wasm-toolkit.cabal
+site/
