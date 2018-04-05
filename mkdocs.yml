@@ -4,5 +4,6 @@ repo_url: https://github.com/tweag/asterius
 pages:
   - 'Introduction': 'index.md'
   - 'Building guide': 'building.md'
+  - 'Project architecture': 'architecture.md'
   - 'Project roadmap': 'roadmap.md'
 theme: readthedocs
