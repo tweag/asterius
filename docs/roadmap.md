@@ -1,6 +1,4 @@
-# Project roadmap
-
-This document maintains a list of milestones along with their planned features. Some notations:
+This page maintains a list of milestones along with their planned features. Some notations:
 
 * M0, M1, .. indicates Milestone 0, Milestone 1, etc. The numbers grow monotonically.
 * P0, P1, .. incicates Priority 0, Priority 1, etc. The lesser the number, the more significant is the feature.

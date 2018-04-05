@@ -1,5 +1,3 @@
-# Building guide
-
 `asterius` is tested on Linux x64 and Windows x64. macOS x64 may also work.
 
 tl;dr: See [`.circleci/config.yml`](https://github.com/tweag/asterius/blob/master/.circleci/config.yml) for CircleCI config, [`appveyor.yml`](https://github.com/tweag/asterius/blob/master/appveyor.yml) for AppVeyor config.

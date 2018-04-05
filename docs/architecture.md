@@ -1,5 +1,3 @@
-# Project architecture
-
 ## High-level architecture
 
 The `asterius` project is hosted at [GitHub](https://github.com/tweag/asterius). The monorepo contains several packages:

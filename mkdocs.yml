@@ -2,8 +2,11 @@ site_name: Asterius
 site_url: https://tweag.github.io/asterius
 repo_url: https://github.com/tweag/asterius
 pages:
-  - 'Introduction': 'index.md'
-  - 'Building guide': 'building.md'
-  - 'Project architecture': 'architecture.md'
-  - 'Project roadmap': 'roadmap.md'
+  - 'Home': 'index.md'
+  - For users:
+    - 'Building guide': 'building.md'
+  - For developers:
+    - 'Project architecture': 'architecture.md'
+    - 'About WebAssembly': 'webassembly.md'
+    - 'Project roadmap': 'roadmap.md'
 theme: readthedocs
