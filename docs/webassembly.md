@@ -29,7 +29,7 @@ Cross-function branching (`CmmCall`) is tricky. WebAssembly lacks explicit tail 
 
 We're still investigating the best way. The first approach probably produces the fastest code, at the cost of no dynamic linking (not a scheduled feature anyway) and potential slowdown when linking large Haskell programs (unless an O(n) relooping algorithm is implemented).
 
-Update: for the first approach, using a long chain of nested blocks combined with a single `br_table` seems not to scale. On my laptop, `binaryen` starts to spit out meaningless error messages or halt when block number begin to exceed 2000.
+Update: for the first approach, using a long chain of nested blocks combined with a single `br_table` seems not to scale. On my laptop `binaryen` can't finish validation/serialization for a mere 10^6 blocks in a minute.
 
 ### Handling relocations
 
