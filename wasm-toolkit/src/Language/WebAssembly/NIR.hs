@@ -197,6 +197,10 @@ data Expression
            , condition, value :: Expression }
   | GetLocal { index :: BinaryenIndex
              , localType :: ValueType }
+  | SetLocal { index :: BinaryenIndex
+             , value :: Expression }
+  | TeeLocal { index :: BinaryenIndex
+             , value :: Expression }
   | Unary { unaryOp :: UnaryOp
           , operand0 :: Expression }
   | Binary { binaryOp :: BinaryOp
@@ -400,6 +404,12 @@ marshalExpression m e =
       withSV ns $ \nsp nl ->
         withSBS defaultName $ \dn -> c_BinaryenSwitch m nsp nl dn c v
     GetLocal {..} -> c_BinaryenGetLocal m index $ marshalValueType localType
+    SetLocal {..} -> do
+      v <- marshalExpression m value
+      c_BinaryenSetLocal m index v
+    TeeLocal {..} -> do
+      v <- marshalExpression m value
+      c_BinaryenTeeLocal m index v
     Unary {..} -> do
       x <- marshalExpression m operand0
       c_BinaryenUnary m (marshalUnaryOp unaryOp) x
