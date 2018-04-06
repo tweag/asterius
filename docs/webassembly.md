@@ -35,4 +35,12 @@ Update: for the first approach, using a long chain of nested blocks combined wit
 
 When producing a WebAssembly binary, we need to map `CLabel`s to the precise linear memory locations for `CmmStatics` or the precise table ids for `CmmProc`s. They are unknown when compiling individual modules, so `binaryen` is invoked only when linking, and during compiling we only convert `CLabel`s to some serializable representation.
 
-It's also worth noting that currently only `wasm32` is implemented, but we are running 64-bit `ghc`, so extra care need to be taken when computing memory locations.
+Currently WebAssembly community has a [proposal](https://github.com/WebAssembly/tool-conventions/blob/master/Linking.md) for linkable object format, and it's prototyped by `lld`. We'll probably turn to that format and use `lld` some day, but right now we'll simply stick to our own format for simplicity.
+
+### The word size story
+
+Although `wasm64` is scheduled, currently only `wasm32` is implemented. However, we are running 64-bit `ghc`, and there are several places which need extra care:
+
+* The load/store instructions operate on 64-bit addresses, yet `wasm32` use `uint32` when indexing into the linear memory.
+* The `CmmSwitch` labels are 64-bit. `CmmCondBranch` also checks a 64-bit condition. `br_if`/`br_table` operates on `uint32`.
+* Only `i32`/`i64` is supported by `wasm32` value types, but in Cmm we also need arithmetic on 8-bit/16-bit integers.

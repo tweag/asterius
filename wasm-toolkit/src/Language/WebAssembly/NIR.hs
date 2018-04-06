@@ -10,17 +10,27 @@ module Language.WebAssembly.NIR
   , FunctionType(..)
   , UnaryOp(..)
   , BinaryOp(..)
+  , HostOp(..)
+  , AtomicRMWOp(..)
   , Expression(..)
   , Function(..)
+  , RelooperAddBlock(..)
+  , RelooperAddBranch(..)
+  , RelooperBlock(..)
+  , RelooperRun(..)
   , marshalFunction
   ) where
 
 import Bindings.Binaryen.Raw
 import qualified Data.ByteString.Short as SBS
 import Data.Data
+import Data.Foldable
+import qualified Data.HashMap.Strict as HM
+import Data.Hashable
 import Data.Serialize
+import Data.Traversable
 import qualified Data.Vector as V
-import GHC.Generics
+import GHC.Generics (Generic)
 import Language.WebAssembly.Internals
 import UnliftIO
 import UnliftIO.Foreign
@@ -177,6 +187,26 @@ data BinaryOp
 
 instance Serialize BinaryOp
 
+data HostOp
+  = PageSize
+  | CurrentMemory
+  | GrowMemory
+  | HasFeature
+  deriving (Show, Generic, Data)
+
+instance Serialize HostOp
+
+data AtomicRMWOp
+  = AtomicRMWAdd
+  | AtomicRMWSub
+  | AtomicRMWAnd
+  | AtomicRMWOr
+  | AtomicRMWXor
+  | AtomicRMWXchg
+  deriving (Show, Generic, Data)
+
+instance Serialize AtomicRMWOp
+
 data Expression
   = ConstI32 Int32
   | ConstI64 Int64
@@ -186,7 +216,7 @@ data Expression
   | ConstF64Bits Int64
   | Block { name :: SBS.ShortByteString
           , bodys :: V.Vector Expression
-          , blockType :: ValueType }
+          , resultType :: ValueType }
   | If { condition, ifTrue, ifFalse :: Expression }
   | Loop { name :: SBS.ShortByteString
          , body :: Expression }
@@ -196,16 +226,30 @@ data Expression
            , defaultName :: SBS.ShortByteString
            , condition, value :: Expression }
   | GetLocal { index :: BinaryenIndex
-             , localType :: ValueType }
+             , resultType :: ValueType }
   | SetLocal { index :: BinaryenIndex
              , value :: Expression }
   | TeeLocal { index :: BinaryenIndex
              , value :: Expression }
+  | GetGlobal { name :: SBS.ShortByteString
+              , resultType :: ValueType }
+  | SetGlobal { name :: SBS.ShortByteString
+              , value :: Expression }
   | Unary { unaryOp :: UnaryOp
           , operand0 :: Expression }
   | Binary { binaryOp :: BinaryOp
            , operand0, operand1 :: Expression }
   | Return { value :: Expression }
+  | Host { hostOp :: HostOp
+         , name :: SBS.ShortByteString
+         , operands :: V.Vector Expression }
+  | Nop
+  | Unreachable
+  | AtomicRMW { atomicRMWOp :: AtomicRMWOp
+              , bytes, offset :: BinaryenIndex
+              , ptr, value :: Expression
+              , resultType :: ValueType }
+  | CFG { graph :: RelooperRun }
   | Null
   deriving (Show, Generic, Data)
 
@@ -219,6 +263,38 @@ data Function = Function
   } deriving (Show, Generic, Data)
 
 instance Serialize Function
+
+data RelooperAddBlock
+  = AddBlock { code :: Expression }
+  | AddBlockWithSwitch { code, condition :: Expression }
+  deriving (Show, Generic, Data)
+
+instance Serialize RelooperAddBlock
+
+data RelooperAddBranch
+  = AddBranch { to :: SBS.ShortByteString
+              , condition, code :: Expression }
+  | AddBranchForSwitch { to :: SBS.ShortByteString
+                       , indexes :: V.Vector BinaryenIndex
+                       , code :: Expression }
+  deriving (Show, Generic, Data)
+
+instance Serialize RelooperAddBranch
+
+data RelooperBlock = RelooperBlock
+  { addBlock :: RelooperAddBlock
+  , addBranches :: V.Vector RelooperAddBranch
+  } deriving (Show, Generic, Data)
+
+instance Serialize RelooperBlock
+
+data RelooperRun = RelooperRun
+  { entry :: SBS.ShortByteString
+  , blockMap :: HM.HashMap SBS.ShortByteString RelooperBlock
+  , labelHelper :: BinaryenIndex
+  } deriving (Show, Generic, Data)
+
+instance Serialize RelooperRun
 
 marshalValueType :: ValueType -> BinaryenType
 marshalValueType t =
@@ -361,6 +437,24 @@ marshalBinaryOp op =
     GtFloat64 -> c_BinaryenGtFloat64
     GeFloat64 -> c_BinaryenGeFloat64
 
+marshalHostOp :: HostOp -> BinaryenOp
+marshalHostOp op =
+  case op of
+    PageSize -> c_BinaryenPageSize
+    CurrentMemory -> c_BinaryenCurrentMemory
+    GrowMemory -> c_BinaryenGrowMemory
+    HasFeature -> c_BinaryenHasFeature
+
+marshalAtomicRMWOp :: AtomicRMWOp -> BinaryenOp
+marshalAtomicRMWOp op =
+  case op of
+    AtomicRMWAdd -> c_BinaryenAtomicRMWAdd
+    AtomicRMWSub -> c_BinaryenAtomicRMWSub
+    AtomicRMWAnd -> c_BinaryenAtomicRMWAnd
+    AtomicRMWOr -> c_BinaryenAtomicRMWOr
+    AtomicRMWXor -> c_BinaryenAtomicRMWXor
+    AtomicRMWXchg -> c_BinaryenAtomicRMWXchg
+
 marshalFunctionType ::
      MonadIO m => BinaryenModuleRef -> FunctionType -> m BinaryenFunctionTypeRef
 marshalFunctionType m FunctionType {..} =
@@ -384,7 +478,7 @@ marshalExpression m e =
       bs <- fmap V.convert $ V.forM bodys $ marshalExpression m
       withSV bs $ \bsp bl ->
         withSBS name $ \np ->
-          c_BinaryenBlock m np bsp bl (marshalValueType blockType)
+          c_BinaryenBlock m np bsp bl (marshalValueType resultType)
     If {..} -> do
       c <- marshalExpression m condition
       t <- marshalExpression m ifTrue
@@ -403,13 +497,19 @@ marshalExpression m e =
       ns <- fmap V.convert $ V.forM names $ flip withSBS pure
       withSV ns $ \nsp nl ->
         withSBS defaultName $ \dn -> c_BinaryenSwitch m nsp nl dn c v
-    GetLocal {..} -> c_BinaryenGetLocal m index $ marshalValueType localType
+    GetLocal {..} -> c_BinaryenGetLocal m index $ marshalValueType resultType
     SetLocal {..} -> do
       v <- marshalExpression m value
       c_BinaryenSetLocal m index v
     TeeLocal {..} -> do
       v <- marshalExpression m value
       c_BinaryenTeeLocal m index v
+    GetGlobal {..} ->
+      withSBS name $ \np ->
+        c_BinaryenGetGlobal m np (marshalValueType resultType)
+    SetGlobal {..} -> do
+      v <- marshalExpression m value
+      withSBS name $ \np -> c_BinaryenSetGlobal m np v
     Unary {..} -> do
       x <- marshalExpression m operand0
       c_BinaryenUnary m (marshalUnaryOp unaryOp) x
@@ -420,6 +520,24 @@ marshalExpression m e =
     Return {..} -> do
       v <- marshalExpression m value
       c_BinaryenReturn m v
+    Host {..} -> do
+      xs <- fmap V.convert $ V.forM operands $ marshalExpression m
+      withSV xs $ \es en ->
+        withSBS name $ \np -> c_BinaryenHost m (marshalHostOp hostOp) np es en
+    Nop -> c_BinaryenNop m
+    Unreachable -> c_BinaryenUnreachable m
+    AtomicRMW {..} -> do
+      p <- marshalExpression m ptr
+      v <- marshalExpression m value
+      c_BinaryenAtomicRMW
+        m
+        (marshalAtomicRMWOp atomicRMWOp)
+        bytes
+        offset
+        p
+        v
+        (marshalValueType resultType)
+    CFG {..} -> relooperRun m graph
     Null -> pure nullPtr
 
 marshalFunction ::
@@ -431,11 +549,68 @@ marshalFunction m Function {..} =
     withSV (V.convert $ V.map marshalValueType varTypes) $ \vtp vtl ->
       withSBS name $ \np -> c_BinaryenAddFunction m np ft vtp vtl b
 
+relooperAddBlock ::
+     MonadIO m
+  => BinaryenModuleRef
+  -> RelooperRef
+  -> RelooperAddBlock
+  -> m RelooperBlockRef
+relooperAddBlock m r ab =
+  liftIO $
+  case ab of
+    AddBlock {..} -> do
+      c <- marshalExpression m code
+      c_RelooperAddBlock r c
+    AddBlockWithSwitch {..} -> do
+      _code <- marshalExpression m code
+      _cond <- marshalExpression m condition
+      c_RelooperAddBlockWithSwitch r _code _cond
+
+relooperAddBranch ::
+     MonadIO m
+  => BinaryenModuleRef
+  -> HM.HashMap SBS.ShortByteString RelooperBlockRef
+  -> SBS.ShortByteString
+  -> RelooperAddBranch
+  -> m ()
+relooperAddBranch m bm k ab =
+  liftIO $
+  case ab of
+    AddBranch {..} -> do
+      _cond <- marshalExpression m condition
+      _code <- marshalExpression m code
+      c_RelooperAddBranch (bm HM.! k) (bm HM.! to) _cond _code
+    AddBranchForSwitch {..} -> do
+      c <- marshalExpression m code
+      withSV (V.convert indexes) $ \idp idn ->
+        c_RelooperAddBranchForSwitch (bm HM.! k) (bm HM.! to) idp idn c
+
+relooperRun ::
+     MonadIO m => BinaryenModuleRef -> RelooperRun -> m BinaryenExpressionRef
+relooperRun m RelooperRun {..} =
+  liftIO $ do
+    r <- c_RelooperCreate
+    bpm <-
+      fmap HM.fromList $
+      for (HM.toList blockMap) $ \(k, RelooperBlock {..}) -> do
+        bp <- relooperAddBlock m r addBlock
+        pure (k, bp)
+    for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
+      V.forM_ addBranches $ relooperAddBranch m bpm k
+    c_RelooperRenderAndDispose r (bpm HM.! entry) labelHelper m
+
 instance Serialize SBS.ShortByteString where
   {-# INLINE put #-}
   put sbs = put (SBS.length sbs) *> putShortByteString sbs
   {-# INLINE get #-}
   get = get >>= getShortByteString
+
+instance (Eq k, Hashable k, Serialize k, Serialize v) =>
+         Serialize (HM.HashMap k v) where
+  {-# INLINE put #-}
+  put = put . HM.toList
+  {-# INLINE get #-}
+  get = HM.fromList <$> get
 
 instance Serialize a => Serialize (V.Vector a) where
   {-# INLINE put #-}
