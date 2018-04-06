@@ -208,15 +208,9 @@ data AtomicRMWOp
 instance Serialize AtomicRMWOp
 
 data Expression
-  = ConstI32 Int32
-  | ConstI64 Int64
-  | ConstF32 Float
-  | ConstF64 Double
-  | ConstF32Bits Int32
-  | ConstF64Bits Int64
-  | Block { name :: SBS.ShortByteString
+  = Block { name :: SBS.ShortByteString
           , bodys :: V.Vector Expression
-          , resultType :: ValueType }
+          , valueType :: ValueType }
   | If { condition, ifTrue, ifFalse :: Expression }
   | Loop { name :: SBS.ShortByteString
          , body :: Expression }
@@ -225,20 +219,44 @@ data Expression
   | Switch { names :: V.Vector SBS.ShortByteString
            , defaultName :: SBS.ShortByteString
            , condition, value :: Expression }
+  | Call { target :: SBS.ShortByteString
+         , operands :: V.Vector Expression
+         , valueType :: ValueType }
+  | CallImport { target :: SBS.ShortByteString
+               , operands :: V.Vector Expression
+               , valueType :: ValueType }
+  | CallIndirect { indirectTarget :: Expression
+                 , operands :: V.Vector Expression
+                 , typeName :: SBS.ShortByteString }
   | GetLocal { index :: BinaryenIndex
-             , resultType :: ValueType }
+             , valueType :: ValueType }
   | SetLocal { index :: BinaryenIndex
              , value :: Expression }
   | TeeLocal { index :: BinaryenIndex
              , value :: Expression }
   | GetGlobal { name :: SBS.ShortByteString
-              , resultType :: ValueType }
+              , valueType :: ValueType }
   | SetGlobal { name :: SBS.ShortByteString
               , value :: Expression }
+  | Load { signed :: Bool
+         , bytes, offset, align :: BinaryenIndex
+         , valueType :: ValueType
+         , ptr :: Expression }
+  | Store { bytes, offset, align :: BinaryenIndex
+          , ptr, value :: Expression
+          , valueType :: ValueType }
+  | ConstI32 Int32
+  | ConstI64 Int64
+  | ConstF32 Float
+  | ConstF64 Double
+  | ConstF32Bits Int32
+  | ConstF64Bits Int64
   | Unary { unaryOp :: UnaryOp
           , operand0 :: Expression }
   | Binary { binaryOp :: BinaryOp
            , operand0, operand1 :: Expression }
+  | Select { condition, ifTrue, ifFalse :: Expression }
+  | Drop { value :: Expression }
   | Return { value :: Expression }
   | Host { hostOp :: HostOp
          , name :: SBS.ShortByteString
@@ -248,7 +266,7 @@ data Expression
   | AtomicRMW { atomicRMWOp :: AtomicRMWOp
               , bytes, offset :: BinaryenIndex
               , ptr, value :: Expression
-              , resultType :: ValueType }
+              , valueType :: ValueType }
   | CFG { graph :: RelooperRun }
   | Null
   deriving (Show, Generic, Data)
@@ -468,17 +486,11 @@ marshalExpression ::
 marshalExpression m e =
   liftIO $
   case e of
-    ConstI32 x -> c_BinaryenConstInt32 m x
-    ConstI64 x -> c_BinaryenConstInt64 m x
-    ConstF32 x -> c_BinaryenConstFloat32 m x
-    ConstF64 x -> c_BinaryenConstFloat64 m x
-    ConstF32Bits x -> c_BinaryenConstFloat32Bits m x
-    ConstF64Bits x -> c_BinaryenConstFloat64Bits m x
     Block {..} -> do
       bs <- fmap V.convert $ V.forM bodys $ marshalExpression m
       withSV bs $ \bsp bl ->
         withSBS name $ \np ->
-          c_BinaryenBlock m np bsp bl (marshalValueType resultType)
+          c_BinaryenBlock m np bsp bl (marshalValueType valueType)
     If {..} -> do
       c <- marshalExpression m condition
       t <- marshalExpression m ifTrue
@@ -497,7 +509,22 @@ marshalExpression m e =
       ns <- fmap V.convert $ V.forM names $ flip withSBS pure
       withSV ns $ \nsp nl ->
         withSBS defaultName $ \dn -> c_BinaryenSwitch m nsp nl dn c v
-    GetLocal {..} -> c_BinaryenGetLocal m index $ marshalValueType resultType
+    Call {..} -> do
+      os <- fmap V.convert $ V.forM operands $ marshalExpression m
+      withSV os $ \ops osl ->
+        withSBS target $ \tp ->
+          c_BinaryenCall m tp ops osl (marshalValueType valueType)
+    CallImport {..} -> do
+      os <- fmap V.convert $ V.forM operands $ marshalExpression m
+      withSV os $ \ops osl ->
+        withSBS target $ \tp ->
+          c_BinaryenCallImport m tp ops osl (marshalValueType valueType)
+    CallIndirect {..} -> do
+      t <- marshalExpression m indirectTarget
+      os <- fmap V.convert $ V.forM operands $ marshalExpression m
+      withSV os $ \ops osl ->
+        withSBS typeName $ \tp -> c_BinaryenCallIndirect m t ops osl tp
+    GetLocal {..} -> c_BinaryenGetLocal m index $ marshalValueType valueType
     SetLocal {..} -> do
       v <- marshalExpression m value
       c_BinaryenSetLocal m index v
@@ -506,10 +533,32 @@ marshalExpression m e =
       c_BinaryenTeeLocal m index v
     GetGlobal {..} ->
       withSBS name $ \np ->
-        c_BinaryenGetGlobal m np (marshalValueType resultType)
+        c_BinaryenGetGlobal m np (marshalValueType valueType)
     SetGlobal {..} -> do
       v <- marshalExpression m value
       withSBS name $ \np -> c_BinaryenSetGlobal m np v
+    Load {..} -> do
+      p <- marshalExpression m ptr
+      c_BinaryenLoad
+        m
+        bytes
+        (if signed
+           then 1
+           else 0)
+        offset
+        align
+        (marshalValueType valueType)
+        p
+    Store {..} -> do
+      p <- marshalExpression m ptr
+      v <- marshalExpression m value
+      c_BinaryenStore m bytes offset align p v (marshalValueType valueType)
+    ConstI32 x -> c_BinaryenConstInt32 m x
+    ConstI64 x -> c_BinaryenConstInt64 m x
+    ConstF32 x -> c_BinaryenConstFloat32 m x
+    ConstF64 x -> c_BinaryenConstFloat64 m x
+    ConstF32Bits x -> c_BinaryenConstFloat32Bits m x
+    ConstF64Bits x -> c_BinaryenConstFloat64Bits m x
     Unary {..} -> do
       x <- marshalExpression m operand0
       c_BinaryenUnary m (marshalUnaryOp unaryOp) x
@@ -517,6 +566,14 @@ marshalExpression m e =
       x <- marshalExpression m operand0
       y <- marshalExpression m operand1
       c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
+    Select {..} -> do
+      c <- marshalExpression m condition
+      t <- marshalExpression m ifTrue
+      f <- marshalExpression m ifFalse
+      c_BinaryenSelect m c t f
+    Drop {..} -> do
+      v <- marshalExpression m value
+      c_BinaryenDrop m v
     Return {..} -> do
       v <- marshalExpression m value
       c_BinaryenReturn m v
@@ -536,7 +593,7 @@ marshalExpression m e =
         offset
         p
         v
-        (marshalValueType resultType)
+        (marshalValueType valueType)
     CFG {..} -> relooperRun m graph
     Null -> pure nullPtr
 
