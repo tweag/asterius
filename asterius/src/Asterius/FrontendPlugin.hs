@@ -5,14 +5,16 @@ module Asterius.FrontendPlugin
   ( frontendPlugin
   ) where
 
-import Asterius.IR
+import CLabel
+import Cmm
 import Control.Monad.Except
-import Control.Monad.Reader
+import Data.Maybe
 import GHC
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import Language.Haskell.GHC.Toolkit.ObjectStore
+import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import System.Environment
 import Text.Show.Pretty
 
@@ -33,10 +35,13 @@ frontendPlugin =
     pure $
       defaultCompiler
         { withIR =
-            \mod_summary@ModSummary {..} ir ->
-              liftIO $
-              objectWrite ms_mod $
-              ppShow $
-              runExcept $
-              flip runReaderT defaultMarshalContext $ marshalIR mod_summary ir
+            \ModSummary {..} IR {..} ->
+              let clbls =
+                    [ case decl of
+                      CmmData (Section _ clbl) _ -> clbl
+                      CmmProc _ clbl _ _ -> clbl
+                    | decl <- cmmRaw
+                    ]
+                  ns = mapMaybe (fmap nameStableString . hasHaskellName) clbls
+               in liftIO $ objectWrite ms_mod $ ppShow (clbls, ns)
         }
