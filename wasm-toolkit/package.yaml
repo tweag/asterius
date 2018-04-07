@@ -38,6 +38,7 @@ library:
     - FlexibleContexts
     - MagicHash
     - PolyKinds
+    - OverloadedLists
     - StrictData
     - TypeFamilies
     - UnboxedTuples

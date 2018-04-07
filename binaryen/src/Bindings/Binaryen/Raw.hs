@@ -128,7 +128,9 @@ foreign import ccall unsafe "BinaryenExternalMemory" c_BinaryenExternalMemory
 foreign import ccall unsafe "BinaryenExternalGlobal" c_BinaryenExternalGlobal
   :: BinaryenExternalKind
 
-type BinaryenModuleRef = Ptr ()
+data BinaryenModule
+
+type BinaryenModuleRef = Ptr BinaryenModule
 
 foreign import ccall unsafe "BinaryenModuleCreate" c_BinaryenModuleCreate
   :: IO BinaryenModuleRef
@@ -136,7 +138,9 @@ foreign import ccall unsafe "BinaryenModuleCreate" c_BinaryenModuleCreate
 foreign import ccall unsafe "BinaryenModuleDispose" c_BinaryenModuleDispose
   :: BinaryenModuleRef -> IO ()
 
-type BinaryenFunctionTypeRef = Ptr ()
+data BinaryenFunctionType
+
+type BinaryenFunctionTypeRef = Ptr BinaryenFunctionType
 
 foreign import ccall unsafe "BinaryenAddFunctionType" c_BinaryenAddFunctionType
   :: BinaryenModuleRef ->
@@ -522,7 +526,9 @@ foreign import ccall unsafe "BinaryenAtomicRMWXor" c_BinaryenAtomicRMWXor
 foreign import ccall unsafe "BinaryenAtomicRMWXchg" c_BinaryenAtomicRMWXchg
   :: BinaryenOp
 
-type BinaryenExpressionRef = Ptr ()
+data BinaryenExpression
+
+type BinaryenExpressionRef = Ptr BinaryenExpression
 
 foreign import ccall unsafe "BinaryenBlock" c_BinaryenBlock
   :: BinaryenModuleRef ->
@@ -934,7 +940,9 @@ foreign import ccall unsafe "BinaryenAtomicWakeGetPtr" c_BinaryenAtomicWakeGetPt
 foreign import ccall unsafe "BinaryenAtomicWakeGetWakeCount" c_BinaryenAtomicWakeGetWakeCount
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
-type BinaryenFunctionRef = Ptr ()
+data BinaryenFunction
+
+type BinaryenFunctionRef = Ptr BinaryenFunction
 
 foreign import ccall unsafe "BinaryenAddFunction" c_BinaryenAddFunction
   :: BinaryenModuleRef ->
@@ -949,7 +957,9 @@ foreign import ccall unsafe "BinaryenGetFunction" c_BinaryenGetFunction
 foreign import ccall unsafe "BinaryenRemoveFunction" c_BinaryenRemoveFunction
   :: BinaryenModuleRef -> Ptr CChar -> IO ()
 
-type BinaryenImportRef = Ptr ()
+data BinaryenImport
+
+type BinaryenImportRef = Ptr BinaryenImport
 
 foreign import ccall unsafe "BinaryenAddFunctionImport" c_BinaryenAddFunctionImport
   :: BinaryenModuleRef ->
@@ -973,7 +983,9 @@ foreign import ccall unsafe "BinaryenAddGlobalImport" c_BinaryenAddGlobalImport
 foreign import ccall unsafe "BinaryenRemoveImport" c_BinaryenRemoveImport
   :: BinaryenModuleRef -> Ptr CChar -> IO ()
 
-type BinaryenExportRef = Ptr ()
+data BinaryenExport
+
+type BinaryenExportRef = Ptr BinaryenExport
 
 foreign import ccall unsafe "BinaryenAddFunctionExport" c_BinaryenAddFunctionExport
   :: BinaryenModuleRef -> Ptr CChar -> Ptr CChar -> IO BinaryenExportRef
@@ -990,7 +1002,9 @@ foreign import ccall unsafe "BinaryenAddGlobalExport" c_BinaryenAddGlobalExport
 foreign import ccall unsafe "BinaryenRemoveExport" c_BinaryenRemoveExport
   :: BinaryenModuleRef -> Ptr CChar -> IO ()
 
-type BinaryenGlobalRef = Ptr ()
+data BinaryenGlobal
+
+type BinaryenGlobalRef = Ptr BinaryenGlobal
 
 foreign import ccall unsafe "BinaryenAddGlobal" c_BinaryenAddGlobal
   :: BinaryenModuleRef ->
@@ -1153,9 +1167,13 @@ foreign import ccall unsafe "BinaryenExportGetName" c_BinaryenExportGetName
 foreign import ccall unsafe "BinaryenExportGetValue" c_BinaryenExportGetValue
   :: BinaryenExportRef -> IO (Ptr CChar)
 
-type RelooperRef = Ptr ()
+data Relooper
 
-type RelooperBlockRef = Ptr ()
+type RelooperRef = Ptr Relooper
+
+data RelooperBlock
+
+type RelooperBlockRef = Ptr RelooperBlock
 
 foreign import ccall unsafe "RelooperCreate" c_RelooperCreate :: IO RelooperRef
 

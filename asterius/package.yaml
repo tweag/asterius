@@ -50,6 +50,7 @@ library:
   other-modules: Paths_asterius
   other-extensions:
     - DeriveGeneric
+    - DeriveDataTypeable
     - FlexibleContexts
     - GADTs
     - GeneralizedNewtypeDeriving
