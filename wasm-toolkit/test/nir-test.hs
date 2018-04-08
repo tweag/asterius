@@ -30,7 +30,7 @@ main = do
                 , ("block_0", RelooperBlock (AddBlock (ConstI32 0)) [])
                 , ("block_def", RelooperBlock (AddBlock (ConstI32 233)) [])
                 ]
-                1)
+                (Just 1))
           ]
       }
   fptr <- mallocForeignPtrBytes 1000000

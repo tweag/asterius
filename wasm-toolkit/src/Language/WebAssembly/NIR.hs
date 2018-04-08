@@ -8,7 +8,8 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Language.WebAssembly.NIR
-  ( ValueType(..)
+  ( BinaryenIndex
+  , ValueType(..)
   , FunctionType(..)
   , UnaryOp(..)
   , BinaryOp(..)
@@ -37,6 +38,7 @@ module Language.WebAssembly.NIR
   ) where
 
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
+import Control.DeepSeq
 import qualified Data.ByteString.Short as SBS
 import Data.Data
 import Data.Foldable
@@ -61,12 +63,16 @@ data ValueType
 
 instance Serialize ValueType
 
+instance NFData ValueType
+
 data FunctionType = FunctionType
   { returnType :: ValueType
   , paramTypes :: V.Vector ValueType
   } deriving (Show, Generic, Data)
 
 instance Serialize FunctionType
+
+instance NFData FunctionType
 
 data UnaryOp
   = ClzInt32
@@ -119,6 +125,8 @@ data UnaryOp
   deriving (Show, Generic, Data)
 
 instance Serialize UnaryOp
+
+instance NFData UnaryOp
 
 data BinaryOp
   = AddInt32
@@ -201,6 +209,8 @@ data BinaryOp
 
 instance Serialize BinaryOp
 
+instance NFData BinaryOp
+
 data HostOp
   = PageSize
   | CurrentMemory
@@ -209,6 +219,8 @@ data HostOp
   deriving (Show, Generic, Data)
 
 instance Serialize HostOp
+
+instance NFData HostOp
 
 data AtomicRMWOp
   = AtomicRMWAdd
@@ -220,6 +232,8 @@ data AtomicRMWOp
   deriving (Show, Generic, Data)
 
 instance Serialize AtomicRMWOp
+
+instance NFData AtomicRMWOp
 
 data Expression
   = Block { name :: SBS.ShortByteString
@@ -283,10 +297,20 @@ data Expression
               , valueType :: ValueType }
   | CFG { graph :: RelooperRun }
   | Unresolved { unresolvedLabel :: SBS.ShortByteString }
+  | UnresolvedOff { unresolvedLabel :: SBS.ShortByteString
+                  , offset :: BinaryenIndex }
+  | UnresolvedGetLocal { unresolvedIndex :: Int
+                       , valueType :: ValueType }
+  | UnresolvedSetLocal { unresolvedIndex :: Int
+                       , value :: Expression }
+  | UnresolvedTeeLocal { unresolvedIndex :: Int
+                       , value :: Expression }
   | Null
   deriving (Show, Generic, Data)
 
 instance Serialize Expression
+
+instance NFData Expression
 
 data Function = Function
   { functionTypeName :: SBS.ShortByteString
@@ -296,17 +320,23 @@ data Function = Function
 
 instance Serialize Function
 
+instance NFData Function
+
 data FunctionImport = FunctionImport
   { internalName, externalModuleName, externalBaseName, functionTypeName :: SBS.ShortByteString
   } deriving (Show, Generic, Data)
 
 instance Serialize FunctionImport
 
+instance NFData FunctionImport
+
 data TableImport = TableImport
   { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
   } deriving (Show, Generic, Data)
 
 instance Serialize TableImport
+
+instance NFData TableImport
 
 data GlobalImport = GlobalImport
   { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
@@ -315,11 +345,15 @@ data GlobalImport = GlobalImport
 
 instance Serialize GlobalImport
 
+instance NFData GlobalImport
+
 data FunctionExport = FunctionExport
   { internalName, externalName :: SBS.ShortByteString
   } deriving (Show, Generic, Data)
 
 instance Serialize FunctionExport
+
+instance NFData FunctionExport
 
 data TableExport = TableExport
   { internalName, externalName :: SBS.ShortByteString
@@ -327,11 +361,15 @@ data TableExport = TableExport
 
 instance Serialize TableExport
 
+instance NFData TableExport
+
 data GlobalExport = GlobalExport
   { internalName, externalName :: SBS.ShortByteString
   } deriving (Show, Generic, Data)
 
 instance Serialize GlobalExport
+
+instance NFData GlobalExport
 
 data Global = Global
   { valueType :: ValueType
@@ -341,11 +379,15 @@ data Global = Global
 
 instance Serialize Global
 
+instance NFData Global
+
 newtype FunctionTable = FunctionTable
   { functionNames :: V.Vector SBS.ShortByteString
   } deriving (Show, Generic, Data)
 
 instance Serialize FunctionTable
+
+instance NFData FunctionTable
 
 data DataSegment = DataSegment
   { content :: SBS.ShortByteString
@@ -354,6 +396,8 @@ data DataSegment = DataSegment
 
 instance Serialize DataSegment
 
+instance NFData DataSegment
+
 data Memory = Memory
   { initialPages, maximumPages :: BinaryenIndex
   , exportName :: SBS.ShortByteString
@@ -361,6 +405,8 @@ data Memory = Memory
   } deriving (Show, Generic, Data)
 
 instance Serialize Memory
+
+instance NFData Memory
 
 data Module = Module
   { functionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
@@ -379,12 +425,16 @@ data Module = Module
 
 instance Serialize Module
 
+instance NFData Module
+
 data RelooperAddBlock
   = AddBlock { code :: Expression }
   | AddBlockWithSwitch { code, condition :: Expression }
   deriving (Show, Generic, Data)
 
 instance Serialize RelooperAddBlock
+
+instance NFData RelooperAddBlock
 
 data RelooperAddBranch
   = AddBranch { to :: SBS.ShortByteString
@@ -396,6 +446,8 @@ data RelooperAddBranch
 
 instance Serialize RelooperAddBranch
 
+instance NFData RelooperAddBranch
+
 data RelooperBlock = RelooperBlock
   { addBlock :: RelooperAddBlock
   , addBranches :: V.Vector RelooperAddBranch
@@ -403,16 +455,21 @@ data RelooperBlock = RelooperBlock
 
 instance Serialize RelooperBlock
 
+instance NFData RelooperBlock
+
 data RelooperRun = RelooperRun
   { entry :: SBS.ShortByteString
   , blockMap :: HM.HashMap SBS.ShortByteString RelooperBlock
-  , labelHelper :: BinaryenIndex
+  , labelHelper :: Maybe BinaryenIndex
   } deriving (Show, Generic, Data)
 
 instance Serialize RelooperRun
 
-newtype MarshalError =
-  UnsupportedExpression Expression
+instance NFData RelooperRun
+
+data MarshalError
+  = UnsupportedExpression Expression
+  | MissingLabelHelper RelooperRun
   deriving (Show)
 
 instance Exception MarshalError
@@ -723,8 +780,8 @@ marshalExpression m e =
         v
         (marshalValueType valueType)
     CFG {..} -> relooperRun m graph
-    Unresolved {} -> throwIO $ UnsupportedExpression e
     Null -> pure nullPtr
+    _ -> throwIO $ UnsupportedExpression e
 
 marshalFunction ::
      MonadIO m
@@ -923,7 +980,7 @@ relooperAddBranch m bm k ab =
 
 relooperRun ::
      MonadIO m => BinaryenModuleRef -> RelooperRun -> m BinaryenExpressionRef
-relooperRun m RelooperRun {..} =
+relooperRun m rr@RelooperRun {..} =
   liftIO $ do
     r <- c_RelooperCreate
     bpm <-
@@ -933,7 +990,9 @@ relooperRun m RelooperRun {..} =
         pure (k, bp)
     for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
       V.forM_ addBranches $ relooperAddBranch m bpm k
-    c_RelooperRenderAndDispose r (bpm HM.! entry) labelHelper m
+    case labelHelper of
+      Just lh -> c_RelooperRenderAndDispose r (bpm HM.! entry) lh m
+      _ -> throwIO $ MissingLabelHelper rr
 
 instance Serialize SBS.ShortByteString where
   {-# INLINE put #-}

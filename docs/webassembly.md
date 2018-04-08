@@ -45,6 +45,8 @@ Although `wasm64` is scheduled, currently only `wasm32` is implemented. However,
 * The `CmmSwitch` labels are 64-bit. `CmmCondBranch` also checks a 64-bit condition. `br_if`/`br_table` operates on `uint32`.
 * Only `i32`/`i64` is supported by `wasm32` value types, but in Cmm we also need arithmetic on 8-bit/16-bit integers.
 
+As for booleans: there's no native boolean type in either WebAssembly or Cmm. As a convention we use `uint32`.
+
 ### Pages and addresses
 
 The WebAssembly linear memory has a hard-coded page size of 64KB. There are several places which operate in units of pages rather than raw bytes:
