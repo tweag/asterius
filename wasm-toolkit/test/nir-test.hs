@@ -27,7 +27,10 @@ main = do
                           Null
                       , AddBranch "block_def" Null Null
                       ])
-                , ("block_0", RelooperBlock (AddBlock (ConstI32 0)) [])
+                , ( "block_0"
+                  , RelooperBlock
+                      (AddBlock (Block "" [Return $ ConstI32 0] I32))
+                      [])
                 , ("block_def", RelooperBlock (AddBlock (ConstI32 233)) [])
                 ]
                 (Just 1))

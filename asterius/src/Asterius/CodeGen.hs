@@ -18,6 +18,7 @@ module Asterius.CodeGen
 
 import qualified CLabel as GHC
 import qualified Cmm as GHC
+import qualified CmmSwitch as GHC
 import Control.DeepSeq
 import Control.Monad
 import Control.Monad.IO.Class
@@ -45,9 +46,11 @@ import UnliftIO
 data AsteriusCodeGenError
   = UnsupportedCmmLit SBS.ShortByteString
   | UnsupportedCmmInstr SBS.ShortByteString
+  | UnsupportedCmmBranch SBS.ShortByteString
   | UnsupportedCmmType SBS.ShortByteString
   | UnsupportedCmmGlobalReg SBS.ShortByteString
   | UnsupportedCmmExpr SBS.ShortByteString
+  | UnsupportedRelooperAddBlock RelooperAddBlock
   | UnhandledException SBS.ShortByteString
   deriving (Show, Generic, Data)
 
@@ -229,7 +232,7 @@ marshalCmmExpr dflags expr =
             , offset = 0
             , align = 0
             , valueType = vt
-            , ptr = p
+            , ptr = Unary {unaryOp = WrapInt64, operand0 = p}
             }
         , vt
         , vts
@@ -1074,13 +1077,18 @@ marshalCmmBlockBody ::
   -> m ( RelooperAddBlock
        , HM.HashMap Int ValueType
        , HM.HashMap SBS.ShortByteString ValueType)
-marshalCmmBlockBody dflags instrs = do
-  (es, lrs, grs) <- fmap unzip3 $ for instrs $ marshalCmmInstr dflags
-  pure
-    ( AddBlock
-        {code = Block {name = "", bodys = V.fromList es, valueType = None}}
-    , mconcat lrs
-    , mconcat grs)
+marshalCmmBlockBody dflags instrs =
+  case instrs of
+    [instr] -> do
+      (e, lr, gr) <- marshalCmmInstr dflags instr
+      pure (AddBlock {code = e}, lr, gr)
+    _ -> do
+      (es, lrs, grs) <- fmap unzip3 $ for instrs $ marshalCmmInstr dflags
+      pure
+        ( AddBlock
+            {code = Block {name = "", bodys = V.fromList es, valueType = None}}
+        , mconcat lrs
+        , mconcat grs)
 
 marshalCmmLocalReg ::
      MonadIO m => GHC.LocalReg -> m (Int, ValueType, BinaryenIndex)
@@ -1117,19 +1125,105 @@ marshalCmmBlock ::
        , HM.HashMap SBS.ShortByteString ValueType)
 marshalCmmBlock dflags (k, body, branch) = do
   (_body, _body_lrs, _body_grs) <- marshalCmmBlockBody dflags body
-  _branch <- marshalCmmBlockBranch dflags branch
-  pure
-    ( k
-    , RelooperBlock {addBlock = _body, addBranches = _branch}
-    , _body_lrs
-    , _body_grs)
+  _br_result <- marshalCmmBlockBranch dflags branch
+  case _br_result of
+    (Left _append_expr, _append_lrs, _append_grs) ->
+      case _body of
+        AddBlock {code = Block bk es _} ->
+          pure
+            ( k
+            , RelooperBlock
+                { addBlock =
+                    AddBlock {code = Block bk (es <> [_append_expr]) I64}
+                , addBranches = []
+                }
+            , _body_lrs <> _append_lrs
+            , _body_grs <> _append_grs)
+        AddBlock {..} ->
+          pure
+            ( k
+            , RelooperBlock
+                { addBlock =
+                    AddBlock
+                      { code =
+                          Block
+                            { name = ""
+                            , bodys = [code, _append_expr]
+                            , valueType = I64
+                            }
+                      }
+                , addBranches = []
+                }
+            , _body_lrs <> _append_lrs
+            , _body_grs <> _append_grs)
+        _ -> throwIO $ UnsupportedRelooperAddBlock _body
+    (Right _branch, _branch_lrs, _branch_grs) ->
+      pure
+        ( k
+        , RelooperBlock {addBlock = _body, addBranches = _branch}
+        , _body_lrs <> _branch_lrs
+        , _body_grs <> _branch_grs)
 
 marshalCmmBlockBranch ::
      MonadIO m
   => GHC.DynFlags
   -> GHC.CmmNode GHC.O GHC.C
-  -> m (V.Vector RelooperAddBranch)
-marshalCmmBlockBranch _ _ = pure []
+  -> m ( Either Expression (V.Vector RelooperAddBranch)
+       , HM.HashMap Int ValueType
+       , HM.HashMap SBS.ShortByteString ValueType)
+marshalCmmBlockBranch dflags instr =
+  case instr of
+    GHC.CmmBranch lbl ->
+      pure
+        ( Right
+            [ AddBranch
+                {to = marshalLabel dflags lbl, condition = Null, code = Null}
+            ]
+        , mempty
+        , mempty)
+    GHC.CmmCondBranch {..} -> do
+      (c, I32, 4, cond_lrs, cond_grs) <- marshalCmmExpr dflags cml_pred
+      pure
+        ( Right
+            [ AddBranch
+                {to = marshalLabel dflags cml_true, condition = c, code = Null}
+            , AddBranch
+                { to = marshalLabel dflags cml_false
+                , condition = Null
+                , code = Null
+                }
+            ]
+        , cond_lrs
+        , cond_grs)
+    GHC.CmmSwitch cml_pred st -> do
+      (p, I64, 8, p_lrs, p_grs) <- marshalCmmExpr dflags cml_pred
+      pure
+        ( Right $
+          V.fromList
+            [ AddBranch
+              { to = marshalLabel dflags lbl
+              , condition =
+                  Binary
+                    { binaryOp = EqInt64
+                    , operand0 = p
+                    , operand1 = ConstI64 $ fromIntegral k
+                    }
+              , code = Null
+              }
+            | (k, lbl) <- GHC.switchTargetsCases st
+            ] <>
+          (case GHC.switchTargetsDefault st of
+             Just lbl ->
+               [ AddBranch
+                   {to = marshalLabel dflags lbl, condition = Null, code = Null}
+               ]
+             _ -> [])
+        , p_lrs
+        , p_grs)
+    GHC.CmmCall {..} -> do
+      (t, I64, 8, t_lrs, t_grs) <- marshalCmmExpr dflags cml_target
+      pure (Left Return {value = t}, t_lrs, t_grs)
+    _ -> throwIO $ UnsupportedCmmBranch $ fromString $ show instr
 
 marshalCmmProc ::
      MonadIO m
