@@ -1079,6 +1079,7 @@ marshalCmmBlockBody ::
        , HM.HashMap SBS.ShortByteString ValueType)
 marshalCmmBlockBody dflags instrs =
   case instrs of
+    [] -> pure (AddBlock {code = Nop}, mempty, mempty)
     [instr] -> do
       (e, lr, gr) <- marshalCmmInstr dflags instr
       pure (AddBlock {code = e}, lr, gr)
@@ -1129,6 +1130,13 @@ marshalCmmBlock dflags (k, body, branch) = do
   case _br_result of
     (Left _append_expr, _append_lrs, _append_grs) ->
       case _body of
+        AddBlock {code = Nop} ->
+          pure
+            ( k
+            , RelooperBlock
+                {addBlock = AddBlock {code = _append_expr}, addBranches = []}
+            , _append_lrs
+            , _append_grs)
         AddBlock {code = Block bk es _} ->
           pure
             ( k
