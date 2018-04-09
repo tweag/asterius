@@ -634,6 +634,38 @@ marshalCmmInstr ::
      MonadIO m => GHC.DynFlags -> GHC.CmmNode GHC.O GHC.O -> m Expression
 marshalCmmInstr dflags instr =
   case instr of
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F64_Fabs) [r] [e] -> do
+      let (k, F64) = marshalCmmLocalReg r
+      x <- marshalAndCastCmmExpr dflags e F64
+      pure
+        UnresolvedSetLocal
+          { unresolvedIndex = k
+          , value = Unary {unaryOp = AbsFloat64, operand0 = x}
+          }
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F32_Fabs) [r] [e] -> do
+      let (k, F32) = marshalCmmLocalReg r
+      x <- marshalAndCastCmmExpr dflags e F32
+      pure
+        UnresolvedSetLocal
+          { unresolvedIndex = k
+          , value = Unary {unaryOp = AbsFloat32, operand0 = x}
+          }
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F64_Sqrt) [r] [e] -> do
+      let (k, F64) = marshalCmmLocalReg r
+      x <- marshalAndCastCmmExpr dflags e F64
+      pure
+        UnresolvedSetLocal
+          { unresolvedIndex = k
+          , value = Unary {unaryOp = SqrtFloat64, operand0 = x}
+          }
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F32_Sqrt) [r] [e] -> do
+      let (k, F32) = marshalCmmLocalReg r
+      x <- marshalAndCastCmmExpr dflags e F32
+      pure
+        UnresolvedSetLocal
+          { unresolvedIndex = k
+          , value = Unary {unaryOp = SqrtFloat32, operand0 = x}
+          }
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       let (k, _) = marshalCmmLocalReg r
       (v, _) <- marshalCmmExpr dflags e

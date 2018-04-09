@@ -11,10 +11,7 @@ main = do
     BootArgs
       { bootDir = bootdir
       , configureOptions =
-          (case buildOS of
-             Windows -> "--disable-split-objs"
-             _ -> "--disable-split-sections") ++
-          " --verbose"
+          "--disable-split-objs --disable-split-sections -O2 --verbose"
       , buildOptions = ""
       , installOptions = ""
       }
