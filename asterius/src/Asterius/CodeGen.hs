@@ -631,96 +631,173 @@ marshalCmmExpr dflags expr =
     _ -> throwIO $ UnsupportedCmmExpr $ fromString $ show expr
 
 marshalCmmInstr ::
-     MonadIO m => GHC.DynFlags -> GHC.CmmNode GHC.O GHC.O -> m Expression
+     MonadIO m => GHC.DynFlags -> GHC.CmmNode GHC.O GHC.O -> m [Expression]
 marshalCmmInstr dflags instr =
   case instr of
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F64_Fabs) [r] [e] -> do
       let (k, F64) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e F64
       pure
-        UnresolvedSetLocal
-          { unresolvedIndex = k
-          , value = Unary {unaryOp = AbsFloat64, operand0 = x}
-          }
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value = Unary {unaryOp = AbsFloat64, operand0 = x}
+            }
+        ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F32_Fabs) [r] [e] -> do
       let (k, F32) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e F32
       pure
-        UnresolvedSetLocal
-          { unresolvedIndex = k
-          , value = Unary {unaryOp = AbsFloat32, operand0 = x}
-          }
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value = Unary {unaryOp = AbsFloat32, operand0 = x}
+            }
+        ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F64_Sqrt) [r] [e] -> do
       let (k, F64) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e F64
       pure
-        UnresolvedSetLocal
-          { unresolvedIndex = k
-          , value = Unary {unaryOp = SqrtFloat64, operand0 = x}
-          }
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value = Unary {unaryOp = SqrtFloat64, operand0 = x}
+            }
+        ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F32_Sqrt) [r] [e] -> do
       let (k, F32) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e F32
       pure
-        UnresolvedSetLocal
-          { unresolvedIndex = k
-          , value = Unary {unaryOp = SqrtFloat32, operand0 = x}
-          }
-    GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_Touch) _ _ -> pure Nop
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value = Unary {unaryOp = SqrtFloat32, operand0 = x}
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_S_QuotRem GHC.W32)) [rx, ry] [x, y] -> do
+      let (kx, I32) = marshalCmmLocalReg rx
+          (ky, I32) = marshalCmmLocalReg ry
+      x' <- marshalAndCastCmmExpr dflags x I32
+      y' <- marshalAndCastCmmExpr dflags y I32
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = kx
+            , value =
+                Binary {binaryOp = DivSInt32, operand0 = x', operand1 = y'}
+            }
+        , UnresolvedSetLocal
+            { unresolvedIndex = ky
+            , value =
+                Binary {binaryOp = RemSInt32, operand0 = x', operand1 = y'}
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_S_QuotRem GHC.W64)) [rx, ry] [x, y] -> do
+      let (kx, I64) = marshalCmmLocalReg rx
+          (ky, I64) = marshalCmmLocalReg ry
+      x' <- marshalAndCastCmmExpr dflags x I64
+      y' <- marshalAndCastCmmExpr dflags y I64
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = kx
+            , value =
+                Binary {binaryOp = DivSInt64, operand0 = x', operand1 = y'}
+            }
+        , UnresolvedSetLocal
+            { unresolvedIndex = ky
+            , value =
+                Binary {binaryOp = RemSInt64, operand0 = x', operand1 = y'}
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_U_QuotRem GHC.W32)) [rx, ry] [x, y] -> do
+      let (kx, I32) = marshalCmmLocalReg rx
+          (ky, I32) = marshalCmmLocalReg ry
+      x' <- marshalAndCastCmmExpr dflags x I32
+      y' <- marshalAndCastCmmExpr dflags y I32
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = kx
+            , value =
+                Binary {binaryOp = DivUInt32, operand0 = x', operand1 = y'}
+            }
+        , UnresolvedSetLocal
+            { unresolvedIndex = ky
+            , value =
+                Binary {binaryOp = RemUInt32, operand0 = x', operand1 = y'}
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_U_QuotRem GHC.W64)) [rx, ry] [x, y] -> do
+      let (kx, I64) = marshalCmmLocalReg rx
+          (ky, I64) = marshalCmmLocalReg ry
+      x' <- marshalAndCastCmmExpr dflags x I64
+      y' <- marshalAndCastCmmExpr dflags y I64
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = kx
+            , value =
+                Binary {binaryOp = DivUInt64, operand0 = x', operand1 = y'}
+            }
+        , UnresolvedSetLocal
+            { unresolvedIndex = ky
+            , value =
+                Binary {binaryOp = RemUInt64, operand0 = x', operand1 = y'}
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_Touch) _ _ -> pure []
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Prefetch_Data _)) _ _ ->
-      pure Nop
+      pure []
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Clz GHC.W32)) [r] [e] -> do
       let (k, I32) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e I32
       pure
-        UnresolvedSetLocal
-          { unresolvedIndex = k
-          , value = Unary {unaryOp = ClzInt32, operand0 = x}
-          }
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value = Unary {unaryOp = ClzInt32, operand0 = x}
+            }
+        ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Clz GHC.W64)) [r] [e] -> do
       let (k, I64) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e I64
       pure
-        UnresolvedSetLocal
-          { unresolvedIndex = k
-          , value = Unary {unaryOp = ClzInt64, operand0 = x}
-          }
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value = Unary {unaryOp = ClzInt64, operand0 = x}
+            }
+        ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Ctz GHC.W32)) [r] [e] -> do
       let (k, I32) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e I32
       pure
-        UnresolvedSetLocal
-          { unresolvedIndex = k
-          , value = Unary {unaryOp = CtzInt32, operand0 = x}
-          }
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value = Unary {unaryOp = CtzInt32, operand0 = x}
+            }
+        ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Ctz GHC.W64)) [r] [e] -> do
       let (k, I64) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e I64
       pure
-        UnresolvedSetLocal
-          { unresolvedIndex = k
-          , value = Unary {unaryOp = CtzInt64, operand0 = x}
-          }
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value = Unary {unaryOp = CtzInt64, operand0 = x}
+            }
+        ]
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       let (k, _) = marshalCmmLocalReg r
       (v, _) <- marshalCmmExpr dflags e
-      pure UnresolvedSetLocal {unresolvedIndex = k, value = v}
+      pure [UnresolvedSetLocal {unresolvedIndex = k, value = v}]
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       let (k, _) = marshalCmmGlobalReg r
       (v, _) <- marshalCmmExpr dflags e
-      pure SetGlobal {name = k, value = v}
+      pure [SetGlobal {name = k, value = v}]
     GHC.CmmStore dest expr -> do
       dest_v <- marshalAndCastCmmExpr dflags dest I64
       (expr_v, expr_vt) <- marshalCmmExpr dflags expr
       pure
-        Store
-          { bytes = sizeOfValueType expr_vt
-          , offset = 0
-          , align = 0
-          , ptr = Unary {unaryOp = WrapInt64, operand0 = dest_v}
-          , value = expr_v
-          , valueType = expr_vt
-          }
+        [ Store
+            { bytes = sizeOfValueType expr_vt
+            , offset = 0
+            , align = 0
+            , ptr = Unary {unaryOp = WrapInt64, operand0 = dest_v}
+            , value = expr_v
+            , valueType = expr_vt
+            }
+        ]
     _ -> throwIO $ UnsupportedCmmInstr $ fromString $ show instr
 
 marshalCmmBlockBody ::
@@ -728,17 +805,16 @@ marshalCmmBlockBody ::
   => GHC.DynFlags
   -> [GHC.CmmNode GHC.O GHC.O]
   -> m RelooperAddBlock
-marshalCmmBlockBody dflags instrs =
-  case instrs of
-    [] -> pure AddBlock {code = Nop}
-    [instr] -> do
-      e <- marshalCmmInstr dflags instr
-      pure AddBlock {code = e}
-    _ -> do
-      es <- for instrs $ marshalCmmInstr dflags
-      pure
-        AddBlock
-          {code = Block {name = "", bodys = V.fromList es, valueType = None}}
+marshalCmmBlockBody dflags instrs = do
+  es <- fmap concat $ for instrs $ marshalCmmInstr dflags
+  pure
+    AddBlock
+      { code =
+          case es of
+            [] -> Nop
+            [e] -> e
+            _ -> Block {name = "", bodys = V.fromList es, valueType = None}
+      }
 
 marshalCmmLocalReg :: GHC.LocalReg -> (Int, ValueType)
 marshalCmmLocalReg (GHC.LocalReg u t) = (GHC.getKey u, marshalCmmType t)
