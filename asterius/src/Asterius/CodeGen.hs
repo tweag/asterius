@@ -119,15 +119,15 @@ chaseCLabel :: GHC.CLabel -> Maybe GHC.Module
 chaseCLabel = GHC.nameModule_maybe <=< GHC.hasHaskellName
 
 {-# INLINEABLE marshalCmmType #-}
-marshalCmmType :: MonadIO m => GHC.CmmType -> m (ValueType, BinaryenIndex)
+marshalCmmType :: GHC.CmmType -> ValueType
 marshalCmmType t
   | GHC.b8 `GHC.cmmEqType_ignoring_ptrhood` t ||
       GHC.b16 `GHC.cmmEqType_ignoring_ptrhood` t ||
-      GHC.b32 `GHC.cmmEqType_ignoring_ptrhood` t = pure (I32, 4)
-  | GHC.b64 `GHC.cmmEqType_ignoring_ptrhood` t = pure (I64, 8)
-  | GHC.f32 `GHC.cmmEqType_ignoring_ptrhood` t = pure (F32, 4)
-  | GHC.f64 `GHC.cmmEqType_ignoring_ptrhood` t = pure (F64, 8)
-  | otherwise = throwIO $ UnsupportedCmmType $ fromString $ show t
+      GHC.b32 `GHC.cmmEqType_ignoring_ptrhood` t = I32
+  | GHC.b64 `GHC.cmmEqType_ignoring_ptrhood` t = I64
+  | GHC.f32 `GHC.cmmEqType_ignoring_ptrhood` t = F32
+  | GHC.f64 `GHC.cmmEqType_ignoring_ptrhood` t = F64
+  | otherwise = impureThrow $ UnsupportedCmmType $ fromString $ show t
 
 marshalCmmStatic ::
      MonadIO m => GHC.DynFlags -> GHC.CmmStatic -> m AsteriusStatic
@@ -182,60 +182,52 @@ marshalCmmData dflags _ (GHC.Statics _ ss) =
   fmap (AsteriusStatics . V.fromList) $ for ss $ marshalCmmStatic dflags
 
 marshalCmmExpr ::
-     MonadIO m
-  => GHC.DynFlags
-  -> GHC.CmmExpr
-  -> m (Expression, ValueType, BinaryenIndex)
+     MonadIO m => GHC.DynFlags -> GHC.CmmExpr -> m (Expression, ValueType)
 marshalCmmExpr dflags expr =
   case expr of
     GHC.CmmLit lit ->
       case lit of
         GHC.CmmInt x w
           | w `V.elem` [GHC.W8, GHC.W16, GHC.W32] ->
-            pure (ConstI32 $ fromIntegral x, I32, 4)
-          | w == GHC.W64 -> pure (ConstI64 $ fromIntegral x, I64, 8)
-        GHC.CmmFloat x GHC.W32 -> pure (ConstF32 $ fromRational x, F32, 4)
-        GHC.CmmFloat x GHC.W64 -> pure (ConstF64 $ fromRational x, F64, 8)
+            pure (ConstI32 $ fromIntegral x, I32)
+          | w == GHC.W64 -> pure (ConstI64 $ fromIntegral x, I64)
+        GHC.CmmFloat x GHC.W32 -> pure (ConstF32 $ fromRational x, F32)
+        GHC.CmmFloat x GHC.W64 -> pure (ConstF64 $ fromRational x, F64)
         GHC.CmmLabel clbl ->
           pure
             ( Language.WebAssembly.NIR.Unresolved
                 {unresolvedLabel = marshalCLabel dflags clbl}
-            , I64
-            , 8)
+            , I64)
         GHC.CmmLabelOff clbl o ->
           pure
             ( Language.WebAssembly.NIR.UnresolvedOff
                 { unresolvedLabel = marshalCLabel dflags clbl
                 , offset = fromIntegral o
                 }
-            , I64
-            , 8)
+            , I64)
         _ -> throwIO $ UnsupportedCmmLit $ fromString $ show lit
     GHC.CmmLoad addr t -> do
-      (vt, vts) <- marshalCmmType t
-      (p, I64, 8) <- marshalCmmExpr dflags addr
+      let vt = marshalCmmType t
+      (p, I64) <- marshalCmmExpr dflags addr
       pure
         ( Load
             { signed = False
-            , bytes = vts
+            , bytes = sizeOfValueType vt
             , offset = 0
             , align = 0
             , valueType = vt
             , ptr = Unary {unaryOp = WrapInt64, operand0 = p}
             }
-        , vt
-        , vts)
+        , vt)
     GHC.CmmReg (GHC.CmmLocal lr) -> do
-      (lr_k, lr_vt, lr_vts) <- marshalCmmLocalReg lr
+      let (lr_k, lr_vt) = marshalCmmLocalReg lr
       pure
-        ( UnresolvedGetLocal {unresolvedIndex = lr_k, valueType = lr_vt}
-        , lr_vt
-        , lr_vts)
+        (UnresolvedGetLocal {unresolvedIndex = lr_k, valueType = lr_vt}, lr_vt)
     GHC.CmmReg (GHC.CmmGlobal gr) -> do
-      (gr_k, gr_vt) <- marshalCmmGlobalReg gr
-      pure (GetGlobal {name = gr_k, valueType = gr_vt}, gr_vt, 8)
+      let (gr_k, gr_vt) = marshalCmmGlobalReg gr
+      pure (GetGlobal {name = gr_k, valueType = gr_vt}, gr_vt)
     GHC.CmmRegOff (GHC.CmmLocal lr) o -> do
-      (lr_k, lr_vt, _) <- marshalCmmLocalReg lr
+      let (lr_k, lr_vt) = marshalCmmLocalReg lr
       case lr_vt of
         I32 ->
           pure
@@ -246,8 +238,7 @@ marshalCmmExpr dflags expr =
                       {unresolvedIndex = lr_k, valueType = lr_vt}
                 , operand1 = ConstI32 (fromIntegral o)
                 }
-            , lr_vt
-            , 4)
+            , lr_vt)
         I64 ->
           pure
             ( Binary
@@ -257,11 +248,10 @@ marshalCmmExpr dflags expr =
                       {unresolvedIndex = lr_k, valueType = lr_vt}
                 , operand1 = ConstI64 (fromIntegral o)
                 }
-            , lr_vt
-            , 8)
+            , lr_vt)
         _ -> throwIO $ UnsupportedCmmExpr $ fromString $ show expr
     GHC.CmmRegOff (GHC.CmmGlobal gr) o -> do
-      (gr_k, gr_vt) <- marshalCmmGlobalReg gr
+      let (gr_k, gr_vt) = marshalCmmGlobalReg gr
       case gr_vt of
         I32 ->
           pure
@@ -270,8 +260,7 @@ marshalCmmExpr dflags expr =
                 , operand0 = GetGlobal {name = gr_k, valueType = gr_vt}
                 , operand1 = ConstI32 (fromIntegral o)
                 }
-            , gr_vt
-            , 4)
+            , gr_vt)
         I64 ->
           pure
             ( Binary
@@ -279,358 +268,345 @@ marshalCmmExpr dflags expr =
                 , operand0 = GetGlobal {name = gr_k, valueType = gr_vt}
                 , operand1 = ConstI64 (fromIntegral o)
                 }
-            , gr_vt
-            , 8)
+            , gr_vt)
         _ -> throwIO $ UnsupportedCmmExpr $ fromString $ show expr
     GHC.CmmMachOp (GHC.MO_Add GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = AddInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = AddInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Add GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = AddInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = AddInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_Sub GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = SubInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = SubInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Sub GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = SubInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = SubInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_Eq GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = EqInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = EqInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Eq GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = EqInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = EqInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Ne GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = NeInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = NeInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Ne GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = NeInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = NeInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Mul GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = MulInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = MulInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Mul GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = MulInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = MulInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_S_Quot GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = DivSInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = DivSInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Quot GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = DivSInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = DivSInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_S_Rem GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = RemSInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = RemSInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Rem GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = RemSInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = RemSInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_S_Neg GHC.W32) [x] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
+      (x', I32) <- marshalCmmExpr dflags x
       pure
         ( Binary {binaryOp = SubInt32, operand0 = ConstI32 0, operand1 = x'}
-        , I32
-        , 4)
+        , I32)
     GHC.CmmMachOp (GHC.MO_S_Neg GHC.W64) [x] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
+      (x', I64) <- marshalCmmExpr dflags x
       pure
         ( Binary {binaryOp = SubInt64, operand0 = ConstI64 0, operand1 = x'}
-        , I64
-        , 8)
+        , I64)
     GHC.CmmMachOp (GHC.MO_U_Quot GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = DivUInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = DivUInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Quot GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = DivUInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = DivUInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_U_Rem GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = RemUInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = RemUInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Rem GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = RemUInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = RemUInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_S_Ge GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GeSInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GeSInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Ge GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GeSInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GeSInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Le GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LeSInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LeSInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Le GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LeSInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LeSInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Gt GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GtSInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GtSInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Gt GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GtSInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GtSInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Lt GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LtSInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LtSInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Lt GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LtSInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LtSInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Ge GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GeUInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GeUInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Ge GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GeUInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GeUInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Le GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LeUInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LeUInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Le GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LeUInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LeUInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Gt GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GtUInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GtUInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Gt GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GtUInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GtUInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Lt GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LtUInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LtUInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Lt GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LtUInt64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LtUInt64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Add GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure
-        (Binary {binaryOp = AddFloat32, operand0 = x', operand1 = y'}, F32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = AddFloat32, operand0 = x', operand1 = y'}, F32)
     GHC.CmmMachOp (GHC.MO_F_Add GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure
-        (Binary {binaryOp = AddFloat64, operand0 = x', operand1 = y'}, F64, 8)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = AddFloat64, operand0 = x', operand1 = y'}, F64)
     GHC.CmmMachOp (GHC.MO_F_Sub GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure
-        (Binary {binaryOp = SubFloat32, operand0 = x', operand1 = y'}, F32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = SubFloat32, operand0 = x', operand1 = y'}, F32)
     GHC.CmmMachOp (GHC.MO_F_Sub GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure
-        (Binary {binaryOp = SubFloat64, operand0 = x', operand1 = y'}, F64, 8)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = SubFloat64, operand0 = x', operand1 = y'}, F64)
     GHC.CmmMachOp (GHC.MO_F_Neg GHC.W32) [x] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = NegFloat32, operand0 = x'}, F32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = NegFloat32, operand0 = x'}, F32)
     GHC.CmmMachOp (GHC.MO_F_Neg GHC.W64) [x] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = NegFloat64, operand0 = x'}, F64, 8)
+      (x', F64) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = NegFloat64, operand0 = x'}, F64)
     GHC.CmmMachOp (GHC.MO_F_Mul GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure
-        (Binary {binaryOp = MulFloat32, operand0 = x', operand1 = y'}, F32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = MulFloat32, operand0 = x', operand1 = y'}, F32)
     GHC.CmmMachOp (GHC.MO_F_Mul GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure
-        (Binary {binaryOp = MulFloat64, operand0 = x', operand1 = y'}, F64, 8)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = MulFloat64, operand0 = x', operand1 = y'}, F64)
     GHC.CmmMachOp (GHC.MO_F_Quot GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure
-        (Binary {binaryOp = DivFloat32, operand0 = x', operand1 = y'}, F32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = DivFloat32, operand0 = x', operand1 = y'}, F32)
     GHC.CmmMachOp (GHC.MO_F_Quot GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure
-        (Binary {binaryOp = DivFloat64, operand0 = x', operand1 = y'}, F64, 8)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = DivFloat64, operand0 = x', operand1 = y'}, F64)
     GHC.CmmMachOp (GHC.MO_F_Eq GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = EqFloat32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = EqFloat32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Eq GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = EqFloat64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = EqFloat64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Ne GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = NeFloat32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = NeFloat32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Ne GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = NeFloat64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = NeFloat64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Ge GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GeFloat32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GeFloat32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Ge GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GeFloat64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GeFloat64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Le GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LeFloat32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LeFloat32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Le GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LeFloat64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LeFloat64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Gt GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GtFloat32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GtFloat32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Gt GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = GtFloat64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = GtFloat64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Lt GHC.W32) [x, y] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      (y', F32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LtFloat32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      (y', F32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LtFloat32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_F_Lt GHC.W64) [x, y] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      (y', F64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = LtFloat64, operand0 = x', operand1 = y'}, I32, 4)
+      (x', F64) <- marshalCmmExpr dflags x
+      (y', F64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = LtFloat64, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_And GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = AndInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = AndInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_And GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = AndInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = AndInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_Or GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = OrInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = OrInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Or GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = OrInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = OrInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_Xor GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = XorInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = XorInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Xor GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = XorInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = XorInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_Not GHC.W32) [x] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
+      (x', I32) <- marshalCmmExpr dflags x
       pure
         ( Binary
             {binaryOp = XorInt32, operand0 = x', operand1 = ConstI32 0xFFFFFFFF}
-        , I32
-        , 4)
+        , I32)
     GHC.CmmMachOp (GHC.MO_Not GHC.W64) [x] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
+      (x', I64) <- marshalCmmExpr dflags x
       pure
         ( Binary
             { binaryOp = XorInt64
             , operand0 = x'
             , operand1 = ConstI64 0xFFFFFFFFFFFFFFFF
             }
-        , I64
-        , 8)
+        , I64)
     GHC.CmmMachOp (GHC.MO_Shl GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = ShlInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = ShlInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Shl GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = ShlInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = ShlInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_U_Shr GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = ShrUInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = ShrUInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_U_Shr GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = ShrUInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = ShrUInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_S_Shr GHC.W32) [x, y] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      (y', I32, 4) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = ShrSInt32, operand0 = x', operand1 = y'}, I32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      (y', I32) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = ShrSInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_S_Shr GHC.W64) [x, y] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      (y', I64, 8) <- marshalCmmExpr dflags y
-      pure (Binary {binaryOp = ShrSInt64, operand0 = x', operand1 = y'}, I64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      (y', I64) <- marshalCmmExpr dflags y
+      pure (Binary {binaryOp = ShrSInt64, operand0 = x', operand1 = y'}, I64)
     GHC.CmmMachOp (GHC.MO_SF_Conv GHC.W32 GHC.W32) [x] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = ConvertSInt32ToFloat32, operand0 = x'}, F32, 4)
+      (x', I32) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = ConvertSInt32ToFloat32, operand0 = x'}, F32)
     GHC.CmmMachOp (GHC.MO_SF_Conv GHC.W32 GHC.W64) [x] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = ConvertSInt32ToFloat64, operand0 = x'}, F64, 8)
+      (x', I32) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = ConvertSInt32ToFloat64, operand0 = x'}, F64)
     GHC.CmmMachOp (GHC.MO_SF_Conv GHC.W64 GHC.W32) [x] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = ConvertSInt64ToFloat32, operand0 = x'}, F32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = ConvertSInt64ToFloat32, operand0 = x'}, F32)
     GHC.CmmMachOp (GHC.MO_SF_Conv GHC.W64 GHC.W64) [x] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = ConvertSInt64ToFloat64, operand0 = x'}, F64, 8)
+      (x', I64) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = ConvertSInt64ToFloat64, operand0 = x'}, F64)
     GHC.CmmMachOp (GHC.MO_FS_Conv GHC.W32 GHC.W32) [x] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = TruncSFloat32ToInt32, operand0 = x'}, I32, 4)
+      (x', F32) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = TruncSFloat32ToInt32, operand0 = x'}, I32)
     GHC.CmmMachOp (GHC.MO_FS_Conv GHC.W32 GHC.W64) [x] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = TruncSFloat32ToInt64, operand0 = x'}, I64, 8)
+      (x', F32) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = TruncSFloat32ToInt64, operand0 = x'}, I64)
     GHC.CmmMachOp (GHC.MO_FS_Conv GHC.W64 GHC.W32) [x] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = TruncSFloat64ToInt32, operand0 = x'}, I32, 4)
+      (x', F64) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = TruncSFloat64ToInt32, operand0 = x'}, I32)
     GHC.CmmMachOp (GHC.MO_FS_Conv GHC.W64 GHC.W64) [x] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = TruncSFloat64ToInt64, operand0 = x'}, I64, 8)
+      (x', F64) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = TruncSFloat64ToInt64, operand0 = x'}, I64)
     GHC.CmmMachOp (GHC.MO_SS_Conv _ GHC.W64) [x] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = ExtendSInt32, operand0 = x'}, I64, 8)
+      (x', I32) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = ExtendSInt32, operand0 = x'}, I64)
     GHC.CmmMachOp (GHC.MO_SS_Conv GHC.W64 _) [x] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = WrapInt64, operand0 = x'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = WrapInt64, operand0 = x'}, I32)
     GHC.CmmMachOp (GHC.MO_UU_Conv _ GHC.W64) [x] -> do
-      (x', I32, 4) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = ExtendUInt32, operand0 = x'}, I64, 8)
+      (x', I32) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = ExtendUInt32, operand0 = x'}, I64)
     GHC.CmmMachOp (GHC.MO_UU_Conv GHC.W64 _) [x] -> do
-      (x', I64, 8) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = WrapInt64, operand0 = x'}, I32, 4)
+      (x', I64) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = WrapInt64, operand0 = x'}, I32)
     GHC.CmmMachOp (GHC.MO_FF_Conv GHC.W32 GHC.W64) [x] -> do
-      (x', F32, 4) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = PromoteFloat32, operand0 = x'}, F64, 8)
+      (x', F32) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = PromoteFloat32, operand0 = x'}, F64)
     GHC.CmmMachOp (GHC.MO_FF_Conv GHC.W64 GHC.W32) [x] -> do
-      (x', F64, 8) <- marshalCmmExpr dflags x
-      pure (Unary {unaryOp = DemoteFloat64, operand0 = x'}, F32, 4)
+      (x', F64) <- marshalCmmExpr dflags x
+      pure (Unary {unaryOp = DemoteFloat64, operand0 = x'}, F32)
     _ -> throwIO $ UnsupportedCmmExpr $ fromString $ show expr
 
 marshalCmmInstr ::
@@ -638,19 +614,19 @@ marshalCmmInstr ::
 marshalCmmInstr dflags instr =
   case instr of
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
-      (k, _, _) <- marshalCmmLocalReg r
-      (v, _, _) <- marshalCmmExpr dflags e
+      let (k, _) = marshalCmmLocalReg r
+      (v, _) <- marshalCmmExpr dflags e
       pure UnresolvedSetLocal {unresolvedIndex = k, value = v}
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
-      (k, _) <- marshalCmmGlobalReg r
-      (v, _, _) <- marshalCmmExpr dflags e
+      let (k, _) = marshalCmmGlobalReg r
+      (v, _) <- marshalCmmExpr dflags e
       pure SetGlobal {name = k, value = v}
     GHC.CmmStore dest expr -> do
-      (dest_v, I64, 8) <- marshalCmmExpr dflags dest
-      (expr_v, expr_vt, expr_vts) <- marshalCmmExpr dflags expr
+      (dest_v, I64) <- marshalCmmExpr dflags dest
+      (expr_v, expr_vt) <- marshalCmmExpr dflags expr
       pure
         Store
-          { bytes = expr_vts
+          { bytes = sizeOfValueType expr_vt
           , offset = 0
           , align = 0
           , ptr = Unary {unaryOp = WrapInt64, operand0 = dest_v}
@@ -676,28 +652,24 @@ marshalCmmBlockBody dflags instrs =
         AddBlock
           {code = Block {name = "", bodys = V.fromList es, valueType = None}}
 
-marshalCmmLocalReg ::
-     MonadIO m => GHC.LocalReg -> m (Int, ValueType, BinaryenIndex)
-marshalCmmLocalReg (GHC.LocalReg u t) = do
-  (vt, vts) <- marshalCmmType t
-  pure (GHC.getKey u, vt, vts)
+marshalCmmLocalReg :: GHC.LocalReg -> (Int, ValueType)
+marshalCmmLocalReg (GHC.LocalReg u t) = (GHC.getKey u, marshalCmmType t)
 
-marshalCmmGlobalReg ::
-     MonadIO m => GHC.GlobalReg -> m (SBS.ShortByteString, ValueType)
+marshalCmmGlobalReg :: GHC.GlobalReg -> (SBS.ShortByteString, ValueType)
 marshalCmmGlobalReg r =
   case r of
-    GHC.VanillaReg _ _ -> pure (k, I64)
-    GHC.FloatReg _ -> pure (k, F32)
-    GHC.DoubleReg _ -> pure (k, F64)
-    GHC.Sp -> pure (k, I64)
-    GHC.SpLim -> pure (k, I64)
-    GHC.Hp -> pure (k, I64)
-    GHC.HpLim -> pure (k, I64)
-    GHC.HpAlloc -> pure (k, I64)
-    GHC.GCEnter1 -> pure (k, I64)
-    GHC.GCFun -> pure (k, I64)
-    GHC.BaseReg -> pure (k, I64)
-    _ -> throwIO $ UnsupportedCmmGlobalReg $ fromString $ show r
+    GHC.VanillaReg _ _ -> (k, I64)
+    GHC.FloatReg _ -> (k, F32)
+    GHC.DoubleReg _ -> (k, F64)
+    GHC.Sp -> (k, I64)
+    GHC.SpLim -> (k, I64)
+    GHC.Hp -> (k, I64)
+    GHC.HpLim -> (k, I64)
+    GHC.HpAlloc -> (k, I64)
+    GHC.GCEnter1 -> (k, I64)
+    GHC.GCFun -> (k, I64)
+    GHC.BaseReg -> (k, I64)
+    _ -> impureThrow $ UnsupportedCmmGlobalReg $ fromString $ show r
   where
     k = fromString $ show r
 
@@ -758,7 +730,7 @@ marshalCmmBlockBranch dflags instr =
             {to = marshalLabel dflags lbl, condition = Null, code = Null}
         ]
     GHC.CmmCondBranch {..} -> do
-      (c, I32, 4) <- marshalCmmExpr dflags cml_pred
+      (c, I32) <- marshalCmmExpr dflags cml_pred
       pure $
         Right
           [ AddBranch
@@ -770,7 +742,7 @@ marshalCmmBlockBranch dflags instr =
               }
           ]
     GHC.CmmSwitch cml_pred st -> do
-      (p, I64, 8) <- marshalCmmExpr dflags cml_pred
+      (p, I64) <- marshalCmmExpr dflags cml_pred
       pure $
         Right $
         V.fromList
@@ -793,7 +765,7 @@ marshalCmmBlockBranch dflags instr =
              ]
            _ -> [])
     GHC.CmmCall {..} -> do
-      (t, I64, 8) <- marshalCmmExpr dflags cml_target
+      (t, I64) <- marshalCmmExpr dflags cml_target
       pure $ Left Return {value = t}
     _ -> throwIO $ UnsupportedCmmBranch $ fromString $ show instr
 

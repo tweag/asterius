@@ -33,6 +33,7 @@ module Language.WebAssembly.NIR
   , RelooperBlock(..)
   , RelooperRun(..)
   , MarshalError(..)
+  , sizeOfValueType
   , emptyModule
   , marshalModule
   ) where
@@ -470,9 +471,20 @@ instance NFData RelooperRun
 data MarshalError
   = UnsupportedExpression Expression
   | MissingLabelHelper RelooperRun
+  | CalculatingSizeOfAuto
   deriving (Show)
 
 instance Exception MarshalError
+
+sizeOfValueType :: ValueType -> BinaryenIndex
+sizeOfValueType vt =
+  case vt of
+    None -> 0
+    I32 -> 4
+    I64 -> 8
+    F32 -> 4
+    F64 -> 8
+    Auto -> impureThrow CalculatingSizeOfAuto
 
 emptyModule :: Module
 emptyModule =
