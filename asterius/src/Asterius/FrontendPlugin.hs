@@ -5,9 +5,9 @@ module Asterius.FrontendPlugin
   ) where
 
 import Asterius.CodeGen
-import Data.Compact
-import Data.Compact.Serialize
+import qualified Data.ByteString as BS
 import Data.Functor
+import Data.Serialize
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
@@ -27,11 +27,11 @@ frontendPlugin =
             , cacheObject = False
             , rawRead =
                 \p -> do
-                  e <- unsafeReadCompact p
+                  e <- decode <$> BS.readFile p
                   case e of
                     Left err -> fail err
                     Right r -> pure r
-            , rawWrite = writeCompact
+            , rawWrite = \p m -> BS.writeFile p $ encode m
             }
     pure $
       defaultCompiler
@@ -40,7 +40,6 @@ frontendPlugin =
               dflags <- getDynFlags
               liftIO $ do
                 m <- marshalIR dflags ir
-                c <- compactWithSharing m
-                objectWrite ms_mod c
+                objectWrite ms_mod m
                 void $ objectRead ms_mod
         }

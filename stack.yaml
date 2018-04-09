@@ -9,7 +9,6 @@ extra-deps:
   - async-2.2.1
   - cereal-0.5.5.0
   - clock-0.7.2
-  - compact-0.1.0.1
   - happy-1.19.9
   - hashable-1.2.7.0
   - haskell-lexer-1.0.1

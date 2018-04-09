@@ -31,7 +31,6 @@ dependencies:
   - bytestring
   - Cabal
   - cereal
-  - compact
   - containers
   - deepseq
   - directory
