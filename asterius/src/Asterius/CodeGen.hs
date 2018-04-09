@@ -777,6 +777,60 @@ marshalCmmInstr dflags instr =
             , value = Unary {unaryOp = CtzInt64, operand0 = x}
             }
         ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_AtomicRead GHC.W32)) [r] [p] -> do
+      let (k, I32) = marshalCmmLocalReg r
+      p' <- marshalAndCastCmmExpr dflags p I64
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value =
+                AtomicLoad
+                  { bytes = 4
+                  , offset = 0
+                  , valueType = I32
+                  , ptr = Unary {unaryOp = WrapInt64, operand0 = p'}
+                  }
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_AtomicRead GHC.W64)) [r] [p] -> do
+      let (k, I64) = marshalCmmLocalReg r
+      p' <- marshalAndCastCmmExpr dflags p I64
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value =
+                AtomicLoad
+                  { bytes = 8
+                  , offset = 0
+                  , valueType = I64
+                  , ptr = Unary {unaryOp = WrapInt64, operand0 = p'}
+                  }
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_AtomicWrite GHC.W32)) [] [p, v] -> do
+      p' <- marshalAndCastCmmExpr dflags p I64
+      v' <- marshalAndCastCmmExpr dflags v I32
+      pure
+        [ AtomicStore
+            { bytes = 4
+            , offset = 0
+            , ptr = Unary {unaryOp = WrapInt64, operand0 = p'}
+            , value = v'
+            , valueType = I32
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_AtomicWrite GHC.W64)) [] [p, v] -> do
+      p' <- marshalAndCastCmmExpr dflags p I64
+      v' <- marshalAndCastCmmExpr dflags v I64
+      pure
+        [ AtomicStore
+            { bytes = 8
+            , offset = 0
+            , ptr = Unary {unaryOp = WrapInt64, operand0 = p'}
+            , value = v'
+            , valueType = I64
+            }
+        ]
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       let (k, _) = marshalCmmLocalReg r
       (v, _) <- marshalCmmExpr dflags e

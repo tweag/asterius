@@ -292,6 +292,12 @@ data Expression
          , operands :: V.Vector Expression }
   | Nop
   | Unreachable
+  | AtomicLoad { bytes, offset :: BinaryenIndex
+               , valueType :: ValueType
+               , ptr :: Expression }
+  | AtomicStore { bytes, offset :: BinaryenIndex
+                , ptr, value :: Expression
+                , valueType :: ValueType }
   | AtomicRMW { atomicRMWOp :: AtomicRMWOp
               , bytes, offset :: BinaryenIndex
               , ptr, value :: Expression
@@ -780,6 +786,13 @@ marshalExpression m e =
         withSBS name $ \np -> c_BinaryenHost m (marshalHostOp hostOp) np es en
     Nop -> c_BinaryenNop m
     Unreachable -> c_BinaryenUnreachable m
+    AtomicLoad {..} -> do
+      p <- marshalExpression m ptr
+      c_BinaryenAtomicLoad m bytes offset (marshalValueType valueType) p
+    AtomicStore {..} -> do
+      p <- marshalExpression m ptr
+      v <- marshalExpression m value
+      c_BinaryenAtomicStore m bytes offset p v (marshalValueType valueType)
     AtomicRMW {..} -> do
       p <- marshalExpression m ptr
       v <- marshalExpression m value
