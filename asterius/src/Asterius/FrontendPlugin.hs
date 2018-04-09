@@ -10,6 +10,7 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import Language.Haskell.GHC.Toolkit.ObjectStore
 import System.Environment
+import System.Mem
 import Text.Show.Pretty
 
 frontendPlugin :: FrontendPlugin
@@ -34,4 +35,5 @@ frontendPlugin =
               liftIO $ do
                 m <- marshalIR dflags ir
                 objectWrite ms_mod $ ppShow m
+                performGC
         }

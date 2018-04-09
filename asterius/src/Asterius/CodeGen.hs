@@ -22,6 +22,8 @@ import qualified CmmSwitch as GHC
 import Control.DeepSeq
 import Control.Monad
 import Control.Monad.IO.Class
+import Control.Monad.Par.Combinator
+import Control.Monad.Par.IO
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data)
 import qualified Data.HashMap.Strict as HM
@@ -96,6 +98,8 @@ data AsteriusModule = AsteriusModule
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusModule
+
+instance NFData AsteriusModule
 
 instance Semigroup AsteriusModule where
   AsteriusModule sm0 se0 fm0 fe0 <> AsteriusModule sm1 se1 fm1 fe1 =
@@ -829,4 +833,5 @@ marshalCmmDecl dflags decl =
                  pure $ AsteriusModule mempty mempty [(k, f)] mempty
 
 marshalIR :: MonadIO m => GHC.DynFlags -> IR -> m AsteriusModule
-marshalIR dflags IR {..} = fmap mconcat $ for cmmRaw $ marshalCmmDecl dflags
+marshalIR dflags IR {..} =
+  liftIO $ fmap mconcat $ runParIO $ parMapM (marshalCmmDecl dflags) cmmRaw

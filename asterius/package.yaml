@@ -38,6 +38,8 @@ dependencies:
   - ghc
   - ghc-toolkit
   - hashable
+  - monad-par
+  - monad-par-extras
   - mtl
   - pretty-show
   - template-haskell
