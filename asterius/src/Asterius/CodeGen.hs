@@ -666,6 +666,9 @@ marshalCmmInstr dflags instr =
           { unresolvedIndex = k
           , value = Unary {unaryOp = SqrtFloat32, operand0 = x}
           }
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_Touch) _ _ -> pure Nop
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Prefetch_Data _)) _ _ ->
+      pure Nop
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       let (k, _) = marshalCmmLocalReg r
       (v, _) <- marshalCmmExpr dflags e
