@@ -5,13 +5,14 @@ module Asterius.FrontendPlugin
   ) where
 
 import Asterius.CodeGen
+import Data.Compact
+import Data.Compact.Serialize
+import Data.Functor
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import Language.Haskell.GHC.Toolkit.ObjectStore
 import System.Environment
-import System.Mem
-import Text.Show.Pretty
 
 frontendPlugin :: FrontendPlugin
 frontendPlugin =
@@ -22,10 +23,15 @@ frontendPlugin =
         newStore
           StoreConfig
             { storeTopDir = obj_topdir
-            , objectExt = "txt"
-            , cacheObject = True
-            , rawRead = readFile
-            , rawWrite = writeFile
+            , objectExt = "asterius_o"
+            , cacheObject = False
+            , rawRead =
+                \p -> do
+                  e <- unsafeReadCompact p
+                  case e of
+                    Left err -> fail err
+                    Right r -> pure r
+            , rawWrite = writeCompact
             }
     pure $
       defaultCompiler
@@ -34,6 +40,7 @@ frontendPlugin =
               dflags <- getDynFlags
               liftIO $ do
                 m <- marshalIR dflags ir
-                objectWrite ms_mod $ ppShow m
-                performGC
+                c <- compactWithSharing m
+                objectWrite ms_mod c
+                void $ objectRead ms_mod
         }
