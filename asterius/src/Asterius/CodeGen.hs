@@ -750,7 +750,7 @@ marshalCmmInstr dflags instr =
             , value =
                 Unary
                   { unaryOp = ExtendSInt32
-                  , value = Unary {unaryOp = ClzInt32, operand0 = x}
+                  , operand0 = Unary {unaryOp = ClzInt32, operand0 = x}
                   }
             }
         ]
@@ -772,7 +772,7 @@ marshalCmmInstr dflags instr =
             , value =
                 Unary
                   { unaryOp = ExtendSInt32
-                  , value = Unary {unaryOp = CtzInt32, operand0 = x}
+                  , operand0 = Unary {unaryOp = CtzInt32, operand0 = x}
                   }
             }
         ]
