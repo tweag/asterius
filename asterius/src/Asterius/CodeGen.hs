@@ -742,12 +742,16 @@ marshalCmmInstr dflags instr =
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Prefetch_Data _)) _ _ ->
       pure []
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Clz GHC.W32)) [r] [e] -> do
-      let (k, I32) = marshalCmmLocalReg r
+      let (k, I64) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e I32
       pure
         [ UnresolvedSetLocal
             { unresolvedIndex = k
-            , value = Unary {unaryOp = ClzInt32, operand0 = x}
+            , value =
+                Unary
+                  { unaryOp = ExtendSInt32
+                  , value = Unary {unaryOp = ClzInt32, operand0 = x}
+                  }
             }
         ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Clz GHC.W64)) [r] [e] -> do
@@ -760,12 +764,16 @@ marshalCmmInstr dflags instr =
             }
         ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Ctz GHC.W32)) [r] [e] -> do
-      let (k, I32) = marshalCmmLocalReg r
+      let (k, I64) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e I32
       pure
         [ UnresolvedSetLocal
             { unresolvedIndex = k
-            , value = Unary {unaryOp = CtzInt32, operand0 = x}
+            , value =
+                Unary
+                  { unaryOp = ExtendSInt32
+                  , value = Unary {unaryOp = CtzInt32, operand0 = x}
+                  }
             }
         ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Ctz GHC.W64)) [r] [e] -> do
