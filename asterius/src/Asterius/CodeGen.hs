@@ -777,6 +777,60 @@ marshalCmmInstr dflags instr =
             , value = Unary {unaryOp = CtzInt64, operand0 = x}
             }
         ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_AtomicRMW GHC.W32 atomic_op)) [r] [p, v] -> do
+      let (k, I32) = marshalCmmLocalReg r
+      p' <- marshalAndCastCmmExpr dflags p I64
+      v' <- marshalAndCastCmmExpr dflags v I32
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value =
+                AtomicRMW
+                  { atomicRMWOp =
+                      case atomic_op of
+                        GHC.AMO_Add -> AtomicRMWAdd
+                        GHC.AMO_Sub -> AtomicRMWSub
+                        GHC.AMO_And -> AtomicRMWAnd
+                        GHC.AMO_Or -> AtomicRMWOr
+                        GHC.AMO_Xor -> AtomicRMWXor
+                        _ ->
+                          impureThrow $
+                          UnsupportedCmmInstr $ fromString $ show instr
+                  , bytes = 4
+                  , offset = 0
+                  , ptr = Unary {unaryOp = WrapInt64, operand0 = p'}
+                  , value = v'
+                  , valueType = I32
+                  }
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_AtomicRMW GHC.W64 atomic_op)) [r] [p, v] -> do
+      let (k, I64) = marshalCmmLocalReg r
+      p' <- marshalAndCastCmmExpr dflags p I64
+      v' <- marshalAndCastCmmExpr dflags v I64
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value =
+                AtomicRMW
+                  { atomicRMWOp =
+                      case atomic_op of
+                        GHC.AMO_Add -> AtomicRMWAdd
+                        GHC.AMO_Sub -> AtomicRMWSub
+                        GHC.AMO_And -> AtomicRMWAnd
+                        GHC.AMO_Or -> AtomicRMWOr
+                        GHC.AMO_Xor -> AtomicRMWXor
+                        _ ->
+                          impureThrow $
+                          UnsupportedCmmInstr $ fromString $ show instr
+                  , bytes = 8
+                  , offset = 0
+                  , ptr = Unary {unaryOp = WrapInt64, operand0 = p'}
+                  , value = v'
+                  , valueType = I64
+                  }
+            }
+        ]
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_AtomicRead GHC.W32)) [r] [p] -> do
       let (k, I32) = marshalCmmLocalReg r
       p' <- marshalAndCastCmmExpr dflags p I64
@@ -829,6 +883,44 @@ marshalCmmInstr dflags instr =
             , ptr = Unary {unaryOp = WrapInt64, operand0 = p'}
             , value = v'
             , valueType = I64
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Cmpxchg GHC.W32)) [r] [p, o, n] -> do
+      let (k, I64) = marshalCmmLocalReg r
+      p' <- marshalAndCastCmmExpr dflags p I64
+      o' <- marshalAndCastCmmExpr dflags o I32
+      n' <- marshalAndCastCmmExpr dflags n I32
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value =
+                AtomicCmpxchg
+                  { bytes = 4
+                  , offset = 0
+                  , ptr = p'
+                  , expected = o'
+                  , replacement = n'
+                  , valueType = I32
+                  }
+            }
+        ]
+    GHC.CmmUnsafeForeignCall (GHC.PrimTarget (GHC.MO_Cmpxchg GHC.W64)) [r] [p, o, n] -> do
+      let (k, I64) = marshalCmmLocalReg r
+      p' <- marshalAndCastCmmExpr dflags p I64
+      o' <- marshalAndCastCmmExpr dflags o I64
+      n' <- marshalAndCastCmmExpr dflags n I64
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedIndex = k
+            , value =
+                AtomicCmpxchg
+                  { bytes = 8
+                  , offset = 0
+                  , ptr = p'
+                  , expected = o'
+                  , replacement = n'
+                  , valueType = I64
+                  }
             }
         ]
     GHC.CmmAssign (GHC.CmmLocal r) e -> do

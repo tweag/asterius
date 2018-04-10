@@ -303,6 +303,9 @@ data Expression
               , ptr, value :: Expression
               , valueType :: ValueType }
   | CFG { graph :: RelooperRun }
+  | AtomicCmpxchg { bytes, offset :: BinaryenIndex
+                  , ptr, expected, replacement :: Expression
+                  , valueType :: ValueType }
   | Unresolved { unresolvedLabel :: SBS.ShortByteString }
   | UnresolvedOff { unresolvedLabel :: SBS.ShortByteString
                   , offset :: BinaryenIndex }
@@ -805,6 +808,11 @@ marshalExpression m e =
         v
         (marshalValueType valueType)
     CFG {..} -> relooperRun m graph
+    AtomicCmpxchg {..} -> do
+      p <- marshalExpression m ptr
+      o <- marshalExpression m expected
+      n <- marshalExpression m replacement
+      c_BinaryenAtomicCmpxchg m bytes offset p o n (marshalValueType valueType)
     Null -> pure nullPtr
     _ -> throwIO $ UnsupportedExpression e
 
