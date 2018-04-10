@@ -1,5 +1,4 @@
 import Asterius.Boot
-import Distribution.System
 import System.Directory
 import System.FilePath
 

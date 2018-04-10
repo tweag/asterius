@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -36,6 +37,8 @@ module Language.WebAssembly.NIR
   , sizeOfValueType
   , emptyModule
   , marshalModule
+  , expressionDescendents
+  , relooperBlockUnresolvedLabels
   ) where
 
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
@@ -45,6 +48,7 @@ import qualified Data.ByteString.Short as SBS
 import Data.Data
 import Data.Foldable
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 import Data.Hashable
 import Data.Serialize
 import Data.Traversable
@@ -1030,6 +1034,34 @@ relooperRun m rr@RelooperRun {..} =
       Just lh -> c_RelooperRenderAndDispose r (bpm HM.! entry) lh m
       _ -> throwIO $ MissingLabelHelper rr
 
+{-# INLINE expressionDescendents #-}
+expressionDescendents :: Expression -> [Expression]
+expressionDescendents = universe
+
+{-# INLINE expressionUnresolvedLabels #-}
+expressionUnresolvedLabels :: Expression -> HS.HashSet SBS.ShortByteString
+expressionUnresolvedLabels =
+  foldMap
+    (\case
+       Unresolved {..} -> [unresolvedLabel]
+       UnresolvedOff {..} -> [unresolvedLabel]
+       _ -> []) .
+  expressionDescendents
+
+{-# INLINE relooperBlockUnresolvedLabels #-}
+relooperBlockUnresolvedLabels :: RelooperBlock -> HS.HashSet SBS.ShortByteString
+relooperBlockUnresolvedLabels RelooperBlock {..} =
+  (case addBlock of
+     AddBlock {..} -> expressionUnresolvedLabels code
+     AddBlockWithSwitch {..} ->
+       expressionUnresolvedLabels code <> expressionUnresolvedLabels condition) <>
+  foldMap
+    (\case
+       AddBranch {..} ->
+         expressionUnresolvedLabels condition <> expressionUnresolvedLabels code
+       AddBranchForSwitch {..} -> expressionUnresolvedLabels code)
+    addBranches
+
 instance Serialize SBS.ShortByteString where
   {-# INLINE put #-}
   put sbs = put (SBS.length sbs) *> putShortByteString sbs
@@ -1042,6 +1074,12 @@ instance (Eq k, Hashable k, Serialize k, Serialize v) =>
   put = put . HM.toList
   {-# INLINE get #-}
   get = HM.fromList <$> get
+
+instance (Eq k, Hashable k, Serialize k) => Serialize (HS.HashSet k) where
+  {-# INLINE put #-}
+  put = put . HS.toList
+  {-# INLINE get #-}
+  get = HS.fromList <$> get
 
 instance Serialize a => Serialize (V.Vector a) where
   {-# INLINE put #-}
