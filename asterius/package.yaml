@@ -38,6 +38,7 @@ dependencies:
   - ghc
   - ghc-toolkit
   - hashable
+  - lens
   - monad-par
   - monad-par-extras
   - mtl

@@ -40,6 +40,7 @@ module Language.WebAssembly.NIR
 
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.DeepSeq
+import Control.Lens.Plated
 import qualified Data.ByteString.Short as SBS
 import Data.Data
 import Data.Foldable
@@ -321,6 +322,8 @@ data Expression
 instance Serialize Expression
 
 instance NFData Expression
+
+instance Plated Expression
 
 data Function = Function
   { functionTypeName :: SBS.ShortByteString
