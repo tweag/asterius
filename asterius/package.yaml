@@ -34,7 +34,6 @@ dependencies:
   - containers
   - deepseq
   - directory
-  - filelock
   - filepath
   - ghc
   - ghc-toolkit

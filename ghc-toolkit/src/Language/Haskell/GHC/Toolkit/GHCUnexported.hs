@@ -1,5 +1,5 @@
 {-# LANGUAGE NamedFieldPuns #-}
-{-# OPTIONS_GHC -Wno-name-shadowing #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns -Wno-name-shadowing #-}
 
 module Language.Haskell.GHC.Toolkit.GHCUnexported where
 

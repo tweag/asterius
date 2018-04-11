@@ -14,16 +14,20 @@ module Asterius.CodeGen
   , AsteriusFunction(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
+  , AsteriusSymbolKind(..)
+  , AsteriusSymbolInfo(..)
+  , AsteriusSymbolDatabase(..)
+  , marshalToModuleSymbol
   , modulePath
-  , chaseCLabel
+  , moduleSymbolPath
   , marshalIR
+  , chaseModule
   ) where
 
 import qualified CLabel as GHC
 import qualified Cmm as GHC
 import qualified CmmSwitch as GHC
 import Control.DeepSeq
-import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Par.Combinator
 import Control.Monad.Par.IO
@@ -126,6 +130,32 @@ instance Serialize AsteriusModuleSymbol
 
 instance NFData AsteriusModuleSymbol
 
+data AsteriusSymbolKind
+  = Static
+  | Function
+  deriving (Show, Generic, Data)
+
+instance Serialize AsteriusSymbolKind
+
+instance NFData AsteriusSymbolKind
+
+data AsteriusSymbolInfo = AsteriusSymbolInfo
+  { symbolKind :: AsteriusSymbolKind
+  , symbolSource :: AsteriusModuleSymbol
+  } deriving (Show, Generic, Data)
+
+instance Serialize AsteriusSymbolInfo
+
+instance NFData AsteriusSymbolInfo
+
+newtype AsteriusSymbolDatabase = AsteriusSymbolDatabase
+  { symbolMap :: HM.HashMap SBS.ShortByteString AsteriusSymbolInfo
+  } deriving (Show, Generic, Data)
+
+instance Serialize AsteriusSymbolDatabase
+
+instance NFData AsteriusSymbolDatabase
+
 {-# INLINEABLE marshalToModuleSymbol #-}
 marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol
 marshalToModuleSymbol (GHC.Module u m) =
@@ -165,10 +195,6 @@ marshalCLabel dflags =
 marshalLabel :: GHC.DynFlags -> GHC.Label -> SBS.ShortByteString
 marshalLabel dflags =
   marshalCLabel dflags . GHC.mkLocalBlockLabel . GHC.getUnique
-
-{-# INLINEABLE chaseCLabel #-}
-chaseCLabel :: GHC.CLabel -> Maybe GHC.Module
-chaseCLabel = GHC.nameModule_maybe <=< GHC.hasHaskellName
 
 {-# INLINEABLE marshalCmmType #-}
 marshalCmmType :: GHC.CmmType -> ValueType
@@ -1193,3 +1219,10 @@ marshalCmmDecl dflags decl =
 marshalIR :: MonadIO m => GHC.DynFlags -> IR -> m AsteriusModule
 marshalIR dflags IR {..} =
   liftIO $ fmap mconcat $ runParIO $ parMapM (marshalCmmDecl dflags) cmmRaw
+
+chaseModule ::
+     AsteriusModuleSymbol
+  -> AsteriusModule
+  -> AsteriusSymbolDatabase
+  -> (AsteriusModule, AsteriusSymbolDatabase)
+chaseModule _ = (,)

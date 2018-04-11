@@ -19,7 +19,6 @@ extra-deps:
   - distributive-0.5.3
   - exceptions-0.10.0
   - fail-4.9.0.0
-  - filelock-0.1.1.2
   - free-5.0.1
   - happy-1.19.9
   - hashable-1.2.7.0
