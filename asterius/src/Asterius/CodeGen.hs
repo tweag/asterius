@@ -10,6 +10,7 @@
 
 module Asterius.CodeGen
   ( AsteriusCodeGenError(..)
+  , AsteriusStatic(..)
   , AsteriusStatics(..)
   , AsteriusFunction(..)
   , AsteriusModule(..)
@@ -33,6 +34,7 @@ import Control.Monad.Par.Combinator
 import Control.Monad.Par.IO
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
+import Data.Coerce
 import Data.Data (Data)
 import Data.Either
 import qualified Data.HashMap.Strict as HM
@@ -68,7 +70,7 @@ data AsteriusCodeGenError
   | UnsupportedImplicitCasting Expression
                                ValueType
                                ValueType
-  | UnresolvedSymbols (HS.HashSet SBS.ShortByteString)
+  | UnresolvedSymbols (HS.HashSet UnresolvedSymbol)
   | UnhandledException SBS.ShortByteString
   deriving (Show, Generic, Data)
 
@@ -79,9 +81,9 @@ instance NFData AsteriusCodeGenError
 instance Exception AsteriusCodeGenError
 
 data AsteriusStatic
-  = Unresolved SBS.ShortByteString
-  | UnresolvedOff SBS.ShortByteString
-                  Int
+  = UnresolvedStatic UnresolvedSymbol
+  | UnresolvedOffStatic UnresolvedSymbol
+                        Int
   | Uninitialized Int
   | Serialized SBS.ShortByteString
   deriving (Show, Generic, Data)
@@ -107,10 +109,10 @@ instance Serialize AsteriusFunction
 instance NFData AsteriusFunction
 
 data AsteriusModule = AsteriusModule
-  { staticsMap :: HM.HashMap SBS.ShortByteString AsteriusStatics
-  , staticsErrorMap :: HM.HashMap SBS.ShortByteString AsteriusCodeGenError
-  , functionMap :: HM.HashMap SBS.ShortByteString AsteriusFunction
-  , functionErrorMap :: HM.HashMap SBS.ShortByteString AsteriusCodeGenError
+  { staticsMap :: HM.HashMap UnresolvedSymbol AsteriusStatics
+  , staticsErrorMap :: HM.HashMap UnresolvedSymbol AsteriusCodeGenError
+  , functionMap :: HM.HashMap UnresolvedSymbol AsteriusFunction
+  , functionErrorMap :: HM.HashMap UnresolvedSymbol AsteriusCodeGenError
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusModule
@@ -134,7 +136,7 @@ instance Serialize AsteriusModuleSymbol
 instance NFData AsteriusModuleSymbol
 
 data AsteriusSymbolKind
-  = StaticSymbol
+  = StaticsSymbol
   | FunctionSymbol
   deriving (Show, Generic, Data)
 
@@ -152,7 +154,7 @@ instance Serialize AsteriusSymbolInfo
 instance NFData AsteriusSymbolInfo
 
 newtype AsteriusSymbolDatabase = AsteriusSymbolDatabase
-  { symbolMap :: HM.HashMap SBS.ShortByteString AsteriusSymbolInfo
+  { symbolMap :: HM.HashMap UnresolvedSymbol AsteriusSymbolInfo
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusSymbolDatabase
@@ -190,14 +192,15 @@ modulePath :: MonadIO m => FilePath -> GHC.Module -> FilePath -> m FilePath
 modulePath topdir m = moduleSymbolPath topdir (marshalToModuleSymbol m)
 
 {-# INLINEABLE marshalCLabel #-}
-marshalCLabel :: GHC.DynFlags -> GHC.CLabel -> SBS.ShortByteString
+marshalCLabel :: GHC.DynFlags -> GHC.CLabel -> UnresolvedSymbol
 marshalCLabel dflags =
+  (coerce :: SBS.ShortByteString -> UnresolvedSymbol) .
   fromString . GHC.showSDoc dflags . GHC.pprCode GHC.AsmStyle . GHC.ppr
 
 {-#INLINEABLE marshalLabel#-}
 marshalLabel :: GHC.DynFlags -> GHC.Label -> SBS.ShortByteString
 marshalLabel dflags =
-  marshalCLabel dflags . GHC.mkLocalBlockLabel . GHC.getUnique
+  coerce . marshalCLabel dflags . GHC.mkLocalBlockLabel . GHC.getUnique
 
 {-# INLINEABLE marshalCmmType #-}
 marshalCmmType :: GHC.CmmType -> ValueType
@@ -245,10 +248,9 @@ marshalCmmStatic dflags st =
           pure $ Serialized $ encodePrim (fromRational x :: Float)
         GHC.CmmFloat x GHC.W64 ->
           pure $ Serialized $ encodePrim (fromRational x :: Double)
-        GHC.CmmLabel clbl ->
-          pure $ Asterius.CodeGen.Unresolved $ marshalCLabel dflags clbl
+        GHC.CmmLabel clbl -> pure $ UnresolvedStatic $ marshalCLabel dflags clbl
         GHC.CmmLabelOff clbl o ->
-          pure $ Asterius.CodeGen.UnresolvedOff (marshalCLabel dflags clbl) o
+          pure $ UnresolvedOffStatic (marshalCLabel dflags clbl) o
         _ -> throwIO $ UnsupportedCmmLit $ fromString $ show lit
     GHC.CmmUninitialised s -> pure $ Uninitialized s
     GHC.CmmString s -> pure $ Serialized $ SBS.pack $ s ++ [0]
@@ -290,12 +292,12 @@ marshalCmmExpr dflags expr =
         GHC.CmmLabel clbl ->
           pure
             ( Language.WebAssembly.NIR.Unresolved
-                {unresolvedLabel = marshalCLabel dflags clbl}
+                {unresolvedSymbol = marshalCLabel dflags clbl}
             , I64)
         GHC.CmmLabelOff clbl o ->
           pure
             ( Language.WebAssembly.NIR.UnresolvedOff
-                { unresolvedLabel = marshalCLabel dflags clbl
+                { unresolvedSymbol = marshalCLabel dflags clbl
                 , offset = fromIntegral o
                 }
             , I64)
@@ -1224,7 +1226,7 @@ marshalIR dflags IR {..} =
   liftIO $ fmap mconcat $ runParIO $ parMapM (marshalCmmDecl dflags) cmmRaw
 
 chaseUnresolvedSymbol ::
-     AsteriusModule -> AsteriusSymbolDatabase -> SBS.ShortByteString -> Bool
+     AsteriusModule -> AsteriusSymbolDatabase -> UnresolvedSymbol -> Bool
 chaseUnresolvedSymbol AsteriusModule {..} AsteriusSymbolDatabase {..} sym =
   sym `HM.member` staticsMap ||
   sym `HM.member` functionMap || sym `HM.member` symbolMap
@@ -1234,64 +1236,65 @@ chaseAsteriusStaticsOrFunction ::
   => AsteriusModule
   -> AsteriusSymbolDatabase
   -> a
-  -> Maybe (HS.HashSet SBS.ShortByteString)
+  -> Maybe (HS.HashSet UnresolvedSymbol)
 chaseAsteriusStaticsOrFunction m@AsteriusModule {..} sym_db@AsteriusSymbolDatabase {..} a =
   if HS.null err_syms
     then Nothing
     else Just err_syms
   where
-    syms = expressionUnresolvedLabels a
+    syms = collectUnresolvedLabels a
     err_syms = HS.filter (not . chaseUnresolvedSymbol m sym_db) syms
 
 chaseModuleOneRound ::
-     AsteriusModuleSymbol
-  -> AsteriusModule
-  -> AsteriusSymbolDatabase
-  -> (AsteriusModule, AsteriusSymbolDatabase)
-chaseModuleOneRound mod_sym m@AsteriusModule {..} sym_db@AsteriusSymbolDatabase {..} =
-  ( AsteriusModule
-      { staticsMap = HM.filterWithKey (\k _ -> HS.member k ok_syms) staticsMap
-      , staticsErrorMap = HM.fromList err_statics <> staticsErrorMap
-      , functionMap = HM.filterWithKey (\k _ -> HS.member k ok_syms) functionMap
-      , functionErrorMap = HM.fromList err_funcs <> functionErrorMap
-      }
-  , AsteriusSymbolDatabase
-      {symbolMap = HM.fromList ok_statics <> HM.fromList ok_funcs <> symbolMap})
+     AsteriusSymbolDatabase -> AsteriusModule -> AsteriusModule
+chaseModuleOneRound sym_db@AsteriusSymbolDatabase {..} m@AsteriusModule {..} =
+  AsteriusModule
+    { staticsMap = HM.filterWithKey (\k _ -> HS.member k ok_syms) staticsMap
+    , staticsErrorMap = HM.fromList err_statics <> staticsErrorMap
+    , functionMap = HM.filterWithKey (\k _ -> HS.member k ok_syms) functionMap
+    , functionErrorMap = HM.fromList err_funcs <> functionErrorMap
+    }
   where
     (err_statics, ok_statics) =
       partitionEithers
         [ case chaseAsteriusStaticsOrFunction m sym_db ss of
           Just err -> Left (k, UnresolvedSymbols err)
-          _ ->
-            Right
-              ( k
-              , AsteriusSymbolInfo
-                  {symbolKind = StaticSymbol, symbolSource = mod_sym})
+          _ -> Right k
         | (k, ss) <- HM.toList staticsMap
         ]
     (err_funcs, ok_funcs) =
       partitionEithers
         [ case chaseAsteriusStaticsOrFunction m sym_db f of
           Just err -> Left (k, UnresolvedSymbols err)
-          _ ->
-            Right
-              ( k
-              , AsteriusSymbolInfo
-                  {symbolKind = FunctionSymbol, symbolSource = mod_sym})
+          _ -> Right k
         | (k, f) <- HM.toList functionMap
         ]
-    ok_syms = HS.fromList $ map fst $ ok_statics <> ok_funcs
+    ok_syms = HS.fromList $ ok_statics <> ok_funcs
 
 chaseModule ::
-     AsteriusModuleSymbol
+     AsteriusSymbolDatabase
+  -> AsteriusModuleSymbol
   -> AsteriusModule
-  -> AsteriusSymbolDatabase
   -> (AsteriusModule, AsteriusSymbolDatabase)
-chaseModule mod_sym m sym_db =
+chaseModule sym_db@AsteriusSymbolDatabase {..} mod_sym m =
   if HM.size (staticsMap m) == HM.size (staticsMap m') &&
      HM.size (Asterius.CodeGen.functionMap m) ==
      HM.size (Asterius.CodeGen.functionMap m')
-    then (m', sym_db')
-    else chaseModule mod_sym m' sym_db'
+    then ( m'
+         , AsteriusSymbolDatabase
+             { symbolMap =
+                 HM.map
+                   (const
+                      AsteriusSymbolInfo
+                        {symbolKind = StaticsSymbol, symbolSource = mod_sym})
+                   (staticsMap m') <>
+                 HM.map
+                   (const
+                      AsteriusSymbolInfo
+                        {symbolKind = FunctionSymbol, symbolSource = mod_sym})
+                   (Asterius.CodeGen.functionMap m) <>
+                 symbolMap
+             })
+    else chaseModule sym_db mod_sym m'
   where
-    (m', sym_db') = chaseModuleOneRound mod_sym m sym_db
+    m' = chaseModuleOneRound sym_db m

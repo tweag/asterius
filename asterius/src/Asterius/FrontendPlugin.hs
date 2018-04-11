@@ -5,8 +5,9 @@ module Asterius.FrontendPlugin
   ) where
 
 import Asterius.CodeGen
+import Control.Monad
 import qualified Data.ByteString as BS
-import Data.Functor
+import Data.Maybe
 import Data.Serialize
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
@@ -32,6 +33,7 @@ frontendPlugin =
   frontendPluginFromCompiler
     (liftIO $ do
        obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
+       is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
        let sym_db_path = obj_topdir </> ".asterius_sym_db"
        void $
          tryAnyDeep $ do
@@ -43,11 +45,12 @@ frontendPlugin =
          createDirectoryIfMissing True obj_topdir
          sym_db <- readIORef symDBRef
          BS.writeFile sym_db_path $ encode sym_db
-         writeFile (obj_topdir </> "asterius_sym_db.txt") $ ppShow sym_db
+         when is_debug $
+           writeFile (obj_topdir </> "asterius_sym_db.txt") $ ppShow sym_db
        pure $
          defaultCompiler
            { withIR =
-               \ModSummary {..} ir -> do
+               \ModSummary {..} ir@IR {..} -> do
                  let mod_sym = marshalToModuleSymbol ms_mod
                  dflags <- getDynFlags
                  liftIO $ do
@@ -55,10 +58,14 @@ frontendPlugin =
                    p <- moduleSymbolPath obj_topdir mod_sym "asterius_o"
                    m' <-
                      atomicModifyIORef' symDBRef $ \sym_db ->
-                       let (m', sym_db') = chaseModule mod_sym m sym_db
+                       let (m', sym_db') = chaseModule sym_db mod_sym m
                         in (sym_db', m')
                    BS.writeFile p $ encode m'
-                   p' <- moduleSymbolPath obj_topdir mod_sym "txt"
-                   writeFile p' $ ppShow m'
+                   when is_debug $ do
+                     p_a <- moduleSymbolPath obj_topdir mod_sym "txt"
+                     writeFile p_a $ ppShow m'
+                     p_c <-
+                       moduleSymbolPath obj_topdir mod_sym "dump-cmm-raw-ast"
+                     writeFile p_c $ ppShow cmmRaw
            })
     (readIORef symDBFinRef >>= liftIO)

@@ -22,7 +22,6 @@ dependencies:
   - deepseq
   - ghc-prim
   - hashable
-  - lens
   - mtl
   - primitive
   - unliftio
@@ -38,6 +37,7 @@ library:
     - DeriveGeneric
     - DuplicateRecordFields
     - FlexibleContexts
+    - GADTs
     - LambdaCase
     - MagicHash
     - PolyKinds

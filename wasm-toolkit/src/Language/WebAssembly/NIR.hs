@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -10,6 +10,7 @@
 
 module Language.WebAssembly.NIR
   ( BinaryenIndex
+  , UnresolvedSymbol(..)
   , ValueType(..)
   , FunctionType(..)
   , UnaryOp(..)
@@ -37,16 +38,13 @@ module Language.WebAssembly.NIR
   , sizeOfValueType
   , emptyModule
   , marshalModule
-  , expressionDescendents
-  , expressionUnresolvedLabels
+  , collectUnresolvedLabels
   ) where
 
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.DeepSeq
-import Control.Lens.Plated
 import qualified Data.ByteString.Short as SBS
-import Data.Data
-import Data.Data.Lens
+import Data.Data (Data, gmapQr)
 import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
@@ -56,8 +54,19 @@ import Data.Traversable
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import Language.WebAssembly.Internals
+import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
 import UnliftIO
 import UnliftIO.Foreign
+
+newtype UnresolvedSymbol =
+  UnresolvedSymbol SBS.ShortByteString
+  deriving (Eq, Show, Generic, Data)
+
+instance Serialize UnresolvedSymbol
+
+instance Hashable UnresolvedSymbol
+
+instance NFData UnresolvedSymbol
 
 data ValueType
   = None
@@ -312,8 +321,8 @@ data Expression
   | AtomicCmpxchg { bytes, offset :: BinaryenIndex
                   , ptr, expected, replacement :: Expression
                   , valueType :: ValueType }
-  | Unresolved { unresolvedLabel :: SBS.ShortByteString }
-  | UnresolvedOff { unresolvedLabel :: SBS.ShortByteString
+  | Unresolved { unresolvedSymbol :: UnresolvedSymbol }
+  | UnresolvedOff { unresolvedSymbol :: UnresolvedSymbol
                   , offset :: BinaryenIndex }
   | UnresolvedGetLocal { unresolvedIndex :: Int
                        , valueType :: ValueType }
@@ -327,8 +336,6 @@ data Expression
 instance Serialize Expression
 
 instance NFData Expression
-
-instance Plated Expression
 
 data Function = Function
   { functionTypeName :: SBS.ShortByteString
@@ -1035,19 +1042,15 @@ relooperRun m rr@RelooperRun {..} =
       Just lh -> c_RelooperRenderAndDispose r (bpm HM.! entry) lh m
       _ -> throwIO $ MissingLabelHelper rr
 
-{-# INLINE expressionDescendents #-}
-expressionDescendents :: Data a => a -> [Expression]
-expressionDescendents = universeOn template
-
-{-# INLINE expressionUnresolvedLabels #-}
-expressionUnresolvedLabels :: Data a => a -> HS.HashSet SBS.ShortByteString
-expressionUnresolvedLabels =
-  foldMap
-    (\case
-       Unresolved {..} -> [unresolvedLabel]
-       UnresolvedOff {..} -> [unresolvedLabel]
-       _ -> []) .
-  expressionDescendents
+collectUnresolvedLabels :: Data a => a -> HS.HashSet UnresolvedSymbol
+collectUnresolvedLabels =
+  gmapQr
+    (<>)
+    mempty
+    (\t ->
+       case eqTypeRep (typeOf t) (typeRep :: TypeRep UnresolvedSymbol) of
+         Just HRefl -> HS.singleton t
+         _ -> collectUnresolvedLabels t)
 
 instance Serialize SBS.ShortByteString where
   {-# INLINE put #-}
