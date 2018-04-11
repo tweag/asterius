@@ -6,34 +6,16 @@ module Asterius.FrontendPlugin
 
 import Asterius.CodeGen
 import qualified Data.ByteString as BS
-import Data.Functor
 import Data.Serialize
 import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
-import Language.Haskell.GHC.Toolkit.ObjectStore
-import System.Environment
+import UnliftIO.Environment
 
 frontendPlugin :: FrontendPlugin
 frontendPlugin =
   frontendPluginFromCompiler $ do
-    Store {..} <-
-      liftIO $ do
-        obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
-        newStore
-          StoreConfig
-            { storeTopDir = obj_topdir
-            , objectExt = "asterius_o"
-            , globalFile = ""
-            , cacheObject = False
-            , rawRead =
-                \p -> do
-                  e <- decode <$> BS.readFile p
-                  case e of
-                    Left err -> fail err
-                    Right r -> pure r
-            , rawWrite = \p m -> BS.writeFile p $ encode m
-            }
+    obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
     pure $
       defaultCompiler
         { withIR =
@@ -41,6 +23,6 @@ frontendPlugin =
               dflags <- getDynFlags
               liftIO $ do
                 m <- marshalIR dflags ir
-                objectWrite ms_mod m
-                void $ objectRead ms_mod
+                p <- modulePath obj_topdir ms_mod "asterius_o"
+                BS.writeFile p $ encode m
         }

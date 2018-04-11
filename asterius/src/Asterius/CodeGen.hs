@@ -13,6 +13,8 @@ module Asterius.CodeGen
   , AsteriusStatics(..)
   , AsteriusFunction(..)
   , AsteriusModule(..)
+  , AsteriusModuleSymbol(..)
+  , modulePath
   , chaseCLabel
   , marshalIR
   ) where
@@ -25,6 +27,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Par.Combinator
 import Control.Monad.Par.IO
+import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data)
 import qualified Data.HashMap.Strict as HM
@@ -43,8 +46,10 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Language.WebAssembly.Internals
 import Language.WebAssembly.NIR
+import System.FilePath
 import qualified Unique as GHC
 import UnliftIO
+import UnliftIO.Directory
 
 data AsteriusCodeGenError
   = UnsupportedCmmLit SBS.ShortByteString
@@ -111,6 +116,45 @@ instance Semigroup AsteriusModule where
 
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty
+
+data AsteriusModuleSymbol = AsteriusModuleSymbol
+  { unitId :: SBS.ShortByteString
+  , moduleName :: V.Vector SBS.ShortByteString
+  } deriving (Show, Generic, Data)
+
+instance Serialize AsteriusModuleSymbol
+
+instance NFData AsteriusModuleSymbol
+
+{-# INLINEABLE marshalToModuleSymbol #-}
+marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol
+marshalToModuleSymbol (GHC.Module u m) =
+  AsteriusModuleSymbol
+    { unitId = SBS.toShort $ GHC.fs_bs $ GHC.unitIdFS u
+    , moduleName =
+        V.fromList $
+        map SBS.toShort $
+        CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
+    }
+
+{-# INLINEABLE moduleSymbolPath #-}
+moduleSymbolPath ::
+     MonadIO m => FilePath -> AsteriusModuleSymbol -> FilePath -> m FilePath
+moduleSymbolPath topdir AsteriusModuleSymbol {..} ext = do
+  createDirectoryIfMissing True $ takeDirectory p
+  pure p
+  where
+    f = CBS.unpack . SBS.fromShort
+    p =
+      topdir </> f unitId </>
+      V.foldr'
+        (\c tot -> f c </> tot)
+        (f (V.last moduleName) <.> ext)
+        (V.init moduleName)
+
+{-# INLINEABLE modulePath #-}
+modulePath :: MonadIO m => FilePath -> GHC.Module -> FilePath -> m FilePath
+modulePath topdir m = moduleSymbolPath topdir (marshalToModuleSymbol m)
 
 {-# INLINEABLE marshalCLabel #-}
 marshalCLabel :: GHC.DynFlags -> GHC.CLabel -> SBS.ShortByteString
