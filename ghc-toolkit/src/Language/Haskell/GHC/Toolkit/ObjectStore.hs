@@ -1,3 +1,4 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -16,7 +17,7 @@ import System.Directory
 import System.FilePath
 
 data StoreConfig m a = StoreConfig
-  { storeTopDir, objectExt :: FilePath
+  { storeTopDir, objectExt, globalFile :: FilePath
   , cacheObject :: Bool
   , rawRead :: FilePath -> m a
   , rawWrite :: FilePath -> a -> m ()
@@ -25,6 +26,9 @@ data StoreConfig m a = StoreConfig
 data Store m a = Store
   { objectRead :: Module -> m a
   , objectWrite :: Module -> a -> m ()
+  , globalFile :: FilePath
+  , globalRead :: m a
+  , globalWrite :: a -> m ()
   }
 
 newStore :: MonadIO m => StoreConfig m a -> m (Store m a)
@@ -46,8 +50,18 @@ newStore StoreConfig {..} =
                         (M.insert m r om', ())
                     pure r
           , objectWrite = w
+          , globalFile = globalFile
+          , globalRead = rawRead globalFile
+          , globalWrite = rawWrite globalFile
           }
-    else pure Store {objectRead = rawRead . p, objectWrite = w}
+    else pure
+           Store
+             { objectRead = rawRead . p
+             , objectWrite = w
+             , globalFile = globalFile
+             , globalRead = rawRead globalFile
+             , globalWrite = rawWrite globalFile
+             }
   where
     w m a = do
       let x = p m

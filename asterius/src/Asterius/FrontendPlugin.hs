@@ -24,6 +24,7 @@ frontendPlugin =
           StoreConfig
             { storeTopDir = obj_topdir
             , objectExt = "asterius_o"
+            , globalFile = ""
             , cacheObject = False
             , rawRead =
                 \p -> do
