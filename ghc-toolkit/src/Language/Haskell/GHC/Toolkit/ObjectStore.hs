@@ -51,16 +51,16 @@ newStore StoreConfig {..} =
                     pure r
           , objectWrite = w
           , globalFile = globalFile
-          , globalRead = rawRead globalFile
-          , globalWrite = rawWrite globalFile
+          , globalRead = rawRead (storeTopDir </> globalFile)
+          , globalWrite = rawWrite (storeTopDir </> globalFile)
           }
     else pure
            Store
              { objectRead = rawRead . p
              , objectWrite = w
              , globalFile = globalFile
-             , globalRead = rawRead globalFile
-             , globalWrite = rawWrite globalFile
+             , globalRead = rawRead (storeTopDir </> globalFile)
+             , globalWrite = rawWrite (storeTopDir </> globalFile)
              }
   where
     w m a = do

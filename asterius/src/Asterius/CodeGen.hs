@@ -28,7 +28,6 @@ import Control.Monad.Par.IO
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data)
 import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
 import Data.Int
 import Data.Serialize (Serialize)
 import Data.String (fromString)
@@ -87,9 +86,8 @@ instance Serialize AsteriusStatics
 
 instance NFData AsteriusStatics
 
-data AsteriusFunction = AsteriusFunction
+newtype AsteriusFunction = AsteriusFunction
   { body :: RelooperRun
-  , unresolvedLabels :: HS.HashSet SBS.ShortByteString
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusFunction
@@ -1107,7 +1105,6 @@ marshalCmmProc dflags GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
             , blockMap = rbs
             , labelHelper = Nothing
             }
-      , unresolvedLabels = expressionUnresolvedLabels rbs
       }
 
 marshalCmmDecl ::
