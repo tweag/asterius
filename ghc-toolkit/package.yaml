@@ -27,7 +27,6 @@ ghc-options: -Wall
 
 dependencies:
   - base
-  - binary
   - Cabal
   - containers
   - directory
