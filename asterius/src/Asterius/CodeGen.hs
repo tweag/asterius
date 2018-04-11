@@ -34,7 +34,9 @@ import Control.Monad.Par.IO
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data)
+import Data.Either
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 import Data.Int
 import Data.Serialize (Serialize)
 import Data.String (fromString)
@@ -66,6 +68,7 @@ data AsteriusCodeGenError
   | UnsupportedImplicitCasting Expression
                                ValueType
                                ValueType
+  | UnresolvedSymbols (HS.HashSet SBS.ShortByteString)
   | UnhandledException SBS.ShortByteString
   deriving (Show, Generic, Data)
 
@@ -105,7 +108,7 @@ instance NFData AsteriusFunction
 
 data AsteriusModule = AsteriusModule
   { staticsMap :: HM.HashMap SBS.ShortByteString AsteriusStatics
-  , staticErrorMap :: HM.HashMap SBS.ShortByteString AsteriusCodeGenError
+  , staticsErrorMap :: HM.HashMap SBS.ShortByteString AsteriusCodeGenError
   , functionMap :: HM.HashMap SBS.ShortByteString AsteriusFunction
   , functionErrorMap :: HM.HashMap SBS.ShortByteString AsteriusCodeGenError
   } deriving (Show, Generic, Data)
@@ -131,8 +134,8 @@ instance Serialize AsteriusModuleSymbol
 instance NFData AsteriusModuleSymbol
 
 data AsteriusSymbolKind
-  = Static
-  | Function
+  = StaticSymbol
+  | FunctionSymbol
   deriving (Show, Generic, Data)
 
 instance Serialize AsteriusSymbolKind
@@ -1220,9 +1223,73 @@ marshalIR :: MonadIO m => GHC.DynFlags -> IR -> m AsteriusModule
 marshalIR dflags IR {..} =
   liftIO $ fmap mconcat $ runParIO $ parMapM (marshalCmmDecl dflags) cmmRaw
 
+chaseUnresolvedSymbol ::
+     AsteriusModule -> AsteriusSymbolDatabase -> SBS.ShortByteString -> Bool
+chaseUnresolvedSymbol AsteriusModule {..} AsteriusSymbolDatabase {..} sym =
+  sym `HM.member` staticsMap ||
+  sym `HM.member` functionMap || sym `HM.member` symbolMap
+
+chaseAsteriusStaticsOrFunction ::
+     Data a
+  => AsteriusModule
+  -> AsteriusSymbolDatabase
+  -> a
+  -> Maybe (HS.HashSet SBS.ShortByteString)
+chaseAsteriusStaticsOrFunction m@AsteriusModule {..} sym_db@AsteriusSymbolDatabase {..} a =
+  if HS.null err_syms
+    then Nothing
+    else Just err_syms
+  where
+    syms = expressionUnresolvedLabels a
+    err_syms = HS.filter (not . chaseUnresolvedSymbol m sym_db) syms
+
+chaseModuleOneRound ::
+     AsteriusModuleSymbol
+  -> AsteriusModule
+  -> AsteriusSymbolDatabase
+  -> (AsteriusModule, AsteriusSymbolDatabase)
+chaseModuleOneRound mod_sym m@AsteriusModule {..} sym_db@AsteriusSymbolDatabase {..} =
+  ( AsteriusModule
+      { staticsMap = HM.filterWithKey (\k _ -> HS.member k ok_syms) staticsMap
+      , staticsErrorMap = HM.fromList err_statics <> staticsErrorMap
+      , functionMap = HM.filterWithKey (\k _ -> HS.member k ok_syms) functionMap
+      , functionErrorMap = HM.fromList err_funcs <> functionErrorMap
+      }
+  , AsteriusSymbolDatabase
+      {symbolMap = HM.fromList ok_statics <> HM.fromList ok_funcs <> symbolMap})
+  where
+    (err_statics, ok_statics) =
+      partitionEithers
+        [ case chaseAsteriusStaticsOrFunction m sym_db ss of
+          Just err -> Left (k, UnresolvedSymbols err)
+          _ ->
+            Right
+              ( k
+              , AsteriusSymbolInfo
+                  {symbolKind = StaticSymbol, symbolSource = mod_sym})
+        | (k, ss) <- HM.toList staticsMap
+        ]
+    (err_funcs, ok_funcs) =
+      partitionEithers
+        [ case chaseAsteriusStaticsOrFunction m sym_db f of
+          Just err -> Left (k, UnresolvedSymbols err)
+          _ ->
+            Right
+              ( k
+              , AsteriusSymbolInfo
+                  {symbolKind = FunctionSymbol, symbolSource = mod_sym})
+        | (k, f) <- HM.toList functionMap
+        ]
+    ok_syms = HS.fromList $ map fst $ ok_statics <> ok_funcs
+
 chaseModule ::
      AsteriusModuleSymbol
   -> AsteriusModule
   -> AsteriusSymbolDatabase
   -> (AsteriusModule, AsteriusSymbolDatabase)
-chaseModule _ = (,)
+chaseModule mod_sym m sym_db =
+  if HM.size (symbolMap sym_db) == HM.size (symbolMap sym_db')
+    then (m', sym_db')
+    else chaseModule mod_sym m' sym_db'
+  where
+    (m', sym_db') = chaseModuleOneRound mod_sym m sym_db

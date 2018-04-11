@@ -41,7 +41,9 @@ frontendPlugin =
              Right sym_db -> writeIORef symDBRef sym_db
        writeIORef symDBFinRef $ do
          createDirectoryIfMissing True obj_topdir
-         readIORef symDBRef >>= BS.writeFile sym_db_path . encode
+         sym_db <- readIORef symDBRef
+         BS.writeFile sym_db_path $ encode sym_db
+         writeFile (obj_topdir </> "asterius_sym_db.txt") $ ppShow sym_db
        pure $
          defaultCompiler
            { withIR =
