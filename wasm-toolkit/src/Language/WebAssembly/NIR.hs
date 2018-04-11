@@ -38,7 +38,7 @@ module Language.WebAssembly.NIR
   , emptyModule
   , marshalModule
   , expressionDescendents
-  , relooperBlockUnresolvedLabels
+  , expressionUnresolvedLabels
   ) where
 
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
@@ -46,6 +46,7 @@ import Control.DeepSeq
 import Control.Lens.Plated
 import qualified Data.ByteString.Short as SBS
 import Data.Data
+import Data.Data.Lens
 import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
@@ -1035,11 +1036,11 @@ relooperRun m rr@RelooperRun {..} =
       _ -> throwIO $ MissingLabelHelper rr
 
 {-# INLINE expressionDescendents #-}
-expressionDescendents :: Expression -> [Expression]
-expressionDescendents = universe
+expressionDescendents :: Data a => a -> [Expression]
+expressionDescendents = universeOn template
 
 {-# INLINE expressionUnresolvedLabels #-}
-expressionUnresolvedLabels :: Expression -> HS.HashSet SBS.ShortByteString
+expressionUnresolvedLabels :: Data a => a -> HS.HashSet SBS.ShortByteString
 expressionUnresolvedLabels =
   foldMap
     (\case
@@ -1047,20 +1048,6 @@ expressionUnresolvedLabels =
        UnresolvedOff {..} -> [unresolvedLabel]
        _ -> []) .
   expressionDescendents
-
-{-# INLINE relooperBlockUnresolvedLabels #-}
-relooperBlockUnresolvedLabels :: RelooperBlock -> HS.HashSet SBS.ShortByteString
-relooperBlockUnresolvedLabels RelooperBlock {..} =
-  (case addBlock of
-     AddBlock {..} -> expressionUnresolvedLabels code
-     AddBlockWithSwitch {..} ->
-       expressionUnresolvedLabels code <> expressionUnresolvedLabels condition) <>
-  foldMap
-    (\case
-       AddBranch {..} ->
-         expressionUnresolvedLabels condition <> expressionUnresolvedLabels code
-       AddBranchForSwitch {..} -> expressionUnresolvedLabels code)
-    addBranches
 
 instance Serialize SBS.ShortByteString where
   {-# INLINE put #-}

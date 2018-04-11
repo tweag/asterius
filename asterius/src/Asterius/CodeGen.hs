@@ -1093,6 +1093,7 @@ marshalCmmProc ::
      MonadIO m => GHC.DynFlags -> GHC.CmmGraph -> m AsteriusFunction
 marshalCmmProc dflags GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   rbs <-
+    fmap HM.fromList $
     for
       [ (marshalLabel dflags k, GHC.blockToList inner_nodes, exit_node)
       | (k, GHC.BlockCC _ inner_nodes exit_node) <- GHC.bodyList body
@@ -1103,10 +1104,10 @@ marshalCmmProc dflags GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
       { body =
           RelooperRun
             { entry = marshalLabel dflags g_entry
-            , blockMap = HM.fromList rbs
+            , blockMap = rbs
             , labelHelper = Nothing
             }
-      , unresolvedLabels = foldMap relooperBlockUnresolvedLabels $ map snd rbs
+      , unresolvedLabels = expressionUnresolvedLabels rbs
       }
 
 marshalCmmDecl ::
