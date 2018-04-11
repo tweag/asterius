@@ -1288,7 +1288,9 @@ chaseModule ::
   -> AsteriusSymbolDatabase
   -> (AsteriusModule, AsteriusSymbolDatabase)
 chaseModule mod_sym m sym_db =
-  if HM.size (symbolMap sym_db) == HM.size (symbolMap sym_db')
+  if HM.size (staticsMap m) == HM.size (staticsMap m') &&
+     HM.size (Asterius.CodeGen.functionMap m) ==
+     HM.size (Asterius.CodeGen.functionMap m')
     then (m', sym_db')
     else chaseModule mod_sym m' sym_db'
   where
