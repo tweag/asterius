@@ -21,7 +21,7 @@ module Asterius.CodeGen
   , marshalToModuleSymbol
   , modulePath
   , moduleSymbolPath
-  , marshalIR
+  , marshalHaskellIR
   , chaseModule
   ) where
 
@@ -1221,8 +1221,8 @@ marshalCmmDecl dflags decl =
                Right (Right f) ->
                  pure $ AsteriusModule mempty mempty [(k, f)] mempty
 
-marshalIR :: MonadIO m => GHC.DynFlags -> IR -> m AsteriusModule
-marshalIR dflags IR {..} =
+marshalHaskellIR :: MonadIO m => GHC.DynFlags -> HaskellIR -> m AsteriusModule
+marshalHaskellIR dflags HaskellIR {..} =
   liftIO $ fmap mconcat $ runParIO $ parMapM (marshalCmmDecl dflags) cmmRaw
 
 chaseUnresolvedSymbol ::

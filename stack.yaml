@@ -6,48 +6,30 @@ flags:
 extra-deps:
   - abstract-deque-0.3
   - abstract-par-0.3.3
-  - adjunctions-4.4
+  - acid-state-0.14.3
   - async-2.2.1
-  - base-orphans-0.7
-  - bifunctors-5.5.2
-  - cabal-doctest-1.0.6
-  - call-stack-0.1.0
   - cereal-0.5.5.0
-  - clock-0.7.2
-  - comonad-5.0.3
-  - https://github.com/ekmett/contravariant/archive/24dbefdff224153cf19520ca3bef01c7c7549018.zip
-  - distributive-0.5.3
-  - exceptions-0.10.0
-  - fail-4.9.0.0
-  - free-5.0.1
+  - extensible-exceptions-0.1.1.4
   - happy-1.19.9
   - hashable-1.2.7.0
   - haskell-lexer-1.0.1
-  - kan-extensions-5.1
-  - lens-4.16.1
   - math-functions-0.2.1.0
   - monad-par-0.3.4.8
   - monad-par-extras-0.3.3
   - mwc-random-0.13.6.0
+  - network-2.6.3.5
+  - old-locale-1.0.0.7
+  - old-time-1.1.0.3
   - parallel-3.2.1.1
   - pretty-show-1.7
   - primitive-0.6.3.0
-  - profunctors-5.2.2
   - random-1.1
-  - reflection-2.1.3
-  - semigroupoids-5.2.2
-  - semigroups-0.18.4
-  - StateVar-1.1.0.4
-  - tagged-0.8.5
-  - th-abstraction-0.2.6.0
-  - transformers-base-0.4.4
-  - transformers-compat-0.6.0.6
+  - safecopy-0.9.4.1
   - unliftio-0.2.6.0
   - unliftio-core-0.1.1.0
   - unordered-containers-0.2.9.0
   - vector-0.12.0.1
   - vector-th-unbox-0.2.1.6
-  - void-0.7.2
 packages:
   - asterius
   - ghc-toolkit

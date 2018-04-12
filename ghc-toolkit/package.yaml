@@ -39,6 +39,7 @@ library:
   other-modules:
     - Language.Haskell.GHC.Toolkit.GHCUnexported
   other-extensions:
+    - DuplicateRecordFields
     - FlexibleInstances
     - GADTs
     - LambdaCase

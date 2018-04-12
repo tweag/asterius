@@ -49,12 +49,12 @@ frontendPlugin =
            writeFile (obj_topdir </> "asterius_sym_db.txt") $ ppShow sym_db
        pure $
          defaultCompiler
-           { withIR =
-               \ModSummary {..} ir@IR {..} -> do
+           { withHaskellIR =
+               \ModSummary {..} ir@HaskellIR {..} -> do
                  let mod_sym = marshalToModuleSymbol ms_mod
                  dflags <- getDynFlags
                  liftIO $ do
-                   m <- marshalIR dflags ir
+                   m <- marshalHaskellIR dflags ir
                    p <- moduleSymbolPath obj_topdir mod_sym "asterius_o"
                    m' <-
                      atomicModifyIORef' symDBRef $ \sym_db ->

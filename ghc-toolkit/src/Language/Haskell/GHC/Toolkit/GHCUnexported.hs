@@ -7,6 +7,7 @@ import Avail
 import Cmm
 import CmmBuildInfoTables
 import CmmInfo
+import CmmParse
 import CmmPipeline
 import CodeOutput
 import Control.Monad
@@ -45,6 +46,7 @@ import StgSyn
 import qualified Stream
 import Stream (Stream)
 import SysTools
+import qualified System.FilePath as FilePath
 import System.FilePath
 import TcBackpack
 import TcRnTypes
@@ -361,6 +363,29 @@ hscGenHardCode' hsc_env cgguts mod_summary output_filename = do
                   codeOutput dflags this_mod output_filename location
                   foreign_stubs foreign_files dependencies rawcmms1
             return (output_filename, stub_c_exists, foreign_fps, stg_binds, cmms_list, rawcmms_list)
+
+hscCompileCmmFile' :: HscEnv -> FilePath -> FilePath -> IO ([CmmDecl], [RawCmmDecl])
+hscCompileCmmFile' hsc_env filename output_filename = runHsc hsc_env $ do
+    let dflags = hsc_dflags hsc_env
+    cmm <- ioMsgMaybe $ parseCmmFile dflags filename
+    liftIO $ do
+        us <- mkSplitUniqSupply 'S'
+        let initTopSRT = initUs_ us emptySRT
+        dumpIfSet_dyn dflags Opt_D_dump_cmm_verbose "Parsed Cmm" (ppr cmm)
+        (_, cmmgroup) <- cmmPipeline hsc_env initTopSRT cmm
+        rawCmms <- cmmToRawCmm dflags (Stream.yield cmmgroup)
+        rawCmms_list <- concat <$> Stream.collect rawCmms
+        let -- Make up a module name to give the NCG. We can't pass bottom here
+            -- lest we reproduce #11784.
+            mod_name = mkModuleName $ "Cmm$" ++ FilePath.takeFileName filename
+            cmm_mod = mkModule (thisPackage dflags) mod_name
+        _ <- codeOutput dflags cmm_mod output_filename no_loc NoStubs [] []
+             rawCmms
+        return (cmmgroup, rawCmms_list)
+  where
+    no_loc = ModLocation{ ml_hs_file  = Just filename,
+                          ml_hi_file  = panic "hscCompileCmmFile: no hi file",
+                          ml_obj_file = panic "hscCompileCmmFile: no obj file" }
 
 doCodeGen   :: HscEnv -> Module -> [TyCon]
             -> CollectedCCs

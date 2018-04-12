@@ -1,10 +1,13 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE StrictData #-}
 
 module Language.Haskell.GHC.Toolkit.Compiler
-  ( IR(..)
+  ( HaskellIR(..)
+  , CmmIR(..)
   , Compiler
   , patch
-  , withIR
+  , withHaskellIR
+  , withCmmIR
   , defaultCompiler
   ) where
 
@@ -14,7 +17,7 @@ import PipelineMonad
 import StgSyn
 import TcRnTypes
 
-data IR = IR
+data HaskellIR = HaskellIR
   { parsed :: HsParsedModule
   , typeChecked :: TcGblEnv
   , core :: CgGuts
@@ -23,10 +26,21 @@ data IR = IR
   , cmmRaw :: [RawCmmDecl]
   }
 
+data CmmIR = CmmIR
+  { cmm :: [CmmDecl]
+  , cmmRaw :: [RawCmmDecl]
+  }
+
 data Compiler = Compiler
   { patch :: ModSummary -> HsParsedModule -> Hsc HsParsedModule
-  , withIR :: ModSummary -> IR -> CompPipeline ()
+  , withHaskellIR :: ModSummary -> HaskellIR -> CompPipeline ()
+  , withCmmIR :: CmmIR -> CompPipeline ()
   }
 
 defaultCompiler :: Compiler
-defaultCompiler = Compiler {patch = const pure, withIR = \_ _ -> pure ()}
+defaultCompiler =
+  Compiler
+    { patch = const pure
+    , withHaskellIR = \_ _ -> pure ()
+    , withCmmIR = \_ -> pure ()
+    }

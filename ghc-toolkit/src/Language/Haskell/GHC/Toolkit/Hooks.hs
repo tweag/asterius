@@ -1,3 +1,4 @@
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Language.Haskell.GHC.Toolkit.Hooks
@@ -6,9 +7,11 @@ module Language.Haskell.GHC.Toolkit.Hooks
 
 import Control.Monad.IO.Class
 import Data.IORef
+import DriverPhases
 import DriverPipeline
 import DynFlags
 import Hooks
+import HscMain
 import HscTypes
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.GHCUnexported
@@ -66,10 +69,10 @@ hooksFromCompiler c =
                         liftIO $
                         mapM (uncurry (compileForeign hsc_env')) foreign_files
                       setForeignOs (maybe [] return stub_o ++ foreign_os)
-                      withIR
+                      withHaskellIR
                         c
                         mod_summary
-                        IR
+                        HaskellIR
                           { parsed = p
                           , typeChecked = tc
                           , core = cgguts
@@ -79,5 +82,14 @@ hooksFromCompiler c =
                           }
                       pure (RealPhase next_phase, outputFilename)
                     _ -> runPhase phase_plus input_fn dflags
+                RealPhase Cmm -> do
+                  let hsc_lang = hscTarget dflags
+                  let next_phase = hscPostBackendPhase dflags HsSrcFile hsc_lang
+                  output_fn <- phaseOutputFilename next_phase
+                  PipeState {hsc_env} <- getPipeState
+                  (cs, rcs) <-
+                    liftIO $ hscCompileCmmFile' hsc_env input_fn output_fn
+                  withCmmIR c CmmIR {cmm = cs, cmmRaw = rcs}
+                  pure (RealPhase next_phase, output_fn)
                 _ -> runPhase phase_plus input_fn dflags
         }

@@ -39,7 +39,7 @@ defaultConfig =
     , ghcLibDir = BI.ghcLibDir
     }
 
-run :: MonadIO m => Config -> [String] -> m (M.Map Module IR)
+run :: MonadIO m => Config -> [String] -> m (M.Map Module HaskellIR)
 run Config {..} targets =
   liftIO $
   defaultErrorHandler defaultFatalMessager defaultFlushOut $
@@ -54,7 +54,7 @@ run Config {..} targets =
             h <-
               hooksFromCompiler $
               defaultCompiler
-                { withIR =
+                { withHaskellIR =
                     \ModSummary {..} ir ->
                       liftIO $
                       atomicModifyIORef' mod_map_ref $ \mod_map ->
