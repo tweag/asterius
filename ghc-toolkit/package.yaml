@@ -47,5 +47,4 @@ library:
     - RecordWildCards
     - StandaloneDeriving
     - StrictData
-    - UnboxedTuples
     - UndecidableInstances
