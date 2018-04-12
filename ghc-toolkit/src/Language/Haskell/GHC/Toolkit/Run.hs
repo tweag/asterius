@@ -10,7 +10,6 @@ module Language.Haskell.GHC.Toolkit.Run
   , runCmm
   ) where
 
-import Control.Exception
 import Control.Monad.IO.Class
 import Data.Functor
 import Data.IORef
@@ -69,24 +68,28 @@ runHaskell Config {..} targets =
       Succeeded -> read_mod_map
       Failed -> liftIO $ throwGhcExceptionIO $ Panic "GHC.load returned Failed."
 
-runCmm :: MonadIO m => Config -> String -> m CmmIR
-runCmm Config {..} cmm_fn =
+runCmm :: MonadIO m => Config -> [FilePath] -> m (M.Map FilePath CmmIR)
+runCmm Config {..} cmm_fns =
   liftIO $
   defaultErrorHandler defaultFatalMessager defaultFlushOut $
   runGhc (Just ghcLibDir) $ do
     dflags <- getSessionDynFlags
     (dflags', _, _) <- parseDynamicFlags dflags $ map noLoc ghcFlags
-    (h, read_cmm_ir) <-
+    (h, read_cmm_irs) <-
       liftIO $ do
-        cmm_ir_ref <- newIORef $ throw $ Panic "Failed to compile Cmm."
+        cmm_irs_ref <- newIORef []
         h <-
           hooksFromCompiler $
-          defaultCompiler {withCmmIR = liftIO . writeIORef cmm_ir_ref}
-        pure (h, readIORef cmm_ir_ref)
+          defaultCompiler
+            {withCmmIR = \ir -> liftIO $ modifyIORef' cmm_irs_ref (ir :)}
+        pure (h, reverse <$> readIORef cmm_irs_ref)
     void $
       setSessionDynFlags
         dflags' {ghcMode = OneShot, ghcLink = NoLink, hooks = h}
     env <- getSession
     liftIO $ do
-      oneShot env StopLn [(cmm_fn, Just CmmCpp)]
-      read_cmm_ir
+      oneShot env StopLn [(cmm_fn, Just CmmCpp) | cmm_fn <- cmm_fns]
+      cmm_irs <- read_cmm_irs
+      if length cmm_irs == length cmm_fns
+        then pure $ M.fromList $ zip cmm_fns cmm_irs
+        else throwGhcExceptionIO $ Panic "Unknown error when compiling .cmm"
