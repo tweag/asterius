@@ -7,7 +7,7 @@ jobs:
     environment:
       MAKEFLAGS: -j4
       XZ_OPT: -9
-      NIXPKGS_REV: 4cc8c2955fe132c3c780cdce41746ea77fcfe687
+      NIXPKGS_REV: ff861c076f71fea22430a6154fef9c380cab3deb
     steps:
       - checkout
       - run: |
@@ -29,9 +29,9 @@ jobs:
 
           export PREV_DIR=`pwd`
           cd /tmp
-          curl -L https://github.com/TerrorJack/nixpkgs/archive/$NIXPKGS_REV.zip -o nixpkgs-$NIXPKGS_REV.zip
-          unzip -q nixpkgs-$NIXPKGS_REV.zip
-          cd nixpkgs-$NIXPKGS_REV
+          curl -L https://github.com/TerrorJack/asterius-nixpkgs/archive/$NIXPKGS_REV.zip -o asterius-nixpkgs-$NIXPKGS_REV.zip
+          unzip -q asterius-nixpkgs-$NIXPKGS_REV.zip
+          cd asterius-nixpkgs-$NIXPKGS_REV
           nix-env -f . -iA haskell.compiler.ghcAsterius --option require-sigs false --option extra-binary-caches https://canis.sapiens.moe/
           cd $PREV_DIR
           unset PREV_DIR
@@ -70,7 +70,9 @@ jobs:
       - MAKEFLAGS: -j4
     steps:
       - checkout
-      - run: stack --no-terminal --resolver ghc-8.4.1 --nix-packages "cmake gcc gnumake" test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
+      - run: |
+          nix-channel --update
+          stack --no-terminal --resolver ghc-8.4.1 --nix-packages "cmake gcc gnumake" test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
 
 workflows:
   version: 2
