@@ -90,3 +90,9 @@ tests:
     main: fact-dump.hs
     dependencies:
       - asterius
+
+  rts-cmm:
+    source-dirs: test
+    main: rts-cmm.hs
+    dependencies:
+      - asterius

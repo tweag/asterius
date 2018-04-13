@@ -18,9 +18,11 @@ module Asterius.CodeGen
   , AsteriusSymbolKind(..)
   , AsteriusSymbolInfo(..)
   , AsteriusSymbolDatabase(..)
+  , marshalCLabel
   , marshalToModuleSymbol
   , modulePath
   , moduleSymbolPath
+  , marshalCmmDecl
   , marshalHaskellIR
   , chaseModule
   ) where

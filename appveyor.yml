@@ -14,5 +14,6 @@ build_script:
   - stack --no-terminal test wasm-toolkit:nir-test
   - stack --no-terminal test asterius:fact-dump
   - stack --no-terminal test asterius:ahc-boot
+  - stack --no-terminal test asterius:rts-cmm
 
 test: off
