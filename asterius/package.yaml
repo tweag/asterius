@@ -25,7 +25,6 @@ custom-setup:
 ghc-options: -Wall
 
 dependencies:
-  - acid-state
   - base
   - binary
   - binaryen
