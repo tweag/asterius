@@ -32,6 +32,6 @@ main = do
             CmmData _ (Statics clbl _) -> clbl
             CmmProc _ clbl _ _ -> clbl
         ,) .
-        collectUnresolvedLabels <$>
+        (\decl -> (decl, collectUnresolvedLabels decl)) <$>
         marshalCmmDecl unsafeGlobalDynFlags rawcmm
   pPrint ams

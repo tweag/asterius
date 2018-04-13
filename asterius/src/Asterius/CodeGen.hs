@@ -1029,6 +1029,8 @@ marshalCmmInstr dflags instr =
             , valueType = expr_vt
             }
         ]
+    GHC.CmmComment {} -> pure []
+    GHC.CmmTick {} -> pure []
     _ -> throwIO $ UnsupportedCmmInstr $ fromString $ show instr
 
 marshalCmmBlockBody ::
