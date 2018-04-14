@@ -4,7 +4,8 @@
 import Bindings.Binaryen.Raw
 import qualified Data.ByteString as BS
 import Foreign.ForeignPtr
-import Language.WebAssembly.NIR
+import Language.WebAssembly.Marshal
+import Language.WebAssembly.Types
 
 main :: IO ()
 main = do

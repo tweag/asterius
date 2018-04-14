@@ -5,6 +5,7 @@ module Asterius.FrontendPlugin
   ) where
 
 import Asterius.CodeGen
+import Asterius.Types
 import Control.Monad
 import qualified Data.ByteString as BS
 import Data.Maybe
