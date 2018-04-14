@@ -911,14 +911,7 @@ marshalCmmInstr dflags instr =
                 , operands = os
                 , valueType = r_vt
                 }
-          _ -> do
-            fe <- marshalAndCastCmmExpr dflags f I64
-            pure
-              CallIndirect
-                { indirectTarget = Unary {unaryOp = WrapInt64, operand0 = fe}
-                , operands = os
-                , typeName = ""
-                }
+          _ -> impureThrow $ UnsupportedCmmInstr $ fromString $ show instr
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       let (k, _) = marshalCmmLocalReg r
       (v, _) <- marshalCmmExpr dflags e

@@ -7,7 +7,7 @@ jobs:
     environment:
       MAKEFLAGS: -j4
       XZ_OPT: -9
-      NIXPKGS_REV: ff861c076f71fea22430a6154fef9c380cab3deb
+      NIXPKGS_REV: fadcbfc2f593301c7dc22447ba1d7eed3549b1ac
     steps:
       - checkout
       - run: |
@@ -38,7 +38,7 @@ jobs:
 
           stack --no-terminal --system-ghc test --haddock wasm-toolkit:nir-test
           stack --no-terminal --system-ghc test --haddock asterius:fact-dump
-          stack --no-terminal --system-ghc test --haddock asterius:ahc-boot
+          stack --no-terminal --system-ghc exec ahc-boot
           if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
           then
             export PREV_DIR=`pwd`

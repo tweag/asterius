@@ -36,4 +36,4 @@ Besides the custom `ghc`, these dependencies are also required:
 
 `stack build asterius`. That's it. If you are using `nix`, make sure to add `--system-ghc` when invoking `stack`.
 
-Set `MAKEFLAGS=-j8` to pass flags to `make` for parallel building of `binaryen`. Run `stack test asterius:ahc-boot` to test if booting works.
+Set `MAKEFLAGS=-j8` to pass flags to `make` for parallel building of `binaryen`. Run `stack exec ahc-boot` to test if booting works.

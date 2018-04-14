@@ -4,8 +4,13 @@
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Boot
-  ( BootArgs(..)
+  ( BootArgs
+  , bootDir
+  , configureOptions
+  , buildOptions
+  , defaultBootArgs
   , boot
+  , clean
   ) where
 
 import Asterius.BuildInfo
@@ -32,8 +37,16 @@ import UnliftIO.Process
 
 data BootArgs = BootArgs
   { bootDir :: FilePath
-  , configureOptions, buildOptions, installOptions :: String
+  , configureOptions, buildOptions :: String
   }
+
+defaultBootArgs :: BootArgs
+defaultBootArgs =
+  BootArgs
+    { bootDir = dataDir </> ".boot"
+    , configureOptions = "--disable-split-objs --disable-split-sections -O2"
+    , buildOptions = ""
+    }
 
 bootTmpDir :: BootArgs -> FilePath
 bootTmpDir BootArgs {..} = bootDir </> "dist"
@@ -95,3 +108,6 @@ boot args = do
     case ec of
       ExitFailure _ -> throwString "boot failure"
       _ -> pure ()
+
+clean :: BootArgs -> IO ()
+clean BootArgs {..} = removePathForcibly bootDir

@@ -75,13 +75,13 @@ executables:
     dependencies:
       - asterius
 
-tests:
   ahc-boot:
-    source-dirs: test
+    source-dirs: app
     main: ahc-boot.hs
     dependencies:
       - asterius
 
+tests:
   fact-dump:
     source-dirs: test
     main: fact-dump.hs
