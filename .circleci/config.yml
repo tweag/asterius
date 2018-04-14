@@ -18,10 +18,8 @@ jobs:
             nixpkgs.cmake \
             nixpkgs.coreutils \
             nixpkgs.curlFull \
-            nixpkgs.findutils \
             nixpkgs.gcc \
             nixpkgs.gnumake \
-            nixpkgs.lzma \
             nixpkgs.mkdocs \
             nixpkgs.nodejs-9_x \
             nixpkgs.stack \
@@ -57,10 +55,6 @@ jobs:
             cd $PREV_DIR
             unset PREV_DIR
           fi
-          cd /tmp
-          tar -cJf /tmp/asterius_boot.tar.xz asterius/.boot
-      - store_artifacts:
-          path: /tmp/asterius_boot.tar.xz
 
   binaryen:
     docker:
