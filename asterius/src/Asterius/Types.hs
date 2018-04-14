@@ -11,14 +11,13 @@ module Asterius.Types
   , AsteriusModuleSymbol(..)
   , AsteriusSymbolKind(..)
   , AsteriusSymbolInfo(..)
-  , AsteriusSymbolDatabase(..)
+  , AsteriusSymbolDB(..)
   ) where
 
 import Control.DeepSeq
 import qualified Data.ByteString.Short as SBS
 import Data.Data
 import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
 import Data.Serialize
 import qualified Data.Vector as V
 import GHC.Generics
@@ -36,7 +35,6 @@ data AsteriusCodeGenError
   | UnsupportedImplicitCasting Expression
                                ValueType
                                ValueType
-  | UnresolvedSymbols (HS.HashSet UnresolvedSymbol)
   | UnhandledException SBS.ShortByteString
   deriving (Show, Generic, Data)
 
@@ -113,16 +111,17 @@ instance NFData AsteriusSymbolKind
 data AsteriusSymbolInfo = AsteriusSymbolInfo
   { symbolKind :: AsteriusSymbolKind
   , symbolSource :: AsteriusModuleSymbol
+  , symbolAvailable :: Bool
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusSymbolInfo
 
 instance NFData AsteriusSymbolInfo
 
-newtype AsteriusSymbolDatabase = AsteriusSymbolDatabase
+newtype AsteriusSymbolDB = AsteriusSymbolDB
   { symbolMap :: HM.HashMap UnresolvedSymbol AsteriusSymbolInfo
   } deriving (Show, Generic, Data)
 
-instance Serialize AsteriusSymbolDatabase
+instance Serialize AsteriusSymbolDB
 
-instance NFData AsteriusSymbolDatabase
+instance NFData AsteriusSymbolDB

@@ -35,9 +35,11 @@ library:
     - DefaultSignatures
     - DeriveDataTypeable
     - DeriveGeneric
+    - DerivingStrategies
     - DuplicateRecordFields
     - FlexibleContexts
     - GADTs
+    - GeneralizedNewtypeDeriving
     - LambdaCase
     - MagicHash
     - PolyKinds

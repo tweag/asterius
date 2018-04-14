@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -42,19 +44,14 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Data.Hashable
 import Data.Serialize
+import Data.String
 import qualified Data.Vector as V
 import GHC.Generics (Generic)
 import UnliftIO.Foreign
 
-newtype UnresolvedSymbol =
-  UnresolvedSymbol SBS.ShortByteString
-  deriving (Eq, Show, Generic, Data)
-
-instance Serialize UnresolvedSymbol
-
-instance Hashable UnresolvedSymbol
-
-instance NFData UnresolvedSymbol
+newtype UnresolvedSymbol = UnresolvedSymbol SBS.ShortByteString
+  deriving stock (Generic, Data)
+  deriving newtype (Eq, Show, Serialize, Hashable, NFData, IsString)
 
 data ValueType
   = None
