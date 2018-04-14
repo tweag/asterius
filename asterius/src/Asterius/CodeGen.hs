@@ -12,7 +12,8 @@ module Asterius.CodeGen
   , moduleSymbolPath
   , marshalCmmDecl
   , marshalHaskellIR
-  , updateSymbolDB
+  , marshalCmmIR
+  , moduleSymbolDB
   ) where
 
 import Asterius.Types
@@ -20,8 +21,6 @@ import qualified CLabel as GHC
 import qualified Cmm as GHC
 import qualified CmmSwitch as GHC
 import Control.Monad.IO.Class
-import Control.Monad.Par.Combinator
-import Control.Monad.Par.IO
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
@@ -1109,14 +1108,14 @@ marshalCmmDecl dflags decl =
 
 marshalHaskellIR :: MonadIO m => GHC.DynFlags -> HaskellIR -> m AsteriusModule
 marshalHaskellIR dflags HaskellIR {..} =
-  liftIO $ fmap mconcat $ runParIO $ parMapM (marshalCmmDecl dflags) cmmRaw
+  fmap mconcat $ for cmmRaw $ marshalCmmDecl dflags
 
-updateSymbolDB ::
-     AsteriusModuleSymbol
-  -> AsteriusModule
-  -> AsteriusSymbolDB
-  -> AsteriusSymbolDB
-updateSymbolDB mod_sym AsteriusModule {..} AsteriusSymbolDB {..} =
+marshalCmmIR :: MonadIO m => GHC.DynFlags -> CmmIR -> m AsteriusModule
+marshalCmmIR dflags CmmIR {..} =
+  fmap mconcat $ for cmmRaw $ marshalCmmDecl dflags
+
+moduleSymbolDB :: AsteriusModuleSymbol -> AsteriusModule -> AsteriusSymbolDB
+moduleSymbolDB mod_sym AsteriusModule {..} =
   AsteriusSymbolDB
     { symbolMap =
         f
@@ -1146,8 +1145,7 @@ updateSymbolDB mod_sym AsteriusModule {..} AsteriusSymbolDB {..} =
             , symbolSource = mod_sym
             , symbolAvailable = False
             }
-          functionErrorMap <>
-        symbolMap
+          functionErrorMap
     }
   where
     f = HM.map . const

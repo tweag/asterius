@@ -38,8 +38,6 @@ dependencies:
   - ghc
   - ghc-toolkit
   - hashable
-  - monad-par
-  - monad-par-extras
   - mtl
   - pretty-show
   - template-haskell
@@ -87,11 +85,5 @@ tests:
   fact-dump:
     source-dirs: test
     main: fact-dump.hs
-    dependencies:
-      - asterius
-
-  rts-cmm:
-    source-dirs: test
-    main: rts-cmm.hs
     dependencies:
       - asterius

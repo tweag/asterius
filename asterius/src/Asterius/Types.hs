@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Types
@@ -120,8 +121,4 @@ instance NFData AsteriusSymbolInfo
 
 newtype AsteriusSymbolDB = AsteriusSymbolDB
   { symbolMap :: HM.HashMap UnresolvedSymbol AsteriusSymbolInfo
-  } deriving (Show, Generic, Data)
-
-instance Serialize AsteriusSymbolDB
-
-instance NFData AsteriusSymbolDB
+  } deriving (Show, Generic, Data, Serialize, NFData, Semigroup, Monoid)

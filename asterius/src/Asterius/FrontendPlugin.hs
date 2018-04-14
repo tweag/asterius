@@ -10,13 +10,12 @@ import Control.Monad
 import qualified Data.ByteString as BS
 import Data.Maybe
 import Data.Serialize
-import GhcPlugins
+import GhcPlugins hiding ((<>))
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import System.FilePath
 import Text.Show.Pretty
 import UnliftIO
-import UnliftIO.Directory
 import UnliftIO.Environment
 
 frontendPlugin :: FrontendPlugin
@@ -42,7 +41,7 @@ frontendPlugin =
               liftIO $ do
                 m <- marshalHaskellIR dflags ir
                 atomicModifyIORef' sym_db_ref $ \sym_db ->
-                  (updateSymbolDB mod_sym m sym_db, ())
+                  (moduleSymbolDB mod_sym m <> sym_db, ())
                 p <- moduleSymbolPath obj_topdir mod_sym "asterius_o"
                 BS.writeFile p $ encode m
                 when is_debug $ do
@@ -52,7 +51,6 @@ frontendPlugin =
                   writeFile p_c $ ppShow cmmRaw
         , finalize =
             liftIO $ do
-              createDirectoryIfMissing True obj_topdir
               sym_db <- readIORef sym_db_ref
               BS.writeFile sym_db_path $ encode sym_db
               when is_debug $
