@@ -1,5 +1,5 @@
 module Language.Haskell.GHC.Toolkit.FrontendPlugin
-  ( frontendPluginFromCompiler
+  ( makeFrontendPlugin
   ) where
 
 import Control.Monad
@@ -12,23 +12,23 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 import Panic
 
-frontendPluginFromCompiler :: Ghc Compiler -> Ghc () -> FrontendPlugin
-frontendPluginFromCompiler init_c fin =
+makeFrontendPlugin :: Ghc Compiler -> FrontendPlugin
+makeFrontendPlugin init_c =
   defaultFrontendPlugin
     { frontend =
-        \_ targets ->
-          flip gfinally fin $ do
+        \_ targets -> do
+          c <- init_c
+          flip gfinally (finalize c) $ do
+            h <- liftIO $ hooksFromCompiler c
             let (hs_targets, non_hs_targets) =
                   partition isHaskellishTarget targets
             if null hs_targets
               then do
                 dflags <- getSessionDynFlags
-                void $ setSessionDynFlags dflags {ghcLink = NoLink}
+                void $ setSessionDynFlags dflags {ghcLink = NoLink, hooks = h}
                 env <- getSession
                 liftIO $ oneShot env StopLn targets
               else do
-                c <- init_c
-                h <- liftIO $ hooksFromCompiler c
                 env <- getSession
                 o_files <-
                   liftIO $ traverse (compileFile env StopLn) non_hs_targets
