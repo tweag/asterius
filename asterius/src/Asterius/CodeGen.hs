@@ -36,6 +36,7 @@ import qualified Hoopl.Graph as GHC
 import qualified Hoopl.Label as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
+import Language.WebAssembly.Analysis
 import Language.WebAssembly.Internals
 import Language.WebAssembly.Marshal
 import Language.WebAssembly.Types
@@ -1139,34 +1140,40 @@ moduleSymbolDB :: AsteriusModuleSymbol -> AsteriusModule -> AsteriusSymbolDB
 moduleSymbolDB mod_sym AsteriusModule {..} =
   AsteriusSymbolDB
     { symbolMap =
-        f
-          AsteriusSymbolInfo
-            { symbolKind = StaticsSymbol
-            , symbolSource = mod_sym
-            , symbolAvailable = True
-            }
+        HM.map
+          (\ss ->
+             AsteriusSymbolInfo
+               { symbolKind = StaticsSymbol
+               , symbolSource = mod_sym
+               , symbolAvailable = True
+               , symbolDirectDeps = collectUnresolvedSymbols ss
+               })
           staticsMap <>
-        f
-          AsteriusSymbolInfo
-            { symbolKind = StaticsSymbol
-            , symbolSource = mod_sym
-            , symbolAvailable = False
-            }
+        HM.map
+          (const
+             AsteriusSymbolInfo
+               { symbolKind = StaticsSymbol
+               , symbolSource = mod_sym
+               , symbolAvailable = False
+               , symbolDirectDeps = mempty
+               })
           staticsErrorMap <>
-        f
-          AsteriusSymbolInfo
-            { symbolKind = FunctionSymbol
-            , symbolSource = mod_sym
-            , symbolAvailable = True
-            }
+        HM.map
+          (\f ->
+             AsteriusSymbolInfo
+               { symbolKind = FunctionSymbol
+               , symbolSource = mod_sym
+               , symbolAvailable = True
+               , symbolDirectDeps = collectUnresolvedSymbols f
+               })
           functionMap <>
-        f
-          AsteriusSymbolInfo
-            { symbolKind = FunctionSymbol
-            , symbolSource = mod_sym
-            , symbolAvailable = False
-            }
+        HM.map
+          (const
+             AsteriusSymbolInfo
+               { symbolKind = FunctionSymbol
+               , symbolSource = mod_sym
+               , symbolAvailable = False
+               , symbolDirectDeps = mempty
+               })
           functionErrorMap
     }
-  where
-    f = HM.map . const

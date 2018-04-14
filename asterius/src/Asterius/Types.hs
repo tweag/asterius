@@ -19,6 +19,7 @@ import Control.DeepSeq
 import qualified Data.ByteString.Short as SBS
 import Data.Data
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 import Data.Serialize
 import qualified Data.Vector as V
 import GHC.Generics
@@ -113,6 +114,7 @@ data AsteriusSymbolInfo = AsteriusSymbolInfo
   { symbolKind :: AsteriusSymbolKind
   , symbolSource :: AsteriusModuleSymbol
   , symbolAvailable :: Bool
+  , symbolDirectDeps :: HS.HashSet UnresolvedSymbol
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusSymbolInfo
