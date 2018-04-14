@@ -9,6 +9,7 @@ module Language.WebAssembly.Marshal
 
 import Bindings.Binaryen.Raw
 import qualified Data.ByteString.Short as SBS
+import Data.Coerce
 import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import Data.Traversable
@@ -244,12 +245,12 @@ marshalExpression m e =
     Call {..} -> do
       os <- fmap V.convert $ V.forM operands $ marshalExpression m
       withSV os $ \ops osl ->
-        withSBS target $ \tp ->
+        withSBS (coerce target) $ \tp ->
           c_BinaryenCall m tp ops osl (marshalValueType valueType)
     CallImport {..} -> do
       os <- fmap V.convert $ V.forM operands $ marshalExpression m
       withSV os $ \ops osl ->
-        withSBS target $ \tp ->
+        withSBS (coerce target) $ \tp ->
           c_BinaryenCallImport m tp ops osl (marshalValueType valueType)
     CallIndirect {..} -> do
       t <- marshalExpression m indirectTarget

@@ -592,6 +592,8 @@ marshalCmmInstr ::
      MonadIO m => GHC.DynFlags -> GHC.CmmNode GHC.O GHC.O -> m [Expression]
 marshalCmmInstr dflags instr =
   case instr of
+    GHC.CmmComment {} -> pure []
+    GHC.CmmTick {} -> pure []
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget GHC.MO_F64_Fabs) [r] [e] -> do
       let (k, F64) = marshalCmmLocalReg r
       x <- marshalAndCastCmmExpr dflags e F64
@@ -889,6 +891,34 @@ marshalCmmInstr dflags instr =
                   }
             }
         ]
+    GHC.CmmUnsafeForeignCall (GHC.ForeignTarget f _) rs xs -> do
+      es <- for xs $ marshalCmmExpr dflags
+      let (r_vt, from_rhs) =
+            case rs of
+              [] -> (None, id)
+              [r] ->
+                let (k, vt) = marshalCmmLocalReg r
+                 in ( vt
+                    , \e -> UnresolvedSetLocal {unresolvedIndex = k, value = e})
+              _ -> impureThrow $ UnsupportedCmmInstr $ fromString $ show instr
+          os = V.fromList $ map fst es
+      pure . from_rhs <$>
+        case f of
+          GHC.CmmLit (GHC.CmmLabel clbl) ->
+            pure
+              Call
+                { target = marshalCLabel dflags clbl
+                , operands = os
+                , valueType = r_vt
+                }
+          _ -> do
+            fe <- marshalAndCastCmmExpr dflags f I64
+            pure
+              CallIndirect
+                { indirectTarget = Unary {unaryOp = WrapInt64, operand0 = fe}
+                , operands = os
+                , typeName = ""
+                }
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       let (k, _) = marshalCmmLocalReg r
       (v, _) <- marshalCmmExpr dflags e
@@ -910,8 +940,6 @@ marshalCmmInstr dflags instr =
             , valueType = expr_vt
             }
         ]
-    GHC.CmmComment {} -> pure []
-    GHC.CmmTick {} -> pure []
     _ -> throwIO $ UnsupportedCmmInstr $ fromString $ show instr
 
 marshalCmmBlockBody ::

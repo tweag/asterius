@@ -248,10 +248,10 @@ data Expression
   | Switch { names :: V.Vector SBS.ShortByteString
            , defaultName :: SBS.ShortByteString
            , condition, value :: Expression }
-  | Call { target :: SBS.ShortByteString
+  | Call { target :: UnresolvedSymbol
          , operands :: V.Vector Expression
          , valueType :: ValueType }
-  | CallImport { target :: SBS.ShortByteString
+  | CallImport { target :: UnresolvedSymbol
                , operands :: V.Vector Expression
                , valueType :: ValueType }
   | CallIndirect { indirectTarget :: Expression
