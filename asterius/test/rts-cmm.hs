@@ -9,7 +9,7 @@ import DynFlags
 import Language.Haskell.GHC.Toolkit.BuildInfo
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Run
-import Language.WebAssembly.NIR
+import Language.WebAssembly.Analysis
 import System.Directory
 import System.FilePath
 import Text.Show.Pretty
