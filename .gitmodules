@@ -1,0 +1,3 @@
+[submodule "ghc"]
+	path = ghc
+	url = http://git.haskell.org/ghc.git
