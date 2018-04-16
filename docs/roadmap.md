@@ -8,7 +8,7 @@ This page maintains a list of milestones along with their planned features. Some
 
 ## M1
 
-Approximate delivery time: Apr 15, 2018
+Approximate delivery time: Apr 15, 2018 (MISSED)
 
 The purpose of M1 is to ship an MVP(Minimum Viable Product).
 
@@ -29,6 +29,23 @@ The purpose of M1 is to ship an MVP(Minimum Viable Product).
 * A separate `inline-javascript` package to provide quasi-quoters for evaluating JavaScript embedded in Haskell, useful for the test suite.
 * A build system based on nix/bazel instead of docker for developers on Linux/Mac.
 * Fix Windows support, set up AppVeyor for testing the project itself/building the custom ghc bindist required for the project.
+
+### Current progress
+
+Last updated on: Apr 16, 2018
+
+#### Regarding P0 features
+
+* Able to compile and serialize boot libs(`ghc-prim`/`integer-simple`/`base`, along with `.cmm` files in `rts`). The current IR & object format is organized as simple K/V stores, with keys being marshaled Cmm symbols, which will be used as unique identifiers for relocation when linking.
+* Able to generate `binaryen` IR from pure Haskell programs which depend on only boot libs.
+* The linker panics about unimplemented C/Cmm routines in `rts`. They are all related to the storage manager, and to provide pure WebAssembly shims even with the no-GC scenario it takes much more time than anticipated.
+
+#### Regarding P1/P2 features
+
+* CI workflows that supports building/testing `asterius` on Windows/Linux x64 are set up. The headless browser part is not up yet, since no runnable standalone wasm32 binaries are produced for now.
+* `inline-javascript` is available.
+* (Originally in M2) [`ghc-toolkit`](https://github.com/tweag/asterius/tree/master/ghc-toolkit) is available and can be used by any Haskell-to-X compiler author.
+* (Originally in M2) A static documentation [site](https://tweag.github.io/asterius) is available. More introductory material for newcomers need to be written though.
 
 ## M2
 
