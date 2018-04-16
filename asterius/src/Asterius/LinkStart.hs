@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
@@ -104,7 +106,8 @@ chase sym_db syms =
               | sym <- syms
               ]
        in (HS.fromList l, HM.fromList r)
-    (final_weeds, final_seeds) = f init_t
+    (final_weeds', final_seeds) = f init_t
+    final_weeds = final_weeds' `HS.difference` ["newCAF"]
 
 linkStart :: MonadIO m => LinkStart -> m AsteriusModule
 linkStart ls@LinkStart {..} =
