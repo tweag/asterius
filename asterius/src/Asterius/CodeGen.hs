@@ -274,6 +274,10 @@ marshalCmmExpr dflags expr =
       x' <- marshalAndCastCmmExpr dflags x I64
       y' <- marshalAndCastCmmExpr dflags y I64
       pure (Binary {binaryOp = EqInt64, operand0 = x', operand1 = y'}, I32)
+    GHC.CmmMachOp (GHC.MO_Ne GHC.W16) [x, y] -> do
+      x' <- marshalAndCastCmmExpr dflags x I32
+      y' <- marshalAndCastCmmExpr dflags y I32
+      pure (Binary {binaryOp = NeInt32, operand0 = x', operand1 = y'}, I32)
     GHC.CmmMachOp (GHC.MO_Ne GHC.W32) [x, y] -> do
       x' <- marshalAndCastCmmExpr dflags x I32
       y' <- marshalAndCastCmmExpr dflags y I32
@@ -1064,6 +1068,10 @@ marshalCmmBlockBranch dflags instr =
                  {to = marshalLabel dflags lbl, condition = Null, code = Null}
              ]
            _ -> [])
+    GHC.CmmCall {cml_target = GHC.CmmLit (GHC.CmmLabel clbl)}
+      | "stg_gc" `CBS.isPrefixOf`
+          SBS.fromShort (coerce (marshalCLabel dflags clbl)) ->
+        pure $ Left Unreachable
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr dflags cml_target I64
       pure $ Left Return {value = t}
