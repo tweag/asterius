@@ -2,47 +2,105 @@ version: 2
 
 jobs:
   asterius:
+    resource_class: xlarge # otherwise compiling GHC may take a while
     docker:
-      - image: terrorjack/vanilla:circleci
+      - image: ghcci/x86_64-linux:0.0.1
     environment:
-      MAKEFLAGS: -j4
-      XZ_OPT: -9
-      NIXPKGS_REV: fadcbfc2f593301c7dc22447ba1d7eed3549b1ac
+      JOBS: 9
     steps:
       - checkout
-      - run: |
-          nix-channel --update
-          nix-env -iA \
-            nixpkgs.autoconf \
-            nixpkgs.binutils_nogold \
-            nixpkgs.cmake \
-            nixpkgs.coreutils \
-            nixpkgs.curlFull \
-            nixpkgs.gcc \
-            nixpkgs.gnumake \
-            nixpkgs.mkdocs \
-            nixpkgs.nodejs-9_x \
-            nixpkgs.stack \
-            nixpkgs.unzip
-
-          export PREV_DIR=`pwd`
-          cd /tmp
-          curl -L https://github.com/TerrorJack/asterius-nixpkgs/archive/$NIXPKGS_REV.zip -o asterius-nixpkgs-$NIXPKGS_REV.zip
-          unzip -q asterius-nixpkgs-$NIXPKGS_REV.zip
-          cd asterius-nixpkgs-$NIXPKGS_REV
-          nix-env -f . -iA haskell.compiler.ghcAsterius --option require-sigs false --option extra-binary-caches https://canis.sapiens.moe/
-          cd $PREV_DIR
-          unset PREV_DIR
-
-          stack --no-terminal --system-ghc test --haddock wasm-toolkit:nir-test
-          stack --no-terminal --system-ghc test --haddock asterius:fact-dump
-          stack --no-terminal --system-ghc exec ahc-boot
-          if [ $CIRCLE_PROJECT_USERNAME == "tweag" ] && [ $CIRCLE_BRANCH == "master" ]
-          then
+      # CircleCI does not checkout submodules, so we must do it ourselves.
+      - run: git submodule sync
+      - run: git submodule update --init --recursive
+      - run:
+          name: Install some packages
+          command: |
+            sudo apt-get update -qq
+            sudo apt-get install -qy python-sphinx cmake nodejs-legacy python3 python3-pip
+            sudo pip3 install mkdocs
+            which mkdocs
+      - run:
+          name: Write commit hash to a file
+          command: |
+            cd ghc
+            git rev-parse HEAD > git-rev-sha1
+      - restore_cache:
+          keys:
+            - ghc-build-cache-{{ checksum "ghc/git-rev-sha1" }}-
+      - run:
+          name: Compile GHC
+          command: |
+            if ! [ -f ghc/ghc-compiled ]
+            then
+              cp -v .circleci/build.mk ghc/mk/build.mk
+              cd ghc
+              ./boot
+              ./configure
+              make -j$JOBS
+              touch ghc-compiled
+            fi
+      - save_cache:
+          key: ghc-build-cache-{{ checksum "ghc/git-rev-sha1" }}-{{ .BuildNum }}
+          paths: "ghc"
+      - run:
+          name: Install GHC
+          command: |
+            cd ghc
+            sudo make install
+      - run:
+          name: Drop boot GHC
+          command: |
+            sudo rm -rfv /opt/ghc/
+      - run:
+          name: Check that we have the right GHC version installed
+          command: |
+            ghc --version
+      - restore_cache:
+          keys:
+            - stack-home-ghc-8.5
+      - restore_cache:
+          keys:
+            - stack-work-ghc-8.5
+      - run:
+          name: Test Asterius
+          command: |
+            stack --no-terminal --system-ghc test --haddock wasm-toolkit:nir-test
+            stack --no-terminal --system-ghc test --haddock asterius:fact-dump
+            stack --no-terminal --system-ghc exec ahc-boot
+      - save_cache:
+          key: stack-home-ghc-8.5
+          paths: "~/.stack"
+      - save_cache:
+          key: stack-work-ghc-8.5
+          paths: ".stack-work"
+      - run:
+          name: Test generation of documentation
+          command: |
             export PREV_DIR=`pwd`
             mkdocs build
             cp -r site /tmp/
             cp -r `stack --no-terminal --system-ghc path --local-doc-root` /tmp/site/haddock
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - site
+
+  asterius-push-docs:
+    docker:
+      - image: ghcci/x86_64-linux:0.0.1
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp
+      - run:
+          name: Ensure that GitHub is a known host (SSH)
+          command: |
+            if [ -z `ssh-keygen -F github.com` ]; then
+              ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+            fi
+      - run:
+          name: Push documentation to gh-pages
+          command: |
             cd /tmp/site
             touch .nojekyll
             git init
@@ -51,25 +109,16 @@ jobs:
             git checkout -b gh-pages
             git add --all
             git commit -q --message="Documentation of tweag/asterius@$CIRCLE_SHA1"
-            git push https://TerrorJack:$GH_TOKEN@github.com/tweag/asterius.git gh-pages --force
-            cd $PREV_DIR
-            unset PREV_DIR
-          fi
-
-  binaryen:
-    docker:
-      - image: terrorjack/vanilla:haskell
-    environment:
-      - MAKEFLAGS: -j4
-    steps:
-      - checkout
-      - run: |
-          nix-channel --update
-          stack --no-terminal --resolver ghc-8.4.1 --nix-packages "cmake gcc gnumake" test --haddock --flag hashable:integer-gmp binaryen:binaryen-test
+            git push git@github.com:tweag/asterius.git gh-pages --force
 
 workflows:
   version: 2
   build:
     jobs:
       - asterius
-      - binaryen
+      - asterius-push-docs:
+          requires:
+            - asterius
+          filters:
+            branches:
+              only: master
