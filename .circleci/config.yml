@@ -19,10 +19,14 @@ jobs:
             sudo apt-get install -qy python-sphinx cmake nodejs-legacy python3 python3-pip
             sudo pip3 install mkdocs
             which mkdocs
+      - run:
+          name: Write commit hash to a file
+          command: |
+            cd ghc
+            git rev-parse HEAD > git-rev-sha1
       - restore_cache:
           keys:
-            # NOTE When you bump this, also bump it in 'save_cache' step.
-            - ghc-build-cache-a303584e58b3f4791bc5881cb722e7f498e14554-
+            - ghc-build-cache-{{ checksum "ghc/git-rev-sha1" }}-
       - run:
           name: Compile GHC
           command: |
@@ -36,12 +40,7 @@ jobs:
               touch ghc-compiled
             fi
       - save_cache:
-          # TODO Avoid hardcoding GHC checkout commit here. This may be a
-          # bit tricky because CircleCI allows only env vars from contexts
-          # here, not arbitrary env vars.
-          #
-          # See: https://circleci.com/docs/2.0/caching/#using-keys-and-templates
-          key: ghc-build-cache-a303584e58b3f4791bc5881cb722e7f498e14554-{{ .BuildNum }}
+          key: ghc-build-cache-{{ checksum "ghc/git-rev-sha1" }}-{{ .BuildNum }}
           paths: "ghc"
       - run:
           name: Install GHC
