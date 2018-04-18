@@ -10,6 +10,7 @@
 module Language.WebAssembly.Types
   ( BinaryenIndex
   , UnresolvedSymbol(..)
+  , UnresolvedLocalReg(..)
   , ValueType(..)
   , FunctionType(..)
   , UnaryOp(..)
@@ -52,6 +53,19 @@ import UnliftIO.Foreign
 newtype UnresolvedSymbol = UnresolvedSymbol SBS.ShortByteString
   deriving stock (Generic, Data)
   deriving newtype (Eq, Show, Serialize, Hashable, NFData, IsString)
+
+data UnresolvedLocalReg
+  = UniqueLocalReg Int
+  | RelooperHelperReg
+  | QuotRemIntOperand0
+  | QuotRemIntOperand1
+  | QuotRemWordOperand0
+  | QuotRemWordOperand1
+  deriving (Show, Generic, Data)
+
+instance Serialize UnresolvedLocalReg
+
+instance NFData UnresolvedLocalReg
 
 data ValueType
   = None
@@ -309,11 +323,11 @@ data Expression
   | Unresolved { unresolvedSymbol :: UnresolvedSymbol }
   | UnresolvedOff { unresolvedSymbol :: UnresolvedSymbol
                   , offset :: BinaryenIndex }
-  | UnresolvedGetLocal { unresolvedIndex :: Int
+  | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , valueType :: ValueType }
-  | UnresolvedSetLocal { unresolvedIndex :: Int
+  | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
-  | UnresolvedTeeLocal { unresolvedIndex :: Int
+  | UnresolvedTeeLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
   | Null
   deriving (Show, Generic, Data)

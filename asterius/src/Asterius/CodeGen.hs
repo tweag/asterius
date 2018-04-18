@@ -202,7 +202,9 @@ marshalCmmExpr dflags expr =
     GHC.CmmReg (GHC.CmmLocal lr) -> do
       let (lr_k, lr_vt) = marshalCmmLocalReg lr
       pure
-        (UnresolvedGetLocal {unresolvedIndex = lr_k, valueType = lr_vt}, lr_vt)
+        ( UnresolvedGetLocal
+            {unresolvedLocalReg = UniqueLocalReg lr_k, valueType = lr_vt}
+        , lr_vt)
     GHC.CmmReg (GHC.CmmGlobal gr) -> do
       let (gr_k, gr_vt) = marshalCmmGlobalReg gr
       pure (GetGlobal {name = gr_k, valueType = gr_vt}, gr_vt)
@@ -215,7 +217,9 @@ marshalCmmExpr dflags expr =
                 { binaryOp = AddInt32
                 , operand0 =
                     UnresolvedGetLocal
-                      {unresolvedIndex = lr_k, valueType = lr_vt}
+                      { unresolvedLocalReg = UniqueLocalReg lr_k
+                      , valueType = lr_vt
+                      }
                 , operand1 = ConstI32 (fromIntegral o)
                 }
             , lr_vt)
@@ -225,7 +229,9 @@ marshalCmmExpr dflags expr =
                 { binaryOp = AddInt64
                 , operand0 =
                     UnresolvedGetLocal
-                      {unresolvedIndex = lr_k, valueType = lr_vt}
+                      { unresolvedLocalReg = UniqueLocalReg lr_k
+                      , valueType = lr_vt
+                      }
                 , operand1 = ConstI64 (fromIntegral o)
                 }
             , lr_vt)
@@ -604,7 +610,7 @@ marshalCmmInstr dflags instr =
       x <- marshalAndCastCmmExpr dflags e F64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value = Unary {unaryOp = AbsFloat64, operand0 = x}
             }
         ]
@@ -613,7 +619,7 @@ marshalCmmInstr dflags instr =
       x <- marshalAndCastCmmExpr dflags e F32
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value = Unary {unaryOp = AbsFloat32, operand0 = x}
             }
         ]
@@ -622,7 +628,7 @@ marshalCmmInstr dflags instr =
       x <- marshalAndCastCmmExpr dflags e F64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value = Unary {unaryOp = SqrtFloat64, operand0 = x}
             }
         ]
@@ -631,7 +637,7 @@ marshalCmmInstr dflags instr =
       x <- marshalAndCastCmmExpr dflags e F32
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value = Unary {unaryOp = SqrtFloat32, operand0 = x}
             }
         ]
@@ -642,12 +648,12 @@ marshalCmmInstr dflags instr =
       y' <- marshalAndCastCmmExpr dflags y I32
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = kx
+            { unresolvedLocalReg = UniqueLocalReg kx
             , value =
                 Binary {binaryOp = DivSInt32, operand0 = x', operand1 = y'}
             }
         , UnresolvedSetLocal
-            { unresolvedIndex = ky
+            { unresolvedLocalReg = UniqueLocalReg ky
             , value =
                 Binary {binaryOp = RemSInt32, operand0 = x', operand1 = y'}
             }
@@ -659,12 +665,12 @@ marshalCmmInstr dflags instr =
       y' <- marshalAndCastCmmExpr dflags y I64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = kx
+            { unresolvedLocalReg = UniqueLocalReg kx
             , value =
                 Binary {binaryOp = DivSInt64, operand0 = x', operand1 = y'}
             }
         , UnresolvedSetLocal
-            { unresolvedIndex = ky
+            { unresolvedLocalReg = UniqueLocalReg ky
             , value =
                 Binary {binaryOp = RemSInt64, operand0 = x', operand1 = y'}
             }
@@ -676,12 +682,12 @@ marshalCmmInstr dflags instr =
       y' <- marshalAndCastCmmExpr dflags y I32
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = kx
+            { unresolvedLocalReg = UniqueLocalReg kx
             , value =
                 Binary {binaryOp = DivUInt32, operand0 = x', operand1 = y'}
             }
         , UnresolvedSetLocal
-            { unresolvedIndex = ky
+            { unresolvedLocalReg = UniqueLocalReg ky
             , value =
                 Binary {binaryOp = RemUInt32, operand0 = x', operand1 = y'}
             }
@@ -693,12 +699,12 @@ marshalCmmInstr dflags instr =
       y' <- marshalAndCastCmmExpr dflags y I64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = kx
+            { unresolvedLocalReg = UniqueLocalReg kx
             , value =
                 Binary {binaryOp = DivUInt64, operand0 = x', operand1 = y'}
             }
         , UnresolvedSetLocal
-            { unresolvedIndex = ky
+            { unresolvedLocalReg = UniqueLocalReg ky
             , value =
                 Binary {binaryOp = RemUInt64, operand0 = x', operand1 = y'}
             }
@@ -711,7 +717,7 @@ marshalCmmInstr dflags instr =
       x <- marshalAndCastCmmExpr dflags e I32
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value =
                 Unary
                   { unaryOp = ExtendSInt32
@@ -724,7 +730,7 @@ marshalCmmInstr dflags instr =
       x <- marshalAndCastCmmExpr dflags e I64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value = Unary {unaryOp = ClzInt64, operand0 = x}
             }
         ]
@@ -733,7 +739,7 @@ marshalCmmInstr dflags instr =
       x <- marshalAndCastCmmExpr dflags e I32
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value =
                 Unary
                   { unaryOp = ExtendSInt32
@@ -746,7 +752,7 @@ marshalCmmInstr dflags instr =
       x <- marshalAndCastCmmExpr dflags e I64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value = Unary {unaryOp = CtzInt64, operand0 = x}
             }
         ]
@@ -756,7 +762,7 @@ marshalCmmInstr dflags instr =
       v' <- marshalAndCastCmmExpr dflags v I32
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value =
                 AtomicRMW
                   { atomicRMWOp =
@@ -783,7 +789,7 @@ marshalCmmInstr dflags instr =
       v' <- marshalAndCastCmmExpr dflags v I64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value =
                 AtomicRMW
                   { atomicRMWOp =
@@ -809,7 +815,7 @@ marshalCmmInstr dflags instr =
       p' <- marshalAndCastCmmExpr dflags p I64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value =
                 AtomicLoad
                   { bytes = 4
@@ -824,7 +830,7 @@ marshalCmmInstr dflags instr =
       p' <- marshalAndCastCmmExpr dflags p I64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value =
                 AtomicLoad
                   { bytes = 8
@@ -865,7 +871,7 @@ marshalCmmInstr dflags instr =
       n' <- marshalAndCastCmmExpr dflags n I32
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value =
                 AtomicCmpxchg
                   { bytes = 4
@@ -884,7 +890,7 @@ marshalCmmInstr dflags instr =
       n' <- marshalAndCastCmmExpr dflags n I64
       pure
         [ UnresolvedSetLocal
-            { unresolvedIndex = k
+            { unresolvedLocalReg = UniqueLocalReg k
             , value =
                 AtomicCmpxchg
                   { bytes = 8
@@ -904,7 +910,9 @@ marshalCmmInstr dflags instr =
               [r] ->
                 let (k, vt) = marshalCmmLocalReg r
                  in ( vt
-                    , \e -> UnresolvedSetLocal {unresolvedIndex = k, value = e})
+                    , \e ->
+                        UnresolvedSetLocal
+                          {unresolvedLocalReg = UniqueLocalReg k, value = e})
               _ -> impureThrow $ UnsupportedCmmInstr $ fromString $ show instr
           os = V.fromList $ map fst es
       pure . from_rhs <$>
@@ -920,7 +928,8 @@ marshalCmmInstr dflags instr =
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       let (k, _) = marshalCmmLocalReg r
       (v, _) <- marshalCmmExpr dflags e
-      pure [UnresolvedSetLocal {unresolvedIndex = k, value = v}]
+      pure
+        [UnresolvedSetLocal {unresolvedLocalReg = UniqueLocalReg k, value = v}]
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       let (k, _) = marshalCmmGlobalReg r
       (v, _) <- marshalCmmExpr dflags e
