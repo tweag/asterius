@@ -19,7 +19,6 @@ packages:
   - asterius
   - ghc-toolkit
   - binaryen
-  - wasm-toolkit
 setup-info:
   ghc:
     windows64:

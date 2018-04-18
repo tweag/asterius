@@ -64,7 +64,7 @@ jobs:
       - run:
           name: Test Asterius
           command: |
-            stack --no-terminal --system-ghc test --haddock wasm-toolkit:nir-test
+            stack --no-terminal --system-ghc test --haddock asterius:nir-test
             stack --no-terminal --system-ghc test --haddock asterius:fact-dump
             stack --no-terminal --system-ghc exec ahc-boot
       - save_cache:
