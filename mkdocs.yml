@@ -9,4 +9,5 @@ pages:
     - 'Project architecture': 'architecture.md'
     - 'About WebAssembly': 'webassembly.md'
     - 'Project roadmap': 'roadmap.md'
+    - 'Reading list': 'readings.md'
 theme: readthedocs
