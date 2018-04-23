@@ -22,6 +22,8 @@ custom-setup:
     - containers
     - directory
     - filepath
+    - genapply
+    - process
 
 ghc-options: -Wall
 

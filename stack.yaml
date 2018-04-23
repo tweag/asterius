@@ -17,6 +17,7 @@ extra-deps:
   - vector-0.12.0.1
 packages:
   - asterius
+  - genapply
   - ghc-toolkit
   - binaryen
 setup-info:
