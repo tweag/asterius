@@ -917,13 +917,15 @@ marshalCmmInstr dflags instr =
           os = V.fromList $ map fst es
       pure . from_rhs <$>
         case f of
-          GHC.CmmLit (GHC.CmmLabel clbl) ->
-            pure
-              Call
-                { target = marshalCLabel dflags clbl
-                , operands = os
-                , valueType = r_vt
-                }
+          GHC.CmmLit (GHC.CmmLabel clbl)
+            | marshalCLabel dflags clbl == "barf" -> pure Unreachable
+            | otherwise ->
+              pure
+                Call
+                  { target = marshalCLabel dflags clbl
+                  , operands = os
+                  , valueType = r_vt
+                  }
           _ -> impureThrow $ UnsupportedCmmInstr $ fromString $ show instr
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       let (k, _) = marshalCmmLocalReg r
