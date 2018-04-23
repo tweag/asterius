@@ -52,9 +52,8 @@ INFO_TABLE_RET ( stg_marked_upd_frame, UPDATE_FRAME,
     ASSERT(HpAlloc == 0); // Note [HpAlloc]
 
     // we know the closure is a BLACKHOLE
-    // v = StgInd_indirectee(updatee);
+    v = StgInd_indirectee(updatee);
 
-	/*
     if (GETTAG(v) != 0) (likely: False) {
         // updated by someone else: discard our value and use the
         // other one to increase sharing, but check the blocking
@@ -62,18 +61,15 @@ INFO_TABLE_RET ( stg_marked_upd_frame, UPDATE_FRAME,
         ccall checkBlockingQueues(MyCapability() "ptr", CurrentTSO "ptr");
         return (v);
     }
-	*/
 
     // common case: it is still our BLACKHOLE
-    // if (v == CurrentTSO) (likely: True) {
+    if (v == CurrentTSO) (likely: True) {
         updateWithIndirection(updatee, ret, return (ret));
-    // }
+    }
 
     // The other cases are all handled by the generic code
-	/*
     ccall updateThunk (MyCapability() "ptr", CurrentTSO "ptr",
                        updatee "ptr", ret "ptr");
-	*/
 
     return (ret);
 }

@@ -291,13 +291,12 @@ INFO_TABLE(stg_BLACKHOLE,1,0,BLACKHOLE,"BLACKHOLE","BLACKHOLE")
 
     TICK_ENT_DYN_IND(); /* tick */
 
-// retry:
+retry:
     p = StgInd_indirectee(node);
     if (GETTAG(p) != 0) {
         return (p);
     }
 
-	/*
     info = StgHeader_info(p);
     if (info == stg_IND_info) {
         // This could happen, if e.g. we got a BLOCKING_QUEUE that has
@@ -329,11 +328,9 @@ INFO_TABLE(stg_BLACKHOLE,1,0,BLACKHOLE,"BLACKHOLE","BLACKHOLE")
         }
     }
     else
-	*/
-	
-    // {
+    {
         ENTER(p);
-    // }
+    }
 }
 
 // CAF_BLACKHOLE is allocated when entering a CAF.  The reason it is
