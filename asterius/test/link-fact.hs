@@ -11,6 +11,5 @@ main = do
   withCurrentDirectory (pwd </> "test" </> "fact-dump") $ do
     m <-
       linkStart
-        defaultLinkStart
-          {targets = ["Fact.hs"], rootSymbols = ["Fact_root_closure"]}
+        defaultLinkStart {targets = ["Fact.hs"], rootSymbols = [undefined]}
     pPrint m
