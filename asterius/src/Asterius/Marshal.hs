@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Language.WebAssembly.Marshal
+module Asterius.Marshal
   ( MarshalError(..)
   , sizeOfValueType
   , marshalModule
@@ -14,8 +14,8 @@ import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import Data.Traversable
 import qualified Data.Vector as V
-import Language.WebAssembly.Internals
-import Language.WebAssembly.Types
+import Asterius.Internals
+import Asterius.Types
 import UnliftIO
 import UnliftIO.Foreign
 
@@ -478,7 +478,7 @@ marshalModule Module {..} =
         pure (k, ftp)
     fps <-
       fmap HM.fromList $
-      for (HM.toList functionMap) $ \(k, f@Function {..}) -> do
+      for (HM.toList functionMap') $ \(k, f@Function {..}) -> do
         fp <- marshalFunction m k (ftps HM.! functionTypeName) f
         pure (k, fp)
     V.forM_ functionImports $ \fi@FunctionImport {..} ->

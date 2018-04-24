@@ -2,7 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
 
-module Language.WebAssembly.Internals
+module Asterius.Internals
   ( withSBS
   , withSV
   , encodePrim

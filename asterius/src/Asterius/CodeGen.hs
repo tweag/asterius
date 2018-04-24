@@ -36,10 +36,9 @@ import qualified Hoopl.Graph as GHC
 import qualified Hoopl.Label as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
-import Language.WebAssembly.Analysis
-import Language.WebAssembly.Internals
-import Language.WebAssembly.Marshal
-import Language.WebAssembly.Types
+import Asterius.Analysis
+import Asterius.Internals
+import Asterius.Marshal
 import System.FilePath
 import qualified Unique as GHC
 import UnliftIO
@@ -175,12 +174,12 @@ marshalCmmExpr dflags expr =
         GHC.CmmFloat x GHC.W64 -> pure (ConstF64 $ fromRational x, F64)
         GHC.CmmLabel clbl ->
           pure
-            ( Language.WebAssembly.Types.Unresolved
+            ( Asterius.Types.Unresolved
                 {unresolvedSymbol = marshalCLabel dflags clbl}
             , I64)
         GHC.CmmLabelOff clbl o ->
           pure
-            ( Language.WebAssembly.Types.UnresolvedOff
+            ( Asterius.Types.UnresolvedOff
                 { unresolvedSymbol = marshalCLabel dflags clbl
                 , offset = fromIntegral o
                 }

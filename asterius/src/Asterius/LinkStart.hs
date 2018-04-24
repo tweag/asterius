@@ -17,7 +17,6 @@ module Asterius.LinkStart
 
 import Asterius.BuildInfo
 import Asterius.CodeGen
-import Asterius.Types
 import qualified Data.ByteString as BS
 import Data.Either
 import qualified Data.HashMap.Strict as HM
@@ -27,7 +26,7 @@ import Data.Serialize
 import Data.Traversable
 import DynFlags
 import Language.Haskell.GHC.Toolkit.Run
-import Language.WebAssembly.Types
+import Asterius.Types
 import System.FilePath
 import UnliftIO
 

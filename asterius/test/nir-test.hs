@@ -4,8 +4,8 @@
 import Bindings.Binaryen.Raw
 import qualified Data.ByteString as BS
 import Foreign.ForeignPtr
-import Language.WebAssembly.Marshal
-import Language.WebAssembly.Types
+import Asterius.Marshal
+import Asterius.Types
 
 main :: IO ()
 main = do
@@ -13,7 +13,7 @@ main = do
     marshalModule $
     emptyModule
       { functionTypeMap = [("func_type", FunctionType I32 [I32])]
-      , functionMap =
+      , functionMap' =
           [ ( "func"
             , Function "func_type" [I32] $
               CFG $
