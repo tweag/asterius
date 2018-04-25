@@ -1,41 +1,21 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Asterius.Marshal
-  ( MarshalError(..)
-  , sizeOfValueType
-  , marshalModule
+  ( marshalModule
   ) where
 
+import Asterius.Internals
+import Asterius.Types
 import Bindings.Binaryen.Raw
 import qualified Data.ByteString.Short as SBS
-import Data.Coerce
 import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import Data.Traversable
 import qualified Data.Vector as V
-import Asterius.Internals
-import Asterius.Types
-import UnliftIO
-import UnliftIO.Foreign
-
-data MarshalError
-  = UnsupportedExpression Expression
-  | MissingLabelHelper RelooperRun
-  | CalculatingSizeOfAuto
-  deriving (Show)
-
-instance Exception MarshalError
-
-sizeOfValueType :: ValueType -> BinaryenIndex
-sizeOfValueType vt =
-  case vt of
-    None -> 0
-    I32 -> 4
-    I64 -> 8
-    F32 -> 4
-    F64 -> 8
-    Auto -> impureThrow CalculatingSizeOfAuto
+import Data.Void
+import Foreign
 
 marshalBool :: Bool -> Int8
 marshalBool flag =
@@ -203,21 +183,18 @@ marshalAtomicRMWOp op =
     AtomicRMWXchg -> c_BinaryenAtomicRMWXchg
 
 marshalFunctionType ::
-     MonadIO m
-  => BinaryenModuleRef
+     BinaryenModuleRef
   -> SBS.ShortByteString
   -> FunctionType
-  -> m BinaryenFunctionTypeRef
+  -> IO BinaryenFunctionTypeRef
 marshalFunctionType m k FunctionType {..} =
-  liftIO $
   withSV (V.convert $ V.map marshalValueType paramTypes) $ \pts ptl ->
     withSBS k $ \np ->
       c_BinaryenAddFunctionType m np (marshalValueType returnType) pts ptl
 
 marshalExpression ::
-     MonadIO m => BinaryenModuleRef -> Expression -> m BinaryenExpressionRef
+     BinaryenModuleRef -> Expression Void -> IO BinaryenExpressionRef
 marshalExpression m e =
-  liftIO $
   case e of
     Block {..} -> do
       bs <- fmap V.convert $ V.forM bodys $ marshalExpression m
@@ -245,12 +222,12 @@ marshalExpression m e =
     Call {..} -> do
       os <- fmap V.convert $ V.forM operands $ marshalExpression m
       withSV os $ \ops osl ->
-        withSBS (coerce target) $ \tp ->
+        withSBS (entityName target) $ \tp ->
           c_BinaryenCall m tp ops osl (marshalValueType valueType)
     CallImport {..} -> do
       os <- fmap V.convert $ V.forM operands $ marshalExpression m
       withSV os $ \ops osl ->
-        withSBS (coerce target) $ \tp ->
+        withSBS (entityName target) $ \tp ->
           c_BinaryenCallImport m tp ops osl (marshalValueType valueType)
     CallIndirect {..} -> do
       t <- marshalExpression m indirectTarget
@@ -332,182 +309,156 @@ marshalExpression m e =
         p
         v
         (marshalValueType valueType)
-    CFG {..} -> relooperRun m graph
     AtomicCmpxchg {..} -> do
       p <- marshalExpression m ptr
       o <- marshalExpression m expected
       n <- marshalExpression m replacement
       c_BinaryenAtomicCmpxchg m bytes offset p o n (marshalValueType valueType)
+    CFG {..} -> relooperRun m graph
     Null -> pure nullPtr
-    _ -> throwIO $ UnsupportedExpression e
 
 marshalFunction ::
-     MonadIO m
-  => BinaryenModuleRef
+     BinaryenModuleRef
   -> SBS.ShortByteString
   -> BinaryenFunctionTypeRef
   -> Function
-  -> m BinaryenFunctionRef
-marshalFunction m k ft Function {..} =
-  liftIO $ do
-    b <- marshalExpression m body
-    withSV (V.convert $ V.map marshalValueType varTypes) $ \vtp vtl ->
-      withSBS k $ \np -> c_BinaryenAddFunction m np ft vtp vtl b
+  -> IO BinaryenFunctionRef
+marshalFunction m k ft Function {..} = do
+  b <- marshalExpression m body
+  withSV (V.convert $ V.map marshalValueType varTypes) $ \vtp vtl ->
+    withSBS k $ \np -> c_BinaryenAddFunction m np ft vtp vtl b
 
 marshalFunctionImport ::
-     MonadIO m
-  => BinaryenModuleRef
+     BinaryenModuleRef
   -> BinaryenFunctionTypeRef
   -> FunctionImport
-  -> m BinaryenImportRef
+  -> IO BinaryenImportRef
 marshalFunctionImport m ft FunctionImport {..} =
-  liftIO $
   withSBS internalName $ \inp ->
     withSBS externalModuleName $ \emp ->
       withSBS externalBaseName $ \ebp ->
         c_BinaryenAddFunctionImport m inp emp ebp ft
 
-marshalTableImport ::
-     MonadIO m => BinaryenModuleRef -> TableImport -> m BinaryenImportRef
+marshalTableImport :: BinaryenModuleRef -> TableImport -> IO BinaryenImportRef
 marshalTableImport m TableImport {..} =
-  liftIO $
   withSBS internalName $ \inp ->
     withSBS externalModuleName $ \emp ->
       withSBS externalBaseName $ \ebp -> c_BinaryenAddTableImport m inp emp ebp
 
-marshalGlobalImport ::
-     MonadIO m => BinaryenModuleRef -> GlobalImport -> m BinaryenImportRef
+marshalGlobalImport :: BinaryenModuleRef -> GlobalImport -> IO BinaryenImportRef
 marshalGlobalImport m GlobalImport {..} =
-  liftIO $
   withSBS internalName $ \inp ->
     withSBS externalModuleName $ \emp ->
       withSBS externalBaseName $ \ebp ->
         c_BinaryenAddGlobalImport m inp emp ebp (marshalValueType globalType)
 
 marshalFunctionExport ::
-     MonadIO m => BinaryenModuleRef -> FunctionExport -> m BinaryenExportRef
+     BinaryenModuleRef -> FunctionExport -> IO BinaryenExportRef
 marshalFunctionExport m FunctionExport {..} =
-  liftIO $
   withSBS internalName $ \inp ->
     withSBS externalName $ \enp -> c_BinaryenAddFunctionExport m inp enp
 
-marshalTableExport ::
-     MonadIO m => BinaryenModuleRef -> TableExport -> m BinaryenExportRef
+marshalTableExport :: BinaryenModuleRef -> TableExport -> IO BinaryenExportRef
 marshalTableExport m TableExport {..} =
-  liftIO $
   withSBS internalName $ \inp ->
     withSBS externalName $ \enp -> c_BinaryenAddTableExport m inp enp
 
-marshalGlobalExport ::
-     MonadIO m => BinaryenModuleRef -> GlobalExport -> m BinaryenExportRef
+marshalGlobalExport :: BinaryenModuleRef -> GlobalExport -> IO BinaryenExportRef
 marshalGlobalExport m GlobalExport {..} =
-  liftIO $
   withSBS internalName $ \inp ->
     withSBS externalName $ \enp -> c_BinaryenAddGlobalExport m inp enp
 
 marshalGlobal ::
-     MonadIO m
-  => BinaryenModuleRef
-  -> SBS.ShortByteString
-  -> Global
-  -> m BinaryenGlobalRef
-marshalGlobal m k Global {..} =
-  liftIO $ do
-    i <- marshalExpression m initValue
-    withSBS k $ \kp ->
-      c_BinaryenAddGlobal
-        m
-        kp
-        (marshalValueType valueType)
-        (marshalBool mutable)
-        i
+     BinaryenModuleRef -> SBS.ShortByteString -> Global -> IO BinaryenGlobalRef
+marshalGlobal m k Global {..} = do
+  i <- marshalExpression m initValue
+  withSBS k $ \kp ->
+    c_BinaryenAddGlobal
+      m
+      kp
+      (marshalValueType valueType)
+      (marshalBool mutable)
+      i
 
 marshalFunctionTable ::
-     MonadIO m
-  => BinaryenModuleRef
+     BinaryenModuleRef
   -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
   -> FunctionTable
-  -> m ()
+  -> IO ()
 marshalFunctionTable m fps FunctionTable {..} =
-  liftIO $
   withSV (V.convert $ V.map (fps HM.!) functionNames) $
   c_BinaryenSetFunctionTable m
 
-marshalMemory :: MonadIO m => BinaryenModuleRef -> Memory -> m ()
-marshalMemory m Memory {..} =
-  liftIO $ do
-    (cps, os) <-
-      fmap V.unzip $
-      V.forM dataSegments $ \DataSegment {..} -> do
-        o <- marshalExpression m offset
-        withSBS content $ \cp -> pure (cp, o)
-    withSV (V.convert cps) $ \cp (_ :: Int) ->
-      withSV (V.convert os) $ \ofs (_ :: Int) ->
-        withSV
-          (V.convert $
-           V.map
-             (\DataSegment {..} -> fromIntegral $ SBS.length content)
-             dataSegments) $ \sps (_ :: Int) ->
-          withSBS exportName $ \enp ->
-            c_BinaryenSetMemory
-              m
-              initialPages
-              maximumPages
-              enp
-              cp
-              ofs
-              sps
-              (fromIntegral $ V.length dataSegments)
+marshalMemory :: BinaryenModuleRef -> Memory -> IO ()
+marshalMemory m Memory {..} = do
+  (cps, os) <-
+    fmap V.unzip $
+    V.forM dataSegments $ \DataSegment {..} -> do
+      o <- marshalExpression m offset
+      withSBS content $ \cp -> pure (cp, o)
+  withSV (V.convert cps) $ \cp (_ :: Int) ->
+    withSV (V.convert os) $ \ofs (_ :: Int) ->
+      withSV
+        (V.convert $
+         V.map
+           (\DataSegment {..} -> fromIntegral $ SBS.length content)
+           dataSegments) $ \sps (_ :: Int) ->
+        withSBS exportName $ \enp ->
+          c_BinaryenSetMemory
+            m
+            initialPages
+            maximumPages
+            enp
+            cp
+            ofs
+            sps
+            (fromIntegral $ V.length dataSegments)
 
 marshalStartFunctionName ::
-     MonadIO m
-  => BinaryenModuleRef
+     BinaryenModuleRef
   -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
   -> SBS.ShortByteString
-  -> m ()
-marshalStartFunctionName m fps n = liftIO $ c_BinaryenSetStart m (fps HM.! n)
+  -> IO ()
+marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps HM.! n)
 
-marshalModule :: MonadIO m => Module -> m BinaryenModuleRef
-marshalModule Module {..} =
-  liftIO $ do
-    m <- c_BinaryenModuleCreate
-    ftps <-
-      fmap HM.fromList $
-      for (HM.toList functionTypeMap) $ \(k, ft) -> do
-        ftp <- marshalFunctionType m k ft
-        pure (k, ftp)
-    fps <-
-      fmap HM.fromList $
-      for (HM.toList functionMap') $ \(k, f@Function {..}) -> do
-        fp <- marshalFunction m k (ftps HM.! functionTypeName) f
-        pure (k, fp)
-    V.forM_ functionImports $ \fi@FunctionImport {..} ->
-      marshalFunctionImport m (ftps HM.! functionTypeName) fi
-    V.forM_ tableImports $ marshalTableImport m
-    V.forM_ globalImports $ marshalGlobalImport m
-    V.forM_ functionExports $ marshalFunctionExport m
-    V.forM_ tableExports $ marshalTableExport m
-    V.forM_ globalExports $ marshalGlobalExport m
-    for_ (HM.toList globalMap) $ uncurry (marshalGlobal m)
-    case functionTable of
-      Just ft -> marshalFunctionTable m fps ft
-      _ -> pure ()
-    case memory of
-      Just mem -> marshalMemory m mem
-      _ -> pure ()
-    case startFunctionName of
-      Just k -> marshalStartFunctionName m fps k
-      _ -> pure ()
-    pure m
+marshalModule :: Module -> IO BinaryenModuleRef
+marshalModule Module {..} = do
+  m <- c_BinaryenModuleCreate
+  ftps <-
+    fmap HM.fromList $
+    for (HM.toList functionTypeMap) $ \(k, ft) -> do
+      ftp <- marshalFunctionType m k ft
+      pure (k, ftp)
+  fps <-
+    fmap HM.fromList $
+    for (HM.toList functionMap') $ \(k, f@Function {..}) -> do
+      fp <- marshalFunction m k (ftps HM.! functionTypeName) f
+      pure (k, fp)
+  V.forM_ functionImports $ \fi@FunctionImport {..} ->
+    marshalFunctionImport m (ftps HM.! functionTypeName) fi
+  V.forM_ tableImports $ marshalTableImport m
+  V.forM_ globalImports $ marshalGlobalImport m
+  V.forM_ functionExports $ marshalFunctionExport m
+  V.forM_ tableExports $ marshalTableExport m
+  V.forM_ globalExports $ marshalGlobalExport m
+  for_ (HM.toList globalMap) $ uncurry (marshalGlobal m)
+  case functionTable of
+    Just ft -> marshalFunctionTable m fps ft
+    _ -> pure ()
+  case memory of
+    Just mem -> marshalMemory m mem
+    _ -> pure ()
+  case startFunctionName of
+    Just k -> marshalStartFunctionName m fps k
+    _ -> pure ()
+  pure m
 
 relooperAddBlock ::
-     MonadIO m
-  => BinaryenModuleRef
+     BinaryenModuleRef
   -> RelooperRef
-  -> RelooperAddBlock
-  -> m RelooperBlockRef
+  -> RelooperAddBlock Void
+  -> IO RelooperBlockRef
 relooperAddBlock m r ab =
-  liftIO $
   case ab of
     AddBlock {..} -> do
       c <- marshalExpression m code
@@ -518,14 +469,12 @@ relooperAddBlock m r ab =
       c_RelooperAddBlockWithSwitch r _code _cond
 
 relooperAddBranch ::
-     MonadIO m
-  => BinaryenModuleRef
+     BinaryenModuleRef
   -> HM.HashMap SBS.ShortByteString RelooperBlockRef
   -> SBS.ShortByteString
-  -> RelooperAddBranch
-  -> m ()
+  -> RelooperAddBranch Void
+  -> IO ()
 relooperAddBranch m bm k ab =
-  liftIO $
   case ab of
     AddBranch {..} -> do
       _cond <- marshalExpression m condition
@@ -536,18 +485,14 @@ relooperAddBranch m bm k ab =
       withSV (V.convert indexes) $ \idp idn ->
         c_RelooperAddBranchForSwitch (bm HM.! k) (bm HM.! to) idp idn c
 
-relooperRun ::
-     MonadIO m => BinaryenModuleRef -> RelooperRun -> m BinaryenExpressionRef
-relooperRun m rr@RelooperRun {..} =
-  liftIO $ do
-    r <- c_RelooperCreate
-    bpm <-
-      fmap HM.fromList $
-      for (HM.toList blockMap) $ \(k, RelooperBlock {..}) -> do
-        bp <- relooperAddBlock m r addBlock
-        pure (k, bp)
-    for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
-      V.forM_ addBranches $ relooperAddBranch m bpm k
-    case labelHelper of
-      Just lh -> c_RelooperRenderAndDispose r (bpm HM.! entry) lh m
-      _ -> throwIO $ MissingLabelHelper rr
+relooperRun :: BinaryenModuleRef -> RelooperRun Void -> IO BinaryenExpressionRef
+relooperRun m RelooperRun {..} = do
+  r <- c_RelooperCreate
+  bpm <-
+    fmap HM.fromList $
+    for (HM.toList blockMap) $ \(k, RelooperBlock {..}) -> do
+      bp <- relooperAddBlock m r addBlock
+      pure (k, bp)
+  for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
+    V.forM_ addBranches $ relooperAddBranch m bpm k
+  c_RelooperRenderAndDispose r (bpm HM.! entry) labelHelper m
