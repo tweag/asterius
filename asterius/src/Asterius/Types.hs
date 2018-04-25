@@ -146,10 +146,10 @@ data UnresolvedLocalReg
   | RelooperHelperReg
   | SwitchCondReg
   | NarrowStoreReg
-  | QuotRemIntOperand0
-  | QuotRemIntOperand1
-  | QuotRemWordOperand0
-  | QuotRemWordOperand1
+  | QuotRemI32X
+  | QuotRemI32Y
+  | QuotRemI64X
+  | QuotRemI64Y
   deriving (Show, Generic, Data)
 
 instance Serialize UnresolvedLocalReg
