@@ -244,44 +244,51 @@ marshalCmmLoad ::
      GHC.CmmExpr -> GHC.CmmType -> CodeGen (AsteriusExpression, ValueType)
 marshalCmmLoad p t = do
   pv <- marshalAndCastCmmExpr p I32
-  dispatchAllCmmWidth
-    (GHC.typeWidth t)
-    ( Load
-        { signed = False
-        , bytes = 1
-        , offset = 0
-        , align = 0
-        , valueType = I32
-        , ptr = pv
-        }
-    , I32)
-    ( Load
-        { signed = False
-        , bytes = 2
-        , offset = 0
-        , align = 0
-        , valueType = I32
-        , ptr = pv
-        }
-    , I32)
-    ( Load
-        { signed = False
-        , bytes = 4
-        , offset = 0
-        , align = 0
-        , valueType = I32
-        , ptr = pv
-        }
-    , I32)
-    ( Load
-        { signed = False
-        , bytes = 8
-        , offset = 0
-        , align = 0
-        , valueType = I64
-        , ptr = pv
-        }
-    , I64)
+  join $
+    dispatchAllCmmWidth
+      (GHC.typeWidth t)
+      (pure
+         ( Load
+             { signed = False
+             , bytes = 1
+             , offset = 0
+             , align = 0
+             , valueType = I32
+             , ptr = pv
+             }
+         , I32))
+      (pure
+         ( Load
+             { signed = False
+             , bytes = 2
+             , offset = 0
+             , align = 0
+             , valueType = I32
+             , ptr = pv
+             }
+         , I32))
+      (do vt <- marshalCmmType t
+          pure
+            ( Load
+                { signed = False
+                , bytes = 4
+                , offset = 0
+                , align = 0
+                , valueType = vt
+                , ptr = pv
+                }
+            , vt))
+      (do vt <- marshalCmmType t
+          pure
+            ( Load
+                { signed = False
+                , bytes = 8
+                , offset = 0
+                , align = 0
+                , valueType = vt
+                , ptr = pv
+                }
+            , vt))
 
 marshalCmmReg :: GHC.CmmReg -> CodeGen (AsteriusExpression, ValueType)
 marshalCmmReg r =
@@ -774,7 +781,7 @@ marshalCmmInstr instr =
                   , value = xe
                   , valueType = I32
                   })
-          (do xe <- marshalAndCastCmmExpr e I32
+          (do (xe, vt) <- marshalCmmExpr e
               pure
                 Store
                   { bytes = 4
@@ -782,9 +789,9 @@ marshalCmmInstr instr =
                   , align = 0
                   , ptr = pv
                   , value = xe
-                  , valueType = I32
+                  , valueType = vt
                   })
-          (do xe <- marshalAndCastCmmExpr e I64
+          (do (xe, vt) <- marshalCmmExpr e
               pure
                 Store
                   { bytes = 8
@@ -792,7 +799,7 @@ marshalCmmInstr instr =
                   , align = 0
                   , ptr = pv
                   , value = xe
-                  , valueType = I64
+                  , valueType = vt
                   })
       pure [store_instr]
     _ -> throwError $ UnsupportedCmmInstr $ showSBS instr

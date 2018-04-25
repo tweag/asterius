@@ -14,11 +14,20 @@ module Asterius.Boot
   ) where
 
 import Asterius.BuildInfo
-import Data.Functor
+import Asterius.CodeGen
+import Control.Monad
+import qualified Data.ByteString as BS
+import Data.Foldable
+import qualified Data.Map.Strict as M
+import Data.Maybe
+import Data.Serialize
+import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath)
+import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Run
 import System.Exit
 import System.FilePath
+import Text.Show.Pretty (ppShow)
 import UnliftIO
 import UnliftIO.Directory
 import UnliftIO.Environment
@@ -63,13 +72,29 @@ bootCreateProcess args@BootArgs {..} = do
 
 bootRTSCmm :: BootArgs -> IO ()
 bootRTSCmm BootArgs {..} = do
-  rts_cmm_fns <-
-    map (rts_path </>) . filter ((== ".cmm") . takeExtension) <$>
+  is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
+  rts_cmm_mods <-
+    map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
     listDirectory rts_path
-  void $ runCmm defaultConfig rts_cmm_fns
-  pure ()
+  cmms <-
+    M.toList <$>
+    runCmm defaultConfig [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
+  for_ cmms $ \(fn, ir@CmmIR {..}) ->
+    let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
+        mod_sym = marshalToModuleSymbol ms_mod
+     in case runCodeGen (marshalCmmIR ir) GHC.unsafeGlobalDynFlags ms_mod of
+          Left err -> throwIO err
+          Right m -> do
+            p <- moduleSymbolPath obj_topdir mod_sym "asterius_o"
+            BS.writeFile p $ encode m
+            when is_debug $ do
+              p_a <- moduleSymbolPath obj_topdir mod_sym "txt"
+              writeFile p_a $ ppShow m
+              p_c <- moduleSymbolPath obj_topdir mod_sym "dump-cmm-raw-ast"
+              writeFile p_c $ ppShow cmmRaw
   where
     rts_path = bootLibsPath </> "rts"
+    obj_topdir = bootDir </> "asterius_lib"
 
 boot :: BootArgs -> IO ()
 boot args = do
