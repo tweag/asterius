@@ -145,7 +145,6 @@ data UnresolvedLocalReg
   = UniqueLocalReg Int
   | RelooperHelperReg
   | SwitchCondReg
-  | NarrowStoreReg
   | QuotRemI32X
   | QuotRemI32Y
   | QuotRemI64X

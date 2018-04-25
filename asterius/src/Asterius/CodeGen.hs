@@ -142,13 +142,6 @@ dispatchAllCmmWidth w r8 r16 r32 r64 =
     GHC.W64 -> pure r64
     _ -> throwError $ UnsupportedCmmWidth $ showSBS w
 
-{-# INLINEABLE sizeOfValueType #-}
-sizeOfValueType :: ValueType -> CodeGen BinaryenIndex
-sizeOfValueType vt
-  | vt == I32 || vt == F32 = pure 4
-  | vt == I64 || vt == F64 = pure 8
-  | otherwise = throwError $ UnsupportedCmmType $ showSBS vt
-
 marshalCmmStatic :: GHC.CmmStatic -> CodeGen AsteriusStatic
 marshalCmmStatic st =
   case st of
@@ -250,50 +243,45 @@ marshalCmmLit lit =
 marshalCmmLoad ::
      GHC.CmmExpr -> GHC.CmmType -> CodeGen (AsteriusExpression, ValueType)
 marshalCmmLoad p t = do
-  vt <- marshalCmmType t
-  vts <- sizeOfValueType vt
   pv <- marshalAndCastCmmExpr p I32
-  let r8 =
-        ( Binary
-            { binaryOp = AndInt32
-            , operand0 =
-                Load
-                  { signed = True
-                  , bytes = 4
-                  , offset = 0
-                  , align = 0
-                  , valueType = I32
-                  , ptr = pv
-                  }
-            , operand1 = ConstI32 0x000000FF
-            }
-        , I32)
-      r16 =
-        ( Binary
-            { binaryOp = AndInt32
-            , operand0 =
-                Load
-                  { signed = True
-                  , bytes = 4
-                  , offset = 0
-                  , align = 0
-                  , valueType = I32
-                  , ptr = pv
-                  }
-            , operand1 = ConstI32 0x0000FFFF
-            }
-        , I32)
-      relse =
-        ( Load
-            { signed = True
-            , bytes = vts
-            , offset = 0
-            , align = 0
-            , valueType = vt
-            , ptr = pv
-            }
-        , vt)
-  dispatchAllCmmWidth (GHC.typeWidth t) r8 r16 relse relse
+  dispatchAllCmmWidth
+    (GHC.typeWidth t)
+    ( Load
+        { signed = False
+        , bytes = 1
+        , offset = 0
+        , align = 0
+        , valueType = I32
+        , ptr = pv
+        }
+    , I32)
+    ( Load
+        { signed = False
+        , bytes = 2
+        , offset = 0
+        , align = 0
+        , valueType = I32
+        , ptr = pv
+        }
+    , I32)
+    ( Load
+        { signed = False
+        , bytes = 4
+        , offset = 0
+        , align = 0
+        , valueType = I32
+        , ptr = pv
+        }
+    , I32)
+    ( Load
+        { signed = False
+        , bytes = 8
+        , offset = 0
+        , align = 0
+        , valueType = I64
+        , ptr = pv
+        }
+    , I64)
 
 marshalCmmReg :: GHC.CmmReg -> CodeGen (AsteriusExpression, ValueType)
 marshalCmmReg r =
@@ -760,97 +748,53 @@ marshalCmmInstr instr =
       v <- marshalAndCastCmmExpr e vt
       pure [SetGlobal {name = gr, value = v}]
     GHC.CmmStore p e -> do
-      (dflags, _) <- ask
       pv <- marshalAndCastCmmExpr p I32
-      let narrow_load =
-            ExtraExpression
-              UnresolvedSetLocal
-                { unresolvedLocalReg = NarrowStoreReg
-                , value =
-                    Load
-                      { signed = True
-                      , bytes = 4
-                      , offset = 0
-                      , align = 0
-                      , valueType = I32
-                      , ptr = pv
-                      }
-                }
-      (v, vt) <- marshalCmmExpr e
-      sz <- sizeOfValueType vt
-      let r8 =
-            [ narrow_load
-            , Store
-                { bytes = 4
-                , offset = 0
-                , align = 0
-                , ptr = pv
-                , value =
-                    Binary
-                      { binaryOp = OrInt32
-                      , operand0 =
-                          Binary
-                            { binaryOp = AndInt32
-                            , operand0 = v
-                            , operand1 = ConstI32 0x000000FF
-                            }
-                      , operand1 =
-                          Binary
-                            { binaryOp = AndInt32
-                            , operand0 =
-                                ExtraExpression
-                                  UnresolvedGetLocal
-                                    { unresolvedLocalReg = NarrowStoreReg
-                                    , valueType = I32
-                                    }
-                            , operand1 = ConstI32 0xFFFFFF00
-                            }
-                      }
-                , valueType = I32
-                }
-            ]
-          r16 =
-            [ narrow_load
-            , Store
-                { bytes = 4
-                , offset = 0
-                , align = 0
-                , ptr = pv
-                , value =
-                    Binary
-                      { binaryOp = OrInt32
-                      , operand0 =
-                          Binary
-                            { binaryOp = AndInt32
-                            , operand0 = v
-                            , operand1 = ConstI32 0x0000FFFF
-                            }
-                      , operand1 =
-                          Binary
-                            { binaryOp = AndInt32
-                            , operand0 =
-                                ExtraExpression
-                                  UnresolvedGetLocal
-                                    { unresolvedLocalReg = NarrowStoreReg
-                                    , valueType = I32
-                                    }
-                            , operand1 = ConstI32 0xFFFF0000
-                            }
-                      }
-                , valueType = I32
-                }
-            ]
-          relse =
-            [ Store
-                { bytes = sz
-                , offset = 0
-                , align = 0
-                , ptr = pv
-                , value = v
-                , valueType = vt
-                }
-            ]
-      dispatchAllCmmWidth (GHC.cmmExprWidth dflags e) r8 r16 relse relse
+      (dflags, _) <- ask
+      store_instr <-
+        join $
+        dispatchAllCmmWidth
+          (GHC.cmmExprWidth dflags e)
+          (do xe <- marshalAndCastCmmExpr e I32
+              pure
+                Store
+                  { bytes = 1
+                  , offset = 0
+                  , align = 0
+                  , ptr = pv
+                  , value = xe
+                  , valueType = I32
+                  })
+          (do xe <- marshalAndCastCmmExpr e I32
+              pure
+                Store
+                  { bytes = 2
+                  , offset = 0
+                  , align = 0
+                  , ptr = pv
+                  , value = xe
+                  , valueType = I32
+                  })
+          (do xe <- marshalAndCastCmmExpr e I32
+              pure
+                Store
+                  { bytes = 4
+                  , offset = 0
+                  , align = 0
+                  , ptr = pv
+                  , value = xe
+                  , valueType = I32
+                  })
+          (do xe <- marshalAndCastCmmExpr e I64
+              pure
+                Store
+                  { bytes = 8
+                  , offset = 0
+                  , align = 0
+                  , ptr = pv
+                  , value = xe
+                  , valueType = I64
+                  })
+      pure [store_instr]
     _ -> throwError $ UnsupportedCmmInstr $ showSBS instr
 
 marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [AsteriusExpression]

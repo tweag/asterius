@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
+import Asterius.Marshal
+import Asterius.Types
 import Bindings.Binaryen.Raw
 import qualified Data.ByteString as BS
 import Foreign.ForeignPtr
-import Asterius.Marshal
-import Asterius.Types
 
 main :: IO ()
 main = do
@@ -21,7 +22,8 @@ main = do
                 "block_entry"
                 [ ( "block_entry"
                   , RelooperBlock
-                      (AddBlock Nop)
+                      (AddBlock $
+                       Store 2 0 0 (ConstI32 0) (ConstI32 0xFFFFFFFF) I32)
                       [ AddBranch
                           "block_0"
                           (Binary EqInt32 (GetLocal 0 I32) (ConstI32 0))
