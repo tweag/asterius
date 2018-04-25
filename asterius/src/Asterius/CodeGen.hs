@@ -553,6 +553,7 @@ marshalAndCastCmmExpr :: GHC.CmmExpr -> ValueType -> CodeGen AsteriusExpression
 marshalAndCastCmmExpr cmm_expr dest_vt = do
   (src_expr, src_vt) <- marshalCmmExpr cmm_expr
   case (# src_vt, dest_vt #) of
+    (# I32, I64 #) -> pure Unary {unaryOp = ExtendSInt32, operand0 = src_expr}
     (# I64, I32 #) -> pure Unary {unaryOp = WrapInt64, operand0 = src_expr}
     _
       | src_vt == dest_vt -> pure src_expr
@@ -693,18 +694,12 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem w) [qr, rr] [x, y] =
 marshalCmmPrimCall GHC.MO_WriteBarrier _ _ = pure []
 marshalCmmPrimCall GHC.MO_Touch _ _ = pure []
 marshalCmmPrimCall (GHC.MO_Prefetch_Data _) _ _ = pure []
-marshalCmmPrimCall (GHC.MO_Clz w) [r] [x] =
-  join $
-  dispatchCmmWidth
-    w
-    (marshalCmmUnPrimCall ClzInt32 I32 r x)
-    (marshalCmmUnPrimCall ClzInt64 I64 r x)
-marshalCmmPrimCall (GHC.MO_Ctz w) [r] [x] =
-  join $
-  dispatchCmmWidth
-    w
-    (marshalCmmUnPrimCall CtzInt32 I32 r x)
-    (marshalCmmUnPrimCall CtzInt64 I64 r x)
+marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =
+  marshalCmmUnPrimCall PopcntInt64 I64 r x
+marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
+  marshalCmmUnPrimCall ClzInt64 I64 r x
+marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
+  marshalCmmUnPrimCall CtzInt64 I64 r x
 marshalCmmPrimCall op rs xs =
   throwError $
   UnsupportedCmmInstr $
