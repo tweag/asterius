@@ -7,9 +7,11 @@ module Language.Haskell.GHC.Toolkit.Run
   , ghcLibDir
   , defaultConfig
   , runHaskell
+  , runSingleHaskell
   , runCmm
   ) where
 
+import Control.Exception
 import Control.Monad.IO.Class
 import Data.Functor
 import Data.IORef
@@ -22,6 +24,9 @@ import qualified Language.Haskell.GHC.Toolkit.BuildInfo as BI
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 import Panic
+import System.Directory
+import System.FilePath
+import System.IO
 
 data Config = Config
   { ghcFlags :: [String]
@@ -67,6 +72,16 @@ runHaskell Config {..} targets =
     case ok_flag of
       Succeeded -> read_mod_map
       Failed -> liftIO $ throwGhcExceptionIO $ Panic "GHC.load returned Failed."
+
+runSingleHaskell :: MonadIO m => Config -> String -> m (Module, HaskellIR)
+runSingleHaskell conf src =
+  liftIO $ do
+    tmpdir <- getTemporaryDirectory
+    bracket (openBinaryTempFile tmpdir "TMP.hs") (\(p, _) -> removeFile p) $ \(p, h) -> do
+      hClose h
+      writeFile p $ mconcat ["module ", takeBaseName p, " where\n\n", src]
+      [t] <- M.toList <$> runHaskell conf [p]
+      pure t
 
 runCmm :: MonadIO m => Config -> [FilePath] -> m (M.Map FilePath CmmIR)
 runCmm Config {..} cmm_fns =
