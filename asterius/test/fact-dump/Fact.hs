@@ -9,5 +9,5 @@ fact n = n * fact (n - 1)
 facts :: [Int]
 facts = scanl (*) 1 [1 ..]
 
-root :: Int
-root = fact 5 + facts !! 5
+root :: IO ()
+root = pure ()

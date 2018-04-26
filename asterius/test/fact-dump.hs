@@ -25,11 +25,13 @@ main = do
         putStrLn "Dumping IR of Fact.."
         writeFile "Fact.txt" $ ppShow m
         putStrLn "Chasing Fact_root_closure.."
-        cache <- initAsteriusModuleCache obj_topdir
+        cache' <- initAsteriusModuleCache obj_topdir
+        cache <-
+          enrichAsteriusModuleCache (marshalToModuleSymbol ms_mod) m cache'
         chase
           cache
           AsteriusEntitySymbol
             {entityKind = StaticsEntity, entityName = "Fact_root_closure"} >>=
-          print
+          pPrint
   where
     obj_topdir = bootDir defaultBootArgs </> "asterius_lib"

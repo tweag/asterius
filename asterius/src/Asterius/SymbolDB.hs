@@ -158,11 +158,13 @@ chaseIter c (staging_syms, ChaseResult {..}) = do
               directDepBy $
             concat [[(k1, k) | k1 <- HS.toList k1s] | (k, k1s) <- availables]
         , statusMap =
-            [ (Unfound, HS.fromList unfounds)
-            , (Unavailable, HS.fromList unavailables)
-            , (Available (), HS.fromList $ map fst availables)
-            ] <>
-            statusMap
+            HM.unionWith
+              (<>)
+              [ (Unfound, HS.fromList unfounds)
+              , (Unavailable, HS.fromList unavailables)
+              , (Available (), HS.fromList $ map fst availables)
+              ]
+              statusMap
         })
 
 chase :: AsteriusModuleCache -> AsteriusEntitySymbol -> IO ChaseResult
