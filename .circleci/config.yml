@@ -65,7 +65,6 @@ jobs:
           name: Test Asterius
           command: |
             stack --no-terminal --system-ghc test --haddock asterius:nir-test
-            stack --no-terminal --system-ghc test --haddock asterius:fact-dump
             stack --no-terminal --system-ghc exec ahc-boot
       - save_cache:
           key: stack-home-ghc-8.5

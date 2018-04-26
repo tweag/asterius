@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
@@ -25,6 +26,7 @@ import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath)
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Run
+import Prelude hiding (IO)
 import System.Exit
 import System.FilePath
 import Text.Show.Pretty (ppShow)

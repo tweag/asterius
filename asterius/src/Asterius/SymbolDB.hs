@@ -1,5 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -15,6 +16,7 @@ import qualified Data.HashSet as HS
 import Data.IORef
 import Data.Serialize
 import GHC.Exts
+import Prelude hiding (IO)
 import System.FilePath
 
 newtype AsteriusSymbolDB = AsteriusSymbolDB
@@ -59,9 +61,19 @@ loadAsteriusModule AsteriusModuleCache {..} mod_sym = do
     _ -> do
       p <- moduleSymbolPath asteriusModuleTopDir mod_sym "asterius_o"
       m <- decodeFile p
-      atomicModifyIORef asteriusModuleCacheRef $ \cache ->
+      atomicModifyIORef' asteriusModuleCacheRef $ \cache ->
         (HM.insert mod_sym m cache, ())
       pure m
+
+enrichAsteriusModuleCache ::
+     AsteriusModuleSymbol
+  -> AsteriusModule
+  -> AsteriusModuleCache
+  -> IO AsteriusModuleCache
+enrichAsteriusModuleCache mod_sym m c@AsteriusModuleCache {..} = do
+  atomicModifyIORef' asteriusModuleCacheRef $ \cache ->
+    (HM.insert mod_sym m cache, ())
+  pure c {asteriusSymbolDB = enrichSymbolDB mod_sym m asteriusSymbolDB}
 
 data EntitySymbolStatus
   = Unfound

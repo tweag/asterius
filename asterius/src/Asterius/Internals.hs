@@ -1,9 +1,11 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.Internals
-  ( withSBS
+  ( IO
+  , withSBS
   , withSV
   , encodePrim
   , reinterpretCast
@@ -26,16 +28,22 @@ import qualified Data.Vector.Storable as SV
 import Foreign
 import Foreign.C
 import GHC.Exts
-import GHC.Types
+import GHC.Stack
+import qualified GHC.Types
+import Prelude hiding (IO)
 import Type.Reflection
 import UnliftIO.Exception
+
+type IO a
+   = HasCallStack =>
+       GHC.Types.IO a
 
 {-# INLINEABLE withSBS #-}
 withSBS :: SBS.ShortByteString -> (Ptr CChar -> IO r) -> IO r
 withSBS sbs@(SBS.SBS ba) cont =
   if SBS.null sbs
     then cont nullPtr
-    else IO
+    else GHC.Types.IO
            (\s0 ->
               case newPinnedByteArray# (l0 +# 1#) s0 of
                 (# s1, mba #) ->
@@ -46,7 +54,7 @@ withSBS sbs@(SBS.SBS ba) cont =
                           case unsafeFreezeByteArray# mba s3 of
                             (# s4, ba' #) ->
                               case cont (Ptr (byteArrayContents# ba')) of
-                                IO cf -> cf s4)
+                                GHC.Types.IO cf -> cf s4)
   where
     l0 = sizeofByteArray# ba
 

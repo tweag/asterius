@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
@@ -37,6 +38,7 @@ import qualified Hoopl.Graph as GHC
 import qualified Hoopl.Label as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
+import Prelude hiding (IO)
 import System.Directory
 import System.FilePath
 import qualified Unique as GHC
@@ -282,9 +284,7 @@ marshalCmmReg r =
   case r of
     GHC.CmmLocal lr -> do
       (lr_k, lr_vt) <- marshalCmmLocalReg lr
-      pure
-        ( UnresolvedGetLocal {unresolvedLocalReg = lr_k}
-        , lr_vt)
+      pure (UnresolvedGetLocal {unresolvedLocalReg = lr_k}, lr_vt)
     GHC.CmmGlobal gr -> do
       (gr_k, gr_vt) <- marshalCmmGlobalReg gr
       pure (GetGlobal {name = gr_k, valueType = gr_vt}, gr_vt)
@@ -572,10 +572,8 @@ marshalCmmQuotRemPrimCall tmp0 tmp1 qop rop vt qr rr x y = do
         , value =
             Binary
               { binaryOp = qop
-              , operand0 =
-                  UnresolvedGetLocal {unresolvedLocalReg = tmp0}
-              , operand1 =
-                  UnresolvedGetLocal {unresolvedLocalReg = tmp1}
+              , operand0 = UnresolvedGetLocal {unresolvedLocalReg = tmp0}
+              , operand1 = UnresolvedGetLocal {unresolvedLocalReg = tmp1}
               }
         }
     , UnresolvedSetLocal
@@ -583,10 +581,8 @@ marshalCmmQuotRemPrimCall tmp0 tmp1 qop rop vt qr rr x y = do
         , value =
             Binary
               { binaryOp = rop
-              , operand0 =
-                  UnresolvedGetLocal {unresolvedLocalReg = tmp0}
-              , operand1 =
-                  UnresolvedGetLocal {unresolvedLocalReg = tmp1}
+              , operand0 = UnresolvedGetLocal {unresolvedLocalReg = tmp0}
+              , operand1 = UnresolvedGetLocal {unresolvedLocalReg = tmp1}
               }
         }
     ]
@@ -799,8 +795,7 @@ marshalCmmBlockBranch instr =
                   Binary
                     { binaryOp = EqInt64
                     , operand0 =
-                        UnresolvedGetLocal
-                          {unresolvedLocalReg = SwitchCondReg}
+                        UnresolvedGetLocal {unresolvedLocalReg = SwitchCondReg}
                     , operand1 = ConstI64 $ fromIntegral idx
                     }
               , code = Null

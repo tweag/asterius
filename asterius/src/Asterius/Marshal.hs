@@ -1,3 +1,4 @@
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -16,6 +17,7 @@ import qualified Data.HashMap.Strict as HM
 import Data.Traversable
 import qualified Data.Vector as V
 import Foreign
+import Prelude hiding (IO)
 
 newtype MarshalError =
   UnsupportedExpression Expression
