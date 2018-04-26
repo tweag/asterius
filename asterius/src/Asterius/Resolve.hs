@@ -1,17 +1,19 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Asterius.Resolve
   ( resolveLocalRegs
   ) where
 
+import Asterius.Internals
 import Asterius.Types
-import Data.Data (Data, gmapQr, gmapT)
+import Data.Data (Data, gmapT)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
+import GHC.Exts
 import Type.Reflection
 
 unresolvedLocalRegType :: UnresolvedLocalReg -> ValueType
@@ -25,10 +27,7 @@ unresolvedLocalRegType lr =
     QuotRemI64Y -> I64
 
 collectUnresolvedLocalRegs :: Data a => a -> HS.HashSet UnresolvedLocalReg
-collectUnresolvedLocalRegs t =
-  case eqTypeRep (typeOf t) (typeRep :: TypeRep UnresolvedLocalReg) of
-    Just HRefl -> [t]
-    _ -> gmapQr (<>) mempty collectUnresolvedLocalRegs t
+collectUnresolvedLocalRegs = collect proxy#
 
 resolveLocalRegs :: Data a => a -> (a, V.Vector ValueType)
 resolveLocalRegs t =

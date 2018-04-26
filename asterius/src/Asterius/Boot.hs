@@ -15,12 +15,12 @@ module Asterius.Boot
 
 import Asterius.BuildInfo
 import Asterius.CodeGen
+import Asterius.Internals
+import Asterius.SymbolDB
 import Control.Monad
-import qualified Data.ByteString as BS
 import Data.Foldable
 import qualified Data.Map.Strict as M
 import Data.Maybe
-import Data.Serialize
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath)
 import Language.Haskell.GHC.Toolkit.Compiler
@@ -79,6 +79,7 @@ bootRTSCmm BootArgs {..} = do
   cmms <-
     M.toList <$>
     runCmm defaultConfig [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
+  sym_db_ref <- newIORef mempty
   for_ cmms $ \(fn, ir@CmmIR {..}) ->
     let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
         mod_sym = marshalToModuleSymbol ms_mod
@@ -86,12 +87,17 @@ bootRTSCmm BootArgs {..} = do
           Left err -> throwIO err
           Right m -> do
             p <- moduleSymbolPath obj_topdir mod_sym "asterius_o"
-            BS.writeFile p $ encode m
+            encodeFile p m
             when is_debug $ do
               p_a <- moduleSymbolPath obj_topdir mod_sym "txt"
               writeFile p_a $ ppShow m
               p_c <- moduleSymbolPath obj_topdir mod_sym "dump-cmm-raw-ast"
               writeFile p_c $ ppShow cmmRaw
+            modifyIORef' sym_db_ref $ enrichSymbolDB mod_sym m
+  sym_db <- readIORef sym_db_ref
+  encodeFile (obj_topdir </> "asterius_sym_db") sym_db
+  when is_debug $
+    writeFile (obj_topdir </> "asterius_sym_db.txt") $ ppShow sym_db
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"

@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
 
@@ -6,18 +7,28 @@ module Asterius.Internals
   , withSV
   , encodePrim
   , reinterpretCast
+  , collect
+  , encodeFile
+  , decodeFile
   ) where
 
 import Control.Monad.ST.Strict
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short.Internal as SBS
+import Data.Data (Data, gmapQr)
+import qualified Data.HashSet as HS
+import Data.Hashable
 import Data.Primitive (Prim)
 import qualified Data.Primitive as P
 import Data.Primitive.ByteArray
+import Data.Serialize
 import qualified Data.Vector.Storable as SV
 import Foreign
 import Foreign.C
 import GHC.Exts
 import GHC.Types
+import Type.Reflection
+import UnliftIO.Exception
 
 {-# INLINEABLE withSBS #-}
 withSBS :: SBS.ShortByteString -> (Ptr CChar -> IO r) -> IO r
@@ -62,3 +73,25 @@ reinterpretCast a =
     (do mba <- newByteArray (P.sizeOf a)
         writeByteArray mba 0 a
         readByteArray mba 0)
+
+collect ::
+     (Data a, Typeable k, Eq k, Hashable k) => Proxy# k -> a -> HS.HashSet k
+collect p t =
+  case eqTypeRep (typeOf t) (f p) of
+    Just HRefl -> HS.singleton t
+    _ -> gmapQr (<>) mempty (collect p) t
+  where
+    f :: Typeable t => Proxy# t -> TypeRep t
+    f _ = typeRep
+
+{-# INLINEABLE encodeFile #-}
+encodeFile :: Serialize a => FilePath -> a -> IO ()
+encodeFile p = BS.writeFile p . encode
+
+{-# INLINEABLE decodeFile #-}
+decodeFile :: Serialize a => FilePath -> IO a
+decodeFile p = do
+  r <- decode <$> BS.readFile p
+  case r of
+    Left err -> throwString err
+    Right a -> pure a
