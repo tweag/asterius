@@ -17,6 +17,7 @@ module Asterius.CodeGen
 
 import Asterius.Builtins
 import Asterius.Internals
+import Asterius.Resolve
 import Asterius.Types
 import qualified CLabel as GHC
 import qualified Cmm as GHC
@@ -864,19 +865,23 @@ marshalCmmBlock inner_nodes exit_node = do
         [e] -> e
         _ -> Block {name = "", bodys = V.fromList es, valueType = I64}
 
-marshalCmmProc :: GHC.CmmGraph -> CodeGen AsteriusFunction
+marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
-  rbs <-
+  rbs' <-
     for (GHC.bodyList body) $ \(lbl, GHC.BlockCC _ inner_nodes exit_node) -> do
       k <- marshalLabel lbl
       b <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
       pure (k, b)
+  let (rbs, lrs) = resolveLocalRegs rbs'
   pure
-    AsteriusFunction
-      { body =
-          RelooperRun
-            {entry = entry_k, blockMap = HM.fromList rbs, labelHelper = 0}
+    Function
+      { functionTypeName = fnTypeName
+      , varTypes = lrs
+      , body =
+          CFG
+            RelooperRun
+              {entry = entry_k, blockMap = HM.fromList rbs, labelHelper = 0}
       }
 
 marshalCmmDecl ::

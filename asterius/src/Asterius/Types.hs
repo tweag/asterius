@@ -10,7 +10,6 @@ module Asterius.Types
   , AsteriusCodeGenError(..)
   , AsteriusStatic(..)
   , AsteriusStatics(..)
-  , AsteriusFunction(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
   , AsteriusEntityKind(..)
@@ -89,16 +88,10 @@ newtype AsteriusStatics = AsteriusStatics
 
 instance Serialize AsteriusStatics
 
-newtype AsteriusFunction = AsteriusFunction
-  { body :: RelooperRun
-  } deriving (Show, Generic, Data)
-
-instance Serialize AsteriusFunction
-
 data AsteriusModule = AsteriusModule
   { staticsMap :: HM.HashMap AsteriusEntitySymbol AsteriusStatics
   , staticsErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
-  , functionMap :: HM.HashMap AsteriusEntitySymbol AsteriusFunction
+  , functionMap :: HM.HashMap AsteriusEntitySymbol Function
   , functionErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
   } deriving (Show, Generic, Data)
 
@@ -146,9 +139,11 @@ data UnresolvedLocalReg
   | QuotRemI32Y
   | QuotRemI64X
   | QuotRemI64Y
-  deriving (Show, Generic, Data)
+  deriving (Eq, Show, Generic, Data)
 
 instance Serialize UnresolvedLocalReg
+
+instance Hashable UnresolvedLocalReg
 
 data ValueType
   = None
@@ -409,7 +404,9 @@ data Function = Function
   { functionTypeName :: SBS.ShortByteString
   , varTypes :: V.Vector ValueType
   , body :: Expression
-  }
+  } deriving (Show, Generic, Data)
+
+instance Serialize Function
 
 data FunctionImport = FunctionImport
   { internalName, externalModuleName, externalBaseName, functionTypeName :: SBS.ShortByteString

@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Asterius.Builtins
-  ( spName
+  ( fnTypeName
+  , spName
   , spLimName
   , hpName
   , hpLimName
@@ -21,8 +22,10 @@ module Asterius.Builtins
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
 
-spName, spLimName, hpName, hpLimName, currentTSOName, currentNurseryName, hpAllocName, gcEnter1Name, gcFunName, baseRegName ::
+fnTypeName, spName, spLimName, hpName, hpLimName, currentTSOName, currentNurseryName, hpAllocName, gcEnter1Name, gcFunName, baseRegName ::
      SBS.ShortByteString
+fnTypeName = "_asterius_FN"
+
 spName = "_asterius_Sp"
 
 spLimName = "_asterius_SpLim"
