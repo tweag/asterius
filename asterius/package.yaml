@@ -97,9 +97,3 @@ tests:
     main: fact-dump.hs
     dependencies:
       - asterius
-
-  link-fact:
-    source-dirs: test
-    main: link-fact.hs
-    dependencies:
-      - asterius
