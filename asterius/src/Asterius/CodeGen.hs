@@ -216,7 +216,7 @@ marshalCmmGlobalReg r =
     GHC.BaseReg -> pure (baseRegName, I64)
     _ -> throwError $ UnsupportedCmmGlobalReg $ showSBS r
 
-marshalCmmLit :: GHC.CmmLit -> CodeGen (AsteriusExpression, ValueType)
+marshalCmmLit :: GHC.CmmLit -> CodeGen (Expression, ValueType)
 marshalCmmLit lit =
   case lit of
     GHC.CmmInt x w ->
@@ -231,17 +231,14 @@ marshalCmmLit lit =
         (ConstF64 $ fromRational x, F64)
     GHC.CmmLabel clbl -> do
       sym <- marshalCLabel clbl
-      pure (ExtraExpression Unresolved {unresolvedSymbol = sym}, I64)
+      pure (Unresolved {unresolvedSymbol = sym}, I64)
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
       pure
-        ( ExtraExpression
-            UnresolvedOff {unresolvedSymbol = sym, offset = fromIntegral o}
-        , I64)
+        (UnresolvedOff {unresolvedSymbol = sym, offset = fromIntegral o}, I64)
     _ -> throwError $ UnsupportedCmmLit $ showSBS lit
 
-marshalCmmLoad ::
-     GHC.CmmExpr -> GHC.CmmType -> CodeGen (AsteriusExpression, ValueType)
+marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
 marshalCmmLoad p t = do
   pv <- marshalAndCastCmmExpr p I32
   join $
@@ -290,20 +287,19 @@ marshalCmmLoad p t = do
                 }
             , vt))
 
-marshalCmmReg :: GHC.CmmReg -> CodeGen (AsteriusExpression, ValueType)
+marshalCmmReg :: GHC.CmmReg -> CodeGen (Expression, ValueType)
 marshalCmmReg r =
   case r of
     GHC.CmmLocal lr -> do
       (lr_k, lr_vt) <- marshalCmmLocalReg lr
       pure
-        ( ExtraExpression
-            UnresolvedGetLocal {unresolvedLocalReg = lr_k, valueType = lr_vt}
+        ( UnresolvedGetLocal {unresolvedLocalReg = lr_k, valueType = lr_vt}
         , lr_vt)
     GHC.CmmGlobal gr -> do
       (gr_k, gr_vt) <- marshalCmmGlobalReg gr
       pure (GetGlobal {name = gr_k, valueType = gr_vt}, gr_vt)
 
-marshalCmmRegOff :: GHC.CmmReg -> Int -> CodeGen (AsteriusExpression, ValueType)
+marshalCmmRegOff :: GHC.CmmReg -> Int -> CodeGen (Expression, ValueType)
 marshalCmmRegOff r o = do
   (re, vt) <- marshalCmmReg r
   case vt of
@@ -338,7 +334,7 @@ marshalCmmBinMachOp ::
   -> GHC.Width
   -> GHC.CmmExpr
   -> GHC.CmmExpr
-  -> CodeGen (AsteriusExpression, ValueType)
+  -> CodeGen (Expression, ValueType)
 marshalCmmBinMachOp o32 tx32 ty32 tr32 o64 tx64 ty64 tr64 w x y =
   join $
   dispatchCmmWidth
@@ -359,7 +355,7 @@ marshalCmmHomoConvMachOp ::
   -> GHC.Width
   -> GHC.Width
   -> GHC.CmmExpr
-  -> CodeGen (AsteriusExpression, ValueType)
+  -> CodeGen (Expression, ValueType)
 marshalCmmHomoConvMachOp o36 o63 t32 t64 _ w1 x = do
   (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
   xe <- marshalAndCastCmmExpr x t
@@ -378,7 +374,7 @@ marshalCmmHeteroConvMachOp ::
   -> GHC.Width
   -> GHC.Width
   -> GHC.CmmExpr
-  -> CodeGen (AsteriusExpression, ValueType)
+  -> CodeGen (Expression, ValueType)
 marshalCmmHeteroConvMachOp o33 o36 o63 o66 tx32 ty32 tx64 ty64 w0 w1 x = do
   (g0, g1) <-
     dispatchCmmWidth
@@ -390,7 +386,7 @@ marshalCmmHeteroConvMachOp o33 o36 o63 o66 tx32 ty32 tx64 ty64 w0 w1 x = do
   pure (Unary {unaryOp = o, operand0 = xe}, tr)
 
 marshalCmmMachOp ::
-     GHC.MachOp -> [GHC.CmmExpr] -> CodeGen (AsteriusExpression, ValueType)
+     GHC.MachOp -> [GHC.CmmExpr] -> CodeGen (Expression, ValueType)
 marshalCmmMachOp (GHC.MO_Add w) [x, y] =
   marshalCmmBinMachOp AddInt32 I32 I32 I32 AddInt64 I64 I64 I64 w x y
 marshalCmmMachOp (GHC.MO_Sub w) [x, y] =
@@ -534,7 +530,7 @@ marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
 marshalCmmMachOp op xs =
   throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmMachOp op xs
 
-marshalCmmExpr :: GHC.CmmExpr -> CodeGen (AsteriusExpression, ValueType)
+marshalCmmExpr :: GHC.CmmExpr -> CodeGen (Expression, ValueType)
 marshalCmmExpr cmm_expr =
   case cmm_expr of
     GHC.CmmLit lit -> marshalCmmLit lit
@@ -544,7 +540,7 @@ marshalCmmExpr cmm_expr =
     GHC.CmmRegOff r o -> marshalCmmRegOff r o
     _ -> throwError $ UnsupportedCmmExpr $ showSBS cmm_expr
 
-marshalAndCastCmmExpr :: GHC.CmmExpr -> ValueType -> CodeGen AsteriusExpression
+marshalAndCastCmmExpr :: GHC.CmmExpr -> ValueType -> CodeGen Expression
 marshalAndCastCmmExpr cmm_expr dest_vt = do
   (src_expr, src_vt) <- marshalCmmExpr cmm_expr
   case (# src_vt, dest_vt #) of
@@ -557,18 +553,13 @@ marshalAndCastCmmExpr cmm_expr dest_vt = do
 
 {-# INLINEABLE marshalCmmUnPrimCall #-}
 marshalCmmUnPrimCall ::
-     UnaryOp
-  -> ValueType
-  -> GHC.LocalReg
-  -> GHC.CmmExpr
-  -> CodeGen [AsteriusExpression]
+     UnaryOp -> ValueType -> GHC.LocalReg -> GHC.CmmExpr -> CodeGen [Expression]
 marshalCmmUnPrimCall op vt r x = do
   lr <- marshalTypedCmmLocalReg r vt
   xe <- marshalAndCastCmmExpr x vt
   pure
-    [ ExtraExpression
-        UnresolvedSetLocal
-          {unresolvedLocalReg = lr, value = Unary {unaryOp = op, operand0 = xe}}
+    [ UnresolvedSetLocal
+        {unresolvedLocalReg = lr, value = Unary {unaryOp = op, operand0 = xe}}
     ]
 
 {-# INLINEABLE marshalCmmQuotRemPrimCall #-}
@@ -582,54 +573,44 @@ marshalCmmQuotRemPrimCall ::
   -> GHC.LocalReg
   -> GHC.CmmExpr
   -> GHC.CmmExpr
-  -> CodeGen [AsteriusExpression]
+  -> CodeGen [Expression]
 marshalCmmQuotRemPrimCall tmp0 tmp1 qop rop vt qr rr x y = do
   qlr <- marshalTypedCmmLocalReg qr vt
   rlr <- marshalTypedCmmLocalReg rr vt
   xe <- marshalAndCastCmmExpr x vt
   ye <- marshalAndCastCmmExpr y vt
   pure
-    [ ExtraExpression UnresolvedSetLocal {unresolvedLocalReg = tmp0, value = xe}
-    , ExtraExpression UnresolvedSetLocal {unresolvedLocalReg = tmp1, value = ye}
-    , ExtraExpression
-        UnresolvedSetLocal
-          { unresolvedLocalReg = qlr
-          , value =
-              Binary
-                { binaryOp = qop
-                , operand0 =
-                    ExtraExpression
-                      UnresolvedGetLocal
-                        {unresolvedLocalReg = tmp0, valueType = vt}
-                , operand1 =
-                    ExtraExpression
-                      UnresolvedGetLocal
-                        {unresolvedLocalReg = tmp1, valueType = vt}
-                }
-          }
-    , ExtraExpression
-        UnresolvedSetLocal
-          { unresolvedLocalReg = rlr
-          , value =
-              Binary
-                { binaryOp = rop
-                , operand0 =
-                    ExtraExpression
-                      UnresolvedGetLocal
-                        {unresolvedLocalReg = tmp0, valueType = vt}
-                , operand1 =
-                    ExtraExpression
-                      UnresolvedGetLocal
-                        {unresolvedLocalReg = tmp1, valueType = vt}
-                }
-          }
+    [ UnresolvedSetLocal {unresolvedLocalReg = tmp0, value = xe}
+    , UnresolvedSetLocal {unresolvedLocalReg = tmp1, value = ye}
+    , UnresolvedSetLocal
+        { unresolvedLocalReg = qlr
+        , value =
+            Binary
+              { binaryOp = qop
+              , operand0 =
+                  UnresolvedGetLocal {unresolvedLocalReg = tmp0, valueType = vt}
+              , operand1 =
+                  UnresolvedGetLocal {unresolvedLocalReg = tmp1, valueType = vt}
+              }
+        }
+    , UnresolvedSetLocal
+        { unresolvedLocalReg = rlr
+        , value =
+            Binary
+              { binaryOp = rop
+              , operand0 =
+                  UnresolvedGetLocal {unresolvedLocalReg = tmp0, valueType = vt}
+              , operand1 =
+                  UnresolvedGetLocal {unresolvedLocalReg = tmp1, valueType = vt}
+              }
+        }
     ]
 
 marshalCmmPrimCall ::
      GHC.CallishMachOp
   -> [GHC.LocalReg]
   -> [GHC.CmmExpr]
-  -> CodeGen [AsteriusExpression]
+  -> CodeGen [Expression]
 marshalCmmPrimCall GHC.MO_F64_Fabs [r] [x] =
   marshalCmmUnPrimCall AbsFloat64 F64 r x
 marshalCmmPrimCall GHC.MO_F64_Sqrt [r] [x] =
@@ -705,7 +686,7 @@ marshalCmmUnsafeCall ::
   -> GHC.ForeignConvention
   -> [GHC.LocalReg]
   -> [GHC.CmmExpr]
-  -> CodeGen [AsteriusExpression]
+  -> CodeGen [Expression]
 marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
   sym <- marshalCLabel clbl
   xes <-
@@ -718,12 +699,11 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
     [r] -> do
       (lr, vt) <- marshalCmmLocalReg r
       pure
-        [ ExtraExpression
-            UnresolvedSetLocal
-              { unresolvedLocalReg = lr
-              , value =
-                  Call {target = sym, operands = V.fromList xes, valueType = vt}
-              }
+        [ UnresolvedSetLocal
+            { unresolvedLocalReg = lr
+            , value =
+                Call {target = sym, operands = V.fromList xes, valueType = vt}
+            }
         ]
     _ ->
       throwError $
@@ -734,7 +714,7 @@ marshalCmmUnsafeCall p f rs xs =
   UnsupportedCmmInstr $
   showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
 
-marshalCmmInstr :: GHC.CmmNode GHC.O GHC.O -> CodeGen [AsteriusExpression]
+marshalCmmInstr :: GHC.CmmNode GHC.O GHC.O -> CodeGen [Expression]
 marshalCmmInstr instr =
   case instr of
     GHC.CmmComment {} -> pure []
@@ -746,10 +726,7 @@ marshalCmmInstr instr =
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       (lr, vt) <- marshalCmmLocalReg r
       v <- marshalAndCastCmmExpr e vt
-      pure
-        [ ExtraExpression
-            UnresolvedSetLocal {unresolvedLocalReg = lr, value = v}
-        ]
+      pure [UnresolvedSetLocal {unresolvedLocalReg = lr, value = v}]
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       (gr, vt) <- marshalCmmGlobalReg r
       v <- marshalAndCastCmmExpr e vt
@@ -804,13 +781,12 @@ marshalCmmInstr instr =
       pure [store_instr]
     _ -> throwError $ UnsupportedCmmInstr $ showSBS instr
 
-marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [AsteriusExpression]
+marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [Expression]
 marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
 marshalCmmBlockBranch ::
      GHC.CmmNode GHC.O GHC.C
-  -> CodeGen (Either AsteriusExpression ( [AsteriusExpression]
-                                        , V.Vector (RelooperAddBranch UnresolvedExpression)))
+  -> CodeGen (Either Expression ([Expression], V.Vector (RelooperAddBranch)))
 marshalCmmBlockBranch instr =
   case instr of
     GHC.CmmBranch lbl -> do
@@ -838,11 +814,8 @@ marshalCmmBlockBranch instr =
                   Binary
                     { binaryOp = EqInt64
                     , operand0 =
-                        ExtraExpression
-                          UnresolvedGetLocal
-                            { unresolvedLocalReg = SwitchCondReg
-                            , valueType = I64
-                            }
+                        UnresolvedGetLocal
+                          {unresolvedLocalReg = SwitchCondReg, valueType = I64}
                     , operand1 = ConstI64 $ fromIntegral idx
                     }
               , code = Null
@@ -855,10 +828,7 @@ marshalCmmBlockBranch instr =
           _ -> pure []
       pure $
         Right
-          ( [ ExtraExpression
-                UnresolvedSetLocal
-                  {unresolvedLocalReg = SwitchCondReg, value = a}
-            ]
+          ( [UnresolvedSetLocal {unresolvedLocalReg = SwitchCondReg, value = a}]
           , V.fromList $ brs <> last_brs)
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
@@ -868,7 +838,7 @@ marshalCmmBlockBranch instr =
 marshalCmmBlock ::
      [GHC.CmmNode GHC.O GHC.O]
   -> GHC.CmmNode GHC.O GHC.C
-  -> CodeGen (RelooperBlock UnresolvedExpression)
+  -> CodeGen (RelooperBlock)
 marshalCmmBlock inner_nodes exit_node = do
   inner_exprs <- marshalCmmBlockBody inner_nodes
   br_result <- marshalCmmBlockBranch exit_node

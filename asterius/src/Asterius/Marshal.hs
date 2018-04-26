@@ -1,21 +1,27 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Asterius.Marshal
-  ( marshalModule
+  ( MarshalError(..)
+  , marshalModule
   ) where
 
 import Asterius.Internals
 import Asterius.Types
 import Bindings.Binaryen.Raw
+import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import Data.Traversable
 import qualified Data.Vector as V
-import Data.Void
 import Foreign
+
+newtype MarshalError =
+  UnsupportedExpression Expression
+  deriving (Show)
+
+instance Exception MarshalError
 
 marshalBool :: Bool -> Int8
 marshalBool flag =
@@ -192,8 +198,7 @@ marshalFunctionType m k FunctionType {..} =
     withSBS k $ \np ->
       c_BinaryenAddFunctionType m np (marshalValueType returnType) pts ptl
 
-marshalExpression ::
-     BinaryenModuleRef -> Expression Void -> IO BinaryenExpressionRef
+marshalExpression :: BinaryenModuleRef -> Expression -> IO BinaryenExpressionRef
 marshalExpression m e =
   case e of
     Block {..} -> do
@@ -316,6 +321,7 @@ marshalExpression m e =
       c_BinaryenAtomicCmpxchg m bytes offset p o n (marshalValueType valueType)
     CFG {..} -> relooperRun m graph
     Null -> pure nullPtr
+    _ -> throwIO $ UnsupportedExpression e
 
 marshalFunction ::
      BinaryenModuleRef
@@ -454,10 +460,7 @@ marshalModule Module {..} = do
   pure m
 
 relooperAddBlock ::
-     BinaryenModuleRef
-  -> RelooperRef
-  -> RelooperAddBlock Void
-  -> IO RelooperBlockRef
+     BinaryenModuleRef -> RelooperRef -> RelooperAddBlock -> IO RelooperBlockRef
 relooperAddBlock m r ab =
   case ab of
     AddBlock {..} -> do
@@ -472,7 +475,7 @@ relooperAddBranch ::
      BinaryenModuleRef
   -> HM.HashMap SBS.ShortByteString RelooperBlockRef
   -> SBS.ShortByteString
-  -> RelooperAddBranch Void
+  -> RelooperAddBranch
   -> IO ()
 relooperAddBranch m bm k ab =
   case ab of
@@ -485,7 +488,7 @@ relooperAddBranch m bm k ab =
       withSV (V.convert indexes) $ \idp idn ->
         c_RelooperAddBranchForSwitch (bm HM.! k) (bm HM.! to) idp idn c
 
-relooperRun :: BinaryenModuleRef -> RelooperRun Void -> IO BinaryenExpressionRef
+relooperRun :: BinaryenModuleRef -> RelooperRun -> IO BinaryenExpressionRef
 relooperRun m RelooperRun {..} = do
   r <- c_RelooperCreate
   bpm <-
