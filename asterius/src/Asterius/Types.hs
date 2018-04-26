@@ -132,8 +132,7 @@ instance Serialize AsteriusEntitySymbol
 instance Hashable AsteriusEntitySymbol
 
 data UnresolvedLocalReg
-  = UniqueLocalReg Int
-  | RelooperHelperReg
+  = UniqueLocalReg Int ValueType
   | SwitchCondReg
   | QuotRemI32X
   | QuotRemI32Y
@@ -155,6 +154,8 @@ data ValueType
   deriving (Eq, Show, Generic, Data)
 
 instance Serialize ValueType
+
+instance Hashable ValueType
 
 data FunctionType = FunctionType
   { returnType :: ValueType
@@ -389,8 +390,7 @@ data Expression
   | Unresolved { unresolvedSymbol :: AsteriusEntitySymbol }
   | UnresolvedOff { unresolvedSymbol :: AsteriusEntitySymbol
                   , offset :: BinaryenIndex }
-  | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg
-                       , valueType :: ValueType }
+  | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
   | UnresolvedTeeLocal { unresolvedLocalReg :: UnresolvedLocalReg

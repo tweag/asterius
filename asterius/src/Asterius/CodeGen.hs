@@ -41,11 +41,9 @@ import System.Directory
 import System.FilePath
 import qualified Unique as GHC
 
-{-# INLINEABLE asmPpr #-}
 asmPpr :: GHC.Outputable a => GHC.DynFlags -> a -> String
 asmPpr dflags = GHC.showSDoc dflags . GHC.pprCode GHC.AsmStyle . GHC.ppr
 
-{-# INLINEABLE showSBS #-}
 showSBS :: Show a => a -> SBS.ShortByteString
 showSBS = fromString . show
 
@@ -85,7 +83,6 @@ newtype CodeGen a =
            , MonadError AsteriusCodeGenError
            )
 
-{-# INLINEABLE unCodeGen #-}
 unCodeGen :: CodeGen a -> CodeGen (Either AsteriusCodeGenError a)
 unCodeGen (CodeGen m) = asks $ runExcept . runReaderT m
 
@@ -95,7 +92,6 @@ runCodeGen ::
 runCodeGen (CodeGen m) dflags def_mod =
   runExcept $ runReaderT m (dflags, asmPpr dflags def_mod <> "_")
 
-{-# INLINEABLE marshalCLabel #-}
 marshalCLabel :: GHC.CLabel -> CodeGen AsteriusEntitySymbol
 marshalCLabel clbl = do
   (dflags, def_mod_prefix) <- ask
@@ -112,13 +108,11 @@ marshalCLabel clbl = do
             else def_mod_prefix <> asmPpr dflags clbl
       }
 
-{-# INLINEABLE marshalLabel #-}
 marshalLabel :: GHC.Label -> CodeGen SBS.ShortByteString
 marshalLabel lbl = do
   (dflags, _) <- ask
   pure $ fromString $ asmPpr dflags $ GHC.mkLocalBlockLabel $ GHC.getUnique lbl
 
-{-# INLINEABLE marshalCmmType #-}
 marshalCmmType :: GHC.CmmType -> CodeGen ValueType
 marshalCmmType t
   | GHC.b8 `GHC.cmmEqType_ignoring_ptrhood` t ||
@@ -129,11 +123,9 @@ marshalCmmType t
   | GHC.f64 `GHC.cmmEqType_ignoring_ptrhood` t = pure F64
   | otherwise = throwError $ UnsupportedCmmType $ showSBS t
 
-{-# INLINEABLE dispatchCmmWidth #-}
 dispatchCmmWidth :: GHC.Width -> a -> a -> CodeGen a
 dispatchCmmWidth w r32 = dispatchAllCmmWidth w r32 r32 r32
 
-{-# INLINEABLE dispatchAllCmmWidth #-}
 dispatchAllCmmWidth :: GHC.Width -> a -> a -> a -> a -> CodeGen a
 dispatchAllCmmWidth w r8 r16 r32 r64 =
   case w of
@@ -183,13 +175,11 @@ marshalCmmData (GHC.Statics _ ss) = do
   ass <- for ss marshalCmmStatic
   pure AsteriusStatics {asteriusStatics = V.fromList ass}
 
-{-# INLINEABLE marshalCmmLocalReg #-}
 marshalCmmLocalReg :: GHC.LocalReg -> CodeGen (UnresolvedLocalReg, ValueType)
 marshalCmmLocalReg (GHC.LocalReg u t) = do
   vt <- marshalCmmType t
-  pure (UniqueLocalReg $ GHC.getKey u, vt)
+  pure (UniqueLocalReg (GHC.getKey u) vt, vt)
 
-{-# INLINEABLE marshalTypedCmmLocalReg #-}
 marshalTypedCmmLocalReg ::
      GHC.LocalReg -> ValueType -> CodeGen UnresolvedLocalReg
 marshalTypedCmmLocalReg r vt = do
@@ -198,7 +188,6 @@ marshalTypedCmmLocalReg r vt = do
     then pure lr
     else throwError $ UnsupportedCmmExpr $ showSBS r
 
-{-# INLINEABLE marshalCmmGlobalReg #-}
 marshalCmmGlobalReg :: GHC.GlobalReg -> CodeGen (SBS.ShortByteString, ValueType)
 marshalCmmGlobalReg r =
   case r of
@@ -294,7 +283,7 @@ marshalCmmReg r =
     GHC.CmmLocal lr -> do
       (lr_k, lr_vt) <- marshalCmmLocalReg lr
       pure
-        ( UnresolvedGetLocal {unresolvedLocalReg = lr_k, valueType = lr_vt}
+        ( UnresolvedGetLocal {unresolvedLocalReg = lr_k}
         , lr_vt)
     GHC.CmmGlobal gr -> do
       (gr_k, gr_vt) <- marshalCmmGlobalReg gr
@@ -322,7 +311,6 @@ marshalCmmRegOff r o = do
         , vt)
     _ -> throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmRegOff r o
 
-{-# INLINEABLE marshalCmmBinMachOp #-}
 marshalCmmBinMachOp ::
      BinaryOp
   -> ValueType
@@ -347,7 +335,6 @@ marshalCmmBinMachOp o32 tx32 ty32 tr32 o64 tx64 ty64 tr64 w x y =
         ye <- marshalAndCastCmmExpr y ty64
         pure (Binary {binaryOp = o64, operand0 = xe, operand1 = ye}, tr64))
 
-{-# INLINEABLE marshalCmmHomoConvMachOp #-}
 marshalCmmHomoConvMachOp ::
      UnaryOp
   -> UnaryOp
@@ -362,7 +349,6 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 _ w1 x = do
   xe <- marshalAndCastCmmExpr x t
   pure (Unary {unaryOp = o, operand0 = xe}, tr)
 
-{-# INLINEABLE marshalCmmHeteroConvMachOp #-}
 marshalCmmHeteroConvMachOp ::
      UnaryOp
   -> UnaryOp
@@ -552,7 +538,6 @@ marshalAndCastCmmExpr cmm_expr dest_vt = do
       | otherwise ->
         throwError $ UnsupportedImplicitCasting src_expr src_vt dest_vt
 
-{-# INLINEABLE marshalCmmUnPrimCall #-}
 marshalCmmUnPrimCall ::
      UnaryOp -> ValueType -> GHC.LocalReg -> GHC.CmmExpr -> CodeGen [Expression]
 marshalCmmUnPrimCall op vt r x = do
@@ -563,7 +548,6 @@ marshalCmmUnPrimCall op vt r x = do
         {unresolvedLocalReg = lr, value = Unary {unaryOp = op, operand0 = xe}}
     ]
 
-{-# INLINEABLE marshalCmmQuotRemPrimCall #-}
 marshalCmmQuotRemPrimCall ::
      UnresolvedLocalReg
   -> UnresolvedLocalReg
@@ -589,9 +573,9 @@ marshalCmmQuotRemPrimCall tmp0 tmp1 qop rop vt qr rr x y = do
             Binary
               { binaryOp = qop
               , operand0 =
-                  UnresolvedGetLocal {unresolvedLocalReg = tmp0, valueType = vt}
+                  UnresolvedGetLocal {unresolvedLocalReg = tmp0}
               , operand1 =
-                  UnresolvedGetLocal {unresolvedLocalReg = tmp1, valueType = vt}
+                  UnresolvedGetLocal {unresolvedLocalReg = tmp1}
               }
         }
     , UnresolvedSetLocal
@@ -600,9 +584,9 @@ marshalCmmQuotRemPrimCall tmp0 tmp1 qop rop vt qr rr x y = do
             Binary
               { binaryOp = rop
               , operand0 =
-                  UnresolvedGetLocal {unresolvedLocalReg = tmp0, valueType = vt}
+                  UnresolvedGetLocal {unresolvedLocalReg = tmp0}
               , operand1 =
-                  UnresolvedGetLocal {unresolvedLocalReg = tmp1, valueType = vt}
+                  UnresolvedGetLocal {unresolvedLocalReg = tmp1}
               }
         }
     ]
@@ -816,7 +800,7 @@ marshalCmmBlockBranch instr =
                     { binaryOp = EqInt64
                     , operand0 =
                         UnresolvedGetLocal
-                          {unresolvedLocalReg = SwitchCondReg, valueType = I64}
+                          {unresolvedLocalReg = SwitchCondReg}
                     , operand1 = ConstI64 $ fromIntegral idx
                     }
               , code = Null
