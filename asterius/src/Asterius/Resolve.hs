@@ -45,7 +45,9 @@ resolveLocalRegs t =
           case x of
             UnresolvedGetLocal {..} ->
               GetLocal
-                {index = lr_idx unresolvedLocalReg, valueType = undefined}
+                { index = lr_idx unresolvedLocalReg
+                , valueType = unresolvedLocalRegType unresolvedLocalReg
+                }
             UnresolvedSetLocal {..} ->
               SetLocal {index = lr_idx unresolvedLocalReg, value = f value}
             UnresolvedTeeLocal {..} ->
