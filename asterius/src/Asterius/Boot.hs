@@ -15,6 +15,7 @@ module Asterius.Boot
   ) where
 
 import Asterius.BuildInfo
+import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.SymbolDB
@@ -38,6 +39,7 @@ import UnliftIO.Process
 data BootArgs = BootArgs
   { bootDir :: FilePath
   , configureOptions, buildOptions :: String
+  , builtinsOptions :: BuiltinsOptions
   }
 
 defaultBootArgs :: BootArgs
@@ -46,6 +48,7 @@ defaultBootArgs =
     { bootDir = dataDir </> ".boot"
     , configureOptions = "--disable-split-objs --disable-split-sections -O2"
     , buildOptions = ""
+    , builtinsOptions = defaultBuiltinsOptions
     }
 
 bootTmpDir :: BootArgs -> FilePath
@@ -82,10 +85,17 @@ bootRTSCmm BootArgs {..} = do
     M.toList <$>
     runCmm defaultConfig [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
   sym_db_ref <- newIORef mempty
+  do let m = rtsAsteriusModule builtinsOptions
+     p <- moduleSymbolPath obj_topdir rtsAsteriusModuleSymbol "asterius_o"
+     encodeFile p m
+     when is_debug $ do
+       p_a <- moduleSymbolPath obj_topdir rtsAsteriusModuleSymbol "txt"
+       writeFile p_a $ ppShow m
+     modifyIORef' sym_db_ref $ enrichSymbolDB rtsAsteriusModuleSymbol m
   for_ cmms $ \(fn, ir@CmmIR {..}) ->
     let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
         mod_sym = marshalToModuleSymbol ms_mod
-     in case runCodeGen (marshalCmmIR ir) GHC.unsafeGlobalDynFlags ms_mod of
+     in case runCodeGen (marshalCmmIR ir) (dflags builtinsOptions) ms_mod of
           Left err -> throwIO err
           Right m -> do
             p <- moduleSymbolPath obj_topdir mod_sym "asterius_o"

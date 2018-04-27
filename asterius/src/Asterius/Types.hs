@@ -62,11 +62,10 @@ data AsteriusCodeGenError
   | UnsupportedCmmWidth SBS.ShortByteString
   | UnsupportedCmmGlobalReg SBS.ShortByteString
   | UnsupportedCmmExpr SBS.ShortByteString
-  | UnsupportedRelooperAddBlock RelooperAddBlock
   | UnsupportedImplicitCasting Expression
                                ValueType
                                ValueType
-  | UnhandledException SBS.ShortByteString
+  | AssignToImmutableGlobalReg UnresolvedGlobalReg
   deriving (Show, Generic, Data)
 
 instance Serialize AsteriusCodeGenError
@@ -153,6 +152,7 @@ data UnresolvedGlobalReg
   = VanillaReg Int
   | FloatReg Int
   | DoubleReg Int
+  | LongReg Int
   | Sp
   | SpLim
   | Hp
@@ -160,6 +160,7 @@ data UnresolvedGlobalReg
   | CurrentTSO
   | CurrentNursery
   | HpAlloc
+  | EagerBlackholeInfo
   | GCEnter1
   | GCFun
   | BaseReg

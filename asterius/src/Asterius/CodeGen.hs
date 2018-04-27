@@ -196,6 +196,7 @@ marshalCmmGlobalReg r =
     GHC.VanillaReg i _ -> pure $ VanillaReg i
     GHC.FloatReg i -> pure $ FloatReg i
     GHC.DoubleReg i -> pure $ DoubleReg i
+    GHC.LongReg i -> pure $ LongReg i
     GHC.Sp -> pure Sp
     GHC.SpLim -> pure SpLim
     GHC.Hp -> pure Hp
@@ -203,6 +204,7 @@ marshalCmmGlobalReg r =
     GHC.CurrentTSO -> pure CurrentTSO
     GHC.CurrentNursery -> pure CurrentNursery
     GHC.HpAlloc -> pure HpAlloc
+    GHC.EagerBlackholeInfo -> pure EagerBlackholeInfo
     GHC.GCEnter1 -> pure GCEnter1
     GHC.GCFun -> pure GCFun
     GHC.BaseReg -> pure BaseReg
@@ -288,7 +290,12 @@ marshalCmmReg r =
     GHC.CmmGlobal gr -> do
       gr_k <- marshalCmmGlobalReg gr
       pure
-        ( UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
+        ( case gr_k of
+            CurrentTSO -> Unresolved tsoSymbol
+            EagerBlackholeInfo -> Unresolved eagerBlackholeInfoSymbol
+            GCEnter1 -> Unresolved gcEnter1Symbol
+            GCFun -> Unresolved gcFunSymbol
+            _ -> UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
         , unresolvedGlobalRegType gr_k)
 
 marshalCmmRegOff :: GHC.CmmReg -> Int -> CodeGen (Expression, ValueType)
@@ -713,7 +720,9 @@ marshalCmmInstr instr =
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       gr <- marshalCmmGlobalReg r
       v <- marshalAndCastCmmExpr e $ unresolvedGlobalRegType gr
-      pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
+      if gr `V.elem` [CurrentTSO, EagerBlackholeInfo, GCEnter1, GCFun]
+        then throwError $ AssignToImmutableGlobalReg gr
+        else pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
     GHC.CmmStore p e -> do
       pv <- marshalAndCastCmmExpr p I32
       (dflags, _) <- ask

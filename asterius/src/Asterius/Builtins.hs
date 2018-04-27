@@ -1,28 +1,56 @@
+{-# LANGUAGE CApiFFI #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StrictData #-}
 
 module Asterius.Builtins
-  ( rtsAsteriusModuleSymbol
+  ( BuiltinsOptions(..)
+  , defaultBuiltinsOptions
+  , rtsAsteriusModuleSymbol
+  , rtsAsteriusModule
   , fnTypeName
   , fnType
   , globalRegName
   , tsoSymbol
+  , tsoInfoSymbol
   , stackSymbol
-  , capabilitySymbol
-  , baseRegSymbol
+  , stackInfoSymbol
   , bdescrSymbol
+  , eagerBlackholeInfoSymbol
+  , gcEnter1Symbol
+  , gcFunSymbol
+  , capabilitySymbol
+  , sizeof_bdescr
   , tsoStatics
   , stackStatics
-  , capabilityStatics
-  , baseRegStatics
   , bdescrStatics
+  , baseRegStatics
+  , capabilityStatics
   ) where
 
+import Asterius.Internals
 import Asterius.Types
+import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.String
 import qualified Data.Vector as V
+import Foreign
+import Foreign.C
 import qualified GhcPlugins as GHC
+
+data BuiltinsOptions = BuiltinsOptions
+  { dflags :: GHC.DynFlags
+  , stackSize, nurserySize :: Int
+  }
+
+defaultBuiltinsOptions :: BuiltinsOptions
+defaultBuiltinsOptions =
+  BuiltinsOptions
+    { dflags = GHC.unsafeGlobalDynFlags
+    , stackSize = 1024576
+    , nurserySize = 1024576
+    }
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -30,6 +58,10 @@ rtsAsteriusModuleSymbol =
     { unitId = SBS.toShort $ GHC.fs_bs $ GHC.unitIdFS GHC.rtsUnitId
     , moduleName = ["Asterius"]
     }
+
+rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
+rtsAsteriusModule opts =
+  mempty {staticsMap = [(capabilitySymbol, capabilityStatics opts)]}
 
 fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
@@ -43,38 +75,52 @@ globalRegName gr =
     VanillaReg i -> fromString $ "_asterius_R" <> show i
     FloatReg i -> fromString $ "_asterius_F" <> show i
     DoubleReg i -> fromString $ "_asterius_D" <> show i
+    LongReg i -> fromString $ "_asterius_L" <> show i
     Sp -> "_asterius_Sp"
     SpLim -> "_asterius_SpLim"
     Hp -> "_asterius_Hp"
     HpLim -> "_asterius_HpLim"
-    CurrentTSO -> "_asterius_CurrentTSO"
     CurrentNursery -> "_asterius_CurrentNursery"
     HpAlloc -> "_asterius_HpAlloc"
-    GCEnter1 -> "_asterius_GCEnter1"
-    GCFun -> "_asterius_GCFun"
     BaseReg -> "_asterius_BaseReg"
+    _ -> throw $ AssignToImmutableGlobalReg gr
 
-tsoSymbol, stackSymbol, capabilitySymbol, baseRegSymbol, bdescrSymbol ::
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, eagerBlackholeInfoSymbol, gcEnter1Symbol, gcFunSymbol, capabilitySymbol ::
      AsteriusEntitySymbol
 tsoSymbol =
   AsteriusEntitySymbol
     {entityKind = StaticsEntity, entityName = "_asterius_TSO"}
 
+tsoInfoSymbol =
+  AsteriusEntitySymbol {entityKind = StaticsEntity, entityName = "stg_TSO_info"}
+
 stackSymbol =
   AsteriusEntitySymbol
     {entityKind = StaticsEntity, entityName = "_asterius_Stack"}
 
-capabilitySymbol =
+stackInfoSymbol =
   AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "_asterius_Capability"}
-
-baseRegSymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "_asterius_BaseReg"}
+    {entityKind = StaticsEntity, entityName = "stg_STACK_info"}
 
 bdescrSymbol =
   AsteriusEntitySymbol
     {entityKind = StaticsEntity, entityName = "_asterius_bdescr"}
+
+eagerBlackholeInfoSymbol =
+  AsteriusEntitySymbol
+    {entityKind = StaticsEntity, entityName = "__stg_EAGER_BLACKHOLE_info"}
+
+gcEnter1Symbol =
+  AsteriusEntitySymbol
+    {entityKind = FunctionEntity, entityName = "__stg_gc_enter_1"}
+
+gcFunSymbol =
+  AsteriusEntitySymbol
+    {entityKind = FunctionEntity, entityName = "__stg_gc_fun"}
+
+capabilitySymbol =
+  AsteriusEntitySymbol
+    {entityKind = StaticsEntity, entityName = "_asterius_Capability"}
 
 asteriusStaticSize :: AsteriusStatic -> Int
 asteriusStaticSize s =
@@ -98,26 +144,53 @@ layoutStatics ss = AsteriusStatics {asteriusStatics = snd $ f ss (0, [])}
             0 -> tot_l <> [x_static]
             delta -> tot_l <> [Uninitialized delta, x_static])
 
-tsoStatics, stackStatics, capabilityStatics, baseRegStatics, bdescrStatics ::
-     GHC.DynFlags -> AsteriusStatics
-tsoStatics dflags =
+foreign import capi "Rts.h value BDESCR_SIZE" sizeof_bdescr :: CInt
+
+tsoStatics, stackStatics, bdescrStatics, baseRegStatics, capabilityStatics ::
+     BuiltinsOptions -> AsteriusStatics
+tsoStatics BuiltinsOptions {..} =
   layoutStatics
-    [ (GHC.oFFSET_StgTSO_stackobj dflags, UnresolvedStatic stackSymbol)
-    , (GHC.oFFSET_StgTSO_alloc_limit dflags, undefined)
+    [ (0, UnresolvedStatic tsoInfoSymbol)
+    , (GHC.oFFSET_StgTSO_stackobj dflags, UnresolvedStatic stackSymbol)
+    , ( GHC.oFFSET_StgTSO_alloc_limit dflags
+      , Serialized (encodePrim (maxBound :: Int64)))
     ]
 
-stackStatics _ = layoutStatics []
-
-capabilityStatics dflags =
+stackStatics BuiltinsOptions {..} =
   layoutStatics
-    [(GHC.oFFSET_Capability_r dflags, UnresolvedStatic baseRegSymbol)]
+    [ (0, UnresolvedStatic stackInfoSymbol)
+    , ( GHC.oFFSET_StgStack_sp dflags
+      , UnresolvedOffStatic stackSymbol (GHC.oFFSET_StgStack_stack dflags))
+    , (GHC.oFFSET_StgStack_stack dflags, Uninitialized stackSize)
+    ]
 
-baseRegStatics _ = layoutStatics []
-
-bdescrStatics dflags =
+bdescrStatics BuiltinsOptions {..} =
   layoutStatics
     [ (GHC.oFFSET_bdescr_start dflags, undefined)
     , (GHC.oFFSET_bdescr_free dflags, undefined)
-    , (GHC.oFFSET_bdescr_flags dflags, undefined)
-    , (GHC.oFFSET_bdescr_blocks dflags, undefined)
+    , (GHC.oFFSET_bdescr_flags dflags, Serialized (encodePrim (0 :: Word16)))
+    , (GHC.oFFSET_bdescr_blocks dflags, Serialized (encodePrim (1 :: Word32)))
     ]
+
+baseRegStatics BuiltinsOptions {..} =
+  layoutStatics
+    [ (GHC.oFFSET_StgRegTable_rCurrentTSO dflags, UnresolvedStatic tsoSymbol)
+    , ( GHC.oFFSET_StgRegTable_rCurrentNursery dflags
+      , UnresolvedStatic bdescrSymbol)
+    ]
+
+capabilityStatics opts@BuiltinsOptions {..} =
+  AsteriusStatics
+    { asteriusStatics =
+        asteriusStatics
+          (layoutStatics
+             [ ( GHC.oFFSET_stgEagerBlackholeInfo dflags +
+                 GHC.oFFSET_Capability_r dflags
+               , UnresolvedStatic eagerBlackholeInfoSymbol)
+             , ( GHC.oFFSET_stgGCEnter1 dflags + GHC.oFFSET_Capability_r dflags
+               , UnresolvedStatic gcEnter1Symbol)
+             , ( GHC.oFFSET_stgGCFun dflags + GHC.oFFSET_Capability_r dflags
+               , UnresolvedStatic gcFunSymbol)
+             ]) <>
+        asteriusStatics (baseRegStatics opts)
+    }
