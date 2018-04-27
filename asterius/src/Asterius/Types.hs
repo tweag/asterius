@@ -15,6 +15,7 @@ module Asterius.Types
   , AsteriusEntityKind(..)
   , AsteriusEntitySymbol(..)
   , UnresolvedLocalReg(..)
+  , UnresolvedGlobalReg(..)
   , ValueType(..)
   , FunctionType(..)
   , UnaryOp(..)
@@ -125,14 +126,18 @@ instance Hashable AsteriusEntityKind
 data AsteriusEntitySymbol = AsteriusEntitySymbol
   { entityKind :: AsteriusEntityKind
   , entityName :: SBS.ShortByteString
-  } deriving (Eq, Show, Generic, Data)
+  } deriving (Eq, Generic, Data)
+
+instance Show AsteriusEntitySymbol where
+  show = show . entityName
 
 instance Serialize AsteriusEntitySymbol
 
 instance Hashable AsteriusEntitySymbol
 
 data UnresolvedLocalReg
-  = UniqueLocalReg Int ValueType
+  = UniqueLocalReg Int
+                   ValueType
   | SwitchCondReg
   | QuotRemI32X
   | QuotRemI32Y
@@ -143,6 +148,26 @@ data UnresolvedLocalReg
 instance Serialize UnresolvedLocalReg
 
 instance Hashable UnresolvedLocalReg
+
+data UnresolvedGlobalReg
+  = VanillaReg Int
+  | FloatReg Int
+  | DoubleReg Int
+  | Sp
+  | SpLim
+  | Hp
+  | HpLim
+  | CurrentTSO
+  | CurrentNursery
+  | HpAlloc
+  | GCEnter1
+  | GCFun
+  | BaseReg
+  deriving (Eq, Show, Generic, Data)
+
+instance Serialize UnresolvedGlobalReg
+
+instance Hashable UnresolvedGlobalReg
 
 data ValueType
   = None
@@ -395,6 +420,9 @@ data Expression
                        , value :: Expression }
   | UnresolvedTeeLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
+  | UnresolvedGetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg }
+  | UnresolvedSetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg
+                        , value :: Expression }
   | Null
   deriving (Show, Generic, Data)
 

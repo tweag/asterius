@@ -190,23 +190,30 @@ marshalTypedCmmLocalReg r vt = do
     then pure lr
     else throwError $ UnsupportedCmmExpr $ showSBS r
 
-marshalCmmGlobalReg :: GHC.GlobalReg -> CodeGen (SBS.ShortByteString, ValueType)
+marshalCmmGlobalReg :: GHC.GlobalReg -> CodeGen UnresolvedGlobalReg
 marshalCmmGlobalReg r =
   case r of
-    GHC.VanillaReg i _ -> pure (fromString $ "_asterius_R" <> show i, I64)
-    GHC.FloatReg i -> pure (fromString $ "_asterius_F" <> show i, F32)
-    GHC.DoubleReg i -> pure (fromString $ "_asterius_D" <> show i, F64)
-    GHC.Sp -> pure (spName, I64)
-    GHC.SpLim -> pure (spLimName, I64)
-    GHC.Hp -> pure (hpName, I64)
-    GHC.HpLim -> pure (hpLimName, I64)
-    GHC.CurrentTSO -> pure (currentTSOName, I64)
-    GHC.CurrentNursery -> pure (currentNurseryName, I64)
-    GHC.HpAlloc -> pure (hpAllocName, I64)
-    GHC.GCEnter1 -> pure (gcEnter1Name, I64)
-    GHC.GCFun -> pure (gcFunName, I64)
-    GHC.BaseReg -> pure (baseRegName, I64)
+    GHC.VanillaReg i _ -> pure $ VanillaReg i
+    GHC.FloatReg i -> pure $ FloatReg i
+    GHC.DoubleReg i -> pure $ DoubleReg i
+    GHC.Sp -> pure Sp
+    GHC.SpLim -> pure SpLim
+    GHC.Hp -> pure Hp
+    GHC.HpLim -> pure HpLim
+    GHC.CurrentTSO -> pure CurrentTSO
+    GHC.CurrentNursery -> pure CurrentNursery
+    GHC.HpAlloc -> pure HpAlloc
+    GHC.GCEnter1 -> pure GCEnter1
+    GHC.GCFun -> pure GCFun
+    GHC.BaseReg -> pure BaseReg
     _ -> throwError $ UnsupportedCmmGlobalReg $ showSBS r
+
+typeOfUnresolvedGlobalReg :: UnresolvedGlobalReg -> ValueType
+typeOfUnresolvedGlobalReg gr =
+  case gr of
+    FloatReg _ -> F32
+    DoubleReg _ -> F64
+    _ -> I64
 
 marshalCmmLit :: GHC.CmmLit -> CodeGen (Expression, ValueType)
 marshalCmmLit lit =
@@ -286,8 +293,10 @@ marshalCmmReg r =
       (lr_k, lr_vt) <- marshalCmmLocalReg lr
       pure (UnresolvedGetLocal {unresolvedLocalReg = lr_k}, lr_vt)
     GHC.CmmGlobal gr -> do
-      (gr_k, gr_vt) <- marshalCmmGlobalReg gr
-      pure (GetGlobal {name = gr_k, valueType = gr_vt}, gr_vt)
+      gr_k <- marshalCmmGlobalReg gr
+      pure
+        ( UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
+        , typeOfUnresolvedGlobalReg gr_k)
 
 marshalCmmRegOff :: GHC.CmmReg -> Int -> CodeGen (Expression, ValueType)
 marshalCmmRegOff r o = do
@@ -709,9 +718,9 @@ marshalCmmInstr instr =
       v <- marshalAndCastCmmExpr e vt
       pure [UnresolvedSetLocal {unresolvedLocalReg = lr, value = v}]
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
-      (gr, vt) <- marshalCmmGlobalReg r
-      v <- marshalAndCastCmmExpr e vt
-      pure [SetGlobal {name = gr, value = v}]
+      gr <- marshalCmmGlobalReg r
+      v <- marshalAndCastCmmExpr e $ typeOfUnresolvedGlobalReg gr
+      pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
     GHC.CmmStore p e -> do
       pv <- marshalAndCastCmmExpr p I32
       (dflags, _) <- ask

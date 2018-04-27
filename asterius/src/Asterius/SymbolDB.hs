@@ -9,7 +9,14 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Asterius.SymbolDB where
+module Asterius.SymbolDB
+  ( AsteriusSymbolDB
+  , enrichSymbolDB
+  , AsteriusModuleCache
+  , initAsteriusModuleCache
+  , enrichAsteriusModuleCache
+  , chase
+  ) where
 
 import Asterius.CodeGen
 import Asterius.Internals
