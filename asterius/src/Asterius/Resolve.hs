@@ -6,8 +6,12 @@
 
 module Asterius.Resolve
   ( resolveLocalRegs
+  , unresolvedGlobalRegType
+  , collectUnresolvedGlobalRegs
+  , resolveGlobalRegs
   ) where
 
+import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Types
 import Data.Data (Data, gmapT)
@@ -52,6 +56,37 @@ resolveLocalRegs t =
               SetLocal {index = lr_idx unresolvedLocalReg, value = f value}
             UnresolvedTeeLocal {..} ->
               TeeLocal {index = lr_idx unresolvedLocalReg, value = f value}
+            _ -> go
+        _ -> go
+      where
+        go = gmapT f x
+
+unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
+unresolvedGlobalRegType gr =
+  case gr of
+    FloatReg _ -> F32
+    DoubleReg _ -> F64
+    _ -> I64
+
+collectUnresolvedGlobalRegs :: Data a => a -> HS.HashSet UnresolvedGlobalReg
+collectUnresolvedGlobalRegs = collect proxy#
+
+resolveGlobalRegs :: Data a => a -> (a, HS.HashSet UnresolvedGlobalReg)
+resolveGlobalRegs t = (f t, collectUnresolvedGlobalRegs t)
+  where
+    f :: Data a => a -> a
+    f x =
+      case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
+        Just HRefl ->
+          case x of
+            UnresolvedGetGlobal {..} ->
+              GetGlobal
+                { name = globalRegName unresolvedGlobalReg
+                , valueType = unresolvedGlobalRegType unresolvedGlobalReg
+                }
+            UnresolvedSetGlobal {..} ->
+              SetGlobal
+                {name = globalRegName unresolvedGlobalReg, value = f value}
             _ -> go
         _ -> go
       where

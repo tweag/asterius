@@ -208,13 +208,6 @@ marshalCmmGlobalReg r =
     GHC.BaseReg -> pure BaseReg
     _ -> throwError $ UnsupportedCmmGlobalReg $ showSBS r
 
-typeOfUnresolvedGlobalReg :: UnresolvedGlobalReg -> ValueType
-typeOfUnresolvedGlobalReg gr =
-  case gr of
-    FloatReg _ -> F32
-    DoubleReg _ -> F64
-    _ -> I64
-
 marshalCmmLit :: GHC.CmmLit -> CodeGen (Expression, ValueType)
 marshalCmmLit lit =
   case lit of
@@ -296,7 +289,7 @@ marshalCmmReg r =
       gr_k <- marshalCmmGlobalReg gr
       pure
         ( UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
-        , typeOfUnresolvedGlobalReg gr_k)
+        , unresolvedGlobalRegType gr_k)
 
 marshalCmmRegOff :: GHC.CmmReg -> Int -> CodeGen (Expression, ValueType)
 marshalCmmRegOff r o = do
@@ -719,7 +712,7 @@ marshalCmmInstr instr =
       pure [UnresolvedSetLocal {unresolvedLocalReg = lr, value = v}]
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       gr <- marshalCmmGlobalReg r
-      v <- marshalAndCastCmmExpr e $ typeOfUnresolvedGlobalReg gr
+      v <- marshalAndCastCmmExpr e $ unresolvedGlobalRegType gr
       pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
     GHC.CmmStore p e -> do
       pv <- marshalAndCastCmmExpr p I32
