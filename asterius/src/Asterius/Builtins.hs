@@ -17,16 +17,20 @@ module Asterius.Builtins
   , stackSymbol
   , stackInfoSymbol
   , bdescrSymbol
+  , capabilitySymbol
   , eagerBlackholeInfoSymbol
+  , stopThreadInfoSymbol
   , gcEnter1Symbol
   , gcFunSymbol
-  , capabilitySymbol
+  , stgRunSymbol
+  , stgReturnSymbol
   , sizeof_bdescr
   , tsoStatics
   , stackStatics
   , bdescrStatics
   , baseRegStatics
   , capabilityStatics
+  , stgReturnFunction
   ) where
 
 import Asterius.Internals
@@ -38,6 +42,8 @@ import qualified Data.Vector as V
 import Foreign
 import Foreign.C
 import qualified GhcPlugins as GHC
+
+foreign import capi "Rts.h value BDESCR_SIZE" sizeof_bdescr :: CInt
 
 data BuiltinsOptions = BuiltinsOptions
   { dflags :: GHC.DynFlags
@@ -61,7 +67,10 @@ rtsAsteriusModuleSymbol =
 
 rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
-  mempty {staticsMap = [(capabilitySymbol, capabilityStatics opts)]}
+  mempty
+    { staticsMap = [(capabilitySymbol, capabilityStatics opts)]
+    , functionMap = [(stgReturnSymbol, stgReturnFunction opts)]
+    }
 
 fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
@@ -85,7 +94,7 @@ globalRegName gr =
     BaseReg -> "_asterius_BaseReg"
     _ -> throw $ AssignToImmutableGlobalReg gr
 
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, eagerBlackholeInfoSymbol, gcEnter1Symbol, gcFunSymbol, capabilitySymbol ::
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 tsoSymbol =
   AsteriusEntitySymbol
@@ -106,9 +115,17 @@ bdescrSymbol =
   AsteriusEntitySymbol
     {entityKind = StaticsEntity, entityName = "_asterius_bdescr"}
 
+capabilitySymbol =
+  AsteriusEntitySymbol
+    {entityKind = StaticsEntity, entityName = "_asterius_Capability"}
+
 eagerBlackholeInfoSymbol =
   AsteriusEntitySymbol
     {entityKind = StaticsEntity, entityName = "__stg_EAGER_BLACKHOLE_info"}
+
+stopThreadInfoSymbol =
+  AsteriusEntitySymbol
+    {entityKind = StaticsEntity, entityName = "stg_stop_thread_info"}
 
 gcEnter1Symbol =
   AsteriusEntitySymbol
@@ -118,9 +135,11 @@ gcFunSymbol =
   AsteriusEntitySymbol
     {entityKind = FunctionEntity, entityName = "__stg_gc_fun"}
 
-capabilitySymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "_asterius_Capability"}
+stgRunSymbol =
+  AsteriusEntitySymbol {entityKind = FunctionEntity, entityName = "StgRun"}
+
+stgReturnSymbol =
+  AsteriusEntitySymbol {entityKind = FunctionEntity, entityName = "StgReturn"}
 
 asteriusStaticSize :: AsteriusStatic -> Int
 asteriusStaticSize s =
@@ -143,8 +162,6 @@ layoutStatics ss = AsteriusStatics {asteriusStatics = snd $ f ss (0, [])}
         , case x_offset - tot_len of
             0 -> tot_l <> [x_static]
             delta -> tot_l <> [Uninitialized delta, x_static])
-
-foreign import capi "Rts.h value BDESCR_SIZE" sizeof_bdescr :: CInt
 
 tsoStatics, stackStatics, bdescrStatics, baseRegStatics, capabilityStatics ::
      BuiltinsOptions -> AsteriusStatics
@@ -194,3 +211,8 @@ capabilityStatics opts@BuiltinsOptions {..} =
              ]) <>
         asteriusStatics (baseRegStatics opts)
     }
+
+stgReturnFunction :: BuiltinsOptions -> Function
+stgReturnFunction _ =
+  Function
+    {functionTypeName = fnTypeName, varTypes = [], body = Return $ ConstI64 0}
