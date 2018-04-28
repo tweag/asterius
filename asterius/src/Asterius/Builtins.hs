@@ -6,7 +6,7 @@
 
 module Asterius.Builtins
   ( BuiltinsOptions(..)
-  , defaultBuiltinsOptions
+  , getDefaultBuiltinsOptions
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
   , fnTypeName
@@ -33,6 +33,7 @@ module Asterius.Builtins
   , stgReturnFunction
   ) where
 
+import Asterius.BuildInfo
 import Asterius.Internals
 import Asterius.Types
 import Control.Exception
@@ -41,7 +42,9 @@ import Data.String
 import qualified Data.Vector as V
 import Foreign
 import Foreign.C
+import qualified GHC
 import qualified GhcPlugins as GHC
+import Prelude hiding (IO)
 
 foreign import capi "Rts.h value BDESCR_SIZE" sizeof_bdescr :: CInt
 
@@ -50,13 +53,15 @@ data BuiltinsOptions = BuiltinsOptions
   , stackSize, nurserySize :: Int
   }
 
-defaultBuiltinsOptions :: BuiltinsOptions
-defaultBuiltinsOptions =
-  BuiltinsOptions
-    { dflags = GHC.unsafeGlobalDynFlags
-    , stackSize = 1024576
-    , nurserySize = 1024576
-    }
+getDefaultBuiltinsOptions :: IO BuiltinsOptions
+getDefaultBuiltinsOptions =
+  GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
+  GHC.runGhc (Just ghcLibDir) $ do
+    _ <- GHC.getSessionDynFlags >>= GHC.setSessionDynFlags
+    dflags <- GHC.getSessionDynFlags
+    pure
+      BuiltinsOptions
+        {dflags = dflags, stackSize = 1024576, nurserySize = 1024576}
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =

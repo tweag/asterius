@@ -9,7 +9,7 @@ module Asterius.Boot
   , bootDir
   , configureOptions
   , buildOptions
-  , defaultBootArgs
+  , getDefaultBootArgs
   , boot
   , clean
   ) where
@@ -42,14 +42,16 @@ data BootArgs = BootArgs
   , builtinsOptions :: BuiltinsOptions
   }
 
-defaultBootArgs :: BootArgs
-defaultBootArgs =
-  BootArgs
-    { bootDir = dataDir </> ".boot"
-    , configureOptions = "--disable-split-objs --disable-split-sections -O2"
-    , buildOptions = ""
-    , builtinsOptions = defaultBuiltinsOptions
-    }
+getDefaultBootArgs :: IO BootArgs
+getDefaultBootArgs = do
+  builtins_opts <- getDefaultBuiltinsOptions
+  pure
+    BootArgs
+      { bootDir = dataDir </> ".boot"
+      , configureOptions = "--disable-split-objs --disable-split-sections -O2"
+      , buildOptions = ""
+      , builtinsOptions = builtins_opts
+      }
 
 bootTmpDir :: BootArgs -> FilePath
 bootTmpDir BootArgs {..} = bootDir </> "dist"

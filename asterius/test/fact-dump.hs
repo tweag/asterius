@@ -14,6 +14,8 @@ import Text.Show.Pretty
 
 main :: IO ()
 main = do
+  boot_args <- getDefaultBootArgs
+  let obj_topdir = bootDir boot_args </> "asterius_lib"
   pwd <- getCurrentDirectory
   let test_path = pwd </> "test" </> "fact-dump"
   withCurrentDirectory test_path $ do
@@ -33,5 +35,3 @@ main = do
           AsteriusEntitySymbol
             {entityKind = StaticsEntity, entityName = "Fact_root_closure"} >>=
           pPrint
-  where
-    obj_topdir = bootDir defaultBootArgs </> "asterius_lib"
