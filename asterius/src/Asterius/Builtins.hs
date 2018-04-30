@@ -1,8 +1,10 @@
-{-# LANGUAGE CApiFFI #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+
+#include "DerivedConstants.h"
 
 module Asterius.Builtins
   ( BuiltinsOptions(..)
@@ -24,11 +26,9 @@ module Asterius.Builtins
   , gcFunSymbol
   , stgRunSymbol
   , stgReturnSymbol
-  , sizeof_bdescr
   , tsoStatics
   , stackStatics
   , bdescrStatics
-  , baseRegStatics
   , capabilityStatics
   , stgReturnFunction
   ) where
@@ -38,19 +38,17 @@ import Asterius.Internals
 import Asterius.Types
 import Control.Exception
 import qualified Data.ByteString.Short as SBS
+import Data.List
 import Data.String
 import qualified Data.Vector as V
 import Foreign
-import Foreign.C
 import qualified GHC
 import qualified GhcPlugins as GHC
 import Prelude hiding (IO)
 
-foreign import capi "Rts.h value BDESCR_SIZE" sizeof_bdescr :: CInt
-
 data BuiltinsOptions = BuiltinsOptions
   { dflags :: GHC.DynFlags
-  , stackSize, nurserySize :: Int
+  , stackSize :: Int
   }
 
 getDefaultBuiltinsOptions :: IO BuiltinsOptions
@@ -59,9 +57,7 @@ getDefaultBuiltinsOptions =
   GHC.runGhc (Just ghcLibDir) $ do
     _ <- GHC.getSessionDynFlags >>= GHC.setSessionDynFlags
     dflags <- GHC.getSessionDynFlags
-    pure
-      BuiltinsOptions
-        {dflags = dflags, stackSize = 1024576, nurserySize = 1024576}
+    pure BuiltinsOptions {dflags = dflags, stackSize = 1024576}
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -153,8 +149,13 @@ asteriusStaticSize s =
     Serialized buf -> SBS.length buf
     _ -> 8
 
+asteriusStaticsSize :: AsteriusStatics -> Int
+asteriusStaticsSize ss =
+  V.foldl' (\tot s -> tot + asteriusStaticSize s) 0 (asteriusStatics ss)
+
 layoutStatics :: [(Int, AsteriusStatic)] -> AsteriusStatics
-layoutStatics ss = AsteriusStatics {asteriusStatics = snd $ f ss (0, [])}
+layoutStatics ss =
+  AsteriusStatics {asteriusStatics = snd $ f (sortOn fst ss) (0, [])}
   where
     f :: [(Int, AsteriusStatic)]
       -> (Int, V.Vector AsteriusStatic)
@@ -166,55 +167,54 @@ layoutStatics ss = AsteriusStatics {asteriusStatics = snd $ f ss (0, [])}
         ( x_offset + asteriusStaticSize x_static
         , case x_offset - tot_len of
             0 -> tot_l <> [x_static]
-            delta -> tot_l <> [Uninitialized delta, x_static])
+            delta
+              | delta > 0 -> tot_l <> [Uninitialized delta, x_static]
+              | otherwise -> error "Invalid offset in layoutStatics")
 
-tsoStatics, stackStatics, bdescrStatics, baseRegStatics, capabilityStatics ::
+tsoStatics, stackStatics, bdescrStatics, capabilityStatics ::
      BuiltinsOptions -> AsteriusStatics
 tsoStatics BuiltinsOptions {..} =
   layoutStatics
     [ (0, UnresolvedStatic tsoInfoSymbol)
-    , (GHC.oFFSET_StgTSO_stackobj dflags, UnresolvedStatic stackSymbol)
-    , ( GHC.oFFSET_StgTSO_alloc_limit dflags
-      , Serialized (encodePrim (maxBound :: Int64)))
+    , (OFFSET_StgTSO_stackobj, UnresolvedStatic stackSymbol)
+    , (OFFSET_StgTSO_alloc_limit, Serialized (encodePrim (maxBound :: Int64)))
     ]
 
 stackStatics BuiltinsOptions {..} =
   layoutStatics
     [ (0, UnresolvedStatic stackInfoSymbol)
-    , ( GHC.oFFSET_StgStack_sp dflags
-      , UnresolvedOffStatic stackSymbol (GHC.oFFSET_StgStack_stack dflags))
-    , (GHC.oFFSET_StgStack_stack dflags, Uninitialized stackSize)
+    , ( OFFSET_StgStack_sp
+      , UnresolvedOffStatic stackSymbol OFFSET_StgStack_stack)
+    , (OFFSET_StgStack_stack, Uninitialized stackSize)
     ]
 
-bdescrStatics BuiltinsOptions {..} =
+bdescrStatics _ =
   layoutStatics
-    [ (GHC.oFFSET_bdescr_start dflags, undefined)
-    , (GHC.oFFSET_bdescr_free dflags, undefined)
-    , (GHC.oFFSET_bdescr_flags dflags, Serialized (encodePrim (0 :: Word16)))
-    , (GHC.oFFSET_bdescr_blocks dflags, Serialized (encodePrim (1 :: Word32)))
+    [ (OFFSET_bdescr_start, Uninitialized 8)
+    , (OFFSET_bdescr_free, Uninitialized 8)
+    , (OFFSET_bdescr_flags, Serialized (encodePrim (0 :: Word16)))
+    , (OFFSET_bdescr_blocks, Serialized (encodePrim (1 :: Word32)))
     ]
 
-baseRegStatics BuiltinsOptions {..} =
-  layoutStatics
-    [ (GHC.oFFSET_StgRegTable_rCurrentTSO dflags, UnresolvedStatic tsoSymbol)
-    , ( GHC.oFFSET_StgRegTable_rCurrentNursery dflags
-      , UnresolvedStatic bdescrSymbol)
-    ]
-
-capabilityStatics opts@BuiltinsOptions {..} =
+capabilityStatics _ =
   AsteriusStatics
     { asteriusStatics =
         asteriusStatics
-          (layoutStatics
-             [ ( GHC.oFFSET_stgEagerBlackholeInfo dflags +
-                 GHC.oFFSET_Capability_r dflags
-               , UnresolvedStatic eagerBlackholeInfoSymbol)
-             , ( GHC.oFFSET_stgGCEnter1 dflags + GHC.oFFSET_Capability_r dflags
-               , UnresolvedStatic gcEnter1Symbol)
-             , ( GHC.oFFSET_stgGCFun dflags + GHC.oFFSET_Capability_r dflags
-               , UnresolvedStatic gcFunSymbol)
-             ]) <>
-        asteriusStatics (baseRegStatics opts)
+          (layoutStatics $
+           [ (OFFSET_Capability_r + o, s)
+           | (o, s) <-
+               [ ( OFFSET_stgEagerBlackholeInfo
+                 , UnresolvedStatic eagerBlackholeInfoSymbol)
+               , (OFFSET_stgGCEnter1, UnresolvedStatic gcEnter1Symbol)
+               , (OFFSET_stgGCFun, UnresolvedStatic gcFunSymbol)
+               , (OFFSET_StgRegTable_rCurrentTSO, UnresolvedStatic tsoSymbol)
+               , ( OFFSET_StgRegTable_rCurrentNursery
+                 , UnresolvedStatic bdescrSymbol)
+               , ( OFFSET_StgRegTable_rRet
+                 , Serialized (encodePrim (0 :: Word64)))
+               ]
+           ] <>
+           [(OFFSET_Capability_sparks, Serialized (encodePrim (0 :: Word64)))])
     }
 
 stgReturnFunction :: BuiltinsOptions -> Function
