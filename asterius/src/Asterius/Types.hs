@@ -3,6 +3,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Asterius.Types
@@ -14,6 +15,7 @@ module Asterius.Types
   , AsteriusModuleSymbol(..)
   , AsteriusEntityKind(..)
   , AsteriusEntitySymbol(..)
+  , AsteriusStore(..)
   , UnresolvedLocalReg(..)
   , UnresolvedGlobalReg(..)
   , ValueType(..)
@@ -133,6 +135,13 @@ instance Show AsteriusEntitySymbol where
 instance Serialize AsteriusEntitySymbol
 
 instance Hashable AsteriusEntitySymbol
+
+data AsteriusStore = AsteriusStore
+  { symbolMap :: HM.HashMap AsteriusEntitySymbol AsteriusModuleSymbol
+  , moduleMap :: HM.HashMap AsteriusModuleSymbol AsteriusModule
+  } deriving (Show, Generic, Data)
+
+instance Serialize AsteriusStore
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int

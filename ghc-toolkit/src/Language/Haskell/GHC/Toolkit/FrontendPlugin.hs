@@ -29,6 +29,8 @@ makeFrontendPlugin init_c =
                 env <- getSession
                 liftIO $ oneShot env StopLn targets
               else do
+                do dflags <- getSessionDynFlags
+                   void $ setSessionDynFlags dflags {hooks = h}
                 env <- getSession
                 o_files <-
                   liftIO $ traverse (compileFile env StopLn) non_hs_targets
@@ -39,7 +41,6 @@ makeFrontendPlugin init_c =
                       { ghcMode = CompManager
                       , ldInputs =
                           map (FileOption "") o_files ++ ldInputs dflags
-                      , hooks = h
                       }
                 traverse (uncurry GHC.guessTarget) hs_targets >>= setTargets
                 ok_flag <- load LoadAllTargets

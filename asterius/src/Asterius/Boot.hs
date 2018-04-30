@@ -18,7 +18,7 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
-import Asterius.SymbolDB
+import Asterius.Store
 import Control.Monad
 import Data.Foldable
 import qualified Data.Map.Strict as M
@@ -80,38 +80,28 @@ bootCreateProcess args@BootArgs {..} = do
 bootRTSCmm :: BootArgs -> IO ()
 bootRTSCmm BootArgs {..} = do
   is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
+  store_ref <- newIORef $ builtinsStore builtinsOptions
   rts_cmm_mods <-
     map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
     listDirectory rts_path
   cmms <-
     M.toList <$>
     runCmm defaultConfig [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
-  sym_db_ref <- newIORef mempty
-  do let m = rtsAsteriusModule builtinsOptions
-     p <- moduleSymbolPath obj_topdir rtsAsteriusModuleSymbol "asterius_o"
-     encodeFile p m
-     when is_debug $ do
-       p_a <- moduleSymbolPath obj_topdir rtsAsteriusModuleSymbol "txt"
-       writeFile p_a $ ppShow m
-     modifyIORef' sym_db_ref $ enrichSymbolDB rtsAsteriusModuleSymbol m
   for_ cmms $ \(fn, ir@CmmIR {..}) ->
     let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
         mod_sym = marshalToModuleSymbol ms_mod
      in case runCodeGen (marshalCmmIR ir) (dflags builtinsOptions) ms_mod of
           Left err -> throwIO err
           Right m -> do
-            p <- moduleSymbolPath obj_topdir mod_sym "asterius_o"
-            encodeFile p m
+            modifyIORef' store_ref $ addModule mod_sym m
             when is_debug $ do
-              p_a <- moduleSymbolPath obj_topdir mod_sym "txt"
-              writeFile p_a $ ppShow m
               p_c <- moduleSymbolPath obj_topdir mod_sym "dump-cmm-raw-ast"
               writeFile p_c $ ppShow cmmRaw
-            modifyIORef' sym_db_ref $ enrichSymbolDB mod_sym m
-  sym_db <- readIORef sym_db_ref
-  encodeFile (obj_topdir </> "asterius_sym_db") sym_db
-  when is_debug $
-    writeFile (obj_topdir </> "asterius_sym_db.txt") $ ppShow sym_db
+              p_s <- moduleSymbolPath obj_topdir mod_sym "txt"
+              writeFile p_s $ ppShow m
+  createDirectoryIfMissing True obj_topdir
+  store <- readIORef store_ref
+  encodeFile (obj_topdir </> "asterius_store") store
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
