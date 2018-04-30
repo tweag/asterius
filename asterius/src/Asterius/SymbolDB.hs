@@ -8,7 +8,11 @@
 {-# LANGUAGE StrictData #-}
 
 module Asterius.SymbolDB
-  ( chase
+  ( EntitySymbolStatus(..)
+  , availStatus
+  , queryAsteriusEntitySymbol
+  , ChaseResult(..)
+  , chase
   ) where
 
 import Asterius.Internals
@@ -29,6 +33,11 @@ data EntitySymbolStatus a
 
 instance Hashable a => Hashable (EntitySymbolStatus a)
 
+{-# INLINEABLE availStatus #-}
+availStatus :: Show a => EntitySymbolStatus a -> a
+availStatus (Available a) = a
+availStatus st = error $ "Encountered " <> show st <> " in availStatus."
+
 splitEntitySymbolStatus :: [(k, EntitySymbolStatus a)] -> ([k], [k], [(k, a)])
 splitEntitySymbolStatus =
   foldr
@@ -42,23 +51,23 @@ splitEntitySymbolStatus =
 queryAsteriusEntitySymbol ::
      AsteriusStore
   -> AsteriusEntitySymbol
-  -> (forall t. Data t =>
-                  t -> a)
+  -> (AsteriusStatics -> a)
+  -> (Function -> a)
   -> EntitySymbolStatus a
-queryAsteriusEntitySymbol AsteriusStore {..} sym f =
+queryAsteriusEntitySymbol AsteriusStore {..} sym f_statics f_function =
   case HM.lookup sym symbolMap of
     Just mod_sym -> do
       let AsteriusModule {..} = moduleMap HM.! mod_sym
       case entityKind sym of
         StaticsEntity ->
           case HM.lookup sym staticsMap of
-            Just ss -> Available $ f ss
+            Just ss -> Available $ f_statics ss
             _
               | HM.member sym staticsErrorMap -> Unavailable
               | otherwise -> Unfound
         FunctionEntity ->
           case HM.lookup sym functionMap of
-            Just func -> Available $ f func
+            Just func -> Available $ f_function func
             _
               | HM.member sym functionErrorMap -> Unavailable
               | otherwise -> Unfound
@@ -107,6 +116,7 @@ chaseIter c (staging_syms, ChaseResult {..}) =
               , queryAsteriusEntitySymbol
                   c
                   staging_sym
+                  collectAsteriusEntitySymbol
                   collectAsteriusEntitySymbol))
            (HS.toList staging_syms))
 

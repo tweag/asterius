@@ -448,49 +448,49 @@ instance Serialize Function
 
 data FunctionImport = FunctionImport
   { internalName, externalModuleName, externalBaseName, functionTypeName :: SBS.ShortByteString
-  }
+  } deriving (Show)
 
 data TableImport = TableImport
   { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
-  }
+  } deriving (Show)
 
 data GlobalImport = GlobalImport
   { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
   , globalType :: ValueType
-  }
+  } deriving (Show)
 
 data FunctionExport = FunctionExport
   { internalName, externalName :: SBS.ShortByteString
-  }
+  } deriving (Show)
 
 data TableExport = TableExport
   { internalName, externalName :: SBS.ShortByteString
-  }
+  } deriving (Show)
 
 data GlobalExport = GlobalExport
   { internalName, externalName :: SBS.ShortByteString
-  }
+  } deriving (Show)
 
 data Global = Global
   { valueType :: ValueType
   , mutable :: Bool
   , initValue :: Expression
-  }
+  } deriving (Show)
 
 newtype FunctionTable = FunctionTable
   { functionNames :: V.Vector SBS.ShortByteString
-  }
+  } deriving (Show)
 
 data DataSegment = DataSegment
   { content :: SBS.ShortByteString
   , offset :: Expression
-  }
+  } deriving (Show)
 
 data Memory = Memory
   { initialPages, maximumPages :: BinaryenIndex
   , exportName :: SBS.ShortByteString
   , dataSegments :: V.Vector DataSegment
-  }
+  } deriving (Show)
 
 data Module = Module
   { functionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
@@ -505,7 +505,7 @@ data Module = Module
   , functionTable :: Maybe FunctionTable
   , memory :: Maybe Memory
   , startFunctionName :: Maybe SBS.ShortByteString
-  }
+  } deriving (Show)
 
 emptyModule :: Module
 emptyModule =

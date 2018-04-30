@@ -2,18 +2,20 @@
 
 import Asterius.Boot
 import Asterius.CodeGen
+import Asterius.Internals
+import Asterius.Resolve
+import Asterius.Store
 import Asterius.SymbolDB
 import Asterius.Types
 import Control.Exception
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Map as M
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Run
+import Prelude hiding (IO)
 import System.Directory
 import System.FilePath
 import Text.Show.Pretty
-import Asterius.Store
-import Asterius.Internals
-import Prelude hiding (IO)
 
 main :: IO ()
 main = do
@@ -32,7 +34,11 @@ main = do
         putStrLn "Chasing Fact_root_closure.."
         store' <- decodeFile (obj_topdir </> "asterius_store")
         let store = addModule (marshalToModuleSymbol ms_mod) m store'
-        pPrint $ chase
-          store
-          AsteriusEntitySymbol
-            {entityKind = StaticsEntity, entityName = "Fact_root_closure"}
+            chase_result =
+              chase
+                store
+                AsteriusEntitySymbol
+                  {entityKind = StaticsEntity, entityName = "Fact_root_closure"}
+            avail_syms = statusMap chase_result HM.! Available ()
+        pPrint chase_result
+        pPrint $ linkStart store avail_syms

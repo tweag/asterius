@@ -13,7 +13,6 @@ module Asterius.Builtins
   , rtsAsteriusModule
   , fnTypeName
   , fnType
-  , globalRegName
   , tsoSymbol
   , tsoInfoSymbol
   , stackSymbol
@@ -78,22 +77,6 @@ fnTypeName = "_asterius_FN"
 
 fnType :: FunctionType
 fnType = FunctionType {returnType = I64, paramTypes = []}
-
-globalRegName :: UnresolvedGlobalReg -> SBS.ShortByteString
-globalRegName gr =
-  case gr of
-    VanillaReg i -> fromString $ "_asterius_R" <> show i
-    FloatReg i -> fromString $ "_asterius_F" <> show i
-    DoubleReg i -> fromString $ "_asterius_D" <> show i
-    LongReg i -> fromString $ "_asterius_L" <> show i
-    Sp -> "_asterius_Sp"
-    SpLim -> "_asterius_SpLim"
-    Hp -> "_asterius_Hp"
-    HpLim -> "_asterius_HpLim"
-    CurrentNursery -> "_asterius_CurrentNursery"
-    HpAlloc -> "_asterius_HpAlloc"
-    BaseReg -> "_asterius_BaseReg"
-    _ -> throw $ AssignToImmutableGlobalReg gr
 
 tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
