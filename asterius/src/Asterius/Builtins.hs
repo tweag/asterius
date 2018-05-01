@@ -30,6 +30,8 @@ module Asterius.Builtins
   , bdescrStatics
   , capabilityStatics
   , stgReturnFunction
+  , asteriusStaticSize
+  , asteriusStaticsSize
   ) where
 
 import Asterius.BuildInfo

@@ -23,6 +23,7 @@ import Asterius.Types
 import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
+import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
@@ -121,23 +122,23 @@ marshalGlobalReg gr =
       , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     Sp ->
       ( "_asterius_Sp"
-      , Global {valueType = I64, mutable = True, initValue = undefined})
+      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     SpLim ->
       ( "_asterius_SpLim"
-      , Global {valueType = I64, mutable = True, initValue = undefined})
+      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     Hp ->
       ( "_asterius_Hp"
-      , Global {valueType = I64, mutable = True, initValue = undefined})
+      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     HpLim ->
       ( "_asterius_HpLim"
-      , Global {valueType = I64, mutable = True, initValue = undefined})
+      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     CurrentNursery ->
       ( "_asterius_CurrentNursery"
       , Global
           {valueType = I64, mutable = True, initValue = Unresolved bdescrSymbol})
     HpAlloc ->
       ( "_asterius_HpAlloc"
-      , Global {valueType = I64, mutable = True, initValue = undefined})
+      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     BaseReg ->
       ( "_asterius_BaseReg"
       , Global
@@ -167,8 +168,46 @@ makeFunctionTable AsteriusModule {..} =
   where
     func_syms = HM.keys functionMap
 
-makeMemory :: AsteriusModule -> (Memory, HM.HashMap AsteriusEntitySymbol Int64)
-makeMemory = undefined
+roundBy :: Integral a => a -> a -> a
+roundBy y x
+  | x `mod` y == 0 = x
+  | otherwise = ((x `div` y) + 1) * y
+
+makeStaticsOffsetTable ::
+     AsteriusModule -> (Int64, HM.HashMap AsteriusEntitySymbol Int64)
+makeStaticsOffsetTable AsteriusModule {..} = (last_o, HM.fromList statics_map)
+  where
+    (last_o, statics_map) = layoutStatics $ HM.toList staticsMap
+    layoutStatics = foldl' iterLayoutStaticsState (8, [])
+    iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
+      ( roundBy 8 $ ptr + fromIntegral (asteriusStaticsSize ss)
+      , (ss_sym, ptr) : sym_map)
+
+makeMemory ::
+     AsteriusModule -> Int64 -> HM.HashMap AsteriusEntitySymbol Int64 -> Memory
+makeMemory AsteriusModule {..} last_o sym_map =
+  Memory
+    { initialPages = page_num
+    , maximumPages = page_num
+    , exportName = ""
+    , dataSegments = V.fromList $ concatMap data_segs $ HM.toList staticsMap
+    }
+  where
+    data_segs (ss_sym, AsteriusStatics {..}) =
+      snd $
+      V.foldl'
+        (\(p, segs) s ->
+           ( p + fromIntegral (asteriusStaticSize s)
+           , case s of
+               Serialized buf ->
+                 DataSegment {content = buf, offset = ConstI64 p} : segs
+               Uninitialized {} -> segs
+               _ ->
+                 error $
+                 "Encountered unresolved content " <> show s <> " in makeMemory"))
+        (sym_map HM.! ss_sym, [])
+        asteriusStatics
+    page_num = fromIntegral $ roundBy 65536 last_o
 
 resolveEntitySymbols ::
      Data a => HM.HashMap AsteriusEntitySymbol Int64 -> a -> a
@@ -217,12 +256,12 @@ resolveAsteriusModule m_unresolved =
         HM.fromList $
         map (resolve_syms . marshalGlobalReg) $ HS.toList global_regs
     , functionTable = Just func_table
-    , memory = Just mem
+    , memory = Just $ makeMemory m_resolved last_o ss_sym_map
     , startFunctionName = Nothing
     }
   where
     (func_table, func_sym_map) = makeFunctionTable m_unresolved
-    (mem, ss_sym_map) = makeMemory m_unresolved
+    (last_o, ss_sym_map) = makeStaticsOffsetTable m_unresolved
     resolve_syms :: Data a => a -> a
     resolve_syms = resolveEntitySymbols $ func_sym_map <> ss_sym_map
     (m_resolved, global_regs) = resolveGlobalRegs $ resolve_syms m_unresolved

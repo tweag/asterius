@@ -120,11 +120,11 @@ chaseIter c (staging_syms, ChaseResult {..}) =
                   collectAsteriusEntitySymbol))
            (HS.toList staging_syms))
 
-chase :: AsteriusStore -> AsteriusEntitySymbol -> ChaseResult
-chase c sym =
+chase :: AsteriusStore -> HS.HashSet AsteriusEntitySymbol -> ChaseResult
+chase c syms =
   snd $
   go
-    ( [sym]
+    ( syms
     , ChaseResult
         { directDepBy = []
         , statusMap = [(Unfound, []), (Unavailable, []), (Available (), [])]

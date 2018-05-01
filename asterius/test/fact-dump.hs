@@ -1,6 +1,8 @@
+{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 import Asterius.Boot
+import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.Resolve
@@ -37,8 +39,13 @@ main = do
             chase_result =
               chase
                 store
-                AsteriusEntitySymbol
-                  {entityKind = StaticsEntity, entityName = "Fact_root_closure"}
+                [ AsteriusEntitySymbol
+                    { entityKind = StaticsEntity
+                    , entityName = "Fact_root_closure"
+                    }
+                , bdescrSymbol
+                , capabilitySymbol
+                ]
             avail_syms = statusMap chase_result HM.! Available ()
         pPrint chase_result
         pPrint $ linkStart store avail_syms
