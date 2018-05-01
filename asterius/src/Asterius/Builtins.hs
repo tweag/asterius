@@ -35,10 +35,8 @@ module Asterius.Builtins
 import Asterius.BuildInfo
 import Asterius.Internals
 import Asterius.Types
-import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.List
-import Data.String
 import qualified Data.Vector as V
 import Foreign
 import qualified GHC
@@ -68,7 +66,10 @@ rtsAsteriusModuleSymbol =
 rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
-    { staticsMap = [(capabilitySymbol, capabilityStatics opts)]
+    { staticsMap =
+        [ (bdescrSymbol, bdescrStatics opts)
+        , (capabilitySymbol, capabilityStatics opts)
+        ]
     , functionMap = [(stgReturnSymbol, stgReturnFunction opts)]
     }
 

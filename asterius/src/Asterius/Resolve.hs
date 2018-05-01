@@ -5,7 +5,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+
 #include "DerivedConstants.h"
+
 module Asterius.Resolve
   ( resolveLocalRegs
   , unresolvedGlobalRegType
@@ -131,7 +133,8 @@ marshalGlobalReg gr =
       , Global {valueType = I64, mutable = True, initValue = undefined})
     CurrentNursery ->
       ( "_asterius_CurrentNursery"
-      , Global {valueType = I64, mutable = True, initValue = undefined})
+      , Global
+          {valueType = I64, mutable = True, initValue = Unresolved bdescrSymbol})
     HpAlloc ->
       ( "_asterius_HpAlloc"
       , Global {valueType = I64, mutable = True, initValue = undefined})
@@ -140,12 +143,7 @@ marshalGlobalReg gr =
       , Global
           { valueType = I64
           , mutable = True
-          , initValue =
-              Binary
-                { binaryOp = AddInt64
-                , operand0 = undefined
-                , operand1 = ConstI64 OFFSET_Capability_r
-                }
+          , initValue = UnresolvedOff capabilitySymbol OFFSET_Capability_r
           })
     _ -> throw $ AssignToImmutableGlobalReg gr
 
@@ -163,14 +161,42 @@ mergeSymbols store =
 
 makeFunctionTable ::
      AsteriusModule -> (FunctionTable, HM.HashMap AsteriusEntitySymbol Int64)
-makeFunctionTable = undefined
+makeFunctionTable AsteriusModule {..} =
+  ( FunctionTable {functionNames = V.fromList $ map entityName func_syms}
+  , HM.fromList $ zip func_syms [1 ..])
+  where
+    func_syms = HM.keys functionMap
 
 makeMemory :: AsteriusModule -> (Memory, HM.HashMap AsteriusEntitySymbol Int64)
 makeMemory = undefined
 
 resolveEntitySymbols ::
      Data a => HM.HashMap AsteriusEntitySymbol Int64 -> a -> a
-resolveEntitySymbols = undefined
+resolveEntitySymbols sym_table = f
+  where
+    f :: Data a => a -> a
+    f t =
+      case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
+        Just HRefl ->
+          case t of
+            Unresolved {..} -> ConstI64 $ subst unresolvedSymbol
+            UnresolvedOff {..} ->
+              ConstI64 $ subst unresolvedSymbol + fromIntegral offset'
+            _ -> go
+        _ ->
+          case eqTypeRep (typeOf t) (typeRep :: TypeRep AsteriusStatic) of
+            Just HRefl ->
+              case t of
+                UnresolvedStatic unresolvedSymbol ->
+                  Serialized (encodePrim (subst unresolvedSymbol))
+                UnresolvedOffStatic unresolvedSymbol offset' ->
+                  Serialized
+                    (encodePrim (subst unresolvedSymbol + fromIntegral offset'))
+                _ -> t
+            _ -> go
+      where
+        go = gmapT f t
+        subst = (sym_table HM.!)
 
 resolveAsteriusModule :: AsteriusModule -> Module
 resolveAsteriusModule m_unresolved =
@@ -187,7 +213,9 @@ resolveAsteriusModule m_unresolved =
     , functionExports = []
     , tableExports = []
     , globalExports = []
-    , globalMap = HM.fromList $ map marshalGlobalReg $ HS.toList global_regs
+    , globalMap =
+        HM.fromList $
+        map (resolve_syms . marshalGlobalReg) $ HS.toList global_regs
     , functionTable = Just func_table
     , memory = Just mem
     , startFunctionName = Nothing
@@ -195,9 +223,9 @@ resolveAsteriusModule m_unresolved =
   where
     (func_table, func_sym_map) = makeFunctionTable m_unresolved
     (mem, ss_sym_map) = makeMemory m_unresolved
-    (m_resolved, global_regs) =
-      resolveGlobalRegs
-        (resolveEntitySymbols (func_sym_map <> ss_sym_map) m_unresolved)
+    resolve_syms :: Data a => a -> a
+    resolve_syms = resolveEntitySymbols $ func_sym_map <> ss_sym_map
+    (m_resolved, global_regs) = resolveGlobalRegs $ resolve_syms m_unresolved
 
 linkStart :: AsteriusStore -> HS.HashSet AsteriusEntitySymbol -> Module
 linkStart store syms = resolveAsteriusModule $ mergeSymbols store syms

@@ -424,7 +424,7 @@ data Expression
   | CFG { graph :: RelooperRun }
   | Unresolved { unresolvedSymbol :: AsteriusEntitySymbol }
   | UnresolvedOff { unresolvedSymbol :: AsteriusEntitySymbol
-                  , offset :: BinaryenIndex }
+                  , offset' :: Int }
   | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
@@ -475,7 +475,7 @@ data Global = Global
   { valueType :: ValueType
   , mutable :: Bool
   , initValue :: Expression
-  } deriving (Show)
+  } deriving (Show, Data)
 
 newtype FunctionTable = FunctionTable
   { functionNames :: V.Vector SBS.ShortByteString

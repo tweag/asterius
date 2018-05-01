@@ -229,7 +229,7 @@ marshalCmmLit lit =
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
       pure
-        (UnresolvedOff {unresolvedSymbol = sym, offset = fromIntegral o}, I64)
+        (UnresolvedOff {unresolvedSymbol = sym, offset' = o}, I64)
     _ -> throwError $ UnsupportedCmmLit $ showSBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
