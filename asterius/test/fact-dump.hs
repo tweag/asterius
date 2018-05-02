@@ -47,6 +47,8 @@ main = do
                     }
                 , bdescrSymbol
                 , capabilitySymbol
+                , stgRunSymbol
+                -- , stopThreadInfoSymbol
                 ]
             avail_syms = statusMap chase_result HM.! Available ()
         pPrint chase_result

@@ -676,26 +676,31 @@ marshalCmmUnsafeCall ::
   -> CodeGen [Expression]
 marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
   sym <- marshalCLabel clbl
-  xes <-
-    for xs $ \x -> do
-      (xe, _) <- marshalCmmExpr x
-      pure xe
-  case rs of
-    [] ->
-      pure [Call {target = sym, operands = V.fromList xes, valueType = None}]
-    [r] -> do
-      (lr, vt) <- marshalCmmLocalReg r
-      pure
-        [ UnresolvedSetLocal
-            { unresolvedLocalReg = lr
-            , value =
-                Call {target = sym, operands = V.fromList xes, valueType = vt}
-            }
-        ]
-    _ ->
-      throwError $
-      UnsupportedCmmInstr $
-      showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
+  if entityName sym == "barf"
+    then pure [Unreachable]
+    else do
+      xes <-
+        for xs $ \x -> do
+          (xe, _) <- marshalCmmExpr x
+          pure xe
+      case rs of
+        [] ->
+          pure
+            [Call {target = sym, operands = V.fromList xes, valueType = None}]
+        [r] -> do
+          (lr, vt) <- marshalCmmLocalReg r
+          pure
+            [ UnresolvedSetLocal
+                { unresolvedLocalReg = lr
+                , value =
+                    Call
+                      {target = sym, operands = V.fromList xes, valueType = vt}
+                }
+            ]
+        _ ->
+          throwError $
+          UnsupportedCmmInstr $
+          showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
 marshalCmmUnsafeCall p f rs xs =
   throwError $
   UnsupportedCmmInstr $

@@ -12,9 +12,9 @@ module Asterius.Builtins
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
   , fnTypeName
-  , barfTypeName
+  , stgRunTypeName
   , fnType
-  , barfType
+  , stgRunType
   , tsoSymbol
   , tsoInfoSymbol
   , stackSymbol
@@ -27,13 +27,12 @@ module Asterius.Builtins
   , gcFunSymbol
   , stgRunSymbol
   , stgReturnSymbol
-  , barfSymbol
   , tsoStatics
   , stackStatics
   , bdescrStatics
   , capabilityStatics
+  , stgRunFunction
   , stgReturnFunction
-  , barfFunction
   , asteriusStaticSize
   , asteriusStaticsSize
   ) where
@@ -79,22 +78,22 @@ rtsAsteriusModule opts =
         , (capabilitySymbol, capabilityStatics opts)
         ]
     , functionMap =
-        [ (stgReturnSymbol, stgReturnFunction opts)
-        , (barfSymbol, barfFunction opts)
+        [ (stgRunSymbol, stgRunFunction opts)
+        , (stgReturnSymbol, stgReturnFunction opts)
         ]
     }
 
-fnTypeName, barfTypeName :: SBS.ShortByteString
+fnTypeName, stgRunTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-barfTypeName = "_asterius_barf"
+stgRunTypeName = "_asterius_StgRun"
 
-fnType, barfType :: FunctionType
+fnType, stgRunType :: FunctionType
 fnType = FunctionType {returnType = I64, paramTypes = []}
 
-barfType = FunctionType {returnType = None, paramTypes = [I64]}
+stgRunType = FunctionType {returnType = None, paramTypes = [I64]}
 
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, stgRunSymbol, stgReturnSymbol, barfSymbol ::
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 tsoSymbol =
   AsteriusEntitySymbol
@@ -140,9 +139,6 @@ stgRunSymbol =
 
 stgReturnSymbol =
   AsteriusEntitySymbol {entityKind = FunctionEntity, entityName = "StgReturn"}
-
-barfSymbol =
-  AsteriusEntitySymbol {entityKind = FunctionEntity, entityName = "barf"}
 
 asteriusStaticSize :: AsteriusStatic -> Int
 asteriusStaticSize s =
@@ -215,11 +211,60 @@ capabilityStatics _ =
            [(OFFSET_Capability_sparks, Serialized (encodePrim (0 :: Word64)))])
     }
 
-stgReturnFunction :: BuiltinsOptions -> Function
+stgRunFunction, stgReturnFunction :: BuiltinsOptions -> Function
+stgRunFunction _ =
+  Function
+    { functionTypeName = stgRunTypeName
+    , varTypes = []
+    , body =
+        Loop
+          { name = loop_lbl
+          , body =
+              If
+                { condition =
+                    Binary
+                      { binaryOp = NeInt64
+                      , operand0 = GetLocal {index = 0, valueType = I64}
+                      , operand1 = ConstI64 0
+                      }
+                , ifTrue =
+                    Block
+                      { name = ""
+                      , bodys =
+                          [ SetLocal
+                              { index = 0
+                              , value =
+                                  CallIndirect
+                                    { indirectTarget =
+                                        Binary
+                                          { binaryOp = SubInt32
+                                          , operand0 =
+                                              Unary
+                                                { unaryOp = WrapInt64
+                                                , operand0 =
+                                                    GetLocal
+                                                      { index = 0
+                                                      , valueType = I64
+                                                      }
+                                                }
+                                          , operand1 = ConstI32 1
+                                          }
+                                    , operands = []
+                                    , typeName = fnTypeName
+                                    }
+                              }
+                          , Break
+                              {name = loop_lbl, condition = Null, value = Null}
+                          ]
+                      , valueType = None
+                      }
+                , ifFalse = Return {value = Null}
+                }
+          }
+    }
+  where
+    loop_lbl = "StgRun_loop"
+
 stgReturnFunction _ =
   Function
     {functionTypeName = fnTypeName, varTypes = [], body = Return $ ConstI64 0}
-
-barfFunction :: BuiltinsOptions -> Function
-barfFunction _ =
-  Function {functionTypeName = barfTypeName, varTypes = [], body = Unreachable}

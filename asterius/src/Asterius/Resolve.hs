@@ -241,7 +241,7 @@ resolveEntitySymbols sym_table = f
 resolveAsteriusModule :: AsteriusModule -> Module
 resolveAsteriusModule m_unresolved =
   Module
-    { functionTypeMap = [(fnTypeName, fnType), (barfTypeName, barfType)]
+    { functionTypeMap = [(fnTypeName, fnType), (stgRunTypeName, stgRunType)]
     , functionMap' =
         HM.fromList
           [ (entityName func_sym, func)
