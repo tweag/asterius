@@ -143,6 +143,16 @@ data AsteriusStore = AsteriusStore
 
 instance Serialize AsteriusStore
 
+instance Semigroup AsteriusStore where
+  s0 <> s1 =
+    AsteriusStore
+      { symbolMap = symbolMap s0 <> symbolMap s1
+      , moduleMap = moduleMap s0 <> moduleMap s1
+      }
+
+instance Monoid AsteriusStore where
+  mempty = AsteriusStore {symbolMap = mempty, moduleMap = mempty}
+
 data UnresolvedLocalReg
   = UniqueLocalReg Int
                    ValueType

@@ -5,13 +5,9 @@
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Boot
-  ( BootArgs
-  , bootDir
-  , configureOptions
-  , buildOptions
+  ( BootArgs(..)
   , getDefaultBootArgs
   , boot
-  , clean
   ) where
 
 import Asterius.BuildInfo
@@ -115,6 +111,3 @@ boot args = do
     case ec of
       ExitFailure _ -> throwString "boot failure"
       _ -> pure ()
-
-clean :: BootArgs -> IO ()
-clean BootArgs {..} = removePathForcibly bootDir
