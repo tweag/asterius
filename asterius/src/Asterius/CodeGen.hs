@@ -204,7 +204,6 @@ marshalCmmGlobalReg r =
     GHC.CurrentTSO -> pure CurrentTSO
     GHC.CurrentNursery -> pure CurrentNursery
     GHC.HpAlloc -> pure HpAlloc
-    GHC.EagerBlackholeInfo -> pure EagerBlackholeInfo
     GHC.GCEnter1 -> pure GCEnter1
     GHC.GCFun -> pure GCFun
     GHC.BaseReg -> pure BaseReg
@@ -228,8 +227,7 @@ marshalCmmLit lit =
       pure (Unresolved {unresolvedSymbol = sym}, I64)
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
-      pure
-        (UnresolvedOff {unresolvedSymbol = sym, offset' = o}, I64)
+      pure (UnresolvedOff {unresolvedSymbol = sym, offset' = o}, I64)
     _ -> throwError $ UnsupportedCmmLit $ showSBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
@@ -292,9 +290,8 @@ marshalCmmReg r =
       pure
         ( case gr_k of
             CurrentTSO -> Unresolved tsoSymbol
-            EagerBlackholeInfo -> Unresolved eagerBlackholeInfoSymbol
-            GCEnter1 -> Unresolved gcEnter1Symbol
-            GCFun -> Unresolved gcFunSymbol
+            GCEnter1 -> Unreachable
+            GCFun -> Unreachable
             _ -> UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
         , unresolvedGlobalRegType gr_k)
 
@@ -778,7 +775,7 @@ marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
 marshalCmmBlockBranch ::
      GHC.CmmNode GHC.O GHC.C
-  -> CodeGen (Either Expression ([Expression], V.Vector (RelooperAddBranch)))
+  -> CodeGen (Either Expression ([Expression], V.Vector RelooperAddBranch))
 marshalCmmBlockBranch instr =
   case instr of
     GHC.CmmBranch lbl -> do
@@ -823,13 +820,23 @@ marshalCmmBlockBranch instr =
           , V.fromList $ brs <> last_brs)
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
-      pure $ Left Return {value = t}
+      pure $
+        Left
+          Return
+            { value =
+                case t of
+                  Unresolved {..}
+                    | "stg_gc" `CBS.isPrefixOf`
+                        SBS.fromShort (entityName unresolvedSymbol) ->
+                      Unreachable
+                  _ -> t
+            }
     _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
 
 marshalCmmBlock ::
      [GHC.CmmNode GHC.O GHC.O]
   -> GHC.CmmNode GHC.O GHC.C
-  -> CodeGen (RelooperBlock)
+  -> CodeGen RelooperBlock
 marshalCmmBlock inner_nodes exit_node = do
   inner_exprs <- marshalCmmBlockBody inner_nodes
   br_result <- marshalCmmBlockBranch exit_node

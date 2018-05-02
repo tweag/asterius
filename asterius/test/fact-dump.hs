@@ -5,10 +5,12 @@ import Asterius.Boot
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
+import Asterius.Marshal
 import Asterius.Resolve
 import Asterius.Store
 import Asterius.SymbolDB
 import Asterius.Types
+import Bindings.Binaryen.Raw
 import Control.Exception
 import qualified Data.HashMap.Strict as HM
 import qualified Data.Map as M
@@ -48,4 +50,10 @@ main = do
                 ]
             avail_syms = statusMap chase_result HM.! Available ()
         pPrint chase_result
-        pPrint $ linkStart store avail_syms
+        let final_m = linkStart store avail_syms
+        pPrint final_m
+        m_ref <- marshalModule final_m
+        print m_ref
+        c_BinaryenModuleValidate m_ref >>= print
+        c_BinaryenModulePrint m_ref
+        c_BinaryenModuleDispose m_ref

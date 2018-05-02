@@ -12,7 +12,9 @@ module Asterius.Builtins
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
   , fnTypeName
+  , barfTypeName
   , fnType
+  , barfType
   , tsoSymbol
   , tsoInfoSymbol
   , stackSymbol
@@ -25,11 +27,13 @@ module Asterius.Builtins
   , gcFunSymbol
   , stgRunSymbol
   , stgReturnSymbol
+  , barfSymbol
   , tsoStatics
   , stackStatics
   , bdescrStatics
   , capabilityStatics
   , stgReturnFunction
+  , barfFunction
   , asteriusStaticSize
   , asteriusStaticsSize
   ) where
@@ -69,19 +73,28 @@ rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
     { staticsMap =
-        [ (bdescrSymbol, bdescrStatics opts)
+        [ (tsoSymbol, tsoStatics opts)
+        , (stackSymbol, stackStatics opts)
+        , (bdescrSymbol, bdescrStatics opts)
         , (capabilitySymbol, capabilityStatics opts)
         ]
-    , functionMap = [(stgReturnSymbol, stgReturnFunction opts)]
+    , functionMap =
+        [ (stgReturnSymbol, stgReturnFunction opts)
+        , (barfSymbol, barfFunction opts)
+        ]
     }
 
-fnTypeName :: SBS.ShortByteString
+fnTypeName, barfTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-fnType :: FunctionType
+barfTypeName = "_asterius_barf"
+
+fnType, barfType :: FunctionType
 fnType = FunctionType {returnType = I64, paramTypes = []}
 
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, stgRunSymbol, stgReturnSymbol ::
+barfType = FunctionType {returnType = None, paramTypes = [I64]}
+
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, stgRunSymbol, stgReturnSymbol, barfSymbol ::
      AsteriusEntitySymbol
 tsoSymbol =
   AsteriusEntitySymbol
@@ -127,6 +140,9 @@ stgRunSymbol =
 
 stgReturnSymbol =
   AsteriusEntitySymbol {entityKind = FunctionEntity, entityName = "StgReturn"}
+
+barfSymbol =
+  AsteriusEntitySymbol {entityKind = FunctionEntity, entityName = "barf"}
 
 asteriusStaticSize :: AsteriusStatic -> Int
 asteriusStaticSize s =
@@ -189,11 +205,7 @@ capabilityStatics _ =
           (layoutStatics $
            [ (OFFSET_Capability_r + o, s)
            | (o, s) <-
-               [ ( OFFSET_stgEagerBlackholeInfo
-                 , UnresolvedStatic eagerBlackholeInfoSymbol)
-               , (OFFSET_stgGCEnter1, UnresolvedStatic gcEnter1Symbol)
-               , (OFFSET_stgGCFun, UnresolvedStatic gcFunSymbol)
-               , (OFFSET_StgRegTable_rCurrentTSO, UnresolvedStatic tsoSymbol)
+               [ (OFFSET_StgRegTable_rCurrentTSO, UnresolvedStatic tsoSymbol)
                , ( OFFSET_StgRegTable_rCurrentNursery
                  , UnresolvedStatic bdescrSymbol)
                , ( OFFSET_StgRegTable_rRet
@@ -207,3 +219,7 @@ stgReturnFunction :: BuiltinsOptions -> Function
 stgReturnFunction _ =
   Function
     {functionTypeName = fnTypeName, varTypes = [], body = Return $ ConstI64 0}
+
+barfFunction :: BuiltinsOptions -> Function
+barfFunction _ =
+  Function {functionTypeName = barfTypeName, varTypes = [], body = Unreachable}

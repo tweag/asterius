@@ -200,14 +200,15 @@ makeMemory AsteriusModule {..} last_o sym_map =
            ( p + fromIntegral (asteriusStaticSize s)
            , case s of
                Serialized buf ->
-                 DataSegment {content = buf, offset = ConstI64 p} : segs
+                 DataSegment {content = buf, offset = ConstI32 $ fromIntegral p} :
+                 segs
                Uninitialized {} -> segs
                _ ->
                  error $
                  "Encountered unresolved content " <> show s <> " in makeMemory"))
         (sym_map HM.! ss_sym, [])
         asteriusStatics
-    page_num = fromIntegral $ roundBy 65536 last_o
+    page_num = fromIntegral $ roundBy 65536 last_o `div` 65536
 
 resolveEntitySymbols ::
      Data a => HM.HashMap AsteriusEntitySymbol Int64 -> a -> a
@@ -240,7 +241,7 @@ resolveEntitySymbols sym_table = f
 resolveAsteriusModule :: AsteriusModule -> Module
 resolveAsteriusModule m_unresolved =
   Module
-    { functionTypeMap = [(fnTypeName, fnType)]
+    { functionTypeMap = [(fnTypeName, fnType), (barfTypeName, barfType)]
     , functionMap' =
         HM.fromList
           [ (entityName func_sym, func)
