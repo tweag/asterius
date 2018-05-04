@@ -18,7 +18,6 @@ module Asterius.Resolve
 
 import Asterius.Builtins
 import Asterius.Internals
-import Asterius.SymbolDB
 import Asterius.Types
 import Control.Exception
 import qualified Data.ByteString.Short as SBS
@@ -51,7 +50,7 @@ resolveLocalRegs t =
     lrs =
       zip (HS.toList $ collectUnresolvedLocalRegs t) ([1 ..] :: [BinaryenIndex])
     lr_map = HM.fromList lrs
-    lr_idx = (lr_map HM.!)
+    lr_idx = (lr_map !)
     f :: Data a => a -> a
     f x =
       case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
@@ -148,17 +147,51 @@ marshalGlobalReg gr =
           })
     _ -> throw $ AssignToImmutableGlobalReg gr
 
+collectAsteriusEntitySymbols :: Data a => a -> HS.HashSet AsteriusEntitySymbol
+collectAsteriusEntitySymbols = collect proxy#
+
 mergeSymbols ::
      AsteriusStore -> HS.HashSet AsteriusEntitySymbol -> AsteriusModule
-mergeSymbols store =
-  foldMap
-    (\sym ->
-       availStatus $
-       queryAsteriusEntitySymbol
-         store
-         sym
-         (\ss -> mempty {staticsMap = [(sym, ss)]})
-         (\f -> mempty {functionMap = [(sym, f)]}))
+mergeSymbols AsteriusStore {..} syms = final_m
+  where
+    (_, _, final_m) = go (syms, mempty, mempty)
+    go i@(_, i_syms, _) =
+      if HS.size i_syms == HS.size o_syms
+        then o
+        else go o
+      where
+        o@(_, o_syms, _) = iter i
+    iter (i_staging_syms, i_syms, i_m) =
+      ( collectAsteriusEntitySymbols i_staging_m `HS.difference` o_syms
+      , o_syms
+      , i_staging_m <> i_m)
+      where
+        (i_staging_static_syms, i_staging_func_syms) =
+          HS.foldl'
+            (\(ss, fs) s ->
+               case entityKind s of
+                 StaticsEntity -> (s : ss, fs)
+                 FunctionEntity -> (ss, s : fs))
+            ([], [])
+            i_staging_syms
+        i_staging_m =
+          mempty
+            { staticsMap =
+                HM.fromList
+                  [ ( statics_sym
+                    , staticsMap (moduleMap ! (symbolMap ! statics_sym)) !
+                      statics_sym)
+                  | statics_sym <- i_staging_static_syms
+                  ]
+            , functionMap =
+                HM.fromList
+                  [ ( func_sym
+                    , functionMap (moduleMap ! (symbolMap ! func_sym)) !
+                      func_sym)
+                  | func_sym <- i_staging_func_syms
+                  ]
+            }
+        o_syms = i_staging_syms <> i_syms
 
 makeFunctionTable ::
      AsteriusModule -> (FunctionTable, HM.HashMap AsteriusEntitySymbol Int64)
@@ -206,7 +239,7 @@ makeMemory AsteriusModule {..} last_o sym_map =
                _ ->
                  error $
                  "Encountered unresolved content " <> show s <> " in makeMemory"))
-        (sym_map HM.! ss_sym, [])
+        (sym_map ! ss_sym, [])
         asteriusStatics
     page_num = fromIntegral $ roundBy 65536 last_o `div` 65536
 
@@ -236,7 +269,7 @@ resolveEntitySymbols sym_table = f
             _ -> go
       where
         go = gmapT f t
-        subst = (sym_table HM.!)
+        subst = (sym_table !)
 
 resolveAsteriusModule :: AsteriusModule -> Module
 resolveAsteriusModule m_unresolved =

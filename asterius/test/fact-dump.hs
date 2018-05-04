@@ -8,11 +8,9 @@ import Asterius.Internals
 import Asterius.Marshal
 import Asterius.Resolve
 import Asterius.Store
-import Asterius.SymbolDB
 import Asterius.Types
 import Bindings.Binaryen.Raw
 import Control.Exception
-import qualified Data.HashMap.Strict as HM
 import qualified Data.Map as M
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Run
@@ -38,8 +36,8 @@ main = do
         putStrLn "Chasing Fact_root_closure.."
         store' <- decodeFile (obj_topdir </> "asterius_store")
         let store = addModule (marshalToModuleSymbol ms_mod) m store'
-            chase_result =
-              chase
+        let final_m =
+              linkStart
                 store
                 [ AsteriusEntitySymbol
                     { entityKind = StaticsEntity
@@ -48,11 +46,8 @@ main = do
                 , bdescrSymbol
                 , capabilitySymbol
                 , stgRunSymbol
-                -- , stopThreadInfoSymbol
+                , stopThreadInfoSymbol
                 ]
-            avail_syms = statusMap chase_result HM.! Available ()
-        pPrint chase_result
-        let final_m = linkStart store avail_syms
         pPrint final_m
         m_ref <- marshalModule final_m
         print m_ref

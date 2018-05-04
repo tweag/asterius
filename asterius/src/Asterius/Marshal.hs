@@ -394,7 +394,7 @@ marshalFunctionTable ::
   -> FunctionTable
   -> IO ()
 marshalFunctionTable m fps FunctionTable {..} =
-  withSV (V.convert $ V.map (fps HM.!) functionNames) $
+  withSV (V.convert $ V.map (fps !) functionNames) $
   c_BinaryenSetFunctionTable m
 
 marshalMemory :: BinaryenModuleRef -> Memory -> IO ()
@@ -427,7 +427,7 @@ marshalStartFunctionName ::
   -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
   -> SBS.ShortByteString
   -> IO ()
-marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps HM.! n)
+marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps ! n)
 
 marshalModule :: Module -> IO BinaryenModuleRef
 marshalModule Module {..} = do
@@ -440,10 +440,10 @@ marshalModule Module {..} = do
   fps <-
     fmap HM.fromList $
     for (HM.toList functionMap') $ \(k, f@Function {..}) -> do
-      fp <- marshalFunction m k (ftps HM.! functionTypeName) f
+      fp <- marshalFunction m k (ftps ! functionTypeName) f
       pure (k, fp)
   V.forM_ functionImports $ \fi@FunctionImport {..} ->
-    marshalFunctionImport m (ftps HM.! functionTypeName) fi
+    marshalFunctionImport m (ftps ! functionTypeName) fi
   V.forM_ tableImports $ marshalTableImport m
   V.forM_ globalImports $ marshalGlobalImport m
   V.forM_ functionExports $ marshalFunctionExport m
@@ -484,11 +484,11 @@ relooperAddBranch m bm k ab =
     AddBranch {..} -> do
       _cond <- marshalExpression m condition
       _code <- marshalExpression m code
-      c_RelooperAddBranch (bm HM.! k) (bm HM.! to) _cond _code
+      c_RelooperAddBranch (bm ! k) (bm ! to) _cond _code
     AddBranchForSwitch {..} -> do
       c <- marshalExpression m code
       withSV (V.convert indexes) $ \idp idn ->
-        c_RelooperAddBranchForSwitch (bm HM.! k) (bm HM.! to) idp idn c
+        c_RelooperAddBranchForSwitch (bm ! k) (bm ! to) idp idn c
 
 relooperRun :: BinaryenModuleRef -> RelooperRun -> IO BinaryenExpressionRef
 relooperRun m RelooperRun {..} = do
@@ -500,4 +500,4 @@ relooperRun m RelooperRun {..} = do
       pure (k, bp)
   for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
     V.forM_ addBranches $ relooperAddBranch m bpm k
-  c_RelooperRenderAndDispose r (bpm HM.! entry) labelHelper m
+  c_RelooperRenderAndDispose r (bpm ! entry) labelHelper m
