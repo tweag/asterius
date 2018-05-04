@@ -95,50 +95,29 @@ stgRunType = FunctionType {returnType = None, paramTypes = [I64]}
 
 tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
-tsoSymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "_asterius_TSO"}
+tsoSymbol = "_asterius_TSO"
 
-tsoInfoSymbol =
-  AsteriusEntitySymbol {entityKind = StaticsEntity, entityName = "stg_TSO_info"}
+tsoInfoSymbol = "stg_TSO_info"
 
-stackSymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "_asterius_Stack"}
+stackSymbol = "_asterius_Stack"
 
-stackInfoSymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "stg_STACK_info"}
+stackInfoSymbol = "stg_STACK_info"
 
-bdescrSymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "_asterius_bdescr"}
+bdescrSymbol = "_asterius_bdescr"
 
-capabilitySymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "_asterius_Capability"}
+capabilitySymbol = "_asterius_Capability"
 
-eagerBlackholeInfoSymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "__stg_EAGER_BLACKHOLE_info"}
+eagerBlackholeInfoSymbol = "__stg_EAGER_BLACKHOLE_info"
 
-stopThreadInfoSymbol =
-  AsteriusEntitySymbol
-    {entityKind = StaticsEntity, entityName = "stg_stop_thread_info"}
+stopThreadInfoSymbol = "stg_stop_thread_info"
 
-gcEnter1Symbol =
-  AsteriusEntitySymbol
-    {entityKind = FunctionEntity, entityName = "__stg_gc_enter_1"}
+gcEnter1Symbol = "__stg_gc_enter_1"
 
-gcFunSymbol =
-  AsteriusEntitySymbol
-    {entityKind = FunctionEntity, entityName = "__stg_gc_fun"}
+gcFunSymbol = "__stg_gc_fun"
 
-stgRunSymbol =
-  AsteriusEntitySymbol {entityKind = FunctionEntity, entityName = "StgRun"}
+stgRunSymbol = "StgRun"
 
-stgReturnSymbol =
-  AsteriusEntitySymbol {entityKind = FunctionEntity, entityName = "StgReturn"}
+stgReturnSymbol = "StgReturn"
 
 asteriusStaticSize :: AsteriusStatic -> Int
 asteriusStaticSize s =

@@ -8,7 +8,6 @@ import Asterius.Internals
 import Asterius.Marshal
 import Asterius.Resolve
 import Asterius.Store
-import Asterius.Types
 import Bindings.Binaryen.Raw
 import Control.Exception
 import qualified Data.Map as M
@@ -39,10 +38,7 @@ main = do
         let final_m =
               linkStart
                 store
-                [ AsteriusEntitySymbol
-                    { entityKind = StaticsEntity
-                    , entityName = "Fact_root_closure"
-                    }
+                [ "Fact_root_closure"
                 , bdescrSymbol
                 , capabilitySymbol
                 , stgRunSymbol

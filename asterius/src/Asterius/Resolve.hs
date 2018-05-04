@@ -13,6 +13,9 @@ module Asterius.Resolve
   , unresolvedGlobalRegType
   , collectUnresolvedGlobalRegs
   , resolveGlobalRegs
+  , collectAsteriusEntitySymbols
+  , mergeSymbols
+  , resolveAsteriusModule
   , linkStart
   ) where
 
@@ -166,31 +169,19 @@ mergeSymbols AsteriusStore {..} syms = final_m
       , o_syms
       , i_staging_m <> i_m)
       where
-        (i_staging_static_syms, i_staging_func_syms) =
-          HS.foldl'
-            (\(ss, fs) s ->
-               case entityKind s of
-                 StaticsEntity -> (s : ss, fs)
-                 FunctionEntity -> (ss, s : fs))
-            ([], [])
-            i_staging_syms
         i_staging_m =
-          mempty
-            { staticsMap =
-                HM.fromList
-                  [ ( statics_sym
-                    , staticsMap (moduleMap ! (symbolMap ! statics_sym)) !
-                      statics_sym)
-                  | statics_sym <- i_staging_static_syms
-                  ]
-            , functionMap =
-                HM.fromList
-                  [ ( func_sym
-                    , functionMap (moduleMap ! (symbolMap ! func_sym)) !
-                      func_sym)
-                  | func_sym <- i_staging_func_syms
-                  ]
-            }
+          foldMap
+            (\staging_sym ->
+               case moduleMap ! (symbolMap ! staging_sym) of
+                 AsteriusModule {..} ->
+                   case HM.lookup staging_sym staticsMap of
+                     Just ss -> mempty {staticsMap = [(staging_sym, ss)]}
+                     _ ->
+                       mempty
+                         { functionMap =
+                             [(staging_sym, functionMap ! staging_sym)]
+                         })
+            i_staging_syms
         o_syms = i_staging_syms <> i_syms
 
 makeFunctionTable ::

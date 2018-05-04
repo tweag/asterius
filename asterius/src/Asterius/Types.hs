@@ -1,6 +1,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -13,7 +15,6 @@ module Asterius.Types
   , AsteriusStatics(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
-  , AsteriusEntityKind(..)
   , AsteriusEntitySymbol(..)
   , AsteriusStore(..)
   , UnresolvedLocalReg(..)
@@ -51,6 +52,7 @@ import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Data.Hashable
 import Data.Serialize
+import Data.String
 import qualified Data.Vector as V
 import GHC.Generics
 import UnliftIO
@@ -115,26 +117,10 @@ instance Serialize AsteriusModuleSymbol
 
 instance Hashable AsteriusModuleSymbol
 
-data AsteriusEntityKind
-  = StaticsEntity
-  | FunctionEntity
-  deriving (Eq, Show, Generic, Data)
-
-instance Serialize AsteriusEntityKind
-
-instance Hashable AsteriusEntityKind
-
-data AsteriusEntitySymbol = AsteriusEntitySymbol
-  { entityKind :: AsteriusEntityKind
-  , entityName :: SBS.ShortByteString
-  } deriving (Eq, Generic, Data)
-
-instance Show AsteriusEntitySymbol where
-  show = show . entityName
-
-instance Serialize AsteriusEntitySymbol
-
-instance Hashable AsteriusEntitySymbol
+newtype AsteriusEntitySymbol = AsteriusEntitySymbol
+  { entityName :: SBS.ShortByteString
+  } deriving stock (Generic, Data)
+    deriving newtype (Eq, Show, IsString, Serialize, Hashable)
 
 data AsteriusStore = AsteriusStore
   { symbolMap :: HM.HashMap AsteriusEntitySymbol AsteriusModuleSymbol

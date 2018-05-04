@@ -99,11 +99,7 @@ marshalCLabel clbl = do
   (dflags, def_mod_prefix) <- ask
   pure
     AsteriusEntitySymbol
-      { entityKind =
-          if GHC.isCFunctionLabel clbl
-            then FunctionEntity
-            else StaticsEntity
-      , entityName =
+      { entityName =
           fromString $
           if GHC.externallyVisibleCLabel clbl
             then asmPpr dflags clbl
