@@ -776,62 +776,71 @@ marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
 marshalCmmBlockBranch ::
      GHC.CmmNode GHC.O GHC.C
-  -> CodeGen (Either Expression ([Expression], V.Vector RelooperAddBranch))
+  -> CodeGen ([Expression], Maybe Expression, V.Vector RelooperAddBranch)
 marshalCmmBlockBranch instr =
   case instr of
     GHC.CmmBranch lbl -> do
       k <- marshalLabel lbl
-      pure $ Right ([], [AddBranch {to = k, condition = Null, code = Null}])
+      pure ([], Nothing, [AddBranch {to = k, condition = Null, code = Null}])
     GHC.CmmCondBranch {..} -> do
       c <- marshalAndCastCmmExpr cml_pred I32
       kf <- marshalLabel cml_false
       kt <- marshalLabel cml_true
-      pure $
-        Right
-          ( []
-          , [ AddBranch {to = kt, condition = c, code = Null}
-            , AddBranch {to = kf, condition = Null, code = Null}
-            ])
+      pure
+        ( []
+        , Nothing
+        , V.fromList $
+          [AddBranch {to = kt, condition = c, code = Null} | kt /= kf] <>
+          [AddBranch {to = kf, condition = Null, code = Null}])
     GHC.CmmSwitch cml_arg st -> do
       a <- marshalAndCastCmmExpr cml_arg I64
       brs <-
         for (GHC.switchTargetsCases st) $ \(idx, lbl) -> do
           k <- marshalLabel lbl
-          pure
-            AddBranch
-              { to = k
-              , condition =
-                  Binary
-                    { binaryOp = EqInt64
-                    , operand0 =
-                        UnresolvedGetLocal {unresolvedLocalReg = SwitchCondReg}
-                    , operand1 = ConstI64 $ fromIntegral idx
-                    }
-              , code = Null
-              }
-      last_brs <-
+          pure (k, [fromIntegral $ idx - fst (GHC.switchTargetsRange st)])
+      maybe_br_def <-
         case GHC.switchTargetsDefault st of
-          Just lbl -> do
-            k <- marshalLabel lbl
-            pure [AddBranch {to = k, condition = Null, code = Null}]
-          _ -> pure []
-      pure $
-        Right
-          ( [UnresolvedSetLocal {unresolvedLocalReg = SwitchCondReg, value = a}]
-          , V.fromList $ brs <> last_brs)
+          Just lbl -> Just <$> marshalLabel lbl
+          _ -> pure Nothing
+      pure
+        ( []
+        , Just
+            Unary
+              { unaryOp = WrapInt64
+              , operand0 =
+                  case GHC.switchTargetsRange st of
+                    (0, _) -> a
+                    (l, _) ->
+                      Binary
+                        { binaryOp = SubInt64
+                        , operand0 = a
+                        , operand1 = ConstI64 $ fromIntegral l
+                        }
+              }
+        , V.fromList $
+          [ AddBranchForSwitch
+            {to = dest, indexes = V.fromList tags, code = Null}
+          | (dest, tags) <- HM.toList $ HM.fromListWith (<>) brs
+          ] <>
+          case maybe_br_def of
+            Just br_def ->
+              [AddBranch {to = br_def, condition = Null, code = Null}]
+            _ -> [])
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
-      pure $
-        Left
-          Return
-            { value =
-                case t of
-                  Unresolved {..}
-                    | "stg_gc" `CBS.isPrefixOf`
-                        SBS.fromShort (entityName unresolvedSymbol) ->
-                      Unreachable
-                  _ -> t
-            }
+      pure
+        ( [ Return
+              { value =
+                  case t of
+                    Unresolved {..}
+                      | "stg_gc" `CBS.isPrefixOf`
+                          SBS.fromShort (entityName unresolvedSymbol) ->
+                        Unreachable
+                    _ -> t
+              }
+          ]
+        , Nothing
+        , [])
     _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
 
 marshalCmmBlock ::
@@ -840,16 +849,20 @@ marshalCmmBlock ::
   -> CodeGen RelooperBlock
 marshalCmmBlock inner_nodes exit_node = do
   inner_exprs <- marshalCmmBlockBody inner_nodes
-  br_result <- marshalCmmBlockBranch exit_node
+  (br_helper_exprs, maybe_switch_cond, br_branches) <-
+    marshalCmmBlockBranch exit_node
   pure $
-    case br_result of
-      Left br_expr ->
+    case maybe_switch_cond of
+      Just switch_cond ->
         RelooperBlock
           { addBlock =
-              AddBlock {code = concatExpressions $ inner_exprs <> [br_expr]}
-          , addBranches = []
+              AddBlockWithSwitch
+                { code = concatExpressions $ inner_exprs <> br_helper_exprs
+                , condition = switch_cond
+                }
+          , addBranches = br_branches
           }
-      Right (br_helper_exprs, br_branches) ->
+      _ ->
         RelooperBlock
           { addBlock =
               AddBlock

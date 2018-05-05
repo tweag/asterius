@@ -13,30 +13,42 @@ main = do
   m <-
     marshalModule $
     emptyModule
-      { functionTypeMap = [("func_type", FunctionType I32 [I32])]
+      { functionTypeMap = [("func_type", FunctionType I32 [])]
       , functionMap' =
           [ ( "func"
-            , Function "func_type" [I32] $
-              CFG $
-              RelooperRun
-                "block_entry"
-                [ ( "block_entry"
-                  , RelooperBlock
-                      (AddBlock $
-                       Store 2 0 0 (ConstI32 0) (ConstI32 0xFFFFFFFF) I32)
-                      [ AddBranch
-                          "block_0"
-                          (Binary EqInt32 (GetLocal 0 I32) (ConstI32 0))
-                          Null
-                      , AddBranch "block_def" Null Null
-                      ])
-                , ( "block_0"
-                  , RelooperBlock
-                      (AddBlock (Block "" [Return $ ConstI32 0] I32))
-                      [])
-                , ("block_def", RelooperBlock (AddBlock (ConstI32 233)) [])
-                ]
-                1)
+            , Function
+                "func_type"
+                [I32]
+                CFG
+                  { graph =
+                      RelooperRun
+                        { entry = ".entry"
+                        , blockMap =
+                            [ ( ".entry"
+                              , RelooperBlock
+                                  { addBlock =
+                                      AddBlockWithSwitch Null (GetLocal 0 I32)
+                                  , addBranches =
+                                      [ AddBranchForSwitch ".odd" [1] Null
+                                      , AddBranch ".def" Null Null
+                                      ]
+                                  })
+                            , ( ".odd"
+                              , RelooperBlock
+                                  { addBlock =
+                                      AddBlock Return {value = ConstI32 19}
+                                  , addBranches = []
+                                  })
+                            , ( ".def"
+                              , RelooperBlock
+                                  { addBlock =
+                                      AddBlock Return {value = ConstI32 233}
+                                  , addBranches = []
+                                  })
+                            ]
+                        , labelHelper = 0
+                        }
+                  })
           ]
       }
   fptr <- mallocForeignPtrBytes 1000000

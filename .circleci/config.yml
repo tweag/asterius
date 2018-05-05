@@ -64,7 +64,6 @@ jobs:
       - run:
           name: Test Asterius
           command: |
-            stack --no-terminal --system-ghc test --haddock asterius:nir-test
             stack --no-terminal --system-ghc exec --haddock ahc-boot
             stack --no-terminal --system-ghc test --haddock asterius:ahc-boot-builtins
             stack --no-terminal --system-ghc test --haddock asterius:fact-dump

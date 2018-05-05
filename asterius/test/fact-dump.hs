@@ -16,6 +16,7 @@ import Language.Haskell.GHC.Toolkit.Run
 import Prelude hiding (IO)
 import System.Directory
 import System.FilePath
+import System.IO hiding (IO)
 import Text.Show.Pretty
 
 main :: IO ()
@@ -45,6 +46,7 @@ main = do
                 , stopThreadInfoSymbol
                 ]
         pPrint final_m
+        hFlush stdout
         m_ref <- marshalModule final_m
         print m_ref
         c_BinaryenModuleValidate m_ref >>= print
