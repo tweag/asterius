@@ -16,39 +16,45 @@ main = do
       { functionTypeMap = [("func_type", FunctionType I32 [])]
       , functionMap' =
           [ ( "func"
-            , Function
-                "func_type"
-                [I32]
-                CFG
-                  { graph =
-                      RelooperRun
-                        { entry = ".entry"
-                        , blockMap =
-                            [ ( ".entry"
-                              , RelooperBlock
-                                  { addBlock =
-                                      AddBlockWithSwitch Null (GetLocal 0 I32)
-                                  , addBranches =
-                                      [ AddBranchForSwitch ".odd" [1] Null
-                                      , AddBranch ".def" Null Null
-                                      ]
-                                  })
-                            , ( ".odd"
-                              , RelooperBlock
-                                  { addBlock =
-                                      AddBlock Return {value = ConstI32 19}
-                                  , addBranches = []
-                                  })
-                            , ( ".def"
-                              , RelooperBlock
-                                  { addBlock =
-                                      AddBlock Return {value = ConstI32 233}
-                                  , addBranches = []
-                                  })
-                            ]
-                        , labelHelper = 0
-                        }
-                  })
+            , Function "func_type" [I32, I32] $
+              Block
+                ""
+                [ CFG
+                    { graph =
+                        RelooperRun
+                          { entry = ".entry"
+                          , blockMap =
+                              [ ( ".entry"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlockWithSwitch Null (GetLocal 1 I32)
+                                    , addBranches =
+                                        [ AddBranchForSwitch
+                                            ".odd"
+                                            [2, 3, 5, 7]
+                                            Null
+                                        , AddBranch ".def" Null Null
+                                        ]
+                                    })
+                              , ( ".odd"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlock $ SetLocal 1 $ ConstI32 19
+                                    , addBranches = []
+                                    })
+                              , ( ".def"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlock $ SetLocal 1 $ ConstI32 233
+                                    , addBranches = []
+                                    })
+                              ]
+                          , labelHelper = 0
+                          }
+                    }
+                , Return $ GetLocal 1 I32
+                ]
+                I32)
           ]
       }
   fptr <- mallocForeignPtrBytes 1000000

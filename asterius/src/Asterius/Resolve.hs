@@ -37,7 +37,7 @@ unresolvedLocalRegType :: UnresolvedLocalReg -> ValueType
 unresolvedLocalRegType lr =
   case lr of
     UniqueLocalReg _ vt -> vt
-    SwitchCondReg -> I64
+    RetReg -> I64
     QuotRemI32X -> I32
     QuotRemI32Y -> I32
     QuotRemI64X -> I64

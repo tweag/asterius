@@ -142,7 +142,7 @@ instance Monoid AsteriusStore where
 data UnresolvedLocalReg
   = UniqueLocalReg Int
                    ValueType
-  | SwitchCondReg
+  | RetReg
   | QuotRemI32X
   | QuotRemI32Y
   | QuotRemI64X

@@ -153,10 +153,6 @@ struct FunctionTypeAnalyzer : public PostWalker<FunctionTypeAnalyzer> {
 };
 
 struct RemoveUnusedModuleElements : public Pass {
-  bool rootAllFunctions;
-
-  RemoveUnusedModuleElements(bool rootAllFunctions) : rootAllFunctions(rootAllFunctions) {}
-
   void run(PassRunner* runner, Module* module) override {
     optimizeGlobalsAndFunctions(module);
     optimizeFunctionTypes(module);
@@ -174,12 +170,6 @@ struct RemoveUnusedModuleElements : public Pass {
         roots.emplace_back(ModuleElementKind::Function, module->start);
       }
     }
-    // If told to, root all the functions
-    if (rootAllFunctions) {
-      for (auto& func : module->functions) {
-        roots.emplace_back(ModuleElementKind::Function, func->name);
-      }
-    }
     // Exports are roots.
     bool exportsMemory = false;
     bool exportsTable = false;
@@ -192,16 +182,6 @@ struct RemoveUnusedModuleElements : public Pass {
         exportsMemory = true;
       } else if (curr->kind == ExternalKind::Table) {
         exportsTable = true;
-      }
-    }
-    // Check for special imports are roots.
-    bool importsMemory = false;
-    bool importsTable = false;
-    for (auto& curr : module->imports) {
-      if (curr->kind == ExternalKind::Memory) {
-        importsMemory = true;
-      } else if (curr->kind == ExternalKind::Table) {
-        importsTable = true;
       }
     }
     // For now, all functions that can be called indirectly are marked as roots.
@@ -238,31 +218,19 @@ struct RemoveUnusedModuleElements : public Pass {
     }
     module->updateMaps();
     // Handle the memory and table
-    if (!exportsMemory && !analyzer.usesMemory) {
-      if (!importsMemory) {
-        // The memory is unobservable to the outside, we can remove the contents.
-        module->memory.segments.clear();
-      }
-      if (module->memory.segments.empty()) {
-        module->memory.exists = false;
-        module->memory.imported = false;
-        module->memory.initial = 0;
-        module->memory.max = 0;
-        removeImport(ExternalKind::Memory, module);
-      }
+    if (!exportsMemory && !analyzer.usesMemory && module->memory.segments.empty()) {
+      module->memory.exists = false;
+      module->memory.imported = false;
+      module->memory.initial = 0;
+      module->memory.max = 0;
+      removeImport(ExternalKind::Memory, module);
     }
-    if (!exportsTable && !analyzer.usesTable) {
-      if (!importsTable) {
-        // The table is unobservable to the outside, we can remove the contents.
-        module->table.segments.clear();
-      }
-      if (module->table.segments.empty()) {
-        module->table.exists = false;
-        module->table.imported = false;
-        module->table.initial = 0;
-        module->table.max = 0;
-        removeImport(ExternalKind::Table, module);
-      }
+    if (!exportsTable && !analyzer.usesTable && module->table.segments.empty()) {
+      module->table.exists = false;
+      module->table.imported = false;
+      module->table.initial = 0;
+      module->table.max = 0;
+      removeImport(ExternalKind::Table, module);
     }
   }
 
@@ -311,11 +279,7 @@ struct RemoveUnusedModuleElements : public Pass {
 };
 
 Pass* createRemoveUnusedModuleElementsPass() {
-  return new RemoveUnusedModuleElements(false);
-}
-
-Pass* createRemoveUnusedNonFunctionModuleElementsPass() {
-  return new RemoveUnusedModuleElements(true);
+  return new RemoveUnusedModuleElements();
 }
 
 } // namespace wasm
