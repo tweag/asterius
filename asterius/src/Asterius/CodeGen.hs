@@ -903,14 +903,14 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
               { entry = entry_k
               , blockMap =
                   HM.fromList $
-                  if or need_unreachable_block_list
-                    then [ ( "_asterius_unreachable"
-                           , RelooperBlock
-                               { addBlock = AddBlock {code = Unreachable}
-                               , addBranches = []
-                               })
-                         ]
-                    else [] <> rbs
+                  [ ( "_asterius_unreachable"
+                    , RelooperBlock
+                        { addBlock = AddBlock {code = Unreachable}
+                        , addBranches = []
+                        })
+                  | or need_unreachable_block_list
+                  ] <>
+                  rbs
               , labelHelper = 0
               }
       }
