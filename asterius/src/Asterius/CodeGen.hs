@@ -834,8 +834,8 @@ marshalCmmBlockBranch instr =
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
       pure
-        ( [ UnresolvedSetLocal
-              { unresolvedLocalReg = RetReg
+        ( [ SetLocal
+              { index = 1
               , value =
                   case t of
                     Unresolved {..}
@@ -918,8 +918,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                           rbs
                       , labelHelper = 0
                       }
-                , Return
-                    {value = UnresolvedGetLocal {unresolvedLocalReg = RetReg}}
+                , Return {value = GetLocal {index = 1, valueType = I64}}
                 ]
             , valueType = I64
             }

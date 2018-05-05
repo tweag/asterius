@@ -37,7 +37,6 @@ unresolvedLocalRegType :: UnresolvedLocalReg -> ValueType
 unresolvedLocalRegType lr =
   case lr of
     UniqueLocalReg _ vt -> vt
-    RetReg -> I64
     QuotRemI32X -> I32
     QuotRemI32Y -> I32
     QuotRemI64X -> I64
@@ -48,10 +47,10 @@ collectUnresolvedLocalRegs = collect proxy#
 
 resolveLocalRegs :: Data a => a -> (a, V.Vector ValueType)
 resolveLocalRegs t =
-  (f t, V.fromList $ I32 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
+  (f t, V.fromList $ I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
   where
     lrs =
-      zip (HS.toList $ collectUnresolvedLocalRegs t) ([1 ..] :: [BinaryenIndex])
+      zip (HS.toList $ collectUnresolvedLocalRegs t) ([2 ..] :: [BinaryenIndex])
     lr_map = HM.fromList lrs
     lr_idx = (lr_map !)
     f :: Data a => a -> a
