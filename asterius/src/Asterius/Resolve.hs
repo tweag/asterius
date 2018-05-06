@@ -153,35 +153,41 @@ collectAsteriusEntitySymbols :: Data a => a -> HS.HashSet AsteriusEntitySymbol
 collectAsteriusEntitySymbols = collect proxy#
 
 mergeSymbols ::
-     AsteriusStore -> HS.HashSet AsteriusEntitySymbol -> AsteriusModule
-mergeSymbols AsteriusStore {..} syms = final_m
+     AsteriusStore
+  -> HS.HashSet AsteriusEntitySymbol
+  -> ( Maybe AsteriusModule
+     , HM.HashMap AsteriusEntitySymbol (HS.HashSet AsteriusEntitySymbol))
+mergeSymbols AsteriusStore {..} syms = (maybe_final_m, mempty)
   where
-    (_, _, final_m) = go (syms, mempty, mempty)
+    (_, _, maybe_final_m) = go (syms, mempty, Just mempty)
     go i@(_, i_syms, _) =
       if HS.size i_syms == HS.size o_syms
         then o
         else go o
       where
         o@(_, o_syms, _) = iter i
-    iter (i_staging_syms, i_syms, i_m) =
-      ( collectAsteriusEntitySymbols i_staging_m `HS.difference` o_syms
-      , o_syms
-      , i_staging_m <> i_m)
-      where
-        i_staging_m =
-          foldMap
-            (\staging_sym ->
-               case moduleMap ! (symbolMap ! staging_sym) of
-                 AsteriusModule {..} ->
-                   case HM.lookup staging_sym staticsMap of
-                     Just ss -> mempty {staticsMap = [(staging_sym, ss)]}
-                     _ ->
-                       mempty
-                         { functionMap =
-                             [(staging_sym, functionMap ! staging_sym)]
-                         })
-            i_staging_syms
-        o_syms = i_staging_syms <> i_syms
+    iter (i_staging_syms, i_syms, maybe_i_m) =
+      case maybe_i_m of
+        Just i_m ->
+          ( collectAsteriusEntitySymbols i_staging_m `HS.difference` o_syms
+          , o_syms
+          , Just $ i_staging_m <> i_m)
+          where i_staging_m =
+                  foldMap
+                    (\staging_sym ->
+                       case moduleMap ! (symbolMap ! staging_sym) of
+                         AsteriusModule {..} ->
+                           case HM.lookup staging_sym staticsMap of
+                             Just ss ->
+                               mempty {staticsMap = [(staging_sym, ss)]}
+                             _ ->
+                               mempty
+                                 { functionMap =
+                                     [(staging_sym, functionMap ! staging_sym)]
+                                 })
+                    i_staging_syms
+                o_syms = i_staging_syms <> i_syms
+        _ -> (i_staging_syms, i_syms, maybe_i_m)
 
 makeFunctionTable ::
      AsteriusModule -> (FunctionTable, HM.HashMap AsteriusEntitySymbol Int64)
@@ -290,5 +296,10 @@ resolveAsteriusModule m_unresolved =
     resolve_syms = resolveEntitySymbols $ func_sym_map <> ss_sym_map
     (m_resolved, global_regs) = resolveGlobalRegs $ resolve_syms m_unresolved
 
-linkStart :: AsteriusStore -> HS.HashSet AsteriusEntitySymbol -> Module
-linkStart store syms = resolveAsteriusModule $ mergeSymbols store syms
+linkStart ::
+     AsteriusStore
+  -> HS.HashSet AsteriusEntitySymbol
+  -> (Module, HM.HashMap AsteriusEntitySymbol (HS.HashSet AsteriusEntitySymbol))
+linkStart store syms = (resolveAsteriusModule merged_m, dep_map)
+  where
+    (Just merged_m, dep_map) = mergeSymbols store syms
