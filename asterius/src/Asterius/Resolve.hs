@@ -5,6 +5,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StrictData #-}
 
 #include "DerivedConstants.h"
 
@@ -14,6 +15,7 @@ module Asterius.Resolve
   , collectUnresolvedGlobalRegs
   , resolveGlobalRegs
   , collectAsteriusEntitySymbols
+  , LinkReport(..)
   , mergeSymbols
   , resolveAsteriusModule
   , linkStart
@@ -25,6 +27,7 @@ import Asterius.Types
 import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
+import Data.Either
 import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
@@ -152,42 +155,92 @@ marshalGlobalReg gr =
 collectAsteriusEntitySymbols :: Data a => a -> HS.HashSet AsteriusEntitySymbol
 collectAsteriusEntitySymbols = collect proxy#
 
+data LinkReport = LinkReport
+  { parentSymbols :: HM.HashMap AsteriusEntitySymbol (HS.HashSet AsteriusEntitySymbol)
+  , unfoundSymbols, unavailableSymbols :: HS.HashSet AsteriusEntitySymbol
+  } deriving (Show)
+
+instance Semigroup LinkReport where
+  r0 <> r1 =
+    LinkReport
+      { parentSymbols = HM.unionWith (<>) (parentSymbols r0) (parentSymbols r1)
+      , unfoundSymbols = unfoundSymbols r0 <> unfoundSymbols r1
+      , unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
+      }
+
+instance Monoid LinkReport where
+  mempty =
+    LinkReport
+      { parentSymbols = mempty
+      , unfoundSymbols = mempty
+      , unavailableSymbols = mempty
+      }
+
 mergeSymbols ::
      AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
-  -> ( Maybe AsteriusModule
-     , HM.HashMap AsteriusEntitySymbol (HS.HashSet AsteriusEntitySymbol))
-mergeSymbols AsteriusStore {..} syms = (maybe_final_m, mempty)
+  -> (Maybe AsteriusModule, LinkReport)
+mergeSymbols AsteriusStore {..} syms = (maybe_final_m, final_rep)
   where
-    (_, _, maybe_final_m) = go (syms, mempty, Just mempty)
-    go i@(_, i_syms, _) =
-      if HS.size i_syms == HS.size o_syms
-        then o
-        else go o
+    maybe_final_m
+      | HS.null (unfoundSymbols final_rep) &&
+          HS.null (unavailableSymbols final_rep) = Just final_m
+      | otherwise = Nothing
+    (_, final_rep, final_m) = go (syms, mempty, mempty)
+    go i@(_, i_rep, _)
+      | HM.size (parentSymbols i_rep) == HM.size (parentSymbols o_rep) = o
+      | otherwise = go o
       where
-        o@(_, o_syms, _) = iter i
-    iter (i_staging_syms, i_syms, maybe_i_m) =
-      case maybe_i_m of
-        Just i_m ->
-          ( collectAsteriusEntitySymbols i_staging_m `HS.difference` o_syms
-          , o_syms
-          , Just $ i_staging_m <> i_m)
-          where i_staging_m =
-                  foldMap
-                    (\staging_sym ->
-                       case moduleMap ! (symbolMap ! staging_sym) of
-                         AsteriusModule {..} ->
-                           case HM.lookup staging_sym staticsMap of
-                             Just ss ->
-                               mempty {staticsMap = [(staging_sym, ss)]}
-                             _ ->
-                               mempty
-                                 { functionMap =
-                                     [(staging_sym, functionMap ! staging_sym)]
-                                 })
-                    i_staging_syms
-                o_syms = i_staging_syms <> i_syms
-        _ -> (i_staging_syms, i_syms, maybe_i_m)
+        o@(_, o_rep, _) = iter i
+    iter (i_staging_syms, i_rep, i_m) = (o_staging_syms, o_rep, o_m)
+      where
+        (i_unfound_syms, i_sym_mods) =
+          partitionEithers
+            [ case HM.lookup i_staging_sym symbolMap of
+              Just mod_sym -> Right (i_staging_sym, moduleMap ! mod_sym)
+              _ -> Left i_staging_sym
+            | i_staging_sym <- HS.toList i_staging_syms
+            ]
+        (i_unavailable_syms, i_sym_modlets) =
+          partitionEithers
+            [ case HM.lookup i_staging_sym staticsMap of
+              Just ss ->
+                Right
+                  (i_staging_sym, mempty {staticsMap = [(i_staging_sym, ss)]})
+              _ ->
+                case HM.lookup i_staging_sym functionMap of
+                  Just func ->
+                    Right
+                      ( i_staging_sym
+                      , mempty {functionMap = [(i_staging_sym, func)]})
+                  _ -> Left i_staging_sym
+            | (i_staging_sym, AsteriusModule {..}) <- i_sym_mods
+            ]
+        i_mod = mconcat $ map snd i_sym_modlets
+        i_parent_map =
+          HM.fromListWith (<>) $
+          concat
+            [ [ (i_descendent_sym, [i_staging_sym])
+            | i_descendent_sym <-
+                HS.toList $ collectAsteriusEntitySymbols i_modlet
+            ]
+            | (i_staging_sym, i_modlet) <- i_sym_modlets
+            ]
+        o_rep =
+          mempty
+            { parentSymbols = i_parent_map
+            , unfoundSymbols = HS.fromList i_unfound_syms
+            , unavailableSymbols = HS.fromList i_unavailable_syms
+            } <>
+          i_rep
+        o_m = i_mod <> i_m
+        o_staging_syms =
+          HS.fromList (HM.keys i_parent_map) `HS.difference`
+          HS.unions
+            [ unfoundSymbols o_rep
+            , unavailableSymbols o_rep
+            , HS.unions $ HM.elems $ parentSymbols o_rep
+            ]
 
 makeFunctionTable ::
      AsteriusModule -> (FunctionTable, HM.HashMap AsteriusEntitySymbol Int64)
@@ -299,7 +352,7 @@ resolveAsteriusModule m_unresolved =
 linkStart ::
      AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
-  -> (Module, HM.HashMap AsteriusEntitySymbol (HS.HashSet AsteriusEntitySymbol))
-linkStart store syms = (resolveAsteriusModule merged_m, dep_map)
+  -> (Maybe Module, LinkReport)
+linkStart store syms = (resolveAsteriusModule <$> maybe_merged_m, report)
   where
-    (Just merged_m, dep_map) = mergeSymbols store syms
+    (maybe_merged_m, report) = mergeSymbols store syms

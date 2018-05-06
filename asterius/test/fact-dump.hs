@@ -36,7 +36,7 @@ main = do
         putStrLn "Chasing Fact_root_closure.."
         store' <- decodeFile (obj_topdir </> "asterius_store")
         let store = addModule (marshalToModuleSymbol ms_mod) m store'
-            (final_m, dep_map) =
+            (maybe_final_m, report) =
               linkStart
                 store
                 [ "Fact_root_closure"
@@ -45,7 +45,8 @@ main = do
                 , stgRunSymbol
                 , stopThreadInfoSymbol
                 ]
-        pPrint dep_map
+        pPrint report
+        let Just final_m = maybe_final_m
         pPrint final_m
         hFlush stdout
         m_ref <- marshalModule final_m

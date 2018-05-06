@@ -3,17 +3,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
-
 #include "DerivedConstants.h"
-
 module Asterius.Builtins
   ( BuiltinsOptions(..)
   , getDefaultBuiltinsOptions
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
   , fnTypeName
+  , newCAFTypeName
   , stgRunTypeName
   , fnType
+  , newCAFType
   , stgRunType
   , tsoSymbol
   , tsoInfoSymbol
@@ -25,12 +25,14 @@ module Asterius.Builtins
   , stopThreadInfoSymbol
   , gcEnter1Symbol
   , gcFunSymbol
+  , newCAFSymbol
   , stgRunSymbol
   , stgReturnSymbol
   , tsoStatics
   , stackStatics
   , bdescrStatics
   , capabilityStatics
+  , newCAFFunction
   , stgRunFunction
   , stgReturnFunction
   , asteriusStaticSize
@@ -78,22 +80,27 @@ rtsAsteriusModule opts =
         , (capabilitySymbol, capabilityStatics opts)
         ]
     , functionMap =
-        [ (stgRunSymbol, stgRunFunction opts)
+        [ (newCAFSymbol, newCAFFunction opts)
+        , (stgRunSymbol, stgRunFunction opts)
         , (stgReturnSymbol, stgReturnFunction opts)
         ]
     }
 
-fnTypeName, stgRunTypeName :: SBS.ShortByteString
+fnTypeName, newCAFTypeName, stgRunTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
+
+newCAFTypeName = "_asterius_newCAF"
 
 stgRunTypeName = "_asterius_StgRun"
 
-fnType, stgRunType :: FunctionType
+fnType, newCAFType, stgRunType :: FunctionType
 fnType = FunctionType {returnType = I64, paramTypes = []}
+
+newCAFType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
 
 stgRunType = FunctionType {returnType = None, paramTypes = [I64]}
 
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, stgRunSymbol, stgReturnSymbol ::
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 tsoSymbol = "_asterius_TSO"
 
@@ -114,6 +121,8 @@ stopThreadInfoSymbol = "stg_stop_thread_info"
 gcEnter1Symbol = "__stg_gc_enter_1"
 
 gcFunSymbol = "__stg_gc_fun"
+
+newCAFSymbol = "newCAF"
 
 stgRunSymbol = "StgRun"
 
@@ -190,7 +199,14 @@ capabilityStatics _ =
            [(OFFSET_Capability_sparks, Serialized (encodePrim (0 :: Word64)))])
     }
 
-stgRunFunction, stgReturnFunction :: BuiltinsOptions -> Function
+newCAFFunction, stgRunFunction, stgReturnFunction :: BuiltinsOptions -> Function
+newCAFFunction _ =
+  Function
+    { functionTypeName = newCAFTypeName
+    , varTypes = []
+    , body = Return $ ConstI64 0
+    }
+
 stgRunFunction _ =
   Function
     { functionTypeName = stgRunTypeName
