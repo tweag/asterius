@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedLists #-}
@@ -6,8 +5,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
-
-#include "DerivedConstants.h"
 
 module Asterius.Resolve
   ( resolveLocalRegs
@@ -34,6 +31,7 @@ import qualified Data.HashSet as HS
 import qualified Data.Vector as V
 import Foreign
 import GHC.Exts
+import Language.Haskell.GHC.Toolkit.Constants
 import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
 
 unresolvedLocalRegType :: UnresolvedLocalReg -> ValueType
@@ -148,7 +146,7 @@ marshalGlobalReg gr =
       , Global
           { valueType = I64
           , mutable = True
-          , initValue = UnresolvedOff capabilitySymbol OFFSET_Capability_r
+          , initValue = UnresolvedOff capabilitySymbol offset_Capability_r
           })
     _ -> throw $ AssignToImmutableGlobalReg gr
 

@@ -6,6 +6,7 @@ environment:
   MAKEFLAGS: -j4
 
 build_script:
+  - git submodule update --init --recursive
   - choco install haskell-stack
   - stack --no-terminal --skip-msys setup > NUL
   - mklink /D %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025 C:\\msys64

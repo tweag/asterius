@@ -1,9 +1,8 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
-#include "DerivedConstants.h"
+
 module Asterius.Builtins
   ( BuiltinsOptions(..)
   , getDefaultBuiltinsOptions
@@ -48,6 +47,7 @@ import qualified Data.Vector as V
 import Foreign
 import qualified GHC
 import qualified GhcPlugins as GHC
+import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 
 data BuiltinsOptions = BuiltinsOptions
@@ -162,41 +162,40 @@ tsoStatics, stackStatics, bdescrStatics, capabilityStatics ::
 tsoStatics BuiltinsOptions {..} =
   layoutStatics
     [ (0, UnresolvedStatic tsoInfoSymbol)
-    , (OFFSET_StgTSO_stackobj, UnresolvedStatic stackSymbol)
-    , (OFFSET_StgTSO_alloc_limit, Serialized (encodePrim (maxBound :: Int64)))
+    , (offset_StgTSO_stackobj, UnresolvedStatic stackSymbol)
+    , (offset_StgTSO_alloc_limit, Serialized (encodePrim (maxBound :: Int64)))
     ]
 
 stackStatics BuiltinsOptions {..} =
   layoutStatics
     [ (0, UnresolvedStatic stackInfoSymbol)
-    , ( OFFSET_StgStack_sp
-      , UnresolvedOffStatic stackSymbol OFFSET_StgStack_stack)
-    , (OFFSET_StgStack_stack, Uninitialized stackSize)
+    , ( offset_StgStack_sp
+      , UnresolvedOffStatic stackSymbol offset_StgStack_stack)
+    , (offset_StgStack_stack, Uninitialized stackSize)
     ]
 
 bdescrStatics _ =
   layoutStatics
-    [ (OFFSET_bdescr_start, Uninitialized 8)
-    , (OFFSET_bdescr_free, Uninitialized 8)
-    , (OFFSET_bdescr_flags, Serialized (encodePrim (0 :: Word16)))
-    , (OFFSET_bdescr_blocks, Serialized (encodePrim (1 :: Word32)))
+    [ (offset_bdescr_start, Uninitialized 8)
+    , (offset_bdescr_free, Uninitialized 8)
+    , (offset_bdescr_flags, Serialized (encodePrim (0 :: Word16)))
+    , (offset_bdescr_blocks, Serialized (encodePrim (1 :: Word32)))
     ]
 
 capabilityStatics _ =
   AsteriusStatics
     { asteriusStatics =
         asteriusStatics
-          (layoutStatics $
-           [ (OFFSET_Capability_r + o, s)
-           | (o, s) <-
-               [ (OFFSET_StgRegTable_rCurrentTSO, UnresolvedStatic tsoSymbol)
-               , ( OFFSET_StgRegTable_rCurrentNursery
-                 , UnresolvedStatic bdescrSymbol)
-               , ( OFFSET_StgRegTable_rRet
-                 , Serialized (encodePrim (0 :: Word64)))
-               ]
-           ] <>
-           [(OFFSET_Capability_sparks, Serialized (encodePrim (0 :: Word64)))])
+          (layoutStatics
+             [ (offset_Capability_r + o, s)
+             | (o, s) <-
+                 [ (offset_StgRegTable_rCurrentTSO, UnresolvedStatic tsoSymbol)
+                 , ( offset_StgRegTable_rCurrentNursery
+                   , UnresolvedStatic bdescrSymbol)
+                 , ( offset_StgRegTable_rRet
+                   , Serialized (encodePrim (0 :: Word64)))
+                 ]
+             ])
     }
 
 newCAFFunction, stgRunFunction, stgReturnFunction :: BuiltinsOptions -> Function
