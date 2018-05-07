@@ -216,13 +216,12 @@ mergeSymbols AsteriusStore {..} syms = (maybe_final_m, final_rep)
             ]
         i_mod = mconcat $ map snd i_sym_modlets
         i_parent_map =
-          HM.fromListWith (<>) $
-          concat
-            [ [ (i_descendent_sym, [i_staging_sym])
-            | i_descendent_sym <-
-                HS.toList $ collectAsteriusEntitySymbols i_modlet
-            ]
+          HM.fromListWith
+            (<>)
+            [ (i_descendent_sym, [i_staging_sym])
             | (i_staging_sym, i_modlet) <- i_sym_modlets
+            , i_descendent_sym <-
+                HS.toList $ collectAsteriusEntitySymbols i_modlet
             ]
         o_rep =
           mempty
@@ -321,7 +320,7 @@ resolveEntitySymbols sym_table = f
 resolveAsteriusModule :: AsteriusModule -> Module
 resolveAsteriusModule m_unresolved =
   Module
-    { functionTypeMap = [(fnTypeName, fnType), (stgRunTypeName, stgRunType)]
+    { functionTypeMap = rtsAsteriusFunctionTypeMap
     , functionMap' =
         HM.fromList
           [ (entityName func_sym, func)

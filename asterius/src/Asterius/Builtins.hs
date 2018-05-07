@@ -8,12 +8,8 @@ module Asterius.Builtins
   , getDefaultBuiltinsOptions
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
+  , rtsAsteriusFunctionTypeMap
   , fnTypeName
-  , newCAFTypeName
-  , stgRunTypeName
-  , fnType
-  , newCAFType
-  , stgRunType
   , tsoSymbol
   , tsoInfoSymbol
   , stackSymbol
@@ -24,6 +20,8 @@ module Asterius.Builtins
   , stopThreadInfoSymbol
   , gcEnter1Symbol
   , gcFunSymbol
+  , allocateSymbol
+  , allocBlockOnNodeSymbol
   , newCAFSymbol
   , stgRunSymbol
   , stgReturnSymbol
@@ -31,6 +29,8 @@ module Asterius.Builtins
   , stackStatics
   , bdescrStatics
   , capabilityStatics
+  , allocateFunction
+  , allocBlockOnNodeFunction
   , newCAFFunction
   , stgRunFunction
   , stgReturnFunction
@@ -42,6 +42,7 @@ import Asterius.BuildInfo
 import Asterius.Internals
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
+import qualified Data.HashMap.Strict as HM
 import Data.List
 import qualified Data.Vector as V
 import Foreign
@@ -80,27 +81,31 @@ rtsAsteriusModule opts =
         , (capabilitySymbol, capabilityStatics opts)
         ]
     , functionMap =
-        [ (newCAFSymbol, newCAFFunction opts)
+        [ (allocateSymbol, allocateFunction opts)
+        , (allocBlockOnNodeSymbol, allocBlockOnNodeFunction opts)
+        , (newCAFSymbol, newCAFFunction opts)
         , (stgRunSymbol, stgRunFunction opts)
         , (stgReturnSymbol, stgReturnFunction opts)
         ]
     }
 
-fnTypeName, newCAFTypeName, stgRunTypeName :: SBS.ShortByteString
+rtsAsteriusFunctionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
+rtsAsteriusFunctionTypeMap =
+  [ (fnTypeName, FunctionType {returnType = I64, paramTypes = []})
+  , ( entityName allocateSymbol
+    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
+  , ( entityName allocBlockOnNodeSymbol
+    , FunctionType {returnType = I64, paramTypes = [I32]})
+  , ( entityName newCAFSymbol
+    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
+  , ( entityName stgRunSymbol
+    , FunctionType {returnType = None, paramTypes = [I64]})
+  ]
+
+fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-newCAFTypeName = "_asterius_newCAF"
-
-stgRunTypeName = "_asterius_StgRun"
-
-fnType, newCAFType, stgRunType :: FunctionType
-fnType = FunctionType {returnType = I64, paramTypes = []}
-
-newCAFType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
-
-stgRunType = FunctionType {returnType = None, paramTypes = [I64]}
-
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, allocateSymbol, allocBlockOnNodeSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 tsoSymbol = "_asterius_TSO"
 
@@ -121,6 +126,10 @@ stopThreadInfoSymbol = "stg_stop_thread_info"
 gcEnter1Symbol = "__stg_gc_enter_1"
 
 gcFunSymbol = "__stg_gc_fun"
+
+allocateSymbol = "allocate"
+
+allocBlockOnNodeSymbol = "allocBlockOnNode"
 
 newCAFSymbol = "newCAF"
 
@@ -198,17 +207,32 @@ capabilityStatics _ =
              ])
     }
 
-newCAFFunction, stgRunFunction, stgReturnFunction :: BuiltinsOptions -> Function
+allocateFunction, allocBlockOnNodeFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+     BuiltinsOptions -> Function
+allocateFunction _ =
+  Function
+    { functionTypeName = entityName allocateSymbol
+    , varTypes = []
+    , body = Return $ ConstI64 0
+    }
+
+allocBlockOnNodeFunction _ =
+  Function
+    { functionTypeName = entityName allocBlockOnNodeSymbol
+    , varTypes = []
+    , body = Return $ ConstI64 0
+    }
+
 newCAFFunction _ =
   Function
-    { functionTypeName = newCAFTypeName
+    { functionTypeName = entityName newCAFSymbol
     , varTypes = []
     , body = Return $ ConstI64 0
     }
 
 stgRunFunction _ =
   Function
-    { functionTypeName = stgRunTypeName
+    { functionTypeName = entityName stgRunSymbol
     , varTypes = []
     , body =
         Loop
