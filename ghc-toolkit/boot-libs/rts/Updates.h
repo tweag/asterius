@@ -48,15 +48,8 @@
     prim_write_barrier;                                         \
     SET_INFO(p1, stg_BLACKHOLE_info);                           \
     LDV_RECORD_CREATE(p1);                                      \
-    bd = Bdescr(p1);                                            \
-    if (bdescr_gen_no(bd) != 0 :: bits16) {                     \
-      recordMutableCap(p1, TO_W_(bdescr_gen_no(bd)));           \
-      TICK_UPD_OLD_IND();                                       \
-      and_then;                                                 \
-    } else {                                                    \
-      TICK_UPD_NEW_IND();                                       \
-      and_then;                                                 \
-  }
+    TICK_UPD_NEW_IND();                                         \
+    and_then;
 
 #else /* !CMINUSMINUS */
 

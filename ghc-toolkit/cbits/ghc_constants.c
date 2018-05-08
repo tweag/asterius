@@ -15,6 +15,12 @@ HsInt sizeof_Capability() { return sizeof(Capability); }
 
 HsInt offset_Capability_r() { return offsetof(Capability, r); }
 
+HsInt sizeof_nursery() { return sizeof(nursery); }
+
+HsInt offset_nursery_blocks() { return offsetof(nursery, blocks); }
+
+HsInt offset_nursery_n_blocks() { return offsetof(nursery, n_blocks); }
+
 HsInt sizeof_StgInd() { return sizeof(StgInd); }
 
 HsInt offset_StgInd_indirectee() { return offsetof(StgInd, indirectee); }

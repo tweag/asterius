@@ -291,46 +291,12 @@ INFO_TABLE(stg_BLACKHOLE,1,0,BLACKHOLE,"BLACKHOLE","BLACKHOLE")
 
     TICK_ENT_DYN_IND(); /* tick */
 
-retry:
     p = StgInd_indirectee(node);
     if (GETTAG(p) != 0) {
         return (p);
     }
 
-    info = StgHeader_info(p);
-    if (info == stg_IND_info) {
-        // This could happen, if e.g. we got a BLOCKING_QUEUE that has
-        // just been replaced with an IND by another thread in
-        // wakeBlockingQueue().
-        // See Note [BLACKHOLE pointing to IND] in sm/Evac.c
-        goto retry;
-    }
-
-    if (info == stg_TSO_info ||
-        info == stg_BLOCKING_QUEUE_CLEAN_info ||
-        info == stg_BLOCKING_QUEUE_DIRTY_info)
-    {
-        ("ptr" msg) = ccall allocate(MyCapability() "ptr",
-                                     BYTES_TO_WDS(SIZEOF_MessageBlackHole));
-
-        SET_HDR(msg, stg_MSG_BLACKHOLE_info, CCS_SYSTEM);
-        MessageBlackHole_tso(msg) = CurrentTSO;
-        MessageBlackHole_bh(msg) = node;
-
-        (r) = ccall messageBlackHole(MyCapability() "ptr", msg "ptr");
-
-        if (r == 0) {
-            goto retry;
-        } else {
-            StgTSO_why_blocked(CurrentTSO) = BlockedOnBlackHole::I16;
-            StgTSO_block_info(CurrentTSO) = msg;
-            jump stg_block_blackhole(node);
-        }
-    }
-    else
-    {
-        ENTER(p);
-    }
+    ENTER(p);
 }
 
 // CAF_BLACKHOLE is allocated when entering a CAF.  The reason it is

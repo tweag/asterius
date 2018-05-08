@@ -126,7 +126,7 @@ stackInfoSymbol = "stg_STACK_info"
 
 bdescrSymbol = "_asterius_bdescr"
 
-capabilitySymbol = "_asterius_Capability"
+capabilitySymbol = "MainCapability"
 
 stopThreadInfoSymbol = "stg_stop_thread_info"
 
@@ -232,7 +232,7 @@ allocateFunction _ =
   Function
     { functionTypeName = entityName allocateSymbol
     , varTypes = []
-    , body = undefined
+    , body = Unreachable
     }
 
 allocatePinnedFunction _ =
@@ -297,7 +297,7 @@ allocGroupFunction _ =
   Function
     { functionTypeName = entityName allocGroupSymbol
     , varTypes = []
-    , body = undefined
+    , body = Unreachable
     }
 
 allocGroupLockFunction _ =

@@ -14,6 +14,13 @@ foreign import ccall unsafe "sizeof_Capability" sizeof_Capability :: Int
 
 foreign import ccall unsafe "offset_Capability_r" offset_Capability_r :: Int
 
+foreign import ccall unsafe "sizeof_nursery" sizeof_nursery :: Int
+
+foreign import ccall unsafe "offset_nursery_blocks" offset_nursery_blocks :: Int
+
+foreign import ccall unsafe "offset_nursery_n_blocks" offset_nursery_n_blocks
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgInd" sizeof_StgInd :: Int
 
 foreign import ccall unsafe "offset_StgInd_indirectee" offset_StgInd_indirectee
