@@ -333,8 +333,9 @@ resolveAsteriusModule m_unresolved =
     , tableExports = []
     , globalExports = []
     , globalMap =
-        HM.fromList $
-        map (resolve_syms . marshalGlobalReg) $ HS.toList global_regs
+        HM.fromList
+          (map (resolve_syms . marshalGlobalReg) $ HS.toList global_regs) <>
+        rtsAsteriusGlobalMap
     , functionTable = Just func_table
     , memory = Just $ makeMemory m_resolved last_o ss_sym_map
     , startFunctionName = Nothing

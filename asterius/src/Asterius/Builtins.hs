@@ -9,31 +9,13 @@ module Asterius.Builtins
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
   , rtsAsteriusFunctionTypeMap
+  , rtsAsteriusGlobalMap
   , fnTypeName
   , tsoSymbol
-  , tsoInfoSymbol
-  , stackSymbol
-  , stackInfoSymbol
   , bdescrSymbol
   , capabilitySymbol
-  , eagerBlackholeInfoSymbol
   , stopThreadInfoSymbol
-  , gcEnter1Symbol
-  , gcFunSymbol
-  , allocateSymbol
-  , allocBlockOnNodeSymbol
-  , newCAFSymbol
   , stgRunSymbol
-  , stgReturnSymbol
-  , tsoStatics
-  , stackStatics
-  , bdescrStatics
-  , capabilityStatics
-  , allocateFunction
-  , allocBlockOnNodeFunction
-  , newCAFFunction
-  , stgRunFunction
-  , stgReturnFunction
   , asteriusStaticSize
   , asteriusStaticsSize
   ) where
@@ -82,7 +64,15 @@ rtsAsteriusModule opts =
         ]
     , functionMap =
         [ (allocateSymbol, allocateFunction opts)
+        , (allocatePinnedSymbol, allocatePinnedFunction opts)
+        , (allocBlockSymbol, allocBlockFunction opts)
+        , (allocBlockLockSymbol, allocBlockLockFunction opts)
         , (allocBlockOnNodeSymbol, allocBlockOnNodeFunction opts)
+        , (allocBlockOnNodeLockSymbol, allocBlockOnNodeLockFunction opts)
+        , (allocGroupSymbol, allocGroupFunction opts)
+        , (allocGroupLockSymbol, allocGroupLockFunction opts)
+        , (allocGroupOnNodeSymbol, allocGroupOnNodeFunction opts)
+        , (allocGroupOnNodeLockSymbol, allocGroupOnNodeLockFunction opts)
         , (newCAFSymbol, newCAFFunction opts)
         , (stgRunSymbol, stgRunFunction opts)
         , (stgReturnSymbol, stgReturnFunction opts)
@@ -94,18 +84,37 @@ rtsAsteriusFunctionTypeMap =
   [ (fnTypeName, FunctionType {returnType = I64, paramTypes = []})
   , ( entityName allocateSymbol
     , FunctionType {returnType = I64, paramTypes = [I64, I64]})
+  , ( entityName allocatePinnedSymbol
+    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
+  , ( entityName allocBlockSymbol
+    , FunctionType {returnType = I64, paramTypes = []})
+  , ( entityName allocBlockLockSymbol
+    , FunctionType {returnType = I64, paramTypes = []})
   , ( entityName allocBlockOnNodeSymbol
     , FunctionType {returnType = I64, paramTypes = [I32]})
+  , ( entityName allocBlockOnNodeLockSymbol
+    , FunctionType {returnType = I64, paramTypes = [I32]})
+  , ( entityName allocGroupSymbol
+    , FunctionType {returnType = I64, paramTypes = [I64]})
+  , ( entityName allocGroupLockSymbol
+    , FunctionType {returnType = I64, paramTypes = [I64]})
+  , ( entityName allocGroupOnNodeSymbol
+    , FunctionType {returnType = I64, paramTypes = [I32, I64]})
+  , ( entityName allocGroupOnNodeLockSymbol
+    , FunctionType {returnType = I64, paramTypes = [I32, I64]})
   , ( entityName newCAFSymbol
     , FunctionType {returnType = I64, paramTypes = [I64, I64]})
   , ( entityName stgRunSymbol
     , FunctionType {returnType = None, paramTypes = [I64]})
   ]
 
+rtsAsteriusGlobalMap :: HM.HashMap SBS.ShortByteString Global
+rtsAsteriusGlobalMap = []
+
 fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, eagerBlackholeInfoSymbol, stopThreadInfoSymbol, gcEnter1Symbol, gcFunSymbol, allocateSymbol, allocBlockOnNodeSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, stopThreadInfoSymbol, allocateSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 tsoSymbol = "_asterius_TSO"
 
@@ -119,17 +128,27 @@ bdescrSymbol = "_asterius_bdescr"
 
 capabilitySymbol = "_asterius_Capability"
 
-eagerBlackholeInfoSymbol = "__stg_EAGER_BLACKHOLE_info"
-
 stopThreadInfoSymbol = "stg_stop_thread_info"
-
-gcEnter1Symbol = "__stg_gc_enter_1"
-
-gcFunSymbol = "__stg_gc_fun"
 
 allocateSymbol = "allocate"
 
+allocatePinnedSymbol = "allocatePinned"
+
+allocBlockSymbol = "allocBlock"
+
+allocBlockLockSymbol = "allocBlock_lock"
+
 allocBlockOnNodeSymbol = "allocBlockOnNode"
+
+allocBlockOnNodeLockSymbol = "allocBlockOnNode_lock"
+
+allocGroupSymbol = "allocGroup"
+
+allocGroupLockSymbol = "allocGroup_lock"
+
+allocGroupOnNodeSymbol = "allocGroupOnNode"
+
+allocGroupOnNodeLockSymbol = "allocGroupOnNode_lock"
 
 newCAFSymbol = "newCAF"
 
@@ -207,20 +226,120 @@ capabilityStatics _ =
              ])
     }
 
-allocateFunction, allocBlockOnNodeFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+allocateFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
 allocateFunction _ =
   Function
     { functionTypeName = entityName allocateSymbol
     , varTypes = []
-    , body = Return $ ConstI64 0
+    , body = undefined
+    }
+
+allocatePinnedFunction _ =
+  Function
+    { functionTypeName = entityName allocatePinnedSymbol
+    , varTypes = []
+    , body =
+        Return
+          Call
+            { target = allocateSymbol
+            , operands =
+                [ GetLocal {index = 0, valueType = I64}
+                , GetLocal {index = 1, valueType = I64}
+                ]
+            , valueType = I64
+            }
+    }
+
+allocBlockFunction _ =
+  Function
+    { functionTypeName = entityName allocBlockSymbol
+    , varTypes = []
+    , body =
+        Return
+          Call
+            { target = allocGroupSymbol
+            , operands = [ConstI64 1]
+            , valueType = I64
+            }
+    }
+
+allocBlockLockFunction _ =
+  Function
+    { functionTypeName = entityName allocBlockLockSymbol
+    , varTypes = []
+    , body =
+        Return Call {target = allocBlockSymbol, operands = [], valueType = I64}
     }
 
 allocBlockOnNodeFunction _ =
   Function
     { functionTypeName = entityName allocBlockOnNodeSymbol
     , varTypes = []
-    , body = Return $ ConstI64 0
+    , body =
+        Return Call {target = allocBlockSymbol, operands = [], valueType = I64}
+    }
+
+allocBlockOnNodeLockFunction _ =
+  Function
+    { functionTypeName = entityName allocBlockOnNodeLockSymbol
+    , varTypes = []
+    , body =
+        Return
+          Call
+            { target = allocBlockOnNodeSymbol
+            , operands = [GetLocal {index = 0, valueType = I32}]
+            , valueType = I64
+            }
+    }
+
+allocGroupFunction _ =
+  Function
+    { functionTypeName = entityName allocGroupSymbol
+    , varTypes = []
+    , body = undefined
+    }
+
+allocGroupLockFunction _ =
+  Function
+    { functionTypeName = entityName allocGroupLockSymbol
+    , varTypes = []
+    , body =
+        Return
+          Call
+            { target = allocGroupSymbol
+            , operands = [GetLocal {index = 0, valueType = I64}]
+            , valueType = I64
+            }
+    }
+
+allocGroupOnNodeFunction _ =
+  Function
+    { functionTypeName = entityName allocGroupOnNodeSymbol
+    , varTypes = []
+    , body =
+        Return
+          Call
+            { target = allocGroupSymbol
+            , operands = [GetLocal {index = 1, valueType = I64}]
+            , valueType = I64
+            }
+    }
+
+allocGroupOnNodeLockFunction _ =
+  Function
+    { functionTypeName = entityName allocGroupOnNodeLockSymbol
+    , varTypes = []
+    , body =
+        Return
+          Call
+            { target = allocGroupOnNodeSymbol
+            , operands =
+                [ GetLocal {index = 0, valueType = I32}
+                , GetLocal {index = 1, valueType = I64}
+                ]
+            , valueType = I64
+            }
     }
 
 newCAFFunction _ =
