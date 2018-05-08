@@ -16,7 +16,7 @@ data-files:
   - boot-libs/**/**
 
 include-dirs:
-  - ../../ghc/rts
+  - ../ghc/rts
 
 c-sources:
   - cbits/ghc_constants.c
