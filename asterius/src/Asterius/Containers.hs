@@ -18,6 +18,8 @@ module Asterius.Containers
   , HashSet(..)
   , hashSetNull
   , hashSetDifference
+  , hashSetFilter
+  , hashSetSize
   , hashSetUnions
   ) where
 
@@ -107,6 +109,14 @@ hashSetNull = HS.null . coerce
 {-# INLINE hashSetDifference #-}
 hashSetDifference :: (Eq k, Hashable k) => HashSet k -> HashSet k -> HashSet k
 hashSetDifference s0 s1 = coerce $ HS.difference (coerce s0) (coerce s1)
+
+{-# INLINE hashSetFilter #-}
+hashSetFilter :: (k -> Bool) -> HashSet k -> HashSet k
+hashSetFilter f = coerce . HS.filter f . coerce
+
+{-# INLINE hashSetSize #-}
+hashSetSize :: HashSet k -> Int
+hashSetSize = HS.size . coerce
 
 {-# INLINE hashSetUnions #-}
 hashSetUnions :: (Eq k, Hashable k) => [HashSet k] -> HashSet k

@@ -154,15 +154,14 @@ collectAsteriusEntitySymbols :: Data a => a -> HashSet AsteriusEntitySymbol
 collectAsteriusEntitySymbols = collect proxy#
 
 data LinkReport = LinkReport
-  { parentSymbols :: HashMap AsteriusEntitySymbol (HashSet AsteriusEntitySymbol)
+  { childSymbols :: HashMap AsteriusEntitySymbol (HashSet AsteriusEntitySymbol)
   , unfoundSymbols, unavailableSymbols :: HashSet AsteriusEntitySymbol
   } deriving (Show)
 
 instance Semigroup LinkReport where
   r0 <> r1 =
     LinkReport
-      { parentSymbols =
-          hashMapUnionWith (<>) (parentSymbols r0) (parentSymbols r1)
+      { childSymbols = hashMapUnionWith (<>) (childSymbols r0) (childSymbols r1)
       , unfoundSymbols = unfoundSymbols r0 <> unfoundSymbols r1
       , unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
       }
@@ -170,7 +169,7 @@ instance Semigroup LinkReport where
 instance Monoid LinkReport where
   mempty =
     LinkReport
-      { parentSymbols = mempty
+      { childSymbols = mempty
       , unfoundSymbols = mempty
       , unavailableSymbols = mempty
       }
@@ -186,12 +185,11 @@ mergeSymbols AsteriusStore {..} syms = (maybe_final_m, final_rep)
           hashSetNull (unavailableSymbols final_rep) = Just final_m
       | otherwise = Nothing
     (_, final_rep, final_m) = go (syms, mempty, mempty)
-    go i@(_, i_rep, _)
-      | hashMapSize (parentSymbols i_rep) == hashMapSize (parentSymbols o_rep) =
-        o
+    go i@(i_staging_syms, _, _)
+      | hashSetNull i_staging_syms = o
       | otherwise = go o
       where
-        o@(_, o_rep, _) = iter i
+        o = iter i
     iter (i_staging_syms, i_rep, i_m) = (o_staging_syms, o_rep, o_m)
       where
         (i_unfound_syms, i_sym_mods) =
@@ -216,28 +214,27 @@ mergeSymbols AsteriusStore {..} syms = (maybe_final_m, final_rep)
                   _ -> Left i_staging_sym
             | (i_staging_sym, AsteriusModule {..}) <- i_sym_mods
             ]
-        i_mod = mconcat $ map snd i_sym_modlets
-        i_parent_map =
-          hashMapFromListWith
-            (<>)
-            [ (i_descendent_sym, [i_staging_sym])
+        i_child_map =
+          fromList
+            [ ( i_staging_sym
+              , hashSetFilter (/= i_staging_sym) $
+                collectAsteriusEntitySymbols i_modlet)
             | (i_staging_sym, i_modlet) <- i_sym_modlets
-            , i_descendent_sym <- toList $ collectAsteriusEntitySymbols i_modlet
             ]
         o_rep =
           mempty
-            { parentSymbols = i_parent_map
+            { childSymbols = i_child_map
             , unfoundSymbols = fromList i_unfound_syms
             , unavailableSymbols = fromList i_unavailable_syms
             } <>
           i_rep
-        o_m = i_mod <> i_m
+        o_m = mconcat (map snd i_sym_modlets) <> i_m
         o_staging_syms =
-          fromList (hashMapKeys i_parent_map) `hashSetDifference`
+          mconcat (hashMapElems $ childSymbols o_rep) `hashSetDifference`
           hashSetUnions
             [ unfoundSymbols o_rep
             , unavailableSymbols o_rep
-            , hashSetUnions $ hashMapElems $ parentSymbols o_rep
+            , fromList $ hashMapKeys $ childSymbols o_rep
             ]
 
 makeFunctionTable ::
