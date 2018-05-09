@@ -7,16 +7,17 @@ module Asterius.Marshal
   , marshalModule
   ) where
 
+import Asterius.Containers
 import Asterius.Internals
 import Asterius.Types
 import Bindings.Binaryen.Raw
 import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
-import qualified Data.HashMap.Strict as HM
 import Data.Traversable
 import qualified Data.Vector as V
 import Foreign
+import GHC.Exts
 import Prelude hiding (IO)
 
 newtype MarshalError =
@@ -390,7 +391,7 @@ marshalGlobal m k Global {..} = do
 
 marshalFunctionTable ::
      BinaryenModuleRef
-  -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
+  -> HashMap SBS.ShortByteString BinaryenFunctionRef
   -> FunctionTable
   -> IO ()
 marshalFunctionTable m fps FunctionTable {..} =
@@ -424,7 +425,7 @@ marshalMemory m Memory {..} = do
 
 marshalStartFunctionName ::
      BinaryenModuleRef
-  -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
+  -> HashMap SBS.ShortByteString BinaryenFunctionRef
   -> SBS.ShortByteString
   -> IO ()
 marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps ! n)
@@ -433,13 +434,13 @@ marshalModule :: Module -> IO BinaryenModuleRef
 marshalModule Module {..} = do
   m <- c_BinaryenModuleCreate
   ftps <-
-    fmap HM.fromList $
-    for (HM.toList functionTypeMap) $ \(k, ft) -> do
+    fmap fromList $
+    for (hashMapToList functionTypeMap) $ \(k, ft) -> do
       ftp <- marshalFunctionType m k ft
       pure (k, ftp)
   fps <-
-    fmap HM.fromList $
-    for (HM.toList functionMap') $ \(k, f@Function {..}) -> do
+    fmap fromList $
+    for (hashMapToList functionMap') $ \(k, f@Function {..}) -> do
       fp <- marshalFunction m k (ftps ! functionTypeName) f
       pure (k, fp)
   V.forM_ functionImports $ \fi@FunctionImport {..} ->
@@ -449,7 +450,7 @@ marshalModule Module {..} = do
   V.forM_ functionExports $ marshalFunctionExport m
   V.forM_ tableExports $ marshalTableExport m
   V.forM_ globalExports $ marshalGlobalExport m
-  for_ (HM.toList globalMap) $ uncurry (marshalGlobal m)
+  for_ (hashMapToList globalMap) $ uncurry (marshalGlobal m)
   case functionTable of
     Just ft -> marshalFunctionTable m fps ft
     _ -> pure ()
@@ -475,7 +476,7 @@ relooperAddBlock m r ab =
 
 relooperAddBranch ::
      BinaryenModuleRef
-  -> HM.HashMap SBS.ShortByteString RelooperBlockRef
+  -> HashMap SBS.ShortByteString RelooperBlockRef
   -> SBS.ShortByteString
   -> RelooperAddBranch
   -> IO ()
@@ -494,10 +495,10 @@ relooperRun :: BinaryenModuleRef -> RelooperRun -> IO BinaryenExpressionRef
 relooperRun m RelooperRun {..} = do
   r <- c_RelooperCreate
   bpm <-
-    fmap HM.fromList $
-    for (HM.toList blockMap) $ \(k, RelooperBlock {..}) -> do
+    fmap fromList $
+    for (hashMapToList blockMap) $ \(k, RelooperBlock {..}) -> do
       bp <- relooperAddBlock m r addBlock
       pure (k, bp)
-  for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
+  for_ (hashMapToList blockMap) $ \(k, RelooperBlock {..}) ->
     V.forM_ addBranches $ relooperAddBranch m bpm k
   c_RelooperRenderAndDispose r (bpm ! entry) labelHelper m

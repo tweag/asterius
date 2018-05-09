@@ -18,6 +18,7 @@ module Asterius.CodeGen
   ) where
 
 import Asterius.Builtins
+import Asterius.Containers
 import Asterius.Internals
 import Asterius.Resolve
 import Asterius.Types
@@ -28,11 +29,11 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
-import qualified Data.HashMap.Strict as HM
 import Data.String
 import Data.Traversable
 import qualified Data.Vector as V
 import Foreign
+import GHC.Exts
 import qualified GhcPlugins as GHC
 import qualified Hoopl.Block as GHC
 import qualified Hoopl.Graph as GHC
@@ -826,7 +827,7 @@ marshalCmmBlockBranch instr =
         , V.fromList $
           [ AddBranchForSwitch
             {to = dest, indexes = V.fromList tags, code = Null}
-          | (dest, tags) <- HM.toList $ HM.fromListWith (<>) brs
+          | (dest, tags) <- hashMapToList $ hashMapFromListWith (<>) brs
           , dest /= dest_def
           ] <>
           [AddBranch {to = dest_def, condition = Null, code = Null}]
@@ -907,7 +908,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                     RelooperRun
                       { entry = entry_k
                       , blockMap =
-                          HM.fromList $
+                          fromList $
                           [ ( "_asterius_unreachable"
                             , RelooperBlock
                                 { addBlock = AddBlock {code = Unreachable}

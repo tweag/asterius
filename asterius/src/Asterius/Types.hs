@@ -6,7 +6,6 @@
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Asterius.Types
   ( BinaryenIndex
@@ -48,8 +47,7 @@ module Asterius.Types
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import qualified Data.ByteString.Short as SBS
 import Data.Data
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
+import Asterius.Containers
 import Data.Hashable
 import Data.Serialize
 import Data.String
@@ -82,21 +80,21 @@ data AsteriusStatic
                         Int
   | Uninitialized Int
   | Serialized SBS.ShortByteString
-  deriving (Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize AsteriusStatic
 
 newtype AsteriusStatics = AsteriusStatics
   { asteriusStatics :: V.Vector AsteriusStatic
-  } deriving (Show, Generic, Data)
+  } deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize AsteriusStatics
 
 data AsteriusModule = AsteriusModule
-  { staticsMap :: HM.HashMap AsteriusEntitySymbol AsteriusStatics
-  , staticsErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
-  , functionMap :: HM.HashMap AsteriusEntitySymbol Function
-  , functionErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
+  { staticsMap :: HashMap AsteriusEntitySymbol AsteriusStatics
+  , staticsErrorMap :: HashMap AsteriusEntitySymbol AsteriusCodeGenError
+  , functionMap :: HashMap AsteriusEntitySymbol Function
+  , functionErrorMap :: HashMap AsteriusEntitySymbol AsteriusCodeGenError
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusModule
@@ -111,7 +109,7 @@ instance Monoid AsteriusModule where
 data AsteriusModuleSymbol = AsteriusModuleSymbol
   { unitId :: SBS.ShortByteString
   , moduleName :: V.Vector SBS.ShortByteString
-  } deriving (Eq, Show, Generic, Data)
+  } deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize AsteriusModuleSymbol
 
@@ -120,11 +118,11 @@ instance Hashable AsteriusModuleSymbol
 newtype AsteriusEntitySymbol = AsteriusEntitySymbol
   { entityName :: SBS.ShortByteString
   } deriving stock (Generic, Data)
-    deriving newtype (Eq, Show, IsString, Serialize, Hashable)
+    deriving newtype (Eq, Ord, Show, IsString, Serialize, Hashable)
 
 data AsteriusStore = AsteriusStore
-  { symbolMap :: HM.HashMap AsteriusEntitySymbol AsteriusModuleSymbol
-  , moduleMap :: HM.HashMap AsteriusModuleSymbol AsteriusModule
+  { symbolMap :: HashMap AsteriusEntitySymbol AsteriusModuleSymbol
+  , moduleMap :: HashMap AsteriusModuleSymbol AsteriusModule
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusStore
@@ -146,7 +144,7 @@ data UnresolvedLocalReg
   | QuotRemI32Y
   | QuotRemI64X
   | QuotRemI64Y
-  deriving (Eq, Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize UnresolvedLocalReg
 
@@ -168,7 +166,7 @@ data UnresolvedGlobalReg
   | GCEnter1
   | GCFun
   | BaseReg
-  deriving (Eq, Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize UnresolvedGlobalReg
 
@@ -181,7 +179,7 @@ data ValueType
   | F32
   | F64
   | Auto
-  deriving (Eq, Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize ValueType
 
@@ -190,7 +188,7 @@ instance Hashable ValueType
 data FunctionType = FunctionType
   { returnType :: ValueType
   , paramTypes :: V.Vector ValueType
-  } deriving (Show, Generic, Data)
+  } deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize FunctionType
 
@@ -242,7 +240,7 @@ data UnaryOp
   | DemoteFloat64
   | ReinterpretInt32
   | ReinterpretInt64
-  deriving (Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize UnaryOp
 
@@ -323,7 +321,7 @@ data BinaryOp
   | LeFloat64
   | GtFloat64
   | GeFloat64
-  deriving (Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize BinaryOp
 
@@ -332,7 +330,7 @@ data HostOp
   | CurrentMemory
   | GrowMemory
   | HasFeature
-  deriving (Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize HostOp
 
@@ -343,7 +341,7 @@ data AtomicRMWOp
   | AtomicRMWOr
   | AtomicRMWXor
   | AtomicRMWXchg
-  deriving (Show, Generic, Data)
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Serialize AtomicRMWOp
 
@@ -488,15 +486,15 @@ data Memory = Memory
   } deriving (Show)
 
 data Module = Module
-  { functionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
-  , functionMap' :: HM.HashMap SBS.ShortByteString Function
+  { functionTypeMap :: HashMap SBS.ShortByteString FunctionType
+  , functionMap' :: HashMap SBS.ShortByteString Function
   , functionImports :: V.Vector FunctionImport
   , tableImports :: V.Vector TableImport
   , globalImports :: V.Vector GlobalImport
   , functionExports :: V.Vector FunctionExport
   , tableExports :: V.Vector TableExport
   , globalExports :: V.Vector GlobalExport
-  , globalMap :: HM.HashMap SBS.ShortByteString Global
+  , globalMap :: HashMap SBS.ShortByteString Global
   , functionTable :: Maybe FunctionTable
   , memory :: Maybe Memory
   , startFunctionName :: Maybe SBS.ShortByteString
@@ -545,39 +543,8 @@ instance Serialize RelooperBlock
 
 data RelooperRun = RelooperRun
   { entry :: SBS.ShortByteString
-  , blockMap :: HM.HashMap SBS.ShortByteString RelooperBlock
+  , blockMap :: HashMap SBS.ShortByteString RelooperBlock
   , labelHelper :: BinaryenIndex
   } deriving (Show, Generic, Data)
 
 instance Serialize RelooperRun
-
-instance Serialize SBS.ShortByteString where
-  put sbs = put (SBS.length sbs) *> putShortByteString sbs
-  {-# INLINEABLE put #-}
-  get = get >>= getShortByteString
-  {-# INLINEABLE get #-}
-
-instance (Eq k, Hashable k, Serialize k, Serialize v) =>
-         Serialize (HM.HashMap k v) where
-  put = put . HM.toList
-  {-# INLINEABLE put #-}
-  get = HM.fromList <$> get
-  {-# INLINEABLE get #-}
-
-instance (Eq k, Hashable k, Serialize k) => Serialize (HS.HashSet k) where
-  put = put . HS.toList
-  {-# INLINEABLE put #-}
-  get = HS.fromList <$> get
-  {-# INLINEABLE get #-}
-
-instance Serialize a => Serialize (V.Vector a) where
-  put v = put (V.length v) *> V.mapM_ put v
-  {-# INLINEABLE put #-}
-  get = do
-    len <- get
-    V.replicateM len get
-  {-# INLINEABLE get #-}
-
-instance Hashable a => Hashable (V.Vector a) where
-  hashWithSalt salt = hashWithSalt salt . V.toList
-  {-# INLINEABLE hashWithSalt #-}

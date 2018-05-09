@@ -21,10 +21,10 @@ module Asterius.Builtins
   ) where
 
 import Asterius.BuildInfo
+import Asterius.Containers
 import Asterius.Internals
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
-import qualified Data.HashMap.Strict as HM
 import Data.List
 import qualified Data.Vector as V
 import Foreign
@@ -79,7 +79,7 @@ rtsAsteriusModule opts =
         ]
     }
 
-rtsAsteriusFunctionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
+rtsAsteriusFunctionTypeMap :: HashMap SBS.ShortByteString FunctionType
 rtsAsteriusFunctionTypeMap =
   [ (fnTypeName, FunctionType {returnType = I64, paramTypes = []})
   , ( entityName allocateSymbol
@@ -108,7 +108,7 @@ rtsAsteriusFunctionTypeMap =
     , FunctionType {returnType = None, paramTypes = [I64]})
   ]
 
-rtsAsteriusGlobalMap :: HM.HashMap SBS.ShortByteString Global
+rtsAsteriusGlobalMap :: HashMap SBS.ShortByteString Global
 rtsAsteriusGlobalMap = []
 
 fnTypeName :: SBS.ShortByteString
