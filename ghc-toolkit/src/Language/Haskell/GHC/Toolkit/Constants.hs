@@ -1,5 +1,8 @@
 module Language.Haskell.GHC.Toolkit.Constants where
 
+foreign import ccall unsafe "roundup_bytes_to_words" roundup_bytes_to_words
+  :: Int -> Int
+
 foreign import ccall unsafe "block_size" block_size :: Int
 
 foreign import ccall unsafe "mblock_size" mblock_size :: Int
@@ -7,6 +10,14 @@ foreign import ccall unsafe "mblock_size" mblock_size :: Int
 foreign import ccall unsafe "mblock_mask" mblock_mask :: Int
 
 foreign import ccall unsafe "blocks_per_mblock" blocks_per_mblock :: Int
+
+foreign import ccall unsafe "offset_first_bdescr" offset_first_bdescr :: Int
+
+foreign import ccall unsafe "offset_last_bdescr" offset_last_bdescr :: Int
+
+foreign import ccall unsafe "offset_first_block" offset_first_block :: Int
+
+foreign import ccall unsafe "offset_last_block" offset_last_block :: Int
 
 foreign import ccall unsafe "sizeof_bdescr" sizeof_bdescr :: Int
 

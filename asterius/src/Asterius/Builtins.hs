@@ -391,21 +391,20 @@ allocBlockOnNodeLockFunction _ =
           }
     }
 
-{-
-    mblock_round_up p = (p + mblock_size - 1) .&. complement mblock_mask
-    blocks_to_mblocks n =
-      1 +
-      (mblock_round_up ((n - blocks_per_mblock) * block_size) `div` mblock_size)
--}
 allocGroupFunction _ =
   Function
     { functionTypeName = entityName allocGroupSymbol
-    , varTypes = [I64]
+    , varTypes = [I64, I64]
     , body =
         Block
           { name = ""
           , bodys =
               [ SetLocal
+                  { index = 2
+                  , value =
+                      blocks_to_mblocks GetLocal {index = 0, valueType = I64}
+                  }
+              , SetLocal
                   { index = 1
                   , value =
                       Binary
@@ -424,11 +423,10 @@ allocGroupFunction _ =
                                                 Binary
                                                   { binaryOp = MulInt64
                                                   , operand0 =
-                                                      blocks_to_mblocks
-                                                        GetLocal
-                                                          { index = 0
-                                                          , valueType = I64
-                                                          }
+                                                      GetLocal
+                                                        { index = 2
+                                                        , valueType = I64
+                                                        }
                                                   , operand1 =
                                                       ConstI64 $
                                                       fromIntegral $
@@ -447,17 +445,10 @@ allocGroupFunction _ =
                   , offset = 0
                   , align = 0
                   , ptr =
-                      Unary
-                        { unaryOp = WrapInt64
-                        , operand0 =
-                            Binary
-                              { binaryOp = AddInt64
-                              , operand0 = GetLocal {index = 1, valueType = I64}
-                              , operand1 =
-                                  ConstI64 $ fromIntegral offset_bdescr_start
-                              }
-                        }
-                  , value = Unreachable
+                      fieldOff
+                        mblocks_p
+                        (offset_first_bdescr + offset_bdescr_start)
+                  , value = first_block_p
                   , valueType = I64
                   }
               , Store
@@ -465,17 +456,10 @@ allocGroupFunction _ =
                   , offset = 0
                   , align = 0
                   , ptr =
-                      Unary
-                        { unaryOp = WrapInt64
-                        , operand0 =
-                            Binary
-                              { binaryOp = AddInt64
-                              , operand0 = GetLocal {index = 1, valueType = I64}
-                              , operand1 =
-                                  ConstI64 $ fromIntegral offset_bdescr_free
-                              }
-                        }
-                  , value = Unreachable
+                      fieldOff
+                        mblocks_p
+                        (offset_first_bdescr + offset_bdescr_free)
+                  , value = first_block_p
                   , valueType = I64
                   }
               , Store
@@ -483,25 +467,43 @@ allocGroupFunction _ =
                   , offset = 0
                   , align = 0
                   , ptr =
-                      Unary
-                        { unaryOp = WrapInt64
-                        , operand0 =
+                      fieldOff
+                        mblocks_p
+                        (offset_first_bdescr + offset_bdescr_blocks)
+                  , value =
+                      Binary
+                        { binaryOp = AddInt64
+                        , operand0 = ConstI64 $ fromIntegral blocks_per_mblock
+                        , operand1 =
                             Binary
-                              { binaryOp = AddInt64
-                              , operand0 = GetLocal {index = 1, valueType = I64}
+                              { binaryOp = MulInt64
+                              , operand0 =
+                                  Binary
+                                    { binaryOp = SubInt64
+                                    , operand0 =
+                                        GetLocal {index = 2, valueType = I64}
+                                    , operand1 = ConstI64 1
+                                    }
                               , operand1 =
-                                  ConstI64 $ fromIntegral offset_bdescr_blocks
+                                  ConstI64 $
+                                  fromIntegral $ mblock_size `div` block_size
                               }
                         }
-                  , value = Unreachable
                   , valueType = I64
                   }
-              , GetLocal {index = 1, valueType = I64}
+              , mblocks_p
               ]
           , valueType = I64
           }
     }
   where
+    first_block_p =
+      Binary
+        { binaryOp = AddInt64
+        , operand0 = mblocks_p
+        , operand1 = ConstI64 $ fromIntegral offset_first_block
+        }
+    mblocks_p = GetLocal {index = 1, valueType = I64}
     mblock_round_up p =
       Binary
         { binaryOp = AndInt64
@@ -638,3 +640,15 @@ stgRunFunction _ =
 
 stgReturnFunction _ =
   Function {functionTypeName = fnTypeName, varTypes = [], body = ConstI64 0}
+
+fieldOff :: Expression -> Int -> Expression
+fieldOff p o =
+  Unary
+    { unaryOp = WrapInt64
+    , operand0 =
+        Binary
+          { binaryOp = AddInt64
+          , operand0 = p
+          , operand1 = ConstI64 $ fromIntegral o
+          }
+    }

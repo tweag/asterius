@@ -1,6 +1,8 @@
 #include <Rts.h>
 #include <Capability.h>
 
+HsInt roundup_bytes_to_words(HsInt n) { return ROUNDUP_BYTES_TO_WDS(n); }
+
 HsInt block_size() { return BLOCK_SIZE; }
 
 HsInt mblock_size() { return MBLOCK_SIZE; }
@@ -8,6 +10,14 @@ HsInt mblock_size() { return MBLOCK_SIZE; }
 HsInt mblock_mask() { return MBLOCK_MASK; }
 
 HsInt blocks_per_mblock() { return BLOCKS_PER_MBLOCK; }
+
+HsInt offset_first_bdescr() { return (HsInt)FIRST_BDESCR(0); }
+
+HsInt offset_last_bdescr() { return (HsInt)LAST_BDESCR(0); }
+
+HsInt offset_first_block() { return (HsInt)FIRST_BLOCK(0); }
+
+HsInt offset_last_block() { return (HsInt)LAST_BLOCK(0); }
 
 HsInt sizeof_bdescr() { return sizeof(bdescr); }
 
