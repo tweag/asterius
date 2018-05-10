@@ -123,15 +123,15 @@ rtsAsteriusGlobalMap = []
 fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, stopThreadInfoSymbol, createThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
+tsoSymbol, stgTSOInfoSymbol, stackSymbol, stgStackInfoSymbol, bdescrSymbol, capabilitySymbol, stopThreadInfoSymbol, createThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 tsoSymbol = "_asterius_TSO"
 
-tsoInfoSymbol = "stg_TSO_info"
+stgTSOInfoSymbol = "stg_TSO_info"
 
 stackSymbol = "_asterius_Stack"
 
-stackInfoSymbol = "stg_STACK_info"
+stgStackInfoSymbol = "stg_STACK_info"
 
 bdescrSymbol = "_asterius_bdescr"
 
@@ -202,14 +202,14 @@ tsoStatics, stackStatics, bdescrStatics, capabilityStatics ::
      BuiltinsOptions -> AsteriusStatics
 tsoStatics BuiltinsOptions {..} =
   layoutStatics
-    [ (0, UnresolvedStatic tsoInfoSymbol)
+    [ (0, UnresolvedStatic stgTSOInfoSymbol)
     , (offset_StgTSO_stackobj, UnresolvedStatic stackSymbol)
     , (offset_StgTSO_alloc_limit, Serialized (encodePrim (maxBound :: Int64)))
     ]
 
 stackStatics BuiltinsOptions {..} =
   layoutStatics
-    [ (0, UnresolvedStatic stackInfoSymbol)
+    [ (0, UnresolvedStatic stgStackInfoSymbol)
     , ( offset_StgStack_sp
       , UnresolvedOffStatic stackSymbol offset_StgStack_stack)
     , (offset_StgStack_stack, Uninitialized threadStateSize)
@@ -259,44 +259,37 @@ createThreadFunction _ =
                         }
                   }
               , SetLocal
-                  { index = 3
-                  , value =
-                      Binary
-                        { binaryOp = AddInt64
-                        , operand0 = tso_p
-                        , operand1 =
-                            ConstI64 $ fromIntegral offset_StgTSO_StgStack
-                        }
-                  }
+                  {index = 3, value = fieldOff tso_p offset_StgTSO_StgStack}
               , setFieldWord
                   stack_p
                   0
-                  Unresolved {unresolvedSymbol = stackInfoSymbol}
+                  Unresolved {unresolvedSymbol = stgStackInfoSymbol}
               , SetLocal
                   { index = 4
                   , value =
                       Binary
                         { binaryOp = SubInt64
-                        , operand0 = words2Bytes alloc_words
+                        , operand0 = alloc_words
                         , operand1 =
                             ConstI64 $
                             fromIntegral $
-                            offset_StgTSO_StgStack + offset_StgStack_stack
+                            (offset_StgTSO_StgStack + offset_StgStack_stack) `div` 8
                         }
                   }
               , setFieldWord32
                   stack_p
                   offset_StgStack_stack_size
-                  (wrapI64 stack_size)
+                  (wrapI64 stack_size_w)
               , setFieldWord
                   stack_p
                   offset_StgStack_sp
                   Binary
                     { binaryOp = AddInt64
                     , operand0 = fieldOff stack_p offset_StgStack_stack
-                    , operand1 = stack_size
+                    , operand1 = words2Bytes stack_size_w
                     }
               , setFieldWord32 stack_p offset_StgStack_dirty (ConstI32 1)
+              , setFieldWord tso_p 0 Unresolved {unresolvedSymbol = stgTSOInfoSymbol}
               , tso_p
               ]
           , valueType = I64
@@ -306,7 +299,7 @@ createThreadFunction _ =
     alloc_words = getLocalWord 1
     tso_p = getLocalWord 2
     stack_p = getLocalWord 3
-    stack_size = getLocalWord 4
+    stack_size_w = getLocalWord 4
 
 allocateFunction _ =
   Function
@@ -344,31 +337,21 @@ allocateFunction _ =
               , UnresolvedSetGlobal
                   {unresolvedGlobalReg = Hp, value = getLocalWord 2}
               , storeWord
-                  (wrapI64
-                     Binary
-                       { binaryOp = AddInt64
-                       , operand0 =
-                           Load
-                             { signed = False
-                             , bytes = 8
-                             , offset = 0
-                             , align = 0
-                             , valueType = I64
-                             , ptr =
-                                 wrapI64
-                                   Binary
-                                     { binaryOp = AddInt64
-                                     , operand0 =
-                                         UnresolvedGetGlobal
-                                           {unresolvedGlobalReg = BaseReg}
-                                     , operand1 =
-                                         ConstI64 $
-                                         fromIntegral
-                                           offset_StgRegTable_rCurrentAlloc
-                                     }
-                             }
-                       , operand1 = ConstI64 $ fromIntegral offset_bdescr_free
-                       })
+                  (wrapI64 $
+                   fieldOff
+                     Load
+                       { signed = False
+                       , bytes = 8
+                       , offset = 0
+                       , align = 0
+                       , valueType = I64
+                       , ptr =
+                           wrapI64 $
+                           fieldOff
+                             UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
+                             offset_StgRegTable_rCurrentAlloc
+                       }
+                     offset_bdescr_free)
                   (getLocalWord 2)
               , getLocalWord 3
               ]
@@ -513,22 +496,12 @@ allocGroupFunction _ =
           }
     }
   where
-    first_block_p =
-      Binary
-        { binaryOp = AddInt64
-        , operand0 = mblocks_p
-        , operand1 = ConstI64 $ fromIntegral offset_first_block
-        }
+    first_block_p = fieldOff mblocks_p offset_first_block
     mblocks_p = getLocalWord 1
     mblock_round_up p =
       Binary
         { binaryOp = AndInt64
-        , operand0 =
-            Binary
-              { binaryOp = AddInt64
-              , operand0 = p
-              , operand1 = ConstI64 $ fromIntegral $ mblock_size - 1
-              }
+        , operand0 = fieldOff p $ mblock_size - 1
         , operand1 = ConstI64 $ fromIntegral $ complement mblock_mask
         }
     blocks_to_mblocks n =
