@@ -308,7 +308,6 @@ marshalCmmReg r =
       gr_k <- marshalCmmGlobalReg gr
       pure
         ( case gr_k of
-            CurrentTSO -> Unresolved tsoSymbol
             GCEnter1 -> Unreachable
             GCFun -> Unreachable
             _ -> UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}

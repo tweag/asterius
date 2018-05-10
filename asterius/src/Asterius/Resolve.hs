@@ -34,7 +34,6 @@ import Data.String
 import qualified Data.Vector as V
 import Foreign
 import GHC.Exts (fromList, proxy#)
-import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 import System.IO hiding (IO)
 import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
@@ -141,18 +140,13 @@ marshalGlobalReg gr =
       , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     CurrentNursery ->
       ( "_asterius_CurrentNursery"
-      , Global
-          {valueType = I64, mutable = True, initValue = Unresolved bdescrSymbol})
+      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     HpAlloc ->
       ( "_asterius_HpAlloc"
       , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     BaseReg ->
       ( "_asterius_BaseReg"
-      , Global
-          { valueType = I64
-          , mutable = True
-          , initValue = UnresolvedOff capabilitySymbol offset_Capability_r
-          })
+      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     _ -> throw $ AssignToImmutableGlobalReg gr
 
 collectAsteriusEntitySymbols :: Data a => a -> HashSet AsteriusEntitySymbol

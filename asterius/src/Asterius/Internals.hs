@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedLists #-}
@@ -94,7 +95,9 @@ collect p t =
 
 {-# INLINEABLE encodeFile #-}
 encodeFile :: Serialize a => FilePath -> a -> IO ()
-encodeFile p = BS.writeFile p . encode
+encodeFile p a = do
+  let !buf = encode a
+  BS.writeFile p buf
 
 {-# INLINEABLE decodeFile #-}
 decodeFile :: Serialize a => FilePath -> IO a

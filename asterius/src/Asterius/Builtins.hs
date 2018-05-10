@@ -11,9 +11,6 @@ module Asterius.Builtins
   , rtsAsteriusFunctionTypeMap
   , rtsAsteriusGlobalMap
   , fnTypeName
-  , tsoSymbol
-  , bdescrSymbol
-  , capabilitySymbol
   , stopThreadInfoSymbol
   , stgRunSymbol
   , asteriusStaticSize
@@ -25,7 +22,6 @@ import Asterius.Containers
 import Asterius.Internals
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
-import Data.List
 import qualified Data.Vector as V
 import Foreign
 import qualified GHC
@@ -59,12 +55,7 @@ rtsAsteriusModuleSymbol =
 rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
-    { staticsMap =
-        [ (tsoSymbol, tsoStatics opts)
-        , (stackSymbol, stackStatics opts)
-        , (bdescrSymbol, bdescrStatics opts)
-        , (capabilitySymbol, capabilityStatics opts)
-        ]
+    { staticsMap = []
     , functionMap =
         [ (createThreadSymbol, createThreadFunction opts)
         , (allocateSymbol, allocateFunction opts)
@@ -123,19 +114,13 @@ rtsAsteriusGlobalMap = []
 fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-tsoSymbol, stgTSOInfoSymbol, stackSymbol, stgStackInfoSymbol, bdescrSymbol, capabilitySymbol, stopThreadInfoSymbol, createThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
+stgTSOInfoSymbol, stgStackInfoSymbol, stgEndTSOQueueSymbol, stopThreadInfoSymbol, createThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
-tsoSymbol = "_asterius_TSO"
-
 stgTSOInfoSymbol = "stg_TSO_info"
-
-stackSymbol = "_asterius_Stack"
 
 stgStackInfoSymbol = "stg_STACK_info"
 
-bdescrSymbol = "_asterius_bdescr"
-
-capabilitySymbol = "MainCapability"
+stgEndTSOQueueSymbol = "stg_END_TSO_QUEUE_closure"
 
 stopThreadInfoSymbol = "stg_stop_thread_info"
 
@@ -180,65 +165,6 @@ asteriusStaticsSize :: AsteriusStatics -> Int
 asteriusStaticsSize ss =
   V.foldl' (\tot s -> tot + asteriusStaticSize s) 0 (asteriusStatics ss)
 
-layoutStatics :: [(Int, AsteriusStatic)] -> AsteriusStatics
-layoutStatics ss =
-  AsteriusStatics {asteriusStatics = snd $ f (sortOn fst ss) (0, [])}
-  where
-    f :: [(Int, AsteriusStatic)]
-      -> (Int, V.Vector AsteriusStatic)
-      -> (Int, V.Vector AsteriusStatic)
-    f [] r = r
-    f ((x_offset, x_static):xs) (tot_len, tot_l) =
-      f
-        xs
-        ( x_offset + asteriusStaticSize x_static
-        , case x_offset - tot_len of
-            0 -> tot_l <> [x_static]
-            delta
-              | delta > 0 -> tot_l <> [Uninitialized delta, x_static]
-              | otherwise -> error "Invalid offset in layoutStatics")
-
-tsoStatics, stackStatics, bdescrStatics, capabilityStatics ::
-     BuiltinsOptions -> AsteriusStatics
-tsoStatics BuiltinsOptions {..} =
-  layoutStatics
-    [ (0, UnresolvedStatic stgTSOInfoSymbol)
-    , (offset_StgTSO_stackobj, UnresolvedStatic stackSymbol)
-    , (offset_StgTSO_alloc_limit, Serialized (encodePrim (maxBound :: Int64)))
-    ]
-
-stackStatics BuiltinsOptions {..} =
-  layoutStatics
-    [ (0, UnresolvedStatic stgStackInfoSymbol)
-    , ( offset_StgStack_sp
-      , UnresolvedOffStatic stackSymbol offset_StgStack_stack)
-    , (offset_StgStack_stack, Uninitialized threadStateSize)
-    ]
-
-bdescrStatics _ =
-  layoutStatics
-    [ (offset_bdescr_start, Uninitialized 8)
-    , (offset_bdescr_free, Uninitialized 8)
-    , (offset_bdescr_flags, Serialized (encodePrim (0 :: Word16)))
-    , (offset_bdescr_blocks, Serialized (encodePrim (1 :: Word32)))
-    ]
-
-capabilityStatics _ =
-  AsteriusStatics
-    { asteriusStatics =
-        asteriusStatics
-          (layoutStatics
-             [ (offset_Capability_r + o, s)
-             | (o, s) <-
-                 [ (offset_StgRegTable_rCurrentTSO, UnresolvedStatic tsoSymbol)
-                 , ( offset_StgRegTable_rCurrentNursery
-                   , UnresolvedStatic bdescrSymbol)
-                 , ( offset_StgRegTable_rRet
-                   , Serialized (encodePrim (0 :: Word64)))
-                 ]
-             ])
-    }
-
 createThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
 createThreadFunction _ =
@@ -273,7 +199,8 @@ createThreadFunction _ =
                         , operand1 =
                             ConstI64 $
                             fromIntegral $
-                            (offset_StgTSO_StgStack + offset_StgStack_stack) `div` 8
+                            (offset_StgTSO_StgStack + offset_StgStack_stack) `div`
+                            8
                         }
                   }
               , setFieldWord32
@@ -289,7 +216,18 @@ createThreadFunction _ =
                     , operand1 = words2Bytes stack_size_w
                     }
               , setFieldWord32 stack_p offset_StgStack_dirty (ConstI32 1)
-              , setFieldWord tso_p 0 Unresolved {unresolvedSymbol = stgTSOInfoSymbol}
+              , setFieldWord
+                  tso_p
+                  0
+                  Unresolved {unresolvedSymbol = stgTSOInfoSymbol}
+              , setFieldWord16 tso_p offset_StgTSO_what_next $
+                ConstI32 $ fromIntegral next_ThreadRunGHC
+              , setFieldWord16 tso_p offset_StgTSO_why_blocked $
+                ConstI32 $ fromIntegral blocked_NotBlocked
+              , setFieldWord
+                  tso_p
+                  (offset_StgTSO_block_info + offset_StgTSOBlockInfo_closure)
+                  Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
               , tso_p
               ]
           , valueType = I64
@@ -647,6 +585,13 @@ setFieldWord32 p o = storeWord32 (wrapI64 $ fieldOff p o)
 storeWord32 :: Expression -> Expression -> Expression
 storeWord32 p w =
   Store {bytes = 4, offset = 0, align = 0, ptr = p, value = w, valueType = I32}
+
+setFieldWord16 :: Expression -> Int -> Expression -> Expression
+setFieldWord16 p o = storeWord16 (wrapI64 $ fieldOff p o)
+
+storeWord16 :: Expression -> Expression -> Expression
+storeWord16 p w =
+  Store {bytes = 2, offset = 0, align = 0, ptr = p, value = w, valueType = I32}
 
 wrapI64 :: Expression -> Expression
 wrapI64 w = Unary {unaryOp = WrapInt64, operand0 = w}

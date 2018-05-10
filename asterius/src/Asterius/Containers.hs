@@ -23,6 +23,7 @@ module Asterius.Containers
   , hashSetUnions
   ) where
 
+import Control.DeepSeq
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data)
 import qualified Data.HashMap.Strict as HM
@@ -36,7 +37,7 @@ import GHC.Stack
 
 newtype HashMap k v = HashMap
   { unHashMap :: HM.HashMap k v
-  } deriving (Functor, Semigroup, Monoid, Data, IsList)
+  } deriving (Functor, Semigroup, Monoid, Data, IsList, NFData)
 
 instance (Ord k, Show k, Show v) => Show (HashMap k v) where
   showsPrec p = showsPrec p . sortOn fst . hashMapToList

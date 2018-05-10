@@ -40,8 +40,6 @@ main = do
               linkStart
                 store
                 [ "Fact_root_closure"
-                , bdescrSymbol
-                , capabilitySymbol
                 , stgRunSymbol
                 , stopThreadInfoSymbol
                 , "allocGroup"
