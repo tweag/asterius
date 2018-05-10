@@ -44,8 +44,10 @@ main = do
                 , capabilitySymbol
                 , stgRunSymbol
                 , stopThreadInfoSymbol
+                , "allocGroup"
+                , "allocate"
                 ]
-        pPrint report
+        writeDot "Fact.gv" report
         let Just final_m = maybe_final_m
         pPrint final_m
         hFlush stdout

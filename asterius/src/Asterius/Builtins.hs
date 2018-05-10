@@ -33,6 +33,9 @@ import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 
+wasmPageSize :: Int
+wasmPageSize = 65536
+
 data BuiltinsOptions = BuiltinsOptions
   { dflags :: GHC.DynFlags
   , stackSize :: Int
@@ -44,7 +47,7 @@ getDefaultBuiltinsOptions =
   GHC.runGhc (Just ghcLibDir) $ do
     _ <- GHC.getSessionDynFlags >>= GHC.setSessionDynFlags
     dflags <- GHC.getSessionDynFlags
-    pure BuiltinsOptions {dflags = dflags, stackSize = 1024576}
+    pure BuiltinsOptions {dflags = dflags, stackSize = 65536}
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -64,6 +67,7 @@ rtsAsteriusModule opts =
         ]
     , functionMap =
         [ (allocateSymbol, allocateFunction opts)
+        , (allocateMightFailSymbol, allocateMightFailFunction opts)
         , (allocatePinnedSymbol, allocatePinnedFunction opts)
         , (allocBlockSymbol, allocBlockFunction opts)
         , (allocBlockLockSymbol, allocBlockLockFunction opts)
@@ -83,6 +87,8 @@ rtsAsteriusFunctionTypeMap :: HashMap SBS.ShortByteString FunctionType
 rtsAsteriusFunctionTypeMap =
   [ (fnTypeName, FunctionType {returnType = I64, paramTypes = []})
   , ( entityName allocateSymbol
+    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
+  , ( entityName allocateMightFailSymbol
     , FunctionType {returnType = I64, paramTypes = [I64, I64]})
   , ( entityName allocatePinnedSymbol
     , FunctionType {returnType = I64, paramTypes = [I64, I64]})
@@ -114,7 +120,7 @@ rtsAsteriusGlobalMap = []
 fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, stopThreadInfoSymbol, allocateSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, stopThreadInfoSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 tsoSymbol = "_asterius_TSO"
 
@@ -131,6 +137,8 @@ capabilitySymbol = "MainCapability"
 stopThreadInfoSymbol = "stg_stop_thread_info"
 
 allocateSymbol = "allocate"
+
+allocateMightFailSymbol = "allocateMightFail"
 
 allocatePinnedSymbol = "allocatePinned"
 
@@ -226,13 +234,111 @@ capabilityStatics _ =
              ])
     }
 
-allocateFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
 allocateFunction _ =
   Function
     { functionTypeName = entityName allocateSymbol
+    , varTypes = [I64, I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ SetLocal
+                  { index = 2
+                  , value =
+                      Binary
+                        { binaryOp = AddInt64
+                        , operand0 =
+                            UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
+                        , operand1 =
+                            Binary
+                              { binaryOp = MulInt64
+                              , operand0 = GetLocal {index = 1, valueType = I64}
+                              , operand1 = ConstI64 8
+                              }
+                        }
+                  }
+              , If
+                  { condition =
+                      Binary
+                        { binaryOp = GtSInt64
+                        , operand0 = GetLocal {index = 2, valueType = I64}
+                        , operand1 =
+                            UnresolvedGetGlobal {unresolvedGlobalReg = HpLim}
+                        }
+                  , ifTrue = Unreachable
+                  , ifFalse = Null
+                  }
+              , SetLocal
+                  { index = 3
+                  , value = UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
+                  }
+              , UnresolvedSetGlobal
+                  { unresolvedGlobalReg = Hp
+                  , value = GetLocal {index = 2, valueType = I64}
+                  }
+              , Store
+                  { bytes = 8
+                  , offset = 0
+                  , align = 0
+                  , ptr =
+                      Unary
+                        { unaryOp = WrapInt64
+                        , operand0 =
+                            Binary
+                              { binaryOp = AddInt64
+                              , operand0 =
+                                  Load
+                                    { signed = False
+                                    , bytes = 8
+                                    , offset = 0
+                                    , align = 0
+                                    , valueType = I64
+                                    , ptr =
+                                        Unary
+                                          { unaryOp = WrapInt64
+                                          , operand0 =
+                                              Binary
+                                                { binaryOp = AddInt64
+                                                , operand0 =
+                                                    UnresolvedGetGlobal
+                                                      { unresolvedGlobalReg =
+                                                          BaseReg
+                                                      }
+                                                , operand1 =
+                                                    ConstI64 $
+                                                    fromIntegral
+                                                      offset_StgRegTable_rCurrentAlloc
+                                                }
+                                          }
+                                    }
+                              , operand1 =
+                                  ConstI64 $ fromIntegral offset_bdescr_free
+                              }
+                        }
+                  , value = GetLocal {index = 2, valueType = I64}
+                  , valueType = I64
+                  }
+              , GetLocal {index = 3, valueType = I64}
+              ]
+          , valueType = I64
+          }
+    }
+
+allocateMightFailFunction _ =
+  Function
+    { functionTypeName = entityName allocateMightFailSymbol
     , varTypes = []
-    , body = Unreachable
+    , body =
+        Call
+          { target = allocateSymbol
+          , operands =
+              [ GetLocal {index = 0, valueType = I64}
+              , GetLocal {index = 1, valueType = I64}
+              ]
+          , valueType = I64
+          }
     }
 
 allocatePinnedFunction _ =
@@ -240,15 +346,14 @@ allocatePinnedFunction _ =
     { functionTypeName = entityName allocatePinnedSymbol
     , varTypes = []
     , body =
-        Return
-          Call
-            { target = allocateSymbol
-            , operands =
-                [ GetLocal {index = 0, valueType = I64}
-                , GetLocal {index = 1, valueType = I64}
-                ]
-            , valueType = I64
-            }
+        Call
+          { target = allocateSymbol
+          , operands =
+              [ GetLocal {index = 0, valueType = I64}
+              , GetLocal {index = 1, valueType = I64}
+              ]
+          , valueType = I64
+          }
     }
 
 allocBlockFunction _ =
@@ -256,28 +361,22 @@ allocBlockFunction _ =
     { functionTypeName = entityName allocBlockSymbol
     , varTypes = []
     , body =
-        Return
-          Call
-            { target = allocGroupSymbol
-            , operands = [ConstI64 1]
-            , valueType = I64
-            }
+        Call
+          {target = allocGroupSymbol, operands = [ConstI64 1], valueType = I64}
     }
 
 allocBlockLockFunction _ =
   Function
     { functionTypeName = entityName allocBlockLockSymbol
     , varTypes = []
-    , body =
-        Return Call {target = allocBlockSymbol, operands = [], valueType = I64}
+    , body = Call {target = allocBlockSymbol, operands = [], valueType = I64}
     }
 
 allocBlockOnNodeFunction _ =
   Function
     { functionTypeName = entityName allocBlockOnNodeSymbol
     , varTypes = []
-    , body =
-        Return Call {target = allocBlockSymbol, operands = [], valueType = I64}
+    , body = Call {target = allocBlockSymbol, operands = [], valueType = I64}
     }
 
 allocBlockOnNodeLockFunction _ =
@@ -285,32 +384,169 @@ allocBlockOnNodeLockFunction _ =
     { functionTypeName = entityName allocBlockOnNodeLockSymbol
     , varTypes = []
     , body =
-        Return
-          Call
-            { target = allocBlockOnNodeSymbol
-            , operands = [GetLocal {index = 0, valueType = I32}]
-            , valueType = I64
-            }
+        Call
+          { target = allocBlockOnNodeSymbol
+          , operands = [GetLocal {index = 0, valueType = I32}]
+          , valueType = I64
+          }
     }
 
+{-
+    mblock_round_up p = (p + mblock_size - 1) .&. complement mblock_mask
+    blocks_to_mblocks n =
+      1 +
+      (mblock_round_up ((n - blocks_per_mblock) * block_size) `div` mblock_size)
+-}
 allocGroupFunction _ =
   Function
     { functionTypeName = entityName allocGroupSymbol
-    , varTypes = []
-    , body = Unreachable
+    , varTypes = [I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ SetLocal
+                  { index = 1
+                  , value =
+                      Binary
+                        { binaryOp = MulInt64
+                        , operand0 =
+                            Unary
+                              { unaryOp = ExtendSInt32
+                              , operand0 =
+                                  Host
+                                    { hostOp = GrowMemory
+                                    , name = ""
+                                    , operands =
+                                        [ Unary
+                                            { unaryOp = WrapInt64
+                                            , operand0 =
+                                                Binary
+                                                  { binaryOp = MulInt64
+                                                  , operand0 =
+                                                      blocks_to_mblocks
+                                                        GetLocal
+                                                          { index = 0
+                                                          , valueType = I64
+                                                          }
+                                                  , operand1 =
+                                                      ConstI64 $
+                                                      fromIntegral $
+                                                      mblock_size `div`
+                                                      wasmPageSize
+                                                  }
+                                            }
+                                        ]
+                                    }
+                              }
+                        , operand1 = ConstI64 $ fromIntegral wasmPageSize
+                        }
+                  }
+              , Store
+                  { bytes = 8
+                  , offset = 0
+                  , align = 0
+                  , ptr =
+                      Unary
+                        { unaryOp = WrapInt64
+                        , operand0 =
+                            Binary
+                              { binaryOp = AddInt64
+                              , operand0 = GetLocal {index = 1, valueType = I64}
+                              , operand1 =
+                                  ConstI64 $ fromIntegral offset_bdescr_start
+                              }
+                        }
+                  , value = Unreachable
+                  , valueType = I64
+                  }
+              , Store
+                  { bytes = 8
+                  , offset = 0
+                  , align = 0
+                  , ptr =
+                      Unary
+                        { unaryOp = WrapInt64
+                        , operand0 =
+                            Binary
+                              { binaryOp = AddInt64
+                              , operand0 = GetLocal {index = 1, valueType = I64}
+                              , operand1 =
+                                  ConstI64 $ fromIntegral offset_bdescr_free
+                              }
+                        }
+                  , value = Unreachable
+                  , valueType = I64
+                  }
+              , Store
+                  { bytes = 8
+                  , offset = 0
+                  , align = 0
+                  , ptr =
+                      Unary
+                        { unaryOp = WrapInt64
+                        , operand0 =
+                            Binary
+                              { binaryOp = AddInt64
+                              , operand0 = GetLocal {index = 1, valueType = I64}
+                              , operand1 =
+                                  ConstI64 $ fromIntegral offset_bdescr_blocks
+                              }
+                        }
+                  , value = Unreachable
+                  , valueType = I64
+                  }
+              , GetLocal {index = 1, valueType = I64}
+              ]
+          , valueType = I64
+          }
     }
+  where
+    mblock_round_up p =
+      Binary
+        { binaryOp = AndInt64
+        , operand0 =
+            Binary
+              { binaryOp = AddInt64
+              , operand0 = p
+              , operand1 = ConstI64 $ fromIntegral $ mblock_size - 1
+              }
+        , operand1 = ConstI64 $ fromIntegral $ complement mblock_mask
+        }
+    blocks_to_mblocks n =
+      Binary
+        { binaryOp = AddInt64
+        , operand0 = ConstI64 1
+        , operand1 =
+            Binary
+              { binaryOp = DivSInt64
+              , operand0 =
+                  mblock_round_up
+                    Binary
+                      { binaryOp = MulInt64
+                      , operand0 =
+                          Binary
+                            { binaryOp = SubInt64
+                            , operand0 = n
+                            , operand1 =
+                                ConstI64 $ fromIntegral blocks_per_mblock
+                            }
+                      , operand1 = ConstI64 $ fromIntegral block_size
+                      }
+              , operand1 = ConstI64 $ fromIntegral mblock_size
+              }
+        }
 
 allocGroupLockFunction _ =
   Function
     { functionTypeName = entityName allocGroupLockSymbol
     , varTypes = []
     , body =
-        Return
-          Call
-            { target = allocGroupSymbol
-            , operands = [GetLocal {index = 0, valueType = I64}]
-            , valueType = I64
-            }
+        Call
+          { target = allocGroupSymbol
+          , operands = [GetLocal {index = 0, valueType = I64}]
+          , valueType = I64
+          }
     }
 
 allocGroupOnNodeFunction _ =
@@ -318,12 +554,11 @@ allocGroupOnNodeFunction _ =
     { functionTypeName = entityName allocGroupOnNodeSymbol
     , varTypes = []
     , body =
-        Return
-          Call
-            { target = allocGroupSymbol
-            , operands = [GetLocal {index = 1, valueType = I64}]
-            , valueType = I64
-            }
+        Call
+          { target = allocGroupSymbol
+          , operands = [GetLocal {index = 1, valueType = I64}]
+          , valueType = I64
+          }
     }
 
 allocGroupOnNodeLockFunction _ =
@@ -331,22 +566,21 @@ allocGroupOnNodeLockFunction _ =
     { functionTypeName = entityName allocGroupOnNodeLockSymbol
     , varTypes = []
     , body =
-        Return
-          Call
-            { target = allocGroupOnNodeSymbol
-            , operands =
-                [ GetLocal {index = 0, valueType = I32}
-                , GetLocal {index = 1, valueType = I64}
-                ]
-            , valueType = I64
-            }
+        Call
+          { target = allocGroupOnNodeSymbol
+          , operands =
+              [ GetLocal {index = 0, valueType = I32}
+              , GetLocal {index = 1, valueType = I64}
+              ]
+          , valueType = I64
+          }
     }
 
 newCAFFunction _ =
   Function
     { functionTypeName = entityName newCAFSymbol
     , varTypes = []
-    , body = Return $ ConstI64 0
+    , body = ConstI64 0
     }
 
 stgRunFunction _ =
@@ -395,7 +629,7 @@ stgRunFunction _ =
                           ]
                       , valueType = None
                       }
-                , ifFalse = Return {value = Null}
+                , ifFalse = Null
                 }
           }
     }
@@ -403,5 +637,4 @@ stgRunFunction _ =
     loop_lbl = "StgRun_loop"
 
 stgReturnFunction _ =
-  Function
-    {functionTypeName = fnTypeName, varTypes = [], body = Return $ ConstI64 0}
+  Function {functionTypeName = fnTypeName, varTypes = [], body = ConstI64 0}

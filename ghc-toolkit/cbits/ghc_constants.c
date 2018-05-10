@@ -1,6 +1,14 @@
 #include <Rts.h>
 #include <Capability.h>
 
+HsInt block_size() { return BLOCK_SIZE; }
+
+HsInt mblock_size() { return MBLOCK_SIZE; }
+
+HsInt mblock_mask() { return MBLOCK_MASK; }
+
+HsInt blocks_per_mblock() { return BLOCKS_PER_MBLOCK; }
+
 HsInt sizeof_bdescr() { return sizeof(bdescr); }
 
 HsInt offset_bdescr_start() { return offsetof(bdescr, start); }
@@ -27,6 +35,8 @@ HsInt offset_StgInd_indirectee() { return offsetof(StgInd, indirectee); }
 
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
+HsInt offset_StgRegTable_rNursery() { return offsetof(StgRegTable, rNursery); }
+
 HsInt offset_StgRegTable_rCurrentTSO() {
   return offsetof(StgRegTable, rCurrentTSO);
 }
@@ -35,6 +45,9 @@ HsInt offset_StgRegTable_rCurrentNursery() {
   return offsetof(StgRegTable, rCurrentNursery);
 }
 
+HsInt offset_StgRegTable_rCurrentAlloc() {
+  return offsetof(StgRegTable, rCurrentAlloc);
+}
 HsInt offset_StgRegTable_rRet() { return offsetof(StgRegTable, rRet); }
 
 HsInt sizeof_StgStack() { return sizeof(StgStack); }

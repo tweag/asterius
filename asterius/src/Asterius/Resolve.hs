@@ -16,6 +16,8 @@ module Asterius.Resolve
   , mergeSymbols
   , resolveAsteriusModule
   , linkStart
+  , renderDot
+  , writeDot
   ) where
 
 import Asterius.Builtins
@@ -23,6 +25,7 @@ import Asterius.Containers
 import Asterius.Internals
 import Asterius.Types
 import Control.Exception
+import Data.ByteString.Builder
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
 import Data.Either
@@ -32,6 +35,8 @@ import qualified Data.Vector as V
 import Foreign
 import GHC.Exts (fromList, proxy#)
 import Language.Haskell.GHC.Toolkit.Constants
+import Prelude hiding (IO)
+import System.IO hiding (IO)
 import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
 
 unresolvedLocalRegType :: UnresolvedLocalReg -> ValueType
@@ -348,3 +353,31 @@ linkStart ::
 linkStart store syms = (resolveAsteriusModule <$> maybe_merged_m, report)
   where
     (maybe_merged_m, report) = mergeSymbols store syms
+
+renderDot :: LinkReport -> Builder
+renderDot LinkReport {..} =
+  mconcat $
+  ["digraph {\n"] <>
+  concat
+    [ ["    ", sym unfound_sym, " [color=orange];\n"]
+    | unfound_sym <- toList unfoundSymbols
+    ] <>
+  concat
+    [ ["    ", sym unavailable_sym, " [color=red];\n"]
+    | unavailable_sym <- toList unavailableSymbols
+    ] <>
+  concat
+    [ ["    ", sym u, " -> ", sym v, ";\n"]
+    | (u, vs) <- hashMapToList childSymbols
+    , v <- toList vs
+    ] <>
+  ["}\n"]
+  where
+    sym = shortByteString . entityName
+
+writeDot :: FilePath -> LinkReport -> IO ()
+writeDot p r = do
+  h <- openBinaryFile p WriteMode
+  hSetBuffering h $ BlockBuffering Nothing
+  hPutBuilder h $ renderDot r
+  hClose h
