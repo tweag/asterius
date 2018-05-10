@@ -67,9 +67,13 @@ foreign import ccall unsafe "sizeof_StgStack" sizeof_StgStack :: Int
 foreign import ccall unsafe "offset_StgStack_stack_size" offset_StgStack_stack_size
   :: Int
 
+foreign import ccall unsafe "offset_StgStack_dirty" offset_StgStack_dirty :: Int
+
 foreign import ccall unsafe "offset_StgStack_sp" offset_StgStack_sp :: Int
 
 foreign import ccall unsafe "offset_StgStack_stack" offset_StgStack_stack :: Int
+
+foreign import ccall unsafe "sizeof_StgStopFrame" sizeof_StgStopFrame :: Int
 
 foreign import ccall unsafe "sizeof_StgTSO" sizeof_StgTSO :: Int
 
@@ -77,4 +81,7 @@ foreign import ccall unsafe "offset_StgTSO_stackobj" offset_StgTSO_stackobj
   :: Int
 
 foreign import ccall unsafe "offset_StgTSO_alloc_limit" offset_StgTSO_alloc_limit
+  :: Int
+
+foreign import ccall unsafe "offset_StgTSO_StgStack" offset_StgTSO_StgStack
   :: Int

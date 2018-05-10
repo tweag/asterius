@@ -940,7 +940,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                           rbs
                       , labelHelper = 0
                       }
-                , Return {value = GetLocal {index = 1, valueType = I64}}
+                , GetLocal {index = 1, valueType = I64}
                 ]
             , valueType = I64
             }

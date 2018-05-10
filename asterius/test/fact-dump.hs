@@ -45,7 +45,7 @@ main = do
                 , stgRunSymbol
                 , stopThreadInfoSymbol
                 , "allocGroup"
-                , "allocate"
+                , "createThread"
                 ]
         writeDot "Fact.gv" report
         let Just final_m = maybe_final_m

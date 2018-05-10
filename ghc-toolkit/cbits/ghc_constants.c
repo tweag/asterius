@@ -64,12 +64,20 @@ HsInt sizeof_StgStack() { return sizeof(StgStack); }
 
 HsInt offset_StgStack_stack_size() { return offsetof(StgStack, stack_size); }
 
+HsInt offset_StgStack_dirty() { return offsetof(StgStack, dirty); }
+
 HsInt offset_StgStack_sp() { return offsetof(StgStack, sp); }
 
 HsInt offset_StgStack_stack() { return offsetof(StgStack, stack); }
+
+HsInt sizeof_StgStopFrame() { return sizeof(StgStopFrame); }
 
 HsInt sizeof_StgTSO() { return sizeof(StgTSO); }
 
 HsInt offset_StgTSO_stackobj() { return offsetof(StgTSO, stackobj); }
 
 HsInt offset_StgTSO_alloc_limit() { return offsetof(StgTSO, alloc_limit); }
+
+HsInt offset_StgTSO_StgStack() {
+  return ROUNDUP_BYTES_TO_WDS(sizeof(StgTSO)) * 8;
+}

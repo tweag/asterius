@@ -38,7 +38,7 @@ wasmPageSize = 65536
 
 data BuiltinsOptions = BuiltinsOptions
   { dflags :: GHC.DynFlags
-  , stackSize :: Int
+  , threadStateSize :: Int
   }
 
 getDefaultBuiltinsOptions :: IO BuiltinsOptions
@@ -47,7 +47,7 @@ getDefaultBuiltinsOptions =
   GHC.runGhc (Just ghcLibDir) $ do
     _ <- GHC.getSessionDynFlags >>= GHC.setSessionDynFlags
     dflags <- GHC.getSessionDynFlags
-    pure BuiltinsOptions {dflags = dflags, stackSize = 65536}
+    pure BuiltinsOptions {dflags = dflags, threadStateSize = 65536}
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -66,7 +66,8 @@ rtsAsteriusModule opts =
         , (capabilitySymbol, capabilityStatics opts)
         ]
     , functionMap =
-        [ (allocateSymbol, allocateFunction opts)
+        [ (createThreadSymbol, createThreadFunction opts)
+        , (allocateSymbol, allocateFunction opts)
         , (allocateMightFailSymbol, allocateMightFailFunction opts)
         , (allocatePinnedSymbol, allocatePinnedFunction opts)
         , (allocBlockSymbol, allocBlockFunction opts)
@@ -86,6 +87,8 @@ rtsAsteriusModule opts =
 rtsAsteriusFunctionTypeMap :: HashMap SBS.ShortByteString FunctionType
 rtsAsteriusFunctionTypeMap =
   [ (fnTypeName, FunctionType {returnType = I64, paramTypes = []})
+  , ( entityName createThreadSymbol
+    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
   , ( entityName allocateSymbol
     , FunctionType {returnType = I64, paramTypes = [I64, I64]})
   , ( entityName allocateMightFailSymbol
@@ -120,7 +123,7 @@ rtsAsteriusGlobalMap = []
 fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, stopThreadInfoSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
+tsoSymbol, tsoInfoSymbol, stackSymbol, stackInfoSymbol, bdescrSymbol, capabilitySymbol, stopThreadInfoSymbol, createThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 tsoSymbol = "_asterius_TSO"
 
@@ -135,6 +138,8 @@ bdescrSymbol = "_asterius_bdescr"
 capabilitySymbol = "MainCapability"
 
 stopThreadInfoSymbol = "stg_stop_thread_info"
+
+createThreadSymbol = "createThread"
 
 allocateSymbol = "allocate"
 
@@ -207,7 +212,7 @@ stackStatics BuiltinsOptions {..} =
     [ (0, UnresolvedStatic stackInfoSymbol)
     , ( offset_StgStack_sp
       , UnresolvedOffStatic stackSymbol offset_StgStack_stack)
-    , (offset_StgStack_stack, Uninitialized stackSize)
+    , (offset_StgStack_stack, Uninitialized threadStateSize)
     ]
 
 bdescrStatics _ =
@@ -234,8 +239,75 @@ capabilityStatics _ =
              ])
     }
 
-allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+createThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
+createThreadFunction _ =
+  Function
+    { functionTypeName = entityName createThreadSymbol
+    , varTypes = [I64, I64, I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ SetLocal
+                  { index = 2
+                  , value =
+                      Call
+                        { target = allocateSymbol
+                        , operands = [getLocalWord 0, alloc_words]
+                        , valueType = I64
+                        }
+                  }
+              , SetLocal
+                  { index = 3
+                  , value =
+                      Binary
+                        { binaryOp = AddInt64
+                        , operand0 = tso_p
+                        , operand1 =
+                            ConstI64 $ fromIntegral offset_StgTSO_StgStack
+                        }
+                  }
+              , setFieldWord
+                  stack_p
+                  0
+                  Unresolved {unresolvedSymbol = stackInfoSymbol}
+              , SetLocal
+                  { index = 4
+                  , value =
+                      Binary
+                        { binaryOp = SubInt64
+                        , operand0 = words2Bytes alloc_words
+                        , operand1 =
+                            ConstI64 $
+                            fromIntegral $
+                            offset_StgTSO_StgStack + offset_StgStack_stack
+                        }
+                  }
+              , setFieldWord32
+                  stack_p
+                  offset_StgStack_stack_size
+                  (wrapI64 stack_size)
+              , setFieldWord
+                  stack_p
+                  offset_StgStack_sp
+                  Binary
+                    { binaryOp = AddInt64
+                    , operand0 = fieldOff stack_p offset_StgStack_stack
+                    , operand1 = stack_size
+                    }
+              , setFieldWord32 stack_p offset_StgStack_dirty (ConstI32 1)
+              , tso_p
+              ]
+          , valueType = I64
+          }
+    }
+  where
+    alloc_words = getLocalWord 1
+    tso_p = getLocalWord 2
+    stack_p = getLocalWord 3
+    stack_size = getLocalWord 4
+
 allocateFunction _ =
   Function
     { functionTypeName = entityName allocateSymbol
@@ -251,19 +323,14 @@ allocateFunction _ =
                         { binaryOp = AddInt64
                         , operand0 =
                             UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
-                        , operand1 =
-                            Binary
-                              { binaryOp = MulInt64
-                              , operand0 = GetLocal {index = 1, valueType = I64}
-                              , operand1 = ConstI64 8
-                              }
+                        , operand1 = words2Bytes $ getLocalWord 1
                         }
                   }
               , If
                   { condition =
                       Binary
                         { binaryOp = GtSInt64
-                        , operand0 = GetLocal {index = 2, valueType = I64}
+                        , operand0 = getLocalWord 2
                         , operand1 =
                             UnresolvedGetGlobal {unresolvedGlobalReg = HpLim}
                         }
@@ -275,52 +342,35 @@ allocateFunction _ =
                   , value = UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
                   }
               , UnresolvedSetGlobal
-                  { unresolvedGlobalReg = Hp
-                  , value = GetLocal {index = 2, valueType = I64}
-                  }
-              , Store
-                  { bytes = 8
-                  , offset = 0
-                  , align = 0
-                  , ptr =
-                      Unary
-                        { unaryOp = WrapInt64
-                        , operand0 =
-                            Binary
-                              { binaryOp = AddInt64
-                              , operand0 =
-                                  Load
-                                    { signed = False
-                                    , bytes = 8
-                                    , offset = 0
-                                    , align = 0
-                                    , valueType = I64
-                                    , ptr =
-                                        Unary
-                                          { unaryOp = WrapInt64
-                                          , operand0 =
-                                              Binary
-                                                { binaryOp = AddInt64
-                                                , operand0 =
-                                                    UnresolvedGetGlobal
-                                                      { unresolvedGlobalReg =
-                                                          BaseReg
-                                                      }
-                                                , operand1 =
-                                                    ConstI64 $
-                                                    fromIntegral
-                                                      offset_StgRegTable_rCurrentAlloc
-                                                }
-                                          }
-                                    }
-                              , operand1 =
-                                  ConstI64 $ fromIntegral offset_bdescr_free
-                              }
-                        }
-                  , value = GetLocal {index = 2, valueType = I64}
-                  , valueType = I64
-                  }
-              , GetLocal {index = 3, valueType = I64}
+                  {unresolvedGlobalReg = Hp, value = getLocalWord 2}
+              , storeWord
+                  (wrapI64
+                     Binary
+                       { binaryOp = AddInt64
+                       , operand0 =
+                           Load
+                             { signed = False
+                             , bytes = 8
+                             , offset = 0
+                             , align = 0
+                             , valueType = I64
+                             , ptr =
+                                 wrapI64
+                                   Binary
+                                     { binaryOp = AddInt64
+                                     , operand0 =
+                                         UnresolvedGetGlobal
+                                           {unresolvedGlobalReg = BaseReg}
+                                     , operand1 =
+                                         ConstI64 $
+                                         fromIntegral
+                                           offset_StgRegTable_rCurrentAlloc
+                                     }
+                             }
+                       , operand1 = ConstI64 $ fromIntegral offset_bdescr_free
+                       })
+                  (getLocalWord 2)
+              , getLocalWord 3
               ]
           , valueType = I64
           }
@@ -333,10 +383,7 @@ allocateMightFailFunction _ =
     , body =
         Call
           { target = allocateSymbol
-          , operands =
-              [ GetLocal {index = 0, valueType = I64}
-              , GetLocal {index = 1, valueType = I64}
-              ]
+          , operands = [getLocalWord 0, getLocalWord 1]
           , valueType = I64
           }
     }
@@ -348,10 +395,7 @@ allocatePinnedFunction _ =
     , body =
         Call
           { target = allocateSymbol
-          , operands =
-              [ GetLocal {index = 0, valueType = I64}
-              , GetLocal {index = 1, valueType = I64}
-              ]
+          , operands = [getLocalWord 0, getLocalWord 1]
           , valueType = I64
           }
     }
@@ -399,11 +443,7 @@ allocGroupFunction _ =
         Block
           { name = ""
           , bodys =
-              [ SetLocal
-                  { index = 2
-                  , value =
-                      blocks_to_mblocks GetLocal {index = 0, valueType = I64}
-                  }
+              [ SetLocal {index = 2, value = blocks_to_mblocks $ getLocalWord 0}
               , SetLocal
                   { index = 1
                   , value =
@@ -417,80 +457,56 @@ allocGroupFunction _ =
                                     { hostOp = GrowMemory
                                     , name = ""
                                     , operands =
-                                        [ Unary
-                                            { unaryOp = WrapInt64
-                                            , operand0 =
-                                                Binary
-                                                  { binaryOp = MulInt64
-                                                  , operand0 =
-                                                      GetLocal
-                                                        { index = 2
-                                                        , valueType = I64
-                                                        }
-                                                  , operand1 =
-                                                      ConstI64 $
-                                                      fromIntegral $
-                                                      mblock_size `div`
-                                                      wasmPageSize
-                                                  }
-                                            }
+                                        [ wrapI64
+                                            Binary
+                                              { binaryOp = MulInt64
+                                              , operand0 =
+                                                  GetLocal
+                                                    {index = 2, valueType = I64}
+                                              , operand1 =
+                                                  ConstI64 $
+                                                  fromIntegral $
+                                                  mblock_size `div` wasmPageSize
+                                              }
                                         ]
                                     }
                               }
                         , operand1 = ConstI64 $ fromIntegral wasmPageSize
                         }
                   }
-              , Store
-                  { bytes = 8
-                  , offset = 0
-                  , align = 0
-                  , ptr =
-                      fieldOff
-                        mblocks_p
-                        (offset_first_bdescr + offset_bdescr_start)
-                  , value = first_block_p
-                  , valueType = I64
-                  }
-              , Store
-                  { bytes = 8
-                  , offset = 0
-                  , align = 0
-                  , ptr =
-                      fieldOff
-                        mblocks_p
-                        (offset_first_bdescr + offset_bdescr_free)
-                  , value = first_block_p
-                  , valueType = I64
-                  }
-              , Store
-                  { bytes = 8
-                  , offset = 0
-                  , align = 0
-                  , ptr =
-                      fieldOff
-                        mblocks_p
-                        (offset_first_bdescr + offset_bdescr_blocks)
-                  , value =
-                      Binary
-                        { binaryOp = AddInt64
-                        , operand0 = ConstI64 $ fromIntegral blocks_per_mblock
-                        , operand1 =
-                            Binary
-                              { binaryOp = MulInt64
-                              , operand0 =
-                                  Binary
-                                    { binaryOp = SubInt64
-                                    , operand0 =
-                                        GetLocal {index = 2, valueType = I64}
-                                    , operand1 = ConstI64 1
-                                    }
-                              , operand1 =
-                                  ConstI64 $
-                                  fromIntegral $ mblock_size `div` block_size
-                              }
-                        }
-                  , valueType = I64
-                  }
+              , setFieldWord
+                  mblocks_p
+                  (offset_first_bdescr + offset_bdescr_start)
+                  first_block_p
+              , setFieldWord
+                  mblocks_p
+                  (offset_first_bdescr + offset_bdescr_free)
+                  first_block_p
+              , setFieldWord32
+                  mblocks_p
+                  (offset_first_bdescr + offset_bdescr_blocks)
+                  Unary
+                    { unaryOp = WrapInt64
+                    , operand0 =
+                        Binary
+                          { binaryOp = AddInt64
+                          , operand0 = ConstI64 $ fromIntegral blocks_per_mblock
+                          , operand1 =
+                              Binary
+                                { binaryOp = MulInt64
+                                , operand0 =
+                                    Binary
+                                      { binaryOp = SubInt64
+                                      , operand0 =
+                                          GetLocal {index = 2, valueType = I64}
+                                      , operand1 = ConstI64 1
+                                      }
+                                , operand1 =
+                                    ConstI64 $
+                                    fromIntegral $ mblock_size `div` block_size
+                                }
+                          }
+                    }
               , mblocks_p
               ]
           , valueType = I64
@@ -503,7 +519,7 @@ allocGroupFunction _ =
         , operand0 = mblocks_p
         , operand1 = ConstI64 $ fromIntegral offset_first_block
         }
-    mblocks_p = GetLocal {index = 1, valueType = I64}
+    mblocks_p = getLocalWord 1
     mblock_round_up p =
       Binary
         { binaryOp = AndInt64
@@ -546,7 +562,7 @@ allocGroupLockFunction _ =
     , body =
         Call
           { target = allocGroupSymbol
-          , operands = [GetLocal {index = 0, valueType = I64}]
+          , operands = [getLocalWord 0]
           , valueType = I64
           }
     }
@@ -558,7 +574,7 @@ allocGroupOnNodeFunction _ =
     , body =
         Call
           { target = allocGroupSymbol
-          , operands = [GetLocal {index = 1, valueType = I64}]
+          , operands = [getLocalWord 1]
           , valueType = I64
           }
     }
@@ -570,10 +586,7 @@ allocGroupOnNodeLockFunction _ =
     , body =
         Call
           { target = allocGroupOnNodeSymbol
-          , operands =
-              [ GetLocal {index = 0, valueType = I32}
-              , GetLocal {index = 1, valueType = I64}
-              ]
+          , operands = [GetLocal {index = 0, valueType = I32}, getLocalWord 1]
           , valueType = I64
           }
     }
@@ -597,7 +610,7 @@ stgRunFunction _ =
                 { condition =
                     Binary
                       { binaryOp = NeInt64
-                      , operand0 = GetLocal {index = 0, valueType = I64}
+                      , operand0 = getLocalWord 0
                       , operand1 = ConstI64 0
                       }
                 , ifTrue =
@@ -609,18 +622,18 @@ stgRunFunction _ =
                               , value =
                                   CallIndirect
                                     { indirectTarget =
-                                        Binary
-                                          { binaryOp = SubInt32
+                                        Unary
+                                          { unaryOp = WrapInt64
                                           , operand0 =
-                                              Unary
-                                                { unaryOp = WrapInt64
+                                              Binary
+                                                { binaryOp = SubInt64
                                                 , operand0 =
                                                     GetLocal
                                                       { index = 0
                                                       , valueType = I64
                                                       }
+                                                , operand1 = ConstI64 1
                                                 }
-                                          , operand1 = ConstI32 1
                                           }
                                     , operands = []
                                     , typeName = fnTypeName
@@ -642,13 +655,32 @@ stgReturnFunction _ =
   Function {functionTypeName = fnTypeName, varTypes = [], body = ConstI64 0}
 
 fieldOff :: Expression -> Int -> Expression
-fieldOff p o =
-  Unary
-    { unaryOp = WrapInt64
-    , operand0 =
-        Binary
-          { binaryOp = AddInt64
-          , operand0 = p
-          , operand1 = ConstI64 $ fromIntegral o
-          }
-    }
+fieldOff p o
+  | o == 0 = p
+  | otherwise =
+    Binary
+      {binaryOp = AddInt64, operand0 = p, operand1 = ConstI64 $ fromIntegral o}
+
+setFieldWord :: Expression -> Int -> Expression -> Expression
+setFieldWord p o = storeWord (wrapI64 $ fieldOff p o)
+
+storeWord :: Expression -> Expression -> Expression
+storeWord p w =
+  Store {bytes = 8, offset = 0, align = 0, ptr = p, value = w, valueType = I64}
+
+setFieldWord32 :: Expression -> Int -> Expression -> Expression
+setFieldWord32 p o = storeWord32 (wrapI64 $ fieldOff p o)
+
+storeWord32 :: Expression -> Expression -> Expression
+storeWord32 p w =
+  Store {bytes = 4, offset = 0, align = 0, ptr = p, value = w, valueType = I32}
+
+wrapI64 :: Expression -> Expression
+wrapI64 w = Unary {unaryOp = WrapInt64, operand0 = w}
+
+words2Bytes :: Expression -> Expression
+words2Bytes w =
+  Binary {binaryOp = MulInt64, operand0 = w, operand1 = ConstI64 8}
+
+getLocalWord :: BinaryenIndex -> Expression
+getLocalWord i = GetLocal {index = i, valueType = I64}
