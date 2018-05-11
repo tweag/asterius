@@ -138,6 +138,9 @@ marshalGlobalReg gr =
     HpLim ->
       ( "_asterius_HpLim"
       , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
+    CurrentTSO ->
+      ( "_asterius_CurrentTSO"
+      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
     CurrentNursery ->
       ( "_asterius_CurrentNursery"
       , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
