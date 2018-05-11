@@ -41,7 +41,7 @@ main = do
                 store
                 [ "Fact_root_closure"
                 , stgRunSymbol
-                , stopThreadInfoSymbol
+                , stgStopThreadInfoSymbol
                 , "allocGroup"
                 , "createThread"
                 ]

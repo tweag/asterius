@@ -11,7 +11,7 @@ module Asterius.Builtins
   , rtsAsteriusFunctionTypeMap
   , rtsAsteriusGlobalMap
   , fnTypeName
-  , stopThreadInfoSymbol
+  , stgStopThreadInfoSymbol
   , stgRunSymbol
   , asteriusStaticSize
   , asteriusStaticsSize
@@ -114,7 +114,7 @@ rtsAsteriusGlobalMap = []
 fnTypeName :: SBS.ShortByteString
 fnTypeName = "_asterius_FN"
 
-stgTSOInfoSymbol, stgStackInfoSymbol, stgEndTSOQueueSymbol, stopThreadInfoSymbol, createThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
+stgTSOInfoSymbol, stgStackInfoSymbol, stgEndTSOQueueSymbol, stgNoTRecSymbol, stgStopThreadInfoSymbol, createThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
 stgTSOInfoSymbol = "stg_TSO_info"
 
@@ -122,7 +122,9 @@ stgStackInfoSymbol = "stg_STACK_info"
 
 stgEndTSOQueueSymbol = "stg_END_TSO_QUEUE_closure"
 
-stopThreadInfoSymbol = "stg_stop_thread_info"
+stgNoTRecSymbol = "stg_NO_TREC_closure"
+
+stgStopThreadInfoSymbol = "stg_stop_thread_info"
 
 createThreadSymbol = "createThread"
 
@@ -170,7 +172,7 @@ createThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinne
 createThreadFunction _ =
   Function
     { functionTypeName = entityName createThreadSymbol
-    , varTypes = [I64, I64, I64]
+    , varTypes = [I64, I64, I64, I64]
     , body =
         Block
           { name = ""
@@ -184,8 +186,7 @@ createThreadFunction _ =
                         , valueType = I64
                         }
                   }
-              , SetLocal
-                  {index = 3, value = fieldOff tso_p offset_StgTSO_StgStack}
+              , saveSp 3 tso_p
               , setFieldWord
                   stack_p
                   0
@@ -207,14 +208,25 @@ createThreadFunction _ =
                   stack_p
                   offset_StgStack_stack_size
                   (wrapI64 stack_size_w)
-              , setFieldWord
-                  stack_p
-                  offset_StgStack_sp
-                  Binary
-                    { binaryOp = AddInt64
-                    , operand0 = fieldOff stack_p offset_StgStack_stack
-                    , operand1 = words2Bytes stack_size_w
-                    }
+              , SetLocal
+                  { index = 5
+                  , value =
+                      Binary
+                        { binaryOp = AddInt64
+                        , operand0 = fieldOff stack_p offset_StgStack_stack
+                        , operand1 =
+                            words2Bytes
+                              Binary
+                                { binaryOp = SubInt64
+                                , operand0 = stack_size_w
+                                , operand1 =
+                                    ConstI64 $
+                                    fromIntegral $
+                                    roundup_bytes_to_words sizeof_StgStopFrame
+                                }
+                        }
+                  }
+              , setFieldWord stack_p offset_StgStack_sp sp
               , setFieldWord32 stack_p offset_StgStack_dirty (ConstI32 1)
               , setFieldWord
                   tso_p
@@ -228,16 +240,47 @@ createThreadFunction _ =
                   tso_p
                   (offset_StgTSO_block_info + offset_StgTSOBlockInfo_closure)
                   Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
+              , setFieldWord
+                  tso_p
+                  offset_StgTSO_blocked_exceptions
+                  Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
+              , setFieldWord
+                  tso_p
+                  offset_StgTSO_bq
+                  Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
+              , setFieldWord32 tso_p offset_StgTSO_flags $ ConstI32 0
+              , setFieldWord32 tso_p offset_StgTSO_dirty $ ConstI32 1
+              , setFieldWord
+                  tso_p
+                  offset_StgTSO__link
+                  Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
+              , setFieldWord32 tso_p offset_StgTSO_saved_errno $ ConstI32 0
+              , setFieldWord tso_p offset_StgTSO_bound $ ConstI64 0
+              , setFieldWord tso_p offset_StgTSO_cap cap
+              , setFieldWord tso_p offset_StgTSO_stackobj stack_p
+              , setFieldWord32 tso_p offset_StgTSO_tot_stack_size $
+                wrapI64 stack_size_w
+              , setFieldWord tso_p offset_StgTSO_alloc_limit $ ConstI64 0
+              , setFieldWord
+                  tso_p
+                  offset_StgTSO_trec
+                  Unresolved {unresolvedSymbol = stgNoTRecSymbol}
+              , setFieldWord
+                  sp
+                  0
+                  Unresolved {unresolvedSymbol = stgStopThreadInfoSymbol}
               , tso_p
               ]
           , valueType = I64
           }
     }
   where
+    cap = getLocalWord 0
     alloc_words = getLocalWord 1
     tso_p = getLocalWord 2
     stack_p = getLocalWord 3
     stack_size_w = getLocalWord 4
+    sp = getLocalWord 5
 
 allocateFunction _ =
   Function
@@ -277,18 +320,11 @@ allocateFunction _ =
               , storeWord
                   (wrapI64 $
                    fieldOff
-                     Load
-                       { signed = False
-                       , bytes = 8
-                       , offset = 0
-                       , align = 0
-                       , valueType = I64
-                       , ptr =
-                           wrapI64 $
-                           fieldOff
-                             UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
-                             offset_StgRegTable_rCurrentAlloc
-                       }
+                     (loadWord $
+                      wrapI64 $
+                      fieldOff
+                        UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
+                        offset_StgRegTable_rCurrentAlloc)
                      offset_bdescr_free)
                   (getLocalWord 2)
               , getLocalWord 3
@@ -575,6 +611,11 @@ fieldOff p o
 setFieldWord :: Expression -> Int -> Expression -> Expression
 setFieldWord p o = storeWord (wrapI64 $ fieldOff p o)
 
+loadWord :: Expression -> Expression
+loadWord p =
+  Load
+    {signed = False, bytes = 8, offset = 0, align = 0, valueType = I64, ptr = p}
+
 storeWord :: Expression -> Expression -> Expression
 storeWord p w =
   Store {bytes = 8, offset = 0, align = 0, ptr = p, value = w, valueType = I64}
@@ -602,3 +643,7 @@ words2Bytes w =
 
 getLocalWord :: BinaryenIndex -> Expression
 getLocalWord i = GetLocal {index = i, valueType = I64}
+
+saveSp :: BinaryenIndex -> Expression -> Expression
+saveSp sp_i tso_p =
+  SetLocal {index = sp_i, value = fieldOff tso_p offset_StgTSO_StgStack}
