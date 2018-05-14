@@ -10,8 +10,6 @@ module Asterius.Builtins
   , rtsAsteriusModule
   , rtsAsteriusFunctionTypeMap
   , rtsAsteriusGlobalMap
-  , fnTypeName
-  , stgStopThreadInfoSymbol
   , stgRunSymbol
   , asteriusStaticSize
   , asteriusStaticsSize
@@ -58,6 +56,9 @@ rtsAsteriusModule opts =
     { staticsMap = []
     , functionMap =
         [ (createThreadSymbol, createThreadFunction opts)
+        , (createGenThreadSymbol, createGenThreadFunction opts)
+        , (createIOThreadSymbol, createIOThreadFunction opts)
+        , (createStrictIOThreadSymbol, createStrictIOThreadFunction opts)
         , (allocateSymbol, allocateFunction opts)
         , (allocateMightFailSymbol, allocateMightFailFunction opts)
         , (allocatePinnedSymbol, allocatePinnedFunction opts)
@@ -77,56 +78,28 @@ rtsAsteriusModule opts =
 
 rtsAsteriusFunctionTypeMap :: HashMap SBS.ShortByteString FunctionType
 rtsAsteriusFunctionTypeMap =
-  [ (fnTypeName, FunctionType {returnType = I64, paramTypes = []})
-  , ( entityName createThreadSymbol
-    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
-  , ( entityName allocateSymbol
-    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
-  , ( entityName allocateMightFailSymbol
-    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
-  , ( entityName allocatePinnedSymbol
-    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
-  , ( entityName allocBlockSymbol
-    , FunctionType {returnType = I64, paramTypes = []})
-  , ( entityName allocBlockLockSymbol
-    , FunctionType {returnType = I64, paramTypes = []})
-  , ( entityName allocBlockOnNodeSymbol
-    , FunctionType {returnType = I64, paramTypes = [I32]})
-  , ( entityName allocBlockOnNodeLockSymbol
-    , FunctionType {returnType = I64, paramTypes = [I32]})
-  , ( entityName allocGroupSymbol
-    , FunctionType {returnType = I64, paramTypes = [I64]})
-  , ( entityName allocGroupLockSymbol
-    , FunctionType {returnType = I64, paramTypes = [I64]})
-  , ( entityName allocGroupOnNodeSymbol
-    , FunctionType {returnType = I64, paramTypes = [I32, I64]})
-  , ( entityName allocGroupOnNodeLockSymbol
-    , FunctionType {returnType = I64, paramTypes = [I32, I64]})
-  , ( entityName newCAFSymbol
-    , FunctionType {returnType = I64, paramTypes = [I64, I64]})
-  , ( entityName stgRunSymbol
-    , FunctionType {returnType = None, paramTypes = [I64]})
+  [ ("I64()", FunctionType {returnType = I64, paramTypes = []})
+  , ("I64(I64,I64)", FunctionType {returnType = I64, paramTypes = [I64, I64]})
+  , ( "I64(I64,I64,I64)"
+    , FunctionType {returnType = I64, paramTypes = [I64, I64, I64]})
+  , ("I64(I32)", FunctionType {returnType = I64, paramTypes = [I32]})
+  , ("I64(I64)", FunctionType {returnType = I64, paramTypes = [I64]})
+  , ("I64(I32,I64)", FunctionType {returnType = I64, paramTypes = [I32, I64]})
+  , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
   ]
 
 rtsAsteriusGlobalMap :: HashMap SBS.ShortByteString Global
 rtsAsteriusGlobalMap = []
 
-fnTypeName :: SBS.ShortByteString
-fnTypeName = "_asterius_FN"
-
-stgTSOInfoSymbol, stgStackInfoSymbol, stgEndTSOQueueSymbol, stgNoTRecSymbol, stgStopThreadInfoSymbol, createThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
+createThreadSymbol, createGenThreadSymbol, createIOThreadSymbol, createStrictIOThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
      AsteriusEntitySymbol
-stgTSOInfoSymbol = "stg_TSO_info"
-
-stgStackInfoSymbol = "stg_STACK_info"
-
-stgEndTSOQueueSymbol = "stg_END_TSO_QUEUE_closure"
-
-stgNoTRecSymbol = "stg_NO_TREC_closure"
-
-stgStopThreadInfoSymbol = "stg_stop_thread_info"
-
 createThreadSymbol = "createThread"
+
+createGenThreadSymbol = "createGenThread"
+
+createIOThreadSymbol = "createIOThread"
+
+createStrictIOThreadSymbol = "createStrictIOThread"
 
 allocateSymbol = "allocate"
 
@@ -167,11 +140,11 @@ asteriusStaticsSize :: AsteriusStatics -> Int
 asteriusStaticsSize ss =
   V.foldl' (\tot s -> tot + asteriusStaticSize s) 0 (asteriusStatics ss)
 
-createThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
 createThreadFunction _ =
   Function
-    { functionTypeName = entityName createThreadSymbol
+    { functionTypeName = "I64(I64,I64)"
     , varTypes = [I64, I64, I64, I64]
     , body =
         Block
@@ -190,7 +163,7 @@ createThreadFunction _ =
               , setFieldWord
                   stack_p
                   0
-                  Unresolved {unresolvedSymbol = stgStackInfoSymbol}
+                  Unresolved {unresolvedSymbol = "stg_STACK_info"}
               , SetLocal
                   { index = 4
                   , value =
@@ -231,7 +204,7 @@ createThreadFunction _ =
               , setFieldWord
                   tso_p
                   0
-                  Unresolved {unresolvedSymbol = stgTSOInfoSymbol}
+                  Unresolved {unresolvedSymbol = "stg_TSO_info"}
               , setFieldWord16 tso_p offset_StgTSO_what_next $
                 ConstI32 $ fromIntegral next_ThreadRunGHC
               , setFieldWord16 tso_p offset_StgTSO_why_blocked $
@@ -239,21 +212,21 @@ createThreadFunction _ =
               , setFieldWord
                   tso_p
                   (offset_StgTSO_block_info + offset_StgTSOBlockInfo_closure)
-                  Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
+                  Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
               , setFieldWord
                   tso_p
                   offset_StgTSO_blocked_exceptions
-                  Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
+                  Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
               , setFieldWord
                   tso_p
                   offset_StgTSO_bq
-                  Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
+                  Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
               , setFieldWord32 tso_p offset_StgTSO_flags $ ConstI32 0
               , setFieldWord32 tso_p offset_StgTSO_dirty $ ConstI32 1
               , setFieldWord
                   tso_p
                   offset_StgTSO__link
-                  Unresolved {unresolvedSymbol = stgEndTSOQueueSymbol}
+                  Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
               , setFieldWord32 tso_p offset_StgTSO_saved_errno $ ConstI32 0
               , setFieldWord tso_p offset_StgTSO_bound $ ConstI64 0
               , setFieldWord tso_p offset_StgTSO_cap cap
@@ -264,11 +237,11 @@ createThreadFunction _ =
               , setFieldWord
                   tso_p
                   offset_StgTSO_trec
-                  Unresolved {unresolvedSymbol = stgNoTRecSymbol}
+                  Unresolved {unresolvedSymbol = "stg_NO_TREC_closure"}
               , setFieldWord
                   sp
                   0
-                  Unresolved {unresolvedSymbol = stgStopThreadInfoSymbol}
+                  Unresolved {unresolvedSymbol = "stg_stop_thread_info"}
               , tso_p
               ]
           , valueType = I64
@@ -282,9 +255,79 @@ createThreadFunction _ =
     stack_size_w = getLocalWord 4
     sp = getLocalWord 5
 
+createThreadHelperFunction ::
+     BuiltinsOptions -> [Maybe AsteriusEntitySymbol] -> Function
+createThreadHelperFunction _ closures =
+  Function
+    { functionTypeName = "I64(I64,I64,I64)"
+    , varTypes = [I64, I64, I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              V.fromList $
+              [ SetLocal
+                  { index = 3
+                  , value =
+                      Call
+                        { target = createThreadSymbol
+                        , operands = [cap, stack_size_w]
+                        , valueType = I64
+                        }
+                  }
+              , saveSp 4 tso_p
+              , SetLocal
+                  { index = 5
+                  , value =
+                      Binary
+                        { binaryOp = SubInt64
+                        , operand0 =
+                            loadWord $
+                            wrapI64 $ fieldOff stack_p offset_StgStack_sp
+                        , operand1 = constInt $ 8 * length closures
+                        }
+                  }
+              , setFieldWord stack_p offset_StgStack_sp sp
+              ] <>
+              [ storeWord
+                (fieldOff sp $ i * 8)
+                (case maybe_closure of
+                   Just closure -> Unresolved {unresolvedSymbol = closure}
+                   _ -> target_closure)
+              | (i, maybe_closure) <- zip [0 ..] closures
+              ] <>
+              [tso_p]
+          , valueType = I64
+          }
+    }
+  where
+    cap = getLocalWord 0
+    stack_size_w = getLocalWord 1
+    target_closure = getLocalWord 2
+    tso_p = getLocalWord 3
+    stack_p = getLocalWord 4
+    sp = getLocalWord 5
+
+createGenThreadFunction opts =
+  createThreadHelperFunction opts [Nothing, Just "stg_enter_info"]
+
+createIOThreadFunction opts =
+  createThreadHelperFunction
+    opts
+    [Just "stg_ap_v_info", Nothing, Just "stg_enter_info"]
+
+createStrictIOThreadFunction opts =
+  createThreadHelperFunction
+    opts
+    [ Just "stg_forceIO_info"
+    , Just "stg_ap_v_info"
+    , Nothing
+    , Just "stg_enter_info"
+    ]
+
 allocateFunction _ =
   Function
-    { functionTypeName = entityName allocateSymbol
+    { functionTypeName = "I64(I64,I64)"
     , varTypes = [I64, I64]
     , body =
         Block
@@ -335,7 +378,7 @@ allocateFunction _ =
 
 allocateMightFailFunction _ =
   Function
-    { functionTypeName = entityName allocateMightFailSymbol
+    { functionTypeName = "I64(I64,I64)"
     , varTypes = []
     , body =
         Call
@@ -347,7 +390,7 @@ allocateMightFailFunction _ =
 
 allocatePinnedFunction _ =
   Function
-    { functionTypeName = entityName allocatePinnedSymbol
+    { functionTypeName = "I64(I64,I64)"
     , varTypes = []
     , body =
         Call
@@ -359,7 +402,7 @@ allocatePinnedFunction _ =
 
 allocBlockFunction _ =
   Function
-    { functionTypeName = entityName allocBlockSymbol
+    { functionTypeName = "I64()"
     , varTypes = []
     , body =
         Call
@@ -368,21 +411,21 @@ allocBlockFunction _ =
 
 allocBlockLockFunction _ =
   Function
-    { functionTypeName = entityName allocBlockLockSymbol
+    { functionTypeName = "I64()"
     , varTypes = []
     , body = Call {target = allocBlockSymbol, operands = [], valueType = I64}
     }
 
 allocBlockOnNodeFunction _ =
   Function
-    { functionTypeName = entityName allocBlockOnNodeSymbol
+    { functionTypeName = "I64(I32)"
     , varTypes = []
     , body = Call {target = allocBlockSymbol, operands = [], valueType = I64}
     }
 
 allocBlockOnNodeLockFunction _ =
   Function
-    { functionTypeName = entityName allocBlockOnNodeLockSymbol
+    { functionTypeName = "I64(I32)"
     , varTypes = []
     , body =
         Call
@@ -394,7 +437,7 @@ allocBlockOnNodeLockFunction _ =
 
 allocGroupFunction _ =
   Function
-    { functionTypeName = entityName allocGroupSymbol
+    { functionTypeName = "I64(I64)"
     , varTypes = [I64, I64]
     , body =
         Block
@@ -428,7 +471,7 @@ allocGroupFunction _ =
                                         ]
                                     }
                               }
-                        , operand1 = ConstI64 $ fromIntegral wasmPageSize
+                        , operand1 = constInt wasmPageSize
                         }
                   }
               , setFieldWord
@@ -447,7 +490,7 @@ allocGroupFunction _ =
                     , operand0 =
                         Binary
                           { binaryOp = AddInt64
-                          , operand0 = ConstI64 $ fromIntegral blocks_per_mblock
+                          , operand0 = constInt blocks_per_mblock
                           , operand1 =
                               Binary
                                 { binaryOp = MulInt64
@@ -476,7 +519,7 @@ allocGroupFunction _ =
       Binary
         { binaryOp = AndInt64
         , operand0 = fieldOff p $ mblock_size - 1
-        , operand1 = ConstI64 $ fromIntegral $ complement mblock_mask
+        , operand1 = constInt $ complement mblock_mask
         }
     blocks_to_mblocks n =
       Binary
@@ -493,18 +536,17 @@ allocGroupFunction _ =
                           Binary
                             { binaryOp = SubInt64
                             , operand0 = n
-                            , operand1 =
-                                ConstI64 $ fromIntegral blocks_per_mblock
+                            , operand1 = constInt blocks_per_mblock
                             }
-                      , operand1 = ConstI64 $ fromIntegral block_size
+                      , operand1 = constInt block_size
                       }
-              , operand1 = ConstI64 $ fromIntegral mblock_size
+              , operand1 = constInt mblock_size
               }
         }
 
 allocGroupLockFunction _ =
   Function
-    { functionTypeName = entityName allocGroupLockSymbol
+    { functionTypeName = "I64(I64)"
     , varTypes = []
     , body =
         Call
@@ -516,7 +558,7 @@ allocGroupLockFunction _ =
 
 allocGroupOnNodeFunction _ =
   Function
-    { functionTypeName = entityName allocGroupOnNodeSymbol
+    { functionTypeName = "I64(I32,I64)"
     , varTypes = []
     , body =
         Call
@@ -528,7 +570,7 @@ allocGroupOnNodeFunction _ =
 
 allocGroupOnNodeLockFunction _ =
   Function
-    { functionTypeName = entityName allocGroupOnNodeLockSymbol
+    { functionTypeName = "I64(I32,I64)"
     , varTypes = []
     , body =
         Call
@@ -539,15 +581,11 @@ allocGroupOnNodeLockFunction _ =
     }
 
 newCAFFunction _ =
-  Function
-    { functionTypeName = entityName newCAFSymbol
-    , varTypes = []
-    , body = ConstI64 0
-    }
+  Function {functionTypeName = "I64(I64,I64)", varTypes = [], body = ConstI64 0}
 
 stgRunFunction _ =
   Function
-    { functionTypeName = entityName stgRunSymbol
+    { functionTypeName = "None(I64)"
     , varTypes = []
     , body =
         Loop
@@ -583,7 +621,7 @@ stgRunFunction _ =
                                                 }
                                           }
                                     , operands = []
-                                    , typeName = fnTypeName
+                                    , typeName = "I64()"
                                     }
                               }
                           , Break
@@ -599,14 +637,13 @@ stgRunFunction _ =
     loop_lbl = "StgRun_loop"
 
 stgReturnFunction _ =
-  Function {functionTypeName = fnTypeName, varTypes = [], body = ConstI64 0}
+  Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
 
 fieldOff :: Expression -> Int -> Expression
 fieldOff p o
   | o == 0 = p
   | otherwise =
-    Binary
-      {binaryOp = AddInt64, operand0 = p, operand1 = ConstI64 $ fromIntegral o}
+    Binary {binaryOp = AddInt64, operand0 = p, operand1 = constInt o}
 
 setFieldWord :: Expression -> Int -> Expression -> Expression
 setFieldWord p o = storeWord (wrapI64 $ fieldOff p o)
@@ -640,6 +677,9 @@ wrapI64 w = Unary {unaryOp = WrapInt64, operand0 = w}
 words2Bytes :: Expression -> Expression
 words2Bytes w =
   Binary {binaryOp = MulInt64, operand0 = w, operand1 = ConstI64 8}
+
+constInt :: Int -> Expression
+constInt = ConstI64 . fromIntegral
 
 getLocalWord :: BinaryenIndex -> Expression
 getLocalWord i = GetLocal {index = i, valueType = I64}

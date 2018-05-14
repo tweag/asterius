@@ -17,7 +17,6 @@ module Asterius.CodeGen
   , marshalCmmIR
   ) where
 
-import Asterius.Builtins
 import Asterius.Containers
 import Asterius.Internals
 import Asterius.Resolve
@@ -918,7 +917,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   let (rbs, lrs) = resolveLocalRegs rbs'
   pure
     Function
-      { functionTypeName = fnTypeName
+      { functionTypeName = "I64()"
       , varTypes = lrs
       , body =
           Block

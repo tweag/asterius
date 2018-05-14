@@ -41,9 +41,10 @@ main = do
                 store
                 [ "Fact_root_closure"
                 , stgRunSymbol
-                , stgStopThreadInfoSymbol
+                , "stg_stop_thread_info"
                 , "allocGroup"
                 , "createThread"
+                , "createStrictIOThread"
                 ]
         writeDot "Fact.gv" report
         let Just final_m = maybe_final_m
