@@ -158,6 +158,54 @@ HsInt offset_StgTSOBlockInfo_closure() {
   return offsetof(StgTSOBlockInfo, closure);
 }
 
+HsInt sizeof_Task() { return sizeof(Task); }
+
+HsInt offset_Task_cap() { return offsetof(Task, cap); }
+
+HsInt offset_Task_incall() { return offsetof(Task, incall); }
+
+HsInt offset_Task_n_spare_incalls() { return offsetof(Task, n_spare_incalls); }
+
+HsInt offset_Task_spare_incalls() { return offsetof(Task, spare_incalls); }
+
+HsInt offset_Task_worker() { return offsetof(Task, worker); }
+
+HsInt offset_Task_stopped() { return offsetof(Task, stopped); }
+
+HsInt offset_Task_running_finalizers() {
+  return offsetof(Task, running_finalizers);
+}
+
+HsInt offset_Task_preferred_capability() {
+  return offsetof(Task, preferred_capability);
+}
+
+HsInt offset_Task_next() { return offsetof(Task, next); }
+
+HsInt offset_Task_all_next() { return offsetof(Task, all_next); }
+
+HsInt offset_Task_all_prev() { return offsetof(Task, all_prev); }
+
+HsInt sizeof_InCall() { return sizeof(InCall); }
+
+HsInt offset_InCall_tso() { return offsetof(InCall, tso); }
+
+HsInt offset_InCall_suspended_tso() { return offsetof(InCall, suspended_tso); }
+
+HsInt offset_InCall_suspended_cap() { return offsetof(InCall, suspended_cap); }
+
+HsInt offset_InCall_rstat() { return offsetof(InCall, rstat); }
+
+HsInt offset_InCall_ret() { return offsetof(InCall, ret); }
+
+HsInt offset_InCall_task() { return offsetof(InCall, task); }
+
+HsInt offset_InCall_prev_stack() { return offsetof(InCall, prev_stack); }
+
+HsInt offset_InCall_prev() { return offsetof(InCall, prev); }
+
+HsInt offset_InCall_next() { return offsetof(InCall, next); }
+
 HsInt next_ThreadRunGHC() { return ThreadRunGHC; }
 
 HsInt next_ThreadInterpret() { return ThreadInterpret; }
@@ -193,3 +241,17 @@ HsInt blocked_BlockedOnCCall_Interruptible() {
 HsInt blocked_BlockedOnMsgThrowTo() { return BlockedOnMsgThrowTo; }
 
 HsInt blocked_ThreadMigrating() { return ThreadMigrating; }
+
+HsInt scheduler_NoStatus() { return NoStatus; }
+
+HsInt scheduler_Success() { return Success; }
+
+HsInt scheduler_Killed() { return Killed; }
+
+HsInt scheduler_Interrupted() { return Interrupted; }
+
+HsInt scheduler_HeapExhausted() { return HeapExhausted; }
+
+HsInt sizeof_bool() { return sizeof(bool); }
+
+HsInt sizeof_SchedulerStatus() { return sizeof(SchedulerStatus); }
