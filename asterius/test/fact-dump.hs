@@ -42,7 +42,7 @@ main = do
                 , "StgRun"
                 , "stg_stop_thread_info"
                 , "allocGroup"
-                , "createStrictIOThread"
+                , "rts_evalIO"
                 , "newCAF"
                 ]
         writeDot "Fact.gv" report

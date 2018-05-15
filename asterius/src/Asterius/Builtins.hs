@@ -54,7 +54,9 @@ rtsAsteriusModule opts =
   mempty
     { staticsMap = []
     , functionMap =
-        [ ("createThread", createThreadFunction opts)
+        [ ("rts_evalIO", rtsEvalIOFunction opts)
+        , ("scheduleWaitThread", scheduleWaitThreadFunction opts)
+        , ("createThread", createThreadFunction opts)
         , ("createGenThread", createGenThreadFunction opts)
         , ("createIOThread", createIOThreadFunction opts)
         , ("createStrictIOThread", createStrictIOThreadFunction opts)
@@ -85,6 +87,8 @@ rtsAsteriusFunctionTypeMap =
   , ("I64(I64)", FunctionType {returnType = I64, paramTypes = [I64]})
   , ("I64(I32,I64)", FunctionType {returnType = I64, paramTypes = [I32, I64]})
   , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
+  , ( "None(I64,I64,I64)"
+    , FunctionType {returnType = None, paramTypes = [I64, I64, I64]})
   ]
 
 rtsAsteriusGlobalMap :: HashMap SBS.ShortByteString Global
@@ -101,8 +105,48 @@ asteriusStaticsSize :: AsteriusStatics -> Int
 asteriusStaticsSize ss =
   V.foldl' (\tot s -> tot + asteriusStaticSize s) 0 (asteriusStatics ss)
 
-createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
+rtsEvalIOFunction BuiltinsOptions {..} =
+  Function
+    { functionTypeName = "None(I64,I64,I64)"
+    , varTypes = [I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ SetLocal
+                  { index = 3
+                  , value =
+                      Call
+                        { target = "createStrictIOThread"
+                        , operands =
+                            [ loadWord $ wrapI64 cap
+                            , constInt threadStateSize
+                            , p
+                            ]
+                        , valueType = I64
+                        }
+                  }
+              , Call
+                  { target = "scheduleWaitThread"
+                  , operands = [tso, ret, cap]
+                  , valueType = None
+                  }
+              ]
+          , valueType = None
+          }
+    }
+  where
+    cap = getLocalWord 0
+    p = getLocalWord 1
+    ret = getLocalWord 2
+    tso = getLocalWord 3
+
+scheduleWaitThreadFunction _ =
+  Function
+    {functionTypeName = "None(I64,I64,I64)", varTypes = [], body = Unreachable}
+
 createThreadFunction _ =
   Function
     { functionTypeName = "I64(I64,I64)"
