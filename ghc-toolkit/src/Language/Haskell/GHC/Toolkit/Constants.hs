@@ -64,6 +64,17 @@ foreign import ccall unsafe "sizeof_StgInd" sizeof_StgInd :: Int
 foreign import ccall unsafe "offset_StgInd_indirectee" offset_StgInd_indirectee
   :: Int
 
+foreign import ccall unsafe "sizeof_StgIndStatic" sizeof_StgIndStatic :: Int
+
+foreign import ccall unsafe "offset_StgIndStatic_indirectee" offset_StgIndStatic_indirectee
+  :: Int
+
+foreign import ccall unsafe "offset_StgIndStatic_static_link" offset_StgIndStatic_static_link
+  :: Int
+
+foreign import ccall unsafe "offset_StgIndStatic_saved_info" offset_StgIndStatic_saved_info
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgRegTable" sizeof_StgRegTable :: Int
 
 foreign import ccall unsafe "offset_StgRegTable_rNursery" offset_StgRegTable_rNursery

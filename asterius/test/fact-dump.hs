@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Asterius.Boot
-import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.Marshal
@@ -40,11 +39,11 @@ main = do
               linkStart
                 store
                 [ "Fact_root_closure"
-                , stgRunSymbol
+                , "StgRun"
                 , "stg_stop_thread_info"
                 , "allocGroup"
-                , "createThread"
                 , "createStrictIOThread"
+                , "newCAF"
                 ]
         writeDot "Fact.gv" report
         let Just final_m = maybe_final_m
@@ -52,6 +51,6 @@ main = do
         hFlush stdout
         m_ref <- marshalModule final_m
         print m_ref
-        c_BinaryenModuleValidate m_ref >>= print
         c_BinaryenModulePrint m_ref
+        c_BinaryenModuleValidate m_ref >>= print
         c_BinaryenModuleDispose m_ref

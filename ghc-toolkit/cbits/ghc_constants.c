@@ -65,6 +65,20 @@ HsInt sizeof_StgInd() { return sizeof(StgInd); }
 
 HsInt offset_StgInd_indirectee() { return offsetof(StgInd, indirectee); }
 
+HsInt sizeof_StgIndStatic() { return sizeof(StgIndStatic); }
+
+HsInt offset_StgIndStatic_indirectee() {
+  return offsetof(StgIndStatic, indirectee);
+}
+
+HsInt offset_StgIndStatic_static_link() {
+  return offsetof(StgIndStatic, static_link);
+}
+
+HsInt offset_StgIndStatic_saved_info() {
+  return offsetof(StgIndStatic, saved_info);
+}
+
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
 HsInt offset_StgRegTable_rNursery() { return offsetof(StgRegTable, rNursery); }

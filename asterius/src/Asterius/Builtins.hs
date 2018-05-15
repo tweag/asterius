@@ -10,7 +10,6 @@ module Asterius.Builtins
   , rtsAsteriusModule
   , rtsAsteriusFunctionTypeMap
   , rtsAsteriusGlobalMap
-  , stgRunSymbol
   , asteriusStaticSize
   , asteriusStaticsSize
   ) where
@@ -55,24 +54,24 @@ rtsAsteriusModule opts =
   mempty
     { staticsMap = []
     , functionMap =
-        [ (createThreadSymbol, createThreadFunction opts)
-        , (createGenThreadSymbol, createGenThreadFunction opts)
-        , (createIOThreadSymbol, createIOThreadFunction opts)
-        , (createStrictIOThreadSymbol, createStrictIOThreadFunction opts)
-        , (allocateSymbol, allocateFunction opts)
-        , (allocateMightFailSymbol, allocateMightFailFunction opts)
-        , (allocatePinnedSymbol, allocatePinnedFunction opts)
-        , (allocBlockSymbol, allocBlockFunction opts)
-        , (allocBlockLockSymbol, allocBlockLockFunction opts)
-        , (allocBlockOnNodeSymbol, allocBlockOnNodeFunction opts)
-        , (allocBlockOnNodeLockSymbol, allocBlockOnNodeLockFunction opts)
-        , (allocGroupSymbol, allocGroupFunction opts)
-        , (allocGroupLockSymbol, allocGroupLockFunction opts)
-        , (allocGroupOnNodeSymbol, allocGroupOnNodeFunction opts)
-        , (allocGroupOnNodeLockSymbol, allocGroupOnNodeLockFunction opts)
-        , (newCAFSymbol, newCAFFunction opts)
-        , (stgRunSymbol, stgRunFunction opts)
-        , (stgReturnSymbol, stgReturnFunction opts)
+        [ ("createThread", createThreadFunction opts)
+        , ("createGenThread", createGenThreadFunction opts)
+        , ("createIOThread", createIOThreadFunction opts)
+        , ("createStrictIOThread", createStrictIOThreadFunction opts)
+        , ("allocate", allocateFunction opts)
+        , ("allocateMightFail", allocateMightFailFunction opts)
+        , ("allocatePinned", allocatePinnedFunction opts)
+        , ("allocBlock", allocBlockFunction opts)
+        , ("allocBlock_lock", allocBlockLockFunction opts)
+        , ("allocBlockOnNode", allocBlockOnNodeFunction opts)
+        , ("allocBlockOnNode_lock", allocBlockOnNodeLockFunction opts)
+        , ("allocGroup", allocGroupFunction opts)
+        , ("allocGroup_lock", allocGroupLockFunction opts)
+        , ("allocGroupOnNode", allocGroupOnNodeFunction opts)
+        , ("allocGroupOnNode_lock", allocGroupOnNodeLockFunction opts)
+        , ("newCAF", newCAFFunction opts)
+        , ("StgRun", stgRunFunction opts)
+        , ("StgReturn", stgReturnFunction opts)
         ]
     }
 
@@ -85,49 +84,11 @@ rtsAsteriusFunctionTypeMap =
   , ("I64(I32)", FunctionType {returnType = I64, paramTypes = [I32]})
   , ("I64(I64)", FunctionType {returnType = I64, paramTypes = [I64]})
   , ("I64(I32,I64)", FunctionType {returnType = I64, paramTypes = [I32, I64]})
-  , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
+  , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
   ]
 
 rtsAsteriusGlobalMap :: HashMap SBS.ShortByteString Global
 rtsAsteriusGlobalMap = []
-
-createThreadSymbol, createGenThreadSymbol, createIOThreadSymbol, createStrictIOThreadSymbol, allocateSymbol, allocateMightFailSymbol, allocatePinnedSymbol, allocBlockSymbol, allocBlockLockSymbol, allocBlockOnNodeSymbol, allocBlockOnNodeLockSymbol, allocGroupSymbol, allocGroupLockSymbol, allocGroupOnNodeSymbol, allocGroupOnNodeLockSymbol, newCAFSymbol, stgRunSymbol, stgReturnSymbol ::
-     AsteriusEntitySymbol
-createThreadSymbol = "createThread"
-
-createGenThreadSymbol = "createGenThread"
-
-createIOThreadSymbol = "createIOThread"
-
-createStrictIOThreadSymbol = "createStrictIOThread"
-
-allocateSymbol = "allocate"
-
-allocateMightFailSymbol = "allocateMightFail"
-
-allocatePinnedSymbol = "allocatePinned"
-
-allocBlockSymbol = "allocBlock"
-
-allocBlockLockSymbol = "allocBlock_lock"
-
-allocBlockOnNodeSymbol = "allocBlockOnNode"
-
-allocBlockOnNodeLockSymbol = "allocBlockOnNode_lock"
-
-allocGroupSymbol = "allocGroup"
-
-allocGroupLockSymbol = "allocGroup_lock"
-
-allocGroupOnNodeSymbol = "allocGroupOnNode"
-
-allocGroupOnNodeLockSymbol = "allocGroupOnNode_lock"
-
-newCAFSymbol = "newCAF"
-
-stgRunSymbol = "StgRun"
-
-stgReturnSymbol = "StgReturn"
 
 asteriusStaticSize :: AsteriusStatic -> Int
 asteriusStaticSize s =
@@ -154,7 +115,7 @@ createThreadFunction _ =
                   { index = 2
                   , value =
                       Call
-                        { target = allocateSymbol
+                        { target = "allocate"
                         , operands = [getLocalWord 0, alloc_words]
                         , valueType = I64
                         }
@@ -270,7 +231,7 @@ createThreadHelperFunction _ closures =
                   { index = 3
                   , value =
                       Call
-                        { target = createThreadSymbol
+                        { target = "createThread"
                         , operands = [cap, stack_size_w]
                         , valueType = I64
                         }
@@ -279,18 +240,16 @@ createThreadHelperFunction _ closures =
               , SetLocal
                   { index = 5
                   , value =
-                      Binary
-                        { binaryOp = SubInt64
-                        , operand0 =
-                            loadWord $
-                            wrapI64 $ fieldOff stack_p offset_StgStack_sp
-                        , operand1 = constInt $ 8 * length closures
-                        }
+                      fieldOff
+                        (loadWord $
+                         wrapI64 $ fieldOff stack_p offset_StgStack_sp)
+                        (-8 * length closures)
                   }
               , setFieldWord stack_p offset_StgStack_sp sp
               ] <>
-              [ storeWord
-                (fieldOff sp $ i * 8)
+              [ setFieldWord
+                sp
+                (i * 8)
                 (case maybe_closure of
                    Just closure -> Unresolved {unresolvedSymbol = closure}
                    _ -> target_closure)
@@ -382,7 +341,7 @@ allocateMightFailFunction _ =
     , varTypes = []
     , body =
         Call
-          { target = allocateSymbol
+          { target = "allocate"
           , operands = [getLocalWord 0, getLocalWord 1]
           , valueType = I64
           }
@@ -394,7 +353,7 @@ allocatePinnedFunction _ =
     , varTypes = []
     , body =
         Call
-          { target = allocateSymbol
+          { target = "allocate"
           , operands = [getLocalWord 0, getLocalWord 1]
           , valueType = I64
           }
@@ -405,22 +364,21 @@ allocBlockFunction _ =
     { functionTypeName = "I64()"
     , varTypes = []
     , body =
-        Call
-          {target = allocGroupSymbol, operands = [ConstI64 1], valueType = I64}
+        Call {target = "allocGroup", operands = [ConstI64 1], valueType = I64}
     }
 
 allocBlockLockFunction _ =
   Function
     { functionTypeName = "I64()"
     , varTypes = []
-    , body = Call {target = allocBlockSymbol, operands = [], valueType = I64}
+    , body = Call {target = "allocBlock", operands = [], valueType = I64}
     }
 
 allocBlockOnNodeFunction _ =
   Function
     { functionTypeName = "I64(I32)"
     , varTypes = []
-    , body = Call {target = allocBlockSymbol, operands = [], valueType = I64}
+    , body = Call {target = "allocBlock", operands = [], valueType = I64}
     }
 
 allocBlockOnNodeLockFunction _ =
@@ -429,7 +387,7 @@ allocBlockOnNodeLockFunction _ =
     , varTypes = []
     , body =
         Call
-          { target = allocBlockOnNodeSymbol
+          { target = "allocBlockOnNode"
           , operands = [GetLocal {index = 0, valueType = I32}]
           , valueType = I64
           }
@@ -550,10 +508,7 @@ allocGroupLockFunction _ =
     , varTypes = []
     , body =
         Call
-          { target = allocGroupSymbol
-          , operands = [getLocalWord 0]
-          , valueType = I64
-          }
+          {target = "allocGroup", operands = [getLocalWord 0], valueType = I64}
     }
 
 allocGroupOnNodeFunction _ =
@@ -562,10 +517,7 @@ allocGroupOnNodeFunction _ =
     , varTypes = []
     , body =
         Call
-          { target = allocGroupSymbol
-          , operands = [getLocalWord 1]
-          , valueType = I64
-          }
+          {target = "allocGroup", operands = [getLocalWord 1], valueType = I64}
     }
 
 allocGroupOnNodeLockFunction _ =
@@ -574,18 +526,59 @@ allocGroupOnNodeLockFunction _ =
     , varTypes = []
     , body =
         Call
-          { target = allocGroupOnNodeSymbol
+          { target = "allocGroupOnNode"
           , operands = [GetLocal {index = 0, valueType = I32}, getLocalWord 1]
           , valueType = I64
           }
     }
 
 newCAFFunction _ =
-  Function {functionTypeName = "I64(I64,I64)", varTypes = [], body = ConstI64 0}
+  Function
+    { functionTypeName = "I64(I64,I64)"
+    , varTypes = [I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ setFieldWord caf offset_StgIndStatic_saved_info orig_info
+              , SetLocal
+                  { index = 2
+                  , value =
+                      Call
+                        { target = "allocate"
+                        , operands =
+                            [ cap
+                            , constInt $ roundup_bytes_to_words sizeof_StgInd
+                            ]
+                        , valueType = I64
+                        }
+                  }
+              , setFieldWord
+                  bh
+                  0
+                  Unresolved {unresolvedSymbol = "stg_CAF_BLACKHOLE_info"}
+              , setFieldWord bh offset_StgInd_indirectee $
+                loadWord $ wrapI64 $ fieldOff reg offset_StgRegTable_rCurrentTSO
+              , setFieldWord caf offset_StgIndStatic_indirectee bh
+              , setFieldWord
+                  caf
+                  0
+                  Unresolved {unresolvedSymbol = "stg_IND_STATIC_info"}
+              , bh
+              ]
+          , valueType = I64
+          }
+    }
+  where
+    reg = getLocalWord 0
+    caf = getLocalWord 1
+    cap = fieldOff reg (-offset_Capability_r)
+    orig_info = loadWord (wrapI64 caf)
+    bh = getLocalWord 2
 
 stgRunFunction _ =
   Function
-    { functionTypeName = "None(I64)"
+    { functionTypeName = "None(I64,I64)"
     , varTypes = []
     , body =
         Loop
@@ -594,10 +587,7 @@ stgRunFunction _ =
               If
                 { condition =
                     Binary
-                      { binaryOp = NeInt64
-                      , operand0 = getLocalWord 0
-                      , operand1 = ConstI64 0
-                      }
+                      {binaryOp = NeInt64, operand0 = f, operand1 = ConstI64 0}
                 , ifTrue =
                     Block
                       { name = ""
@@ -635,6 +625,7 @@ stgRunFunction _ =
     }
   where
     loop_lbl = "StgRun_loop"
+    f = getLocalWord 0
 
 stgReturnFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
