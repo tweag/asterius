@@ -352,14 +352,14 @@ allocateFunction _ =
                         { binaryOp = AddInt64
                         , operand0 =
                             UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
-                        , operand1 = words2Bytes $ getLocalWord 1
+                        , operand1 = words2Bytes n
                         }
                   }
               , If
                   { condition =
                       Binary
                         { binaryOp = GtSInt64
-                        , operand0 = getLocalWord 2
+                        , operand0 = new_hp
                         , operand1 =
                             UnresolvedGetGlobal {unresolvedGlobalReg = HpLim}
                         }
@@ -370,21 +370,22 @@ allocateFunction _ =
                   { index = 3
                   , value = UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
                   }
-              , UnresolvedSetGlobal
-                  {unresolvedGlobalReg = Hp, value = getLocalWord 2}
-              , storeWord
-                  (wrapI64 $
-                   fieldOff
-                     (getFieldWord
-                        UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
-                        offset_StgRegTable_rCurrentAlloc)
-                     offset_bdescr_free)
-                  (getLocalWord 2)
-              , getLocalWord 3
+              , UnresolvedSetGlobal {unresolvedGlobalReg = Hp, value = new_hp}
+              , setFieldWord
+                  (getFieldWord
+                     UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
+                     offset_StgRegTable_rCurrentAlloc)
+                  offset_bdescr_free
+                  new_hp
+              , old_hp
               ]
           , valueType = I64
           }
     }
+  where
+    n = getLocalWord 1
+    new_hp = getLocalWord 2
+    old_hp = getLocalWord 3
 
 allocateMightFailFunction _ =
   Function
@@ -452,7 +453,7 @@ allocGroupFunction _ =
         Block
           { name = ""
           , bodys =
-              [ SetLocal {index = 2, value = blocks_to_mblocks $ getLocalWord 0}
+              [ SetLocal {index = 2, value = blocks_to_mblocks blocks_n}
               , SetLocal
                   { index = 1
                   , value =
@@ -469,12 +470,9 @@ allocGroupFunction _ =
                                         [ wrapI64
                                             Binary
                                               { binaryOp = MulInt64
-                                              , operand0 =
-                                                  GetLocal
-                                                    {index = 2, valueType = I64}
+                                              , operand0 = mblocks_n
                                               , operand1 =
-                                                  ConstI64 $
-                                                  fromIntegral $
+                                                  constInt $
                                                   mblock_size `div` wasmPageSize
                                               }
                                         ]
@@ -493,37 +491,35 @@ allocGroupFunction _ =
                   first_block_p
               , setFieldWord32
                   mblocks_p
-                  (offset_first_bdescr + offset_bdescr_blocks)
-                  Unary
-                    { unaryOp = WrapInt64
-                    , operand0 =
+                  (offset_first_bdescr + offset_bdescr_blocks) $
+                wrapI64
+                  Binary
+                    { binaryOp = AddInt64
+                    , operand0 = constInt blocks_per_mblock
+                    , operand1 =
                         Binary
-                          { binaryOp = AddInt64
-                          , operand0 = constInt blocks_per_mblock
-                          , operand1 =
+                          { binaryOp = MulInt64
+                          , operand0 =
                               Binary
-                                { binaryOp = MulInt64
-                                , operand0 =
-                                    Binary
-                                      { binaryOp = SubInt64
-                                      , operand0 =
-                                          GetLocal {index = 2, valueType = I64}
-                                      , operand1 = ConstI64 1
-                                      }
-                                , operand1 =
-                                    ConstI64 $
-                                    fromIntegral $ mblock_size `div` block_size
+                                { binaryOp = SubInt64
+                                , operand0 = mblocks_n
+                                , operand1 = ConstI64 1
                                 }
+                          , operand1 =
+                              ConstI64 $
+                              fromIntegral $ mblock_size `div` block_size
                           }
                     }
-              , mblocks_p
+              , fieldOff mblocks_p offset_first_bdescr
               ]
           , valueType = I64
           }
     }
   where
     first_block_p = fieldOff mblocks_p offset_first_block
+    blocks_n = getLocalWord 0
     mblocks_p = getLocalWord 1
+    mblocks_n = getLocalWord 2
     mblock_round_up p =
       Binary
         { binaryOp = AndInt64
