@@ -9,7 +9,6 @@
 module Asterius.Resolve
   ( resolveLocalRegs
   , unresolvedGlobalRegType
-  , collectUnresolvedGlobalRegs
   , resolveGlobalRegs
   , collectAsteriusEntitySymbols
   , LinkReport(..)
@@ -37,6 +36,17 @@ import GHC.Exts (fromList, proxy#)
 import Prelude hiding (IO)
 import System.IO hiding (IO)
 import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
+
+asteriusStaticSize :: AsteriusStatic -> Int
+asteriusStaticSize s =
+  case s of
+    Uninitialized l -> l
+    Serialized buf -> SBS.length buf
+    _ -> 8
+
+asteriusStaticsSize :: AsteriusStatics -> Int
+asteriusStaticsSize ss =
+  V.foldl' (\tot s -> tot + asteriusStaticSize s) 0 (asteriusStatics ss)
 
 unresolvedLocalRegType :: UnresolvedLocalReg -> ValueType
 unresolvedLocalRegType lr =
@@ -84,73 +94,48 @@ unresolvedGlobalRegType gr =
     DoubleReg _ -> F64
     _ -> I64
 
-collectUnresolvedGlobalRegs :: Data a => a -> HashSet UnresolvedGlobalReg
-collectUnresolvedGlobalRegs = collect proxy#
-
-resolveGlobalRegs :: Data a => a -> (a, HashSet UnresolvedGlobalReg)
-resolveGlobalRegs t = (f t, collectUnresolvedGlobalRegs t)
-  where
-    f :: Data a => a -> a
-    f x =
-      case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
-        Just HRefl ->
-          case x of
-            UnresolvedGetGlobal {..} ->
-              GetGlobal
-                { name = globalRegName unresolvedGlobalReg
-                , valueType = unresolvedGlobalRegType unresolvedGlobalReg
-                }
-            UnresolvedSetGlobal {..} ->
-              SetGlobal
-                {name = globalRegName unresolvedGlobalReg, value = f value}
-            _ -> go
+resolveGlobalRegs :: Data a => a -> a
+resolveGlobalRegs x =
+  case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
+    Just HRefl ->
+      case x of
+        UnresolvedGetGlobal {..} ->
+          GetGlobal
+            { name = globalRegName unresolvedGlobalReg
+            , valueType = unresolvedGlobalRegType unresolvedGlobalReg
+            }
+        UnresolvedSetGlobal {..} ->
+          SetGlobal
+            { name = globalRegName unresolvedGlobalReg
+            , value = resolveGlobalRegs value
+            }
         _ -> go
-      where
-        go = gmapT f x
+    _ -> go
+  where
+    go = gmapT resolveGlobalRegs x
 
 globalRegName :: UnresolvedGlobalReg -> SBS.ShortByteString
-globalRegName = fst . marshalGlobalReg
-
-marshalGlobalReg :: UnresolvedGlobalReg -> (SBS.ShortByteString, Global)
-marshalGlobalReg gr =
+globalRegName gr =
   case gr of
-    VanillaReg i ->
-      ( fromString $ "_asterius_R" <> show i
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    FloatReg i ->
-      ( fromString $ "_asterius_F" <> show i
-      , Global {valueType = F32, mutable = True, initValue = ConstF32 0})
-    DoubleReg i ->
-      ( fromString $ "_asterius_D" <> show i
-      , Global {valueType = F64, mutable = True, initValue = ConstF64 0})
-    LongReg i ->
-      ( fromString $ "_asterius_L" <> show i
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    Sp ->
-      ( "_asterius_Sp"
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    SpLim ->
-      ( "_asterius_SpLim"
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    Hp ->
-      ( "_asterius_Hp"
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    HpLim ->
-      ( "_asterius_HpLim"
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    CurrentTSO ->
-      ( "_asterius_CurrentTSO"
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    CurrentNursery ->
-      ( "_asterius_CurrentNursery"
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    HpAlloc ->
-      ( "_asterius_HpAlloc"
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
-    BaseReg ->
-      ( "_asterius_BaseReg"
-      , Global {valueType = I64, mutable = True, initValue = ConstI64 0})
+    VanillaReg i
+      | i >= 1 && i <= 10 -> rn "R" i
+    FloatReg i
+      | i >= 1 && i <= 6 -> rn "F" i
+    DoubleReg i
+      | i >= 1 && i <= 6 -> rn "D" i
+    LongReg 1 -> "L1"
+    Sp -> "Sp"
+    SpLim -> "SpLim"
+    Hp -> "Hp"
+    HpLim -> "HpLim"
+    CurrentTSO -> "CurrentTSO"
+    CurrentNursery -> "CurrentNursery"
+    HpAlloc -> "HpAlloc"
+    BaseReg -> "BaseReg"
     _ -> throw $ AssignToImmutableGlobalReg gr
+  where
+    rn :: String -> Int -> SBS.ShortByteString
+    rn p i = fromString $ p <> show i
 
 collectAsteriusEntitySymbols :: Data a => a -> HashSet AsteriusEntitySymbol
 collectAsteriusEntitySymbols = collect proxy#
@@ -331,9 +316,7 @@ resolveAsteriusModule m_unresolved =
     , functionExports = []
     , tableExports = []
     , globalExports = []
-    , globalMap =
-        fromList (map (resolve_syms . marshalGlobalReg) $ toList global_regs) <>
-        rtsAsteriusGlobalMap
+    , globalMap = rtsAsteriusGlobalMap
     , functionTable = Just func_table
     , memory = Just $ makeMemory m_resolved last_o ss_sym_map
     , startFunctionName = Nothing
@@ -343,7 +326,7 @@ resolveAsteriusModule m_unresolved =
     (last_o, ss_sym_map) = makeStaticsOffsetTable m_unresolved
     resolve_syms :: Data a => a -> a
     resolve_syms = resolveEntitySymbols $ func_sym_map <> ss_sym_map
-    (m_resolved, global_regs) = resolveGlobalRegs $ resolve_syms m_unresolved
+    m_resolved = resolve_syms m_unresolved
 
 linkStart ::
      AsteriusStore -> HashSet AsteriusEntitySymbol -> (Maybe Module, LinkReport)

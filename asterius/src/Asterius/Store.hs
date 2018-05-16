@@ -8,6 +8,7 @@ module Asterius.Store
 
 import Asterius.Builtins
 import Asterius.Containers
+import Asterius.Resolve
 import Asterius.Types
 
 {-# INLINEABLE builtinsStore #-}
@@ -15,7 +16,7 @@ builtinsStore :: BuiltinsOptions -> AsteriusStore
 builtinsStore opts =
   addModule
     rtsAsteriusModuleSymbol
-    (rtsAsteriusModule opts)
+    (resolveGlobalRegs $ rtsAsteriusModule opts)
     AsteriusStore {symbolMap = mempty, moduleMap = mempty}
 
 {-# INLINEABLE addModule #-}

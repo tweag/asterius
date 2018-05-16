@@ -914,7 +914,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
       (b, need_unreachable_block) <-
         marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
       pure ((k, b), need_unreachable_block)
-  let (rbs, lrs) = resolveLocalRegs rbs'
+  let (rbs, lrs) = resolveLocalRegs $ resolveGlobalRegs rbs'
   pure
     Function
       { functionTypeName = "I64()"

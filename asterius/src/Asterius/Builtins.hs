@@ -10,8 +10,6 @@ module Asterius.Builtins
   , rtsAsteriusModule
   , rtsAsteriusFunctionTypeMap
   , rtsAsteriusGlobalMap
-  , asteriusStaticSize
-  , asteriusStaticsSize
   ) where
 
 import Asterius.BuildInfo
@@ -22,6 +20,7 @@ import qualified Data.ByteString.Short as SBS
 import qualified Data.Vector as V
 import Foreign
 import qualified GHC
+import GHC.Exts
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
@@ -92,18 +91,29 @@ rtsAsteriusFunctionTypeMap =
   ]
 
 rtsAsteriusGlobalMap :: HashMap SBS.ShortByteString Global
-rtsAsteriusGlobalMap = []
-
-asteriusStaticSize :: AsteriusStatic -> Int
-asteriusStaticSize s =
-  case s of
-    Uninitialized l -> l
-    Serialized buf -> SBS.length buf
-    _ -> 8
-
-asteriusStaticsSize :: AsteriusStatics -> Int
-asteriusStaticsSize ss =
-  V.foldl' (\tot s -> tot + asteriusStaticSize s) 0 (asteriusStatics ss)
+rtsAsteriusGlobalMap =
+  fromList $
+  [(rn "R" i, w) | i <- [1 .. 10]] <> [(rn "F" i, f) | i <- [1 .. 6]] <>
+  [(rn "D" i, d) | i <- [1 .. 6]] <>
+  [ (k, w)
+  | k <-
+      [ "L1"
+      , "Sp"
+      , "SpLim"
+      , "Hp"
+      , "HpLim"
+      , "CurrentTSO"
+      , "CurrentNursery"
+      , "HpAlloc"
+      , "BaseReg"
+      ]
+  ]
+  where
+    rn :: String -> Int -> SBS.ShortByteString
+    rn p i = fromString $ p <> show i
+    w = Global {valueType = I64, mutable = True, initValue = ConstI64 0}
+    f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
+    d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
 
 rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
@@ -122,7 +132,7 @@ rtsEvalIOFunction BuiltinsOptions {..} =
                         { target = "createStrictIOThread"
                         , operands =
                             [ loadWord $ wrapI64 cap
-                            , constInt threadStateSize
+                            , constInt $ roundup_bytes_to_words threadStateSize
                             , p
                             ]
                         , valueType = I64
