@@ -131,7 +131,7 @@ rtsEvalIOFunction BuiltinsOptions {..} =
                       Call
                         { target = "createStrictIOThread"
                         , operands =
-                            [ loadWord $ wrapI64 cap
+                            [ getFieldWord cap 0
                             , constInt $ roundup_bytes_to_words threadStateSize
                             , p
                             ]
@@ -295,8 +295,7 @@ createThreadHelperFunction _ closures =
                   { index = 5
                   , value =
                       fieldOff
-                        (loadWord $
-                         wrapI64 $ fieldOff stack_p offset_StgStack_sp)
+                        (getFieldWord stack_p offset_StgStack_sp)
                         (-8 * length closures)
                   }
               , setFieldWord stack_p offset_StgStack_sp sp
@@ -376,9 +375,7 @@ allocateFunction _ =
               , storeWord
                   (wrapI64 $
                    fieldOff
-                     (loadWord $
-                      wrapI64 $
-                      fieldOff
+                     (getFieldWord
                         UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
                         offset_StgRegTable_rCurrentAlloc)
                      offset_bdescr_free)
@@ -612,7 +609,7 @@ newCAFFunction _ =
                   0
                   Unresolved {unresolvedSymbol = "stg_CAF_BLACKHOLE_info"}
               , setFieldWord bh offset_StgInd_indirectee $
-                loadWord $ wrapI64 $ fieldOff reg offset_StgRegTable_rCurrentTSO
+                getFieldWord reg offset_StgRegTable_rCurrentTSO
               , setFieldWord caf offset_StgIndStatic_indirectee bh
               , setFieldWord
                   caf
@@ -627,7 +624,7 @@ newCAFFunction _ =
     reg = getLocalWord 0
     caf = getLocalWord 1
     cap = fieldOff reg (-offset_Capability_r)
-    orig_info = loadWord (wrapI64 caf)
+    orig_info = getFieldWord caf 0
     bh = getLocalWord 2
 
 stgRunFunction _ =
@@ -635,51 +632,86 @@ stgRunFunction _ =
     { functionTypeName = "None(I64,I64)"
     , varTypes = []
     , body =
-        Loop
-          { name = loop_lbl
-          , body =
-              If
-                { condition =
-                    Binary
-                      {binaryOp = NeInt64, operand0 = f, operand1 = ConstI64 0}
-                , ifTrue =
-                    Block
-                      { name = ""
-                      , bodys =
-                          [ SetLocal
-                              { index = 0
-                              , value =
-                                  CallIndirect
-                                    { indirectTarget =
-                                        Unary
-                                          { unaryOp = WrapInt64
-                                          , operand0 =
-                                              Binary
-                                                { binaryOp = SubInt64
-                                                , operand0 =
-                                                    GetLocal
-                                                      { index = 0
-                                                      , valueType = I64
-                                                      }
-                                                , operand1 = ConstI64 1
-                                                }
-                                          }
-                                    , operands = []
-                                    , typeName = "I64()"
-                                    }
+        Block
+          { name = ""
+          , bodys =
+              V.fromList $
+              [ UnresolvedSetGlobal
+                  {unresolvedGlobalReg = BaseReg, value = basereg}
+              ] <>
+              [ UnresolvedSetGlobal
+                {unresolvedGlobalReg = gr, value = getFieldWord basereg o}
+              | (gr, o) <- volatile_global_regs
+              ] <>
+              [ Loop
+                  { name = loop_lbl
+                  , body =
+                      If
+                        { condition =
+                            Binary
+                              { binaryOp = NeInt64
+                              , operand0 = f
+                              , operand1 = ConstI64 0
                               }
-                          , Break
-                              {name = loop_lbl, condition = Null, value = Null}
-                          ]
-                      , valueType = None
-                      }
-                , ifFalse = Null
-                }
+                        , ifTrue =
+                            Block
+                              { name = ""
+                              , bodys =
+                                  [ SetLocal
+                                      { index = 0
+                                      , value =
+                                          CallIndirect
+                                            { indirectTarget =
+                                                Unary
+                                                  { unaryOp = WrapInt64
+                                                  , operand0 =
+                                                      Binary
+                                                        { binaryOp = SubInt64
+                                                        , operand0 =
+                                                            GetLocal
+                                                              { index = 0
+                                                              , valueType = I64
+                                                              }
+                                                        , operand1 = ConstI64 1
+                                                        }
+                                                  }
+                                            , operands = []
+                                            , typeName = "I64()"
+                                            }
+                                      }
+                                  , Break
+                                      { name = loop_lbl
+                                      , condition = Null
+                                      , value = Null
+                                      }
+                                  ]
+                              , valueType = None
+                              }
+                        , ifFalse = Null
+                        }
+                  }
+              ] <>
+              [ setFieldWord
+                basereg
+                o
+                UnresolvedGetGlobal {unresolvedGlobalReg = gr}
+              | (gr, o) <- volatile_global_regs
+              ]
+          , valueType = None
           }
     }
   where
     loop_lbl = "StgRun_loop"
     f = getLocalWord 0
+    basereg = getLocalWord 1
+    volatile_global_regs =
+      [ (Sp, offset_StgRegTable_rSp)
+      , (SpLim, offset_StgRegTable_rSpLim)
+      , (Hp, offset_StgRegTable_rHp)
+      , (HpLim, offset_StgRegTable_rHpLim)
+      , (CurrentTSO, offset_StgRegTable_rCurrentTSO)
+      , (CurrentNursery, offset_StgRegTable_rCurrentNursery)
+      ]
 
 stgReturnFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
@@ -689,6 +721,9 @@ fieldOff p o
   | o == 0 = p
   | otherwise =
     Binary {binaryOp = AddInt64, operand0 = p, operand1 = constInt o}
+
+getFieldWord :: Expression -> Int -> Expression
+getFieldWord p o = loadWord (wrapI64 $ fieldOff p o)
 
 setFieldWord :: Expression -> Int -> Expression -> Expression
 setFieldWord p o = storeWord (wrapI64 $ fieldOff p o)

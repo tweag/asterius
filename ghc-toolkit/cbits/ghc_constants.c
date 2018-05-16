@@ -81,6 +81,14 @@ HsInt offset_StgIndStatic_saved_info() {
 
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
+HsInt offset_StgRegTable_rSp() { return offsetof(StgRegTable, rSp); }
+
+HsInt offset_StgRegTable_rSpLim() { return offsetof(StgRegTable, rSpLim); }
+
+HsInt offset_StgRegTable_rHp() { return offsetof(StgRegTable, rHp); }
+
+HsInt offset_StgRegTable_rHpLim() { return offsetof(StgRegTable, rHpLim); }
+
 HsInt offset_StgRegTable_rNursery() { return offsetof(StgRegTable, rNursery); }
 
 HsInt offset_StgRegTable_rCurrentTSO() {
