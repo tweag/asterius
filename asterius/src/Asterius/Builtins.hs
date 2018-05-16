@@ -57,6 +57,8 @@ rtsAsteriusModule opts =
         , ("rts_evalIO", rtsEvalIOFunction opts)
         , ("scheduleWaitThread", scheduleWaitThreadFunction opts)
         , ("appendToRunQueue", appendToRunQueueFunction opts)
+        , ("setTSOLink", setTSOLinkFunction opts)
+        , ("setTSOPrev", setTSOPrevFunction opts)
         , ("createThread", createThreadFunction opts)
         , ("createGenThread", createGenThreadFunction opts)
         , ("createIOThread", createIOThreadFunction opts)
@@ -117,7 +119,7 @@ rtsAsteriusGlobalMap =
     f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
     d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
 
-rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
 rtsLockFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = Unreachable}
@@ -201,7 +203,127 @@ scheduleWaitThreadFunction _ =
 
 appendToRunQueueFunction _ =
   Function
-    {functionTypeName = "None(I64,I64)", varTypes = [], body = Unreachable}
+    { functionTypeName = "None(I64,I64)"
+    , varTypes = []
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ If
+                  { condition =
+                      Binary
+                        { binaryOp = EqInt64
+                        , operand0 =
+                            getFieldWord cap offset_Capability_run_queue_hd
+                        , operand1 =
+                            Unresolved
+                              {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
+                        }
+                  , ifTrue =
+                      Block
+                        { name = ""
+                        , bodys =
+                            [ setFieldWord
+                                cap
+                                offset_Capability_run_queue_hd
+                                tso
+                            , setFieldWord
+                                tso
+                                (offset_StgTSO_block_info +
+                                 offset_StgTSOBlockInfo_prev)
+                                Unresolved
+                                  { unresolvedSymbol =
+                                      "stg_END_TSO_QUEUE_closure"
+                                  }
+                            ]
+                        , valueType = None
+                        }
+                  , ifFalse =
+                      Block
+                        { name = ""
+                        , bodys =
+                            [ Call
+                                { target = "setTSOLink"
+                                , operands =
+                                    [ cap
+                                    , getFieldWord
+                                        cap
+                                        offset_Capability_run_queue_tl
+                                    , tso
+                                    ]
+                                , valueType = None
+                                }
+                            , Call
+                                { target = "setTSOPrev"
+                                , operands =
+                                    [ cap
+                                    , tso
+                                    , getFieldWord
+                                        cap
+                                        offset_Capability_run_queue_tl
+                                    ]
+                                , valueType = None
+                                }
+                            ]
+                        , valueType = None
+                        }
+                  }
+              , setFieldWord cap offset_Capability_run_queue_tl tso
+              , setFieldWord32
+                  cap
+                  offset_Capability_n_run_queue
+                  Binary
+                    { binaryOp = AddInt32
+                    , operand0 =
+                        getFieldWord32 cap offset_Capability_n_run_queue
+                    , operand1 = ConstI32 1
+                    }
+              ]
+          , valueType = None
+          }
+    }
+  where
+    cap = getLocalWord 0
+    tso = getLocalWord 1
+
+setTSOLinkFunction _ =
+  Function
+    { functionTypeName = "None(I64,I64,I64)"
+    , varTypes = []
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ setFieldWord32 tso offset_StgTSO_dirty (ConstI32 1)
+              , setFieldWord tso offset_StgTSO__link target
+              ]
+          , valueType = None
+          }
+    }
+  where
+    tso = getLocalWord 1
+    target = getLocalWord 2
+
+setTSOPrevFunction _ =
+  Function
+    { functionTypeName = "None(I64,I64,I64)"
+    , varTypes = []
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ setFieldWord32 tso offset_StgTSO_dirty (ConstI32 1)
+              , setFieldWord
+                  tso
+                  (offset_StgTSO_block_info + offset_StgTSOBlockInfo_prev)
+                  target
+              ]
+          , valueType = None
+          }
+    }
+  where
+    tso = getLocalWord 1
+    target = getLocalWord 2
 
 createThreadFunction _ =
   Function
@@ -767,6 +889,9 @@ fieldOff p o
 getFieldWord :: Expression -> Int -> Expression
 getFieldWord p o = loadWord (wrapI64 $ fieldOff p o)
 
+getFieldWord32 :: Expression -> Int -> Expression
+getFieldWord32 p o = loadWord32 (wrapI64 $ fieldOff p o)
+
 setFieldWord :: Expression -> Int -> Expression -> Expression
 setFieldWord p o = storeWord (wrapI64 $ fieldOff p o)
 
@@ -774,6 +899,11 @@ loadWord :: Expression -> Expression
 loadWord p =
   Load
     {signed = False, bytes = 8, offset = 0, align = 0, valueType = I64, ptr = p}
+
+loadWord32 :: Expression -> Expression
+loadWord32 p =
+  Load
+    {signed = False, bytes = 4, offset = 0, align = 0, valueType = I32, ptr = p}
 
 storeWord :: Expression -> Expression -> Expression
 storeWord p w =
