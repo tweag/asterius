@@ -37,6 +37,22 @@ HsInt offset_Capability_r() { return offsetof(Capability, r); }
 
 HsInt offset_Capability_no() { return offsetof(Capability, no); }
 
+HsInt offset_Capability_running_task() {
+  return offsetof(Capability, running_task);
+}
+
+HsInt offset_Capability_run_queue_hd() {
+  return offsetof(Capability, run_queue_hd);
+}
+
+HsInt offset_Capability_run_queue_tl() {
+  return offsetof(Capability, run_queue_tl);
+}
+
+HsInt offset_Capability_n_run_queue() {
+  return offsetof(Capability, n_run_queue);
+}
+
 HsInt offset_Capability_weak_ptr_list_hd() {
   return offsetof(Capability, weak_ptr_list_hd);
 }
@@ -165,6 +181,8 @@ HsInt sizeof_StgTSOBlockInfo() { return sizeof(StgTSOBlockInfo); }
 HsInt offset_StgTSOBlockInfo_closure() {
   return offsetof(StgTSOBlockInfo, closure);
 }
+
+HsInt offset_StgTSOBlockInfo_prev() { return offsetof(StgTSOBlockInfo, prev); }
 
 HsInt sizeof_Task() { return sizeof(Task); }
 

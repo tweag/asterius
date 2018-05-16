@@ -37,6 +37,18 @@ foreign import ccall unsafe "offset_Capability_r" offset_Capability_r :: Int
 
 foreign import ccall unsafe "offset_Capability_no" offset_Capability_no :: Int
 
+foreign import ccall unsafe "offset_Capability_running_task" offset_Capability_running_task
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_run_queue_hd" offset_Capability_run_queue_hd
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_run_queue_tl" offset_Capability_run_queue_tl
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_n_run_queue" offset_Capability_n_run_queue
+  :: Int
+
 foreign import ccall unsafe "offset_Capability_weak_ptr_list_hd" offset_Capability_weak_ptr_list_hd
   :: Int
 
@@ -166,6 +178,9 @@ foreign import ccall unsafe "sizeof_StgTSOBlockInfo" sizeof_StgTSOBlockInfo
   :: Int
 
 foreign import ccall unsafe "offset_StgTSOBlockInfo_closure" offset_StgTSOBlockInfo_closure
+  :: Int
+
+foreign import ccall unsafe "offset_StgTSOBlockInfo_prev" offset_StgTSOBlockInfo_prev
   :: Int
 
 foreign import ccall unsafe "sizeof_Task" sizeof_Task :: Int

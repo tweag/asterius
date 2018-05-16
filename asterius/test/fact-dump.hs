@@ -44,6 +44,7 @@ main = do
                 , "allocGroup"
                 , "rts_evalIO"
                 , "newCAF"
+                , "rts_lock"
                 ]
         writeDot "Fact.gv" report
         let Just final_m = maybe_final_m

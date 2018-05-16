@@ -53,8 +53,10 @@ rtsAsteriusModule opts =
   mempty
     { staticsMap = []
     , functionMap =
-        [ ("rts_evalIO", rtsEvalIOFunction opts)
+        [ ("rts_lock", rtsLockFunction opts)
+        , ("rts_evalIO", rtsEvalIOFunction opts)
         , ("scheduleWaitThread", scheduleWaitThreadFunction opts)
+        , ("appendToRunQueue", appendToRunQueueFunction opts)
         , ("createThread", createThreadFunction opts)
         , ("createGenThread", createGenThreadFunction opts)
         , ("createIOThread", createIOThreadFunction opts)
@@ -115,8 +117,11 @@ rtsAsteriusGlobalMap =
     f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
     d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
 
-rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
+rtsLockFunction _ =
+  Function {functionTypeName = "I64()", varTypes = [], body = Unreachable}
+
 rtsEvalIOFunction BuiltinsOptions {..} =
   Function
     { functionTypeName = "None(I64,I64,I64)"
@@ -155,7 +160,48 @@ rtsEvalIOFunction BuiltinsOptions {..} =
 
 scheduleWaitThreadFunction _ =
   Function
-    {functionTypeName = "None(I64,I64,I64)", varTypes = [], body = Unreachable}
+    { functionTypeName = "None(I64,I64,I64)"
+    , varTypes = [I64, I64, I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ SetLocal {index = 3, value = getFieldWord pcap 0}
+              , SetLocal
+                  { index = 4
+                  , value = getFieldWord cap offset_Capability_running_task
+                  }
+              , setFieldWord tso offset_StgTSO_bound $
+                getFieldWord task offset_Task_incall
+              , setFieldWord tso offset_StgTSO_cap cap
+              , SetLocal
+                  {index = 5, value = getFieldWord task offset_Task_incall}
+              , setFieldWord incall offset_InCall_tso tso
+              , setFieldWord incall offset_InCall_ret ret
+              , setFieldWord32
+                  incall
+                  offset_InCall_rstat
+                  (ConstI32 $ fromIntegral scheduler_NoStatus)
+              , Call
+                  { target = "appendToRunQueue"
+                  , operands = [cap, tso]
+                  , valueType = None
+                  }
+              ]
+          , valueType = None
+          }
+    }
+  where
+    tso = getLocalWord 0
+    ret = getLocalWord 1
+    pcap = getLocalWord 2
+    cap = getLocalWord 3
+    task = getLocalWord 4
+    incall = getLocalWord 5
+
+appendToRunQueueFunction _ =
+  Function
+    {functionTypeName = "None(I64,I64)", varTypes = [], body = Unreachable}
 
 createThreadFunction _ =
   Function
