@@ -57,6 +57,7 @@ rtsAsteriusModule opts =
         , ("rts_evalIO", rtsEvalIOFunction opts)
         , ("scheduleWaitThread", scheduleWaitThreadFunction opts)
         , ("appendToRunQueue", appendToRunQueueFunction opts)
+        , ("popRunQueue", popRunQueueFunction opts)
         , ("setTSOLink", setTSOLinkFunction opts)
         , ("setTSOPrev", setTSOPrevFunction opts)
         , ("createThread", createThreadFunction opts)
@@ -119,7 +120,7 @@ rtsAsteriusGlobalMap =
     f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
     d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
 
-rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, popRunQueueFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
 rtsLockFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = Unreachable}
@@ -163,7 +164,7 @@ rtsEvalIOFunction BuiltinsOptions {..} =
 scheduleWaitThreadFunction _ =
   Function
     { functionTypeName = "None(I64,I64,I64)"
-    , varTypes = [I64, I64, I64]
+    , varTypes = [I64, I64, I64, I64]
     , body =
         Block
           { name = ""
@@ -189,6 +190,19 @@ scheduleWaitThreadFunction _ =
                   , operands = [cap, tso]
                   , valueType = None
                   }
+              , SetLocal
+                  { index = 6
+                  , value =
+                      Call
+                        { target = "popRunQueue"
+                        , operands = [cap]
+                        , valueType = I64
+                        }
+                  }
+              , setFieldWord
+                  cap
+                  (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
+                  t
               ]
           , valueType = None
           }
@@ -200,6 +214,7 @@ scheduleWaitThreadFunction _ =
     cap = getLocalWord 3
     task = getLocalWord 4
     incall = getLocalWord 5
+    t = getLocalWord 6
 
 appendToRunQueueFunction _ =
   Function
@@ -215,9 +230,7 @@ appendToRunQueueFunction _ =
                         { binaryOp = EqInt64
                         , operand0 =
                             getFieldWord cap offset_Capability_run_queue_hd
-                        , operand1 =
-                            Unresolved
-                              {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
+                        , operand1 = endTSOQueue
                         }
                   , ifTrue =
                       Block
@@ -231,10 +244,7 @@ appendToRunQueueFunction _ =
                                 tso
                                 (offset_StgTSO_block_info +
                                  offset_StgTSOBlockInfo_prev)
-                                Unresolved
-                                  { unresolvedSymbol =
-                                      "stg_END_TSO_QUEUE_closure"
-                                  }
+                                endTSOQueue
                             ]
                         , valueType = None
                         }
@@ -285,6 +295,68 @@ appendToRunQueueFunction _ =
   where
     cap = getLocalWord 0
     tso = getLocalWord 1
+
+popRunQueueFunction _ =
+  Function
+    { functionTypeName = "I64(I64)"
+    , varTypes = [I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ SetLocal
+                  { index = 1
+                  , value = getFieldWord cap offset_Capability_run_queue_hd
+                  }
+              , setFieldWord cap offset_Capability_run_queue_hd $
+                getFieldWord t offset_StgTSO__link
+              , If
+                  { condition =
+                      Binary
+                        { binaryOp = NeInt64
+                        , operand0 = getFieldWord t offset_StgTSO__link
+                        , operand1 = endTSOQueue
+                        }
+                  , ifTrue =
+                      setFieldWord
+                        (getFieldWord t offset_StgTSO__link)
+                        (offset_StgTSO_block_info + offset_StgTSOBlockInfo_prev)
+                        endTSOQueue
+                  , ifFalse = Null
+                  }
+              , setFieldWord t offset_StgTSO__link endTSOQueue
+              , If
+                  { condition =
+                      Binary
+                        { binaryOp = EqInt64
+                        , operand0 =
+                            getFieldWord cap offset_Capability_run_queue_hd
+                        , operand1 = endTSOQueue
+                        }
+                  , ifTrue =
+                      setFieldWord
+                        cap
+                        offset_Capability_run_queue_tl
+                        endTSOQueue
+                  , ifFalse = Null
+                  }
+              , setFieldWord32
+                  cap
+                  offset_Capability_n_run_queue
+                  Binary
+                    { binaryOp = SubInt32
+                    , operand0 =
+                        getFieldWord32 cap offset_Capability_n_run_queue
+                    , operand1 = ConstI32 1
+                    }
+              , t
+              ]
+          , valueType = I64
+          }
+    }
+  where
+    cap = getLocalWord 0
+    t = getLocalWord 1
 
 setTSOLinkFunction _ =
   Function
@@ -395,21 +467,12 @@ createThreadFunction _ =
               , setFieldWord
                   tso_p
                   (offset_StgTSO_block_info + offset_StgTSOBlockInfo_closure)
-                  Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
-              , setFieldWord
-                  tso_p
-                  offset_StgTSO_blocked_exceptions
-                  Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
-              , setFieldWord
-                  tso_p
-                  offset_StgTSO_bq
-                  Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
+                  endTSOQueue
+              , setFieldWord tso_p offset_StgTSO_blocked_exceptions endTSOQueue
+              , setFieldWord tso_p offset_StgTSO_bq endTSOQueue
               , setFieldWord32 tso_p offset_StgTSO_flags $ ConstI32 0
               , setFieldWord32 tso_p offset_StgTSO_dirty $ ConstI32 1
-              , setFieldWord
-                  tso_p
-                  offset_StgTSO__link
-                  Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
+              , setFieldWord tso_p offset_StgTSO__link endTSOQueue
               , setFieldWord32 tso_p offset_StgTSO_saved_errno $ ConstI32 0
               , setFieldWord tso_p offset_StgTSO_bound $ ConstI64 0
               , setFieldWord tso_p offset_StgTSO_cap cap
@@ -939,3 +1002,6 @@ getLocalWord i = GetLocal {index = i, valueType = I64}
 saveSp :: BinaryenIndex -> Expression -> Expression
 saveSp sp_i tso_p =
   SetLocal {index = sp_i, value = fieldOff tso_p offset_StgTSO_StgStack}
+
+endTSOQueue :: Expression
+endTSOQueue = Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
