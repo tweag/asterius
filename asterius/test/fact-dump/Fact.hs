@@ -9,5 +9,7 @@ fact n = n * fact (n - 1)
 facts :: [Int]
 facts = scanl (*) 1 [1 ..]
 
-root :: IO Int
-root = pure $ fact 5
+foreign import ccall unsafe "return_int" return_int :: Int -> IO ()
+
+root :: IO ()
+root = return_int $ fact 5

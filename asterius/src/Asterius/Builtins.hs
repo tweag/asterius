@@ -80,6 +80,7 @@ rtsAsteriusModule opts =
         , ("newCAF", newCAFFunction opts)
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
+        , ("return_int", returnIntFunction opts)
         ]
     }
 
@@ -92,6 +93,7 @@ rtsAsteriusFunctionTypeMap =
   , ("I64(I32)", FunctionType {returnType = I64, paramTypes = [I32]})
   , ("I64(I64)", FunctionType {returnType = I64, paramTypes = [I64]})
   , ("I64(I32,I64)", FunctionType {returnType = I64, paramTypes = [I32, I64]})
+  , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
   , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
   , ( "None(I64,I64,I64)"
     , FunctionType {returnType = None, paramTypes = [I64, I64, I64]})
@@ -122,7 +124,7 @@ rtsAsteriusGlobalMap =
     f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
     d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
 
-rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, popRunQueueFunction, dirtyTSOFunction, dirtyStackFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, popRunQueueFunction, dirtyTSOFunction, dirtyStackFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, returnIntFunction ::
      BuiltinsOptions -> Function
 rtsLockFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = Unreachable}
@@ -1005,6 +1007,9 @@ stgRunFunction _ =
 
 stgReturnFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
+
+returnIntFunction _ =
+  Function {functionTypeName = "None(I64)", varTypes = [], body = Unreachable}
 
 fieldOff :: Expression -> Int -> Expression
 fieldOff p o
