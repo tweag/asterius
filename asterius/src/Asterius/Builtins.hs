@@ -58,6 +58,8 @@ rtsAsteriusModule opts =
         , ("scheduleWaitThread", scheduleWaitThreadFunction opts)
         , ("appendToRunQueue", appendToRunQueueFunction opts)
         , ("popRunQueue", popRunQueueFunction opts)
+        , ("dirty_TSO", dirtyTSOFunction opts)
+        , ("dirty_STACK", dirtyStackFunction opts)
         , ("setTSOLink", setTSOLinkFunction opts)
         , ("setTSOPrev", setTSOPrevFunction opts)
         , ("createThread", createThreadFunction opts)
@@ -120,7 +122,7 @@ rtsAsteriusGlobalMap =
     f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
     d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
 
-rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, popRunQueueFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
+rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, popRunQueueFunction, dirtyTSOFunction, dirtyStackFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction ::
      BuiltinsOptions -> Function
 rtsLockFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = Unreachable}
@@ -164,7 +166,7 @@ rtsEvalIOFunction BuiltinsOptions {..} =
 scheduleWaitThreadFunction _ =
   Function
     { functionTypeName = "None(I64,I64,I64)"
-    , varTypes = [I64, I64, I64, I64]
+    , varTypes = [I64, I64, I64, I64, I64, I64, I64]
     , body =
         Block
           { name = ""
@@ -184,7 +186,7 @@ scheduleWaitThreadFunction _ =
               , setFieldWord32
                   incall
                   offset_InCall_rstat
-                  (ConstI32 $ fromIntegral scheduler_NoStatus)
+                  (constInt32 scheduler_NoStatus)
               , Call
                   { target = "appendToRunQueue"
                   , operands = [cap, tso]
@@ -203,6 +205,46 @@ scheduleWaitThreadFunction _ =
                   cap
                   (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
                   t
+              , setFieldWord32 cap offset_Capability_interrupt (ConstI32 0)
+              , setFieldWord8 cap offset_Capability_in_haskell (ConstI32 1)
+              , setFieldWord32 cap offset_Capability_idle (ConstI32 0)
+              , Call
+                  {target = "dirty_TSO", operands = [cap, t], valueType = None}
+              , Call
+                  { target = "dirty_STACK"
+                  , operands = [cap, getFieldWord t offset_StgTSO_stackobj]
+                  , valueType = None
+                  }
+              , SetLocal
+                  { index = 7
+                  , value =
+                      Call
+                        { target = "StgRun"
+                        , operands =
+                            [ Unresolved
+                                {unresolvedSymbol = "stg_returnToStackTop"}
+                            , fieldOff cap offset_Capability_r
+                            ]
+                        , valueType = I64
+                        }
+                  }
+              , SetLocal
+                  {index = 8, value = getFieldWord r offset_StgRegTable_rRet}
+              , setFieldWord8 cap offset_Capability_in_haskell (ConstI32 0)
+              , SetLocal
+                  {index = 9, value = getFieldWord task offset_Task_incall}
+              , setFieldWord incall' offset_InCall_ret $
+                fieldOff
+                  (getFieldWord
+                     (getFieldWord
+                        (getFieldWord incall' offset_InCall_tso)
+                        offset_StgTSO_stackobj)
+                     offset_StgStack_sp)
+                  8
+              , setFieldWord32
+                  incall'
+                  offset_InCall_rstat
+                  (constInt32 scheduler_Success)
               ]
           , valueType = None
           }
@@ -215,6 +257,8 @@ scheduleWaitThreadFunction _ =
     task = getLocalWord 4
     incall = getLocalWord 5
     t = getLocalWord 6
+    r = getLocalWord 7
+    incall' = getLocalWord 9
 
 appendToRunQueueFunction _ =
   Function
@@ -358,6 +402,24 @@ popRunQueueFunction _ =
     cap = getLocalWord 0
     t = getLocalWord 1
 
+dirtyTSOFunction _ =
+  Function
+    { functionTypeName = "None(I64,I64)"
+    , varTypes = []
+    , body = setFieldWord32 tso offset_StgTSO_dirty (ConstI32 1)
+    }
+  where
+    tso = getLocalWord 1
+
+dirtyStackFunction _ =
+  Function
+    { functionTypeName = "None(I64,I64)"
+    , varTypes = []
+    , body = setFieldWord32 stack offset_StgStack_dirty (ConstI32 1)
+    }
+  where
+    stack = getLocalWord 1
+
 setTSOLinkFunction _ =
   Function
     { functionTypeName = "None(I64,I64,I64)"
@@ -461,9 +523,9 @@ createThreadFunction _ =
                   0
                   Unresolved {unresolvedSymbol = "stg_TSO_info"}
               , setFieldWord16 tso_p offset_StgTSO_what_next $
-                ConstI32 $ fromIntegral next_ThreadRunGHC
+                constInt32 next_ThreadRunGHC
               , setFieldWord16 tso_p offset_StgTSO_why_blocked $
-                ConstI32 $ fromIntegral blocked_NotBlocked
+                constInt32 blocked_NotBlocked
               , setFieldWord
                   tso_p
                   (offset_StgTSO_block_info + offset_StgTSOBlockInfo_closure)
@@ -856,7 +918,7 @@ newCAFFunction _ =
 
 stgRunFunction _ =
   Function
-    { functionTypeName = "None(I64,I64)"
+    { functionTypeName = "I64(I64,I64)"
     , varTypes = []
     , body =
         Block
@@ -923,8 +985,9 @@ stgRunFunction _ =
                 o
                 UnresolvedGetGlobal {unresolvedGlobalReg = gr}
               | (gr, o) <- volatile_global_regs
-              ]
-          , valueType = None
+              ] <>
+              [UnresolvedGetGlobal {unresolvedGlobalReg = VanillaReg 1}]
+          , valueType = I64
           }
     }
   where
@@ -986,6 +1049,13 @@ storeWord16 :: Expression -> Expression -> Expression
 storeWord16 p w =
   Store {bytes = 2, offset = 0, align = 0, ptr = p, value = w, valueType = I32}
 
+setFieldWord8 :: Expression -> Int -> Expression -> Expression
+setFieldWord8 p o = storeWord8 (wrapI64 $ fieldOff p o)
+
+storeWord8 :: Expression -> Expression -> Expression
+storeWord8 p w =
+  Store {bytes = 1, offset = 0, align = 0, ptr = p, value = w, valueType = I32}
+
 wrapI64 :: Expression -> Expression
 wrapI64 w = Unary {unaryOp = WrapInt64, operand0 = w}
 
@@ -995,6 +1065,9 @@ words2Bytes w =
 
 constInt :: Int -> Expression
 constInt = ConstI64 . fromIntegral
+
+constInt32 :: Int -> Expression
+constInt32 = ConstI32 . fromIntegral
 
 getLocalWord :: BinaryenIndex -> Expression
 getLocalWord i = GetLocal {index = i, valueType = I64}

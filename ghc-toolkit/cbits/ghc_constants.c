@@ -41,6 +41,12 @@ HsInt offset_Capability_running_task() {
   return offsetof(Capability, running_task);
 }
 
+HsInt offset_Capability_in_haskell() {
+  return offsetof(Capability, in_haskell);
+}
+
+HsInt offset_Capability_idle() { return offsetof(Capability, idle); }
+
 HsInt offset_Capability_run_queue_hd() {
   return offsetof(Capability, run_queue_hd);
 }
@@ -279,5 +285,7 @@ HsInt scheduler_Interrupted() { return Interrupted; }
 HsInt scheduler_HeapExhausted() { return HeapExhausted; }
 
 HsInt sizeof_bool() { return sizeof(bool); }
+
+HsInt sizeof_int() { return sizeof(int); }
 
 HsInt sizeof_SchedulerStatus() { return sizeof(SchedulerStatus); }

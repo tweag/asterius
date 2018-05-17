@@ -40,6 +40,12 @@ foreign import ccall unsafe "offset_Capability_no" offset_Capability_no :: Int
 foreign import ccall unsafe "offset_Capability_running_task" offset_Capability_running_task
   :: Int
 
+foreign import ccall unsafe "offset_Capability_in_haskell" offset_Capability_in_haskell
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_idle" offset_Capability_idle
+  :: Int
+
 foreign import ccall unsafe "offset_Capability_run_queue_hd" offset_Capability_run_queue_hd
   :: Int
 
@@ -289,6 +295,8 @@ foreign import ccall unsafe "scheduler_HeapExhausted" scheduler_HeapExhausted
   :: Int
 
 foreign import ccall unsafe "sizeof_bool" sizeof_bool :: Int
+
+foreign import ccall unsafe "sizeof_int" sizeof_int :: Int
 
 foreign import ccall unsafe "sizeof_SchedulerStatus" sizeof_SchedulerStatus
   :: Int
