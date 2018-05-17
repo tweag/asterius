@@ -310,7 +310,7 @@ resolveAsteriusModule m_unresolved =
           [ (entityName func_sym, func)
           | (func_sym, func) <- hashMapToList $ functionMap m_resolved
           ]
-    , functionImports = []
+    , functionImports = rtsAsteriusFunctionImports
     , tableImports = []
     , globalImports = []
     , functionExports = []

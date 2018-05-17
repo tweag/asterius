@@ -235,7 +235,7 @@ marshalExpression m e =
     CallImport {..} -> do
       os <- fmap V.convert $ V.forM operands $ marshalExpression m
       withSV os $ \ops osl ->
-        withSBS (entityName target) $ \tp ->
+        withSBS target' $ \tp ->
           c_BinaryenCallImport m tp ops osl (marshalValueType valueType)
     CallIndirect {..} -> do
       t <- marshalExpression m indirectTarget

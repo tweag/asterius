@@ -360,7 +360,7 @@ data Expression
   | Call { target :: AsteriusEntitySymbol
          , operands :: V.Vector Expression
          , valueType :: ValueType }
-  | CallImport { target :: AsteriusEntitySymbol
+  | CallImport { target' :: SBS.ShortByteString
                , operands :: V.Vector Expression
                , valueType :: ValueType }
   | CallIndirect { indirectTarget :: Expression

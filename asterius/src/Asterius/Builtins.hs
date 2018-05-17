@@ -8,6 +8,7 @@ module Asterius.Builtins
   , getDefaultBuiltinsOptions
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
+  , rtsAsteriusFunctionImports
   , rtsAsteriusFunctionTypeMap
   , rtsAsteriusGlobalMap
   ) where
@@ -80,9 +81,19 @@ rtsAsteriusModule opts =
         , ("newCAF", newCAFFunction opts)
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
-        , ("return_int", returnIntFunction opts)
+        , ("print_int", printIntFunction opts)
         ]
     }
+
+rtsAsteriusFunctionImports :: V.Vector FunctionImport
+rtsAsteriusFunctionImports =
+  [ FunctionImport
+      { internalName = "printI64"
+      , externalModuleName = "rts"
+      , externalBaseName = "print"
+      , functionTypeName = "None(I64)"
+      }
+  ]
 
 rtsAsteriusFunctionTypeMap :: HashMap SBS.ShortByteString FunctionType
 rtsAsteriusFunctionTypeMap =
@@ -124,7 +135,7 @@ rtsAsteriusGlobalMap =
     f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
     d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
 
-rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, popRunQueueFunction, dirtyTSOFunction, dirtyStackFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, returnIntFunction ::
+rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, appendToRunQueueFunction, popRunQueueFunction, dirtyTSOFunction, dirtyStackFunction, setTSOLinkFunction, setTSOPrevFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printIntFunction ::
      BuiltinsOptions -> Function
 rtsLockFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = Unreachable}
@@ -1008,8 +1019,14 @@ stgRunFunction _ =
 stgReturnFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
 
-returnIntFunction _ =
-  Function {functionTypeName = "None(I64)", varTypes = [], body = Unreachable}
+printIntFunction _ =
+  Function
+    { functionTypeName = "None(I64)"
+    , varTypes = []
+    , body = CallImport {target' = "printI64", operands = [x], valueType = None}
+    }
+  where
+    x = getLocalWord 0
 
 fieldOff :: Expression -> Int -> Expression
 fieldOff p o
