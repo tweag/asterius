@@ -677,18 +677,22 @@ allocateFunction _ =
                   , value = UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
                   }
               , UnresolvedSetGlobal {unresolvedGlobalReg = Hp, value = new_hp}
-              , setFieldWord
-                  (getFieldWord
-                     UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
-                     offset_StgRegTable_rCurrentAlloc)
-                  offset_bdescr_free
-                  new_hp
+              , If
+                  { condition = Unary {unaryOp = EqZInt64, operand0 = basereg}
+                  , ifTrue = Nop
+                  , ifFalse =
+                      setFieldWord
+                        (getFieldWord basereg offset_StgRegTable_rCurrentAlloc)
+                        offset_bdescr_free
+                        new_hp
+                  }
               , old_hp
               ]
           , valueType = I64
           }
     }
   where
+    basereg = UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
     n = getLocalWord 1
     new_hp = getLocalWord 2
     old_hp = getLocalWord 3
@@ -949,13 +953,9 @@ stgRunFunction _ =
                   { name = loop_lbl
                   , body =
                       If
-                        { condition =
-                            Binary
-                              { binaryOp = NeInt64
-                              , operand0 = f
-                              , operand1 = ConstI64 0
-                              }
-                        , ifTrue =
+                        { condition = Unary {unaryOp = EqZInt64, operand0 = f}
+                        , ifTrue = Nop
+                        , ifFalse =
                             Block
                               { name = ""
                               , bodys =
@@ -989,7 +989,6 @@ stgRunFunction _ =
                                   ]
                               , valueType = None
                               }
-                        , ifFalse = Null
                         }
                   }
               ] <>
