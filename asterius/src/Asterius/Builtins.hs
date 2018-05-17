@@ -52,9 +52,14 @@ rtsAsteriusModuleSymbol =
 rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
-    { staticsMap = []
+    { staticsMap =
+        [ ( "MainCapability"
+          , AsteriusStatics
+              {asteriusStatics = [Uninitialized sizeof_Capability]})
+        ]
     , functionMap =
-        [ ("rts_lock", rtsLockFunction opts)
+        [ ("initMainCapability", initMainCapabilityFunction opts)
+        , ("rts_lock", rtsLockFunction opts)
         , ("rts_evalIO", rtsEvalIOFunction opts)
         , ("scheduleWaitThread", scheduleWaitThreadFunction opts)
         , ("createThread", createThreadFunction opts)
@@ -98,6 +103,7 @@ rtsAsteriusFunctionTypeMap =
   , ("I64(I32)", FunctionType {returnType = I64, paramTypes = [I32]})
   , ("I64(I64)", FunctionType {returnType = I64, paramTypes = [I64]})
   , ("I64(I32,I64)", FunctionType {returnType = I64, paramTypes = [I32, I64]})
+  , ("None()", FunctionType {returnType = None, paramTypes = []})
   , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
   , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
   , ( "None(I64,I64,I64)"
@@ -129,8 +135,11 @@ rtsAsteriusGlobalMap =
     f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
     d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
 
-rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printIntFunction ::
+initMainCapabilityFunction, rtsLockFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printIntFunction ::
      BuiltinsOptions -> Function
+initMainCapabilityFunction _ =
+  Function {functionTypeName = "None()", varTypes = [], body = Unreachable}
+
 rtsLockFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = Unreachable}
 
@@ -165,7 +174,7 @@ rtsEvalIOFunction BuiltinsOptions {..} =
           }
     }
   where
-    cap = getLocalWord 0
+    cap = mainCap
     p = getLocalWord 1
     ret = getLocalWord 2
     tso = getLocalWord 3
@@ -219,7 +228,7 @@ scheduleWaitThreadFunction _ =
   where
     tso = getLocalWord 0
     ret = getLocalWord 1
-    cap = getLocalWord 2
+    cap = mainCap
     task = getLocalWord 3
     incall = getLocalWord 4
 
@@ -318,7 +327,7 @@ createThreadFunction _ =
           }
     }
   where
-    cap = getLocalWord 0
+    cap = mainCap
     alloc_words = getLocalWord 1
     tso_p = getLocalWord 2
     stack_p = getLocalWord 3
@@ -368,7 +377,7 @@ createThreadHelperFunction _ closures =
           }
     }
   where
-    cap = getLocalWord 0
+    cap = mainCap
     stack_size_w = getLocalWord 1
     target_closure = getLocalWord 2
     tso_p = getLocalWord 3
@@ -678,7 +687,7 @@ newCAFFunction _ =
   where
     reg = getLocalWord 0
     caf = getLocalWord 1
-    cap = fieldOff reg (-offset_Capability_r)
+    cap = mainCap
     orig_info = getFieldWord caf 0
     bh = getLocalWord 2
 
@@ -833,3 +842,6 @@ saveSp sp_i tso_p =
 
 endTSOQueue :: Expression
 endTSOQueue = Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
+
+mainCap :: Expression
+mainCap = Unresolved {unresolvedSymbol = "MainCapability"}
