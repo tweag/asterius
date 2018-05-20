@@ -228,6 +228,11 @@ data UnaryOp
   | TruncUFloat64ToInt64
   | ReinterpretFloat32
   | ReinterpretFloat64
+  | ExtendS8Int32
+  | ExtendS16Int32
+  | ExtendS8Int64
+  | ExtendS16Int64
+  | ExtendS32Int64
   | ConvertSInt32ToFloat32
   | ConvertSInt32ToFloat64
   | ConvertUInt32ToFloat32

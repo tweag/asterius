@@ -1,6 +1,8 @@
 #include <Rts.h>
 #include <Capability.h>
 
+HsInt roundup(HsInt x, HsInt n) { return (x + (n - 1)) & (~(n - 1)); }
+
 HsInt roundup_bytes_to_words(HsInt n) { return ROUNDUP_BYTES_TO_WDS(n); }
 
 HsInt block_size() { return BLOCK_SIZE; }
@@ -32,6 +34,8 @@ HsInt offset_bdescr_flags() { return offsetof(bdescr, flags); }
 HsInt offset_bdescr_blocks() { return offsetof(bdescr, blocks); }
 
 HsInt sizeof_Capability() { return sizeof(Capability); }
+
+HsInt offset_Capability_f() { return offsetof(Capability, f); }
 
 HsInt offset_Capability_r() { return offsetof(Capability, r); }
 
@@ -100,6 +104,18 @@ HsInt offset_StgIndStatic_static_link() {
 HsInt offset_StgIndStatic_saved_info() {
   return offsetof(StgIndStatic, saved_info);
 }
+
+HsInt sizeof_StgFunTable() { return sizeof(StgFunTable); }
+
+HsInt offset_StgFunTable_stgEagerBlackholeInfo() {
+  return offsetof(StgFunTable, stgEagerBlackholeInfo);
+}
+
+HsInt offset_StgFunTable_stgGCEnter1() {
+  return offsetof(StgFunTable, stgGCEnter1);
+}
+
+HsInt offset_StgFunTable_stgGCFun() { return offsetof(StgFunTable, stgGCFun); }
 
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
@@ -176,10 +192,6 @@ HsInt offset_StgTSO_alloc_limit() { return offsetof(StgTSO, alloc_limit); }
 
 HsInt offset_StgTSO_tot_stack_size() {
   return offsetof(StgTSO, tot_stack_size);
-}
-
-HsInt offset_StgTSO_StgStack() {
-  return ROUNDUP_BYTES_TO_WDS(sizeof(StgTSO)) * 8;
 }
 
 HsInt sizeof_StgTSOBlockInfo() { return sizeof(StgTSOBlockInfo); }

@@ -1,5 +1,7 @@
 module Language.Haskell.GHC.Toolkit.Constants where
 
+foreign import ccall unsafe "roundup" roundup :: Int -> Int -> Int
+
 foreign import ccall unsafe "roundup_bytes_to_words" roundup_bytes_to_words
   :: Int -> Int
 
@@ -32,6 +34,8 @@ foreign import ccall unsafe "offset_bdescr_flags" offset_bdescr_flags :: Int
 foreign import ccall unsafe "offset_bdescr_blocks" offset_bdescr_blocks :: Int
 
 foreign import ccall unsafe "sizeof_Capability" sizeof_Capability :: Int
+
+foreign import ccall unsafe "offset_Capability_f" offset_Capability_f :: Int
 
 foreign import ccall unsafe "offset_Capability_r" offset_Capability_r :: Int
 
@@ -91,6 +95,17 @@ foreign import ccall unsafe "offset_StgIndStatic_static_link" offset_StgIndStati
   :: Int
 
 foreign import ccall unsafe "offset_StgIndStatic_saved_info" offset_StgIndStatic_saved_info
+  :: Int
+
+foreign import ccall unsafe "sizeof_StgFunTable" sizeof_StgFunTable :: Int
+
+foreign import ccall unsafe "offset_StgFunTable_stgEagerBlackholeInfo" offset_StgFunTable_stgEagerBlackholeInfo
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunTable_stgGCEnter1" offset_StgFunTable_stgGCEnter1
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunTable_stgGCFun" offset_StgFunTable_stgGCFun
   :: Int
 
 foreign import ccall unsafe "sizeof_StgRegTable" sizeof_StgRegTable :: Int
@@ -175,9 +190,6 @@ foreign import ccall unsafe "offset_StgTSO_alloc_limit" offset_StgTSO_alloc_limi
   :: Int
 
 foreign import ccall unsafe "offset_StgTSO_tot_stack_size" offset_StgTSO_tot_stack_size
-  :: Int
-
-foreign import ccall unsafe "offset_StgTSO_StgStack" offset_StgTSO_StgStack
   :: Int
 
 foreign import ccall unsafe "sizeof_StgTSOBlockInfo" sizeof_StgTSOBlockInfo

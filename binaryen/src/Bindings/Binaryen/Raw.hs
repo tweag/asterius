@@ -148,6 +148,9 @@ foreign import ccall unsafe "BinaryenAddFunctionType" c_BinaryenAddFunctionType
     BinaryenType ->
       Ptr BinaryenType -> BinaryenIndex -> IO BinaryenFunctionTypeRef
 
+foreign import ccall unsafe "BinaryenRemoveFunctionType" c_BinaryenRemoveFunctionType
+  :: BinaryenModuleRef -> Ptr CChar -> IO ()
+
 foreign import ccall unsafe "BinaryenConstInt32" c_BinaryenConstInt32
   :: BinaryenModuleRef -> Int32 -> IO BinaryenExpressionRef
 
@@ -265,6 +268,21 @@ foreign import ccall unsafe "BinaryenReinterpretFloat32" c_BinaryenReinterpretFl
   :: BinaryenOp
 
 foreign import ccall unsafe "BinaryenReinterpretFloat64" c_BinaryenReinterpretFloat64
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtendS8Int32" c_BinaryenExtendS8Int32
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtendS16Int32" c_BinaryenExtendS16Int32
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtendS8Int64" c_BinaryenExtendS8Int64
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtendS16Int64" c_BinaryenExtendS16Int64
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtendS32Int64" c_BinaryenExtendS32Int64
   :: BinaryenOp
 
 foreign import ccall unsafe "BinaryenConvertSInt32ToFloat32" c_BinaryenConvertSInt32ToFloat32

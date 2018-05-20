@@ -5,3 +5,5 @@ ghc-toolkit.cabal
 binaryen.cabal
 wasm-toolkit.cabal
 site/
+.idea/
+node_modules/

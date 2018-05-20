@@ -5,6 +5,7 @@
 module Asterius.Marshal
   ( MarshalError(..)
   , marshalModule
+  , serializeModule
   ) where
 
 import Asterius.Containers
@@ -12,11 +13,14 @@ import Asterius.Internals
 import Asterius.Types
 import Bindings.Binaryen.Raw
 import Control.Exception
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.Traversable
 import qualified Data.Vector as V
 import Foreign
+import Foreign.C
 import GHC.Exts
 import Prelude hiding (IO)
 
@@ -80,6 +84,11 @@ marshalUnaryOp op =
     TruncUFloat64ToInt64 -> c_BinaryenTruncUFloat64ToInt64
     ReinterpretFloat32 -> c_BinaryenReinterpretFloat32
     ReinterpretFloat64 -> c_BinaryenReinterpretFloat64
+    ExtendS8Int32 -> c_BinaryenExtendS8Int32
+    ExtendS16Int32 -> c_BinaryenExtendS16Int32
+    ExtendS8Int64 -> c_BinaryenExtendS8Int64
+    ExtendS16Int64 -> c_BinaryenExtendS16Int64
+    ExtendS32Int64 -> c_BinaryenExtendS32Int64
     ConvertSInt32ToFloat32 -> c_BinaryenConvertSInt32ToFloat32
     ConvertSInt32ToFloat64 -> c_BinaryenConvertSInt32ToFloat64
     ConvertUInt32ToFloat32 -> c_BinaryenConvertUInt32ToFloat32
@@ -502,3 +511,13 @@ relooperRun m RelooperRun {..} = do
   for_ (hashMapToList blockMap) $ \(k, RelooperBlock {..}) ->
     V.forM_ addBranches $ relooperAddBranch m bpm k
   c_RelooperRenderAndDispose r (bpm ! entry) labelHelper m
+
+serializeModule :: BinaryenModuleRef -> IO BS.ByteString
+serializeModule m =
+  alloca $ \(buf_p :: Ptr (Ptr ())) ->
+    alloca $ \(len_p :: Ptr CSize) ->
+      alloca $ \(src_map_p :: Ptr (Ptr CChar)) -> do
+        c_BinaryenModuleAllocateAndWriteMut m nullPtr buf_p len_p src_map_p
+        buf <- peek buf_p
+        len <- peek len_p
+        BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)

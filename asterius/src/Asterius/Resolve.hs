@@ -10,10 +10,7 @@ module Asterius.Resolve
   ( resolveLocalRegs
   , unresolvedGlobalRegType
   , resolveGlobalRegs
-  , collectAsteriusEntitySymbols
   , LinkReport(..)
-  , mergeSymbols
-  , resolveAsteriusModule
   , linkStart
   , renderDot
   , writeDot
@@ -33,6 +30,7 @@ import Data.String
 import qualified Data.Vector as V
 import Foreign
 import GHC.Exts (fromList, proxy#)
+import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 import System.IO hiding (IO)
 import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
@@ -143,6 +141,7 @@ collectAsteriusEntitySymbols = collect proxy#
 data LinkReport = LinkReport
   { childSymbols :: HashMap AsteriusEntitySymbol (HashSet AsteriusEntitySymbol)
   , unfoundSymbols, unavailableSymbols :: HashSet AsteriusEntitySymbol
+  , functionSymbolMap :: HashMap AsteriusEntitySymbol Int64
   } deriving (Show)
 
 instance Semigroup LinkReport where
@@ -151,6 +150,7 @@ instance Semigroup LinkReport where
       { childSymbols = hashMapUnionWith (<>) (childSymbols r0) (childSymbols r1)
       , unfoundSymbols = unfoundSymbols r0 <> unfoundSymbols r1
       , unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
+      , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
       }
 
 instance Monoid LinkReport where
@@ -159,6 +159,7 @@ instance Monoid LinkReport where
       { childSymbols = mempty
       , unfoundSymbols = mempty
       , unavailableSymbols = mempty
+      , functionSymbolMap = mempty
       }
 
 mergeSymbols ::
@@ -232,11 +233,6 @@ makeFunctionTable AsteriusModule {..} =
   where
     func_syms = hashMapKeys functionMap
 
-roundBy :: Integral a => a -> a -> a
-roundBy y x
-  | x `mod` y == 0 = x
-  | otherwise = ((x `div` y) + 1) * y
-
 makeStaticsOffsetTable ::
      AsteriusModule -> (Int64, HashMap AsteriusEntitySymbol Int64)
 makeStaticsOffsetTable AsteriusModule {..} = (last_o, fromList statics_map)
@@ -244,15 +240,18 @@ makeStaticsOffsetTable AsteriusModule {..} = (last_o, fromList statics_map)
     (last_o, statics_map) = layoutStatics $ hashMapToList staticsMap
     layoutStatics = foldl' iterLayoutStaticsState (8, [])
     iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
-      ( roundBy 8 $ ptr + fromIntegral (asteriusStaticsSize ss)
+      ( fromIntegral $
+        8 * roundup_bytes_to_words (fromIntegral ptr + asteriusStaticsSize ss)
       , (ss_sym, ptr) : sym_map)
 
 makeMemory ::
      AsteriusModule -> Int64 -> HashMap AsteriusEntitySymbol Int64 -> Memory
 makeMemory AsteriusModule {..} last_o sym_map =
   Memory
-    { initialPages = page_num
-    , maximumPages = page_num
+    { initialPages =
+        fromIntegral $
+        roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
+    , maximumPages = 65535
     , exportName = ""
     , dataSegments = V.fromList $ concatMap data_segs $ hashMapToList staticsMap
     }
@@ -272,7 +271,6 @@ makeMemory AsteriusModule {..} last_o sym_map =
                  "Encountered unresolved content " <> show s <> " in makeMemory"))
         (sym_map ! ss_sym, [])
         asteriusStatics
-    page_num = fromIntegral $ roundBy 65536 last_o `div` 65536
 
 resolveEntitySymbols :: Data a => HashMap AsteriusEntitySymbol Int64 -> a -> a
 resolveEntitySymbols sym_table = f
@@ -301,26 +299,28 @@ resolveEntitySymbols sym_table = f
         go = gmapT f t
         subst = (sym_table !)
 
-resolveAsteriusModule :: AsteriusModule -> Module
+resolveAsteriusModule ::
+     AsteriusModule -> (Module, HashMap AsteriusEntitySymbol Int64)
 resolveAsteriusModule m_unresolved =
-  Module
-    { functionTypeMap = rtsAsteriusFunctionTypeMap
-    , functionMap' =
-        fromList
-          [ (entityName func_sym, func)
-          | (func_sym, func) <- hashMapToList $ functionMap m_resolved
-          ]
-    , functionImports = rtsAsteriusFunctionImports
-    , tableImports = []
-    , globalImports = []
-    , functionExports = []
-    , tableExports = []
-    , globalExports = []
-    , globalMap = rtsAsteriusGlobalMap
-    , functionTable = Just func_table
-    , memory = Just $ makeMemory m_resolved last_o ss_sym_map
-    , startFunctionName = Nothing
-    }
+  ( Module
+      { functionTypeMap = rtsAsteriusFunctionTypeMap
+      , functionMap' =
+          fromList
+            [ (entityName func_sym, func)
+            | (func_sym, func) <- hashMapToList $ functionMap m_resolved
+            ]
+      , functionImports = rtsAsteriusFunctionImports
+      , tableImports = []
+      , globalImports = []
+      , functionExports = rtsAsteriusFunctionExports
+      , tableExports = []
+      , globalExports = []
+      , globalMap = resolve_syms rtsAsteriusGlobalMap
+      , functionTable = Just func_table
+      , memory = Just $ makeMemory m_resolved last_o ss_sym_map
+      , startFunctionName = Nothing
+      }
+  , func_sym_map)
   where
     (func_table, func_sym_map) = makeFunctionTable m_unresolved
     (last_o, ss_sym_map) = makeStaticsOffsetTable m_unresolved
@@ -330,9 +330,15 @@ resolveAsteriusModule m_unresolved =
 
 linkStart ::
      AsteriusStore -> HashSet AsteriusEntitySymbol -> (Maybe Module, LinkReport)
-linkStart store syms = (resolveAsteriusModule <$> maybe_merged_m, report)
+linkStart store syms =
+  (maybe_result_m, report {functionSymbolMap = func_sym_map})
   where
     (maybe_merged_m, report) = mergeSymbols store syms
+    (maybe_result_m, func_sym_map) =
+      case maybe_merged_m of
+        Just merged_m -> (Just result_m, func_sym_map')
+          where (result_m, func_sym_map') = resolveAsteriusModule merged_m
+        _ -> (Nothing, mempty)
 
 renderDot :: LinkReport -> Builder
 renderDot LinkReport {..} =

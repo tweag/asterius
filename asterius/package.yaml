@@ -12,6 +12,8 @@ extra-source-files:
   - LICENSE
   - README.md
   - test/fact-dump/Fact.hs
+  - test/fact-dump/loader.js
+  - test/fact-dump/package.json
 
 data-files:
   - boot.sh
@@ -42,6 +44,7 @@ dependencies:
   - mtl
   - pretty-show
   - primitive
+  - process
   - template-haskell
   - unliftio
   - unordered-containers
