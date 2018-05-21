@@ -1,20 +1,19 @@
 version: 0.0.1.{build}
 
-shallow_clone: true
+clone_depth: 1
 
 environment:
   MAKEFLAGS: -j4
 
 build_script:
   - git submodule update --init --recursive
-  - choco install haskell-stack
+  - choco install haskell-stack nodejs
   - stack --no-terminal --skip-msys setup > NUL
   - mklink /D %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025 C:\\msys64
   - copy %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\ghc-8.5.*.installed %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025.installed
   - stack --no-terminal exec pacman -- -S autoconf coreutils make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc --needed --noconfirm --noprogressbar
-  - stack --no-terminal build --haddock --test --no-run-tests
+  - stack --no-terminal build --test --no-run-tests
   - stack --no-terminal exec ahc-boot
-  - stack --no-terminal test asterius:ahc-boot-builtins
   - stack --no-terminal test asterius:fact-dump
 
 test: off
