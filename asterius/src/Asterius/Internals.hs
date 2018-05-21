@@ -16,12 +16,11 @@ module Asterius.Internals
   , decodeFile
   ) where
 
-import Asterius.Containers
-import Control.Exception
 import Control.Monad.ST.Strict
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short.Internal as SBS
 import Data.Data (Data, gmapQr)
+import qualified Data.HashSet as HS
 import Data.Hashable
 import Data.Primitive (Prim)
 import qualified Data.Primitive as P
@@ -84,7 +83,8 @@ reinterpretCast a =
         writeByteArray mba 0 a
         readByteArray mba 0)
 
-collect :: (Data a, Typeable k, Eq k, Hashable k) => Proxy# k -> a -> HashSet k
+collect ::
+     (Data a, Typeable k, Eq k, Hashable k) => Proxy# k -> a -> HS.HashSet k
 collect p t =
   case eqTypeRep (typeOf t) (f p) of
     Just HRefl -> [t]

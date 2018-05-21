@@ -7,9 +7,9 @@ module Asterius.Store
   ) where
 
 import Asterius.Builtins
-import Asterius.Containers
 import Asterius.Resolve
 import Asterius.Types
+import qualified Data.HashMap.Strict as HM
 
 {-# INLINEABLE builtinsStore #-}
 builtinsStore :: BuiltinsOptions -> AsteriusStore
@@ -25,14 +25,14 @@ addModule ::
 addModule mod_sym m@AsteriusModule {..} AsteriusStore {..} =
   AsteriusStore
     { symbolMap =
-        hashMapUnions
+        HM.unions
           [ f staticsMap
           , f staticsErrorMap
           , f functionMap
           , f functionErrorMap
           , symbolMap
           ]
-    , moduleMap = hashMapInsert mod_sym m moduleMap
+    , moduleMap = HM.insert mod_sym m moduleMap
     }
   where
     f = fmap (const mod_sym)

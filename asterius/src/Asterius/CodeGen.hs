@@ -17,7 +17,6 @@ module Asterius.CodeGen
   , marshalCmmIR
   ) where
 
-import Asterius.Containers
 import Asterius.Internals
 import Asterius.Resolve
 import Asterius.Types
@@ -28,6 +27,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
+import qualified Data.HashMap.Strict as HM
 import Data.String
 import Data.Traversable
 import qualified Data.Vector as V
@@ -846,7 +846,7 @@ marshalCmmBlockBranch instr =
         , V.fromList $
           [ AddBranchForSwitch
             {to = dest, indexes = V.fromList tags, code = Null}
-          | (dest, tags) <- hashMapToList $ hashMapFromListWith (<>) brs
+          | (dest, tags) <- HM.toList $ HM.fromListWith (<>) brs
           , dest /= dest_def
           ] <>
           [AddBranch {to = dest_def, condition = Null, code = Null}]

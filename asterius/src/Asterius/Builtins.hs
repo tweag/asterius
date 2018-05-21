@@ -16,11 +16,10 @@ module Asterius.Builtins
   ) where
 
 import Asterius.BuildInfo
-import Asterius.Containers
 import Asterius.Internals
 import Asterius.Types
-import Control.Monad.IO.Class
 import qualified Data.ByteString.Short as SBS
+import qualified Data.HashMap.Strict as HM
 import Data.Maybe
 import qualified Data.Vector as V
 import Foreign
@@ -29,7 +28,6 @@ import GHC.Exts
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
-import System.Environment
 
 wasmPageSize :: Int
 wasmPageSize = 65536
@@ -38,7 +36,6 @@ data BuiltinsOptions = BuiltinsOptions
   { dflags :: GHC.DynFlags
   , nurseryGroups, threadStateSize :: Int
   , mainClosure :: AsteriusEntitySymbol
-  , debugMode :: Bool
   }
 
 getDefaultBuiltinsOptions :: IO BuiltinsOptions
@@ -47,14 +44,12 @@ getDefaultBuiltinsOptions =
   GHC.runGhc (Just ghcLibDir) $ do
     _ <- GHC.getSessionDynFlags >>= GHC.setSessionDynFlags
     dflags <- GHC.getSessionDynFlags
-    is_debug <- fmap isJust $ liftIO $ lookupEnv "ASTERIUS_DEBUG"
     pure
       BuiltinsOptions
         { dflags = dflags
         , nurseryGroups = blocks_per_mblock
         , threadStateSize = 65536
         , mainClosure = "Main_main_closure"
-        , debugMode = False
         }
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
@@ -115,7 +110,7 @@ rtsAsteriusFunctionExports :: V.Vector FunctionExport
 rtsAsteriusFunctionExports =
   [FunctionExport {internalName = "main", externalName = "main"}]
 
-rtsAsteriusFunctionTypeMap :: HashMap SBS.ShortByteString FunctionType
+rtsAsteriusFunctionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
 rtsAsteriusFunctionTypeMap =
   [ ("I64()", FunctionType {returnType = I64, paramTypes = []})
   , ("I64(I64,I64)", FunctionType {returnType = I64, paramTypes = [I64, I64]})
@@ -132,7 +127,7 @@ rtsAsteriusFunctionTypeMap =
     , FunctionType {returnType = None, paramTypes = [I64, I64, I64]})
   ]
 
-rtsAsteriusGlobalMap :: HashMap SBS.ShortByteString Global
+rtsAsteriusGlobalMap :: HM.HashMap SBS.ShortByteString Global
 rtsAsteriusGlobalMap =
   fromList $
   [(rn "R" i, w) | i <- [1 .. 10]] <> [(rn "F" i, f) | i <- [1 .. 6]] <>
@@ -865,14 +860,6 @@ stgRunFunction BuiltinsOptions {..} =
                       Block
                         { name = ""
                         , bodys =
-                            V.fromList $
-                            [ Call
-                              { target = "print_int"
-                              , operands = [f]
-                              , valueType = None
-                              }
-                            | debugMode
-                            ] <>
                             [ If
                                 { condition =
                                     Unary {unaryOp = EqZInt64, operand0 = f}

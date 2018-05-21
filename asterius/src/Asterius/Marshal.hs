@@ -8,7 +8,6 @@ module Asterius.Marshal
   , serializeModule
   ) where
 
-import Asterius.Containers
 import Asterius.Internals
 import Asterius.Types
 import Bindings.Binaryen.Raw
@@ -17,6 +16,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
+import qualified Data.HashMap.Strict as HM
 import Data.Traversable
 import qualified Data.Vector as V
 import Foreign
@@ -400,11 +400,11 @@ marshalGlobal m k Global {..} = do
 
 marshalFunctionTable ::
      BinaryenModuleRef
-  -> HashMap SBS.ShortByteString BinaryenFunctionRef
+  -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
   -> FunctionTable
   -> IO ()
 marshalFunctionTable m fps FunctionTable {..} =
-  withSV (V.convert $ V.map (fps !) functionNames) $
+  withSV (V.convert $ V.map (fps HM.!) functionNames) $
   c_BinaryenSetFunctionTable m
 
 marshalMemory :: BinaryenModuleRef -> Memory -> IO ()
@@ -434,32 +434,32 @@ marshalMemory m Memory {..} = do
 
 marshalStartFunctionName ::
      BinaryenModuleRef
-  -> HashMap SBS.ShortByteString BinaryenFunctionRef
+  -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
   -> SBS.ShortByteString
   -> IO ()
-marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps ! n)
+marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps HM.! n)
 
 marshalModule :: Module -> IO BinaryenModuleRef
 marshalModule Module {..} = do
   m <- c_BinaryenModuleCreate
   ftps <-
     fmap fromList $
-    for (hashMapToList functionTypeMap) $ \(k, ft) -> do
+    for (HM.toList functionTypeMap) $ \(k, ft) -> do
       ftp <- marshalFunctionType m k ft
       pure (k, ftp)
   fps <-
     fmap fromList $
-    for (hashMapToList functionMap') $ \(k, f@Function {..}) -> do
-      fp <- marshalFunction m k (ftps ! functionTypeName) f
+    for (HM.toList functionMap') $ \(k, f@Function {..}) -> do
+      fp <- marshalFunction m k (ftps HM.! functionTypeName) f
       pure (k, fp)
   V.forM_ functionImports $ \fi@FunctionImport {..} ->
-    marshalFunctionImport m (ftps ! functionTypeName) fi
+    marshalFunctionImport m (ftps HM.! functionTypeName) fi
   V.forM_ tableImports $ marshalTableImport m
   V.forM_ globalImports $ marshalGlobalImport m
   V.forM_ functionExports $ marshalFunctionExport m
   V.forM_ tableExports $ marshalTableExport m
   V.forM_ globalExports $ marshalGlobalExport m
-  for_ (hashMapToList globalMap) $ uncurry (marshalGlobal m)
+  for_ (HM.toList globalMap) $ uncurry (marshalGlobal m)
   case functionTable of
     Just ft -> marshalFunctionTable m fps ft
     _ -> pure ()
@@ -485,7 +485,7 @@ relooperAddBlock m r ab =
 
 relooperAddBranch ::
      BinaryenModuleRef
-  -> HashMap SBS.ShortByteString RelooperBlockRef
+  -> HM.HashMap SBS.ShortByteString RelooperBlockRef
   -> SBS.ShortByteString
   -> RelooperAddBranch
   -> IO ()
@@ -494,23 +494,23 @@ relooperAddBranch m bm k ab =
     AddBranch {..} -> do
       _cond <- marshalExpression m condition
       _code <- marshalExpression m code
-      c_RelooperAddBranch (bm ! k) (bm ! to) _cond _code
+      c_RelooperAddBranch (bm HM.! k) (bm HM.! to) _cond _code
     AddBranchForSwitch {..} -> do
       c <- marshalExpression m code
       withSV (V.convert indexes) $ \idp idn ->
-        c_RelooperAddBranchForSwitch (bm ! k) (bm ! to) idp idn c
+        c_RelooperAddBranchForSwitch (bm HM.! k) (bm HM.! to) idp idn c
 
 relooperRun :: BinaryenModuleRef -> RelooperRun -> IO BinaryenExpressionRef
 relooperRun m RelooperRun {..} = do
   r <- c_RelooperCreate
   bpm <-
     fmap fromList $
-    for (hashMapToList blockMap) $ \(k, RelooperBlock {..}) -> do
+    for (HM.toList blockMap) $ \(k, RelooperBlock {..}) -> do
       bp <- relooperAddBlock m r addBlock
       pure (k, bp)
-  for_ (hashMapToList blockMap) $ \(k, RelooperBlock {..}) ->
+  for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
     V.forM_ addBranches $ relooperAddBranch m bpm k
-  c_RelooperRenderAndDispose r (bpm ! entry) labelHelper m
+  c_RelooperRenderAndDispose r (bpm HM.! entry) labelHelper m
 
 serializeModule :: BinaryenModuleRef -> IO BS.ByteString
 serializeModule m =
