@@ -82,13 +82,6 @@ executables:
     dependencies:
       - asterius
 
-tests:
-  ahc-boot-builtins:
-    source-dirs: test
-    main: ahc-boot-builtins.hs
-    dependencies:
-      - asterius
-
   nir-test:
     source-dirs: test
     main: nir-test.hs

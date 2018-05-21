@@ -77,7 +77,7 @@ bootCreateProcess args@BootArgs {..} = do
 bootRTSCmm :: BootArgs -> IO ()
 bootRTSCmm BootArgs {..} = do
   is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
-  store_ref <- newIORef $ builtinsStore builtinsOptions
+  store_ref <- newIORef mempty
   rts_cmm_mods <-
     map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
     listDirectory rts_path

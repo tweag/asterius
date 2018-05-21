@@ -34,17 +34,7 @@ data Config = Config
   }
 
 defaultConfig :: Config
-defaultConfig =
-  Config
-    { ghcFlags =
-        [ "-Wall"
-        , "-O2"
-        , "-fforce-recomp"
-        , "-no-keep-hi-files"
-        , "-no-keep-o-files"
-        ]
-    , ghcLibDir = BI.ghcLibDir
-    }
+defaultConfig = Config {ghcFlags = ["-Wall", "-O2"], ghcLibDir = BI.ghcLibDir}
 
 runHaskell :: MonadIO m => Config -> [String] -> m (M.Map Module HaskellIR)
 runHaskell Config {..} targets =
@@ -52,7 +42,11 @@ runHaskell Config {..} targets =
   defaultErrorHandler defaultFatalMessager defaultFlushOut $
   runGhc (Just ghcLibDir) $ do
     dflags <- getSessionDynFlags
-    (dflags', _, _) <- parseDynamicFlags dflags $ map noLoc ghcFlags
+    (dflags', _, _) <-
+      parseDynamicFlags
+        (dflags `gopt_set` Opt_ForceRecomp `gopt_unset` Opt_KeepHiFiles `gopt_unset`
+         Opt_KeepOFiles) $
+      map noLoc ghcFlags
     (h, read_mod_map) <-
       liftIO $ do
         mod_map_ref <- newIORef M.empty
@@ -91,7 +85,10 @@ runCmm Config {..} cmm_fns =
   defaultErrorHandler defaultFatalMessager defaultFlushOut $
   runGhc (Just ghcLibDir) $ do
     dflags <- getSessionDynFlags
-    (dflags', _, _) <- parseDynamicFlags dflags $ map noLoc ghcFlags
+    (dflags', _, _) <-
+      parseDynamicFlags
+        (dflags `gopt_set` Opt_ForceRecomp `gopt_unset` Opt_KeepOFiles) $
+      map noLoc ghcFlags
     (h, read_cmm_irs) <-
       liftIO $ do
         cmm_irs_ref <- newIORef []

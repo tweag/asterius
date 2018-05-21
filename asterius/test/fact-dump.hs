@@ -3,6 +3,7 @@
 
 import Asterius.Boot
 import Asterius.BuildInfo
+import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.Marshal
@@ -28,23 +29,22 @@ main = do
   pwd <- getCurrentDirectory
   let test_path = pwd </> "test" </> "fact-dump"
   withCurrentDirectory test_path $ do
-    putStrLn "Compiling Fact.."
-    [(ms_mod, ir)] <-
-      M.toList <$>
-      runHaskell
-        defaultConfig {ghcFlags = ["-Wall", "-O2", "-fforce-recomp"]}
-        ["Fact.hs"]
+    putStrLn "Compiling fact.."
+    [(ms_mod, ir)] <- M.toList <$> runHaskell defaultConfig ["fact.hs"]
     case runCodeGen (marshalHaskellIR ir) GHC.unsafeGlobalDynFlags ms_mod of
       Left err -> throwIO err
       Right m -> do
-        putStrLn "Dumping IR of Fact.."
-        writeFile "Fact.txt" $ ppShow m
-        putStrLn "Chasing Fact_root_closure.."
+        putStrLn "Dumping IR of fact.."
+        writeFile "fact.txt" $ ppShow m
+        putStrLn "Chasing Main_main_closure.."
         store' <- decodeFile (obj_topdir </> "asterius_store")
-        let store = addModule (marshalToModuleSymbol ms_mod) m store'
+        builtins_opts <- getDefaultBuiltinsOptions
+        let store =
+              addModule (marshalToModuleSymbol ms_mod) m $
+              builtinsStore builtins_opts <> store'
             (maybe_final_m, report) = linkStart store ["main"]
-        writeDot "Fact.gv" report
-        writeFile "Fact.link-report.txt" $ ppShow report
+        writeDot "fact.gv" report
+        writeFile "fact.link-report.txt" $ ppShow report
         let Just final_m = maybe_final_m
         pPrint final_m
         hFlush stdout
@@ -53,6 +53,6 @@ main = do
         c_BinaryenModulePrint m_ref
         c_BinaryenModuleValidate m_ref >>= print
         m_bin <- serializeModule m_ref
-        BS.writeFile "Fact.wasm" m_bin
+        BS.writeFile "fact.wasm" m_bin
         c_BinaryenModuleDispose m_ref
         callProcess node ["loader.js"]
