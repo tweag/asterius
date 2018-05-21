@@ -11,9 +11,8 @@ extra-source-files:
   - CHANGELOG.md
   - LICENSE
   - README.md
-  - test/fact-dump/Fact.hs
+  - test/fact-dump/fact.hs
   - test/fact-dump/loader.js
-  - test/fact-dump/package.json
 
 data-files:
   - boot.sh

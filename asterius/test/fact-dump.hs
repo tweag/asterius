@@ -29,7 +29,11 @@ main = do
   let test_path = pwd </> "test" </> "fact-dump"
   withCurrentDirectory test_path $ do
     putStrLn "Compiling Fact.."
-    [(ms_mod, ir)] <- M.toList <$> runHaskell defaultConfig ["Fact.hs"]
+    [(ms_mod, ir)] <-
+      M.toList <$>
+      runHaskell
+        defaultConfig {ghcFlags = ["-Wall", "-O2", "-fforce-recomp"]}
+        ["Fact.hs"]
     case runCodeGen (marshalHaskellIR ir) GHC.unsafeGlobalDynFlags ms_mod of
       Left err -> throwIO err
       Right m -> do
@@ -38,7 +42,7 @@ main = do
         putStrLn "Chasing Fact_root_closure.."
         store' <- decodeFile (obj_topdir </> "asterius_store")
         let store = addModule (marshalToModuleSymbol ms_mod) m store'
-            (maybe_final_m, report) = linkStart store ["main", "MainCapability"]
+            (maybe_final_m, report) = linkStart store ["main"]
         writeDot "Fact.gv" report
         writeFile "Fact.link-report.txt" $ ppShow report
         let Just final_m = maybe_final_m

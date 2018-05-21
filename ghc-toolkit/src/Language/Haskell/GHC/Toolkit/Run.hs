@@ -66,7 +66,9 @@ runHaskell Config {..} targets =
                     (M.insert ms_mod ir mod_map, ())
             }
         pure (h, liftIO $ readIORef mod_map_ref)
-    void $ setSessionDynFlags dflags' {ghcMode = CompManager, hooks = h}
+    void $
+      setSessionDynFlags
+        dflags' {ghcMode = CompManager, ghcLink = NoLink, hooks = h}
     traverse (`guessTarget` Nothing) targets >>= setTargets
     ok_flag <- load LoadAllTargets
     case ok_flag of

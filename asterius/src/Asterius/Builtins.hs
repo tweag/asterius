@@ -53,7 +53,7 @@ getDefaultBuiltinsOptions =
         { dflags = dflags
         , nurseryGroups = blocks_per_mblock
         , threadStateSize = 65536
-        , mainClosure = "Fact_root_closure"
+        , mainClosure = "Main_main_closure"
         , debugMode = False
         }
 
