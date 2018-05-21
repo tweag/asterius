@@ -45,6 +45,7 @@ module Asterius.Types
   ) where
 
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
+import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.Data
 import Asterius.Containers
@@ -52,9 +53,8 @@ import Data.Hashable
 import Data.Serialize
 import Data.String
 import qualified Data.Vector as V
+import Foreign
 import GHC.Generics
-import UnliftIO
-import UnliftIO.Foreign
 
 data AsteriusCodeGenError
   = UnsupportedCmmLit SBS.ShortByteString

@@ -15,8 +15,10 @@ import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.Store
+import Control.Exception
 import Control.Monad
 import Data.Foldable
+import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified GhcPlugins as GHC
@@ -24,13 +26,12 @@ import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath)
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Run
 import Prelude hiding (IO)
+import System.Directory
+import System.Environment
 import System.Exit
 import System.FilePath
+import System.Process
 import Text.Show.Pretty (ppShow)
-import UnliftIO
-import UnliftIO.Directory
-import UnliftIO.Environment
-import UnliftIO.Process
 
 data BootArgs = BootArgs
   { bootDir :: FilePath
@@ -109,5 +110,5 @@ boot args = do
   withCreateProcess cp' $ \_ _ _ ph -> do
     ec <- waitForProcess ph
     case ec of
-      ExitFailure _ -> throwString "boot failure"
+      ExitFailure _ -> fail "boot failure"
       _ -> pure ()

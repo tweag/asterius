@@ -17,6 +17,7 @@ module Asterius.Internals
   ) where
 
 import Asterius.Containers
+import Control.Exception
 import Control.Monad.ST.Strict
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short.Internal as SBS
@@ -34,7 +35,6 @@ import GHC.Stack
 import qualified GHC.Types
 import Prelude hiding (IO)
 import Type.Reflection
-import UnliftIO.Exception
 
 type IO a
    = HasCallStack =>
@@ -104,5 +104,5 @@ decodeFile :: Serialize a => FilePath -> IO a
 decodeFile p = do
   r <- decode <$> BS.readFile p
   case r of
-    Left err -> throwString err
+    Left err -> fail err
     Right a -> pure a

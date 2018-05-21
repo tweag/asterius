@@ -45,8 +45,6 @@ dependencies:
   - pretty-show
   - primitive
   - process
-  - template-haskell
-  - unliftio
   - unordered-containers
   - vector
 
