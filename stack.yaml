@@ -23,9 +23,14 @@ packages:
   - genapply
   - ghc-toolkit
   - binaryen
+ghc-build: standard
 setup-info:
   ghc:
     windows64:
       8.5.20180413:
         url: https://felis.sapiens.moe/ghc-8.5.20180413-x86_64-unknown-mingw32.tar.xz
         sha256: b4e511f04e75bed048dd5eeffa05e642284fa22d8c49d7306029c2951b4d135f
+    linux64:
+      8.5.20180413:
+        url: https://felis.sapiens.moe/ghc-8.5.20180413-x86_64-unknown-linux.tar.xz
+        sha256: 2cb3175b403b79a91c882ab8d506c79c49360418ad39d943b98f2a93aa3e300e

@@ -2,85 +2,52 @@ version: 2
 
 jobs:
   asterius:
-    resource_class: xlarge # otherwise compiling GHC may take a while
+    resource_class: xlarge
     docker:
-      - image: ghcci/x86_64-linux:0.0.1
+      - image: ubuntu:bionic
     environment:
-      JOBS: 9
+      DEBIAN_FRONTEND: noninteractive
+      MAKEFLAGS: -j9
     steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt update
+            apt install -y \
+              apt-transport-https \
+              curl \
+              software-properties-common
+            curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+            add-apt-repository -y "deb https://deb.nodesource.com/node_10.x bionic main"
+            apt update
+            apt dist-upgrade -y
+            apt install -y \
+              autoconf \
+              cmake \
+              g++ \
+              git \
+              libedit-dev \
+              libffi-dev \
+              libgmp-dev \
+              make \
+              mkdocs \
+              nodejs \
+              xz-utils \
+              zlib1g-dev
+            mkdir -p ~/.local/bin
+            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
       - checkout
-      # CircleCI does not checkout submodules, so we must do it ourselves.
-      - run: git submodule sync
       - run: git submodule update --init --recursive
       - run:
-          name: Install some packages
+          name: Test Asterius & generate docs
           command: |
-            sudo apt-get update -qq
-            sudo apt-get install -qy python-sphinx cmake nodejs-legacy python3 python3-pip
-            sudo pip3 install mkdocs
-            which mkdocs
-      - run:
-          name: Write commit hash to a file
-          command: |
-            cd ghc
-            git rev-parse HEAD > git-rev-sha1
-      - restore_cache:
-          keys:
-            - ghc-build-cache-{{ checksum "ghc/git-rev-sha1" }}-
-      - run:
-          name: Compile GHC
-          command: |
-            if ! [ -f ghc/ghc-compiled ]
-            then
-              cp -v .circleci/build.mk ghc/mk/build.mk
-              cd ghc
-              ./boot
-              ./configure
-              make -j$JOBS
-              touch ghc-compiled
-            fi
-      - save_cache:
-          key: ghc-build-cache-{{ checksum "ghc/git-rev-sha1" }}-{{ .BuildNum }}
-          paths: "ghc"
-      - run:
-          name: Install GHC
-          command: |
-            cd ghc
-            sudo make install
-      - run:
-          name: Drop boot GHC
-          command: |
-            sudo rm -rfv /opt/ghc/
-      - run:
-          name: Check that we have the right GHC version installed
-          command: |
-            ghc --version
-      - restore_cache:
-          keys:
-            - stack-home-ghc-8.5
-      - restore_cache:
-          keys:
-            - stack-work-ghc-8.5
-      - run:
-          name: Test Asterius
-          command: |
-            stack --no-terminal --system-ghc build --haddock --test --no-run-tests
-            stack --no-terminal --system-ghc exec ahc-boot
-            stack --no-terminal --system-ghc test asterius:ahc-boot-builtins
-            stack --no-terminal --system-ghc test asterius:fact-dump
-      - save_cache:
-          key: stack-home-ghc-8.5
-          paths: "~/.stack"
-      - save_cache:
-          key: stack-work-ghc-8.5
-          paths: ".stack-work"
-      - run:
-          name: Test generation of documentation
-          command: |
-            export PREV_DIR=`pwd`
+            export PATH=$PATH:~/.local/bin
+            stack --no-terminal build --haddock --test --no-run-tests
+            stack --no-terminal exec ahc-boot
+            stack --no-terminal test asterius:fact-dump
             mkdocs build
             cp -r site /tmp/
-            cp -r `stack --no-terminal --system-ghc path --local-doc-root` /tmp/site/haddock
+            cp -r `stack --no-terminal path --local-doc-root` /tmp/site/haddock
       - persist_to_workspace:
           root: /tmp
           paths:
