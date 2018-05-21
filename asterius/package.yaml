@@ -12,7 +12,6 @@ extra-source-files:
   - LICENSE
   - README.md
   - test/fact-dump/fact.hs
-  - test/fact-dump/loader.js
 
 data-files:
   - boot.sh
@@ -41,6 +40,7 @@ dependencies:
   - ghc-toolkit
   - hashable
   - mtl
+  - optparse-applicative
   - pretty-show
   - primitive
   - process
@@ -82,6 +82,13 @@ executables:
     dependencies:
       - asterius
 
+  ahc-link:
+    source-dirs: app
+    main: ahc-link.hs
+    dependencies:
+      - asterius
+
+tests:
   nir-test:
     source-dirs: test
     main: nir-test.hs

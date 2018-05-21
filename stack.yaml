@@ -4,12 +4,18 @@ flags:
   hashable:
     integer-gmp: false
 extra-deps:
+  - ansi-terminal-0.8.0.2
+  - ansi-wl-pprint-0.6.8.2
+  - base-compat-0.10.1
   - cereal-0.5.5.0
+  - colour-2.3.4
   - happy-1.19.9
   - hashable-1.2.7.0
   - haskell-lexer-1.0.1
+  - optparse-applicative-0.14.2.0
   - pretty-show-1.7
   - primitive-0.6.3.0
+  - transformers-compat-0.6.1.6
   - unordered-containers-0.2.9.0
   - vector-0.12.0.1
 packages:
