@@ -32,22 +32,23 @@ import Text.Show.Pretty
 data Task = Task
   { input, outputWasm, outputNode :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
-  , outputIR, run :: Bool
+  , debug, outputIR, run :: Bool
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\(i, m_wasm, m_node, m_report, m_gv, ir, r) ->
+  (\(i, m_wasm, m_node, m_report, m_gv, dbg, ir, r) ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
        , outputNode = fromMaybe (i -<.> "js") m_node
        , outputLinkReport = m_report
        , outputGraphViz = m_gv
+       , debug = dbg
        , outputIR = ir
        , run = r
        }) <$>
-  ((,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
+  ((,,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
    optional
      (strOption
         (long "output-wasm" <>
@@ -63,6 +64,7 @@ parseTask =
      (strOption
         (long "output-graphviz" <>
          help "Output path of GraphViz file of symbol dependencies")) <*>
+   switch (long "debug" <> help "Enable debug mode in the runtime") <*>
    switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>
    switch (long "run" <> help "Run the compiled module with Node.js"))
 
@@ -79,7 +81,7 @@ genNode m_bin =
   mconcat
     [ "WebAssembly.instantiate(new Uint8Array("
     , string7 $ show $ BS.unpack m_bin
-    , "), {rts: {print: console.log, panic: console.error}}).then(i => i.instance.exports.main());\n"
+    , "), {rts: {print: console.log, panic: console.error, traceCmm: (f => console.log(\"Calling \" + f))}}).then(i => i.instance.exports.main());\n"
     ]
 
 main :: IO ()
@@ -91,8 +93,9 @@ main = do
   putStrLn $ "Loading boot library store from " <> show store_path
   boot_store <- decodeFile store_path
   putStrLn "Populating the store with builtin routines"
-  builtins_opts <- getDefaultBuiltinsOptions
-  let !orig_store = builtinsStore builtins_opts <> boot_store
+  def_builtins_opts <- getDefaultBuiltinsOptions
+  let builtins_opts = def_builtins_opts {tracing = debug}
+      !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "Compiling " <> input <> " to Cmm"
   mod_ir_map <- runHaskell defaultConfig [input]
   putStrLn "Marshalling from Cmm to WebAssembly"
@@ -136,7 +139,8 @@ main = do
        putStrLn "Invoking binaryen to marshal the WebAssembly module"
        m_ref <- marshalModule final_m
        putStrLn "Validating the WebAssembly module"
-       c_BinaryenModuleValidate m_ref >>= print
+       pass_validation <- c_BinaryenModuleValidate m_ref
+       when (pass_validation /= 1) $ fail "Validation failed"
        putStrLn "Serializing the WebAssembly module to the binary form"
        m_bin <- serializeModule m_ref
        putStrLn $ "Writing WebAssembly binary to " <> show outputWasm

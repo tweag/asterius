@@ -42,6 +42,7 @@ wasmPageSize = 65536
 data BuiltinsOptions = BuiltinsOptions
   { dflags :: GHC.DynFlags
   , nurseryGroups, threadStateSize :: Int
+  , tracing :: Bool
   }
 
 getDefaultBuiltinsOptions :: IO BuiltinsOptions
@@ -55,6 +56,7 @@ getDefaultBuiltinsOptions =
         { dflags = dflags
         , nurseryGroups = blocks_per_mblock
         , threadStateSize = 65536
+        , tracing = False
         }
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
@@ -113,6 +115,12 @@ rtsAsteriusFunctionImports =
       { internalName = "errorI32"
       , externalModuleName = "rts"
       , externalBaseName = "panic"
+      , functionTypeName = "None(I32)"
+      }
+  , FunctionImport
+      { internalName = "traceCmmCall"
+      , externalModuleName = "rts"
+      , externalBaseName = "traceCmm"
       , functionTypeName = "None(I32)"
       }
   ]
@@ -898,6 +906,14 @@ stgRunFunction BuiltinsOptions {..} =
                       Block
                         { name = ""
                         , bodys =
+                            V.fromList $
+                            [ CallImport
+                              { target' = "traceCmmCall"
+                              , operands = [wrapI64 f]
+                              , valueType = None
+                              }
+                            | tracing
+                            ] <>
                             [ If
                                 { condition =
                                     Unary {unaryOp = EqZInt64, operand0 = f}
