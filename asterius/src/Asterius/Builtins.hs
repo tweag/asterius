@@ -122,7 +122,7 @@ rtsAsteriusFunctionImports =
       , functionTypeName = "None(I32)"
       }
   , FunctionImport
-      { internalName = "traceCmmCall"
+      { internalName = "traceCmm"
       , externalModuleName = "rts"
       , externalBaseName = "traceCmm"
       , functionTypeName = "None(I32)"
@@ -174,7 +174,7 @@ rtsAsteriusGlobalMap =
   [ ( "BaseReg"
     , Global
         { valueType = I64
-        , mutable = True
+        , mutable = False
         , initValue =
             UnresolvedOff
               { unresolvedSymbol = "MainCapability"
@@ -288,31 +288,6 @@ initRtsAsteriusFunction BuiltinsOptions {..} =
                   }
               , setFieldWord baseReg offset_StgRegTable_rCurrentNursery bd
               , setFieldWord baseReg offset_StgRegTable_rCurrentAlloc bd
-              , setFieldWord32 mainCap offset_Capability_no (ConstI32 0)
-              , setFieldWord
-                  mainCap
-                  offset_Capability_total_allocated
-                  (ConstI64 0)
-              , setFieldWord
-                  mainCap
-                  (offset_Capability_f + offset_StgFunTable_stgGCEnter1)
-                  Unresolved {unresolvedSymbol = "__stg_gc_enter_1"}
-              , setFieldWord
-                  mainCap
-                  (offset_Capability_f + offset_StgFunTable_stgGCFun)
-                  Unresolved {unresolvedSymbol = "__stg_gc_fun"}
-              , setFieldWord
-                  mainCap
-                  offset_Capability_weak_ptr_list_hd
-                  (ConstI64 0)
-              , setFieldWord
-                  mainCap
-                  offset_Capability_weak_ptr_list_tl
-                  (ConstI64 0)
-              , setFieldWord32
-                  mainCap
-                  offset_Capability_context_switch
-                  (ConstI32 0)
               , SetLocal
                   { index = 1
                   , value =
@@ -497,33 +472,8 @@ createThreadFunction _ =
                         }
                   }
               , setFieldWord stack_p offset_StgStack_sp sp
-              , setFieldWord
-                  tso_p
-                  0
-                  Unresolved {unresolvedSymbol = "stg_TSO_info"}
-              , setFieldWord16 tso_p offset_StgTSO_what_next $
-                constInt32 next_ThreadRunGHC
-              , setFieldWord16 tso_p offset_StgTSO_why_blocked $
-                constInt32 blocked_NotBlocked
-              , setFieldWord
-                  tso_p
-                  (offset_StgTSO_block_info + offset_StgTSOBlockInfo_closure)
-                  endTSOQueue
-              , setFieldWord tso_p offset_StgTSO_blocked_exceptions endTSOQueue
-              , setFieldWord tso_p offset_StgTSO_bq endTSOQueue
-              , setFieldWord32 tso_p offset_StgTSO_flags $ ConstI32 0
-              , setFieldWord tso_p offset_StgTSO__link endTSOQueue
-              , setFieldWord32 tso_p offset_StgTSO_saved_errno $ ConstI32 0
-              , setFieldWord tso_p offset_StgTSO_bound $ ConstI64 0
               , setFieldWord tso_p offset_StgTSO_cap cap
               , setFieldWord tso_p offset_StgTSO_stackobj stack_p
-              , setFieldWord32 tso_p offset_StgTSO_tot_stack_size $
-                wrapI64 stack_size_w
-              , setFieldWord tso_p offset_StgTSO_alloc_limit $ ConstI64 0
-              , setFieldWord
-                  tso_p
-                  offset_StgTSO_trec
-                  Unresolved {unresolvedSymbol = "stg_NO_TREC_closure"}
               , setFieldWord
                   sp
                   0
@@ -774,9 +724,7 @@ allocGroupFunction _ =
                                 , operand0 = mblocks_n
                                 , operand1 = ConstI64 1
                                 }
-                          , operand1 =
-                              ConstI64 $
-                              fromIntegral $ mblock_size `div` block_size
+                          , operand1 = constInt $ mblock_size `div` block_size
                           }
                     }
               , fieldOff mblocks_p offset_first_bdescr
@@ -902,9 +850,6 @@ stgRunFunction BuiltinsOptions {..} =
           , bodys =
               V.fromList $
               [ UnresolvedSetGlobal
-                  {unresolvedGlobalReg = BaseReg, value = baseReg}
-              ] <>
-              [ UnresolvedSetGlobal
                 {unresolvedGlobalReg = gr, value = getFieldWord baseReg o}
               | (gr, o) <- volatile_global_regs
               ] <>
@@ -920,7 +865,7 @@ stgRunFunction BuiltinsOptions {..} =
                               , bodys =
                                   V.fromList $
                                   [ CallImport
-                                    { target' = "traceCmmCall"
+                                    { target' = "traceCmm"
                                     , operands = [wrapI64 f]
                                     , valueType = None
                                     }
@@ -959,12 +904,6 @@ stgRunFunction BuiltinsOptions {..} =
                         }
                   }
               ] <>
-              [ setFieldWord
-                baseReg
-                o
-                UnresolvedGetGlobal {unresolvedGlobalReg = gr}
-              | (gr, o) <- volatile_global_regs
-              ] <>
               [UnresolvedGetGlobal {unresolvedGlobalReg = VanillaReg 1}]
           , valueType = I64
           }
@@ -973,9 +912,7 @@ stgRunFunction BuiltinsOptions {..} =
     loop_lbl = "StgRun_loop"
     f = getLocalWord 0
     volatile_global_regs =
-      [ (Sp, offset_StgRegTable_rSp)
-      , (SpLim, offset_StgRegTable_rSpLim)
-      , (CurrentTSO, offset_StgRegTable_rCurrentTSO)
+      [ (CurrentTSO, offset_StgRegTable_rCurrentTSO)
       , (CurrentNursery, offset_StgRegTable_rCurrentNursery)
       ]
 
@@ -1037,13 +974,6 @@ storeWord32 :: Expression -> Expression -> Expression
 storeWord32 p w =
   Store {bytes = 4, offset = 0, align = 0, ptr = p, value = w, valueType = I32}
 
-setFieldWord16 :: Expression -> Int -> Expression -> Expression
-setFieldWord16 p o = storeWord16 (wrapI64 $ fieldOff p o)
-
-storeWord16 :: Expression -> Expression -> Expression
-storeWord16 p w =
-  Store {bytes = 2, offset = 0, align = 0, ptr = p, value = w, valueType = I32}
-
 wrapI64 :: Expression -> Expression
 wrapI64 w = Unary {unaryOp = WrapInt64, operand0 = w}
 
@@ -1054,18 +984,12 @@ words2Bytes w =
 constInt :: Int -> Expression
 constInt = ConstI64 . fromIntegral
 
-constInt32 :: Int -> Expression
-constInt32 = ConstI32 . fromIntegral
-
 getLocalWord :: BinaryenIndex -> Expression
 getLocalWord i = GetLocal {index = i, valueType = I64}
 
 saveSp :: BinaryenIndex -> Expression -> Expression
 saveSp sp_i tso_p =
   SetLocal {index = sp_i, value = fieldOff tso_p offset_StgTSO_StgStack}
-
-endTSOQueue :: Expression
-endTSOQueue = Unresolved {unresolvedSymbol = "stg_END_TSO_QUEUE_closure"}
 
 mainCap :: Expression
 mainCap = Unresolved {unresolvedSymbol = "MainCapability"}
