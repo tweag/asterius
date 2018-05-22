@@ -12,7 +12,7 @@ build_script:
   - mklink /D %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025 C:\\msys64
   - copy %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\ghc-8.5.*.installed %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025.installed
   - stack --no-terminal exec pacman -- -S autoconf coreutils make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc --needed --noconfirm --noprogressbar
-  - stack --no-terminal build --test --no-run-tests
+  - stack --no-terminal build --haddock --test --no-run-tests
   - stack --no-terminal exec ahc-boot
   - stack --no-terminal test asterius:fact-dump
 

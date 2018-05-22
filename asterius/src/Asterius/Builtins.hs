@@ -12,6 +12,13 @@ module Asterius.Builtins
   , rtsAsteriusFunctionExports
   , rtsAsteriusFunctionTypeMap
   , rtsAsteriusGlobalMap
+  , marshalErrorCode
+  , errGCEnter1
+  , errGCFun
+  , errBarf
+  , errStgGC
+  , errUnreachableBlock
+  , errHeapOverflow
   , wasmPageSize
   ) where
 
@@ -102,6 +109,12 @@ rtsAsteriusFunctionImports =
       , externalBaseName = "print"
       , functionTypeName = "None(I32)"
       }
+  , FunctionImport
+      { internalName = "errorI32"
+      , externalModuleName = "rts"
+      , externalBaseName = "panic"
+      , functionTypeName = "None(I32)"
+      }
   ]
 
 rtsAsteriusFunctionExports :: V.Vector FunctionExport
@@ -159,6 +172,33 @@ rtsAsteriusGlobalMap =
     w = Global {valueType = I64, mutable = True, initValue = ConstI64 0}
     f = Global {valueType = F32, mutable = True, initValue = ConstF32 0}
     d = Global {valueType = F64, mutable = True, initValue = ConstF64 0}
+
+{-# INLINEABLE marshalErrorCode #-}
+marshalErrorCode :: Int32 -> ValueType -> Expression
+marshalErrorCode err vt =
+  Block
+    { name = ""
+    , bodys =
+        [ CallImport
+            {target' = "errorI32", operands = [ConstI32 err], valueType = None}
+        , Unreachable
+        ]
+    , valueType = vt
+    }
+
+errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow ::
+     Int32
+errGCEnter1 = 1
+
+errGCFun = 2
+
+errBarf = 3
+
+errStgGC = 4
+
+errUnreachableBlock = 5
+
+errHeapOverflow = 6
 
 mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printIntFunction ::
      BuiltinsOptions -> Function
@@ -578,7 +618,7 @@ allocateFunction _ =
                         , operand1 =
                             UnresolvedGetGlobal {unresolvedGlobalReg = HpLim}
                         }
-                  , ifTrue = Unreachable
+                  , ifTrue = marshalErrorCode errHeapOverflow None
                   , ifFalse = Null
                   }
               , SetLocal

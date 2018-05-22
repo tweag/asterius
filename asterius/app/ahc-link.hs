@@ -79,7 +79,7 @@ genNode m_bin =
   mconcat
     [ "WebAssembly.instantiate(new Uint8Array("
     , string7 $ show $ BS.unpack m_bin
-    , "), {rts: {print: console.log}}).then(i => i.instance.exports.main());"
+    , "), {rts: {print: console.log, panic: console.error}}).then(i => i.instance.exports.main());\n"
     ]
 
 main :: IO ()

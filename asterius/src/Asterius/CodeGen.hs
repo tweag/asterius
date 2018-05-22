@@ -17,6 +17,7 @@ module Asterius.CodeGen
   , marshalCmmIR
   ) where
 
+import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Resolve
 import Asterius.Types
@@ -307,8 +308,8 @@ marshalCmmReg r =
       gr_k <- marshalCmmGlobalReg gr
       pure
         ( case gr_k of
-            GCEnter1 -> Unreachable
-            GCFun -> Unreachable
+            GCEnter1 -> marshalErrorCode errGCEnter1 I64
+            GCFun -> marshalErrorCode errGCFun I64
             _ -> UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
         , unresolvedGlobalRegType gr_k)
 
@@ -694,7 +695,7 @@ marshalCmmUnsafeCall ::
 marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
   sym <- marshalCLabel clbl
   if entityName sym == "barf"
-    then pure [Unreachable]
+    then pure [marshalErrorCode errBarf None]
     else do
       xes <-
         for xs $ \x -> do
@@ -861,7 +862,7 @@ marshalCmmBlockBranch instr =
                     Unresolved {..}
                       | "stg_gc" `CBS.isPrefixOf`
                           SBS.fromShort (entityName unresolvedSymbol) ->
-                        Unreachable
+                        marshalErrorCode errStgGC I64
                     _ -> t
               }
           ]
@@ -930,7 +931,13 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                           fromList $
                           [ ( "_asterius_unreachable"
                             , RelooperBlock
-                                { addBlock = AddBlock {code = Unreachable}
+                                { addBlock =
+                                    AddBlock
+                                      { code =
+                                          marshalErrorCode
+                                            errUnreachableBlock
+                                            None
+                                      }
                                 , addBranches = []
                                 })
                           | or need_unreachable_block_list
