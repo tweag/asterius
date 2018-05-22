@@ -903,62 +903,51 @@ stgRunFunction BuiltinsOptions {..} =
               [ Loop
                   { name = loop_lbl
                   , body =
-                      Block
-                        { name = ""
-                        , bodys =
-                            V.fromList $
-                            [ CallImport
-                              { target' = "traceCmmCall"
-                              , operands = [wrapI64 f]
+                      If
+                        { condition = Unary {unaryOp = EqZInt64, operand0 = f}
+                        , ifTrue = Nop
+                        , ifFalse =
+                            Block
+                              { name = ""
+                              , bodys =
+                                  V.fromList $
+                                  [ CallImport
+                                    { target' = "traceCmmCall"
+                                    , operands = [wrapI64 f]
+                                    , valueType = None
+                                    }
+                                  | tracing
+                                  ] <>
+                                  [ SetLocal
+                                      { index = 0
+                                      , value =
+                                          CallIndirect
+                                            { indirectTarget =
+                                                Unary
+                                                  { unaryOp = WrapInt64
+                                                  , operand0 =
+                                                      Binary
+                                                        { binaryOp = SubInt64
+                                                        , operand0 =
+                                                            GetLocal
+                                                              { index = 0
+                                                              , valueType = I64
+                                                              }
+                                                        , operand1 = ConstI64 1
+                                                        }
+                                                  }
+                                            , operands = []
+                                            , typeName = "I64()"
+                                            }
+                                      }
+                                  , Break
+                                      { name = loop_lbl
+                                      , condition = Null
+                                      , value = Null
+                                      }
+                                  ]
                               , valueType = None
                               }
-                            | tracing
-                            ] <>
-                            [ If
-                                { condition =
-                                    Unary {unaryOp = EqZInt64, operand0 = f}
-                                , ifTrue = Nop
-                                , ifFalse =
-                                    Block
-                                      { name = ""
-                                      , bodys =
-                                          [ SetLocal
-                                              { index = 0
-                                              , value =
-                                                  CallIndirect
-                                                    { indirectTarget =
-                                                        Unary
-                                                          { unaryOp = WrapInt64
-                                                          , operand0 =
-                                                              Binary
-                                                                { binaryOp =
-                                                                    SubInt64
-                                                                , operand0 =
-                                                                    GetLocal
-                                                                      { index =
-                                                                          0
-                                                                      , valueType =
-                                                                          I64
-                                                                      }
-                                                                , operand1 =
-                                                                    ConstI64 1
-                                                                }
-                                                          }
-                                                    , operands = []
-                                                    , typeName = "I64()"
-                                                    }
-                                              }
-                                          , Break
-                                              { name = loop_lbl
-                                              , condition = Null
-                                              , value = Null
-                                              }
-                                          ]
-                                      , valueType = None
-                                      }
-                                }
-                            ]
-                        , valueType = None
                         }
                   }
               ] <>

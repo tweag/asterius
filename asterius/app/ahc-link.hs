@@ -17,7 +17,9 @@ import Control.Exception
 import Control.Monad
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
+import qualified Data.HashMap.Strict as HM
 import Data.IORef
+import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified GhcPlugins as GHC
@@ -76,13 +78,20 @@ opts =
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
 
-genNode :: BS.ByteString -> Builder
-genNode m_bin =
-  mconcat
-    [ "WebAssembly.instantiate(new Uint8Array("
-    , string7 $ show $ BS.unpack m_bin
-    , "), {rts: {print: console.log, panic: console.error, traceCmm: (f => console.log(\"Calling \" + f))}}).then(i => i.instance.exports.main());\n"
-    ]
+genNode :: Bool -> LinkReport -> BS.ByteString -> Builder
+genNode dbg LinkReport {..} m_bin =
+  mconcat $
+  [ "WebAssembly.instantiate(new Uint8Array("
+  , string7 $ show $ BS.unpack m_bin
+  , "), {rts: {print: console.log, panic: console.error"
+  ] <>
+  (if dbg
+     then [ ", traceCmm: (f => console.log(\"Entering \" + "
+          , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
+          , "[f-1]))"
+          ]
+     else []) <>
+  ["}}).then(i => i.instance.exports.main());\n"]
 
 main :: IO ()
 main = do
@@ -147,7 +156,7 @@ main = do
        BS.writeFile outputWasm m_bin
        putStrLn $ "Writing Node.js script to " <> show outputNode
        h <- openBinaryFile outputNode WriteMode
-       hPutBuilder h $ genNode m_bin
+       hPutBuilder h $ genNode debug report m_bin
        hClose h
        when run $ do
          putStrLn $ "Using " <> node <> " to run " <> outputNode
