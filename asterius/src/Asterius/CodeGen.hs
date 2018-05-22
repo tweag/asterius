@@ -438,6 +438,8 @@ marshalCmmMachOp (GHC.MO_S_Lt w) [x, y] =
   marshalCmmBinMachOp LtSInt32 I32 I32 I32 LtSInt64 I64 I64 I32 w x y
 marshalCmmMachOp (GHC.MO_U_Ge w) [x, y] =
   marshalCmmBinMachOp GeUInt32 I32 I32 I32 GeUInt64 I64 I64 I32 w x y
+marshalCmmMachOp (GHC.MO_U_Le w) [x, y] =
+  marshalCmmBinMachOp LeUInt32 I32 I32 I32 LeUInt64 I64 I64 I32 w x y
 marshalCmmMachOp (GHC.MO_U_Gt w) [x, y] =
   marshalCmmBinMachOp GtUInt32 I32 I32 I32 GtUInt64 I64 I64 I32 w x y
 marshalCmmMachOp (GHC.MO_U_Lt w) [x, y] =

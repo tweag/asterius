@@ -5,9 +5,9 @@ main =
   callProcess
     "ahc-link"
     [ "--input"
-    , "test/fact-dump/fact.hs"
+    , "test/fib/fib.hs"
     , "--output-link-report"
-    , "test/fact-dump/fact.link.txt"
+    , "test/fib/fib.link.txt"
     , "--debug"
     , "--output-ir"
     , "--run"
