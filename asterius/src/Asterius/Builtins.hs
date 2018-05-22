@@ -19,6 +19,7 @@ module Asterius.Builtins
   , errStgGC
   , errUnreachableBlock
   , errHeapOverflow
+  , errMegaBlockGroup
   , wasmPageSize
   ) where
 
@@ -202,7 +203,7 @@ marshalErrorCode err vt =
     , valueType = vt
     }
 
-errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow ::
+errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup ::
      Int32
 errGCEnter1 = 1
 
@@ -215,6 +216,8 @@ errStgGC = 4
 errUnreachableBlock = 5
 
 errHeapOverflow = 6
+
+errMegaBlockGroup = 7
 
 mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printIntFunction ::
      BuiltinsOptions -> Function
@@ -667,12 +670,21 @@ allocBlockOnNodeLockFunction _ =
 allocGroupFunction _ =
   Function
     { functionTypeName = "I64(I64)"
-    , varTypes = [I64, I64]
+    , varTypes = [I64]
     , body =
         Block
           { name = ""
           , bodys =
-              [ SetLocal {index = 2, value = blocks_to_mblocks blocks_n}
+              [ If
+                  { condition =
+                      Binary
+                        { binaryOp = GtSInt64
+                        , operand0 = blocks_n
+                        , operand1 = constInt blocks_per_mblock
+                        }
+                  , ifTrue = marshalErrorCode errMegaBlockGroup None
+                  , ifFalse = Null
+                  }
               , SetLocal
                   { index = 1
                   , value =
@@ -686,14 +698,8 @@ allocGroupFunction _ =
                                     { hostOp = GrowMemory
                                     , name = ""
                                     , operands =
-                                        [ wrapI64
-                                            Binary
-                                              { binaryOp = MulInt64
-                                              , operand0 = mblocks_n
-                                              , operand1 =
-                                                  constInt $
-                                                  mblock_size `div` wasmPageSize
-                                              }
+                                        [ constInt32 $
+                                          mblock_size `div` wasmPageSize
                                         ]
                                     }
                               }
@@ -711,22 +717,7 @@ allocGroupFunction _ =
               , setFieldWord32
                   mblocks_p
                   (offset_first_bdescr + offset_bdescr_blocks) $
-                wrapI64
-                  Binary
-                    { binaryOp = AddInt64
-                    , operand0 = constInt blocks_per_mblock
-                    , operand1 =
-                        Binary
-                          { binaryOp = MulInt64
-                          , operand0 =
-                              Binary
-                                { binaryOp = SubInt64
-                                , operand0 = mblocks_n
-                                , operand1 = ConstI64 1
-                                }
-                          , operand1 = constInt $ mblock_size `div` block_size
-                          }
-                    }
+                constInt32 blocks_per_mblock
               , fieldOff mblocks_p offset_first_bdescr
               ]
           , valueType = I64
@@ -736,35 +727,6 @@ allocGroupFunction _ =
     first_block_p = fieldOff mblocks_p offset_first_block
     blocks_n = getLocalWord 0
     mblocks_p = getLocalWord 1
-    mblocks_n = getLocalWord 2
-    mblock_round_up p =
-      Binary
-        { binaryOp = AndInt64
-        , operand0 = fieldOff p $ mblock_size - 1
-        , operand1 = constInt $ complement mblock_mask
-        }
-    blocks_to_mblocks n =
-      Binary
-        { binaryOp = AddInt64
-        , operand0 = ConstI64 1
-        , operand1 =
-            Binary
-              { binaryOp = DivSInt64
-              , operand0 =
-                  mblock_round_up
-                    Binary
-                      { binaryOp = MulInt64
-                      , operand0 =
-                          Binary
-                            { binaryOp = SubInt64
-                            , operand0 = n
-                            , operand1 = constInt blocks_per_mblock
-                            }
-                      , operand1 = constInt block_size
-                      }
-              , operand1 = constInt mblock_size
-              }
-        }
 
 allocGroupLockFunction _ =
   Function
@@ -983,6 +945,9 @@ words2Bytes w =
 
 constInt :: Int -> Expression
 constInt = ConstI64 . fromIntegral
+
+constInt32 :: Int -> Expression
+constInt32 = ConstI32 . fromIntegral
 
 getLocalWord :: BinaryenIndex -> Expression
 getLocalWord i = GetLocal {index = i, valueType = I64}
