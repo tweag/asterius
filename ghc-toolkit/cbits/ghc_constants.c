@@ -151,7 +151,7 @@ HsInt offset_StgStack_dirty() { return offsetof(StgStack, dirty); }
 HsInt offset_StgStack_sp() { return offsetof(StgStack, sp); }
 
 HsInt offset_StgStack_stack() {
-  return ROUNDUP_BYTES_TO_WDS(offsetof(StgStack, stack));
+  return 8 * ROUNDUP_BYTES_TO_WDS(sizeof(StgStack));
 }
 
 HsInt sizeof_StgStopFrame() { return sizeof(StgStopFrame); }

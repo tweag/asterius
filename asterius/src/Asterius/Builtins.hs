@@ -446,8 +446,7 @@ createThreadFunction _ =
                         { binaryOp = SubInt64
                         , operand0 = alloc_words
                         , operand1 =
-                            ConstI64 $
-                            fromIntegral $
+                            constInt $
                             (offset_StgTSO_StgStack + offset_StgStack_stack) `div`
                             8
                         }
@@ -468,8 +467,7 @@ createThreadFunction _ =
                                 { binaryOp = SubInt64
                                 , operand0 = stack_size_w
                                 , operand1 =
-                                    ConstI64 $
-                                    fromIntegral $
+                                    constInt $
                                     roundup_bytes_to_words sizeof_StgStopFrame
                                 }
                         }
