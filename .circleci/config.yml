@@ -46,8 +46,8 @@ jobs:
             export PATH=$PATH:~/.local/bin
             stack --no-terminal build --haddock --test --no-run-tests
             stack --no-terminal exec ahc-boot
-            stack --no-terminal test asterius:fact-dump
-            cp -r asterius/test/fact-dump /tmp/
+            stack --no-terminal test asterius:fib
+            cp -r asterius/test/fib /tmp/
             mkdocs build
             cp -r site /tmp/
             cp -r `stack --no-terminal path --local-doc-root` /tmp/site/haddock
@@ -56,7 +56,7 @@ jobs:
           paths:
             - site
       - store_artifacts:
-          path: /tmp/fact-dump
+          path: /tmp/fib
 
   asterius-push-docs:
     docker:
