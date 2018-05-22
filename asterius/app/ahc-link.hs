@@ -78,20 +78,17 @@ opts =
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
 
-genNode :: Bool -> LinkReport -> BS.ByteString -> Builder
-genNode dbg LinkReport {..} m_bin =
-  mconcat $
-  [ "WebAssembly.instantiate(new Uint8Array("
-  , string7 $ show $ BS.unpack m_bin
-  , "), {rts: {print: console.log, panic: console.error"
-  ] <>
-  (if dbg
-     then [ ", traceCmm: (f => console.log(\"Entering \" + "
-          , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
-          , "[f-1]))"
-          ]
-     else []) <>
-  ["}}).then(i => i.instance.exports.main());\n"]
+genNode :: LinkReport -> BS.ByteString -> Builder
+genNode LinkReport {..} m_bin =
+  mconcat
+    [ "let i = null;\nWebAssembly.instantiate(new Uint8Array("
+    , string7 $ show $ BS.unpack m_bin
+    , "), {rts: {print: console.log, panic: console.error"
+    , ", traceCmm: (f => console.log(\"Entering \" + "
+    , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
+    , "[f-1] + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim()))"
+    , "}}).then(r => {i = r.instance; i.exports.main();});\n"
+    ]
 
 main :: IO ()
 main = do
@@ -129,7 +126,10 @@ main = do
     mod_ir_map
   final_store <- readIORef final_store_ref
   putStrLn "Attempting to link into a standalone WebAssembly module"
-  let (!m_final_m, !report) = linkStart final_store ["main"]
+  let (!m_final_m, !report) =
+        linkStart
+          final_store
+          ["main", "_get_Sp", "_get_SpLim", "_get_Hp", "_get_HpLim"]
   maybe
     (pure ())
     (\p -> do
@@ -156,7 +156,7 @@ main = do
        BS.writeFile outputWasm m_bin
        putStrLn $ "Writing Node.js script to " <> show outputNode
        h <- openBinaryFile outputNode WriteMode
-       hPutBuilder h $ genNode debug report m_bin
+       hPutBuilder h $ genNode report m_bin
        hClose h
        when run $ do
          putStrLn $ "Using " <> node <> " to run " <> outputNode

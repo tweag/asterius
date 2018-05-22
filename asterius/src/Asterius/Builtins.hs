@@ -100,6 +100,10 @@ rtsAsteriusModule opts =
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
         , ("print_int", printIntFunction opts)
+        , ("_get_Sp", getI32GlobalRegFunction opts Sp)
+        , ("_get_SpLim", getI32GlobalRegFunction opts SpLim)
+        , ("_get_Hp", getI32GlobalRegFunction opts Hp)
+        , ("_get_HpLim", getI32GlobalRegFunction opts HpLim)
         ]
     }
 
@@ -127,7 +131,10 @@ rtsAsteriusFunctionImports =
 
 rtsAsteriusFunctionExports :: V.Vector FunctionExport
 rtsAsteriusFunctionExports =
-  [FunctionExport {internalName = "main", externalName = "main"}]
+  V.fromList
+    [ FunctionExport {internalName = f, externalName = f}
+    | f <- ["main", "_get_Sp", "_get_SpLim", "_get_Hp", "_get_HpLim"]
+    ]
 
 rtsAsteriusFunctionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
 rtsAsteriusFunctionTypeMap =
@@ -138,6 +145,7 @@ rtsAsteriusFunctionTypeMap =
   , ("I64(I32)", FunctionType {returnType = I64, paramTypes = [I32]})
   , ("I64(I64)", FunctionType {returnType = I64, paramTypes = [I64]})
   , ("I64(I32,I64)", FunctionType {returnType = I64, paramTypes = [I32, I64]})
+  , ("I32()", FunctionType {returnType = I32, paramTypes = []})
   , ("None()", FunctionType {returnType = None, paramTypes = []})
   , ("None(I32)", FunctionType {returnType = None, paramTypes = [I32]})
   , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
@@ -984,6 +992,14 @@ printIntFunction _ =
     }
   where
     x = getLocalWord 0
+
+getI32GlobalRegFunction :: BuiltinsOptions -> UnresolvedGlobalReg -> Function
+getI32GlobalRegFunction _ gr =
+  Function
+    { functionTypeName = "I32()"
+    , varTypes = []
+    , body = wrapI64 UnresolvedGetGlobal {unresolvedGlobalReg = gr}
+    }
 
 fieldOff :: Expression -> Int -> Expression
 fieldOff p o
