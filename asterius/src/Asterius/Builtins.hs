@@ -35,7 +35,6 @@ wasmPageSize = 65536
 data BuiltinsOptions = BuiltinsOptions
   { dflags :: GHC.DynFlags
   , nurseryGroups, threadStateSize :: Int
-  , mainClosure :: AsteriusEntitySymbol
   }
 
 getDefaultBuiltinsOptions :: IO BuiltinsOptions
@@ -49,7 +48,6 @@ getDefaultBuiltinsOptions =
         { dflags = dflags
         , nurseryGroups = blocks_per_mblock
         , threadStateSize = 65536
-        , mainClosure = "Main_main_closure"
         }
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
@@ -181,7 +179,7 @@ mainFunction BuiltinsOptions {..} =
                   { target = "rts_evalIO"
                   , operands =
                       [ mainCap
-                      , Unresolved {unresolvedSymbol = mainClosure}
+                      , Unresolved {unresolvedSymbol = "Main_main_closure"}
                       , constInt 0
                       ]
                   , valueType = None

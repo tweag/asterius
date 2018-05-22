@@ -7,6 +7,8 @@ jobs:
       - image: ubuntu:bionic
     environment:
       DEBIAN_FRONTEND: noninteractive
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
       MAKEFLAGS: -j9
     steps:
       - run:
@@ -45,6 +47,7 @@ jobs:
             stack --no-terminal build --haddock --test --no-run-tests
             stack --no-terminal exec ahc-boot
             stack --no-terminal test asterius:fact-dump
+            cp -r asterius/test/fact-dump /tmp/
             mkdocs build
             cp -r site /tmp/
             cp -r `stack --no-terminal path --local-doc-root` /tmp/site/haddock
@@ -52,6 +55,8 @@ jobs:
           root: /tmp
           paths:
             - site
+      - store_artifacts:
+          path: /tmp/fact-dump
 
   asterius-push-docs:
     docker:

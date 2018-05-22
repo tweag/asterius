@@ -17,8 +17,10 @@ import Control.Exception
 import Control.Monad
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
+import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.Maybe
+import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Run
 import Options.Applicative
 import Prelude hiding (IO)
@@ -30,21 +32,22 @@ import Text.Show.Pretty
 data Task = Task
   { input, outputWasm, outputNode :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
-  , run :: Bool
+  , outputIR, run :: Bool
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\(i, m_wasm, m_node, m_report, m_gv, r) ->
+  (\(i, m_wasm, m_node, m_report, m_gv, ir, r) ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
        , outputNode = fromMaybe (i -<.> "js") m_node
        , outputLinkReport = m_report
        , outputGraphViz = m_gv
+       , outputIR = ir
        , run = r
        }) <$>
-  ((,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
+  ((,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
    optional
      (strOption
         (long "output-wasm" <>
@@ -55,13 +58,12 @@ parseTask =
          help "Output path of Node.js script, defaults to same path of Main")) <*>
    optional
      (strOption
-        (long "output-link-report" <>
-         help "Output path of linking report, not enabled by default")) <*>
+        (long "output-link-report" <> help "Output path of linking report")) <*>
    optional
      (strOption
         (long "output-graphviz" <>
-         help
-           "Output path of GraphViz file of symbol dependencies, not enabled by default")) <*>
+         help "Output path of GraphViz file of symbol dependencies")) <*>
+   switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>
    switch (long "run" <> help "Run the compiled module with Node.js"))
 
 opts :: ParserInfo Task
@@ -94,14 +96,26 @@ main = do
   putStrLn $ "Compiling " <> input <> " to Cmm"
   mod_ir_map <- runHaskell defaultConfig [input]
   putStrLn "Marshalling from Cmm to WebAssembly"
-  let !final_store =
-        M.foldlWithKey'
-          (\store ms_mod ir ->
-             case runCodeGen (marshalHaskellIR ir) (dflags builtins_opts) ms_mod of
-               Left err -> throw err
-               Right m -> addModule (marshalToModuleSymbol ms_mod) m store)
-          orig_store
-          mod_ir_map
+  final_store_ref <- newIORef orig_store
+  M.foldlWithKey'
+    (\act ms_mod ir ->
+       case runCodeGen (marshalHaskellIR ir) (dflags builtins_opts) ms_mod of
+         Left err -> throwIO err
+         Right m -> do
+           let mod_str = GHC.moduleNameString $ GHC.moduleName ms_mod
+           putStrLn $
+             "Marshalling " <> show mod_str <> " from Cmm to WebAssembly"
+           modifyIORef' final_store_ref $
+             addModule (marshalToModuleSymbol ms_mod) m
+           when outputIR $ do
+             let p = takeDirectory input </> mod_str <.> "txt"
+             putStrLn $
+               "Writing pretty-printed IR of " <> mod_str <> " to " <> p
+             writeFile p $ ppShow m
+           act)
+    (pure ())
+    mod_ir_map
+  final_store <- readIORef final_store_ref
   putStrLn "Attempting to link into a standalone WebAssembly module"
   let (!m_final_m, !report) = linkStart final_store ["main"]
   maybe
