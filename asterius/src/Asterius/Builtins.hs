@@ -823,14 +823,6 @@ stgRunFunction BuiltinsOptions {..} =
                             Block
                               { name = ""
                               , bodys =
-                                  V.fromList $
-                                  [ CallImport
-                                    { target' = "traceCmm"
-                                    , operands = [wrapI64 f]
-                                    , valueType = None
-                                    }
-                                  | tracing
-                                  ] <>
                                   [ SetLocal
                                       { index = 0
                                       , value =

@@ -18,6 +18,7 @@ module Asterius.Resolve
 
 import Asterius.Builtins
 import Asterius.Internals
+import Asterius.Tracing
 import Asterius.Types
 import Control.Exception
 import Data.ByteString.Builder
@@ -308,7 +309,7 @@ resolveAsteriusModule m_unresolved =
       { functionTypeMap = rtsAsteriusFunctionTypeMap
       , functionMap' =
           fromList
-            [ (entityName func_sym, func)
+            [ (entityName func_sym, addTracingModule func_sym_map func_sym func)
             | (func_sym, func) <- HM.toList $ functionMap m_resolved
             ]
       , functionImports = rtsAsteriusFunctionImports
