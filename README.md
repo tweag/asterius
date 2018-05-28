@@ -9,7 +9,7 @@ See the [documentation](https://tweag.github.io/asterius) for further instructio
 
 ## Sponsors
 
-[<img src="https://www.tweag.io/img/tweag-med.png">](https://tweag.io)
+[<img src="https://www.tweag.io/img/tweag-med.png" height="65">](https://tweag.io)
 
 Asterius is maintained by [Tweag I/O](https://tweag.io/).
 
