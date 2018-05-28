@@ -19,9 +19,7 @@ INTEGER_LIBRARY           = integer-simple
 
 In addition to your own build configs.
 
-On Linux, a `nix` binary cache for the custom `ghc` is provided. See the CircleCI config file at `.circleci/config.yml` for details. The `NIXPKGS_REV` environment variable specifies which revision of [patched `nixpkgs`](https://github.com/TerrorJack/asterius-nixpkgs) should be used. The `haskell.compiler.ghcAsterius` package is the custom `ghc` for `asterius`. The binary cache server address is `https://canis.sapiens.moe/` (signatures not enabled yet).
-
-On Windows, a prebuilt `ghc` tarball is provided. It's already included in [`stack.yaml`](https://github.com/tweag/asterius/blob/master/stack.yaml).
+On Linux/Windows, a prebuilt `ghc` tarball is provided. It's already included in [`stack.yaml`](https://github.com/tweag/asterius/blob/master/stack.yaml).
 
 ## Extra dependencies
 
