@@ -83,8 +83,7 @@ genNode LinkReport {..} m_bin =
   mconcat
     [ "let i = null;\nWebAssembly.instantiate(new Uint8Array("
     , string7 $ show $ BS.unpack m_bin
-    , "), {rts: {print: console.log, panic: console.error"
-    , ", traceCmm: (f => console.log(\"Entering \" + "
+    , "), {rts: {print: console.log, panic: (e => console.error([\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\"][e-1])), traceCmm: (f => console.log(\"Entering \" + "
     , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
     , "[f-1] + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim()))"
     , "}}).then(r => {i = r.instance; i.exports.main();});\n"
