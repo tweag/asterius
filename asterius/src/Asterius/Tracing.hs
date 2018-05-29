@@ -73,8 +73,7 @@ addTracingModule func_sym_map func_sym func = f func
                                                               { target' =
                                                                   "traceCmmBlock"
                                                               , operands =
-                                                                  [ func_idx
-                                                                  , lbl_to_idx
+                                                                  [ lbl_to_idx
                                                                       lbl
                                                                   ]
                                                               , valueType = None
@@ -94,8 +93,7 @@ addTracingModule func_sym_map func_sym func = f func
                                                               { target' =
                                                                   "traceCmmBlock"
                                                               , operands =
-                                                                  [ func_idx
-                                                                  , lbl_to_idx
+                                                                  [ lbl_to_idx
                                                                       lbl
                                                                   ]
                                                               , valueType = None
@@ -125,8 +123,7 @@ addTracingModule func_sym_map func_sym func = f func
                           [ CallImport
                               { target' = "traceCmmSetLocal"
                               , operands =
-                                  [ func_idx
-                                  , ConstI32 $ fromIntegral index
+                                  [ ConstI32 $ fromIntegral index
                                   , Unary
                                       {unaryOp = WrapInt64, operand0 = value}
                                   ]
