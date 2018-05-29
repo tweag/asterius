@@ -134,6 +134,12 @@ rtsAsteriusFunctionImports =
       , externalBaseName = "traceCmmBlock"
       , functionTypeName = "None(I32,I32)"
       }
+  , FunctionImport
+      { internalName = "traceCmmSetLocal"
+      , externalModuleName = "rts"
+      , externalBaseName = "traceCmmSetLocal"
+      , functionTypeName = "None(I32,I32,I32)"
+      }
   ]
 
 rtsAsteriusFunctionExports :: V.Vector FunctionExport
@@ -156,6 +162,8 @@ rtsAsteriusFunctionTypeMap =
   , ("None()", FunctionType {returnType = None, paramTypes = []})
   , ("None(I32)", FunctionType {returnType = None, paramTypes = [I32]})
   , ("None(I32,I32)", FunctionType {returnType = None, paramTypes = [I32, I32]})
+  , ( "None(I32,I32,I32)"
+    , FunctionType {returnType = None, paramTypes = [I32, I32, I32]})
   , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
   , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
   , ( "None(I64,I64,I64)"

@@ -7,6 +7,7 @@ module Asterius.Tracing
   ( addTracingModule
   ) where
 
+import Asterius.Builtins
 import Asterius.Types
 import Data.Data (Data, gmapT)
 import qualified Data.HashMap.Strict as HM
@@ -16,12 +17,11 @@ import Foreign
 import Type.Reflection
 
 addTracingModule ::
-     Data a
-  => HM.HashMap AsteriusEntitySymbol Int64
+     HM.HashMap AsteriusEntitySymbol Int64
   -> AsteriusEntitySymbol
-  -> a
-  -> a
-addTracingModule func_sym_map func_sym = f
+  -> Function
+  -> Function
+addTracingModule func_sym_map func_sym func = f func
   where
     f :: Data a => a -> a
     f x =
@@ -79,7 +79,7 @@ addTracingModule func_sym_map func_sym = f
                                                                   ]
                                                               , valueType = None
                                                               }
-                                                          , code
+                                                          , f code
                                                           ]
                                                       , valueType = Auto
                                                       }
@@ -100,7 +100,7 @@ addTracingModule func_sym_map func_sym = f
                                                                   ]
                                                               , valueType = None
                                                               }
-                                                          , code
+                                                          , f code
                                                           ]
                                                       , valueType = Auto
                                                       }
@@ -116,6 +116,27 @@ addTracingModule func_sym_map func_sym = f
                         lbl_to_idx lbl = ConstI32 $ fromIntegral idx
                           where
                             Just idx = elemIndex lbl lbls
+                SetLocal {..}
+                  | V.null (paramTypes (rtsAsteriusFunctionTypeMap HM.! ft)) &&
+                      varTypes func V.! fromIntegral index == I64 ->
+                    Block
+                      { name = ""
+                      , bodys =
+                          [ CallImport
+                              { target' = "traceCmmSetLocal"
+                              , operands =
+                                  [ func_idx
+                                  , ConstI32 $ fromIntegral index
+                                  , Unary
+                                      {unaryOp = WrapInt64, operand0 = value}
+                                  ]
+                              , valueType = None
+                              }
+                          , SetLocal {index = index, value = value}
+                          ]
+                      , valueType = None
+                      }
+                  where Function {functionTypeName = ft} = func
                 _ -> go
             _ -> go
       where
