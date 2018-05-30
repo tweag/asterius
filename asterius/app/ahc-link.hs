@@ -126,6 +126,7 @@ main = do
   putStrLn "Attempting to link into a standalone WebAssembly module"
   let (!m_final_m, !report) =
         linkStart
+          debug
           final_store
           ["main", "_get_Sp", "_get_SpLim", "_get_Hp", "_get_HpLim"]
   maybe
