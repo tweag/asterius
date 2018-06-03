@@ -5,6 +5,13 @@ clone_depth: 1
 environment:
   MAKEFLAGS: -j4
 
+cache:
+  - .stack-work
+  - asterius\.stack-work
+  - binaryen\.stack-work
+  - genapply\.stack-work
+  - ghc-toolkit\.stack-work
+
 build_script:
   - git submodule update --init --recursive
   - choco install haskell-stack nodejs

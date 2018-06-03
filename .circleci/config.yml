@@ -19,14 +19,15 @@ jobs:
               apt-transport-https \
               curl \
               software-properties-common
-            curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+            add-apt-repository -y ppa:ubuntu-toolchain-r/test
+            curl https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
             add-apt-repository -y "deb https://deb.nodesource.com/node_10.x bionic main"
             apt update
             apt dist-upgrade -y
             apt install -y \
               autoconf \
               cmake \
-              g++ \
+              g++-8 \
               git \
               libedit-dev \
               libffi-dev \
@@ -36,10 +37,22 @@ jobs:
               nodejs \
               xz-utils \
               zlib1g-dev
+            update-alternatives --install /usr/bin/cpp cpp /usr/bin/cpp-8 80
+            update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-8 80
+            update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-8 80
+            update-alternatives --install /usr/bin/gcc-ar gcc-ar /usr/bin/gcc-ar-8 80
+            update-alternatives --install /usr/bin/gcc-nm gcc-nm /usr/bin/gcc-nm-8 80
+            update-alternatives --install /usr/bin/gcc-ranlib gcc-ranlib /usr/bin/gcc-ranlib-8 80
+            update-alternatives --install /usr/bin/gcov gcov /usr/bin/gcov-8 80
+            update-alternatives --install /usr/bin/gcov-dump gcov-dump /usr/bin/gcov-dump-8 80
+            update-alternatives --install /usr/bin/gcov-tool gcov-tool /usr/bin/gcov-tool-8 80
             mkdir -p ~/.local/bin
             curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
       - checkout
       - run: git submodule update --init --recursive
+      - restore_cache:
+          keys:
+            - asterius-{{ .Branch }}-
       - run:
           name: Test Asterius & generate docs
           command: |
@@ -55,6 +68,14 @@ jobs:
           root: /tmp
           paths:
             - site
+      - save_cache:
+          key: asterius-{{ .Branch }}-{{ .BuildNum }}
+          paths:
+            - .stack-work
+            - asterius/.stack-work
+            - binaryen/.stack-work
+            - genapply/.stack-work
+            - ghc-toolkit/.stack-work
       - store_artifacts:
           path: /tmp/fib
 

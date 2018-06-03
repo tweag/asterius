@@ -108,11 +108,6 @@ marshalCLabel clbl = do
             else def_mod_prefix <> asmPpr dflags clbl
       }
 
-{-# INLINEABLE isDisposedStaticsSymbol #-}
-isDisposedStaticsSymbol :: AsteriusEntitySymbol -> Bool
-isDisposedStaticsSymbol AsteriusEntitySymbol {..} =
-  V.any (`CBS.isSuffixOf` SBS.fromShort entityName) ["_srt", "_srtd", "_btm"]
-
 marshalLabel :: GHC.Label -> CodeGen SBS.ShortByteString
 marshalLabel lbl = do
   (dflags, _) <- ask
@@ -167,18 +162,10 @@ marshalCmmStatic st =
             w
             (encodePrim (fromRational x :: Float))
             (encodePrim (fromRational x :: Double))
-        GHC.CmmLabel clbl -> do
-          sym <- marshalCLabel clbl
-          pure $
-            if isDisposedStaticsSymbol sym
-              then Serialized $ encodePrim (0 :: Word64)
-              else UnresolvedStatic sym
+        GHC.CmmLabel clbl -> UnresolvedStatic <$> marshalCLabel clbl
         GHC.CmmLabelOff clbl o -> do
           sym <- marshalCLabel clbl
-          pure $
-            if isDisposedStaticsSymbol sym
-              then Serialized $ encodePrim (0 :: Word64)
-              else UnresolvedOffStatic sym o
+          pure $ UnresolvedOffStatic sym o
         _ -> throwError $ UnsupportedCmmLit $ showSBS lit
     GHC.CmmUninitialised s -> pure $ Uninitialized s
     GHC.CmmString s -> pure $ Serialized $ SBS.pack s <> "\0"
@@ -235,18 +222,10 @@ marshalCmmLit lit =
         (ConstF64 $ fromRational x, F64)
     GHC.CmmLabel clbl -> do
       sym <- marshalCLabel clbl
-      pure
-        ( if isDisposedStaticsSymbol sym
-            then ConstI64 0
-            else Unresolved {unresolvedSymbol = sym}
-        , I64)
+      pure (Unresolved {unresolvedSymbol = sym}, I64)
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
-      pure
-        ( if isDisposedStaticsSymbol sym
-            then ConstI64 0
-            else UnresolvedOff {unresolvedSymbol = sym, offset' = o}
-        , I64)
+      pure (UnresolvedOff {unresolvedSymbol = sym, offset' = o}, I64)
     _ -> throwError $ UnsupportedCmmLit $ showSBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
@@ -959,14 +938,11 @@ marshalCmmDecl decl =
   case decl of
     GHC.CmmData _ d@(GHC.Statics clbl _) -> do
       sym <- marshalCLabel clbl
-      if isDisposedStaticsSymbol sym
-        then pure mempty
-        else do
-          r <- unCodeGen $ marshalCmmData d
-          pure $
-            case r of
-              Left err -> mempty {staticsErrorMap = [(sym, err)]}
-              Right ass -> mempty {staticsMap = [(sym, ass)]}
+      r <- unCodeGen $ marshalCmmData d
+      pure $
+        case r of
+          Left err -> mempty {staticsErrorMap = [(sym, err)]}
+          Right ass -> mempty {staticsMap = [(sym, ass)]}
     GHC.CmmProc _ clbl _ g -> do
       sym <- marshalCLabel clbl
       r <- unCodeGen $ marshalCmmProc g
