@@ -18,6 +18,7 @@ module Asterius.Resolve
 
 import Asterius.Builtins
 import Asterius.Internals
+import Asterius.Tracing
 import Asterius.Types
 import Control.Exception
 import Data.ByteString.Builder
@@ -302,13 +303,16 @@ resolveEntitySymbols sym_table = f
         subst = (sym_table HM.!)
 
 resolveAsteriusModule ::
-     AsteriusModule -> (Module, HM.HashMap AsteriusEntitySymbol Int64)
-resolveAsteriusModule m_unresolved =
+     Bool -> AsteriusModule -> (Module, HM.HashMap AsteriusEntitySymbol Int64)
+resolveAsteriusModule add_tracing m_unresolved =
   ( Module
       { functionTypeMap = rtsAsteriusFunctionTypeMap
       , functionMap' =
           fromList
-            [ (entityName func_sym, func)
+            [ ( entityName func_sym
+              , if add_tracing
+                  then addTracingModule func_sym_map func_sym func
+                  else func)
             | (func_sym, func) <- HM.toList $ functionMap m_resolved
             ]
       , functionImports = rtsAsteriusFunctionImports
@@ -331,17 +335,19 @@ resolveAsteriusModule m_unresolved =
     m_resolved = resolve_syms m_unresolved
 
 linkStart ::
-     AsteriusStore
+     Bool
+  -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe Module, LinkReport)
-linkStart store syms =
+linkStart add_tracing store syms =
   (maybe_result_m, report {functionSymbolMap = func_sym_map})
   where
     (maybe_merged_m, report) = mergeSymbols store syms
     (maybe_result_m, func_sym_map) =
       case maybe_merged_m of
         Just merged_m -> (Just result_m, func_sym_map')
-          where (result_m, func_sym_map') = resolveAsteriusModule merged_m
+          where (result_m, func_sym_map') =
+                  resolveAsteriusModule add_tracing merged_m
         _ -> (Nothing, mempty)
 
 renderDot :: LinkReport -> Builder

@@ -1,0 +1,73 @@
+!<arch>
+quux.s/         0           0     0     644     345       `
+	.text
+	.file	"test/linker/quux.c"
+	.section	.text.quux,"ax",@progbits
+	.hidden	quux
+	.globl	quux
+	.type	quux,@function
+quux:                                   # @quux
+# BB#0:                                 # %entry
+	return
+	.endfunc
+.Lfunc_end0:
+	.size	quux, .Lfunc_end0-quux
+
+
+	.ident	"clang version 3.9.0 (trunk 268553) (llvm/trunk 268561)"
+
+foo.s/          0           0     0     644     407       `
+	.text
+	.file	"src/work/binaryen/test/linker/foo.c"
+	.section	.text.foo,"ax",@progbits
+	.hidden	foo
+	.globl	foo
+	.type	foo,@function
+foo:                                    # @foo
+	.result 	i32
+	.local  	i32
+# BB#0:                                 # %entry
+	i32.const	$0=, 43
+	return  	$0
+	.endfunc
+.Lfunc_end0:
+	.size	foo, .Lfunc_end0-foo
+
+
+	.ident	"clang version 3.9.0 (trunk 267883) (llvm/trunk 267901)"
+
+bar.s/          0           0     0     644     361       `
+	.text
+	.file	"test/linker/bar.c"
+	.section	.text.bar,"ax",@progbits
+	.hidden	bar
+	.globl	bar
+	.type	bar,@function
+bar:                                    # @bar
+# BB#0:                                 # %entry
+	call    	quux@FUNCTION
+	return
+	.endfunc
+.Lfunc_end0:
+	.size	bar, .Lfunc_end0-bar
+
+
+	.ident	"clang version 3.9.0 (trunk 268553) (llvm/trunk 268561)"
+
+baz.s/          0           0     0     644     355       `
+	.text
+	.file	"src/work/binaryen/test/linker/baz.c"
+	.section	.text.baz,"ax",@progbits
+	.hidden	baz
+	.globl	baz
+	.type	baz,@function
+baz:                                    # @baz
+# BB#0:                                 # %entry
+	return
+	.endfunc
+.Lfunc_end0:
+	.size	baz, .Lfunc_end0-baz
+
+
+	.ident	"clang version 3.9.0 (trunk 267883) (llvm/trunk 267901)"
+

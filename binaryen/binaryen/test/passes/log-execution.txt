@@ -1,0 +1,87 @@
+(module
+ (type $0 (func))
+ (type $1 (func (result i32)))
+ (type $FUNCSIG$vi (func (param i32)))
+ (import "env" "log_execution" (func $log_execution (param i32)))
+ (func $nopp (; 1 ;) (type $0)
+  (call $log_execution
+   (i32.const 0)
+  )
+  (nop)
+ )
+ (func $intt (; 2 ;) (type $1) (result i32)
+  (call $log_execution
+   (i32.const 1)
+  )
+  (i32.const 10)
+ )
+ (func $workk (; 3 ;) (type $0)
+  (call $log_execution
+   (i32.const 2)
+  )
+  (block
+   (if
+    (i32.const 0)
+    (nop)
+   )
+   (drop
+    (i32.const 1)
+   )
+  )
+ )
+ (func $loops (; 4 ;) (type $0)
+  (call $log_execution
+   (i32.const 6)
+  )
+  (block
+   (loop $x
+    (call $log_execution
+     (i32.const 3)
+    )
+    (block
+     (call $loops)
+     (br $x)
+    )
+   )
+   (if
+    (call $intt)
+    (loop $y
+     (call $log_execution
+      (i32.const 4)
+     )
+     (call $loops)
+    )
+   )
+   (loop $loop-in
+    (call $log_execution
+     (i32.const 5)
+    )
+    (block
+     (drop
+      (i32.const 10)
+     )
+     (drop
+      (i32.const 20)
+     )
+     (drop
+      (i32.const 30)
+     )
+    )
+   )
+  )
+ )
+ (func $loops-similar (; 5 ;) (type $0)
+  (call $log_execution
+   (i32.const 8)
+  )
+  (loop $x
+   (call $log_execution
+    (i32.const 7)
+   )
+   (block
+    (call $loops)
+    (br $x)
+   )
+  )
+ )
+)
