@@ -144,6 +144,10 @@ main = do
   maybe
     (fail "Linking failed")
     (\final_m -> do
+       when outputIR $ do
+         let p = input -<.> "txt"
+         putStrLn $ "Writing pretty-printed linked IR to " <> show p
+         writeFile p $ ppShow final_m
        putStrLn "Invoking binaryen to marshal the WebAssembly module"
        m_ref <- marshalModule final_m
        putStrLn "Validating the WebAssembly module"
