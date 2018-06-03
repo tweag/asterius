@@ -8,6 +8,7 @@ main =
     , "test/fib/fib.hs"
     , "--output-link-report"
     , "test/fib/fib.link.txt"
+    , "--override-store"
     , "--debug"
     , "--output-ir"
     , "--run"
