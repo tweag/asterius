@@ -100,7 +100,7 @@ rtsAsteriusModule opts =
         , ("newCAF", newCAFFunction opts)
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
-        , ("print_int", printIntFunction opts)
+        , ("print_i64", printI64Function opts)
         , ("_get_Sp", getI32GlobalRegFunction opts Sp)
         , ("_get_SpLim", getI32GlobalRegFunction opts SpLim)
         , ("_get_Hp", getI32GlobalRegFunction opts Hp)
@@ -180,6 +180,7 @@ rtsAsteriusGlobalMap =
       , "SpLim"
       , "Hp"
       , "HpLim"
+      , "CCCS"
       , "CurrentTSO"
       , "CurrentNursery"
       , "HpAlloc"
@@ -232,7 +233,7 @@ errHeapOverflow = 6
 
 errMegaBlockGroup = 7
 
-mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printIntFunction ::
+mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {..} =
   Function
@@ -302,6 +303,7 @@ initRtsAsteriusFunction BuiltinsOptions {..} =
                               }
                         }
                   }
+              , setFieldWord baseReg offset_StgRegTable_rCCCS (ConstI64 0)
               , setFieldWord baseReg offset_StgRegTable_rCurrentNursery bd
               , setFieldWord baseReg offset_StgRegTable_rCurrentAlloc bd
               , SetLocal
@@ -884,7 +886,7 @@ stgRunFunction BuiltinsOptions {..} =
 stgReturnFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
 
-printIntFunction _ =
+printI64Function _ =
   Function
     { functionTypeName = "None(I64)"
     , varTypes = []

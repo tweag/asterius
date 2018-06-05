@@ -160,6 +160,7 @@ data UnresolvedGlobalReg
   | SpLim
   | Hp
   | HpLim
+  | CCCS
   | CurrentTSO
   | CurrentNursery
   | HpAlloc

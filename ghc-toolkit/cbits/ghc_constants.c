@@ -127,6 +127,8 @@ HsInt offset_StgRegTable_rHp() { return offsetof(StgRegTable, rHp); }
 
 HsInt offset_StgRegTable_rHpLim() { return offsetof(StgRegTable, rHpLim); }
 
+HsInt offset_StgRegTable_rCCCS() { return offsetof(StgRegTable, rCCCS); }
+
 HsInt offset_StgRegTable_rNursery() { return offsetof(StgRegTable, rNursery); }
 
 HsInt offset_StgRegTable_rCurrentTSO() {

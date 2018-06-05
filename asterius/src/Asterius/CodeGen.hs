@@ -199,6 +199,7 @@ marshalCmmGlobalReg r =
     GHC.SpLim -> pure SpLim
     GHC.Hp -> pure Hp
     GHC.HpLim -> pure HpLim
+    GHC.CCCS -> pure CCCS
     GHC.CurrentTSO -> pure CurrentTSO
     GHC.CurrentNursery -> pure CurrentNursery
     GHC.HpAlloc -> pure HpAlloc

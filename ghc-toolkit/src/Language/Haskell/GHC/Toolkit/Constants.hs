@@ -122,6 +122,9 @@ foreign import ccall unsafe "offset_StgRegTable_rHp" offset_StgRegTable_rHp
 foreign import ccall unsafe "offset_StgRegTable_rHpLim" offset_StgRegTable_rHpLim
   :: Int
 
+foreign import ccall unsafe "offset_StgRegTable_rCCCS" offset_StgRegTable_rCCCS
+  :: Int
+
 foreign import ccall unsafe "offset_StgRegTable_rNursery" offset_StgRegTable_rNursery
   :: Int
 

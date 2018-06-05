@@ -128,6 +128,7 @@ globalRegName gr =
     SpLim -> "SpLim"
     Hp -> "Hp"
     HpLim -> "HpLim"
+    CCCS -> "CCCS"
     CurrentTSO -> "CurrentTSO"
     CurrentNursery -> "CurrentNursery"
     HpAlloc -> "HpAlloc"
