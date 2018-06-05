@@ -67,7 +67,7 @@ main =
                       , "Unix Makefiles"
                       , pwd </> "binaryen"
                       ]
-                    , ["--build", binaryen_builddir, "--target", "binaryen"]
+                    , ["--build", binaryen_builddir]
                     ] $ \args -> run (simpleProgram "cmake") args ""
                 run
                   gccProgram
@@ -95,6 +95,11 @@ main =
                   , "save\n"
                   , "end\n"
                   ]
+                binaryen_bins <- listDirectory $ binaryen_builddir </> "bin"
+                for_ binaryen_bins $ \b ->
+                  copyFile
+                    (binaryen_builddir </> "bin" </> b)
+                    (binaryen_bindir </> b)
                 pure
                   lbi
                     { localPkgDescr =
