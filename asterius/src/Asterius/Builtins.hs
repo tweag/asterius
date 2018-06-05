@@ -101,6 +101,8 @@ rtsAsteriusModule opts =
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
         , ("print_i64", printI64Function opts)
+        , ("print_f32", printF32Function opts)
+        , ("print_f64", printF64Function opts)
         , ("_get_Sp", getI32GlobalRegFunction opts Sp)
         , ("_get_SpLim", getI32GlobalRegFunction opts SpLim)
         , ("_get_Hp", getI32GlobalRegFunction opts Hp)
@@ -110,11 +112,54 @@ rtsAsteriusModule opts =
 
 rtsAsteriusFunctionImports :: V.Vector FunctionImport
 rtsAsteriusFunctionImports =
+  V.fromList $
+  [ FunctionImport
+    { internalName = "__asterius_" <> op <> "_" <> ft
+    , externalModuleName = "Math"
+    , externalBaseName = op
+    , functionTypeName = ft <> "(" <> ft <> ")"
+    }
+  | ft <- ["F32", "F64"]
+  , op <-
+      [ "sin"
+      , "cos"
+      , "tan"
+      , "sinh"
+      , "cosh"
+      , "tanh"
+      , "asin"
+      , "acos"
+      , "atan"
+      , "log"
+      , "exp"
+      ]
+  ] <>
+  [ FunctionImport
+    { internalName = "__asterius_" <> op <> "_" <> ft
+    , externalModuleName = "Math"
+    , externalBaseName = op
+    , functionTypeName = ft <> "(" <> ft <> "," <> ft <> ")"
+    }
+  | ft <- ["F32", "F64"]
+  , op <- ["pow"]
+  ] <>
   [ FunctionImport
       { internalName = "printI32"
       , externalModuleName = "rts"
       , externalBaseName = "print"
       , functionTypeName = "None(I32)"
+      }
+  , FunctionImport
+      { internalName = "printF32"
+      , externalModuleName = "rts"
+      , externalBaseName = "print"
+      , functionTypeName = "None(F32)"
+      }
+  , FunctionImport
+      { internalName = "printF64"
+      , externalModuleName = "rts"
+      , externalBaseName = "print"
+      , functionTypeName = "None(F64)"
       }
   , FunctionImport
       { internalName = "errorI32"
@@ -166,6 +211,12 @@ rtsAsteriusFunctionTypeMap =
   , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
   , ( "None(I64,I64,I64)"
     , FunctionType {returnType = None, paramTypes = [I64, I64, I64]})
+  , ("None(F32)", FunctionType {returnType = None, paramTypes = [F32]})
+  , ("None(F64)", FunctionType {returnType = None, paramTypes = [F64]})
+  , ("F32(F32)", FunctionType {returnType = F32, paramTypes = [F32]})
+  , ("F64(F64)", FunctionType {returnType = F64, paramTypes = [F64]})
+  , ("F32(F32,F32)", FunctionType {returnType = F32, paramTypes = [F32, F32]})
+  , ("F64(F64,F64)", FunctionType {returnType = F64, paramTypes = [F64, F64]})
   ]
 
 rtsAsteriusGlobalMap :: HM.HashMap SBS.ShortByteString Global
@@ -233,7 +284,7 @@ errHeapOverflow = 6
 
 errMegaBlockGroup = 7
 
-mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function ::
+mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {..} =
   Function
@@ -896,6 +947,24 @@ printI64Function _ =
     }
   where
     x = getLocalWord 0
+
+printF32Function _ =
+  Function
+    { functionTypeName = "None(F32)"
+    , varTypes = []
+    , body = CallImport {target' = "printF32", operands = [x], valueType = None}
+    }
+  where
+    x = GetLocal {index = 0, valueType = F32}
+
+printF64Function _ =
+  Function
+    { functionTypeName = "None(F64)"
+    , varTypes = []
+    , body = CallImport {target' = "printF64", operands = [x], valueType = None}
+    }
+  where
+    x = GetLocal {index = 0, valueType = F64}
 
 getI32GlobalRegFunction :: BuiltinsOptions -> UnresolvedGlobalReg -> Function
 getI32GlobalRegFunction _ gr =

@@ -593,19 +593,123 @@ marshalCmmQuotRemPrimCall tmp0 tmp1 qop rop vt qr rr x y = do
         }
     ]
 
+marshalCmmUnMathPrimCall ::
+     SBS.ShortByteString
+  -> ValueType
+  -> GHC.LocalReg
+  -> GHC.CmmExpr
+  -> CodeGen [Expression]
+marshalCmmUnMathPrimCall op vt r x = do
+  lr <- marshalTypedCmmLocalReg r vt
+  xe <- marshalAndCastCmmExpr x vt
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = lr
+        , value =
+            CallImport
+              { target' = "__asterius_" <> op <> "_" <> showSBS vt
+              , operands = [xe]
+              , valueType = vt
+              }
+        }
+    ]
+
+marshalCmmBinMathPrimCall ::
+     SBS.ShortByteString
+  -> ValueType
+  -> GHC.LocalReg
+  -> GHC.CmmExpr
+  -> GHC.CmmExpr
+  -> CodeGen [Expression]
+marshalCmmBinMathPrimCall op vt r x y = do
+  lr <- marshalTypedCmmLocalReg r vt
+  xe <- marshalAndCastCmmExpr x vt
+  ye <- marshalAndCastCmmExpr y vt
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = lr
+        , value =
+            CallImport
+              { target' = "__asterius_" <> op <> "_" <> showSBS vt
+              , operands = [xe, ye]
+              , valueType = vt
+              }
+        }
+    ]
+
 marshalCmmPrimCall ::
      GHC.CallishMachOp
   -> [GHC.LocalReg]
   -> [GHC.CmmExpr]
   -> CodeGen [Expression]
+marshalCmmPrimCall GHC.MO_F64_Pwr [r] [x, y] =
+  marshalCmmBinMathPrimCall "pow" F64 r x y
+marshalCmmPrimCall GHC.MO_F64_Sin [r] [x] =
+  marshalCmmUnMathPrimCall "sin" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Cos [r] [x] =
+  marshalCmmUnMathPrimCall "cos" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Tan [r] [x] =
+  marshalCmmUnMathPrimCall "tan" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Sinh [r] [x] =
+  marshalCmmUnMathPrimCall "sinh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Cosh [r] [x] =
+  marshalCmmUnMathPrimCall "cosh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Tanh [r] [x] =
+  marshalCmmUnMathPrimCall "tanh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Asin [r] [x] =
+  marshalCmmUnMathPrimCall "asin" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Acos [r] [x] =
+  marshalCmmUnMathPrimCall "acos" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Atan [r] [x] =
+  marshalCmmUnMathPrimCall "atan" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Log [r] [x] =
+  marshalCmmUnMathPrimCall "log" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Exp [r] [x] =
+  marshalCmmUnMathPrimCall "exp" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Fabs [r] [x] =
   marshalCmmUnPrimCall AbsFloat64 F64 r x
 marshalCmmPrimCall GHC.MO_F64_Sqrt [r] [x] =
   marshalCmmUnPrimCall SqrtFloat64 F64 r x
+marshalCmmPrimCall GHC.MO_F32_Pwr [r] [x, y] =
+  marshalCmmBinMathPrimCall "pow" F32 r x y
+marshalCmmPrimCall GHC.MO_F32_Sin [r] [x] =
+  marshalCmmUnMathPrimCall "sin" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Cos [r] [x] =
+  marshalCmmUnMathPrimCall "cos" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Tan [r] [x] =
+  marshalCmmUnMathPrimCall "tan" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Sinh [r] [x] =
+  marshalCmmUnMathPrimCall "sinh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Cosh [r] [x] =
+  marshalCmmUnMathPrimCall "cosh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Tanh [r] [x] =
+  marshalCmmUnMathPrimCall "tanh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Asin [r] [x] =
+  marshalCmmUnMathPrimCall "asin" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Acos [r] [x] =
+  marshalCmmUnMathPrimCall "acos" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Atan [r] [x] =
+  marshalCmmUnMathPrimCall "atan" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Log [r] [x] =
+  marshalCmmUnMathPrimCall "log" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Exp [r] [x] =
+  marshalCmmUnMathPrimCall "exp" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Fabs [r] [x] =
   marshalCmmUnPrimCall AbsFloat32 F32 r x
 marshalCmmPrimCall GHC.MO_F32_Sqrt [r] [x] =
   marshalCmmUnPrimCall SqrtFloat32 F32 r x
+marshalCmmPrimCall (GHC.MO_UF_Conv w) [r] [x] = do
+  (op, ft) <-
+    dispatchCmmWidth
+      w
+      (ConvertUInt64ToFloat32, F32)
+      (ConvertUInt64ToFloat64, F64)
+  lr <- marshalTypedCmmLocalReg r ft
+  xe <- marshalAndCastCmmExpr x I64
+  pure
+    [ UnresolvedSetLocal
+        {unresolvedLocalReg = lr, value = Unary {unaryOp = op, operand0 = xe}}
+    ]
 marshalCmmPrimCall (GHC.MO_S_QuotRem w) [qr, rr] [x, y] =
   join $
   dispatchCmmWidth
