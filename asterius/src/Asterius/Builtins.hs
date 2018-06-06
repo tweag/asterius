@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 module Asterius.Builtins
   ( BuiltinsOptions(..)
@@ -20,6 +21,7 @@ module Asterius.Builtins
   , errUnreachableBlock
   , errHeapOverflow
   , errMegaBlockGroup
+  , errUnimplemented
   , wasmPageSize
   ) where
 
@@ -75,6 +77,16 @@ rtsAsteriusModule opts =
           , AsteriusStatics
               { asteriusStatics =
                   [Uninitialized $ 8 * roundup_bytes_to_words sizeof_Capability]
+              })
+        , ( "g0"
+          , AsteriusStatics
+              { asteriusStatics =
+                  [Serialized $ encodePrim (0xFFFFFFFFFFFFFFFF :: Int64)]
+              })
+        , ( "RtsFlags"
+          , AsteriusStatics
+              { asteriusStatics =
+                  [Uninitialized $ 8 * roundup_bytes_to_words sizeof_RTS_FLAGS]
               })
         ]
     , functionMap =
@@ -240,7 +252,7 @@ rtsAsteriusGlobalMap =
   [ ( "BaseReg"
     , Global
         { valueType = I64
-        , mutable = False
+        , mutable = True
         , initValue =
             UnresolvedOff
               { unresolvedSymbol = "MainCapability"
@@ -268,7 +280,7 @@ marshalErrorCode err vt =
     , valueType = vt
     }
 
-errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup ::
+errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented ::
      Int32
 errGCEnter1 = 1
 
@@ -283,6 +295,8 @@ errUnreachableBlock = 5
 errHeapOverflow = 6
 
 errMegaBlockGroup = 7
+
+errUnimplemented = 8
 
 mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function ::
      BuiltinsOptions -> Function

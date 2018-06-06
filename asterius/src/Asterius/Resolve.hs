@@ -36,6 +36,7 @@ import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 import System.IO hiding (IO)
 import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
+import Asterius.Ostrich
 
 asteriusStaticSize :: AsteriusStatic -> Int
 asteriusStaticSize s =
@@ -165,11 +166,11 @@ instance Monoid LinkReport where
       , functionSymbolMap = mempty
       }
 
-mergeSymbols ::
+mergeSymbols :: Bool ->
      AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe AsteriusModule, LinkReport)
-mergeSymbols AsteriusStore {..} syms = (maybe_final_m, final_rep)
+mergeSymbols force_link AsteriusStore {..} syms = (maybe_final_m, final_rep)
   where
     maybe_final_m
       | HS.null (unfoundSymbols final_rep) &&
@@ -195,13 +196,13 @@ mergeSymbols AsteriusStore {..} syms = (maybe_final_m, final_rep)
             [ case HM.lookup i_staging_sym staticsMap of
               Just ss ->
                 Right
-                  (i_staging_sym, mempty {staticsMap = [(i_staging_sym, ss)]})
+                  (i_staging_sym, mempty {staticsMap = [(i_staging_sym, if force_link then ostrich ss else ss)]})
               _ ->
                 case HM.lookup i_staging_sym functionMap of
                   Just func ->
                     Right
                       ( i_staging_sym
-                      , mempty {functionMap = [(i_staging_sym, func)]})
+                      , mempty {functionMap = [(i_staging_sym, if force_link then ostrich func else func)]})
                   _ -> Left i_staging_sym
             | (i_staging_sym, AsteriusModule {..}) <- i_sym_mods
             ]
@@ -337,13 +338,14 @@ resolveAsteriusModule add_tracing m_unresolved =
 
 linkStart ::
      Bool
+  -> Bool
   -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe Module, LinkReport)
-linkStart add_tracing store syms =
+linkStart force_link add_tracing store syms =
   (maybe_result_m, report {functionSymbolMap = func_sym_map})
   where
-    (maybe_merged_m, report) = mergeSymbols store syms
+    (maybe_merged_m, report) = mergeSymbols force_link store syms
     (maybe_result_m, func_sym_map) =
       case maybe_merged_m of
         Just merged_m -> (Just result_m, func_sym_map')

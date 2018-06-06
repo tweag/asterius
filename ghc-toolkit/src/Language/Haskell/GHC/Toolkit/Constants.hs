@@ -81,6 +81,8 @@ foreign import ccall unsafe "offset_nursery_blocks" offset_nursery_blocks :: Int
 foreign import ccall unsafe "offset_nursery_n_blocks" offset_nursery_n_blocks
   :: Int
 
+foreign import ccall unsafe "sizeof_RTS_FLAGS" sizeof_RTS_FLAGS :: Int
+
 foreign import ccall unsafe "sizeof_StgInd" sizeof_StgInd :: Int
 
 foreign import ccall unsafe "offset_StgInd_indirectee" offset_StgInd_indirectee

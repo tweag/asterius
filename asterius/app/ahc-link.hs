@@ -34,24 +34,25 @@ import Text.Show.Pretty
 data Task = Task
   { input, outputWasm, outputNode :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
-  , overrideStore, debug, outputIR, run :: Bool
+  , force, overrideStore, debug, outputIR, run :: Bool
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\(i, m_wasm, m_node, m_report, m_gv, os, dbg, ir, r) ->
+  (\(i, m_wasm, m_node, m_report, m_gv, fl, os, dbg, ir, r) ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
        , outputNode = fromMaybe (i -<.> "js") m_node
        , outputLinkReport = m_report
        , outputGraphViz = m_gv
+       , force = fl
        , overrideStore = os
        , debug = dbg
        , outputIR = ir
        , run = r
        }) <$>
-  ((,,,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
+  ((,,,,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
    optional
      (strOption
         (long "output-wasm" <>
@@ -67,6 +68,10 @@ parseTask =
      (strOption
         (long "output-graphviz" <>
          help "Output path of GraphViz file of symbol dependencies")) <*>
+   switch
+     (long "force" <>
+      help
+        "Attempt to link even when unfound/unavailable symbols are encountered") <*>
    switch
      (long "override-store" <> help "Override the store produced by ahc-boot") <*>
    switch (long "debug" <> help "Enable debug mode in the runtime") <*>
@@ -88,7 +93,7 @@ genNode LinkReport {..} m_bin =
     , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
     , ";\nWebAssembly.instantiate(new Uint8Array("
     , string7 $ show $ BS.unpack m_bin
-    , "), {Math:Math, rts: {print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\"][e-1])), traceCmm: (f => console.log(\"[INFO] Entering \" + fs[f-1] + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmBlock: (lbl => console.log(\"[INFO] Branching to basic block \" + lbl + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmSetLocal: ((i,x) => console.log(\"[INFO] Setting local register \" + i + \" to \" + x))}}).then(r => {i = r.instance; i.exports.main();});\n"
+    , "), {Math:Math, rts: {print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\"][e-1])), traceCmm: (f => console.log(\"[INFO] Entering \" + fs[f-1] + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmBlock: (lbl => console.log(\"[INFO] Branching to basic block \" + lbl + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmSetLocal: ((i,x) => console.log(\"[INFO] Setting local register \" + i + \" to \" + x))}}).then(r => {i = r.instance; i.exports.main();});\n"
     ]
 
 main :: IO ()
@@ -133,6 +138,7 @@ main = do
   putStrLn "Attempting to link into a standalone WebAssembly module"
   let (!m_final_m, !report) =
         linkStart
+          force
           debug
           final_store
           ["main", "_get_Sp", "_get_SpLim", "_get_Hp", "_get_HpLim"]
