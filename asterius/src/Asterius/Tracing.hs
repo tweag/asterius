@@ -120,16 +120,20 @@ addTracingModule func_sym_map func_sym func = f func
                     Block
                       { name = ""
                       , bodys =
-                          [ CallImport
+                          [ SetLocal {index = index, value = value}
+                          , CallImport
                               { target' = "traceCmmSetLocal"
                               , operands =
                                   [ ConstI32 $ fromIntegral index
                                   , Unary
-                                      {unaryOp = WrapInt64, operand0 = value}
+                                      { unaryOp = WrapInt64
+                                      , operand0 =
+                                          GetLocal
+                                            {index = index, valueType = I64}
+                                      }
                                   ]
                               , valueType = None
                               }
-                          , SetLocal {index = index, value = value}
                           ]
                       , valueType = None
                       }
