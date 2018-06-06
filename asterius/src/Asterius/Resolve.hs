@@ -145,7 +145,7 @@ collectAsteriusEntitySymbols = collect proxy#
 data LinkReport = LinkReport
   { childSymbols :: HM.HashMap AsteriusEntitySymbol (HS.HashSet AsteriusEntitySymbol)
   , unfoundSymbols, unavailableSymbols :: HS.HashSet AsteriusEntitySymbol
-  , functionSymbolMap :: HM.HashMap AsteriusEntitySymbol Int64
+  , staticsSymbolMap, functionSymbolMap :: HM.HashMap AsteriusEntitySymbol Int64
   } deriving (Show)
 
 instance Semigroup LinkReport where
@@ -154,6 +154,7 @@ instance Semigroup LinkReport where
       { childSymbols = HM.unionWith (<>) (childSymbols r0) (childSymbols r1)
       , unfoundSymbols = unfoundSymbols r0 <> unfoundSymbols r1
       , unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
+      , staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
       , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
       }
 
@@ -163,6 +164,7 @@ instance Monoid LinkReport where
       { childSymbols = mempty
       , unfoundSymbols = mempty
       , unavailableSymbols = mempty
+      , staticsSymbolMap = mempty
       , functionSymbolMap = mempty
       }
 
@@ -313,7 +315,11 @@ resolveEntitySymbols sym_table = f
         subst = (sym_table HM.!)
 
 resolveAsteriusModule ::
-     Bool -> AsteriusModule -> (Module, HM.HashMap AsteriusEntitySymbol Int64)
+     Bool
+  -> AsteriusModule
+  -> ( Module
+     , HM.HashMap AsteriusEntitySymbol Int64
+     , HM.HashMap AsteriusEntitySymbol Int64)
 resolveAsteriusModule add_tracing m_unresolved =
   ( Module
       { functionTypeMap = rtsAsteriusFunctionTypeMap
@@ -336,6 +342,7 @@ resolveAsteriusModule add_tracing m_unresolved =
       , memory = Just $ makeMemory m_resolved last_o ss_sym_map
       , startFunctionName = Nothing
       }
+  , ss_sym_map
   , func_sym_map)
   where
     (func_table, func_sym_map) = makeFunctionTable m_unresolved
@@ -351,15 +358,16 @@ linkStart ::
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe Module, LinkReport)
 linkStart force_link add_tracing store syms =
-  (maybe_result_m, report {functionSymbolMap = func_sym_map})
+  ( maybe_result_m
+  , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
   where
     (maybe_merged_m, report) = mergeSymbols force_link store syms
-    (maybe_result_m, func_sym_map) =
+    (maybe_result_m, ss_sym_map, func_sym_map) =
       case maybe_merged_m of
-        Just merged_m -> (Just result_m, func_sym_map')
-          where (result_m, func_sym_map') =
+        Just merged_m -> (Just result_m, ss_sym_map', func_sym_map')
+          where (result_m, ss_sym_map', func_sym_map') =
                   resolveAsteriusModule add_tracing merged_m
-        _ -> (Nothing, mempty)
+        _ -> (Nothing, mempty, mempty)
 
 renderDot :: LinkReport -> Builder
 renderDot LinkReport {..} =
