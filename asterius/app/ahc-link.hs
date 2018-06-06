@@ -176,5 +176,5 @@ main = do
        hClose h
        when run $ do
          putStrLn $ "Using " <> node <> " to run " <> outputNode
-         callProcess node [outputNode])
+         callProcess node $ ["--wasm-trace-memory" | debug] <> [outputNode])
     m_final_m

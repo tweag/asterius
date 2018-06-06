@@ -523,7 +523,7 @@ scheduleWaitThreadFunction _ =
 createThreadFunction _ =
   Function
     { functionTypeName = "I64(I64,I64)"
-    , varTypes = [I64, I64, I64, I64]
+    , varTypes = [I64, I64, I64]
     , body =
         Block
           { name = ""
@@ -558,8 +558,8 @@ createThreadFunction _ =
                   stack_p
                   offset_StgStack_stack_size
                   (wrapI64 stack_size_w)
-              , SetLocal
-                  { index = 5
+              , UnresolvedSetGlobal
+                  { unresolvedGlobalReg = Sp
                   , value =
                       Binary
                         { binaryOp = AddInt64
@@ -593,14 +593,14 @@ createThreadFunction _ =
     tso_p = getLocalWord 2
     stack_p = getLocalWord 3
     stack_size_w = getLocalWord 4
-    sp = getLocalWord 5
+    sp = UnresolvedGetGlobal {unresolvedGlobalReg = Sp}
 
 createThreadHelperFunction ::
      BuiltinsOptions -> [Maybe AsteriusEntitySymbol] -> Function
 createThreadHelperFunction _ closures =
   Function
     { functionTypeName = "I64(I64,I64,I64)"
-    , varTypes = [I64, I64, I64]
+    , varTypes = [I64, I64]
     , body =
         Block
           { name = ""
@@ -616,8 +616,8 @@ createThreadHelperFunction _ closures =
                         }
                   }
               , saveSp 4 tso_p
-              , SetLocal
-                  { index = 5
+              , UnresolvedSetGlobal
+                  { unresolvedGlobalReg = Sp
                   , value =
                       fieldOff
                         (getFieldWord stack_p offset_StgStack_sp)
@@ -643,7 +643,7 @@ createThreadHelperFunction _ closures =
     target_closure = getLocalWord 2
     tso_p = getLocalWord 3
     stack_p = getLocalWord 4
-    sp = getLocalWord 5
+    sp = UnresolvedGetGlobal {unresolvedGlobalReg = Sp}
 
 createGenThreadFunction opts =
   createThreadHelperFunction opts [Nothing, Just "stg_enter_info"]
