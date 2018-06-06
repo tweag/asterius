@@ -11,5 +11,6 @@ main =
     , "--force"
     , "--override-store"
     , "--debug"
+    , "--output-ir"
     , "--run"
     ]

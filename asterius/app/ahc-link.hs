@@ -12,6 +12,7 @@ import Asterius.Internals
 import Asterius.Marshal
 import Asterius.Resolve
 import Asterius.Store
+import Asterius.Types
 import Bindings.Binaryen.Raw
 import Control.Exception
 import Control.Monad
@@ -159,8 +160,8 @@ main = do
     (\final_m -> do
        when outputIR $ do
          let p = input -<.> "txt"
-         putStrLn $ "Writing pretty-printed linked IR to " <> show p
-         writeFile p $ ppShow final_m
+         putStrLn $ "Writing memory of linked IR to " <> show p
+         writeFile p $ ppShow $ memory final_m
        putStrLn "Invoking binaryen to marshal the WebAssembly module"
        m_ref <- marshalModule final_m
        putStrLn "Validating the WebAssembly module"

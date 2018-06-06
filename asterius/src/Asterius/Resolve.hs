@@ -29,6 +29,7 @@ import Data.Either
 import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
+import Data.List
 import Data.String
 import qualified Data.Vector as V
 import Foreign
@@ -267,7 +268,8 @@ makeMemory AsteriusModule {..} last_o sym_map =
         roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
     , maximumPages = 65535
     , exportName = ""
-    , dataSegments = V.fromList $ concatMap data_segs $ HM.toList staticsMap
+    , dataSegments =
+        V.fromList $ combine $ concatMap data_segs $ HM.toList staticsMap
     }
   where
     data_segs (ss_sym, AsteriusStatics {..}) =
@@ -285,6 +287,25 @@ makeMemory AsteriusModule {..} last_o sym_map =
                  "Encountered unresolved content " <> show s <> " in makeMemory"))
         (sym_map HM.! ss_sym, [])
         asteriusStatics
+    combine :: [DataSegment] -> [DataSegment]
+    combine segs =
+      reverse $
+      foldl'
+        (\stack seg@DataSegment {content = seg_content, offset = ConstI32 seg_o} ->
+           case stack of
+             DataSegment { content = stack_top_content
+                         , offset = ConstI32 stack_top_o
+                         }:stack_rest
+               | fromIntegral stack_top_o + SBS.length stack_top_content ==
+                   fromIntegral seg_o ->
+                 DataSegment
+                   { content = stack_top_content <> seg_content
+                   , offset = ConstI32 stack_top_o
+                   } :
+                 stack_rest
+             _ -> seg : stack)
+        []
+        (sortOn (\DataSegment {offset = ConstI32 o} -> o) segs)
 
 resolveEntitySymbols ::
      Data a => HM.HashMap AsteriusEntitySymbol Int64 -> a -> a
