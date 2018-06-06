@@ -19,4 +19,4 @@ main = do
   print_i64 $ fib 10
   print_f64 $ cos 0.5
   print_f64 $ 2 ** 3
-  print_i64 $ facts !! 5
+  -- print_i64 $ facts !! 5

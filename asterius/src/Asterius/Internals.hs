@@ -3,12 +3,11 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.Internals
   ( IO
-  , withSBS
-  , withSV
+  , marshalSBS
+  , marshalV
   , encodePrim
   , reinterpretCast
   , collect
@@ -26,7 +25,7 @@ import Data.Primitive (Prim)
 import qualified Data.Primitive as P
 import Data.Primitive.ByteArray
 import Data.Serialize
-import qualified Data.Vector.Storable as SV
+import qualified Data.Vector as V
 import Foreign
 import Foreign.C
 import GHC.Exts
@@ -39,32 +38,21 @@ type IO a
    = HasCallStack =>
        GHC.Types.IO a
 
-{-# INLINEABLE withSBS #-}
-withSBS :: SBS.ShortByteString -> (Ptr CChar -> IO r) -> IO r
-withSBS sbs@(SBS.SBS ba) cont =
+{-# INLINEABLE marshalSBS #-}
+marshalSBS :: Pool -> SBS.ShortByteString -> IO (Ptr CChar)
+marshalSBS pool sbs =
   if SBS.null sbs
-    then cont nullPtr
-    else GHC.Types.IO
-           (\s0 ->
-              case newPinnedByteArray# (l0 +# 1#) s0 of
-                (# s1, mba #) ->
-                  case copyByteArray# ba 0# mba 0# l0 s1 of
-                    s2 ->
-                      case writeWord8Array# mba l0 0## s2 of
-                        s3 ->
-                          case unsafeFreezeByteArray# mba s3 of
-                            (# s4, ba' #) ->
-                              case cont (Ptr (byteArrayContents# ba')) of
-                                GHC.Types.IO cf -> cf s4)
-  where
-    l0 = sizeofByteArray# ba
+    then pure nullPtr
+    else castPtr <$> pooledNewArray0 pool 0 (SBS.unpack sbs)
 
-{-# INLINEABLE withSV #-}
-withSV :: (Storable a, Num n) => SV.Vector a -> (Ptr a -> n -> IO r) -> IO r
-withSV v cont =
-  if SV.null v
-    then cont nullPtr 0
-    else SV.unsafeWith v (\p -> cont p (fromIntegral (SV.length v)))
+{-# INLINEABLE marshalV #-}
+marshalV :: (Storable a, Num n) => Pool -> V.Vector a -> IO (Ptr a, n)
+marshalV pool v =
+  if V.null v
+    then pure (nullPtr, 0)
+    else do
+      buf <- pooledNewArray pool (V.toList v)
+      pure (buf, fromIntegral $ V.length v)
 
 {-# INLINEABLE encodePrim #-}
 encodePrim :: Prim a => a -> SBS.ShortByteString

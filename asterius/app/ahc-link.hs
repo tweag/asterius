@@ -23,6 +23,7 @@ import Data.IORef
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
+import Foreign
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Run
 import Options.Applicative
@@ -161,9 +162,9 @@ main = do
        when outputIR $ do
          let p = input -<.> "txt"
          putStrLn $ "Writing memory of linked IR to " <> show p
-         writeFile p $ ppShow $ memory final_m
+         writeFile p $ show $ memory final_m
        putStrLn "Invoking binaryen to marshal the WebAssembly module"
-       m_ref <- marshalModule final_m
+       m_ref <- withPool $ \pool -> marshalModule pool final_m
        putStrLn "Validating the WebAssembly module"
        pass_validation <- c_BinaryenModuleValidate m_ref
        when (pass_validation /= 1) $ fail "Validation failed"
