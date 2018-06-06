@@ -18,6 +18,7 @@ module Asterius.Resolve
 
 import Asterius.Builtins
 import Asterius.Internals
+import Asterius.Ostrich
 import Asterius.Tracing
 import Asterius.Types
 import Control.Exception
@@ -36,7 +37,6 @@ import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 import System.IO hiding (IO)
 import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
-import Asterius.Ostrich
 
 asteriusStaticSize :: AsteriusStatic -> Int
 asteriusStaticSize s =
@@ -166,8 +166,9 @@ instance Monoid LinkReport where
       , functionSymbolMap = mempty
       }
 
-mergeSymbols :: Bool ->
-     AsteriusStore
+mergeSymbols ::
+     Bool
+  -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe AsteriusModule, LinkReport)
 mergeSymbols force_link AsteriusStore {..} syms = (maybe_final_m, final_rep)
@@ -196,13 +197,20 @@ mergeSymbols force_link AsteriusStore {..} syms = (maybe_final_m, final_rep)
             [ case HM.lookup i_staging_sym staticsMap of
               Just ss ->
                 Right
-                  (i_staging_sym, mempty {staticsMap = [(i_staging_sym, if force_link then ostrich ss else ss)]})
+                  (i_staging_sym, mempty {staticsMap = [(i_staging_sym, ss)]})
               _ ->
                 case HM.lookup i_staging_sym functionMap of
                   Just func ->
                     Right
                       ( i_staging_sym
-                      , mempty {functionMap = [(i_staging_sym, if force_link then ostrich func else func)]})
+                      , mempty
+                          { functionMap =
+                              [ ( i_staging_sym
+                                , if force_link
+                                    then ostrich func
+                                    else func)
+                              ]
+                          })
                   _ -> Left i_staging_sym
             | (i_staging_sym, AsteriusModule {..}) <- i_sym_mods
             ]

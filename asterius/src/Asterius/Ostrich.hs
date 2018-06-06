@@ -8,58 +8,34 @@ module Asterius.Ostrich
   ) where
 
 import Asterius.Builtins
-import Asterius.Internals
 import Asterius.Types
 import Data.Data (Data, gmapT)
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
-import Foreign
 import Type.Reflection
 
 ostrich :: Data a => a -> a
 ostrich t =
-  case eqTypeRep (typeOf t) (typeRep :: TypeRep AsteriusStatic) of
+  case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
     Just HRefl ->
       case t of
-        UnresolvedStatic sym
-          | pretend_useless_sym sym ->
-            Serialized (encodePrim (0x7FFFFFFFFFFFFFFF :: Int64))
+        Call {..}
+          | pretend_useless_sym target ->
+            marshalErrorCode errUnimplemented valueType
+          | target == "createIOThread" ->
+            case V.toList operands of
+              [cap, stack_size_w@Load {valueType = I32}, target_closure] ->
+                t
+                  { operands =
+                      [ cap
+                      , Unary {unaryOp = ExtendUInt32, operand0 = stack_size_w}
+                      , target_closure
+                      ]
+                  }
+              _ -> t
           | otherwise -> t
-        UnresolvedOffStatic sym _
-          | pretend_useless_sym sym ->
-            Serialized (encodePrim (0x7FFFFFFFFFFFFFFF :: Int64))
-          | otherwise -> t
-        _ -> t
-    _ ->
-      case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
-        Just HRefl ->
-          case t of
-            Call {..}
-              | pretend_useless_sym target ->
-                marshalErrorCode errUnimplemented valueType
-              | target == "createIOThread" ->
-                case V.toList operands of
-                  [cap, stack_size_w@Load {valueType = I32}, target_closure] ->
-                    t
-                      { operands =
-                          [ cap
-                          , Unary
-                              {unaryOp = ExtendUInt32, operand0 = stack_size_w}
-                          , target_closure
-                          ]
-                      }
-                  _ -> t
-              | otherwise -> t
-            Unresolved {..}
-              | pretend_useless_sym unresolvedSymbol ->
-                marshalErrorCode errUnimplemented I64
-              | otherwise -> t
-            UnresolvedOff {..}
-              | pretend_useless_sym unresolvedSymbol ->
-                marshalErrorCode errUnimplemented I64
-              | otherwise -> t
-            _ -> go
         _ -> go
+    _ -> go
   where
     go = gmapT ostrich t
     pretend_useless_sym sym =
@@ -102,8 +78,6 @@ ostrich t =
       , "addDelayRequest"
       , "addIORequest"
       , "base_getErrorMessage"
-      , "blocked_queue_hd"
-      , "blocked_queue_tl"
       , "calloc"
       , "close"
       , "closesocket"
@@ -150,7 +124,6 @@ ostrich t =
       , "isFloatNaN"
       , "isFloatNegativeZero"
       , "is_console__"
-      , "large_alloc_lim"
       , "lockFile"
       , "malloc"
       , "maperrno"
@@ -158,7 +131,6 @@ ostrich t =
       , "maybePerformBlockedException"
       , "memcpy"
       , "memmove"
-      , "n_capabilities"
       , "raiseExceptionHelper"
       , "readIOManagerEvent"
       , "realloc"
@@ -172,7 +144,6 @@ ostrich t =
       , "rts_InstallConsoleEvent"
       , "rts_breakpoint_io_action"
       , "rts_setMainThread"
-      , "rts_stop_on_exception"
       , "runCFinalizers"
       , "scheduleThread"
       , "scheduleThreadOn"
@@ -183,7 +154,6 @@ ostrich t =
       , "set_console_buffering__"
       , "set_console_echo__"
       , "shutdownHaskellAndExit"
-      , "stable_ptr_table"
       , "stgMallocBytes"
       , "stmAbortTransaction"
       , "stmAddInvariantToCheck"

@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 module Asterius.Builtins
   ( BuiltinsOptions(..)
@@ -73,21 +72,45 @@ rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
     { staticsMap =
-        [ ( "MainCapability"
+        [ ( "g0"
+          , AsteriusStatics
+              {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
+        , ( "blocked_queue_hd"
+          , AsteriusStatics
+              {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
+        , ( "blocked_queue_tl"
+          , AsteriusStatics
+              {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
+        , ( "large_alloc_lim"
           , AsteriusStatics
               { asteriusStatics =
-                  [Uninitialized $ 8 * roundup_bytes_to_words sizeof_Capability]
+                  [Serialized $ encodePrim (0x7FFFFFFFFFFFFFFF :: Word64)]
               })
-        , ( "g0"
+        , ( "MainCapability"
           , AsteriusStatics
               { asteriusStatics =
-                  [Serialized $ encodePrim (0xFFFFFFFFFFFFFFFF :: Int64)]
+                  [ Serialized $
+                    SBS.pack $
+                    replicate (8 * roundup_bytes_to_words sizeof_Capability) 0
+                  ]
               })
+        , ( "n_capabilities"
+          , AsteriusStatics
+              {asteriusStatics = [Serialized $ encodePrim (1 :: Word32)]})
+        , ( "rts_stop_on_exception"
+          , AsteriusStatics
+              {asteriusStatics = [Serialized $ encodePrim (0 :: Int32)]})
         , ( "RtsFlags"
           , AsteriusStatics
               { asteriusStatics =
-                  [Uninitialized $ 8 * roundup_bytes_to_words sizeof_RTS_FLAGS]
+                  [ Serialized $
+                    SBS.pack $
+                    replicate (8 * roundup_bytes_to_words sizeof_RTS_FLAGS) 0
+                  ]
               })
+        , ( "stable_ptr_table"
+          , AsteriusStatics
+              {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
         ]
     , functionMap =
         [ ("main", mainFunction opts)
