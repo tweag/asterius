@@ -81,6 +81,9 @@ rtsAsteriusModule opts =
         , ( "blocked_queue_tl"
           , AsteriusStatics
               {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
+        , ( "enabled_capabilities"
+          , AsteriusStatics
+              {asteriusStatics = [Serialized $ encodePrim (1 :: Word32)]})
         , ( "large_alloc_lim"
           , AsteriusStatics
               { asteriusStatics =

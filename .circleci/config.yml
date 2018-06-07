@@ -69,7 +69,7 @@ jobs:
       - store_artifacts:
           path: asterius/test/fib
       - store_artifacts:
-          path: asterius/asterius/.stack-work
+          path: asterius/.stack-work
 
   asterius-push-docs:
     docker:
