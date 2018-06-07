@@ -132,6 +132,7 @@ rtsAsteriusModule opts =
         , ("allocGroupOnNode_lock", allocGroupOnNodeLockFunction opts)
         , ("free", freeFunction opts)
         , ("newCAF", newCAFFunction opts)
+        , ("stg_enter_ret", stgEnterFunction opts)
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
         , ("print_i64", printI64Function opts)
@@ -322,7 +323,7 @@ errUnimplemented = 8
 
 errAtomics = 9
 
-mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function ::
+mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgEnterFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {..} =
   Function
@@ -912,6 +913,825 @@ newCAFFunction _ =
     cap = mainCap
     orig_info = getFieldWord caf 0
     bh = getLocalWord 2
+
+stgEnterFunction _ =
+  Function
+    { functionTypeName = "I64()"
+    , varTypes = [I32, I64, I64, I64]
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ CFG
+                  { graph =
+                      RelooperRun
+                        { entry = ".Lc15r"
+                        , blockMap =
+                            fromList
+                              [ ( "_asterius_unreachable"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlock
+                                          { code =
+                                              Block
+                                                { name = ""
+                                                , bodys =
+                                                    [ CallImport
+                                                        { target' = "errorI32"
+                                                        , operands =
+                                                            [ConstI32 5]
+                                                        , valueType = None
+                                                        }
+                                                    , Unreachable
+                                                    ]
+                                                , valueType = None
+                                                }
+                                          }
+                                    , addBranches = []
+                                    })
+                              , ( ".Lu15z"
+                                , RelooperBlock
+                                    { addBlock = AddBlock {code = Nop}
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lc15p"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = LtUInt32
+                                                  , operand0 =
+                                                      Load
+                                                        { signed = False
+                                                        , bytes = 4
+                                                        , offset = 0
+                                                        , align = 0
+                                                        , valueType = I32
+                                                        , ptr =
+                                                            Unary
+                                                              { unaryOp =
+                                                                  WrapInt64
+                                                              , operand0 =
+                                                                  Binary
+                                                                    { binaryOp =
+                                                                        AddInt64
+                                                                    , operand0 =
+                                                                        GetLocal
+                                                                          { index =
+                                                                              2
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    , operand1 =
+                                                                        ConstI64
+                                                                          16
+                                                                    }
+                                                              }
+                                                        }
+                                                  , operand1 = ConstI32 29
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lc15o"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lc15p"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlock
+                                          { code =
+                                              Block
+                                                { name = ""
+                                                , bodys =
+                                                    [ SetLocal
+                                                        { index = 3
+                                                        , value =
+                                                            Load
+                                                              { signed = False
+                                                              , bytes = 8
+                                                              , offset = 0
+                                                              , align = 0
+                                                              , valueType = I64
+                                                              , ptr =
+                                                                  Unary
+                                                                    { unaryOp =
+                                                                        WrapInt64
+                                                                    , operand0 =
+                                                                        Binary
+                                                                          { binaryOp =
+                                                                              AddInt64
+                                                                          , operand0 =
+                                                                              GetLocal
+                                                                                { index =
+                                                                                    3
+                                                                                , valueType =
+                                                                                    I64
+                                                                                }
+                                                                          , operand1 =
+                                                                              ConstI64
+                                                                                8
+                                                                          }
+                                                                    }
+                                                              }
+                                                        }
+                                                    , Store
+                                                        { bytes = 8
+                                                        , offset = 0
+                                                        , align = 0
+                                                        , ptr =
+                                                            Unary
+                                                              { unaryOp =
+                                                                  WrapInt64
+                                                              , operand0 =
+                                                                  Binary
+                                                                    { binaryOp =
+                                                                        AddInt64
+                                                                    , operand0 =
+                                                                        GetGlobal
+                                                                          { name =
+                                                                              "Sp"
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    , operand1 =
+                                                                        ConstI64
+                                                                          8
+                                                                    }
+                                                              }
+                                                        , value =
+                                                            GetLocal
+                                                              { index = 3
+                                                              , valueType = I64
+                                                              }
+                                                        , valueType = I64
+                                                        }
+                                                    ]
+                                                , valueType = None
+                                                }
+                                          }
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lc15j"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lu15y"
+                                , RelooperBlock
+                                    { addBlock = AddBlock {code = Nop}
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lc15o"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = LtUInt32
+                                                  , operand0 =
+                                                      Load
+                                                        { signed = False
+                                                        , bytes = 4
+                                                        , offset = 0
+                                                        , align = 0
+                                                        , valueType = I32
+                                                        , ptr =
+                                                            Unary
+                                                              { unaryOp =
+                                                                  WrapInt64
+                                                              , operand0 =
+                                                                  Binary
+                                                                    { binaryOp =
+                                                                        AddInt64
+                                                                    , operand0 =
+                                                                        GetLocal
+                                                                          { index =
+                                                                              2
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    , operand1 =
+                                                                        ConstI64
+                                                                          16
+                                                                    }
+                                                              }
+                                                        }
+                                                  , operand1 = ConstI32 27
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lc15p"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lu15x"
+                                , RelooperBlock
+                                    { addBlock = AddBlock {code = Nop}
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lu15y"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = LtUInt32
+                                                  , operand0 =
+                                                      Load
+                                                        { signed = False
+                                                        , bytes = 4
+                                                        , offset = 0
+                                                        , align = 0
+                                                        , valueType = I32
+                                                        , ptr =
+                                                            Unary
+                                                              { unaryOp =
+                                                                  WrapInt64
+                                                              , operand0 =
+                                                                  Binary
+                                                                    { binaryOp =
+                                                                        AddInt64
+                                                                    , operand0 =
+                                                                        GetLocal
+                                                                          { index =
+                                                                              2
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    , operand1 =
+                                                                        ConstI64
+                                                                          16
+                                                                    }
+                                                              }
+                                                        }
+                                                  , operand1 = ConstI32 28
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lu15z"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lc15r"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlock
+                                          { code =
+                                              SetLocal
+                                                { index = 3
+                                                , value =
+                                                    Load
+                                                      { signed = False
+                                                      , bytes = 8
+                                                      , offset = 0
+                                                      , align = 0
+                                                      , valueType = I64
+                                                      , ptr =
+                                                          Unary
+                                                            { unaryOp =
+                                                                WrapInt64
+                                                            , operand0 =
+                                                                Binary
+                                                                  { binaryOp =
+                                                                      AddInt64
+                                                                  , operand0 =
+                                                                      GetGlobal
+                                                                        { name =
+                                                                            "Sp"
+                                                                        , valueType =
+                                                                            I64
+                                                                        }
+                                                                  , operand1 =
+                                                                      ConstI64 8
+                                                                  }
+                                                            }
+                                                      }
+                                                }
+                                          }
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lc15j"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lu15w"
+                                , RelooperBlock
+                                    { addBlock = AddBlock {code = Nop}
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lc15o"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = NeInt64
+                                                  , operand0 =
+                                                      Unary
+                                                        { unaryOp = ExtendSInt32
+                                                        , operand0 =
+                                                            Load
+                                                              { signed = False
+                                                              , bytes = 4
+                                                              , offset = 0
+                                                              , align = 0
+                                                              , valueType = I32
+                                                              , ptr =
+                                                                  Unary
+                                                                    { unaryOp =
+                                                                        WrapInt64
+                                                                    , operand0 =
+                                                                        Binary
+                                                                          { binaryOp =
+                                                                              AddInt64
+                                                                          , operand0 =
+                                                                              GetLocal
+                                                                                { index =
+                                                                                    2
+                                                                                , valueType =
+                                                                                    I64
+                                                                                }
+                                                                          , operand1 =
+                                                                              ConstI64
+                                                                                16
+                                                                          }
+                                                                    }
+                                                              }
+                                                        }
+                                                  , operand1 = ConstI64 23
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lc15l"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lu15v"
+                                , RelooperBlock
+                                    { addBlock = AddBlock {code = Nop}
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lc15l"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = GeUInt32
+                                                  , operand0 =
+                                                      Load
+                                                        { signed = False
+                                                        , bytes = 4
+                                                        , offset = 0
+                                                        , align = 0
+                                                        , valueType = I32
+                                                        , ptr =
+                                                            Unary
+                                                              { unaryOp =
+                                                                  WrapInt64
+                                                              , operand0 =
+                                                                  Binary
+                                                                    { binaryOp =
+                                                                        AddInt64
+                                                                    , operand0 =
+                                                                        GetLocal
+                                                                          { index =
+                                                                              2
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    , operand1 =
+                                                                        ConstI64
+                                                                          16
+                                                                    }
+                                                              }
+                                                        }
+                                                  , operand1 = ConstI32 25
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lu15w"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lc15l"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlock
+                                          { code =
+                                              Block
+                                                { name = ""
+                                                , bodys =
+                                                    [ SetGlobal
+                                                        { name = "R1"
+                                                        , value =
+                                                            GetLocal
+                                                              { index = 3
+                                                              , valueType = I64
+                                                              }
+                                                        }
+                                                    , SetGlobal
+                                                        { name = "Sp"
+                                                        , value =
+                                                            Binary
+                                                              { binaryOp =
+                                                                  AddInt64
+                                                              , operand0 =
+                                                                  GetGlobal
+                                                                    { name =
+                                                                        "Sp"
+                                                                    , valueType =
+                                                                        I64
+                                                                    }
+                                                              , operand1 =
+                                                                  ConstI64 16
+                                                              }
+                                                        }
+                                                    , SetLocal
+                                                        { index = 1
+                                                        , value =
+                                                            Load
+                                                              { signed = False
+                                                              , bytes = 8
+                                                              , offset = 0
+                                                              , align = 0
+                                                              , valueType = I64
+                                                              , ptr =
+                                                                  Unary
+                                                                    { unaryOp =
+                                                                        WrapInt64
+                                                                    , operand0 =
+                                                                        Load
+                                                                          { signed =
+                                                                              False
+                                                                          , bytes =
+                                                                              8
+                                                                          , offset =
+                                                                              0
+                                                                          , align =
+                                                                              0
+                                                                          , valueType =
+                                                                              I64
+                                                                          , ptr =
+                                                                              Unary
+                                                                                { unaryOp =
+                                                                                    WrapInt64
+                                                                                , operand0 =
+                                                                                    GetGlobal
+                                                                                      { name =
+                                                                                          "Sp"
+                                                                                      , valueType =
+                                                                                          I64
+                                                                                      }
+                                                                                }
+                                                                          }
+                                                                    }
+                                                              }
+                                                        }
+                                                    ]
+                                                , valueType = None
+                                                }
+                                          }
+                                    , addBranches = []
+                                    })
+                              , ( ".Lu15u"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlockWithSwitch
+                                          { code = Nop
+                                          , condition =
+                                              Unary
+                                                { unaryOp = WrapInt64
+                                                , operand0 =
+                                                    Binary
+                                                      { binaryOp = SubInt64
+                                                      , operand0 =
+                                                          Unary
+                                                            { unaryOp =
+                                                                ExtendSInt32
+                                                            , operand0 =
+                                                                Load
+                                                                  { signed =
+                                                                      False
+                                                                  , bytes = 4
+                                                                  , offset = 0
+                                                                  , align = 0
+                                                                  , valueType =
+                                                                      I32
+                                                                  , ptr =
+                                                                      Unary
+                                                                        { unaryOp =
+                                                                            WrapInt64
+                                                                        , operand0 =
+                                                                            Binary
+                                                                              { binaryOp =
+                                                                                  AddInt64
+                                                                              , operand0 =
+                                                                                  GetLocal
+                                                                                    { index =
+                                                                                        2
+                                                                                    , valueType =
+                                                                                        I64
+                                                                                    }
+                                                                              , operand1 =
+                                                                                  ConstI64
+                                                                                    16
+                                                                              }
+                                                                        }
+                                                                  }
+                                                            }
+                                                      , operand1 = ConstI64 8
+                                                      }
+                                                }
+                                          }
+                                    , addBranches =
+                                        [ AddBranchForSwitch
+                                            { to = ".Lc15l"
+                                            , indexes = [6, 5, 4, 3, 2, 1, 0]
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = "_asterius_unreachable"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lc15o"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlock
+                                          { code =
+                                              Block
+                                                { name = ""
+                                                , bodys =
+                                                    [ SetGlobal
+                                                        { name = "R1"
+                                                        , value =
+                                                            GetLocal
+                                                              { index = 3
+                                                              , valueType = I64
+                                                              }
+                                                        }
+                                                    , SetGlobal
+                                                        { name = "Sp"
+                                                        , value =
+                                                            Binary
+                                                              { binaryOp =
+                                                                  AddInt64
+                                                              , operand0 =
+                                                                  GetGlobal
+                                                                    { name =
+                                                                        "Sp"
+                                                                    , valueType =
+                                                                        I64
+                                                                    }
+                                                              , operand1 =
+                                                                  ConstI64 16
+                                                              }
+                                                        }
+                                                    , SetLocal
+                                                        { index = 1
+                                                        , value =
+                                                            Load
+                                                              { signed = False
+                                                              , bytes = 8
+                                                              , offset = 0
+                                                              , align = 0
+                                                              , valueType = I64
+                                                              , ptr =
+                                                                  Unary
+                                                                    { unaryOp =
+                                                                        WrapInt64
+                                                                    , operand0 =
+                                                                        GetLocal
+                                                                          { index =
+                                                                              2
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    }
+                                                              }
+                                                        }
+                                                    ]
+                                                , valueType = None
+                                                }
+                                          }
+                                    , addBranches = []
+                                    })
+                              , ( ".Lu15t"
+                                , RelooperBlock
+                                    { addBlock = AddBlock {code = Nop}
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lc15o"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = LtUInt32
+                                                  , operand0 =
+                                                      Load
+                                                        { signed = False
+                                                        , bytes = 4
+                                                        , offset = 0
+                                                        , align = 0
+                                                        , valueType = I32
+                                                        , ptr =
+                                                            Unary
+                                                              { unaryOp =
+                                                                  WrapInt64
+                                                              , operand0 =
+                                                                  Binary
+                                                                    { binaryOp =
+                                                                        AddInt64
+                                                                    , operand0 =
+                                                                        GetLocal
+                                                                          { index =
+                                                                              2
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    , operand1 =
+                                                                        ConstI64
+                                                                          16
+                                                                    }
+                                                              }
+                                                        }
+                                                  , operand1 = ConstI32 8
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lu15u"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lc15n"
+                                , RelooperBlock
+                                    { addBlock =
+                                        AddBlock
+                                          { code =
+                                              SetLocal
+                                                { index = 2
+                                                , value =
+                                                    Load
+                                                      { signed = False
+                                                      , bytes = 8
+                                                      , offset = 0
+                                                      , align = 0
+                                                      , valueType = I64
+                                                      , ptr =
+                                                          Unary
+                                                            { unaryOp =
+                                                                WrapInt64
+                                                            , operand0 =
+                                                                GetLocal
+                                                                  { index = 3
+                                                                  , valueType =
+                                                                      I64
+                                                                  }
+                                                            }
+                                                      }
+                                                }
+                                          }
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lu15s"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = LtUInt32
+                                                  , operand0 =
+                                                      Load
+                                                        { signed = False
+                                                        , bytes = 4
+                                                        , offset = 0
+                                                        , align = 0
+                                                        , valueType = I32
+                                                        , ptr =
+                                                            Unary
+                                                              { unaryOp =
+                                                                  WrapInt64
+                                                              , operand0 =
+                                                                  Binary
+                                                                    { binaryOp =
+                                                                        AddInt64
+                                                                    , operand0 =
+                                                                        GetLocal
+                                                                          { index =
+                                                                              2
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    , operand1 =
+                                                                        ConstI64
+                                                                          16
+                                                                    }
+                                                              }
+                                                        }
+                                                  , operand1 = ConstI32 26
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lu15x"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lu15s"
+                                , RelooperBlock
+                                    { addBlock = AddBlock {code = Nop}
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lu15t"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = LtUInt32
+                                                  , operand0 =
+                                                      Load
+                                                        { signed = False
+                                                        , bytes = 4
+                                                        , offset = 0
+                                                        , align = 0
+                                                        , valueType = I32
+                                                        , ptr =
+                                                            Unary
+                                                              { unaryOp =
+                                                                  WrapInt64
+                                                              , operand0 =
+                                                                  Binary
+                                                                    { binaryOp =
+                                                                        AddInt64
+                                                                    , operand0 =
+                                                                        GetLocal
+                                                                          { index =
+                                                                              2
+                                                                          , valueType =
+                                                                              I64
+                                                                          }
+                                                                    , operand1 =
+                                                                        ConstI64
+                                                                          16
+                                                                    }
+                                                              }
+                                                        }
+                                                  , operand1 = ConstI32 15
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lu15v"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              , ( ".Lc15j"
+                                , RelooperBlock
+                                    { addBlock = AddBlock {code = Nop}
+                                    , addBranches =
+                                        [ AddBranch
+                                            { to = ".Lc15l"
+                                            , condition =
+                                                Binary
+                                                  { binaryOp = NeInt64
+                                                  , operand0 =
+                                                      Binary
+                                                        { binaryOp = AndInt64
+                                                        , operand0 =
+                                                            GetLocal
+                                                              { index = 3
+                                                              , valueType = I64
+                                                              }
+                                                        , operand1 = ConstI64 7
+                                                        }
+                                                  , operand1 = ConstI64 0
+                                                  }
+                                            , code = Null
+                                            }
+                                        , AddBranch
+                                            { to = ".Lc15n"
+                                            , condition = Null
+                                            , code = Null
+                                            }
+                                        ]
+                                    })
+                              ]
+                        , labelHelper = 0
+                        }
+                  }
+              , GetLocal {index = 1, valueType = I64}
+              ]
+          , valueType = I64
+          }
+    }
 
 stgRunFunction BuiltinsOptions {..} =
   Function
