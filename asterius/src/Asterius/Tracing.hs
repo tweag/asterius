@@ -115,8 +115,9 @@ addTracingModule func_sym_map func_sym func = f func
                           where
                             Just idx = elemIndex lbl lbls
                 SetLocal {..}
-                  | V.null (paramTypes (rtsAsteriusFunctionTypeMap HM.! ft)) &&
-                      varTypes func V.! fromIntegral index == I64 ->
+                  | ((index_int < param_num) && (params V.! index_int == I64)) ||
+                      ((index_int >= param_num) &&
+                       varTypes func V.! (index_int - param_num) == I64) ->
                     Block
                       { name = ""
                       , bodys =
@@ -124,20 +125,18 @@ addTracingModule func_sym_map func_sym func = f func
                           , CallImport
                               { target' = "traceCmmSetLocal"
                               , operands =
-                                  [ ConstI32 $ fromIntegral index
-                                  , Unary
-                                      { unaryOp = WrapInt64
-                                      , operand0 =
-                                          GetLocal
-                                            {index = index, valueType = I64}
-                                      }
-                                  ]
+                                  [ConstI32 $ fromIntegral index] <>
+                                  cutI64
+                                    GetLocal {index = index, valueType = I64}
                               , valueType = None
                               }
                           ]
                       , valueType = None
                       }
                   where Function {functionTypeName = ft} = func
+                        params = paramTypes (rtsAsteriusFunctionTypeMap HM.! ft)
+                        param_num = V.length params
+                        index_int = fromIntegral index
                 _ -> go
             _ -> go
       where

@@ -89,9 +89,9 @@ genNode LinkReport {..} m_bin =
   mconcat
     [ "let i = null;\nlet fs = "
     , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
-    , ";\nWebAssembly.instantiate(new Uint8Array("
+    , ";\nfunction newI64(lo,hi) { return BigInt(lo) | (BigInt(hi) << 32n);  };\nWebAssembly.instantiate(new Uint8Array("
     , string7 $ show $ BS.unpack m_bin
-    , "), {Math:Math, rts: {print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\"][e-1])), traceCmm: (f => console.log(\"[INFO] Entering \" + fs[f-1] + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmBlock: (lbl => console.log(\"[INFO] Branching to basic block \" + lbl + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmSetLocal: ((i,x) => console.log(\"[INFO] Setting local register \" + i + \" to \" + x))}}).then(r => {i = r.instance; i.exports.main();});\n"
+    , "), {Math:Math, rts: {printI64: (lo,hi) => console.log(newI64(lo,hi)), print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\"][e-1])), traceCmm: (f => console.log(\"[INFO] Entering \" + fs[f-1] + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmBlock: (lbl => console.log(\"[INFO] Branching to basic block \" + lbl + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmSetLocal: ((i,lo,hi) => console.log(\"[INFO] Setting local register \" + i + \" to \" + newI64(lo,hi)))}}).then(r => {i = r.instance; i.exports.main();});\n"
     ]
 
 main :: IO ()
@@ -171,5 +171,6 @@ main = do
        hClose h
        when run $ do
          putStrLn $ "Using " <> node <> " to run " <> outputNode
-         callProcess node $ ["--wasm-trace-memory" | debug] <> [outputNode])
+         callProcess node $
+           ["--wasm-trace-memory" | debug] <> ["--harmony-bigint", outputNode])
     m_final_m

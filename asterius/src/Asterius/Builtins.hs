@@ -23,6 +23,7 @@ module Asterius.Builtins
   , errUnimplemented
   , errAtomics
   , wasmPageSize
+  , cutI64
   ) where
 
 import Asterius.BuildInfo
@@ -179,10 +180,10 @@ rtsAsteriusFunctionImports =
   , op <- ["pow"]
   ] <>
   [ FunctionImport
-      { internalName = "printI32"
+      { internalName = "printI64"
       , externalModuleName = "rts"
-      , externalBaseName = "print"
-      , functionTypeName = "None(I32)"
+      , externalBaseName = "printI64"
+      , functionTypeName = "None(I32,I32)"
       }
   , FunctionImport
       { internalName = "printF32"
@@ -218,7 +219,7 @@ rtsAsteriusFunctionImports =
       { internalName = "traceCmmSetLocal"
       , externalModuleName = "rts"
       , externalBaseName = "traceCmmSetLocal"
-      , functionTypeName = "None(I32,I32)"
+      , functionTypeName = "None(I32,I32,I32)"
       }
   ]
 
@@ -242,6 +243,8 @@ rtsAsteriusFunctionTypeMap =
   , ("None()", FunctionType {returnType = None, paramTypes = []})
   , ("None(I32)", FunctionType {returnType = None, paramTypes = [I32]})
   , ("None(I32,I32)", FunctionType {returnType = None, paramTypes = [I32, I32]})
+  , ( "None(I32,I32,I32)"
+    , FunctionType {returnType = None, paramTypes = [I32, I32, I32]})
   , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
   , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
   , ( "None(I64,I64,I64)"
@@ -1809,8 +1812,7 @@ printI64Function _ =
     { functionTypeName = "None(I64)"
     , varTypes = []
     , body =
-        CallImport
-          {target' = "printI32", operands = [wrapI64 x], valueType = None}
+        CallImport {target' = "printI64", operands = cutI64 x, valueType = None}
     }
   where
     x = getLocalWord 0
@@ -1905,3 +1907,10 @@ baseReg = UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
 
 offset_StgTSO_StgStack :: Int
 offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
+
+cutI64 :: Expression -> V.Vector Expression
+cutI64 x =
+  [ wrapI64 x
+  , wrapI64 $
+    Binary {binaryOp = ShrUInt64, operand0 = x, operand1 = ConstI64 32}
+  ]
