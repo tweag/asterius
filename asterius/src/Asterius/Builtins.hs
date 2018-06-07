@@ -129,6 +129,7 @@ rtsAsteriusModule opts =
         , ("allocGroup_lock", allocGroupLockFunction opts)
         , ("allocGroupOnNode", allocGroupOnNodeFunction opts)
         , ("allocGroupOnNode_lock", allocGroupOnNodeLockFunction opts)
+        , ("free", freeFunction opts)
         , ("newCAF", newCAFFunction opts)
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
@@ -318,7 +319,7 @@ errMegaBlockGroup = 7
 
 errUnimplemented = 8
 
-mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function ::
+mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {..} =
   Function
@@ -778,7 +779,7 @@ allocGroupFunction _ =
                       Binary
                         { binaryOp = GtSInt64
                         , operand0 = blocks_n
-                        , operand1 = constInt blocks_per_mblock
+                        , operand1 = constInt $ 1024 * blocks_per_mblock
                         }
                   , ifTrue = marshalErrorCode errMegaBlockGroup None
                   , ifFalse = Null
@@ -797,7 +798,8 @@ allocGroupFunction _ =
                                     , name = ""
                                     , operands =
                                         [ constInt32 $
-                                          mblock_size `div` wasmPageSize
+                                          1024 *
+                                          (mblock_size `div` wasmPageSize)
                                         ]
                                     }
                               }
@@ -815,7 +817,8 @@ allocGroupFunction _ =
               , setFieldWord32
                   mblocks_p
                   (offset_first_bdescr + offset_bdescr_blocks) $
-                constInt32 blocks_per_mblock
+                constInt32 $
+                blocks_per_mblock + ((1023 * mblock_size) `div` block_size)
               , fieldOff mblocks_p offset_first_bdescr
               ]
           , valueType = I64
@@ -854,6 +857,13 @@ allocGroupOnNodeLockFunction _ =
           , operands = [GetLocal {index = 0, valueType = I32}, getLocalWord 1]
           , valueType = I64
           }
+    }
+
+freeFunction _ =
+  Function
+    { functionTypeName = "None(I64)"
+    , varTypes = []
+    , body = marshalErrorCode errUnimplemented None
     }
 
 newCAFFunction _ =

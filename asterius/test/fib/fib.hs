@@ -15,6 +15,18 @@ fact n = n * fact (n - 1)
 facts :: [Int]
 facts = scanl (*) 1 [1 ..]
 
+data BinTree
+  = Tip
+  | Branch !BinTree
+           !BinTree
+  deriving (Eq, Ord)
+
+genBinTree :: Int -> BinTree
+genBinTree 0 = Tip
+genBinTree n = Branch t t
+  where
+    t = genBinTree (n - 1)
+
 foreign import ccall unsafe "print_i64" print_i64 :: Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
@@ -25,4 +37,8 @@ main = do
   print_i64 $ fact 5
   print_f64 $ cos 0.5
   print_f64 $ 2 ** 3
+  print_i64 $
+    if genBinTree 3 < genBinTree 5
+      then 1
+      else 0
   print_i64 $ facts !! 5

@@ -767,6 +767,65 @@ marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall ClzInt64 I64 r x
 marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall CtzInt64 I64 r x
+marshalCmmPrimCall (GHC.MO_AtomicRMW GHC.W64 op) [r] [p, x] = do
+  lr <- marshalTypedCmmLocalReg r I64
+  pv <- marshalAndCastCmmExpr p I32
+  xv <- marshalAndCastCmmExpr x I64
+  wasm_op <-
+    case op of
+      GHC.AMO_Add -> pure AtomicRMWAdd
+      GHC.AMO_Sub -> pure AtomicRMWSub
+      GHC.AMO_And -> pure AtomicRMWAnd
+      GHC.AMO_Or -> pure AtomicRMWOr
+      GHC.AMO_Xor -> pure AtomicRMWXor
+      GHC.AMO_Nand -> throwError $ UnsupportedCmmInstr "AMO_Nand"
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = lr
+        , value =
+            AtomicRMW
+              { atomicRMWOp = wasm_op
+              , bytes = 8
+              , offset = 0
+              , ptr = pv
+              , value = xv
+              , valueType = I64
+              }
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_AtomicRead GHC.W64) [r] [p] = do
+  lr <- marshalTypedCmmLocalReg r I64
+  pv <- marshalAndCastCmmExpr p I32
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = lr
+        , value = AtomicLoad {bytes = 8, offset = 0, valueType = I64, ptr = pv}
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_AtomicWrite GHC.W64) [] [p, x] = do
+  pv <- marshalAndCastCmmExpr p I32
+  xv <- marshalAndCastCmmExpr x I64
+  pure
+    [AtomicStore {bytes = 8, offset = 0, ptr = pv, value = xv, valueType = I64}]
+marshalCmmPrimCall (GHC.MO_Cmpxchg GHC.W64) [r] [p, o, n] = do
+  lr <- marshalTypedCmmLocalReg r I64
+  pv <- marshalAndCastCmmExpr p I32
+  ov <- marshalAndCastCmmExpr o I64
+  nv <- marshalAndCastCmmExpr n I64
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = lr
+        , value =
+            AtomicCmpxchg
+              { bytes = 8
+              , offset = 0
+              , ptr = pv
+              , expected = ov
+              , replacement = nv
+              , valueType = I64
+              }
+        }
+    ]
 marshalCmmPrimCall op rs xs =
   throwError $
   UnsupportedCmmInstr $

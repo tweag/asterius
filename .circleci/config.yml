@@ -69,7 +69,7 @@ jobs:
       - store_artifacts:
           path: asterius/test/fib
       - store_artifacts:
-          path: .stack-work/install
+          path: .stack-work/install/x86_64-linux/ghc-8.5/8.5.20180413/share/x86_64-linux-ghc-8.5.20180413/asterius-0.0.1
 
   asterius-push-docs:
     docker:

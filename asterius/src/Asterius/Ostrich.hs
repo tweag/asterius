@@ -59,6 +59,7 @@ ostrich t =
       , "allocGroup_lock"
       , "allocGroupOnNode"
       , "allocGroupOnNode_lock"
+      , "free"
       , "newCAF"
       , "StgRun"
       , "StgReturn"
