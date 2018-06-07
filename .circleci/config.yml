@@ -50,7 +50,6 @@ jobs:
             stack --no-terminal build --haddock --test --no-run-tests
             stack --no-terminal exec ahc-boot
             stack --no-terminal test asterius:fib
-            cp -r asterius/test/fib /tmp/
             mkdocs build
             cp -r site /tmp/
             cp -r `stack --no-terminal path --local-doc-root` /tmp/site/haddock
@@ -67,7 +66,7 @@ jobs:
             - genapply/.stack-work
             - ghc-toolkit/.stack-work
       - store_artifacts:
-          path: /tmp/fib
+          path: asterius/test/fib
 
   asterius-push-docs:
     docker:
