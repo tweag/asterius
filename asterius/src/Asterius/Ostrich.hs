@@ -34,6 +34,10 @@ ostrich t =
                   }
               _ -> t
           | otherwise -> t
+        AtomicRMW {} -> marshalErrorCode errAtomics I64
+        AtomicLoad {} -> marshalErrorCode errAtomics I64
+        AtomicStore {} -> marshalErrorCode errAtomics None
+        AtomicCmpxchg {} -> marshalErrorCode errAtomics I64
         _ -> go
     _ -> go
   where

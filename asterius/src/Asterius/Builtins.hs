@@ -21,6 +21,7 @@ module Asterius.Builtins
   , errHeapOverflow
   , errMegaBlockGroup
   , errUnimplemented
+  , errAtomics
   , wasmPageSize
   ) where
 
@@ -301,7 +302,7 @@ marshalErrorCode err vt =
     , valueType = vt
     }
 
-errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented ::
+errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented, errAtomics ::
      Int32
 errGCEnter1 = 1
 
@@ -318,6 +319,8 @@ errHeapOverflow = 6
 errMegaBlockGroup = 7
 
 errUnimplemented = 8
+
+errAtomics = 9
 
 mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function ::
      BuiltinsOptions -> Function
