@@ -28,6 +28,7 @@ import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Run
 import Options.Applicative
 import Prelude hiding (IO)
+import System.Directory
 import System.FilePath
 import System.IO hiding (IO)
 import System.Process
@@ -61,7 +62,8 @@ parseTask =
    optional
      (strOption
         (long "output-node" <>
-         help "Output path of Node.js script, defaults to same path of Main")) <*>
+         help
+           "Output path of Node.js script, defaults to same path of Main. Must be the same directory as the WebAssembly binary.")) <*>
    optional
      (strOption
         (long "output-link-report" <> help "Output path of linking report")) <*>
@@ -84,14 +86,14 @@ opts =
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
 
-genNode :: LinkReport -> BS.ByteString -> Builder
-genNode LinkReport {..} m_bin =
+genNode :: LinkReport -> FilePath -> Builder
+genNode LinkReport {..} m_path =
   mconcat
-    [ "let i = null;\nlet fs = "
+    [ "\"use strict\";\nconst fs = require(\"fs\");\nlet i = null;\nlet func_syms = "
     , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
-    , ";\nfunction newI64(lo,hi) { return BigInt(lo) | (BigInt(hi) << 32n);  };\nWebAssembly.instantiate(new Uint8Array("
-    , string7 $ show $ BS.unpack m_bin
-    , "), {Math:Math, rts: {printI64: (lo,hi) => console.log(newI64(lo,hi)), print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\"][e-1])), traceCmm: (f => console.log(\"[INFO] Entering \" + fs[f-1] + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmBlock: (lbl => console.log(\"[INFO] Branching to basic block \" + lbl + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmSetLocal: ((i,lo,hi) => console.log(\"[INFO] Setting local register \" + i + \" to \" + newI64(lo,hi)))}}).then(r => {i = r.instance; i.exports.main();});\n"
+    , ";\nfunction newI64(lo,hi) { return BigInt(lo) | (BigInt(hi) << 32n);  };\nWebAssembly.instantiate(fs.readFileSync("
+    , string7 $ show m_path
+    , "), {Math:Math, rts: {printI64: (lo,hi) => console.log(newI64(lo,hi)), print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\"][e-1])), traceCmm: (f => console.log(\"[INFO] Entering \" + func_syms[f-1] + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmBlock: (lbl => console.log(\"[INFO] Branching to basic block \" + lbl + \", Sp: \" + i.exports._get_Sp() + \", SpLim: \" + i.exports._get_SpLim() + \", Hp: \" + i.exports._get_Hp() + \", HpLim: \" + i.exports._get_HpLim())), traceCmmSetLocal: ((i,lo,hi) => console.log(\"[INFO] Setting local register \" + i + \" to \" + newI64(lo,hi)))}}).then(r => {i = r.instance; i.exports.main();});\n"
     ]
 
 main :: IO ()
@@ -167,10 +169,12 @@ main = do
        BS.writeFile outputWasm m_bin
        putStrLn $ "Writing Node.js script to " <> show outputNode
        h <- openBinaryFile outputNode WriteMode
-       hPutBuilder h $ genNode report m_bin
+       hPutBuilder h $ genNode report $ takeFileName outputWasm
        hClose h
        when run $ do
          putStrLn $ "Using " <> node <> " to run " <> outputNode
-         callProcess node $
-           ["--wasm-trace-memory" | debug] <> ["--harmony-bigint", outputNode])
+         withCurrentDirectory (takeDirectory outputWasm) $
+           callProcess node $
+           ["--wasm-trace-memory" | debug] <>
+           ["--harmony-bigint", takeFileName outputNode])
     m_final_m
