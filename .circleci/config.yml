@@ -6,7 +6,6 @@ jobs:
     docker:
       - image: ubuntu:bionic
     environment:
-      ASTERIUS_DEBUG: 1
       DEBIAN_FRONTEND: noninteractive
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
@@ -68,8 +67,6 @@ jobs:
             - ghc-toolkit/.stack-work
       - store_artifacts:
           path: asterius/test/fib
-      - store_artifacts:
-          path: .stack-work/install/x86_64-linux/ghc-8.5/8.5.20180413/share/x86_64-linux-ghc-8.5.20180413/asterius-0.0.1
 
   asterius-push-docs:
     docker:
