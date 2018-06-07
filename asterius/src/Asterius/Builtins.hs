@@ -89,10 +89,7 @@ rtsAsteriusModule opts =
         , ( "MainCapability"
           , AsteriusStatics
               { asteriusStatics =
-                  [ Serialized $
-                    SBS.pack $
-                    replicate (8 * roundup_bytes_to_words sizeof_Capability) 0
-                  ]
+                  [Uninitialized (8 * roundup_bytes_to_words sizeof_Capability)]
               })
         , ( "n_capabilities"
           , AsteriusStatics
@@ -103,10 +100,7 @@ rtsAsteriusModule opts =
         , ( "RtsFlags"
           , AsteriusStatics
               { asteriusStatics =
-                  [ Serialized $
-                    SBS.pack $
-                    replicate (8 * roundup_bytes_to_words sizeof_RTS_FLAGS) 0
-                  ]
+                  [Uninitialized (8 * roundup_bytes_to_words sizeof_RTS_FLAGS)]
               })
         , ( "stable_ptr_table"
           , AsteriusStatics

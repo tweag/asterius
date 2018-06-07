@@ -36,12 +36,12 @@ import Text.Show.Pretty
 data Task = Task
   { input, outputWasm, outputNode :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
-  , force, overrideStore, debug, outputIR, run :: Bool
+  , force, debug, outputIR, run :: Bool
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\(i, m_wasm, m_node, m_report, m_gv, fl, os, dbg, ir, r) ->
+  (\(i, m_wasm, m_node, m_report, m_gv, fl, dbg, ir, r) ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
@@ -49,12 +49,11 @@ parseTask =
        , outputLinkReport = m_report
        , outputGraphViz = m_gv
        , force = fl
-       , overrideStore = os
        , debug = dbg
        , outputIR = ir
        , run = r
        }) <$>
-  ((,,,,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
+  ((,,,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
    optional
      (strOption
         (long "output-wasm" <>
@@ -72,10 +71,7 @@ parseTask =
          help "Output path of GraphViz file of symbol dependencies")) <*>
    switch
      (long "force" <>
-      help
-        "Attempt to link even when unfound/unavailable symbols are encountered") <*>
-   switch
-     (long "override-store" <> help "Override the store produced by ahc-boot") <*>
+      help "Attempt to link even when non-existent call target exists") <*>
    switch (long "debug" <> help "Enable debug mode in the runtime") <*>
    switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>
    switch (long "run" <> help "Run the compiled module with Node.js"))
@@ -103,11 +99,8 @@ main = do
   Task {..} <- execParser opts
   boot_store <-
     do store_path <-
-         if overrideStore
-           then pure $ Asterius.BuildInfo.dataDir </> "asterius_store"
-           else do
-             boot_args <- getDefaultBootArgs
-             pure $ bootDir boot_args </> "asterius_lib" </> "asterius_store"
+         do boot_args <- getDefaultBootArgs
+            pure $ bootDir boot_args </> "asterius_lib" </> "asterius_store"
        putStrLn $ "Loading boot library store from " <> show store_path
        decodeFile store_path
   putStrLn "Populating the store with builtin routines"

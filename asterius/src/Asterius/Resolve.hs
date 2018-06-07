@@ -246,13 +246,13 @@ makeFunctionTable AsteriusModule {..} =
   ( FunctionTable {functionNames = V.fromList $ map entityName func_syms}
   , fromList $ zip func_syms [1 ..])
   where
-    func_syms = HM.keys functionMap
+    func_syms = sort $ HM.keys functionMap
 
 makeStaticsOffsetTable ::
      AsteriusModule -> (Int64, HM.HashMap AsteriusEntitySymbol Int64)
 makeStaticsOffsetTable AsteriusModule {..} = (last_o, fromList statics_map)
   where
-    (last_o, statics_map) = layoutStatics $ HM.toList staticsMap
+    (last_o, statics_map) = layoutStatics $ sortOn fst $ HM.toList staticsMap
     layoutStatics = foldl' iterLayoutStaticsState (8, [])
     iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
       ( fromIntegral $
@@ -267,7 +267,7 @@ makeMemory AsteriusModule {..} last_o sym_map =
         fromIntegral $
         roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
     , maximumPages = 65535
-    , exportName = ""
+    , exportName = "mem"
     , dataSegments =
         V.fromList $ combine $ concatMap data_segs $ HM.toList staticsMap
     }
@@ -287,7 +287,6 @@ makeMemory AsteriusModule {..} last_o sym_map =
                  "Encountered unresolved content " <> show s <> " in makeMemory"))
         (sym_map HM.! ss_sym, [])
         asteriusStatics
-    combine :: [DataSegment] -> [DataSegment]
     combine segs =
       reverse $
       foldl'
