@@ -246,8 +246,6 @@ deriving instance Show ProfilingInfo
 instance Show StgHalfWord where
   show = show . fromStgHalfWord
 
-deriving instance Show C_SRT
-
 deriving instance Show CmmInfoTable
 
 deriving instance Show CmmStackInfo

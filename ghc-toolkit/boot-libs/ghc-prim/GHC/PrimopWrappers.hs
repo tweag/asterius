@@ -114,6 +114,9 @@ uncheckedIShiftRL# a1 a2 = (GHC.Prim.uncheckedIShiftRL#) a1 a2
 {-# NOINLINE plusWord# #-}
 plusWord# :: Word# -> Word# -> Word#
 plusWord# a1 a2 = (GHC.Prim.plusWord#) a1 a2
+{-# NOINLINE addWordC# #-}
+addWordC# :: Word# -> Word# -> (# Word#,Int# #)
+addWordC# a1 a2 = (GHC.Prim.addWordC#) a1 a2
 {-# NOINLINE subWordC# #-}
 subWordC# :: Word# -> Word# -> (# Word#,Int# #)
 subWordC# a1 a2 = (GHC.Prim.subWordC#) a1 a2
@@ -195,7 +198,6 @@ popCnt64# a1 = (GHC.Prim.popCnt64#) a1
 {-# NOINLINE popCnt# #-}
 popCnt# :: Word# -> Word#
 popCnt# a1 = (GHC.Prim.popCnt#) a1
-#if MIN_TOOL_VERSION_ghc(8,4,1)
 {-# NOINLINE pdep8# #-}
 pdep8# :: Word# -> Word# -> Word#
 pdep8# a1 a2 = (GHC.Prim.pdep8#) a1 a2
@@ -226,7 +228,6 @@ pext64# a1 a2 = (GHC.Prim.pext64#) a1 a2
 {-# NOINLINE pext# #-}
 pext# :: Word# -> Word# -> Word#
 pext# a1 a2 = (GHC.Prim.pext#) a1 a2
-#endif
 {-# NOINLINE clz8# #-}
 clz8# :: Word# -> Word#
 clz8# a1 = (GHC.Prim.clz8#) a1
@@ -641,7 +642,6 @@ indexWord32Array# a1 a2 = (GHC.Prim.indexWord32Array#) a1 a2
 {-# NOINLINE indexWord64Array# #-}
 indexWord64Array# :: ByteArray# -> Int# -> Word#
 indexWord64Array# a1 a2 = (GHC.Prim.indexWord64Array#) a1 a2
-#if MIN_TOOL_VERSION_ghc(8,5,20180326)
 {-# NOINLINE indexWord8ArrayAsChar# #-}
 indexWord8ArrayAsChar# :: ByteArray# -> Int# -> Char#
 indexWord8ArrayAsChar# a1 a2 = (GHC.Prim.indexWord8ArrayAsChar#) a1 a2
@@ -684,7 +684,6 @@ indexWord8ArrayAsWord64# a1 a2 = (GHC.Prim.indexWord8ArrayAsWord64#) a1 a2
 {-# NOINLINE indexWord8ArrayAsWord# #-}
 indexWord8ArrayAsWord# :: ByteArray# -> Int# -> Word#
 indexWord8ArrayAsWord# a1 a2 = (GHC.Prim.indexWord8ArrayAsWord#) a1 a2
-#endif
 {-# NOINLINE readCharArray# #-}
 readCharArray# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Char# #)
 readCharArray# a1 a2 a3 = (GHC.Prim.readCharArray#) a1 a2 a3
@@ -733,7 +732,6 @@ readWord32Array# a1 a2 a3 = (GHC.Prim.readWord32Array#) a1 a2 a3
 {-# NOINLINE readWord64Array# #-}
 readWord64Array# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Word# #)
 readWord64Array# a1 a2 a3 = (GHC.Prim.readWord64Array#) a1 a2 a3
-#if MIN_TOOL_VERSION_ghc(8,5,20180326)
 {-# NOINLINE readWord8ArrayAsChar# #-}
 readWord8ArrayAsChar# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Char# #)
 readWord8ArrayAsChar# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsChar#) a1 a2 a3
@@ -776,7 +774,6 @@ readWord8ArrayAsWord64# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsWord64#) a1 a2 a3
 {-# NOINLINE readWord8ArrayAsWord# #-}
 readWord8ArrayAsWord# :: MutableByteArray# s -> Int# -> State# s -> (# State# s,Word# #)
 readWord8ArrayAsWord# a1 a2 a3 = (GHC.Prim.readWord8ArrayAsWord#) a1 a2 a3
-#endif
 {-# NOINLINE writeCharArray# #-}
 writeCharArray# :: MutableByteArray# s -> Int# -> Char# -> State# s -> State# s
 writeCharArray# a1 a2 a3 a4 = (GHC.Prim.writeCharArray#) a1 a2 a3 a4
@@ -825,7 +822,6 @@ writeWord32Array# a1 a2 a3 a4 = (GHC.Prim.writeWord32Array#) a1 a2 a3 a4
 {-# NOINLINE writeWord64Array# #-}
 writeWord64Array# :: MutableByteArray# s -> Int# -> Word# -> State# s -> State# s
 writeWord64Array# a1 a2 a3 a4 = (GHC.Prim.writeWord64Array#) a1 a2 a3 a4
-#if MIN_TOOL_VERSION_ghc(8,5,20180326)
 {-# NOINLINE writeWord8ArrayAsChar# #-}
 writeWord8ArrayAsChar# :: MutableByteArray# s -> Int# -> Char# -> State# s -> State# s
 writeWord8ArrayAsChar# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsChar#) a1 a2 a3 a4
@@ -868,12 +864,9 @@ writeWord8ArrayAsWord64# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsWord64#) a1 a2
 {-# NOINLINE writeWord8ArrayAsWord# #-}
 writeWord8ArrayAsWord# :: MutableByteArray# s -> Int# -> Word# -> State# s -> State# s
 writeWord8ArrayAsWord# a1 a2 a3 a4 = (GHC.Prim.writeWord8ArrayAsWord#) a1 a2 a3 a4
-#endif
-#if MIN_TOOL_VERSION_ghc(8,4,1)
 {-# NOINLINE compareByteArrays# #-}
 compareByteArrays# :: ByteArray# -> Int# -> ByteArray# -> Int# -> Int# -> Int#
 compareByteArrays# a1 a2 a3 a4 a5 = (GHC.Prim.compareByteArrays#) a1 a2 a3 a4 a5
-#endif
 {-# NOINLINE copyByteArray# #-}
 copyByteArray# :: ByteArray# -> Int# -> MutableByteArray# s -> Int# -> Int# -> State# s -> State# s
 copyByteArray# a1 a2 a3 a4 a5 a6 = (GHC.Prim.copyByteArray#) a1 a2 a3 a4 a5 a6
@@ -1198,9 +1191,6 @@ catchRetry# a1 a2 a3 = (GHC.Prim.catchRetry#) a1 a2 a3
 {-# NOINLINE catchSTM# #-}
 catchSTM# :: (State# (RealWorld) -> (# State# (RealWorld),a #)) -> (b -> State# (RealWorld) -> (# State# (RealWorld),a #)) -> State# (RealWorld) -> (# State# (RealWorld),a #)
 catchSTM# a1 a2 a3 = (GHC.Prim.catchSTM#) a1 a2 a3
-{-# NOINLINE check# #-}
-check# :: (State# (RealWorld) -> (# State# (RealWorld),a #)) -> State# (RealWorld) -> State# (RealWorld)
-check# a1 a2 = (GHC.Prim.check#) a1 a2
 {-# NOINLINE newTVar# #-}
 newTVar# :: a -> State# s -> (# State# s,TVar# s a #)
 newTVar# a1 a2 = (GHC.Prim.newTVar#) a1 a2
@@ -1393,7 +1383,7 @@ mkApUpd0# a1 = (GHC.Prim.mkApUpd0#) a1
 newBCO# :: ByteArray# -> ByteArray# -> Array# a -> Int# -> ByteArray# -> State# s -> (# State# s,BCO# #)
 newBCO# a1 a2 a3 a4 a5 a6 = (GHC.Prim.newBCO#) a1 a2 a3 a4 a5 a6
 {-# NOINLINE unpackClosure# #-}
-unpackClosure# :: a -> (# Addr#,Array# b,ByteArray# #)
+unpackClosure# :: a -> (# Addr#,ByteArray#,Array# b #)
 unpackClosure# a1 = (GHC.Prim.unpackClosure#) a1
 {-# NOINLINE getApStackVal# #-}
 getApStackVal# :: a -> Int# -> (# Int#,b #)
@@ -1413,14 +1403,12 @@ traceEvent# a1 a2 = (GHC.Prim.traceEvent#) a1 a2
 {-# NOINLINE traceMarker# #-}
 traceMarker# :: Addr# -> State# s -> State# s
 traceMarker# a1 a2 = (GHC.Prim.traceMarker#) a1 a2
-#if MIN_TOOL_VERSION_ghc(8,5,20180108)
 {-# NOINLINE getThreadAllocationCounter# #-}
 getThreadAllocationCounter# :: State# (RealWorld) -> (# State# (RealWorld),Int# #)
 getThreadAllocationCounter# a1 = (GHC.Prim.getThreadAllocationCounter#) a1
 {-# NOINLINE setThreadAllocationCounter# #-}
 setThreadAllocationCounter# :: Int# -> State# (RealWorld) -> State# (RealWorld)
 setThreadAllocationCounter# a1 a2 = (GHC.Prim.setThreadAllocationCounter#) a1 a2
-#endif
 {-# NOINLINE prefetchByteArray3# #-}
 prefetchByteArray3# :: ByteArray# -> Int# -> State# s -> State# s
 prefetchByteArray3# a1 a2 a3 = (GHC.Prim.prefetchByteArray3#) a1 a2 a3

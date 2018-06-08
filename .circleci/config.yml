@@ -28,9 +28,10 @@ jobs:
               cmake \
               g++ \
               git \
-              libedit-dev \
               libffi-dev \
               libgmp-dev \
+              libncurses5-dev \
+              libnuma-dev \
               make \
               mkdocs \
               nodejs \

@@ -28,10 +28,10 @@ ghc-build: standard
 setup-info:
   ghc:
     windows64:
-      8.5.20180413:
-        url: https://felis.sapiens.moe/ghc-8.5.20180413-x86_64-unknown-mingw32.tar.xz
-        sha256: b4e511f04e75bed048dd5eeffa05e642284fa22d8c49d7306029c2951b4d135f
+      8.5.20180607:
+        url: https://ci.appveyor.com/api/buildjobs/ax9ngiou4crqlb9x/artifacts/ghc/ghc-8.5.20180607-x86_64-unknown-mingw32.tar.xz
+        sha256: 7e3c7e10d275ca638db30333a6d24fb6b2b3b0ec0ae7421b5e6fb418dfa43ff6
     linux64:
-      8.5.20180413:
-        url: https://felis.sapiens.moe/ghc-8.5.20180413-x86_64-unknown-linux.tar.xz
-        sha256: 2cb3175b403b79a91c882ab8d506c79c49360418ad39d943b98f2a93aa3e300e
+      8.5.20180607:
+        url: https://1219-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.5.20180607-x86_64-unknown-linux.tar.xz
+        sha256: c7927e3e1fc9250ff88bee238bcbb1ac18aad0730ef3eb72a246d7f81c1c32e8

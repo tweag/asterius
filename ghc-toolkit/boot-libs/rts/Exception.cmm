@@ -370,7 +370,6 @@ INFO_TABLE_RET(stg_catch_frame, CATCH_FRAME,
                                   exceptions_blocked,handler))
     return (P_ ret)
 {
-    unwind Sp = Sp + SIZEOF_StgCatchFrame;
     return (ret);
 }
 
@@ -489,11 +488,6 @@ retry_pop_stack:
       outer  = StgTRecHeader_enclosing_trec(trec);
       ccall stmAbortTransaction(MyCapability() "ptr", trec "ptr");
       ccall stmFreeAbortedTRec(MyCapability() "ptr", trec "ptr");
-
-      if (outer != NO_TREC) {
-        ccall stmAbortTransaction(MyCapability() "ptr", outer "ptr");
-        ccall stmFreeAbortedTRec(MyCapability() "ptr", outer "ptr");
-      }
 
       StgTSO_trec(CurrentTSO) = NO_TREC;
       if (r != 0) {
