@@ -4,6 +4,7 @@ cereal-utils.cabal
 ghc-toolkit.cabal
 binaryen.cabal
 wasm-toolkit.cabal
+dist-newstyle/
 site/
 .idea/
 node_modules/
