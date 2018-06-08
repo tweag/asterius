@@ -48,6 +48,7 @@ jobs:
           name: Test Asterius & generate docs
           command: |
             export PATH=$PATH:~/.local/bin
+            stack --no-terminal install --haddock happy
             stack --no-terminal build --haddock --test --no-run-tests
             stack --no-terminal exec ahc-boot
             stack --no-terminal test asterius:fib
