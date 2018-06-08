@@ -48,7 +48,9 @@ jobs:
           name: Test Asterius & generate docs
           command: |
             export PATH=$PATH:~/.local/bin
-            stack --no-terminal install --haddock happy
+            mv stack.yaml stack.yaml.bak
+            stack --no-terminal --resolver nightly install happy
+            mv stack.yaml.bak stack.yaml
             stack --no-terminal build --haddock --test --no-run-tests
             stack --no-terminal exec ahc-boot
             stack --no-terminal test asterius:fib
