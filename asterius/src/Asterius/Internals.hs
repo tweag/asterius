@@ -40,19 +40,17 @@ type IO a
 
 {-# INLINEABLE marshalSBS #-}
 marshalSBS :: Pool -> SBS.ShortByteString -> IO (Ptr CChar)
-marshalSBS pool sbs =
-  if SBS.null sbs
-    then pure nullPtr
-    else castPtr <$> pooledNewArray0 pool 0 (SBS.unpack sbs)
+marshalSBS pool sbs
+  | SBS.null sbs = pure nullPtr
+  | otherwise = castPtr <$> pooledNewArray0 pool 0 (SBS.unpack sbs)
 
 {-# INLINEABLE marshalV #-}
 marshalV :: (Storable a, Num n) => Pool -> V.Vector a -> IO (Ptr a, n)
-marshalV pool v =
-  if V.null v
-    then pure (nullPtr, 0)
-    else do
-      buf <- pooledNewArray pool (V.toList v)
-      pure (buf, fromIntegral $ V.length v)
+marshalV pool v
+  | V.null v = pure (nullPtr, 0)
+  | otherwise = do
+    buf <- pooledNewArray pool (V.toList v)
+    pure (buf, fromIntegral $ V.length v)
 
 {-# INLINEABLE encodePrim #-}
 encodePrim :: Prim a => a -> SBS.ShortByteString

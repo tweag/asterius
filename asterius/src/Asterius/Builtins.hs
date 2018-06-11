@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 module Asterius.Builtins
   ( BuiltinsOptions(..)
@@ -22,6 +23,7 @@ module Asterius.Builtins
   , errMegaBlockGroup
   , errUnimplemented
   , errAtomics
+  , errMemoryTrap
   , wasmPageSize
   , cutI64
   ) where
@@ -143,6 +145,7 @@ rtsAsteriusModule opts =
         , ("_get_SpLim", getI32GlobalRegFunction opts SpLim)
         , ("_get_Hp", getI32GlobalRegFunction opts Hp)
         , ("_get_HpLim", getI32GlobalRegFunction opts HpLim)
+        , ("__asterius_memory_trap", memoryTrapFunction opts)
         ]
     }
 
@@ -306,7 +309,7 @@ marshalErrorCode err vt =
     , valueType = vt
     }
 
-errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented, errAtomics ::
+errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented, errAtomics, errMemoryTrap ::
      Int32
 errGCEnter1 = 1
 
@@ -326,7 +329,9 @@ errUnimplemented = 8
 
 errAtomics = 9
 
-mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgEnterFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function ::
+errMemoryTrap = 10
+
+mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgEnterFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {..} =
   Function
@@ -1842,6 +1847,74 @@ getI32GlobalRegFunction _ gr =
     , varTypes = []
     , body = wrapI64 UnresolvedGetGlobal {unresolvedGlobalReg = gr}
     }
+
+memoryTrapFunction _ =
+  Function
+    { functionTypeName = "None(I64)"
+    , varTypes = []
+    , body =
+        If
+          { condition =
+              guard_struct
+                mainCap
+                sizeof_Capability
+                [ offset_Capability_r
+                , offset_Capability_running_task
+                , offset_Capability_interrupt
+                ]
+          , ifTrue = marshalErrorCode errMemoryTrap None
+          , ifFalse = Null
+          }
+    }
+  where
+    p = getLocalWord 0
+    guard_struct struct_addr_expr struct_size allowed_field_offsets =
+      Binary
+        { binaryOp = AndInt32
+        , operand0 =
+            Binary
+              { binaryOp = AndInt32
+              , operand0 =
+                  Binary
+                    { binaryOp = GeUInt64
+                    , operand0 = p
+                    , operand1 = struct_addr_expr
+                    }
+              , operand1 =
+                  Binary
+                    { binaryOp = LtUInt64
+                    , operand0 = p
+                    , operand1 = struct_field_off struct_size
+                    }
+              }
+        , operand1 =
+            Binary
+              { binaryOp = XorInt32
+              , operand0 =
+                  V.foldl1' (Binary OrInt32) $
+                  V.fromList
+                    [ Binary
+                      { binaryOp = EqInt64
+                      , operand0 =
+                          Binary
+                            { binaryOp = SubInt64
+                            , operand0 = p
+                            , operand1 = struct_addr_expr
+                            }
+                      , operand1 = constInt o
+                      }
+                    | o <- allowed_field_offsets
+                    ]
+              , operand1 = ConstI32 0xFFFFFFFF
+              }
+        }
+      where
+        struct_field_off o =
+          Binary
+            { binaryOp = AddInt64
+            , operand0 = struct_addr_expr
+            , operand1 = constInt o
+            }
 
 fieldOff :: Expression -> Int -> Expression
 fieldOff p o

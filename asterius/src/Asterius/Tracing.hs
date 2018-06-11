@@ -8,6 +8,7 @@ module Asterius.Tracing
   ) where
 
 import Asterius.Builtins
+import Asterius.MemoryTrap
 import Asterius.Types
 import Data.Data (Data, gmapT)
 import qualified Data.HashMap.Strict as HM
@@ -21,7 +22,15 @@ addTracingModule ::
   -> AsteriusEntitySymbol
   -> Function
   -> Function
-addTracingModule func_sym_map func_sym func = f func
+addTracingModule func_sym_map func_sym func
+  | func_sym `V.elem`
+      [ "_get_Sp"
+      , "_get_SpLim"
+      , "_get_Hp"
+      , "_get_HpLim"
+      , "__asterius_memory_trap"
+      ] = func
+  | otherwise = addMemoryTrap $ f func
   where
     f :: Data a => a -> a
     f x =
@@ -33,21 +42,18 @@ addTracingModule func_sym_map func_sym func = f func
                 { functionTypeName = functionTypeName
                 , varTypes = varTypes
                 , body =
-                    if func_sym `V.elem`
-                       ["_get_Sp", "_get_SpLim", "_get_Hp", "_get_HpLim"]
-                      then body
-                      else Block
-                             { name = ""
-                             , bodys =
-                                 [ CallImport
-                                     { target' = "traceCmm"
-                                     , operands = [func_idx]
-                                     , valueType = None
-                                     }
-                                 , f body
-                                 ]
-                             , valueType = Auto
-                             }
+                    Block
+                      { name = ""
+                      , bodys =
+                          [ CallImport
+                              { target' = "traceCmm"
+                              , operands = [func_idx]
+                              , valueType = None
+                              }
+                          , f body
+                          ]
+                      , valueType = Auto
+                      }
                 }
         _ ->
           case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
