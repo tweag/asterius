@@ -547,6 +547,8 @@ createThreadFunction _ =
                         , valueType = I64
                         }
                   }
+              , UnresolvedSetGlobal
+                  {unresolvedGlobalReg = CurrentTSO, value = tso_p}
               , saveSp 3 tso_p
               , setFieldWord
                   stack_p
@@ -588,6 +590,7 @@ createThreadFunction _ =
               , setFieldWord stack_p offset_StgStack_sp sp
               , setFieldWord tso_p offset_StgTSO_cap cap
               , setFieldWord tso_p offset_StgTSO_stackobj stack_p
+              , setFieldWord tso_p offset_StgTSO_alloc_limit (ConstI64 0)
               , setFieldWord
                   sp
                   0
@@ -1857,6 +1860,21 @@ memoryTrapFunction _ =
           { condition =
               V.foldl1' (Binary OrInt32) $
               V.fromList $
+              [ Binary
+                  { binaryOp = AndInt32
+                  , operand0 =
+                      notExpr $ Unary {unaryOp = EqZInt64, operand0 = tso_p}
+                  , operand1 =
+                      guard_struct
+                        tso_p
+                        sizeof_StgTSO
+                        [ offset_StgTSO_alloc_limit
+                        , offset_StgTSO_bound
+                        , offset_StgTSO_cap
+                        , offset_StgTSO_stackobj
+                        ]
+                  }
+              ] <>
               [ guard_struct mainCap sizeof_Capability $
                 [offset_Capability_running_task, offset_Capability_interrupt] <>
                 [ offset_Capability_r + o
@@ -1887,6 +1905,7 @@ memoryTrapFunction _ =
     }
   where
     p = getLocalWord 0
+    tso_p = UnresolvedGetGlobal {unresolvedGlobalReg = CurrentTSO}
     guard_struct struct_addr_expr struct_size allowed_field_offsets =
       Binary
         { binaryOp = AndInt32
@@ -1907,25 +1926,21 @@ memoryTrapFunction _ =
                     }
               }
         , operand1 =
-            Binary
-              { binaryOp = XorInt32
-              , operand0 =
-                  V.foldl' (Binary OrInt32) (ConstI32 0) $
-                  V.fromList
-                    [ Binary
-                      { binaryOp = EqInt64
-                      , operand0 =
-                          Binary
-                            { binaryOp = SubInt64
-                            , operand0 = p
-                            , operand1 = struct_addr_expr
-                            }
-                      , operand1 = constInt o
+            notExpr $
+            V.foldl' (Binary OrInt32) (ConstI32 0) $
+            V.fromList
+              [ Binary
+                { binaryOp = EqInt64
+                , operand0 =
+                    Binary
+                      { binaryOp = SubInt64
+                      , operand0 = p
+                      , operand1 = struct_addr_expr
                       }
-                    | o <- allowed_field_offsets
-                    ]
-              , operand1 = ConstI32 0xFFFFFFFF
-              }
+                , operand1 = constInt o
+                }
+              | o <- allowed_field_offsets
+              ]
         }
       where
         struct_field_off o =
@@ -2006,3 +2021,6 @@ cutI64 x =
   , wrapI64 $
     Binary {binaryOp = ShrUInt64, operand0 = x, operand1 = ConstI64 32}
   ]
+
+notExpr :: Expression -> Expression
+notExpr = Binary XorInt32 (ConstI32 0xFFFFFFFF)
