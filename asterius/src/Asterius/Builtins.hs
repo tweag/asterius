@@ -1878,6 +1878,7 @@ memoryTrapFunction _ =
                         , offset_StgTSO_bound
                         , offset_StgTSO_cap
                         , offset_StgTSO_stackobj
+                        , offset_StgTSO_what_next
                         ]
                   }
               ] <>
@@ -1889,6 +1890,7 @@ memoryTrapFunction _ =
                     , offset_StgRegTable_rCurrentAlloc
                     , offset_StgRegTable_rCurrentNursery
                     , offset_StgRegTable_rCurrentTSO
+                    , offset_StgRegTable_rRet
                     ]
                 ]
               ] <>
