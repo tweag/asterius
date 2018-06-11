@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
-{-# OPTIONS_GHC -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
+{-# OPTIONS_GHC
+  -Wall -O2 -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 fib :: Int -> Int
 fib n = go 0 1 0
@@ -27,6 +28,10 @@ genBinTree n = Branch t t
   where
     t = genBinTree (n - 1)
 
+sizeofBinTree :: BinTree -> Int
+sizeofBinTree Tip = 1
+sizeofBinTree (Branch x y) = 1 + sizeofBinTree x + sizeofBinTree y
+
 foreign import ccall unsafe "print_i64" print_i64 :: Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
@@ -37,8 +42,6 @@ main = do
   print_i64 $ fact 5
   print_f64 $ cos 0.5
   print_f64 $ 2 ** 3
-  print_i64 $
-    if genBinTree 3 < genBinTree 5
-      then 1
-      else 0
-  print_i64 $ facts !! 5
+  print_i64 $ sizeofBinTree $ genBinTree 3
+  print_i64 $ sizeofBinTree $ genBinTree 5
+  print_i64 $ head facts

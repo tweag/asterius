@@ -23,7 +23,6 @@ module Asterius.Builtins
   , errMegaBlockGroup
   , errUnimplemented
   , errAtomics
-  , errMemoryTrap
   , wasmPageSize
   , cutI64
   ) where
@@ -213,6 +212,24 @@ rtsAsteriusFunctionImports =
       , externalBaseName = "traceCmmSetLocal"
       , functionTypeName = "None(I32,I32,I32)"
       }
+  , FunctionImport
+      { internalName = "__asterius_memory_trap_trigger"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_memory_trap_trigger"
+      , functionTypeName = "None(I32,I32)"
+      }
+  , FunctionImport
+      { internalName = "__asterius_load_i64"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_load_i64"
+      , functionTypeName = "None(I32,I32)"
+      }
+  , FunctionImport
+      { internalName = "__asterius_store_i64"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_store_i64"
+      , functionTypeName = "None(I32,I32,I32,I32)"
+      }
   ]
 
 rtsAsteriusFunctionExports :: V.Vector FunctionExport
@@ -237,6 +254,8 @@ rtsAsteriusFunctionTypeMap =
   , ("None(I32,I32)", FunctionType {returnType = None, paramTypes = [I32, I32]})
   , ( "None(I32,I32,I32)"
     , FunctionType {returnType = None, paramTypes = [I32, I32, I32]})
+  , ( "None(I32,I32,I32,I32)"
+    , FunctionType {returnType = None, paramTypes = [I32, I32, I32, I32]})
   , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
   , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
   , ( "None(I64,I64,I64)"
@@ -298,7 +317,7 @@ marshalErrorCode err vt =
     , valueType = vt
     }
 
-errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented, errAtomics, errMemoryTrap ::
+errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented, errAtomics ::
      Int32
 errGCEnter1 = 1
 
@@ -317,8 +336,6 @@ errMegaBlockGroup = 7
 errUnimplemented = 8
 
 errAtomics = 9
-
-errMemoryTrap = 10
 
 mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgEnterFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> Function
@@ -1888,7 +1905,19 @@ memoryTrapFunction _ =
                   , ("stable_ptr_table", 8)
                   ]
               ]
-          , ifTrue = marshalErrorCode errMemoryTrap None
+          , ifTrue =
+              Block
+                { name = ""
+                , bodys =
+                    [ CallImport
+                        { target' = "__asterius_memory_trap_trigger"
+                        , operands = cutI64 p
+                        , valueType = None
+                        }
+                    , Unreachable
+                    ]
+                , valueType = None
+                }
           , ifFalse = Null
           }
     }
