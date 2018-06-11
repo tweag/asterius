@@ -1855,13 +1855,16 @@ memoryTrapFunction _ =
     , body =
         If
           { condition =
-              guard_struct
-                mainCap
-                sizeof_Capability
-                [ offset_Capability_r
-                , offset_Capability_running_task
-                , offset_Capability_interrupt
-                ]
+              guard_struct mainCap sizeof_Capability $
+              [offset_Capability_running_task, offset_Capability_interrupt] <>
+              [ offset_Capability_r + o
+              | o <-
+                  [ offset_StgRegTable_rCCCS
+                  , offset_StgRegTable_rCurrentAlloc
+                  , offset_StgRegTable_rCurrentNursery
+                  , offset_StgRegTable_rCurrentTSO
+                  ]
+              ]
           , ifTrue = marshalErrorCode errMemoryTrap None
           , ifFalse = Null
           }
