@@ -1855,14 +1855,30 @@ memoryTrapFunction _ =
     , body =
         If
           { condition =
-              guard_struct mainCap sizeof_Capability $
-              [offset_Capability_running_task, offset_Capability_interrupt] <>
-              [ offset_Capability_r + o
-              | o <-
-                  [ offset_StgRegTable_rCCCS
-                  , offset_StgRegTable_rCurrentAlloc
-                  , offset_StgRegTable_rCurrentNursery
-                  , offset_StgRegTable_rCurrentTSO
+              V.foldl1' (Binary OrInt32) $
+              V.fromList $
+              [ guard_struct mainCap sizeof_Capability $
+                [offset_Capability_running_task, offset_Capability_interrupt] <>
+                [ offset_Capability_r + o
+                | o <-
+                    [ offset_StgRegTable_rCCCS
+                    , offset_StgRegTable_rCurrentAlloc
+                    , offset_StgRegTable_rCurrentNursery
+                    , offset_StgRegTable_rCurrentTSO
+                    ]
+                ]
+              ] <>
+              [ guard_struct Unresolved {unresolvedSymbol = sym} size []
+              | (sym, size) <-
+                  [ ("g0", 8)
+                  , ("blocked_queue_hd", 8)
+                  , ("blocked_queue_tl", 8)
+                  , ("enabled_capabilities", 4)
+                  , ("large_alloc_lim", 8)
+                  , ("n_capabilities", 4)
+                  , ("rts_stop_on_exception", 4)
+                  , ("RtsFlags", 8 * roundup_bytes_to_words sizeof_RTS_FLAGS)
+                  , ("stable_ptr_table", 8)
                   ]
               ]
           , ifTrue = marshalErrorCode errMemoryTrap None
@@ -1894,7 +1910,7 @@ memoryTrapFunction _ =
             Binary
               { binaryOp = XorInt32
               , operand0 =
-                  V.foldl1' (Binary OrInt32) $
+                  V.foldl' (Binary OrInt32) (ConstI32 0) $
                   V.fromList
                     [ Binary
                       { binaryOp = EqInt64
