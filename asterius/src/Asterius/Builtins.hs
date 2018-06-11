@@ -76,42 +76,31 @@ rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
     { staticsMap =
-        [ ( "g0"
-          , AsteriusStatics
-              {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
+        [ ("g0", AsteriusStatics {asteriusStatics = [Uninitialized 8]})
         , ( "blocked_queue_hd"
-          , AsteriusStatics
-              {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
+          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
         , ( "blocked_queue_tl"
-          , AsteriusStatics
-              {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
+          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
         , ( "enabled_capabilities"
-          , AsteriusStatics
-              {asteriusStatics = [Serialized $ encodePrim (1 :: Word32)]})
+          , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
         , ( "large_alloc_lim"
-          , AsteriusStatics
-              { asteriusStatics =
-                  [Serialized $ encodePrim (0x7FFFFFFFFFFFFFFF :: Word64)]
-              })
+          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
         , ( "MainCapability"
           , AsteriusStatics
               { asteriusStatics =
                   [Uninitialized (8 * roundup_bytes_to_words sizeof_Capability)]
               })
         , ( "n_capabilities"
-          , AsteriusStatics
-              {asteriusStatics = [Serialized $ encodePrim (1 :: Word32)]})
+          , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
         , ( "rts_stop_on_exception"
-          , AsteriusStatics
-              {asteriusStatics = [Serialized $ encodePrim (0 :: Int32)]})
+          , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
         , ( "RtsFlags"
           , AsteriusStatics
               { asteriusStatics =
                   [Uninitialized (8 * roundup_bytes_to_words sizeof_RTS_FLAGS)]
               })
         , ( "stable_ptr_table"
-          , AsteriusStatics
-              {asteriusStatics = [Serialized $ encodePrim (0 :: Word64)]})
+          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
         ]
     , functionMap =
         [ ("main", mainFunction opts)
@@ -281,7 +270,7 @@ rtsAsteriusGlobalMap =
   [ ( "BaseReg"
     , Global
         { valueType = I64
-        , mutable = True
+        , mutable = False
         , initValue =
             UnresolvedOff
               { unresolvedSymbol = "MainCapability"
