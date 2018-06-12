@@ -87,7 +87,10 @@ rtsAsteriusModule opts =
         , ( "MainCapability"
           , AsteriusStatics
               { asteriusStatics =
-                  [Uninitialized (8 * roundup_bytes_to_words sizeof_Capability)]
+                  [ Serialized $
+                    SBS.pack $
+                    replicate (8 * roundup_bytes_to_words sizeof_Capability) 0
+                  ]
               })
         , ( "n_capabilities"
           , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
@@ -1866,7 +1869,11 @@ memoryTrapFunction _ =
           { condition =
               V.foldl1' (Binary OrInt32) $
               V.fromList $
-              [ Binary
+              [ guard_struct
+                  task_p
+                  sizeof_Task
+                  [offset_Task_cap, offset_Task_incall]
+              , Binary
                   { binaryOp = AndInt32
                   , operand0 =
                       notExpr $ Unary {unaryOp = EqZInt64, operand0 = tso_p}
@@ -1881,8 +1888,7 @@ memoryTrapFunction _ =
                         , offset_StgTSO_what_next
                         ]
                   }
-              ] <>
-              [ guard_struct mainCap sizeof_Capability $
+              , guard_struct mainCap sizeof_Capability $
                 [offset_Capability_running_task, offset_Capability_interrupt] <>
                 [ offset_Capability_r + o
                 | o <-
@@ -1926,41 +1932,48 @@ memoryTrapFunction _ =
   where
     p = getLocalWord 0
     tso_p = UnresolvedGetGlobal {unresolvedGlobalReg = CurrentTSO}
+    task_p = getFieldWord mainCap offset_Capability_running_task
     guard_struct struct_addr_expr struct_size allowed_field_offsets =
       Binary
         { binaryOp = AndInt32
         , operand0 =
+            notExpr $ Unary {unaryOp = EqZInt64, operand0 = struct_addr_expr}
+        , operand1 =
             Binary
               { binaryOp = AndInt32
               , operand0 =
                   Binary
-                    { binaryOp = GeUInt64
-                    , operand0 = p
-                    , operand1 = struct_addr_expr
+                    { binaryOp = AndInt32
+                    , operand0 =
+                        Binary
+                          { binaryOp = GeUInt64
+                          , operand0 = p
+                          , operand1 = struct_addr_expr
+                          }
+                    , operand1 =
+                        Binary
+                          { binaryOp = LtUInt64
+                          , operand0 = p
+                          , operand1 = struct_field_off struct_size
+                          }
                     }
               , operand1 =
-                  Binary
-                    { binaryOp = LtUInt64
-                    , operand0 = p
-                    , operand1 = struct_field_off struct_size
-                    }
-              }
-        , operand1 =
-            notExpr $
-            V.foldl' (Binary OrInt32) (ConstI32 0) $
-            V.fromList
-              [ Binary
-                { binaryOp = EqInt64
-                , operand0 =
-                    Binary
-                      { binaryOp = SubInt64
-                      , operand0 = p
-                      , operand1 = struct_addr_expr
+                  notExpr $
+                  V.foldl' (Binary OrInt32) (ConstI32 0) $
+                  V.fromList
+                    [ Binary
+                      { binaryOp = EqInt64
+                      , operand0 =
+                          Binary
+                            { binaryOp = SubInt64
+                            , operand0 = p
+                            , operand1 = struct_addr_expr
+                            }
+                      , operand1 = constInt o
                       }
-                , operand1 = constInt o
-                }
-              | o <- allowed_field_offsets
-              ]
+                    | o <- allowed_field_offsets
+                    ]
+              }
         }
       where
         struct_field_off o =
