@@ -67,7 +67,7 @@ resolveLocalRegs t =
   (f t, V.fromList $ I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
   where
     lrs =
-      zip (toList $ collectUnresolvedLocalRegs t) ([2 ..] :: [BinaryenIndex])
+      zip (sort $ toList $ collectUnresolvedLocalRegs t) ([2 ..] :: [BinaryenIndex])
     lr_map = fromList lrs
     lr_idx = (lr_map HM.!)
     f :: Data a => a -> a

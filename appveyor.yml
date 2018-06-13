@@ -1,12 +1,11 @@
 version: 0.0.1.{build}
 
-clone_depth: 1
+shallow_clone: true
 
 environment:
   MAKEFLAGS: -j4
 
 build_script:
-  - git submodule update --init --recursive
   - choco install haskell-stack nodejs
   - stack --no-terminal --skip-msys setup > NUL
   - mklink /D %LOCALAPPDATA%\\Programs\\stack\\x86_64-windows\\msys2-20161025 C:\\msys64

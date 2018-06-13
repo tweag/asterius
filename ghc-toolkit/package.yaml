@@ -16,12 +16,12 @@ data-files:
   - boot-libs/**/**
 
 include-dirs:
-  - ../ghc/rts
+  - include
 
 c-sources:
   - cbits/ghc_constants.c
 
-cc-options: -Wall -Wextra -O3 -std=c11
+cc-options: -Wall -Wextra -O3 -fPIC -std=c11
 
 custom-setup:
   dependencies:

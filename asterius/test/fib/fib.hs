@@ -44,4 +44,4 @@ main = do
   print_f64 $ 2 ** 3
   print_i64 $ sizeofBinTree $ genBinTree 3
   print_i64 $ sizeofBinTree $ genBinTree 5
-  print_i64 $ head facts
+  print_i64 $ [2, 3, 5, 7] !! 1
