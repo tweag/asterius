@@ -127,7 +127,7 @@ resolveGlobalRegs x =
               }
         UnresolvedSetGlobal {..}
           | unresolvedGlobalReg == BaseReg ->
-            throw $ AssignToImmutableGlobalReg BaseReg
+            marshalErrorCode errSetBaseReg None
           | otherwise ->
             Store
               { bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
