@@ -1030,17 +1030,6 @@ memoryTrapFunction _ =
                         , offset_StgTSO_what_next
                         ]
                   }
-              , guard_struct mainCap sizeof_Capability $
-                [offset_Capability_running_task, offset_Capability_interrupt] <>
-                [ offset_Capability_r + o
-                | o <-
-                    [ offset_StgRegTable_rCCCS
-                    , offset_StgRegTable_rCurrentAlloc
-                    , offset_StgRegTable_rCurrentNursery
-                    , offset_StgRegTable_rCurrentTSO
-                    , offset_StgRegTable_rRet
-                    ]
-                ]
               ] <>
               [ guard_struct Unresolved {unresolvedSymbol = sym} size []
               | (sym, size) <-
