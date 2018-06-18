@@ -11,7 +11,6 @@ import GhcPlugins
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 import Panic
-import Platform
 
 makeFrontendPlugin :: Ghc Compiler -> FrontendPlugin
 makeFrontendPlugin init_c =
@@ -20,17 +19,6 @@ makeFrontendPlugin init_c =
         \_ targets -> do
           c <- init_c
           flip gfinally (finalize c) $ do
-            do dflags <- getSessionDynFlags
-               void $
-                 setSessionDynFlags
-                   dflags
-                     { settings =
-                         (settings dflags)
-                           { sTargetPlatform =
-                               (sTargetPlatform (settings dflags))
-                                 {platformUnregisterised = True}
-                           }
-                     }
             h <- liftIO $ hooksFromCompiler c
             let (hs_targets, non_hs_targets) =
                   partition isHaskellishTarget targets
