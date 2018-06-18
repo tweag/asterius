@@ -24,6 +24,7 @@ import qualified Language.Haskell.GHC.Toolkit.BuildInfo as BI
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 import Panic
+import Platform
 import System.Directory
 import System.FilePath
 import System.IO
@@ -41,6 +42,17 @@ runHaskell Config {..} targets =
   liftIO $
   defaultErrorHandler defaultFatalMessager defaultFlushOut $
   runGhc (Just ghcLibDir) $ do
+    do dflags <- getSessionDynFlags
+       void $
+         setSessionDynFlags
+           dflags
+             { settings =
+                 (settings dflags)
+                   { sTargetPlatform =
+                       (sTargetPlatform (settings dflags))
+                         {platformUnregisterised = True}
+                   }
+             }
     dflags <- getSessionDynFlags
     (dflags', _, _) <-
       parseDynamicFlags
@@ -84,6 +96,17 @@ runCmm Config {..} cmm_fns =
   liftIO $
   defaultErrorHandler defaultFatalMessager defaultFlushOut $
   runGhc (Just ghcLibDir) $ do
+    do dflags <- getSessionDynFlags
+       void $
+         setSessionDynFlags
+           dflags
+             { settings =
+                 (settings dflags)
+                   { sTargetPlatform =
+                       (sTargetPlatform (settings dflags))
+                         {platformUnregisterised = True}
+                   }
+             }
     dflags <- getSessionDynFlags
     (dflags', _, _) <-
       parseDynamicFlags

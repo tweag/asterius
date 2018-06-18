@@ -45,7 +45,7 @@ getDefaultBootArgs = do
   pure
     BootArgs
       { bootDir = dataDir </> ".boot"
-      , configureOptions = "--disable-split-objs --disable-split-sections -O2 --configure-option=CPPFLAGS=\"-DNO_REGS\""
+      , configureOptions = "--disable-split-objs --disable-split-sections -O2"
       , buildOptions = ""
       , builtinsOptions = builtins_opts
       }
