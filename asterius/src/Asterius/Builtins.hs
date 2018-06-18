@@ -222,7 +222,7 @@ rtsAsteriusFunctionImports =
       { internalName = "__asterius_load_i64"
       , externalModuleName = "rts"
       , externalBaseName = "__asterius_load_i64"
-      , functionTypeName = "None(I32,I32)"
+      , functionTypeName = "None(I32,I32,I32,I32)"
       }
   , FunctionImport
       { internalName = "__asterius_store_i64"

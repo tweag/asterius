@@ -25,7 +25,18 @@ addMemoryTrap t =
                 V.fromList $
                 [ CallImport
                   { target' = "__asterius_load_i64"
-                  , operands = cutI64 i64_ptr
+                  , operands =
+                      cutI64 i64_ptr <>
+                      cutI64
+                        Load
+                          { signed = False
+                          , bytes = 8
+                          , offset = 0
+                          , align = 0
+                          , valueType = I64
+                          , ptr =
+                              Unary {unaryOp = WrapInt64, operand0 = i64_ptr}
+                          }
                   , valueType = None
                   }
                 | valueType == I64
