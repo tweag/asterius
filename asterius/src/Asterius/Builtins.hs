@@ -906,11 +906,6 @@ stgRunFunction BuiltinsOptions {..} =
         Block
           { name = ""
           , bodys =
-              V.fromList $
-              [ UnresolvedSetGlobal
-                {unresolvedGlobalReg = gr, value = getFieldWord baseReg o}
-              | (gr, o) <- volatile_global_regs
-              ] <>
               [ Loop
                   { name = loop_lbl
                   , body =
@@ -953,18 +948,14 @@ stgRunFunction BuiltinsOptions {..} =
                               }
                         }
                   }
-              ] <>
-              [UnresolvedGetGlobal {unresolvedGlobalReg = VanillaReg 1}]
+              , UnresolvedGetGlobal {unresolvedGlobalReg = VanillaReg 1}
+              ]
           , valueType = I64
           }
     }
   where
     loop_lbl = "StgRun_loop"
     f = getLocalWord 0
-    volatile_global_regs =
-      [ (CurrentTSO, offset_StgRegTable_rCurrentTSO)
-      , (CurrentNursery, offset_StgRegTable_rCurrentNursery)
-      ]
 
 stgReturnFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
