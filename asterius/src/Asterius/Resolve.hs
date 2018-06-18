@@ -109,24 +109,34 @@ resolveGlobalRegs x =
   case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
     Just HRefl ->
       case x of
-        UnresolvedGetGlobal {..} ->
-          Load
-            { signed = False
-            , bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
-            , offset = 0
-            , align = 0
-            , valueType = unresolvedGlobalRegType unresolvedGlobalReg
-            , ptr = gr_ptr unresolvedGlobalReg
-            }
-        UnresolvedSetGlobal {..} ->
-          Store
-            { bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
-            , offset = 0
-            , align = 0
-            , ptr = gr_ptr unresolvedGlobalReg
-            , value = resolveGlobalRegs value
-            , valueType = unresolvedGlobalRegType unresolvedGlobalReg
-            }
+        UnresolvedGetGlobal {..}
+          | unresolvedGlobalReg == BaseReg ->
+            Binary
+              { binaryOp = AddInt64
+              , operand0 = Unresolved {unresolvedSymbol = "MainCapability"}
+              , operand1 = ConstI64 $ fromIntegral offset_Capability_r
+              }
+          | otherwise ->
+            Load
+              { signed = False
+              , bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
+              , offset = 0
+              , align = 0
+              , valueType = unresolvedGlobalRegType unresolvedGlobalReg
+              , ptr = gr_ptr unresolvedGlobalReg
+              }
+        UnresolvedSetGlobal {..}
+          | unresolvedGlobalReg == BaseReg ->
+            throw $ AssignToImmutableGlobalReg BaseReg
+          | otherwise ->
+            Store
+              { bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
+              , offset = 0
+              , align = 0
+              , ptr = gr_ptr unresolvedGlobalReg
+              , value = resolveGlobalRegs value
+              , valueType = unresolvedGlobalRegType unresolvedGlobalReg
+              }
         _ -> go
     _ -> go
   where
@@ -178,7 +188,6 @@ globalRegOffset gr =
     CurrentTSO -> offset_StgRegTable_rCurrentTSO
     CurrentNursery -> offset_StgRegTable_rCurrentNursery
     HpAlloc -> offset_StgRegTable_rHpAlloc
-    BaseReg -> 0
     _ -> throw $ AssignToImmutableGlobalReg gr
 
 collectAsteriusEntitySymbols :: Data a => a -> HS.HashSet AsteriusEntitySymbol
