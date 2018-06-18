@@ -30,7 +30,6 @@ import Data.Foldable
 import qualified Data.HashMap.Strict as HM
 import qualified Data.HashSet as HS
 import Data.List
-import Data.String
 import qualified Data.Vector as V
 import Foreign
 import GHC.Exts (fromList, proxy#)
@@ -67,7 +66,9 @@ resolveLocalRegs t =
   (f t, V.fromList $ I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
   where
     lrs =
-      zip (sort $ toList $ collectUnresolvedLocalRegs t) ([2 ..] :: [BinaryenIndex])
+      zip
+        (sort $ toList $ collectUnresolvedLocalRegs t)
+        ([2 ..] :: [BinaryenIndex])
     lr_map = fromList lrs
     lr_idx = (lr_map HM.!)
     f :: Data a => a -> a
@@ -96,49 +97,89 @@ unresolvedGlobalRegType gr =
     DoubleReg _ -> F64
     _ -> I64
 
+unresolvedGlobalRegBytes :: UnresolvedGlobalReg -> BinaryenIndex
+unresolvedGlobalRegBytes gr =
+  case unresolvedGlobalRegType gr of
+    I32 -> 4
+    F32 -> 4
+    _ -> 8
+
 resolveGlobalRegs :: Data a => a -> a
 resolveGlobalRegs x =
   case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
     Just HRefl ->
       case x of
         UnresolvedGetGlobal {..} ->
-          GetGlobal
-            { name = globalRegName unresolvedGlobalReg
+          Load
+            { signed = False
+            , bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
+            , offset = 0
+            , align = 0
             , valueType = unresolvedGlobalRegType unresolvedGlobalReg
+            , ptr = gr_ptr unresolvedGlobalReg
             }
         UnresolvedSetGlobal {..} ->
-          SetGlobal
-            { name = globalRegName unresolvedGlobalReg
+          Store
+            { bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
+            , offset = 0
+            , align = 0
+            , ptr = gr_ptr unresolvedGlobalReg
             , value = resolveGlobalRegs value
+            , valueType = unresolvedGlobalRegType unresolvedGlobalReg
             }
         _ -> go
     _ -> go
   where
+    gr_ptr gr =
+      Unary
+        { unaryOp = WrapInt64
+        , operand0 =
+            Binary
+              { binaryOp = AddInt64
+              , operand0 = Unresolved {unresolvedSymbol = "MainCapability"}
+              , operand1 =
+                  ConstI64 $
+                  fromIntegral $ offset_Capability_r + globalRegOffset gr
+              }
+        }
     go = gmapT resolveGlobalRegs x
 
-globalRegName :: UnresolvedGlobalReg -> SBS.ShortByteString
-globalRegName gr =
+globalRegOffset :: UnresolvedGlobalReg -> Int
+globalRegOffset gr =
   case gr of
-    VanillaReg i
-      | i >= 1 && i <= 10 -> rn "R" i
-    FloatReg i
-      | i >= 1 && i <= 6 -> rn "F" i
-    DoubleReg i
-      | i >= 1 && i <= 6 -> rn "D" i
-    LongReg 1 -> "L1"
-    Sp -> "Sp"
-    SpLim -> "SpLim"
-    Hp -> "Hp"
-    HpLim -> "HpLim"
-    CCCS -> "CCCS"
-    CurrentTSO -> "CurrentTSO"
-    CurrentNursery -> "CurrentNursery"
-    HpAlloc -> "HpAlloc"
-    BaseReg -> "BaseReg"
+    VanillaReg 1 -> offset_StgRegTable_rR1
+    VanillaReg 2 -> offset_StgRegTable_rR2
+    VanillaReg 3 -> offset_StgRegTable_rR3
+    VanillaReg 4 -> offset_StgRegTable_rR4
+    VanillaReg 5 -> offset_StgRegTable_rR5
+    VanillaReg 6 -> offset_StgRegTable_rR6
+    VanillaReg 7 -> offset_StgRegTable_rR7
+    VanillaReg 8 -> offset_StgRegTable_rR8
+    VanillaReg 9 -> offset_StgRegTable_rR9
+    VanillaReg 10 -> offset_StgRegTable_rR10
+    FloatReg 1 -> offset_StgRegTable_rF1
+    FloatReg 2 -> offset_StgRegTable_rF2
+    FloatReg 3 -> offset_StgRegTable_rF3
+    FloatReg 4 -> offset_StgRegTable_rF4
+    FloatReg 5 -> offset_StgRegTable_rF5
+    FloatReg 6 -> offset_StgRegTable_rF6
+    DoubleReg 1 -> offset_StgRegTable_rD1
+    DoubleReg 2 -> offset_StgRegTable_rD2
+    DoubleReg 3 -> offset_StgRegTable_rD3
+    DoubleReg 4 -> offset_StgRegTable_rD4
+    DoubleReg 5 -> offset_StgRegTable_rD5
+    DoubleReg 6 -> offset_StgRegTable_rD6
+    LongReg 1 -> offset_StgRegTable_rL1
+    Sp -> offset_StgRegTable_rSp
+    SpLim -> offset_StgRegTable_rSpLim
+    Hp -> offset_StgRegTable_rHp
+    HpLim -> offset_StgRegTable_rHpLim
+    CCCS -> offset_StgRegTable_rCCCS
+    CurrentTSO -> offset_StgRegTable_rCurrentTSO
+    CurrentNursery -> offset_StgRegTable_rCurrentNursery
+    HpAlloc -> offset_StgRegTable_rHpAlloc
+    BaseReg -> 0
     _ -> throw $ AssignToImmutableGlobalReg gr
-  where
-    rn :: String -> Int -> SBS.ShortByteString
-    rn p i = fromString $ p <> show i
 
 collectAsteriusEntitySymbols :: Data a => a -> HS.HashSet AsteriusEntitySymbol
 collectAsteriusEntitySymbols = collect proxy#
@@ -357,7 +398,7 @@ resolveAsteriusModule add_tracing m_unresolved =
       , functionExports = rtsAsteriusFunctionExports
       , tableExports = []
       , globalExports = []
-      , globalMap = resolve_syms rtsAsteriusGlobalMap
+      , globalMap = []
       , functionTable = Just func_table
       , memory = Just $ makeMemory m_resolved last_o ss_sym_map
       , startFunctionName = Nothing

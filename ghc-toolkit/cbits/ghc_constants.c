@@ -121,6 +121,52 @@ HsInt offset_StgFunTable_stgGCFun() { return offsetof(StgFunTable, stgGCFun); }
 
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
+HsInt offset_StgRegTable_rR1() { return offsetof(StgRegTable, rR1); }
+
+HsInt offset_StgRegTable_rR2() { return offsetof(StgRegTable, rR2); }
+
+HsInt offset_StgRegTable_rR3() { return offsetof(StgRegTable, rR3); }
+
+HsInt offset_StgRegTable_rR4() { return offsetof(StgRegTable, rR4); }
+
+HsInt offset_StgRegTable_rR5() { return offsetof(StgRegTable, rR5); }
+
+HsInt offset_StgRegTable_rR6() { return offsetof(StgRegTable, rR6); }
+
+HsInt offset_StgRegTable_rR7() { return offsetof(StgRegTable, rR7); }
+
+HsInt offset_StgRegTable_rR8() { return offsetof(StgRegTable, rR8); }
+
+HsInt offset_StgRegTable_rR9() { return offsetof(StgRegTable, rR9); }
+
+HsInt offset_StgRegTable_rR10() { return offsetof(StgRegTable, rR10); }
+
+HsInt offset_StgRegTable_rF1() { return offsetof(StgRegTable, rF1); }
+
+HsInt offset_StgRegTable_rF2() { return offsetof(StgRegTable, rF2); }
+
+HsInt offset_StgRegTable_rF3() { return offsetof(StgRegTable, rF3); }
+
+HsInt offset_StgRegTable_rF4() { return offsetof(StgRegTable, rF4); }
+
+HsInt offset_StgRegTable_rF5() { return offsetof(StgRegTable, rF5); }
+
+HsInt offset_StgRegTable_rF6() { return offsetof(StgRegTable, rF6); }
+
+HsInt offset_StgRegTable_rD1() { return offsetof(StgRegTable, rD1); }
+
+HsInt offset_StgRegTable_rD2() { return offsetof(StgRegTable, rD2); }
+
+HsInt offset_StgRegTable_rD3() { return offsetof(StgRegTable, rD3); }
+
+HsInt offset_StgRegTable_rD4() { return offsetof(StgRegTable, rD4); }
+
+HsInt offset_StgRegTable_rD5() { return offsetof(StgRegTable, rD5); }
+
+HsInt offset_StgRegTable_rD6() { return offsetof(StgRegTable, rD6); }
+
+HsInt offset_StgRegTable_rL1() { return offsetof(StgRegTable, rL1); }
+
 HsInt offset_StgRegTable_rSp() { return offsetof(StgRegTable, rSp); }
 
 HsInt offset_StgRegTable_rSpLim() { return offsetof(StgRegTable, rSpLim); }
@@ -144,6 +190,9 @@ HsInt offset_StgRegTable_rCurrentNursery() {
 HsInt offset_StgRegTable_rCurrentAlloc() {
   return offsetof(StgRegTable, rCurrentAlloc);
 }
+
+HsInt offset_StgRegTable_rHpAlloc() { return offsetof(StgRegTable, rHpAlloc); }
+
 HsInt offset_StgRegTable_rRet() { return offsetof(StgRegTable, rRet); }
 
 HsInt sizeof_StgStack() { return sizeof(StgStack); }

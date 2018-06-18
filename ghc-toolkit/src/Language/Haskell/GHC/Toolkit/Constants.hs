@@ -112,6 +112,75 @@ foreign import ccall unsafe "offset_StgFunTable_stgGCFun" offset_StgFunTable_stg
 
 foreign import ccall unsafe "sizeof_StgRegTable" sizeof_StgRegTable :: Int
 
+foreign import ccall unsafe "offset_StgRegTable_rR1" offset_StgRegTable_rR1
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR2" offset_StgRegTable_rR2
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR3" offset_StgRegTable_rR3
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR4" offset_StgRegTable_rR4
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR5" offset_StgRegTable_rR5
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR6" offset_StgRegTable_rR6
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR7" offset_StgRegTable_rR7
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR8" offset_StgRegTable_rR8
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR9" offset_StgRegTable_rR9
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rR10" offset_StgRegTable_rR10
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rF1" offset_StgRegTable_rF1
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rF2" offset_StgRegTable_rF2
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rF3" offset_StgRegTable_rF3
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rF4" offset_StgRegTable_rF4
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rF5" offset_StgRegTable_rF5
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rF6" offset_StgRegTable_rF6
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rD1" offset_StgRegTable_rD1
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rD2" offset_StgRegTable_rD2
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rD3" offset_StgRegTable_rD3
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rD4" offset_StgRegTable_rD4
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rD5" offset_StgRegTable_rD5
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rD6" offset_StgRegTable_rD6
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rL1" offset_StgRegTable_rL1
+  :: Int
+
 foreign import ccall unsafe "offset_StgRegTable_rSp" offset_StgRegTable_rSp
   :: Int
 
@@ -137,6 +206,9 @@ foreign import ccall unsafe "offset_StgRegTable_rCurrentNursery" offset_StgRegTa
   :: Int
 
 foreign import ccall unsafe "offset_StgRegTable_rCurrentAlloc" offset_StgRegTable_rCurrentAlloc
+  :: Int
+
+foreign import ccall unsafe "offset_StgRegTable_rHpAlloc" offset_StgRegTable_rHpAlloc
   :: Int
 
 foreign import ccall unsafe "offset_StgRegTable_rRet" offset_StgRegTable_rRet

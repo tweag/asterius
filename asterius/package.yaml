@@ -22,6 +22,8 @@ custom-setup:
     - Cabal
     - ghc-toolkit
 
+cpp-options: -DNO_REGS
+
 ghc-options: -Wall
 
 dependencies:
