@@ -10,7 +10,7 @@
  *
  * ---------------------------------------------------------------------------*/
 
-#include "Cmm.h"
+#include "CmmPatched.h"
 
 /*
  * This module contains the two entry points and the final exit point

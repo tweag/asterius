@@ -21,7 +21,7 @@
  *
  * ---------------------------------------------------------------------------*/
 
-#include "Cmm.h"
+#include "CmmPatched.h"
 #include "MachDeps.h"
 #include "SMPClosureOps.h"
 

@@ -11,7 +11,7 @@
  * ---------------------------------------------------------------------------*/
 
 
-#include "Cmm.h"
+#include "CmmPatched.h"
 #include "rts/prof/LDV.h"
 
 #include "Updates.h"
