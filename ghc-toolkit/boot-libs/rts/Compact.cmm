@@ -7,7 +7,7 @@
  *
  * ---------------------------------------------------------------------------*/
 
-#include "CmmPatched.h"
+#include "Cmm.h"
 #include "sm/ShouldCompact.h"
 
 import CLOSURE base_GHCziIOziException_cannotCompactFunction_closure;

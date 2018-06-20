@@ -10,7 +10,7 @@
  *
  * ---------------------------------------------------------------------------*/
 
-#include "CmmPatched.h"
+#include "Cmm.h"
 #include "Updates.h"
 #include "SMPClosureOps.h"
 
@@ -164,7 +164,38 @@ stg_gc_noregs
 INFO_TABLE_RET ( stg_enter, RET_SMALL, W_ info_ptr, P_ closure )
     return (/* no return values */)
 {
-    ENTER(closure);
+ again:
+  W_ info;
+  LOAD_INFO(return,closure)
+  switch [INVALID_OBJECT .. N_CLOSURE_TYPES]
+         (TO_W_( %INFO_TYPE(%STD_INFO(info)) )) {
+  case
+    IND,
+    IND_STATIC:
+   {
+      closure = StgInd_indirectee(closure);
+      goto again;
+   }
+  case
+    FUN,
+    FUN_1_0,
+    FUN_0_1,
+    FUN_2_0,
+    FUN_1_1,
+    FUN_0_2,
+    FUN_STATIC,
+    BCO,
+    PAP:
+   {
+       Sp_adj(1);
+       jump %ENTRY_CODE(info) (closure);
+   }
+  default:
+   {
+       closure = UNTAG_IF_PROF(closure);
+       jump %ENTRY_CODE(info) (closure);
+   }
+  }
 }
 
 __stg_gc_enter_1 (P_ node)

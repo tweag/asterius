@@ -10,7 +10,7 @@
  *
  * --------------------------------------------------------------------------*/
 
-#include "CmmPatched.h"
+#include "Cmm.h"
 
 import pthread_mutex_lock;
 import ghczmprim_GHCziTypes_Czh_info;
