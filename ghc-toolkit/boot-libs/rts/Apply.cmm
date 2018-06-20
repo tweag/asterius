@@ -32,7 +32,9 @@ stg_ap_0_fast ( P_ fun )
 
 #if !defined(PROFILING)
 
-    ENTER(fun);
+    W_ info;
+    LOAD_INFO(return,x);
+    jump %ENTRY_CODE(info) (x);
 
 #else
 
