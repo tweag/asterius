@@ -312,7 +312,8 @@
    }                                                                                                         \
   if (((switch_cond >= FUN) && (switch_cond <= FUN_STATIC)) || (switch_cond == BCO) || (switch_cond == PAP)) \
    {                                                                                                         \
-       ret(x);                                                                                               \
+       Sp_adj(1);                                                                                            \
+       jump %ENTRY_CODE(info) (x);                                                                           \
    }                                                                                                         \
   x = UNTAG_IF_PROF(x);                                                                                      \
   jump %ENTRY_CODE(info) (x);
