@@ -31,10 +31,13 @@ import System.IO
 data Config = Config
   { ghcFlags :: [String]
   , ghcLibDir :: FilePath
+  , compiler :: Compiler
   }
 
 defaultConfig :: Config
-defaultConfig = Config {ghcFlags = ["-Wall", "-O2"], ghcLibDir = BI.ghcLibDir}
+defaultConfig =
+  Config
+    {ghcFlags = ["-Wall", "-O2"], ghcLibDir = BI.ghcLibDir, compiler = mempty}
 
 runHaskell :: MonadIO m => Config -> [String] -> m (M.Map Module HaskellIR)
 runHaskell Config {..} targets =
@@ -52,7 +55,8 @@ runHaskell Config {..} targets =
         mod_map_ref <- newIORef M.empty
         h <-
           hooksFromCompiler $
-          defaultCompiler
+          compiler <>
+          mempty
             { withHaskellIR =
                 \ModSummary {..} ir ->
                   liftIO $
@@ -94,8 +98,8 @@ runCmm Config {..} cmm_fns =
         cmm_irs_ref <- newIORef []
         h <-
           hooksFromCompiler $
-          defaultCompiler
-            {withCmmIR = \ir -> liftIO $ modifyIORef' cmm_irs_ref (ir :)}
+          compiler <>
+          mempty {withCmmIR = \ir -> liftIO $ modifyIORef' cmm_irs_ref (ir :)}
         pure (h, reverse <$> readIORef cmm_irs_ref)
     void $
       setSessionDynFlags

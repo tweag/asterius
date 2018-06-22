@@ -9,7 +9,6 @@ module Language.Haskell.GHC.Toolkit.Compiler
   , withHaskellIR
   , withCmmIR
   , finalize
-  , defaultCompiler
   ) where
 
 import Cmm
@@ -40,9 +39,26 @@ data Compiler = Compiler
   , finalize :: Ghc ()
   }
 
-defaultCompiler :: Compiler
-defaultCompiler =
-  Compiler
+instance Semigroup Compiler where
+  c0 <> c1 =
+    Compiler
+      { patch =
+          \mod_summary parsed_mod -> do
+            parsed_mod' <- patch c0 mod_summary parsed_mod
+            patch c1 mod_summary parsed_mod'
+      , withHaskellIR = \mod_summary hs_ir -> do
+          withHaskellIR c0 mod_summary hs_ir
+          withHaskellIR c1 mod_summary hs_ir
+      , withCmmIR = \cmm_ir -> do
+          withCmmIR c0 cmm_ir
+          withCmmIR c1 cmm_ir
+      , finalize = do
+          finalize c0
+          finalize c1
+      }
+
+instance Monoid Compiler where
+  mempty = Compiler
     { patch = const pure
     , withHaskellIR = \_ _ -> pure ()
     , withCmmIR = \_ -> pure ()

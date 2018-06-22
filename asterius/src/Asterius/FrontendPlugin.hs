@@ -26,7 +26,7 @@ frontendPlugin =
     is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
     store_ref <- decodeFile (obj_topdir </> "asterius_store") >>= newIORef
     pure $
-      defaultCompiler
+      mempty
         { withHaskellIR =
             \ModSummary {..} ir@HaskellIR {..} -> do
               let mod_sym = marshalToModuleSymbol ms_mod
