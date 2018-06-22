@@ -5,19 +5,26 @@ flags:
     unregisterised: true
   hashable:
     integer-gmp: false
+  integer-logarithms:
+    integer-gmp: false
+  scientific:
+    integer-simple: true
 extra-deps:
   - ansi-terminal-0.8.0.4
   - ansi-wl-pprint-0.6.8.2
+  - attoparsec-0.13.2.2
   - base-compat-0.10.1
   - cereal-0.5.5.0
   - colour-2.3.4
   - happy-1.19.9
   - hashable-1.2.7.0
   - haskell-lexer-1.0.1
+  - integer-logarithms-1.0.2.1
   - mintty-0.1.2
   - optparse-applicative-0.14.2.0
   - pretty-show-1.7
   - primitive-0.6.4.0
+  - scientific-0.3.6.2
   - transformers-compat-0.6.2
   - unordered-containers-0.2.9.0
   - vector-0.12.0.1

@@ -27,6 +27,7 @@ cpp-options: -DNO_REGS
 ghc-options: -Wall
 
 dependencies:
+  - attoparsec
   - base
   - binary
   - binaryen
