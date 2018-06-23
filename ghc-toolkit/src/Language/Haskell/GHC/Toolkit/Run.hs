@@ -5,6 +5,7 @@ module Language.Haskell.GHC.Toolkit.Run
   ( Config
   , ghcFlags
   , ghcLibDir
+  , compiler
   , defaultConfig
   , runHaskell
   , runSingleHaskell
