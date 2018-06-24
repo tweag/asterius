@@ -6,10 +6,11 @@
 module Asterius.FFI where
 
 import Control.Applicative
-import Control.Monad.Writer.Strict
+import Control.Monad.State.Strict
 import Data.Attoparsec.ByteString.Char8
+import qualified Data.ByteString.Char8 as CBS
 import Data.Data (Data, gmapM)
-import Data.Functor
+import qualified Data.IntMap.Strict as IM
 import qualified ForeignCall as GHC
 import qualified GhcPlugins as GHC
 import qualified HsSyn as GHC
@@ -55,6 +56,15 @@ data FFIType
   | FFI_REF
   deriving (Show)
 
+data FFIDecl = FFIDecl
+  { ffiTypeSpine :: [FFIType]
+  , ffiSourceChunks :: [Chunk Int]
+  } deriving (Show)
+
+newtype FFIMarshalState = FFIMarshalState
+  { ffiDecls :: IM.IntMap FFIDecl
+  } deriving (Show)
+
 generateFFITypeSpine :: GHC.LHsType GHC.GhcPs -> Maybe [FFIType]
 generateFFITypeSpine loc_ty =
   case ty of
@@ -96,35 +106,48 @@ recoverHsTypeFromSpine (t:ts) =
   GHC.noLoc $
   GHC.HsFunTy GHC.NoExt (recoverHsType t) (recoverHsTypeFromSpine ts)
 
-processJSFFI :: Data a => a -> Writer [([FFIType], String)] a
+recoverCCallTarget :: Int -> String
+recoverCCallTarget = ("__asterius_jsffi_" <>) . show
+
+processJSFFI :: Data a => a -> State FFIMarshalState a
 processJSFFI t =
   case eqTypeRep (typeOf t) (typeRep :: TypeRep (GHC.ForeignDecl GHC.GhcPs)) of
     Just HRefl ->
       case t of
         GHC.ForeignImport {fd_fi = GHC.CImport loc_conv _ _ _ loc_src, ..} ->
-          case conv of
-            GHC.JavaScriptCallConv ->
-              tell [(spine, src)] $>
-              t
-                { GHC.fd_sig_ty =
-                    GHC.mkHsImplicitBndrs $ recoverHsTypeFromSpine spine
-                , GHC.fd_fi =
-                    GHC.CImport
-                      (GHC.noLoc GHC.CCallConv)
-                      (GHC.noLoc GHC.PlayRisky)
-                      Nothing
-                      undefined
-                      (GHC.noLoc GHC.NoSourceText)
-                }
+          case GHC.unLoc loc_conv of
+            GHC.JavaScriptCallConv -> do
+              FFIMarshalState {..} <- get
+              let new_k = maybe 0 fst $ IM.lookupMax ffiDecls
+                  new_decls = IM.insert new_k new_decl ffiDecls
+              put $ FFIMarshalState {ffiDecls = new_decls}
+              pure
+                t
+                  { GHC.fd_sig_ty =
+                      GHC.mkHsImplicitBndrs $ recoverHsTypeFromSpine spine
+                  , GHC.fd_fi =
+                      GHC.CImport
+                        (GHC.noLoc GHC.CCallConv)
+                        (GHC.noLoc GHC.PlayRisky)
+                        Nothing
+                        (GHC.CLabel $
+                         GHC.mkFastString $ recoverCCallTarget new_k)
+                        (GHC.noLoc GHC.NoSourceText)
+                  }
+              where GHC.SourceText src = GHC.unLoc loc_src
+                    Just spine =
+                      generateFFITypeSpine (GHC.hsImplicitBody fd_sig_ty)
+                    Right chunks = parseOnly parseFFIChunks $ CBS.pack src
+                    new_decl =
+                      FFIDecl {ffiTypeSpine = spine, ffiSourceChunks = chunks}
             _ -> pure t
-          where conv = GHC.unLoc loc_conv
-                GHC.SourceText src = GHC.unLoc loc_src
-                Just spine = generateFFITypeSpine (GHC.hsImplicitBody fd_sig_ty)
         _ -> pure t
     _ -> gmapM processJSFFI t
 
-collectJSFFISrc ::
-     GHC.HsParsedModule -> (GHC.HsParsedModule, [([FFIType], String)])
+collectJSFFISrc :: GHC.HsParsedModule -> (GHC.HsParsedModule, FFIMarshalState)
 collectJSFFISrc m = (m {GHC.hpm_module = new_m}, src)
   where
-    (new_m, src) = runWriter (processJSFFI $ GHC.hpm_module m)
+    (new_m, src) =
+      runState
+        (processJSFFI $ GHC.hpm_module m)
+        FFIMarshalState {ffiDecls = mempty}
