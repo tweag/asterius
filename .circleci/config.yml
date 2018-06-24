@@ -50,6 +50,7 @@ jobs:
             stack --no-terminal build --haddock --test --no-run-tests
             stack --no-terminal exec ahc-boot
             stack --no-terminal test asterius:fib
+            stack --no-terminal test asterius:jsffi
             mkdocs build
             cp -r site /tmp/
             cp -r `stack --no-terminal path --local-doc-root` /tmp/site/haddock

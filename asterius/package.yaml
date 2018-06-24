@@ -12,6 +12,7 @@ extra-source-files:
   - LICENSE
   - README.md
   - test/fib/fib.hs
+  - test/jsffi/jsffi.hs
 
 data-files:
   - boot.sh
@@ -104,5 +105,11 @@ tests:
   fib:
     source-dirs: test
     main: fib.hs
+    dependencies:
+      - asterius
+
+  jsffi:
+    source-dirs: test
+    main: jsffi.hs
     dependencies:
       - asterius
