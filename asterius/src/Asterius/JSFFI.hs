@@ -1,24 +1,30 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
-module Asterius.FFI
+module Asterius.JSFFI
   ( Chunk(..)
   , FFIType(..)
   , FFIDecl(..)
   , FFIMarshalState(..)
   , addJSFFIProcessor
+  , generateFFIFunctionImports
   ) where
 
+import Asterius.Types
 import Control.Applicative
 import Control.Concurrent
 import Control.Monad.State.Strict
 import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as CBS
+import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapM, gmapT)
 import Data.Functor
 import qualified Data.IntMap.Strict as IM
+import Data.String
+import qualified Data.Vector as V
 import qualified ForeignCall as GHC
 import qualified GhcPlugins as GHC
 import qualified HsSyn as GHC
@@ -126,6 +132,19 @@ recoverHsTypeFromSpine (t:ts) =
   GHC.noLoc $
   GHC.HsFunTy GHC.NoExt (recoverHsType t) (recoverHsTypeFromSpine ts)
 
+recoverWasmTypeNameFromSpine :: [FFIType] -> SBS.ShortByteString
+recoverWasmTypeNameFromSpine spine =
+  mconcat $ concat $ [[f r, "("]] <> [[f x, ","] | x <- xs] <> [[")"]]
+  where
+    r = last spine
+    xs = init spine
+    f t =
+      case t of
+        FFI_I32 -> "I32"
+        FFI_F32 -> "F32"
+        FFI_F64 -> "F64"
+        FFI_REF -> "I32"
+
 recoverCCallTarget :: Int -> String
 recoverCCallTarget = ("__asterius_jsffi_" <>) . show
 
@@ -214,3 +233,16 @@ addJSFFIProcessor c = do
               patch c mod_summary patched_mod
         }
     , takeMVar ffi_state_ref)
+
+generateFFIFunctionImports :: FFIMarshalState -> V.Vector FunctionImport
+generateFFIFunctionImports FFIMarshalState {..} =
+  V.fromList
+    [ FunctionImport
+      { internalName = fn
+      , externalModuleName = "jsffi"
+      , externalBaseName = fn
+      , functionTypeName = recoverWasmTypeNameFromSpine ffiTypeSpine
+      }
+    | (k, FFIDecl {..}) <- IM.toList ffiDecls
+    , let fn = fromString $ recoverCCallTarget k
+    ]

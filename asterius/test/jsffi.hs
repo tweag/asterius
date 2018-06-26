@@ -1,4 +1,4 @@
-import Asterius.FFI
+import Asterius.JSFFI
 import Data.Functor
 import Language.Haskell.GHC.Toolkit.Run
 

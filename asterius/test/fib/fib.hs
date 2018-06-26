@@ -42,5 +42,5 @@ main = do
   print_i64 $ fact 5
   print_f64 $ cos 0.5
   print_f64 $ 2 ** 3
-  print_i64 $ sizeofBinTree $ genBinTree 3
-  print_i64 $ sizeofBinTree $ genBinTree 5
+  -- print_i64 $ sizeofBinTree $ genBinTree 3
+  -- print_i64 $ sizeofBinTree $ genBinTree 5

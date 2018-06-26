@@ -848,16 +848,35 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
           pure xe
       case rs of
         [] ->
-          pure
-            [Call {target = sym, operands = V.fromList xes, valueType = None}]
+          pure $
+          if "__asterius_jsffi_" `CBS.isPrefixOf` SBS.fromShort (entityName sym)
+            then [ CallImport
+                     { target' = entityName sym
+                     , operands = V.fromList xes
+                     , valueType = None
+                     }
+                 ]
+            else [ Call
+                     {target = sym, operands = V.fromList xes, valueType = None}
+                 ]
         [r] -> do
           (lr, vt) <- marshalCmmLocalReg r
           pure
             [ UnresolvedSetLocal
                 { unresolvedLocalReg = lr
                 , value =
-                    Call
-                      {target = sym, operands = V.fromList xes, valueType = vt}
+                    if "__asterius_jsffi_" `CBS.isPrefixOf`
+                       SBS.fromShort (entityName sym)
+                      then CallImport
+                             { target' = entityName sym
+                             , operands = V.fromList xes
+                             , valueType = vt
+                             }
+                      else Call
+                             { target = sym
+                             , operands = V.fromList xes
+                             , valueType = vt
+                             }
                 }
             ]
         _ ->
