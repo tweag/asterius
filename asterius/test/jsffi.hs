@@ -1,10 +1,4 @@
-import Asterius.JSFFI
-import Data.Functor
-import Language.Haskell.GHC.Toolkit.Run
+import System.Process
 
 main :: IO ()
-main = do
-  (c, get_ffi_state) <- addJSFFIProcessor mempty
-  void $ runHaskell defaultConfig {compiler = c} ["test/jsffi/jsffi.hs"]
-  ffi_state <- get_ffi_state
-  print ffi_state
+main = callProcess "ahc-link" ["--input", "test/jsffi/jsffi.hs"]

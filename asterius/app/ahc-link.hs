@@ -9,6 +9,7 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
+import Asterius.JSFFI
 import Asterius.Marshal
 import Asterius.Resolve
 import Asterius.Store
@@ -86,14 +87,16 @@ opts =
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
 
-genNode :: LinkReport -> FilePath -> Builder
-genNode LinkReport {..} m_path =
+genNode :: FFIMarshalState -> LinkReport -> FilePath -> Builder
+genNode ffi_state LinkReport {..} m_path =
   mconcat
     [ "\"use strict\";\nconst fs = require(\"fs\");\nlet i = null;\nlet func_syms = "
     , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
     , ";\nfunction newI64(lo,hi) { return BigInt(lo) | (BigInt(hi) << 32n);  };\nWebAssembly.instantiate(fs.readFileSync("
     , string7 $ show m_path
-    , "), {Math:Math, rts: {printI64: (lo,hi) => console.log(newI64(lo,hi)), print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\", \"errSetBaseReg\"][e-1])), __asterius_memory_trap_trigger: ((p_lo,p_hi) => console.error(\"[ERROR] Uninitialized memory trapped at 0x\" + newI64(p_lo,p_hi).toString(16))), __asterius_load_i64: ((p_lo,p_hi,v_lo,v_hi) => console.log(\"[INFO] Loading i64 at 0x\" + newI64(p_lo,p_hi).toString(16) + \", value: 0x\" + newI64(v_lo,v_hi).toString(16))), __asterius_store_i64: ((p_lo,p_hi,v_lo,v_hi) => console.log(\"[INFO] Storing i64 at 0x\" + newI64(p_lo,p_hi).toString(16) + \", value: 0x\" + newI64(v_lo,v_hi).toString(16))), traceCmm: (f => console.log(\"[INFO] Entering \" + func_syms[f-1] + \", Sp: 0x\" + i.exports._get_Sp().toString(16) + \", SpLim: 0x\" + i.exports._get_SpLim().toString(16) + \", Hp: 0x\" + i.exports._get_Hp().toString(16) + \", HpLim: 0x\" + i.exports._get_HpLim().toString(16))), traceCmmBlock: (lbl => console.log(\"[INFO] Branching to basic block \" + lbl + \", Sp: 0x\" + i.exports._get_Sp().toString(16) + \", SpLim: 0x\" + i.exports._get_SpLim().toString(16) + \", Hp: 0x\" + i.exports._get_Hp().toString(16) + \", HpLim: 0x\" + i.exports._get_HpLim().toString(16))), traceCmmSetLocal: ((i,lo,hi) => console.log(\"[INFO] Setting local register \" + i + \" to 0x\" + newI64(lo,hi).toString(16)))}}).then(r => {i = r.instance; i.exports.main();});\n"
+    , "), {Math:Math, jsffi: "
+    , generateJSFFIDict ffi_state
+    , ", rts: {printI64: (lo,hi) => console.log(newI64(lo,hi)), print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\", \"errSetBaseReg\"][e-1])), __asterius_memory_trap_trigger: ((p_lo,p_hi) => console.error(\"[ERROR] Uninitialized memory trapped at 0x\" + newI64(p_lo,p_hi).toString(16))), __asterius_load_i64: ((p_lo,p_hi,v_lo,v_hi) => console.log(\"[INFO] Loading i64 at 0x\" + newI64(p_lo,p_hi).toString(16) + \", value: 0x\" + newI64(v_lo,v_hi).toString(16))), __asterius_store_i64: ((p_lo,p_hi,v_lo,v_hi) => console.log(\"[INFO] Storing i64 at 0x\" + newI64(p_lo,p_hi).toString(16) + \", value: 0x\" + newI64(v_lo,v_hi).toString(16))), traceCmm: (f => console.log(\"[INFO] Entering \" + func_syms[f-1] + \", Sp: 0x\" + i.exports._get_Sp().toString(16) + \", SpLim: 0x\" + i.exports._get_SpLim().toString(16) + \", Hp: 0x\" + i.exports._get_Hp().toString(16) + \", HpLim: 0x\" + i.exports._get_HpLim().toString(16))), traceCmmBlock: (lbl => console.log(\"[INFO] Branching to basic block \" + lbl + \", Sp: 0x\" + i.exports._get_Sp().toString(16) + \", SpLim: 0x\" + i.exports._get_SpLim().toString(16) + \", Hp: 0x\" + i.exports._get_Hp().toString(16) + \", HpLim: 0x\" + i.exports._get_HpLim().toString(16))), traceCmmSetLocal: ((i,lo,hi) => console.log(\"[INFO] Setting local register \" + i + \" to 0x\" + newI64(lo,hi).toString(16)))}}).then(r => {i = r.instance; i.exports.main();});\n"
     ]
 
 main :: IO ()
@@ -110,7 +113,9 @@ main = do
   let builtins_opts = def_builtins_opts {tracing = debug}
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "Compiling " <> input <> " to Cmm"
-  mod_ir_map <- runHaskell defaultConfig [input]
+  (c, get_ffi_state) <- addJSFFIProcessor mempty
+  mod_ir_map <- runHaskell defaultConfig {compiler = c} [input]
+  ffi_state <- get_ffi_state
   putStrLn "Marshalling from Cmm to WebAssembly"
   final_store_ref <- newIORef orig_store
   M.foldlWithKey'
@@ -137,6 +142,7 @@ main = do
         linkStart
           force
           debug
+          ffi_state
           final_store
           [ "main"
           , "_get_Sp"
@@ -175,7 +181,7 @@ main = do
        BS.writeFile outputWasm m_bin
        putStrLn $ "Writing Node.js script to " <> show outputNode
        h <- openBinaryFile outputNode WriteMode
-       hPutBuilder h $ genNode report $ takeFileName outputWasm
+       hPutBuilder h $ genNode ffi_state report $ takeFileName outputWasm
        hClose h
        when run $ do
          putStrLn $ "Using " <> node <> " to run " <> outputNode

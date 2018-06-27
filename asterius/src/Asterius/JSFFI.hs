@@ -11,7 +11,9 @@ module Asterius.JSFFI
   , FFIDecl(..)
   , FFIMarshalState(..)
   , addJSFFIProcessor
+  , generateFFIFunctionTypeMap
   , generateFFIFunctionImports
+  , generateJSFFIDict
   ) where
 
 import Asterius.Types
@@ -19,11 +21,14 @@ import Control.Applicative
 import Control.Concurrent
 import Control.Monad.State.Strict
 import Data.Attoparsec.ByteString.Char8
+import Data.ByteString.Builder
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapM, gmapT)
 import Data.Functor
+import qualified Data.HashMap.Strict as HM
 import qualified Data.IntMap.Strict as IM
+import Data.List
 import Data.String
 import qualified Data.Vector as V
 import qualified ForeignCall as GHC
@@ -181,6 +186,15 @@ recoverWasmValueTypeName vt =
     Just FFI_REF -> "I32"
     Nothing -> "None"
 
+recoverWasmValueType :: Maybe FFIValueType -> ValueType
+recoverWasmValueType vt =
+  case vt of
+    Just FFI_I32 -> I32
+    Just FFI_F32 -> F32
+    Just FFI_F64 -> F64
+    Just FFI_REF -> I32
+    Nothing -> None
+
 recoverWasmTypeName :: FFIFunctionType -> SBS.ShortByteString
 recoverWasmTypeName FFIFunctionType {..} =
   recoverWasmValueTypeName ffiResultType <> "(" <>
@@ -282,6 +296,22 @@ addJSFFIProcessor c = do
         }
     , takeMVar ffi_state_ref)
 
+generateFFIFunctionTypeMap ::
+     FFIMarshalState -> HM.HashMap SBS.ShortByteString FunctionType
+generateFFIFunctionTypeMap FFIMarshalState {..} =
+  HM.fromList
+    [ ( recoverWasmTypeName ffiFunctionType
+      , FunctionType
+          { returnType = recoverWasmValueType $ ffiResultType ffiFunctionType
+          , paramTypes =
+              V.fromList
+                [ recoverWasmValueType (Just t)
+                | t <- ffiParamTypes ffiFunctionType
+                ]
+          })
+    | FFIDecl {..} <- IM.elems ffiDecls
+    ]
+
 generateFFIFunctionImports :: FFIMarshalState -> V.Vector FunctionImport
 generateFFIFunctionImports FFIMarshalState {..} =
   V.fromList
@@ -294,3 +324,27 @@ generateFFIFunctionImports FFIMarshalState {..} =
     | (k, FFIDecl {..}) <- IM.toList ffiDecls
     , let fn = fromString $ recoverCCallTarget k
     ]
+
+generateJSFFILambda :: FFIDecl -> Builder
+generateJSFFILambda FFIDecl {ffiFunctionType = FFIFunctionType {..}, ..} =
+  "((" <>
+  mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
+  ")=>(" <>
+  mconcat
+    [ case chunk of
+      Lit s -> string7 s
+      Field i -> "_" <> intDec i
+    | chunk <- ffiSourceChunks
+    ] <>
+  "))"
+
+generateJSFFIDict :: FFIMarshalState -> Builder
+generateJSFFIDict FFIMarshalState {..} =
+  "{" <>
+  mconcat
+    (intersperse
+       ","
+       [ string7 (recoverCCallTarget k) <> ":" <> generateJSFFILambda ffi_decl
+       | (k, ffi_decl) <- IM.toList ffiDecls
+       ]) <>
+  "}"

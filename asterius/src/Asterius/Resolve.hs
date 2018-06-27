@@ -18,6 +18,7 @@ module Asterius.Resolve
 
 import Asterius.Builtins
 import Asterius.Internals
+import Asterius.JSFFI
 import Asterius.Ostrich
 import Asterius.Tracing
 import Asterius.Types
@@ -386,13 +387,15 @@ resolveEntitySymbols sym_table = f
 
 resolveAsteriusModule ::
      Bool
+  -> FFIMarshalState
   -> AsteriusModule
   -> ( Module
      , HM.HashMap AsteriusEntitySymbol Int64
      , HM.HashMap AsteriusEntitySymbol Int64)
-resolveAsteriusModule add_tracing m_unresolved =
+resolveAsteriusModule add_tracing ffi_state m_unresolved =
   ( Module
-      { functionTypeMap = rtsAsteriusFunctionTypeMap
+      { functionTypeMap =
+          rtsAsteriusFunctionTypeMap <> generateFFIFunctionTypeMap ffi_state
       , functionMap' =
           fromList
             [ ( entityName func_sym
@@ -401,7 +404,8 @@ resolveAsteriusModule add_tracing m_unresolved =
                   else func)
             | (func_sym, func) <- HM.toList $ functionMap m_resolved
             ]
-      , functionImports = rtsAsteriusFunctionImports
+      , functionImports =
+          rtsAsteriusFunctionImports <> generateFFIFunctionImports ffi_state
       , tableImports = []
       , globalImports = []
       , functionExports = rtsAsteriusFunctionExports
@@ -424,10 +428,11 @@ resolveAsteriusModule add_tracing m_unresolved =
 linkStart ::
      Bool
   -> Bool
+  -> FFIMarshalState
   -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe Module, LinkReport)
-linkStart force_link add_tracing store syms =
+linkStart force_link add_tracing ffi_state store syms =
   ( maybe_result_m
   , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
   where
@@ -436,7 +441,7 @@ linkStart force_link add_tracing store syms =
       case maybe_merged_m of
         Just merged_m -> (Just result_m, ss_sym_map', func_sym_map')
           where (result_m, ss_sym_map', func_sym_map') =
-                  resolveAsteriusModule add_tracing merged_m
+                  resolveAsteriusModule add_tracing ffi_state merged_m
         _ -> (Nothing, mempty, mempty)
 
 renderDot :: LinkReport -> Builder
