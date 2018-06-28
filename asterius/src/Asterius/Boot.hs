@@ -14,6 +14,7 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
+import Asterius.JSFFI
 import Asterius.Store
 import Control.Exception
 import Control.Monad
@@ -87,7 +88,11 @@ bootRTSCmm BootArgs {..} = do
   for_ cmms $ \(fn, ir@CmmIR {..}) ->
     let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
         mod_sym = marshalToModuleSymbol ms_mod
-     in case runCodeGen (marshalCmmIR ir) (dflags builtinsOptions) ms_mod of
+     in case runCodeGen
+               (marshalCmmIR ir)
+               (dflags builtinsOptions)
+               ms_mod
+               emptyFFIMarshalState of
           Left err -> throwIO err
           Right m -> do
             modifyIORef' store_ref $ addModule mod_sym m

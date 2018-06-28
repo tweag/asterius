@@ -10,6 +10,7 @@ module Asterius.JSFFI
   , FFIFunctionType(..)
   , FFIDecl(..)
   , FFIMarshalState(..)
+  , emptyFFIMarshalState
   , addJSFFIProcessor
   , generateFFIFunctionTypeMap
   , generateFFIFunctionImports
@@ -91,6 +92,9 @@ data FFIDecl = FFIDecl
 newtype FFIMarshalState = FFIMarshalState
   { ffiDecls :: IM.IntMap FFIDecl
   } deriving (Show)
+
+emptyFFIMarshalState :: FFIMarshalState
+emptyFFIMarshalState = FFIMarshalState {ffiDecls = mempty}
 
 marshalToFFIValueType :: GHC.Located GHC.RdrName -> Maybe FFIValueType
 marshalToFFIValueType loc_t =

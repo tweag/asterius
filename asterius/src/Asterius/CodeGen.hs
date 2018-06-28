@@ -19,6 +19,7 @@ module Asterius.CodeGen
 
 import Asterius.Builtins
 import Asterius.Internals
+import Asterius.JSFFI
 import Asterius.Resolve
 import Asterius.Types
 import qualified CLabel as GHC
@@ -76,7 +77,7 @@ moduleSymbolPath topdir AsteriusModuleSymbol {..} ext = do
         (f (V.last moduleName) <.> ext)
         (V.init moduleName)
 
-type CodeGenContext = (GHC.DynFlags, String)
+type CodeGenContext = (GHC.DynFlags, String, FFIMarshalState)
 
 newtype CodeGen a =
   CodeGen (ReaderT CodeGenContext (Except AsteriusCodeGenError) a)
@@ -92,13 +93,17 @@ unCodeGen (CodeGen m) = asks $ runExcept . runReaderT m
 
 {-# INLINEABLE runCodeGen #-}
 runCodeGen ::
-     CodeGen a -> GHC.DynFlags -> GHC.Module -> Either AsteriusCodeGenError a
-runCodeGen (CodeGen m) dflags def_mod =
-  runExcept $ runReaderT m (dflags, asmPpr dflags def_mod <> "_")
+     CodeGen a
+  -> GHC.DynFlags
+  -> GHC.Module
+  -> FFIMarshalState
+  -> Either AsteriusCodeGenError a
+runCodeGen (CodeGen m) dflags def_mod ffi_state =
+  runExcept $ runReaderT m (dflags, asmPpr dflags def_mod <> "_", ffi_state)
 
 marshalCLabel :: GHC.CLabel -> CodeGen AsteriusEntitySymbol
 marshalCLabel clbl = do
-  (dflags, def_mod_prefix) <- ask
+  (dflags, def_mod_prefix, _) <- ask
   pure
     AsteriusEntitySymbol
       { entityName =
@@ -110,7 +115,7 @@ marshalCLabel clbl = do
 
 marshalLabel :: GHC.Label -> CodeGen SBS.ShortByteString
 marshalLabel lbl = do
-  (dflags, _) <- ask
+  (dflags, _, _) <- ask
   pure $ fromString $ asmPpr dflags $ GHC.mkLocalBlockLabel $ GHC.getUnique lbl
 
 marshalCmmType :: GHC.CmmType -> CodeGen ValueType
@@ -909,7 +914,7 @@ marshalCmmInstr instr =
         else pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
     GHC.CmmStore p e -> do
       pv <- marshalAndCastCmmExpr p I32
-      (dflags, _) <- ask
+      (dflags, _, _) <- ask
       store_instr <-
         join $
         dispatchAllCmmWidth

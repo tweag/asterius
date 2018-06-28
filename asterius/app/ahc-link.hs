@@ -120,7 +120,11 @@ main = do
   final_store_ref <- newIORef orig_store
   M.foldlWithKey'
     (\act ms_mod ir ->
-       case runCodeGen (marshalHaskellIR ir) (dflags builtins_opts) ms_mod of
+       case runCodeGen
+              (marshalHaskellIR ir)
+              (dflags builtins_opts)
+              ms_mod
+              ffi_state of
          Left err -> throwIO err
          Right m -> do
            let mod_str = GHC.moduleNameString $ GHC.moduleName ms_mod

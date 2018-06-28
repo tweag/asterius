@@ -6,9 +6,11 @@ module Asterius.FrontendPlugin
 
 import Asterius.CodeGen
 import Asterius.Internals
+import Asterius.JSFFI
 import Asterius.Store
 import Control.Exception
 import Control.Monad
+import Control.Monad.Fix
 import Data.IORef
 import Data.Maybe
 import GhcPlugins
@@ -25,26 +27,37 @@ frontendPlugin =
     obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
     is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
     store_ref <- decodeFile (obj_topdir </> "asterius_store") >>= newIORef
-    pure $
-      mempty
-        { withHaskellIR =
-            \ModSummary {..} ir@HaskellIR {..} -> do
-              let mod_sym = marshalToModuleSymbol ms_mod
-              dflags <- getDynFlags
-              liftIO $
-                case runCodeGen (marshalHaskellIR ir) dflags ms_mod of
-                  Left err -> throwIO err
-                  Right m -> do
-                    atomicModifyIORef' store_ref $ \store ->
-                      (addModule mod_sym m store, ())
-                    when is_debug $ do
-                      p_c <-
-                        moduleSymbolPath obj_topdir mod_sym "dump-cmm-raw-ast"
-                      writeFile p_c $ ppShow cmmRaw
-                      p_s <- moduleSymbolPath obj_topdir mod_sym "txt"
-                      writeFile p_s $ ppShow m
-        , finalize =
-            liftIO $ do
-              store <- readIORef store_ref
-              encodeFile (obj_topdir </> "asterius_store") store
-        }
+    (c, _) <-
+      mfix $ \(_, get_ffi_state) ->
+        addJSFFIProcessor
+          mempty
+            { withHaskellIR =
+                \ModSummary {..} ir@HaskellIR {..} -> do
+                  let mod_sym = marshalToModuleSymbol ms_mod
+                  dflags <- getDynFlags
+                  liftIO $ do
+                    ffi_state <- get_ffi_state
+                    case runCodeGen
+                           (marshalHaskellIR ir)
+                           dflags
+                           ms_mod
+                           ffi_state of
+                      Left err -> throwIO err
+                      Right m -> do
+                        atomicModifyIORef' store_ref $ \store ->
+                          (addModule mod_sym m store, ())
+                        when is_debug $ do
+                          p_c <-
+                            moduleSymbolPath
+                              obj_topdir
+                              mod_sym
+                              "dump-cmm-raw-ast"
+                          writeFile p_c $ ppShow cmmRaw
+                          p_s <- moduleSymbolPath obj_topdir mod_sym "txt"
+                          writeFile p_s $ ppShow m
+            , finalize =
+                liftIO $ do
+                  store <- readIORef store_ref
+                  encodeFile (obj_topdir </> "asterius_store") store
+            }
+    pure c
