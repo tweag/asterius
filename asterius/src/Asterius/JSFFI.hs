@@ -19,7 +19,6 @@ module Asterius.JSFFI
 
 import Asterius.Types
 import Control.Applicative
-import Control.Concurrent
 import Control.Monad.State.Strict
 import Data.Attoparsec.ByteString.Char8
 import Data.ByteString.Builder
@@ -28,6 +27,7 @@ import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapM, gmapT)
 import Data.Functor
 import qualified Data.HashMap.Strict as HM
+import Data.IORef
 import qualified Data.IntMap.Strict as IM
 import Data.List
 import Data.String
@@ -289,21 +289,20 @@ collectJSFFISrc m ffi_state = (m {GHC.hpm_module = rewriteJSRef imp_m}, st)
 
 addJSFFIProcessor :: Compiler -> IO (Compiler, IO FFIMarshalState)
 addJSFFIProcessor c = do
-  ffi_state_ref <- newMVar FFIMarshalState {ffiDecls = mempty}
+  ffi_state_ref <- newIORef FFIMarshalState {ffiDecls = mempty}
   pure
     ( c
         { patch =
             \mod_summary parsed_mod -> do
               patched_mod <-
-                liftIO $ do
-                  ffi_state <- takeMVar ffi_state_ref
+                liftIO $
+                atomicModifyIORef' ffi_state_ref $ \ffi_state ->
                   let (patched_mod, ffi_state') =
                         collectJSFFISrc parsed_mod ffi_state
-                  putMVar ffi_state_ref ffi_state'
-                  pure patched_mod
+                   in (ffi_state', patched_mod)
               patch c mod_summary patched_mod
         }
-    , readMVar ffi_state_ref)
+    , readIORef ffi_state_ref)
 
 generateFFIFunctionTypeMap ::
      FFIMarshalState -> HM.HashMap SBS.ShortByteString FunctionType
