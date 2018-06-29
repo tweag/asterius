@@ -254,13 +254,13 @@ processJSFFI t =
         _ -> pure t
     _ -> gmapM processJSFFI t
 
-collectJSFFISrc :: GHC.HsParsedModule -> (GHC.HsParsedModule, FFIMarshalState)
-collectJSFFISrc m = (m {GHC.hpm_module = rewriteJSRef imp_m}, st)
+collectJSFFISrc ::
+     GHC.HsParsedModule
+  -> FFIMarshalState
+  -> (GHC.HsParsedModule, FFIMarshalState)
+collectJSFFISrc m ffi_state = (m {GHC.hpm_module = rewriteJSRef imp_m}, st)
   where
-    (new_m, st) =
-      runState
-        (processJSFFI $ GHC.hpm_module m)
-        FFIMarshalState {ffiDecls = mempty}
+    (new_m, st) = runState (processJSFFI $ GHC.hpm_module m) ffi_state
     imp_m
       | IM.null (ffiDecls st) = new_m
       | otherwise =
@@ -289,16 +289,21 @@ collectJSFFISrc m = (m {GHC.hpm_module = rewriteJSRef imp_m}, st)
 
 addJSFFIProcessor :: Compiler -> IO (Compiler, IO FFIMarshalState)
 addJSFFIProcessor c = do
-  ffi_state_ref <- newEmptyMVar
+  ffi_state_ref <- newMVar FFIMarshalState {ffiDecls = mempty}
   pure
     ( c
         { patch =
             \mod_summary parsed_mod -> do
-              let (patched_mod, ffi_state) = collectJSFFISrc parsed_mod
-              liftIO $ putMVar ffi_state_ref ffi_state
+              patched_mod <-
+                liftIO $ do
+                  ffi_state <- takeMVar ffi_state_ref
+                  let (patched_mod, ffi_state') =
+                        collectJSFFISrc parsed_mod ffi_state
+                  putMVar ffi_state_ref ffi_state'
+                  pure patched_mod
               patch c mod_summary patched_mod
         }
-    , takeMVar ffi_state_ref)
+    , readMVar ffi_state_ref)
 
 generateFFIFunctionTypeMap ::
      FFIMarshalState -> HM.HashMap SBS.ShortByteString FunctionType
