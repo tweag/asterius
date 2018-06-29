@@ -72,8 +72,7 @@ parseFFIChunks :: Parser [Chunk Int]
 parseFFIChunks = combineChunks <$> parseChunks (parseChunk (parseField decimal))
 
 data FFIValueType
-  = FFI_I32
-  | FFI_F32
+  = FFI_F32
   | FFI_F64
   | FFI_REF
   deriving (Show)
@@ -99,7 +98,6 @@ emptyFFIMarshalState = FFIMarshalState {ffiDecls = mempty}
 marshalToFFIValueType :: GHC.Located GHC.RdrName -> Maybe FFIValueType
 marshalToFFIValueType loc_t =
   case GHC.occNameString $ GHC.rdrNameOcc $ GHC.unLoc loc_t of
-    "Int32" -> Just FFI_I32
     "Float" -> Just FFI_F32
     "Double" -> Just FFI_F64
     "JSRef" -> Just FFI_REF
@@ -150,7 +148,7 @@ rewriteJSRef t =
       case t of
         GHC.Unqual n
           | GHC.occNameString n == "JSRef" ->
-            GHC.Qual (GHC.mkModuleName "GHC.Int") (GHC.mkTcOcc "Int32")
+            GHC.Qual (GHC.mkModuleName "GHC.Types") (GHC.mkTcOcc "Double")
         _ -> t
     _ -> gmapT rewriteJSRef t
 
@@ -163,10 +161,9 @@ mkQualTyCon m t =
 recoverHsType :: Maybe FFIValueType -> GHC.LHsType GHC.GhcPs
 recoverHsType t =
   case t of
-    Just FFI_I32 -> mkQualTyCon "GHC.Int" "Int32"
     Just FFI_F32 -> mkQualTyCon "GHC.Types" "Float"
     Just FFI_F64 -> mkQualTyCon "GHC.Types" "Double"
-    Just FFI_REF -> mkQualTyCon "GHC.Int" "Int32"
+    Just FFI_REF -> mkQualTyCon "GHC.Types" "Double"
     Nothing -> mkQualTyCon "GHC.Tuple" "()"
 
 recoverHsFunctionType :: FFIFunctionType -> GHC.LHsType GHC.GhcPs
@@ -184,19 +181,17 @@ recoverHsFunctionType FFIFunctionType {..} =
 recoverWasmValueTypeName :: Maybe FFIValueType -> SBS.ShortByteString
 recoverWasmValueTypeName vt =
   case vt of
-    Just FFI_I32 -> "I32"
     Just FFI_F32 -> "F32"
     Just FFI_F64 -> "F64"
-    Just FFI_REF -> "I32"
+    Just FFI_REF -> "F64"
     Nothing -> "None"
 
 recoverWasmValueType :: Maybe FFIValueType -> ValueType
 recoverWasmValueType vt =
   case vt of
-    Just FFI_I32 -> I32
     Just FFI_F32 -> F32
     Just FFI_F64 -> F64
-    Just FFI_REF -> I32
+    Just FFI_REF -> F64
     Nothing -> None
 
 recoverWasmTypeName :: FFIFunctionType -> SBS.ShortByteString
@@ -280,7 +275,7 @@ collectJSFFISrc m ffi_state = (m {GHC.hpm_module = rewriteJSRef imp_m}, st)
                   , GHC.ideclAs = Nothing
                   , GHC.ideclHiding = Nothing
                   }
-              | imp <- ["GHC.Int", "GHC.Tuple", "GHC.Types"]
+              | imp <- ["GHC.Tuple", "GHC.Types"]
               ] <>
               GHC.hsmodImports new_m_unloc
           }
