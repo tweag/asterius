@@ -332,11 +332,17 @@ generateJSFFILambda :: FFIDecl -> Builder
 generateJSFFILambda FFIDecl {ffiFunctionType = FFIFunctionType {..}, ..} =
   "((" <>
   mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
-  ")=>(" <>
+  ")=>" <>
+  (case ffiResultType of
+     Just FFI_REF -> "__asterius_jsffi_newJSRef("
+     _ -> "(") <>
   mconcat
     [ case chunk of
       Lit s -> string7 s
-      Field i -> "_" <> intDec i
+      Field i ->
+        case ffiParamTypes !! (i - 1) of
+          FFI_REF -> "__asterius_jsffi_JSRefs[_" <> intDec i <> "]"
+          _ -> "_" <> intDec i
     | chunk <- ffiSourceChunks
     ] <>
   "))"
