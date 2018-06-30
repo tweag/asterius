@@ -127,7 +127,6 @@ rtsAsteriusModule opts =
         , ("newCAF", newCAFFunction opts)
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
-        , ("stg_ap_0_fast", stgAp0FastFunction opts)
         , ("print_i64", printI64Function opts)
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
@@ -206,13 +205,13 @@ rtsAsteriusFunctionImports =
       { internalName = "traceCmmBlock"
       , externalModuleName = "rts"
       , externalBaseName = "traceCmmBlock"
-      , functionTypeName = "None(I32)"
+      , functionTypeName = "None(I32,I32)"
       }
   , FunctionImport
       { internalName = "traceCmmSetLocal"
       , externalModuleName = "rts"
       , externalBaseName = "traceCmmSetLocal"
-      , functionTypeName = "None(I32,I32,I32)"
+      , functionTypeName = "None(I32,I32,I32,I32)"
       }
   , FunctionImport
       { internalName = "__asterius_memory_trap_trigger"
@@ -305,7 +304,7 @@ errAtomics = 9
 
 errSetBaseReg = 10
 
-mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, stgAp0FastFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
+mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {..} =
   Function
@@ -961,42 +960,6 @@ stgRunFunction BuiltinsOptions {..} =
 stgReturnFunction _ =
   Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
 
-stgAp0FastFunction _ =
-  Function
-    { functionTypeName = "I64()"
-    , varTypes = [I64]
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ SetLocal
-                  { index = 0
-                  , value =
-                      getFieldWord
-                        UnresolvedGetGlobal {unresolvedGlobalReg = Sp}
-                        0
-                  }
-              , If
-                  { condition =
-                      Unary
-                        { unaryOp = EqZInt64
-                        , operand0 =
-                            Binary
-                              { binaryOp = AndInt64
-                              , operand0 = sp0
-                              , operand1 = ConstI64 7
-                              }
-                        }
-                  , ifTrue = getFieldWord sp0 0
-                  , ifFalse = sp0
-                  }
-              ]
-          , valueType = I64
-          }
-    }
-  where
-    sp0 = getLocalWord 0
-
 printI64Function _ =
   Function
     { functionTypeName = "None(I64)"
@@ -1042,7 +1005,8 @@ memoryTrapFunction _ =
           { condition =
               V.foldl1' (Binary OrInt32) $
               V.fromList $
-              [ guard_struct
+              [ guard_struct (ConstI64 0) 8 []
+              , guard_struct
                   task_p
                   sizeof_Task
                   [offset_Task_cap, offset_Task_incall]
@@ -1099,43 +1063,37 @@ memoryTrapFunction _ =
       Binary
         { binaryOp = AndInt32
         , operand0 =
-            notExpr $ Unary {unaryOp = EqZInt64, operand0 = struct_addr_expr}
-        , operand1 =
             Binary
               { binaryOp = AndInt32
               , operand0 =
                   Binary
-                    { binaryOp = AndInt32
-                    , operand0 =
-                        Binary
-                          { binaryOp = GeUInt64
-                          , operand0 = p
-                          , operand1 = struct_addr_expr
-                          }
-                    , operand1 =
-                        Binary
-                          { binaryOp = LtUInt64
-                          , operand0 = p
-                          , operand1 = struct_field_off struct_size
-                          }
+                    { binaryOp = GeUInt64
+                    , operand0 = p
+                    , operand1 = struct_addr_expr
                     }
               , operand1 =
-                  notExpr $
-                  V.foldl' (Binary OrInt32) (ConstI32 0) $
-                  V.fromList
-                    [ Binary
-                      { binaryOp = EqInt64
-                      , operand0 =
-                          Binary
-                            { binaryOp = SubInt64
-                            , operand0 = p
-                            , operand1 = struct_addr_expr
-                            }
-                      , operand1 = constInt o
-                      }
-                    | o <- allowed_field_offsets
-                    ]
+                  Binary
+                    { binaryOp = LtUInt64
+                    , operand0 = p
+                    , operand1 = struct_field_off struct_size
+                    }
               }
+        , operand1 =
+            notExpr $
+            V.foldl' (Binary OrInt32) (ConstI32 0) $
+            V.fromList
+              [ Binary
+                { binaryOp = EqInt64
+                , operand0 =
+                    Binary
+                      { binaryOp = SubInt64
+                      , operand0 = p
+                      , operand1 = struct_addr_expr
+                      }
+                , operand1 = constInt o
+                }
+              | o <- allowed_field_offsets
+              ]
         }
       where
         struct_field_off o =

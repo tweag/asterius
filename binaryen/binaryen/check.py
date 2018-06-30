@@ -21,8 +21,8 @@ import sys
 
 from scripts.test.support import run_command, split_wast, node_test_glue, node_has_webassembly
 from scripts.test.shared import (
-    BIN_DIR, EMCC, MOZJS, NATIVECC, NATIVEXX, NODEJS, S2WASM_EXE,
-    WASM_AS, WASM_CTOR_EVAL, WASM_OPT, WASM_SHELL, WASM_MERGE, WASM_SHELL_EXE, WASM_METADCE,
+    BIN_DIR, EMCC, MOZJS, NATIVECC, NATIVEXX, NODEJS, BINARYEN_JS,
+    WASM_AS, WASM_CTOR_EVAL, WASM_OPT, WASM_SHELL, WASM_MERGE, WASM_METADCE,
     WASM_DIS, WASM_REDUCE, binary_format_check, delete_from_orbit, fail, fail_with_error,
     fail_if_not_identical, fail_if_not_contained, has_vanilla_emcc,
     has_vanilla_llvm, minify_check, num_failures, options, tests,
@@ -31,7 +31,6 @@ from scripts.test.shared import (
 
 import scripts.test.asm2wasm as asm2wasm
 import scripts.test.lld as lld
-import scripts.test.s2wasm as s2wasm
 import scripts.test.wasm2asm as wasm2asm
 
 if options.interpreter:
@@ -105,7 +104,7 @@ def run_wasm_opt_tests():
       actual = ''
       for module, asserts in split_wast(t):
         assert len(asserts) == 0
-        with open('split.wast', 'w') as o:
+        with open('split.wast', "wb" if binary else 'w') as o:
           o.write(module)
         cmd = WASM_OPT + opts + ['split.wast', '--print']
         curr = run_command(cmd)
@@ -139,12 +138,12 @@ def run_wasm_opt_tests():
       wasm = os.path.basename(t).replace('.wast', '')
       cmd = WASM_OPT + [os.path.join(options.binaryen_test, 'print', t), '--print']
       print '    ', ' '.join(cmd)
-      actual, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+      actual, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
       expected_file = os.path.join(options.binaryen_test, 'print', wasm + '.txt')
       fail_if_not_identical_to_file(actual, expected_file)
       cmd = WASM_OPT + [os.path.join(options.binaryen_test, 'print', t), '--print-minified']
       print '    ', ' '.join(cmd)
-      actual, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+      actual, err = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True).communicate()
       fail_if_not_identical(actual.strip(), open(os.path.join(options.binaryen_test, 'print', wasm + '.minified.txt')).read().strip())
 
   print '\n[ checking wasm-opt testcases... ]\n'
@@ -405,9 +404,15 @@ def run_spec_tests():
 
 
 def run_binaryen_js_tests():
-  if not MOZJS and not NODEJS:
+  if not (MOZJS or NODEJS):
+    print 'no vm to run binaryen.js tests'
     return
+
   node_has_wasm = NODEJS and node_has_webassembly(NODEJS)
+
+  if not os.path.exists(BINARYEN_JS):
+    print 'no binaryen.js build to test'
+    return
 
   print '\n[ checking binaryen.js testcases... ]\n'
 
@@ -420,7 +425,7 @@ def run_binaryen_js_tests():
     f.write('''
       console.warn = function(x) { console.log(x) };
     ''')
-    binaryen_js = open(os.path.join(options.binaryen_root, 'bin', 'binaryen.js')).read()
+    binaryen_js = open(BINARYEN_JS).read()
     f.write(binaryen_js)
     if NODEJS:
       f.write(node_test_glue())
@@ -459,50 +464,6 @@ def run_validator_tests():
   run_command(cmd, expected_status=1)
   cmd = WASM_AS + ['--validate=none', os.path.join(options.binaryen_test, 'validator', 'invalid_return.wast')]
   run_command(cmd)
-
-
-def run_torture_tests():
-  print '\n[ checking torture testcases... ]\n'
-
-  # torture tests are parallel anyhow, don't create multiple threads in each child
-  old_cores = os.environ.get('BINARYEN_CORES')
-  try:
-    os.environ['BINARYEN_CORES'] = '1'
-
-    unexpected_result_count = 0
-
-    import test.waterfall.src.link_assembly_files as link_assembly_files
-    s2wasm_torture_out = os.path.abspath(os.path.join(options.binaryen_test, 's2wasm-torture-out'))
-    if os.path.isdir(s2wasm_torture_out):
-      shutil.rmtree(s2wasm_torture_out)
-    os.mkdir(s2wasm_torture_out)
-    unexpected_result_count += link_assembly_files.run(
-        linker=os.path.abspath(S2WASM_EXE),
-        files=os.path.abspath(os.path.join(options.binaryen_test, 'torture-s', '*.s')),
-        fails=[os.path.abspath(os.path.join(options.binaryen_test, 's2wasm_known_gcc_test_failures.txt'))],
-        attributes=['O2'],
-        out=s2wasm_torture_out,
-        args=None)
-    assert os.path.isdir(s2wasm_torture_out), 'Expected output directory %s' % s2wasm_torture_out
-
-    import test.waterfall.src.execute_files as execute_files
-    unexpected_result_count += execute_files.run(
-        runner=os.path.abspath(WASM_SHELL_EXE),
-        files=os.path.abspath(os.path.join(s2wasm_torture_out, '*.wast')),
-        fails=[os.path.abspath(os.path.join(options.binaryen_test, 's2wasm_known_binaryen_shell_test_failures.txt'))],
-        attributes=['O2'],
-        out='',
-        wasmjs='')
-
-    shutil.rmtree(s2wasm_torture_out)
-    if unexpected_result_count:
-      fail('%s failures' % unexpected_result_count, '0 failures')
-
-  finally:
-    if old_cores:
-      os.environ['BINARYEN_CORES'] = old_cores
-    else:
-      del os.environ['BINARYEN_CORES']
 
 
 def run_vanilla_tests():
@@ -605,6 +566,10 @@ def run_gcc_torture_tests():
 
 
 def run_emscripten_tests():
+  if not os.path.exists(os.path.join(options.binaryen_bin, 'wasm.js')):
+    print 'no wasm.js build to test'
+    return
+
   print '\n[ checking wasm.js methods... ]\n'
 
   for method_init in ['interpret-asm2wasm', 'interpret-s-expr', 'asmjs', 'interpret-binary', 'asmjs,interpret-binary', 'interpret-binary,asmjs']:
@@ -676,13 +641,9 @@ def main():
 
   run_spec_tests()
   run_binaryen_js_tests()
-  s2wasm.test_s2wasm()
-  s2wasm.test_linker()
   lld.test_wasm_emscripten_finalize()
   wasm2asm.test_wasm2asm()
   run_validator_tests()
-  if options.torture and options.test_waterfall:
-    run_torture_tests()
   if has_vanilla_emcc and has_vanilla_llvm and 0:
     run_vanilla_tests()
   print '\n[ checking example testcases... ]\n'

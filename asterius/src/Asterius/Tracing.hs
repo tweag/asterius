@@ -79,7 +79,8 @@ addTracingModule func_sym_map func_sym func
                                                               { target' =
                                                                   "traceCmmBlock"
                                                               , operands =
-                                                                  [ lbl_to_idx
+                                                                  [ func_idx
+                                                                  , lbl_to_idx
                                                                       lbl
                                                                   ]
                                                               , valueType = None
@@ -99,7 +100,8 @@ addTracingModule func_sym_map func_sym func
                                                               { target' =
                                                                   "traceCmmBlock"
                                                               , operands =
-                                                                  [ lbl_to_idx
+                                                                  [ func_idx
+                                                                  , lbl_to_idx
                                                                       lbl
                                                                   ]
                                                               , valueType = None
@@ -131,7 +133,7 @@ addTracingModule func_sym_map func_sym func
                           , CallImport
                               { target' = "traceCmmSetLocal"
                               , operands =
-                                  [ConstI32 $ fromIntegral index] <>
+                                  [func_idx, ConstI32 $ fromIntegral index] <>
                                   cutI64
                                     GetLocal {index = index, valueType = I64}
                               , valueType = None

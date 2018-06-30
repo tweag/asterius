@@ -967,16 +967,12 @@ marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
 marshalCmmBlockBranch ::
      GHC.CmmNode GHC.O GHC.C
-  -> CodeGen ([Expression], Maybe Expression, V.Vector RelooperAddBranch, Bool)
+  -> CodeGen ([Expression], Maybe Expression, V.Vector RelooperAddBranch)
 marshalCmmBlockBranch instr =
   case instr of
     GHC.CmmBranch lbl -> do
       k <- marshalLabel lbl
-      pure
-        ( []
-        , Nothing
-        , [AddBranch {to = k, condition = Null, code = Null}]
-        , False)
+      pure ([], Nothing, [AddBranch {to = k, condition = Null, code = Null}])
     GHC.CmmCondBranch {..} -> do
       c <- marshalAndCastCmmExpr cml_pred I32
       kf <- marshalLabel cml_false
@@ -986,18 +982,17 @@ marshalCmmBlockBranch instr =
         , Nothing
         , V.fromList $
           [AddBranch {to = kt, condition = c, code = Null} | kt /= kf] <>
-          [AddBranch {to = kf, condition = Null, code = Null}]
-        , False)
+          [AddBranch {to = kf, condition = Null, code = Null}])
     GHC.CmmSwitch cml_arg st -> do
       a <- marshalAndCastCmmExpr cml_arg I64
       brs <-
         for (GHC.switchTargetsCases st) $ \(idx, lbl) -> do
           dest <- marshalLabel lbl
           pure (dest, [fromIntegral $ idx - fst (GHC.switchTargetsRange st)])
-      (dest_def, need_unreachable_block) <-
+      dest_def <-
         case GHC.switchTargetsDefault st of
-          Just lbl -> (, False) <$> marshalLabel lbl
-          _ -> pure ("_asterius_unreachable", True)
+          Just lbl -> marshalLabel lbl
+          _ -> pure "__asterius_unreachable"
       pure
         ( []
         , Just
@@ -1019,13 +1014,12 @@ marshalCmmBlockBranch instr =
           | (dest, tags) <- HM.toList $ HM.fromListWith (<>) brs
           , dest /= dest_def
           ] <>
-          [AddBranch {to = dest_def, condition = Null, code = Null}]
-        , need_unreachable_block)
+          [AddBranch {to = dest_def, condition = Null, code = Null}])
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
       pure
         ( [ SetLocal
-              { index = 1
+              { index = 2
               , value =
                   case t of
                     Unresolved {..}
@@ -1036,37 +1030,35 @@ marshalCmmBlockBranch instr =
               }
           ]
         , Nothing
-        , []
-        , False)
+        , [])
     _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
 
 marshalCmmBlock ::
      [GHC.CmmNode GHC.O GHC.O]
   -> GHC.CmmNode GHC.O GHC.C
-  -> CodeGen (RelooperBlock, Bool)
+  -> CodeGen RelooperBlock
 marshalCmmBlock inner_nodes exit_node = do
   inner_exprs <- marshalCmmBlockBody inner_nodes
-  (br_helper_exprs, maybe_switch_cond_expr, br_branches, need_unreachable_block) <-
+  (br_helper_exprs, maybe_switch_cond_expr, br_branches) <-
     marshalCmmBlockBranch exit_node
-  pure
-    ( case maybe_switch_cond_expr of
-        Just switch_cond_expr ->
-          RelooperBlock
-            { addBlock =
-                AddBlockWithSwitch
-                  { code = concatExpressions $ inner_exprs <> br_helper_exprs
-                  , condition = switch_cond_expr
-                  }
-            , addBranches = br_branches
-            }
-        _ ->
-          RelooperBlock
-            { addBlock =
-                AddBlock
-                  {code = concatExpressions $ inner_exprs <> br_helper_exprs}
-            , addBranches = br_branches
-            }
-    , need_unreachable_block)
+  pure $
+    case maybe_switch_cond_expr of
+      Just switch_cond_expr ->
+        RelooperBlock
+          { addBlock =
+              AddBlockWithSwitch
+                { code = concatExpressions $ inner_exprs <> br_helper_exprs
+                , condition = switch_cond_expr
+                }
+          , addBranches = br_branches
+          }
+      _ ->
+        RelooperBlock
+          { addBlock =
+              AddBlock
+                {code = concatExpressions $ inner_exprs <> br_helper_exprs}
+          , addBranches = br_branches
+          }
   where
     concatExpressions es =
       case es of
@@ -1077,13 +1069,11 @@ marshalCmmBlock inner_nodes exit_node = do
 marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
-  (rbs', need_unreachable_block_list) <-
-    fmap unzip $
+  rbs' <-
     for (GHC.bodyList body) $ \(lbl, GHC.BlockCC _ inner_nodes exit_node) -> do
       k <- marshalLabel lbl
-      (b, need_unreachable_block) <-
-        marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
-      pure ((k, b), need_unreachable_block)
+      b <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
+      pure (k, b)
   let (rbs, lrs) = resolveLocalRegs $ resolveGlobalRegs rbs'
   pure
     Function
@@ -1098,7 +1088,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                       { entry = entry_k
                       , blockMap =
                           fromList $
-                          [ ( "_asterius_unreachable"
+                          [ ( "__asterius_unreachable"
                             , RelooperBlock
                                 { addBlock =
                                     AddBlock
@@ -1109,12 +1099,11 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                                       }
                                 , addBranches = []
                                 })
-                          | or need_unreachable_block_list
                           ] <>
                           rbs
                       , labelHelper = 0
                       }
-                , GetLocal {index = 1, valueType = I64}
+                , GetLocal {index = 2, valueType = I64}
                 ]
             , valueType = I64
             }

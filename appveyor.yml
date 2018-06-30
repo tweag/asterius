@@ -13,6 +13,8 @@ build_script:
   - stack --no-terminal exec pacman -- -S autoconf coreutils make mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc --needed --noconfirm --noprogressbar
   - stack --no-terminal build --haddock --test --no-run-tests
   - stack --no-terminal exec ahc-boot
+  - stack --no-terminal exec ahc-boot -- --rts-only
+  - stack --no-terminal test asterius:fib --test-arguments="--debug"
   - stack --no-terminal test asterius:fib
   - stack --no-terminal test asterius:jsffi
 

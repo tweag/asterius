@@ -64,12 +64,13 @@ collectUnresolvedLocalRegs = collect proxy#
 
 resolveLocalRegs :: Data a => a -> (a, V.Vector ValueType)
 resolveLocalRegs t =
-  (f t, V.fromList $ I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
+  ( f t
+  , V.fromList $ I32 : I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
   where
     lrs =
       zip
         (sort $ toList $ collectUnresolvedLocalRegs t)
-        ([2 ..] :: [BinaryenIndex])
+        ([3 ..] :: [BinaryenIndex])
     lr_map = fromList lrs
     lr_idx = (lr_map HM.!)
     f :: Data a => a -> a

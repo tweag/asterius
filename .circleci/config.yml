@@ -49,6 +49,8 @@ jobs:
             export PATH=$PATH:~/.local/bin
             stack --no-terminal build --haddock --test --no-run-tests
             stack --no-terminal exec ahc-boot
+            stack --no-terminal exec ahc-boot -- --rts-only
+            stack --no-terminal test asterius:fib --test-arguments="--debug"
             stack --no-terminal test asterius:fib
             stack --no-terminal test asterius:jsffi
             mkdocs build

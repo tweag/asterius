@@ -38,6 +38,7 @@ data BootArgs = BootArgs
   { bootDir :: FilePath
   , configureOptions, buildOptions :: String
   , builtinsOptions :: BuiltinsOptions
+  , rtsOnly :: Bool
   }
 
 getDefaultBootArgs :: IO BootArgs
@@ -49,6 +50,7 @@ getDefaultBootArgs = do
       , configureOptions = "--disable-split-objs --disable-split-sections -O2"
       , buildOptions = ""
       , builtinsOptions = builtins_opts
+      , rtsOnly = False
       }
 
 bootTmpDir :: BootArgs -> FilePath
@@ -84,7 +86,10 @@ bootRTSCmm BootArgs {..} = do
     listDirectory rts_path
   cmms <-
     M.toList <$>
-    runCmm defaultConfig [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
+    runCmm
+      defaultConfig
+        {ghcFlags = ["-this-unit-id", "rts", "-dcmm-lint", "-O2"]}
+      [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
   for_ cmms $ \(fn, ir@CmmIR {..}) ->
     let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
         mod_sym = marshalToModuleSymbol ms_mod
@@ -101,19 +106,27 @@ bootRTSCmm BootArgs {..} = do
               writeFile p_c $ ppShow cmmRaw
               p_s <- moduleSymbolPath obj_topdir mod_sym "txt"
               writeFile p_s $ ppShow m
-  createDirectoryIfMissing True obj_topdir
-  store <- readIORef store_ref
-  encodeFile (obj_topdir </> "asterius_store") store
+  if rtsOnly
+    then do
+      rts_store <- readIORef store_ref
+      store <- decodeFile store_path
+      encodeFile store_path $ rts_store <> store
+    else do
+      createDirectoryIfMissing True obj_topdir
+      store <- readIORef store_ref
+      encodeFile store_path store
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
+    store_path = obj_topdir </> "asterius_store"
 
 boot :: BootArgs -> IO ()
 boot args = do
   bootRTSCmm args
-  cp' <- bootCreateProcess args
-  withCreateProcess cp' $ \_ _ _ ph -> do
-    ec <- waitForProcess ph
-    case ec of
-      ExitFailure _ -> fail "boot failure"
-      _ -> pure ()
+  unless (rtsOnly args) $ do
+    cp' <- bootCreateProcess args
+    withCreateProcess cp' $ \_ _ _ ph -> do
+      ec <- waitForProcess ph
+      case ec of
+        ExitFailure _ -> fail "boot failure"
+        _ -> pure ()
