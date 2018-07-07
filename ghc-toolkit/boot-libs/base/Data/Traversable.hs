@@ -62,6 +62,7 @@ import Data.Functor.Identity ( Identity(..) )
 import Data.Functor.Utils ( StateL(..), StateR(..) )
 import Data.Monoid ( Dual(..), Sum(..), Product(..),
                      First(..), Last(..), Alt(..), Ap(..) )
+import Data.Ord ( Down(..) )
 import Data.Proxy ( Proxy(..) )
 
 import GHC.Arr
@@ -164,7 +165,7 @@ class (Functor t, Foldable t) => Traversable t where
     traverse f = sequenceA . fmap f
 
     -- | Evaluate each action in the structure from left to right, and
-    -- and collect the results. For a version that ignores the results
+    -- collect the results. For a version that ignores the results
     -- see 'Data.Foldable.sequenceA_'.
     sequenceA :: Applicative f => t (f a) -> f (t a)
     {-# INLINE sequenceA #-}  -- See Note [Inline default methods]
@@ -359,6 +360,10 @@ deriving instance Traversable UInt
 
 -- | @since 4.9.0.0
 deriving instance Traversable UWord
+
+-- Instance for Data.Ord
+-- | @since 4.12.0.0
+deriving instance Traversable Down
 
 -- general functions
 
