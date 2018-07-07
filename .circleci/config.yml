@@ -51,7 +51,7 @@ jobs:
             stack --no-terminal exec ahc-boot
             stack --no-terminal exec ahc-boot -- --rts-only
             stack --no-terminal test asterius:fib --test-arguments="--debug"
-            stack --no-terminal test asterius:fib
+            stack --no-terminal test asterius:fib --test-arguments="--optimize"
             stack --no-terminal test asterius:jsffi
             mkdocs build
             cp -r site /tmp/

@@ -37,12 +37,12 @@ import Text.Show.Pretty
 data Task = Task
   { input, outputWasm, outputNode :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
-  , force, debug, outputIR, run :: Bool
+  , force, debug, optimize, outputIR, run :: Bool
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\(i, m_wasm, m_node, m_report, m_gv, fl, dbg, ir, r) ->
+  (\(i, m_wasm, m_node, m_report, m_gv, fl, dbg, opt, ir, r) ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
@@ -51,10 +51,11 @@ parseTask =
        , outputGraphViz = m_gv
        , force = fl
        , debug = dbg
+       , optimize = opt
        , outputIR = ir
        , run = r
        }) <$>
-  ((,,,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
+  ((,,,,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
    optional
      (strOption
         (long "output-wasm" <>
@@ -75,6 +76,7 @@ parseTask =
      (long "force" <>
       help "Attempt to link even when non-existent call target exists") <*>
    switch (long "debug" <> help "Enable debug mode in the runtime") <*>
+   switch (long "optimize" <> help "Enable binaryen optimizer") <*>
    switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>
    switch (long "run" <> help "Run the compiled module with Node.js"))
 
@@ -178,6 +180,9 @@ main = do
        putStrLn "Validating the WebAssembly module"
        pass_validation <- c_BinaryenModuleValidate m_ref
        when (pass_validation /= 1) $ fail "Validation failed"
+       when optimize $ do
+         putStrLn "Invoking binaryen optimizer"
+         c_BinaryenModuleOptimize m_ref
        putStrLn "Serializing the WebAssembly module to the binary form"
        m_bin <- serializeModule m_ref
        putStrLn $ "Writing WebAssembly binary to " <> show outputWasm
