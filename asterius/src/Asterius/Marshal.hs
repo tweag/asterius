@@ -9,7 +9,6 @@ module Asterius.Marshal
   ) where
 
 import Asterius.Internals
-import Asterius.Relooper
 import Asterius.Types
 import Bindings.Binaryen.Raw
 import Control.Exception
@@ -340,7 +339,7 @@ marshalExpression pool m e =
       o <- marshalExpression pool m expected
       n <- marshalExpression pool m replacement
       c_BinaryenAtomicCmpxchg m bytes offset p o n (marshalValueType valueType)
-    CFG {..} -> marshalExpression pool m $ relooper graph
+    CFG {..} -> relooperRun pool m graph
     Null -> pure nullPtr
     _ -> throwIO $ UnsupportedExpression e
 
@@ -489,6 +488,53 @@ marshalModule pool Module {..} = do
     Just k -> marshalStartFunctionName m fps k
     _ -> pure ()
   pure m
+
+relooperAddBlock ::
+     Pool
+  -> BinaryenModuleRef
+  -> RelooperRef
+  -> RelooperAddBlock
+  -> IO RelooperBlockRef
+relooperAddBlock pool m r ab =
+  case ab of
+    AddBlock {..} -> do
+      c <- marshalExpression pool m code
+      c_RelooperAddBlock r c
+    AddBlockWithSwitch {..} -> do
+      _code <- marshalExpression pool m code
+      _cond <- marshalExpression pool m condition
+      c_RelooperAddBlockWithSwitch r _code _cond
+
+relooperAddBranch ::
+     Pool
+  -> BinaryenModuleRef
+  -> HM.HashMap SBS.ShortByteString RelooperBlockRef
+  -> SBS.ShortByteString
+  -> RelooperAddBranch
+  -> IO ()
+relooperAddBranch pool m bm k ab =
+  case ab of
+    AddBranch {..} -> do
+      _cond <- marshalExpression pool m condition
+      _code <- marshalExpression pool m code
+      c_RelooperAddBranch (bm HM.! k) (bm HM.! to) _cond _code
+    AddBranchForSwitch {..} -> do
+      c <- marshalExpression pool m code
+      (idp, idn) <- marshalV pool indexes
+      c_RelooperAddBranchForSwitch (bm HM.! k) (bm HM.! to) idp idn c
+
+relooperRun ::
+     Pool -> BinaryenModuleRef -> RelooperRun -> IO BinaryenExpressionRef
+relooperRun pool m RelooperRun {..} = do
+  r <- c_RelooperCreate
+  bpm <-
+    fmap fromList $
+    for (HM.toList blockMap) $ \(k, RelooperBlock {..}) -> do
+      bp <- relooperAddBlock pool m r addBlock
+      pure (k, bp)
+  for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
+    V.forM_ addBranches $ relooperAddBranch pool m bpm k
+  c_RelooperRenderAndDispose r (bpm HM.! entry) labelHelper m
 
 serializeModule :: BinaryenModuleRef -> IO BS.ByteString
 serializeModule m =
