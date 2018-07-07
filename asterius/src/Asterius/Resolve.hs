@@ -267,7 +267,22 @@ mergeSymbols force_link AsteriusStore {..} syms = (maybe_final_m, final_rep)
                                     else func)
                               ]
                           })
-                  _ -> Left i_staging_sym
+                  _
+                    | force_link && HM.member i_staging_sym functionErrorMap ->
+                      Right
+                        ( i_staging_sym
+                        , mempty
+                            { functionMap =
+                                [ ( i_staging_sym
+                                  , Function
+                                      { functionTypeName = "I64()"
+                                      , varTypes = []
+                                      , body =
+                                          marshalErrorCode errBrokenFunction I64
+                                      })
+                                ]
+                            })
+                    | otherwise -> Left i_staging_sym
             | (i_staging_sym, AsteriusModule {..}) <- i_sym_mods
             ]
         i_child_map =

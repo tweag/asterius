@@ -23,6 +23,7 @@ module Asterius.Builtins
   , errUnimplemented
   , errAtomics
   , errSetBaseReg
+  , errBrokenFunction
   , wasmPageSize
   , cutI64
   ) where
@@ -282,7 +283,7 @@ marshalErrorCode err vt =
     , valueType = vt
     }
 
-errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented, errAtomics, errSetBaseReg ::
+errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented, errAtomics, errSetBaseReg, errBrokenFunction ::
      Int32
 errGCEnter1 = 1
 
@@ -303,6 +304,8 @@ errUnimplemented = 8
 errAtomics = 9
 
 errSetBaseReg = 10
+
+errBrokenFunction = 11
 
 mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> Function
