@@ -1,16 +1,20 @@
 {-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Relooper
   ( relooper
+  , relooperDeep
   ) where
 
 import Asterius.Types
+import Data.Data (Data, gmapT)
 import qualified Data.HashMap.Strict as HM
 import Data.List
 import qualified Data.Vector as V
+import Type.Reflection
 
 relooper :: RelooperRun -> Expression
 relooper RelooperRun {..} = result_expr
@@ -100,3 +104,14 @@ relooper RelooperRun {..} = result_expr
             ]
         , valueType = None
         }
+
+relooperDeep :: Data a => a -> a
+relooperDeep t =
+  case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
+    Just HRefl ->
+      case t of
+        CFG {..} -> relooper graph
+        _ -> go
+    _ -> go
+  where
+    go = gmapT relooperDeep t

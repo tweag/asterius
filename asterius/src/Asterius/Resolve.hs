@@ -20,6 +20,7 @@ import Asterius.Builtins
 import Asterius.Internals
 import Asterius.JSFFI
 import Asterius.Ostrich
+import Asterius.Relooper
 import Asterius.Tracing
 import Asterius.Types
 import Control.Exception
@@ -389,20 +390,25 @@ resolveEntitySymbols sym_table = f
 resolveAsteriusModule ::
      Bool
   -> FFIMarshalState
+  -> AsteriusStore
   -> AsteriusModule
   -> ( Module
      , HM.HashMap AsteriusEntitySymbol Int64
      , HM.HashMap AsteriusEntitySymbol Int64)
-resolveAsteriusModule add_tracing ffi_state m_unresolved =
+resolveAsteriusModule add_tracing ffi_state AsteriusStore {..} m_unresolved =
   ( Module
       { functionTypeMap =
           rtsAsteriusFunctionTypeMap <> generateFFIFunctionTypeMap ffi_state
       , functionMap' =
           fromList
             [ ( entityName func_sym
-              , if add_tracing
-                  then addTracingModule func_sym_map func_sym func
-                  else func)
+              , let func0 =
+                      if add_tracing
+                        then addTracingModule func_sym_map func_sym func
+                        else func
+                 in if unitId (symbolMap HM.! func_sym) == "rts"
+                      then relooperDeep func0
+                      else func0)
             | (func_sym, func) <- HM.toList $ functionMap m_resolved
             ]
       , functionImports =
@@ -442,7 +448,7 @@ linkStart force_link add_tracing ffi_state store syms =
       case maybe_merged_m of
         Just merged_m -> (Just result_m, ss_sym_map', func_sym_map')
           where (result_m, ss_sym_map', func_sym_map') =
-                  resolveAsteriusModule add_tracing ffi_state merged_m
+                  resolveAsteriusModule add_tracing ffi_state store merged_m
         _ -> (Nothing, mempty, mempty)
 
 renderDot :: LinkReport -> Builder
