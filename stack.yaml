@@ -7,6 +7,9 @@ flags:
     integer-gmp: false
   scientific:
     integer-simple: true
+ghc-options:
+  cereal: -XStarIsType
+  hashable: -XStarIsType
 extra-deps:
   - ansi-terminal-0.8.0.4
   - ansi-wl-pprint-0.6.8.2
