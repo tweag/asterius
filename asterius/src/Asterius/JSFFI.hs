@@ -115,22 +115,18 @@ marshalToFFIFunctionType loc_ty =
       pure
         FFIFunctionType
           {ffiParamTypes = [], ffiResultType = Nothing, ffiInIO = False}
-    GHC.HsAppsTy _ [c', t'] ->
-      case (GHC.unLoc c', GHC.unLoc t') of
-        (GHC.HsAppPrefix _ c, GHC.HsAppPrefix _ t) ->
-          case GHC.unLoc c of
-            GHC.HsTyVar _ _ loc_io
-              | GHC.occNameString (GHC.rdrNameOcc $ GHC.unLoc loc_io) == "IO" -> do
-                r <-
-                  case GHC.unLoc t of
-                    GHC.HsTyVar _ _ loc_t ->
-                      Just <$> marshalToFFIValueType loc_t
-                    GHC.HsTupleTy _ _ [] -> Just Nothing
-                    _ -> Nothing
-                pure
-                  FFIFunctionType
-                    {ffiParamTypes = [], ffiResultType = r, ffiInIO = True}
-            _ -> Nothing
+    GHC.HsAppTy _ c t ->
+      case GHC.unLoc c of
+        GHC.HsTyVar _ _ loc_io
+          | GHC.occNameString (GHC.rdrNameOcc $ GHC.unLoc loc_io) == "IO" -> do
+            r <-
+              case GHC.unLoc t of
+                GHC.HsTyVar _ _ loc_t -> Just <$> marshalToFFIValueType loc_t
+                GHC.HsTupleTy _ _ [] -> Just Nothing
+                _ -> Nothing
+            pure
+              FFIFunctionType
+                {ffiParamTypes = [], ffiResultType = r, ffiInIO = True}
         _ -> Nothing
     GHC.HsFunTy _ t ts -> do
       vt <-
