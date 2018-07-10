@@ -1016,20 +1016,7 @@ marshalCmmBlockBranch instr =
           [AddBranch {to = dest_def, condition = Null, code = Null}])
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
-      pure
-        ( [ SetLocal
-              { index = 2
-              , value =
-                  case t of
-                    Unresolved {..}
-                      | "stg_gc" `CBS.isPrefixOf`
-                          SBS.fromShort (entityName unresolvedSymbol) ->
-                        marshalErrorCode errStgGC I64
-                    _ -> t
-              }
-          ]
-        , Nothing
-        , [])
+      pure ([SetLocal {index = 2, value = t}], Nothing, [])
     _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
 
 marshalCmmBlock ::

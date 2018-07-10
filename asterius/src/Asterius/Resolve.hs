@@ -417,13 +417,10 @@ resolveAsteriusModule add_tracing ffi_state AsteriusStore {..} m_unresolved =
       , functionMap' =
           fromList
             [ ( entityName func_sym
-              , let func0 =
-                      if add_tracing
-                        then addTracingModule func_sym_map func_sym func
-                        else func
-                 in if unitId (symbolMap HM.! func_sym) == "rts"
-                      then relooperDeep func0
-                      else func0)
+              , relooperDeep $
+                if add_tracing
+                  then addTracingModule func_sym_map func_sym func
+                  else func)
             | (func_sym, func) <- HM.toList $ functionMap m_resolved
             ]
       , functionImports =
