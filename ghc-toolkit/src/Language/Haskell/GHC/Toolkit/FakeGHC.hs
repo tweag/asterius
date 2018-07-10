@@ -3,29 +3,42 @@
 
 module Language.Haskell.GHC.Toolkit.FakeGHC
   ( FakeGHCOptions(..)
-  , fakeMain
+  , fakeGHCMain
   ) where
 
-import Distribution.Simple.Compiler
+import Control.Monad
+import Data.List
+import qualified DynFlags as GHC
+import qualified GHC
+import qualified Plugins as GHC
 import System.Environment
 import System.Process
 
 data FakeGHCOptions = FakeGHCOptions
-  { ghc :: FilePath
-  , pluginModuleName, pluginPackageName :: String
-  , packageDBStack :: PackageDBStack
+  { ghc, ghcLibDir :: FilePath
+  , frontendPlugin :: GHC.FrontendPlugin
   }
 
-fakeMain :: FakeGHCOptions -> IO ()
-fakeMain FakeGHCOptions {..} = do
-  args <- getArgs
-  callProcess ghc $ do
-    arg <- args
-    case arg of
-      "--make" ->
-        ["--frontend", pluginModuleName, "-plugin-package", pluginPackageName] ++
-        case registrationPackageDB packageDBStack of
-          GlobalPackageDB -> ["-global-package-db"]
-          UserPackageDB -> ["-user-package-db"]
-          SpecificPackageDB p -> ["-package-db", p]
-      _ -> [arg]
+fakeGHCMain :: FakeGHCOptions -> IO ()
+fakeGHCMain FakeGHCOptions {..} = do
+  args0 <- getArgs
+  case partition (== "--make") args0 of
+    ([], _) -> callProcess ghc args0
+    (_, args1) ->
+      GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
+      GHC.runGhc (Just ghcLibDir) $ do
+        dflags0 <- GHC.getSessionDynFlags
+        (dflags1, fileish_args, _) <-
+          GHC.parseDynamicFlags dflags0 (map GHC.noLoc args1)
+        void $
+          GHC.setSessionDynFlags
+            dflags1
+              { GHC.ghcMode = GHC.CompManager
+              , GHC.ghcLink = GHC.NoLink
+              , GHC.hscTarget = GHC.HscAsm
+              , GHC.verbosity = 1
+              }
+        GHC.frontend
+          frontendPlugin
+          []
+          [(GHC.unLoc m, Nothing) | m <- fileish_args]
