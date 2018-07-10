@@ -35,6 +35,13 @@
 
   * `Data.Monoid.Ap` has been introduced
 
+  * `Control.Exception.throw` is now levity polymorphic. (#15180)
+
+  * `Data.Ord.Down` now has a number of new instances. These include:
+    `MonadFix`, `MonadZip`, `Data`, `Foldable`, `Traversable`, `Eq1`, `Ord1`,
+    `Read1`, `Show1`, `Generic`, `Generic1`. (#15098)
+
+
 ## 4.11.1.0 *TBA*
   * Bundled with GHC 8.4.2
 
@@ -322,6 +329,9 @@
 
   * New `Control.Exception.TypeError` datatype, which is thrown when an
     expression fails to typecheck when run using `-fdefer-type-errors` (#10284)
+
+  * The `bitSize` method of `Data.Bits.Bits` now has a (partial!)
+    default implementation based on `bitSizeMaybe`. (#12970)
 
 ### New instances
 

@@ -113,6 +113,8 @@ deriving instance Show Coercion
 
 deriving instance Show Type
 
+deriving instance Show LitNumType
+
 deriving instance Show Literal
 
 deriving instance Show occ => Show (GenStgArg occ)

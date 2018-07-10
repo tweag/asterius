@@ -1,4 +1,4 @@
-resolver: ghc-8.5
+resolver: ghc-8.7
 allow-newer: true
 flags:
   hashable:
@@ -11,11 +11,11 @@ extra-deps:
   - ansi-terminal-0.8.0.4
   - ansi-wl-pprint-0.6.8.2
   - attoparsec-0.13.2.2
-  - base-compat-0.10.1
-  - cereal-0.5.5.0
+  - base-compat-0.10.4
+  - https://github.com/TerrorJack/cereal/archive/asterius.zip
   - colour-2.3.4
   - happy-1.19.9
-  - hashable-1.2.7.0
+  - https://github.com/vmchale/hashable/archive/31fbfc77cbc6e574a96caca9fd223a645fe2a07f.zip
   - haskell-lexer-1.0.1
   - integer-logarithms-1.0.2.1
   - mintty-0.1.2
@@ -35,8 +35,8 @@ ghc-build: standard
 setup-info:
   ghc:
     windows64:
-      8.5.20180610:
-        url: https://ci.appveyor.com/api/buildjobs/uyb5at0868xhw150/artifacts/ghc/ghc-8.5.20180610-x86_64-unknown-mingw32.tar.xz
+      8.7.20180706:
+        url: https://ci.appveyor.com/api/buildjobs/ea8g39xf3vfcoscq/artifacts/ghc/ghc-8.7.20180706-x86_64-unknown-mingw32.tar.xz
     linux64:
-      8.5.20180610:
-        url: https://1230-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.5.20180610-x86_64-unknown-linux.tar.xz
+      8.7.20180706:
+        url: https://1311-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180706-x86_64-unknown-linux.tar.xz

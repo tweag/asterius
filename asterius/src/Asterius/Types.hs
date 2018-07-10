@@ -574,9 +574,3 @@ instance Serialize a => Serialize (V.Vector a) where
 instance Hashable a => Hashable (V.Vector a) where
   hashWithSalt salt = hashWithSalt salt . V.toList
   {-# INLINE hashWithSalt #-}
-
-instance Serialize SBS.ShortByteString where
-  put sbs = put (SBS.length sbs) *> putShortByteString sbs
-  {-# INLINE put #-}
-  get = get >>= getShortByteString
-  {-# INLINE get #-}
