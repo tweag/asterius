@@ -1,5 +1,6 @@
 module Asterius.BuildInfo
   ( ghc
+  , ghcPkg
   , mkdir
   , cp
   , node

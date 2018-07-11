@@ -25,7 +25,7 @@ import Data.Maybe
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath)
 import Language.Haskell.GHC.Toolkit.Compiler
-import Language.Haskell.GHC.Toolkit.Run
+import Language.Haskell.GHC.Toolkit.Run (defaultConfig, ghcFlags, runCmm)
 import Prelude hiding (IO)
 import System.Directory
 import System.Environment
@@ -36,7 +36,7 @@ import Text.Show.Pretty (ppShow)
 
 data BootArgs = BootArgs
   { bootDir :: FilePath
-  , configureOptions, buildOptions :: String
+  , configureOptions, buildOptions, installOptions :: String
   , builtinsOptions :: BuiltinsOptions
   , rtsOnly :: Bool
   }
@@ -49,6 +49,7 @@ getDefaultBootArgs = do
       { bootDir = dataDir </> ".boot"
       , configureOptions = "--disable-split-objs --disable-split-sections -O2"
       , buildOptions = ""
+      , installOptions = ""
       , builtinsOptions = builtins_opts
       , rtsOnly = False
       }
@@ -68,11 +69,14 @@ bootCreateProcess args@BootArgs {..} = do
           ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib") :
           ("ASTERIUS_TMP_DIR", bootTmpDir args) :
           ("ASTERIUS_GHC_PATH", ghc) :
+          ("ASTERIUS_GHCLIBDIR", ghcLibDir) :
+          ("ASTERIUS_GHCPKG_PATH", ghcPkg) :
           ("ASTERIUS_AHC_PATH", ahc) :
           ("ASTERIUS_MKDIR_PATH", mkdir) :
           ("ASTERIUS_CP_PATH", cp) :
           ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
           ("ASTERIUS_BUILD_OPTIONS", buildOptions) :
+          ("ASTERIUS_INSTALL_OPTIONS", installOptions) :
           [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"]
       , delegate_ctlc = True
       }
@@ -87,8 +91,7 @@ bootRTSCmm BootArgs {..} = do
   cmms <-
     M.toList <$>
     runCmm
-      defaultConfig
-        {ghcFlags = ["-this-unit-id", "rts", "-dcmm-lint", "-O2"]}
+      defaultConfig {ghcFlags = ["-this-unit-id", "rts", "-dcmm-lint", "-O2"]}
       [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
   for_ cmms $ \(fn, ir@CmmIR {..}) ->
     let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)

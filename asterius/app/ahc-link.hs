@@ -103,19 +103,41 @@ genNode ffi_state LinkReport {..} m_path =
 main :: IO ()
 main = do
   Task {..} <- execParser opts
-  boot_store <-
-    do store_path <-
+  (boot_store, boot_pkgdb) <-
+    do (store_path, boot_pkgdb) <-
          do boot_args <- getDefaultBootArgs
-            pure $ bootDir boot_args </> "asterius_lib" </> "asterius_store"
+            let boot_lib = bootDir boot_args </> "asterius_lib"
+            pure (boot_lib </> "asterius_store", boot_lib </> "package.conf.d")
        putStrLn $ "Loading boot library store from " <> show store_path
-       decodeFile store_path
+       store <- decodeFile store_path
+       pure (store, boot_pkgdb)
   putStrLn "Populating the store with builtin routines"
   def_builtins_opts <- getDefaultBuiltinsOptions
   let builtins_opts = def_builtins_opts {tracing = debug}
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "Compiling " <> input <> " to Cmm"
   (c, get_ffi_state) <- addJSFFIProcessor mempty
-  mod_ir_map <- runHaskell defaultConfig {compiler = c} [input]
+  mod_ir_map <-
+    runHaskell
+      defaultConfig
+        { ghcFlags =
+            [ "-Wall"
+            , "-O2"
+            , "-clear-package-db"
+            , "-global-package-db"
+            , "-package-db"
+            , boot_pkgdb
+            , "-hide-all-packages"
+            , "-package"
+            , "ghc-prim"
+            , "-package"
+            , "integer-simple"
+            , "-package"
+            , "base"
+            ]
+        , compiler = c
+        }
+      [input]
   ffi_state <- get_ffi_state
   putStrLn "Marshalling from Cmm to WebAssembly"
   final_store_ref <- newIORef orig_store

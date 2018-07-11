@@ -64,7 +64,6 @@ jobs:
           key: asterius-{{ .Branch }}-{{ .BuildNum }}
           paths:
             - .stack-work
-            - asterius/.stack-work
             - binaryen/.stack-work
             - genapply/.stack-work
             - ghc-toolkit/.stack-work
