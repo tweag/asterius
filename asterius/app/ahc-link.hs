@@ -76,7 +76,7 @@ parseTask =
      (long "force" <>
       help "Attempt to link even when non-existent call target exists") <*>
    switch (long "debug" <> help "Enable debug mode in the runtime") <*>
-   switch (long "optimize" <> help "Enable binaryen optimizer") <*>
+   switch (long "optimize" <> help "Enable binaryen & V8 optimization") <*>
    switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>
    switch (long "run" <> help "Run the compiled module with Node.js"))
 
@@ -194,5 +194,7 @@ main = do
        when run $ do
          putStrLn $ "Using " <> node <> " to run " <> outputNode
          withCurrentDirectory (takeDirectory outputWasm) $
-           callProcess node ["--harmony-bigint", takeFileName outputNode])
+           callProcess node $
+           ["--wasm-opt" | optimize] <>
+           ["--harmony-bigint", takeFileName outputNode])
     m_final_m
