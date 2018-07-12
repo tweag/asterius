@@ -13,6 +13,7 @@ module Asterius.Internals
   , collect
   , encodeFile
   , decodeFile
+  , showSBS
   ) where
 
 import Control.Monad.ST.Strict
@@ -92,3 +93,7 @@ decodeFile p = do
   case r of
     Left err -> fail err
     Right a -> pure a
+
+{-# INLINEABLE showSBS #-}
+showSBS :: Show a => a -> SBS.ShortByteString
+showSBS = fromString . show

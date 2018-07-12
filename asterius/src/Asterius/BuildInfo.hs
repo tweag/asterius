@@ -1,10 +1,6 @@
 module Asterius.BuildInfo
   ( ghc
   , ghcPkg
-  , mkdir
-  , cp
-  , node
-  , sh
   , ghcLibDir
   , ahc
   , dataDir

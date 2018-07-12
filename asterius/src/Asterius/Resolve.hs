@@ -455,7 +455,8 @@ linkStart force_link add_tracing ffi_state store syms =
   ( maybe_result_m
   , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
   where
-    (maybe_merged_m, report) = mergeSymbols force_link store syms
+    (maybe_merged_m, report) =
+      mergeSymbols force_link (generateFFIWrapperStore ffi_state <> store) syms
     (maybe_result_m, ss_sym_map, func_sym_map) =
       case maybe_merged_m of
         Just merged_m -> (Just result_m, ss_sym_map', func_sym_map')

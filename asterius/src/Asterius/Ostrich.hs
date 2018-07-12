@@ -9,6 +9,8 @@ module Asterius.Ostrich
 
 import Asterius.Builtins
 import Asterius.Types
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
 import qualified Data.HashSet as HS
 import qualified Data.Vector as V
@@ -43,6 +45,7 @@ ostrich t =
   where
     go = gmapT ostrich t
     has_call_target sym =
+      "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName sym) ||
       sym `HS.member`
       [ "main"
       , "init_rts_asterius"

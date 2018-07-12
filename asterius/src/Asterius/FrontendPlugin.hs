@@ -28,7 +28,7 @@ frontendPlugin =
     store_ref <- decodeFile (obj_topdir </> "asterius_store") >>= newIORef
     get_ffi_state_ref <- newIORef undefined
     (c, get_ffi_state) <-
-      addJSFFIProcessor
+      addFFIProcessor
         mempty
           { withHaskellIR =
               \ModSummary {..} ir@HaskellIR {..} -> do

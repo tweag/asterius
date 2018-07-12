@@ -109,6 +109,8 @@ instance Show a => Show (IORef a) where
 
 deriving instance Show CoercionHole
 
+deriving instance Show MCoercionN
+
 deriving instance Show Coercion
 
 deriving instance Show Type

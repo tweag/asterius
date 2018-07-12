@@ -8,3 +8,4 @@ dist-newstyle/
 site/
 .idea/
 node_modules/
+*.dump-*

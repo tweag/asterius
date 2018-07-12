@@ -7,8 +7,5 @@ main :: IO ()
 main =
   defaultMainWithHooks $
   genPaths
-    GenPathsOptions
-      { targetModuleName = "BuildInfo_asterius"
-      , extraPrograms = ["mkdir", "cp", "node", "sh"]
-      }
+    GenPathsOptions {targetModuleName = "BuildInfo_asterius"}
     simpleUserHooks

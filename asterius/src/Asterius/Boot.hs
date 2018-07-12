@@ -61,19 +61,17 @@ bootCreateProcess :: BootArgs -> IO CreateProcess
 bootCreateProcess args@BootArgs {..} = do
   e <- getEnvironment
   pure
-    (proc sh ["-e", "boot.sh"])
+    (proc "sh" ["-e", "boot.sh"])
       { cwd = Just dataDir
       , env =
           Just $
           ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath) :
           ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib") :
           ("ASTERIUS_TMP_DIR", bootTmpDir args) :
-          ("ASTERIUS_GHC_PATH", ghc) :
+          ("ASTERIUS_GHC", ghc) :
           ("ASTERIUS_GHCLIBDIR", ghcLibDir) :
-          ("ASTERIUS_GHCPKG_PATH", ghcPkg) :
-          ("ASTERIUS_AHC_PATH", ahc) :
-          ("ASTERIUS_MKDIR_PATH", mkdir) :
-          ("ASTERIUS_CP_PATH", cp) :
+          ("ASTERIUS_GHCPKG", ghcPkg) :
+          ("ASTERIUS_AHC", ahc) :
           ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
           ("ASTERIUS_BUILD_OPTIONS", buildOptions) :
           ("ASTERIUS_INSTALL_OPTIONS", installOptions) :
@@ -124,12 +122,15 @@ bootRTSCmm BootArgs {..} = do
     store_path = obj_topdir </> "asterius_store"
 
 boot :: BootArgs -> IO ()
-boot args = do
-  bootRTSCmm args
-  unless (rtsOnly args) $ do
-    cp' <- bootCreateProcess args
-    withCreateProcess cp' $ \_ _ _ ph -> do
-      ec <- waitForProcess ph
-      case ec of
-        ExitFailure _ -> fail "boot failure"
-        _ -> pure ()
+boot args =
+  finally
+    (do bootRTSCmm args
+        unless (rtsOnly args) $ do
+          cp' <- bootCreateProcess args
+          withCreateProcess cp' $ \_ _ _ ph -> do
+            ec <- waitForProcess ph
+            case ec of
+              ExitFailure _ -> fail "boot failure"
+              _ -> pure ())
+    (do is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
+        unless is_debug $ removeDirectoryRecursive $ bootTmpDir args)

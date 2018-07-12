@@ -5,7 +5,6 @@
 {-# LANGUAGE StrictData #-}
 
 import Asterius.Boot
-import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
@@ -96,7 +95,7 @@ genNode ffi_state LinkReport {..} m_path =
     , ";\nfunction newI64(lo,hi) { return BigInt(lo) | (BigInt(hi) << 32n);  };\nlet __asterius_jsffi_JSRefs = [];\nfunction __asterius_jsffi_newJSRef(e) { const n = __asterius_jsffi_JSRefs.length; __asterius_jsffi_JSRefs[n] = e; return n; };\nWebAssembly.instantiate(fs.readFileSync("
     , string7 $ show m_path
     , "), {Math:Math, jsffi: "
-    , generateJSFFIDict ffi_state
+    , generateFFIDict ffi_state
     , ", rts: {printI64: (lo,hi) => console.log(newI64(lo,hi)), print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\", \"errSetBaseReg\", \"errBrokenFunction\"][e-1])), __asterius_memory_trap_trigger: ((p_lo,p_hi) => console.error(\"[ERROR] Uninitialized memory trapped at 0x\" + newI64(p_lo,p_hi).toString(16).padStart(8, \"0\"))), __asterius_load_i64: ((p_lo,p_hi,v_lo,v_hi) => console.log(\"[INFO] Loading i64 at 0x\" + newI64(p_lo,p_hi).toString(16).padStart(8, \"0\") + \", value: 0x\" + newI64(v_lo,v_hi).toString(16).padStart(8, \"0\"))), __asterius_store_i64: ((p_lo,p_hi,v_lo,v_hi) => console.log(\"[INFO] Storing i64 at 0x\" + newI64(p_lo,p_hi).toString(16).padStart(8, \"0\") + \", value: 0x\" + newI64(v_lo,v_hi).toString(16).padStart(8, \"0\"))), traceCmm: (f => console.log(\"[INFO] Entering \" + func_syms[f-1] + \", Sp: 0x\" + i.exports._get_Sp().toString(16).padStart(8, \"0\") + \", SpLim: 0x\" + i.exports._get_SpLim().toString(16).padStart(8, \"0\") + \", Hp: 0x\" + i.exports._get_Hp().toString(16).padStart(8, \"0\") + \", HpLim: 0x\" + i.exports._get_HpLim().toString(16).padStart(8, \"0\"))), traceCmmBlock: ((f,lbl) => console.log(\"[INFO] Branching to \" + func_syms[f-1] + \" basic block \" + lbl + \", Sp: 0x\" + i.exports._get_Sp().toString(16).padStart(8, \"0\") + \", SpLim: 0x\" + i.exports._get_SpLim().toString(16).padStart(8, \"0\") + \", Hp: 0x\" + i.exports._get_Hp().toString(16).padStart(8, \"0\") + \", HpLim: 0x\" + i.exports._get_HpLim().toString(16).padStart(8, \"0\"))), traceCmmSetLocal: ((f,i,lo,hi) => console.log(\"[INFO] In \" + func_syms[f-1] + \", Setting local register \" + i + \" to 0x\" + newI64(lo,hi).toString(16).padStart(8, \"0\")))}}).then(r => {i = r.instance; i.exports.main();});\n"
     ]
 
@@ -116,7 +115,7 @@ main = do
   let builtins_opts = def_builtins_opts {tracing = debug}
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "Compiling " <> input <> " to Cmm"
-  (c, get_ffi_state) <- addJSFFIProcessor mempty
+  (c, get_ffi_state) <- addFFIProcessor mempty
   mod_ir_map <-
     runHaskell
       defaultConfig
@@ -214,9 +213,9 @@ main = do
        hPutBuilder h $ genNode ffi_state report $ takeFileName outputWasm
        hClose h
        when run $ do
-         putStrLn $ "Using " <> node <> " to run " <> outputNode
+         putStrLn $ "Running " <> outputNode
          withCurrentDirectory (takeDirectory outputWasm) $
-           callProcess node $
+           callProcess "node" $
            ["--wasm-opt" | optimize] <>
            ["--harmony-bigint", takeFileName outputNode])
     m_final_m

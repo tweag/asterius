@@ -48,9 +48,6 @@ import qualified Unique as GHC
 asmPpr :: GHC.Outputable a => GHC.DynFlags -> a -> String
 asmPpr dflags = GHC.showSDoc dflags . GHC.pprCode GHC.AsmStyle . GHC.ppr
 
-showSBS :: Show a => a -> SBS.ShortByteString
-showSBS = fromString . show
-
 {-# INLINEABLE marshalToModuleSymbol #-}
 marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol
 marshalToModuleSymbol (GHC.Module u m) =
@@ -852,35 +849,16 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
           pure xe
       case rs of
         [] ->
-          pure $
-          if "__asterius_jsffi_" `CBS.isPrefixOf` SBS.fromShort (entityName sym)
-            then [ CallImport
-                     { target' = entityName sym
-                     , operands = V.fromList xes
-                     , valueType = None
-                     }
-                 ]
-            else [ Call
-                     {target = sym, operands = V.fromList xes, valueType = None}
-                 ]
+          pure
+            [Call {target = sym, operands = V.fromList xes, valueType = None}]
         [r] -> do
           (lr, vt) <- marshalCmmLocalReg r
           pure
             [ UnresolvedSetLocal
                 { unresolvedLocalReg = lr
                 , value =
-                    if "__asterius_jsffi_" `CBS.isPrefixOf`
-                       SBS.fromShort (entityName sym)
-                      then CallImport
-                             { target' = entityName sym
-                             , operands = V.fromList xes
-                             , valueType = vt
-                             }
-                      else Call
-                             { target = sym
-                             , operands = V.fromList xes
-                             , valueType = vt
-                             }
+                    Call
+                      {target = sym, operands = V.fromList xes, valueType = vt}
                 }
             ]
         _ ->

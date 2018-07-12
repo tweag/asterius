@@ -18,16 +18,14 @@ import Distribution.Types.PackageDescription
 import System.Directory
 import System.FilePath
 
-data GenPathsOptions = GenPathsOptions
+newtype GenPathsOptions = GenPathsOptions
   { targetModuleName :: String
-  , extraPrograms :: [String]
   }
 
 genPaths :: GenPathsOptions -> UserHooks -> UserHooks
 genPaths GenPathsOptions {..} h =
   h
-    { hookedPrograms = map simpleProgram extraPrograms ++ hookedPrograms h
-    , confHook =
+    { confHook =
         \t f -> do
           lbi@LocalBuildInfo {localPkgDescr = pkg_descr@PackageDescription {library = Just lib@Library {libBuildInfo = lib_bi}}} <-
             confHook h t f
@@ -46,7 +44,6 @@ genPaths GenPathsOptions {..} h =
                     " :: FilePath\n" ++
                     prog_name ++ " = " ++ show (programPath conf_prog) ++ "\n\n"
               | (prog_name, prog) <-
-                  [(s, simpleProgram s) | s <- extraPrograms] ++
                   [("ghc", ghcProgram), ("ghcPkg", ghcPkgProgram)]
               ] ++
             "ghcLibDir :: FilePath\nghcLibDir = " ++

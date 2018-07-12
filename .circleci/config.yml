@@ -1,92 +1,57 @@
 version: 2
 
 jobs:
-  asterius:
-    resource_class: xlarge
+  asterius-build-docker:
+    docker:
+      - image: docker:edge-git
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run:
+          name: Make docker image
+          command: |
+            export ASTERIUS_REV=$(git rev-parse --short HEAD)
+            docker login -u terrorjack -p $DOCKER_PASS
+            docker build -t terrorjack/asterius:latest -t terrorjack/asterius:$ASTERIUS_REV .
+
+            export fib_debug=$(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--debug")
+            docker start -a $fib_debug
+            export fib_opt=$(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--optimize")
+            docker start -a $fib_opt
+            export jsffi_debug=$(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--debug")
+            docker start -a $jsffi_debug
+            export jsffi_opt=$(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--optimize")
+            docker start -a $jsffi_opt
+
+            docker push terrorjack/asterius:$ASTERIUS_REV
+            if [ $CIRCLE_BRANCH = "master" ]; then
+              docker push terrorjack/asterius:latest
+            fi
+
+  asterius-build-docs:
     docker:
       - image: ubuntu:bionic
     environment:
       DEBIAN_FRONTEND: noninteractive
       LANG: C.UTF-8
       LC_ALL: C.UTF-8
-      MAKEFLAGS: -j9
     steps:
       - run:
           name: Install dependencies
           command: |
             apt update
             apt install -y \
-              apt-transport-https \
-              curl \
-              software-properties-common
-            curl https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            add-apt-repository -y "deb https://deb.nodesource.com/node_10.x bionic main"
-            apt update
-            apt dist-upgrade -y
-            apt install -y \
-              autoconf \
-              cmake \
-              g++ \
               git \
-              libffi-dev \
-              libgmp-dev \
-              libncurses5-dev \
-              libnuma-dev \
-              make \
-              mkdocs \
-              nodejs \
-              xz-utils \
-              zlib1g-dev
-            mkdir -p ~/.local/bin
-            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+              mkdocs
       - checkout
-      - restore_cache:
-          keys:
-            - asterius-{{ .Branch }}-
       - run:
-          name: Test Asterius & generate docs
-          command: |
-            export PATH=$PATH:~/.local/bin
-            stack --no-terminal build --haddock --test --no-run-tests
-            stack --no-terminal exec ahc-boot
-            stack --no-terminal exec ahc-boot -- --rts-only
-            stack --no-terminal test asterius:fib --test-arguments="--debug"
-            stack --no-terminal test asterius:fib --test-arguments="--optimize"
-            stack --no-terminal test asterius:jsffi
-            mkdocs build
-            cp -r site /tmp/
-            cp -r `stack --no-terminal path --local-doc-root` /tmp/site/haddock
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - site
-      - save_cache:
-          key: asterius-{{ .Branch }}-{{ .BuildNum }}
-          paths:
-            - .stack-work
-            - binaryen/.stack-work
-            - genapply/.stack-work
-            - ghc-toolkit/.stack-work
-      - store_artifacts:
-          path: asterius/test/fib
-
-  asterius-push-docs:
-    docker:
-      - image: ghcci/x86_64-linux:0.0.1
-    steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp
-      - run:
-          name: Ensure that GitHub is a known host (SSH)
+          name: Build & push docs
           command: |
             if [ -z `ssh-keygen -F github.com` ]; then
               ssh-keyscan -H github.com >> ~/.ssh/known_hosts
             fi
-      - run:
-          name: Push documentation to gh-pages
-          command: |
-            cd /tmp/site
+            mkdocs build
+            cd site
             touch .nojekyll
             git init
             git config user.email "cheng.shao@tweag.io"
@@ -96,14 +61,15 @@ jobs:
             git commit -q --message="Documentation of tweag/asterius@$CIRCLE_SHA1"
             git push git@github.com:tweag/asterius.git gh-pages --force
 
+
 workflows:
   version: 2
   build:
     jobs:
-      - asterius
-      - asterius-push-docs:
+      - asterius-build-docker
+      - asterius-build-docs:
           requires:
-            - asterius
-          filters:
-            branches:
-              only: master
+            - asterius-build-docker
+          # filters:
+          #   branches:
+          #     only: master
