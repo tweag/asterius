@@ -70,6 +70,6 @@ workflows:
       - asterius-build-docs:
           requires:
             - asterius-build-docker
-          # filters:
-          #   branches:
-          #     only: master
+          filters:
+            branches:
+              only: master
