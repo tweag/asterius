@@ -11,7 +11,6 @@ module Asterius.Builtins
   , rtsAsteriusModule
   , rtsAsteriusFunctionImports
   , rtsAsteriusFunctionExports
-  , rtsAsteriusFunctionTypeMap
   , marshalErrorCode
   , errGCEnter1
   , errGCFun
@@ -26,13 +25,14 @@ module Asterius.Builtins
   , errBrokenFunction
   , wasmPageSize
   , cutI64
+  , generateWasmFunctionTypeName
   ) where
 
 import Asterius.BuildInfo
 import Asterius.Internals
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
-import qualified Data.HashMap.Strict as HM
+import Data.List
 import Data.Maybe
 import qualified Data.Vector as V
 import Foreign
@@ -131,24 +131,41 @@ rtsAsteriusModule opts =
         , ("print_i64", printI64Function opts)
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
-        , ("_get_Sp", getI32GlobalRegFunction opts Sp)
-        , ("_get_SpLim", getI32GlobalRegFunction opts SpLim)
-        , ("_get_Hp", getI32GlobalRegFunction opts Hp)
-        , ("_get_HpLim", getI32GlobalRegFunction opts HpLim)
+        , ("__asterius_Load_Sp", getI32GlobalRegFunction opts Sp)
+        , ("__asterius_Load_SpLim", getI32GlobalRegFunction opts SpLim)
+        , ("__asterius_Load_Hp", getI32GlobalRegFunction opts Hp)
+        , ("__asterius_Load_HpLim", getI32GlobalRegFunction opts HpLim)
         , ("__asterius_memory_trap", memoryTrapFunction opts)
+        , ("__asterius_Load_I8", loadWrapperFunction opts 1 I32)
+        , ("__asterius_Load_I16", loadWrapperFunction opts 2 I32)
+        , ("__asterius_Load_I32", loadWrapperFunction opts 4 I32)
+        , ("__asterius_Load_I64", loadWrapperFunction opts 8 I64)
+        , ("__asterius_Load_F32", loadWrapperFunction opts 4 F32)
+        , ("__asterius_Load_F64", loadWrapperFunction opts 8 F64)
+        , ("__asterius_Store_I8", storeWrapperFunction opts 1 I32)
+        , ("__asterius_Store_I16", storeWrapperFunction opts 2 I32)
+        , ("__asterius_Store_I32", storeWrapperFunction opts 4 I32)
+        , ("__asterius_Store_I64", storeWrapperFunction opts 8 I64)
+        , ("__asterius_Store_F32", storeWrapperFunction opts 4 F32)
+        , ("__asterius_Store_F64", storeWrapperFunction opts 8 F64)
         ]
     }
 
-rtsAsteriusFunctionImports :: V.Vector FunctionImport
-rtsAsteriusFunctionImports =
-  V.fromList $
-  [ FunctionImport
-    { internalName = "__asterius_" <> op <> "_" <> ft
+generateWasmFunctionTypeName :: FunctionType -> SBS.ShortByteString
+generateWasmFunctionTypeName FunctionType {..} =
+  showSBS returnType <> "(" <>
+  mconcat (intersperse "," [showSBS t | t <- V.toList paramTypes]) <>
+  ")"
+
+rtsAsteriusFunctionImports :: Bool -> [AsteriusFunctionImport]
+rtsAsteriusFunctionImports debug =
+  [ AsteriusFunctionImport
+    { internalName = "__asterius_" <> op <> "_" <> showSBS ft
     , externalModuleName = "Math"
     , externalBaseName = op
-    , functionTypeName = ft <> "(" <> ft <> ")"
+    , functionType = FunctionType {returnType = ft, paramTypes = [ft]}
     }
-  | ft <- ["F32", "F64"]
+  | ft <- [F32, F64]
   , op <-
       [ "sin"
       , "cos"
@@ -163,112 +180,129 @@ rtsAsteriusFunctionImports =
       , "exp"
       ]
   ] <>
-  [ FunctionImport
-    { internalName = "__asterius_" <> op <> "_" <> ft
+  [ AsteriusFunctionImport
+    { internalName = "__asterius_" <> op <> "_" <> showSBS ft
     , externalModuleName = "Math"
     , externalBaseName = op
-    , functionTypeName = ft <> "(" <> ft <> "," <> ft <> ")"
+    , functionType = FunctionType {returnType = ft, paramTypes = [ft, ft]}
     }
-  | ft <- ["F32", "F64"]
+  | ft <- [F32, F64]
   , op <- ["pow"]
   ] <>
-  [ FunctionImport
+  [ AsteriusFunctionImport
       { internalName = "printI64"
       , externalModuleName = "rts"
       , externalBaseName = "printI64"
-      , functionTypeName = "None(I32,I32)"
+      , functionType = FunctionType {returnType = None, paramTypes = [I32, I32]}
       }
-  , FunctionImport
+  , AsteriusFunctionImport
       { internalName = "printF32"
       , externalModuleName = "rts"
       , externalBaseName = "print"
-      , functionTypeName = "None(F32)"
+      , functionType = FunctionType {returnType = None, paramTypes = [F32]}
       }
-  , FunctionImport
+  , AsteriusFunctionImport
       { internalName = "printF64"
       , externalModuleName = "rts"
       , externalBaseName = "print"
-      , functionTypeName = "None(F64)"
+      , functionType = FunctionType {returnType = None, paramTypes = [F64]}
       }
-  , FunctionImport
-      { internalName = "errorI32"
+  , AsteriusFunctionImport
+      { internalName = "__asterius_errorI32"
       , externalModuleName = "rts"
       , externalBaseName = "panic"
-      , functionTypeName = "None(I32)"
+      , functionType = FunctionType {returnType = None, paramTypes = [I32]}
       }
-  , FunctionImport
-      { internalName = "traceCmm"
-      , externalModuleName = "rts"
-      , externalBaseName = "traceCmm"
-      , functionTypeName = "None(I32)"
-      }
-  , FunctionImport
-      { internalName = "traceCmmBlock"
-      , externalModuleName = "rts"
-      , externalBaseName = "traceCmmBlock"
-      , functionTypeName = "None(I32,I32)"
-      }
-  , FunctionImport
-      { internalName = "traceCmmSetLocal"
-      , externalModuleName = "rts"
-      , externalBaseName = "traceCmmSetLocal"
-      , functionTypeName = "None(I32,I32,I32,I32)"
-      }
-  , FunctionImport
-      { internalName = "__asterius_memory_trap_trigger"
-      , externalModuleName = "rts"
-      , externalBaseName = "__asterius_memory_trap_trigger"
-      , functionTypeName = "None(I32,I32)"
-      }
-  , FunctionImport
-      { internalName = "__asterius_load_i64"
-      , externalModuleName = "rts"
-      , externalBaseName = "__asterius_load_i64"
-      , functionTypeName = "None(I32,I32,I32,I32)"
-      }
-  , FunctionImport
-      { internalName = "__asterius_store_i64"
-      , externalModuleName = "rts"
-      , externalBaseName = "__asterius_store_i64"
-      , functionTypeName = "None(I32,I32,I32,I32)"
-      }
-  ]
+  ] <>
+  (if debug
+     then [ AsteriusFunctionImport
+              { internalName = "__asterius_traceCmm"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_traceCmm"
+              , functionType =
+                  FunctionType {returnType = None, paramTypes = [I32]}
+              }
+          , AsteriusFunctionImport
+              { internalName = "__asterius_traceCmmBlock"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_traceCmmBlock"
+              , functionType =
+                  FunctionType {returnType = None, paramTypes = [I32, I32]}
+              }
+          , AsteriusFunctionImport
+              { internalName = "__asterius_traceCmmSetLocal"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_traceCmmSetLocal"
+              , functionType =
+                  FunctionType
+                    {returnType = None, paramTypes = [I32, I32, I32, I32]}
+              }
+          , AsteriusFunctionImport
+              { internalName = "__asterius_memory_trap_trigger"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_memory_trap_trigger"
+              , functionType =
+                  FunctionType {returnType = None, paramTypes = [I32, I32]}
+              }
+          , AsteriusFunctionImport
+              { internalName = "__asterius_load_i64"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_load_i64"
+              , functionType =
+                  FunctionType
+                    {returnType = None, paramTypes = [I32, I32, I32, I32]}
+              }
+          , AsteriusFunctionImport
+              { internalName = "__asterius_store_i64"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_store_i64"
+              , functionType =
+                  FunctionType
+                    {returnType = None, paramTypes = [I32, I32, I32, I32]}
+              }
+          ] <>
+          concat
+            [ [ AsteriusFunctionImport
+                  { internalName = "__asterius_load_" <> k
+                  , externalModuleName = "rts"
+                  , externalBaseName = "__asterius_load_" <> k
+                  , functionType =
+                      FunctionType
+                        {returnType = None, paramTypes = [I32, I32, t]}
+                  }
+              , AsteriusFunctionImport
+                  { internalName = "__asterius_store_" <> k
+                  , externalModuleName = "rts"
+                  , externalBaseName = "__asterius_store_" <> k
+                  , functionType =
+                      FunctionType
+                        {returnType = None, paramTypes = [I32, I32, t]}
+                  }
+            ]
+            | (k, t) <-
+                [ ("i8", I32)
+                , ("i16", I32)
+                , ("i32", I32)
+                , ("f32", F32)
+                , ("f64", F64)
+                ]
+            ]
+     else [])
 
-rtsAsteriusFunctionExports :: V.Vector FunctionExport
-rtsAsteriusFunctionExports =
+rtsAsteriusFunctionExports :: Bool -> V.Vector FunctionExport
+rtsAsteriusFunctionExports debug =
   V.fromList
     [ FunctionExport {internalName = f, externalName = f}
-    | f <- ["main", "_get_Sp", "_get_SpLim", "_get_Hp", "_get_HpLim"]
+    | f <-
+        if debug
+          then [ "main"
+               , "__asterius_Load_Sp"
+               , "__asterius_Load_SpLim"
+               , "__asterius_Load_Hp"
+               , "__asterius_Load_HpLim"
+               ]
+          else ["main"]
     ]
-
-rtsAsteriusFunctionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
-rtsAsteriusFunctionTypeMap =
-  [ ("I64()", FunctionType {returnType = I64, paramTypes = []})
-  , ("I64(I64,I64)", FunctionType {returnType = I64, paramTypes = [I64, I64]})
-  , ( "I64(I64,I64,I64)"
-    , FunctionType {returnType = I64, paramTypes = [I64, I64, I64]})
-  , ("I64(I32)", FunctionType {returnType = I64, paramTypes = [I32]})
-  , ("I64(I64)", FunctionType {returnType = I64, paramTypes = [I64]})
-  , ("I64(I32,I64)", FunctionType {returnType = I64, paramTypes = [I32, I64]})
-  , ("I32()", FunctionType {returnType = I32, paramTypes = []})
-  , ("None()", FunctionType {returnType = None, paramTypes = []})
-  , ("None(I32)", FunctionType {returnType = None, paramTypes = [I32]})
-  , ("None(I32,I32)", FunctionType {returnType = None, paramTypes = [I32, I32]})
-  , ( "None(I32,I32,I32)"
-    , FunctionType {returnType = None, paramTypes = [I32, I32, I32]})
-  , ( "None(I32,I32,I32,I32)"
-    , FunctionType {returnType = None, paramTypes = [I32, I32, I32, I32]})
-  , ("None(I64)", FunctionType {returnType = None, paramTypes = [I64]})
-  , ("None(I64,I64)", FunctionType {returnType = None, paramTypes = [I64, I64]})
-  , ( "None(I64,I64,I64)"
-    , FunctionType {returnType = None, paramTypes = [I64, I64, I64]})
-  , ("None(F32)", FunctionType {returnType = None, paramTypes = [F32]})
-  , ("None(F64)", FunctionType {returnType = None, paramTypes = [F64]})
-  , ("F32(F32)", FunctionType {returnType = F32, paramTypes = [F32]})
-  , ("F64(F64)", FunctionType {returnType = F64, paramTypes = [F64]})
-  , ("F32(F32,F32)", FunctionType {returnType = F32, paramTypes = [F32, F32]})
-  , ("F64(F64,F64)", FunctionType {returnType = F64, paramTypes = [F64, F64]})
-  ]
 
 {-# INLINEABLE marshalErrorCode #-}
 marshalErrorCode :: Int32 -> ValueType -> Expression
@@ -277,7 +311,10 @@ marshalErrorCode err vt =
     { name = ""
     , bodys =
         [ CallImport
-            {target' = "errorI32", operands = [ConstI32 err], valueType = None}
+            { target' = "__asterius_errorI32"
+            , operands = [ConstI32 err]
+            , valueType = None
+            }
         , Unreachable
         ]
     , valueType = vt
@@ -308,11 +345,10 @@ errSetBaseReg = 10
 errBrokenFunction = 11
 
 mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
-     BuiltinsOptions -> Function
+     BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
-  Function
-    { functionTypeName = "None()"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = None, paramTypes = []}
     , body =
         Block
           { name = ""
@@ -337,15 +373,14 @@ mainFunction BuiltinsOptions {..} =
     }
 
 initRtsAsteriusFunction BuiltinsOptions {..} =
-  Function
-    { functionTypeName = "None()"
-    , varTypes = [I64, I64, I64]
+  AsteriusFunction
+    { functionType = FunctionType {returnType = None, paramTypes = []}
     , body =
         Block
           { name = ""
           , bodys =
-              [ SetLocal
-                  { index = 0
+              [ UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 0 I64
                   , value =
                       Call
                         { target = "allocGroup"
@@ -369,7 +404,7 @@ initRtsAsteriusFunction BuiltinsOptions {..} =
                               { binaryOp = MulInt64
                               , operand0 =
                                   Unary
-                                    { unaryOp = ExtendSInt32
+                                    { unaryOp = ExtendUInt32
                                     , operand0 =
                                         getFieldWord32 bd offset_bdescr_blocks
                                     }
@@ -380,8 +415,8 @@ initRtsAsteriusFunction BuiltinsOptions {..} =
               , setFieldWord baseReg offset_StgRegTable_rCCCS (ConstI64 0)
               , setFieldWord baseReg offset_StgRegTable_rCurrentNursery bd
               , setFieldWord baseReg offset_StgRegTable_rCurrentAlloc bd
-              , SetLocal
-                  { index = 1
+              , UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 1 I64
                   , value =
                       Call
                         { target = "allocate"
@@ -392,8 +427,8 @@ initRtsAsteriusFunction BuiltinsOptions {..} =
                         , valueType = I64
                         }
                   }
-              , SetLocal
-                  { index = 2
+              , UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 2 I64
                   , value =
                       Call
                         { target = "allocate"
@@ -413,20 +448,20 @@ initRtsAsteriusFunction BuiltinsOptions {..} =
           }
     }
   where
-    bd = getLocalWord 0
-    task = getLocalWord 1
-    incall = getLocalWord 2
+    bd = getUnresolvedLocalWord 0
+    task = getUnresolvedLocalWord 1
+    incall = getUnresolvedLocalWord 2
 
 rtsEvalIOFunction BuiltinsOptions {..} =
-  Function
-    { functionTypeName = "None(I64,I64,I64)"
-    , varTypes = [I64]
+  AsteriusFunction
+    { functionType =
+        FunctionType {returnType = None, paramTypes = [I64, I64, I64]}
     , body =
         Block
           { name = ""
           , bodys =
-              [ SetLocal
-                  { index = 3
+              [ UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 3 I64
                   , value =
                       Call
                         { target = "createStrictIOThread"
@@ -451,25 +486,27 @@ rtsEvalIOFunction BuiltinsOptions {..} =
     cap = mainCap
     p = getLocalWord 1
     ret = getLocalWord 2
-    tso = getLocalWord 3
+    tso = getUnresolvedLocalWord 3
 
 scheduleWaitThreadFunction _ =
-  Function
-    { functionTypeName = "None(I64,I64,I64)"
-    , varTypes = [I64, I64, I64]
+  AsteriusFunction
+    { functionType =
+        FunctionType {returnType = None, paramTypes = [I64, I64, I64]}
     , body =
         Block
           { name = ""
           , bodys =
-              [ SetLocal
-                  { index = 3
+              [ UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 3 I64
                   , value = getFieldWord cap offset_Capability_running_task
                   }
               , setFieldWord tso offset_StgTSO_bound $
                 getFieldWord task offset_Task_incall
               , setFieldWord tso offset_StgTSO_cap cap
-              , SetLocal
-                  {index = 4, value = getFieldWord task offset_Task_incall}
+              , UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 4 I64
+                  , value = getFieldWord task offset_Task_incall
+                  }
               , setFieldWord incall offset_InCall_tso tso
               , setFieldWord incall offset_InCall_ret ret
               , setFieldWord
@@ -477,8 +514,8 @@ scheduleWaitThreadFunction _ =
                   (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
                   tso
               , setFieldWord32 cap offset_Capability_interrupt (ConstI32 0)
-              , SetLocal
-                  { index = 5
+              , UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 5 I64
                   , value =
                       Call
                         { target = "StgRun"
@@ -503,19 +540,18 @@ scheduleWaitThreadFunction _ =
     tso = getLocalWord 0
     ret = getLocalWord 1
     cap = mainCap
-    task = getLocalWord 3
-    incall = getLocalWord 4
+    task = getUnresolvedLocalWord 3
+    incall = getUnresolvedLocalWord 4
 
 createThreadFunction _ =
-  Function
-    { functionTypeName = "I64(I64,I64)"
-    , varTypes = [I64, I64, I64]
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
     , body =
         Block
           { name = ""
           , bodys =
-              [ SetLocal
-                  { index = 2
+              [ UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 2 I64
                   , value =
                       Call
                         { target = "allocate"
@@ -525,13 +561,13 @@ createThreadFunction _ =
                   }
               , UnresolvedSetGlobal
                   {unresolvedGlobalReg = CurrentTSO, value = tso_p}
-              , saveSp 3 tso_p
+              , saveUnresolvedSp 3 tso_p
               , setFieldWord
                   stack_p
                   0
                   Unresolved {unresolvedSymbol = "stg_STACK_info"}
-              , SetLocal
-                  { index = 4
+              , UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 4 I64
                   , value =
                       Binary
                         { binaryOp = SubInt64
@@ -579,24 +615,24 @@ createThreadFunction _ =
   where
     cap = mainCap
     alloc_words = getLocalWord 1
-    tso_p = getLocalWord 2
-    stack_p = getLocalWord 3
-    stack_size_w = getLocalWord 4
+    tso_p = getUnresolvedLocalWord 2
+    stack_p = getUnresolvedLocalWord 3
+    stack_size_w = getUnresolvedLocalWord 4
     sp = UnresolvedGetGlobal {unresolvedGlobalReg = Sp}
 
 createThreadHelperFunction ::
-     BuiltinsOptions -> [Maybe AsteriusEntitySymbol] -> Function
+     BuiltinsOptions -> [Maybe AsteriusEntitySymbol] -> AsteriusFunction
 createThreadHelperFunction _ closures =
-  Function
-    { functionTypeName = "I64(I64,I64,I64)"
-    , varTypes = [I64, I64]
+  AsteriusFunction
+    { functionType =
+        FunctionType {returnType = I64, paramTypes = [I64, I64, I64]}
     , body =
         Block
           { name = ""
           , bodys =
               V.fromList $
-              [ SetLocal
-                  { index = 3
+              [ UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 3 I64
                   , value =
                       Call
                         { target = "createThread"
@@ -604,7 +640,7 @@ createThreadHelperFunction _ closures =
                         , valueType = I64
                         }
                   }
-              , saveSp 4 tso_p
+              , saveUnresolvedSp 4 tso_p
               , UnresolvedSetGlobal
                   { unresolvedGlobalReg = Sp
                   , value =
@@ -630,8 +666,8 @@ createThreadHelperFunction _ closures =
     cap = mainCap
     stack_size_w = getLocalWord 1
     target_closure = getLocalWord 2
-    tso_p = getLocalWord 3
-    stack_p = getLocalWord 4
+    tso_p = getUnresolvedLocalWord 3
+    stack_p = getUnresolvedLocalWord 4
     sp = UnresolvedGetGlobal {unresolvedGlobalReg = Sp}
 
 createGenThreadFunction opts =
@@ -652,15 +688,14 @@ createStrictIOThreadFunction opts =
     ]
 
 allocateFunction _ =
-  Function
-    { functionTypeName = "I64(I64,I64)"
-    , varTypes = [I64, I64]
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
     , body =
         Block
           { name = ""
           , bodys =
-              [ SetLocal
-                  { index = 2
+              [ UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 2 I64
                   , value =
                       Binary
                         { binaryOp = AddInt64
@@ -680,8 +715,8 @@ allocateFunction _ =
                   , ifTrue = marshalErrorCode errHeapOverflow None
                   , ifFalse = Null
                   }
-              , SetLocal
-                  { index = 3
+              , UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 3 I64
                   , value = UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
                   }
               , UnresolvedSetGlobal {unresolvedGlobalReg = Hp, value = new_hp}
@@ -696,13 +731,12 @@ allocateFunction _ =
     }
   where
     n = getLocalWord 1
-    new_hp = getLocalWord 2
-    old_hp = getLocalWord 3
+    new_hp = getUnresolvedLocalWord 2
+    old_hp = getUnresolvedLocalWord 3
 
 allocateMightFailFunction _ =
-  Function
-    { functionTypeName = "I64(I64,I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
     , body =
         Call
           { target = "allocate"
@@ -712,9 +746,8 @@ allocateMightFailFunction _ =
     }
 
 allocatePinnedFunction _ =
-  Function
-    { functionTypeName = "I64(I64,I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
     , body =
         Call
           { target = "allocate"
@@ -724,31 +757,27 @@ allocatePinnedFunction _ =
     }
 
 allocBlockFunction _ =
-  Function
-    { functionTypeName = "I64()"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = []}
     , body =
         Call {target = "allocGroup", operands = [ConstI64 1], valueType = I64}
     }
 
 allocBlockLockFunction _ =
-  Function
-    { functionTypeName = "I64()"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = []}
     , body = Call {target = "allocBlock", operands = [], valueType = I64}
     }
 
 allocBlockOnNodeFunction _ =
-  Function
-    { functionTypeName = "I64(I32)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I32]}
     , body = Call {target = "allocBlock", operands = [], valueType = I64}
     }
 
 allocBlockOnNodeLockFunction _ =
-  Function
-    { functionTypeName = "I64(I32)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I32]}
     , body =
         Call
           { target = "allocBlockOnNode"
@@ -758,9 +787,8 @@ allocBlockOnNodeLockFunction _ =
     }
 
 allocGroupFunction _ =
-  Function
-    { functionTypeName = "I64(I64)"
-    , varTypes = [I64]
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I64]}
     , body =
         Block
           { name = ""
@@ -775,14 +803,14 @@ allocGroupFunction _ =
                   , ifTrue = marshalErrorCode errMegaBlockGroup None
                   , ifFalse = Null
                   }
-              , SetLocal
-                  { index = 1
+              , UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 1 I64
                   , value =
                       Binary
                         { binaryOp = MulInt64
                         , operand0 =
                             Unary
-                              { unaryOp = ExtendSInt32
+                              { unaryOp = ExtendUInt32
                               , operand0 =
                                   Host
                                     { hostOp = GrowMemory
@@ -818,30 +846,27 @@ allocGroupFunction _ =
   where
     first_block_p = fieldOff mblocks_p offset_first_block
     blocks_n = getLocalWord 0
-    mblocks_p = getLocalWord 1
+    mblocks_p = getUnresolvedLocalWord 1
 
 allocGroupLockFunction _ =
-  Function
-    { functionTypeName = "I64(I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I64]}
     , body =
         Call
           {target = "allocGroup", operands = [getLocalWord 0], valueType = I64}
     }
 
 allocGroupOnNodeFunction _ =
-  Function
-    { functionTypeName = "I64(I32,I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I32, I64]}
     , body =
         Call
           {target = "allocGroup", operands = [getLocalWord 1], valueType = I64}
     }
 
 allocGroupOnNodeLockFunction _ =
-  Function
-    { functionTypeName = "I64(I32,I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I32, I64]}
     , body =
         Call
           { target = "allocGroupOnNode"
@@ -851,23 +876,21 @@ allocGroupOnNodeLockFunction _ =
     }
 
 freeFunction _ =
-  Function
-    { functionTypeName = "None(I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = None, paramTypes = [I64]}
     , body = marshalErrorCode errUnimplemented None
     }
 
 newCAFFunction _ =
-  Function
-    { functionTypeName = "I64(I64,I64)"
-    , varTypes = [I64]
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
     , body =
         Block
           { name = ""
           , bodys =
               [ setFieldWord caf offset_StgIndStatic_saved_info orig_info
-              , SetLocal
-                  { index = 2
+              , UnresolvedSetLocal
+                  { unresolvedLocalReg = UniqueLocalReg 2 I64
                   , value =
                       Call
                         { target = "allocate"
@@ -899,12 +922,11 @@ newCAFFunction _ =
     caf = getLocalWord 1
     cap = mainCap
     orig_info = getFieldWord caf 0
-    bh = getLocalWord 2
+    bh = getUnresolvedLocalWord 2
 
 stgRunFunction BuiltinsOptions {..} =
-  Function
-    { functionTypeName = "I64(I64,I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
     , body =
         Block
           { name = ""
@@ -961,12 +983,14 @@ stgRunFunction BuiltinsOptions {..} =
     f = getLocalWord 0
 
 stgReturnFunction _ =
-  Function {functionTypeName = "I64()", varTypes = [], body = ConstI64 0}
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I64, paramTypes = []}
+    , body = ConstI64 0
+    }
 
 printI64Function _ =
-  Function
-    { functionTypeName = "None(I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = None, paramTypes = [I64]}
     , body =
         CallImport {target' = "printI64", operands = cutI64 x, valueType = None}
     }
@@ -974,35 +998,32 @@ printI64Function _ =
     x = getLocalWord 0
 
 printF32Function _ =
-  Function
-    { functionTypeName = "None(F32)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = None, paramTypes = [F32]}
     , body = CallImport {target' = "printF32", operands = [x], valueType = None}
     }
   where
     x = GetLocal {index = 0, valueType = F32}
 
 printF64Function _ =
-  Function
-    { functionTypeName = "None(F64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = None, paramTypes = [F64]}
     , body = CallImport {target' = "printF64", operands = [x], valueType = None}
     }
   where
     x = GetLocal {index = 0, valueType = F64}
 
-getI32GlobalRegFunction :: BuiltinsOptions -> UnresolvedGlobalReg -> Function
+getI32GlobalRegFunction ::
+     BuiltinsOptions -> UnresolvedGlobalReg -> AsteriusFunction
 getI32GlobalRegFunction _ gr =
-  Function
-    { functionTypeName = "I32()"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = I32, paramTypes = []}
     , body = wrapI64 UnresolvedGetGlobal {unresolvedGlobalReg = gr}
     }
 
 memoryTrapFunction _ =
-  Function
-    { functionTypeName = "None(I64)"
-    , varTypes = []
+  AsteriusFunction
+    { functionType = FunctionType {returnType = None, paramTypes = [I64]}
     , body =
         If
           { condition =
@@ -1106,6 +1127,103 @@ memoryTrapFunction _ =
             , operand1 = constInt o
             }
 
+loadWrapperFunction, storeWrapperFunction ::
+     BuiltinsOptions -> BinaryenIndex -> ValueType -> AsteriusFunction
+loadWrapperFunction _ b vt =
+  AsteriusFunction
+    { functionType = FunctionType {returnType = vt, paramTypes = [I64]}
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ CallImport
+                  { target' =
+                      case (vt, b) of
+                        (I32, 1) -> "__asterius_load_i8"
+                        (I32, 2) -> "__asterius_load_i16"
+                        (I32, 4) -> "__asterius_load_i32"
+                        (I64, 8) -> "__asterius_load_i64"
+                        (F32, 4) -> "__asterius_load_f32"
+                        (F64, 8) -> "__asterius_load_f64"
+                        _ ->
+                          error $
+                          "Unsupported ValueType/ByteLength: " <> show (vt, b)
+                  , operands =
+                      cutI64 p <>
+                      (case vt of
+                         I64 -> cutI64 v
+                         _ -> [v])
+                  , valueType = None
+                  }
+              , Call
+                  { target = "__asterius_memory_trap"
+                  , operands = [p]
+                  , valueType = None
+                  }
+              , v
+              ]
+          , valueType = vt
+          }
+    }
+  where
+    p = getLocalWord 0
+    v =
+      Load
+        { signed = False
+        , bytes = b
+        , offset = 0
+        , align = 0
+        , valueType = vt
+        , ptr = wrapI64 p
+        }
+
+storeWrapperFunction _ b vt =
+  AsteriusFunction
+    { functionType = FunctionType {returnType = None, paramTypes = [I64, vt]}
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              [ CallImport
+                  { target' =
+                      case (vt, b) of
+                        (I32, 1) -> "__asterius_store_i8"
+                        (I32, 2) -> "__asterius_store_i16"
+                        (I32, 4) -> "__asterius_store_i32"
+                        (I64, 8) -> "__asterius_store_i64"
+                        (F32, 4) -> "__asterius_store_f32"
+                        (F64, 8) -> "__asterius_store_f64"
+                        _ ->
+                          error $
+                          "Unsupported ValueType/ByteLength: " <> show (vt, b)
+                  , operands =
+                      cutI64 p <>
+                      (case vt of
+                         I64 -> cutI64 v
+                         _ -> [v])
+                  , valueType = None
+                  }
+              , Call
+                  { target = "__asterius_memory_trap"
+                  , operands = [p]
+                  , valueType = None
+                  }
+              , Store
+                  { bytes = b
+                  , offset = 0
+                  , align = 0
+                  , ptr = wrapI64 p
+                  , value = v
+                  , valueType = vt
+                  }
+              ]
+          , valueType = None
+          }
+    }
+  where
+    p = getLocalWord 0
+    v = GetLocal {index = 1, valueType = vt}
+
 fieldOff :: Expression -> Int -> Expression
 fieldOff p o
   | o == 0 = p
@@ -1155,12 +1273,19 @@ constInt = ConstI64 . fromIntegral
 constInt32 :: Int -> Expression
 constInt32 = ConstI32 . fromIntegral
 
+getUnresolvedLocalWord :: Int -> Expression
+getUnresolvedLocalWord i =
+  UnresolvedGetLocal {unresolvedLocalReg = UniqueLocalReg i I64}
+
 getLocalWord :: BinaryenIndex -> Expression
 getLocalWord i = GetLocal {index = i, valueType = I64}
 
-saveSp :: BinaryenIndex -> Expression -> Expression
-saveSp sp_i tso_p =
-  SetLocal {index = sp_i, value = fieldOff tso_p offset_StgTSO_StgStack}
+saveUnresolvedSp :: Int -> Expression -> Expression
+saveUnresolvedSp sp_i tso_p =
+  UnresolvedSetLocal
+    { unresolvedLocalReg = UniqueLocalReg sp_i I64
+    , value = fieldOff tso_p offset_StgTSO_StgStack
+    }
 
 mainCap :: Expression
 mainCap = Unresolved {unresolvedSymbol = "MainCapability"}

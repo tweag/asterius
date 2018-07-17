@@ -423,7 +423,7 @@ marshalFunctionTable ::
   -> FunctionTable
   -> IO ()
 marshalFunctionTable pool m fps FunctionTable {..} = do
-  (fnp, fnl) <- marshalV pool $ V.map (fps HM.!) functionNames
+  (fnp, fnl) <- marshalV pool $ V.map (fps !) functionNames
   c_BinaryenSetFunctionTable m fnp fnl
 
 marshalMemory :: Pool -> BinaryenModuleRef -> Memory -> IO ()
@@ -455,7 +455,7 @@ marshalStartFunctionName ::
   -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
   -> SBS.ShortByteString
   -> IO ()
-marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps HM.! n)
+marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps ! n)
 
 marshalModule :: Pool -> Module -> IO BinaryenModuleRef
 marshalModule pool Module {..} = do
@@ -468,10 +468,10 @@ marshalModule pool Module {..} = do
   fps <-
     fmap fromList $
     for (HM.toList functionMap') $ \(k, f@Function {..}) -> do
-      fp <- marshalFunction pool m k (ftps HM.! functionTypeName) f
+      fp <- marshalFunction pool m k (ftps ! functionTypeName) f
       pure (k, fp)
   V.forM_ functionImports $ \fi@FunctionImport {..} ->
-    marshalFunctionImport pool m (ftps HM.! functionTypeName) fi
+    marshalFunctionImport pool m (ftps ! functionTypeName) fi
   V.forM_ tableImports $ marshalTableImport pool m
   V.forM_ globalImports $ marshalGlobalImport pool m
   V.forM_ functionExports $ marshalFunctionExport pool m
@@ -517,11 +517,11 @@ relooperAddBranch pool m bm k ab =
     AddBranch {..} -> do
       _cond <- marshalExpression pool m condition
       _code <- marshalExpression pool m code
-      c_RelooperAddBranch (bm HM.! k) (bm HM.! to) _cond _code
+      c_RelooperAddBranch (bm ! k) (bm ! to) _cond _code
     AddBranchForSwitch {..} -> do
       c <- marshalExpression pool m code
       (idp, idn) <- marshalV pool indexes
-      c_RelooperAddBranchForSwitch (bm HM.! k) (bm HM.! to) idp idn c
+      c_RelooperAddBranchForSwitch (bm ! k) (bm ! to) idp idn c
 
 relooperRun ::
      Pool -> BinaryenModuleRef -> RelooperRun -> IO BinaryenExpressionRef
@@ -534,7 +534,7 @@ relooperRun pool m RelooperRun {..} = do
       pure (k, bp)
   for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
     V.forM_ addBranches $ relooperAddBranch pool m bpm k
-  c_RelooperRenderAndDispose r (bpm HM.! entry) labelHelper m
+  c_RelooperRenderAndDispose r (bpm ! entry) labelHelper m
 
 serializeModule :: BinaryenModuleRef -> IO BS.ByteString
 serializeModule m =

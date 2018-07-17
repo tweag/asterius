@@ -14,14 +14,12 @@ jobs:
             docker login -u terrorjack -p $DOCKER_PASS
             docker build -t terrorjack/asterius:latest -t terrorjack/asterius:$ASTERIUS_REV .
 
-            export fib_debug=$(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--debug")
-            docker start -a $fib_debug
-            export fib_opt=$(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--optimize")
-            docker start -a $fib_opt
-            export jsffi_debug=$(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--debug")
-            docker start -a $jsffi_debug
-            export jsffi_opt=$(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--optimize")
-            docker start -a $jsffi_opt
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--debug")
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--optimize")
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--debug")
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--optimize")
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array --test-arguments="--debug")
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array --test-arguments="--optimize")
 
             docker push terrorjack/asterius:$ASTERIUS_REV
             if [ $CIRCLE_BRANCH = "master" ]; then

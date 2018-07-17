@@ -4,6 +4,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
@@ -13,6 +14,8 @@ module Asterius.Types
   , AsteriusCodeGenError(..)
   , AsteriusStatic(..)
   , AsteriusStatics(..)
+  , AsteriusFunction(..)
+  , AsteriusFunctionImport(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
   , AsteriusEntitySymbol(..)
@@ -49,8 +52,8 @@ import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.Data
-import Data.Hashable
 import qualified Data.HashMap.Strict as HM
+import Data.Hashable
 import Data.Serialize
 import Data.String
 import qualified Data.Vector as V
@@ -91,10 +94,24 @@ newtype AsteriusStatics = AsteriusStatics
 
 instance Serialize AsteriusStatics
 
+data AsteriusFunction = AsteriusFunction
+  { functionType :: FunctionType
+  , body :: Expression
+  } deriving (Show, Generic, Data)
+
+instance Serialize AsteriusFunction
+
+data AsteriusFunctionImport = AsteriusFunctionImport
+  { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
+  , functionType :: FunctionType
+  } deriving (Show, Generic, Data)
+
+instance Serialize AsteriusFunctionImport
+
 data AsteriusModule = AsteriusModule
   { staticsMap :: HM.HashMap AsteriusEntitySymbol AsteriusStatics
   , staticsErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
-  , functionMap :: HM.HashMap AsteriusEntitySymbol Function
+  , functionMap :: HM.HashMap AsteriusEntitySymbol AsteriusFunction
   , functionErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
   } deriving (Show, Generic, Data)
 
@@ -118,8 +135,13 @@ instance Hashable AsteriusModuleSymbol
 
 newtype AsteriusEntitySymbol = AsteriusEntitySymbol
   { entityName :: SBS.ShortByteString
-  } deriving stock (Generic, Data)
-    deriving newtype (Eq, Ord, Show, IsString, Serialize, Hashable)
+  } deriving (Eq, Ord, IsString, Serialize, Hashable)
+
+deriving newtype instance Show AsteriusEntitySymbol
+
+deriving instance Generic AsteriusEntitySymbol
+
+deriving instance Data AsteriusEntitySymbol
 
 data AsteriusStore = AsteriusStore
   { symbolMap :: HM.HashMap AsteriusEntitySymbol AsteriusModuleSymbol
@@ -427,8 +449,6 @@ data Expression
                   , offset' :: Int }
   | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
-                       , value :: Expression }
-  | UnresolvedTeeLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
   | UnresolvedGetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg }
   | UnresolvedSetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg

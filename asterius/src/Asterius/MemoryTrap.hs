@@ -5,73 +5,62 @@
 
 module Asterius.MemoryTrap
   ( addMemoryTrap
+  , addMemoryTrapDeep
   ) where
 
-import Asterius.Builtins
 import Asterius.Types
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
-import qualified Data.Vector as V
+import qualified Data.HashMap.Strict as HM
 import Type.Reflection
 
-addMemoryTrap :: Data a => a -> a
-addMemoryTrap t =
+addMemoryTrap :: AsteriusModule -> AsteriusModule
+addMemoryTrap m =
+  m
+    { functionMap =
+        HM.mapWithKey
+          (\func_sym func ->
+             if "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName func_sym)
+               then func
+               else addMemoryTrapDeep func)
+          (functionMap m)
+    }
+
+addMemoryTrapDeep :: Data a => a -> a
+addMemoryTrapDeep t =
   case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
     Just HRefl ->
       case t of
         Load {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
-          Block
-            { name = ""
-            , bodys =
-                V.fromList $
-                [ CallImport
-                  { target' = "__asterius_load_i64"
-                  , operands =
-                      cutI64 i64_ptr <>
-                      cutI64
-                        Load
-                          { signed = False
-                          , bytes = 8
-                          , offset = 0
-                          , align = 0
-                          , valueType = I64
-                          , ptr =
-                              Unary {unaryOp = WrapInt64, operand0 = i64_ptr}
-                          }
-                  , valueType = None
-                  }
-                | valueType == I64
-                ] <>
-                [ Call
-                    { target = "__asterius_memory_trap"
-                    , operands = [i64_ptr]
-                    , valueType = None
-                    }
-                , t
-                ]
+          Call
+            { target =
+                case (valueType, bytes) of
+                  (I32, 1) -> "__asterius_Load_I8"
+                  (I32, 2) -> "__asterius_Load_I16"
+                  (I32, 4) -> "__asterius_Load_I32"
+                  (I64, 8) -> "__asterius_Load_I64"
+                  (F32, 4) -> "__asterius_Load_F32"
+                  (F64, 8) -> "__asterius_Load_F64"
+                  _ -> error $ "Unsupported instruction: " <> show t
+            , operands = [addMemoryTrapDeep i64_ptr]
             , valueType = valueType
             }
         Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
-          Block
-            { name = ""
-            , bodys =
-                V.fromList $
-                [ CallImport
-                  { target' = "__asterius_store_i64"
-                  , operands = cutI64 i64_ptr <> cutI64 value
-                  , valueType = None
-                  }
-                | valueType == I64
-                ] <>
-                [ Call
-                    { target = "__asterius_memory_trap"
-                    , operands = [i64_ptr]
-                    , valueType = None
-                    }
-                , t
-                ]
+          Call
+            { target =
+                case (valueType, bytes) of
+                  (I32, 1) -> "__asterius_Store_I8"
+                  (I32, 2) -> "__asterius_Store_I16"
+                  (I32, 4) -> "__asterius_Store_I32"
+                  (I64, 8) -> "__asterius_Store_I64"
+                  (F32, 4) -> "__asterius_Store_F32"
+                  (F64, 8) -> "__asterius_Store_F64"
+                  _ -> error $ "Unsupported instruction: " <> show t
+            , operands = [addMemoryTrapDeep i64_ptr, addMemoryTrapDeep value]
             , valueType = None
             }
         _ -> go
     _ -> go
   where
-    go = gmapT addMemoryTrap t
+    go = gmapT addMemoryTrapDeep t

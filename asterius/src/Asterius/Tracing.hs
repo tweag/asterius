@@ -8,11 +8,13 @@ module Asterius.Tracing
   ) where
 
 import Asterius.Builtins
-import Asterius.MemoryTrap
+import Asterius.Internals
 import Asterius.Types
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as SBS
+import Data.Char
 import Data.Data (Data, gmapT)
 import qualified Data.HashMap.Strict as HM
-import Data.List
 import qualified Data.Vector as V
 import Foreign
 import Type.Reflection
@@ -20,17 +22,12 @@ import Type.Reflection
 addTracingModule ::
      HM.HashMap AsteriusEntitySymbol Int64
   -> AsteriusEntitySymbol
+  -> FunctionType
   -> Function
   -> Function
-addTracingModule func_sym_map func_sym func
-  | func_sym `V.elem`
-      [ "_get_Sp"
-      , "_get_SpLim"
-      , "_get_Hp"
-      , "_get_HpLim"
-      , "__asterius_memory_trap"
-      ] = func
-  | otherwise = addMemoryTrap $ f func
+addTracingModule func_sym_map func_sym func_type func
+  | "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName func_sym) = func
+  | otherwise = f func
   where
     f :: Data a => a -> a
     f x =
@@ -46,7 +43,7 @@ addTracingModule func_sym_map func_sym func
                       { name = ""
                       , bodys =
                           [ CallImport
-                              { target' = "traceCmm"
+                              { target' = "__asterius_traceCmm"
                               , operands = [func_idx]
                               , valueType = None
                               }
@@ -77,7 +74,7 @@ addTracingModule func_sym_map func_sym func
                                                       , bodys =
                                                           [ CallImport
                                                               { target' =
-                                                                  "traceCmmBlock"
+                                                                  "__asterius_traceCmmBlock"
                                                               , operands =
                                                                   [ func_idx
                                                                   , lbl_to_idx
@@ -98,7 +95,7 @@ addTracingModule func_sym_map func_sym func
                                                       , bodys =
                                                           [ CallImport
                                                               { target' =
-                                                                  "traceCmmBlock"
+                                                                  "__asterius_traceCmmBlock"
                                                               , operands =
                                                                   [ func_idx
                                                                   , lbl_to_idx
@@ -118,10 +115,9 @@ addTracingModule func_sym_map func_sym func
                                 ]
                           }
                     }
-                  where lbls = sort $ HM.keys blockMap
-                        lbl_to_idx lbl = ConstI32 $ fromIntegral idx
-                          where
-                            Just idx = elemIndex lbl lbls
+                  where lbl_to_idx =
+                          ConstI32 .
+                          read . map (chr . fromIntegral) . SBS.unpack
                 SetLocal {..}
                   | ((index_int < param_num) && (params V.! index_int == I64)) ||
                       ((index_int >= param_num) &&
@@ -131,7 +127,7 @@ addTracingModule func_sym_map func_sym func
                       , bodys =
                           [ SetLocal {index = index, value = value}
                           , CallImport
-                              { target' = "traceCmmSetLocal"
+                              { target' = "__asterius_traceCmmSetLocal"
                               , operands =
                                   [func_idx, ConstI32 $ fromIntegral index] <>
                                   cutI64
@@ -141,12 +137,11 @@ addTracingModule func_sym_map func_sym func
                           ]
                       , valueType = None
                       }
-                  where Function {functionTypeName = ft} = func
-                        params = paramTypes (rtsAsteriusFunctionTypeMap HM.! ft)
+                  where params = paramTypes func_type
                         param_num = V.length params
                         index_int = fromIntegral index
                 _ -> go
             _ -> go
       where
         go = gmapT f x
-        func_idx = ConstI32 $ fromIntegral $ func_sym_map HM.! func_sym
+        func_idx = ConstI32 $ fromIntegral $ func_sym_map ! func_sym

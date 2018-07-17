@@ -9,24 +9,27 @@ module Asterius.Relooper
   , relooperDeep
   ) where
 
+import Asterius.Internals
 import Asterius.Types
 import Data.Data (Data, gmapT)
 import qualified Data.HashMap.Strict as HM
 import Data.List
+import Data.String
 import qualified Data.Vector as V
 import Type.Reflection
 
 relooper :: RelooperRun -> Expression
 relooper RelooperRun {..} = result_expr
   where
-    lbls = sort $ HM.keys blockMap
+    lbls = HM.keys blockMap
+    def_lbl = fromString $ show $ length lbls - 1
     lbl_map = HM.fromList $ zip lbls [0 ..]
-    lbl_to_idx = (lbl_map HM.!)
+    lbl_to_idx = (lbl_map !)
     set_block_lbl lbl = SetLocal {index = 0, value = ConstI32 $ lbl_to_idx lbl}
     initial_expr =
       Switch
         { names = V.fromList lbls
-        , defaultName = "__asterius_unreachable"
+        , defaultName = def_lbl
         , condition = GetLocal {index = 0, valueType = I32}
         , value = Null
         }

@@ -23,8 +23,6 @@ c-sources:
 
 cc-options: -Wall -Wextra -O3 -fPIC -std=c11
 
-cpp-options: -DNO_REGS
-
 custom-setup:
   dependencies:
     - base

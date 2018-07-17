@@ -45,3 +45,4 @@ main = do
   print_i64 $ sizeofBinTree $ genBinTree 3
   print_i64 $ sizeofBinTree $ genBinTree 5
   print_i64 $ facts !! 5
+  print_i64 $ facts !! 5

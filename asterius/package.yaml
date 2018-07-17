@@ -13,6 +13,7 @@ extra-source-files:
   - README.md
   - test/fib/fib.hs
   - test/jsffi/jsffi.hs
+  - test/array/array.hs
 
 data-files:
   - boot.sh
@@ -22,8 +23,6 @@ custom-setup:
     - base
     - Cabal
     - ghc-toolkit
-
-cpp-options: -DNO_REGS
 
 ghc-options: -Wall
 
@@ -111,5 +110,11 @@ tests:
   jsffi:
     source-dirs: test
     main: jsffi.hs
+    dependencies:
+      - asterius
+
+  array:
+    source-dirs: test
+    main: array.hs
     dependencies:
       - asterius

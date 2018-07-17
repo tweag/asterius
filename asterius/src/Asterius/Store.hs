@@ -7,7 +7,6 @@ module Asterius.Store
   ) where
 
 import Asterius.Builtins
-import Asterius.Resolve
 import Asterius.Types
 import qualified Data.HashMap.Strict as HM
 
@@ -16,7 +15,7 @@ builtinsStore :: BuiltinsOptions -> AsteriusStore
 builtinsStore opts =
   addModule
     rtsAsteriusModuleSymbol
-    (resolveGlobalRegs $ rtsAsteriusModule opts)
+    (rtsAsteriusModule opts)
     AsteriusStore {symbolMap = mempty, moduleMap = mempty}
 
 {-# INLINEABLE addModule #-}

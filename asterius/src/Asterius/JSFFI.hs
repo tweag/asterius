@@ -19,7 +19,7 @@ module Asterius.JSFFI
   , generateFFIDict
   ) where
 
-import Asterius.Internals hiding (IO)
+import Asterius.Builtins
 import Asterius.Types
 import Control.Applicative
 import Control.Monad.State.Strict
@@ -256,12 +256,6 @@ recoverWasmWrapperFunctionType FFIFunctionType {..} =
         V.fromList [recoverWasmWrapperValueType $ Just t | t <- ffiParamTypes]
     }
 
-generateWasmFunctionTypeName :: FunctionType -> SBS.ShortByteString
-generateWasmFunctionTypeName FunctionType {..} =
-  showSBS returnType <> "(" <>
-  mconcat (intersperse "," [showSBS t | t <- V.toList paramTypes]) <>
-  ")"
-
 recoverWasmImportFunctionName :: Int -> String
 recoverWasmImportFunctionName = ("__asterius_jsffi_" <>) . show
 
@@ -386,13 +380,10 @@ generateImplicitCastExpression signed src_t dest_t src_expr =
         error $
         "Unsupported implicit cast from " <> show src_t <> " to " <> show dest_t
 
-generateFFIWrapperFunction :: Int -> FFIDecl -> Function
+generateFFIWrapperFunction :: Int -> FFIDecl -> AsteriusFunction
 generateFFIWrapperFunction k FFIDecl {..} =
-  Function
-    { functionTypeName =
-        generateWasmFunctionTypeName $
-        recoverWasmWrapperFunctionType ffiFunctionType
-    , varTypes = []
+  AsteriusFunction
+    { functionType = recoverWasmWrapperFunctionType ffiFunctionType
     , body =
         generateImplicitCastExpression
           (case ffiResultType ffiFunctionType of
@@ -466,20 +457,17 @@ generateFFIFunctionTypeMap FFIMarshalState {..} =
           wrapper_func_type = recoverWasmWrapperFunctionType ffiFunctionType
     ]
 
-generateFFIFunctionImports :: FFIMarshalState -> V.Vector FunctionImport
+generateFFIFunctionImports :: FFIMarshalState -> [AsteriusFunctionImport]
 generateFFIFunctionImports FFIMarshalState {..} =
-  V.fromList
-    [ FunctionImport
-      { internalName = fn
-      , externalModuleName = "jsffi"
-      , externalBaseName = fn
-      , functionTypeName =
-          generateWasmFunctionTypeName $
-          recoverWasmImportFunctionType ffiFunctionType
-      }
-    | (k, FFIDecl {..}) <- IM.toList ffiDecls
-    , let fn = fromString $ recoverWasmImportFunctionName k
-    ]
+  [ AsteriusFunctionImport
+    { internalName = fn
+    , externalModuleName = "jsffi"
+    , externalBaseName = fn
+    , functionType = recoverWasmImportFunctionType ffiFunctionType
+    }
+  | (k, FFIDecl {..}) <- IM.toList ffiDecls
+  , let fn = fromString $ recoverWasmImportFunctionName k
+  ]
 
 generateFFILambda :: FFIDecl -> Builder
 generateFFILambda FFIDecl {ffiFunctionType = FFIFunctionType {..}, ..} =

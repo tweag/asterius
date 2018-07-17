@@ -23,10 +23,10 @@ See the help text of `ahc-link` for further instructions.
 What works for now:
 
 * All GHC language features except Template Haskell
-* Non-IO parts in `ghc-prim`/`integer-simple`/`base`
+* Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`
 * Importing JavaScript expressions via the `foreign import javascript` syntax
 
-Better check the [`fib`](asterius/test/fib/fib.hs) and [`jsffi`](asterius/test/jsffi/jsffi.hs) test suites first to get some idea on current capabilities of `asterius`.
+Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs) and [`array`](asterius/test/array/array.hs) test suites first to get some idea on current capabilities of `asterius`.
 
 ## Sponsors
 

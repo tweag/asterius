@@ -87,34 +87,69 @@ opts =
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
 
-genNode :: FFIMarshalState -> LinkReport -> FilePath -> Builder
-genNode ffi_state LinkReport {..} m_path =
-  mconcat
-    [ "\"use strict\";\nconst fs = require(\"fs\");\nlet i = null;\nlet func_syms = "
-    , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
-    , ";\nfunction newI64(lo,hi) { return BigInt(lo) | (BigInt(hi) << 32n);  };\nlet __asterius_jsffi_JSRefs = [];\nfunction __asterius_jsffi_newJSRef(e) { const n = __asterius_jsffi_JSRefs.length; __asterius_jsffi_JSRefs[n] = e; return n; };\nWebAssembly.instantiate(fs.readFileSync("
-    , string7 $ show m_path
-    , "), {Math:Math, jsffi: "
-    , generateFFIDict ffi_state
-    , ", rts: {printI64: (lo,hi) => console.log(newI64(lo,hi)), print: console.log, panic: (e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\", \"errSetBaseReg\", \"errBrokenFunction\"][e-1])), __asterius_memory_trap_trigger: ((p_lo,p_hi) => console.error(\"[ERROR] Uninitialized memory trapped at 0x\" + newI64(p_lo,p_hi).toString(16).padStart(8, \"0\"))), __asterius_load_i64: ((p_lo,p_hi,v_lo,v_hi) => console.log(\"[INFO] Loading i64 at 0x\" + newI64(p_lo,p_hi).toString(16).padStart(8, \"0\") + \", value: 0x\" + newI64(v_lo,v_hi).toString(16).padStart(8, \"0\"))), __asterius_store_i64: ((p_lo,p_hi,v_lo,v_hi) => console.log(\"[INFO] Storing i64 at 0x\" + newI64(p_lo,p_hi).toString(16).padStart(8, \"0\") + \", value: 0x\" + newI64(v_lo,v_hi).toString(16).padStart(8, \"0\"))), traceCmm: (f => console.log(\"[INFO] Entering \" + func_syms[f-1] + \", Sp: 0x\" + i.exports._get_Sp().toString(16).padStart(8, \"0\") + \", SpLim: 0x\" + i.exports._get_SpLim().toString(16).padStart(8, \"0\") + \", Hp: 0x\" + i.exports._get_Hp().toString(16).padStart(8, \"0\") + \", HpLim: 0x\" + i.exports._get_HpLim().toString(16).padStart(8, \"0\"))), traceCmmBlock: ((f,lbl) => console.log(\"[INFO] Branching to \" + func_syms[f-1] + \" basic block \" + lbl + \", Sp: 0x\" + i.exports._get_Sp().toString(16).padStart(8, \"0\") + \", SpLim: 0x\" + i.exports._get_SpLim().toString(16).padStart(8, \"0\") + \", Hp: 0x\" + i.exports._get_Hp().toString(16).padStart(8, \"0\") + \", HpLim: 0x\" + i.exports._get_HpLim().toString(16).padStart(8, \"0\"))), traceCmmSetLocal: ((f,i,lo,hi) => console.log(\"[INFO] In \" + func_syms[f-1] + \", Setting local register \" + i + \" to 0x\" + newI64(lo,hi).toString(16).padStart(8, \"0\")))}}).then(r => {i = r.instance; i.exports.main();});\n"
-    ]
+genNode :: Task -> FFIMarshalState -> LinkReport -> Builder
+genNode Task {..} ffi_state LinkReport {..} =
+  mconcat $
+  [ "\"use strict\";\n"
+  , "process.on('unhandledRejection', err => { throw err; });\n"
+  , "const fs = require(\"fs\");\n"
+  , "let __asterius_wasm_instance = null;\n"
+  ] <>
+  (if debug
+     then [ "const __asterius_func_syms = "
+          , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
+          , ";\n"
+          ]
+     else []) <>
+  [ "function __asterius_newI64(lo, hi) { return BigInt(lo) | (BigInt(hi) << 32n);  };\n"
+  , "let __asterius_jsffi_JSRefs = [];\n"
+  , "function __asterius_jsffi_newJSRef(e) { const n = __asterius_jsffi_JSRefs.length; __asterius_jsffi_JSRefs[n] = e; return n; };\n"
+  , "WebAssembly.instantiate(fs.readFileSync("
+  , string7 $ show $ takeFileName outputWasm
+  , "), {Math: Math, jsffi: "
+  , generateFFIDict ffi_state
+  , ", rts: {printI64: (lo, hi) => console.log(__asterius_newI64(lo, hi))"
+  , ", print: console.log"
+  , ", panic: e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\", \"errSetBaseReg\", \"errBrokenFunction\"][e-1])"
+  ] <>
+  (if debug
+     then [ ", __asterius_memory_trap_trigger: (p_lo, p_hi) => console.error(\"[ERROR] Uninitialized memory trapped at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\"))"
+          , ", __asterius_load_i64: (p_lo, p_hi, v_lo, v_hi) => console.log(\"[INFO] Loading i64 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: 0x\" + __asterius_newI64(v_lo,v_hi).toString(16).padStart(8, \"0\"))"
+          , ", __asterius_store_i64: (p_lo, p_hi, v_lo, v_hi) => console.log(\"[INFO] Storing i64 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: 0x\" + __asterius_newI64(v_lo,v_hi).toString(16).padStart(8, \"0\"))"
+          , ", __asterius_load_i8: (p_lo, p_hi, v) => console.log(\"[INFO] Loading i8 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_store_i8: (p_lo, p_hi, v) => console.log(\"[INFO] Storing i8 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_load_i16: (p_lo, p_hi, v) => console.log(\"[INFO] Loading i16 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_store_i16: (p_lo, p_hi, v) => console.log(\"[INFO] Storing i16 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_load_i32: (p_lo, p_hi, v) => console.log(\"[INFO] Loading i32 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_store_i32: (p_lo, p_hi, v) => console.log(\"[INFO] Storing i32 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_load_f32: (p_lo, p_hi, v) => console.log(\"[INFO] Loading f32 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_store_f32: (p_lo, p_hi, v) => console.log(\"[INFO] Storing f32 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_load_f64: (p_lo, p_hi, v) => console.log(\"[INFO] Loading f64 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_store_f64: (p_lo, p_hi, v) => console.log(\"[INFO] Storing f64 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
+          , ", __asterius_traceCmm: f => console.log(\"[INFO] Entering \" + __asterius_func_syms[f-1] + \", Sp: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_Sp().toString(16).padStart(8, \"0\") + \", SpLim: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_SpLim().toString(16).padStart(8, \"0\") + \", Hp: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_Hp().toString(16).padStart(8, \"0\") + \", HpLim: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_HpLim().toString(16).padStart(8, \"0\"))"
+          , ", __asterius_traceCmmBlock: (f, lbl) => console.log(\"[INFO] Branching to \" + __asterius_func_syms[f-1] + \" basic block \" + lbl + \", Sp: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_Sp().toString(16).padStart(8, \"0\") + \", SpLim: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_SpLim().toString(16).padStart(8, \"0\") + \", Hp: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_Hp().toString(16).padStart(8, \"0\") + \", HpLim: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_HpLim().toString(16).padStart(8, \"0\"))"
+          , ", __asterius_traceCmmSetLocal: (f, i, lo, hi) => console.log(\"[INFO] In \" + __asterius_func_syms[f-1] + \", Setting local register \" + i + \" to 0x\" + __asterius_newI64(lo, hi).toString(16).padStart(8, \"0\"))"
+          ]
+     else []) <>
+  [ "}}).then(r => {__asterius_wasm_instance = r.instance; __asterius_wasm_instance.exports.main();});\n"
+  ]
 
 main :: IO ()
 main = do
-  Task {..} <- execParser opts
+  task@Task {..} <- execParser opts
   (boot_store, boot_pkgdb) <-
     do (store_path, boot_pkgdb) <-
          do boot_args <- getDefaultBootArgs
             let boot_lib = bootDir boot_args </> "asterius_lib"
             pure (boot_lib </> "asterius_store", boot_lib </> "package.conf.d")
-       putStrLn $ "Loading boot library store from " <> show store_path
+       putStrLn $ "[INFO] Loading boot library store from " <> show store_path
        store <- decodeFile store_path
        pure (store, boot_pkgdb)
-  putStrLn "Populating the store with builtin routines"
+  putStrLn "[INFO] Populating the store with builtin routines"
   def_builtins_opts <- getDefaultBuiltinsOptions
   let builtins_opts = def_builtins_opts {tracing = debug}
       !orig_store = builtinsStore builtins_opts <> boot_store
-  putStrLn $ "Compiling " <> input <> " to Cmm"
+  putStrLn $ "[INFO] Compiling " <> input <> " to Cmm"
   (c, get_ffi_state) <- addFFIProcessor mempty
   mod_ir_map <-
     runHaskell
@@ -133,12 +168,14 @@ main = do
             , "integer-simple"
             , "-package"
             , "base"
+            , "-package"
+            , "array"
             ]
         , compiler = c
         }
       [input]
   ffi_state <- get_ffi_state
-  putStrLn "Marshalling from Cmm to WebAssembly"
+  putStrLn "[INFO] Marshalling from Cmm to WebAssembly"
   final_store_ref <- newIORef orig_store
   M.foldlWithKey'
     (\act ms_mod ir ->
@@ -151,69 +188,67 @@ main = do
          Right m -> do
            let mod_str = GHC.moduleNameString $ GHC.moduleName ms_mod
            putStrLn $
-             "Marshalling " <> show mod_str <> " from Cmm to WebAssembly"
+             "[INFO] Marshalling " <> show mod_str <> " from Cmm to WebAssembly"
            modifyIORef' final_store_ref $
              addModule (marshalToModuleSymbol ms_mod) m
            when outputIR $ do
              let p = takeDirectory input </> mod_str <.> "txt"
              putStrLn $
-               "Writing pretty-printed IR of " <> mod_str <> " to " <> p
+               "[INFO] Writing pretty-printed IR of " <> mod_str <> " to " <> p
              writeFile p $ ppShow m
            act)
     (pure ())
     mod_ir_map
   final_store <- readIORef final_store_ref
-  putStrLn "Attempting to link into a standalone WebAssembly module"
+  putStrLn "[INFO] Attempting to link into a standalone WebAssembly module"
   let (!m_final_m, !report) =
-        linkStart
-          force
-          debug
-          ffi_state
-          final_store
-          [ "main"
-          , "_get_Sp"
-          , "_get_SpLim"
-          , "_get_Hp"
-          , "_get_HpLim"
-          , "__asterius_memory_trap"
-          ]
+        linkStart force debug ffi_state final_store $
+        if debug
+          then [ "main"
+               , "__asterius_Load_Sp"
+               , "__asterius_Load_SpLim"
+               , "__asterius_Load_Hp"
+               , "__asterius_Load_HpLim"
+               ]
+          else ["main"]
   maybe
     (pure ())
     (\p -> do
-       putStrLn $ "Writing linking report to " <> show p
+       putStrLn $ "[INFO] Writing linking report to " <> show p
        writeFile p $ ppShow report)
     outputLinkReport
   maybe
     (pure ())
     (\p -> do
-       putStrLn $ "Writing GraphViz file of symbol dependencies to " <> show p
+       putStrLn $
+         "[INFO] Writing GraphViz file of symbol dependencies to " <> show p
        writeDot p report)
     outputGraphViz
   maybe
-    (fail "Linking failed")
+    (fail "[ERROR] Linking failed")
     (\final_m -> do
        when outputIR $ do
          let p = input -<.> "txt"
-         putStrLn $ "Writing linked IR to " <> show p
-         writeFile p $ ppShow final_m
-       putStrLn "Invoking binaryen to marshal the WebAssembly module"
+         putStrLn $ "[INFO] Writing linked IR to " <> show p
+         writeFile p $ show final_m
+       putStrLn "[INFO] Invoking binaryen to marshal the WebAssembly module"
        m_ref <- withPool $ \pool -> marshalModule pool final_m
-       putStrLn "Validating the WebAssembly module"
+       putStrLn "[INFO] Validating the WebAssembly module"
        pass_validation <- c_BinaryenModuleValidate m_ref
-       when (pass_validation /= 1) $ fail "Validation failed"
+       when (pass_validation /= 1) $ fail "[ERROR] Validation failed"
        when optimize $ do
-         putStrLn "Invoking binaryen optimizer"
+         putStrLn "[INFO] Invoking binaryen optimizer"
          c_BinaryenModuleOptimize m_ref
-       putStrLn "Serializing the WebAssembly module to the binary form"
-       m_bin <- serializeModule m_ref
-       putStrLn $ "Writing WebAssembly binary to " <> show outputWasm
+       putStrLn "[INFO] Serializing the WebAssembly module to the binary form"
+       !m_bin <- serializeModule m_ref
+       putStrLn $ "[INFO] Writing WebAssembly binary to " <> show outputWasm
        BS.writeFile outputWasm m_bin
-       putStrLn $ "Writing Node.js script to " <> show outputNode
+       putStrLn $ "[INFO] Writing Node.js script to " <> show outputNode
        h <- openBinaryFile outputNode WriteMode
-       hPutBuilder h $ genNode ffi_state report $ takeFileName outputWasm
+       hPutBuilder h $ genNode task ffi_state report
        hClose h
        when run $ do
-         putStrLn $ "Running " <> outputNode
+         putStrLn $ "[INFO] Running " <> outputNode
          withCurrentDirectory (takeDirectory outputWasm) $
            callProcess "node" $
            ["--wasm-opt" | optimize] <>

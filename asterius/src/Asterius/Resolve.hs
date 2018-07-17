@@ -7,22 +7,20 @@
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Resolve
-  ( resolveLocalRegs
-  , unresolvedGlobalRegType
-  , resolveGlobalRegs
+  ( unresolvedGlobalRegType
   , LinkReport(..)
   , linkStart
-  , renderDot
   , writeDot
   ) where
 
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.JSFFI
-import Asterius.Ostrich
+import Asterius.MemoryTrap
 import Asterius.Relooper
 import Asterius.Tracing
 import Asterius.Types
+import Asterius.Workarounds
 import Control.Exception
 import Data.ByteString.Builder
 import qualified Data.ByteString.Short as SBS
@@ -63,17 +61,17 @@ unresolvedLocalRegType lr =
 collectUnresolvedLocalRegs :: Data a => a -> HS.HashSet UnresolvedLocalReg
 collectUnresolvedLocalRegs = collect proxy#
 
-resolveLocalRegs :: Data a => a -> (a, V.Vector ValueType)
-resolveLocalRegs t =
+resolveLocalRegs :: Data a => Int -> a -> (a, V.Vector ValueType)
+resolveLocalRegs func_param_n t =
   ( f t
   , V.fromList $ I32 : I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
   where
     lrs =
       zip
         (sort $ toList $ collectUnresolvedLocalRegs t)
-        ([3 ..] :: [BinaryenIndex])
+        ([fromIntegral func_param_n + 3 ..] :: [BinaryenIndex])
     lr_map = fromList lrs
-    lr_idx = (lr_map HM.!)
+    lr_idx = (lr_map !)
     f :: Data a => a -> a
     f x =
       case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
@@ -86,8 +84,6 @@ resolveLocalRegs t =
                 }
             UnresolvedSetLocal {..} ->
               SetLocal {index = lr_idx unresolvedLocalReg, value = f value}
-            UnresolvedTeeLocal {..} ->
-              TeeLocal {index = lr_idx unresolvedLocalReg, value = f value}
             _ -> go
         _ -> go
       where
@@ -224,10 +220,12 @@ instance Monoid LinkReport where
 
 mergeSymbols ::
      Bool
+  -> Bool
   -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe AsteriusModule, LinkReport)
-mergeSymbols force_link AsteriusStore {..} syms = (maybe_final_m, final_rep)
+mergeSymbols force_link debug AsteriusStore {..} syms =
+  (maybe_final_m, final_rep)
   where
     maybe_final_m
       | HS.null (unfoundSymbols final_rep) &&
@@ -244,7 +242,7 @@ mergeSymbols force_link AsteriusStore {..} syms = (maybe_final_m, final_rep)
         (i_unfound_syms, i_sym_mods) =
           partitionEithers
             [ case HM.lookup i_staging_sym symbolMap of
-              Just mod_sym -> Right (i_staging_sym, moduleMap HM.! mod_sym)
+              Just mod_sym -> Right (i_staging_sym, moduleMap ! mod_sym)
               _ -> Left i_staging_sym
             | i_staging_sym <- toList i_staging_syms
             ]
@@ -253,20 +251,28 @@ mergeSymbols force_link AsteriusStore {..} syms = (maybe_final_m, final_rep)
             [ case HM.lookup i_staging_sym staticsMap of
               Just ss ->
                 Right
-                  (i_staging_sym, mempty {staticsMap = [(i_staging_sym, ss)]})
+                  ( i_staging_sym
+                  , mempty
+                      {staticsMap = [(i_staging_sym, resolveGlobalRegs ss)]})
               _ ->
                 case HM.lookup i_staging_sym functionMap of
                   Just func ->
                     Right
                       ( i_staging_sym
-                      , mempty
-                          { functionMap =
-                              [ ( i_staging_sym
-                                , if force_link
-                                    then ostrich func
-                                    else func)
-                              ]
-                          })
+                      , let m0 =
+                              mempty
+                                { functionMap =
+                                    [ ( i_staging_sym
+                                      , removeI8Stores $
+                                        resolveGlobalRegs $
+                                        if force_link
+                                          then maskUnknownCCallTargets func
+                                          else func)
+                                    ]
+                                }
+                         in if debug
+                              then addMemoryTrap m0
+                              else m0)
                   _
                     | force_link && HM.member i_staging_sym functionErrorMap ->
                       Right
@@ -274,9 +280,10 @@ mergeSymbols force_link AsteriusStore {..} syms = (maybe_final_m, final_rep)
                         , mempty
                             { functionMap =
                                 [ ( i_staging_sym
-                                  , Function
-                                      { functionTypeName = "I64()"
-                                      , varTypes = []
+                                  , AsteriusFunction
+                                      { functionType =
+                                          FunctionType
+                                            {returnType = I64, paramTypes = []}
                                       , body =
                                           marshalErrorCode errBrokenFunction I64
                                       })
@@ -353,7 +360,7 @@ makeMemory AsteriusModule {..} last_o sym_map =
                _ ->
                  error $
                  "Encountered unresolved content " <> show s <> " in makeMemory"))
-        (sym_map HM.! ss_sym, [])
+        (sym_map ! ss_sym, [])
         asteriusStatics
     combine segs =
       reverse $
@@ -400,49 +407,77 @@ resolveEntitySymbols sym_table = f
             _ -> go
       where
         go = gmapT f t
-        subst = (sym_table HM.!)
+        subst = (sym_table !)
+
+resolveFunctionImport :: AsteriusFunctionImport -> FunctionImport
+resolveFunctionImport AsteriusFunctionImport {..} =
+  FunctionImport
+    { internalName = internalName
+    , externalModuleName = externalModuleName
+    , externalBaseName = externalBaseName
+    , functionTypeName = generateWasmFunctionTypeName functionType
+    }
 
 resolveAsteriusModule ::
      Bool
   -> FFIMarshalState
-  -> AsteriusStore
   -> AsteriusModule
   -> ( Module
      , HM.HashMap AsteriusEntitySymbol Int64
      , HM.HashMap AsteriusEntitySymbol Int64)
-resolveAsteriusModule add_tracing ffi_state AsteriusStore {..} m_unresolved =
+resolveAsteriusModule debug ffi_state m_globals_resolved =
   ( Module
       { functionTypeMap =
-          rtsAsteriusFunctionTypeMap <> generateFFIFunctionTypeMap ffi_state
+          HM.fromList
+            [ (generateWasmFunctionTypeName ft, ft)
+            | ft <-
+                [functionType | AsteriusFunctionImport {..} <- func_imports] <>
+                [ functionType
+                | AsteriusFunction {..} <-
+                    HM.elems $ functionMap m_globals_syms_resolved
+                ]
+            ]
       , functionMap' =
-          fromList
+          HM.fromList
             [ ( entityName func_sym
               , relooperDeep $
-                if add_tracing
-                  then addTracingModule func_sym_map func_sym func
+                if debug
+                  then addTracingModule func_sym_map func_sym functionType func
                   else func)
-            | (func_sym, func) <- HM.toList $ functionMap m_resolved
+            | (func_sym, AsteriusFunction {..}) <-
+                HM.toList $ functionMap m_globals_syms_resolved
+            , let (body_locals_resolved, local_types) =
+                    resolveLocalRegs (V.length $ paramTypes functionType) body
+                  func =
+                    Function
+                      { functionTypeName =
+                          generateWasmFunctionTypeName functionType
+                      , varTypes = local_types
+                      , body = body_locals_resolved
+                      }
             ]
       , functionImports =
-          rtsAsteriusFunctionImports <> generateFFIFunctionImports ffi_state
+          V.fromList [resolveFunctionImport imp | imp <- func_imports]
       , tableImports = []
       , globalImports = []
-      , functionExports = rtsAsteriusFunctionExports
+      , functionExports = rtsAsteriusFunctionExports debug
       , tableExports = []
       , globalExports = []
       , globalMap = []
       , functionTable = Just func_table
-      , memory = Just $ makeMemory m_resolved last_o ss_sym_map
+      , memory = Just $ makeMemory m_globals_syms_resolved last_o ss_sym_map
       , startFunctionName = Nothing
       }
   , ss_sym_map
   , func_sym_map)
   where
-    (func_table, func_sym_map) = makeFunctionTable m_unresolved
-    (last_o, ss_sym_map) = makeStaticsOffsetTable m_unresolved
+    (func_table, func_sym_map) = makeFunctionTable m_globals_resolved
+    (last_o, ss_sym_map) = makeStaticsOffsetTable m_globals_resolved
     resolve_syms :: Data a => a -> a
     resolve_syms = resolveEntitySymbols $ func_sym_map <> ss_sym_map
-    m_resolved = resolve_syms m_unresolved
+    m_globals_syms_resolved = resolve_syms m_globals_resolved
+    func_imports =
+      rtsAsteriusFunctionImports debug <> generateFFIFunctionImports ffi_state
 
 linkStart ::
      Bool
@@ -451,17 +486,17 @@ linkStart ::
   -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe Module, LinkReport)
-linkStart force_link add_tracing ffi_state store syms =
+linkStart force_link debug ffi_state store syms =
   ( maybe_result_m
   , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
   where
-    (maybe_merged_m, report) =
-      mergeSymbols force_link (generateFFIWrapperStore ffi_state <> store) syms
+    bundled_store = generateFFIWrapperStore ffi_state <> store
+    (maybe_merged_m, report) = mergeSymbols force_link debug bundled_store syms
     (maybe_result_m, ss_sym_map, func_sym_map) =
       case maybe_merged_m of
         Just merged_m -> (Just result_m, ss_sym_map', func_sym_map')
           where (result_m, ss_sym_map', func_sym_map') =
-                  resolveAsteriusModule add_tracing ffi_state store merged_m
+                  resolveAsteriusModule debug ffi_state merged_m
         _ -> (Nothing, mempty, mempty)
 
 renderDot :: LinkReport -> Builder
