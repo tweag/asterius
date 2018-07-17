@@ -122,15 +122,15 @@ bootRTSCmm BootArgs {..} = do
     store_path = obj_topdir </> "asterius_store"
 
 boot :: BootArgs -> IO ()
-boot args =
-  finally
-    (do bootRTSCmm args
-        unless (rtsOnly args) $ do
-          cp' <- bootCreateProcess args
-          withCreateProcess cp' $ \_ _ _ ph -> do
-            ec <- waitForProcess ph
+boot args = do
+  bootRTSCmm args
+  unless (rtsOnly args) $ do
+    cp' <- bootCreateProcess args
+    withCreateProcess cp' $ \_ _ _ ph ->
+      finally
+        (do ec <- waitForProcess ph
             case ec of
               ExitFailure _ -> fail "boot failure"
               _ -> pure ())
-    (do is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
-        unless is_debug $ removeDirectoryRecursive $ bootTmpDir args)
+        (do is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
+            unless is_debug $ removeDirectoryRecursive $ bootTmpDir args)
