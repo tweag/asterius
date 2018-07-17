@@ -283,7 +283,7 @@ def run_wasm_reduce_tests():
       t = os.path.join(test_dir, t)
       # convert to wasm
       run_command(WASM_AS + [t, '-o', 'a.wasm'])
-      run_command(WASM_REDUCE + ['a.wasm', '--command=%s b.wasm --fuzz-exec' % WASM_OPT[0], '-t', 'b.wasm', '-w', 'c.wasm'])
+      run_command(WASM_REDUCE + ['a.wasm', '--command=%s b.wasm --fuzz-exec' % WASM_OPT[0], '-t', 'b.wasm', '-w', 'c.wasm', '--timeout=4'])
       expected = t + '.txt'
       run_command(WASM_DIS + ['c.wasm', '-o', 'a.wast'])
       with open('a.wast') as seen:
@@ -436,7 +436,11 @@ def run_binaryen_js_tests():
 
     def test(engine):
       cmd = [engine, 'a.js']
-      out = run_command(cmd, stderr=subprocess.STDOUT)
+      if 'fatal' not in s:
+        out = run_command(cmd, stderr=subprocess.STDOUT)
+      else:
+        # expect an error - the specific error code will depend on the vm
+        out = run_command(cmd, stderr=subprocess.STDOUT, expected_status=None)
       expected = open(os.path.join(options.binaryen_test, 'binaryen.js', s + '.txt')).read()
       if expected not in out:
         fail(out, expected)
@@ -510,7 +514,7 @@ def run_vanilla_tests():
       del os.environ['EMCC_WASM_BACKEND']
 
 
-def run_gcc_torture_tests():
+def run_gcc_tests():
   print '\n[ checking native gcc testcases...]\n'
   if not NATIVECC or not NATIVEXX:
     fail_with_error('Native compiler (e.g. gcc/g++) was not found in PATH!')
@@ -648,7 +652,7 @@ def main():
     run_vanilla_tests()
   print '\n[ checking example testcases... ]\n'
   if options.run_gcc_tests:
-    run_gcc_torture_tests()
+    run_gcc_tests()
   if EMCC:
     run_emscripten_tests()
 
