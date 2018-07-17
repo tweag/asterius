@@ -1152,9 +1152,12 @@ writeMutVar# a1 a2 a3 = (GHC.Prim.writeMutVar#) a1 a2 a3
 {-# NOINLINE sameMutVar# #-}
 sameMutVar# :: MutVar# s a -> MutVar# s a -> Int#
 sameMutVar# a1 a2 = (GHC.Prim.sameMutVar#) a1 a2
-{-# NOINLINE atomicModifyMutVar# #-}
-atomicModifyMutVar# :: MutVar# s a -> (a -> b) -> State# s -> (# State# s,c #)
-atomicModifyMutVar# a1 a2 a3 = (GHC.Prim.atomicModifyMutVar#) a1 a2 a3
+{-# NOINLINE atomicModifyMutVar2# #-}
+atomicModifyMutVar2# :: MutVar# s a -> (a -> c) -> State# s -> (# State# s,a,c #)
+atomicModifyMutVar2# a1 a2 a3 = (GHC.Prim.atomicModifyMutVar2#) a1 a2 a3
+{-# NOINLINE atomicModifyMutVar_# #-}
+atomicModifyMutVar_# :: MutVar# s a -> (a -> a) -> State# s -> (# State# s,a,a #)
+atomicModifyMutVar_# a1 a2 a3 = (GHC.Prim.atomicModifyMutVar_#) a1 a2 a3
 {-# NOINLINE casMutVar# #-}
 casMutVar# :: MutVar# s a -> a -> a -> State# s -> (# State# s,Int#,a #)
 casMutVar# a1 a2 a3 a4 = (GHC.Prim.casMutVar#) a1 a2 a3 a4

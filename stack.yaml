@@ -12,16 +12,16 @@ extra-deps:
   - ansi-wl-pprint-0.6.8.2
   - attoparsec-0.13.2.2
   - base-compat-0.10.4
-  - https://github.com/TerrorJack/cereal/archive/asterius.zip
+  - https://github.com/TerrorJack/cereal/archive/Serialize-instance-ShortByteString.zip
   - colour-2.3.4
   - happy-1.19.9
-  - https://github.com/vmchale/hashable/archive/31fbfc77cbc6e574a96caca9fd223a645fe2a07f.zip
+  - hashable-1.2.7.0
   - haskell-lexer-1.0.1
   - integer-logarithms-1.0.2.1
   - mintty-0.1.2
   - optparse-applicative-0.14.2.0
   - pretty-show-1.7
-  - primitive-0.6.4.0
+  - https://github.com/TerrorJack/primitive/archive/fix-atomicModifyMutVar.zip
   - scientific-0.3.6.2
   - transformers-compat-0.6.2
   - unordered-containers-0.2.9.0
@@ -35,8 +35,8 @@ ghc-build: standard
 setup-info:
   ghc:
     windows64:
-      8.7.20180712:
-        url: https://ci.appveyor.com/api/buildjobs/06x76hjut4pnj6mq/artifacts/ghc/ghc-8.7.20180712-x86_64-unknown-mingw32.tar.xz
+      8.7.20180717:
+        url: https://ci.appveyor.com/api/buildjobs/8l2bwk4xwkrmwwv9/artifacts/ghc/ghc-8.7.20180717-x86_64-unknown-mingw32.tar.xz
     linux64:
-      8.7.20180712:
-        url: https://1368-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180712-x86_64-unknown-linux.tar.xz
+      8.7.20180717:
+        url: https://1389-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180717-x86_64-unknown-linux.tar.xz
