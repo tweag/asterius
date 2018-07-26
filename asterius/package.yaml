@@ -76,18 +76,21 @@ executables:
   ahc:
     source-dirs: app
     main: ahc.hs
+    ghc-options: -threaded -feager-blackholing -with-rtsopts=-N
     dependencies:
       - asterius
 
   ahc-boot:
     source-dirs: app
     main: ahc-boot.hs
+    ghc-options: -threaded -feager-blackholing -with-rtsopts=-N
     dependencies:
       - asterius
 
   ahc-link:
     source-dirs: app
     main: ahc-link.hs
+    ghc-options: -threaded -feager-blackholing -with-rtsopts=-N
     dependencies:
       - asterius
 

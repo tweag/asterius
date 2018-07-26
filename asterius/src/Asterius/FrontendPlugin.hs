@@ -5,7 +5,6 @@ module Asterius.FrontendPlugin
   ) where
 
 import Asterius.CodeGen
-import Asterius.Internals
 import Asterius.JSFFI
 import Asterius.Store
 import Control.Exception
@@ -25,7 +24,7 @@ frontendPlugin =
   liftIO $ do
     obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
     is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
-    store_ref <- decodeFile (obj_topdir </> "asterius_store") >>= newIORef
+    store_ref <- decodeStore (obj_topdir </> "asterius_store") >>= newIORef
     get_ffi_state_ref <- newIORef undefined
     (c, get_ffi_state) <-
       addFFIProcessor
@@ -39,8 +38,9 @@ frontendPlugin =
                   case runCodeGen (marshalHaskellIR ir) dflags ms_mod ffi_state of
                     Left err -> throwIO err
                     Right m -> do
+                      encodeAsteriusModule obj_topdir mod_sym m
                       atomicModifyIORef' store_ref $ \store ->
-                        (addModule mod_sym m store, ())
+                        (registerModule obj_topdir mod_sym m store, ())
                       when is_debug $ do
                         p_c <-
                           moduleSymbolPath obj_topdir mod_sym "dump-cmm-raw-ast"
@@ -50,7 +50,7 @@ frontendPlugin =
           , finalize =
               liftIO $ do
                 store <- readIORef store_ref
-                encodeFile (obj_topdir </> "asterius_store") store
+                encodeStore (obj_topdir </> "asterius_store") store
           }
     writeIORef get_ffi_state_ref get_ffi_state
     pure c

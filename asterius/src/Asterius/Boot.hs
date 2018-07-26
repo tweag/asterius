@@ -101,7 +101,8 @@ bootRTSCmm BootArgs {..} = do
                emptyFFIMarshalState of
           Left err -> throwIO err
           Right m -> do
-            modifyIORef' store_ref $ addModule mod_sym m
+            encodeAsteriusModule obj_topdir mod_sym m
+            modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
             when is_debug $ do
               p_c <- moduleSymbolPath obj_topdir mod_sym "dump-cmm-raw-ast"
               writeFile p_c $ ppShow cmmRaw
@@ -110,12 +111,11 @@ bootRTSCmm BootArgs {..} = do
   if rtsOnly
     then do
       rts_store <- readIORef store_ref
-      store <- decodeFile store_path
-      encodeFile store_path $ rts_store <> store
+      store <- decodeStore store_path
+      encodeStore store_path $ rts_store <> store
     else do
-      createDirectoryIfMissing True obj_topdir
       store <- readIORef store_ref
-      encodeFile store_path store
+      encodeStore store_path store
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"

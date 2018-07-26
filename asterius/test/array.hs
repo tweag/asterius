@@ -9,7 +9,6 @@ main = do
     , "test/array/array.hs"
     , "--output-link-report"
     , "test/array/array.link.txt"
-    , "--force"
     , "--run"
     ] <>
     args

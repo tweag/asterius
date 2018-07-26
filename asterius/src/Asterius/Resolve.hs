@@ -220,12 +220,10 @@ instance Monoid LinkReport where
 
 mergeSymbols ::
      Bool
-  -> Bool
   -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe AsteriusModule, LinkReport)
-mergeSymbols force_link debug AsteriusStore {..} syms =
-  (maybe_final_m, final_rep)
+mergeSymbols debug AsteriusStore {..} syms = (maybe_final_m, final_rep)
   where
     maybe_final_m
       | HS.null (unfoundSymbols final_rep) &&
@@ -263,18 +261,16 @@ mergeSymbols force_link debug AsteriusStore {..} syms =
                               mempty
                                 { functionMap =
                                     [ ( i_staging_sym
-                                      , removeI8Stores $
-                                        resolveGlobalRegs $
-                                        if force_link
-                                          then maskUnknownCCallTargets func
-                                          else func)
+                                      , patchWritePtrArrayOp $
+                                        maskUnknownCCallTargets $
+                                        resolveGlobalRegs func)
                                     ]
                                 }
                          in if debug
                               then addMemoryTrap m0
                               else m0)
                   _
-                    | force_link && HM.member i_staging_sym functionErrorMap ->
+                    | HM.member i_staging_sym functionErrorMap ->
                       Right
                         ( i_staging_sym
                         , mempty
@@ -481,17 +477,16 @@ resolveAsteriusModule debug ffi_state m_globals_resolved =
 
 linkStart ::
      Bool
-  -> Bool
   -> FFIMarshalState
   -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe Module, LinkReport)
-linkStart force_link debug ffi_state store syms =
+linkStart debug ffi_state store syms =
   ( maybe_result_m
   , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
   where
     bundled_store = generateFFIWrapperStore ffi_state <> store
-    (maybe_merged_m, report) = mergeSymbols force_link debug bundled_store syms
+    (maybe_merged_m, report) = mergeSymbols debug bundled_store syms
     (maybe_result_m, ss_sym_map, func_sym_map) =
       case maybe_merged_m of
         Just merged_m -> (Just result_m, ss_sym_map', func_sym_map')

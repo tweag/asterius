@@ -9,7 +9,6 @@ main = do
     , "test/fib/fib.hs"
     , "--output-link-report"
     , "test/fib/fib.link.txt"
-    , "--force"
     , "--run"
     ] <>
     args

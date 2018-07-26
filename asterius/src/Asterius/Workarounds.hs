@@ -4,7 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Workarounds
-  ( removeI8Stores
+  ( patchWritePtrArrayOp
   , maskUnknownCCallTargets
   ) where
 
@@ -17,16 +17,20 @@ import qualified Data.HashSet as HS
 import qualified Data.Vector as V
 import Type.Reflection
 
-removeI8Stores :: Data a => a -> a
-removeI8Stores t =
+patchWritePtrArrayOp :: Data a => a -> a
+patchWritePtrArrayOp t =
   case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
     Just HRefl ->
       case t of
-        Store {bytes = 1} -> Nop
+        Block {..} -> t {bodys = V.fromList $ w $ V.toList bodys}
+          where w (e0@Store {value = Unresolved {unresolvedSymbol = "stg_MUT_ARR_PTRS_DIRTY_info"}}:Store {bytes = 1}:es) =
+                  e0 : w es
+                w (e0:e1:es) = patchWritePtrArrayOp e0 : w (e1 : es)
+                w es = patchWritePtrArrayOp es
         _ -> go
     _ -> go
   where
-    go = gmapT removeI8Stores t
+    go = gmapT patchWritePtrArrayOp t
 
 maskUnknownCCallTargets :: Data a => a -> a
 maskUnknownCCallTargets t =

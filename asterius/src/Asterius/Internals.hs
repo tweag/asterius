@@ -14,14 +14,16 @@ module Asterius.Internals
   , encodeFile
   , decodeFile
   , showSBS
+  , c8SBS
   , (!)
   ) where
 
 import Control.Monad.ST.Strict
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short.Internal as SBS
 import Data.Data (Data, gmapQr)
-import qualified Data.HashMap.Strict as HM
+import qualified Data.HashMap.Lazy as LHM
 import qualified Data.HashSet as HS
 import Data.Hashable
 import Data.Primitive (Prim)
@@ -100,9 +102,13 @@ decodeFile p = do
 showSBS :: Show a => a -> SBS.ShortByteString
 showSBS = fromString . show
 
+{-# INLINEABLE c8SBS #-}
+c8SBS :: SBS.ShortByteString -> String
+c8SBS = CBS.unpack . SBS.fromShort
+
 {-# INLINEABLE (!) #-}
-(!) :: (HasCallStack, Eq k, Hashable k, Show k) => HM.HashMap k v -> k -> v
+(!) :: (HasCallStack, Eq k, Hashable k, Show k) => LHM.HashMap k v -> k -> v
 (!) m k =
-  case HM.lookup k m of
+  case LHM.lookup k m of
     Just v -> v
     _ -> error $ show k <> " not found"

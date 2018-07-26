@@ -52,6 +52,7 @@ import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.Exception
 import qualified Data.ByteString.Short as SBS
 import Data.Data
+import qualified Data.HashMap.Lazy as LHM
 import qualified Data.HashMap.Strict as HM
 import Data.Hashable
 import Data.Serialize
@@ -145,10 +146,8 @@ deriving instance Data AsteriusEntitySymbol
 
 data AsteriusStore = AsteriusStore
   { symbolMap :: HM.HashMap AsteriusEntitySymbol AsteriusModuleSymbol
-  , moduleMap :: HM.HashMap AsteriusModuleSymbol AsteriusModule
+  , moduleMap :: LHM.HashMap AsteriusModuleSymbol AsteriusModule
   } deriving (Show, Generic, Data)
-
-instance Serialize AsteriusStore
 
 instance Semigroup AsteriusStore where
   s0 <> s1 =
