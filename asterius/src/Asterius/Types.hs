@@ -46,6 +46,11 @@ module Asterius.Types
   , RelooperAddBranch(..)
   , RelooperBlock(..)
   , RelooperRun(..)
+  , Chunk(..)
+  , FFIValueType(..)
+  , FFIFunctionType(..)
+  , FFIDecl(..)
+  , FFIMarshalState(..)
   ) where
 
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
@@ -55,6 +60,7 @@ import Data.Data
 import qualified Data.HashMap.Lazy as LHM
 import qualified Data.HashMap.Strict as HM
 import Data.Hashable
+import qualified Data.IntMap.Strict as IM
 import Data.Serialize
 import Data.String
 import qualified Data.Vector as V
@@ -114,16 +120,22 @@ data AsteriusModule = AsteriusModule
   , staticsErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
   , functionMap :: HM.HashMap AsteriusEntitySymbol AsteriusFunction
   , functionErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
+  , ffiMarshalState :: FFIMarshalState
   } deriving (Show, Generic, Data)
 
 instance Serialize AsteriusModule
 
 instance Semigroup AsteriusModule where
-  AsteriusModule sm0 se0 fm0 fe0 <> AsteriusModule sm1 se1 fm1 fe1 =
-    AsteriusModule (sm0 <> sm1) (se0 <> se1) (fm0 <> fm1) (fe0 <> fe1)
+  AsteriusModule sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 fe1 mod_ffi_state1 =
+    AsteriusModule
+      (sm0 <> sm1)
+      (se0 <> se1)
+      (fm0 <> fm1)
+      (fe0 <> fe1)
+      (mod_ffi_state0 <> mod_ffi_state1)
 
 instance Monoid AsteriusModule where
-  mempty = AsteriusModule mempty mempty mempty mempty
+  mempty = AsteriusModule mempty mempty mempty mempty mempty
 
 data AsteriusModuleSymbol = AsteriusModuleSymbol
   { unitId :: SBS.ShortByteString
@@ -574,6 +586,43 @@ data RelooperRun = RelooperRun
   } deriving (Show, Generic, Data)
 
 instance Serialize RelooperRun
+
+data Chunk a
+  = Lit String
+  | Field a
+  deriving (Show, Generic, Data)
+
+instance Serialize a => Serialize (Chunk a)
+
+data FFIValueType
+  = FFI_VAL { ffiWasmValueType, ffiJSValueType :: ValueType
+            , hsValueTypeModule, hsValueTypeName :: String
+            , signed :: Bool }
+  | FFI_JSREF
+  deriving (Show, Generic, Data)
+
+instance Serialize FFIValueType
+
+data FFIFunctionType = FFIFunctionType
+  { ffiParamTypes :: [FFIValueType]
+  , ffiResultType :: Maybe FFIValueType
+  , ffiInIO :: Bool
+  } deriving (Show, Generic, Data)
+
+instance Serialize FFIFunctionType
+
+data FFIDecl = FFIDecl
+  { ffiFunctionType :: FFIFunctionType
+  , ffiSourceChunks :: [Chunk Int]
+  } deriving (Show, Generic, Data)
+
+instance Serialize FFIDecl
+
+newtype FFIMarshalState = FFIMarshalState
+  { ffiDecls :: HM.HashMap AsteriusModuleSymbol (IM.IntMap FFIDecl)
+  } deriving (Show, Generic, Data, Semigroup, Monoid)
+
+instance Serialize FFIMarshalState
 
 instance (Eq k, Hashable k, Serialize k, Serialize v) =>
          Serialize (HM.HashMap k v) where

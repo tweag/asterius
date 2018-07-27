@@ -21,7 +21,7 @@ extra-deps:
   - mintty-0.1.2
   - optparse-applicative-0.14.2.0
   - pretty-show-1.7
-  - https://github.com/TerrorJack/primitive/archive/fix-atomicModifyMutVar.zip
+  - https://github.com/haskell/primitive/archive/ea9f0426646ecf8a5a0a1659b29a8dc014ceda05.zip
   - scientific-0.3.6.2
   - transformers-compat-0.6.2
   - unordered-containers-0.2.9.0

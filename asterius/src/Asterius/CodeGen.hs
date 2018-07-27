@@ -9,7 +9,6 @@
 
 module Asterius.CodeGen
   ( marshalToModuleSymbol
-  , moduleSymbolPath
   , CodeGen
   , runCodeGen
   , marshalHaskellIR
@@ -18,15 +17,14 @@ module Asterius.CodeGen
 
 import Asterius.Builtins
 import Asterius.Internals
-import Asterius.JSFFI
 import Asterius.Resolve
 import Asterius.Types
+import Asterius.TypesConv
 import qualified CLabel as GHC
 import qualified Cmm as GHC
 import qualified CmmSwitch as GHC
 import Control.Monad.Except
 import Control.Monad.Reader
-import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
 import qualified Data.HashMap.Strict as HM
 import Data.List
@@ -42,39 +40,12 @@ import qualified Hoopl.Label as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Prelude hiding (IO)
-import System.Directory
-import System.FilePath
 import qualified Unique as GHC
 
 asmPpr :: GHC.Outputable a => GHC.DynFlags -> a -> String
 asmPpr dflags = GHC.showSDoc dflags . GHC.pprCode GHC.AsmStyle . GHC.ppr
 
-{-# INLINEABLE marshalToModuleSymbol #-}
-marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol
-marshalToModuleSymbol (GHC.Module u m) =
-  AsteriusModuleSymbol
-    { unitId = SBS.toShort $ GHC.fs_bs $ GHC.unitIdFS u
-    , moduleName =
-        V.fromList $
-        map SBS.toShort $
-        CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
-    }
-
-{-# INLINEABLE moduleSymbolPath #-}
-moduleSymbolPath :: FilePath -> AsteriusModuleSymbol -> FilePath -> IO FilePath
-moduleSymbolPath topdir AsteriusModuleSymbol {..} ext = do
-  createDirectoryIfMissing True $ takeDirectory p
-  pure p
-  where
-    f = CBS.unpack . SBS.fromShort
-    p =
-      topdir </> f unitId </>
-      V.foldr'
-        (\c tot -> f c </> tot)
-        (f (V.last moduleName) <.> ext)
-        (V.init moduleName)
-
-type CodeGenContext = (GHC.DynFlags, String, FFIMarshalState)
+type CodeGenContext = (GHC.DynFlags, String)
 
 newtype CodeGen a =
   CodeGen (ReaderT CodeGenContext (Except AsteriusCodeGenError) a)
@@ -93,14 +64,13 @@ runCodeGen ::
      CodeGen a
   -> GHC.DynFlags
   -> GHC.Module
-  -> FFIMarshalState
   -> Either AsteriusCodeGenError a
-runCodeGen (CodeGen m) dflags def_mod ffi_state =
-  runExcept $ runReaderT m (dflags, asmPpr dflags def_mod <> "_", ffi_state)
+runCodeGen (CodeGen m) dflags def_mod =
+  runExcept $ runReaderT m (dflags, asmPpr dflags def_mod <> "_")
 
 marshalCLabel :: GHC.CLabel -> CodeGen AsteriusEntitySymbol
 marshalCLabel clbl = do
-  (dflags, def_mod_prefix, _) <- ask
+  (dflags, def_mod_prefix) <- ask
   pure
     AsteriusEntitySymbol
       { entityName =
@@ -112,7 +82,7 @@ marshalCLabel clbl = do
 
 marshalLabel :: GHC.Label -> CodeGen SBS.ShortByteString
 marshalLabel lbl = do
-  (dflags, _, _) <- ask
+  (dflags, _) <- ask
   pure $ fromString $ asmPpr dflags $ GHC.mkLocalBlockLabel $ GHC.getUnique lbl
 
 marshalCmmType :: GHC.CmmType -> CodeGen ValueType
@@ -892,7 +862,7 @@ marshalCmmInstr instr =
         else pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
     GHC.CmmStore p e -> do
       pv <- marshalAndCastCmmExpr p I32
-      (dflags, _, _) <- ask
+      (dflags, _) <- ask
       store_instr <-
         join $
         dispatchAllCmmWidth

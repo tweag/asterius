@@ -12,7 +12,7 @@ jobs:
           command: |
             export ASTERIUS_REV=$(git rev-parse --short HEAD)
             docker login -u terrorjack -p $DOCKER_PASS
-            docker build -t terrorjack/asterius:latest -t terrorjack/asterius:$ASTERIUS_REV .
+            docker build -t terrorjack/asterius:$ASTERIUS_REV -t terrorjack/asterius:$CIRCLE_BRANCH -t terrorjack/asterius:latest .
 
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--debug")
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--optimize")
@@ -22,6 +22,7 @@ jobs:
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array --test-arguments="--optimize")
 
             docker push terrorjack/asterius:$ASTERIUS_REV
+            docker push terrorjack/asterius:$CIRCLE_BRANCH
             if [ $CIRCLE_BRANCH = "master" ]; then
               docker push terrorjack/asterius:latest
             fi

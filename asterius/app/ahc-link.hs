@@ -83,8 +83,8 @@ opts =
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
 
-genNode :: Task -> FFIMarshalState -> LinkReport -> Builder
-genNode Task {..} ffi_state LinkReport {..} =
+genNode :: Task -> LinkReport -> Builder
+genNode Task {..} LinkReport {..} =
   mconcat $
   [ "\"use strict\";\n"
   , "process.on('unhandledRejection', err => { throw err; });\n"
@@ -103,7 +103,7 @@ genNode Task {..} ffi_state LinkReport {..} =
   , "WebAssembly.instantiate(fs.readFileSync("
   , string7 $ show $ takeFileName outputWasm
   , "), {Math: Math, jsffi: "
-  , generateFFIDict ffi_state
+  , generateFFIDict bundledFFIMarshalState
   , ", rts: {printI64: (lo, hi) => console.log(__asterius_newI64(lo, hi))"
   , ", print: console.log"
   , ", panic: e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\", \"errSetBaseReg\", \"errBrokenFunction\"][e-1])"
@@ -146,7 +146,7 @@ main = do
   let builtins_opts = def_builtins_opts {tracing = debug}
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "[INFO] Compiling " <> input <> " to Cmm"
-  (c, get_ffi_state) <- addFFIProcessor mempty
+  (c, get_ffi_mod) <- addFFIProcessor mempty
   mod_ir_map <-
     runHaskell
       defaultConfig
@@ -170,19 +170,17 @@ main = do
         , compiler = c
         }
       [input]
-  ffi_state <- get_ffi_state
   putStrLn "[INFO] Marshalling from Cmm to WebAssembly"
   final_store_ref <- newIORef orig_store
   M.foldlWithKey'
     (\act ms_mod ir ->
-       case runCodeGen
-              (marshalHaskellIR ir)
-              (dflags builtins_opts)
-              ms_mod
-              ffi_state of
+       case runCodeGen (marshalHaskellIR ir) (dflags builtins_opts) ms_mod of
          Left err -> throwIO err
-         Right m -> do
-           let mod_str = GHC.moduleNameString $ GHC.moduleName ms_mod
+         Right m' -> do
+           let mod_sym = marshalToModuleSymbol ms_mod
+               mod_str = GHC.moduleNameString $ GHC.moduleName ms_mod
+           ffi_mod <- get_ffi_mod mod_sym
+           let m = ffi_mod <> m'
            putStrLn $
              "[INFO] Marshalling " <> show mod_str <> " from Cmm to WebAssembly"
            modifyIORef' final_store_ref $
@@ -198,7 +196,7 @@ main = do
   final_store <- readIORef final_store_ref
   putStrLn "[INFO] Attempting to link into a standalone WebAssembly module"
   let (!m_final_m, !report) =
-        linkStart debug ffi_state final_store $
+        linkStart debug final_store $
         if debug
           then [ "main"
                , "__asterius_Load_Sp"
@@ -241,7 +239,7 @@ main = do
        BS.writeFile outputWasm m_bin
        putStrLn $ "[INFO] Writing Node.js script to " <> show outputNode
        h <- openBinaryFile outputNode WriteMode
-       hPutBuilder h $ genNode task ffi_state report
+       hPutBuilder h $ genNode task report
        hClose h
        when run $ do
          putStrLn $ "[INFO] Running " <> outputNode

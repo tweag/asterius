@@ -196,6 +196,7 @@ data LinkReport = LinkReport
   { childSymbols :: HM.HashMap AsteriusEntitySymbol (HS.HashSet AsteriusEntitySymbol)
   , unfoundSymbols, unavailableSymbols :: HS.HashSet AsteriusEntitySymbol
   , staticsSymbolMap, functionSymbolMap :: HM.HashMap AsteriusEntitySymbol Int64
+  , bundledFFIMarshalState :: FFIMarshalState
   } deriving (Show)
 
 instance Semigroup LinkReport where
@@ -206,6 +207,8 @@ instance Semigroup LinkReport where
       , unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
       , staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
       , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
+      , bundledFFIMarshalState =
+          bundledFFIMarshalState r0 <> bundledFFIMarshalState r1
       }
 
 instance Monoid LinkReport where
@@ -216,6 +219,7 @@ instance Monoid LinkReport where
       , unavailableSymbols = mempty
       , staticsSymbolMap = mempty
       , functionSymbolMap = mempty
+      , bundledFFIMarshalState = mempty
       }
 
 mergeSymbols ::
@@ -300,6 +304,9 @@ mergeSymbols debug AsteriusStore {..} syms = (maybe_final_m, final_rep)
             { childSymbols = i_child_map
             , unfoundSymbols = fromList i_unfound_syms
             , unavailableSymbols = fromList i_unavailable_syms
+            , bundledFFIMarshalState =
+                mconcat
+                  [ffiMarshalState | (_, AsteriusModule {..}) <- i_sym_mods]
             } <>
           i_rep
         o_m = mconcat (map snd i_sym_modlets) <> i_m
@@ -421,7 +428,7 @@ resolveAsteriusModule ::
   -> ( Module
      , HM.HashMap AsteriusEntitySymbol Int64
      , HM.HashMap AsteriusEntitySymbol Int64)
-resolveAsteriusModule debug ffi_state m_globals_resolved =
+resolveAsteriusModule debug bundled_ffi_state m_globals_resolved =
   ( Module
       { functionTypeMap =
           HM.fromList
@@ -473,25 +480,27 @@ resolveAsteriusModule debug ffi_state m_globals_resolved =
     resolve_syms = resolveEntitySymbols $ func_sym_map <> ss_sym_map
     m_globals_syms_resolved = resolve_syms m_globals_resolved
     func_imports =
-      rtsAsteriusFunctionImports debug <> generateFFIFunctionImports ffi_state
+      rtsAsteriusFunctionImports debug <>
+      generateFFIFunctionImports bundled_ffi_state
 
 linkStart ::
      Bool
-  -> FFIMarshalState
   -> AsteriusStore
   -> HS.HashSet AsteriusEntitySymbol
   -> (Maybe Module, LinkReport)
-linkStart debug ffi_state store syms =
+linkStart debug store syms =
   ( maybe_result_m
   , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
   where
-    bundled_store = generateFFIWrapperStore ffi_state <> store
-    (maybe_merged_m, report) = mergeSymbols debug bundled_store syms
+    (maybe_merged_m, report) = mergeSymbols debug store syms
     (maybe_result_m, ss_sym_map, func_sym_map) =
       case maybe_merged_m of
         Just merged_m -> (Just result_m, ss_sym_map', func_sym_map')
           where (result_m, ss_sym_map', func_sym_map') =
-                  resolveAsteriusModule debug ffi_state merged_m
+                  resolveAsteriusModule
+                    debug
+                    (bundledFFIMarshalState report)
+                    merged_m
         _ -> (Nothing, mempty, mempty)
 
 renderDot :: LinkReport -> Builder

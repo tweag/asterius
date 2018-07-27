@@ -14,7 +14,6 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
-import Asterius.JSFFI
 import Asterius.Store
 import Control.Exception
 import Control.Monad
@@ -94,19 +93,15 @@ bootRTSCmm BootArgs {..} = do
   for_ cmms $ \(fn, ir@CmmIR {..}) ->
     let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
         mod_sym = marshalToModuleSymbol ms_mod
-     in case runCodeGen
-               (marshalCmmIR ir)
-               (dflags builtinsOptions)
-               ms_mod
-               emptyFFIMarshalState of
+     in case runCodeGen (marshalCmmIR ir) (dflags builtinsOptions) ms_mod of
           Left err -> throwIO err
           Right m -> do
             encodeAsteriusModule obj_topdir mod_sym m
             modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
             when is_debug $ do
-              p_c <- moduleSymbolPath obj_topdir mod_sym "dump-cmm-raw-ast"
+              let p_c = asteriusModulePath obj_topdir mod_sym "dump-cmm-raw-ast"
               writeFile p_c $ ppShow cmmRaw
-              p_s <- moduleSymbolPath obj_topdir mod_sym "txt"
+              let p_s = asteriusModulePath obj_topdir mod_sym "txt"
               writeFile p_s $ ppShow m
   if rtsOnly
     then do

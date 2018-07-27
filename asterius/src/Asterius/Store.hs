@@ -3,7 +3,8 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Store
-  ( decodeStore
+  ( asteriusModulePath
+  , decodeStore
   , encodeAsteriusModule
   , encodeStore
   , builtinsStore
@@ -23,17 +24,18 @@ import System.Directory
 import System.FilePath
 import System.IO.Unsafe
 
-asteriusModulePath :: FilePath -> AsteriusModuleSymbol -> FilePath
-asteriusModulePath obj_topdir AsteriusModuleSymbol {..} =
+{-# INLINEABLE asteriusModulePath #-}
+asteriusModulePath :: FilePath -> AsteriusModuleSymbol -> FilePath -> FilePath
+asteriusModulePath obj_topdir AsteriusModuleSymbol {..} ext =
   foldr1
     (</>)
     (obj_topdir :
      c8SBS unitId : [c8SBS mod_chunk | mod_chunk <- V.toList moduleName]) <.>
-  "asterius_o"
+  ext
 
 decodeAsteriusModule :: FilePath -> AsteriusModuleSymbol -> IO AsteriusModule
 decodeAsteriusModule obj_topdir mod_sym =
-  decodeFile $ asteriusModulePath obj_topdir mod_sym
+  decodeFile $ asteriusModulePath obj_topdir mod_sym "asterius_o"
 
 {-# INLINEABLE decodeStore #-}
 decodeStore :: FilePath -> IO AsteriusStore
@@ -59,7 +61,7 @@ encodeAsteriusModule obj_topdir mod_sym m = do
   createDirectoryIfMissing True $ takeDirectory obj_path
   encodeFile obj_path m
   where
-    obj_path = asteriusModulePath obj_topdir mod_sym
+    obj_path = asteriusModulePath obj_topdir mod_sym "asterius_o"
 
 {-# INLINEABLE encodeStore #-}
 encodeStore :: FilePath -> AsteriusStore -> IO ()
