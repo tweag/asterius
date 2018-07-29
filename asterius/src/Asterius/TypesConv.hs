@@ -4,11 +4,14 @@
 module Asterius.TypesConv
   ( marshalToModuleSymbol
   , zEncodeModuleSymbol
+  , generateWasmFunctionTypeName
   ) where
 
+import Asterius.Internals
 import Asterius.Types
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
+import Data.List
 import qualified Data.Vector as V
 import qualified GhcPlugins as GHC
 
@@ -33,3 +36,10 @@ zEncodeModuleSymbol AsteriusModuleSymbol {..} =
   CBS.intercalate
     "."
     [SBS.fromShort mod_chunk | mod_chunk <- V.toList moduleName]
+
+{-# INLINEABLE generateWasmFunctionTypeName #-}
+generateWasmFunctionTypeName :: FunctionType -> SBS.ShortByteString
+generateWasmFunctionTypeName FunctionType {..} =
+  showSBS returnType <> "(" <>
+  mconcat (intersperse "," [showSBS t | t <- V.toList paramTypes]) <>
+  ")"

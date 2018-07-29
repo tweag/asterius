@@ -6,6 +6,7 @@ pages:
   - For users:
     - 'Building guide': 'building.md'
   - For developers:
+    - 'Writing WebAssembly code in Haskell': 'wasm-in-hs.md'
     - 'JavaScript FFI': 'jsffi.md'
     - 'The runtime debugging feature': 'debugging.md'
     - 'Project architecture': 'architecture.md'

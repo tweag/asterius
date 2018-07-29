@@ -37,6 +37,7 @@ dependencies:
   - containers
   - deepseq
   - directory
+  - dlist
   - filepath
   - ghc
   - ghc-prim

@@ -29,9 +29,12 @@ module Asterius.Builtins
   ) where
 
 import Asterius.BuildInfo
+import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Types
+import Asterius.TypesConv
 import qualified Data.ByteString.Short as SBS
+import Data.Foldable
 import Data.List
 import Data.Maybe
 import qualified Data.Vector as V
@@ -150,12 +153,6 @@ rtsAsteriusModule opts =
         , ("__asterius_Store_F64", storeWrapperFunction opts 8 F64)
         ]
     }
-
-generateWasmFunctionTypeName :: FunctionType -> SBS.ShortByteString
-generateWasmFunctionTypeName FunctionType {..} =
-  showSBS returnType <> "(" <>
-  mconcat (intersperse "," [showSBS t | t <- V.toList paramTypes]) <>
-  ")"
 
 rtsAsteriusFunctionImports :: Bool -> [AsteriusFunctionImport]
 rtsAsteriusFunctionImports debug =
@@ -347,328 +344,110 @@ errBrokenFunction = 11
 mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = None, paramTypes = []}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ Call
-                  { target = "init_rts_asterius"
-                  , operands = []
-                  , valueType = None
-                  }
-              , Call
-                  { target = "rts_evalIO"
-                  , operands =
-                      [ mainCap
-                      , Unresolved {unresolvedSymbol = "Main_main_closure"}
-                      , constInt 0
-                      ]
-                  , valueType = None
-                  }
-              ]
-          , valueType = None
-          }
-    }
+  runEDSL $ do
+    call "init_rts_asterius" []
+    call "rts_evalIO" [mainCapability, symbol "Main_main_closure", constI64 0]
 
 initRtsAsteriusFunction BuiltinsOptions {..} =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = None, paramTypes = []}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 0 I64
-                  , value =
-                      Call
-                        { target = "allocGroup"
-                        , operands = [constInt nurseryGroups]
-                        , valueType = I64
-                        }
-                  }
-              , UnresolvedSetGlobal
-                  { unresolvedGlobalReg = Hp
-                  , value = getFieldWord bd offset_bdescr_start
-                  }
-              , UnresolvedSetGlobal
-                  { unresolvedGlobalReg = HpLim
-                  , value =
-                      Binary
-                        { binaryOp = AddInt64
-                        , operand0 =
-                            UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
-                        , operand1 =
-                            Binary
-                              { binaryOp = MulInt64
-                              , operand0 =
-                                  Unary
-                                    { unaryOp = ExtendUInt32
-                                    , operand0 =
-                                        getFieldWord32 bd offset_bdescr_blocks
-                                    }
-                              , operand1 = constInt block_size
-                              }
-                        }
-                  }
-              , setFieldWord baseReg offset_StgRegTable_rCCCS (ConstI64 0)
-              , setFieldWord baseReg offset_StgRegTable_rCurrentNursery bd
-              , setFieldWord baseReg offset_StgRegTable_rCurrentAlloc bd
-              , UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 1 I64
-                  , value =
-                      Call
-                        { target = "allocate"
-                        , operands =
-                            [ mainCap
-                            , constInt $ roundup_bytes_to_words sizeof_Task
-                            ]
-                        , valueType = I64
-                        }
-                  }
-              , UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 2 I64
-                  , value =
-                      Call
-                        { target = "allocate"
-                        , operands =
-                            [ mainCap
-                            , constInt $ roundup_bytes_to_words sizeof_InCall
-                            ]
-                        , valueType = I64
-                        }
-                  }
-              , setFieldWord mainCap offset_Capability_running_task task
-              , setFieldWord task offset_Task_cap mainCap
-              , setFieldWord task offset_Task_incall incall
-              , setFieldWord incall offset_InCall_task task
-              ]
-          , valueType = None
-          }
-    }
-  where
-    bd = getUnresolvedLocalWord 0
-    task = getUnresolvedLocalWord 1
-    incall = getUnresolvedLocalWord 2
+  runEDSL $ do
+    bd <- call' "allocGroup" [constI64 nurseryGroups] I64
+    putLVal hp $ loadI64 bd offset_bdescr_start
+    putLVal hpLim $
+      getLVal hp `addInt64`
+      (extendUInt32 (loadI32 bd offset_bdescr_blocks) `mulInt64`
+       constI64 block_size)
+    putLVal cccs (constI64 0)
+    putLVal currentNursery bd
+    storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc bd
+    task <-
+      call'
+        "allocate"
+        [mainCapability, constI64 $ roundup_bytes_to_words sizeof_Task]
+        I64
+    incall <-
+      call'
+        "allocate"
+        [mainCapability, constI64 $ roundup_bytes_to_words sizeof_InCall]
+        I64
+    storeI64 mainCapability offset_Capability_running_task task
+    storeI64 task offset_Task_cap mainCapability
+    storeI64 task offset_Task_incall incall
+    storeI64 incall offset_InCall_task task
 
 rtsEvalIOFunction BuiltinsOptions {..} =
-  AsteriusFunction
-    { functionType =
-        FunctionType {returnType = None, paramTypes = [I64, I64, I64]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 3 I64
-                  , value =
-                      Call
-                        { target = "createStrictIOThread"
-                        , operands =
-                            [ cap
-                            , constInt $ roundup_bytes_to_words threadStateSize
-                            , p
-                            ]
-                        , valueType = I64
-                        }
-                  }
-              , Call
-                  { target = "scheduleWaitThread"
-                  , operands = [tso, ret, cap]
-                  , valueType = None
-                  }
-              ]
-          , valueType = None
-          }
-    }
-  where
-    cap = mainCap
-    p = getLocalWord 1
-    ret = getLocalWord 2
-    tso = getUnresolvedLocalWord 3
+  runEDSL $ do
+    [cap, p, ret] <- params [I64, I64, I64]
+    tso <-
+      call'
+        "createStrictIOThread"
+        [cap, constI64 $ roundup_bytes_to_words threadStateSize, p]
+        I64
+    call "scheduleWaitThread" [tso, ret, cap]
 
 scheduleWaitThreadFunction _ =
-  AsteriusFunction
-    { functionType =
-        FunctionType {returnType = None, paramTypes = [I64, I64, I64]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 3 I64
-                  , value = getFieldWord cap offset_Capability_running_task
-                  }
-              , setFieldWord tso offset_StgTSO_bound $
-                getFieldWord task offset_Task_incall
-              , setFieldWord tso offset_StgTSO_cap cap
-              , UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 4 I64
-                  , value = getFieldWord task offset_Task_incall
-                  }
-              , setFieldWord incall offset_InCall_tso tso
-              , setFieldWord incall offset_InCall_ret ret
-              , setFieldWord
-                  cap
-                  (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
-                  tso
-              , setFieldWord32 cap offset_Capability_interrupt (ConstI32 0)
-              , UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 5 I64
-                  , value =
-                      Call
-                        { target = "StgRun"
-                        , operands =
-                            [ Unresolved
-                                {unresolvedSymbol = "stg_returnToStackTop"}
-                            , fieldOff cap offset_Capability_r
-                            ]
-                        , valueType = I64
-                        }
-                  }
-              , setFieldWord incall offset_InCall_ret $
-                getFieldWord
-                  (getFieldWord tso $
-                   offset_StgTSO_StgStack + offset_StgStack_sp)
-                  8
-              ]
-          , valueType = None
-          }
-    }
-  where
-    tso = getLocalWord 0
-    ret = getLocalWord 1
-    cap = mainCap
-    task = getUnresolvedLocalWord 3
-    incall = getUnresolvedLocalWord 4
+  runEDSL $ do
+    [tso, ret, cap] <- params [I64, I64, I64]
+    task <- i64Local $ loadI64 cap offset_Capability_running_task
+    storeI64 tso offset_StgTSO_bound $ loadI64 task offset_Task_incall
+    storeI64 tso offset_StgTSO_cap cap
+    incall <- i64Local $ loadI64 task offset_Task_incall
+    storeI64 incall offset_InCall_tso tso
+    storeI64 incall offset_InCall_ret ret
+    storeI64 cap (offset_Capability_r + offset_StgRegTable_rCurrentTSO) tso
+    storeI32 cap offset_Capability_interrupt (constI32 0)
+    _ <-
+      call'
+        "StgRun"
+        [ symbol "stg_returnToStackTop"
+        , cap `addInt64` constI64 offset_Capability_r
+        ]
+        I64
+    storeI64 incall offset_InCall_ret $
+      loadI64 (loadI64 tso $ offset_StgTSO_StgStack + offset_StgStack_sp) 8
 
 createThreadFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 2 I64
-                  , value =
-                      Call
-                        { target = "allocate"
-                        , operands = [getLocalWord 0, alloc_words]
-                        , valueType = I64
-                        }
-                  }
-              , UnresolvedSetGlobal
-                  {unresolvedGlobalReg = CurrentTSO, value = tso_p}
-              , saveUnresolvedSp 3 tso_p
-              , setFieldWord
-                  stack_p
-                  0
-                  Unresolved {unresolvedSymbol = "stg_STACK_info"}
-              , UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 4 I64
-                  , value =
-                      Binary
-                        { binaryOp = SubInt64
-                        , operand0 = alloc_words
-                        , operand1 =
-                            constInt $
-                            (offset_StgTSO_StgStack + offset_StgStack_stack) `div`
-                            8
-                        }
-                  }
-              , setFieldWord32
-                  stack_p
-                  offset_StgStack_stack_size
-                  (wrapI64 stack_size_w)
-              , UnresolvedSetGlobal
-                  { unresolvedGlobalReg = Sp
-                  , value =
-                      Binary
-                        { binaryOp = AddInt64
-                        , operand0 = fieldOff stack_p offset_StgStack_stack
-                        , operand1 =
-                            words2Bytes
-                              Binary
-                                { binaryOp = SubInt64
-                                , operand0 = stack_size_w
-                                , operand1 =
-                                    constInt $
-                                    roundup_bytes_to_words sizeof_StgStopFrame
-                                }
-                        }
-                  }
-              , setFieldWord stack_p offset_StgStack_sp sp
-              , setFieldWord tso_p offset_StgTSO_cap cap
-              , setFieldWord tso_p offset_StgTSO_stackobj stack_p
-              , setFieldWord tso_p offset_StgTSO_alloc_limit (ConstI64 0)
-              , setFieldWord
-                  sp
-                  0
-                  Unresolved {unresolvedSymbol = "stg_stop_thread_info"}
-              , tso_p
-              ]
-          , valueType = I64
-          }
-    }
-  where
-    cap = mainCap
-    alloc_words = getLocalWord 1
-    tso_p = getUnresolvedLocalWord 2
-    stack_p = getUnresolvedLocalWord 3
-    stack_size_w = getUnresolvedLocalWord 4
-    sp = UnresolvedGetGlobal {unresolvedGlobalReg = Sp}
+  runEDSL $ do
+    setReturnType I64
+    [cap, alloc_words] <- params [I64, I64]
+    tso_p <- call' "allocate" [cap, alloc_words] I64
+    putLVal currentTSO tso_p
+    stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
+    storeI64 stack_p 0 $ symbol "stg_STACK_info"
+    stack_size_w <-
+      i64Local $
+      alloc_words `subInt64`
+      constI64 ((offset_StgTSO_StgStack + offset_StgStack_stack) `div` 8)
+    storeI32 stack_p offset_StgStack_stack_size $ wrapInt64 stack_size_w
+    putLVal sp $
+      (stack_p `addInt64` constI64 offset_StgStack_stack) `addInt64`
+      (stack_size_w `subInt64`
+       constI64 (roundup_bytes_to_words sizeof_StgStopFrame) `mulInt64`
+       constI64 8)
+    storeI64 stack_p offset_StgStack_sp (getLVal sp)
+    storeI64 tso_p offset_StgTSO_cap cap
+    storeI64 tso_p offset_StgTSO_stackobj stack_p
+    storeI64 tso_p offset_StgTSO_alloc_limit (constI64 0)
+    storeI64 (getLVal sp) 0 $ symbol "stg_stop_thread_info"
+    emit tso_p
 
 createThreadHelperFunction ::
      BuiltinsOptions -> [Maybe AsteriusEntitySymbol] -> AsteriusFunction
 createThreadHelperFunction _ closures =
-  AsteriusFunction
-    { functionType =
-        FunctionType {returnType = I64, paramTypes = [I64, I64, I64]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              V.fromList $
-              [ UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 3 I64
-                  , value =
-                      Call
-                        { target = "createThread"
-                        , operands = [cap, stack_size_w]
-                        , valueType = I64
-                        }
-                  }
-              , saveUnresolvedSp 4 tso_p
-              , UnresolvedSetGlobal
-                  { unresolvedGlobalReg = Sp
-                  , value =
-                      fieldOff
-                        (getFieldWord stack_p offset_StgStack_sp)
-                        (-8 * length closures)
-                  }
-              , setFieldWord stack_p offset_StgStack_sp sp
-              ] <>
-              [ setFieldWord
-                sp
-                (i * 8)
-                (case maybe_closure of
-                   Just closure -> Unresolved {unresolvedSymbol = closure}
-                   _ -> target_closure)
-              | (i, maybe_closure) <- zip [0 ..] (reverse closures)
-              ] <>
-              [tso_p]
-          , valueType = I64
-          }
-    }
-  where
-    cap = mainCap
-    stack_size_w = getLocalWord 1
-    target_closure = getLocalWord 2
-    tso_p = getUnresolvedLocalWord 3
-    stack_p = getUnresolvedLocalWord 4
-    sp = UnresolvedGetGlobal {unresolvedGlobalReg = Sp}
+  runEDSL $ do
+    setReturnType I64
+    [cap, stack_size_w, target_closure] <- params [I64, I64, I64]
+    tso_p <- call' "createThread" [cap, stack_size_w] I64
+    stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
+    putLVal sp $
+      loadI64 stack_p offset_StgStack_sp `addInt64`
+      constI64 (-8 * length closures)
+    storeI64 stack_p offset_StgStack_sp $ getLVal sp
+    for_ (zip [0 ..] (reverse closures)) $ \(i, maybe_closure) ->
+      storeI64 (getLVal sp) (i * 8) $
+      case maybe_closure of
+        Just closure -> symbol closure
+        _ -> target_closure
+    emit tso_p
 
 createGenThreadFunction opts =
   createThreadHelperFunction opts [Nothing, Just "stg_enter_info"]
@@ -688,338 +467,163 @@ createStrictIOThreadFunction opts =
     ]
 
 allocateFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 2 I64
-                  , value =
-                      Binary
-                        { binaryOp = AddInt64
-                        , operand0 =
-                            UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
-                        , operand1 = words2Bytes n
-                        }
-                  }
-              , If
-                  { condition =
-                      Binary
-                        { binaryOp = GtSInt64
-                        , operand0 = new_hp
-                        , operand1 =
-                            UnresolvedGetGlobal {unresolvedGlobalReg = HpLim}
-                        }
-                  , ifTrue = marshalErrorCode errHeapOverflow None
-                  , ifFalse = Null
-                  }
-              , UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 3 I64
-                  , value = UnresolvedGetGlobal {unresolvedGlobalReg = Hp}
-                  }
-              , UnresolvedSetGlobal {unresolvedGlobalReg = Hp, value = new_hp}
-              , setFieldWord
-                  (getFieldWord baseReg offset_StgRegTable_rCurrentAlloc)
-                  offset_bdescr_free
-                  new_hp
-              , old_hp
-              ]
-          , valueType = I64
-          }
-    }
-  where
-    n = getLocalWord 1
-    new_hp = getUnresolvedLocalWord 2
-    old_hp = getUnresolvedLocalWord 3
+  runEDSL $ do
+    setReturnType I64
+    [_, n] <- params [I64, I64]
+    new_hp <- i64Local $ getLVal hp `addInt64` (n `mulInt64` constI64 8)
+    if'
+      (new_hp `gtUInt64` getLVal hpLim)
+      (emit $ marshalErrorCode errHeapOverflow None)
+      mempty
+    old_hp <- i64Local $ getLVal hp
+    putLVal hp new_hp
+    storeI64
+      (loadI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc)
+      offset_bdescr_free
+      new_hp
+    emit old_hp
 
 allocateMightFailFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
-    , body =
-        Call
-          { target = "allocate"
-          , operands = [getLocalWord 0, getLocalWord 1]
-          , valueType = I64
-          }
-    }
+  runEDSL $ do
+    setReturnType I64
+    xs <- params [I64, I64]
+    r <- call' "allocate" xs I64
+    emit r
 
-allocatePinnedFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
-    , body =
-        Call
-          { target = "allocate"
-          , operands = [getLocalWord 0, getLocalWord 1]
-          , valueType = I64
-          }
-    }
+allocatePinnedFunction = allocateMightFailFunction
 
 allocBlockFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = []}
-    , body =
-        Call {target = "allocGroup", operands = [ConstI64 1], valueType = I64}
-    }
+  runEDSL $ do
+    setReturnType I64
+    r <- call' "allocGroup" [constI64 1] I64
+    emit r
 
 allocBlockLockFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = []}
-    , body = Call {target = "allocBlock", operands = [], valueType = I64}
-    }
+  runEDSL $ do
+    setReturnType I64
+    r <- call' "allocBlock" [] I64
+    emit r
 
 allocBlockOnNodeFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I32]}
-    , body = Call {target = "allocBlock", operands = [], valueType = I64}
-    }
+  runEDSL $ do
+    setReturnType I64
+    _ <- param I32
+    r <- call' "allocBlock" [] I64
+    emit r
 
 allocBlockOnNodeLockFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I32]}
-    , body =
-        Call
-          { target = "allocBlockOnNode"
-          , operands = [GetLocal {index = 0, valueType = I32}]
-          , valueType = I64
-          }
-    }
+  runEDSL $ do
+    setReturnType I64
+    node <- param I32
+    r <- call' "allocBlockOnNode" [node] I64
+    emit r
 
 allocGroupFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I64]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ If
-                  { condition =
-                      Binary
-                        { binaryOp = GtSInt64
-                        , operand0 = blocks_n
-                        , operand1 = constInt $ 1024 * blocks_per_mblock
-                        }
-                  , ifTrue = marshalErrorCode errMegaBlockGroup None
-                  , ifFalse = Null
-                  }
-              , UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 1 I64
-                  , value =
-                      Binary
-                        { binaryOp = MulInt64
-                        , operand0 =
-                            Unary
-                              { unaryOp = ExtendUInt32
-                              , operand0 =
-                                  Host
-                                    { hostOp = GrowMemory
-                                    , name = ""
-                                    , operands =
-                                        [ constInt32 $
-                                          1024 *
-                                          (mblock_size `div` wasmPageSize)
-                                        ]
-                                    }
-                              }
-                        , operand1 = constInt wasmPageSize
-                        }
-                  }
-              , setFieldWord
-                  mblocks_p
-                  (offset_first_bdescr + offset_bdescr_start)
-                  first_block_p
-              , setFieldWord
-                  mblocks_p
-                  (offset_first_bdescr + offset_bdescr_free)
-                  first_block_p
-              , setFieldWord32
-                  mblocks_p
-                  (offset_first_bdescr + offset_bdescr_blocks) $
-                constInt32 $
-                blocks_per_mblock + ((1023 * mblock_size) `div` block_size)
-              , fieldOff mblocks_p offset_first_bdescr
-              ]
-          , valueType = I64
-          }
-    }
-  where
-    first_block_p = fieldOff mblocks_p offset_first_block
-    blocks_n = getLocalWord 0
-    mblocks_p = getUnresolvedLocalWord 1
+  runEDSL $ do
+    setReturnType I64
+    blocks_n <- param I64
+    if'
+      (blocks_n `gtUInt64` constI64 (1024 * blocks_per_mblock))
+      (emit $ marshalErrorCode errMegaBlockGroup None)
+      mempty
+    mblocks_p <-
+      i64Local $
+      extendUInt32
+        (growMemory (constI32 (1024 * (mblock_size `div` wasmPageSize)))) `mulInt64`
+      constI64 wasmPageSize
+    first_block_p <- i64Local $ mblocks_p `addInt64` constI64 offset_first_block
+    storeI64 mblocks_p (offset_first_bdescr + offset_bdescr_start) first_block_p
+    storeI64 mblocks_p (offset_first_bdescr + offset_bdescr_free) first_block_p
+    storeI32 mblocks_p (offset_first_bdescr + offset_bdescr_blocks) $
+      constI32 $ blocks_per_mblock + ((1023 * mblock_size) `div` block_size)
+    emit $ mblocks_p `addInt64` constI64 offset_first_bdescr
 
 allocGroupLockFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I64]}
-    , body =
-        Call
-          {target = "allocGroup", operands = [getLocalWord 0], valueType = I64}
-    }
+  runEDSL $ do
+    setReturnType I64
+    x <- param I64
+    r <- call' "allocGroup" [x] I64
+    emit r
 
 allocGroupOnNodeFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I32, I64]}
-    , body =
-        Call
-          {target = "allocGroup", operands = [getLocalWord 1], valueType = I64}
-    }
+  runEDSL $ do
+    setReturnType I64
+    [_, x] <- params [I32, I64]
+    r <- call' "allocGroup" [x] I64
+    emit r
 
 allocGroupOnNodeLockFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I32, I64]}
-    , body =
-        Call
-          { target = "allocGroupOnNode"
-          , operands = [GetLocal {index = 0, valueType = I32}, getLocalWord 1]
-          , valueType = I64
-          }
-    }
+  runEDSL $ do
+    setReturnType I64
+    xs <- params [I32, I64]
+    r <- call' "allocGroupOnNode" xs I64
+    emit r
 
 freeFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = None, paramTypes = [I64]}
-    , body = marshalErrorCode errUnimplemented None
-    }
+  runEDSL $ do
+    _ <- param I64
+    emit $ marshalErrorCode errUnimplemented None
 
 newCAFFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ setFieldWord caf offset_StgIndStatic_saved_info orig_info
-              , UnresolvedSetLocal
-                  { unresolvedLocalReg = UniqueLocalReg 2 I64
-                  , value =
-                      Call
-                        { target = "allocate"
-                        , operands =
-                            [ cap
-                            , constInt $ roundup_bytes_to_words sizeof_StgInd
-                            ]
-                        , valueType = I64
-                        }
-                  }
-              , setFieldWord
-                  bh
-                  0
-                  Unresolved {unresolvedSymbol = "stg_CAF_BLACKHOLE_info"}
-              , setFieldWord bh offset_StgInd_indirectee $
-                getFieldWord reg offset_StgRegTable_rCurrentTSO
-              , setFieldWord caf offset_StgIndStatic_indirectee bh
-              , setFieldWord
-                  caf
-                  0
-                  Unresolved {unresolvedSymbol = "stg_IND_STATIC_info"}
-              , bh
-              ]
-          , valueType = I64
-          }
-    }
-  where
-    reg = getLocalWord 0
-    caf = getLocalWord 1
-    cap = mainCap
-    orig_info = getFieldWord caf 0
-    bh = getUnresolvedLocalWord 2
+  runEDSL $ do
+    setReturnType I64
+    [reg, caf] <- params [I64, I64]
+    orig_info <- i64Local $ loadI64 caf 0
+    storeI64 caf offset_StgIndStatic_saved_info orig_info
+    bh <-
+      call'
+        "allocate"
+        [mainCapability, constI64 $ roundup_bytes_to_words sizeof_StgInd]
+        I64
+    storeI64 bh 0 $ symbol "stg_CAF_BLACKHOLE_info"
+    storeI64 bh offset_StgInd_indirectee $
+      loadI64 reg offset_StgRegTable_rCurrentTSO
+    storeI64 caf offset_StgIndStatic_indirectee bh
+    storeI64 caf 0 $ symbol "stg_IND_STATIC_info"
+    emit bh
 
 stgRunFunction BuiltinsOptions {..} =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = [I64, I64]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ Loop
-                  { name = loop_lbl
-                  , body =
-                      If
-                        { condition = Unary {unaryOp = EqZInt64, operand0 = f}
-                        , ifTrue = Nop
-                        , ifFalse =
-                            Block
-                              { name = ""
-                              , bodys =
-                                  [ SetLocal
-                                      { index = 0
-                                      , value =
-                                          CallIndirect
-                                            { indirectTarget =
-                                                Unary
-                                                  { unaryOp = WrapInt64
-                                                  , operand0 =
-                                                      Binary
-                                                        { binaryOp = SubInt64
-                                                        , operand0 =
-                                                            GetLocal
-                                                              { index = 0
-                                                              , valueType = I64
-                                                              }
-                                                        , operand1 = ConstI64 1
-                                                        }
-                                                  }
-                                            , operands = []
-                                            , typeName = "I64()"
-                                            }
-                                      }
-                                  , Break
-                                      { name = loop_lbl
-                                      , condition = Null
-                                      , value = Null
-                                      }
-                                  ]
-                              , valueType = None
-                              }
-                        }
-                  }
-              , UnresolvedGetGlobal {unresolvedGlobalReg = VanillaReg 1}
-              ]
-          , valueType = I64
-          }
-    }
-  where
-    loop_lbl = "StgRun_loop"
-    f = getLocalWord 0
+  runEDSL $ do
+    setReturnType I64
+    f <- mutParam I64
+    _ <- param I64
+    loop $ \loop_lbl ->
+      if' (eqZInt64 (getLVal f)) mempty $ do
+        f' <-
+          callIndirect'
+            (getLVal f `subInt64` constI64 1)
+            []
+            (FunctionType I64 [])
+        putLVal f f'
+        break' loop_lbl Null
+    emit $ getLVal r1
 
 stgReturnFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I64, paramTypes = []}
-    , body = ConstI64 0
-    }
+  runEDSL $ do
+    setReturnType I64
+    emit $ constI64 0
 
 printI64Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = None, paramTypes = [I64]}
-    , body =
-        CallImport {target' = "printI64", operands = cutI64 x, valueType = None}
-    }
-  where
-    x = getLocalWord 0
+  runEDSL $ do
+    x <- param I64
+    callImport "printI64" (V.toList (cutI64 x))
 
 printF32Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = None, paramTypes = [F32]}
-    , body = CallImport {target' = "printF32", operands = [x], valueType = None}
-    }
-  where
-    x = GetLocal {index = 0, valueType = F32}
+  runEDSL $ do
+    x <- param F32
+    callImport "printF32" [x]
 
 printF64Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = None, paramTypes = [F64]}
-    , body = CallImport {target' = "printF64", operands = [x], valueType = None}
-    }
-  where
-    x = GetLocal {index = 0, valueType = F64}
+  runEDSL $ do
+    x <- param F64
+    callImport "printF64" [x]
 
 getI32GlobalRegFunction ::
      BuiltinsOptions -> UnresolvedGlobalReg -> AsteriusFunction
 getI32GlobalRegFunction _ gr =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = I32, paramTypes = []}
-    , body = wrapI64 UnresolvedGetGlobal {unresolvedGlobalReg = gr}
-    }
+  runEDSL $ do
+    setReturnType I32
+    emit $ wrapInt64 $ getLVal $ global gr
 
 memoryTrapFunction _ =
   AsteriusFunction
@@ -1233,65 +837,22 @@ fieldOff p o
 getFieldWord :: Expression -> Int -> Expression
 getFieldWord p o = loadWord (wrapI64 $ fieldOff p o)
 
-getFieldWord32 :: Expression -> Int -> Expression
-getFieldWord32 p o = loadWord32 (wrapI64 $ fieldOff p o)
-
-setFieldWord :: Expression -> Int -> Expression -> Expression
-setFieldWord p o = storeWord (wrapI64 $ fieldOff p o)
-
 loadWord :: Expression -> Expression
 loadWord p =
   Load
     {signed = False, bytes = 8, offset = 0, align = 0, valueType = I64, ptr = p}
 
-loadWord32 :: Expression -> Expression
-loadWord32 p =
-  Load
-    {signed = False, bytes = 4, offset = 0, align = 0, valueType = I32, ptr = p}
-
-storeWord :: Expression -> Expression -> Expression
-storeWord p w =
-  Store {bytes = 8, offset = 0, align = 0, ptr = p, value = w, valueType = I64}
-
-setFieldWord32 :: Expression -> Int -> Expression -> Expression
-setFieldWord32 p o = storeWord32 (wrapI64 $ fieldOff p o)
-
-storeWord32 :: Expression -> Expression -> Expression
-storeWord32 p w =
-  Store {bytes = 4, offset = 0, align = 0, ptr = p, value = w, valueType = I32}
-
 wrapI64 :: Expression -> Expression
 wrapI64 w = Unary {unaryOp = WrapInt64, operand0 = w}
-
-words2Bytes :: Expression -> Expression
-words2Bytes w =
-  Binary {binaryOp = MulInt64, operand0 = w, operand1 = ConstI64 8}
 
 constInt :: Int -> Expression
 constInt = ConstI64 . fromIntegral
 
-constInt32 :: Int -> Expression
-constInt32 = ConstI32 . fromIntegral
-
-getUnresolvedLocalWord :: Int -> Expression
-getUnresolvedLocalWord i =
-  UnresolvedGetLocal {unresolvedLocalReg = UniqueLocalReg i I64}
-
 getLocalWord :: BinaryenIndex -> Expression
 getLocalWord i = GetLocal {index = i, valueType = I64}
 
-saveUnresolvedSp :: Int -> Expression -> Expression
-saveUnresolvedSp sp_i tso_p =
-  UnresolvedSetLocal
-    { unresolvedLocalReg = UniqueLocalReg sp_i I64
-    , value = fieldOff tso_p offset_StgTSO_StgStack
-    }
-
 mainCap :: Expression
 mainCap = Unresolved {unresolvedSymbol = "MainCapability"}
-
-baseReg :: Expression
-baseReg = UnresolvedGetGlobal {unresolvedGlobalReg = BaseReg}
 
 offset_StgTSO_StgStack :: Int
 offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO

@@ -14,6 +14,7 @@ extra-deps:
   - base-compat-0.10.4
   - https://github.com/TerrorJack/cereal/archive/Serialize-instance-ShortByteString.zip
   - colour-2.3.4
+  - dlist-0.8.0.4
   - happy-1.19.9
   - hashable-1.2.7.0
   - haskell-lexer-1.0.1

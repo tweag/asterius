@@ -21,8 +21,8 @@ root@76bcb511663d:/mirror# ahc-link --help
 
 `asterius` requires a custom `ghc` which:
 
-* Uses `ghc-head` instead of a release version. It forces us to keep an eye on upstream changes. The `master` branch of `ghc` may introduce breaking commits, so for safety you should choose the specific `ghc` commit as indicated in the `NIXPKGS_REV` revision of the CircleCI config file, details below.
-* Disables [`TABLES_NEXT_TO_CODE`](https://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/HeapObjects#TABLES_NEXT_TO_CODE). It's impossible to attach executable code to an info table on the WebAssembly platform.
+* Uses `ghc-head` instead of a release version. It forces us to keep an eye on upstream changes. The `master` branch of `ghc` may introduce breaking commits, so for safety you should choose the specific `ghc` version as indicated in the `stack.yaml` file.
+* Disables [`TABLES_NEXT_TO_CODE`](https://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/HeapObjects#TABLES_NEXT_TO_CODE). It's hard to attach executable code to an info table on the WebAssembly platform.
 * Uses `integer-simple` instead of `integer-gmp`. Porting `integer-gmp` to WebAssembly requires extra work and is not currently scheduled.
 
 The building guide of `ghc` can be found [here](https://ghc.haskell.org/trac/ghc/wiki/Building). Add the following lines to `mk/build.mk`:
@@ -42,11 +42,11 @@ Besides the custom `ghc`, these dependencies are also required:
 
 * `cmake`/`make`/`g++`: For building in-tree [`binaryen`](https://github.com/WebAssembly/binaryen)
 * `autoconf`: For booting `ghc-prim`/`base`
-* `nodejs`: For running tests
-* `stack`
+* `nodejs`: For running tests. Ensure the latest version is used, since we rely on some recent V8 experimental features (e.g. BigInt support)
+* `stack`: Someday `cabal` may also work, no specific obstacles anyway.
 
 ## Building `asterius`
 
-`stack build asterius`. That's it. If you are using `nix`, make sure to add `--system-ghc` when invoking `stack`.
+`stack build asterius`. That's it. Set `MAKEFLAGS=-j8` to pass flags to `make` for parallel building of `binaryen`.
 
-Set `MAKEFLAGS=-j8` to pass flags to `make` for parallel building of `binaryen`. Run `stack exec ahc-boot` to test if booting works.
+After the dust settles, run `stack exec ahc-boot` to perform booting. Set the `ASTERIUS_DEBUG` environment variable to make `ahc-boot` pretty-print IRs to text files which are useful when debugging compiled code of standard libraries. Be aware that this flag slows down the booting process significantly!

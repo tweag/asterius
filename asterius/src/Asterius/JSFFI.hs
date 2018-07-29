@@ -7,8 +7,7 @@
 {-# LANGUAGE StrictData #-}
 
 module Asterius.JSFFI
-  ( emptyFFIMarshalState
-  , addFFIProcessor
+  ( addFFIProcessor
   , generateFFIFunctionImports
   , generateFFIDict
   ) where
@@ -70,9 +69,6 @@ combineChunks =
 
 parseFFIChunks :: Parser [Chunk Int]
 parseFFIChunks = combineChunks <$> parseChunks (parseChunk (parseField decimal))
-
-emptyFFIMarshalState :: FFIMarshalState
-emptyFFIMarshalState = FFIMarshalState {ffiDecls = mempty}
 
 marshalToFFIValueType :: GHC.Located GHC.RdrName -> Maybe FFIValueType
 marshalToFFIValueType loc_t =
