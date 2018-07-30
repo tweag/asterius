@@ -16,6 +16,7 @@ extra-source-files:
   - test/array/array.hs
 
 data-files:
+  - rts/rts.js
   - boot.sh
 
 custom-setup:

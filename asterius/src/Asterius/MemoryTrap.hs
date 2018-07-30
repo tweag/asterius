@@ -13,6 +13,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
 import qualified Data.HashMap.Strict as HM
+import qualified Data.Vector as V
 import Type.Reflection
 
 addMemoryTrap :: AsteriusModule -> AsteriusModule
@@ -59,6 +60,18 @@ addMemoryTrapDeep t =
                   _ -> error $ "Unsupported instruction: " <> show t
             , operands = [addMemoryTrapDeep i64_ptr, addMemoryTrapDeep value]
             , valueType = None
+            }
+        Host {hostOp = CurrentMemory} ->
+          CallImport
+            { target' = "__asterius_current_memory"
+            , operands = [t]
+            , valueType = I32
+            }
+        Host {hostOp = GrowMemory, ..} ->
+          CallImport
+            { target' = "__asterius_grow_memory"
+            , operands = [t, V.head operands]
+            , valueType = I32
             }
         _ -> go
     _ -> go

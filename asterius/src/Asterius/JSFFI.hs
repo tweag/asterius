@@ -9,7 +9,7 @@
 module Asterius.JSFFI
   ( addFFIProcessor
   , generateFFIFunctionImports
-  , generateFFIDict
+  , generateFFIImportObjectFactory
   ) where
 
 import Asterius.Internals
@@ -440,22 +440,22 @@ generateFFILambda FFIDecl {ffiFunctionType = FFIFunctionType {..}, ..} =
   mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
   ")=>" <>
   (case ffiResultType of
-     Just FFI_JSREF -> "__asterius_jsffi_newJSRef("
+     Just FFI_JSREF -> "ffi.newJSRef("
      _ -> "(") <>
   mconcat
     [ case chunk of
       Lit s -> string7 s
       Field i ->
         case ffiParamTypes !! (i - 1) of
-          FFI_JSREF -> "__asterius_jsffi_JSRefs[_" <> intDec i <> "]"
+          FFI_JSREF -> "ffi.JSRefs[_" <> intDec i <> "]"
           _ -> "_" <> intDec i
     | chunk <- ffiSourceChunks
     ] <>
   "))"
 
-generateFFIDict :: FFIMarshalState -> Builder
-generateFFIDict FFIMarshalState {..} =
-  "{" <>
+generateFFIImportObjectFactory :: FFIMarshalState -> Builder
+generateFFIImportObjectFactory FFIMarshalState {..} =
+  "ffi => ({jsffi: {" <>
   mconcat
     (intersperse
        ","
@@ -464,4 +464,4 @@ generateFFIDict FFIMarshalState {..} =
        | (mk, mod_ffi_decls) <- HM.toList ffiDecls
        , (k, ffi_decl) <- IM.toList mod_ffi_decls
        ]) <>
-  "}"
+  "}})"

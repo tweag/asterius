@@ -13,7 +13,7 @@ import Asterius.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
-import qualified Data.HashSet as HS
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Vector as V
 import Type.Reflection
 
@@ -62,31 +62,5 @@ maskUnknownCCallTargets t =
     go = gmapT maskUnknownCCallTargets t
     has_call_target sym =
       "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName sym) ||
-      sym `HS.member`
-      [ "main"
-      , "init_rts_asterius"
-      , "rts_evalIO"
-      , "scheduleWaitThread"
-      , "createThread"
-      , "createGenThread"
-      , "createIOThread"
-      , "createStrictIOThread"
-      , "allocate"
-      , "allocateMightFail"
-      , "allocatePinned"
-      , "allocBlock"
-      , "allocBlock_lock"
-      , "allocBlockOnNode"
-      , "allocBlockOnNode_lock"
-      , "allocGroup"
-      , "allocGroup_lock"
-      , "allocGroupOnNode"
-      , "allocGroupOnNode_lock"
-      , "free"
-      , "newCAF"
-      , "StgRun"
-      , "StgReturn"
-      , "print_i64"
-      , "print_f32"
-      , "print_f64"
-      ]
+      sym `HM.member`
+      functionMap (rtsAsteriusModule unsafeDefaultBuiltinsOptions)

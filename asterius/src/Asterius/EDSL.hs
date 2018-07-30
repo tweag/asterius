@@ -18,24 +18,31 @@ module Asterius.EDSL
   , params
   , local
   , i64Local
+  , i32Local
+  , i64MutLocal
+  , i32MutLocal
   , global
   , pointer
   , pointerI64
   , pointerI32
+  , pointerI16
   , loadI64
   , loadI32
+  , loadI16
   , storeI64
   , storeI32
+  , storeI16
   , call
   , call'
   , callImport
   , callImport'
   , callIndirect'
   , Label
-  , block
-  , loop
+  , block'
+  , loop'
   , if'
   , break'
+  , whileLoop
   , eqZInt64
   , extendUInt32
   , wrapInt64
@@ -43,7 +50,10 @@ module Asterius.EDSL
   , addInt64
   , subInt64
   , mulInt64
+  , divUInt64
   , gtUInt64
+  , mulInt32
+  , leUInt64
   , symbol
   , constI32
   , constI64
@@ -166,8 +176,15 @@ local vt v = do
   putLVal lr v
   pure $ getLVal lr
 
-i64Local :: Expression -> EDSL Expression
+i64Local, i32Local :: Expression -> EDSL Expression
 i64Local = local I64
+
+i32Local = local I32
+
+i64MutLocal, i32MutLocal :: EDSL LVal
+i64MutLocal = mutLocal I64
+
+i32MutLocal = mutLocal I32
 
 global :: UnresolvedGlobalReg -> LVal
 global gr =
@@ -208,20 +225,26 @@ pointer vt b bp o =
         0 -> bp
         _ -> bp `addInt64` constI64 o
 
-pointerI64, pointerI32 :: Expression -> Int -> LVal
+pointerI64, pointerI32, pointerI16 :: Expression -> Int -> LVal
 pointerI64 = pointer I64 8
 
 pointerI32 = pointer I32 4
 
-loadI64, loadI32 :: Expression -> Int -> Expression
+pointerI16 = pointer I32 2
+
+loadI64, loadI32, loadI16 :: Expression -> Int -> Expression
 loadI64 bp o = getLVal $ pointerI64 bp o
 
 loadI32 bp o = getLVal $ pointerI32 bp o
 
-storeI64, storeI32 :: Expression -> Int -> Expression -> EDSL ()
+loadI16 bp o = getLVal $ pointerI16 bp o
+
+storeI64, storeI32, storeI16 :: Expression -> Int -> Expression -> EDSL ()
 storeI64 bp o = putLVal $ pointerI64 bp o
 
 storeI32 bp o = putLVal $ pointerI32 bp o
+
+storeI16 bp o = putLVal $ pointerI16 bp o
 
 call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = V.fromList xs, valueType = None}
@@ -272,15 +295,15 @@ newScope m = do
   m
   EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = orig_buf})
 
-block, loop :: (Label -> EDSL ()) -> EDSL ()
-block cont = do
+block', loop' :: (Label -> EDSL ()) -> EDSL ()
+block' cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
   emit
     Block
       {name = unLabel lbl, bodys = V.fromList $ DL.toList es, valueType = Auto}
 
-loop cont = do
+loop' cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
   emit Loop {name = unLabel lbl, body = bundleExpressions es}
@@ -300,6 +323,9 @@ break' :: Label -> Expression -> EDSL ()
 break' (Label lbl) cond =
   emit Break {name = lbl, condition = cond, value = Null}
 
+whileLoop :: Expression -> EDSL () -> EDSL ()
+whileLoop cond body = loop' $ \lbl -> if' cond (body *> break' lbl Null) mempty
+
 eqZInt64, extendUInt32, wrapInt64, growMemory :: Expression -> Expression
 eqZInt64 = Unary EqZInt64
 
@@ -309,14 +335,21 @@ wrapInt64 = Unary WrapInt64
 
 growMemory x = Host {hostOp = GrowMemory, name = "", operands = [x]}
 
-addInt64, subInt64, mulInt64, gtUInt64 :: Expression -> Expression -> Expression
+addInt64, subInt64, mulInt64, divUInt64, gtUInt64, mulInt32, leUInt64 ::
+     Expression -> Expression -> Expression
 addInt64 = Binary AddInt64
 
 subInt64 = Binary SubInt64
 
 mulInt64 = Binary MulInt64
 
+divUInt64 = Binary DivUInt64
+
 gtUInt64 = Binary GtUInt64
+
+mulInt32 = Binary MulInt32
+
+leUInt64 = Binary LeUInt64
 
 symbol :: AsteriusEntitySymbol -> Expression
 symbol = Unresolved

@@ -1,10 +1,12 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
 import Asterius.Boot
+import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
@@ -24,6 +26,7 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import Foreign
 import qualified GhcPlugins as GHC
+import Language.Haskell.GHC.Toolkit.Constants
 import Language.Haskell.GHC.Toolkit.Run
 import Options.Applicative
 import Prelude hiding (IO)
@@ -31,17 +34,18 @@ import System.Directory
 import System.FilePath
 import System.IO hiding (IO)
 import System.Process
-import Text.Show.Pretty
+import Text.Show.Pretty (ppShow)
 
 data Task = Task
   { input, outputWasm, outputNode :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
   , debug, optimize, outputIR, run :: Bool
+  , heapSize :: Int
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\(i, m_wasm, m_node, m_report, m_gv, dbg, opt, ir, r) ->
+  (\i m_wasm m_node m_report m_gv dbg opt ir r m_hs ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
@@ -52,28 +56,34 @@ parseTask =
        , optimize = opt
        , outputIR = ir
        , run = r
+       , heapSize = maybe 1024 read m_hs
        }) <$>
-  ((,,,,,,,,) <$> strOption (long "input" <> help "Path of the Main module") <*>
-   optional
-     (strOption
-        (long "output-wasm" <>
-         help "Output path of WebAssembly binary, defaults to same path of Main")) <*>
-   optional
-     (strOption
-        (long "output-node" <>
-         help
-           "Output path of Node.js script, defaults to same path of Main. Must be the same directory as the WebAssembly binary.")) <*>
-   optional
-     (strOption
-        (long "output-link-report" <> help "Output path of linking report")) <*>
-   optional
-     (strOption
-        (long "output-graphviz" <>
-         help "Output path of GraphViz file of symbol dependencies")) <*>
-   switch (long "debug" <> help "Enable debug mode in the runtime") <*>
-   switch (long "optimize" <> help "Enable binaryen & V8 optimization") <*>
-   switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>
-   switch (long "run" <> help "Run the compiled module with Node.js"))
+  strOption (long "input" <> help "Path of the Main module") <*>
+  optional
+    (strOption
+       (long "output-wasm" <>
+        help "Output path of WebAssembly binary, defaults to same path of Main")) <*>
+  optional
+    (strOption
+       (long "output-node" <>
+        help
+          "Output path of Node.js script, defaults to same path of Main. Must be the same directory as the WebAssembly binary.")) <*>
+  optional
+    (strOption
+       (long "output-link-report" <> help "Output path of linking report")) <*>
+  optional
+    (strOption
+       (long "output-graphviz" <>
+        help "Output path of GraphViz file of symbol dependencies")) <*>
+  switch (long "debug" <> help "Enable debug mode in the runtime") <*>
+  switch (long "optimize" <> help "Enable binaryen & V8 optimization") <*>
+  switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>
+  switch (long "run" <> help "Run the compiled module with Node.js") <*>
+  optional
+    (strOption
+       (long "heap-size" <>
+        help
+          "Heap size in MBs, used for both nursery/object pool. Defaults to 1024."))
 
 opts :: ParserInfo Task
 opts =
@@ -83,52 +93,26 @@ opts =
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
 
-genNode :: Task -> LinkReport -> Builder
-genNode Task {..} LinkReport {..} =
-  mconcat $
-  [ "\"use strict\";\n"
-  , "process.on('unhandledRejection', err => { throw err; });\n"
-  , "const fs = require(\"fs\");\n"
-  , "let __asterius_wasm_instance = null;\n"
-  ] <>
-  (if debug
-     then [ "const __asterius_func_syms = "
-          , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
-          , ";\n"
-          ]
-     else []) <>
-  [ "function __asterius_newI64(lo, hi) { return BigInt(lo) | (BigInt(hi) << 32n);  };\n"
-  , "let __asterius_jsffi_JSRefs = [];\n"
-  , "function __asterius_jsffi_newJSRef(e) { const n = __asterius_jsffi_JSRefs.length; __asterius_jsffi_JSRefs[n] = e; return n; };\n"
-  , "WebAssembly.instantiate(fs.readFileSync("
-  , string7 $ show $ takeFileName outputWasm
-  , "), {Math: Math, jsffi: "
-  , generateFFIDict bundledFFIMarshalState
-  , ", rts: {printI64: (lo, hi) => console.log(__asterius_newI64(lo, hi))"
-  , ", print: console.log"
-  , ", panic: e => console.error(\"[ERROR] \" + [\"errGCEnter1\", \"errGCFun\", \"errBarf\", \"errStgGC\", \"errUnreachableBlock\", \"errHeapOverflow\", \"errMegaBlockGroup\", \"errUnimplemented\", \"errAtomics\", \"errSetBaseReg\", \"errBrokenFunction\"][e-1])"
-  ] <>
-  (if debug
-     then [ ", __asterius_memory_trap_trigger: (p_lo, p_hi) => console.error(\"[ERROR] Uninitialized memory trapped at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\"))"
-          , ", __asterius_load_i64: (p_lo, p_hi, v_lo, v_hi) => console.log(\"[INFO] Loading i64 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: 0x\" + __asterius_newI64(v_lo,v_hi).toString(16).padStart(8, \"0\"))"
-          , ", __asterius_store_i64: (p_lo, p_hi, v_lo, v_hi) => console.log(\"[INFO] Storing i64 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: 0x\" + __asterius_newI64(v_lo,v_hi).toString(16).padStart(8, \"0\"))"
-          , ", __asterius_load_i8: (p_lo, p_hi, v) => console.log(\"[INFO] Loading i8 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_store_i8: (p_lo, p_hi, v) => console.log(\"[INFO] Storing i8 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_load_i16: (p_lo, p_hi, v) => console.log(\"[INFO] Loading i16 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_store_i16: (p_lo, p_hi, v) => console.log(\"[INFO] Storing i16 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_load_i32: (p_lo, p_hi, v) => console.log(\"[INFO] Loading i32 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_store_i32: (p_lo, p_hi, v) => console.log(\"[INFO] Storing i32 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_load_f32: (p_lo, p_hi, v) => console.log(\"[INFO] Loading f32 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_store_f32: (p_lo, p_hi, v) => console.log(\"[INFO] Storing f32 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_load_f64: (p_lo, p_hi, v) => console.log(\"[INFO] Loading f64 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_store_f64: (p_lo, p_hi, v) => console.log(\"[INFO] Storing f64 at 0x\" + __asterius_newI64(p_lo, p_hi).toString(16).padStart(8, \"0\") + \", value: \" + v)"
-          , ", __asterius_traceCmm: f => console.log(\"[INFO] Entering \" + __asterius_func_syms[f-1] + \", Sp: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_Sp().toString(16).padStart(8, \"0\") + \", SpLim: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_SpLim().toString(16).padStart(8, \"0\") + \", Hp: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_Hp().toString(16).padStart(8, \"0\") + \", HpLim: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_HpLim().toString(16).padStart(8, \"0\"))"
-          , ", __asterius_traceCmmBlock: (f, lbl) => console.log(\"[INFO] Branching to \" + __asterius_func_syms[f-1] + \" basic block \" + lbl + \", Sp: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_Sp().toString(16).padStart(8, \"0\") + \", SpLim: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_SpLim().toString(16).padStart(8, \"0\") + \", Hp: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_Hp().toString(16).padStart(8, \"0\") + \", HpLim: 0x\" + __asterius_wasm_instance.exports.__asterius_Load_HpLim().toString(16).padStart(8, \"0\"))"
-          , ", __asterius_traceCmmSetLocal: (f, i, lo, hi) => console.log(\"[INFO] In \" + __asterius_func_syms[f-1] + \", Setting local register \" + i + \" to 0x\" + __asterius_newI64(lo, hi).toString(16).padStart(8, \"0\"))"
-          ]
-     else []) <>
-  [ "}}).then(r => {__asterius_wasm_instance = r.instance; __asterius_wasm_instance.exports.main();});\n"
-  ]
+genNode :: Task -> LinkReport -> IO Builder
+genNode Task {..} LinkReport {..} = do
+  rts_buf <- BS.readFile $ dataDir </> "rts" </> "rts.js"
+  pure $
+    mconcat
+      [ byteString rts_buf
+      , "async function main() {\n"
+      , "const i = await newAsteriusInstance({functionSymbols: "
+      , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
+      , ", bufferSource: require(\"fs\").readFileSync("
+      , string7 $ show $ takeFileName outputWasm
+      , "), jsffiFactory: "
+      , generateFFIImportObjectFactory bundledFFIMarshalState
+      , "});\n"
+      , "i.wasmInstance.exports.hs_init();\n"
+      , "i.wasmInstance.exports.main();\n"
+      , "}\n"
+      , "process.on('unhandledRejection', err => { throw err; });\n"
+      , "main();\n"
+      ]
 
 main :: IO ()
 main = do
@@ -143,7 +127,9 @@ main = do
        pure (store, boot_pkgdb)
   putStrLn "[INFO] Populating the store with builtin routines"
   def_builtins_opts <- getDefaultBuiltinsOptions
-  let builtins_opts = def_builtins_opts {tracing = debug}
+  let builtins_opts =
+        def_builtins_opts
+          {nurseryGroups = blocks_per_mblock * heapSize, tracing = debug}
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "[INFO] Compiling " <> input <> " to Cmm"
   (c, get_ffi_mod) <- addFFIProcessor mempty
@@ -198,13 +184,14 @@ main = do
   let (!m_final_m, !report) =
         linkStart debug final_store $
         if debug
-          then [ "main"
+          then [ "hs_init"
+               , "main"
                , "__asterius_Load_Sp"
                , "__asterius_Load_SpLim"
                , "__asterius_Load_Hp"
                , "__asterius_Load_HpLim"
                ]
-          else ["main"]
+          else ["hs_init", "main"]
   maybe
     (pure ())
     (\p -> do
@@ -239,7 +226,8 @@ main = do
        BS.writeFile outputWasm m_bin
        putStrLn $ "[INFO] Writing Node.js script to " <> show outputNode
        h <- openBinaryFile outputNode WriteMode
-       hPutBuilder h $ genNode task report
+       b <- genNode task report
+       hPutBuilder h b
        hClose h
        when run $ do
          putStrLn $ "[INFO] Running " <> outputNode

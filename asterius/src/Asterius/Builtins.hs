@@ -7,6 +7,7 @@
 module Asterius.Builtins
   ( BuiltinsOptions(..)
   , getDefaultBuiltinsOptions
+  , unsafeDefaultBuiltinsOptions
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
   , rtsAsteriusFunctionImports
@@ -43,6 +44,7 @@ import qualified GHC
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
+import System.IO.Unsafe
 
 wasmPageSize :: Int
 wasmPageSize = 65536
@@ -62,10 +64,14 @@ getDefaultBuiltinsOptions =
     pure
       BuiltinsOptions
         { dflags = dflags
-        , nurseryGroups = blocks_per_mblock
+        , nurseryGroups = blocks_per_mblock * 1024
         , threadStateSize = 65536
         , tracing = False
         }
+
+{-# NOINLINE unsafeDefaultBuiltinsOptions #-}
+unsafeDefaultBuiltinsOptions :: BuiltinsOptions
+unsafeDefaultBuiltinsOptions = unsafePerformIO getDefaultBuiltinsOptions
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -109,24 +115,14 @@ rtsAsteriusModule opts =
         ]
     , functionMap =
         [ ("main", mainFunction opts)
-        , ("init_rts_asterius", initRtsAsteriusFunction opts)
-        , ("rts_evalIO", rtsEvalIOFunction opts)
+        , ("hs_init", hsInitFunction opts)
+        , ("rts_evalLazyIO", rtsEvalLazyIOFunction opts)
         , ("scheduleWaitThread", scheduleWaitThreadFunction opts)
         , ("createThread", createThreadFunction opts)
-        , ("createGenThread", createGenThreadFunction opts)
         , ("createIOThread", createIOThreadFunction opts)
-        , ("createStrictIOThread", createStrictIOThreadFunction opts)
         , ("allocate", allocateFunction opts)
-        , ("allocateMightFail", allocateMightFailFunction opts)
-        , ("allocatePinned", allocatePinnedFunction opts)
-        , ("allocBlock", allocBlockFunction opts)
-        , ("allocBlock_lock", allocBlockLockFunction opts)
-        , ("allocBlockOnNode", allocBlockOnNodeFunction opts)
-        , ("allocBlockOnNode_lock", allocBlockOnNodeLockFunction opts)
-        , ("allocGroup", allocGroupFunction opts)
-        , ("allocGroup_lock", allocGroupLockFunction opts)
         , ("allocGroupOnNode", allocGroupOnNodeFunction opts)
-        , ("allocGroupOnNode_lock", allocGroupOnNodeLockFunction opts)
+        , ("getMBlocks", getMBlocksFunction opts)
         , ("free", freeFunction opts)
         , ("newCAF", newCAFFunction opts)
         , ("StgRun", stgRunFunction opts)
@@ -235,6 +231,20 @@ rtsAsteriusFunctionImports debug =
                     {returnType = None, paramTypes = [I32, I32, I32, I32]}
               }
           , AsteriusFunctionImport
+              { internalName = "__asterius_current_memory"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_current_memory"
+              , functionType =
+                  FunctionType {returnType = I32, paramTypes = [I32]}
+              }
+          , AsteriusFunctionImport
+              { internalName = "__asterius_grow_memory"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_grow_memory"
+              , functionType =
+                  FunctionType {returnType = I32, paramTypes = [I32, I32]}
+              }
+          , AsteriusFunctionImport
               { internalName = "__asterius_memory_trap_trigger"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_memory_trap_trigger"
@@ -292,13 +302,14 @@ rtsAsteriusFunctionExports debug =
     [ FunctionExport {internalName = f, externalName = f}
     | f <-
         if debug
-          then [ "main"
+          then [ "hs_init"
+               , "main"
                , "__asterius_Load_Sp"
                , "__asterius_Load_SpLim"
                , "__asterius_Load_Hp"
                , "__asterius_Load_HpLim"
                ]
-          else ["main"]
+          else ["hs_init", "main"]
     ]
 
 {-# INLINEABLE marshalErrorCode #-}
@@ -341,16 +352,15 @@ errSetBaseReg = 10
 
 errBrokenFunction = 11
 
-mainFunction, initRtsAsteriusFunction, rtsEvalIOFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateMightFailFunction, allocatePinnedFunction, allocBlockFunction, allocBlockLockFunction, allocBlockOnNodeFunction, allocBlockOnNodeLockFunction, allocGroupFunction, allocGroupLockFunction, allocGroupOnNodeFunction, allocGroupOnNodeLockFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
+mainFunction, hsInitFunction, rtsEvalLazyIOFunction, scheduleWaitThreadFunction, createThreadFunction, createIOThreadFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
-  runEDSL $ do
-    call "init_rts_asterius" []
-    call "rts_evalIO" [mainCapability, symbol "Main_main_closure", constI64 0]
+  runEDSL $
+  call "rts_evalLazyIO" [mainCapability, symbol "Main_main_closure", constI64 0]
 
-initRtsAsteriusFunction BuiltinsOptions {..} =
+hsInitFunction BuiltinsOptions {..} =
   runEDSL $ do
-    bd <- call' "allocGroup" [constI64 nurseryGroups] I64
+    bd <- call' "allocGroupOnNode" [constI32 0, constI64 nurseryGroups] I64
     putLVal hp $ loadI64 bd offset_bdescr_start
     putLVal hpLim $
       getLVal hp `addInt64`
@@ -374,12 +384,12 @@ initRtsAsteriusFunction BuiltinsOptions {..} =
     storeI64 task offset_Task_incall incall
     storeI64 incall offset_InCall_task task
 
-rtsEvalIOFunction BuiltinsOptions {..} =
+rtsEvalLazyIOFunction BuiltinsOptions {..} =
   runEDSL $ do
     [cap, p, ret] <- params [I64, I64, I64]
     tso <-
       call'
-        "createStrictIOThread"
+        "createIOThread"
         [cap, constI64 $ roundup_bytes_to_words threadStateSize, p]
         I64
     call "scheduleWaitThread" [tso, ret, cap]
@@ -418,53 +428,35 @@ createThreadFunction _ =
       alloc_words `subInt64`
       constI64 ((offset_StgTSO_StgStack + offset_StgStack_stack) `div` 8)
     storeI32 stack_p offset_StgStack_stack_size $ wrapInt64 stack_size_w
-    putLVal sp $
+    storeI64 stack_p offset_StgStack_sp $
       (stack_p `addInt64` constI64 offset_StgStack_stack) `addInt64`
-      (stack_size_w `subInt64`
-       constI64 (roundup_bytes_to_words sizeof_StgStopFrame) `mulInt64`
-       constI64 8)
-    storeI64 stack_p offset_StgStack_sp (getLVal sp)
+      stack_size_w
     storeI64 tso_p offset_StgTSO_cap cap
     storeI64 tso_p offset_StgTSO_stackobj stack_p
     storeI64 tso_p offset_StgTSO_alloc_limit (constI64 0)
-    storeI64 (getLVal sp) 0 $ symbol "stg_stop_thread_info"
+    storeI64 stack_p offset_StgStack_sp $
+      loadI64 stack_p offset_StgStack_sp `subInt64`
+      constI64 (8 * roundup_bytes_to_words sizeof_StgStopFrame)
+    storeI64 (loadI64 stack_p offset_StgStack_sp) 0 $
+      symbol "stg_stop_thread_info"
     emit tso_p
 
-createThreadHelperFunction ::
-     BuiltinsOptions -> [Maybe AsteriusEntitySymbol] -> AsteriusFunction
-createThreadHelperFunction _ closures =
+pushClosure :: Expression -> Expression -> EDSL ()
+pushClosure tso c = do
+  stack_p <- i64Local $ loadI64 tso offset_StgTSO_stackobj
+  storeI64 stack_p offset_StgStack_sp $
+    loadI64 stack_p offset_StgStack_sp `subInt64` constI64 8
+  storeI64 (loadI64 stack_p offset_StgStack_sp) 0 c
+
+createIOThreadFunction _ =
   runEDSL $ do
     setReturnType I64
-    [cap, stack_size_w, target_closure] <- params [I64, I64, I64]
-    tso_p <- call' "createThread" [cap, stack_size_w] I64
-    stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
-    putLVal sp $
-      loadI64 stack_p offset_StgStack_sp `addInt64`
-      constI64 (-8 * length closures)
-    storeI64 stack_p offset_StgStack_sp $ getLVal sp
-    for_ (zip [0 ..] (reverse closures)) $ \(i, maybe_closure) ->
-      storeI64 (getLVal sp) (i * 8) $
-      case maybe_closure of
-        Just closure -> symbol closure
-        _ -> target_closure
-    emit tso_p
-
-createGenThreadFunction opts =
-  createThreadHelperFunction opts [Nothing, Just "stg_enter_info"]
-
-createIOThreadFunction opts =
-  createThreadHelperFunction
-    opts
-    [Just "stg_ap_v_info", Nothing, Just "stg_enter_info"]
-
-createStrictIOThreadFunction opts =
-  createThreadHelperFunction
-    opts
-    [ Just "stg_forceIO_info"
-    , Just "stg_ap_v_info"
-    , Nothing
-    , Just "stg_enter_info"
-    ]
+    [cap, stack_size, closure] <- params [I64, I64, I64]
+    t <- call' "createThread" [cap, stack_size] I64
+    pushClosure t $ symbol "stg_ap_v_info"
+    pushClosure t closure
+    pushClosure t $ symbol "stg_enter_info"
+    emit t
 
 allocateFunction _ =
   runEDSL $ do
@@ -483,81 +475,68 @@ allocateFunction _ =
       new_hp
     emit old_hp
 
-allocateMightFailFunction _ =
-  runEDSL $ do
-    setReturnType I64
-    xs <- params [I64, I64]
-    r <- call' "allocate" xs I64
-    emit r
+blocksToMBlocks :: Expression -> EDSL Expression
+blocksToMBlocks n = do
+  r <- i64MutLocal
+  if'
+    (n `leUInt64` constI64 blocks_per_mblock)
+    (putLVal r (constI64 1))
+    (putLVal
+       r
+       (constI64 1 `addInt64`
+        ((n `mulInt64` constI64 block_size) `divUInt64` constI64 mblock_size)))
+  pure $ getLVal r
 
-allocatePinnedFunction = allocateMightFailFunction
-
-allocBlockFunction _ =
-  runEDSL $ do
-    setReturnType I64
-    r <- call' "allocGroup" [constI64 1] I64
-    emit r
-
-allocBlockLockFunction _ =
-  runEDSL $ do
-    setReturnType I64
-    r <- call' "allocBlock" [] I64
-    emit r
-
-allocBlockOnNodeFunction _ =
-  runEDSL $ do
-    setReturnType I64
-    _ <- param I32
-    r <- call' "allocBlock" [] I64
-    emit r
-
-allocBlockOnNodeLockFunction _ =
-  runEDSL $ do
-    setReturnType I64
-    node <- param I32
-    r <- call' "allocBlockOnNode" [node] I64
-    emit r
-
-allocGroupFunction _ =
-  runEDSL $ do
-    setReturnType I64
-    blocks_n <- param I64
-    if'
-      (blocks_n `gtUInt64` constI64 (1024 * blocks_per_mblock))
-      (emit $ marshalErrorCode errMegaBlockGroup None)
-      mempty
-    mblocks_p <-
-      i64Local $
-      extendUInt32
-        (growMemory (constI32 (1024 * (mblock_size `div` wasmPageSize)))) `mulInt64`
-      constI64 wasmPageSize
-    first_block_p <- i64Local $ mblocks_p `addInt64` constI64 offset_first_block
-    storeI64 mblocks_p (offset_first_bdescr + offset_bdescr_start) first_block_p
-    storeI64 mblocks_p (offset_first_bdescr + offset_bdescr_free) first_block_p
-    storeI32 mblocks_p (offset_first_bdescr + offset_bdescr_blocks) $
-      constI32 $ blocks_per_mblock + ((1023 * mblock_size) `div` block_size)
-    emit $ mblocks_p `addInt64` constI64 offset_first_bdescr
-
-allocGroupLockFunction _ =
-  runEDSL $ do
-    setReturnType I64
-    x <- param I64
-    r <- call' "allocGroup" [x] I64
-    emit r
+initGroup :: Expression -> EDSL ()
+initGroup hd = do
+  storeI64 hd offset_bdescr_free $ loadI64 hd offset_bdescr_start
+  storeI64 hd offset_bdescr_link $ constI64 0
 
 allocGroupOnNodeFunction _ =
   runEDSL $ do
     setReturnType I64
-    [_, x] <- params [I32, I64]
-    r <- call' "allocGroup" [x] I64
-    emit r
+    [node, n] <- params [I32, I64]
+    mblocks <- blocksToMBlocks n
+    bd <- allocMegaGroup node mblocks
+    initGroup bd
+    emit bd
 
-allocGroupOnNodeLockFunction _ =
+getMBlocksFunction _ =
   runEDSL $ do
     setReturnType I64
-    xs <- params [I32, I64]
-    r <- call' "allocGroupOnNode" xs I64
-    emit r
+    n <- param I32
+    ret <-
+      i64Local $
+      extendUInt32 $
+      growMemory (n `mulInt32` constI32 (mblock_size `div` wasmPageSize)) `mulInt32`
+      constI32 wasmPageSize
+    emit ret
+
+mblockGroupBlocks :: Expression -> Expression
+mblockGroupBlocks n =
+  constI64 blocks_per_mblock `addInt64`
+  ((n `subInt64` constI64 1) `mulInt64` constI64 (mblock_size `div` block_size))
+
+initMBlock :: Expression -> Expression -> EDSL ()
+initMBlock mblock node = do
+  block <- i64MutLocal
+  putLVal block $ mblock `addInt64` constI64 offset_first_block
+  bd <- i64MutLocal
+  putLVal bd $ mblock `addInt64` constI64 offset_first_bdescr
+  last_block <- i64Local $ mblock `addInt64` constI64 offset_last_block
+  whileLoop (getLVal block `leUInt64` last_block) $ do
+    storeI64 (getLVal bd) offset_bdescr_start (getLVal block)
+    storeI16 (getLVal bd) offset_bdescr_node node
+    putLVal bd $ getLVal bd `addInt64` constI64 sizeof_bdescr
+    putLVal block $ getLVal block `addInt64` constI64 block_size
+
+allocMegaGroup :: Expression -> Expression -> EDSL Expression
+allocMegaGroup node mblocks = do
+  mblock <- call' "getMBlocks" [wrapInt64 mblocks] I64
+  initMBlock mblock node
+  bd <- i64Local $ mblock `addInt64` constI64 offset_first_bdescr
+  storeI32 bd offset_bdescr_blocks $ wrapI64 $ mblockGroupBlocks mblocks
+  pure bd
 
 freeFunction _ =
   runEDSL $ do
@@ -587,7 +566,7 @@ stgRunFunction BuiltinsOptions {..} =
     setReturnType I64
     f <- mutParam I64
     _ <- param I64
-    loop $ \loop_lbl ->
+    loop' $ \loop_lbl ->
       if' (eqZInt64 (getLVal f)) mempty $ do
         f' <-
           callIndirect'
