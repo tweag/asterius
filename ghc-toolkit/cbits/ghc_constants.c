@@ -1,4 +1,5 @@
 #include <Rts.h>
+#include <Schedule.h>
 #include <Capability.h>
 
 HsInt roundup(HsInt x, HsInt n) { return (x + (n - 1)) & (~(n - 1)); }
@@ -43,6 +44,8 @@ HsInt offset_Capability_r() { return offsetof(Capability, r); }
 
 HsInt offset_Capability_no() { return offsetof(Capability, no); }
 
+HsInt offset_Capability_node() { return offsetof(Capability, node); }
+
 HsInt offset_Capability_running_task() {
   return offsetof(Capability, running_task);
 }
@@ -52,6 +55,8 @@ HsInt offset_Capability_in_haskell() {
 }
 
 HsInt offset_Capability_idle() { return offsetof(Capability, idle); }
+
+HsInt offset_Capability_disabled() { return offsetof(Capability, disabled); }
 
 HsInt offset_Capability_run_queue_hd() {
   return offsetof(Capability, run_queue_hd);
@@ -63,6 +68,25 @@ HsInt offset_Capability_run_queue_tl() {
 
 HsInt offset_Capability_n_run_queue() {
   return offsetof(Capability, n_run_queue);
+}
+HsInt offset_Capability_suspended_ccalls() {
+  return offsetof(Capability, suspended_ccalls);
+}
+HsInt offset_Capability_n_suspended_ccalls() {
+  return offsetof(Capability, n_suspended_ccalls);
+}
+
+HsInt offset_Capability_mut_lists() { return offsetof(Capability, mut_lists); }
+
+HsInt offset_Capability_saved_mut_lists() {
+  return offsetof(Capability, saved_mut_lists);
+}
+
+HsInt offset_Capability_pinned_object_block() {
+  return offsetof(Capability, pinned_object_block);
+}
+HsInt offset_Capability_pinned_object_blocks() {
+  return offsetof(Capability, pinned_object_blocks);
 }
 
 HsInt offset_Capability_weak_ptr_list_hd() {
@@ -83,6 +107,20 @@ HsInt offset_Capability_total_allocated() {
   return offsetof(Capability, total_allocated);
 }
 
+HsInt offset_Capability_free_tvar_watch_queues() {
+  return offsetof(Capability, free_tvar_watch_queues);
+}
+
+HsInt offset_Capability_free_trec_chunks() {
+  return offsetof(Capability, free_trec_chunks);
+}
+HsInt offset_Capability_free_trec_headers() {
+  return offsetof(Capability, free_trec_headers);
+}
+
+HsInt offset_Capability_transaction_tokens() {
+  return offsetof(Capability, transaction_tokens);
+}
 HsInt sizeof_nursery() { return sizeof(nursery); }
 
 HsInt offset_nursery_blocks() { return offsetof(nursery, blocks); }
@@ -210,6 +248,10 @@ HsInt offset_StgStack_stack() {
 }
 
 HsInt sizeof_StgStopFrame() { return sizeof(StgStopFrame); }
+
+HsInt sizeof_StgThunk() { return sizeof(StgThunk); }
+
+HsInt offset_StgThunk_payload() { return offsetof(StgThunk, payload); }
 
 HsInt sizeof_StgTSO() { return sizeof(StgTSO); }
 
@@ -340,6 +382,30 @@ HsInt blocked_BlockedOnCCall_Interruptible() {
 HsInt blocked_BlockedOnMsgThrowTo() { return BlockedOnMsgThrowTo; }
 
 HsInt blocked_ThreadMigrating() { return ThreadMigrating; }
+
+HsInt recent_ACTIVITY_YES() { return ACTIVITY_YES; }
+
+HsInt recent_ACTIVITY_MAYBE_NO() { return ACTIVITY_MAYBE_NO; }
+
+HsInt recent_ACTIVITY_INACTIVE() { return ACTIVITY_INACTIVE; }
+
+HsInt recent_ACTIVITY_DONE_GC() { return ACTIVITY_DONE_GC; }
+
+HsInt ret_HeapOverflow() { return HeapOverflow; }
+
+HsInt ret_StackOverflow() { return StackOverflow; }
+
+HsInt ret_ThreadYielding() { return ThreadYielding; }
+
+HsInt ret_ThreadBlocked() { return ThreadBlocked; }
+
+HsInt ret_ThreadFinished() { return ThreadFinished; }
+
+HsInt sched_SCHED_RUNNING() { return SCHED_RUNNING; }
+
+HsInt sched_SCHED_INTERRUPTING() { return SCHED_INTERRUPTING; }
+
+HsInt sched_SCHED_SHUTTING_DOWN() { return SCHED_SHUTTING_DOWN; }
 
 HsInt scheduler_NoStatus() { return NoStatus; }
 

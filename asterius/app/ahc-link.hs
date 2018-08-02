@@ -14,16 +14,19 @@ import Asterius.JSFFI
 import Asterius.Marshal
 import Asterius.Resolve
 import Asterius.Store
+import Asterius.Types
 import Bindings.Binaryen.Raw
 import Control.Exception
 import Control.Monad
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
 import qualified Data.HashMap.Strict as HM
+import qualified Data.HashSet as HS
 import Data.IORef
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
+import qualified Data.Vector as V
 import Foreign
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
@@ -41,11 +44,12 @@ data Task = Task
   , outputLinkReport, outputGraphViz :: Maybe FilePath
   , debug, optimize, outputIR, run :: Bool
   , heapSize :: Int
+  , asteriusInstanceCallback :: String
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\i m_wasm m_node m_report m_gv dbg opt ir r m_hs ->
+  (\i m_wasm m_node m_report m_gv dbg opt ir r m_hs m_with_i ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
@@ -57,6 +61,10 @@ parseTask =
        , outputIR = ir
        , run = r
        , heapSize = maybe 1024 read m_hs
+       , asteriusInstanceCallback =
+           fromMaybe
+             "i => {\ni.wasmInstance.exports.hs_init();\ni.wasmInstance.exports.rts_evalLazyIO(i.staticsSymbolMap.MainCapability, i.staticsSymbolMap.Main_main_closure, 0);\n}"
+             m_with_i
        }) <$>
   strOption (long "input" <> help "Path of the Main module") <*>
   optional
@@ -83,7 +91,12 @@ parseTask =
     (strOption
        (long "heap-size" <>
         help
-          "Heap size in MBs, used for both nursery/object pool. Defaults to 1024."))
+          "Heap size in MBs, used for both nursery/object pool. Defaults to 1024.")) <*>
+  optional
+    (strOption
+       (long "asterius-instance-callback" <>
+        help
+          "Supply a JavaScript callback expression which will be invoked on the initiated asterius instance. Defaults to calling Main.main"))
 
 opts :: ParserInfo Task
 opts =
@@ -92,6 +105,17 @@ opts =
     (fullDesc <>
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
+
+genSymbolDict :: HM.HashMap AsteriusEntitySymbol Int64 -> Builder
+genSymbolDict sym_map =
+  "{" <>
+  mconcat
+    (intersperse
+       ","
+       [ string7 (show sym) <> ":" <> int64Dec sym_idx
+       | (sym, sym_idx) <- HM.toList sym_map
+       ]) <>
+  "}"
 
 genNode :: Task -> LinkReport -> IO Builder
 genNode Task {..} LinkReport {..} = do
@@ -106,9 +130,14 @@ genNode Task {..} LinkReport {..} = do
       , string7 $ show $ takeFileName outputWasm
       , "), jsffiFactory: "
       , generateFFIImportObjectFactory bundledFFIMarshalState
+      , ", staticsSymbolMap: "
+      , genSymbolDict staticsSymbolMap
+      , ", functionSymbolMap: "
+      , genSymbolDict functionSymbolMap
       , "});\n"
-      , "i.wasmInstance.exports.hs_init();\n"
-      , "i.wasmInstance.exports.main();\n"
+      , "("
+      , string7 asteriusInstanceCallback
+      , ")(i);\n"
       , "}\n"
       , "process.on('unhandledRejection', err => { throw err; });\n"
       , "main();\n"
@@ -183,15 +212,10 @@ main = do
   putStrLn "[INFO] Attempting to link into a standalone WebAssembly module"
   let (!m_final_m, !report) =
         linkStart debug final_store $
-        if debug
-          then [ "hs_init"
-               , "main"
-               , "__asterius_Load_Sp"
-               , "__asterius_Load_SpLim"
-               , "__asterius_Load_Hp"
-               , "__asterius_Load_HpLim"
-               ]
-          else ["hs_init", "main"]
+        HS.fromList
+          [ AsteriusEntitySymbol {entityName = internalName}
+          | FunctionExport {..} <- V.toList $ rtsAsteriusFunctionExports debug
+          ]
   maybe
     (pure ())
     (\p -> do

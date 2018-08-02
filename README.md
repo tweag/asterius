@@ -20,11 +20,15 @@ root@76bcb511663d:/mirror# ahc-link --help
 
 See the help text of `ahc-link` for further instructions.
 
-What works for now:
+What works currently:
 
-* All GHC language features except Template Haskell
-* Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`
-* Importing JavaScript expressions via the `foreign import javascript` syntax
+* All GHC language features except Template Haskell.
+* Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
+* Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSRef` type in Haskell land.
+* Invoking RTS API on the JavaScript side to manipulate Haskell closures and trigger evaluation.
+* A debugger which outputs memory loads/stores and control flow transfers.
+* A monadic EDSL to construct WebAssembly code directly in Haskell.
+* Besides WebAssembly MVP & the experimental BigInt support, no special requirements on the underlying JavaScript engine.
 
 Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs) and [`array`](asterius/test/array/array.hs) test suites first to get some idea on current capabilities of `asterius`.
 

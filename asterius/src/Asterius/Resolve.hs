@@ -331,10 +331,9 @@ makeStaticsOffsetTable ::
 makeStaticsOffsetTable AsteriusModule {..} = (last_o, fromList statics_map)
   where
     (last_o, statics_map) = layoutStatics $ sortOn fst $ HM.toList staticsMap
-    layoutStatics = foldl' iterLayoutStaticsState (8, [])
+    layoutStatics = foldl' iterLayoutStaticsState (16, [])
     iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
-      ( fromIntegral $
-        8 * roundup_bytes_to_words (fromIntegral ptr + asteriusStaticsSize ss)
+      ( fromIntegral $ roundup (fromIntegral ptr + asteriusStaticsSize ss) 16
       , (ss_sym, ptr) : sym_map)
 
 makeMemory ::

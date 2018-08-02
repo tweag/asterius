@@ -38,7 +38,12 @@ async function newAsteriusInstance(req) {
                   "errUnimplemented",
                   "errAtomics",
                   "errSetBaseReg",
-                  "errBrokenFunction"
+                  "errBrokenFunction",
+                  "errAssert",
+                  "errSchedulerReenteredFromHaskell",
+                  "errIllegalSchedState",
+                  "errIllegalPrevWhatNext",
+                  "errIllegalThreadReturnCode"
                 ][e - 1]
             ),
           __asterius_current_memory: p => {
@@ -243,6 +248,8 @@ async function newAsteriusInstance(req) {
   __asterius_wasm_instance = resultObject.instance;
   return {
     wasmModule: resultObject.module,
-    wasmInstance: resultObject.instance
+    wasmInstance: resultObject.instance,
+    staticsSymbolMap: req.staticsSymbolMap,
+    functionSymbolMap: req.functionSymbolMap
   };
 }

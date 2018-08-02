@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -Wall -O2 -ddump-to-file -ddump-rn -ddump-stg -ddump-cmm-raw -ddump-asm #-}
+{-# OPTIONS_GHC -Wall -ddump-to-file -ddump-rn -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 foreign import javascript "new Date()" current_time :: IO JSRef
 

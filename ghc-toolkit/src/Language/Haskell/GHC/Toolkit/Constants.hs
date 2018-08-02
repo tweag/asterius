@@ -43,6 +43,9 @@ foreign import ccall unsafe "offset_Capability_r" offset_Capability_r :: Int
 
 foreign import ccall unsafe "offset_Capability_no" offset_Capability_no :: Int
 
+foreign import ccall unsafe "offset_Capability_node" offset_Capability_node
+  :: Int
+
 foreign import ccall unsafe "offset_Capability_running_task" offset_Capability_running_task
   :: Int
 
@@ -52,6 +55,9 @@ foreign import ccall unsafe "offset_Capability_in_haskell" offset_Capability_in_
 foreign import ccall unsafe "offset_Capability_idle" offset_Capability_idle
   :: Int
 
+foreign import ccall unsafe "offset_Capability_disabled" offset_Capability_disabled
+  :: Int
+
 foreign import ccall unsafe "offset_Capability_run_queue_hd" offset_Capability_run_queue_hd
   :: Int
 
@@ -59,6 +65,24 @@ foreign import ccall unsafe "offset_Capability_run_queue_tl" offset_Capability_r
   :: Int
 
 foreign import ccall unsafe "offset_Capability_n_run_queue" offset_Capability_n_run_queue
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_suspended_ccalls" offset_Capability_suspended_ccalls
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_n_suspended_ccalls" offset_Capability_n_suspended_ccalls
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_mut_lists" offset_Capability_mut_lists
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_saved_mut_lists" offset_Capability_saved_mut_lists
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_pinned_object_block" offset_Capability_pinned_object_block
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_pinned_object_blocks" offset_Capability_pinned_object_blocks
   :: Int
 
 foreign import ccall unsafe "offset_Capability_weak_ptr_list_hd" offset_Capability_weak_ptr_list_hd
@@ -74,6 +98,18 @@ foreign import ccall unsafe "offset_Capability_interrupt" offset_Capability_inte
   :: Int
 
 foreign import ccall unsafe "offset_Capability_total_allocated" offset_Capability_total_allocated
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_free_tvar_watch_queues" offset_Capability_free_tvar_watch_queues
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_free_trec_chunks" offset_Capability_free_trec_chunks
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_free_trec_headers" offset_Capability_free_trec_headers
+  :: Int
+
+foreign import ccall unsafe "offset_Capability_transaction_tokens" offset_Capability_transaction_tokens
   :: Int
 
 foreign import ccall unsafe "sizeof_nursery" sizeof_nursery :: Int
@@ -229,6 +265,11 @@ foreign import ccall unsafe "offset_StgStack_stack" offset_StgStack_stack :: Int
 
 foreign import ccall unsafe "sizeof_StgStopFrame" sizeof_StgStopFrame :: Int
 
+foreign import ccall unsafe "sizeof_StgThunk" sizeof_StgThunk :: Int
+
+foreign import ccall unsafe "offset_StgThunk_payload" offset_StgThunk_payload
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgTSO" sizeof_StgTSO :: Int
 
 foreign import ccall unsafe "offset_StgTSO__link" offset_StgTSO__link :: Int
@@ -372,6 +413,35 @@ foreign import ccall unsafe "blocked_BlockedOnMsgThrowTo" blocked_BlockedOnMsgTh
   :: Int
 
 foreign import ccall unsafe "blocked_ThreadMigrating" blocked_ThreadMigrating
+  :: Int
+
+foreign import ccall unsafe "recent_ACTIVITY_YES" recent_ACTIVITY_YES :: Int
+
+foreign import ccall unsafe "recent_ACTIVITY_MAYBE_NO" recent_ACTIVITY_MAYBE_NO
+  :: Int
+
+foreign import ccall unsafe "recent_ACTIVITY_INACTIVE" recent_ACTIVITY_INACTIVE
+  :: Int
+
+foreign import ccall unsafe "recent_ACTIVITY_DONE_GC" recent_ACTIVITY_DONE_GC
+  :: Int
+
+foreign import ccall unsafe "ret_HeapOverflow" ret_HeapOverflow :: Int
+
+foreign import ccall unsafe "ret_StackOverflow" ret_StackOverflow :: Int
+
+foreign import ccall unsafe "ret_ThreadYielding" ret_ThreadYielding :: Int
+
+foreign import ccall unsafe "ret_ThreadBlocked" ret_ThreadBlocked :: Int
+
+foreign import ccall unsafe "ret_ThreadFinished" ret_ThreadFinished :: Int
+
+foreign import ccall unsafe "sched_SCHED_RUNNING" sched_SCHED_RUNNING :: Int
+
+foreign import ccall unsafe "sched_SCHED_INTERRUPTING" sched_SCHED_INTERRUPTING
+  :: Int
+
+foreign import ccall unsafe "sched_SCHED_SHUTTING_DOWN" sched_SCHED_SHUTTING_DOWN
   :: Int
 
 foreign import ccall unsafe "scheduler_NoStatus" scheduler_NoStatus :: Int
