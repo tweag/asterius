@@ -1,5 +1,9 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
+
+import Control.DeepSeq
+import GHC.Generics
 
 fib :: Int -> Int
 fib n = go 0 1 0
@@ -19,7 +23,9 @@ data BinTree
   = Tip
   | Branch !BinTree
            !BinTree
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
+
+instance NFData BinTree
 
 genBinTree :: Int -> BinTree
 genBinTree 0 = Tip
@@ -41,7 +47,7 @@ main = do
   print_i64 $ fact 5
   print_f64 $ cos 0.5
   print_f64 $ 2 ** 3
-  print_i64 $ sizeofBinTree $ genBinTree 3
-  print_i64 $ sizeofBinTree $ genBinTree 5
+  print_i64 $ sizeofBinTree $ force $ genBinTree 3
+  print_i64 $ sizeofBinTree $ force $ genBinTree 5
   print_i64 $ facts !! 5
   print_i64 $ facts !! 5
