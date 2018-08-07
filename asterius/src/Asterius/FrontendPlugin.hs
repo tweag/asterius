@@ -51,8 +51,6 @@ frontendPlugin =
                                 mod_sym
                                 "dump-cmm-raw-ast"
                         writeFile p_c $ ppShow cmmRaw
-                        let p_s = asteriusModulePath obj_topdir mod_sym "txt"
-                        writeFile p_s $ ppShow m
           , finalize =
               liftIO $ do
                 store <- readIORef store_ref

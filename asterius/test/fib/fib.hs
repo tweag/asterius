@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 import Control.DeepSeq
+import qualified Data.IntMap.Strict as IM
 import GHC.Generics
 
 fib :: Int -> Int
@@ -18,6 +19,9 @@ fact n = n * fact (n - 1)
 
 facts :: [Int]
 facts = scanl (*) 1 [1 ..]
+
+factMap :: Int -> IM.IntMap Int
+factMap n = IM.fromList $ take n $ zip [0 ..] facts
 
 data BinTree
   = Tip
@@ -50,4 +54,4 @@ main = do
   print_i64 $ sizeofBinTree $ force $ genBinTree 3
   print_i64 $ sizeofBinTree $ force $ genBinTree 5
   print_i64 $ facts !! 5
-  print_i64 $ facts !! 5
+  print_i64 $ factMap 10 IM.! 5

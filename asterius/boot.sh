@@ -44,4 +44,11 @@ $ASTERIUS_TMP_DIR/Setup build --builddir=$ASTERIUS_TMP_DIR/dist/deepseq $ASTERIU
 $ASTERIUS_TMP_DIR/Setup install --builddir=$ASTERIUS_TMP_DIR/dist/deepseq $ASTERIUS_INSTALL_OPTIONS
 cd ..
 
+$ASTERIUS_GHC containers/Setup.hs -no-keep-hi-files -no-keep-o-files -o $ASTERIUS_TMP_DIR/Setup
+cd containers
+$ASTERIUS_TMP_DIR/Setup configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --package-db=$ASTERIUS_LIB_DIR/package.conf.d --builddir=$ASTERIUS_TMP_DIR/dist/containers --with-ghc=$ASTERIUS_AHC $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_TMP_DIR/Setup build --builddir=$ASTERIUS_TMP_DIR/dist/containers $ASTERIUS_BUILD_OPTIONS
+$ASTERIUS_TMP_DIR/Setup install --builddir=$ASTERIUS_TMP_DIR/dist/containers $ASTERIUS_INSTALL_OPTIONS
+cd ..
+
 cd ..

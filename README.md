@@ -23,7 +23,7 @@ See the help text of `ahc-link` for further instructions.
 What works currently:
 
 * All GHC language features except Template Haskell.
-* Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`/`deepseq`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
+* Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`/`deepseq`/`containers`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
 * Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSRef` type in Haskell land.
 * Invoking RTS API on the JavaScript side to manipulate Haskell closures and trigger evaluation.
 * A debugger which outputs memory loads/stores and control flow transfers.

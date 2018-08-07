@@ -183,6 +183,8 @@ main = do
             , "array"
             , "-package"
             , "deepseq"
+            , "-package"
+            , "containers"
             ]
         , compiler = c
         }

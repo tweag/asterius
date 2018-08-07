@@ -101,8 +101,6 @@ bootRTSCmm BootArgs {..} = do
             when is_debug $ do
               let p_c = asteriusModulePath obj_topdir mod_sym "dump-cmm-raw-ast"
               writeFile p_c $ ppShow cmmRaw
-              let p_s = asteriusModulePath obj_topdir mod_sym "txt"
-              writeFile p_s $ ppShow m
   if rtsOnly
     then do
       rts_store <- readIORef store_ref
