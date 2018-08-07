@@ -45,11 +45,12 @@ data Task = Task
   , debug, optimize, outputIR, run :: Bool
   , heapSize :: Int
   , asteriusInstanceCallback :: String
+  , extraGHCFlags :: [String]
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\i m_wasm m_node m_report m_gv dbg opt ir r m_hs m_with_i ->
+  (\i m_wasm m_node m_report m_gv dbg opt ir r m_hs m_with_i ghc_flags ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
@@ -65,6 +66,7 @@ parseTask =
            fromMaybe
              "i => {\ni.wasmInstance.exports.hs_init();\ni.wasmInstance.exports.rts_evalLazyIO(i.staticsSymbolMap.MainCapability, i.staticsSymbolMap.Main_main_closure, 0);\n}"
              m_with_i
+       , extraGHCFlags = ghc_flags
        }) <$>
   strOption (long "input" <> help "Path of the Main module") <*>
   optional
@@ -96,7 +98,8 @@ parseTask =
     (strOption
        (long "asterius-instance-callback" <>
         help
-          "Supply a JavaScript callback expression which will be invoked on the initiated asterius instance. Defaults to calling Main.main"))
+          "Supply a JavaScript callback expression which will be invoked on the initiated asterius instance. Defaults to calling Main.main")) <*>
+  many (strOption (long "ghc-option" <> help "Extra GHC flags"))
 
 opts :: ParserInfo Task
 opts =
@@ -190,7 +193,8 @@ main = do
                   , "ghc-boot-th"
                   , "template-haskell"
                   ]
-              ]
+              ] <>
+            extraGHCFlags
         , compiler = c
         }
       [input]
