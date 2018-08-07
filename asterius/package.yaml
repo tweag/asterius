@@ -14,6 +14,8 @@ extra-source-files:
   - test/fib/fib.hs
   - test/jsffi/jsffi.hs
   - test/array/array.hs
+  - test/th/Splices.hs
+  - test/th/th.hs
 
 data-files:
   - rts/rts.js
@@ -121,5 +123,11 @@ tests:
   array:
     source-dirs: test
     main: array.hs
+    dependencies:
+      - asterius
+
+  th:
+    source-dirs: test
+    main: th.hs
     dependencies:
       - asterius

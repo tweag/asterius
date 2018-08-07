@@ -65,4 +65,25 @@ $ASTERIUS_TMP_DIR/Setup build --builddir=$ASTERIUS_TMP_DIR/dist/mtl $ASTERIUS_BU
 $ASTERIUS_TMP_DIR/Setup install --builddir=$ASTERIUS_TMP_DIR/dist/mtl $ASTERIUS_INSTALL_OPTIONS
 cd ..
 
+$ASTERIUS_GHC pretty/Setup.hs -no-keep-hi-files -no-keep-o-files -o $ASTERIUS_TMP_DIR/Setup
+cd pretty
+$ASTERIUS_TMP_DIR/Setup configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --package-db=$ASTERIUS_LIB_DIR/package.conf.d --builddir=$ASTERIUS_TMP_DIR/dist/pretty --with-ghc=$ASTERIUS_AHC $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_TMP_DIR/Setup build --builddir=$ASTERIUS_TMP_DIR/dist/pretty $ASTERIUS_BUILD_OPTIONS
+$ASTERIUS_TMP_DIR/Setup install --builddir=$ASTERIUS_TMP_DIR/dist/pretty $ASTERIUS_INSTALL_OPTIONS
+cd ..
+
+$ASTERIUS_GHC ghc-boot-th/Setup.hs -no-keep-hi-files -no-keep-o-files -o $ASTERIUS_TMP_DIR/Setup
+cd ghc-boot-th
+$ASTERIUS_TMP_DIR/Setup configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --package-db=$ASTERIUS_LIB_DIR/package.conf.d --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th --with-ghc=$ASTERIUS_AHC $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_TMP_DIR/Setup build --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th $ASTERIUS_BUILD_OPTIONS
+$ASTERIUS_TMP_DIR/Setup install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th $ASTERIUS_INSTALL_OPTIONS
+cd ..
+
+$ASTERIUS_GHC template-haskell/Setup.hs -no-keep-hi-files -no-keep-o-files -o $ASTERIUS_TMP_DIR/Setup
+cd template-haskell
+$ASTERIUS_TMP_DIR/Setup configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --package-db=$ASTERIUS_LIB_DIR/package.conf.d --builddir=$ASTERIUS_TMP_DIR/dist/template-haskell --with-ghc=$ASTERIUS_AHC $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_TMP_DIR/Setup build --builddir=$ASTERIUS_TMP_DIR/dist/template-haskell $ASTERIUS_BUILD_OPTIONS
+$ASTERIUS_TMP_DIR/Setup install --builddir=$ASTERIUS_TMP_DIR/dist/template-haskell $ASTERIUS_INSTALL_OPTIONS
+cd ..
+
 cd ..
