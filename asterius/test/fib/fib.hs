@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 import Control.DeepSeq
+import Control.Monad.State.Strict
 import qualified Data.IntMap.Strict as IM
 import GHC.Generics
 
@@ -22,6 +23,15 @@ facts = scanl (*) 1 [1 ..]
 
 factMap :: Int -> IM.IntMap Int
 factMap n = IM.fromList $ take n $ zip [0 ..] facts
+
+sumFacts :: Int -> Int
+sumFacts n =
+  fst $
+  flip execState (0, 0) $
+  fix $ \w -> do
+    (tot, i) <- get
+    put (tot + facts !! i, i + 1)
+    when (i < n) w
 
 data BinTree
   = Tip
@@ -55,3 +65,4 @@ main = do
   print_i64 $ sizeofBinTree $ force $ genBinTree 5
   print_i64 $ facts !! 5
   print_i64 $ factMap 10 IM.! 5
+  print_i64 $ sumFacts 5

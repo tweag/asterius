@@ -185,6 +185,10 @@ main = do
             , "deepseq"
             , "-package"
             , "containers"
+            , "-package"
+            , "transformers"
+            , "-package"
+            , "mtl"
             ]
         , compiler = c
         }
