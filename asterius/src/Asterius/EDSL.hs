@@ -91,6 +91,7 @@ module Asterius.EDSL
 import Asterius.Internals
 import Asterius.Types
 import Asterius.TypesConv
+import Control.Monad.Fail
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Short as SBS
 import qualified Data.DList as DL
@@ -118,6 +119,9 @@ initialEDSLState =
 newtype EDSL a =
   EDSL (State EDSLState a)
   deriving (Functor, Applicative, Monad)
+
+instance MonadFail EDSL where
+  fail = pure . error
 
 instance Semigroup a => Semigroup (EDSL a) where
   p0 <> p1 = (<>) <$> p0 <*> p1
