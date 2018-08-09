@@ -16,6 +16,7 @@ extra-source-files:
   - test/array/array.hs
   - test/th/Splices.hs
   - test/th/th.hs
+  - test/stableptr/stableptr.hs
 
 data-files:
   - rts/rts.js
@@ -129,5 +130,11 @@ tests:
   th:
     source-dirs: test
     main: th.hs
+    dependencies:
+      - asterius
+
+  stableptr:
+    source-dirs: test
+    main: stableptr.hs
     dependencies:
       - asterius

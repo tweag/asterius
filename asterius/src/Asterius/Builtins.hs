@@ -45,7 +45,7 @@ import Data.Foldable
 import Data.List
 import Data.Maybe
 import qualified Data.Vector as V
-import Foreign
+import Foreign (Int32, Word64, Word8)
 import qualified GHC
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
@@ -119,6 +119,8 @@ rtsAsteriusModule opts =
                       (encodePrim (fromIntegral recent_ACTIVITY_YES :: Word64))
                   ]
               })
+        , ( "rts_breakpoint_io_action"
+          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
         , ( "rts_stop_on_exception"
           , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
         , ( "RtsFlags"
@@ -133,8 +135,6 @@ rtsAsteriusModule opts =
                       (encodePrim (fromIntegral sched_SCHED_RUNNING :: Word64))
                   ]
               })
-        , ( "stable_ptr_table"
-          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
         ]
     , functionMap =
         [ ("main", mainFunction opts)
@@ -161,6 +161,8 @@ rtsAsteriusModule opts =
         , ("createGenThread", createGenThreadFunction opts)
         , ("createIOThread", createIOThreadFunction opts)
         , ("createStrictIOThread", createStrictIOThreadFunction opts)
+        , ("malloc", mallocFunction opts)
+        , ("memcpy", memcpyFunction opts)
         , ("allocate", allocateFunction opts)
         , ("allocGroupOnNode", allocGroupOnNodeFunction opts)
         , ("getMBlocks", getMBlocksFunction opts)
@@ -168,6 +170,9 @@ rtsAsteriusModule opts =
         , ("newCAF", newCAFFunction opts)
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
+        , ("getStablePtr", getStablePtrWrapperFunction opts)
+        , ("deRefStablePtr", deRefStablePtrWrapperFunction opts)
+        , ("hs_free_stable_ptr", freeStablePtrWrapperFunction opts)
         , ("print_i64", printI64Function opts)
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
@@ -224,6 +229,24 @@ rtsAsteriusFunctionImports debug =
   , op <- ["pow"]
   ] <>
   [ AsteriusFunctionImport
+      { internalName = "__asterius_newStablePtr"
+      , externalModuleName = "rts"
+      , externalBaseName = "newStablePtr"
+      , functionType = FunctionType {returnType = I32, paramTypes = [I32]}
+      }
+  , AsteriusFunctionImport
+      { internalName = "__asterius_deRefStablePtr"
+      , externalModuleName = "rts"
+      , externalBaseName = "deRefStablePtr"
+      , functionType = FunctionType {returnType = I32, paramTypes = [I32]}
+      }
+  , AsteriusFunctionImport
+      { internalName = "__asterius_freeStablePtr"
+      , externalModuleName = "rts"
+      , externalBaseName = "freeStablePtr"
+      , functionType = FunctionType {returnType = None, paramTypes = [I32]}
+      }
+  , AsteriusFunctionImport
       { internalName = "printI64"
       , externalModuleName = "rts"
       , externalBaseName = "printI64"
@@ -450,7 +473,7 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
         I64 -> (I32, wrapInt64)
         _ -> (returnType, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL $
@@ -963,6 +986,22 @@ createStrictIOThreadFunction _ =
     , symbol "stg_enter_info"
     ]
 
+mallocFunction _ =
+  runEDSL $ do
+    setReturnType I64
+    size <- param I64
+    call' "allocate" [mainCapability, roundupBytesToWords size] I64 >>= emit
+
+memcpyFunction _ =
+  runEDSL $ do
+    [dest, src, count] <- params [I64, I64, I64]
+    i <- i64MutLocal
+    putLVal i $ constI64 0
+    whileLoop (getLVal i `ltUInt64` count) $ do
+      storeI8 (dest `addInt64` getLVal i) 0 $
+        loadI8 (src `addInt64` getLVal i) 0
+      putLVal i $ getLVal i `addInt64` constI64 1
+
 allocateFunction _ =
   runEDSL $ do
     setReturnType I64
@@ -1087,6 +1126,25 @@ stgReturnFunction _ =
     setReturnType I64
     emit $ constI64 0
 
+getStablePtrWrapperFunction _ =
+  runEDSL $ do
+    setReturnType I64
+    obj64 <- param I64
+    sp32 <- callImport' "__asterius_newStablePtr" [wrapI64 obj64] I32
+    emit $ extendUInt32 sp32
+
+deRefStablePtrWrapperFunction _ =
+  runEDSL $ do
+    setReturnType I64
+    sp64 <- param I64
+    obj32 <- callImport' "__asterius_deRefStablePtr" [wrapI64 sp64] I32
+    emit $ extendUInt32 obj32
+
+freeStablePtrWrapperFunction _ =
+  runEDSL $ do
+    sp64 <- param I64
+    callImport "__asterius_freeStablePtr" [wrapI64 sp64]
+
 printI64Function _ =
   runEDSL $ do
     x <- param I64
@@ -1159,9 +1217,9 @@ memoryTrapFunction _ =
                   , ("enabled_capabilities", 4)
                   , ("large_alloc_lim", 8)
                   , ("n_capabilities", 4)
+                  , ("rts_breakpoint_io_action", 8)
                   , ("rts_stop_on_exception", 4)
                   , ("RtsFlags", 8 * roundup_bytes_to_words sizeof_RTS_FLAGS)
-                  , ("stable_ptr_table", 8)
                   ]
               ]
           , ifTrue =

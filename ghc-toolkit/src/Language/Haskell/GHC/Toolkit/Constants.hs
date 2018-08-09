@@ -121,6 +121,10 @@ foreign import ccall unsafe "offset_nursery_n_blocks" offset_nursery_n_blocks
 
 foreign import ccall unsafe "sizeof_RTS_FLAGS" sizeof_RTS_FLAGS :: Int
 
+foreign import ccall unsafe "sizeof_spEntry" sizeof_spEntry :: Int
+
+foreign import ccall unsafe "offset_spEntry_addr" offset_spEntry_addr :: Int
+
 foreign import ccall unsafe "sizeof_StgInd" sizeof_StgInd :: Int
 
 foreign import ccall unsafe "offset_StgInd_indirectee" offset_StgInd_indirectee

@@ -1922,7 +1922,8 @@ stg_makeStablePtrzh ( P_ obj )
 stg_deRefStablePtrzh ( P_ sp )
 {
     W_ r;
-    r = spEntry_addr(W_[stable_ptr_table] + sp*SIZEOF_spEntry);
+    
+    ("ptr" r) = ccall deRefStablePtr(sp "ptr");
     return (r);
 }
 

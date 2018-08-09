@@ -20,6 +20,8 @@ jobs:
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--optimize")
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array --test-arguments="--debug")
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array --test-arguments="--optimize")
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:stableptr --test-arguments="--debug")
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:stableptr --test-arguments="--optimize")
 
             docker push terrorjack/asterius:$ASTERIUS_REV
             docker push terrorjack/asterius:$CIRCLE_BRANCH

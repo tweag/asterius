@@ -129,6 +129,10 @@ HsInt offset_nursery_n_blocks() { return offsetof(nursery, n_blocks); }
 
 HsInt sizeof_RTS_FLAGS() { return sizeof(RTS_FLAGS); }
 
+HsInt sizeof_spEntry() { return sizeof(spEntry); }
+
+HsInt offset_spEntry_addr() { return offsetof(spEntry, addr); }
+
 HsInt sizeof_StgInd() { return sizeof(StgInd); }
 
 HsInt offset_StgInd_indirectee() { return offsetof(StgInd, indirectee); }
