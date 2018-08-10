@@ -30,7 +30,7 @@ What works currently:
 * A monadic EDSL to construct WebAssembly code directly in Haskell.
 * Besides WebAssembly MVP & the experimental BigInt support, no special requirements on the underlying JavaScript engine.
 
-Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs) and [`array`](asterius/test/array/array.hs) test suites first to get some idea on current capabilities of `asterius`.
+Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs), [`array`](asterius/test/array/array.hs) and [`rtsapi`](asterius/test/rtsapi.hs) test suites first to get some idea on current capabilities of `asterius`.
 
 ## Sponsors
 

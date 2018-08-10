@@ -17,6 +17,7 @@ extra-source-files:
   - test/th/Splices.hs
   - test/th/th.hs
   - test/stableptr/stableptr.hs
+  - test/rtsapi/rtsapi.hs
 
 data-files:
   - rts/rts.js
@@ -136,5 +137,11 @@ tests:
   stableptr:
     source-dirs: test
     main: stableptr.hs
+    dependencies:
+      - asterius
+
+  rtsapi:
+    source-dirs: test
+    main: rtsapi.hs
     dependencies:
       - asterius

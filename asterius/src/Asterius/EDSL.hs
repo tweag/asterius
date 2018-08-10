@@ -47,6 +47,7 @@ module Asterius.EDSL
   , break'
   , whileLoop
   , switchI64
+  , notInt64
   , notInt32
   , eqZInt64
   , eqZInt32
@@ -73,6 +74,7 @@ module Asterius.EDSL
   , ltUInt32
   , neInt64
   , neInt32
+  , andInt64
   , andInt32
   , orInt32
   , symbol
@@ -390,8 +392,10 @@ switchI64 cond make_clauses =
           def_clause
      in switch_block
 
-notInt32, eqZInt64, eqZInt32, extendUInt32, wrapInt64, convertUInt64ToFloat64, truncUFloat64ToInt64, growMemory, roundupBytesToWords ::
+notInt64, notInt32, eqZInt64, eqZInt32, extendUInt32, wrapInt64, convertUInt64ToFloat64, truncUFloat64ToInt64, growMemory, roundupBytesToWords ::
      Expression -> Expression
+notInt64 = eqZInt64
+
 notInt32 = eqZInt32
 
 eqZInt64 = Unary EqZInt64
@@ -410,7 +414,7 @@ growMemory x = Host {hostOp = GrowMemory, name = "", operands = [x]}
 
 roundupBytesToWords n = (n `addInt64` constI64 7) `divUInt64` constI64 8
 
-addInt64, subInt64, mulInt64, divUInt64, gtUInt64, geUInt64, geUInt32, addInt32, subInt32, mulInt32, eqInt64, eqInt32, ltUInt64, leUInt64, ltUInt32, neInt64, neInt32, andInt32, orInt32 ::
+addInt64, subInt64, mulInt64, divUInt64, gtUInt64, geUInt64, geUInt32, addInt32, subInt32, mulInt32, eqInt64, eqInt32, ltUInt64, leUInt64, ltUInt32, neInt64, neInt32, andInt64, andInt32, orInt32 ::
      Expression -> Expression -> Expression
 addInt64 = Binary AddInt64
 
@@ -445,6 +449,8 @@ ltUInt32 = Binary LtUInt32
 neInt64 = Binary NeInt64
 
 neInt32 = Binary NeInt32
+
+andInt64 = Binary AndInt64
 
 andInt32 = Binary AndInt32
 

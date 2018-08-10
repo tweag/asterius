@@ -46,11 +46,12 @@ data Task = Task
   , heapSize :: Int
   , asteriusInstanceCallback :: String
   , extraGHCFlags :: [String]
+  , extraRootSymbols :: [AsteriusEntitySymbol]
   }
 
 parseTask :: Parser Task
 parseTask =
-  (\i m_wasm m_node m_report m_gv dbg opt ir r m_hs m_with_i ghc_flags ->
+  (\i m_wasm m_node m_report m_gv dbg opt ir r m_hs m_with_i ghc_flags root_syms ->
      Task
        { input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
@@ -67,6 +68,8 @@ parseTask =
              "i => {\ni.wasmInstance.exports.hs_init();\ni.wasmInstance.exports.rts_evalLazyIO(i.staticsSymbolMap.MainCapability, i.staticsSymbolMap.Main_main_closure, 0);\n}"
              m_with_i
        , extraGHCFlags = ghc_flags
+       , extraRootSymbols =
+           [AsteriusEntitySymbol {entityName = sym} | sym <- root_syms]
        }) <$>
   strOption (long "input" <> help "Path of the Main module") <*>
   optional
@@ -99,7 +102,11 @@ parseTask =
        (long "asterius-instance-callback" <>
         help
           "Supply a JavaScript callback expression which will be invoked on the initiated asterius instance. Defaults to calling Main.main")) <*>
-  many (strOption (long "ghc-option" <> help "Extra GHC flags"))
+  many (strOption (long "ghc-option" <> help "Extra GHC flags")) <*>
+  many
+    (strOption
+       (long "extra-root-symbol" <>
+        help "Symbol of extra root entity, e.g. Main_f_closure"))
 
 opts :: ParserInfo Task
 opts =
@@ -170,7 +177,7 @@ main = do
       defaultConfig
         { ghcFlags =
             [ "-Wall"
-            , "-O2"
+            , "-O"
             , "-i" <> takeDirectory input
             , "-clear-package-db"
             , "-global-package-db"
@@ -225,10 +232,11 @@ main = do
   putStrLn "[INFO] Attempting to link into a standalone WebAssembly module"
   let (!m_final_m, !report) =
         linkStart debug final_store $
-        HS.fromList
-          [ AsteriusEntitySymbol {entityName = internalName}
-          | FunctionExport {..} <- V.toList $ rtsAsteriusFunctionExports debug
-          ]
+        HS.fromList $
+        extraRootSymbols <>
+        [ AsteriusEntitySymbol {entityName = internalName}
+        | FunctionExport {..} <- V.toList $ rtsAsteriusFunctionExports debug
+        ]
   maybe
     (pure ())
     (\p -> do

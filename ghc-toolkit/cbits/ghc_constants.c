@@ -133,6 +133,10 @@ HsInt sizeof_spEntry() { return sizeof(spEntry); }
 
 HsInt offset_spEntry_addr() { return offsetof(spEntry, addr); }
 
+HsInt sizeof_StgClosure() { return sizeof(StgClosure); }
+
+HsInt offset_StgClosure_payload() { return offsetof(StgClosure, payload); }
+
 HsInt sizeof_StgInd() { return sizeof(StgInd); }
 
 HsInt offset_StgInd_indirectee() { return offsetof(StgInd, indirectee); }
@@ -426,3 +430,17 @@ HsInt sizeof_bool() { return sizeof(bool); }
 HsInt sizeof_int() { return sizeof(int); }
 
 HsInt sizeof_SchedulerStatus() { return sizeof(SchedulerStatus); }
+
+HsInt tso_LOCKED() { return TSO_LOCKED; }
+
+HsInt tso_BLOCKEX() { return TSO_BLOCKEX; }
+
+HsInt tso_INTERRUPTIBLE() { return TSO_INTERRUPTIBLE; }
+
+HsInt tso_STOPPED_ON_BREAKPOINT() { return TSO_STOPPED_ON_BREAKPOINT; }
+
+HsInt tso_MARKED() { return TSO_MARKED; }
+
+HsInt tso_SQUEEZED() { return TSO_SQUEEZED; }
+
+HsInt tso_ALLOC_LIMIT() { return TSO_ALLOC_LIMIT; }

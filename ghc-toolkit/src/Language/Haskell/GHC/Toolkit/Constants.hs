@@ -125,6 +125,11 @@ foreign import ccall unsafe "sizeof_spEntry" sizeof_spEntry :: Int
 
 foreign import ccall unsafe "offset_spEntry_addr" offset_spEntry_addr :: Int
 
+foreign import ccall unsafe "sizeof_StgClosure" sizeof_StgClosure :: Int
+
+foreign import ccall unsafe "offset_StgClosure_payload" offset_StgClosure_payload
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgInd" sizeof_StgInd :: Int
 
 foreign import ccall unsafe "offset_StgInd_indirectee" offset_StgInd_indirectee
@@ -465,3 +470,18 @@ foreign import ccall unsafe "sizeof_int" sizeof_int :: Int
 
 foreign import ccall unsafe "sizeof_SchedulerStatus" sizeof_SchedulerStatus
   :: Int
+
+foreign import ccall unsafe "tso_LOCKED" tso_LOCKED :: Int
+
+foreign import ccall unsafe "tso_BLOCKEX" tso_BLOCKEX :: Int
+
+foreign import ccall unsafe "tso_INTERRUPTIBLE" tso_INTERRUPTIBLE :: Int
+
+foreign import ccall unsafe "tso_STOPPED_ON_BREAKPOINT" tso_STOPPED_ON_BREAKPOINT
+  :: Int
+
+foreign import ccall unsafe "tso_MARKED" tso_MARKED :: Int
+
+foreign import ccall unsafe "tso_SQUEEZED" tso_SQUEEZED :: Int
+
+foreign import ccall unsafe "tso_ALLOC_LIMIT" tso_ALLOC_LIMIT :: Int

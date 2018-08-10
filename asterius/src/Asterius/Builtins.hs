@@ -16,19 +16,11 @@ module Asterius.Builtins
   , errGCEnter1
   , errGCFun
   , errBarf
-  , errStgGC
   , errUnreachableBlock
-  , errHeapOverflow
-  , errMegaBlockGroup
   , errUnimplemented
   , errAtomics
   , errSetBaseReg
   , errBrokenFunction
-  , errAssert
-  , errSchedulerReenteredFromHaskell
-  , errIllegalSchedState
-  , errIllegalPrevWhatNext
-  , errIllegalThreadReturnCode
   , wasmPageSize
   , cutI64
   , generateWasmFunctionTypeName
@@ -152,6 +144,14 @@ rtsAsteriusModule opts =
         , ( "rts_evalLazyIO_wrapper"
           , generateWrapperFunction "rts_evalLazyIO" $
             rtsEvalLazyIOFunction opts)
+        , ("rts_evalStableIO", rtsEvalStableIOFunction opts)
+        , ( "rts_evalStableIO_wrapper"
+          , generateWrapperFunction "rts_evalStableIO" $
+            rtsEvalStableIOFunction opts)
+        , ("rts_getSchedStatus", rtsGetSchedStatusFunction opts)
+        , ( "rts_getSchedStatus_wrapper"
+          , generateWrapperFunction "rts_getSchedStatus" $
+            rtsGetSchedStatusFunction opts)
         , ("setTSOLink", setTSOLinkFunction opts)
         , ("setTSOPrev", setTSOPrevFunction opts)
         , ("threadStackOverflow", threadStackOverflowFunction opts)
@@ -164,6 +164,8 @@ rtsAsteriusModule opts =
         , ("malloc", mallocFunction opts)
         , ("memcpy", memcpyFunction opts)
         , ("allocate", allocateFunction opts)
+        , ( "allocate_wrapper"
+          , generateWrapperFunction "allocate" $ allocateFunction opts)
         , ("allocGroupOnNode", allocGroupOnNodeFunction opts)
         , ("getMBlocks", getMBlocksFunction opts)
         , ("free", freeFunction opts)
@@ -171,8 +173,45 @@ rtsAsteriusModule opts =
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
         , ("getStablePtr", getStablePtrWrapperFunction opts)
+        , ( "getStablePtr_wrapper"
+          , generateWrapperFunction "getStablePtr" $
+            getStablePtrWrapperFunction opts)
         , ("deRefStablePtr", deRefStablePtrWrapperFunction opts)
+        , ( "deRefStablePtr_wrapper"
+          , generateWrapperFunction "deRefStablePtr" $
+            deRefStablePtrWrapperFunction opts)
         , ("hs_free_stable_ptr", freeStablePtrWrapperFunction opts)
+        , ( "hs_free_stable_ptr_wrapper"
+          , generateWrapperFunction "hs_free_stable_ptr" $
+            freeStablePtrWrapperFunction opts)
+        , ("rts_mkInt", rtsMkIntFunction opts)
+        , ( "rts_mkInt_wrapper"
+          , generateWrapperFunction "rts_mkInt" $ rtsMkIntFunction opts)
+        , ("rts_mkWord", rtsMkWordFunction opts)
+        , ( "rts_mkWord_wrapper"
+          , generateWrapperFunction "rts_mkWord" $ rtsMkWordFunction opts)
+        , ("rts_mkPtr", rtsMkPtrFunction opts)
+        , ( "rts_mkPtr_wrapper"
+          , generateWrapperFunction "rts_mkPtr" $ rtsMkPtrFunction opts)
+        , ("rts_mkStablePtr", rtsMkStablePtrFunction opts)
+        , ( "rts_mkStablePtr_wrapper"
+          , generateWrapperFunction "rts_mkStablePtr" $
+            rtsMkStablePtrFunction opts)
+        , ("rts_getInt", rtsGetIntFunction opts)
+        , ( "rts_getInt_wrapper"
+          , generateWrapperFunction "rts_getInt" $ rtsGetIntFunction opts)
+        , ("rts_getWord", rtsGetIntFunction opts)
+        , ( "rts_getWord_wrapper"
+          , generateWrapperFunction "rts_getWord" $ rtsGetIntFunction opts)
+        , ("rts_getPtr", rtsGetIntFunction opts)
+        , ( "rts_getPtr_wrapper"
+          , generateWrapperFunction "rts_getPtr" $ rtsGetIntFunction opts)
+        , ("rts_getStablePtr", rtsGetIntFunction opts)
+        , ( "rts_getStablePtr_wrapper"
+          , generateWrapperFunction "rts_getStablePtr" $ rtsGetIntFunction opts)
+        , ("loadI64", loadI64Function opts)
+        , ( "loadI64_wrapper"
+          , generateWrapperFunction "loadI64" $ loadI64Function opts)
         , ("print_i64", printI64Function opts)
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
@@ -364,7 +403,27 @@ rtsAsteriusFunctionExports :: Bool -> V.Vector FunctionExport
 rtsAsteriusFunctionExports debug =
   V.fromList $
   [ FunctionExport {internalName = f <> "_wrapper", externalName = f}
-  | f <- ["rts_apply", "rts_eval", "rts_evalIO", "rts_evalLazyIO"]
+  | f <-
+      [ "allocate"
+      , "loadI64"
+      , "rts_mkInt"
+      , "rts_mkWord"
+      , "rts_mkPtr"
+      , "rts_mkStablePtr"
+      , "rts_getInt"
+      , "rts_getWord"
+      , "rts_getPtr"
+      , "rts_getStablePtr"
+      , "rts_apply"
+      , "rts_eval"
+      , "rts_evalIO"
+      , "rts_evalLazyIO"
+      , "rts_evalStableIO"
+      , "rts_getSchedStatus"
+      , "getStablePtr"
+      , "deRefStablePtr"
+      , "hs_free_stable_ptr"
+      ]
   ] <>
   [ FunctionExport {internalName = f, externalName = f}
   | f <-
@@ -394,7 +453,7 @@ marshalErrorCode err vt =
     , valueType = vt
     }
 
-errGCEnter1, errGCFun, errBarf, errStgGC, errUnreachableBlock, errHeapOverflow, errMegaBlockGroup, errUnimplemented, errAtomics, errSetBaseReg, errBrokenFunction, errAssert, errSchedulerReenteredFromHaskell, errIllegalSchedState, errIllegalPrevWhatNext, errIllegalThreadReturnCode ::
+errGCEnter1, errGCFun, errBarf, errUnreachableBlock, errHeapOverflow, errUnimplemented, errAtomics, errSetBaseReg, errBrokenFunction, errAssert, errSchedulerReenteredFromHaskell, errIllegalSchedState, errIllegalPrevWhatNext, errIllegalThreadReturnCode ::
      Int32
 errGCEnter1 = 1
 
@@ -402,13 +461,9 @@ errGCFun = 2
 
 errBarf = 3
 
-errStgGC = 4
-
 errUnreachableBlock = 5
 
 errHeapOverflow = 6
-
-errMegaBlockGroup = 7
 
 errUnimplemented = 8
 
@@ -473,7 +528,7 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
         I64 -> (I32, wrapInt64)
         _ -> (returnType, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL $
@@ -568,6 +623,36 @@ rtsEvalFunction opts = runEDSL $ rtsEvalHelper opts "createGenThread"
 rtsEvalIOFunction opts = runEDSL $ rtsEvalHelper opts "createStrictIOThread"
 
 rtsEvalLazyIOFunction opts = runEDSL $ rtsEvalHelper opts "createIOThread"
+
+rtsEvalStableIOFunction BuiltinsOptions {..} =
+  runEDSL $ do
+    [cap, s, ret] <- params [I64, I64, I64]
+    p <- call' "deRefStablePtr" [s] I64
+    tso <-
+      call'
+        "createStrictIOThread"
+        [cap, constI64 $ roundup_bytes_to_words threadStateSize, p]
+        I64
+    storeI32 tso offset_StgTSO_flags $
+      loadI32 tso offset_StgTSO_flags `orInt32` constI32 tso_BLOCKEX `orInt32`
+      constI32 tso_INTERRUPTIBLE
+    rp <- call' "allocate" [cap, constI64 1] I64
+    call "scheduleWaitThread" [tso, rp, cap]
+    stat <- call' "rts_getSchedStatus" [cap] I32
+    if'
+      ((stat `eqInt32` constI32 scheduler_Success) `andInt32`
+       (ret `neInt64` constI64 0))
+      (call' "getStablePtr" [loadI64 rp 0] I64 >>= storeI64 ret 0)
+      mempty
+
+rtsGetSchedStatusFunction _ =
+  runEDSL $ do
+    setReturnType I32
+    cap <- param I64
+    emit $
+      loadI32
+        (loadI64 (loadI64 cap offset_Capability_running_task) offset_Task_incall)
+        offset_InCall_rstat
 
 appendToRunQueue :: BuiltinsOptions -> Expression -> Expression -> EDSL ()
 appendToRunQueue opts cap tso = do
@@ -1144,6 +1229,40 @@ freeStablePtrWrapperFunction _ =
   runEDSL $ do
     sp64 <- param I64
     callImport "__asterius_freeStablePtr" [wrapI64 sp64]
+
+rtsMkHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> AsteriusFunction
+rtsMkHelper _ con_sym =
+  runEDSL $ do
+    setReturnType I64
+    [cap, i] <- params [I64, I64]
+    p <- call' "allocate" [cap, constI64 2] I64
+    storeI64 p 0 $ symbol con_sym
+    storeI64 p 8 i
+    emit p
+
+rtsMkIntFunction opts = rtsMkHelper opts "ghczmprim_GHCziTypes_Izh_con_info"
+
+rtsMkWordFunction opts = rtsMkHelper opts "ghczmprim_GHCziTypes_Wzh_con_info"
+
+rtsMkPtrFunction opts = rtsMkHelper opts "base_GHCziPtr_Ptr_con_info"
+
+rtsMkStablePtrFunction opts =
+  rtsMkHelper opts "base_GHCziStable_StablePtr_con_info"
+
+unTagClosure :: Expression -> Expression
+unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
+
+rtsGetIntFunction _ =
+  runEDSL $ do
+    setReturnType I64
+    p <- param I64
+    emit $ loadI64 (unTagClosure p) offset_StgClosure_payload
+
+loadI64Function _ =
+  runEDSL $ do
+    setReturnType I64
+    p <- param I64
+    emit $ loadI64 p 0
 
 printI64Function _ =
   runEDSL $ do
