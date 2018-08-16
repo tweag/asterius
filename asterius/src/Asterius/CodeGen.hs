@@ -42,9 +42,6 @@ import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Prelude hiding (IO)
 import qualified Unique as GHC
 
-asmPpr :: GHC.Outputable a => GHC.DynFlags -> a -> String
-asmPpr dflags = GHC.showSDoc dflags . GHC.pprCode GHC.AsmStyle . GHC.ppr
-
 type CodeGenContext = (GHC.DynFlags, String)
 
 newtype CodeGen a =

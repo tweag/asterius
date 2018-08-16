@@ -10,6 +10,9 @@ foreign import javascript "console.log(${1})" js_print :: JSRef -> IO ()
 
 The source text of `foreign import javascript` should be a valid JavaScript expression (but you can use something like `${1}`, `${2}` to refer to the function parameters). Supported types are:
 
+* `Ptr`
+* `FunPtr`
+* `StablePtr`
 * `Int`
 * `Word`
 * `Char`

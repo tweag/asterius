@@ -28,24 +28,25 @@ hooksFromCompiler c =
         { hscFrontendHook =
             Just $ \mod_summary -> do
               let ms_mod0 = ms_mod mod_summary
-              r@(FrontendTypecheck tc_env) <-
+              FrontendTypecheck tc_env0 <-
                 genericHscFrontend'
                   (\mod_summary' p -> do
-                     r <- patch c mod_summary' p
+                     r <- patchParsed c mod_summary' p
                      liftIO $
                        atomicModifyIORef' tc_map $ \m ->
                          ( extendModuleEnv
                              m
                              (ms_mod mod_summary')
-                             (p, undefined)
+                             (r, undefined)
                          , ())
                      pure r)
                   mod_summary
+              tc_env <- patchTypechecked c mod_summary tc_env0
               liftIO $
                 atomicModifyIORef' tc_map $ \m ->
                   let Just (p, _) = m `lookupModuleEnv` ms_mod0
                    in (extendModuleEnv m ms_mod0 (p, tc_env), ())
-              pure r
+              pure $ FrontendTypecheck tc_env
         , runPhaseHook =
             Just $ \phase_plus input_fn dflags ->
               case phase_plus of
@@ -74,7 +75,7 @@ hooksFromCompiler c =
                         mod_summary
                         HaskellIR
                           { parsed = p
-                          , typeChecked = tc
+                          , typechecked = tc
                           , core = cgguts
                           , stg = _stg
                           , cmm = _cmm

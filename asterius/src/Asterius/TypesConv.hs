@@ -5,6 +5,7 @@ module Asterius.TypesConv
   ( marshalToModuleSymbol
   , zEncodeModuleSymbol
   , generateWasmFunctionTypeName
+  , asmPpr
   ) where
 
 import Asterius.Internals
@@ -43,3 +44,7 @@ generateWasmFunctionTypeName FunctionType {..} =
   showSBS returnType <> "(" <>
   mconcat (intersperse "," [showSBS t | t <- V.toList paramTypes]) <>
   ")"
+
+{-# INLINEABLE asmPpr #-}
+asmPpr :: GHC.Outputable a => GHC.DynFlags -> a -> String
+asmPpr dflags = GHC.showSDoc dflags . GHC.pprCode GHC.AsmStyle . GHC.ppr

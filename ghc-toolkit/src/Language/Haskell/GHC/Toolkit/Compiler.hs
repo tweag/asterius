@@ -5,7 +5,8 @@ module Language.Haskell.GHC.Toolkit.Compiler
   ( HaskellIR(..)
   , CmmIR(..)
   , Compiler
-  , patch
+  , patchParsed
+  , patchTypechecked
   , withHaskellIR
   , withCmmIR
   , finalize
@@ -20,7 +21,7 @@ import TcRnTypes
 
 data HaskellIR = HaskellIR
   { parsed :: HsParsedModule
-  , typeChecked :: TcGblEnv
+  , typechecked :: TcGblEnv
   , core :: CgGuts
   , stg :: [StgTopBinding]
   , cmm :: [CmmDecl]
@@ -33,7 +34,8 @@ data CmmIR = CmmIR
   }
 
 data Compiler = Compiler
-  { patch :: ModSummary -> HsParsedModule -> Hsc HsParsedModule
+  { patchParsed :: ModSummary -> HsParsedModule -> Hsc HsParsedModule
+  , patchTypechecked :: ModSummary -> TcGblEnv -> Hsc TcGblEnv
   , withHaskellIR :: ModSummary -> HaskellIR -> CompPipeline ()
   , withCmmIR :: CmmIR -> CompPipeline ()
   , finalize :: Ghc ()
@@ -42,25 +44,33 @@ data Compiler = Compiler
 instance Semigroup Compiler where
   c0 <> c1 =
     Compiler
-      { patch =
+      { patchParsed =
           \mod_summary parsed_mod -> do
-            parsed_mod' <- patch c0 mod_summary parsed_mod
-            patch c1 mod_summary parsed_mod'
-      , withHaskellIR = \mod_summary hs_ir -> do
-          withHaskellIR c0 mod_summary hs_ir
-          withHaskellIR c1 mod_summary hs_ir
-      , withCmmIR = \cmm_ir -> do
-          withCmmIR c0 cmm_ir
-          withCmmIR c1 cmm_ir
-      , finalize = do
-          finalize c0
-          finalize c1
+            parsed_mod' <- patchParsed c0 mod_summary parsed_mod
+            patchParsed c1 mod_summary parsed_mod'
+      , patchTypechecked =
+          \mod_summary tc_mod -> do
+            tc_mod' <- patchTypechecked c0 mod_summary tc_mod
+            patchTypechecked c1 mod_summary tc_mod'
+      , withHaskellIR =
+          \mod_summary hs_ir -> do
+            withHaskellIR c0 mod_summary hs_ir
+            withHaskellIR c1 mod_summary hs_ir
+      , withCmmIR =
+          \cmm_ir -> do
+            withCmmIR c0 cmm_ir
+            withCmmIR c1 cmm_ir
+      , finalize =
+          do finalize c0
+             finalize c1
       }
 
 instance Monoid Compiler where
-  mempty = Compiler
-    { patch = const pure
-    , withHaskellIR = \_ _ -> pure ()
-    , withCmmIR = \_ -> pure ()
-    , finalize = pure ()
-    }
+  mempty =
+    Compiler
+      { patchParsed = const pure
+      , patchTypechecked = const pure
+      , withHaskellIR = \_ _ -> pure ()
+      , withCmmIR = \_ -> pure ()
+      , finalize = pure ()
+      }

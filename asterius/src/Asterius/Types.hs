@@ -49,7 +49,7 @@ module Asterius.Types
   , Chunk(..)
   , FFIValueType(..)
   , FFIFunctionType(..)
-  , FFIDecl(..)
+  , FFIImportDecl(..)
   , FFIMarshalState(..)
   ) where
 
@@ -596,7 +596,6 @@ instance Serialize a => Serialize (Chunk a)
 
 data FFIValueType
   = FFI_VAL { ffiWasmValueType, ffiJSValueType :: ValueType
-            , hsValueTypeModule, hsValueTypeName :: String
             , signed :: Bool }
   | FFI_JSREF
   deriving (Show, Generic, Data)
@@ -606,20 +605,19 @@ instance Serialize FFIValueType
 data FFIFunctionType = FFIFunctionType
   { ffiParamTypes :: [FFIValueType]
   , ffiResultType :: Maybe FFIValueType
-  , ffiInIO :: Bool
   } deriving (Show, Generic, Data)
 
 instance Serialize FFIFunctionType
 
-data FFIDecl = FFIDecl
+data FFIImportDecl = FFIImportDecl
   { ffiFunctionType :: FFIFunctionType
   , ffiSourceChunks :: [Chunk Int]
   } deriving (Show, Generic, Data)
 
-instance Serialize FFIDecl
+instance Serialize FFIImportDecl
 
 newtype FFIMarshalState = FFIMarshalState
-  { ffiDecls :: HM.HashMap AsteriusModuleSymbol (IM.IntMap FFIDecl)
+  { ffiImportDecls :: HM.HashMap AsteriusModuleSymbol (IM.IntMap FFIImportDecl)
   } deriving (Show, Generic, Data, Semigroup, Monoid)
 
 instance Serialize FFIMarshalState
