@@ -50,6 +50,7 @@ module Asterius.Types
   , FFIValueType(..)
   , FFIFunctionType(..)
   , FFIImportDecl(..)
+  , FFIExportDecl(..)
   , FFIMarshalState(..)
   ) where
 
@@ -596,6 +597,7 @@ instance Serialize a => Serialize (Chunk a)
 
 data FFIValueType
   = FFI_VAL { ffiWasmValueType, ffiJSValueType :: ValueType
+            , hsTyCon :: SBS.ShortByteString
             , signed :: Bool }
   | FFI_JSREF
   deriving (Show, Generic, Data)
@@ -605,6 +607,7 @@ instance Serialize FFIValueType
 data FFIFunctionType = FFIFunctionType
   { ffiParamTypes :: [FFIValueType]
   , ffiResultType :: Maybe FFIValueType
+  , ffiInIO :: Bool
   } deriving (Show, Generic, Data)
 
 instance Serialize FFIFunctionType
@@ -616,9 +619,27 @@ data FFIImportDecl = FFIImportDecl
 
 instance Serialize FFIImportDecl
 
-newtype FFIMarshalState = FFIMarshalState
+data FFIExportDecl = FFIExportDecl
+  { ffiFunctionType :: FFIFunctionType
+  , ffiExportClosure :: AsteriusEntitySymbol
+  } deriving (Show, Generic, Data)
+
+instance Serialize FFIExportDecl
+
+data FFIMarshalState = FFIMarshalState
   { ffiImportDecls :: HM.HashMap AsteriusModuleSymbol (IM.IntMap FFIImportDecl)
-  } deriving (Show, Generic, Data, Semigroup, Monoid)
+  , ffiExportDecls :: HM.HashMap AsteriusModuleSymbol (HM.HashMap AsteriusEntitySymbol FFIExportDecl)
+  } deriving (Show, Generic, Data)
+
+instance Semigroup FFIMarshalState where
+  s0 <> s1 =
+    FFIMarshalState
+      { ffiImportDecls = ffiImportDecls s0 <> ffiImportDecls s1
+      , ffiExportDecls = ffiExportDecls s0 <> ffiExportDecls s1
+      }
+
+instance Monoid FFIMarshalState where
+  mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
 
 instance Serialize FFIMarshalState
 

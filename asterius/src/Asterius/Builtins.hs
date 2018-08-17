@@ -152,6 +152,10 @@ rtsAsteriusModule opts =
         , ( "rts_getSchedStatus_wrapper"
           , generateWrapperFunction "rts_getSchedStatus" $
             rtsGetSchedStatusFunction opts)
+        , ("rts_checkSchedStatus", rtsCheckSchedStatusFunction opts)
+        , ( "rts_checkSchedStatus_wrapper"
+          , generateWrapperFunction "rts_checkSchedStatus" $
+            rtsCheckSchedStatusFunction opts)
         , ("setTSOLink", setTSOLinkFunction opts)
         , ("setTSOPrev", setTSOPrevFunction opts)
         , ("threadStackOverflow", threadStackOverflowFunction opts)
@@ -420,6 +424,7 @@ rtsAsteriusFunctionExports debug =
       , "rts_evalLazyIO"
       , "rts_evalStableIO"
       , "rts_getSchedStatus"
+      , "rts_checkSchedStatus"
       , "getStablePtr"
       , "deRefStablePtr"
       , "hs_free_stable_ptr"
@@ -528,7 +533,7 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
         I64 -> (I32, wrapInt64)
         _ -> (returnType, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL $
@@ -653,6 +658,13 @@ rtsGetSchedStatusFunction _ =
       loadI32
         (loadI64 (loadI64 cap offset_Capability_running_task) offset_Task_incall)
         offset_InCall_rstat
+
+rtsCheckSchedStatusFunction _ =
+  runEDSL $ do
+    cap <- param I64
+    stat <- call' "rts_getSchedStatus" [cap] I32
+    if' (stat `eqInt32` constI32 scheduler_Success) mempty $
+      emit $ marshalErrorCode errIllegalSchedState None
 
 appendToRunQueue :: BuiltinsOptions -> Expression -> Expression -> EDSL ()
 appendToRunQueue opts cap tso = do

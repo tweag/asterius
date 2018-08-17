@@ -16,7 +16,7 @@ foreign import javascript "console.log(${1})" print_int :: Int -> IO ()
 foreign import javascript "${1}" js_stableptr_id
   :: StablePtr Int -> IO (StablePtr Int)
 
-foreign export javascript "plus_hs" (+) :: Int -> Int -> Int
+foreign export javascript "mult_hs" (*) :: Int -> Int -> Int
 
 main :: IO ()
 main = do

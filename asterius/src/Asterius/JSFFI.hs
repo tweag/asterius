@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedLists #-}
@@ -27,11 +28,13 @@ import Data.Attoparsec.ByteString.Char8
   )
 import Data.ByteString.Builder
 import qualified Data.ByteString.Char8 as CBS
+import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapM, gmapQ, gmapT)
 import qualified Data.HashMap.Strict as HM
 import Data.IORef
 import qualified Data.IntMap.Strict as IM
 import Data.List
+import Data.Monoid
 import Data.String
 import qualified Data.Vector as V
 import qualified ForeignCall as GHC
@@ -72,42 +75,88 @@ combineChunks =
 parseFFIChunks :: Parser [Chunk Int]
 parseFFIChunks = combineChunks <$> parseChunks (parseChunk (parseField decimal))
 
-marshalToFFIValueType :: GHC.LHsType GHC.GhcPs -> Maybe FFIValueType
+marshalToFFIValueType ::
+     (GHC.HasOccName (GHC.IdP p)) => GHC.LHsType p -> Maybe FFIValueType
 marshalToFFIValueType (GHC.unLoc -> GHC.HsParTy _ t) = marshalToFFIValueType t
 marshalToFFIValueType (GHC.unLoc -> t) =
   case t of
-    GHC.HsAppTy _ (GHC.unLoc -> (GHC.HsTyVar _ _ (GHC.rdrNameOcc . GHC.unLoc -> c))) _
-      | c `elem`
-          map
-            GHC.nameOccName
-            [GHC.ptrTyConName, GHC.funPtrTyConName, GHC.stablePtrTyConName] ->
+    GHC.HsAppTy _ (GHC.unLoc -> (GHC.HsTyVar _ _ (GHC.occName . GHC.unLoc -> c))) _
+      | c == GHC.occName GHC.ptrTyConName ->
         pure
-          FFI_VAL {ffiWasmValueType = I64, ffiJSValueType = I32, signed = False}
-    GHC.HsTyVar _ _ (GHC.rdrNameOcc . GHC.unLoc -> tv)
-      | tv == GHC.nameOccName GHC.charTyConName ->
+          FFI_VAL
+            { ffiWasmValueType = I64
+            , ffiJSValueType = I32
+            , hsTyCon = "Ptr"
+            , signed = False
+            }
+      | c == GHC.occName GHC.funPtrTyConName ->
         pure
-          FFI_VAL {ffiWasmValueType = I64, ffiJSValueType = I32, signed = False}
-      | tv == GHC.nameOccName GHC.intTyConName ->
+          FFI_VAL
+            { ffiWasmValueType = I64
+            , ffiJSValueType = I32
+            , hsTyCon = "FunPtr"
+            , signed = False
+            }
+      | c == GHC.occName GHC.stablePtrTyConName ->
         pure
-          FFI_VAL {ffiWasmValueType = I64, ffiJSValueType = I32, signed = True}
-      | tv == GHC.nameOccName GHC.wordTyConName ->
+          FFI_VAL
+            { ffiWasmValueType = I64
+            , ffiJSValueType = I32
+            , hsTyCon = "StablePtr"
+            , signed = False
+            }
+    GHC.HsTyVar _ _ (GHC.occName . GHC.unLoc -> tv)
+      | tv == GHC.occName GHC.charTyConName ->
         pure
-          FFI_VAL {ffiWasmValueType = I64, ffiJSValueType = I32, signed = False}
-      | tv == GHC.nameOccName GHC.floatTyConName ->
+          FFI_VAL
+            { ffiWasmValueType = I64
+            , ffiJSValueType = I32
+            , hsTyCon = "Char"
+            , signed = False
+            }
+      | tv == GHC.occName GHC.intTyConName ->
         pure
-          FFI_VAL {ffiWasmValueType = F32, ffiJSValueType = F32, signed = True}
-      | tv == GHC.nameOccName GHC.doubleTyConName ->
+          FFI_VAL
+            { ffiWasmValueType = I64
+            , ffiJSValueType = I32
+            , hsTyCon = "Int"
+            , signed = True
+            }
+      | tv == GHC.occName GHC.wordTyConName ->
         pure
-          FFI_VAL {ffiWasmValueType = F64, ffiJSValueType = F64, signed = True}
+          FFI_VAL
+            { ffiWasmValueType = I64
+            , ffiJSValueType = I32
+            , hsTyCon = "Word"
+            , signed = False
+            }
+      | tv == GHC.occName GHC.floatTyConName ->
+        pure
+          FFI_VAL
+            { ffiWasmValueType = F32
+            , ffiJSValueType = F32
+            , hsTyCon = "Float"
+            , signed = True
+            }
+      | tv == GHC.occName GHC.doubleTyConName ->
+        pure
+          FFI_VAL
+            { ffiWasmValueType = F64
+            , ffiJSValueType = F64
+            , hsTyCon = "Double"
+            , signed = True
+            }
       | GHC.occNameString tv == "JSRef" -> pure FFI_JSREF
     _ -> empty
 
-marshalToFFIResultType :: GHC.LHsType GHC.GhcPs -> Maybe (Maybe FFIValueType)
+marshalToFFIResultType ::
+     (GHC.HasOccName (GHC.IdP p)) => GHC.LHsType p -> Maybe (Maybe FFIValueType)
 marshalToFFIResultType (GHC.unLoc -> GHC.HsParTy _ t) = marshalToFFIResultType t
 marshalToFFIResultType (GHC.unLoc -> GHC.HsTupleTy _ _ []) = pure Nothing
 marshalToFFIResultType t = Just <$> marshalToFFIValueType t
 
-marshalToFFIFunctionType :: GHC.LHsType GHC.GhcPs -> Maybe FFIFunctionType
+marshalToFFIFunctionType ::
+     (GHC.HasOccName (GHC.IdP p)) => GHC.LHsType p -> Maybe FFIFunctionType
 marshalToFFIFunctionType (GHC.unLoc -> GHC.HsParTy _ t) =
   marshalToFFIFunctionType t
 marshalToFFIFunctionType (GHC.unLoc -> ty) =
@@ -116,13 +165,16 @@ marshalToFFIFunctionType (GHC.unLoc -> ty) =
       vt <- marshalToFFIValueType t
       ft <- marshalToFFIFunctionType ts
       pure ft {ffiParamTypes = vt : ffiParamTypes ft}
-    GHC.HsAppTy _ (GHC.unLoc -> (GHC.HsTyVar _ _ (GHC.rdrNameOcc . GHC.unLoc -> io))) t
-      | io == GHC.nameOccName GHC.ioTyConName -> do
+    GHC.HsAppTy _ (GHC.unLoc -> (GHC.HsTyVar _ _ (GHC.occName . GHC.unLoc -> io))) t
+      | io == GHC.occName GHC.ioTyConName -> do
         r <- marshalToFFIResultType t
-        pure $ FFIFunctionType {ffiParamTypes = [], ffiResultType = r}
+        pure $
+          FFIFunctionType
+            {ffiParamTypes = [], ffiResultType = r, ffiInIO = True}
     _ -> do
       r <- marshalToFFIResultType (GHC.noLoc ty)
-      pure FFIFunctionType {ffiParamTypes = [], ffiResultType = r}
+      pure
+        FFIFunctionType {ffiParamTypes = [], ffiResultType = r, ffiInIO = False}
 
 rewriteJSRef :: Data a => a -> a
 rewriteJSRef t =
@@ -180,45 +232,55 @@ processFFI mod_sym = w
       case eqTypeRep (typeOf t) (typeRep :: TypeRep (GHC.ForeignDecl GHC.GhcPs)) of
         Just HRefl ->
           case t of
-            GHC.ForeignImport {fd_fi = GHC.CImport loc_conv _ _ _ loc_src, ..} ->
-              case GHC.unLoc loc_conv of
-                GHC.JavaScriptCallConv -> do
-                  FFIMarshalState {..} <- get
-                  let old_decls = ffiImportDecls ! mod_sym
-                      new_k = maybe 0 (succ . fst) $ IM.lookupMax old_decls
-                      new_decls = IM.insert new_k new_decl old_decls
-                  put $
-                    FFIMarshalState
-                      {ffiImportDecls = HM.singleton mod_sym new_decls}
-                  pure
-                    t
-                      { GHC.fd_fi =
-                          GHC.CImport
-                            (GHC.noLoc GHC.CCallConv)
-                            (GHC.noLoc GHC.PlayRisky)
-                            Nothing
-                            (GHC.CFunction $
-                             GHC.StaticTarget
-                               GHC.NoSourceText
-                               (GHC.mkFastString $
-                                recoverWasmWrapperFunctionName mod_sym new_k)
-                               Nothing
-                               True)
-                            (GHC.noLoc GHC.NoSourceText)
-                      }
-                  where GHC.SourceText src = GHC.unLoc loc_src
-                        Just ffi_ftype =
-                          marshalToFFIFunctionType $
-                          GHC.hsImplicitBody fd_sig_ty
-                        Right chunks =
-                          parseOnly parseFFIChunks $ CBS.pack $ read src
-                        new_decl =
-                          FFIImportDecl
-                            { ffiFunctionType = ffi_ftype
-                            , ffiSourceChunks = chunks
-                            }
-                _ -> pure t
-            GHC.ForeignExport {..} ->
+            GHC.ForeignImport { GHC.fd_fi = GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) _ _ _ loc_src
+                              , ..
+                              } -> do
+              old_state@FFIMarshalState {..} <- get
+              let old_decls = ffiImportDecls ! mod_sym
+                  new_k = maybe 0 (succ . fst) $ IM.lookupMax old_decls
+                  new_decls = IM.insert new_k new_decl old_decls
+              put $ old_state {ffiImportDecls = HM.singleton mod_sym new_decls}
+              pure
+                t
+                  { GHC.fd_fi =
+                      GHC.CImport
+                        (GHC.noLoc GHC.CCallConv)
+                        (GHC.noLoc GHC.PlayRisky)
+                        Nothing
+                        (GHC.CFunction $
+                         GHC.StaticTarget
+                           GHC.NoSourceText
+                           (GHC.mkFastString $
+                            recoverWasmWrapperFunctionName mod_sym new_k)
+                           Nothing
+                           True)
+                        (GHC.noLoc GHC.NoSourceText)
+                  }
+              where GHC.SourceText src = GHC.unLoc loc_src
+                    Just ffi_ftype =
+                      marshalToFFIFunctionType $ GHC.hsImplicitBody fd_sig_ty
+                    Right chunks =
+                      parseOnly parseFFIChunks $ CBS.pack $ read src
+                    new_decl =
+                      FFIImportDecl
+                        {ffiFunctionType = ffi_ftype, ffiSourceChunks = chunks}
+            GHC.ForeignExport { GHC.fd_fe = GHC.CExport (GHC.unLoc -> GHC.CExportStatic src_txt lbl GHC.JavaScriptCallConv) loc_src
+                              , ..
+                              } -> do
+              old_state@FFIMarshalState {..} <- get
+              let old_decls = ffiExportDecls ! mod_sym
+                  Just ffi_ftype =
+                    marshalToFFIFunctionType $ GHC.hsImplicitBody fd_sig_ty
+                  new_decls =
+                    HM.insert
+                      AsteriusEntitySymbol
+                        { entityName =
+                            SBS.toShort $ GHC.fastStringToByteString lbl
+                        }
+                      FFIExportDecl
+                        {ffiFunctionType = ffi_ftype, ffiExportClosure = ""}
+                      old_decls
+              put $ old_state {ffiExportDecls = HM.singleton mod_sym new_decls}
               pure
                 t
                   { GHC.fd_fe =
@@ -226,8 +288,6 @@ processFFI mod_sym = w
                         (GHC.noLoc $ GHC.CExportStatic src_txt lbl GHC.CCallConv)
                         loc_src
                   }
-              where GHC.CExport loc_spec loc_src = fd_fe
-                    GHC.CExportStatic src_txt lbl _ = GHC.unLoc loc_spec
             _ -> pure t
         _ -> gmapM w t
 
@@ -245,28 +305,32 @@ addFFIProcessor ::
      Compiler
   -> IO (Compiler, AsteriusModuleSymbol -> Prelude.IO AsteriusModule)
 addFFIProcessor c = do
-  ffi_mods_ref <- newIORef mempty
+  ffi_states_ref <- newIORef mempty
   pure
     ( c
         { patchParsed =
             \mod_summary parsed_mod -> do
               patched_mod <-
                 liftIO $
-                atomicModifyIORef' ffi_mods_ref $ \ffi_mods ->
+                atomicModifyIORef' ffi_states_ref $ \ffi_states ->
                   let mod_sym = marshalToModuleSymbol $ GHC.ms_mod mod_summary
                       (patched_mod, ffi_state) =
                         collectFFISrc
                           mod_sym
                           parsed_mod
-                          mempty
-                            {ffiImportDecls = HM.insert mod_sym mempty mempty}
-                      ffi_mod = generateFFIWrapperModule ffi_state
-                   in (HM.insert mod_sym ffi_mod ffi_mods, patched_mod)
+                          FFIMarshalState
+                            { ffiImportDecls = HM.insert mod_sym mempty mempty
+                            , ffiExportDecls = HM.insert mod_sym mempty mempty
+                            }
+                   in (HM.insert mod_sym ffi_state ffi_states, patched_mod)
               patchParsed c mod_summary patched_mod
         , patchTypechecked =
-            \_ tc_mod -> do
+            \mod_summary tc_mod -> do
               dflags <- GHC.getDynFlags
-              let f :: Data a => a -> [(String, String)]
+              let mod_sym = marshalToModuleSymbol $ GHC.ms_mod mod_summary
+                  f :: Data a
+                    => a
+                    -> Endo (HM.HashMap AsteriusEntitySymbol FFIExportDecl)
                   f t =
                     case eqTypeRep
                            (typeOf t)
@@ -274,22 +338,46 @@ addFFIProcessor c = do
                       Just HRefl ->
                         case t of
                           GHC.ForeignExport {..} ->
-                            [ ( GHC.unpackFS lbl
-                              , asmPpr dflags $ GHC.unLoc fd_name)
-                            ]
+                            Endo $
+                            HM.adjust
+                              (\ffi_decl ->
+                                 ffi_decl {ffiExportClosure = export_closure})
+                              export_func_name
                             where GHC.CExport loc_spec _ = fd_fe
                                   GHC.CExportStatic _ lbl _ = GHC.unLoc loc_spec
-                          _ -> []
+                                  export_func_name =
+                                    AsteriusEntitySymbol
+                                      { entityName =
+                                          SBS.toShort $
+                                          GHC.fastStringToByteString lbl
+                                      }
+                                  export_closure =
+                                    fromString $
+                                    asmPpr dflags (GHC.unLoc fd_name) <>
+                                    "_closure"
+                          _ -> mempty
                       _ -> go
                     where
-                      go = concat $ gmapQ f t
-                  ids = f $ GHC.tcg_fords tc_mod
-              liftIO $ print ids
-              pure tc_mod
+                      go = mconcat $ gmapQ f t
+              liftIO $
+                atomicModifyIORef' ffi_states_ref $ \ffi_state ->
+                  ( HM.adjust
+                      (\s ->
+                         s
+                           { ffiExportDecls =
+                               HM.adjust
+                                 (appEndo $ f $ GHC.tcg_fords tc_mod)
+                                 mod_sym $
+                               ffiExportDecls s
+                           })
+                      mod_sym
+                      ffi_state
+                  , tc_mod)
         }
     , \mod_sym ->
-        atomicModifyIORef' ffi_mods_ref $ \ffi_mods ->
-          (HM.delete mod_sym ffi_mods, ffi_mods ! mod_sym))
+        atomicModifyIORef' ffi_states_ref $ \ffi_states ->
+          ( HM.delete mod_sym ffi_states
+          , generateFFIWrapperModule $ ffi_states ! mod_sym))
 
 generateImplicitCastExpression ::
      Bool -> ValueType -> ValueType -> Expression -> Expression
@@ -310,9 +398,9 @@ generateImplicitCastExpression signed src_t dest_t src_expr =
         error $
         "Unsupported implicit cast from " <> show src_t <> " to " <> show dest_t
 
-generateFFIWrapperFunction ::
+generateFFIImportWrapperFunction ::
      AsteriusModuleSymbol -> Int -> FFIImportDecl -> AsteriusFunction
-generateFFIWrapperFunction mod_sym k FFIImportDecl {..} =
+generateFFIImportWrapperFunction mod_sym k FFIImportDecl {..} =
   AsteriusFunction
     { functionType = recoverWasmWrapperFunctionType ffiFunctionType
     , body =
@@ -347,21 +435,115 @@ generateFFIWrapperFunction mod_sym k FFIImportDecl {..} =
     import_func_type = recoverWasmImportFunctionType ffiFunctionType
     wrapper_func_type = recoverWasmWrapperFunctionType ffiFunctionType
 
+generateFFIExportFunction :: FFIExportDecl -> AsteriusFunction
+generateFFIExportFunction FFIExportDecl {..} =
+  AsteriusFunction
+    { functionType = recoverWasmWrapperFunctionType ffiFunctionType
+    , body =
+        Block
+          { name = ""
+          , bodys =
+              V.fromList
+                [ UnresolvedSetLocal
+                    { unresolvedLocalReg = ret
+                    , value =
+                        Call
+                          { target = "allocate"
+                          , operands = [cap, ConstI64 1]
+                          , valueType = I64
+                          }
+                    }
+                , Call
+                    { target =
+                        if ffiInIO ffiFunctionType
+                          then "rts_evalIO"
+                          else "rts_eval"
+                    , operands =
+                        [ cap
+                        , foldl'
+                            (\tot_expr (ffi_param_i, ffi_param_t) ->
+                               Call
+                                 { target = "rts_apply"
+                                 , operands =
+                                     [ cap
+                                     , tot_expr
+                                     , Call
+                                         { target =
+                                             AsteriusEntitySymbol
+                                               { entityName =
+                                                   "rts_mk" <>
+                                                   (case ffi_param_t of
+                                                      FFI_VAL {..} -> hsTyCon
+                                                      FFI_JSREF -> "Int")
+                                               }
+                                         , operands =
+                                             [ cap
+                                             , GetLocal
+                                                 { index = ffi_param_i
+                                                 , valueType =
+                                                     recoverWasmWrapperValueType $
+                                                     Just ffi_param_t
+                                                 }
+                                             ]
+                                         , valueType = I64
+                                         }
+                                     ]
+                                 , valueType = I64
+                                 })
+                            Unresolved {unresolvedSymbol = ffiExportClosure}
+                            (zip [0 ..] $ ffiParamTypes ffiFunctionType)
+                        , UnresolvedGetLocal {unresolvedLocalReg = ret}
+                        ]
+                    , valueType = None
+                    }
+                , Call
+                    { target = "rts_checkSchedStatus"
+                    , operands = [cap]
+                    , valueType = None
+                    }
+                ] <>
+              case ffiResultType ffiFunctionType of
+                Just ffi_result_t ->
+                  [ Call
+                      { target =
+                          AsteriusEntitySymbol
+                            {entityName = "rts_get" <> hsTyCon ffi_result_t}
+                      , operands =
+                          [UnresolvedGetLocal {unresolvedLocalReg = ret}]
+                      , valueType =
+                          recoverWasmWrapperValueType $ Just ffi_result_t
+                      }
+                  ]
+                _ -> []
+          , valueType =
+              recoverWasmWrapperValueType $ ffiResultType ffiFunctionType
+          }
+    }
+  where
+    cap = Unresolved {unresolvedSymbol = "MainCapability"}
+    ret = UniqueLocalReg 0 I64
+
 generateFFIWrapperModule :: FFIMarshalState -> AsteriusModule
 generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =
   mempty
     { functionMap =
-        HM.fromList
-          [ (fromString $ recoverWasmWrapperFunctionName mk k, wrapper_func)
-          | (mk, k, wrapper_func) <- wrapper_funcs
-          ]
+        HM.fromList $
+        [ (fromString $ recoverWasmWrapperFunctionName mk k, wrapper_func)
+        | (mk, k, wrapper_func) <- import_wrapper_funcs
+        ] <>
+        export_funcs
     , ffiMarshalState = mod_ffi_state
     }
   where
-    wrapper_funcs =
-      [ (mk, k, generateFFIWrapperFunction mk k ffi_decl)
+    import_wrapper_funcs =
+      [ (mk, k, generateFFIImportWrapperFunction mk k ffi_decl)
       | (mk, mod_ffi_decls) <- HM.toList ffiImportDecls
       , (k, ffi_decl) <- IM.toList mod_ffi_decls
+      ]
+    export_funcs =
+      [ (k, generateFFIExportFunction ffi_decl)
+      | mod_ffi_decls <- HM.elems ffiExportDecls
+      , (k, ffi_decl) <- HM.toList mod_ffi_decls
       ]
 
 generateFFIFunctionImports :: FFIMarshalState -> [AsteriusFunctionImport]
