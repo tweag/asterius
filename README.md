@@ -25,9 +25,11 @@ What works currently:
 * All GHC language features except Template Haskell.
 * Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`/`deepseq`/`containers`/`transformers`/`mtl`/`pretty`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
 * Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSRef` type in Haskell land.
+* Calling Haskell functions from JavaScript via the `foreign export javascript` syntax. Haskell closures can be passed between Haskell/JavaScript boundary via `StablePtr`.
 * Invoking RTS API on the JavaScript side to manipulate Haskell closures and trigger evaluation.
+* A linker which performs aggressive dead-code elimination, producing as small WebAssembly binary as possible.
 * A debugger which outputs memory loads/stores and control flow transfers.
-* A monadic EDSL to construct WebAssembly code directly in Haskell.
+* Complete `binaryen` raw bindings, plus a monadic EDSL to construct WebAssembly code directly in Haskell.
 * Besides WebAssembly MVP & the experimental BigInt support, no special requirements on the underlying JavaScript engine.
 
 Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs), [`array`](asterius/test/array/array.hs) and [`rtsapi`](asterius/test/rtsapi.hs) test suites first to get some idea on current capabilities of `asterius`.

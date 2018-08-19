@@ -9,7 +9,16 @@ main = do
     , "test/jsffi/jsffi.hs"
     , "--output-link-report"
     , "test/jsffi/jsffi.link.txt"
-    , "--extra-root-symbol=mult_hs"
+    , "--export-function=mult_hs"
     , "--run"
+    ] <>
+    [ mconcat
+        [ "--asterius-instance-callback="
+        , "i => {"
+        , "i.wasmInstance.exports.hs_init();"
+        , "i.wasmInstance.exports.main();"
+        , "console.log(i.wasmInstance.exports.mult_hs(6, 7));"
+        , "}"
+        ]
     ] <>
     args

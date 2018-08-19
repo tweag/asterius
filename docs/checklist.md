@@ -15,7 +15,7 @@ Requirements:
 * Implement `StablePtr`, so that Haskell closures can be safely passed between Haskell/JavaScript boundary without being garbage collected. (done, see `stableptr` unit test)
 * Implement `RtsAPI`, so that JavaScript code can create Haskell closures, trigger evaluation and inspect results. (done, see `rtsapi` unit test)
 * Add `StablePtr` to JSFFI basic types. (done, see `jsffi` unit test)
-* Implement `foreign export javascript` syntax, add necessary logic in `JSFFI`/`Resolve` (in progress)
+* Implement `foreign export javascript` syntax, add necessary logic in `JSFFI`/`Resolve` (done, see `jsffi` unit test)
 
 Rough ETA: before Aug 20th.
 

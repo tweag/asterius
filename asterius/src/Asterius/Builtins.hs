@@ -24,6 +24,7 @@ module Asterius.Builtins
   , wasmPageSize
   , cutI64
   , generateWasmFunctionTypeName
+  , generateWrapperFunction
   ) where
 
 import Asterius.BuildInfo

@@ -32,35 +32,41 @@ patchWritePtrArrayOp t =
   where
     go = gmapT patchWritePtrArrayOp t
 
-maskUnknownCCallTargets :: Data a => a -> a
-maskUnknownCCallTargets t =
-  case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
-    Just HRefl ->
-      case t of
-        Call {..}
-          | not $ has_call_target target ->
-            marshalErrorCode errUnimplemented valueType
-          | target == "createIOThread" ->
-            case V.toList operands of
-              [cap, stack_size_w@Load {valueType = I32}, target_closure] ->
-                t
-                  { operands =
-                      [ cap
-                      , Unary {unaryOp = ExtendUInt32, operand0 = stack_size_w}
-                      , target_closure
-                      ]
-                  }
-              _ -> t
-          | otherwise -> t
-        AtomicRMW {} -> marshalErrorCode errAtomics I64
-        AtomicLoad {} -> marshalErrorCode errAtomics I64
-        AtomicStore {} -> marshalErrorCode errAtomics None
-        AtomicCmpxchg {} -> marshalErrorCode errAtomics I64
-        _ -> go
-    _ -> go
+maskUnknownCCallTargets :: Data a => [AsteriusEntitySymbol] -> a -> a
+maskUnknownCCallTargets export_funcs = f
   where
-    go = gmapT maskUnknownCCallTargets t
     has_call_target sym =
       "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName sym) ||
       sym `HM.member`
-      functionMap (rtsAsteriusModule unsafeDefaultBuiltinsOptions)
+      functionMap (rtsAsteriusModule unsafeDefaultBuiltinsOptions) ||
+      sym `elem` export_funcs
+    f :: Data a => a -> a
+    f t =
+      let go = gmapT f t
+       in case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
+            Just HRefl ->
+              case t of
+                Call {..}
+                  | not $ has_call_target target ->
+                    marshalErrorCode errUnimplemented valueType
+                  | target == "createIOThread" ->
+                    case V.toList operands of
+                      [cap, stack_size_w@Load {valueType = I32}, target_closure] ->
+                        t
+                          { operands =
+                              [ cap
+                              , Unary
+                                  { unaryOp = ExtendUInt32
+                                  , operand0 = stack_size_w
+                                  }
+                              , target_closure
+                              ]
+                          }
+                      _ -> t
+                  | otherwise -> t
+                AtomicRMW {} -> marshalErrorCode errAtomics I64
+                AtomicLoad {} -> marshalErrorCode errAtomics I64
+                AtomicStore {} -> marshalErrorCode errAtomics None
+                AtomicCmpxchg {} -> marshalErrorCode errAtomics I64
+                _ -> go
+            _ -> go
