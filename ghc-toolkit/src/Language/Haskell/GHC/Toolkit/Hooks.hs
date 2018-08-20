@@ -7,6 +7,7 @@ module Language.Haskell.GHC.Toolkit.Hooks
 
 import Control.Monad.IO.Class
 import Data.IORef
+import Data.Maybe
 import DriverPhases
 import DriverPipeline
 import DynFlags
@@ -17,6 +18,7 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.GHCUnexported
 import Module
 import PipelineMonad
+import System.Environment
 import TcRnTypes
 
 hooksFromCompiler :: MonadIO m => Compiler -> m Hooks
@@ -65,11 +67,18 @@ hooksFromCompiler c =
                       (outputFilename, mStub, foreign_files, _stg, _cmm, _cmmRaw) <-
                         liftIO $
                         hscGenHardCode' hsc_env' cgguts mod_summary output_fn
-                      stub_o <- liftIO (mapM (compileStub hsc_env') mStub)
-                      foreign_os <-
-                        liftIO $
-                        mapM (uncurry (compileForeign hsc_env')) foreign_files
-                      setForeignOs (maybe [] return stub_o ++ foreign_os)
+                      skip_gcc <-
+                        isJust <$> liftIO (lookupEnv "GHC_TOOLKIT_SKIP_GCC")
+                      if skip_gcc
+                        then setForeignOs []
+                        else do
+                          stub_o <- liftIO (mapM (compileStub hsc_env') mStub)
+                          foreign_os <-
+                            liftIO $
+                            mapM
+                              (uncurry (compileForeign hsc_env'))
+                              foreign_files
+                          setForeignOs (maybe [] return stub_o ++ foreign_os)
                       withHaskellIR
                         c
                         mod_summary
@@ -81,7 +90,12 @@ hooksFromCompiler c =
                           , cmm = _cmm
                           , cmmRaw = _cmmRaw
                           }
-                      pure (RealPhase next_phase, outputFilename)
+                      pure
+                        ( RealPhase $
+                          if skip_gcc
+                            then StopLn
+                            else next_phase
+                        , outputFilename)
                     _ -> runPhase phase_plus input_fn dflags
                 RealPhase Cmm -> do
                   let hsc_lang = hscTarget dflags
@@ -91,6 +105,13 @@ hooksFromCompiler c =
                   (cs, rcs) <-
                     liftIO $ hscCompileCmmFile' hsc_env input_fn output_fn
                   withCmmIR c CmmIR {cmm = cs, cmmRaw = rcs}
-                  pure (RealPhase next_phase, output_fn)
+                  skip_gcc <-
+                    isJust <$> liftIO (lookupEnv "GHC_TOOLKIT_SKIP_GCC")
+                  pure
+                    ( RealPhase $
+                      if skip_gcc
+                        then StopLn
+                        else next_phase
+                    , output_fn)
                 _ -> runPhase phase_plus input_fn dflags
         }
