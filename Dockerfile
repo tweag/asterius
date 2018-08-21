@@ -2,7 +2,6 @@ FROM ubuntu:bionic
 
 COPY asterius /root/asterius
 COPY binaryen /root/binaryen
-COPY genapply /root/genapply
 COPY ghc-toolkit /root/ghc-toolkit
 COPY stack.yaml /root/stack.yaml
 ENV \

@@ -2,12 +2,13 @@ module Language.Haskell.GHC.Toolkit.FrontendPlugin
   ( makeFrontendPlugin
   ) where
 
+import Config
 import Control.Monad
 import Data.List
 import DriverPhases
 import DriverPipeline
 import GHC
-import GhcPlugins
+import GhcPlugins hiding ((<>))
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
 import Panic
@@ -25,12 +26,25 @@ makeFrontendPlugin init_c =
             if null hs_targets
               then do
                 dflags <- getSessionDynFlags
-                void $ setSessionDynFlags dflags {ghcLink = NoLink, hooks = h}
+                void $
+                  setSessionDynFlags
+                    dflags
+                      { ghcLink = NoLink
+                      , integerLibrary = IntegerSimple
+                      , tablesNextToCode = False
+                      , hooks = h
+                      }
                 env <- getSession
                 liftIO $ oneShot env StopLn targets
               else do
                 do dflags <- getSessionDynFlags
-                   void $ setSessionDynFlags dflags {hooks = h}
+                   void $
+                     setSessionDynFlags
+                       dflags
+                         { integerLibrary = IntegerSimple
+                         , tablesNextToCode = False
+                         , hooks = h
+                         }
                 env <- getSession
                 o_files <-
                   liftIO $ traverse (compileFile env StopLn) non_hs_targets

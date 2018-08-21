@@ -5,10 +5,10 @@ import qualified Data.Map as M
 import Distribution.Simple
 import Distribution.Simple.BuildPaths hiding (exeExtension)
 import Distribution.Simple.LocalBuildInfo
+import Distribution.Simple.Program
 import Distribution.Types.BuildInfo
 import Distribution.Types.Library
 import Distribution.Types.PackageDescription
-import qualified Paths_genapply
 import System.Directory
 import System.FilePath
 import System.Process
@@ -21,22 +21,38 @@ main =
           \t f -> do
             lbi@LocalBuildInfo { localPkgDescr = pkg_descr@PackageDescription {library = Just lib@Library {libBuildInfo = bi}}
                                , compiler = Compiler {compilerProperties = m}
+                               , withPrograms = prog_db
                                } <- confHook simpleUserHooks t f
             let [clbi@LibComponentLocalBuildInfo {componentUnitId = uid}] =
                   componentNameMap lbi M.! CLibName
                 amp = autogenComponentModulesDir lbi clbi
-                self_datadir =
-                  datadir $
+                self_installdirs =
                   absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
+                self_bindir = bindir self_installdirs
+                self_datadir = datadir self_installdirs
                 rts_datadir = self_datadir </> "boot-libs" </> "rts"
+                Just ghc_prog = lookupProgram ghcProgram prog_db
+                Just gcc_prog = lookupProgram gccProgram prog_db
             createDirectoryIfMissing True amp
             writeFile (amp </> "BuildInfo_ghc_toolkit.hs") $
               "module BuildInfo_ghc_toolkit where\nghcLibDir :: FilePath\nghcLibDir = " ++
               show (m M.! "LibDir") ++
-              "\ndataDir :: FilePath\ndataDir = " ++ show self_datadir
-            genapply <-
-              (</> "genapply" <.> exeExtension) <$> Paths_genapply.getBinDir
-            autoapply <- readProcess genapply [] ""
+              "\ndataDir :: FilePath\ndataDir = " ++
+              show self_datadir ++
+              "\nbinDir :: FilePath\nbinDir = " ++
+              show self_bindir ++
+              "\ngccPath :: FilePath\ngccPath = " ++
+              show (locationPath (programLocation gcc_prog))
+            autoapply <-
+              readProcess
+                (replaceBaseName
+                   (locationPath (programLocation ghc_prog))
+                   "runghc")
+                [ "--ghc-arg=-Iinclude"
+                , "--ghc-arg=-Iinclude-private"
+                , "genapply" </> "Main.hs"
+                ]
+                ""
             createDirectoryIfMissing True rts_datadir
             writeFile (rts_datadir </> "AutoApply.cmm") autoapply
             pure

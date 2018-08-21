@@ -12,6 +12,7 @@ module Language.Haskell.GHC.Toolkit.Run
   , runCmm
   ) where
 
+import Config
 import Control.Exception
 import Control.Monad.IO.Class
 import Data.Functor
@@ -41,9 +42,8 @@ defaultConfig =
   Config
     {ghcFlags = ["-Wall", "-O"], ghcLibDir = BI.ghcLibDir, compiler = mempty}
 
-runHaskell :: MonadIO m => Config -> [String] -> m (M.Map Module HaskellIR)
+runHaskell :: Config -> [String] -> IO (M.Map Module HaskellIR)
 runHaskell Config {..} targets =
-  liftIO $
   flip finally (unsetEnv "GHC_TOOLKIT_SKIP_GCC") $ do
     setEnv "GHC_TOOLKIT_SKIP_GCC" "1"
     defaultErrorHandler defaultFatalMessager defaultFlushOut $
@@ -70,7 +70,13 @@ runHaskell Config {..} targets =
             pure (h, liftIO $ readIORef mod_map_ref)
         void $
           setSessionDynFlags
-            dflags' {ghcMode = CompManager, ghcLink = NoLink, hooks = h}
+            dflags'
+              { ghcMode = CompManager
+              , ghcLink = NoLink
+              , integerLibrary = IntegerSimple
+              , tablesNextToCode = False
+              , hooks = h
+              }
         traverse (`guessTarget` Nothing) targets >>= setTargets
         ok_flag <- load LoadAllTargets
         case ok_flag of
@@ -78,19 +84,17 @@ runHaskell Config {..} targets =
           Failed ->
             liftIO $ throwGhcExceptionIO $ Panic "GHC.load returned Failed."
 
-runSingleHaskell :: MonadIO m => Config -> String -> m (Module, HaskellIR)
-runSingleHaskell conf src =
-  liftIO $ do
-    tmpdir <- getTemporaryDirectory
-    bracket (openBinaryTempFile tmpdir "TMP.hs") (\(p, _) -> removeFile p) $ \(p, h) -> do
-      hClose h
-      writeFile p $ mconcat ["module ", takeBaseName p, " where\n\n", src]
-      [t] <- M.toList <$> runHaskell conf [p]
-      pure t
+runSingleHaskell :: Config -> String -> IO (Module, HaskellIR)
+runSingleHaskell conf src = do
+  tmpdir <- getTemporaryDirectory
+  bracket (openBinaryTempFile tmpdir "TMP.hs") (\(p, _) -> removeFile p) $ \(p, h) -> do
+    hClose h
+    writeFile p $ mconcat ["module ", takeBaseName p, " where\n\n", src]
+    [t] <- M.toList <$> runHaskell conf [p]
+    pure t
 
-runCmm :: MonadIO m => Config -> [FilePath] -> m (M.Map FilePath CmmIR)
+runCmm :: Config -> [FilePath] -> IO (M.Map FilePath CmmIR)
 runCmm Config {..} cmm_fns =
-  liftIO $
   flip finally (unsetEnv "GHC_TOOLKIT_SKIP_GCC") $ do
     setEnv "GHC_TOOLKIT_SKIP_GCC" "1"
     defaultErrorHandler defaultFatalMessager defaultFlushOut $
@@ -111,7 +115,13 @@ runCmm Config {..} cmm_fns =
             pure (h, reverse <$> readIORef cmm_irs_ref)
         void $
           setSessionDynFlags
-            dflags' {ghcMode = OneShot, ghcLink = NoLink, hooks = h}
+            dflags'
+              { ghcMode = OneShot
+              , ghcLink = NoLink
+              , integerLibrary = IntegerSimple
+              , tablesNextToCode = False
+              , hooks = h
+              }
         env <- getSession
         liftIO $ do
           oneShot env StopLn [(cmm_fn, Just CmmCpp) | cmm_fn <- cmm_fns]

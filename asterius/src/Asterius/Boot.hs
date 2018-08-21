@@ -22,7 +22,7 @@ import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified GhcPlugins as GHC
-import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath)
+import Language.Haskell.GHC.Toolkit.BuildInfo (ahcGccPath, bootLibsPath)
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Run (defaultConfig, ghcFlags, runCmm)
 import Prelude hiding (IO)
@@ -46,7 +46,9 @@ getDefaultBootArgs = do
   pure
     BootArgs
       { bootDir = dataDir </> ".boot"
-      , configureOptions = "--disable-split-objs --disable-split-sections -O2"
+      , configureOptions =
+          "--disable-split-objs --disable-split-sections -O2 --with-gcc=" <>
+          ahcGccPath
       , buildOptions = ""
       , installOptions = ""
       , builtinsOptions = builtins_opts
@@ -88,7 +90,10 @@ bootRTSCmm BootArgs {..} = do
   cmms <-
     M.toList <$>
     runCmm
-      defaultConfig {ghcFlags = ["-this-unit-id", "rts", "-dcmm-lint", "-O2"]}
+      defaultConfig
+        { ghcFlags =
+            ["-this-unit-id", "rts", "-dcmm-lint", "-O2", "-pgmc" <> ahcGccPath]
+        }
       [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
   for_ cmms $ \(fn, ir@CmmIR {..}) ->
     let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)

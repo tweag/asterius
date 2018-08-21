@@ -1,12 +1,5 @@
 resolver: ghc-8.7
 allow-newer: true
-flags:
-  hashable:
-    integer-gmp: false
-  integer-logarithms:
-    integer-gmp: false
-  scientific:
-    integer-simple: true
 extra-deps:
   - ansi-terminal-0.8.0.4
   - ansi-wl-pprint-0.6.8.2
@@ -22,22 +15,22 @@ extra-deps:
   - mintty-0.1.2
   - optparse-applicative-0.14.2.0
   - pretty-show-1.8.1
-  - https://github.com/haskell/primitive/archive/ea9f0426646ecf8a5a0a1659b29a8dc014ceda05.zip
+  - https://github.com/haskell/primitive/archive/ff65e8e3a415eba7ba9b20ea83cd08cb3d601b26.zip
   - scientific-0.3.6.2
+  - strict-0.3.2
   - transformers-compat-0.6.2
   - unordered-containers-0.2.9.0
   - vector-0.12.0.1
 packages:
   - asterius
-  - genapply
-  - ghc-toolkit
   - binaryen
+  - ghc-toolkit
 ghc-build: standard
 setup-info:
   ghc:
     windows64:
-      8.7.20180821:
-        url: https://ci.appveyor.com/api/buildjobs/sqr9gg42l4ilcyh2/artifacts/ghc/ghc-8.7.20180821-x86_64-unknown-mingw32.tar.xz
+      8.7.20180822:
+        url: https://ci.appveyor.com/api/buildjobs/a0ism43pxm9f4371/artifacts/ghc/ghc-8.7.20180822-x86_64-unknown-mingw32.tar.xz
     linux64:
-      8.7.20180821:
-        url: https://1541-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180821-x86_64-unknown-linux.tar.xz
+      8.7.20180822:
+        url: https://1574-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180822-x86_64-unknown-linux.tar.xz

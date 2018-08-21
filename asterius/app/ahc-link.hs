@@ -29,8 +29,9 @@ import Data.Maybe
 import qualified Data.Vector as V
 import Foreign
 import qualified GhcPlugins as GHC
+import Language.Haskell.GHC.Toolkit.BuildInfo (ahcGccPath)
 import Language.Haskell.GHC.Toolkit.Constants
-import Language.Haskell.GHC.Toolkit.Run
+import Language.Haskell.GHC.Toolkit.Run hiding (ghcLibDir)
 import Options.Applicative
 import Prelude hiding (IO)
 import System.Directory
@@ -205,6 +206,7 @@ main = do
                   , "template-haskell"
                   ]
               ] <>
+            ["-pgmc=" <> ahcGccPath] <>
             extraGHCFlags
         , compiler = c
         }

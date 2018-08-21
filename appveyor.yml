@@ -2,11 +2,6 @@ version: 0.0.1.{build}
 
 shallow_clone: true
 
-cache:
-  - .stack-work
-  - genapply\.stack-work
-  - ghc-toolkit\.stack-work
-
 environment:
   MAKEFLAGS: -j4
 
