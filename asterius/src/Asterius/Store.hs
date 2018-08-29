@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -15,10 +14,9 @@ module Asterius.Store
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Types
-import qualified Data.HashMap.Lazy as LHM
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
-import qualified Data.Vector as V
+import qualified Data.Map.Lazy as LM
+import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import Prelude hiding (IO)
 import System.Directory
 import System.FilePath
@@ -29,8 +27,7 @@ asteriusModulePath :: FilePath -> AsteriusModuleSymbol -> FilePath -> FilePath
 asteriusModulePath obj_topdir AsteriusModuleSymbol {..} ext =
   foldr1
     (</>)
-    (obj_topdir :
-     c8SBS unitId : [c8SBS mod_chunk | mod_chunk <- V.toList moduleName]) <.>
+    (obj_topdir : c8SBS unitId : [c8SBS mod_chunk | mod_chunk <- moduleName]) <.>
   ext
 
 decodeAsteriusModule :: FilePath -> AsteriusModuleSymbol -> IO AsteriusModule
@@ -42,12 +39,12 @@ decodeStore :: FilePath -> IO AsteriusStore
 decodeStore store_path = do
   sym_map <- decodeFile store_path
   let obj_topdir = takeDirectory store_path
-      mod_syms = HS.toList $ HS.fromList $ HM.elems sym_map
+      mod_syms = S.toList $ S.fromList $ M.elems sym_map
   pure
     AsteriusStore
       { symbolMap = sym_map
       , moduleMap =
-          LHM.fromList
+          LM.fromList
             [ ( mod_sym
               , unsafePerformIO $ decodeAsteriusModule obj_topdir mod_sym)
             | mod_sym <- mod_syms
@@ -87,7 +84,7 @@ registerModule ::
 registerModule obj_topdir mod_sym AsteriusModule {..} AsteriusStore {..} =
   AsteriusStore
     { symbolMap =
-        HM.unions
+        M.unions
           [ f staticsMap
           , f staticsErrorMap
           , f functionMap
@@ -95,7 +92,7 @@ registerModule obj_topdir mod_sym AsteriusModule {..} AsteriusStore {..} =
           , symbolMap
           ]
     , moduleMap =
-        LHM.insert
+        LM.insert
           mod_sym
           (unsafePerformIO $ decodeAsteriusModule obj_topdir mod_sym)
           moduleMap
@@ -109,14 +106,14 @@ addModule ::
 addModule mod_sym m@AsteriusModule {..} AsteriusStore {..} =
   AsteriusStore
     { symbolMap =
-        HM.unions
+        M.unions
           [ f staticsMap
           , f staticsErrorMap
           , f functionMap
           , f functionErrorMap
           , symbolMap
           ]
-    , moduleMap = LHM.insert mod_sym m moduleMap
+    , moduleMap = LM.insert mod_sym m moduleMap
     }
   where
     f = fmap (const mod_sym)

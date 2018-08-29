@@ -17,7 +17,6 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import System.Environment
 import System.FilePath
-import Text.Show.Pretty
 
 frontendPlugin :: GHC.FrontendPlugin
 frontendPlugin =
@@ -50,7 +49,7 @@ frontendPlugin =
                                 obj_topdir
                                 mod_sym
                                 "dump-cmm-raw-ast"
-                        writeFile p_c $ ppShow cmmRaw
+                        writeFile p_c $ show cmmRaw
           , finalize =
               liftIO $ do
                 store <- readIORef store_ref

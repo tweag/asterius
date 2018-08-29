@@ -12,15 +12,14 @@ import Asterius.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
-import qualified Data.HashMap.Strict as HM
-import qualified Data.Vector as V
+import qualified Data.Map.Strict as M
 import Type.Reflection
 
 addMemoryTrap :: AsteriusModule -> AsteriusModule
 addMemoryTrap m =
   m
     { functionMap =
-        HM.mapWithKey
+        M.mapWithKey
           (\func_sym func ->
              if "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName func_sym)
                then func
@@ -70,7 +69,7 @@ addMemoryTrapDeep t =
         Host {hostOp = GrowMemory, ..} ->
           CallImport
             { target' = "__asterius_grow_memory"
-            , operands = [t, V.head operands]
+            , operands = [t, head operands]
             , valueType = I32
             }
         _ -> go

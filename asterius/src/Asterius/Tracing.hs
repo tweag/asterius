@@ -14,13 +14,12 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Char
 import Data.Data (Data, gmapT)
-import qualified Data.HashMap.Strict as HM
-import qualified Data.Vector as V
+import qualified Data.Map.Strict as M
 import Foreign
 import Type.Reflection
 
 addTracingModule ::
-     HM.HashMap AsteriusEntitySymbol Int64
+     M.Map AsteriusEntitySymbol Int64
   -> AsteriusEntitySymbol
   -> FunctionType
   -> Function
@@ -61,7 +60,7 @@ addTracingModule func_sym_map func_sym func_type func
                     { graph =
                         g
                           { blockMap =
-                              HM.fromList
+                              M.fromList
                                 [ ( lbl
                                   , blk
                                       { addBlock =
@@ -111,7 +110,7 @@ addTracingModule func_sym_map func_sym func_type func
                                                 }
                                       })
                                 | (lbl, blk@RelooperBlock {..}) <-
-                                    HM.toList blockMap
+                                    M.toList blockMap
                                 ]
                           }
                     }
@@ -119,9 +118,9 @@ addTracingModule func_sym_map func_sym func_type func
                           ConstI32 .
                           read . map (chr . fromIntegral) . SBS.unpack
                 SetLocal {..}
-                  | ((index_int < param_num) && (params V.! index_int == I64)) ||
+                  | ((index_int < param_num) && (params !! index_int == I64)) ||
                       ((index_int >= param_num) &&
-                       varTypes func V.! (index_int - param_num) == I64) ->
+                       varTypes func !! (index_int - param_num) == I64) ->
                     Block
                       { name = ""
                       , bodys =
@@ -138,7 +137,7 @@ addTracingModule func_sym_map func_sym func_type func
                       , valueType = None
                       }
                   where params = paramTypes func_type
-                        param_num = V.length params
+                        param_num = length params
                         index_int = fromIntegral index
                 _ -> go
             _ -> go

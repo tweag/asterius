@@ -100,15 +100,22 @@ import Asterius.TypesConv
 import Control.Monad.Fail
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Short as SBS
-import qualified Data.DList as DL
+import Data.Monoid
 import Data.Traversable
-import qualified Data.Vector as V
+
+type DList a = Endo [a]
+
+dListSnoc :: DList a -> a -> DList a
+dListSnoc dl a = dl <> Endo (a :)
+
+fromDList :: DList a -> [a]
+fromDList = ($ []) . appEndo
 
 data EDSLState = EDSLState
   { retType :: ValueType
-  , paramBuf :: DL.DList ValueType
+  , paramBuf :: DList ValueType
   , paramNum, localNum, labelNum :: Int
-  , exprBuf :: DL.DList Expression
+  , exprBuf :: DList Expression
   }
 
 initialEDSLState :: EDSLState
@@ -136,22 +143,22 @@ instance Monoid a => Monoid (EDSL a) where
   mempty = pure mempty
 
 emit :: Expression -> EDSL ()
-emit e = EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `DL.snoc` e}
+emit e =
+  EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `dListSnoc` e}
 
 bundleExpressions :: [Expression] -> Expression
 bundleExpressions el =
   case el of
     [] -> Nop
     [e] -> e
-    _ -> Block {name = mempty, bodys = V.fromList el, valueType = Auto}
+    _ -> Block {name = mempty, bodys = el, valueType = Auto}
 
 runEDSL :: EDSL () -> AsteriusFunction
 runEDSL (EDSL m) =
   AsteriusFunction
     { functionType =
-        FunctionType
-          {returnType = retType, paramTypes = V.fromList $ DL.toList paramBuf}
-    , body = bundleExpressions $ DL.toList exprBuf
+        FunctionType {returnType = retType, paramTypes = fromDList paramBuf}
+    , body = bundleExpressions $ fromDList exprBuf
     }
   where
     EDSLState {..} = execState m initialEDSLState
@@ -170,7 +177,7 @@ mutParam vt =
     i <-
       state $ \s@EDSLState {..} ->
         ( fromIntegral paramNum
-        , s {paramBuf = paramBuf `DL.snoc` vt, paramNum = succ paramNum})
+        , s {paramBuf = paramBuf `dListSnoc` vt, paramNum = succ paramNum})
     pure
       LVal
         { getLVal = GetLocal {index = i, valueType = vt}
@@ -280,23 +287,22 @@ storeI16 bp o = putLVal $ pointerI16 bp o
 storeI8 bp o = putLVal $ pointerI8 bp o
 
 call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
-call f xs = emit Call {target = f, operands = V.fromList xs, valueType = None}
+call f xs = emit Call {target = f, operands = xs, valueType = None}
 
 call' :: AsteriusEntitySymbol -> [Expression] -> ValueType -> EDSL Expression
 call' f xs vt = do
   lr <- mutLocal vt
-  putLVal lr Call {target = f, operands = V.fromList xs, valueType = vt}
+  putLVal lr Call {target = f, operands = xs, valueType = vt}
   pure $ getLVal lr
 
 callImport :: SBS.ShortByteString -> [Expression] -> EDSL ()
-callImport f xs =
-  emit CallImport {target' = f, operands = V.fromList xs, valueType = None}
+callImport f xs = emit CallImport {target' = f, operands = xs, valueType = None}
 
 callImport' ::
      SBS.ShortByteString -> [Expression] -> ValueType -> EDSL Expression
 callImport' f xs vt = do
   lr <- mutLocal vt
-  putLVal lr CallImport {target' = f, operands = V.fromList xs, valueType = vt}
+  putLVal lr CallImport {target' = f, operands = xs, valueType = vt}
   pure $ getLVal lr
 
 callIndirect' :: Expression -> [Expression] -> FunctionType -> EDSL Expression
@@ -306,7 +312,7 @@ callIndirect' f xs ft = do
     lr
     CallIndirect
       { indirectTarget = wrapInt64 f
-      , operands = V.fromList xs
+      , operands = xs
       , typeName = generateWasmFunctionTypeName ft
       }
   pure $ getLVal lr
@@ -321,7 +327,7 @@ newLabel =
   state $ \s@EDSLState {..} ->
     (Label $ showSBS labelNum, s {labelNum = succ labelNum})
 
-newScope :: EDSL () -> EDSL (DL.DList Expression)
+newScope :: EDSL () -> EDSL (DList Expression)
 newScope m = do
   orig_buf <-
     EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = mempty})
@@ -332,21 +338,17 @@ block', loop' :: (Label -> EDSL ()) -> EDSL ()
 block' cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
-  emit
-    Block
-      {name = unLabel lbl, bodys = V.fromList $ DL.toList es, valueType = Auto}
+  emit Block {name = unLabel lbl, bodys = fromDList es, valueType = Auto}
 
 blockWithLabel :: Label -> EDSL () -> EDSL ()
 blockWithLabel lbl m = do
   es <- newScope m
-  emit
-    Block
-      {name = unLabel lbl, bodys = V.fromList $ DL.toList es, valueType = Auto}
+  emit Block {name = unLabel lbl, bodys = fromDList es, valueType = Auto}
 
 loop' cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
-  emit Loop {name = unLabel lbl, body = bundleExpressions $ DL.toList es}
+  emit Loop {name = unLabel lbl, body = bundleExpressions $ fromDList es}
 
 if' :: Expression -> EDSL () -> EDSL () -> EDSL ()
 if' cond t f = do
@@ -355,8 +357,8 @@ if' cond t f = do
   emit
     If
       { condition = cond
-      , ifTrue = bundleExpressions $ DL.toList t_es
-      , ifFalse = bundleExpressions $ DL.toList f_es
+      , ifTrue = bundleExpressions $ fromDList t_es
+      , ifFalse = bundleExpressions $ fromDList f_es
       }
 
 break' :: Label -> Expression -> EDSL ()

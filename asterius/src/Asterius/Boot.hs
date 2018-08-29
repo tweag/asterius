@@ -31,7 +31,6 @@ import System.Environment
 import System.Exit
 import System.FilePath
 import System.Process
-import Text.Show.Pretty (ppShow)
 
 data BootArgs = BootArgs
   { bootDir :: FilePath
@@ -105,7 +104,7 @@ bootRTSCmm BootArgs {..} = do
             modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
             when is_debug $ do
               let p_c = asteriusModulePath obj_topdir mod_sym "dump-cmm-raw-ast"
-              writeFile p_c $ ppShow cmmRaw
+              writeFile p_c $ show cmmRaw
   if rtsOnly
     then do
       rts_store <- readIORef store_ref

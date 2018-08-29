@@ -37,7 +37,6 @@ import qualified Data.ByteString.Short as SBS
 import Data.Foldable
 import Data.List
 import Data.Maybe
-import qualified Data.Vector as V
 import Foreign (Int32, Word64, Word8)
 import qualified GHC
 import qualified GhcPlugins as GHC
@@ -92,7 +91,7 @@ rtsAsteriusModule opts =
           , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
         , ( "heap_overflow"
           , AsteriusStatics
-              {asteriusStatics = [Serialized (encodePrim (0 :: Word8))]})
+              {asteriusStatics = [Serialized (encodeStorable (0 :: Word8))]})
         , ( "large_alloc_lim"
           , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
         , ( "MainCapability"
@@ -109,7 +108,8 @@ rtsAsteriusModule opts =
           , AsteriusStatics
               { asteriusStatics =
                   [ Serialized
-                      (encodePrim (fromIntegral recent_ACTIVITY_YES :: Word64))
+                      (encodeStorable
+                         (fromIntegral recent_ACTIVITY_YES :: Word64))
                   ]
               })
         , ( "rts_breakpoint_io_action"
@@ -125,7 +125,8 @@ rtsAsteriusModule opts =
           , AsteriusStatics
               { asteriusStatics =
                   [ Serialized
-                      (encodePrim (fromIntegral sched_SCHED_RUNNING :: Word64))
+                      (encodeStorable
+                         (fromIntegral sched_SCHED_RUNNING :: Word64))
                   ]
               })
         ]
@@ -404,9 +405,8 @@ rtsAsteriusFunctionImports debug =
             ]
      else [])
 
-rtsAsteriusFunctionExports :: Bool -> V.Vector FunctionExport
+rtsAsteriusFunctionExports :: Bool -> [FunctionExport]
 rtsAsteriusFunctionExports debug =
-  V.fromList $
   [ FunctionExport {internalName = f <> "_wrapper", externalName = f}
   | f <-
       [ "allocate"
@@ -503,22 +503,20 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
         FunctionType
           { returnType = wrapper_return_type
           , paramTypes =
-              V.fromList
-                [ wrapper_param_type
-                | (_, wrapper_param_type, _) <- wrapper_param_types
-                ]
+              [ wrapper_param_type
+              | (_, wrapper_param_type, _) <- wrapper_param_types
+              ]
           }
     , body =
         to_wrapper_return_type $
         Call
           { target = func_sym
           , operands =
-              V.fromList
-                [ from_wrapper_param_type
-                  GetLocal {index = i, valueType = wrapper_param_type}
-                | (i, wrapper_param_type, from_wrapper_param_type) <-
-                    wrapper_param_types
-                ]
+              [ from_wrapper_param_type
+                GetLocal {index = i, valueType = wrapper_param_type}
+              | (i, wrapper_param_type, from_wrapper_param_type) <-
+                  wrapper_param_types
+              ]
           , valueType = returnType
           }
     }
@@ -527,7 +525,7 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
       [ case param_type of
         I64 -> (i, I32, extendUInt32)
         _ -> (i, param_type, id)
-      | (i, param_type) <- zip [0 ..] $ V.toList paramTypes
+      | (i, param_type) <- zip [0 ..] paramTypes
       ]
     (wrapper_return_type, to_wrapper_return_type) =
       case returnType of
@@ -1280,7 +1278,7 @@ loadI64Function _ =
 printI64Function _ =
   runEDSL $ do
     x <- param I64
-    callImport "printI64" (V.toList (cutI64 x))
+    callImport "printI64" (cutI64 x)
 
 printF32Function _ =
   runEDSL $ do
@@ -1305,8 +1303,7 @@ memoryTrapFunction _ =
     , body =
         If
           { condition =
-              V.foldl1' (Binary OrInt32) $
-              V.fromList $
+              foldl1' (Binary OrInt32) $
               [ guard_struct (ConstI64 0) 16 []
               , (task_p `neInt64` constI64 0) `andInt32`
                 guard_struct
@@ -1395,8 +1392,9 @@ memoryTrapFunction _ =
               }
         , operand1 =
             notExpr $
-            V.foldl' (Binary OrInt32) (ConstI32 0) $
-            V.fromList
+            foldl'
+              (Binary OrInt32)
+              (ConstI32 0)
               [ Binary
                 { binaryOp = EqInt64
                 , operand0 =
@@ -1544,7 +1542,7 @@ mainCap = Unresolved {unresolvedSymbol = "MainCapability"}
 offset_StgTSO_StgStack :: Int
 offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
 
-cutI64 :: Expression -> V.Vector Expression
+cutI64 :: Expression -> [Expression]
 cutI64 x =
   [ wrapI64 x
   , wrapI64 $

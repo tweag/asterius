@@ -45,7 +45,6 @@ dependencies:
   - filepath
   - ghc
   - process
-  - strict
 
 library:
   source-dirs: src

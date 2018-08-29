@@ -20,13 +20,11 @@ import Control.Exception
 import Control.Monad
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
-import qualified Data.HashMap.Strict as HM
-import qualified Data.HashSet as HS
 import Data.IORef
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
-import qualified Data.Vector as V
+import qualified Data.Set as S
 import Foreign
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.BuildInfo (ahcGccPath)
@@ -38,7 +36,6 @@ import System.Directory
 import System.FilePath
 import System.IO hiding (IO)
 import System.Process
-import Text.Show.Pretty (ppShow)
 
 data Task = Task
   { input, outputWasm, outputNode :: FilePath
@@ -121,14 +118,14 @@ opts =
      progDesc "Producing a standalone WebAssembly binary from Haskell" <>
      header "ahc-link - Linker for the Asterius compiler")
 
-genSymbolDict :: HM.HashMap AsteriusEntitySymbol Int64 -> Builder
+genSymbolDict :: M.Map AsteriusEntitySymbol Int64 -> Builder
 genSymbolDict sym_map =
   "{" <>
   mconcat
     (intersperse
        ","
        [ string7 (show sym) <> ":" <> int64Dec sym_idx
-       | (sym, sym_idx) <- HM.toList sym_map
+       | (sym, sym_idx) <- M.toList sym_map
        ]) <>
   "}"
 
@@ -140,7 +137,7 @@ genNode Task {..} LinkReport {..} = do
       [ byteString rts_buf
       , "async function main() {\n"
       , "const i = await newAsteriusInstance({functionSymbols: "
-      , string7 $ show $ map fst $ sortOn snd $ HM.toList functionSymbolMap
+      , string7 $ show $ map fst $ sortOn snd $ M.toList functionSymbolMap
       , ", bufferSource: require(\"fs\").readFileSync("
       , string7 $ show $ takeFileName outputWasm
       , "), jsffiFactory: "
@@ -228,9 +225,8 @@ main = do
              addModule (marshalToModuleSymbol ms_mod) m
            when outputIR $ do
              let p = takeDirectory input </> mod_str <.> "txt"
-             putStrLn $
-               "[INFO] Writing pretty-printed IR of " <> mod_str <> " to " <> p
-             writeFile p $ ppShow m
+             putStrLn $ "[INFO] Writing IR of " <> mod_str <> " to " <> p
+             writeFile p $ show m
            act)
     (pure ())
     mod_ir_map
@@ -240,17 +236,17 @@ main = do
         linkStart
           debug
           final_store
-          (HS.fromList $
+          (S.fromList $
            extraRootSymbols <>
            [ AsteriusEntitySymbol {entityName = internalName}
-           | FunctionExport {..} <- V.toList $ rtsAsteriusFunctionExports debug
+           | FunctionExport {..} <- rtsAsteriusFunctionExports debug
            ])
           exportFunctions
   maybe
     (pure ())
     (\p -> do
        putStrLn $ "[INFO] Writing linking report to " <> show p
-       writeFile p $ ppShow report)
+       writeFile p $ show report)
     outputLinkReport
   maybe
     (pure ())

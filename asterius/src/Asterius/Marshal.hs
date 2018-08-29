@@ -16,9 +16,8 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
-import qualified Data.HashMap.Strict as HM
+import qualified Data.Map.Strict as M
 import Data.Traversable
-import qualified Data.Vector as V
 import Foreign
 import Foreign.C
 import GHC.Exts
@@ -207,7 +206,7 @@ marshalFunctionType ::
   -> FunctionType
   -> IO BinaryenFunctionTypeRef
 marshalFunctionType pool m k FunctionType {..} = do
-  (pts, ptl) <- marshalV pool $ V.map marshalValueType paramTypes
+  (pts, ptl) <- marshalV pool $ map marshalValueType paramTypes
   np <- marshalSBS pool k
   c_BinaryenAddFunctionType m np (marshalValueType returnType) pts ptl
 
@@ -216,7 +215,7 @@ marshalExpression ::
 marshalExpression pool m e =
   case e of
     Block {..} -> do
-      bs <- V.forM bodys $ marshalExpression pool m
+      bs <- forM bodys $ marshalExpression pool m
       (bsp, bl) <- marshalV pool bs
       np <- marshalSBS pool name
       c_BinaryenBlock m np bsp bl (marshalValueType valueType)
@@ -237,23 +236,23 @@ marshalExpression pool m e =
     Switch {..} -> do
       c <- marshalExpression pool m condition
       v <- marshalExpression pool m value
-      ns <- V.forM names $ marshalSBS pool
+      ns <- forM names $ marshalSBS pool
       (nsp, nl) <- marshalV pool ns
       dn <- marshalSBS pool defaultName
       c_BinaryenSwitch m nsp nl dn c v
     Call {..} -> do
-      os <- V.forM operands $ marshalExpression pool m
+      os <- forM operands $ marshalExpression pool m
       (ops, osl) <- marshalV pool os
       tp <- marshalSBS pool (entityName target)
       c_BinaryenCall m tp ops osl (marshalValueType valueType)
     CallImport {..} -> do
-      os <- V.forM operands $ marshalExpression pool m
+      os <- forM operands $ marshalExpression pool m
       (ops, osl) <- marshalV pool os
       tp <- marshalSBS pool target'
       c_BinaryenCallImport m tp ops osl (marshalValueType valueType)
     CallIndirect {..} -> do
       t <- marshalExpression pool m indirectTarget
-      os <- V.forM operands $ marshalExpression pool m
+      os <- forM operands $ marshalExpression pool m
       (ops, osl) <- marshalV pool os
       tp <- marshalSBS pool typeName
       c_BinaryenCallIndirect m t ops osl tp
@@ -310,7 +309,7 @@ marshalExpression pool m e =
       v <- marshalExpression pool m value
       c_BinaryenReturn m v
     Host {..} -> do
-      xs <- V.forM operands $ marshalExpression pool m
+      xs <- forM operands $ marshalExpression pool m
       (es, en) <- marshalV pool xs
       np <- marshalSBS pool name
       c_BinaryenHost m (marshalHostOp hostOp) np es en
@@ -352,7 +351,7 @@ marshalFunction ::
   -> IO BinaryenFunctionRef
 marshalFunction pool m k ft Function {..} = do
   b <- marshalExpression pool m body
-  (vtp, vtl) <- marshalV pool $ V.map marshalValueType varTypes
+  (vtp, vtl) <- marshalV pool $ map marshalValueType varTypes
   np <- marshalSBS pool k
   c_BinaryenAddFunction m np ft vtp vtl b
 
@@ -419,18 +418,18 @@ marshalGlobal pool m k Global {..} = do
 marshalFunctionTable ::
      Pool
   -> BinaryenModuleRef
-  -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
+  -> M.Map SBS.ShortByteString BinaryenFunctionRef
   -> FunctionTable
   -> IO ()
 marshalFunctionTable pool m fps FunctionTable {..} = do
-  (fnp, fnl) <- marshalV pool $ V.map (fps !) functionNames
+  (fnp, fnl) <- marshalV pool $ map (fps !) functionNames
   c_BinaryenSetFunctionTable m fnp fnl
 
 marshalMemory :: Pool -> BinaryenModuleRef -> Memory -> IO ()
 marshalMemory pool m Memory {..} = do
   (cps, os) <-
-    fmap V.unzip $
-    V.forM dataSegments $ \DataSegment {..} -> do
+    fmap unzip $
+    forM dataSegments $ \DataSegment {..} -> do
       o <- marshalExpression pool m offset
       cp <- marshalSBS pool content
       pure (cp, o)
@@ -438,7 +437,7 @@ marshalMemory pool m Memory {..} = do
   (ofs, _ :: Int) <- marshalV pool os
   (sps, _ :: Int) <-
     marshalV pool $
-    V.map (\DataSegment {..} -> fromIntegral $ SBS.length content) dataSegments
+    map (\DataSegment {..} -> fromIntegral $ SBS.length content) dataSegments
   enp <- marshalSBS pool exportName
   c_BinaryenSetMemory
     m
@@ -448,11 +447,11 @@ marshalMemory pool m Memory {..} = do
     cp
     ofs
     sps
-    (fromIntegral $ V.length dataSegments)
+    (fromIntegral $ length dataSegments)
 
 marshalStartFunctionName ::
      BinaryenModuleRef
-  -> HM.HashMap SBS.ShortByteString BinaryenFunctionRef
+  -> M.Map SBS.ShortByteString BinaryenFunctionRef
   -> SBS.ShortByteString
   -> IO ()
 marshalStartFunctionName m fps n = c_BinaryenSetStart m (fps ! n)
@@ -462,22 +461,22 @@ marshalModule pool Module {..} = do
   m <- c_BinaryenModuleCreate
   ftps <-
     fmap fromList $
-    for (HM.toList functionTypeMap) $ \(k, ft) -> do
+    for (M.toList functionTypeMap) $ \(k, ft) -> do
       ftp <- marshalFunctionType pool m k ft
       pure (k, ftp)
   fps <-
     fmap fromList $
-    for (HM.toList functionMap') $ \(k, f@Function {..}) -> do
+    for (M.toList functionMap') $ \(k, f@Function {..}) -> do
       fp <- marshalFunction pool m k (ftps ! functionTypeName) f
       pure (k, fp)
-  V.forM_ functionImports $ \fi@FunctionImport {..} ->
+  forM_ functionImports $ \fi@FunctionImport {..} ->
     marshalFunctionImport pool m (ftps ! functionTypeName) fi
-  V.forM_ tableImports $ marshalTableImport pool m
-  V.forM_ globalImports $ marshalGlobalImport pool m
-  V.forM_ functionExports $ marshalFunctionExport pool m
-  V.forM_ tableExports $ marshalTableExport pool m
-  V.forM_ globalExports $ marshalGlobalExport pool m
-  for_ (HM.toList globalMap) $ uncurry (marshalGlobal pool m)
+  forM_ tableImports $ marshalTableImport pool m
+  forM_ globalImports $ marshalGlobalImport pool m
+  forM_ functionExports $ marshalFunctionExport pool m
+  forM_ tableExports $ marshalTableExport pool m
+  forM_ globalExports $ marshalGlobalExport pool m
+  for_ (M.toList globalMap) $ uncurry (marshalGlobal pool m)
   case functionTable of
     Just ft -> marshalFunctionTable pool m fps ft
     _ -> pure ()
@@ -508,7 +507,7 @@ relooperAddBlock pool m r ab =
 relooperAddBranch ::
      Pool
   -> BinaryenModuleRef
-  -> HM.HashMap SBS.ShortByteString RelooperBlockRef
+  -> M.Map SBS.ShortByteString RelooperBlockRef
   -> SBS.ShortByteString
   -> RelooperAddBranch
   -> IO ()
@@ -529,11 +528,11 @@ relooperRun pool m RelooperRun {..} = do
   r <- c_RelooperCreate
   bpm <-
     fmap fromList $
-    for (HM.toList blockMap) $ \(k, RelooperBlock {..}) -> do
+    for (M.toList blockMap) $ \(k, RelooperBlock {..}) -> do
       bp <- relooperAddBlock pool m r addBlock
       pure (k, bp)
-  for_ (HM.toList blockMap) $ \(k, RelooperBlock {..}) ->
-    V.forM_ addBranches $ relooperAddBranch pool m bpm k
+  for_ (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
+    forM_ addBranches $ relooperAddBranch pool m bpm k
   c_RelooperRenderAndDispose r (bpm ! entry) labelHelper m
 
 serializeModule :: BinaryenModuleRef -> IO BS.ByteString

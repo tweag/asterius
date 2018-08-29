@@ -32,29 +32,22 @@ custom-setup:
 ghc-options: -Wall
 
 dependencies:
-  - attoparsec
   - base
   - binary
   - binaryen
   - bytestring
   - Cabal
-  - cereal
   - containers
   - deepseq
   - directory
-  - dlist
   - filepath
   - ghc
   - ghc-prim
   - ghc-toolkit
-  - hashable
   - mtl
   - optparse-applicative
-  - pretty-show
-  - primitive
+  - parsec
   - process
-  - unordered-containers
-  - vector
 
 library:
   source-dirs: src

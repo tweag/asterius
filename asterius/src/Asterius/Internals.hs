@@ -1,14 +1,14 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.Internals
   ( IO
   , marshalSBS
   , marshalV
-  , encodePrim
+  , encodeStorable
   , reinterpretCast
   , collect
   , encodeFile
@@ -18,19 +18,12 @@ module Asterius.Internals
   , (!)
   ) where
 
-import Control.Monad.ST.Strict
-import qualified Data.ByteString as BS
+import qualified Data.Binary as Binary
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short.Internal as SBS
 import Data.Data (Data, gmapQr)
-import qualified Data.HashMap.Lazy as LHM
-import qualified Data.HashSet as HS
-import Data.Hashable
-import Data.Primitive (Prim)
-import qualified Data.Primitive as P
-import Data.Primitive.ByteArray
-import Data.Serialize
-import qualified Data.Vector as V
+import qualified Data.Map.Lazy as LM
+import qualified Data.Set as S
 import Foreign
 import Foreign.C
 import GHC.Exts
@@ -50,32 +43,54 @@ marshalSBS pool sbs
   | otherwise = castPtr <$> pooledNewArray0 pool 0 (SBS.unpack sbs)
 
 {-# INLINEABLE marshalV #-}
-marshalV :: (Storable a, Num n) => Pool -> V.Vector a -> IO (Ptr a, n)
+marshalV :: (Storable a, Num n) => Pool -> [a] -> IO (Ptr a, n)
 marshalV pool v
-  | V.null v = pure (nullPtr, 0)
+  | null v = pure (nullPtr, 0)
   | otherwise = do
-    buf <- pooledNewArray pool (V.toList v)
-    pure (buf, fromIntegral $ V.length v)
+    buf <- pooledNewArray pool v
+    pure (buf, fromIntegral $ length v)
 
-{-# INLINEABLE encodePrim #-}
-encodePrim :: Prim a => a -> SBS.ShortByteString
-encodePrim a =
-  runST
-    (do mba <- newByteArray (P.sizeOf a)
-        writeByteArray mba 0 a
-        ByteArray ba <- unsafeFreezeByteArray mba
-        pure (SBS.SBS ba))
+unI# :: Int -> Int#
+unI# (I# x) = x
+
+unIO :: GHC.Types.IO a -> (State# RealWorld -> (# State# RealWorld, a #))
+unIO (GHC.Types.IO m) = m
+
+{-# INLINEABLE encodeStorable #-}
+encodeStorable :: Storable a => a -> SBS.ShortByteString
+encodeStorable a =
+  case runRW#
+         (\s0 ->
+            case newAlignedPinnedByteArray#
+                   (unI# (sizeOf a))
+                   (unI# (alignment a))
+                   s0 of
+              (# s1, mba #) ->
+                case unsafeFreezeByteArray# mba s1 of
+                  (# s2, ba #) ->
+                    let addr = byteArrayContents# ba
+                     in case unIO (poke (Ptr addr) a) s2 of
+                          (# s3, _ #) -> (# s3, SBS.SBS ba #)) of
+    (# _, r #) -> r
 
 {-# INLINEABLE reinterpretCast #-}
-reinterpretCast :: (Prim a, Prim b) => a -> b
+reinterpretCast :: (Storable a, Storable b) => a -> b
 reinterpretCast a =
-  runST
-    (do mba <- newByteArray (P.sizeOf a)
-        writeByteArray mba 0 a
-        readByteArray mba 0)
+  case runRW#
+         (\s0 ->
+            case newAlignedPinnedByteArray#
+                   (unI# (sizeOf a))
+                   (unI# (alignment a))
+                   s0 of
+              (# s1, mba #) ->
+                case unsafeFreezeByteArray# mba s1 of
+                  (# s2, ba #) ->
+                    let addr = byteArrayContents# ba
+                     in case unIO (poke (Ptr addr) a) s2 of
+                          (# s3, _ #) -> unIO (peek (Ptr addr)) s3) of
+    (# _, r #) -> r
 
-collect ::
-     (Data a, Typeable k, Eq k, Hashable k) => Proxy# k -> a -> HS.HashSet k
+collect :: (Data a, Typeable k, Ord k) => Proxy# k -> a -> S.Set k
 collect p t =
   case eqTypeRep (typeOf t) (f p) of
     Just HRefl -> [t]
@@ -85,18 +100,12 @@ collect p t =
     f _ = typeRep
 
 {-# INLINEABLE encodeFile #-}
-encodeFile :: Serialize a => FilePath -> a -> IO ()
-encodeFile p a = do
-  let !buf = encode a
-  BS.writeFile p buf
+encodeFile :: Binary.Binary a => FilePath -> a -> IO ()
+encodeFile = Binary.encodeFile
 
 {-# INLINEABLE decodeFile #-}
-decodeFile :: Serialize a => FilePath -> IO a
-decodeFile p = do
-  r <- decode <$> BS.readFile p
-  case r of
-    Left err -> fail err
-    Right a -> pure a
+decodeFile :: Binary.Binary a => FilePath -> IO a
+decodeFile = Binary.decodeFile
 
 {-# INLINEABLE showSBS #-}
 showSBS :: Show a => a -> SBS.ShortByteString
@@ -107,8 +116,8 @@ c8SBS :: SBS.ShortByteString -> String
 c8SBS = CBS.unpack . SBS.fromShort
 
 {-# INLINEABLE (!) #-}
-(!) :: (HasCallStack, Eq k, Hashable k, Show k) => LHM.HashMap k v -> k -> v
+(!) :: (HasCallStack, Ord k, Show k) => LM.Map k v -> k -> v
 (!) m k =
-  case LHM.lookup k m of
+  case LM.lookup k m of
     Just v -> v
     _ -> error $ show k <> " not found"

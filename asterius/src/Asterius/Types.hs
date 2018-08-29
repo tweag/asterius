@@ -56,15 +56,13 @@ module Asterius.Types
 
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.Exception
+import Data.Binary
 import qualified Data.ByteString.Short as SBS
 import Data.Data
-import qualified Data.HashMap.Lazy as LHM
-import qualified Data.HashMap.Strict as HM
-import Data.Hashable
 import qualified Data.IntMap.Strict as IM
-import Data.Serialize
+import qualified Data.Map.Lazy as LM
+import qualified Data.Map.Strict as M
 import Data.String
-import qualified Data.Vector as V
 import Foreign
 import GHC.Generics
 
@@ -82,7 +80,7 @@ data AsteriusCodeGenError
   | AssignToImmutableGlobalReg UnresolvedGlobalReg
   deriving (Show, Generic, Data)
 
-instance Serialize AsteriusCodeGenError
+instance Binary AsteriusCodeGenError
 
 instance Exception AsteriusCodeGenError
 
@@ -94,37 +92,37 @@ data AsteriusStatic
   | Serialized SBS.ShortByteString
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize AsteriusStatic
+instance Binary AsteriusStatic
 
 newtype AsteriusStatics = AsteriusStatics
-  { asteriusStatics :: V.Vector AsteriusStatic
+  { asteriusStatics :: [AsteriusStatic]
   } deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize AsteriusStatics
+instance Binary AsteriusStatics
 
 data AsteriusFunction = AsteriusFunction
   { functionType :: FunctionType
   , body :: Expression
   } deriving (Show, Generic, Data)
 
-instance Serialize AsteriusFunction
+instance Binary AsteriusFunction
 
 data AsteriusFunctionImport = AsteriusFunctionImport
   { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
   , functionType :: FunctionType
   } deriving (Show, Generic, Data)
 
-instance Serialize AsteriusFunctionImport
+instance Binary AsteriusFunctionImport
 
 data AsteriusModule = AsteriusModule
-  { staticsMap :: HM.HashMap AsteriusEntitySymbol AsteriusStatics
-  , staticsErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
-  , functionMap :: HM.HashMap AsteriusEntitySymbol AsteriusFunction
-  , functionErrorMap :: HM.HashMap AsteriusEntitySymbol AsteriusCodeGenError
+  { staticsMap :: M.Map AsteriusEntitySymbol AsteriusStatics
+  , staticsErrorMap :: M.Map AsteriusEntitySymbol AsteriusCodeGenError
+  , functionMap :: M.Map AsteriusEntitySymbol AsteriusFunction
+  , functionErrorMap :: M.Map AsteriusEntitySymbol AsteriusCodeGenError
   , ffiMarshalState :: FFIMarshalState
   } deriving (Show, Generic, Data)
 
-instance Serialize AsteriusModule
+instance Binary AsteriusModule
 
 instance Semigroup AsteriusModule where
   AsteriusModule sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 fe1 mod_ffi_state1 =
@@ -140,26 +138,22 @@ instance Monoid AsteriusModule where
 
 data AsteriusModuleSymbol = AsteriusModuleSymbol
   { unitId :: SBS.ShortByteString
-  , moduleName :: V.Vector SBS.ShortByteString
+  , moduleName :: [SBS.ShortByteString]
   } deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize AsteriusModuleSymbol
-
-instance Hashable AsteriusModuleSymbol
+instance Binary AsteriusModuleSymbol
 
 newtype AsteriusEntitySymbol = AsteriusEntitySymbol
   { entityName :: SBS.ShortByteString
-  } deriving (Eq, Ord, IsString, Serialize, Hashable)
+  } deriving (Eq, Ord, IsString, Binary)
 
 deriving newtype instance Show AsteriusEntitySymbol
-
-deriving instance Generic AsteriusEntitySymbol
 
 deriving instance Data AsteriusEntitySymbol
 
 data AsteriusStore = AsteriusStore
-  { symbolMap :: HM.HashMap AsteriusEntitySymbol AsteriusModuleSymbol
-  , moduleMap :: LHM.HashMap AsteriusModuleSymbol AsteriusModule
+  { symbolMap :: M.Map AsteriusEntitySymbol AsteriusModuleSymbol
+  , moduleMap :: LM.Map AsteriusModuleSymbol AsteriusModule
   } deriving (Show, Generic, Data)
 
 instance Semigroup AsteriusStore where
@@ -181,9 +175,7 @@ data UnresolvedLocalReg
   | QuotRemI64Y
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize UnresolvedLocalReg
-
-instance Hashable UnresolvedLocalReg
+instance Binary UnresolvedLocalReg
 
 data UnresolvedGlobalReg
   = VanillaReg Int
@@ -204,9 +196,7 @@ data UnresolvedGlobalReg
   | BaseReg
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize UnresolvedGlobalReg
-
-instance Hashable UnresolvedGlobalReg
+instance Binary UnresolvedGlobalReg
 
 data ValueType
   = None
@@ -217,16 +207,14 @@ data ValueType
   | Auto
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize ValueType
-
-instance Hashable ValueType
+instance Binary ValueType
 
 data FunctionType = FunctionType
   { returnType :: ValueType
-  , paramTypes :: V.Vector ValueType
+  , paramTypes :: [ValueType]
   } deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize FunctionType
+instance Binary FunctionType
 
 data UnaryOp
   = ClzInt32
@@ -283,7 +271,7 @@ data UnaryOp
   | ReinterpretInt64
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize UnaryOp
+instance Binary UnaryOp
 
 data BinaryOp
   = AddInt32
@@ -364,7 +352,7 @@ data BinaryOp
   | GeFloat64
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize BinaryOp
+instance Binary BinaryOp
 
 data HostOp
   = PageSize
@@ -373,7 +361,7 @@ data HostOp
   | HasFeature
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize HostOp
+instance Binary HostOp
 
 data AtomicRMWOp
   = AtomicRMWAdd
@@ -384,28 +372,28 @@ data AtomicRMWOp
   | AtomicRMWXchg
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Serialize AtomicRMWOp
+instance Binary AtomicRMWOp
 
 data Expression
   = Block { name :: SBS.ShortByteString
-          , bodys :: V.Vector Expression
+          , bodys :: [Expression]
           , valueType :: ValueType }
   | If { condition, ifTrue, ifFalse :: Expression }
   | Loop { name :: SBS.ShortByteString
          , body :: Expression }
   | Break { name :: SBS.ShortByteString
           , condition, value :: Expression }
-  | Switch { names :: V.Vector SBS.ShortByteString
+  | Switch { names :: [SBS.ShortByteString]
            , defaultName :: SBS.ShortByteString
            , condition, value :: Expression }
   | Call { target :: AsteriusEntitySymbol
-         , operands :: V.Vector Expression
+         , operands :: [Expression]
          , valueType :: ValueType }
   | CallImport { target' :: SBS.ShortByteString
-               , operands :: V.Vector Expression
+               , operands :: [Expression]
                , valueType :: ValueType }
   | CallIndirect { indirectTarget :: Expression
-                 , operands :: V.Vector Expression
+                 , operands :: [Expression]
                  , typeName :: SBS.ShortByteString }
   | GetLocal { index :: BinaryenIndex
              , valueType :: ValueType }
@@ -439,7 +427,7 @@ data Expression
   | Return { value :: Expression }
   | Host { hostOp :: HostOp
          , name :: SBS.ShortByteString
-         , operands :: V.Vector Expression }
+         , operands :: [Expression] }
   | Nop
   | Unreachable
   | AtomicLoad { bytes, offset :: BinaryenIndex
@@ -468,15 +456,15 @@ data Expression
   | Null
   deriving (Show, Generic, Data)
 
-instance Serialize Expression
+instance Binary Expression
 
 data Function = Function
   { functionTypeName :: SBS.ShortByteString
-  , varTypes :: V.Vector ValueType
+  , varTypes :: [ValueType]
   , body :: Expression
   } deriving (Show, Generic, Data)
 
-instance Serialize Function
+instance Binary Function
 
 data FunctionImport = FunctionImport
   { internalName, externalModuleName, externalBaseName, functionTypeName :: SBS.ShortByteString
@@ -510,7 +498,7 @@ data Global = Global
   } deriving (Show, Data)
 
 newtype FunctionTable = FunctionTable
-  { functionNames :: V.Vector SBS.ShortByteString
+  { functionNames :: [SBS.ShortByteString]
   } deriving (Show)
 
 data DataSegment = DataSegment
@@ -521,19 +509,19 @@ data DataSegment = DataSegment
 data Memory = Memory
   { initialPages, maximumPages :: BinaryenIndex
   , exportName :: SBS.ShortByteString
-  , dataSegments :: V.Vector DataSegment
+  , dataSegments :: [DataSegment]
   } deriving (Show)
 
 data Module = Module
-  { functionTypeMap :: HM.HashMap SBS.ShortByteString FunctionType
-  , functionMap' :: HM.HashMap SBS.ShortByteString Function
-  , functionImports :: V.Vector FunctionImport
-  , tableImports :: V.Vector TableImport
-  , globalImports :: V.Vector GlobalImport
-  , functionExports :: V.Vector FunctionExport
-  , tableExports :: V.Vector TableExport
-  , globalExports :: V.Vector GlobalExport
-  , globalMap :: HM.HashMap SBS.ShortByteString Global
+  { functionTypeMap :: M.Map SBS.ShortByteString FunctionType
+  , functionMap' :: M.Map SBS.ShortByteString Function
+  , functionImports :: [FunctionImport]
+  , tableImports :: [TableImport]
+  , globalImports :: [GlobalImport]
+  , functionExports :: [FunctionExport]
+  , tableExports :: [TableExport]
+  , globalExports :: [GlobalExport]
+  , globalMap :: M.Map SBS.ShortByteString Global
   , functionTable :: Maybe FunctionTable
   , memory :: Maybe Memory
   , startFunctionName :: Maybe SBS.ShortByteString
@@ -561,39 +549,39 @@ data RelooperAddBlock
   | AddBlockWithSwitch { code, condition :: Expression }
   deriving (Show, Generic, Data)
 
-instance Serialize RelooperAddBlock
+instance Binary RelooperAddBlock
 
 data RelooperAddBranch
   = AddBranch { to :: SBS.ShortByteString
               , condition, code :: Expression }
   | AddBranchForSwitch { to :: SBS.ShortByteString
-                       , indexes :: V.Vector BinaryenIndex
+                       , indexes :: [BinaryenIndex]
                        , code :: Expression }
   deriving (Show, Generic, Data)
 
-instance Serialize RelooperAddBranch
+instance Binary RelooperAddBranch
 
 data RelooperBlock = RelooperBlock
   { addBlock :: RelooperAddBlock
-  , addBranches :: V.Vector RelooperAddBranch
+  , addBranches :: [RelooperAddBranch]
   } deriving (Show, Generic, Data)
 
-instance Serialize RelooperBlock
+instance Binary RelooperBlock
 
 data RelooperRun = RelooperRun
   { entry :: SBS.ShortByteString
-  , blockMap :: HM.HashMap SBS.ShortByteString RelooperBlock
+  , blockMap :: M.Map SBS.ShortByteString RelooperBlock
   , labelHelper :: BinaryenIndex
   } deriving (Show, Generic, Data)
 
-instance Serialize RelooperRun
+instance Binary RelooperRun
 
 data Chunk a
   = Lit String
   | Field a
   deriving (Show, Generic, Data)
 
-instance Serialize a => Serialize (Chunk a)
+instance Binary a => Binary (Chunk a)
 
 data FFIValueType
   = FFI_VAL { ffiWasmValueType, ffiJSValueType :: ValueType
@@ -602,7 +590,7 @@ data FFIValueType
   | FFI_JSREF
   deriving (Show, Generic, Data)
 
-instance Serialize FFIValueType
+instance Binary FFIValueType
 
 data FFIFunctionType = FFIFunctionType
   { ffiParamTypes :: [FFIValueType]
@@ -610,25 +598,25 @@ data FFIFunctionType = FFIFunctionType
   , ffiInIO :: Bool
   } deriving (Show, Generic, Data)
 
-instance Serialize FFIFunctionType
+instance Binary FFIFunctionType
 
 data FFIImportDecl = FFIImportDecl
   { ffiFunctionType :: FFIFunctionType
   , ffiSourceChunks :: [Chunk Int]
   } deriving (Show, Generic, Data)
 
-instance Serialize FFIImportDecl
+instance Binary FFIImportDecl
 
 data FFIExportDecl = FFIExportDecl
   { ffiFunctionType :: FFIFunctionType
   , ffiExportClosure :: AsteriusEntitySymbol
   } deriving (Show, Generic, Data)
 
-instance Serialize FFIExportDecl
+instance Binary FFIExportDecl
 
 data FFIMarshalState = FFIMarshalState
-  { ffiImportDecls :: HM.HashMap AsteriusModuleSymbol (IM.IntMap FFIImportDecl)
-  , ffiExportDecls :: HM.HashMap AsteriusModuleSymbol (HM.HashMap AsteriusEntitySymbol FFIExportDecl)
+  { ffiImportDecls :: M.Map AsteriusModuleSymbol (IM.IntMap FFIImportDecl)
+  , ffiExportDecls :: M.Map AsteriusModuleSymbol (M.Map AsteriusEntitySymbol FFIExportDecl)
   } deriving (Show, Generic, Data)
 
 instance Semigroup FFIMarshalState where
@@ -641,23 +629,4 @@ instance Semigroup FFIMarshalState where
 instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
 
-instance Serialize FFIMarshalState
-
-instance (Eq k, Hashable k, Serialize k, Serialize v) =>
-         Serialize (HM.HashMap k v) where
-  put = put . HM.toList
-  {-# INLINE put #-}
-  get = HM.fromList <$> get
-  {-# INLINE get #-}
-
-instance Serialize a => Serialize (V.Vector a) where
-  put v = put (V.length v) *> V.mapM_ put v
-  {-# INLINE put #-}
-  get = do
-    len <- get
-    V.replicateM len get
-  {-# INLINE get #-}
-
-instance Hashable a => Hashable (V.Vector a) where
-  hashWithSalt salt = hashWithSalt salt . V.toList
-  {-# INLINE hashWithSalt #-}
+instance Binary FFIMarshalState

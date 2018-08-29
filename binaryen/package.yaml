@@ -41,6 +41,4 @@ tests:
     main: binaryen-test.hs
     dependencies:
       - binaryen
-      - vector
-    other-extensions:
-      - OverloadedLists
+      # - vector

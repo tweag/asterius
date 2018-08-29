@@ -1,6 +1,5 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -26,11 +25,10 @@ import qualified CmmSwitch as GHC
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString.Short as SBS
-import qualified Data.HashMap.Strict as HM
 import Data.List
+import qualified Data.Map.Strict as M
 import Data.String
 import Data.Traversable
-import qualified Data.Vector as V
 import Foreign
 import GHC.Exts
 import qualified GhcPlugins as GHC
@@ -58,10 +56,7 @@ unCodeGen (CodeGen m) = asks $ runExcept . runReaderT m
 
 {-# INLINEABLE runCodeGen #-}
 runCodeGen ::
-     CodeGen a
-  -> GHC.DynFlags
-  -> GHC.Module
-  -> Either AsteriusCodeGenError a
+     CodeGen a -> GHC.DynFlags -> GHC.Module -> Either AsteriusCodeGenError a
 runCodeGen (CodeGen m) dflags def_mod =
   runExcept $ runReaderT m (dflags, asmPpr dflags def_mod <> "_")
 
@@ -114,23 +109,23 @@ marshalCmmStatic st =
           dispatchAllCmmWidth
             w
             (if x < 0
-               then encodePrim (fromIntegral x :: Int8)
-               else encodePrim (fromIntegral x :: Word8))
+               then encodeStorable (fromIntegral x :: Int8)
+               else encodeStorable (fromIntegral x :: Word8))
             (if x < 0
-               then encodePrim (fromIntegral x :: Int16)
-               else encodePrim (fromIntegral x :: Word16))
+               then encodeStorable (fromIntegral x :: Int16)
+               else encodeStorable (fromIntegral x :: Word16))
             (if x < 0
-               then encodePrim (fromIntegral x :: Int32)
-               else encodePrim (fromIntegral x :: Word32))
+               then encodeStorable (fromIntegral x :: Int32)
+               else encodeStorable (fromIntegral x :: Word32))
             (if x < 0
-               then encodePrim (fromIntegral x :: Int64)
-               else encodePrim (fromIntegral x :: Word64))
+               then encodeStorable (fromIntegral x :: Int64)
+               else encodeStorable (fromIntegral x :: Word64))
         GHC.CmmFloat x w ->
           Serialized <$>
           dispatchCmmWidth
             w
-            (encodePrim (fromRational x :: Float))
-            (encodePrim (fromRational x :: Double))
+            (encodeStorable (fromRational x :: Float))
+            (encodeStorable (fromRational x :: Double))
         GHC.CmmLabel clbl -> UnresolvedStatic <$> marshalCLabel clbl
         GHC.CmmLabelOff clbl o -> do
           sym <- marshalCLabel clbl
@@ -142,7 +137,7 @@ marshalCmmStatic st =
 marshalCmmData :: GHC.CmmStatics -> CodeGen AsteriusStatics
 marshalCmmData (GHC.Statics _ ss) = do
   ass <- for ss marshalCmmStatic
-  pure AsteriusStatics {asteriusStatics = V.fromList ass}
+  pure AsteriusStatics {asteriusStatics = ass}
 
 marshalCmmLocalReg :: GHC.LocalReg -> CodeGen (UnresolvedLocalReg, ValueType)
 marshalCmmLocalReg (GHC.LocalReg u t) = do
@@ -816,17 +811,13 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
           (xe, _) <- marshalCmmExpr x
           pure xe
       case rs of
-        [] ->
-          pure
-            [Call {target = sym, operands = V.fromList xes, valueType = None}]
+        [] -> pure [Call {target = sym, operands = xes, valueType = None}]
         [r] -> do
           (lr, vt) <- marshalCmmLocalReg r
           pure
             [ UnresolvedSetLocal
                 { unresolvedLocalReg = lr
-                , value =
-                    Call
-                      {target = sym, operands = V.fromList xes, valueType = vt}
+                , value = Call {target = sym, operands = xes, valueType = vt}
                 }
             ]
         _ ->
@@ -854,7 +845,7 @@ marshalCmmInstr instr =
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       gr <- marshalCmmGlobalReg r
       v <- marshalAndCastCmmExpr e $ unresolvedGlobalRegType gr
-      if gr `V.elem` [CurrentTSO, EagerBlackholeInfo, GCEnter1, GCFun]
+      if gr `elem` [CurrentTSO, EagerBlackholeInfo, GCEnter1, GCFun]
         then throwError $ AssignToImmutableGlobalReg gr
         else pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
     GHC.CmmStore p e -> do
@@ -912,7 +903,7 @@ marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
 marshalCmmBlockBranch ::
      GHC.CmmNode GHC.O GHC.C
-  -> CodeGen ([Expression], Maybe Expression, V.Vector RelooperAddBranch)
+  -> CodeGen ([Expression], Maybe Expression, [RelooperAddBranch])
 marshalCmmBlockBranch instr =
   case instr of
     GHC.CmmBranch lbl -> do
@@ -925,8 +916,7 @@ marshalCmmBlockBranch instr =
       pure
         ( []
         , Nothing
-        , V.fromList $
-          [AddBranch {to = kt, condition = c, code = Null} | kt /= kf] <>
+        , [AddBranch {to = kt, condition = c, code = Null} | kt /= kf] <>
           [AddBranch {to = kf, condition = Null, code = Null}])
     GHC.CmmSwitch cml_arg st -> do
       a <- marshalAndCastCmmExpr cml_arg I64
@@ -953,10 +943,8 @@ marshalCmmBlockBranch instr =
                         , operand1 = ConstI64 $ fromIntegral l
                         }
               }
-        , V.fromList $
-          [ AddBranchForSwitch
-            {to = dest, indexes = V.fromList tags, code = Null}
-          | (dest, tags) <- HM.toList $ HM.fromListWith (<>) brs
+        , [ AddBranchForSwitch {to = dest, indexes = tags, code = Null}
+          | (dest, tags) <- M.toList $ M.fromListWith (<>) brs
           , dest /= dest_def
           ] <>
           [AddBranch {to = dest_def, condition = Null, code = Null}])
@@ -996,7 +984,7 @@ marshalCmmBlock inner_nodes exit_node = do
       case es of
         [] -> Nop
         [e] -> e
-        _ -> Block {name = "", bodys = V.fromList es, valueType = None}
+        _ -> Block {name = "", bodys = es, valueType = None}
 
 marshalCmmProc :: GHC.CmmGraph -> CodeGen AsteriusFunction
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
@@ -1015,14 +1003,14 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
             }) :
         rbs
       blocks_key_map =
-        HM.fromList
+        M.fromList
           (zip (sort (map fst blocks_unresolved)) (map showSBS [(0 :: Int) ..]))
       blocks_key_subst = (blocks_key_map !)
       blocks_resolved =
         [ ( blocks_key_subst k
           , b
               { addBranches =
-                  V.map
+                  map
                     (\br ->
                        case br of
                          AddBranch {..} -> br {to = blocks_key_subst to}
@@ -1042,7 +1030,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                 [ CFG
                     RelooperRun
                       { entry = blocks_key_subst entry_k
-                      , blockMap = HM.fromList blocks_resolved
+                      , blockMap = M.fromList blocks_resolved
                       , labelHelper = 0
                       }
                 , GetLocal {index = 2, valueType = I64}
@@ -1060,15 +1048,15 @@ marshalCmmDecl decl =
       r <- unCodeGen $ marshalCmmData d
       pure $
         case r of
-          Left err -> mempty {staticsErrorMap = [(sym, err)]}
-          Right ass -> mempty {staticsMap = [(sym, ass)]}
+          Left err -> mempty {staticsErrorMap = M.fromList [(sym, err)]}
+          Right ass -> mempty {staticsMap = M.fromList [(sym, ass)]}
     GHC.CmmProc _ clbl _ g -> do
       sym <- marshalCLabel clbl
       r <- unCodeGen $ marshalCmmProc g
       pure $
         case r of
-          Left err -> mempty {functionErrorMap = [(sym, err)]}
-          Right f -> mempty {functionMap = [(sym, f)]}
+          Left err -> mempty {functionErrorMap = M.fromList [(sym, err)]}
+          Right f -> mempty {functionMap = M.fromList [(sym, f)]}
 
 marshalHaskellIR :: HaskellIR -> CodeGen AsteriusModule
 marshalHaskellIR HaskellIR {..} = mconcat <$> for cmmRaw marshalCmmDecl
