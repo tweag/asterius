@@ -26,6 +26,7 @@ custom-setup:
     - Cabal
     - directory
     - filepath
+    - process
 
 ghc-options: -Wall
 
@@ -41,4 +42,3 @@ tests:
     main: binaryen-test.hs
     dependencies:
       - binaryen
-      # - vector

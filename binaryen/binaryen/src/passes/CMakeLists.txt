@@ -1,7 +1,7 @@
 add_custom_command(
   OUTPUT WasmIntrinsics.cpp
-  COMMAND python ${CMAKE_SOURCE_DIR}/scripts/embedwast.py ${CMAKE_SOURCE_DIR}/src/passes/wasm-intrinsics.wast ${CMAKE_CURRENT_BINARY_DIR}/WasmIntrinsics.cpp
-  DEPENDS ${CMAKE_SOURCE_DIR}/scripts/embedwast.py wasm-intrinsics.wast)
+  COMMAND python ${PROJECT_SOURCE_DIR}/scripts/embedwast.py ${PROJECT_SOURCE_DIR}/src/passes/wasm-intrinsics.wast ${CMAKE_CURRENT_BINARY_DIR}/WasmIntrinsics.cpp
+  DEPENDS ${PROJECT_SOURCE_DIR}/scripts/embedwast.py wasm-intrinsics.wast)
 
 SET(passes_SOURCES
   pass.cpp
@@ -9,6 +9,7 @@ SET(passes_SOURCES
   CodePushing.cpp
   CodeFolding.cpp
   ConstHoisting.cpp
+  DataFlowOpts.cpp
   DeadCodeElimination.cpp
   DuplicateFunctionElimination.cpp
   ExtractFunction.cpp
@@ -47,6 +48,7 @@ SET(passes_SOURCES
   TrapMode.cpp
   SafeHeap.cpp
   SimplifyLocals.cpp
+  Souperify.cpp
   SpillPointers.cpp
   SSAify.cpp
   Untee.cpp

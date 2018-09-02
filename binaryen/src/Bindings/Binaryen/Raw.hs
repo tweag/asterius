@@ -1031,8 +1031,7 @@ foreign import ccall unsafe "BinaryenAddGlobal" c_BinaryenAddGlobal
       Int8 -> BinaryenExpressionRef -> IO BinaryenGlobalRef
 
 foreign import ccall unsafe "BinaryenSetFunctionTable" c_BinaryenSetFunctionTable
-  :: BinaryenModuleRef ->
-  Ptr BinaryenFunctionRef -> BinaryenIndex -> IO ()
+  :: BinaryenModuleRef -> Ptr (Ptr CChar) -> BinaryenIndex -> IO ()
 
 foreign import ccall unsafe "BinaryenSetMemory" c_BinaryenSetMemory
   :: BinaryenModuleRef ->

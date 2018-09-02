@@ -19,4 +19,4 @@ setup-info:
         url: https://ci.appveyor.com/api/buildjobs/a0ism43pxm9f4371/artifacts/ghc/ghc-8.7.20180822-x86_64-unknown-mingw32.tar.xz
     linux64:
       8.7.20180822:
-        url: https://1574-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180822-x86_64-unknown-linux.tar.xz
+        url: https://1593-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180822-x86_64-unknown-linux.tar.xz

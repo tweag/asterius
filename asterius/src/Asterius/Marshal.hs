@@ -415,14 +415,10 @@ marshalGlobal pool m k Global {..} = do
   kp <- marshalSBS pool k
   c_BinaryenAddGlobal m kp (marshalValueType valueType) (marshalBool mutable) i
 
-marshalFunctionTable ::
-     Pool
-  -> BinaryenModuleRef
-  -> M.Map SBS.ShortByteString BinaryenFunctionRef
-  -> FunctionTable
-  -> IO ()
-marshalFunctionTable pool m fps FunctionTable {..} = do
-  (fnp, fnl) <- marshalV pool $ map (fps !) functionNames
+marshalFunctionTable :: Pool -> BinaryenModuleRef -> FunctionTable -> IO ()
+marshalFunctionTable pool m FunctionTable {..} = do
+  func_name_ptrs <- for functionNames $ marshalSBS pool
+  (fnp, fnl) <- marshalV pool func_name_ptrs
   c_BinaryenSetFunctionTable m fnp fnl
 
 marshalMemory :: Pool -> BinaryenModuleRef -> Memory -> IO ()
@@ -478,7 +474,7 @@ marshalModule pool Module {..} = do
   forM_ globalExports $ marshalGlobalExport pool m
   for_ (M.toList globalMap) $ uncurry (marshalGlobal pool m)
   case functionTable of
-    Just ft -> marshalFunctionTable pool m fps ft
+    Just ft -> marshalFunctionTable pool m ft
     _ -> pure ()
   case memory of
     Just mem -> marshalMemory pool m mem

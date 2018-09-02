@@ -22,19 +22,13 @@ root@76bcb511663d:/mirror# ahc-link --help
 `asterius` requires a custom `ghc` which:
 
 * Uses `ghc-head` instead of a release version. It forces us to keep an eye on upstream changes. The `master` branch of `ghc` may introduce breaking commits, so for safety you should choose the specific `ghc` version as indicated in the `stack.yaml` file.
-* Disables [`TABLES_NEXT_TO_CODE`](https://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Storage/HeapObjects#TABLES_NEXT_TO_CODE). It's hard to attach executable code to an info table on the WebAssembly platform.
-* Uses `integer-simple` instead of `integer-gmp`. Porting `integer-gmp` to WebAssembly requires extra work and is not currently scheduled.
+* Integrates [D5079](https://phabricator.haskell.org/D5079).
 
-The building guide of `ghc` can be found [here](https://ghc.haskell.org/trac/ghc/wiki/Building). Add the following lines to `mk/build.mk`:
-
-```
-GhcEnableTablesNextToCode = NO
-INTEGER_LIBRARY           = integer-simple
-```
+The building guide of `ghc` can be found [here](https://ghc.haskell.org/trac/ghc/wiki/Building).
 
 In addition to your own build configs.
 
-On Linux/Windows, a prebuilt `ghc` tarball is provided. It's already included in [`stack.yaml`](https://github.com/tweag/asterius/blob/master/stack.yaml).
+On Linux/Windows, a prebuilt `ghc` tarball is provided. It's already included in [`stack.yaml`](https://github.com/tweag/asterius/blob/master/stack.yaml). Note that the Windows bindist does not provide prof libs/haddock (due to AppVeyor build time restriction).
 
 ## Extra dependencies
 
