@@ -17,7 +17,18 @@ Requirements:
 * Add `StablePtr` to JSFFI basic types. (done, see `jsffi` unit test)
 * Implement `foreign export javascript` syntax, add necessary logic in `JSFFI`/`Resolve` (done, see `jsffi` unit test)
 
-Rough ETA: before Aug 20th.
+#### Improve `.wasm`/`.js` generation
+
+Currently, given a home module, `ahc-link` outputs a `.wasm` and a `.js` wrapper which runs in Node.js. We will need the whole thing to run in browser though.
+
+Requirements:
+
+* Add logic in `ahc-link` to generate browser-friendly code
+* Make the test suite run via a headless browser, and properly retrieve results from the browser back to Haskell
+
+### Next important tasks
+
+The following tasks are somewhat less important, but still necessary for end-user experience. They will be processed once the previous goal is accomplished.
 
 #### Improve Haskell/JavaScript marshalling
 
@@ -38,19 +49,6 @@ Requirements:
 * Add `bytestring` to boot libs.
 * Implement `Weak#`, since `ByteString` needs finalizers
 * Implement WebAssembly shims in `Builtins` for required C functions.
-
-#### Improve `.wasm`/`.js` generation
-
-Currently, given a home module, `ahc-link` outputs a `.wasm` and a `.js` wrapper which runs in Node.js. We will need the whole thing to run in browser though.
-
-Requirements:
-
-* Add logic in `ahc-link` to generate browser-friendly code
-* Make the test suite run via a headless browser, and properly retrieve results from the browser back to Haskell
-
-### Next important tasks
-
-The following tasks are somewhat less important, but still necessary for end-user experience. They will be processed once the previous goal is accomplished.
 
 #### Utilize GHC renamer/typechecker in JSFFI
 
@@ -84,6 +82,37 @@ Some possible fixes:
 * Provide `nukeJSRefs`, can be called periodically to wipe all `JSRef`s
 * Provide a region-based API, all `JSRef`s are tied to a region. Regions themselves can be allocated and recycled. Optionally there can be a global region.
 
+#### Support 3rd-party GHC plugins
+
+Currently there exist multiple plugin mechanisms in GHC:
+
+* Frontend plugins, allowing one to create a custom major mode and execute custom login in the `Ghc` monad when the `ghc` process is called. GHC only does the work of parsing command line arguments.
+* Core plugins, allowing one to modify the Core -> Core pipeline and insert custom passes.
+* Source plugins, allowing one to inspect/modify the parsed/renamed/typechecked AST.
+* Hooks, allowing one to override certain GHC internal functions.
+
+We should add tests to ensure 3rd-party GHC plugins work.
+
+* For Core plugins: we don't manipulate Core, so they should work out of the box.
+* For Source plugins: the JSFFI mechanism relies on rewriting AST (currently parsed AST), but via `runPhaseHook` instead of source plugins, so this may work but needs some testing.
+* For Frontend plugins: to support a frontend plugin, work must be done on the plugin side instead of here, since the main logic is handled by plugin itself. Not practical since we use hooks to implement our modified pipeline, which is likely to be hard to integrated into another pipeline.
+* For Hooks: Not practical, reason is the same as above.
+
+#### Implement Template Haskell/GHCi
+
+There are two possible ways to implement Template Haskell:
+
+* Link with the native code produced when booting. For simple `Q` computations that doesn't involve `runIO` this should work fine, but it won't work when one calls a WebAssembly computation in `Q`.
+* Implement the remote interpreter for WebAssembly, much like ghcjs. When Template Haskell/GHCi is involved, we fire up a Node.js/Headless Chrome process and do all the message passing. This is the ideal solution but takes a huge amount of work.
+
+Implementing the first approach is straightforward:
+
+* While we compile to WebAssembly, we still perform native code generation and emit x64 object files. The emitted object files are just there to make `Cabal` happy, but GHCi linker can take advantage of them.
+* GHCi linking for the objects should work out of the box (at least on Linux). There is a `th` test suite but it isn't run on CI mainly because of some weird Windows GHCi linker bug.
+* As long as GHCi linker doesn't fail, the computation in `Q` monad can be executed in the `ahc` process. It's not run in a JavaScript runtime properly, so the splice's module must not have any transitive dependency on a JSFFI import (GHCi linking will fail anyway).
+
+GHCi can work in a similar way (but pretty meaningless..)
+
 #### Improve `Cabal` support
 
 Currently, `Cabal` still thinks `ahc` is yet another `ghc` and feeds it with `ghc` command line arguments. We should teach it to regard `ahc` as a new Haskell compiler, and what to do for typical commands (`configure`/`build`/`install`, etc).
@@ -101,13 +130,6 @@ The current test suites have poor coverage of Haskell features.
 ### Archived tasks
 
 The following tasks have lower priority, either due to low impact to end-user experience or significant time involved. They are archived here and may be revisited at a later date, and we're still happy to discuss or review a pull request.
-
-#### Implement Template Haskell/GHCi
-
-There are two possible ways to implement Template Haskell/GHCi:
-
-* Link with the native code produced when booting. For simple `Q` computations that doesn't involve `runIO` this should work fine, but it won't work when one calls a WebAssembly computation in `Q`.
-* Implement the remote interpreter for WebAssembly, much like ghcjs. When Template Haskell/GHCi is involved, we fire up a Node.js/Headless Chrome process and do all the message passing. This is the ideal solution but takes a huge amount of work.
 
 #### Improve WebAssembly EDSL
 
