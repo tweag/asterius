@@ -11,13 +11,12 @@ extra-source-files:
   - CHANGELOG.md
   - LICENSE
   - README.md
-  - test/fib/fib.hs
-  - test/jsffi/jsffi.hs
-  - test/array/array.hs
-  - test/th/Splices.hs
-  - test/th/th.hs
-  - test/stableptr/stableptr.hs
-  - test/rtsapi/rtsapi.hs
+  - test/array/**/*.hs
+  - test/fib/**/*.hs
+  - test/jsffi/**/*.hs
+  - test/rtsapi/**/*.hs
+  - test/stableptr/**/*.hs
+  - test/th/**/*.hs
 
 data-files:
   - rts/rts.js

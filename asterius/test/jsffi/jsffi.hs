@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-rn -ddump-foreign -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
+import AsteriusPrim
 import Foreign.StablePtr
 
 foreign import javascript "new Date()" current_time :: IO JSRef
@@ -25,5 +26,9 @@ main = do
   js_putchar 'H'
   let x = js_mult 6 7
   print_int x
-  x' <- newStablePtr x >>= js_stableptr_id >>= deRefStablePtr
+  x' <- newStablePtr 233 >>= js_stableptr_id >>= deRefStablePtr
   print_int x'
+  js_print $
+    toJSString $
+    fromJSString $ toJSString "I AM A STRING THAT LEAPS BETWEEN HEAPS"
+  js_print $ toJSArray $ fromJSArray $ toJSArray [t, t, t]

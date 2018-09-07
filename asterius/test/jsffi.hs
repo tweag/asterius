@@ -17,7 +17,7 @@ main = do
         , "i => {"
         , "i.wasmInstance.exports.hs_init();"
         , "i.wasmInstance.exports.main();"
-        , "console.log(i.wasmInstance.exports.mult_hs(6, 7));"
+        , "console.log(i.wasmInstance.exports.mult_hs(9, 9));"
         , "}"
         ]
     ] <>
