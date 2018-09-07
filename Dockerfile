@@ -12,6 +12,7 @@ ENV \
 WORKDIR /root
 
 RUN \
+  apt-mark hold dash && \
   apt update && \
   apt install -y \
     apt-transport-https \

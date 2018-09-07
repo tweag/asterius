@@ -26,7 +26,6 @@ custom-setup:
     - Cabal
     - directory
     - filepath
-    - process
 
 ghc-options: -Wall
 
