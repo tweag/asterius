@@ -37,8 +37,14 @@ import System.FilePath
 import System.IO hiding (IO)
 import System.Process
 
+data Target
+  = Node
+  | Browser
+  deriving (Eq)
+
 data Task = Task
-  { input, outputWasm, outputNode :: FilePath
+  { target :: Target
+  , input, outputWasm, outputJS :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
   , debug, optimize, outputIR, run :: Bool
   , heapSize :: Int
@@ -49,11 +55,12 @@ data Task = Task
 
 parseTask :: Parser Task
 parseTask =
-  (\i m_wasm m_node m_report m_gv dbg opt ir r m_hs m_with_i ghc_flags export_funcs root_syms ->
+  (\t i m_wasm m_node m_report m_gv dbg opt ir r m_hs m_with_i ghc_flags export_funcs root_syms ->
      Task
-       { input = i
+       { target = t
+       , input = i
        , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
-       , outputNode = fromMaybe (i -<.> "js") m_node
+       , outputJS = fromMaybe (i -<.> "js") m_node
        , outputLinkReport = m_report
        , outputGraphViz = m_gv
        , debug = dbg
@@ -71,6 +78,12 @@ parseTask =
        , extraRootSymbols =
            [AsteriusEntitySymbol {entityName = sym} | sym <- root_syms]
        }) <$>
+  fmap
+    (\f ->
+       if f
+         then Browser
+         else Node)
+    (switch (long "browser" <> help "Target browsers instead of Node.js")) <*>
   strOption (long "input" <> help "Path of the Main module") <*>
   optional
     (strOption
@@ -78,9 +91,9 @@ parseTask =
         help "Output path of WebAssembly binary, defaults to same path of Main")) <*>
   optional
     (strOption
-       (long "output-node" <>
+       (long "output-js" <>
         help
-          "Output path of Node.js script, defaults to same path of Main. Must be the same directory as the WebAssembly binary.")) <*>
+          "Output path of JavaScript, defaults to same path of Main. Must be the same directory as the WebAssembly binary.")) <*>
   optional
     (strOption
        (long "output-link-report" <> help "Output path of linking report")) <*>
@@ -133,27 +146,40 @@ genNode :: Task -> LinkReport -> IO Builder
 genNode Task {..} LinkReport {..} = do
   rts_buf <- BS.readFile $ dataDir </> "rts" </> "rts.js"
   pure $
-    mconcat
-      [ byteString rts_buf
-      , "async function main() {\n"
-      , "const i = await newAsteriusInstance({functionSymbols: "
-      , string7 $ show $ map fst $ sortOn snd $ M.toList functionSymbolMap
-      , ", bufferSource: require(\"fs\").readFileSync("
-      , string7 $ show $ takeFileName outputWasm
-      , "), jsffiFactory: "
-      , generateFFIImportObjectFactory bundledFFIMarshalState
-      , ", staticsSymbolMap: "
-      , genSymbolDict staticsSymbolMap
-      , ", functionSymbolMap: "
-      , genSymbolDict functionSymbolMap
-      , "});\n"
-      , "("
-      , string7 asteriusInstanceCallback
-      , ")(i);\n"
-      , "}\n"
-      , "process.on('unhandledRejection', err => { throw err; });\n"
-      , "main();\n"
-      ]
+    mconcat $
+    [ byteString rts_buf
+    , "async function main() {\n"
+    , "const i = await newAsteriusInstance({functionSymbols: "
+    , string7 $ show $ map fst $ sortOn snd $ M.toList functionSymbolMap
+    , ", bufferSource: "
+    ] <>
+    (case target of
+       Node ->
+         [ "require(\"fs\").readFileSync("
+         , string7 $ show $ takeFileName outputWasm
+         , ")"
+         ]
+       Browser ->
+         [ "await (await fetch("
+         , string7 $ show $ takeFileName outputWasm
+         , ")).arrayBuffer()"
+         ]) <>
+    [ ", jsffiFactory: "
+    , generateFFIImportObjectFactory bundledFFIMarshalState
+    , ", staticsSymbolMap: "
+    , genSymbolDict staticsSymbolMap
+    , ", functionSymbolMap: "
+    , genSymbolDict functionSymbolMap
+    , "});\n"
+    , "("
+    , string7 asteriusInstanceCallback
+    , ")(i);\n"
+    , "}\n"
+    , case target of
+        Node -> "process.on('unhandledRejection', err => { throw err; });\n"
+        Browser -> mempty
+    , "main();\n"
+    ]
 
 main :: IO ()
 main = do
@@ -274,15 +300,15 @@ main = do
        !m_bin <- serializeModule m_ref
        putStrLn $ "[INFO] Writing WebAssembly binary to " <> show outputWasm
        BS.writeFile outputWasm m_bin
-       putStrLn $ "[INFO] Writing Node.js script to " <> show outputNode
-       h <- openBinaryFile outputNode WriteMode
+       putStrLn $ "[INFO] Writing Node.js script to " <> show outputJS
+       h <- openBinaryFile outputJS WriteMode
        b <- genNode task report
        hPutBuilder h b
        hClose h
-       when run $ do
-         putStrLn $ "[INFO] Running " <> outputNode
+       when (target == Node && run) $ do
+         putStrLn $ "[INFO] Running " <> outputJS
          withCurrentDirectory (takeDirectory outputWasm) $
            callProcess "node" $
            ["--wasm-opt" | optimize] <>
-           ["--harmony-bigint", takeFileName outputNode])
+           ["--harmony-bigint", takeFileName outputJS])
     m_final_m
