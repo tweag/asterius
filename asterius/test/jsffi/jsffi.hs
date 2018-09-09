@@ -17,6 +17,10 @@ foreign import javascript "console.log(${1})" print_int :: Int -> IO ()
 foreign import javascript "${1}" js_stableptr_id
   :: StablePtr Int -> IO (StablePtr Int)
 
+foreign import javascript "false" js_false :: Bool
+
+foreign import javascript "true" js_true :: Bool
+
 foreign export javascript "mult_hs" (*) :: Int -> Int -> Int
 
 main :: IO ()
@@ -32,3 +36,6 @@ main = do
     toJSString $
     fromJSString $ toJSString "I AM A STRING THAT LEAPS BETWEEN HEAPS"
   js_print $ toJSArray $ fromJSArray $ toJSArray [t, t, t]
+  js_print $ callJSObjectMethod json "parse" [toJSString "{}"]
+  print_int $ fromEnum js_false
+  print_int $ fromEnum js_true

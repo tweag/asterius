@@ -167,6 +167,14 @@ HsInt offset_StgFunTable_stgGCEnter1() {
 
 HsInt offset_StgFunTable_stgGCFun() { return offsetof(StgFunTable, stgGCFun); }
 
+HsInt offset_StgInfoTable_entry() { return 0; }
+
+HsInt offset_StgInfoTable_layout() { return 8; }
+
+HsInt offset_StgInfoTable_type() { return 16; }
+
+HsInt offset_StgInfoTable_srt() { return 20; }
+
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
 HsInt offset_StgRegTable_rR1() { return offsetof(StgRegTable, rR1); }

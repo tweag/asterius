@@ -190,6 +190,9 @@ rtsAsteriusModule opts =
         , ( "hs_free_stable_ptr_wrapper"
           , generateWrapperFunction "hs_free_stable_ptr" $
             freeStablePtrWrapperFunction opts)
+        , ("rts_mkBool", rtsMkBoolFunction opts)
+        , ( "rts_mkBool_wrapper"
+          , generateWrapperFunction "rts_mkBool" $ rtsMkBoolFunction opts)
         , ("rts_mkInt", rtsMkIntFunction opts)
         , ( "rts_mkInt_wrapper"
           , generateWrapperFunction "rts_mkInt" $ rtsMkIntFunction opts)
@@ -203,6 +206,9 @@ rtsAsteriusModule opts =
         , ( "rts_mkStablePtr_wrapper"
           , generateWrapperFunction "rts_mkStablePtr" $
             rtsMkStablePtrFunction opts)
+        , ("rts_getBool", rtsGetBoolFunction opts)
+        , ( "rts_getBool_wrapper"
+          , generateWrapperFunction "rts_getBool" $ rtsGetBoolFunction opts)
         , ("rts_getInt", rtsGetIntFunction opts)
         , ( "rts_getInt_wrapper"
           , generateWrapperFunction "rts_getInt" $ rtsGetIntFunction opts)
@@ -411,10 +417,12 @@ rtsAsteriusFunctionExports debug =
   | f <-
       [ "allocate"
       , "loadI64"
+      , "rts_mkBool"
       , "rts_mkInt"
       , "rts_mkWord"
       , "rts_mkPtr"
       , "rts_mkStablePtr"
+      , "rts_getBool"
       , "rts_getInt"
       , "rts_getWord"
       , "rts_getPtr"
@@ -532,7 +540,7 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
         I64 -> (I32, wrapInt64)
         _ -> (returnType, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL $
@@ -1251,6 +1259,15 @@ rtsMkHelper _ con_sym =
     storeI64 p 8 i
     emit p
 
+rtsMkBoolFunction _ =
+  runEDSL $ do
+    setReturnType I64
+    [_, i] <- params [I64, I64]
+    if'
+      (eqZInt64 i)
+      (emit $ symbol "ghczmprim_GHCziTypes_False_closure")
+      (emit $ symbol "ghczmprim_GHCziTypes_True_closure")
+
 rtsMkIntFunction opts = rtsMkHelper opts "ghczmprim_GHCziTypes_Izh_con_info"
 
 rtsMkWordFunction opts = rtsMkHelper opts "ghczmprim_GHCziTypes_Wzh_con_info"
@@ -1262,6 +1279,16 @@ rtsMkStablePtrFunction opts =
 
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
+
+rtsGetBoolFunction _ =
+  runEDSL $ do
+    setReturnType I64
+    p <- param I64
+    emit $
+      extendUInt32 $
+      neInt32
+        (constI32 0)
+        (loadI32 (loadI64 (unTagClosure p) 0) offset_StgInfoTable_srt)
 
 rtsGetIntFunction _ =
   runEDSL $ do
