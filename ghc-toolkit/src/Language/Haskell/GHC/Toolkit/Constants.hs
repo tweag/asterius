@@ -157,6 +157,18 @@ foreign import ccall unsafe "offset_StgFunTable_stgGCEnter1" offset_StgFunTable_
 foreign import ccall unsafe "offset_StgFunTable_stgGCFun" offset_StgFunTable_stgGCFun
   :: Int
 
+foreign import ccall unsafe "offset_StgInfoTable_entry" offset_StgInfoTable_entry
+  :: Int
+
+foreign import ccall unsafe "offset_StgInfoTable_layout" offset_StgInfoTable_layout
+  :: Int
+
+foreign import ccall unsafe "offset_StgInfoTable_type" offset_StgInfoTable_type
+  :: Int
+
+foreign import ccall unsafe "offset_StgInfoTable_srt" offset_StgInfoTable_srt
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgRegTable" sizeof_StgRegTable :: Int
 
 foreign import ccall unsafe "offset_StgRegTable_rR1" offset_StgRegTable_rR1

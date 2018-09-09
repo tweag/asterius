@@ -109,6 +109,14 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , hsTyCon = "Char"
             , signed = False
             }
+      | tv == GHC.occName GHC.boolTyConName ->
+        pure
+          FFI_VAL
+            { ffiWasmValueType = I64
+            , ffiJSValueType = I32
+            , hsTyCon = "Bool"
+            , signed = False
+            }
       | tv == GHC.occName GHC.intTyConName ->
         pure
           FFI_VAL

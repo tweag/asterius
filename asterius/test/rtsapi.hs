@@ -26,6 +26,10 @@ main = do
         , "const ret_p2 = i.wasmInstance.exports.allocate(cap, 1);"
         , "i.wasmInstance.exports.rts_evalStableIO(cap, i.wasmInstance.exports.getStablePtr(i.wasmInstance.exports.rts_apply(cap, i.staticsSymbolMap.Main_printInt_closure, i.wasmInstance.exports.rts_apply(cap, i.staticsSymbolMap.Main_fact_closure, i.wasmInstance.exports.rts_mkInt(cap, 5)))), ret_p2);"
         , "console.log((i.wasmInstance.exports.deRefStablePtr(i.wasmInstance.exports.loadI64(ret_p2)) & (~ 7)) === i.staticsSymbolMap.ghczmprim_GHCziTuple_Z0T_closure);"
+        , "console.log(i.wasmInstance.exports.rts_getBool(i.staticsSymbolMap.ghczmprim_GHCziTypes_False_closure));"
+        , "console.log(i.wasmInstance.exports.rts_getBool(i.staticsSymbolMap.ghczmprim_GHCziTypes_True_closure));"
+        , "console.log(i.wasmInstance.exports.rts_getBool(i.wasmInstance.exports.rts_mkBool(cap, 0)));"
+        , "console.log(i.wasmInstance.exports.rts_getBool(i.wasmInstance.exports.rts_mkBool(cap, 42)));"
         , "}"
         ]
     ] <>
