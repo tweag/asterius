@@ -6,17 +6,13 @@ async function newAsteriusInstance(req) {
   function __asterius_newI64(lo, hi) {
     return BigInt(lo) | (BigInt(hi) << 32n);
   }
-  let __asterius_jsffi_JSRefs = [undefined];
+  const __asterius_jsffi_JSRefs = [undefined];
   function __asterius_jsffi_newJSRef(e) {
-    const n = __asterius_jsffi_JSRefs.length;
-    __asterius_jsffi_JSRefs[n] = e;
-    return n;
+    return __asterius_jsffi_JSRefs.push(e) - 1;
   }
-  let __asterius_SPT = [undefined];
+  const __asterius_SPT = [undefined];
   function __asterius_newStablePtr(obj) {
-    const n = __asterius_SPT.length;
-    __asterius_SPT[n] = obj;
-    return n;
+    return __asterius_SPT.push(obj) - 1;
   }
   function __asterius_deRefStablePtr(sp) {
     return __asterius_SPT[sp];
@@ -29,7 +25,11 @@ async function newAsteriusInstance(req) {
       Object.assign(
           req.jsffiFactory({
             JSRefs: __asterius_jsffi_JSRefs,
-            newJSRef: __asterius_jsffi_newJSRef
+            newJSRef: __asterius_jsffi_newJSRef,
+            evalStableIO: s => {
+              const cap = req.staticsSymbolMap.MainCapability;
+              __asterius_wasm_instance.exports.rts_evalStableIO(cap, s, 0);
+            }
           }),
           {
             Math: Math,

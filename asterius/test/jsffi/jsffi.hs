@@ -21,6 +21,12 @@ foreign import javascript "false" js_false :: Bool
 
 foreign import javascript "true" js_true :: Bool
 
+foreign import javascript "() => __asterius_jsffi.evalStableIO(${1})" js_make_hs_callback
+  :: StablePtr (IO ()) -> JSRef
+
+foreign import javascript "setTimeout(${1},${2})" js_set_timeout
+  :: JSRef -> Int -> IO ()
+
 foreign export javascript "mult_hs" (*) :: Int -> Int -> Int
 
 main :: IO ()
@@ -39,3 +45,5 @@ main = do
   js_print $ callJSObjectMethod json "parse" [toJSString "{}"]
   print_int $ fromEnum js_false
   print_int $ fromEnum js_true
+  io <- newStablePtr $ print_int 123456
+  js_set_timeout (js_make_hs_callback io) 1000

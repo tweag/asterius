@@ -584,14 +584,14 @@ generateFFILambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..} =
   mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
   ")=>" <>
   (case ffiResultType of
-     Just FFI_JSREF -> "ffi.newJSRef("
+     Just FFI_JSREF -> "__asterius_jsffi.newJSRef("
      _ -> "(") <>
   mconcat
     [ case chunk of
       Lit s -> string7 s
       Field i ->
         case ffiParamTypes !! (i - 1) of
-          FFI_JSREF -> "ffi.JSRefs[_" <> intDec i <> "]"
+          FFI_JSREF -> "__asterius_jsffi.JSRefs[_" <> intDec i <> "]"
           _ -> "_" <> intDec i
     | chunk <- ffiSourceChunks
     ] <>
@@ -599,7 +599,7 @@ generateFFILambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..} =
 
 generateFFIImportObjectFactory :: FFIMarshalState -> Builder
 generateFFIImportObjectFactory FFIMarshalState {..} =
-  "ffi => ({jsffi: {" <>
+  "__asterius_jsffi => ({jsffi: {" <>
   mconcat
     (intersperse
        ","
