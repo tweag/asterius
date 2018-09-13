@@ -184,10 +184,8 @@ marshalBinaryOp op =
 marshalHostOp :: HostOp -> BinaryenOp
 marshalHostOp op =
   case op of
-    PageSize -> c_BinaryenPageSize
     CurrentMemory -> c_BinaryenCurrentMemory
     GrowMemory -> c_BinaryenGrowMemory
-    HasFeature -> c_BinaryenHasFeature
 
 marshalAtomicRMWOp :: AtomicRMWOp -> BinaryenOp
 marshalAtomicRMWOp op =

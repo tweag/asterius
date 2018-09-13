@@ -515,15 +515,10 @@ foreign import ccall unsafe "BinaryenGtFloat64" c_BinaryenGtFloat64
 foreign import ccall unsafe "BinaryenGeFloat64" c_BinaryenGeFloat64
   :: BinaryenOp
 
-foreign import ccall unsafe "BinaryenPageSize" c_BinaryenPageSize :: BinaryenOp
-
 foreign import ccall unsafe "BinaryenCurrentMemory" c_BinaryenCurrentMemory
   :: BinaryenOp
 
 foreign import ccall unsafe "BinaryenGrowMemory" c_BinaryenGrowMemory
-  :: BinaryenOp
-
-foreign import ccall unsafe "BinaryenHasFeature" c_BinaryenHasFeature
   :: BinaryenOp
 
 foreign import ccall unsafe "BinaryenAtomicRMWAdd" c_BinaryenAtomicRMWAdd

@@ -355,10 +355,8 @@ data BinaryOp
 instance Binary BinaryOp
 
 data HostOp
-  = PageSize
-  | CurrentMemory
+  = CurrentMemory
   | GrowMemory
-  | HasFeature
   deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary HostOp

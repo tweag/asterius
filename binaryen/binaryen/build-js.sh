@@ -90,6 +90,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/ir/LocalGraph.cpp \
   $BINARYEN_SRC/passes/pass.cpp \
   $BINARYEN_SRC/passes/CoalesceLocals.cpp \
+  $BINARYEN_SRC/passes/DeadArgumentElimination.cpp \
   $BINARYEN_SRC/passes/CodeFolding.cpp \
   $BINARYEN_SRC/passes/CodePushing.cpp \
   $BINARYEN_SRC/passes/ConstHoisting.cpp \
@@ -106,6 +107,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/passes/LegalizeJSInterface.cpp \
   $BINARYEN_SRC/passes/LocalCSE.cpp \
   $BINARYEN_SRC/passes/LogExecution.cpp \
+  $BINARYEN_SRC/passes/LoopInvariantCodeMotion.cpp \
   $BINARYEN_SRC/passes/MemoryPacking.cpp \
   $BINARYEN_SRC/passes/MergeBlocks.cpp \
   $BINARYEN_SRC/passes/MergeLocals.cpp \
