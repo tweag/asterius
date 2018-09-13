@@ -17,6 +17,8 @@ extra-source-files:
   - test/rtsapi/**/*.hs
   - test/stableptr/**/*.hs
   - test/th/**/*.hs
+  - test/todomvc/**/*.hs
+  - test/todomvc/**/*.html
 
 data-files:
   - rts/rts.js
@@ -135,5 +137,11 @@ tests:
   rtsapi:
     source-dirs: test
     main: rtsapi.hs
+    dependencies:
+      - asterius
+
+  todomvc:
+    source-dirs: test
+    main: todomvc.hs
     dependencies:
       - asterius

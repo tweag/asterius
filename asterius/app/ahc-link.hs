@@ -148,6 +148,7 @@ genNode Task {..} LinkReport {..} = do
   pure $
     mconcat $
     [ byteString rts_buf
+    , "let __asterius_instance = null;\n"
     , "async function main() {\n"
     , "const i = await newAsteriusInstance({functionSymbols: "
     , string7 $ show $ map fst $ sortOn snd $ M.toList functionSymbolMap
@@ -155,15 +156,11 @@ genNode Task {..} LinkReport {..} = do
     ] <>
     (case target of
        Node ->
-         [ "require(\"fs\").readFileSync("
+         [ "await require(\"fs\").promises.readFile("
          , string7 $ show $ takeFileName outputWasm
          , ")"
          ]
-       Browser ->
-         [ "await (await fetch("
-         , string7 $ show $ takeFileName outputWasm
-         , ")).arrayBuffer()"
-         ]) <>
+       Browser -> ["fetch(", string7 $ show $ takeFileName outputWasm, ")"]) <>
     [ ", jsffiFactory: "
     , generateFFIImportObjectFactory bundledFFIMarshalState
     , ", staticsSymbolMap: "
@@ -171,6 +168,7 @@ genNode Task {..} LinkReport {..} = do
     , ", functionSymbolMap: "
     , genSymbolDict functionSymbolMap
     , "});\n"
+    , "__asterius_instance = i\n;"
     , "("
     , string7 asteriusInstanceCallback
     , ")(i);\n"
