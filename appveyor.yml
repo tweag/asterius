@@ -25,5 +25,6 @@ build_script:
   - stack --no-terminal test asterius:stableptr --test-arguments="--optimize"
   - stack --no-terminal test asterius:rtsapi --test-arguments="--debug"
   - stack --no-terminal test asterius:rtsapi --test-arguments="--optimize"
+  - stack --no-terminal test asterius:todomvc --test-arguments="--optimize"
 
 test: off
