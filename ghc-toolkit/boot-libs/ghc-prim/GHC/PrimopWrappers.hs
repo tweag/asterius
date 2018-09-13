@@ -366,6 +366,15 @@ coshDouble# a1 = (GHC.Prim.coshDouble#) a1
 {-# NOINLINE tanhDouble# #-}
 tanhDouble# :: Double# -> Double#
 tanhDouble# a1 = (GHC.Prim.tanhDouble#) a1
+{-# NOINLINE asinhDouble# #-}
+asinhDouble# :: Double# -> Double#
+asinhDouble# a1 = (GHC.Prim.asinhDouble#) a1
+{-# NOINLINE acoshDouble# #-}
+acoshDouble# :: Double# -> Double#
+acoshDouble# a1 = (GHC.Prim.acoshDouble#) a1
+{-# NOINLINE atanhDouble# #-}
+atanhDouble# :: Double# -> Double#
+atanhDouble# a1 = (GHC.Prim.atanhDouble#) a1
 {-# NOINLINE (**##) #-}
 (**##) :: Double# -> Double# -> Double#
 (**##) a1 a2 = (GHC.Prim.**##) a1 a2
@@ -450,6 +459,15 @@ coshFloat# a1 = (GHC.Prim.coshFloat#) a1
 {-# NOINLINE tanhFloat# #-}
 tanhFloat# :: Float# -> Float#
 tanhFloat# a1 = (GHC.Prim.tanhFloat#) a1
+{-# NOINLINE asinhFloat# #-}
+asinhFloat# :: Float# -> Float#
+asinhFloat# a1 = (GHC.Prim.asinhFloat#) a1
+{-# NOINLINE acoshFloat# #-}
+acoshFloat# :: Float# -> Float#
+acoshFloat# a1 = (GHC.Prim.acoshFloat#) a1
+{-# NOINLINE atanhFloat# #-}
+atanhFloat# :: Float# -> Float#
+atanhFloat# a1 = (GHC.Prim.atanhFloat#) a1
 {-# NOINLINE powerFloat# #-}
 powerFloat# :: Float# -> Float# -> Float#
 powerFloat# a1 a2 = (GHC.Prim.powerFloat#) a1 a2
@@ -1403,6 +1421,9 @@ clearCCS# a1 a2 = (GHC.Prim.clearCCS#) a1 a2
 {-# NOINLINE traceEvent# #-}
 traceEvent# :: Addr# -> State# s -> State# s
 traceEvent# a1 a2 = (GHC.Prim.traceEvent#) a1 a2
+{-# NOINLINE traceBinaryEvent# #-}
+traceBinaryEvent# :: Addr# -> Int# -> State# s -> State# s
+traceBinaryEvent# a1 a2 a3 = (GHC.Prim.traceBinaryEvent#) a1 a2 a3
 {-# NOINLINE traceMarker# #-}
 traceMarker# :: Addr# -> State# s -> State# s
 traceMarker# a1 a2 = (GHC.Prim.traceMarker#) a1 a2

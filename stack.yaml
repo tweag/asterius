@@ -1,7 +1,7 @@
 resolver: ghc-8.7
 allow-newer: true
 extra-deps:
-  - ansi-terminal-0.8.0.4
+  - ansi-terminal-0.8.1
   - ansi-wl-pprint-0.6.8.2
   - colour-2.3.4
   - mintty-0.1.2
@@ -15,8 +15,10 @@ ghc-build: standard
 setup-info:
   ghc:
     windows64:
-      8.7.20180822:
-        url: https://ci.appveyor.com/api/buildjobs/a0ism43pxm9f4371/artifacts/ghc/ghc-8.7.20180822-x86_64-unknown-mingw32.tar.xz
+      8.7.20180918:
+        url: https://ci.appveyor.com/api/buildjobs/f2bwtfsd3a8echh6/artifacts/ghc/ghc-bindist/ghc-8.7.20180918-x86_64-unknown-mingw32.tar.xz
+        sha256: ee156ff47752ab76e8c2b329e90d9adb736799064455bfc20dce98380a27b2df
     linux64:
-      8.7.20180822:
-        url: https://1593-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180822-x86_64-unknown-linux.tar.xz
+      8.7.20180918:
+        url: https://1647-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180918-x86_64-unknown-linux.tar.xz
+        sha256: 1771e0e9a472c32636fda974fd428cded08e4ed6db6ce1d075c3a801922ac7a3

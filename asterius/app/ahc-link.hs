@@ -64,8 +64,8 @@ parseTask =
        , outputLinkReport = m_report
        , outputGraphViz = m_gv
        , debug = dbg
-       , optimize = opt
-       , outputIR = ir
+       , optimize = opt && not dbg
+       , outputIR = ir || dbg
        , run = r
        , heapSize = maybe 1024 read m_hs
        , asteriusInstanceCallback =
@@ -298,7 +298,7 @@ main = do
        !m_bin <- serializeModule m_ref
        putStrLn $ "[INFO] Writing WebAssembly binary to " <> show outputWasm
        BS.writeFile outputWasm m_bin
-       putStrLn $ "[INFO] Writing Node.js script to " <> show outputJS
+       putStrLn $ "[INFO] Writing JavaScript to " <> show outputJS
        h <- openBinaryFile outputJS WriteMode
        b <- genNode task report
        hPutBuilder h b

@@ -27,14 +27,20 @@ module Asterius.EDSL
   , pointerI32
   , pointerI16
   , pointerI8
+  , pointerF64
+  , pointerF32
   , loadI64
   , loadI32
   , loadI16
   , loadI8
+  , loadF64
+  , loadF32
   , storeI64
   , storeI32
   , storeI16
   , storeI8
+  , storeF64
+  , storeF32
   , call
   , call'
   , callImport
@@ -258,7 +264,8 @@ pointer vt b bp o =
         0 -> bp
         _ -> bp `addInt64` constI64 o
 
-pointerI64, pointerI32, pointerI16, pointerI8 :: Expression -> Int -> LVal
+pointerI64, pointerI32, pointerI16, pointerI8, pointerF64, pointerF32 ::
+     Expression -> Int -> LVal
 pointerI64 = pointer I64 8
 
 pointerI32 = pointer I32 4
@@ -267,7 +274,12 @@ pointerI16 = pointer I32 2
 
 pointerI8 = pointer I32 1
 
-loadI64, loadI32, loadI16, loadI8 :: Expression -> Int -> Expression
+pointerF64 = pointer F64 8
+
+pointerF32 = pointer F32 4
+
+loadI64, loadI32, loadI16, loadI8, loadF64, loadF32 ::
+     Expression -> Int -> Expression
 loadI64 bp o = getLVal $ pointerI64 bp o
 
 loadI32 bp o = getLVal $ pointerI32 bp o
@@ -276,7 +288,11 @@ loadI16 bp o = getLVal $ pointerI16 bp o
 
 loadI8 bp o = getLVal $ pointerI8 bp o
 
-storeI64, storeI32, storeI16, storeI8 ::
+loadF64 bp o = getLVal $ pointerF64 bp o
+
+loadF32 bp o = getLVal $ pointerF32 bp o
+
+storeI64, storeI32, storeI16, storeI8, storeF64, storeF32 ::
      Expression -> Int -> Expression -> EDSL ()
 storeI64 bp o = putLVal $ pointerI64 bp o
 
@@ -285,6 +301,10 @@ storeI32 bp o = putLVal $ pointerI32 bp o
 storeI16 bp o = putLVal $ pointerI16 bp o
 
 storeI8 bp o = putLVal $ pointerI8 bp o
+
+storeF64 bp o = putLVal $ pointerF64 bp o
+
+storeF32 bp o = putLVal $ pointerF32 bp o
 
 call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, valueType = None}

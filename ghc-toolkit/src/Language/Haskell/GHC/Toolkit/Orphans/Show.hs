@@ -76,9 +76,6 @@ deriving instance Show b => Show (Bind b)
 
 deriving instance Show FunctionOrData
 
-deriving instance
-         (Show tyvar, Show argf) => Show (TyVarBndr tyvar argf)
-
 instance Show Var where
   show = fakeShow "Var"
 
@@ -112,6 +109,8 @@ deriving instance Show CoercionHole
 deriving instance Show MCoercionN
 
 deriving instance Show Coercion
+
+deriving instance Show TyCoVarBinder
 
 deriving instance Show Type
 

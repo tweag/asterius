@@ -65,7 +65,7 @@ resolveLocalRegs func_param_n t =
   where
     lrs =
       zip
-        (sort $ toList $ collectUnresolvedLocalRegs t)
+        (toList $ collectUnresolvedLocalRegs t)
         ([fromIntegral func_param_n + 3 ..] :: [BinaryenIndex])
     lr_map = fromList lrs
     lr_idx = (lr_map !)
@@ -331,30 +331,38 @@ makeFunctionTable AsteriusModule {..} =
   ( FunctionTable {functionNames = map entityName func_syms}
   , fromList $ zip func_syms [1 ..])
   where
-    func_syms = sort $ M.keys functionMap
+    func_syms = M.keys functionMap
 
 makeStaticsOffsetTable ::
      AsteriusModule -> (Int64, M.Map AsteriusEntitySymbol Int64)
 makeStaticsOffsetTable AsteriusModule {..} = (last_o, fromList statics_map)
   where
-    (last_o, statics_map) = layoutStatics $ sortOn fst $ M.toList staticsMap
+    (last_o, statics_map) = layoutStatics $ M.toList staticsMap
     layoutStatics = foldl' iterLayoutStaticsState (16, [])
     iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
       ( fromIntegral $ roundup (fromIntegral ptr + asteriusStaticsSize ss) 16
       , (ss_sym, ptr) : sym_map)
 
 makeMemory ::
-     AsteriusModule -> Int64 -> M.Map AsteriusEntitySymbol Int64 -> Memory
-makeMemory AsteriusModule {..} last_o sym_map =
+     Bool
+  -> AsteriusModule
+  -> Int64
+  -> M.Map AsteriusEntitySymbol Int64
+  -> Memory
+makeMemory debug AsteriusModule {..} last_o sym_map =
   Memory
     { initialPages =
         fromIntegral $
         roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
     , maximumPages = 65535
     , exportName = "mem"
-    , dataSegments = combine $ concatMap data_segs $ M.toList staticsMap
+    , dataSegments =
+        if debug
+          then uncombined_segs
+          else combine uncombined_segs
     }
   where
+    uncombined_segs = concatMap data_segs $ M.toList staticsMap
     data_segs (ss_sym, AsteriusStatics {..}) =
       snd $
       foldl'
@@ -478,7 +486,8 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved =
       , globalExports = []
       , globalMap = M.fromList []
       , functionTable = Just func_table
-      , memory = Just $ makeMemory m_globals_syms_resolved last_o ss_sym_map
+      , memory =
+          Just $ makeMemory debug m_globals_syms_resolved last_o ss_sym_map
       , startFunctionName = Nothing
       }
   , ss_sym_map

@@ -12,6 +12,7 @@ main = do
     , "--run"
     , "--extra-root-symbol=Main_printInt_closure"
     , "--extra-root-symbol=Main_fact_closure"
+    , "--extra-root-symbol=base_GHCziBase_id_closure"
     ] <>
     [ mconcat
         [ "--asterius-instance-callback="
@@ -30,6 +31,11 @@ main = do
         , "console.log(i.wasmInstance.exports.rts_getBool(i.staticsSymbolMap.ghczmprim_GHCziTypes_True_closure));"
         , "console.log(i.wasmInstance.exports.rts_getBool(i.wasmInstance.exports.rts_mkBool(cap, 0)));"
         , "console.log(i.wasmInstance.exports.rts_getBool(i.wasmInstance.exports.rts_mkBool(cap, 42)));"
+        , "const x0 = Math.random();"
+        , "const ret_p3 = i.wasmInstance.exports.allocate(cap, 1);"
+        , "i.wasmInstance.exports.rts_eval(cap, i.wasmInstance.exports.rts_apply(cap, i.staticsSymbolMap.base_GHCziBase_id_closure, i.wasmInstance.exports.rts_mkDouble(cap, x0)), ret_p3);"
+        , "const x1 = i.wasmInstance.exports.rts_getDouble(i.wasmInstance.exports.loadI64(ret_p3));"
+        , "console.log([x0, x1, x0 === x1]);"
         , "}"
         ]
     ] <>

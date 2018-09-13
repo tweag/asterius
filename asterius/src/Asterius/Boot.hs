@@ -15,6 +15,7 @@ import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.Store
+import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
 import Data.Foldable
@@ -103,8 +104,12 @@ bootRTSCmm BootArgs {..} = do
             encodeAsteriusModule obj_topdir mod_sym m
             modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
             when is_debug $ do
-              let p_c = asteriusModulePath obj_topdir mod_sym "dump-cmm-raw-ast"
-              writeFile p_c $ show cmmRaw
+              let p = asteriusModulePath obj_topdir mod_sym
+                  df = dflags builtinsOptions
+              writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
+              asmPrint df (p "dump-cmm-raw") cmmRaw
+              writeFile (p "dump-cmm-ast") $ show cmm
+              asmPrint df (p "dump-cmm") cmm
   if rtsOnly
     then do
       rts_store <- readIORef store_ref

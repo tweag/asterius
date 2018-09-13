@@ -14,6 +14,8 @@ extra-source-files:
   - test/array/**/*.hs
   - test/fib/**/*.hs
   - test/jsffi/**/*.hs
+  - test/jsffi-chrome/**/*.hs
+  - test/jsffi-chrome/**/*.html
   - test/rtsapi/**/*.hs
   - test/stableptr/**/*.hs
   - test/th/**/*.hs
@@ -143,5 +145,11 @@ tests:
   todomvc:
     source-dirs: test
     main: todomvc.hs
+    dependencies:
+      - asterius
+
+  jsffi-chrome:
+    source-dirs: test
+    main: jsffi-chrome.hs
     dependencies:
       - asterius

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.TypesConv
@@ -6,6 +7,7 @@ module Asterius.TypesConv
   , zEncodeModuleSymbol
   , generateWasmFunctionTypeName
   , asmPpr
+  , asmPrint
   ) where
 
 import Asterius.Internals
@@ -14,6 +16,9 @@ import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
 import Data.List
 import qualified GhcPlugins as GHC
+import Prelude hiding (IO)
+import qualified Pretty as GHC
+import System.IO (IOMode(WriteMode), withFile)
 
 {-# INLINEABLE marshalToModuleSymbol #-}
 marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol
@@ -44,3 +49,14 @@ generateWasmFunctionTypeName FunctionType {..} =
 {-# INLINEABLE asmPpr #-}
 asmPpr :: GHC.Outputable a => GHC.DynFlags -> a -> String
 asmPpr dflags = GHC.showSDoc dflags . GHC.pprCode GHC.AsmStyle . GHC.ppr
+
+{-# INLINEABLE asmPrint #-}
+asmPrint :: GHC.Outputable a => GHC.DynFlags -> FilePath -> a -> IO ()
+asmPrint dflags p a =
+  withFile p WriteMode $ \h ->
+    GHC.printSDocLn
+      GHC.PageMode
+      dflags
+      h
+      (GHC.mkCodeStyle GHC.AsmStyle)
+      (GHC.ppr a)

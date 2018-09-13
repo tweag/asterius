@@ -7,6 +7,7 @@ module Asterius.FrontendPlugin
 import Asterius.CodeGen
 import Asterius.JSFFI
 import Asterius.Store
+import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
@@ -44,12 +45,15 @@ frontendPlugin =
                       atomicModifyIORef' store_ref $ \store ->
                         (registerModule obj_topdir mod_sym m store, ())
                       when is_debug $ do
-                        let p_c =
-                              asteriusModulePath
-                                obj_topdir
-                                mod_sym
-                                "dump-cmm-raw-ast"
-                        writeFile p_c $ show cmmRaw
+                        let p = asteriusModulePath obj_topdir mod_sym
+                        writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
+                        asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                        writeFile (p "dump-cmm-ast") $ show cmm
+                        asmPrint dflags (p "dump-cmm") cmm
+                        writeFile (p "dump-stg-ast") $ show stg
+                        asmPrint dflags (p "dump-stg") stg
+                        writeFile (p "dump-core-ast") $ show core
+                        asmPrint dflags (p "dump-core") $ GHC.cg_binds core
           , finalize =
               liftIO $ do
                 store <- readIORef store_ref
