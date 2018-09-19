@@ -196,6 +196,9 @@ rtsAsteriusModule opts =
         , ("rts_mkDouble", rtsMkDoubleFunction opts)
         , ( "rts_mkDouble_wrapper"
           , generateWrapperFunction "rts_mkDouble" $ rtsMkDoubleFunction opts)
+        , ("rts_mkChar", rtsMkCharFunction opts)
+        , ( "rts_mkChar_wrapper"
+          , generateWrapperFunction "rts_mkChar" $ rtsMkCharFunction opts)
         , ("rts_mkInt", rtsMkIntFunction opts)
         , ( "rts_mkInt_wrapper"
           , generateWrapperFunction "rts_mkInt" $ rtsMkIntFunction opts)
@@ -215,6 +218,9 @@ rtsAsteriusModule opts =
         , ("rts_getDouble", rtsGetDoubleFunction opts)
         , ( "rts_getDouble_wrapper"
           , generateWrapperFunction "rts_getDouble" $ rtsGetDoubleFunction opts)
+        , ("rts_getChar", rtsGetCharFunction opts)
+        , ( "rts_getChar_wrapper"
+          , generateWrapperFunction "rts_getChar" $ rtsGetCharFunction opts)
         , ("rts_getInt", rtsGetIntFunction opts)
         , ( "rts_getInt_wrapper"
           , generateWrapperFunction "rts_getInt" $ rtsGetIntFunction opts)
@@ -425,12 +431,14 @@ rtsAsteriusFunctionExports debug =
       , "loadI64"
       , "rts_mkBool"
       , "rts_mkDouble"
+      , "rts_mkChar"
       , "rts_mkInt"
       , "rts_mkWord"
       , "rts_mkPtr"
       , "rts_mkStablePtr"
       , "rts_getBool"
       , "rts_getDouble"
+      , "rts_getChar"
       , "rts_getInt"
       , "rts_getWord"
       , "rts_getPtr"
@@ -548,7 +556,7 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
         I64 -> (I32, wrapInt64)
         _ -> (returnType, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL $
@@ -1285,6 +1293,15 @@ rtsMkDoubleFunction _ =
     storeF64 p 8 i
     emit p
 
+rtsMkCharFunction _ =
+  runEDSL $ do
+    setReturnType I64
+    [cap, i] <- params [I64, I64]
+    p <- call' "allocate" [cap, constI64 2] I64
+    storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
+    storeI64 p 8 i
+    emit p
+
 rtsMkIntFunction opts = rtsMkHelper opts "ghczmprim_GHCziTypes_Izh_con_info"
 
 rtsMkWordFunction opts = rtsMkHelper opts "ghczmprim_GHCziTypes_Wzh_con_info"
@@ -1312,6 +1329,8 @@ rtsGetDoubleFunction _ =
     setReturnType F64
     p <- param I64
     emit $ loadF64 (unTagClosure p) offset_StgClosure_payload
+
+rtsGetCharFunction = rtsGetIntFunction
 
 rtsGetIntFunction _ =
   runEDSL $ do

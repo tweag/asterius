@@ -33,7 +33,15 @@ foreign import javascript "setTimeout(${1},${2})" js_set_timeout
 foreign import javascript "setTimeout(${1},${2},${3})" js_set_timeout1
   :: JSRef -> Int -> JSRef -> IO ()
 
-foreign export javascript "mult_hs" (*) :: Int -> Int -> Int
+foreign import javascript "Math.random()" js_random :: IO Double
+
+foreign import javascript "console.log(${1})" js_print_double :: Double -> IO ()
+
+foreign export javascript "mult_hs_int" (*) :: Int -> Int -> Int
+
+foreign export javascript "mult_hs_double" (*) :: Double -> Double -> Double
+
+foreign export javascript "putchar" js_putchar :: Char -> IO ()
 
 main :: IO ()
 main = do
@@ -55,3 +63,5 @@ main = do
   js_set_timeout (js_make_hs_callback io) 1000
   ev_io <- newStablePtr js_print
   js_set_timeout1 (js_make_hs_callback1 ev_io) 2000 json
+  js_random >>= js_print_double
+  js_random >>= js_print_double
