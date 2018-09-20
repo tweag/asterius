@@ -5,113 +5,130 @@ module Language.Haskell.GHC.Toolkit.Hooks
   ( hooksFromCompiler
   ) where
 
+import qualified CmmInfo as GHC
+import Control.Concurrent
 import Control.Monad.IO.Class
-import Data.IORef
-import Data.Maybe
-import DriverPhases
-import DriverPipeline
-import DynFlags
-import Hooks
-import HscMain
-import HscTypes
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
+import qualified DriverPhases as GHC
+import qualified DriverPipeline as GHC
+import qualified DynFlags as GHC
+import qualified Hooks as GHC
+import qualified HscMain as GHC
+import qualified HscTypes as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
-import Language.Haskell.GHC.Toolkit.GHCUnexported
-import Module
-import PipelineMonad
-import System.Environment
-import TcRnTypes
+import qualified PipelineMonad as GHC
+import qualified StgCmm as GHC
+import qualified Stream
 
-hooksFromCompiler :: MonadIO m => Compiler -> m Hooks
-hooksFromCompiler c =
-  liftIO $ do
-    tc_map <- newIORef emptyModuleEnv
-    pure $
-      emptyHooks
-        { hscFrontendHook =
-            Just $ \mod_summary -> do
-              let ms_mod0 = ms_mod mod_summary
-              FrontendTypecheck tc_env0 <-
-                genericHscFrontend'
-                  (\mod_summary' p -> do
-                     r <- patchParsed c mod_summary' p
-                     liftIO $
-                       atomicModifyIORef' tc_map $ \m ->
-                         ( extendModuleEnv
-                             m
-                             (ms_mod mod_summary')
-                             (r, undefined)
-                         , ())
-                     pure r)
-                  mod_summary
-              tc_env <- patchTypechecked c mod_summary tc_env0
-              liftIO $
-                atomicModifyIORef' tc_map $ \m ->
-                  let Just (p, _) = m `lookupModuleEnv` ms_mod0
-                   in (extendModuleEnv m ms_mod0 (p, tc_env), ())
-              pure $ FrontendTypecheck tc_env
-        , runPhaseHook =
-            Just $ \phase_plus input_fn dflags ->
-              case phase_plus of
-                HscOut src_flavour _ (HscRecomp cgguts mod_summary@ModSummary {..}) -> do
-                  m_tc <-
-                    liftIO $
-                    atomicModifyIORef' tc_map $ \m ->
-                      (m `delModuleEnv` ms_mod, m `lookupModuleEnv` ms_mod)
-                  case m_tc of
-                    Just (p, tc) -> do
-                      let hsc_lang = hscTarget dflags
-                          next_phase =
-                            hscPostBackendPhase dflags src_flavour hsc_lang
-                      output_fn <- phaseOutputFilename next_phase
-                      PipeState {hsc_env = hsc_env'} <- getPipeState
-                      (outputFilename, mStub, foreign_files, _stg, _cmm, _cmmRaw) <-
-                        liftIO $
-                        hscGenHardCode' hsc_env' cgguts mod_summary output_fn
-                      skip_gcc <-
-                        isJust <$> liftIO (lookupEnv "GHC_TOOLKIT_SKIP_GCC")
-                      if skip_gcc
-                        then setForeignOs []
-                        else do
-                          stub_o <- liftIO (mapM (compileStub hsc_env') mStub)
-                          foreign_os <-
-                            liftIO $
-                            mapM
-                              (uncurry (compileForeign hsc_env'))
-                              foreign_files
-                          setForeignOs (maybe [] return stub_o ++ foreign_os)
-                      withHaskellIR
-                        c
-                        mod_summary
-                        HaskellIR
-                          { parsed = p
-                          , typechecked = tc
-                          , core = cgguts
-                          , stg = _stg
-                          , cmm = _cmm
-                          , cmmRaw = _cmmRaw
-                          }
-                      pure
-                        ( RealPhase $
-                          if skip_gcc
-                            then StopLn
-                            else next_phase
-                        , outputFilename)
-                    _ -> runPhase phase_plus input_fn dflags
-                RealPhase Cmm -> do
-                  let hsc_lang = hscTarget dflags
-                  let next_phase = hscPostBackendPhase dflags HsSrcFile hsc_lang
-                  output_fn <- phaseOutputFilename next_phase
-                  PipeState {hsc_env} <- getPipeState
-                  (cs, rcs) <-
-                    liftIO $ hscCompileCmmFile' hsc_env input_fn output_fn
-                  withCmmIR c CmmIR {cmm = cs, cmmRaw = rcs}
-                  skip_gcc <-
-                    isJust <$> liftIO (lookupEnv "GHC_TOOLKIT_SKIP_GCC")
-                  pure
-                    ( RealPhase $
-                      if skip_gcc
-                        then StopLn
-                        else next_phase
-                    , output_fn)
-                _ -> runPhase phase_plus input_fn dflags
-        }
+hooksFromCompiler :: Compiler -> IO GHC.Hooks
+hooksFromCompiler Compiler {..} = do
+  mods_set_ref <- newMVar Set.empty
+  parsed_map_ref <- newMVar Map.empty
+  typechecked_map_ref <- newMVar Map.empty
+  stg_map_ref <- newMVar Map.empty
+  cmm_map_ref <- newMVar Map.empty
+  cmm_raw_map_ref <- newMVar Map.empty
+  cmm_ref <- newEmptyMVar
+  cmm_raw_ref <- newEmptyMVar
+  pure
+    GHC.emptyHooks
+      { GHC.tcRnModuleHook =
+          Just $ \mod_summary@GHC.ModSummary {..} save_rn_syntax parsed_module' -> do
+            parsed_module <- patchParsed mod_summary parsed_module'
+            typechecked_module <-
+              GHC.tcRnModule' mod_summary save_rn_syntax parsed_module >>=
+              patchTypechecked mod_summary
+            let store ref v =
+                  modifyMVar_ ref $ \m -> pure $ Map.insert ms_mod v m
+            liftIO $ do
+              store parsed_map_ref parsed_module
+              store typechecked_map_ref typechecked_module
+            pure typechecked_module
+      , GHC.stgCmmHook =
+          Just $ \dflags this_mod data_tycons cost_centre_info stg_binds hpc_info -> do
+            Stream.liftIO $
+              modifyMVar_ stg_map_ref $ \stg_map ->
+                pure $ Map.insert this_mod stg_binds stg_map
+            GHC.codeGen
+              dflags
+              this_mod
+              data_tycons
+              cost_centre_info
+              stg_binds
+              hpc_info
+      , GHC.cmmToRawCmmHook =
+          Just $ \dflags maybe_ms_mod cmms -> do
+            rawcmms <- GHC.cmmToRawCmm dflags maybe_ms_mod cmms
+            case maybe_ms_mod of
+              Just ms_mod -> do
+                let store ref v =
+                      modifyMVar_ ref $ \m -> pure $ Map.insert ms_mod v m
+                store cmm_map_ref cmms
+                store cmm_raw_map_ref rawcmms
+              _ -> do
+                putMVar cmm_ref cmms
+                putMVar cmm_raw_ref rawcmms
+            pure rawcmms
+      , GHC.runPhaseHook =
+          Just $ \phase input_fn dflags ->
+            case phase of
+              GHC.HscOut src_flavour _ (GHC.HscRecomp cgguts mod_summary@GHC.ModSummary {..}) -> do
+                output_fn <-
+                  GHC.phaseOutputFilename $
+                  GHC.hscPostBackendPhase dflags src_flavour $
+                  GHC.hscTarget dflags
+                GHC.PipeState {GHC.hsc_env = hsc_env'} <- GHC.getPipeState
+                (outputFilename, _, _) <-
+                  liftIO $
+                  GHC.hscGenHardCode hsc_env' cgguts mod_summary output_fn
+                GHC.setForeignOs []
+                f <-
+                  liftIO $
+                  modifyMVar mods_set_ref $ \s ->
+                    pure (Set.insert ms_mod s, Set.member ms_mod s)
+                if f
+                  then liftIO $ do
+                         let clean ref =
+                               modifyMVar_ ref $ \m ->
+                                 pure $ Map.delete ms_mod m
+                         clean parsed_map_ref
+                         clean typechecked_map_ref
+                         clean stg_map_ref
+                         clean cmm_map_ref
+                         clean cmm_raw_map_ref
+                  else (do let fetch ref =
+                                 modifyMVar
+                                   ref
+                                   (\m ->
+                                      let (Just v, m') =
+                                            Map.updateLookupWithKey
+                                              (\_ _ -> Nothing)
+                                              ms_mod
+                                              m
+                                       in pure (m', v))
+                           ir <-
+                             liftIO $
+                             HaskellIR <$> fetch parsed_map_ref <*>
+                             fetch typechecked_map_ref <*>
+                             pure cgguts <*>
+                             fetch stg_map_ref <*>
+                             (fetch cmm_map_ref >>= Stream.collect) <*>
+                             (fetch cmm_raw_map_ref >>= Stream.collect)
+                           withHaskellIR mod_summary ir)
+                pure (GHC.RealPhase GHC.StopLn, outputFilename)
+              GHC.RealPhase GHC.Cmm -> do
+                output_fn <-
+                  GHC.phaseOutputFilename $
+                  GHC.hscPostBackendPhase dflags GHC.HsSrcFile $
+                  GHC.hscTarget dflags
+                GHC.PipeState {hsc_env} <- GHC.getPipeState
+                ir <-
+                  liftIO $ do
+                    GHC.hscCompileCmmFile hsc_env input_fn output_fn
+                    CmmIR <$> (takeMVar cmm_ref >>= Stream.collect) <*>
+                      (takeMVar cmm_raw_ref >>= Stream.collect)
+                withCmmIR ir
+                pure (GHC.RealPhase GHC.StopLn, output_fn)
+              _ -> GHC.runPhase phase input_fn dflags
+      }

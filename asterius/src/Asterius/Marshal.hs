@@ -247,7 +247,7 @@ marshalExpression pool m e =
       os <- forM operands $ marshalExpression pool m
       (ops, osl) <- marshalV pool os
       tp <- marshalSBS pool target'
-      c_BinaryenCallImport m tp ops osl (marshalValueType valueType)
+      c_BinaryenCall m tp ops osl (marshalValueType valueType)
     CallIndirect {..} -> do
       t <- marshalExpression pool m indirectTarget
       os <- forM operands $ marshalExpression pool m
@@ -358,23 +358,21 @@ marshalFunctionImport ::
   -> BinaryenModuleRef
   -> BinaryenFunctionTypeRef
   -> FunctionImport
-  -> IO BinaryenImportRef
+  -> IO ()
 marshalFunctionImport pool m ft FunctionImport {..} = do
   inp <- marshalSBS pool internalName
   emp <- marshalSBS pool externalModuleName
   ebp <- marshalSBS pool externalBaseName
   c_BinaryenAddFunctionImport m inp emp ebp ft
 
-marshalTableImport ::
-     Pool -> BinaryenModuleRef -> TableImport -> IO BinaryenImportRef
+marshalTableImport :: Pool -> BinaryenModuleRef -> TableImport -> IO ()
 marshalTableImport pool m TableImport {..} = do
   inp <- marshalSBS pool internalName
   emp <- marshalSBS pool externalModuleName
   ebp <- marshalSBS pool externalBaseName
   c_BinaryenAddTableImport m inp emp ebp
 
-marshalGlobalImport ::
-     Pool -> BinaryenModuleRef -> GlobalImport -> IO BinaryenImportRef
+marshalGlobalImport :: Pool -> BinaryenModuleRef -> GlobalImport -> IO ()
 marshalGlobalImport pool m GlobalImport {..} = do
   inp <- marshalSBS pool internalName
   emp <- marshalSBS pool externalModuleName

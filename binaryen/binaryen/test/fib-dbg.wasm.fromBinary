@@ -4,6 +4,8 @@
  (type $2 (func (result i32)))
  (type $3 (func (param i32)))
  (type $4 (func))
+ (import "env" "memory" (memory $9 256 256))
+ (import "env" "table" (table 0 0 anyfunc))
  (import "env" "DYNAMICTOP_PTR" (global $gimport$0 i32))
  (import "env" "tempDoublePtr" (global $gimport$1 i32))
  (import "env" "ABORT" (global $gimport$2 i32))
@@ -13,8 +15,6 @@
  (import "env" "fb" (global $gimport$6 i32))
  (import "global" "NaN" (global $gimport$7 f64))
  (import "global" "Infinity" (global $gimport$8 f64))
- (import "env" "memory" (memory $0 256 256))
- (import "env" "table" (table 0 0 anyfunc))
  (import "env" "memoryBase" (global $gimport$11 i32))
  (import "env" "tableBase" (global $gimport$12 i32))
  (global $global$0 (mut i32) (get_global $gimport$0))
@@ -122,7 +122,6 @@
   (local $9 i32)
   (local $10 i32)
   (local $11 i32)
-  ;;@ fib.c:8:0
   (block $label$1
    (set_local $11
     (get_global $global$3)
@@ -134,9 +133,7 @@
      (i32.const 0)
     )
    )
-   ;;@ fib.c:8:0
    (if
-    ;;@ fib.c:3:0
     (get_local $6)
     (block
      (set_local $1
@@ -159,7 +156,6 @@
      )
     )
    )
-   ;;@ fib.c:3:0
    (loop $label$4
     (block $label$5
      ;;@ fib.c:4:0

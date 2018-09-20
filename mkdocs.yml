@@ -4,6 +4,7 @@ repo_url: https://github.com/tweag/asterius
 pages:
   - 'Home': 'index.md'
   - 'Building guide': 'building.md'
+  - 'Using ahc-link': 'ahc-link.md'
   - 'JavaScript FFI': 'jsffi.md'
   - 'Invoking RTS API in JavaScript': 'rts-api.md'
   - 'The runtime debugging feature': 'debugging.md'

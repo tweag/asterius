@@ -1059,7 +1059,7 @@ marshalCmmDecl decl =
           Right f -> mempty {functionMap = M.fromList [(sym, f)]}
 
 marshalHaskellIR :: HaskellIR -> CodeGen AsteriusModule
-marshalHaskellIR HaskellIR {..} = mconcat <$> for cmmRaw marshalCmmDecl
+marshalHaskellIR HaskellIR {..} = mconcat <$> for (concat cmmRaw) marshalCmmDecl
 
 marshalCmmIR :: CmmIR -> CodeGen AsteriusModule
-marshalCmmIR CmmIR {..} = mconcat <$> for cmmRaw marshalCmmDecl
+marshalCmmIR CmmIR {..} = mconcat <$> for (concat cmmRaw) marshalCmmDecl

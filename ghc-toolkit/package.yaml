@@ -48,8 +48,6 @@ dependencies:
 
 library:
   source-dirs: src
-  other-modules:
-    - Language.Haskell.GHC.Toolkit.GHCUnexported
   other-extensions:
     - DuplicateRecordFields
     - FlexibleInstances

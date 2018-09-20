@@ -4,12 +4,7 @@
 module Language.Haskell.GHC.Toolkit.Compiler
   ( HaskellIR(..)
   , CmmIR(..)
-  , Compiler
-  , patchParsed
-  , patchTypechecked
-  , withHaskellIR
-  , withCmmIR
-  , finalize
+  , Compiler(..)
   ) where
 
 import Cmm
@@ -24,13 +19,13 @@ data HaskellIR = HaskellIR
   , typechecked :: TcGblEnv
   , core :: CgGuts
   , stg :: [StgTopBinding]
-  , cmm :: [CmmDecl]
-  , cmmRaw :: [RawCmmDecl]
+  , cmm :: [[CmmDecl]]
+  , cmmRaw :: [[RawCmmDecl]]
   }
 
 data CmmIR = CmmIR
-  { cmm :: [CmmDecl]
-  , cmmRaw :: [RawCmmDecl]
+  { cmm :: [[CmmDecl]]
+  , cmmRaw :: [[RawCmmDecl]]
   }
 
 data Compiler = Compiler

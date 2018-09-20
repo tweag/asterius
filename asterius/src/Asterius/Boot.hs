@@ -47,7 +47,7 @@ getDefaultBootArgs = do
     BootArgs
       { bootDir = dataDir </> ".boot"
       , configureOptions =
-          "--disable-split-objs --disable-split-sections -O2 --with-gcc=" <>
+          "--disable-shared --disable-split-objs --disable-split-sections -O2 --with-gcc=" <>
           ahcGccPath
       , buildOptions = ""
       , installOptions = ""

@@ -1,4 +1,4 @@
-FROM debian:unstable-slim
+FROM debian:unstable
 
 COPY asterius /root/asterius
 COPY binaryen /root/binaryen
@@ -12,7 +12,6 @@ ENV \
 WORKDIR /root
 
 RUN \
-  apt-mark hold dash && \
   apt update && \
   apt install -y \
     apt-transport-https \

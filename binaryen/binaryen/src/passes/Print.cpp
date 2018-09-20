@@ -109,10 +109,6 @@ struct PrintExpressionContents : public Visitor<PrintExpressionContents> {
     printMedium(o, "call ");
     printName(curr->target, o);
   }
-  void visitCallImport(CallImport* curr) {
-    printMedium(o, "call ");
-    printName(curr->target, o);
-  }
   void visitCallIndirect(CallIndirect* curr) {
     printMedium(o, "call_indirect (type ") << curr->fullType << ')';
   }
@@ -437,20 +433,29 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     if (!full) full = isFullForced();
   }
 
-  void visit(Expression* curr) {
+  void printDebugLocation(const Function::DebugLocation &location) {
+    if (lastPrintedLocation == location) {
+      return;
+    }
+    lastPrintedLocation = location;
+    auto fileName = currModule->debugInfoFileNames[location.fileIndex];
+    o << ";;@ " << fileName << ":" << location.lineNumber << ":" << location.columnNumber << '\n';
+    doIndent(o, indent);
+  }
+
+  void printDebugLocation(Expression* curr) {
     if (currFunction) {
       // show an annotation, if there is one
       auto& debugLocations = currFunction->debugLocations;
       auto iter = debugLocations.find(curr);
       if (iter != debugLocations.end()) {
-        auto fileName = currModule->debugInfoFileNames[iter->second.fileIndex];
-        if (lastPrintedLocation != iter->second) {
-          lastPrintedLocation = iter->second;
-          o << ";;@ " << fileName << ":" << iter->second.lineNumber << ":" << iter->second.columnNumber << '\n';
-          doIndent(o, indent);
-        }
+        printDebugLocation(iter->second);
       }
     }
+  }
+
+  void visit(Expression* curr) {
+    printDebugLocation(curr);
     Visitor<PrintSExpression>::visit(curr);
   }
 
@@ -469,6 +474,7 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
   }
   void decIndent() {
     if (!minify) {
+      assert(indent > 0);
       indent--;
       doIndent(o, indent);
     }
@@ -487,7 +493,10 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     // special-case Block, because Block nesting (in their first element) can be incredibly deep
     std::vector<Block*> stack;
     while (1) {
-      if (stack.size() > 0) doIndent(o, indent);
+      if (stack.size() > 0) {
+        doIndent(o, indent);
+        printDebugLocation(curr);
+      }
       stack.push_back(curr);
       if (full) {
         o << "[" << printType(curr->type) << "] ";
@@ -620,11 +629,6 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
   }
 
   void visitCall(Call* curr) {
-    o << '(';
-    PrintExpressionContents(currFunction, o).visit(curr);
-    printCallOperands(curr);
-  }
-  void visitCallImport(CallImport* curr) {
     o << '(';
     PrintExpressionContents(currFunction, o).visit(curr);
     printCallOperands(curr);
@@ -806,20 +810,6 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     }
     o << ")";
   }
-  void visitImport(Import* curr) {
-    o << '(';
-    printMedium(o, "import ");
-    printText(o, curr->module.str) << ' ';
-    printText(o, curr->base.str) << ' ';
-    switch (curr->kind) {
-      case ExternalKind::Function: if (curr->functionType.is()) visitFunctionType(currModule->getFunctionType(curr->functionType), &curr->name); break;
-      case ExternalKind::Table:    printTableHeader(&currModule->table); break;
-      case ExternalKind::Memory:   printMemoryHeader(&currModule->memory); break;
-      case ExternalKind::Global:   o << "(global " << curr->name << ' ' << printType(curr->globalType) << ")"; break;
-      default: WASM_UNREACHABLE();
-    }
-    o << ')';
-  }
   void visitExport(Export* curr) {
     o << '(';
     printMedium(o, "export ");
@@ -834,21 +824,71 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     o << ' ';
     printName(curr->value, o) << "))";
   }
+  void emitImportHeader(Importable* curr) {
+    printMedium(o, "import ");
+    printText(o, curr->module.str) << ' ';
+    printText(o, curr->base.str) << ' ';
+  }
   void visitGlobal(Global* curr) {
+    if (curr->imported()) {
+      visitImportedGlobal(curr);
+    } else {
+      visitDefinedGlobal(curr);
+    }
+  }
+  void emitGlobalType(Global* curr) {
+    if (curr->mutable_) {
+      o << "(mut " << printType(curr->type) << ')';
+    } else {
+      o << printType(curr->type);
+    }
+  }
+  void visitImportedGlobal(Global* curr) {
+    doIndent(o, indent);
+    o << '(';
+    emitImportHeader(curr);
+    o << "(global ";
+    printName(curr->name, o) << ' ';
+    emitGlobalType(curr);
+    o << "))" << maybeNewLine;
+  }
+  void visitDefinedGlobal(Global* curr) {
+    doIndent(o, indent);
     o << '(';
     printMedium(o, "global ");
     printName(curr->name, o) << ' ';
-    if (curr->mutable_) {
-      o << "(mut " << printType(curr->type) << ") ";
-    } else {
-      o << printType(curr->type) << ' ';
-    }
+    emitGlobalType(curr);
+    o << ' ';
     visit(curr->init);
     o << ')';
+    o << maybeNewLine;
   }
   void visitFunction(Function* curr) {
+    if (curr->imported()) {
+      visitImportedFunction(curr);
+    } else {
+      visitDefinedFunction(curr);
+    }
+  }
+  void visitImportedFunction(Function* curr) {
+    doIndent(o, indent);
     currFunction = curr;
     lastPrintedLocation = { 0, 0, 0 };
+    o << '(';
+    emitImportHeader(curr);
+    if (curr->type.is()) {
+      visitFunctionType(currModule->getFunctionType(curr->type), &curr->name);
+    }
+    o << ')';
+    o << maybeNewLine;
+  }
+  void visitDefinedFunction(Function* curr) {
+    doIndent(o, indent);
+    currFunction = curr;
+    lastPrintedLocation = { 0, 0, 0 };
+    if (currFunction->prologLocation.size()) {
+      printDebugLocation(*currFunction->prologLocation.begin());
+    }
     o << '(';
     printMajor(o, "func ");
     printName(curr->name, o);
@@ -901,7 +941,18 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
       // Print the stack IR.
       WasmPrinter::printStackIR(curr->stackIR.get(), o, curr);
     }
-    decIndent();
+    if (currFunction->epilogLocation.size() && lastPrintedLocation != *currFunction->epilogLocation.begin()) {
+      // Print last debug location: mix of decIndent and printDebugLocation logic.
+      doIndent(o, indent);
+      if (!minify) {
+        indent--;
+      }
+      printDebugLocation(*currFunction->epilogLocation.begin());
+      o << ')';
+    } else {
+      decIndent();
+    }
+    o << maybeNewLine;
   }
   void printTableHeader(Table* curr) {
     o << '(';
@@ -912,8 +963,13 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
   }
   void visitTable(Table* curr) {
     if (!curr->exists) return;
-    // if table wasn't imported, declare it
-    if (!curr->imported) {
+    if (curr->imported()) {
+      doIndent(o, indent);
+      o << '(';
+      emitImportHeader(curr);
+      printTableHeader(&currModule->table);
+      o << ')' << maybeNewLine;
+    } else {
       doIndent(o, indent);
       printTableHeader(curr);
       o << maybeNewLine;
@@ -929,7 +985,7 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
         o << ' ';
         printName(name, o);
       }
-      o << ")\n";
+      o << ')' << maybeNewLine;
     }
   }
   void printMemoryHeader(Memory* curr) {
@@ -947,8 +1003,13 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
   }
   void visitMemory(Memory* curr) {
     if (!curr->exists) return;
-    // if memory wasn't imported, declare it
-    if (!curr->imported) {
+    if (curr->imported()) {
+      doIndent(o, indent);
+      o << '(';
+      emitImportHeader(curr);
+      printMemoryHeader(&currModule->memory);
+      o << ')' << maybeNewLine;
+    } else {
       doIndent(o, indent);
       printMemoryHeader(curr);
       o << '\n';
@@ -979,7 +1040,7 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
           }
         }
       }
-      o << "\")\n";
+      o << "\")" << maybeNewLine;
     }
   }
   void visitModule(Module* curr) {
@@ -995,20 +1056,19 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
       visitFunctionType(child.get());
       o << ")" << maybeNewLine;
     }
-    for (auto& child : curr->imports) {
-      doIndent(o, indent);
-      visitImport(child.get());
-      o << maybeNewLine;
-    }
-    for (auto& child : curr->globals) {
-      doIndent(o, indent);
-      visitGlobal(child.get());
-      o << maybeNewLine;
-    }
+    visitMemory(&curr->memory);
     if (curr->table.exists) {
       visitTable(&curr->table); // Prints its own newlines
     }
-    visitMemory(&curr->memory);
+    ModuleUtils::iterImportedGlobals(*curr, [&](Global* global) {
+      visitGlobal(global);
+    });
+    ModuleUtils::iterImportedFunctions(*curr, [&](Function* func) {
+      visitFunction(func);
+    });
+    ModuleUtils::iterDefinedGlobals(*curr, [&](Global* global) {
+      visitGlobal(global);
+    });
     for (auto& child : curr->exports) {
       doIndent(o, indent);
       visitExport(child.get());
@@ -1020,11 +1080,9 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
       printMedium(o, "start") << ' ' << curr->start << ')';
       o << maybeNewLine;
     }
-    for (auto& child : curr->functions) {
-      doIndent(o, indent);
-      visitFunction(child.get());
-      o << maybeNewLine;
-    }
+    ModuleUtils::iterDefinedFunctions(*curr, [&](Function* func) {
+      visitFunction(func);
+    });
     for (auto& section : curr->userSections) {
       doIndent(o, indent);
       o << ";; custom section \"" << section.name << "\", size " << section.data.size();

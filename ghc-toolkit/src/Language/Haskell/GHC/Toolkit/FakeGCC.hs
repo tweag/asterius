@@ -6,9 +6,7 @@ module Language.Haskell.GHC.Toolkit.FakeGCC
   , fakeGCCMain
   ) where
 
-import Data.List
 import System.Environment
-import System.FilePath
 import System.Process
 
 data FakeGCCOptions = FakeGCCOptions
