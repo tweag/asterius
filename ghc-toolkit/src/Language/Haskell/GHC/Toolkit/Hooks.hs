@@ -1,8 +1,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE StrictData #-}
 
 module Language.Haskell.GHC.Toolkit.Hooks
-  ( hooksFromCompiler
+  ( CompilerHooksOptions(..)
+  , hooksFromCompiler
   ) where
 
 import qualified CmmInfo as GHC
@@ -21,8 +23,12 @@ import qualified PipelineMonad as GHC
 import qualified StgCmm as GHC
 import qualified Stream
 
-hooksFromCompiler :: Compiler -> IO GHC.Hooks
-hooksFromCompiler Compiler {..} = do
+newtype CompilerHooksOptions = CompilerHooksOptions
+  { skipGCC :: Bool
+  }
+
+hooksFromCompiler :: Compiler -> CompilerHooksOptions -> IO GHC.Hooks
+hooksFromCompiler Compiler {..} CompilerHooksOptions {..} = do
   mods_set_ref <- newMVar Set.empty
   parsed_map_ref <- newMVar Map.empty
   typechecked_map_ref <- newMVar Map.empty
@@ -74,15 +80,20 @@ hooksFromCompiler Compiler {..} = do
           Just $ \phase input_fn dflags ->
             case phase of
               GHC.HscOut src_flavour _ (GHC.HscRecomp cgguts mod_summary@GHC.ModSummary {..}) -> do
-                output_fn <-
-                  GHC.phaseOutputFilename $
-                  GHC.hscPostBackendPhase dflags src_flavour $
-                  GHC.hscTarget dflags
-                GHC.PipeState {GHC.hsc_env = hsc_env'} <- GHC.getPipeState
-                (outputFilename, _, _) <-
-                  liftIO $
-                  GHC.hscGenHardCode hsc_env' cgguts mod_summary output_fn
-                GHC.setForeignOs []
+                r <-
+                  if skipGCC
+                    then do
+                      output_fn <-
+                        GHC.phaseOutputFilename $
+                        GHC.hscPostBackendPhase dflags src_flavour $
+                        GHC.hscTarget dflags
+                      GHC.PipeState {GHC.hsc_env = hsc_env'} <- GHC.getPipeState
+                      (outputFilename, _, _) <-
+                        liftIO $
+                        GHC.hscGenHardCode hsc_env' cgguts mod_summary output_fn
+                      GHC.setForeignOs []
+                      pure (GHC.RealPhase GHC.StopLn, outputFilename)
+                    else GHC.runPhase phase input_fn dflags
                 f <-
                   liftIO $
                   modifyMVar mods_set_ref $ \s ->
@@ -116,19 +127,24 @@ hooksFromCompiler Compiler {..} = do
                              (fetch cmm_map_ref >>= Stream.collect) <*>
                              (fetch cmm_raw_map_ref >>= Stream.collect)
                            withHaskellIR mod_summary ir)
-                pure (GHC.RealPhase GHC.StopLn, outputFilename)
+                pure r
               GHC.RealPhase GHC.Cmm -> do
-                output_fn <-
-                  GHC.phaseOutputFilename $
-                  GHC.hscPostBackendPhase dflags GHC.HsSrcFile $
-                  GHC.hscTarget dflags
-                GHC.PipeState {hsc_env} <- GHC.getPipeState
+                r <-
+                  if skipGCC
+                    then do
+                      output_fn <-
+                        GHC.phaseOutputFilename $
+                        GHC.hscPostBackendPhase dflags GHC.HsSrcFile $
+                        GHC.hscTarget dflags
+                      GHC.PipeState {hsc_env} <- GHC.getPipeState
+                      liftIO $ GHC.hscCompileCmmFile hsc_env input_fn output_fn
+                      pure (GHC.RealPhase GHC.StopLn, output_fn)
+                    else GHC.runPhase phase input_fn dflags
                 ir <-
-                  liftIO $ do
-                    GHC.hscCompileCmmFile hsc_env input_fn output_fn
-                    CmmIR <$> (takeMVar cmm_ref >>= Stream.collect) <*>
-                      (takeMVar cmm_raw_ref >>= Stream.collect)
+                  liftIO $
+                  CmmIR <$> (takeMVar cmm_ref >>= Stream.collect) <*>
+                  (takeMVar cmm_raw_ref >>= Stream.collect)
                 withCmmIR ir
-                pure (GHC.RealPhase GHC.StopLn, output_fn)
+                pure r
               _ -> GHC.runPhase phase input_fn dflags
       }

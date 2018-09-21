@@ -55,15 +55,16 @@ runHaskell Config {..} targets =
       liftIO $ do
         mod_map_ref <- newIORef M.empty
         h <-
-          hooksFromCompiler $
-          compiler <>
-          mempty
-            { withHaskellIR =
-                \ModSummary {..} ir ->
-                  liftIO $
-                  atomicModifyIORef' mod_map_ref $ \mod_map ->
-                    (M.insert ms_mod ir mod_map, ())
-            }
+          hooksFromCompiler
+            (compiler <>
+             mempty
+               { withHaskellIR =
+                   \ModSummary {..} ir ->
+                     liftIO $
+                     atomicModifyIORef' mod_map_ref $ \mod_map ->
+                       (M.insert ms_mod ir mod_map, ())
+               })
+            CompilerHooksOptions {skipGCC = True}
         pure (h, liftIO $ readIORef mod_map_ref)
     void $
       setSessionDynFlags
@@ -102,9 +103,11 @@ runCmm Config {..} cmm_fns =
       liftIO $ do
         cmm_irs_ref <- newIORef []
         h <-
-          hooksFromCompiler $
-          compiler <>
-          mempty {withCmmIR = \ir -> liftIO $ modifyIORef' cmm_irs_ref (ir :)}
+          hooksFromCompiler
+            (compiler <>
+             mempty
+               {withCmmIR = \ir -> liftIO $ modifyIORef' cmm_irs_ref (ir :)})
+            CompilerHooksOptions {skipGCC = True}
         pure (h, reverse <$> readIORef cmm_irs_ref)
     void $
       setSessionDynFlags
