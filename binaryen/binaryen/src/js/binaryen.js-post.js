@@ -1066,6 +1066,11 @@ Module['Module'] = function(module) {
       return Module['_BinaryenAddGlobal'](module, strToStack(name), type, mutable, init);
     });
   }
+  this['removeGlobal'] = function(name) {
+    return preserveStack(function () {
+      return Module['_BinaryenRemoveGlobal'](module, strToStack(name));
+    });
+  }
   this['addFunctionImport'] = function(internalName, externalModuleName, externalBaseName, functionType) {
     return preserveStack(function() {
       return Module['_BinaryenAddFunctionImport'](module, strToStack(internalName), strToStack(externalModuleName), strToStack(externalBaseName), functionType);
@@ -1076,9 +1081,9 @@ Module['Module'] = function(module) {
       return Module['_BinaryenAddTableImport'](module, strToStack(internalName), strToStack(externalModuleName), strToStack(externalBaseName));
     });
   };
-  this['addMemoryImport'] = function(internalName, externalModuleName, externalBaseName) {
+  this['addMemoryImport'] = function(internalName, externalModuleName, externalBaseName, shared) {
     return preserveStack(function() {
-      return Module['_BinaryenAddMemoryImport'](module, strToStack(internalName), strToStack(externalModuleName), strToStack(externalBaseName));
+      return Module['_BinaryenAddMemoryImport'](module, strToStack(internalName), strToStack(externalModuleName), strToStack(externalBaseName), shared);
     });
   };
   this['addGlobalImport'] = function(internalName, externalModuleName, externalBaseName, globalType) {
@@ -1112,14 +1117,15 @@ Module['Module'] = function(module) {
       return Module['_BinaryenRemoveExport'](module, strToStack(externalName));
     });
   };
-  this['setFunctionTable'] = function(funcNames) {
+  this['setFunctionTable'] = function(initial, maximum, funcNames) {
     return preserveStack(function() {
-      return Module['_BinaryenSetFunctionTable'](module, i32sToStack(
-          funcNames.map(strToStack)
-        ), funcNames.length);
+      return Module['_BinaryenSetFunctionTable'](module, initial, maximum,
+        i32sToStack(funcNames.map(strToStack)),
+        funcNames.length
+      );
     });
   };
-  this['setMemory'] = function(initial, maximum, exportName, segments) {
+  this['setMemory'] = function(initial, maximum, exportName, segments, shared) {
     // segments are assumed to be { offset: expression ref, data: array of 8-bit data }
     if (!segments) segments = [];
     return preserveStack(function() {
@@ -1140,7 +1146,8 @@ Module['Module'] = function(module) {
             return segment.data.length;
           })
         ),
-        segments.length
+        segments.length,
+        shared
       );
     });
   };

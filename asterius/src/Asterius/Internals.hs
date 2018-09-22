@@ -36,13 +36,13 @@ type IO a
    = HasCallStack =>
        GHC.Types.IO a
 
-{-# INLINEABLE marshalSBS #-}
+{-# INLINE marshalSBS #-}
 marshalSBS :: Pool -> SBS.ShortByteString -> IO (Ptr CChar)
 marshalSBS pool sbs
   | SBS.null sbs = pure nullPtr
   | otherwise = castPtr <$> pooledNewArray0 pool 0 (SBS.unpack sbs)
 
-{-# INLINEABLE marshalV #-}
+{-# INLINE marshalV #-}
 marshalV :: (Storable a, Num n) => Pool -> [a] -> IO (Ptr a, n)
 marshalV pool v
   | null v = pure (nullPtr, 0)
@@ -56,7 +56,7 @@ unI# (I# x) = x
 unIO :: GHC.Types.IO a -> (State# RealWorld -> (# State# RealWorld, a #))
 unIO (GHC.Types.IO m) = m
 
-{-# INLINEABLE encodeStorable #-}
+{-# INLINE encodeStorable #-}
 encodeStorable :: Storable a => a -> SBS.ShortByteString
 encodeStorable a =
   case runRW#
@@ -73,7 +73,7 @@ encodeStorable a =
                           (# s3, _ #) -> (# s3, SBS.SBS ba #)) of
     (# _, r #) -> r
 
-{-# INLINEABLE reinterpretCast #-}
+{-# INLINE reinterpretCast #-}
 reinterpretCast :: (Storable a, Storable b) => a -> b
 reinterpretCast a =
   case runRW#
@@ -99,23 +99,23 @@ collect p t =
     f :: Typeable t => Proxy# t -> TypeRep t
     f _ = typeRep
 
-{-# INLINEABLE encodeFile #-}
+{-# INLINE encodeFile #-}
 encodeFile :: Binary.Binary a => FilePath -> a -> IO ()
 encodeFile = Binary.encodeFile
 
-{-# INLINEABLE decodeFile #-}
+{-# INLINE decodeFile #-}
 decodeFile :: Binary.Binary a => FilePath -> IO a
 decodeFile = Binary.decodeFile
 
-{-# INLINEABLE showSBS #-}
+{-# INLINE showSBS #-}
 showSBS :: Show a => a -> SBS.ShortByteString
 showSBS = fromString . show
 
-{-# INLINEABLE c8SBS #-}
+{-# INLINE c8SBS #-}
 c8SBS :: SBS.ShortByteString -> String
 c8SBS = CBS.unpack . SBS.fromShort
 
-{-# INLINEABLE (!) #-}
+{-# INLINE (!) #-}
 (!) :: (HasCallStack, Ord k, Show k) => LM.Map k v -> k -> v
 (!) m k =
   case LM.lookup k m of

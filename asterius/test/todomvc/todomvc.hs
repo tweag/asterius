@@ -1,10 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC
-  -Wall -ddump-to-file -ddump-rn -ddump-foreign -ddump-stg -ddump-cmm-raw -ddump-asm #-}
+{-# OPTIONS_GHC -Wall -ddump-to-file -ddump-rn -ddump-foreign -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 import AsteriusPrim
-import qualified Data.Map.Strict as Map
 import ElementBuilder
 import TodoView
 import WebAPI
@@ -23,34 +21,34 @@ data Route
   | Active
   | Completed
 
-buildTodoElement :: Route -> Todo -> Element
-buildTodoElement route Todo {..} =
+buildTodoElement :: Route -> TodoModel -> Todo -> Element
+buildTodoElement route _ Todo {..} =
   emptyElement
     { className = "li"
-    , attributes =
-        Map.fromList $ [("class", "completed") | completed] <> [("id", key)]
+    , attributes = [("class", "completed") | completed] <> [("id", key)]
     , children =
         [ emptyElement
             { className = "div"
-            , attributes = Map.fromList [("class", "view")]
+            , attributes = [("class", "view")]
             , children =
                 [ emptyElement
                     { className = "input"
                     , attributes =
-                        Map.fromList $
                         [("checked", "true") | completed] <>
                         [("class", "toggle"), ("type", "checkbox")]
                     }
-                , emptyElement {className = "label", children = [TextNode text]}
                 , emptyElement
-                    { className = "button"
-                    , attributes = Map.fromList [("class", "destroy")]
+                    { className = "label"
+                    , children = [TextNode text]
+                    , eventHandlers = [("click", consoleLog)]
                     }
+                , emptyElement
+                    {className = "button", attributes = [("class", "destroy")]}
                 ]
             }
         , emptyElement
             { className = "input"
-            , attributes = Map.fromList [("class", "edit"), ("value", "")]
+            , attributes = [("class", "edit"), ("value", "")]
             }
         ]
     , hidden =
@@ -61,25 +59,37 @@ buildTodoElement route Todo {..} =
     }
 
 buildTodoList :: Route -> TodoModel -> Element
-buildTodoList route TodoModel {..} =
+buildTodoList route model@TodoModel {..} =
   emptyElement
     { className = "ul"
-    , attributes = Map.fromList [("class", "todo-list")]
-    , children = map (buildTodoElement route) todos
+    , attributes = [("class", "todo-list")]
+    , children = map (buildTodoElement route model) todos
     }
 
-todoApp :: TodoModel -> IO ()
-todoApp model = do
-  new_todo_list <- buildElement $ buildTodoList All model
-  consoleLog new_todo_list
+renderTodoList :: Route -> TodoModel -> IO ()
+renderTodoList route model = do
+  new_todo_list <- buildElement $ buildTodoList route model
   old_todo_list <- todoList
-  consoleLog old_todo_list
   replaceWith old_todo_list new_todo_list
+
+todoApp :: Route -> TodoModel -> IO ()
+todoApp route model = do
+  renderTodoList route model
+  route_change_callback <-
+    makeHaskellCallback $ do
+      mode <- getURLMode
+      todoApp
+        (case mode of
+           "active" -> Active
+           "completed" -> Completed
+           _ -> All)
+        model
+  onPopstate route_change_callback
 
 main :: IO ()
 main =
-  todoApp $
+  todoApp All $
   TodoModel
-    [ Todo {key = "0", text = "0", completed = True}
-    , Todo {key = "1", text = "1", completed = False}
+    [ Todo {key = "0", text = "0sdfghsadfasd", completed = True}
+    , Todo {key = "1", text = "1wertyhdvgjdfg", completed = False}
     ]

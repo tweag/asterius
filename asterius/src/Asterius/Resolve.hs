@@ -23,12 +23,13 @@ import Asterius.Workarounds
 import Control.Exception
 import Data.ByteString.Builder
 import qualified Data.ByteString.Short as SBS
-import Data.Data (Data, gmapT)
+import Data.Data (Data, gmapM)
 import Data.Either
 import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
+import Data.Traversable
 import Foreign
 import GHC.Exts (fromList, proxy#)
 import Language.Haskell.GHC.Toolkit.Constants
@@ -59,9 +60,10 @@ unresolvedLocalRegType lr =
 collectUnresolvedLocalRegs :: Data a => a -> S.Set UnresolvedLocalReg
 collectUnresolvedLocalRegs = collect proxy#
 
-resolveLocalRegs :: Data a => Int -> a -> (a, [ValueType])
-resolveLocalRegs func_param_n t =
-  (f t, I32 : I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
+resolveLocalRegs :: (Monad m, Data a) => Int -> a -> m (a, [ValueType])
+resolveLocalRegs func_param_n t = do
+  new_t <- f t
+  pure (new_t, I32 : I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
   where
     lrs =
       zip
@@ -69,22 +71,25 @@ resolveLocalRegs func_param_n t =
         ([fromIntegral func_param_n + 3 ..] :: [BinaryenIndex])
     lr_map = fromList lrs
     lr_idx = (lr_map !)
-    f :: Data a => a -> a
+    f :: (Monad m, Data a) => a -> m a
     f x =
       case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
         Just HRefl ->
           case x of
             UnresolvedGetLocal {..} ->
-              GetLocal
-                { index = lr_idx unresolvedLocalReg
-                , valueType = unresolvedLocalRegType unresolvedLocalReg
-                }
-            UnresolvedSetLocal {..} ->
-              SetLocal {index = lr_idx unresolvedLocalReg, value = f value}
+              pure
+                GetLocal
+                  { index = lr_idx unresolvedLocalReg
+                  , valueType = unresolvedLocalRegType unresolvedLocalReg
+                  }
+            UnresolvedSetLocal {..} -> do
+              new_value <- f value
+              pure
+                SetLocal {index = lr_idx unresolvedLocalReg, value = new_value}
             _ -> go
         _ -> go
       where
-        go = gmapT f x
+        go = gmapM f x
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
 unresolvedGlobalRegType gr =
@@ -100,39 +105,44 @@ unresolvedGlobalRegBytes gr =
     F32 -> 4
     _ -> 8
 
-resolveGlobalRegs :: Data a => a -> a
+resolveGlobalRegs :: (Monad m, Data a) => a -> m a
 resolveGlobalRegs x =
   case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
     Just HRefl ->
       case x of
         UnresolvedGetGlobal {..}
           | unresolvedGlobalReg == BaseReg ->
-            Binary
-              { binaryOp = AddInt64
-              , operand0 = Unresolved {unresolvedSymbol = "MainCapability"}
-              , operand1 = ConstI64 $ fromIntegral offset_Capability_r
-              }
+            pure
+              Binary
+                { binaryOp = AddInt64
+                , operand0 = Unresolved {unresolvedSymbol = "MainCapability"}
+                , operand1 = ConstI64 $ fromIntegral offset_Capability_r
+                }
           | otherwise ->
-            Load
-              { signed = False
-              , bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
-              , offset = 0
-              , align = 0
-              , valueType = unresolvedGlobalRegType unresolvedGlobalReg
-              , ptr = gr_ptr unresolvedGlobalReg
-              }
+            pure
+              Load
+                { signed = False
+                , bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
+                , offset = 0
+                , valueType = unresolvedGlobalRegType unresolvedGlobalReg
+                , ptr = gr_ptr unresolvedGlobalReg
+                }
         UnresolvedSetGlobal {..}
           | unresolvedGlobalReg == BaseReg ->
-            marshalErrorCode errSetBaseReg None
-          | otherwise ->
-            Store
-              { bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
-              , offset = 0
-              , align = 0
-              , ptr = gr_ptr unresolvedGlobalReg
-              , value = resolveGlobalRegs value
-              , valueType = unresolvedGlobalRegType unresolvedGlobalReg
-              }
+            pure $
+            emitErrorMessage
+              None
+              "SetGlobal instruction: attempting to assign to BaseReg"
+          | otherwise -> do
+            new_value <- resolveGlobalRegs value
+            pure $
+              Store
+                { bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
+                , offset = 0
+                , ptr = gr_ptr unresolvedGlobalReg
+                , value = new_value
+                , valueType = unresolvedGlobalRegType unresolvedGlobalReg
+                }
         _ -> go
     _ -> go
   where
@@ -148,7 +158,7 @@ resolveGlobalRegs x =
                   fromIntegral $ offset_Capability_r + globalRegOffset gr
               }
         }
-    go = gmapT resolveGlobalRegs x
+    go = gmapM resolveGlobalRegs x
 
 globalRegOffset :: UnresolvedGlobalReg -> Int
 globalRegOffset gr =
@@ -220,110 +230,107 @@ instance Monoid LinkReport where
       }
 
 mergeSymbols ::
-     Bool
+     Monad m
+  => Bool
   -> AsteriusStore
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> (Maybe AsteriusModule, LinkReport)
-mergeSymbols debug AsteriusStore {..} root_syms export_funcs =
-  (maybe_final_m, final_rep)
+  -> m (Maybe AsteriusModule, LinkReport)
+mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
+  (_, final_rep, final_m) <- go (root_syms, mempty, mempty)
+  pure
+    ( if S.null (unfoundSymbols final_rep) &&
+         S.null (unavailableSymbols final_rep)
+        then Just final_m
+        else Nothing
+    , final_rep)
   where
-    maybe_final_m
-      | S.null (unfoundSymbols final_rep) &&
-          S.null (unavailableSymbols final_rep) = Just final_m
-      | otherwise = Nothing
-    (_, final_rep, final_m) = go (root_syms, mempty, mempty)
-    go i@(i_staging_syms, _, _)
-      | S.null i_staging_syms = o
-      | otherwise = go o
-      where
-        o = iter i
-    iter (i_staging_syms, i_rep, i_m) = (o_staging_syms, o_rep, o_m)
-      where
-        (i_unfound_syms, i_sym_mods) =
-          partitionEithers
-            [ case M.lookup i_staging_sym symbolMap of
-              Just mod_sym -> Right (i_staging_sym, moduleMap ! mod_sym)
-              _ -> Left i_staging_sym
-            | i_staging_sym <- toList i_staging_syms
-            ]
-        (i_unavailable_syms, i_sym_modlets) =
-          partitionEithers
-            [ case M.lookup i_staging_sym staticsMap of
-              Just ss ->
+    go i@(i_staging_syms, _, _) = do
+      o <- iter i
+      if S.null i_staging_syms
+        then pure o
+        else go o
+    iter (i_staging_syms, i_rep, i_m) = do
+      let (i_unfound_syms, i_sym_mods) =
+            partitionEithers
+              [ case M.lookup i_staging_sym symbolMap of
+                Just mod_sym -> Right (i_staging_sym, moduleMap ! mod_sym)
+                _ -> Left i_staging_sym
+              | i_staging_sym <- S.toList i_staging_syms
+              ]
+      (i_unavailable_syms, i_sym_modlets) <-
+        fmap partitionEithers $
+        for i_sym_mods $ \(i_staging_sym, AsteriusModule {..}) ->
+          case M.lookup i_staging_sym staticsMap of
+            Just ss -> do
+              new_ss <- resolveGlobalRegs ss
+              pure $
                 Right
                   ( i_staging_sym
-                  , mempty
-                      { staticsMap =
-                          M.fromList [(i_staging_sym, resolveGlobalRegs ss)]
-                      })
-              _ ->
-                case M.lookup i_staging_sym functionMap of
-                  Just func ->
+                  , mempty {staticsMap = M.fromList [(i_staging_sym, new_ss)]})
+            _ ->
+              case M.lookup i_staging_sym functionMap of
+                Just func -> do
+                  new_func <-
+                    resolveGlobalRegs func >>=
+                    maskUnknownCCallTargets export_funcs >>=
+                    patchWritePtrArrayOp
+                  m <-
+                    (if debug
+                       then addMemoryTrap
+                       else pure)
+                      mempty
+                        {functionMap = M.fromList [(i_staging_sym, new_func)]}
+                  pure $ Right (i_staging_sym, m)
+                _
+                  | M.member i_staging_sym functionErrorMap ->
+                    pure $
                     Right
                       ( i_staging_sym
-                      , let m0 =
-                              mempty
-                                { functionMap =
-                                    M.fromList
-                                      [ ( i_staging_sym
-                                        , patchWritePtrArrayOp $
-                                          maskUnknownCCallTargets export_funcs $
-                                          resolveGlobalRegs func)
-                                      ]
-                                }
-                         in if debug
-                              then addMemoryTrap m0
-                              else m0)
-                  _
-                    | M.member i_staging_sym functionErrorMap ->
-                      Right
-                        ( i_staging_sym
-                        , mempty
-                            { functionMap =
-                                M.fromList
-                                  [ ( i_staging_sym
-                                    , AsteriusFunction
-                                        { functionType =
-                                            FunctionType
-                                              { returnType = I64
-                                              , paramTypes = []
-                                              }
-                                        , body =
-                                            marshalErrorCode
-                                              errBrokenFunction
-                                              I64
-                                        })
-                                  ]
-                            })
-                    | otherwise -> Left i_staging_sym
-            | (i_staging_sym, AsteriusModule {..}) <- i_sym_mods
-            ]
-        i_child_map =
-          fromList
-            [ ( i_staging_sym
-              , S.filter (/= i_staging_sym) $
-                collectAsteriusEntitySymbols i_modlet)
-            | (i_staging_sym, i_modlet) <- i_sym_modlets
-            ]
-        o_rep =
-          mempty
-            { childSymbols = i_child_map
-            , unfoundSymbols = fromList i_unfound_syms
-            , unavailableSymbols = fromList i_unavailable_syms
-            , bundledFFIMarshalState =
-                mconcat
-                  [ffiMarshalState | (_, AsteriusModule {..}) <- i_sym_mods]
-            } <>
-          i_rep
-        o_m = mconcat (map snd i_sym_modlets) <> i_m
-        o_staging_syms =
-          mconcat (M.elems $ childSymbols o_rep) `S.difference`
-          S.unions
-            [ unfoundSymbols o_rep
-            , unavailableSymbols o_rep
-            , fromList $ M.keys $ childSymbols o_rep
-            ]
+                      , mempty
+                          { functionMap =
+                              M.fromList
+                                [ ( i_staging_sym
+                                  , AsteriusFunction
+                                      { functionType =
+                                          FunctionType
+                                            {returnType = I64, paramTypes = []}
+                                      , body =
+                                          emitErrorMessage I64 $
+                                          entityName i_staging_sym <>
+                                          " failed: it was marked as broken by code generator, with error message: " <>
+                                          showSBS
+                                            (functionErrorMap ! i_staging_sym)
+                                      })
+                                ]
+                          })
+                  | otherwise -> pure $ Left i_staging_sym
+      let i_child_map =
+            M.fromList
+              [ ( i_staging_sym
+                , S.filter (/= i_staging_sym) $
+                  collectAsteriusEntitySymbols i_modlet)
+              | (i_staging_sym, i_modlet) <- i_sym_modlets
+              ]
+          o_rep =
+            mempty
+              { childSymbols = i_child_map
+              , unfoundSymbols = fromList i_unfound_syms
+              , unavailableSymbols = fromList i_unavailable_syms
+              , bundledFFIMarshalState =
+                  mconcat
+                    [ffiMarshalState | (_, AsteriusModule {..}) <- i_sym_mods]
+              } <>
+            i_rep
+          o_m = mconcat (map snd i_sym_modlets) <> i_m
+          o_staging_syms =
+            mconcat (M.elems $ childSymbols o_rep) `S.difference`
+            S.unions
+              [ unfoundSymbols o_rep
+              , unavailableSymbols o_rep
+              , fromList $ M.keys $ childSymbols o_rep
+              ]
+      pure (o_staging_syms, o_rep, o_m)
 
 makeFunctionTable ::
      AsteriusModule -> (FunctionTable, M.Map AsteriusEntitySymbol Int64)
@@ -397,32 +404,34 @@ makeMemory debug AsteriusModule {..} last_o sym_map =
         []
         (sortOn (\DataSegment {offset = ConstI32 o} -> o) segs)
 
-resolveEntitySymbols :: Data a => M.Map AsteriusEntitySymbol Int64 -> a -> a
+resolveEntitySymbols ::
+     (Monad m, Data a) => M.Map AsteriusEntitySymbol Int64 -> a -> m a
 resolveEntitySymbols sym_table = f
   where
-    f :: Data a => a -> a
+    f :: (Monad m, Data a) => a -> m a
     f t =
       case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
         Just HRefl ->
           case t of
-            Unresolved {..} -> ConstI64 $ subst unresolvedSymbol
+            Unresolved {..} -> pure $ ConstI64 $ subst unresolvedSymbol
             UnresolvedOff {..} ->
-              ConstI64 $ subst unresolvedSymbol + fromIntegral offset'
+              pure $ ConstI64 $ subst unresolvedSymbol + fromIntegral offset'
             _ -> go
         _ ->
           case eqTypeRep (typeOf t) (typeRep :: TypeRep AsteriusStatic) of
             Just HRefl ->
               case t of
                 UnresolvedStatic unresolvedSymbol ->
-                  Serialized (encodeStorable (subst unresolvedSymbol))
+                  pure $ Serialized (encodeStorable (subst unresolvedSymbol))
                 UnresolvedOffStatic unresolvedSymbol offset' ->
+                  pure $
                   Serialized
                     (encodeStorable
                        (subst unresolvedSymbol + fromIntegral offset'))
-                _ -> t
+                _ -> pure t
             _ -> go
       where
-        go = gmapT f t
+        go = gmapM f t
         subst = (sym_table !)
 
 resolveFunctionImport :: AsteriusFunctionImport -> FunctionImport
@@ -434,105 +443,136 @@ resolveFunctionImport AsteriusFunctionImport {..} =
     , functionTypeName = generateWasmFunctionTypeName functionType
     }
 
+collectErrorMessages :: Data a => a -> S.Set ErrorMessage
+collectErrorMessages = collect proxy#
+
+rewriteEmitErrorMessage :: (Monad m, Data a) => a -> m (a, [ErrorMessage])
+rewriteEmitErrorMessage x = do
+  new_x <- f x
+  pure (new_x, msg_lst)
+  where
+    msg_lst = S.toList $ collectErrorMessages x
+    msg_tbl = M.fromList $ zip msg_lst [(0 :: Int32) ..]
+    msg_lookup = (msg_tbl !)
+    f :: (Monad m, Data a) => a -> m a
+    f t =
+      case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
+        Just HRefl ->
+          case t of
+            EmitErrorMessage {..} ->
+              pure
+                Block
+                  { name = ""
+                  , bodys =
+                      [ CallImport
+                          { target' = "__asterius_errorI32"
+                          , operands = [ConstI32 $ msg_lookup errorMessage]
+                          , valueType = None
+                          }
+                      , Unreachable
+                      ]
+                  , valueType = valueType
+                  }
+            _ -> go
+        _ -> go
+      where
+        go = gmapM f t
+
 resolveAsteriusModule ::
-     Bool
+     Monad m
+  => Bool
   -> FFIMarshalState
   -> [AsteriusEntitySymbol]
   -> AsteriusModule
-  -> ( Module
-     , M.Map AsteriusEntitySymbol Int64
-     , M.Map AsteriusEntitySymbol Int64)
-resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved =
-  ( Module
-      { functionTypeMap =
-          M.fromList
-            [ (generateWasmFunctionTypeName ft, ft)
-            | ft <-
-                [functionType | AsteriusFunctionImport {..} <- func_imports] <>
-                [ functionType
-                | AsteriusFunction {..} <-
-                    M.elems $ functionMap m_globals_syms_resolved
-                ]
+  -> m ( Module
+       , M.Map AsteriusEntitySymbol Int64
+       , M.Map AsteriusEntitySymbol Int64
+       , [ErrorMessage])
+resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = do
+  let (func_table, func_sym_map) = makeFunctionTable m_globals_resolved
+      (last_o, ss_sym_map) = makeStaticsOffsetTable m_globals_resolved
+      resolve_syms :: (Monad m, Data a) => a -> m a
+      resolve_syms = resolveEntitySymbols (func_sym_map <> ss_sym_map)
+  m_globals_syms_resolved <- resolve_syms m_globals_resolved
+  let func_imports =
+        rtsAsteriusFunctionImports debug <>
+        generateFFIFunctionImports bundled_ffi_state
+  new_function_map <-
+    fmap M.fromList $
+    for (M.toList $ functionMap m_globals_syms_resolved) $ \(func_sym, AsteriusFunction {..}) -> do
+      (body_locals_resolved, local_types) <-
+        resolveLocalRegs (length $ paramTypes functionType) body
+      let func =
+            Function
+              { functionTypeName = generateWasmFunctionTypeName functionType
+              , varTypes = local_types
+              , body = body_locals_resolved
+              }
+      new_func <-
+        (if debug
+           then addTracingModule func_sym_map func_sym functionType func
+           else pure func) >>=
+        relooperDeep
+      pure (entityName func_sym, new_func)
+  (new_mod, err_msgs) <-
+    rewriteEmitErrorMessage
+      Module
+        { functionTypeMap =
+            M.fromList
+              [ (generateWasmFunctionTypeName ft, ft)
+              | ft <-
+                  [functionType | AsteriusFunctionImport {..} <- func_imports] <>
+                  [ functionType
+                  | AsteriusFunction {..} <-
+                      M.elems $ functionMap m_globals_syms_resolved
+                  ]
+              ]
+        , functionMap' = new_function_map
+        , functionImports = [resolveFunctionImport imp | imp <- func_imports]
+        , functionExports =
+            rtsAsteriusFunctionExports debug <>
+            [ FunctionExport
+              {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
+            | k <- map entityName export_funcs
             ]
-      , functionMap' =
-          M.fromList
-            [ ( entityName func_sym
-              , relooperDeep $
-                if debug
-                  then addTracingModule func_sym_map func_sym functionType func
-                  else func)
-            | (func_sym, AsteriusFunction {..}) <-
-                M.toList $ functionMap m_globals_syms_resolved
-            , let (body_locals_resolved, local_types) =
-                    resolveLocalRegs (length $ paramTypes functionType) body
-                  func =
-                    Function
-                      { functionTypeName =
-                          generateWasmFunctionTypeName functionType
-                      , varTypes = local_types
-                      , body = body_locals_resolved
-                      }
-            ]
-      , functionImports = [resolveFunctionImport imp | imp <- func_imports]
-      , tableImports = []
-      , globalImports = []
-      , functionExports =
-          rtsAsteriusFunctionExports debug <>
-          [ FunctionExport
-            {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
-          | k <- map entityName export_funcs
-          ]
-      , tableExports = []
-      , globalExports = []
-      , globalMap = M.fromList []
-      , functionTable = Just func_table
-      , memory =
-          Just $ makeMemory debug m_globals_syms_resolved last_o ss_sym_map
-      , startFunctionName = Nothing
-      }
-  , ss_sym_map
-  , func_sym_map)
-  where
-    (func_table, func_sym_map) = makeFunctionTable m_globals_resolved
-    (last_o, ss_sym_map) = makeStaticsOffsetTable m_globals_resolved
-    resolve_syms :: Data a => a -> a
-    resolve_syms = resolveEntitySymbols $ func_sym_map <> ss_sym_map
-    m_globals_syms_resolved = resolve_syms m_globals_resolved
-    func_imports =
-      rtsAsteriusFunctionImports debug <>
-      generateFFIFunctionImports bundled_ffi_state
+        , functionTable = func_table
+        , memory = makeMemory debug m_globals_syms_resolved last_o ss_sym_map
+        }
+  pure (new_mod, ss_sym_map, func_sym_map, err_msgs)
 
 linkStart ::
-     Bool
+     Monad m
+  => Bool
   -> AsteriusStore
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> (Maybe Module, LinkReport)
-linkStart debug store root_syms export_funcs =
-  ( maybe_result_m
-  , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
-  where
-    (maybe_merged_m, report) =
-      mergeSymbols
-        debug
-        store
-        (root_syms <>
-         S.fromList
-           [ AsteriusEntitySymbol
-             {entityName = "__asterius_jsffi_export_" <> entityName k}
-           | k <- export_funcs
-           ])
-        export_funcs
-    (maybe_result_m, ss_sym_map, func_sym_map) =
-      case maybe_merged_m of
-        Just merged_m -> (Just result_m, ss_sym_map', func_sym_map')
-          where (result_m, ss_sym_map', func_sym_map') =
-                  resolveAsteriusModule
-                    debug
-                    (bundledFFIMarshalState report)
-                    export_funcs
-                    merged_m
-        _ -> (Nothing, mempty, mempty)
+  -> m (Maybe (Module, [ErrorMessage]), LinkReport)
+linkStart debug store root_syms export_funcs = do
+  (maybe_merged_m, report) <-
+    mergeSymbols
+      debug
+      store
+      (root_syms <>
+       S.fromList
+         [ AsteriusEntitySymbol
+           {entityName = "__asterius_jsffi_export_" <> entityName k}
+         | k <- export_funcs
+         ])
+      export_funcs
+  (maybe_result_m, ss_sym_map, func_sym_map) <-
+    case maybe_merged_m of
+      Just merged_m -> do
+        (result_m, ss_sym_map', func_sym_map', err_msgs) <-
+          resolveAsteriusModule
+            debug
+            (bundledFFIMarshalState report)
+            export_funcs
+            merged_m
+        pure (Just (result_m, err_msgs), ss_sym_map', func_sym_map')
+      _ -> pure (Nothing, mempty, mempty)
+  pure
+    ( maybe_result_m
+    , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
 
 renderDot :: LinkReport -> Builder
 renderDot LinkReport {..} =

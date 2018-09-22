@@ -105,13 +105,21 @@ There are two possible ways to implement Template Haskell:
 * Link with the native code produced when booting. For simple `Q` computations that doesn't involve `runIO` this should work fine, but it won't work when one calls a WebAssembly computation in `Q`.
 * Implement the remote interpreter for WebAssembly, much like ghcjs. When Template Haskell/GHCi is involved, we fire up a Node.js/Headless Chrome process and do all the message passing. This is the ideal solution but takes a huge amount of work.
 
-Implementing the first approach is straightforward:
+Implementing the first approach seems straightforward:
 
-* While we compile to WebAssembly, we still perform native code generation and emit x64 object files. The emitted object files are just there to make `Cabal` happy, but GHCi linker can take advantage of them.
-* GHCi linking for the objects should work out of the box (at least on Linux). There is a `th` test suite but it isn't run on CI mainly because of some weird Windows GHCi linker bug.
+* While we compile to WebAssembly, we still perform native code generation and emit x64 object files. The emitted object files are just there to make `Cabal` happy, but GHCi linker may take advantage of them.
 * As long as GHCi linker doesn't fail, the computation in `Q` monad can be executed in the `ahc` process. It's not run in a JavaScript runtime properly, so the splice's module must not have any transitive dependency on a JSFFI import (GHCi linking will fail anyway).
 
-GHCi can work in a similar way (but pretty meaningless..)
+However, even for simple splices, the GHCi linker raises a lot of unresolved symbol errors like this:
+
+```
+ahc-link: /mnt/c/Users/Think/Documents/Haskell/asterius/.stack-work/install/x86_64-linux/ghc-8.7/8.7.20180920/share/x86_64-linux-ghc-8.7.20180920/asterius-0.0.1/.boot/asterius_lib/lib/x86_64-linux-ghc-8.7.20180920/base-4.12.0.0-JnKKLQIOONeDRirkEsAqF2/libHSbase-4.12.0.0-JnKKLQIOONeDRirkEsAqF2.a: unknown symbol `stg_word32ToFloatzh'
+ahc-link: /mnt/c/Users/Think/Documents/Haskell/asterius/.stack-work/install/x86_64-linux/ghc-8.7/8.7.20180920/share/x86_64-linux-ghc-8.7.20180920/asterius-0.0.1/.boot/asterius_lib/lib/x86_64-linux-ghc-8.7.20180920/base-4.12.0.0-JnKKLQIOONeDRirkEsAqF2/libHSbase-4.12.0.0-JnKKLQIOONeDRirkEsAqF2.a: unknown symbol `base_GHCziFloat_zdfRealFloatDouble2_closure'
+```
+
+The ELF object files are not corrupt, but a lot of places assume the unit id of `base` is simply `base`, however the `base` package compiled by `ahc-boot` has a different unit id to avoid collision with the host ghc's `base`.
+
+Patching the object files may be a valid workaround here, but I question if it's worth the effort.
 
 #### Improve `Cabal` support
 

@@ -16,6 +16,10 @@ extra-source-files:
   - test/jsffi/**/*.hs
   - test/jsffi-chrome/**/*.hs
   - test/jsffi-chrome/**/*.html
+  - test/mealy-chrome/**/*.hs
+  - test/mealy-chrome/**/*.html
+  - test/mealy-chrome/mealy-driver.js
+  - test/node-compile/node-compile.js
   - test/rtsapi/**/*.hs
   - test/stableptr/**/*.hs
   - test/th/**/*.hs
@@ -51,6 +55,8 @@ dependencies:
   - optparse-applicative
   - parsec
   - process
+  - wasm-toolkit
+  - QuickCheck
 
 library:
   source-dirs: src
@@ -151,5 +157,17 @@ tests:
   jsffi-chrome:
     source-dirs: test
     main: jsffi-chrome.hs
+    dependencies:
+      - asterius
+
+  mealy-chrome:
+    source-dirs: test
+    main: mealy-chrome.hs
+    dependencies:
+      - asterius
+
+  node-compile:
+    source-dirs: test
+    main: node-compile.hs
     dependencies:
       - asterius

@@ -961,7 +961,8 @@ foreign import ccall unsafe "BinaryenAddTableImport" c_BinaryenAddTableImport
   :: BinaryenModuleRef -> Ptr CChar -> Ptr CChar -> Ptr CChar -> IO ()
 
 foreign import ccall unsafe "BinaryenAddMemoryImport" c_BinaryenAddMemoryImport
-  :: BinaryenModuleRef -> Ptr CChar -> Ptr CChar -> Ptr CChar -> IO ()
+  :: BinaryenModuleRef ->
+  Ptr CChar -> Ptr CChar -> Ptr CChar -> Ptr Word8 -> IO ()
 
 foreign import ccall unsafe "BinaryenAddGlobalImport" c_BinaryenAddGlobalImport
   :: BinaryenModuleRef ->
@@ -999,8 +1000,13 @@ foreign import ccall unsafe "BinaryenAddGlobal" c_BinaryenAddGlobal
     BinaryenType ->
       Int8 -> BinaryenExpressionRef -> IO BinaryenGlobalRef
 
+foreign import ccall unsafe "BinaryenRemoveGlobal" c_BinaryenRemoveGlobal
+  :: BinaryenModuleRef -> Ptr CChar -> IO ()
+
 foreign import ccall unsafe "BinaryenSetFunctionTable" c_BinaryenSetFunctionTable
-  :: BinaryenModuleRef -> Ptr (Ptr CChar) -> BinaryenIndex -> IO ()
+  :: BinaryenModuleRef ->
+  BinaryenIndex ->
+    BinaryenIndex -> Ptr (Ptr CChar) -> BinaryenIndex -> IO ()
 
 foreign import ccall unsafe "BinaryenSetMemory" c_BinaryenSetMemory
   :: BinaryenModuleRef ->
@@ -1009,7 +1015,7 @@ foreign import ccall unsafe "BinaryenSetMemory" c_BinaryenSetMemory
       Ptr CChar ->
         Ptr (Ptr CChar) ->
           Ptr BinaryenExpressionRef ->
-            Ptr BinaryenIndex -> BinaryenIndex -> IO ()
+            Ptr BinaryenIndex -> BinaryenIndex -> Word8 -> IO ()
 
 foreign import ccall unsafe "BinaryenSetStart" c_BinaryenSetStart
   :: BinaryenModuleRef -> BinaryenFunctionRef -> IO ()

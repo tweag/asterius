@@ -22,7 +22,8 @@ import Control.Applicative
 import Control.Monad.State.Strict
 import Data.ByteString.Builder
 import qualified Data.ByteString.Short as SBS
-import Data.Data (Data, gmapM, gmapQ, gmapT)
+import Data.Data (Data, gmapM, gmapQ)
+import Data.Functor.Identity
 import Data.IORef
 import qualified Data.IntMap.Strict as IM
 import Data.List
@@ -179,15 +180,16 @@ marshalToFFIFunctionType (GHC.unLoc -> ty) =
       pure
         FFIFunctionType {ffiParamTypes = [], ffiResultType = r, ffiInIO = False}
 
-rewriteJSRef :: Data a => a -> a
+rewriteJSRef :: (Monad m, Data a) => a -> m a
 rewriteJSRef t =
   case eqTypeRep (typeOf t) (typeRep :: TypeRep GHC.RdrName) of
     Just HRefl ->
       case t of
         GHC.Unqual n
-          | GHC.occNameString n == "JSRef" -> GHC.Unqual (GHC.mkTcOcc "Int")
-        _ -> t
-    _ -> gmapT rewriteJSRef t
+          | GHC.occNameString n == "JSRef" ->
+            pure $ GHC.Unqual (GHC.mkTcOcc "Int")
+        _ -> pure t
+    _ -> gmapM rewriteJSRef t
 
 recoverWasmImportValueType :: Maybe FFIValueType -> ValueType
 recoverWasmImportValueType vt =
@@ -292,12 +294,14 @@ processFFI mod_sym = w
         _ -> gmapM w t
 
 collectFFISrc ::
-     AsteriusModuleSymbol
+     Monad m
+  => AsteriusModuleSymbol
   -> GHC.HsParsedModule
   -> FFIMarshalState
-  -> (GHC.HsParsedModule, FFIMarshalState)
-collectFFISrc mod_sym m ffi_state =
-  (m {GHC.hpm_module = rewriteJSRef new_m}, st)
+  -> m (GHC.HsParsedModule, FFIMarshalState)
+collectFFISrc mod_sym m ffi_state = do
+  new_hpm_module <- rewriteJSRef new_m
+  pure (m {GHC.hpm_module = new_hpm_module}, st)
   where
     (new_m, st) = runState (processFFI mod_sym (GHC.hpm_module m)) ffi_state
 
@@ -315,6 +319,7 @@ addFFIProcessor c = do
                 atomicModifyIORef' ffi_states_ref $ \ffi_states ->
                   let mod_sym = marshalToModuleSymbol $ GHC.ms_mod mod_summary
                       (patched_mod, ffi_state) =
+                        runIdentity $
                         collectFFISrc
                           mod_sym
                           parsed_mod
@@ -511,7 +516,6 @@ generateFFIExportFunction FFIExportDecl {..} =
                               { signed = False
                               , bytes = 8
                               , offset = 0
-                              , align = 0
                               , valueType = I64
                               , ptr =
                                   Unary

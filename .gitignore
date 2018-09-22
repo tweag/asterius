@@ -11,3 +11,4 @@ node_modules/
 *.dump-*
 yarn.lock
 package-lock.json
+*.ghcid

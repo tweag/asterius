@@ -64,7 +64,6 @@ runHaskell Config {..} targets =
                      atomicModifyIORef' mod_map_ref $ \mod_map ->
                        (M.insert ms_mod ir mod_map, ())
                })
-            CompilerHooksOptions {skipGCC = True}
         pure (h, liftIO $ readIORef mod_map_ref)
     void $
       setSessionDynFlags
@@ -107,7 +106,6 @@ runCmm Config {..} cmm_fns =
             (compiler <>
              mempty
                {withCmmIR = \ir -> liftIO $ modifyIORef' cmm_irs_ref (ir :)})
-            CompilerHooksOptions {skipGCC = True}
         pure (h, reverse <$> readIORef cmm_irs_ref)
     void $
       setSessionDynFlags

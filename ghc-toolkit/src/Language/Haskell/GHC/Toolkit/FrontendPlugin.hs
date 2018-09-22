@@ -20,9 +20,7 @@ makeFrontendPlugin init_c =
         \_ targets -> do
           c <- init_c
           flip gfinally (finalize c) $ do
-            h <-
-              liftIO $
-              hooksFromCompiler c CompilerHooksOptions {skipGCC = False}
+            h <- liftIO $ hooksFromCompiler c
             let (hs_targets, non_hs_targets) =
                   partition isHaskellishTarget targets
             if null hs_targets

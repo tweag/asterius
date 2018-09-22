@@ -254,14 +254,14 @@ void test_core() {
 
   // Function table. One per module
   const char* funcNames[] = { BinaryenFunctionGetName(sinker) };
-  BinaryenSetFunctionTable(module, funcNames, 1);
+  BinaryenSetFunctionTable(module, 1, 1, funcNames, 1);
 
   // Memory. One per module
 
   const char* segments[] = { "hello, world" };
   BinaryenExpressionRef segmentOffsets[] = { BinaryenConst(module, BinaryenLiteralInt32(10)) };
   BinaryenIndex segmentSizes[] = { 12 };
-  BinaryenSetMemory(module, 1, 256, "mem", segments, segmentOffsets, segmentSizes, 1);
+  BinaryenSetMemory(module, 1, 256, "mem", segments, segmentOffsets, segmentSizes, 1, 0);
 
   // Start function. One per module
 

@@ -3,6 +3,7 @@ FROM debian:unstable
 COPY asterius /root/asterius
 COPY binaryen /root/binaryen
 COPY ghc-toolkit /root/ghc-toolkit
+COPY wasm-toolkit /root/wasm-toolkit
 COPY stack.yaml /root/stack.yaml
 ENV \
   DEBIAN_FRONTEND=noninteractive \

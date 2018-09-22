@@ -7,6 +7,7 @@ pages:
   - 'Using ahc-link': 'ahc-link.md'
   - 'JavaScript FFI': 'jsffi.md'
   - 'Invoking RTS API in JavaScript': 'rts-api.md'
+  - 'IR types and transformation passes': 'ir.md'
   - 'The runtime debugging feature': 'debugging.md'
   - 'Project architecture': 'architecture.md'
   - 'Writing WebAssembly code in Haskell': 'wasm-in-hs.md'

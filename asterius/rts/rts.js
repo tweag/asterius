@@ -51,28 +51,7 @@ async function newAsteriusInstance(req) {
         freeStablePtr: __asterius_freeStablePtr,
         printI64: (lo, hi) => console.log(__asterius_newI64(lo, hi)),
         print: console.log,
-        panic: e =>
-          console.error(
-            "[ERROR] " +
-              [
-                "errGCEnter1",
-                "errGCFun",
-                "errBarf",
-                "errStgGC",
-                "errUnreachableBlock",
-                "errHeapOverflow",
-                "errMegaBlockGroup",
-                "errUnimplemented",
-                "errAtomics",
-                "errSetBaseReg",
-                "errBrokenFunction",
-                "errAssert",
-                "errSchedulerReenteredFromHaskell",
-                "errIllegalSchedState",
-                "errIllegalPrevWhatNext",
-                "errIllegalThreadReturnCode"
-              ][e - 1]
-          ),
+        panic: e => console.error("[ERROR] " + req.errorMessages[e]),
         __asterius_current_memory: p => {
           console.log("[INFO] Current Memory Pages: " + p);
           return p;

@@ -201,23 +201,11 @@ marshalCmmLoad p t = do
       (GHC.typeWidth t)
       (pure
          ( Load
-             { signed = False
-             , bytes = 1
-             , offset = 0
-             , align = 0
-             , valueType = I32
-             , ptr = pv
-             }
+             {signed = False, bytes = 1, offset = 0, valueType = I32, ptr = pv}
          , I32))
       (pure
          ( Load
-             { signed = False
-             , bytes = 2
-             , offset = 0
-             , align = 0
-             , valueType = I32
-             , ptr = pv
-             }
+             {signed = False, bytes = 2, offset = 0, valueType = I32, ptr = pv}
          , I32))
       (do vt <- marshalCmmType t
           pure
@@ -225,7 +213,6 @@ marshalCmmLoad p t = do
                 { signed = False
                 , bytes = 4
                 , offset = 0
-                , align = 0
                 , valueType = vt
                 , ptr = pv
                 }
@@ -236,7 +223,6 @@ marshalCmmLoad p t = do
                 { signed = False
                 , bytes = 8
                 , offset = 0
-                , align = 0
                 , valueType = vt
                 , ptr = pv
                 }
@@ -252,8 +238,14 @@ marshalCmmReg r =
       gr_k <- marshalCmmGlobalReg gr
       pure
         ( case gr_k of
-            GCEnter1 -> marshalErrorCode errGCEnter1 I64
-            GCFun -> marshalErrorCode errGCFun I64
+            GCEnter1 ->
+              emitErrorMessage
+                I64
+                "GetGlobal instruction: attempting to read GCEnter1"
+            GCFun ->
+              emitErrorMessage
+                I64
+                "GetGlobal instruction: attempting to read GCFun"
             _ -> UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
         , unresolvedGlobalRegType gr_k)
 
@@ -731,65 +723,6 @@ marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall ClzInt64 I64 r x
 marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall CtzInt64 I64 r x
-marshalCmmPrimCall (GHC.MO_AtomicRMW GHC.W64 op) [r] [p, x] = do
-  lr <- marshalTypedCmmLocalReg r I64
-  pv <- marshalAndCastCmmExpr p I32
-  xv <- marshalAndCastCmmExpr x I64
-  wasm_op <-
-    case op of
-      GHC.AMO_Add -> pure AtomicRMWAdd
-      GHC.AMO_Sub -> pure AtomicRMWSub
-      GHC.AMO_And -> pure AtomicRMWAnd
-      GHC.AMO_Or -> pure AtomicRMWOr
-      GHC.AMO_Xor -> pure AtomicRMWXor
-      GHC.AMO_Nand -> throwError $ UnsupportedCmmInstr "AMO_Nand"
-  pure
-    [ UnresolvedSetLocal
-        { unresolvedLocalReg = lr
-        , value =
-            AtomicRMW
-              { atomicRMWOp = wasm_op
-              , bytes = 8
-              , offset = 0
-              , ptr = pv
-              , value = xv
-              , valueType = I64
-              }
-        }
-    ]
-marshalCmmPrimCall (GHC.MO_AtomicRead GHC.W64) [r] [p] = do
-  lr <- marshalTypedCmmLocalReg r I64
-  pv <- marshalAndCastCmmExpr p I32
-  pure
-    [ UnresolvedSetLocal
-        { unresolvedLocalReg = lr
-        , value = AtomicLoad {bytes = 8, offset = 0, valueType = I64, ptr = pv}
-        }
-    ]
-marshalCmmPrimCall (GHC.MO_AtomicWrite GHC.W64) [] [p, x] = do
-  pv <- marshalAndCastCmmExpr p I32
-  xv <- marshalAndCastCmmExpr x I64
-  pure
-    [AtomicStore {bytes = 8, offset = 0, ptr = pv, value = xv, valueType = I64}]
-marshalCmmPrimCall (GHC.MO_Cmpxchg GHC.W64) [r] [p, o, n] = do
-  lr <- marshalTypedCmmLocalReg r I64
-  pv <- marshalAndCastCmmExpr p I32
-  ov <- marshalAndCastCmmExpr o I64
-  nv <- marshalAndCastCmmExpr n I64
-  pure
-    [ UnresolvedSetLocal
-        { unresolvedLocalReg = lr
-        , value =
-            AtomicCmpxchg
-              { bytes = 8
-              , offset = 0
-              , ptr = pv
-              , expected = ov
-              , replacement = nv
-              , valueType = I64
-              }
-        }
-    ]
 marshalCmmPrimCall op rs xs =
   throwError $
   UnsupportedCmmInstr $
@@ -804,7 +737,7 @@ marshalCmmUnsafeCall ::
 marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
   sym <- marshalCLabel clbl
   if entityName sym == "barf"
-    then pure [marshalErrorCode errBarf None]
+    then pure [emitErrorMessage None "barf() is invoked"]
     else do
       xes <-
         for xs $ \x -> do
@@ -858,43 +791,19 @@ marshalCmmInstr instr =
           (do xe <- marshalAndCastCmmExpr e I32
               pure
                 Store
-                  { bytes = 1
-                  , offset = 0
-                  , align = 0
-                  , ptr = pv
-                  , value = xe
-                  , valueType = I32
-                  })
+                  {bytes = 1, offset = 0, ptr = pv, value = xe, valueType = I32})
           (do xe <- marshalAndCastCmmExpr e I32
               pure
                 Store
-                  { bytes = 2
-                  , offset = 0
-                  , align = 0
-                  , ptr = pv
-                  , value = xe
-                  , valueType = I32
-                  })
+                  {bytes = 2, offset = 0, ptr = pv, value = xe, valueType = I32})
           (do (xe, vt) <- marshalCmmExpr e
               pure
                 Store
-                  { bytes = 4
-                  , offset = 0
-                  , align = 0
-                  , ptr = pv
-                  , value = xe
-                  , valueType = vt
-                  })
+                  {bytes = 4, offset = 0, ptr = pv, value = xe, valueType = vt})
           (do (xe, vt) <- marshalCmmExpr e
               pure
                 Store
-                  { bytes = 8
-                  , offset = 0
-                  , align = 0
-                  , ptr = pv
-                  , value = xe
-                  , valueType = vt
-                  })
+                  {bytes = 8, offset = 0, ptr = pv, value = xe, valueType = vt})
       pure [store_instr]
     _ -> throwError $ UnsupportedCmmInstr $ showSBS instr
 
@@ -998,7 +907,12 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
         ( "__asterius_unreachable"
         , RelooperBlock
             { addBlock =
-                AddBlock {code = marshalErrorCode errUnreachableBlock None}
+                AddBlock
+                  { code =
+                      emitErrorMessage
+                        None
+                        "__asterius_unreachable block is entered"
+                  }
             , addBranches = []
             }) :
         rbs

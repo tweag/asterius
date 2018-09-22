@@ -4,21 +4,31 @@ extra-deps:
   - ansi-terminal-0.8.1
   - ansi-wl-pprint-0.6.8.2
   - colour-2.3.4
+  - erf-2.0.0.0
   - mintty-0.1.2
   - optparse-applicative-0.14.2.0
+  - https://github.com/haskell/primitive/archive/1c1b357ee2e66fd684306e49ef30e453b0abe7c2.zip
+  - QuickCheck-2.12.4
+  - random-1.1
+  - tf-random-0.5
   - transformers-compat-0.6.2
 packages:
   - asterius
   - binaryen
   - ghc-toolkit
+  - wasm-toolkit
 ghc-build: standard
 setup-info:
   ghc:
     windows64:
-      8.7.20180920:
-        url: https://ci.appveyor.com/api/buildjobs/hnl00glf483ds970/artifacts/ghc/ghc-bindist/ghc-8.7.20180920-x86_64-unknown-mingw32.tar.xz
-        sha256: 497cba035f22d8e9b45ea53063f5f8b82d9041cda49835a3e706e55aa0432d7d
+      8.7.20180924:
+        url: https://ci.appveyor.com/api/buildjobs/u4xad1iq4w7c3fi4/artifacts/ghc/ghc-bindist/ghc-8.7.20180924-x86_64-unknown-mingw32.tar.xz
+        sha256: 5a155d470b2d9683042de2272e731b98110411f22f7a75a84b9fd7b9153ed88f
     linux64:
-      8.7.20180920:
-        url: https://1660-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20180920-x86_64-unknown-linux.tar.xz
-        sha256: 35d9a6ab1e926ea1a897d7701b2794350e4530239b34c266ba9cc911568e35d2
+      8.7.20181010:
+        url: https://1724-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181010-x86_64-unknown-linux.tar.xz
+        sha256: 2657286239731531a0a462787f2ba48cc405bbb633e65464b98319df75b7c4b2
+    macosx:
+      8.7.20181010:
+        url: https://1723-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181010-x86_64-apple-darwin.tar.xz
+        sha256: 996751c8bb47022db81c83449aa4f85ece3895c8d682eba1a4adc4e6132c301b

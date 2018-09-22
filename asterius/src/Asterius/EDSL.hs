@@ -152,19 +152,19 @@ emit :: Expression -> EDSL ()
 emit e =
   EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `dListSnoc` e}
 
-bundleExpressions :: [Expression] -> Expression
-bundleExpressions el =
+bundleExpressions :: ValueType -> [Expression] -> Expression
+bundleExpressions vt el =
   case el of
     [] -> Nop
     [e] -> e
-    _ -> Block {name = mempty, bodys = el, valueType = Auto}
+    _ -> Block {name = mempty, bodys = el, valueType = vt}
 
-runEDSL :: EDSL () -> AsteriusFunction
-runEDSL (EDSL m) =
+runEDSL :: ValueType -> EDSL () -> AsteriusFunction
+runEDSL vt (EDSL m) =
   AsteriusFunction
     { functionType =
         FunctionType {returnType = retType, paramTypes = fromDList paramBuf}
-    , body = bundleExpressions $ fromDList exprBuf
+    , body = bundleExpressions vt $ fromDList exprBuf
     }
   where
     EDSLState {..} = execState m initialEDSLState
@@ -237,25 +237,11 @@ pointer :: ValueType -> BinaryenIndex -> Expression -> Int -> LVal
 pointer vt b bp o =
   LVal
     { getLVal =
-        Load
-          { signed = False
-          , bytes = b
-          , offset = 0
-          , align = 0
-          , valueType = vt
-          , ptr = p
-          }
+        Load {signed = False, bytes = b, offset = 0, valueType = vt, ptr = p}
     , putLVal =
         \v ->
           emit $
-          Store
-            { bytes = b
-            , offset = 0
-            , align = 0
-            , ptr = p
-            , value = v
-            , valueType = vt
-            }
+          Store {bytes = b, offset = 0, ptr = p, value = v, valueType = vt}
     }
   where
     p =
@@ -354,55 +340,55 @@ newScope m = do
   m
   EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = orig_buf})
 
-block', loop' :: (Label -> EDSL ()) -> EDSL ()
-block' cont = do
+block', loop' :: ValueType -> (Label -> EDSL ()) -> EDSL ()
+block' vt cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
-  emit Block {name = unLabel lbl, bodys = fromDList es, valueType = Auto}
+  emit Block {name = unLabel lbl, bodys = fromDList es, valueType = vt}
 
-blockWithLabel :: Label -> EDSL () -> EDSL ()
-blockWithLabel lbl m = do
+blockWithLabel :: ValueType -> Label -> EDSL () -> EDSL ()
+blockWithLabel vt lbl m = do
   es <- newScope m
-  emit Block {name = unLabel lbl, bodys = fromDList es, valueType = Auto}
+  emit Block {name = unLabel lbl, bodys = fromDList es, valueType = vt}
 
-loop' cont = do
+loop' vt cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
-  emit Loop {name = unLabel lbl, body = bundleExpressions $ fromDList es}
+  emit Loop {name = unLabel lbl, body = bundleExpressions vt $ fromDList es}
 
-if' :: Expression -> EDSL () -> EDSL () -> EDSL ()
-if' cond t f = do
+if' :: ValueType -> Expression -> EDSL () -> EDSL () -> EDSL ()
+if' vt cond t f = do
   t_es <- newScope t
   f_es <- newScope f
   emit
     If
       { condition = cond
-      , ifTrue = bundleExpressions $ fromDList t_es
-      , ifFalse = bundleExpressions $ fromDList f_es
+      , ifTrue = bundleExpressions vt $ fromDList t_es
+      , ifFalse = bundleExpressions vt $ fromDList f_es
       }
 
 break' :: Label -> Expression -> EDSL ()
-break' (Label lbl) cond =
-  emit Break {name = lbl, condition = cond, value = Null}
+break' (Label lbl) cond = emit Break {name = lbl, condition = cond}
 
-whileLoop :: Expression -> EDSL () -> EDSL ()
-whileLoop cond body = loop' $ \lbl -> if' cond (body *> break' lbl Null) mempty
+whileLoop :: ValueType -> Expression -> EDSL () -> EDSL ()
+whileLoop vt cond body =
+  loop' vt $ \lbl -> if' vt cond (body *> break' lbl Null) mempty
 
 switchI64 :: Expression -> (EDSL () -> ([(Int, EDSL ())], EDSL ())) -> EDSL ()
 switchI64 cond make_clauses =
-  block' $ \switch_lbl ->
+  block' None $ \switch_lbl ->
     let exit_switch = break' switch_lbl Null
         (clauses, def_clause) = make_clauses exit_switch
         switch_block = do
           switch_def_lbl <- newLabel
-          blockWithLabel switch_def_lbl $ do
+          blockWithLabel None switch_def_lbl $ do
             clause_seq <-
               for (reverse clauses) $ \(clause_i, clause_m) -> do
                 clause_lbl <- newLabel
                 pure (clause_i, clause_lbl, clause_m)
             foldr
               (\(_, clause_lbl, clause_m) tot_m -> do
-                 blockWithLabel clause_lbl tot_m
+                 blockWithLabel None clause_lbl tot_m
                  clause_m)
               (foldr
                  (\(clause_i, clause_lbl, _) br_m -> do

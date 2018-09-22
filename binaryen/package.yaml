@@ -14,12 +14,6 @@ extra-source-files:
   - LICENSE
   - README.md
 
-flags:
-  system-binaryen:
-    description: Link with system-wide binaryen instead of building the bundled version.
-    default: false
-    manual: false
-
 custom-setup:
   dependencies:
     - base
