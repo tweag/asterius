@@ -129,7 +129,7 @@ marshalCmmStatic st =
         GHC.CmmLabel clbl -> UnresolvedStatic <$> marshalCLabel clbl
         GHC.CmmLabelOff clbl o -> do
           sym <- marshalCLabel clbl
-          pure $ UnresolvedOffStatic sym o
+          pure $ SymbolStatic sym o
         _ -> throwError $ UnsupportedCmmLit $ showSBS lit
     GHC.CmmUninitialised s -> pure $ Uninitialized s
     GHC.CmmString s -> pure $ Serialized $ SBS.pack s <> "\0"
@@ -187,10 +187,16 @@ marshalCmmLit lit =
         (ConstF64 $ fromRational x, F64)
     GHC.CmmLabel clbl -> do
       sym <- marshalCLabel clbl
-      pure (Unresolved {unresolvedSymbol = sym}, I64)
+      pure
+        ( Symbol
+            {unresolvedSymbol = sym, symbolOffset = 0, resolvedSymbol = Nothing}
+        , I64)
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
-      pure (UnresolvedOff {unresolvedSymbol = sym, offset' = o}, I64)
+      pure
+        ( Symbol
+            {unresolvedSymbol = sym, symbolOffset = o, resolvedSymbol = Nothing}
+        , I64)
     _ -> throwError $ UnsupportedCmmLit $ showSBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
@@ -240,11 +246,11 @@ marshalCmmReg r =
         ( case gr_k of
             GCEnter1 ->
               emitErrorMessage
-                I64
+                [I64]
                 "GetGlobal instruction: attempting to read GCEnter1"
             GCFun ->
               emitErrorMessage
-                I64
+                [I64]
                 "GetGlobal instruction: attempting to read GCFun"
             _ -> UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
         , unresolvedGlobalRegType gr_k)
@@ -565,7 +571,7 @@ marshalCmmUnMathPrimCall op vt r x = do
             CallImport
               { target' = "__asterius_" <> op <> "_" <> showSBS vt
               , operands = [xe]
-              , valueType = vt
+              , callImportReturnTypes = [vt]
               }
         }
     ]
@@ -588,7 +594,7 @@ marshalCmmBinMathPrimCall op vt r x y = do
             CallImport
               { target' = "__asterius_" <> op <> "_" <> showSBS vt
               , operands = [xe, ye]
-              , valueType = vt
+              , callImportReturnTypes = [vt]
               }
         }
     ]
@@ -737,20 +743,21 @@ marshalCmmUnsafeCall ::
 marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
   sym <- marshalCLabel clbl
   if entityName sym == "barf"
-    then pure [emitErrorMessage None "barf() is invoked"]
+    then pure [emitErrorMessage [] "barf() is invoked"]
     else do
       xes <-
         for xs $ \x -> do
           (xe, _) <- marshalCmmExpr x
           pure xe
       case rs of
-        [] -> pure [Call {target = sym, operands = xes, valueType = None}]
+        [] -> pure [Call {target = sym, operands = xes, callReturnTypes = []}]
         [r] -> do
           (lr, vt) <- marshalCmmLocalReg r
           pure
             [ UnresolvedSetLocal
                 { unresolvedLocalReg = lr
-                , value = Call {target = sym, operands = xes, valueType = vt}
+                , value =
+                    Call {target = sym, operands = xes, callReturnTypes = [vt]}
                 }
             ]
         _ ->
@@ -817,7 +824,7 @@ marshalCmmBlockBranch instr =
   case instr of
     GHC.CmmBranch lbl -> do
       k <- marshalLabel lbl
-      pure ([], Nothing, [AddBranch {to = k, condition = Null, code = Null}])
+      pure ([], Nothing, [AddBranch {to = k, addBranchCondition = Nothing}])
     GHC.CmmCondBranch {..} -> do
       c <- marshalAndCastCmmExpr cml_pred I32
       kf <- marshalLabel cml_false
@@ -825,8 +832,8 @@ marshalCmmBlockBranch instr =
       pure
         ( []
         , Nothing
-        , [AddBranch {to = kt, condition = c, code = Null} | kt /= kf] <>
-          [AddBranch {to = kf, condition = Null, code = Null}])
+        , [AddBranch {to = kt, addBranchCondition = Just c} | kt /= kf] <>
+          [AddBranch {to = kf, addBranchCondition = Nothing}])
     GHC.CmmSwitch cml_arg st -> do
       a <- marshalAndCastCmmExpr cml_arg I64
       brs <-
@@ -852,11 +859,11 @@ marshalCmmBlockBranch instr =
                         , operand1 = ConstI64 $ fromIntegral l
                         }
               }
-        , [ AddBranchForSwitch {to = dest, indexes = tags, code = Null}
+        , [ AddBranchForSwitch {to = dest, indexes = tags}
           | (dest, tags) <- M.toList $ M.fromListWith (<>) brs
           , dest /= dest_def
           ] <>
-          [AddBranch {to = dest_def, condition = Null, code = Null}])
+          [AddBranch {to = dest_def, addBranchCondition = Nothing}])
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
       pure ([SetLocal {index = 2, value = t}], Nothing, [])
@@ -893,7 +900,7 @@ marshalCmmBlock inner_nodes exit_node = do
       case es of
         [] -> Nop
         [e] -> e
-        _ -> Block {name = "", bodys = es, valueType = None}
+        _ -> Block {name = "", bodys = es, blockReturnTypes = []}
 
 marshalCmmProc :: GHC.CmmGraph -> CodeGen AsteriusFunction
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
@@ -910,7 +917,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                 AddBlock
                   { code =
                       emitErrorMessage
-                        None
+                        []
                         "__asterius_unreachable block is entered"
                   }
             , addBranches = []
@@ -936,7 +943,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
         ]
   pure
     AsteriusFunction
-      { functionType = FunctionType {returnType = I64, paramTypes = []}
+      { functionType = FunctionType {paramTypes = [], returnTypes = [I64]}
       , body =
           Block
             { name = ""
@@ -949,7 +956,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
                       }
                 , GetLocal {index = 2, valueType = I64}
                 ]
-            , valueType = I64
+            , blockReturnTypes = [I64]
             }
       }
 

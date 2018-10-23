@@ -11,7 +11,7 @@ module Asterius.EDSL
   , LVal
   , getLVal
   , putLVal
-  , setReturnType
+  , setReturnTypes
   , mutParam
   , mutLocal
   , param
@@ -102,7 +102,6 @@ module Asterius.EDSL
 
 import Asterius.Internals
 import Asterius.Types
-import Asterius.TypesConv
 import Control.Monad.Fail
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Short as SBS
@@ -118,7 +117,7 @@ fromDList :: DList a -> [a]
 fromDList = ($ []) . appEndo
 
 data EDSLState = EDSLState
-  { retType :: ValueType
+  { retTypes :: [ValueType]
   , paramBuf :: DList ValueType
   , paramNum, localNum, labelNum :: Int
   , exprBuf :: DList Expression
@@ -127,7 +126,7 @@ data EDSLState = EDSLState
 initialEDSLState :: EDSLState
 initialEDSLState =
   EDSLState
-    { retType = None
+    { retTypes = []
     , paramBuf = mempty
     , paramNum = 0
     , localNum = 0
@@ -152,19 +151,19 @@ emit :: Expression -> EDSL ()
 emit e =
   EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `dListSnoc` e}
 
-bundleExpressions :: ValueType -> [Expression] -> Expression
-bundleExpressions vt el =
+bundleExpressions :: [ValueType] -> [Expression] -> Expression
+bundleExpressions vts el =
   case el of
     [] -> Nop
     [e] -> e
-    _ -> Block {name = mempty, bodys = el, valueType = vt}
+    _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
-runEDSL :: ValueType -> EDSL () -> AsteriusFunction
-runEDSL vt (EDSL m) =
+runEDSL :: [ValueType] -> EDSL () -> AsteriusFunction
+runEDSL vts (EDSL m) =
   AsteriusFunction
     { functionType =
-        FunctionType {returnType = retType, paramTypes = fromDList paramBuf}
-    , body = bundleExpressions vt $ fromDList exprBuf
+        FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
+    , body = bundleExpressions vts $ fromDList exprBuf
     }
   where
     EDSLState {..} = execState m initialEDSLState
@@ -174,8 +173,8 @@ data LVal = LVal
   , putLVal :: Expression -> EDSL ()
   }
 
-setReturnType :: ValueType -> EDSL ()
-setReturnType vt = EDSL $ modify' $ \s -> s {retType = vt}
+setReturnTypes :: [ValueType] -> EDSL ()
+setReturnTypes vts = EDSL $ modify' $ \s -> s {retTypes = vts}
 
 mutParam, mutLocal :: ValueType -> EDSL LVal
 mutParam vt =
@@ -237,18 +236,24 @@ pointer :: ValueType -> BinaryenIndex -> Expression -> Int -> LVal
 pointer vt b bp o =
   LVal
     { getLVal =
-        Load {signed = False, bytes = b, offset = 0, valueType = vt, ptr = p}
+        Load
+          { signed = False
+          , bytes = b
+          , offset = fromIntegral o
+          , valueType = vt
+          , ptr = wrapInt64 bp
+          }
     , putLVal =
         \v ->
           emit $
-          Store {bytes = b, offset = 0, ptr = p, value = v, valueType = vt}
+          Store
+            { bytes = b
+            , offset = fromIntegral o
+            , ptr = wrapInt64 bp
+            , value = v
+            , valueType = vt
+            }
     }
-  where
-    p =
-      wrapInt64 $
-      case o of
-        0 -> bp
-        _ -> bp `addInt64` constI64 o
 
 pointerI64, pointerI32, pointerI16, pointerI8, pointerF64, pointerF32 ::
      Expression -> Int -> LVal
@@ -293,35 +298,38 @@ storeF64 bp o = putLVal $ pointerF64 bp o
 storeF32 bp o = putLVal $ pointerF32 bp o
 
 call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
-call f xs = emit Call {target = f, operands = xs, valueType = None}
+call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}
 
 call' :: AsteriusEntitySymbol -> [Expression] -> ValueType -> EDSL Expression
 call' f xs vt = do
   lr <- mutLocal vt
-  putLVal lr Call {target = f, operands = xs, valueType = vt}
+  putLVal lr Call {target = f, operands = xs, callReturnTypes = [vt]}
   pure $ getLVal lr
 
 callImport :: SBS.ShortByteString -> [Expression] -> EDSL ()
-callImport f xs = emit CallImport {target' = f, operands = xs, valueType = None}
+callImport f xs =
+  emit CallImport {target' = f, operands = xs, callImportReturnTypes = []}
 
 callImport' ::
      SBS.ShortByteString -> [Expression] -> ValueType -> EDSL Expression
 callImport' f xs vt = do
   lr <- mutLocal vt
-  putLVal lr CallImport {target' = f, operands = xs, valueType = vt}
+  putLVal
+    lr
+    CallImport {target' = f, operands = xs, callImportReturnTypes = [vt]}
   pure $ getLVal lr
 
 callIndirect' :: Expression -> [Expression] -> FunctionType -> EDSL Expression
-callIndirect' f xs ft = do
-  lr <- mutLocal (returnType ft)
+callIndirect' f xs ft@FunctionType {returnTypes = [rt]} = do
+  lr <- mutLocal rt
   putLVal
     lr
     CallIndirect
-      { indirectTarget = wrapInt64 f
-      , operands = xs
-      , typeName = generateWasmFunctionTypeName ft
-      }
+      {indirectTarget = wrapInt64 f, operands = xs, functionType = ft}
   pure $ getLVal lr
+callIndirect' _ _ ft =
+  Control.Monad.Fail.fail $
+  "callIndirect': unsupported function type: " <> show ft
 
 newtype Label = Label
   { unLabel :: SBS.ShortByteString
@@ -340,61 +348,61 @@ newScope m = do
   m
   EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = orig_buf})
 
-block', loop' :: ValueType -> (Label -> EDSL ()) -> EDSL ()
-block' vt cont = do
+block', loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
+block' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
-  emit Block {name = unLabel lbl, bodys = fromDList es, valueType = vt}
+  emit Block {name = unLabel lbl, bodys = fromDList es, blockReturnTypes = vts}
 
-blockWithLabel :: ValueType -> Label -> EDSL () -> EDSL ()
-blockWithLabel vt lbl m = do
+blockWithLabel :: [ValueType] -> Label -> EDSL () -> EDSL ()
+blockWithLabel vts lbl m = do
   es <- newScope m
-  emit Block {name = unLabel lbl, bodys = fromDList es, valueType = vt}
+  emit Block {name = unLabel lbl, bodys = fromDList es, blockReturnTypes = vts}
 
-loop' vt cont = do
+loop' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
-  emit Loop {name = unLabel lbl, body = bundleExpressions vt $ fromDList es}
+  emit Loop {name = unLabel lbl, body = bundleExpressions vts $ fromDList es}
 
-if' :: ValueType -> Expression -> EDSL () -> EDSL () -> EDSL ()
-if' vt cond t f = do
+if' :: [ValueType] -> Expression -> EDSL () -> EDSL () -> EDSL ()
+if' vts cond t f = do
   t_es <- newScope t
   f_es <- newScope f
   emit
     If
       { condition = cond
-      , ifTrue = bundleExpressions vt $ fromDList t_es
-      , ifFalse = bundleExpressions vt $ fromDList f_es
+      , ifTrue = bundleExpressions vts $ fromDList t_es
+      , ifFalse = Just $ bundleExpressions vts $ fromDList f_es
       }
 
-break' :: Label -> Expression -> EDSL ()
-break' (Label lbl) cond = emit Break {name = lbl, condition = cond}
+break' :: Label -> Maybe Expression -> EDSL ()
+break' (Label lbl) cond = emit Break {name = lbl, breakCondition = cond}
 
-whileLoop :: ValueType -> Expression -> EDSL () -> EDSL ()
-whileLoop vt cond body =
-  loop' vt $ \lbl -> if' vt cond (body *> break' lbl Null) mempty
+whileLoop :: [ValueType] -> Expression -> EDSL () -> EDSL ()
+whileLoop vts cond body =
+  loop' vts $ \lbl -> if' vts cond (body *> break' lbl Nothing) mempty
 
 switchI64 :: Expression -> (EDSL () -> ([(Int, EDSL ())], EDSL ())) -> EDSL ()
 switchI64 cond make_clauses =
-  block' None $ \switch_lbl ->
-    let exit_switch = break' switch_lbl Null
+  block' [] $ \switch_lbl ->
+    let exit_switch = break' switch_lbl Nothing
         (clauses, def_clause) = make_clauses exit_switch
         switch_block = do
           switch_def_lbl <- newLabel
-          blockWithLabel None switch_def_lbl $ do
+          blockWithLabel [] switch_def_lbl $ do
             clause_seq <-
               for (reverse clauses) $ \(clause_i, clause_m) -> do
                 clause_lbl <- newLabel
                 pure (clause_i, clause_lbl, clause_m)
             foldr
               (\(_, clause_lbl, clause_m) tot_m -> do
-                 blockWithLabel None clause_lbl tot_m
+                 blockWithLabel [] clause_lbl tot_m
                  clause_m)
               (foldr
                  (\(clause_i, clause_lbl, _) br_m -> do
-                    break' clause_lbl $ cond `eqInt64` constI64 clause_i
+                    break' clause_lbl $ Just $ cond `eqInt64` constI64 clause_i
                     br_m)
-                 (break' switch_def_lbl Null)
+                 (break' switch_def_lbl Nothing)
                  clause_seq)
               clause_seq
           def_clause
@@ -418,7 +426,7 @@ convertUInt64ToFloat64 = Unary ConvertUInt64ToFloat64
 
 truncUFloat64ToInt64 = Unary TruncUFloat64ToInt64
 
-growMemory x = Host {hostOp = GrowMemory, name = "", operands = [x]}
+growMemory x = Host {hostOp = GrowMemory, operands = [x]}
 
 roundupBytesToWords n = (n `addInt64` constI64 7) `divUInt64` constI64 8
 
@@ -465,7 +473,8 @@ andInt32 = Binary AndInt32
 orInt32 = Binary OrInt32
 
 symbol :: AsteriusEntitySymbol -> Expression
-symbol = Unresolved
+symbol sym =
+  Symbol {unresolvedSymbol = sym, symbolOffset = 0, resolvedSymbol = Nothing}
 
 constI32, constI64 :: Int -> Expression
 constI32 = ConstI32 . fromIntegral

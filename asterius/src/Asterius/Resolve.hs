@@ -113,10 +113,10 @@ resolveGlobalRegs x =
         UnresolvedGetGlobal {..}
           | unresolvedGlobalReg == BaseReg ->
             pure
-              Binary
-                { binaryOp = AddInt64
-                , operand0 = Unresolved {unresolvedSymbol = "MainCapability"}
-                , operand1 = ConstI64 $ fromIntegral offset_Capability_r
+              Symbol
+                { unresolvedSymbol = "MainCapability"
+                , symbolOffset = offset_Capability_r
+                , resolvedSymbol = Nothing
                 }
           | otherwise ->
             pure
@@ -131,7 +131,7 @@ resolveGlobalRegs x =
           | unresolvedGlobalReg == BaseReg ->
             pure $
             emitErrorMessage
-              None
+              []
               "SetGlobal instruction: attempting to assign to BaseReg"
           | otherwise -> do
             new_value <- resolveGlobalRegs value
@@ -150,12 +150,10 @@ resolveGlobalRegs x =
       Unary
         { unaryOp = WrapInt64
         , operand0 =
-            Binary
-              { binaryOp = AddInt64
-              , operand0 = Unresolved {unresolvedSymbol = "MainCapability"}
-              , operand1 =
-                  ConstI64 $
-                  fromIntegral $ offset_Capability_r + globalRegOffset gr
+            Symbol
+              { unresolvedSymbol = "MainCapability"
+              , symbolOffset = offset_Capability_r + globalRegOffset gr
+              , resolvedSymbol = Nothing
               }
         }
     go = gmapM resolveGlobalRegs x
@@ -294,9 +292,11 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
                                   , AsteriusFunction
                                       { functionType =
                                           FunctionType
-                                            {returnType = I64, paramTypes = []}
+                                            { paramTypes = []
+                                            , returnTypes = [I64]
+                                            }
                                       , body =
-                                          emitErrorMessage I64 $
+                                          emitErrorMessage [I64] $
                                           entityName i_staging_sym <>
                                           " failed: it was marked as broken by code generator, with error message: " <>
                                           showSBS
@@ -361,7 +361,6 @@ makeMemory debug AsteriusModule {..} last_o sym_map =
     { initialPages =
         fromIntegral $
         roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
-    , maximumPages = 65535
     , exportName = "mem"
     , dataSegments =
         if debug
@@ -413,9 +412,8 @@ resolveEntitySymbols sym_table = f
       case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
         Just HRefl ->
           case t of
-            Unresolved {..} -> pure $ ConstI64 $ subst unresolvedSymbol
-            UnresolvedOff {..} ->
-              pure $ ConstI64 $ subst unresolvedSymbol + fromIntegral offset'
+            Symbol {..} ->
+              pure t {resolvedSymbol = Just $ subst unresolvedSymbol}
             _ -> go
         _ ->
           case eqTypeRep (typeOf t) (typeRep :: TypeRep AsteriusStatic) of
@@ -423,25 +421,16 @@ resolveEntitySymbols sym_table = f
               case t of
                 UnresolvedStatic unresolvedSymbol ->
                   pure $ Serialized (encodeStorable (subst unresolvedSymbol))
-                UnresolvedOffStatic unresolvedSymbol offset' ->
+                SymbolStatic unresolvedSymbol symbolOffset ->
                   pure $
                   Serialized
                     (encodeStorable
-                       (subst unresolvedSymbol + fromIntegral offset'))
+                       (subst unresolvedSymbol + fromIntegral symbolOffset))
                 _ -> pure t
             _ -> go
       where
         go = gmapM f t
         subst = (sym_table !)
-
-resolveFunctionImport :: AsteriusFunctionImport -> FunctionImport
-resolveFunctionImport AsteriusFunctionImport {..} =
-  FunctionImport
-    { internalName = internalName
-    , externalModuleName = externalModuleName
-    , externalBaseName = externalBaseName
-    , functionTypeName = generateWasmFunctionTypeName functionType
-    }
 
 collectErrorMessages :: Data a => a -> S.Set ErrorMessage
 collectErrorMessages = collect proxy#
@@ -467,11 +456,11 @@ rewriteEmitErrorMessage x = do
                       [ CallImport
                           { target' = "__asterius_errorI32"
                           , operands = [ConstI32 $ msg_lookup errorMessage]
-                          , valueType = None
+                          , callImportReturnTypes = []
                           }
                       , Unreachable
                       ]
-                  , valueType = valueType
+                  , blockReturnTypes = phantomReturnTypes
                   }
             _ -> go
         _ -> go
@@ -495,8 +484,7 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
       resolve_syms = resolveEntitySymbols (func_sym_map <> ss_sym_map)
   m_globals_syms_resolved <- resolve_syms m_globals_resolved
   let func_imports =
-        rtsAsteriusFunctionImports debug <>
-        generateFFIFunctionImports bundled_ffi_state
+        rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
   new_function_map <-
     fmap M.fromList $
     for (M.toList $ functionMap m_globals_syms_resolved) $ \(func_sym, AsteriusFunction {..}) -> do
@@ -504,7 +492,7 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
         resolveLocalRegs (length $ paramTypes functionType) body
       let func =
             Function
-              { functionTypeName = generateWasmFunctionTypeName functionType
+              { functionType = functionType
               , varTypes = local_types
               , body = body_locals_resolved
               }
@@ -517,18 +505,8 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
   (new_mod, err_msgs) <-
     rewriteEmitErrorMessage
       Module
-        { functionTypeMap =
-            M.fromList
-              [ (generateWasmFunctionTypeName ft, ft)
-              | ft <-
-                  [functionType | AsteriusFunctionImport {..} <- func_imports] <>
-                  [ functionType
-                  | AsteriusFunction {..} <-
-                      M.elems $ functionMap m_globals_syms_resolved
-                  ]
-              ]
-        , functionMap' = new_function_map
-        , functionImports = [resolveFunctionImport imp | imp <- func_imports]
+        { functionMap' = new_function_map
+        , functionImports = func_imports
         , functionExports =
             rtsAsteriusFunctionExports debug <>
             [ FunctionExport

@@ -12,12 +12,14 @@ import Asterius.Internals
 import qualified Asterius.Internals.DList as DList
 import Asterius.TypeInfer
 import Asterius.Types
+import Asterius.TypesConv
 import Control.Exception
 import Control.Monad.Except
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
 import Data.List
 import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import Data.Traversable
 import Data.Word
 import qualified Language.WebAssembly.WireFormat as Wasm
@@ -33,51 +35,46 @@ data MarshalError
 instance Exception MarshalError
 
 data ModuleSymbolTable = ModuleSymbolTable
-  { functionTypeSymbols :: Map.Map SBS.ShortByteString Wasm.FunctionTypeIndex
+  { functionTypeSymbols :: Map.Map FunctionType Wasm.FunctionTypeIndex
   , functionSymbols :: Map.Map SBS.ShortByteString Wasm.FunctionIndex
   }
 
 makeModuleSymbolTable ::
      MonadError MarshalError m => Module -> m ModuleSymbolTable
-makeModuleSymbolTable Module {..} = do
+makeModuleSymbolTable m@Module {..} = do
   let _has_dup l = length l /= length (nub l)
       _func_import_syms =
         [internalName | FunctionImport {..} <- functionImports]
       _func_syms = Map.keys functionMap'
       _func_conflict_syms = _func_import_syms `intersect` _func_syms
+      _func_types = generateWasmFunctionTypeSet m
   if _has_dup _func_import_syms
     then throwError DuplicateFunctionImport
     else pure
            ModuleSymbolTable
              { functionTypeSymbols =
                  Map.fromDistinctAscList $
-                 zip (Map.keys functionTypeMap) (coerce [0 :: Word32 ..])
+                 zip (Set.toList _func_types) (coerce [0 :: Word32 ..])
              , functionSymbols =
                  Map.fromList $
                  zip (_func_import_syms <> _func_syms) (coerce [0 :: Word32 ..])
              }
 
-makeResultType :: ValueType -> [Wasm.ValueType]
-makeResultType vt =
+makeValueType :: ValueType -> Wasm.ValueType
+makeValueType vt =
   case vt of
-    None -> []
-    I32 -> [Wasm.I32]
-    I64 -> [Wasm.I64]
-    F32 -> [Wasm.F32]
-    F64 -> [Wasm.F64]
+    I32 -> Wasm.I32
+    I64 -> Wasm.I64
+    F32 -> Wasm.F32
+    F64 -> Wasm.F64
 
-makeTypeSection :: MonadError MarshalError m => Module -> m Wasm.Section
-makeTypeSection Module {..} = do
+makeTypeSection ::
+     MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
+makeTypeSection Module {..} ModuleSymbolTable {..} = do
   _func_types <-
-    for (Map.elems functionTypeMap) $ \FunctionType {..} -> do
-      _param_types <-
-        for paramTypes $ \case
-          None -> throwError InvalidParameterType
-          I32 -> pure Wasm.I32
-          I64 -> pure Wasm.I64
-          F32 -> pure Wasm.F32
-          F64 -> pure Wasm.F64
-      let _result_type = makeResultType returnType
+    for (Map.keys functionTypeSymbols) $ \FunctionType {..} -> do
+      let _param_types = map makeValueType paramTypes
+          _result_type = map makeValueType returnTypes
       pure
         Wasm.FunctionType
           {parameterTypes = _param_types, resultTypes = _result_type}
@@ -93,7 +90,7 @@ makeImportSection Module {..} ModuleSymbolTable {..} =
             { moduleName = coerce externalModuleName
             , importName = coerce externalBaseName
             , importDescription =
-                Wasm.ImportFunction $ functionTypeSymbols ! functionTypeName
+                Wasm.ImportFunction $ functionTypeSymbols ! functionType
             }
           | FunctionImport {..} <- functionImports
           ]
@@ -105,7 +102,7 @@ makeFunctionSection Module {..} ModuleSymbolTable {..} =
   pure
     Wasm.FunctionSection
       { functionTypeIndices =
-          [ functionTypeSymbols ! functionTypeName
+          [ functionTypeSymbols ! functionType
           | Function {..} <- Map.elems functionMap'
           ]
       }
@@ -143,9 +140,7 @@ makeMemorySection Module {..} =
                       Wasm.MemoryType
                         { memoryLimits =
                             Wasm.Limits
-                              { minLimit = initialPages
-                              , maxLimit = Just maximumPages
-                              }
+                              {minLimit = initialPages, maxLimit = Nothing}
                         }
                   }
               ]
@@ -244,8 +239,7 @@ makeLocalContext Module {..} Function {..} =
     (arity, emptyLocalContext) $
   sort $ zip varTypes [arity ..]
   where
-    arity =
-      fromIntegral $ length $ paramTypes (functionTypeMap ! functionTypeName)
+    arity = fromIntegral $ length $ paramTypes functionType
 
 lookupLocalContext :: LocalContext -> BinaryenIndex -> Wasm.LocalIndex
 lookupLocalContext LocalContext {..} i =
@@ -276,7 +270,7 @@ makeInstructions _module_symtable@ModuleSymbolTable {..} _de_bruijn_ctx _local_c
         pure $
           DList.singleton
             Wasm.Block
-              { blockResultType = makeResultType valueType
+              { blockResultType = map makeValueType blockReturnTypes
               , blockInstructions = DList.toList $ mconcat bs
               }
     If {..} -> do
@@ -287,12 +281,16 @@ makeInstructions _module_symtable@ModuleSymbolTable {..} _de_bruijn_ctx _local_c
         makeInstructions _module_symtable _new_de_bruijn_ctx _local_ctx ifTrue
       f <-
         DList.toList <$>
-        makeInstructions _module_symtable _new_de_bruijn_ctx _local_ctx ifFalse
+        makeInstructionsMaybe
+          _module_symtable
+          _new_de_bruijn_ctx
+          _local_ctx
+          ifFalse
       pure $
         c <>
         DList.singleton
           Wasm.If
-            { ifResultType = makeResultType $ infer ifTrue
+            { ifResultType = map makeValueType $ infer ifTrue
             , thenInstructions = t
             , elseInstructions =
                 case f of
@@ -307,16 +305,11 @@ makeInstructions _module_symtable@ModuleSymbolTable {..} _de_bruijn_ctx _local_c
           Wasm.Loop {loopResultType = [], loopInstructions = DList.toList b}
     Break {..} -> do
       let _lbl = extractLabel _de_bruijn_ctx name
-      case condition of
-        Null -> pure $ DList.singleton Wasm.Branch {branchLabel = _lbl}
-        _ -> do
-          c <-
-            makeInstructions
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-              condition
+      case breakCondition of
+        Just cond -> do
+          c <- makeInstructions _module_symtable _de_bruijn_ctx _local_ctx cond
           pure $ c <> DList.singleton Wasm.BranchIf {branchIfLabel = _lbl}
+        _ -> pure $ DList.singleton Wasm.Branch {branchLabel = _lbl}
     Switch {..} -> do
       c <- makeInstructions _module_symtable _de_bruijn_ctx _local_ctx condition
       pure $
@@ -356,7 +349,7 @@ makeInstructions _module_symtable@ModuleSymbolTable {..} _de_bruijn_ctx _local_c
         mconcat xs <> f <>
         DList.singleton
           Wasm.CallIndirect
-            {callIndirectFuctionTypeIndex = functionTypeSymbols ! typeName}
+            {callIndirectFuctionTypeIndex = functionTypeSymbols ! functionType}
     GetLocal {..} ->
       pure $
       DList.singleton
@@ -563,8 +556,24 @@ makeInstructions _module_symtable@ModuleSymbolTable {..} _de_bruijn_ctx _local_c
       pure $ mconcat xs <> op
     Nop -> pure $ DList.singleton Wasm.Nop
     Unreachable -> pure $ DList.singleton Wasm.Unreachable
-    Null -> pure mempty
+    Symbol {resolvedSymbol = Just x, ..} ->
+      pure $
+      DList.singleton
+        Wasm.I64Const {i64ConstValue = x + fromIntegral symbolOffset}
     _ -> throwError $ UnsupportedExpression expr
+
+makeInstructionsMaybe ::
+     MonadError MarshalError m
+  => ModuleSymbolTable
+  -> DeBruijnContext
+  -> LocalContext
+  -> Maybe Expression
+  -> m (DList.DList Wasm.Instruction)
+makeInstructionsMaybe _module_symtable _de_bruijn_ctx _local_ctx m_expr =
+  case m_expr of
+    Just expr ->
+      makeInstructions _module_symtable _de_bruijn_ctx _local_ctx expr
+    _ -> pure mempty
 
 makeCodeSection ::
      MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
@@ -572,13 +581,12 @@ makeCodeSection _mod@Module {..} _module_symtable =
   fmap Wasm.CodeSection $
   for (Map.elems functionMap') $ \_func@Function {..} -> do
     let _local_ctx@LocalContext {..} = makeLocalContext _mod _func
-    _locals <-
-      for (Map.toList localCount) $ \case
-        (None, _) -> throwError InvalidLocalType
-        (I32, c) -> pure (Wasm.I32, c)
-        (I64, c) -> pure (Wasm.I64, c)
-        (F32, c) -> pure (Wasm.F32, c)
-        (F64, c) -> pure (Wasm.F64, c)
+        _locals =
+          flip map (Map.toList localCount) $ \case
+            (I32, c) -> (Wasm.I32, c)
+            (I64, c) -> (Wasm.I64, c)
+            (F32, c) -> (Wasm.F32, c)
+            (F64, c) -> (Wasm.F64, c)
     _body <-
       makeInstructions _module_symtable emptyDeBruijnContext _local_ctx body
     pure
@@ -614,7 +622,7 @@ makeDataSection Module {..} _module_symtable =
 makeModule :: MonadError MarshalError m => Module -> m Wasm.Module
 makeModule m = do
   _module_symtable <- makeModuleSymbolTable m
-  _type_sec <- makeTypeSection m
+  _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
   _table_sec <- makeTableSection m

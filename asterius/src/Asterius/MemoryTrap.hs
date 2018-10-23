@@ -45,8 +45,8 @@ addMemoryTrapDeep t =
                     (F32, 4) -> "__asterius_Load_F32"
                     (F64, 8) -> "__asterius_Load_F64"
                     _ -> error $ "Unsupported instruction: " <> show t
-              , operands = [new_i64_ptr]
-              , valueType = valueType
+              , operands = [new_i64_ptr, ConstI32 $ fromIntegral offset]
+              , callReturnTypes = [valueType]
               }
         Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} -> do
           new_i64_ptr <- addMemoryTrapDeep i64_ptr
@@ -62,22 +62,23 @@ addMemoryTrapDeep t =
                     (F32, 4) -> "__asterius_Store_F32"
                     (F64, 8) -> "__asterius_Store_F64"
                     _ -> error $ "Unsupported instruction: " <> show t
-              , operands = [new_i64_ptr, new_value]
-              , valueType = None
+              , operands =
+                  [new_i64_ptr, ConstI32 $ fromIntegral offset, new_value]
+              , callReturnTypes = []
               }
         Host {hostOp = CurrentMemory} ->
           pure
             CallImport
               { target' = "__asterius_current_memory"
               , operands = [t]
-              , valueType = I32
+              , callImportReturnTypes = [I32]
               }
         Host {hostOp = GrowMemory, ..} ->
           pure
             CallImport
               { target' = "__asterius_grow_memory"
               , operands = [t, head operands]
-              , valueType = I32
+              , callImportReturnTypes = [I32]
               }
         _ -> go
     _ -> go

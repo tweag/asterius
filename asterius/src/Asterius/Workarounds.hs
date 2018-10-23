@@ -24,7 +24,7 @@ patchWritePtrArrayOp t =
           new_bodys <- w bodys
           pure t {bodys = new_bodys}
           where w :: Monad m => [Expression] -> m [Expression]
-                w (e0@Store {value = Unresolved {unresolvedSymbol = "stg_MUT_ARR_PTRS_DIRTY_info"}}:Store {bytes = 1}:es) = do
+                w (e0@Store {value = Symbol {unresolvedSymbol = "stg_MUT_ARR_PTRS_DIRTY_info"}}:Store {bytes = 1}:es) = do
                   new_es <- w es
                   pure $ e0 : new_es
                 w (e0:e1:es) = do
@@ -56,7 +56,7 @@ maskUnknownCCallTargets export_funcs = f
                   | not $ has_call_target target ->
                     pure $
                     emitErrorMessage
-                      valueType
+                      callReturnTypes
                       (entityName target <>
                        " failed: unimplemented stub function entered")
                   | target == "createIOThread" ->

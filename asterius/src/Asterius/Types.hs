@@ -3,11 +3,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE UndecidableInstances #-}
-{-# OPTIONS_GHC -Wno-orphans #-}
 
 module Asterius.Types
   ( BinaryenIndex
@@ -15,7 +11,6 @@ module Asterius.Types
   , AsteriusStatic(..)
   , AsteriusStatics(..)
   , AsteriusFunction(..)
-  , AsteriusFunctionImport(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
   , AsteriusEntitySymbol(..)
@@ -80,8 +75,8 @@ instance Exception AsteriusCodeGenError
 
 data AsteriusStatic
   = UnresolvedStatic AsteriusEntitySymbol
-  | UnresolvedOffStatic AsteriusEntitySymbol
-                        Int
+  | SymbolStatic AsteriusEntitySymbol
+                 Int
   | Uninitialized Int
   | Serialized SBS.ShortByteString
   deriving (Eq, Ord, Show, Generic, Data)
@@ -100,13 +95,6 @@ data AsteriusFunction = AsteriusFunction
   } deriving (Eq, Show, Generic, Data)
 
 instance Binary AsteriusFunction
-
-data AsteriusFunctionImport = AsteriusFunctionImport
-  { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
-  , functionType :: FunctionType
-  } deriving (Eq, Show, Generic, Data)
-
-instance Binary AsteriusFunctionImport
 
 data AsteriusModule = AsteriusModule
   { staticsMap :: M.Map AsteriusEntitySymbol AsteriusStatics
@@ -201,8 +189,7 @@ deriving newtype instance Show ErrorMessage
 instance Binary ErrorMessage
 
 data ValueType
-  = None
-  | I32
+  = I32
   | I64
   | F32
   | F64
@@ -211,8 +198,7 @@ data ValueType
 instance Binary ValueType
 
 data FunctionType = FunctionType
-  { returnType :: ValueType
-  , paramTypes :: [ValueType]
+  { paramTypes, returnTypes :: [ValueType]
   } deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary FunctionType
@@ -360,24 +346,25 @@ instance Binary HostOp
 data Expression
   = Block { name :: SBS.ShortByteString
           , bodys :: [Expression]
-          , valueType :: ValueType }
-  | If { condition, ifTrue, ifFalse :: Expression }
+          , blockReturnTypes :: [ValueType] }
+  | If { condition, ifTrue :: Expression
+       , ifFalse :: Maybe Expression }
   | Loop { name :: SBS.ShortByteString
          , body :: Expression }
   | Break { name :: SBS.ShortByteString
-          , condition :: Expression }
+          , breakCondition :: Maybe Expression }
   | Switch { names :: [SBS.ShortByteString]
            , defaultName :: SBS.ShortByteString
            , condition :: Expression }
   | Call { target :: AsteriusEntitySymbol
          , operands :: [Expression]
-         , valueType :: ValueType }
+         , callReturnTypes :: [ValueType] }
   | CallImport { target' :: SBS.ShortByteString
                , operands :: [Expression]
-               , valueType :: ValueType }
+               , callImportReturnTypes :: [ValueType] }
   | CallIndirect { indirectTarget :: Expression
                  , operands :: [Expression]
-                 , typeName :: SBS.ShortByteString }
+                 , functionType :: FunctionType }
   | GetLocal { index :: BinaryenIndex
              , valueType :: ValueType }
   | SetLocal { index :: BinaryenIndex
@@ -398,14 +385,13 @@ data Expression
   | Binary { binaryOp :: BinaryOp
            , operand0, operand1 :: Expression }
   | Host { hostOp :: HostOp
-         , name :: SBS.ShortByteString
          , operands :: [Expression] }
   | Nop
   | Unreachable
   | CFG { graph :: RelooperRun }
-  | Unresolved { unresolvedSymbol :: AsteriusEntitySymbol }
-  | UnresolvedOff { unresolvedSymbol :: AsteriusEntitySymbol
-                  , offset' :: Int }
+  | Symbol { unresolvedSymbol :: AsteriusEntitySymbol
+           , symbolOffset :: Int
+           , resolvedSymbol :: Maybe Int64 }
   | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
@@ -413,14 +399,13 @@ data Expression
   | UnresolvedSetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg
                         , value :: Expression }
   | EmitErrorMessage { errorMessage :: ErrorMessage
-                     , valueType :: ValueType }
-  | Null
+                     , phantomReturnTypes :: [ValueType] }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary Expression
 
 data Function = Function
-  { functionTypeName :: SBS.ShortByteString
+  { functionType :: FunctionType
   , varTypes :: [ValueType]
   , body :: Expression
   } deriving (Eq, Show, Generic, Data)
@@ -428,7 +413,8 @@ data Function = Function
 instance Binary Function
 
 data FunctionImport = FunctionImport
-  { internalName, externalModuleName, externalBaseName, functionTypeName :: SBS.ShortByteString
+  { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
+  , functionType :: FunctionType
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary FunctionImport
@@ -453,7 +439,7 @@ data DataSegment = DataSegment
 instance Binary DataSegment
 
 data Memory = Memory
-  { initialPages, maximumPages :: BinaryenIndex
+  { initialPages :: BinaryenIndex
   , exportName :: SBS.ShortByteString
   , dataSegments :: [DataSegment]
   } deriving (Eq, Show, Data, Generic)
@@ -461,8 +447,7 @@ data Memory = Memory
 instance Binary Memory
 
 data Module = Module
-  { functionTypeMap :: M.Map SBS.ShortByteString FunctionType
-  , functionMap' :: M.Map SBS.ShortByteString Function
+  { functionMap' :: M.Map SBS.ShortByteString Function
   , functionImports :: [FunctionImport]
   , functionExports :: [FunctionExport]
   , functionTable :: FunctionTable
@@ -480,10 +465,9 @@ instance Binary RelooperAddBlock
 
 data RelooperAddBranch
   = AddBranch { to :: SBS.ShortByteString
-              , condition, code :: Expression }
+              , addBranchCondition :: Maybe Expression }
   | AddBranchForSwitch { to :: SBS.ShortByteString
-                       , indexes :: [BinaryenIndex]
-                       , code :: Expression }
+                       , indexes :: [BinaryenIndex] }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary RelooperAddBranch
@@ -520,8 +504,7 @@ data FFIValueType
 instance Binary FFIValueType
 
 data FFIFunctionType = FFIFunctionType
-  { ffiParamTypes :: [FFIValueType]
-  , ffiResultType :: Maybe FFIValueType
+  { ffiParamTypes, ffiResultTypes :: [FFIValueType]
   , ffiInIO :: Bool
   } deriving (Eq, Show, Generic, Data)
 

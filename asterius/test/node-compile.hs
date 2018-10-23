@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 import Asterius.Internals
@@ -41,14 +42,14 @@ shrinkExpression =
         pure expr {bodys = _new_bodys}
       If {..} -> do
         _new_ifTrue <- shrinkExpression ifTrue
-        _new_ifFalse <- shrinkExpression ifFalse
+        _new_ifFalse <- shrinkMaybeExpression ifFalse
         pure expr {ifTrue = _new_ifTrue, ifFalse = _new_ifFalse}
       Loop {..} -> do
         _new_body <- shrinkExpression body
         pure Loop {name = name, body = _new_body}
       Break {..} -> do
-        _new_condition <- shrinkExpression condition
-        pure Break {name = name, condition = _new_condition}
+        _new_condition <- shrinkMaybeExpression breakCondition
+        pure Break {name = name, breakCondition = _new_condition}
       Switch {..} -> do
         _new_condition <- shrinkExpression condition
         pure
@@ -90,6 +91,12 @@ shrinkExpression =
         pure expr {operands = _new_operands}
       _ -> mempty
 
+shrinkMaybeExpression :: Shrink (Maybe Expression)
+shrinkMaybeExpression =
+  preserve Nothing $ \case
+    Just expr -> Just <$> shrinkExpression expr
+    _ -> mempty
+
 shrinkModule' :: Shrink Module
 shrinkModule' m@Module {..} = _shrink_funcs {-_shrink_memory <> _shrink_exports <>-}
   where
@@ -121,7 +128,7 @@ shrinkModule' m@Module {..} = _shrink_funcs {-_shrink_memory <> _shrink_exports 
                   Map.insert
                     _func_to_shrink_key
                     Function
-                      { functionTypeName = functionTypeName
+                      { functionType = functionType
                       , varTypes = varTypes
                       , body = Unreachable
                       }
@@ -138,7 +145,7 @@ shrinkModule' m@Module {..} = _shrink_funcs {-_shrink_memory <> _shrink_exports 
                     Map.insert
                       _func_to_shrink_key
                       Function
-                        { functionTypeName = functionTypeName
+                        { functionType = functionType
                         , varTypes = varTypes
                         , body = _shrink_expr
                         }

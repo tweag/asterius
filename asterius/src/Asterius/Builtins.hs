@@ -10,12 +10,11 @@ module Asterius.Builtins
   , unsafeDefaultBuiltinsOptions
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
-  , rtsAsteriusFunctionImports
+  , rtsFunctionImports
   , rtsAsteriusFunctionExports
   , emitErrorMessage
   , wasmPageSize
   , cutI64
-  , generateWasmFunctionTypeName
   , generateWrapperFunction
   ) where
 
@@ -23,7 +22,6 @@ import Asterius.BuildInfo
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Types
-import Asterius.TypesConv
 import Control.Monad (when)
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
@@ -235,7 +233,6 @@ rtsAsteriusModule opts =
         , ("__asterius_Load_SpLim", getI32GlobalRegFunction opts SpLim)
         , ("__asterius_Load_Hp", getI32GlobalRegFunction opts Hp)
         , ("__asterius_Load_HpLim", getI32GlobalRegFunction opts HpLim)
-        , ("__asterius_memory_trap", memoryTrapFunction opts)
         , ("__asterius_Load_I8", loadWrapperFunction opts 1 I32)
         , ("__asterius_Load_I16", loadWrapperFunction opts 2 I32)
         , ("__asterius_Load_I32", loadWrapperFunction opts 4 I32)
@@ -251,13 +248,13 @@ rtsAsteriusModule opts =
         ]
     }
 
-rtsAsteriusFunctionImports :: Bool -> [AsteriusFunctionImport]
-rtsAsteriusFunctionImports debug =
-  [ AsteriusFunctionImport
+rtsFunctionImports :: Bool -> [FunctionImport]
+rtsFunctionImports debug =
+  [ FunctionImport
     { internalName = "__asterius_" <> op <> "_" <> showSBS ft
     , externalModuleName = "Math"
     , externalBaseName = op
-    , functionType = FunctionType {returnType = ft, paramTypes = [ft]}
+    , functionType = FunctionType {paramTypes = [ft], returnTypes = [ft]}
     }
   | ft <- [F32, F64]
   , op <-
@@ -274,135 +271,128 @@ rtsAsteriusFunctionImports debug =
       , "exp"
       ]
   ] <>
-  [ AsteriusFunctionImport
+  [ FunctionImport
     { internalName = "__asterius_" <> op <> "_" <> showSBS ft
     , externalModuleName = "Math"
     , externalBaseName = op
-    , functionType = FunctionType {returnType = ft, paramTypes = [ft, ft]}
+    , functionType = FunctionType {paramTypes = [ft, ft], returnTypes = [ft]}
     }
   | ft <- [F32, F64]
   , op <- ["pow"]
   ] <>
-  [ AsteriusFunctionImport
+  [ FunctionImport
       { internalName = "__asterius_newStablePtr"
       , externalModuleName = "rts"
       , externalBaseName = "newStablePtr"
-      , functionType = FunctionType {returnType = I32, paramTypes = [I32]}
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       }
-  , AsteriusFunctionImport
+  , FunctionImport
       { internalName = "__asterius_deRefStablePtr"
       , externalModuleName = "rts"
       , externalBaseName = "deRefStablePtr"
-      , functionType = FunctionType {returnType = I32, paramTypes = [I32]}
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       }
-  , AsteriusFunctionImport
+  , FunctionImport
       { internalName = "__asterius_freeStablePtr"
       , externalModuleName = "rts"
       , externalBaseName = "freeStablePtr"
-      , functionType = FunctionType {returnType = None, paramTypes = [I32]}
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       }
-  , AsteriusFunctionImport
+  , FunctionImport
       { internalName = "printI64"
       , externalModuleName = "rts"
       , externalBaseName = "printI64"
-      , functionType = FunctionType {returnType = None, paramTypes = [I32, I32]}
+      , functionType = FunctionType {paramTypes = [I32, I32], returnTypes = []}
       }
-  , AsteriusFunctionImport
+  , FunctionImport
       { internalName = "printF32"
       , externalModuleName = "rts"
       , externalBaseName = "print"
-      , functionType = FunctionType {returnType = None, paramTypes = [F32]}
+      , functionType = FunctionType {paramTypes = [F32], returnTypes = []}
       }
-  , AsteriusFunctionImport
+  , FunctionImport
       { internalName = "printF64"
       , externalModuleName = "rts"
       , externalBaseName = "print"
-      , functionType = FunctionType {returnType = None, paramTypes = [F64]}
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       }
-  , AsteriusFunctionImport
+  , FunctionImport
       { internalName = "__asterius_errorI32"
       , externalModuleName = "rts"
       , externalBaseName = "panic"
-      , functionType = FunctionType {returnType = None, paramTypes = [I32]}
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       }
   ] <>
   (if debug
-     then [ AsteriusFunctionImport
+     then [ FunctionImport
               { internalName = "__asterius_traceCmm"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_traceCmm"
               , functionType =
-                  FunctionType {returnType = None, paramTypes = [I32]}
+                  FunctionType {paramTypes = [I32], returnTypes = []}
               }
-          , AsteriusFunctionImport
+          , FunctionImport
               { internalName = "__asterius_traceCmmBlock"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_traceCmmBlock"
               , functionType =
-                  FunctionType {returnType = None, paramTypes = [I32, I32]}
+                  FunctionType {paramTypes = [I32, I32], returnTypes = []}
               }
-          , AsteriusFunctionImport
+          , FunctionImport
               { internalName = "__asterius_traceCmmSetLocal"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_traceCmmSetLocal"
               , functionType =
                   FunctionType
-                    {returnType = None, paramTypes = [I32, I32, I32, I32]}
+                    {paramTypes = [I32, I32, I32, I32], returnTypes = []}
               }
-          , AsteriusFunctionImport
+          , FunctionImport
               { internalName = "__asterius_current_memory"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_current_memory"
               , functionType =
-                  FunctionType {returnType = I32, paramTypes = [I32]}
+                  FunctionType {paramTypes = [I32], returnTypes = [I32]}
               }
-          , AsteriusFunctionImport
+          , FunctionImport
               { internalName = "__asterius_grow_memory"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_grow_memory"
               , functionType =
-                  FunctionType {returnType = I32, paramTypes = [I32, I32]}
+                  FunctionType {paramTypes = [I32, I32], returnTypes = [I32]}
               }
-          , AsteriusFunctionImport
-              { internalName = "__asterius_memory_trap_trigger"
-              , externalModuleName = "rts"
-              , externalBaseName = "__asterius_memory_trap_trigger"
-              , functionType =
-                  FunctionType {returnType = None, paramTypes = [I32, I32]}
-              }
-          , AsteriusFunctionImport
+          , FunctionImport
               { internalName = "__asterius_load_i64"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_load_i64"
               , functionType =
                   FunctionType
-                    {returnType = None, paramTypes = [I32, I32, I32, I32]}
+                    {paramTypes = [I32, I32, I32, I32, I32], returnTypes = []}
               }
-          , AsteriusFunctionImport
+          , FunctionImport
               { internalName = "__asterius_store_i64"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_store_i64"
               , functionType =
                   FunctionType
-                    {returnType = None, paramTypes = [I32, I32, I32, I32]}
+                    {paramTypes = [I32, I32, I32, I32, I32], returnTypes = []}
               }
           ] <>
           concat
-            [ [ AsteriusFunctionImport
+            [ [ FunctionImport
                   { internalName = "__asterius_load_" <> k
                   , externalModuleName = "rts"
                   , externalBaseName = "__asterius_load_" <> k
                   , functionType =
                       FunctionType
-                        {returnType = None, paramTypes = [I32, I32, t]}
+                        {paramTypes = [I32, I32, I32, t], returnTypes = []}
                   }
-              , AsteriusFunctionImport
+              , FunctionImport
                   { internalName = "__asterius_store_" <> k
                   , externalModuleName = "rts"
                   , externalBaseName = "__asterius_store_" <> k
                   , functionType =
                       FunctionType
-                        {returnType = None, paramTypes = [I32, I32, t]}
+                        {paramTypes = [I32, I32, I32, t], returnTypes = []}
                   }
             ]
             | (k, t) <-
@@ -459,17 +449,19 @@ rtsAsteriusFunctionExports debug =
       ["hs_init", "main"]
   ]
 
-emitErrorMessage :: ValueType -> SBS.ShortByteString -> Expression
-emitErrorMessage vt msg =
+emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
+emitErrorMessage vts msg =
   EmitErrorMessage
-    {errorMessage = ErrorMessage {unErrorMessage = msg}, valueType = vt}
+    { errorMessage = ErrorMessage {unErrorMessage = msg}
+    , phantomReturnTypes = vts
+    }
 
 assert :: BuiltinsOptions -> Expression -> EDSL ()
 assert BuiltinsOptions {..} cond =
   when tracing $
-  if' None cond mempty $
+  if' [] cond mempty $
   emit $
-  emitErrorMessage None $
+  emitErrorMessage [] $
   "Assertion failure, condition expression: " <> showSBS cond
 
 generateWrapperFunction ::
@@ -480,14 +472,14 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
   AsteriusFunction
     { functionType =
         FunctionType
-          { returnType = wrapper_return_type
-          , paramTypes =
+          { paramTypes =
               [ wrapper_param_type
               | (_, wrapper_param_type, _) <- wrapper_param_types
               ]
+          , returnTypes = wrapper_return_types
           }
     , body =
-        to_wrapper_return_type $
+        to_wrapper_return_types $
         Call
           { target = func_sym
           , operands =
@@ -496,7 +488,7 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
               | (i, wrapper_param_type, from_wrapper_param_type) <-
                   wrapper_param_types
               ]
-          , valueType = returnType
+          , callReturnTypes = returnTypes
           }
     }
   where
@@ -506,15 +498,15 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
         _ -> (i, param_type, id)
       | (i, param_type) <- zip [0 ..] paramTypes
       ]
-    (wrapper_return_type, to_wrapper_return_type) =
-      case returnType of
-        I64 -> (I32, wrapInt64)
-        _ -> (returnType, id)
+    (wrapper_return_types, to_wrapper_return_types) =
+      case returnTypes of
+        [I64] -> ([I32], wrapInt64)
+        _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, memoryTrapFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
-  runEDSL None $
+  runEDSL [] $
   call "rts_evalLazyIO" [mainCapability, symbol "Main_main_closure", constI64 0]
 
 initCapability :: Expression -> Expression -> EDSL ()
@@ -551,7 +543,7 @@ initCapability cap i = do
     constI64 0
 
 hsInitFunction BuiltinsOptions {..} =
-  runEDSL None $ do
+  runEDSL [] $ do
     initCapability mainCapability (constI32 0)
     bd <- call' "allocGroupOnNode" [constI32 0, constI64 nurseryGroups] I64
     putLVal hp $ loadI64 bd offset_bdescr_start
@@ -588,8 +580,8 @@ rtsEvalHelper BuiltinsOptions {..} create_thread_func_sym = do
   call "scheduleWaitThread" [tso, ret, cap]
 
 rtsApplyFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [cap, f, arg] <- params [I64, I64, I64]
     ap <-
       call'
@@ -601,15 +593,14 @@ rtsApplyFunction _ =
     storeI64 ap (offset_StgThunk_payload + 8) arg
     emit ap
 
-rtsEvalFunction opts = runEDSL None $ rtsEvalHelper opts "createGenThread"
+rtsEvalFunction opts = runEDSL [] $ rtsEvalHelper opts "createGenThread"
 
-rtsEvalIOFunction opts =
-  runEDSL None $ rtsEvalHelper opts "createStrictIOThread"
+rtsEvalIOFunction opts = runEDSL [] $ rtsEvalHelper opts "createStrictIOThread"
 
-rtsEvalLazyIOFunction opts = runEDSL None $ rtsEvalHelper opts "createIOThread"
+rtsEvalLazyIOFunction opts = runEDSL [] $ rtsEvalHelper opts "createIOThread"
 
 rtsEvalStableIOFunction BuiltinsOptions {..} =
-  runEDSL None $ do
+  runEDSL [] $ do
     [cap, s, ret] <- params [I64, I64, I64]
     p <- call' "deRefStablePtr" [s] I64
     tso <-
@@ -624,15 +615,15 @@ rtsEvalStableIOFunction BuiltinsOptions {..} =
     call "scheduleWaitThread" [tso, rp, cap]
     stat <- call' "rts_getSchedStatus" [cap] I32
     if'
-      None
+      []
       ((stat `eqInt32` constI32 scheduler_Success) `andInt32`
        (ret `neInt64` constI64 0))
       (call' "getStablePtr" [loadI64 rp 0] I64 >>= storeI64 ret 0)
       mempty
 
 rtsGetSchedStatusFunction _ =
-  runEDSL I32 $ do
-    setReturnType I32
+  runEDSL [I32] $ do
+    setReturnTypes [I32]
     cap <- param I64
     emit $
       loadI32
@@ -640,20 +631,20 @@ rtsGetSchedStatusFunction _ =
         offset_InCall_rstat
 
 rtsCheckSchedStatusFunction _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     cap <- param I64
     stat <- call' "rts_getSchedStatus" [cap] I32
-    if' None (stat `eqInt32` constI32 scheduler_Success) mempty $
+    if' [] (stat `eqInt32` constI32 scheduler_Success) mempty $
       emit $
       emitErrorMessage
-        None
+        []
         "rts_checkSchedStatus failed: illegal scheduler status code"
 
 appendToRunQueue :: BuiltinsOptions -> Expression -> Expression -> EDSL ()
 appendToRunQueue opts cap tso = do
   assert opts $ loadI64 tso offset_StgTSO__link `eqInt64` endTSOQueue
   if'
-    None
+    []
     (loadI64 cap offset_Capability_run_queue_hd `eqInt64` endTSOQueue)
     (do storeI64 cap offset_Capability_run_queue_hd tso
         storeI64
@@ -667,20 +658,20 @@ appendToRunQueue opts cap tso = do
     loadI32 cap offset_Capability_n_run_queue `addInt32` constI32 1
 
 setTSOLinkFunction _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     [_, tso, target] <- params [I64, I64, I64]
     if'
-      None
+      []
       (eqZInt32 (loadI32 tso offset_StgTSO_dirty))
       (storeI32 tso offset_StgTSO_dirty (constI32 1))
       mempty
     storeI64 tso offset_StgTSO__link target
 
 setTSOPrevFunction _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     [_, tso, target] <- params [I64, I64, I64]
     if'
-      None
+      []
       (eqZInt32 (loadI32 tso offset_StgTSO_dirty))
       (storeI32 tso offset_StgTSO_dirty (constI32 1))
       mempty
@@ -696,7 +687,7 @@ emptyRunQueue cap = eqZInt32 $ loadI32 cap offset_Capability_n_run_queue
 
 scheduleDoGC :: Expression -> Expression -> Expression -> EDSL ()
 scheduleDoGC _ _ _ =
-  emit $ emitErrorMessage None "scheduleDoGC failed: unimplemented"
+  emit $ emitErrorMessage [] "scheduleDoGC failed: unimplemented"
 
 popRunQueue :: BuiltinsOptions -> Expression -> EDSL Expression
 popRunQueue opts cap = do
@@ -704,7 +695,7 @@ popRunQueue opts cap = do
   assert opts $ t `neInt64` endTSOQueue
   storeI64 cap offset_Capability_run_queue_hd $ loadI64 t offset_StgTSO__link
   if'
-    None
+    []
     (loadI64 t offset_StgTSO__link `neInt64` endTSOQueue)
     (storeI64
        (loadI64 t offset_StgTSO__link)
@@ -713,7 +704,7 @@ popRunQueue opts cap = do
     mempty
   storeI64 t offset_StgTSO__link endTSOQueue
   if'
-    None
+    []
     (loadI64 cap offset_Capability_run_queue_hd `eqInt64` endTSOQueue)
     (storeI64 cap offset_Capability_run_queue_tl endTSOQueue)
     mempty
@@ -722,13 +713,12 @@ popRunQueue opts cap = do
   pure t
 
 deleteThread :: Expression -> EDSL ()
-deleteThread _ =
-  emit $ emitErrorMessage None "deleteThread failed: unimplemented"
+deleteThread _ = emit $ emitErrorMessage [] "deleteThread failed: unimplemented"
 
 dirtyTSO :: Expression -> Expression -> EDSL ()
 dirtyTSO _ tso =
   if'
-    None
+    []
     (eqZInt32 $ loadI32 tso offset_StgTSO_dirty)
     (storeI32 tso offset_StgTSO_dirty $ constI32 1)
     mempty
@@ -736,22 +726,23 @@ dirtyTSO _ tso =
 dirtySTACK :: Expression -> Expression -> EDSL ()
 dirtySTACK _ stack =
   if'
-    None
+    []
     (eqZInt32 $ loadI32 stack offset_StgStack_dirty)
     (storeI32 stack offset_StgStack_dirty $ constI32 1)
     mempty
 
 scheduleHandleHeapOverflow :: Expression -> Expression -> EDSL Expression
 scheduleHandleHeapOverflow _ _ =
-  pure $ emitErrorMessage I32 "scheduleHandleHeapOverflow failed: unimplemented"
+  pure $
+  emitErrorMessage [I32] "scheduleHandleHeapOverflow failed: unimplemented"
 
 threadStackOverflowFunction _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     _ <- params [I64, I64]
-    emit $ emitErrorMessage None "threadStackOverflow failed: unimplemented"
+    emit $ emitErrorMessage [] "threadStackOverflow failed: unimplemented"
 
 pushOnRunQueueFunction _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     [cap, tso] <- params [I64, I64]
     call "setTSOLink" [cap, tso, loadI64 cap offset_Capability_run_queue_hd]
     storeI64
@@ -759,13 +750,13 @@ pushOnRunQueueFunction _ =
       (offset_StgTSO_block_info + offset_StgTSOBlockInfo_prev)
       endTSOQueue
     if'
-      None
+      []
       (loadI64 cap offset_Capability_run_queue_hd `neInt64` endTSOQueue)
       (call "setTSOPrev" [cap, loadI64 cap offset_Capability_run_queue_hd, tso])
       mempty
     storeI64 cap offset_Capability_run_queue_hd tso
     if'
-      None
+      []
       (loadI64 cap offset_Capability_run_queue_tl `eqInt64` endTSOQueue)
       (storeI64 cap offset_Capability_run_queue_tl tso)
       mempty
@@ -774,11 +765,11 @@ pushOnRunQueueFunction _ =
 
 scheduleHandleYield :: Expression -> Expression -> Expression -> EDSL Expression
 scheduleHandleYield _ _ _ =
-  pure $ emitErrorMessage I32 "scheduleHandleYield failed: unimplemented"
+  pure $ emitErrorMessage [I32] "scheduleHandleYield failed: unimplemented"
 
 scheduleHandleThreadBlocked :: Expression -> EDSL ()
 scheduleHandleThreadBlocked _ =
-  emit $ emitErrorMessage None "scheduleHandleThreadBlock failed: unimplemented"
+  emit $ emitErrorMessage [] "scheduleHandleThreadBlock failed: unimplemented"
 
 scheduleHandleThreadFinished ::
      BuiltinsOptions
@@ -788,27 +779,27 @@ scheduleHandleThreadFinished ::
   -> EDSL Expression
 scheduleHandleThreadFinished opts cap task t = do
   r <- i32MutLocal
-  block' None $ \ret_lbl ->
+  block' [] $ \ret_lbl ->
     if'
-      None
+      []
       (loadI64 t offset_StgTSO_bound `neInt64` constI64 0)
       (do if'
-            None
+            []
             (loadI64 t offset_StgTSO_bound `neInt64`
              loadI64 task offset_Task_incall)
             (do appendToRunQueue opts cap t
                 putLVal r $ constI32 0
-                break' ret_lbl Null)
+                break' ret_lbl Nothing)
             mempty
           assert opts $
             loadI64 (loadI64 task offset_Task_incall) offset_InCall_tso `eqInt64`
             t
           if'
-            None
+            []
             (loadI16 t offset_StgTSO_what_next `eqInt32`
              constI32 next_ThreadComplete)
             (do if'
-                  None
+                  []
                   (loadI64 (loadI64 task offset_Task_incall) offset_InCall_ret `neInt64`
                    constI64 0)
                   (storeI64
@@ -829,7 +820,7 @@ scheduleHandleThreadFinished opts cap task t = do
                 storeI32 (loadI64 task offset_Task_incall) offset_InCall_rstat $
                   constI32 scheduler_Success)
             (do if'
-                  None
+                  []
                   (loadI64 (loadI64 task offset_Task_incall) offset_InCall_ret `neInt64`
                    constI64 0)
                   (storeI64
@@ -840,11 +831,11 @@ scheduleHandleThreadFinished opts cap task t = do
                    constI64 0)
                   mempty
                 if'
-                  None
+                  []
                   (loadI64 (symbol "sched_state") 0 `geUInt64`
                    constI64 sched_SCHED_INTERRUPTING)
                   (if'
-                     None
+                     []
                      (loadI8 (symbol "heap_overflow") 0)
                      (storeI32
                         (loadI64 task offset_Task_incall)
@@ -873,14 +864,14 @@ schedule opts cap task = do
   t <- i64MutLocal
   ret <- i32MutLocal
   ready_to_gc <- i32MutLocal
-  block' None $ \sched_block_lbl ->
-    loop' None $ \sched_loop_lbl -> do
+  block' [] $ \sched_block_lbl ->
+    loop' [] $ \sched_loop_lbl -> do
       if'
-        None
+        []
         (loadI8 cap offset_Capability_in_haskell)
         (emit
            (emitErrorMessage
-              None
+              []
               "schedule failed: scheduler reentered from Haskell"))
         mempty
       switchI64 (loadI64 (symbol "sched_state") 0) $ \brake ->
@@ -892,14 +883,14 @@ schedule opts cap task = do
                    constI64 sched_SCHED_SHUTTING_DOWN)
           , ( sched_SCHED_SHUTTING_DOWN
             , if'
-                None
+                []
                 (eqZInt32 (isBoundTask task) `andInt32` emptyRunQueue cap)
-                (break' sched_block_lbl Null)
+                (break' sched_block_lbl Nothing)
                 brake)
           ]
-        , emit $ emitErrorMessage None "schedule failed: illegal sched_state")
+        , emit $ emitErrorMessage [] "schedule failed: illegal sched_state")
       if'
-        None
+        []
         (emptyRunQueue cap)
         (assert opts $
          loadI64 (symbol "sched_state") 0 `geUInt64`
@@ -907,7 +898,7 @@ schedule opts cap task = do
         mempty
       popRunQueue opts cap >>= putLVal t
       if'
-        None
+        []
         ((loadI64 (symbol "sched_state") 0 `geUInt64`
           constI64 sched_SCHED_INTERRUPTING) `andInt32`
          notInt32
@@ -917,7 +908,7 @@ schedule opts cap task = do
              constI32 next_ThreadKilled)))
         (deleteThread (getLVal t))
         mempty
-      loop' None $ \run_thread_lbl -> do
+      loop' [] $ \run_thread_lbl -> do
         storeI64
           cap
           (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
@@ -963,8 +954,7 @@ schedule opts cap task = do
                    putLVal ret $ wrapInt64 $ loadI64 r offset_StgRegTable_rRet
                    brake)
             ]
-          , emit $
-            emitErrorMessage None "schedule failed: errIllegalPrevWhatNext")
+          , emit $ emitErrorMessage [] "schedule failed: errIllegalPrevWhatNext")
         storeI8 cap offset_Capability_in_haskell $ constI32 0
         putLVal t $
           loadI64 cap (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
@@ -983,28 +973,28 @@ schedule opts cap task = do
                    brake)
             , ( ret_ThreadYielding
               , do scheduleHandleYield cap (getLVal t) prev_what_next >>=
-                     break' run_thread_lbl
+                     break' run_thread_lbl . Just
                    brake)
             , ( ret_ThreadBlocked
               , do scheduleHandleThreadBlocked (getLVal t)
                    brake)
             , ( ret_ThreadFinished
               , do scheduleHandleThreadFinished opts cap task (getLVal t) >>=
-                     break' sched_block_lbl
+                     break' sched_block_lbl . Just
                    brake)
             ]
           , emit $
-            emitErrorMessage None "schedule failed: errIllegalThreadReturnCode")
+            emitErrorMessage [] "schedule failed: errIllegalThreadReturnCode")
         need_heap_profile <- scheduleNeedHeapProfile (getLVal ready_to_gc)
         if'
-          None
+          []
           (getLVal ready_to_gc `orInt32` need_heap_profile)
           (scheduleDoGC cap task (constI32 0))
           mempty
-        break' sched_loop_lbl Null
+        break' sched_loop_lbl Nothing
 
 scheduleWaitThreadFunction opts =
-  runEDSL None $ do
+  runEDSL [] $ do
     [tso, ret, cap] <- params [I64, I64, I64]
     task <- i64Local $ loadI64 cap offset_Capability_running_task
     storeI64 tso offset_StgTSO_bound $ loadI64 task offset_Task_incall
@@ -1020,8 +1010,8 @@ scheduleWaitThreadFunction opts =
       constI32 scheduler_NoStatus
 
 createThreadFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [cap, alloc_words] <- params [I64, I64]
     tso_p <- call' "allocate" [cap, alloc_words] I64
     putLVal currentTSO tso_p
@@ -1071,23 +1061,23 @@ pushClosure tso c = do
 
 createThreadHelper :: (Expression -> [Expression]) -> EDSL ()
 createThreadHelper mk_closures = do
-  setReturnType I64
+  setReturnTypes [I64]
   [cap, stack_size, closure] <- params [I64, I64, I64]
   t <- call' "createThread" [cap, stack_size] I64
   for_ (mk_closures closure) $ pushClosure t
   emit t
 
 createGenThreadFunction _ =
-  runEDSL I64 $
+  runEDSL [I64] $
   createThreadHelper $ \closure -> [closure, symbol "stg_enter_info"]
 
 createIOThreadFunction _ =
-  runEDSL I64 $
+  runEDSL [I64] $
   createThreadHelper $ \closure ->
     [symbol "stg_ap_v_info", closure, symbol "stg_enter_info"]
 
 createStrictIOThreadFunction _ =
-  runEDSL I64 $
+  runEDSL [I64] $
   createThreadHelper $ \closure ->
     [ symbol "stg_forceIO_info"
     , symbol "stg_ap_v_info"
@@ -1096,30 +1086,30 @@ createStrictIOThreadFunction _ =
     ]
 
 mallocFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     size <- param I64
     call' "allocate" [mainCapability, roundupBytesToWords size] I64 >>= emit
 
 memcpyFunction _ =
-  runEDSL I64 $ do
+  runEDSL [I64] $ do
     [dest, src, count] <- params [I64, I64, I64]
     i <- i64MutLocal
     putLVal i $ constI64 0
-    whileLoop None (getLVal i `ltUInt64` count) $ do
+    whileLoop [] (getLVal i `ltUInt64` count) $ do
       storeI8 (dest `addInt64` getLVal i) 0 $
         loadI8 (src `addInt64` getLVal i) 0
       putLVal i $ getLVal i `addInt64` constI64 1
 
 allocateFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [_, n] <- params [I64, I64]
     new_hp <- i64Local $ getLVal hp `addInt64` (n `mulInt64` constI64 8)
     if'
-      None
+      []
       (new_hp `gtUInt64` getLVal hpLim)
-      (emit $ emitErrorMessage None "allocate failed: errHeapOverflow")
+      (emit $ emitErrorMessage [] "allocate failed: errHeapOverflow")
       mempty
     old_hp <- i64Local $ getLVal hp
     putLVal hp new_hp
@@ -1133,7 +1123,7 @@ blocksToMBlocks :: Expression -> EDSL Expression
 blocksToMBlocks n = do
   r <- i64MutLocal
   if'
-    None
+    []
     (n `leUInt64` constI64 blocks_per_mblock)
     (putLVal r (constI64 1))
     (putLVal
@@ -1148,8 +1138,8 @@ initGroup hd = do
   storeI64 hd offset_bdescr_link $ constI64 0
 
 allocGroupOnNodeFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [node, n] <- params [I32, I64]
     mblocks <- blocksToMBlocks n
     bd <- allocMegaGroup node mblocks
@@ -1157,8 +1147,8 @@ allocGroupOnNodeFunction _ =
     emit bd
 
 getMBlocksFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     n <- param I32
     ret <-
       i64Local $
@@ -1179,7 +1169,7 @@ initMBlock mblock node = do
   bd <- i64MutLocal
   putLVal bd $ mblock `addInt64` constI64 offset_first_bdescr
   last_block <- i64Local $ mblock `addInt64` constI64 offset_last_block
-  whileLoop None (getLVal block `leUInt64` last_block) $ do
+  whileLoop [] (getLVal block `leUInt64` last_block) $ do
     storeI64 (getLVal bd) offset_bdescr_start (getLVal block)
     storeI16 (getLVal bd) offset_bdescr_node node
     putLVal bd $ getLVal bd `addInt64` constI64 sizeof_bdescr
@@ -1194,13 +1184,13 @@ allocMegaGroup node mblocks = do
   pure bd
 
 freeFunction _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     _ <- param I64
-    emit $ emitErrorMessage None "free failed: unimplemented"
+    emit $ emitErrorMessage [] "free failed: unimplemented"
 
 newCAFFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [reg, caf] <- params [I64, I64]
     orig_info <- i64Local $ loadI64 caf 0
     storeI64 caf offset_StgIndStatic_saved_info orig_info
@@ -1217,49 +1207,49 @@ newCAFFunction _ =
     emit bh
 
 stgRunFunction BuiltinsOptions {..} =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     f <- mutParam I64
     _ <- param I64
-    loop' None $ \loop_lbl ->
-      if' None (eqZInt64 (getLVal f)) mempty $ do
+    loop' [] $ \loop_lbl ->
+      if' [] (eqZInt64 (getLVal f)) mempty $ do
         f' <-
           callIndirect'
             (getLVal f `subInt64` constI64 1)
             []
-            (FunctionType I64 [])
+            (FunctionType [] [I64])
         putLVal f f'
-        break' loop_lbl Null
+        break' loop_lbl Nothing
     emit $ getLVal r1
 
 stgReturnFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     emit $ constI64 0
 
 getStablePtrWrapperFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     obj64 <- param I64
     sp32 <- callImport' "__asterius_newStablePtr" [wrapI64 obj64] I32
     emit $ extendUInt32 sp32
 
 deRefStablePtrWrapperFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     sp64 <- param I64
     obj32 <- callImport' "__asterius_deRefStablePtr" [wrapI64 sp64] I32
     emit $ extendUInt32 obj32
 
 freeStablePtrWrapperFunction _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     sp64 <- param I64
     callImport "__asterius_freeStablePtr" [wrapI64 sp64]
 
 rtsMkHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> AsteriusFunction
 rtsMkHelper _ con_sym =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [cap, i] <- params [I64, I64]
     p <- call' "allocate" [cap, constI64 2] I64
     storeI64 p 0 $ symbol con_sym
@@ -1267,18 +1257,18 @@ rtsMkHelper _ con_sym =
     emit p
 
 rtsMkBoolFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [_, i] <- params [I64, I64]
     if'
-      I64
+      [I64]
       (eqZInt64 i)
       (emit $ symbol "ghczmprim_GHCziTypes_False_closure")
       (emit $ symbol "ghczmprim_GHCziTypes_True_closure")
 
 rtsMkDoubleFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [cap, i] <- params [I64, F64]
     p <- call' "allocate" [cap, constI64 2] I64
     storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Dzh_con_info"
@@ -1286,8 +1276,8 @@ rtsMkDoubleFunction _ =
     emit p
 
 rtsMkCharFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     [cap, i] <- params [I64, I64]
     p <- call' "allocate" [cap, constI64 2] I64
     storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
@@ -1307,8 +1297,8 @@ unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
 rtsGetBoolFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     p <- param I64
     emit $
       extendUInt32 $
@@ -1317,171 +1307,52 @@ rtsGetBoolFunction _ =
         (loadI32 (loadI64 (unTagClosure p) 0) offset_StgInfoTable_srt)
 
 rtsGetDoubleFunction _ =
-  runEDSL F64 $ do
-    setReturnType F64
+  runEDSL [F64] $ do
+    setReturnTypes [F64]
     p <- param I64
     emit $ loadF64 (unTagClosure p) offset_StgClosure_payload
 
 rtsGetCharFunction = rtsGetIntFunction
 
 rtsGetIntFunction _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     p <- param I64
     emit $ loadI64 (unTagClosure p) offset_StgClosure_payload
 
 loadI64Function _ =
-  runEDSL I64 $ do
-    setReturnType I64
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
     p <- param I64
     emit $ loadI64 p 0
 
 printI64Function _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     x <- param I64
     callImport "printI64" (cutI64 x)
 
 printF32Function _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     x <- param F32
     callImport "printF32" [x]
 
 printF64Function _ =
-  runEDSL None $ do
+  runEDSL [] $ do
     x <- param F64
     callImport "printF64" [x]
 
 getI32GlobalRegFunction ::
      BuiltinsOptions -> UnresolvedGlobalReg -> AsteriusFunction
 getI32GlobalRegFunction _ gr =
-  runEDSL I32 $ do
-    setReturnType I32
+  runEDSL [I32] $ do
+    setReturnTypes [I32]
     emit $ wrapInt64 $ getLVal $ global gr
-
-memoryTrapFunction _ =
-  AsteriusFunction
-    { functionType = FunctionType {returnType = None, paramTypes = [I64]}
-    , body =
-        If
-          { condition =
-              foldl1' (Binary OrInt32) $
-              [ guard_struct (ConstI64 0) 16 []
-              , (task_p `neInt64` constI64 0) `andInt32`
-                guard_struct
-                  task_p
-                  sizeof_Task
-                  [offset_Task_cap, offset_Task_incall]
-              , Binary
-                  { binaryOp = AndInt32
-                  , operand0 =
-                      notExpr $ Unary {unaryOp = EqZInt64, operand0 = tso_p}
-                  , operand1 =
-                      guard_struct
-                        tso_p
-                        sizeof_StgTSO
-                        [ 0
-                        , offset_StgTSO_alloc_limit
-                        , offset_StgTSO_blocked_exceptions
-                        , offset_StgTSO_block_info
-                        , offset_StgTSO_bound
-                        , offset_StgTSO_bq
-                        , offset_StgTSO_bound
-                        , offset_StgTSO_cap
-                        , offset_StgTSO_dirty
-                        , offset_StgTSO_flags
-                        , offset_StgTSO_saved_errno
-                        , offset_StgTSO_stackobj
-                        , offset_StgTSO_tot_stack_size
-                        , offset_StgTSO_trec
-                        , offset_StgTSO_what_next
-                        , offset_StgTSO_why_blocked
-                        , offset_StgTSO__link
-                        ]
-                  }
-              ] <>
-              [ guard_struct Unresolved {unresolvedSymbol = sym} size []
-              | (sym, size) <-
-                  [ ("g0", 8)
-                  , ("blocked_queue_hd", 8)
-                  , ("blocked_queue_tl", 8)
-                  , ("enabled_capabilities", 4)
-                  , ("large_alloc_lim", 8)
-                  , ("n_capabilities", 4)
-                  , ("rts_breakpoint_io_action", 8)
-                  , ("rts_stop_on_exception", 4)
-                  , ("RtsFlags", 8 * roundup_bytes_to_words sizeof_RTS_FLAGS)
-                  ]
-              ]
-          , ifTrue =
-              Block
-                { name = ""
-                , bodys =
-                    [ CallImport
-                        { target' = "__asterius_memory_trap_trigger"
-                        , operands = cutI64 p
-                        , valueType = None
-                        }
-                    , Unreachable
-                    ]
-                , valueType = None
-                }
-          , ifFalse = Null
-          }
-    }
-  where
-    p = getLocalWord 0
-    tso_p = UnresolvedGetGlobal {unresolvedGlobalReg = CurrentTSO}
-    task_p = getFieldWord mainCap offset_Capability_running_task
-    guard_struct struct_addr_expr struct_size allowed_field_offsets =
-      Binary
-        { binaryOp = AndInt32
-        , operand0 =
-            Binary
-              { binaryOp = AndInt32
-              , operand0 =
-                  Binary
-                    { binaryOp = GeUInt64
-                    , operand0 = p
-                    , operand1 = struct_addr_expr
-                    }
-              , operand1 =
-                  Binary
-                    { binaryOp = LtUInt64
-                    , operand0 = p
-                    , operand1 = struct_field_off struct_size
-                    }
-              }
-        , operand1 =
-            notExpr $
-            foldl'
-              (Binary OrInt32)
-              (ConstI32 0)
-              [ Binary
-                { binaryOp = EqInt64
-                , operand0 =
-                    Binary
-                      { binaryOp = SubInt64
-                      , operand0 = p
-                      , operand1 = struct_addr_expr
-                      }
-                , operand1 = constInt o
-                }
-              | o <- allowed_field_offsets
-              ]
-        }
-      where
-        struct_field_off o =
-          Binary
-            { binaryOp = AddInt64
-            , operand0 = struct_addr_expr
-            , operand1 = constInt o
-            }
 
 loadWrapperFunction, storeWrapperFunction ::
      BuiltinsOptions -> BinaryenIndex -> ValueType -> AsteriusFunction
 loadWrapperFunction _ b vt =
   AsteriusFunction
-    { functionType = FunctionType {returnType = vt, paramTypes = [I64]}
+    { functionType = FunctionType {paramTypes = [I64, I32], returnTypes = [vt]}
     , body =
         Block
           { name = ""
@@ -1499,31 +1370,33 @@ loadWrapperFunction _ b vt =
                           error $
                           "Unsupported ValueType/ByteLength: " <> show (vt, b)
                   , operands =
-                      cutI64 p <>
+                      cutI64 p <> [o] <>
                       (case vt of
                          I64 -> cutI64 v
                          _ -> [v])
-                  , valueType = None
-                  }
-              , Call
-                  { target = "__asterius_memory_trap"
-                  , operands = [p]
-                  , valueType = None
+                  , callImportReturnTypes = []
                   }
               , v
               ]
-          , valueType = vt
+          , blockReturnTypes = [vt]
           }
     }
   where
     p = getLocalWord 0
+    o = GetLocal {index = 1, valueType = I32}
     v =
       Load
-        {signed = False, bytes = b, offset = 0, valueType = vt, ptr = wrapI64 p}
+        { signed = False
+        , bytes = b
+        , offset = 0
+        , valueType = vt
+        , ptr = wrapI64 p `addInt32` o
+        }
 
 storeWrapperFunction _ b vt =
   AsteriusFunction
-    { functionType = FunctionType {returnType = None, paramTypes = [I64, vt]}
+    { functionType =
+        FunctionType {paramTypes = [I64, I32, vt], returnTypes = []}
     , body =
         Block
           { name = ""
@@ -1541,56 +1414,33 @@ storeWrapperFunction _ b vt =
                           error $
                           "Unsupported ValueType/ByteLength: " <> show (vt, b)
                   , operands =
-                      cutI64 p <>
+                      cutI64 p <> [o] <>
                       (case vt of
                          I64 -> cutI64 v
                          _ -> [v])
-                  , valueType = None
-                  }
-              , Call
-                  { target = "__asterius_memory_trap"
-                  , operands = [p]
-                  , valueType = None
+                  , callImportReturnTypes = []
                   }
               , Store
                   { bytes = b
                   , offset = 0
-                  , ptr = wrapI64 p
+                  , ptr = wrapI64 p `addInt32` o
                   , value = v
                   , valueType = vt
                   }
               ]
-          , valueType = None
+          , blockReturnTypes = []
           }
     }
   where
     p = getLocalWord 0
-    v = GetLocal {index = 1, valueType = vt}
-
-fieldOff :: Expression -> Int -> Expression
-fieldOff p o
-  | o == 0 = p
-  | otherwise =
-    Binary {binaryOp = AddInt64, operand0 = p, operand1 = constInt o}
-
-getFieldWord :: Expression -> Int -> Expression
-getFieldWord p o = loadWord (wrapI64 $ fieldOff p o)
-
-loadWord :: Expression -> Expression
-loadWord p =
-  Load {signed = False, bytes = 8, offset = 0, valueType = I64, ptr = p}
+    o = GetLocal {index = 1, valueType = I32}
+    v = GetLocal {index = 2, valueType = vt}
 
 wrapI64 :: Expression -> Expression
 wrapI64 w = Unary {unaryOp = WrapInt64, operand0 = w}
 
-constInt :: Int -> Expression
-constInt = ConstI64 . fromIntegral
-
 getLocalWord :: BinaryenIndex -> Expression
 getLocalWord i = GetLocal {index = i, valueType = I64}
-
-mainCap :: Expression
-mainCap = Unresolved {unresolvedSymbol = "MainCapability"}
 
 offset_StgTSO_StgStack :: Int
 offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
@@ -1601,6 +1451,3 @@ cutI64 x =
   , wrapI64 $
     Binary {binaryOp = ShrUInt64, operand0 = x, operand1 = ConstI64 32}
   ]
-
-notExpr :: Expression -> Expression
-notExpr = Binary XorInt32 (ConstI32 0xFFFFFFFF)

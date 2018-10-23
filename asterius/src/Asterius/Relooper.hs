@@ -37,24 +37,27 @@ relooper RelooperRun {..} = result_expr
       M.foldlWithKey'
         (\(tot_expr, residule_exprs) lbl RelooperBlock {..} ->
            ( Block
-               {name = lbl, bodys = tot_expr : residule_exprs, valueType = None}
+               { name = lbl
+               , bodys = tot_expr : residule_exprs
+               , blockReturnTypes = []
+               }
            , case addBlock of
                AddBlock {..} ->
                  code :
                  (case addBranches of
-                    [] -> [Break {name = exit_lbl, condition = Null}]
+                    [] -> [Break {name = exit_lbl, breakCondition = Nothing}]
                     branches ->
                       foldr
-                        (\AddBranch {condition, to} e ->
+                        (\AddBranch {addBranchCondition = Just cond, to} e ->
                            If
-                             { condition = condition
+                             { condition = cond
                              , ifTrue = set_block_lbl to
-                             , ifFalse = e
+                             , ifFalse = Just e
                              })
                         (set_block_lbl $ to def_branch)
                         (init branches) :
-                      [Break {name = loop_lbl, condition = Null}]
-                      where def_branch@AddBranch {condition = Null, code = Null} =
+                      [Break {name = loop_lbl, breakCondition = Nothing}]
+                      where def_branch@AddBranch {addBranchCondition = Nothing} =
                               last branches)
                AddBlockWithSwitch {..} ->
                  [code, SetLocal {index = 1, value = condition}] <>
@@ -73,13 +76,13 @@ relooper RelooperRun {..} = result_expr
                                | tag <- indexes
                                ]
                          , ifTrue = set_block_lbl to
-                         , ifFalse = e
+                         , ifFalse = Just e
                          })
                     (set_block_lbl $ to def_branch)
                     (init branches) :
-                  [Break {name = loop_lbl, condition = Null}])
+                  [Break {name = loop_lbl, breakCondition = Nothing}])
                  where branches = addBranches
-                       def_branch@AddBranch {condition = Null, code = Null} =
+                       def_branch@AddBranch {addBranchCondition = Nothing} =
                          last branches))
         (initial_expr, [])
         blockMap
@@ -94,11 +97,11 @@ relooper RelooperRun {..} = result_expr
                     Block
                       { name = ""
                       , bodys = blocks_expr : last_block_residule_exprs
-                      , valueType = None
+                      , blockReturnTypes = []
                       }
                 }
             ]
-        , valueType = None
+        , blockReturnTypes = []
         }
 
 relooperDeep :: (Monad m, Data a) => a -> m a

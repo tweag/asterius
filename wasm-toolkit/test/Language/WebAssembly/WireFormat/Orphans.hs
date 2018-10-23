@@ -408,13 +408,6 @@ instance Arbitrary Export where
   arbitrary = genExport
   shrink = genericShrink
 
-genStart :: Gen Start
-genStart = coerce genFunctionIndex
-
-instance Arbitrary Start where
-  arbitrary = genStart
-  shrink = genericShrink
-
 genElement :: Gen Element
 genElement =
   Element <$> genTableIndex <*> genExpression <*> listOf genFunctionIndex
@@ -545,7 +538,7 @@ genSection =
     , MemorySection <$> listOf genMemory
     , GlobalSection <$> listOf genGlobal
     , ExportSection <$> listOf genExport
-    , StartSection <$> genStart
+    , StartSection <$> genFunctionIndex
     , ElementSection <$> listOf genElement
     , CodeSection <$> listOf genFunction
     , DataSection <$> listOf genDataSegment

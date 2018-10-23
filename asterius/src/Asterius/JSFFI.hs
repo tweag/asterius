@@ -153,11 +153,12 @@ marshalToFFIValueType (GHC.unLoc -> t) =
       | GHC.occNameString tv == "JSRef" -> pure FFI_JSREF
     _ -> empty
 
-marshalToFFIResultType ::
-     (GHC.HasOccName (GHC.IdP p)) => GHC.LHsType p -> Maybe (Maybe FFIValueType)
-marshalToFFIResultType (GHC.unLoc -> GHC.HsParTy _ t) = marshalToFFIResultType t
-marshalToFFIResultType (GHC.unLoc -> GHC.HsTupleTy _ _ []) = pure Nothing
-marshalToFFIResultType t = Just <$> marshalToFFIValueType t
+marshalToFFIResultTypes ::
+     (GHC.HasOccName (GHC.IdP p)) => GHC.LHsType p -> Maybe [FFIValueType]
+marshalToFFIResultTypes (GHC.unLoc -> GHC.HsParTy _ t) =
+  marshalToFFIResultTypes t
+marshalToFFIResultTypes (GHC.unLoc -> GHC.HsTupleTy _ _ []) = pure []
+marshalToFFIResultTypes t = (: []) <$> marshalToFFIValueType t
 
 marshalToFFIFunctionType ::
      (GHC.HasOccName (GHC.IdP p)) => GHC.LHsType p -> Maybe FFIFunctionType
@@ -171,14 +172,15 @@ marshalToFFIFunctionType (GHC.unLoc -> ty) =
       pure ft {ffiParamTypes = vt : ffiParamTypes ft}
     GHC.HsAppTy _ (GHC.unLoc -> (GHC.HsTyVar _ _ (GHC.occName . GHC.unLoc -> io))) t
       | io == GHC.occName GHC.ioTyConName -> do
-        r <- marshalToFFIResultType t
+        r <- marshalToFFIResultTypes t
         pure $
           FFIFunctionType
-            {ffiParamTypes = [], ffiResultType = r, ffiInIO = True}
+            {ffiParamTypes = [], ffiResultTypes = r, ffiInIO = True}
     _ -> do
-      r <- marshalToFFIResultType (GHC.noLoc ty)
+      r <- marshalToFFIResultTypes (GHC.noLoc ty)
       pure
-        FFIFunctionType {ffiParamTypes = [], ffiResultType = r, ffiInIO = False}
+        FFIFunctionType
+          {ffiParamTypes = [], ffiResultTypes = r, ffiInIO = False}
 
 rewriteJSRef :: (Monad m, Data a) => a -> m a
 rewriteJSRef t =
@@ -191,32 +193,30 @@ rewriteJSRef t =
         _ -> pure t
     _ -> gmapM rewriteJSRef t
 
-recoverWasmImportValueType :: Maybe FFIValueType -> ValueType
+recoverWasmImportValueType :: FFIValueType -> ValueType
 recoverWasmImportValueType vt =
   case vt of
-    Just FFI_VAL {..} -> ffiJSValueType
-    Just FFI_JSREF -> I32
-    Nothing -> None
+    FFI_VAL {..} -> ffiJSValueType
+    FFI_JSREF -> I32
 
-recoverWasmWrapperValueType :: Maybe FFIValueType -> ValueType
+recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType vt =
   case vt of
-    Just FFI_VAL {..} -> ffiWasmValueType
-    Just FFI_JSREF -> I64
-    Nothing -> None
+    FFI_VAL {..} -> ffiWasmValueType
+    FFI_JSREF -> I64
 
 recoverWasmImportFunctionType :: FFIFunctionType -> FunctionType
 recoverWasmImportFunctionType FFIFunctionType {..} =
   FunctionType
-    { returnType = recoverWasmImportValueType ffiResultType
-    , paramTypes = [recoverWasmImportValueType $ Just t | t <- ffiParamTypes]
+    { paramTypes = [recoverWasmImportValueType t | t <- ffiParamTypes]
+    , returnTypes = map recoverWasmImportValueType ffiResultTypes
     }
 
 recoverWasmWrapperFunctionType :: FFIFunctionType -> FunctionType
 recoverWasmWrapperFunctionType FFIFunctionType {..} =
   FunctionType
-    { returnType = recoverWasmWrapperValueType ffiResultType
-    , paramTypes = [recoverWasmWrapperValueType $ Just t | t <- ffiParamTypes]
+    { paramTypes = [recoverWasmWrapperValueType t | t <- ffiParamTypes]
+    , returnTypes = map recoverWasmWrapperValueType ffiResultTypes
     }
 
 recoverWasmImportFunctionName :: AsteriusModuleSymbol -> Int -> String
@@ -385,11 +385,11 @@ addFFIProcessor c = do
           , generateFFIWrapperModule $ ffi_states ! mod_sym))
 
 generateImplicitCastExpression ::
-     Bool -> ValueType -> ValueType -> Expression -> Expression
-generateImplicitCastExpression signed src_t dest_t src_expr =
-  case (src_t, dest_t) of
-    (I64, I32) -> Unary {unaryOp = WrapInt64, operand0 = src_expr}
-    (I32, I64) ->
+     Bool -> [ValueType] -> [ValueType] -> Expression -> Expression
+generateImplicitCastExpression signed src_ts dest_ts src_expr =
+  case (src_ts, dest_ts) of
+    ([I64], [I32]) -> Unary {unaryOp = WrapInt64, operand0 = src_expr}
+    ([I32], [I64]) ->
       Unary
         { unaryOp =
             if signed
@@ -398,10 +398,11 @@ generateImplicitCastExpression signed src_t dest_t src_expr =
         , operand0 = src_expr
         }
     _
-      | src_t == dest_t -> src_expr
+      | src_ts == dest_ts -> src_expr
       | otherwise ->
         error $
-        "Unsupported implicit cast from " <> show src_t <> " to " <> show dest_t
+        "Unsupported implicit cast from " <> show src_ts <> " to " <>
+        show dest_ts
 
 generateFFIImportWrapperFunction ::
      AsteriusModuleSymbol -> Int -> FFIImportDecl -> AsteriusFunction
@@ -410,11 +411,11 @@ generateFFIImportWrapperFunction mod_sym k FFIImportDecl {..} =
     { functionType = recoverWasmWrapperFunctionType ffiFunctionType
     , body =
         generateImplicitCastExpression
-          (case ffiResultType ffiFunctionType of
-             Just FFI_VAL {..} -> signed
+          (case ffiResultTypes ffiFunctionType of
+             [FFI_VAL {..}] -> signed
              _ -> False)
-          (returnType import_func_type)
-          (returnType wrapper_func_type) $
+          (returnTypes import_func_type)
+          (returnTypes wrapper_func_type) $
         CallImport
           { target' = fromString $ recoverWasmImportFunctionName mod_sym k
           , operands =
@@ -422,8 +423,8 @@ generateFFIImportWrapperFunction mod_sym k FFIImportDecl {..} =
                 (case param_t of
                    FFI_VAL {..} -> signed
                    _ -> False)
-                wrapper_param_t
-                import_param_t
+                [wrapper_param_t]
+                [import_param_t]
                 GetLocal {index = i, valueType = wrapper_param_t}
               | (i, param_t, wrapper_param_t, import_param_t) <-
                   zip4
@@ -432,7 +433,7 @@ generateFFIImportWrapperFunction mod_sym k FFIImportDecl {..} =
                     (paramTypes wrapper_func_type)
                     (paramTypes import_func_type)
               ]
-          , valueType = returnType import_func_type
+          , callImportReturnTypes = returnTypes import_func_type
           }
     }
   where
@@ -453,7 +454,7 @@ generateFFIExportFunction FFIExportDecl {..} =
                       Call
                         { target = "allocate"
                         , operands = [cap, ConstI64 1]
-                        , valueType = I64
+                        , callReturnTypes = [I64]
                         }
                   }
               , Call
@@ -484,29 +485,33 @@ generateFFIExportFunction FFIExportDecl {..} =
                                            , GetLocal
                                                { index = ffi_param_i
                                                , valueType =
-                                                   recoverWasmWrapperValueType $
-                                                   Just ffi_param_t
+                                                   recoverWasmWrapperValueType
+                                                     ffi_param_t
                                                }
                                            ]
-                                       , valueType = I64
+                                       , callReturnTypes = [I64]
                                        }
                                    ]
-                               , valueType = I64
+                               , callReturnTypes = [I64]
                                })
-                          Unresolved {unresolvedSymbol = ffiExportClosure}
+                          Symbol
+                            { unresolvedSymbol = ffiExportClosure
+                            , symbolOffset = 0
+                            , resolvedSymbol = Nothing
+                            }
                           (zip [0 ..] $ ffiParamTypes ffiFunctionType)
                       , UnresolvedGetLocal {unresolvedLocalReg = ret}
                       ]
-                  , valueType = None
+                  , callReturnTypes = []
                   }
               , Call
                   { target = "rts_checkSchedStatus"
                   , operands = [cap]
-                  , valueType = None
+                  , callReturnTypes = []
                   }
               ] <>
-              case ffiResultType ffiFunctionType of
-                Just ffi_result_t ->
+              case ffiResultTypes ffiFunctionType of
+                [ffi_result_t] ->
                   [ Call
                       { target =
                           AsteriusEntitySymbol
@@ -526,17 +531,22 @@ generateFFIExportFunction FFIExportDecl {..} =
                                     }
                               }
                           ]
-                      , valueType =
-                          recoverWasmWrapperValueType $ Just ffi_result_t
+                      , callReturnTypes =
+                          [recoverWasmWrapperValueType ffi_result_t]
                       }
                   ]
                 _ -> []
-          , valueType =
-              recoverWasmWrapperValueType $ ffiResultType ffiFunctionType
+          , blockReturnTypes =
+              map recoverWasmWrapperValueType $ ffiResultTypes ffiFunctionType
           }
     }
   where
-    cap = Unresolved {unresolvedSymbol = "MainCapability"}
+    cap =
+      Symbol
+        { unresolvedSymbol = "MainCapability"
+        , symbolOffset = 0
+        , resolvedSymbol = Nothing
+        }
     ret = UniqueLocalReg 0 I64
 
 generateFFIWrapperModule :: FFIMarshalState -> AsteriusModule
@@ -569,9 +579,9 @@ generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =
       | (k, f) <- export_funcs
       ]
 
-generateFFIFunctionImports :: FFIMarshalState -> [AsteriusFunctionImport]
+generateFFIFunctionImports :: FFIMarshalState -> [FunctionImport]
 generateFFIFunctionImports FFIMarshalState {..} =
-  [ AsteriusFunctionImport
+  [ FunctionImport
     { internalName = fn
     , externalModuleName = "jsffi"
     , externalBaseName = fn
@@ -587,8 +597,8 @@ generateFFILambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..} =
   "((" <>
   mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
   ")=>" <>
-  (case ffiResultType of
-     Just FFI_JSREF -> "__asterius_jsffi.newJSRef("
+  (case ffiResultTypes of
+     [FFI_JSREF] -> "__asterius_jsffi.newJSRef("
      _ -> "(") <>
   mconcat
     [ case chunk of

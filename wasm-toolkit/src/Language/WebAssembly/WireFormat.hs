@@ -31,7 +31,6 @@ module Language.WebAssembly.WireFormat
   , Global(..)
   , ExportDescription(..)
   , Export(..)
-  , Start(..)
   , Element(..)
   , Locals(..)
   , Function(..)
@@ -1103,16 +1102,6 @@ putExport Export {..} = do
   putName exportName
   putExportDescription exportDescription
 
-newtype Start = Start
-  { startFunctionIndex :: FunctionIndex
-  } deriving (Eq, Generic, Ord, Show)
-
-getStart :: Get Start
-getStart = coerce getFunctionIndex
-
-putStart :: Start -> Put
-putStart = coerce putFunctionIndex
-
 data Element = Element
   { tableIndex :: TableIndex
   , tableOffset :: Expression
@@ -1333,7 +1322,7 @@ data Section
   | MemorySection { memories :: [Memory] }
   | GlobalSection { globals :: [Global] }
   | ExportSection { exports :: [Export] }
-  | StartSection { start :: Start }
+  | StartSection { startFunctionIndex :: FunctionIndex }
   | ElementSection { elements :: [Element] }
   | CodeSection { functions' :: [Function] }
   | DataSection { dataSegments :: [DataSegment] }
@@ -1400,7 +1389,7 @@ getSection = do
     5 -> getCheckedRegion (MemorySection <$> getVec getMemory)
     6 -> getCheckedRegion (GlobalSection <$> getVec getGlobal)
     7 -> getCheckedRegion (ExportSection <$> getVec getExport)
-    8 -> getCheckedRegion (StartSection <$> getStart)
+    8 -> getCheckedRegion (StartSection <$> getFunctionIndex)
     9 -> getCheckedRegion (ElementSection <$> getVec getElement)
     10 ->
       getCheckedRegion (CodeSection <$> getVec (getCheckedRegion getFunction))
@@ -1465,7 +1454,7 @@ putSection sec =
       putWithLength $ putVec putExport exports
     StartSection {..} -> do
       putWord8 8
-      putWithLength $ putStart start
+      putWithLength $ putFunctionIndex startFunctionIndex
     ElementSection {..} -> do
       putWord8 9
       putWithLength $ putVec putElement elements
@@ -1560,16 +1549,16 @@ getVS64 :: Get Int64
 getVS64 = getVSN 64
 
 getF32 :: Get Float
-getF32 = getFloatle
+getF32 = getFloathost
 
 putF32 :: Float -> Put
-putF32 = putFloatle
+putF32 = putFloathost
 
 getF64 :: Get Double
-getF64 = getDoublele
+getF64 = getDoublehost
 
 putF64 :: Double -> Put
-putF64 = putDoublele
+putF64 = putDoublehost
 
 getVec :: Get a -> Get [a]
 getVec g = do

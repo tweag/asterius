@@ -65,123 +65,116 @@ async function newAsteriusInstance(req) {
           );
           return p0;
         },
-        __asterius_memory_trap_trigger: (p_lo, p_hi) =>
-          console.error(
-            "[ERROR] Uninitialized memory trapped at 0x" +
-              __asterius_newI64(p_lo, p_hi)
-                .toString(16)
-                .padStart(8, "0")
-          ),
-        __asterius_load_i64: (p_lo, p_hi, v_lo, v_hi) =>
+        __asterius_load_i64: (p_lo, p_hi, o, v_lo, v_hi) =>
           console.log(
             "[INFO] Loading i64 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: 0x" +
+              "+" + o + ", value: 0x" +
               __asterius_newI64(v_lo, v_hi)
                 .toString(16)
                 .padStart(8, "0")
           ),
-        __asterius_store_i64: (p_lo, p_hi, v_lo, v_hi) =>
+        __asterius_store_i64: (p_lo, p_hi, o, v_lo, v_hi) =>
           console.log(
             "[INFO] Storing i64 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: 0x" +
+              "+" + o + ", value: 0x" +
               __asterius_newI64(v_lo, v_hi)
                 .toString(16)
                 .padStart(8, "0")
           ),
-        __asterius_load_i8: (p_lo, p_hi, v) =>
+        __asterius_load_i8: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Loading i8 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_store_i8: (p_lo, p_hi, v) =>
+        __asterius_store_i8: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Storing i8 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_load_i16: (p_lo, p_hi, v) =>
+        __asterius_load_i16: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Loading i16 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_store_i16: (p_lo, p_hi, v) =>
+        __asterius_store_i16: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Storing i16 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_load_i32: (p_lo, p_hi, v) =>
+        __asterius_load_i32: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Loading i32 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_store_i32: (p_lo, p_hi, v) =>
+        __asterius_store_i32: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Storing i32 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_load_f32: (p_lo, p_hi, v) =>
+        __asterius_load_f32: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Loading f32 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_store_f32: (p_lo, p_hi, v) =>
+        __asterius_store_f32: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Storing f32 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_load_f64: (p_lo, p_hi, v) =>
+        __asterius_load_f64: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Loading f64 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
-        __asterius_store_f64: (p_lo, p_hi, v) =>
+        __asterius_store_f64: (p_lo, p_hi, o, v) =>
           console.log(
             "[INFO] Storing f64 at 0x" +
               __asterius_newI64(p_lo, p_hi)
                 .toString(16)
                 .padStart(8, "0") +
-              ", value: " +
+              "+" + o + ", value: " +
               v
           ),
         __asterius_traceCmm: f =>

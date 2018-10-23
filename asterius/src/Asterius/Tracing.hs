@@ -40,7 +40,7 @@ addTracingModule func_sym_map func_sym func_type func
               new_body <- f body
               pure
                 Function
-                  { functionTypeName = functionTypeName
+                  { functionType = functionType
                   , varTypes = varTypes
                   , body =
                       Block
@@ -49,11 +49,11 @@ addTracingModule func_sym_map func_sym func_type func
                             [ CallImport
                                 { target' = "__asterius_traceCmm"
                                 , operands = [func_idx]
-                                , valueType = None
+                                , callImportReturnTypes = []
                                 }
                             , new_body
                             ]
-                        , valueType = infer new_body
+                        , blockReturnTypes = infer new_body
                         }
                   }
         _ ->
@@ -83,11 +83,11 @@ addTracingModule func_sym_map func_sym func_type func
                                                         [ func_idx
                                                         , lbl_to_idx lbl
                                                         ]
-                                                    , valueType = None
+                                                    , callImportReturnTypes = []
                                                     }
                                                 , new_code
                                                 ]
-                                            , valueType = infer new_code
+                                            , blockReturnTypes = infer new_code
                                             }
                                       }
                                 })
@@ -109,11 +109,11 @@ addTracingModule func_sym_map func_sym func_type func
                                                         [ func_idx
                                                         , lbl_to_idx lbl
                                                         ]
-                                                    , valueType = None
+                                                    , callImportReturnTypes = []
                                                     }
                                                 , new_code
                                                 ]
-                                            , valueType = infer new_code
+                                            , blockReturnTypes = infer new_code
                                             }
                                       , condition = condition
                                       }
@@ -137,10 +137,10 @@ addTracingModule func_sym_map func_sym func_type func
                                     [func_idx, ConstI32 $ fromIntegral index] <>
                                     cutI64
                                       GetLocal {index = index, valueType = I64}
-                                , valueType = None
+                                , callImportReturnTypes = []
                                 }
                             ]
-                        , valueType = None
+                        , blockReturnTypes = []
                         }
                   where params = paramTypes func_type
                         param_num = length params
