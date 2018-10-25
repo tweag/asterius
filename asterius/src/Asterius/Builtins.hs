@@ -72,48 +72,33 @@ rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
     { staticsMap =
-        [ ("g0", AsteriusStatics {asteriusStatics = [Uninitialized 8]})
-        , ( "blocked_queue_hd"
-          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
-        , ( "blocked_queue_tl"
-          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
-        , ( "enabled_capabilities"
-          , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
-        , ( "heap_overflow"
+        [ ( "heap_overflow"
           , AsteriusStatics
-              {asteriusStatics = [Serialized (encodeStorable (0 :: Word8))]})
-        , ( "large_alloc_lim"
-          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
+              { isConstant = False
+              , asteriusStatics = [Serialized (encodeStorable (0 :: Word8))]
+              })
         , ( "MainCapability"
           , AsteriusStatics
-              { asteriusStatics =
+              { isConstant = False
+              , asteriusStatics =
                   [ Serialized $
                     SBS.pack $
                     replicate (8 * roundup_bytes_to_words sizeof_Capability) 0
                   ]
               })
-        , ( "n_capabilities"
-          , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
         , ( "recent_activity"
           , AsteriusStatics
-              { asteriusStatics =
+              { isConstant = False
+              , asteriusStatics =
                   [ Serialized
                       (encodeStorable
                          (fromIntegral recent_ACTIVITY_YES :: Word64))
                   ]
               })
-        , ( "rts_breakpoint_io_action"
-          , AsteriusStatics {asteriusStatics = [Uninitialized 8]})
-        , ( "rts_stop_on_exception"
-          , AsteriusStatics {asteriusStatics = [Uninitialized 4]})
-        , ( "RtsFlags"
-          , AsteriusStatics
-              { asteriusStatics =
-                  [Uninitialized (8 * roundup_bytes_to_words sizeof_RTS_FLAGS)]
-              })
         , ( "sched_state"
           , AsteriusStatics
-              { asteriusStatics =
+              { isConstant = False
+              , asteriusStatics =
                   [ Serialized
                       (encodeStorable
                          (fromIntegral sched_SCHED_RUNNING :: Word64))

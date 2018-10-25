@@ -25,10 +25,10 @@ setup-info:
         url: https://ci.appveyor.com/api/buildjobs/u4xad1iq4w7c3fi4/artifacts/ghc/ghc-bindist/ghc-8.7.20180924-x86_64-unknown-mingw32.tar.xz
         sha256: 5a155d470b2d9683042de2272e731b98110411f22f7a75a84b9fd7b9153ed88f
     linux64:
-      8.7.20181010:
-        url: https://1724-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181010-x86_64-unknown-linux.tar.xz
-        sha256: 2657286239731531a0a462787f2ba48cc405bbb633e65464b98319df75b7c4b2
+      8.7.20181027:
+        url: https://1785-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181027-x86_64-unknown-linux.tar.xz
+        sha256: 062cc514e02ca2996e0ae35cfeab278bed740d8cdd377c7efc3d40ca05c2e571
     macosx:
-      8.7.20181010:
-        url: https://1723-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181010-x86_64-apple-darwin.tar.xz
-        sha256: 996751c8bb47022db81c83449aa4f85ece3895c8d682eba1a4adc4e6132c301b
+      8.7.20181027:
+        url: https://1784-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181027-x86_64-apple-darwin.tar.xz
+        sha256: 3e0c04f7203a35ddd5b02776094fbbc5790eb3e200790988efb861f1042cae36

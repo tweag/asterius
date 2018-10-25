@@ -233,15 +233,10 @@ mergeSymbols ::
   -> AsteriusStore
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> m (Maybe AsteriusModule, LinkReport)
+  -> m (AsteriusModule, LinkReport)
 mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
   (_, final_rep, final_m) <- go (root_syms, mempty, mempty)
-  pure
-    ( if S.null (unfoundSymbols final_rep) &&
-         S.null (unavailableSymbols final_rep)
-        then Just final_m
-        else Nothing
-    , final_rep)
+  pure (final_m, final_rep)
   where
     go i@(i_staging_syms, _, _) = do
       o <- iter i
@@ -342,9 +337,12 @@ makeFunctionTable AsteriusModule {..} =
 
 makeStaticsOffsetTable ::
      AsteriusModule -> (Int64, M.Map AsteriusEntitySymbol Int64)
-makeStaticsOffsetTable AsteriusModule {..} = (last_o, fromList statics_map)
+makeStaticsOffsetTable AsteriusModule {..} = (last_o, M.fromList statics_map)
   where
-    (last_o, statics_map) = layoutStatics $ M.toList staticsMap
+    (last_o, statics_map) =
+      layoutStatics $
+      sortOn (\(k, AsteriusStatics {..}) -> (not isConstant, k)) $
+      M.toList staticsMap
     layoutStatics = foldl' iterLayoutStaticsState (16, [])
     iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
       ( fromIntegral $ roundup (fromIntegral ptr + asteriusStaticsSize ss) 16
@@ -378,10 +376,7 @@ makeMemory debug AsteriusModule {..} last_o sym_map =
                Serialized buf ->
                  DataSegment {content = buf, offset = ConstI32 $ fromIntegral p} :
                  segs
-               Uninitialized {} -> segs
-               _ ->
-                 error $
-                 "Encountered unresolved content " <> show s <> " in makeMemory"))
+               _ -> segs))
         (sym_map ! ss_sym, [])
         asteriusStatics
     combine segs =
@@ -413,24 +408,32 @@ resolveEntitySymbols sym_table = f
         Just HRefl ->
           case t of
             Symbol {..} ->
-              pure t {resolvedSymbol = Just $ subst unresolvedSymbol}
+              pure $
+              case M.lookup unresolvedSymbol sym_table of
+                Just r -> t {resolvedSymbol = Just r}
+                _ ->
+                  EmitErrorMessage
+                    { errorMessage =
+                        ErrorMessage $
+                        "Unresolved symbol: " <> entityName unresolvedSymbol
+                    , phantomReturnTypes = [I64]
+                    }
             _ -> go
         _ ->
           case eqTypeRep (typeOf t) (typeRep :: TypeRep AsteriusStatic) of
             Just HRefl ->
               case t of
-                UnresolvedStatic unresolvedSymbol ->
-                  pure $ Serialized (encodeStorable (subst unresolvedSymbol))
                 SymbolStatic unresolvedSymbol symbolOffset ->
                   pure $
-                  Serialized
-                    (encodeStorable
-                       (subst unresolvedSymbol + fromIntegral symbolOffset))
+                  case M.lookup unresolvedSymbol sym_table of
+                    Just r ->
+                      Serialized
+                        (encodeStorable (r + fromIntegral symbolOffset))
+                    _ -> t
                 _ -> pure t
             _ -> go
       where
         go = gmapM f t
-        subst = (sym_table !)
 
 collectErrorMessages :: Data a => a -> S.Set ErrorMessage
 collectErrorMessages = collect proxy#
@@ -524,9 +527,9 @@ linkStart ::
   -> AsteriusStore
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> m (Maybe (Module, [ErrorMessage]), LinkReport)
+  -> m (Module, [ErrorMessage], LinkReport)
 linkStart debug store root_syms export_funcs = do
-  (maybe_merged_m, report) <-
+  (merged_m, report) <-
     mergeSymbols
       debug
       store
@@ -537,19 +540,15 @@ linkStart debug store root_syms export_funcs = do
          | k <- export_funcs
          ])
       export_funcs
-  (maybe_result_m, ss_sym_map, func_sym_map) <-
-    case maybe_merged_m of
-      Just merged_m -> do
-        (result_m, ss_sym_map', func_sym_map', err_msgs) <-
-          resolveAsteriusModule
-            debug
-            (bundledFFIMarshalState report)
-            export_funcs
-            merged_m
-        pure (Just (result_m, err_msgs), ss_sym_map', func_sym_map')
-      _ -> pure (Nothing, mempty, mempty)
+  (result_m, ss_sym_map, func_sym_map, err_msgs) <-
+    resolveAsteriusModule
+      debug
+      (bundledFFIMarshalState report)
+      export_funcs
+      merged_m
   pure
-    ( maybe_result_m
+    ( result_m
+    , err_msgs
     , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
 
 renderDot :: LinkReport -> Builder

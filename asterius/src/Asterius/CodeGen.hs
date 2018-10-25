@@ -126,7 +126,7 @@ marshalCmmStatic st =
             w
             (encodeStorable (fromRational x :: Float))
             (encodeStorable (fromRational x :: Double))
-        GHC.CmmLabel clbl -> UnresolvedStatic <$> marshalCLabel clbl
+        GHC.CmmLabel clbl -> flip SymbolStatic 0 <$> marshalCLabel clbl
         GHC.CmmLabelOff clbl o -> do
           sym <- marshalCLabel clbl
           pure $ SymbolStatic sym o
@@ -134,10 +134,11 @@ marshalCmmStatic st =
     GHC.CmmUninitialised s -> pure $ Uninitialized s
     GHC.CmmString s -> pure $ Serialized $ SBS.pack s <> "\0"
 
-marshalCmmData :: GHC.CmmStatics -> CodeGen AsteriusStatics
-marshalCmmData (GHC.Statics _ ss) = do
+marshalCmmData :: GHC.Section -> GHC.CmmStatics -> CodeGen AsteriusStatics
+marshalCmmData sec (GHC.Statics _ ss) = do
   ass <- for ss marshalCmmStatic
-  pure AsteriusStatics {asteriusStatics = ass}
+  pure
+    AsteriusStatics {isConstant = GHC.isSecConstant sec, asteriusStatics = ass}
 
 marshalCmmLocalReg :: GHC.LocalReg -> CodeGen (UnresolvedLocalReg, ValueType)
 marshalCmmLocalReg (GHC.LocalReg u t) = do
@@ -964,9 +965,9 @@ marshalCmmDecl ::
      GHC.GenCmmDecl GHC.CmmStatics h GHC.CmmGraph -> CodeGen AsteriusModule
 marshalCmmDecl decl =
   case decl of
-    GHC.CmmData _ d@(GHC.Statics clbl _) -> do
+    GHC.CmmData sec d@(GHC.Statics clbl _) -> do
       sym <- marshalCLabel clbl
-      r <- unCodeGen $ marshalCmmData d
+      r <- unCodeGen $ marshalCmmData sec d
       pure $
         case r of
           Left err -> mempty {staticsErrorMap = M.fromList [(sym, err)]}

@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 module Asterius.Types
@@ -74,8 +75,7 @@ instance Binary AsteriusCodeGenError
 instance Exception AsteriusCodeGenError
 
 data AsteriusStatic
-  = UnresolvedStatic AsteriusEntitySymbol
-  | SymbolStatic AsteriusEntitySymbol
+  = SymbolStatic AsteriusEntitySymbol
                  Int
   | Uninitialized Int
   | Serialized SBS.ShortByteString
@@ -83,8 +83,9 @@ data AsteriusStatic
 
 instance Binary AsteriusStatic
 
-newtype AsteriusStatics = AsteriusStatics
-  { asteriusStatics :: [AsteriusStatic]
+data AsteriusStatics = AsteriusStatics
+  { isConstant :: Bool
+  , asteriusStatics :: [AsteriusStatic]
   } deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary AsteriusStatics

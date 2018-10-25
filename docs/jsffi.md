@@ -42,3 +42,17 @@ Look at the following places:
 * `Asterius.JSFFI` module. All JavaScript reference types are uniformly handled as `FFI_JSREF`, while value types are treated as `FFI_VAL`. Assuming we are adding a value type. Add logic to:
     * `marshalToFFIValueType`: Recognize the value type in parsed AST, and translate to `FFI_VAL`
 * `Asterius.Builtins` module. Add the corresponding `rts_mkXX`/`rts_getXX` builtin functions. They are required for stub functions of `foreign export javascript`.
+
+### Implementation
+
+This subsection presents a high-level overview on the implementation of JSFFI, based on the information flow from syntactic sugar to generated WebAssembly/JavaScript code.
+
+#### Syntactic sugar
+
+As documented in previous sections, one can write `foreign import javascript` or `foreign export javascript` clauses in a `.hs` module. How are they processed? The logic resides in `Asterius.JSFFI`.
+
+First, there is `addFFIProcessor`, which given a `Compiler` (defined in `ghc-toolkit`), returns a new `Compiler` and a callback to fetch a stub module. The details of `Compiler`'s implementation are not relevant here, just think of it as an abstraction layer to fetch/modify GHC IRs without dealing with all the details of GHC API.
+
+`addFFIProcessor` adds one functionality to the input `Compiler`: rewrite parsed Haskell AST and handle the `foreign import javascript`/`foreign export javascript` syntactic sugar. After rewriting, JavaScript FFI is really turned into C FFI, so type-checking/code generation proceeds as normal.
+
+After the parsed AST is processed, a "stub module" of type `AsteriusModule` is generated and can be later fetched given an `AsteriusModuleSymbol`. It contains JSFFI related information of type `FFIMarshalState`. Both `AsteriusModule` and `FFIMarshalState` types has `Semigroup` instance so they can be combined later at link-time.

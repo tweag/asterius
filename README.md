@@ -35,7 +35,7 @@ What works currently:
 * Complete [`binaryen`](https://github.com/WebAssembly/binaryen) raw bindings, plus a monadic EDSL to construct WebAssembly code directly in Haskell.
 * A Haskell library to handle WebAssembly code, which already powers binary code generation.
 * Unit tests implementing stochastic fuzzer/shrinker for WebAssembly, in order to produce minimal repro in case something goes wrong in generated code.
-* Besides WebAssembly MVP & the experimental BigInt support, no special requirements on the underlying JavaScript engine.
+* Besides WebAssembly MVP, no special requirements on the underlying JavaScript engine at the moment.
 
 Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs), [`array`](asterius/test/array/array.hs) and [`rtsapi`](asterius/test/rtsapi.hs) test suites first to get some idea on current capabilities of `asterius`.
 

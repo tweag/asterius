@@ -1,0 +1,32 @@
+repository:
+  has_wiki: false
+
+labels:
+  - name: "duplicate"
+    color: cfd3d7
+  - name: "good first issue"
+    color: 7057ff
+  - name: "invalid"
+    color: cfd3d7
+  - name: "more data needed"
+    color: bfdadc
+  - name: "P0"
+    color: b60205
+  - name: "P1"
+    color: d93f0b
+  - name: "P2"
+    color: e99695
+  - name: "P3"
+    color: fbca04
+  - name: "P4"
+    color: fef2c0
+  - name: "question"
+    color: d876e3
+  - name: "type: bug"
+    color: 0052cc
+  - name: "type: documentation"
+    color: 0052cc
+  - name: "type: feature request"
+    color: 0052cc
+  - name: "wontfix"
+    color: ffffff

@@ -1,6 +1,6 @@
 ## IR types and transformation passes
 
-This section explains various IR types in asterius, and hopefully presents a clear picture of how information flows from Haskell to WebAssembly.
+This section explains various IR types in asterius, and hopefully presents a clear picture of how information flows from Haskell to WebAssembly. (There's a similar section in `jsffi.md` which explains implementation details of JSFFI)
 
 ### Cmm IR
 

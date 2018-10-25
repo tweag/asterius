@@ -193,7 +193,7 @@ ahcLinkMain task@Task {..} = do
     mod_ir_map
   final_store <- readIORef final_store_ref
   putStrLn "[INFO] Attempting to link into a standalone WebAssembly module"
-  (!m_final_m, !report) <-
+  (!final_m, !err_msgs, !report) <-
     linkStart
       debug
       final_store
@@ -216,58 +216,51 @@ ahcLinkMain task@Task {..} = do
          "[INFO] Writing GraphViz file of symbol dependencies to " <> show p
        writeDot p report)
     outputGraphViz
-  maybe
-    (fail "[ERROR] Linking failed")
-    (\(final_m, err_msgs) -> do
-       when outputIR $ do
-         let p = outputWasm -<.> "bin"
-         putStrLn $ "[INFO] Serializing linked IR to " <> show p
-         encodeFile p final_m
-       if binaryen
-         then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
-                  m_ref <-
-                    withPool $ \pool -> OldMarshal.marshalModule pool final_m
-                  putStrLn "[INFO] Validating binaryen IR"
-                  pass_validation <- c_BinaryenModuleValidate m_ref
-                  when (pass_validation /= 1) $
-                    fail "[ERROR] binaryen validation failed"
-                  putStrLn $
-                    "[INFO] Writing WebAssembly binary to " <> show outputWasm
-                  m_bin <- OldMarshal.serializeModule m_ref
-                  BS.writeFile outputWasm m_bin
-                  when outputIR $ do
-                    let p = outputWasm -<.> "binaryen.txt"
-                    putStrLn $
-                      "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
-                    case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
-                      Right (rest, _, r)
-                        | LBS.null rest -> writeFile p (show r)
-                        | otherwise ->
-                          fail "[ERROR] Re-parsing produced residule"
-                      _ -> fail "[ERROR] Re-parsing failed")
-         else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
-                  let conv_result = runExcept $ NewMarshal.makeModule final_m
-                  r <-
-                    case conv_result of
-                      Left err ->
-                        fail $ "[ERROR] Conversion failed with " <> show err
-                      Right r -> pure r
-                  when outputIR $ do
-                    let p = outputWasm -<.> "wasm-toolkit.txt"
-                    putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
-                    writeFile p $ show r
-                  putStrLn $
-                    "[INFO] Writing WebAssembly binary to " <> show outputWasm
-                  LBS.writeFile outputWasm $ runPut $ putModule r)
-       putStrLn $ "[INFO] Writing JavaScript to " <> show outputJS
-       h <- openBinaryFile outputJS WriteMode
-       b <- genNode task report err_msgs
-       hPutBuilder h b
-       hClose h
-       when (target == Node && run) $ do
-         putStrLn $ "[INFO] Running " <> outputJS
-         withCurrentDirectory (takeDirectory outputWasm) $
-           callProcess "node" $
-           ["--wasm-opt" | optimize] <>
-           ["--harmony-bigint", takeFileName outputJS])
-    m_final_m
+  when outputIR $ do
+    let p = outputWasm -<.> "bin"
+    putStrLn $ "[INFO] Serializing linked IR to " <> show p
+    encodeFile p final_m
+  if binaryen
+    then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+             m_ref <- withPool $ \pool -> OldMarshal.marshalModule pool final_m
+             putStrLn "[INFO] Validating binaryen IR"
+             pass_validation <- c_BinaryenModuleValidate m_ref
+             when (pass_validation /= 1) $
+               fail "[ERROR] binaryen validation failed"
+             putStrLn $
+               "[INFO] Writing WebAssembly binary to " <> show outputWasm
+             m_bin <- OldMarshal.serializeModule m_ref
+             BS.writeFile outputWasm m_bin
+             when outputIR $ do
+               let p = outputWasm -<.> "binaryen.txt"
+               putStrLn $
+                 "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
+               case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
+                 Right (rest, _, r)
+                   | LBS.null rest -> writeFile p (show r)
+                   | otherwise -> fail "[ERROR] Re-parsing produced residule"
+                 _ -> fail "[ERROR] Re-parsing failed")
+    else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
+             let conv_result = runExcept $ NewMarshal.makeModule final_m
+             r <-
+               case conv_result of
+                 Left err ->
+                   fail $ "[ERROR] Conversion failed with " <> show err
+                 Right r -> pure r
+             when outputIR $ do
+               let p = outputWasm -<.> "wasm-toolkit.txt"
+               putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
+               writeFile p $ show r
+             putStrLn $
+               "[INFO] Writing WebAssembly binary to " <> show outputWasm
+             LBS.writeFile outputWasm $ runPut $ putModule r)
+  putStrLn $ "[INFO] Writing JavaScript to " <> show outputJS
+  h <- openBinaryFile outputJS WriteMode
+  b <- genNode task report err_msgs
+  hPutBuilder h b
+  hClose h
+  when (target == Node && run) $ do
+    putStrLn $ "[INFO] Running " <> outputJS
+    withCurrentDirectory (takeDirectory outputWasm) $
+      callProcess "node" $
+      ["--wasm-opt" | optimize] <> ["--harmony-bigint", takeFileName outputJS]
