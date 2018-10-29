@@ -112,6 +112,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/passes/MergeBlocks.cpp \
   $BINARYEN_SRC/passes/MergeLocals.cpp \
   $BINARYEN_SRC/passes/Metrics.cpp \
+  $BINARYEN_SRC/passes/MinifyImportsAndExports.cpp \
   $BINARYEN_SRC/passes/NameList.cpp \
   $BINARYEN_SRC/passes/OptimizeInstructions.cpp \
   $BINARYEN_SRC/passes/PickLoadSigns.cpp \
@@ -354,10 +355,8 @@ export_function "_BinaryenLtFloat64"
 export_function "_BinaryenLeFloat64"
 export_function "_BinaryenGtFloat64"
 export_function "_BinaryenGeFloat64"
-export_function "_BinaryenPageSize"
 export_function "_BinaryenCurrentMemory"
 export_function "_BinaryenGrowMemory"
-export_function "_BinaryenHasFeature"
 export_function "_BinaryenAtomicRMWAdd"
 export_function "_BinaryenAtomicRMWSub"
 export_function "_BinaryenAtomicRMWAnd"

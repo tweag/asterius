@@ -21,8 +21,10 @@ module Asterius.Builtins
 import Asterius.BuildInfo
 import Asterius.EDSL
 import Asterius.Internals
+import Asterius.Internals.MagicNumber
 import Asterius.Types
 import Control.Monad (when)
+import Data.Bits
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
 import Data.List
@@ -214,10 +216,10 @@ rtsAsteriusModule opts =
         , ("print_i64", printI64Function opts)
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
-        , ("__asterius_Load_Sp", getI32GlobalRegFunction opts Sp)
-        , ("__asterius_Load_SpLim", getI32GlobalRegFunction opts SpLim)
-        , ("__asterius_Load_Hp", getI32GlobalRegFunction opts Hp)
-        , ("__asterius_Load_HpLim", getI32GlobalRegFunction opts HpLim)
+        , ("__asterius_Load_Sp", getF64GlobalRegFunction opts Sp)
+        , ("__asterius_Load_SpLim", getF64GlobalRegFunction opts SpLim)
+        , ("__asterius_Load_Hp", getF64GlobalRegFunction opts Hp)
+        , ("__asterius_Load_HpLim", getF64GlobalRegFunction opts HpLim)
         , ("__asterius_Load_I8", loadWrapperFunction opts 1 I32)
         , ("__asterius_Load_I16", loadWrapperFunction opts 2 I32)
         , ("__asterius_Load_I32", loadWrapperFunction opts 4 I32)
@@ -269,24 +271,30 @@ rtsFunctionImports debug =
       { internalName = "__asterius_newStablePtr"
       , externalModuleName = "rts"
       , externalBaseName = "newStablePtr"
-      , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
       { internalName = "__asterius_deRefStablePtr"
       , externalModuleName = "rts"
       , externalBaseName = "deRefStablePtr"
-      , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
       { internalName = "__asterius_freeStablePtr"
       , externalModuleName = "rts"
       , externalBaseName = "freeStablePtr"
-      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       }
   , FunctionImport
       { internalName = "printI64"
       , externalModuleName = "rts"
       , externalBaseName = "printI64"
+      , functionType = FunctionType {paramTypes = [I32, I32], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "printI64_with_sym"
+      , externalModuleName = "rts"
+      , externalBaseName = "printI64_with_sym"
       , functionType = FunctionType {paramTypes = [I32, I32], returnTypes = []}
       }
   , FunctionImport
@@ -314,14 +322,14 @@ rtsFunctionImports debug =
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_traceCmm"
               , functionType =
-                  FunctionType {paramTypes = [I32], returnTypes = []}
+                  FunctionType {paramTypes = [F64], returnTypes = []}
               }
           , FunctionImport
               { internalName = "__asterius_traceCmmBlock"
               , externalModuleName = "rts"
               , externalBaseName = "__asterius_traceCmmBlock"
               , functionType =
-                  FunctionType {paramTypes = [I32, I32], returnTypes = []}
+                  FunctionType {paramTypes = [F64, I32], returnTypes = []}
               }
           , FunctionImport
               { internalName = "__asterius_traceCmmSetLocal"
@@ -329,7 +337,7 @@ rtsFunctionImports debug =
               , externalBaseName = "__asterius_traceCmmSetLocal"
               , functionType =
                   FunctionType
-                    {paramTypes = [I32, I32, I32, I32], returnTypes = []}
+                    {paramTypes = [F64, I32, I32, I32], returnTypes = []}
               }
           , FunctionImport
               { internalName = "__asterius_current_memory"
@@ -360,6 +368,20 @@ rtsFunctionImports debug =
               , functionType =
                   FunctionType
                     {paramTypes = [I32, I32, I32, I32, I32], returnTypes = []}
+              }
+          , FunctionImport
+              { internalName = "__asterius_debug_log_is_enabled"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_debug_log_is_enabled"
+              , functionType =
+                  FunctionType {paramTypes = [], returnTypes = [I32]}
+              }
+          , FunctionImport
+              { internalName = "__asterius_debug_log_set_enabled"
+              , externalModuleName = "rts"
+              , externalBaseName = "__asterius_debug_log_set_enabled"
+              , functionType =
+                  FunctionType {paramTypes = [I32], returnTypes = []}
               }
           ] <>
           concat
@@ -479,13 +501,13 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
   where
     wrapper_param_types =
       [ case param_type of
-        I64 -> (i, I32, extendUInt32)
+        I64 -> (i, F64, Unary TruncUFloat64ToInt64)
         _ -> (i, param_type, id)
       | (i, param_type) <- zip [0 ..] paramTypes
       ]
     (wrapper_return_types, to_wrapper_return_types) =
       case returnTypes of
-        [I64] -> ([I32], wrapInt64)
+        [I64] -> ([F64], Unary ConvertUInt64ToFloat64)
         _ -> (returnTypes, id)
 
 mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function ::
@@ -1140,7 +1162,7 @@ getMBlocksFunction _ =
       extendUInt32 $
       growMemory (n `mulInt32` constI32 (mblock_size `div` wasmPageSize)) `mulInt32`
       constI32 wasmPageSize
-    emit ret
+    emit $ ConstI64 (dataTag `shiftL` 32) `orInt64` ret
 
 mblockGroupBlocks :: Expression -> Expression
 mblockGroupBlocks n =
@@ -1216,20 +1238,28 @@ getStablePtrWrapperFunction _ =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     obj64 <- param I64
-    sp32 <- callImport' "__asterius_newStablePtr" [wrapI64 obj64] I32
-    emit $ extendUInt32 sp32
+    sp_f64 <-
+      callImport'
+        "__asterius_newStablePtr"
+        [Unary ConvertUInt64ToFloat64 obj64]
+        F64
+    emit $ Unary TruncUFloat64ToInt64 sp_f64
 
 deRefStablePtrWrapperFunction _ =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     sp64 <- param I64
-    obj32 <- callImport' "__asterius_deRefStablePtr" [wrapI64 sp64] I32
-    emit $ extendUInt32 obj32
+    obj_f64 <-
+      callImport'
+        "__asterius_deRefStablePtr"
+        [Unary ConvertUInt64ToFloat64 sp64]
+        F64
+    emit $ Unary TruncUFloat64ToInt64 obj_f64
 
 freeStablePtrWrapperFunction _ =
   runEDSL [] $ do
     sp64 <- param I64
-    callImport "__asterius_freeStablePtr" [wrapI64 sp64]
+    callImport "__asterius_freeStablePtr" [Unary ConvertUInt64ToFloat64 sp64]
 
 rtsMkHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> AsteriusFunction
 rtsMkHelper _ con_sym =
@@ -1326,12 +1356,12 @@ printF64Function _ =
     x <- param F64
     callImport "printF64" [x]
 
-getI32GlobalRegFunction ::
+getF64GlobalRegFunction ::
      BuiltinsOptions -> UnresolvedGlobalReg -> AsteriusFunction
-getI32GlobalRegFunction _ gr =
-  runEDSL [I32] $ do
-    setReturnTypes [I32]
-    emit $ wrapInt64 $ getLVal $ global gr
+getF64GlobalRegFunction _ gr =
+  runEDSL [F64] $ do
+    setReturnTypes [F64]
+    emit $ Unary ConvertUInt64ToFloat64 $ getLVal $ global gr
 
 loadWrapperFunction, storeWrapperFunction ::
      BuiltinsOptions -> BinaryenIndex -> ValueType -> AsteriusFunction

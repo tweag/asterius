@@ -56,3 +56,5 @@ First, there is `addFFIProcessor`, which given a `Compiler` (defined in `ghc-too
 `addFFIProcessor` adds one functionality to the input `Compiler`: rewrite parsed Haskell AST and handle the `foreign import javascript`/`foreign export javascript` syntactic sugar. After rewriting, JavaScript FFI is really turned into C FFI, so type-checking/code generation proceeds as normal.
 
 After the parsed AST is processed, a "stub module" of type `AsteriusModule` is generated and can be later fetched given an `AsteriusModuleSymbol`. It contains JSFFI related information of type `FFIMarshalState`. Both `AsteriusModule` and `FFIMarshalState` types has `Semigroup` instance so they can be combined later at link-time.
+
+#### TODO

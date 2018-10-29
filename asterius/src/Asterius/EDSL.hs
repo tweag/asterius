@@ -81,6 +81,7 @@ module Asterius.EDSL
   , neInt64
   , neInt32
   , andInt64
+  , orInt64
   , andInt32
   , orInt32
   , symbol
@@ -430,7 +431,7 @@ growMemory x = Host {hostOp = GrowMemory, operands = [x]}
 
 roundupBytesToWords n = (n `addInt64` constI64 7) `divUInt64` constI64 8
 
-addInt64, subInt64, mulInt64, divUInt64, gtUInt64, geUInt64, geUInt32, addInt32, subInt32, mulInt32, eqInt64, eqInt32, ltUInt64, leUInt64, ltUInt32, neInt64, neInt32, andInt64, andInt32, orInt32 ::
+addInt64, subInt64, mulInt64, divUInt64, gtUInt64, geUInt64, geUInt32, addInt32, subInt32, mulInt32, eqInt64, eqInt32, ltUInt64, leUInt64, ltUInt32, neInt64, neInt32, andInt64, orInt64, andInt32, orInt32 ::
      Expression -> Expression -> Expression
 addInt64 = Binary AddInt64
 
@@ -467,6 +468,8 @@ neInt64 = Binary NeInt64
 neInt32 = Binary NeInt32
 
 andInt64 = Binary AndInt64
+
+orInt64 = Binary OrInt64
 
 andInt32 = Binary AndInt32
 

@@ -16,15 +16,15 @@ build_script:
   - stack --no-terminal exec ahc-boot
   - stack --no-terminal exec ahc-boot -- --rts-only
   - stack --no-terminal test asterius:fib --test-arguments="--debug"
-  - stack --no-terminal test asterius:fib --test-arguments="--optimize"
   - stack --no-terminal test asterius:jsffi --test-arguments="--debug"
-  - stack --no-terminal test asterius:jsffi --test-arguments="--optimize"
   - stack --no-terminal test asterius:array --test-arguments="--debug"
-  - stack --no-terminal test asterius:array --test-arguments="--optimize"
   - stack --no-terminal test asterius:stableptr --test-arguments="--debug"
-  - stack --no-terminal test asterius:stableptr --test-arguments="--optimize"
   - stack --no-terminal test asterius:rtsapi --test-arguments="--debug"
-  - stack --no-terminal test asterius:rtsapi --test-arguments="--optimize"
-  - stack --no-terminal test asterius:todomvc --test-arguments="--optimize"
+  - stack --no-terminal test asterius:fib
+  - stack --no-terminal test asterius:jsffi
+  - stack --no-terminal test asterius:array
+  - stack --no-terminal test asterius:stableptr
+  - stack --no-terminal test asterius:rtsapi
+  - stack --no-terminal test asterius:todomvc
 
 test: off

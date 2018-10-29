@@ -13,19 +13,17 @@ jobs:
             export ASTERIUS_REV=$(git rev-parse --short HEAD)
             docker login -u terrorjack -p $DOCKER_PASS
             docker build -t terrorjack/asterius:$ASTERIUS_REV -t terrorjack/asterius:$CIRCLE_BRANCH -t terrorjack/asterius:latest .
-
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--optimize")
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--optimize")
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array --test-arguments="--optimize")
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:stableptr --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:stableptr --test-arguments="--optimize")
             docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:rtsapi --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:rtsapi --test-arguments="--optimize")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:todomvc --test-arguments="--optimize")
-
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib)
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi)
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array)
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:stableptr)
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:rtsapi)
+            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:todomvc)
             docker push terrorjack/asterius:$ASTERIUS_REV
             docker push terrorjack/asterius:$CIRCLE_BRANCH
             if [ $CIRCLE_BRANCH = "master" ]; then

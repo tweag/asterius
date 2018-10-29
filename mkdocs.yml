@@ -12,6 +12,7 @@ pages:
   - 'Project architecture': 'architecture.md'
   - 'Writing WebAssembly code in Haskell': 'wasm-in-hs.md'
   - 'WebAssembly as a Haskell compilation target': 'webassembly.md'
+  - 'About the custom GHC fork': 'custom-ghc.md'
   - 'Reading list': 'readings.md'
   - 'Checklist': 'checklist.md'
 theme: readthedocs

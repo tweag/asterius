@@ -19,7 +19,7 @@ RUN \
     curl \
     gnupg && \
   curl https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
-  echo "deb https://deb.nodesource.com/node_10.x sid main" >> /etc/apt/sources.list && \
+  echo "deb https://deb.nodesource.com/node_11.x sid main" >> /etc/apt/sources.list && \
   apt update && \
   apt dist-upgrade -y && \
   apt install -y \

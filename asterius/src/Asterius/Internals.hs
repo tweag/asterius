@@ -78,15 +78,13 @@ reinterpretCast :: (Storable a, Storable b) => a -> b
 reinterpretCast a =
   case runRW#
          (\s0 ->
-            case newAlignedPinnedByteArray#
-                   (unI# (sizeOf a))
-                   (unI# (alignment a))
-                   s0 of
+            case newPinnedByteArray# (unI# (sizeOf a)) s0 of
               (# s1, mba #) ->
                 case unsafeFreezeByteArray# mba s1 of
                   (# s2, ba #) ->
-                    let addr = byteArrayContents# ba
-                     in case unIO (poke (Ptr addr) a) s2 of
+                    case byteArrayContents# ba of
+                      addr ->
+                        case unIO (poke (Ptr addr) a) s2 of
                           (# s3, _ #) -> unIO (peek (Ptr addr)) s3) of
     (# _, r #) -> r
 

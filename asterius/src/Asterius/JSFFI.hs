@@ -81,7 +81,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
         pure
           FFI_VAL
             { ffiWasmValueType = I64
-            , ffiJSValueType = I32
+            , ffiJSValueType = F64
             , hsTyCon = "Ptr"
             , signed = False
             }
@@ -89,7 +89,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
         pure
           FFI_VAL
             { ffiWasmValueType = I64
-            , ffiJSValueType = I32
+            , ffiJSValueType = F64
             , hsTyCon = "FunPtr"
             , signed = False
             }
@@ -97,7 +97,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
         pure
           FFI_VAL
             { ffiWasmValueType = I64
-            , ffiJSValueType = I32
+            , ffiJSValueType = F64
             , hsTyCon = "StablePtr"
             , signed = False
             }
@@ -106,7 +106,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
         pure
           FFI_VAL
             { ffiWasmValueType = I64
-            , ffiJSValueType = I32
+            , ffiJSValueType = F64
             , hsTyCon = "Char"
             , signed = False
             }
@@ -114,7 +114,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
         pure
           FFI_VAL
             { ffiWasmValueType = I64
-            , ffiJSValueType = I32
+            , ffiJSValueType = F64
             , hsTyCon = "Bool"
             , signed = False
             }
@@ -122,7 +122,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
         pure
           FFI_VAL
             { ffiWasmValueType = I64
-            , ffiJSValueType = I32
+            , ffiJSValueType = F64
             , hsTyCon = "Int"
             , signed = True
             }
@@ -130,7 +130,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
         pure
           FFI_VAL
             { ffiWasmValueType = I64
-            , ffiJSValueType = I32
+            , ffiJSValueType = F64
             , hsTyCon = "Word"
             , signed = False
             }
@@ -197,7 +197,7 @@ recoverWasmImportValueType :: FFIValueType -> ValueType
 recoverWasmImportValueType vt =
   case vt of
     FFI_VAL {..} -> ffiJSValueType
-    FFI_JSREF -> I32
+    FFI_JSREF -> F64
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType vt =
@@ -388,13 +388,20 @@ generateImplicitCastExpression ::
      Bool -> [ValueType] -> [ValueType] -> Expression -> Expression
 generateImplicitCastExpression signed src_ts dest_ts src_expr =
   case (src_ts, dest_ts) of
-    ([I64], [I32]) -> Unary {unaryOp = WrapInt64, operand0 = src_expr}
-    ([I32], [I64]) ->
+    ([I64], [F64]) ->
       Unary
         { unaryOp =
             if signed
-              then ExtendSInt32
-              else ExtendUInt32
+              then ConvertSInt64ToFloat64
+              else ConvertUInt64ToFloat64
+        , operand0 = src_expr
+        }
+    ([F64], [I64]) ->
+      Unary
+        { unaryOp =
+            if signed
+              then TruncSFloat64ToInt64
+              else TruncUFloat64ToInt64
         , operand0 = src_expr
         }
     _

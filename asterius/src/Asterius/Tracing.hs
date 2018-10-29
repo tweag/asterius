@@ -149,4 +149,5 @@ addTracingModule func_sym_map func_sym func_type func
             _ -> go
       where
         go = gmapM f x
-        func_idx = ConstI32 $ fromIntegral $ func_sym_map ! func_sym
+        func_idx =
+          Unary ConvertUInt64ToFloat64 $ ConstI64 $ func_sym_map ! func_sym
