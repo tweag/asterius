@@ -1,0 +1,80 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (func
+    i32.const 0
+    f32.reinterpret/i32
+    drop
+    f32.const 0
+    i32.reinterpret/f32
+    drop
+    i64.const 0
+    f64.reinterpret/i64 
+    drop
+    f64.const 0
+    i64.reinterpret/f64
+    drop))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 01                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 00                                        ; num params
+000000d: 00                                        ; num results
+0000009: 04                                        ; FIXUP section size
+; section "Function" (3)
+000000e: 03                                        ; section code
+000000f: 00                                        ; section size (guess)
+0000010: 01                                        ; num functions
+0000011: 00                                        ; function 0 signature index
+000000f: 02                                        ; FIXUP section size
+; section "Code" (10)
+0000012: 0a                                        ; section code
+0000013: 00                                        ; section size (guess)
+0000014: 01                                        ; num functions
+; function body 0
+0000015: 00                                        ; func body size (guess)
+0000016: 00                                        ; local decl count
+0000017: 41                                        ; i32.const
+0000018: 00                                        ; i32 literal
+0000019: be                                        ; f32.reinterpret/i32
+000001a: 1a                                        ; drop
+000001b: 43                                        ; f32.const
+000001c: 0000 0000                                 ; f32 literal
+0000020: bc                                        ; i32.reinterpret/f32
+0000021: 1a                                        ; drop
+0000022: 42                                        ; i64.const
+0000023: 00                                        ; i64 literal
+0000024: bf                                        ; f64.reinterpret/i64
+0000025: 1a                                        ; drop
+0000026: 44                                        ; f64.const
+0000027: 0000 0000 0000 0000                       ; f64 literal
+000002f: bd                                        ; i64.reinterpret/f64
+0000030: 1a                                        ; drop
+0000031: 0b                                        ; end
+0000015: 1c                                        ; FIXUP func body size
+0000013: 1e                                        ; FIXUP section size
+
+cast.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000015 func[0]:
+ 000017: 41 00                      | i32.const 0
+ 000019: be                         | f32.reinterpret/i32
+ 00001a: 1a                         | drop
+ 00001b: 43 00 00 00 00             | f32.const 0x0p+0
+ 000020: bc                         | i32.reinterpret/f32
+ 000021: 1a                         | drop
+ 000022: 42 00                      | i64.const 0
+ 000024: bf                         | f64.reinterpret/i64
+ 000025: 1a                         | drop
+ 000026: 44 00 00 00 00 00 00 00 00 | f64.const 0x0p+0
+ 00002f: bd                         | i64.reinterpret/f64
+ 000030: 1a                         | drop
+ 000031: 0b                         | end
+;;; STDOUT ;;)

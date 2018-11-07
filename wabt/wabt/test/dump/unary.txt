@@ -1,0 +1,134 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (func
+    i32.const 0
+    i32.popcnt
+    i32.ctz
+    i32.clz
+    i32.eqz
+    drop
+    
+    i64.const 0
+    i64.popcnt
+    i64.ctz
+    i64.clz
+    drop
+    
+    f32.const 0
+    f32.nearest
+    f32.trunc
+    f32.floor
+    f32.ceil
+    f32.sqrt
+    f32.abs
+    f32.neg
+    drop
+   
+    f64.const 0
+    f64.nearest 
+    f64.trunc
+    f64.floor
+    f64.ceil
+    f64.sqrt
+    f64.abs
+    f64.neg
+    drop))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 01                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 00                                        ; num params
+000000d: 00                                        ; num results
+0000009: 04                                        ; FIXUP section size
+; section "Function" (3)
+000000e: 03                                        ; section code
+000000f: 00                                        ; section size (guess)
+0000010: 01                                        ; num functions
+0000011: 00                                        ; function 0 signature index
+000000f: 02                                        ; FIXUP section size
+; section "Code" (10)
+0000012: 0a                                        ; section code
+0000013: 00                                        ; section size (guess)
+0000014: 01                                        ; num functions
+; function body 0
+0000015: 00                                        ; func body size (guess)
+0000016: 00                                        ; local decl count
+0000017: 41                                        ; i32.const
+0000018: 00                                        ; i32 literal
+0000019: 69                                        ; i32.popcnt
+000001a: 68                                        ; i32.ctz
+000001b: 67                                        ; i32.clz
+000001c: 45                                        ; i32.eqz
+000001d: 1a                                        ; drop
+000001e: 42                                        ; i64.const
+000001f: 00                                        ; i64 literal
+0000020: 7b                                        ; i64.popcnt
+0000021: 7a                                        ; i64.ctz
+0000022: 79                                        ; i64.clz
+0000023: 1a                                        ; drop
+0000024: 43                                        ; f32.const
+0000025: 0000 0000                                 ; f32 literal
+0000029: 90                                        ; f32.nearest
+000002a: 8f                                        ; f32.trunc
+000002b: 8e                                        ; f32.floor
+000002c: 8d                                        ; f32.ceil
+000002d: 91                                        ; f32.sqrt
+000002e: 8b                                        ; f32.abs
+000002f: 8c                                        ; f32.neg
+0000030: 1a                                        ; drop
+0000031: 44                                        ; f64.const
+0000032: 0000 0000 0000 0000                       ; f64 literal
+000003a: 9e                                        ; f64.nearest
+000003b: 9d                                        ; f64.trunc
+000003c: 9c                                        ; f64.floor
+000003d: 9b                                        ; f64.ceil
+000003e: 9f                                        ; f64.sqrt
+000003f: 99                                        ; f64.abs
+0000040: 9a                                        ; f64.neg
+0000041: 1a                                        ; drop
+0000042: 0b                                        ; end
+0000015: 2d                                        ; FIXUP func body size
+0000013: 2f                                        ; FIXUP section size
+
+unary.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000015 func[0]:
+ 000017: 41 00                      | i32.const 0
+ 000019: 69                         | i32.popcnt
+ 00001a: 68                         | i32.ctz
+ 00001b: 67                         | i32.clz
+ 00001c: 45                         | i32.eqz
+ 00001d: 1a                         | drop
+ 00001e: 42 00                      | i64.const 0
+ 000020: 7b                         | i64.popcnt
+ 000021: 7a                         | i64.ctz
+ 000022: 79                         | i64.clz
+ 000023: 1a                         | drop
+ 000024: 43 00 00 00 00             | f32.const 0x0p+0
+ 000029: 90                         | f32.nearest
+ 00002a: 8f                         | f32.trunc
+ 00002b: 8e                         | f32.floor
+ 00002c: 8d                         | f32.ceil
+ 00002d: 91                         | f32.sqrt
+ 00002e: 8b                         | f32.abs
+ 00002f: 8c                         | f32.neg
+ 000030: 1a                         | drop
+ 000031: 44 00 00 00 00 00 00 00 00 | f64.const 0x0p+0
+ 00003a: 9e                         | f64.nearest
+ 00003b: 9d                         | f64.trunc
+ 00003c: 9c                         | f64.floor
+ 00003d: 9b                         | f64.ceil
+ 00003e: 9f                         | f64.sqrt
+ 00003f: 99                         | f64.abs
+ 000040: 9a                         | f64.neg
+ 000041: 1a                         | drop
+ 000042: 0b                         | end
+;;; STDOUT ;;)

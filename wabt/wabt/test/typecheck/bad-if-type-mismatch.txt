@@ -1,0 +1,16 @@
+;;; TOOL: wat2wasm
+;;; ERROR: 1
+(module
+  (func
+    i32.const 0
+    if (result i32)
+      f32.const 0
+    else
+      i32.const 0
+    end
+    drop))
+(;; STDERR ;;;
+out/test/typecheck/bad-if-type-mismatch.txt:7:7: error: type mismatch in if true branch, expected [i32] but got [f32]
+      f32.const 0
+      ^^^^^^^^^
+;;; STDERR ;;)

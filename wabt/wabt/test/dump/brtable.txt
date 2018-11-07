@@ -1,0 +1,100 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (func
+    block
+      block
+        block
+          i32.const 0 
+          br_table 0 1 0 
+        end
+        ;; case 0
+        i32.const 1
+        drop
+        i32.const 2
+        drop
+        br 1  ;; topmost block
+      end
+      ;; case 1
+      ;; fallthrough
+    end
+    i32.const 3
+    drop))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 01                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 00                                        ; num params
+000000d: 00                                        ; num results
+0000009: 04                                        ; FIXUP section size
+; section "Function" (3)
+000000e: 03                                        ; section code
+000000f: 00                                        ; section size (guess)
+0000010: 01                                        ; num functions
+0000011: 00                                        ; function 0 signature index
+000000f: 02                                        ; FIXUP section size
+; section "Code" (10)
+0000012: 0a                                        ; section code
+0000013: 00                                        ; section size (guess)
+0000014: 01                                        ; num functions
+; function body 0
+0000015: 00                                        ; func body size (guess)
+0000016: 00                                        ; local decl count
+0000017: 02                                        ; block
+0000018: 40                                        ; void
+0000019: 02                                        ; block
+000001a: 40                                        ; void
+000001b: 02                                        ; block
+000001c: 40                                        ; void
+000001d: 41                                        ; i32.const
+000001e: 00                                        ; i32 literal
+000001f: 0e                                        ; br_table
+0000020: 02                                        ; num targets
+0000021: 00                                        ; break depth
+0000022: 01                                        ; break depth
+0000023: 00                                        ; break depth for default
+0000024: 0b                                        ; end
+0000025: 41                                        ; i32.const
+0000026: 01                                        ; i32 literal
+0000027: 1a                                        ; drop
+0000028: 41                                        ; i32.const
+0000029: 02                                        ; i32 literal
+000002a: 1a                                        ; drop
+000002b: 0c                                        ; br
+000002c: 01                                        ; break depth
+000002d: 0b                                        ; end
+000002e: 0b                                        ; end
+000002f: 41                                        ; i32.const
+0000030: 03                                        ; i32 literal
+0000031: 1a                                        ; drop
+0000032: 0b                                        ; end
+0000015: 1d                                        ; FIXUP func body size
+0000013: 1f                                        ; FIXUP section size
+
+brtable.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000015 func[0]:
+ 000017: 02 40                      | block
+ 000019: 02 40                      |   block
+ 00001b: 02 40                      |     block
+ 00001d: 41 00                      |       i32.const 0
+ 00001f: 0e 02 00 01 00             |       br_table
+ 000024: 0b                         |     end
+ 000025: 41 01                      |     i32.const 1
+ 000027: 1a                         |     drop
+ 000028: 41 02                      |     i32.const 2
+ 00002a: 1a                         |     drop
+ 00002b: 0c 01                      |     br 1
+ 00002d: 0b                         |   end
+ 00002e: 0b                         | end
+ 00002f: 41 03                      | i32.const 3
+ 000031: 1a                         | drop
+ 000032: 0b                         | end
+;;; STDOUT ;;)

@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -150,7 +149,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , hsTyCon = "Double"
             , signed = True
             }
-      | GHC.occNameString tv == "JSRef" -> pure FFI_JSREF
+      | take 2 (GHC.occNameString tv) == "JS" -> pure FFI_JSREF
     _ -> empty
 
 marshalToFFIResultTypes ::
@@ -181,17 +180,6 @@ marshalToFFIFunctionType (GHC.unLoc -> ty) =
       pure
         FFIFunctionType
           {ffiParamTypes = [], ffiResultTypes = r, ffiInIO = False}
-
-rewriteJSRef :: (Monad m, Data a) => a -> m a
-rewriteJSRef t =
-  case eqTypeRep (typeOf t) (typeRep :: TypeRep GHC.RdrName) of
-    Just HRefl ->
-      case t of
-        GHC.Unqual n
-          | GHC.occNameString n == "JSRef" ->
-            pure $ GHC.Unqual (GHC.mkTcOcc "Int")
-        _ -> pure t
-    _ -> gmapM rewriteJSRef t
 
 recoverWasmImportValueType :: FFIValueType -> ValueType
 recoverWasmImportValueType vt =
@@ -299,9 +287,7 @@ collectFFISrc ::
   -> GHC.HsParsedModule
   -> FFIMarshalState
   -> m (GHC.HsParsedModule, FFIMarshalState)
-collectFFISrc mod_sym m ffi_state = do
-  new_hpm_module <- rewriteJSRef new_m
-  pure (m {GHC.hpm_module = new_hpm_module}, st)
+collectFFISrc mod_sym m ffi_state = pure (m {GHC.hpm_module = new_m}, st)
   where
     (new_m, st) = runState (processFFI mod_sym (GHC.hpm_module m)) ffi_state
 

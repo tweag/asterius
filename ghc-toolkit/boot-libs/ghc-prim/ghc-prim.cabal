@@ -49,6 +49,9 @@ Library
         GHC.Tuple
         GHC.Types
 
+        Asterius.Magic
+        Asterius.Types
+
     virtual-modules:
         GHC.Prim
 

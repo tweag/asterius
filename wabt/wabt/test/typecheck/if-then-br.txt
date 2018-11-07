@@ -1,0 +1,9 @@
+;;; TOOL: wat2wasm
+(module
+  (func
+    block
+      i32.const 0
+      if
+        br 0
+      end
+    end))

@@ -1,0 +1,40 @@
+;;; TOOL: run-interp-spec
+;;; STDIN_FILE: third_party/testsuite/globals.wast
+(;; STDOUT ;;;
+out/test/spec/globals.wast:243: assert_invalid passed:
+  error: can't set_global on immutable global at index 0.
+  0000026: error: OnSetGlobalExpr callback failed
+out/test/spec/globals.wast:252: assert_invalid passed:
+  0000013: error: expected END opcode after initializer expression
+out/test/spec/globals.wast:257: assert_invalid passed:
+  000000e: error: unexpected opcode in initializer expression: 0x20
+out/test/spec/globals.wast:262: assert_invalid passed:
+  0000013: error: expected END opcode after initializer expression
+out/test/spec/globals.wast:267: assert_invalid passed:
+  0000010: error: expected END opcode after initializer expression
+out/test/spec/globals.wast:272: assert_invalid passed:
+  000000e: error: unexpected opcode in initializer expression: 0x1
+out/test/spec/globals.wast:277: assert_invalid passed:
+  error: type mismatch in global, expected i32 but got f32.
+  0000013: error: EndGlobalInitExpr callback failed
+out/test/spec/globals.wast:282: assert_invalid passed:
+  0000010: error: expected END opcode after initializer expression
+out/test/spec/globals.wast:287: assert_invalid passed:
+  error: type mismatch in global, expected i32 but got void.
+  000000e: error: EndGlobalInitExpr callback failed
+out/test/spec/globals.wast:292: assert_invalid passed:
+  error: initializer expression can only reference an imported global
+  000000f: error: OnInitExprGetGlobalExpr callback failed
+out/test/spec/globals.wast:297: assert_invalid passed:
+  error: initializer expression can only reference an imported global
+  000000f: error: OnInitExprGetGlobalExpr callback failed
+out/test/spec/globals.wast:305: assert_malformed passed:
+  0000019: error: unable to read string: import field name
+out/test/spec/globals.wast:318: assert_malformed passed:
+  0000019: error: unable to read string: import field name
+out/test/spec/globals.wast:335: assert_malformed passed:
+  0000011: error: global mutability must be 0 or 1
+out/test/spec/globals.wast:347: assert_malformed passed:
+  0000011: error: global mutability must be 0 or 1
+61/61 tests passed.
+;;; STDOUT ;;)

@@ -31,7 +31,7 @@
 namespace wasm {
 
 // Print anything that can be streamed to an ostream
-template <typename T,
+template<typename T,
   typename std::enable_if<
     !std::is_base_of<Expression, typename std::remove_pointer<T>::type>::value
   >::type* = nullptr>
@@ -75,7 +75,7 @@ struct ValidationInfo {
 
   // printing and error handling support
 
-  template <typename T, typename S>
+  template<typename T, typename S>
   std::ostream& fail(S text, T curr, Function* func) {
     valid.store(false);
     auto& stream = getStream(func);
@@ -497,7 +497,7 @@ void FunctionValidator::visitSetGlobal(SetGlobal* curr) {
 }
 
 void FunctionValidator::visitLoad(Load* curr) {
-  if (curr->isAtomic) shouldBeTrue(info.features & Feature::Atomics, curr, "Atomic operation (atomics are disabled)");
+  if (curr->isAtomic) shouldBeTrue(info.features.hasAtomics(), curr, "Atomic operation (atomics are disabled)");
   shouldBeFalse(curr->isAtomic && !getModule()->memory.shared, curr, "Atomic operation with non-shared memory");
   validateMemBytes(curr->bytes, curr->type, curr);
   validateAlignment(curr->align, curr->type, curr->bytes, curr->isAtomic, curr);
@@ -509,7 +509,7 @@ void FunctionValidator::visitLoad(Load* curr) {
 }
 
 void FunctionValidator::visitStore(Store* curr) {
-  if (curr->isAtomic) shouldBeTrue(info.features & Feature::Atomics, curr, "Atomic operation (atomics are disabled)");
+  if (curr->isAtomic) shouldBeTrue(info.features.hasAtomics(), curr, "Atomic operation (atomics are disabled)");
   shouldBeFalse(curr->isAtomic && !getModule()->memory.shared, curr, "Atomic operation with non-shared memory");
   validateMemBytes(curr->bytes, curr->valueType, curr);
   validateAlignment(curr->align, curr->type, curr->bytes, curr->isAtomic, curr);
@@ -522,7 +522,7 @@ void FunctionValidator::visitStore(Store* curr) {
 }
 
 void FunctionValidator::visitAtomicRMW(AtomicRMW* curr) {
-  shouldBeTrue(info.features & Feature::Atomics, curr, "Atomic operation (atomics are disabled)");
+  shouldBeTrue(info.features.hasAtomics(), curr, "Atomic operation (atomics are disabled)");
   shouldBeFalse(!getModule()->memory.shared, curr, "Atomic operation with non-shared memory");
   validateMemBytes(curr->bytes, curr->type, curr);
   shouldBeEqualOrFirstIsUnreachable(curr->ptr->type, i32, curr, "AtomicRMW pointer type must be i32");
@@ -531,7 +531,7 @@ void FunctionValidator::visitAtomicRMW(AtomicRMW* curr) {
 }
 
 void FunctionValidator::visitAtomicCmpxchg(AtomicCmpxchg* curr) {
-  shouldBeTrue(info.features & Feature::Atomics, curr, "Atomic operation (atomics are disabled)");
+  shouldBeTrue(info.features.hasAtomics(), curr, "Atomic operation (atomics are disabled)");
   shouldBeFalse(!getModule()->memory.shared, curr, "Atomic operation with non-shared memory");
   validateMemBytes(curr->bytes, curr->type, curr);
   shouldBeEqualOrFirstIsUnreachable(curr->ptr->type, i32, curr, "cmpxchg pointer type must be i32");
@@ -544,7 +544,7 @@ void FunctionValidator::visitAtomicCmpxchg(AtomicCmpxchg* curr) {
 }
 
 void FunctionValidator::visitAtomicWait(AtomicWait* curr) {
-  shouldBeTrue(info.features & Feature::Atomics, curr, "Atomic operation (atomics are disabled)");
+  shouldBeTrue(info.features.hasAtomics(), curr, "Atomic operation (atomics are disabled)");
   shouldBeFalse(!getModule()->memory.shared, curr, "Atomic operation with non-shared memory");
   shouldBeEqualOrFirstIsUnreachable(curr->type, i32, curr, "AtomicWait must have type i32");
   shouldBeEqualOrFirstIsUnreachable(curr->ptr->type, i32, curr, "AtomicWait pointer type must be i32");
@@ -554,7 +554,7 @@ void FunctionValidator::visitAtomicWait(AtomicWait* curr) {
 }
 
 void FunctionValidator::visitAtomicWake(AtomicWake* curr) {
-  shouldBeTrue(info.features & Feature::Atomics, curr, "Atomic operation (atomics are disabled)");
+  shouldBeTrue(info.features.hasAtomics(), curr, "Atomic operation (atomics are disabled)");
   shouldBeFalse(!getModule()->memory.shared, curr, "Atomic operation with non-shared memory");
   shouldBeEqualOrFirstIsUnreachable(curr->type, i32, curr, "AtomicWake must have type i32");
   shouldBeEqualOrFirstIsUnreachable(curr->ptr->type, i32, curr, "AtomicWake pointer type must be i32");
@@ -671,7 +671,7 @@ void FunctionValidator::visitBinary(Binary* curr) {
       shouldBeEqualOrFirstIsUnreachable(curr->left->type, f64, curr, "f64 op");
       break;
     }
-    default: WASM_UNREACHABLE();
+    case InvalidBinary: WASM_UNREACHABLE();
   }
 }
 
@@ -723,37 +723,88 @@ void FunctionValidator::visitUnary(Unary* curr) {
     case ExtendUInt32:
     case ExtendS8Int32:
     case ExtendS16Int32: {
-      shouldBeEqual(curr->value->type, i32, curr, "extend type must be correct"); break;
+      shouldBeEqual(curr->value->type, i32, curr, "extend type must be correct");
+      break;
     }
     case ExtendS8Int64:
     case ExtendS16Int64:
     case ExtendS32Int64: {
-      shouldBeEqual(curr->value->type, i64, curr, "extend type must be correct"); break;
+      shouldBeEqual(curr->value->type, i64, curr, "extend type must be correct");
+      break;
     }
-    case WrapInt64:              shouldBeEqual(curr->value->type, i64, curr, "wrap type must be correct"); break;
-    case TruncSFloat32ToInt32:   shouldBeEqual(curr->value->type, f32, curr, "trunc type must be correct"); break;
-    case TruncSFloat32ToInt64:   shouldBeEqual(curr->value->type, f32, curr, "trunc type must be correct"); break;
-    case TruncUFloat32ToInt32:   shouldBeEqual(curr->value->type, f32, curr, "trunc type must be correct"); break;
-    case TruncUFloat32ToInt64:   shouldBeEqual(curr->value->type, f32, curr, "trunc type must be correct"); break;
-    case TruncSFloat64ToInt32:   shouldBeEqual(curr->value->type, f64, curr, "trunc type must be correct"); break;
-    case TruncSFloat64ToInt64:   shouldBeEqual(curr->value->type, f64, curr, "trunc type must be correct"); break;
-    case TruncUFloat64ToInt32:   shouldBeEqual(curr->value->type, f64, curr, "trunc type must be correct"); break;
-    case TruncUFloat64ToInt64:   shouldBeEqual(curr->value->type, f64, curr, "trunc type must be correct"); break;
-    case ReinterpretFloat32:     shouldBeEqual(curr->value->type, f32, curr, "reinterpret/f32 type must be correct"); break;
-    case ReinterpretFloat64:     shouldBeEqual(curr->value->type, f64, curr, "reinterpret/f64 type must be correct"); break;
-    case ConvertUInt32ToFloat32: shouldBeEqual(curr->value->type, i32, curr, "convert type must be correct"); break;
-    case ConvertUInt32ToFloat64: shouldBeEqual(curr->value->type, i32, curr, "convert type must be correct"); break;
-    case ConvertSInt32ToFloat32: shouldBeEqual(curr->value->type, i32, curr, "convert type must be correct"); break;
-    case ConvertSInt32ToFloat64: shouldBeEqual(curr->value->type, i32, curr, "convert type must be correct"); break;
-    case ConvertUInt64ToFloat32: shouldBeEqual(curr->value->type, i64, curr, "convert type must be correct"); break;
-    case ConvertUInt64ToFloat64: shouldBeEqual(curr->value->type, i64, curr, "convert type must be correct"); break;
-    case ConvertSInt64ToFloat32: shouldBeEqual(curr->value->type, i64, curr, "convert type must be correct"); break;
-    case ConvertSInt64ToFloat64: shouldBeEqual(curr->value->type, i64, curr, "convert type must be correct"); break;
-    case PromoteFloat32:         shouldBeEqual(curr->value->type, f32, curr, "promote type must be correct"); break;
-    case DemoteFloat64:          shouldBeEqual(curr->value->type, f64, curr, "demote type must be correct"); break;
-    case ReinterpretInt32:       shouldBeEqual(curr->value->type, i32, curr, "reinterpret/i32 type must be correct"); break;
-    case ReinterpretInt64:       shouldBeEqual(curr->value->type, i64, curr, "reinterpret/i64 type must be correct"); break;
-    default: abort();
+    case WrapInt64: {
+      shouldBeEqual(curr->value->type, i64, curr, "wrap type must be correct");
+      break;
+    }
+    case TruncSFloat32ToInt32:
+    case TruncSFloat32ToInt64:
+    case TruncUFloat32ToInt32:
+    case TruncUFloat32ToInt64: {
+      shouldBeEqual(curr->value->type, f32, curr, "trunc type must be correct");
+      break;
+    }
+    case TruncSatSFloat32ToInt32:
+    case TruncSatSFloat32ToInt64:
+    case TruncSatUFloat32ToInt32:
+    case TruncSatUFloat32ToInt64: {
+      shouldBeTrue(info.features.hasTruncSat(), curr, "nontrapping float-to-int conversions are disabled");
+      shouldBeEqual(curr->value->type, f32, curr, "trunc type must be correct");
+      break;
+    }
+    case TruncSFloat64ToInt32:
+    case TruncSFloat64ToInt64:
+    case TruncUFloat64ToInt32:
+    case TruncUFloat64ToInt64: {
+      shouldBeEqual(curr->value->type, f64, curr, "trunc type must be correct");
+      break;
+    }
+    case TruncSatSFloat64ToInt32:
+    case TruncSatSFloat64ToInt64:
+    case TruncSatUFloat64ToInt32:
+    case TruncSatUFloat64ToInt64: {
+      shouldBeTrue(info.features.hasTruncSat(), curr, "nontrapping float-to-int conversions are disabled");
+      shouldBeEqual(curr->value->type, f64, curr, "trunc type must be correct");
+      break;
+    }
+    case ReinterpretFloat32: {
+      shouldBeEqual(curr->value->type, f32, curr, "reinterpret/f32 type must be correct");
+      break;
+    }
+    case ReinterpretFloat64: {
+      shouldBeEqual(curr->value->type, f64, curr, "reinterpret/f64 type must be correct");
+      break;
+    }
+    case ConvertUInt32ToFloat32:
+    case ConvertUInt32ToFloat64:
+    case ConvertSInt32ToFloat32:
+    case ConvertSInt32ToFloat64: {
+      shouldBeEqual(curr->value->type, i32, curr, "convert type must be correct");
+      break;
+    }
+    case ConvertUInt64ToFloat32:
+    case ConvertUInt64ToFloat64:
+    case ConvertSInt64ToFloat32:
+    case ConvertSInt64ToFloat64: {
+      shouldBeEqual(curr->value->type, i64, curr, "convert type must be correct");
+      break;
+    }
+    case PromoteFloat32: {
+      shouldBeEqual(curr->value->type, f32, curr, "promote type must be correct");
+      break;
+    }
+    case DemoteFloat64: {
+      shouldBeEqual(curr->value->type, f64, curr, "demote type must be correct");
+      break;
+    }
+    case ReinterpretInt32: {
+      shouldBeEqual(curr->value->type, i32, curr, "reinterpret/i32 type must be correct");
+      break;
+    }
+    case ReinterpretInt64: {
+      shouldBeEqual(curr->value->type, i64, curr, "reinterpret/i64 type must be correct");
+      break;
+    }
+    case InvalidUnary: WASM_UNREACHABLE();
   }
 }
 
@@ -790,7 +841,6 @@ void FunctionValidator::visitHost(Host* curr) {
       break;
     }
     case CurrentMemory: break;
-    default: WASM_UNREACHABLE();
   }
 }
 
@@ -863,7 +913,9 @@ void FunctionValidator::validateAlignment(size_t align, Type type, Index bytes,
       shouldBeTrue(align <= 8, curr, "alignment must not exceed natural");
       break;
     }
-    default: {}
+    case v128: assert(false && "v128 not implemented yet");
+    case none:
+    case unreachable: {}
   }
 }
 
@@ -922,6 +974,11 @@ static void validateImports(Module& module, ValidationInfo& info) {
       }
     }
   });
+  if (!info.features.hasMutableGlobals()) {
+    ModuleUtils::iterImportedGlobals(module, [&](Global* curr) {
+      info.shouldBeFalse(curr->mutable_, curr->name, "Imported global cannot be mutable");
+    });
+  }
 }
 
 static void validateExports(Module& module, ValidationInfo& info) {
@@ -933,6 +990,10 @@ static void validateExports(Module& module, ValidationInfo& info) {
         for (auto param : f->params) {
           info.shouldBeUnequal(param, i64, f->name, "Exported function must not have i64 parameters");
         }
+      }
+    } else if (curr->kind == ExternalKind::Global && !info.features.hasMutableGlobals()) {
+      if (Global* g = module.getGlobalOrNull(curr->value)) {
+        info.shouldBeFalse(g->mutable_, g->name, "Exported global cannot be mutable");
       }
     }
   }
@@ -971,12 +1032,17 @@ static void validateMemory(Module& module, ValidationInfo& info) {
   info.shouldBeFalse(curr.initial > curr.max, "memory", "memory max >= initial");
   info.shouldBeTrue(!curr.hasMax() || curr.max <= Memory::kMaxSize, "memory", "max memory must be <= 4GB, or unlimited");
   info.shouldBeTrue(!curr.shared || curr.hasMax(), "memory", "shared memory must have max size");
-  if (curr.shared) info.shouldBeTrue(info.features & Feature::Atomics, "memory", "memory is shared, but atomics are disabled");
+  if (curr.shared) info.shouldBeTrue(info.features.hasAtomics(), "memory", "memory is shared, but atomics are disabled");
   for (auto& segment : curr.segments) {
     if (!info.shouldBeEqual(segment.offset->type, i32, segment.offset, "segment offset should be i32")) continue;
-    info.shouldBeTrue(checkOffset(segment.offset, segment.data.size(), module.memory.initial * Memory::kPageSize), segment.offset, "segment offset should be reasonable");
+    info.shouldBeTrue(checkOffset(segment.offset, segment.data.size(), curr.initial * Memory::kPageSize), segment.offset, "segment offset should be reasonable");
     Index size = segment.data.size();
-    info.shouldBeTrue(size <= curr.initial * Memory::kPageSize, segment.data.size(), "segment size should fit in memory (initial)");
+    // If the memory is imported we don't actually know its initial size.
+    // Specifically wasm dll's import a zero sized memory which is perfectly
+    // valid.
+    if (!curr.imported()) {
+      info.shouldBeTrue(size <= curr.initial * Memory::kPageSize, segment.data.size(), "segment size should fit in memory (initial)");
+    }
     if (segment.offset->is<Const>()) {
       Index start = segment.offset->cast<Const>()->value.geti32();
       Index end = start + size;

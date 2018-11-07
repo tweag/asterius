@@ -27,21 +27,26 @@ Type asmToWasmType(AsmType asmType) {
     case ASM_FLOAT: return Type::f32;
     case ASM_INT64: return Type::i64;
     case ASM_NONE: return Type::none;
-    default: {}
+    case ASM_FLOAT32X4:
+    case ASM_FLOAT64X2:
+    case ASM_INT8X16:
+    case ASM_INT16X8:
+    case ASM_INT32X4: return Type::v128;
   }
-  abort();
+  WASM_UNREACHABLE();
 }
 
 AsmType wasmToAsmType(Type type) {
   switch (type) {
-    case Type::i32: return ASM_INT;
-    case Type::f32: return ASM_FLOAT;
-    case Type::f64: return ASM_DOUBLE;
-    case Type::i64: return ASM_INT64;
-    case Type::none: return ASM_NONE;
-    default: {}
+    case i32: return ASM_INT;
+    case f32: return ASM_FLOAT;
+    case f64: return ASM_DOUBLE;
+    case i64: return ASM_INT64;
+    case v128: assert(false && "v128 not implemented yet");
+    case none: return ASM_NONE;
+    case unreachable: WASM_UNREACHABLE();
   }
-  abort();
+  WASM_UNREACHABLE();
 }
 
 char getSig(Type type) {
@@ -50,9 +55,11 @@ char getSig(Type type) {
     case i64:  return 'j';
     case f32:  return 'f';
     case f64:  return 'd';
+    case v128: return 'V';
     case none: return 'v';
-    default: abort();
+    case unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 std::string getSig(const FunctionType *type) {
@@ -79,16 +86,17 @@ Type sigToType(char sig) {
     case 'j': return i64;
     case 'f': return f32;
     case 'd': return f64;
+    case 'V': return v128;
     case 'v': return none;
     default: abort();
   }
 }
 
-FunctionType* sigToFunctionType(std::string sig) {
-  auto ret = new FunctionType;
-  ret->result = sigToType(sig[0]);
+FunctionType sigToFunctionType(std::string sig) {
+  FunctionType ret;
+  ret.result = sigToType(sig[0]);
   for (size_t i = 1; i < sig.size(); i++) {
-    ret->params.push_back(sigToType(sig[i]));
+    ret.params.push_back(sigToType(sig[i]));
   }
   return ret;
 }

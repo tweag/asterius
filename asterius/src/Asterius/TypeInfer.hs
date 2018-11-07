@@ -50,5 +50,4 @@ infer expr =
         DoubleReg {} -> [F64]
         _ -> [I64]
     UnresolvedSetGlobal {..} -> []
-    EmitErrorMessage {..} -> phantomReturnTypes
     _ -> error $ "Asterius.TypeInfer.infer: " <> show expr

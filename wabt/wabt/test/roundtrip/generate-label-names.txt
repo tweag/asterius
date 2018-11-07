@@ -1,0 +1,37 @@
+;;; TOOL: run-roundtrip
+;;; ARGS: --stdout --generate-names
+(module
+  (func 
+    block  
+      loop  
+        br 0 
+        br 1 
+        br 2 ;; equivalent to return
+        i32.const 0
+        br_table 0 1 2 
+        i32.const 1
+        br_if 2
+      end
+    end
+    block  
+      br 0 
+    end))
+(;; STDOUT ;;;
+(module
+  (type $t0 (func))
+  (func $f0 (type $t0)
+    block $B0
+      loop $L1
+        br $L1
+        br $B0
+        br 2 (;@0;)
+        i32.const 0
+        br_table $L1 $B0 2 (;@0;)
+        i32.const 1
+        br_if 2 (;@0;)
+      end
+    end
+    block $B2
+      br $B2
+    end))
+;;; STDOUT ;;)

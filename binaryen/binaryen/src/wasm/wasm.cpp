@@ -29,14 +29,16 @@ namespace BinaryConsts {
 namespace UserSections {
 const char* Name = "name";
 const char* SourceMapUrl = "sourceMappingURL";
-
 const char* Dylink = "dylink";
+const char* Linking = "linking";
 }
 }
 
 Name GROW_WASM_MEMORY("__growWasmMemory"),
-     MEMORY_BASE("memoryBase"),
-     TABLE_BASE("tableBase"),
+     MEMORY_BASE("__memory_base"),
+     TABLE_BASE("__table_base"),
+     GET_TEMP_RET0("getTempRet0"),
+     SET_TEMP_RET0("setTempRet0"),
      NEW_SIZE("newSize"),
      MODULE("module"),
      START("start"),
@@ -102,8 +104,9 @@ const char* getExpressionName(Expression* curr) {
     case Expression::Id::AtomicRMWId: return "atomic_rmw";
     case Expression::Id::AtomicWaitId: return "atomic_wait";
     case Expression::Id::AtomicWakeId: return "atomic_wake";
-    default: WASM_UNREACHABLE();
+    case Expression::Id::NumExpressionIds: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 // core AST type checking
@@ -464,11 +467,19 @@ void Unary::finalize() {
     case TruncUFloat32ToInt32:
     case TruncSFloat64ToInt32:
     case TruncUFloat64ToInt32:
+    case TruncSatSFloat32ToInt32:
+    case TruncSatUFloat32ToInt32:
+    case TruncSatSFloat64ToInt32:
+    case TruncSatUFloat64ToInt32:
     case ReinterpretFloat32: type = i32; break;
     case TruncSFloat32ToInt64:
     case TruncUFloat32ToInt64:
     case TruncSFloat64ToInt64:
     case TruncUFloat64ToInt64:
+    case TruncSatSFloat32ToInt64:
+    case TruncSatUFloat32ToInt64:
+    case TruncSatSFloat64ToInt64:
+    case TruncSatUFloat64ToInt64:
     case ReinterpretFloat64: type = i64; break;
     case ReinterpretInt32:
     case ConvertSInt32ToFloat32:
@@ -480,7 +491,7 @@ void Unary::finalize() {
     case ConvertUInt32ToFloat64:
     case ConvertSInt64ToFloat64:
     case ConvertUInt64ToFloat64: type = f64; break;
-    default: std::cerr << "waka " << op << '\n'; WASM_UNREACHABLE();
+    case InvalidUnary: WASM_UNREACHABLE();
   }
 }
 
@@ -565,7 +576,6 @@ void Host::finalize() {
       }
       break;
     }
-    default: WASM_UNREACHABLE();
   }
 }
 
@@ -634,6 +644,17 @@ Type Function::getLocalType(Index index) {
   } else {
     WASM_UNREACHABLE();
   }
+}
+
+void Function::clearNames() {
+  localNames.clear();
+}
+
+void Function::clearDebugInfo() {
+  localIndices.clear();
+  debugLocations.clear();
+  prologLocation.clear();
+  epilogLocation.clear();
 }
 
 FunctionType* Module::getFunctionType(Name name) {
@@ -807,6 +828,10 @@ void Module::updateMaps() {
   for (auto& curr : globals) {
     globalsMap[curr->name] = curr.get();
   }
+}
+
+void Module::clearDebugInfo() {
+  debugInfoFileNames.clear();
 }
 
 } // namespace wasm

@@ -11,7 +11,7 @@
 
 #pragma once
 
-#include "rts/GetTime.h"
+#include "GetTime.h"
 
 #include "BeginPrivate.h"
 

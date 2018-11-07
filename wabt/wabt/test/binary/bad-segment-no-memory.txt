@@ -1,0 +1,12 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(DATA) {
+  count[1]
+  addr[i32.const 0 end]
+  data[str("hi")]
+}
+(;; STDERR ;;;
+000000b: error: data section without memory section
+000000b: error: data section without memory section
+;;; STDERR ;;)

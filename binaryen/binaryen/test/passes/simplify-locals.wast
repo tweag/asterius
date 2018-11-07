@@ -12,6 +12,8 @@
   (import $_i64Subtract "env" "i64sub" (param i32 i32 i32 i32) (result i32))
   (import $___udivmoddi4 "env" "moddi" (param i32 i32 i32 i32 i32) (result i32))
   (import $lp "env" "lp" (param i32 i32) (result i32))
+  (import "fuzzing-support" "log-f32" (func $fimport$0 (param f32)))
+  (global $global$0 (mut i32) (i32.const 10))
   (func $contrast ;; check for tee and structure sinking
     (local $x i32)
     (local $y i32)
@@ -882,6 +884,207 @@
     )
    )
   )
+  (func $if-one-side (result i32)
+   (local $x i32)
+   (if
+    (i32.const 1)
+    (set_local $x
+     (i32.const 2)
+    )
+   )
+   (get_local  $x)
+  )
+  (func $if-one-side-undo (result i32)
+   (local $x i32)
+   (local $y i32)
+   (set_local $y
+    (i32.const 0)
+   )
+   (if
+    (i32.const 1)
+    (set_local $x
+     (i32.const 2)
+    )
+   )
+   (get_local  $y)
+  )
+  (func $if-one-side-multi (param $0 i32) (result i32)
+   (if
+    (i32.lt_s
+     (get_local $0)
+     (i32.const -1073741824)
+    )
+    (set_local $0
+     (i32.const -1073741824)
+    )
+    (if
+     (i32.gt_s
+      (get_local $0)
+      (i32.const 1073741823)
+     )
+     (set_local $0
+      (i32.const 1073741823)
+     )
+    )
+   )
+   (get_local $0)
+  )
+  (func $if-one-side-undo-but-its-a-tee (param $0 i32) (result i32)
+   (local $1 i32)
+   (local $2 i32)
+   (local $3 i32)
+   (local $4 i32)
+   (local $x i32)
+   (local $y i32)
+   (local $z i32)
+   ;; break these splittable ifs up
+   (set_local $x
+     (if (result i32)
+       (i32.const -1)
+       (i32.const -2)
+       (get_local $x)
+     )
+   )
+   ;; oops, this one is a tee
+   (drop
+    (call $if-one-side-undo-but-its-a-tee
+     (tee_local $x
+       (if (result i32)
+         (i32.const -3)
+         (i32.const -4)
+         (get_local $x)
+       )
+     )
+    )
+   )
+   ;; sinkable
+   (set_local $y
+     (if (result i32)
+       (i32.const -5)
+       (i32.const -6)
+       (get_local $y)
+     )
+   )
+   (drop (i32.eqz (get_local $y)))
+   ;; tee-able at best
+   (set_local $z
+     (if (result i32)
+       (i32.const -7)
+       (i32.const -8)
+       (get_local $z)
+     )
+   )
+   (drop
+    (i32.add
+     (get_local $z)
+     (get_local $z)
+    )
+   )
+   (if
+    (block $label$1 (result i32)
+     (if
+      (i32.const 1)
+      (set_local $4
+       (i32.const 2)
+      )
+     )
+     (if
+      (get_local $4)
+      (set_local $4
+       (i32.const 0)
+      )
+     )
+     (get_local $4)
+    )
+    (unreachable)
+   )
+   (i32.const 0)
+  )
+  (func $splittable-ifs-multicycle (param $20 i32) (result i32)
+   (set_local $20
+    (if (result i32)
+     (i32.const 1)
+     (if (result i32)
+      (i32.const 2)
+      (if (result i32)
+       (i32.const 3)
+       (i32.const 4)
+       (get_local $20)
+      )
+      (get_local $20)
+     )
+     (get_local $20)
+    )
+   )
+   (get_local $20)
+  )
+  (func $update-getCounter (param $0 i32) (param $1 f64) (param $2 f64) (param $3 f32) (param $4 i32) (result f64)
+   (set_global $global$0
+    (i32.sub
+     (get_global $global$0)
+     (i32.const 1)
+    )
+   )
+   (set_global $global$0
+    (i32.sub
+     (get_global $global$0)
+     (i32.const 1)
+    )
+   )
+   (loop $label$1 (result f64)
+    (set_global $global$0
+     (i32.sub
+      (get_global $global$0)
+      (i32.const 1)
+     )
+    )
+    (set_global $global$0
+     (i32.sub
+      (get_global $global$0)
+      (i32.const 1)
+     )
+    )
+    (call $fimport$0
+     (tee_local $3
+      (if (result f32)
+       (i32.eqz
+        (get_local $0)
+       )
+       (f32.const 4623408228068004207103214e13)
+       (get_local $3)
+      )
+     )
+    )
+    (set_global $global$0
+     (i32.sub
+      (get_global $global$0)
+      (i32.const 1)
+     )
+    )
+    (if (result f64)
+     (get_global $global$0)
+     (block
+      (set_global $global$0
+       (i32.sub
+        (get_global $global$0)
+        (i32.const 1)
+       )
+      )
+      (set_local $0
+       (i32.const -65)
+      )
+      (set_global $global$0
+       (i32.sub
+        (get_global $global$0)
+        (i32.const 1)
+       )
+      )
+      (br $label$1)
+     )
+     (f64.const -70)
+    )
+   )
+  )
 )
 (module
   (memory (shared 256 256))
@@ -892,6 +1095,10 @@
   (type $4 (func (param i32)))
   (type $5 (func (param i32) (result i32)))
   (type $6 (func (param i32 i32 i32 i32 i32 i32)))
+  (import "fuzzing-support" "log1" (func $fimport$0 (result i32)))
+  (import "fuzzing-support" "log2" (func $fimport$1 (param i32)))
+  (import "fuzzing-support" "log3" (func $fimport$2 (param f32)))
+  (global $global$0 (mut i32) (i32.const 10))
   (func $nonatomics (result i32) ;; loads are reordered
     (local $x i32)
     (set_local $x (i32.load (i32.const 1024)))
@@ -1240,5 +1447,71 @@
     )
    )
    (get_local $var$2)
+  )
+  (func $loop-value-harder (result i32)
+   (local $0 i32)
+   (local $1 i32)
+   (local $2 i32)
+   (local $3 f32)
+   (local $4 f32)
+   (local $5 f32)
+   (local $6 f32)
+   (local $7 f32)
+   (local $8 f32)
+   (local $9 f32)
+   (local $10 f32)
+   (block $label$1
+    (loop $label$2
+     (block $label$3
+      (set_global $global$0
+       (i32.const -1)
+      )
+      (block $label$4
+       (set_local $0
+        (call $fimport$0)
+       )
+       (if
+        (get_local $0)
+        (set_local $5
+         (f32.const -2048)
+        )
+        (block
+         (call $fimport$1
+          (i32.const -25732)
+         )
+         (br $label$2)
+        )
+       )
+      )
+      (set_local $6
+       (get_local $5)
+      )
+      (set_local $7
+       (get_local $6)
+      )
+     )
+     (set_local $8
+      (get_local $7)
+     )
+     (set_local $9
+      (get_local $8)
+     )
+    )
+    (set_local $10
+     (get_local $9)
+    )
+    (call $fimport$2
+     (get_local $10)
+    )
+    (set_local $1
+     (i32.const -5417091)
+    )
+   )
+   (set_local $2
+    (get_local $1)
+   )
+   (return
+    (get_local $2)
+   )
   )
 )

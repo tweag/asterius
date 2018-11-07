@@ -1,0 +1,21 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) { count[1] function params[0] results[0] }
+section(FUNCTION) { count[1] sig[0] }
+section(CODE) { count[1] func { locals[0] nop } }
+section("name") {
+  section(NAME_FUNCTION) {
+    count[2]
+    index[0]
+    str("f")
+    index[1]
+    str("g")
+  }
+}
+(;; STDERR ;;;
+error: expected function name count (2) <= function count (1)
+0000023: error: OnFunctionNamesCount callback failed
+error: expected function name count (2) <= function count (1)
+0000023: error: OnFunctionNamesCount callback failed
+;;; STDERR ;;)

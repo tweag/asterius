@@ -21,16 +21,19 @@
 -----------------------------------------------------------------------------
 
 module GHC.IO.Handle (
+#if !defined(ASTERIUS)
+   mkFileHandle, mkDuplexHandle,
+
+   hClose_help,
+#endif
    Handle,
    BufferMode(..),
-
-   mkFileHandle, mkDuplexHandle,
 
    hFileSize, hSetFileSize, hIsEOF, isEOF, hLookAhead,
    hSetBuffering, hSetBinaryMode, hSetEncoding, hGetEncoding,
    hFlush, hFlushAll, hDuplicate, hDuplicateTo,
 
-   hClose, hClose_help,
+   hClose,
 
    LockMode(..), hLock, hTryLock,
 
@@ -86,13 +89,18 @@ import Data.Typeable
 -- closed.
 
 hClose :: Handle -> IO ()
+#if defined(ASTERIUS)
+hClose = undefined
+#else
 hClose h@(FileHandle _ m)     = do
   mb_exc <- hClose' h m
   hClose_maybethrow mb_exc h
 hClose h@(DuplexHandle _ r w) = do
   excs <- mapM (hClose' h) [r,w]
   hClose_maybethrow (listToMaybe (catMaybes excs)) h
+#endif
 
+#if !defined(ASTERIUS)
 hClose_maybethrow :: Maybe SomeException -> Handle -> IO ()
 hClose_maybethrow Nothing  h = return ()
 hClose_maybethrow (Just e) h = hClose_rethrow e h
@@ -105,6 +113,7 @@ hClose_rethrow e h =
 
 hClose' :: Handle -> MVar Handle__ -> IO (Maybe SomeException)
 hClose' h m = withHandle' "hClose" h m $ hClose_help
+#endif
 
 -----------------------------------------------------------------------------
 -- Detecting and changing the size of a file
@@ -113,6 +122,9 @@ hClose' h m = withHandle' "hClose" h m $ hClose_help
 -- 'hFileSize' @hdl@ returns the size of that file in 8-bit bytes.
 
 hFileSize :: Handle -> IO Integer
+#if defined(ASTERIUS)
+hFileSize = undefined
+#else
 hFileSize handle =
     withHandle_ "hFileSize" handle $ \ handle_@Handle__{haDevice=dev} -> do
     case haType handle_ of
@@ -124,11 +136,14 @@ hFileSize handle =
                  then return r
                  else ioException (IOError Nothing InappropriateType "hFileSize"
                                    "not a regular file" Nothing Nothing)
-
+#endif
 
 -- | 'hSetFileSize' @hdl@ @size@ truncates the physical file with handle @hdl@ to @size@ bytes.
 
 hSetFileSize :: Handle -> Integer -> IO ()
+#if defined(ASTERIUS)
+hSetFileSize = undefined
+#else
 hSetFileSize handle size =
     withHandle_ "hSetFileSize" handle $ \ handle_@Handle__{haDevice=dev} -> do
     case haType handle_ of
@@ -137,6 +152,7 @@ hSetFileSize handle size =
       _ -> do flushWriteBuffer handle_
               IODevice.setSize dev size
               return ()
+#endif
 
 -- ---------------------------------------------------------------------------
 -- Detecting the End of Input
@@ -150,6 +166,9 @@ hSetFileSize handle size =
 -- the stream to determine whether there is any more data to be read.
 
 hIsEOF :: Handle -> IO Bool
+#if defined(ASTERIUS)
+hIsEOF = undefined
+#else
 hIsEOF handle = wantReadableHandle_ "hIsEOF" handle $ \Handle__{..} -> do
 
   cbuf <- readIORef haCharBuffer
@@ -164,6 +183,7 @@ hIsEOF handle = wantReadableHandle_ "hIsEOF" handle $ \Handle__{..} -> do
      then return True
      else do writeIORef haByteBuffer bbuf'
              return False
+#endif
 
 -- ---------------------------------------------------------------------------
 -- isEOF
@@ -186,8 +206,12 @@ isEOF = hIsEOF stdin
 --  * 'System.IO.Error.isEOFError' if the end of file has been reached.
 
 hLookAhead :: Handle -> IO Char
+#if defined(ASTERIUS)
+hLookAhead = undefined
+#else
 hLookAhead handle =
   wantReadableHandle_ "hLookAhead"  handle hLookAhead_
+#endif
 
 -- ---------------------------------------------------------------------------
 -- Buffering Operations
@@ -213,6 +237,9 @@ hLookAhead handle =
 --    buffering mode to be changed.
 
 hSetBuffering :: Handle -> BufferMode -> IO ()
+#if defined(ASTERIUS)
+hSetBuffering = undefined
+#else
 hSetBuffering handle mode =
   withAllHandles__ "hSetBuffering" handle $ \ handle_@Handle__{..} -> do
   case haType of
@@ -245,6 +272,7 @@ hSetBuffering handle mode =
           writeIORef haBuffers BufferListNil
 
           return Handle__{ haBufferMode = mode,.. }
+#endif
 
 -- -----------------------------------------------------------------------------
 -- hSetEncoding
@@ -262,6 +290,9 @@ hSetBuffering handle mode =
 -- the encoding.
 --
 hSetEncoding :: Handle -> TextEncoding -> IO ()
+#if defined(ASTERIUS)
+hSetEncoding = undefined
+#else
 hSetEncoding hdl encoding = do
   withAllHandles__ "hSetEncoding" hdl $ \h_@Handle__{..} -> do
     flushCharBuffer h_
@@ -273,6 +304,7 @@ hSetEncoding hdl encoding = do
                       haDecoder = mb_decoder,
                       haEncoder = mb_encoder,
                       haCodec   = Just encoding, .. })
+#endif
 
 -- | Return the current 'TextEncoding' for the specified 'Handle', or
 -- 'Nothing' if the 'Handle' is in binary mode.
@@ -284,8 +316,12 @@ hSetEncoding hdl encoding = do
 -- extra byte-order-mark being written to the file.
 --
 hGetEncoding :: Handle -> IO (Maybe TextEncoding)
+#if defined(ASTERIUS)
+hGetEncoding = undefined
+#else
 hGetEncoding hdl =
   withHandle_ "hGetEncoding" hdl $ \h_@Handle__{..} -> return haCodec
+#endif
 
 -- -----------------------------------------------------------------------------
 -- hFlush
@@ -302,7 +338,11 @@ hGetEncoding hdl =
 --    discarded or retained under these circumstances.
 
 hFlush :: Handle -> IO ()
+#if defined(ASTERIUS)
+hFlush = undefined
+#else
 hFlush handle = wantWritableHandle "hFlush" handle flushWriteBuffer
+#endif
 
 -- | The action 'hFlushAll' @hdl@ flushes all buffered data in @hdl@,
 -- including any buffered read data.  Buffered read data is flushed
@@ -322,7 +362,11 @@ hFlush handle = wantWritableHandle "hFlush" handle flushWriteBuffer
 --    is not seekable.
 
 hFlushAll :: Handle -> IO ()
+#if defined(ASTERIUS)
+hFlushAll = undefined
+#else
 hFlushAll handle = withHandle_ "hFlushAll" handle flushBuffer
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Repositioning Handles
@@ -399,6 +443,9 @@ hSetPosn (HandlePosn h i) = hSeek h AbsoluteSeek i
 --    exceeded.
 
 hSeek :: Handle -> SeekMode -> Integer -> IO ()
+#if defined(ASTERIUS)
+hSeek = undefined
+#else
 hSeek handle mode offset =
     wantSeekableHandle "hSeek" handle $ \ handle_@Handle__{..} -> do
     debugIO ("hSeek " ++ show (mode,offset))
@@ -418,7 +465,7 @@ hSeek handle mode offset =
     flushCharReadBuffer handle_
     flushByteReadBuffer handle_
     IODevice.seek haDevice mode offset
-
+#endif
 
 -- | Computation 'hTell' @hdl@ returns the current position of the
 -- handle @hdl@, as the number of bytes from the beginning of
@@ -430,6 +477,9 @@ hSeek handle mode offset =
 --  * 'System.IO.Error.isIllegalOperationError' if the Handle is not seekable.
 --
 hTell :: Handle -> IO Integer
+#if defined(ASTERIUS)
+hTell = undefined
+#else
 hTell handle =
     wantSeekableHandle "hGetPosn" handle $ \ handle_@Handle__{..} -> do
 
@@ -451,6 +501,7 @@ hTell handle =
             "   bbuf: " ++ summaryBuffer bbuf)
 
       return real_posn
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Handle Properties
@@ -460,19 +511,27 @@ hTell handle =
 -- the specified property, and `False' otherwise.
 
 hIsOpen :: Handle -> IO Bool
+#if defined(ASTERIUS)
+hIsOpen = undefined
+#else
 hIsOpen handle =
     withHandle_ "hIsOpen" handle $ \ handle_ -> do
     case haType handle_ of
       ClosedHandle         -> return False
       SemiClosedHandle     -> return False
       _                    -> return True
+#endif
 
 hIsClosed :: Handle -> IO Bool
+#if defined(ASTERIUS)
+hIsClosed = undefined
+#else
 hIsClosed handle =
     withHandle_ "hIsClosed" handle $ \ handle_ -> do
     case haType handle_ of
       ClosedHandle         -> return True
       _                    -> return False
+#endif
 
 {- not defined, nor exported, but mentioned
    here for documentation purposes:
@@ -485,6 +544,9 @@ hIsClosed handle =
 -}
 
 hIsReadable :: Handle -> IO Bool
+#if defined(ASTERIUS)
+hIsReadable = undefined
+#else
 hIsReadable (DuplexHandle _ _ _) = return True
 hIsReadable handle =
     withHandle_ "hIsReadable" handle $ \ handle_ -> do
@@ -492,8 +554,12 @@ hIsReadable handle =
       ClosedHandle         -> ioe_closedHandle
       SemiClosedHandle     -> ioe_semiclosedHandle
       htype                -> return (isReadableHandleType htype)
+#endif
 
 hIsWritable :: Handle -> IO Bool
+#if defined(ASTERIUS)
+hIsWritable = undefined
+#else
 hIsWritable (DuplexHandle _ _ _) = return True
 hIsWritable handle =
     withHandle_ "hIsWritable" handle $ \ handle_ -> do
@@ -501,11 +567,15 @@ hIsWritable handle =
       ClosedHandle         -> ioe_closedHandle
       SemiClosedHandle     -> ioe_semiclosedHandle
       htype                -> return (isWritableHandleType htype)
+#endif
 
 -- | Computation 'hGetBuffering' @hdl@ returns the current buffering mode
 -- for @hdl@.
 
 hGetBuffering :: Handle -> IO BufferMode
+#if defined(ASTERIUS)
+hGetBuffering = undefined
+#else
 hGetBuffering handle =
     withHandle_ "hGetBuffering" handle $ \ handle_ -> do
     case haType handle_ of
@@ -514,8 +584,12 @@ hGetBuffering handle =
            -- We're being non-standard here, and allow the buffering
            -- of a semi-closed handle to be queried.   -- sof 6/98
           return (haBufferMode handle_)  -- could be stricter..
+#endif
 
 hIsSeekable :: Handle -> IO Bool
+#if defined(ASTERIUS)
+hIsSeekable = undefined
+#else
 hIsSeekable handle =
     withHandle_ "hIsSeekable" handle $ \ handle_@Handle__{..} -> do
     case haType of
@@ -523,6 +597,7 @@ hIsSeekable handle =
       SemiClosedHandle     -> ioe_semiclosedHandle
       AppendHandle         -> return False
       _                    -> IODevice.isSeekable haDevice
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Changing echo status
@@ -530,6 +605,9 @@ hIsSeekable handle =
 -- | Set the echoing status of a handle connected to a terminal.
 
 hSetEcho :: Handle -> Bool -> IO ()
+#if defined(ASTERIUS)
+hSetEcho = undefined
+#else
 hSetEcho handle on = do
     isT   <- hIsTerminalDevice handle
     if not isT
@@ -539,10 +617,14 @@ hSetEcho handle on = do
       case haType of
          ClosedHandle -> ioe_closedHandle
          _            -> IODevice.setEcho haDevice on
+#endif
 
 -- | Get the echoing status of a handle connected to a terminal.
 
 hGetEcho :: Handle -> IO Bool
+#if defined(ASTERIUS)
+hGetEcho = undefined
+#else
 hGetEcho handle = do
     isT   <- hIsTerminalDevice handle
     if not isT
@@ -552,15 +634,20 @@ hGetEcho handle = do
        case haType of
          ClosedHandle -> ioe_closedHandle
          _            -> IODevice.getEcho haDevice
+#endif
 
 -- | Is the handle connected to a terminal?
 
 hIsTerminalDevice :: Handle -> IO Bool
+#if defined(ASTERIUS)
+hIsTerminalDevice = undefined
+#else
 hIsTerminalDevice handle = do
     withHandle_ "hIsTerminalDevice" handle $ \ Handle__{..} -> do
      case haType of
        ClosedHandle -> ioe_closedHandle
        _            -> IODevice.isTerminal haDevice
+#endif
 
 -- -----------------------------------------------------------------------------
 -- hSetBinaryMode
@@ -572,6 +659,9 @@ hIsTerminalDevice handle = do
 -- with 'hSetNewlineMode' with 'noNewlineTranslation'.
 --
 hSetBinaryMode :: Handle -> Bool -> IO ()
+#if defined(ASTERIUS)
+hSetBinaryMode = undefined
+#else
 hSetBinaryMode handle bin =
   withAllHandles__ "hSetBinaryMode" handle $ \ h_@Handle__{..} ->
     do
@@ -596,6 +686,7 @@ hSetBinaryMode handle bin =
                           haCodec    = mb_te,
                           haInputNL  = inputNL nl,
                           haOutputNL = outputNL nl, .. }
+#endif
 
 -- -----------------------------------------------------------------------------
 -- hSetNewlineMode
@@ -603,11 +694,15 @@ hSetBinaryMode handle bin =
 -- | Set the 'NewlineMode' on the specified 'Handle'.  All buffered
 -- data is flushed first.
 hSetNewlineMode :: Handle -> NewlineMode -> IO ()
+#if defined(ASTERIUS)
+hSetNewlineMode = undefined
+#else
 hSetNewlineMode handle NewlineMode{ inputNL=i, outputNL=o } =
   withAllHandles__ "hSetNewlineMode" handle $ \h_@Handle__{..} ->
     do
          flushBuffer h_
          return h_{ haInputNL=i, haOutputNL=o }
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Duplicating a Handle
@@ -618,6 +713,9 @@ hSetNewlineMode handle NewlineMode{ inputNL=i, outputNL=o } =
 -- before the handle is duplicated.
 
 hDuplicate :: Handle -> IO Handle
+#if defined(ASTERIUS)
+hDuplicate = undefined
+#else
 hDuplicate h@(FileHandle path m) = do
   withHandle_' "hDuplicate" h m $ \h_ ->
       dupHandle path h Nothing h_ (Just handleFinalizer)
@@ -629,7 +727,9 @@ hDuplicate h@(DuplexHandle path r w) = do
     withHandle_' "hDuplicate" h r $ \h_ ->
         dupHandle path h (Just write_m) h_  Nothing
   return (DuplexHandle path read_m write_m)
+#endif
 
+#if !defined(ASTERIUS)
 dupHandle :: FilePath
           -> Handle
           -> Maybe (MVar Handle__)
@@ -659,6 +759,7 @@ dupHandle_ new_dev filepath other_side h_@Handle__{..} mb_finalizer = do
   mkHandle new_dev filepath haType True{-buffered-} mb_codec
       NewlineMode { inputNL = haInputNL, outputNL = haOutputNL }
       mb_finalizer other_side
+#endif
 
 -- -----------------------------------------------------------------------------
 -- Replacing a Handle
@@ -674,6 +775,9 @@ This can be used to retarget the standard Handles, for example:
 -}
 
 hDuplicateTo :: Handle -> Handle -> IO ()
+#if defined(ASTERIUS)
+hDuplicateTo = undefined
+#else
 hDuplicateTo h1@(FileHandle path m1) h2@(FileHandle _ m2)  = do
  withHandle__' "hDuplicateTo" h2 m2 $ \h2_ -> do
    _ <- hClose_help h2_
@@ -690,13 +794,16 @@ hDuplicateTo h1@(DuplexHandle path r1 w1) h2@(DuplexHandle _ r2 w2)  = do
      dupHandleTo path h1 (Just w1) r2_ r1_ Nothing
 hDuplicateTo h1 _ =
   ioe_dupHandlesNotCompatible h1
+#endif
 
-
+#if !defined(ASTERIUS)
 ioe_dupHandlesNotCompatible :: Handle -> IO a
 ioe_dupHandlesNotCompatible h =
    ioException (IOError (Just h) IllegalOperation "hDuplicateTo"
                 "handles are incompatible" Nothing Nothing)
+#endif
 
+#if !defined(ASTERIUS)
 dupHandleTo :: FilePath
             -> Handle
             -> Maybe (MVar Handle__)
@@ -714,6 +821,7 @@ dupHandleTo filepath h other_side
       _ <- IODevice.dup2 dev dev'
       FileHandle _ m <- dupHandle_ dev' filepath other_side h_ mb_finalizer
       takeMVar m
+#endif
 
 -- ---------------------------------------------------------------------------
 -- showing Handles.
@@ -722,9 +830,14 @@ dupHandleTo filepath h other_side
 -- than the (pure) instance of 'Show' for 'Handle'.
 
 hShow :: Handle -> IO String
+#if defined(ASTERIUS)
+hShow = undefined
+#else
 hShow h@(FileHandle path _) = showHandle' path False h
 hShow h@(DuplexHandle path _ _) = showHandle' path True h
+#endif
 
+#if !defined(ASTERIUS)
 showHandle' :: String -> Bool -> Handle -> IO String
 showHandle' filepath is_duplex h =
   withHandle_ "showHandle" h $ \hdl_ ->
@@ -757,4 +870,4 @@ showHandle' filepath is_duplex h =
       where
        def :: Int
        def = bufSize buf
-
+#endif

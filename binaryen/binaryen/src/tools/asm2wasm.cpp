@@ -60,7 +60,7 @@ int main(int argc, const char *argv[]) {
            [](Options *o, const std::string& argument) {
              o->extra["mem init"] = argument;
            })
-      .add("--mem-base", "-mb", "Set the location to write the memory initialization (--mem-init) file (GLOBAL_BASE in emscripten). If not provided, the memoryBase global import is used.", Options::Arguments::One,
+      .add("--mem-base", "-mb", "Set the location to write the memory initialization (--mem-init) file (GLOBAL_BASE in emscripten). If not provided, the __memory_base global import is used.", Options::Arguments::One,
            [](Options *o, const std::string& argument) {
              o->extra["mem base"] = argument;
            })
@@ -115,9 +115,6 @@ int main(int argc, const char *argv[]) {
       .add("--emit-text", "-S", "Emit text instead of binary for the output file",
            Options::Arguments::Zero,
            [&](Options *o, const std::string& argument) { emitBinary = false; })
-      .add("--enable-threads", "-a", "Enable the Atomics wasm feature",
-           Options::Arguments::Zero,
-           [&](Options *o, const std::string& argument) { options.passOptions.features |= Feature::Atomics; })
       .add_positional("INFILE", Options::Arguments::One,
                       [](Options *o, const std::string& argument) {
                         o->extra["infile"] = argument;
@@ -173,7 +170,7 @@ int main(int argc, const char *argv[]) {
     Expression* init;
     const auto &memBase = options.extra.find("mem base");
     if (memBase == options.extra.end()) {
-      init = Builder(wasm).makeGetGlobal(Name("memoryBase"), i32);
+      init = Builder(wasm).makeGetGlobal(MEMORY_BASE, i32);
     } else {
       init = Builder(wasm).makeConst(Literal(int32_t(atoi(memBase->second.c_str()))));
     }
@@ -188,7 +185,7 @@ int main(int argc, const char *argv[]) {
   if (memInit != options.extra.end()) {
     if (options.runningDefaultOptimizationPasses()) {
       PassRunner runner(&wasm);
-      runner.setFeatures(options.features);
+      runner.setFeatures(options.getFeatures());
       runner.add("memory-packing");
       runner.run();
     }

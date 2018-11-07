@@ -428,9 +428,13 @@
    HP_CHK_P(bytes);                             \
    TICK_ALLOC_HEAP_NOCTR(bytes);
 
+#define CHECK_GC() 0
+
+/*
 #define CHECK_GC()                                                      \
   (bdescr_link(CurrentNursery) == NULL ||                               \
    generation_n_new_large_words(W_[g0]) >= TO_W_(CLong[large_alloc_lim]))
+*/
 
 // allocate() allocates from the nursery, so we check to see
 // whether the nursery is nearly empty in any function that uses
@@ -617,10 +621,11 @@
 #define mutArrPtrsCardWords(n) ROUNDUP_BYTES_TO_WDS(mutArrPtrCardUp(n))
 
 #if defined(PROFILING) || (!defined(THREADED_RTS) && defined(DEBUG))
+#define OVERWRITING_CLOSURE_SIZE(c, size) foreign "C" overwritingClosureSize(c "ptr", size)
 #define OVERWRITING_CLOSURE(c) foreign "C" overwritingClosure(c "ptr")
-#define OVERWRITING_CLOSURE_OFS(c,n) \
-    foreign "C" overwritingClosureOfs(c "ptr", n)
+#define OVERWRITING_CLOSURE_OFS(c,n) foreign "C" overwritingClosureOfs(c "ptr", n)
 #else
+#define OVERWRITING_CLOSURE_SIZE(c, size) /* nothing */
 #define OVERWRITING_CLOSURE(c) /* nothing */
 #define OVERWRITING_CLOSURE_OFS(c,n) /* nothing */
 #endif
@@ -800,6 +805,10 @@
 #define END_TSO_QUEUE             stg_END_TSO_QUEUE_closure
 #define STM_AWOKEN                stg_STM_AWOKEN_closure
 
+#define recordMutableCap(p, gen)
+#define recordMutable(p)
+
+/*
 #define recordMutableCap(p, gen)                                        \
   W_ __bd;                                                              \
   W_ mut_list;                                                          \
@@ -825,6 +834,7 @@
       __bd = Bdescr(__p);                                       \
       __gen = TO_W_(bdescr_gen_no(__bd));                       \
       if (__gen > 0) { recordMutableCap(__p, __gen); }
+*/
 
 /* -----------------------------------------------------------------------------
    Arrays

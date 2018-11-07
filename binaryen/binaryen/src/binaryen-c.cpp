@@ -49,7 +49,9 @@ BinaryenLiteral toBinaryenLiteral(Literal x) {
     case Type::i64: ret.i64 = x.geti64(); break;
     case Type::f32: ret.i32 = x.reinterpreti32(); break;
     case Type::f64: ret.i64 = x.reinterpreti64(); break;
-    default: abort();
+    case Type::v128: assert(false && "v128 not implemented yet");
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
   return ret;
 }
@@ -60,8 +62,10 @@ Literal fromBinaryenLiteral(BinaryenLiteral x) {
     case Type::i64: return Literal(x.i64);
     case Type::f32: return Literal(x.i32).castToF32();
     case Type::f64: return Literal(x.i64).castToF64();
-    default: abort();
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 // Mutexes (global for now; in theory if multiple modules
@@ -110,6 +114,7 @@ BinaryenType BinaryenTypeInt32(void) { return i32; }
 BinaryenType BinaryenTypeInt64(void) { return i64; }
 BinaryenType BinaryenTypeFloat32(void) { return f32; }
 BinaryenType BinaryenTypeFloat64(void) { return f64; }
+BinaryenType BinaryenTypeVec128(void) { return v128; }
 BinaryenType BinaryenTypeUnreachable(void) { return unreachable; }
 BinaryenType BinaryenTypeAuto(void) { return uint32_t(-1); }
 
@@ -389,6 +394,14 @@ BinaryenOp BinaryenAtomicRMWAnd(void) { return AtomicRMWOp::And; }
 BinaryenOp BinaryenAtomicRMWOr(void) { return AtomicRMWOp::Or; }
 BinaryenOp BinaryenAtomicRMWXor(void) { return AtomicRMWOp::Xor; }
 BinaryenOp BinaryenAtomicRMWXchg(void) { return AtomicRMWOp::Xchg; }
+BinaryenOp BinaryenTruncSatSFloat32ToInt32(void) { return TruncSatSFloat32ToInt32; }
+BinaryenOp BinaryenTruncSatSFloat32ToInt64(void) { return TruncSatSFloat32ToInt64; }
+BinaryenOp BinaryenTruncSatUFloat32ToInt32(void) { return TruncSatUFloat32ToInt32; }
+BinaryenOp BinaryenTruncSatUFloat32ToInt64(void) { return TruncSatUFloat32ToInt64; }
+BinaryenOp BinaryenTruncSatSFloat64ToInt32(void) { return TruncSatSFloat64ToInt32; }
+BinaryenOp BinaryenTruncSatSFloat64ToInt64(void) { return TruncSatSFloat64ToInt64; }
+BinaryenOp BinaryenTruncSatUFloat64ToInt32(void) { return TruncSatUFloat64ToInt32; }
+BinaryenOp BinaryenTruncSatUFloat64ToInt64(void) { return TruncSatUFloat64ToInt64; }
 
 BinaryenExpressionRef BinaryenBlock(BinaryenModuleRef module, const char* name, BinaryenExpressionRef* children, BinaryenIndex numChildren, BinaryenType type) {
   auto* ret = ((Module*)module)->allocator.alloc<Block>();
@@ -657,7 +670,8 @@ BinaryenExpressionRef BinaryenConst(BinaryenModuleRef module, BinaryenLiteral va
         std::cout << "));\n";
         break;
       }
-      default: WASM_UNREACHABLE();
+      case Type::none:
+      case Type::unreachable: WASM_UNREACHABLE();
     }
   }
   return static_cast<Expression*>(ret);
@@ -1930,7 +1944,7 @@ int BinaryenModuleValidate(BinaryenModuleRef module) {
 
   Module* wasm = (Module*)module;
   // TODO add feature selection support to C API
-  FeatureSet features = Feature::Atomics;
+  FeatureSet features = FeatureSet::All;
   return WasmValidator().validate(*wasm, features) ? 1 : 0;
 }
 
@@ -1946,7 +1960,7 @@ void BinaryenModuleOptimize(BinaryenModuleRef module) {
   passRunner.run();
 }
 
-int BinaryenGetOptimizeLevel() {
+int BinaryenGetOptimizeLevel(void) {
   if (tracing) {
     std::cout << "  BinaryenGetOptimizeLevel();\n";
   }
@@ -1962,7 +1976,7 @@ void BinaryenSetOptimizeLevel(int level) {
   globalPassOptions.optimizeLevel = level;
 }
 
-int BinaryenGetShrinkLevel() {
+int BinaryenGetShrinkLevel(void) {
   if (tracing) {
     std::cout << "  BinaryenGetShrinkLevel();\n";
   }
@@ -1978,7 +1992,7 @@ void BinaryenSetShrinkLevel(int level) {
   globalPassOptions.shrinkLevel = level;
 }
 
-int BinaryenGetDebugInfo() {
+int BinaryenGetDebugInfo(void) {
   if (tracing) {
     std::cout << "  BinaryenGetDebugInfo();\n";
   }
@@ -2373,12 +2387,13 @@ const char* BinaryenExportGetValue(BinaryenExportRef export_) {
 // ========== CFG / Relooper ==========
 //
 
-RelooperRef RelooperCreate(void) {
+RelooperRef RelooperCreate(BinaryenModuleRef module) {
   if (tracing) {
-    std::cout << "  the_relooper = RelooperCreate();\n";
+    std::cout << "  the_relooper = RelooperCreate(the_module);\n";
   }
 
-  return RelooperRef(new CFG::Relooper());
+  auto* wasm = (Module*)module;
+  return RelooperRef(new CFG::Relooper(wasm));
 }
 
 RelooperBlockRef RelooperAddBlock(RelooperRef relooper, BinaryenExpressionRef code) {
@@ -2440,15 +2455,15 @@ void RelooperAddBranchForSwitch(RelooperBlockRef from, RelooperBlockRef to, Bina
   fromBlock->AddSwitchBranchTo(toBlock, std::move(values), (Expression*)code);
 }
 
-BinaryenExpressionRef RelooperRenderAndDispose(RelooperRef relooper, RelooperBlockRef entry, BinaryenIndex labelHelper, BinaryenModuleRef module) {
+BinaryenExpressionRef RelooperRenderAndDispose(RelooperRef relooper, RelooperBlockRef entry, BinaryenIndex labelHelper) {
   auto* R = (CFG::Relooper*)relooper;
   R->Calculate((CFG::Block*)entry);
-  CFG::RelooperBuilder builder(*(Module*)module, labelHelper);
+  CFG::RelooperBuilder builder(*R->Module, labelHelper);
   auto* ret = R->Render(builder);
 
   if (tracing) {
     auto id = noteExpression(ret);
-    std::cout << "  expressions[" << id << "] = RelooperRenderAndDispose(the_relooper, relooperBlocks[" << relooperBlocks[entry] << "], " << labelHelper << ", the_module);\n";
+    std::cout << "  expressions[" << id << "] = RelooperRenderAndDispose(the_relooper, relooperBlocks[" << relooperBlocks[entry] << "], " << labelHelper << ");\n";
     relooperBlocks.clear();
   }
 

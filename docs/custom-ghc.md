@@ -6,5 +6,6 @@ Here is a *complete* list of differences we've made in the fork (surprisingly fe
 
 * Enable [D5079](https://phabricator.haskell.org/D5079) and [D5082](https://phabricator.haskell.org/D5082), which are kindly offered by Joachim Breitner but not all landed in `master` yet.
 * Implement additional [`Hooks`](https://github.com/TerrorJack/ghc/blob/asterius/compiler/main/Hooks.hs): `tcRnModuleHook`, `stgCmmHook`, `cmmToRawCmmHook`.
+* Link `ghc-pkg`/`hsc2hs` with `-threaded`.
 
-See the `circle-ghc-bindist`/`appveyor-ghc-bindist` branches of `asterius` repo for CI scripts to build bindists for the fork.
+See the `circleci-ghc-bindist`/`appveyor-ghc-bindist` branches of `asterius` repo for CI scripts to build bindists for the fork. The AppVeyor script is broken for now.

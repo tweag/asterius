@@ -22,6 +22,9 @@ foreign import ccall unsafe "BinaryenTypeFloat32" c_BinaryenTypeFloat32
 foreign import ccall unsafe "BinaryenTypeFloat64" c_BinaryenTypeFloat64
   :: BinaryenType
 
+foreign import ccall unsafe "BinaryenTypeVec128" c_BinaryenTypeVec128
+  :: BinaryenType
+
 foreign import ccall unsafe "BinaryenTypeUnreachable" c_BinaryenTypeUnreachable
   :: BinaryenType
 
@@ -534,6 +537,30 @@ foreign import ccall unsafe "BinaryenAtomicRMWXor" c_BinaryenAtomicRMWXor
   :: BinaryenOp
 
 foreign import ccall unsafe "BinaryenAtomicRMWXchg" c_BinaryenAtomicRMWXchg
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatSFloat32ToInt32" c_BinaryenTruncSatSFloat32ToInt32
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatSFloat32ToInt64" c_BinaryenTruncSatSFloat32ToInt64
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatUFloat32ToInt32" c_BinaryenTruncSatUFloat32ToInt32
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatUFloat32ToInt64" c_BinaryenTruncSatUFloat32ToInt64
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatSFloat64ToInt32" c_BinaryenTruncSatSFloat64ToInt32
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatSFloat64ToInt64" c_BinaryenTruncSatSFloat64ToInt64
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatUFloat64ToInt32" c_BinaryenTruncSatUFloat64ToInt32
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatUFloat64ToInt64" c_BinaryenTruncSatUFloat64ToInt64
   :: BinaryenOp
 
 data BinaryenExpression
@@ -1161,7 +1188,8 @@ data RelooperBlock
 
 type RelooperBlockRef = Ptr RelooperBlock
 
-foreign import ccall unsafe "RelooperCreate" c_RelooperCreate :: IO RelooperRef
+foreign import ccall unsafe "RelooperCreate" c_RelooperCreate
+  :: BinaryenModuleRef -> IO RelooperRef
 
 foreign import ccall unsafe "RelooperAddBlock" c_RelooperAddBlock
   :: RelooperRef -> BinaryenExpressionRef -> IO RelooperBlockRef
@@ -1184,8 +1212,7 @@ foreign import ccall unsafe "RelooperAddBranchForSwitch" c_RelooperAddBranchForS
 
 foreign import ccall unsafe "RelooperRenderAndDispose" c_RelooperRenderAndDispose
   :: RelooperRef ->
-  RelooperBlockRef ->
-    BinaryenIndex -> BinaryenModuleRef -> IO BinaryenExpressionRef
+  RelooperBlockRef -> BinaryenIndex -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenSetAPITracing" c_BinaryenSetAPITracing
   :: CInt -> IO ()

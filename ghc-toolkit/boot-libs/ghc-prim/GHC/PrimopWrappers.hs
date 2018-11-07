@@ -1,8 +1,9 @@
 {-# LANGUAGE CPP, MagicHash, NoImplicitPrelude, UnboxedTuples #-}
+{-# OPTIONS_GHC -Wno-deprecations #-}
 module GHC.PrimopWrappers where
 import qualified GHC.Prim
 import GHC.Tuple ()
-import GHC.Prim (Char#, Int#, Word#, Float#, Double#, State#, MutableArray#, Array#, SmallMutableArray#, SmallArray#, MutableByteArray#, ByteArray#, Addr#, StablePtr#, MutableArrayArray#, ArrayArray#, MutVar#, RealWorld, TVar#, MVar#, ThreadId#, Weak#, StableName#, Compact#, BCO#)
+import GHC.Prim (Char#, Int#, Word#, Float#, Double#, Int8#, Word8#, State#, MutableArray#, Array#, SmallMutableArray#, SmallArray#, MutableByteArray#, ByteArray#, Addr#, StablePtr#, MutableArrayArray#, ArrayArray#, MutVar#, RealWorld, TVar#, MVar#, ThreadId#, Weak#, StableName#, Compact#, BCO#)
 {-# NOINLINE gtChar# #-}
 gtChar# :: Char# -> Char# -> Int#
 gtChar# a1 a2 = (GHC.Prim.gtChar#) a1 a2
@@ -111,6 +112,96 @@ uncheckedIShiftRA# a1 a2 = (GHC.Prim.uncheckedIShiftRA#) a1 a2
 {-# NOINLINE uncheckedIShiftRL# #-}
 uncheckedIShiftRL# :: Int# -> Int# -> Int#
 uncheckedIShiftRL# a1 a2 = (GHC.Prim.uncheckedIShiftRL#) a1 a2
+{-# NOINLINE extendInt8# #-}
+extendInt8# :: Int8# -> Int#
+extendInt8# a1 = (GHC.Prim.extendInt8#) a1
+{-# NOINLINE narrowInt8# #-}
+narrowInt8# :: Int# -> Int8#
+narrowInt8# a1 = (GHC.Prim.narrowInt8#) a1
+{-# NOINLINE negateInt8# #-}
+negateInt8# :: Int8# -> Int8#
+negateInt8# a1 = (GHC.Prim.negateInt8#) a1
+{-# NOINLINE plusInt8# #-}
+plusInt8# :: Int8# -> Int8# -> Int8#
+plusInt8# a1 a2 = (GHC.Prim.plusInt8#) a1 a2
+{-# NOINLINE subInt8# #-}
+subInt8# :: Int8# -> Int8# -> Int8#
+subInt8# a1 a2 = (GHC.Prim.subInt8#) a1 a2
+{-# NOINLINE timesInt8# #-}
+timesInt8# :: Int8# -> Int8# -> Int8#
+timesInt8# a1 a2 = (GHC.Prim.timesInt8#) a1 a2
+{-# NOINLINE quotInt8# #-}
+quotInt8# :: Int8# -> Int8# -> Int8#
+quotInt8# a1 a2 = (GHC.Prim.quotInt8#) a1 a2
+{-# NOINLINE remInt8# #-}
+remInt8# :: Int8# -> Int8# -> Int8#
+remInt8# a1 a2 = (GHC.Prim.remInt8#) a1 a2
+{-# NOINLINE quotRemInt8# #-}
+quotRemInt8# :: Int8# -> Int8# -> (# Int8#,Int8# #)
+quotRemInt8# a1 a2 = (GHC.Prim.quotRemInt8#) a1 a2
+{-# NOINLINE eqInt8# #-}
+eqInt8# :: Int8# -> Int8# -> Int#
+eqInt8# a1 a2 = (GHC.Prim.eqInt8#) a1 a2
+{-# NOINLINE geInt8# #-}
+geInt8# :: Int8# -> Int8# -> Int#
+geInt8# a1 a2 = (GHC.Prim.geInt8#) a1 a2
+{-# NOINLINE gtInt8# #-}
+gtInt8# :: Int8# -> Int8# -> Int#
+gtInt8# a1 a2 = (GHC.Prim.gtInt8#) a1 a2
+{-# NOINLINE leInt8# #-}
+leInt8# :: Int8# -> Int8# -> Int#
+leInt8# a1 a2 = (GHC.Prim.leInt8#) a1 a2
+{-# NOINLINE ltInt8# #-}
+ltInt8# :: Int8# -> Int8# -> Int#
+ltInt8# a1 a2 = (GHC.Prim.ltInt8#) a1 a2
+{-# NOINLINE neInt8# #-}
+neInt8# :: Int8# -> Int8# -> Int#
+neInt8# a1 a2 = (GHC.Prim.neInt8#) a1 a2
+{-# NOINLINE extendWord8# #-}
+extendWord8# :: Word8# -> Word#
+extendWord8# a1 = (GHC.Prim.extendWord8#) a1
+{-# NOINLINE narrowWord8# #-}
+narrowWord8# :: Word# -> Word8#
+narrowWord8# a1 = (GHC.Prim.narrowWord8#) a1
+{-# NOINLINE notWord8# #-}
+notWord8# :: Word8# -> Word8#
+notWord8# a1 = (GHC.Prim.notWord8#) a1
+{-# NOINLINE plusWord8# #-}
+plusWord8# :: Word8# -> Word8# -> Word8#
+plusWord8# a1 a2 = (GHC.Prim.plusWord8#) a1 a2
+{-# NOINLINE subWord8# #-}
+subWord8# :: Word8# -> Word8# -> Word8#
+subWord8# a1 a2 = (GHC.Prim.subWord8#) a1 a2
+{-# NOINLINE timesWord8# #-}
+timesWord8# :: Word8# -> Word8# -> Word8#
+timesWord8# a1 a2 = (GHC.Prim.timesWord8#) a1 a2
+{-# NOINLINE quotWord8# #-}
+quotWord8# :: Word8# -> Word8# -> Word8#
+quotWord8# a1 a2 = (GHC.Prim.quotWord8#) a1 a2
+{-# NOINLINE remWord8# #-}
+remWord8# :: Word8# -> Word8# -> Word8#
+remWord8# a1 a2 = (GHC.Prim.remWord8#) a1 a2
+{-# NOINLINE quotRemWord8# #-}
+quotRemWord8# :: Word8# -> Word8# -> (# Word8#,Word8# #)
+quotRemWord8# a1 a2 = (GHC.Prim.quotRemWord8#) a1 a2
+{-# NOINLINE eqWord8# #-}
+eqWord8# :: Word8# -> Word8# -> Int#
+eqWord8# a1 a2 = (GHC.Prim.eqWord8#) a1 a2
+{-# NOINLINE geWord8# #-}
+geWord8# :: Word8# -> Word8# -> Int#
+geWord8# a1 a2 = (GHC.Prim.geWord8#) a1 a2
+{-# NOINLINE gtWord8# #-}
+gtWord8# :: Word8# -> Word8# -> Int#
+gtWord8# a1 a2 = (GHC.Prim.gtWord8#) a1 a2
+{-# NOINLINE leWord8# #-}
+leWord8# :: Word8# -> Word8# -> Int#
+leWord8# a1 a2 = (GHC.Prim.leWord8#) a1 a2
+{-# NOINLINE ltWord8# #-}
+ltWord8# :: Word8# -> Word8# -> Int#
+ltWord8# a1 a2 = (GHC.Prim.ltWord8#) a1 a2
+{-# NOINLINE neWord8# #-}
+neWord8# :: Word8# -> Word8# -> Int#
+neWord8# a1 a2 = (GHC.Prim.neWord8#) a1 a2
 {-# NOINLINE plusWord# #-}
 plusWord# :: Word# -> Word# -> Word#
 plusWord# a1 a2 = (GHC.Prim.plusWord#) a1 a2

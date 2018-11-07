@@ -213,7 +213,11 @@ inline Expression* parseConst(cashew::IString s, Type type, MixedArena& allocato
       ret->value = Literal(strtod(str, &end));
       break;
     }
-    default: return nullptr;
+    case v128: WASM_UNREACHABLE();
+    case none:
+    case unreachable: {
+      return nullptr;
+    }
   }
   if (ret->value.type != type) {
     throw ParseException("parsed type does not match expected type");

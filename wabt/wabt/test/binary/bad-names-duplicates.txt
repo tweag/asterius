@@ -1,0 +1,23 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) { count[1] function params[0] results[1] i32 }
+section(FUNCTION) { count[2] type[0] type[0] }
+section(CODE) {
+  count[2]
+  func { locals[decl_count[0]] }
+  func { locals[decl_count[0]] }
+}
+section("name") {
+  section(NAME_FUNCTION) {
+    func_count[2]
+    index[0]
+    str("F0")
+    index[0]
+    str("F1")
+  }
+}
+(;; STDERR ;;;
+000002c: error: duplicate function name: 0
+000002c: error: duplicate function name: 0
+;;; STDERR ;;)

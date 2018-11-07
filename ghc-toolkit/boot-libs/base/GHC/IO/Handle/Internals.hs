@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE NoImplicitPrelude
            , RecordWildCards
@@ -26,14 +27,14 @@
 -----------------------------------------------------------------------------
 
 module GHC.IO.Handle.Internals (
+#if !defined(ASTERIUS)
   withHandle, withHandle', withHandle_,
   withHandle__', withHandle_', withAllHandles__,
   wantWritableHandle, wantReadableHandle, wantReadableHandle_,
   wantSeekableHandle,
 
   mkHandle, mkFileHandle, mkDuplexHandle,
-  openTextEncoding, closeTextCodecs, initBufferState,
-  dEFAULT_CHAR_BUFFER_SIZE,
+  closeTextCodecs,
 
   flushBuffer, flushWriteBuffer, flushCharReadBuffer,
   flushCharBuffer, flushByteReadBuffer, flushByteWriteBuffer,
@@ -41,14 +42,20 @@ module GHC.IO.Handle.Internals (
   readTextDevice, writeCharBuffer, readTextDeviceNonBlocking,
   decodeByteBuf,
 
-  augmentIOError,
-  ioe_closedHandle, ioe_semiclosedHandle,
-  ioe_EOF, ioe_notReadable, ioe_notWritable,
-  ioe_finalizedHandle, ioe_bufsiz,
+  ioe_finalizedHandle,
 
   hClose_help, hLookAhead_,
 
   HandleFinalizer, handleFinalizer,
+#endif
+
+  openTextEncoding, initBufferState,
+  dEFAULT_CHAR_BUFFER_SIZE,
+
+  augmentIOError,
+  ioe_closedHandle, ioe_semiclosedHandle,
+  ioe_EOF, ioe_notReadable, ioe_notWritable,
+  ioe_bufsiz,
 
   debugIO,
  ) where
@@ -86,6 +93,8 @@ c_DEBUG_DUMP = False
 -- ---------------------------------------------------------------------------
 -- Creating a new handle
 
+#if !defined(ASTERIUS)
+
 type HandleFinalizer = FilePath -> MVar Handle__ -> IO ()
 
 newFileHandle :: FilePath -> Maybe HandleFinalizer -> Handle__ -> IO Handle
@@ -95,6 +104,8 @@ newFileHandle filepath mb_finalizer hc = do
     Just finalizer -> addMVarFinalizer m (finalizer filepath m)
     Nothing        -> return ()
   return (FileHandle filepath m)
+
+#endif
 
 -- ---------------------------------------------------------------------------
 -- Working with Handles
@@ -119,6 +130,8 @@ possible combinations of:
 If the operation generates an error or an exception is raised, the
 original handle is always replaced.
 -}
+
+#if !defined(ASTERIUS)
 
 {-# INLINE withHandle #-}
 withHandle :: String -> Handle -> (Handle__ -> IO (Handle__,a)) -> IO a
@@ -178,6 +191,8 @@ do_operation fun h act m = do
         _otherwise ->
             throwIO e
 
+#endif
+
 -- Note [async]
 --
 -- If an asynchronous exception is raised during an I/O operation,
@@ -213,13 +228,19 @@ augmentIOError :: IOException -> String -> Handle -> IOException
 augmentIOError ioe@IOError{ ioe_filename = fp } fun h
   = ioe { ioe_handle = Just h, ioe_location = fun, ioe_filename = filepath }
   where filepath
+#if defined(ASTERIUS)
+                      = Just (show h)
+#else
           | Just _ <- fp = fp
           | otherwise = case h of
                           FileHandle path _     -> Just path
                           DuplexHandle path _ _ -> Just path
+#endif
 
 -- ---------------------------------------------------------------------------
 -- Wrapper for write operations.
+
+#if !defined(ASTERIUS)
 
 wantWritableHandle :: String -> Handle -> (Handle__ -> IO a) -> IO a
 wantWritableHandle fun h@(FileHandle _ m) act
@@ -314,6 +335,8 @@ checkSeekableHandle act handle_@Handle__{haDevice=dev} =
               if b then act handle_
                    else ioe_notSeekable
 
+#endif
+
 -- -----------------------------------------------------------------------------
 -- Handy IOErrors
 
@@ -343,10 +366,14 @@ ioe_cannotFlushNotSeekable = ioException
       "cannot flush the read buffer: underlying device is not seekable"
         Nothing Nothing)
 
+#if !defined(ASTERIUS)
+
 ioe_finalizedHandle :: FilePath -> Handle__
 ioe_finalizedHandle fp = throw
    (IOError Nothing IllegalOperation ""
         "handle is finalized" Nothing (Just fp))
+
+#endif
 
 ioe_bufsiz :: Int -> IO a
 ioe_bufsiz n = ioException
@@ -421,12 +448,16 @@ recoveringEncode codec from to = go from to
 -- will then report an error.  We'd rather this was not an error and
 -- the program just prints "<<loop>>".
 
+#if !defined(ASTERIUS)
+
 handleFinalizer :: FilePath -> MVar Handle__ -> IO ()
 handleFinalizer fp m = do
   handle_ <- takeMVar m
   (handle_', _) <- hClose_help handle_
   putMVar m handle_'
   return ()
+
+#endif
 
 -- ---------------------------------------------------------------------------
 -- Allocating buffers
@@ -462,6 +493,9 @@ mkUnBuffer state = do
 -- | syncs the file with the buffer, including moving the
 -- file pointer backwards in the case of a read buffer.  This can fail
 -- on a non-seekable read Handle.
+
+#if !defined(ASTERIUS)
+
 flushBuffer :: Handle__ -> IO ()
 flushBuffer h_@Handle__{..} = do
   buf <- readIORef haCharBuffer
@@ -609,8 +643,12 @@ flushByteReadBuffer h_@Handle__{..} = do
 
   writeIORef haByteBuffer bbuf{ bufL=0, bufR=0 }
 
+#endif
+
 -- ----------------------------------------------------------------------------
 -- Making Handles
+
+#if !defined(ASTERIUS)
 
 mkHandle :: (IODevice dev, BufferedIO dev, Typeable dev) => dev
             -> FilePath
@@ -691,6 +729,8 @@ mkDuplexHandle dev filepath mb_codec tr_newlines = do
 
   return (DuplexHandle filepath read_m write_m)
 
+#endif
+
 ioModeToHandleType :: IOMode -> HandleType
 ioModeToHandleType ReadMode      = ReadHandle
 ioModeToHandleType WriteMode     = WriteHandle
@@ -721,10 +761,14 @@ openTextEncoding (Just TextEncoding{..}) ha_type cont = do
                      return Nothing
     cont mb_encoder mb_decoder
 
+#if !defined(ASTERIUS)
+
 closeTextCodecs :: Handle__ -> IO ()
 closeTextCodecs Handle__{..} = do
   case haDecoder of Nothing -> return (); Just d -> Encoding.close d
   case haEncoder of Nothing -> return (); Just d -> Encoding.close d
+
+#endif
 
 -- ---------------------------------------------------------------------------
 -- closing Handles
@@ -735,6 +779,9 @@ closeTextCodecs Handle__{..} = do
 -- careful with DuplexHandles though: we have to leave the closing to
 -- the finalizer in that case, because the write side may still be in
 -- use.
+
+#if !defined(ASTERIUS)
+
 hClose_help :: Handle__ -> IO (Handle__, Maybe SomeException)
 hClose_help handle_ =
   case haType handle_ of
@@ -746,9 +793,12 @@ hClose_help handle_ =
               (h_, mb_exc2) <- hClose_handle_ handle_
               return (h_, if isJust mb_exc1 then mb_exc1 else mb_exc2)
 
+#endif
 
 trymaybe :: IO () -> IO (Maybe SomeException)
 trymaybe io = (do io; return Nothing) `catchException` \e -> return (Just e)
+
+#if !defined(ASTERIUS)
 
 hClose_handle_ :: Handle__ -> IO (Handle__, Maybe SomeException)
 hClose_handle_ h_@Handle__{..} = do
@@ -778,6 +828,8 @@ hClose_handle_ h_@Handle__{..} = do
     -- XXX GHC won't let us use record update here, hence wildcards
     return (Handle__{ haType = ClosedHandle, .. }, maybe_exception)
 
+#endif
+
 {-# NOINLINE noCharBuffer #-}
 noCharBuffer :: CharBuffer
 noCharBuffer = unsafePerformIO $ newCharBuffer 1 ReadBuffer
@@ -788,6 +840,8 @@ noByteBuffer = unsafePerformIO $ newByteBuffer 1 ReadBuffer
 
 -- ---------------------------------------------------------------------------
 -- Looking ahead
+
+#if !defined(ASTERIUS)
 
 hLookAhead_ :: Handle__ -> IO Char
 hLookAhead_ handle_@Handle__{..} = do
@@ -800,6 +854,8 @@ hLookAhead_ handle_@Handle__{..} = do
     writeIORef haCharBuffer new_buf
 
     peekCharBuf (bufRaw buf) (bufL buf)
+
+#endif
 
 -- ---------------------------------------------------------------------------
 -- debugging
@@ -828,6 +884,9 @@ debugIO s
 --
 -- Users of this function expect that the buffer returned contains
 -- at least 1 more character than the input buffer.
+
+#if !defined(ASTERIUS)
+
 readTextDevice :: Handle__ -> CharBuffer -> IO CharBuffer
 readTextDevice h_@Handle__{..} cbuf = do
   --
@@ -947,3 +1006,4 @@ decodeByteBuf h_@Handle__{..} cbuf = do
   writeIORef haByteBuffer bbuf2
   return cbuf'
 
+#endif

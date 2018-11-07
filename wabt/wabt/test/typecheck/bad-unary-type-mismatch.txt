@@ -1,0 +1,12 @@
+;;; TOOL: wat2wasm
+;;; ERROR: 1
+(module
+  (func
+    f64.const 0x0p+0 (;=0;)
+    f32.neg
+    drop))
+(;; STDERR ;;;
+out/test/typecheck/bad-unary-type-mismatch.txt:6:5: error: type mismatch in f32.neg, expected [f32] but got [f64]
+    f32.neg
+    ^^^^^^^
+;;; STDERR ;;)

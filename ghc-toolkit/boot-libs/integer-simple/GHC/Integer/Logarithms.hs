@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash, UnboxedTuples, NoImplicitPrelude #-}
 module GHC.Integer.Logarithms
     ( integerLogBase#
@@ -8,6 +9,11 @@ module GHC.Integer.Logarithms
 import GHC.Prim
 import GHC.Integer
 import qualified GHC.Integer.Logarithms.Internals as I
+import GHC.Types
+
+#if defined(ASTERIUS)
+import GHC.Integer.Type (unsafeBigInt)
+#endif
 
 -- | Calculate the integer logarithm for an arbitrary base.
 --   The base must be greater than 1, the second argument, the number
@@ -18,6 +24,9 @@ import qualified GHC.Integer.Logarithms.Internals as I
 --
 -- for @base > 1@ and @m > 0@.
 integerLogBase# :: Integer -> Integer -> Int#
+#if defined(ASTERIUS)
+integerLogBase# b m = unI# (js_integerLogBase (unsafeBigInt b) (unsafeBigInt m))
+#else
 integerLogBase# b m = case step b of
                         (# _, e #) -> e
   where
@@ -29,6 +38,7 @@ integerLogBase# b m = case step b of
                  if q `ltInteger` pw
                    then (# q, 2# *# e #)
                    else (# q `quotInteger` pw, 2# *# e +# 1# #)
+#endif
 
 -- | Calculate the integer base 2 logarithm of an 'Integer'.
 --   The calculation is more efficient than for the general case,
@@ -41,3 +51,13 @@ integerLog2# = I.integerLog2#
 -- | This function calculates the integer base 2 logarithm of a 'Word#'.
 wordLog2# :: Word# -> Int#
 wordLog2# = I.wordLog2#
+
+#if defined(ASTERIUS)
+
+{-# INLINE unI# #-}
+unI# :: Int -> Int#
+unI# (I# i) = i
+
+foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, ${2})" js_integerLogBase :: Int -> Int -> Int
+
+#endif

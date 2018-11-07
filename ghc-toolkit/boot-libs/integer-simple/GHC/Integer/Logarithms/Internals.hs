@@ -92,6 +92,9 @@ wordLog2# w =
 -- otherwise return -1# arbitrarily
 -- Going up in word-sized steps should not be too bad.
 integerLog2# :: Integer -> Int#
+#if defined(ASTERIUS)
+integerLog2# i = unI# (js_integerLog2 (unsafeBigInt i))
+#else
 integerLog2# (Positive digits) = step 0# digits
   where
     step acc (Some dig None) = acc +# wordLog2# dig
@@ -99,9 +102,13 @@ integerLog2# (Positive digits) = step 0# digits
         step (acc +# WORD_SIZE_IN_BITS#) digs
     step acc None = acc     -- should be impossible, throw error?
 integerLog2# _ = negateInt# 1#
+#endif
 
 -- Again, integer should be strictly positive
 integerLog2IsPowerOf2# :: Integer -> (# Int#, Int# #)
+#if defined(ASTERIUS)
+integerLog2IsPowerOf2# i = (# unI# (js_integerLog2 (unsafeBigInt i)), unI# (js_integerIsPowerOf2 (unsafeBigInt i)) #)
+#else
 integerLog2IsPowerOf2# (Positive digits) = couldBe 0# digits
   where
     couldBe acc (Some dig None) =
@@ -117,6 +124,7 @@ integerLog2IsPowerOf2# (Positive digits) = couldBe 0# digits
         noPower (acc +# WORD_SIZE_IN_BITS#) digs
     noPower acc None = (# acc, 1# #) -- should be impossible, error?
 integerLog2IsPowerOf2# _ = (# negateInt# 1#, 1# #)
+#endif
 
 -- Assumption: Integer and Int# are strictly positive, Int# is less
 -- than logBase 2 of Integer, otherwise havoc ensues.
@@ -164,3 +172,15 @@ leadingZeros =
                               (# _, ba #) -> ba
     in case mkArr realWorld# of
         b -> BA b
+
+#if defined(ASTERIUS)
+
+{-# INLINE unI# #-}
+unI# :: Int -> Int#
+unI# (I# i) = i
+
+foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, 4)" js_integerLog2 :: Int -> Int
+
+foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: Int -> Int
+
+#endif

@@ -1,6 +1,66 @@
 version: 2
 
 jobs:
+  asterius-test:
+    docker:
+      - image: debian:testing
+    environment:
+      - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -A512M -I0 -qg -qb -N8
+      - LANG: C.UTF-8
+      - MAKEFLAGS: -j8
+      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - STACK_ROOT: /tmp/.stack
+    resource_class: xlarge
+    working_directory: /tmp/asterius
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt update
+            apt full-upgrade -y
+            apt install -y \
+              automake \
+              cmake \
+              curl \
+              g++ \
+              git \
+              jq \
+              libffi-dev \
+              libgmp-dev \
+              libncurses-dev \
+              libnuma-dev \
+              make \
+              openssh-client \
+              python-minimal \
+              xz-utils \
+              zlib1g-dev
+            mkdir /root/.local
+            export NODE_VER=$(curl https://nodejs.org/download/v8-canary/index.json | jq -r 'map(select(.files[] | contains("linux-x64"))) | .[0].version')
+            curl https://nodejs.org/download/v8-canary/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz | tar xJ --strip-components=1 -C /root/.local
+            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
+      - checkout
+      - run:
+          name: Test asterius
+          command: |
+            git submodule update --init --recursive
+            stack --no-terminal -j8 build --test --no-run-tests
+            stack --no-terminal exec ahc-boot -- -j8
+            stack --no-terminal test asterius:fib
+            stack --no-terminal test asterius:jsffi
+            stack --no-terminal test asterius:array
+            stack --no-terminal test asterius:stableptr
+            stack --no-terminal test asterius:rtsapi
+            stack --no-terminal test asterius:teletype
+            stack --no-terminal test asterius:bytearray
+            stack --no-terminal test asterius:fib --test-arguments="--binaryen"
+            stack --no-terminal test asterius:jsffi --test-arguments="--binaryen"
+            stack --no-terminal test asterius:array --test-arguments="--binaryen"
+            stack --no-terminal test asterius:stableptr --test-arguments="--binaryen"
+            stack --no-terminal test asterius:rtsapi --test-arguments="--binaryen"
+            stack --no-terminal test asterius:teletype --test-arguments="--binaryen"
+            stack --no-terminal test asterius:bytearray --test-arguments="--binaryen"
+
   asterius-build-docker:
     docker:
       - image: docker:edge-git
@@ -8,43 +68,30 @@ jobs:
       - setup_remote_docker
       - checkout
       - run:
-          name: Make docker image
+          name: Make Docker image
           command: |
+            git submodule update --init --recursive
             export ASTERIUS_REV=$(git rev-parse --short HEAD)
             docker login -u terrorjack -p $DOCKER_PASS
-            docker build -t terrorjack/asterius:$ASTERIUS_REV -t terrorjack/asterius:$CIRCLE_BRANCH -t terrorjack/asterius:latest .
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:stableptr --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:rtsapi --test-arguments="--debug")
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:fib)
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:jsffi)
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:array)
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:stableptr)
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:rtsapi)
-            docker start -a $(docker create terrorjack/asterius:$ASTERIUS_REV stack --no-terminal test asterius:todomvc)
+            docker build -t terrorjack/asterius:$ASTERIUS_REV .
             docker push terrorjack/asterius:$ASTERIUS_REV
-            docker push terrorjack/asterius:$CIRCLE_BRANCH
-            if [ $CIRCLE_BRANCH = "master" ]; then
-              docker push terrorjack/asterius:latest
-            fi
 
   asterius-build-docs:
     docker:
-      - image: ubuntu:bionic
+      - image: debian:testing
     environment:
       DEBIAN_FRONTEND: noninteractive
       LANG: C.UTF-8
-      LC_ALL: C.UTF-8
     steps:
       - run:
           name: Install dependencies
           command: |
             apt update
+            apt full-upgrade -y
             apt install -y \
               git \
-              mkdocs
+              mkdocs \
+              openssh-client
       - checkout
       - run:
           name: Build & push docs
@@ -63,15 +110,38 @@ jobs:
             git commit -q --message="Documentation of tweag/asterius@$CIRCLE_SHA1"
             git push git@github.com:tweag/asterius.git gh-pages --force
 
+  asterius-update-docker-tag:
+    docker:
+      - image: docker:edge-git
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run:
+          name: Update Docker tags
+          command: |
+            export ASTERIUS_REV=$(git rev-parse --short HEAD)
+            docker login -u terrorjack -p $DOCKER_PASS
+            docker pull terrorjack/asterius:$ASTERIUS_REV
+            docker tag terrorjack/asterius:$ASTERIUS_REV terrorjack/asterius:$CIRCLE_BRANCH
+            docker tag terrorjack/asterius:$ASTERIUS_REV terrorjack/asterius:latest
+            docker push terrorjack/asterius:$CIRCLE_BRANCH
+            if [ $CIRCLE_BRANCH = "master" ]; then
+              docker push terrorjack/asterius:latest
+            fi
 
 workflows:
   version: 2
   build:
     jobs:
+      - asterius-test
       - asterius-build-docker
       - asterius-build-docs:
           requires:
-            - asterius-build-docker
+            - asterius-test
           filters:
             branches:
               only: master
+      - asterius-update-docker-tag:
+          requires:
+            - asterius-test
+            - asterius-build-docker

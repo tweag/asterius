@@ -63,5 +63,6 @@ executables:
   ahc-gcc:
     source-dirs: app
     main: ahc-gcc.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - ghc-toolkit

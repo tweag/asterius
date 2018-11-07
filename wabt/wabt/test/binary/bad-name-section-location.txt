@@ -1,0 +1,20 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) { count[1] function params[0] results[0] }
+section(FUNCTION) { count[1] type[0] }
+section("name") {
+  section(NAME_FUNCTION) {
+    func_count[1]
+    index[0]
+    str("F0")
+  }
+}
+section(CODE) {
+  count[1]
+  func { locals[0] }
+}
+(;; STDERR ;;;
+0000022: error: Code section can not occur after Name section
+0000022: error: Code section can not occur after Name section
+;;; STDERR ;;)

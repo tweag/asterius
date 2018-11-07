@@ -1,0 +1,13 @@
+;;; TOOL: wat2wasm
+;;; ERROR: 1
+(module
+  (memory 1)
+  (func
+    f32.const 0
+    i32.load
+    drop))
+(;; STDERR ;;;
+out/test/typecheck/bad-load-type-mismatch.txt:7:5: error: type mismatch in i32.load, expected [i32] but got [f32]
+    i32.load
+    ^^^^^^^^
+;;; STDERR ;;)

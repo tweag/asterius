@@ -1,0 +1,38 @@
+;;; TOOL: run-gen-spec-js
+;;; ARGS: --prefix=%(test_dir)s/gen-spec-empty-prefix.js
+(module $A (func (export "f") (result i32) i32.const 1))
+(module $B (func (export "f") (result i32) i32.const 2))
+(module $C (func (export "f") (result i32) i32.const 3))
+
+(assert_return (invoke "f") (i32.const 3))
+(assert_return (invoke $A "f") (i32.const 1))
+(assert_return (invoke $B "f") (i32.const 2))
+(assert_return (invoke $C "f") (i32.const 3))
+(;; STDOUT ;;;
+// A deliberately empty file for testing.
+
+// many-modules.txt:3
+let $1 = instance("\x00\x61\x73\x6d\x01\x00\x00\x00\x01\x05\x01\x60\x00\x01\x7f\x03\x02\x01\x00\x07\x05\x01\x01\x66\x00\x00\x0a\x06\x01\x04\x00\x41\x01\x0b");
+let $A = $1;
+
+// many-modules.txt:4
+let $2 = instance("\x00\x61\x73\x6d\x01\x00\x00\x00\x01\x05\x01\x60\x00\x01\x7f\x03\x02\x01\x00\x07\x05\x01\x01\x66\x00\x00\x0a\x06\x01\x04\x00\x41\x02\x0b");
+let $B = $2;
+
+// many-modules.txt:5
+let $3 = instance("\x00\x61\x73\x6d\x01\x00\x00\x00\x01\x05\x01\x60\x00\x01\x7f\x03\x02\x01\x00\x07\x05\x01\x01\x66\x00\x00\x0a\x06\x01\x04\x00\x41\x03\x0b");
+let $C = $3;
+
+// many-modules.txt:7
+assert_return(() => call($3, "f", []), 3);
+
+// many-modules.txt:8
+assert_return(() => call($A, "f", []), 1);
+
+// many-modules.txt:9
+assert_return(() => call($B, "f", []), 2);
+
+// many-modules.txt:10
+assert_return(() => call($C, "f", []), 3);
+
+;;; STDOUT ;;)

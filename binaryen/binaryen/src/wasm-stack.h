@@ -291,6 +291,11 @@ void StackWriter<Mode, Parent>::mapLocalsAndEmitHeader() {
       mappedLocals[i] = index + currLocalsByType[f64] - 1;
       continue;
     }
+    index += numLocalsByType[f64];
+    if (type == v128) {
+      mappedLocals[i] = index + currLocalsByType[v128] - 1;
+      continue;
+    }
     WASM_UNREACHABLE();
   }
   // Emit them.
@@ -298,12 +303,14 @@ void StackWriter<Mode, Parent>::mapLocalsAndEmitHeader() {
       (numLocalsByType[i32] ? 1 : 0) +
       (numLocalsByType[i64] ? 1 : 0) +
       (numLocalsByType[f32] ? 1 : 0) +
-      (numLocalsByType[f64] ? 1 : 0)
+      (numLocalsByType[f64] ? 1 : 0) +
+      (numLocalsByType[v128] ? 1 : 0)
               );
   if (numLocalsByType[i32]) o << U32LEB(numLocalsByType[i32]) << binaryType(i32);
   if (numLocalsByType[i64]) o << U32LEB(numLocalsByType[i64]) << binaryType(i64);
   if (numLocalsByType[f32]) o << U32LEB(numLocalsByType[f32]) << binaryType(f32);
   if (numLocalsByType[f64]) o << U32LEB(numLocalsByType[f64]) << binaryType(f64);
+  if (numLocalsByType[v128]) o << U32LEB(numLocalsByType[v128]) << binaryType(v128);
 }
 
 template<StackWriterMode Mode, typename Parent>
@@ -627,8 +634,9 @@ void StackWriter<Mode, Parent>::visitLoad(Load* curr) {
       }
       case f32: o << int8_t(BinaryConsts::F32LoadMem); break;
       case f64: o << int8_t(BinaryConsts::F64LoadMem); break;
+      case v128: assert(false && "v128 not implemented yet");
       case unreachable: return; // the pointer is unreachable, so we are never reached; just don't emit a load
-      default: WASM_UNREACHABLE();
+      case none: WASM_UNREACHABLE();
     }
   } else {
     o << int8_t(BinaryConsts::AtomicPrefix);
@@ -693,7 +701,9 @@ void StackWriter<Mode, Parent>::visitStore(Store* curr) {
       }
       case f32: o << int8_t(BinaryConsts::F32StoreMem); break;
       case f64: o << int8_t(BinaryConsts::F64StoreMem); break;
-      default: abort();
+      case v128: assert(false && "v128 not implemented yet");
+      case none:
+      case unreachable: WASM_UNREACHABLE();
     }
   } else {
     o << int8_t(BinaryConsts::AtomicPrefix);
@@ -882,7 +892,9 @@ void StackWriter<Mode, Parent>::visitConst(Const* curr) {
       o << int8_t(BinaryConsts::F64Const) << curr->value.reinterpreti64();
       break;
     }
-    default: abort();
+    case v128: assert(false && "v128 not implemented yet");
+    case none:
+    case unreachable: WASM_UNREACHABLE();
   }
   if (debug) std::cerr << "zz const node done.\n";
 }
@@ -949,7 +961,15 @@ void StackWriter<Mode, Parent>::visitUnary(Unary* curr) {
     case ExtendS8Int64:          o << int8_t(BinaryConsts::I64ExtendS8); break;
     case ExtendS16Int64:         o << int8_t(BinaryConsts::I64ExtendS16); break;
     case ExtendS32Int64:         o << int8_t(BinaryConsts::I64ExtendS32); break;
-    default: abort();
+    case TruncSatSFloat32ToInt32: o << int8_t(BinaryConsts::TruncSatPrefix) << U32LEB(BinaryConsts::I32STruncSatF32); break;
+    case TruncSatUFloat32ToInt32: o << int8_t(BinaryConsts::TruncSatPrefix) << U32LEB(BinaryConsts::I32UTruncSatF32); break;
+    case TruncSatSFloat64ToInt32: o << int8_t(BinaryConsts::TruncSatPrefix) << U32LEB(BinaryConsts::I32STruncSatF64); break;
+    case TruncSatUFloat64ToInt32: o << int8_t(BinaryConsts::TruncSatPrefix) << U32LEB(BinaryConsts::I32UTruncSatF64); break;
+    case TruncSatSFloat32ToInt64: o << int8_t(BinaryConsts::TruncSatPrefix) << U32LEB(BinaryConsts::I64STruncSatF32); break;
+    case TruncSatUFloat32ToInt64: o << int8_t(BinaryConsts::TruncSatPrefix) << U32LEB(BinaryConsts::I64UTruncSatF32); break;
+    case TruncSatSFloat64ToInt64: o << int8_t(BinaryConsts::TruncSatPrefix) << U32LEB(BinaryConsts::I64STruncSatF64); break;
+    case TruncSatUFloat64ToInt64: o << int8_t(BinaryConsts::TruncSatPrefix) << U32LEB(BinaryConsts::I64UTruncSatF64); break;
+    case InvalidUnary: WASM_UNREACHABLE();
   }
 }
 
@@ -1043,7 +1063,7 @@ void StackWriter<Mode, Parent>::visitBinary(Binary* curr) {
     case LeFloat64:       o << int8_t(BinaryConsts::F64Le); break;
     case GtFloat64:       o << int8_t(BinaryConsts::F64Gt); break;
     case GeFloat64:       o << int8_t(BinaryConsts::F64Ge); break;
-    default: abort();
+    case InvalidBinary: WASM_UNREACHABLE();
   }
 }
 
@@ -1083,7 +1103,6 @@ void StackWriter<Mode, Parent>::visitHost(Host* curr) {
       visitChild(curr->operands[0]);
       break;
     }
-    default: WASM_UNREACHABLE();
   }
   if (justAddToStack(curr)) return;
   switch (curr->op) {
@@ -1095,7 +1114,6 @@ void StackWriter<Mode, Parent>::visitHost(Host* curr) {
       o << int8_t(BinaryConsts::GrowMemory);
       break;
     }
-    default: WASM_UNREACHABLE();
   }
   o << U32LEB(0); // Reserved flags field
 }
@@ -1191,4 +1209,3 @@ StackInst* StackWriter<Mode, Parent>::makeStackInst(StackInst::Op op, Expression
 } // namespace wasm
 
 #endif // wasm_stack_h
-

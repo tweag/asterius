@@ -29,8 +29,11 @@ inline Literal makeLiteralFromInt32(int32_t x, Type type) {
     case i64: return Literal(int64_t(x)); break;
     case f32: return Literal(float(x)); break;
     case f64: return Literal(double(x)); break;
-    default: WASM_UNREACHABLE();
+    case v128: assert(false && "v128 not implemented yet");
+    case none:
+    case unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 inline Literal makeLiteralZero(Type type) {
@@ -53,4 +56,3 @@ inline Expression* makeZero(Type type, Module& wasm) {
 } // namespace wasm
 
 #endif // wasm_ir_literal_utils_h
-

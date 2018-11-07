@@ -1,0 +1,172 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v --no-canonicalize-leb128s
+(module
+  (import "stdio" "print" (func (param i32)))
+  (memory 100)
+  (export "f1" (func $f1))
+  (table anyfunc (elem $f2 $f3))
+  (type $t (func (param i32) (result i32)))
+  (func $f1 (param i32 i32)
+    get_local 0
+    get_local 1
+    call_indirect (type $t)
+    drop)
+  (func $f2 (param i32)
+    get_local 0
+    i32.const 1
+    i32.add
+    drop)
+  (func $f3 (param i32)
+    get_local 0
+    i32.const 2
+    i32.mul
+    drop))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 0000 0000 00                              ; section size (guess)
+000000e: 03                                        ; num types
+; type 0
+000000f: 60                                        ; func
+0000010: 01                                        ; num params
+0000011: 7f                                        ; i32
+0000012: 01                                        ; num results
+0000013: 7f                                        ; i32
+; type 1
+0000014: 60                                        ; func
+0000015: 01                                        ; num params
+0000016: 7f                                        ; i32
+0000017: 00                                        ; num results
+; type 2
+0000018: 60                                        ; func
+0000019: 02                                        ; num params
+000001a: 7f                                        ; i32
+000001b: 7f                                        ; i32
+000001c: 00                                        ; num results
+0000009: 8f80 8080 00                              ; FIXUP section size
+; section "Import" (2)
+000001d: 02                                        ; section code
+000001e: 0000 0000 00                              ; section size (guess)
+0000023: 01                                        ; num imports
+; import header 0
+0000024: 05                                        ; string length
+0000025: 7374 6469 6f                             stdio  ; import module name
+000002a: 05                                        ; string length
+000002b: 7072 696e 74                             print  ; import field name
+0000030: 00                                        ; import kind
+0000031: 01                                        ; import signature index
+000001e: 8f80 8080 00                              ; FIXUP section size
+; section "Function" (3)
+0000032: 03                                        ; section code
+0000033: 0000 0000 00                              ; section size (guess)
+0000038: 03                                        ; num functions
+0000039: 02                                        ; function 0 signature index
+000003a: 01                                        ; function 1 signature index
+000003b: 01                                        ; function 2 signature index
+0000033: 8480 8080 00                              ; FIXUP section size
+; section "Table" (4)
+000003c: 04                                        ; section code
+000003d: 0000 0000 00                              ; section size (guess)
+0000042: 01                                        ; num tables
+; table 0
+0000043: 70                                        ; anyfunc
+0000044: 01                                        ; limits: flags
+0000045: 02                                        ; limits: initial
+0000046: 02                                        ; limits: max
+000003d: 8580 8080 00                              ; FIXUP section size
+; section "Memory" (5)
+0000047: 05                                        ; section code
+0000048: 0000 0000 00                              ; section size (guess)
+000004d: 01                                        ; num memories
+; memory 0
+000004e: 00                                        ; limits: flags
+000004f: 64                                        ; limits: initial
+0000048: 8380 8080 00                              ; FIXUP section size
+; section "Export" (7)
+0000050: 07                                        ; section code
+0000051: 0000 0000 00                              ; section size (guess)
+0000056: 01                                        ; num exports
+0000057: 02                                        ; string length
+0000058: 6631                                     f1  ; export name
+000005a: 00                                        ; export kind
+000005b: 01                                        ; export func index
+0000051: 8680 8080 00                              ; FIXUP section size
+; section "Elem" (9)
+000005c: 09                                        ; section code
+000005d: 0000 0000 00                              ; section size (guess)
+0000062: 01                                        ; num elem segments
+; elem segment header 0
+0000063: 00                                      
+0000064: 41                                        ; i32.const
+0000065: 00                                        ; i32 literal
+0000066: 0b                                        ; end
+0000067: 02                                        ; num function indices
+0000068: 02                                        ; function index
+0000069: 03                                        ; function index
+000005d: 8880 8080 00                              ; FIXUP section size
+; section "Code" (10)
+000006a: 0a                                        ; section code
+000006b: 0000 0000 00                              ; section size (guess)
+0000070: 03                                        ; num functions
+; function body 0
+0000071: 0000 0000 00                              ; func body size (guess)
+0000076: 00                                        ; local decl count
+0000077: 20                                        ; get_local
+0000078: 00                                        ; local index
+0000079: 20                                        ; get_local
+000007a: 01                                        ; local index
+000007b: 11                                        ; call_indirect
+000007c: 00                                        ; signature index
+000007d: 00                                        ; call_indirect reserved
+000007e: 1a                                        ; drop
+000007f: 0b                                        ; end
+0000071: 8a80 8080 00                              ; FIXUP func body size
+; function body 1
+0000080: 0000 0000 00                              ; func body size (guess)
+0000085: 00                                        ; local decl count
+0000086: 20                                        ; get_local
+0000087: 00                                        ; local index
+0000088: 41                                        ; i32.const
+0000089: 01                                        ; i32 literal
+000008a: 6a                                        ; i32.add
+000008b: 1a                                        ; drop
+000008c: 0b                                        ; end
+0000080: 8880 8080 00                              ; FIXUP func body size
+; function body 2
+000008d: 0000 0000 00                              ; func body size (guess)
+0000092: 00                                        ; local decl count
+0000093: 20                                        ; get_local
+0000094: 00                                        ; local index
+0000095: 41                                        ; i32.const
+0000096: 02                                        ; i32 literal
+0000097: 6c                                        ; i32.mul
+0000098: 1a                                        ; drop
+0000099: 0b                                        ; end
+000008d: 8880 8080 00                              ; FIXUP func body size
+000006b: aa80 8080 00                              ; FIXUP section size
+
+no-canonicalize.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000071 <f1>:
+ 000077: 20 00                      | get_local 0
+ 000079: 20 01                      | get_local 1
+ 00007b: 11 00 00                   | call_indirect 0 0
+ 00007e: 1a                         | drop
+ 00007f: 0b                         | end
+000080 func[2]:
+ 000086: 20 00                      | get_local 0
+ 000088: 41 01                      | i32.const 1
+ 00008a: 6a                         | i32.add
+ 00008b: 1a                         | drop
+ 00008c: 0b                         | end
+00008d func[3]:
+ 000093: 20 00                      | get_local 0
+ 000095: 41 02                      | i32.const 2
+ 000097: 6c                         | i32.mul
+ 000098: 1a                         | drop
+ 000099: 0b                         | end
+;;; STDOUT ;;)

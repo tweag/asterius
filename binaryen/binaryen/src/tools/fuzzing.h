@@ -26,7 +26,10 @@ high chance for set at start of loop
 */
 
 #include <wasm-builder.h>
+#include <ir/find_all.h>
 #include <ir/literal-utils.h>
+#include <ir/manipulation.h>
+#include <ir/utils.h>
 
 namespace wasm {
 
@@ -120,11 +123,12 @@ public:
     std::cout << "shrink level: " << options.passOptions.shrinkLevel << '\n';
   }
 
-  void build(bool initEmitAtomics = true) {
-    emitAtomics = initEmitAtomics;
+  void build(FeatureSet features_) {
+    features = features_;
     setupMemory();
     setupTable();
     setupGlobals();
+    addImportLoggingSupport();
     // keep adding functions until we run out of input
     while (!finishedInput) {
       auto* func = addFunction();
@@ -175,16 +179,19 @@ private:
   // cross-VM comparisons harder)
   static const bool DE_NAN = true;
 
-  // Whether to emit atomics
-  bool emitAtomics = true;
+  // Features allowed to be emitted
+  FeatureSet features = FeatureSet::All;
 
   // Whether to emit atomic waits (which in single-threaded mode, may hang...)
   static const bool ATOMIC_WAITS = false;
 
-  // after we finish the input, we start going through it again, but xoring
+  // After we finish the input, we start going through it again, but xoring
   // so it's not identical
   int xorFactor = 0;
 
+  // The chance to emit a logging operation for a none expression. We
+  // randomize this in each function.
+  unsigned LOGGING_PERCENT = 0;
 
   void readData(std::vector<char> input) {
     bytes.swap(input);
@@ -297,6 +304,19 @@ private:
     wasm.addExport(export_);
   }
 
+  void addImportLoggingSupport() {
+    for (auto type : { i32, i64, f32, f64 }) {
+      auto* func = new Function;
+      Name name = std::string("log-") + printType(type);
+      func->name = name;
+      func->module = "fuzzing-support";
+      func->base = name;
+      func->params.push_back(type);
+      func->result = none;
+      wasm.addFunction(func);
+    }
+  }
+
   Expression* makeHangLimitCheck() {
     return builder.makeSequence(
       builder.makeIf(
@@ -361,6 +381,7 @@ private:
   std::map<Type, std::vector<Index>> typeLocals; // type => list of locals with that type
 
   Function* addFunction() {
+    LOGGING_PERCENT = upToSquared(100);
     Index num = wasm.functions.size();
     func = new Function;
     func->name = std::string("func_") + std::to_string(num);
@@ -392,11 +413,18 @@ private:
     } else {
       func->body = make(bodyType);
     }
+    // Recombinations create duplicate code patterns.
+    recombine(func);
+    // Mutations add random small changes, which can subtly break duplicate code
+    // patterns.
+    mutate(func);
+    // TODO: liveness operations on gets, with some prob alter a get to one with
+    //       more possible sets
+    // Recombination, mutation, etc. can break validation; fix things up after.
+    fixLabels(func);
+    // Add hang limit checks after all other operations on the function body.
     if (HANG_LIMIT > 0) {
-      func->body = builder.makeSequence(
-        makeHangLimitCheck(),
-        func->body
-      );
+      addHangLimitChecks(func);
     }
     assert(breakableStack.empty());
     assert(hangStack.empty());
@@ -418,6 +446,181 @@ private:
     // cleanup
     typeLocals.clear();
     return func;
+  }
+
+  void addHangLimitChecks(Function* func) {
+    // loop limit
+    FindAll<Loop> loops(func->body);
+    for (auto* loop : loops.list) {
+      loop->body = builder.makeSequence(
+        makeHangLimitCheck(),
+        loop->body
+      );
+    }
+    // recursion limit
+    func->body = builder.makeSequence(
+      makeHangLimitCheck(),
+      func->body
+    );
+  }
+
+  void recombine(Function* func) {
+    // Don't always do this.
+    if (oneIn(2)) return;
+    // First, scan and group all expressions by type.
+    struct Scanner : public PostWalker<Scanner, UnifiedExpressionVisitor<Scanner>> {
+      // A map of all expressions, categorized by type.
+      std::map<Type, std::vector<Expression*>> exprsByType;
+
+      void visitExpression(Expression* curr) {
+        exprsByType[curr->type].push_back(curr);
+      }
+    };
+    Scanner scanner;
+    scanner.walk(func->body);
+    // Potentially trim the list of possible picks, so replacements are more likely
+    // to collide.
+    for (auto& pair : scanner.exprsByType) {
+      if (oneIn(2)) continue;
+      auto& list = pair.second;
+      std::vector<Expression*> trimmed;
+      size_t num = upToSquared(list.size());
+      for (size_t i = 0; i < num; i++) {
+        trimmed.push_back(vectorPick(list));
+      }
+      if (trimmed.empty()) {
+        trimmed.push_back(vectorPick(list));
+      }
+      list.swap(trimmed);
+    }
+    // Replace them with copies, to avoid a copy into one altering another copy
+    for (auto& pair : scanner.exprsByType) {
+      for (auto*& item : pair.second) {
+        item = ExpressionManipulator::copy(item, wasm);
+      }
+    }
+    // Second, with some probability replace an item with another item having
+    // the same type. (This is not always valid due to nesting of labels, but
+    // we'll fix that up later.)
+    struct Modder : public PostWalker<Modder, UnifiedExpressionVisitor<Modder>> {
+      Module& wasm;
+      Scanner& scanner;
+      TranslateToFuzzReader& parent;
+
+      Modder(Module& wasm, Scanner& scanner, TranslateToFuzzReader& parent) : wasm(wasm), scanner(scanner), parent(parent) {}
+
+      void visitExpression(Expression* curr) {
+        if (parent.oneIn(10)) {
+          // Replace it!
+          auto& candidates = scanner.exprsByType[curr->type];
+          assert(!candidates.empty()); // this expression itself must be there
+          replaceCurrent(ExpressionManipulator::copy(parent.vectorPick(candidates), wasm));
+        }
+      }
+    };
+    Modder modder(wasm, scanner, *this);
+    modder.walk(func->body);
+  }
+
+  void mutate(Function* func) {
+    // Don't always do this.
+    if (oneIn(2)) return;
+    struct Modder : public PostWalker<Modder, UnifiedExpressionVisitor<Modder>> {
+      Module& wasm;
+      TranslateToFuzzReader& parent;
+
+      Modder(Module& wasm, TranslateToFuzzReader& parent) : wasm(wasm), parent(parent) {}
+
+      void visitExpression(Expression* curr) {
+        if (parent.oneIn(10)) {
+          // Replace it!
+          // (This is not always valid due to nesting of labels, but
+          // we'll fix that up later.)
+          replaceCurrent(parent.make(curr->type));
+        }
+      }
+    };
+    Modder modder(wasm, *this);
+    modder.walk(func->body);
+  }
+
+  // Fix up changes that may have broken validation - types are correct in our
+  // modding, but not necessarily labels.
+  void fixLabels(Function* func) {
+    struct Fixer : public ControlFlowWalker<Fixer> {
+      Module& wasm;
+      TranslateToFuzzReader& parent;
+
+      Fixer(Module& wasm, TranslateToFuzzReader& parent) : wasm(wasm), parent(parent) {}
+
+      // Track seen names to find duplication, which is invalid.
+      std::set<Name> seen;
+
+      void visitBlock(Block* curr) {
+        if (curr->name.is()) {
+          if (seen.count(curr->name)) {
+            replace();
+          } else {
+            seen.insert(curr->name);
+          }
+        }
+      }
+
+      void visitLoop(Loop* curr) {
+        if (curr->name.is()) {
+          if (seen.count(curr->name)) {
+            replace();
+          } else {
+            seen.insert(curr->name);
+          }
+        }
+      }
+
+      void visitSwitch(Switch* curr) {
+        for (auto name : curr->targets) {
+          if (replaceIfInvalid(name)) return;
+        }
+        replaceIfInvalid(curr->default_);
+      }
+
+      void visitBreak(Break* curr) {
+        replaceIfInvalid(curr->name);
+      }
+
+      bool replaceIfInvalid(Name target) {
+        if (!hasBreakTarget(target)) {
+          // There is no valid parent, replace with something trivially safe.
+          replace();
+          return true;
+        }
+        return false;
+      }
+
+      void replace() {
+        replaceCurrent(parent.makeTrivial(getCurrent()->type));
+      }
+
+      bool hasBreakTarget(Name name) {
+        if (controlFlowStack.empty()) return false;
+        Index i = controlFlowStack.size() - 1;
+        while (1) {
+          auto* curr = controlFlowStack[i];
+          if (Block* block = curr->template dynCast<Block>()) {
+            if (name == block->name) return true;
+          } else if (Loop* loop = curr->template dynCast<Loop>()) {
+            if (name == loop->name) return true;
+          } else {
+            // an if, ignorable
+            assert(curr->template is<If>());
+          }
+          if (i == 0) return false;
+          i--;
+        }
+      }
+    };
+    Fixer fixer(wasm, *this);
+    fixer.walk(func->body);
+    ReFinalize().walkFunctionInModule(func, &wasm);
   }
 
   // the fuzzer external interface sends in zeros (simpler to compare
@@ -480,15 +683,15 @@ private:
       return makeTrivial(type);
     }
     nesting++;
-    Expression* ret;
+    Expression* ret = nullptr;
     switch (type) {
       case i32:
       case i64:
       case f32:
       case f64: ret = _makeConcrete(type); break;
+      case v128: assert(false && "v128 not implemented yet");
       case none: ret = _makenone(); break;
       case unreachable: ret = _makeunreachable(); break;
-      default: WASM_UNREACHABLE();
     }
     assert(ret->type == type); // we should create the right type of thing
     nesting--;
@@ -526,6 +729,8 @@ private:
 
   Expression* _makenone() {
     auto choice = upTo(100);
+    if (choice < LOGGING_PERCENT) return makeLogging();
+    choice = upTo(100);
     if (choice < 50) return makeSetLocal(none);
     if (choice < 60) return makeBlock(none);
     if (choice < 70) return makeIf(none);
@@ -651,12 +856,6 @@ private:
     }
     breakableStack.pop_back();
     hangStack.pop_back();
-    if (HANG_LIMIT > 0) {
-      ret->body = builder.makeSequence(
-        makeHangLimitCheck(),
-        ret->body
-      );
-    }
     ret->finalize();
     return ret;
   }
@@ -909,14 +1108,17 @@ private:
       case f64: {
         return builder.makeLoad(8, false, offset, pick(1, 2, 4, 8), ptr, type);
       }
-      default: WASM_UNREACHABLE();
+      case v128: assert(false && "v128 not implemented yet");
+      case none:
+      case unreachable: WASM_UNREACHABLE();
     }
+    WASM_UNREACHABLE();
   }
 
   Expression* makeLoad(Type type) {
     auto* ret = makeNonAtomicLoad(type);
     if (type != i32 && type != i64) return ret;
-    if (!emitAtomics || oneIn(2)) return ret;
+    if (!features.hasAtomics() || oneIn(2)) return ret;
     // make it atomic
     wasm.memory.shared = true;
     ret->isAtomic = true;
@@ -969,14 +1171,17 @@ private:
       case f64: {
         return builder.makeStore(8, offset, pick(1, 2, 4, 8), ptr, value, type);
       }
-      default: WASM_UNREACHABLE();
+      case v128: assert(false && "v128 not implemented yet");
+      case none:
+      case unreachable: WASM_UNREACHABLE();
     }
+    WASM_UNREACHABLE();
   }
 
   Store* makeStore(Type type) {
     auto* ret = makeNonAtomicStore(type);
     if (ret->value->type != i32 && ret->value->type != i64) return ret;
-    if (!emitAtomics || oneIn(2)) return ret;
+    if (!features.hasAtomics() || oneIn(2)) return ret;
     // make it atomic
     wasm.memory.shared = true;
     ret->isAtomic = true;
@@ -994,7 +1199,9 @@ private:
           case i64: value = Literal(get64()); break;
           case f32: value = Literal(getFloat()); break;
           case f64: value = Literal(getDouble()); break;
-          default: WASM_UNREACHABLE();
+          case v128: assert(false && "v128 not implemented yet");
+          case none:
+          case unreachable: WASM_UNREACHABLE();
         }
         break;
       }
@@ -1015,7 +1222,9 @@ private:
           case i64: value = Literal(int64_t(small)); break;
           case f32: value = Literal(float(small)); break;
           case f64: value = Literal(double(small)); break;
-          default: WASM_UNREACHABLE();
+          case v128: assert(false && "v128 not implemented yet");
+          case none:
+          case unreachable: WASM_UNREACHABLE();
         }
         break;
       }
@@ -1051,7 +1260,11 @@ private:
                                                  std::numeric_limits<int64_t>::min(), std::numeric_limits<int64_t>::max(),
                                                  std::numeric_limits<uint32_t>::max(),
                                                  std::numeric_limits<uint64_t>::max())); break;
-          default: WASM_UNREACHABLE();
+          case v128: assert(false && "v128 not implemented yet");
+          case none:
+          case unreachable: {
+            WASM_UNREACHABLE();
+          }
         }
         // tweak around special values
         if (oneIn(3)) { // +- 1
@@ -1069,7 +1282,9 @@ private:
           case i64: value = Literal(int64_t(1) << upTo(64)); break;
           case f32: value = Literal(float(int64_t(1) << upTo(64))); break;
           case f64: value = Literal(double(int64_t(1) << upTo(64))); break;
-          default: WASM_UNREACHABLE();
+          case v128: assert(false && "v128 not implemented yet");
+          case none:
+          case unreachable: WASM_UNREACHABLE();
         }
         // maybe negative
         if (oneIn(2)) {
@@ -1099,7 +1314,7 @@ private:
       case i32: {
         switch (upTo(4)) {
           case 0: {
-            if (emitAtomics) {
+            if (features.hasAtomics()) {
               return makeUnary({ pick(EqZInt32, ClzInt32, CtzInt32, PopcntInt32, ExtendS8Int32, ExtendS16Int32), make(i32) });
             } else {
               return makeUnary({ pick(EqZInt32, ClzInt32, CtzInt32, PopcntInt32), make(i32) });
@@ -1107,15 +1322,29 @@ private:
             break;
           }
           case 1: return makeUnary({ pick(EqZInt64, WrapInt64), make(i64) });
-          case 2: return makeUnary({ pick(TruncSFloat32ToInt32, TruncUFloat32ToInt32, ReinterpretFloat32), make(f32) });
-          case 3: return makeUnary({ pick(TruncSFloat64ToInt32, TruncUFloat64ToInt32), make(f64) });
+          case 2: {
+            if (features.hasTruncSat()) {
+              return makeUnary({ pick(TruncSFloat32ToInt32, TruncUFloat32ToInt32, ReinterpretFloat32, TruncSatSFloat32ToInt32, TruncSatUFloat32ToInt32), make(f32) });
+            } else {
+              return makeUnary({ pick(TruncSFloat32ToInt32, TruncUFloat32ToInt32, ReinterpretFloat32), make(f32) });
+            }
+            break;
+          }
+          case 3: {
+            if (features.hasTruncSat()) {
+              return makeUnary({ pick(TruncSFloat64ToInt32, TruncUFloat64ToInt32, TruncSatSFloat64ToInt32, TruncSatUFloat64ToInt32), make(f64) });
+            } else {
+              return makeUnary({ pick(TruncSFloat64ToInt32, TruncUFloat64ToInt32), make(f64) });
+            }
+            break;
+          }
         }
         WASM_UNREACHABLE();
       }
       case i64: {
         switch (upTo(4)) {
           case 0: {
-            if (emitAtomics) {
+            if (features.hasAtomics()) {
               return makeUnary({ pick(ClzInt64, CtzInt64, PopcntInt64, ExtendS8Int64, ExtendS16Int64, ExtendS32Int64), make(i64) });
             } else {
               return makeUnary({ pick(ClzInt64, CtzInt64, PopcntInt64), make(i64) });
@@ -1123,8 +1352,22 @@ private:
             break;
           }
           case 1: return makeUnary({ pick(ExtendSInt32, ExtendUInt32), make(i32) });
-          case 2: return makeUnary({ pick(TruncSFloat32ToInt64, TruncUFloat32ToInt64), make(f32) });
-          case 3: return makeUnary({ pick(TruncSFloat64ToInt64, TruncUFloat64ToInt64, ReinterpretFloat64), make(f64) });
+          case 2: {
+            if (features.hasTruncSat()) {
+              return makeUnary({ pick(TruncSFloat32ToInt64, TruncUFloat32ToInt64, TruncSatSFloat32ToInt64, TruncSatUFloat32ToInt64), make(f32) });
+            } else {
+              return makeUnary({ pick(TruncSFloat32ToInt64, TruncUFloat32ToInt64), make(f32) });
+            }
+            break;
+          }
+          case 3: {
+            if (features.hasTruncSat()) {
+              return makeUnary({ pick(TruncSFloat64ToInt64, TruncUFloat64ToInt64, ReinterpretFloat64, TruncSatSFloat64ToInt64, TruncSatUFloat64ToInt64), make(f64) });
+            } else {
+              return makeUnary({ pick(TruncSFloat64ToInt64, TruncUFloat64ToInt64, ReinterpretFloat64), make(f64) });
+            }
+            break;
+          }
         }
         WASM_UNREACHABLE();
       }
@@ -1146,7 +1389,11 @@ private:
         }
         WASM_UNREACHABLE();
       }
-      default: WASM_UNREACHABLE();
+      case v128: assert(false && "v128 not implemented yet");
+      case none:
+      case unreachable: {
+        WASM_UNREACHABLE();
+      }
     }
     WASM_UNREACHABLE();
   }
@@ -1182,7 +1429,9 @@ private:
       case f64: {
         return makeDeNanOp(makeBinary({ pick(AddFloat64, SubFloat64, MulFloat64, DivFloat64, CopySignFloat64, MinFloat64, MaxFloat64), make(f64), make(f64) }));
       }
-      default: WASM_UNREACHABLE();
+      case v128: assert(false && "v128 not implemented yet");
+      case none:
+      case unreachable: WASM_UNREACHABLE();
     }
     WASM_UNREACHABLE();
   }
@@ -1244,7 +1493,7 @@ private:
   }
 
   Expression* makeAtomic(Type type) {
-    if (!emitAtomics || (type != i32 && type != i64)) return makeTrivial(type);
+    if (!features.hasAtomics() || (type != i32 && type != i64)) return makeTrivial(type);
     wasm.memory.shared = true;
     if (type == i32 && oneIn(2)) {
       if (ATOMIC_WAITS && oneIn(2)) {
@@ -1293,6 +1542,13 @@ private:
       auto* replacement = make(type);
       return builder.makeAtomicCmpxchg(bytes, offset, ptr, expected, replacement, type);
     }
+  }
+
+  // special makers
+
+  Expression* makeLogging() {
+    auto type = pick(i32, i64, f32, f64);
+    return builder.makeCall(std::string("log-") + printType(type), { make(type) }, none);
   }
 
   // special getters
@@ -1440,4 +1696,3 @@ private:
 // XXX Switch class has a condition?! is it real? should the node type be the value type if it exists?!
 
 // TODO copy an existing function and replace just one node in it
-

@@ -283,11 +283,120 @@
     (drop (i32.and (i32.const 100) (i32.const 1)))
     (drop (i32.and (i32.lt_s (i32.const 2000) (i32.const 3000)) (i32.const 1)))
   )
-  (func $canonicalize-binary
+  (func $canonicalize (param $x i32) (param $y i32) (param $fx f64) (param $fy f64)
     (drop (i32.and (unreachable) (i32.const 1))) ;; ok to reorder
     (drop (i32.and (i32.const 1) (unreachable)))
     (drop (i32.div_s (unreachable) (i32.const 1))) ;; not ok
     (drop (i32.div_s (i32.const 1) (unreachable)))
+    ;; the various orderings
+    (drop (i32.and (i32.const 1) (i32.const 2)))
+    (drop (i32.and (get_local $x) (i32.const 3)))
+    (drop (i32.and (i32.const 4) (get_local $x)))
+    (drop (i32.and (get_local $x) (get_local $y)))
+    (drop (i32.and (get_local $y) (get_local $x)))
+    (drop (i32.and (get_local $y) (tee_local $x (i32.const -4))))
+    (drop (i32.and
+      (block (result i32)
+        (i32.const -5)
+      )
+      (get_local $x)
+    ))
+    (drop (i32.and
+      (get_local $x)
+      (block (result i32)
+        (i32.const -6)
+      )
+    ))
+    (drop (i32.and
+      (block (result i32)
+        (i32.const 5)
+      )
+      (loop (result i32)
+        (i32.const 6)
+      )
+    ))
+    (drop (i32.and
+      (loop (result i32)
+        (i32.const 7)
+      )
+      (block (result i32)
+        (i32.const 8)
+      )
+    ))
+    (drop (i32.and
+      (loop (result i32)
+        (call $and-pos1)
+        (i32.const 9)
+      )
+      (block (result i32)
+        (i32.const 10)
+      )
+    ))
+    (drop (i32.and
+      (loop (result i32)
+        (i32.const 11)
+      )
+      (block (result i32)
+        (call $and-pos1)
+        (i32.const 12)
+      )
+    ))
+    (drop (i32.and
+      (loop (result i32)
+        (call $and-pos1)
+        (i32.const 13)
+      )
+      (block (result i32)
+        (call $and-pos1)
+        (i32.const 14)
+      )
+    ))
+    (drop (i32.and
+      (block (result i32)
+        (call $and-pos1)
+        (i32.const 14)
+      )
+      (loop (result i32)
+        (call $and-pos1)
+        (i32.const 13)
+      )
+    ))
+    (drop (i32.and
+      (block (result i32)
+        (i32.const 15)
+      )
+      (get_local $x)
+    ))
+    (drop (i32.and
+      (get_local $x)
+      (block (result i32)
+        (i32.const 15)
+      )
+    ))
+    (drop (i32.and
+      (i32.gt_s
+        (i32.const 16)
+        (i32.const 17)
+      )
+      (i32.gt_u
+        (i32.const 18)
+        (i32.const 19)
+      )
+    ))
+    (drop (i32.and
+      (i32.gt_u
+        (i32.const 20)
+        (i32.const 21)
+      )
+      (i32.gt_s
+        (i32.const 22)
+        (i32.const 23)
+      )
+    ))
+    (drop (i32.add (i32.ctz (get_local $x)) (i32.ctz (get_local $y))))
+    (drop (i32.add (i32.ctz (get_local $y)) (i32.ctz (get_local $x))))
+    (drop (i32.add (i32.ctz (get_local $x)) (i32.eqz (get_local $y))))
+    (drop (i32.add (i32.eqz (get_local $x)) (i32.ctz (get_local $y))))
   )
   (func $ne0 (result i32)
     (if (i32.ne (call $ne0) (i32.const 0))
@@ -615,7 +724,7 @@
     (drop
       (i32.shr_s
         (i32.shl
-          (get-local $0) ;; who knows...
+          (get_local $0) ;; who knows...
           (i32.const 24)
         )
         (i32.const 24)
@@ -3526,6 +3635,109 @@
     )
    )
   )
+  (func $add-sub-zero-reorder-1 (param $temp i32) (result i32)
+   (i32.add
+    (i32.add
+     (i32.sub
+      (i32.const 0) ;; this zero looks like we could remove it by subtracting the get of $temp from the parent, but that would reorder it *after* the tee :(
+      (get_local $temp)
+     )
+     (tee_local $temp ;; cannot move this tee before the get
+      (i32.const 1)
+     )
+    )
+    (i32.const 2)
+   )
+  )
+  (func $add-sub-zero-reorder-2 (param $temp i32) (result i32)
+   (i32.add
+    (i32.add
+     (tee_local $temp ;; in this order, the tee already comes first, so all is good for the optimization
+      (i32.const 1)
+     )
+     (i32.sub
+      (i32.const 0)
+      (get_local $temp)
+     )
+    )
+    (i32.const 2)
+   )
+  )
+  (func $pre-combine-or (param $x i32) (param $y i32)
+    (drop (i32.or
+      (i32.gt_s
+        (get_local $x)
+        (get_local $y)
+      )
+      (i32.eq
+        (get_local $y) ;; ordering should not stop us
+        (get_local $x)
+      )
+    ))
+    (drop (i32.or
+      (i32.eq ;; ordering should not stop us
+        (get_local $y)
+        (get_local $x)
+      )
+      (i32.gt_s
+        (get_local $x)
+        (get_local $y)
+      )
+    ))
+    (drop (i32.or
+      (i32.gt_s
+        (get_local $x)
+        (get_local $y)
+      )
+      (i32.eq
+        (get_local $x)
+        (i32.const 1) ;; not equal
+      )
+    ))
+    (drop (i32.or
+      (i32.gt_s
+        (get_local $x)
+        (i32.const 1) ;; not equal
+      )
+      (i32.eq
+        (get_local $x)
+        (get_local $y)
+      )
+    ))
+    (drop (i32.or
+      (i32.gt_s
+        (call $ne0) ;; side effects
+        (get_local $y)
+      )
+      (i32.eq
+        (call $ne0)
+        (get_local $y)
+      )
+    ))
+    (drop (i32.or
+      (i32.gt_s
+        (get_local $y)
+        (call $ne0) ;; side effects
+      )
+      (i32.eq
+        (get_local $y)
+        (call $ne0)
+      )
+    ))
+  )
+  (func $combine-or (param $x i32) (param $y i32)
+    (drop (i32.or
+      (i32.gt_s
+        (get_local $x)
+        (get_local $y)
+      )
+      (i32.eq
+        (get_local $x)
+        (get_local $y)
+      )
+    ))
+    ;; TODO: more stuff here
+  )
 )
 (module
   (import "env" "memory" (memory $0 (shared 256 256)))
@@ -3543,4 +3755,3 @@
    )
   )
 )
-

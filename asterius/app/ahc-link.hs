@@ -8,7 +8,7 @@ import System.FilePath
 
 parseTask :: Parser Task
 parseTask =
-  (\t i m_wasm m_js m_html m_report m_gv wasm_toolkit dbg ir r m_hs m_with_i ghc_flags export_funcs root_syms ->
+  (\t i m_wasm m_js m_html m_report m_gv wasm_toolkit dbg ir r m_ns m_ops m_with_i ghc_flags export_funcs root_syms ->
      Task
        { target = t
        , input = i
@@ -21,7 +21,8 @@ parseTask =
        , debug = dbg
        , outputIR = ir || dbg
        , run = r
-       , heapSize = maybe 1024 read m_hs
+       , nurserySize = maybe 512 read m_ns
+       , objectPoolSize = maybe 512 read m_ops
        , asteriusInstanceCallback =
            fromMaybe
              "i => {\ni.wasmInstance.exports.hs_init();\ni.wasmInstance.exports.rts_evalLazyIO(i.staticsSymbolMap.MainCapability, i.staticsSymbolMap.Main_main_closure, 0);\n}"
@@ -66,9 +67,11 @@ parseTask =
   switch (long "run" <> help "Run the compiled module with Node.js") <*>
   optional
     (strOption
-       (long "heap-size" <>
-        help
-          "Heap size in MBs, used for both nursery/object pool. Defaults to 1024.")) <*>
+       (long "nursery-size" <> help "Nursery size in MBs, defaults to 512.")) <*>
+  optional
+    (strOption
+       (long "object-pool-size" <>
+        help "Object pool size in MBs, defaults to 512.")) <*>
   optional
     (strOption
        (long "asterius-instance-callback" <>

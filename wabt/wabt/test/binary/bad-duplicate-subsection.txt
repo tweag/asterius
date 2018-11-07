@@ -1,0 +1,24 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) { count[1] function params[0] results[1] i32 }
+section(FUNCTION) { count[1] type[0] }
+section(CODE) {
+  count[1]
+  func {
+    locals[decl_count[1] i32_count[1] i32]
+    get_local 0
+  }
+}
+section("name") {
+  section(NAME_FUNCTION) {
+    count[0]
+  }
+  section(NAME_FUNCTION) {
+    count[0]
+  }
+}
+(;; STDERR ;;;
+0000028: error: duplicate sub-section
+0000028: error: duplicate sub-section
+;;; STDERR ;;)

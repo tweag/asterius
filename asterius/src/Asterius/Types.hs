@@ -18,7 +18,7 @@ module Asterius.Types
   , AsteriusStore(..)
   , UnresolvedLocalReg(..)
   , UnresolvedGlobalReg(..)
-  , ErrorMessage(..)
+  , Event(..)
   , ValueType(..)
   , FunctionType(..)
   , UnaryOp(..)
@@ -181,13 +181,13 @@ data UnresolvedGlobalReg
 
 instance Binary UnresolvedGlobalReg
 
-newtype ErrorMessage = ErrorMessage
-  { unErrorMessage :: SBS.ShortByteString
+newtype Event = Event
+  { eventMessage :: SBS.ShortByteString
   } deriving (Eq, Ord, Generic, Data)
 
-deriving newtype instance Show ErrorMessage
+deriving newtype instance Show Event
 
-instance Binary ErrorMessage
+instance Binary Event
 
 data ValueType
   = I32
@@ -399,8 +399,7 @@ data Expression
   | UnresolvedGetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg }
   | UnresolvedSetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg
                         , value :: Expression }
-  | EmitErrorMessage { errorMessage :: ErrorMessage
-                     , phantomReturnTypes :: [ValueType] }
+  | EmitEvent { event :: Event }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary Expression
@@ -426,8 +425,9 @@ data FunctionExport = FunctionExport
 
 instance Binary FunctionExport
 
-newtype FunctionTable = FunctionTable
+data FunctionTable = FunctionTable
   { functionNames :: [SBS.ShortByteString]
+  , tableExportName :: SBS.ShortByteString
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary FunctionTable
@@ -441,7 +441,7 @@ instance Binary DataSegment
 
 data Memory = Memory
   { initialPages :: BinaryenIndex
-  , exportName :: SBS.ShortByteString
+  , memoryExportName :: SBS.ShortByteString
   , dataSegments :: [DataSegment]
   } deriving (Eq, Show, Data, Generic)
 

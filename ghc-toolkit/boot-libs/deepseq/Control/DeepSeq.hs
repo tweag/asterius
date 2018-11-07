@@ -657,19 +657,27 @@ instance NFData Unique where
     rnf = rwhnf -- assumes `newtype Unique = Unique Integer`
 
 #if MIN_VERSION_base(4,8,0)
--- |@since 1.4.0.0
+-- | __NOTE__: Prior to @deepseq-1.4.4.0@ this instance was only defined for @base-4.8.0.0@ and later.
+--
+-- @since 1.4.0.0
 instance NFData TypeRep where
     rnf tyrep = rnfTypeRep tyrep
 
--- |@since 1.4.0.0
+-- | __NOTE__: Prior to @deepseq-1.4.4.0@ this instance was only defined for @base-4.8.0.0@ and later.
+--
+-- @since 1.4.0.0
 instance NFData TyCon where
     rnf tycon = rnfTyCon tycon
 #else
--- |@since 1.4.0.0
+-- | __NOTE__: Prior to @deepseq-1.4.4.0@ this instance was only defined for @base-4.8.0.0@ and later.
+--
+-- @since 1.4.0.0
 instance NFData TypeRep where
     rnf tr = rnf (typeRepTyCon tr) `seq` rnf (typeRepArgs tr)
 
--- |@since 1.4.0.0
+-- | __NOTE__: Prior to @deepseq-1.4.4.0@ this instance was only defined for @base-4.8.0.0@ and later.
+--
+-- @since 1.4.0.0
 instance NFData TyCon where
     rnf tc = rnf (tyConPackage tc) `seq`
              rnf (tyConModule  tc) `seq`

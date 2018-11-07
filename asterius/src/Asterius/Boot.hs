@@ -6,7 +6,7 @@
 
 module Asterius.Boot
   ( BootArgs(..)
-  , getDefaultBootArgs
+  , defaultBootArgs
   , boot
   ) where
 
@@ -14,18 +14,24 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
+import Asterius.Internals.Codensity
 import Asterius.Store
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
+import Control.Monad.IO.Class
+import Control.Monad.Trans.Class
 import Data.Foldable
 import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.Maybe
-import qualified GhcPlugins as GHC
+import qualified DynFlags as GHC
+import qualified GHC
 import Language.Haskell.GHC.Toolkit.BuildInfo (ahcGccPath, bootLibsPath)
 import Language.Haskell.GHC.Toolkit.Compiler
+import Language.Haskell.GHC.Toolkit.Orphans.Show
 import Language.Haskell.GHC.Toolkit.Run (defaultConfig, ghcFlags, runCmm)
+import qualified Module as GHC
 import Prelude hiding (IO)
 import System.Directory
 import System.Environment
@@ -40,20 +46,18 @@ data BootArgs = BootArgs
   , rtsOnly :: Bool
   }
 
-getDefaultBootArgs :: IO BootArgs
-getDefaultBootArgs = do
-  builtins_opts <- getDefaultBuiltinsOptions
-  pure
-    BootArgs
-      { bootDir = dataDir </> ".boot"
-      , configureOptions =
-          "--disable-shared --disable-split-objs --disable-split-sections -O2 --with-gcc=" <>
-          ahcGccPath
-      , buildOptions = ""
-      , installOptions = ""
-      , builtinsOptions = builtins_opts
-      , rtsOnly = False
-      }
+defaultBootArgs :: BootArgs
+defaultBootArgs =
+  BootArgs
+    { bootDir = dataDir </> ".boot"
+    , configureOptions =
+        "--disable-shared --disable-profiling --disable-library-for-ghci --disable-split-objs --disable-split-sections -O1 --with-gcc=" <>
+        ahcGccPath
+    , buildOptions = "-j1"
+    , installOptions = ""
+    , builtinsOptions = defaultBuiltinsOptions
+    , rtsOnly = False
+    }
 
 bootTmpDir :: BootArgs -> FilePath
 bootTmpDir BootArgs {..} = bootDir </> "dist"
@@ -81,43 +85,56 @@ bootCreateProcess args@BootArgs {..} = do
       }
 
 bootRTSCmm :: BootArgs -> IO ()
-bootRTSCmm BootArgs {..} = do
-  is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
-  store_ref <- newIORef mempty
-  rts_cmm_mods <-
-    map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
-    listDirectory rts_path
-  cmms <-
-    M.toList <$>
-    runCmm
-      defaultConfig
-        { ghcFlags =
-            ["-this-unit-id", "rts", "-dcmm-lint", "-O2", "-pgmc" <> ahcGccPath]
-        }
-      [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
-  for_ cmms $ \(fn, ir@CmmIR {..}) ->
-    let ms_mod = (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
-        mod_sym = marshalToModuleSymbol ms_mod
-     in case runCodeGen (marshalCmmIR ir) (dflags builtinsOptions) ms_mod of
-          Left err -> throwIO err
-          Right m -> do
-            encodeAsteriusModule obj_topdir mod_sym m
-            modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
-            when is_debug $ do
-              let p = asteriusModulePath obj_topdir mod_sym
-                  df = dflags builtinsOptions
-              writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-              asmPrint df (p "dump-cmm-raw") cmmRaw
-              writeFile (p "dump-cmm-ast") $ show cmm
-              asmPrint df (p "dump-cmm") cmm
-  if rtsOnly
-    then do
-      rts_store <- readIORef store_ref
-      store <- decodeStore store_path
-      encodeStore store_path $ rts_store <> store
-    else do
-      store <- readIORef store_ref
-      encodeStore store_path store
+bootRTSCmm BootArgs {..} =
+  GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
+  GHC.runGhc (Just ghcLibDir) $
+  lowerCodensity $ do
+    dflags <- lift GHC.getSessionDynFlags
+    setDynFlagsRef dflags
+    is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
+    store_ref <- liftIO $ newIORef mempty
+    rts_cmm_mods <-
+      map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
+      liftIO (listDirectory rts_path)
+    cmms <-
+      M.toList <$>
+      liftCodensity
+        (runCmm
+           defaultConfig
+             { ghcFlags =
+                 [ "-this-unit-id"
+                 , "rts"
+                 , "-dcmm-lint"
+                 , "-O2"
+                 , "-pgmc" <> ahcGccPath
+                 ]
+             }
+           [rts_path </> m <.> "cmm" | m <- rts_cmm_mods])
+    liftIO $ do
+      for_ cmms $ \(fn, ir@CmmIR {..}) ->
+        let ms_mod =
+              (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
+            mod_sym = marshalToModuleSymbol ms_mod
+         in case runCodeGen (marshalCmmIR ir) dflags ms_mod of
+              Left err -> throwIO err
+              Right m -> do
+                encodeAsteriusModule obj_topdir mod_sym m
+                modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
+                when is_debug $ do
+                  let p = asteriusModulePath obj_topdir mod_sym
+                  writeFile (p "dump-wasm-ast") $ show m
+                  writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
+                  asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                  writeFile (p "dump-cmm-ast") $ show cmm
+                  asmPrint dflags (p "dump-cmm") cmm
+      if rtsOnly
+        then do
+          rts_store <- readIORef store_ref
+          store <- decodeStore store_path
+          encodeStore store_path $ rts_store <> store
+        else do
+          store <- readIORef store_ref
+          encodeStore store_path store
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"

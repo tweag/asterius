@@ -73,6 +73,7 @@ BinaryenType BinaryenTypeInt32(void);
 BinaryenType BinaryenTypeInt64(void);
 BinaryenType BinaryenTypeFloat32(void);
 BinaryenType BinaryenTypeFloat64(void);
+BinaryenType BinaryenTypeVec128(void);
 BinaryenType BinaryenTypeUnreachable(void);
 // Not a real type. Used as the last parameter to BinaryenBlock to let
 // the API figure out the type instead of providing one.
@@ -323,6 +324,14 @@ BinaryenOp BinaryenAtomicRMWAnd(void);
 BinaryenOp BinaryenAtomicRMWOr(void);
 BinaryenOp BinaryenAtomicRMWXor(void);
 BinaryenOp BinaryenAtomicRMWXchg(void);
+BinaryenOp BinaryenTruncSatSFloat32ToInt32(void);
+BinaryenOp BinaryenTruncSatSFloat32ToInt64(void);
+BinaryenOp BinaryenTruncSatUFloat32ToInt32(void);
+BinaryenOp BinaryenTruncSatUFloat32ToInt64(void);
+BinaryenOp BinaryenTruncSatSFloat64ToInt32(void);
+BinaryenOp BinaryenTruncSatSFloat64ToInt64(void);
+BinaryenOp BinaryenTruncSatUFloat64ToInt32(void);
+BinaryenOp BinaryenTruncSatUFloat64ToInt64(void);
 
 typedef void* BinaryenExpressionRef;
 
@@ -652,7 +661,7 @@ void BinaryenModuleOptimize(BinaryenModuleRef module);
 
 // Gets the currently set optimize level. Applies to all modules, globally.
 // 0, 1, 2 correspond to -O0, -O1, -O2 (default), etc.
-int BinaryenGetOptimizeLevel();
+int BinaryenGetOptimizeLevel(void);
 
 // Sets the optimization level to use. Applies to all modules, globally.
 // 0, 1, 2 correspond to -O0, -O1, -O2 (default), etc.
@@ -660,7 +669,7 @@ void BinaryenSetOptimizeLevel(int level);
 
 // Gets the currently set shrink level. Applies to all modules, globally.
 // 0, 1, 2 correspond to -O0, -Os (default), -Oz.
-int BinaryenGetShrinkLevel();
+int BinaryenGetShrinkLevel(void);
 
 // Sets the shrink level to use. Applies to all modules, globally.
 // 0, 1, 2 correspond to -O0, -Os (default), -Oz.
@@ -668,7 +677,7 @@ void BinaryenSetShrinkLevel(int level);
 
 // Gets whether generating debug information is currently enabled or not.
 // Applies to all modules, globally.
-int BinaryenGetDebugInfo();
+int BinaryenGetDebugInfo(void);
 
 // Enables or disables debug information in emitted binaries.
 // Applies to all modules, globally.
@@ -806,7 +815,7 @@ typedef void* RelooperRef;
 typedef void* RelooperBlockRef;
 
 // Create a relooper instance
-RelooperRef RelooperCreate(void);
+RelooperRef RelooperCreate(BinaryenModuleRef module);
 
 // Create a basic block that ends with nothing, or with some simple branching
 RelooperBlockRef RelooperAddBlock(RelooperRef relooper, BinaryenExpressionRef code);
@@ -827,7 +836,7 @@ void RelooperAddBranchForSwitch(RelooperBlockRef from, RelooperBlockRef to, Bina
 //   @param labelHelper To render irreducible control flow, we may need a helper variable to
 //                      guide us to the right target label. This value should be an index of
 //                      an i32 local variable that is free for us to use.
-BinaryenExpressionRef RelooperRenderAndDispose(RelooperRef relooper, RelooperBlockRef entry, BinaryenIndex labelHelper, BinaryenModuleRef module);
+BinaryenExpressionRef RelooperRenderAndDispose(RelooperRef relooper, RelooperBlockRef entry, BinaryenIndex labelHelper);
 
 //
 // ========= Other APIs =========

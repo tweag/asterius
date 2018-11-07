@@ -133,6 +133,12 @@ HsInt sizeof_spEntry() { return sizeof(spEntry); }
 
 HsInt offset_spEntry_addr() { return offsetof(spEntry, addr); }
 
+HsInt sizeof_StgArrBytes() { return sizeof(StgArrBytes); }
+
+HsInt offset_StgArrBytes_bytes() { return offsetof(StgArrBytes, bytes); }
+
+HsInt offset_StgArrBytes_payload() { return offsetof(StgArrBytes, payload); }
+
 HsInt sizeof_StgClosure() { return sizeof(StgClosure); }
 
 HsInt offset_StgClosure_payload() { return offsetof(StgClosure, payload); }

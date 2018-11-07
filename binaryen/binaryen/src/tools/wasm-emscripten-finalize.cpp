@@ -40,6 +40,7 @@ int main(int argc, const char *argv[]) {
   std::string inputSourceMapFilename;
   std::string outputSourceMapFilename;
   std::string outputSourceMapUrl;
+  std::string dataSegmentFile;
   bool emitBinary = true;
   bool debugInfo = false;
   bool legalizeJavaScriptFFI = true;
@@ -94,6 +95,9 @@ int main(int argc, const char *argv[]) {
       .add("--output-source-map-url", "-osu", "Emit specified string as source map URL",
            Options::Arguments::One,
            [&outputSourceMapUrl](Options *o, const std::string& argument) { outputSourceMapUrl = argument; })
+      .add("--separate-data-segments", "", "Separate data segments to a file",
+           Options::Arguments::One,
+           [&dataSegmentFile](Options *o, const std::string& argument) { dataSegmentFile = argument;})
       .add_positional("INFILE", Options::Arguments::One,
                       [&infile](Options *o, const std::string& argument) {
                         infile = argument;
@@ -126,23 +130,29 @@ int main(int argc, const char *argv[]) {
     WasmPrinter::printModule(&wasm, std::cerr);
   }
 
-  Export* dataEndExport = wasm.getExport("__data_end");
-  if (dataEndExport == nullptr) {
-    Fatal() << "__data_end export not found";
+  bool isSideModule = false;
+  for (const UserSection& section : wasm.userSections) {
+    if (section.name == BinaryConsts::UserSections::Dylink) {
+      isSideModule = true;
+    }
   }
-  Global* dataEnd = wasm.getGlobal(dataEndExport->value);
-  if (dataEnd == nullptr) {
-    Fatal() << "__data_end global not found";
-  }
-  if (dataEnd->type != Type::i32) {
-    Fatal() << "__data_end global has wrong type";
-  }
-  Const* dataEndConst = dataEnd->init->cast<Const>();
-  uint32_t dataSize = dataEndConst->value.geti32() - globalBase;
 
-  std::vector<Name> initializerFunctions;
-  if (wasm.getFunctionOrNull("__wasm_call_ctors")) {
-    initializerFunctions.push_back("__wasm_call_ctors");
+  uint32_t dataSize = 0;
+
+  if (!isSideModule) {
+    Export* dataEndExport = wasm.getExport("__data_end");
+    if (dataEndExport == nullptr) {
+      Fatal() << "__data_end export not found";
+    }
+    Global* dataEnd = wasm.getGlobal(dataEndExport->value);
+    if (dataEnd == nullptr) {
+      Fatal() << "__data_end global not found";
+    }
+    if (dataEnd->type != Type::i32) {
+      Fatal() << "__data_end global has wrong type";
+    }
+    Const* dataEndConst = dataEnd->init->cast<Const>();
+    dataSize = dataEndConst->value.geti32() - globalBase;
   }
 
   EmscriptenGlueGenerator generator(wasm);
@@ -156,11 +166,41 @@ int main(int argc, const char *argv[]) {
     passRunner.run();
   }
 
-  generator.generateRuntimeFunctions();
-  generator.generateMemoryGrowthFunction();
+  std::vector<Name> initializerFunctions;
+
+  // The names of standard imports/exports used by lld doesn't quite match that
+  // expected by emscripten.
+  // TODO(sbc): Unify these
+  if (Export* ex = wasm.getExportOrNull("__wasm_call_ctors")) {
+    ex->name = "__post_instantiate";
+  }
+  if (wasm.table.imported()) {
+    if (wasm.table.base != "table") wasm.table.base = Name("table");
+  }
+  if (wasm.memory.imported()) {
+    if (wasm.table.base != "memory") wasm.memory.base = Name("memory");
+  }
+  wasm.updateMaps();
+
+  if (isSideModule) {
+    generator.replaceStackPointerGlobal();
+  } else {
+    generator.generateRuntimeFunctions();
+    generator.generateMemoryGrowthFunction();
+    // emscripten calls this by default for side libraries so we only need
+    // to include in as a static ctor for main module case.
+    if (wasm.getExportOrNull("__post_instantiate")) {
+      initializerFunctions.push_back("__post_instantiate");
+    }
+  }
+
   generator.generateDynCallThunks();
   generator.generateJSCallThunks(numReservedFunctionPointers);
   std::string metadata = generator.generateEmscriptenMetadata(dataSize, initializerFunctions, numReservedFunctionPointers);
+  if (!dataSegmentFile.empty()) {
+    Output memInitFile(dataSegmentFile, Flags::Binary, Flags::Release);
+    generator.separateDataSegments(&memInitFile);
+  }
 
   if (options.debug) {
     std::cerr << "Module after:\n";
@@ -182,7 +222,9 @@ int main(int argc, const char *argv[]) {
   if (emitBinary) {
     std::cout << metadata;
   } else {
-    output << ";; METADATA: " << metadata;
+    output << "(;\n";
+    output << "--BEGIN METADATA --\n" << metadata << "-- END METADATA --\n";
+    output << ";)\n";
   }
 
   return 0;

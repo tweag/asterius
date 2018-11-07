@@ -1,0 +1,22 @@
+;;; TOOL: run-roundtrip
+;;; ARGS: --stdout --generate-names
+(module
+  (func)
+  (func
+    call 0)
+  (func (; not exported ;))
+  (table anyfunc (elem 0 1 0))
+  (export "zero" (func 0))
+  (export "one" (func 1)))
+(;; STDOUT ;;;
+(module
+  (type $t0 (func))
+  (func $zero (type $t0))
+  (func $one (type $t0)
+    call $zero)
+  (func $f2 (type $t0))
+  (table $T0 3 3 anyfunc)
+  (export "zero" (func $zero))
+  (export "one" (func $one))
+  (elem $e0 (i32.const 0) $zero $one $zero))
+;;; STDOUT ;;)

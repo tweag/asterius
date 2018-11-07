@@ -7,16 +7,20 @@
  (type $5 (func (param i32) (result i32)))
  (type $6 (func (param i32 i32 i32 i32 i32 i32)))
  (type $FUNCSIG$iii (func (param i32 i32) (result i32)))
- (type $8 (func (param i32 i32)))
- (type $9 (func (param i32 i32 i32) (result i32)))
- (type $10 (func (param i64)))
+ (type $FUNCSIG$vf (func (param f32)))
+ (type $9 (func (param i32 i32)))
+ (type $10 (func (param i32 i32 i32) (result i32)))
+ (type $11 (func (param i64)))
+ (type $12 (func (param i32 f64 f64 f32 i32) (result f64)))
  (import "env" "waka" (func $waka))
  (import "env" "waka_int" (func $waka_int (result i32)))
  (import "env" "i64sub" (func $_i64Subtract (param i32 i32 i32 i32) (result i32)))
  (import "env" "moddi" (func $___udivmoddi4 (param i32 i32 i32 i32 i32) (result i32)))
  (import "env" "lp" (func $lp (param i32 i32) (result i32)))
+ (import "fuzzing-support" "log-f32" (func $fimport$0 (param f32)))
  (memory $0 256 256)
- (func $contrast (; 5 ;) (type $FUNCSIG$v)
+ (global $global$0 (mut i32) (i32.const 10))
+ (func $contrast (; 6 ;) (type $FUNCSIG$v)
   (local $x i32)
   (local $y i32)
   (local $z i32)
@@ -78,7 +82,7 @@
    )
   )
  )
- (func $b0-yes (; 6 ;) (type $4) (param $i1 i32)
+ (func $b0-yes (; 7 ;) (type $4) (param $i1 i32)
   (local $x i32)
   (local $y i32)
   (local $a i32)
@@ -400,7 +404,7 @@
    )
   )
  )
- (func $Ia (; 7 ;) (type $5) (param $a i32) (result i32)
+ (func $Ia (; 8 ;) (type $5) (param $a i32) (result i32)
   (local $b i32)
   (block $switch$0
    (block $switch-default$6
@@ -411,7 +415,7 @@
    (i32.const 60)
   )
  )
- (func $memories (; 8 ;) (type $6) (param $i2 i32) (param $i3 i32) (param $bi2 i32) (param $bi3 i32) (param $ci3 i32) (param $di3 i32)
+ (func $memories (; 9 ;) (type $6) (param $i2 i32) (param $i3 i32) (param $bi2 i32) (param $bi3 i32) (param $ci3 i32) (param $di3 i32)
   (local $set_with_no_get i32)
   (nop)
   (i32.store8
@@ -443,7 +447,7 @@
    (i32.const 456)
   )
  )
- (func $___remdi3 (; 9 ;) (type $FUNCSIG$iiiii) (param $$a$0 i32) (param $$a$1 i32) (param $$b$0 i32) (param $$b$1 i32) (result i32)
+ (func $___remdi3 (; 10 ;) (type $FUNCSIG$iiiii) (param $$a$0 i32) (param $$a$1 i32) (param $$b$0 i32) (param $$b$1 i32) (result i32)
   (local $$1$1 i32)
   (local $$1$0 i32)
   (local $$rem i32)
@@ -636,7 +640,7 @@
    )
   )
  )
- (func $block-returns (; 10 ;) (type $FUNCSIG$v)
+ (func $block-returns (; 11 ;) (type $FUNCSIG$v)
   (local $x i32)
   (set_local $x
    (block $out (result i32)
@@ -685,12 +689,16 @@
       (tee_local $x
        (if (result i32)
         (i32.const 1)
-        (block $block3 (result i32)
-         (nop)
+        (block (result i32)
+         (block $block3
+          (nop)
+         )
          (i32.const 14)
         )
-        (block $block5 (result i32)
-         (nop)
+        (block (result i32)
+         (block $block5
+          (nop)
+         )
          (i32.const 25)
         )
        )
@@ -706,7 +714,7 @@
    )
   )
  )
- (func $multiple (; 11 ;) (type $6) (param $s i32) (param $r i32) (param $f i32) (param $p i32) (param $t i32) (param $m i32)
+ (func $multiple (; 12 ;) (type $6) (param $s i32) (param $r i32) (param $f i32) (param $p i32) (param $t i32) (param $m i32)
   (nop)
   (set_local $r
    (i32.add
@@ -733,7 +741,7 @@
    (get_local $t)
   )
  )
- (func $switch-def (; 12 ;) (type $5) (param $i3 i32) (result i32)
+ (func $switch-def (; 13 ;) (type $5) (param $i3 i32) (result i32)
   (local $i1 i32)
   (set_local $i1
    (i32.const 10)
@@ -752,10 +760,11 @@
    (get_local $i1)
   )
  )
- (func $no-out-of-label (; 13 ;) (type $8) (param $x i32) (param $y i32)
+ (func $no-out-of-label (; 14 ;) (type $9) (param $x i32) (param $y i32)
   (nop)
   (set_local $x
    (loop $moar (result i32)
+    (nop)
     (block $block (result i32)
      (br_if $moar
       (get_local $x)
@@ -778,11 +787,12 @@
    (get_local $y)
   )
  )
- (func $freetype-cd (; 14 ;) (type $5) (param $a i32) (result i32)
+ (func $freetype-cd (; 15 ;) (type $5) (param $a i32) (result i32)
   (local $e i32)
   (nop)
   (tee_local $a
    (loop $while-in$1 (result i32)
+    (nop)
     (block $while-out$0 (result i32)
      (set_local $e
       (get_local $a)
@@ -805,7 +815,7 @@
    )
   )
  )
- (func $drop-if-value (; 15 ;) (type $9) (param $x i32) (param $y i32) (param $z i32) (result i32)
+ (func $drop-if-value (; 16 ;) (type $10) (param $x i32) (param $y i32) (param $z i32) (result i32)
   (local $temp i32)
   (drop
    (if (result i32)
@@ -833,7 +843,7 @@
    (i32.const 0)
   )
  )
- (func $drop-br_if (; 16 ;) (type $9) (param $label i32) (param $$cond2 i32) (param $$$0151 i32) (result i32)
+ (func $drop-br_if (; 17 ;) (type $10) (param $label i32) (param $$cond2 i32) (param $$$0151 i32) (result i32)
   (nop)
   (tee_local $label
    (block $label$break$L4 (result i32)
@@ -865,7 +875,7 @@
    )
   )
  )
- (func $drop-tee-unreachable (; 17 ;) (type $FUNCSIG$v)
+ (func $drop-tee-unreachable (; 18 ;) (type $FUNCSIG$v)
   (local $x i32)
   (tee_local $x
    (unreachable)
@@ -874,7 +884,7 @@
    (get_local $x)
   )
  )
- (func $if-return-but-unreachable (; 18 ;) (type $10) (param $var$0 i64)
+ (func $if-return-but-unreachable (; 19 ;) (type $11) (param $var$0 i64)
   (if
    (unreachable)
    (drop
@@ -882,6 +892,231 @@
    )
    (set_local $var$0
     (i64.const 1)
+   )
+  )
+ )
+ (func $if-one-side (; 20 ;) (type $FUNCSIG$i) (result i32)
+  (local $x i32)
+  (nop)
+  (tee_local $x
+   (if (result i32)
+    (i32.const 1)
+    (block (result i32)
+     (nop)
+     (i32.const 2)
+    )
+    (get_local $x)
+   )
+  )
+ )
+ (func $if-one-side-undo (; 21 ;) (type $FUNCSIG$i) (result i32)
+  (local $x i32)
+  (local $y i32)
+  (set_local $y
+   (i32.const 0)
+  )
+  (set_local $x
+   (if (result i32)
+    (i32.const 1)
+    (block (result i32)
+     (nop)
+     (i32.const 2)
+    )
+    (get_local $x)
+   )
+  )
+  (get_local $y)
+ )
+ (func $if-one-side-multi (; 22 ;) (type $5) (param $0 i32) (result i32)
+  (nop)
+  (tee_local $0
+   (if (result i32)
+    (i32.lt_s
+     (get_local $0)
+     (i32.const -1073741824)
+    )
+    (block (result i32)
+     (nop)
+     (i32.const -1073741824)
+    )
+    (block (result i32)
+     (nop)
+     (if (result i32)
+      (i32.gt_s
+       (get_local $0)
+       (i32.const 1073741823)
+      )
+      (block (result i32)
+       (nop)
+       (i32.const 1073741823)
+      )
+      (get_local $0)
+     )
+    )
+   )
+  )
+ )
+ (func $if-one-side-undo-but-its-a-tee (; 23 ;) (type $5) (param $0 i32) (result i32)
+  (local $1 i32)
+  (local $2 i32)
+  (local $3 i32)
+  (local $4 i32)
+  (local $x i32)
+  (local $y i32)
+  (local $z i32)
+  (set_local $x
+   (if (result i32)
+    (i32.const -1)
+    (i32.const -2)
+    (get_local $x)
+   )
+  )
+  (drop
+   (call $if-one-side-undo-but-its-a-tee
+    (tee_local $x
+     (if (result i32)
+      (i32.const -3)
+      (i32.const -4)
+      (get_local $x)
+     )
+    )
+   )
+  )
+  (nop)
+  (drop
+   (i32.eqz
+    (tee_local $y
+     (if (result i32)
+      (i32.const -5)
+      (i32.const -6)
+      (get_local $y)
+     )
+    )
+   )
+  )
+  (nop)
+  (drop
+   (i32.add
+    (tee_local $z
+     (if (result i32)
+      (i32.const -7)
+      (i32.const -8)
+      (get_local $z)
+     )
+    )
+    (get_local $z)
+   )
+  )
+  (if
+   (block $label$1 (result i32)
+    (nop)
+    (nop)
+    (tee_local $4
+     (if (result i32)
+      (tee_local $4
+       (if (result i32)
+        (i32.const 1)
+        (block (result i32)
+         (nop)
+         (i32.const 2)
+        )
+        (get_local $4)
+       )
+      )
+      (block (result i32)
+       (nop)
+       (i32.const 0)
+      )
+      (get_local $4)
+     )
+    )
+   )
+   (unreachable)
+  )
+  (i32.const 0)
+ )
+ (func $splittable-ifs-multicycle (; 24 ;) (type $5) (param $20 i32) (result i32)
+  (nop)
+  (tee_local $20
+   (if (result i32)
+    (i32.const 1)
+    (if (result i32)
+     (i32.const 2)
+     (if (result i32)
+      (i32.const 3)
+      (i32.const 4)
+      (get_local $20)
+     )
+     (get_local $20)
+    )
+    (get_local $20)
+   )
+  )
+ )
+ (func $update-getCounter (; 25 ;) (type $12) (param $0 i32) (param $1 f64) (param $2 f64) (param $3 f32) (param $4 i32) (result f64)
+  (set_global $global$0
+   (i32.sub
+    (get_global $global$0)
+    (i32.const 1)
+   )
+  )
+  (set_global $global$0
+   (i32.sub
+    (get_global $global$0)
+    (i32.const 1)
+   )
+  )
+  (loop $label$1 (result f64)
+   (set_global $global$0
+    (i32.sub
+     (get_global $global$0)
+     (i32.const 1)
+    )
+   )
+   (set_global $global$0
+    (i32.sub
+     (get_global $global$0)
+     (i32.const 1)
+    )
+   )
+   (call $fimport$0
+    (tee_local $3
+     (if (result f32)
+      (i32.eqz
+       (get_local $0)
+      )
+      (f32.const 4623408228068004207103214e13)
+      (get_local $3)
+     )
+    )
+   )
+   (set_global $global$0
+    (i32.sub
+     (get_global $global$0)
+     (i32.const 1)
+    )
+   )
+   (if (result f64)
+    (get_global $global$0)
+    (block $block
+     (set_global $global$0
+      (i32.sub
+       (get_global $global$0)
+       (i32.const 1)
+      )
+     )
+     (set_local $0
+      (i32.const -65)
+     )
+     (set_global $global$0
+      (i32.sub
+       (get_global $global$0)
+       (i32.const 1)
+      )
+     )
+     (br $label$1)
+    )
+    (f64.const -70)
    )
   )
  )
@@ -894,12 +1129,18 @@
  (type $4 (func (param i32)))
  (type $5 (func (param i32) (result i32)))
  (type $6 (func (param i32 i32 i32 i32 i32 i32)))
- (type $7 (func (param i32 i32)))
- (type $8 (func (result f64)))
- (type $9 (func (param i32 i32) (result f64)))
- (type $10 (func (param i32 i32) (result i32)))
+ (type $FUNCSIG$vi (func (param i32)))
+ (type $FUNCSIG$vf (func (param f32)))
+ (type $9 (func (param i32 i32)))
+ (type $10 (func (result f64)))
+ (type $11 (func (param i32 i32) (result f64)))
+ (type $12 (func (param i32 i32) (result i32)))
+ (import "fuzzing-support" "log1" (func $fimport$0 (result i32)))
+ (import "fuzzing-support" "log2" (func $fimport$1 (param i32)))
+ (import "fuzzing-support" "log3" (func $fimport$2 (param f32)))
  (memory $0 (shared 256 256))
- (func $nonatomics (; 0 ;) (type $FUNCSIG$i) (result i32)
+ (global $global$0 (mut i32) (i32.const 10))
+ (func $nonatomics (; 3 ;) (type $FUNCSIG$i) (result i32)
   (local $x i32)
   (nop)
   (drop
@@ -911,7 +1152,7 @@
    (i32.const 1024)
   )
  )
- (func $nonatomic-growmem (; 1 ;) (type $FUNCSIG$i) (result i32)
+ (func $nonatomic-growmem (; 4 ;) (type $FUNCSIG$i) (result i32)
   (local $x i32)
   (set_local $x
    (i32.load
@@ -927,7 +1168,7 @@
   )
   (get_local $x)
  )
- (func $atomics (; 2 ;) (type $FUNCSIG$v)
+ (func $atomics (; 5 ;) (type $FUNCSIG$v)
   (local $x i32)
   (set_local $x
    (i32.atomic.load
@@ -943,7 +1184,7 @@
    (get_local $x)
   )
  )
- (func $one-atomic (; 3 ;) (type $FUNCSIG$v)
+ (func $one-atomic (; 6 ;) (type $FUNCSIG$v)
   (local $x i32)
   (set_local $x
    (i32.load
@@ -959,7 +1200,7 @@
    (get_local $x)
   )
  )
- (func $other-atomic (; 4 ;) (type $FUNCSIG$v)
+ (func $other-atomic (; 7 ;) (type $FUNCSIG$v)
   (local $x i32)
   (set_local $x
    (i32.atomic.load
@@ -975,7 +1216,7 @@
    (get_local $x)
   )
  )
- (func $atomic-growmem (; 5 ;) (type $FUNCSIG$i) (result i32)
+ (func $atomic-growmem (; 8 ;) (type $FUNCSIG$i) (result i32)
   (local $x i32)
   (set_local $x
    (i32.load
@@ -991,7 +1232,7 @@
   )
   (get_local $x)
  )
- (func $atomicrmw (; 6 ;) (type $FUNCSIG$v)
+ (func $atomicrmw (; 9 ;) (type $FUNCSIG$v)
   (local $x i32)
   (set_local $x
    (i32.atomic.rmw.add
@@ -1008,7 +1249,7 @@
    (get_local $x)
   )
  )
- (func $atomic-cmpxchg (; 7 ;) (type $FUNCSIG$v)
+ (func $atomic-cmpxchg (; 10 ;) (type $FUNCSIG$v)
   (local $x i32)
   (set_local $x
    (i32.atomic.rmw.cmpxchg
@@ -1026,7 +1267,7 @@
    (get_local $x)
   )
  )
- (func $br-value-reordering (; 8 ;) (type $FUNCSIG$i) (result i32)
+ (func $br-value-reordering (; 11 ;) (type $FUNCSIG$i) (result i32)
   (local $temp i32)
   (block $outside
    (loop $loop
@@ -1049,7 +1290,7 @@
   )
   (unreachable)
  )
- (func $br-value-reordering-safe (; 9 ;) (type $FUNCSIG$i) (result i32)
+ (func $br-value-reordering-safe (; 12 ;) (type $FUNCSIG$i) (result i32)
   (local $temp i32)
   (set_local $temp
    (block $outside (result i32)
@@ -1075,7 +1316,7 @@
   )
   (unreachable)
  )
- (func $if-one-side-unreachable (; 10 ;) (type $FUNCSIG$v)
+ (func $if-one-side-unreachable (; 13 ;) (type $FUNCSIG$v)
   (local $x i32)
   (block $out
    (drop
@@ -1111,27 +1352,31 @@
    )
   )
  )
- (func $if-one-side-unreachable-blocks (; 11 ;) (type $FUNCSIG$v)
+ (func $if-one-side-unreachable-blocks (; 14 ;) (type $FUNCSIG$v)
   (local $x i32)
   (local $y i32)
   (block $out
    (drop
     (if (result i32)
      (i32.const 1)
-     (block $block
-      (drop
-       (i32.const 2)
+     (block
+      (block $block
+       (drop
+        (i32.const 2)
+       )
+       (drop
+        (i32.const 3)
+       )
+       (br $out)
       )
-      (drop
-       (i32.const 3)
-      )
-      (br $out)
       (nop)
      )
-     (block $block2 (result i32)
-      (nop)
-      (drop
-       (i32.const 5)
+     (block (result i32)
+      (block $block2
+       (nop)
+       (drop
+        (i32.const 5)
+       )
       )
       (i32.const 4)
      )
@@ -1140,21 +1385,25 @@
    (drop
     (if (result i32)
      (i32.const 6)
-     (block $block4 (result i32)
-      (nop)
-      (drop
-       (i32.const 8)
+     (block (result i32)
+      (block $block4
+       (nop)
+       (drop
+        (i32.const 8)
+       )
       )
       (i32.const 7)
      )
-     (block $block5
-      (drop
-       (i32.const 9)
+     (block
+      (block $block5
+       (drop
+        (i32.const 9)
+       )
+       (drop
+        (i32.const 10)
+       )
+       (br $out)
       )
-      (drop
-       (i32.const 10)
-      )
-      (br $out)
       (nop)
      )
     )
@@ -1182,26 +1431,30 @@
    )
   )
  )
- (func $loop-value (; 12 ;) (type $5) (param $x i32) (result i32)
+ (func $loop-value (; 15 ;) (type $5) (param $x i32) (result i32)
   (loop $loopy
    (unreachable)
   )
   (nop)
   (loop $loopy9 (result i32)
+   (nop)
    (i32.const 1)
   )
  )
- (func $loop-loop-loopy-value (; 13 ;) (type $5) (param $x i32) (result i32)
+ (func $loop-loop-loopy-value (; 16 ;) (type $5) (param $x i32) (result i32)
   (nop)
   (loop $loopy1 (result i32)
+   (nop)
    (loop $loopy2 (result i32)
+    (nop)
     (loop $loopy3 (result i32)
+     (nop)
      (i32.const 1)
     )
    )
   )
  )
- (func $loop-modified-during-main-pass-be-careful-fuzz (; 14 ;) (type $FUNCSIG$i) (result i32)
+ (func $loop-modified-during-main-pass-be-careful-fuzz (; 17 ;) (type $FUNCSIG$i) (result i32)
   (local $0 i32)
   (nop)
   (if (result i32)
@@ -1218,9 +1471,10 @@
    )
   )
  )
- (func $loop-later (; 15 ;) (type $FUNCSIG$iiiiii) (param $var$0 i32) (param $var$1 i32) (param $var$2 i32) (param $var$3 i32) (param $var$4 i32) (result i32)
+ (func $loop-later (; 18 ;) (type $FUNCSIG$iiiiii) (param $var$0 i32) (param $var$1 i32) (param $var$2 i32) (param $var$3 i32) (param $var$4 i32) (result i32)
   (drop
    (loop $label$1 (result i32)
+    (nop)
     (block $label$2 (result i32)
      (if
       (i32.const 0)
@@ -1238,45 +1492,53 @@
   )
   (i32.const 0)
  )
- (func $pick (; 16 ;) (type $FUNCSIG$v)
+ (func $pick (; 19 ;) (type $FUNCSIG$v)
   (local $x i32)
   (local $y i32)
-  (drop
+  (set_local $x
    (get_local $y)
   )
-  (if
-   (i32.const 1)
-   (drop
+  (drop
+   (if (result i32)
     (i32.const 1)
+    (block (result i32)
+     (nop)
+     (i32.const 1)
+    )
+    (get_local $x)
    )
   )
   (drop
    (get_local $y)
   )
-  (drop
+  (set_local $x
    (get_local $y)
   )
  )
- (func $pick-2 (; 17 ;) (type $FUNCSIG$v)
+ (func $pick-2 (; 20 ;) (type $FUNCSIG$v)
   (local $x i32)
   (local $y i32)
-  (drop
+  (set_local $y
    (get_local $x)
   )
-  (if
-   (i32.const 1)
-   (drop
+  (drop
+   (if (result i32)
     (i32.const 1)
+    (block (result i32)
+     (nop)
+     (i32.const 1)
+    )
+    (get_local $y)
    )
   )
   (drop
    (get_local $x)
   )
-  (drop
+  (set_local $y
    (get_local $x)
   )
  )
- (func $many (; 18 ;) (type $FUNCSIG$v)
+ (func $many (; 21 ;) (type $FUNCSIG$v)
   (local $x i32)
   (local $y i32)
   (local $z i32)
@@ -1284,29 +1546,39 @@
   (nop)
   (nop)
   (set_local $z
-   (get_local $x)
+   (tee_local $y
+    (get_local $x)
+   )
   )
   (drop
    (get_local $x)
   )
-  (if
-   (i32.const 1)
-   (drop
+  (set_local $y
+   (if (result i32)
     (i32.const 1)
+    (block (result i32)
+     (nop)
+     (i32.const 1)
+    )
+    (get_local $y)
    )
   )
   (set_local $x
    (get_local $z)
   )
-  (if
-   (i32.const 1)
-   (drop
+  (drop
+   (if (result i32)
     (i32.const 1)
+    (block (result i32)
+     (nop)
+     (i32.const 1)
+    )
+    (get_local $y)
    )
   )
   (nop)
   (nop)
-  (drop
+  (set_local $y
    (get_local $x)
   )
   (nop)
@@ -1315,15 +1587,19 @@
     (i32.const 2)
    )
   )
-  (if
-   (i32.const 1)
-   (drop
+  (drop
+   (if (result i32)
     (i32.const 1)
+    (block (result i32)
+     (nop)
+     (i32.const 1)
+    )
+    (get_local $y)
    )
   )
   (nop)
   (nop)
-  (drop
+  (set_local $y
    (get_local $x)
   )
   (set_local $z
@@ -1333,7 +1609,7 @@
    (get_local $x)
   )
  )
- (func $loop-copies (; 19 ;) (type $7) (param $x i32) (param $y i32)
+ (func $loop-copies (; 22 ;) (type $9) (param $x i32) (param $y i32)
   (loop $loop
    (nop)
    (drop
@@ -1344,7 +1620,7 @@
    )
   )
  )
- (func $proper-type (; 20 ;) (type $8) (result f64)
+ (func $proper-type (; 23 ;) (type $10) (result f64)
   (local $var$0 i32)
   (local $var$2 f64)
   (set_local $var$0
@@ -1356,7 +1632,7 @@
   )
   (get_local $var$2)
  )
- (func $multi-pass-get-equivs-right (; 21 ;) (type $9) (param $var$0 i32) (param $var$1 i32) (result f64)
+ (func $multi-pass-get-equivs-right (; 24 ;) (type $11) (param $var$0 i32) (param $var$1 i32) (result f64)
   (local $var$2 i32)
   (nop)
   (i32.store
@@ -1369,7 +1645,7 @@
    )
   )
  )
- (func $if-value-structure-equivalent (; 22 ;) (type $5) (param $x i32) (result i32)
+ (func $if-value-structure-equivalent (; 25 ;) (type $5) (param $x i32) (result i32)
   (local $y i32)
   (nop)
   (tee_local $x
@@ -1379,15 +1655,17 @@
      (nop)
      (i32.const 2)
     )
-    (block $block (result i32)
-     (nop)
-     (nop)
+    (block (result i32)
+     (block $block
+      (nop)
+      (nop)
+     )
      (get_local $x)
     )
    )
   )
  )
- (func $set-tee-need-one-of-them (; 23 ;) (type $10) (param $var$0 i32) (param $var$1 i32) (result i32)
+ (func $set-tee-need-one-of-them (; 26 ;) (type $12) (param $var$0 i32) (param $var$1 i32) (result i32)
   (local $var$2 i32)
   (local $var$3 i32)
   (set_local $var$2
@@ -1399,5 +1677,60 @@
    )
   )
   (get_local $var$2)
+ )
+ (func $loop-value-harder (; 27 ;) (type $FUNCSIG$i) (result i32)
+  (local $0 i32)
+  (local $1 i32)
+  (local $2 i32)
+  (local $3 f32)
+  (local $4 f32)
+  (local $5 f32)
+  (local $6 f32)
+  (local $7 f32)
+  (local $8 f32)
+  (local $9 f32)
+  (local $10 f32)
+  (block $label$1
+   (nop)
+   (nop)
+   (call $fimport$2
+    (loop $label$2 (result f32)
+     (block $label$3
+      (set_global $global$0
+       (i32.const -1)
+      )
+      (block $label$4
+       (nop)
+       (nop)
+      )
+      (nop)
+      (nop)
+     )
+     (nop)
+     (nop)
+     (if (result f32)
+      (call $fimport$0)
+      (block (result f32)
+       (nop)
+       (f32.const -2048)
+      )
+      (block
+       (block $block
+        (call $fimport$1
+         (i32.const -25732)
+        )
+        (br $label$2)
+       )
+       (nop)
+      )
+     )
+    )
+   )
+   (nop)
+  )
+  (nop)
+  (return
+   (i32.const -5417091)
+  )
  )
 )

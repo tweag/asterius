@@ -1,0 +1,108 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (func
+    i32.const 1
+    if 
+      nop
+    end
+    i32.const 0
+    if (result f32)
+      f32.const 1.0
+    else
+      f32.const 2.0 
+    end
+    drop)
+  (func
+    i32.const 1
+    if
+      return
+    else
+      return
+    end))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 01                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 00                                        ; num params
+000000d: 00                                        ; num results
+0000009: 04                                        ; FIXUP section size
+; section "Function" (3)
+000000e: 03                                        ; section code
+000000f: 00                                        ; section size (guess)
+0000010: 02                                        ; num functions
+0000011: 00                                        ; function 0 signature index
+0000012: 00                                        ; function 1 signature index
+000000f: 03                                        ; FIXUP section size
+; section "Code" (10)
+0000013: 0a                                        ; section code
+0000014: 00                                        ; section size (guess)
+0000015: 02                                        ; num functions
+; function body 0
+0000016: 00                                        ; func body size (guess)
+0000017: 00                                        ; local decl count
+0000018: 41                                        ; i32.const
+0000019: 01                                        ; i32 literal
+000001a: 04                                        ; if
+000001b: 40                                        ; void
+000001c: 01                                        ; nop
+000001d: 0b                                        ; end
+000001e: 41                                        ; i32.const
+000001f: 00                                        ; i32 literal
+0000020: 04                                        ; if
+0000021: 7d                                        ; f32
+0000022: 43                                        ; f32.const
+0000023: 0000 803f                                 ; f32 literal
+0000027: 05                                        ; else
+0000028: 43                                        ; f32.const
+0000029: 0000 0040                                 ; f32 literal
+000002d: 0b                                        ; end
+000002e: 1a                                        ; drop
+000002f: 0b                                        ; end
+0000016: 19                                        ; FIXUP func body size
+; function body 1
+0000030: 00                                        ; func body size (guess)
+0000031: 00                                        ; local decl count
+0000032: 41                                        ; i32.const
+0000033: 01                                        ; i32 literal
+0000034: 04                                        ; if
+0000035: 40                                        ; void
+0000036: 0f                                        ; return
+0000037: 05                                        ; else
+0000038: 0f                                        ; return
+0000039: 0b                                        ; end
+000003a: 0b                                        ; end
+0000030: 0a                                        ; FIXUP func body size
+0000014: 26                                        ; FIXUP section size
+
+if.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000016 func[0]:
+ 000018: 41 01                      | i32.const 1
+ 00001a: 04 40                      | if
+ 00001c: 01                         |   nop
+ 00001d: 0b                         | end
+ 00001e: 41 00                      | i32.const 0
+ 000020: 04 7d                      | if f32
+ 000022: 43 00 00 80 3f             |   f32.const 0x1p+0
+ 000027: 05                         | else
+ 000028: 43 00 00 00 40             |   f32.const 0x1p+1
+ 00002d: 0b                         | end
+ 00002e: 1a                         | drop
+ 00002f: 0b                         | end
+000030 func[1]:
+ 000032: 41 01                      | i32.const 1
+ 000034: 04 40                      | if
+ 000036: 0f                         |   return
+ 000037: 05                         | else
+ 000038: 0f                         |   return
+ 000039: 0b                         | end
+ 00003a: 0b                         | end
+;;; STDOUT ;;)

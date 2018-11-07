@@ -1,9 +1,11 @@
 .stack-work/
+wabt/wabt/bin
 asterius.cabal
-cereal-utils.cabal
 ghc-toolkit.cabal
 binaryen.cabal
+wabt.cabal
 wasm-toolkit.cabal
+dist/
 dist-newstyle/
 site/
 .idea/
@@ -11,4 +13,3 @@ node_modules/
 *.dump-*
 yarn.lock
 package-lock.json
-*.ghcid

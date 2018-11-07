@@ -36,10 +36,10 @@ static bool isFullForced() {
 
 static std::ostream& printName(Name name, std::ostream& o) {
   // we need to quote names if they have tricky chars
-  if (strpbrk(name.str, "()")) {
-    o << '"' << name << '"';
-  } else {
+  if (!name.str || !strpbrk(name.str, "()")) {
     o << name;
+  } else {
+    o << '"' << name << '"';
   }
   return o;
 }
@@ -292,7 +292,15 @@ struct PrintExpressionContents : public Visitor<PrintExpressionContents> {
       case ExtendS8Int64:          o << "i64.extend8_s"; break;
       case ExtendS16Int64:         o << "i64.extend16_s"; break;
       case ExtendS32Int64:         o << "i64.extend32_s"; break;
-      default: abort();
+      case TruncSatSFloat32ToInt32: o << "i32.trunc_s:sat/f32"; break;
+      case TruncSatUFloat32ToInt32: o << "i32.trunc_u:sat/f32"; break;
+      case TruncSatSFloat64ToInt32: o << "i32.trunc_s:sat/f64"; break;
+      case TruncSatUFloat64ToInt32: o << "i32.trunc_u:sat/f64"; break;
+      case TruncSatSFloat32ToInt64: o << "i64.trunc_s:sat/f32"; break;
+      case TruncSatUFloat32ToInt64: o << "i64.trunc_u:sat/f32"; break;
+      case TruncSatSFloat64ToInt64: o << "i64.trunc_s:sat/f64"; break;
+      case TruncSatUFloat64ToInt64: o << "i64.trunc_u:sat/f64"; break;
+      case InvalidUnary: WASM_UNREACHABLE();
     }
   }
   void visitBinary(Binary* curr) {
@@ -378,7 +386,7 @@ struct PrintExpressionContents : public Visitor<PrintExpressionContents> {
       case GtFloat64:       o << "f64.gt";       break;
       case GeFloat64:       o << "f64.ge";       break;
 
-      default:       abort();
+      case InvalidBinary: WASM_UNREACHABLE();
     }
     restoreNormalColor(o);
   }
@@ -395,7 +403,6 @@ struct PrintExpressionContents : public Visitor<PrintExpressionContents> {
     switch (curr->op) {
       case CurrentMemory: printMedium(o, "current_memory"); break;
       case GrowMemory:    printMedium(o, "grow_memory"); break;
-      default: WASM_UNREACHABLE();
     }
   }
   void visitNop(Nop* curr) {
@@ -775,7 +782,7 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
         decIndent();
         break;
       }
-      default: {
+      case CurrentMemory: {
         o << ')';
       }
     }
@@ -819,7 +826,7 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
       case ExternalKind::Table:    o << "table"; break;
       case ExternalKind::Memory:   o << "memory"; break;
       case ExternalKind::Global:   o << "global"; break;
-      default: WASM_UNREACHABLE();
+      case ExternalKind::Invalid: WASM_UNREACHABLE();
     }
     o << ' ';
     printName(curr->value, o) << "))";
@@ -878,6 +885,9 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     emitImportHeader(curr);
     if (curr->type.is()) {
       visitFunctionType(currModule->getFunctionType(curr->type), &curr->name);
+    } else {
+      auto functionType = sigToFunctionType(getSig(curr));
+      visitFunctionType(&functionType, &curr->name);
     }
     o << ')';
     o << maybeNewLine;
@@ -900,7 +910,7 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
       }
       o << " (; " << functionIndexes[curr->name] << " ;)";
     }
-    if (curr->stackIR && !minify) {
+    if (!printStackIR && curr->stackIR && !minify) {
       o << " (; has Stack IR ;)";
     }
     if (curr->type.is()) {
@@ -1182,7 +1192,7 @@ Pass* createPrintStackIRPass() {
 
 std::ostream& WasmPrinter::printModule(Module* module, std::ostream& o) {
   PassRunner passRunner(module);
-  passRunner.setFeatures(Feature::All);
+  passRunner.setFeatures(FeatureSet::All);
   passRunner.setIsNested(true);
   passRunner.add<Printer>(&o);
   passRunner.run();

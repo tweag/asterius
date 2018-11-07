@@ -319,6 +319,8 @@ Library
         Type.Reflection.Unsafe
         Unsafe.Coerce
 
+        Asterius.Prim
+
     other-modules:
         Control.Monad.ST.Imp
         Control.Monad.ST.Lazy.Imp

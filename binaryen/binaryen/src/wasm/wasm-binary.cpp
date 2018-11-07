@@ -44,6 +44,7 @@ void WasmBinaryWriter::write() {
 
   writeEarlyUserSections();
 
+  initializeDebugInfo();
   if (sourceMap) {
     writeSourceMapProlog();
   }
@@ -198,7 +199,7 @@ void WasmBinaryWriter::writeImports() {
     writeImportHeader(global);
     o << U32LEB(int32_t(ExternalKind::Global));
     o << binaryType(global->type);
-    o << U32LEB(0); // Mutable globals can't be imported for now.
+    o << U32LEB(global->mutable_);
   });
   if (wasm->memory.imported()) {
     if (debug) std::cerr << "write one memory" << std::endl;
@@ -484,8 +485,11 @@ void WasmBinaryWriter::writeSymbolMap() {
   file.close();
 }
 
-void WasmBinaryWriter::writeSourceMapProlog() {
+void WasmBinaryWriter::initializeDebugInfo() {
   lastDebugLocation = { 0, /* lineNumber = */ 1, 0 };
+}
+
+void WasmBinaryWriter::writeSourceMapProlog() {
   *sourceMap << "{\"version\":3,\"sources\":[";
   for (size_t i = 0; i < wasm->debugInfoFileNames.size(); i++) {
     if (i > 0) *sourceMap << ",";
@@ -709,6 +713,9 @@ void WasmBinaryBuilder::readUserSection(size_t payloadLen) {
     readNames(payloadLen - (pos - oldPos));
   } else {
     // an unfamiliar custom section
+    if (sectionName.equals(BinaryConsts::UserSections::Linking)) {
+      std::cerr << "warning: linking section is present, which binaryen cannot handle yet - relocations will be invalidated!\n";
+    }
     wasm.userSections.resize(wasm.userSections.size() + 1);
     auto& section = wasm.userSections.back();
     section.name = sectionName.str;
@@ -815,7 +822,9 @@ Type WasmBinaryBuilder::getType() {
     case BinaryConsts::EncodedType::i64: return i64;
     case BinaryConsts::EncodedType::f32: return f32;
     case BinaryConsts::EncodedType::f64: return f64;
-    default: throwError("invalid wasm type: " + std::to_string(type));
+    case BinaryConsts::EncodedType::AnyFunc:
+    case BinaryConsts::EncodedType::Func:
+      throwError("invalid wasm type: " + std::to_string(type));
   }
   WASM_UNREACHABLE();
 }
@@ -1003,7 +1012,6 @@ void WasmBinaryBuilder::readImports() {
         auto name = Name(std::string("gimport$") + std::to_string(i));
         auto type = getConcreteType();
         auto mutable_ = getU32LEB();
-        assert(!mutable_); // for now, until mutable globals
         auto* curr = builder.makeGlobal(name, type, nullptr, mutable_ ? Builder::Mutable : Builder::Immutable);
         curr->module = module;
         curr->base = base;
@@ -1687,6 +1695,12 @@ BinaryConsts::ASTNodes WasmBinaryBuilder::readExpression(Expression*& curr) {
       throwError("invalid code after atomic prefix: " + std::to_string(code));
       break;
     }
+    case BinaryConsts::TruncSatPrefix: {
+      uint32_t code = getU32LEB();
+      if (maybeVisitTruncSat(curr, code)) break;
+      throwError("invalid code after nontrapping float-to-int prefix: " + std::to_string(code));
+      break;
+    }
     default: {
       // otherwise, the code is a subcode TODO: optimize
       if (maybeVisitBinary(curr, code)) break;
@@ -2204,63 +2218,63 @@ bool WasmBinaryBuilder::maybeVisitConst(Expression*& out, uint8_t code) {
 bool WasmBinaryBuilder::maybeVisitUnary(Expression*& out, uint8_t code) {
   Unary* curr;
   switch (code) {
-    case BinaryConsts::I32Clz:         curr = allocator.alloc<Unary>(); curr->op = ClzInt32;      curr->type = i32; break;
-    case BinaryConsts::I64Clz:         curr = allocator.alloc<Unary>(); curr->op = ClzInt64;      curr->type = i64; break;
-    case BinaryConsts::I32Ctz:         curr = allocator.alloc<Unary>(); curr->op = CtzInt32;      curr->type = i32; break;
-    case BinaryConsts::I64Ctz:         curr = allocator.alloc<Unary>(); curr->op = CtzInt64;      curr->type = i64; break;
-    case BinaryConsts::I32Popcnt:      curr = allocator.alloc<Unary>(); curr->op = PopcntInt32;   curr->type = i32; break;
-    case BinaryConsts::I64Popcnt:      curr = allocator.alloc<Unary>(); curr->op = PopcntInt64;   curr->type = i64; break;
-    case BinaryConsts::I32EqZ:         curr = allocator.alloc<Unary>(); curr->op = EqZInt32;      curr->type = i32; break;
-    case BinaryConsts::I64EqZ:         curr = allocator.alloc<Unary>(); curr->op = EqZInt64;      curr->type = i32; break;
-    case BinaryConsts::F32Neg:         curr = allocator.alloc<Unary>(); curr->op = NegFloat32;    curr->type = f32; break;
-    case BinaryConsts::F64Neg:         curr = allocator.alloc<Unary>(); curr->op = NegFloat64;           curr->type = f64; break;
-    case BinaryConsts::F32Abs:         curr = allocator.alloc<Unary>(); curr->op = AbsFloat32;           curr->type = f32; break;
-    case BinaryConsts::F64Abs:         curr = allocator.alloc<Unary>(); curr->op = AbsFloat64;           curr->type = f64; break;
-    case BinaryConsts::F32Ceil:        curr = allocator.alloc<Unary>(); curr->op = CeilFloat32;          curr->type = f32; break;
-    case BinaryConsts::F64Ceil:        curr = allocator.alloc<Unary>(); curr->op = CeilFloat64;          curr->type = f64; break;
-    case BinaryConsts::F32Floor:       curr = allocator.alloc<Unary>(); curr->op = FloorFloat32;         curr->type = f32; break;
-    case BinaryConsts::F64Floor:       curr = allocator.alloc<Unary>(); curr->op = FloorFloat64;         curr->type = f64; break;
-    case BinaryConsts::F32NearestInt:  curr = allocator.alloc<Unary>(); curr->op = NearestFloat32;       curr->type = f32; break;
-    case BinaryConsts::F64NearestInt:  curr = allocator.alloc<Unary>(); curr->op = NearestFloat64;       curr->type = f64; break;
-    case BinaryConsts::F32Sqrt:        curr = allocator.alloc<Unary>(); curr->op = SqrtFloat32;          curr->type = f32; break;
-    case BinaryConsts::F64Sqrt:        curr = allocator.alloc<Unary>(); curr->op = SqrtFloat64;          curr->type = f64; break;
-    case BinaryConsts::F32UConvertI32: curr = allocator.alloc<Unary>(); curr->op = ConvertUInt32ToFloat32; curr->type = f32; break;
-    case BinaryConsts::F64UConvertI32: curr = allocator.alloc<Unary>(); curr->op = ConvertUInt32ToFloat64; curr->type = f64; break;
-    case BinaryConsts::F32SConvertI32: curr = allocator.alloc<Unary>(); curr->op = ConvertSInt32ToFloat32; curr->type = f32; break;
-    case BinaryConsts::F64SConvertI32: curr = allocator.alloc<Unary>(); curr->op = ConvertSInt32ToFloat64; curr->type = f64; break;
-    case BinaryConsts::F32UConvertI64: curr = allocator.alloc<Unary>(); curr->op = ConvertUInt64ToFloat32; curr->type = f32; break;
-    case BinaryConsts::F64UConvertI64: curr = allocator.alloc<Unary>(); curr->op = ConvertUInt64ToFloat64; curr->type = f64; break;
-    case BinaryConsts::F32SConvertI64: curr = allocator.alloc<Unary>(); curr->op = ConvertSInt64ToFloat32; curr->type = f32; break;
-    case BinaryConsts::F64SConvertI64: curr = allocator.alloc<Unary>(); curr->op = ConvertSInt64ToFloat64; curr->type = f64; break;
+    case BinaryConsts::I32Clz:         curr = allocator.alloc<Unary>(); curr->op = ClzInt32;               break;
+    case BinaryConsts::I64Clz:         curr = allocator.alloc<Unary>(); curr->op = ClzInt64;               break;
+    case BinaryConsts::I32Ctz:         curr = allocator.alloc<Unary>(); curr->op = CtzInt32;               break;
+    case BinaryConsts::I64Ctz:         curr = allocator.alloc<Unary>(); curr->op = CtzInt64;               break;
+    case BinaryConsts::I32Popcnt:      curr = allocator.alloc<Unary>(); curr->op = PopcntInt32;            break;
+    case BinaryConsts::I64Popcnt:      curr = allocator.alloc<Unary>(); curr->op = PopcntInt64;            break;
+    case BinaryConsts::I32EqZ:         curr = allocator.alloc<Unary>(); curr->op = EqZInt32;               break;
+    case BinaryConsts::I64EqZ:         curr = allocator.alloc<Unary>(); curr->op = EqZInt64;               break;
+    case BinaryConsts::F32Neg:         curr = allocator.alloc<Unary>(); curr->op = NegFloat32;             break;
+    case BinaryConsts::F64Neg:         curr = allocator.alloc<Unary>(); curr->op = NegFloat64;             break;
+    case BinaryConsts::F32Abs:         curr = allocator.alloc<Unary>(); curr->op = AbsFloat32;             break;
+    case BinaryConsts::F64Abs:         curr = allocator.alloc<Unary>(); curr->op = AbsFloat64;             break;
+    case BinaryConsts::F32Ceil:        curr = allocator.alloc<Unary>(); curr->op = CeilFloat32;            break;
+    case BinaryConsts::F64Ceil:        curr = allocator.alloc<Unary>(); curr->op = CeilFloat64;            break;
+    case BinaryConsts::F32Floor:       curr = allocator.alloc<Unary>(); curr->op = FloorFloat32;           break;
+    case BinaryConsts::F64Floor:       curr = allocator.alloc<Unary>(); curr->op = FloorFloat64;           break;
+    case BinaryConsts::F32NearestInt:  curr = allocator.alloc<Unary>(); curr->op = NearestFloat32;         break;
+    case BinaryConsts::F64NearestInt:  curr = allocator.alloc<Unary>(); curr->op = NearestFloat64;         break;
+    case BinaryConsts::F32Sqrt:        curr = allocator.alloc<Unary>(); curr->op = SqrtFloat32;            break;
+    case BinaryConsts::F64Sqrt:        curr = allocator.alloc<Unary>(); curr->op = SqrtFloat64;            break;
+    case BinaryConsts::F32UConvertI32: curr = allocator.alloc<Unary>(); curr->op = ConvertUInt32ToFloat32; break;
+    case BinaryConsts::F64UConvertI32: curr = allocator.alloc<Unary>(); curr->op = ConvertUInt32ToFloat64; break;
+    case BinaryConsts::F32SConvertI32: curr = allocator.alloc<Unary>(); curr->op = ConvertSInt32ToFloat32; break;
+    case BinaryConsts::F64SConvertI32: curr = allocator.alloc<Unary>(); curr->op = ConvertSInt32ToFloat64; break;
+    case BinaryConsts::F32UConvertI64: curr = allocator.alloc<Unary>(); curr->op = ConvertUInt64ToFloat32; break;
+    case BinaryConsts::F64UConvertI64: curr = allocator.alloc<Unary>(); curr->op = ConvertUInt64ToFloat64; break;
+    case BinaryConsts::F32SConvertI64: curr = allocator.alloc<Unary>(); curr->op = ConvertSInt64ToFloat32; break;
+    case BinaryConsts::F64SConvertI64: curr = allocator.alloc<Unary>(); curr->op = ConvertSInt64ToFloat64; break;
 
-    case BinaryConsts::I64STruncI32:  curr = allocator.alloc<Unary>(); curr->op = ExtendSInt32;  curr->type = i64; break;
-    case BinaryConsts::I64UTruncI32:  curr = allocator.alloc<Unary>(); curr->op = ExtendUInt32;  curr->type = i64; break;
-    case BinaryConsts::I32ConvertI64: curr = allocator.alloc<Unary>(); curr->op = WrapInt64;     curr->type = i32; break;
+    case BinaryConsts::I64STruncI32:  curr = allocator.alloc<Unary>(); curr->op = ExtendSInt32;            break;
+    case BinaryConsts::I64UTruncI32:  curr = allocator.alloc<Unary>(); curr->op = ExtendUInt32;            break;
+    case BinaryConsts::I32ConvertI64: curr = allocator.alloc<Unary>(); curr->op = WrapInt64;               break;
 
-    case BinaryConsts::I32UTruncF32: curr = allocator.alloc<Unary>(); curr->op = TruncUFloat32ToInt32; curr->type = i32; break;
-    case BinaryConsts::I32UTruncF64: curr = allocator.alloc<Unary>(); curr->op = TruncUFloat64ToInt32; curr->type = i32; break;
-    case BinaryConsts::I32STruncF32: curr = allocator.alloc<Unary>(); curr->op = TruncSFloat32ToInt32; curr->type = i32; break;
-    case BinaryConsts::I32STruncF64: curr = allocator.alloc<Unary>(); curr->op = TruncSFloat64ToInt32; curr->type = i32; break;
-    case BinaryConsts::I64UTruncF32: curr = allocator.alloc<Unary>(); curr->op = TruncUFloat32ToInt64; curr->type = i64; break;
-    case BinaryConsts::I64UTruncF64: curr = allocator.alloc<Unary>(); curr->op = TruncUFloat64ToInt64; curr->type = i64; break;
-    case BinaryConsts::I64STruncF32: curr = allocator.alloc<Unary>(); curr->op = TruncSFloat32ToInt64; curr->type = i64; break;
-    case BinaryConsts::I64STruncF64: curr = allocator.alloc<Unary>(); curr->op = TruncSFloat64ToInt64; curr->type = i64; break;
+    case BinaryConsts::I32UTruncF32: curr = allocator.alloc<Unary>(); curr->op = TruncUFloat32ToInt32;     break;
+    case BinaryConsts::I32UTruncF64: curr = allocator.alloc<Unary>(); curr->op = TruncUFloat64ToInt32;     break;
+    case BinaryConsts::I32STruncF32: curr = allocator.alloc<Unary>(); curr->op = TruncSFloat32ToInt32;     break;
+    case BinaryConsts::I32STruncF64: curr = allocator.alloc<Unary>(); curr->op = TruncSFloat64ToInt32;     break;
+    case BinaryConsts::I64UTruncF32: curr = allocator.alloc<Unary>(); curr->op = TruncUFloat32ToInt64;     break;
+    case BinaryConsts::I64UTruncF64: curr = allocator.alloc<Unary>(); curr->op = TruncUFloat64ToInt64;     break;
+    case BinaryConsts::I64STruncF32: curr = allocator.alloc<Unary>(); curr->op = TruncSFloat32ToInt64;     break;
+    case BinaryConsts::I64STruncF64: curr = allocator.alloc<Unary>(); curr->op = TruncSFloat64ToInt64;     break;
 
-    case BinaryConsts::F32Trunc: curr = allocator.alloc<Unary>(); curr->op = TruncFloat32; curr->type = f32; break;
-    case BinaryConsts::F64Trunc: curr = allocator.alloc<Unary>(); curr->op = TruncFloat64; curr->type = f64; break;
+    case BinaryConsts::F32Trunc: curr = allocator.alloc<Unary>(); curr->op = TruncFloat32;                 break;
+    case BinaryConsts::F64Trunc: curr = allocator.alloc<Unary>(); curr->op = TruncFloat64;                 break;
 
-    case BinaryConsts::F32ConvertF64:     curr = allocator.alloc<Unary>(); curr->op = DemoteFloat64;     curr->type = f32; break;
-    case BinaryConsts::F64ConvertF32:     curr = allocator.alloc<Unary>(); curr->op = PromoteFloat32;    curr->type = f64; break;
-    case BinaryConsts::I32ReinterpretF32: curr = allocator.alloc<Unary>(); curr->op = ReinterpretFloat32;  curr->type = i32; break;
-    case BinaryConsts::I64ReinterpretF64: curr = allocator.alloc<Unary>(); curr->op = ReinterpretFloat64;  curr->type = i64; break;
-    case BinaryConsts::F32ReinterpretI32: curr = allocator.alloc<Unary>(); curr->op = ReinterpretInt32;    curr->type = f32; break;
-    case BinaryConsts::F64ReinterpretI64: curr = allocator.alloc<Unary>(); curr->op = ReinterpretInt64;    curr->type = f64; break;
+    case BinaryConsts::F32ConvertF64:     curr = allocator.alloc<Unary>(); curr->op = DemoteFloat64;       break;
+    case BinaryConsts::F64ConvertF32:     curr = allocator.alloc<Unary>(); curr->op = PromoteFloat32;      break;
+    case BinaryConsts::I32ReinterpretF32: curr = allocator.alloc<Unary>(); curr->op = ReinterpretFloat32;  break;
+    case BinaryConsts::I64ReinterpretF64: curr = allocator.alloc<Unary>(); curr->op = ReinterpretFloat64;  break;
+    case BinaryConsts::F32ReinterpretI32: curr = allocator.alloc<Unary>(); curr->op = ReinterpretInt32;    break;
+    case BinaryConsts::F64ReinterpretI64: curr = allocator.alloc<Unary>(); curr->op = ReinterpretInt64;    break;
 
-    case BinaryConsts::I32ExtendS8:  curr = allocator.alloc<Unary>(); curr->op = ExtendS8Int32; curr->type = i32; break;
-    case BinaryConsts::I32ExtendS16: curr = allocator.alloc<Unary>(); curr->op = ExtendS16Int32; curr->type = i32; break;
-    case BinaryConsts::I64ExtendS8:  curr = allocator.alloc<Unary>(); curr->op = ExtendS8Int64; curr->type = i64; break;
-    case BinaryConsts::I64ExtendS16: curr = allocator.alloc<Unary>(); curr->op = ExtendS16Int64; curr->type = i64; break;
-    case BinaryConsts::I64ExtendS32: curr = allocator.alloc<Unary>(); curr->op = ExtendS32Int64; curr->type = i64; break;
+    case BinaryConsts::I32ExtendS8:  curr = allocator.alloc<Unary>(); curr->op = ExtendS8Int32;            break;
+    case BinaryConsts::I32ExtendS16: curr = allocator.alloc<Unary>(); curr->op = ExtendS16Int32;           break;
+    case BinaryConsts::I64ExtendS8:  curr = allocator.alloc<Unary>(); curr->op = ExtendS8Int64;            break;
+    case BinaryConsts::I64ExtendS16: curr = allocator.alloc<Unary>(); curr->op = ExtendS16Int64;           break;
+    case BinaryConsts::I64ExtendS32: curr = allocator.alloc<Unary>(); curr->op = ExtendS32Int64;           break;
 
     default: return false;
   }
@@ -2271,15 +2285,35 @@ bool WasmBinaryBuilder::maybeVisitUnary(Expression*& out, uint8_t code) {
   return true;
 }
 
+bool WasmBinaryBuilder::maybeVisitTruncSat(Expression*& out, uint32_t code) {
+  Unary* curr;
+  switch (code) {
+    case BinaryConsts::I32STruncSatF32: curr = allocator.alloc<Unary>(); curr->op = TruncSatSFloat32ToInt32; break;
+    case BinaryConsts::I32UTruncSatF32: curr = allocator.alloc<Unary>(); curr->op = TruncSatUFloat32ToInt32; break;
+    case BinaryConsts::I32STruncSatF64: curr = allocator.alloc<Unary>(); curr->op = TruncSatSFloat64ToInt32; break;
+    case BinaryConsts::I32UTruncSatF64: curr = allocator.alloc<Unary>(); curr->op = TruncSatUFloat64ToInt32; break;
+    case BinaryConsts::I64STruncSatF32: curr = allocator.alloc<Unary>(); curr->op = TruncSatSFloat32ToInt64; break;
+    case BinaryConsts::I64UTruncSatF32: curr = allocator.alloc<Unary>(); curr->op = TruncSatUFloat32ToInt64; break;
+    case BinaryConsts::I64STruncSatF64: curr = allocator.alloc<Unary>(); curr->op = TruncSatSFloat64ToInt64; break;
+    case BinaryConsts::I64UTruncSatF64: curr = allocator.alloc<Unary>(); curr->op = TruncSatUFloat64ToInt64; break;
+    default: return false;
+  }
+  if (debug) std::cerr << "zz node: Unary (nontrapping float-to-int)" << std::endl;
+  curr->value = popNonVoidExpression();
+  curr->finalize();
+  out = curr;
+  return true;
+}
+
 bool WasmBinaryBuilder::maybeVisitBinary(Expression*& out, uint8_t code) {
   Binary* curr;
 #define INT_TYPED_CODE(code) {                                          \
-    case BinaryConsts::I32##code: curr = allocator.alloc<Binary>(); curr->op = code##Int32; curr->type = i32; break; \
-      case BinaryConsts::I64##code: curr = allocator.alloc<Binary>(); curr->op = code##Int64; curr->type = i64; break; \
+    case BinaryConsts::I32##code: curr = allocator.alloc<Binary>(); curr->op = code##Int32; break; \
+      case BinaryConsts::I64##code: curr = allocator.alloc<Binary>(); curr->op = code##Int64; break; \
   }
 #define FLOAT_TYPED_CODE(code) {                                        \
-    case BinaryConsts::F32##code: curr = allocator.alloc<Binary>(); curr->op = code##Float32; curr->type = f32; break; \
-      case BinaryConsts::F64##code: curr = allocator.alloc<Binary>(); curr->op = code##Float64; curr->type = f64; break; \
+    case BinaryConsts::F32##code: curr = allocator.alloc<Binary>(); curr->op = code##Float32; break; \
+      case BinaryConsts::F64##code: curr = allocator.alloc<Binary>(); curr->op = code##Float64; break; \
   }
 #define TYPED_CODE(code) {                      \
     INT_TYPED_CODE(code)                        \
@@ -2356,7 +2390,6 @@ bool WasmBinaryBuilder::maybeVisitHost(Expression*& out, uint8_t code) {
     case BinaryConsts::CurrentMemory: {
       curr = allocator.alloc<Host>();
       curr->op = CurrentMemory;
-      curr->type = i32;
       break;
     }
     case BinaryConsts::GrowMemory: {

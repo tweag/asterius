@@ -664,8 +664,10 @@ runtimeRepTypeRep r =
       SumRep rs   -> kindedTypeRep @_ @'SumRep
                      `kApp` buildList (map runtimeRepTypeRep rs)
       IntRep      -> rep @'IntRep
-      WordRep     -> rep @'WordRep
+      Int8Rep     -> rep @'Int8Rep
       Int64Rep    -> rep @'Int64Rep
+      WordRep     -> rep @'WordRep
+      Word8Rep    -> rep @'Word8Rep
       Word64Rep   -> rep @'Word64Rep
       AddrRep     -> rep @'AddrRep
       FloatRep    -> rep @'FloatRep
@@ -773,7 +775,11 @@ showTypeable _ TrType = showChar '*'
 showTypeable _ rep
   | isListTyCon tc, [ty] <- tys =
     showChar '[' . shows ty . showChar ']'
-  | isTupleTyCon tc =
+
+    -- Take care only to render saturated tuple tycon applications
+    -- with tuple notation (#14341).
+  | isTupleTyCon tc,
+    Just _ <- TrType `eqTypeRep` typeRepKind rep =
     showChar '(' . showArgs (showChar ',') tys . showChar ')'
   where (tc, tys) = splitApps rep
 showTypeable _ (TrTyCon {trTyCon = tycon, trKindVars = []})

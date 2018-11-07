@@ -125,6 +125,14 @@ foreign import ccall unsafe "sizeof_spEntry" sizeof_spEntry :: Int
 
 foreign import ccall unsafe "offset_spEntry_addr" offset_spEntry_addr :: Int
 
+foreign import ccall unsafe "sizeof_StgArrBytes" sizeof_StgArrBytes :: Int
+
+foreign import ccall unsafe "offset_StgArrBytes_bytes" offset_StgArrBytes_bytes
+  :: Int
+
+foreign import ccall unsafe "offset_StgArrBytes_payload" offset_StgArrBytes_payload
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgClosure" sizeof_StgClosure :: Int
 
 foreign import ccall unsafe "offset_StgClosure_payload" offset_StgClosure_payload

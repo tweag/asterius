@@ -159,15 +159,25 @@ makeExportSection Module {..} ModuleSymbolTable {..} =
             }
           | FunctionExport {..} <- functionExports
           ] <>
-          case memory of
-            Memory {..}
-              | not $ SBS.null exportName ->
-                [ Wasm.Export
-                    { exportName = coerce exportName
-                    , exportDescription = Wasm.ExportMemory $ Wasm.MemoryIndex 0
-                    }
-                ]
-              | otherwise -> []
+          (case memory of
+             Memory {..}
+               | not $ SBS.null memoryExportName ->
+                 [ Wasm.Export
+                     { exportName = coerce memoryExportName
+                     , exportDescription =
+                         Wasm.ExportMemory $ Wasm.MemoryIndex 0
+                     }
+                 ]
+               | otherwise -> []) <>
+          (case functionTable of
+             FunctionTable {..}
+               | not $ SBS.null tableExportName ->
+                 [ Wasm.Export
+                     { exportName = coerce tableExportName
+                     , exportDescription = Wasm.ExportTable $ Wasm.TableIndex 0
+                     }
+                 ]
+               | otherwise -> [])
       }
 
 makeElementSection ::

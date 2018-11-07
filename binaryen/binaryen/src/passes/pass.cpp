@@ -95,7 +95,8 @@ void PassRegistry::registerPasses() {
   registerPass("merge-blocks", "merges blocks to their parents", createMergeBlocksPass);
   registerPass("merge-locals", "merges locals when beneficial", createMergeLocalsPass);
   registerPass("metrics", "reports metrics", createMetricsPass);
-  registerPass("minify-imports-and-exports", "minifies import and export names, and emits a mapping to the minified ones", createMinifyImportsAndExportsPass);
+  registerPass("minify-imports", "minifies import names (only those, and not export names), and emits a mapping to the minified ones", createMinifyImportsPass);
+  registerPass("minify-imports-and-exports", "minifies both import and export names, and emits a mapping to the minified ones", createMinifyImportsAndExportsPass);
   registerPass("nm", "name list", createNameListPass);
   registerPass("optimize-instructions", "optimizes instruction combinations", createOptimizeInstructionsPass);
   registerPass("optimize-stack-ir", "optimize Stack IR", createOptimizeStackIRPass);
@@ -130,6 +131,7 @@ void PassRegistry::registerPasses() {
   registerPass("souperify-single-use", "emit Souper IR in text form (single-use nodes only)", createSouperifySingleUsePass);
   registerPass("spill-pointers", "spill pointers to the C stack (useful for Boehm-style GC)", createSpillPointersPass);
   registerPass("ssa", "ssa-ify variables so that they have a single assignment", createSSAifyPass);
+  registerPass("strip", "strip debug info (including the names section)", createStripPass);
   registerPass("trap-mode-clamp", "replace trapping operations with clamping semantics", createTrapModeClamp);
   registerPass("trap-mode-js", "replace trapping operations with js semantics", createTrapModeJS);
   registerPass("untee", "removes tee_locals, replacing them with sets and gets", createUnteePass);
@@ -178,13 +180,17 @@ void PassRunner::addDefaultFunctionOptimizationPasses() {
   }
   add("coalesce-locals");
   add("simplify-locals");
-  add("vacuum"); // previous pass creates garbage
+  add("vacuum");
   add("reorder-locals");
+  add("coalesce-locals");
+  add("reorder-locals");
+  add("vacuum");
   if (options.optimizeLevel >= 3 || options.shrinkLevel >= 1) {
     add("code-folding");
   }
   add("merge-blocks"); // makes remove-unused-brs more effective
-  add("remove-unused-brs"); // coalesce-locals opens opportunities for optimizations
+  add("remove-unused-brs"); // coalesce-locals opens opportunities
+  add("remove-unused-names"); // remove-unused-brs opens opportunities
   add("merge-blocks"); // clean up remove-unused-brs new blocks
   add("optimize-instructions");
   // late propagation

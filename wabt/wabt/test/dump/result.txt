@@ -1,0 +1,99 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (func (result i32) 
+    i32.const 0)
+  (func (result i64) 
+    i64.const 0)
+  (func (result f32) 
+    f32.const 0)
+  (func (result f64) 
+    f64.const 0))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 04                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 00                                        ; num params
+000000d: 01                                        ; num results
+000000e: 7f                                        ; i32
+; type 1
+000000f: 60                                        ; func
+0000010: 00                                        ; num params
+0000011: 01                                        ; num results
+0000012: 7e                                        ; i64
+; type 2
+0000013: 60                                        ; func
+0000014: 00                                        ; num params
+0000015: 01                                        ; num results
+0000016: 7d                                        ; f32
+; type 3
+0000017: 60                                        ; func
+0000018: 00                                        ; num params
+0000019: 01                                        ; num results
+000001a: 7c                                        ; f64
+0000009: 11                                        ; FIXUP section size
+; section "Function" (3)
+000001b: 03                                        ; section code
+000001c: 00                                        ; section size (guess)
+000001d: 04                                        ; num functions
+000001e: 00                                        ; function 0 signature index
+000001f: 01                                        ; function 1 signature index
+0000020: 02                                        ; function 2 signature index
+0000021: 03                                        ; function 3 signature index
+000001c: 05                                        ; FIXUP section size
+; section "Code" (10)
+0000022: 0a                                        ; section code
+0000023: 00                                        ; section size (guess)
+0000024: 04                                        ; num functions
+; function body 0
+0000025: 00                                        ; func body size (guess)
+0000026: 00                                        ; local decl count
+0000027: 41                                        ; i32.const
+0000028: 00                                        ; i32 literal
+0000029: 0b                                        ; end
+0000025: 04                                        ; FIXUP func body size
+; function body 1
+000002a: 00                                        ; func body size (guess)
+000002b: 00                                        ; local decl count
+000002c: 42                                        ; i64.const
+000002d: 00                                        ; i64 literal
+000002e: 0b                                        ; end
+000002a: 04                                        ; FIXUP func body size
+; function body 2
+000002f: 00                                        ; func body size (guess)
+0000030: 00                                        ; local decl count
+0000031: 43                                        ; f32.const
+0000032: 0000 0000                                 ; f32 literal
+0000036: 0b                                        ; end
+000002f: 07                                        ; FIXUP func body size
+; function body 3
+0000037: 00                                        ; func body size (guess)
+0000038: 00                                        ; local decl count
+0000039: 44                                        ; f64.const
+000003a: 0000 0000 0000 0000                       ; f64 literal
+0000042: 0b                                        ; end
+0000037: 0b                                        ; FIXUP func body size
+0000023: 1f                                        ; FIXUP section size
+
+result.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000025 func[0]:
+ 000027: 41 00                      | i32.const 0
+ 000029: 0b                         | end
+00002a func[1]:
+ 00002c: 42 00                      | i64.const 0
+ 00002e: 0b                         | end
+00002f func[2]:
+ 000031: 43 00 00 00 00             | f32.const 0x0p+0
+ 000036: 0b                         | end
+000037 func[3]:
+ 000039: 44 00 00 00 00 00 00 00 00 | f64.const 0x0p+0
+ 000042: 0b                         | end
+;;; STDOUT ;;)

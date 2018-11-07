@@ -1,0 +1,82 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (func
+    block
+      nop
+      nop
+      nop
+    end)
+
+  (func (result i32)
+    block (result i32)
+      i32.const 1
+    end))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 02                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 00                                        ; num params
+000000d: 00                                        ; num results
+; type 1
+000000e: 60                                        ; func
+000000f: 00                                        ; num params
+0000010: 01                                        ; num results
+0000011: 7f                                        ; i32
+0000009: 08                                        ; FIXUP section size
+; section "Function" (3)
+0000012: 03                                        ; section code
+0000013: 00                                        ; section size (guess)
+0000014: 02                                        ; num functions
+0000015: 00                                        ; function 0 signature index
+0000016: 01                                        ; function 1 signature index
+0000013: 03                                        ; FIXUP section size
+; section "Code" (10)
+0000017: 0a                                        ; section code
+0000018: 00                                        ; section size (guess)
+0000019: 02                                        ; num functions
+; function body 0
+000001a: 00                                        ; func body size (guess)
+000001b: 00                                        ; local decl count
+000001c: 02                                        ; block
+000001d: 40                                        ; void
+000001e: 01                                        ; nop
+000001f: 01                                        ; nop
+0000020: 01                                        ; nop
+0000021: 0b                                        ; end
+0000022: 0b                                        ; end
+000001a: 08                                        ; FIXUP func body size
+; function body 1
+0000023: 00                                        ; func body size (guess)
+0000024: 00                                        ; local decl count
+0000025: 02                                        ; block
+0000026: 7f                                        ; i32
+0000027: 41                                        ; i32.const
+0000028: 01                                        ; i32 literal
+0000029: 0b                                        ; end
+000002a: 0b                                        ; end
+0000023: 07                                        ; FIXUP func body size
+0000018: 12                                        ; FIXUP section size
+
+block.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+00001a func[0]:
+ 00001c: 02 40                      | block
+ 00001e: 01                         |   nop
+ 00001f: 01                         |   nop
+ 000020: 01                         |   nop
+ 000021: 0b                         | end
+ 000022: 0b                         | end
+000023 func[1]:
+ 000025: 02 7f                      | block i32
+ 000027: 41 01                      |   i32.const 1
+ 000029: 0b                         | end
+ 00002a: 0b                         | end
+;;; STDOUT ;;)

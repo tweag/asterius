@@ -1,0 +1,82 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (import "foo" "bar" (func (param i32 f32) (result i32)))
+  (func (result i32)
+    ;; call imported func
+    i32.const 1
+    f32.const 2
+    call 0
+    drop
+    ;; call local func
+    call 1))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 02                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 02                                        ; num params
+000000d: 7f                                        ; i32
+000000e: 7d                                        ; f32
+000000f: 01                                        ; num results
+0000010: 7f                                        ; i32
+; type 1
+0000011: 60                                        ; func
+0000012: 00                                        ; num params
+0000013: 01                                        ; num results
+0000014: 7f                                        ; i32
+0000009: 0b                                        ; FIXUP section size
+; section "Import" (2)
+0000015: 02                                        ; section code
+0000016: 00                                        ; section size (guess)
+0000017: 01                                        ; num imports
+; import header 0
+0000018: 03                                        ; string length
+0000019: 666f 6f                                  foo  ; import module name
+000001c: 03                                        ; string length
+000001d: 6261 72                                  bar  ; import field name
+0000020: 00                                        ; import kind
+0000021: 00                                        ; import signature index
+0000016: 0b                                        ; FIXUP section size
+; section "Function" (3)
+0000022: 03                                        ; section code
+0000023: 00                                        ; section size (guess)
+0000024: 01                                        ; num functions
+0000025: 01                                        ; function 0 signature index
+0000023: 02                                        ; FIXUP section size
+; section "Code" (10)
+0000026: 0a                                        ; section code
+0000027: 00                                        ; section size (guess)
+0000028: 01                                        ; num functions
+; function body 0
+0000029: 00                                        ; func body size (guess)
+000002a: 00                                        ; local decl count
+000002b: 41                                        ; i32.const
+000002c: 01                                        ; i32 literal
+000002d: 43                                        ; f32.const
+000002e: 0000 0040                                 ; f32 literal
+0000032: 10                                        ; call
+0000033: 00                                        ; function index
+0000034: 1a                                        ; drop
+0000035: 10                                        ; call
+0000036: 01                                        ; function index
+0000037: 0b                                        ; end
+0000029: 0e                                        ; FIXUP func body size
+0000027: 10                                        ; FIXUP section size
+
+callimport.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000029 func[1]:
+ 00002b: 41 01                      | i32.const 1
+ 00002d: 43 00 00 00 40             | f32.const 0x1p+1
+ 000032: 10 00                      | call 0 <bar>
+ 000034: 1a                         | drop
+ 000035: 10 01                      | call 1
+ 000037: 0b                         | end
+;;; STDOUT ;;)

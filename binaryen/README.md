@@ -1,3 +1,3 @@
 # `binaryen`
 
-Complete raw Haskell bindings to WebAssembly/binaryen@0ed4d2f.
+Complete raw Haskell bindings to WebAssembly/binaryen@1cf103e.

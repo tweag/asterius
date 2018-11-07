@@ -104,9 +104,12 @@ shrinkModule' m@Module {..} = _shrink_funcs {-_shrink_memory <> _shrink_exports 
     _shrink_memory =
       case memory of
         Memory {..}
-          | not (SBS.null exportName) || not (null dataSegments) ->
+          | not (SBS.null memoryExportName) || not (null dataSegments) ->
             pure
-              m {memory = memory {exportName = mempty, dataSegments = mempty}}
+              m
+                { memory =
+                    memory {memoryExportName = mempty, dataSegments = mempty}
+                }
           | otherwise -> mempty
     _shrink_exports
       | not (null functionExports) = pure m {functionExports = []}

@@ -21,8 +21,12 @@
 -----------------------------------------------------------------------------
 
 module GHC.IO.Handle.Types (
-      Handle(..), Handle__(..), showHandle,
+#if !defined(ASTERIUS)
+      Handle__(..),
       checkHandleInvariants,
+#endif
+      Handle(..),
+      showHandle,
       BufferList(..),
       HandleType(..),
       isReadableHandleType, isWritableHandleType, isReadWriteHandleType,
@@ -95,6 +99,12 @@ import Control.Monad
 -- equal according to '==' only to itself; no attempt
 -- is made to compare the internal state of different handles for equality.
 
+#if defined(ASTERIUS)
+
+newtype Handle = Handle Int
+
+#else
+
 data Handle
   = FileHandle                          -- A normal handle to a file
         FilePath                        -- the file (used for error messages
@@ -108,15 +118,28 @@ data Handle
         !(MVar Handle__)                -- The read side
         !(MVar Handle__)                -- The write side
 
+#endif
 -- NOTES:
 --    * A 'FileHandle' is seekable.  A 'DuplexHandle' may or may not be
 --      seekable.
 
 -- | @since 4.1.0.0
+
+#if defined(ASTERIUS)
+
+instance Eq Handle where
+ Handle h1 == Handle h2 = h1 == h2
+
+#else
+
 instance Eq Handle where
  (FileHandle _ h1)     == (FileHandle _ h2)     = h1 == h2
  (DuplexHandle _ h1 _) == (DuplexHandle _ h2 _) = h1 == h2
  _ == _ = False
+
+#endif
+
+#if !defined(ASTERIUS)
 
 data Handle__
   = forall dev enc_state dec_state . (IODevice dev, BufferedIO dev, Typeable dev) =>
@@ -137,6 +160,7 @@ data Handle__
                                              -- duplex handle.
     }
 
+#endif
 -- we keep a few spare buffers around in a handle to avoid allocating
 -- a new one for each hPutStr.  These buffers are *guaranteed* to be the
 -- same size as the main buffer.
@@ -178,6 +202,8 @@ isReadWriteHandleType _                 = False
 --   * In a read Handle, the byte buffer is always empty (we decode when reading)
 --   * In a wriite Handle, the Char buffer is always empty (we encode when writing)
 --
+#if !defined(ASTERIUS)
+
 checkHandleInvariants :: Handle__ -> IO ()
 #if defined(DEBUG)
 checkHandleInvariants h_ = do
@@ -194,6 +220,8 @@ checkHandleInvariants h_ = do
 
 #else
 checkHandleInvariants _ = return ()
+#endif
+
 #endif
 
 -- ---------------------------------------------------------------------------
@@ -432,10 +460,18 @@ instance Show HandleType where
       ReadWriteHandle   -> showString "read-writable"
 
 -- | @since 4.1.0.0
+#if defined(ASTERIUS)
+
+instance Show Handle where
+  showsPrec _ (Handle h) = showString "{handle: " . shows h . showString "}"
+
+#else
+
 instance Show Handle where
   showsPrec _ (FileHandle   file _)   = showHandle file
   showsPrec _ (DuplexHandle file _ _) = showHandle file
 
+#endif
+
 showHandle :: FilePath -> String -> String
 showHandle file = showString "{handle: " . showString file . showString "}"
-

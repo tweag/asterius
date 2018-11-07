@@ -28,7 +28,7 @@ main = do
             ]
         , functionImports = []
         , functionExports = []
-        , functionTable = FunctionTable []
+        , functionTable = FunctionTable [] ""
         , memory = Memory 1 mempty mempty
         }
   c_BinaryenModuleValidate m >>= print

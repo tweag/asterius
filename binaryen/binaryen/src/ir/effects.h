@@ -74,9 +74,10 @@ struct EffectAnalyzer : public PostWalker<EffectAnalyzer> {
 
   // checks if these effects would invalidate another set (e.g., if we write, we invalidate someone that reads, they can't be moved past us)
   bool invalidates(EffectAnalyzer& other) {
-    if (branches || other.branches
-                 || ((writesMemory || calls) && other.accessesMemory())
-                 || (accessesMemory() && (other.writesMemory || other.calls))) {
+    if ((branches && other.hasSideEffects()) ||
+        (other.branches && hasSideEffects()) ||
+        ((writesMemory || calls) && other.accessesMemory()) ||
+        (accessesMemory() && (other.writesMemory || other.calls))) {
       return true;
     }
     // All atomics are sequentially consistent for now, and ordered wrt other
@@ -283,6 +284,14 @@ struct EffectAnalyzer : public PostWalker<EffectAnalyzer> {
     isAtomic = true;
   }
   void visitUnreachable(Unreachable *curr) { branches = true; }
+
+  // Helpers
+
+  static bool canReorder(PassOptions& passOptions, Expression* a, Expression* b) {
+    EffectAnalyzer aEffects(passOptions, a);
+    EffectAnalyzer bEffects(passOptions, b);
+    return !aEffects.invalidates(bEffects);
+  }
 };
 
 } // namespace wasm

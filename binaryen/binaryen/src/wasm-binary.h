@@ -289,7 +289,7 @@ public:
     return x.writeAt(this, i);
   }
 
-  template <typename T>
+  template<typename T>
   void writeTo(T& o) {
     for (auto c : *this) o << c;
   }
@@ -341,8 +341,8 @@ enum EncodedType {
 namespace UserSections {
 extern const char* Name;
 extern const char* SourceMapUrl;
-
 extern const char* Dylink;
+extern const char* Linking;
 
 enum Subsection {
   NameFunction = 1,
@@ -548,6 +548,7 @@ enum ASTNodes {
   I64ExtendS16 = 0xc3,
   I64ExtendS32 = 0xc4,
 
+  TruncSatPrefix = 0xfc,
   AtomicPrefix = 0xfe
 };
 
@@ -627,6 +628,16 @@ enum AtomicOpcodes {
   AtomicCmpxchgOps_End = 0x4e
 };
 
+enum TruncSatOpcodes {
+  I32STruncSatF32 = 0x00,
+  I32UTruncSatF32 = 0x01,
+  I32STruncSatF64 = 0x02,
+  I32UTruncSatF64 = 0x03,
+  I64STruncSatF32 = 0x04,
+  I64UTruncSatF32 = 0x05,
+  I64STruncSatF64 = 0x06,
+  I64UTruncSatF64 = 0x07,
+};
 
 enum MemoryAccess {
   Offset = 0x10,     // bit 4
@@ -643,7 +654,7 @@ enum MemoryFlags {
 
 
 inline S32LEB binaryType(Type type) {
-  int ret;
+  int ret = 0;
   switch (type) {
     // None only used for block signatures. TODO: Separate out?
     case none: ret = BinaryConsts::EncodedType::Empty; break;
@@ -651,7 +662,8 @@ inline S32LEB binaryType(Type type) {
     case i64: ret = BinaryConsts::EncodedType::i64; break;
     case f32: ret = BinaryConsts::EncodedType::f32; break;
     case f64: ret = BinaryConsts::EncodedType::f64; break;
-    default: abort();
+    case v128: assert(false && "v128 not implemented yet");
+    case unreachable: WASM_UNREACHABLE();
   }
   return S32LEB(ret);
 }
@@ -721,6 +733,7 @@ public:
   void writeLateUserSections();
   void writeUserSection(const UserSection& section);
 
+  void initializeDebugInfo();
   void writeSourceMapProlog();
   void writeSourceMapEpilog();
   void writeDebugLocation(const Function::DebugLocation& loc);
@@ -942,6 +955,7 @@ public:
   bool maybeVisitConst(Expression*& out, uint8_t code);
   bool maybeVisitUnary(Expression*& out, uint8_t code);
   bool maybeVisitBinary(Expression*& out, uint8_t code);
+  bool maybeVisitTruncSat(Expression*& out, uint32_t code);
   void visitSelect(Select* curr);
   void visitReturn(Return* curr);
   bool maybeVisitHost(Expression*& out, uint8_t code);

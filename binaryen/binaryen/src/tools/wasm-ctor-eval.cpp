@@ -263,7 +263,7 @@ struct CtorEvalExternalInterface : EvallingModuleInstance::ExternalInterface {
 private:
   // TODO: handle unaligned too, see shell-interface
 
-  template <typename T>
+  template<typename T>
   T* getMemory(Address address) {
     // if memory is on the stack, use the stack
     if (address >= STACK_START) {
@@ -295,13 +295,13 @@ private:
     return (T*)(&data[address]);
   }
 
-  template <typename T>
+  template<typename T>
   void doStore(Address address, T value) {
     // do a memcpy to avoid undefined behavior if unaligned
     memcpy(getMemory<T>(address), &value, sizeof(T));
   }
 
-  template <typename T>
+  template<typename T>
   T doLoad(Address address) {
     // do a memcpy to avoid undefined behavior if unaligned
     T ret;
@@ -331,8 +331,12 @@ void evalCtors(Module& wasm, std::vector<std::string> ctors) {
       // snapshot globals (note that STACKTOP might be modified, but should
       // be returned, so that works out)
       auto globalsBefore = instance.globals;
+      Export *ex = wasm.getExportOrNull(ctor);
+      if (!ex) {
+        Fatal() << "export not found: " << ctor;
+      }
       try {
-        instance.callExport(ctor);
+        instance.callFunction(ex->value, LiteralList());
       } catch (FailToEvalException& fail) {
         // that's it, we failed, so stop here, cleaning up partial
         // memory changes first

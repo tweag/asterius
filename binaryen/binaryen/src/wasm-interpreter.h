@@ -256,13 +256,13 @@ public:
       case ExtendUInt32:           return value.extendToUI64();
       case WrapInt64:              return value.truncateToI32();
       case ConvertUInt32ToFloat32:
-      case ConvertUInt64ToFloat32: return value.convertUToF32();
+      case ConvertUInt64ToFloat32: return value.truncUIToF32();
       case ConvertUInt32ToFloat64:
-      case ConvertUInt64ToFloat64: return value.convertUToF64();
+      case ConvertUInt64ToFloat64: return value.truncUIToF64();
       case ConvertSInt32ToFloat32:
-      case ConvertSInt64ToFloat32: return value.convertSToF32();
+      case ConvertSInt64ToFloat32: return value.truncSIToF32();
       case ConvertSInt32ToFloat64:
-      case ConvertSInt64ToFloat64: return value.convertSToF64();
+      case ConvertSInt64ToFloat64: return value.truncSIToF64();
       case ExtendS8Int32:
       case ExtendS8Int64:          return value.extendS8();
       case ExtendS16Int32:
@@ -291,13 +291,22 @@ public:
       case TruncUFloat64ToInt32:
       case TruncUFloat32ToInt64:
       case TruncUFloat64ToInt64: return truncUFloat(curr, value);
+      case TruncSatSFloat32ToInt32:
+      case TruncSatSFloat64ToInt32: return value.truncSatToSI32();
+      case TruncSatSFloat32ToInt64:
+      case TruncSatSFloat64ToInt64: return value.truncSatToSI64();
+      case TruncSatUFloat32ToInt32:
+      case TruncSatUFloat64ToInt32: return value.truncSatToUI32();
+      case TruncSatUFloat32ToInt64:
+      case TruncSatUFloat64ToInt64: return value.truncSatToUI64();
       case ReinterpretFloat32:   return value.castToI32();
       case PromoteFloat32:       return value.extendToF64();
       case ReinterpretFloat64:   return value.castToI64();
       case DemoteFloat64:        return value.demote();
 
-      default: WASM_UNREACHABLE();
+      case InvalidUnary: WASM_UNREACHABLE();
     }
+    WASM_UNREACHABLE();
   }
   Flow visitBinary(Binary *curr) {
     NOTE_ENTER("Binary");
@@ -417,8 +426,10 @@ public:
       case MinFloat64:      return left.min(right);
       case MaxFloat32:
       case MaxFloat64:      return left.max(right);
-      default: WASM_UNREACHABLE();
+
+      case InvalidBinary: WASM_UNREACHABLE();
     }
+    WASM_UNREACHABLE();
   }
   Flow visitSelect(Select *curr) {
     NOTE_ENTER("Select");
@@ -575,8 +586,11 @@ public:
         }
         case f32: return Literal(load32u(addr)).castToF32();
         case f64: return Literal(load64u(addr)).castToF64();
-        default: WASM_UNREACHABLE();
+        case v128: assert(false && "v128 not implemented yet");
+        case none:
+        case unreachable: WASM_UNREACHABLE();
       }
+      WASM_UNREACHABLE();
     }
     virtual void store(Store* store, Address addr, Literal value) {
       switch (store->valueType) {
@@ -602,7 +616,9 @@ public:
         // write floats carefully, ensuring all bits reach memory
         case f32: store32(addr, value.reinterpreti32()); break;
         case f64: store64(addr, value.reinterpreti64()); break;
-        default: WASM_UNREACHABLE();
+        case v128: assert(false && "v128 not implemented yet");
+        case none:
+        case unreachable: WASM_UNREACHABLE();
       }
     }
 
@@ -862,7 +878,6 @@ public:
           case Or:   computed = computed.or_(value.value);  break;
           case Xor:  computed = computed.xor_(value.value); break;
           case Xchg: computed = value.value;               break;
-          default: WASM_UNREACHABLE();
         }
         instance.doAtomicStore(addr, curr->bytes, computed);
         return loaded;
@@ -920,7 +935,6 @@ public:
         // TODO: add threads support!
         return Literal(int32_t(0)); // none woken up
       }
-
       Flow visitHost(Host *curr) {
         NOTE_ENTER("Host");
         switch (curr->op) {
@@ -939,8 +953,8 @@ public:
             instance.memorySize = newSize;
             return Literal(int32_t(ret));
           }
-          default: WASM_UNREACHABLE();
         }
+        WASM_UNREACHABLE();
       }
 
       void trap(const char* why) override {
@@ -996,7 +1010,7 @@ protected:
     }
   }
 
-  template <class LS>
+  template<class LS>
   Address getFinalAddress(LS* curr, Literal ptr) {
     Address memorySizeBytes = memorySize * Memory::kPageSize;
     uint64_t addr = ptr.type == i32 ? ptr.geti32() : ptr.geti64();

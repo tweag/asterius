@@ -1,0 +1,12 @@
+;;; TOOL: wat2wasm
+;;; ERROR: 1
+(module
+  (func (param i32 i64)
+    i64.const 0
+    i64.const 0
+    call 0))
+(;; STDERR ;;;
+out/test/typecheck/bad-call-type-mismatch.txt:7:5: error: type mismatch in call, expected [i32, i64] but got [i64, i64]
+    call 0))
+    ^^^^
+;;; STDERR ;;)

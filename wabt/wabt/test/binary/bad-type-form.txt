@@ -1,0 +1,11 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) {
+  count[1]
+  0x20
+}
+(;; STDERR ;;;
+000000c: error: unexpected type form (got 0x20)
+000000c: error: unexpected type form (got 0x20)
+;;; STDERR ;;)

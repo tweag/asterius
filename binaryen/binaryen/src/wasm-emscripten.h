@@ -19,6 +19,8 @@
 
 #include "wasm.h"
 #include "wasm-builder.h"
+#include "support/file.h"
+
 
 namespace wasm {
 
@@ -39,6 +41,10 @@ public:
   // signature in the indirect function table.
   void generateDynCallThunks();
 
+  // Convert stack pointer access from get_global/set_global to calling save
+  // and restore functions.
+  void replaceStackPointerGlobal();
+
   // Create thunks to support emscripten's addFunction functionality. Creates (#
   // of reserved function pointers) thunks for each indirectly called function
   // signature.
@@ -48,10 +54,9 @@ public:
       Address staticBump, std::vector<Name> const& initializerFunctions,
       unsigned numReservedFunctionPointers);
 
-  // Replace placeholder emscripten_asm_const functions with *_signature versions.
-  void fixEmAsmConsts();
-
   void fixInvokeFunctionNames();
+
+  void separateDataSegments(Output* outfile);
 
 private:
   Module& wasm;

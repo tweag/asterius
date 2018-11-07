@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -14,6 +15,7 @@ import Asterius.Types
 import Asterius.TypesConv
 import Bindings.Binaryen.Raw
 import Control.Exception
+import Control.Monad
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString.Unsafe as BS
@@ -21,7 +23,7 @@ import Data.Foldable
 import qualified Data.Map.Strict as M
 import qualified Data.Set as Set
 import Data.Traversable
-import Foreign
+import Foreign hiding (void)
 import Foreign.C
 import GHC.Exts
 import Prelude hiding (IO)
@@ -335,7 +337,11 @@ marshalFunctionTable pool m FunctionTable {..} = do
   func_name_ptrs <- for functionNames $ marshalSBS pool
   (fnp, fnl) <- marshalV pool func_name_ptrs
   let l = fromIntegral $ length functionNames
-  c_BinaryenSetFunctionTable m l l fnp fnl
+  c_BinaryenSetFunctionTable m l (-1) fnp fnl
+  tbl_name <- marshalSBS pool tableExportName
+  unless (tbl_name == nullPtr) $ do
+    tbl_internal_name <- marshalSBS pool "0"
+    void $ c_BinaryenAddMemoryExport m tbl_internal_name tbl_name
 
 marshalMemory :: Pool -> BinaryenModuleRef -> Memory -> IO ()
 marshalMemory pool m Memory {..} = do
@@ -350,7 +356,7 @@ marshalMemory pool m Memory {..} = do
   (sps, _ :: Int) <-
     marshalV pool $
     map (\DataSegment {..} -> fromIntegral $ SBS.length content) dataSegments
-  enp <- marshalSBS pool exportName
+  enp <- marshalSBS pool memoryExportName
   c_BinaryenSetMemory
     m
     initialPages
@@ -415,7 +421,7 @@ relooperAddBranch pool m bm k ab =
 relooperRun ::
      Pool -> BinaryenModuleRef -> RelooperRun -> IO BinaryenExpressionRef
 relooperRun pool m RelooperRun {..} = do
-  r <- c_RelooperCreate
+  r <- c_RelooperCreate m
   bpm <-
     fmap fromList $
     for (M.toList blockMap) $ \(k, RelooperBlock {..}) -> do
@@ -423,7 +429,7 @@ relooperRun pool m RelooperRun {..} = do
       pure (k, bp)
   for_ (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
     forM_ addBranches $ relooperAddBranch pool m bpm k
-  c_RelooperRenderAndDispose r (bpm ! entry) labelHelper m
+  c_RelooperRenderAndDispose r (bpm ! entry) labelHelper
 
 serializeModule :: BinaryenModuleRef -> IO BS.ByteString
 serializeModule m =

@@ -1,11 +1,12 @@
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-rn -ddump-foreign -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
+import Asterius.Types (JSVal(..))
 import AsteriusPrim
 import Foreign.StablePtr
 
-foreign import javascript "new Date()" current_time :: IO JSRef
+foreign import javascript "new Date()" current_time :: IO JSVal
 
-foreign import javascript "console.log(${1})" js_print :: JSRef -> IO ()
+foreign import javascript "console.log(${1})" js_print :: JSVal -> IO ()
 
 foreign import javascript "console.log(String.fromCodePoint(${1}))" js_putchar
   :: Char -> IO ()
@@ -22,16 +23,16 @@ foreign import javascript "false" js_false :: Bool
 foreign import javascript "true" js_true :: Bool
 
 foreign import javascript "__asterius_jsffi.makeHaskellCallback(${1})" js_make_hs_callback
-  :: StablePtr (IO ()) -> JSRef
+  :: StablePtr (IO ()) -> JSVal
 
 foreign import javascript "__asterius_jsffi.makeHaskellCallback1(${1})" js_make_hs_callback1
-  :: StablePtr (JSRef -> IO ()) -> JSRef
+  :: StablePtr (JSVal -> IO ()) -> JSVal
 
 foreign import javascript "setTimeout(${1},${2})" js_set_timeout
-  :: JSRef -> Int -> IO ()
+  :: JSVal -> Int -> IO ()
 
 foreign import javascript "setTimeout(${1},${2},${3})" js_set_timeout1
-  :: JSRef -> Int -> JSRef -> IO ()
+  :: JSVal -> Int -> JSVal -> IO ()
 
 foreign import javascript "Math.random()" js_random :: IO Double
 

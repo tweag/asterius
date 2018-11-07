@@ -10,9 +10,9 @@ ahc-link - Linker for the Asterius compiler
 Usage: ahc-link [--browser] --input ARG [--output-wasm ARG] [--output-js ARG]
                 [--output-html ARG] [--output-link-report ARG]
                 [--output-graphviz ARG] [--binaryen] [--debug] [--output-ir]
-                [--run] [--heap-size ARG] [--asterius-instance-callback ARG]
-                [--ghc-option ARG] [--export-function ARG]
-                [--extra-root-symbol ARG]
+                [--run] [--nursery-size ARG] [--object-pool-size ARG]
+                [--asterius-instance-callback ARG] [--ghc-option ARG]
+                [--export-function ARG] [--extra-root-symbol ARG]
   Producing a standalone WebAssembly binary from Haskell
 
 Available options:
@@ -31,8 +31,8 @@ Available options:
   --debug                  Enable debug mode in the runtime
   --output-ir              Output Asterius IR of compiled modules
   --run                    Run the compiled module with Node.js
-  --heap-size ARG          Heap size in MBs, used for both nursery/object pool.
-                           Defaults to 1024.
+  --nursery-size ARG       Nursery size in MBs, defaults to 512.
+  --object-pool-size ARG   Object pool size in MBs, defaults to 512.
   --asterius-instance-callback ARG
                            Supply a JavaScript callback expression which will be
                            invoked on the initiated asterius instance. Defaults

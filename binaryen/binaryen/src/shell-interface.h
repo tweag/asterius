@@ -33,7 +33,7 @@ namespace wasm {
 struct ExitException {};
 struct TrapException {};
 
-struct ShellExternalInterface final : ModuleInstance::ExternalInterface {
+struct ShellExternalInterface : ModuleInstance::ExternalInterface {
   // The underlying memory can be accessed through unaligned pointers which
   // isn't well-behaved in C++. WebAssembly nonetheless expects it to behave
   // properly. Avoid emitting unaligned load/store by checking for alignment
@@ -44,7 +44,7 @@ struct ShellExternalInterface final : ModuleInstance::ExternalInterface {
   class Memory {
     // Use char because it doesn't run afoul of aliasing rules.
     std::vector<char> memory;
-    template <typename T>
+    template<typename T>
     static bool aligned(const char* address) {
       static_assert(!(sizeof(T) & (sizeof(T) - 1)), "must be a power of 2");
       return 0 == (reinterpret_cast<uintptr_t>(address) & (sizeof(T) - 1));
@@ -68,7 +68,7 @@ struct ShellExternalInterface final : ModuleInstance::ExternalInterface {
         std::memset(&memory[newSize], 0, minSize - newSize);
       }
     }
-    template <typename T>
+    template<typename T>
     void set(size_t address, T value) {
       if (aligned<T>(&memory[address])) {
         *reinterpret_cast<T*>(&memory[address]) = value;
@@ -76,7 +76,7 @@ struct ShellExternalInterface final : ModuleInstance::ExternalInterface {
         std::memcpy(&memory[address], &value, sizeof(T));
       }
     }
-    template <typename T>
+    template<typename T>
     T get(size_t address) {
       if (aligned<T>(&memory[address])) {
         return *reinterpret_cast<T*>(&memory[address]);
@@ -91,6 +91,7 @@ struct ShellExternalInterface final : ModuleInstance::ExternalInterface {
   std::vector<Name> table;
 
   ShellExternalInterface() : memory() {}
+  virtual ~ShellExternalInterface() = default;
 
   void init(Module& wasm, ModuleInstance& instance) override {
     memory.resize(wasm.memory.initial * wasm::Memory::kPageSize);
@@ -126,7 +127,9 @@ struct ShellExternalInterface final : ModuleInstance::ExternalInterface {
           case i64: globals[import->name] = Literal(int64_t(666)); break;
           case f32: globals[import->name] = Literal(float(666.6)); break;
           case f64: globals[import->name] = Literal(double(666.6)); break;
-          default: WASM_UNREACHABLE();
+          case v128: assert(false && "v128 not implemented yet");
+          case none:
+          case unreachable: WASM_UNREACHABLE();
         }
       }
     });

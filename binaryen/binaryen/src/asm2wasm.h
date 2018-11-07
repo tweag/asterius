@@ -130,6 +130,7 @@ Name I32_CTTZ("i32_cttz"),
      I64_ATOMICS_SUB("i64_atomics_sub"),
      I64_ATOMICS_EXCHANGE("i64_atomics_exchange"),
      I64_ATOMICS_COMPAREEXCHANGE("i64_atomics_compareExchange"),
+     TEMP_DOUBLE_PTR("tempDoublePtr"),
      EMSCRIPTEN_DEBUGINFO("emscripten_debuginfo");
 
 // Utilities
@@ -777,9 +778,9 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
   // Import memory offset, if not already there
   {
     auto* import = new Global;
-    import->name = "memoryBase";
+    import->name = MEMORY_BASE;
     import->module = "env";
-    import->base = "memoryBase";
+    import->base = MEMORY_BASE;
     import->type = i32;
     wasm.addGlobal(import);
   }
@@ -787,9 +788,9 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
   // Import table offset, if not already there
   {
     auto* import = new Global;
-    import->name = "tableBase";
+    import->name = TABLE_BASE;
     import->module = "env";
-    import->base = "tableBase";
+    import->base = TABLE_BASE;
     import->type = i32;
     wasm.addGlobal(import);
   }
@@ -911,9 +912,9 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
       import->base = base;
       import->type = type;
       mappedGlobals.emplace(name, type);
-      // tableBase and memoryBase are used as segment/element offsets, and must be constant;
+      // __table_base and __memory_base are used as segment/element offsets, and must be constant;
       // otherwise, an asm.js import of a constant is mutable, e.g. STACKTOP
-      if (name != "tableBase" && name != "memoryBase") {
+      if (name != TABLE_BASE && name != MEMORY_BASE) {
         // we need imported globals to be mutable, but wasm doesn't support that yet, so we must
         // import an immutable and create a mutable global initialized to its value
         import->name = Name(std::string(import->name.str) + "$asm2wasm$import");
@@ -926,7 +927,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
           ));
         }
       }
-      if ((name == "tableBase" || name == "memoryBase") &&
+      if ((name == TABLE_BASE || name == MEMORY_BASE) &&
           wasm.getGlobalOrNull(import->base)) {
         return;
       }
@@ -1093,7 +1094,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
           //       index 0 in each table is the null func, and each other index should only have one
           //       non-null func. However, that breaks down when function pointer casts are emulated.
           if (wasm.table.segments.size() == 0) {
-            wasm.table.segments.emplace_back(builder.makeGetGlobal(Name("tableBase"), i32));
+            wasm.table.segments.emplace_back(builder.makeGetGlobal(Name(TABLE_BASE), i32));
           }
           auto& segment = wasm.table.segments[0];
           functionTableStarts[name] = segment.data.size(); // this table starts here
@@ -1458,6 +1459,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
     // autodrop can add some garbage
     passRunner.add("vacuum");
     passRunner.add("remove-unused-brs");
+    passRunner.add("remove-unused-names");
     passRunner.add("merge-blocks");
     passRunner.add("optimize-instructions");
     passRunner.add("post-emscripten");
@@ -1615,6 +1617,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
   // processors
   std::function<Expression* (Ref, unsigned)> processStatements;
   std::function<Expression* (Ref, unsigned)> processUnshifted;
+  std::function<Expression* (Ref, unsigned)> processIgnoringShift;
 
   std::function<Expression* (Ref)> process = [&](Ref ast) -> Expression* {
     AstStackHelper astStackHelper(ast); // TODO: only create one when we need it?
@@ -2014,7 +2017,8 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
           } else if (name == Atomics_exchange) {
             return builder.makeAtomicRMW(AtomicRMWOp::Xchg, view.bytes, 0, processUnshifted(ast[2][1], view.bytes), process(ast[2][2]), asmToWasmType(view.type));
           } else if (name == Atomics_compareExchange) {
-            return builder.makeAtomicCmpxchg(view.bytes, 0, processUnshifted(ast[2][1], view.bytes), process(ast[2][2]), process(ast[2][3]), asmToWasmType(view.type));
+            // cmpxchg is odd in fastcomp output - we must ignore the shift, a cmpxchg of a i8 will look like compareExchange(HEAP8, ptr >> 2)
+            return builder.makeAtomicCmpxchg(view.bytes, 0, processIgnoringShift(ast[2][1], view.bytes), process(ast[2][2]), process(ast[2][3]), asmToWasmType(view.type));
           } else if (name == Atomics_add) {
             return builder.makeAtomicRMW(AtomicRMWOp::Add, view.bytes, 0, processUnshifted(ast[2][1], view.bytes), process(ast[2][2]), asmToWasmType(view.type));
           } else if (name == Atomics_sub) {
@@ -2740,6 +2744,16 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
     }
     abort_on("bad processUnshifted", ptr);
     return (Expression*)nullptr; // avoid warning
+  };
+
+  processIgnoringShift = [&](Ref ptr, unsigned bytes) {
+    // If there is a shift here, no matter the size look through it.
+    if ((ptr->isArray(BINARY) && ptr[1] == RSHIFT && ptr[3]->isNumber()) ||
+        (bytes == 1 && ptr->isArray(BINARY) && ptr[1] == OR && ptr[3]->isNumber() && ptr[3]->getInteger() == 0)) {
+      return process(ptr[2]);
+    }
+    // Otherwise do the same as processUnshifted.
+    return processUnshifted(ptr, bytes);
   };
 
   processStatements = [&](Ref ast, unsigned from) -> Expression* {

@@ -33,5 +33,6 @@ tests:
   binaryen-test:
     source-dirs: test
     main: binaryen-test.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - binaryen

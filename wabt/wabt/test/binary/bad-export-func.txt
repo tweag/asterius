@@ -1,0 +1,10 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) { count[1] function params[0] results[0] }
+section(FUNCTION) { count[1] sig[0] }
+section(EXPORT) { count[1] str("foo") func_kind func[1] }
+(;; STDERR ;;;
+000001b: error: invalid export func index: 1
+000001b: error: invalid export func index: 1
+;;; STDERR ;;)

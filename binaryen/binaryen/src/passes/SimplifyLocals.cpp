@@ -50,6 +50,7 @@
 #include <wasm-builder.h>
 #include <wasm-traversal.h>
 #include <pass.h>
+#include <ir/branch-utils.h>
 #include <ir/count.h>
 #include <ir/effects.h>
 #include "ir/equivalent_sets.h"
@@ -125,38 +126,46 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
     } else if (curr->is<Block>()) {
       return; // handled in visitBlock
     } else if (curr->is<If>()) {
-      assert(!curr->cast<If>()->ifFalse); // if-elses are handled by doNoteIfElse* methods
+      assert(!curr->cast<If>()->ifFalse); // if-elses are handled by doNoteIf* methods
     } else if (curr->is<Switch>()) {
       auto* sw = curr->cast<Switch>();
-      for (auto target : sw->targets) {
+      auto targets = BranchUtils::getUniqueTargets(sw);
+      for (auto target : targets) {
         self->unoptimizableBlocks.insert(target);
       }
-      self->unoptimizableBlocks.insert(sw->default_);
       // TODO: we could use this info to stop gathering data on these blocks
     }
     self->sinkables.clear();
   }
 
-  static void doNoteIfElseCondition(SimplifyLocals<allowTee, allowStructure, allowNesting>* self, Expression** currp) {
+  static void doNoteIfCondition(SimplifyLocals<allowTee, allowStructure, allowNesting>* self, Expression** currp) {
     // we processed the condition of this if-else, and now control flow branches
     // into either the true or the false sides
-    assert((*currp)->cast<If>()->ifFalse);
     self->sinkables.clear();
   }
 
-  static void doNoteIfElseTrue(SimplifyLocals<allowTee, allowStructure, allowNesting>* self, Expression** currp) {
-    // we processed the ifTrue side of this if-else, save it on the stack
-    assert((*currp)->cast<If>()->ifFalse);
-    self->ifStack.push_back(std::move(self->sinkables));
+  static void doNoteIfTrue(SimplifyLocals<allowTee, allowStructure, allowNesting>* self, Expression** currp) {
+    auto* iff = (*currp)->dynCast<If>();
+    if (iff->ifFalse) {
+      // We processed the ifTrue side of this if-else, save it on the stack.
+      assert((*currp)->cast<If>()->ifFalse);
+      self->ifStack.push_back(std::move(self->sinkables));
+    } else {
+      // This is an if without an else.
+      if (allowStructure) {
+        self->optimizeIfReturn(iff, currp);
+      }
+      self->sinkables.clear();
+    }
   }
 
-  static void doNoteIfElseFalse(SimplifyLocals<allowTee, allowStructure, allowNesting>* self, Expression** currp) {
+  static void doNoteIfFalse(SimplifyLocals<allowTee, allowStructure, allowNesting>* self, Expression** currp) {
     // we processed the ifFalse side of this if-else, we can now try to
     // mere with the ifTrue side and optimize a return value, if possible
     auto* iff = (*currp)->cast<If>();
     assert(iff->ifFalse);
     if (allowStructure) {
-      self->optimizeIfReturn(iff, currp, self->ifStack.back());
+      self->optimizeIfElseReturn(iff, currp, self->ifStack.back());
     }
     self->ifStack.pop_back();
     self->sinkables.clear();
@@ -186,9 +195,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
 
   void visitLoop(Loop* curr) {
     if (allowStructure) {
-      if (canUseLoopReturnValue(curr)) {
-        loops.push_back(this->getCurrentPointer());
-      }
+      optimizeLoopReturn(curr);
     }
   }
 
@@ -326,7 +333,37 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
 
   std::vector<Block*> blocksToEnlarge;
   std::vector<If*> ifsToEnlarge;
-  std::vector<Expression**> loops;
+  std::vector<Loop*> loopsToEnlarge;
+
+  void optimizeLoopReturn(Loop* loop) {
+    // If there is a sinkable thing in an eligible loop, we can optimize
+    // it in a trivial way to the outside of the loop.
+    if (loop->type != none) return;
+    if (sinkables.empty()) return;
+    Index goodIndex = sinkables.begin()->first;
+    // Ensure we have a place to write the return values for, if not, we
+    // need another cycle.
+    auto* block = loop->body->dynCast<Block>();
+    if (!block || block->name.is() || block->list.size() == 0  || !block->list.back()->is<Nop>()) {
+      loopsToEnlarge.push_back(loop);
+      return;
+    }
+    Builder builder(*this->getModule());
+    auto** item = sinkables.at(goodIndex).item;
+    auto* set = (*item)->template cast<SetLocal>();
+    block->list[block->list.size() - 1] = set->value;
+    *item = builder.makeNop();
+    block->finalize();
+    assert(block->type != none);
+    loop->finalize();
+    set->value = loop;
+    set->finalize();
+    this->replaceCurrent(set);
+    // We moved things around, clear all tracking; we'll do another cycle
+    // anyhow.
+    sinkables.clear();
+    anotherCycle = true;
+  }
 
   void optimizeBlockReturn(Block* block) {
     if (!block->name.is() || unoptimizableBlocks.count(block->name) > 0) {
@@ -443,7 +480,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
   }
 
   // optimize set_locals from both sides of an if into a return value
-  void optimizeIfReturn(If* iff, Expression** currp, Sinkables& ifTrue) {
+  void optimizeIfElseReturn(If* iff, Expression** currp, Sinkables& ifTrue) {
     assert(iff->ifFalse);
     // if this if already has a result, or is unreachable code, we have
     // nothing to do
@@ -496,14 +533,14 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
     // need another cycle
     auto* ifTrueBlock  = iff->ifTrue->dynCast<Block>();
     if (iff->ifTrue->type != unreachable) {
-      if (!ifTrueBlock  || ifTrueBlock->list.size() == 0  || !ifTrueBlock->list.back()->is<Nop>()) {
+      if (!ifTrueBlock  || ifTrueBlock->name.is() || ifTrueBlock->list.size() == 0  || !ifTrueBlock->list.back()->is<Nop>()) {
         ifsToEnlarge.push_back(iff);
         return;
       }
     }
     auto* ifFalseBlock = iff->ifFalse->dynCast<Block>();
     if (iff->ifFalse->type != unreachable) {
-      if (!ifFalseBlock  || ifFalseBlock->list.size() == 0  || !ifFalseBlock->list.back()->is<Nop>()) {
+      if (!ifFalseBlock  || ifFalseBlock->name.is() || ifFalseBlock->list.size() == 0  || !ifFalseBlock->list.back()->is<Nop>()) {
         ifsToEnlarge.push_back(iff);
         return;
       }
@@ -531,20 +568,78 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
     anotherCycle = true;
   }
 
+  // Optimize set_locals from a one-sided iff, adding a get on the other:
+  //  (if
+  //    (..condition..)
+  //    (block
+  //      (set_local $x (..value..))
+  //    )
+  //  )
+  // =>
+  //  (set_local $x
+  //    (if (result ..)
+  //      (..condition..)
+  //      (block (result ..)
+  //        (..value..)
+  //      )
+  //      (get_local $x)
+  //    )
+  //  )
+  // This is a speculative optimization: we add a get here, as well as a branch
+  // in the if, so this is harmful for code size and for speed. However, later
+  // optimizations may sink the set and enable other useful things. If none of
+  // that happens, other passes can "undo" this by turning an if with a copy
+  // arm into a one-sided if.
+  void optimizeIfReturn(If* iff, Expression** currp) {
+    // If this if is unreachable code, we have nothing to do.
+    if (iff->type != none || iff->ifTrue->type != none) return;
+    // Anything sinkable is good for us.
+    if (sinkables.empty()) return;
+    Index goodIndex = sinkables.begin()->first;
+    // Ensure we have a place to write the return values for, if not, we
+    // need another cycle.
+    auto* ifTrueBlock = iff->ifTrue->dynCast<Block>();
+    if (!ifTrueBlock || ifTrueBlock->name.is() || ifTrueBlock->list.size() == 0  || !ifTrueBlock->list.back()->is<Nop>()) {
+      ifsToEnlarge.push_back(iff);
+      return;
+    }
+    // Update the ifTrue side.
+    Builder builder(*this->getModule());
+    auto** item = sinkables.at(goodIndex).item;
+    auto* set = (*item)->template cast<SetLocal>();
+    ifTrueBlock->list[ifTrueBlock->list.size() - 1] = set->value;
+    *item = builder.makeNop();
+    ifTrueBlock->finalize();
+    assert(ifTrueBlock->type != none);
+    // Update the ifFalse side.
+    iff->ifFalse = builder.makeGetLocal(set->index, set->value->type);
+    iff->finalize(); // update type
+    // Update the get count.
+    getCounter.num[set->index]++;
+    assert(iff->type != none);
+    // Finally, reuse the set_local on the iff itself.
+    set->value = iff;
+    set->finalize();
+    *currp = set;
+    anotherCycle = true;
+  }
+
   // override scan to add a pre and a post check task to all nodes
   static void scan(SimplifyLocals<allowTee, allowStructure, allowNesting>* self, Expression** currp) {
     self->pushTask(visitPost, currp);
 
     auto* curr = *currp;
 
-    if (curr->is<If>() && curr->cast<If>()->ifFalse) {
-      // handle if-elses in a special manner, using the ifStack
-      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::doNoteIfElseFalse, currp);
-      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::scan, &curr->cast<If>()->ifFalse);
-      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::doNoteIfElseTrue, currp);
-      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::scan, &curr->cast<If>()->ifTrue);
-      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::doNoteIfElseCondition, currp);
-      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::scan, &curr->cast<If>()->condition);
+    if (auto* iff = curr->dynCast<If>()) {
+      // handle if in a special manner, using the ifStack for if-elses etc.
+      if (iff->ifFalse) {
+        self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::doNoteIfFalse, currp);
+        self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::scan, &iff->ifFalse);
+      }
+      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::doNoteIfTrue, currp);
+      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::scan, &iff->ifTrue);
+      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::doNoteIfCondition, currp);
+      self->pushTask(SimplifyLocals<allowTee, allowStructure, allowNesting>::scan, &iff->condition);
     } else {
       WalkerPass<LinearExecutionWalker<SimplifyLocals<allowTee, allowStructure, allowNesting>>>::scan(self, currp);
     }
@@ -581,7 +676,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
         // opts; continue only if they do. In other words, do not end up
         // doing final opts again and again when no main opts are being
         // enabled.
-        if (runFinalOptimizations(func) && runMainOptimizations(func)) {
+        if (runLateOptimizations(func) && runMainOptimizations(func)) {
           anotherCycle = true;
         }
       }
@@ -602,37 +697,34 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
     // enlarge ifs that were marked, for the next round
     if (ifsToEnlarge.size() > 0) {
       for (auto* iff : ifsToEnlarge) {
-        auto ifTrue = Builder(*this->getModule()).blockify(iff->ifTrue);
+        auto ifTrue = Builder(*this->getModule()).blockifyWithName(iff->ifTrue, Name());
         iff->ifTrue = ifTrue;
         if (ifTrue->list.size() == 0 || !ifTrue->list.back()->template is<Nop>()) {
           ifTrue->list.push_back(this->getModule()->allocator.template alloc<Nop>());
         }
-        auto ifFalse = Builder(*this->getModule()).blockify(iff->ifFalse);
-        iff->ifFalse = ifFalse;
-        if (ifFalse->list.size() == 0 || !ifFalse->list.back()->template is<Nop>()) {
-          ifFalse->list.push_back(this->getModule()->allocator.template alloc<Nop>());
+        if (iff->ifFalse) {
+          auto ifFalse = Builder(*this->getModule()).blockifyWithName(iff->ifFalse, Name());
+          iff->ifFalse = ifFalse;
+          if (ifFalse->list.size() == 0 || !ifFalse->list.back()->template is<Nop>()) {
+            ifFalse->list.push_back(this->getModule()->allocator.template alloc<Nop>());
+          }
         }
       }
       ifsToEnlarge.clear();
       anotherCycle = true;
     }
-    // handle loops. note that a lot happens in this pass, and we can't just modify
-    // set_locals when we see a loop - it might be tracked - and we can't also just
-    // assume our loop didn't move either (might be in a block now). So we do this
-    // when all other work is done - as loop return values are rare, that is fine.
-    if (!anotherCycle) {
-      for (auto* currp : loops) {
-        auto* curr = (*currp)->template cast<Loop>();
-        assert(canUseLoopReturnValue(curr));
-        auto* set = curr->body->template cast<SetLocal>();
-        curr->body = set->value;
-        set->value = curr;
-        curr->finalize(curr->body->type);
-        *currp = set;
-        anotherCycle = true;
+    // enlarge loops that were marked, for the next round
+    if (loopsToEnlarge.size() > 0) {
+      for (auto* loop : loopsToEnlarge) {
+        auto block = Builder(*this->getModule()).blockifyWithName(loop->body, Name());
+        loop->body = block;
+        if (block->list.size() == 0 || !block->list.back()->template is<Nop>()) {
+          block->list.push_back(this->getModule()->allocator.template alloc<Nop>());
+        }
       }
+      loopsToEnlarge.clear();
+      anotherCycle = true;
     }
-    loops.clear();
     // clean up
     sinkables.clear();
     blockBreaks.clear();
@@ -640,7 +732,7 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
     return anotherCycle;
   }
 
-  bool runFinalOptimizations(Function* func) {
+  bool runLateOptimizations(Function* func) {
     // Finally, after optimizing a function we can do some additional
     // optimization.
     getCounter.analyze(func);
@@ -777,17 +869,6 @@ struct SimplifyLocals : public WalkerPass<LinearExecutionWalker<SimplifyLocals<a
     setRemover.walkFunction(func);
 
     return eqOpter.anotherCycle || setRemover.anotherCycle;
-  }
-
-  bool canUseLoopReturnValue(Loop* curr) {
-    // Optimizing a loop return value is trivial: just see if it contains
-    // a set_local, and pull that out.
-    if (auto* set = curr->body->template dynCast<SetLocal>()) {
-      if (isConcreteType(set->value->type)) {
-        return true;
-      }
-    }
-    return false;
   }
 };
 

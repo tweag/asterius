@@ -1,0 +1,52 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (func (local i32 i64 i64 f32 f32 f32 f64 f64 f64 f64)))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 01                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 00                                        ; num params
+000000d: 00                                        ; num results
+0000009: 04                                        ; FIXUP section size
+; section "Function" (3)
+000000e: 03                                        ; section code
+000000f: 00                                        ; section size (guess)
+0000010: 01                                        ; num functions
+0000011: 00                                        ; function 0 signature index
+000000f: 02                                        ; FIXUP section size
+; section "Code" (10)
+0000012: 0a                                        ; section code
+0000013: 00                                        ; section size (guess)
+0000014: 01                                        ; num functions
+; function body 0
+0000015: 00                                        ; func body size (guess)
+0000016: 04                                        ; local decl count
+0000017: 01                                        ; local type count
+0000018: 7f                                        ; i32
+0000019: 02                                        ; local type count
+000001a: 7e                                        ; i64
+000001b: 03                                        ; local type count
+000001c: 7d                                        ; f32
+000001d: 04                                        ; local type count
+000001e: 7c                                        ; f64
+000001f: 0b                                        ; end
+0000015: 0a                                        ; FIXUP func body size
+0000013: 0c                                        ; FIXUP section size
+
+locals.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000015 func[0]:
+ 000017: 01 7f                      | local[0] type=i32
+ 000019: 02 7e                      | local[1..2] type=i64
+ 00001b: 03 7d                      | local[3..5] type=f32
+ 00001d: 04 7c                      | local[6..9] type=f64
+ 00001f: 0b                         | end
+;;; STDOUT ;;)

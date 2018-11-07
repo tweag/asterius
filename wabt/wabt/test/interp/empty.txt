@@ -1,0 +1,6 @@
+;;; TOOL: run-interp
+(module
+  (func (export "f")))
+(;; STDOUT ;;;
+f() =>
+;;; STDOUT ;;)

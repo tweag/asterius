@@ -1,0 +1,13 @@
+;;; TOOL: wat2wasm
+;;; ERROR: 1
+(module
+  (func
+    f32.const 0
+    i32.const 0
+    i32.eq
+    drop))
+(;; STDERR ;;;
+out/test/typecheck/bad-compare-type-mismatch-1.txt:7:5: error: type mismatch in i32.eq, expected [i32, i32] but got [f32, i32]
+    i32.eq
+    ^^^^^^
+;;; STDERR ;;)

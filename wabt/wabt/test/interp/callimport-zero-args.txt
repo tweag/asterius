@@ -1,0 +1,13 @@
+;;; TOOL: run-interp
+;;; ARGS: --host-print
+(module
+  (import "host" "print" (func $imported (result i32)))
+
+  (func (export "f") (result i32)
+    i32.const 13
+    call $imported
+    i32.add))
+(;; STDOUT ;;;
+called host host.print() => i32:0
+f() => i32:13
+;;; STDOUT ;;)

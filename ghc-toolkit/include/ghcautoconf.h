@@ -97,6 +97,9 @@
 /* Define to 1 if you have the <bfd.h> header file. */
 /* #undef HAVE_BFD_H */
 
+/* Does GCC support __atomic primitives? */
+#define HAVE_C11_ATOMICS $CONF_GCC_SUPPORTS__ATOMICS
+
 /* Define to 1 if you have the `clock_gettime' function. */
 #define HAVE_CLOCK_GETTIME 1
 

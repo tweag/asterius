@@ -1,0 +1,10 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) { count[0] }
+section("foo") { 1 2 3 4 }
+section(TYPE) { count[0] }
+(;; STDERR ;;;
+0000017: error: section Type out of order
+0000017: error: section Type out of order
+;;; STDERR ;;)

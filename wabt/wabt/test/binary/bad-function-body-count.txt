@@ -1,0 +1,13 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) { count[1] function params[0] results[0] }
+section(FUNCTION) { count[2] func[0] func[0] }
+section(CODE) {
+  count[1]
+  func { locals[0] }
+}
+(;; STDERR ;;;
+0000016: error: function signature count != function body count
+0000016: error: function signature count != function body count
+;;; STDERR ;;)

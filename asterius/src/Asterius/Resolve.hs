@@ -267,8 +267,7 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
                 Just func -> do
                   new_func <-
                     resolveGlobalRegs func >>=
-                    maskUnknownCCallTargets export_funcs >>=
-                    patchWritePtrArrayOp
+                    maskUnknownCCallTargets i_staging_sym export_funcs
                   m <-
                     (if debug
                        then addMemoryTrap
@@ -331,7 +330,8 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
 makeFunctionTable ::
      AsteriusModule -> (FunctionTable, M.Map AsteriusEntitySymbol Int64)
 makeFunctionTable AsteriusModule {..} =
-  ( FunctionTable {functionNames = map entityName func_syms}
+  ( FunctionTable
+      {functionNames = map entityName func_syms, tableExportName = "table"}
   , fromList $ zip func_syms [1 .|. functionTag `shiftL` 32 ..])
   where
     func_syms = M.keys functionMap
@@ -362,7 +362,7 @@ makeMemory debug AsteriusModule {..} last_o sym_map =
     { initialPages =
         fromIntegral $
         roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
-    , exportName = "mem"
+    , memoryExportName = "memory"
     , dataSegments =
         if debug
           then uncombined_segs
@@ -424,12 +424,8 @@ resolveEntitySymbols ss_sym_map func_sym_map = f
                 (Just r, _) -> t {resolvedSymbol = Just r}
                 (_, Just r) -> t {resolvedSymbol = Just r}
                 _ ->
-                  EmitErrorMessage
-                    { errorMessage =
-                        ErrorMessage $
-                        "Unresolved symbol: " <> entityName unresolvedSymbol
-                    , phantomReturnTypes = [I64]
-                    }
+                  emitErrorMessage [I64] $
+                  "Unresolved symbol: " <> entityName unresolvedSymbol
             _ -> go
         _ ->
           case eqTypeRep (typeOf t) (typeRep :: TypeRep AsteriusStatic) of
@@ -451,15 +447,15 @@ resolveEntitySymbols ss_sym_map func_sym_map = f
       where
         go = gmapM f t
 
-collectErrorMessages :: Data a => a -> S.Set ErrorMessage
-collectErrorMessages = collect proxy#
+collectEvents :: Data a => a -> S.Set Event
+collectEvents = collect proxy#
 
-rewriteEmitErrorMessage :: (Monad m, Data a) => a -> m (a, [ErrorMessage])
-rewriteEmitErrorMessage x = do
+rewriteEmitEvent :: (Monad m, Data a) => a -> m (a, [Event])
+rewriteEmitEvent x = do
   new_x <- f x
   pure (new_x, msg_lst)
   where
-    msg_lst = S.toList $ collectErrorMessages x
+    msg_lst = S.toList $ collectEvents x
     msg_tbl = M.fromList $ zip msg_lst [(0 :: Int32) ..]
     msg_lookup = (msg_tbl !)
     f :: (Monad m, Data a) => a -> m a
@@ -467,19 +463,12 @@ rewriteEmitErrorMessage x = do
       case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
         Just HRefl ->
           case t of
-            EmitErrorMessage {..} ->
+            EmitEvent {..} ->
               pure
-                Block
-                  { name = ""
-                  , bodys =
-                      [ CallImport
-                          { target' = "__asterius_errorI32"
-                          , operands = [ConstI32 $ msg_lookup errorMessage]
-                          , callImportReturnTypes = []
-                          }
-                      , Unreachable
-                      ]
-                  , blockReturnTypes = phantomReturnTypes
+                CallImport
+                  { target' = "__asterius_eventI32"
+                  , operands = [ConstI32 $ msg_lookup event]
+                  , callImportReturnTypes = []
                   }
             _ -> go
         _ -> go
@@ -495,7 +484,7 @@ resolveAsteriusModule ::
   -> m ( Module
        , M.Map AsteriusEntitySymbol Int64
        , M.Map AsteriusEntitySymbol Int64
-       , [ErrorMessage])
+       , [Event])
 resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = do
   let (func_table, func_sym_map) = makeFunctionTable m_globals_resolved
       (last_o, ss_sym_map) = makeStaticsOffsetTable m_globals_resolved
@@ -522,7 +511,7 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
         relooperDeep
       pure (entityName func_sym, new_func)
   (new_mod, err_msgs) <-
-    rewriteEmitErrorMessage
+    rewriteEmitEvent
       Module
         { functionMap' = new_function_map
         , functionImports = func_imports
@@ -543,7 +532,7 @@ linkStart ::
   -> AsteriusStore
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> m (Module, [ErrorMessage], LinkReport)
+  -> m (Module, [Event], LinkReport)
 linkStart debug store root_syms export_funcs = do
   (merged_m, report) <-
     mergeSymbols

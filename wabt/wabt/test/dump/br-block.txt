@@ -1,0 +1,91 @@
+;;; TOOL: run-objdump
+;;; ARGS0: -v
+(module
+  (func                     ;; depth
+    block $outer           ;; 4
+      loop                 ;; 2 loop, 3 exit
+        block              ;; 1
+          i32.const 0
+          drop 
+          block $inner     ;; 0
+            br 0
+            br 1
+            br 2
+            br 3
+          end
+        end
+      end
+    end))
+(;; STDOUT ;;;
+0000000: 0061 736d                                 ; WASM_BINARY_MAGIC
+0000004: 0100 0000                                 ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                                        ; section code
+0000009: 00                                        ; section size (guess)
+000000a: 01                                        ; num types
+; type 0
+000000b: 60                                        ; func
+000000c: 00                                        ; num params
+000000d: 00                                        ; num results
+0000009: 04                                        ; FIXUP section size
+; section "Function" (3)
+000000e: 03                                        ; section code
+000000f: 00                                        ; section size (guess)
+0000010: 01                                        ; num functions
+0000011: 00                                        ; function 0 signature index
+000000f: 02                                        ; FIXUP section size
+; section "Code" (10)
+0000012: 0a                                        ; section code
+0000013: 00                                        ; section size (guess)
+0000014: 01                                        ; num functions
+; function body 0
+0000015: 00                                        ; func body size (guess)
+0000016: 00                                        ; local decl count
+0000017: 02                                        ; block
+0000018: 40                                        ; void
+0000019: 03                                        ; loop
+000001a: 40                                        ; void
+000001b: 02                                        ; block
+000001c: 40                                        ; void
+000001d: 41                                        ; i32.const
+000001e: 00                                        ; i32 literal
+000001f: 1a                                        ; drop
+0000020: 02                                        ; block
+0000021: 40                                        ; void
+0000022: 0c                                        ; br
+0000023: 00                                        ; break depth
+0000024: 0c                                        ; br
+0000025: 01                                        ; break depth
+0000026: 0c                                        ; br
+0000027: 02                                        ; break depth
+0000028: 0c                                        ; br
+0000029: 03                                        ; break depth
+000002a: 0b                                        ; end
+000002b: 0b                                        ; end
+000002c: 0b                                        ; end
+000002d: 0b                                        ; end
+000002e: 0b                                        ; end
+0000015: 19                                        ; FIXUP func body size
+0000013: 1b                                        ; FIXUP section size
+
+br-block.wasm:	file format wasm 0x1
+
+Code Disassembly:
+
+000015 func[0]:
+ 000017: 02 40                      | block
+ 000019: 03 40                      |   loop
+ 00001b: 02 40                      |     block
+ 00001d: 41 00                      |       i32.const 0
+ 00001f: 1a                         |       drop
+ 000020: 02 40                      |       block
+ 000022: 0c 00                      |         br 0
+ 000024: 0c 01                      |         br 1
+ 000026: 0c 02                      |         br 2
+ 000028: 0c 03                      |         br 3
+ 00002a: 0b                         |       end
+ 00002b: 0b                         |     end
+ 00002c: 0b                         |   end
+ 00002d: 0b                         | end
+ 00002e: 0b                         | end
+;;; STDOUT ;;)

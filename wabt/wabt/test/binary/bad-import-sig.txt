@@ -1,0 +1,9 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(TYPE) { count[1] function params[0] results[1] i32 }
+section(IMPORT) { count[1] str("module") str("func") func_kind type[1] }
+(;; STDERR ;;;
+0000020: error: invalid import signature index
+0000020: error: invalid import signature index
+;;; STDERR ;;)

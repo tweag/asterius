@@ -1,0 +1,12 @@
+;;; TOOL: wat2wasm
+;;; ERROR: 1
+(module
+  (func
+    i32.const 0
+    i32.trunc_s/f32 
+    drop))
+(;; STDERR ;;;
+out/test/typecheck/bad-convert-type-mismatch.txt:6:5: error: type mismatch in i32.trunc_s/f32, expected [f32] but got [i32]
+    i32.trunc_s/f32 
+    ^^^^^^^^^^^^^^^
+;;; STDERR ;;)

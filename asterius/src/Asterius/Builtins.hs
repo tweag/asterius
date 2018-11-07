@@ -6,8 +6,7 @@
 
 module Asterius.Builtins
   ( BuiltinsOptions(..)
-  , getDefaultBuiltinsOptions
-  , unsafeDefaultBuiltinsOptions
+  , defaultBuiltinsOptions
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
   , rtsFunctionImports
@@ -18,50 +17,36 @@ module Asterius.Builtins
   , generateWrapperFunction
   ) where
 
-import Asterius.BuildInfo
 import Asterius.EDSL
 import Asterius.Internals
-import Asterius.Internals.MagicNumber
 import Asterius.Types
 import Control.Monad (when)
-import Data.Bits
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
 import Data.List
+import qualified Data.Map.Strict as Map
 import Data.Maybe
 import Foreign (Word64, Word8)
-import qualified GHC
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
-import System.IO.Unsafe
 
 wasmPageSize :: Int
 wasmPageSize = 65536
 
 data BuiltinsOptions = BuiltinsOptions
-  { dflags :: GHC.DynFlags
-  , nurseryGroups, threadStateSize :: Int
+  { nurseryMBlocks, objectPoolMBlocks, threadStateSize :: Int
   , tracing :: Bool
   }
 
-getDefaultBuiltinsOptions :: IO BuiltinsOptions
-getDefaultBuiltinsOptions =
-  GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
-  GHC.runGhc (Just ghcLibDir) $ do
-    _ <- GHC.getSessionDynFlags >>= GHC.setSessionDynFlags
-    dflags <- GHC.getSessionDynFlags
-    pure
-      BuiltinsOptions
-        { dflags = dflags
-        , nurseryGroups = blocks_per_mblock * 1024
-        , threadStateSize = 65536
-        , tracing = False
-        }
-
-{-# NOINLINE unsafeDefaultBuiltinsOptions #-}
-unsafeDefaultBuiltinsOptions :: BuiltinsOptions
-unsafeDefaultBuiltinsOptions = unsafePerformIO getDefaultBuiltinsOptions
+defaultBuiltinsOptions :: BuiltinsOptions
+defaultBuiltinsOptions =
+  BuiltinsOptions
+    { nurseryMBlocks = 512
+    , objectPoolMBlocks = 512
+    , threadStateSize = 65536
+    , tracing = False
+    }
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -108,6 +93,7 @@ rtsAsteriusModule opts =
               })
         ]
     , functionMap =
+        Map.fromList $
         [ ("main", mainFunction opts)
         , ("hs_init", hsInitFunction opts)
         , ("rts_apply", rtsApplyFunction opts)
@@ -144,14 +130,12 @@ rtsAsteriusModule opts =
         , ("createGenThread", createGenThreadFunction opts)
         , ("createIOThread", createIOThreadFunction opts)
         , ("createStrictIOThread", createStrictIOThreadFunction opts)
-        , ("malloc", mallocFunction opts)
-        , ("memcpy", memcpyFunction opts)
         , ("allocate", allocateFunction opts)
         , ( "allocate_wrapper"
           , generateWrapperFunction "allocate" $ allocateFunction opts)
+        , ("allocateMightFail", allocateFunction opts)
+        , ("allocatePinned", allocateFunction opts)
         , ("allocGroupOnNode", allocGroupOnNodeFunction opts)
-        , ("getMBlocks", getMBlocksFunction opts)
-        , ("free", freeFunction opts)
         , ("newCAF", newCAFFunction opts)
         , ("StgRun", stgRunFunction opts)
         , ("StgReturn", stgReturnFunction opts)
@@ -232,7 +216,17 @@ rtsAsteriusModule opts =
         , ("__asterius_Store_I64", storeWrapperFunction opts 8 I64)
         , ("__asterius_Store_F32", storeWrapperFunction opts 4 F32)
         , ("__asterius_Store_F64", storeWrapperFunction opts 8 F64)
-        ]
+        , ("strlen", strlenFunction opts)
+        , ("memchr", memchrFunction opts)
+        , ("memcpy", memcpyFunction opts)
+        , ("memset", memsetFunction opts)
+        , ("memcmp", memcmpFunction opts)
+        , ("__asterius_fromJSArrayBuffer", fromJSArrayBufferFunction opts)
+        , ("__asterius_toJSArrayBuffer", toJSArrayBufferFunction opts)
+        , ("__asterius_fromJSString", fromJSStringFunction opts)
+        , ("__asterius_fromJSArray", fromJSArrayFunction opts)
+        ] <>
+        map (\(func_sym, (_, func)) -> (func_sym, func)) byteStringCBits
     }
 
 rtsFunctionImports :: Bool -> [FunctionImport]
@@ -310,10 +304,83 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       }
   , FunctionImport
-      { internalName = "__asterius_errorI32"
+      { internalName = "__asterius_eventI32"
       , externalModuleName = "rts"
-      , externalBaseName = "panic"
+      , externalBaseName = "emitEvent"
       , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_allocGroupOnNode"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_allocGroupOnNode"
+      , functionType =
+          FunctionType {paramTypes = [I32, F64], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_strlen"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_strlen"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_memchr"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_memchr"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_memcpy"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_memcpy"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_memmove"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_memmove"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_memset"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_memset"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_memcmp"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_memcmp"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = [I32]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_fromJSArrayBuffer_imp"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_fromJSArrayBuffer"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_toJSArrayBuffer_imp"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_toJSArrayBuffer"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_fromJSString_imp"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_fromJSString"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_fromJSArray_imp"
+      , externalModuleName = "rts"
+      , externalBaseName = "__asterius_fromJSArray"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   ] <>
   (if debug
@@ -410,7 +477,8 @@ rtsFunctionImports debug =
                 , ("f64", F64)
                 ]
             ]
-     else [])
+     else []) <>
+  map (fst . snd) byteStringCBits
 
 rtsAsteriusFunctionExports :: Bool -> [FunctionExport]
 rtsAsteriusFunctionExports debug =
@@ -458,9 +526,10 @@ rtsAsteriusFunctionExports debug =
 
 emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
 emitErrorMessage vts msg =
-  EmitErrorMessage
-    { errorMessage = ErrorMessage {unErrorMessage = msg}
-    , phantomReturnTypes = vts
+  Block
+    { name = ""
+    , bodys = [EmitEvent {event = Event msg}, Unreachable]
+    , blockReturnTypes = vts
     }
 
 assert :: BuiltinsOptions -> Expression -> EDSL ()
@@ -471,11 +540,75 @@ assert BuiltinsOptions {..} cond =
   emitErrorMessage [] $
   "Assertion failure, condition expression: " <> showSBS cond
 
+byteStringCBits :: [(AsteriusEntitySymbol, (FunctionImport, AsteriusFunction))]
+byteStringCBits =
+  map
+    (\(func_sym, param_vts, ret_vts) ->
+       ( AsteriusEntitySymbol func_sym
+       , generateRTSWrapper "bytestring" func_sym param_vts ret_vts))
+    [ ("fps_reverse", [I64, I64, I64], [])
+    , ("fps_intersperse", [I64, I64, I64, I64], [])
+    , ("fps_maximum", [I64, I64], [I64])
+    , ("fps_minimum", [I64, I64], [I64])
+    , ("fps_count", [I64, I64, I64], [I64])
+    , ("fps_memcpy_offsets", [I64, I64, I64, I64, I64], [I64])
+    , ("_hs_bytestring_int_dec", [I64, I64], [I64])
+    , ("_hs_bytestring_long_long_int_dec", [I64, I64], [I64])
+    , ("_hs_bytestring_uint_dec", [I64, I64], [I64])
+    , ("_hs_bytestring_long_long_uint_dec", [I64, I64], [I64])
+    , ("_hs_bytestring_int_dec_padded9", [I64, I64], [])
+    , ("_hs_bytestring_long_long_int_dec_padded18", [I64, I64], [])
+    , ("_hs_bytestring_uint_hex", [I64, I64], [I64])
+    , ("_hs_bytestring_long_long_uint_hex", [I64, I64], [I64])
+    ]
+
+generateRTSWrapper ::
+     SBS.ShortByteString
+  -> SBS.ShortByteString
+  -> [ValueType]
+  -> [ValueType]
+  -> (FunctionImport, AsteriusFunction)
+generateRTSWrapper mod_sym func_sym param_vts ret_vts =
+  ( FunctionImport
+      { internalName = func_sym
+      , externalModuleName = mod_sym
+      , externalBaseName = func_sym
+      , functionType =
+          FunctionType {paramTypes = map fst xs, returnTypes = fst ret}
+      }
+  , AsteriusFunction
+      { functionType =
+          FunctionType {paramTypes = param_vts, returnTypes = ret_vts}
+      , body =
+          snd
+            ret
+            CallImport
+              { target' = func_sym
+              , operands = map snd xs
+              , callImportReturnTypes = fst ret
+              }
+      })
+  where
+    xs =
+      zipWith
+        (\i vt ->
+           case vt of
+             I64 ->
+               ( F64
+               , Unary
+                   ConvertSInt64ToFloat64
+                   GetLocal {index = i, valueType = I64})
+             _ -> (vt, GetLocal {index = i, valueType = vt}))
+        [0 ..]
+        param_vts
+    ret =
+      case ret_vts of
+        [I64] -> ([F64], Unary TruncUFloat64ToInt64)
+        _ -> (ret_vts, id)
+
 generateWrapperFunction ::
      AsteriusEntitySymbol -> AsteriusFunction -> AsteriusFunction
-generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType {..}
-                                                  , ..
-                                                  } =
+generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {..}} =
   AsteriusFunction
     { functionType =
         FunctionType
@@ -510,7 +643,7 @@ generateWrapperFunction func_sym AsteriusFunction { functionType = FunctionType 
         [I64] -> ([F64], Unary ConvertUInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, mallocFunction, memcpyFunction, allocateFunction, allocGroupOnNodeFunction, getMBlocksFunction, freeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, setTSOLinkFunction, setTSOPrevFunction, threadStackOverflowFunction, pushOnRunQueueFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocGroupOnNodeFunction, newCAFFunction, stgRunFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL [] $
@@ -552,15 +685,18 @@ initCapability cap i = do
 hsInitFunction BuiltinsOptions {..} =
   runEDSL [] $ do
     initCapability mainCapability (constI32 0)
-    bd <- call' "allocGroupOnNode" [constI32 0, constI64 nurseryGroups] I64
-    putLVal hp $ loadI64 bd offset_bdescr_start
+    bd_nursery <-
+      call' "allocGroupOnNode" [constI32 0, constI64 nurseryMBlocks] I64
+    bd_object_pool <-
+      call' "allocGroupOnNode" [constI32 0, constI64 objectPoolMBlocks] I64
+    putLVal hp $ loadI64 bd_nursery offset_bdescr_start
     putLVal hpLim $
-      getLVal hp `addInt64`
-      (extendUInt32 (loadI32 bd offset_bdescr_blocks) `mulInt64`
-       constI64 block_size)
+      bd_nursery `addInt64`
+      constI64
+        (fromIntegral ((mblock_size * nurseryMBlocks) - offset_first_bdescr))
     putLVal cccs (constI64 0)
-    putLVal currentNursery bd
-    storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc bd
+    putLVal currentNursery bd_nursery
+    storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc bd_object_pool
     task <-
       call'
         "allocate"
@@ -1092,108 +1228,46 @@ createStrictIOThreadFunction _ =
     , symbol "stg_enter_info"
     ]
 
-mallocFunction _ =
-  runEDSL [I64] $ do
-    setReturnTypes [I64]
-    size <- param I64
-    call' "allocate" [mainCapability, roundupBytesToWords size] I64 >>= emit
-
-memcpyFunction _ =
-  runEDSL [I64] $ do
-    [dest, src, count] <- params [I64, I64, I64]
-    i <- i64MutLocal
-    putLVal i $ constI64 0
-    whileLoop [] (getLVal i `ltUInt64` count) $ do
-      storeI8 (dest `addInt64` getLVal i) 0 $
-        loadI8 (src `addInt64` getLVal i) 0
-      putLVal i $ getLVal i `addInt64` constI64 1
-
-allocateFunction _ =
+allocateFunction BuiltinsOptions {..} =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     [_, n] <- params [I64, I64]
-    new_hp <- i64Local $ getLVal hp `addInt64` (n `mulInt64` constI64 8)
+    bd_object_pool <-
+      i64Local $ loadI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc
+    old_free <- i64Local $ loadI64 bd_object_pool offset_bdescr_free
+    new_free <- i64Local $ old_free `addInt64` (n `mulInt64` constI64 8)
     if'
       []
-      (new_hp `gtUInt64` getLVal hpLim)
-      (emit $ emitErrorMessage [] "allocate failed: errHeapOverflow")
+      (new_free `gtUInt64`
+       (loadI64 bd_object_pool offset_bdescr_start `addInt64`
+        constI64
+          (fromIntegral
+             ((mblock_size * objectPoolMBlocks) - offset_first_bdescr))))
+      (emit $ emitErrorMessage [] "allocate failed: object pool overflow")
       mempty
-    old_hp <- i64Local $ getLVal hp
-    putLVal hp new_hp
-    storeI64
-      (loadI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc)
-      offset_bdescr_free
-      new_hp
-    emit old_hp
-
-blocksToMBlocks :: Expression -> EDSL Expression
-blocksToMBlocks n = do
-  r <- i64MutLocal
-  if'
-    []
-    (n `leUInt64` constI64 blocks_per_mblock)
-    (putLVal r (constI64 1))
-    (putLVal
-       r
-       (constI64 1 `addInt64`
-        ((n `mulInt64` constI64 block_size) `divUInt64` constI64 mblock_size)))
-  pure $ getLVal r
-
-initGroup :: Expression -> EDSL ()
-initGroup hd = do
-  storeI64 hd offset_bdescr_free $ loadI64 hd offset_bdescr_start
-  storeI64 hd offset_bdescr_link $ constI64 0
+    storeI64 bd_object_pool offset_bdescr_free new_free
+    emit old_free
 
 allocGroupOnNodeFunction _ =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     [node, n] <- params [I32, I64]
-    mblocks <- blocksToMBlocks n
-    bd <- allocMegaGroup node mblocks
-    initGroup bd
-    emit bd
-
-getMBlocksFunction _ =
-  runEDSL [I64] $ do
-    setReturnTypes [I64]
-    n <- param I32
-    ret <-
+    bd <-
+      Unary TruncUFloat64ToInt64 <$>
+      callImport'
+        "__asterius_allocGroupOnNode"
+        [node, Unary ConvertUInt64ToFloat64 n]
+        F64
+    block <-
       i64Local $
-      extendUInt32 $
-      growMemory (n `mulInt32` constI32 (mblock_size `div` wasmPageSize)) `mulInt32`
-      constI32 wasmPageSize
-    emit $ ConstI64 (dataTag `shiftL` 32) `orInt64` ret
-
-mblockGroupBlocks :: Expression -> Expression
-mblockGroupBlocks n =
-  constI64 blocks_per_mblock `addInt64`
-  ((n `subInt64` constI64 1) `mulInt64` constI64 (mblock_size `div` block_size))
-
-initMBlock :: Expression -> Expression -> EDSL ()
-initMBlock mblock node = do
-  block <- i64MutLocal
-  putLVal block $ mblock `addInt64` constI64 offset_first_block
-  bd <- i64MutLocal
-  putLVal bd $ mblock `addInt64` constI64 offset_first_bdescr
-  last_block <- i64Local $ mblock `addInt64` constI64 offset_last_block
-  whileLoop [] (getLVal block `leUInt64` last_block) $ do
-    storeI64 (getLVal bd) offset_bdescr_start (getLVal block)
-    storeI16 (getLVal bd) offset_bdescr_node node
-    putLVal bd $ getLVal bd `addInt64` constI64 sizeof_bdescr
-    putLVal block $ getLVal block `addInt64` constI64 block_size
-
-allocMegaGroup :: Expression -> Expression -> EDSL Expression
-allocMegaGroup node mblocks = do
-  mblock <- call' "getMBlocks" [wrapInt64 mblocks] I64
-  initMBlock mblock node
-  bd <- i64Local $ mblock `addInt64` constI64 offset_first_bdescr
-  storeI32 bd offset_bdescr_blocks $ wrapI64 $ mblockGroupBlocks mblocks
-  pure bd
-
-freeFunction _ =
-  runEDSL [] $ do
-    _ <- param I64
-    emit $ emitErrorMessage [] "free failed: unimplemented"
+      (bd `andInt64` constI64 0xFFFFFFFFFFF00000) `orInt64`
+      ((bd `andInt64` constI64 0xFFFFF) `shlInt64` constI64 6)
+    storeI64 bd offset_bdescr_start block
+    storeI64 bd offset_bdescr_free block
+    storeI64 bd offset_bdescr_link $ constI64 0
+    storeI16 bd offset_bdescr_node node
+    storeI32 bd offset_bdescr_blocks $ wrapI64 n
+    emit bd
 
 newCAFFunction _ =
   runEDSL [I64] $ do
@@ -1355,6 +1429,100 @@ printF64Function _ =
   runEDSL [] $ do
     x <- param F64
     callImport "printF64" [x]
+
+strlenFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [str] <- params [I64]
+    len <-
+      callImport' "__asterius_strlen" [Unary ConvertUInt64ToFloat64 str] F64
+    emit $ Unary TruncUFloat64ToInt64 len
+
+memchrFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [ptr, val, num] <- params [I64, I64, I64]
+    p <-
+      callImport'
+        "__asterius_memchr"
+        (map (Unary ConvertUInt64ToFloat64) [ptr, val, num])
+        F64
+    emit $ Unary TruncUFloat64ToInt64 p
+
+memcpyFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [dst, src, n] <- params [I64, I64, I64]
+    callImport "__asterius_memcpy" $
+      map (Unary ConvertUInt64ToFloat64) [dst, src, n]
+    emit dst
+
+memsetFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [dst, c, n] <- params [I64, I64, I64]
+    callImport "__asterius_memset" $
+      map (Unary ConvertUInt64ToFloat64) [dst, c, n]
+    emit dst
+
+memcmpFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [ptr1, ptr2, n] <- params [I64, I64, I64]
+    cres <-
+      callImport'
+        "__asterius_memcmp"
+        (map (Unary ConvertUInt64ToFloat64) [ptr1, ptr2, n])
+        I32
+    emit $ Unary ExtendSInt32 cres
+
+fromJSArrayBufferFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [buf] <- params [I64]
+    addr <-
+      Unary TruncUFloat64ToInt64 <$>
+      callImport'
+        "__asterius_fromJSArrayBuffer_imp"
+        [Unary ConvertUInt64ToFloat64 buf]
+        F64
+    emit addr
+
+toJSArrayBufferFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [addr, len] <- params [I64, I64]
+    r <-
+      Unary TruncUFloat64ToInt64 <$>
+      callImport'
+        "__asterius_toJSArrayBuffer_imp"
+        (map (Unary ConvertUInt64ToFloat64) [addr, len])
+        F64
+    emit r
+
+fromJSStringFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [s] <- params [I64]
+    addr <-
+      Unary TruncUFloat64ToInt64 <$>
+      callImport'
+        "__asterius_fromJSString_imp"
+        [Unary ConvertUInt64ToFloat64 s]
+        F64
+    emit addr
+
+fromJSArrayFunction _ =
+  runEDSL [I64] $ do
+    setReturnTypes [I64]
+    [arr] <- params [I64]
+    addr <-
+      Unary TruncUFloat64ToInt64 <$>
+      callImport'
+        "__asterius_fromJSArray_imp"
+        [Unary ConvertUInt64ToFloat64 arr]
+        F64
+    emit addr
 
 getF64GlobalRegFunction ::
      BuiltinsOptions -> UnresolvedGlobalReg -> AsteriusFunction

@@ -22,6 +22,7 @@
 #include "emscripten-optimizer/simple_ast.h"
 #include "pretty_printing.h"
 #include "support/bits.h"
+#include "support/utilities.h"
 #include "ir/bits.h"
 
 
@@ -75,8 +76,10 @@ int64_t Literal::getBits() const {
   switch (type) {
     case Type::i32: case Type::f32: return i32;
     case Type::i64: case Type::f64: return i64;
-    default: abort();
+    case Type::v128: assert(false && "v128 not implemented");
+    case Type::none: case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 bool Literal::operator==(const Literal& other) const {
@@ -158,12 +161,13 @@ void Literal::printDouble(std::ostream& o, double d) {
 std::ostream& operator<<(std::ostream& o, Literal literal) {
   prepareMinorColor(o) << printType(literal.type) << ".const ";
   switch (literal.type) {
-    case none: o << "?"; break;
+    case Type::none: o << "?"; break;
     case Type::i32: o << literal.i32; break;
     case Type::i64: o << literal.i64; break;
     case Type::f32: literal.printFloat(o, literal.getf32()); break;
     case Type::f64: literal.printDouble(o, literal.getf64()); break;
-    default: WASM_UNREACHABLE();
+    case Type::v128: assert(false && "v128 not implemented yet");
+    case Type::unreachable: WASM_UNREACHABLE();
   }
   restoreNormalColor(o);
   return o;
@@ -229,27 +233,105 @@ Literal Literal::truncateToF32() const {
   return Literal(float(getf64()));
 }
 
-Literal Literal::convertSToF32() const {
+Literal Literal::truncSIToF32() const {
   if (type == Type::i32) return Literal(float(i32));
   if (type == Type::i64) return Literal(float(i64));
   WASM_UNREACHABLE();
 }
 
-Literal Literal::convertUToF32() const {
+Literal Literal::truncUIToF32() const {
   if (type == Type::i32) return Literal(float(uint32_t(i32)));
   if (type == Type::i64) return Literal(float(uint64_t(i64)));
   WASM_UNREACHABLE();
 }
 
-Literal Literal::convertSToF64() const {
+Literal Literal::truncSIToF64() const {
   if (type == Type::i32) return Literal(double(i32));
   if (type == Type::i64) return Literal(double(i64));
   WASM_UNREACHABLE();
 }
 
-Literal Literal::convertUToF64() const {
+Literal Literal::truncUIToF64() const {
   if (type == Type::i32) return Literal(double(uint32_t(i32)));
   if (type == Type::i64) return Literal(double(uint64_t(i64)));
+  WASM_UNREACHABLE();
+}
+
+template<typename F>
+struct AsInt {
+  using type = void;
+};
+template<> struct AsInt<float> { using type = int32_t; };
+template<> struct AsInt<double> { using type = int64_t; };
+
+template<typename F, typename I, bool (*RangeCheck)(typename AsInt<F>::type)>
+static Literal saturating_trunc(typename AsInt<F>::type val) {
+  if (std::isnan(bit_cast<F>(val))) {
+    return Literal(I(0));
+  }
+  if (!RangeCheck(val)) {
+    if (std::signbit(bit_cast<F>(val))) {
+      return Literal(std::numeric_limits<I>::min());
+    } else {
+      return Literal(std::numeric_limits<I>::max());
+    }
+  }
+  return Literal(I(std::trunc(bit_cast<F>(val))));
+}
+
+Literal Literal::truncSatToSI32() const {
+  if (type == Type::f32) {
+    return saturating_trunc<float, int32_t, isInRangeI32TruncS>(
+      Literal(*this).castToI32().geti32()
+    );
+  }
+  if (type == Type::f64) {
+    return saturating_trunc<double, int32_t, isInRangeI32TruncS>(
+      Literal(*this).castToI64().geti64()
+    );
+  }
+  WASM_UNREACHABLE();
+}
+
+Literal Literal::truncSatToSI64() const {
+  if (type == Type::f32) {
+    return saturating_trunc<float, int64_t, isInRangeI64TruncS>(
+      Literal(*this).castToI32().geti32()
+    );
+  }
+  if (type == Type::f64) {
+    return saturating_trunc<double, int64_t, isInRangeI64TruncS>(
+      Literal(*this).castToI64().geti64()
+    );
+  }
+  WASM_UNREACHABLE();
+}
+
+Literal Literal::truncSatToUI32() const {
+  if (type == Type::f32) {
+    return saturating_trunc<float, uint32_t, isInRangeI32TruncU>(
+      Literal(*this).castToI32().geti32()
+    );
+  }
+  if (type == Type::f64) {
+    return saturating_trunc<double, uint32_t, isInRangeI32TruncU>(
+      Literal(*this).castToI64().geti64()
+    );
+  }
+  WASM_UNREACHABLE();
+}
+
+Literal Literal::truncSatToUI64() const {
+  if (type == Type::f32) {
+    return saturating_trunc<float, uint64_t, isInRangeI64TruncU>(
+      Literal(*this).castToI32().geti32()
+    );
+  }
+  if (type == Type::f64) {
+    return saturating_trunc<double, uint64_t, isInRangeI64TruncU>(
+      Literal(*this).castToI64().geti64()
+    );
+  }
   WASM_UNREACHABLE();
 }
 
@@ -259,8 +341,11 @@ Literal Literal::eqz() const {
     case Type::i64: return eq(Literal(int64_t(0)));
     case Type::f32: return eq(Literal(float(0)));
     case Type::f64: return eq(Literal(double(0)));
-    default: WASM_UNREACHABLE();
+    case Type::v128:
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 Literal Literal::neg() const {
@@ -269,8 +354,11 @@ Literal Literal::neg() const {
     case Type::i64: return Literal(-uint64_t(i64));
     case Type::f32: return Literal(i32 ^ 0x80000000).castToF32();
     case Type::f64: return Literal(int64_t(i64 ^ 0x8000000000000000ULL)).castToF64();
-    default: WASM_UNREACHABLE();
+    case Type::v128:
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 Literal Literal::abs() const {
@@ -279,8 +367,11 @@ Literal Literal::abs() const {
     case Type::i64: return Literal(int64_t(i64 & 0x7fffffffffffffffULL));
     case Type::f32: return Literal(i32 & 0x7fffffff).castToF32();
     case Type::f64: return Literal(int64_t(i64 & 0x7fffffffffffffffULL)).castToF64();
-    default: WASM_UNREACHABLE();
+    case Type::v128:
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 Literal Literal::ceil() const {
@@ -344,8 +435,11 @@ Literal Literal::add(const Literal& other) const {
     case Type::i64: return Literal(uint64_t(i64) + uint64_t(other.i64));
     case Type::f32: return Literal(getf32() + other.getf32());
     case Type::f64: return Literal(getf64() + other.getf64());
-    default: WASM_UNREACHABLE();
+    case Type::v128:
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 Literal Literal::sub(const Literal& other) const {
@@ -354,8 +448,11 @@ Literal Literal::sub(const Literal& other) const {
     case Type::i64: return Literal(uint64_t(i64) - uint64_t(other.i64));
     case Type::f32: return Literal(getf32() - other.getf32());
     case Type::f64: return Literal(getf64() - other.getf64());
-    default: WASM_UNREACHABLE();
+    case Type::v128:
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 Literal Literal::mul(const Literal& other) const {
@@ -364,8 +461,11 @@ Literal Literal::mul(const Literal& other) const {
     case Type::i64: return Literal(uint64_t(i64) * uint64_t(other.i64));
     case Type::f32: return Literal(getf32() * other.getf32());
     case Type::f64: return Literal(getf64() * other.getf64());
-    default: WASM_UNREACHABLE();
+    case Type::v128:
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 Literal Literal::div(const Literal& other) const {
@@ -516,8 +616,11 @@ Literal Literal::eq(const Literal& other) const {
     case Type::i64: return Literal(i64 == other.i64);
     case Type::f32: return Literal(getf32() == other.getf32());
     case Type::f64: return Literal(getf64() == other.getf64());
-    default: WASM_UNREACHABLE();
+    case Type::v128:
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 Literal Literal::ne(const Literal& other) const {
@@ -526,8 +629,11 @@ Literal Literal::ne(const Literal& other) const {
     case Type::i64: return Literal(i64 != other.i64);
     case Type::f32: return Literal(getf32() != other.getf32());
     case Type::f64: return Literal(getf64() != other.getf64());
-    default: WASM_UNREACHABLE();
+    case Type::v128:
+    case Type::none:
+    case Type::unreachable: WASM_UNREACHABLE();
   }
+  WASM_UNREACHABLE();
 }
 
 Literal Literal::ltS(const Literal& other) const {

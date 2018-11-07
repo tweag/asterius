@@ -1,0 +1,123 @@
+;;; TOOL: run-interp-spec
+;;; STDIN_FILE: third_party/testsuite/binary.wast
+(;; STDOUT ;;;
+out/test/spec/binary.wast:6: assert_malformed passed:
+  0000000: error: unable to read uint32_t: magic
+out/test/spec/binary.wast:7: assert_malformed passed:
+  0000000: error: unable to read uint32_t: magic
+out/test/spec/binary.wast:8: assert_malformed passed:
+  0000000: error: unable to read uint32_t: magic
+out/test/spec/binary.wast:9: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:10: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:11: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:12: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:13: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:14: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:15: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:16: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:17: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:18: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:21: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:24: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:25: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:28: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:31: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:34: assert_malformed passed:
+  0000004: error: bad magic value
+out/test/spec/binary.wast:36: assert_malformed passed:
+  0000004: error: unable to read uint32_t: version
+out/test/spec/binary.wast:37: assert_malformed passed:
+  0000004: error: unable to read uint32_t: version
+out/test/spec/binary.wast:38: assert_malformed passed:
+  0000004: error: unable to read uint32_t: version
+out/test/spec/binary.wast:39: assert_malformed passed:
+  0000008: error: bad wasm file version: 0 (expected 0x1)
+out/test/spec/binary.wast:40: assert_malformed passed:
+  0000008: error: bad wasm file version: 0xd (expected 0x1)
+out/test/spec/binary.wast:41: assert_malformed passed:
+  0000008: error: bad wasm file version: 0xe (expected 0x1)
+out/test/spec/binary.wast:42: assert_malformed passed:
+  0000008: error: bad wasm file version: 0x100 (expected 0x1)
+out/test/spec/binary.wast:43: assert_malformed passed:
+  0000008: error: bad wasm file version: 0x10000 (expected 0x1)
+out/test/spec/binary.wast:44: assert_malformed passed:
+  0000008: error: bad wasm file version: 0x1000000 (expected 0x1)
+out/test/spec/binary.wast:139: assert_malformed passed:
+  000000c: error: unable to read u32 leb128: memory initial page count
+out/test/spec/binary.wast:149: assert_malformed passed:
+  000000e: error: unable to read i32 leb128: init_expr i32.const value
+out/test/spec/binary.wast:159: assert_malformed passed:
+  000000e: error: unable to read i32 leb128: init_expr i32.const value
+out/test/spec/binary.wast:170: assert_malformed passed:
+  000000e: error: unable to read i64 leb128: init_expr i64.const value
+out/test/spec/binary.wast:180: assert_malformed passed:
+  000000e: error: unable to read i64 leb128: init_expr i64.const value
+out/test/spec/binary.wast:192: assert_malformed passed:
+  000000c: error: unable to read u32 leb128: memory initial page count
+out/test/spec/binary.wast:200: assert_malformed passed:
+  000000c: error: unable to read u32 leb128: memory initial page count
+out/test/spec/binary.wast:210: assert_malformed passed:
+  000000e: error: unable to read i32 leb128: init_expr i32.const value
+out/test/spec/binary.wast:220: assert_malformed passed:
+  000000e: error: unable to read i32 leb128: init_expr i32.const value
+out/test/spec/binary.wast:230: assert_malformed passed:
+  000000e: error: unable to read i32 leb128: init_expr i32.const value
+out/test/spec/binary.wast:240: assert_malformed passed:
+  000000e: error: unable to read i32 leb128: init_expr i32.const value
+out/test/spec/binary.wast:251: assert_malformed passed:
+  000000e: error: unable to read i64 leb128: init_expr i64.const value
+out/test/spec/binary.wast:261: assert_malformed passed:
+  000000e: error: unable to read i64 leb128: init_expr i64.const value
+out/test/spec/binary.wast:271: assert_malformed passed:
+  000000e: error: unable to read i64 leb128: init_expr i64.const value
+out/test/spec/binary.wast:281: assert_malformed passed:
+  000000e: error: unable to read i64 leb128: init_expr i64.const value
+out/test/spec/binary.wast:293: assert_malformed passed:
+  0000022: error: call_indirect reserved value must be 0
+out/test/spec/binary.wast:312: assert_malformed passed:
+  0000022: error: call_indirect reserved value must be 0
+out/test/spec/binary.wast:331: assert_malformed passed:
+  0000022: error: call_indirect reserved value must be 0
+out/test/spec/binary.wast:349: assert_malformed passed:
+  0000022: error: call_indirect reserved value must be 0
+out/test/spec/binary.wast:367: assert_malformed passed:
+  0000022: error: call_indirect reserved value must be 0
+out/test/spec/binary.wast:386: assert_malformed passed:
+  0000020: error: memory.grow reserved value must be 0
+out/test/spec/binary.wast:406: assert_malformed passed:
+  0000020: error: memory.grow reserved value must be 0
+out/test/spec/binary.wast:426: assert_malformed passed:
+  0000020: error: memory.grow reserved value must be 0
+out/test/spec/binary.wast:445: assert_malformed passed:
+  0000020: error: memory.grow reserved value must be 0
+out/test/spec/binary.wast:464: assert_malformed passed:
+  0000020: error: memory.grow reserved value must be 0
+out/test/spec/binary.wast:484: assert_malformed passed:
+  000001e: error: memory.size reserved value must be 0
+out/test/spec/binary.wast:503: assert_malformed passed:
+  000001e: error: memory.size reserved value must be 0
+out/test/spec/binary.wast:522: assert_malformed passed:
+  000001e: error: memory.size reserved value must be 0
+out/test/spec/binary.wast:540: assert_malformed passed:
+  000001e: error: memory.size reserved value must be 0
+out/test/spec/binary.wast:558: assert_malformed passed:
+  000001e: error: memory.size reserved value must be 0
+out/test/spec/binary.wast:577: assert_malformed passed:
+  000001c: error: local count must be < 0x10000000
+59/59 tests passed.
+;;; STDOUT ;;)

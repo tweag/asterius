@@ -3,8 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Workarounds
-  ( patchWritePtrArrayOp
-  , maskUnknownCCallTargets
+  ( maskUnknownCCallTargets
   ) where
 
 import Asterius.Builtins
@@ -15,36 +14,17 @@ import Data.Data (Data, gmapM)
 import qualified Data.Map.Strict as M
 import Type.Reflection
 
-patchWritePtrArrayOp :: (Monad m, Data a) => a -> m a
-patchWritePtrArrayOp t =
-  case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
-    Just HRefl ->
-      case t of
-        Block {..} -> do
-          new_bodys <- w bodys
-          pure t {bodys = new_bodys}
-          where w :: Monad m => [Expression] -> m [Expression]
-                w (e0@Store {value = Symbol {unresolvedSymbol = "stg_MUT_ARR_PTRS_DIRTY_info"}}:Store {bytes = 1}:es) = do
-                  new_es <- w es
-                  pure $ e0 : new_es
-                w (e0:e1:es) = do
-                  new_e0 <- patchWritePtrArrayOp e0
-                  new_e1_es <- w $ e1 : es
-                  pure $ new_e0 : new_e1_es
-                w es = patchWritePtrArrayOp es
-        _ -> go
-    _ -> go
-  where
-    go = gmapM patchWritePtrArrayOp t
-
 maskUnknownCCallTargets ::
-     (Monad m, Data a) => [AsteriusEntitySymbol] -> a -> m a
-maskUnknownCCallTargets export_funcs = f
+     (Monad m, Data a)
+  => AsteriusEntitySymbol
+  -> [AsteriusEntitySymbol]
+  -> a
+  -> m a
+maskUnknownCCallTargets whoami export_funcs = f
   where
     has_call_target sym =
       "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName sym) ||
-      sym `M.member`
-      functionMap (rtsAsteriusModule unsafeDefaultBuiltinsOptions) ||
+      sym `M.member` functionMap (rtsAsteriusModule defaultBuiltinsOptions) ||
       sym `elem` export_funcs
     f :: (Monad m, Data a) => a -> m a
     f t =
@@ -57,7 +37,8 @@ maskUnknownCCallTargets export_funcs = f
                     pure $
                     emitErrorMessage
                       callReturnTypes
-                      (entityName target <>
+                      ("Inside " <> entityName whoami <> ", " <>
+                       entityName target <>
                        " failed: unimplemented stub function entered")
                   | target == "createIOThread" ->
                     case operands of

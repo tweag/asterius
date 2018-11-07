@@ -25,6 +25,8 @@ extra-source-files:
   - test/th/**/*.hs
   - test/todomvc/**/*.hs
   - test/todomvc/**/*.html
+  - test/teletype/**/*.hs
+  - test/bytearray/**/*.hs
 
 data-files:
   - rts/rts.js
@@ -51,12 +53,13 @@ dependencies:
   - ghc
   - ghc-prim
   - ghc-toolkit
+  - inline-js
   - mtl
   - optparse-applicative
   - parsec
   - process
+  - transformers
   - wasm-toolkit
-  - QuickCheck
 
 library:
   source-dirs: src
@@ -84,21 +87,21 @@ executables:
   ahc:
     source-dirs: app
     main: ahc.hs
-    ghc-options: -threaded -feager-blackholing -with-rtsopts=-N
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   ahc-boot:
     source-dirs: app
     main: ahc-boot.hs
-    ghc-options: -threaded -feager-blackholing -with-rtsopts=-N
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   ahc-link:
     source-dirs: app
     main: ahc-link.hs
-    ghc-options: -threaded -feager-blackholing -with-rtsopts=-N
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
@@ -106,6 +109,7 @@ tests:
   nir-test:
     source-dirs: test
     main: nir-test.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
     other-extensions:
@@ -115,59 +119,84 @@ tests:
   fib:
     source-dirs: test
     main: fib.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   jsffi:
     source-dirs: test
     main: jsffi.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   array:
     source-dirs: test
     main: array.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   th:
     source-dirs: test
     main: th.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   stableptr:
     source-dirs: test
     main: stableptr.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   rtsapi:
     source-dirs: test
     main: rtsapi.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   todomvc:
     source-dirs: test
     main: todomvc.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   jsffi-chrome:
     source-dirs: test
     main: jsffi-chrome.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   mealy-chrome:
     source-dirs: test
     main: mealy-chrome.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
 
   node-compile:
     source-dirs: test
     main: node-compile.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
+    dependencies:
+      - asterius
+      - QuickCheck
+
+  teletype:
+    source-dirs: test
+    main: teletype.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
+    dependencies:
+      - asterius
+
+  bytearray:
+    source-dirs: test
+    main: bytearray.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius

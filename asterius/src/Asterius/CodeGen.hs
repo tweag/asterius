@@ -502,6 +502,8 @@ marshalAndCastCmmExpr cmm_expr dest_vt = do
   case (# src_vt, dest_vt #) of
     (# I32, I64 #) -> pure Unary {unaryOp = ExtendSInt32, operand0 = src_expr}
     (# I64, I32 #) -> pure Unary {unaryOp = WrapInt64, operand0 = src_expr}
+    (# I64, F64 #) ->
+      pure Unary {unaryOp = ConvertUInt64ToFloat64, operand0 = src_expr}
     _
       | src_vt == dest_vt -> pure src_expr
       | otherwise ->
@@ -724,6 +726,55 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem w) [qr, rr] [x, y] =
 marshalCmmPrimCall GHC.MO_WriteBarrier _ _ = pure []
 marshalCmmPrimCall GHC.MO_Touch _ _ = pure []
 marshalCmmPrimCall (GHC.MO_Prefetch_Data _) _ _ = pure []
+marshalCmmPrimCall (GHC.MO_Memcpy _) [] [_dst, _src, _n] = do
+  dst <- marshalAndCastCmmExpr _dst F64
+  src <- marshalAndCastCmmExpr _src F64
+  n <- marshalAndCastCmmExpr _n F64
+  pure
+    [ CallImport
+        { target' = "__asterius_memcpy"
+        , operands = [dst, src, n]
+        , callImportReturnTypes = []
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_Memset _) [] [_dst, _c, _n] = do
+  dst <- marshalAndCastCmmExpr _dst F64
+  c <- marshalAndCastCmmExpr _c F64
+  n <- marshalAndCastCmmExpr _n F64
+  pure
+    [ CallImport
+        { target' = "__asterius_memset"
+        , operands = [dst, c, n]
+        , callImportReturnTypes = []
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_Memmove _) [] [_dst, _src, _n] = do
+  dst <- marshalAndCastCmmExpr _dst F64
+  src <- marshalAndCastCmmExpr _src F64
+  n <- marshalAndCastCmmExpr _n F64
+  pure
+    [ CallImport
+        { target' = "__asterius_memmove"
+        , operands = [dst, src, n]
+        , callImportReturnTypes = []
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_Memcmp _) [_cres] [_ptr1, _ptr2, _n] = do
+  cres <- marshalTypedCmmLocalReg _cres I32
+  ptr1 <- marshalAndCastCmmExpr _ptr1 F64
+  ptr2 <- marshalAndCastCmmExpr _ptr2 F64
+  n <- marshalAndCastCmmExpr _n F64
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = cres
+        , value =
+            CallImport
+              { target' = "__asterius_memcmp"
+              , operands = [ptr1, ptr2, n]
+              , callImportReturnTypes = [I32]
+              }
+        }
+    ]
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =
   marshalCmmUnPrimCall PopcntInt64 I64 r x
 marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =

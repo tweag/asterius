@@ -42,7 +42,12 @@
 namespace wasm {
 
 struct MinifyImportsAndExports : public Pass {
+  bool minifyExports;
 
+public:
+  explicit MinifyImportsAndExports(bool minifyExports):minifyExports(minifyExports) {}
+
+private:
   // Generates minified names that are valid in JS.
   // Names are computed lazily.
   class MinifiedNames {
@@ -64,7 +69,6 @@ struct MinifyImportsAndExports : public Pass {
       reserved.insert("enum");
       reserved.insert("void");
       reserved.insert("this");
-      reserved.insert("void");
       reserved.insert("with");
 
       validInitialChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_$";
@@ -151,9 +155,12 @@ struct MinifyImportsAndExports : public Pass {
     };
     ModuleUtils::iterImportedGlobals(*module, processImport);
     ModuleUtils::iterImportedFunctions(*module, processImport);
-    // Minify the exported names.
-    for (auto& curr : module->exports) {
-      process(curr->name);
+
+    if (minifyExports) {
+      // Minify the exported names.
+      for (auto& curr : module->exports) {
+        process(curr->name);
+      }
     }
     module->updateMaps();
     // Emit the mapping.
@@ -163,8 +170,12 @@ struct MinifyImportsAndExports : public Pass {
   }
 };
 
+Pass *createMinifyImportsPass() {
+  return new MinifyImportsAndExports(false);
+}
+
 Pass *createMinifyImportsAndExportsPass() {
-  return new MinifyImportsAndExports();
+  return new MinifyImportsAndExports(true);
 }
 
 } // namespace wasm

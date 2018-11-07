@@ -1,0 +1,12 @@
+;;; TOOL: run-gen-wasm-bad
+magic
+version
+section(MEMORY) {
+  count[1]
+  has_max[0]
+  initial[leb_u32(65537)]
+}
+(;; STDERR ;;;
+000000f: error: invalid memory initial size
+000000f: error: invalid memory initial size
+;;; STDERR ;;)

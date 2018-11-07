@@ -1,7 +1,7 @@
 # Asterius: A Haskell to WebAssembly compiler
 
 [![CircleCI](https://circleci.com/gh/tweag/asterius/tree/master.svg?style=shield)](https://circleci.com/gh/tweag/asterius/tree/master)
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/github/tweag/asterius?branch=master&svg=true)](https://ci.appveyor.com/project/GHCAppveyor/asterius?branch=master)
+[![Docker Pulls](https://img.shields.io/docker/pulls/terrorjack/asterius.svg)](https://hub.docker.com/r/terrorjack/asterius)
 
 A Haskell to WebAssembly compiler. Project status: **alpha**, in active development, some simple examples already work.
 
@@ -26,18 +26,19 @@ See the [help text](https://tweag.github.io/asterius/ahc-link) of `ahc-link` for
 What works currently:
 
 * All GHC language features except Template Haskell.
-* Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`/`deepseq`/`containers`/`transformers`/`mtl`/`pretty`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
-* Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSRef` type in Haskell land.
+* Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`/`deepseq`/`containers`/`transformers`/`mtl`/`pretty`/`bytestring`/`binary`/`xhtml`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
+* Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSVal` type in Haskell land.
+* Fast conversion between Haskell/JavaScript types (strings, arrays and ArrayBuffers at the moment)
 * Calling Haskell functions from JavaScript via the `foreign export javascript` syntax. Haskell closures can be passed between Haskell/JavaScript boundary via `StablePtr`.
 * Invoking RTS API on the JavaScript side to manipulate Haskell closures and trigger evaluation.
 * A linker which performs aggressive dead-code elimination, producing as small WebAssembly binary as possible.
-* A debugger which outputs memory loads/stores and control flow transfers.
-* Complete [`binaryen`](https://github.com/WebAssembly/binaryen) raw bindings, plus a monadic EDSL to construct WebAssembly code directly in Haskell.
+* A debugger which checks invalid memory access and outputs memory loads/stores and control flow transfers.
+* Complete [`binaryen`](https://github.com/WebAssembly/binaryen)/[`wabt`](https://github.com/WebAssembly/wabt) raw bindings, plus a monadic EDSL to construct WebAssembly code directly in Haskell.
 * A Haskell library to handle WebAssembly code, which already powers binary code generation.
 * Unit tests implementing stochastic fuzzer/shrinker for WebAssembly, in order to produce minimal repro in case something goes wrong in generated code.
-* Besides WebAssembly MVP, no special requirements on the underlying JavaScript engine at the moment.
+* Besides WebAssembly MVP and `BigInt`, no special requirements on the underlying JavaScript engine at the moment.
 
-Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs), [`array`](asterius/test/array/array.hs) and [`rtsapi`](asterius/test/rtsapi.hs) test suites first to get some idea on current capabilities of `asterius`.
+Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs), [`array`](asterius/test/array/array.hs), [`rtsapi`](asterius/test/rtsapi.hs) and [`teletype`](asterius/test/teletype/teletype.hs) test suites first to get some idea on current capabilities of `asterius`.
 
 ## Sponsors
 

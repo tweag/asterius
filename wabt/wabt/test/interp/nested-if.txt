@@ -1,0 +1,24 @@
+;;; TOOL: run-interp
+
+;; This used to test an odd case where a nested if would return a void, so the
+;; true branch of the outer if would have to be dropped its instructions had
+;; already been generated. Now that drops are explicit, this case is
+;; straightforward.
+
+(module
+  (func (export "f") (result i32)
+    block $exit
+      i32.const 1
+      if                     ;; outer if
+        i32.const 2          
+        drop
+        i32.const 3
+        if                   ;; inner if
+          br $exit
+        end
+      end
+    end
+    i32.const 4))
+(;; STDOUT ;;;
+f() => i32:4
+;;; STDOUT ;;)

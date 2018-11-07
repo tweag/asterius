@@ -41,7 +41,7 @@ dynFlagsRef :: IORef DynFlags
 dynFlagsRef = unsafePerformIO $ newIORef unsafeGlobalDynFlags
 
 setDynFlagsRef :: MonadIO m => DynFlags -> m ()
-setDynFlagsRef = liftIO . writeIORef dynFlagsRef
+setDynFlagsRef = liftIO . atomicWriteIORef dynFlagsRef
 
 fakeShow :: Outputable a => String -> a -> String
 fakeShow tag val =
@@ -146,12 +146,6 @@ deriving instance
 
 instance Show CostCentreStack where
   show = fakeShow "CostCentreStack"
-
-instance Show StgBinderInfo where
-  show sbi =
-    if satCallsOnly sbi
-      then "SatCallsOnly"
-      else "NoStgBinderInfo"
 
 deriving instance Show UpdateFlag
 

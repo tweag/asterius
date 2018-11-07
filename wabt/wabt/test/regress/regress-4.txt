@@ -1,0 +1,12 @@
+;;; TOOL: wat2wasm
+;;; ERROR: 1
+;; bug where looking up an undefined name would not produce an error if there
+;; was any name at all.
+(module
+  (func (param $p i32)
+    (get_local $n)))
+(;; STDERR ;;;
+out/test/regress/regress-4.txt:7:16: error: undefined local variable "$n"
+    (get_local $n)))
+               ^^
+;;; STDERR ;;)

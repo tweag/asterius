@@ -1,0 +1,73 @@
+;;; TOOL: run-objdump-gen-wasm
+;;; ARGS: -x
+magic
+version
+section("linking") {
+  metadata_version[1]
+
+  section(LINKING_SEGMENT_INFO) {
+    count[2]
+    str("data1")
+    align[4]
+    flags[0]
+    str("data2")
+    align[8]
+    flags[0]
+  }
+
+  section(LINKING_INIT_FUNCTIONS) {
+    count[2]
+    priority[5]
+    func[1]
+    priority[6]
+    func[0]
+  }
+
+  section(LINKING_SYMBOL_TABLE) {
+    num_symbols[4]
+
+    type[0]
+    flags[1]
+    index[0]
+    str("func_sym")
+
+    type[2]
+    flags[2]
+    index[0]
+    str("global_sym")
+
+    type[1]
+    flags[4]
+    str("data_sym")
+    segment[1]
+    offset[2]
+    size[1]
+
+    type[0]
+    flags[0x10]
+    index[0]
+  }
+}
+(;; STDOUT ;;;
+
+linking-section.wasm:	file format wasm 0x1
+
+Section Details:
+
+Custom:
+ - name: "linking"
+  - segment info [count=2]
+   - 0: data1 align=4 flags=0
+   - 1: data2 align=8 flags=0
+  - init functions [count=2]
+   - 1: priority=5
+   - 0: priority=6
+  - symbol table [count=4]
+   - [0] F <func_sym> func=0 binding=weak vis=default
+   - [1] G <global_sym> global=0 binding=local vis=default
+   - [2] D <data_sym> segment=1 offset=2 size=1 binding=global vis=hidden
+   - [3] F <func_sym> func=0 undefined binding=global vis=default
+
+Code Disassembly:
+
+;;; STDOUT ;;)

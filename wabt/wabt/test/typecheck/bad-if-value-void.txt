@@ -1,0 +1,18 @@
+;;; TOOL: wat2wasm
+;;; ERROR: 1
+(module
+  (func
+    block $b
+      i32.const 0
+      if (result f32)
+        nop
+      else
+        f32.const 0
+      end
+      drop
+    end))
+(;; STDERR ;;;
+out/test/typecheck/bad-if-value-void.txt:8:9: error: type mismatch in if true branch, expected [f32] but got []
+        nop
+        ^^^
+;;; STDERR ;;)

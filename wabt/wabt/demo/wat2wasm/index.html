@@ -1,0 +1,92 @@
+<!--
+ Copyright 2016 WebAssembly Community Group participants
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <title>wat2wasm demo</title>
+  <link href="../third_party/codemirror/codemirror.css" rel="stylesheet">
+  <link href="../custom.css" rel="stylesheet">
+</head>
+<body>
+  <header>
+    <h1>wat2wasm demo</h1>
+    <p>WebAssembly has a
+      <a href="https://webassembly.github.io/spec/core/text/index.html">text format</a>
+      and a
+      <a href="https://webassembly.github.io/spec/core/binary/index.html">binary format</a>.
+      This demo converts from the text format to the binary format.
+    </p>
+    <p>
+      Enter WebAssembly text in the textarea on the left. The right side will
+      either show an error, or will show a log with a description of the
+      generated binary file.
+    </p>
+    <div>Enabled features:</div>
+    <div>
+      <input type="checkbox" id="exceptions"><label for="exceptions">exceptions</label>
+      <input type="checkbox" id="mutable_globals" checked><label for="mutable_globals">mutable globals</label>
+      <input type="checkbox" id="sat_float_to_int"><label for="sat_float_to_int">saturating float to int</label>
+      <input type="checkbox" id="sign_extension"><label for="sign_extension">sign extension</label>
+    </div>
+    <div>
+      <input type="checkbox" id="simd"><label for="simd">simd</label>
+      <input type="checkbox" id="threads"><label for="threads">threads</label>
+      <input type="checkbox" id="multi_value"><label for="multi_value">multi value</label>
+      <input type="checkbox" id="tail_call"><label for="tail_call">tail call</label>
+    </div>
+  </header>
+  <main>
+    <div id="split-grid" class="split-grid">
+      <div id="top-row" class="split-vertical">
+        <div id="top-left" class="split split-horizontal">
+          <div class="toolbar">
+            WAT
+            <div class="right">
+              <label>example:</label>
+              <select id="select" class="form-select"></select>
+              <button class="btn disabled" type="button" id="download">Download</button>
+              <a id="downloadLink" download="test.wasm" class="hidden"></a>
+            </div>
+          </div>
+        </div>
+        <div id="top-right" class="split split-horizontal">
+          <pre id="output" class="output"></pre>
+          <div class="toolbar">BUILD LOG</div>
+        </div>
+      </div>
+      <div id="bottom-row" class="split-vertical">
+        <div id="bottom-left" class="split split-horizontal">
+          <div class="toolbar">JS</div>
+        </div>
+        <div id="bottom-right" class="split split-horizontal">
+          <pre id="js_log" class="output"></pre>
+          <div class="toolbar">JS LOG</div>
+        </div>
+      </div>
+    </div>
+  </main>
+  <script src="../third_party/split/split.min.js"></script>
+  <script src="../third_party/codemirror/codemirror.js"></script>
+  <script src="../third_party/codemirror/simple-mode.js"></script>
+  <script src="../third_party/codemirror/javascript.js"></script>
+  <script src="../wast-mode.js"></script>
+  <script src="../libwabt.js"></script>
+  <script src="examples.js"></script>
+  <script src="demo.js"></script>
+</body>
+</html>

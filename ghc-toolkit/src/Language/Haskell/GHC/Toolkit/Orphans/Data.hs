@@ -55,17 +55,6 @@ deriving instance
 
 deriving instance Data UpdateFlag
 
-stgBinderInfoConstr :: Constr
-stgBinderInfoConstr = mkConstr stgBinderInfoDataType "StgBinderInfo" [] Prefix
-
-stgBinderInfoDataType :: DataType
-stgBinderInfoDataType = mkDataType "StgBinderInfo" [stgBinderInfoConstr]
-
-instance Data StgBinderInfo where
-  gunfold _ _ _ = error "gunfold unsupported for StgBinderInfo"
-  toConstr _ = stgBinderInfoConstr
-  dataTypeOf _ = stgBinderInfoDataType
-
 costCentreStackConstr :: Constr
 costCentreStackConstr =
   mkConstr costCentreStackDataType "CostCentreStack" [] Prefix

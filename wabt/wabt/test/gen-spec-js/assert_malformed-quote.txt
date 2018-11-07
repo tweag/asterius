@@ -1,0 +1,13 @@
+;;; TOOL: run-gen-spec-js
+;;; ARGS: --prefix=%(test_dir)s/gen-spec-empty-prefix.js
+
+;; This won't be written out, since it can't be tested in JS.
+(assert_malformed
+  (module quote "(module))")
+  "syntax error")
+(;; STDOUT ;;;
+// A deliberately empty file for testing.
+
+// assert_malformed-quote.txt:6
+
+;;; STDOUT ;;)

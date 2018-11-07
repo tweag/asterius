@@ -1,0 +1,6 @@
+;;; RUN: %(gen_wasm_py)s %(in_file)s
+;;; ERROR: 1
+section(TYPE) { foo }
+(;; STDERR ;;;
+3: syntax error, LexToken(RBRACE,'}',3,22)
+;;; STDERR ;;)

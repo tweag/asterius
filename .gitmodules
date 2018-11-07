@@ -1,0 +1,4 @@
+[submodule "inline-js"]
+	path = inline-js
+	url = https://github.com/tweag/inline-js.git
+	branch = wip-chrome

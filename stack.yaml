@@ -1,34 +1,91 @@
 resolver: ghc-8.7
 allow-newer: true
 extra-deps:
-  - ansi-terminal-0.8.1
+  - aeson-1.4.1.0
+  - ansi-terminal-0.8.2
   - ansi-wl-pprint-0.6.8.2
+  - appar-0.1.4
+  - async-2.2.1
+  - attoparsec-0.13.2.2
+  - auto-update-0.1.4
+  - base-compat-0.10.5
+  - base64-bytestring-1.0.0.1
+  - basement-0.0.8
+  - blaze-builder-0.4.1.0
+  - blaze-html-0.9.1.1
+  - blaze-markup-0.8.2.2
+  - bsb-http-chunked-0.0.0.4
+  - byteorder-1.0.4
+  - case-insensitive-1.2.0.11
   - colour-2.3.4
+  - cookie-0.4.4
+  - cryptonite-0.25
+  - data-default-class-0.1.2.0
+  - dlist-0.8.0.5
+  - easy-file-0.2.2
   - erf-2.0.0.0
+  - exceptions-0.10.0
+  - fast-logger-2.4.11
+  - file-embed-0.0.11
+  - hashable-1.2.7.0
+  - http-date-0.0.8
+  - http-types-0.12.2
+  - http2-1.6.4
+  - integer-logarithms-1.0.2.2
+  - iproute-1.7.6
+  - memory-0.14.18
+  - mime-types-0.1.0.8
   - mintty-0.1.2
-  - optparse-applicative-0.14.2.0
-  - https://github.com/haskell/primitive/archive/1c1b357ee2e66fd684306e49ef30e453b0abe7c2.zip
-  - QuickCheck-2.12.4
+  - network-2.8.0.0
+  - network-byte-order-0.0.0.0
+  - old-locale-1.0.0.7
+  - old-time-1.1.0.3
+  - optparse-applicative-0.14.3.0
+  - http://head.hackage.haskell.org/package/primitive-0.6.4.0.tar.gz
+  - psqueues-0.2.7.0
+  - QuickCheck-2.12.6.1
+  - quickcheck-instances-0.3.19
   - random-1.1
+  - resourcet-1.2.2
+  - scientific-0.3.6.2
+  - semigroups-0.18.5
+  - simple-sendfile-0.2.27
+  - streaming-commons-0.2.1.0
+  - tagged-0.8.6
   - tf-random-0.5
+  - http://head.hackage.haskell.org/package/th-abstraction-0.2.8.0.tar.gz
+  - time-locale-compat-0.1.1.5
   - transformers-compat-0.6.2
+  - unix-compat-0.5.1
+  - unordered-containers-0.2.9.0
+  - vault-0.3.1.2
+  - unix-time-0.3.8
+  - uuid-types-1.0.3
+  - unliftio-core-0.1.2.0
+  - vector-0.12.0.1
+  - void-0.7.2
+  - wai-3.2.1.2
+  - wai-app-static-3.1.6.2
+  - wai-extra-3.0.24.3
+  - wai-logger-2.3.2
+  - warp-3.2.25
+  - word8-0.1.3
+  - zlib-0.6.2
 packages:
   - asterius
   - binaryen
   - ghc-toolkit
+  - inline-js/inline-js
+  - wabt
   - wasm-toolkit
 ghc-build: standard
 setup-info:
   ghc:
-    windows64:
-      8.7.20180924:
-        url: https://ci.appveyor.com/api/buildjobs/u4xad1iq4w7c3fi4/artifacts/ghc/ghc-bindist/ghc-8.7.20180924-x86_64-unknown-mingw32.tar.xz
-        sha256: 5a155d470b2d9683042de2272e731b98110411f22f7a75a84b9fd7b9153ed88f
     linux64:
-      8.7.20181027:
-        url: https://1785-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181027-x86_64-unknown-linux.tar.xz
-        sha256: 062cc514e02ca2996e0ae35cfeab278bed740d8cdd377c7efc3d40ca05c2e571
+      8.7.20181115:
+        url: https://1860-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181115-x86_64-unknown-linux.tar.xz
+        sha256: a68c8e3c81589bf1000798a47f03dd9a09108e34c17c5db380ae5a3f624923ee
     macosx:
-      8.7.20181027:
-        url: https://1784-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181027-x86_64-apple-darwin.tar.xz
-        sha256: 3e0c04f7203a35ddd5b02776094fbbc5790eb3e200790988efb861f1042cae36
+      8.7.20181115:
+        url: https://1862-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20181115-x86_64-apple-darwin.tar.xz
+        sha256: af04dc85c32211d85b31140723d36a9bccd2bab55c1c48b47b650cc59258af54
