@@ -1,4 +1,4 @@
-FROM debian:testing
+FROM debian:unstable
 
 COPY asterius /root/asterius/asterius
 COPY binaryen /root/asterius/binaryen

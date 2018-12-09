@@ -3,8 +3,9 @@ version: 2
 jobs:
   asterius-test:
     docker:
-      - image: debian:testing
+      - image: debian:unstable
     environment:
+      - ASTERIUS_BUILD_OPTIONS: -j8
       - DEBIAN_FRONTEND: noninteractive
       - GHCRTS: -A512M -I0 -qg -qb -N8
       - LANG: C.UTF-8
@@ -45,7 +46,7 @@ jobs:
           command: |
             git submodule update --init --recursive
             stack --no-terminal -j8 build --test --no-run-tests
-            stack --no-terminal exec ahc-boot -- -j8
+            stack --no-terminal exec ahc-boot
             stack --no-terminal test asterius:fib
             stack --no-terminal test asterius:jsffi
             stack --no-terminal test asterius:array
@@ -53,6 +54,7 @@ jobs:
             stack --no-terminal test asterius:rtsapi
             stack --no-terminal test asterius:teletype
             stack --no-terminal test asterius:bytearray
+            stack --no-terminal test asterius:bigint
             stack --no-terminal test asterius:fib --test-arguments="--binaryen"
             stack --no-terminal test asterius:jsffi --test-arguments="--binaryen"
             stack --no-terminal test asterius:array --test-arguments="--binaryen"
@@ -60,6 +62,7 @@ jobs:
             stack --no-terminal test asterius:rtsapi --test-arguments="--binaryen"
             stack --no-terminal test asterius:teletype --test-arguments="--binaryen"
             stack --no-terminal test asterius:bytearray --test-arguments="--binaryen"
+            stack --no-terminal test asterius:bigint --test-arguments="--binaryen"
 
   asterius-build-docker:
     docker:
@@ -78,7 +81,7 @@ jobs:
 
   asterius-build-docs:
     docker:
-      - image: debian:testing
+      - image: debian:unstable
     environment:
       DEBIAN_FRONTEND: noninteractive
       LANG: C.UTF-8

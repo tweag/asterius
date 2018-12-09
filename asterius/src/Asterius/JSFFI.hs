@@ -40,6 +40,7 @@ import qualified TcRnTypes as GHC
 import Text.Parsec (anyChar, char, digit, parse, try)
 import Text.Parsec.String (Parser)
 import Type.Reflection
+import qualified TysPrim as GHC
 
 parseField :: Parser a -> Parser (Chunk a)
 parseField f = do
@@ -92,7 +93,10 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , hsTyCon = "FunPtr"
             , signed = False
             }
-      | c == GHC.occName GHC.stablePtrTyConName ->
+      | c `elem`
+          map
+            GHC.occName
+            [GHC.stablePtrTyConName, GHC.getName GHC.stablePtrPrimTyCon] ->
         pure
           FFI_VAL
             { ffiWasmValueType = I64
@@ -101,7 +105,15 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , signed = False
             }
     GHC.HsTyVar _ _ (GHC.occName . GHC.unLoc -> tv)
-      | tv == GHC.occName GHC.charTyConName ->
+      | tv == GHC.occName GHC.addrPrimTyConName ->
+        pure
+          FFI_VAL
+            { ffiWasmValueType = I64
+            , ffiJSValueType = F64
+            , hsTyCon = "Ptr"
+            , signed = False
+            }
+      | tv `elem` map GHC.occName [GHC.charTyConName, GHC.charPrimTyConName] ->
         pure
           FFI_VAL
             { ffiWasmValueType = I64
@@ -117,7 +129,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , hsTyCon = "Bool"
             , signed = False
             }
-      | tv == GHC.occName GHC.intTyConName ->
+      | tv `elem` map GHC.occName [GHC.intTyConName, GHC.intPrimTyConName] ->
         pure
           FFI_VAL
             { ffiWasmValueType = I64
@@ -125,7 +137,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , hsTyCon = "Int"
             , signed = True
             }
-      | tv == GHC.occName GHC.wordTyConName ->
+      | tv `elem` map GHC.occName [GHC.wordTyConName, GHC.wordPrimTyConName] ->
         pure
           FFI_VAL
             { ffiWasmValueType = I64
@@ -133,7 +145,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , hsTyCon = "Word"
             , signed = False
             }
-      | tv == GHC.occName GHC.floatTyConName ->
+      | tv `elem` map GHC.occName [GHC.floatTyConName, GHC.floatPrimTyConName] ->
         pure
           FFI_VAL
             { ffiWasmValueType = F32
@@ -141,7 +153,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , hsTyCon = "Float"
             , signed = True
             }
-      | tv == GHC.occName GHC.doubleTyConName ->
+      | tv `elem` map GHC.occName [GHC.doubleTyConName, GHC.doublePrimTyConName] ->
         pure
           FFI_VAL
             { ffiWasmValueType = F64

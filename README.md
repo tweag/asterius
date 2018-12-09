@@ -27,6 +27,7 @@ What works currently:
 
 * All GHC language features except Template Haskell.
 * Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`/`deepseq`/`containers`/`transformers`/`mtl`/`pretty`/`bytestring`/`binary`/`xhtml`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
+* Fast arbitrary-precision `Integer` operations backed by `BigInt`s.
 * Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSVal` type in Haskell land.
 * Fast conversion between Haskell/JavaScript types (strings, arrays and ArrayBuffers at the moment)
 * Calling Haskell functions from JavaScript via the `foreign export javascript` syntax. Haskell closures can be passed between Haskell/JavaScript boundary via `StablePtr`.

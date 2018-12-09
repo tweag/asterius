@@ -53,7 +53,7 @@ defaultBootArgs =
     , configureOptions =
         "--disable-shared --disable-profiling --disable-library-for-ghci --disable-split-objs --disable-split-sections -O1 --with-gcc=" <>
         ahcGccPath
-    , buildOptions = "-j1"
+    , buildOptions = ""
     , installOptions = ""
     , builtinsOptions = defaultBuiltinsOptions
     , rtsOnly = False

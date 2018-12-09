@@ -1,6 +1,6 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE CPP, NoImplicitPrelude, BangPatterns, StandaloneDeriving,
-             MagicHash, UnboxedTuples #-}
+             MagicHash, UnboxedTuples, UnliftedFFITypes #-}
 {-# OPTIONS_HADDOCK hide #-}
 
 #include "MachDeps.h"
@@ -54,6 +54,12 @@ import GHC.List ((!!), foldr1, break)
 import GHC.Num
 import GHC.Stack.Types
 import GHC.Types (TypeLitSort (..))
+
+#if defined(ASTERIUS)
+import Asterius.Magic
+import GHC.Integer.Simple.Internals
+import GHC.Prim
+#endif
 
 
 -- | The @shows@ functions return a function that prepends the
@@ -488,6 +494,16 @@ instance Show Natural where
 
 -- Divide and conquer implementation of string conversion
 integerToString :: Integer -> String -> String
+#if defined(ASTERIUS)
+
+integerToString i s =
+  accursedUnutterableAddrToAny
+    (js_integerToString (coerce i) (accursedUnutterableAnyToAddr s))
+
+foreign import javascript "__asterius_jsffi.Integer.integerToString(${1},${2})" js_integerToString
+  :: Int -> Addr# -> Addr#
+
+#else
 integerToString n0 cs0
     | n0 < 0    = '-' : integerToString' (- n0) cs0
     | otherwise = integerToString' n0 cs0
@@ -564,6 +580,7 @@ integerToString n0 cs0
              c@(C# _) -> jblock' (d - 1) q (c : cs)
         where
         (q, r) = n `quotRemInt` 10
+#endif
 
 instance Show KindRep where
   showsPrec d (KindRepVar v) = showParen (d > 10) $

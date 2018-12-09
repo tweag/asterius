@@ -17,6 +17,10 @@ module GHC.Integer.Logarithms.Internals
     , roundingMode#
     ) where
 
+#if defined(ASTERIUS)
+import Asterius.Magic
+#endif
+
 import GHC.Prim
 import GHC.Integer.Type
 import GHC.Types
@@ -93,7 +97,7 @@ wordLog2# w =
 -- Going up in word-sized steps should not be too bad.
 integerLog2# :: Integer -> Int#
 #if defined(ASTERIUS)
-integerLog2# i = unI# (js_integerLog2 (unsafeBigInt i))
+integerLog2# i = unI# (js_integerLog2 (coerce i))
 #else
 integerLog2# (Positive digits) = step 0# digits
   where
@@ -107,7 +111,7 @@ integerLog2# _ = negateInt# 1#
 -- Again, integer should be strictly positive
 integerLog2IsPowerOf2# :: Integer -> (# Int#, Int# #)
 #if defined(ASTERIUS)
-integerLog2IsPowerOf2# i = (# unI# (js_integerLog2 (unsafeBigInt i)), unI# (js_integerIsPowerOf2 (unsafeBigInt i)) #)
+integerLog2IsPowerOf2# i = (# unI# (js_integerLog2 (coerce i)), unI# (js_integerIsPowerOf2 (coerce i)) #)
 #else
 integerLog2IsPowerOf2# (Positive digits) = couldBe 0# digits
   where
@@ -174,10 +178,6 @@ leadingZeros =
         b -> BA b
 
 #if defined(ASTERIUS)
-
-{-# INLINE unI# #-}
-unI# :: Int -> Int#
-unI# (I# i) = i
 
 foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, 4)" js_integerLog2 :: Int -> Int
 

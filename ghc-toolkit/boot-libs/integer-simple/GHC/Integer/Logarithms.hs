@@ -12,7 +12,8 @@ import qualified GHC.Integer.Logarithms.Internals as I
 import GHC.Types
 
 #if defined(ASTERIUS)
-import GHC.Integer.Type (unsafeBigInt)
+import Asterius.Magic
+import GHC.Integer.Type (Integer(..))
 #endif
 
 -- | Calculate the integer logarithm for an arbitrary base.
@@ -25,7 +26,7 @@ import GHC.Integer.Type (unsafeBigInt)
 -- for @base > 1@ and @m > 0@.
 integerLogBase# :: Integer -> Integer -> Int#
 #if defined(ASTERIUS)
-integerLogBase# b m = unI# (js_integerLogBase (unsafeBigInt b) (unsafeBigInt m))
+integerLogBase# b m = unI# (js_integerLogBase (coerce m) (coerce b))
 #else
 integerLogBase# b m = case step b of
                         (# _, e #) -> e
@@ -53,10 +54,6 @@ wordLog2# :: Word# -> Int#
 wordLog2# = I.wordLog2#
 
 #if defined(ASTERIUS)
-
-{-# INLINE unI# #-}
-unI# :: Int -> Int#
-unI# (I# i) = i
 
 foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, ${2})" js_integerLogBase :: Int -> Int -> Int
 

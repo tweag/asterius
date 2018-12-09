@@ -8,6 +8,11 @@ module Asterius.Magic
   , accursedUnutterableAnyToAddr
   , accursedUnutterablePerformIO
   , unIO
+  , unI#
+  , unW#
+  , unF#
+  , unD#
+  , unBool
   ) where
 
 import GHC.Magic
@@ -35,3 +40,24 @@ accursedUnutterablePerformIO (IO m) =
 {-# INLINE unIO #-}
 unIO :: IO a -> State# RealWorld -> (# State# RealWorld, a #)
 unIO (IO m) = m
+
+{-# INLINE unI# #-}
+unI# :: Int -> Int#
+unI# (I# i) = i
+
+{-# INLINE unW# #-}
+unW# :: Word -> Word#
+unW# (W# w) = w
+
+{-# INLINE unF# #-}
+unF# :: Float -> Float#
+unF# (F# f) = f
+
+{-# INLINE unD# #-}
+unD# :: Double -> Double#
+unD# (D# d) = d
+
+{-# INLINE unBool #-}
+unBool :: Bool -> Int#
+unBool False = 0#
+unBool True = 1#

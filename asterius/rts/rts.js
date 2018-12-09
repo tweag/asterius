@@ -7,21 +7,40 @@
     this;
 
   __asterius_root.newAsteriusInstance = async req => {
-    const __asterius_bigints = [,],
-      __asterius_staging_bigints = [,];
+    const __asterius_jsffi_JSRefs = [,],
+      __asterius_jsffi_JSRef_revs = new Map();
+    function __asterius_jsffi_newJSRef(e) {
+      let i = __asterius_jsffi_JSRef_revs.get(e);
+      if (i === undefined) {
+        i = __asterius_jsffi_JSRefs.push(e) - 1;
+        __asterius_jsffi_JSRef_revs.set(e, i);
+      }
+      return i;
+    }
+    function __asterius_jsffi_newTempJSRef(e) {
+      return __asterius_jsffi_JSRefs.push(e) - 1;
+    }
+    function __asterius_jsffi_mutTempJSRef(i, f) {
+      __asterius_jsffi_JSRefs[i] = f(__asterius_jsffi_JSRefs[i]);
+    }
+    function __asterius_jsffi_freezeTempJSRef(i) {
+      const e = __asterius_jsffi_JSRefs[i];
+      delete __asterius_jsffi_JSRefs[i];
+      return e;
+    }
     function __asterius_bigint_abs(bi) {
       return bi < BigInt(0) ? -bi : bi;
     }
     function __asterius_bigint_decode(i) {
       const x = BigInt(i);
       return x & BigInt(1)
-        ? __asterius_bigints[x >> BigInt(1)]
+        ? __asterius_jsffi_JSRefs[x >> BigInt(1)]
         : x >> BigInt(1);
     }
     function __asterius_bigint_encode(bi) {
       return Number(
         __asterius_bigint_abs(bi) >> BigInt(52)
-          ? (BigInt(__asterius_bigints.push(bi) - 1) << BigInt(1)) | BigInt(1)
+          ? (BigInt(__asterius_jsffi_newJSRef(bi)) << BigInt(1)) | BigInt(1)
           : bi << BigInt(1)
       );
     }
@@ -97,27 +116,6 @@
           return __asterius_show_I64(lo, hi);
       }
     }
-    const __asterius_jsffi_JSRefs = [,],
-      __asterius_jsffi_JSRef_revs = new Map();
-    function __asterius_jsffi_newJSRef(e) {
-      let i = __asterius_jsffi_JSRef_revs.get(e);
-      if (!i) {
-        i = __asterius_jsffi_JSRefs.push(e) - 1;
-        __asterius_jsffi_JSRef_revs.set(e, i);
-      }
-      return i;
-    }
-    function __asterius_jsffi_newTempJSRef(e) {
-      return __asterius_jsffi_JSRefs.push(e) - 1;
-    }
-    function __asterius_jsffi_mutTempJSRef(i, f) {
-      __asterius_jsffi_JSRefs[i] = f(__asterius_jsffi_JSRefs[i]);
-    }
-    function __asterius_jsffi_freezeTempJSRef(i) {
-      const e = __asterius_jsffi_JSRefs[i];
-      delete __asterius_jsffi_JSRefs[i];
-      return e;
-    }
     const __asterius_SPT = [,];
     function __asterius_newStablePtr(obj) {
       return __asterius_SPT.push(obj) - 1;
@@ -162,22 +160,20 @@
       },
       Integer: {
         mkInteger_init: non_neg =>
-          __asterius_staging_bigints.push([
+          __asterius_jsffi_newTempJSRef([
             Boolean(non_neg),
             BigInt(0),
             BigInt(0)
-          ]) - 1,
-        mkInteger_prepend: (i, x) => {
-          __asterius_staging_bigints[i][2] |=
-            BigInt(x) << __asterius_staging_bigints[i][1];
-          __asterius_staging_bigints[i][1] += BigInt(31);
-          return i;
-        },
+          ]),
+        mkInteger_prepend: (i, x) =>
+          __asterius_jsffi_mutTempJSRef(i, ([non_neg, shift_bits, tot]) => [
+            non_neg,
+            shift_bits + BigInt(31),
+            (BigInt(x) << shift_bits) | tot
+          ]),
         mkInteger_finalize: i => {
-          const bi = __asterius_staging_bigints[i][0]
-            ? __asterius_staging_bigints[i][2]
-            : -__asterius_staging_bigints[i][2];
-          delete __asterius_staging_bigints[i];
+          let [non_neg, , bi] = __asterius_jsffi_freezeTempJSRef(i);
+          bi = non_neg ? bi : -bi;
           return __asterius_bigint_encode(bi);
         },
         smallInteger: x => __asterius_bigint_encode(BigInt(x)),
@@ -282,7 +278,7 @@
           Boolean((__asterius_bigint_decode(i0) >> BigInt(i1)) & BigInt(1)),
         hashInteger: i =>
           Number(BigInt.asIntN(64, __asterius_bigint_decode(i))),
-        integerLogBase: (b, i) => {
+        integerLogBase: (i, b) => {
           const bi = __asterius_bigint_decode(i);
           return bi > BigInt(0)
             ? __asterius_bigint_decode(bi).toString(
@@ -296,6 +292,32 @@
           __asterius_bigint_encode(
             __asterius_bigint_decode(i0) ** __asterius_bigint_decode(i1)
           ),
+        integerToString: (_i, _s) => {
+          const bi_str = __asterius_bigint_decode(_i).toString(),
+            cap = req.staticsSymbolMap.MainCapability;
+          const rp = __asterius_wasm_instance.exports.allocate(
+            cap,
+            bi_str.length * 5
+          );
+          const buf = new BigUint64Array(
+            __asterius_wasm_instance.exports.memory.buffer,
+            rp & 0xffffffff,
+            bi_str.length * 5
+          );
+          for (let i = 0; i < bi_str.length; ++i) {
+            buf[i * 5] = BigInt(
+              req.staticsSymbolMap.ghczmprim_GHCziTypes_ZC_con_info
+            );
+            buf[i * 5 + 1] = BigInt(rp + i * 40 + 25);
+            buf[i * 5 + 2] = BigInt(rp + (i + 1) * 40 + 2);
+            buf[i * 5 + 3] = BigInt(
+              req.staticsSymbolMap.ghczmprim_GHCziTypes_Czh_con_info
+            );
+            buf[i * 5 + 4] = BigInt(bi_str.codePointAt(i));
+          }
+          buf[(bi_str.length - 1) * 5 + 2] = BigInt(_s);
+          return rp + 2;
+        },
         encode: __asterius_bigint_encode,
         decode: __asterius_bigint_decode
       },

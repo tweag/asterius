@@ -27,6 +27,7 @@ extra-source-files:
   - test/todomvc/**/*.html
   - test/teletype/**/*.hs
   - test/bytearray/**/*.hs
+  - test/bigint/**/*.hs
 
 data-files:
   - rts/rts.js
@@ -197,6 +198,13 @@ tests:
   bytearray:
     source-dirs: test
     main: bytearray.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
+    dependencies:
+      - asterius
+
+  bigint:
+    source-dirs: test
+    main: bigint.hs
     ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius

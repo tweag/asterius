@@ -28,19 +28,28 @@ module GHC.Integer.Type where
 
 #if defined(ASTERIUS)
 
-import GHC.Prim
+import Asterius.Magic
 import GHC.Classes
+import GHC.Magic
+import GHC.Prim
 import GHC.Types
 
 newtype Integer = Integer Int
 
 mkInteger :: Bool -> [Int] -> Integer
-mkInteger nonNegative is = Integer r
-  where
-    !i0 = js_mkInteger_init nonNegative
-    go !t [] = t
-    go !t (x:xs) = go (js_mkInteger_prepend t x) xs
-    !r = js_mkInteger_finalize (go i0 is)
+mkInteger nonNegative is =
+  runRW#
+    (\s0 ->
+       case unIO (js_mkInteger_init nonNegative) s0 of
+         (# s1, i0 #) ->
+           let w [] sx = (# sx, () #)
+               w (x:xs) sx =
+                 case unIO (js_mkInteger_prepend i0 x) sx of
+                   (# sy, _ #) -> w xs sy
+            in case w is s1 of
+                 (# s2, _ #) ->
+                   case unIO (js_mkInteger_finalize i0) s2 of
+                     (# _, r #) -> Integer r)
 
 smallInteger :: Int# -> Integer
 smallInteger i = Integer (js_smallInteger (I# i))
@@ -91,7 +100,12 @@ geInteger :: Integer -> Integer -> Bool
 geInteger (Integer i0) (Integer i1) = js_geInteger i0 i1
 
 compareInteger :: Integer -> Integer -> Ordering
-compareInteger (Integer i0) (Integer i1) = if js_eqInteger i0 i1 then EQ else if js_leInteger i0 i1 then LT else GT
+compareInteger (Integer i0) (Integer i1) =
+  if js_eqInteger i0 i1
+    then EQ
+    else if js_leInteger i0 i1
+           then LT
+           else GT
 
 eqInteger# :: Integer -> Integer -> Int#
 eqInteger# (Integer i0) (Integer i1) = unBool (js_eqInteger i0 i1)
@@ -118,10 +132,12 @@ modInteger :: Integer -> Integer -> Integer
 modInteger (Integer i0) (Integer i1) = Integer (js_modInteger i0 i1)
 
 divModInteger :: Integer -> Integer -> (# Integer, Integer #)
-divModInteger (Integer i0) (Integer i1) = (# Integer (js_divInteger i0 i1), Integer (js_modInteger i0 i1) #)
+divModInteger (Integer i0) (Integer i1) =
+  (# Integer (js_divInteger i0 i1), Integer (js_modInteger i0 i1) #)
 
 quotRemInteger :: Integer -> Integer -> (# Integer, Integer #)
-quotRemInteger (Integer i0) (Integer i1) = (# Integer (js_quotInteger i0 i1), Integer (js_remInteger i0 i1) #)
+quotRemInteger (Integer i0) (Integer i1) =
+  (# Integer (js_quotInteger i0 i1), Integer (js_remInteger i0 i1) #)
 
 quotInteger :: Integer -> Integer -> Integer
 quotInteger (Integer i0) (Integer i1) = Integer (js_quotInteger i0 i1)
@@ -133,7 +149,8 @@ encodeFloatInteger :: Integer -> Int# -> Float#
 encodeFloatInteger (Integer m) n = unF# (js_encodeFloatInteger m (I# n))
 
 decodeFloatInteger :: Float# -> (# Integer, Int# #)
-decodeFloatInteger f = (# Integer (js_decodeFloatInteger_m (F# f)), unI# (js_decodeFloatInteger_n (F# f)) #)
+decodeFloatInteger f =
+  (# Integer (js_decodeFloatInteger_m (F# f)), unI# (js_decodeFloatInteger_n (F# f)) #)
 
 floatFromInteger :: Integer -> Float#
 floatFromInteger (Integer i) = unF# (js_floatFromInteger i)
@@ -172,13 +189,10 @@ hashInteger :: Integer -> Int#
 hashInteger (Integer i) = unI# (js_hashInteger i)
 
 oneInteger :: Integer
-oneInteger = Integer 1
+oneInteger = smallInteger 1#
 
 powInteger :: Integer -> Integer -> Integer
 powInteger (Integer i0) (Integer i1) = Integer (js_powInteger i0 i1)
-
-unsafeBigInt :: Integer -> Int
-unsafeBigInt (Integer i) = i
 
 instance Eq Integer where
   (==) = eqInteger
@@ -191,32 +205,11 @@ instance Ord Integer where
   (>=) = geInteger
   compare = compareInteger
 
-{-# INLINE unI# #-}
-unI# :: Int -> Int#
-unI# (I# i) = i
+foreign import javascript "__asterius_jsffi.Integer.mkInteger_init(${1})" js_mkInteger_init :: Bool -> IO Int
 
-{-# INLINE unW# #-}
-unW# :: Word -> Word#
-unW# (W# w) = w
+foreign import javascript "__asterius_jsffi.Integer.mkInteger_prepend(${1},${2})" js_mkInteger_prepend :: Int -> Int -> IO ()
 
-{-# INLINE unF# #-}
-unF# :: Float -> Float#
-unF# (F# f) = f
-
-{-# INLINE unD# #-}
-unD# :: Double -> Double#
-unD# (D# d) = d
-
-{-# INLINE unBool #-}
-unBool :: Bool -> Int#
-unBool False = 0#
-unBool True = 1#
-
-foreign import javascript "__asterius_jsffi.Integer.mkInteger_init(${1})" js_mkInteger_init :: Bool -> Int
-
-foreign import javascript "__asterius_jsffi.Integer.mkInteger_prepend(${1},${2})" js_mkInteger_prepend :: Int -> Int -> Int
-
-foreign import javascript "__asterius_jsffi.Integer.mkInteger_finalize(${1})" js_mkInteger_finalize :: Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.mkInteger_finalize(${1})" js_mkInteger_finalize :: Int -> IO Int
 
 foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_smallInteger :: Int -> Int
 
