@@ -40,9 +40,8 @@ import qualified Data.Set as S
 import qualified DynFlags as GHC
 import Foreign
 import qualified GHC
-import Language.Haskell.GHC.Toolkit.BuildInfo (ahcGccPath)
 import Language.Haskell.GHC.Toolkit.Orphans.Show
-import Language.Haskell.GHC.Toolkit.Run hiding (ghcLibDir)
+import Language.Haskell.GHC.Toolkit.Run
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import Prelude hiding (IO)
@@ -140,13 +139,12 @@ ahcLinkMain :: Task -> IO ()
 ahcLinkMain task@Task {..} = do
   c_BinaryenSetOptimizeLevel 0
   c_BinaryenSetShrinkLevel 0
-  (boot_store, boot_pkgdb) <-
-    do (store_path, boot_pkgdb) <-
+  boot_store <-
+    do store_path <-
          do let boot_lib = bootDir defaultBootArgs </> "asterius_lib"
-            pure (boot_lib </> "asterius_store", boot_lib </> "package.conf.d")
+            pure (boot_lib </> "asterius_store")
        putStrLn $ "[INFO] Loading boot library store from " <> show store_path
-       store <- decodeStore store_path
-       pure (store, boot_pkgdb)
+       decodeStore store_path
   putStrLn "[INFO] Populating the store with builtin routines"
   let builtins_opts =
         defaultBuiltinsOptions
@@ -158,7 +156,7 @@ ahcLinkMain task@Task {..} = do
   putStrLn $ "[INFO] Compiling " <> input <> " to Cmm"
   (c, get_ffi_mod) <- addFFIProcessor mempty
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
-    GHC.runGhc (Just ghcLibDir) $
+    GHC.runGhc (Just (dataDir </> ".boot" </> "asterius_lib")) $
     lowerCodensity $ do
       dflags <- lift GHC.getSessionDynFlags
       setDynFlagsRef dflags
@@ -172,8 +170,6 @@ ahcLinkMain task@Task {..} = do
                 , "-i" <> takeDirectory input
                 , "-clear-package-db"
                 , "-global-package-db"
-                , "-package-db"
-                , boot_pkgdb
                 , "-hide-all-packages"
                 ] <>
                 mconcat
@@ -195,7 +191,6 @@ ahcLinkMain task@Task {..} = do
                       , "xhtml"
                       ]
                   ] <>
-                ["-pgmc=" <> ahcGccPath] <>
                 extraGHCFlags
             , compiler = c
             }

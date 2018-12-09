@@ -31,6 +31,7 @@ extra-source-files:
 
 data-files:
   - rts/rts.js
+  - boot-init.sh
   - boot.sh
 
 custom-setup:

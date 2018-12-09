@@ -24,13 +24,9 @@ frontendPlugin :: GHC.FrontendPlugin
 frontendPlugin =
   makeFrontendPlugin $
   liftIO $ do
-    m_obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
+    Just obj_topdir <- getEnv "ASTERIUS_LIB_DIR"
     is_debug <- isJust <$> getEnv "ASTERIUS_DEBUG"
-    store_ref <-
-      (case m_obj_topdir of
-         Just obj_topdir -> decodeStore (obj_topdir </> "asterius_store")
-         _ -> pure $ error "Asterius.FrontendPlugin.frontendPlugin") >>=
-      newIORef
+    store_ref <- decodeStore (obj_topdir </> "asterius_store") >>= newIORef
     get_ffi_mod_ref <- newIORef $ error "get_ffi_mod_ref not initialized"
     (c, get_ffi_mod) <-
       addFFIProcessor
@@ -47,30 +43,24 @@ frontendPlugin =
                       get_ffi_mod <- readIORef get_ffi_mod_ref
                       ffi_mod <- get_ffi_mod mod_sym
                       let m = ffi_mod <> m'
-                      case m_obj_topdir of
-                        Just obj_topdir -> do
-                          encodeAsteriusModule obj_topdir mod_sym m
-                          atomicModifyIORef' store_ref $ \store ->
-                            (registerModule obj_topdir mod_sym m store, ())
-                          when is_debug $ do
-                            let p = asteriusModulePath obj_topdir mod_sym
-                            writeFile (p "dump-wasm-ast") $ show m
-                            writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                            asmPrint dflags (p "dump-cmm-raw") cmmRaw
-                            writeFile (p "dump-cmm-ast") $ show cmm
-                            asmPrint dflags (p "dump-cmm") cmm
-                            writeFile (p "dump-stg-ast") $ show stg
-                            asmPrint dflags (p "dump-stg") stg
-                            writeFile (p "dump-core-ast") $ show core
-                            asmPrint dflags (p "dump-core") $ GHC.cg_binds core
-                        _ -> pure ()
+                      encodeAsteriusModule obj_topdir mod_sym m
+                      atomicModifyIORef' store_ref $ \store ->
+                        (registerModule obj_topdir mod_sym m store, ())
+                      when is_debug $ do
+                        let p = asteriusModulePath obj_topdir mod_sym
+                        writeFile (p "dump-wasm-ast") $ show m
+                        writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
+                        asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                        writeFile (p "dump-cmm-ast") $ show cmm
+                        asmPrint dflags (p "dump-cmm") cmm
+                        writeFile (p "dump-stg-ast") $ show stg
+                        asmPrint dflags (p "dump-stg") stg
+                        writeFile (p "dump-core-ast") $ show core
+                        asmPrint dflags (p "dump-core") $ GHC.cg_binds core
           , finalize =
-              case m_obj_topdir of
-                Just obj_topdir ->
-                  liftIO $ do
-                    store <- readIORef store_ref
-                    encodeStore (obj_topdir </> "asterius_store") store
-                _ -> pure ()
+              liftIO $ do
+                store <- readIORef store_ref
+                encodeStore (obj_topdir </> "asterius_store") store
           }
     writeIORef get_ffi_mod_ref get_ffi_mod
     pure c

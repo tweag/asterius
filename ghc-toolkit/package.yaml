@@ -15,10 +15,10 @@ extra-source-files:
 
 data-files:
   - boot-libs/**/**
-  - include/**/**
+  - ghc-libdir/**/**
 
 include-dirs:
-  - include
+  - ghc-libdir/include
   - include-private
 
 c-sources:
@@ -58,11 +58,3 @@ library:
     - StandaloneDeriving
     - StrictData
     - UndecidableInstances
-
-executables:
-  ahc-gcc:
-    source-dirs: app
-    main: ahc-gcc.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
-    dependencies:
-      - ghc-toolkit

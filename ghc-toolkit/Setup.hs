@@ -48,7 +48,7 @@ main =
                 (replaceBaseName
                    (locationPath (programLocation ghc_prog))
                    "runghc")
-                [ "--ghc-arg=-Iinclude"
+                [ "--ghc-arg=-Ighc-libdir/include"
                 , "--ghc-arg=-Iinclude-private"
                 , "genapply" </> "Main.hs"
                 ]

@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -27,7 +26,7 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified DynFlags as GHC
 import qualified GHC
-import Language.Haskell.GHC.Toolkit.BuildInfo (ahcGccPath, bootLibsPath)
+import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath, sandboxGhcLibDir)
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show
 import Language.Haskell.GHC.Toolkit.Run (defaultConfig, ghcFlags, runCmm)
@@ -43,7 +42,6 @@ data BootArgs = BootArgs
   { bootDir :: FilePath
   , configureOptions, buildOptions, installOptions :: String
   , builtinsOptions :: BuiltinsOptions
-  , rtsOnly :: Bool
   }
 
 defaultBootArgs :: BootArgs
@@ -51,12 +49,10 @@ defaultBootArgs =
   BootArgs
     { bootDir = dataDir </> ".boot"
     , configureOptions =
-        "--disable-shared --disable-profiling --disable-library-for-ghci --disable-split-objs --disable-split-sections -O1 --with-gcc=" <>
-        ahcGccPath
+        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2"
     , buildOptions = ""
     , installOptions = ""
     , builtinsOptions = defaultBuiltinsOptions
-    , rtsOnly = False
     }
 
 bootTmpDir :: BootArgs -> FilePath
@@ -71,6 +67,7 @@ bootCreateProcess args@BootArgs {..} = do
       , env =
           Just $
           ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath) :
+          ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir) :
           ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib") :
           ("ASTERIUS_TMP_DIR", bootTmpDir args) :
           ("ASTERIUS_GHC", ghc) :
@@ -87,7 +84,7 @@ bootCreateProcess args@BootArgs {..} = do
 bootRTSCmm :: BootArgs -> IO ()
 bootRTSCmm BootArgs {..} =
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
-  GHC.runGhc (Just ghcLibDir) $
+  GHC.runGhc (Just obj_topdir) $
   lowerCodensity $ do
     dflags <- lift GHC.getSessionDynFlags
     setDynFlagsRef dflags
@@ -106,7 +103,7 @@ bootRTSCmm BootArgs {..} =
                  , "rts"
                  , "-dcmm-lint"
                  , "-O2"
-                 , "-pgmc" <> ahcGccPath
+                 , "-I" <> obj_topdir </> "include"
                  ]
              }
            [rts_path </> m <.> "cmm" | m <- rts_cmm_mods])
@@ -127,29 +124,27 @@ bootRTSCmm BootArgs {..} =
                   asmPrint dflags (p "dump-cmm-raw") cmmRaw
                   writeFile (p "dump-cmm-ast") $ show cmm
                   asmPrint dflags (p "dump-cmm") cmm
-      if rtsOnly
-        then do
-          rts_store <- readIORef store_ref
-          store <- decodeStore store_path
-          encodeStore store_path $ rts_store <> store
-        else do
-          store <- readIORef store_ref
-          encodeStore store_path store
+      store <- readIORef store_ref
+      encodeStore store_path store
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
     store_path = obj_topdir </> "asterius_store"
 
+runBootCreateProcess :: CreateProcess -> IO ()
+runBootCreateProcess =
+  flip withCreateProcess $ \_ _ _ ph -> do
+    ec <- waitForProcess ph
+    case ec of
+      ExitFailure _ -> fail "boot failure"
+      _ -> pure ()
+
 boot :: BootArgs -> IO ()
 boot args = do
+  cp_boot <- bootCreateProcess args
+  runBootCreateProcess
+    cp_boot {cmdspec = RawCommand "sh" ["-e", "boot-init.sh"]}
   bootRTSCmm args
-  unless (rtsOnly args) $ do
-    cp' <- bootCreateProcess args
-    withCreateProcess cp' $ \_ _ _ ph ->
-      finally
-        (do ec <- waitForProcess ph
-            case ec of
-              ExitFailure _ -> fail "boot failure"
-              _ -> pure ())
-        (do is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
-            unless is_debug $ removeDirectoryRecursive $ bootTmpDir args)
+  runBootCreateProcess cp_boot
+  is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
+  unless is_debug $ removePathForcibly $ bootTmpDir args

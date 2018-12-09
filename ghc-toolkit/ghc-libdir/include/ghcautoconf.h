@@ -534,4 +534,8 @@
 /* Define as `fork' if `vfork' does not work. */
 /* #undef vfork */
 
+/*
+#define TABLES_NEXT_TO_CODE 1
+*/
+
 #endif /* __GHCAUTOCONF_H__ */
