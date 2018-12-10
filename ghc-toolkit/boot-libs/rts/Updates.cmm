@@ -63,13 +63,13 @@ INFO_TABLE_RET ( stg_marked_upd_frame, UPDATE_FRAME,
     }
 
     // common case: it is still our BLACKHOLE
-    // if (v == CurrentTSO) (likely: True) {
+    if (v == CurrentTSO) (likely: True) {
         updateWithIndirection(updatee, ret, return (ret));
-    // }
+    }
 
     // The other cases are all handled by the generic code
-    // ccall updateThunk (MyCapability() "ptr", CurrentTSO "ptr",
-    //                    updatee "ptr", ret "ptr");
+    ccall updateThunk (MyCapability() "ptr", CurrentTSO "ptr",
+                       updatee "ptr", ret "ptr");
 
     return (ret);
 }
