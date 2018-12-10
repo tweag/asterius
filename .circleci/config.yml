@@ -26,7 +26,6 @@ jobs:
               curl \
               g++ \
               git \
-              jq \
               libffi-dev \
               libgmp-dev \
               libncurses-dev \
@@ -34,16 +33,20 @@ jobs:
               make \
               openssh-client \
               python-minimal \
+              python3-minimal \
+              unzip \
               xz-utils \
               zlib1g-dev
-            mkdir /root/.local
-            export NODE_VER=$(curl https://nodejs.org/download/v8-canary/index.json | jq -r 'map(select(.files[] | contains("linux-x64"))) | .[0].version')
-            curl https://nodejs.org/download/v8-canary/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz | tar xJ --strip-components=1 -C /root/.local
+            mkdir -p /root/.local/bin
             curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
       - checkout
       - run:
           name: Test asterius
           command: |
+            curl $(python3 utils/v8-node.py) -o /tmp/v8-node.zip
+            unzip -q /tmp/v8-node.zip -d /root/.local
+            node --version
+
             git submodule update --init --recursive
             stack --no-terminal -j8 build --test --no-run-tests
             stack --no-terminal exec ahc-boot

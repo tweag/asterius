@@ -468,14 +468,12 @@ generateFFIExportFunction FFIExportDecl {..} =
                         then "rts_evalIO"
                         else "rts_eval"
                   , operands =
-                      [ cap
-                      , foldl'
+                      [ foldl'
                           (\tot_expr (ffi_param_i, ffi_param_t) ->
                              Call
                                { target = "rts_apply"
                                , operands =
-                                   [ cap
-                                   , tot_expr
+                                   [ tot_expr
                                    , Call
                                        { target =
                                            AsteriusEntitySymbol
@@ -486,8 +484,7 @@ generateFFIExportFunction FFIExportDecl {..} =
                                                     FFI_JSREF -> "Int")
                                              }
                                        , operands =
-                                           [ cap
-                                           , GetLocal
+                                           [ GetLocal
                                                { index = ffi_param_i
                                                , valueType =
                                                    recoverWasmWrapperValueType
@@ -511,7 +508,7 @@ generateFFIExportFunction FFIExportDecl {..} =
                   }
               , Call
                   { target = "rts_checkSchedStatus"
-                  , operands = [cap]
+                  , operands = []
                   , callReturnTypes = []
                   }
               ] <>

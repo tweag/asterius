@@ -7,6 +7,7 @@ COPY inline-js /root/asterius/inline-js
 COPY wabt /root/asterius/wabt
 COPY wasm-toolkit /root/asterius/wasm-toolkit
 COPY stack.yaml /root/asterius/stack.yaml
+COPY utils/v8-node.py /tmp/v8-node.py
 ENV \
   DEBIAN_FRONTEND=noninteractive \
   LANG=C.UTF-8 \
@@ -23,18 +24,19 @@ RUN \
     curl \
     g++ \
     gcc \
-    jq \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
     libnuma-dev \
     make \
     python-minimal \
+    python3-minimal \
+    unzip \
     xz-utils \
     zlib1g-dev && \
   mkdir /root/.local && \
-  export NODE_VER=$(curl https://nodejs.org/download/v8-canary/index.json | jq -r 'map(select(.files[] | contains("linux-x64"))) | .[0].version') && \
-  curl https://nodejs.org/download/v8-canary/$NODE_VER/node-$NODE_VER-linux-x64.tar.xz | tar xJ --strip-components=1 -C /root/.local && \
+  curl $(python3 /tmp/v8-node.py) -o /tmp/v8-node.zip && \
+  unzip -q /tmp/v8-node.zip -d /root/.local && \
   curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack' && \
   stack --no-terminal install asterius wabt && \
   stack --no-terminal exec ahc-boot && \
@@ -43,13 +45,16 @@ RUN \
     cmake \
     curl \
     g++ \
-    jq \
     make \
     python-minimal \
+    python3-minimal \
+    unzip \
     xz-utils && \
   apt autoremove --purge -y && \
-  rm -rf /var/lib/apt/lists/* && \
-  rm /root/.stack/programs/x86_64-linux/*.tar.xz && \
+  rm -rf \
+    /root/.stack/programs/x86_64-linux/*.tar.xz \
+    /var/lib/apt/lists/* \
+    /tmp/* && \
   mv /root/.stack/programs /tmp/ && \
   rm -rf /root/.stack && \
   mkdir /root/.stack && \

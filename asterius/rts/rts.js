@@ -141,19 +141,15 @@
       mutTempJSRef: __asterius_jsffi_mutTempJSRef,
       freezeTempJSRef: __asterius_jsffi_freezeTempJSRef,
       makeHaskellCallback: s => () => {
-        const cap = req.staticsSymbolMap.MainCapability,
-          export_funcs = __asterius_wasm_instance.exports;
-        export_funcs.rts_evalIO(cap, __asterius_deRefStablePtr(s), 0);
+        const export_funcs = __asterius_wasm_instance.exports;
+        export_funcs.rts_evalIO(__asterius_deRefStablePtr(s), 0);
       },
       makeHaskellCallback1: s => ev => {
-        const cap = req.staticsSymbolMap.MainCapability,
-          export_funcs = __asterius_wasm_instance.exports;
+        const export_funcs = __asterius_wasm_instance.exports;
         export_funcs.rts_evalIO(
-          cap,
           export_funcs.rts_apply(
-            cap,
             __asterius_deRefStablePtr(s),
-            export_funcs.rts_mkInt(cap, __asterius_jsffi_newJSRef(ev))
+            export_funcs.rts_mkInt(__asterius_jsffi_newJSRef(ev))
           ),
           0
         );

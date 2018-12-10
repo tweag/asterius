@@ -86,6 +86,7 @@ module Asterius.EDSL
   , andInt32
   , orInt32
   , symbol
+  , symbol'
   , constI32
   , constI64
   , baseReg
@@ -481,6 +482,10 @@ orInt32 = Binary OrInt32
 symbol :: AsteriusEntitySymbol -> Expression
 symbol sym =
   Symbol {unresolvedSymbol = sym, symbolOffset = 0, resolvedSymbol = Nothing}
+
+symbol' :: AsteriusEntitySymbol -> Int -> Expression
+symbol' sym o =
+  Symbol {unresolvedSymbol = sym, symbolOffset = o, resolvedSymbol = Nothing}
 
 constI32, constI64 :: Int -> Expression
 constI32 = ConstI32 . fromIntegral
