@@ -3,10 +3,12 @@
 import Asterius.ByteString
 import Asterius.Types
 import qualified Data.ByteString.Char8 as CBS
+import Data.Char
 import Data.Coerce
 import System.IO
 
-foreign import javascript "(new Date()).toString()" js_get_str :: IO JSString
+foreign import javascript "(new Date()).toString() + String.fromCodePoint(0x10000)" js_get_str
+  :: IO JSString
 
 foreign import javascript "['asdf', 'zer0']" js_get_arr :: IO JSArray
 
@@ -26,7 +28,9 @@ main = do
     "The trouble with the world is that the stupid are cocksure and the intelligent are full of doubt."
   js_str <- js_get_str
   let hs_str = fromJSString js_str
-  js_print $ coerce $ toJSString $ "From Haskell: " <> hs_str
+  js_print $
+    coerce $
+    toJSString $ "From Haskell: " <> hs_str <> " " <> show (ord (last hs_str))
   js_arr <- js_get_arr
   js_print $ coerce $ toJSArray $ fromJSArray js_arr
   js_buf <- js_get_buf

@@ -1,15 +1,15 @@
 resolver: ghc-8.7
 allow-newer: true
 extra-deps:
-  - aeson-1.4.1.0
+  - aeson-1.4.2.0
   - ansi-terminal-0.8.2
   - ansi-wl-pprint-0.6.8.2
-  - appar-0.1.4
+  - appar-0.1.7
   - async-2.2.1
   - attoparsec-0.13.2.2
   - auto-update-0.1.4
   - base-compat-0.10.5
-  - base64-bytestring-1.0.0.1
+  - base64-bytestring-1.0.0.2
   - basement-0.0.8
   - blaze-builder-0.4.1.0
   - blaze-html-0.9.1.1
@@ -32,7 +32,7 @@ extra-deps:
   - http-types-0.12.2
   - http2-1.6.4
   - integer-logarithms-1.0.2.2
-  - iproute-1.7.6
+  - iproute-1.7.7
   - memory-0.14.18
   - mime-types-0.1.0.8
   - mintty-0.1.2
@@ -62,7 +62,7 @@ extra-deps:
   - unix-time-0.3.8
   - uuid-types-1.0.3
   - unliftio-core-0.1.2.0
-  - vector-0.12.0.1
+  - vector-0.12.0.2
   - void-0.7.2
   - wai-3.2.1.2
   - wai-app-static-3.1.6.2

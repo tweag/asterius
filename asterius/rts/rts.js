@@ -325,6 +325,18 @@
         stderr: () => __asterius_stdio_bufs[2]
       }
     };
+    function __asterius_encodeUTF32(s) {
+      const buf = new Uint32Array(s.length);
+      let i = 0,
+        j = 0;
+      for (; i < s.length; ) {
+        const char_code = s.charCodeAt(i),
+          code_point = s.codePointAt(i);
+        buf[j++] = code_point;
+        i += char_code === code_point ? 1 : 2;
+      }
+      return buf.subarray(0, j);
+    }
     const importObject = Object.assign(
       req.jsffiFactory(__asterius_jsffi_instance),
       {
@@ -470,16 +482,17 @@
             const s = __asterius_jsffi_JSRefs[_i];
             if (s) {
               const cap = req.staticsSymbolMap.MainCapability;
+              const s_utf32 = __asterius_encodeUTF32(s);
               const rp = __asterius_wasm_instance.exports.allocate(
                 cap,
-                s.length * 5
+                s_utf32.length * 5
               );
               const buf = new BigUint64Array(
                 __asterius_wasm_instance.exports.memory.buffer,
                 rp & 0xffffffff,
-                s.length * 5
+                s_utf32.length * 5
               );
-              for (let i = 0; i < s.length; ++i) {
+              for (let i = 0; i < s_utf32.length; ++i) {
                 buf[i * 5] = BigInt(
                   req.staticsSymbolMap.ghczmprim_GHCziTypes_ZC_con_info
                 );
@@ -488,9 +501,9 @@
                 buf[i * 5 + 3] = BigInt(
                   req.staticsSymbolMap.ghczmprim_GHCziTypes_Czh_con_info
                 );
-                buf[i * 5 + 4] = BigInt(s.codePointAt(i));
+                buf[i * 5 + 4] = BigInt(s_utf32[i]);
               }
-              buf[(s.length - 1) * 5 + 2] = BigInt(
+              buf[(s_utf32.length - 1) * 5 + 2] = BigInt(
                 req.staticsSymbolMap.ghczmprim_GHCziTypes_ZMZN_closure + 1
               );
               return rp + 2;
