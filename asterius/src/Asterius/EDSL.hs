@@ -100,7 +100,6 @@ module Asterius.EDSL
   , currentNursery
   , hpAlloc
   , mainCapability
-  , endTSOQueue
   ) where
 
 import Asterius.Internals
@@ -514,7 +513,5 @@ currentNursery = global CurrentNursery
 
 hpAlloc = global HpAlloc
 
-mainCapability, endTSOQueue :: Expression
+mainCapability :: Expression
 mainCapability = symbol "MainCapability"
-
-endTSOQueue = symbol "stg_END_TSO_QUEUE_closure"

@@ -363,7 +363,7 @@
             console.log("[INFO] " + __asterius_show_I64_with_sym(lo, hi)),
           print: x => console.log(x),
           emitEvent: e => console.log("[EVENT] " + req.errorMessages[e]),
-          __asterius_allocGroupOnNode: (node, n) => {
+          __asterius_allocGroup: n => {
             let ret_mblock = null,
               ret_block = null;
             if (__asterius_last_block + n <= 252) {
@@ -379,7 +379,7 @@
                   __asterius_wasm_instance.exports.memory.grow(pd) !==
                   __asterius_mem_cap
                 )
-                  throw new WebAssembly.RuntimeError("allocGroupOnNode failed");
+                  throw new WebAssembly.RuntimeError("allocGroup failed");
                 __asterius_mem_cap += pd;
               }
               __asterius_mem_size += d;
