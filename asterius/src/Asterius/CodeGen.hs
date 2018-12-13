@@ -503,7 +503,7 @@ marshalAndCastCmmExpr cmm_expr dest_vt = do
     (# I32, I64 #) -> pure Unary {unaryOp = ExtendSInt32, operand0 = src_expr}
     (# I64, I32 #) -> pure Unary {unaryOp = WrapInt64, operand0 = src_expr}
     (# I64, F64 #) ->
-      pure Unary {unaryOp = ConvertUInt64ToFloat64, operand0 = src_expr}
+      pure Unary {unaryOp = ConvertSInt64ToFloat64, operand0 = src_expr}
     _
       | src_vt == dest_vt -> pure src_expr
       | otherwise ->

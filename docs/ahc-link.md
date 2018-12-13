@@ -5,6 +5,7 @@
 The help text of `ahc-link` is pasted here for your convenience:
 
 ```
+
 ahc-link - Linker for the Asterius compiler
 
 Usage: ahc-link [--browser] --input ARG [--output-wasm ARG] [--output-js ARG]
@@ -41,4 +42,5 @@ Available options:
   --export-function ARG    Symbol of exported function
   --extra-root-symbol ARG  Symbol of extra root entity, e.g. Main_f_closure
   -h,--help                Show this help text
+
 ```

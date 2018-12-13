@@ -22,27 +22,24 @@ Since we'd like to call `fact`, we need to apply it to an argument, build a thun
 
 ```JavaScript
 i.wasmInstance.exports.hs_init();
-const cap = i.staticsSymbolMap.MainCapability;
-const argument = i.wasmInstance.exports.rts_mkInt(cap, 5);
-const thunk = i.wasmInstance.exports.rts_apply(cap, i.staticsSymbolMap.Main_fact_closure, argument);
-const ret = i.wasmInstance.exports.allocate(cap, 1);
-i.wasmInstance.exports.rts_eval(cap, thunk, ret);
-console.log(i.wasmInstance.exports.rts_getInt(i.wasmInstance.exports.loadI64(ret)));
+const argument = i.wasmInstance.exports.rts_mkInt(5);
+const thunk = i.wasmInstance.exports.rts_apply(i.staticsSymbolMap.Main_fact_closure, argument);
+const tid = i.wasmInstance.exports.rts_eval(thunk);
+console.log(i.wasmInstance.exports.rts_getInt(i.wasmInstance.exports.getTSOret(tid)));
 ```
 
 A line-by-line explanation follows:
 
 * As usual, the first step is calling `hs_init` to initialize the runtime.
-* Most RTS API functions requires passing a `Capability` as the first argument, which can be thought as a single processor core for the virtual machine executing Haskell code. Since asterius only has a non-threaded runtime at the moment, we can simply use `MainCapability` as the pointer to the unique global `Capability`.
 * Assuming we'd like to calculate `fact 5`, we need to build an `Int` object which value is `5`. We can't directly pass the JavaScript `5`, instead we should call `rts_mkInt`, which properly allocates a heap object and sets up the info pointer of an `Int` value. When we need to pass a value of basic type (e.g. `Int`, `StablePtr`, etc), we should always call `rts_mk*` and use the returned pointers to the allocated heap object.
 * Then we can apply `fact` to `5` by using `rts_apply`. It builds a thunk without triggering evaluation. If we are dealing with a curried multiple-arguments function, we should chain `rts_apply` repeatedly until we get a thunk representing the final result.
-* Before triggering evaluation, we need to allocate one single word, which serves as the "result pointer". All the `rts_eval*` functions expect a "result pointer", and upon successful evaluation, the result (which is yet another heap object)'s pointer will be written to the place pointed by the "result pointer". If we don't care about the result (e.g. `IO ()`), it's okay to pass `0` there.
 * Finally, we call `rts_eval`, which enters the runtime and perform all the evaluation for us. There are different types of evaluation functions:
   * `rts_eval` evaluates a thunk of type `a` to WHNF.
   * `rts_evalIO` evaluates the result of `IO a` to WHNF.
   * `rts_evalLazyIO` evaluates `IO a`, without forcing the result to WHNF. It is also the default evaluator used by the runtime to run `Main.main`.
   * `rts_evalStableIO` evaluates the result of `StablePtr (IO a)` to WHNF, then return the result as `StablePtr a`.
+* All `rts_eval*` functions initiate a new Haskell thread for evaluation, and they return a thread ID. The thread ID is useful for inspecting whether or not evaluation succeeded and what the result is.
 * If we need to retrieve the result back to JavaScript, we must pick an evaluator function which forces the result to WHNF. The `rts_get*` functions assume the objects are evaluated and won't trigger evaluation.
-* Finally, we use `loadI64` to retrieve the `Int` object stored in the space pointed by `ret`, then use `rts_getInt` to retrieve the content of that `Int`. The result is the integer value we expect.
+* Assuming we stored the thread ID to `tid`, we can use `getTSOret(tid)` to retrieve the result. The result is always a pointer to the Haskell heap, so additionally we need to use `rts_getInt` to retrieve the unboxed `Int` content to JavaScript.
 
 Most users probably don't need to use RTS API manually, since the `foreign import`/`export` syntactic sugar and the `makeHaskellCallback` interface should be sufficient for typical use cases of Haskell/JavaScript interaction. Though it won't hurt to know what is hidden beneath the syntactic sugar, `foreign import`/`export` is implemented by automatically generating stub WebAssembly functions which calls RTS API for you.

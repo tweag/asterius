@@ -25,7 +25,7 @@ parseTask =
        , objectPoolSize = maybe 512 read m_ops
        , asteriusInstanceCallback =
            fromMaybe
-             "i => {\ni.wasmInstance.exports.hs_init();\ni.wasmInstance.exports.rts_evalLazyIO(i.staticsSymbolMap.Main_main_closure, 0);\n}"
+             "i => {\ni.wasmInstance.exports.hs_init();\ni.wasmInstance.exports.main();\n}"
              m_with_i
        , extraGHCFlags = ghc_flags
        , exportFunctions =

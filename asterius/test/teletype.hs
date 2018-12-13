@@ -15,7 +15,7 @@ main = do
         [ "--asterius-instance-callback="
         , "i => {"
         , "i.wasmInstance.exports.hs_init();"
-        , "i.wasmInstance.exports.rts_evalLazyIO(i.staticsSymbolMap.Main_main_closure, 0);"
+        , "i.wasmInstance.exports.main();"
         , "console.log(i.stdio.stdout());"
         , "console.log(i.stdio.stderr());"
         , "}"

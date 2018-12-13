@@ -454,61 +454,56 @@ generateFFIExportFunction FFIExportDecl {..} =
           { name = ""
           , bodys =
               [ UnresolvedSetLocal
-                  { unresolvedLocalReg = ret
+                  { unresolvedLocalReg = tid
                   , value =
                       Call
-                        { target = "allocate"
-                        , operands = [cap, ConstI64 1]
-                        , callReturnTypes = [I64]
+                        { target =
+                            if ffiInIO ffiFunctionType
+                              then "rts_evalIO"
+                              else "rts_eval"
+                        , operands =
+                            [ foldl'
+                                (\tot_expr (ffi_param_i, ffi_param_t) ->
+                                   Call
+                                     { target = "rts_apply"
+                                     , operands =
+                                         [ tot_expr
+                                         , Call
+                                             { target =
+                                                 AsteriusEntitySymbol
+                                                   { entityName =
+                                                       "rts_mk" <>
+                                                       (case ffi_param_t of
+                                                          FFI_VAL {..} ->
+                                                            hsTyCon
+                                                          FFI_JSREF -> "Int")
+                                                   }
+                                             , operands =
+                                                 [ GetLocal
+                                                     { index = ffi_param_i
+                                                     , valueType =
+                                                         recoverWasmWrapperValueType
+                                                           ffi_param_t
+                                                     }
+                                                 ]
+                                             , callReturnTypes = [I64]
+                                             }
+                                         ]
+                                     , callReturnTypes = [I64]
+                                     })
+                                Symbol
+                                  { unresolvedSymbol = ffiExportClosure
+                                  , symbolOffset = 0
+                                  , resolvedSymbol = Nothing
+                                  }
+                                (zip [0 ..] $ ffiParamTypes ffiFunctionType)
+                            ]
+                        , callReturnTypes = [I32]
                         }
                   }
               , Call
-                  { target =
-                      if ffiInIO ffiFunctionType
-                        then "rts_evalIO"
-                        else "rts_eval"
-                  , operands =
-                      [ foldl'
-                          (\tot_expr (ffi_param_i, ffi_param_t) ->
-                             Call
-                               { target = "rts_apply"
-                               , operands =
-                                   [ tot_expr
-                                   , Call
-                                       { target =
-                                           AsteriusEntitySymbol
-                                             { entityName =
-                                                 "rts_mk" <>
-                                                 (case ffi_param_t of
-                                                    FFI_VAL {..} -> hsTyCon
-                                                    FFI_JSREF -> "Int")
-                                             }
-                                       , operands =
-                                           [ GetLocal
-                                               { index = ffi_param_i
-                                               , valueType =
-                                                   recoverWasmWrapperValueType
-                                                     ffi_param_t
-                                               }
-                                           ]
-                                       , callReturnTypes = [I64]
-                                       }
-                                   ]
-                               , callReturnTypes = [I64]
-                               })
-                          Symbol
-                            { unresolvedSymbol = ffiExportClosure
-                            , symbolOffset = 0
-                            , resolvedSymbol = Nothing
-                            }
-                          (zip [0 ..] $ ffiParamTypes ffiFunctionType)
-                      , UnresolvedGetLocal {unresolvedLocalReg = ret}
-                      ]
-                  , callReturnTypes = []
-                  }
-              , Call
                   { target = "rts_checkSchedStatus"
-                  , operands = []
+                  , operands = [UnresolvedGetLocal {unresolvedLocalReg = tid}]
                   , callReturnTypes = []
                   }
               ] <>
@@ -519,18 +514,14 @@ generateFFIExportFunction FFIExportDecl {..} =
                           AsteriusEntitySymbol
                             {entityName = "rts_get" <> hsTyCon ffi_result_t}
                       , operands =
-                          [ Load
-                              { signed = False
-                              , bytes = 8
-                              , offset = 0
-                              , valueType = I64
-                              , ptr =
-                                  Unary
-                                    { unaryOp = WrapInt64
-                                    , operand0 =
-                                        UnresolvedGetLocal
-                                          {unresolvedLocalReg = ret}
-                                    }
+                          [ Unary TruncUFloat64ToInt64 $
+                            CallImport
+                              { target' = "__asterius_getTSOret"
+                              , operands =
+                                  [ UnresolvedGetLocal
+                                      {unresolvedLocalReg = tid}
+                                  ]
+                              , callImportReturnTypes = [F64]
                               }
                           ]
                       , callReturnTypes =
@@ -543,13 +534,7 @@ generateFFIExportFunction FFIExportDecl {..} =
           }
     }
   where
-    cap =
-      Symbol
-        { unresolvedSymbol = "MainCapability"
-        , symbolOffset = 0
-        , resolvedSymbol = Nothing
-        }
-    ret = UniqueLocalReg 0 I64
+    tid = UniqueLocalReg 0 I32
 
 generateFFIWrapperModule :: FFIMarshalState -> AsteriusModule
 generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =

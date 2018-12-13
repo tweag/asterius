@@ -70,7 +70,8 @@
       __asterius_mem_cap = null,
       __asterius_mem_size = null,
       __asterius_last_mblock = null,
-      __asterius_last_block = null;
+      __asterius_last_block = null,
+      __asterius_TSOs = [,];
     function __asterius_show_I(x) {
       return x.toString(16).padStart(8, "0");
     }
@@ -142,7 +143,7 @@
       freezeTempJSRef: __asterius_jsffi_freezeTempJSRef,
       makeHaskellCallback: s => () => {
         const export_funcs = __asterius_wasm_instance.exports;
-        export_funcs.rts_evalIO(__asterius_deRefStablePtr(s), 0);
+        export_funcs.rts_evalIO(__asterius_deRefStablePtr(s));
       },
       makeHaskellCallback1: s => ev => {
         const export_funcs = __asterius_wasm_instance.exports;
@@ -150,8 +151,7 @@
           export_funcs.rts_apply(
             __asterius_deRefStablePtr(s),
             export_funcs.rts_mkInt(__asterius_jsffi_newJSRef(ev))
-          ),
-          0
+          )
         );
       },
       Integer: {
@@ -289,10 +289,8 @@
             __asterius_bigint_decode(i0) ** __asterius_bigint_decode(i1)
           ),
         integerToString: (_i, _s) => {
-          const bi_str = __asterius_bigint_decode(_i).toString(),
-            cap = req.staticsSymbolMap.MainCapability;
+          const bi_str = __asterius_bigint_decode(_i).toString();
           const rp = __asterius_wasm_instance.exports.allocate(
-            cap,
             bi_str.length * 5
           );
           const buf = new BigUint64Array(
@@ -363,6 +361,12 @@
             console.log("[INFO] " + __asterius_show_I64_with_sym(lo, hi)),
           print: x => console.log(x),
           emitEvent: e => console.log("[EVENT] " + req.errorMessages[e]),
+          __asterius_allocTSOid: () => __asterius_TSOs.push({}) - 1,
+          __asterius_setTSOret: (i, ret) => (__asterius_TSOs[i].ret = ret),
+          __asterius_setTSOrstat: (i, rstat) =>
+            (__asterius_TSOs[i].rstat = rstat),
+          __asterius_getTSOret: i => __asterius_TSOs[i].ret,
+          __asterius_getTSOrstat: i => __asterius_TSOs[i].rstat,
           __asterius_allocGroup: n => {
             let ret_mblock = null,
               ret_block = null;
@@ -448,10 +452,8 @@
             return 0;
           },
           __asterius_fromJSArrayBuffer: _i => {
-            const buf = __asterius_jsffi_JSRefs[_i],
-              cap = req.staticsSymbolMap.MainCapability;
+            const buf = __asterius_jsffi_JSRefs[_i];
             let p = __asterius_wasm_instance.exports.allocate(
-              cap,
               Math.ceil((buf.byteLength + 31) / 8)
             );
             p = Math.ceil(p / 16) * 16;
@@ -481,10 +483,8 @@
           __asterius_fromJSString: _i => {
             const s = __asterius_jsffi_JSRefs[_i];
             if (s) {
-              const cap = req.staticsSymbolMap.MainCapability;
               const s_utf32 = __asterius_encodeUTF32(s);
               const rp = __asterius_wasm_instance.exports.allocate(
-                cap,
                 s_utf32.length * 5
               );
               const buf = new BigUint64Array(
@@ -513,9 +513,7 @@
           __asterius_fromJSArray: _i => {
             const arr = __asterius_jsffi_JSRefs[_i];
             if (arr.length) {
-              const cap = req.staticsSymbolMap.MainCapability;
               const rp = __asterius_wasm_instance.exports.allocate(
-                cap,
                 arr.length * 5
               );
               const buf = new BigUint64Array(
