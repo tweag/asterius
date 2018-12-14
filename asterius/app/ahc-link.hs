@@ -8,7 +8,7 @@ import System.FilePath
 
 parseTask :: Parser Task
 parseTask =
-  (\t i m_wasm m_js m_html m_report m_gv wasm_toolkit dbg ir r m_ns m_ops m_with_i ghc_flags export_funcs root_syms ->
+  (\t i m_wasm m_js m_html m_report m_gv wasm_toolkit dbg ir r m_ns m_with_i ghc_flags export_funcs root_syms ->
      Task
        { target = t
        , input = i
@@ -22,7 +22,6 @@ parseTask =
        , outputIR = ir || dbg
        , run = r
        , nurserySize = maybe 512 read m_ns
-       , objectPoolSize = maybe 512 read m_ops
        , asteriusInstanceCallback =
            fromMaybe
              "i => {\ni.wasmInstance.exports.hs_init();\ni.wasmInstance.exports.main();\n}"
@@ -68,10 +67,6 @@ parseTask =
   optional
     (strOption
        (long "nursery-size" <> help "Nursery size in MBs, defaults to 512.")) <*>
-  optional
-    (strOption
-       (long "object-pool-size" <>
-        help "Object pool size in MBs, defaults to 512.")) <*>
   optional
     (strOption
        (long "asterius-instance-callback" <>

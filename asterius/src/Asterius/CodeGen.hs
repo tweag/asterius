@@ -168,6 +168,7 @@ marshalCmmGlobalReg r =
     GHC.CurrentTSO -> pure CurrentTSO
     GHC.CurrentNursery -> pure CurrentNursery
     GHC.HpAlloc -> pure HpAlloc
+    GHC.EagerBlackholeInfo -> pure EagerBlackholeInfo
     GHC.GCEnter1 -> pure GCEnter1
     GHC.GCFun -> pure GCFun
     GHC.BaseReg -> pure BaseReg
@@ -244,16 +245,7 @@ marshalCmmReg r =
     GHC.CmmGlobal gr -> do
       gr_k <- marshalCmmGlobalReg gr
       pure
-        ( case gr_k of
-            GCEnter1 ->
-              emitErrorMessage
-                [I64]
-                "GetGlobal instruction: attempting to read GCEnter1"
-            GCFun ->
-              emitErrorMessage
-                [I64]
-                "GetGlobal instruction: attempting to read GCFun"
-            _ -> UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
+        ( UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
         , unresolvedGlobalRegType gr_k)
 
 marshalCmmRegOff :: GHC.CmmReg -> Int -> CodeGen (Expression, ValueType)
@@ -834,9 +826,7 @@ marshalCmmInstr instr =
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       gr <- marshalCmmGlobalReg r
       v <- marshalAndCastCmmExpr e $ unresolvedGlobalRegType gr
-      if gr `elem` [CurrentTSO, EagerBlackholeInfo, GCEnter1, GCFun]
-        then throwError $ AssignToImmutableGlobalReg gr
-        else pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
+      pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
     GHC.CmmStore p e -> do
       pv <- marshalAndCastCmmExpr p I32
       (dflags, _) <- ask

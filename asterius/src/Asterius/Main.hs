@@ -60,7 +60,7 @@ data Task = Task
   , input, outputWasm, outputJS, outputHTML :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
   , binaryen, debug, outputIR, run :: Bool
-  , nurserySize, objectPoolSize :: Int
+  , nurserySize :: Int
   , asteriusInstanceCallback :: String
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
@@ -147,11 +147,7 @@ ahcLinkMain task@Task {..} = do
        decodeStore store_path
   putStrLn "[INFO] Populating the store with builtin routines"
   let builtins_opts =
-        defaultBuiltinsOptions
-          { nurseryMBlocks = nurserySize
-          , objectPoolMBlocks = objectPoolSize
-          , tracing = debug
-          }
+        defaultBuiltinsOptions {nurseryMBlocks = nurserySize, tracing = debug}
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "[INFO] Compiling " <> input <> " to Cmm"
   (c, get_ffi_mod) <- addFFIProcessor mempty

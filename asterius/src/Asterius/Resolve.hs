@@ -193,7 +193,12 @@ globalRegOffset gr =
     CurrentTSO -> offset_StgRegTable_rCurrentTSO
     CurrentNursery -> offset_StgRegTable_rCurrentNursery
     HpAlloc -> offset_StgRegTable_rHpAlloc
+    EagerBlackholeInfo -> rf + offset_StgFunTable_stgEagerBlackholeInfo
+    GCEnter1 -> rf + offset_StgFunTable_stgGCEnter1
+    GCFun -> rf + offset_StgFunTable_stgGCFun
     _ -> throw $ AssignToImmutableGlobalReg gr
+  where
+    rf = offset_Capability_f - offset_Capability_r
 
 collectAsteriusEntitySymbols :: Data a => a -> S.Set AsteriusEntitySymbol
 collectAsteriusEntitySymbols = collect proxy#

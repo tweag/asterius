@@ -2,6 +2,8 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-simpl -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
+import Control.Monad
+import Data.Foldable
 import GHC.Exts
 import GHC.Types
 
@@ -23,25 +25,19 @@ fill mba f s0 =
         0# -> w len (i +# 1#) (writeInt8Array# mba i (unI# (f (I# i))) s)
         _ -> s
 
-load :: ByteArray# -> [Int]
-load ba =
-  let len = sizeofByteArray# ba
-      w i acc =
-        case i ==# len of
-          0# -> w (i +# 1#) (I# (indexInt8Array# ba i) : acc)
-          _ -> reverse acc
-   in w 0# []
-
-m :: IO [Int]
-m =
+m :: Int -> IO (Int, Int)
+m (I# len) =
   IO
     (\s0 ->
-       case newPinnedByteArray# 8# s0 of
+       case newPinnedByteArray# len s0 of
          (# s1, mba #) ->
            case fill mba (+ 1) s1 of
              s2 ->
                case unsafeFreezeByteArray# mba s2 of
-                 (# s3, ba #) -> (# s3, load ba #))
+                 (# s3, ba #) ->
+                   (# s3
+                    , ( I# (indexInt8Array# ba 0#)
+                      , I# (indexInt8Array# ba (len -# 1#)))#))
 
 main :: IO ()
-main = m >>= print
+main = for_ [63, 511, 8191, 65535] $ m >=> print

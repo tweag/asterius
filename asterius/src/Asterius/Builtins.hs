@@ -33,18 +33,14 @@ wasmPageSize :: Int
 wasmPageSize = 65536
 
 data BuiltinsOptions = BuiltinsOptions
-  { nurseryMBlocks, objectPoolMBlocks, threadStateSize :: Int
+  { nurseryMBlocks, threadStateSize :: Int
   , tracing :: Bool
   }
 
 defaultBuiltinsOptions :: BuiltinsOptions
 defaultBuiltinsOptions =
   BuiltinsOptions
-    { nurseryMBlocks = 512
-    , objectPoolMBlocks = 512
-    , threadStateSize = 65536
-    , tracing = False
-    }
+    {nurseryMBlocks = 512, threadStateSize = 65536, tracing = False}
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -672,8 +668,6 @@ hsInitFunction BuiltinsOptions {..} =
     initCapability
     bd_nursery <-
       call' "allocGroup" [constI64 $ nurseryMBlocks * blocks_per_mblock] I64
-    bd_object_pool <-
-      call' "allocGroup" [constI64 $ objectPoolMBlocks * blocks_per_mblock] I64
     putLVal hp $ loadI64 bd_nursery offset_bdescr_start
     putLVal hpLim $
       bd_nursery `addInt64`
@@ -681,7 +675,7 @@ hsInitFunction BuiltinsOptions {..} =
         (fromIntegral ((mblock_size * nurseryMBlocks) - offset_first_bdescr))
     putLVal cccs (constI64 0)
     putLVal currentNursery bd_nursery
-    storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc bd_object_pool
+    storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc (constI64 0)
 
 rtsEvalHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> EDSL ()
 rtsEvalHelper BuiltinsOptions {..} create_thread_func_sym = do
@@ -924,21 +918,35 @@ allocateFunction BuiltinsOptions {..} =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     [_, n] <- params [I64, I64]
-    bd_object_pool <-
-      i64Local $ loadI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc
-    old_free <- i64Local $ loadI64 bd_object_pool offset_bdescr_free
-    new_free <- i64Local $ old_free `addInt64` (n `mulInt64` constI64 8)
+    bytes <- i64Local $ n `mulInt64` constI64 8
     if'
-      []
-      (new_free `gtUInt64`
-       (loadI64 bd_object_pool offset_bdescr_start `addInt64`
-        constI64
-          (fromIntegral
-             ((mblock_size * objectPoolMBlocks) - offset_first_bdescr))))
-      (emit $ emitErrorMessage [] "allocate failed: object pool overflow")
-      mempty
-    storeI64 bd_object_pool offset_bdescr_free new_free
-    emit old_free
+      [I64]
+      (bytes `geUInt64` constI64 block_size)
+      (do bd <-
+            call'
+              "allocGroup"
+              [ (bytes `addInt64` constI64 (block_size - 1)) `divUInt64`
+                constI64 block_size
+              ]
+              I64
+          emit $ loadI64 bd offset_bdescr_free)
+      (do if'
+            []
+            (eqZInt64 current_alloc `orInt32`
+             ((current_alloc_used `addInt64` bytes) `geUInt64`
+              constI64 block_size))
+            (call' "allocGroup" [constI64 1] I64 >>=
+             storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc)
+            mempty
+          bd <- i64Local current_alloc
+          free_prev <- i64Local $ loadI64 bd offset_bdescr_free
+          storeI64 bd offset_bdescr_free $ free_prev `addInt64` bytes
+          emit free_prev)
+  where
+    current_alloc = loadI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc
+    current_alloc_start = loadI64 current_alloc offset_bdescr_start
+    current_alloc_free = loadI64 current_alloc offset_bdescr_free
+    current_alloc_used = current_alloc_free `subInt64` current_alloc_start
 
 allocateWrapperFunction _ =
   runEDSL [F64] $ do
