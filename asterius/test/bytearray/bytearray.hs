@@ -2,6 +2,7 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-simpl -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
+import Control.Concurrent
 import Control.Monad
 import Data.Foldable
 import GHC.Exts
@@ -39,5 +40,13 @@ m (I# len) =
                     , ( I# (indexInt8Array# ba 0#)
                       , I# (indexInt8Array# ba (len -# 1#)))#))
 
+src :: [Int]
+src = w 0 []
+  where
+    w 100000 acc = acc
+    w i acc = w (succ i) (i : acc)
+
 main :: IO ()
-main = for_ [63, 511, 8191, 65535] $ m >=> print
+main = do
+  for_ [63, 511, 8191, 65535] $ m >=> print >=> const yield
+  print $ foldl' (+) (0 :: Int) src

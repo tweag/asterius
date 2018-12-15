@@ -10,8 +10,6 @@ HsInt block_size() { return BLOCK_SIZE; }
 
 HsInt mblock_size() { return MBLOCK_SIZE; }
 
-HsInt mblock_mask() { return MBLOCK_MASK; }
-
 HsInt blocks_per_mblock() { return BLOCKS_PER_MBLOCK; }
 
 HsInt offset_first_bdescr() { return (HsInt)FIRST_BDESCR(0); }
@@ -121,17 +119,6 @@ HsInt offset_Capability_free_trec_headers() {
 HsInt offset_Capability_transaction_tokens() {
   return offsetof(Capability, transaction_tokens);
 }
-HsInt sizeof_nursery() { return sizeof(nursery); }
-
-HsInt offset_nursery_blocks() { return offsetof(nursery, blocks); }
-
-HsInt offset_nursery_n_blocks() { return offsetof(nursery, n_blocks); }
-
-HsInt sizeof_RTS_FLAGS() { return sizeof(RTS_FLAGS); }
-
-HsInt sizeof_spEntry() { return sizeof(spEntry); }
-
-HsInt offset_spEntry_addr() { return offsetof(spEntry, addr); }
 
 HsInt sizeof_StgArrBytes() { return sizeof(StgArrBytes); }
 
@@ -313,62 +300,6 @@ HsInt offset_StgTSO_tot_stack_size() {
   return offsetof(StgTSO, tot_stack_size);
 }
 
-HsInt sizeof_StgTSOBlockInfo() { return sizeof(StgTSOBlockInfo); }
-
-HsInt offset_StgTSOBlockInfo_closure() {
-  return offsetof(StgTSOBlockInfo, closure);
-}
-
-HsInt offset_StgTSOBlockInfo_prev() { return offsetof(StgTSOBlockInfo, prev); }
-
-HsInt sizeof_Task() { return sizeof(Task); }
-
-HsInt offset_Task_cap() { return offsetof(Task, cap); }
-
-HsInt offset_Task_incall() { return offsetof(Task, incall); }
-
-HsInt offset_Task_n_spare_incalls() { return offsetof(Task, n_spare_incalls); }
-
-HsInt offset_Task_spare_incalls() { return offsetof(Task, spare_incalls); }
-
-HsInt offset_Task_worker() { return offsetof(Task, worker); }
-
-HsInt offset_Task_stopped() { return offsetof(Task, stopped); }
-
-HsInt offset_Task_running_finalizers() {
-  return offsetof(Task, running_finalizers);
-}
-
-HsInt offset_Task_preferred_capability() {
-  return offsetof(Task, preferred_capability);
-}
-
-HsInt offset_Task_next() { return offsetof(Task, next); }
-
-HsInt offset_Task_all_next() { return offsetof(Task, all_next); }
-
-HsInt offset_Task_all_prev() { return offsetof(Task, all_prev); }
-
-HsInt sizeof_InCall() { return sizeof(InCall); }
-
-HsInt offset_InCall_tso() { return offsetof(InCall, tso); }
-
-HsInt offset_InCall_suspended_tso() { return offsetof(InCall, suspended_tso); }
-
-HsInt offset_InCall_suspended_cap() { return offsetof(InCall, suspended_cap); }
-
-HsInt offset_InCall_rstat() { return offsetof(InCall, rstat); }
-
-HsInt offset_InCall_ret() { return offsetof(InCall, ret); }
-
-HsInt offset_InCall_task() { return offsetof(InCall, task); }
-
-HsInt offset_InCall_prev_stack() { return offsetof(InCall, prev_stack); }
-
-HsInt offset_InCall_prev() { return offsetof(InCall, prev); }
-
-HsInt offset_InCall_next() { return offsetof(InCall, next); }
-
 HsInt next_ThreadRunGHC() { return ThreadRunGHC; }
 
 HsInt next_ThreadInterpret() { return ThreadInterpret; }
@@ -404,14 +335,6 @@ HsInt blocked_BlockedOnCCall_Interruptible() {
 HsInt blocked_BlockedOnMsgThrowTo() { return BlockedOnMsgThrowTo; }
 
 HsInt blocked_ThreadMigrating() { return ThreadMigrating; }
-
-HsInt recent_ACTIVITY_YES() { return ACTIVITY_YES; }
-
-HsInt recent_ACTIVITY_MAYBE_NO() { return ACTIVITY_MAYBE_NO; }
-
-HsInt recent_ACTIVITY_INACTIVE() { return ACTIVITY_INACTIVE; }
-
-HsInt recent_ACTIVITY_DONE_GC() { return ACTIVITY_DONE_GC; }
 
 HsInt ret_HeapOverflow() { return HeapOverflow; }
 

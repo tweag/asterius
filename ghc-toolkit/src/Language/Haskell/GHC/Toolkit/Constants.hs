@@ -9,8 +9,6 @@ foreign import ccall unsafe "block_size" block_size :: Int
 
 foreign import ccall unsafe "mblock_size" mblock_size :: Int
 
-foreign import ccall unsafe "mblock_mask" mblock_mask :: Int
-
 foreign import ccall unsafe "blocks_per_mblock" blocks_per_mblock :: Int
 
 foreign import ccall unsafe "offset_first_bdescr" offset_first_bdescr :: Int
@@ -111,19 +109,6 @@ foreign import ccall unsafe "offset_Capability_free_trec_headers" offset_Capabil
 
 foreign import ccall unsafe "offset_Capability_transaction_tokens" offset_Capability_transaction_tokens
   :: Int
-
-foreign import ccall unsafe "sizeof_nursery" sizeof_nursery :: Int
-
-foreign import ccall unsafe "offset_nursery_blocks" offset_nursery_blocks :: Int
-
-foreign import ccall unsafe "offset_nursery_n_blocks" offset_nursery_n_blocks
-  :: Int
-
-foreign import ccall unsafe "sizeof_RTS_FLAGS" sizeof_RTS_FLAGS :: Int
-
-foreign import ccall unsafe "sizeof_spEntry" sizeof_spEntry :: Int
-
-foreign import ccall unsafe "offset_spEntry_addr" offset_spEntry_addr :: Int
 
 foreign import ccall unsafe "sizeof_StgArrBytes" sizeof_StgArrBytes :: Int
 
@@ -341,66 +326,6 @@ foreign import ccall unsafe "offset_StgTSO_alloc_limit" offset_StgTSO_alloc_limi
 foreign import ccall unsafe "offset_StgTSO_tot_stack_size" offset_StgTSO_tot_stack_size
   :: Int
 
-foreign import ccall unsafe "sizeof_StgTSOBlockInfo" sizeof_StgTSOBlockInfo
-  :: Int
-
-foreign import ccall unsafe "offset_StgTSOBlockInfo_closure" offset_StgTSOBlockInfo_closure
-  :: Int
-
-foreign import ccall unsafe "offset_StgTSOBlockInfo_prev" offset_StgTSOBlockInfo_prev
-  :: Int
-
-foreign import ccall unsafe "sizeof_Task" sizeof_Task :: Int
-
-foreign import ccall unsafe "offset_Task_cap" offset_Task_cap :: Int
-
-foreign import ccall unsafe "offset_Task_incall" offset_Task_incall :: Int
-
-foreign import ccall unsafe "offset_Task_n_spare_incalls" offset_Task_n_spare_incalls
-  :: Int
-
-foreign import ccall unsafe "offset_Task_spare_incalls" offset_Task_spare_incalls
-  :: Int
-
-foreign import ccall unsafe "offset_Task_worker" offset_Task_worker :: Int
-
-foreign import ccall unsafe "offset_Task_stopped" offset_Task_stopped :: Int
-
-foreign import ccall unsafe "offset_Task_running_finalizers" offset_Task_running_finalizers
-  :: Int
-
-foreign import ccall unsafe "offset_Task_preferred_capability" offset_Task_preferred_capability
-  :: Int
-
-foreign import ccall unsafe "offset_Task_next" offset_Task_next :: Int
-
-foreign import ccall unsafe "offset_Task_all_next" offset_Task_all_next :: Int
-
-foreign import ccall unsafe "offset_Task_all_prev" offset_Task_all_prev :: Int
-
-foreign import ccall unsafe "sizeof_InCall" sizeof_InCall :: Int
-
-foreign import ccall unsafe "offset_InCall_tso" offset_InCall_tso :: Int
-
-foreign import ccall unsafe "offset_InCall_suspended_tso" offset_InCall_suspended_tso
-  :: Int
-
-foreign import ccall unsafe "offset_InCall_suspended_cap" offset_InCall_suspended_cap
-  :: Int
-
-foreign import ccall unsafe "offset_InCall_rstat" offset_InCall_rstat :: Int
-
-foreign import ccall unsafe "offset_InCall_ret" offset_InCall_ret :: Int
-
-foreign import ccall unsafe "offset_InCall_task" offset_InCall_task :: Int
-
-foreign import ccall unsafe "offset_InCall_prev_stack" offset_InCall_prev_stack
-  :: Int
-
-foreign import ccall unsafe "offset_InCall_prev" offset_InCall_prev :: Int
-
-foreign import ccall unsafe "offset_InCall_next" offset_InCall_next :: Int
-
 foreign import ccall unsafe "next_ThreadRunGHC" next_ThreadRunGHC :: Int
 
 foreign import ccall unsafe "next_ThreadInterpret" next_ThreadInterpret :: Int
@@ -442,17 +367,6 @@ foreign import ccall unsafe "blocked_BlockedOnMsgThrowTo" blocked_BlockedOnMsgTh
   :: Int
 
 foreign import ccall unsafe "blocked_ThreadMigrating" blocked_ThreadMigrating
-  :: Int
-
-foreign import ccall unsafe "recent_ACTIVITY_YES" recent_ACTIVITY_YES :: Int
-
-foreign import ccall unsafe "recent_ACTIVITY_MAYBE_NO" recent_ACTIVITY_MAYBE_NO
-  :: Int
-
-foreign import ccall unsafe "recent_ACTIVITY_INACTIVE" recent_ACTIVITY_INACTIVE
-  :: Int
-
-foreign import ccall unsafe "recent_ACTIVITY_DONE_GC" recent_ACTIVITY_DONE_GC
   :: Int
 
 foreign import ccall unsafe "ret_HeapOverflow" ret_HeapOverflow :: Int

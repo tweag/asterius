@@ -22,6 +22,7 @@ import Asterius.Internals
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
+import Data.Functor
 import Data.List
 import qualified Data.Map.Strict as Map
 import Data.Maybe
@@ -190,6 +191,7 @@ rtsAsteriusModule opts =
         , ("__asterius_toJSArrayBuffer", toJSArrayBufferFunction opts)
         , ("__asterius_fromJSString", fromJSStringFunction opts)
         , ("__asterius_fromJSArray", fromJSArrayFunction opts)
+        , ("threadPaused", threadPausedFunction opts)
         ] <>
         map (\(func_sym, (_, func)) -> (func_sym, func)) byteStringCBits
     }
@@ -632,7 +634,7 @@ generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {
         [I64] -> ([F64], Unary ConvertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateWrapperFunction, allocateProxyFunction, allocGroupFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateWrapperFunction, allocateProxyFunction, allocGroupFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL [] $ do
@@ -663,16 +665,14 @@ initCapability = do
   storeI64 mainCapability (offset_Capability_r + offset_StgRegTable_rCurrentTSO) $
     constI64 0
 
-hsInitFunction BuiltinsOptions {..} =
+hsInitFunction _ =
   runEDSL [] $ do
     initCapability
-    bd_nursery <-
-      call' "allocGroup" [constI64 $ nurseryMBlocks * blocks_per_mblock] I64
-    putLVal hp $ loadI64 bd_nursery offset_bdescr_start
-    putLVal hpLim $
-      bd_nursery `addInt64`
-      constI64
-        (fromIntegral ((mblock_size * nurseryMBlocks) - offset_first_bdescr))
+    bd_nursery <- call' "allocGroup" [constI64 1] I64
+    block_nursery <- i64Local $ loadI64 bd_nursery offset_bdescr_start
+    putLVal hp block_nursery
+    putLVal hpLim $ block_nursery `addInt64` constI64 block_size
+    putLVal hpAlloc (constI64 0)
     putLVal cccs (constI64 0)
     putLVal currentNursery bd_nursery
     storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc (constI64 0)
@@ -771,45 +771,17 @@ dirtySTACK _ stack =
     (storeI32 stack offset_StgStack_dirty $ constI32 1)
     mempty
 
-scheduleHandleThreadFinished :: Expression -> EDSL Expression
-scheduleHandleThreadFinished t = do
-  if'
-    []
-    (loadI16 t offset_StgTSO_what_next `eqInt32` constI32 next_ThreadComplete)
-    (do callImport
-          "__asterius_setTSOret"
-          [ loadI32 t offset_StgTSO_id
-          , Unary ConvertUInt64ToFloat64 $
-            loadI64
-              (loadI64 (loadI64 t offset_StgTSO_stackobj) offset_StgStack_sp)
-              8
-          ]
-        callImport
-          "__asterius_setTSOrstat"
-          [loadI32 t offset_StgTSO_id, constI32 scheduler_Success])
-    (do callImport
-          "__asterius_setTSOret"
-          [loadI32 t offset_StgTSO_id, ConstF64 0]
-        callImport
-          "__asterius_setTSOrstat"
-          [loadI32 t offset_StgTSO_id, constI32 scheduler_Killed])
-  storeI64 t offset_StgTSO_bound $ constI64 0
-  pure $ constI32 1
-
-schedule :: Expression -> EDSL ()
-schedule t = do
-  ret <- i32MutLocal
-  block' [] $ \sched_block_lbl ->
-    loop' [] $ \sched_loop_lbl -> do
-      if'
-        []
-        (loadI8 mainCapability offset_Capability_in_haskell)
-        (emit
-           (emitErrorMessage
-              []
-              "schedule failed: scheduler reentered from Haskell"))
-        mempty
-      loop' [] $ \_ -> do
+scheduleWaitThreadFunction _ =
+  runEDSL [] $ do
+    t <- param I64
+    ret <- i32MutLocal
+    block' [] $ \sched_block_lbl ->
+      loop' [] $ \sched_loop_lbl -> do
+        if'
+          []
+          (loadI8 mainCapability offset_Capability_in_haskell)
+          (emit (emitErrorMessage [] "Scheduler reentered from Haskell"))
+          mempty
         storeI64
           mainCapability
           (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
@@ -826,23 +798,59 @@ schedule t = do
           mainCapability
           (offset_Capability_r + offset_StgRegTable_rCurrentTSO) $
           constI64 0
-        switchI64 (extendUInt32 (getLVal ret)) $ \brake ->
-          ( [ (ret_HeapOverflow, emit $ emitErrorMessage [] "HeapOverflow")
-            , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
-            , (ret_ThreadYielding, emit $ emitErrorMessage [] "ThreadYielding")
-            , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
-            , ( ret_ThreadFinished
-              , do scheduleHandleThreadFinished t >>=
-                     break' sched_block_lbl . Just
-                   brake)
-            ]
-          , emit $ emitErrorMessage [] "Illegal thread return code")
-        break' sched_loop_lbl Nothing
-
-scheduleWaitThreadFunction _ =
-  runEDSL [] $ do
-    tso <- param I64
-    schedule tso
+        switchI64 (extendUInt32 (getLVal ret)) $
+          const
+            ( [ ( ret_HeapOverflow
+                , do bytes <- i64Local $ getLVal hpAlloc
+                     putLVal hpAlloc $ constI64 0
+                     if'
+                       []
+                       (eqZInt64 bytes)
+                       (emit $ emitErrorMessage [] "HeapOverflow with HpAlloc=0")
+                       mempty
+                     blocks <- i64Local $ bytesToBlocks bytes
+                     bd <- call' "allocGroup" [blocks] I64
+                     block <- i64Local $ loadI64 bd offset_bdescr_start
+                     putLVal currentNursery bd
+                     putLVal hp block
+                     putLVal hpLim $
+                       block `addInt64` (constI64 block_size `mulInt64` blocks)
+                     break' sched_loop_lbl Nothing)
+              , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
+              , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
+              , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
+              , ( ret_ThreadFinished
+                , if'
+                    []
+                    (loadI16 t offset_StgTSO_what_next `eqInt32`
+                     constI32 next_ThreadComplete)
+                    (do callImport
+                          "__asterius_setTSOret"
+                          [ loadI32 t offset_StgTSO_id
+                          , Unary ConvertUInt64ToFloat64 $
+                            loadI64
+                              (loadI64
+                                 (loadI64 t offset_StgTSO_stackobj)
+                                 offset_StgStack_sp)
+                              8
+                          ]
+                        callImport
+                          "__asterius_setTSOrstat"
+                          [ loadI32 t offset_StgTSO_id
+                          , constI32 scheduler_Success
+                          ]
+                        break' sched_block_lbl Nothing)
+                    (do callImport
+                          "__asterius_setTSOret"
+                          [loadI32 t offset_StgTSO_id, ConstF64 0]
+                        callImport
+                          "__asterius_setTSOrstat"
+                          [ loadI32 t offset_StgTSO_id
+                          , constI32 scheduler_Killed
+                          ]
+                        break' sched_block_lbl Nothing))
+              ]
+            , emit $ emitErrorMessage [] "Illegal thread return code")
 
 createThreadFunction _ =
   runEDSL [I64] $ do
@@ -867,7 +875,6 @@ createThreadFunction _ =
     storeI32 tso_p offset_StgTSO_flags $ constI32 0
     storeI32 tso_p offset_StgTSO_dirty $ constI32 1
     storeI32 tso_p offset_StgTSO_saved_errno $ constI32 0
-    storeI64 tso_p offset_StgTSO_bound $ constI64 0
     storeI64 tso_p offset_StgTSO_cap cap
     storeI64 tso_p offset_StgTSO_stackobj stack_p
     storeI32 tso_p offset_StgTSO_tot_stack_size $ wrapInt64 stack_size_w
@@ -914,6 +921,10 @@ createStrictIOThreadFunction _ =
     , symbol "stg_enter_info"
     ]
 
+bytesToBlocks :: Expression -> Expression
+bytesToBlocks bytes =
+  (bytes `addInt64` constI64 (block_size - 1)) `divUInt64` constI64 block_size
+
 allocateFunction BuiltinsOptions {..} =
   runEDSL [I64] $ do
     setReturnTypes [I64]
@@ -922,13 +933,7 @@ allocateFunction BuiltinsOptions {..} =
     if'
       [I64]
       (bytes `geUInt64` constI64 block_size)
-      (do bd <-
-            call'
-              "allocGroup"
-              [ (bytes `addInt64` constI64 (block_size - 1)) `divUInt64`
-                constI64 block_size
-              ]
-              I64
+      (do bd <- call' "allocGroup" [bytesToBlocks bytes] I64
           emit $ loadI64 bd offset_bdescr_free)
       (do if'
             []
@@ -1234,6 +1239,8 @@ fromJSArrayFunction _ =
         [Unary ConvertUInt64ToFloat64 arr]
         F64
     emit addr
+
+threadPausedFunction _ = runEDSL [] $ void $ params [I64, I64]
 
 getF64GlobalRegFunction ::
      BuiltinsOptions -> UnresolvedGlobalReg -> AsteriusFunction

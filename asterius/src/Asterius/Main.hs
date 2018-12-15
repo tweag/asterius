@@ -60,7 +60,6 @@ data Task = Task
   , input, outputWasm, outputJS, outputHTML :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
   , binaryen, debug, outputIR, run :: Bool
-  , nurserySize :: Int
   , asteriusInstanceCallback :: String
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
@@ -146,8 +145,7 @@ ahcLinkMain task@Task {..} = do
        putStrLn $ "[INFO] Loading boot library store from " <> show store_path
        decodeStore store_path
   putStrLn "[INFO] Populating the store with builtin routines"
-  let builtins_opts =
-        defaultBuiltinsOptions {nurseryMBlocks = nurserySize, tracing = debug}
+  let builtins_opts = defaultBuiltinsOptions {tracing = debug}
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "[INFO] Compiling " <> input <> " to Cmm"
   (c, get_ffi_mod) <- addFFIProcessor mempty
