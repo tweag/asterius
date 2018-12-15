@@ -85,6 +85,7 @@ void PassRegistry::registerPasses() {
   registerPass("inlining", "inline functions (you probably want inlining-optimizing)", createInliningPass);
   registerPass("inlining-optimizing", "inline functions and optimizes where we inlined", createInliningOptimizingPass);
   registerPass("legalize-js-interface", "legalizes i64 types on the import/export boundary", createLegalizeJSInterfacePass);
+  registerPass("legalize-js-interface-minimally", "legalizes i64 types on the import/export boundary in a minimal manner, only on things only JS will call", createLegalizeJSInterfaceMinimallyPass);
   registerPass("local-cse", "common subexpression elimination inside basic blocks", createLocalCSEPass);
   registerPass("log-execution", "instrument the build with logging of where execution goes", createLogExecutionPass);
   registerPass("i64-to-i32-lowering", "lower all uses of i64s to use i32s instead", createI64ToI32LoweringPass);
@@ -98,6 +99,7 @@ void PassRegistry::registerPasses() {
   registerPass("minify-imports", "minifies import names (only those, and not export names), and emits a mapping to the minified ones", createMinifyImportsPass);
   registerPass("minify-imports-and-exports", "minifies both import and export names, and emits a mapping to the minified ones", createMinifyImportsAndExportsPass);
   registerPass("nm", "name list", createNameListPass);
+  registerPass("no-exit-runtime", "removes calls to atexit(), which is valid if the C runtime will never be exited", createNoExitRuntimePass);
   registerPass("optimize-instructions", "optimizes instruction combinations", createOptimizeInstructionsPass);
   registerPass("optimize-stack-ir", "optimize Stack IR", createOptimizeStackIRPass);
   registerPass("pick-load-signs", "pick load signs based on their uses", createPickLoadSignsPass);

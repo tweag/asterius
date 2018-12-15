@@ -8,6 +8,11 @@ BinaryenExpressionRef BinaryenConstInt64(BinaryenModuleRef module, int64_t x) {
   return BinaryenConst(module, BinaryenLiteralInt64(x));
 }
 
+BinaryenExpressionRef BinaryenConstVec128(BinaryenModuleRef module,
+                                          const uint8_t x[16]) {
+  return BinaryenConst(module, BinaryenLiteralVec128(x));
+}
+
 BinaryenExpressionRef BinaryenConstFloat32(BinaryenModuleRef module, float x) {
   return BinaryenConst(module, BinaryenLiteralFloat32(x));
 }

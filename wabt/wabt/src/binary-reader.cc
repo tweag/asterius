@@ -1562,6 +1562,15 @@ Result BinaryReader::ReadDylinkSection(Offset section_size) {
   CHECK_RESULT(ReadU32Leb128(&table_align, "table_align"));
   CALLBACK(OnDylinkInfo, mem_size, mem_align, table_size, table_align);
 
+  uint32_t count;
+  CHECK_RESULT(ReadU32Leb128(&count, "needed_dynlibs"));
+  CALLBACK(OnDylinkNeededCount, count);
+  while (count--) {
+    string_view so_name;
+    CHECK_RESULT(ReadStr(&so_name, "dylib so_name"));
+    CALLBACK(OnDylinkNeeded, so_name);
+  }
+
   CALLBACK0(EndDylinkSection);
   return Result::Ok;
 }
@@ -2024,11 +2033,11 @@ Result BinaryReader::ReadCodeSection(Offset section_size) {
     Index func_index = num_func_imports_ + i;
     Offset func_offset = state_.offset;
     state_.offset = func_offset;
-    CALLBACK(BeginFunctionBody, func_index);
     uint32_t body_size;
     CHECK_RESULT(ReadU32Leb128(&body_size, "function body size"));
     Offset body_start_offset = state_.offset;
     Offset end_offset = body_start_offset + body_size;
+    CALLBACK(BeginFunctionBody, func_index, body_size);
 
     uint64_t total_locals = 0;
     Index num_local_decls;

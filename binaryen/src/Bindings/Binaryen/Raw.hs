@@ -114,6 +114,21 @@ foreign import ccall unsafe "BinaryenAtomicWaitId" c_BinaryenAtomicWaitId
 foreign import ccall unsafe "BinaryenAtomicWakeId" c_BinaryenAtomicWakeId
   :: BinaryenExpressionId
 
+foreign import ccall unsafe "BinaryenSIMDExtractId" c_BinaryenSIMDExtractId
+  :: BinaryenExpressionId
+
+foreign import ccall unsafe "BinaryenSIMDReplaceId" c_BinaryenSIMDReplaceId
+  :: BinaryenExpressionId
+
+foreign import ccall unsafe "BinaryenSIMDShuffleId" c_BinaryenSIMDShuffleId
+  :: BinaryenExpressionId
+
+foreign import ccall unsafe "BinaryenSIMDBitselectId" c_BinaryenSIMDBitselectId
+  :: BinaryenExpressionId
+
+foreign import ccall unsafe "BinaryenSIMDShiftId" c_BinaryenSIMDShiftId
+  :: BinaryenExpressionId
+
 type BinaryenExternalKind = Word32
 
 foreign import ccall unsafe "BinaryenExternalFunction" c_BinaryenExternalFunction
@@ -162,6 +177,9 @@ foreign import ccall unsafe "BinaryenConstFloat32" c_BinaryenConstFloat32
 
 foreign import ccall unsafe "BinaryenConstFloat64" c_BinaryenConstFloat64
   :: BinaryenModuleRef -> Double -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenConstVec128" c_BinaryenConstVec128
+  :: BinaryenModuleRef -> Ptr Word8 -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenConstFloat32Bits" c_BinaryenConstFloat32Bits
   :: BinaryenModuleRef -> Int32 -> IO BinaryenExpressionRef
@@ -563,6 +581,410 @@ foreign import ccall unsafe "BinaryenTruncSatUFloat64ToInt32" c_BinaryenTruncSat
 foreign import ccall unsafe "BinaryenTruncSatUFloat64ToInt64" c_BinaryenTruncSatUFloat64ToInt64
   :: BinaryenOp
 
+foreign import ccall unsafe "BinaryenSplatVecI8x16" c_BinaryenSplatVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtractLaneSVecI8x16" c_BinaryenExtractLaneSVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtractLaneUVecI8x16" c_BinaryenExtractLaneUVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenReplaceLaneVecI8x16" c_BinaryenReplaceLaneVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSplatVecI16x8" c_BinaryenSplatVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtractLaneSVecI16x8" c_BinaryenExtractLaneSVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtractLaneUVecI16x8" c_BinaryenExtractLaneUVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenReplaceLaneVecI16x8" c_BinaryenReplaceLaneVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSplatVecI32x4" c_BinaryenSplatVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtractLaneVecI32x4" c_BinaryenExtractLaneVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenReplaceLaneVecI32x4" c_BinaryenReplaceLaneVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSplatVecI64x2" c_BinaryenSplatVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtractLaneVecI64x2" c_BinaryenExtractLaneVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenReplaceLaneVecI64x2" c_BinaryenReplaceLaneVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSplatVecF32x4" c_BinaryenSplatVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtractLaneVecF32x4" c_BinaryenExtractLaneVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenReplaceLaneVecF32x4" c_BinaryenReplaceLaneVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSplatVecF64x2" c_BinaryenSplatVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenExtractLaneVecF64x2" c_BinaryenExtractLaneVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenReplaceLaneVecF64x2" c_BinaryenReplaceLaneVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenEqVecI8x16" c_BinaryenEqVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNeVecI8x16" c_BinaryenNeVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLtSVecI8x16" c_BinaryenLtSVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLtUVecI8x16" c_BinaryenLtUVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGtSVecI8x16" c_BinaryenGtSVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGtUVecI8x16" c_BinaryenGtUVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLeSVecI8x16" c_BinaryenLeSVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLeUVecI8x16" c_BinaryenLeUVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGeSVecI8x16" c_BinaryenGeSVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGeUVecI8x16" c_BinaryenGeUVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenEqVecI16x8" c_BinaryenEqVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNeVecI16x8" c_BinaryenNeVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLtSVecI16x8" c_BinaryenLtSVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLtUVecI16x8" c_BinaryenLtUVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGtSVecI16x8" c_BinaryenGtSVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGtUVecI16x8" c_BinaryenGtUVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLeSVecI16x8" c_BinaryenLeSVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLeUVecI16x8" c_BinaryenLeUVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGeSVecI16x8" c_BinaryenGeSVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGeUVecI16x8" c_BinaryenGeUVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenEqVecI32x4" c_BinaryenEqVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNeVecI32x4" c_BinaryenNeVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLtSVecI32x4" c_BinaryenLtSVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLtUVecI32x4" c_BinaryenLtUVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGtSVecI32x4" c_BinaryenGtSVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGtUVecI32x4" c_BinaryenGtUVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLeSVecI32x4" c_BinaryenLeSVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLeUVecI32x4" c_BinaryenLeUVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGeSVecI32x4" c_BinaryenGeSVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGeUVecI32x4" c_BinaryenGeUVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenEqVecF32x4" c_BinaryenEqVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNeVecF32x4" c_BinaryenNeVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLtVecF32x4" c_BinaryenLtVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGtVecF32x4" c_BinaryenGtVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLeVecF32x4" c_BinaryenLeVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGeVecF32x4" c_BinaryenGeVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenEqVecF64x2" c_BinaryenEqVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNeVecF64x2" c_BinaryenNeVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLtVecF64x2" c_BinaryenLtVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGtVecF64x2" c_BinaryenGtVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenLeVecF64x2" c_BinaryenLeVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenGeVecF64x2" c_BinaryenGeVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNotVec128" c_BinaryenNotVec128
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAndVec128" c_BinaryenAndVec128
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenOrVec128" c_BinaryenOrVec128 :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenXorVec128" c_BinaryenXorVec128
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNegVecI8x16" c_BinaryenNegVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAnyTrueVecI8x16" c_BinaryenAnyTrueVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAllTrueVecI8x16" c_BinaryenAllTrueVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShlVecI8x16" c_BinaryenShlVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShrSVecI8x16" c_BinaryenShrSVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShrUVecI8x16" c_BinaryenShrUVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddVecI8x16" c_BinaryenAddVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddSatSVecI8x16" c_BinaryenAddSatSVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddSatUVecI8x16" c_BinaryenAddSatUVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubVecI8x16" c_BinaryenSubVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubSatSVecI8x16" c_BinaryenSubSatSVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubSatUVecI8x16" c_BinaryenSubSatUVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMulVecI8x16" c_BinaryenMulVecI8x16
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNegVecI16x8" c_BinaryenNegVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAnyTrueVecI16x8" c_BinaryenAnyTrueVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAllTrueVecI16x8" c_BinaryenAllTrueVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShlVecI16x8" c_BinaryenShlVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShrSVecI16x8" c_BinaryenShrSVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShrUVecI16x8" c_BinaryenShrUVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddVecI16x8" c_BinaryenAddVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddSatSVecI16x8" c_BinaryenAddSatSVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddSatUVecI16x8" c_BinaryenAddSatUVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubVecI16x8" c_BinaryenSubVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubSatSVecI16x8" c_BinaryenSubSatSVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubSatUVecI16x8" c_BinaryenSubSatUVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMulVecI16x8" c_BinaryenMulVecI16x8
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNegVecI32x4" c_BinaryenNegVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAnyTrueVecI32x4" c_BinaryenAnyTrueVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAllTrueVecI32x4" c_BinaryenAllTrueVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShlVecI32x4" c_BinaryenShlVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShrSVecI32x4" c_BinaryenShrSVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShrUVecI32x4" c_BinaryenShrUVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddVecI32x4" c_BinaryenAddVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubVecI32x4" c_BinaryenSubVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMulVecI32x4" c_BinaryenMulVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNegVecI64x2" c_BinaryenNegVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAnyTrueVecI64x2" c_BinaryenAnyTrueVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAllTrueVecI64x2" c_BinaryenAllTrueVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShlVecI64x2" c_BinaryenShlVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShrSVecI64x2" c_BinaryenShrSVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenShrUVecI64x2" c_BinaryenShrUVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddVecI64x2" c_BinaryenAddVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubVecI64x2" c_BinaryenSubVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAbsVecF32x4" c_BinaryenAbsVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNegVecF32x4" c_BinaryenNegVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSqrtVecF32x4" c_BinaryenSqrtVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddVecF32x4" c_BinaryenAddVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubVecF32x4" c_BinaryenSubVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMulVecF32x4" c_BinaryenMulVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenDivVecF32x4" c_BinaryenDivVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMinVecF32x4" c_BinaryenMinVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMaxVecF32x4" c_BinaryenMaxVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAbsVecF64x2" c_BinaryenAbsVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenNegVecF64x2" c_BinaryenNegVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSqrtVecF64x2" c_BinaryenSqrtVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenAddVecF64x2" c_BinaryenAddVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenSubVecF64x2" c_BinaryenSubVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMulVecF64x2" c_BinaryenMulVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenDivVecF64x2" c_BinaryenDivVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMinVecF64x2" c_BinaryenMinVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenMaxVecF64x2" c_BinaryenMaxVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatSVecF32x4ToVecI32x4" c_BinaryenTruncSatSVecF32x4ToVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatUVecF32x4ToVecI32x4" c_BinaryenTruncSatUVecF32x4ToVecI32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatSVecF64x2ToVecI64x2" c_BinaryenTruncSatSVecF64x2ToVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenTruncSatUVecF64x2ToVecI64x2" c_BinaryenTruncSatUVecF64x2ToVecI64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenConvertSVecI32x4ToVecF32x4" c_BinaryenConvertSVecI32x4ToVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenConvertUVecI32x4ToVecF32x4" c_BinaryenConvertUVecI32x4ToVecF32x4
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenConvertSVecI64x2ToVecF64x2" c_BinaryenConvertSVecI64x2ToVecF64x2
+  :: BinaryenOp
+
+foreign import ccall unsafe "BinaryenConvertUVecI64x2ToVecF64x2" c_BinaryenConvertUVecI64x2ToVecF64x2
+  :: BinaryenOp
+
 data BinaryenExpression
 
 type BinaryenExpressionRef = Ptr BinaryenExpression
@@ -721,6 +1143,34 @@ foreign import ccall unsafe "BinaryenAtomicWake" c_BinaryenAtomicWake
   :: BinaryenModuleRef ->
   BinaryenExpressionRef ->
     BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDExtract" c_BinaryenSIMDExtract
+  :: BinaryenModuleRef ->
+  BinaryenOp ->
+    BinaryenExpressionRef -> Word8 -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDReplace" c_BinaryenSIMDReplace
+  :: BinaryenModuleRef ->
+  BinaryenOp ->
+    BinaryenExpressionRef ->
+      Word8 -> BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDShuffle" c_BinaryenSIMDShuffle
+  :: BinaryenModuleRef ->
+  BinaryenExpressionRef ->
+    BinaryenExpressionRef -> Ptr Word8 -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDBitselect" c_BinaryenSIMDBitselect
+  :: BinaryenModuleRef ->
+  BinaryenExpressionRef ->
+    BinaryenExpressionRef ->
+      BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDShift" c_BinaryenSIMDShift
+  :: BinaryenModuleRef ->
+  BinaryenOp ->
+    BinaryenExpressionRef ->
+      BinaryenExpressionRef -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenExpressionGetId" c_BinaryenExpressionGetId
   :: BinaryenExpressionRef -> IO BinaryenExpressionId
@@ -960,6 +1410,54 @@ foreign import ccall unsafe "BinaryenAtomicWakeGetPtr" c_BinaryenAtomicWakeGetPt
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenAtomicWakeGetWakeCount" c_BinaryenAtomicWakeGetWakeCount
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDExtractGetOp" c_BinaryenSIMDExtractGetOp
+  :: BinaryenExpressionRef -> IO BinaryenOp
+
+foreign import ccall unsafe "BinaryenSIMDExtractGetVec" c_BinaryenSIMDExtractGetVec
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDExtractGetIdx" c_BinaryenSIMDExtractGetIdx
+  :: BinaryenExpressionRef -> IO Word8
+
+foreign import ccall unsafe "BinaryenSIMDReplaceGetOp" c_BinaryenSIMDReplaceGetOp
+  :: BinaryenExpressionRef -> IO BinaryenOp
+
+foreign import ccall unsafe "BinaryenSIMDReplaceGetVec" c_BinaryenSIMDReplaceGetVec
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDReplaceGetIdx" c_BinaryenSIMDReplaceGetIdx
+  :: BinaryenExpressionRef -> IO Word8
+
+foreign import ccall unsafe "BinaryenSIMDReplaceGetValue" c_BinaryenSIMDReplaceGetValue
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDShuffleGetLeft" c_BinaryenSIMDShuffleGetLeft
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDShuffleGetRight" c_BinaryenSIMDShuffleGetRight
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDShuffleGetMask" c_BinaryenSIMDShuffleGetMask
+  :: BinaryenExpressionRef -> Ptr Word8 -> IO ()
+
+foreign import ccall unsafe "BinaryenSIMDBitselectGetLeft" c_BinaryenSIMDBitselectGetLeft
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDBitselectGetRight" c_BinaryenSIMDBitselectGetRight
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDBitselectGetCond" c_BinaryenSIMDBitselectGetCond
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDShiftGetOp" c_BinaryenSIMDShiftGetOp
+  :: BinaryenExpressionRef -> IO BinaryenOp
+
+foreign import ccall unsafe "BinaryenSIMDShiftGetVec" c_BinaryenSIMDShiftGetVec
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenSIMDShiftGetShift" c_BinaryenSIMDShiftGetShift
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
 data BinaryenFunction

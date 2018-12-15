@@ -45,5 +45,6 @@ main =
                   ]
                 , ["--build", wabt_builddir, "--target", "install"]
                 ] $ \args -> run (simpleProgram "cmake") args ""
+            removePathForcibly $ pwd </> "wabt" </> "bin"
             pure lbi
       }

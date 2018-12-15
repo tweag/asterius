@@ -254,6 +254,11 @@ Result BinaryReaderLogging::OnExport(Index index,
   return reader_->OnExport(index, kind, item_index, name);
 }
 
+Result BinaryReaderLogging::BeginFunctionBody(Index value, Offset size) {
+  LOGF("BeginFunctionBody(%" PRIindex ", size:%" PRIzd ")\n", value, size);
+  return reader_->BeginFunctionBody(value, size);
+}
+
 Result BinaryReaderLogging::OnLocalDecl(Index decl_index,
                                         Index count,
                                         Type type) {
@@ -479,6 +484,12 @@ Result BinaryReaderLogging::OnDylinkInfo(uint32_t mem_size,
   return reader_->OnDylinkInfo(mem_size, mem_align, table_size, table_align);
 }
 
+Result BinaryReaderLogging::OnDylinkNeeded(string_view so_name) {
+  LOGF("OnDylinkNeeded(name: " PRIstringview ")\n",
+       WABT_PRINTF_STRING_VIEW_ARG(so_name));
+  return reader_->OnDylinkNeeded(so_name);
+}
+
 Result BinaryReaderLogging::OnRelocCount(Index count,
                                          Index section_index) {
   LOGF("OnRelocCount(count: %" PRIindex ", section: %" PRIindex ")\n", count,
@@ -663,7 +674,6 @@ DEFINE_END(EndStartSection)
 
 DEFINE_BEGIN(BeginCodeSection)
 DEFINE_INDEX(OnFunctionBodyCount)
-DEFINE_INDEX(BeginFunctionBody)
 DEFINE_INDEX(EndFunctionBody)
 DEFINE_INDEX(OnLocalDeclCount)
 DEFINE_LOAD_STORE_OPCODE(OnAtomicLoadExpr);
@@ -739,6 +749,7 @@ DEFINE_END(EndRelocSection)
 DEFINE_INDEX_INDEX(OnInitExprGetGlobalExpr, "index", "global_index")
 
 DEFINE_BEGIN(BeginDylinkSection)
+DEFINE_INDEX(OnDylinkNeededCount)
 DEFINE_END(EndDylinkSection)
 
 DEFINE_BEGIN(BeginLinkingSection)

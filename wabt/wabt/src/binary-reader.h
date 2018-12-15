@@ -168,7 +168,7 @@ class BinaryReaderDelegate {
   /* Code section */
   virtual Result BeginCodeSection(Offset size) = 0;
   virtual Result OnFunctionBodyCount(Index count) = 0;
-  virtual Result BeginFunctionBody(Index index) = 0;
+  virtual Result BeginFunctionBody(Index index, Offset size) = 0;
   virtual Result OnLocalDeclCount(Index count) = 0;
   virtual Result OnLocalDecl(Index decl_index, Index count, Type type) = 0;
 
@@ -328,6 +328,8 @@ class BinaryReaderDelegate {
                               uint32_t mem_align,
                               uint32_t table_size,
                               uint32_t table_align) = 0;
+  virtual Result OnDylinkNeededCount(Index count) = 0;
+  virtual Result OnDylinkNeeded(string_view so_name) = 0;
   virtual Result EndDylinkSection() = 0;
 
   /* Linking section */
