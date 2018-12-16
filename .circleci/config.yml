@@ -58,6 +58,7 @@ jobs:
             stack --no-terminal test asterius:teletype
             stack --no-terminal test asterius:bytearray
             stack --no-terminal test asterius:bigint
+            stack --no-terminal test asterius:vault
             stack --no-terminal test asterius:fib --test-arguments="--binaryen"
             stack --no-terminal test asterius:jsffi --test-arguments="--binaryen"
             stack --no-terminal test asterius:array --test-arguments="--binaryen"
@@ -66,6 +67,7 @@ jobs:
             stack --no-terminal test asterius:teletype --test-arguments="--binaryen"
             stack --no-terminal test asterius:bytearray --test-arguments="--binaryen"
             stack --no-terminal test asterius:bigint --test-arguments="--binaryen"
+            stack --no-terminal test asterius:vault --test-arguments="--binaryen"
 
   asterius-build-docker:
     docker:

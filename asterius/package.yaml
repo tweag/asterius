@@ -28,6 +28,7 @@ extra-source-files:
   - test/teletype/**/*.hs
   - test/bytearray/**/*.hs
   - test/bigint/**/*.hs
+  - test/vault/**/*.hs
 
 data-files:
   - rts/rts.js
@@ -206,6 +207,13 @@ tests:
   bigint:
     source-dirs: test
     main: bigint.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
+    dependencies:
+      - asterius
+
+  vault:
+    source-dirs: test
+    main: vault.hs
     ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius

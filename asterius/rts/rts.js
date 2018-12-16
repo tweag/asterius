@@ -71,7 +71,8 @@
       __asterius_mem_size = null,
       __asterius_last_mblock = null,
       __asterius_last_block = null,
-      __asterius_TSOs = [,];
+      __asterius_TSOs = [,],
+      __asterius_vault = req.vault ? req.vault : new Map();
     function __asterius_show_I(x) {
       return x.toString(16).padStart(8, "0");
     }
@@ -135,12 +136,26 @@
         );
       }
     }
+    function __asterius_decodeLatin1(buf) {
+      return new Uint8Array(buf).reduce(
+        (tot, byte) => tot + String.fromCodePoint(byte),
+        ""
+      );
+    }
     const __asterius_jsffi_instance = {
       JSRefs: __asterius_jsffi_JSRefs,
       newJSRef: __asterius_jsffi_newJSRef,
       newTempJSRef: __asterius_jsffi_newTempJSRef,
       mutTempJSRef: __asterius_jsffi_mutTempJSRef,
       freezeTempJSRef: __asterius_jsffi_freezeTempJSRef,
+      vaultInsert: (k, v) =>
+        __asterius_jsffi_instance.vault.set(__asterius_decodeLatin1(k), v),
+      vaultHas: k =>
+        __asterius_jsffi_instance.vault.has(__asterius_decodeLatin1(k)),
+      vaultLookup: k =>
+        __asterius_jsffi_instance.vault.get(__asterius_decodeLatin1(k)),
+      vaultDelete: k =>
+        __asterius_jsffi_instance.vault.delete(__asterius_decodeLatin1(k)),
       makeHaskellCallback: s => () => {
         const export_funcs = __asterius_wasm_instance.exports;
         export_funcs.rts_evalIO(__asterius_deRefStablePtr(s));
@@ -898,6 +913,7 @@
       wasmInstance: resultObject.instance,
       staticsSymbolMap: req.staticsSymbolMap,
       functionSymbolMap: req.functionSymbolMap,
+      vault: __asterius_vault,
       __asterius_jsffi_JSRefs: __asterius_jsffi_JSRefs,
       __asterius_SPT: __asterius_SPT
     });
