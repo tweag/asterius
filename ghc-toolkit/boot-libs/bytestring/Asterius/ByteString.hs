@@ -19,17 +19,17 @@ import GHC.Ptr
 foreignPtrFromJSArrayBuffer :: JSArrayBuffer -> ForeignPtr a
 foreignPtrFromJSArrayBuffer buf =
   case fromJSArrayBuffer buf of
-    mba -> ForeignPtr (byteArrayContents# (unsafeCoerce# mba)) (PlainPtr mba)
+    ba -> ForeignPtr (byteArrayContents# ba) (PlainPtr (unsafeCoerce# ba))
 
 {-# INLINE byteStringFromJSArrayBuffer #-}
 byteStringFromJSArrayBuffer :: JSArrayBuffer -> ByteString
 byteStringFromJSArrayBuffer buf =
   case fromJSArrayBuffer buf of
-    mba ->
+    ba ->
       PS
-        (ForeignPtr (byteArrayContents# (unsafeCoerce# mba)) (PlainPtr mba))
+        (ForeignPtr (byteArrayContents# ba) (PlainPtr (unsafeCoerce# ba)))
         0
-        (I# (sizeofByteArray# (unsafeCoerce# mba)))
+        (I# (sizeofByteArray# ba))
 
 {-# INLINE byteStringToJSArrayBuffer #-}
 byteStringToJSArrayBuffer :: ByteString -> JSArrayBuffer

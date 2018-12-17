@@ -96,7 +96,10 @@ marshalToFFIValueType (GHC.unLoc -> t) =
       | c `elem`
           map
             GHC.occName
-            [GHC.stablePtrTyConName, GHC.getName GHC.stablePtrPrimTyCon] ->
+            [ GHC.stablePtrTyConName
+            , GHC.getName GHC.stablePtrPrimTyCon
+            , GHC.getName GHC.mutableByteArrayPrimTyCon
+            ] ->
         pure
           FFI_VAL
             { ffiWasmValueType = I64
@@ -105,7 +108,10 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , signed = False
             }
     GHC.HsTyVar _ _ (GHC.occName . GHC.unLoc -> tv)
-      | tv == GHC.occName GHC.addrPrimTyConName ->
+      | tv `elem`
+          map
+            GHC.occName
+            [GHC.addrPrimTyConName, GHC.getName GHC.byteArrayPrimTyCon] ->
         pure
           FFI_VAL
             { ffiWasmValueType = I64

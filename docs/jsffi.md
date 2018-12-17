@@ -25,7 +25,19 @@ Supported basic types are:
 * `Double`
 * `JSVal`/`JSArrayBuffer`/`JSString`/`JSArray`
 
-The result can be wrapped in `IO` (or not).
+For the lifted basic types, the result can be wrapped in `IO` (or not). There's also limited support for unlifted FFI types:
+
+* `StablePtr# a`
+* `Addr#`
+* `ByteArray#`
+* `MutableByteArray# s`
+* `Char#`
+* `Int#`
+* `Word#`
+* `Float#`
+* `Double#`
+
+These unlifted FFI types can be used in a `foreign import javascript` clause (but not `export`.) The results can't be wrapped in `IO`.
 
 `JSVal` is defined in `Asterius.Types` in the patched `ghc-prim` package. In the Haskell land, `JSVal` is first-class and opaque: you can pass it around, put it in a data structure, etc, but under the hood it's just a handle. The runtime maintains mappings from handles to real JavaScript objects.
 

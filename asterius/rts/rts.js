@@ -72,7 +72,10 @@
       __asterius_last_mblock = null,
       __asterius_last_block = null,
       __asterius_TSOs = [,],
-      __asterius_vault = req.vault ? req.vault : new Map();
+      __asterius_vault = req.vault ? req.vault : new Map(),
+      __asterius_encoder_utf8 = new TextEncoder(),
+      __asterius_decoder_utf8 = new TextDecoder("utf-8", { fatal: true }),
+      __asterius_decoder_utf16 = new TextDecoder("utf-16", { fatal: true });
     function __asterius_show_I(x) {
       return x.toString(16).padStart(8, "0");
     }
@@ -136,13 +139,58 @@
         );
       }
     }
+    function __asterius_decodeUTF8(buf) {
+      return __asterius_decoder_utf8.decode(buf);
+    }
+    function __asterius_encodeUTF8(s) {
+      return __asterius_encoder_utf8.encode(s).buffer;
+    }
     function __asterius_decodeLatin1(buf) {
       return new Uint8Array(buf).reduce(
         (tot, byte) => tot + String.fromCodePoint(byte),
         ""
       );
     }
+    function __asterius_encodeLatin1(s) {
+      const buf = new Uint8Array(s.length);
+      for (let i = 0; i < s.length; ++i) buf[i] = s.codePointAt(i);
+      return buf.buffer;
+    }
+    function __asterius_decodeUTF16(buf) {
+      return __asterius_decoder_utf16.decode(buf);
+    }
+    function __asterius_encodeUTF16(s) {
+      const buf = new Uint16Array(s.length);
+      for (let i = 0; i < s.length; ++i) buf[i] = s.charCodeAt(i);
+      return buf.buffer;
+    }
+    function __asterius_decodeUTF32(buf) {
+      return new Uint32Array(buf).reduce(
+        (tot, byte) => tot + String.fromCodePoint(byte),
+        ""
+      );
+    }
+    function __asterius_encodeUTF32(s) {
+      const buf = new Uint32Array(s.length);
+      let i = 0,
+        j = 0;
+      for (; i < s.length; ) {
+        const char_code = s.charCodeAt(i),
+          code_point = s.codePointAt(i);
+        buf[j++] = code_point;
+        i += char_code === code_point ? 1 : 2;
+      }
+      return buf.subarray(0, j).buffer;
+    }
     const __asterius_jsffi_instance = {
+      decodeUTF8: __asterius_decodeUTF8,
+      encodeUTF8: __asterius_encodeUTF8,
+      decodeLatin1: __asterius_decodeLatin1,
+      encodeLatin1: __asterius_encodeLatin1,
+      decodeUTF16LE: __asterius_decodeUTF16,
+      encodeUTF16LE: __asterius_encodeUTF16,
+      decodeUTF32LE: __asterius_decodeUTF32,
+      encodeUTF32LE: __asterius_encodeUTF32,
       JSRefs: __asterius_jsffi_JSRefs,
       newJSRef: __asterius_jsffi_newJSRef,
       newTempJSRef: __asterius_jsffi_newTempJSRef,
@@ -156,6 +204,21 @@
         __asterius_jsffi_instance.vault.get(__asterius_decodeLatin1(k)),
       vaultDelete: k =>
         __asterius_jsffi_instance.vault.delete(__asterius_decodeLatin1(k)),
+      unsafeMakeHaskellCallback: f => () => {
+        const tid = __asterius_wasm_instance.exports.rts_evalLazyIO(f);
+        __asterius_wasm_instance.exports.rts_checkSchedStatus(tid);
+      },
+      unsafeMakeHaskellCallback1: f => ev => {
+        const tid = __asterius_wasm_instance.exports.rts_evalLazyIO(
+          __asterius_wasm_instance.exports.rts_apply(
+            f,
+            __asterius_wasm_instance.exports.rts_mkInt(
+              __asterius_jsffi_newJSRef(ev)
+            )
+          )
+        );
+        __asterius_wasm_instance.exports.rts_checkSchedStatus(tid);
+      },
       makeHaskellCallback: s => () => {
         const export_funcs = __asterius_wasm_instance.exports;
         export_funcs.rts_evalIO(__asterius_deRefStablePtr(s));
@@ -338,18 +401,6 @@
         stderr: () => __asterius_stdio_bufs[2]
       }
     };
-    function __asterius_encodeUTF32(s) {
-      const buf = new Uint32Array(s.length);
-      let i = 0,
-        j = 0;
-      for (; i < s.length; ) {
-        const char_code = s.charCodeAt(i),
-          code_point = s.codePointAt(i);
-        buf[j++] = code_point;
-        i += char_code === code_point ? 1 : 2;
-      }
-      return buf.subarray(0, j);
-    }
     const importObject = Object.assign(
       req.jsffiFactory(__asterius_jsffi_instance),
       {
@@ -498,7 +549,7 @@
           __asterius_fromJSString: _i => {
             const s = __asterius_jsffi_JSRefs[_i];
             if (s) {
-              const s_utf32 = __asterius_encodeUTF32(s);
+              const s_utf32 = new Uint32Array(__asterius_encodeUTF32(s));
               const rp = __asterius_wasm_instance.exports.allocate(
                 s_utf32.length * 5
               );
