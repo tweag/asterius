@@ -11,77 +11,67 @@ module WebAPI
   , replaceWith
   , onPopstate
   , getURLMode
+  , randomString
+  , getElementById
   ) where
 
-import AsteriusPrim
+import Asterius.Types
+import Data.Coerce
 
-{-# INLINEABLE consoleLog #-}
-consoleLog :: JSRef -> IO ()
-consoleLog = js_console_log
-
-{-# INLINEABLE createElement #-}
-createElement :: String -> IO JSRef
+createElement :: String -> IO JSVal
 createElement = js_createElement . toJSString
 
-{-# INLINEABLE setAttribute #-}
-setAttribute :: JSRef -> String -> String -> IO ()
+setAttribute :: JSVal -> String -> String -> IO ()
 setAttribute e k v = js_setAttribute e (toJSString k) (toJSString v)
 
-{-# INLINEABLE appendChild #-}
-appendChild :: JSRef -> JSRef -> IO ()
-appendChild = js_appendChild
-
-{-# INLINEABLE setHidden #-}
-setHidden :: JSRef -> Bool -> IO ()
-setHidden = js_element_set_hidden
-
-{-# INLINEABLE addEventListener #-}
-addEventListener :: JSRef -> String -> (JSRef -> IO ()) -> IO ()
+addEventListener :: JSVal -> String -> (JSObject -> IO ()) -> IO ()
 addEventListener target event handler = do
-  callback <- makeHaskellCallback1 handler
+  callback <- makeHaskellCallback1 $ coerce handler
   js_addEventListener target (toJSString event) callback
 
-{-# INLINEABLE createTextNode #-}
-createTextNode :: String -> IO JSRef
+createTextNode :: String -> IO JSVal
 createTextNode = js_createTextNode . toJSString
 
-{-# INLINEABLE replaceWith #-}
-replaceWith :: JSRef -> JSRef -> IO ()
-replaceWith = js_replaceWith
-
-{-# INLINEABLE onPopstate #-}
-onPopstate :: JSRef -> IO ()
-onPopstate = js_onPopstate
-
-{-# INLINEABLE getURLMode #-}
 getURLMode :: IO String
 getURLMode = fromJSString <$> js_url_mode
 
-foreign import javascript "console.log(${1})" js_console_log :: JSRef -> IO ()
+randomString :: IO String
+randomString = fromJSString <$> js_randomString
+
+getElementById :: String -> IO JSVal
+getElementById k = js_getElementById (toJSString k)
+
+foreign import javascript "console.log(${1})" consoleLog :: JSVal -> IO ()
 
 foreign import javascript "document.createElement(${1})" js_createElement
-  :: JSRef -> IO JSRef
+  :: JSString -> IO JSVal
 
 foreign import javascript "${1}.setAttribute(${2},${3})" js_setAttribute
-  :: JSRef -> JSRef -> JSRef -> IO ()
+  :: JSVal -> JSString -> JSString -> IO ()
 
-foreign import javascript "${1}.appendChild(${2})" js_appendChild
-  :: JSRef -> JSRef -> IO ()
+foreign import javascript "${1}.appendChild(${2})" appendChild
+  :: JSVal -> JSVal -> IO ()
 
-foreign import javascript "${1}.hidden = ${2}" js_element_set_hidden
-  :: JSRef -> Bool -> IO ()
+foreign import javascript "${1}.hidden = ${2}" setHidden
+  :: JSVal -> Bool -> IO ()
 
 foreign import javascript "${1}.addEventListener(${2},${3})" js_addEventListener
-  :: JSRef -> JSRef -> JSRef -> IO ()
+  :: JSVal -> JSString -> JSFunction -> IO ()
 
 foreign import javascript "document.createTextNode(${1})" js_createTextNode
-  :: JSRef -> IO JSRef
+  :: JSString -> IO JSVal
 
-foreign import javascript "${1}.replaceWith(${2})" js_replaceWith
-  :: JSRef -> JSRef -> IO ()
+foreign import javascript "${1}.replaceWith(${2})" replaceWith
+  :: JSVal -> JSVal -> IO ()
 
-foreign import javascript "window.addEventListener(\"popstate\", ${1})" js_onPopstate
-  :: JSRef -> IO ()
+foreign import javascript "window.addEventListener(\"popstate\", ${1})" onPopstate
+  :: JSFunction -> IO ()
 
 foreign import javascript "window.location.href.split(\"#/\")[1] || \"\"" js_url_mode
-  :: IO JSRef
+  :: IO JSString
+
+foreign import javascript "Math.random().toString(36).slice(2)" js_randomString
+  :: IO JSString
+
+foreign import javascript "document.getElementById(${1})" js_getElementById
+  :: JSString -> IO JSVal

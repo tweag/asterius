@@ -8,18 +8,17 @@ module ElementBuilder
   , buildElement
   ) where
 
+import Asterius.Types
 import Control.Monad
 import Data.Foldable
 import WebAPI
-
-import AsteriusPrim
 
 data Element
   = Element { className :: String
             , attributes :: [(String, String)]
             , children :: [Element]
             , hidden :: Bool
-            , eventHandlers :: [(String, JSRef -> IO ())] }
+            , eventHandlers :: [(String, JSObject -> IO ())] }
   | TextNode String
 
 emptyElement :: Element
@@ -32,8 +31,7 @@ emptyElement =
     , eventHandlers = mempty
     }
 
-{-# INLINEABLE buildElement #-}
-buildElement :: Element -> IO JSRef
+buildElement :: Element -> IO JSVal
 buildElement Element {..} = do
   e <- createElement className
   for_ attributes $ uncurry $ setAttribute e

@@ -192,6 +192,7 @@ rtsAsteriusModule opts =
         , ("__asterius_fromJSString", fromJSStringFunction opts)
         , ("__asterius_fromJSArray", fromJSArrayFunction opts)
         , ("threadPaused", threadPausedFunction opts)
+        , ("dirty_MUT_VAR", dirtyMutVarFunction opts)
         ] <>
         map (\(func_sym, (_, func)) -> (func_sym, func)) byteStringCBits
     }
@@ -634,7 +635,7 @@ generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {
         [I64] -> ([F64], Unary ConvertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateWrapperFunction, allocateProxyFunction, allocGroupFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateWrapperFunction, allocateProxyFunction, allocGroupFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL [] $ do
@@ -1241,6 +1242,15 @@ fromJSArrayFunction _ =
     emit addr
 
 threadPausedFunction _ = runEDSL [] $ void $ params [I64, I64]
+
+dirtyMutVarFunction _ =
+  runEDSL [] $ do
+    [_, p] <- params [I64, I64]
+    if'
+      []
+      (loadI64 p 0 `eqInt64` symbol "stg_MUT_VAR_CLEAN_info")
+      (storeI64 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
+      mempty
 
 getF64GlobalRegFunction ::
      BuiltinsOptions -> UnresolvedGlobalReg -> AsteriusFunction

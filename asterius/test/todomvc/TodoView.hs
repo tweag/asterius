@@ -2,33 +2,38 @@
 
 module TodoView where
 
-foreign import javascript "document.querySelector(\".todoapp\")" newTodo
-  :: JSRef
+import Asterius.Types
 
-foreign import javascript "document.querySelector(\".main\")" main' :: JSRef
+foreign import javascript "document.querySelector(\".new-todo\")" newTodo
+  :: JSVal
+
+foreign import javascript "document.querySelector(\".main\")" main' :: JSVal
 
 foreign import javascript "document.querySelector(\".toggle-all\")" toggleAll
-  :: JSRef
+  :: JSVal
+
+foreign import javascript "document.querySelector(\".toggle-all\").checked" toggleAllChecked
+  :: IO Bool
 
 foreign import javascript "document.querySelector(\".todo-list\")" todoList
-  :: IO JSRef
+  :: IO JSVal
 
-foreign import javascript "document.querySelector(\".footer\")" footer :: JSRef
+foreign import javascript "document.querySelector(\".footer\")" footer :: JSVal
 
 foreign import javascript "document.querySelector(\".todo-count\")" todoCount
-  :: IO JSRef
+  :: IO JSVal
 
 foreign import javascript "document.querySelector(\".filters\")" filters
-  :: JSRef
+  :: JSVal
 
 foreign import javascript "document.querySelector(\".filters > li:nth-child(1) > a\")" allAnchor
-  :: JSRef
+  :: JSVal
 
 foreign import javascript "document.querySelector(\".filters > li:nth-child(2) > a\")" activeAnchor
-  :: JSRef
+  :: JSVal
 
 foreign import javascript "document.querySelector(\".filters > li:nth-child(3) > a\")" completedAnchor
-  :: JSRef
+  :: JSVal
 
 foreign import javascript "document.querySelector(\".clear-completed\")" clearCompleted
-  :: JSRef
+  :: JSVal

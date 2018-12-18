@@ -180,7 +180,7 @@
         buf[j++] = code_point;
         i += char_code === code_point ? 1 : 2;
       }
-      return buf.subarray(0, j).buffer;
+      return buf.slice(0, j).buffer;
     }
     const __asterius_jsffi_instance = {
       decodeUTF8: __asterius_decodeUTF8,

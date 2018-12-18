@@ -20,6 +20,9 @@ foreign import javascript "console.log(new Uint8Array(${1}))" js_print_buf
 
 foreign import javascript "console.log(${1})" js_print :: JSVal -> IO ()
 
+foreign import javascript "setTimeout(${1},${2},${3})" js_setTimeout
+  :: JSFunction -> Int -> JSVal -> IO ()
+
 main :: IO ()
 main = do
   print $ CBS.pack "The limits of my language mean the limits of my world."
@@ -37,3 +40,5 @@ main = do
   let hs_buf = byteStringFromJSArrayBuffer js_buf
   js_print_buf $ byteStringToJSArrayBuffer hs_buf
   print hs_buf
+  cb1 <- makeHaskellCallback1 js_print
+  js_setTimeout cb1 4096 (coerce js_str)
