@@ -18,6 +18,8 @@ module Asterius.Types
   , toJSArray
   , indexJSObject
   , setJSObject
+  , jsonParse
+  , jsonStringify
   , callJSFunction
   , makeHaskellCallback
   , makeHaskellCallback1
@@ -71,6 +73,14 @@ indexJSObject obj k = js_object_index obj (toJSString k)
 {-# INLINE setJSObject #-}
 setJSObject :: JSObject -> [Char] -> JSVal -> IO ()
 setJSObject obj k = js_object_set obj (toJSString k)
+
+{-# INLINE jsonParse #-}
+jsonParse :: [Char] -> JSVal
+jsonParse s = js_jsonParse (toJSString s)
+
+{-# INLINE jsonStringify #-}
+jsonStringify :: JSVal -> [Char]
+jsonStringify v = fromJSString (js_jsonStringify v)
 
 {-# INLINE callJSFunction #-}
 callJSFunction :: JSFunction -> [JSVal] -> IO JSVal
@@ -197,3 +207,8 @@ foreign import javascript "__asterius_jsffi.unsafeMakeHaskellCallback(${1})" js_
 
 foreign import javascript "__asterius_jsffi.unsafeMakeHaskellCallback1(${1})" js_mk_hs_callback1
   :: Addr# -> IO JSFunction
+
+foreign import javascript "JSON.parse(${1})" js_jsonParse :: JSString -> JSVal
+
+foreign import javascript "JSON.stringify(${1})" js_jsonStringify
+  :: JSVal -> JSString

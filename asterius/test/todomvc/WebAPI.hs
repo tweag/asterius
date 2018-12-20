@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wall -ddump-to-file -ddump-rn -ddump-foreign -ddump-stg -ddump-cmm-raw -ddump-asm #-}
-
 module WebAPI
   ( consoleLog
   , createElement
@@ -13,9 +11,13 @@ module WebAPI
   , getURLMode
   , randomString
   , getElementById
+  , localStorageSetItem
+  , localStorageGetItem
   ) where
 
+import Asterius.ByteString
 import Asterius.Types
+import qualified Data.ByteString as BS
 import Data.Coerce
 
 createElement :: String -> IO JSVal
@@ -40,6 +42,22 @@ randomString = fromJSString <$> js_randomString
 
 getElementById :: String -> IO JSVal
 getElementById k = js_getElementById (toJSString k)
+
+localStorageSetItem :: String -> BS.ByteString -> IO ()
+localStorageSetItem k v =
+  js_localStorage_setItem
+    (toJSString k)
+    (jsStringDecodeLatin1 (byteStringToJSArrayBuffer v))
+
+localStorageGetItem :: String -> IO (Maybe BS.ByteString)
+localStorageGetItem k = do
+  f <- js_localStorage_hasItem js_k
+  if f
+    then Just . byteStringFromJSArrayBuffer . jsStringEncodeLatin1 <$>
+         js_localStorage_getItem js_k
+    else pure Nothing
+  where
+    js_k = toJSString k
 
 foreign import javascript "console.log(${1})" consoleLog :: JSVal -> IO ()
 
@@ -75,3 +93,12 @@ foreign import javascript "Math.random().toString(36).slice(2)" js_randomString
 
 foreign import javascript "document.getElementById(${1})" js_getElementById
   :: JSString -> IO JSVal
+
+foreign import javascript "localStorage.setItem(${1},${2})" js_localStorage_setItem
+  :: JSString -> JSString -> IO ()
+
+foreign import javascript "localStorage.getItem(${1}) !== null" js_localStorage_hasItem
+  :: JSString -> IO Bool
+
+foreign import javascript "localStorage.getItem(${1})" js_localStorage_getItem
+  :: JSString -> IO JSString

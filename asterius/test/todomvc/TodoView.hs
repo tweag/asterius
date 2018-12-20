@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wall -ddump-to-file -ddump-rn -ddump-foreign -ddump-stg -ddump-cmm-raw -ddump-asm #-}
-
 module TodoView where
 
 import Asterius.Types

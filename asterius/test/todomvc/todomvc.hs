@@ -1,29 +1,51 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC -Wall -ddump-to-file -ddump-rn -ddump-foreign -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 import Asterius.Types
 import Control.Monad
+import Data.Binary
+import qualified Data.ByteString.Lazy as LBS
 import Data.Char
 import Data.Coerce
 import Data.IORef
+import Data.Maybe
 import ElementBuilder
+import GHC.Generics
 import TodoView
 import WebAPI
 
 data Todo = Todo
   { key, text :: String
   , editing, completed :: Bool
-  }
+  } deriving (Generic)
+
+instance Binary Todo
 
 newtype TodoModel = TodoModel
   { todos :: [Todo]
-  }
+  } deriving (Generic)
+
+instance Binary TodoModel
 
 data Route
   = All
   | Active
   | Completed
+
+loadModel :: String -> IO (Maybe TodoModel)
+loadModel k = do
+  r <- localStorageGetItem k
+  pure $
+    case r of
+      Just bs ->
+        case decodeOrFail (LBS.fromStrict bs) of
+          Right (_, _, model) -> Just model
+          _ -> Nothing
+      _ -> Nothing
+
+saveModel :: String -> TodoModel -> IO ()
+saveModel k v = localStorageSetItem k (LBS.toStrict (encode v))
 
 modifyTodo :: TodoModel -> String -> (Todo -> Todo) -> TodoModel
 modifyTodo model k f =
@@ -61,7 +83,7 @@ buildTodoElement route model_ref current_todo =
                               modifyIORef' model_ref $ \model ->
                                 modifyTodo model (key current_todo) $ \todo ->
                                   todo {completed = not $ completed todo}
-                              dirtyRouteModel model_ref)
+                              render model_ref)
                         ]
                     }
                 , emptyElement
@@ -73,7 +95,7 @@ buildTodoElement route model_ref current_todo =
                               modifyIORef' model_ref $ \model ->
                                 modifyTodo model (key current_todo) $ \todo ->
                                   todo {editing = not $ editing todo}
-                              dirtyRouteModel model_ref)
+                              render model_ref)
                         ]
                     }
                 , emptyElement
@@ -89,7 +111,7 @@ buildTodoElement route model_ref current_todo =
                                         (\todo -> key todo /= key current_todo) $
                                       todos model
                                   }
-                              dirtyRouteModel model_ref)
+                              render model_ref)
                         ]
                     }
                 ]
@@ -114,7 +136,7 @@ buildTodoElement route model_ref current_todo =
                         modifyIORef' model_ref $ \model ->
                           modifyTodo model (key current_todo) $ \todo ->
                             todo {text = new_text, editing = False}
-                        dirtyRouteModel model_ref)
+                        render model_ref)
                 | editing current_todo
                 ]
             }
@@ -145,13 +167,13 @@ currentRoute = do
       "completed" -> Completed
       _ -> All
 
-dirtyRouteModel :: IORef TodoModel -> IO ()
-dirtyRouteModel model_ref = do
+render :: IORef TodoModel -> IO ()
+render model_ref = do
   route <- currentRoute
   new_todo_list <- buildTodoList route model_ref >>= buildElement
   old_todo_list <- todoList
   replaceWith old_todo_list new_todo_list
-  TodoModel {..} <- readIORef model_ref
+  model@TodoModel {..} <- readIORef model_ref
   let active_todos = length $ filter (not . completed) todos
   new_todo_count <-
     buildElement
@@ -171,13 +193,14 @@ dirtyRouteModel model_ref = do
         }
   old_todo_count <- todoCount
   replaceWith old_todo_count new_todo_count
+  saveModel "todomvc-asterius" model
 
 trim :: String -> String
 trim = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 
-todoApp :: IORef TodoModel -> IO ()
-todoApp model_ref = do
-  let m = dirtyRouteModel model_ref
+todoMVC :: IORef TodoModel -> IO ()
+todoMVC model_ref = do
+  let m = render model_ref
   addEventListener toggleAll "click" $
     const $ do
       checked <- toggleAllChecked
@@ -210,5 +233,6 @@ todoApp model_ref = do
 
 main :: IO ()
 main = do
-  model_ref <- newIORef $ TodoModel []
-  todoApp model_ref
+  init_model <- fromMaybe (TodoModel []) <$> loadModel "todomvc-asterius"
+  model_ref <- newIORef init_model
+  todoMVC model_ref
