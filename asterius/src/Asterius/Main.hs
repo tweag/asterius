@@ -59,7 +59,7 @@ data Task = Task
   { target :: Target
   , input, outputWasm, outputJS, outputHTML :: FilePath
   , outputLinkReport, outputGraphViz :: Maybe FilePath
-  , binaryen, debug, outputIR, run :: Bool
+  , jsBundle, binaryen, debug, outputIR, run :: Bool
   , asteriusInstanceCallback :: String
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
@@ -76,25 +76,30 @@ genSymbolDict sym_map =
        ]) <>
   "}"
 
-genNode :: Task -> LinkReport -> [Event] -> IO Builder
-genNode Task {..} LinkReport {..} err_msgs = do
+genJS :: Task -> LinkReport -> [Event] -> LBS.ByteString -> IO Builder
+genJS Task {..} LinkReport {..} err_msgs m_bin = do
   rts_buf <- BS.readFile $ dataDir </> "rts" </> "rts.js"
   pure $
     mconcat $
     [ byteString rts_buf
-    , "let __asterius_instance = null;\n"
-    , "async function main() {\n"
+    , case target of
+        Node -> "process.on('unhandledRejection', err => { throw err; });\n"
+        Browser -> mempty
+    , "(async () => {\n"
     , "const i = await newAsteriusInstance({errorMessages: ["
     , mconcat (intersperse "," [string7 $ show msg | msg <- err_msgs])
     , "], bufferSource: "
     ] <>
-    (case target of
-       Node ->
-         [ "require(\"fs\").readFileSync("
-         , string7 $ show $ takeFileName outputWasm
-         , ")"
-         ]
-       Browser -> ["fetch(", string7 $ show $ takeFileName outputWasm, ")"]) <>
+    (if jsBundle
+       then ["new Uint8Array(", string7 $ show $ LBS.unpack m_bin, ")"]
+       else case target of
+              Node ->
+                [ "require(\"fs\").readFileSync("
+                , string7 $ show $ takeFileName outputWasm
+                , ")"
+                ]
+              Browser ->
+                ["fetch(", string7 $ show $ takeFileName outputWasm, ")"]) <>
     [ ", jsffiFactory: "
     , generateFFIImportObjectFactory bundledFFIMarshalState
     , ", staticsSymbolMap: "
@@ -102,15 +107,10 @@ genNode Task {..} LinkReport {..} err_msgs = do
     , ", functionSymbolMap: "
     , genSymbolDict functionSymbolMap
     , "});\n"
-    , "__asterius_instance = i\n;"
     , "("
     , string7 asteriusInstanceCallback
     , ")(i);\n"
-    , "}\n"
-    , case target of
-        Node -> "process.on('unhandledRejection', err => { throw err; });\n"
-        Browser -> mempty
-    , "main();\n"
+    , "})();\n"
     ]
 
 genHTML :: Task -> Builder
@@ -244,44 +244,53 @@ ahcLinkMain task@Task {..} = do
           let p = outputWasm -<.> "bin"
           putStrLn $ "[INFO] Serializing linked IR to " <> show p
           encodeFile p final_m
-        if binaryen
-          then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
-                   m_ref <-
-                     withPool $ \pool -> OldMarshal.marshalModule pool final_m
-                   putStrLn "[INFO] Validating binaryen IR"
-                   pass_validation <- c_BinaryenModuleValidate m_ref
-                   when (pass_validation /= 1) $
-                     fail "[ERROR] binaryen validation failed"
-                   putStrLn $
-                     "[INFO] Writing WebAssembly binary to " <> show outputWasm
-                   m_bin <- OldMarshal.serializeModule m_ref
-                   BS.writeFile outputWasm m_bin
-                   when outputIR $ do
-                     let p = outputWasm -<.> "binaryen.txt"
-                     putStrLn $
-                       "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
-                     case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
-                       Right (rest, _, r)
-                         | LBS.null rest -> writeFile p (show r)
-                         | otherwise ->
-                           fail "[ERROR] Re-parsing produced residule"
-                       _ -> fail "[ERROR] Re-parsing failed")
-          else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
-                   let conv_result = runExcept $ NewMarshal.makeModule final_m
-                   r <-
-                     case conv_result of
-                       Left err ->
-                         fail $ "[ERROR] Conversion failed with " <> show err
-                       Right r -> pure r
-                   when outputIR $ do
-                     let p = outputWasm -<.> "wasm-toolkit.txt"
-                     putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
-                     writeFile p $ show r
-                   putStrLn $
-                     "[INFO] Writing WebAssembly binary to " <> show outputWasm
-                   LBS.writeFile outputWasm $ runPut $ putModule r)
+        wasm_bin <-
+          if binaryen
+            then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+                     m_ref <-
+                       withPool $ \pool -> OldMarshal.marshalModule pool final_m
+                     putStrLn "[INFO] Validating binaryen IR"
+                     pass_validation <- c_BinaryenModuleValidate m_ref
+                     when (pass_validation /= 1) $
+                       fail "[ERROR] binaryen validation failed"
+                     m_bin <- OldMarshal.serializeModule m_ref
+                     unless jsBundle $ do
+                       putStrLn $
+                         "[INFO] Writing WebAssembly binary to " <>
+                         show outputWasm
+                       BS.writeFile outputWasm m_bin
+                     when outputIR $ do
+                       let p = outputWasm -<.> "binaryen.txt"
+                       putStrLn $
+                         "[INFO] Writing re-parsed wasm-toolkit IR to " <>
+                         show p
+                       case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
+                         Right (rest, _, r)
+                           | LBS.null rest -> writeFile p (show r)
+                           | otherwise ->
+                             fail "[ERROR] Re-parsing produced residule"
+                         _ -> fail "[ERROR] Re-parsing failed"
+                     pure $ LBS.fromStrict m_bin)
+            else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
+                     let conv_result = runExcept $ NewMarshal.makeModule final_m
+                     r <-
+                       case conv_result of
+                         Left err ->
+                           fail $ "[ERROR] Conversion failed with " <> show err
+                         Right r -> pure r
+                     when outputIR $ do
+                       let p = outputWasm -<.> "wasm-toolkit.txt"
+                       putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
+                       writeFile p $ show r
+                     let m_bin = runPut $ putModule r
+                     unless jsBundle $ do
+                       putStrLn $
+                         "[INFO] Writing WebAssembly binary to " <>
+                         show outputWasm
+                       LBS.writeFile outputWasm m_bin
+                     pure m_bin)
         putStrLn $ "[INFO] Writing JavaScript to " <> show outputJS
-        b <- genNode task report err_msgs
+        b <- genJS task report err_msgs wasm_bin
         builderWriteFile outputJS b
         when (target == Browser) $ do
           putStrLn $ "[INFO] Writing HTML to " <> show outputHTML

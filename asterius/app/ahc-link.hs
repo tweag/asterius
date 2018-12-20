@@ -8,7 +8,7 @@ import System.FilePath
 
 parseTask :: Parser Task
 parseTask =
-  (\t i m_wasm m_js m_html m_report m_gv wasm_toolkit dbg ir r m_with_i ghc_flags export_funcs root_syms ->
+  (\t i m_wasm m_js m_html m_report m_gv js_bundle binaryen dbg ir r m_with_i ghc_flags export_funcs root_syms ->
      Task
        { target = t
        , input = i
@@ -17,7 +17,8 @@ parseTask =
        , outputHTML = fromMaybe (i -<.> "html") m_html
        , outputLinkReport = m_report
        , outputGraphViz = m_gv
-       , binaryen = wasm_toolkit
+       , jsBundle = js_bundle
+       , binaryen = binaryen
        , debug = dbg
        , outputIR = ir || dbg
        , run = r
@@ -59,6 +60,7 @@ parseTask =
     (strOption
        (long "output-graphviz" <>
         help "Output path of GraphViz file of symbol dependencies")) <*>
+  switch (long "js-bundle" <> help "Output a self-contained .js file") <*>
   switch (long "binaryen" <> help "Use the binaryen backend") <*>
   switch (long "debug" <> help "Enable debug mode in the runtime") <*>
   switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>

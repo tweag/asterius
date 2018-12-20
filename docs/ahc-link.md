@@ -9,9 +9,10 @@ ahc-link - Linker for the Asterius compiler
 
 Usage: ahc-link [--browser] --input ARG [--output-wasm ARG] [--output-js ARG]
                 [--output-html ARG] [--output-link-report ARG]
-                [--output-graphviz ARG] [--binaryen] [--debug] [--output-ir]
-                [--run] [--asterius-instance-callback ARG] [--ghc-option ARG]
-                [--export-function ARG] [--extra-root-symbol ARG]
+                [--output-graphviz ARG] [--js-bundle] [--binaryen] [--debug]
+                [--output-ir] [--run] [--asterius-instance-callback ARG]
+                [--ghc-option ARG] [--export-function ARG]
+                [--extra-root-symbol ARG]
   Producing a standalone WebAssembly binary from Haskell
 
 Available options:
@@ -26,6 +27,7 @@ Available options:
                            Must be the same directory as the WebAssembly binary.
   --output-link-report ARG Output path of linking report
   --output-graphviz ARG    Output path of GraphViz file of symbol dependencies
+  --js-bundle              Output a self-contained .js file
   --binaryen               Use the binaryen backend
   --debug                  Enable debug mode in the runtime
   --output-ir              Output Asterius IR of compiled modules
