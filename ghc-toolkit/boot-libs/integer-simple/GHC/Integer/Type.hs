@@ -40,15 +40,15 @@ mkInteger :: Bool -> [Int] -> Integer
 mkInteger nonNegative is =
   runRW#
     (\s0 ->
-       case unIO (js_mkInteger_init nonNegative) s0 of
+       case unIO (js_newInteger nonNegative) s0 of
          (# s1, i0 #) ->
            let w [] sx = (# sx, () #)
                w (x:xs) sx =
-                 case unIO (js_mkInteger_prepend i0 x) sx of
+                 case unIO (js_prependInteger i0 x) sx of
                    (# sy, _ #) -> w xs sy
             in case w is s1 of
                  (# s2, _ #) ->
-                   case unIO (js_mkInteger_finalize i0) s2 of
+                   case unIO (js_freezeInteger i0) s2 of
                      (# _, r #) -> Integer r)
 
 smallInteger :: Int# -> Integer
@@ -125,15 +125,22 @@ ltInteger# (Integer i0) (Integer i1) = unBool (js_ltInteger i0 i1)
 geInteger# :: Integer -> Integer -> Int#
 geInteger# (Integer i0) (Integer i1) = unBool (js_geInteger i0 i1)
 
+divModInteger :: Integer -> Integer -> (# Integer, Integer #)
+n `divModInteger` d =
+    case n `quotRemInteger` d of
+        (# q, r #) ->
+            if signumInteger r `eqInteger`
+               negateInteger (signumInteger d)
+            then (# q `minusInteger` oneInteger, r `plusInteger` d #)
+            else (# q, r #)
+
 divInteger :: Integer -> Integer -> Integer
-divInteger (Integer i0) (Integer i1) = Integer (js_divInteger i0 i1)
+n `divInteger` d = quotient
+    where (# quotient, _ #) = n `divModInteger` d
 
 modInteger :: Integer -> Integer -> Integer
-modInteger (Integer i0) (Integer i1) = Integer (js_modInteger i0 i1)
-
-divModInteger :: Integer -> Integer -> (# Integer, Integer #)
-divModInteger (Integer i0) (Integer i1) =
-  (# Integer (js_divInteger i0 i1), Integer (js_modInteger i0 i1) #)
+n `modInteger` d = modulus
+    where (# _, modulus #) = n `divModInteger` d
 
 quotRemInteger :: Integer -> Integer -> (# Integer, Integer #)
 quotRemInteger (Integer i0) (Integer i1) =
@@ -205,15 +212,15 @@ instance Ord Integer where
   (>=) = geInteger
   compare = compareInteger
 
-foreign import javascript "__asterius_jsffi.Integer.mkInteger_init(${1})" js_mkInteger_init :: Bool -> IO Int
+foreign import javascript "__asterius_jsffi.Integer.newInteger(${1})" js_newInteger :: Bool -> IO Int
 
-foreign import javascript "__asterius_jsffi.Integer.mkInteger_prepend(${1},${2})" js_mkInteger_prepend :: Int -> Int -> IO ()
+foreign import javascript "__asterius_jsffi.Integer.prependInteger(${1},${2})" js_prependInteger :: Int -> Int -> IO ()
 
-foreign import javascript "__asterius_jsffi.Integer.mkInteger_finalize(${1})" js_mkInteger_finalize :: Int -> IO Int
+foreign import javascript "__asterius_jsffi.Integer.freezeInteger(${1})" js_freezeInteger :: Int -> IO Int
 
 foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_smallInteger :: Int -> Int
 
-foreign import javascript "__asterius_jsffi.Integer.wordToInteger(${1})" js_wordToInteger :: Word -> Int
+foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_wordToInteger :: Word -> Int
 
 foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1})" js_integerToWord :: Int -> Word
 
@@ -243,27 +250,23 @@ foreign import javascript "__asterius_jsffi.Integer.ltInteger(${1},${2})" js_ltI
 
 foreign import javascript "__asterius_jsffi.Integer.geInteger(${1},${2})" js_geInteger :: Int -> Int -> Bool
 
-foreign import javascript "__asterius_jsffi.Integer.divInteger(${1},${2})" js_divInteger :: Int -> Int -> Int
-
-foreign import javascript "__asterius_jsffi.Integer.modInteger(${1},${2})" js_modInteger :: Int -> Int -> Int
-
 foreign import javascript "__asterius_jsffi.Integer.quotInteger(${1},${2})" js_quotInteger :: Int -> Int -> Int
 
 foreign import javascript "__asterius_jsffi.Integer.remInteger(${1},${2})" js_remInteger :: Int -> Int -> Int
 
-foreign import javascript "__asterius_jsffi.Integer.encodeFloatInteger(${1},${2})" js_encodeFloatInteger :: Int -> Int -> Float
+foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeFloatInteger :: Int -> Int -> Float
 
-foreign import javascript "__asterius_jsffi.Integer.decodeFloatInteger_m(${1})" js_decodeFloatInteger_m :: Float -> Int
+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeFloatInteger_m :: Float -> Int
 
-foreign import javascript "__asterius_jsffi.Integer.decodeFloatInteger_n(${1})" js_decodeFloatInteger_n :: Float -> Int
+foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeFloatInteger_n :: Float -> Int
 
-foreign import javascript "__asterius_jsffi.Integer.floatFromInteger(${1})" js_floatFromInteger :: Int -> Float
+foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_floatFromInteger :: Int -> Float
 
 foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeDoubleInteger :: Int -> Int -> Double
 
-foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger_m(${1})" js_decodeDoubleInteger_m :: Double -> Int
+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double -> Int
 
-foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger_n(${1})" js_decodeDoubleInteger_n :: Double -> Int
+foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_n :: Double -> Int
 
 foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_doubleFromInteger :: Int -> Double
 

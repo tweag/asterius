@@ -43,7 +43,7 @@ m (I# len) =
 src :: [Int]
 src = w 0 []
   where
-    w 100000 acc = acc
+    w 20000 acc = acc
     w i acc = w (succ i) (i : acc)
 
 main :: IO ()

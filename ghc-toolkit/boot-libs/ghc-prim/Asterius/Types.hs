@@ -23,6 +23,7 @@ module Asterius.Types
   , callJSFunction
   , makeHaskellCallback
   , makeHaskellCallback1
+  , makeHaskellCallback2
   , jsStringDecodeUTF8
   , jsStringEncodeUTF8
   , jsStringDecodeLatin1
@@ -31,7 +32,7 @@ module Asterius.Types
   , jsStringEncodeUTF16LE
   , jsStringDecodeUTF32LE
   , jsStringEncodeUTF32LE
-  , js_freezeTempJSRef
+  , js_freezeTmpJSVal
   ) where
 
 import Asterius.Magic
@@ -102,6 +103,14 @@ makeHaskellCallback1 f =
        case anyToAddr# f s0 of
          (# s1, addr #) -> unIO (js_mk_hs_callback1 addr) s1)
 
+{-# INLINE makeHaskellCallback2 #-}
+makeHaskellCallback2 :: (JSVal -> JSVal -> IO ()) -> IO JSFunction
+makeHaskellCallback2 f =
+  IO
+    (\s0 ->
+       case anyToAddr# f s0 of
+         (# s1, addr #) -> unIO (js_mk_hs_callback2 addr) s1)
+
 {-# INLINE fromJSString #-}
 fromJSString :: JSString -> [Char]
 fromJSString s = accursedUnutterableAddrToAny (c_fromJSString s)
@@ -119,7 +128,7 @@ toJSString s =
                    (# sy, _ #) -> w cs sy
             in case w s s1 of
                  (# s2, _ #) ->
-                   case unIO (js_freezeTempJSRef i) s2 of
+                   case unIO (js_freezeTmpJSVal i) s2 of
                      (# _, r #) -> JSString r)
 
 {-# INLINE fromJSArray #-}
@@ -139,7 +148,7 @@ toJSArray arr =
                    (# sy, _ #) -> w vs sy
             in case w arr s1 of
                  (# s2, _ #) ->
-                   case unIO (js_freezeTempJSRef i) s2 of
+                   case unIO (js_freezeTmpJSVal i) s2 of
                      (# _, r #) -> JSArray r)
 
 foreign import ccall unsafe "__asterius_fromJSArrayBuffer" c_fromJSArrayBuffer
@@ -154,19 +163,19 @@ foreign import ccall unsafe "__asterius_fromJSString" c_fromJSString
 foreign import ccall unsafe "__asterius_fromJSArray" c_fromJSArray
   :: JSArray -> Addr#
 
-foreign import javascript "__asterius_jsffi.newTempJSRef('')" js_newString
+foreign import javascript "__asterius_jsffi.newTmpJSVal('')" js_newString
   :: IO Int
 
-foreign import javascript "__asterius_jsffi.mutTempJSRef(${1}, s => s + String.fromCodePoint(${2}))" js_appendString
+foreign import javascript "__asterius_jsffi.mutTmpJSVal(${1}, s => s + String.fromCodePoint(${2}))" js_appendString
   :: Int -> Char -> IO ()
 
-foreign import javascript "__asterius_jsffi.newTempJSRef([])" js_newArray
+foreign import javascript "__asterius_jsffi.newTmpJSVal([])" js_newArray
   :: IO Int
 
-foreign import javascript "__asterius_jsffi.mutTempJSRef(${1}, arr => (arr.push(${2}), arr))" js_appendArray
+foreign import javascript "__asterius_jsffi.mutTmpJSVal(${1}, arr => (arr.push(${2}), arr))" js_appendArray
   :: Int -> JSVal -> IO ()
 
-foreign import javascript "__asterius_jsffi.freezeTempJSRef(${1})" js_freezeTempJSRef
+foreign import javascript "__asterius_jsffi.freezeTmpJSVal(${1})" js_freezeTmpJSVal
   :: Int -> IO JSVal
 
 foreign import javascript "__asterius_jsffi.decodeUTF8(${1})" jsStringDecodeUTF8
@@ -206,6 +215,9 @@ foreign import javascript "__asterius_jsffi.unsafeMakeHaskellCallback(${1})" js_
   :: Addr# -> IO JSFunction
 
 foreign import javascript "__asterius_jsffi.unsafeMakeHaskellCallback1(${1})" js_mk_hs_callback1
+  :: Addr# -> IO JSFunction
+
+foreign import javascript "__asterius_jsffi.unsafeMakeHaskellCallback2(${1})" js_mk_hs_callback2
   :: Addr# -> IO JSFunction
 
 foreign import javascript "JSON.parse(${1})" js_jsonParse :: JSString -> JSVal

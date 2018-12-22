@@ -66,20 +66,6 @@ addMemoryTrapDeep t =
                   [new_i64_ptr, ConstI32 $ fromIntegral offset, new_value]
               , callReturnTypes = []
               }
-        Host {hostOp = CurrentMemory} ->
-          pure
-            CallImport
-              { target' = "__asterius_current_memory"
-              , operands = [t]
-              , callImportReturnTypes = [I32]
-              }
-        Host {hostOp = GrowMemory, ..} ->
-          pure
-            CallImport
-              { target' = "__asterius_grow_memory"
-              , operands = [t, head operands]
-              , callImportReturnTypes = [I32]
-              }
         _ -> go
     _ -> go
   where

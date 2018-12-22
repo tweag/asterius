@@ -60,17 +60,19 @@ jobs:
             stack --no-terminal test asterius:bigint
             stack --no-terminal test asterius:vault
             stack --no-terminal test asterius:todomvc
+            stack --no-terminal test asterius:cloudflare
             stack --no-terminal test asterius:fib --test-arguments="--binaryen"
-            stack --no-terminal test asterius:jsffi --test-arguments="--binaryen"
-            stack --no-terminal test asterius:array --test-arguments="--binaryen"
-            stack --no-terminal test asterius:stableptr --test-arguments="--binaryen"
-            stack --no-terminal test asterius:rtsapi --test-arguments="--binaryen"
-            stack --no-terminal test asterius:teletype --test-arguments="--binaryen"
-            stack --no-terminal test asterius:bytearray --test-arguments="--binaryen"
-            stack --no-terminal test asterius:bigint --test-arguments="--binaryen"
-            stack --no-terminal test asterius:vault --test-arguments="--binaryen"
-            stack --no-terminal test asterius:todomvc --test-arguments="--binaryen"
-            stack --no-terminal test asterius:teletype --test-arguments="--js-bundle"
+            stack --no-terminal test asterius:fib --test-arguments="--bundle"
+            stack --no-terminal test asterius:fib --test-arguments="--sync"
+            stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:stableptr --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:rtsapi --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:teletype --test-arguments="--debug" > /dev/null
+            # stack --no-terminal test asterius:bytearray --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:bigint --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:vault --test-arguments="--debug" > /dev/null
 
   asterius-build-docker:
     docker:

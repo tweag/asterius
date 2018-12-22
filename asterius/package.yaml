@@ -14,24 +14,26 @@ extra-source-files:
   - test/array/**/*.hs
   - test/fib/**/*.hs
   - test/jsffi/**/*.hs
-  - test/jsffi-chrome/**/*.hs
-  - test/jsffi-chrome/**/*.html
-  - test/mealy-chrome/**/*.hs
-  - test/mealy-chrome/**/*.html
-  - test/mealy-chrome/mealy-driver.js
+  - test/jsffi/jsffi.mjs
   - test/node-compile/node-compile.js
   - test/rtsapi/**/*.hs
+  - test/rtsapi/rtsapi.mjs
   - test/stableptr/**/*.hs
-  - test/th/**/*.hs
   - test/todomvc/**/*.hs
   - test/todomvc/**/*.html
   - test/teletype/**/*.hs
+  - test/teletype/teletype.mjs
   - test/bytearray/**/*.hs
+  - test/bytearray/bytearray.mjs
   - test/bigint/**/*.hs
+  - test/bigint/bigint.mjs
   - test/vault/**/*.hs
+  - test/vault/vault.mjs
+  - test/cloudflare/**/*.hs
+  - test/cloudflare/cloudflare.mjs
 
 data-files:
-  - rts/rts.js
+  - rts/*.mjs
   - boot-init.sh
   - boot.sh
 
@@ -58,6 +60,7 @@ dependencies:
   - ghc-toolkit
   - inline-js
   - mtl
+  - npm-utils
   - optparse-applicative
   - parsec
   - process
@@ -140,13 +143,6 @@ tests:
     dependencies:
       - asterius
 
-  th:
-    source-dirs: test
-    main: th.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
-    dependencies:
-      - asterius
-
   stableptr:
     source-dirs: test
     main: stableptr.hs
@@ -164,20 +160,6 @@ tests:
   todomvc:
     source-dirs: test
     main: todomvc.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
-    dependencies:
-      - asterius
-
-  jsffi-chrome:
-    source-dirs: test
-    main: jsffi-chrome.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
-    dependencies:
-      - asterius
-
-  mealy-chrome:
-    source-dirs: test
-    main: mealy-chrome.hs
     ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius
@@ -214,6 +196,13 @@ tests:
   vault:
     source-dirs: test
     main: vault.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
+    dependencies:
+      - asterius
+
+  cloudflare:
+    source-dirs: test
+    main: cloudflare.hs
     ghc-options: -threaded -feager-blackholing -rtsopts
     dependencies:
       - asterius

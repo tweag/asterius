@@ -8,68 +8,63 @@ import System.FilePath
 
 parseTask :: Parser Task
 parseTask =
-  (\t i m_wasm m_js m_html m_report m_gv js_bundle binaryen dbg ir r m_with_i ghc_flags export_funcs root_syms ->
+  (\browser i m_input_mjs m_out_dir m_out_base no_streaming full_sym_table bundle sync binaryen dbg lr dot ir r ghc_flags export_funcs root_syms ->
      Task
-       { target = t
-       , input = i
-       , outputWasm = fromMaybe (i -<.> "wasm") m_wasm
-       , outputJS = fromMaybe (i -<.> "js") m_js
-       , outputHTML = fromMaybe (i -<.> "html") m_html
-       , outputLinkReport = m_report
-       , outputGraphViz = m_gv
-       , jsBundle = js_bundle
+       { target =
+           if browser
+             then Browser
+             else Node
+       , inputHS = i
+       , inputEntryMJS = m_input_mjs
+       , outputDirectory = fromMaybe (takeDirectory i) m_out_dir
+       , outputBaseName = fromMaybe (takeBaseName i) m_out_base
+       , noStreaming = no_streaming
+       , fullSymTable = full_sym_table
+       , bundle = bundle
+       , sync = sync
        , binaryen = binaryen
        , debug = dbg
+       , outputLinkReport = lr || dbg
+       , outputGraphViz = dot || dbg
        , outputIR = ir || dbg
        , run = r
-       , asteriusInstanceCallback =
-           fromMaybe
-             "i => {\ni.wasmInstance.exports.hs_init();\ni.wasmInstance.exports.main();\n}"
-             m_with_i
        , extraGHCFlags = ghc_flags
        , exportFunctions =
            [AsteriusEntitySymbol {entityName = sym} | sym <- export_funcs]
        , extraRootSymbols =
            [AsteriusEntitySymbol {entityName = sym} | sym <- root_syms]
        }) <$>
-  fmap
-    (\f ->
-       if f
-         then Browser
-         else Node)
-    (switch (long "browser" <> help "Target browsers instead of Node.js")) <*>
-  strOption (long "input" <> help "Path of the Main module") <*>
+  switch (long "browser" <> help "Target browsers instead of Node.js") <*>
+  strOption (long "input-hs" <> help "Input path of the Haskell Main module") <*>
   optional
     (strOption
-       (long "output-wasm" <>
-        help "Output path of WebAssembly binary, defaults to same path of Main")) <*>
+       (long "input-mjs" <> help "Input path of the JavaScript entry module")) <*>
   optional
     (strOption
-       (long "output-js" <>
+       (long "output-directory" <>
+        help "Output directory, defaults to same directory of --input-hs")) <*>
+  optional
+    (strOption
+       (long "output-prefix" <>
         help
-          "Output path of JavaScript, defaults to same path of Main. Must be the same directory as the WebAssembly binary.")) <*>
-  optional
-    (strOption
-       (long "output-html" <>
-        help
-          "Output path of HTML, defaults to same path of Main. Must be the same directory as the WebAssembly binary.")) <*>
-  optional
-    (strOption
-       (long "output-link-report" <> help "Output path of linking report")) <*>
-  optional
-    (strOption
-       (long "output-graphviz" <>
-        help "Output path of GraphViz file of symbol dependencies")) <*>
-  switch (long "js-bundle" <> help "Output a self-contained .js file") <*>
+          "Output file name prefix, defaults to --input-hs with .hs extension stripped")) <*>
+  switch (long "no-streaming" <> help "Don't use WebAssembly.compileStreaming") <*>
+  switch
+    (long "full-sym-table" <>
+     help
+       "Generate a full symbol table. Enable this if you intend to use RTS API.") <*>
+  switch (long "bundle" <> help "Generate a standalone .js file.") <*>
+  switch
+    (long "sync" <>
+     help "Use synchronous compilation & instantiation API for WebAssembly") <*>
   switch (long "binaryen" <> help "Use the binaryen backend") <*>
   switch (long "debug" <> help "Enable debug mode in the runtime") <*>
+  switch (long "output-link-report" <> help "Output linking report") <*>
+  switch
+    (long "output-graphviz" <>
+     help "Output GraphViz file of symbol dependencies") <*>
   switch (long "output-ir" <> help "Output Asterius IR of compiled modules") <*>
-  switch (long "run" <> help "Run the compiled module with Node.js") <*>
-  optional
-    (strOption
-       (long "asterius-instance-callback" <>
-        help
-          "Supply a JavaScript callback expression which will be invoked on the initiated asterius instance. Defaults to calling Main.main")) <*>
+  switch (long "run" <> help "Run compiled code with node") <*>
   many (strOption (long "ghc-option" <> help "Extra GHC flags")) <*>
   many
     (strOption (long "export-function" <> help "Symbol of exported function")) <*>

@@ -61,6 +61,8 @@ module Asterius.EDSL
   , wrapInt64
   , convertUInt64ToFloat64
   , truncUFloat64ToInt64
+  , convertSInt64ToFloat64
+  , truncSFloat64ToInt64
   , roundupBytesToWords
   , addInt64
   , subInt64
@@ -410,7 +412,7 @@ switchI64 cond make_clauses =
           def_clause
      in switch_block
 
-notInt64, notInt32, eqZInt64, eqZInt32, extendUInt32, wrapInt64, convertUInt64ToFloat64, truncUFloat64ToInt64, roundupBytesToWords ::
+notInt64, notInt32, eqZInt64, eqZInt32, extendUInt32, wrapInt64, convertUInt64ToFloat64, truncUFloat64ToInt64, convertSInt64ToFloat64, truncSFloat64ToInt64, roundupBytesToWords ::
      Expression -> Expression
 notInt64 = eqZInt64
 
@@ -427,6 +429,10 @@ wrapInt64 = Unary WrapInt64
 convertUInt64ToFloat64 = Unary ConvertUInt64ToFloat64
 
 truncUFloat64ToInt64 = Unary TruncUFloat64ToInt64
+
+convertSInt64ToFloat64 = Unary ConvertSInt64ToFloat64
+
+truncSFloat64ToInt64 = Unary TruncSFloat64ToInt64
 
 roundupBytesToWords n = (n `addInt64` constI64 7) `divUInt64` constI64 8
 

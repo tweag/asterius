@@ -4,11 +4,4 @@ import System.Process
 main :: IO ()
 main = do
   args <- getArgs
-  callProcess "ahc-link" $
-    [ "--input"
-    , "test/fib/fib.hs"
-    , "--output-link-report"
-    , "test/fib/fib.link.txt"
-    , "--run"
-    ] <>
-    args
+  callProcess "ahc-link" $ ["--input-hs", "test/fib/fib.hs", "--run"] <> args

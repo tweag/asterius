@@ -4,6 +4,7 @@ COPY asterius /root/asterius/asterius
 COPY binaryen /root/asterius/binaryen
 COPY ghc-toolkit /root/asterius/ghc-toolkit
 COPY inline-js /root/asterius/inline-js
+COPY npm-utils /root/asterius/npm-utils
 COPY wabt /root/asterius/wabt
 COPY wasm-toolkit /root/asterius/wasm-toolkit
 COPY stack.yaml /root/asterius/stack.yaml

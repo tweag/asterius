@@ -7,7 +7,7 @@ module Asterius.Tracing
   ( addTracingModule
   ) where
 
-import Asterius.Builtins
+import Asterius.EDSL (convertSInt64ToFloat64, convertUInt64ToFloat64)
 import Asterius.Internals
 import Asterius.TypeInfer
 import Asterius.Types
@@ -134,9 +134,12 @@ addTracingModule func_sym_map func_sym func_type func
                             , CallImport
                                 { target' = "__asterius_traceCmmSetLocal"
                                 , operands =
-                                    [func_idx, ConstI32 $ fromIntegral index] <>
-                                    cutI64
-                                      GetLocal {index = index, valueType = I64}
+                                    [ func_idx
+                                    , ConstI32 $ fromIntegral index
+                                    , convertSInt64ToFloat64
+                                        GetLocal
+                                          {index = index, valueType = I64}
+                                    ]
                                 , callImportReturnTypes = []
                                 }
                             ]
@@ -149,5 +152,4 @@ addTracingModule func_sym_map func_sym func_type func
             _ -> go
       where
         go = gmapM f x
-        func_idx =
-          Unary ConvertUInt64ToFloat64 $ ConstI64 $ func_sym_map ! func_sym
+        func_idx = convertUInt64ToFloat64 $ ConstI64 $ func_sym_map ! func_sym

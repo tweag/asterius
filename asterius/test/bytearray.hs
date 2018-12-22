@@ -5,20 +5,10 @@ main :: IO ()
 main = do
   args <- getArgs
   callProcess "ahc-link" $
-    [ "--input"
+    [ "--input-hs"
     , "test/bytearray/bytearray.hs"
-    , "--output-link-report"
-    , "test/bytearray/bytearray.link.txt"
+    , "--input-mjs"
+    , "test/bytearray/bytearray.mjs"
     , "--run"
-    ] <>
-    [ mconcat
-        [ "--asterius-instance-callback="
-        , "i => {"
-        , "i.wasmInstance.exports.hs_init();"
-        , "i.wasmInstance.exports.main();"
-        , "console.log(i.stdio.stdout());"
-        , "console.log(i.stdio.stderr());"
-        , "}"
-        ]
     ] <>
     args

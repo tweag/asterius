@@ -1,0 +1,31 @@
+name: npm-utils
+version: 0.0.1
+category: Compiler
+stability: alpha
+maintainer: Shao Cheng <cheng.shao@tweag.io>
+copyright: (c) 2018 Tweag I/O
+license: BSD3
+github: tweag/asterius
+
+extra-source-files:
+  - CHANGELOG.md
+  - LICENSE
+  - README.md
+
+custom-setup:
+  dependencies:
+    - base
+    - Cabal
+    - directory
+    - process
+
+ghc-options: -Wall
+
+dependencies:
+  - base
+  - filepath
+
+library:
+  source-dirs: src
+  other-modules:
+    - Paths_npm_utils

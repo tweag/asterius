@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
-
 import Asterius.ByteString
 import Asterius.Types
 import qualified Data.ByteString.Char8 as CBS
@@ -23,6 +21,12 @@ foreign import javascript "console.log(${1})" js_print :: JSVal -> IO ()
 foreign import javascript "setTimeout(${1},${2},${3})" js_setTimeout
   :: JSFunction -> Int -> JSVal -> IO ()
 
+foreign import javascript "console.log([${1},${2}])" js_print2
+  :: JSVal -> JSVal -> IO ()
+
+foreign import javascript "setTimeout(${1},${2},${3},${4})" js_setTimeout2
+  :: JSFunction -> Int -> JSVal -> JSVal -> IO ()
+
 main :: IO ()
 main = do
   print $ CBS.pack "The limits of my language mean the limits of my world."
@@ -42,3 +46,5 @@ main = do
   print hs_buf
   cb1 <- makeHaskellCallback1 js_print
   js_setTimeout cb1 4096 (coerce js_str)
+  cb2 <- makeHaskellCallback2 js_print2
+  js_setTimeout2 cb2 4096 (coerce js_str) (coerce js_str)
