@@ -9,6 +9,9 @@ See the [documentation](https://tweag.github.io/asterius) for further instructio
 
 * [Fibonacci compiles end-to-end: Haskell to WebAssembly via GHC](https://www.tweag.io/posts/2018-05-29-hello-asterius.html)
 * [Haskell WebAssembly calling JavaScript and back again](https://www.tweag.io/posts/2018-09-12-asterius-ffi.html)
+* [Asterius GHC WebAssembly backend reaches TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
+
+Also, we've added [Weekly Status Reports](https://tweag.github.io/asterius/reports) in case you're interested where the bleeding edge has reached.
 
 ## Quick start
 

@@ -15,5 +15,5 @@ pages:
   - 'WebAssembly as a Haskell compilation target': 'webassembly.md'
   - 'About the custom GHC fork': 'custom-ghc.md'
   - 'Reading list': 'readings.md'
-  - 'Checklist': 'checklist.md'
+  - 'Status reports': 'reports.md'
 theme: readthedocs
