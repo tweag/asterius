@@ -47,9 +47,9 @@ Indicates the output code is to be run in a browser environment. By default, the
 
 ### `--bundle`
 
-Instead of copying the runtime `.mjs` modules to the target directory, generate a self-contained `xx.js` script, and running `xx.js` has the same effect as running the entry module.
+Instead of copying the runtime `.mjs` modules to the target directory, generate a self-contained `xx.js` script, and running `xx.js` has the same effect as running the entry module. Only works for browser targets.
 
-`--bundle` is supported by [`Parcel`](https://parceljs.org/) under the hood and performs minification on the bundled JavaScript file. It's likely beneficial for browser targets.
+`--bundle` is supported by [`Parcel`](https://parceljs.org/) under the hood and performs minification on the bundled JavaScript file. It's likely beneficial since it reduces total size of scripts and doesn't require multiple requests for fetching them.
 
 ## `--no-streaming`
 
