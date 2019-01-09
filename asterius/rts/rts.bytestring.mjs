@@ -8,54 +8,49 @@ export class ByteStringCBits {
 
   fps_reverse(_q, _p, n) {
     const q = Memory.unTag(_q), p = Memory.unTag(_p);
-    const buffer = new Uint8Array(this.memory.memory.buffer),
-          subbuffer = new Uint8Array(this.memory.memory.buffer, q, n);
-    buffer.copyWithin(q, p, p + n);
-    subbuffer.reverse();
+    this.memory.i8View.copyWithin(q, p, p + n);
+    this.memory.i8View.subarray(q, q + n).reverse();
   }
 
   fps_intersperse(_q, _p, n, c) {
     let q = Memory.unTag(_q), p = Memory.unTag(_p);
-    const buffer = new Uint8Array(this.memory.memory.buffer);
     while (n > 1) {
-      buffer[q++] = buffer[p++];
-      buffer[q++] = c;
+      this.memory.i8View[q++] = this.memory.i8View[p++];
+      this.memory.i8View[q++] = c;
       --n;
     }
-    if (n === 1) buffer[q] = buffer[p];
+    if (n === 1) this.memory.i8View[q] = this.memory.i8View[p];
   }
 
   fps_maximum(_p, len) {
-    const p = Memory.unTag(_p);
-    const buffer = new Uint8Array(this.memory.memory.buffer, p, len);
+    const p = Memory.unTag(_p),
+          buffer = this.memory.i8View.subarray(p, p + len);
     return buffer.reduce((x, y) => Math.max(x, y), buffer[0]);
   }
 
   fps_minimum(_p, len) {
-    const p = Memory.unTag(_p);
-    const buffer = new Uint8Array(this.memory.memory.buffer, p, len);
+    const p = Memory.unTag(_p),
+          buffer = this.memory.i8View.subarray(p, p + len);
     return buffer.reduce((x, y) => Math.min(x, y), buffer[0]);
   }
 
   fps_count(_p, len, w) {
-    const p = Memory.unTag(_p);
-    const buffer = new Uint8Array(this.memory.memory.buffer, p, len);
+    const p = Memory.unTag(_p),
+          buffer = this.memory.i8View.subarray(p, p + len);
     return buffer.reduce((tot, c) => (c === w ? tot + 1 : tot), 0);
   }
 
   fps_memcpy_offsets(_dst, dst_off, _src, src_off, n) {
-    const dst = Memory.unTag(_dst), src = Memory.unTag(_src),
-          buffer = new Uint8Array(this.memory.memory.buffer);
-    buffer.copyWithin(dst + dst_off, src + src_off, src + src_off + n);
+    const dst = Memory.unTag(_dst), src = Memory.unTag(_src);
+    this.memory.i8View.copyWithin(dst + dst_off, src + src_off,
+                                  src + src_off + n);
     return _dst + dst_off;
   }
 
   _hs_bytestring_itoa(x, _buf, base, pad) {
-    const buf = Memory.unTag(_buf),
-          buffer = new Uint8Array(this.memory.memory.buffer),
-          x_str = x.toString(base).padStart(pad, "0");
+    const buf = Memory.unTag(_buf), x_str = x.toString(base).padStart(pad, "0");
     for (let i = 0; i < x_str.length; ++i)
-      buffer[buf + i] = x_str.codePointAt(i);
+      this.memory.i8View[buf + i] = x_str.codePointAt(i);
     return _buf + x_str.length;
   }
 

@@ -14,8 +14,8 @@ export class Heap {
         _last ? _last : this.symbolTable.ghczmprim_GHCziTypes_ZMZN_closure + 1;
     if (s.length) {
       const rp = this.instance.exports.allocate(s.length * 5);
-      const buf = new BigUint64Array(this.memory.buffer, Memory.unTag(rp),
-                                     s.length * 5);
+      const buf = this.memory.i64View.subarray(
+          Memory.unTag(rp) >> 3, (Memory.unTag(rp) >> 3) + (s.length * 5));
       for (let i = 0; i < s.length; ++i) {
         buf[i * 5] = BigInt(this.symbolTable.ghczmprim_GHCziTypes_ZC_con_info);
         buf[i * 5 + 1] = BigInt(rp + i * 40 + 25);
@@ -33,10 +33,11 @@ export class Heap {
                             Math.ceil((buf.byteLength + 31) / 8))) /
                         16) *
               16;
-    new Uint8Array(this.memory.buffer, Memory.unTag(p + 16), buf.byteLength)
+    this.memory.i8View
+        .subarray(Memory.unTag(p + 16), Memory.unTag(p + 16) + buf.byteLength)
         .set(new Uint8Array(buf));
-    const buf_header =
-        new BigUint64Array(this.memory.buffer, Memory.unTag(p), 2);
+    const buf_header = this.memory.i64View.subarray(Memory.unTag(p) >> 3,
+                                                    (Memory.unTag(p) >> 3) + 2);
     buf_header[0] = BigInt(this.symbolTable.stg_ARR_WORDS_info);
     buf_header[1] = BigInt(buf.byteLength);
     return p;
