@@ -23,12 +23,15 @@ export class Memory {
   static tagFunction(p) {
     return Number((BigInt(settings.functionTag) << BigInt(32)) | BigInt(p));
   }
+  static getDynTag(p) { return p & 7; }
   get buffer() { return this.memory.buffer; }
   grow(n) {
     const prev_pages = this.memory.grow(n);
     this.initView();
     return prev_pages;
   }
+  i64Load(p) { return this.i64View[Memory.unTag(p) >> 3]; }
+  i64Store(p, v) { this.i64View[Memory.unTag(p) >> 3] = v; }
   strlen(_str) { return this.i8View.subarray(Memory.unTag(_str)).indexOf(0); }
   memchr(_ptr, val, num) {
     const ptr = Memory.unTag(_ptr),

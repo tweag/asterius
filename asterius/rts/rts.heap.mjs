@@ -14,16 +14,17 @@ export class Heap {
         _last ? _last : this.symbolTable.ghczmprim_GHCziTypes_ZMZN_closure + 1;
     if (s.length) {
       const rp = this.instance.exports.allocate(s.length * 5);
-      const buf = this.memory.i64View.subarray(
-          Memory.unTag(rp) >> 3, (Memory.unTag(rp) >> 3) + (s.length * 5));
       for (let i = 0; i < s.length; ++i) {
-        buf[i * 5] = BigInt(this.symbolTable.ghczmprim_GHCziTypes_ZC_con_info);
-        buf[i * 5 + 1] = BigInt(rp + i * 40 + 25);
-        buf[i * 5 + 2] = BigInt(rp + (i + 1) * 40 + 2);
-        buf[i * 5 + 3] = BigInt(elem_con_info);
-        buf[i * 5 + 4] = BigInt(s[i]);
+        this.memory.i64Store(
+            rp + ((i * 5) << 3),
+            BigInt(this.symbolTable.ghczmprim_GHCziTypes_ZC_con_info));
+        this.memory.i64Store(rp + ((i * 5 + 1) << 3), BigInt(rp + i * 40 + 25));
+        this.memory.i64Store(rp + ((i * 5 + 2) << 3),
+                             BigInt(rp + (i + 1) * 40 + 2));
+        this.memory.i64Store(rp + ((i * 5 + 3) << 3), BigInt(elem_con_info));
+        this.memory.i64Store(rp + ((i * 5 + 4) << 3), BigInt(s[i]));
       }
-      buf[(s.length - 1) * 5 + 2] = BigInt(last);
+      this.memory.i64Store(rp + (((s.length - 1) * 5 + 2) << 3), BigInt(last));
       return rp + 2;
     } else
       return last;
@@ -36,10 +37,8 @@ export class Heap {
     this.memory.i8View
         .subarray(Memory.unTag(p + 16), Memory.unTag(p + 16) + buf.byteLength)
         .set(new Uint8Array(buf));
-    const buf_header = this.memory.i64View.subarray(Memory.unTag(p) >> 3,
-                                                    (Memory.unTag(p) >> 3) + 2);
-    buf_header[0] = BigInt(this.symbolTable.stg_ARR_WORDS_info);
-    buf_header[1] = BigInt(buf.byteLength);
+    this.memory.i64Store(p, BigInt(this.symbolTable.stg_ARR_WORDS_info));
+    this.memory.i64Store(p + 8, BigInt(buf.byteLength));
     return p;
   }
   newHaskellString(s, _last) {
