@@ -1,5 +1,8 @@
 export function modulify(obj) {
-  return Object.getOwnPropertyNames(Object.getPrototypeOf(obj))
-      .reduce((acc, k) => k === "constructor" ? acc : (acc[k] = obj[k].bind(obj), acc),
+  return Object
+      .entries(Object.getOwnPropertyDescriptors(Object.getPrototypeOf(obj)))
+      .reduce((acc, [ k, descr ]) => (k === "constructor" || descr.get)
+                                        ? acc
+                                        : (acc[k] = obj[k].bind(obj), acc),
               {});
 };
