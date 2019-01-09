@@ -71,31 +71,45 @@ data Task = Task
 
 genRTSSettings :: Task -> Builder
 genRTSSettings Task {..} =
-  mconcat
-    [ "export const debug = "
-    , if debug
-        then "true;\n"
-        else "false;\n"
-    , "export const platform = "
-    , case target of
-        Node -> "\"node\";\n"
-        Browser -> "\"browser\";\n"
-    , "export const dataTag = "
-    , int64Dec dataTag
-    , ";\nexport const functionTag = "
-    , int64Dec functionTag
-    , ";\nexport const mblockSize = "
-    , intDec mblock_size
-    , ";\nexport const blockSize = "
-    , intDec block_size
-    , ";\nexport const blocksPerMBlock = "
-    , intDec blocks_per_mblock
-    , ";\nexport const bdescrSize = "
-    , intDec sizeof_bdescr
-    , ";\nexport const firstBdescr = "
-    , intDec offset_first_bdescr
-    , ";\nexport const pageSize = 65536;\n"
-    ]
+  mconcat $
+  [ "export const debug = "
+  , if debug
+      then "true;\n"
+      else "false;\n"
+  , "export const platform = "
+  , case target of
+      Node -> "\"node\";\n"
+      Browser -> "\"browser\";\n"
+  , "export const dataTag = "
+  , int64Dec dataTag
+  , ";\nexport const functionTag = "
+  , int64Dec functionTag
+  , ";\nexport const mblockSize = "
+  , intDec mblock_size
+  , ";\nexport const blockSize = "
+  , intDec block_size
+  , ";\nexport const blocksPerMBlock = "
+  , intDec blocks_per_mblock
+  , ";\nexport const bdescrSize = "
+  , intDec sizeof_bdescr
+  , ";\nexport const firstBdescr = "
+  , intDec offset_first_bdescr
+  , ";\nexport const pageSize = 65536;\n"
+  ] <>
+  [ "export const " <> k <> " = " <> intDec v <> ";\n"
+  | (k, v) <-
+      [ ("offset_StgInfoTable_entry", offset_StgInfoTable_entry)
+      , ("offset_StgInfoTable_layout", offset_StgInfoTable_layout)
+      , ("offset_StgInfoTable_type", offset_StgInfoTable_type)
+      , ("offset_StgInfoTable_srt", offset_StgInfoTable_srt)
+      , ("offset_StgLargeBitmap_size", offset_StgLargeBitmap_size)
+      , ("offset_StgLargeBitmap_bitmap", offset_StgLargeBitmap_bitmap)
+      , ("offset_StgTSO_stackobj", offset_StgTSO_stackobj)
+      , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
+      , ("offset_StgStack_sp", offset_StgStack_sp)
+      , ("offset_StgStack_stack", offset_StgStack_stack)
+      ]
+  ]
 
 genPackageJSON :: Task -> Builder
 genPackageJSON Task {..} =
