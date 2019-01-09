@@ -162,6 +162,12 @@ foreign import ccall unsafe "offset_StgInfoTable_type" offset_StgInfoTable_type
 foreign import ccall unsafe "offset_StgInfoTable_srt" offset_StgInfoTable_srt
   :: Int
 
+foreign import ccall unsafe "offset_StgLargeBitmap_size" offset_StgLargeBitmap_size
+  :: Int
+
+foreign import ccall unsafe "offset_StgLargeBitmap_bitmap" offset_StgLargeBitmap_bitmap
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgRegTable" sizeof_StgRegTable :: Int
 
 foreign import ccall unsafe "offset_StgRegTable_rR1" offset_StgRegTable_rR1

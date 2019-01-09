@@ -160,13 +160,19 @@ HsInt offset_StgFunTable_stgGCEnter1() {
 
 HsInt offset_StgFunTable_stgGCFun() { return offsetof(StgFunTable, stgGCFun); }
 
-HsInt offset_StgInfoTable_entry() { return 0; }
+HsInt offset_StgInfoTable_entry() { return offsetof(StgInfoTable, entry); }
 
-HsInt offset_StgInfoTable_layout() { return 8; }
+HsInt offset_StgInfoTable_layout() { return offsetof(StgInfoTable, layout); }
 
-HsInt offset_StgInfoTable_type() { return 16; }
+HsInt offset_StgInfoTable_type() { return offsetof(StgInfoTable, type); }
 
-HsInt offset_StgInfoTable_srt() { return 20; }
+HsInt offset_StgInfoTable_srt() { return offsetof(StgInfoTable, srt); }
+
+HsInt offset_StgLargeBitmap_size() { return offsetof(StgLargeBitmap, size); }
+
+HsInt offset_StgLargeBitmap_bitmap() {
+  return offsetof(StgLargeBitmap, bitmap);
+}
 
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
