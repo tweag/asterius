@@ -17,7 +17,7 @@ class Layout {
           bitmap = raw_layout >> BigInt(6);
     return new Layout(size, bitmap);
   }
-  static fromLargeBitmap(raw_layout, memory) {
+  static fromLargeBitmap(memory, raw_layout) {
     const p = Number(raw_layout), size = Number(memory.i64Load(p));
     let bitmap = BigInt(0);
     for (let i = 0; i < Math.ceil(size / 64); ++i)
@@ -32,30 +32,48 @@ export class InfoTable {
     this.layout = layout;
     Object.freeze(this);
   }
+}
 
-  static parse(p, memory) {
-    const raw_layout = memory.i64Load(p + settings.offset_StgInfoTable_layout),
-          type = Number(memory.i64Load(p + settings.offset_StgInfoTable_type) &
-                        BigInt(0xffffffff));
-    switch (type) {
-      case ClosureTypes.RET_SMALL:
-      case ClosureTypes.UPDATE_FRAME:
-      case ClosureTypes.CATCH_FRAME:
-      case ClosureTypes.UNDERFLOW_FRAME:
-      case ClosureTypes.STOP_FRAME:
-      case ClosureTypes.ATOMICALLY_FRAME:
-      case ClosureTypes.CATCH_RETRY_FRAME:
-      case ClosureTypes.CATCH_STM_FRAME:
-        return new InfoTable(type, Layout.fromSmallBitmap(raw_layout));
-      case ClosureTypes.RET_BIG:
-        return new InfoTable(type, Layout.fromLargeBitmap(raw_layout, memory));
-      default:
-        if (type > ClosureTypes.INVALID_OBJECT &&
-            type < ClosureTypes.N_CLOSURE_TYPES)
-          return new InfoTable(type, Layout.fromPointersFirst(raw_layout));
-        else
-          throw new WebAssembly.RuntimeError("Invalid closure type " + type +
-                                             " at 0x" + p.toString(16));
+export class InfoTableParser {
+  constructor(memory) {
+    this.memory = memory;
+    this.memoTable = new Map();
+    Object.freeze(this);
+  }
+
+  parse(p) {
+    let r = this.memoTable.get(p);
+    if (!r) {
+      const raw_layout =
+          this.memory.i64Load(p + settings.offset_StgInfoTable_layout),
+            type = Number(
+                this.memory.i64Load(p + settings.offset_StgInfoTable_type) &
+                BigInt(0xffffffff));
+      switch (type) {
+        case ClosureTypes.RET_SMALL:
+        case ClosureTypes.UPDATE_FRAME:
+        case ClosureTypes.CATCH_FRAME:
+        case ClosureTypes.UNDERFLOW_FRAME:
+        case ClosureTypes.STOP_FRAME:
+        case ClosureTypes.ATOMICALLY_FRAME:
+        case ClosureTypes.CATCH_RETRY_FRAME:
+        case ClosureTypes.CATCH_STM_FRAME:
+          r = new InfoTable(type, Layout.fromSmallBitmap(raw_layout));
+          break;
+        case ClosureTypes.RET_BIG:
+          r = new InfoTable(type,
+                            Layout.fromLargeBitmap(this.memory, raw_layout));
+          break;
+        default:
+          if (type > ClosureTypes.INVALID_OBJECT &&
+              type < ClosureTypes.N_CLOSURE_TYPES)
+            r = new InfoTable(type, Layout.fromPointersFirst(raw_layout));
+          else
+            throw new WebAssembly.RuntimeError("Invalid closure type " + type +
+                                               " at 0x" + p.toString(16));
+      }
+      this.memoTable.set(p, r);
     }
+    return r;
   }
 }
