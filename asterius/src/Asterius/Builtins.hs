@@ -829,7 +829,7 @@ createThreadFunction _ =
     storeI32 stack_p offset_StgStack_stack_size $ wrapInt64 stack_size_w
     storeI64 stack_p offset_StgStack_sp $
       (stack_p `addInt64` constI64 offset_StgStack_stack) `addInt64`
-      stack_size_w
+      (stack_size_w `mulInt64` constI64 8)
     storeI32 stack_p offset_StgStack_dirty $ constI32 1
     storeI64 tso_p 0 $ symbol "stg_TSO_info"
     storeI16 tso_p offset_StgTSO_what_next $ constI32 next_ThreadRunGHC
