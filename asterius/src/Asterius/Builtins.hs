@@ -372,6 +372,12 @@ rtsFunctionImports debug =
       , externalBaseName = "fromJSArray"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
+  , FunctionImport
+      { internalName = "__asterius_checkTSO"
+      , externalModuleName = "SanCheck"
+      , externalBaseName = "checkTSO"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+      }
   ] <>
   (if debug
      then [ FunctionImport
@@ -733,10 +739,9 @@ dirtySTACK _ stack =
     (storeI32 stack offset_StgStack_dirty $ constI32 1)
     mempty
 
-scheduleWaitThreadFunction _ =
+scheduleWaitThreadFunction BuiltinsOptions {..} =
   runEDSL [] $ do
     t <- param I64
-    ret <- i32MutLocal
     block' [] $ \sched_block_lbl ->
       loop' [] $ \sched_loop_lbl -> do
         if'
@@ -753,17 +758,15 @@ scheduleWaitThreadFunction _ =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
+        callImport "__asterius_checkTSO" [convertUInt64ToFloat64 t]
         r <- stgRun $ symbol "stg_returnToStackTop"
-        putLVal ret $ wrapInt64 $ loadI64 r offset_StgRegTable_rRet
+        ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
         storeI8 mainCapability offset_Capability_in_haskell $ constI32 0
-        storeI64
-          mainCapability
-          (offset_Capability_r + offset_StgRegTable_rCurrentTSO) $
-          constI64 0
-        switchI64 (extendUInt32 (getLVal ret)) $
+        switchI64 ret $
           const
             ( [ ( ret_HeapOverflow
-                , do bytes <- i64Local $ getLVal hpAlloc
+                , do callImport "__asterius_checkTSO" [convertUInt64ToFloat64 t]
+                     bytes <- i64Local $ getLVal hpAlloc
                      putLVal hpAlloc $ constI64 0
                      if'
                        []
@@ -819,7 +822,6 @@ createThreadFunction _ =
     setReturnTypes [I64]
     [cap, alloc_words] <- params [I64, I64]
     tso_p <- call' "allocate" [cap, alloc_words] I64
-    putLVal currentTSO tso_p
     stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
     storeI64 stack_p 0 $ symbol "stg_STACK_info"
     stack_size_w <-

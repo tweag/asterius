@@ -16,6 +16,7 @@ import { IntegerManager } from "./rts.integer.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
+import { SanCheck } from "./rts.sanity.mjs";
 
 export function newAsteriusInstance(req) {
   let __asterius_logger = new EventLogManager(req.symbolTable),
@@ -31,7 +32,8 @@ export function newAsteriusInstance(req) {
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_vault = req.vault ? req.vault : new Map(),
-    __asterius_bytestring_cbits = new ByteStringCBits(null);
+    __asterius_bytestring_cbits = new ByteStringCBits(null),
+    __asterius_sancheck = new SanCheck(__asterius_memory);
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
   }
@@ -116,6 +118,7 @@ export function newAsteriusInstance(req) {
       Heap: modulify(__asterius_heap),
       Memory: modulify(__asterius_memory),
       MemoryTrap: modulify(__asterius_memory_trap),
+      SanCheck: modulify(__asterius_sancheck),
       StablePtr: modulify(__asterius_stableptr_manager),
       Tracing: modulify(__asterius_tracer),
       TSO: modulify(__asterius_tso_manager)
