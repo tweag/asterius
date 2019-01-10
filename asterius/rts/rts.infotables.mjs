@@ -18,15 +18,19 @@ class Layout {
     return new Layout(size, bitmap);
   }
   static fromLargeBitmap(memory, raw_layout) {
-    const p = Number(raw_layout), size = Number(memory.i64Load(p));
+    const p = Number(raw_layout),
+          size =
+              Number(memory.i64Load(p + settings.offset_StgLargeBitmap_size));
     let bitmap = BigInt(0);
     for (let i = 0; i < Math.ceil(size / 64); ++i)
-      bitmap |= memory.i64Load(p + 1 + i) << BigInt(i << 6);
+      bitmap |=
+          memory.i64Load(p + settings.offset_StgLargeBitmap_bitmap + (i << 3))
+          << BigInt(i << 6);
     return new Layout(size, bitmap);
   }
 }
 
-export class InfoTable {
+class InfoTable {
   constructor(type, layout) {
     this.type = type;
     this.layout = layout;
