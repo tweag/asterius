@@ -15,7 +15,7 @@ export class Memory {
     this.i8View = new Uint8Array(this.memory.buffer);
     this.i64View = new BigUint64Array(this.memory.buffer);
   }
-  static unTag(p) { return p & 0xfffffff8; }
+  static unTag(p) { return Number(BigInt(p) & BigInt(0xfffffff8)); }
   static getTag(p) { return Number(BigInt(p) >> BigInt(32)); }
   static tagData(p) {
     return Number((BigInt(settings.dataTag) << BigInt(32)) | BigInt(p));
