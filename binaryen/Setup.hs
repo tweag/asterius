@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -Wall #-}
 
 import Data.Foldable
@@ -12,6 +13,10 @@ import Distribution.Types.PackageDescription
 import Distribution.Verbosity
 import System.Directory
 import System.FilePath
+
+#if defined(darwin_HOST_OS)
+import Ar
+#endif
 
 main :: IO ()
 main =
@@ -30,6 +35,10 @@ main =
                   absoluteInstallDirs pkg_descr lbi NoCopyDest
                 binaryen_libdir = libdir binaryen_installdirs
                 binaryen_bindir = bindir binaryen_installdirs
+                run' prog args stdin_s = runProgramInvocation
+                                         normal
+                                         (simpleProgramInvocation prog args)
+                                           {progInvokeInput = Just stdin_s}
                 run prog args stdin_s =
                   let Just conf_prog = lookupProgram prog (withPrograms lbi)
                    in runProgramInvocation
@@ -69,6 +78,17 @@ main =
               ]
               ""
             binaryen_libs <- listDirectory $ binaryen_builddir </> "lib"
+#if defined(darwin_HOST_OS)
+            let output_fn = binaryen_libdir </> "libHSbinaryen-binaryen.a"
+                modules = [cbits_builddir </> "cbits.o"]
+                archives = [ binaryen_builddir </> "lib" </> l
+                           | l <- binaryen_libs ]
+            ar <- foldl mappend
+                 <$> (Archive <$> mapM loadObj modules)
+                 <*> mapM loadAr archives
+            writeBSDAr output_fn $ afilter (not . isBSDSymdef) ar
+            run' "ranlib" [output_fn] ""
+#else
             run arProgram ["-M"] $
               concat $
               [ "create " ++
@@ -81,6 +101,7 @@ main =
               , "save\n"
               , "end\n"
               ]
+#endif
             binaryen_bins <- listDirectory $ binaryen_builddir </> "bin"
             for_ binaryen_bins $ \b ->
               copyFile

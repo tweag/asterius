@@ -20,6 +20,12 @@ custom-setup:
     - Cabal
     - directory
     - filepath
+    # we need ghc technically only on macOS
+    # to work around the lack of MRI scripts
+    # via -M support of the `ar` that's
+    # shipped with macOS.  We here rely in
+    # GHC's built in Ar.
+    - ghc
 
 ghc-options: -Wall
 
