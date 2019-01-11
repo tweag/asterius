@@ -174,6 +174,14 @@ HsInt offset_StgLargeBitmap_bitmap() {
   return offsetof(StgLargeBitmap, bitmap);
 }
 
+HsInt sizeof_StgRetFun() { return sizeof(StgRetFun); }
+
+HsInt offset_StgRetFun_size() { return offsetof(StgRetFun, size); }
+
+HsInt offset_StgRetFun_fun() { return offsetof(StgRetFun, fun); }
+
+HsInt offset_StgRetFun_payload() { return offsetof(StgRetFun, payload); }
+
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
 HsInt offset_StgRegTable_rR1() { return offsetof(StgRegTable, rR1); }

@@ -168,6 +168,15 @@ foreign import ccall unsafe "offset_StgLargeBitmap_size" offset_StgLargeBitmap_s
 foreign import ccall unsafe "offset_StgLargeBitmap_bitmap" offset_StgLargeBitmap_bitmap
   :: Int
 
+foreign import ccall unsafe "sizeof_StgRetFun" sizeof_StgRetFun :: Int
+
+foreign import ccall unsafe "offset_StgRetFun_size" offset_StgRetFun_size :: Int
+
+foreign import ccall unsafe "offset_StgRetFun_fun" offset_StgRetFun_fun :: Int
+
+foreign import ccall unsafe "offset_StgRetFun_payload" offset_StgRetFun_payload
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgRegTable" sizeof_StgRegTable :: Int
 
 foreign import ccall unsafe "offset_StgRegTable_rR1" offset_StgRegTable_rR1
