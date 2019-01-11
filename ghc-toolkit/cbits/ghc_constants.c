@@ -148,6 +148,16 @@ HsInt offset_StgIndStatic_saved_info() {
   return offsetof(StgIndStatic, saved_info);
 }
 
+HsInt offset_StgFunInfoExtraFwd_fun_type() {
+  return offsetof(StgFunInfoExtraFwd, fun_type);
+}
+
+HsInt offset_StgFunInfoExtraFwd_b() { return offsetof(StgFunInfoExtraFwd, b); }
+
+HsInt offset_StgFunInfoTable_i() { return offsetof(StgFunInfoTable, i); }
+
+HsInt offset_StgFunInfoTable_f() { return offsetof(StgFunInfoTable, f); }
+
 HsInt sizeof_StgFunTable() { return sizeof(StgFunTable); }
 
 HsInt offset_StgFunTable_stgEagerBlackholeInfo() {

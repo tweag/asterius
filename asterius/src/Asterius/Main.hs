@@ -98,7 +98,12 @@ genRTSSettings Task {..} =
   ] <>
   [ "export const " <> k <> " = " <> intDec v <> ";\n"
   | (k, v) <-
-      [ ("offset_StgInfoTable_layout", offset_StgInfoTable_layout)
+      [ ( "offset_StgFunInfoExtraFwd_fun_type"
+        , offset_StgFunInfoExtraFwd_fun_type)
+      , ("offset_StgFunInfoExtraFwd_b", offset_StgFunInfoExtraFwd_b)
+      , ("offset_StgFunInfoTable_i", offset_StgFunInfoTable_i)
+      , ("offset_StgFunInfoTable_f", offset_StgFunInfoTable_f)
+      , ("offset_StgInfoTable_layout", offset_StgInfoTable_layout)
       , ("offset_StgInfoTable_type", offset_StgInfoTable_type)
       , ("offset_StgLargeBitmap_size", offset_StgLargeBitmap_size)
       , ("offset_StgLargeBitmap_bitmap", offset_StgLargeBitmap_bitmap)

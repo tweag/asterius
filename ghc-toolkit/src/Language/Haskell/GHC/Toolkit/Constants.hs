@@ -139,6 +139,18 @@ foreign import ccall unsafe "offset_StgIndStatic_static_link" offset_StgIndStati
 foreign import ccall unsafe "offset_StgIndStatic_saved_info" offset_StgIndStatic_saved_info
   :: Int
 
+foreign import ccall unsafe "offset_StgFunInfoExtraFwd_fun_type" offset_StgFunInfoExtraFwd_fun_type
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunInfoExtraFwd_b" offset_StgFunInfoExtraFwd_b
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunInfoTable_i" offset_StgFunInfoTable_i
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunInfoTable_f" offset_StgFunInfoTable_f
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgFunTable" sizeof_StgFunTable :: Int
 
 foreign import ccall unsafe "offset_StgFunTable_stgEagerBlackholeInfo" offset_StgFunTable_stgEagerBlackholeInfo
