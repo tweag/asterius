@@ -53,7 +53,7 @@ extra-deps:
   - streaming-commons-0.2.1.0
   - tagged-0.8.6
   - tf-random-0.5
-  - http://head.hackage.haskell.org/package/th-abstraction-0.2.8.0.tar.gz
+  # - http://head.hackage.haskell.org/package/th-abstraction-0.2.10.0.tar.gz
   - time-locale-compat-0.1.1.5
   - transformers-compat-0.6.2
   - unix-compat-0.5.1
