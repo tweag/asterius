@@ -207,6 +207,7 @@ data LinkReport = LinkReport
   { childSymbols :: M.Map AsteriusEntitySymbol (S.Set AsteriusEntitySymbol)
   , unfoundSymbols, unavailableSymbols :: S.Set AsteriusEntitySymbol
   , staticsSymbolMap, functionSymbolMap :: M.Map AsteriusEntitySymbol Int64
+  , infoTableSet :: S.Set Int64
   , bundledFFIMarshalState :: FFIMarshalState
   } deriving (Show)
 
@@ -218,6 +219,7 @@ instance Semigroup LinkReport where
       , unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
       , staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
       , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
+      , infoTableSet = infoTableSet r0 <> infoTableSet r1
       , bundledFFIMarshalState =
           bundledFFIMarshalState r0 <> bundledFFIMarshalState r1
       }
@@ -230,6 +232,7 @@ instance Monoid LinkReport where
       , unavailableSymbols = mempty
       , staticsSymbolMap = mempty
       , functionSymbolMap = mempty
+      , infoTableSet = mempty
       , bundledFFIMarshalState = mempty
       }
 
@@ -355,6 +358,12 @@ makeStaticsOffsetTable AsteriusModule {..} =
     iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
       ( fromIntegral $ roundup (fromIntegral ptr + asteriusStaticsSize ss) 16
       , (ss_sym, ptr) : sym_map)
+
+makeInfoTableSet ::
+     AsteriusModule -> M.Map AsteriusEntitySymbol Int64 -> S.Set Int64
+makeInfoTableSet AsteriusModule {..} sym_map =
+  S.map (sym_map !) $
+  M.keysSet $ M.filter ((== InfoTable) . staticsType) staticsMap
 
 makeMemory ::
      Bool
@@ -559,7 +568,11 @@ linkStart debug store root_syms export_funcs = do
   pure
     ( result_m
     , err_msgs
-    , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
+    , report
+        { staticsSymbolMap = ss_sym_map
+        , functionSymbolMap = func_sym_map
+        , infoTableSet = makeInfoTableSet merged_m ss_sym_map
+        })
 
 renderDot :: LinkReport -> Builder
 renderDot LinkReport {..} =

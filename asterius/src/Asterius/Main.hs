@@ -142,6 +142,9 @@ genSymbolDict sym_map =
        ]) <>
   "}"
 
+genInfoTables :: S.Set Int64 -> Builder
+genInfoTables sym_set = "new Set(" <> string7 (show (S.toList sym_set)) <> ")"
+
 genWasm :: Task -> LBS.ByteString -> Builder
 genWasm Task {..} _ =
   mconcat
@@ -180,6 +183,8 @@ genLib Task {..} LinkReport {..} err_msgs =
   , generateFFIImportObjectFactory bundledFFIMarshalState
   , ", symbolTable: "
   , genSymbolDict symbol_table
+  , ", infoTables: "
+  , genInfoTables infoTableSet
   , if sync
       then ", sync: true"
       else ", sync: false"

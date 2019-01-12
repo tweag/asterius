@@ -33,7 +33,7 @@ export function newAsteriusInstance(req) {
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_vault = req.vault ? req.vault : new Map(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
-    __asterius_sancheck = new SanCheck(__asterius_memory);
+    __asterius_sancheck = new SanCheck(__asterius_memory, req.infoTables);
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
   }

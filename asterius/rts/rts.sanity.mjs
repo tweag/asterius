@@ -5,10 +5,16 @@ import * as settings from "./rts.settings.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class SanCheck {
-  constructor(memory) {
+  constructor(memory, info_tables) {
     this.memory = memory;
+    this.infoTables = info_tables;
     this.visitedClosures = new Set();
     Object.freeze(this);
+  }
+
+  checkInfoTable(p) {
+    if (!this.infoTables.has(p))
+      throw new WebAssembly.RuntimeError(`Invalid info table: 0x${p.toString(16)}`);
   }
 
   checkSmallBitmap(payload, bitmap, size) {
@@ -30,6 +36,8 @@ export class SanCheck {
   checkClosure(c) {
     if (this.visitedClosures.has(Memory.unTag(c))) return;
     this.visitedClosures.add(Memory.unTag(c));
+    const p = Number(this.memory.i64Load(c));
+    this.checkInfoTable(p);
   }
 
   checkStack(stackobj) {
@@ -53,6 +61,7 @@ export class SanCheck {
                 BigInt(0xffffffff)),
             raw_layout =
                 this.memory.i64Load(p + settings.offset_StgInfoTable_layout);
+      this.checkInfoTable(p);
       switch (type) {
         case ClosureTypes.RET_SMALL:
         case ClosureTypes.UPDATE_FRAME:
