@@ -13,8 +13,8 @@ export class SanCheck {
   }
 
   checkInfoTable(p) {
-    if (!this.infoTables.has(p))
-      throw new WebAssembly.RuntimeError(`Invalid info table: 0x${p.toString(16)}`);
+    if (!this.infoTables.has(Number(p)))
+      throw new WebAssembly.RuntimeError(`Invalid info table: 0x${ p.toString(16) }`);
   }
 
   checkSmallBitmap(payload, bitmap, size) {
@@ -36,11 +36,43 @@ export class SanCheck {
   checkClosure(c) {
     if (this.visitedClosures.has(Memory.unTag(c))) return;
     this.visitedClosures.add(Memory.unTag(c));
-    const p = Number(this.memory.i64Load(c));
+    const p = Number(this.memory.i64Load(c)),
+          type = Number(
+              this.memory.i64Load(p + settings.offset_StgInfoTable_type) &
+              BigInt(0xffffffff));
     this.checkInfoTable(p);
+    switch (type) {
+      case ClosureTypes.CONSTR:
+      case ClosureTypes.CONSTR_1_0:
+      case ClosureTypes.CONSTR_0_1:
+      case ClosureTypes.CONSTR_2_0:
+      case ClosureTypes.CONSTR_1_1:
+      case ClosureTypes.CONSTR_0_2:
+      case ClosureTypes.CONSTR_NOCAF:
+      case ClosureTypes.FUN:
+      case ClosureTypes.FUN_1_0:
+      case ClosureTypes.FUN_0_1:
+      case ClosureTypes.FUN_2_0:
+      case ClosureTypes.FUN_1_1:
+      case ClosureTypes.FUN_0_2:
+      case ClosureTypes.FUN_STATIC: {
+        const ptrs = Number(
+            this.memory.i64Load(p + settings.offset_StgInfoTable_layout) &
+            BigInt(0xffffffff));
+        for (let i = 0; i < ptrs; ++i) this.checkClosure(c + ((1 + ptrs) << 3));
+        break;
+      }
+      default:
+        if (type <= ClosureTypes.INVALID_OBJECT ||
+            type >= ClosureTypes.N_CLOSURE_TYPES)
+          throw new WebAssembly.RuntimeError(
+            `Invalid closure type ${ type } for closure 0x${ c.toString(16) }`
+          );
+    }
   }
 
   checkStack(stackobj) {
+    this.checkInfoTable(this.memory.i64Load(stackobj));
     const stack_size = Number(
         this.memory.i64Load(stackobj + settings.offset_StgStack_stack_size) &
         BigInt(0xffffffff)),
@@ -117,7 +149,7 @@ export class SanCheck {
                              [this.memory.i64Load(
                                   fun_info + settings.offset_StgFunInfoTable_f +
                                   settings.offset_StgFunInfoExtraFwd_fun_type) &
-                              BigInt(0xFFFFFFFF)]) >>
+                              BigInt(0xffffffff)]) >>
                       BigInt(6),
                   size);
               break;
@@ -132,6 +164,7 @@ export class SanCheck {
   }
 
   checkTSO(tso) {
+    this.checkInfoTable(this.memory.i64Load(tso));
     const stackobj =
         Number(this.memory.i64Load(tso + settings.offset_StgTSO_stackobj));
     this.checkStack(stackobj);
