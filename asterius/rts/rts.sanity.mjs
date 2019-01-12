@@ -17,6 +17,11 @@ export class SanCheck {
       throw new WebAssembly.RuntimeError(`Invalid info table: 0x${ p.toString(16) }`);
   }
 
+  checkPointersFirst(payload, ptrs) {
+    for (let i = 0; i < ptrs; ++i)
+      this.checkClosure(this.memory.i64Load(payload + (i << 3)));
+  }
+
   checkSmallBitmap(payload, bitmap, size) {
     for (let i = 0; i < size; ++i)
       if (!((bitmap >> BigInt(i)) & BigInt(1)))
@@ -33,7 +38,8 @@ export class SanCheck {
     }
   }
 
-  checkClosure(c) {
+  checkClosure(_c) {
+    const c = Number(_c);
     if (this.visitedClosures.has(Memory.unTag(c))) return;
     this.visitedClosures.add(Memory.unTag(c));
     const p = Number(this.memory.i64Load(c)),
@@ -59,7 +65,19 @@ export class SanCheck {
         const ptrs = Number(
             this.memory.i64Load(p + settings.offset_StgInfoTable_layout) &
             BigInt(0xffffffff));
-        for (let i = 0; i < ptrs; ++i) this.checkClosure(c + ((1 + ptrs) << 3));
+        this.checkPointersFirst(c + 8, ptrs);
+        break;
+      }
+      case ClosureTypes.THUNK:
+      case ClosureTypes.THUNK_1_0:
+      case ClosureTypes.THUNK_0_1:
+      case ClosureTypes.THUNK_2_0:
+      case ClosureTypes.THUNK_1_1:
+      case ClosureTypes.THUNK_0_2: {
+        const ptrs = Number(
+            this.memory.i64Load(p + settings.offset_StgInfoTable_layout) &
+            BigInt(0xffffffff));
+        this.checkPointersFirst(c + settings.offset_StgThunk_payload, ptrs);
         break;
       }
       default:
@@ -86,7 +104,7 @@ export class SanCheck {
         throw new WebAssembly.RuntimeError(`Slipped through SpLim,
                                            SpLim: 0x${ sp_lim.toString(16) },
                                            Sp: 0x${ c.toString(16) }`);
-      if (c == sp_lim) break;
+      if (c === sp_lim) break;
       const p = Number(this.memory.i64Load(c)),
             type = Number(
                 this.memory.i64Load(p + settings.offset_StgInfoTable_type) &

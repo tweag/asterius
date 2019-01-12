@@ -111,6 +111,7 @@ genRTSSettings Task {..} =
       , ("offset_StgRetFun_size", offset_StgRetFun_size)
       , ("offset_StgRetFun_fun", offset_StgRetFun_fun)
       , ("offset_StgRetFun_payload", offset_StgRetFun_payload)
+      , ("offset_StgThunk_payload", offset_StgThunk_payload)
       , ("offset_StgTSO_stackobj", offset_StgTSO_stackobj)
       , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
       , ("offset_StgStack_sp", offset_StgStack_sp)
