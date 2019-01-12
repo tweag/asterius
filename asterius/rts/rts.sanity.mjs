@@ -94,6 +94,12 @@ export class SanCheck {
                   size);
               break;
             case FunTypes.ARG_GEN_BIG:
+              this.checkLargeBitmap(
+                  c + settings.offset_StgRetFun_payload,
+                  this.memory.i64Load(fun_info +
+                                      settings.offset_StgFunInfoTable_f +
+                                      settings.offset_StgFunInfoExtraFwd_b),
+                  size);
               break;
             default:
               this.checkSmallBitmap(
