@@ -134,18 +134,19 @@ marshalCmmStatic st =
     GHC.CmmUninitialised s -> pure $ Uninitialized s
     GHC.CmmString s -> pure $ Serialized $ SBS.pack s <> "\0"
 
-marshalCmmSectionType :: GHC.Section -> CodeGen AsteriusStaticsType
+marshalCmmSectionType :: GHC.Section -> AsteriusStaticsType
 marshalCmmSectionType sec@(GHC.Section _ clbl)
-  | GHC.isGcPtrLabel clbl = pure Closure
-  | GHC.isSomeRODataLabel clbl = pure InfoTable
-  | GHC.isBytesLabel clbl = pure Bytes
-  | otherwise = throwError $ UnsupportedCmmSectionType $ showSBS sec
+  | GHC.isGcPtrLabel clbl = Closure
+  | GHC.isSomeRODataLabel clbl = InfoTable
+  | GHC.isSecConstant sec = ConstBytes
+  | otherwise = Bytes
 
 marshalCmmData :: GHC.Section -> GHC.CmmStatics -> CodeGen AsteriusStatics
 marshalCmmData sec (GHC.Statics _ ss) = do
-  t <- marshalCmmSectionType sec
   ass <- for ss marshalCmmStatic
-  pure AsteriusStatics {staticsType = t, asteriusStatics = ass}
+  pure
+    AsteriusStatics
+      {staticsType = marshalCmmSectionType sec, asteriusStatics = ass}
 
 marshalCmmLocalReg :: GHC.LocalReg -> CodeGen (UnresolvedLocalReg, ValueType)
 marshalCmmLocalReg (GHC.LocalReg u t) = do

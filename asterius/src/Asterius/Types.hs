@@ -86,7 +86,8 @@ data AsteriusStatic
 instance Binary AsteriusStatic
 
 data AsteriusStaticsType
-  = Bytes
+  = ConstBytes
+  | Bytes
   | InfoTable
   | Closure
   deriving (Eq, Ord, Show, Generic, Data)
