@@ -41,6 +41,7 @@ import qualified Data.Set as S
 import qualified DynFlags as GHC
 import Foreign
 import qualified GHC
+import Language.Haskell.GHC.Toolkit.BuildInfo (getDataDir)
 import Language.Haskell.GHC.Toolkit.Constants
 import Language.Haskell.GHC.Toolkit.Orphans.Show
 import Language.Haskell.GHC.Toolkit.Run
@@ -248,9 +249,10 @@ ahcLinkMain :: Task -> IO ()
 ahcLinkMain task@Task {..} = do
   c_BinaryenSetOptimizeLevel 0
   c_BinaryenSetShrinkLevel 0
+  bootArgs <- defaultBootArgs
   boot_store <-
     do store_path <-
-         do let boot_lib = bootDir defaultBootArgs </> "asterius_lib"
+         do let boot_lib = bootDir bootArgs </> "asterius_lib"
             pure (boot_lib </> "asterius_store")
        putStrLn $ "[INFO] Loading boot library store from " <> show store_path
        decodeStore store_path
@@ -259,6 +261,8 @@ ahcLinkMain task@Task {..} = do
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "[INFO] Compiling " <> inputHS <> " to Cmm"
   (c, get_ffi_mod) <- addFFIProcessor mempty
+  dataDir <- getDataDir
+  defConfig <- defaultConfig
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
     GHC.runGhc (Just (dataDir </> ".boot" </> "asterius_lib")) $
     lowerCodensity $ do
@@ -267,7 +271,7 @@ ahcLinkMain task@Task {..} = do
       mod_ir_map <-
         liftCodensity $
         runHaskell
-          defaultConfig
+          defConfig
             { ghcFlags =
                 [ "-Wall"
                 , "-O"

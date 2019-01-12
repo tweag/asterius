@@ -31,10 +31,11 @@ data Config = Config
   , compiler :: Compiler
   }
 
-defaultConfig :: Config
-defaultConfig =
-  Config
-    {ghcFlags = ["-Wall", "-O"], ghcLibDir = BI.ghcLibDir, compiler = mempty}
+defaultConfig :: IO Config
+defaultConfig = do
+  ghcLibDir <- BI.getGhcLibDir
+  return $ Config
+    {ghcFlags = ["-Wall", "-O"], ghcLibDir = ghcLibDir, compiler = mempty}
 
 runHaskell ::
      Config -> [String] -> (M.Map Module HaskellIR -> GHC.Ghc r) -> GHC.Ghc r
@@ -77,10 +78,11 @@ runHaskell Config {..} targets cont = do
 runCmm ::
      Config -> [FilePath] -> (M.Map FilePath CmmIR -> GHC.Ghc r) -> GHC.Ghc r
 runCmm Config {..} cmm_fns cont = do
+  liftIO $ putStrLn $ "runCmm on " ++ show cmm_fns
   dflags <- getSessionDynFlags
   (dflags', _, _) <-
     parseDynamicFlags
-      (dflags `gopt_set` Opt_ForceRecomp `gopt_unset` Opt_KeepOFiles) $
+      ((dflags `gopt_set` Opt_ForceRecomp `gopt_unset` Opt_KeepOFiles `gopt_set` Opt_KeepTmpFiles) { verbosity = 3 })$
     map noLoc ghcFlags
   (h, read_cmm_irs) <-
     liftIO $ do
@@ -101,7 +103,9 @@ runCmm Config {..} cmm_fns cont = do
         }
   env <- getSession
   liftIO
-    (do oneShot env StopLn [(cmm_fn, Just CmmCpp) | cmm_fn <- cmm_fns]
+    (do putStrLn $ "Running oneShot"
+        sequence_ [oneShot env StopLn [(cmm_fn, Just CmmCpp)] | cmm_fn <- cmm_fns]
+        putStrLn $ "Done running oneShot"
         cmm_irs <- read_cmm_irs
         if length cmm_irs == length cmm_fns
           then pure $ M.fromList $ zip cmm_fns cmm_irs

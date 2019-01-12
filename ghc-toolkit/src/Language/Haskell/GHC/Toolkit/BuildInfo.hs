@@ -1,15 +1,14 @@
 module Language.Haskell.GHC.Toolkit.BuildInfo
-  ( bootLibsPath
-  , sandboxGhcLibDir
-  , ghcLibDir
-  , dataDir
-  , gccPath
+  ( getBootLibsPath
+  , getSandboxGhcLibDir
+  , getGhcLibDir
+  , getDataDir
+  , getGccPath
   ) where
 
 import BuildInfo_ghc_toolkit
 import System.FilePath
 
-bootLibsPath, sandboxGhcLibDir :: FilePath
-bootLibsPath = dataDir </> "boot-libs"
-
-sandboxGhcLibDir = dataDir </> "ghc-libdir"
+getBootLibsPath, getSandboxGhcLibDir :: IO FilePath
+getBootLibsPath = (</> "boot-libs") <$> getDataDir
+getSandboxGhcLibDir = (</> "ghc-libdir") <$> getDataDir
