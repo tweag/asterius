@@ -55,7 +55,7 @@ rtsAsteriusModule opts =
         Map.fromList
           [ ( "MainCapability"
             , AsteriusStatics
-                { isConstant = False
+                { staticsType = Bytes
                 , asteriusStatics =
                     [ Serialized $
                       SBS.pack $

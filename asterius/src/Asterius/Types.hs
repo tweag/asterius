@@ -10,6 +10,7 @@ module Asterius.Types
   ( BinaryenIndex
   , AsteriusCodeGenError(..)
   , AsteriusStatic(..)
+  , AsteriusStaticsType(..)
   , AsteriusStatics(..)
   , AsteriusFunction(..)
   , AsteriusModule(..)
@@ -64,6 +65,7 @@ data AsteriusCodeGenError
   | UnsupportedCmmWidth SBS.ShortByteString
   | UnsupportedCmmGlobalReg SBS.ShortByteString
   | UnsupportedCmmExpr SBS.ShortByteString
+  | UnsupportedCmmSectionType SBS.ShortByteString
   | UnsupportedImplicitCasting Expression
                                ValueType
                                ValueType
@@ -83,8 +85,16 @@ data AsteriusStatic
 
 instance Binary AsteriusStatic
 
+data AsteriusStaticsType
+  = Bytes
+  | InfoTable
+  | Closure
+  deriving (Eq, Ord, Show, Generic, Data)
+
+instance Binary AsteriusStaticsType
+
 data AsteriusStatics = AsteriusStatics
-  { isConstant :: Bool
+  { staticsType :: AsteriusStaticsType
   , asteriusStatics :: [AsteriusStatic]
   } deriving (Eq, Ord, Show, Generic, Data)
 

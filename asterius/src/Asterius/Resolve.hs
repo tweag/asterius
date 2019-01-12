@@ -348,7 +348,7 @@ makeStaticsOffsetTable AsteriusModule {..} =
   where
     (last_o, statics_map) =
       layoutStatics $
-      sortOn (\(k, AsteriusStatics {..}) -> (not isConstant, k)) $
+      sortOn (\(k, AsteriusStatics {..}) -> (staticsType, k)) $
       M.toList staticsMap
     layoutStatics =
       foldl' iterLayoutStaticsState (16 .|. dataTag `shiftL` 32, [])
