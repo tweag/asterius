@@ -373,9 +373,9 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
-      { internalName = "__asterius_checkTSO"
+      { internalName = "__asterius_checkRootTSO"
       , externalModuleName = "SanCheck"
-      , externalBaseName = "checkTSO"
+      , externalBaseName = "checkRootTSO"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       }
   ] <>
@@ -758,14 +758,16 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
-        callImport "__asterius_checkTSO" [convertUInt64ToFloat64 t]
+        callImport "__asterius_checkRootTSO" [convertUInt64ToFloat64 t]
         r <- stgRun $ symbol "stg_returnToStackTop"
         ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
         storeI8 mainCapability offset_Capability_in_haskell $ constI32 0
         switchI64 ret $
           const
             ( [ ( ret_HeapOverflow
-                , do callImport "__asterius_checkTSO" [convertUInt64ToFloat64 t]
+                , do callImport
+                       "__asterius_checkRootTSO"
+                       [convertUInt64ToFloat64 t]
                      bytes <- i64Local $ getLVal hpAlloc
                      putLVal hpAlloc $ constI64 0
                      if'

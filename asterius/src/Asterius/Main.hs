@@ -115,6 +115,8 @@ genRTSSettings Task {..} =
       , ("offset_StgInfoTable_type", offset_StgInfoTable_type)
       , ("offset_StgLargeBitmap_size", offset_StgLargeBitmap_size)
       , ("offset_StgLargeBitmap_bitmap", offset_StgLargeBitmap_bitmap)
+      , ("offset_StgMutArrPtrs_ptrs", offset_StgMutArrPtrs_ptrs)
+      , ("offset_StgMutArrPtrs_payload", offset_StgMutArrPtrs_payload)
       , ("offset_StgPAP_arity", offset_StgPAP_arity)
       , ("offset_StgPAP_fun", offset_StgPAP_fun)
       , ("offset_StgPAP_payload", offset_StgPAP_payload)
@@ -123,11 +125,18 @@ genRTSSettings Task {..} =
       , ("offset_StgRetFun_fun", offset_StgRetFun_fun)
       , ("offset_StgRetFun_payload", offset_StgRetFun_payload)
       , ("offset_StgSelector_selectee", offset_StgSelector_selectee)
+      , ("offset_StgSmallMutArrPtrs_ptrs", offset_StgSmallMutArrPtrs_ptrs)
+      , ("offset_StgSmallMutArrPtrs_payload", offset_StgSmallMutArrPtrs_payload)
       , ("offset_StgThunk_payload", offset_StgThunk_payload)
       , ("offset_StgTSO_stackobj", offset_StgTSO_stackobj)
       , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
       , ("offset_StgStack_sp", offset_StgStack_sp)
       , ("offset_StgStack_stack", offset_StgStack_stack)
+      , ("offset_StgWeak_cfinalizers", offset_StgWeak_cfinalizers)
+      , ("offset_StgWeak_key", offset_StgWeak_key)
+      , ("offset_StgWeak_value", offset_StgWeak_value)
+      , ("offset_StgWeak_finalizer", offset_StgWeak_finalizer)
+      , ("offset_StgWeak_link", offset_StgWeak_link)
       ]
   ]
 

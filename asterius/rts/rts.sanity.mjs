@@ -18,7 +18,7 @@ export class SanCheck {
   }
 
   checkPointersFirst(payload, ptrs) {
-    for (let i = 0; i < ptrs; ++i)
+    for (let i = 0; i < Number(ptrs); ++i)
       this.checkClosure(this.memory.i64Load(payload + (i << 3)));
   }
 
@@ -96,7 +96,13 @@ export class SanCheck {
       case ClosureTypes.FUN_1_1:
       case ClosureTypes.FUN_0_2:
       case ClosureTypes.FUN_STATIC:
-      case ClosureTypes.THUNK_STATIC: {
+      case ClosureTypes.THUNK_STATIC:
+      case ClosureTypes.BLACKHOLE:
+      case ClosureTypes.MUT_VAR_CLEAN:
+      case ClosureTypes.MUT_VAR_DIRTY:
+      case ClosureTypes.PRIM:
+      case ClosureTypes.MUT_PRIM:
+      case ClosureTypes.COMPACT_NFDATA: {
         const ptrs = Number(this.memory.i64Load(p + settings.offset_StgInfoTable_layout) & BigInt(0xffffffff));
         this.checkPointersFirst(c + 8, ptrs);
         break;
@@ -151,8 +157,70 @@ export class SanCheck {
             this.memory.i64Load(c + settings.offset_StgIndStatic_indirectee));
         break;
       }
+      case ClosureTypes.RET_BCO:
+      case ClosureTypes.RET_SMALL:
+      case ClosureTypes.RET_BIG:
+      case ClosureTypes.RET_FUN:
+      case ClosureTypes.UPDATE_FRAME:
+      case ClosureTypes.CATCH_FRAME:
+      case ClosureTypes.UNDERFLOW_FRAME:
+      case ClosureTypes.STOP_FRAME:
+      case ClosureTypes.ATOMICALLY_FRAME:
+      case ClosureTypes.CATCH_RETRY_FRAME:
+      case ClosureTypes.CATCH_STM_FRAME:
+        throw new WebAssembly.RuntimeError(`Invalid stack frame on the heap at 0x${ c.toString(16) }`);
+      case ClosureTypes.BLOCKING_QUEUE:
+        throw new WebAssembly.RuntimeError(`Invalid blocking queue at 0x${ c.toString(16) }`);
+      case ClosureTypes.MVAR_CLEAN:
+      case ClosureTypes.MVAR_DIRTY:
+        throw new WebAssembly.RuntimeError(`Unsupported MVar at 0x${ c.toString(16) }`);
+      case ClosureTypes.TVAR:
+        throw new WebAssembly.RuntimeError(`Unsupported TVar at 0x${ c.toString(16) }`);
+      case ClosureTypes.ARR_WORDS:
+        break;
+      case ClosureTypes.MUT_ARR_PTRS_CLEAN:
+      case ClosureTypes.MUT_ARR_PTRS_DIRTY:
+      case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY:
+      case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN: {
+        const ptrs =
+            Number(this.memory.i64Load(c + settings.offset_StgMutArrPtrs_ptrs));
+        this.checkPointersFirst(c + settings.offset_StgMutArrPtrs_payload,
+                                ptrs);
+        break;
+      }
+      case ClosureTypes.WEAK: {
+        this.checkClosure(
+            this.memory.i64Load(c + settings.offset_StgWeak_cfinalizers));
+        this.checkClosure(this.memory.i64Load(c + settings.offset_StgWeak_key));
+        this.checkClosure(
+            this.memory.i64Load(c + settings.offset_StgWeak_value));
+        this.checkClosure(
+            this.memory.i64Load(c + settings.offset_StgWeak_finalizer));
+        const link = this.memory.i64Load(c + settings.offset_StgWeak_link);
+        if (link) this.checkClosure(link);
+        break;
+      }
+      case ClosureTypes.TSO: {
+        this.checkTSO(c);
+        break;
+      }
+      case ClosureTypes.STACK: {
+        this.checkStack(c);
+        break;
+      }
+      case ClosureTypes.TREC_CHUNK:
+        throw new WebAssembly.RuntimeError(`Invalid TREC_CHUNK at 0x${ c.toString(16) }`);
+      case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN:
+      case ClosureTypes.SMALL_MUT_ARR_PTRS_DIRTY:
+      case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY:
+      case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
+        this.checkPointersFirst(
+            c + settings.offset_StgSmallMutArrPtrs_payload,
+            this.memory.i64Load(c + settings.offset_StgSmallMutArrPtrs_ptrs));
+        break;
+      }
       default:
-        if (type <= ClosureTypes.INVALID_OBJECT || type >= ClosureTypes.N_CLOSURE_TYPES) throw new WebAssembly.RuntimeError(`Invalid closure type ${type} for closure 0x${c.toString(16)}`);
+        throw new WebAssembly.RuntimeError(`Invalid closure type ${ type } for closure 0x${ c.toString(16) }`);
     }
   }
 
@@ -243,6 +311,8 @@ export class SanCheck {
   }
 
   checkStack(stackobj) {
+    if (this.visitedClosures.has(stackobj)) return;
+    this.visitedClosures.add(Memory.unTag(stackobj));
     this.checkInfoTable(this.memory.i64Load(stackobj));
     const stack_size = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_stack_size) & BigInt(0xffffffff)),
       sp = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_sp)),
@@ -251,10 +321,16 @@ export class SanCheck {
   }
 
   checkTSO(tso) {
+    if (this.visitedClosures.has(Memory.unTag(tso))) return;
+    this.visitedClosures.add(Memory.unTag(tso));
     this.checkInfoTable(this.memory.i64Load(tso));
     const stackobj =
         Number(this.memory.i64Load(tso + settings.offset_StgTSO_stackobj));
     this.checkStack(stackobj);
+  }
+
+  checkRootTSO(tso) {
+    this.checkTSO(tso);
     console.log(`[EVENT] Live object count: ${ this.visitedClosures.size }`);
     this.visitedClosures.clear();
   }
