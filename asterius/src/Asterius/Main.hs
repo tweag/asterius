@@ -98,7 +98,10 @@ genRTSSettings Task {..} =
   ] <>
   [ "export const " <> k <> " = " <> intDec v <> ";\n"
   | (k, v) <-
-      [ ( "offset_StgFunInfoExtraFwd_fun_type"
+      [ ("offset_StgAP_arity", offset_StgAP_arity)
+      , ("offset_StgAP_fun", offset_StgAP_fun)
+      , ("offset_StgAP_payload", offset_StgAP_payload)
+      , ( "offset_StgFunInfoExtraFwd_fun_type"
         , offset_StgFunInfoExtraFwd_fun_type)
       , ("offset_StgFunInfoExtraFwd_b", offset_StgFunInfoExtraFwd_b)
       , ("offset_StgFunInfoTable_i", offset_StgFunInfoTable_i)
@@ -107,10 +110,14 @@ genRTSSettings Task {..} =
       , ("offset_StgInfoTable_type", offset_StgInfoTable_type)
       , ("offset_StgLargeBitmap_size", offset_StgLargeBitmap_size)
       , ("offset_StgLargeBitmap_bitmap", offset_StgLargeBitmap_bitmap)
+      , ("offset_StgPAP_arity", offset_StgPAP_arity)
+      , ("offset_StgPAP_fun", offset_StgPAP_fun)
+      , ("offset_StgPAP_payload", offset_StgPAP_payload)
       , ("sizeof_StgRetFun", sizeof_StgRetFun)
       , ("offset_StgRetFun_size", offset_StgRetFun_size)
       , ("offset_StgRetFun_fun", offset_StgRetFun_fun)
       , ("offset_StgRetFun_payload", offset_StgRetFun_payload)
+      , ("offset_StgSelector_selectee", offset_StgSelector_selectee)
       , ("offset_StgThunk_payload", offset_StgThunk_payload)
       , ("offset_StgTSO_stackobj", offset_StgTSO_stackobj)
       , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
@@ -482,9 +489,12 @@ ahcLinkMain task@Task {..} = do
           if bundle
             then do
               putStrLn $ "[INFO] Running " <> out_js
-              callProcess "node" [takeFileName out_js]
+              callProcess "node" ["--stack-size=4096", takeFileName out_js]
             else do
               putStrLn $ "[INFO] Running " <> out_entry
               callProcess
                 "node"
-                ["--experimental-modules", takeFileName out_entry]
+                [ "--experimental-modules"
+                , "--stack-size=4096"
+                , takeFileName out_entry
+                ]

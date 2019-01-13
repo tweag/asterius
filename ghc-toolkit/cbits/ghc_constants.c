@@ -120,6 +120,18 @@ HsInt offset_Capability_transaction_tokens() {
   return offsetof(Capability, transaction_tokens);
 }
 
+HsInt offset_StgAP_arity() { return offsetof(StgAP, arity); }
+
+HsInt offset_StgAP_fun() { return offsetof(StgAP, fun); }
+
+HsInt offset_StgAP_payload() { return offsetof(StgAP, payload); }
+
+HsInt offset_StgAP_STACK_size() { return offsetof(StgAP_STACK, size); }
+
+HsInt offset_StgAP_STACK_fun() { return offsetof(StgAP_STACK, fun); }
+
+HsInt offset_StgAP_STACK_payload() { return offsetof(StgAP_STACK, payload); }
+
 HsInt sizeof_StgArrBytes() { return sizeof(StgArrBytes); }
 
 HsInt offset_StgArrBytes_bytes() { return offsetof(StgArrBytes, bytes); }
@@ -183,6 +195,20 @@ HsInt offset_StgLargeBitmap_size() { return offsetof(StgLargeBitmap, size); }
 HsInt offset_StgLargeBitmap_bitmap() {
   return offsetof(StgLargeBitmap, bitmap);
 }
+
+HsInt offset_StgMutArrPtrs_ptrs() { return offsetof(StgMutArrPtrs, ptrs); }
+
+HsInt offset_StgMutArrPtrs_size() { return offsetof(StgMutArrPtrs, size); }
+
+HsInt offset_StgMutArrPtrs_payload() {
+  return offsetof(StgMutArrPtrs, payload);
+}
+
+HsInt offset_StgPAP_arity() { return offsetof(StgPAP, arity); }
+
+HsInt offset_StgPAP_fun() { return offsetof(StgPAP, fun); }
+
+HsInt offset_StgPAP_payload() { return offsetof(StgPAP, payload); }
 
 HsInt sizeof_StgRetFun() { return sizeof(StgRetFun); }
 
@@ -268,6 +294,16 @@ HsInt offset_StgRegTable_rHpAlloc() { return offsetof(StgRegTable, rHpAlloc); }
 
 HsInt offset_StgRegTable_rRet() { return offsetof(StgRegTable, rRet); }
 
+HsInt offset_StgSelector_selectee() { return offsetof(StgSelector, selectee); }
+
+HsInt offset_StgSmallMutArrPtrs_ptrs() {
+  return offsetof(StgSmallMutArrPtrs, ptrs);
+}
+
+HsInt offset_StgSmallMutArrPtrs_payload() {
+  return offsetof(StgSmallMutArrPtrs, payload);
+}
+
 HsInt sizeof_StgStack() { return sizeof(StgStack); }
 
 HsInt offset_StgStack_stack_size() { return offsetof(StgStack, stack_size); }
@@ -323,6 +359,16 @@ HsInt offset_StgTSO_alloc_limit() { return offsetof(StgTSO, alloc_limit); }
 HsInt offset_StgTSO_tot_stack_size() {
   return offsetof(StgTSO, tot_stack_size);
 }
+
+HsInt offset_StgWeak_cfinalizers() { return offsetof(StgWeak, cfinalizers); }
+
+HsInt offset_StgWeak_key() { return offsetof(StgWeak, key); }
+
+HsInt offset_StgWeak_value() { return offsetof(StgWeak, value); }
+
+HsInt offset_StgWeak_finalizer() { return offsetof(StgWeak, finalizer); }
+
+HsInt offset_StgWeak_link() { return offsetof(StgWeak, link); }
 
 HsInt next_ThreadRunGHC() { return ThreadRunGHC; }
 

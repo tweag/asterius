@@ -23,18 +23,52 @@ export class SanCheck {
   }
 
   checkSmallBitmap(payload, bitmap, size) {
-    for (let i = 0; i < size; ++i)
+    for (let i = 0; i < Number(size); ++i)
       if (!((bitmap >> BigInt(i)) & BigInt(1)))
-        this.checkClosure(this.memory.i64Load(payload + (i << 3)));
+        this.checkClosure(this.memory.i64Load(Number(payload) + (i << 3)));
   }
 
   checkLargeBitmap(payload, large_bitmap, size) {
-    for (let j = 0; j < size; j += 64) {
+    for (let j = 0; j < Number(size); j += 64) {
       const bitmap = this.memory.i64Load(
           large_bitmap + settings.offset_StgLargeBitmap_bitmap + (j >> 3));
-      for (let i = j; i - j < 64 && i < size; ++i)
+      for (let i = j; i - j < 64 && i < Number(size); ++i)
         if (!((bitmap >> BigInt(i - j)) & BigInt(1)))
-          this.checkClosure(this.memory.i64Load(payload + (i << 3)));
+          this.checkClosure(this.memory.i64Load(Number(payload) + (i << 3)));
+    }
+  }
+
+  checkPAP(fun, payload, n_args) {
+    this.checkClosure(fun);
+    const fun_info = Number(this.memory.i64Load(fun));
+    switch(Number(
+              this.memory.i64Load(fun_info + settings.offset_StgFunInfoTable_f +
+                                  settings.offset_StgFunInfoExtraFwd_fun_type) &
+              BigInt(0xffffffff))) {
+      case FunTypes.ARG_GEN:
+        this.checkSmallBitmap(payload, this.memory.i64Load(fun_info +
+                                      settings.offset_StgFunInfoTable_f +
+                                      settings.offset_StgFunInfoExtraFwd_b) >>
+                      BigInt(6), n_args);
+        break;
+      case FunTypes.ARG_GEN_BIG:
+        this.checkLargeBitmap(payload, this.memory.i64Load(fun_info +
+                                      settings.offset_StgFunInfoTable_f +
+                                      settings.offset_StgFunInfoExtraFwd_b), n_args);
+        break;
+      case FunTypes.ARG_BCO:
+        throw new WebAssembly.RuntimeError(`Invalid ARG_BCO in closure 0x${ fun.toString(16) }`);
+      default:
+        this.checkSmallBitmap(
+            payload,
+            BigInt(stg_arg_bitmaps
+                       [this.memory.i64Load(
+                            fun_info + settings.offset_StgFunInfoTable_f +
+                            settings.offset_StgFunInfoExtraFwd_fun_type) &
+                        BigInt(0xffffffff)]) >>
+                BigInt(6),
+            n_args);
+        break;
     }
   }
 
@@ -61,10 +95,9 @@ export class SanCheck {
       case ClosureTypes.FUN_2_0:
       case ClosureTypes.FUN_1_1:
       case ClosureTypes.FUN_0_2:
-      case ClosureTypes.FUN_STATIC: {
-        const ptrs = Number(
-            this.memory.i64Load(p + settings.offset_StgInfoTable_layout) &
-            BigInt(0xffffffff));
+      case ClosureTypes.FUN_STATIC:
+      case ClosureTypes.THUNK_STATIC: {
+        const ptrs = Number(this.memory.i64Load(p + settings.offset_StgInfoTable_layout) & BigInt(0xffffffff));
         this.checkPointersFirst(c + 8, ptrs);
         break;
       }
@@ -74,18 +107,33 @@ export class SanCheck {
       case ClosureTypes.THUNK_2_0:
       case ClosureTypes.THUNK_1_1:
       case ClosureTypes.THUNK_0_2: {
-        const ptrs = Number(
-            this.memory.i64Load(p + settings.offset_StgInfoTable_layout) &
-            BigInt(0xffffffff));
+        const ptrs = Number(this.memory.i64Load(p + settings.offset_StgInfoTable_layout) & BigInt(0xffffffff));
         this.checkPointersFirst(c + settings.offset_StgThunk_payload, ptrs);
         break;
       }
+      case ClosureTypes.THUNK_SELECTOR: {
+        this.checkClosure(
+            this.memory.i64Load(c + settings.offset_StgSelector_selectee));
+        break;
+      }
+      case ClosureTypes.BCO:
+        throw new WebAssembly.RuntimeError(`Invalid BCO object at 0x${c.toString(16)}`);
+      case ClosureTypes.AP: {
+        this.checkPAP(
+            this.memory.i64Load(c + settings.offset_StgAP_fun),
+            this.memory.i64Load(c + settings.offset_StgAP_payload),
+            this.memory.i64Load(c + settings.offset_StgAP_arity) >> BigInt(32));
+        break;
+      }
+      case ClosureTypes.PAP: {
+        this.checkPAP(
+            this.memory.i64Load(c + settings.offset_StgPAP_fun),
+            this.memory.i64Load(c + settings.offset_StgPAP_payload),
+            this.memory.i64Load(c + settings.offset_StgPAP_arity) >> BigInt(32));
+        break;
+      }
       default:
-        if (type <= ClosureTypes.INVALID_OBJECT ||
-            type >= ClosureTypes.N_CLOSURE_TYPES)
-          throw new WebAssembly.RuntimeError(
-            `Invalid closure type ${ type } for closure 0x${ c.toString(16) }`
-          );
+        if (type <= ClosureTypes.INVALID_OBJECT || type >= ClosureTypes.N_CLOSURE_TYPES) throw new WebAssembly.RuntimeError(`Invalid closure type ${type} for closure 0x${c.toString(16)}`);
     }
   }
 
@@ -160,6 +208,8 @@ export class SanCheck {
                                       settings.offset_StgFunInfoExtraFwd_b),
                   size);
               break;
+            case FunTypes.ARG_BCO:
+              throw new WebAssembly.RuntimeError(`Invalid ARG_BCO in RET_FUN frame 0x${ c.toString(16) }`);
             default:
               this.checkSmallBitmap(
                   c + settings.offset_StgRetFun_payload,
