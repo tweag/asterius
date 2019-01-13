@@ -2,6 +2,35 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-01-13
+
+Covers the last week. The week before was new year vacation; happy new year everyone!
+
+Completed & ongoing work:
+
+* Completed the "modularized runtime" refactorings. (#50)
+* Drafted three feature roadmaps:
+    * Implement proper garbage collection (#52)
+    * Implement Cabal support (#53)
+    * Implement support for Template Haskell/GHCi/Plugins (#54)
+    * The above proposals are scheduled to be completed on 2019 Q1.
+* Began working on GC, and finished the first stage: accurate heap objects traversal.
+    * Identify different types of data sections in object files (regular bytes/info tables/closures). The info table addresses are emitted into generated JavaScript to allow an accurate info table sanity check.
+    * Implemented runtime utils for directly manipulating the linear memory with tagged addresses.
+    * Implemented the sanity check which traverses the whole heap and visits every live object. All existing unit tests pass this check.
+
+Planned work for next week:
+
+* Finish the second stage of GC support: evacuate/scavenge.
+    * See #52 for details. After this is finished, GC will be operational.
+    * Support for handling `JSVal` and `Weak#` is scheduled in later stages.
+
+Originally scheduled but lowered priority:
+
+* Improving the Cloudflare worker demo. We're prioritizing more pressing issues like GC over specific use cases right now.
+
+Special thanks to Moritz Angermann (@angerman) for contributing a patch (#55) for fixing `ar` problem on macOS, and helping to improve macOS & cabal support, discovering a GHC bug related to tables-next-to-code (#16174).
+
 ## 2018-12-28
 
 Covers the last two weeks.
