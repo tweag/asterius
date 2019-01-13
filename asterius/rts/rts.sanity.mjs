@@ -132,20 +132,31 @@ export class SanCheck {
             this.memory.i64Load(c + settings.offset_StgPAP_arity) >> BigInt(32));
         break;
       }
+      case ClosureTypes.AP_STACK: {
+        this.checkClosure(
+            this.memory.i64Load(c + settings.offset_StgAP_STACK_fun));
+        this.checkStackChunk(c + settings.offset_StgAP_STACK_payload,
+                             c + settings.offset_StgAP_STACK_payload +
+                                 Number(this.memory.i64Load(
+                                     c + settings.offset_StgAP_STACK_size)));
+        break;
+      }
+      case ClosureTypes.IND: {
+        this.checkClosure(
+            this.memory.i64Load(c + settings.offset_StgInd_indirectee));
+        break;
+      }
+      case ClosureTypes.IND_STATIC: {
+        this.checkClosure(
+            this.memory.i64Load(c + settings.offset_StgIndStatic_indirectee));
+        break;
+      }
       default:
         if (type <= ClosureTypes.INVALID_OBJECT || type >= ClosureTypes.N_CLOSURE_TYPES) throw new WebAssembly.RuntimeError(`Invalid closure type ${type} for closure 0x${c.toString(16)}`);
     }
   }
 
-  checkStack(stackobj) {
-    this.checkInfoTable(this.memory.i64Load(stackobj));
-    const stack_size = Number(
-        this.memory.i64Load(stackobj + settings.offset_StgStack_stack_size) &
-        BigInt(0xffffffff)),
-          sp = Number(
-              this.memory.i64Load(stackobj + settings.offset_StgStack_sp)),
-          sp_lim =
-              stackobj + settings.offset_StgStack_stack + (stack_size << 3);
+  checkStackChunk(sp, sp_lim) {
     let c = sp;
     while (true) {
       if (c > sp_lim)
@@ -229,6 +240,14 @@ export class SanCheck {
           throw new WebAssembly.RuntimeError(`Invalid frame type ${ tbl.type }`);
       }
     }
+  }
+
+  checkStack(stackobj) {
+    this.checkInfoTable(this.memory.i64Load(stackobj));
+    const stack_size = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_stack_size) & BigInt(0xffffffff)),
+      sp = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_sp)),
+      sp_lim = stackobj + settings.offset_StgStack_stack + (stack_size << 3);
+    this.checkStackChunk(sp, sp_lim);
   }
 
   checkTSO(tso) {
