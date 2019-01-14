@@ -5,8 +5,9 @@ import * as settings from "./rts.settings.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class SanCheck {
-  constructor(memory, info_tables) {
+  constructor(memory, stableptr_mgr, info_tables) {
     this.memory = memory;
+    this.stablePtrManager = stableptr_mgr;
     this.infoTables = info_tables;
     this.visitedClosures = new Set();
     Object.freeze(this);
@@ -329,7 +330,13 @@ export class SanCheck {
     this.checkStack(stackobj);
   }
 
+  checkStablePtrs() {
+    for (const addr of this.stablePtrManager.spt.values())
+      this.checkClosure(addr);
+  }
+
   checkRootTSO(tso) {
+    this.checkStablePtrs();
     this.checkTSO(tso);
     console.log(`[EVENT] Live object count: ${ this.visitedClosures.size }`);
     this.visitedClosures.clear();
