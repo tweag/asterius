@@ -331,8 +331,8 @@ export class SanCheck {
   }
 
   checkStablePtrs() {
-    for (const addr of this.stablePtrManager.spt.values())
-      this.checkClosure(addr);
+    for (const [sp, addr] of this.stablePtrManager.spt.entries())
+      if (!(sp & 1)) this.checkClosure(addr);
   }
 
   checkRootTSO(tso) {

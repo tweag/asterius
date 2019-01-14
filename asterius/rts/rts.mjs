@@ -9,11 +9,10 @@ import { Memory } from "./rts.memory.mjs";
 import { MemoryTrap } from "./rts.memorytrap.mjs";
 import { MBlockAlloc } from "./rts.mblockalloc.mjs";
 import { BlockAlloc } from "./rts.blockalloc.mjs";
+import { StablePtrManager } from "./rts.stableptr.mjs";
 import { TSOManager } from "./rts.tso.mjs";
-import { JSValManager } from "./rts.jsval.mjs";
 import { Heap } from "./rts.heap.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
-import { StablePtrManager } from "./rts.stableptr.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { SanCheck } from "./rts.sanity.mjs";
@@ -25,11 +24,10 @@ export function newAsteriusInstance(req) {
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable),
     __asterius_blockalloc = new BlockAlloc(),
-    __asterius_tso_manager = new TSOManager(),
-    __asterius_jsval_manager = new JSValManager(),
-    __asterius_heap = new Heap(req.symbolTable, null, null, __asterius_jsval_manager),
-    __asterius_integer_manager = new IntegerManager(__asterius_jsval_manager, __asterius_heap),
     __asterius_stableptr_manager = new StablePtrManager(),
+    __asterius_tso_manager = new TSOManager(),
+    __asterius_heap = new Heap(req.symbolTable, null, null, __asterius_stableptr_manager),
+    __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager, __asterius_heap),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_vault = req.vault ? req.vault : new Map(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
@@ -46,11 +44,11 @@ export function newAsteriusInstance(req) {
     encodeUTF16LE: encodeUTF16,
     decodeUTF32LE: decodeUTF32,
     encodeUTF32LE: encodeUTF32,
-    newJSVal: v => __asterius_jsval_manager.newJSVal(v),
-    getJSVal: i => __asterius_jsval_manager.getJSVal(i),
-    newTmpJSVal: v => __asterius_jsval_manager.newTmpJSVal(v),
-    mutTmpJSVal: (i, f) => __asterius_jsval_manager.mutTmpJSVal(i, f),
-    freezeTmpJSVal: i => __asterius_jsval_manager.freezeTmpJSVal(i),
+    newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
+    getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
+    newTmpJSVal: v => __asterius_stableptr_manager.newTmpJSVal(v),
+    mutTmpJSVal: (i, f) => __asterius_stableptr_manager.mutTmpJSVal(i, f),
+    freezeTmpJSVal: i => __asterius_stableptr_manager.freezeTmpJSVal(i),
     vaultInsert: (k, v) =>
       __asterius_jsffi_instance.vault.set(decodeLatin1(k), v),
     vaultHas: k =>
@@ -68,7 +66,7 @@ export function newAsteriusInstance(req) {
         __asterius_wasm_instance.exports.rts_apply(
           f,
           __asterius_wasm_instance.exports.rts_mkInt(
-            __asterius_jsval_manager.newJSVal(ev)
+            __asterius_stableptr_manager.newJSVal(ev)
           )
         )
       );
@@ -79,9 +77,9 @@ export function newAsteriusInstance(req) {
         __asterius_wasm_instance.exports.rts_apply(
           __asterius_wasm_instance.exports.rts_apply(
             f, __asterius_wasm_instance.exports.rts_mkInt(
-              __asterius_jsval_manager.newJSVal(x))),
+              __asterius_stableptr_manager.newJSVal(x))),
           __asterius_wasm_instance.exports.rts_mkInt(
-            __asterius_jsval_manager.newJSVal(y))));
+            __asterius_stableptr_manager.newJSVal(y))));
       __asterius_wasm_instance.exports.rts_checkSchedStatus(tid);
     },
     Integer: __asterius_integer_manager,
