@@ -345,19 +345,33 @@ makeFunctionTable AsteriusModule {..} =
     func_syms = M.keys functionMap
 
 makeStaticsOffsetTable ::
-     AsteriusModule -> (Int64, M.Map AsteriusEntitySymbol Int64)
+     AsteriusModule -> (Int64, Int, Int, M.Map AsteriusEntitySymbol Int64)
 makeStaticsOffsetTable AsteriusModule {..} =
-  (last_o .&. 0xFFFFFFFF, M.fromList statics_map)
+  ( closures_last .&. 0xFFFFFFFF
+  , fromIntegral non_closures_mblocks
+  , fromIntegral closures_mblocks
+  , non_closures_map <> closures_map)
   where
-    (last_o, statics_map) =
-      layoutStatics $
-      sortOn (\(k, AsteriusStatics {..}) -> (staticsType, k)) $
-      M.toList staticsMap
-    layoutStatics =
-      foldl' iterLayoutStaticsState (16 .|. dataTag `shiftL` 32, [])
-    iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
+    (closures, non_closures) =
+      M.partition ((== Closure) . staticsType) staticsMap
+    (non_closures_last, non_closures_map) =
+      layoutStatics (fromIntegral offset_first_block) non_closures
+    non_closures_mblocks = regionMBlocks non_closures_last
+    (closures_last, closures_map) =
+      layoutStatics
+        (non_closures_mblocks * fromIntegral mblock_size +
+         fromIntegral offset_first_block)
+        closures
+    closures_mblocks = regionMBlocks closures_last - non_closures_mblocks
+    layoutStatics l =
+      M.foldlWithKey'
+        iterLayoutStaticsState
+        (l .|. dataTag `shiftL` 32, M.empty)
+    iterLayoutStaticsState (ptr, sym_map) ss_sym ss =
       ( fromIntegral $ roundup (fromIntegral ptr + asteriusStaticsSize ss) 16
-      , (ss_sym, ptr) : sym_map)
+      , M.insert ss_sym ptr sym_map)
+    regionMBlocks r =
+      (r + fromIntegral (mblock_size - 1)) `quot` fromIntegral mblock_size
 
 makeInfoTableSet ::
      AsteriusModule -> M.Map AsteriusEntitySymbol Int64 -> S.Set Int64
@@ -501,7 +515,7 @@ resolveAsteriusModule ::
        , [Event])
 resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = do
   let (func_table, func_sym_map) = makeFunctionTable m_globals_resolved
-      (last_o, ss_sym_map) = makeStaticsOffsetTable m_globals_resolved
+      (last_o, _, _, ss_sym_map) = makeStaticsOffsetTable m_globals_resolved
       resolve_syms :: (Monad m, Data a) => a -> m a
       resolve_syms = resolveEntitySymbols ss_sym_map func_sym_map
   m_globals_syms_resolved <- resolve_syms m_globals_resolved
