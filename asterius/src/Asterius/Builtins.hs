@@ -942,15 +942,6 @@ allocGroupFunction _ =
     bd <-
       truncUFloat64ToInt64 <$>
       callImport' "__asterius_allocGroup" [convertUInt64ToFloat64 n] F64
-    block <-
-      i64Local $
-      (bd `andInt64` constI64 0xFFFFFFFFFFF00000) `orInt64`
-      ((bd `andInt64` constI64 0xFFFFF) `shlInt64` constI64 6)
-    storeI64 bd offset_bdescr_start block
-    storeI64 bd offset_bdescr_free block
-    storeI64 bd offset_bdescr_link $ constI64 0
-    storeI16 bd offset_bdescr_node $ constI32 0
-    storeI32 bd offset_bdescr_blocks $ wrapI64 n
     emit bd
 
 newCAFFunction _ =

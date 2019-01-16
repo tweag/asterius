@@ -23,7 +23,7 @@ export function newAsteriusInstance(req) {
     __asterius_wasm_instance = null,
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable),
-    __asterius_blockalloc = new BlockAlloc(),
+    __asterius_blockalloc = new BlockAlloc(__asterius_memory),
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_tso_manager = new TSOManager(),
     __asterius_heap = new Heap(req.symbolTable, null, null, __asterius_stableptr_manager),

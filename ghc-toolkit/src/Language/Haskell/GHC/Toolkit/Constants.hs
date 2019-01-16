@@ -416,6 +416,24 @@ foreign import ccall unsafe "next_ThreadKilled" next_ThreadKilled :: Int
 
 foreign import ccall unsafe "next_ThreadComplete" next_ThreadComplete :: Int
 
+foreign import ccall unsafe "bf_EVACUATED" bf_EVACUATED :: Int
+
+foreign import ccall unsafe "bf_LARGE" bf_LARGE :: Int
+
+foreign import ccall unsafe "bf_PINNED" bf_PINNED :: Int
+
+foreign import ccall unsafe "bf_MARKED" bf_MARKED :: Int
+
+foreign import ccall unsafe "bf_EXEC" bf_EXEC :: Int
+
+foreign import ccall unsafe "bf_FRAGMENTED" bf_FRAGMENTED :: Int
+
+foreign import ccall unsafe "bf_KNOWN" bf_KNOWN :: Int
+
+foreign import ccall unsafe "bf_SWEPT" bf_SWEPT :: Int
+
+foreign import ccall unsafe "bf_COMPACT" bf_COMPACT :: Int
+
 foreign import ccall unsafe "blocked_NotBlocked" blocked_NotBlocked :: Int
 
 foreign import ccall unsafe "blocked_BlockedOnMVar" blocked_BlockedOnMVar :: Int

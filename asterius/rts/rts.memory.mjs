@@ -37,11 +37,11 @@ export class Memory {
     return prev_pages;
   }
   i16Load(p) { return this.i16View[Memory.unTag16(p) >> 1]; }
-  i16Store(p, v) { this.i16View[Memory.unTag16(p) >> 1] = v; }
+  i16Store(p, v) { this.i16View[Memory.unTag16(p) >> 1] = Number(v); }
   i32Load(p) { return this.i32View[Memory.unTag32(p) >> 2]; }
-  i32Store(p, v) { this.i32View[Memory.unTag32(p) >> 2] = v; }
+  i32Store(p, v) { this.i32View[Memory.unTag32(p) >> 2] = Number(v); }
   i64Load(p) { return this.i64View[Memory.unTag64(p) >> 3]; }
-  i64Store(p, v) { this.i64View[Memory.unTag64(p) >> 3] = v; }
+  i64Store(p, v) { this.i64View[Memory.unTag64(p) >> 3] = BigInt(v); }
   strlen(_str) { return this.i8View.subarray(Memory.unTag64(_str)).indexOf(0); }
   memchr(_ptr, val, num) {
     const ptr = Memory.unTag64(_ptr),

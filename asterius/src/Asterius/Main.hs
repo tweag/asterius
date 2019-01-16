@@ -84,16 +84,28 @@ genRTSSettings Task {..} =
   , int64Dec dataTag
   , ";\nexport const functionTag = "
   , int64Dec functionTag
-  , ";\nexport const mblockSize = "
+  , ";\nexport const mblock_size = "
   , intDec mblock_size
-  , ";\nexport const blockSize = "
+  , ";\nexport const block_size = "
   , intDec block_size
-  , ";\nexport const blocksPerMBlock = "
+  , ";\nexport const blocks_per_mblock = "
   , intDec blocks_per_mblock
-  , ";\nexport const bdescrSize = "
+  , ";\nexport const sizeof_bdescr = "
   , intDec sizeof_bdescr
-  , ";\nexport const firstBdescr = "
+  , ";\nexport const offset_first_bdescr = "
   , intDec offset_first_bdescr
+  , ";\nexport const offset_first_block = "
+  , intDec offset_first_block
+  , ";\nexport const offset_bdescr_start = "
+  , intDec offset_bdescr_start
+  , ";\nexport const offset_bdescr_free = "
+  , intDec offset_bdescr_free
+  , ";\nexport const offset_bdescr_link = "
+  , intDec offset_bdescr_link
+  , ";\nexport const offset_bdescr_node = "
+  , intDec offset_bdescr_node
+  , ";\nexport const offset_bdescr_blocks = "
+  , intDec offset_bdescr_blocks
   , ";\nexport const pageSize = 65536;\n"
   ] <>
   [ "export const " <> k <> " = " <> intDec v <> ";\n"

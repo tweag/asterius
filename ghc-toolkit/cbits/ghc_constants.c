@@ -382,6 +382,24 @@ HsInt next_ThreadKilled() { return ThreadKilled; }
 
 HsInt next_ThreadComplete() { return ThreadComplete; }
 
+HsInt bf_EVACUATED() { return BF_EVACUATED; }
+
+HsInt bf_LARGE() { return BF_LARGE; }
+
+HsInt bf_PINNED() { return BF_PINNED; }
+
+HsInt bf_MARKED() { return BF_MARKED; }
+
+HsInt bf_EXEC() { return BF_EXEC; }
+
+HsInt bf_FRAGMENTED() { return BF_FRAGMENTED; }
+
+HsInt bf_KNOWN() { return BF_KNOWN; }
+
+HsInt bf_SWEPT() { return BF_SWEPT; }
+
+HsInt bf_COMPACT() { return BF_COMPACT; }
+
 HsInt blocked_NotBlocked() { return NotBlocked; }
 
 HsInt blocked_BlockedOnMVar() { return BlockedOnMVar; }
