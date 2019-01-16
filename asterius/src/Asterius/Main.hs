@@ -99,6 +99,7 @@ genRTSSettings Task {..} =
   [ "export const " <> k <> " = " <> intDec v <> ";\n"
   | (k, v) <-
       [ ("offset_StgAP_arity", offset_StgAP_arity)
+      , ("offset_StgAP_n_args", offset_StgAP_n_args)
       , ("offset_StgAP_fun", offset_StgAP_fun)
       , ("offset_StgAP_payload", offset_StgAP_payload)
       , ("offset_StgAP_STACK_size", offset_StgAP_STACK_size)
@@ -118,6 +119,7 @@ genRTSSettings Task {..} =
       , ("offset_StgMutArrPtrs_ptrs", offset_StgMutArrPtrs_ptrs)
       , ("offset_StgMutArrPtrs_payload", offset_StgMutArrPtrs_payload)
       , ("offset_StgPAP_arity", offset_StgPAP_arity)
+      , ("offset_StgPAP_n_args", offset_StgPAP_n_args)
       , ("offset_StgPAP_fun", offset_StgPAP_fun)
       , ("offset_StgPAP_payload", offset_StgPAP_payload)
       , ("sizeof_StgRetFun", sizeof_StgRetFun)

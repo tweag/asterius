@@ -112,6 +112,8 @@ foreign import ccall unsafe "offset_Capability_transaction_tokens" offset_Capabi
 
 foreign import ccall unsafe "offset_StgAP_arity" offset_StgAP_arity :: Int
 
+foreign import ccall unsafe "offset_StgAP_n_args" offset_StgAP_n_args :: Int
+
 foreign import ccall unsafe "offset_StgAP_fun" offset_StgAP_fun :: Int
 
 foreign import ccall unsafe "offset_StgAP_payload" offset_StgAP_payload :: Int
@@ -205,6 +207,8 @@ foreign import ccall unsafe "offset_StgMutArrPtrs_payload" offset_StgMutArrPtrs_
   :: Int
 
 foreign import ccall unsafe "offset_StgPAP_arity" offset_StgPAP_arity :: Int
+
+foreign import ccall unsafe "offset_StgPAP_n_args" offset_StgPAP_n_args :: Int
 
 foreign import ccall unsafe "offset_StgPAP_fun" offset_StgPAP_fun :: Int
 

@@ -52,10 +52,8 @@ export class SanCheck {
     this.stack.push(["checkPAP", fun, payload, n_args]);
     this.checkClosure(fun);
     const fun_info = Number(this.memory.i64Load(fun));
-    switch(Number(
-              this.memory.i64Load(fun_info + settings.offset_StgFunInfoTable_f +
-                                  settings.offset_StgFunInfoExtraFwd_fun_type) &
-              BigInt(0xffffffff))) {
+    switch(this.memory.i32Load(fun_info + settings.offset_StgFunInfoTable_f +
+                                  settings.offset_StgFunInfoExtraFwd_fun_type)) {
       case FunTypes.ARG_GEN:
         this.checkSmallBitmap(payload, this.memory.i64Load(fun_info +
                                       settings.offset_StgFunInfoTable_f +
@@ -73,10 +71,9 @@ export class SanCheck {
         this.checkSmallBitmap(
             payload,
             BigInt(stg_arg_bitmaps
-                       [this.memory.i64Load(
+                       [this.memory.i32Load(
                             fun_info + settings.offset_StgFunInfoTable_f +
-                            settings.offset_StgFunInfoExtraFwd_fun_type) &
-                        BigInt(0xffffffff)]) >>
+                            settings.offset_StgFunInfoExtraFwd_fun_type)]) >>
                 BigInt(6),
             n_args);
         break;
@@ -86,12 +83,10 @@ export class SanCheck {
 
   checkClosure(_c) {
     const c = Number(_c);
-    if (this.visitedClosures.has(Memory.unTag(c))) return;
-    this.visitedClosures.add(Memory.unTag(c));
+    if (this.visitedClosures.has(Memory.unTag64(c))) return;
+    this.visitedClosures.add(Memory.unTag64(c));
     const p = Number(this.memory.i64Load(c)),
-          type = Number(
-              this.memory.i64Load(p + settings.offset_StgInfoTable_type) &
-              BigInt(0xffffffff));
+          type = this.memory.i32Load(p + settings.offset_StgInfoTable_type);
     this.stack.push(["checkClosure", c, p, type]);
     this.checkInfoTable(p);
     switch (type) {
@@ -116,7 +111,7 @@ export class SanCheck {
       case ClosureTypes.PRIM:
       case ClosureTypes.MUT_PRIM:
       case ClosureTypes.COMPACT_NFDATA: {
-        const ptrs = Number(this.memory.i64Load(p + settings.offset_StgInfoTable_layout) & BigInt(0xffffffff));
+        const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
         this.checkPointersFirst(c + 8, ptrs);
         break;
       }
@@ -126,7 +121,7 @@ export class SanCheck {
       case ClosureTypes.THUNK_2_0:
       case ClosureTypes.THUNK_1_1:
       case ClosureTypes.THUNK_0_2: {
-        const ptrs = Number(this.memory.i64Load(p + settings.offset_StgInfoTable_layout) & BigInt(0xffffffff));
+        const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
         this.checkPointersFirst(c + settings.offset_StgThunk_payload, ptrs);
         break;
       }
@@ -141,14 +136,14 @@ export class SanCheck {
         this.checkPAP(
             this.memory.i64Load(c + settings.offset_StgAP_fun),
             c + settings.offset_StgAP_payload,
-            this.memory.i64Load(c + settings.offset_StgAP_arity) >> BigInt(32));
+            this.memory.i32Load(c + settings.offset_StgAP_n_args));
         break;
       }
       case ClosureTypes.PAP: {
         this.checkPAP(
             this.memory.i64Load(c + settings.offset_StgPAP_fun),
             c + settings.offset_StgPAP_payload,
-            this.memory.i64Load(c + settings.offset_StgPAP_arity) >> BigInt(32));
+            this.memory.i32Load(c + settings.offset_StgPAP_n_args));
         break;
       }
       case ClosureTypes.AP_STACK: {
@@ -248,9 +243,7 @@ export class SanCheck {
                                            Sp: 0x${ c.toString(16) }`);
       if (c === sp_lim) break;
       const p = Number(this.memory.i64Load(c)),
-            type = Number(
-                this.memory.i64Load(p + settings.offset_StgInfoTable_type) &
-                BigInt(0xffffffff)),
+            type = this.memory.i32Load(p + settings.offset_StgInfoTable_type),
             raw_layout =
                 this.memory.i64Load(p + settings.offset_StgInfoTable_layout);
       this.checkInfoTable(p);
@@ -281,10 +274,8 @@ export class SanCheck {
               Number(this.memory.i64Load(c + settings.offset_StgRetFun_size)),
                 fun_info = Number(this.memory.i64Load(
                     this.memory.i64Load(c + settings.offset_StgRetFun_fun)));
-          switch (Number(
-              this.memory.i64Load(fun_info + settings.offset_StgFunInfoTable_f +
-                                  settings.offset_StgFunInfoExtraFwd_fun_type) &
-              BigInt(0xffffffff))) {
+          switch (this.memory.i32Load(fun_info + settings.offset_StgFunInfoTable_f +
+                                  settings.offset_StgFunInfoExtraFwd_fun_type)) {
             case FunTypes.ARG_GEN:
               this.checkSmallBitmap(
                   c + settings.offset_StgRetFun_payload,
@@ -308,10 +299,9 @@ export class SanCheck {
               this.checkSmallBitmap(
                   c + settings.offset_StgRetFun_payload,
                   BigInt(stg_arg_bitmaps
-                             [this.memory.i64Load(
+                             [this.memory.i32Load(
                                   fun_info + settings.offset_StgFunInfoTable_f +
-                                  settings.offset_StgFunInfoExtraFwd_fun_type) &
-                              BigInt(0xffffffff)]) >>
+                                  settings.offset_StgFunInfoExtraFwd_fun_type)]) >>
                       BigInt(6),
                   size);
               break;
@@ -329,9 +319,9 @@ export class SanCheck {
   checkStack(stackobj) {
     if (this.visitedClosures.has(stackobj)) return;
     this.stack.push(["checkStack", stackobj]);
-    this.visitedClosures.add(Memory.unTag(stackobj));
+    this.visitedClosures.add(Memory.unTag64(stackobj));
     this.checkInfoTable(this.memory.i64Load(stackobj));
-    const stack_size = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_stack_size) & BigInt(0xffffffff)),
+    const stack_size = this.memory.i32Load(stackobj + settings.offset_StgStack_stack_size),
       sp = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_sp)),
       sp_lim = stackobj + settings.offset_StgStack_stack + (stack_size << 3);
     this.checkStackChunk(sp, sp_lim);
@@ -339,9 +329,9 @@ export class SanCheck {
   }
 
   checkTSO(tso) {
-    if (this.visitedClosures.has(Memory.unTag(tso))) return;
+    if (this.visitedClosures.has(Memory.unTag64(tso))) return;
     this.stack.push(["checkTSO", tso]);
-    this.visitedClosures.add(Memory.unTag(tso));
+    this.visitedClosures.add(Memory.unTag64(tso));
     this.checkInfoTable(this.memory.i64Load(tso));
     const stackobj =
         Number(this.memory.i64Load(tso + settings.offset_StgTSO_stackobj));

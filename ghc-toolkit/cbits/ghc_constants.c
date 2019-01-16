@@ -122,6 +122,8 @@ HsInt offset_Capability_transaction_tokens() {
 
 HsInt offset_StgAP_arity() { return offsetof(StgAP, arity); }
 
+HsInt offset_StgAP_n_args() { return offsetof(StgAP, n_args); }
+
 HsInt offset_StgAP_fun() { return offsetof(StgAP, fun); }
 
 HsInt offset_StgAP_payload() { return offsetof(StgAP, payload); }
@@ -205,6 +207,8 @@ HsInt offset_StgMutArrPtrs_payload() {
 }
 
 HsInt offset_StgPAP_arity() { return offsetof(StgPAP, arity); }
+
+HsInt offset_StgPAP_n_args() { return offsetof(StgPAP, n_args); }
 
 HsInt offset_StgPAP_fun() { return offsetof(StgPAP, fun); }
 
