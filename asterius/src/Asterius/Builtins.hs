@@ -787,35 +787,38 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
               , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
               , ( ret_ThreadFinished
-                , if'
-                    []
-                    (loadI16 t offset_StgTSO_what_next `eqInt32`
-                     constI32 next_ThreadComplete)
-                    (do callImport
-                          "__asterius_setTSOret"
-                          [ loadI32 t offset_StgTSO_id
-                          , convertUInt64ToFloat64 $
-                            loadI64
-                              (loadI64
-                                 (loadI64 t offset_StgTSO_stackobj)
-                                 offset_StgStack_sp)
-                              8
-                          ]
-                        callImport
-                          "__asterius_setTSOrstat"
-                          [ loadI32 t offset_StgTSO_id
-                          , constI32 scheduler_Success
-                          ]
-                        break' sched_block_lbl Nothing)
-                    (do callImport
-                          "__asterius_setTSOret"
-                          [loadI32 t offset_StgTSO_id, ConstF64 0]
-                        callImport
-                          "__asterius_setTSOrstat"
-                          [ loadI32 t offset_StgTSO_id
-                          , constI32 scheduler_Killed
-                          ]
-                        break' sched_block_lbl Nothing))
+                , do callImport
+                       "__asterius_checkRootTSO"
+                       [convertUInt64ToFloat64 t]
+                     if'
+                       []
+                       (loadI16 t offset_StgTSO_what_next `eqInt32`
+                        constI32 next_ThreadComplete)
+                       (do callImport
+                             "__asterius_setTSOret"
+                             [ loadI32 t offset_StgTSO_id
+                             , convertUInt64ToFloat64 $
+                               loadI64
+                                 (loadI64
+                                    (loadI64 t offset_StgTSO_stackobj)
+                                    offset_StgStack_sp)
+                                 8
+                             ]
+                           callImport
+                             "__asterius_setTSOrstat"
+                             [ loadI32 t offset_StgTSO_id
+                             , constI32 scheduler_Success
+                             ]
+                           break' sched_block_lbl Nothing)
+                       (do callImport
+                             "__asterius_setTSOret"
+                             [loadI32 t offset_StgTSO_id, ConstF64 0]
+                           callImport
+                             "__asterius_setTSOrstat"
+                             [ loadI32 t offset_StgTSO_id
+                             , constI32 scheduler_Killed
+                             ]
+                           break' sched_block_lbl Nothing))
               ]
             , emit $ emitErrorMessage [] "Illegal thread return code")
 

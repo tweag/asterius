@@ -10,26 +10,34 @@ export class SanCheck {
     this.stablePtrManager = stableptr_mgr;
     this.infoTables = info_tables;
     this.visitedClosures = new Set();
+    this.stack = [];
     Object.freeze(this);
   }
 
   checkInfoTable(p) {
+    this.stack.push(["checkInfoTable", p]);
     if (!this.infoTables.has(Number(p)))
       throw new WebAssembly.RuntimeError(`Invalid info table: 0x${ p.toString(16) }`);
+    this.stack.pop();
   }
 
   checkPointersFirst(payload, ptrs) {
+    this.stack.push(["checkPointersFirst", payload, ptrs]);
     for (let i = 0; i < Number(ptrs); ++i)
       this.checkClosure(this.memory.i64Load(payload + (i << 3)));
+    this.stack.pop();
   }
 
   checkSmallBitmap(payload, bitmap, size) {
+    this.stack.push(["checkSmallBitmap", payload, bitmap, size]);
     for (let i = 0; i < Number(size); ++i)
       if (!((bitmap >> BigInt(i)) & BigInt(1)))
         this.checkClosure(this.memory.i64Load(Number(payload) + (i << 3)));
+    this.stack.pop();
   }
 
   checkLargeBitmap(payload, large_bitmap, size) {
+    this.stack.push(["checkLargeBitmap", payload, large_bitmap, size]);
     for (let j = 0; j < Number(size); j += 64) {
       const bitmap = this.memory.i64Load(
           large_bitmap + settings.offset_StgLargeBitmap_bitmap + (j >> 3));
@@ -37,9 +45,11 @@ export class SanCheck {
         if (!((bitmap >> BigInt(i - j)) & BigInt(1)))
           this.checkClosure(this.memory.i64Load(Number(payload) + (i << 3)));
     }
+    this.stack.pop();
   }
 
   checkPAP(fun, payload, n_args) {
+    this.stack.push(["checkPAP", fun, payload, n_args]);
     this.checkClosure(fun);
     const fun_info = Number(this.memory.i64Load(fun));
     switch(Number(
@@ -71,6 +81,7 @@ export class SanCheck {
             n_args);
         break;
     }
+    this.stack.pop();
   }
 
   checkClosure(_c) {
@@ -81,6 +92,7 @@ export class SanCheck {
           type = Number(
               this.memory.i64Load(p + settings.offset_StgInfoTable_type) &
               BigInt(0xffffffff));
+    this.stack.push(["checkClosure", c, p, type]);
     this.checkInfoTable(p);
     switch (type) {
       case ClosureTypes.CONSTR:
@@ -128,14 +140,14 @@ export class SanCheck {
       case ClosureTypes.AP: {
         this.checkPAP(
             this.memory.i64Load(c + settings.offset_StgAP_fun),
-            this.memory.i64Load(c + settings.offset_StgAP_payload),
+            c + settings.offset_StgAP_payload,
             this.memory.i64Load(c + settings.offset_StgAP_arity) >> BigInt(32));
         break;
       }
       case ClosureTypes.PAP: {
         this.checkPAP(
             this.memory.i64Load(c + settings.offset_StgPAP_fun),
-            this.memory.i64Load(c + settings.offset_StgPAP_payload),
+            c + settings.offset_StgPAP_payload,
             this.memory.i64Load(c + settings.offset_StgPAP_arity) >> BigInt(32));
         break;
       }
@@ -223,9 +235,11 @@ export class SanCheck {
       default:
         throw new WebAssembly.RuntimeError(`Invalid closure type ${ type } for closure 0x${ c.toString(16) }`);
     }
+    this.stack.pop();
   }
 
   checkStackChunk(sp, sp_lim) {
+    this.stack.push(["checkStackChunk", sp, sp_lim]);
     let c = sp;
     while (true) {
       if (c > sp_lim)
@@ -309,36 +323,49 @@ export class SanCheck {
           throw new WebAssembly.RuntimeError(`Invalid frame type ${ tbl.type }`);
       }
     }
+    this.stack.pop();
   }
 
   checkStack(stackobj) {
     if (this.visitedClosures.has(stackobj)) return;
+    this.stack.push(["checkStack", stackobj]);
     this.visitedClosures.add(Memory.unTag(stackobj));
     this.checkInfoTable(this.memory.i64Load(stackobj));
     const stack_size = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_stack_size) & BigInt(0xffffffff)),
       sp = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_sp)),
       sp_lim = stackobj + settings.offset_StgStack_stack + (stack_size << 3);
     this.checkStackChunk(sp, sp_lim);
+    this.stack.pop();
   }
 
   checkTSO(tso) {
     if (this.visitedClosures.has(Memory.unTag(tso))) return;
+    this.stack.push(["checkTSO", tso]);
     this.visitedClosures.add(Memory.unTag(tso));
     this.checkInfoTable(this.memory.i64Load(tso));
     const stackobj =
         Number(this.memory.i64Load(tso + settings.offset_StgTSO_stackobj));
     this.checkStack(stackobj);
+    this.stack.pop();
   }
 
   checkStablePtrs() {
+    this.stack.push(["checkStablePtrs"]);
     for (const [sp, addr] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.checkClosure(addr);
+    this.stack.pop();
   }
 
   checkRootTSO(tso) {
-    this.checkStablePtrs();
-    this.checkTSO(tso);
+    this.stack.push(["checkRootTSO", tso]);
+    try {
+      this.checkStablePtrs();
+      this.checkTSO(tso);
+    } catch (err) {
+      throw new WebAssembly.RuntimeError(`Captured error: ${err.stack}\nCall stack:\n${this.stack.reduce((acc, f) => "    " + f + "\n" + acc, "")}`);
+    }
     console.log(`[EVENT] Live object count: ${ this.visitedClosures.size }`);
     this.visitedClosures.clear();
+    this.stack.pop();
   }
 }
