@@ -102,8 +102,6 @@ genRTSSettings Task {..} =
   , intDec offset_bdescr_free
   , ";\nexport const offset_bdescr_link = "
   , intDec offset_bdescr_link
-  , ";\nexport const offset_bdescr_node = "
-  , intDec offset_bdescr_node
   , ";\nexport const offset_bdescr_blocks = "
   , intDec offset_bdescr_blocks
   , ";\nexport const pageSize = 65536;\n"

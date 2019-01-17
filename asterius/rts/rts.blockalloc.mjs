@@ -41,7 +41,6 @@ export class BlockAlloc {
     this.memory.i64Store(bd + settings.offset_bdescr_start, block_addr);
     this.memory.i64Store(bd + settings.offset_bdescr_free, block_addr);
     this.memory.i64Store(bd + settings.offset_bdescr_link, 0);
-    this.memory.i16Store(bd + settings.offset_bdescr_node, 0);
     this.memory.i32Store(bd + settings.offset_bdescr_blocks, n);
     return bd;
   }
