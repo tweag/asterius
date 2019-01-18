@@ -442,11 +442,12 @@ makeStaticsOffsetTable AsteriusModule {..} = (last_o, closures_address_map)
         closures_head_block
         non_closures_address_map
         closures
-    last_o =
-      fromIntegral $
-      ((mblock_size * closures_result_mblock) + offset_first_block +
-       (block_size * closures_result_block)) .&.
-      0xFFFFFFFF
+    last_address
+      | closures_result_block == 0 = mblock_size * closures_result_mblock
+      | otherwise =
+        (mblock_size * closures_result_mblock) + offset_first_block +
+        (block_size * closures_result_block)
+    last_o = fromIntegral $ last_address .&. 0xFFFFFFFF
 
 makeInfoTableSet ::
      AsteriusModule -> M.Map AsteriusEntitySymbol Int64 -> S.Set Int64
