@@ -456,21 +456,14 @@ makeInfoTableSet AsteriusModule {..} sym_map =
   M.keysSet $ M.filter ((== InfoTable) . staticsType) staticsMap
 
 makeMemory ::
-     Bool
-  -> AsteriusModule
-  -> Int64
-  -> M.Map AsteriusEntitySymbol Int64
-  -> Memory
-makeMemory debug AsteriusModule {..} last_o sym_map =
+     AsteriusModule -> Int64 -> M.Map AsteriusEntitySymbol Int64 -> Memory
+makeMemory AsteriusModule {..} last_o sym_map =
   Memory
     { initialPages =
         fromIntegral $
         roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
     , memoryExportName = "memory"
-    , dataSegments =
-        if debug
-          then uncombined_segs
-          else combine uncombined_segs
+    , dataSegments = combine uncombined_segs
     }
   where
     uncombined_segs = concatMap data_segs $ M.toList staticsMap
@@ -490,18 +483,17 @@ makeMemory debug AsteriusModule {..} last_o sym_map =
         (sym_map ! ss_sym, [])
         asteriusStatics
     combine segs =
-      reverse $
-      foldl'
-        (\stack seg@DataSegment {content = seg_content, offset = ConstI32 seg_o} ->
+      foldr
+        (\seg@DataSegment {content = seg_content, offset = ConstI32 seg_o} stack ->
            case stack of
              DataSegment { content = stack_top_content
                          , offset = ConstI32 stack_top_o
                          }:stack_rest
-               | fromIntegral stack_top_o + SBS.length stack_top_content ==
-                   fromIntegral seg_o ->
+               | fromIntegral seg_o + SBS.length seg_content ==
+                   fromIntegral stack_top_o ->
                  DataSegment
-                   { content = stack_top_content <> seg_content
-                   , offset = ConstI32 stack_top_o
+                   { content = seg_content <> stack_top_content
+                   , offset = ConstI32 seg_o
                    } :
                  stack_rest
              _ -> seg : stack)
@@ -626,7 +618,7 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
             | k <- map entityName export_funcs
             ]
         , functionTable = func_table
-        , memory = makeMemory debug m_globals_syms_resolved last_o ss_sym_map
+        , memory = makeMemory m_globals_syms_resolved last_o ss_sym_map
         }
   pure (new_mod, ss_sym_map, func_sym_map, err_msgs)
 
