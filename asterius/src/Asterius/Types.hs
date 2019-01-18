@@ -445,7 +445,7 @@ instance Binary FunctionTable
 
 data DataSegment = DataSegment
   { content :: SBS.ShortByteString
-  , offset :: Expression
+  , offset :: Int32
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary DataSegment

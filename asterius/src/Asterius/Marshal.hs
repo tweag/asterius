@@ -348,7 +348,7 @@ marshalMemory pool m Memory {..} = do
   (cps, os) <-
     fmap unzip $
     forM dataSegments $ \DataSegment {..} -> do
-      o <- marshalExpression pool m offset
+      o <- marshalExpression pool m $ ConstI32 offset
       cp <- marshalSBS pool content
       pure (cp, o)
   (cp, _ :: Int) <- marshalV pool cps

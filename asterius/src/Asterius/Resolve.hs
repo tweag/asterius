@@ -480,7 +480,7 @@ makeMemory AsteriusModule {..} last_o sym_map =
                     Serialized buf ->
                       DataSegment
                         { content = buf
-                        , offset = ConstI32 $ fromIntegral $ p .&. 0xFFFFFFFF
+                        , offset = fromIntegral $ p .&. 0xFFFFFFFF
                         } :
                       inner_segs
                     Uninitialized {} -> inner_segs))
@@ -490,24 +490,20 @@ makeMemory AsteriusModule {..} last_o sym_map =
         staticsMap
     combined_segs =
       foldr
-        (\seg@DataSegment {content = seg_content, offset = ConstI32 seg_o} stack ->
+        (\seg@DataSegment {content = seg_content, offset = seg_o} stack ->
            case stack of
-             DataSegment { content = stack_top_content
-                         , offset = ConstI32 stack_top_o
-                         }:stack_rest
+             DataSegment {content = stack_top_content, offset = stack_top_o}:stack_rest
                | fromIntegral seg_o + SBS.length seg_content ==
                    fromIntegral stack_top_o ->
                  DataSegment
-                   { content = seg_content <> stack_top_content
-                   , offset = ConstI32 seg_o
-                   } :
+                   {content = seg_content <> stack_top_content, offset = seg_o} :
                  stack_rest
                | fromIntegral seg_o + SBS.length seg_content >
                    fromIntegral stack_top_o ->
                  error "Asterius.Resolve.makeMemory: overlapping sections!"
              _ -> seg : stack)
         []
-        (sortOn (\DataSegment {offset = ConstI32 o} -> o) uncombined_segs)
+        (sortOn (\DataSegment {offset = o} -> o) uncombined_segs)
 
 resolveEntitySymbols ::
      (Monad m, Data a)
