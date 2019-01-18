@@ -515,12 +515,12 @@ ahcLinkMain task@Task {..} = do
           if bundle
             then do
               putStrLn $ "[INFO] Running " <> out_js
-              callProcess "node" ["--stack-size=4096", takeFileName out_js]
+              callProcess "node" ["--stack-size=8192", takeFileName out_js]
             else do
               putStrLn $ "[INFO] Running " <> out_entry
               callProcess
                 "node"
                 [ "--experimental-modules"
-                , "--stack-size=4096"
+                , "--stack-size=8192"
                 , takeFileName out_entry
                 ]

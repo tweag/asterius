@@ -101,7 +101,7 @@ rtsAsteriusModule opts =
         , ("allocate_wrapper", allocateWrapperFunction opts)
         , ("allocateMightFail", allocateProxyFunction opts)
         , ("allocatePinned", allocateProxyFunction opts)
-        , ("allocGroup", allocGroupFunction opts)
+        , ("allocMegaGroup", allocMegaGroupFunction opts)
         , ("newCAF", newCAFFunction opts)
         , ("StgReturn", stgReturnFunction opts)
         , ("getStablePtr", getStablePtrWrapperFunction opts)
@@ -301,9 +301,9 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       }
   , FunctionImport
-      { internalName = "__asterius_allocGroup"
-      , externalModuleName = "BlockAlloc"
-      , externalBaseName = "allocGroup"
+      { internalName = "__asterius_allocMegaGroup"
+      , externalModuleName = "MBlockAlloc"
+      , externalBaseName = "allocMegaGroup"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
@@ -601,7 +601,7 @@ generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateWrapperFunction, allocateProxyFunction, allocGroupFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocateWrapperFunction, allocateProxyFunction, allocMegaGroupFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL [] $ do
@@ -635,14 +635,14 @@ initCapability = do
 hsInitFunction _ =
   runEDSL [] $ do
     initCapability
-    bd_nursery <- call' "allocGroup" [constI64 1] I64
+    bd_nursery <- call' "allocMegaGroup" [constI64 1] I64
     block_nursery <- i64Local $ loadI64 bd_nursery offset_bdescr_start
     putLVal hp block_nursery
     putLVal hpLim $ block_nursery `addInt64` constI64 block_size
     putLVal hpAlloc (constI64 0)
     putLVal cccs (constI64 0)
     putLVal currentNursery bd_nursery
-    bd_object_pool <- call' "allocGroup" [constI64 1] I64
+    bd_object_pool <- call' "allocMegaGroup" [constI64 1] I64
     storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc bd_object_pool
 
 rtsEvalHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> EDSL ()
@@ -775,8 +775,8 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
                        (eqZInt64 bytes)
                        (emit $ emitErrorMessage [] "HeapOverflow with HpAlloc=0")
                        mempty
-                     blocks <- i64Local $ bytesToBlocks bytes
-                     bd <- call' "allocGroup" [blocks] I64
+                     blocks <- i64Local $ bytesToMBlocks bytes
+                     bd <- call' "allocMegaGroup" [blocks] I64
                      block <- i64Local $ loadI64 bd offset_bdescr_start
                      putLVal currentNursery bd
                      putLVal hp block
@@ -889,9 +889,12 @@ createStrictIOThreadFunction _ =
     , symbol "stg_enter_info"
     ]
 
-bytesToBlocks :: Expression -> Expression
-bytesToBlocks bytes =
-  (bytes `addInt64` constI64 (block_size - 1)) `divUInt64` constI64 block_size
+bytesToMBlocks :: Expression -> Expression
+bytesToMBlocks bytes =
+  (bytes `addInt64` constI64 (real_mblock_size - 1)) `divUInt64`
+  constI64 real_mblock_size
+  where
+    real_mblock_size = mblock_size - offset_first_block
 
 allocateFunction BuiltinsOptions {..} =
   runEDSL [I64] $ do
@@ -900,14 +903,14 @@ allocateFunction BuiltinsOptions {..} =
     bytes <- i64Local $ n `mulInt64` constI64 8
     if'
       [I64]
-      (bytes `geUInt64` constI64 block_size)
-      (do bd <- call' "allocGroup" [bytesToBlocks bytes] I64
+      (bytes `geUInt64` constI64 real_mblock_size)
+      (do bd <- call' "allocMegaGroup" [bytesToMBlocks bytes] I64
           emit $ loadI64 bd offset_bdescr_free)
       (do if'
             []
             ((current_alloc_used `addInt64` bytes) `geUInt64`
-             constI64 block_size)
-            (call' "allocGroup" [constI64 1] I64 >>=
+             constI64 real_mblock_size)
+            (call' "allocMegaGroup" [constI64 1] I64 >>=
              storeI64 (getLVal baseReg) offset_StgRegTable_rCurrentAlloc)
             mempty
           bd <- i64Local current_alloc
@@ -919,6 +922,7 @@ allocateFunction BuiltinsOptions {..} =
     current_alloc_start = loadI64 current_alloc offset_bdescr_start
     current_alloc_free = loadI64 current_alloc offset_bdescr_free
     current_alloc_used = current_alloc_free `subInt64` current_alloc_start
+    real_mblock_size = mblock_size - offset_first_block
 
 allocateWrapperFunction _ =
   runEDSL [F64] $ do
@@ -935,13 +939,13 @@ allocateProxyFunction _ =
     [cap, n] <- params [I64, I64]
     call' "allocate" [cap, n] I64 >>= emit
 
-allocGroupFunction _ =
+allocMegaGroupFunction _ =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     n <- param I64
     bd <-
       truncUFloat64ToInt64 <$>
-      callImport' "__asterius_allocGroup" [convertUInt64ToFloat64 n] F64
+      callImport' "__asterius_allocMegaGroup" [convertUInt64ToFloat64 n] F64
     emit bd
 
 newCAFFunction _ =

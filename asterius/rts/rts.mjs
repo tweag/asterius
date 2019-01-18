@@ -8,7 +8,6 @@ import { Tracer } from "./rts.tracing.mjs";
 import { Memory } from "./rts.memory.mjs";
 import { MemoryTrap } from "./rts.memorytrap.mjs";
 import { MBlockAlloc } from "./rts.mblockalloc.mjs";
-import { BlockAlloc } from "./rts.blockalloc.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
 import { TSOManager } from "./rts.tso.mjs";
 import { Heap } from "./rts.heap.mjs";
@@ -23,7 +22,7 @@ export function newAsteriusInstance(req) {
     __asterius_wasm_instance = null,
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable),
-    __asterius_blockalloc = new BlockAlloc(__asterius_memory),
+    __asterius_mblockalloc = new MBlockAlloc(__asterius_memory),
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_tso_manager = new TSOManager(),
     __asterius_heap = new Heap(req.symbolTable, null, null, __asterius_stableptr_manager),
@@ -111,7 +110,7 @@ export function newAsteriusInstance(req) {
         print: x => __asterius_fs.writeSync(__asterius_fs.stdout(), x + "\n"),
         emitEvent: ev => __asterius_logger.logEvent(req.events[ev])
       },
-      BlockAlloc: modulify(__asterius_blockalloc),
+      MBlockAlloc: modulify(__asterius_mblockalloc),
       bytestring: modulify(__asterius_bytestring_cbits),
       Heap: modulify(__asterius_heap),
       Memory: modulify(__asterius_memory),
@@ -126,7 +125,7 @@ export function newAsteriusInstance(req) {
     const i = new WebAssembly.Instance(req.module, importObject);
     __asterius_wasm_instance = i;
     __asterius_memory.init(__asterius_wasm_instance.exports.memory);
-    __asterius_blockalloc.init(new MBlockAlloc(__asterius_memory));
+    __asterius_mblockalloc.init();
     __asterius_heap.instance = __asterius_wasm_instance;
     __asterius_heap.memory = __asterius_memory;
     __asterius_integer_manager.heap = __asterius_heap;
@@ -142,7 +141,7 @@ export function newAsteriusInstance(req) {
     return WebAssembly.instantiate(req.module, importObject).then(i => {
       __asterius_wasm_instance = i;
       __asterius_memory.init(__asterius_wasm_instance.exports.memory);
-      __asterius_blockalloc.init(new MBlockAlloc(__asterius_memory));
+      __asterius_mblockalloc.init();
       __asterius_heap.instance = __asterius_wasm_instance;
       __asterius_heap.memory = __asterius_memory;
       __asterius_integer_manager.heap = __asterius_heap;
