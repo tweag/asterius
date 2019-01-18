@@ -463,26 +463,32 @@ makeMemory AsteriusModule {..} last_o sym_map =
         fromIntegral $
         roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
     , memoryExportName = "memory"
-    , dataSegments = combine uncombined_segs
+    , dataSegments = combined_segs
     }
   where
-    uncombined_segs = concatMap data_segs $ M.toList staticsMap
-    data_segs (ss_sym, AsteriusStatics {..}) =
-      snd $
-      foldl'
-        (\(p, segs) s ->
-           ( p + fromIntegral (asteriusStaticSize s)
-           , case s of
-               Serialized buf ->
-                 DataSegment
-                   { content = buf
-                   , offset = ConstI32 $ fromIntegral $ p .&. 0xFFFFFFFF
-                   } :
-                 segs
-               _ -> segs))
-        (sym_map ! ss_sym, [])
-        asteriusStatics
-    combine segs =
+    uncombined_segs =
+      M.foldlWithKey'
+        (\segs sym AsteriusStatics {..} ->
+           snd $
+           foldl'
+             (\(p, inner_segs) seg ->
+                ( p + fromIntegral (asteriusStaticSize seg)
+                , case seg of
+                    SymbolStatic {} ->
+                      error
+                        "Asterius.Resolve.makeMemory: unresolved SymbolStatic!"
+                    Serialized buf ->
+                      DataSegment
+                        { content = buf
+                        , offset = ConstI32 $ fromIntegral $ p .&. 0xFFFFFFFF
+                        } :
+                      inner_segs
+                    Uninitialized {} -> inner_segs))
+             (sym_map ! sym, segs)
+             asteriusStatics)
+        []
+        staticsMap
+    combined_segs =
       foldr
         (\seg@DataSegment {content = seg_content, offset = ConstI32 seg_o} stack ->
            case stack of
@@ -496,9 +502,12 @@ makeMemory AsteriusModule {..} last_o sym_map =
                    , offset = ConstI32 seg_o
                    } :
                  stack_rest
+               | fromIntegral seg_o + SBS.length seg_content >
+                   fromIntegral stack_top_o ->
+                 error "Asterius.Resolve.makeMemory: overlapping sections!"
              _ -> seg : stack)
         []
-        (sortOn (\DataSegment {offset = ConstI32 o} -> o) segs)
+        (sortOn (\DataSegment {offset = ConstI32 o} -> o) uncombined_segs)
 
 resolveEntitySymbols ::
      (Monad m, Data a)
