@@ -346,83 +346,55 @@ makeFunctionTable AsteriusModule {..} =
 
 makeStaticNurseries ::
      Int
-  -> Int
   -> M.Map AsteriusEntitySymbol Int64
   -> M.Map AsteriusEntitySymbol AsteriusStatics
-  -> (Int, Int, M.Map AsteriusEntitySymbol Int64)
-makeStaticNurseries head_mblock head_block init_address_map statics_map =
-  (result_mblock, result_block, last_address_map)
+  -> (Int, M.Map AsteriusEntitySymbol Int64)
+makeStaticNurseries head_mblock init_address_map statics_map =
+  (result_mblock, last_address_map)
   where
-    raw_address current_mblock current_block current_offset =
-      (mblock_size * current_mblock) + offset_first_block +
-      (block_size * current_block) +
-      current_offset
-    succ_block current_mblock current_block
-      | current_block + 1 < blocks_per_mblock =
-        (current_mblock, current_block + 1)
-      | otherwise = (current_mblock + 1, 0)
-    static_allocGroup n current_mblock current_block
-      | current_block + n < blocks_per_mblock =
-        (current_mblock, current_block, current_mblock, current_block + n)
-      | current_block + n == blocks_per_mblock =
-        (current_mblock, current_block, current_mblock + 1, 0)
-      | n < blocks_per_mblock = (current_mblock + 1, 0, current_mblock + 1, n)
-      | otherwise = (current_mblock + 1, 0, current_block + 1 + m, 0)
-      where
-        raw_blocks_per_mblock = mblock_size `quot` block_size
-        m =
-          1 +
-          (((n - blocks_per_mblock) `roundup` raw_blocks_per_mblock) `quot`
-           raw_blocks_per_mblock)
-    static_allocate raw_size current_mblock current_block current_free
-      | current_free + size < block_size =
-        ( current_mblock
-        , current_block
-        , current_free
-        , current_mblock
-        , current_block
-        , current_free + size)
-      | current_free + size == block_size =
-        ( current_mblock
-        , current_block
-        , current_free
-        , next_mblock
-        , next_block
-        , 0)
-      | size < block_size =
-        (next_mblock, next_block, 0, next_mblock, next_block, size)
+    raw_address current_mblock current_offset =
+      (mblock_size * current_mblock) + current_offset
+    static_allocate raw_size current_mblock current_free
+      | current_free + size < mblock_size =
+        (current_mblock, current_free, current_mblock, current_free + size)
+      | current_free + size == mblock_size =
+        (current_mblock, current_free, current_mblock + 1, offset_first_block)
+      | size < mblock_size - offset_first_block =
+        ( current_mblock + 1
+        , offset_first_block
+        , current_mblock + 1
+        , offset_first_block + size)
       | otherwise =
-        (big_mblock, big_block, 0, big_next_mblock, big_next_block, 0)
+        ( current_mblock + 1
+        , offset_first_block
+        , current_mblock + 1 + n
+        , offset_first_block)
       where
         size = raw_size `roundup` 16
-        blocks = raw_size `roundup` block_size
-        (next_mblock, next_block) = succ_block current_mblock current_block
-        (big_mblock, big_block, big_next_mblock, big_next_block) =
-          static_allocGroup blocks next_mblock next_block
-    layout_section (current_mblock, current_block, current_free, address_map) sym sec =
+        n =
+          1 +
+          (((size - (mblock_size - offset_first_block)) `roundup` mblock_size) `quot`
+           mblock_size)
+    layout_section (current_mblock, current_free, address_map) sym sec =
       ( next_mblock
-      , next_block
       , next_free
       , M.insert
           sym
-          (fromIntegral (raw_address sec_mblock sec_block sec_offset))
+          (fromIntegral (raw_address sec_mblock sec_offset))
           address_map)
       where
-        (sec_mblock, sec_block, sec_offset, next_mblock, next_block, next_free) =
-          static_allocate
-            (asteriusStaticsSize sec)
-            current_mblock
-            current_block
-            current_free
-    (last_mblock, last_block, last_free, last_address_map) =
+        (sec_mblock, sec_offset, next_mblock, next_free) =
+          static_allocate (asteriusStaticsSize sec) current_mblock current_free
+    (last_mblock, last_free, last_address_map) =
       M.foldlWithKey'
         layout_section
-        (head_mblock, head_block, 0, init_address_map)
+        (head_mblock, offset_first_block, init_address_map)
         statics_map
-    (result_mblock, result_block) =
-      case last_free of
-        0 -> (last_mblock, last_block)
-        _ -> succ_block last_mblock last_block
+    result_mblock
+      | last_free < offset_first_block =
+        error "Asterius.Resolve.makeStaticNurseries: internal error!"
+      | last_free == offset_first_block = last_mblock
+      | otherwise = last_mblock + 1
 
 makeStaticsOffsetTable ::
      AsteriusModule -> (Int64, M.Map AsteriusEntitySymbol Int64)
@@ -430,24 +402,15 @@ makeStaticsOffsetTable AsteriusModule {..} = (last_o, closures_address_map)
   where
     (closures, non_closures) =
       M.partition ((== Closure) . staticsType) staticsMap
-    (closures_head_mblock, closures_head_block, non_closures_address_map) =
+    (closures_head_mblock, non_closures_address_map) =
       makeStaticNurseries
         ((fromIntegral dataTag `shiftL` 32) `quot` mblock_size)
-        0
         M.empty
         non_closures
-    (closures_result_mblock, closures_result_block, closures_address_map) =
-      makeStaticNurseries
-        closures_head_mblock
-        closures_head_block
-        non_closures_address_map
-        closures
-    last_address
-      | closures_result_block == 0 = mblock_size * closures_result_mblock
-      | otherwise =
-        (mblock_size * closures_result_mblock) + offset_first_block +
-        (block_size * closures_result_block)
-    last_o = fromIntegral $ last_address .&. 0xFFFFFFFF
+    (closures_result_mblock, closures_address_map) =
+      makeStaticNurseries closures_head_mblock non_closures_address_map closures
+    last_o =
+      fromIntegral $ (mblock_size * closures_result_mblock) .&. 0xFFFFFFFF
 
 makeInfoTableSet ::
      AsteriusModule -> M.Map AsteriusEntitySymbol Int64 -> S.Set Int64
