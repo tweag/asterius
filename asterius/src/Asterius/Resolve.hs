@@ -347,68 +347,123 @@ makeFunctionTable AsteriusModule {..} =
 makeStaticNurseries ::
      Int
   -> M.Map AsteriusEntitySymbol Int64
+  -> [DataSegment]
   -> M.Map AsteriusEntitySymbol AsteriusStatics
-  -> (Int, M.Map AsteriusEntitySymbol Int64)
-makeStaticNurseries head_mblock init_address_map statics_map =
-  (result_mblock, last_address_map)
+  -> (Int, M.Map AsteriusEntitySymbol Int64, [DataSegment])
+makeStaticNurseries head_mblock init_address_map init_bdescrs statics_map =
+  (result_mblock, last_address_map, result_bdescrs)
   where
     raw_address current_mblock current_offset =
       (mblock_size * current_mblock) + current_offset
-    static_allocate raw_size current_mblock current_free
+    gen_bdescr current_mblock n current_bdescrs =
+      DataSegment
+        { content = encodeStorable block_addr
+        , offset = bdescr_field offset_bdescr_start
+        } :
+      DataSegment
+        { content = encodeStorable block_addr
+        , offset = bdescr_field offset_bdescr_free
+        } :
+      DataSegment
+        { content = encodeStorable (0 :: Int64)
+        , offset = bdescr_field offset_bdescr_link
+        } :
+      DataSegment
+        { content = encodeStorable blocks
+        , offset = bdescr_field offset_bdescr_blocks
+        } :
+      current_bdescrs
+      where
+        bdescr_field o =
+          fromIntegral $
+          ((mblock_size * current_mblock) .&. 0xFFFFFFFF) + offset_first_bdescr +
+          o
+        block_addr :: Int64
+        block_addr =
+          fromIntegral $ (mblock_size * current_mblock) + offset_first_block
+        blocks :: Int32
+        blocks
+          | n == 1 = fromIntegral blocks_per_mblock
+          | otherwise =
+            fromIntegral $
+            blocks_per_mblock + ((mblock_size `quot` block_size) * (n - 1))
+    static_allocate raw_size current_mblock current_free current_bdescrs
       | current_free + size < mblock_size =
-        (current_mblock, current_free, current_mblock, current_free + size)
+        ( current_mblock
+        , current_free
+        , current_mblock
+        , current_free + size
+        , current_bdescrs)
       | current_free + size == mblock_size =
-        (current_mblock, current_free, current_mblock + 1, offset_first_block)
+        ( current_mblock
+        , current_free
+        , current_mblock + 1
+        , offset_first_block
+        , gen_bdescr current_mblock 1 current_bdescrs)
       | size < mblock_size - offset_first_block =
         ( current_mblock + 1
         , offset_first_block
         , current_mblock + 1
-        , offset_first_block + size)
+        , offset_first_block + size
+        , gen_bdescr current_mblock 1 current_bdescrs)
       | otherwise =
         ( current_mblock + 1
         , offset_first_block
         , current_mblock + 1 + n
-        , offset_first_block)
+        , offset_first_block
+        , gen_bdescr (current_mblock + 1) n $
+          gen_bdescr current_mblock 1 current_bdescrs)
       where
         size = raw_size `roundup` 16
         n =
           1 +
           (((size - (mblock_size - offset_first_block)) `roundup` mblock_size) `quot`
            mblock_size)
-    layout_section (current_mblock, current_free, address_map) sym sec =
+    layout_section (current_mblock, current_free, current_bdescrs, address_map) sym sec =
       ( next_mblock
       , next_free
+      , next_bdescrs
       , M.insert
           sym
           (fromIntegral (raw_address sec_mblock sec_offset))
           address_map)
       where
-        (sec_mblock, sec_offset, next_mblock, next_free) =
-          static_allocate (asteriusStaticsSize sec) current_mblock current_free
-    (last_mblock, last_free, last_address_map) =
+        (sec_mblock, sec_offset, next_mblock, next_free, next_bdescrs) =
+          static_allocate
+            (asteriusStaticsSize sec)
+            current_mblock
+            current_free
+            current_bdescrs
+    (last_mblock, last_free, last_bdescrs, last_address_map) =
       M.foldlWithKey'
         layout_section
-        (head_mblock, offset_first_block, init_address_map)
+        (head_mblock, offset_first_block, init_bdescrs, init_address_map)
         statics_map
-    result_mblock
+    (result_mblock, result_bdescrs)
       | last_free < offset_first_block =
         error "Asterius.Resolve.makeStaticNurseries: internal error!"
-      | last_free == offset_first_block = last_mblock
-      | otherwise = last_mblock + 1
+      | last_free == offset_first_block = (last_mblock, last_bdescrs)
+      | otherwise = (last_mblock + 1, gen_bdescr last_mblock 1 last_bdescrs)
 
 makeStaticsOffsetTable ::
-     AsteriusModule -> (Int64, M.Map AsteriusEntitySymbol Int64)
-makeStaticsOffsetTable AsteriusModule {..} = (last_o, closures_address_map)
+     AsteriusModule -> (Int64, M.Map AsteriusEntitySymbol Int64, [DataSegment])
+makeStaticsOffsetTable AsteriusModule {..} =
+  (last_o, closures_address_map, closures_bdescrs)
   where
     (closures, non_closures) =
       M.partition ((== Closure) . staticsType) staticsMap
-    (closures_head_mblock, non_closures_address_map) =
+    (closures_head_mblock, non_closures_address_map, non_closures_bdescrs) =
       makeStaticNurseries
         ((fromIntegral dataTag `shiftL` 32) `quot` mblock_size)
         M.empty
+        []
         non_closures
-    (closures_result_mblock, closures_address_map) =
-      makeStaticNurseries closures_head_mblock non_closures_address_map closures
+    (closures_result_mblock, closures_address_map, closures_bdescrs) =
+      makeStaticNurseries
+        closures_head_mblock
+        non_closures_address_map
+        non_closures_bdescrs
+        closures
     last_o =
       fromIntegral $ (mblock_size * closures_result_mblock) .&. 0xFFFFFFFF
 
@@ -419,8 +474,12 @@ makeInfoTableSet AsteriusModule {..} sym_map =
   M.keysSet $ M.filter ((== InfoTable) . staticsType) staticsMap
 
 makeMemory ::
-     AsteriusModule -> Int64 -> M.Map AsteriusEntitySymbol Int64 -> Memory
-makeMemory AsteriusModule {..} last_o sym_map =
+     AsteriusModule
+  -> Int64
+  -> M.Map AsteriusEntitySymbol Int64
+  -> [DataSegment]
+  -> Memory
+makeMemory AsteriusModule {..} last_o sym_map extra_segs =
   Memory
     { initialPages =
         fromIntegral $
@@ -449,7 +508,7 @@ makeMemory AsteriusModule {..} last_o sym_map =
                     Uninitialized {} -> inner_segs))
              (sym_map ! sym, segs)
              asteriusStatics)
-        []
+        extra_segs
         staticsMap
     combined_segs =
       foldr
@@ -551,7 +610,8 @@ resolveAsteriusModule ::
        , [Event])
 resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = do
   let (func_table, func_sym_map) = makeFunctionTable m_globals_resolved
-      (last_o, ss_sym_map) = makeStaticsOffsetTable m_globals_resolved
+      (last_o, ss_sym_map, extra_segs) =
+        makeStaticsOffsetTable m_globals_resolved
       resolve_syms :: (Monad m, Data a) => a -> m a
       resolve_syms = resolveEntitySymbols ss_sym_map func_sym_map
   m_globals_syms_resolved <- resolve_syms m_globals_resolved
@@ -586,7 +646,8 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
             | k <- map entityName export_funcs
             ]
         , functionTable = func_table
-        , memory = makeMemory m_globals_syms_resolved last_o ss_sym_map
+        , memory =
+            makeMemory m_globals_syms_resolved last_o ss_sym_map extra_segs
         }
   pure (new_mod, ss_sym_map, func_sym_map, err_msgs)
 
