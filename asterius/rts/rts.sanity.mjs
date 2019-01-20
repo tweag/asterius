@@ -10,6 +10,7 @@ export class SanCheck {
     this.stablePtrManager = stableptr_mgr;
     this.infoTables = info_tables;
     this.visitedClosures = new Set();
+    this.visitedBdescrs = new Set();
     this.stack = [];
     Object.freeze(this);
   }
@@ -85,6 +86,7 @@ export class SanCheck {
     const c = Number(_c);
     if (this.visitedClosures.has(Memory.unTag64(c))) return;
     this.visitedClosures.add(Memory.unTag64(c));
+    this.visitClosureBdescr(c);
     const p = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(p + settings.offset_StgInfoTable_type);
     this.stack.push(["checkClosure", c, p, type]);
@@ -320,6 +322,7 @@ export class SanCheck {
     if (this.visitedClosures.has(stackobj)) return;
     this.stack.push(["checkStack", stackobj]);
     this.visitedClosures.add(Memory.unTag64(stackobj));
+    this.visitClosureBdescr(stackobj);
     this.checkInfoTable(this.memory.i64Load(stackobj));
     const stack_size = this.memory.i32Load(stackobj + settings.offset_StgStack_stack_size),
       sp = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_sp)),
@@ -332,6 +335,7 @@ export class SanCheck {
     if (this.visitedClosures.has(Memory.unTag64(tso))) return;
     this.stack.push(["checkTSO", tso]);
     this.visitedClosures.add(Memory.unTag64(tso));
+    this.visitClosureBdescr(tso);
     this.checkInfoTable(this.memory.i64Load(tso));
     const stackobj =
         Number(this.memory.i64Load(tso + settings.offset_StgTSO_stackobj));
@@ -346,16 +350,32 @@ export class SanCheck {
     this.stack.pop();
   }
 
+  visitClosureBdescr(c) {
+    const bd = ((Number(c) >> Math.log2(settings.mblock_size)) << Math.log2(settings.mblock_size)) + settings.offset_first_bdescr;
+    this.visitedBdescrs.add(bd);
+  }
+
+  checkVisitedBdescrs() {
+    Array.from(this.visitedBdescrs).sort((a, b) => a - b).forEach(bd => {
+      const start = this.memory.i64Load(bd + settings.offset_bdescr_start),
+            free = this.memory.i64Load(bd + settings.offset_bdescr_free),
+            blocks = this.memory.i64Load(bd + settings.offset_bdescr_blocks);
+      console.log(`[EVENT] MGroup start: 0x${start.toString(16)}, free: 0x${free.toString(16)}, size: ${free-start}, blocks: ${blocks}`);
+    });
+  }
+
   checkRootTSO(tso) {
     this.stack.push(["checkRootTSO", tso]);
     try {
       this.checkStablePtrs();
       this.checkTSO(tso);
+      this.checkVisitedBdescrs();
     } catch (err) {
       throw new WebAssembly.RuntimeError(`Captured error: ${err.stack}\nCall stack:\n${this.stack.reduce((acc, f) => "    " + f + "\n" + acc, "")}`);
     }
-    console.log(`[EVENT] Live object count: ${ this.visitedClosures.size }`);
+    console.log(`[EVENT] Live object count: ${ this.visitedClosures.size }, live mgroup count: ${ this.visitedBdescrs.size }`);
     this.visitedClosures.clear();
+    this.visitedBdescrs.clear();
     this.stack.pop();
   }
 }

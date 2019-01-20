@@ -51,9 +51,12 @@ export class MBlockAlloc {
   }
 
   freeMegaGroup(bd) {
-    this.memory.i64Store(
-        bd + settings.offset_bdescr_free,
-        this.memory.i64Load(bd + settings.offset_bdescr_start));
+    const start = this.memory.i64Load(bd + settings.offset_bdescr_start),
+          blocks = this.memory.i64Load(bd + settings.offset_bdescr_blocks);
+    this.memory.i64Store(bd + settings.offset_bdescr_free, start);
+    this.memory.i64View.fill(
+        BigInt(0), Memory.unTag64(start) >> 3,
+        Memory.unTag64(start + BigInt(settings.block_size * blocks)) >> 3);
     this.freeList.push(bd);
   }
 }
