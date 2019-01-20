@@ -361,7 +361,8 @@ makeStaticNurseries head_mblock init_address_map init_bdescrs statics_map =
         , offset = bdescr_field offset_bdescr_start
         } :
       DataSegment
-        { content = encodeStorable block_addr
+        { content =
+            encodeStorable $ mblock_addr + fromIntegral (mblock_size * n)
         , offset = bdescr_field offset_bdescr_free
         } :
       DataSegment
@@ -378,15 +379,13 @@ makeStaticNurseries head_mblock init_address_map init_bdescrs statics_map =
           fromIntegral $
           ((mblock_size * current_mblock) .&. 0xFFFFFFFF) + offset_first_bdescr +
           o
-        block_addr :: Int64
-        block_addr =
-          fromIntegral $ (mblock_size * current_mblock) + offset_first_block
+        mblock_addr, block_addr :: Int64
+        mblock_addr = fromIntegral $ mblock_size * current_mblock
+        block_addr = mblock_addr + fromIntegral offset_first_block
         blocks :: Int32
-        blocks
-          | n == 1 = fromIntegral blocks_per_mblock
-          | otherwise =
-            fromIntegral $
-            blocks_per_mblock + ((mblock_size `quot` block_size) * (n - 1))
+        blocks =
+          fromIntegral $
+          blocks_per_mblock + ((mblock_size `quot` block_size) * (n - 1))
     static_allocate raw_size current_mblock current_free current_bdescrs
       | current_free + size < mblock_size =
         ( current_mblock

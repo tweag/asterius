@@ -4,13 +4,15 @@ import { Memory } from "./rts.memory.mjs";
 export class MBlockAlloc {
   constructor(memory) {
     this.memory = memory;
-    this.capacity = null;
-    this.size = null;
+    this.capacity = undefined;
+    this.size = undefined;
+    this.freeList = [];
     Object.seal(this);
   }
 
   init() {
-    this.capacity = this.memory.buffer.byteLength >> Math.log2(settings.mblock_size);
+    this.capacity =
+        this.memory.buffer.byteLength >> Math.log2(settings.mblock_size);
     this.size = this.capacity;
   }
 
@@ -27,6 +29,13 @@ export class MBlockAlloc {
   }
 
   allocMegaGroup(n) {
+    for (let i = 0; i < this.freeList.length; ++i) {
+      const bd = this.freeList[i];
+      if (this.memory.i32Load(bd + settings.offset_bdescr_blocks) >= n) {
+        this.freeList.splice(i, 1);
+        return bd;
+      }
+    }
     const mblock = this.getMBlocks(n),
           bd = mblock + settings.offset_first_bdescr,
           block_addr = mblock + settings.offset_first_block;
@@ -35,9 +44,16 @@ export class MBlockAlloc {
     this.memory.i64Store(bd + settings.offset_bdescr_link, 0);
     this.memory.i32Store(
         bd + settings.offset_bdescr_blocks,
-        n === 1 ? settings.blocks_per_mblock
-                : settings.blocks_per_mblock +
-                       (settings.mblock_size / settings.block_size) * (n - 1));
+        n == 1 ? settings.blocks_per_mblock
+               : settings.blocks_per_mblock +
+                     (settings.mblock_size / settings.block_size) * (n - 1));
     return bd;
+  }
+
+  freeMegaGroup(bd) {
+    this.memory.i64Store(
+        bd + settings.offset_bdescr_free,
+        this.memory.i64Load(bd + settings.offset_bdescr_start));
+    this.freeList.push(bd);
   }
 }
