@@ -96,14 +96,20 @@ genRTSSettings Task {..} =
   , intDec offset_first_bdescr
   , ";\nexport const offset_first_block = "
   , intDec offset_first_block
+  , ";\nexport const sizeof_first_mblock = "
+  , intDec $ mblock_size - offset_first_block
   , ";\nexport const offset_bdescr_start = "
   , intDec offset_bdescr_start
   , ";\nexport const offset_bdescr_free = "
   , intDec offset_bdescr_free
   , ";\nexport const offset_bdescr_link = "
   , intDec offset_bdescr_link
+  , ";\nexport const offset_bdescr_flags = "
+  , intDec offset_bdescr_flags
   , ";\nexport const offset_bdescr_blocks = "
   , intDec offset_bdescr_blocks
+  , ";\nexport const BF_PINNED = "
+  , intDec bf_PINNED
   , ";\nexport const pageSize = 65536;\n"
   ] <>
   [ "export const " <> k <> " = " <> intDec v <> ";\n"

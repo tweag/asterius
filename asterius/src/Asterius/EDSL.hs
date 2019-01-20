@@ -91,14 +91,9 @@ module Asterius.EDSL
   , symbol'
   , constI32
   , constI64
+  , constF64
   , baseReg
   , r1
-  , sp
-  , spLim
-  , hp
-  , hpLim
-  , cccs
-  , currentTSO
   , currentNursery
   , hpAlloc
   , mainCapability
@@ -492,28 +487,17 @@ symbol' :: AsteriusEntitySymbol -> Int -> Expression
 symbol' sym o =
   Symbol {unresolvedSymbol = sym, symbolOffset = o, resolvedSymbol = Nothing}
 
-constI32, constI64 :: Int -> Expression
+constI32, constI64, constF64 :: Int -> Expression
 constI32 = ConstI32 . fromIntegral
 
 constI64 = ConstI64 . fromIntegral
 
-baseReg, r1, sp, spLim, hp, hpLim, cccs, currentTSO, currentNursery, hpAlloc ::
-     LVal
+constF64 = ConstF64 . fromIntegral
+
+baseReg, r1, currentNursery, hpAlloc :: LVal
 baseReg = global BaseReg
 
 r1 = global $ VanillaReg 1
-
-sp = global Sp
-
-spLim = global SpLim
-
-hp = global Hp
-
-hpLim = global HpLim
-
-cccs = global CCCS
-
-currentTSO = global CurrentTSO
 
 currentNursery = global CurrentNursery
 

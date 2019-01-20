@@ -1,19 +1,19 @@
 import { encodeUTF32 } from "./rts.utf32.mjs";
 import { Memory } from "./rts.memory.mjs";
 
-export class Heap {
-  constructor(syms, i, m, jsval_mgr) {
+export class HeapBuilder {
+  constructor(syms, hpalloc, m, jsval_mgr) {
     this.symbolTable = syms;
-    this.instance = i;
+    this.heapAlloc = hpalloc;
     this.memory = m;
     this.jsvalManager = jsval_mgr;
-    Object.seal(this);
+    Object.freeze(this);
   }
   newHaskellList(elem_con_info, s, _last) {
     const last =
         _last ? _last : this.symbolTable.ghczmprim_GHCziTypes_ZMZN_closure + 1;
     if (s.length) {
-      const rp = this.instance.exports.allocate(s.length * 5);
+      const rp = this.heapAlloc.allocate(s.length * 5);
       for (let i = 0; i < s.length; ++i) {
         this.memory.i64Store(
             rp + ((i * 5) << 3),
@@ -30,7 +30,7 @@ export class Heap {
       return last;
   }
   newHaskellByteArray(buf) {
-    const p = Math.ceil((this.instance.exports.allocate(
+    const p = Math.ceil((this.heapAlloc.allocate(
                             Math.ceil((buf.byteLength + 31) / 8))) /
                         16) *
               16;
