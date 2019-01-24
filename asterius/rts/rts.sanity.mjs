@@ -11,6 +11,7 @@ export class SanCheck {
     this.infoTables = info_tables;
     this.visitedClosures = new Set();
     this.visitedBdescrs = new Set();
+    this.workList = [];
     Object.freeze(this);
   }
 
@@ -21,13 +22,13 @@ export class SanCheck {
 
   checkPointersFirst(payload, ptrs) {
     for (let i = 0; i < Number(ptrs); ++i)
-      this.checkClosure(this.memory.i64Load(payload + (i << 3)));
+      this.enqueueClosure(this.memory.i64Load(payload + (i << 3)));
   }
 
   checkSmallBitmap(payload, bitmap, size) {
     for (let i = 0; i < Number(size); ++i)
       if (!((bitmap >> BigInt(i)) & BigInt(1)))
-        this.checkClosure(this.memory.i64Load(Number(payload) + (i << 3)));
+        this.enqueueClosure(this.memory.i64Load(Number(payload) + (i << 3)));
   }
 
   checkLargeBitmap(payload, large_bitmap, size) {
@@ -36,12 +37,12 @@ export class SanCheck {
           large_bitmap + settings.offset_StgLargeBitmap_bitmap + (j >> 3));
       for (let i = j; i - j < 64 && i < Number(size); ++i)
         if (!((bitmap >> BigInt(i - j)) & BigInt(1)))
-          this.checkClosure(this.memory.i64Load(Number(payload) + (i << 3)));
+          this.enqueueClosure(this.memory.i64Load(Number(payload) + (i << 3)));
     }
   }
 
   checkPAP(fun, payload, n_args) {
-    this.checkClosure(fun);
+    this.enqueueClosure(fun);
     const fun_info = Number(this.memory.i64Load(fun));
     switch(this.memory.i32Load(fun_info + settings.offset_StgFunInfoTable_f +
                                   settings.offset_StgFunInfoExtraFwd_fun_type)) {
@@ -71,10 +72,19 @@ export class SanCheck {
     }
   }
 
-  checkClosure(_c) {
-    const c = Number(_c);
-    if (this.visitedClosures.has(Memory.unTag64(c))) return;
-    this.visitedClosures.add(Memory.unTag64(c));
+  enqueueClosure(_c) {
+    const c = Number(_c), untagged_c = Memory.unTag64(c);
+    if (this.visitedClosures.has(untagged_c)) return;
+    this.visitedClosures.add(untagged_c);
+    this.workList.push(c);
+  }
+
+  checkWorkList() {
+    while(this.workList.length)
+      this.checkClosure(this.workList.pop());
+  }
+
+  checkClosure(c) {
     this.visitClosureBdescr(c);
     const p = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(p + settings.offset_StgInfoTable_type);
@@ -105,14 +115,14 @@ export class SanCheck {
       case ClosureTypes.MUT_PRIM:
       case ClosureTypes.COMPACT_NFDATA: {
         if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
-          this.checkClosure(this.memory.i64Load(p + settings.offset_StgFunInfoTable_f + settings.offset_StgFunInfoExtraFwd_srt));
+          this.enqueueClosure(this.memory.i64Load(p + settings.offset_StgFunInfoTable_f + settings.offset_StgFunInfoExtraFwd_srt));
         const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
         this.checkPointersFirst(c + 8, ptrs);
         break;
       }
       case ClosureTypes.THUNK_STATIC: {
         if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
-          this.checkClosure(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
+          this.enqueueClosure(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
         const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
         this.checkPointersFirst(c + 8, ptrs);
         break;
@@ -124,15 +134,15 @@ export class SanCheck {
       case ClosureTypes.THUNK_1_1:
       case ClosureTypes.THUNK_0_2: {
         if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
-          this.checkClosure(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
+          this.enqueueClosure(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
         const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
         this.checkPointersFirst(c + settings.offset_StgThunk_payload, ptrs);
         break;
       }
       case ClosureTypes.THUNK_SELECTOR: {
         if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
-          this.checkClosure(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
-        this.checkClosure(
+          this.enqueueClosure(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
+        this.enqueueClosure(
             this.memory.i64Load(c + settings.offset_StgSelector_selectee));
         break;
       }
@@ -153,21 +163,21 @@ export class SanCheck {
         break;
       }
       case ClosureTypes.AP_STACK: {
-        this.checkClosure(
+        this.enqueueClosure(
             this.memory.i64Load(c + settings.offset_StgAP_STACK_fun));
-        this.checkStackChunk(c + settings.offset_StgAP_STACK_payload,
+        this.enqueueStackChunk(c + settings.offset_StgAP_STACK_payload,
                              c + settings.offset_StgAP_STACK_payload +
                                  Number(this.memory.i64Load(
                                      c + settings.offset_StgAP_STACK_size)));
         break;
       }
       case ClosureTypes.IND: {
-        this.checkClosure(
+        this.enqueueClosure(
             this.memory.i64Load(c + settings.offset_StgInd_indirectee));
         break;
       }
       case ClosureTypes.IND_STATIC: {
-        this.checkClosure(
+        this.enqueueClosure(
             this.memory.i64Load(c + settings.offset_StgIndStatic_indirectee));
         break;
       }
@@ -203,23 +213,28 @@ export class SanCheck {
         break;
       }
       case ClosureTypes.WEAK: {
-        this.checkClosure(
+        this.enqueueClosure(
             this.memory.i64Load(c + settings.offset_StgWeak_cfinalizers));
-        this.checkClosure(this.memory.i64Load(c + settings.offset_StgWeak_key));
-        this.checkClosure(
+        this.enqueueClosure(this.memory.i64Load(c + settings.offset_StgWeak_key));
+        this.enqueueClosure(
             this.memory.i64Load(c + settings.offset_StgWeak_value));
-        this.checkClosure(
+        this.enqueueClosure(
             this.memory.i64Load(c + settings.offset_StgWeak_finalizer));
         const link = this.memory.i64Load(c + settings.offset_StgWeak_link);
-        if (link) this.checkClosure(link);
+        if (link) this.enqueueClosure(link);
         break;
       }
       case ClosureTypes.TSO: {
-        this.checkTSO(c);
+        const stackobj =
+              Number(this.memory.i64Load(c + settings.offset_StgTSO_stackobj));
+        this.enqueueClosure(stackobj);
         break;
       }
       case ClosureTypes.STACK: {
-        this.checkStack(c);
+        const stack_size = this.memory.i32Load(c + settings.offset_StgStack_stack_size),
+          sp = Number(this.memory.i64Load(c + settings.offset_StgStack_sp)),
+          sp_lim = c + settings.offset_StgStack_stack + (stack_size << 3);
+        this.enqueueStackChunk(sp, sp_lim);
         break;
       }
       case ClosureTypes.TREC_CHUNK:
@@ -238,7 +253,7 @@ export class SanCheck {
     }
   }
 
-  checkStackChunk(sp, sp_lim) {
+  enqueueStackChunk(sp, sp_lim) {
     let c = sp;
     while (true) {
       if (c > sp_lim)
@@ -252,7 +267,7 @@ export class SanCheck {
                 this.memory.i64Load(p + settings.offset_StgInfoTable_layout);
       this.checkInfoTable(p);
       if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
-          this.checkClosure(this.memory.i64Load(p + settings.offset_StgRetInfoTable_srt));
+          this.enqueueClosure(this.memory.i64Load(p + settings.offset_StgRetInfoTable_srt));
       switch (type) {
         case ClosureTypes.RET_SMALL:
         case ClosureTypes.UPDATE_FRAME:
@@ -321,30 +336,9 @@ export class SanCheck {
     }
   }
 
-  checkStack(stackobj) {
-    if (this.visitedClosures.has(stackobj)) return;
-    this.visitedClosures.add(Memory.unTag64(stackobj));
-    this.visitClosureBdescr(stackobj);
-    this.checkInfoTable(this.memory.i64Load(stackobj));
-    const stack_size = this.memory.i32Load(stackobj + settings.offset_StgStack_stack_size),
-      sp = Number(this.memory.i64Load(stackobj + settings.offset_StgStack_sp)),
-      sp_lim = stackobj + settings.offset_StgStack_stack + (stack_size << 3);
-    this.checkStackChunk(sp, sp_lim);
-  }
-
-  checkTSO(tso) {
-    if (this.visitedClosures.has(Memory.unTag64(tso))) return;
-    this.visitedClosures.add(Memory.unTag64(tso));
-    this.visitClosureBdescr(tso);
-    this.checkInfoTable(this.memory.i64Load(tso));
-    const stackobj =
-        Number(this.memory.i64Load(tso + settings.offset_StgTSO_stackobj));
-    this.checkStack(stackobj);
-  }
-
-  checkStablePtrs() {
+  enqueueStablePtrs() {
     for (const [sp, addr] of this.stablePtrManager.spt.entries())
-      if (!(sp & 1)) this.checkClosure(addr);
+      if (!(sp & 1)) this.enqueueClosure(addr);
   }
 
   visitClosureBdescr(c) {
@@ -364,8 +358,9 @@ export class SanCheck {
   checkRootTSO(i, tso) {
     console.log(`[EVENT] checkRootTSO ${i}`);
     try {
-      this.checkStablePtrs();
-      this.checkTSO(tso);
+      this.enqueueStablePtrs();
+      this.enqueueClosure(tso);
+      this.checkWorkList();
       this.checkVisitedBdescrs();
     } catch (err) {
       throw new WebAssembly.RuntimeError(`Captured error: ${err.stack}\n`);
