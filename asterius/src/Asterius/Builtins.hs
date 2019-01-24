@@ -386,7 +386,7 @@ rtsFunctionImports debug =
       { internalName = "__asterius_checkRootTSO"
       , externalModuleName = "SanCheck"
       , externalBaseName = "checkRootTSO"
-      , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+      , functionType = FunctionType {paramTypes = [I32, F64], returnTypes = []}
       }
   , FunctionImport
       { internalName = "__asterius_gcRootTSO"
@@ -767,7 +767,9 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
-        callImport "__asterius_checkRootTSO" [convertUInt64ToFloat64 t]
+        callImport
+          "__asterius_checkRootTSO"
+          [constI32 0, convertUInt64ToFloat64 t]
         r <- stgRun $ symbol "stg_returnToStackTop"
         ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
         storeI8 mainCapability offset_Capability_in_haskell $ constI32 0
@@ -776,7 +778,7 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
             ( [ ( ret_HeapOverflow
                 , do callImport
                        "__asterius_checkRootTSO"
-                       [convertUInt64ToFloat64 t]
+                       [constI32 1, convertUInt64ToFloat64 t]
                      callImport
                        "__asterius_gcRootTSO"
                        [convertUInt64ToFloat64 t]
@@ -800,7 +802,7 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
               , ( ret_ThreadFinished
                 , do callImport
                        "__asterius_checkRootTSO"
-                       [convertUInt64ToFloat64 t]
+                       [constI32 2, convertUInt64ToFloat64 t]
                      if'
                        []
                        (loadI16 t offset_StgTSO_what_next `eqInt32`

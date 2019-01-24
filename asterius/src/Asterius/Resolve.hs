@@ -526,28 +526,6 @@ makeMemory AsteriusModule {..} last_o sym_map extra_segs =
         []
         (sortOn (\DataSegment {offset = o} -> o) uncombined_segs)
 
-checkNonClosures ::
-     AsteriusModule -> [(AsteriusEntitySymbol, AsteriusEntitySymbol)]
-checkNonClosures AsteriusModule {..} =
-  M.foldlWithKey'
-    (\tot parent_sym parent_statics ->
-       case staticsType parent_statics of
-         Closure -> tot
-         _ ->
-           foldl'
-             (\tot' static ->
-                case static of
-                  SymbolStatic child_sym _
-                    | child_sym `S.member` closure_syms ->
-                      (parent_sym, child_sym) : tot'
-                  _ -> tot')
-             tot
-             (asteriusStatics parent_statics))
-    []
-    staticsMap
-  where
-    closure_syms = M.keysSet $ M.filter ((== Closure) . staticsType) staticsMap
-
 resolveEntitySymbols ::
      (Monad m, Data a)
   => M.Map AsteriusEntitySymbol Int64
@@ -691,24 +669,20 @@ linkStart debug store root_syms export_funcs = do
          | k <- export_funcs
          ])
       export_funcs
-  let invalid_refs = checkNonClosures merged_m
-  if null invalid_refs
-    then do
-      (result_m, ss_sym_map, func_sym_map, err_msgs) <-
-        resolveAsteriusModule
-          debug
-          (bundledFFIMarshalState report)
-          export_funcs
-          merged_m
-      pure
-        ( result_m
-        , err_msgs
-        , report
-            { staticsSymbolMap = ss_sym_map
-            , functionSymbolMap = func_sym_map
-            , infoTableSet = makeInfoTableSet merged_m ss_sym_map
-            })
-    else error $ show invalid_refs
+  (result_m, ss_sym_map, func_sym_map, err_msgs) <-
+    resolveAsteriusModule
+      debug
+      (bundledFFIMarshalState report)
+      export_funcs
+      merged_m
+  pure
+    ( result_m
+    , err_msgs
+    , report
+        { staticsSymbolMap = ss_sym_map
+        , functionSymbolMap = func_sym_map
+        , infoTableSet = makeInfoTableSet merged_m ss_sym_map
+        })
 
 renderDot :: LinkReport -> Builder
 renderDot LinkReport {..} =

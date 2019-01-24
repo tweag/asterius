@@ -11,6 +11,7 @@ export class SanCheck {
     this.infoTables = info_tables;
     this.visitedClosures = new Set();
     this.visitedBdescrs = new Set();
+    this.visitedSRTs = new Set();
     this.stack = [];
     Object.freeze(this);
   }
@@ -98,7 +99,11 @@ export class SanCheck {
       case ClosureTypes.CONSTR_2_0:
       case ClosureTypes.CONSTR_1_1:
       case ClosureTypes.CONSTR_0_2:
-      case ClosureTypes.CONSTR_NOCAF:
+      case ClosureTypes.CONSTR_NOCAF: {
+        const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
+        this.checkPointersFirst(c + 8, ptrs);
+        break;
+      }
       case ClosureTypes.FUN:
       case ClosureTypes.FUN_1_0:
       case ClosureTypes.FUN_0_1:
@@ -106,13 +111,21 @@ export class SanCheck {
       case ClosureTypes.FUN_1_1:
       case ClosureTypes.FUN_0_2:
       case ClosureTypes.FUN_STATIC:
-      case ClosureTypes.THUNK_STATIC:
       case ClosureTypes.BLACKHOLE:
       case ClosureTypes.MUT_VAR_CLEAN:
       case ClosureTypes.MUT_VAR_DIRTY:
       case ClosureTypes.PRIM:
       case ClosureTypes.MUT_PRIM:
       case ClosureTypes.COMPACT_NFDATA: {
+        if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
+          this.checkSRT(this.memory.i64Load(p + settings.offset_StgFunInfoTable_f + settings.offset_StgFunInfoExtraFwd_srt));
+        const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
+        this.checkPointersFirst(c + 8, ptrs);
+        break;
+      }
+      case ClosureTypes.THUNK_STATIC: {
+        if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
+          this.checkSRT(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
         const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
         this.checkPointersFirst(c + 8, ptrs);
         break;
@@ -123,11 +136,15 @@ export class SanCheck {
       case ClosureTypes.THUNK_2_0:
       case ClosureTypes.THUNK_1_1:
       case ClosureTypes.THUNK_0_2: {
+        if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
+          this.checkSRT(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
         const ptrs = this.memory.i32Load(p + settings.offset_StgInfoTable_layout);
         this.checkPointersFirst(c + settings.offset_StgThunk_payload, ptrs);
         break;
       }
       case ClosureTypes.THUNK_SELECTOR: {
+        if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
+          this.checkSRT(this.memory.i64Load(p + settings.offset_StgThunkInfoTable_srt));
         this.checkClosure(
             this.memory.i64Load(c + settings.offset_StgSelector_selectee));
         break;
@@ -235,6 +252,13 @@ export class SanCheck {
     this.stack.pop();
   }
 
+  checkSRT(_c) {
+    const c = Number(_c);
+    if (this.visitedSRTs.has(Memory.unTag64(c))) return;
+    this.visitedSRTs.add(Memory.unTag64(c));
+    this.checkClosure(c);
+  }
+
   checkStackChunk(sp, sp_lim) {
     this.stack.push(["checkStackChunk", sp, sp_lim]);
     let c = sp;
@@ -249,6 +273,8 @@ export class SanCheck {
             raw_layout =
                 this.memory.i64Load(p + settings.offset_StgInfoTable_layout);
       this.checkInfoTable(p);
+      if (this.memory.i32Load(p + settings.offset_StgInfoTable_srt))
+          this.checkSRT(this.memory.i64Load(p + settings.offset_StgRetInfoTable_srt));
       switch (type) {
         case ClosureTypes.RET_SMALL:
         case ClosureTypes.UPDATE_FRAME:
@@ -364,8 +390,9 @@ export class SanCheck {
     });
   }
 
-  checkRootTSO(tso) {
-    this.stack.push(["checkRootTSO", tso]);
+  checkRootTSO(i, tso) {
+    this.stack.push(["checkRootTSO", i, tso]);
+    console.log(`[EVENT] checkRootTSO ${i}`);
     try {
       this.checkStablePtrs();
       this.checkTSO(tso);
@@ -373,9 +400,12 @@ export class SanCheck {
     } catch (err) {
       throw new WebAssembly.RuntimeError(`Captured error: ${err.stack}\nCall stack:\n${this.stack.reduce((acc, f) => "    " + f + "\n" + acc, "")}`);
     }
-    console.log(`[EVENT] Live object count: ${ this.visitedClosures.size }, live mgroup count: ${ this.visitedBdescrs.size }`);
+    console.log(`[EVENT] Live object count: ${ this.visitedClosures.size }, live mgroup count: ${ this.visitedBdescrs.size }, checked SRTs: ${ this.visitedSRTs.size }`);
+    if (this.visitedClosures.size < 64)
+      console.log(`[EVENT] Live objects: ${ Array.from(this.visitedClosures).map(Memory.tagData) }`);
     this.visitedClosures.clear();
     this.visitedBdescrs.clear();
+    this.visitedSRTs.clear();
     this.stack.pop();
   }
 }

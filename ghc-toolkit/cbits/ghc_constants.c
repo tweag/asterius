@@ -166,6 +166,10 @@ HsInt offset_StgFunInfoExtraFwd_fun_type() {
   return offsetof(StgFunInfoExtraFwd, fun_type);
 }
 
+HsInt offset_StgFunInfoExtraFwd_srt() {
+  return offsetof(StgFunInfoExtraFwd, srt);
+}
+
 HsInt offset_StgFunInfoExtraFwd_b() { return offsetof(StgFunInfoExtraFwd, b); }
 
 HsInt offset_StgFunInfoTable_i() { return offsetof(StgFunInfoTable, i); }
@@ -221,6 +225,10 @@ HsInt offset_StgRetFun_size() { return offsetof(StgRetFun, size); }
 HsInt offset_StgRetFun_fun() { return offsetof(StgRetFun, fun); }
 
 HsInt offset_StgRetFun_payload() { return offsetof(StgRetFun, payload); }
+
+HsInt offset_StgRetInfoTable_i() { return offsetof(StgRetInfoTable, i); }
+
+HsInt offset_StgRetInfoTable_srt() { return offsetof(StgRetInfoTable, srt); }
 
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
@@ -325,6 +333,12 @@ HsInt sizeof_StgStopFrame() { return sizeof(StgStopFrame); }
 HsInt sizeof_StgThunk() { return sizeof(StgThunk); }
 
 HsInt offset_StgThunk_payload() { return offsetof(StgThunk, payload); }
+
+HsInt offset_StgThunkInfoTable_i() { return offsetof(StgThunkInfoTable, i); }
+
+HsInt offset_StgThunkInfoTable_srt() {
+  return offsetof(StgThunkInfoTable, srt);
+}
 
 HsInt sizeof_StgTSO() { return sizeof(StgTSO); }
 

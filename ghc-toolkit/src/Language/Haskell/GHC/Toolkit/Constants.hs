@@ -159,6 +159,9 @@ foreign import ccall unsafe "offset_StgIndStatic_saved_info" offset_StgIndStatic
 foreign import ccall unsafe "offset_StgFunInfoExtraFwd_fun_type" offset_StgFunInfoExtraFwd_fun_type
   :: Int
 
+foreign import ccall unsafe "offset_StgFunInfoExtraFwd_srt" offset_StgFunInfoExtraFwd_srt
+  :: Int
+
 foreign import ccall unsafe "offset_StgFunInfoExtraFwd_b" offset_StgFunInfoExtraFwd_b
   :: Int
 
@@ -221,6 +224,12 @@ foreign import ccall unsafe "offset_StgRetFun_size" offset_StgRetFun_size :: Int
 foreign import ccall unsafe "offset_StgRetFun_fun" offset_StgRetFun_fun :: Int
 
 foreign import ccall unsafe "offset_StgRetFun_payload" offset_StgRetFun_payload
+  :: Int
+
+foreign import ccall unsafe "offset_StgRetInfoTable_i" offset_StgRetInfoTable_i
+  :: Int
+
+foreign import ccall unsafe "offset_StgRetInfoTable_srt" offset_StgRetInfoTable_srt
   :: Int
 
 foreign import ccall unsafe "sizeof_StgRegTable" sizeof_StgRegTable :: Int
@@ -352,6 +361,12 @@ foreign import ccall unsafe "sizeof_StgStopFrame" sizeof_StgStopFrame :: Int
 foreign import ccall unsafe "sizeof_StgThunk" sizeof_StgThunk :: Int
 
 foreign import ccall unsafe "offset_StgThunk_payload" offset_StgThunk_payload
+  :: Int
+
+foreign import ccall unsafe "offset_StgThunkInfoTable_i" offset_StgThunkInfoTable_i
+  :: Int
+
+foreign import ccall unsafe "offset_StgThunkInfoTable_srt" offset_StgThunkInfoTable_srt
   :: Int
 
 foreign import ccall unsafe "sizeof_StgTSO" sizeof_StgTSO :: Int
