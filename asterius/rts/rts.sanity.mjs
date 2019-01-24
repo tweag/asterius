@@ -85,7 +85,8 @@ export class SanCheck {
   }
 
   checkClosure(c) {
-    this.visitClosureBdescr(c);
+    if (this.memory.heapAlloced(c))
+      this.visitClosureBdescr(c);
     const p = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(p + settings.offset_StgInfoTable_type);
     this.checkInfoTable(p);

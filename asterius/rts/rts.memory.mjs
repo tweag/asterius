@@ -3,14 +3,16 @@ import * as settings from "./rts.settings.mjs";
 export class Memory {
   constructor() {
     this.memory = null;
+    this.staticMBlocks = null;
     this.i8View = null;
     this.i16View = null;
     this.i32View = null;
     this.i64View = null;
     Object.seal(this);
   }
-  init(memory) {
+  init(memory, static_mblocks) {
     this.memory = memory;
+    this.staticMBlocks = static_mblocks;
     this.initView();
   }
   initView() {
@@ -42,6 +44,7 @@ export class Memory {
   i32Store(p, v) { this.i32View[Memory.unTag32(p) >> 2] = Number(v); }
   i64Load(p) { return this.i64View[Memory.unTag64(p) >> 3]; }
   i64Store(p, v) { this.i64View[Memory.unTag64(p) >> 3] = BigInt(v); }
+  heapAlloced(p) { return Memory.unTag64(p) >= (this.staticMBlocks << Math.log2(settings.mblock_size)); }
   strlen(_str) { return this.i8View.subarray(Memory.unTag64(_str)).indexOf(0); }
   memchr(_ptr, val, num) {
     const ptr = Memory.unTag64(_ptr),

@@ -208,6 +208,7 @@ data LinkReport = LinkReport
   , unfoundSymbols, unavailableSymbols :: S.Set AsteriusEntitySymbol
   , staticsSymbolMap, functionSymbolMap :: M.Map AsteriusEntitySymbol Int64
   , infoTableSet :: S.Set Int64
+  , staticMBlocks :: Int
   , bundledFFIMarshalState :: FFIMarshalState
   } deriving (Show)
 
@@ -220,6 +221,7 @@ instance Semigroup LinkReport where
       , staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
       , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
       , infoTableSet = infoTableSet r0 <> infoTableSet r1
+      , staticMBlocks = 0
       , bundledFFIMarshalState =
           bundledFFIMarshalState r0 <> bundledFFIMarshalState r1
       }
@@ -233,6 +235,7 @@ instance Monoid LinkReport where
       , staticsSymbolMap = mempty
       , functionSymbolMap = mempty
       , infoTableSet = mempty
+      , staticMBlocks = 0
       , bundledFFIMarshalState = mempty
       }
 
@@ -482,7 +485,7 @@ makeMemory AsteriusModule {..} last_o sym_map extra_segs =
   Memory
     { initialPages =
         fromIntegral $
-        roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
+        roundup (fromIntegral last_o) mblock_size `quot` wasmPageSize
     , memoryExportName = "memory"
     , dataSegments = combined_segs
     }
@@ -606,7 +609,8 @@ resolveAsteriusModule ::
   -> m ( Module
        , M.Map AsteriusEntitySymbol Int64
        , M.Map AsteriusEntitySymbol Int64
-       , [Event])
+       , [Event]
+       , Int)
 resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = do
   let (func_table, func_sym_map) = makeFunctionTable m_globals_resolved
       (last_o, ss_sym_map, extra_segs) =
@@ -633,6 +637,7 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
            else pure func) >>=
         relooperDeep
       pure (entityName func_sym, new_func)
+  let mem = makeMemory m_globals_syms_resolved last_o ss_sym_map extra_segs
   (new_mod, err_msgs) <-
     rewriteEmitEvent
       Module
@@ -645,10 +650,14 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
             | k <- map entityName export_funcs
             ]
         , functionTable = func_table
-        , memory =
-            makeMemory m_globals_syms_resolved last_o ss_sym_map extra_segs
+        , memory = mem
         }
-  pure (new_mod, ss_sym_map, func_sym_map, err_msgs)
+  pure
+    ( new_mod
+    , ss_sym_map
+    , func_sym_map
+    , err_msgs
+    , fromIntegral (initialPages mem) `quot` (mblock_size `quot` wasmPageSize))
 
 linkStart ::
      Monad m
@@ -669,7 +678,7 @@ linkStart debug store root_syms export_funcs = do
          | k <- export_funcs
          ])
       export_funcs
-  (result_m, ss_sym_map, func_sym_map, err_msgs) <-
+  (result_m, ss_sym_map, func_sym_map, err_msgs, static_mbs) <-
     resolveAsteriusModule
       debug
       (bundledFFIMarshalState report)
@@ -682,6 +691,7 @@ linkStart debug store root_syms export_funcs = do
         { staticsSymbolMap = ss_sym_map
         , functionSymbolMap = func_sym_map
         , infoTableSet = makeInfoTableSet merged_m ss_sym_map
+        , staticMBlocks = static_mbs
         })
 
 renderDot :: LinkReport -> Builder

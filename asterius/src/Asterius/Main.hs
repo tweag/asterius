@@ -231,6 +231,8 @@ genLib Task {..} LinkReport {..} err_msgs =
   , genSymbolDict symbol_table
   , ", infoTables: "
   , genInfoTables infoTableSet
+  , ", staticMBlocks: "
+  , intDec staticMBlocks
   , if sync
       then ", sync: true"
       else ", sync: false"
