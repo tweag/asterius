@@ -1,5 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash, UnboxedTuples, NoImplicitPrelude #-}
+{-# LANGUAGE UnliftedFFITypes #-}
+
 module GHC.Integer.Logarithms
     ( integerLogBase#
     , integerLog2#
@@ -26,7 +28,7 @@ import GHC.Integer.Type (Integer(..))
 -- for @base > 1@ and @m > 0@.
 integerLogBase# :: Integer -> Integer -> Int#
 #if defined(ASTERIUS)
-integerLogBase# b m = unI# (js_integerLogBase (coerce m) (coerce b))
+integerLogBase# (Integer b) (Integer m) = js_integerLogBase m b
 #else
 integerLogBase# b m = case step b of
                         (# _, e #) -> e
@@ -55,6 +57,6 @@ wordLog2# = I.wordLog2#
 
 #if defined(ASTERIUS)
 
-foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, ${2})" js_integerLogBase :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, ${2})" js_integerLogBase :: Int# -> Int# -> Int#
 
 #endif
