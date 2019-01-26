@@ -30,7 +30,7 @@ export class HeapBuilder {
       return last;
   }
   newHaskellByteArray(buf) {
-    const p = Math.ceil((this.heapAlloc.allocate(
+    const p = Math.ceil((this.heapAlloc.allocatePinned(
                             Math.ceil((buf.byteLength + 31) / 8))) /
                         16) *
               16;
