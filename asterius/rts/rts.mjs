@@ -60,14 +60,14 @@ export function newAsteriusInstance(req) {
       __asterius_jsffi_instance.vault.get(decodeLatin1(k)),
     vaultDelete: k =>
       __asterius_jsffi_instance.vault.delete(decodeLatin1(k)),
-    unsafeMakeHaskellCallback: f => () => {
-      const tid = __asterius_wasm_instance.exports.rts_evalLazyIO(f);
+    makeHaskellCallback: sp => () => {
+      const tid = __asterius_wasm_instance.exports.rts_evalLazyIO(__asterius_stableptr_manager.deRefStablePtr(sp));
       __asterius_wasm_instance.exports.rts_checkSchedStatus(tid);
     },
-    unsafeMakeHaskellCallback1: f => ev => {
+    makeHaskellCallback1: sp => ev => {
       const tid = __asterius_wasm_instance.exports.rts_evalLazyIO(
         __asterius_wasm_instance.exports.rts_apply(
-          f,
+          __asterius_stableptr_manager.deRefStablePtr(sp),
           __asterius_wasm_instance.exports.rts_mkInt(
             __asterius_stableptr_manager.newJSVal(ev)
           )
@@ -75,11 +75,11 @@ export function newAsteriusInstance(req) {
       );
       __asterius_wasm_instance.exports.rts_checkSchedStatus(tid);
     },
-    unsafeMakeHaskellCallback2: f => (x, y) => {
+    makeHaskellCallback2: sp => (x, y) => {
       const tid = __asterius_wasm_instance.exports.rts_evalLazyIO(
         __asterius_wasm_instance.exports.rts_apply(
           __asterius_wasm_instance.exports.rts_apply(
-            f, __asterius_wasm_instance.exports.rts_mkInt(
+            __asterius_stableptr_manager.deRefStablePtr(sp), __asterius_wasm_instance.exports.rts_mkInt(
               __asterius_stableptr_manager.newJSVal(x))),
           __asterius_wasm_instance.exports.rts_mkInt(
             __asterius_stableptr_manager.newJSVal(y))));
