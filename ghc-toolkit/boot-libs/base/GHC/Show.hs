@@ -496,12 +496,12 @@ instance Show Natural where
 integerToString :: Integer -> String -> String
 #if defined(ASTERIUS)
 
-integerToString i s =
+integerToString (Integer i) s =
   accursedUnutterableAddrToAny
-    (js_integerToString (coerce i) (accursedUnutterableAnyToAddr s))
+    (js_integerToString i (accursedUnutterableAnyToAddr s))
 
 foreign import javascript "__asterius_jsffi.Integer.integerToString(${1},${2})" js_integerToString
-  :: Int -> Addr# -> Addr#
+  :: Int# -> Addr# -> Addr#
 
 #else
 integerToString n0 cs0
