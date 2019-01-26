@@ -69,6 +69,15 @@ data Task = Task
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   }
 
+rtsUsedSymbols :: S.Set AsteriusEntitySymbol
+rtsUsedSymbols =
+  [ "ghczmprim_GHCziTypes_Czh_con_info"
+  , "ghczmprim_GHCziTypes_Izh_con_info"
+  , "ghczmprim_GHCziTypes_ZC_con_info"
+  , "ghczmprim_GHCziTypes_ZMZN_closure"
+  , "stg_ARR_WORDS_info"
+  ]
+
 genRTSSettings :: Task -> Builder
 genRTSSettings Task {..} =
   mconcat $
@@ -245,13 +254,7 @@ genLib Task {..} LinkReport {..} err_msgs =
       if fullSymTable || debug
         then raw_symbol_table
         else M.restrictKeys raw_symbol_table $
-             S.fromList extraRootSymbols <>
-             [ "ghczmprim_GHCziTypes_Czh_con_info"
-             , "ghczmprim_GHCziTypes_Izh_con_info"
-             , "ghczmprim_GHCziTypes_ZC_con_info"
-             , "ghczmprim_GHCziTypes_ZMZN_closure"
-             , "stg_ARR_WORDS_info"
-             ]
+             S.fromList extraRootSymbols <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =
@@ -404,11 +407,12 @@ ahcLinkMain task@Task {..} = do
           linkStart
             debug
             final_store
-            (S.fromList $
-             extraRootSymbols <>
-             [ AsteriusEntitySymbol {entityName = internalName}
-             | FunctionExport {..} <- rtsAsteriusFunctionExports debug
-             ])
+            (rtsUsedSymbols <>
+             S.fromList
+               (extraRootSymbols <>
+                [ AsteriusEntitySymbol {entityName = internalName}
+                | FunctionExport {..} <- rtsAsteriusFunctionExports debug
+                ]))
             exportFunctions
         let out_package_json = outputDirectory </> "package.json"
             out_rts_settings = outputDirectory </> "rts.settings.mjs"
