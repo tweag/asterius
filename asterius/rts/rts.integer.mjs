@@ -23,7 +23,7 @@ export class IntegerManager {
   }
   abs(bi) { return bi < BigInt(0) ? -bi : bi; }
   encode(bi) {
-    return Number(this.abs(bi) >> BigInt(52)
+    return Number(this.abs(bi) >> BigInt(31)
                       ? (BigInt(this.jsvalManager.newJSVal(bi)) << BigInt(1)) |
                             BigInt(1)
                       : bi << BigInt(1));

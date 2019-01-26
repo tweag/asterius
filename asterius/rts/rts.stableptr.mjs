@@ -1,12 +1,12 @@
 export class StablePtrManager {
   constructor() {
     this.spt = new Map();
-    this.last = 0;
-    Object.seal(this);
+    this.lasts = [0, 0];
+    Object.freeze(this);
   }
 
   newWithTag(v, tag) {
-    const sp = (++this.last << 1) | tag;
+    const sp = (++this.lasts[tag] << 1) | tag;
     this.spt.set(sp, v);
     return sp;
   }
