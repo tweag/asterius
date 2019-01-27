@@ -5,10 +5,11 @@ import * as settings from "./rts.settings.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class SanCheck {
-  constructor(memory, stableptr_mgr, info_tables) {
+  constructor(memory, stableptr_mgr, info_tables, pinned_closures) {
     this.memory = memory;
     this.stablePtrManager = stableptr_mgr;
     this.infoTables = info_tables;
+    this.pinnedClosures = pinned_closures;
     this.visitedClosures = new Set();
     this.visitedBdescrs = new Set();
     this.workList = [];
@@ -359,6 +360,8 @@ export class SanCheck {
   checkRootTSO(i, tso) {
     console.log(`[EVENT] checkRootTSO ${i}`);
     try {
+      for (const c in this.pinnedClosures)
+        this.enqueueClosure(c);
       this.enqueueStablePtrs();
       this.enqueueClosure(tso);
       this.checkWorkList();

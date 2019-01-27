@@ -244,7 +244,7 @@ mergeSymbols ::
   => Bool
   -> AsteriusStore
   -> S.Set AsteriusEntitySymbol
-  -> [AsteriusEntitySymbol]
+  -> S.Set AsteriusEntitySymbol
   -> m (AsteriusModule, LinkReport)
 mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
   (_, final_rep, final_m) <- go (root_syms, mempty, mempty)
@@ -283,8 +283,7 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
                     (if debug
                        then addMemoryTrap
                        else pure)
-                      mempty
-                        {functionMap = M.fromList [(i_staging_sym, new_func)]}
+                      mempty {functionMap = M.singleton i_staging_sym new_func}
                   pure $ Right (i_staging_sym, m)
                 _
                   | M.member i_staging_sym functionErrorMap ->
@@ -677,7 +676,7 @@ linkStart debug store root_syms export_funcs = do
            {entityName = "__asterius_jsffi_export_" <> entityName k}
          | k <- export_funcs
          ])
-      export_funcs
+      (S.fromList export_funcs)
   (result_m, ss_sym_map, func_sym_map, err_msgs, static_mbs) <-
     resolveAsteriusModule
       debug

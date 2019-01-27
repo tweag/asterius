@@ -71,10 +71,17 @@ data Task = Task
 
 rtsUsedSymbols :: S.Set AsteriusEntitySymbol
 rtsUsedSymbols =
-  [ "ghczmprim_GHCziTypes_Czh_con_info"
+  [ "base_GHCziPtr_Ptr_con_info"
+  , "base_GHCziStable_StablePtr_con_info"
+  , "ghczmprim_GHCziTypes_Czh_con_info"
+  , "ghczmprim_GHCziTypes_Dzh_con_info"
+  , "ghczmprim_GHCziTypes_False_closure"
   , "ghczmprim_GHCziTypes_Izh_con_info"
+  , "ghczmprim_GHCziTypes_True_closure"
+  , "ghczmprim_GHCziTypes_Wzh_con_info"
   , "ghczmprim_GHCziTypes_ZC_con_info"
   , "ghczmprim_GHCziTypes_ZMZN_closure"
+  , "Main_main_closure"
   , "stg_ARR_WORDS_info"
   ]
 
@@ -200,6 +207,27 @@ genSymbolDict sym_map =
 genInfoTables :: S.Set Int64 -> Builder
 genInfoTables sym_set = "new Set(" <> string7 (show (S.toList sym_set)) <> ")"
 
+genPinnedStaticClosures ::
+     M.Map AsteriusEntitySymbol Int64
+  -> [AsteriusEntitySymbol]
+  -> FFIMarshalState
+  -> Builder
+genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
+  "new Set(" <>
+  string7
+    (show (map ((sym_map !) . ffiExportClosure . (export_decls !)) export_funcs)) <>
+  ")"
+  where
+    export_decls =
+      M.foldl'
+        (M.unionWithKey
+           (\k _ _ ->
+              error $
+              "Asterius.Main.genPinnedStaticClosures: conflicted export function " <>
+              show k))
+        M.empty
+        ffiExportDecls
+
 genWasm :: Task -> LBS.ByteString -> Builder
 genWasm Task {..} _ =
   mconcat
@@ -240,6 +268,11 @@ genLib Task {..} LinkReport {..} err_msgs =
   , genSymbolDict symbol_table
   , ", infoTables: "
   , genInfoTables infoTableSet
+  , ", pinnedStaticClosures: "
+  , genPinnedStaticClosures
+      staticsSymbolMap
+      exportFunctions
+      bundledFFIMarshalState
   , ", staticMBlocks: "
   , intDec staticMBlocks
   , if sync
