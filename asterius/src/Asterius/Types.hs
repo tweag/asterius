@@ -510,7 +510,7 @@ data FFIValueType
   = FFI_VAL { ffiWasmValueType, ffiJSValueType :: ValueType
             , hsTyCon :: SBS.ShortByteString
             , signed :: Bool }
-  | FFI_JSREF
+  | FFI_JSVAL
   deriving (Eq, Show, Generic, Data)
 
 instance Binary FFIValueType
