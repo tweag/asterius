@@ -2,6 +2,27 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-01-28
+
+Covers last week.
+
+Ongoing work:
+
+* More work to improve the sanity checker and get GC near completion:
+    * The sanity checker spotted a fatal situation where previously unreachable static closures become reachable again. More experiments in this direction invalidated a previous conjecture that no special treatments for static closure is required as long as they have valid block descriptors and can be moved just like dynamic ones.
+    * The solution to the problem above is not hard: when scanning an info table, we also follow the SRT if it's present, and we still need to identify static/dynamic closures and prevent moving static ones. This is implemented in the sanity checker.
+    * The sanity checker is no longer backed by explicit recursion. When scanning a long chain of closures, we won't run out of JavaScript stack space.
+    * Adjusting the codegen & standard libraries to cope with upcoming GC:
+        * The `makeHaskellCallback*` interfaces now properly allocate a stable pointer for the exported Haskell closure. This is to ensure that they remain valid when later called from JavaScript, even after GC runs.
+        * The function closures of `foreign export javascript` clauses are recognized and become GC roots for similar reasons.
+        * `Asterius.Types` is moved from `ghc-prim` to `base`, so the `JSVal` type can be backed by `StablePtr`. The GC will use a tag bit to identify regular stable pointers and JavaScript references, and automatically free unused references.
+        * `Integer` is promoted to a standalone datatype, so the GC can scan reachable `Integer`s and free unreachable ones which point to `BigInt`s.
+
+Remaining work for GC:
+
+* Implement evac/scav functionality.
+* Implement support for `Weak#`s based on the constraint that no Haskell execution is required when firing a finalizer.
+
 ## 2019-01-21
 
 Covers last week.
@@ -20,7 +41,7 @@ Ongoing work:
     * Added functionality to free block groups, so they can later be reused without growing the linear memory. Their payloads can be zeroed to eliminate a potential attack surface (or for better reproduction of bugs in case something goes wrong)
     * Moved `allocate*` to the JavaScript runtime and properly implemented `allocatePinned`. Previously it was simply an alias of `allocate` since we didn't move anything around.
 
-Planned work for last week:
+Planned work for next week:
 
 * Wrap up all GC work and get a fully functional GC up & running. This was originally planned to finish by end of last week, but fell behind schedule due to the hidden workload described above. Required work:
     * Implement evac/scav functionalities in the runtime.
