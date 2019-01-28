@@ -839,7 +839,7 @@ createThreadFunction _ =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     [cap, alloc_words] <- params [I64, I64]
-    tso_p <- call' "allocate" [cap, alloc_words] I64
+    tso_p <- call' "allocatePinned" [cap, alloc_words] I64
     stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
     storeI64 stack_p 0 $ symbol "stg_STACK_info"
     stack_size_w <-
