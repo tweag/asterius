@@ -31,7 +31,9 @@ export class Memory {
   static tagFunction(p) {
     return Number((BigInt(settings.functionTag) << BigInt(32)) | BigInt(p));
   }
-  static getDynTag(p) { return p & 7; }
+  static unDynTag(p) { return Number((BigInt(p) >> BigInt(3)) << BigInt(3)); }
+  static getDynTag(p) { return Number(p) & 7; }
+  static setDynTag(p, t) { return Number(BigInt(p) | BigInt(t)); }
   get buffer() { return this.memory.buffer; }
   grow(n) {
     const prev_pages = this.memory.grow(n);
