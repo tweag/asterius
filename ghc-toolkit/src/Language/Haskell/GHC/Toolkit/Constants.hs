@@ -110,6 +110,8 @@ foreign import ccall unsafe "offset_Capability_free_trec_headers" offset_Capabil
 foreign import ccall unsafe "offset_Capability_transaction_tokens" offset_Capability_transaction_tokens
   :: Int
 
+foreign import ccall unsafe "sizeof_StgAP" sizeof_StgAP :: Int
+
 foreign import ccall unsafe "offset_StgAP_arity" offset_StgAP_arity :: Int
 
 foreign import ccall unsafe "offset_StgAP_n_args" offset_StgAP_n_args :: Int
@@ -117,6 +119,8 @@ foreign import ccall unsafe "offset_StgAP_n_args" offset_StgAP_n_args :: Int
 foreign import ccall unsafe "offset_StgAP_fun" offset_StgAP_fun :: Int
 
 foreign import ccall unsafe "offset_StgAP_payload" offset_StgAP_payload :: Int
+
+foreign import ccall unsafe "sizeof_StgAP_STACK" sizeof_StgAP_STACK :: Int
 
 foreign import ccall unsafe "offset_StgAP_STACK_size" offset_StgAP_STACK_size
   :: Int
@@ -200,6 +204,8 @@ foreign import ccall unsafe "offset_StgLargeBitmap_size" offset_StgLargeBitmap_s
 foreign import ccall unsafe "offset_StgLargeBitmap_bitmap" offset_StgLargeBitmap_bitmap
   :: Int
 
+foreign import ccall unsafe "sizeof_StgMutArrPtrs" sizeof_StgMutArrPtrs :: Int
+
 foreign import ccall unsafe "offset_StgMutArrPtrs_ptrs" offset_StgMutArrPtrs_ptrs
   :: Int
 
@@ -208,6 +214,8 @@ foreign import ccall unsafe "offset_StgMutArrPtrs_size" offset_StgMutArrPtrs_siz
 
 foreign import ccall unsafe "offset_StgMutArrPtrs_payload" offset_StgMutArrPtrs_payload
   :: Int
+
+foreign import ccall unsafe "sizeof_StgPAP" sizeof_StgPAP :: Int
 
 foreign import ccall unsafe "offset_StgPAP_arity" offset_StgPAP_arity :: Int
 
@@ -339,6 +347,9 @@ foreign import ccall unsafe "offset_StgRegTable_rRet" offset_StgRegTable_rRet
 foreign import ccall unsafe "offset_StgSelector_selectee" offset_StgSelector_selectee
   :: Int
 
+foreign import ccall unsafe "sizeof_StgSmallMutArrPtrs" sizeof_StgSmallMutArrPtrs
+  :: Int
+
 foreign import ccall unsafe "offset_StgSmallMutArrPtrs_ptrs" offset_StgSmallMutArrPtrs_ptrs
   :: Int
 
@@ -410,6 +421,8 @@ foreign import ccall unsafe "offset_StgTSO_alloc_limit" offset_StgTSO_alloc_limi
 
 foreign import ccall unsafe "offset_StgTSO_tot_stack_size" offset_StgTSO_tot_stack_size
   :: Int
+
+foreign import ccall unsafe "sizeof_StgWeak" sizeof_StgWeak :: Int
 
 foreign import ccall unsafe "offset_StgWeak_cfinalizers" offset_StgWeak_cfinalizers
   :: Int

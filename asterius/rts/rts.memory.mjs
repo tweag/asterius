@@ -21,6 +21,7 @@ export class Memory {
     this.i32View = new Uint32Array(this.memory.buffer);
     this.i64View = new BigUint64Array(this.memory.buffer);
   }
+  static unTag8(p) { return Number(BigInt(p) & BigInt(0xffffffff)); }
   static unTag16(p) { return Number(BigInt(p) & BigInt(0xfffffffe)); }
   static unTag32(p) { return Number(BigInt(p) & BigInt(0xfffffffc)); }
   static unTag64(p) { return Number(BigInt(p) & BigInt(0xfffffff8)); }
@@ -46,25 +47,25 @@ export class Memory {
   i32Store(p, v) { this.i32View[Memory.unTag32(p) >> 2] = Number(v); }
   i64Load(p) { return this.i64View[Memory.unTag64(p) >> 3]; }
   i64Store(p, v) { this.i64View[Memory.unTag64(p) >> 3] = BigInt(v); }
-  heapAlloced(p) { return Memory.unTag64(p) >= (this.staticMBlocks << Math.log2(settings.mblock_size)); }
-  strlen(_str) { return this.i8View.subarray(Memory.unTag64(_str)).indexOf(0); }
+  heapAlloced(p) { return Memory.unTag8(p) >= (this.staticMBlocks << Math.log2(settings.mblock_size)); }
+  strlen(_str) { return this.i8View.subarray(Memory.unTag8(_str)).indexOf(0); }
   memchr(_ptr, val, num) {
-    const ptr = Memory.unTag64(_ptr),
+    const ptr = Memory.unTag8(_ptr),
           off = this.i8View.subarray(ptr, ptr + num).indexOf(val);
     return off === -1 ? 0 : _ptr + off;
   }
   memcpy(_dst, _src, n) {
-    this.i8View.copyWithin(Memory.unTag64(_dst), Memory.unTag64(_src),
-                           Memory.unTag64(_src) + n);
+    this.i8View.copyWithin(Memory.unTag8(_dst), Memory.unTag8(_src),
+                           Memory.unTag8(_src) + n);
   }
   memmove(_dst, _src, n) { return this.memcpy(_dst, _src, n); }
   memset(_dst, c, n) {
-    this.i8View.fill(c, Memory.unTag64(_dst), Memory.unTag64(_dst) + n);
+    this.i8View.fill(c, Memory.unTag8(_dst), Memory.unTag8(_dst) + n);
   }
   memcmp(_ptr1, _ptr2, n) {
     for (let i = 0; i < n; ++i) {
-      const sgn = Math.sign(this.i8View[Memory.unTag64(_ptr1) + i] -
-                            this.i8View[Memory.unTag64(_ptr2) + i]);
+      const sgn = Math.sign(this.i8View[Memory.unTag8(_ptr1) + i] -
+                            this.i8View[Memory.unTag8(_ptr2) + i]);
       if (sgn) return sgn;
     }
     return 0;

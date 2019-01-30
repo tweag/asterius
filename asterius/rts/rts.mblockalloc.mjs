@@ -52,11 +52,16 @@ export class MBlockAlloc {
 
   freeMegaGroup(bd) {
     const start = this.memory.i64Load(bd + settings.offset_bdescr_start),
-          blocks = this.memory.i64Load(bd + settings.offset_bdescr_blocks);
+          blocks = this.memory.i32Load(bd + settings.offset_bdescr_blocks),
+          mblock_addr = bd - settings.offset_first_bdescr;
     this.memory.i64Store(bd + settings.offset_bdescr_free, start);
     this.memory.i64View.fill(
-        BigInt(0), Memory.unTag64(start) >> 3,
+        BigInt(0), Memory.unTag64(mblock_addr) >> 3,
         Memory.unTag64(start + BigInt(settings.block_size * blocks)) >> 3);
+    this.memory.i64Store(bd + settings.offset_bdescr_start, start);
+    this.memory.i64Store(bd + settings.offset_bdescr_free, start);
+    this.memory.i64Store(bd + settings.offset_bdescr_link, 0);
+    this.memory.i32Store(bd + settings.offset_bdescr_blocks, blocks);
     this.freeList.push(bd);
   }
 }

@@ -119,6 +119,7 @@ HsInt offset_Capability_free_trec_headers() {
 HsInt offset_Capability_transaction_tokens() {
   return offsetof(Capability, transaction_tokens);
 }
+HsInt sizeof_StgAP() { return sizeof(StgAP); }
 
 HsInt offset_StgAP_arity() { return offsetof(StgAP, arity); }
 
@@ -127,6 +128,8 @@ HsInt offset_StgAP_n_args() { return offsetof(StgAP, n_args); }
 HsInt offset_StgAP_fun() { return offsetof(StgAP, fun); }
 
 HsInt offset_StgAP_payload() { return offsetof(StgAP, payload); }
+
+HsInt sizeof_StgAP_STACK() { return sizeof(StgAP_STACK); }
 
 HsInt offset_StgAP_STACK_size() { return offsetof(StgAP_STACK, size); }
 
@@ -201,6 +204,7 @@ HsInt offset_StgLargeBitmap_size() { return offsetof(StgLargeBitmap, size); }
 HsInt offset_StgLargeBitmap_bitmap() {
   return offsetof(StgLargeBitmap, bitmap);
 }
+HsInt sizeof_StgMutArrPtrs() { return sizeof(StgMutArrPtrs); }
 
 HsInt offset_StgMutArrPtrs_ptrs() { return offsetof(StgMutArrPtrs, ptrs); }
 
@@ -209,6 +213,7 @@ HsInt offset_StgMutArrPtrs_size() { return offsetof(StgMutArrPtrs, size); }
 HsInt offset_StgMutArrPtrs_payload() {
   return offsetof(StgMutArrPtrs, payload);
 }
+HsInt sizeof_StgPAP() { return sizeof(StgPAP); }
 
 HsInt offset_StgPAP_arity() { return offsetof(StgPAP, arity); }
 
@@ -308,6 +313,8 @@ HsInt offset_StgRegTable_rRet() { return offsetof(StgRegTable, rRet); }
 
 HsInt offset_StgSelector_selectee() { return offsetof(StgSelector, selectee); }
 
+HsInt sizeof_StgSmallMutArrPtrs() { return sizeof(StgSmallMutArrPtrs); }
+
 HsInt offset_StgSmallMutArrPtrs_ptrs() {
   return offsetof(StgSmallMutArrPtrs, ptrs);
 }
@@ -377,6 +384,8 @@ HsInt offset_StgTSO_alloc_limit() { return offsetof(StgTSO, alloc_limit); }
 HsInt offset_StgTSO_tot_stack_size() {
   return offsetof(StgTSO, tot_stack_size);
 }
+
+HsInt sizeof_StgWeak() { return sizeof(StgWeak); }
 
 HsInt offset_StgWeak_cfinalizers() { return offsetof(StgWeak, cfinalizers); }
 
