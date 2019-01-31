@@ -3,17 +3,16 @@ import { Memory } from "./rts.memory.mjs";
 import * as settings from "./rts.settings.mjs";
 
 export class GC {
-  constructor(memory, mblockalloc, stableptr_manager, info_tables,
+  constructor(memory, heapalloc, stableptr_manager, info_tables,
               pinned_closures) {
     this.memory = memory;
-    this.mblockAlloc = mblockalloc;
+    this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
     this.infoTables = info_tables;
     this.pinnedClosures = pinned_closures;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
     this.workList = [];
-    this.currentNursery = undefined;
     Object.seal(this);
   }
 
@@ -29,30 +28,8 @@ export class GC {
     return Boolean(flags & settings.BF_PINNED);
   }
 
-  allocate(bytes) {
-    const rounded_bytes = Math.ceil(bytes / 8) << 3;
-    while (true) {
-      let start = Number(this.memory.i64Load(this.currentNursery +
-                                             settings.offset_bdescr_start)),
-          free = Number(this.memory.i64Load(this.currentNursery +
-                                            settings.offset_bdescr_free)),
-          blocks = this.memory.i32Load(this.currentNursery +
-                                       settings.offset_bdescr_blocks),
-          limit = start + settings.block_size * blocks;
-      if (free + rounded_bytes <= limit) {
-        this.liveMBlocks.add(this.currentNursery);
-        this.memory.i64Store(this.currentNursery + settings.offset_bdescr_free,
-                             free + rounded_bytes);
-        return free;
-      } else {
-        this.currentNursery = this.mblockAlloc.allocMegaGroup(1);
-        continue;
-      }
-    }
-  }
-
   copyClosure(c, bytes) {
-    const dest_c = this.allocate(bytes);
+    const dest_c = this.heapAlloc.allocate(bytes << 3);
     this.memory.memcpy(dest_c, c, bytes);
     return dest_c;
   }
@@ -192,7 +169,7 @@ export class GC {
   scavengeClosure(c) {}
 
   gcRootTSO(tso) {
-    this.currentNursery = this.mblockAlloc.allocMegaGroup(1);
+    this.heapAlloc.init();
     for (const c in this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
@@ -200,6 +177,5 @@ export class GC {
     this.scavengeWorkList();
     this.closureIndirects.clear();
     this.liveMBlocks.clear();
-    this.currentNursery = undefined;
   }
 }
