@@ -24,7 +24,7 @@ export function newAsteriusInstance(req) {
     __asterius_wasm_instance = null,
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable),
-    __asterius_mblockalloc = new MBlockAlloc(__asterius_memory),
+    __asterius_mblockalloc = new MBlockAlloc(),
     __asterius_heapalloc = new HeapAlloc(__asterius_memory, __asterius_mblockalloc),
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_tso_manager = new TSOManager(),
@@ -131,7 +131,7 @@ export function newAsteriusInstance(req) {
     const i = new WebAssembly.Instance(req.module, importObject);
     __asterius_wasm_instance = i;
     __asterius_memory.init(__asterius_wasm_instance.exports.memory, req.staticMBlocks);
-    __asterius_mblockalloc.init();
+    __asterius_mblockalloc.init(__asterius_memory, req.staticMBlocks);
     __asterius_heapalloc.init();
     __asterius_integer_manager.heap = __asterius_heap_builder;
     __asterius_bytestring_cbits.memory = __asterius_memory;
@@ -146,7 +146,7 @@ export function newAsteriusInstance(req) {
     return WebAssembly.instantiate(req.module, importObject).then(i => {
       __asterius_wasm_instance = i;
       __asterius_memory.init(__asterius_wasm_instance.exports.memory, req.staticMBlocks);
-      __asterius_mblockalloc.init();
+      __asterius_mblockalloc.init(__asterius_memory, req.staticMBlocks);
       __asterius_heapalloc.init();
       __asterius_integer_manager.heap = __asterius_heap_builder;
       __asterius_bytestring_cbits.memory = __asterius_memory;

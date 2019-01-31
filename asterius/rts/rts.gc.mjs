@@ -13,7 +13,7 @@ export class GC {
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
     this.workList = [];
-    Object.seal(this);
+    Object.freeze(this);
   }
 
   bdescr(c) {
@@ -29,8 +29,9 @@ export class GC {
   }
 
   copyClosure(c, bytes) {
-    const dest_c = this.heapAlloc.allocate(bytes << 3);
+    const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
+    this.liveMBlocks.add(this.bdescr(dest_c));
     return dest_c;
   }
 
