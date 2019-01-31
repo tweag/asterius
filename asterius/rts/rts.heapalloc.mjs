@@ -16,11 +16,15 @@ export class HeapAlloc {
         settings.BF_PINNED);
   }
   hpAlloc(b) {
-    return this.mblockAlloc.allocMegaGroup(
-        b <= settings.sizeof_first_mblock
-            ? 1
-            : 1 + Math.ceil((b - settings.sizeof_first_mblock) /
-                            settings.mblock_size));
+    const mblocks = b <= settings.sizeof_first_mblock
+                        ? 1
+                        : 1 + Math.ceil((b - settings.sizeof_first_mblock) /
+                                        settings.mblock_size),
+          bd = this.mblockAlloc.allocMegaGroup(mblocks);
+    if (mblocks > 1)
+      this.memory.i16Store(bd + settings.offset_bdescr_flags,
+                           settings.BF_PINNED);
+    return bd;
   }
   allocate(n) {
     let b = n << 3,
