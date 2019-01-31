@@ -25,7 +25,7 @@ export class HeapAlloc {
     return bd;
   }
   allocate(n, pinned = false) {
-    let pool_i = Number(pinned), b = n << 3,
+    let pool_i = Number(pinned || n >= settings.block_size), b = n << 3,
         current_start = Number(this.memory.i64Load(
             this.currentPools[pool_i] + settings.offset_bdescr_start)),
         current_free = Number(this.memory.i64Load(this.currentPools[pool_i] +
@@ -40,9 +40,9 @@ export class HeapAlloc {
       return current_free;
     }
     this.currentPools[pool_i] = this.hpAlloc(b);
-    if (pinned)
+    if (pool_i)
       this.memory.i16Store(
-          this.currentPinnedObjectPool + settings.offset_bdescr_flags,
+          this.currentPools[pool_i] + settings.offset_bdescr_flags,
           settings.BF_PINNED);
     current_free = Number(this.memory.i64Load(this.currentPools[pool_i] +
                                               settings.offset_bdescr_free));
