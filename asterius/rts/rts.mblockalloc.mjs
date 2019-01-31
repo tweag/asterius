@@ -14,21 +14,19 @@ export class MBlockAlloc {
   init(memory, static_mblocks) {
     this.memory = memory;
     this.staticMBlocks = static_mblocks;
-    this.capacity =
-        this.memory.buffer.byteLength >> Math.log2(settings.mblock_size);
+    this.capacity = this.memory.buffer.byteLength / settings.mblock_size;
     this.size = this.capacity;
   }
 
   getMBlocks(n) {
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
-      this.memory.grow(
-          d << Math.log2(settings.mblock_size / settings.pageSize));
+      this.memory.grow(d * (settings.mblock_size / settings.pageSize));
       this.capacity += d;
     }
     const prev_size = this.size;
     this.size += n;
-    return Memory.tagData(prev_size << Math.log2(settings.mblock_size));
+    return Memory.tagData(prev_size * settings.mblock_size);
   }
 
   allocMegaGroup(n) {
@@ -40,6 +38,7 @@ export class MBlockAlloc {
       const bd = this.freeList[i],
             blocks = this.memory.i32Load(bd + settings.offset_bdescr_blocks);
       if (req_blocks < blocks) {
+        this.memory.i32Store(bd + settings.offset_bdescr_blocks, req_blocks);
         const rest_bd = bd + (settings.mblock_size * n),
               rest_start = rest_bd - settings.offset_first_bdescr +
                            settings.offset_first_block;
