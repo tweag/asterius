@@ -83,6 +83,9 @@ rtsUsedSymbols =
   , "ghczmprim_GHCziTypes_ZMZN_closure"
   , "Main_main_closure"
   , "stg_ARR_WORDS_info"
+  , "stg_DEAD_WEAK_info"
+  , "stg_NO_FINALIZER_closure"
+  , "stg_WEAK_info"
   ]
 
 genRTSSettings :: Task -> Builder
