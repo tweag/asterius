@@ -45,6 +45,7 @@ export class SanCheck {
   checkPAP(fun, payload, n_args) {
     this.enqueueClosure(fun);
     const fun_info = Number(this.memory.i64Load(fun));
+    this.checkInfoTable(fun_info);
     switch(this.memory.i32Load(fun_info + settings.offset_StgFunInfoTable_f +
                                   settings.offset_StgFunInfoExtraFwd_fun_type)) {
       case FunTypes.ARG_GEN:

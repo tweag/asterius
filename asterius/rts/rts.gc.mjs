@@ -169,13 +169,66 @@ export class GC {
     this.memory.i64Store(p, this.evacuateClosure(this.memory.i64Load(p)));
   }
 
-  scavengePointersFirst(payload, ptrs) {}
+  scavengePointersFirst(payload, ptrs) {
+    for (let i = 0; i < ptrs; ++i) this.scavengeClosureAt(payload + (i << 3));
+  }
 
-  scavengeSmallBitmap(payload, bitmap, size) {}
+  scavengeSmallBitmap(payload, bitmap, size) {
+    for (let i = 0; i < size; ++i)
+      if (!((bitmap >> BigInt(i)) & BigInt(1)))
+        this.scavengeClosureAt(payload + (i << 3));
+  }
 
-  scavengeLargeBitmap(payload, large_bitmap, size) {}
+  scavengeLargeBitmap(payload, large_bitmap, size) {
+    for (let j = 0; j < size; j += 64) {
+      const bitmap = this.memory.i64Load(
+          large_bitmap + settings.offset_StgLargeBitmap_bitmap + (j >> 3));
+      for (let i = j; i - j < 64 && i < size; ++i)
+        if (!((bitmap >> BigInt(i - j)) & BigInt(1)))
+          this.scavengeClosureAt(payload + (i << 3));
+    }
+  }
 
-  scavengePAP(c, offset_fun, payload, n_args) {}
+  scavengePAP(c, offset_fun, payload, n_args) {
+    this.scavengeClosureAt(c + offset_fun);
+    const fun = this.memory.i64Load(c + offset_fun),
+          fun_info = Number(this.memory.i64Load(fun));
+    if (!this.infoTables.has(fun_info)) throw new WebAssembly.RuntimeError();
+    switch (this.memory.i32Load(fun_info + settings.offset_StgFunInfoTable_f +
+                                settings.offset_StgFunInfoExtraFwd_fun_type)) {
+      case FunTypes.ARG_GEN: {
+        this.scavengeSmallBitmap(
+            payload,
+            this.memory.i64Load(fun_info + settings.offset_StgFunInfoTable_f +
+                                settings.offset_StgFunInfoExtraFwd_b) >>
+                BigInt(6),
+            n_args);
+        break;
+      }
+      case FunTypes.ARG_GEN_BIG: {
+        this.scavengeLargeBitmap(
+            payload,
+            Number(this.memory.i64Load(fun_info +
+                                       settings.offset_StgFunInfoTable_f +
+                                       settings.offset_StgFunInfoExtraFwd_b)),
+            n_args);
+        break;
+      }
+      case FunTypes.ARG_BCO: {
+        throw new WebAssembly.RuntimeError();
+      }
+      default: {
+        this.scavengeSmallBitmap(
+            payload,
+            BigInt(stg_arg_bitmaps[this.memory.i32Load(
+                fun_info + settings.offset_StgFunInfoTable_f +
+                settings.offset_StgFunInfoExtraFwd_fun_type)]) >>
+                BigInt(6),
+            n_args);
+        break;
+      }
+    }
+  }
 
   scavengeStackChunk(sp, sp_lim) {
     let c = sp;
@@ -234,9 +287,9 @@ export class GC {
             case FunTypes.ARG_GEN_BIG: {
               this.scavengeLargeBitmap(
                   c + settings.offset_StgRetFun_payload,
-                  this.memory.i64Load(fun_info +
-                                      settings.offset_StgFunInfoTable_f +
-                                      settings.offset_StgFunInfoExtraFwd_b),
+                  Number(this.memory.i64Load(
+                      fun_info + settings.offset_StgFunInfoTable_f +
+                      settings.offset_StgFunInfoExtraFwd_b)),
                   size);
               break;
             }
@@ -399,7 +452,8 @@ export class GC {
       case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
         this.scavengePointersFirst(
             c + settings.offset_StgSmallMutArrPtrs_payload,
-            this.memory.i64Load(c + settings.offset_StgSmallMutArrPtrs_ptrs));
+            Number(this.memory.i64Load(
+                c + settings.offset_StgSmallMutArrPtrs_ptrs)));
         break;
       }
       default:
