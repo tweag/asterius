@@ -1,6 +1,8 @@
 import * as ClosureTypes from "./rts.closuretypes.mjs";
+import * as FunTypes from "./rts.funtypes.mjs";
 import { Memory } from "./rts.memory.mjs";
 import * as settings from "./rts.settings.mjs";
+import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class GC {
   constructor(memory, heapalloc, stableptr_manager, info_tables,
@@ -175,16 +177,100 @@ export class GC {
 
   scavengePAP(c, offset_fun, payload, n_args) {}
 
-  scavengeStackChunk(sp, sp_lim) {}
+  scavengeStackChunk(sp, sp_lim) {
+    let c = sp;
+    while (true) {
+      if (c > sp_lim) throw new WebAssembly.RuntimeError();
+      if (c == sp_lim) break;
+      const info = Number(this.memory.i64Load(c)),
+            type =
+                this.memory.i32Load(info + settings.offset_StgInfoTable_type),
+            raw_layout =
+                this.memory.i64Load(info + settings.offset_StgInfoTable_layout);
+      if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+      if (this.memory.i32Load(info + settings.offset_StgInfoTable_srt))
+        this.evacuateClosure(
+            this.memory.i64Load(info + settings.offset_StgRetInfoTable_srt));
+      switch (type) {
+        case ClosureTypes.RET_SMALL:
+        case ClosureTypes.UPDATE_FRAME:
+        case ClosureTypes.CATCH_FRAME:
+        case ClosureTypes.UNDERFLOW_FRAME:
+        case ClosureTypes.STOP_FRAME:
+        case ClosureTypes.ATOMICALLY_FRAME:
+        case ClosureTypes.CATCH_RETRY_FRAME:
+        case ClosureTypes.CATCH_STM_FRAME: {
+          const size = Number(raw_layout & BigInt(0x3f)),
+                bitmap = raw_layout >> BigInt(6);
+          this.scavengeSmallBitmap(c + 8, bitmap, size);
+          c += (1 + size) << 3;
+          break;
+        }
+        case ClosureTypes.RET_BIG: {
+          const size = Number(this.memory.i64Load(
+              Number(raw_layout) + settings.offset_StgLargeBitmap_size));
+          this.scavengeLargeBitmap(c + 8, Number(raw_layout), size);
+          c += (1 + size) << 3;
+          break;
+        }
+        case ClosureTypes.RET_FUN: {
+          const size =
+              Number(this.memory.i64Load(c + settings.offset_StgRetFun_size)),
+                fun_info = Number(this.memory.i64Load(
+                    this.memory.i64Load(c + settings.offset_StgRetFun_fun)));
+          switch (this.memory.i32Load(
+              fun_info + settings.offset_StgFunInfoTable_f +
+              settings.offset_StgFunInfoExtraFwd_fun_type)) {
+            case FunTypes.ARG_GEN: {
+              this.scavengeSmallBitmap(
+                  c + settings.offset_StgRetFun_payload,
+                  this.memory.i64Load(fun_info +
+                                      settings.offset_StgFunInfoTable_f +
+                                      settings.offset_StgFunInfoExtraFwd_b) >>
+                      BigInt(6),
+                  size);
+              break;
+            }
+            case FunTypes.ARG_GEN_BIG: {
+              this.scavengeLargeBitmap(
+                  c + settings.offset_StgRetFun_payload,
+                  this.memory.i64Load(fun_info +
+                                      settings.offset_StgFunInfoTable_f +
+                                      settings.offset_StgFunInfoExtraFwd_b),
+                  size);
+              break;
+            }
+            case FunTypes.ARG_BCO: {
+              throw new WebAssembly.RuntimeError();
+            }
+            default: {
+              this.scavengeSmallBitmap(
+                  c + settings.offset_StgRetFun_payload,
+                  BigInt(stg_arg_bitmaps[this.memory.i32Load(
+                      fun_info + settings.offset_StgFunInfoTable_f +
+                      settings.offset_StgFunInfoExtraFwd_fun_type)]) >>
+                      BigInt(6),
+                  size);
+              break;
+            }
+          }
+          c += settings.sizeof_StgRetFun + (size << 3);
+          break;
+        }
+        default:
+          throw new WebAssembly.RuntimeError();
+      }
+    }
+  }
 
   scavengeWorkList() {
     while (this.workList.length) this.scavengeClosure(this.workList.pop());
   }
 
   scavengeClosure(c) {
-    const info = Number(this.memory.i64Load(c));
+    const info = Number(this.memory.i64Load(c)),
+          type = this.memory.i32Load(info + settings.offset_StgInfoTable_type);
     if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
-    const type = this.memory.i32Load(info + settings.offset_StgInfoTable_type);
     switch (type) {
       case ClosureTypes.CONSTR:
       case ClosureTypes.CONSTR_1_0:
