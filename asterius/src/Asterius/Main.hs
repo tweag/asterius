@@ -150,6 +150,7 @@ genRTSSettings Task {..} =
       , ("offset_StgFunInfoExtraFwd_b", offset_StgFunInfoExtraFwd_b)
       , ("offset_StgFunInfoTable_i", offset_StgFunInfoTable_i)
       , ("offset_StgFunInfoTable_f", offset_StgFunInfoTable_f)
+      , ("sizeof_StgInd", sizeof_StgInd)
       , ("offset_StgInd_indirectee", offset_StgInd_indirectee)
       , ("sizeof_StgIndStatic", sizeof_StgIndStatic)
       , ("offset_StgIndStatic_indirectee", offset_StgIndStatic_indirectee)

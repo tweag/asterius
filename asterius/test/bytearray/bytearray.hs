@@ -48,5 +48,5 @@ src = w 0 []
 
 main :: IO ()
 main = do
-  for_ [63, 511, 8191, 65535] $ m >=> print >=> const yield
+  --for_ [63, 511, 8191, 65535] $ m >=> print >=> const yield
   print $ foldl' (+) (0 :: Int) src

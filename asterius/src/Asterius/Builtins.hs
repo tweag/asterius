@@ -767,9 +767,9 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
-        callImport
+        {-callImport
           "__asterius_checkRootTSO"
-          [constI32 0, convertUInt64ToFloat64 t]
+          [constI32 0, convertUInt64ToFloat64 t]-}
         r <- stgRun $ symbol "stg_returnToStackTop"
         ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
         storeI8 mainCapability offset_Capability_in_haskell $ constI32 0
@@ -778,10 +778,13 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
             ( [ ( ret_HeapOverflow
                 , do callImport
                        "__asterius_checkRootTSO"
-                       [constI32 1, convertUInt64ToFloat64 t]
+                       [constI32 19, convertUInt64ToFloat64 t]
                      callImport
                        "__asterius_gcRootTSO"
                        [convertUInt64ToFloat64 t]
+                     callImport
+                       "__asterius_checkRootTSO"
+                       [constI32 91, convertUInt64ToFloat64 t]
                      bytes <- i64Local $ getLVal hpAlloc
                      putLVal hpAlloc $ constI64 0
                      if'
@@ -800,9 +803,9 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
               , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
               , ( ret_ThreadFinished
-                , do callImport
+                , do {-callImport
                        "__asterius_checkRootTSO"
-                       [constI32 2, convertUInt64ToFloat64 t]
+                       [constI32 2, convertUInt64ToFloat64 t]-}
                      if'
                        []
                        (loadI16 t offset_StgTSO_what_next `eqInt32`

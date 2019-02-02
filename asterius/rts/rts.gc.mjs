@@ -19,9 +19,9 @@ export class GC {
   }
 
   bdescr(c) {
-    return (((Number(c) >> Math.log2(settings.mblock_size))
-             << Math.log2(settings.mblock_size)) +
-            settings.offset_first_bdescr);
+    return Number(((BigInt(c) >> BigInt(Math.log2(settings.mblock_size)) )
+             << BigInt(Math.log2(settings.mblock_size)) ) |
+            BigInt(settings.offset_first_bdescr));
   }
 
   isPinned(c) {
@@ -108,8 +108,8 @@ export class GC {
               break;
             }
             case ClosureTypes.IND: {
-              return this.evacuateClosure(this.memory.i64Load(
-                  untagged_c + settings.offset_StgInd_indirectee));
+              dest_c = this.copyClosure(untagged_c, settings.sizeof_StgInd);
+              break;
             }
             case ClosureTypes.IND_STATIC: {
               dest_c =
@@ -410,6 +410,10 @@ export class GC {
                                         c + settings.offset_StgAP_STACK_size)));
         break;
       }
+      case ClosureTypes.IND: {
+        this.scavengeClosure(c + settings.offset_StgInd_indirectee);
+        break;
+      }
       case ClosureTypes.IND_STATIC: {
         this.scavengeClosureAt(c + settings.offset_StgIndStatic_indirectee);
         break;
@@ -468,6 +472,7 @@ export class GC {
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
     this.evacuateClosure(tso);
     this.scavengeWorkList();
+    console.log(`[EVENT] Live object count from gc: ${this.closureIndirects.size}, live mgroup count from gc: ${this.liveMBlocks.size}`)
     this.closureIndirects.clear();
     this.liveMBlocks.clear();
   }

@@ -75,7 +75,7 @@ export class SanCheck {
   }
 
   enqueueClosure(_c) {
-    const c = Number(_c), untagged_c = Memory.unTag64(c);
+    const c = Number(_c), untagged_c = Memory.unDynTag(c);
     if (this.visitedClosures.has(untagged_c)) return;
     this.visitedClosures.add(untagged_c);
     this.workList.push(c);
@@ -345,17 +345,10 @@ export class SanCheck {
   }
 
   visitClosureBdescr(c) {
-    const bd = ((Number(c) >> Math.log2(settings.mblock_size)) << Math.log2(settings.mblock_size)) + settings.offset_first_bdescr;
+    const bd = Number(((BigInt(c) >> BigInt(Math.log2(settings.mblock_size)) )
+             << BigInt(Math.log2(settings.mblock_size)) ) |
+            BigInt(settings.offset_first_bdescr));
     this.visitedBdescrs.add(bd);
-  }
-
-  checkVisitedBdescrs() {
-    Array.from(this.visitedBdescrs).sort((a, b) => a - b).forEach(bd => {
-      const start = this.memory.i64Load(bd + settings.offset_bdescr_start),
-            free = this.memory.i64Load(bd + settings.offset_bdescr_free),
-            blocks = this.memory.i64Load(bd + settings.offset_bdescr_blocks);
-      console.log(`[EVENT] MGroup start: 0x${start.toString(16)}, free: 0x${free.toString(16)}, size: ${free-start}, blocks: ${blocks}`);
-    });
   }
 
   checkRootTSO(i, tso) {
@@ -366,7 +359,6 @@ export class SanCheck {
       this.enqueueStablePtrs();
       this.enqueueClosure(tso);
       this.checkWorkList();
-      this.checkVisitedBdescrs();
     } catch (err) {
       throw new WebAssembly.RuntimeError(`Captured error: ${err.stack}\n`);
     }
