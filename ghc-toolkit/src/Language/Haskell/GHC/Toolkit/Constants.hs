@@ -344,6 +344,8 @@ foreign import ccall unsafe "offset_StgRegTable_rHpAlloc" offset_StgRegTable_rHp
 foreign import ccall unsafe "offset_StgRegTable_rRet" offset_StgRegTable_rRet
   :: Int
 
+foreign import ccall unsafe "sizeof_StgSelector" sizeof_StgSelector :: Int
+
 foreign import ccall unsafe "offset_StgSelector_selectee" offset_StgSelector_selectee
   :: Int
 

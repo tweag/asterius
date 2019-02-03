@@ -311,6 +311,8 @@ HsInt offset_StgRegTable_rHpAlloc() { return offsetof(StgRegTable, rHpAlloc); }
 
 HsInt offset_StgRegTable_rRet() { return offsetof(StgRegTable, rRet); }
 
+HsInt sizeof_StgSelector() { return sizeof(StgSelector); }
+
 HsInt offset_StgSelector_selectee() { return offsetof(StgSelector, selectee); }
 
 HsInt sizeof_StgSmallMutArrPtrs() { return sizeof(StgSmallMutArrPtrs); }

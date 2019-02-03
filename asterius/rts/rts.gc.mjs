@@ -19,9 +19,9 @@ export class GC {
   }
 
   bdescr(c) {
-    return Number(((BigInt(c) >> BigInt(Math.log2(settings.mblock_size)) )
-             << BigInt(Math.log2(settings.mblock_size)) ) |
-            BigInt(settings.offset_first_bdescr));
+    return Number(((BigInt(c) >> BigInt(Math.log2(settings.mblock_size)))
+                   << BigInt(Math.log2(settings.mblock_size))) |
+                  BigInt(settings.offset_first_bdescr));
   }
 
   isPinned(c) {
@@ -51,34 +51,54 @@ export class GC {
           const type =
               this.memory.i32Load(info + settings.offset_StgInfoTable_type);
           switch (type) {
-            case ClosureTypes.CONSTR:
-            case ClosureTypes.CONSTR_1_0:
             case ClosureTypes.CONSTR_0_1:
-            case ClosureTypes.CONSTR_2_0:
-            case ClosureTypes.CONSTR_1_1:
-            case ClosureTypes.CONSTR_0_2:
-            case ClosureTypes.CONSTR_NOCAF:
-            case ClosureTypes.FUN:
-            case ClosureTypes.FUN_1_0:
             case ClosureTypes.FUN_0_1:
-            case ClosureTypes.FUN_2_0:
+            case ClosureTypes.FUN_1_0:
+            case ClosureTypes.CONSTR_1_0: {
+              dest_c = this.copyClosure(untagged_c, 16);
+              break;
+            }
+            case ClosureTypes.THUNK_1_0:
+            case ClosureTypes.THUNK_0_1: {
+              dest_c =
+                  this.copyClosure(untagged_c, settings.sizeof_StgThunk + 8);
+              break;
+            }
+            case ClosureTypes.THUNK_1_1:
+            case ClosureTypes.THUNK_2_0:
+            case ClosureTypes.THUNK_0_2: {
+              dest_c =
+                  this.copyClosure(untagged_c, settings.sizeof_StgThunk + 16);
+              break;
+            }
             case ClosureTypes.FUN_1_1:
+            case ClosureTypes.FUN_2_0:
             case ClosureTypes.FUN_0_2:
-            case ClosureTypes.FUN_STATIC:
-            case ClosureTypes.BLACKHOLE:
+            case ClosureTypes.CONSTR_1_1:
+            case ClosureTypes.CONSTR_2_0:
+            case ClosureTypes.CONSTR_0_2: {
+              dest_c = this.copyClosure(untagged_c, 24);
+              break;
+            }
+            case ClosureTypes.THUNK: {
+              const ptrs = this.memory.i32Load(
+                  info + settings.offset_StgInfoTable_layout),
+                    non_ptrs = this.memory.i32Load(
+                        info + settings.offset_StgInfoTable_layout + 4);
+              dest_c =
+                  this.copyClosure(untagged_c, settings.sizeof_StgThunk +
+                                                   ((ptrs + non_ptrs) << 3));
+              break;
+            }
+            case ClosureTypes.FUN:
+            case ClosureTypes.CONSTR:
+            case ClosureTypes.CONSTR_NOCAF:
             case ClosureTypes.MUT_VAR_CLEAN:
             case ClosureTypes.MUT_VAR_DIRTY:
+            case ClosureTypes.WEAK:
             case ClosureTypes.PRIM:
             case ClosureTypes.MUT_PRIM:
-            case ClosureTypes.COMPACT_NFDATA:
-            case ClosureTypes.THUNK_STATIC:
-            case ClosureTypes.THUNK:
-            case ClosureTypes.THUNK_1_0:
-            case ClosureTypes.THUNK_0_1:
-            case ClosureTypes.THUNK_2_0:
-            case ClosureTypes.THUNK_1_1:
-            case ClosureTypes.THUNK_0_2:
-            case ClosureTypes.THUNK_SELECTOR: {
+            case ClosureTypes.BLACKHOLE: {
               const ptrs = this.memory.i32Load(
                   info + settings.offset_StgInfoTable_layout),
                     non_ptrs = this.memory.i32Load(
@@ -86,11 +106,13 @@ export class GC {
               dest_c = this.copyClosure(untagged_c, (1 + ptrs + non_ptrs) << 3);
               break;
             }
-            case ClosureTypes.AP: {
-              const n_args = this.memory.i32Load(untagged_c +
-                                                 settings.offset_StgAP_n_args);
-              dest_c = this.copyClosure(untagged_c,
-                                        settings.sizeof_StgAP + (n_args << 3));
+            case ClosureTypes.THUNK_SELECTOR: {
+              dest_c =
+                  this.copyClosure(untagged_c, settings.sizeof_StgSelector);
+              break;
+            }
+            case ClosureTypes.IND: {
+              dest_c = this.copyClosure(untagged_c, settings.sizeof_StgInd);
               break;
             }
             case ClosureTypes.PAP: {
@@ -100,20 +122,18 @@ export class GC {
                                         settings.sizeof_StgPAP + (n_args << 3));
               break;
             }
+            case ClosureTypes.AP: {
+              const n_args = this.memory.i32Load(untagged_c +
+                                                 settings.offset_StgAP_n_args);
+              dest_c = this.copyClosure(untagged_c,
+                                        settings.sizeof_StgAP + (n_args << 3));
+              break;
+            }
             case ClosureTypes.AP_STACK: {
               const size = Number(this.memory.i64Load(
                   untagged_c + settings.offset_StgAP_STACK_size));
               dest_c = this.copyClosure(
                   untagged_c, settings.sizeof_StgAP_STACK + (size << 3));
-              break;
-            }
-            case ClosureTypes.IND: {
-              dest_c = this.copyClosure(untagged_c, settings.sizeof_StgInd);
-              break;
-            }
-            case ClosureTypes.IND_STATIC: {
-              dest_c =
-                  this.copyClosure(untagged_c, settings.sizeof_StgIndStatic);
               break;
             }
             case ClosureTypes.ARR_WORDS: {
@@ -134,10 +154,6 @@ export class GC {
                       (Number(this.memory.i64Load(
                            untagged_c + settings.offset_StgMutArrPtrs_ptrs))
                        << 3));
-              break;
-            }
-            case ClosureTypes.WEAK: {
-              dest_c = this.copyClosure(untagged_c, settings.sizeof_StgWeak);
               break;
             }
             case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN:
@@ -472,8 +488,6 @@ export class GC {
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
     this.evacuateClosure(tso);
     this.scavengeWorkList();
-    console.log(`[EVENT] Live object count from gc: ${this.closureIndirects.size}, live mgroup count from gc: ${this.liveMBlocks.size}`)
-    this.closureIndirects.clear();
     this.liveMBlocks.clear();
   }
 }
