@@ -359,13 +359,7 @@ export class GC {
       case ClosureTypes.FUN_2_0:
       case ClosureTypes.FUN_1_1:
       case ClosureTypes.FUN_0_2:
-      case ClosureTypes.FUN_STATIC:
-      case ClosureTypes.BLACKHOLE:
-      case ClosureTypes.MUT_VAR_CLEAN:
-      case ClosureTypes.MUT_VAR_DIRTY:
-      case ClosureTypes.PRIM:
-      case ClosureTypes.MUT_PRIM:
-      case ClosureTypes.COMPACT_NFDATA: {
+      case ClosureTypes.FUN_STATIC: {
         if (this.memory.i32Load(info + settings.offset_StgInfoTable_srt))
           this.evacuateClosure(
               this.memory.i64Load(info + settings.offset_StgFunInfoTable_f +
@@ -375,15 +369,18 @@ export class GC {
         this.scavengePointersFirst(c + 8, ptrs);
         break;
       }
-      case ClosureTypes.THUNK_STATIC: {
-        if (this.memory.i32Load(info + settings.offset_StgInfoTable_srt))
-          this.evacuateClosure(this.memory.i64Load(
-              info + settings.offset_StgThunkInfoTable_srt));
+      case ClosureTypes.BLACKHOLE:
+      case ClosureTypes.MUT_VAR_CLEAN:
+      case ClosureTypes.MUT_VAR_DIRTY:
+      case ClosureTypes.PRIM:
+      case ClosureTypes.MUT_PRIM:
+      case ClosureTypes.COMPACT_NFDATA: {
         const ptrs =
             this.memory.i32Load(info + settings.offset_StgInfoTable_layout);
         this.scavengePointersFirst(c + 8, ptrs);
         break;
       }
+      case ClosureTypes.THUNK_STATIC:
       case ClosureTypes.THUNK:
       case ClosureTypes.THUNK_1_0:
       case ClosureTypes.THUNK_0_1:
