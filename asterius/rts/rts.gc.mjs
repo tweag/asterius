@@ -5,9 +5,10 @@ import * as settings from "./rts.settings.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class GC {
-  constructor(memory, heapalloc, stableptr_manager, info_tables,
+  constructor(memory, mblockalloc, heapalloc, stableptr_manager, info_tables,
               pinned_closures) {
     this.memory = memory;
+    this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
     this.infoTables = info_tables;
@@ -482,8 +483,9 @@ export class GC {
     for (const c in this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
-    this.evacuateClosure(tso);
+    if (tso) this.evacuateClosure(tso);
     this.scavengeWorkList();
+    this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
     this.liveMBlocks.clear();
   }
 }

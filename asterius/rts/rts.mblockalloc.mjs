@@ -91,7 +91,7 @@ export class MBlockAlloc {
     this.freeList = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
     this.freeSegment(
-        this.memory.tagData(settings.mblock_size * this.staticMBlocks),
+        Memory.tagData(settings.mblock_size * this.staticMBlocks),
         sorted_bds[0] - settings.offset_first_bdescr);
     let l_start, l_blocks, l_end, r;
     for (let i = 0; i < sorted_bds.length; ++i) {
@@ -104,7 +104,7 @@ export class MBlockAlloc {
       if (r) this.freeSegment(l_end, r);
     }
     this.freeSegment(l_end,
-                     this.memory.tagData(settings.mblock_size * this.capacity));
+                     Memory.tagData(settings.mblock_size * this.capacity));
     this.freeList.sort(
         (bd0, bd1) => this.memory.i32Load(bd0 + settings.offset_bdescr_blocks) -
                   this.memory.i32Load(bd1 + settings.offset_bdescr_blocks));
