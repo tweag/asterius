@@ -402,8 +402,7 @@ export class GC {
         if (this.memory.i32Load(info + settings.offset_StgInfoTable_srt))
           this.evacuateClosure(this.memory.i64Load(
               info + settings.offset_StgThunkInfoTable_srt));
-        this.evacuateClosure(
-            this.memory.i64Load(c + settings.offset_StgSelector_selectee));
+        this.scavengeClosureAt(c + settings.offset_StgSelector_selectee);
         break;
       }
       case ClosureTypes.AP: {
