@@ -321,7 +321,7 @@ genDefEntry Task {..} =
         then mconcat
                [ "let i = " <> out_base <> ".newInstance(module);\n"
                , if debug
-                   then "i.logger.onEvent = ev => console.log(ev);\n"
+                   then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
                , "i.wasmInstance.exports.hs_init();\n"
                , "i.wasmInstance.exports.main();\n"
@@ -332,7 +332,7 @@ genDefEntry Task {..} =
                , out_base
                , ".newInstance(m)).then(i => {\n"
                , if debug
-                   then "i.logger.onEvent = ev => console.log(ev);\n"
+                   then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
                , "i.wasmInstance.exports.hs_init();\n"
                , "i.wasmInstance.exports.main();\n"
