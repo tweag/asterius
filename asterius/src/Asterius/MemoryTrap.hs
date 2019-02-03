@@ -9,6 +9,7 @@ module Asterius.MemoryTrap
   , addMemoryTrapDeep
   ) where
 
+import Asterius.EDSL
 import Asterius.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
@@ -34,39 +35,55 @@ addMemoryTrapDeep t =
       case t of
         Load {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} -> do
           new_i64_ptr <- addMemoryTrapDeep i64_ptr
-          pure
-            Call
-              { target =
+          pure $
+            castFrom valueType $
+            CallImport
+              { target' =
                   case (valueType, bytes) of
-                    (I32, 1) -> "__asterius_Load_I8"
-                    (I32, 2) -> "__asterius_Load_I16"
-                    (I32, 4) -> "__asterius_Load_I32"
-                    (I64, 8) -> "__asterius_Load_I64"
-                    (F32, 4) -> "__asterius_Load_F32"
-                    (F64, 8) -> "__asterius_Load_F64"
+                    (I32, 1) -> "__asterius_load_I8"
+                    (I32, 2) -> "__asterius_load_I16"
+                    (I32, 4) -> "__asterius_load_I32"
+                    (I64, 8) -> "__asterius_load_I64"
+                    (F32, 4) -> "__asterius_load_F32"
+                    (F64, 8) -> "__asterius_load_F64"
                     _ -> error $ "Unsupported instruction: " <> show t
-              , operands = [new_i64_ptr, ConstI32 $ fromIntegral offset]
-              , callReturnTypes = [valueType]
+              , operands =
+                  [castTo I64 new_i64_ptr, ConstI32 $ fromIntegral offset]
+              , callImportReturnTypes =
+                  [ case valueType of
+                      I64 -> F64
+                      _ -> valueType
+                  ]
               }
         Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} -> do
           new_i64_ptr <- addMemoryTrapDeep i64_ptr
           new_value <- addMemoryTrapDeep value
           pure
-            Call
-              { target =
+            CallImport
+              { target' =
                   case (valueType, bytes) of
-                    (I32, 1) -> "__asterius_Store_I8"
-                    (I32, 2) -> "__asterius_Store_I16"
-                    (I32, 4) -> "__asterius_Store_I32"
-                    (I64, 8) -> "__asterius_Store_I64"
-                    (F32, 4) -> "__asterius_Store_F32"
-                    (F64, 8) -> "__asterius_Store_F64"
+                    (I32, 1) -> "__asterius_store_I8"
+                    (I32, 2) -> "__asterius_store_I16"
+                    (I32, 4) -> "__asterius_store_I32"
+                    (I64, 8) -> "__asterius_store_I64"
+                    (F32, 4) -> "__asterius_store_F32"
+                    (F64, 8) -> "__asterius_store_F64"
                     _ -> error $ "Unsupported instruction: " <> show t
               , operands =
-                  [new_i64_ptr, ConstI32 $ fromIntegral offset, new_value]
-              , callReturnTypes = []
+                  [ castTo I64 new_i64_ptr
+                  , ConstI32 $ fromIntegral offset
+                  , castTo valueType new_value
+                  ]
+              , callImportReturnTypes = []
               }
         _ -> go
     _ -> go
   where
     go = gmapM addMemoryTrapDeep t
+
+castFrom, castTo :: ValueType -> Expression -> Expression
+castFrom I64 = truncSFloat64ToInt64
+castFrom _ = id
+
+castTo I64 = convertSInt64ToFloat64
+castTo _ = id

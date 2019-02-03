@@ -167,18 +167,6 @@ rtsAsteriusModule opts =
         , ("__asterius_Load_SpLim", getF64GlobalRegFunction opts SpLim)
         , ("__asterius_Load_Hp", getF64GlobalRegFunction opts Hp)
         , ("__asterius_Load_HpLim", getF64GlobalRegFunction opts HpLim)
-        , ("__asterius_Load_I8", loadWrapperFunction opts 1 I32)
-        , ("__asterius_Load_I16", loadWrapperFunction opts 2 I32)
-        , ("__asterius_Load_I32", loadWrapperFunction opts 4 I32)
-        , ("__asterius_Load_I64", loadWrapperFunction opts 8 I64)
-        , ("__asterius_Load_F32", loadWrapperFunction opts 4 F32)
-        , ("__asterius_Load_F64", loadWrapperFunction opts 8 F64)
-        , ("__asterius_Store_I8", storeWrapperFunction opts 1 I32)
-        , ("__asterius_Store_I16", storeWrapperFunction opts 2 I32)
-        , ("__asterius_Store_I32", storeWrapperFunction opts 4 I32)
-        , ("__asterius_Store_I64", storeWrapperFunction opts 8 I64)
-        , ("__asterius_Store_F32", storeWrapperFunction opts 4 F32)
-        , ("__asterius_Store_F64", storeWrapperFunction opts 8 F64)
         , ("strlen", strlenFunction opts)
         , ("memchr", memchrFunction opts)
         , ("memcpy", memcpyFunction opts)
@@ -424,14 +412,14 @@ rtsFunctionImports debug =
                   FunctionType {paramTypes = [F64, I32, F64], returnTypes = []}
               }
           , FunctionImport
-              { internalName = "__asterius_loadI64"
+              { internalName = "__asterius_load_I64"
               , externalModuleName = "MemoryTrap"
               , externalBaseName = "loadI64"
               , functionType =
-                  FunctionType {paramTypes = [F64, I32, F64], returnTypes = []}
+                  FunctionType {paramTypes = [F64, I32], returnTypes = [F64]}
               }
           , FunctionImport
-              { internalName = "__asterius_storeI64"
+              { internalName = "__asterius_store_I64"
               , externalModuleName = "MemoryTrap"
               , externalBaseName = "storeI64"
               , functionType =
@@ -440,15 +428,14 @@ rtsFunctionImports debug =
           ] <>
           concat
             [ [ FunctionImport
-                  { internalName = "__asterius_load" <> k
+                  { internalName = "__asterius_load_" <> k
                   , externalModuleName = "MemoryTrap"
                   , externalBaseName = "load" <> k
                   , functionType =
-                      FunctionType
-                        {paramTypes = [F64, I32, t], returnTypes = []}
+                      FunctionType {paramTypes = [F64, I32], returnTypes = [t]}
                   }
               , FunctionImport
-                  { internalName = "__asterius_store" <> k
+                  { internalName = "__asterius_store_" <> k
                   , externalModuleName = "MemoryTrap"
                   , externalBaseName = "store" <> k
                   , functionType =
@@ -1178,104 +1165,6 @@ getF64GlobalRegFunction _ gr =
   runEDSL [F64] $ do
     setReturnTypes [F64]
     emit $ convertSInt64ToFloat64 $ getLVal $ global gr
-
-loadWrapperFunction, storeWrapperFunction ::
-     BuiltinsOptions -> BinaryenIndex -> ValueType -> AsteriusFunction
-loadWrapperFunction _ b vt =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [I64, I32], returnTypes = [vt]}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ CallImport
-                  { target' =
-                      case (vt, b) of
-                        (I32, 1) -> "__asterius_loadI8"
-                        (I32, 2) -> "__asterius_loadI16"
-                        (I32, 4) -> "__asterius_loadI32"
-                        (I64, 8) -> "__asterius_loadI64"
-                        (F32, 4) -> "__asterius_loadF32"
-                        (F64, 8) -> "__asterius_loadF64"
-                        _ ->
-                          error $
-                          "Unsupported ValueType/ByteLength: " <> show (vt, b)
-                  , operands =
-                      [ convertSInt64ToFloat64 p
-                      , o
-                      , case vt of
-                          I64 -> convertSInt64ToFloat64 v
-                          _ -> v
-                      ]
-                  , callImportReturnTypes = []
-                  }
-              , v
-              ]
-          , blockReturnTypes = [vt]
-          }
-    }
-  where
-    p = getLocalWord 0
-    o = GetLocal {index = 1, valueType = I32}
-    v =
-      Load
-        { signed = False
-        , bytes = b
-        , offset = 0
-        , valueType = vt
-        , ptr = wrapI64 p `addInt32` o
-        }
-
-storeWrapperFunction _ b vt =
-  AsteriusFunction
-    { functionType =
-        FunctionType {paramTypes = [I64, I32, vt], returnTypes = []}
-    , body =
-        Block
-          { name = ""
-          , bodys =
-              [ CallImport
-                  { target' =
-                      case (vt, b) of
-                        (I32, 1) -> "__asterius_storeI8"
-                        (I32, 2) -> "__asterius_storeI16"
-                        (I32, 4) -> "__asterius_storeI32"
-                        (I64, 8) -> "__asterius_storeI64"
-                        (F32, 4) -> "__asterius_storeF32"
-                        (F64, 8) -> "__asterius_storeF64"
-                        _ ->
-                          error $
-                          "Unsupported ValueType/ByteLength: " <> show (vt, b)
-                  , operands =
-                      [ convertSInt64ToFloat64 p
-                      , o
-                      , case vt of
-                          I64 -> convertSInt64ToFloat64 v
-                          _ -> v
-                      ]
-                  , callImportReturnTypes = []
-                  }
-              , Store
-                  { bytes = b
-                  , offset = 0
-                  , ptr = wrapI64 p `addInt32` o
-                  , value = v
-                  , valueType = vt
-                  }
-              ]
-          , blockReturnTypes = []
-          }
-    }
-  where
-    p = getLocalWord 0
-    o = GetLocal {index = 1, valueType = I32}
-    v = GetLocal {index = 2, valueType = vt}
-
-wrapI64 :: Expression -> Expression
-wrapI64 w = Unary {unaryOp = WrapInt64, operand0 = w}
-
-getLocalWord :: BinaryenIndex -> Expression
-getLocalWord i = GetLocal {index = i, valueType = I64}
 
 offset_StgTSO_StgStack :: Int
 offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
