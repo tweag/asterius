@@ -2,6 +2,32 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-02-04
+
+Covers last week.
+
+Ongoing work:
+
+* Finished the preliminary implementation of GC.
+    * To increase reliability and catch regressions, after each GC pass, the recycled space is zeroed. If the tospace still contains pointers to recycled space (which is definitely a bug), the program is likely to crash early.
+    * This has helped us to identify & fix a few bugs in the GC implementation. Right now there is only one regression left: the todomvc example crashes after initial loading completes. The crash goes away if we don't zero recycled space, but it's not a good idea to just turn that off and pretend there's no bug!
+
+Remaining work for GC:
+
+* Fix the todomvc regression. Given GC is such a critical component in the runtime, it's probably also good timing to integrate some more unit tests from the GHC test suite.
+    * This also needs some improvement in our debugging infrastructure: our memory traps (wasm read/write barriers) is currently unaware of recycled/live space, and now we should make it cooperate with the allocator to catch invalid access to recycled space earlier.
+
+Known drawbacks of current GC implementation once it's fully fixed & merged:
+
+* No generational GC yet, so high GC overhead if a large volume of long-lived data is retained through program execution.
+* Heap fragmentation is more severe when allocating a lot of small pinned objects.
+* `Weak#` support is expected to split into two different stages and will land after initial GC merge:
+    * Support for running "C finalizers" added by the `addCFinalizerToWeak#` primop. Here, the "C finalizers" are really just JavaScript functions, and the "function pointers" are JavaScript references.
+    * Support for running arbitrary `IO` action as finalizers. This task requires support for Haskell multi-threading, and given multi-threading is not a scheduled goal of 2019 Q1, this will come later.
+* Haskell closures exported to JavaScript using `makeHaskellCallback*` cannot be automatically recycled when they aren't used anymore. This is due to JavaScript's lacking of finalizers; users will need to call `freeHaskellCallback*` by hand to prevent leaking on the Haskell side.
+
+We'll yield to Cabal support & TH/GHCi/Plugins support after the first version of GC is delivered. There's definitely room for improvement later (e.g. reduce heap fragmentation, different GC algorithms for different workloads, more detailed GC statistics, etc), but those will be managed by separate tickets.
+
 ## 2019-01-28
 
 Covers last week.
