@@ -480,7 +480,7 @@ export class GC {
 
   gcRootTSO(tso) {
     this.heapAlloc.init();
-    for (const c in this.pinnedClosures) this.evacuateClosure(c);
+    for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
     if (tso) this.evacuateClosure(tso);

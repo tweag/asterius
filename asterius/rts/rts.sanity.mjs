@@ -354,7 +354,7 @@ export class SanCheck {
   checkRootTSO(i, tso) {
     console.log(`[EVENT] checkRootTSO ${i}`);
     try {
-      for (const c in this.pinnedClosures)
+      for (const c of this.pinnedClosures)
         this.enqueueClosure(c);
       this.enqueueStablePtrs();
       this.enqueueClosure(tso);
