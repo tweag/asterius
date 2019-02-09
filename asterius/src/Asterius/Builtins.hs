@@ -371,12 +371,6 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
-      { internalName = "__asterius_checkRootTSO"
-      , externalModuleName = "SanCheck"
-      , externalBaseName = "checkRootTSO"
-      , functionType = FunctionType {paramTypes = [I32, F64], returnTypes = []}
-      }
-  , FunctionImport
       { internalName = "__asterius_gcRootTSO"
       , externalModuleName = "GC"
       , externalBaseName = "gcRootTSO"
@@ -767,14 +761,8 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
           const
             ( [ ( ret_HeapOverflow
                 , do callImport
-                       "__asterius_checkRootTSO"
-                       [constI32 19, convertUInt64ToFloat64 t]
-                     callImport
                        "__asterius_gcRootTSO"
                        [convertUInt64ToFloat64 t]
-                     callImport
-                       "__asterius_checkRootTSO"
-                       [constI32 91, convertUInt64ToFloat64 t]
                      bytes <- i64Local $ getLVal hpAlloc
                      putLVal hpAlloc $ constI64 0
                      if'
