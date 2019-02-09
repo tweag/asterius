@@ -479,14 +479,15 @@ export class GC {
   }
 
   gcRootTSO(tso) {
-    console.log(`[EVENT] gcRootTSO ${tso}`);
+    console.log(`[EVENT] gcRootTSO 0x${tso.toString(16)}`);
     this.heapAlloc.init();
     for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
-    if (tso) this.evacuateClosure(tso);
+    this.evacuateClosure(tso);
     this.scavengeWorkList();
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+    this.closureIndirects.clear();
     this.liveMBlocks.clear();
   }
 }
