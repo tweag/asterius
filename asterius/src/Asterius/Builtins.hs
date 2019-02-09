@@ -376,12 +376,6 @@ rtsFunctionImports debug =
       , externalBaseName = "gcRootTSO"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       }
-  , FunctionImport
-      { internalName = "__asterius_gc"
-      , externalModuleName = "GC"
-      , externalBaseName = "gcRootTSO"
-      , functionType = FunctionType {paramTypes = [], returnTypes = []}
-      }
   ] <>
   (if debug
      then [ FunctionImport
@@ -812,7 +806,6 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
                         break' sched_block_lbl Nothing))
               ]
             , emit $ emitErrorMessage [] "Illegal thread return code")
-    callImport "__asterius_gc" []
 
 createThreadFunction _ =
   runEDSL [I64] $ do

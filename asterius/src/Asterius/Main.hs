@@ -323,8 +323,13 @@ genDefEntry Task {..} =
                , if debug
                    then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
+               , "try {\n"
                , "i.wasmInstance.exports.hs_init();\n"
                , "i.wasmInstance.exports.main();\n"
+               , "} catch (err) {\n"
+               , "console.log(i.stdio.stdout());\n"
+               , "throw err;\n"
+               , "}\n"
                , "console.log(i.stdio.stdout());\n"
                ]
         else mconcat
@@ -334,8 +339,13 @@ genDefEntry Task {..} =
                , if debug
                    then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
+               , "try {\n"
                , "i.wasmInstance.exports.hs_init();\n"
                , "i.wasmInstance.exports.main();\n"
+               , "} catch (err) {\n"
+               , "console.log(i.stdio.stdout());\n"
+               , "throw err;\n"
+               , "}\n"
                , "console.log(i.stdio.stdout());\n"
                , "});\n"
                ]

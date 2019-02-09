@@ -479,6 +479,7 @@ export class GC {
   }
 
   gcRootTSO(tso) {
+    console.log(`[EVENT] gcRootTSO ${tso}`);
     this.heapAlloc.init();
     for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())

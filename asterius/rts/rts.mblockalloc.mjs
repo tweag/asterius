@@ -30,10 +30,7 @@ export class MBlockAlloc {
   }
 
   allocMegaGroup(n) {
-    const req_blocks =
-        n == 1 ? settings.blocks_per_mblock
-               : settings.blocks_per_mblock +
-                     (settings.mblock_size / settings.block_size) * (n - 1);
+    const req_blocks = ((settings.mblock_size * n) - settings.offset_first_block) / settings.block_size;
     for (let i = 0; i < this.freeList.length; ++i) {
       const bd = this.freeList[i],
             blocks = this.memory.i32Load(bd + settings.offset_bdescr_blocks);
@@ -69,16 +66,12 @@ export class MBlockAlloc {
   }
 
   freeSegment(l_end, r) {
+    console.log(`[EVENT] freeSegment 0x${l_end.toString(16)} 0x${r.toString(16)}`);
     if (l_end < r) {
       this.memory.memset(l_end, 0, r - l_end);
       const bd = l_end + settings.offset_first_bdescr,
             start = l_end + settings.offset_first_block,
-            mblocks = (r - l_end) / settings.mblock_size,
-            blocks = mblocks == 1
-                         ? settings.blocks_per_mblock
-                         : settings.blocks_per_mblock +
-                               (settings.mblock_size / settings.block_size) *
-                                   (mblocks - 1);
+            blocks = (r - start) / settings.block_size;
       this.memory.i64Store(bd + settings.offset_bdescr_start, start);
       this.memory.i64Store(bd + settings.offset_bdescr_free, start);
       this.memory.i64Store(bd + settings.offset_bdescr_link, 0);
@@ -88,23 +81,22 @@ export class MBlockAlloc {
   }
 
   preserveMegaGroups(bds) {
+    console.log(`[EVENT] preserveMegaGroups ${Array.from(bds).map(bd => bd.toString(16))}`);
     this.freeList = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
+    sorted_bds.push(Memory.tagData(settings.mblock_size * this.capacity) + settings.offset_first_bdescr);
     this.freeSegment(
         Memory.tagData(settings.mblock_size * this.staticMBlocks),
         sorted_bds[0] - settings.offset_first_bdescr);
-    let l_start, l_blocks, l_end, r;
-    for (let i = 0; i < sorted_bds.length; ++i) {
-      l_start = Number(
-          this.memory.i64Load(sorted_bds[i] + settings.offset_bdescr_start));
+    for (let i = 0; i < (sorted_bds.length-1); ++i) {
+      const l_start = Number(
+          this.memory.i64Load(sorted_bds[i] + settings.offset_bdescr_start)),
       l_blocks =
-          this.memory.i32Load(sorted_bds[i] + settings.offset_bdescr_blocks);
-      l_end = l_start + (settings.block_size * l_blocks);
+          this.memory.i32Load(sorted_bds[i] + settings.offset_bdescr_blocks),
+      l_end = l_start + (settings.block_size * l_blocks),
       r = sorted_bds[i + 1] - settings.offset_first_bdescr;
-      if (r) this.freeSegment(l_end, r);
+      this.freeSegment(l_end, r);
     }
-    this.freeSegment(l_end,
-                     Memory.tagData(settings.mblock_size * this.capacity));
     this.freeList.sort(
         (bd0, bd1) => this.memory.i32Load(bd0 + settings.offset_bdescr_blocks) -
                   this.memory.i32Load(bd1 + settings.offset_bdescr_blocks));

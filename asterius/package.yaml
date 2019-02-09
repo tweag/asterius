@@ -24,7 +24,6 @@ extra-source-files:
   - test/teletype/**/*.hs
   - test/teletype/teletype.mjs
   - test/bytearray/**/*.hs
-  - test/bytearray/bytearray.mjs
   - test/bigint/**/*.hs
   - test/bigint/bigint.mjs
   - test/vault/**/*.hs
