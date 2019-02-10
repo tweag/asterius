@@ -12,12 +12,13 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapM)
 import qualified Data.Map.Strict as M
+import qualified Data.Set as S
 import Type.Reflection
 
 maskUnknownCCallTargets ::
      (Monad m, Data a)
   => AsteriusEntitySymbol
-  -> [AsteriusEntitySymbol]
+  -> S.Set AsteriusEntitySymbol
   -> a
   -> m a
 maskUnknownCCallTargets whoami export_funcs = f
@@ -25,7 +26,7 @@ maskUnknownCCallTargets whoami export_funcs = f
     has_call_target sym =
       "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName sym) ||
       sym `M.member` functionMap (rtsAsteriusModule defaultBuiltinsOptions) ||
-      sym `elem` export_funcs
+      sym `S.member` export_funcs
     f :: (Monad m, Data a) => a -> m a
     f t =
       let go = gmapM f t

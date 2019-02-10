@@ -110,6 +110,27 @@ foreign import ccall unsafe "offset_Capability_free_trec_headers" offset_Capabil
 foreign import ccall unsafe "offset_Capability_transaction_tokens" offset_Capability_transaction_tokens
   :: Int
 
+foreign import ccall unsafe "sizeof_StgAP" sizeof_StgAP :: Int
+
+foreign import ccall unsafe "offset_StgAP_arity" offset_StgAP_arity :: Int
+
+foreign import ccall unsafe "offset_StgAP_n_args" offset_StgAP_n_args :: Int
+
+foreign import ccall unsafe "offset_StgAP_fun" offset_StgAP_fun :: Int
+
+foreign import ccall unsafe "offset_StgAP_payload" offset_StgAP_payload :: Int
+
+foreign import ccall unsafe "sizeof_StgAP_STACK" sizeof_StgAP_STACK :: Int
+
+foreign import ccall unsafe "offset_StgAP_STACK_size" offset_StgAP_STACK_size
+  :: Int
+
+foreign import ccall unsafe "offset_StgAP_STACK_fun" offset_StgAP_STACK_fun
+  :: Int
+
+foreign import ccall unsafe "offset_StgAP_STACK_payload" offset_StgAP_STACK_payload
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgArrBytes" sizeof_StgArrBytes :: Int
 
 foreign import ccall unsafe "offset_StgArrBytes_bytes" offset_StgArrBytes_bytes
@@ -139,6 +160,21 @@ foreign import ccall unsafe "offset_StgIndStatic_static_link" offset_StgIndStati
 foreign import ccall unsafe "offset_StgIndStatic_saved_info" offset_StgIndStatic_saved_info
   :: Int
 
+foreign import ccall unsafe "offset_StgFunInfoExtraFwd_fun_type" offset_StgFunInfoExtraFwd_fun_type
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunInfoExtraFwd_srt" offset_StgFunInfoExtraFwd_srt
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunInfoExtraFwd_b" offset_StgFunInfoExtraFwd_b
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunInfoTable_i" offset_StgFunInfoTable_i
+  :: Int
+
+foreign import ccall unsafe "offset_StgFunInfoTable_f" offset_StgFunInfoTable_f
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgFunTable" sizeof_StgFunTable :: Int
 
 foreign import ccall unsafe "offset_StgFunTable_stgEagerBlackholeInfo" offset_StgFunTable_stgEagerBlackholeInfo
@@ -160,6 +196,48 @@ foreign import ccall unsafe "offset_StgInfoTable_type" offset_StgInfoTable_type
   :: Int
 
 foreign import ccall unsafe "offset_StgInfoTable_srt" offset_StgInfoTable_srt
+  :: Int
+
+foreign import ccall unsafe "offset_StgLargeBitmap_size" offset_StgLargeBitmap_size
+  :: Int
+
+foreign import ccall unsafe "offset_StgLargeBitmap_bitmap" offset_StgLargeBitmap_bitmap
+  :: Int
+
+foreign import ccall unsafe "sizeof_StgMutArrPtrs" sizeof_StgMutArrPtrs :: Int
+
+foreign import ccall unsafe "offset_StgMutArrPtrs_ptrs" offset_StgMutArrPtrs_ptrs
+  :: Int
+
+foreign import ccall unsafe "offset_StgMutArrPtrs_size" offset_StgMutArrPtrs_size
+  :: Int
+
+foreign import ccall unsafe "offset_StgMutArrPtrs_payload" offset_StgMutArrPtrs_payload
+  :: Int
+
+foreign import ccall unsafe "sizeof_StgPAP" sizeof_StgPAP :: Int
+
+foreign import ccall unsafe "offset_StgPAP_arity" offset_StgPAP_arity :: Int
+
+foreign import ccall unsafe "offset_StgPAP_n_args" offset_StgPAP_n_args :: Int
+
+foreign import ccall unsafe "offset_StgPAP_fun" offset_StgPAP_fun :: Int
+
+foreign import ccall unsafe "offset_StgPAP_payload" offset_StgPAP_payload :: Int
+
+foreign import ccall unsafe "sizeof_StgRetFun" sizeof_StgRetFun :: Int
+
+foreign import ccall unsafe "offset_StgRetFun_size" offset_StgRetFun_size :: Int
+
+foreign import ccall unsafe "offset_StgRetFun_fun" offset_StgRetFun_fun :: Int
+
+foreign import ccall unsafe "offset_StgRetFun_payload" offset_StgRetFun_payload
+  :: Int
+
+foreign import ccall unsafe "offset_StgRetInfoTable_i" offset_StgRetInfoTable_i
+  :: Int
+
+foreign import ccall unsafe "offset_StgRetInfoTable_srt" offset_StgRetInfoTable_srt
   :: Int
 
 foreign import ccall unsafe "sizeof_StgRegTable" sizeof_StgRegTable :: Int
@@ -266,6 +344,20 @@ foreign import ccall unsafe "offset_StgRegTable_rHpAlloc" offset_StgRegTable_rHp
 foreign import ccall unsafe "offset_StgRegTable_rRet" offset_StgRegTable_rRet
   :: Int
 
+foreign import ccall unsafe "sizeof_StgSelector" sizeof_StgSelector :: Int
+
+foreign import ccall unsafe "offset_StgSelector_selectee" offset_StgSelector_selectee
+  :: Int
+
+foreign import ccall unsafe "sizeof_StgSmallMutArrPtrs" sizeof_StgSmallMutArrPtrs
+  :: Int
+
+foreign import ccall unsafe "offset_StgSmallMutArrPtrs_ptrs" offset_StgSmallMutArrPtrs_ptrs
+  :: Int
+
+foreign import ccall unsafe "offset_StgSmallMutArrPtrs_payload" offset_StgSmallMutArrPtrs_payload
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgStack" sizeof_StgStack :: Int
 
 foreign import ccall unsafe "offset_StgStack_stack_size" offset_StgStack_stack_size
@@ -282,6 +374,12 @@ foreign import ccall unsafe "sizeof_StgStopFrame" sizeof_StgStopFrame :: Int
 foreign import ccall unsafe "sizeof_StgThunk" sizeof_StgThunk :: Int
 
 foreign import ccall unsafe "offset_StgThunk_payload" offset_StgThunk_payload
+  :: Int
+
+foreign import ccall unsafe "offset_StgThunkInfoTable_i" offset_StgThunkInfoTable_i
+  :: Int
+
+foreign import ccall unsafe "offset_StgThunkInfoTable_srt" offset_StgThunkInfoTable_srt
   :: Int
 
 foreign import ccall unsafe "sizeof_StgTSO" sizeof_StgTSO :: Int
@@ -326,6 +424,20 @@ foreign import ccall unsafe "offset_StgTSO_alloc_limit" offset_StgTSO_alloc_limi
 foreign import ccall unsafe "offset_StgTSO_tot_stack_size" offset_StgTSO_tot_stack_size
   :: Int
 
+foreign import ccall unsafe "sizeof_StgWeak" sizeof_StgWeak :: Int
+
+foreign import ccall unsafe "offset_StgWeak_cfinalizers" offset_StgWeak_cfinalizers
+  :: Int
+
+foreign import ccall unsafe "offset_StgWeak_key" offset_StgWeak_key :: Int
+
+foreign import ccall unsafe "offset_StgWeak_value" offset_StgWeak_value :: Int
+
+foreign import ccall unsafe "offset_StgWeak_finalizer" offset_StgWeak_finalizer
+  :: Int
+
+foreign import ccall unsafe "offset_StgWeak_link" offset_StgWeak_link :: Int
+
 foreign import ccall unsafe "next_ThreadRunGHC" next_ThreadRunGHC :: Int
 
 foreign import ccall unsafe "next_ThreadInterpret" next_ThreadInterpret :: Int
@@ -333,6 +445,24 @@ foreign import ccall unsafe "next_ThreadInterpret" next_ThreadInterpret :: Int
 foreign import ccall unsafe "next_ThreadKilled" next_ThreadKilled :: Int
 
 foreign import ccall unsafe "next_ThreadComplete" next_ThreadComplete :: Int
+
+foreign import ccall unsafe "bf_EVACUATED" bf_EVACUATED :: Int
+
+foreign import ccall unsafe "bf_LARGE" bf_LARGE :: Int
+
+foreign import ccall unsafe "bf_PINNED" bf_PINNED :: Int
+
+foreign import ccall unsafe "bf_MARKED" bf_MARKED :: Int
+
+foreign import ccall unsafe "bf_EXEC" bf_EXEC :: Int
+
+foreign import ccall unsafe "bf_FRAGMENTED" bf_FRAGMENTED :: Int
+
+foreign import ccall unsafe "bf_KNOWN" bf_KNOWN :: Int
+
+foreign import ccall unsafe "bf_SWEPT" bf_SWEPT :: Int
+
+foreign import ccall unsafe "bf_COMPACT" bf_COMPACT :: Int
 
 foreign import ccall unsafe "blocked_NotBlocked" blocked_NotBlocked :: Int
 

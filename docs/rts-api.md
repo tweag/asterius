@@ -37,7 +37,6 @@ A line-by-line explanation follows:
   * `rts_eval` evaluates a thunk of type `a` to WHNF.
   * `rts_evalIO` evaluates the result of `IO a` to WHNF.
   * `rts_evalLazyIO` evaluates `IO a`, without forcing the result to WHNF. It is also the default evaluator used by the runtime to run `Main.main`.
-  * `rts_evalStableIO` evaluates the result of `StablePtr (IO a)` to WHNF, then return the result as `StablePtr a`.
 * All `rts_eval*` functions initiate a new Haskell thread for evaluation, and they return a thread ID. The thread ID is useful for inspecting whether or not evaluation succeeded and what the result is.
 * If we need to retrieve the result back to JavaScript, we must pick an evaluator function which forces the result to WHNF. The `rts_get*` functions assume the objects are evaluated and won't trigger evaluation.
 * Assuming we stored the thread ID to `tid`, we can use `getTSOret(tid)` to retrieve the result. The result is always a pointer to the Haskell heap, so additionally we need to use `rts_getInt` to retrieve the unboxed `Int` content to JavaScript.

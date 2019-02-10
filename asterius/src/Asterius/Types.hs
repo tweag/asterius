@@ -10,6 +10,7 @@ module Asterius.Types
   ( BinaryenIndex
   , AsteriusCodeGenError(..)
   , AsteriusStatic(..)
+  , AsteriusStaticsType(..)
   , AsteriusStatics(..)
   , AsteriusFunction(..)
   , AsteriusModule(..)
@@ -64,6 +65,7 @@ data AsteriusCodeGenError
   | UnsupportedCmmWidth SBS.ShortByteString
   | UnsupportedCmmGlobalReg SBS.ShortByteString
   | UnsupportedCmmExpr SBS.ShortByteString
+  | UnsupportedCmmSectionType SBS.ShortByteString
   | UnsupportedImplicitCasting Expression
                                ValueType
                                ValueType
@@ -83,8 +85,17 @@ data AsteriusStatic
 
 instance Binary AsteriusStatic
 
+data AsteriusStaticsType
+  = ConstBytes
+  | Bytes
+  | InfoTable
+  | Closure
+  deriving (Eq, Ord, Show, Generic, Data)
+
+instance Binary AsteriusStaticsType
+
 data AsteriusStatics = AsteriusStatics
-  { isConstant :: Bool
+  { staticsType :: AsteriusStaticsType
   , asteriusStatics :: [AsteriusStatic]
   } deriving (Eq, Ord, Show, Generic, Data)
 
@@ -434,7 +445,7 @@ instance Binary FunctionTable
 
 data DataSegment = DataSegment
   { content :: SBS.ShortByteString
-  , offset :: Expression
+  , offset :: Int32
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary DataSegment
@@ -499,7 +510,7 @@ data FFIValueType
   = FFI_VAL { ffiWasmValueType, ffiJSValueType :: ValueType
             , hsTyCon :: SBS.ShortByteString
             , signed :: Bool }
-  | FFI_JSREF
+  | FFI_JSVAL
   deriving (Eq, Show, Generic, Data)
 
 instance Binary FFIValueType

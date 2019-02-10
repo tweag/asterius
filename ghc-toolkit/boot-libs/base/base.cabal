@@ -320,6 +320,7 @@ Library
         Unsafe.Coerce
 
         Asterius.Prim
+        Asterius.Types
         Asterius.Vault
 
     other-modules:

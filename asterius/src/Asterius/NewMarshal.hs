@@ -614,17 +614,12 @@ makeDataSection Module {..} _module_symtable =
   case memory of
     Memory {..} -> do
       segs <-
-        for dataSegments $ \DataSegment {..} -> do
-          instrs <-
-            makeInstructions
-              _module_symtable
-              emptyDeBruijnContext
-              emptyLocalContext
-              offset
+        for dataSegments $ \DataSegment {..} ->
           pure
             Wasm.DataSegment
               { memoryIndex = Wasm.MemoryIndex 0
-              , memoryOffset = coerce $ DList.toList instrs
+              , memoryOffset =
+                  Wasm.Expression {instructions = [Wasm.I32Const offset]}
               , memoryInitialBytes = content
               }
       pure Wasm.DataSection {dataSegments = segs}

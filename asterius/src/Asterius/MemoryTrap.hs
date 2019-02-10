@@ -37,14 +37,10 @@ addMemoryTrapDeep t =
           pure
             Call
               { target =
-                  case (valueType, bytes) of
-                    (I32, 1) -> "__asterius_Load_I8"
-                    (I32, 2) -> "__asterius_Load_I16"
-                    (I32, 4) -> "__asterius_Load_I32"
-                    (I64, 8) -> "__asterius_Load_I64"
-                    (F32, 4) -> "__asterius_Load_F32"
-                    (F64, 8) -> "__asterius_Load_F64"
-                    _ -> error $ "Unsupported instruction: " <> show t
+                  AsteriusEntitySymbol
+                    { entityName =
+                        "__asterius_trap_load_" <> ty_name valueType bytes
+                    }
               , operands = [new_i64_ptr, ConstI32 $ fromIntegral offset]
               , callReturnTypes = [valueType]
               }
@@ -54,14 +50,10 @@ addMemoryTrapDeep t =
           pure
             Call
               { target =
-                  case (valueType, bytes) of
-                    (I32, 1) -> "__asterius_Store_I8"
-                    (I32, 2) -> "__asterius_Store_I16"
-                    (I32, 4) -> "__asterius_Store_I32"
-                    (I64, 8) -> "__asterius_Store_I64"
-                    (F32, 4) -> "__asterius_Store_F32"
-                    (F64, 8) -> "__asterius_Store_F64"
-                    _ -> error $ "Unsupported instruction: " <> show t
+                  AsteriusEntitySymbol
+                    { entityName =
+                        "__asterius_trap_store_" <> ty_name valueType bytes
+                    }
               , operands =
                   [new_i64_ptr, ConstI32 $ fromIntegral offset, new_value]
               , callReturnTypes = []
@@ -70,3 +62,10 @@ addMemoryTrapDeep t =
     _ -> go
   where
     go = gmapM addMemoryTrapDeep t
+    ty_name I32 1 = "i8"
+    ty_name I32 2 = "i16"
+    ty_name I32 4 = "i32"
+    ty_name I64 8 = "i64"
+    ty_name F32 4 = "f32"
+    ty_name F64 8 = "f64"
+    ty_name _ _ = error "Asterius.MemoryTrap.addMemoryTrapDeep"

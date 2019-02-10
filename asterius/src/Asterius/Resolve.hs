@@ -207,6 +207,8 @@ data LinkReport = LinkReport
   { childSymbols :: M.Map AsteriusEntitySymbol (S.Set AsteriusEntitySymbol)
   , unfoundSymbols, unavailableSymbols :: S.Set AsteriusEntitySymbol
   , staticsSymbolMap, functionSymbolMap :: M.Map AsteriusEntitySymbol Int64
+  , infoTableSet :: S.Set Int64
+  , staticMBlocks :: Int
   , bundledFFIMarshalState :: FFIMarshalState
   } deriving (Show)
 
@@ -218,6 +220,8 @@ instance Semigroup LinkReport where
       , unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
       , staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
       , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
+      , infoTableSet = infoTableSet r0 <> infoTableSet r1
+      , staticMBlocks = 0
       , bundledFFIMarshalState =
           bundledFFIMarshalState r0 <> bundledFFIMarshalState r1
       }
@@ -230,6 +234,8 @@ instance Monoid LinkReport where
       , unavailableSymbols = mempty
       , staticsSymbolMap = mempty
       , functionSymbolMap = mempty
+      , infoTableSet = mempty
+      , staticMBlocks = 0
       , bundledFFIMarshalState = mempty
       }
 
@@ -238,7 +244,7 @@ mergeSymbols ::
   => Bool
   -> AsteriusStore
   -> S.Set AsteriusEntitySymbol
-  -> [AsteriusEntitySymbol]
+  -> S.Set AsteriusEntitySymbol
   -> m (AsteriusModule, LinkReport)
 mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
   (_, final_rep, final_m) <- go (root_syms, mempty, mempty)
@@ -277,8 +283,7 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
                     (if debug
                        then addMemoryTrap
                        else pure)
-                      mempty
-                        {functionMap = M.fromList [(i_staging_sym, new_func)]}
+                      mempty {functionMap = M.singleton i_staging_sym new_func}
                   pure $ Right (i_staging_sym, m)
                 _
                   | M.member i_staging_sym functionErrorMap ->
@@ -341,73 +346,187 @@ makeFunctionTable AsteriusModule {..} =
   where
     func_syms = M.keys functionMap
 
-makeStaticsOffsetTable ::
-     AsteriusModule -> (Int64, M.Map AsteriusEntitySymbol Int64)
-makeStaticsOffsetTable AsteriusModule {..} =
-  (last_o .&. 0xFFFFFFFF, M.fromList statics_map)
+makeStaticNurseries ::
+     Int
+  -> M.Map AsteriusEntitySymbol Int64
+  -> [DataSegment]
+  -> M.Map AsteriusEntitySymbol AsteriusStatics
+  -> (Int, M.Map AsteriusEntitySymbol Int64, [DataSegment])
+makeStaticNurseries head_mblock init_address_map init_bdescrs statics_map =
+  (result_mblock, last_address_map, result_bdescrs)
   where
-    (last_o, statics_map) =
-      layoutStatics $
-      sortOn (\(k, AsteriusStatics {..}) -> (not isConstant, k)) $
-      M.toList staticsMap
-    layoutStatics =
-      foldl' iterLayoutStaticsState (16 .|. dataTag `shiftL` 32, [])
-    iterLayoutStaticsState (ptr, sym_map) (ss_sym, ss) =
-      ( fromIntegral $ roundup (fromIntegral ptr + asteriusStaticsSize ss) 16
-      , (ss_sym, ptr) : sym_map)
+    raw_address current_mblock current_offset =
+      (mblock_size * current_mblock) + current_offset
+    gen_bdescr current_mblock n current_bdescrs =
+      DataSegment
+        { content = encodeStorable block_addr
+        , offset = bdescr_field offset_bdescr_start
+        } :
+      DataSegment
+        { content =
+            encodeStorable $ mblock_addr + fromIntegral (mblock_size * n)
+        , offset = bdescr_field offset_bdescr_free
+        } :
+      DataSegment
+        { content = encodeStorable (0 :: Int64)
+        , offset = bdescr_field offset_bdescr_link
+        } :
+      DataSegment
+        { content = encodeStorable blocks
+        , offset = bdescr_field offset_bdescr_blocks
+        } :
+      current_bdescrs
+      where
+        bdescr_field o =
+          fromIntegral $
+          ((mblock_size * current_mblock) .&. 0xFFFFFFFF) + offset_first_bdescr +
+          o
+        mblock_addr, block_addr :: Int64
+        mblock_addr = fromIntegral $ mblock_size * current_mblock
+        block_addr = mblock_addr + fromIntegral offset_first_block
+        blocks :: Int32
+        blocks =
+          fromIntegral $
+          blocks_per_mblock + ((mblock_size `quot` block_size) * (n - 1))
+    static_allocate raw_size current_mblock current_free current_bdescrs
+      | current_free + size < mblock_size =
+        ( current_mblock
+        , current_free
+        , current_mblock
+        , current_free + size
+        , current_bdescrs)
+      | current_free + size == mblock_size =
+        ( current_mblock
+        , current_free
+        , current_mblock + 1
+        , offset_first_block
+        , gen_bdescr current_mblock 1 current_bdescrs)
+      | size < mblock_size - offset_first_block =
+        ( current_mblock + 1
+        , offset_first_block
+        , current_mblock + 1
+        , offset_first_block + size
+        , gen_bdescr current_mblock 1 current_bdescrs)
+      | otherwise =
+        ( current_mblock + 1
+        , offset_first_block
+        , current_mblock + 1 + n
+        , offset_first_block
+        , gen_bdescr (current_mblock + 1) n $
+          gen_bdescr current_mblock 1 current_bdescrs)
+      where
+        size = raw_size `roundup` 16
+        n =
+          1 +
+          (((size - (mblock_size - offset_first_block)) `roundup` mblock_size) `quot`
+           mblock_size)
+    layout_section (current_mblock, current_free, current_bdescrs, address_map) sym sec =
+      ( next_mblock
+      , next_free
+      , next_bdescrs
+      , M.insert
+          sym
+          (fromIntegral (raw_address sec_mblock sec_offset))
+          address_map)
+      where
+        (sec_mblock, sec_offset, next_mblock, next_free, next_bdescrs) =
+          static_allocate
+            (asteriusStaticsSize sec)
+            current_mblock
+            current_free
+            current_bdescrs
+    (last_mblock, last_free, last_bdescrs, last_address_map) =
+      M.foldlWithKey'
+        layout_section
+        (head_mblock, offset_first_block, init_bdescrs, init_address_map)
+        statics_map
+    (result_mblock, result_bdescrs)
+      | last_free < offset_first_block =
+        error "Asterius.Resolve.makeStaticNurseries: internal error!"
+      | last_free == offset_first_block = (last_mblock, last_bdescrs)
+      | otherwise = (last_mblock + 1, gen_bdescr last_mblock 1 last_bdescrs)
+
+makeStaticsOffsetTable ::
+     AsteriusModule -> (Int64, M.Map AsteriusEntitySymbol Int64, [DataSegment])
+makeStaticsOffsetTable AsteriusModule {..} =
+  (last_o, closures_address_map, closures_bdescrs)
+  where
+    (closures, non_closures) =
+      M.partition ((== Closure) . staticsType) staticsMap
+    (closures_head_mblock, non_closures_address_map, non_closures_bdescrs) =
+      makeStaticNurseries
+        ((fromIntegral dataTag `shiftL` 32) `quot` mblock_size)
+        M.empty
+        []
+        non_closures
+    (closures_result_mblock, closures_address_map, closures_bdescrs) =
+      makeStaticNurseries
+        closures_head_mblock
+        non_closures_address_map
+        non_closures_bdescrs
+        closures
+    last_o =
+      fromIntegral $ (mblock_size * closures_result_mblock) .&. 0xFFFFFFFF
+
+makeInfoTableSet ::
+     AsteriusModule -> M.Map AsteriusEntitySymbol Int64 -> S.Set Int64
+makeInfoTableSet AsteriusModule {..} sym_map =
+  S.map (sym_map !) $
+  M.keysSet $ M.filter ((== InfoTable) . staticsType) staticsMap
 
 makeMemory ::
-     Bool
-  -> AsteriusModule
+     AsteriusModule
   -> Int64
   -> M.Map AsteriusEntitySymbol Int64
+  -> [DataSegment]
   -> Memory
-makeMemory debug AsteriusModule {..} last_o sym_map =
+makeMemory AsteriusModule {..} last_o sym_map extra_segs =
   Memory
     { initialPages =
         fromIntegral $
-        roundup (fromIntegral last_o) mblock_size `div` wasmPageSize
+        roundup (fromIntegral last_o) mblock_size `quot` wasmPageSize
     , memoryExportName = "memory"
-    , dataSegments =
-        if debug
-          then uncombined_segs
-          else combine uncombined_segs
+    , dataSegments = combined_segs
     }
   where
-    uncombined_segs = concatMap data_segs $ M.toList staticsMap
-    data_segs (ss_sym, AsteriusStatics {..}) =
-      snd $
-      foldl'
-        (\(p, segs) s ->
-           ( p + fromIntegral (asteriusStaticSize s)
-           , case s of
-               Serialized buf ->
-                 DataSegment
-                   { content = buf
-                   , offset = ConstI32 $ fromIntegral $ p .&. 0xFFFFFFFF
-                   } :
-                 segs
-               _ -> segs))
-        (sym_map ! ss_sym, [])
-        asteriusStatics
-    combine segs =
-      reverse $
-      foldl'
-        (\stack seg@DataSegment {content = seg_content, offset = ConstI32 seg_o} ->
+    uncombined_segs =
+      M.foldlWithKey'
+        (\segs sym AsteriusStatics {..} ->
+           snd $
+           foldl'
+             (\(p, inner_segs) seg ->
+                ( p + fromIntegral (asteriusStaticSize seg)
+                , case seg of
+                    SymbolStatic {} ->
+                      error
+                        "Asterius.Resolve.makeMemory: unresolved SymbolStatic!"
+                    Serialized buf ->
+                      DataSegment
+                        { content = buf
+                        , offset = fromIntegral $ p .&. 0xFFFFFFFF
+                        } :
+                      inner_segs
+                    Uninitialized {} -> inner_segs))
+             (sym_map ! sym, segs)
+             asteriusStatics)
+        extra_segs
+        staticsMap
+    combined_segs =
+      foldr
+        (\seg@DataSegment {content = seg_content, offset = seg_o} stack ->
            case stack of
-             DataSegment { content = stack_top_content
-                         , offset = ConstI32 stack_top_o
-                         }:stack_rest
-               | fromIntegral stack_top_o + SBS.length stack_top_content ==
-                   fromIntegral seg_o ->
+             DataSegment {content = stack_top_content, offset = stack_top_o}:stack_rest
+               | fromIntegral seg_o + SBS.length seg_content ==
+                   fromIntegral stack_top_o ->
                  DataSegment
-                   { content = stack_top_content <> seg_content
-                   , offset = ConstI32 stack_top_o
-                   } :
+                   {content = seg_content <> stack_top_content, offset = seg_o} :
                  stack_rest
+               | fromIntegral seg_o + SBS.length seg_content >
+                   fromIntegral stack_top_o ->
+                 error "Asterius.Resolve.makeMemory: overlapping sections!"
              _ -> seg : stack)
         []
-        (sortOn (\DataSegment {offset = ConstI32 o} -> o) segs)
+        (sortOn (\DataSegment {offset = o} -> o) uncombined_segs)
 
 resolveEntitySymbols ::
      (Monad m, Data a)
@@ -489,10 +608,12 @@ resolveAsteriusModule ::
   -> m ( Module
        , M.Map AsteriusEntitySymbol Int64
        , M.Map AsteriusEntitySymbol Int64
-       , [Event])
+       , [Event]
+       , Int)
 resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = do
   let (func_table, func_sym_map) = makeFunctionTable m_globals_resolved
-      (last_o, ss_sym_map) = makeStaticsOffsetTable m_globals_resolved
+      (last_o, ss_sym_map, extra_segs) =
+        makeStaticsOffsetTable m_globals_resolved
       resolve_syms :: (Monad m, Data a) => a -> m a
       resolve_syms = resolveEntitySymbols ss_sym_map func_sym_map
   m_globals_syms_resolved <- resolve_syms m_globals_resolved
@@ -515,6 +636,7 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
            else pure func) >>=
         relooperDeep
       pure (entityName func_sym, new_func)
+  let mem = makeMemory m_globals_syms_resolved last_o ss_sym_map extra_segs
   (new_mod, err_msgs) <-
     rewriteEmitEvent
       Module
@@ -527,9 +649,14 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
             | k <- map entityName export_funcs
             ]
         , functionTable = func_table
-        , memory = makeMemory debug m_globals_syms_resolved last_o ss_sym_map
+        , memory = mem
         }
-  pure (new_mod, ss_sym_map, func_sym_map, err_msgs)
+  pure
+    ( new_mod
+    , ss_sym_map
+    , func_sym_map
+    , err_msgs
+    , fromIntegral (initialPages mem) `quot` (mblock_size `quot` wasmPageSize))
 
 linkStart ::
      Monad m
@@ -549,8 +676,8 @@ linkStart debug store root_syms export_funcs = do
            {entityName = "__asterius_jsffi_export_" <> entityName k}
          | k <- export_funcs
          ])
-      export_funcs
-  (result_m, ss_sym_map, func_sym_map, err_msgs) <-
+      (S.fromList export_funcs)
+  (result_m, ss_sym_map, func_sym_map, err_msgs, static_mbs) <-
     resolveAsteriusModule
       debug
       (bundledFFIMarshalState report)
@@ -559,7 +686,12 @@ linkStart debug store root_syms export_funcs = do
   pure
     ( result_m
     , err_msgs
-    , report {staticsSymbolMap = ss_sym_map, functionSymbolMap = func_sym_map})
+    , report
+        { staticsSymbolMap = ss_sym_map
+        , functionSymbolMap = func_sym_map
+        , infoTableSet = makeInfoTableSet merged_m ss_sym_map
+        , staticMBlocks = static_mbs
+        })
 
 renderDot :: LinkReport -> Builder
 renderDot LinkReport {..} =

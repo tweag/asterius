@@ -34,7 +34,7 @@ import GHC.Magic
 import GHC.Prim
 import GHC.Types
 
-newtype Integer = Integer Int
+data Integer = Integer Int#
 
 mkInteger :: Bool -> [Int] -> Integer
 mkInteger nonNegative is =
@@ -49,19 +49,19 @@ mkInteger nonNegative is =
             in case w is s1 of
                  (# s2, _ #) ->
                    case unIO (js_freezeInteger i0) s2 of
-                     (# _, r #) -> Integer r)
+                     (# _, I# r #) -> Integer r)
 
 smallInteger :: Int# -> Integer
-smallInteger i = Integer (js_smallInteger (I# i))
+smallInteger i = Integer (js_smallInteger i)
 
 wordToInteger :: Word# -> Integer
-wordToInteger w = Integer (js_wordToInteger (W# w))
+wordToInteger w = Integer (js_wordToInteger w)
 
 integerToWord :: Integer -> Word#
-integerToWord (Integer i) = unW# (js_integerToWord i)
+integerToWord (Integer i) = js_integerToWord i
 
 integerToInt :: Integer -> Int#
-integerToInt (Integer i) = unI# (js_integerToInt i)
+integerToInt (Integer i) = js_integerToInt i
 
 plusInteger :: Integer -> Integer -> Integer
 plusInteger (Integer i0) (Integer i1) = Integer (js_plusInteger i0 i1)
@@ -153,23 +153,23 @@ remInteger :: Integer -> Integer -> Integer
 remInteger (Integer i0) (Integer i1) = Integer (js_remInteger i0 i1)
 
 encodeFloatInteger :: Integer -> Int# -> Float#
-encodeFloatInteger (Integer m) n = unF# (js_encodeFloatInteger m (I# n))
+encodeFloatInteger (Integer m) n = js_encodeFloatInteger m n
 
 decodeFloatInteger :: Float# -> (# Integer, Int# #)
 decodeFloatInteger f =
-  (# Integer (js_decodeFloatInteger_m (F# f)), unI# (js_decodeFloatInteger_n (F# f)) #)
+  (# Integer (js_decodeFloatInteger_m f), js_decodeFloatInteger_n f #)
 
 floatFromInteger :: Integer -> Float#
-floatFromInteger (Integer i) = unF# (js_floatFromInteger i)
+floatFromInteger (Integer i) = js_floatFromInteger i
 
 encodeDoubleInteger :: Integer -> Int# -> Double#
-encodeDoubleInteger (Integer m) n = unD# (js_encodeDoubleInteger m (I# n))
+encodeDoubleInteger (Integer m) n = js_encodeDoubleInteger m n
 
 decodeDoubleInteger :: Double# -> (# Integer, Int# #)
-decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m (D# d)), unI# (js_decodeDoubleInteger_n (D# d)) #)
+decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m d), js_decodeDoubleInteger_n d #)
 
 doubleFromInteger :: Integer -> Double#
-doubleFromInteger (Integer i) = unD# (js_doubleFromInteger i)
+doubleFromInteger (Integer i) = js_doubleFromInteger i
 
 andInteger :: Integer -> Integer -> Integer
 andInteger (Integer i0) (Integer i1) = Integer (js_andInteger i0 i1)
@@ -184,16 +184,16 @@ complementInteger :: Integer -> Integer
 complementInteger (Integer i) = Integer (js_complementInteger i)
 
 shiftLInteger :: Integer -> Int# -> Integer
-shiftLInteger (Integer i0) i1 = Integer (js_shiftLInteger i0 (I# i1))
+shiftLInteger (Integer i0) i1 = Integer (js_shiftLInteger i0 i1)
 
 shiftRInteger :: Integer -> Int# -> Integer
-shiftRInteger (Integer i0) i1 = Integer (js_shiftRInteger i0 (I# i1))
+shiftRInteger (Integer i0) i1 = Integer (js_shiftRInteger i0 i1)
 
 testBitInteger :: Integer -> Int# -> Bool
-testBitInteger (Integer i0) i1 = js_testBitInteger i0 (I# i1)
+testBitInteger (Integer i0) i1 = js_testBitInteger i0 i1
 
 hashInteger :: Integer -> Int#
-hashInteger (Integer i) = unI# (js_hashInteger i)
+hashInteger (Integer i) = js_hashInteger i
 
 oneInteger :: Integer
 oneInteger = smallInteger 1#
@@ -218,75 +218,75 @@ foreign import javascript "__asterius_jsffi.Integer.prependInteger(${1},${2})" j
 
 foreign import javascript "__asterius_jsffi.Integer.freezeInteger(${1})" js_freezeInteger :: Int -> IO Int
 
-foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_smallInteger :: Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_smallInteger :: Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_wordToInteger :: Word -> Int
+foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_wordToInteger :: Word# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1})" js_integerToWord :: Int -> Word
+foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1})" js_integerToWord :: Int# -> Word#
 
-foreign import javascript "__asterius_jsffi.Integer.integerToInt(${1})" js_integerToInt :: Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.integerToInt(${1})" js_integerToInt :: Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.plusInteger(${1},${2})" js_plusInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.plusInteger(${1},${2})" js_plusInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.minusInteger(${1},${2})" js_minusInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.minusInteger(${1},${2})" js_minusInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.timesInteger(${1},${2})" js_timesInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.timesInteger(${1},${2})" js_timesInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.negateInteger(${1})" js_negateInteger :: Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.negateInteger(${1})" js_negateInteger :: Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.eqInteger(${1},${2})" js_eqInteger :: Int -> Int -> Bool
+foreign import javascript "__asterius_jsffi.Integer.eqInteger(${1},${2})" js_eqInteger :: Int# -> Int# -> Bool
 
-foreign import javascript "__asterius_jsffi.Integer.neqInteger(${1},${2})" js_neqInteger :: Int -> Int -> Bool
+foreign import javascript "__asterius_jsffi.Integer.neqInteger(${1},${2})" js_neqInteger :: Int# -> Int# -> Bool
 
-foreign import javascript "__asterius_jsffi.Integer.absInteger(${1})" js_absInteger :: Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.absInteger(${1})" js_absInteger :: Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.signumInteger(${1})" js_signumInteger :: Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.signumInteger(${1})" js_signumInteger :: Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.leInteger(${1},${2})" js_leInteger :: Int -> Int -> Bool
+foreign import javascript "__asterius_jsffi.Integer.leInteger(${1},${2})" js_leInteger :: Int# -> Int# -> Bool
 
-foreign import javascript "__asterius_jsffi.Integer.gtInteger(${1},${2})" js_gtInteger :: Int -> Int -> Bool
+foreign import javascript "__asterius_jsffi.Integer.gtInteger(${1},${2})" js_gtInteger :: Int# -> Int# -> Bool
 
-foreign import javascript "__asterius_jsffi.Integer.ltInteger(${1},${2})" js_ltInteger :: Int -> Int -> Bool
+foreign import javascript "__asterius_jsffi.Integer.ltInteger(${1},${2})" js_ltInteger :: Int# -> Int# -> Bool
 
-foreign import javascript "__asterius_jsffi.Integer.geInteger(${1},${2})" js_geInteger :: Int -> Int -> Bool
+foreign import javascript "__asterius_jsffi.Integer.geInteger(${1},${2})" js_geInteger :: Int# -> Int# -> Bool
 
-foreign import javascript "__asterius_jsffi.Integer.quotInteger(${1},${2})" js_quotInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.quotInteger(${1},${2})" js_quotInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.remInteger(${1},${2})" js_remInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.remInteger(${1},${2})" js_remInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeFloatInteger :: Int -> Int -> Float
+foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeFloatInteger :: Int# -> Int# -> Float#
 
-foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeFloatInteger_m :: Float -> Int
+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeFloatInteger_m :: Float# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeFloatInteger_n :: Float -> Int
+foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeFloatInteger_n :: Float# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_floatFromInteger :: Int -> Float
+foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_floatFromInteger :: Int# -> Float#
 
-foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeDoubleInteger :: Int -> Int -> Double
+foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeDoubleInteger :: Int# -> Int# -> Double#
 
-foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double -> Int
+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_n :: Double -> Int
+foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_n :: Double# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_doubleFromInteger :: Int -> Double
+foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_doubleFromInteger :: Int# -> Double#
 
-foreign import javascript "__asterius_jsffi.Integer.andInteger(${1},${2})" js_andInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.andInteger(${1},${2})" js_andInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.orInteger(${1},${2})" js_orInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.orInteger(${1},${2})" js_orInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.xorInteger(${1},${2})" js_xorInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.xorInteger(${1},${2})" js_xorInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.complementInteger(${1})" js_complementInteger :: Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.complementInteger(${1})" js_complementInteger :: Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.shiftLInteger(${1},${2})" js_shiftLInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.shiftLInteger(${1},${2})" js_shiftLInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.shiftRInteger(${1},${2})" js_shiftRInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.shiftRInteger(${1},${2})" js_shiftRInteger :: Int# -> Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.testBitInteger(${1},${2})" js_testBitInteger :: Int -> Int -> Bool
+foreign import javascript "__asterius_jsffi.Integer.testBitInteger(${1},${2})" js_testBitInteger :: Int# -> Int# -> Bool
 
-foreign import javascript "__asterius_jsffi.Integer.hashInteger(${1})" js_hashInteger :: Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.hashInteger(${1})" js_hashInteger :: Int# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.powInteger(${1},${2})" js_powInteger :: Int -> Int -> Int
+foreign import javascript "__asterius_jsffi.Integer.powInteger(${1},${2})" js_powInteger :: Int# -> Int# -> Int#
 
 #else
 

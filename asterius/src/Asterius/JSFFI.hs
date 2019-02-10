@@ -167,7 +167,7 @@ marshalToFFIValueType (GHC.unLoc -> t) =
             , hsTyCon = "Double"
             , signed = True
             }
-      | take 2 (GHC.occNameString tv) == "JS" -> pure FFI_JSREF
+      | take 2 (GHC.occNameString tv) == "JS" -> pure FFI_JSVAL
     _ -> empty
 
 marshalToFFIResultTypes ::
@@ -203,13 +203,13 @@ recoverWasmImportValueType :: FFIValueType -> ValueType
 recoverWasmImportValueType vt =
   case vt of
     FFI_VAL {..} -> ffiJSValueType
-    FFI_JSREF -> F64
+    FFI_JSVAL -> F64
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType vt =
   case vt of
     FFI_VAL {..} -> ffiWasmValueType
-    FFI_JSREF -> I64
+    FFI_JSVAL -> I64
 
 recoverWasmImportFunctionType :: FFIFunctionType -> FunctionType
 recoverWasmImportFunctionType FFIFunctionType {..} =
@@ -482,7 +482,7 @@ generateFFIExportFunction FFIExportDecl {..} =
                                                        (case ffi_param_t of
                                                           FFI_VAL {..} ->
                                                             hsTyCon
-                                                          FFI_JSREF -> "Int")
+                                                          FFI_JSVAL -> "StablePtr")
                                                    }
                                              , operands =
                                                  [ GetLocal
@@ -591,14 +591,14 @@ generateFFILambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..} =
   mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
   ")=>" <>
   (case ffiResultTypes of
-     [FFI_JSREF] -> "__asterius_jsffi.newJSVal("
+     [FFI_JSVAL] -> "__asterius_jsffi.newJSVal("
      _ -> "(") <>
   mconcat
     [ case chunk of
       Lit s -> string7 s
       Field i ->
         case ffiParamTypes !! (i - 1) of
-          FFI_JSREF -> "__asterius_jsffi.getJSVal(_" <> intDec i <> ")"
+          FFI_JSVAL -> "__asterius_jsffi.getJSVal(_" <> intDec i <> ")"
           _ -> "_" <> intDec i
     | chunk <- ffiSourceChunks
     ] <>

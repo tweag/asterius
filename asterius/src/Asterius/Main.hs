@@ -69,33 +69,132 @@ data Task = Task
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   }
 
+rtsUsedSymbols :: S.Set AsteriusEntitySymbol
+rtsUsedSymbols =
+  [ "base_GHCziPtr_Ptr_con_info"
+  , "base_GHCziStable_StablePtr_con_info"
+  , "ghczmprim_GHCziTypes_Czh_con_info"
+  , "ghczmprim_GHCziTypes_Dzh_con_info"
+  , "ghczmprim_GHCziTypes_False_closure"
+  , "ghczmprim_GHCziTypes_Izh_con_info"
+  , "ghczmprim_GHCziTypes_True_closure"
+  , "ghczmprim_GHCziTypes_Wzh_con_info"
+  , "ghczmprim_GHCziTypes_ZC_con_info"
+  , "ghczmprim_GHCziTypes_ZMZN_closure"
+  , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
+  , "Main_main_closure"
+  , "stg_ARR_WORDS_info"
+  , "stg_DEAD_WEAK_info"
+  , "stg_NO_FINALIZER_closure"
+  , "stg_WEAK_info"
+  ]
+
 genRTSSettings :: Task -> Builder
 genRTSSettings Task {..} =
-  mconcat
-    [ "export const debug = "
-    , if debug
-        then "true;\n"
-        else "false;\n"
-    , "export const platform = "
-    , case target of
-        Node -> "\"node\";\n"
-        Browser -> "\"browser\";\n"
-    , "export const dataTag = "
-    , int64Dec dataTag
-    , ";\nexport const functionTag = "
-    , int64Dec functionTag
-    , ";\nexport const mblockSize = "
-    , intDec mblock_size
-    , ";\nexport const blockSize = "
-    , intDec block_size
-    , ";\nexport const blocksPerMBlock = "
-    , intDec blocks_per_mblock
-    , ";\nexport const bdescrSize = "
-    , intDec sizeof_bdescr
-    , ";\nexport const firstBdescr = "
-    , intDec offset_first_bdescr
-    , ";\nexport const pageSize = 65536;\n"
-    ]
+  mconcat $
+  [ "export const debug = "
+  , if debug
+      then "true;\n"
+      else "false;\n"
+  , "export const platform = "
+  , case target of
+      Node -> "\"node\";\n"
+      Browser -> "\"browser\";\n"
+  , "export const dataTag = "
+  , int64Dec dataTag
+  , ";\nexport const functionTag = "
+  , int64Dec functionTag
+  , ";\nexport const mblock_size = "
+  , intDec mblock_size
+  , ";\nexport const block_size = "
+  , intDec block_size
+  , ";\nexport const blocks_per_mblock = "
+  , intDec blocks_per_mblock
+  , ";\nexport const sizeof_bdescr = "
+  , intDec sizeof_bdescr
+  , ";\nexport const offset_first_bdescr = "
+  , intDec offset_first_bdescr
+  , ";\nexport const offset_first_block = "
+  , intDec offset_first_block
+  , ";\nexport const sizeof_first_mblock = "
+  , intDec $ mblock_size - offset_first_block
+  , ";\nexport const offset_bdescr_start = "
+  , intDec offset_bdescr_start
+  , ";\nexport const offset_bdescr_free = "
+  , intDec offset_bdescr_free
+  , ";\nexport const offset_bdescr_link = "
+  , intDec offset_bdescr_link
+  , ";\nexport const offset_bdescr_flags = "
+  , intDec offset_bdescr_flags
+  , ";\nexport const offset_bdescr_blocks = "
+  , intDec offset_bdescr_blocks
+  , ";\nexport const BF_PINNED = "
+  , intDec bf_PINNED
+  , ";\nexport const pageSize = 65536;\n"
+  ] <>
+  [ "export const " <> k <> " = " <> intDec v <> ";\n"
+  | (k, v) <-
+      [ ("sizeof_StgAP", sizeof_StgAP)
+      , ("offset_StgAP_arity", offset_StgAP_arity)
+      , ("offset_StgAP_n_args", offset_StgAP_n_args)
+      , ("offset_StgAP_fun", offset_StgAP_fun)
+      , ("offset_StgAP_payload", offset_StgAP_payload)
+      , ("sizeof_StgAP_STACK", sizeof_StgAP_STACK)
+      , ("offset_StgAP_STACK_size", offset_StgAP_STACK_size)
+      , ("offset_StgAP_STACK_fun", offset_StgAP_STACK_fun)
+      , ("offset_StgAP_STACK_payload", offset_StgAP_STACK_payload)
+      , ("sizeof_StgArrBytes", sizeof_StgArrBytes)
+      , ("offset_StgArrBytes_bytes", offset_StgArrBytes_bytes)
+      , ( "offset_StgFunInfoExtraFwd_fun_type"
+        , offset_StgFunInfoExtraFwd_fun_type)
+      , ("offset_StgFunInfoExtraFwd_srt", offset_StgFunInfoExtraFwd_srt)
+      , ("offset_StgFunInfoExtraFwd_b", offset_StgFunInfoExtraFwd_b)
+      , ("offset_StgFunInfoTable_i", offset_StgFunInfoTable_i)
+      , ("offset_StgFunInfoTable_f", offset_StgFunInfoTable_f)
+      , ("sizeof_StgInd", sizeof_StgInd)
+      , ("offset_StgInd_indirectee", offset_StgInd_indirectee)
+      , ("sizeof_StgIndStatic", sizeof_StgIndStatic)
+      , ("offset_StgIndStatic_indirectee", offset_StgIndStatic_indirectee)
+      , ("offset_StgInfoTable_layout", offset_StgInfoTable_layout)
+      , ("offset_StgInfoTable_type", offset_StgInfoTable_type)
+      , ("offset_StgInfoTable_srt", offset_StgInfoTable_srt)
+      , ("offset_StgLargeBitmap_size", offset_StgLargeBitmap_size)
+      , ("offset_StgLargeBitmap_bitmap", offset_StgLargeBitmap_bitmap)
+      , ("sizeof_StgMutArrPtrs", sizeof_StgMutArrPtrs)
+      , ("offset_StgMutArrPtrs_ptrs", offset_StgMutArrPtrs_ptrs)
+      , ("offset_StgMutArrPtrs_payload", offset_StgMutArrPtrs_payload)
+      , ("sizeof_StgPAP", sizeof_StgPAP)
+      , ("offset_StgPAP_arity", offset_StgPAP_arity)
+      , ("offset_StgPAP_n_args", offset_StgPAP_n_args)
+      , ("offset_StgPAP_fun", offset_StgPAP_fun)
+      , ("offset_StgPAP_payload", offset_StgPAP_payload)
+      , ("sizeof_StgRetFun", sizeof_StgRetFun)
+      , ("offset_StgRetFun_size", offset_StgRetFun_size)
+      , ("offset_StgRetFun_fun", offset_StgRetFun_fun)
+      , ("offset_StgRetFun_payload", offset_StgRetFun_payload)
+      , ("offset_StgRetInfoTable_i", offset_StgRetInfoTable_i)
+      , ("offset_StgRetInfoTable_srt", offset_StgRetInfoTable_srt)
+      , ("sizeof_StgSelector", sizeof_StgSelector)
+      , ("offset_StgSelector_selectee", offset_StgSelector_selectee)
+      , ("sizeof_StgSmallMutArrPtrs", sizeof_StgSmallMutArrPtrs)
+      , ("offset_StgSmallMutArrPtrs_ptrs", offset_StgSmallMutArrPtrs_ptrs)
+      , ("offset_StgSmallMutArrPtrs_payload", offset_StgSmallMutArrPtrs_payload)
+      , ("sizeof_StgThunk", sizeof_StgThunk)
+      , ("offset_StgThunk_payload", offset_StgThunk_payload)
+      , ("offset_StgThunkInfoTable_i", offset_StgThunkInfoTable_i)
+      , ("offset_StgThunkInfoTable_srt", offset_StgThunkInfoTable_srt)
+      , ("offset_StgTSO_id", offset_StgTSO_id)
+      , ("offset_StgTSO_stackobj", offset_StgTSO_stackobj)
+      , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
+      , ("offset_StgStack_sp", offset_StgStack_sp)
+      , ("offset_StgStack_stack", offset_StgStack_stack)
+      , ("offset_StgWeak_cfinalizers", offset_StgWeak_cfinalizers)
+      , ("offset_StgWeak_key", offset_StgWeak_key)
+      , ("offset_StgWeak_value", offset_StgWeak_value)
+      , ("offset_StgWeak_finalizer", offset_StgWeak_finalizer)
+      , ("offset_StgWeak_link", offset_StgWeak_link)
+      ]
+  ]
 
 genPackageJSON :: Task -> Builder
 genPackageJSON Task {..} =
@@ -120,6 +219,30 @@ genSymbolDict sym_map =
        | (sym, sym_idx) <- M.toList sym_map
        ]) <>
   "}"
+
+genInfoTables :: S.Set Int64 -> Builder
+genInfoTables sym_set = "new Set(" <> string7 (show (S.toList sym_set)) <> ")"
+
+genPinnedStaticClosures ::
+     M.Map AsteriusEntitySymbol Int64
+  -> [AsteriusEntitySymbol]
+  -> FFIMarshalState
+  -> Builder
+genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
+  "new Set(" <>
+  string7
+    (show (map ((sym_map !) . ffiExportClosure . (export_decls !)) export_funcs)) <>
+  ")"
+  where
+    export_decls =
+      M.foldl'
+        (M.unionWithKey
+           (\k _ _ ->
+              error $
+              "Asterius.Main.genPinnedStaticClosures: conflicted export function " <>
+              show k))
+        M.empty
+        ffiExportDecls
 
 genWasm :: Task -> LBS.ByteString -> Builder
 genWasm Task {..} _ =
@@ -159,6 +282,15 @@ genLib Task {..} LinkReport {..} err_msgs =
   , generateFFIImportObjectFactory bundledFFIMarshalState
   , ", symbolTable: "
   , genSymbolDict symbol_table
+  , ", infoTables: "
+  , genInfoTables infoTableSet
+  , ", pinnedStaticClosures: "
+  , genPinnedStaticClosures
+      staticsSymbolMap
+      exportFunctions
+      bundledFFIMarshalState
+  , ", staticMBlocks: "
+  , intDec staticMBlocks
   , if sync
       then ", sync: true"
       else ", sync: false"
@@ -171,13 +303,7 @@ genLib Task {..} LinkReport {..} err_msgs =
       if fullSymTable || debug
         then raw_symbol_table
         else M.restrictKeys raw_symbol_table $
-             S.fromList extraRootSymbols <>
-             [ "ghczmprim_GHCziTypes_Czh_con_info"
-             , "ghczmprim_GHCziTypes_Izh_con_info"
-             , "ghczmprim_GHCziTypes_ZC_con_info"
-             , "ghczmprim_GHCziTypes_ZMZN_closure"
-             , "stg_ARR_WORDS_info"
-             ]
+             S.fromList extraRootSymbols <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =
@@ -197,10 +323,15 @@ genDefEntry Task {..} =
         then mconcat
                [ "let i = " <> out_base <> ".newInstance(module);\n"
                , if debug
-                   then "i.logger.onEvent = ev => console.log(ev);\n"
+                   then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
+               , "try {\n"
                , "i.wasmInstance.exports.hs_init();\n"
                , "i.wasmInstance.exports.main();\n"
+               , "} catch (err) {\n"
+               , "console.log(i.stdio.stdout());\n"
+               , "throw err;\n"
+               , "}\n"
                , "console.log(i.stdio.stdout());\n"
                ]
         else mconcat
@@ -208,10 +339,15 @@ genDefEntry Task {..} =
                , out_base
                , ".newInstance(m)).then(i => {\n"
                , if debug
-                   then "i.logger.onEvent = ev => console.log(ev);\n"
+                   then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
+               , "try {\n"
                , "i.wasmInstance.exports.hs_init();\n"
                , "i.wasmInstance.exports.main();\n"
+               , "} catch (err) {\n"
+               , "console.log(i.stdio.stdout());\n"
+               , "throw err;\n"
+               , "}\n"
                , "console.log(i.stdio.stdout());\n"
                , "});\n"
                ]
@@ -330,11 +466,12 @@ ahcLinkMain task@Task {..} = do
           linkStart
             debug
             final_store
-            (S.fromList $
-             extraRootSymbols <>
-             [ AsteriusEntitySymbol {entityName = internalName}
-             | FunctionExport {..} <- rtsAsteriusFunctionExports debug
-             ])
+            (rtsUsedSymbols <>
+             S.fromList
+               (extraRootSymbols <>
+                [ AsteriusEntitySymbol {entityName = internalName}
+                | FunctionExport {..} <- rtsAsteriusFunctionExports debug
+                ]))
             exportFunctions
         let out_package_json = outputDirectory </> "package.json"
             out_rts_settings = outputDirectory </> "rts.settings.mjs"

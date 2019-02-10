@@ -38,11 +38,12 @@ module Asterius.Types
 import Asterius.Magic
 import GHC.Magic
 import GHC.Prim
+import GHC.Stable
 import GHC.Tuple
 import GHC.Types
 
 newtype JSVal =
-  JSVal Int
+  JSVal (StablePtr ())
 
 newtype JSArrayBuffer =
   JSArrayBuffer JSVal
@@ -92,24 +93,24 @@ makeHaskellCallback :: IO () -> IO JSFunction
 makeHaskellCallback f =
   IO
     (\s0 ->
-       case anyToAddr# f s0 of
-         (# s1, addr #) -> unIO (js_mk_hs_callback addr) s1)
+       case makeStablePtr# f s0 of
+         (# s1, sp #) -> unIO (js_mk_hs_callback sp) s1)
 
 {-# INLINE makeHaskellCallback1 #-}
 makeHaskellCallback1 :: (JSVal -> IO ()) -> IO JSFunction
 makeHaskellCallback1 f =
   IO
     (\s0 ->
-       case anyToAddr# f s0 of
-         (# s1, addr #) -> unIO (js_mk_hs_callback1 addr) s1)
+       case makeStablePtr# f s0 of
+         (# s1, sp #) -> unIO (js_mk_hs_callback1 sp) s1)
 
 {-# INLINE makeHaskellCallback2 #-}
 makeHaskellCallback2 :: (JSVal -> JSVal -> IO ()) -> IO JSFunction
 makeHaskellCallback2 f =
   IO
     (\s0 ->
-       case anyToAddr# f s0 of
-         (# s1, addr #) -> unIO (js_mk_hs_callback2 addr) s1)
+       case makeStablePtr# f s0 of
+         (# s1, sp #) -> unIO (js_mk_hs_callback2 sp) s1)
 
 {-# INLINE fromJSString #-}
 fromJSString :: JSString -> [Char]
@@ -211,14 +212,14 @@ foreign import javascript "${1}[${2}]=${3}" js_object_set
 foreign import javascript "${1}.apply({},${2})" js_apply
   :: JSFunction -> JSArray -> IO JSVal
 
-foreign import javascript "__asterius_jsffi.unsafeMakeHaskellCallback(${1})" js_mk_hs_callback
-  :: Addr# -> IO JSFunction
+foreign import javascript "__asterius_jsffi.makeHaskellCallback(${1})" js_mk_hs_callback
+  :: StablePtr# (IO ()) -> IO JSFunction
 
-foreign import javascript "__asterius_jsffi.unsafeMakeHaskellCallback1(${1})" js_mk_hs_callback1
-  :: Addr# -> IO JSFunction
+foreign import javascript "__asterius_jsffi.makeHaskellCallback1(${1})" js_mk_hs_callback1
+  :: StablePtr# (JSVal -> IO ()) -> IO JSFunction
 
-foreign import javascript "__asterius_jsffi.unsafeMakeHaskellCallback2(${1})" js_mk_hs_callback2
-  :: Addr# -> IO JSFunction
+foreign import javascript "__asterius_jsffi.makeHaskellCallback2(${1})" js_mk_hs_callback2
+  :: StablePtr# (JSVal -> JSVal -> IO ()) -> IO JSFunction
 
 foreign import javascript "JSON.parse(${1})" js_jsonParse :: JSString -> JSVal
 

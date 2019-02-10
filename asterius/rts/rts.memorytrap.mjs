@@ -11,8 +11,9 @@ export class MemoryTrap {
 
   showI64(x) { return "0x" + x.toString(16).padStart(8, "0"); }
 
-  trap(p) {
-    if (Memory.getTag(p) !== settings.dataTag) {
+  trap(_p, o) {
+    const p = _p + o;
+    if (Memory.getTag(p) != settings.dataTag) {
       const err =
           new WebAssembly.RuntimeError("Invalid address " + this.showI64(p));
       this.logger.logError(err);
@@ -20,34 +21,101 @@ export class MemoryTrap {
     }
   }
 
-  signal(e, t, p, o, v) {
-    this.trap(p);
+  loadI8(p, o, v) {
     this.logger.logInfo([
-      e, t, p, this.symbolLookupTable[p], o, v, this.symbolLookupTable[v]
+      "load", "i8", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
     ]);
+    this.trap(p, o);
   }
 
-  loadI8(p, o, v) { this.signal("load", "i8", p, o, v); }
+  loadI16(p, o, v) {
+    this.logger.logInfo([
+      "load", "i16", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  loadI16(p, o, v) { this.signal("load", "i16", p, o, v); }
+  loadI32(p, o, v) {
+    this.logger.logInfo([
+      "load", "i32", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  loadI32(p, o, v) { this.signal("load", "i32", p, o, v); }
+  loadI64(p, o, v_lo, v_hi) {
+    const v = (BigInt(v_hi) << BigInt(32)) | BigInt(v_lo);
+    this.logger.logInfo([
+      "load", "i64", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  loadI64(p, o, v) { this.signal("load", "i64", p, o, v); }
+  loadF32(p, o, v) {
+    this.logger.logInfo([
+      "load", "f32", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  loadF32(p, o, v) { this.signal("load", "f32", p, o, v); }
+  loadF64(p, o, v) {
+    this.logger.logInfo([
+      "load", "f64", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  loadF64(p, o, v) { this.signal("load", "f64", p, o, v); }
+  storeI8(p, o, v) {
+    this.logger.logInfo([
+      "store", "i8", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  storeI8(p, o, v) { this.signal("store", "i8", p, o, v); }
+  storeI16(p, o, v) {
+    this.logger.logInfo([
+      "store", "i16", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  storeI16(p, o, v) { this.signal("store", "i16", p, o, v); }
+  storeI32(p, o, v) {
+    this.logger.logInfo([
+      "store", "i32", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  storeI32(p, o, v) { this.signal("store", "i32", p, o, v); }
+  storeI64(p, o, v_lo, v_hi) {
+    const v = (BigInt(v_hi) << BigInt(32)) | BigInt(v_lo);
+    this.logger.logInfo([
+      "store", "i64", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  storeI64(p, o, v) { this.signal("store", "i64", p, o, v); }
+  storeF32(p, o, v) {
+    this.logger.logInfo([
+      "store", "f32", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 
-  storeF32(p, o, v) { this.signal("store", "f32", p, o, v); }
-
-  storeF64(p, o, v) { this.signal("store", "f64", p, o, v); }
+  storeF64(p, o, v) {
+    this.logger.logInfo([
+      "store", "f64", p, this.symbolLookupTable[p], o, v,
+      this.symbolLookupTable[v]
+    ]);
+    this.trap(p, o);
+  }
 }

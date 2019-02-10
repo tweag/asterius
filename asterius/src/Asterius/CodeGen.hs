@@ -24,6 +24,7 @@ import qualified Cmm as GHC
 import qualified CmmSwitch as GHC
 import Control.Monad.Except
 import Control.Monad.Reader
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.List
 import qualified Data.Map.Strict as M
@@ -134,11 +135,24 @@ marshalCmmStatic st =
     GHC.CmmUninitialised s -> pure $ Uninitialized s
     GHC.CmmString s -> pure $ Serialized $ SBS.pack s <> "\0"
 
-marshalCmmData :: GHC.Section -> GHC.CmmStatics -> CodeGen AsteriusStatics
-marshalCmmData sec (GHC.Statics _ ss) = do
+marshalCmmSectionType ::
+     AsteriusEntitySymbol -> GHC.Section -> AsteriusStaticsType
+marshalCmmSectionType sym sec@(GHC.Section _ clbl)
+  | GHC.isGcPtrLabel clbl = Closure
+  | "_info" `BS.isSuffixOf` SBS.fromShort (entityName sym) = InfoTable
+  | GHC.isSecConstant sec = ConstBytes
+  | otherwise = Bytes
+
+marshalCmmData ::
+     AsteriusEntitySymbol
+  -> GHC.Section
+  -> GHC.CmmStatics
+  -> CodeGen AsteriusStatics
+marshalCmmData sym sec (GHC.Statics _ ss) = do
   ass <- for ss marshalCmmStatic
   pure
-    AsteriusStatics {isConstant = GHC.isSecConstant sec, asteriusStatics = ass}
+    AsteriusStatics
+      {staticsType = marshalCmmSectionType sym sec, asteriusStatics = ass}
 
 marshalCmmLocalReg :: GHC.LocalReg -> CodeGen (UnresolvedLocalReg, ValueType)
 marshalCmmLocalReg (GHC.LocalReg u t) = do
@@ -1005,7 +1019,7 @@ marshalCmmDecl decl =
   case decl of
     GHC.CmmData sec d@(GHC.Statics clbl _) -> do
       sym <- marshalCLabel clbl
-      r <- unCodeGen $ marshalCmmData sec d
+      r <- unCodeGen $ marshalCmmData sym sec d
       pure $
         case r of
           Left err -> mempty {staticsErrorMap = M.fromList [(sym, err)]}

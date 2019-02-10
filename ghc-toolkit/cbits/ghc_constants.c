@@ -119,6 +119,23 @@ HsInt offset_Capability_free_trec_headers() {
 HsInt offset_Capability_transaction_tokens() {
   return offsetof(Capability, transaction_tokens);
 }
+HsInt sizeof_StgAP() { return sizeof(StgAP); }
+
+HsInt offset_StgAP_arity() { return offsetof(StgAP, arity); }
+
+HsInt offset_StgAP_n_args() { return offsetof(StgAP, n_args); }
+
+HsInt offset_StgAP_fun() { return offsetof(StgAP, fun); }
+
+HsInt offset_StgAP_payload() { return offsetof(StgAP, payload); }
+
+HsInt sizeof_StgAP_STACK() { return sizeof(StgAP_STACK); }
+
+HsInt offset_StgAP_STACK_size() { return offsetof(StgAP_STACK, size); }
+
+HsInt offset_StgAP_STACK_fun() { return offsetof(StgAP_STACK, fun); }
+
+HsInt offset_StgAP_STACK_payload() { return offsetof(StgAP_STACK, payload); }
 
 HsInt sizeof_StgArrBytes() { return sizeof(StgArrBytes); }
 
@@ -148,6 +165,20 @@ HsInt offset_StgIndStatic_saved_info() {
   return offsetof(StgIndStatic, saved_info);
 }
 
+HsInt offset_StgFunInfoExtraFwd_fun_type() {
+  return offsetof(StgFunInfoExtraFwd, fun_type);
+}
+
+HsInt offset_StgFunInfoExtraFwd_srt() {
+  return offsetof(StgFunInfoExtraFwd, srt);
+}
+
+HsInt offset_StgFunInfoExtraFwd_b() { return offsetof(StgFunInfoExtraFwd, b); }
+
+HsInt offset_StgFunInfoTable_i() { return offsetof(StgFunInfoTable, i); }
+
+HsInt offset_StgFunInfoTable_f() { return offsetof(StgFunInfoTable, f); }
+
 HsInt sizeof_StgFunTable() { return sizeof(StgFunTable); }
 
 HsInt offset_StgFunTable_stgEagerBlackholeInfo() {
@@ -160,13 +191,49 @@ HsInt offset_StgFunTable_stgGCEnter1() {
 
 HsInt offset_StgFunTable_stgGCFun() { return offsetof(StgFunTable, stgGCFun); }
 
-HsInt offset_StgInfoTable_entry() { return 0; }
+HsInt offset_StgInfoTable_entry() { return offsetof(StgInfoTable, entry); }
 
-HsInt offset_StgInfoTable_layout() { return 8; }
+HsInt offset_StgInfoTable_layout() { return offsetof(StgInfoTable, layout); }
 
-HsInt offset_StgInfoTable_type() { return 16; }
+HsInt offset_StgInfoTable_type() { return offsetof(StgInfoTable, type); }
 
-HsInt offset_StgInfoTable_srt() { return 20; }
+HsInt offset_StgInfoTable_srt() { return offsetof(StgInfoTable, srt); }
+
+HsInt offset_StgLargeBitmap_size() { return offsetof(StgLargeBitmap, size); }
+
+HsInt offset_StgLargeBitmap_bitmap() {
+  return offsetof(StgLargeBitmap, bitmap);
+}
+HsInt sizeof_StgMutArrPtrs() { return sizeof(StgMutArrPtrs); }
+
+HsInt offset_StgMutArrPtrs_ptrs() { return offsetof(StgMutArrPtrs, ptrs); }
+
+HsInt offset_StgMutArrPtrs_size() { return offsetof(StgMutArrPtrs, size); }
+
+HsInt offset_StgMutArrPtrs_payload() {
+  return offsetof(StgMutArrPtrs, payload);
+}
+HsInt sizeof_StgPAP() { return sizeof(StgPAP); }
+
+HsInt offset_StgPAP_arity() { return offsetof(StgPAP, arity); }
+
+HsInt offset_StgPAP_n_args() { return offsetof(StgPAP, n_args); }
+
+HsInt offset_StgPAP_fun() { return offsetof(StgPAP, fun); }
+
+HsInt offset_StgPAP_payload() { return offsetof(StgPAP, payload); }
+
+HsInt sizeof_StgRetFun() { return sizeof(StgRetFun); }
+
+HsInt offset_StgRetFun_size() { return offsetof(StgRetFun, size); }
+
+HsInt offset_StgRetFun_fun() { return offsetof(StgRetFun, fun); }
+
+HsInt offset_StgRetFun_payload() { return offsetof(StgRetFun, payload); }
+
+HsInt offset_StgRetInfoTable_i() { return offsetof(StgRetInfoTable, i); }
+
+HsInt offset_StgRetInfoTable_srt() { return offsetof(StgRetInfoTable, srt); }
 
 HsInt sizeof_StgRegTable() { return sizeof(StgRegTable); }
 
@@ -244,6 +311,20 @@ HsInt offset_StgRegTable_rHpAlloc() { return offsetof(StgRegTable, rHpAlloc); }
 
 HsInt offset_StgRegTable_rRet() { return offsetof(StgRegTable, rRet); }
 
+HsInt sizeof_StgSelector() { return sizeof(StgSelector); }
+
+HsInt offset_StgSelector_selectee() { return offsetof(StgSelector, selectee); }
+
+HsInt sizeof_StgSmallMutArrPtrs() { return sizeof(StgSmallMutArrPtrs); }
+
+HsInt offset_StgSmallMutArrPtrs_ptrs() {
+  return offsetof(StgSmallMutArrPtrs, ptrs);
+}
+
+HsInt offset_StgSmallMutArrPtrs_payload() {
+  return offsetof(StgSmallMutArrPtrs, payload);
+}
+
 HsInt sizeof_StgStack() { return sizeof(StgStack); }
 
 HsInt offset_StgStack_stack_size() { return offsetof(StgStack, stack_size); }
@@ -261,6 +342,12 @@ HsInt sizeof_StgStopFrame() { return sizeof(StgStopFrame); }
 HsInt sizeof_StgThunk() { return sizeof(StgThunk); }
 
 HsInt offset_StgThunk_payload() { return offsetof(StgThunk, payload); }
+
+HsInt offset_StgThunkInfoTable_i() { return offsetof(StgThunkInfoTable, i); }
+
+HsInt offset_StgThunkInfoTable_srt() {
+  return offsetof(StgThunkInfoTable, srt);
+}
 
 HsInt sizeof_StgTSO() { return sizeof(StgTSO); }
 
@@ -300,6 +387,18 @@ HsInt offset_StgTSO_tot_stack_size() {
   return offsetof(StgTSO, tot_stack_size);
 }
 
+HsInt sizeof_StgWeak() { return sizeof(StgWeak); }
+
+HsInt offset_StgWeak_cfinalizers() { return offsetof(StgWeak, cfinalizers); }
+
+HsInt offset_StgWeak_key() { return offsetof(StgWeak, key); }
+
+HsInt offset_StgWeak_value() { return offsetof(StgWeak, value); }
+
+HsInt offset_StgWeak_finalizer() { return offsetof(StgWeak, finalizer); }
+
+HsInt offset_StgWeak_link() { return offsetof(StgWeak, link); }
+
 HsInt next_ThreadRunGHC() { return ThreadRunGHC; }
 
 HsInt next_ThreadInterpret() { return ThreadInterpret; }
@@ -307,6 +406,24 @@ HsInt next_ThreadInterpret() { return ThreadInterpret; }
 HsInt next_ThreadKilled() { return ThreadKilled; }
 
 HsInt next_ThreadComplete() { return ThreadComplete; }
+
+HsInt bf_EVACUATED() { return BF_EVACUATED; }
+
+HsInt bf_LARGE() { return BF_LARGE; }
+
+HsInt bf_PINNED() { return BF_PINNED; }
+
+HsInt bf_MARKED() { return BF_MARKED; }
+
+HsInt bf_EXEC() { return BF_EXEC; }
+
+HsInt bf_FRAGMENTED() { return BF_FRAGMENTED; }
+
+HsInt bf_KNOWN() { return BF_KNOWN; }
+
+HsInt bf_SWEPT() { return BF_SWEPT; }
+
+HsInt bf_COMPACT() { return BF_COMPACT; }
 
 HsInt blocked_NotBlocked() { return NotBlocked; }
 
