@@ -80,10 +80,6 @@ rtsAsteriusModule opts =
         , ( "rts_evalLazyIO_wrapper"
           , generateWrapperFunction "rts_evalLazyIO" $
             rtsEvalLazyIOFunction opts)
-        , ("rts_evalStableIO", rtsEvalStableIOFunction opts)
-        , ( "rts_evalStableIO_wrapper"
-          , generateWrapperFunction "rts_evalStableIO" $
-            rtsEvalStableIOFunction opts)
         , ("rts_getSchedStatus", rtsGetSchedStatusFunction opts)
         , ( "rts_getSchedStatus_wrapper"
           , generateWrapperFunction "rts_getSchedStatus" $
@@ -480,7 +476,6 @@ rtsAsteriusFunctionExports debug =
       , "rts_eval"
       , "rts_evalIO"
       , "rts_evalLazyIO"
-      , "rts_evalStableIO"
       , "rts_getSchedStatus"
       , "rts_checkSchedStatus"
       , "getStablePtr"
@@ -612,7 +607,7 @@ generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL [] $ do
@@ -682,35 +677,6 @@ rtsEvalIOFunction opts =
   runEDSL [I32] $ rtsEvalHelper opts "createStrictIOThread"
 
 rtsEvalLazyIOFunction opts = runEDSL [I32] $ rtsEvalHelper opts "createIOThread"
-
-rtsEvalStableIOFunction BuiltinsOptions {..} =
-  runEDSL [I32] $ do
-    setReturnTypes [I32]
-    s <- param I64
-    p <- call' "deRefStablePtr" [s] I64
-    tso <-
-      call'
-        "createStrictIOThread"
-        [mainCapability, constI64 $ roundup_bytes_to_words threadStateSize, p]
-        I64
-    storeI32 tso offset_StgTSO_flags $
-      loadI32 tso offset_StgTSO_flags `orInt32` constI32 tso_BLOCKEX `orInt32`
-      constI32 tso_INTERRUPTIBLE
-    call "scheduleWaitThread" [tso]
-    ret_unwrapped <-
-      truncUFloat64ToInt64 <$>
-      callImport' "__asterius_getTSOret" [loadI32 tso offset_StgTSO_id] F64
-    stat <- call' "rts_getSchedStatus" [loadI32 tso offset_StgTSO_id] I32
-    if'
-      []
-      ((stat `eqInt32` constI32 scheduler_Success) `andInt32`
-       (ret_unwrapped `neInt64` constI64 0))
-      (call' "getStablePtr" [ret_unwrapped] I64 >>= \sptr ->
-         callImport
-           "__asterius_setTSOret"
-           [loadI32 tso offset_StgTSO_id, convertUInt64ToFloat64 sptr])
-      mempty
-    emit $ loadI32 tso offset_StgTSO_id
 
 rtsGetSchedStatusFunction _ =
   runEDSL [I32] $ do
@@ -821,6 +787,7 @@ scheduleWaitThreadFunction BuiltinsOptions {..} =
                         break' sched_block_lbl Nothing))
               ]
             , emit $ emitErrorMessage [] "Illegal thread return code")
+    callImport "__asterius_gcRootTSO" [convertUInt64ToFloat64 t]
 
 createThreadFunction _ =
   runEDSL [I64] $ do
