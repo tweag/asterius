@@ -9,7 +9,6 @@ module Asterius.MemoryTrap
   , addMemoryTrapDeep
   ) where
 
-import Asterius.EDSL
 import Asterius.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
@@ -35,55 +34,38 @@ addMemoryTrapDeep t =
       case t of
         Load {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} -> do
           new_i64_ptr <- addMemoryTrapDeep i64_ptr
-          pure $
-            castFrom valueType $
-            CallImport
-              { target' =
-                  case (valueType, bytes) of
-                    (I32, 1) -> "__asterius_load_I8"
-                    (I32, 2) -> "__asterius_load_I16"
-                    (I32, 4) -> "__asterius_load_I32"
-                    (I64, 8) -> "__asterius_load_I64"
-                    (F32, 4) -> "__asterius_load_F32"
-                    (F64, 8) -> "__asterius_load_F64"
-                    _ -> error $ "Unsupported instruction: " <> show t
-              , operands =
-                  [castTo I64 new_i64_ptr, ConstI32 $ fromIntegral offset]
-              , callImportReturnTypes =
-                  [ case valueType of
-                      I64 -> F64
-                      _ -> valueType
-                  ]
+          pure
+            Call
+              { target =
+                  AsteriusEntitySymbol
+                    { entityName =
+                        "__asterius_trap_load_" <> ty_name valueType bytes
+                    }
+              , operands = [new_i64_ptr, ConstI32 $ fromIntegral offset]
+              , callReturnTypes = [valueType]
               }
         Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} -> do
           new_i64_ptr <- addMemoryTrapDeep i64_ptr
           new_value <- addMemoryTrapDeep value
           pure
-            CallImport
-              { target' =
-                  case (valueType, bytes) of
-                    (I32, 1) -> "__asterius_store_I8"
-                    (I32, 2) -> "__asterius_store_I16"
-                    (I32, 4) -> "__asterius_store_I32"
-                    (I64, 8) -> "__asterius_store_I64"
-                    (F32, 4) -> "__asterius_store_F32"
-                    (F64, 8) -> "__asterius_store_F64"
-                    _ -> error $ "Unsupported instruction: " <> show t
+            Call
+              { target =
+                  AsteriusEntitySymbol
+                    { entityName =
+                        "__asterius_trap_store_" <> ty_name valueType bytes
+                    }
               , operands =
-                  [ castTo I64 new_i64_ptr
-                  , ConstI32 $ fromIntegral offset
-                  , castTo valueType new_value
-                  ]
-              , callImportReturnTypes = []
+                  [new_i64_ptr, ConstI32 $ fromIntegral offset, new_value]
+              , callReturnTypes = []
               }
         _ -> go
     _ -> go
   where
     go = gmapM addMemoryTrapDeep t
-
-castFrom, castTo :: ValueType -> Expression -> Expression
-castFrom I64 = truncSFloat64ToInt64
-castFrom _ = id
-
-castTo I64 = convertSInt64ToFloat64
-castTo _ = id
+    ty_name I32 1 = "i8"
+    ty_name I32 2 = "i16"
+    ty_name I32 4 = "i32"
+    ty_name I64 8 = "i64"
+    ty_name F32 4 = "f32"
+    ty_name F64 8 = "f64"
+    ty_name _ _ = error "Asterius.MemoryTrap.addMemoryTrapDeep"

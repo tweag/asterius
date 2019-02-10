@@ -2,8 +2,7 @@ import * as settings from "./rts.settings.mjs";
 import { Memory } from "./rts.memory.mjs";
 
 export class MemoryTrap {
-  constructor(memory, logger, syms) {
-    this.memory = memory;
+  constructor(logger, syms) {
     this.logger = logger;
     this.symbolLookupTable = {};
     for (const[k, v] of Object.entries(syms)) this.symbolLookupTable[v] = k;
@@ -22,117 +21,101 @@ export class MemoryTrap {
     }
   }
 
-  loadI8(p, o) {
-    this.trap(p, o);
-    const v = this.memory.i8Load(p + o);
+  loadI8(p, o, v) {
     this.logger.logInfo([
       "load", "i8", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
-    return v;
+    this.trap(p, o);
   }
 
-  loadI16(p, o) {
-    this.trap(p, o);
-    const v = this.memory.i16Load(p + o);
+  loadI16(p, o, v) {
     this.logger.logInfo([
       "load", "i16", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
-    return v;
+    this.trap(p, o);
   }
 
-  loadI32(p, o) {
-    this.trap(p, o);
-    const v = this.memory.i32Load(p + o);
+  loadI32(p, o, v) {
     this.logger.logInfo([
       "load", "i32", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
-    return v;
+    this.trap(p, o);
   }
 
-  loadI64(p, o) {
-    this.trap(p, o);
-    const v = this.memory.i64Load(p + o);
+  loadI64(p, o, v_lo, v_hi) {
+    const v = (BigInt(v_hi) << BigInt(32)) | BigInt(v_lo);
     this.logger.logInfo([
       "load", "i64", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
-    return Number(v);
+    this.trap(p, o);
   }
 
-  loadF32(p, o) {
-    this.trap(p, o);
-    const v = this.memory.f32Load(p + o);
+  loadF32(p, o, v) {
     this.logger.logInfo([
       "load", "f32", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
-    return v;
+    this.trap(p, o);
   }
 
-  loadF64(p, o) {
-    this.trap(p, o);
-    const v = this.memory.f64Load(p + o);
+  loadF64(p, o, v) {
     this.logger.logInfo([
       "load", "f64", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
-    return v;
+    this.trap(p, o);
   }
 
   storeI8(p, o, v) {
-    this.trap(p, o);
-    this.memory.i8Store(p + o, v);
     this.logger.logInfo([
       "store", "i8", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
+    this.trap(p, o);
   }
 
   storeI16(p, o, v) {
-    this.trap(p, o);
-    this.memory.i16Store(p + o, v);
     this.logger.logInfo([
       "store", "i16", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
+    this.trap(p, o);
   }
 
   storeI32(p, o, v) {
-    this.trap(p, o);
-    this.memory.i32Store(p + o, v);
     this.logger.logInfo([
       "store", "i32", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
+    this.trap(p, o);
   }
 
-  storeI64(p, o, v) {
-    this.trap(p, o);
-    this.memory.i64Store(p + o, v);
+  storeI64(p, o, v_lo, v_hi) {
+    const v = (BigInt(v_hi) << BigInt(32)) | BigInt(v_lo);
     this.logger.logInfo([
       "store", "i64", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
+    this.trap(p, o);
   }
 
   storeF32(p, o, v) {
-    this.trap(p, o);
-    this.memory.f32Store(p + o, v);
     this.logger.logInfo([
       "store", "f32", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
+    this.trap(p, o);
   }
 
   storeF64(p, o, v) {
-    this.trap(p, o);
-    this.memory.f64Store(p + o, v);
     this.logger.logInfo([
       "store", "f64", p, this.symbolLookupTable[p], o, v,
       this.symbolLookupTable[v]
     ]);
+    this.trap(p, o);
   }
 }
