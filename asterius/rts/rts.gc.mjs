@@ -5,12 +5,13 @@ import * as settings from "./rts.settings.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class GC {
-  constructor(memory, mblockalloc, heapalloc, stableptr_manager, info_tables,
+  constructor(memory, mblockalloc, heapalloc, stableptr_manager, tso_manager, info_tables,
               pinned_closures) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
+    this.tsoManager = tso_manager;
     this.infoTables = info_tables;
     this.pinnedClosures = pinned_closures;
     this.closureIndirects = new Map();
@@ -479,7 +480,8 @@ export class GC {
   }
 
   gcRootTSO(tso) {
-    console.log(`[EVENT] gcRootTSO 0x${tso.toString(16)}`);
+    const tid = this.memory.i32Load(tso + settings.offset_StgTSO_id);
+    console.log(`[EVENT] gcRootTSO 0x${tso.toString(16)} ${tid}`);
     this.heapAlloc.initUnpinned();
     for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())

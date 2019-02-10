@@ -182,6 +182,7 @@ genRTSSettings Task {..} =
       , ("offset_StgThunk_payload", offset_StgThunk_payload)
       , ("offset_StgThunkInfoTable_i", offset_StgThunkInfoTable_i)
       , ("offset_StgThunkInfoTable_srt", offset_StgThunkInfoTable_srt)
+      , ("offset_StgTSO_id", offset_StgTSO_id)
       , ("offset_StgTSO_stackobj", offset_StgTSO_stackobj)
       , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
       , ("offset_StgStack_sp", offset_StgStack_sp)
