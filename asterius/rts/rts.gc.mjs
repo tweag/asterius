@@ -6,7 +6,7 @@ import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class GC {
   constructor(memory, mblockalloc, heapalloc, stableptr_manager, tso_manager, info_tables,
-              pinned_closures) {
+              pinned_closures, symbol_table) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
@@ -14,9 +14,11 @@ export class GC {
     this.tsoManager = tso_manager;
     this.infoTables = info_tables;
     this.pinnedClosures = pinned_closures;
+    this.symbolTable = symbol_table;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
     this.workList = [];
+    this.liveJSVals = new Set();
     Object.freeze(this);
   }
 
@@ -342,6 +344,15 @@ export class GC {
     const info = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(info + settings.offset_StgInfoTable_type);
     if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+    switch (info) {
+      case this.symbolTable.base_GHCziStable_StablePtr_con_info:
+      case this.symbolTable.integerzmwiredzmin_GHCziIntegerziType_Integer_con_info: {
+        const raw_stable_ptr = Number(this.memory.i64Load(c + 8)), stable_ptr_tag = raw_stable_ptr & 1;
+        if (stable_ptr_tag)
+          this.liveJSVals.add(raw_stable_ptr);
+        break;
+      }
+    }
     switch (type) {
       case ClosureTypes.CONSTR:
       case ClosureTypes.CONSTR_1_0:
@@ -491,7 +502,9 @@ export class GC {
     this.evacuateClosure(tso);
     this.scavengeWorkList();
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+    this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
     this.liveMBlocks.clear();
+    this.liveJSVals.clear();
   }
 }

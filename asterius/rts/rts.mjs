@@ -32,7 +32,7 @@ export function newAsteriusInstance(req) {
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_vault = req.vault ? req.vault : new Map(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
-    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures);
+    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable);
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
   }

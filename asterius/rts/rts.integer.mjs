@@ -24,13 +24,12 @@ export class IntegerManager {
   abs(bi) { return bi < BigInt(0) ? -bi : bi; }
   encode(bi) {
     return Number(this.abs(bi) >> BigInt(31)
-                      ? (BigInt(this.jsvalManager.newJSVal(bi)) << BigInt(1)) |
-                            BigInt(1)
+                      ? BigInt(this.jsvalManager.newJSVal(bi))
                       : bi << BigInt(1));
   }
   decode(i) {
     const x = BigInt(i);
-    return x & BigInt(1) ? this.jsvalManager.getJSVal(Number(x >> BigInt(1)))
+    return x & BigInt(1) ? this.jsvalManager.getJSVal(Number(x))
                          : x >> BigInt(1);
   }
   smallInteger(x) { return this.encode(BigInt(x)); }

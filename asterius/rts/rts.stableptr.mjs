@@ -36,4 +36,14 @@ export class StablePtrManager {
     this.spt.delete(sp);
     return v;
   }
+
+  hasStablePtr(sp) {
+    return this.spt.has(sp);
+  }
+
+  preserveJSVals(sps) {
+    for (const sp of Array.from(this.spt.keys()))
+      if ((sp & 1) && (!sps.has(sp)))
+        this.freeJSVal(sp);
+  }
 }

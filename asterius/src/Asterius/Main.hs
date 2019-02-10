@@ -81,6 +81,7 @@ rtsUsedSymbols =
   , "ghczmprim_GHCziTypes_Wzh_con_info"
   , "ghczmprim_GHCziTypes_ZC_con_info"
   , "ghczmprim_GHCziTypes_ZMZN_closure"
+  , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
   , "Main_main_closure"
   , "stg_ARR_WORDS_info"
   , "stg_DEAD_WEAK_info"
