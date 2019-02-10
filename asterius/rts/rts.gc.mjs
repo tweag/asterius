@@ -480,7 +480,7 @@ export class GC {
 
   gcRootTSO(tso) {
     console.log(`[EVENT] gcRootTSO 0x${tso.toString(16)}`);
-    this.heapAlloc.init();
+    this.heapAlloc.initUnpinned();
     for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));

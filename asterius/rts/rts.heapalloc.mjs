@@ -13,6 +13,9 @@ export class HeapAlloc {
     this.memory.i16Store(this.currentPools[1] + settings.offset_bdescr_flags,
                          settings.BF_PINNED);
   }
+  initUnpinned() {
+    this.currentPools[0] = this.mblockAlloc.allocMegaGroup(1);
+  }
   hpAlloc(b) {
     const mblocks = b <= settings.sizeof_first_mblock
                         ? 1
