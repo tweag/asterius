@@ -492,7 +492,6 @@ export class GC {
 
   gcRootTSO(tso) {
     const tid = this.memory.i32Load(tso + settings.offset_StgTSO_id);
-    console.log(`[EVENT] gcRootTSO 0x${tso.toString(16)} ${tid}`);
     this.heapAlloc.initUnpinned();
     if (this.tsoManager.getTSOret(tid))
       this.tsoManager.setTSOret(tid, this.evacuateClosure(this.tsoManager.getTSOret(tid)));

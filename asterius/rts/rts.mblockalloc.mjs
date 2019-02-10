@@ -66,7 +66,6 @@ export class MBlockAlloc {
   }
 
   freeSegment(l_end, r) {
-    console.log(`[EVENT] freeSegment 0x${l_end.toString(16)} 0x${r.toString(16)}`);
     if (l_end < r) {
       this.memory.memset(l_end, 0, r - l_end);
       const bd = l_end + settings.offset_first_bdescr,
@@ -81,7 +80,6 @@ export class MBlockAlloc {
   }
 
   preserveMegaGroups(bds) {
-    console.log(`[EVENT] preserveMegaGroups ${Array.from(bds).map(bd => bd.toString(16))}`);
     this.freeList = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
     sorted_bds.push(Memory.tagData(settings.mblock_size * this.capacity) + settings.offset_first_bdescr);
