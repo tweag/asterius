@@ -2,6 +2,25 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-02-11
+
+Covers last week.
+
+Completed work:
+
+* Fixed known regressions of GC & released the initial version.
+
+Additional known drawbacks of the initial version (see report of previous week):
+
+* There is currently no runtime logs/stats about garbage collection.
+* There is currently no tunable parameters; at least we should allow specifying when "real" gc happens and when we just allocate a new nursery instead of traversing the heap (e.g. "real" gc happens when the live semispace size grows beyond a threshold)
+* `StgTSO`/`StgStack` objects are unnecessarily pinned to simplify scheduler implementation a bit, but they really should be unpinned.
+
+Planned work for this week:
+
+* Start working on Cabal support.
+* Some easy improvements in gc, e.g. adding stats/logs, implementing parameters.
+
 ## 2019-02-04
 
 Covers last week.
