@@ -167,14 +167,6 @@ rtsAsteriusModule opts =
         , ("__asterius_Load_SpLim", getF64GlobalRegFunction opts SpLim)
         , ("__asterius_Load_Hp", getF64GlobalRegFunction opts Hp)
         , ("__asterius_Load_HpLim", getF64GlobalRegFunction opts HpLim)
-        , ("__asterius_raw_load_i16", rawLoadI16Function opts)
-        , ("__asterius_raw_store_i16", rawStoreI16Function opts)
-        , ("__asterius_raw_load_i32", rawLoadI32Function opts)
-        , ("__asterius_raw_store_i32", rawStoreI32Function opts)
-        , ("__asterius_raw_load_f32", rawLoadF32Function opts)
-        , ("__asterius_raw_store_f32", rawStoreF32Function opts)
-        , ("__asterius_raw_load_f64", rawLoadF64Function opts)
-        , ("__asterius_raw_store_f64", rawStoreF64Function opts)
         , ("__asterius_trap_load_i8", trapLoadI8Function opts)
         , ("__asterius_trap_store_i8", trapStoreI8Function opts)
         , ("__asterius_trap_load_i16", trapLoadI16Function opts)
@@ -509,11 +501,6 @@ rtsAsteriusFunctionExports debug =
               ]
          else []) <>
       ["hs_init", "main"]
-  ] <>
-  [ FunctionExport {internalName = f, externalName = f}
-  | op <- ["load", "store"]
-  , t <- ["i16", "i32", "f32", "f64"]
-  , let f = "__asterius_raw_" <> op <> "_" <> t
   ]
 
 emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
@@ -625,7 +612,7 @@ generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, rawLoadI16Function, rawStoreI16Function, rawLoadI32Function, rawStoreI32Function, rawLoadF32Function, rawStoreF32Function, rawLoadF64Function, rawStoreF64Function, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsEvalStableIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
      BuiltinsOptions -> AsteriusFunction
 mainFunction BuiltinsOptions {..} =
   runEDSL [] $ do
@@ -1174,190 +1161,6 @@ getF64GlobalRegFunction _ gr =
   runEDSL [F64] $ do
     setReturnTypes [F64]
     emit $ convertSInt64ToFloat64 $ getLVal $ global gr
-
-rawLoadI16Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
-    , body =
-        Unary
-          { unaryOp = ConvertUInt32ToFloat64
-          , operand0 =
-              Load
-                { signed = False
-                , bytes = 2
-                , offset = 0
-                , valueType = I32
-                , ptr =
-                    Unary
-                      { unaryOp = WrapInt64
-                      , operand0 =
-                          Unary
-                            { unaryOp = TruncUFloat64ToInt64
-                            , operand0 = GetLocal {index = 0, valueType = F64}
-                            }
-                      }
-                }
-          }
-    }
-
-rawStoreI16Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
-    , body =
-        Store
-          { bytes = 2
-          , offset = 0
-          , ptr =
-              Unary
-                { unaryOp = WrapInt64
-                , operand0 =
-                    Unary
-                      { unaryOp = TruncUFloat64ToInt64
-                      , operand0 = GetLocal {index = 0, valueType = F64}
-                      }
-                }
-          , value =
-              Unary
-                { unaryOp = TruncUFloat64ToInt32
-                , operand0 = GetLocal {index = 1, valueType = F64}
-                }
-          , valueType = I32
-          }
-    }
-
-rawLoadI32Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
-    , body =
-        Unary
-          { unaryOp = ConvertUInt32ToFloat64
-          , operand0 =
-              Load
-                { signed = False
-                , bytes = 4
-                , offset = 0
-                , valueType = I32
-                , ptr =
-                    Unary
-                      { unaryOp = WrapInt64
-                      , operand0 =
-                          Unary
-                            { unaryOp = TruncUFloat64ToInt64
-                            , operand0 = GetLocal {index = 0, valueType = F64}
-                            }
-                      }
-                }
-          }
-    }
-
-rawStoreI32Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
-    , body =
-        Store
-          { bytes = 4
-          , offset = 0
-          , ptr =
-              Unary
-                { unaryOp = WrapInt64
-                , operand0 =
-                    Unary
-                      { unaryOp = TruncUFloat64ToInt64
-                      , operand0 = GetLocal {index = 0, valueType = F64}
-                      }
-                }
-          , value =
-              Unary
-                { unaryOp = TruncUFloat64ToInt32
-                , operand0 = GetLocal {index = 1, valueType = F64}
-                }
-          , valueType = I32
-          }
-    }
-
-rawLoadF32Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [F64], returnTypes = [F32]}
-    , body =
-        Load
-          { signed = True
-          , bytes = 4
-          , offset = 0
-          , valueType = F32
-          , ptr =
-              Unary
-                { unaryOp = WrapInt64
-                , operand0 =
-                    Unary
-                      { unaryOp = TruncUFloat64ToInt64
-                      , operand0 = GetLocal {index = 0, valueType = F64}
-                      }
-                }
-          }
-    }
-
-rawStoreF32Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [F64, F32], returnTypes = []}
-    , body =
-        Store
-          { bytes = 4
-          , offset = 0
-          , ptr =
-              Unary
-                { unaryOp = WrapInt64
-                , operand0 =
-                    Unary
-                      { unaryOp = TruncUFloat64ToInt64
-                      , operand0 = GetLocal {index = 0, valueType = F64}
-                      }
-                }
-          , value = GetLocal {index = 1, valueType = F32}
-          , valueType = F32
-          }
-    }
-
-rawLoadF64Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
-    , body =
-        Load
-          { signed = True
-          , bytes = 8
-          , offset = 0
-          , valueType = F64
-          , ptr =
-              Unary
-                { unaryOp = WrapInt64
-                , operand0 =
-                    Unary
-                      { unaryOp = TruncUFloat64ToInt64
-                      , operand0 = GetLocal {index = 0, valueType = F64}
-                      }
-                }
-          }
-    }
-
-rawStoreF64Function _ =
-  AsteriusFunction
-    { functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
-    , body =
-        Store
-          { bytes = 8
-          , offset = 0
-          , ptr =
-              Unary
-                { unaryOp = WrapInt64
-                , operand0 =
-                    Unary
-                      { unaryOp = TruncUFloat64ToInt64
-                      , operand0 = GetLocal {index = 0, valueType = F64}
-                      }
-                }
-          , value = GetLocal {index = 1, valueType = F64}
-          , valueType = F64
-          }
-    }
 
 trapLoadI8Function _ =
   AsteriusFunction

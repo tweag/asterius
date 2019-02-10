@@ -3,19 +3,19 @@ import * as settings from "./rts.settings.mjs";
 export class Memory {
   constructor() {
     this.memory = undefined;
-    this.instance = undefined;
     this.staticMBlocks = undefined;
     this.i8View = undefined;
+    this.dataView = undefined;
     Object.seal(this);
   }
-  init(memory, instance, static_mblocks) {
+  init(memory, static_mblocks) {
     this.memory = memory;
-    this.instance = instance;
     this.staticMBlocks = static_mblocks;
     this.initView();
   }
   initView() {
     this.i8View = new Uint8Array(this.memory.buffer);
+    this.dataView = new DataView(this.memory.buffer);
   }
   static unTag(p) { return Number(BigInt(p) & BigInt(0xffffffff)); }
   static getTag(p) { return Number(BigInt(p) >> BigInt(32)); }
@@ -36,16 +36,16 @@ export class Memory {
   }
   i8Load(p) { return this.i8View[Memory.unTag(p)]; }
   i8Store(p, v) { this.i8View[Memory.unTag(p)] = Number(v); }
-  i16Load(p) { return this.instance.exports.__asterius_raw_load_i16(Number(p)); }
-  i16Store(p, v) { this.instance.exports.__asterius_raw_store_i16(Number(p), Number(v)); }
-  i32Load(p) { return this.instance.exports.__asterius_raw_load_i32(Number(p)); }
-  i32Store(p, v) { this.instance.exports.__asterius_raw_store_i32(Number(p), Number(v)); }
-  i64Load(p) { return (BigInt(this.instance.exports.__asterius_raw_load_i32(Number(p) + 4)) << BigInt(32)) | BigInt(this.instance.exports.__asterius_raw_load_i32(Number(p))); }
-  i64Store(p, v) { this.instance.exports.__asterius_raw_store_i32(Number(p), Number(BigInt(v) & BigInt(0xFFFFFFFF))); this.instance.exports.__asterius_raw_store_i32(Number(p)+4, Number(BigInt(v) >> BigInt(32))); }
-  f32Load(p) { return this.instance.exports.__asterius_raw_load_f32(Number(p)); }
-  f32Store(p, v) { this.instance.exports.__asterius_raw_store_f32(Number(p), Number(v)); }
-  f64Load(p) { return this.instance.exports.__asterius_raw_load_f64(Number(p)); }
-  f64Store(p, v) { this.instance.exports.__asterius_raw_store_f64(Number(p), Number(v)); }
+  i16Load(p) { return this.dataView.getUint16(Memory.unTag(p), true); }
+  i16Store(p, v) { this.dataView.setUint16(Memory.unTag(p), Number(v), true); }
+  i32Load(p) { return this.dataView.getUint32(Memory.unTag(p), true); }
+  i32Store(p, v) { this.dataView.setUint32(Memory.unTag(p), Number(v), true); }
+  i64Load(p) { return this.dataView.getBigUint64(Memory.unTag(p), true); }
+  i64Store(p, v) { this.dataView.setBigUint64(Memory.unTag(p), BigInt(v), true); }
+  f32Load(p) { return this.dataView.getFloat32(Memory.unTag(p), true); }
+  f32Store(p, v) { this.dataView.setFloat32(Memory.unTag(p), Number(v), true); }
+  f64Load(p) { return this.dataView.getFloat64(Memory.unTag(p), true); }
+  f64Store(p, v) { this.dataView.setFloat64(Memory.unTag(p), Number(v), true); }
   heapAlloced(p) { return Memory.unTag(p) >= (this.staticMBlocks << Math.log2(settings.mblock_size)); }
   strlen(_str) { return this.i8View.subarray(Memory.unTag(_str)).indexOf(0); }
   memchr(_ptr, val, num) {
