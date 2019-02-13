@@ -26,7 +26,7 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified DynFlags as GHC
 import qualified GHC
-import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath, sandboxGhcLibDir)
+import Language.Haskell.GHC.Toolkit.BuildInfo (getBootLibsPath, getSandboxGhcLibDir, getDataDir)
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show
 import Language.Haskell.GHC.Toolkit.Run (defaultConfig, ghcFlags, runCmm)
@@ -39,15 +39,18 @@ import System.FilePath
 import System.Process
 
 data BootArgs = BootArgs
-  { bootDir :: FilePath
+  { dataDir :: FilePath
+  , bootDir :: FilePath
   , configureOptions, buildOptions, installOptions :: String
   , builtinsOptions :: BuiltinsOptions
   }
 
-defaultBootArgs :: BootArgs
-defaultBootArgs =
-  BootArgs
-    { bootDir = dataDir </> ".boot"
+defaultBootArgs :: IO BootArgs
+defaultBootArgs = do
+  dataDir <- getDataDir
+  return $ BootArgs
+    { dataDir = dataDir
+    , bootDir = dataDir </> ".boot"
     , configureOptions =
         "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2"
     , buildOptions = ""
@@ -60,6 +63,9 @@ bootTmpDir BootArgs {..} = bootDir </> "dist"
 
 bootCreateProcess :: BootArgs -> IO CreateProcess
 bootCreateProcess args@BootArgs {..} = do
+  bootLibsPath <- getBootLibsPath
+  sandboxGhcLibDir <- getSandboxGhcLibDir
+  putStrLn $ "Trying to run 'sh -e boot.sh' in " ++ dataDir
   e <- getEnvironment
   pure
     (proc "sh" ["-e", "boot.sh"])
@@ -86,26 +92,29 @@ bootRTSCmm BootArgs {..} =
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
   GHC.runGhc (Just obj_topdir) $
   lowerCodensity $ do
-    dflags <- lift GHC.getSessionDynFlags
+    dflags_ <- lift GHC.getSessionDynFlags
+    let dflags = dflags_ { GHC.verbosity = 3 }
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
     store_ref <- liftIO $ newIORef mempty
+    rts_path <- liftIO $ get_rts_path
     rts_cmm_mods <-
       map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
       liftIO (listDirectory rts_path)
+    defConfig <- (liftIO $ defaultConfig)
+    let config = defConfig { ghcFlags =
+        [ "-this-unit-id"
+        , "rts"
+        , "-dcmm-lint"
+        , "-O2"
+        , "-I" <> obj_topdir </> "include"
+        ]
+      }
+
     cmms <-
       M.toList <$>
       liftCodensity
-        (runCmm
-           defaultConfig
-             { ghcFlags =
-                 [ "-this-unit-id"
-                 , "rts"
-                 , "-dcmm-lint"
-                 , "-O2"
-                 , "-I" <> obj_topdir </> "include"
-                 ]
-             }
+        (runCmm config
            [rts_path </> m <.> "cmm" | m <- rts_cmm_mods])
     liftIO $ do
       for_ cmms $ \(fn, ir@CmmIR {..}) ->
@@ -127,7 +136,7 @@ bootRTSCmm BootArgs {..} =
       store <- readIORef store_ref
       encodeStore store_path store
   where
-    rts_path = bootLibsPath </> "rts"
+    get_rts_path = (</> "rts") <$> getBootLibsPath
     obj_topdir = bootDir </> "asterius_lib"
     store_path = obj_topdir </> "asterius_store"
 
@@ -144,7 +153,9 @@ boot args = do
   cp_boot <- bootCreateProcess args
   runBootCreateProcess
     cp_boot {cmdspec = RawCommand "sh" ["-e", "boot-init.sh"]}
+  putStrLn "bootRTSCmm"
   bootRTSCmm args
+  putStrLn "/bootRTSCmm"
   runBootCreateProcess cp_boot
   is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"
   unless is_debug $ removePathForcibly $ bootTmpDir args
