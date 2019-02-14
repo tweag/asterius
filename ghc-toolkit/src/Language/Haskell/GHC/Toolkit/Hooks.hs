@@ -121,8 +121,7 @@ hooksFromCompiler Compiler {..} = do
                              fetch stg_map_ref <*>
                              (fetch cmm_map_ref >>= Stream.collect) <*>
                              (fetch cmm_raw_map_ref >>= Stream.collect)
-                           withHaskellIR mod_summary ir
-                           liftIO $ writeFile obj_output_fn "")
+                           withHaskellIR mod_summary ir obj_output_fn)
                 pure r
               GHC.RealPhase GHC.Cmm -> do
                 void $ GHC.runPhase phase input_fn dflags
@@ -130,9 +129,8 @@ hooksFromCompiler Compiler {..} = do
                   liftIO $
                   CmmIR <$> (takeMVar cmm_ref >>= Stream.collect) <*>
                   (takeMVar cmm_raw_ref >>= Stream.collect)
-                withCmmIR ir
                 obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
-                liftIO $ writeFile obj_output_fn ""
+                withCmmIR ir obj_output_fn
                 pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
               _ -> GHC.runPhase phase input_fn dflags
       }

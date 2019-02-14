@@ -5,6 +5,7 @@ module Asterius.FrontendPlugin
   ) where
 
 import Asterius.CodeGen
+import Asterius.Internals
 import Asterius.JSFFI
 import Asterius.Store
 import Asterius.TypesConv
@@ -41,7 +42,7 @@ frontendPlugin =
         addFFIProcessor
           mempty
             { withHaskellIR =
-                \GHC.ModSummary {..} ir@HaskellIR {..} -> do
+                \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
                   let mod_sym = marshalToModuleSymbol ms_mod
                   dflags <- GHC.getDynFlags
                   setDynFlagsRef dflags
@@ -52,6 +53,7 @@ frontendPlugin =
                         get_ffi_mod <- readIORef get_ffi_mod_ref
                         ffi_mod <- get_ffi_mod mod_sym
                         let m = ffi_mod <> m'
+                        encodeFile obj_path m
                         encodeAsteriusModule obj_topdir mod_sym m
                         atomicModifyIORef' store_ref $ \store ->
                           (registerModule obj_topdir mod_sym m store, ())
