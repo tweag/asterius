@@ -395,13 +395,13 @@ ahcLinkMain task@Task {..} = do
       !orig_store = builtinsStore builtins_opts <> boot_store
   putStrLn $ "[INFO] Compiling " <> inputHS <> " to Cmm"
   (c, get_ffi_mod) <- addFFIProcessor mempty
+  final_store_ref <- liftIO $ newIORef orig_store
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
     GHC.runGhc (Just (dataDir </> ".boot" </> "asterius_lib")) $
     lowerCodensity $ do
       dflags <- lift GHC.getSessionDynFlags
       setDynFlagsRef dflags
-      mod_ir_map <-
-        liftCodensity $
+      lift $
         runHaskell
           defaultConfig
             { ghcFlags =
@@ -435,11 +435,7 @@ ahcLinkMain task@Task {..} = do
             , compiler = c
             }
           [inputHS]
-      liftIO $ putStrLn "[INFO] Marshalling from Cmm to WebAssembly"
-      final_store_ref <- liftIO $ newIORef orig_store
-      liftIO $ do
-        M.foldlWithKey'
-          (\act ms_mod ir ->
+          (\ms_mod obj_path ir ->
              case runCodeGen (marshalHaskellIR ir) dflags ms_mod of
                Left err -> throwIO err
                Right m' -> do
@@ -456,9 +452,9 @@ ahcLinkMain task@Task {..} = do
                    let p = takeDirectory inputHS </> mod_str <.> "txt"
                    putStrLn $ "[INFO] Writing IR of " <> mod_str <> " to " <> p
                    writeFile p $ show m
-                 act)
-          (pure ())
-          mod_ir_map
+                 encodeFile obj_path m)
+      liftIO $ putStrLn "[INFO] Marshalling from Cmm to WebAssembly"
+      liftIO $ do
         final_store <- readIORef final_store_ref
         putStrLn
           "[INFO] Attempting to link into a standalone WebAssembly module"

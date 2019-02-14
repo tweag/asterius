@@ -37,28 +37,26 @@ defaultConfig =
     {ghcFlags = ["-Wall", "-O"], ghcLibDir = BI.ghcLibDir, compiler = mempty}
 
 runHaskell ::
-     Config -> [String] -> (M.Map Module HaskellIR -> GHC.Ghc r) -> GHC.Ghc r
-runHaskell Config {..} targets cont = do
+     Config
+  -> [String]
+  -> (Module -> FilePath -> HaskellIR -> IO ())
+  -> GHC.Ghc ()
+runHaskell Config {..} targets write_obj_cont = do
   dflags <- getSessionDynFlags
   (dflags', _, _) <-
     parseDynamicFlags
       (dflags `gopt_set` Opt_ForceRecomp `gopt_unset` Opt_KeepHiFiles `gopt_unset`
        Opt_KeepOFiles) $
     map noLoc ghcFlags
-  (h, read_mod_map) <-
-    liftIO $ do
-      mod_map_ref <- newIORef M.empty
-      h <-
-        hooksFromCompiler
-          (compiler <>
-           mempty
-             { withHaskellIR =
-                 \ModSummary {..} ir _ ->
-                   liftIO $
-                   atomicModifyIORef' mod_map_ref $ \mod_map ->
-                     (M.insert ms_mod ir mod_map, ())
-             })
-      pure (h, liftIO $ readIORef mod_map_ref)
+  h <-
+    liftIO $
+    hooksFromCompiler
+      (compiler <>
+       mempty
+         { withHaskellIR =
+             \ModSummary {..} ir obj_path ->
+               liftIO $ write_obj_cont ms_mod obj_path ir
+         })
   void $
     setSessionDynFlags
       dflags'
@@ -71,7 +69,7 @@ runHaskell Config {..} targets cont = do
   traverse (`guessTarget` Nothing) targets >>= setTargets
   ok_flag <- load LoadAllTargets
   case ok_flag of
-    Succeeded -> liftIO read_mod_map >>= cont
+    Succeeded -> pure ()
     Failed -> liftIO $ throwGhcExceptionIO $ Panic "GHC.load returned Failed."
 
 runCmm ::
