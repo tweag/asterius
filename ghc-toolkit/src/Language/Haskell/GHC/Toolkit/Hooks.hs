@@ -9,6 +9,7 @@ module Language.Haskell.GHC.Toolkit.Hooks
 import qualified CmmInfo as GHC
 import Control.Concurrent
 import Control.Monad.IO.Class
+import Data.Functor
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified DriverPhases as GHC
@@ -75,17 +76,18 @@ hooksFromCompiler Compiler {..} = do
           Just $ \phase input_fn dflags ->
             case phase of
               GHC.HscOut src_flavour _ (GHC.HscRecomp cgguts mod_summary@GHC.ModSummary {..}) -> do
-                r <-
+                r@(_, obj_output_fn) <-
                   do output_fn <-
                        GHC.phaseOutputFilename $
                        GHC.hscPostBackendPhase dflags src_flavour $
                        GHC.hscTarget dflags
                      GHC.PipeState {GHC.hsc_env = hsc_env'} <- GHC.getPipeState
-                     (outputFilename, _, _) <-
+                     void $
                        liftIO $
                        GHC.hscGenHardCode hsc_env' cgguts mod_summary output_fn
                      GHC.setForeignOs []
-                     pure (GHC.RealPhase GHC.StopLn, outputFilename)
+                     obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
+                     pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
                 f <-
                   liftIO $
                   modifyMVar mods_set_ref $ \s ->
@@ -119,15 +121,18 @@ hooksFromCompiler Compiler {..} = do
                              fetch stg_map_ref <*>
                              (fetch cmm_map_ref >>= Stream.collect) <*>
                              (fetch cmm_raw_map_ref >>= Stream.collect)
-                           withHaskellIR mod_summary ir)
+                           withHaskellIR mod_summary ir
+                           liftIO $ writeFile obj_output_fn "")
                 pure r
               GHC.RealPhase GHC.Cmm -> do
-                r <- GHC.runPhase phase input_fn dflags
+                void $ GHC.runPhase phase input_fn dflags
                 ir <-
                   liftIO $
                   CmmIR <$> (takeMVar cmm_ref >>= Stream.collect) <*>
                   (takeMVar cmm_raw_ref >>= Stream.collect)
                 withCmmIR ir
-                pure r
+                obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
+                liftIO $ writeFile obj_output_fn ""
+                pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
               _ -> GHC.runPhase phase input_fn dflags
       }
