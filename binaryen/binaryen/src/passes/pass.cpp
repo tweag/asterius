@@ -122,7 +122,7 @@ void PassRegistry::registerPasses() {
   registerPass("reorder-functions", "sorts functions by access frequency", createReorderFunctionsPass);
   registerPass("reorder-locals", "sorts locals by access frequency", createReorderLocalsPass);
   registerPass("rereloop", "re-optimize control flow using the relooper algorithm", createReReloopPass);
-  registerPass("rse", "remove redundant set_locals", createRedundantSetEliminationPass);
+  registerPass("rse", "remove redundant local.sets", createRedundantSetEliminationPass);
   registerPass("safe-heap", "instrument loads and stores to check for invalid behavior", createSafeHeapPass);
   registerPass("simplify-locals", "miscellaneous locals-related optimizations", createSimplifyLocalsPass);
   registerPass("simplify-locals-nonesting", "miscellaneous locals-related optimizations (no nesting at all; preserves flatness)", createSimplifyLocalsNoNestingPass);
@@ -133,10 +133,12 @@ void PassRegistry::registerPasses() {
   registerPass("souperify-single-use", "emit Souper IR in text form (single-use nodes only)", createSouperifySingleUsePass);
   registerPass("spill-pointers", "spill pointers to the C stack (useful for Boehm-style GC)", createSpillPointersPass);
   registerPass("ssa", "ssa-ify variables so that they have a single assignment", createSSAifyPass);
-  registerPass("strip", "strip debug info (including the names section)", createStripPass);
+  registerPass("strip", "deprecated; same as strip-debug", createStripDebugPass);
+  registerPass("strip-debug", "strip debug info (including the names section)", createStripDebugPass);
+  registerPass("strip-producers", "strip the wasm producers section", createStripProducersPass);
   registerPass("trap-mode-clamp", "replace trapping operations with clamping semantics", createTrapModeClamp);
   registerPass("trap-mode-js", "replace trapping operations with js semantics", createTrapModeJS);
-  registerPass("untee", "removes tee_locals, replacing them with sets and gets", createUnteePass);
+  registerPass("untee", "removes local.tees, replacing them with sets and gets", createUnteePass);
   registerPass("vacuum", "removes obviously unneeded code", createVacuumPass);
 //  registerPass("lower-i64", "lowers i64 into pairs of i32s", createLowerInt64Pass);
 }
@@ -287,28 +289,31 @@ void PassRunner::run() {
       std::chrono::duration<double> diff = after - before;
       std::cerr << diff.count() << " seconds." << std::endl;
       totalTime += diff;
-      // validate, ignoring the time
-      std::cerr << "[PassRunner]   (validating)\n";
-      if (!WasmValidator().validate(*wasm, options.features, validationFlags)) {
-        WasmPrinter::printModule(wasm);
-        if (passDebug >= 2) {
-          std::cerr << "Last pass (" << pass->name << ") broke validation. Here is the module before: \n" << moduleBefore.str() << "\n";
-        } else {
-          std::cerr << "Last pass (" << pass->name << ") broke validation. Run with BINARYEN_PASS_DEBUG=2 in the env to see the earlier state, or 3 to dump byn-* files for each pass\n";
+      if (options.validate) {
+        // validate, ignoring the time
+        std::cerr << "[PassRunner]   (validating)\n";
+        if (!WasmValidator().validate(*wasm, options.features, validationFlags)) {
+          WasmPrinter::printModule(wasm);
+          if (passDebug >= 2) {
+            std::cerr << "Last pass (" << pass->name << ") broke validation. Here is the module before: \n" << moduleBefore.str() << "\n";
+          } else {
+            std::cerr << "Last pass (" << pass->name << ") broke validation. Run with BINARYEN_PASS_DEBUG=2 in the env to see the earlier state, or 3 to dump byn-* files for each pass\n";
+          }
+          abort();
         }
-        abort();
       }
       if (passDebug >= 3) {
         dumpWast(pass->name, wasm);
       }
     }
     std::cerr << "[PassRunner] passes took " << totalTime.count() << " seconds." << std::endl;
-    // validate
-    std::cerr << "[PassRunner] (final validation)\n";
-    if (!WasmValidator().validate(*wasm, options.features, validationFlags)) {
-      WasmPrinter::printModule(wasm);
-      std::cerr << "final module does not validate\n";
-      abort();
+    if (options.validate) {
+      std::cerr << "[PassRunner] (final validation)\n";
+      if (!WasmValidator().validate(*wasm, options.features, validationFlags)) {
+        WasmPrinter::printModule(wasm);
+        std::cerr << "final module does not validate\n";
+        abort();
+      }
     }
   } else {
     // non-debug normal mode, run them in an optimal manner - for locality it is better

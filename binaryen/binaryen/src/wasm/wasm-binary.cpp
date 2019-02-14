@@ -709,17 +709,22 @@ void WasmBinaryBuilder::read() {
 void WasmBinaryBuilder::readUserSection(size_t payloadLen) {
   auto oldPos = pos;
   Name sectionName = getInlineString();
+  size_t read = pos - oldPos;
+  if (read > payloadLen) {
+    throwError("bad user section size");
+  }
+  payloadLen -= read;
   if (sectionName.equals(BinaryConsts::UserSections::Name)) {
-    readNames(payloadLen - (pos - oldPos));
+    readNames(payloadLen);
   } else {
     // an unfamiliar custom section
     if (sectionName.equals(BinaryConsts::UserSections::Linking)) {
-      std::cerr << "warning: linking section is present, which binaryen cannot handle yet - relocations will be invalidated!\n";
+      std::cerr << "warning: linking section is present, so this is not a standard wasm file - binaryen cannot handle this properly!\n";
     }
     wasm.userSections.resize(wasm.userSections.size() + 1);
     auto& section = wasm.userSections.back();
     section.name = sectionName.str;
-    auto sectionSize = payloadLen - (pos - oldPos);
+    auto sectionSize = payloadLen;
     section.data.resize(sectionSize);
     for (size_t i = 0; i < sectionSize; i++) {
       section.data[i] = getInt8();
@@ -757,11 +762,11 @@ uint64_t WasmBinaryBuilder::getInt64() {
   return ret;
 }
 
-uint8_t WasmBinaryBuilder::getLaneIdx(size_t lanes) {
+uint8_t WasmBinaryBuilder::getLaneIndex(size_t lanes) {
   if (debug) std::cerr << "<==" << std::endl;
   auto ret = getInt8();
   if (ret >= lanes) throwError("Illegal lane index");
-  if (debug) std::cerr << "getLaneIdx(" << lanes << "): " << ret << " ==>" << std::endl;
+  if (debug) std::cerr << "getLaneIndex(" << lanes << "): " << ret << " ==>" << std::endl;
   return ret;
 }
 
@@ -842,9 +847,9 @@ Type WasmBinaryBuilder::getType() {
     case BinaryConsts::EncodedType::f32: return f32;
     case BinaryConsts::EncodedType::f64: return f64;
     case BinaryConsts::EncodedType::v128: return v128;
-    case BinaryConsts::EncodedType::AnyFunc:
-    case BinaryConsts::EncodedType::Func:
+    default: {
       throwError("invalid wasm type: " + std::to_string(type));
+    }
   }
   WASM_UNREACHABLE();
 }
@@ -937,7 +942,7 @@ void WasmBinaryBuilder::readSignatures() {
   if (debug) std::cerr << "num: " << numTypes << std::endl;
   for (size_t i = 0; i < numTypes; i++) {
     if (debug) std::cerr << "read one" << std::endl;
-    auto curr = new FunctionType;
+    auto curr = make_unique<FunctionType>();
     auto form = getS32LEB();
     if (form != BinaryConsts::EncodedType::Func) {
       throwError("bad signature form " + std::to_string(form));
@@ -957,11 +962,14 @@ void WasmBinaryBuilder::readSignatures() {
       curr->result = getType();
     }
     curr->name = Name::fromInt(wasm.functionTypes.size());
-    wasm.addFunctionType(curr);
+    wasm.addFunctionType(std::move(curr));
   }
 }
 
 Name WasmBinaryBuilder::getFunctionIndexName(Index i) {
+  if (i >= wasm.functions.size()) {
+    throwError("invalid function index");
+  }
   return wasm.functions[i]->name;
 }
 
@@ -1707,10 +1715,14 @@ BinaryConsts::ASTNodes WasmBinaryBuilder::readExpression(Expression*& curr) {
       throwError("invalid code after atomic prefix: " + std::to_string(code));
       break;
     }
-    case BinaryConsts::TruncSatPrefix: {
+    case BinaryConsts::MiscPrefix: {
       auto opcode = getU32LEB();
       if (maybeVisitTruncSat(curr, opcode)) break;
-      throwError("invalid code after nontrapping float-to-int prefix: " + std::to_string(code));
+      if (maybeVisitMemoryInit(curr, opcode)) break;
+      if (maybeVisitDataDrop(curr, opcode)) break;
+      if (maybeVisitMemoryCopy(curr, opcode)) break;
+      if (maybeVisitMemoryFill(curr, opcode)) break;
+      throwError("invalid code after nontrapping float-to-int prefix: " + std::to_string(opcode));
       break;
     }
     case BinaryConsts::SIMDPrefix: {
@@ -1794,8 +1806,7 @@ void WasmBinaryBuilder::visitBlock(Block* curr) {
     curr->name = getNextLabel();
     breakStack.push_back({curr->name, curr->type != none});
     stack.push_back(curr);
-    auto peek = input[pos];
-    if (peek == BinaryConsts::Block) {
+    if (more() && input[pos] == BinaryConsts::Block) {
       // a recursion
       readNextDebugLocation();
       curr = allocator.alloc<Block>();
@@ -1950,7 +1961,10 @@ void WasmBinaryBuilder::visitCall(Call* curr) {
     auto* import = functionImports[index];
     type = wasm.getFunctionType(import->type);
   } else {
-    auto adjustedIndex = index - functionImports.size();
+    Index adjustedIndex = index - functionImports.size();
+    if (adjustedIndex >= functionTypes.size()) {
+      throwError("invalid call index");
+    }
     type = functionTypes[adjustedIndex];
   }
   assert(type);
@@ -1986,10 +2000,10 @@ void WasmBinaryBuilder::visitCallIndirect(CallIndirect* curr) {
 
 void WasmBinaryBuilder::visitGetLocal(GetLocal* curr) {
   if (debug) std::cerr << "zz node: GetLocal " << pos << std::endl;
-  requireFunctionContext("get_local");
+  requireFunctionContext("local.get");
   curr->index = getU32LEB();
   if (curr->index >= currFunction->getNumLocals()) {
-    throwError("bad get_local index");
+    throwError("bad local.get index");
   }
   curr->type = currFunction->getLocalType(curr->index);
   curr->finalize();
@@ -1997,10 +2011,10 @@ void WasmBinaryBuilder::visitGetLocal(GetLocal* curr) {
 
 void WasmBinaryBuilder::visitSetLocal(SetLocal *curr, uint8_t code) {
   if (debug) std::cerr << "zz node: Set|TeeLocal" << std::endl;
-  requireFunctionContext("set_local outside of function");
+  requireFunctionContext("local.set outside of function");
   curr->index = getU32LEB();
   if (curr->index >= currFunction->getNumLocals()) {
-    throwError("bad set_local index");
+    throwError("bad local.set index");
   }
   curr->value = popNonVoidExpression();
   curr->type = curr->value->type;
@@ -2331,6 +2345,66 @@ bool WasmBinaryBuilder::maybeVisitTruncSat(Expression*& out, uint32_t code) {
   return true;
 }
 
+bool WasmBinaryBuilder::maybeVisitMemoryInit(Expression*& out, uint32_t code) {
+  if (code != BinaryConsts::MemoryInit) {
+    return false;
+  }
+  auto* curr = allocator.alloc<MemoryInit>();
+  curr->size = popNonVoidExpression();
+  curr->offset = popNonVoidExpression();
+  curr->dest = popNonVoidExpression();
+  curr->segment = getU32LEB();
+  if (getInt8() != 0) {
+    throwError("Unexpected nonzero memory index");
+  }
+  curr->finalize();
+  out = curr;
+  return true;
+}
+
+bool WasmBinaryBuilder::maybeVisitDataDrop(Expression*& out, uint32_t code) {
+  if (code != BinaryConsts::DataDrop) {
+    return false;
+  }
+  auto* curr = allocator.alloc<DataDrop>();
+  curr->segment = getU32LEB();
+  curr->finalize();
+  out = curr;
+  return true;
+}
+
+bool WasmBinaryBuilder::maybeVisitMemoryCopy(Expression*& out, uint32_t code) {
+  if (code != BinaryConsts::MemoryCopy) {
+    return false;
+  }
+  auto* curr = allocator.alloc<MemoryCopy>();
+  curr->size = popNonVoidExpression();
+  curr->source = popNonVoidExpression();
+  curr->dest = popNonVoidExpression();
+  if (getInt8() != 0 || getInt8() != 0) {
+    throwError("Unexpected nonzero memory index");
+  }
+  curr->finalize();
+  out = curr;
+  return true;
+}
+
+bool WasmBinaryBuilder::maybeVisitMemoryFill(Expression*& out, uint32_t code) {
+  if (code != BinaryConsts::MemoryFill) {
+    return false;
+  }
+  auto* curr = allocator.alloc<MemoryFill>();
+  curr->size = popNonVoidExpression();
+  curr->value = popNonVoidExpression();
+  curr->dest = popNonVoidExpression();
+  if (getInt8() != 0) {
+    throwError("Unexpected nonzero memory index");
+  }
+  curr->finalize();
+  out = curr;
+  return true;
+}
+
 bool WasmBinaryBuilder::maybeVisitBinary(Expression*& out, uint8_t code) {
   Binary* curr;
 #define INT_TYPED_CODE(code) {                                          \
@@ -2570,14 +2644,14 @@ bool WasmBinaryBuilder::maybeVisitSIMDStore(Expression*& out, uint32_t code) {
 bool WasmBinaryBuilder::maybeVisitSIMDExtract(Expression*& out, uint32_t code) {
   SIMDExtract* curr;
   switch (code) {
-    case BinaryConsts::I8x16ExtractLaneS: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneSVecI8x16; curr->idx = getLaneIdx(16); break;
-    case BinaryConsts::I8x16ExtractLaneU: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneUVecI8x16; curr->idx = getLaneIdx(16); break;
-    case BinaryConsts::I16x8ExtractLaneS: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneSVecI16x8; curr->idx = getLaneIdx(8); break;
-    case BinaryConsts::I16x8ExtractLaneU: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneUVecI16x8; curr->idx = getLaneIdx(8); break;
-    case BinaryConsts::I32x4ExtractLane: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneVecI32x4; curr->idx = getLaneIdx(4); break;
-    case BinaryConsts::I64x2ExtractLane: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneVecI64x2; curr->idx = getLaneIdx(2); break;
-    case BinaryConsts::F32x4ExtractLane: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneVecF32x4; curr->idx = getLaneIdx(4); break;
-    case BinaryConsts::F64x2ExtractLane: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneVecF64x2; curr->idx = getLaneIdx(2); break;
+    case BinaryConsts::I8x16ExtractLaneS: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneSVecI8x16; curr->index = getLaneIndex(16); break;
+    case BinaryConsts::I8x16ExtractLaneU: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneUVecI8x16; curr->index = getLaneIndex(16); break;
+    case BinaryConsts::I16x8ExtractLaneS: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneSVecI16x8; curr->index = getLaneIndex(8); break;
+    case BinaryConsts::I16x8ExtractLaneU: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneUVecI16x8; curr->index = getLaneIndex(8); break;
+    case BinaryConsts::I32x4ExtractLane: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneVecI32x4; curr->index = getLaneIndex(4); break;
+    case BinaryConsts::I64x2ExtractLane: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneVecI64x2; curr->index = getLaneIndex(2); break;
+    case BinaryConsts::F32x4ExtractLane: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneVecF32x4; curr->index = getLaneIndex(4); break;
+    case BinaryConsts::F64x2ExtractLane: curr = allocator.alloc<SIMDExtract>(); curr->op = ExtractLaneVecF64x2; curr->index = getLaneIndex(2); break;
     default: return false;
   }
   curr->vec = popNonVoidExpression();
@@ -2589,12 +2663,12 @@ bool WasmBinaryBuilder::maybeVisitSIMDExtract(Expression*& out, uint32_t code) {
 bool WasmBinaryBuilder::maybeVisitSIMDReplace(Expression*& out, uint32_t code) {
   SIMDReplace* curr;
   switch (code) {
-    case BinaryConsts::I8x16ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecI8x16; curr->idx = getLaneIdx(16); break;
-    case BinaryConsts::I16x8ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecI16x8; curr->idx = getLaneIdx(8); break;
-    case BinaryConsts::I32x4ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecI32x4; curr->idx = getLaneIdx(4); break;
-    case BinaryConsts::I64x2ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecI64x2; curr->idx = getLaneIdx(2); break;
-    case BinaryConsts::F32x4ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecF32x4; curr->idx = getLaneIdx(4); break;
-    case BinaryConsts::F64x2ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecF64x2; curr->idx = getLaneIdx(2); break;
+    case BinaryConsts::I8x16ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecI8x16; curr->index = getLaneIndex(16); break;
+    case BinaryConsts::I16x8ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecI16x8; curr->index = getLaneIndex(8); break;
+    case BinaryConsts::I32x4ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecI32x4; curr->index = getLaneIndex(4); break;
+    case BinaryConsts::I64x2ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecI64x2; curr->index = getLaneIndex(2); break;
+    case BinaryConsts::F32x4ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecF32x4; curr->index = getLaneIndex(4); break;
+    case BinaryConsts::F64x2ReplaceLane: curr = allocator.alloc<SIMDReplace>(); curr->op = ReplaceLaneVecF64x2; curr->index = getLaneIndex(2); break;
     default: return false;
   }
   curr->value = popNonVoidExpression();
@@ -2610,7 +2684,7 @@ bool WasmBinaryBuilder::maybeVisitSIMDShuffle(Expression*& out, uint32_t code) {
   }
   auto* curr = allocator.alloc<SIMDShuffle>();
   for (auto i = 0; i < 16; ++i) {
-    curr->mask[i] = getLaneIdx(32);
+    curr->mask[i] = getLaneIndex(32);
   }
   curr->right = popNonVoidExpression();
   curr->left = popNonVoidExpression();

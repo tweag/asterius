@@ -24,9 +24,9 @@
 #include "wasm-validator.h"
 #include "ir/utils.h"
 #include "ir/branch-utils.h"
+#include "ir/features.h"
 #include "ir/module-utils.h"
 #include "support/colors.h"
-
 
 namespace wasm {
 
@@ -250,6 +250,10 @@ public:
   void visitSIMDShuffle(SIMDShuffle* curr);
   void visitSIMDBitselect(SIMDBitselect* curr);
   void visitSIMDShift(SIMDShift* curr);
+  void visitMemoryInit(MemoryInit* curr);
+  void visitDataDrop(DataDrop* curr);
+  void visitMemoryCopy(MemoryCopy* curr);
+  void visitMemoryFill(MemoryFill* curr);
   void visitBinary(Binary* curr);
   void visitUnary(Unary* curr);
   void visitSelect(Select* curr);
@@ -472,32 +476,32 @@ void FunctionValidator::visitCallIndirect(CallIndirect* curr) {
 }
 
 void FunctionValidator::visitGetLocal(GetLocal* curr) {
-  shouldBeTrue(curr->index < getFunction()->getNumLocals(), curr, "get_local index must be small enough");
-  shouldBeTrue(isConcreteType(curr->type), curr, "get_local must have a valid type - check what you provided when you constructed the node");
-  shouldBeTrue(curr->type == getFunction()->getLocalType(curr->index), curr, "get_local must have proper type");
+  shouldBeTrue(curr->index < getFunction()->getNumLocals(), curr, "local.get index must be small enough");
+  shouldBeTrue(isConcreteType(curr->type), curr, "local.get must have a valid type - check what you provided when you constructed the node");
+  shouldBeTrue(curr->type == getFunction()->getLocalType(curr->index), curr, "local.get must have proper type");
 }
 
 void FunctionValidator::visitSetLocal(SetLocal* curr) {
-  shouldBeTrue(curr->index < getFunction()->getNumLocals(), curr, "set_local index must be small enough");
+  shouldBeTrue(curr->index < getFunction()->getNumLocals(), curr, "local.set index must be small enough");
   if (curr->value->type != unreachable) {
     if (curr->type != none) { // tee is ok anyhow
-      shouldBeEqualOrFirstIsUnreachable(curr->value->type, curr->type, curr, "set_local type must be correct");
+      shouldBeEqualOrFirstIsUnreachable(curr->value->type, curr->type, curr, "local.set type must be correct");
     }
-    shouldBeEqual(getFunction()->getLocalType(curr->index), curr->value->type, curr, "set_local type must match function");
+    shouldBeEqual(getFunction()->getLocalType(curr->index), curr->value->type, curr, "local.set type must match function");
   }
 }
 
 void FunctionValidator::visitGetGlobal(GetGlobal* curr) {
   if (!info.validateGlobally) return;
-  shouldBeTrue(getModule()->getGlobalOrNull(curr->name), curr, "get_global name must be valid");
+  shouldBeTrue(getModule()->getGlobalOrNull(curr->name), curr, "global.get name must be valid");
 }
 
 void FunctionValidator::visitSetGlobal(SetGlobal* curr) {
   if (!info.validateGlobally) return;
   auto* global = getModule()->getGlobalOrNull(curr->name);
-  if (shouldBeTrue(global, curr, "set_global name must be valid (and not an import; imports can't be modified)")) {
-    shouldBeTrue(global->mutable_, curr, "set_global global must be mutable");
-    shouldBeEqualOrFirstIsUnreachable(curr->value->type, global->type, curr, "set_global value must have right type");
+  if (shouldBeTrue(global, curr, "global.set name must be valid (and not an import; imports can't be modified)")) {
+    shouldBeTrue(global->mutable_, curr, "global.set global must be mutable");
+    shouldBeEqualOrFirstIsUnreachable(curr->value->type, global->type, curr, "global.set value must have right type");
   }
 }
 
@@ -590,7 +594,7 @@ void FunctionValidator::visitSIMDExtract(SIMDExtract* curr) {
     case ExtractLaneVecF64x2: lane_t = f64; lanes = 2; break;
   }
   shouldBeEqualOrFirstIsUnreachable(curr->type, lane_t, curr, "extract_lane must have same type as vector lane");
-  shouldBeTrue(curr->idx < lanes, curr, "invalid lane index");
+  shouldBeTrue(curr->index < lanes, curr, "invalid lane index");
 }
 
 void FunctionValidator::visitSIMDReplace(SIMDReplace* curr) {
@@ -608,7 +612,7 @@ void FunctionValidator::visitSIMDReplace(SIMDReplace* curr) {
     case ReplaceLaneVecF64x2: lane_t = f64; lanes = 2; break;
   }
   shouldBeEqualOrFirstIsUnreachable(curr->value->type, lane_t, curr, "unexpected value type");
-  shouldBeTrue(curr->idx < lanes, curr, "invalid lane index");
+  shouldBeTrue(curr->index < lanes, curr, "invalid lane index");
 }
 
 void FunctionValidator::visitSIMDShuffle(SIMDShuffle* curr) {
@@ -616,8 +620,8 @@ void FunctionValidator::visitSIMDShuffle(SIMDShuffle* curr) {
   shouldBeEqualOrFirstIsUnreachable(curr->type, v128, curr, "v128.shuffle must have type v128");
   shouldBeEqualOrFirstIsUnreachable(curr->left->type, v128, curr, "expected operand of type v128");
   shouldBeEqualOrFirstIsUnreachable(curr->right->type, v128, curr, "expected operand of type v128");
-  for (uint8_t idx : curr->mask) {
-    shouldBeTrue(idx < 32, curr, "Invalid lane index in mask");
+  for (uint8_t index : curr->mask) {
+    shouldBeTrue(index < 32, curr, "Invalid lane index in mask");
   }
 }
 
@@ -634,6 +638,37 @@ void FunctionValidator::visitSIMDShift(SIMDShift* curr) {
   shouldBeEqualOrFirstIsUnreachable(curr->type, v128, curr, "vector shift must have type v128");
   shouldBeEqualOrFirstIsUnreachable(curr->vec->type, v128, curr, "expected operand of type v128");
   shouldBeEqualOrFirstIsUnreachable(curr->shift->type, i32, curr, "expected shift amount to have type i32");
+}
+
+void FunctionValidator::visitMemoryInit(MemoryInit* curr) {
+  shouldBeTrue(info.features.hasBulkMemory(), curr, "Bulk memory operation (bulk memory is disabled)");
+  shouldBeEqualOrFirstIsUnreachable(curr->type, none, curr, "memory.init must have type none");
+  shouldBeEqualOrFirstIsUnreachable(curr->dest->type, i32, curr, "memory.init dest must be an i32");
+  shouldBeEqualOrFirstIsUnreachable(curr->offset->type, i32, curr, "memory.init offset must be an i32");
+  shouldBeEqualOrFirstIsUnreachable(curr->size->type, i32, curr, "memory.init size must be an i32");
+  shouldBeTrue(curr->segment < getModule()->memory.segments.size(), curr, "memory.init segment index out of bounds");
+}
+
+void FunctionValidator::visitDataDrop(DataDrop* curr) {
+  shouldBeTrue(info.features.hasBulkMemory(), curr, "Bulk memory operation (bulk memory is disabled)");
+  shouldBeEqualOrFirstIsUnreachable(curr->type, none, curr, "data.drop must have type none");
+  shouldBeTrue(curr->segment < getModule()->memory.segments.size(), curr, "data.drop segment index out of bounds");
+}
+
+void FunctionValidator::visitMemoryCopy(MemoryCopy* curr) {
+  shouldBeTrue(info.features.hasBulkMemory(), curr, "Bulk memory operation (bulk memory is disabled)");
+  shouldBeEqualOrFirstIsUnreachable(curr->type, none, curr, "memory.copy must have type none");
+  shouldBeEqualOrFirstIsUnreachable(curr->dest->type, i32, curr, "memory.copy dest must be an i32");
+  shouldBeEqualOrFirstIsUnreachable(curr->source->type, i32, curr, "memory.copy source must be an i32");
+  shouldBeEqualOrFirstIsUnreachable(curr->size->type, i32, curr, "memory.copy size must be an i32");
+}
+
+void FunctionValidator::visitMemoryFill(MemoryFill* curr) {
+  shouldBeTrue(info.features.hasBulkMemory(), curr, "Bulk memory operation (bulk memory is disabled)");
+  shouldBeEqualOrFirstIsUnreachable(curr->type, none, curr, "memory.fill must have type none");
+  shouldBeEqualOrFirstIsUnreachable(curr->dest->type, i32, curr, "memory.fill dest must be an i32");
+  shouldBeEqualOrFirstIsUnreachable(curr->value->type, i32, curr, "memory.fill value must be an i32");
+  shouldBeEqualOrFirstIsUnreachable(curr->size->type, i32, curr, "memory.fill size must be an i32");
 }
 
 void FunctionValidator::validateMemBytes(uint8_t bytes, Type type, Expression* curr) {
@@ -823,6 +858,7 @@ void FunctionValidator::visitBinary(Binary* curr) {
     }
     case InvalidBinary: WASM_UNREACHABLE();
   }
+  shouldBeTrue(Features::get(curr->op) <= info.features, curr, "all used features should be allowed");
 }
 
 void FunctionValidator::visitUnary(Unary* curr) {
@@ -897,7 +933,6 @@ void FunctionValidator::visitUnary(Unary* curr) {
     case TruncSatSFloat32ToInt64:
     case TruncSatUFloat32ToInt32:
     case TruncSatUFloat32ToInt64: {
-      shouldBeTrue(info.features.hasTruncSat(), curr, "nontrapping float-to-int conversions are disabled");
       shouldBeEqual(curr->value->type, f32, curr, "trunc type must be correct");
       break;
     }
@@ -912,7 +947,6 @@ void FunctionValidator::visitUnary(Unary* curr) {
     case TruncSatSFloat64ToInt64:
     case TruncSatUFloat64ToInt32:
     case TruncSatUFloat64ToInt64: {
-      shouldBeTrue(info.features.hasTruncSat(), curr, "nontrapping float-to-int conversions are disabled");
       shouldBeEqual(curr->value->type, f64, curr, "trunc type must be correct");
       break;
     }
@@ -1007,6 +1041,7 @@ void FunctionValidator::visitUnary(Unary* curr) {
       break;
     case InvalidUnary: WASM_UNREACHABLE();
   }
+  shouldBeTrue(Features::get(curr->op) <= info.features, curr, "all used features should be allowed");
 }
 
 void FunctionValidator::visitSelect(Select* curr) {
@@ -1068,6 +1103,15 @@ void FunctionValidator::visitFunction(Function* curr) {
     auto* ft = getModule()->getFunctionType(curr->type);
     shouldBeTrue(ft->params == curr->params, curr->name, "function params must match its declared type");
     shouldBeTrue(ft->result == curr->result, curr->name, "function result must match its declared type");
+  }
+  if (curr->imported()) {
+    shouldBeTrue(curr->type.is(), curr->name, "imported functions must have a function type");
+  }
+  // validate optional local names
+  std::set<Name> seen;
+  for (auto& pair : curr->localNames) {
+    Name name = pair.second;
+    shouldBeTrue(seen.insert(name).second, name, "local names must be unique");
   }
 }
 

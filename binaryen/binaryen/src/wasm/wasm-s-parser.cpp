@@ -104,7 +104,7 @@ void Element::dump() {
 }
 
 
-SExpressionParser::SExpressionParser(char* input) : input(input), loc(nullptr) {
+SExpressionParser::SExpressionParser(char* input) : input(input) {
   root = nullptr;
   line = 1;
   lineStart = input;
@@ -185,15 +185,14 @@ void SExpressionParser::skipWhitespace() {
       }
       while (input[0] && input[0] != '\n') input++;
       line++;
+      if (!input[0]) return;
       lineStart = ++input;
     } else if (input[0] == '(' && input[1] == ';') {
       // Skip nested block comments.
       input += 2;
       int depth = 1;
       while (1) {
-        if (input[0] == 0) {
-          return;
-        }
+        if (!input[0]) return;
         if (input[0] == '(' && input[1] == ';') {
           input += 2;
           depth++;
@@ -253,7 +252,7 @@ Element* SExpressionParser::parseString() {
   return ret;
 }
 
-SExpressionWasmBuilder::SExpressionWasmBuilder(Module& wasm, Element& module, Name* moduleName) : wasm(wasm), allocator(wasm.allocator), globalCounter(0) {
+SExpressionWasmBuilder::SExpressionWasmBuilder(Module& wasm, Element& module, Name* moduleName) : wasm(wasm), allocator(wasm.allocator) {
   if (module.size() == 0) throw ParseException("empty toplevel, expected module");
   if (module[0]->str() != MODULE) throw ParseException("toplevel does not start with module");
   if (module.size() == 1) return;
@@ -421,7 +420,7 @@ void SExpressionWasmBuilder::preParseFunctionType(Element& s) {
       functionType->name = Name::fromInt(wasm.functionTypes.size());
       functionTypeNames.push_back(functionType->name);
       if (wasm.getFunctionTypeOrNull(functionType->name)) throw ParseException("duplicate function type", s.line, s.col);
-      wasm.addFunctionType(functionType.release());
+      wasm.addFunctionType(std::move(functionType));
     }
   }
 }
@@ -581,6 +580,7 @@ void SExpressionWasmBuilder::parseFunction(Element& s, bool preParseImport) {
   }
   if (importModule.is()) {
     // this is an import, actually
+    if (!importBase.size()) throw ParseException("module but no base for import");
     if (!preParseImport) throw ParseException("!preParseImport in func");
     auto im = make_unique<Function>();
     im->name = name;
@@ -656,7 +656,7 @@ Function::DebugLocation SExpressionWasmBuilder::getDebugLocation(const SourceLoc
 
 Expression* SExpressionWasmBuilder::parseExpression(Element& s) {
   Expression* result = makeExpression(s);
-  if (s.startLoc) {
+  if (s.startLoc && currFunction) {
     currFunction->debugLocations[result] = getDebugLocation(*s.startLoc);
   }
   return result;
@@ -769,7 +769,7 @@ Expression* SExpressionWasmBuilder::makeGetGlobal(Element& s) {
   ret->name = getGlobalName(*s[1]);
   auto* global = wasm.getGlobalOrNull(ret->name);
   if (!global) {
-    throw ParseException("bad get_global name", s.line, s.col);
+    throw ParseException("bad global.get name", s.line, s.col);
   }
   ret->type = global->type;
   return ret;
@@ -778,7 +778,7 @@ Expression* SExpressionWasmBuilder::makeGetGlobal(Element& s) {
 Expression* SExpressionWasmBuilder::makeSetGlobal(Element& s) {
   auto ret = allocator.alloc<SetGlobal>();
   ret->name = getGlobalName(*s[1]);
-  if (wasm.getGlobalOrNull(ret->name) && !wasm.getGlobalOrNull(ret->name)->mutable_) throw ParseException("set_global of immutable", s.line, s.col);
+  if (wasm.getGlobalOrNull(ret->name) && !wasm.getGlobalOrNull(ret->name)->mutable_) throw ParseException("global.set of immutable", s.line, s.col);
   ret->value = parseExpression(s[2]);
   ret->finalize();
   return ret;
@@ -786,6 +786,7 @@ Expression* SExpressionWasmBuilder::makeSetGlobal(Element& s) {
 
 
 Expression* SExpressionWasmBuilder::makeBlock(Element& s) {
+  if (!currFunction) throw ParseException("block is unallowed outside of functions");
   // special-case Block, because Block nesting (in their first element) can be incredibly deep
   auto curr = allocator.alloc<Block>();
   auto* sp = &s;
@@ -1077,7 +1078,7 @@ Expression* SExpressionWasmBuilder::makeAtomicWake(Element& s) {
   return ret;
 }
 
-static uint8_t parseLaneIdx(const Element* s, size_t lanes) {
+static uint8_t parseLaneIndex(const Element* s, size_t lanes) {
   const char *str = s->c_str();
   char *end;
   auto n = static_cast<unsigned long long>(strtoll(str, &end, 10));
@@ -1089,7 +1090,7 @@ static uint8_t parseLaneIdx(const Element* s, size_t lanes) {
 Expression* SExpressionWasmBuilder::makeSIMDExtract(Element& s, SIMDExtractOp op, size_t lanes) {
   auto ret = allocator.alloc<SIMDExtract>();
   ret->op = op;
-  ret->idx = parseLaneIdx(s[1], lanes);
+  ret->index = parseLaneIndex(s[1], lanes);
   ret->vec = parseExpression(s[2]);
   ret->finalize();
   return ret;
@@ -1098,7 +1099,7 @@ Expression* SExpressionWasmBuilder::makeSIMDExtract(Element& s, SIMDExtractOp op
 Expression* SExpressionWasmBuilder::makeSIMDReplace(Element& s, SIMDReplaceOp op, size_t lanes) {
   auto ret = allocator.alloc<SIMDReplace>();
   ret->op = op;
-  ret->idx = parseLaneIdx(s[1], lanes);
+  ret->index = parseLaneIndex(s[1], lanes);
   ret->vec = parseExpression(s[2]);
   ret->value = parseExpression(s[3]);
   ret->finalize();
@@ -1108,7 +1109,7 @@ Expression* SExpressionWasmBuilder::makeSIMDReplace(Element& s, SIMDReplaceOp op
 Expression* SExpressionWasmBuilder::makeSIMDShuffle(Element& s) {
   auto ret = allocator.alloc<SIMDShuffle>();
   for (size_t i = 0; i < 16; ++i) {
-    ret->mask[i] = parseLaneIdx(s[i+1], 32);
+    ret->mask[i] = parseLaneIndex(s[i+1], 32);
   }
   ret->left = parseExpression(s[17]);
   ret->right = parseExpression(s[18]);
@@ -1130,6 +1131,41 @@ Expression* SExpressionWasmBuilder::makeSIMDShift(Element& s, SIMDShiftOp op) {
   ret->op = op;
   ret->vec = parseExpression(s[1]);
   ret->shift = parseExpression(s[2]);
+  ret->finalize();
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeMemoryInit(Element& s) {
+  auto ret = allocator.alloc<MemoryInit>();
+  ret->segment = atoi(s[1]->str().c_str());
+  ret->dest = parseExpression(s[2]);
+  ret->offset = parseExpression(s[3]);
+  ret->size = parseExpression(s[4]);
+  ret->finalize();
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeDataDrop(Element& s) {
+  auto ret = allocator.alloc<DataDrop>();
+  ret->segment = atoi(s[1]->str().c_str());
+  ret->finalize();
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeMemoryCopy(Element& s) {
+  auto ret = allocator.alloc<MemoryCopy>();
+  ret->dest = parseExpression(s[1]);
+  ret->source = parseExpression(s[2]);
+  ret->size = parseExpression(s[3]);
+  ret->finalize();
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeMemoryFill(Element& s) {
+  auto ret = allocator.alloc<MemoryFill>();
+  ret->dest = parseExpression(s[1]);
+  ret->value = parseExpression(s[2]);
+  ret->size = parseExpression(s[3]);
   ret->finalize();
   return ret;
 }
@@ -1572,6 +1608,7 @@ void SExpressionWasmBuilder::parseImport(Element& s) {
   auto module = s[i++]->str();
   if (!s[i]->isStr()) throw ParseException("no name for import");
   auto base = s[i++]->str();
+  if (!module.size() || !base.size()) throw ParseException("imports must have module and base");
   // parse internals
   Element& inner = newStyle ? *s[3] : s;
   Index j = newStyle ? newStyleInner : i;
@@ -1695,6 +1732,7 @@ void SExpressionWasmBuilder::parseGlobal(Element& s, bool preParseImport) {
   }
   if (importModule.is()) {
     // this is an import, actually
+    if (!importBase.size()) throw ParseException("module but no base for import");
     if (!preParseImport) throw ParseException("!preParseImport in global");
     auto im = make_unique<Global>();
     im->name = global->name;
@@ -1751,7 +1789,7 @@ void SExpressionWasmBuilder::parseTable(Element& s, bool preParseImport) {
   }
   if (i == s.size()) return;
   if (!s[i]->dollared()) {
-    if (s[i]->str() == ANYFUNC) {
+    if (s[i]->str() == FUNCREF) {
       // (table type (elem ..))
       parseInnerElem(*s[i + 1]);
       if (wasm.table.segments.size() > 0) {
@@ -1761,8 +1799,8 @@ void SExpressionWasmBuilder::parseTable(Element& s, bool preParseImport) {
       }
       return;
     }
-    // first element isn't dollared, and isn't anyfunc. this could be old syntax for (table 0 1) which means function 0 and 1, or it could be (table initial max? type), look for type
-    if (s[s.size() - 1]->str() == ANYFUNC) {
+    // first element isn't dollared, and isn't funcref. this could be old syntax for (table 0 1) which means function 0 and 1, or it could be (table initial max? type), look for type
+    if (s[s.size() - 1]->str() == FUNCREF) {
       // (table initial max? type)
       if (i < s.size() - 1) {
         wasm.table.initial = atoi(s[i++]->c_str());
@@ -1828,7 +1866,7 @@ void SExpressionWasmBuilder::parseType(Element& s) {
   }
   functionTypeNames.push_back(type->name);
   if (wasm.getFunctionTypeOrNull(type->name)) throw ParseException("duplicate function type", s.line, s.col);
-  wasm.addFunctionType(type.release());
+  wasm.addFunctionType(std::move(type));
 }
 
 } // namespace wasm

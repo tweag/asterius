@@ -129,6 +129,18 @@ foreign import ccall unsafe "BinaryenSIMDBitselectId" c_BinaryenSIMDBitselectId
 foreign import ccall unsafe "BinaryenSIMDShiftId" c_BinaryenSIMDShiftId
   :: BinaryenExpressionId
 
+foreign import ccall unsafe "BinaryenMemoryInitId" c_BinaryenMemoryInitId
+  :: BinaryenExpressionId
+
+foreign import ccall unsafe "BinaryenDataDropId" c_BinaryenDataDropId
+  :: BinaryenExpressionId
+
+foreign import ccall unsafe "BinaryenMemoryCopyId" c_BinaryenMemoryCopyId
+  :: BinaryenExpressionId
+
+foreign import ccall unsafe "BinaryenMemoryFillId" c_BinaryenMemoryFillId
+  :: BinaryenExpressionId
+
 type BinaryenExternalKind = Word32
 
 foreign import ccall unsafe "BinaryenExternalFunction" c_BinaryenExternalFunction
@@ -1172,6 +1184,28 @@ foreign import ccall unsafe "BinaryenSIMDShift" c_BinaryenSIMDShift
     BinaryenExpressionRef ->
       BinaryenExpressionRef -> IO BinaryenExpressionRef
 
+foreign import ccall unsafe "BinaryenMemoryInit" c_BinaryenMemoryInit
+  :: BinaryenModuleRef ->
+  Word32 ->
+    BinaryenExpressionRef ->
+      BinaryenExpressionRef ->
+        BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenDataDrop" c_BinaryenDataDrop
+  :: BinaryenModuleRef -> Word32 -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryCopy" c_BinaryenMemoryCopy
+  :: BinaryenModuleRef ->
+  BinaryenExpressionRef ->
+    BinaryenExpressionRef ->
+      BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryFill" c_BinaryenMemoryFill
+  :: BinaryenModuleRef ->
+  BinaryenExpressionRef ->
+    BinaryenExpressionRef ->
+      BinaryenExpressionRef -> IO BinaryenExpressionRef
+
 foreign import ccall unsafe "BinaryenExpressionGetId" c_BinaryenExpressionGetId
   :: BinaryenExpressionRef -> IO BinaryenExpressionId
 
@@ -1418,7 +1452,7 @@ foreign import ccall unsafe "BinaryenSIMDExtractGetOp" c_BinaryenSIMDExtractGetO
 foreign import ccall unsafe "BinaryenSIMDExtractGetVec" c_BinaryenSIMDExtractGetVec
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
-foreign import ccall unsafe "BinaryenSIMDExtractGetIdx" c_BinaryenSIMDExtractGetIdx
+foreign import ccall unsafe "BinaryenSIMDExtractGetIndex" c_BinaryenSIMDExtractGetIndex
   :: BinaryenExpressionRef -> IO Word8
 
 foreign import ccall unsafe "BinaryenSIMDReplaceGetOp" c_BinaryenSIMDReplaceGetOp
@@ -1427,7 +1461,7 @@ foreign import ccall unsafe "BinaryenSIMDReplaceGetOp" c_BinaryenSIMDReplaceGetO
 foreign import ccall unsafe "BinaryenSIMDReplaceGetVec" c_BinaryenSIMDReplaceGetVec
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
-foreign import ccall unsafe "BinaryenSIMDReplaceGetIdx" c_BinaryenSIMDReplaceGetIdx
+foreign import ccall unsafe "BinaryenSIMDReplaceGetIndex" c_BinaryenSIMDReplaceGetIndex
   :: BinaryenExpressionRef -> IO Word8
 
 foreign import ccall unsafe "BinaryenSIMDReplaceGetValue" c_BinaryenSIMDReplaceGetValue
@@ -1458,6 +1492,39 @@ foreign import ccall unsafe "BinaryenSIMDShiftGetVec" c_BinaryenSIMDShiftGetVec
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenSIMDShiftGetShift" c_BinaryenSIMDShiftGetShift
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryInitGetSegment" c_BinaryenMemoryInitGetSegment
+  :: BinaryenExpressionRef -> IO Word32
+
+foreign import ccall unsafe "BinaryenMemoryInitGetDest" c_BinaryenMemoryInitGetDest
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryInitGetOffset" c_BinaryenMemoryInitGetOffset
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryInitGetSize" c_BinaryenMemoryInitGetSize
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenDataDropGetSegment" c_BinaryenDataDropGetSegment
+  :: BinaryenExpressionRef -> IO Word32
+
+foreign import ccall unsafe "BinaryenMemoryCopyGetDest" c_BinaryenMemoryCopyGetDest
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryCopyGetSource" c_BinaryenMemoryCopyGetSource
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryCopyGetSize" c_BinaryenMemoryCopyGetSize
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryFillGetDest" c_BinaryenMemoryFillGetDest
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryFillGetValue" c_BinaryenMemoryFillGetValue
+  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+
+foreign import ccall unsafe "BinaryenMemoryFillGetSize" c_BinaryenMemoryFillGetSize
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
 data BinaryenFunction

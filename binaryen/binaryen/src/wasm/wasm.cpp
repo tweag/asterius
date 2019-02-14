@@ -31,6 +31,7 @@ const char* Name = "name";
 const char* SourceMapUrl = "sourceMappingURL";
 const char* Dylink = "dylink";
 const char* Linking = "linking";
+const char* Producers = "producers";
 }
 }
 
@@ -66,7 +67,7 @@ Name GROW_WASM_MEMORY("__growWasmMemory"),
      NEG_NAN("-nan"),
      CASE("case"),
      BR("br"),
-     ANYFUNC("anyfunc"),
+     FUNCREF("funcref"),
      FAKE_RETURN("fake_return_waka123"),
      MUT("mut"),
      SPECTEST("spectest"),
@@ -85,10 +86,10 @@ const char* getExpressionName(Expression* curr) {
     case Expression::Id::SwitchId: return "switch";
     case Expression::Id::CallId: return "call";
     case Expression::Id::CallIndirectId: return "call_indirect";
-    case Expression::Id::GetLocalId: return "get_local";
-    case Expression::Id::SetLocalId: return "set_local";
-    case Expression::Id::GetGlobalId: return "get_global";
-    case Expression::Id::SetGlobalId: return "set_global";
+    case Expression::Id::GetLocalId: return "local.get";
+    case Expression::Id::SetLocalId: return "local.set";
+    case Expression::Id::GetGlobalId: return "global.get";
+    case Expression::Id::SetGlobalId: return "global.set";
     case Expression::Id::LoadId: return "load";
     case Expression::Id::StoreId: return "store";
     case Expression::Id::ConstId: return "const";
@@ -109,6 +110,10 @@ const char* getExpressionName(Expression* curr) {
     case Expression::Id::SIMDShuffleId: return "simd_shuffle";
     case Expression::Id::SIMDBitselectId: return "simd_bitselect";
     case Expression::Id::SIMDShiftId: return "simd_shift";
+    case Expression::Id::MemoryInitId: return "memory_init";
+    case Expression::Id::DataDropId: return "data_drop";
+    case Expression::Id::MemoryCopyId: return "memory_copy";
+    case Expression::Id::MemoryFillId: return "memory_fill";
     case Expression::Id::NumExpressionIds: WASM_UNREACHABLE();
   }
   WASM_UNREACHABLE();
@@ -463,6 +468,34 @@ void SIMDBitselect::finalize() {
   }
 }
 
+void MemoryInit::finalize() {
+  assert(dest && offset && size);
+  type = none;
+  if (dest->type == unreachable || offset->type == unreachable || size->type == unreachable) {
+    type = unreachable;
+  }
+}
+
+void DataDrop::finalize() {
+  type = none;
+}
+
+void MemoryCopy::finalize() {
+  assert(dest && source && size);
+  type = none;
+  if (dest->type == unreachable || source->type == unreachable || size->type == unreachable) {
+    type = unreachable;
+  }
+}
+
+void MemoryFill::finalize() {
+  assert(dest && value && size);
+  type = none;
+  if (dest->type == unreachable || value->type == unreachable || size->type == unreachable) {
+    type = unreachable;
+  }
+}
+
 void SIMDShift::finalize() {
   assert(vec && shift);
   type = v128;
@@ -809,15 +842,17 @@ Global* Module::getGlobalOrNull(Name name) {
   return iter->second;
 }
 
-void Module::addFunctionType(FunctionType* curr) {
+FunctionType* Module::addFunctionType(std::unique_ptr<FunctionType> curr) {
   if (!curr->name.is()) {
     Fatal() << "Module::addFunctionType: empty name";
   }
   if (getFunctionTypeOrNull(curr->name)) {
     Fatal() << "Module::addFunctionType: " << curr->name << " already exists";
   }
-  functionTypes.push_back(std::unique_ptr<FunctionType>(curr));
-  functionTypesMap[curr->name] = curr;
+  auto* p = curr.get();
+  functionTypes.emplace_back(std::move(curr));
+  functionTypesMap[p->name] = p;
+  return p;
 }
 
 void Module::addExport(Export* curr) {

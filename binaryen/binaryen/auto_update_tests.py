@@ -80,14 +80,14 @@ def update_lld_tests():
     extension_arg_map = {
       '.out': [],
       '.jscall.out': ['--emscripten-reserved-function-pointers=3'],
-      '.mem.out': ['--separate-data-segments', mem_file],
+      '.mem.out': ['--separate-data-segments', mem_file + '.mem'],
     }
     for ext, ext_args in extension_arg_map.items():
       out_path = wast_path + ext
       if ext != '.out' and not os.path.exists(out_path):
         continue
       cmd = (WASM_EMSCRIPTEN_FINALIZE +
-             [wast_path, '-S', '--global-base=568'] + ext_args)
+             [wast_path, '-S', '--global-base=568', '--initial-stack-pointer=16384'] + ext_args)
       actual = run_command(cmd)
       with open(out_path, 'w') as o:
         o.write(actual)

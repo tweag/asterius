@@ -30,7 +30,7 @@ func: ifs
  (type $1 (func))
  (memory $0 256 256)
  (data (i32.const 0) "\ff\ef\0f\1f 0@P\99")
- (table $0 256 256 anyfunc)
+ (table $0 256 256 funcref)
  (elem (i32.const 0) $ifs $ifs $ifs)
  (global $glob i32 (i32.const 1337))
  (func $empty (; 0 ;) (type $1)
@@ -197,5 +197,25 @@ start: func_a
   (call $waka)
   (call $waka)
   (call $waka)
+ )
+)
+global
+ [funcs]        : 1       
+ [imports]      : 1       
+ [total]        : 1       
+ global.get     : 1       
+func: 0
+ [binary-bytes] : 4       
+ [total]        : 1       
+ global.get     : 1       
+export: stackSave (0)
+ [removable-bytes-without-it]: 74      
+(module
+ (type $0 (func (result i32)))
+ (import "env" "STACKTOP" (global $gimport$0 i32))
+ (global $global$0 (mut i32) (global.get $gimport$0))
+ (export "stackSave" (func $0))
+ (func $0 (; 0 ;) (type $0) (result i32)
+  (global.get $global$0)
  )
 )

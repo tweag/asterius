@@ -53,7 +53,7 @@ struct ShellExternalInterface : ModuleInstance::ExternalInterface {
     Memory& operator=(const Memory&) = delete;
 
    public:
-    Memory() {}
+    Memory() = default;
     void resize(size_t newSize) {
       // Ensure the smallest allocation is large enough that most allocators
       // will provide page-aligned storage. This hopefully allows the
@@ -200,7 +200,7 @@ struct ShellExternalInterface : ModuleInstance::ExternalInterface {
   }
 
   void trap(const char* why) override {
-    std::cerr << "[trap " << why << "]\n";
+    std::cout << "[trap " << why << "]\n";
     throw TrapException();
   }
 };

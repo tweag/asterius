@@ -35,6 +35,10 @@
 #include "ir/utils.h"
 #include "shell-interface.h"
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 using namespace wasm;
 
 // Literal utilities
@@ -263,6 +267,10 @@ BinaryenExpressionId BinaryenSIMDReplaceId(void) { return Expression::Id::SIMDRe
 BinaryenExpressionId BinaryenSIMDShuffleId(void) { return Expression::Id::SIMDShuffleId; }
 BinaryenExpressionId BinaryenSIMDBitselectId(void) { return Expression::Id::SIMDBitselectId; }
 BinaryenExpressionId BinaryenSIMDShiftId(void) { return Expression::Id::SIMDShiftId; }
+BinaryenExpressionId BinaryenMemoryInitId(void) { return Expression::Id::MemoryInitId; }
+BinaryenExpressionId BinaryenDataDropId(void) { return Expression::Id::DataDropId; }
+BinaryenExpressionId BinaryenMemoryCopyId(void) { return Expression::Id::MemoryCopyId; }
+BinaryenExpressionId BinaryenMemoryFillId(void) { return Expression::Id::MemoryFillId; }
 
 // External kinds
 
@@ -306,19 +314,12 @@ void BinaryenModuleDispose(BinaryenModuleRef module) {
 
 BinaryenFunctionTypeRef BinaryenAddFunctionType(BinaryenModuleRef module, const char* name, BinaryenType result, BinaryenType* paramTypes, BinaryenIndex numParams) {
   auto* wasm = (Module*)module;
-  auto* ret = new FunctionType;
+  auto ret = make_unique<FunctionType>();
   if (name) ret->name = name;
   else ret->name = Name::fromInt(wasm->functionTypes.size());
   ret->result = Type(result);
   for (BinaryenIndex i = 0; i < numParams; i++) {
     ret->params.push_back(Type(paramTypes[i]));
-  }
-
-  // Lock. This can be called from multiple threads at once, and is a
-  // point where they all access and modify the module.
-  {
-    std::lock_guard<std::mutex> lock(BinaryenFunctionTypeMutex);
-    wasm->addFunctionType(ret);
   }
 
   if (tracing) {
@@ -332,13 +333,16 @@ BinaryenFunctionTypeRef BinaryenAddFunctionType(BinaryenModuleRef module, const 
     std::cout << " };\n";
     size_t id = functionTypes.size();
     std::cout << "    functionTypes[" << id << "] = BinaryenAddFunctionType(the_module, ";
-    functionTypes[ret] = id;
+    functionTypes[ret.get()] = id;
     traceNameOrNULL(name);
     std::cout << ", " << result << ", paramTypes, " << numParams << ");\n";
     std::cout << "  }\n";
   }
 
-  return ret;
+  // Lock. This can be called from multiple threads at once, and is a
+  // point where they all access and modify the module.
+  std::lock_guard<std::mutex> lock(BinaryenFunctionTypeMutex);
+  return wasm->addFunctionType(std::move(ret));
 }
 void BinaryenRemoveFunctionType(BinaryenModuleRef module, const char* name) {
   if (tracing) {
@@ -1027,17 +1031,17 @@ BinaryenExpressionRef BinaryenAtomicWake(BinaryenModuleRef module, BinaryenExpre
 
   return static_cast<Expression*>(ret);
 }
-BinaryenExpressionRef BinaryenSIMDExtract(BinaryenModuleRef module, BinaryenOp op, BinaryenExpressionRef vec, uint8_t idx) {
-  auto* ret = Builder(*((Module*)module)).makeSIMDExtract(SIMDExtractOp(op), (Expression*) vec, idx);
+BinaryenExpressionRef BinaryenSIMDExtract(BinaryenModuleRef module, BinaryenOp op, BinaryenExpressionRef vec, uint8_t index) {
+  auto* ret = Builder(*((Module*)module)).makeSIMDExtract(SIMDExtractOp(op), (Expression*) vec, index);
   if (tracing) {
-    traceExpression(ret, "BinaryenSIMDExtract", op, vec, int(idx));
+    traceExpression(ret, "BinaryenSIMDExtract", op, vec, int(index));
   }
   return static_cast<Expression*>(ret);
 }
-BinaryenExpressionRef BinaryenSIMDReplace(BinaryenModuleRef module, BinaryenOp op, BinaryenExpressionRef vec, uint8_t idx, BinaryenExpressionRef value) {
-  auto* ret = Builder(*((Module*)module)).makeSIMDReplace(SIMDReplaceOp(op), (Expression*) vec, idx, (Expression*)value);
+BinaryenExpressionRef BinaryenSIMDReplace(BinaryenModuleRef module, BinaryenOp op, BinaryenExpressionRef vec, uint8_t index, BinaryenExpressionRef value) {
+  auto* ret = Builder(*((Module*)module)).makeSIMDReplace(SIMDReplaceOp(op), (Expression*) vec, index, (Expression*)value);
   if (tracing) {
-    traceExpression(ret, "BinaryenSIMDReplace", op, vec, int(idx), value);
+    traceExpression(ret, "BinaryenSIMDReplace", op, vec, int(index), value);
   }
   return static_cast<Expression*>(ret);
 }
@@ -1071,6 +1075,37 @@ BinaryenExpressionRef BinaryenSIMDShift(BinaryenModuleRef module, BinaryenOp op,
   auto* ret = Builder(*((Module*)module)).makeSIMDShift(SIMDShiftOp(op), (Expression*)vec, (Expression*)shift);
   if (tracing) {
     traceExpression(ret, "BinaryenSIMDShift", op, vec, shift);
+  }
+  return static_cast<Expression*>(ret);
+}
+BinaryenExpressionRef BinaryenMemoryInit(BinaryenModuleRef module, uint32_t segment, BinaryenExpressionRef dest, BinaryenExpressionRef offset, BinaryenExpressionRef size) {
+  auto* ret = Builder(*((Module*)module)).makeMemoryInit(segment, (Expression*)dest, (Expression*)offset, (Expression*)size);
+  if (tracing) {
+    traceExpression(ret, "BinaryenMemoryInit", segment, dest, offset, size);
+  }
+  return static_cast<Expression*>(ret);
+}
+
+BinaryenExpressionRef BinaryenDataDrop(BinaryenModuleRef module, uint32_t segment) {
+  auto* ret = Builder(*((Module*)module)).makeDataDrop(segment);
+  if (tracing) {
+    traceExpression(ret, "BinaryenDataDrop", segment);
+  }
+  return static_cast<Expression*>(ret);
+}
+
+BinaryenExpressionRef BinaryenMemoryCopy(BinaryenModuleRef module, BinaryenExpressionRef dest, BinaryenExpressionRef source, BinaryenExpressionRef size) {
+  auto* ret = Builder(*((Module*)module)).makeMemoryCopy((Expression*)dest, (Expression*)source, (Expression*)size);
+  if (tracing) {
+    traceExpression(ret, "BinaryenMemoryCopy", dest, source, size);
+  }
+  return static_cast<Expression*>(ret);
+}
+
+BinaryenExpressionRef BinaryenMemoryFill(BinaryenModuleRef module, BinaryenExpressionRef dest, BinaryenExpressionRef value, BinaryenExpressionRef size) {
+  auto* ret = Builder(*((Module*)module)).makeMemoryFill((Expression*)dest, (Expression*)value, (Expression*)size);
+  if (tracing) {
+    traceExpression(ret, "BinaryenMemoryFill", dest, value, size);
   }
   return static_cast<Expression*>(ret);
 }
@@ -1843,14 +1878,14 @@ BinaryenExpressionRef BinaryenSIMDExtractGetVec(BinaryenExpressionRef expr) {
   assert(expression->is<SIMDExtract>());
   return static_cast<SIMDExtract*>(expression)->vec;
 }
-uint8_t BinaryenSIMDExtractGetIdx(BinaryenExpressionRef expr) {
+uint8_t BinaryenSIMDExtractGetIndex(BinaryenExpressionRef expr) {
   if (tracing) {
-    std::cout << "  BinaryenSIMDExtractGetIdx(expressions[" << expressions[expr] << "]);\n";
+    std::cout << "  BinaryenSIMDExtractGetIndex(expressions[" << expressions[expr] << "]);\n";
   }
 
   auto* expression = (Expression*)expr;
   assert(expression->is<SIMDExtract>());
-  return static_cast<SIMDExtract*>(expression)->idx;
+  return static_cast<SIMDExtract*>(expression)->index;
 }
 // SIMDReplace
 BinaryenOp BinaryenSIMDReplaceGetOp(BinaryenExpressionRef expr) {
@@ -1871,14 +1906,14 @@ BinaryenExpressionRef BinaryenSIMDReplaceGetVec(BinaryenExpressionRef expr) {
   assert(expression->is<SIMDReplace>());
   return static_cast<SIMDReplace*>(expression)->vec;
 }
-uint8_t BinaryenSIMDReplaceGetIdx(BinaryenExpressionRef expr) {
+uint8_t BinaryenSIMDReplaceGetIndex(BinaryenExpressionRef expr) {
   if (tracing) {
-    std::cout << "  BinaryenSIMDReplaceGetIdx(expressions[" << expressions[expr] << "]);\n";
+    std::cout << "  BinaryenSIMDReplaceGetIndex(expressions[" << expressions[expr] << "]);\n";
   }
 
   auto* expression = (Expression*)expr;
   assert(expression->is<SIMDReplace>());
-  return static_cast<SIMDReplace*>(expression)->idx;
+  return static_cast<SIMDReplace*>(expression)->index;
 }
 BinaryenExpressionRef BinaryenSIMDReplaceGetValue(BinaryenExpressionRef expr) {
   if (tracing) {
@@ -1972,6 +2007,109 @@ BinaryenExpressionRef BinaryenSIMDShiftGetShift(BinaryenExpressionRef expr) {
   auto* expression = (Expression*)expr;
   assert(expression->is<SIMDShift>());
   return static_cast<SIMDShift*>(expression)->shift;
+}
+// MemoryInit
+uint32_t BinaryenMemoryInitGetSegment(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryInitGetSegment(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryInit>());
+  return static_cast<MemoryInit*>(expression)->segment;
+}
+BinaryenExpressionRef BinaryenMemoryInitGetDest(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryInitGetDest(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryInit>());
+  return static_cast<MemoryInit*>(expression)->dest;
+}
+BinaryenExpressionRef BinaryenMemoryInitGetOffset(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryInitGetOffset(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryInit>());
+  return static_cast<MemoryInit*>(expression)->offset;
+}
+BinaryenExpressionRef BinaryenMemoryInitGetSize(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryInitGetSize(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryInit>());
+  return static_cast<MemoryInit*>(expression)->size;
+}
+// DataDrop
+uint32_t BinaryenDataDropGetSegment(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenDataDropGetSegment(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<DataDrop>());
+  return static_cast<DataDrop*>(expression)->segment;
+}
+// MemoryCopy
+BinaryenExpressionRef BinaryenMemoryCopyGetDest(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryCopyGetDest(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryCopy>());
+  return static_cast<MemoryCopy*>(expression)->dest;
+}
+BinaryenExpressionRef BinaryenMemoryCopyGetSource(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryCopyGetSource(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryCopy>());
+  return static_cast<MemoryCopy*>(expression)->source;
+}
+BinaryenExpressionRef BinaryenMemoryCopyGetSize(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryCopyGetSize(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryCopy>());
+  return static_cast<MemoryCopy*>(expression)->size;
+}
+// MemoryFill
+BinaryenExpressionRef BinaryenMemoryFillGetDest(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryFillGetDest(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryFill>());
+  return static_cast<MemoryFill*>(expression)->dest;
+}
+BinaryenExpressionRef BinaryenMemoryFillGetValue(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryFillGetValue(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryFill>());
+  return static_cast<MemoryFill*>(expression)->value;
+}
+BinaryenExpressionRef BinaryenMemoryFillGetSize(BinaryenExpressionRef expr) {
+  if (tracing) {
+    std::cout << "  BinaryenMemoryFillGetSize(expressions[" << expressions[expr] << "]);\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<MemoryFill>());
+  return static_cast<MemoryFill*>(expression)->size;
 }
 
 // Functions
@@ -2920,6 +3058,15 @@ BinaryenFunctionTypeRef BinaryenGetFunctionTypeBySignature(BinaryenModuleRef mod
 int atexit(void (*function)(void)) {
   return 0;
 }
+
+// Internal binaryen.js APIs
+
+// Returns the size of a Literal object.
+EMSCRIPTEN_KEEPALIVE
+size_t BinaryenSizeofLiteral(void) {
+  return sizeof(Literal);
+}
+
 #endif
 
 } // extern "C"
