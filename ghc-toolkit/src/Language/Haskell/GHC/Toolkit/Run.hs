@@ -14,8 +14,6 @@ module Language.Haskell.GHC.Toolkit.Run
 import Config
 import Control.Monad.IO.Class
 import Data.Functor
-import Data.IORef
-import qualified Data.Map.Strict as M
 import DriverPhases
 import DriverPipeline
 import DynFlags
@@ -72,23 +70,18 @@ runHaskell Config {..} targets write_obj_cont = do
     Succeeded -> pure ()
     Failed -> liftIO $ throwGhcExceptionIO $ Panic "GHC.load returned Failed."
 
-runCmm ::
-     Config -> [FilePath] -> (M.Map FilePath CmmIR -> GHC.Ghc r) -> GHC.Ghc r
-runCmm Config {..} cmm_fns cont = do
+runCmm :: Config -> [FilePath] -> (FilePath -> CmmIR -> IO ()) -> GHC.Ghc ()
+runCmm Config {..} cmm_fns write_obj_cont = do
   dflags <- getSessionDynFlags
   (dflags', _, _) <-
     parseDynamicFlags
       (dflags `gopt_set` Opt_ForceRecomp `gopt_unset` Opt_KeepOFiles) $
     map noLoc ghcFlags
-  (h, read_cmm_irs) <-
-    liftIO $ do
-      cmm_irs_ref <- newIORef []
-      h <-
-        hooksFromCompiler
-          (compiler <>
-           mempty
-             {withCmmIR = \ir _ -> liftIO $ modifyIORef' cmm_irs_ref (ir :)})
-      pure (h, reverse <$> readIORef cmm_irs_ref)
+  h <-
+    liftIO $
+    hooksFromCompiler
+      (compiler <>
+       mempty {withCmmIR = \ir obj_path -> liftIO $ write_obj_cont obj_path ir})
   void $
     setSessionDynFlags
       dflags'
@@ -99,10 +92,4 @@ runCmm Config {..} cmm_fns cont = do
         , hooks = h
         }
   env <- getSession
-  liftIO
-    (do oneShot env StopLn [(cmm_fn, Just CmmCpp) | cmm_fn <- cmm_fns]
-        cmm_irs <- read_cmm_irs
-        if length cmm_irs == length cmm_fns
-          then pure $ M.fromList $ zip cmm_fns cmm_irs
-          else throwGhcExceptionIO $ Panic "Unknown error when compiling .cmm") >>=
-    cont
+  liftIO $ oneShot env StopLn [(cmm_fn, Just CmmCpp) | cmm_fn <- cmm_fns]

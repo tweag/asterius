@@ -20,9 +20,7 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
-import Data.Foldable
 import Data.IORef
-import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified DynFlags as GHC
 import qualified GHC
@@ -93,37 +91,36 @@ bootRTSCmm BootArgs {..} =
     rts_cmm_mods <-
       map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
       liftIO (listDirectory rts_path)
-    cmms <-
-      M.toList <$>
-      liftCodensity
-        (runCmm
-           defaultConfig
-             { ghcFlags =
-                 [ "-this-unit-id"
-                 , "rts"
-                 , "-dcmm-lint"
-                 , "-O2"
-                 , "-I" <> obj_topdir </> "include"
-                 ]
-             }
-           [rts_path </> m <.> "cmm" | m <- rts_cmm_mods])
+    lift
+      (runCmm
+         defaultConfig
+           { ghcFlags =
+               [ "-this-unit-id"
+               , "rts"
+               , "-dcmm-lint"
+               , "-O2"
+               , "-I" <> obj_topdir </> "include"
+               ]
+           }
+         [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
+         (\obj_path ir@CmmIR {..} ->
+            let ms_mod =
+                  (GHC.Module GHC.rtsUnitId $
+                   GHC.mkModuleName $ takeBaseName obj_path)
+                mod_sym = marshalToModuleSymbol ms_mod
+             in case runCodeGen (marshalCmmIR ir) dflags ms_mod of
+                  Left err -> throwIO err
+                  Right m -> do
+                    encodeAsteriusModule obj_topdir mod_sym m
+                    modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
+                    when is_debug $ do
+                      let p = asteriusModulePath obj_topdir mod_sym
+                      writeFile (p "dump-wasm-ast") $ show m
+                      writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
+                      asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                      writeFile (p "dump-cmm-ast") $ show cmm
+                      asmPrint dflags (p "dump-cmm") cmm))
     liftIO $ do
-      for_ cmms $ \(fn, ir@CmmIR {..}) ->
-        let ms_mod =
-              (GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName fn)
-            mod_sym = marshalToModuleSymbol ms_mod
-         in case runCodeGen (marshalCmmIR ir) dflags ms_mod of
-              Left err -> throwIO err
-              Right m -> do
-                encodeAsteriusModule obj_topdir mod_sym m
-                modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
-                when is_debug $ do
-                  let p = asteriusModulePath obj_topdir mod_sym
-                  writeFile (p "dump-wasm-ast") $ show m
-                  writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                  asmPrint dflags (p "dump-cmm-raw") cmmRaw
-                  writeFile (p "dump-cmm-ast") $ show cmm
-                  asmPrint dflags (p "dump-cmm") cmm
       store <- readIORef store_ref
       encodeStore store_path store
   where
