@@ -92,6 +92,8 @@ inline Global* copyGlobal(Global* global, Module& out) {
   ret->name = global->name;
   ret->type = global->type;
   ret->mutable_ = global->mutable_;
+  ret->module = global->module;
+  ret->base = global->base;
   if (global->imported()) {
     ret->init = nullptr;
   } else {
@@ -105,7 +107,7 @@ inline void copyModule(Module& in, Module& out) {
   // we use names throughout, not raw points, so simple copying is fine
   // for everything *but* expressions
   for (auto& curr : in.functionTypes) {
-    out.addFunctionType(new FunctionType(*curr));
+    out.addFunctionType(make_unique<FunctionType>(*curr));
   }
   for (auto& curr : in.exports) {
     out.addExport(new Export(*curr));

@@ -314,6 +314,7 @@ private:
       func->base = name;
       func->params.push_back(type);
       func->result = none;
+      func->type = ensureFunctionType(getSig(func), &wasm)->name;
       wasm.addFunction(func);
     }
   }
@@ -726,6 +727,9 @@ private:
                         &Self::makeSelect,
                         &Self::makeGetGlobal)
                    .add(FeatureSet::SIMD, &Self::makeSIMD);
+    if (type == none) {
+      options.add(FeatureSet::BulkMemory, &Self::makeBulkMemory);
+    }
     if (type == i32 || type == i64) {
       options.add(FeatureSet::Atomics, &Self::makeAtomic);
     }
@@ -1084,7 +1088,7 @@ private:
     return ret;
   }
 
-  Load* makeNonAtomicLoad(Type type) {
+  Expression* makeNonAtomicLoad(Type type) {
     auto offset = logify(get());
     auto ptr = makePointer();
     switch (type) {
@@ -1114,6 +1118,9 @@ private:
         return builder.makeLoad(8, false, offset, pick(1, 2, 4, 8), ptr, type);
       }
       case v128: {
+        if (!features.hasSIMD()) {
+          return makeTrivial(type);
+        }
         return builder.makeLoad(16, false, offset, pick(1, 2, 4, 8, 16), ptr, type);
       }
       case none:
@@ -1127,24 +1134,27 @@ private:
     if (type != i32 && type != i64) return ret;
     if (!features.hasAtomics() || oneIn(2)) return ret;
     // make it atomic
+    auto* load = ret->cast<Load>();
     wasm.memory.shared = true;
-    ret->isAtomic = true;
-    ret->signed_ = false;
-    ret->align = ret->bytes;
-    return ret;
+    load->isAtomic = true;
+    load->signed_ = false;
+    load->align = load->bytes;
+    return load;
   }
 
-  Store* makeNonAtomicStore(Type type) {
+  Expression* makeNonAtomicStore(Type type) {
     if (type == unreachable) {
       // make a normal store, then make it unreachable
       auto* ret = makeNonAtomicStore(getConcreteType());
+      auto* store = ret->dynCast<Store>();
+      if (!store) return ret;
       switch (upTo(3)) {
-        case 0: ret->ptr = make(unreachable); break;
-        case 1: ret->value = make(unreachable); break;
-        case 2: ret->ptr = make(unreachable); ret->value = make(unreachable); break;
+        case 0: store->ptr = make(unreachable); break;
+        case 1: store->value = make(unreachable); break;
+        case 2: store->ptr = make(unreachable); store->value = make(unreachable); break;
       }
-      ret->finalize();
-      return ret;
+      store->finalize();
+      return store;
     }
     // the type is none or unreachable. we also need to pick the value
     // type.
@@ -1179,6 +1189,9 @@ private:
         return builder.makeStore(8, offset, pick(1, 2, 4, 8), ptr, value, type);
       }
       case v128: {
+        if (!features.hasSIMD()) {
+          return makeTrivial(type);
+        }
         return builder.makeStore(16, offset, pick(1, 2, 4, 8, 16), ptr, value, type);
       }
       case none:
@@ -1187,15 +1200,17 @@ private:
     WASM_UNREACHABLE();
   }
 
-  Store* makeStore(Type type) {
+  Expression* makeStore(Type type) {
     auto* ret = makeNonAtomicStore(type);
-    if (ret->value->type != i32 && ret->value->type != i64) return ret;
-    if (!features.hasAtomics() || oneIn(2)) return ret;
+    auto* store = ret->dynCast<Store>();
+    if (!store) return ret;
+    if (store->value->type != i32 && store->value->type != i64) return store;
+    if (!features.hasAtomics() || oneIn(2)) return store;
     // make it atomic
     wasm.memory.shared = true;
-    ret->isAtomic = true;
-    ret->align = ret->bytes;
-    return ret;
+    store->isAtomic = true;
+    store->align = store->bytes;
+    return store;
   }
 
   Literal makeLiteral(Type type) {
@@ -1643,37 +1658,37 @@ private:
       case unreachable: WASM_UNREACHABLE();
     }
     Expression* vec = make(v128);
-    uint8_t idx = 0;
+    uint8_t index = 0;
     switch (op) {
       case ExtractLaneSVecI8x16:
-      case ExtractLaneUVecI8x16: idx = upTo(16); break;
+      case ExtractLaneUVecI8x16: index = upTo(16); break;
       case ExtractLaneSVecI16x8:
-      case ExtractLaneUVecI16x8: idx = upTo(8); break;
+      case ExtractLaneUVecI16x8: index = upTo(8); break;
       case ExtractLaneVecI32x4:
-      case ExtractLaneVecF32x4: idx = upTo(4); break;
+      case ExtractLaneVecF32x4: index = upTo(4); break;
       case ExtractLaneVecI64x2:
-      case ExtractLaneVecF64x2: idx = upTo(2); break;
+      case ExtractLaneVecF64x2: index = upTo(2); break;
     }
-    return builder.makeSIMDExtract(op, vec, idx);
+    return builder.makeSIMDExtract(op, vec, index);
   }
 
   Expression* makeSIMDReplace() {
     SIMDReplaceOp op = pick(ReplaceLaneVecI8x16, ReplaceLaneVecI16x8, ReplaceLaneVecI32x4,
                             ReplaceLaneVecI64x2, ReplaceLaneVecF32x4, ReplaceLaneVecF64x2);
     Expression* vec = make(v128);
-    uint8_t idx;
+    uint8_t index;
     Type lane_t;
     switch (op) {
-      case ReplaceLaneVecI8x16: idx = upTo(16); lane_t = i32; break;
-      case ReplaceLaneVecI16x8: idx = upTo(8); lane_t = i32; break;
-      case ReplaceLaneVecI32x4: idx = upTo(4); lane_t = i32; break;
-      case ReplaceLaneVecI64x2: idx = upTo(2); lane_t = i64; break;
-      case ReplaceLaneVecF32x4: idx = upTo(4); lane_t = f32; break;
-      case ReplaceLaneVecF64x2: idx = upTo(2); lane_t = f64; break;
+      case ReplaceLaneVecI8x16: index = upTo(16); lane_t = i32; break;
+      case ReplaceLaneVecI16x8: index = upTo(8); lane_t = i32; break;
+      case ReplaceLaneVecI32x4: index = upTo(4); lane_t = i32; break;
+      case ReplaceLaneVecI64x2: index = upTo(2); lane_t = i64; break;
+      case ReplaceLaneVecF32x4: index = upTo(4); lane_t = f32; break;
+      case ReplaceLaneVecF64x2: index = upTo(2); lane_t = f64; break;
       default: WASM_UNREACHABLE();
     }
     Expression* value = make(lane_t);
-    return builder.makeSIMDReplace(op, vec, idx, value);
+    return builder.makeSIMDReplace(op, vec, index, value);
   }
 
   Expression* makeSIMDShuffle() {
@@ -1699,6 +1714,44 @@ private:
     Expression* vec = make(v128);
     Expression* shift = make(i32);
     return builder.makeSIMDShift(op, vec, shift);
+  }
+
+  Expression* makeBulkMemory(Type type) {
+    assert(features.hasBulkMemory());
+    assert(type == none);
+    switch (upTo(4)) {
+      case 0: return makeMemoryInit();
+      case 1: return makeDataDrop();
+      case 2: return makeMemoryCopy();
+      case 3: return makeMemoryFill();
+    }
+    WASM_UNREACHABLE();
+  }
+
+  Expression* makeMemoryInit() {
+    auto segment = uint32_t(get32());
+    Expression* dest = make(i32);
+    Expression* offset = make(i32);
+    Expression* size = make(i32);
+    return builder.makeMemoryInit(segment, dest, offset, size);
+  }
+
+  Expression* makeDataDrop() {
+    return builder.makeDataDrop(get32());
+  }
+
+  Expression* makeMemoryCopy() {
+    Expression* dest = make(i32);
+    Expression* source = make(i32);
+    Expression* size = make(i32);
+    return builder.makeMemoryCopy(dest, source, size);
+  }
+
+  Expression* makeMemoryFill() {
+    Expression* dest = make(i32);
+    Expression* value = make(i32);
+    Expression* size = make(i32);
+    return builder.makeMemoryFill(dest, value, size);
   }
 
   // special makers

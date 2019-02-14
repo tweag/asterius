@@ -48,7 +48,7 @@ Name I32_EXPR  = "i32.expr",
 // returns the maximum amount of bits used in an integer expression
 // not extremely precise (doesn't look into add operands, etc.)
 // LocalInfoProvider is an optional class that can provide answers about
-// get_local.
+// local.get.
 template<typename LocalInfoProvider>
 Index getMaxBits(Expression* curr, LocalInfoProvider* localInfoProvider) {
   if (auto* const_ = curr->dynCast<Const>()) {
@@ -1148,17 +1148,20 @@ private:
         }
       }
     }
-    // note that this is correct even on floats with a NaN on the left,
-    // as a NaN would skip the computation and just return the NaN,
-    // and that is precisely what we do here. but, the same with -1
-    // (change to a negation) would be incorrect for that reason.
-    if (right->value == Literal::makeFromInt32(1, type)) {
-      if (binary->op == Abstract::getBinary(type, Abstract::Mul) ||
-          binary->op == Abstract::getBinary(type, Abstract::DivS) ||
-          binary->op == Abstract::getBinary(type, Abstract::DivU)) {
-        return binary->left;
+    if (isIntegerType(type) || isFloatType(type)) {
+      // note that this is correct even on floats with a NaN on the left,
+      // as a NaN would skip the computation and just return the NaN,
+      // and that is precisely what we do here. but, the same with -1
+      // (change to a negation) would be incorrect for that reason.
+      if (right->value == Literal::makeFromInt32(1, type)) {
+        if (binary->op == Abstract::getBinary(type, Abstract::Mul) ||
+            binary->op == Abstract::getBinary(type, Abstract::DivS) ||
+            binary->op == Abstract::getBinary(type, Abstract::DivU)) {
+          return binary->left;
+        }
       }
     }
+    // TODO: v128 not implemented yet
     return nullptr;
   }
 
@@ -1191,9 +1194,9 @@ private:
     // x + 5 == 7
     //   =>
     //     x == 2
-    if (binary->op == Abstract::getBinary(type, Abstract::Eq) ||
-        binary->op == Abstract::getBinary(type, Abstract::Ne)) {
-      if (isIntegerType(binary->left->type)) {
+    if (isIntegerType(binary->left->type)) {
+      if (binary->op == Abstract::getBinary(type, Abstract::Eq) ||
+          binary->op == Abstract::getBinary(type, Abstract::Ne)) {
         if (auto* left = binary->left->dynCast<Binary>()) {
           if (left->op == Abstract::getBinary(type, Abstract::Add) ||
               left->op == Abstract::getBinary(type, Abstract::Sub)) {

@@ -426,13 +426,16 @@ public:
   std::map<IString, MappedGlobal> mappedGlobals;
 
 private:
-  void allocateGlobal(IString name, Type type) {
+  void allocateGlobal(IString name, Type type, Literal value=Literal()) {
     assert(mappedGlobals.find(name) == mappedGlobals.end());
+    if (value.type == none) {
+      value = Literal::makeZero(type);
+    }
     mappedGlobals.emplace(name, MappedGlobal(type));
     wasm.addGlobal(builder.makeGlobal(
       name,
       type,
-      LiteralUtils::makeZero(type, wasm),
+      builder.makeConst(value),
       Builder::Mutable
     ));
   }
@@ -986,8 +989,7 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
         Ref value = pair[1];
         if (value->isNumber()) {
           // global int
-          assert(value->getNumber() == 0);
-          allocateGlobal(name, Type::i32);
+          allocateGlobal(name, Type::i32, Literal(int32_t(value->getInteger())));
         } else if (value[0] == BINARY) {
           // int import
           assert(value[1] == OR && value[3]->isNumber() && value[3]->getNumber() == 0);
@@ -1454,7 +1456,8 @@ void Asm2WasmBuilder::processAsm(Ref ast) {
   // so that the output of the first pass is valid
   passRunner.add<FinalizeCalls>(this);
   passRunner.add(ABI::getLegalizationPass(
-    legalizeJavaScriptFFI ? ABI::Full : ABI::Minimal
+    legalizeJavaScriptFFI ? ABI::LegalizationLevel::Full
+                          : ABI::LegalizationLevel::Minimal
   ));
   if (runOptimizationPasses) {
     // autodrop can add some garbage
@@ -1683,7 +1686,7 @@ Function* Asm2WasmBuilder::processFunction(Ref ast) {
         Fatal() << "error: access of a non-existent global var " << name.str;
       }
       auto* ret = builder.makeSetGlobal(name, process(assign->value()));
-      // set_global does not return; if our value is trivially not used, don't emit a load (if nontrivially not used, opts get it later)
+      // global.set does not return; if our value is trivially not used, don't emit a load (if nontrivially not used, opts get it later)
       auto parent = astStackHelper.getParent();
       if (!parent || parent->isArray(BLOCK) || parent->isArray(IF)) return ret;
       return builder.makeSequence(ret, builder.makeGetGlobal(name, ret->value->type));

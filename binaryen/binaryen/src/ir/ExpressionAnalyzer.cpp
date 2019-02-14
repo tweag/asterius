@@ -15,10 +15,12 @@
  */
 
 #include "support/hash.h"
-#include "ir/utils.h"
+#include "ir/iteration.h"
 #include "ir/load-utils.h"
+#include "ir/utils.h"
 
 namespace wasm {
+
 // Given a stack of expressions, checks if the topmost is used as a result.
 // For example, if the parent is a block and the node is before the last position,
 // it is not used.
@@ -121,35 +123,21 @@ bool ExpressionAnalyzer::flexibleEqual(Expression* left, Expression* right, Expr
     if (comparer(left, right)) continue; // comparison hook, before all the rest
     // continue with normal structural comparison
     if (left->_id != right->_id) return false;
-    #define PUSH(clazz, what)                               \
-      leftStack.push_back(left->cast<clazz>()->what);       \
-      rightStack.push_back(right->cast<clazz>()->what);
+    // Compare immediate values
     #define CHECK(clazz, what) \
       if (left->cast<clazz>()->what != right->cast<clazz>()->what) return false;
     switch (left->_id) {
       case Expression::Id::BlockId: {
         if (!noteNames(left->cast<Block>()->name, right->cast<Block>()->name)) return false;
         CHECK(Block, list.size());
-        for (Index i = 0; i < left->cast<Block>()->list.size(); i++) {
-          PUSH(Block, list[i]);
-        }
-        break;
-      }
-      case Expression::Id::IfId: {
-        PUSH(If, condition);
-        PUSH(If, ifTrue);
-        PUSH(If, ifFalse);
         break;
       }
       case Expression::Id::LoopId: {
         if (!noteNames(left->cast<Loop>()->name, right->cast<Loop>()->name)) return false;
-        PUSH(Loop, body);
         break;
       }
       case Expression::Id::BreakId: {
         if (!checkNames(left->cast<Break>()->name, right->cast<Break>()->name)) return false;
-        PUSH(Break, condition);
-        PUSH(Break, value);
         break;
       }
       case Expression::Id::SwitchId: {
@@ -158,25 +146,16 @@ bool ExpressionAnalyzer::flexibleEqual(Expression* left, Expression* right, Expr
           if (!checkNames(left->cast<Switch>()->targets[i], right->cast<Switch>()->targets[i])) return false;
         }
         if (!checkNames(left->cast<Switch>()->default_, right->cast<Switch>()->default_)) return false;
-        PUSH(Switch, condition);
-        PUSH(Switch, value);
         break;
       }
       case Expression::Id::CallId: {
         CHECK(Call, target);
         CHECK(Call, operands.size());
-        for (Index i = 0; i < left->cast<Call>()->operands.size(); i++) {
-          PUSH(Call, operands[i]);
-        }
         break;
       }
       case Expression::Id::CallIndirectId: {
-        PUSH(CallIndirect, target);
         CHECK(CallIndirect, fullType);
         CHECK(CallIndirect, operands.size());
-        for (Index i = 0; i < left->cast<CallIndirect>()->operands.size(); i++) {
-          PUSH(CallIndirect, operands[i]);
-        }
         break;
       }
       case Expression::Id::GetLocalId: {
@@ -186,7 +165,6 @@ bool ExpressionAnalyzer::flexibleEqual(Expression* left, Expression* right, Expr
       case Expression::Id::SetLocalId: {
         CHECK(SetLocal, index);
         CHECK(SetLocal, type); // for tee/set
-        PUSH(SetLocal, value);
         break;
       }
       case Expression::Id::GetGlobalId: {
@@ -195,7 +173,6 @@ bool ExpressionAnalyzer::flexibleEqual(Expression* left, Expression* right, Expr
       }
       case Expression::Id::SetGlobalId: {
         CHECK(SetGlobal, name);
-        PUSH(SetGlobal, value);
         break;
       }
       case Expression::Id::LoadId: {
@@ -207,7 +184,6 @@ bool ExpressionAnalyzer::flexibleEqual(Expression* left, Expression* right, Expr
         CHECK(Load, offset);
         CHECK(Load, align);
         CHECK(Load, isAtomic);
-        PUSH(Load, ptr);
         break;
       }
       case Expression::Id::StoreId: {
@@ -216,67 +192,59 @@ bool ExpressionAnalyzer::flexibleEqual(Expression* left, Expression* right, Expr
         CHECK(Store, align);
         CHECK(Store, valueType);
         CHECK(Store, isAtomic);
-        PUSH(Store, ptr);
-        PUSH(Store, value);
         break;
       }
       case Expression::Id::AtomicCmpxchgId: {
         CHECK(AtomicCmpxchg, bytes);
         CHECK(AtomicCmpxchg, offset);
-        PUSH(AtomicCmpxchg, ptr);
-        PUSH(AtomicCmpxchg, expected);
-        PUSH(AtomicCmpxchg, replacement);
         break;
       }
       case Expression::Id::AtomicRMWId: {
         CHECK(AtomicRMW, op);
         CHECK(AtomicRMW, bytes);
         CHECK(AtomicRMW, offset);
-        PUSH(AtomicRMW, ptr);
-        PUSH(AtomicRMW, value);
         break;
       }
       case Expression::Id::AtomicWaitId: {
         CHECK(AtomicWait, expectedType);
-        PUSH(AtomicWait, ptr);
-        PUSH(AtomicWait, expected);
-        PUSH(AtomicWait, timeout);
         break;
       }
       case Expression::Id::AtomicWakeId: {
-        PUSH(AtomicWake, ptr);
-        PUSH(AtomicWake, wakeCount);
         break;
       }
       case Expression::Id::SIMDExtractId: {
         CHECK(SIMDExtract, op);
-        CHECK(SIMDExtract, idx);
-        PUSH(SIMDExtract, vec);
+        CHECK(SIMDExtract, index);
         break;
       }
       case Expression::Id::SIMDReplaceId: {
         CHECK(SIMDReplace, op);
-        CHECK(SIMDReplace, idx);
-        PUSH(SIMDReplace, vec);
-        PUSH(SIMDReplace, value);
+        CHECK(SIMDReplace, index);
         break;
       }
       case Expression::Id::SIMDShuffleId: {
         CHECK(SIMDShuffle, mask);
-        PUSH(SIMDShuffle, left);
-        PUSH(SIMDShuffle, right);
         break;
       }
       case Expression::Id::SIMDBitselectId: {
-        PUSH(SIMDBitselect, left);
-        PUSH(SIMDBitselect, right);
-        PUSH(SIMDBitselect, cond);
         break;
       }
       case Expression::Id::SIMDShiftId: {
         CHECK(SIMDShift, op);
-        PUSH(SIMDShift, vec);
-        PUSH(SIMDShift, shift);
+        break;
+      }
+      case Expression::Id::MemoryInitId: {
+        CHECK(MemoryInit, segment);
+        break;
+      }
+      case Expression::Id::DataDropId: {
+        CHECK(DataDrop, segment);
+        break;
+      }
+      case Expression::Id::MemoryCopyId: {
+        break;
+      }
+      case Expression::Id::MemoryFillId: {
         break;
       }
       case Expression::Id::ConstId: {
@@ -287,36 +255,16 @@ bool ExpressionAnalyzer::flexibleEqual(Expression* left, Expression* right, Expr
       }
       case Expression::Id::UnaryId: {
         CHECK(Unary, op);
-        PUSH(Unary, value);
         break;
       }
       case Expression::Id::BinaryId: {
         CHECK(Binary, op);
-        PUSH(Binary, left);
-        PUSH(Binary, right);
-        break;
-      }
-      case Expression::Id::SelectId: {
-        PUSH(Select, ifTrue);
-        PUSH(Select, ifFalse);
-        PUSH(Select, condition);
-        break;
-      }
-      case Expression::Id::DropId: {
-        PUSH(Drop, value);
-        break;
-      }
-      case Expression::Id::ReturnId: {
-        PUSH(Return, value);
         break;
       }
       case Expression::Id::HostId: {
         CHECK(Host, op);
         CHECK(Host, nameOperand);
         CHECK(Host, operands.size());
-        for (Index i = 0; i < left->cast<Host>()->operands.size(); i++) {
-          PUSH(Host, operands[i]);
-        }
         break;
       }
       case Expression::Id::NopId: {
@@ -329,9 +277,21 @@ bool ExpressionAnalyzer::flexibleEqual(Expression* left, Expression* right, Expr
       case Expression::Id::NumExpressionIds: {
         WASM_UNREACHABLE();
       }
+      case Expression::Id::IfId:
+      case Expression::Id::SelectId:
+      case Expression::Id::DropId:
+      case Expression::Id::ReturnId: {
+        break; // some nodes have no immediate fields
+      }
+    }
+    // Add child nodes
+    for (auto* child : ChildIterator(left)) {
+      leftStack.push_back(child);
+    }
+    for (auto* child : ChildIterator(right)) {
+      rightStack.push_back(child);
     }
     #undef CHECK
-    #undef PUSH
   }
   if (leftStack.size() > 0 || rightStack.size() > 0) return false;
   return true;
@@ -387,7 +347,7 @@ HashType ExpressionAnalyzer::hash(Expression* curr) {
     hash(curr->_id);
     // we often don't need to hash the type, as it is tied to other values
     // we are hashing anyhow, but there are exceptions: for example, a
-    // get_local's type is determined by the function, so if we are
+    // local.get's type is determined by the function, so if we are
     // hashing only expression fragments, then two from different
     // functions may turn out the same even if the type differs. Likewise,
     // if we hash between modules, then we need to take int account
@@ -529,13 +489,13 @@ HashType ExpressionAnalyzer::hash(Expression* curr) {
       }
       case Expression::Id::SIMDExtractId: {
         HASH(SIMDExtract, op);
-        HASH(SIMDExtract, idx);
+        HASH(SIMDExtract, index);
         PUSH(SIMDExtract, vec);
         break;
       }
       case Expression::Id::SIMDReplaceId: {
         HASH(SIMDReplace, op);
-        HASH(SIMDReplace, idx);
+        HASH(SIMDReplace, index);
         PUSH(SIMDReplace, vec);
         PUSH(SIMDReplace, value);
         break;
@@ -558,6 +518,29 @@ HashType ExpressionAnalyzer::hash(Expression* curr) {
         HASH(SIMDShift, op);
         PUSH(SIMDShift, vec);
         PUSH(SIMDShift, shift);
+        break;
+      }
+      case Expression::Id::MemoryInitId: {
+        HASH(MemoryInit, segment);
+        PUSH(MemoryInit, dest);
+        PUSH(MemoryInit, offset);
+        PUSH(MemoryInit, size);
+        break;
+      }
+      case Expression::Id::DataDropId: {
+        HASH(DataDrop, segment);
+        break;
+      }
+      case Expression::Id::MemoryCopyId: {
+        PUSH(MemoryCopy, dest);
+        PUSH(MemoryCopy, source);
+        PUSH(MemoryCopy, size);
+        break;
+      }
+      case Expression::Id::MemoryFillId: {
+        PUSH(MemoryFill, dest);
+        PUSH(MemoryFill, value);
+        PUSH(MemoryFill, size);
         break;
       }
       case Expression::Id::ConstId: {
@@ -616,4 +599,5 @@ HashType ExpressionAnalyzer::hash(Expression* curr) {
   }
   return digest;
 }
+
 } // namespace wasm

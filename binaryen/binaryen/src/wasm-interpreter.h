@@ -53,7 +53,7 @@ enum {
 // Stuff that flows around during executing expressions: a literal, or a change in control flow.
 class Flow {
 public:
-  Flow() {}
+  Flow() = default;
   Flow(Literal value) : value(value) {}
   Flow(Name breakTo) : breakTo(breakTo) {}
 
@@ -549,14 +549,14 @@ public:
     if (flow.breaking()) return flow;
     Literal vec = flow.value;
     switch (curr->op) {
-    case ExtractLaneSVecI8x16: return vec.extractLaneSI8x16(curr->idx);
-    case ExtractLaneUVecI8x16: return vec.extractLaneUI8x16(curr->idx);
-    case ExtractLaneSVecI16x8: return vec.extractLaneSI16x8(curr->idx);
-    case ExtractLaneUVecI16x8: return vec.extractLaneUI16x8(curr->idx);
-    case ExtractLaneVecI32x4: return vec.extractLaneI32x4(curr->idx);
-    case ExtractLaneVecI64x2: return vec.extractLaneI64x2(curr->idx);
-    case ExtractLaneVecF32x4: return vec.extractLaneF32x4(curr->idx);
-    case ExtractLaneVecF64x2: return vec.extractLaneF64x2(curr->idx);
+    case ExtractLaneSVecI8x16: return vec.extractLaneSI8x16(curr->index);
+    case ExtractLaneUVecI8x16: return vec.extractLaneUI8x16(curr->index);
+    case ExtractLaneSVecI16x8: return vec.extractLaneSI16x8(curr->index);
+    case ExtractLaneUVecI16x8: return vec.extractLaneUI16x8(curr->index);
+    case ExtractLaneVecI32x4: return vec.extractLaneI32x4(curr->index);
+    case ExtractLaneVecI64x2: return vec.extractLaneI64x2(curr->index);
+    case ExtractLaneVecF32x4: return vec.extractLaneF32x4(curr->index);
+    case ExtractLaneVecF64x2: return vec.extractLaneF64x2(curr->index);
     }
     WASM_UNREACHABLE();
   }
@@ -569,12 +569,12 @@ public:
     if (flow.breaking()) return flow;
     Literal value = flow.value;
     switch (curr->op) {
-    case ReplaceLaneVecI8x16: return vec.replaceLaneI8x16(value, curr->idx);
-    case ReplaceLaneVecI16x8: return vec.replaceLaneI16x8(value, curr->idx);
-    case ReplaceLaneVecI32x4: return vec.replaceLaneI32x4(value, curr->idx);
-    case ReplaceLaneVecI64x2: return vec.replaceLaneI64x2(value, curr->idx);
-    case ReplaceLaneVecF32x4: return vec.replaceLaneF32x4(value, curr->idx);
-    case ReplaceLaneVecF64x2: return vec.replaceLaneF64x2(value, curr->idx);
+    case ReplaceLaneVecI8x16: return vec.replaceLaneI8x16(value, curr->index);
+    case ReplaceLaneVecI16x8: return vec.replaceLaneI16x8(value, curr->index);
+    case ReplaceLaneVecI32x4: return vec.replaceLaneI32x4(value, curr->index);
+    case ReplaceLaneVecI64x2: return vec.replaceLaneI64x2(value, curr->index);
+    case ReplaceLaneVecF32x4: return vec.replaceLaneF32x4(value, curr->index);
+    case ReplaceLaneVecF64x2: return vec.replaceLaneF64x2(value, curr->index);
     }
     WASM_UNREACHABLE();
   }
@@ -727,6 +727,10 @@ public:
   Flow visitLoad(Load *curr) { WASM_UNREACHABLE(); }
   Flow visitStore(Store *curr) { WASM_UNREACHABLE(); }
   Flow visitHost(Host *curr) { WASM_UNREACHABLE(); }
+  Flow visitMemoryInit(MemoryInit *curr) { WASM_UNREACHABLE(); }
+  Flow visitDataDrop(DataDrop *curr) { WASM_UNREACHABLE(); }
+  Flow visitMemoryCopy(MemoryCopy *curr) { WASM_UNREACHABLE(); }
+  Flow visitMemoryFill(MemoryFill *curr) { WASM_UNREACHABLE(); }
 };
 
 //
@@ -1151,6 +1155,26 @@ public:
           }
         }
         WASM_UNREACHABLE();
+      }
+      Flow visitMemoryInit(MemoryInit *curr) {
+        NOTE_ENTER("MemoryInit");
+        // TODO(tlively): implement me
+        return {};
+      }
+      Flow visitDataDrop(DataDrop *curr) {
+        NOTE_ENTER("DataDrop");
+        // TODO(tlively): implement me
+        return {};
+      }
+      Flow visitMemoryCopy(MemoryCopy *curr) {
+        NOTE_ENTER("MemoryCopy");
+        // TODO(tlively): implement me
+        return {};
+      }
+      Flow visitMemoryFill(MemoryFill *curr) {
+        NOTE_ENTER("MemoryFill");
+        // TODO(tlively): implement me
+        return {};
       }
 
       void trap(const char* why) override {

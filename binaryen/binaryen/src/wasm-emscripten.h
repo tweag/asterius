@@ -36,13 +36,13 @@ public:
 
   void generateRuntimeFunctions();
   Function* generateMemoryGrowthFunction();
-  void generateStackInitialization();
+  void generateStackInitialization(Address addr);
 
   // Create thunks for use with emscripten Runtime.dynCall. Creates one for each
   // signature in the indirect function table.
   void generateDynCallThunks();
 
-  // Convert stack pointer access from get_global/set_global to calling save
+  // Convert stack pointer access from global.get/global.set to calling save
   // and restore functions.
   void replaceStackPointerGlobal();
 
@@ -57,7 +57,10 @@ public:
 
   void fixInvokeFunctionNames();
 
-  void separateDataSegments(Output* outfile);
+  // Emits the data segments to a file. The file contains data from address base
+  // onwards (we must pass in base, as we can't tell it from the wasm - the first
+  // segment may start after a run of zeros, but we need those zeros in the file).
+  void separateDataSegments(Output* outfile, Address base);
 
 private:
   Module& wasm;

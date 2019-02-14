@@ -55,7 +55,7 @@ struct LEB {
 
   T value;
 
-  LEB() {}
+  LEB() = default;
   LEB(T value) : value(value) {}
 
   bool hasMore(T temp, MiniT byte) {
@@ -344,6 +344,7 @@ extern const char* Name;
 extern const char* SourceMapUrl;
 extern const char* Dylink;
 extern const char* Linking;
+extern const char* Producers;
 
 enum Subsection {
   NameFunction = 1,
@@ -549,7 +550,7 @@ enum ASTNodes {
   I64ExtendS16 = 0xc3,
   I64ExtendS32 = 0xc4,
 
-  TruncSatPrefix = 0xfc,
+  MiscPrefix = 0xfc,
   SIMDPrefix = 0xfd,
   AtomicPrefix = 0xfe
 };
@@ -784,6 +785,13 @@ enum SIMDOpcodes {
   F64x2ConvertUI64x2 = 0xb2
 };
 
+enum BulkMemoryOpcodes {
+  MemoryInit = 0x08,
+  DataDrop = 0x09,
+  MemoryCopy = 0x0a,
+  MemoryFill = 0x0b
+};
+
 enum MemoryAccess {
   Offset = 0x10,     // bit 4
   Alignment = 0x80,  // bit 7
@@ -959,7 +967,7 @@ public:
   uint16_t getInt16();
   uint32_t getInt32();
   uint64_t getInt64();
-  uint8_t getLaneIdx(size_t lanes);
+  uint8_t getLaneIndex(size_t lanes);
   // it is unsafe to return a float directly, due to ABI issues with the signalling bit
   Literal getFloat32Literal();
   Literal getFloat64Literal();
@@ -1114,6 +1122,10 @@ public:
   bool maybeVisitSIMDShuffle(Expression*& out, uint32_t code);
   bool maybeVisitSIMDBitselect(Expression*& out, uint32_t code);
   bool maybeVisitSIMDShift(Expression*& out, uint32_t code);
+  bool maybeVisitMemoryInit(Expression*& out, uint32_t code);
+  bool maybeVisitDataDrop(Expression*& out, uint32_t code);
+  bool maybeVisitMemoryCopy(Expression*& out, uint32_t code);
+  bool maybeVisitMemoryFill(Expression*& out, uint32_t code);
   void visitSelect(Select* curr);
   void visitReturn(Return* curr);
   bool maybeVisitHost(Expression*& out, uint8_t code);

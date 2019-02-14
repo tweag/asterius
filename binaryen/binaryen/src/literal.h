@@ -28,10 +28,6 @@
 namespace wasm {
 
 class Literal {
-public:
-  Type type;
-
-private:
   // store only integers, whose bits are deterministic. floats
   // can have their signalling bit set, for example.
   union {
@@ -41,14 +37,17 @@ private:
   };
 
 public:
-  Literal() : type(Type::none), v128() {}
-  explicit Literal(Type type) : type(type), v128() {}
-  explicit Literal(int32_t  init) : type(Type::i32), i32(init) {}
-  explicit Literal(uint32_t init) : type(Type::i32), i32(init) {}
-  explicit Literal(int64_t  init) : type(Type::i64), i64(init) {}
-  explicit Literal(uint64_t init) : type(Type::i64), i64(init) {}
-  explicit Literal(float    init) : type(Type::f32), i32(bit_cast<int32_t>(init)) {}
-  explicit Literal(double   init) : type(Type::f64), i64(bit_cast<int64_t>(init)) {}
+  Type type;
+
+public:
+  Literal()                       : v128(),                       type(Type::none) {}
+  explicit Literal(Type type)     : v128(),                       type(type)       {}
+  explicit Literal(int32_t  init) : i32(init),                    type(Type::i32)  {}
+  explicit Literal(uint32_t init) : i32(init),                    type(Type::i32)  {}
+  explicit Literal(int64_t  init) : i64(init),                    type(Type::i64)  {}
+  explicit Literal(uint64_t init) : i64(init),                    type(Type::i64)  {}
+  explicit Literal(float    init) : i32(bit_cast<int32_t>(init)), type(Type::f32)  {}
+  explicit Literal(double   init) : i64(bit_cast<int64_t>(init)), type(Type::f64)  {}
   // v128 literal from bytes
   explicit Literal(const uint8_t init[16]);
   // v128 literal from lane value literals
@@ -205,25 +204,25 @@ public:
 
   Literal shuffleV8x16(const Literal& other, const std::array<uint8_t, 16>& mask) const;
   Literal splatI8x16() const;
-  Literal extractLaneSI8x16(uint8_t idx) const;
-  Literal extractLaneUI8x16(uint8_t idx) const;
-  Literal replaceLaneI8x16(const Literal& other, uint8_t idx) const;
+  Literal extractLaneSI8x16(uint8_t index) const;
+  Literal extractLaneUI8x16(uint8_t index) const;
+  Literal replaceLaneI8x16(const Literal& other, uint8_t index) const;
   Literal splatI16x8() const;
-  Literal extractLaneSI16x8(uint8_t idx) const;
-  Literal extractLaneUI16x8(uint8_t idx) const;
-  Literal replaceLaneI16x8(const Literal& other, uint8_t idx) const;
+  Literal extractLaneSI16x8(uint8_t index) const;
+  Literal extractLaneUI16x8(uint8_t index) const;
+  Literal replaceLaneI16x8(const Literal& other, uint8_t index) const;
   Literal splatI32x4() const;
-  Literal extractLaneI32x4(uint8_t idx) const;
-  Literal replaceLaneI32x4(const Literal& other, uint8_t idx) const;
+  Literal extractLaneI32x4(uint8_t index) const;
+  Literal replaceLaneI32x4(const Literal& other, uint8_t index) const;
   Literal splatI64x2() const;
-  Literal extractLaneI64x2(uint8_t idx) const;
-  Literal replaceLaneI64x2(const Literal& other, uint8_t idx) const;
+  Literal extractLaneI64x2(uint8_t index) const;
+  Literal replaceLaneI64x2(const Literal& other, uint8_t index) const;
   Literal splatF32x4() const;
-  Literal extractLaneF32x4(uint8_t idx) const;
-  Literal replaceLaneF32x4(const Literal& other, uint8_t idx) const;
+  Literal extractLaneF32x4(uint8_t index) const;
+  Literal replaceLaneF32x4(const Literal& other, uint8_t index) const;
   Literal splatF64x2() const;
-  Literal extractLaneF64x2(uint8_t idx) const;
-  Literal replaceLaneF64x2(const Literal& other, uint8_t idx) const;
+  Literal extractLaneF64x2(uint8_t index) const;
+  Literal replaceLaneF64x2(const Literal& other, uint8_t index) const;
   Literal eqI8x16(const Literal& other) const;
   Literal neI8x16(const Literal& other) const;
   Literal ltSI8x16(const Literal& other) const;
