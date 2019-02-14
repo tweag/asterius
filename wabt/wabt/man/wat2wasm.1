@@ -46,18 +46,29 @@ Write debug names to the generated binary file
 Don't check for invalid modules
 .El
 .Sh EXAMPLES
- # parse and typecheck test.wat
- $ wat2wasm test.wat
-.sp
- # parse test.wat and write to binary file test.wasm
- $ wat2wasm test.wat -o test.wasm
-.sp
- # parse spec-test.wast, and write verbose output to stdout (including
- # the meaning of every byte)
- $ wat2wasm spec-test.wast -v
+Parse and typecheck test.wat
+.Pp
+.Dl $ wat2wasm test.wat
+.Pp
+parse test.wat and write to binary file test.wasm
+.Pp
+.Dl $ wat2wasm test.wat -o test.wasm
+.Pp
+Parse spec-test.wast, and write verbose output to stdout (including the meaning of every byte)
+.Pp
+.Dl $ wat2wasm spec-test.wast -v
 .Sh SEE ALSO
-wasm2wat(1), wasm-objdump(1), wasm-interp(1), wat-desugar(1), wasm2c(1)
+.Xr wasm-interp 1 ,
+.Xr wasm-objdump 1 ,
+.Xr wasm-opcodecnt 1 ,
+.Xr wasm-strip 1 ,
+.Xr wasm-validate 1 ,
+.Xr wasm2c 1 ,
+.Xr wasm2wat 1 ,
+.Xr wast2json 1 ,
+.Xr wat-desugar 1 ,
+.Xr spectest-interp 1
 .Sh BUGS
 If you find a bug, please report it at
 .br
-<\fBhttps://github.com/WebAssembly/wabt/issues/\fP>.
+.Lk https://github.com/WebAssembly/wabt/issues .

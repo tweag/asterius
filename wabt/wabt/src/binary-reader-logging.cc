@@ -207,18 +207,16 @@ Result BinaryReaderLogging::OnImportGlobal(Index import_index,
                                  global_index, type, mutable_);
 }
 
-Result BinaryReaderLogging::OnImportException(Index import_index,
-                                              string_view module_name,
-                                              string_view field_name,
-                                              Index except_index,
-                                              TypeVector& sig) {
-  LOGF("OnImportException(import_index: %" PRIindex ", except_index: %" PRIindex
-       ", sig: ",
-       import_index, except_index);
-  LogTypes(sig);
-  LOGF_NOINDENT(")\n");
-  return reader_->OnImportException(import_index, module_name, field_name,
-                                    except_index, sig);
+Result BinaryReaderLogging::OnImportEvent(Index import_index,
+                                          string_view module_name,
+                                          string_view field_name,
+                                          Index event_index,
+                                          Index sig_index) {
+  LOGF("OnImportEvent(import_index: %" PRIindex ", event_index: %" PRIindex
+       ", sig_index: %" PRIindex ")\n",
+       import_index, event_index, sig_index);
+  return reader_->OnImportEvent(import_index, module_name, field_name,
+                                event_index, sig_index);
 }
 
 Result BinaryReaderLogging::OnTable(Index index,
@@ -299,13 +297,6 @@ Result BinaryReaderLogging::OnBrTableExpr(Index num_targets,
                                 default_target_depth);
 }
 
-Result BinaryReaderLogging::OnExceptionType(Index index, TypeVector& sig) {
-  LOGF("OnType(index: %" PRIindex ", values: ", index);
-  LogTypes(sig);
-  LOGF_NOINDENT(")\n");
-  return reader_->OnExceptionType(index, sig);
-}
-
 Result BinaryReaderLogging::OnF32ConstExpr(uint32_t value_bits) {
   float value;
   memcpy(&value, &value_bits, sizeof(value));
@@ -341,13 +332,6 @@ Result BinaryReaderLogging::OnIfExpr(Type sig_type) {
   LogType(sig_type);
   LOGF_NOINDENT(")\n");
   return reader_->OnIfExpr(sig_type);
-}
-
-Result BinaryReaderLogging::OnIfExceptExpr(Type sig_type, Index except_index) {
-  LOGF("OnIfExceptExpr(sig: ");
-  LogType(sig_type);
-  LOGF_NOINDENT(", except: %" PRIindex ")\n", except_index);
-  return reader_->OnIfExceptExpr(sig_type, except_index);
 }
 
 Result BinaryReaderLogging::OnLoopExpr(Type sig_type) {
@@ -681,40 +665,47 @@ DEFINE_LOAD_STORE_OPCODE(OnAtomicRmwExpr);
 DEFINE_LOAD_STORE_OPCODE(OnAtomicRmwCmpxchgExpr);
 DEFINE_LOAD_STORE_OPCODE(OnAtomicStoreExpr);
 DEFINE_LOAD_STORE_OPCODE(OnAtomicWaitExpr);
-DEFINE_LOAD_STORE_OPCODE(OnAtomicWakeExpr);
+DEFINE_LOAD_STORE_OPCODE(OnAtomicNotifyExpr);
+DEFINE_INDEX_INDEX(OnBrOnExnExpr, "depth", "event_index");
 DEFINE_OPCODE(OnBinaryExpr)
 DEFINE_INDEX_DESC(OnCallExpr, "func_index")
-DEFINE_INDEX_DESC(OnCallIndirectExpr, "sig_index")
+DEFINE_INDEX_INDEX(OnCallIndirectExpr, "sig_index", "table_index")
 DEFINE0(OnCatchExpr);
 DEFINE_OPCODE(OnCompareExpr)
 DEFINE_OPCODE(OnConvertExpr)
 DEFINE0(OnDropExpr)
 DEFINE0(OnElseExpr)
 DEFINE0(OnEndExpr)
-DEFINE_INDEX_DESC(OnGetGlobalExpr, "index")
-DEFINE_INDEX_DESC(OnGetLocalExpr, "index")
+DEFINE_INDEX_DESC(OnGlobalGetExpr, "index")
+DEFINE_INDEX_DESC(OnGlobalSetExpr, "index")
 DEFINE_LOAD_STORE_OPCODE(OnLoadExpr);
+DEFINE_INDEX_DESC(OnLocalGetExpr, "index")
+DEFINE_INDEX_DESC(OnLocalSetExpr, "index")
+DEFINE_INDEX_DESC(OnLocalTeeExpr, "index")
 DEFINE0(OnMemoryCopyExpr)
-DEFINE_INDEX(OnMemoryDropExpr)
+DEFINE_INDEX(OnDataDropExpr)
 DEFINE0(OnMemoryFillExpr)
 DEFINE0(OnMemoryGrowExpr)
 DEFINE_INDEX(OnMemoryInitExpr)
 DEFINE0(OnMemorySizeExpr)
 DEFINE0(OnTableCopyExpr)
-DEFINE_INDEX(OnTableDropExpr)
+DEFINE_INDEX(OnElemDropExpr)
 DEFINE_INDEX(OnTableInitExpr)
+DEFINE_INDEX(OnTableSetExpr)
+DEFINE_INDEX(OnTableGetExpr)
+DEFINE_INDEX(OnTableGrowExpr)
+DEFINE_INDEX(OnTableSizeExpr)
+DEFINE0(OnRefNullExpr)
+DEFINE0(OnRefIsNullExpr)
 DEFINE0(OnNopExpr)
 DEFINE0(OnRethrowExpr);
 DEFINE_INDEX_DESC(OnReturnCallExpr, "func_index")
 
-    DEFINE_INDEX_DESC(OnReturnCallIndirectExpr, "sig_index")
+DEFINE_INDEX_INDEX(OnReturnCallIndirectExpr, "sig_index", "table_index")
 DEFINE0(OnReturnExpr)
 DEFINE0(OnSelectExpr)
-DEFINE_INDEX_DESC(OnSetGlobalExpr, "index")
-DEFINE_INDEX_DESC(OnSetLocalExpr, "index")
 DEFINE_LOAD_STORE_OPCODE(OnStoreExpr);
-DEFINE_INDEX_DESC(OnTeeLocalExpr, "index")
-DEFINE_INDEX_DESC(OnThrowExpr, "except_index")
+DEFINE_INDEX_DESC(OnThrowExpr, "event_index")
 DEFINE0(OnUnreachableExpr)
 DEFINE_OPCODE(OnUnaryExpr)
 DEFINE_OPCODE(OnTernaryExpr)
@@ -738,6 +729,10 @@ DEFINE_INDEX(EndDataSegmentInitExpr)
 DEFINE_INDEX(EndDataSegment)
 DEFINE_END(EndDataSection)
 
+DEFINE_BEGIN(BeginDataCountSection)
+DEFINE_INDEX(OnDataCount)
+DEFINE_END(EndDataCountSection)
+
 DEFINE_BEGIN(BeginNamesSection)
 DEFINE_INDEX(OnFunctionNamesCount)
 DEFINE_INDEX(OnLocalNameFunctionCount)
@@ -746,7 +741,7 @@ DEFINE_END(EndNamesSection)
 
 DEFINE_BEGIN(BeginRelocSection)
 DEFINE_END(EndRelocSection)
-DEFINE_INDEX_INDEX(OnInitExprGetGlobalExpr, "index", "global_index")
+DEFINE_INDEX_INDEX(OnInitExprGlobalGetExpr, "index", "global_index")
 
 DEFINE_BEGIN(BeginDylinkSection)
 DEFINE_INDEX(OnDylinkNeededCount)
@@ -758,10 +753,10 @@ DEFINE_INDEX(OnSegmentInfoCount)
 DEFINE_INDEX(OnInitFunctionCount)
 DEFINE_END(EndLinkingSection)
 
-DEFINE_BEGIN(BeginExceptionSection);
-DEFINE_INDEX(OnExceptionCount);
-
-DEFINE_END(EndExceptionSection);
+DEFINE_BEGIN(BeginEventSection);
+DEFINE_INDEX(OnEventCount);
+DEFINE_INDEX_INDEX(OnEventType, "index", "sig_index")
+DEFINE_END(EndEventSection);
 
 // We don't need to log these (the individual opcodes are logged instead), but
 // we still need to forward the calls.
@@ -775,6 +770,10 @@ Result BinaryReaderLogging::OnOpcodeBare() {
 
 Result BinaryReaderLogging::OnOpcodeIndex(Index value) {
   return reader_->OnOpcodeIndex(value);
+}
+
+Result BinaryReaderLogging::OnOpcodeIndexIndex(Index value, Index value2) {
+  return reader_->OnOpcodeIndexIndex(value, value2);
 }
 
 Result BinaryReaderLogging::OnOpcodeUint32(uint32_t value) {

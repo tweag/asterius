@@ -39,7 +39,6 @@ class NameGenerator : public ExprVisitor::DelegateNop {
   Result BeginBlockExpr(BlockExpr* expr) override;
   Result BeginLoopExpr(LoopExpr* expr) override;
   Result BeginIfExpr(IfExpr* expr) override;
-  Result BeginIfExceptExpr(IfExceptExpr* expr) override;
 
  private:
   static bool HasName(const std::string& str);
@@ -90,7 +89,7 @@ class NameGenerator : public ExprVisitor::DelegateNop {
   Result VisitFuncType(Index func_type_index, FuncType* func_type);
   Result VisitTable(Index table_index, Table* table);
   Result VisitMemory(Index memory_index, Memory* memory);
-  Result VisitExcept(Index except_index, Exception* except);
+  Result VisitEvent(Index event_index, Event* event);
   Result VisitDataSegment(Index data_segment_index, DataSegment* data_segment);
   Result VisitElemSegment(Index elem_segment_index, ElemSegment* elem_segment);
   Result VisitImport(Import* import);
@@ -104,7 +103,7 @@ class NameGenerator : public ExprVisitor::DelegateNop {
   Index num_table_imports_ = 0;
   Index num_memory_imports_ = 0;
   Index num_global_imports_ = 0;
-  Index num_exception_imports_ = 0;
+  Index num_event_imports_ = 0;
 };
 
 NameGenerator::NameGenerator() : visitor_(this) {}
@@ -217,11 +216,6 @@ Result NameGenerator::BeginIfExpr(IfExpr* expr) {
   return Result::Ok;
 }
 
-Result NameGenerator::BeginIfExceptExpr(IfExceptExpr* expr) {
-  MaybeGenerateName("$E", label_count_++, &expr->true_.label);
-  return Result::Ok;
-}
-
 Result NameGenerator::VisitFunc(Index func_index, Func* func) {
   MaybeGenerateAndBindName(&module_->func_bindings, "$f", func_index,
                            &func->name);
@@ -257,9 +251,9 @@ Result NameGenerator::VisitMemory(Index memory_index, Memory* memory) {
   return Result::Ok;
 }
 
-Result NameGenerator::VisitExcept(Index except_index, Exception* except) {
-  MaybeGenerateAndBindName(&module_->except_bindings, "$e", except_index,
-                           &except->name);
+Result NameGenerator::VisitEvent(Index event_index, Event* event) {
+  MaybeGenerateAndBindName(&module_->event_bindings, "$e", event_index,
+                           &event->name);
   return Result::Ok;
 }
 
@@ -315,11 +309,11 @@ Result NameGenerator::VisitImport(Import* import) {
       }
       break;
 
-    case ExternalKind::Except:
-      if (auto* except_import = cast<ExceptionImport>(import)) {
-        bindings = &module_->except_bindings;
-        name = &except_import->except.name;
-        index = num_exception_imports_++;
+    case ExternalKind::Event:
+      if (auto* event_import = cast<EventImport>(import)) {
+        bindings = &module_->event_bindings;
+        name = &event_import->event.name;
+        index = num_event_imports_++;
       }
       break;
   }
@@ -371,11 +365,11 @@ Result NameGenerator::VisitExport(Export* export_) {
       }
       break;
 
-    case ExternalKind::Except:
-      if (Exception* except = module_->GetExcept(export_->var)) {
-        index = module_->GetExceptIndex(export_->var);
-        bindings = &module_->except_bindings;
-        name = &except->name;
+    case ExternalKind::Event:
+      if (Event* event = module_->GetEvent(export_->var)) {
+        index = module_->GetEventIndex(export_->var);
+        bindings = &module_->event_bindings;
+        name = &event->name;
       }
       break;
   }
@@ -413,7 +407,7 @@ Result NameGenerator::VisitModule(Module* module) {
   VisitAll(module->funcs, &NameGenerator::VisitFunc);
   VisitAll(module->tables, &NameGenerator::VisitTable);
   VisitAll(module->memories, &NameGenerator::VisitMemory);
-  VisitAll(module->excepts, &NameGenerator::VisitExcept);
+  VisitAll(module->events, &NameGenerator::VisitEvent);
   VisitAll(module->data_segments, &NameGenerator::VisitDataSegment);
   VisitAll(module->elem_segments, &NameGenerator::VisitElemSegment);
   module_ = nullptr;

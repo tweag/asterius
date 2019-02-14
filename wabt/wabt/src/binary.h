@@ -27,7 +27,6 @@
 #define WABT_BINARY_SECTION_NAME "name"
 #define WABT_BINARY_SECTION_RELOC "reloc"
 #define WABT_BINARY_SECTION_LINKING "linking"
-#define WABT_BINARY_SECTION_EXCEPTION "exception"
 #define WABT_BINARY_SECTION_DYLINK "dylink"
 
 #define WABT_FOREACH_BINARY_SECTION(V) \
@@ -38,9 +37,11 @@
   V(Table, table, 4)                   \
   V(Memory, memory, 5)                 \
   V(Global, global, 6)                 \
+  V(Event, event, 13)                  \
   V(Export, export, 7)                 \
   V(Start, start, 8)                   \
   V(Elem, elem, 9)                     \
+  V(DataCount, data_count, 12)         \
   V(Code, code, 10)                    \
   V(Data, data, 11)
 
@@ -51,13 +52,22 @@ enum class BinarySection {
 #define V(Name, name, code) Name = code,
   WABT_FOREACH_BINARY_SECTION(V)
 #undef V
-  Invalid,
+  Invalid = ~0,
 
   First = Custom,
-  Last = Data,
+  Last = Event,
 };
 /* clang-format on */
 static const int kBinarySectionCount = WABT_ENUM_COUNT(BinarySection);
+
+enum class BinarySectionOrder {
+#define V(Name, name, code) Name,
+  WABT_FOREACH_BINARY_SECTION(V)
+#undef V
+};
+
+BinarySectionOrder GetSectionOrder(BinarySection);
+const char* GetSectionName(BinarySection);
 
 enum class NameSectionSubsection {
   Module = 0,
@@ -70,13 +80,6 @@ enum class SegmentFlags : uint8_t {
   Passive = 1,
   IndexOther = 2,
 };
-
-extern const char* g_section_name[];
-
-static WABT_INLINE const char* GetSectionName(BinarySection sec) {
-  assert(static_cast<int>(sec) < kBinarySectionCount);
-  return g_section_name[static_cast<size_t>(sec)];
-}
 
 }  // namespace wabt
 

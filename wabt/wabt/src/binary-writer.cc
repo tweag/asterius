@@ -125,7 +125,7 @@ class BinaryWriter {
   void BeginSubsection(const char* name);
   void EndSubsection();
   Index GetLabelVarDepth(const Var* var);
-  Index GetExceptVarDepth(const Var* var);
+  Index GetEventVarDepth(const Var* var);
   Index GetLocalIndex(const Func* func, const Var& var);
   Index GetSymbolIndex(RelocType reloc_type, Index index);
   void AddReloc(RelocType reloc_type, Index index);
@@ -143,7 +143,7 @@ class BinaryWriter {
   void WriteTable(const Table* table);
   void WriteMemory(const Memory* memory);
   void WriteGlobalHeader(const Global* global);
-  void WriteExceptType(const TypeVector* except_types);
+  void WriteEventType(const Event* event);
   void WriteRelocSection(const RelocSection* reloc_section);
   void WriteLinkingSection();
 
@@ -301,7 +301,7 @@ Index BinaryWriter::GetLabelVarDepth(const Var* var) {
   return var->index();
 }
 
-Index BinaryWriter::GetExceptVarDepth(const Var* var) {
+Index BinaryWriter::GetEventVarDepth(const Var* var) {
   return var->index();
 }
 
@@ -357,7 +357,7 @@ void BinaryWriter::WriteU32Leb128WithReloc(Index index,
 }
 
 Index BinaryWriter::GetLocalIndex(const Func* func, const Var& var) {
-  // func can be nullptr when using get_local/set_local/tee_local in an
+  // func can be nullptr when using local.get/local.set/local.tee in an
   // init_expr.
   if (func) {
     return func->GetLocalIndex(var);
@@ -397,8 +397,8 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
     case ExprType::AtomicWait:
       WriteLoadStoreExpr<AtomicWaitExpr>(func, expr, "memory offset");
       break;
-    case ExprType::AtomicWake:
-      WriteLoadStoreExpr<AtomicWakeExpr>(func, expr, "memory offset");
+    case ExprType::AtomicNotify:
+      WriteLoadStoreExpr<AtomicNotifyExpr>(func, expr, "memory offset");
       break;
     case ExprType::Binary:
       WriteOpcode(stream_, cast<BinaryExpr>(expr)->opcode);
@@ -419,6 +419,15 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
       WriteU32Leb128(stream_, GetLabelVarDepth(&cast<BrIfExpr>(expr)->var),
                      "break depth");
       break;
+    case ExprType::BrOnExn: {
+      auto* br_on_exn_expr = cast<BrOnExnExpr>(expr);
+      WriteOpcode(stream_, Opcode::BrOnExn);
+      WriteU32Leb128(stream_, GetLabelVarDepth(&br_on_exn_expr->label_var),
+                     "break depth");
+      WriteU32Leb128(stream_, module_->GetEventIndex(br_on_exn_expr->event_var),
+                     "event index");
+      break;
+    }
     case ExprType::BrTable: {
       auto* br_table_expr = cast<BrTableExpr>(expr);
       WriteOpcode(stream_, Opcode::BrTable);
@@ -445,19 +454,23 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
       break;
     }
     case ExprType::CallIndirect:{
-      Index index =
+      Index sig_index =
         module_->GetFuncTypeIndex(cast<CallIndirectExpr>(expr)->decl);
+      Index table_index =
+        module_->GetTableIndex(cast<CallIndirectExpr>(expr)->table);
       WriteOpcode(stream_, Opcode::CallIndirect);
-      WriteU32Leb128WithReloc(index, "signature index", RelocType::TypeIndexLEB);
-      WriteU32Leb128(stream_, 0, "call_indirect reserved");
+      WriteU32Leb128WithReloc(sig_index, "signature index", RelocType::TypeIndexLEB);
+      WriteU32Leb128(stream_, table_index, "table index");
       break;
     }
     case ExprType::ReturnCallIndirect: {
-      Index index =
+      Index sig_index =
           module_->GetFuncTypeIndex(cast<ReturnCallIndirectExpr>(expr)->decl);
+      Index table_index =
+          module_->GetTableIndex(cast<ReturnCallIndirectExpr>(expr)->table);
       WriteOpcode(stream_, Opcode::ReturnCallIndirect);
-      WriteU32Leb128WithReloc(index, "signature index", RelocType::TypeIndexLEB);
-      WriteU32Leb128(stream_, 0, "return_call_indirect reserved");
+      WriteU32Leb128WithReloc(sig_index, "signature index", RelocType::TypeIndexLEB);
+      WriteU32Leb128(stream_, table_index, "table index");
       break;
     }
     case ExprType::Compare:
@@ -498,16 +511,16 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
     case ExprType::Drop:
       WriteOpcode(stream_, Opcode::Drop);
       break;
-    case ExprType::GetGlobal: {
-      Index index = module_->GetGlobalIndex(cast<GetGlobalExpr>(expr)->var);
-      WriteOpcode(stream_, Opcode::GetGlobal);
+    case ExprType::GlobalGet: {
+      Index index = module_->GetGlobalIndex(cast<GlobalGetExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::GlobalGet);
       WriteU32Leb128WithReloc(index, "global index", RelocType::GlobalIndexLEB);
       break;
     }
-    case ExprType::GetLocal: {
-      Index index = GetLocalIndex(func, cast<GetLocalExpr>(expr)->var);
-      WriteOpcode(stream_, Opcode::GetLocal);
-      WriteU32Leb128(stream_, index, "local index");
+    case ExprType::GlobalSet: {
+      Index index = module_->GetGlobalIndex(cast<GlobalSetExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::GlobalSet);
+      WriteU32Leb128WithReloc(index, "global index", RelocType::GlobalIndexLEB);
       break;
     }
     case ExprType::If: {
@@ -522,23 +535,27 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
       WriteOpcode(stream_, Opcode::End);
       break;
     }
-    case ExprType::IfExcept: {
-      auto* if_except_expr = cast<IfExceptExpr>(expr);
-      WriteOpcode(stream_, Opcode::IfExcept);
-      WriteBlockDecl(if_except_expr->true_.decl);
-      Index index = module_->GetExceptIndex(if_except_expr->except_var);
-      WriteU32Leb128(stream_, index, "exception index");
-      WriteExprList(func, if_except_expr->true_.exprs);
-      if (!if_except_expr->false_.empty()) {
-        WriteOpcode(stream_, Opcode::Else);
-        WriteExprList(func, if_except_expr->false_);
-      }
-      WriteOpcode(stream_, Opcode::End);
-      break;
-    }
     case ExprType::Load:
       WriteLoadStoreExpr<LoadExpr>(func, expr, "load offset");
       break;
+    case ExprType::LocalGet: {
+      Index index = GetLocalIndex(func, cast<LocalGetExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::LocalGet);
+      WriteU32Leb128(stream_, index, "local index");
+      break;
+    }
+    case ExprType::LocalSet: {
+      Index index = GetLocalIndex(func, cast<LocalSetExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::LocalSet);
+      WriteU32Leb128(stream_, index, "local index");
+      break;
+    }
+    case ExprType::LocalTee: {
+      Index index = GetLocalIndex(func, cast<LocalTeeExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::LocalTee);
+      WriteU32Leb128(stream_, index, "local index");
+      break;
+    }
     case ExprType::Loop:
       WriteOpcode(stream_, Opcode::Loop);
       WriteBlockDecl(cast<LoopExpr>(expr)->block.decl);
@@ -548,12 +565,13 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
     case ExprType::MemoryCopy:
       WriteOpcode(stream_, Opcode::MemoryCopy);
       WriteU32Leb128(stream_, 0, "memory.copy reserved");
+      WriteU32Leb128(stream_, 0, "memory.copy reserved");
       break;
-    case ExprType::MemoryDrop: {
+    case ExprType::DataDrop: {
       Index index =
-          module_->GetDataSegmentIndex(cast<MemoryDropExpr>(expr)->var);
-      WriteOpcode(stream_, Opcode::MemoryDrop);
-      WriteU32Leb128(stream_, index, "memory.drop segment");
+          module_->GetDataSegmentIndex(cast<DataDropExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::DataDrop);
+      WriteU32Leb128(stream_, index, "data.drop segment");
       break;
     }
     case ExprType::MemoryFill:
@@ -568,8 +586,8 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
       Index index =
           module_->GetDataSegmentIndex(cast<MemoryInitExpr>(expr)->var);
       WriteOpcode(stream_, Opcode::MemoryInit);
-      WriteU32Leb128(stream_, 0, "memory.init reserved");
       WriteU32Leb128(stream_, index, "memory.init segment");
+      WriteU32Leb128(stream_, 0, "memory.init reserved");
       break;
     }
     case ExprType::MemorySize:
@@ -579,20 +597,57 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
     case ExprType::TableCopy:
       WriteOpcode(stream_, Opcode::TableCopy);
       WriteU32Leb128(stream_, 0, "table.copy reserved");
+      WriteU32Leb128(stream_, 0, "table.copy reserved");
       break;
-    case ExprType::TableDrop: {
+    case ExprType::ElemDrop: {
       Index index =
-          module_->GetElemSegmentIndex(cast<TableDropExpr>(expr)->var);
-      WriteOpcode(stream_, Opcode::TableDrop);
-      WriteU32Leb128(stream_, index, "table.drop segment");
+          module_->GetElemSegmentIndex(cast<ElemDropExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::ElemDrop);
+      WriteU32Leb128(stream_, index, "elem.drop segment");
       break;
     }
     case ExprType::TableInit: {
       Index index =
           module_->GetElemSegmentIndex(cast<TableInitExpr>(expr)->var);
       WriteOpcode(stream_, Opcode::TableInit);
-      WriteU32Leb128(stream_, 0, "table.init reserved");
       WriteU32Leb128(stream_, index, "table.init segment");
+      WriteU32Leb128(stream_, 0, "table.init reserved");
+      break;
+    }
+    case ExprType::TableGet: {
+      Index index =
+          module_->GetTableIndex(cast<TableGetExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::TableGet);
+      WriteU32Leb128(stream_, index, "table.get table index");
+      break;
+    }
+    case ExprType::TableSet: {
+      Index index =
+          module_->GetTableIndex(cast<TableSetExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::TableSet);
+      WriteU32Leb128(stream_, index, "table.set table index");
+      break;
+    }
+    case ExprType::TableGrow: {
+      Index index =
+          module_->GetTableIndex(cast<TableGrowExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::TableGrow);
+      WriteU32Leb128(stream_, index, "table.grow table index");
+      break;
+    }
+    case ExprType::TableSize: {
+      Index index =
+          module_->GetTableIndex(cast<TableSizeExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::TableSize);
+      WriteU32Leb128(stream_, index, "table.size table index");
+      break;
+    }
+    case ExprType::RefNull: {
+      WriteOpcode(stream_, Opcode::RefNull);
+      break;
+    }
+    case ExprType::RefIsNull: {
+      WriteOpcode(stream_, Opcode::RefIsNull);
       break;
     }
     case ExprType::Nop:
@@ -607,31 +662,13 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
     case ExprType::Select:
       WriteOpcode(stream_, Opcode::Select);
       break;
-    case ExprType::SetGlobal: {
-      Index index = module_->GetGlobalIndex(cast<SetGlobalExpr>(expr)->var);
-      WriteOpcode(stream_, Opcode::SetGlobal);
-      WriteU32Leb128WithReloc(index, "global index", RelocType::GlobalIndexLEB);
-      break;
-    }
-    case ExprType::SetLocal: {
-      Index index = GetLocalIndex(func, cast<SetLocalExpr>(expr)->var);
-      WriteOpcode(stream_, Opcode::SetLocal);
-      WriteU32Leb128(stream_, index, "local index");
-      break;
-    }
     case ExprType::Store:
       WriteLoadStoreExpr<StoreExpr>(func, expr, "store offset");
       break;
-    case ExprType::TeeLocal: {
-      Index index = GetLocalIndex(func, cast<TeeLocalExpr>(expr)->var);
-      WriteOpcode(stream_, Opcode::TeeLocal);
-      WriteU32Leb128(stream_, index, "local index");
-      break;
-    }
     case ExprType::Throw:
       WriteOpcode(stream_, Opcode::Throw);
-      WriteU32Leb128(stream_, GetExceptVarDepth(&cast<ThrowExpr>(expr)->var),
-                     "throw exception");
+      WriteU32Leb128(stream_, GetEventVarDepth(&cast<ThrowExpr>(expr)->var),
+                     "throw event");
       break;
     case ExprType::Try: {
       auto* try_expr = cast<TryExpr>(expr);
@@ -702,7 +739,7 @@ void BinaryWriter::WriteFunc(const Func* func) {
 }
 
 void BinaryWriter::WriteTable(const Table* table) {
-  WriteType(stream_, Type::Anyfunc);
+  WriteType(stream_, table->elem_type);
   WriteLimits(stream_, &table->elem_limits);
 }
 
@@ -715,11 +752,10 @@ void BinaryWriter::WriteGlobalHeader(const Global* global) {
   stream_->WriteU8(global->mutable_, "global mutability");
 }
 
-void BinaryWriter::WriteExceptType(const TypeVector* except_types) {
-  WriteU32Leb128(stream_, except_types->size(), "exception type count");
-  for (Type ty : *except_types) {
-    WriteType(stream_, ty);
-  }
+void BinaryWriter::WriteEventType(const Event* event) {
+  WriteU32Leb128(stream_, 0, "event attribute");
+  WriteU32Leb128(stream_, module_->GetFuncTypeIndex(event->decl),
+                 "event signature index");
 }
 
 void BinaryWriter::WriteRelocSection(const RelocSection* reloc_section) {
@@ -751,7 +787,7 @@ void BinaryWriter::WriteRelocSection(const RelocSection* reloc_section) {
 
 void BinaryWriter::WriteLinkingSection() {
   BeginCustomSection(WABT_BINARY_SECTION_LINKING);
-  WriteU32Leb128(stream_, 1, "metadata version");
+  WriteU32Leb128(stream_, 2, "metadata version");
   if (symbols_.size()) {
     stream_->WriteU8Enum(LinkingEntryType::SymbolTable, "symbol table");
     BeginSubsection("symbol table");
@@ -848,8 +884,8 @@ Result BinaryWriter::WriteModule() {
           WriteGlobalHeader(&cast<GlobalImport>(import)->global);
           break;
 
-        case ExternalKind::Except:
-          WriteExceptType(&cast<ExceptionImport>(import)->except.sig);
+        case ExternalKind::Event:
+          WriteEventType(&cast<EventImport>(import)->event);
           break;
       }
     }
@@ -912,6 +948,19 @@ Result BinaryWriter::WriteModule() {
     EndSection();
   }
 
+  assert(module_->events.size() >= module_->num_event_imports);
+  Index num_events = module_->events.size() - module_->num_event_imports;
+  if (num_events) {
+    BeginKnownSection(BinarySection::Event);
+    WriteU32Leb128(stream_, num_events, "event count");
+    for (size_t i = 0; i < num_events; ++i) {
+      WriteHeader("event", i);
+      const Event* event = module_->events[i + module_->num_event_imports];
+      WriteEventType(event);
+    }
+    EndSection();
+  }
+
   if (module_->exports.size()) {
     BeginKnownSection(BinarySection::Export);
     WriteU32Leb128(stream_, module_->exports.size(), "num exports");
@@ -940,9 +989,9 @@ Result BinaryWriter::WriteModule() {
           WriteU32Leb128(stream_, index, "export global index");
           break;
         }
-        case ExternalKind::Except: {
-          Index index = module_->GetExceptIndex(export_->var);
-          WriteU32Leb128(stream_, index, "export exception index");
+        case ExternalKind::Event: {
+          Index index = module_->GetEventIndex(export_->var);
+          WriteU32Leb128(stream_, index, "export event index");
           break;
         }
       }
@@ -982,14 +1031,9 @@ Result BinaryWriter::WriteModule() {
     EndSection();
   }
 
-  assert(module_->excepts.size() >= module_->num_except_imports);
-  Index num_exceptions = module_->excepts.size() - module_->num_except_imports;
-  if (num_exceptions) {
-    BeginCustomSection("exception");
-    WriteU32Leb128(stream_, num_exceptions, "exception count");
-    for (Index i = module_->num_except_imports; i < num_exceptions; ++i) {
-      WriteExceptType(&module_->excepts[i]->sig);
-    }
+  if (options_.features.bulk_memory_enabled()) {
+    BeginKnownSection(BinarySection::DataCount);
+    WriteU32Leb128(stream_, module_->data_segments.size(), "data count");
     EndSection();
   }
 

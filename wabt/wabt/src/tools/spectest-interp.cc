@@ -839,7 +839,7 @@ static void InitEnvironment(Environment* env) {
   host_module->AppendFuncExport("print_f64_f64", {{Type::F64, Type::F64}, {}},
                                 PrintCallback);
 
-  host_module->AppendTableExport("table", Limits(10, 20));
+  host_module->AppendTableExport("table", Type::Anyfunc, Limits(10, 20));
   host_module->AppendMemoryExport("memory", Limits(1, 2));
 
   host_module->AppendGlobalExport("global_i32", false, uint32_t(666));
@@ -1331,18 +1331,25 @@ void CommandRunner::TallyCommand(wabt::Result result) {
   total_++;
 }
 
-static wabt::Result ReadAndRunSpecJSON(string_view spec_json_filename) {
+static int ReadAndRunSpecJSON(string_view spec_json_filename) {
   JSONParser parser;
-  CHECK_RESULT(parser.ReadFile(spec_json_filename));
+  if (parser.ReadFile(spec_json_filename) == wabt::Result::Error) {
+    return 1;
+  }
 
   Script script;
-  CHECK_RESULT(parser.ParseScript(&script));
+  if (parser.ParseScript(&script) == wabt::Result::Error) {
+    return 1;
+  }
 
   CommandRunner runner;
-  wabt::Result result = runner.Run(script);
+  if (runner.Run(script) == wabt::Result::Error) {
+    return 1;
+  }
 
   printf("%d/%d tests passed.\n", runner.passed(), runner.total());
-  return result;
+  const int failed = runner.total() - runner.passed();
+  return failed;
 }
 
 }  // namespace spectest
@@ -1352,10 +1359,7 @@ int ProgramMain(int argc, char** argv) {
   s_stdout_stream = FileStream::CreateStdout();
 
   ParseOptions(argc, argv);
-
-  wabt::Result result;
-  result = spectest::ReadAndRunSpecJSON(s_infile);
-  return result != wabt::Result::Ok;
+  return spectest::ReadAndRunSpecJSON(s_infile);
 }
 
 int main(int argc, char** argv) {

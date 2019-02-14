@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
 import Data.Foldable
+import Data.Maybe
 import Distribution.Simple
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
@@ -9,6 +10,7 @@ import Distribution.Simple.Setup
 import Distribution.Types.GenericPackageDescription
 import Distribution.Verbosity
 import System.Directory
+import System.Environment.Blank
 import System.FilePath
 
 main :: IO ()
@@ -21,10 +23,14 @@ main =
             lbi <- confHook simpleUserHooks t c
             absBuildDir <- makeAbsolute $ buildDir lbi
             pwd <- getCurrentDirectory
+            hs_wabt_prefix <- getEnv "HS_WABT_PREFIX"
             let pkg_descr = packageDescription g_pkg_descr
                 wabt_builddir = absBuildDir </> "wabt"
                 wabt_installdirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-                wabt_prefix = takeDirectory $ bindir wabt_installdirs
+                wabt_prefix =
+                  fromMaybe
+                    (takeDirectory (bindir wabt_installdirs))
+                    hs_wabt_prefix
                 run prog args stdin_s =
                   let Just conf_prog = lookupProgram prog (withPrograms lbi)
                    in runProgramInvocation

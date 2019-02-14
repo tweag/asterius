@@ -40,26 +40,29 @@ class NameResolver : public ExprVisitor::DelegateNop {
   Result EndBlockExpr(BlockExpr*) override;
   Result OnBrExpr(BrExpr*) override;
   Result OnBrIfExpr(BrIfExpr*) override;
+  Result OnBrOnExnExpr(BrOnExnExpr*) override;
   Result OnBrTableExpr(BrTableExpr*) override;
   Result OnCallExpr(CallExpr*) override;
   Result OnCallIndirectExpr(CallIndirectExpr*) override;
   Result OnReturnCallExpr(ReturnCallExpr *) override;
   Result OnReturnCallIndirectExpr(ReturnCallIndirectExpr*) override;
-  Result OnGetGlobalExpr(GetGlobalExpr*) override;
-  Result OnGetLocalExpr(GetLocalExpr*) override;
+  Result OnGlobalGetExpr(GlobalGetExpr*) override;
+  Result OnGlobalSetExpr(GlobalSetExpr*) override;
   Result BeginIfExpr(IfExpr*) override;
   Result EndIfExpr(IfExpr*) override;
-  Result BeginIfExceptExpr(IfExceptExpr*) override;
-  Result EndIfExceptExpr(IfExceptExpr*) override;
+  Result OnLocalGetExpr(LocalGetExpr*) override;
+  Result OnLocalSetExpr(LocalSetExpr*) override;
+  Result OnLocalTeeExpr(LocalTeeExpr*) override;
   Result BeginLoopExpr(LoopExpr*) override;
   Result EndLoopExpr(LoopExpr*) override;
-  Result OnMemoryDropExpr(MemoryDropExpr*) override;
+  Result OnDataDropExpr(DataDropExpr*) override;
   Result OnMemoryInitExpr(MemoryInitExpr*) override;
-  Result OnSetGlobalExpr(SetGlobalExpr*) override;
-  Result OnSetLocalExpr(SetLocalExpr*) override;
-  Result OnTableDropExpr(TableDropExpr*) override;
+  Result OnElemDropExpr(ElemDropExpr*) override;
   Result OnTableInitExpr(TableInitExpr*) override;
-  Result OnTeeLocalExpr(TeeLocalExpr*) override;
+  Result OnTableGetExpr(TableGetExpr*) override;
+  Result OnTableSetExpr(TableSetExpr*) override;
+  Result OnTableGrowExpr(TableGrowExpr*) override;
+  Result OnTableSizeExpr(TableSizeExpr*) override;
   Result BeginTryExpr(TryExpr*) override;
   Result EndTryExpr(TryExpr*) override;
   Result OnThrowExpr(ThrowExpr*) override;
@@ -79,7 +82,7 @@ class NameResolver : public ExprVisitor::DelegateNop {
   void ResolveFuncTypeVar(Var* var);
   void ResolveTableVar(Var* var);
   void ResolveMemoryVar(Var* var);
-  void ResolveExceptionVar(Var* var);
+  void ResolveEventVar(Var* var);
   void ResolveDataSegmentVar(Var* var);
   void ResolveElemSegmentVar(Var* var);
   void ResolveLocalVar(Var* var);
@@ -87,6 +90,7 @@ class NameResolver : public ExprVisitor::DelegateNop {
   void VisitFunc(Func* func);
   void VisitExport(Export* export_);
   void VisitGlobal(Global* global);
+  void VisitEvent(Event* event);
   void VisitElemSegment(ElemSegment* segment);
   void VisitDataSegment(DataSegment* segment);
   void VisitScriptModule(ScriptModule* script_module);
@@ -191,8 +195,8 @@ void NameResolver::ResolveMemoryVar(Var* var) {
   ResolveVar(&current_module_->memory_bindings, var, "memory");
 }
 
-void NameResolver::ResolveExceptionVar(Var* var) {
-  ResolveVar(&current_module_->except_bindings, var, "exception");
+void NameResolver::ResolveEventVar(Var* var) {
+  ResolveVar(&current_module_->event_bindings, var, "event");
 }
 
 void NameResolver::ResolveDataSegmentVar(Var* var) {
@@ -258,6 +262,12 @@ Result NameResolver::OnBrIfExpr(BrIfExpr* expr) {
   return Result::Ok;
 }
 
+Result NameResolver::OnBrOnExnExpr(BrOnExnExpr* expr) {
+  ResolveLabelVar(&expr->label_var);
+  ResolveEventVar(&expr->event_var);
+  return Result::Ok;
+}
+
 Result NameResolver::OnBrTableExpr(BrTableExpr* expr) {
   for (Var& target : expr->targets)
     ResolveLabelVar(&target);
@@ -274,6 +284,7 @@ Result NameResolver::OnCallIndirectExpr(CallIndirectExpr* expr) {
   if (expr->decl.has_func_type) {
     ResolveFuncTypeVar(&expr->decl.type_var);
   }
+  ResolveTableVar(&expr->table);
   return Result::Ok;
 }
 
@@ -286,16 +297,17 @@ Result NameResolver::OnReturnCallIndirectExpr(ReturnCallIndirectExpr* expr) {
   if (expr->decl.has_func_type) {
     ResolveFuncTypeVar(&expr->decl.type_var);
   }
+  ResolveTableVar(&expr->table);
   return Result::Ok;
 }
 
-Result NameResolver::OnGetGlobalExpr(GetGlobalExpr* expr) {
+Result NameResolver::OnGlobalGetExpr(GlobalGetExpr* expr) {
   ResolveGlobalVar(&expr->var);
   return Result::Ok;
 }
 
-Result NameResolver::OnGetLocalExpr(GetLocalExpr* expr) {
-  ResolveLocalVar(&expr->var);
+Result NameResolver::OnGlobalSetExpr(GlobalSetExpr* expr) {
+  ResolveGlobalVar(&expr->var);
   return Result::Ok;
 }
 
@@ -310,19 +322,22 @@ Result NameResolver::EndIfExpr(IfExpr* expr) {
   return Result::Ok;
 }
 
-Result NameResolver::BeginIfExceptExpr(IfExceptExpr* expr) {
-  PushLabel(expr->true_.label);
-  ResolveBlockDeclarationVar(&expr->true_.decl);
-  ResolveExceptionVar(&expr->except_var);
+Result NameResolver::OnLocalGetExpr(LocalGetExpr* expr) {
+  ResolveLocalVar(&expr->var);
   return Result::Ok;
 }
 
-Result NameResolver::EndIfExceptExpr(IfExceptExpr* expr) {
-  PopLabel();
+Result NameResolver::OnLocalSetExpr(LocalSetExpr* expr) {
+  ResolveLocalVar(&expr->var);
   return Result::Ok;
 }
 
-Result NameResolver::OnMemoryDropExpr(MemoryDropExpr* expr) {
+Result NameResolver::OnLocalTeeExpr(LocalTeeExpr* expr) {
+  ResolveLocalVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnDataDropExpr(DataDropExpr* expr) {
   ResolveDataSegmentVar(&expr->var);
   return Result::Ok;
 }
@@ -332,17 +347,7 @@ Result NameResolver::OnMemoryInitExpr(MemoryInitExpr* expr) {
   return Result::Ok;
 }
 
-Result NameResolver::OnSetGlobalExpr(SetGlobalExpr* expr) {
-  ResolveGlobalVar(&expr->var);
-  return Result::Ok;
-}
-
-Result NameResolver::OnSetLocalExpr(SetLocalExpr* expr) {
-  ResolveLocalVar(&expr->var);
-  return Result::Ok;
-}
-
-Result NameResolver::OnTableDropExpr(TableDropExpr* expr) {
+Result NameResolver::OnElemDropExpr(ElemDropExpr* expr) {
   ResolveElemSegmentVar(&expr->var);
   return Result::Ok;
 }
@@ -352,8 +357,23 @@ Result NameResolver::OnTableInitExpr(TableInitExpr* expr) {
   return Result::Ok;
 }
 
-Result NameResolver::OnTeeLocalExpr(TeeLocalExpr* expr) {
-  ResolveLocalVar(&expr->var);
+Result NameResolver::OnTableGetExpr(TableGetExpr* expr) {
+  ResolveTableVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnTableSetExpr(TableSetExpr* expr) {
+  ResolveTableVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnTableGrowExpr(TableGrowExpr* expr) {
+  ResolveTableVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnTableSizeExpr(TableSizeExpr* expr) {
+  ResolveTableVar(&expr->var);
   return Result::Ok;
 }
 
@@ -369,7 +389,7 @@ Result NameResolver::EndTryExpr(TryExpr*) {
 }
 
 Result NameResolver::OnThrowExpr(ThrowExpr* expr) {
-  ResolveExceptionVar(&expr->var);
+  ResolveEventVar(&expr->var);
   return Result::Ok;
 }
 
@@ -408,14 +428,20 @@ void NameResolver::VisitExport(Export* export_) {
       ResolveGlobalVar(&export_->var);
       break;
 
-    case ExternalKind::Except:
-      ResolveExceptionVar(&export_->var);
+    case ExternalKind::Event:
+      ResolveEventVar(&export_->var);
       break;
   }
 }
 
 void NameResolver::VisitGlobal(Global* global) {
   visitor_.VisitExprList(global->init_expr);
+}
+
+void NameResolver::VisitEvent(Event* event) {
+  if (event->decl.has_func_type) {
+    ResolveFuncTypeVar(&event->decl.type_var);
+  }
 }
 
 void NameResolver::VisitElemSegment(ElemSegment* segment) {
@@ -437,7 +463,7 @@ Result NameResolver::VisitModule(Module* module) {
   CheckDuplicateBindings(&module->func_type_bindings, "function type");
   CheckDuplicateBindings(&module->table_bindings, "table");
   CheckDuplicateBindings(&module->memory_bindings, "memory");
-  CheckDuplicateBindings(&module->except_bindings, "except");
+  CheckDuplicateBindings(&module->event_bindings, "event");
 
   for (Func* func : module->funcs)
     VisitFunc(func);
@@ -445,6 +471,8 @@ Result NameResolver::VisitModule(Module* module) {
     VisitExport(export_);
   for (Global* global : module->globals)
     VisitGlobal(global);
+  for (Event* event : module->events)
+    VisitEvent(event);
   for (ElemSegment* elem_segment : module->elem_segments)
     VisitElemSegment(elem_segment);
   for (DataSegment* data_segment : module->data_segments)

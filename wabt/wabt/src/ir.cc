@@ -29,12 +29,13 @@ const char* ExprTypeName[] = {
   "AtomicRmw",
   "AtomicRmwCmpxchg",
   "AtomicStore",
+  "AtomicNotify",
   "AtomicWait",
-  "AtomicWake",
   "Binary",
   "Block",
   "Br",
   "BrIf",
+  "BrOnExn",
   "BrTable",
   "Call",
   "CallIndirect",
@@ -42,33 +43,38 @@ const char* ExprTypeName[] = {
   "Const",
   "Convert",
   "Drop",
-  "GetGlobal",
-  "GetLocal",
+  "GlobalGet",
+  "GlobalSet",
   "If",
-  "IfExcept",
   "Load",
+  "LocalGet",
+  "LocalSet",
+  "LocalTee",
   "Loop",
   "MemoryCopy",
-  "MemoryDrop",
+  "DataDrop",
   "MemoryFill",
   "MemoryGrow",
   "MemoryInit",
   "MemorySize",
   "Nop",
+  "RefIsNull",
+  "RefNull",
   "Rethrow",
   "Return",
   "ReturnCall",
   "ReturnCallIndirect",
   "Select",
-  "SetGlobal",
-  "SetLocal",
   "SimdLaneOp",
   "SimdShuffleOp",
   "Store",
-  "TableInit",
   "TableCopy",
-  "TableDrop",
-  "TeeLocal",
+  "ElemDrop",
+  "TableInit",
+  "TableGet",
+  "TableGrow",
+  "TableSize",
+  "TableSet",
   "Ternary",
   "Throw",
   "Try",
@@ -122,8 +128,8 @@ Index Module::GetFuncTypeIndex(const Var& var) const {
   return func_type_bindings.FindIndex(var);
 }
 
-Index Module::GetExceptIndex(const Var& var) const {
-  return except_bindings.FindIndex(var);
+Index Module::GetEventIndex(const Var& var) const {
+  return event_bindings.FindIndex(var);
 }
 
 Index Module::GetDataSegmentIndex(const Var& var) const {
@@ -148,8 +154,8 @@ bool Module::IsImport(ExternalKind kind, const Var& var) const {
     case ExternalKind::Table:
       return GetTableIndex(var) < num_table_imports;
 
-    case ExternalKind::Except:
-      return GetExceptIndex(var) < num_except_imports;
+    case ExternalKind::Event:
+      return GetEventIndex(var) < num_event_imports;
 
     default:
       return false;
@@ -264,12 +270,12 @@ Memory* Module::GetMemory(const Var& var) {
   return memories[index];
 }
 
-Exception* Module::GetExcept(const Var& var) const {
-  Index index = GetExceptIndex(var);
-  if (index >= excepts.size()) {
+Event* Module::GetEvent(const Var& var) const {
+  Index index = GetEventIndex(var);
+  if (index >= events.size()) {
     return nullptr;
   }
-  return excepts[index];
+  return events[index];
 }
 
 const DataSegment* Module::GetDataSegment(const Var& var) const {
@@ -345,12 +351,12 @@ void Module::AppendField(std::unique_ptr<ElemSegmentModuleField> field) {
   fields.push_back(std::move(field));
 }
 
-void Module::AppendField(std::unique_ptr<ExceptionModuleField> field) {
-  Exception& except = field->except;
-  if (!except.name.empty()) {
-    except_bindings.emplace(except.name, Binding(field->loc, excepts.size()));
+void Module::AppendField(std::unique_ptr<EventModuleField> field) {
+  Event& event = field->event;
+  if (!event.name.empty()) {
+    event_bindings.emplace(event.name, Binding(field->loc, events.size()));
   }
-  excepts.push_back(&except);
+  events.push_back(&event);
   fields.push_back(std::move(field));
 }
 
@@ -437,13 +443,13 @@ void Module::AppendField(std::unique_ptr<ImportModuleField> field) {
       break;
     }
 
-    case ExternalKind::Except: {
-      Exception& except = cast<ExceptionImport>(import)->except;
-      name = &except.name;
-      bindings = &except_bindings;
-      index = excepts.size();
-      excepts.push_back(&except);
-      ++num_except_imports;
+    case ExternalKind::Event: {
+      Event& event = cast<EventImport>(import)->event;
+      name = &event.name;
+      bindings = &event_bindings;
+      index = events.size();
+      events.push_back(&event);
+      ++num_event_imports;
       break;
     }
   }
@@ -521,8 +527,8 @@ void Module::AppendField(std::unique_ptr<ModuleField> field) {
       AppendField(cast<StartModuleField>(std::move(field)));
       break;
 
-    case ModuleFieldType::Except:
-      AppendField(cast<ExceptionModuleField>(std::move(field)));
+    case ModuleFieldType::Event:
+      AppendField(cast<EventModuleField>(std::move(field)));
       break;
   }
 }
