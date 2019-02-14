@@ -5,6 +5,7 @@ module Asterius.FrontendPlugin
   ) where
 
 import Asterius.CodeGen
+import Asterius.Internals
 import Asterius.JSFFI
 import Asterius.Store
 import Asterius.TypesConv
@@ -41,10 +42,10 @@ frontendPlugin =
         addFFIProcessor
           mempty
             { withHaskellIR =
-                \GHC.ModSummary {..} ir@HaskellIR {..} -> do
-                  let mod_sym = marshalToModuleSymbol ms_mod
+                \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
                   dflags <- GHC.getDynFlags
                   setDynFlagsRef dflags
+                  let mod_sym = marshalToModuleSymbol ms_mod
                   liftIO $
                     case runCodeGen (marshalHaskellIR ir) dflags ms_mod of
                       Left err -> throwIO err
@@ -52,11 +53,12 @@ frontendPlugin =
                         get_ffi_mod <- readIORef get_ffi_mod_ref
                         ffi_mod <- get_ffi_mod mod_sym
                         let m = ffi_mod <> m'
+                        encodeFile obj_path m
                         encodeAsteriusModule obj_topdir mod_sym m
                         atomicModifyIORef' store_ref $ \store ->
                           (registerModule obj_topdir mod_sym m store, ())
                         when is_debug $ do
-                          let p = asteriusModulePath obj_topdir mod_sym
+                          let p = (obj_path -<.>)
                           writeFile (p "dump-wasm-ast") $ show m
                           writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
                           asmPrint dflags (p "dump-cmm-raw") cmmRaw
@@ -66,6 +68,25 @@ frontendPlugin =
                           asmPrint dflags (p "dump-stg") stg
                           writeFile (p "dump-core-ast") $ show core
                           asmPrint dflags (p "dump-core") $ GHC.cg_binds core
+            , withCmmIR =
+                \ir@CmmIR {..} obj_path -> do
+                  dflags <- GHC.getDynFlags
+                  setDynFlagsRef dflags
+                  let ms_mod =
+                        GHC.Module GHC.rtsUnitId $
+                        GHC.mkModuleName $ takeBaseName obj_path
+                  liftIO $
+                    case runCodeGen (marshalCmmIR ir) dflags ms_mod of
+                      Left err -> throwIO err
+                      Right m -> do
+                        encodeFile obj_path m
+                        when is_debug $ do
+                          let p = (obj_path -<.>)
+                          writeFile (p "dump-wasm-ast") $ show m
+                          writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
+                          asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                          writeFile (p "dump-cmm-ast") $ show cmm
+                          asmPrint dflags (p "dump-cmm") cmm
             , finalize =
                 liftIO $ do
                   store <- readIORef store_ref

@@ -11,7 +11,7 @@ import Data.List
 import qualified DynFlags as GHC
 import qualified GHC
 import qualified Plugins as GHC
-import System.Environment
+import System.Environment.Blank
 import System.Process
 
 data FakeGHCOptions = FakeGHCOptions
@@ -21,6 +21,7 @@ data FakeGHCOptions = FakeGHCOptions
 
 fakeGHCMain :: FakeGHCOptions -> IO ()
 fakeGHCMain FakeGHCOptions {..} = do
+  unsetEnv "GHC_PACKAGE_PATH"
   args0 <- getArgs
   let (minusB_args, args1) = partition ("-B" `isPrefixOf`) args0
       new_ghc_libdir =

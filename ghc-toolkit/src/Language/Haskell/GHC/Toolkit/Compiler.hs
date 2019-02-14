@@ -31,8 +31,8 @@ data CmmIR = CmmIR
 data Compiler = Compiler
   { patchParsed :: ModSummary -> HsParsedModule -> Hsc HsParsedModule
   , patchTypechecked :: ModSummary -> TcGblEnv -> Hsc TcGblEnv
-  , withHaskellIR :: ModSummary -> HaskellIR -> CompPipeline ()
-  , withCmmIR :: CmmIR -> CompPipeline ()
+  , withHaskellIR :: ModSummary -> HaskellIR -> FilePath -> CompPipeline ()
+  , withCmmIR :: CmmIR -> FilePath -> CompPipeline ()
   , finalize :: Ghc ()
   }
 
@@ -48,13 +48,13 @@ instance Semigroup Compiler where
             tc_mod' <- patchTypechecked c0 mod_summary tc_mod
             patchTypechecked c1 mod_summary tc_mod'
       , withHaskellIR =
-          \mod_summary hs_ir -> do
-            withHaskellIR c0 mod_summary hs_ir
-            withHaskellIR c1 mod_summary hs_ir
+          \mod_summary hs_ir obj_path -> do
+            withHaskellIR c0 mod_summary hs_ir obj_path
+            withHaskellIR c1 mod_summary hs_ir obj_path
       , withCmmIR =
-          \cmm_ir -> do
-            withCmmIR c0 cmm_ir
-            withCmmIR c1 cmm_ir
+          \cmm_ir obj_path -> do
+            withCmmIR c0 cmm_ir obj_path
+            withCmmIR c1 cmm_ir obj_path
       , finalize =
           do finalize c0
              finalize c1
@@ -65,7 +65,7 @@ instance Monoid Compiler where
     Compiler
       { patchParsed = const pure
       , patchTypechecked = const pure
-      , withHaskellIR = \_ _ -> pure ()
-      , withCmmIR = \_ -> pure ()
+      , withHaskellIR = \_ _ _ -> pure ()
+      , withCmmIR = \_ _ -> pure ()
       , finalize = pure ()
       }
