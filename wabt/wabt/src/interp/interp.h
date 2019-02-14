@@ -95,9 +95,10 @@ struct FuncSignature {
 };
 
 struct Table {
-  explicit Table(const Limits& limits)
-      : limits(limits), func_indexes(limits.initial, kInvalidIndex) {}
+  explicit Table(Type elem_type, const Limits& limits)
+      : elem_type(elem_type), limits(limits), func_indexes(limits.initial, kInvalidIndex) {}
 
+  Type elem_type;
   Limits limits;
   std::vector<Index> func_indexes;
 };
@@ -220,10 +221,10 @@ struct GlobalImport : Import {
   bool mutable_ = false;
 };
 
-struct ExceptImport : Import {
-  ExceptImport() : Import(ExternalKind::Except) {}
-  ExceptImport(string_view module_name, string_view field_name)
-      : Import(ExternalKind::Except, module_name, field_name) {}
+struct EventImport : Import {
+  EventImport() : Import(ExternalKind::Event) {}
+  EventImport(string_view module_name, string_view field_name)
+      : Import(ExternalKind::Event, module_name, field_name) {}
 };
 
 struct Func;
@@ -323,7 +324,7 @@ struct DefinedModule : Module {
   std::vector<TableImport> table_imports;
   std::vector<MemoryImport> memory_imports;
   std::vector<GlobalImport> global_imports;
-  std::vector<ExceptImport> except_imports;
+  std::vector<EventImport> event_imports;
   Index start_func_index; /* kInvalidIndex if not defined */
   IstreamOffset istream_start;
   IstreamOffset istream_end;
@@ -341,7 +342,9 @@ struct HostModule : Module {
   std::pair<HostFunc*, Index> AppendFuncExport(string_view name,
                                                Index sig_index,
                                                HostFunc::Callback);
-  std::pair<Table*, Index> AppendTableExport(string_view name, const Limits&);
+  std::pair<Table*, Index> AppendTableExport(string_view name,
+                                             Type elem_type,
+                                             const Limits&);
   std::pair<Memory*, Index> AppendMemoryExport(string_view name, const Limits&);
   std::pair<Global*, Index> AppendGlobalExport(string_view name,
                                                Type,

@@ -160,8 +160,6 @@ enum class LabelType {
   Loop,
   If,
   Else,
-  IfExcept,
-  IfExceptElse,
   Try,
   Catch,
 
@@ -207,6 +205,7 @@ enum class Type : int32_t {
   F64 = -0x04,        // 0x7c
   V128 = -0x05,       // 0x7b
   Anyfunc = -0x10,    // 0x70
+  Anyref = -0x11,     // 0x6f
   ExceptRef = -0x18,  // 0x68
   Func = -0x20,       // 0x60
   Void = -0x40,       // 0x40
@@ -276,10 +275,10 @@ enum class ExternalKind {
   Table = 1,
   Memory = 2,
   Global = 3,
-  Except = 4,
+  Event = 4,
 
   First = Func,
-  Last = Except,
+  Last = Event,
 };
 static const int kExternalKindCount = WABT_ENUM_COUNT(ExternalKind);
 
@@ -361,6 +360,8 @@ static WABT_INLINE const char* GetTypeName(Type type) {
       return "void";
     case Type::Any:
       return "any";
+    case Type::Anyref:
+      return "anyref";
     default:
       return "<type index>";
   }

@@ -39,6 +39,7 @@ RUN \
   curl $(python3 /tmp/v8-node.py) -o /tmp/v8-node.zip && \
   unzip -q /tmp/v8-node.zip -d /root/.local && \
   curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack' && \
+  export HS_WABT_PREFIX=/root/.local && \
   stack --no-terminal install asterius wabt && \
   stack --no-terminal exec ahc-boot && \
   apt purge -y \
