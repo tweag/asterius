@@ -114,7 +114,7 @@ bootRTSCmm BootArgs {..} =
                     encodeAsteriusModule obj_topdir mod_sym m
                     modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
                     when is_debug $ do
-                      let p = asteriusModulePath obj_topdir mod_sym
+                      let p = (obj_path -<.>)
                       writeFile (p "dump-wasm-ast") $ show m
                       writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
                       asmPrint dflags (p "dump-cmm-raw") cmmRaw
