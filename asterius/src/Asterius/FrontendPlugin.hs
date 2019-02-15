@@ -47,7 +47,7 @@ frontendPlugin =
                   setDynFlagsRef dflags
                   let mod_sym = marshalToModuleSymbol ms_mod
                   liftIO $
-                    case runCodeGen (marshalHaskellIR ir) dflags ms_mod of
+                    case runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod of
                       Left err -> throwIO err
                       Right m' -> do
                         get_ffi_mod <- readIORef get_ffi_mod_ref
@@ -76,7 +76,7 @@ frontendPlugin =
                         GHC.Module GHC.rtsUnitId $
                         GHC.mkModuleName $ takeBaseName obj_path
                   liftIO $
-                    case runCodeGen (marshalCmmIR ir) dflags ms_mod of
+                    case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
                       Left err -> throwIO err
                       Right m -> do
                         encodeFile obj_path m

@@ -109,7 +109,7 @@ bootRTSCmm BootArgs {..} =
                   (GHC.Module GHC.rtsUnitId $
                    GHC.mkModuleName $ takeBaseName obj_path)
                 mod_sym = marshalToModuleSymbol ms_mod
-             in case runCodeGen (marshalCmmIR ir) dflags ms_mod of
+             in case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
                   Left err -> throwIO err
                   Right m -> do
                     encodeAsteriusModule obj_topdir mod_sym m
