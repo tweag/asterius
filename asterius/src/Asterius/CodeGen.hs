@@ -1032,8 +1032,12 @@ marshalCmmDecl decl =
           Left err -> mempty {functionErrorMap = M.fromList [(sym, err)]}
           Right f -> mempty {functionMap = M.fromList [(sym, f)]}
 
-marshalHaskellIR :: HaskellIR -> CodeGen AsteriusModule
-marshalHaskellIR HaskellIR {..} = mconcat <$> for (concat cmmRaw) marshalCmmDecl
+marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
+marshalHaskellIR ms_mod HaskellIR {..} = do
+  m <- mconcat <$> for (concat cmmRaw) marshalCmmDecl
+  pure m {currentModuleSymbol = marshalToModuleSymbol ms_mod}
 
-marshalCmmIR :: CmmIR -> CodeGen AsteriusModule
-marshalCmmIR CmmIR {..} = mconcat <$> for (concat cmmRaw) marshalCmmDecl
+marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
+marshalCmmIR ms_mod CmmIR {..} = do
+  m <- mconcat <$> for (concat cmmRaw) marshalCmmDecl
+  pure m {currentModuleSymbol = marshalToModuleSymbol ms_mod}

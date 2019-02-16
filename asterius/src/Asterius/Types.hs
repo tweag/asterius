@@ -15,6 +15,7 @@ module Asterius.Types
   , AsteriusFunction(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
+  , noModuleSymbol
   , AsteriusEntitySymbol(..)
   , AsteriusStore(..)
   , UnresolvedLocalReg(..)
@@ -109,7 +110,8 @@ data AsteriusFunction = AsteriusFunction
 instance Binary AsteriusFunction
 
 data AsteriusModule = AsteriusModule
-  { staticsMap :: M.Map AsteriusEntitySymbol AsteriusStatics
+  { currentModuleSymbol :: AsteriusModuleSymbol
+  , staticsMap :: M.Map AsteriusEntitySymbol AsteriusStatics
   , staticsErrorMap :: M.Map AsteriusEntitySymbol AsteriusCodeGenError
   , functionMap :: M.Map AsteriusEntitySymbol AsteriusFunction
   , functionErrorMap :: M.Map AsteriusEntitySymbol AsteriusCodeGenError
@@ -119,8 +121,11 @@ data AsteriusModule = AsteriusModule
 instance Binary AsteriusModule
 
 instance Semigroup AsteriusModule where
-  AsteriusModule sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 fe1 mod_ffi_state1 =
+  AsteriusModule ms0 sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule ms1 sm1 se1 fm1 fe1 mod_ffi_state1 =
     AsteriusModule
+      (if ms0 == noModuleSymbol
+         then ms1
+         else ms0)
       (sm0 <> sm1)
       (se0 <> se1)
       (fm0 <> fm1)
@@ -128,7 +133,7 @@ instance Semigroup AsteriusModule where
       (mod_ffi_state0 <> mod_ffi_state1)
 
 instance Monoid AsteriusModule where
-  mempty = AsteriusModule mempty mempty mempty mempty mempty
+  mempty = AsteriusModule noModuleSymbol mempty mempty mempty mempty mempty
 
 data AsteriusModuleSymbol = AsteriusModuleSymbol
   { unitId :: SBS.ShortByteString
@@ -136,6 +141,9 @@ data AsteriusModuleSymbol = AsteriusModuleSymbol
   } deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary AsteriusModuleSymbol
+
+noModuleSymbol :: AsteriusModuleSymbol
+noModuleSymbol = AsteriusModuleSymbol {unitId = SBS.empty, moduleName = []}
 
 newtype AsteriusEntitySymbol = AsteriusEntitySymbol
   { entityName :: SBS.ShortByteString

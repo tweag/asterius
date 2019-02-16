@@ -436,7 +436,7 @@ ahcLinkMain task@Task {..} = do
             }
           [inputHS]
           (\ms_mod obj_path ir ->
-             case runCodeGen (marshalHaskellIR ir) dflags ms_mod of
+             case runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod of
                Left err -> throwIO err
                Right m' -> do
                  let mod_sym = marshalToModuleSymbol ms_mod
