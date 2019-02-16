@@ -13,13 +13,11 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
-import Asterius.Internals.Codensity
 import Asterius.Store
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.Trans.Class
 import Data.IORef
 import Data.Maybe
 import qualified DynFlags as GHC
@@ -84,9 +82,8 @@ bootCreateProcess args@BootArgs {..} = do
 bootRTSCmm :: BootArgs -> IO ()
 bootRTSCmm BootArgs {..} =
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
-  GHC.runGhc (Just obj_topdir) $
-  lowerCodensity $ do
-    dflags <- lift GHC.getSessionDynFlags
+  GHC.runGhc (Just obj_topdir) $ do
+    dflags <- GHC.getSessionDynFlags
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
     store_ref <- liftIO $ newIORef mempty
@@ -94,37 +91,36 @@ bootRTSCmm BootArgs {..} =
     rts_cmm_mods <-
       map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
       liftIO (listDirectory rts_path)
-    lift
-      (runCmm
-         defaultConfig
-           { ghcFlags =
-               [ "-this-unit-id"
-               , "rts"
-               , "-dcmm-lint"
-               , "-O2"
-               , "-I" <> obj_topdir </> "include"
-               ]
-           }
-         [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
-         (\obj_path ir@CmmIR {..} ->
-            let ms_mod =
-                  (GHC.Module GHC.rtsUnitId $
-                   GHC.mkModuleName $ takeBaseName obj_path)
-                mod_sym = marshalToModuleSymbol ms_mod
-             in case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
-                  Left err -> throwIO err
-                  Right m -> do
-                    encodeFile obj_path m
-                    encodeAsteriusModule obj_topdir mod_sym m
-                    modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
-                    modifyIORef' obj_paths_ref (obj_path :)
-                    when is_debug $ do
-                      let p = (obj_path -<.>)
-                      writeFile (p "dump-wasm-ast") $ show m
-                      writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                      asmPrint dflags (p "dump-cmm-raw") cmmRaw
-                      writeFile (p "dump-cmm-ast") $ show cmm
-                      asmPrint dflags (p "dump-cmm") cmm))
+    runCmm
+      defaultConfig
+        { ghcFlags =
+            [ "-this-unit-id"
+            , "rts"
+            , "-dcmm-lint"
+            , "-O2"
+            , "-I" <> obj_topdir </> "include"
+            ]
+        }
+      [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
+      (\obj_path ir@CmmIR {..} ->
+         let ms_mod =
+               (GHC.Module GHC.rtsUnitId $
+                GHC.mkModuleName $ takeBaseName obj_path)
+             mod_sym = marshalToModuleSymbol ms_mod
+          in case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
+               Left err -> throwIO err
+               Right m -> do
+                 encodeFile obj_path m
+                 encodeAsteriusModule obj_topdir mod_sym m
+                 modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
+                 modifyIORef' obj_paths_ref (obj_path :)
+                 when is_debug $ do
+                   let p = (obj_path -<.>)
+                   writeFile (p "dump-wasm-ast") $ show m
+                   writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
+                   asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                   writeFile (p "dump-cmm-ast") $ show cmm
+                   asmPrint dflags (p "dump-cmm") cmm)
     liftIO $ do
       store <- readIORef store_ref
       encodeStore store_path store

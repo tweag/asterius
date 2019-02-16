@@ -16,7 +16,6 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
-import Asterius.Internals.Codensity
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
 import qualified Asterius.Marshal as OldMarshal
@@ -397,62 +396,60 @@ ahcLinkMain task@Task {..} = do
   (c, get_ffi_mod) <- addFFIProcessor mempty
   final_store_ref <- liftIO $ newIORef orig_store
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
-    GHC.runGhc (Just (dataDir </> ".boot" </> "asterius_lib")) $
-    lowerCodensity $ do
-      dflags <- lift GHC.getSessionDynFlags
+    GHC.runGhc (Just (dataDir </> ".boot" </> "asterius_lib")) $ do
+      dflags <- GHC.getSessionDynFlags
       setDynFlagsRef dflags
-      lift $
-        runHaskell
-          defaultConfig
-            { ghcFlags =
-                [ "-Wall"
-                , "-O"
-                , "-i" <> takeDirectory inputHS
-                , "-clear-package-db"
-                , "-global-package-db"
-                , "-hide-all-packages"
+      runHaskell
+        defaultConfig
+          { ghcFlags =
+              [ "-Wall"
+              , "-O"
+              , "-i" <> takeDirectory inputHS
+              , "-clear-package-db"
+              , "-global-package-db"
+              , "-hide-all-packages"
+              ] <>
+              mconcat
+                [ ["-package", pkg]
+                | pkg <-
+                    [ "ghc-prim"
+                    , "integer-simple"
+                    , "base"
+                    , "array"
+                    , "deepseq"
+                    , "containers"
+                    , "transformers"
+                    , "mtl"
+                    , "pretty"
+                    , "ghc-boot-th"
+                    , "template-haskell"
+                    , "bytestring"
+                    , "binary"
+                    , "xhtml"
+                    ]
                 ] <>
-                mconcat
-                  [ ["-package", pkg]
-                  | pkg <-
-                      [ "ghc-prim"
-                      , "integer-simple"
-                      , "base"
-                      , "array"
-                      , "deepseq"
-                      , "containers"
-                      , "transformers"
-                      , "mtl"
-                      , "pretty"
-                      , "ghc-boot-th"
-                      , "template-haskell"
-                      , "bytestring"
-                      , "binary"
-                      , "xhtml"
-                      ]
-                  ] <>
-                extraGHCFlags
-            , compiler = c
-            }
-          [inputHS]
-          (\ms_mod obj_path ir ->
-             case runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod of
-               Left err -> throwIO err
-               Right m' -> do
-                 let mod_sym = marshalToModuleSymbol ms_mod
-                     mod_str = GHC.moduleNameString $ GHC.moduleName ms_mod
-                 ffi_mod <- get_ffi_mod mod_sym
-                 let m = ffi_mod <> m'
-                 putStrLn $
-                   "[INFO] Marshalling " <> show mod_str <>
-                   " from Cmm to WebAssembly"
-                 modifyIORef' final_store_ref $
-                   addModule (marshalToModuleSymbol ms_mod) m
-                 when outputIR $ do
-                   let p = takeDirectory inputHS </> mod_str <.> "txt"
-                   putStrLn $ "[INFO] Writing IR of " <> mod_str <> " to " <> p
-                   writeFile p $ show m
-                 encodeFile obj_path m)
+              extraGHCFlags
+          , compiler = c
+          }
+        [inputHS]
+        (\ms_mod obj_path ir ->
+           case runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod of
+             Left err -> throwIO err
+             Right m' -> do
+               let mod_sym = marshalToModuleSymbol ms_mod
+                   mod_str = GHC.moduleNameString $ GHC.moduleName ms_mod
+               ffi_mod <- get_ffi_mod mod_sym
+               let m = ffi_mod <> m'
+               putStrLn $
+                 "[INFO] Marshalling " <> show mod_str <>
+                 " from Cmm to WebAssembly"
+               modifyIORef' final_store_ref $
+                 addModule (marshalToModuleSymbol ms_mod) m
+               when outputIR $ do
+                 let p = takeDirectory inputHS </> mod_str <.> "txt"
+                 putStrLn $ "[INFO] Writing IR of " <> mod_str <> " to " <> p
+                 writeFile p $ show m
+               encodeFile obj_path m)
       liftIO $ putStrLn "[INFO] Marshalling from Cmm to WebAssembly"
       liftIO $ do
         final_store <- readIORef final_store_ref
