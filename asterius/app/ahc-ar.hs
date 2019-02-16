@@ -24,14 +24,15 @@ objectSymbolMap obj_path = do
     Right m -> do
       when (currentModuleSymbol m == noModuleSymbol) $
         throwIO $ userError $ "ahc-ar: error when decoding " <> obj_path
-      let syms =
+      let f = Map.map (const $ takeBaseName obj_path)
+          symbol_map =
             mconcat
-              [ Map.keys (staticsMap m)
-              , Map.keys (staticsErrorMap m)
-              , Map.keys (functionMap m)
-              , Map.keys (functionErrorMap m)
+              [ f (staticsMap m)
+              , f (staticsErrorMap m)
+              , f (functionMap m)
+              , f (functionErrorMap m)
               ]
-      pure $ Map.fromList [(sym, takeBaseName obj_path) | sym <- syms]
+      pure symbol_map
 
 archiveIndex :: [FilePath] -> IO FilePath
 archiveIndex obj_paths = do
