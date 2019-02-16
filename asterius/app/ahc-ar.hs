@@ -16,7 +16,8 @@ import System.FilePath
 import System.IO hiding (IO)
 import System.Process
 
-objectSymbolMap :: FilePath -> IO (Map AsteriusEntitySymbol FilePath)
+objectSymbolMap ::
+     FilePath -> IO (Map AsteriusEntitySymbol AsteriusModuleSymbol)
 objectSymbolMap obj_path = do
   r <- decodeFileOrFail obj_path
   case r of
@@ -24,7 +25,7 @@ objectSymbolMap obj_path = do
     Right m -> do
       when (currentModuleSymbol m == noModuleSymbol) $
         throwIO $ userError $ "ahc-ar: error when decoding " <> obj_path
-      let f = Map.map (const $ takeBaseName obj_path)
+      let f = Map.map (const $ currentModuleSymbol m)
           symbol_map =
             mconcat
               [ f (staticsMap m)
