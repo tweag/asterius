@@ -34,6 +34,7 @@ import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath
+import System.IO hiding (IO)
 import System.Process
 
 data BootArgs = BootArgs
@@ -89,6 +90,7 @@ bootRTSCmm BootArgs {..} =
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
     store_ref <- liftIO $ newIORef mempty
+    obj_paths_ref <- liftIO $ newIORef []
     rts_cmm_mods <-
       map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
       liftIO (listDirectory rts_path)
@@ -112,8 +114,10 @@ bootRTSCmm BootArgs {..} =
              in case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
                   Left err -> throwIO err
                   Right m -> do
+                    encodeFile obj_path m
                     encodeAsteriusModule obj_topdir mod_sym m
                     modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
+                    modifyIORef' obj_paths_ref (obj_path :)
                     when is_debug $ do
                       let p = (obj_path -<.>)
                       writeFile (p "dump-wasm-ast") $ show m
@@ -124,6 +128,15 @@ bootRTSCmm BootArgs {..} =
     liftIO $ do
       store <- readIORef store_ref
       encodeStore store_path store
+      obj_paths <- readIORef obj_paths_ref
+      tmpdir <- getTemporaryDirectory
+      (rsp_path, rsp_h) <- openTempFile tmpdir "ar.rsp"
+      hPutStr rsp_h $ unlines obj_paths
+      hClose rsp_h
+      callProcess
+        ahcAr
+        ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
+      removeFile rsp_path
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
