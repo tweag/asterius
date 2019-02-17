@@ -34,6 +34,7 @@ import System.IO.Unsafe
 import Text.Show.Functions ()
 import TyCoRep
 import TyCon
+import UniqDSet
 import Var
 
 {-# NOINLINE dynFlagsRef #-}
@@ -118,8 +119,6 @@ deriving instance Show LitNumType
 
 deriving instance Show Literal
 
-deriving instance Show occ => Show (GenStgArg occ)
-
 instance Show DataCon where
   show = fakeShow "DataCon"
 
@@ -141,8 +140,15 @@ deriving instance Show AltType
 
 deriving instance Show AltCon
 
+deriving instance Show StgArg
+
+instance Show NoExtSilent where
+  show = fakeShow "NoExtSilent"
+
 deriving instance
-         (Show bndr, Show occ) => Show (GenStgExpr bndr occ)
+         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
+          Show (XRhsClosure pass)) =>
+         Show (GenStgExpr pass)
 
 instance Show CostCentreStack where
   show = fakeShow "CostCentreStack"
@@ -150,13 +156,19 @@ instance Show CostCentreStack where
 deriving instance Show UpdateFlag
 
 deriving instance
-         (Show bndr, Show occ) => Show (GenStgRhs bndr occ)
+         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
+          Show (XRhsClosure pass)) =>
+         Show (GenStgRhs pass)
 
 deriving instance
-         (Show bndr, Show occ) => Show (GenStgBinding bndr occ)
+         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
+          Show (XRhsClosure pass)) =>
+         Show (GenStgBinding pass)
 
 deriving instance
-         (Show bndr, Show occ) => Show (GenStgTopBinding bndr occ)
+         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
+          Show (XRhsClosure pass)) =>
+         Show (GenStgTopBinding pass)
 
 instance Show Name where
   show = fakeShow "Name"
@@ -248,3 +260,6 @@ deriving instance Show CmmInfoTable
 deriving instance Show CmmStackInfo
 
 deriving instance Show CmmTopInfo
+
+instance Show a => Show (UniqDSet a) where
+  showsPrec p = showsPrec p . uniqDSetToList

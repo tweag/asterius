@@ -24,7 +24,7 @@ main =
                                , withPrograms = prog_db
                                } <- confHook simpleUserHooks t f
             let [clbi@LibComponentLocalBuildInfo {componentUnitId = uid}] =
-                  componentNameMap lbi M.! CLibName
+                  componentNameMap lbi M.! CLibName LMainLibName
                 amp = autogenComponentModulesDir lbi clbi
                 self_installdirs =
                   absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest

@@ -133,7 +133,7 @@ marshalCmmStatic st =
           pure $ SymbolStatic sym o
         _ -> throwError $ UnsupportedCmmLit $ showSBS lit
     GHC.CmmUninitialised s -> pure $ Uninitialized s
-    GHC.CmmString s -> pure $ Serialized $ SBS.pack s <> "\0"
+    GHC.CmmString s -> pure $ Serialized $ SBS.toShort s <> "\0"
 
 marshalCmmSectionType ::
      AsteriusEntitySymbol -> GHC.Section -> AsteriusStaticsType
