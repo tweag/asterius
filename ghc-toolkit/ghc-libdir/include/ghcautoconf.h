@@ -526,7 +526,7 @@
 /* #undef pid_t */
 
 /* The supported LLVM version number */
-#define sUPPORTED_LLVM_VERSION (6,0)
+#define sUPPORTED_LLVM_VERSION (7,0)
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 /* #undef size_t */

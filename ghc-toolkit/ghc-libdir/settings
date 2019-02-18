@@ -1,6 +1,6 @@
 [("GCC extra via C opts", " -fwrapv -fno-builtin"),
  ("C compiler command", "gcc"),
- ("C compiler flags", " -fno-stack-protector"),
+ ("C compiler flags", ""),
  ("C compiler link flags", " -fuse-ld=gold"),
  ("C compiler supports -no-pie", "YES"),
  ("Haskell CPP command","gcc"),
@@ -14,7 +14,7 @@
  ("ar command", "ar"),
  ("ar flags", "q"),
  ("ar supports at file", "YES"),
- ("ranlib command", ""),
+ ("ranlib command", "ranlib"),
  ("touch command", "touch"),
  ("dllwrap command", "/bin/false"),
  ("windres command", "/bin/false"),
@@ -33,3 +33,4 @@
  ("LLVM opt command", "opt"),
  ("LLVM clang command", "clang")
  ]
+
