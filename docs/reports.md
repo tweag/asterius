@@ -2,6 +2,31 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-02-18
+
+Covers last week.
+
+Completed work, mainly routine maintainence:
+
+* Updated `ghc` and standard libraries to a recent revision (`8.7.20181115` -> `8.7.20190217`)
+* Updated `binaryen` and `wabt` toolchains
+* Added the experimental bulk memory opcodes in the `binaryen` Haskell bindings
+
+Ongoing work:
+
+* Finished implementation of library targets for Cabal.
+    * The `ahc` executable was only meant to be invoked from the boot script. Now it can be run to compile any user input Haskell/Cmm code and produce object files.
+    * `ahc-ar` is implemented to generate `.a` static libs, and those libs contain symbol indices required by asterius linker. The static libs can later be used as linker inputs.
+    * Currently, no patching to Cabal is required.
+
+Planned work for this week:
+
+* Finish implementation of executable targets for Cabal.
+    * When compiling the "executable" targets, final linking (including any necessary LTO & rewriting passes) is done. The resulting file can be quickly converted to node/web artifacts by an external tool.
+    * The legacy mechanism for storing/retrieving wasm objects will be removed, and we'll only rely on the static libs and input object files for linking.
+    * Add unit tests for compiling & running stuff via `cabal-install`.
+* Some improvements in gc, if we manage to finish Cabal stuff.
+
 ## 2019-02-11
 
 Covers last week.
