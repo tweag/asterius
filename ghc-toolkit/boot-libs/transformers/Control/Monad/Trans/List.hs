@@ -123,8 +123,10 @@ instance (Monad m) => Monad (ListT m) where
         b <- mapM (runListT . k) a
         return (concat b)
     {-# INLINE (>>=) #-}
+#if !(MIN_VERSION_base(4,13,0))
     fail _ = ListT $ return []
     {-# INLINE fail #-}
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Monad m) => Fail.MonadFail (ListT m) where

@@ -14,8 +14,8 @@
 -- Portability :  portable
 --
 -- The WriterT monad transformer.
--- This version is lazy; for a strict version, see
--- "Control.Monad.Trans.Writer.Strict", which has the same interface.
+-- This version builds its output lazily; for a constant-space version
+-- with almost the same interface, see "Control.Monad.Trans.Writer.CPS".
 -----------------------------------------------------------------------------
 
 module Control.Monad.Trans.Writer (

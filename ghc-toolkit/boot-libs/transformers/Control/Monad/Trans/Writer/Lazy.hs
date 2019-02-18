@@ -23,8 +23,8 @@
 -- during the computation.  For more general access, use
 -- "Control.Monad.Trans.State" instead.
 --
--- This version builds its output lazily; for a strict version with
--- the same interface, see "Control.Monad.Trans.Writer.Strict".
+-- This version builds its output lazily; for a constant-space version
+-- with almost the same interface, see "Control.Monad.Trans.Writer.CPS".
 -----------------------------------------------------------------------------
 
 module Control.Monad.Trans.Writer.Lazy (
@@ -204,8 +204,10 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
         ~(b, w') <- runWriterT (k a)
         return (b, w `mappend` w')
     {-# INLINE (>>=) #-}
+#if !(MIN_VERSION_base(4,13,0))
     fail msg = WriterT $ fail msg
     {-# INLINE fail #-}
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where

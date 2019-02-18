@@ -91,12 +91,20 @@ type Success a r = B.ByteString -> a -> Decoder r
 instance Monad Get where
   return = pure
   (>>=) = bindG
-#if MIN_VERSION_base(4,9,0)
-  fail = Fail.fail
-
-instance Fail.MonadFail Get where
+#if !(MIN_VERSION_base(4,9,0))
+  fail = failG -- base < 4.9
+#elif !(MIN_VERSION_base(4,13,0))
+  fail = Fail.fail -- base < 4.13
 #endif
+-- NB: Starting with base-4.13, the `fail` method
+--     has been removed from the `Monad`-class
+--     according to the MonadFail proposal (MFP) schedule
+--     which completes the process that started with base-4.9.
+
+#if MIN_VERSION_base(4,9,0)
+instance Fail.MonadFail Get where
   fail = failG
+#endif
 
 bindG :: Get a -> (a -> Get b) -> Get b
 bindG (C c) f = C $ \i ks -> c i (\i' a -> (runCont (f a)) i' ks)

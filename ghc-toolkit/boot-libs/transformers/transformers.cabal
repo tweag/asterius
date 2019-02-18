@@ -76,6 +76,7 @@ library
     Control.Monad.Trans.Maybe
     Control.Monad.Trans.Reader
     Control.Monad.Trans.RWS
+    Control.Monad.Trans.RWS.CPS
     Control.Monad.Trans.RWS.Lazy
     Control.Monad.Trans.RWS.Strict
     Control.Monad.Trans.Select
@@ -83,6 +84,7 @@ library
     Control.Monad.Trans.State.Lazy
     Control.Monad.Trans.State.Strict
     Control.Monad.Trans.Writer
+    Control.Monad.Trans.Writer.CPS
     Control.Monad.Trans.Writer.Lazy
     Control.Monad.Trans.Writer.Strict
     Data.Functor.Constant

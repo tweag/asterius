@@ -167,8 +167,10 @@ instance (Monad m) => Monad (MaybeT m) where
             Nothing -> return Nothing
             Just y  -> runMaybeT (f y)
     {-# INLINE (>>=) #-}
+#if !(MIN_VERSION_base(4,13,0))
     fail _ = MaybeT (return Nothing)
     {-# INLINE fail #-}
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Monad m) => Fail.MonadFail (MaybeT m) where

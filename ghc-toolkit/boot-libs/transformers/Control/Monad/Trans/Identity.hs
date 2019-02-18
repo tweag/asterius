@@ -124,8 +124,10 @@ instance (Monad m) => Monad (IdentityT m) where
 #endif
     m >>= k = IdentityT $ runIdentityT . k =<< runIdentityT m
     {-# INLINE (>>=) #-}
+#if !(MIN_VERSION_base(4,13,0))
     fail msg = IdentityT $ fail msg
     {-# INLINE fail #-}
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Fail.MonadFail m) => Fail.MonadFail (IdentityT m) where

@@ -43,12 +43,16 @@ import GHC.ST           ( ST(..), runST )
 import GHC.Base         ( IO(..), divInt# )
 import GHC.Exts
 import GHC.Ptr          ( nullPtr, nullFunPtr )
+import GHC.Show         ( appPrec )
 import GHC.Stable       ( StablePtr(..) )
+import GHC.Read         ( expectP, parens, Read(..) )
 import GHC.Int          ( Int8(..),  Int16(..),  Int32(..),  Int64(..) )
 import GHC.Word         ( Word8(..), Word16(..), Word32(..), Word64(..) )
 import GHC.IO           ( stToIO )
 import GHC.IOArray      ( IOArray(..),
                           newIOArray, unsafeReadIOArray, unsafeWriteIOArray )
+import Text.Read.Lex    ( Lexeme(Ident) )
+import Text.ParserCombinators.ReadPrec ( prec, ReadPrec, step )
 
 #include "MachDeps.h"
 
@@ -479,7 +483,7 @@ cmpIntUArray arr1@(UArray l1 u1 n1 _) arr2@(UArray l2 u2 n2 _) =
 {-# RULES "cmpUArray/Int" cmpUArray = cmpIntUArray #-}
 
 -----------------------------------------------------------------------------
--- Showing IArrays
+-- Showing and Reading IArrays
 
 {-# SPECIALISE
     showsIArray :: (IArray UArray e, Ix i, Show i, Show e) =>
@@ -488,11 +492,23 @@ cmpIntUArray arr1@(UArray l1 u1 n1 _) arr2@(UArray l2 u2 n2 _) =
 
 showsIArray :: (IArray a e, Ix i, Show i, Show e) => Int -> a i e -> ShowS
 showsIArray p a =
-    showParen (p > 9) $
+    showParen (p > appPrec) $
     showString "array " .
     shows (bounds a) .
     showChar ' ' .
     shows (assocs a)
+
+{-# SPECIALISE
+    readIArray :: (IArray UArray e, Ix i, Read i, Read e) =>
+                   ReadPrec (UArray i e)
+  #-}
+
+readIArray :: (IArray a e, Ix i, Read i, Read e) => ReadPrec (a i e)
+readIArray = parens $ prec appPrec $
+               do expectP (Ident "array")
+                  theBounds <- step readPrec
+                  vals   <- step readPrec
+                  return (array theBounds vals)
 
 -----------------------------------------------------------------------------
 -- Flat unboxed arrays: instances
@@ -784,6 +800,9 @@ instance (Ix ix, Ord e, IArray UArray e) => Ord (UArray ix e) where
 
 instance (Ix ix, Show ix, Show e, IArray UArray e) => Show (UArray ix e) where
     showsPrec = showsIArray
+
+instance (Ix ix, Read ix, Read e, IArray UArray e) => Read (UArray ix e) where
+    readPrec = readIArray
 
 -----------------------------------------------------------------------------
 -- Mutable arrays

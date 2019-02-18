@@ -224,8 +224,10 @@ instance (Monad m) => Monad (StateT s m) where
         (a, s') <- runStateT m s
         runStateT (k a) s'
     {-# INLINE (>>=) #-}
+#if !(MIN_VERSION_base(4,13,0))
     fail str = StateT $ \ _ -> fail str
     {-# INLINE fail #-}
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Fail.MonadFail m) => Fail.MonadFail (StateT s m) where

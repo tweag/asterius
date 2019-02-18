@@ -103,7 +103,7 @@ benchmark intmap-benchmarks
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3,
+    criterion >= 0.4.0 && < 1.6,
     deepseq >= 1.1.0.0 && < 1.5
 
 benchmark intset-benchmarks
@@ -114,7 +114,7 @@ benchmark intset-benchmarks
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3,
+    criterion >= 0.4.0 && < 1.6,
     deepseq >= 1.1.0.0 && < 1.5
 
 benchmark map-benchmarks
@@ -125,7 +125,7 @@ benchmark map-benchmarks
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3,
+    criterion >= 0.4.0 && < 1.6,
     deepseq >= 1.1.0.0 && < 1.5,
     transformers
 
@@ -137,7 +137,7 @@ benchmark sequence-benchmarks
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3,
+    criterion >= 0.4.0 && < 1.6,
     deepseq >= 1.1.0.0 && < 1.5,
     random < 1.2,
     transformers
@@ -150,7 +150,7 @@ benchmark set-benchmarks
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3,
+    criterion >= 0.4.0 && < 1.6,
     deepseq >= 1.1.0.0 && < 1.5
 
 benchmark set-operations-intmap
@@ -162,7 +162,7 @@ benchmark set-operations-intmap
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3
+    criterion >= 0.4.0 && < 1.6
 
 benchmark set-operations-intset
   type: exitcode-stdio-1.0
@@ -173,7 +173,7 @@ benchmark set-operations-intset
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3
+    criterion >= 0.4.0 && < 1.6
 
 benchmark set-operations-map
   type: exitcode-stdio-1.0
@@ -184,7 +184,7 @@ benchmark set-operations-map
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3
+    criterion >= 0.4.0 && < 1.6
 
 benchmark set-operations-set
   type: exitcode-stdio-1.0
@@ -195,7 +195,7 @@ benchmark set-operations-set
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3
+    criterion >= 0.4.0 && < 1.6
 
 benchmark lookupge-intmap
   type: exitcode-stdio-1.0
@@ -218,7 +218,7 @@ benchmark lookupge-intmap
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3,
+    criterion >= 0.4.0 && < 1.6,
     deepseq >= 1.1.0.0 && < 1.5,
     ghc-prim
 
@@ -247,7 +247,7 @@ benchmark lookupge-map
   build-depends:
     base >= 4.6 && < 5,
     containers,
-    criterion >= 0.4.0 && < 1.3,
+    criterion >= 0.4.0 && < 1.6,
     deepseq >= 1.1.0.0 && < 1.5,
     ghc-prim
 

@@ -236,7 +236,13 @@ import Data.Bits (shiftL, shiftR)
 import Data.Monoid (Monoid(..))
 #endif
 #if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>), stimes), stimesIdempotentMonoid)
+import Data.Semigroup (Semigroup(stimes))
+#endif
+#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
+import Data.Semigroup (Semigroup((<>)))
+#endif
+#if MIN_VERSION_base(4,9,0)
+import Data.Semigroup (stimesIdempotentMonoid)
 import Data.Functor.Classes
 #endif
 import qualified Data.Foldable as Foldable
