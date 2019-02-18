@@ -1,5 +1,5 @@
 Name:                bytestring
-Version:             0.10.8.2
+Version:             0.10.9.0
 Synopsis:            Fast, compact, strict and lazy byte strings with a list interface
 Description:
     An efficient compact, immutable byte string type (both strict and lazy)
@@ -155,7 +155,7 @@ test-suite prop-compiled
   hs-source-dirs:   . tests
   build-depends:    base, ghc-prim, deepseq, random, directory,
                     test-framework, test-framework-quickcheck2,
-                    QuickCheck >= 2.3
+                    QuickCheck >= 2.3 && < 2.10
   c-sources:        cbits/fpstring.c
   include-dirs:     include
   ghc-options:      -fwarn-unused-binds
@@ -200,7 +200,7 @@ test-suite test-builder
 
   build-depends:    base, ghc-prim,
                     deepseq,
-                    QuickCheck                 >= 2.4,
+                    QuickCheck                 >= 2.4 && < 2.10,
                     byteorder                  == 1.0.*,
                     dlist                      >= 0.5 && < 0.9,
                     directory,
