@@ -70,7 +70,7 @@ makeValueType vt =
 
 makeTypeSection ::
      MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
-makeTypeSection Module {..} ModuleSymbolTable {..} = do
+makeTypeSection Module {} ModuleSymbolTable {..} = do
   _func_types <-
     for (Map.keys functionTypeSymbols) $ \FunctionType {..} -> do
       let _param_types = map makeValueType paramTypes
@@ -231,7 +231,7 @@ emptyLocalContext :: LocalContext
 emptyLocalContext = LocalContext {localCount = mempty, localMap = mempty}
 
 makeLocalContext :: Module -> Function -> LocalContext
-makeLocalContext Module {..} Function {..} =
+makeLocalContext Module {} Function {..} =
   snd $
   foldl'
     (\(i, LocalContext {..}) (orig_vt, orig_i) ->

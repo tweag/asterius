@@ -29,7 +29,7 @@ genPaths GenPathsOptions {..} h =
         \t f -> do
           lbi@LocalBuildInfo {localPkgDescr = pkg_descr@PackageDescription {library = Just lib@Library {libBuildInfo = lib_bi}}} <-
             confHook h t f
-          let [clbi] = componentNameMap lbi M.! CLibName
+          let [clbi] = componentNameMap lbi M.! CLibName LMainLibName
               mod_path = autogenComponentModulesDir lbi clbi
               mod_name = fromString targetModuleName
               ghc_libdir = compilerProperties (compiler lbi) M.! "LibDir"

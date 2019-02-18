@@ -3,7 +3,7 @@
 module GHC.PrimopWrappers where
 import qualified GHC.Prim
 import GHC.Tuple ()
-import GHC.Prim (Char#, Int#, Word#, Float#, Double#, Int8#, Word8#, State#, MutableArray#, Array#, SmallMutableArray#, SmallArray#, MutableByteArray#, ByteArray#, Addr#, StablePtr#, MutableArrayArray#, ArrayArray#, MutVar#, RealWorld, TVar#, MVar#, ThreadId#, Weak#, StableName#, Compact#, BCO#)
+import GHC.Prim (Char#, Int#, Word#, Float#, Double#, Int8#, Word8#, Int16#, Word16#, State#, MutableArray#, Array#, SmallMutableArray#, SmallArray#, MutableByteArray#, ByteArray#, Addr#, StablePtr#, MutableArrayArray#, ArrayArray#, MutVar#, RealWorld, TVar#, MVar#, ThreadId#, Weak#, StableName#, Compact#, BCO#)
 {-# NOINLINE gtChar# #-}
 gtChar# :: Char# -> Char# -> Int#
 gtChar# a1 a2 = (GHC.Prim.gtChar#) a1 a2
@@ -202,6 +202,96 @@ ltWord8# a1 a2 = (GHC.Prim.ltWord8#) a1 a2
 {-# NOINLINE neWord8# #-}
 neWord8# :: Word8# -> Word8# -> Int#
 neWord8# a1 a2 = (GHC.Prim.neWord8#) a1 a2
+{-# NOINLINE extendInt16# #-}
+extendInt16# :: Int16# -> Int#
+extendInt16# a1 = (GHC.Prim.extendInt16#) a1
+{-# NOINLINE narrowInt16# #-}
+narrowInt16# :: Int# -> Int16#
+narrowInt16# a1 = (GHC.Prim.narrowInt16#) a1
+{-# NOINLINE negateInt16# #-}
+negateInt16# :: Int16# -> Int16#
+negateInt16# a1 = (GHC.Prim.negateInt16#) a1
+{-# NOINLINE plusInt16# #-}
+plusInt16# :: Int16# -> Int16# -> Int16#
+plusInt16# a1 a2 = (GHC.Prim.plusInt16#) a1 a2
+{-# NOINLINE subInt16# #-}
+subInt16# :: Int16# -> Int16# -> Int16#
+subInt16# a1 a2 = (GHC.Prim.subInt16#) a1 a2
+{-# NOINLINE timesInt16# #-}
+timesInt16# :: Int16# -> Int16# -> Int16#
+timesInt16# a1 a2 = (GHC.Prim.timesInt16#) a1 a2
+{-# NOINLINE quotInt16# #-}
+quotInt16# :: Int16# -> Int16# -> Int16#
+quotInt16# a1 a2 = (GHC.Prim.quotInt16#) a1 a2
+{-# NOINLINE remInt16# #-}
+remInt16# :: Int16# -> Int16# -> Int16#
+remInt16# a1 a2 = (GHC.Prim.remInt16#) a1 a2
+{-# NOINLINE quotRemInt16# #-}
+quotRemInt16# :: Int16# -> Int16# -> (# Int16#,Int16# #)
+quotRemInt16# a1 a2 = (GHC.Prim.quotRemInt16#) a1 a2
+{-# NOINLINE eqInt16# #-}
+eqInt16# :: Int16# -> Int16# -> Int#
+eqInt16# a1 a2 = (GHC.Prim.eqInt16#) a1 a2
+{-# NOINLINE geInt16# #-}
+geInt16# :: Int16# -> Int16# -> Int#
+geInt16# a1 a2 = (GHC.Prim.geInt16#) a1 a2
+{-# NOINLINE gtInt16# #-}
+gtInt16# :: Int16# -> Int16# -> Int#
+gtInt16# a1 a2 = (GHC.Prim.gtInt16#) a1 a2
+{-# NOINLINE leInt16# #-}
+leInt16# :: Int16# -> Int16# -> Int#
+leInt16# a1 a2 = (GHC.Prim.leInt16#) a1 a2
+{-# NOINLINE ltInt16# #-}
+ltInt16# :: Int16# -> Int16# -> Int#
+ltInt16# a1 a2 = (GHC.Prim.ltInt16#) a1 a2
+{-# NOINLINE neInt16# #-}
+neInt16# :: Int16# -> Int16# -> Int#
+neInt16# a1 a2 = (GHC.Prim.neInt16#) a1 a2
+{-# NOINLINE extendWord16# #-}
+extendWord16# :: Word16# -> Word#
+extendWord16# a1 = (GHC.Prim.extendWord16#) a1
+{-# NOINLINE narrowWord16# #-}
+narrowWord16# :: Word# -> Word16#
+narrowWord16# a1 = (GHC.Prim.narrowWord16#) a1
+{-# NOINLINE notWord16# #-}
+notWord16# :: Word16# -> Word16#
+notWord16# a1 = (GHC.Prim.notWord16#) a1
+{-# NOINLINE plusWord16# #-}
+plusWord16# :: Word16# -> Word16# -> Word16#
+plusWord16# a1 a2 = (GHC.Prim.plusWord16#) a1 a2
+{-# NOINLINE subWord16# #-}
+subWord16# :: Word16# -> Word16# -> Word16#
+subWord16# a1 a2 = (GHC.Prim.subWord16#) a1 a2
+{-# NOINLINE timesWord16# #-}
+timesWord16# :: Word16# -> Word16# -> Word16#
+timesWord16# a1 a2 = (GHC.Prim.timesWord16#) a1 a2
+{-# NOINLINE quotWord16# #-}
+quotWord16# :: Word16# -> Word16# -> Word16#
+quotWord16# a1 a2 = (GHC.Prim.quotWord16#) a1 a2
+{-# NOINLINE remWord16# #-}
+remWord16# :: Word16# -> Word16# -> Word16#
+remWord16# a1 a2 = (GHC.Prim.remWord16#) a1 a2
+{-# NOINLINE quotRemWord16# #-}
+quotRemWord16# :: Word16# -> Word16# -> (# Word16#,Word16# #)
+quotRemWord16# a1 a2 = (GHC.Prim.quotRemWord16#) a1 a2
+{-# NOINLINE eqWord16# #-}
+eqWord16# :: Word16# -> Word16# -> Int#
+eqWord16# a1 a2 = (GHC.Prim.eqWord16#) a1 a2
+{-# NOINLINE geWord16# #-}
+geWord16# :: Word16# -> Word16# -> Int#
+geWord16# a1 a2 = (GHC.Prim.geWord16#) a1 a2
+{-# NOINLINE gtWord16# #-}
+gtWord16# :: Word16# -> Word16# -> Int#
+gtWord16# a1 a2 = (GHC.Prim.gtWord16#) a1 a2
+{-# NOINLINE leWord16# #-}
+leWord16# :: Word16# -> Word16# -> Int#
+leWord16# a1 a2 = (GHC.Prim.leWord16#) a1 a2
+{-# NOINLINE ltWord16# #-}
+ltWord16# :: Word16# -> Word16# -> Int#
+ltWord16# a1 a2 = (GHC.Prim.ltWord16#) a1 a2
+{-# NOINLINE neWord16# #-}
+neWord16# :: Word16# -> Word16# -> Int#
+neWord16# a1 a2 = (GHC.Prim.neWord16#) a1 a2
 {-# NOINLINE plusWord# #-}
 plusWord# :: Word# -> Word# -> Word#
 plusWord# a1 a2 = (GHC.Prim.plusWord#) a1 a2

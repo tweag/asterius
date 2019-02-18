@@ -609,7 +609,7 @@ generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {
 
 mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
      BuiltinsOptions -> AsteriusFunction
-mainFunction BuiltinsOptions {..} =
+mainFunction BuiltinsOptions {} =
   runEDSL [] $ do
     tid <- call' "rts_evalLazyIO" [symbol "Main_main_closure"] I32
     call "rts_checkSchedStatus" [tid]
@@ -710,7 +710,7 @@ dirtySTACK _ stack =
     (storeI32 stack offset_StgStack_dirty $ constI32 1)
     mempty
 
-scheduleWaitThreadFunction BuiltinsOptions {..} =
+scheduleWaitThreadFunction BuiltinsOptions {} =
   runEDSL [] $ do
     t <- param I64
     block' [] $ \sched_block_lbl ->
@@ -856,7 +856,7 @@ createStrictIOThreadFunction _ =
     , symbol "stg_enter_info"
     ]
 
-allocateFunction BuiltinsOptions {..} =
+allocateFunction BuiltinsOptions {} =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     [_, n] <- params [I64, I64]

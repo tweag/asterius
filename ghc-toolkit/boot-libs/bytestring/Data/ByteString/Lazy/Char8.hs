@@ -251,7 +251,7 @@ cons :: Char -> ByteString -> ByteString
 cons = L.cons . c2w
 {-# INLINE cons #-}
 
--- | /O(1)/ Unlike 'cons', 'cons\'' is
+-- | /O(1)/ Unlike 'cons', 'cons'' is
 -- strict in the ByteString that we are consing onto. More precisely, it forces
 -- the head and the first chunk. It does this because, for space efficiency, it
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
@@ -259,7 +259,7 @@ cons = L.cons . c2w
 --
 -- So that means you can't use a lazy recursive contruction like this:
 --
--- > let xs = cons\' c xs in xs
+-- > let xs = cons' c xs in xs
 --
 -- You can however use 'cons', as well as 'repeat' and 'cycle', to build
 -- infinite lazy ByteStrings.
@@ -319,7 +319,7 @@ foldl :: (a -> Char -> a) -> a -> ByteString -> a
 foldl f = L.foldl (\a c -> f a (w2c c))
 {-# INLINE foldl #-}
 
--- | 'foldl\'' is like foldl, but strict in the accumulator.
+-- | 'foldl'' is like foldl, but strict in the accumulator.
 foldl' :: (a -> Char -> a) -> a -> ByteString -> a
 foldl' f = L.foldl' (\a c -> f a (w2c c))
 {-# INLINE foldl' #-}
@@ -337,7 +337,7 @@ foldl1 :: (Char -> Char -> Char) -> ByteString -> Char
 foldl1 f ps = w2c (L.foldl1 (\x y -> c2w (f (w2c x) (w2c y))) ps)
 {-# INLINE foldl1 #-}
 
--- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
+-- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 foldl1' :: (Char -> Char -> Char) -> ByteString -> Char
 foldl1' f ps = w2c (L.foldl1' (\x y -> c2w (f (w2c x) (w2c y))) ps)
 

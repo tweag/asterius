@@ -17,8 +17,8 @@
 -- Portability :  portable
 --
 -- A monad transformer that combines 'ReaderT', 'WriterT' and 'StateT'.
--- This version is lazy; for a strict version with the same interface,
--- see "Control.Monad.Trans.RWS.Strict".
+-- This version is lazy; for a constant-space version with almost the
+-- same interface, see "Control.Monad.Trans.RWS.CPS".
 -----------------------------------------------------------------------------
 
 module Control.Monad.Trans.RWS.Lazy (
@@ -205,8 +205,10 @@ instance (Monoid w, Monad m) => Monad (RWST r w s m) where
         ~(b, s'',w') <- runRWST (k a) r s'
         return (b, s'', w `mappend` w')
     {-# INLINE (>>=) #-}
+#if !(MIN_VERSION_base(4,13,0))
     fail msg = RWST $ \ _ _ -> fail msg
     {-# INLINE fail #-}
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (RWST r w s m) where

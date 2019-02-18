@@ -1,7 +1,17 @@
 # Changelog for [`base` package](http://hackage.haskell.org/package/base)
 
+## 4.14.0.0 *TBA*
+  * Bundled with GHC *TBA*
+
+  * Add a `TestEquality` instance for the `Compose` newtype.
+
 ## 4.12.0.0 *TBA*
   * Bundled with GHC *TBA*
+
+  * Fix `Show` instance of `Data.Fixed`: Negative numbers are now parenthesized
+    according to their surrounding context. I.e. `Data.Fixed.show` produces
+    syntactically correct Haskell for expressions like `Just (-1 :: Fixed E2)`.
+    (#16031)
 
   * Support the characters from recent versions of Unicode (up to v. 12) in
     literals (#5518).
@@ -11,6 +21,10 @@
     type of the underlying object.
 
   * Add `foldMap'`, a strict version of `foldMap`, to `Foldable`.
+
+  * The `shiftL` and `shiftR` methods in the `Bits` instances of `Int`, `IntN`,
+    `Word`, and `WordN` now throw an overflow exception for negative shift
+    values (instead of being undefined behaviour).
 
 ## 4.12.0.0 *21 September 2018*
   * Bundled with GHC 8.6.1

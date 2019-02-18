@@ -282,9 +282,7 @@ processFFI mod_sym = w
                   new_decls =
                     M.insert
                       AsteriusEntitySymbol
-                        { entityName =
-                            SBS.toShort $ GHC.fastStringToByteString lbl
-                        }
+                        {entityName = SBS.toShort $ GHC.bytesFS lbl}
                       FFIExportDecl
                         {ffiFunctionType = ffi_ftype, ffiExportClosure = ""}
                       old_decls
@@ -357,8 +355,7 @@ addFFIProcessor c = do
                                   export_func_name =
                                     AsteriusEntitySymbol
                                       { entityName =
-                                          SBS.toShort $
-                                          GHC.fastStringToByteString lbl
+                                          SBS.toShort $ GHC.bytesFS lbl
                                       }
                                   export_closure =
                                     fromString $
@@ -482,7 +479,8 @@ generateFFIExportFunction FFIExportDecl {..} =
                                                        (case ffi_param_t of
                                                           FFI_VAL {..} ->
                                                             hsTyCon
-                                                          FFI_JSVAL -> "StablePtr")
+                                                          FFI_JSVAL ->
+                                                            "StablePtr")
                                                    }
                                              , operands =
                                                  [ GetLocal

@@ -1,16 +1,29 @@
 # Changelog for [`template-haskell` package](http://hackage.haskell.org/package/template-haskell)
 
+## 2.16.0.0 *TBA*
+
+  * Introduce a `liftTyped` method to the `Lift` class and set the default
+    implementations of `lift`/`liftTyped` to be in terms of each other.
+
 ## 2.15.0.0 *TBA*
 
   * In `Language.Haskell.TH.Syntax`, `DataInstD`, `NewTypeInstD`, `TySynEqn`,
     and `RuleP` now all have a `Maybe [TyVarBndr]` argument, which contains a
     list of quantified type variables if an explicit `forall` is present, and
-    `Nothing` otherwise.
+    `Nothing` otherwise. `DataInstD`, `NewTypeInstD`, `TySynEqn` also now use
+    a single `Type` argument to represent the left-hand-side to avoid
+    malformed type family equations and allow visible kind application.
 
     Correspondingly, in `Language.Haskell.TH.Lib.Internal`, `pragRuleD`,
     `dataInstD`, `newtypeInstD`, and `tySynEqn` now all have a
     `Maybe [TyVarBndrQ]` argument. Non-API-breaking versions of these
-    functions can be found in `Language.Haskell.TH.Lib`.
+    functions can be found in `Language.Haskell.TH.Lib`. The type signature
+    of `tySynEqn` has also changed from `[TypeQ] -> TypeQ -> TySynEqnQ` to
+    `(Maybe [TyVarBndrQ]) -> TypeQ -> TypeQ -> TySynEqnQ`, for the same reason
+    as in `Language.Haskell.TH.Syntax` above. Consequently, `tySynInstD` also
+    changes from `Name -> TySynEqnQ -> DecQ` to `TySynEqnQ -> DecQ`.
+
+  * Add `Lift` instances for `NonEmpty` and `Void`
 
 ## 2.14.0.0 *TBA*
 

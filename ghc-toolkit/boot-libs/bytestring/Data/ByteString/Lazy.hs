@@ -357,7 +357,7 @@ cons :: Word8 -> ByteString -> ByteString
 cons c cs = Chunk (S.singleton c) cs
 {-# INLINE cons #-}
 
--- | /O(1)/ Unlike 'cons', 'cons\'' is
+-- | /O(1)/ Unlike 'cons', 'cons'' is
 -- strict in the ByteString that we are consing onto. More precisely, it forces
 -- the head and the first chunk. It does this because, for space efficiency, it
 -- may coalesce the new byte onto the first \'chunk\' rather than starting a
@@ -365,7 +365,7 @@ cons c cs = Chunk (S.singleton c) cs
 --
 -- So that means you can't use a lazy recursive contruction like this:
 --
--- > let xs = cons\' c xs in xs
+-- > let xs = cons' c xs in xs
 --
 -- You can however use 'cons', as well as 'repeat' and 'cycle', to build
 -- infinite lazy ByteStrings.
@@ -488,7 +488,7 @@ foldl f z = go z
         go a (Chunk c cs) = go (S.foldl f a c) cs
 {-# INLINE foldl #-}
 
--- | 'foldl\'' is like 'foldl', but strict in the accumulator.
+-- | 'foldl'' is like 'foldl', but strict in the accumulator.
 foldl' :: (a -> Word8 -> a) -> a -> ByteString -> a
 foldl' f z = go z
   where go !a Empty        = a
@@ -508,7 +508,7 @@ foldl1 :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1 _ Empty        = errorEmptyList "foldl1"
 foldl1 f (Chunk c cs) = foldl f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)
 
--- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
+-- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' _ Empty        = errorEmptyList "foldl1'"
 foldl1' f (Chunk c cs) = foldl' f (S.unsafeHead c) (Chunk (S.unsafeTail c) cs)

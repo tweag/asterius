@@ -27,7 +27,7 @@
 -- the same interface, see "Control.Monad.Trans.Writer.Lazy".
 -- Although the output is built strictly, it is not possible to
 -- achieve constant space behaviour with this transformer: for that,
--- use "Control.Monad.Trans.State.Strict" instead.
+-- use "Control.Monad.Trans.Writer.CPS" instead.
 -----------------------------------------------------------------------------
 
 module Control.Monad.Trans.Writer.Strict (
@@ -207,8 +207,10 @@ instance (Monoid w, Monad m) => Monad (WriterT w m) where
         (b, w') <- runWriterT (k a)
         return (b, w `mappend` w')
     {-# INLINE (>>=) #-}
+#if !(MIN_VERSION_base(4,13,0))
     fail msg = WriterT $ fail msg
     {-# INLINE fail #-}
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Monoid w, Fail.MonadFail m) => Fail.MonadFail (WriterT w m) where

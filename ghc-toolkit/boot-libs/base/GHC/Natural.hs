@@ -42,19 +42,12 @@ module GHC.Natural
     , quotRemNatural
     , quotNatural
     , remNatural
-#if defined(MIN_VERSION_integer_gmp)
-    , gcdNatural
-    , lcmNatural
-#endif
       -- * Bits
     , andNatural
     , orNatural
     , xorNatural
     , bitNatural
     , testBitNatural
-#if defined(MIN_VERSION_integer_gmp)
-    , popCountNatural
-#endif
     , shiftLNatural
     , shiftRNatural
       -- * Conversions
@@ -102,7 +95,7 @@ default ()
 -- TODO: Note that some functions have commented CONSTANT_FOLDED annotations,
 -- that's because the Integer counter-parts of these functions do actually have
 -- a builtinRule in PrelRules, where the Natural functions do not. The plan is
--- to eventually also add builtin rules for those function on Natural.
+-- to eventually also add builtin rules for those functions on Natural.
 #define CONSTANT_FOLDED NOINLINE
 
 -------------------------------------------------------------------------------
@@ -181,25 +174,6 @@ naturalFromInteger (Jp# bn) = bigNatToNatural bn
 naturalFromInteger _        = underflowError
 {-# CONSTANT_FOLDED naturalFromInteger #-}
 
--- | Compute greatest common divisor.
-gcdNatural :: Natural -> Natural -> Natural
-gcdNatural (NatS# 0##) y       = y
-gcdNatural x       (NatS# 0##) = x
-gcdNatural (NatS# 1##) _       = NatS# 1##
-gcdNatural _       (NatS# 1##) = NatS# 1##
-gcdNatural (NatJ# x) (NatJ# y) = bigNatToNatural (gcdBigNat x y)
-gcdNatural (NatJ# x) (NatS# y) = NatS# (gcdBigNatWord x y)
-gcdNatural (NatS# x) (NatJ# y) = NatS# (gcdBigNatWord y x)
-gcdNatural (NatS# x) (NatS# y) = NatS# (gcdWord x y)
-
--- | compute least common multiplier.
-lcmNatural :: Natural -> Natural -> Natural
-lcmNatural (NatS# 0##) _ = NatS# 0##
-lcmNatural _ (NatS# 0##) = NatS# 0##
-lcmNatural (NatS# 1##) y = y
-lcmNatural x (NatS# 1##) = x
-lcmNatural x y           = (x `quotNatural` (gcdNatural x y)) `timesNatural` y
-
 ----------------------------------------------------------------------------
 
 quotRemNatural :: Natural -> Natural -> (Natural, Natural)
@@ -272,11 +246,6 @@ testBitNatural (NatS# w) (I# i#)
   | True                               = False
 testBitNatural (NatJ# bn) (I# i#)      = testBitBigNat bn i#
 -- {-# CONSTANT_FOLDED testBitNatural #-}
-
-popCountNatural :: Natural -> Int
-popCountNatural (NatS# w)  = I# (word2Int# (popCnt# w))
-popCountNatural (NatJ# bn) = I# (popCountBigNat bn)
--- {-# CONSTANT_FOLDED popCountNatural #-}
 
 shiftLNatural :: Natural -> Int -> Natural
 shiftLNatural n           (I# 0#) = n
@@ -460,7 +429,9 @@ plusNatural (Natural x) (Natural y) = Natural (x `plusInteger` y)
 {-# CONSTANT_FOLDED plusNatural #-}
 
 minusNatural :: Natural -> Natural -> Natural
-minusNatural (Natural x) (Natural y) = Natural (x `minusInteger` y)
+minusNatural (Natural x) (Natural y)
+  = if z `ltInteger` wordToInteger 0## then underflowError else Natural z
+  where z = x `minusInteger` y
 {-# CONSTANT_FOLDED minusNatural #-}
 
 timesNatural :: Natural -> Natural -> Natural

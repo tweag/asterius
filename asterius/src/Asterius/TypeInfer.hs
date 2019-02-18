@@ -18,7 +18,7 @@ infer expr =
     CallImport {..} -> callImportReturnTypes
     CallIndirect {} -> [I64]
     GetLocal {..} -> [valueType]
-    SetLocal {..} -> []
+    SetLocal {} -> []
     Load {..} -> [valueType]
     Store {} -> []
     ConstI32 {} -> [I32]
@@ -31,7 +31,7 @@ infer expr =
     Unary {unaryOp = ConvertSInt64ToFloat64} -> [F64]
     Unary {unaryOp = TruncUFloat64ToInt64} -> [I64]
     Unary {unaryOp = TruncSFloat64ToInt64} -> [I64]
-    Host {..} -> [I32]
+    Host {} -> [I32]
     Nop -> []
     Unreachable -> []
     CFG {} -> []
@@ -49,5 +49,5 @@ infer expr =
         FloatReg {} -> [F32]
         DoubleReg {} -> [F64]
         _ -> [I64]
-    UnresolvedSetGlobal {..} -> []
+    UnresolvedSetGlobal {} -> []
     _ -> error $ "Asterius.TypeInfer.infer: " <> show expr

@@ -80,8 +80,8 @@ type Except e = ExceptT e Identity
 
 -- | Constructor for computations in the exception monad.
 -- (The inverse of 'runExcept').
-except :: Either e a -> Except e a
-except m = ExceptT (Identity m)
+except :: (Monad m) => Either e a -> ExceptT e m a
+except m = ExceptT (return m)
 {-# INLINE except #-}
 
 -- | Extractor for computations in the exception monad.
@@ -220,8 +220,10 @@ instance (Monad m) => Monad (ExceptT e m) where
             Left e -> return (Left e)
             Right x -> runExceptT (k x)
     {-# INLINE (>>=) #-}
+#if !(MIN_VERSION_base(4,13,0))
     fail = ExceptT . fail
     {-# INLINE fail #-}
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Fail.MonadFail m) => Fail.MonadFail (ExceptT e m) where
@@ -275,9 +277,9 @@ throwE = ExceptT . return . Left
 
 -- | Handle an exception.
 --
--- * @'catchE' h ('lift' m) = 'lift' m@
+-- * @'catchE' ('lift' m) h = 'lift' m@
 --
--- * @'catchE' h ('throwE' e) = h e@
+-- * @'catchE' ('throwE' e) h = h e@
 catchE :: (Monad m) =>
     ExceptT e m a               -- ^ the inner computation
     -> (e -> ExceptT e' m a)    -- ^ a handler for exceptions in the inner

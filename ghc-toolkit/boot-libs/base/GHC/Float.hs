@@ -10,7 +10,7 @@
 -- We believe we could deorphan this module, by moving lots of things
 -- around, but we haven't got there yet:
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -71,6 +71,7 @@ infixr 8  **
 --
 -- * @exp (a + b)@ = @exp a * exp b@
 -- * @exp (fromInteger 0)@ = @fromInteger 1@
+--
 class  (Fractional a) => Floating a  where
     pi                  :: a
     exp, log, sqrt      :: a -> a

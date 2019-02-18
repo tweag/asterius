@@ -18,7 +18,7 @@ data HaskellIR = HaskellIR
   { parsed :: HsParsedModule
   , typechecked :: TcGblEnv
   , core :: CgGuts
-  , stg :: [StgTopBinding]
+  , stg :: [CgStgTopBinding]
   , cmm :: [[CmmDecl]]
   , cmmRaw :: [[RawCmmDecl]]
   }

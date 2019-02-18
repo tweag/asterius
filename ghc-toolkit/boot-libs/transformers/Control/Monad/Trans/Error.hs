@@ -238,7 +238,9 @@ instance (Monad m, Error e) => Monad (ErrorT e m) where
         case a of
             Left  l -> return (Left l)
             Right r -> runErrorT (k r)
+#if !(MIN_VERSION_base(4,13,0))
     fail msg = ErrorT $ return (Left (strMsg msg))
+#endif
 
 #if MIN_VERSION_base(4,9,0)
 instance (Monad m, Error e) => Fail.MonadFail (ErrorT e m) where
