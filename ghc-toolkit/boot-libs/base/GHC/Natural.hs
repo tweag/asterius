@@ -42,19 +42,15 @@ module GHC.Natural
     , quotRemNatural
     , quotNatural
     , remNatural
-#if defined(MIN_VERSION_integer_gmp)
     , gcdNatural
     , lcmNatural
-#endif
       -- * Bits
     , andNatural
     , orNatural
     , xorNatural
     , bitNatural
     , testBitNatural
-#if defined(MIN_VERSION_integer_gmp)
     , popCountNatural
-#endif
     , shiftLNatural
     , shiftRNatural
       -- * Conversions
@@ -102,7 +98,7 @@ default ()
 -- TODO: Note that some functions have commented CONSTANT_FOLDED annotations,
 -- that's because the Integer counter-parts of these functions do actually have
 -- a builtinRule in PrelRules, where the Natural functions do not. The plan is
--- to eventually also add builtin rules for those function on Natural.
+-- to eventually also add builtin rules for those functions on Natural.
 #define CONSTANT_FOLDED NOINLINE
 
 -------------------------------------------------------------------------------
@@ -192,7 +188,7 @@ gcdNatural (NatJ# x) (NatS# y) = NatS# (gcdBigNatWord x y)
 gcdNatural (NatS# x) (NatJ# y) = NatS# (gcdBigNatWord y x)
 gcdNatural (NatS# x) (NatS# y) = NatS# (gcdWord x y)
 
--- | compute least common multiplier.
+-- | Compute least common multiple.
 lcmNatural :: Natural -> Natural -> Natural
 lcmNatural (NatS# 0##) _ = NatS# 0##
 lcmNatural _ (NatS# 0##) = NatS# 0##
@@ -439,6 +435,15 @@ naturalFromInteger n
   | True                   = underflowError
 {-# INLINE naturalFromInteger #-}
 
+
+-- | Compute greatest common divisor.
+gcdNatural :: Natural -> Natural -> Natural
+gcdNatural (Natural n) (Natural m) = Natural (n `gcdInteger` m)
+
+-- | Compute lowest common multiple.
+lcmNatural :: Natural -> Natural -> Natural
+lcmNatural (Natural n) (Natural m) = Natural (n `lcmInteger` m)
+
 -- | 'Natural' subtraction. Returns 'Nothing's for non-positive results.
 --
 -- @since 4.8.0.0
@@ -460,7 +465,9 @@ plusNatural (Natural x) (Natural y) = Natural (x `plusInteger` y)
 {-# CONSTANT_FOLDED plusNatural #-}
 
 minusNatural :: Natural -> Natural -> Natural
-minusNatural (Natural x) (Natural y) = Natural (x `minusInteger` y)
+minusNatural (Natural x) (Natural y)
+  = if z `ltInteger` wordToInteger 0## then underflowError else Natural z
+  where z = x `minusInteger` y
 {-# CONSTANT_FOLDED minusNatural #-}
 
 timesNatural :: Natural -> Natural -> Natural
@@ -492,6 +499,9 @@ naturalToInteger (Natural i) = i
 testBitNatural :: Natural -> Int -> Bool
 testBitNatural (Natural n) (I# i) = testBitInteger n i
 -- {-# CONSTANT_FOLDED testBitNatural #-}
+
+popCountNatural :: Natural -> Int
+popCountNatural (Natural n) = I# (popCountInteger n)
 
 bitNatural :: Int# -> Natural
 bitNatural i#
