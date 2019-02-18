@@ -46,7 +46,7 @@ defaultBootArgs =
   BootArgs
     { bootDir = dataDir </> ".boot"
     , configureOptions =
-        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1 --with-ar=" <>
+        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v2 --with-ar=" <>
         ahcAr
     , buildOptions = ""
     , installOptions = ""
