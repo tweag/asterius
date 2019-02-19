@@ -3,6 +3,7 @@ module Asterius.BuildInfo
   , ghcPkg
   , ghcLibDir
   , ahc
+  , ahcPkg
   , ahcAr
   , dataDir
   , packageDBStack
@@ -12,7 +13,9 @@ import BuildInfo_asterius
 import System.Directory
 import System.FilePath
 
-ahc, ahcAr :: FilePath
+ahc, ahcPkg, ahcAr :: FilePath
 ahc = binDir </> "ahc" <.> exeExtension
+
+ahcPkg = binDir </> "ahc-pkg" <.> exeExtension
 
 ahcAr = binDir </> "ahc-ar" <.> exeExtension

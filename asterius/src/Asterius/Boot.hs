@@ -46,8 +46,7 @@ defaultBootArgs =
   BootArgs
     { bootDir = dataDir </> ".boot"
     , configureOptions =
-        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1 --with-ar=" <>
-        ahcAr
+        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1"
     , buildOptions = ""
     , installOptions = ""
     , builtinsOptions = defaultBuiltinsOptions
@@ -70,8 +69,9 @@ bootCreateProcess args@BootArgs {..} = do
           ("ASTERIUS_TMP_DIR", bootTmpDir args) :
           ("ASTERIUS_GHC", ghc) :
           ("ASTERIUS_GHCLIBDIR", ghcLibDir) :
-          ("ASTERIUS_GHCPKG", ghcPkg) :
           ("ASTERIUS_AHC", ahc) :
+          ("ASTERIUS_AHCPKG", ahcPkg) :
+          ("ASTERIUS_AHCAR", ahcAr) :
           ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
           ("ASTERIUS_BUILD_OPTIONS", buildOptions) :
           ("ASTERIUS_INSTALL_OPTIONS", installOptions) :
