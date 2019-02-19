@@ -96,6 +96,13 @@ executables:
     dependencies:
       - asterius
 
+  ahc-pkg:
+    source-dirs: app
+    main: ahc-pkg.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
+    dependencies:
+      - asterius
+
   ahc-boot:
     source-dirs: app
     main: ahc-boot.hs
