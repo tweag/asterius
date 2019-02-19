@@ -1,16 +1,10 @@
-{-# LANGUAGE StrictData #-}
-
+import Asterius.Ld
 import Data.List
 import Data.Maybe
 import Data.Traversable
 import System.Directory
 import System.Environment.Blank
 import System.IO
-
-data LinkTask = LinkTask
-  { linkOutput :: FilePath
-  , linkObjs, linkLibs :: [FilePath]
-  } deriving (Show)
 
 parseLinkTask :: [String] -> IO LinkTask
 parseLinkTask args = do
