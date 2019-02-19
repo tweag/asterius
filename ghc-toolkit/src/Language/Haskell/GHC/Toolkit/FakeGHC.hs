@@ -40,7 +40,6 @@ fakeGHCMain FakeGHCOptions {..} = do
           GHC.setSessionDynFlags
             dflags1
               { GHC.ghcMode = GHC.CompManager
-              , GHC.ghcLink = GHC.NoLink
               , GHC.hscTarget = GHC.HscAsm
               }
         GHC.frontend

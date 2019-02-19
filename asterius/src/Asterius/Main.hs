@@ -405,29 +405,10 @@ ahcLinkMain task@Task {..} = do
               [ "-Wall"
               , "-O"
               , "-i" <> takeDirectory inputHS
+              , "-pgml" <> ahcLd
               , "-clear-package-db"
               , "-global-package-db"
-              , "-hide-all-packages"
               ] <>
-              mconcat
-                [ ["-package", pkg]
-                | pkg <-
-                    [ "ghc-prim"
-                    , "integer-simple"
-                    , "base"
-                    , "array"
-                    , "deepseq"
-                    , "containers"
-                    , "transformers"
-                    , "mtl"
-                    , "pretty"
-                    , "ghc-boot-th"
-                    , "template-haskell"
-                    , "bytestring"
-                    , "binary"
-                    , "xhtml"
-                    ]
-                ] <>
               extraGHCFlags
           , compiler = c
           }

@@ -59,7 +59,6 @@ runHaskell Config {..} targets write_obj_cont = do
     setSessionDynFlags
       dflags'
         { ghcMode = CompManager
-        , ghcLink = NoLink
         , integerLibrary = IntegerSimple
         , tablesNextToCode = False
         , hooks = h
@@ -86,7 +85,6 @@ runCmm Config {..} cmm_fns write_obj_cont = do
     setSessionDynFlags
       dflags'
         { ghcMode = OneShot
-        , ghcLink = NoLink
         , integerLibrary = IntegerSimple
         , tablesNextToCode = False
         , hooks = h
