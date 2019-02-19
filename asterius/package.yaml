@@ -117,6 +117,13 @@ executables:
     dependencies:
       - asterius
 
+  ahc-ld:
+    source-dirs: app
+    main: ahc-ld.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
+    dependencies:
+      - asterius
+
 tests:
   nir-test:
     source-dirs: test
