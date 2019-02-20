@@ -13,11 +13,13 @@ module Asterius.Internals
   , collect
   , encodeFile
   , decodeFile
+  , tryDecodeFile
   , showSBS
   , c8SBS
   , (!)
   ) where
 
+import Control.Exception
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short.Internal as SBS
@@ -104,6 +106,16 @@ encodeFile = Binary.encodeFile
 {-# INLINE decodeFile #-}
 decodeFile :: Binary.Binary a => FilePath -> IO a
 decodeFile = Binary.decodeFile
+
+{-# INLINE tryDecodeFile #-}
+tryDecodeFile :: Binary.Binary a => FilePath -> IO (Either SomeException a)
+tryDecodeFile p = do
+  r <- try $ Binary.decodeFileOrFail p
+  pure $
+    case r of
+      Left err -> Left err
+      Right (Left err) -> Left $ toException $ userError $ show err
+      Right (Right v) -> Right v
 
 {-# INLINE showSBS #-}
 showSBS :: Show a => a -> SBS.ShortByteString

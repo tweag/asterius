@@ -11,20 +11,18 @@ module Asterius.Main
   , ahcLinkMain
   ) where
 
-import Asterius.Boot
 import Asterius.BuildInfo
 import Asterius.Builtins
-import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
+import Asterius.Internals.Temp
 import Asterius.JSFFI
+import Asterius.Ld
 import qualified Asterius.Marshal as OldMarshal
 import qualified Asterius.NewMarshal as NewMarshal
 import Asterius.Resolve
-import Asterius.Store
 import Asterius.Types
 import Bindings.Binaryen.Raw
-import Control.Exception
 import Control.Monad
 import Control.Monad.Except
 import Data.Binary.Get
@@ -32,17 +30,12 @@ import Data.Binary.Put
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable
-import Data.IORef
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
-import qualified DynFlags as GHC
 import Foreign
-import qualified GHC
 import Language.Haskell.GHC.Toolkit.Constants
-import Language.Haskell.GHC.Toolkit.Orphans.Show
-import Language.Haskell.GHC.Toolkit.Run
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import NPM.Parcel
@@ -383,211 +376,145 @@ ahcLinkMain :: Task -> IO ()
 ahcLinkMain task@Task {..} = do
   c_BinaryenSetOptimizeLevel 0
   c_BinaryenSetShrinkLevel 0
-  boot_store <-
-    do store_path <-
-         do let boot_lib = bootDir defaultBootArgs </> "asterius_lib"
-            pure (boot_lib </> "asterius_store")
-       putStrLn $ "[INFO] Loading boot library store from " <> show store_path
-       decodeStore store_path
-  putStrLn "[INFO] Populating the store with builtin routines"
-  let builtins_opts = defaultBuiltinsOptions {tracing = debug}
-      !orig_store = builtinsStore builtins_opts <> boot_store
-  putStrLn $ "[INFO] Compiling " <> inputHS <> " to Cmm"
-  (c, get_ffi_mod) <- addFFIProcessor mempty
-  final_store_ref <- liftIO $ newIORef orig_store
-  GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
-    GHC.runGhc (Just (dataDir </> ".boot" </> "asterius_lib")) $ do
-      dflags <- GHC.getSessionDynFlags
-      setDynFlagsRef dflags
-      runHaskell
-        defaultConfig
-          { ghcFlags =
-              [ "-Wall"
-              , "-O"
-              , "-i" <> takeDirectory inputHS
-              , "-clear-package-db"
-              , "-global-package-db"
-              , "-hide-all-packages"
-              ] <>
-              mconcat
-                [ ["-package", pkg]
-                | pkg <-
-                    [ "ghc-prim"
-                    , "integer-simple"
-                    , "base"
-                    , "array"
-                    , "deepseq"
-                    , "containers"
-                    , "transformers"
-                    , "mtl"
-                    , "pretty"
-                    , "ghc-boot-th"
-                    , "template-haskell"
-                    , "bytestring"
-                    , "binary"
-                    , "xhtml"
-                    ]
-                ] <>
-              extraGHCFlags
-          , compiler = c
-          }
-        [inputHS]
-        (\ms_mod obj_path ir ->
-           case runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod of
-             Left err -> throwIO err
-             Right m' -> do
-               let mod_sym = marshalToModuleSymbol ms_mod
-                   mod_str = GHC.moduleNameString $ GHC.moduleName ms_mod
-               ffi_mod <- get_ffi_mod mod_sym
-               let m = ffi_mod <> m'
+  ld_output <- temp (takeBaseName inputHS)
+  putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
+  callProcess ahc $
+    [ "--make"
+    , "-O"
+    , "-i" <> takeDirectory inputHS
+    , "-pgml" <> ahcLd
+    , "-clear-package-db"
+    , "-global-package-db"
+    ] <>
+    extraGHCFlags <>
+    ["-o", ld_output, inputHS]
+  ld_task <- read <$> readFile ld_output
+  removeFile ld_output
+  putStrLn "[INFO] Loading compiled WebAssembly code and dependencies"
+  final_store <- loadTheWorld defaultBuiltinsOptions {tracing = debug} ld_task
+  putStrLn "[INFO] Linking into a standalone WebAssembly module"
+  (!final_m, !err_msgs, !report) <-
+    linkStart
+      debug
+      final_store
+      (rtsUsedSymbols <>
+       S.fromList
+         (extraRootSymbols <>
+          [ AsteriusEntitySymbol {entityName = internalName}
+          | FunctionExport {..} <- rtsAsteriusFunctionExports debug
+          ]))
+      exportFunctions
+  let out_package_json = outputDirectory </> "package.json"
+      out_rts_settings = outputDirectory </> "rts.settings.mjs"
+      out_wasm = outputDirectory </> outputBaseName <.> "wasm"
+      out_wasm_lib = outputDirectory </> outputBaseName <.> "wasm.mjs"
+      out_lib = outputDirectory </> outputBaseName <.> "lib.mjs"
+      out_entry = outputDirectory </> outputBaseName <.> "mjs"
+      out_js = outputDirectory </> outputBaseName <.> "js"
+      out_html = outputDirectory </> outputBaseName <.> "html"
+      out_link = outputDirectory </> outputBaseName <.> "link.txt"
+      out_dot = outputDirectory </> outputBaseName <.> "dot"
+  when outputLinkReport $ do
+    putStrLn $ "[INFO] Writing linking report to " <> show out_link
+    writeFile out_link $ show report
+  when outputGraphViz $ do
+    putStrLn $
+      "[INFO] Writing GraphViz file of symbol dependencies to " <> show out_dot
+    writeDot out_dot report
+  when outputIR $ do
+    let p = out_wasm -<.> "bin"
+    putStrLn $ "[INFO] Serializing linked IR to " <> show p
+    encodeFile p final_m
+  m_bin <-
+    if binaryen
+      then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+               m_ref <-
+                 withPool $ \pool -> OldMarshal.marshalModule pool final_m
+               putStrLn "[INFO] Validating binaryen IR"
+               pass_validation <- c_BinaryenModuleValidate m_ref
+               when (pass_validation /= 1) $
+                 fail "[ERROR] binaryen validation failed"
+               m_bin <- LBS.fromStrict <$> OldMarshal.serializeModule m_ref
                putStrLn $
-                 "[INFO] Marshalling " <> show mod_str <>
-                 " from Cmm to WebAssembly"
-               modifyIORef' final_store_ref $
-                 addModule (marshalToModuleSymbol ms_mod) m
+                 "[INFO] Writing WebAssembly binary to " <> show out_wasm
+               LBS.writeFile out_wasm m_bin
                when outputIR $ do
-                 let p = takeDirectory inputHS </> mod_str <.> "txt"
-                 putStrLn $ "[INFO] Writing IR of " <> mod_str <> " to " <> p
-                 writeFile p $ show m
-               encodeFile obj_path m)
-      liftIO $ putStrLn "[INFO] Marshalling from Cmm to WebAssembly"
-      liftIO $ do
-        final_store <- readIORef final_store_ref
-        putStrLn
-          "[INFO] Attempting to link into a standalone WebAssembly module"
-        (!final_m, !err_msgs, !report) <-
-          linkStart
-            debug
-            final_store
-            (rtsUsedSymbols <>
-             S.fromList
-               (extraRootSymbols <>
-                [ AsteriusEntitySymbol {entityName = internalName}
-                | FunctionExport {..} <- rtsAsteriusFunctionExports debug
-                ]))
-            exportFunctions
-        let out_package_json = outputDirectory </> "package.json"
-            out_rts_settings = outputDirectory </> "rts.settings.mjs"
-            out_wasm = outputDirectory </> outputBaseName <.> "wasm"
-            out_wasm_lib = outputDirectory </> outputBaseName <.> "wasm.mjs"
-            out_lib = outputDirectory </> outputBaseName <.> "lib.mjs"
-            out_entry = outputDirectory </> outputBaseName <.> "mjs"
-            out_js = outputDirectory </> outputBaseName <.> "js"
-            out_html = outputDirectory </> outputBaseName <.> "html"
-            out_link = outputDirectory </> outputBaseName <.> "link.txt"
-            out_dot = outputDirectory </> outputBaseName <.> "dot"
-        when outputLinkReport $ do
-          putStrLn $ "[INFO] Writing linking report to " <> show out_link
-          writeFile out_link $ show report
-        when outputGraphViz $ do
-          putStrLn $
-            "[INFO] Writing GraphViz file of symbol dependencies to " <>
-            show out_dot
-          writeDot out_dot report
-        when outputIR $ do
-          let p = out_wasm -<.> "bin"
-          putStrLn $ "[INFO] Serializing linked IR to " <> show p
-          encodeFile p final_m
-        m_bin <-
-          if binaryen
-            then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
-                     m_ref <-
-                       withPool $ \pool -> OldMarshal.marshalModule pool final_m
-                     putStrLn "[INFO] Validating binaryen IR"
-                     pass_validation <- c_BinaryenModuleValidate m_ref
-                     when (pass_validation /= 1) $
-                       fail "[ERROR] binaryen validation failed"
-                     m_bin <-
-                       LBS.fromStrict <$> OldMarshal.serializeModule m_ref
-                     putStrLn $
-                       "[INFO] Writing WebAssembly binary to " <> show out_wasm
-                     LBS.writeFile out_wasm m_bin
-                     when outputIR $ do
-                       let p = out_wasm -<.> "binaryen.txt"
-                       putStrLn $
-                         "[INFO] Writing re-parsed wasm-toolkit IR to " <>
-                         show p
-                       case runGetOrFail Wasm.getModule m_bin of
-                         Right (rest, _, r)
-                           | LBS.null rest -> writeFile p (show r)
-                           | otherwise ->
-                             fail "[ERROR] Re-parsing produced residule"
-                         _ -> fail "[ERROR] Re-parsing failed"
-                     pure m_bin)
-            else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
-                     let conv_result = runExcept $ NewMarshal.makeModule final_m
-                     r <-
-                       case conv_result of
-                         Left err ->
-                           fail $ "[ERROR] Conversion failed with " <> show err
-                         Right r -> pure r
-                     when outputIR $ do
-                       let p = out_wasm -<.> "wasm-toolkit.txt"
-                       putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
-                       writeFile p $ show r
-                     let m_bin = runPut $ putModule r
-                     putStrLn $
-                       "[INFO] Writing WebAssembly binary to " <> show out_wasm
-                     LBS.writeFile out_wasm m_bin
-                     pure m_bin)
-        putStrLn $
-          "[INFO] Writing JavaScript runtime settings to " <>
-          show out_rts_settings
-        builderWriteFile out_rts_settings $ genRTSSettings task
-        putStrLn $
-          "[INFO] Writing JavaScript runtime modules to " <>
-          show outputDirectory
-        rts_files <- listDirectory $ dataDir </> "rts"
-        for_ rts_files $ \f ->
-          copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
-        putStrLn $
-          "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
-        builderWriteFile out_wasm_lib $ genWasm task m_bin
-        putStrLn $ "[INFO] Writing JavaScript lib module to " <> show out_lib
-        builderWriteFile out_lib $ genLib task report err_msgs
-        putStrLn $
-          "[INFO] Writing JavaScript entry module to " <> show out_entry
-        case inputEntryMJS of
-          Just in_entry -> copyFile in_entry out_entry
-          _ -> builderWriteFile out_entry $ genDefEntry task
-        when bundle $ do
-          package_json_exist <- doesFileExist out_package_json
-          unless package_json_exist $ do
-            putStrLn $
-              "[INFO] Writing a stub package.json to " <> show out_package_json
-            builderWriteFile out_package_json $ genPackageJSON task
-          putStrLn $
-            "[INFO] Writing JavaScript bundled script to " <> show out_js
-          withCurrentDirectory outputDirectory $
-            callProcess
-              "node"
-              [ parcel
-              , "build"
-              , "--out-dir"
-              , "."
-              , "--out-file"
-              , takeFileName out_js
-              , "--no-cache"
-              , "--no-source-maps"
-              , "--no-autoinstall"
-              , "--no-content-hash"
-              , "--target"
-              , case target of
-                  Node -> "node"
-                  Browser -> "browser"
-              , takeFileName out_entry
-              ]
-        when (target == Browser) $ do
-          putStrLn $ "[INFO] Writing HTML to " <> show out_html
-          builderWriteFile out_html $ genHTML task
-        when (target == Node && run) $
-          withCurrentDirectory (takeDirectory out_wasm) $
-          if bundle
-            then do
-              putStrLn $ "[INFO] Running " <> out_js
-              callProcess "node" [takeFileName out_js]
-            else do
-              putStrLn $ "[INFO] Running " <> out_entry
-              callProcess
-                "node"
-                ["--experimental-modules", takeFileName out_entry]
+                 let p = out_wasm -<.> "binaryen.txt"
+                 putStrLn $
+                   "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
+                 case runGetOrFail Wasm.getModule m_bin of
+                   Right (rest, _, r)
+                     | LBS.null rest -> writeFile p (show r)
+                     | otherwise -> fail "[ERROR] Re-parsing produced residule"
+                   _ -> fail "[ERROR] Re-parsing failed"
+               pure m_bin)
+      else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
+               let conv_result = runExcept $ NewMarshal.makeModule final_m
+               r <-
+                 case conv_result of
+                   Left err ->
+                     fail $ "[ERROR] Conversion failed with " <> show err
+                   Right r -> pure r
+               when outputIR $ do
+                 let p = out_wasm -<.> "wasm-toolkit.txt"
+                 putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
+                 writeFile p $ show r
+               let m_bin = runPut $ putModule r
+               putStrLn $
+                 "[INFO] Writing WebAssembly binary to " <> show out_wasm
+               LBS.writeFile out_wasm m_bin
+               pure m_bin)
+  putStrLn $
+    "[INFO] Writing JavaScript runtime settings to " <> show out_rts_settings
+  builderWriteFile out_rts_settings $ genRTSSettings task
+  putStrLn $
+    "[INFO] Writing JavaScript runtime modules to " <> show outputDirectory
+  rts_files <- listDirectory $ dataDir </> "rts"
+  for_ rts_files $ \f ->
+    copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
+  putStrLn $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
+  builderWriteFile out_wasm_lib $ genWasm task m_bin
+  putStrLn $ "[INFO] Writing JavaScript lib module to " <> show out_lib
+  builderWriteFile out_lib $ genLib task report err_msgs
+  putStrLn $ "[INFO] Writing JavaScript entry module to " <> show out_entry
+  case inputEntryMJS of
+    Just in_entry -> copyFile in_entry out_entry
+    _ -> builderWriteFile out_entry $ genDefEntry task
+  when bundle $ do
+    package_json_exist <- doesFileExist out_package_json
+    unless package_json_exist $ do
+      putStrLn $
+        "[INFO] Writing a stub package.json to " <> show out_package_json
+      builderWriteFile out_package_json $ genPackageJSON task
+    putStrLn $ "[INFO] Writing JavaScript bundled script to " <> show out_js
+    withCurrentDirectory outputDirectory $
+      callProcess
+        "node"
+        [ parcel
+        , "build"
+        , "--out-dir"
+        , "."
+        , "--out-file"
+        , takeFileName out_js
+        , "--no-cache"
+        , "--no-source-maps"
+        , "--no-autoinstall"
+        , "--no-content-hash"
+        , "--target"
+        , case target of
+            Node -> "node"
+            Browser -> "browser"
+        , takeFileName out_entry
+        ]
+  when (target == Browser) $ do
+    putStrLn $ "[INFO] Writing HTML to " <> show out_html
+    builderWriteFile out_html $ genHTML task
+  when (target == Node && run) $
+    withCurrentDirectory (takeDirectory out_wasm) $
+    if bundle
+      then do
+        putStrLn $ "[INFO] Running " <> out_js
+        callProcess "node" [takeFileName out_js]
+      else do
+        putStrLn $ "[INFO] Running " <> out_entry
+        callProcess "node" ["--experimental-modules", takeFileName out_entry]

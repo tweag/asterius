@@ -7,7 +7,6 @@ module Language.Haskell.GHC.Toolkit.Run
   , ghcLibDir
   , compiler
   , defaultConfig
-  , runHaskell
   , runCmm
   ) where
 
@@ -21,7 +20,6 @@ import GHC
 import qualified Language.Haskell.GHC.Toolkit.BuildInfo as BI
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
-import Panic
 
 data Config = Config
   { ghcFlags :: [String]
@@ -33,42 +31,6 @@ defaultConfig :: Config
 defaultConfig =
   Config
     {ghcFlags = ["-Wall", "-O"], ghcLibDir = BI.ghcLibDir, compiler = mempty}
-
-runHaskell ::
-     Config
-  -> [String]
-  -> (Module -> FilePath -> HaskellIR -> IO ())
-  -> GHC.Ghc ()
-runHaskell Config {..} targets write_obj_cont = do
-  dflags <- getSessionDynFlags
-  (dflags', _, _) <-
-    parseDynamicFlags
-      (dflags `gopt_set` Opt_ForceRecomp `gopt_unset` Opt_KeepHiFiles `gopt_unset`
-       Opt_KeepOFiles) $
-    map noLoc ghcFlags
-  h <-
-    liftIO $
-    hooksFromCompiler
-      (compiler <>
-       mempty
-         { withHaskellIR =
-             \ModSummary {..} ir obj_path ->
-               liftIO $ write_obj_cont ms_mod obj_path ir
-         })
-  void $
-    setSessionDynFlags
-      dflags'
-        { ghcMode = CompManager
-        , ghcLink = NoLink
-        , integerLibrary = IntegerSimple
-        , tablesNextToCode = False
-        , hooks = h
-        }
-  traverse (`guessTarget` Nothing) targets >>= setTargets
-  ok_flag <- load LoadAllTargets
-  case ok_flag of
-    Succeeded -> pure ()
-    Failed -> liftIO $ throwGhcExceptionIO $ Panic "GHC.load returned Failed."
 
 runCmm :: Config -> [FilePath] -> (FilePath -> CmmIR -> IO ()) -> GHC.Ghc ()
 runCmm Config {..} cmm_fns write_obj_cont = do

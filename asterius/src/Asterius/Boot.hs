@@ -13,7 +13,6 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
-import Asterius.Store
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
@@ -46,8 +45,7 @@ defaultBootArgs =
   BootArgs
     { bootDir = dataDir </> ".boot"
     , configureOptions =
-        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1 --with-ar=" <>
-        ahcAr
+        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1"
     , buildOptions = ""
     , installOptions = ""
     , builtinsOptions = defaultBuiltinsOptions
@@ -70,8 +68,9 @@ bootCreateProcess args@BootArgs {..} = do
           ("ASTERIUS_TMP_DIR", bootTmpDir args) :
           ("ASTERIUS_GHC", ghc) :
           ("ASTERIUS_GHCLIBDIR", ghcLibDir) :
-          ("ASTERIUS_GHCPKG", ghcPkg) :
           ("ASTERIUS_AHC", ahc) :
+          ("ASTERIUS_AHCPKG", ahcPkg) :
+          ("ASTERIUS_AHCAR", ahcAr) :
           ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
           ("ASTERIUS_BUILD_OPTIONS", buildOptions) :
           ("ASTERIUS_INSTALL_OPTIONS", installOptions) :
@@ -86,7 +85,6 @@ bootRTSCmm BootArgs {..} =
     dflags <- GHC.getSessionDynFlags
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
-    store_ref <- liftIO $ newIORef mempty
     obj_paths_ref <- liftIO $ newIORef []
     rts_cmm_mods <-
       map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
@@ -106,13 +104,10 @@ bootRTSCmm BootArgs {..} =
          let ms_mod =
                (GHC.Module GHC.rtsUnitId $
                 GHC.mkModuleName $ takeBaseName obj_path)
-             mod_sym = marshalToModuleSymbol ms_mod
           in case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
                Left err -> throwIO err
                Right m -> do
                  encodeFile obj_path m
-                 encodeAsteriusModule obj_topdir mod_sym m
-                 modifyIORef' store_ref $ registerModule obj_topdir mod_sym m
                  modifyIORef' obj_paths_ref (obj_path :)
                  when is_debug $ do
                    let p = (obj_path -<.>)
@@ -122,8 +117,6 @@ bootRTSCmm BootArgs {..} =
                    writeFile (p "dump-cmm-ast") $ show cmm
                    asmPrint dflags (p "dump-cmm") cmm)
     liftIO $ do
-      store <- readIORef store_ref
-      encodeStore store_path store
       obj_paths <- readIORef obj_paths_ref
       tmpdir <- getTemporaryDirectory
       (rsp_path, rsp_h) <- openTempFile tmpdir "ar.rsp"
@@ -136,7 +129,6 @@ bootRTSCmm BootArgs {..} =
   where
     rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
-    store_path = obj_topdir </> "asterius_store"
 
 runBootCreateProcess :: CreateProcess -> IO ()
 runBootCreateProcess =

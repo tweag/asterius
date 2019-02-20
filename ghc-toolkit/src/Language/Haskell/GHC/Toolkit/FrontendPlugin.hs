@@ -29,8 +29,7 @@ makeFrontendPlugin init_c =
                 void $
                   setSessionDynFlags
                     dflags
-                      { ghcLink = NoLink
-                      , integerLibrary = IntegerSimple
+                      { integerLibrary = IntegerSimple
                       , tablesNextToCode = False
                       , hooks = h
                       }
