@@ -4,7 +4,6 @@ import Data.Maybe
 import Data.Traversable
 import System.Directory
 import System.Environment.Blank
-import System.IO
 
 parseLinkTask :: [String] -> IO LinkTask
 parseLinkTask args = do
@@ -30,5 +29,4 @@ main = do
       rsp <- readFile rsp_path
       let rsp_args = map read $ lines rsp
       task <- parseLinkTask rsp_args
-      hPrint stderr task
-      writeFile (linkOutput task) ""
+      writeFile (linkOutput task) (show task)
