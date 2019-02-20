@@ -15,6 +15,7 @@ import Data.List
 import qualified Data.Map.Lazy as LMap
 import Data.Map.Lazy (Map)
 import Prelude hiding (IO)
+import System.FilePath
 
 loadAr :: FilePath -> IO AsteriusStore
 loadAr p = do
@@ -28,7 +29,13 @@ loadAr p = do
                Right (_, _, mod_sym) -> LMap.insert mod_sym i tot)
           LMap.empty
           files_map
-      Just index_entry = find ((== "INDEX") . GHC.filename) entries
+      index_entry =
+        case find
+               ((\fn -> "INDEX" `isPrefixOf` fn && null (takeExtension fn)) .
+                GHC.filename)
+               entries of
+          Just r -> r
+          _ -> error $ "Asterius.Ar.loadAr: INDEX not found in " <> p
       (sym_map :: Map AsteriusEntitySymbol AsteriusModuleSymbol) =
         decode $ LBS.fromStrict $ GHC.filedata index_entry
       mod_map =
