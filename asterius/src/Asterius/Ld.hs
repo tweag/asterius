@@ -26,10 +26,8 @@ loadTheWorld :: BuiltinsOptions -> LinkTask -> IO AsteriusStore
 loadTheWorld builtins_opts LinkTask {..} = do
   lib <- mconcat <$> for linkLibs loadAr
   objrs <- for linkObjs tryDecodeFile
-  let fail_objs = filter (isLeft . snd) $ zip linkObjs objrs
-      objs = rights objrs
+  let objs = rights objrs
       builtins_store = builtinsStore builtins_opts
-  print (linkObjs, fail_objs)
   pure $
     builtins_store <>
     foldl' (\s m -> addModule (currentModuleSymbol m) m s) lib objs

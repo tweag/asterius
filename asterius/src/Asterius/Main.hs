@@ -377,6 +377,7 @@ ahcLinkMain task@Task {..} = do
   c_BinaryenSetOptimizeLevel 0
   c_BinaryenSetShrinkLevel 0
   ld_output <- temp (takeBaseName inputHS)
+  putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
   callProcess ahc $
     [ "--make"
     , "-O"
@@ -389,9 +390,9 @@ ahcLinkMain task@Task {..} = do
     ["-o", ld_output, inputHS]
   ld_task <- read <$> readFile ld_output
   removeFile ld_output
+  putStrLn "[INFO] Loading compiled WebAssembly code and dependencies"
   final_store <- loadTheWorld defaultBuiltinsOptions {tracing = debug} ld_task
-  putStrLn "[INFO] Marshalling from Cmm to WebAssembly"
-  putStrLn "[INFO] Attempting to link into a standalone WebAssembly module"
+  putStrLn "[INFO] Linking into a standalone WebAssembly module"
   (!final_m, !err_msgs, !report) <-
     linkStart
       debug
