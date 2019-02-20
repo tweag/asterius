@@ -12,15 +12,10 @@ import qualified Data.Map.Lazy as LM
 import qualified Data.Map.Strict as M
 import Prelude hiding (IO)
 
-{-# INLINEABLE builtinsStore #-}
 builtinsStore :: BuiltinsOptions -> AsteriusStore
 builtinsStore opts =
-  addModule
-    rtsAsteriusModuleSymbol
-    (rtsAsteriusModule opts)
-    AsteriusStore {symbolMap = mempty, moduleMap = mempty}
+  addModule rtsAsteriusModuleSymbol (rtsAsteriusModule opts) mempty
 
-{-# INLINEABLE addModule #-}
 addModule ::
      AsteriusModuleSymbol -> AsteriusModule -> AsteriusStore -> AsteriusStore
 addModule mod_sym m@AsteriusModule {..} AsteriusStore {..} =
