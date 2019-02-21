@@ -38,7 +38,7 @@ RUN \
   echo "deb https://deb.nodesource.com/node_11.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
   apt update && \
   apt install -y nodejs && \
-  mkdir /root/.local && \
+  mkdir -p /root/.local/bin && \
   curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack' && \
   export HS_WABT_PREFIX=/root/.local && \
   stack --no-terminal install asterius wabt && \
