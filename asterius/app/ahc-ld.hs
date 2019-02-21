@@ -1,6 +1,8 @@
 import Asterius.Ld
+import Asterius.Types
 import Data.List
 import Data.Maybe
+import Data.String
 import Data.Traversable
 import System.Directory
 import System.Environment.Blank
@@ -10,7 +12,17 @@ parseLinkTask args = do
   link_libs <- fmap catMaybes $ for link_libnames $ findFile link_libdirs
   pure
     LinkTask
-      {linkOutput = link_output, linkObjs = link_objs, linkLibs = link_libs}
+      { linkOutput = link_output
+      , linkObjs = link_objs
+      , linkLibs = link_libs
+      , debug = "--debug" `elem` args
+      , rootSymbols =
+          map (AsteriusEntitySymbol . fromString) $
+          str_args "--extra-root-symbol="
+      , exportFunctions =
+          map (AsteriusEntitySymbol . fromString) $
+          str_args "--export-function="
+      }
   where
     link_output = args !! succ output_i
     Just output_i = elemIndex "-o" args
@@ -18,6 +30,7 @@ parseLinkTask args = do
     link_libnames =
       map ((<> ".a") . ("lib" <>) . drop 2) $ filter ((== "-l") . take 2) args
     link_libdirs = map (drop 2) $ filter ((== "-L") . take 2) args
+    str_args arg_prefix = mapMaybe (stripPrefix arg_prefix) args
 
 main :: IO ()
 main = do
@@ -29,4 +42,4 @@ main = do
       rsp <- readFile rsp_path
       let rsp_args = map read $ lines rsp
       task <- parseLinkTask rsp_args
-      writeFile (linkOutput task) (show task)
+      linkExe task

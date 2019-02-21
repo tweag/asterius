@@ -33,13 +33,11 @@ wasmPageSize = 65536
 
 data BuiltinsOptions = BuiltinsOptions
   { nurseryMBlocks, threadStateSize :: Int
-  , tracing :: Bool
   }
 
 defaultBuiltinsOptions :: BuiltinsOptions
 defaultBuiltinsOptions =
-  BuiltinsOptions
-    {nurseryMBlocks = 512, threadStateSize = 65536, tracing = False}
+  BuiltinsOptions {nurseryMBlocks = 512, threadStateSize = 65536}
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =

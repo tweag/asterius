@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -12,7 +11,6 @@ module Asterius.Main
   ) where
 
 import Asterius.BuildInfo
-import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Temp
@@ -60,26 +58,6 @@ data Task = Task
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   }
-
-rtsUsedSymbols :: S.Set AsteriusEntitySymbol
-rtsUsedSymbols =
-  [ "base_GHCziPtr_Ptr_con_info"
-  , "base_GHCziStable_StablePtr_con_info"
-  , "ghczmprim_GHCziTypes_Czh_con_info"
-  , "ghczmprim_GHCziTypes_Dzh_con_info"
-  , "ghczmprim_GHCziTypes_False_closure"
-  , "ghczmprim_GHCziTypes_Izh_con_info"
-  , "ghczmprim_GHCziTypes_True_closure"
-  , "ghczmprim_GHCziTypes_Wzh_con_info"
-  , "ghczmprim_GHCziTypes_ZC_con_info"
-  , "ghczmprim_GHCziTypes_ZMZN_closure"
-  , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
-  , "Main_main_closure"
-  , "stg_ARR_WORDS_info"
-  , "stg_DEAD_WEAK_info"
-  , "stg_NO_FINALIZER_closure"
-  , "stg_WEAK_info"
-  ]
 
 genRTSSettings :: Task -> Builder
 genRTSSettings Task {..} =
@@ -372,10 +350,8 @@ genHTML Task {..} =
 builderWriteFile :: FilePath -> Builder -> IO ()
 builderWriteFile p b = withBinaryFile p WriteMode $ \h -> hPutBuilder h b
 
-ahcLinkMain :: Task -> IO ()
-ahcLinkMain task@Task {..} = do
-  c_BinaryenSetOptimizeLevel 0
-  c_BinaryenSetShrinkLevel 0
+ahcLink :: Task -> IO (Asterius.Types.Module, [Event], LinkReport)
+ahcLink Task {..} = do
   ld_output <- temp (takeBaseName inputHS)
   putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
   callProcess ahc $
@@ -386,24 +362,22 @@ ahcLinkMain task@Task {..} = do
     , "-clear-package-db"
     , "-global-package-db"
     ] <>
+    ["-optl--debug" | debug] <>
+    [ "-optl--extra-root-symbol=" <> c8SBS (entityName root_sym)
+    | root_sym <- extraRootSymbols
+    ] <>
+    [ "-optl--export-function=" <> c8SBS (entityName export_func)
+    | export_func <- exportFunctions
+    ] <>
     extraGHCFlags <>
     ["-o", ld_output, inputHS]
-  ld_task <- read <$> readFile ld_output
+  r <- decodeFile ld_output
   removeFile ld_output
-  putStrLn "[INFO] Loading compiled WebAssembly code and dependencies"
-  final_store <- loadTheWorld defaultBuiltinsOptions {tracing = debug} ld_task
-  putStrLn "[INFO] Linking into a standalone WebAssembly module"
-  (!final_m, !err_msgs, !report) <-
-    linkStart
-      debug
-      final_store
-      (rtsUsedSymbols <>
-       S.fromList
-         (extraRootSymbols <>
-          [ AsteriusEntitySymbol {entityName = internalName}
-          | FunctionExport {..} <- rtsAsteriusFunctionExports debug
-          ]))
-      exportFunctions
+  pure r
+
+ahcLinkMain :: Task -> IO ()
+ahcLinkMain task@Task {..} = do
+  (final_m, err_msgs, report) <- ahcLink task
   let out_package_json = outputDirectory </> "package.json"
       out_rts_settings = outputDirectory </> "rts.settings.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
@@ -428,6 +402,8 @@ ahcLinkMain task@Task {..} = do
   m_bin <-
     if binaryen
       then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+               c_BinaryenSetOptimizeLevel 0
+               c_BinaryenSetShrinkLevel 0
                m_ref <-
                  withPool $ \pool -> OldMarshal.marshalModule pool final_m
                putStrLn "[INFO] Validating binaryen IR"

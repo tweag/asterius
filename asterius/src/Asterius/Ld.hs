@@ -1,26 +1,33 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Ld
   ( LinkTask(..)
-  , loadTheWorld
+  , linkExe
+  , rtsUsedSymbols
   ) where
 
 import Asterius.Ar
 import Asterius.Builtins
 import Asterius.Internals
+import Asterius.Resolve
 import Asterius.Store
 import Asterius.Types
 import Data.Either
 import Data.Foldable
+import qualified Data.Set as Set
+import Data.Set (Set)
 import Data.Traversable
 import Prelude hiding (IO)
 
 data LinkTask = LinkTask
   { linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
-  } deriving (Read, Show)
+  , debug :: Bool
+  , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
+  } deriving (Show)
 
 loadTheWorld :: BuiltinsOptions -> LinkTask -> IO AsteriusStore
 loadTheWorld builtins_opts LinkTask {..} = do
@@ -31,3 +38,42 @@ loadTheWorld builtins_opts LinkTask {..} = do
   pure $
     builtins_store <>
     foldl' (\s m -> addModule (currentModuleSymbol m) m s) lib objs
+
+rtsUsedSymbols :: Set AsteriusEntitySymbol
+rtsUsedSymbols =
+  Set.fromList
+    [ "base_GHCziPtr_Ptr_con_info"
+    , "base_GHCziStable_StablePtr_con_info"
+    , "ghczmprim_GHCziTypes_Czh_con_info"
+    , "ghczmprim_GHCziTypes_Dzh_con_info"
+    , "ghczmprim_GHCziTypes_False_closure"
+    , "ghczmprim_GHCziTypes_Izh_con_info"
+    , "ghczmprim_GHCziTypes_True_closure"
+    , "ghczmprim_GHCziTypes_Wzh_con_info"
+    , "ghczmprim_GHCziTypes_ZC_con_info"
+    , "ghczmprim_GHCziTypes_ZMZN_closure"
+    , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
+    , "Main_main_closure"
+    , "stg_ARR_WORDS_info"
+    , "stg_DEAD_WEAK_info"
+    , "stg_NO_FINALIZER_closure"
+    , "stg_WEAK_info"
+    ]
+
+linkExe :: LinkTask -> IO ()
+linkExe ld_task@LinkTask {..} = do
+  final_store <- loadTheWorld defaultBuiltinsOptions ld_task
+  ld_result <-
+    linkStart
+      debug
+      final_store
+      (Set.unions
+         [ Set.fromList rootSymbols
+         , rtsUsedSymbols
+         , Set.fromList
+             [ AsteriusEntitySymbol {entityName = internalName}
+             | FunctionExport {..} <- rtsAsteriusFunctionExports debug
+             ]
+         ])
+      exportFunctions
+  encodeFile linkOutput ld_result

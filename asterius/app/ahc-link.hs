@@ -83,5 +83,5 @@ opts =
 
 main :: IO ()
 main = do
-  task@Task {..} <- execParser opts
+  task <- execParser opts
   ahcLinkMain task
