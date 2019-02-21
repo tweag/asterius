@@ -137,6 +137,13 @@ executables:
     dependencies:
       - asterius
 
+  ahc-cabal:
+    source-dirs: app
+    main: ahc-cabal.hs
+    ghc-options: -threaded -feager-blackholing -rtsopts
+    dependencies:
+      - asterius
+
 tests:
   nir-test:
     source-dirs: test
