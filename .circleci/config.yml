@@ -26,6 +26,7 @@ jobs:
               curl \
               g++ \
               git \
+              gnupg \
               libffi-dev \
               libgmp-dev \
               libncurses-dev \
@@ -34,18 +35,20 @@ jobs:
               openssh-client \
               python-minimal \
               python3-minimal \
-              unzip \
               xz-utils \
               zlib1g-dev
+            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+            echo "deb https://deb.nodesource.com/node_11.x sid main" > /etc/apt/sources.list.d/nodesource.list
+            apt update
+            apt install -y nodejs
             mkdir -p /root/.local/bin
             curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
       - checkout
       - run:
           name: Test asterius
           command: |
-            curl $(python3 utils/v8-node.py) -o /tmp/v8-node.zip
-            unzip -q /tmp/v8-node.zip -d /root/.local
             node --version
+            npm --version
 
             git submodule update --init --recursive
             stack --no-terminal -j8 build --test --no-run-tests

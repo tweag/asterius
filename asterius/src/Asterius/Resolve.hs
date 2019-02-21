@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -22,6 +23,7 @@ import Asterius.Tracing
 import Asterius.Types
 import Asterius.Workarounds
 import Control.Exception
+import Data.Binary
 import Data.ByteString.Builder
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapM)
@@ -33,6 +35,7 @@ import qualified Data.Set as S
 import Data.Traversable
 import Foreign
 import GHC.Exts (fromList, proxy#)
+import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 import System.IO hiding (IO)
@@ -210,7 +213,9 @@ data LinkReport = LinkReport
   , infoTableSet :: S.Set Int64
   , staticMBlocks :: Int
   , bundledFFIMarshalState :: FFIMarshalState
-  } deriving (Show)
+  } deriving (Generic, Show)
+
+instance Binary LinkReport
 
 instance Semigroup LinkReport where
   r0 <> r1 =

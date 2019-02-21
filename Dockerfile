@@ -8,7 +8,6 @@ COPY npm-utils /root/asterius/npm-utils
 COPY wabt /root/asterius/wabt
 COPY wasm-toolkit /root/asterius/wasm-toolkit
 COPY stack.yaml /root/asterius/stack.yaml
-COPY utils/v8-node.py /tmp/v8-node.py
 ENV \
   DEBIAN_FRONTEND=noninteractive \
   LANG=C.UTF-8 \
@@ -25,6 +24,7 @@ RUN \
     curl \
     g++ \
     gcc \
+    gnupg \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
@@ -32,12 +32,13 @@ RUN \
     make \
     python-minimal \
     python3-minimal \
-    unzip \
     xz-utils \
     zlib1g-dev && \
-  mkdir /root/.local && \
-  curl $(python3 /tmp/v8-node.py) -o /tmp/v8-node.zip && \
-  unzip -q /tmp/v8-node.zip -d /root/.local && \
+  curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
+  echo "deb https://deb.nodesource.com/node_11.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
+  apt update && \
+  apt install -y nodejs && \
+  mkdir -p /root/.local/bin && \
   curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack' && \
   export HS_WABT_PREFIX=/root/.local && \
   stack --no-terminal install asterius wabt && \
@@ -47,10 +48,10 @@ RUN \
     cmake \
     curl \
     g++ \
+    gnupg \
     make \
     python-minimal \
     python3-minimal \
-    unzip \
     xz-utils && \
   apt autoremove --purge -y && \
   rm -rf \

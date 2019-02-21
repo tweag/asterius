@@ -1,27 +1,33 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
+{-# OPTIONS_GHC -Wno-missing-fields #-}
 
 module Asterius.Main
   ( Target(..)
   , Task(..)
+  , getTask
+  , ahcDistMain
   , ahcLinkMain
   ) where
 
 import Asterius.BuildInfo
-import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Temp
 import Asterius.JSFFI
-import Asterius.Ld
+import Asterius.Ld (rtsUsedSymbols)
 import qualified Asterius.Marshal as OldMarshal
 import qualified Asterius.NewMarshal as NewMarshal
 import Asterius.Resolve
 import Asterius.Types
+  ( AsteriusEntitySymbol(..)
+  , Event
+  , FFIExportDecl(..)
+  , FFIMarshalState(..)
+  , Module
+  )
 import Bindings.Binaryen.Raw
 import Control.Monad
 import Control.Monad.Except
@@ -34,13 +40,16 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
+import Data.String
 import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import NPM.Parcel
 import Prelude hiding (IO)
+import System.Console.GetOpt
 import System.Directory
+import System.Environment.Blank
 import System.FilePath
 import System.IO hiding (IO)
 import System.Process
@@ -48,7 +57,7 @@ import System.Process
 data Target
   = Node
   | Browser
-  deriving (Eq)
+  deriving (Eq, Show)
 
 data Task = Task
   { target :: Target
@@ -59,27 +68,83 @@ data Task = Task
   , fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputGraphViz, outputIR, run :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
-  }
+  } deriving (Show)
 
-rtsUsedSymbols :: S.Set AsteriusEntitySymbol
-rtsUsedSymbols =
-  [ "base_GHCziPtr_Ptr_con_info"
-  , "base_GHCziStable_StablePtr_con_info"
-  , "ghczmprim_GHCziTypes_Czh_con_info"
-  , "ghczmprim_GHCziTypes_Dzh_con_info"
-  , "ghczmprim_GHCziTypes_False_closure"
-  , "ghczmprim_GHCziTypes_Izh_con_info"
-  , "ghczmprim_GHCziTypes_True_closure"
-  , "ghczmprim_GHCziTypes_Wzh_con_info"
-  , "ghczmprim_GHCziTypes_ZC_con_info"
-  , "ghczmprim_GHCziTypes_ZMZN_closure"
-  , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
-  , "Main_main_closure"
-  , "stg_ARR_WORDS_info"
-  , "stg_DEAD_WEAK_info"
-  , "stg_NO_FINALIZER_closure"
-  , "stg_WEAK_info"
-  ]
+parseTask :: [String] -> Task
+parseTask args =
+  case err_msgs of
+    [] -> task
+    _ -> error $ show err_msgs
+  where
+    bool_opt s f = Option [] [s] (NoArg f) ""
+    str_opt s f = Option [] [s] (ReqArg f "") ""
+    (task_trans_list, _, err_msgs) =
+      getOpt
+        Permute
+        [ bool_opt "browser" $ \t -> t {target = Browser}
+        , str_opt "input-hs" $ \s t ->
+            t
+              { inputHS = s
+              , outputDirectory = takeDirectory s
+              , outputBaseName = takeBaseName s
+              }
+        , str_opt "input-exe" $ \s t ->
+            t
+              { inputHS = s
+              , outputDirectory = takeDirectory s
+              , outputBaseName = takeBaseName s
+              }
+        , str_opt "input-mjs" $ \s t -> t {inputEntryMJS = Just s}
+        , str_opt "output-directory" $ \s t -> t {outputDirectory = s}
+        , str_opt "output-prefix" $ \s t -> t {outputBaseName = s}
+        , bool_opt "full-sym-table" $ \t -> t {fullSymTable = True}
+        , bool_opt "bundle" $ \t -> t {bundle = True}
+        , bool_opt "no-streaming" $ \t -> t {noStreaming = True}
+        , bool_opt "sync" $ \t -> t {sync = True}
+        , bool_opt "binaryen" $ \t -> t {binaryen = True}
+        , bool_opt "debug" $ \t ->
+            t
+              { debug = True
+              , outputLinkReport = True
+              , outputGraphViz = True
+              , outputIR = True
+              }
+        , bool_opt "output-link-report" $ \t -> t {outputLinkReport = True}
+        , bool_opt "output-graphviz" $ \t -> t {outputGraphViz = True}
+        , bool_opt "output-ir" $ \t -> t {outputIR = True}
+        , bool_opt "run" $ \t -> t {run = True}
+        , str_opt "ghc-option" $ \s t ->
+            t {extraGHCFlags = extraGHCFlags t <> [s]}
+        , str_opt "export-function" $ \s t ->
+            t {exportFunctions = fromString s : exportFunctions t}
+        , str_opt "extra-root-symbol" $ \s t ->
+            t {extraRootSymbols = fromString s : extraRootSymbols t}
+        ]
+        args
+    task =
+      foldl'
+        (flip ($))
+        Task
+          { target = Node
+          , inputEntryMJS = Nothing
+          , fullSymTable = False
+          , bundle = False
+          , noStreaming = False
+          , sync = False
+          , binaryen = False
+          , debug = False
+          , outputLinkReport = False
+          , outputGraphViz = False
+          , outputIR = False
+          , run = False
+          , extraGHCFlags = []
+          , exportFunctions = []
+          , extraRootSymbols = []
+          }
+        task_trans_list
+
+getTask :: IO Task
+getTask = parseTask <$> getArgs
 
 genRTSSettings :: Task -> Builder
 genRTSSettings Task {..} =
@@ -372,10 +437,8 @@ genHTML Task {..} =
 builderWriteFile :: FilePath -> Builder -> IO ()
 builderWriteFile p b = withBinaryFile p WriteMode $ \h -> hPutBuilder h b
 
-ahcLinkMain :: Task -> IO ()
-ahcLinkMain task@Task {..} = do
-  c_BinaryenSetOptimizeLevel 0
-  c_BinaryenSetShrinkLevel 0
+ahcLink :: Task -> IO (Asterius.Types.Module, [Event], LinkReport)
+ahcLink Task {..} = do
   ld_output <- temp (takeBaseName inputHS)
   putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
   callProcess ahc $
@@ -386,24 +449,21 @@ ahcLinkMain task@Task {..} = do
     , "-clear-package-db"
     , "-global-package-db"
     ] <>
+    ["-optl--debug" | debug] <>
+    [ "-optl--extra-root-symbol=" <> c8SBS (entityName root_sym)
+    | root_sym <- extraRootSymbols
+    ] <>
+    [ "-optl--export-function=" <> c8SBS (entityName export_func)
+    | export_func <- exportFunctions
+    ] <>
     extraGHCFlags <>
     ["-o", ld_output, inputHS]
-  ld_task <- read <$> readFile ld_output
+  r <- decodeFile ld_output
   removeFile ld_output
-  putStrLn "[INFO] Loading compiled WebAssembly code and dependencies"
-  final_store <- loadTheWorld defaultBuiltinsOptions {tracing = debug} ld_task
-  putStrLn "[INFO] Linking into a standalone WebAssembly module"
-  (!final_m, !err_msgs, !report) <-
-    linkStart
-      debug
-      final_store
-      (rtsUsedSymbols <>
-       S.fromList
-         (extraRootSymbols <>
-          [ AsteriusEntitySymbol {entityName = internalName}
-          | FunctionExport {..} <- rtsAsteriusFunctionExports debug
-          ]))
-      exportFunctions
+  pure r
+
+ahcDistMain :: Task -> (Asterius.Types.Module, [Event], LinkReport) -> IO ()
+ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
   let out_package_json = outputDirectory </> "package.json"
       out_rts_settings = outputDirectory </> "rts.settings.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
@@ -428,6 +488,8 @@ ahcLinkMain task@Task {..} = do
   m_bin <-
     if binaryen
       then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+               c_BinaryenSetOptimizeLevel 0
+               c_BinaryenSetShrinkLevel 0
                m_ref <-
                  withPool $ \pool -> OldMarshal.marshalModule pool final_m
                putStrLn "[INFO] Validating binaryen IR"
@@ -518,3 +580,8 @@ ahcLinkMain task@Task {..} = do
       else do
         putStrLn $ "[INFO] Running " <> out_entry
         callProcess "node" ["--experimental-modules", takeFileName out_entry]
+
+ahcLinkMain :: Task -> IO ()
+ahcLinkMain task = do
+  ld_result <- ahcLink task
+  ahcDistMain task ld_result
