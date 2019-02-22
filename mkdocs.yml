@@ -4,7 +4,8 @@ repo_url: https://github.com/tweag/asterius
 pages:
   - 'Home': 'index.md'
   - 'Building guide': 'building.md'
-  - 'Using ahc-link': 'ahc-link.md'
+  - 'Cabal support': 'cabal.md'
+  - 'Using ahc-dist/ahc-link': 'ahc-link.md'
   - 'JavaScript FFI': 'jsffi.md'
   - 'The Vault': 'vault.md'
   - 'Invoking RTS API in JavaScript': 'rts-api.md'
