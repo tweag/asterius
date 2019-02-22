@@ -1,6 +1,8 @@
-# Using `ahc-link`
+# Using `ahc-dist`/`ahc-link`
 
 `ahc-link` is the frontend program of Asterius. It taks a Haskell `Main` module and optionally an ES6 "entry" module as input, then emits a `.wasm` WebAssembly binary module and companion JavaScript, which can be run in Node.js or browser environments.
+
+`ahc-dist` works similarly, except it takes the "executable" file generated from `ahc` (either directly by calling `ahc`, or indirectly by using `cabal`) as input. Most command-line arguments are the same as `ahc-link`, except `ahc-link` takes `--input-hs`, while `ahc-dist` takes `--input-exe`.
 
 The options are described in full details here.
 
@@ -8,7 +10,11 @@ The options are described in full details here.
 
 ### `--input-hs ARG`
 
-The Haskell `Main` module's file path. This option doesn't have a default and is mandatory; all others are optional.
+The Haskell `Main` module's file path. This option doesn't have a default and is mandatory; all others are optional. This works only for `ahc-link`.
+
+### `--input-exe ARG`
+
+The "executable" file path. This works only for `ahc-dist`, and is also mandatory.
 
 ### `--input-mjs ARG`
 

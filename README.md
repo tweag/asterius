@@ -20,7 +20,7 @@ We provide pre-built Docker images. Put the input `.hs` program in a directory a
 ```
 terrorjack@ubuntu:~$ docker run -it -v ~/mirror:/mirror terrorjack/asterius
 root@76bcb511663d:~# cd /mirror
-root@76bcb511663d:/mirror# ahc-link --help
+root@76bcb511663d:/mirror# ahc-link --input-hs xxx.hs
 ...
 ```
 
@@ -32,6 +32,7 @@ What works currently:
 * Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`/`deepseq`/`containers`/`transformers`/`mtl`/`pretty`/`bytestring`/`binary`/`xhtml`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
 * Fast arbitrary-precision `Integer` operations backed by `BigInt`s.
 * Preliminary copying GC, managing both Haskell heap objects and JavaScript references.
+* Preliminary Cabal support.
 * Persistent "vault"s which are KV stores transferrable across asterius instances.
 * Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSVal` type in Haskell land.
 * Fast conversion between Haskell/JavaScript types (strings, arrays and ArrayBuffers at the moment)
