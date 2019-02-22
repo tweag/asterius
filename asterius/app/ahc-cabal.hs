@@ -38,12 +38,25 @@ main = do
                 , "v2-build"
                 , "v2-configure"
                 , "v1-configure"
+                , "v1-reconfigure"
                 , "v1-install"
                 ] -> command : (extra_args <> flags)
             | command `elem` ["v1-build"] ->
               command : (extra_prog_args <> flags)
-            | command `elem` ["new-update", "v2-update", "v1-sandbox"] ->
-              command_flags
+            | command `elem`
+                [ "update"
+                , "help"
+                , "info"
+                , "list"
+                , "fetch"
+                , "user-config"
+                , "get"
+                , "init"
+                , "sandbox"
+                , "new-update"
+                , "v2-update"
+                , "v1-sandbox"
+                ] -> command_flags
             | otherwise -> error $ "ahc-cabal: Unsupported command " <> command
           _ -> command_flags
       new_args = global_flags <> new_command_flags
