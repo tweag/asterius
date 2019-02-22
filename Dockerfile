@@ -40,6 +40,7 @@ RUN \
   apt install -y nodejs && \
   mkdir -p /root/.local/bin && \
   curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack' && \
+  curl https://downloads.haskell.org/~cabal/cabal-install-latest/cabal-install-2.4.1.0-x86_64-unknown-linux.tar.xz | tar xJ -C /root/.local/bin 'cabal' && \
   export HS_WABT_PREFIX=/root/.local && \
   stack --no-terminal install asterius wabt && \
   stack --no-terminal exec ahc-boot && \
