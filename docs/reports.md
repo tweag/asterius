@@ -2,6 +2,31 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-02-22
+
+Covers this week.
+
+Completed work:
+
+* Finished preliminary Cabal support.
+    * The executable targets are implemented. It's possible to call `ahc --make` directly or via `ahc-cabal new-build` to get an "executable". The "executable" can be quickly converted to node/web artifacts by `ahc-dist`.
+    * `ahc-cabal` is a simple wrapper of `cabal`. `stack` is possibly also supported if we provide the same configure flags. Might worth a try in the future.
+    * Cabal tests/benchmarks/documentation is not implemented yet.
+        * `haddock` won't work yet.
+        * Tests/benchmarks should build fine like normal executables, but Cabal can't run them like vanilla executables yet. The executables can still be "run" with `ahc-dist --run`.
+    * `ahc-dist` works similarly like the legacy `ahc-link` tool. They share most command line arguments, except `ahc-dist` expects `--input-exe`; it starts from executable files, where `ahc-link` starts from Haskell sources.
+
+Third-party contributions:
+
+* Thanks to Piotr Majkrzak(@majkrzak) for a PR fixing a `--browser` problem (#73), and issue #70 for reducing Docker image size, #74 for simplifying export module interface.
+
+Planned work for next week:
+
+* Start working on Template Haskell/GHCi/Plugins (#54). This is the last major planned feature of 2019 Q1.
+* Other potential work, in case my main thread become stalled like it always did in the past:
+    * Easy improvements in gc, e.g. adding stats.
+    * Experiment on creating a more asynchronous runtime. A relevant issue will be added shortly.
+
 ## 2019-02-18
 
 Covers last week.
