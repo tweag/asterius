@@ -384,12 +384,14 @@ genDefEntry Task {..} =
                    else mempty
                , "try {\n"
                , "i.wasmInstance.exports.hs_init();\n"
+               , "if (i.wasmInstance.exports.main)\n"
                , "i.wasmInstance.exports.main();\n"
                , "} catch (err) {\n"
                , "console.log(i.stdio.stdout());\n"
                , "throw err;\n"
                , "}\n"
                , "console.log(i.stdio.stdout());\n"
+               , exports
                ]
         else mconcat
                [ "module.then(m => "
@@ -411,6 +413,15 @@ genDefEntry Task {..} =
     ]
   where
     out_base = string7 outputBaseName
+    exports = mconcat $ map
+        ( \AsteriusEntitySymbol{..} -> mconcat
+            [ "export const "
+            , shortByteString entityName
+            , " = i.wasmInstance.exports."
+            , shortByteString entityName
+            , "\n"
+            ]
+        ) exportFunctions
 
 genHTML :: Task -> Builder
 genHTML Task {..} =
