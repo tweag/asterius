@@ -226,13 +226,6 @@ tests:
     dependencies:
       - asterius
 
-  vault:
-    source-dirs: test
-    main: vault.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
-    dependencies:
-      - asterius
-
   cloudflare:
     source-dirs: test
     main: cloudflare.hs

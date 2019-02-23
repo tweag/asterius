@@ -7,7 +7,6 @@ pages:
   - 'Cabal support': 'cabal.md'
   - 'Using ahc-dist/ahc-link': 'ahc-link.md'
   - 'JavaScript FFI': 'jsffi.md'
-  - 'The Vault': 'vault.md'
   - 'Invoking RTS API in JavaScript': 'rts-api.md'
   - 'IR types and transformation passes': 'ir.md'
   - 'The runtime debugging feature': 'debugging.md'
