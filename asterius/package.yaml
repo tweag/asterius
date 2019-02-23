@@ -26,8 +26,6 @@ extra-source-files:
   - test/bytearray/**/*.hs
   - test/bigint/**/*.hs
   - test/bigint/bigint.mjs
-  - test/vault/**/*.hs
-  - test/vault/vault.mjs
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
 
