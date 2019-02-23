@@ -320,7 +320,6 @@ Library
 
         Asterius.Prim
         Asterius.Types
-        Asterius.Vault
 
     other-modules:
         Control.Monad.ST.Imp

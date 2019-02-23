@@ -33,7 +33,6 @@ What works currently:
 * Fast arbitrary-precision `Integer` operations backed by `BigInt`s.
 * Preliminary copying GC, managing both Haskell heap objects and JavaScript references.
 * Preliminary Cabal support.
-* Persistent "vault"s which are KV stores transferrable across asterius instances.
 * Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSVal` type in Haskell land.
 * Fast conversion between Haskell/JavaScript types (strings, arrays and ArrayBuffers at the moment)
 * Calling Haskell functions from JavaScript via the `foreign export javascript` syntax. Haskell closures can be passed between Haskell/JavaScript boundary via `StablePtr`.
