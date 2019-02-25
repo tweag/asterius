@@ -4,14 +4,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Asterius.Relooper
-  ( relooper
-  , relooperDeep
+module Asterius.Passes.Relooper
+  ( relooperDeep
   ) where
 
 import Asterius.Internals
+import Asterius.Internals.SYB
 import Asterius.Types
-import Data.Data (Data, gmapM)
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.String
@@ -104,13 +103,15 @@ relooper RelooperRun {..} = result_expr
         , blockReturnTypes = []
         }
 
-relooperDeep :: (Monad m, Data a) => a -> m a
-relooperDeep t =
+relooperShallow :: Monad m => GenericM m
+relooperShallow t =
+  pure $
   case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
     Just HRefl ->
       case t of
-        CFG {..} -> pure $ relooper graph
-        _ -> go
-    _ -> go
-  where
-    go = gmapM relooperDeep t
+        CFG {..} -> relooper graph
+        _ -> t
+    _ -> t
+
+relooperDeep :: Monad m => GenericM m
+relooperDeep = everywhereM relooperShallow

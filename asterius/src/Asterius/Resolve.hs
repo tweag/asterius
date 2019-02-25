@@ -18,7 +18,7 @@ import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
 import Asterius.MemoryTrap
-import Asterius.Relooper
+import Asterius.Passes.Relooper
 import Asterius.Tracing
 import Asterius.Types
 import Asterius.Workarounds
