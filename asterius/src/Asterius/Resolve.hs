@@ -16,14 +16,15 @@ module Asterius.Resolve
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
+import Asterius.Internals.SYB
 import Asterius.JSFFI
 import Asterius.MemoryTrap
 import Asterius.Passes.All
 import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
+import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import Asterius.Workarounds
-import Control.Exception
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Data (Data, gmapM)
@@ -90,107 +91,6 @@ unresolvedGlobalRegType gr =
     FloatReg _ -> F32
     DoubleReg _ -> F64
     _ -> I64
-
-unresolvedGlobalRegBytes :: UnresolvedGlobalReg -> BinaryenIndex
-unresolvedGlobalRegBytes gr =
-  case unresolvedGlobalRegType gr of
-    I32 -> 4
-    F32 -> 4
-    _ -> 8
-
-resolveGlobalRegs :: (Monad m, Data a) => a -> m a
-resolveGlobalRegs x =
-  case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
-    Just HRefl ->
-      case x of
-        UnresolvedGetGlobal {..}
-          | unresolvedGlobalReg == BaseReg ->
-            pure
-              Symbol
-                { unresolvedSymbol = "MainCapability"
-                , symbolOffset = offset_Capability_r
-                , resolvedSymbol = Nothing
-                }
-          | otherwise ->
-            pure
-              Load
-                { signed = False
-                , bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
-                , offset = 0
-                , valueType = unresolvedGlobalRegType unresolvedGlobalReg
-                , ptr = gr_ptr unresolvedGlobalReg
-                }
-        UnresolvedSetGlobal {..}
-          | unresolvedGlobalReg == BaseReg ->
-            pure $
-            emitErrorMessage
-              []
-              "SetGlobal instruction: attempting to assign to BaseReg"
-          | otherwise -> do
-            new_value <- resolveGlobalRegs value
-            pure $
-              Store
-                { bytes = unresolvedGlobalRegBytes unresolvedGlobalReg
-                , offset = 0
-                , ptr = gr_ptr unresolvedGlobalReg
-                , value = new_value
-                , valueType = unresolvedGlobalRegType unresolvedGlobalReg
-                }
-        _ -> go
-    _ -> go
-  where
-    gr_ptr gr =
-      Unary
-        { unaryOp = WrapInt64
-        , operand0 =
-            Symbol
-              { unresolvedSymbol = "MainCapability"
-              , symbolOffset = offset_Capability_r + globalRegOffset gr
-              , resolvedSymbol = Nothing
-              }
-        }
-    go = gmapM resolveGlobalRegs x
-
-globalRegOffset :: UnresolvedGlobalReg -> Int
-globalRegOffset gr =
-  case gr of
-    VanillaReg 1 -> offset_StgRegTable_rR1
-    VanillaReg 2 -> offset_StgRegTable_rR2
-    VanillaReg 3 -> offset_StgRegTable_rR3
-    VanillaReg 4 -> offset_StgRegTable_rR4
-    VanillaReg 5 -> offset_StgRegTable_rR5
-    VanillaReg 6 -> offset_StgRegTable_rR6
-    VanillaReg 7 -> offset_StgRegTable_rR7
-    VanillaReg 8 -> offset_StgRegTable_rR8
-    VanillaReg 9 -> offset_StgRegTable_rR9
-    VanillaReg 10 -> offset_StgRegTable_rR10
-    FloatReg 1 -> offset_StgRegTable_rF1
-    FloatReg 2 -> offset_StgRegTable_rF2
-    FloatReg 3 -> offset_StgRegTable_rF3
-    FloatReg 4 -> offset_StgRegTable_rF4
-    FloatReg 5 -> offset_StgRegTable_rF5
-    FloatReg 6 -> offset_StgRegTable_rF6
-    DoubleReg 1 -> offset_StgRegTable_rD1
-    DoubleReg 2 -> offset_StgRegTable_rD2
-    DoubleReg 3 -> offset_StgRegTable_rD3
-    DoubleReg 4 -> offset_StgRegTable_rD4
-    DoubleReg 5 -> offset_StgRegTable_rD5
-    DoubleReg 6 -> offset_StgRegTable_rD6
-    LongReg 1 -> offset_StgRegTable_rL1
-    Sp -> offset_StgRegTable_rSp
-    SpLim -> offset_StgRegTable_rSpLim
-    Hp -> offset_StgRegTable_rHp
-    HpLim -> offset_StgRegTable_rHpLim
-    CCCS -> offset_StgRegTable_rCCCS
-    CurrentTSO -> offset_StgRegTable_rCurrentTSO
-    CurrentNursery -> offset_StgRegTable_rCurrentNursery
-    HpAlloc -> offset_StgRegTable_rHpAlloc
-    EagerBlackholeInfo -> rf + offset_StgFunTable_stgEagerBlackholeInfo
-    GCEnter1 -> rf + offset_StgFunTable_stgGCEnter1
-    GCFun -> rf + offset_StgFunTable_stgGCFun
-    _ -> throw $ AssignToImmutableGlobalReg gr
-  where
-    rf = offset_Capability_f - offset_Capability_r
 
 collectAsteriusEntitySymbols :: Data a => a -> S.Set AsteriusEntitySymbol
 collectAsteriusEntitySymbols = collect proxy#
@@ -262,7 +162,7 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
         for i_sym_mods $ \(i_staging_sym, AsteriusModule {..}) ->
           case M.lookup i_staging_sym staticsMap of
             Just ss -> do
-              new_ss <- resolveGlobalRegs ss
+              new_ss <- everywhereM resolveGlobalRegs ss
               pure $
                 Right
                   ( i_staging_sym
@@ -271,7 +171,7 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
               case M.lookup i_staging_sym functionMap of
                 Just func -> do
                   new_func <-
-                    resolveGlobalRegs func >>=
+                    everywhereM resolveGlobalRegs func >>=
                     maskUnknownCCallTargets i_staging_sym export_funcs
                   m <-
                     (if debug
