@@ -5,7 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Passes.Relooper
-  ( relooperDeep
+  ( relooperShallow
   ) where
 
 import Asterius.Internals
@@ -112,6 +112,3 @@ relooperShallow t =
         CFG {..} -> relooper graph
         _ -> t
     _ -> t
-
-relooperDeep :: Monad m => GenericM m
-relooperDeep = everywhereM relooperShallow
