@@ -23,6 +23,7 @@ import Asterius.Passes.All
 import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GlobalRegs
+import Asterius.Passes.ResolveSymbols
 import Asterius.Types
 import Asterius.Workarounds
 import Data.Binary
@@ -237,49 +238,6 @@ makeInfoTableSet AsteriusModule {..} sym_map =
   S.map (sym_map !) $
   M.keysSet $ M.filter ((== InfoTable) . staticsType) staticsMap
 
-resolveEntitySymbols ::
-     (Monad m, Data a)
-  => M.Map AsteriusEntitySymbol Int64
-  -> M.Map AsteriusEntitySymbol Int64
-  -> a
-  -> m a
-resolveEntitySymbols ss_sym_map func_sym_map = f
-  where
-    f :: (Monad m, Data a) => a -> m a
-    f t =
-      case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
-        Just HRefl ->
-          case t of
-            Symbol {..} ->
-              pure $
-              case ( M.lookup unresolvedSymbol ss_sym_map
-                   , M.lookup unresolvedSymbol func_sym_map) of
-                (Just r, _) -> t {resolvedSymbol = Just r}
-                (_, Just r) -> t {resolvedSymbol = Just r}
-                _ ->
-                  emitErrorMessage [I64] $
-                  "Unresolved symbol: " <> entityName unresolvedSymbol
-            _ -> go
-        _ ->
-          case eqTypeRep (typeOf t) (typeRep :: TypeRep AsteriusStatic) of
-            Just HRefl ->
-              case t of
-                SymbolStatic unresolvedSymbol symbolOffset ->
-                  pure $
-                  case ( M.lookup unresolvedSymbol ss_sym_map
-                       , M.lookup unresolvedSymbol func_sym_map) of
-                    (Just r, _) ->
-                      Serialized
-                        (encodeStorable (r + fromIntegral symbolOffset))
-                    (_, Just r) ->
-                      Serialized
-                        (encodeStorable (r + fromIntegral symbolOffset))
-                    _ -> t
-                _ -> pure t
-            _ -> go
-      where
-        go = gmapM f t
-
 collectEvents :: Data a => a -> S.Set Event
 collectEvents = collect proxy#
 
@@ -327,9 +285,9 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
       func_table = makeFunctionTable func_sym_map
       (ss_sym_map, last_addr) =
         makeDataSymbolTable m_globals_resolved (dataTag `shiftL` 32)
-      resolve_syms :: (Monad m, Data a) => a -> m a
-      resolve_syms = resolveEntitySymbols ss_sym_map func_sym_map
-  m_globals_syms_resolved <- resolve_syms m_globals_resolved
+      all_sym_map = func_sym_map <> ss_sym_map
+  m_globals_syms_resolved <-
+    everywhereM (resolveSymbols all_sym_map) m_globals_resolved
   let func_imports =
         rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
   new_function_map <-
@@ -350,11 +308,7 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
         relooperDeep-}
       let new_func = allPasses debug func
       pure (entityName func_sym, new_func)
-  let mem =
-        makeMemory
-          m_globals_syms_resolved
-          (func_sym_map <> ss_sym_map)
-          last_addr
+  let mem = makeMemory m_globals_syms_resolved all_sym_map last_addr
   (new_mod, err_msgs) <-
     rewriteEmitEvent
       Module

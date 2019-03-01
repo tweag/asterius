@@ -8,7 +8,6 @@ module Asterius.Passes.DataSymbolTable
   ) where
 
 import Asterius.Internals
-import Asterius.Internals.MagicNumber
 import Asterius.Types
 import Data.Bits
 import qualified Data.ByteString.Short as SBS
@@ -75,12 +74,10 @@ makeMemory AsteriusModule {..} sym_map last_addr =
                           static_addr =
                             static_tail_addr - fromIntegral (SBS.length buf)
                    in case static of
-                        SymbolStatic sym o ->
-                          flush_static_segs $
-                          encodeStorable $
-                          case Map.lookup sym sym_map of
-                            Just addr -> addr + fromIntegral o
-                            _ -> invalidSymbol
+                        SymbolStatic sym _ ->
+                          error $
+                          "Asterius.Passes.DataSymbolTable.makeMemory: Unresolved symbol " <>
+                          show sym
                         Uninitialized l ->
                           (static_segs, static_tail_addr - fromIntegral l)
                         Serialized buf -> flush_static_segs buf)
