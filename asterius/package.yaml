@@ -28,6 +28,7 @@ extra-source-files:
   - test/bigint/bigint.mjs
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
+  - test/th/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -235,6 +236,13 @@ tests:
   cloudflare:
     source-dirs: test
     main: cloudflare.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  th:
+    source-dirs: test
+    main: th.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
