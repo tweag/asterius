@@ -103,6 +103,7 @@ relooper RelooperRun {..} = result_expr
         , blockReturnTypes = []
         }
 
+{-# INLINABLE relooperShallow #-}
 relooperShallow :: Monad m => GenericM m
 relooperShallow t =
   pure $

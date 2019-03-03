@@ -11,6 +11,7 @@ import Asterius.Types
 import Language.Haskell.GHC.Toolkit.Constants
 import Type.Reflection
 
+{-# INLINABLE resolveGlobalRegs #-}
 resolveGlobalRegs :: Monad m => GenericM m
 resolveGlobalRegs t =
   pure $

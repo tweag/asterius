@@ -26,6 +26,7 @@ unresolvedLocalRegValueType reg =
     QuotRemI64X -> I64
     QuotRemI64Y -> I64
 
+{-# INLINABLE resolveLocalRegs #-}
 resolveLocalRegs ::
      forall m. MonadState PassesState m
   => FunctionType
@@ -55,6 +56,7 @@ resolveLocalRegs FunctionType {..} t =
           _ -> (fromIntegral i, ps {localRegMap = Map.insert reg i localRegMap})
             where i = base_idx + Map.size localRegMap
 
+{-# INLINABLE localRegTable #-}
 localRegTable :: PassesState -> [ValueType]
 localRegTable PassesState {..} =
   I32 :

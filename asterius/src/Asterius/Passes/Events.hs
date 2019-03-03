@@ -17,6 +17,7 @@ import qualified Data.Map.Strict as Map
 import Data.Map.Strict (Map)
 import Type.Reflection
 
+{-# INLINABLE rewriteEmitEvent #-}
 rewriteEmitEvent :: MonadState PassesState m => GenericM m
 rewriteEmitEvent t =
   case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
@@ -38,5 +39,6 @@ rewriteEmitEvent t =
         , callImportReturnTypes = []
         }
 
+{-# INLINABLE eventTable #-}
 eventTable :: Map Event Int -> [Event]
 eventTable = sortKeysByIntValue

@@ -20,6 +20,7 @@ import Data.Traversable
 import Foreign
 import Type.Reflection
 
+{-# INLINABLE addTracingModule #-}
 addTracingModule ::
      Monad m
   => M.Map AsteriusEntitySymbol Int64

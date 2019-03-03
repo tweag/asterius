@@ -19,6 +19,7 @@ import Data.Int
 import Data.Map.Strict (Map)
 import Data.Set (Set)
 
+{-# INLINABLE allPasses #-}
 allPasses ::
      Data a
   => Bool

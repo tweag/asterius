@@ -33,6 +33,7 @@ sizeofStatics =
 unTag :: Int64 -> Int64
 unTag = (.&. 0xFFFFFFFF)
 
+{-# INLINABLE makeDataSymbolTable #-}
 makeDataSymbolTable ::
      AsteriusModule -> Int64 -> (Map AsteriusEntitySymbol Int64, Int64)
 makeDataSymbolTable AsteriusModule {..} l =
@@ -43,6 +44,7 @@ makeDataSymbolTable AsteriusModule {..} l =
     l
     staticsMap
 
+{-# INLINABLE makeMemory #-}
 makeMemory ::
      AsteriusModule -> Map AsteriusEntitySymbol Int64 -> Int64 -> Memory
 makeMemory AsteriusModule {..} sym_map last_addr =

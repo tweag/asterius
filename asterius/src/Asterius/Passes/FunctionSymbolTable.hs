@@ -16,11 +16,13 @@ import Data.Tuple
 import GHC.Exts
 import GHC.Int
 
+{-# INLINABLE makeFunctionSymbolTable #-}
 makeFunctionSymbolTable ::
      AsteriusModule -> Int64 -> (Map AsteriusEntitySymbol Int64, Int64)
 makeFunctionSymbolTable AsteriusModule {..} l =
   swap $ Map.mapAccum (\a _ -> (succ a, a)) l functionMap
 
+{-# INLINABLE makeFunctionTable #-}
 makeFunctionTable :: Map AsteriusEntitySymbol Int64 -> FunctionTable
 makeFunctionTable sym_map =
   FunctionTable

@@ -16,6 +16,7 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Type.Reflection
 
+{-# INLINABLE resolveSymbols #-}
 resolveSymbols :: Monad m => Map AsteriusEntitySymbol Int64 -> GenericM m
 resolveSymbols sym_map t =
   pure $
