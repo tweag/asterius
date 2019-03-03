@@ -62,17 +62,8 @@ genPaths GenPathsOptions {..} h =
                    (componentUnitId clbi)
                    NoCopyDest) ++
               "\n\n"
-              | (k, d) <-
-                  [ ("binDir", bindir)
-                  , ("libDir", libdir)
-                  , ("dynLibDir", dynlibdir)
-                  , ("dataDir", datadir)
-                  , ("libexecDir", libexecdir)
-                  , ("sysconfDir", sysconfdir)
-                  ]
-              ] ++
-            "packageDBStack :: PackageDBStack\npackageDBStack = " ++
-            show (withPackageDB lbi) ++ "\n"
+              | (k, d) <- [("binDir", bindir), ("dataDir", datadir)]
+              ]
           pure
             lbi
               { localPkgDescr =
