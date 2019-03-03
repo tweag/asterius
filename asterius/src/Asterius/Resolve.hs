@@ -22,7 +22,6 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Types
-import Asterius.Workarounds
 import Control.Monad.State.Strict
 import Data.Binary
 import Data.ByteString.Builder
@@ -93,9 +92,8 @@ mergeSymbols ::
   => Bool
   -> AsteriusStore
   -> S.Set AsteriusEntitySymbol
-  -> S.Set AsteriusEntitySymbol
   -> m (AsteriusModule, LinkReport)
-mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
+mergeSymbols debug AsteriusStore {..} root_syms = do
   (_, final_rep, final_m) <- go (root_syms, mempty, mempty)
   pure (final_m, final_rep)
   where
@@ -123,14 +121,11 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
                 , mempty {staticsMap = M.fromList [(i_staging_sym, ss)]})
             _ ->
               case M.lookup i_staging_sym functionMap of
-                Just func -> do
-                  new_func <-
-                    maskUnknownCCallTargets i_staging_sym export_funcs func
+                Just func ->
                   pure $
-                    Right
-                      ( i_staging_sym
-                      , mempty
-                          {functionMap = M.singleton i_staging_sym new_func})
+                  Right
+                    ( i_staging_sym
+                    , mempty {functionMap = M.singleton i_staging_sym func})
                 _
                   | M.member i_staging_sym functionErrorMap ->
                     pure $
@@ -211,11 +206,18 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
       all_sym_map = func_sym_map <> ss_sym_map
   let func_imports =
         rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
+      export_func_set = S.fromList export_funcs
       new_function_map =
         unsafeCoerce $
-        flip M.map (functionMap m_globals_resolved) $ \AsteriusFunction {..} ->
+        flip M.mapWithKey (functionMap m_globals_resolved) $ \sym AsteriusFunction {..} ->
           let (body_locals_resolved, local_reg_table) =
-                allPasses debug all_sym_map functionType body
+                allPasses
+                  debug
+                  all_sym_map
+                  export_func_set
+                  sym
+                  functionType
+                  body
            in Function
                 { functionType = functionType
                 , varTypes = local_reg_table
@@ -267,7 +269,6 @@ linkStart debug store root_syms export_funcs = do
            {entityName = "__asterius_jsffi_export_" <> entityName k}
          | k <- export_funcs
          ])
-      (S.fromList export_funcs)
   (result_m, ss_sym_map, func_sym_map, err_msgs, static_mbs) <-
     resolveAsteriusModule
       debug
