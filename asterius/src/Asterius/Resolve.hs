@@ -21,7 +21,6 @@ import Asterius.Passes.Common
 import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
-import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import Asterius.Workarounds
 import Control.Monad.State.Strict
@@ -117,18 +116,16 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
         fmap partitionEithers $
         for i_sym_mods $ \(i_staging_sym, AsteriusModule {..}) ->
           case M.lookup i_staging_sym staticsMap of
-            Just ss -> do
-              new_ss <- everywhereM resolveGlobalRegs ss
+            Just ss ->
               pure $
-                Right
-                  ( i_staging_sym
-                  , mempty {staticsMap = M.fromList [(i_staging_sym, new_ss)]})
+              Right
+                ( i_staging_sym
+                , mempty {staticsMap = M.fromList [(i_staging_sym, ss)]})
             _ ->
               case M.lookup i_staging_sym functionMap of
                 Just func -> do
                   new_func <-
-                    everywhereM resolveGlobalRegs func >>=
-                    maskUnknownCCallTargets i_staging_sym export_funcs
+                    maskUnknownCCallTargets i_staging_sym export_funcs func
                   pure $
                     Right
                       ( i_staging_sym

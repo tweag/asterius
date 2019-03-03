@@ -6,6 +6,7 @@ module Asterius.Passes.All
 
 import Asterius.Internals.SYB
 import Asterius.Passes.Common
+import Asterius.Passes.GlobalRegs
 import Asterius.Passes.LocalRegs
 import Asterius.Passes.Relooper
 import Asterius.Passes.ResolveSymbols
@@ -27,4 +28,5 @@ allPasses debug sym_map ft t = (result, localRegTable ps)
     (result, ps) = runState (pipeline t) defaultPassesState
     pipeline =
       everywhereM $
-      relooperShallow <=< resolveLocalRegs ft <=< resolveSymbols sym_map
+      relooperShallow <=<
+      resolveLocalRegs ft <=< resolveSymbols sym_map <=< resolveGlobalRegs
