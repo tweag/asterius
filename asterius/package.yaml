@@ -89,56 +89,56 @@ executables:
   ahc:
     source-dirs: app
     main: ahc.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   ahc-pkg:
     source-dirs: app
     main: ahc-pkg.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   ahc-boot:
     source-dirs: app
     main: ahc-boot.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   ahc-link:
     source-dirs: app
     main: ahc-link.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   ahc-ar:
     source-dirs: app
     main: ahc-ar.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   ahc-ld:
     source-dirs: app
     main: ahc-ld.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   ahc-dist:
     source-dirs: app
     main: ahc-dist.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   ahc-cabal:
     source-dirs: app
     main: ahc-cabal.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
@@ -146,7 +146,7 @@ tests:
   nir-test:
     source-dirs: test
     main: nir-test.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
     other-extensions:
@@ -156,49 +156,49 @@ tests:
   fib:
     source-dirs: test
     main: fib.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   jsffi:
     source-dirs: test
     main: jsffi.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   array:
     source-dirs: test
     main: array.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   stableptr:
     source-dirs: test
     main: stableptr.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   rtsapi:
     source-dirs: test
     main: rtsapi.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   todomvc:
     source-dirs: test
     main: todomvc.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   node-compile:
     source-dirs: test
     main: node-compile.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
       - QuickCheck
@@ -206,27 +206,27 @@ tests:
   teletype:
     source-dirs: test
     main: teletype.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   bytearray:
     source-dirs: test
     main: bytearray.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   bigint:
     source-dirs: test
     main: bigint.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
 
   cloudflare:
     source-dirs: test
     main: cloudflare.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
