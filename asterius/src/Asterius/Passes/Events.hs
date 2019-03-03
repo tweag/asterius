@@ -8,11 +8,11 @@ module Asterius.Passes.Events
   , eventTable
   ) where
 
+import Asterius.Internals.Containers
 import Asterius.Internals.SYB
 import Asterius.Passes.Common
 import Asterius.Types
 import Control.Monad.State.Strict
-import qualified Data.IntMap.Strict as IMap
 import qualified Data.Map.Strict as Map
 import Type.Reflection
 
@@ -38,9 +38,4 @@ rewriteEmitEvent t =
         }
 
 eventTable :: PassesState -> [Event]
-eventTable PassesState {..} =
-  IMap.elems $
-  Map.foldlWithKey'
-    (\tot ev i -> IMap.insert (fromIntegral i) ev tot)
-    IMap.empty
-    eventMap
+eventTable PassesState {..} = sortKeysByIntValue eventMap

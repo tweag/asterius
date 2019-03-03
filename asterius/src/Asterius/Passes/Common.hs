@@ -10,11 +10,9 @@ import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 
 data PassesState = PassesState
-  { currentFunction :: AsteriusEntitySymbol
+  { localRegMap :: Map UnresolvedLocalReg Int
   , eventMap :: Map Event Int
   }
 
 defaultPassesState :: PassesState
-defaultPassesState =
-  PassesState
-    {currentFunction = AsteriusEntitySymbol mempty, eventMap = Map.empty}
+defaultPassesState = PassesState {localRegMap = Map.empty, eventMap = Map.empty}

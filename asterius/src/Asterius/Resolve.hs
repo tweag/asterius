@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -25,13 +24,14 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GlobalRegs
+import Asterius.Passes.LocalRegs
 import Asterius.Passes.ResolveSymbols
 import Asterius.Types
 import Asterius.Workarounds
 import Control.Monad.State.Strict
 import Data.Binary
 import Data.ByteString.Builder
-import Data.Data (Data, gmapM)
+import Data.Data (Data)
 import Data.Either
 import Data.Foldable
 import Data.List
@@ -44,50 +44,6 @@ import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 import System.IO hiding (IO)
-import Type.Reflection ((:~~:)(..), TypeRep, eqTypeRep, typeOf, typeRep)
-
-unresolvedLocalRegType :: UnresolvedLocalReg -> ValueType
-unresolvedLocalRegType lr =
-  case lr of
-    UniqueLocalReg _ vt -> vt
-    QuotRemI32X -> I32
-    QuotRemI32Y -> I32
-    QuotRemI64X -> I64
-    QuotRemI64Y -> I64
-
-collectUnresolvedLocalRegs :: Data a => a -> S.Set UnresolvedLocalReg
-collectUnresolvedLocalRegs = collect proxy#
-
-resolveLocalRegs :: (Monad m, Data a) => Int -> a -> m (a, [ValueType])
-resolveLocalRegs func_param_n t = do
-  new_t <- f t
-  pure (new_t, I32 : I32 : I64 : [unresolvedLocalRegType lr | (lr, _) <- lrs])
-  where
-    lrs =
-      zip
-        (toList $ collectUnresolvedLocalRegs t)
-        ([fromIntegral func_param_n + 3 ..] :: [BinaryenIndex])
-    lr_map = fromList lrs
-    lr_idx = (lr_map !)
-    f :: (Monad m, Data a) => a -> m a
-    f x =
-      case eqTypeRep (typeOf x) (typeRep :: TypeRep Expression) of
-        Just HRefl ->
-          case x of
-            UnresolvedGetLocal {..} ->
-              pure
-                GetLocal
-                  { index = lr_idx unresolvedLocalReg
-                  , valueType = unresolvedLocalRegType unresolvedLocalReg
-                  }
-            UnresolvedSetLocal {..} -> do
-              new_value <- f value
-              pure
-                SetLocal {index = lr_idx unresolvedLocalReg, value = new_value}
-            _ -> go
-        _ -> go
-      where
-        go = gmapM f x
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
 unresolvedGlobalRegType gr =
@@ -268,12 +224,14 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
   new_function_map <-
     fmap M.fromList $
     for (M.toList $ functionMap m_globals_syms_resolved) $ \(func_sym, AsteriusFunction {..}) -> do
-      (body_locals_resolved, local_types) <-
-        resolveLocalRegs (length $ paramTypes functionType) body
-      let func =
+      let (body_locals_resolved, ps) =
+            runState
+              (everywhereM (resolveLocalRegs functionType) body)
+              defaultPassesState
+          func =
             Function
               { functionType = functionType
-              , varTypes = local_types
+              , varTypes = localRegTable ps
               , body = body_locals_resolved
               }
       {-new_func <-
