@@ -14,10 +14,8 @@ module Asterius.Resolve
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
-import Asterius.Internals.SYB
 import Asterius.JSFFI
 import Asterius.Passes.All
-import Asterius.Passes.Common
 import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
@@ -207,43 +205,43 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
   let func_imports =
         rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
       export_func_set = S.fromList export_funcs
-      new_function_map =
+      (new_function_map, all_event_map) =
         unsafeCoerce $
-        flip M.mapWithKey (functionMap m_globals_resolved) $ \sym AsteriusFunction {..} ->
-          let (body_locals_resolved, local_reg_table) =
-                allPasses
-                  debug
-                  all_sym_map
-                  export_func_set
-                  sym
-                  functionType
-                  body
-           in Function
-                { functionType = functionType
-                , varTypes = local_reg_table
-                , body = body_locals_resolved
-                }
+        flip runState M.empty $
+        flip M.traverseWithKey (functionMap m_globals_resolved) $ \sym AsteriusFunction {..} ->
+          state $ \event_map ->
+            let (body_locals_resolved, local_reg_table, event_map') =
+                  allPasses
+                    debug
+                    all_sym_map
+                    export_func_set
+                    sym
+                    functionType
+                    event_map
+                    body
+             in ( Function
+                    { functionType = functionType
+                    , varTypes = local_reg_table
+                    , body = body_locals_resolved
+                    }
+                , event_map')
       mem = makeMemory m_globals_resolved all_sym_map last_addr
-      (new_mod, ps) =
-        runState
-          (everywhereM
-             rewriteEmitEvent
-             Module
-               { functionMap' = new_function_map
-               , functionImports = func_imports
-               , functionExports =
-                   rtsAsteriusFunctionExports debug <>
-                   [ FunctionExport
-                     { internalName = "__asterius_jsffi_export_" <> k
-                     , externalName = k
-                     }
-                   | k <- map entityName export_funcs
-                   ]
-               , functionTable = func_table
-               , memory = mem
-               })
-          defaultPassesState
-      err_msgs = eventTable ps
+      new_mod =
+        Module
+          { functionMap' = new_function_map
+          , functionImports = func_imports
+          , functionExports =
+              rtsAsteriusFunctionExports debug <>
+              [ FunctionExport
+                { internalName = "__asterius_jsffi_export_" <> k
+                , externalName = k
+                }
+              | k <- map entityName export_funcs
+              ]
+          , functionTable = func_table
+          , memory = mem
+          }
+      err_msgs = eventTable all_event_map
   pure
     ( new_mod
     , ss_sym_map

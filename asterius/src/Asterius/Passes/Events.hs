@@ -14,6 +14,7 @@ import Asterius.Passes.Common
 import Asterius.Types
 import Control.Monad.State.Strict
 import qualified Data.Map.Strict as Map
+import Data.Map.Strict (Map)
 import Type.Reflection
 
 rewriteEmitEvent :: MonadState PassesState m => GenericM m
@@ -37,5 +38,5 @@ rewriteEmitEvent t =
         , callImportReturnTypes = []
         }
 
-eventTable :: PassesState -> [Event]
-eventTable PassesState {..} = sortKeysByIntValue eventMap
+eventTable :: Map Event Int -> [Event]
+eventTable = sortKeysByIntValue
