@@ -20,4 +20,4 @@ everywhereM ::
 everywhereM f = w
   where
     w :: GenericM m
-    w = (>>= gmapM w) . f
+    w = (>>= f) . gmapM w
