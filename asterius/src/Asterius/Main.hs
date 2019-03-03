@@ -413,15 +413,18 @@ genDefEntry Task {..} =
     ]
   where
     out_base = string7 outputBaseName
-    exports = mconcat $ map
-        ( \AsteriusEntitySymbol{..} -> mconcat
-            [ "export const "
-            , shortByteString entityName
-            , " = i.wasmInstance.exports."
-            , shortByteString entityName
-            , "\n"
-            ]
-        ) exportFunctions
+    exports =
+      mconcat $
+      map
+        (\AsteriusEntitySymbol {..} ->
+           mconcat
+             [ "export const "
+             , shortByteString entityName
+             , " = i.wasmInstance.exports."
+             , shortByteString entityName
+             , "\n"
+             ])
+        exportFunctions
 
 genHTML :: Task -> Builder
 genHTML Task {..} =
@@ -456,6 +459,8 @@ ahcLink Task {..} = do
     [ "--make"
     , "-O"
     , "-i" <> takeDirectory inputHS
+    , "-fexternal-interpreter"
+    , "-pgmi" <> ahcIserv
     , "-pgml" <> ahcLd
     , "-clear-package-db"
     , "-global-package-db"

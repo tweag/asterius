@@ -56,6 +56,7 @@ dependencies:
   - ghc-prim
   - ghc-toolkit
   - inline-js
+  - libiserv
   - mtl
   - npm-utils
   - parsec
@@ -138,6 +139,13 @@ executables:
   ahc-cabal:
     source-dirs: app
     main: ahc-cabal.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  ahc-iserv:
+    source-dirs: app
+    main: ahc-iserv.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius

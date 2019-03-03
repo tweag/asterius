@@ -7,6 +7,7 @@ module Asterius.BuildInfo
   , ahcAr
   , ahcLd
   , ahcDist
+  , ahcIserv
   , dataDir
   ) where
 
@@ -14,7 +15,7 @@ import BuildInfo_asterius
 import System.Directory
 import System.FilePath
 
-ahc, ahcPkg, ahcAr, ahcLd, ahcDist :: FilePath
+ahc, ahcPkg, ahcAr, ahcLd, ahcDist, ahcIserv :: FilePath
 ahc = binDir </> "ahc" <.> exeExtension
 
 ahcPkg = binDir </> "ahc-pkg" <.> exeExtension
@@ -24,3 +25,5 @@ ahcAr = binDir </> "ahc-ar" <.> exeExtension
 ahcLd = binDir </> "ahc-ld" <.> exeExtension
 
 ahcDist = binDir </> "ahc-dist" <.> exeExtension
+
+ahcIserv = binDir </> "ahc-iserv" <.> exeExtension
