@@ -1,4 +1,4 @@
-resolver: ghc-8.7
+resolver: ghc-8.9
 allow-newer: true
 extra-deps:
   - aeson-1.4.2.0
@@ -83,10 +83,10 @@ ghc-build: standard
 setup-info:
   ghc:
     linux64:
-      8.7.20190217:
-        url: https://2679-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20190217-x86_64-unknown-linux.tar.xz
-        sha256: 6749b2b25eb2aeef6c9c5764b53290a3492bd8bead02539903e10fef11321ba9
+      8.9.20190301:
+        url: https://2813-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190301-x86_64-unknown-linux.tar.xz
+        sha256: 56a6761ca5b0b7089d7aef169c3f438734462b3d99a3a3ff71e54c02e11a9a5e
     macosx:
-      8.7.20190217:
-        url: https://2678-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.7.20190217-x86_64-apple-darwin.tar.xz
-        sha256: 84fad16342ab0a8577fd87d9891598ff77f20549e8c713c725b6e6baf21f5ece
+      8.9.20190301:
+        url: https://2810-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190301-x86_64-apple-darwin.tar.xz
+        sha256: 37b3fa2d6e700cd68ecd145cfeb674c81c26c78421388b4d0bb3cd089eb9bb1b
