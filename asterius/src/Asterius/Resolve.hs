@@ -20,12 +20,15 @@ import Asterius.Internals.SYB
 import Asterius.JSFFI
 import Asterius.MemoryTrap
 import Asterius.Passes.All
+import Asterius.Passes.Common
 import Asterius.Passes.DataSymbolTable
+import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GlobalRegs
 import Asterius.Passes.ResolveSymbols
 import Asterius.Types
 import Asterius.Workarounds
+import Control.Monad.State.Strict
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Data (Data, gmapM)
@@ -238,34 +241,6 @@ makeInfoTableSet AsteriusModule {..} sym_map =
   S.map (sym_map !) $
   M.keysSet $ M.filter ((== InfoTable) . staticsType) staticsMap
 
-collectEvents :: Data a => a -> S.Set Event
-collectEvents = collect proxy#
-
-rewriteEmitEvent :: (Monad m, Data a) => a -> m (a, [Event])
-rewriteEmitEvent x = do
-  new_x <- f x
-  pure (new_x, msg_lst)
-  where
-    msg_lst = S.toList $ collectEvents x
-    msg_tbl = M.fromList $ zip msg_lst [(0 :: Int32) ..]
-    msg_lookup = (msg_tbl !)
-    f :: (Monad m, Data a) => a -> m a
-    f t =
-      case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
-        Just HRefl ->
-          case t of
-            EmitEvent {..} ->
-              pure
-                CallImport
-                  { target' = "__asterius_eventI32"
-                  , operands = [ConstI32 $ msg_lookup event]
-                  , callImportReturnTypes = []
-                  }
-            _ -> go
-        _ -> go
-      where
-        go = gmapM f t
-
 resolveAsteriusModule ::
      Monad m
   => Bool
@@ -309,20 +284,26 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
       let new_func = allPasses debug func
       pure (entityName func_sym, new_func)
   let mem = makeMemory m_globals_syms_resolved all_sym_map last_addr
-  (new_mod, err_msgs) <-
-    rewriteEmitEvent
-      Module
-        { functionMap' = new_function_map
-        , functionImports = func_imports
-        , functionExports =
-            rtsAsteriusFunctionExports debug <>
-            [ FunctionExport
-              {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
-            | k <- map entityName export_funcs
-            ]
-        , functionTable = func_table
-        , memory = mem
-        }
+      (new_mod, ps) =
+        runState
+          (everywhereM
+             rewriteEmitEvent
+             Module
+               { functionMap' = new_function_map
+               , functionImports = func_imports
+               , functionExports =
+                   rtsAsteriusFunctionExports debug <>
+                   [ FunctionExport
+                     { internalName = "__asterius_jsffi_export_" <> k
+                     , externalName = k
+                     }
+                   | k <- map entityName export_funcs
+                   ]
+               , functionTable = func_table
+               , memory = mem
+               })
+          defaultPassesState
+      err_msgs = eventTable ps
   pure
     ( new_mod
     , ss_sym_map

@@ -6,12 +6,15 @@ module Asterius.Passes.Common
   ) where
 
 import Asterius.Types
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 
 data PassesState = PassesState
-  { debug :: Bool
-  , currentFunction :: AsteriusEntitySymbol
+  { currentFunction :: AsteriusEntitySymbol
+  , eventMap :: Map Event Int
   }
 
 defaultPassesState :: PassesState
 defaultPassesState =
-  PassesState {debug = False, currentFunction = AsteriusEntitySymbol mempty}
+  PassesState
+    {currentFunction = AsteriusEntitySymbol mempty, eventMap = Map.empty}

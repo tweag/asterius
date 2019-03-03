@@ -12,8 +12,8 @@ import Control.Monad.State.Strict
 import Data.Data (Data)
 
 allPasses :: Data a => Bool -> a -> a
-allPasses dbg t = result
+allPasses debug t = result
   where
-    init_state = defaultPassesState {debug = dbg}
+    init_state = defaultPassesState
     result = evalState (pipeline t) init_state
     pipeline = everywhereM $ relooperShallow <=< whoami
