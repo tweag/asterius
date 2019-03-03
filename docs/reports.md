@@ -2,6 +2,28 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-03-04
+
+Covers last week.
+
+Completed work:
+
+* Thorough refactorings in the linker to improve performance & modularity.
+    * The linker used to produce small code faithfully, but the speed was slow. Moreover, the code was quite messy, with multiple pieces of whole-program traversal code scattered across a single module.
+    * In order to deliver TH support, we need the linker to be:
+        * Fast, loading archives & objects and performing all necessary rewriting passes quickly. Most likely the expensive dead code elimination optimization will hurt us in this scenario and we need a switch to disable it.
+        * Incremental. Loading some new object code into the linker state must not trigger expensive re-compilation of old code.
+    * We tidied up the linker code, moved each rewriting pass to a separate module and fused them into a single pipeline. The fusion guarantees that after dependency analysis, the AST is only traversed once to perform all necessary rewritings and produce executable wasm code.
+* Updated `ghc` and standard libraries to a recent revision (`8.7.20190217` -> `8.9.20190301`). This includes Moritz Angermann's work to improve `iserv`.
+
+Planned work for the week:
+
+* Start experimenting with `iserv` stuff.
+* Continue working to improve the linker:
+    * The linker code now has some space for adding incremental linking logic. Whether/how it works for TH depends on more knowledge accumulated from `iserv` experiments.
+    * Besides rewriting passes, another major performance bottleneck is dependency analysis, where we start from a global "store" and root symbols to scrap a self-contained module. We'll deal with this one for this week. For TH, we'll explore the possibility of adding a switch for faster linking & larger output code.
+    * All rewriting passes for non-debug mode are migrated to the new pipeline, but two additional passes for debug mode are left untouched for now: "memory traps" & "tracing". They are tricky to get right in the new framework, and given debug mode doesn't impact regular users, these two may be left as they are for a bit more time.
+
 ## 2019-02-22
 
 Covers this week.
