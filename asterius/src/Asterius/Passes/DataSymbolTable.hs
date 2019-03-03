@@ -74,10 +74,9 @@ makeMemory AsteriusModule {..} sym_map last_addr =
                           static_addr =
                             static_tail_addr - fromIntegral (SBS.length buf)
                    in case static of
-                        SymbolStatic sym _ ->
-                          error $
-                          "Asterius.Passes.DataSymbolTable.makeMemory: Unresolved symbol " <>
-                          show sym
+                        SymbolStatic sym o ->
+                          flush_static_segs $
+                          encodeStorable $ sym_map ! sym + fromIntegral o
                         Uninitialized l ->
                           (static_segs, static_tail_addr - fromIntegral l)
                         Serialized buf -> flush_static_segs buf)

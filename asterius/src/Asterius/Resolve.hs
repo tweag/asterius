@@ -22,7 +22,6 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GlobalRegs
-import Asterius.Passes.ResolveSymbols
 import Asterius.Types
 import Asterius.Workarounds
 import Control.Monad.State.Strict
@@ -213,21 +212,19 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
       (ss_sym_map, last_addr) =
         makeDataSymbolTable m_globals_resolved (dataTag `shiftL` 32)
       all_sym_map = func_sym_map <> ss_sym_map
-  m_globals_syms_resolved <-
-    everywhereM (resolveSymbols all_sym_map) m_globals_resolved
   let func_imports =
         rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
       new_function_map =
         unsafeCoerce $
-        flip M.map (functionMap m_globals_syms_resolved) $ \AsteriusFunction {..} ->
+        flip M.map (functionMap m_globals_resolved) $ \AsteriusFunction {..} ->
           let (body_locals_resolved, local_reg_table) =
-                allPasses debug functionType body
+                allPasses debug all_sym_map functionType body
            in Function
                 { functionType = functionType
                 , varTypes = local_reg_table
                 , body = body_locals_resolved
                 }
-      mem = makeMemory m_globals_syms_resolved all_sym_map last_addr
+      mem = makeMemory m_globals_resolved all_sym_map last_addr
       (new_mod, ps) =
         runState
           (everywhereM

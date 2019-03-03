@@ -8,7 +8,6 @@ module Asterius.Passes.ResolveSymbols
   ) where
 
 import Asterius.Builtins
-import Asterius.Internals
 import Asterius.Internals.SYB
 import Asterius.Types
 import Data.Coerce
@@ -30,13 +29,4 @@ resolveSymbols sym_map t =
               emitErrorMessage [I64] $
               "Unresolved symbol: " <> coerce unresolvedSymbol
         _ -> t
-    _ ->
-      case eqTypeRep (typeOf t) (typeRep :: TypeRep AsteriusStatic) of
-        Just HRefl ->
-          case t of
-            SymbolStatic unresolvedSymbol o ->
-              case Map.lookup unresolvedSymbol sym_map of
-                Just addr -> Serialized $ encodeStorable $ addr + fromIntegral o
-                _ -> t
-            _ -> t
-        _ -> t
+    _ -> t
