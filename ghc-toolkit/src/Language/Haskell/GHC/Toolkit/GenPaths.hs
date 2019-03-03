@@ -37,7 +37,7 @@ genPaths GenPathsOptions {..} h =
           writeFile (mod_path </> targetModuleName <.> "hs") $
             "module " ++
             targetModuleName ++
-            " where\n\nimport Distribution.Simple.Compiler\n\n" ++
+            " where\n\n" ++
             concat
               [ let Just conf_prog = lookupProgram prog (withPrograms lbi)
                  in prog_name ++
