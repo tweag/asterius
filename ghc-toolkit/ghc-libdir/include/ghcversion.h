@@ -1,9 +1,9 @@
 #ifndef __GHCVERSION_H__
 #define __GHCVERSION_H__
 
-#define __GLASGOW_HASKELL__ 807
+#define __GLASGOW_HASKELL__ 809
 
-#define __GLASGOW_HASKELL_PATCHLEVEL1__ 20190217
+#define __GLASGOW_HASKELL_PATCHLEVEL1__ 20190301
 
 #define MIN_VERSION_GLASGOW_HASKELL(ma,mi,pl1,pl2) (\
    ((ma)*100+(mi)) <  __GLASGOW_HASKELL__ || \

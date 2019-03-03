@@ -191,16 +191,22 @@ forever a   = let a' = a *> a' in a'
 -- data structures or a state monad.
 mapAndUnzipM      :: (Applicative m) => (a -> m (b,c)) -> [a] -> m ([b], [c])
 {-# INLINE mapAndUnzipM #-}
+-- Inline so that fusion with 'unzip' and 'traverse' has a chance to fire.
+-- See Note [Inline @unzipN@ functions] in GHC/OldList.hs.
 mapAndUnzipM f xs =  unzip <$> traverse f xs
 
 -- | The 'zipWithM' function generalizes 'zipWith' to arbitrary applicative functors.
 zipWithM          :: (Applicative m) => (a -> b -> m c) -> [a] -> [b] -> m [c]
 {-# INLINE zipWithM #-}
+-- Inline so that fusion with zipWith and sequenceA have a chance to fire
+-- See Note [Fusion for zipN/zipWithN] in List.hs]
 zipWithM f xs ys  =  sequenceA (zipWith f xs ys)
 
 -- | 'zipWithM_' is the extension of 'zipWithM' which ignores the final result.
 zipWithM_         :: (Applicative m) => (a -> b -> m c) -> [a] -> [b] -> m ()
 {-# INLINE zipWithM_ #-}
+-- Inline so that fusion with zipWith and sequenceA have a chance to fire
+-- See Note [Fusion for zipN/zipWithN] in List.hs]
 zipWithM_ f xs ys =  sequenceA_ (zipWith f xs ys)
 
 {- | The 'foldM' function is analogous to 'Data.Foldable.foldl', except that its result is
