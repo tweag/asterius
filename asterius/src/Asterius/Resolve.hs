@@ -22,7 +22,6 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GlobalRegs
-import Asterius.Passes.LocalRegs
 import Asterius.Passes.ResolveSymbols
 import Asterius.Types
 import Asterius.Workarounds
@@ -221,17 +220,13 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
       new_function_map =
         unsafeCoerce $
         flip M.map (functionMap m_globals_syms_resolved) $ \AsteriusFunction {..} ->
-          let (body_locals_resolved, ps') =
-                runState
-                  (everywhereM (resolveLocalRegs functionType) body)
-                  defaultPassesState
-              func =
-                Function
-                  { functionType = functionType
-                  , varTypes = localRegTable ps'
-                  , body = body_locals_resolved
-                  }
-           in allPasses debug func
+          let (body_locals_resolved, local_reg_table) =
+                allPasses debug functionType body
+           in Function
+                { functionType = functionType
+                , varTypes = local_reg_table
+                , body = body_locals_resolved
+                }
       mem = makeMemory m_globals_syms_resolved all_sym_map last_addr
       (new_mod, ps) =
         runState
