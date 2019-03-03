@@ -16,7 +16,6 @@ import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.SYB
 import Asterius.JSFFI
-import Asterius.MemoryTrap
 import Asterius.Passes.All
 import Asterius.Passes.Common
 import Asterius.Passes.DataSymbolTable
@@ -42,6 +41,7 @@ import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 import System.IO hiding (IO)
+import Unsafe.Coerce
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
 unresolvedGlobalRegType gr =
@@ -131,12 +131,11 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
                   new_func <-
                     everywhereM resolveGlobalRegs func >>=
                     maskUnknownCCallTargets i_staging_sym export_funcs
-                  m <-
-                    (if debug
-                       then addMemoryTrap
-                       else pure)
-                      mempty {functionMap = M.singleton i_staging_sym new_func}
-                  pure $ Right (i_staging_sym, m)
+                  pure $
+                    Right
+                      ( i_staging_sym
+                      , mempty
+                          {functionMap = M.singleton i_staging_sym new_func})
                 _
                   | M.member i_staging_sym functionErrorMap ->
                     pure $
@@ -219,27 +218,21 @@ resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = 
     everywhereM (resolveSymbols all_sym_map) m_globals_resolved
   let func_imports =
         rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-  new_function_map <-
-    fmap M.fromList $
-    for (M.toList $ functionMap m_globals_syms_resolved) $ \(func_sym, AsteriusFunction {..}) -> do
-      let (body_locals_resolved, ps) =
-            runState
-              (everywhereM (resolveLocalRegs functionType) body)
-              defaultPassesState
-          func =
-            Function
-              { functionType = functionType
-              , varTypes = localRegTable ps
-              , body = body_locals_resolved
-              }
-      {-new_func <-
-        (if debug
-           then addTracingModule func_sym_map func_sym functionType func
-           else pure func) >>=
-        relooperDeep-}
-      let new_func = allPasses debug func
-      pure (entityName func_sym, new_func)
-  let mem = makeMemory m_globals_syms_resolved all_sym_map last_addr
+      new_function_map =
+        unsafeCoerce $
+        flip M.map (functionMap m_globals_syms_resolved) $ \AsteriusFunction {..} ->
+          let (body_locals_resolved, ps') =
+                runState
+                  (everywhereM (resolveLocalRegs functionType) body)
+                  defaultPassesState
+              func =
+                Function
+                  { functionType = functionType
+                  , varTypes = localRegTable ps'
+                  , body = body_locals_resolved
+                  }
+           in allPasses debug func
+      mem = makeMemory m_globals_syms_resolved all_sym_map last_addr
       (new_mod, ps) =
         runState
           (everywhereM
