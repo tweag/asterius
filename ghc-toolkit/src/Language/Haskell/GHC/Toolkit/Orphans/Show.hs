@@ -113,6 +113,8 @@ deriving instance Show Coercion
 
 deriving instance Show TyCoVarBinder
 
+deriving instance Show AnonArgFlag
+
 deriving instance Show Type
 
 deriving instance Show LitNumType
