@@ -2,6 +2,7 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.Internals
@@ -23,7 +24,7 @@ import Control.Exception
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short.Internal as SBS
-import Data.Data (Data, gmapQr)
+import Data.Data (Data, gmapQl)
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
 import Foreign
@@ -90,14 +91,14 @@ reinterpretCast a =
                           (# s3, _ #) -> unIO (peek (Ptr addr)) s3) of
     (# _, r #) -> r
 
-collect :: (Data a, Typeable k, Ord k) => Proxy# k -> a -> S.Set k
-collect p t =
-  case eqTypeRep (typeOf t) (f p) of
+collect ::
+     forall a k. (Data a, Typeable k, Ord k)
+  => a
+  -> S.Set k
+collect t =
+  case eqTypeRep (typeOf t) (typeRep :: TypeRep k) of
     Just HRefl -> [t]
-    _ -> gmapQr (<>) mempty (collect p) t
-  where
-    f :: Typeable t => Proxy# t -> TypeRep t
-    f _ = typeRep
+    _ -> gmapQl (<>) mempty collect t
 
 {-# INLINE encodeFile #-}
 encodeFile :: Binary.Binary a => FilePath -> a -> IO ()

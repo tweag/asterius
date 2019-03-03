@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -39,7 +38,6 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Traversable
 import Foreign
-import GHC.Exts (fromList, proxy#)
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
@@ -53,7 +51,7 @@ unresolvedGlobalRegType gr =
     _ -> I64
 
 collectAsteriusEntitySymbols :: Data a => a -> S.Set AsteriusEntitySymbol
-collectAsteriusEntitySymbols = collect proxy#
+collectAsteriusEntitySymbols = collect
 
 data LinkReport = LinkReport
   { childSymbols :: M.Map AsteriusEntitySymbol (S.Set AsteriusEntitySymbol)
@@ -174,8 +172,8 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
           o_rep =
             mempty
               { childSymbols = i_child_map
-              , unfoundSymbols = fromList i_unfound_syms
-              , unavailableSymbols = fromList i_unavailable_syms
+              , unfoundSymbols = S.fromList i_unfound_syms
+              , unavailableSymbols = S.fromList i_unavailable_syms
               , bundledFFIMarshalState =
                   mconcat
                     [ffiMarshalState | (_, AsteriusModule {..}) <- i_sym_mods]
@@ -187,7 +185,7 @@ mergeSymbols debug AsteriusStore {..} root_syms export_funcs = do
             S.unions
               [ unfoundSymbols o_rep
               , unavailableSymbols o_rep
-              , fromList $ M.keys $ childSymbols o_rep
+              , S.fromList $ M.keys $ childSymbols o_rep
               ]
       pure (o_staging_syms, o_rep, o_m)
 
