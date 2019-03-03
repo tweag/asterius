@@ -3,7 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
-module Asterius.Tracing
+module Asterius.Passes.Tracing
   ( addTracingModule
   ) where
 
@@ -20,14 +20,14 @@ import Data.Traversable
 import Foreign
 import Type.Reflection
 
+{-# INLINABLE addTracingModule #-}
 addTracingModule ::
      Monad m
   => M.Map AsteriusEntitySymbol Int64
   -> AsteriusEntitySymbol
-  -> FunctionType
   -> Function
   -> m Function
-addTracingModule func_sym_map func_sym func_type func
+addTracingModule func_sym_map func_sym func@Function {functionType = func_type}
   | "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName func_sym) = pure func
   | otherwise = f func
   where

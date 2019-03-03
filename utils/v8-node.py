@@ -27,13 +27,13 @@ class P1(HTMLParser):
         self.download_link = None
 
     def handle_starttag(self, tag, attrs):
-        if len(attrs) >= 2 and attrs[1][1] == "step link for download":
-            self.download_link = attrs[0][1]
+        if len(attrs) >= 3 and attrs[2][1][-4:] == ".zip":
+            self.download_link = attrs[2][1]
 
 
 if __name__ == "__main__":
     p0 = P0()
-    p0.feed(get("https://ci.chromium.org/p/v8/builders/luci.v8.ci/V8%20Linux64%20-%20node.js%20integration"))
+    p0.feed(get("https://ci.chromium.org/p/v8/builders/luci.v8.ci/V8%20Linux64%20-%20node.js%20integration%20ng"))
     p1 = P1()
     p1.feed(get(p0.success_builds[0]))
     print(p1.download_link, end="")
