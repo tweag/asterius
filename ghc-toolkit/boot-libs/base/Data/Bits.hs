@@ -540,8 +540,8 @@ instance Bits Integer where
    testBit x (I# i) = testBitInteger x i
    zeroBits   = 0
 
-   bit (I# i#) = bitInteger i#
-   popCount x  = I# (popCountInteger x)
+   bit (I# i#) = errorWithoutStackTrace "bitInteger"
+   popCount x  = errorWithoutStackTrace "popCountInteger"
 
    rotate x i = shift x i   -- since an Integer never wraps around
 
@@ -563,8 +563,8 @@ instance Bits Natural where
    zeroBits      = wordToNaturalBase 0##
    clearBit x i  = x `xor` (bit i .&. x)
 
-   bit (I# i#) = bitNatural i#
-   popCount x  = popCountNatural x
+   bit (I# i#) = errorWithoutStackTrace "bitNatural"
+   popCount x  = errorWithoutStackTrace "popCountNatural"
 
    rotate x i = shift x i   -- since an Natural never wraps around
 
