@@ -14,12 +14,14 @@ import Control.Monad.IO.Class
 import Data.IORef
 import Data.Maybe
 import qualified GHC
+import qualified GHCi.RemoteTypes as GHC
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import Language.Haskell.GHC.Toolkit.Orphans.Show
 import System.Environment.Blank
 import System.FilePath
+import Unsafe.Coerce
 
 frontendPlugin :: GHC.FrontendPlugin
 frontendPlugin =
@@ -30,7 +32,10 @@ frontendPlugin =
     (c, get_ffi_mod) <-
       addFFIProcessor
         mempty
-          { withHaskellIR =
+          { compileCoreExpr =
+              Just $ \_ _ _ ->
+                GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
+          , withHaskellIR =
               \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
                 dflags <- GHC.getDynFlags
                 setDynFlagsRef dflags

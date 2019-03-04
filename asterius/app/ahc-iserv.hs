@@ -4,13 +4,11 @@
 
 import Asterius.Iserv.Run
 import Asterius.Iserv.Trace
-import Control.DeepSeq
 import Control.Exception
 import Data.Binary
 import Data.IORef
 import GHCi.Message
 import GHCi.Signals
-import GHCi.TH
 import GHCi.Utils
 import System.Environment.Blank
 
@@ -24,10 +22,7 @@ serv verbose pipe restore = loop
       trace verbose $ "msg: " <> show msg
       case msg of
         Shutdown -> pure ()
-        RunTH st q ty loc -> wrapRunTH $ runTH pipe st q ty loc
-        RunModFinalizers st qrefs ->
-          wrapRunTH $ runModFinalizerRefs pipe st qrefs
-        _other -> run msg >>= reply
+        _other -> run pipe msg >>= reply
     reply ::
          forall a. (Binary a, Show a)
       => a
@@ -36,41 +31,6 @@ serv verbose pipe restore = loop
       trace verbose $ "writing pipe: " <> show r
       writePipe pipe (put r)
       loop
-  -- Run some TH code, which may interact with GHC by sending
-  -- THMessage requests, and then finally send RunTHDone followed by a
-  -- QResult.  For an overview of how TH works with Remote GHCi, see
-  -- Note [Remote Template Haskell] in libraries/ghci/GHCi/TH.hs.
-    wrapRunTH ::
-         forall a. (Binary a, Show a)
-      => IO a
-      -> IO ()
-    wrapRunTH io = do
-      trace verbose "wrapRunTH..."
-      r <- try io
-      trace verbose "wrapRunTH done."
-      trace verbose "writing RunTHDone."
-      writePipe pipe $ putTHMessage RunTHDone
-      case r of
-        Left e
-          | Just (GHCiQException _ err) <- fromException e -> do
-            trace verbose $ "QFail " <> show err
-            reply (QFail err :: QResult a)
-          | otherwise -> do
-            str <- showException e
-            trace verbose $ "QException " <> str
-            reply (QException str :: QResult a)
-        Right a -> do
-          trace verbose "QDone"
-          reply $ QDone a
-  -- carefully when showing an exception, there might be other exceptions
-  -- lurking inside it.  If so, we return the inner exception instead.
-    showException :: SomeException -> IO String
-    showException e0 = do
-      trace verbose "showException"
-      r <- try $ evaluate $ force $ show (e0 :: SomeException)
-      case r of
-        Left e -> showException e
-        Right str -> pure str
   -- throw away any pending ^C exceptions while we're not running
   -- interpreted code.  GHC will also get the ^C, and either ignore it
   -- (if this is GHCi), or tell us to quit with a Shutdown message.

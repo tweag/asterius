@@ -63,6 +63,7 @@ dependencies:
   - npm-utils
   - parsec
   - process
+  - template-haskell
   - transformers
   - wasm-toolkit
 

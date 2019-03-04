@@ -6,9 +6,12 @@ module Asterius.Iserv.Run
 
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import Data.IORef
 import Data.Traversable
 import GHCi.Message
 import GHCi.RemoteTypes
+import qualified Language.Haskell.TH.Syntax as TH
+import Unsafe.Coerce
 
 initLinker :: IO ()
 initLinker = pure ()
@@ -31,8 +34,22 @@ resolveObjs = pure True
 mallocData :: ByteString -> IO (RemotePtr ())
 mallocData _ = pure $ RemotePtr 0
 
-run :: Message a -> IO a
-run msg =
+startTH :: IO (RemoteRef (IORef QState))
+startTH = pure $ unsafeCoerce $ RemotePtr 0
+
+runTH ::
+     Pipe
+  -> RemoteRef (IORef QState)
+  -> HValueRef
+  -> THResultType
+  -> Maybe TH.Loc
+  -> IO (QResult ByteString)
+runTH pipe _ _ _ _ = do
+  writePipe pipe $ putTHMessage RunTHDone
+  pure $ QFail "Asterius.Iserv.Run.runTH"
+
+run :: Pipe -> Message a -> IO a
+run pipe msg =
   case msg of
     InitLinker -> initLinker
     LookupSymbol str -> lookupSymbol str
@@ -42,4 +59,6 @@ run msg =
     ResolveObjs -> resolveObjs
     MallocData bs -> mallocData bs
     MallocStrings bss -> for bss $ mallocData . (`BS.snoc` 0)
+    StartTH -> startTH
+    RunTH rstate rhv ty mb_loc -> runTH pipe rstate rhv ty mb_loc
     _ -> undefined
