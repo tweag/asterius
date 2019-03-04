@@ -2,23 +2,17 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+import Asterius.Iserv.Run
+import Asterius.Iserv.Trace
 import Control.DeepSeq
 import Control.Exception
-import Control.Monad
 import Data.Binary
 import Data.IORef
 import GHCi.Message
-import GHCi.Run
 import GHCi.Signals
 import GHCi.TH
 import GHCi.Utils
 import System.Environment.Blank
-import System.IO
-import Text.Printf
-
-trace :: Bool -> String -> IO ()
-trace verbose s =
-  when verbose $ getProgName >>= \name -> hPrintf stderr "[%20s] %s\n" name s
 
 serv :: Bool -> Pipe -> (forall a. IO a -> IO a) -> IO ()
 serv verbose pipe restore = loop
