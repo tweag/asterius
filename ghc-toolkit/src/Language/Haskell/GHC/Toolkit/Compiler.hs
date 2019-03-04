@@ -8,8 +8,10 @@ module Language.Haskell.GHC.Toolkit.Compiler
   ) where
 
 import Cmm
+import CoreSyn
 import GHC
 import HscTypes
+import Maybes
 import PipelineMonad
 import StgSyn
 import TcRnTypes
@@ -31,6 +33,7 @@ data CmmIR = CmmIR
 data Compiler = Compiler
   { patchParsed :: ModSummary -> HsParsedModule -> Hsc HsParsedModule
   , patchTypechecked :: ModSummary -> TcGblEnv -> Hsc TcGblEnv
+  , compileCoreExpr :: Maybe (HscEnv -> SrcSpan -> CoreExpr -> IO ForeignHValue)
   , withHaskellIR :: ModSummary -> HaskellIR -> FilePath -> CompPipeline ()
   , withCmmIR :: CmmIR -> FilePath -> CompPipeline ()
   , finalize :: Ghc ()
@@ -47,6 +50,7 @@ instance Semigroup Compiler where
           \mod_summary tc_mod -> do
             tc_mod' <- patchTypechecked c0 mod_summary tc_mod
             patchTypechecked c1 mod_summary tc_mod'
+      , compileCoreExpr = firstJust (compileCoreExpr c0) (compileCoreExpr c1)
       , withHaskellIR =
           \mod_summary hs_ir obj_path -> do
             withHaskellIR c0 mod_summary hs_ir obj_path
@@ -65,6 +69,7 @@ instance Monoid Compiler where
     Compiler
       { patchParsed = const pure
       , patchTypechecked = const pure
+      , compileCoreExpr = Nothing
       , withHaskellIR = \_ _ _ -> pure ()
       , withCmmIR = \_ _ -> pure ()
       , finalize = pure ()

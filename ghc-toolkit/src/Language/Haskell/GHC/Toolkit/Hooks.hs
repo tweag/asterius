@@ -72,6 +72,7 @@ hooksFromCompiler Compiler {..} = do
                 putMVar cmm_ref cmms
                 putMVar cmm_raw_ref rawcmms
             pure rawcmms
+      , GHC.hscCompileCoreExprHook = compileCoreExpr
       , GHC.runPhaseHook =
           Just $ \phase input_fn dflags ->
             case phase of
