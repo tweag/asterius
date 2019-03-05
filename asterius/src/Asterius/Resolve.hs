@@ -29,7 +29,6 @@ import Data.Foldable
 import Data.List
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
-import Data.Traversable
 import Foreign
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
@@ -86,75 +85,71 @@ instance Monoid LinkReport where
       }
 
 mergeSymbols ::
-     Monad m
-  => Bool
+     Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
-  -> m (AsteriusModule, LinkReport)
-mergeSymbols debug store_mod root_syms = do
-  (_, final_rep, final_m) <- go (root_syms, mempty, mempty)
-  pure (final_m, final_rep)
+  -> (AsteriusModule, LinkReport)
+mergeSymbols debug AsteriusModule {..} root_syms = (final_m, final_rep)
   where
-    go i@(i_staging_syms, _, _) = do
-      o <- iter i
-      if S.null i_staging_syms
-        then pure o
-        else go o
-    iter (i_staging_syms, i_rep, i_m) = do
-      let (i_unfound_syms, i_sym_mods) =
+    (_, final_rep, final_m) = go (root_syms, mempty, mempty)
+    go i@(i_staging_syms, _, _) =
+      let o = iter i
+       in if S.null i_staging_syms
+            then o
+            else go o
+    iter (i_staging_syms, i_rep, i_m) =
+      let (i_unfound_syms, i_found_syms) =
             partitionEithers
               [ if or
-                     [ i_staging_sym `LM.member` staticsMap store_mod
-                     , i_staging_sym `LM.member` staticsErrorMap store_mod
-                     , i_staging_sym `LM.member` functionMap store_mod
-                     , i_staging_sym `LM.member` functionErrorMap store_mod
+                     [ i_staging_sym `LM.member` staticsMap
+                     , i_staging_sym `LM.member` staticsErrorMap
+                     , i_staging_sym `LM.member` functionMap
+                     , i_staging_sym `LM.member` functionErrorMap
                      ]
-                then Right (i_staging_sym, store_mod)
+                then Right i_staging_sym
                 else Left i_staging_sym
               | i_staging_sym <- S.toList i_staging_syms
               ]
-      (i_unavailable_syms, i_sym_modlets) <-
-        fmap partitionEithers $
-        for i_sym_mods $ \(i_staging_sym, AsteriusModule {..}) ->
-          case LM.lookup i_staging_sym staticsMap of
-            Just ss ->
-              pure $
-              Right
-                ( i_staging_sym
-                , mempty {staticsMap = LM.fromList [(i_staging_sym, ss)]})
-            _ ->
-              case LM.lookup i_staging_sym functionMap of
-                Just func ->
-                  pure $
+          (i_unavailable_syms, i_sym_modlets) =
+            partitionEithers $
+            flip map i_found_syms $ \i_staging_sym ->
+              case LM.lookup i_staging_sym staticsMap of
+                Just ss ->
                   Right
                     ( i_staging_sym
-                    , mempty {functionMap = LM.singleton i_staging_sym func})
-                _
-                  | LM.member i_staging_sym functionErrorMap ->
-                    pure $
-                    Right
-                      ( i_staging_sym
-                      , mempty
-                          { functionMap =
-                              LM.fromList
-                                [ ( i_staging_sym
-                                  , AsteriusFunction
-                                      { functionType =
-                                          FunctionType
-                                            { paramTypes = []
-                                            , returnTypes = [I64]
-                                            }
-                                      , body =
-                                          emitErrorMessage [I64] $
-                                          entityName i_staging_sym <>
-                                          " failed: it was marked as broken by code generator, with error message: " <>
-                                          showSBS
-                                            (functionErrorMap ! i_staging_sym)
-                                      })
-                                ]
-                          })
-                  | otherwise -> pure $ Left i_staging_sym
-      let i_child_map =
+                    , mempty {staticsMap = LM.fromList [(i_staging_sym, ss)]})
+                _ ->
+                  case LM.lookup i_staging_sym functionMap of
+                    Just func ->
+                      Right
+                        ( i_staging_sym
+                        , mempty {functionMap = LM.singleton i_staging_sym func})
+                    _
+                      | LM.member i_staging_sym functionErrorMap ->
+                        Right
+                          ( i_staging_sym
+                          , mempty
+                              { functionMap =
+                                  LM.fromList
+                                    [ ( i_staging_sym
+                                      , AsteriusFunction
+                                          { functionType =
+                                              FunctionType
+                                                { paramTypes = []
+                                                , returnTypes = [I64]
+                                                }
+                                          , body =
+                                              emitErrorMessage [I64] $
+                                              entityName i_staging_sym <>
+                                              " failed: it was marked as broken by code generator, with error message: " <>
+                                              showSBS
+                                                (functionErrorMap !
+                                                 i_staging_sym)
+                                          })
+                                    ]
+                              })
+                      | otherwise -> Left i_staging_sym
+          i_child_map =
             LM.fromList
               [ ( i_staging_sym
                 , S.filter (/= i_staging_sym) $
@@ -166,9 +161,7 @@ mergeSymbols debug store_mod root_syms = do
               { childSymbols = i_child_map
               , unfoundSymbols = S.fromList i_unfound_syms
               , unavailableSymbols = S.fromList i_unavailable_syms
-              , bundledFFIMarshalState =
-                  mconcat
-                    [ffiMarshalState | (_, AsteriusModule {..}) <- i_sym_mods]
+              , bundledFFIMarshalState = ffiMarshalState
               } <>
             i_rep
           o_m = mconcat (map snd i_sym_modlets) <> i_m
@@ -179,7 +172,7 @@ mergeSymbols debug store_mod root_syms = do
               , unavailableSymbols o_rep
               , S.fromList $ LM.keys $ childSymbols o_rep
               ]
-      pure (o_staging_syms, o_rep, o_m)
+       in (o_staging_syms, o_rep, o_m)
 
 makeInfoTableSet ::
      AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> S.Set Int64
@@ -262,16 +255,16 @@ linkStart ::
   -> [AsteriusEntitySymbol]
   -> m (Module, [Event], LinkReport)
 linkStart debug store root_syms export_funcs = do
-  (merged_m, report) <-
-    mergeSymbols
-      debug
-      store
-      (root_syms <>
-       S.fromList
-         [ AsteriusEntitySymbol
-           {entityName = "__asterius_jsffi_export_" <> entityName k}
-         | k <- export_funcs
-         ])
+  let (merged_m, report) =
+        mergeSymbols
+          debug
+          store
+          (root_syms <>
+           S.fromList
+             [ AsteriusEntitySymbol
+               {entityName = "__asterius_jsffi_export_" <> entityName k}
+             | k <- export_funcs
+             ])
   (result_m, ss_sym_map, func_sym_map, err_msgs, static_mbs) <-
     resolveAsteriusModule
       debug
