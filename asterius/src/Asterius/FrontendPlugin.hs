@@ -6,6 +6,7 @@ module Asterius.FrontendPlugin
 
 import Asterius.CodeGen
 import Asterius.Internals
+import qualified Asterius.Iserv.CompileCoreExpr as Iserv
 import Asterius.JSFFI
 import Asterius.TypesConv
 import Control.Exception
@@ -14,14 +15,12 @@ import Control.Monad.IO.Class
 import Data.IORef
 import Data.Maybe
 import qualified GHC
-import qualified GHCi.RemoteTypes as GHC
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import Language.Haskell.GHC.Toolkit.Orphans.Show
 import System.Environment.Blank
 import System.FilePath
-import Unsafe.Coerce
 
 frontendPlugin :: GHC.FrontendPlugin
 frontendPlugin =
@@ -32,9 +31,7 @@ frontendPlugin =
     (c, get_ffi_mod) <-
       addFFIProcessor
         mempty
-          { compileCoreExpr =
-              Just $ \_ _ _ ->
-                GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
+          { compileCoreExpr = Just Iserv.compileCoreExpr
           , withHaskellIR =
               \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
                 dflags <- GHC.getDynFlags
