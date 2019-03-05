@@ -87,7 +87,8 @@ mergeSymbols ::
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> (AsteriusModule, LinkReport)
-mergeSymbols debug AsteriusModule {..} root_syms = (final_m, final_rep)
+mergeSymbols debug AsteriusModule {..} root_syms =
+  (final_m, final_rep {bundledFFIMarshalState = ffiMarshalState})
   where
     (_, final_rep, final_m) = go (root_syms, mempty, mempty)
     go i@(i_staging_syms, _, _) =
@@ -146,7 +147,6 @@ mergeSymbols debug AsteriusModule {..} root_syms = (final_m, final_rep)
             mempty
               { childSymbols = i_child_map
               , unavailableSymbols = S.fromList i_unavailable_syms
-              , bundledFFIMarshalState = ffiMarshalState
               } <>
             i_rep
           o_m = mconcat (map snd i_sym_modlets) <> i_m
