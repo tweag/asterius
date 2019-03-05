@@ -6,7 +6,6 @@ import Asterius.Internals.Temp
 import Asterius.Types
 import qualified Data.ByteString.Lazy as LBS
 import Data.Either
-import Data.IntMap.Strict (IntMap)
 import Data.Map.Lazy (Map)
 import Data.Traversable
 import Prelude hiding (IO)
@@ -19,8 +18,8 @@ type UnsafeAsteriusModule
      , Map AsteriusEntitySymbol LBS.ByteString
      , Map AsteriusEntitySymbol LBS.ByteString
      , Map AsteriusEntitySymbol LBS.ByteString
-     , Map AsteriusModuleSymbol (IntMap FFIImportDecl)
-     , Map AsteriusModuleSymbol (Map AsteriusEntitySymbol FFIExportDecl))
+     , Map AsteriusModuleSymbol LBS.ByteString
+     , Map AsteriusModuleSymbol LBS.ByteString)
 
 appendUnsafeAsteriusModule ::
      UnsafeAsteriusModule -> UnsafeAsteriusModule -> UnsafeAsteriusModule
