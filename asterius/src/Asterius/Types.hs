@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -15,9 +16,7 @@ module Asterius.Types
   , AsteriusFunction(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
-  , noModuleSymbol
   , AsteriusEntitySymbol(..)
-  , AsteriusStore(..)
   , UnresolvedLocalReg(..)
   , UnresolvedGlobalReg(..)
   , Event(..)
@@ -46,6 +45,7 @@ module Asterius.Types
   , FFIMarshalState(..)
   ) where
 
+import Asterius.Internals.Binary
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.Exception
 import Data.Binary
@@ -53,7 +53,6 @@ import qualified Data.ByteString.Short as SBS
 import Data.Data
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Lazy as LM
-import qualified Data.Map.Strict as M
 import Data.String
 import Foreign
 import GHC.Generics
@@ -110,22 +109,28 @@ data AsteriusFunction = AsteriusFunction
 instance Binary AsteriusFunction
 
 data AsteriusModule = AsteriusModule
-  { currentModuleSymbol :: AsteriusModuleSymbol
-  , staticsMap :: M.Map AsteriusEntitySymbol AsteriusStatics
-  , staticsErrorMap :: M.Map AsteriusEntitySymbol AsteriusCodeGenError
-  , functionMap :: M.Map AsteriusEntitySymbol AsteriusFunction
-  , functionErrorMap :: M.Map AsteriusEntitySymbol AsteriusCodeGenError
+  { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics
+  , staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
+  , functionMap :: LM.Map AsteriusEntitySymbol AsteriusFunction
+  , functionErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
   , ffiMarshalState :: FFIMarshalState
-  } deriving (Eq, Show, Generic, Data)
+  } deriving (Eq, Show, Data)
 
-instance Binary AsteriusModule
+instance Binary AsteriusModule where
+  {-# INLINE put #-}
+  put AsteriusModule {..} =
+    lazyMapPut staticsMap *> lazyMapPut staticsErrorMap *>
+    lazyMapPut functionMap *>
+    lazyMapPut functionErrorMap *>
+    put ffiMarshalState
+  {-# INLINE get #-}
+  get =
+    AsteriusModule <$> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*>
+    get
 
 instance Semigroup AsteriusModule where
-  AsteriusModule ms0 sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule ms1 sm1 se1 fm1 fe1 mod_ffi_state1 =
+  AsteriusModule sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 fe1 mod_ffi_state1 =
     AsteriusModule
-      (if ms0 == noModuleSymbol
-         then ms1
-         else ms0)
       (sm0 <> sm1)
       (se0 <> se1)
       (fm0 <> fm1)
@@ -133,7 +138,7 @@ instance Semigroup AsteriusModule where
       (mod_ffi_state0 <> mod_ffi_state1)
 
 instance Monoid AsteriusModule where
-  mempty = AsteriusModule noModuleSymbol mempty mempty mempty mempty mempty
+  mempty = AsteriusModule mempty mempty mempty mempty mempty
 
 data AsteriusModuleSymbol = AsteriusModuleSymbol
   { unitId :: SBS.ShortByteString
@@ -142,9 +147,6 @@ data AsteriusModuleSymbol = AsteriusModuleSymbol
 
 instance Binary AsteriusModuleSymbol
 
-noModuleSymbol :: AsteriusModuleSymbol
-noModuleSymbol = AsteriusModuleSymbol {unitId = SBS.empty, moduleName = []}
-
 newtype AsteriusEntitySymbol = AsteriusEntitySymbol
   { entityName :: SBS.ShortByteString
   } deriving (Eq, Ord, IsString, Binary)
@@ -152,21 +154,6 @@ newtype AsteriusEntitySymbol = AsteriusEntitySymbol
 deriving newtype instance Show AsteriusEntitySymbol
 
 deriving instance Data AsteriusEntitySymbol
-
-data AsteriusStore = AsteriusStore
-  { symbolMap :: M.Map AsteriusEntitySymbol AsteriusModuleSymbol
-  , moduleMap :: LM.Map AsteriusModuleSymbol AsteriusModule
-  } deriving (Eq, Show, Generic, Data)
-
-instance Semigroup AsteriusStore where
-  s0 <> s1 =
-    AsteriusStore
-      { symbolMap = symbolMap s0 <> symbolMap s1
-      , moduleMap = moduleMap s0 <> moduleMap s1
-      }
-
-instance Monoid AsteriusStore where
-  mempty = AsteriusStore {symbolMap = mempty, moduleMap = mempty}
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int
@@ -467,7 +454,7 @@ data Memory = Memory
 instance Binary Memory
 
 data Module = Module
-  { functionMap' :: M.Map SBS.ShortByteString Function
+  { functionMap' :: LM.Map SBS.ShortByteString Function
   , functionImports :: [FunctionImport]
   , functionExports :: [FunctionExport]
   , functionTable :: FunctionTable
@@ -501,7 +488,7 @@ instance Binary RelooperBlock
 
 data RelooperRun = RelooperRun
   { entry :: SBS.ShortByteString
-  , blockMap :: M.Map SBS.ShortByteString RelooperBlock
+  , blockMap :: LM.Map SBS.ShortByteString RelooperBlock
   , labelHelper :: BinaryenIndex
   } deriving (Eq, Show, Generic, Data)
 
@@ -545,9 +532,9 @@ data FFIExportDecl = FFIExportDecl
 instance Binary FFIExportDecl
 
 data FFIMarshalState = FFIMarshalState
-  { ffiImportDecls :: M.Map AsteriusModuleSymbol (IM.IntMap FFIImportDecl)
-  , ffiExportDecls :: M.Map AsteriusModuleSymbol (M.Map AsteriusEntitySymbol FFIExportDecl)
-  } deriving (Eq, Show, Generic, Data)
+  { ffiImportDecls :: LM.Map AsteriusModuleSymbol (IM.IntMap FFIImportDecl)
+  , ffiExportDecls :: LM.Map AsteriusModuleSymbol (LM.Map AsteriusEntitySymbol FFIExportDecl)
+  } deriving (Eq, Show, Data)
 
 instance Semigroup FFIMarshalState where
   s0 <> s1 =
@@ -559,4 +546,9 @@ instance Semigroup FFIMarshalState where
 instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
 
-instance Binary FFIMarshalState
+instance Binary FFIMarshalState where
+  {-# INLINE put #-}
+  put FFIMarshalState {..} =
+    lazyMapPut ffiImportDecls *> lazyMapPut ffiExportDecls
+  {-# INLINE get #-}
+  get = FFIMarshalState <$> lazyMapGet <*> lazyMapGet
