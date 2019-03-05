@@ -104,10 +104,6 @@ Use this to specify a symbol to be added to the "root symbol set". Works similar
 
 Output a "link report" text file containing internal linker stats.
 
-### `--output-graphviz`
-
-Output a `.dot` GraphViz file containing a symbol dependency graph file.
-
 ### `--output-ir`
 
 Output wasm IRs of compiled Haskell modules and the resulting module. The IRs aren't intended to be consumed by external tools like binaryen/wabt.

@@ -30,7 +30,7 @@ tests:
   wasm-toolkit-codec:
     source-dirs: test
     main: wasm-toolkit-codec.hs
-    ghc-options: -threaded -feager-blackholing -rtsopts
+    ghc-options: -threaded -rtsopts
     dependencies:
       - QuickCheck
       - wasm-toolkit

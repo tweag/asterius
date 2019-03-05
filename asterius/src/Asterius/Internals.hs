@@ -1,8 +1,6 @@
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.Internals
@@ -11,7 +9,6 @@ module Asterius.Internals
   , marshalV
   , encodeStorable
   , reinterpretCast
-  , collect
   , encodeFile
   , decodeFile
   , tryDecodeFile
@@ -24,16 +21,13 @@ import Control.Exception
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short.Internal as SBS
-import Data.Data (Data, gmapQl)
 import qualified Data.Map.Lazy as LM
-import qualified Data.Set as S
 import Foreign
 import Foreign.C
 import GHC.Exts
 import GHC.Stack
 import qualified GHC.Types
 import Prelude hiding (IO)
-import Type.Reflection
 
 type IO a
    = HasCallStack =>
@@ -90,15 +84,6 @@ reinterpretCast a =
                         case unIO (poke (Ptr addr) a) s2 of
                           (# s3, _ #) -> unIO (peek (Ptr addr)) s3) of
     (# _, r #) -> r
-
-collect ::
-     forall a k. (Data a, Typeable k, Ord k)
-  => a
-  -> S.Set k
-collect t =
-  case eqTypeRep (typeOf t) (typeRep :: TypeRep k) of
-    Just HRefl -> [t]
-    _ -> gmapQl (<>) mempty collect t
 
 {-# INLINE encodeFile #-}
 encodeFile :: Binary.Binary a => FilePath -> a -> IO ()
