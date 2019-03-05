@@ -48,7 +48,7 @@ collectAsteriusEntitySymbols = collect
 
 data LinkReport = LinkReport
   { childSymbols :: LM.Map AsteriusEntitySymbol (S.Set AsteriusEntitySymbol)
-  , unfoundSymbols, unavailableSymbols :: S.Set AsteriusEntitySymbol
+  , unavailableSymbols :: S.Set AsteriusEntitySymbol
   , staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64
   , infoTableSet :: S.Set Int64
   , staticMBlocks :: Int
@@ -61,7 +61,6 @@ instance Semigroup LinkReport where
   r0 <> r1 =
     LinkReport
       { childSymbols = LM.unionWith (<>) (childSymbols r0) (childSymbols r1)
-      , unfoundSymbols = unfoundSymbols r0 <> unfoundSymbols r1
       , unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
       , staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
       , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
@@ -75,7 +74,6 @@ instance Monoid LinkReport where
   mempty =
     LinkReport
       { childSymbols = mempty
-      , unfoundSymbols = mempty
       , unavailableSymbols = mempty
       , staticsSymbolMap = mempty
       , functionSymbolMap = mempty
@@ -98,21 +96,9 @@ mergeSymbols debug AsteriusModule {..} root_syms = (final_m, final_rep)
             then o
             else go o
     iter (i_staging_syms, i_rep, i_m) =
-      let (i_unfound_syms, i_found_syms) =
-            partitionEithers
-              [ if or
-                     [ i_staging_sym `LM.member` staticsMap
-                     , i_staging_sym `LM.member` staticsErrorMap
-                     , i_staging_sym `LM.member` functionMap
-                     , i_staging_sym `LM.member` functionErrorMap
-                     ]
-                then Right i_staging_sym
-                else Left i_staging_sym
-              | i_staging_sym <- S.toList i_staging_syms
-              ]
-          (i_unavailable_syms, i_sym_modlets) =
+      let (i_unavailable_syms, i_sym_modlets) =
             partitionEithers $
-            flip map i_found_syms $ \i_staging_sym ->
+            flip map (S.toList i_staging_syms) $ \i_staging_sym ->
               case LM.lookup i_staging_sym staticsMap of
                 Just ss ->
                   Right
@@ -159,7 +145,6 @@ mergeSymbols debug AsteriusModule {..} root_syms = (final_m, final_rep)
           o_rep =
             mempty
               { childSymbols = i_child_map
-              , unfoundSymbols = S.fromList i_unfound_syms
               , unavailableSymbols = S.fromList i_unavailable_syms
               , bundledFFIMarshalState = ffiMarshalState
               } <>
@@ -168,8 +153,7 @@ mergeSymbols debug AsteriusModule {..} root_syms = (final_m, final_rep)
           o_staging_syms =
             mconcat (LM.elems $ childSymbols o_rep) `S.difference`
             S.unions
-              [ unfoundSymbols o_rep
-              , unavailableSymbols o_rep
+              [ unavailableSymbols o_rep
               , S.fromList $ LM.keys $ childSymbols o_rep
               ]
        in (o_staging_syms, o_rep, o_m)
@@ -285,10 +269,6 @@ renderDot :: LinkReport -> Builder
 renderDot LinkReport {..} =
   mconcat $
   ["digraph {\n"] <>
-  concat
-    [ ["    ", sym unfound_sym, " [color=orange];\n"]
-    | unfound_sym <- toList unfoundSymbols
-    ] <>
   concat
     [ ["    ", sym unavailable_sym, " [color=red];\n"]
     | unavailable_sym <- toList unavailableSymbols
