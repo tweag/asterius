@@ -2,6 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/tweag/asterius/tree/master.svg?style=shield)](https://circleci.com/gh/tweag/asterius/tree/master)
 [![Docker Pulls](https://img.shields.io/docker/pulls/terrorjack/asterius.svg)](https://hub.docker.com/r/terrorjack/asterius)
+[![Gitter chat](https://badges.gitter.im/tweag/asterius.png)](https://gitter.im/tweag/asterius)
 
 A Haskell to WebAssembly compiler. Project status: **alpha**, in active development, some simple examples already work.
 
