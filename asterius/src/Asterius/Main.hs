@@ -65,7 +65,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputGraphViz, outputIR, run :: Bool
+  , fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -103,14 +103,8 @@ parseTask args =
         , bool_opt "sync" $ \t -> t {sync = True}
         , bool_opt "binaryen" $ \t -> t {binaryen = True}
         , bool_opt "debug" $ \t ->
-            t
-              { debug = True
-              , outputLinkReport = True
-              , outputGraphViz = True
-              , outputIR = True
-              }
+            t {debug = True, outputLinkReport = True, outputIR = True}
         , bool_opt "output-link-report" $ \t -> t {outputLinkReport = True}
-        , bool_opt "output-graphviz" $ \t -> t {outputGraphViz = True}
         , bool_opt "output-ir" $ \t -> t {outputIR = True}
         , bool_opt "run" $ \t -> t {run = True}
         , str_opt "ghc-option" $ \s t ->
@@ -134,7 +128,6 @@ parseTask args =
           , binaryen = False
           , debug = False
           , outputLinkReport = False
-          , outputGraphViz = False
           , outputIR = False
           , run = False
           , extraGHCFlags = []
@@ -413,15 +406,18 @@ genDefEntry Task {..} =
     ]
   where
     out_base = string7 outputBaseName
-    exports = mconcat $ map
-        ( \AsteriusEntitySymbol{..} -> mconcat
-            [ "export const "
-            , shortByteString entityName
-            , " = i.wasmInstance.exports."
-            , shortByteString entityName
-            , "\n"
-            ]
-        ) exportFunctions
+    exports =
+      mconcat $
+      map
+        (\AsteriusEntitySymbol {..} ->
+           mconcat
+             [ "export const "
+             , shortByteString entityName
+             , " = i.wasmInstance.exports."
+             , shortByteString entityName
+             , "\n"
+             ])
+        exportFunctions
 
 genHTML :: Task -> Builder
 genHTML Task {..} =
@@ -484,14 +480,9 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
       out_js = outputDirectory </> outputBaseName <.> "js"
       out_html = outputDirectory </> outputBaseName <.> "html"
       out_link = outputDirectory </> outputBaseName <.> "link.txt"
-      out_dot = outputDirectory </> outputBaseName <.> "dot"
   when outputLinkReport $ do
     putStrLn $ "[INFO] Writing linking report to " <> show out_link
     writeFile out_link $ show report
-  when outputGraphViz $ do
-    putStrLn $
-      "[INFO] Writing GraphViz file of symbol dependencies to " <> show out_dot
-    writeDot out_dot report
   when outputIR $ do
     let p = out_wasm -<.> "bin"
     putStrLn $ "[INFO] Serializing linked IR to " <> show p

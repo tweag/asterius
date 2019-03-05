@@ -8,7 +8,6 @@ module Asterius.BuildInfo
   , ahcLd
   , ahcDist
   , dataDir
-  , packageDBStack
   ) where
 
 import BuildInfo_asterius
