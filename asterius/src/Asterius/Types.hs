@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -46,6 +47,7 @@ module Asterius.Types
   , FFIMarshalState(..)
   ) where
 
+import Asterius.Internals.Binary
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.Exception
 import Data.Binary
@@ -116,9 +118,21 @@ data AsteriusModule = AsteriusModule
   , functionMap :: M.Map AsteriusEntitySymbol AsteriusFunction
   , functionErrorMap :: M.Map AsteriusEntitySymbol AsteriusCodeGenError
   , ffiMarshalState :: FFIMarshalState
-  } deriving (Eq, Show, Generic, Data)
+  } deriving (Eq, Show, Data)
 
-instance Binary AsteriusModule
+instance Binary AsteriusModule where
+  {-# INLINE put #-}
+  put AsteriusModule {..} =
+    put currentModuleSymbol *> lazyMapPut staticsMap *>
+    lazyMapPut staticsErrorMap *>
+    lazyMapPut functionMap *>
+    lazyMapPut functionErrorMap *>
+    put ffiMarshalState
+  {-# INLINE get #-}
+  get =
+    AsteriusModule <$> get <*> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*>
+    lazyMapGet <*>
+    get
 
 instance Semigroup AsteriusModule where
   AsteriusModule ms0 sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule ms1 sm1 se1 fm1 fe1 mod_ffi_state1 =
@@ -547,7 +561,7 @@ instance Binary FFIExportDecl
 data FFIMarshalState = FFIMarshalState
   { ffiImportDecls :: M.Map AsteriusModuleSymbol (IM.IntMap FFIImportDecl)
   , ffiExportDecls :: M.Map AsteriusModuleSymbol (M.Map AsteriusEntitySymbol FFIExportDecl)
-  } deriving (Eq, Show, Generic, Data)
+  } deriving (Eq, Show, Data)
 
 instance Semigroup FFIMarshalState where
   s0 <> s1 =
@@ -559,4 +573,9 @@ instance Semigroup FFIMarshalState where
 instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
 
-instance Binary FFIMarshalState
+instance Binary FFIMarshalState where
+  {-# INLINE put #-}
+  put FFIMarshalState {..} =
+    lazyMapPut ffiImportDecls *> lazyMapPut ffiExportDecls
+  {-# INLINE get #-}
+  get = FFIMarshalState <$> lazyMapGet <*> lazyMapGet
