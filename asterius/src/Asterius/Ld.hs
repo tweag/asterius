@@ -13,10 +13,8 @@ import Asterius.Ar
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Resolve
-import Asterius.Store
 import Asterius.Types
 import Data.Either
-import Data.Foldable
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Data.Traversable
@@ -29,15 +27,13 @@ data LinkTask = LinkTask
   , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
   } deriving (Show)
 
-loadTheWorld :: BuiltinsOptions -> LinkTask -> IO AsteriusStore
+loadTheWorld :: BuiltinsOptions -> LinkTask -> IO AsteriusModule
 loadTheWorld builtins_opts LinkTask {..} = do
   lib <- mconcat <$> for linkLibs loadAr
   objrs <- for linkObjs tryDecodeFile
   let objs = rights objrs
-      builtins_store = builtinsStore builtins_opts
-  pure $
-    builtins_store <>
-    foldl' (\s m -> addModule (currentModuleSymbol m) m s) lib objs
+      builtins_mod = rtsAsteriusModule builtins_opts
+  pure $ mconcat objs <> builtins_mod <> lib
 
 rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
