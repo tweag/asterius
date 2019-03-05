@@ -24,7 +24,6 @@ import Control.Monad.State.Strict
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Data (Data)
-import Data.Either
 import Data.Foldable
 import Data.List
 import qualified Data.Map.Lazy as LM
@@ -91,51 +90,55 @@ mergeSymbols debug AsteriusModule {..} root_syms =
   (final_m, final_rep {bundledFFIMarshalState = ffiMarshalState})
   where
     (_, final_rep, final_m) = go (root_syms, mempty, mempty)
-    go i@(i_staging_syms, _, _) =
-      let o = iter i
-       in if S.null i_staging_syms
-            then o
-            else go o
+    go i@(i_staging_syms, _, _)
+      | S.null i_staging_syms = i
+      | otherwise = go $ iter i
     iter (i_staging_syms, i_rep, i_m) =
       let (i_unavailable_syms, i_sym_modlets) =
-            partitionEithers $
-            flip map (S.toList i_staging_syms) $ \i_staging_sym ->
-              case LM.lookup i_staging_sym staticsMap of
-                Just ss ->
-                  Right
-                    ( i_staging_sym
-                    , mempty {staticsMap = LM.fromList [(i_staging_sym, ss)]})
-                _ ->
-                  case LM.lookup i_staging_sym functionMap of
-                    Just func ->
-                      Right
-                        ( i_staging_sym
-                        , mempty {functionMap = LM.singleton i_staging_sym func})
-                    _
-                      | LM.member i_staging_sym functionErrorMap ->
-                        Right
-                          ( i_staging_sym
-                          , mempty
-                              { functionMap =
-                                  LM.fromList
-                                    [ ( i_staging_sym
-                                      , AsteriusFunction
-                                          { functionType =
-                                              FunctionType
-                                                { paramTypes = []
-                                                , returnTypes = [I64]
-                                                }
-                                          , body =
-                                              emitErrorMessage [I64] $
-                                              entityName i_staging_sym <>
-                                              " failed: it was marked as broken by code generator, with error message: " <>
-                                              showSBS
-                                                (functionErrorMap !
-                                                 i_staging_sym)
-                                          })
-                                    ]
-                              })
-                      | otherwise -> Left i_staging_sym
+            S.foldr'
+              (\i_staging_sym (i_unavailable_syms_acc, i_sym_modlets_acc) ->
+                 case LM.lookup i_staging_sym staticsMap of
+                   Just ss ->
+                     ( i_unavailable_syms_acc
+                     , ( i_staging_sym
+                       , mempty {staticsMap = LM.singleton i_staging_sym ss}) :
+                       i_sym_modlets_acc)
+                   _ ->
+                     case LM.lookup i_staging_sym functionMap of
+                       Just func ->
+                         ( i_unavailable_syms_acc
+                         , ( i_staging_sym
+                           , mempty
+                               {functionMap = LM.singleton i_staging_sym func}) :
+                           i_sym_modlets_acc)
+                       _
+                         | LM.member i_staging_sym functionErrorMap ->
+                           ( i_unavailable_syms_acc
+                           , ( i_staging_sym
+                             , mempty
+                                 { functionMap =
+                                     LM.singleton
+                                       i_staging_sym
+                                       AsteriusFunction
+                                         { functionType =
+                                             FunctionType
+                                               { paramTypes = []
+                                               , returnTypes = [I64]
+                                               }
+                                         , body =
+                                             emitErrorMessage [I64] $
+                                             entityName i_staging_sym <>
+                                             " failed: it was marked as broken by code generator, with error message: " <>
+                                             showSBS
+                                               (functionErrorMap ! i_staging_sym)
+                                         }
+                                 }) :
+                             i_sym_modlets_acc)
+                         | otherwise ->
+                           ( i_staging_sym : i_unavailable_syms_acc
+                           , i_sym_modlets_acc))
+              ([], [])
+              i_staging_syms
           i_child_map =
             LM.fromList
               [ ( i_staging_sym
