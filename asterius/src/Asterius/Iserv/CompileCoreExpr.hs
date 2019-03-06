@@ -42,7 +42,9 @@ compileCoreExpr us_ref hsc_env src_span ds_expr = do
   prepd_expr <- GHC.corePrepExpr dflags hsc_env tidy_expr
   u <- atomicModifyIORef' us_ref $ swap . GHC.takeUniqFromSupply
   let this_mod =
-        GHC.mkModule (GHC.stringToUnitId "asdf") (GHC.mkModuleName "ASDF")
+        GHC.mkModule
+          (GHC.stringToUnitId "asdf")
+          (GHC.mkModuleName $ "ASDF" <> show u)
       occ_n = GHC.mkVarOcc "asdf"
       n = GHC.mkExternalName u this_mod occ_n src_span
       b = GHC.mkVanillaGlobal n (GHC.exprType ds_expr)
