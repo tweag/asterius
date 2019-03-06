@@ -28,10 +28,11 @@ frontendPlugin =
   liftIO $ do
     is_debug <- isJust <$> getEnv "ASTERIUS_DEBUG"
     get_ffi_mod_ref <- newIORef $ error "get_ffi_mod_ref not initialized"
+    us_ref <- GHC.mkSplitUniqSupply 'A' >>= newIORef
     (c, get_ffi_mod) <-
       addFFIProcessor
         mempty
-          { compileCoreExpr = Just Iserv.compileCoreExpr
+          { compileCoreExpr = Just $ Iserv.compileCoreExpr us_ref
           , withHaskellIR =
               \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
                 dflags <- GHC.getDynFlags
