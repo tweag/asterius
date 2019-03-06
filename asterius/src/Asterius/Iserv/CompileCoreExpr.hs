@@ -2,8 +2,10 @@ module Asterius.Iserv.CompileCoreExpr
   ( compileCoreExpr
   ) where
 
+import Asterius.CodeGen
 import Asterius.Iserv.Trace
 import qualified CmmInfo as GHC
+import Control.Exception
 import qualified CorePrep as GHC
 import qualified CoreSyn as GHC
 import qualified CoreTidy as GHC
@@ -56,5 +58,8 @@ compileCoreExpr us_ref hsc_env src_span ds_expr = do
       stg_binds2
       (GHC.emptyHpcInfo False)
   raw_cmms <- GHC.cmmToRawCmm dflags (Just this_mod) cmms >>= Stream.collect
-  trace True $ show raw_cmms
+  m <-
+    either throwIO pure $
+    runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
+  trace True $ show m
   GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
