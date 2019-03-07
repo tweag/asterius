@@ -41,6 +41,7 @@ import Text.Parsec (anyChar, char, digit, parse, try)
 import Text.Parsec.String (Parser)
 import Type.Reflection
 import qualified TysPrim as GHC
+import qualified Unique as GHC
 
 parseField :: Parser a -> Parser (Chunk a)
 parseField f = do
@@ -233,10 +234,14 @@ recoverWasmWrapperFunctionName :: AsteriusModuleSymbol -> Int -> String
 recoverWasmWrapperFunctionName mod_sym k =
   recoverWasmImportFunctionName mod_sym k <> "_wrapper"
 
-processFFI :: Data a => AsteriusModuleSymbol -> a -> State FFIMarshalState a
+processFFI ::
+     Data a
+  => AsteriusModuleSymbol
+  -> a
+  -> State (FFIMarshalState, GHC.UniqSupply) a
 processFFI mod_sym = w
   where
-    w :: Data a => a -> State FFIMarshalState a
+    w :: Data a => a -> State (FFIMarshalState, GHC.UniqSupply) a
     w t =
       case eqTypeRep (typeOf t) (typeRep :: TypeRep (GHC.ForeignDecl GHC.GhcPs)) of
         Just HRefl ->
@@ -244,11 +249,14 @@ processFFI mod_sym = w
             GHC.ForeignImport { GHC.fd_fi = GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) _ _ _ loc_src
                               , ..
                               } -> do
-              old_state@FFIMarshalState {..} <- get
+              (old_state@FFIMarshalState {..}, old_us) <- get
               let old_decls = ffiImportDecls ! mod_sym
-                  new_k = maybe 0 (succ . fst) $ IM.lookupMax old_decls
+                  (u, new_us) = GHC.takeUniqFromSupply old_us
+                  new_k = GHC.getKey u
                   new_decls = IM.insert new_k new_decl old_decls
-              put $ old_state {ffiImportDecls = M.singleton mod_sym new_decls}
+              put
+                ( old_state {ffiImportDecls = M.singleton mod_sym new_decls}
+                , new_us)
               pure
                 t
                   { GHC.fd_fi =
@@ -275,7 +283,7 @@ processFFI mod_sym = w
             GHC.ForeignExport { GHC.fd_fe = GHC.CExport (GHC.unLoc -> GHC.CExportStatic src_txt lbl GHC.JavaScriptCallConv) loc_src
                               , ..
                               } -> do
-              old_state@FFIMarshalState {..} <- get
+              (old_state@FFIMarshalState {..}, old_us) <- get
               let old_decls = ffiExportDecls ! mod_sym
                   Just ffi_ftype =
                     marshalToFFIFunctionType $ GHC.hsImplicitBody fd_sig_ty
@@ -286,7 +294,9 @@ processFFI mod_sym = w
                       FFIExportDecl
                         {ffiFunctionType = ffi_ftype, ffiExportClosure = ""}
                       old_decls
-              put $ old_state {ffiExportDecls = M.singleton mod_sym new_decls}
+              put
+                ( old_state {ffiExportDecls = M.singleton mod_sym new_decls}
+                , old_us)
               pure
                 t
                   { GHC.fd_fe =
@@ -302,25 +312,29 @@ collectFFISrc ::
   => AsteriusModuleSymbol
   -> GHC.HsParsedModule
   -> FFIMarshalState
-  -> m (GHC.HsParsedModule, FFIMarshalState)
-collectFFISrc mod_sym m ffi_state = pure (m {GHC.hpm_module = new_m}, st)
+  -> GHC.UniqSupply
+  -> m (GHC.HsParsedModule, FFIMarshalState, GHC.UniqSupply)
+collectFFISrc mod_sym m ffi_state old_us =
+  pure (m {GHC.hpm_module = new_m}, st, new_us)
   where
-    (new_m, st) = runState (processFFI mod_sym (GHC.hpm_module m)) ffi_state
+    (new_m, (st, new_us)) =
+      runState (processFFI mod_sym (GHC.hpm_module m)) (ffi_state, old_us)
 
 addFFIProcessor ::
      Compiler
   -> IO (Compiler, AsteriusModuleSymbol -> Prelude.IO AsteriusModule)
 addFFIProcessor c = do
-  ffi_states_ref <- newIORef mempty
+  us <- GHC.mkSplitUniqSupply 'J'
+  ffi_states_ref <- newIORef (mempty, us)
   pure
     ( c
         { patchParsed =
             \mod_summary parsed_mod -> do
               patched_mod <-
                 liftIO $
-                atomicModifyIORef' ffi_states_ref $ \ffi_states ->
+                atomicModifyIORef' ffi_states_ref $ \(ffi_states, old_us) ->
                   let mod_sym = marshalToModuleSymbol $ GHC.ms_mod mod_summary
-                      (patched_mod, ffi_state) =
+                      (patched_mod, ffi_state, new_us) =
                         runIdentity $
                         collectFFISrc
                           mod_sym
@@ -329,7 +343,9 @@ addFFIProcessor c = do
                             { ffiImportDecls = M.insert mod_sym mempty mempty
                             , ffiExportDecls = M.insert mod_sym mempty mempty
                             }
-                   in (M.insert mod_sym ffi_state ffi_states, patched_mod)
+                          old_us
+                   in ( (M.insert mod_sym ffi_state ffi_states, new_us)
+                      , patched_mod)
               patchParsed c mod_summary patched_mod
         , patchTypechecked =
             \mod_summary tc_mod -> do
@@ -366,23 +382,24 @@ addFFIProcessor c = do
                     where
                       go = mconcat $ gmapQ f t
               liftIO $
-                atomicModifyIORef' ffi_states_ref $ \ffi_state ->
-                  ( M.adjust
-                      (\s ->
-                         s
-                           { ffiExportDecls =
-                               M.adjust
-                                 (appEndo $ f $ GHC.tcg_fords tc_mod)
-                                 mod_sym $
-                               ffiExportDecls s
-                           })
-                      mod_sym
-                      ffi_state
+                atomicModifyIORef' ffi_states_ref $ \(ffi_state, old_us) ->
+                  ( ( M.adjust
+                        (\s ->
+                           s
+                             { ffiExportDecls =
+                                 M.adjust
+                                   (appEndo $ f $ GHC.tcg_fords tc_mod)
+                                   mod_sym $
+                                 ffiExportDecls s
+                             })
+                        mod_sym
+                        ffi_state
+                    , old_us)
                   , tc_mod)
         }
     , \mod_sym ->
-        atomicModifyIORef' ffi_states_ref $ \ffi_states ->
-          ( M.delete mod_sym ffi_states
+        atomicModifyIORef' ffi_states_ref $ \(ffi_states, old_us) ->
+          ( (M.delete mod_sym ffi_states, old_us)
           , generateFFIWrapperModule $ ffi_states ! mod_sym))
 
 generateImplicitCastExpression ::
