@@ -51,7 +51,6 @@ import Control.Exception
 import Data.Binary
 import qualified Data.ByteString.Short as SBS
 import Data.Data
-import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Lazy as LM
 import Data.String
 import Foreign
@@ -532,7 +531,7 @@ data FFIExportDecl = FFIExportDecl
 instance Binary FFIExportDecl
 
 data FFIMarshalState = FFIMarshalState
-  { ffiImportDecls :: LM.Map AsteriusModuleSymbol (IM.IntMap FFIImportDecl)
+  { ffiImportDecls :: LM.Map (AsteriusModuleSymbol, Int) FFIImportDecl
   , ffiExportDecls :: LM.Map AsteriusModuleSymbol (LM.Map AsteriusEntitySymbol FFIExportDecl)
   } deriving (Eq, Show, Data)
 

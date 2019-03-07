@@ -24,7 +24,6 @@ import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapM, gmapQ)
 import Data.Functor.Identity
 import Data.IORef
-import qualified Data.IntMap.Strict as IM
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Monoid
@@ -250,12 +249,13 @@ processFFI mod_sym = w
                               , ..
                               } -> do
               (old_state@FFIMarshalState {..}, old_us) <- get
-              let old_decls = ffiImportDecls ! mod_sym
-                  (u, new_us) = GHC.takeUniqFromSupply old_us
+              let (u, new_us) = GHC.takeUniqFromSupply old_us
                   new_k = GHC.getKey u
-                  new_decls = IM.insert new_k new_decl old_decls
               put
-                ( old_state {ffiImportDecls = M.singleton mod_sym new_decls}
+                ( old_state
+                    { ffiImportDecls =
+                        M.insert (mod_sym, new_k) new_decl ffiImportDecls
+                    }
                 , new_us)
               pure
                 t
@@ -340,7 +340,7 @@ addFFIProcessor c = do
                           mod_sym
                           parsed_mod
                           FFIMarshalState
-                            { ffiImportDecls = M.insert mod_sym mempty mempty
+                            { ffiImportDecls = M.empty
                             , ffiExportDecls = M.insert mod_sym mempty mempty
                             }
                           old_us
@@ -572,8 +572,7 @@ generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =
   where
     import_wrapper_funcs =
       [ (mk, k, generateFFIImportWrapperFunction mk k ffi_decl)
-      | (mk, mod_ffi_decls) <- M.toList ffiImportDecls
-      , (k, ffi_decl) <- IM.toList mod_ffi_decls
+      | ((mk, k), ffi_decl) <- M.toList ffiImportDecls
       ]
     export_funcs =
       [ (k, generateFFIExportFunction ffi_decl)
@@ -595,8 +594,7 @@ generateFFIFunctionImports FFIMarshalState {..} =
     , externalBaseName = fn
     , functionType = recoverWasmImportFunctionType ffiFunctionType
     }
-  | (mk, mod_ffi_decls) <- M.toList ffiImportDecls
-  , (k, FFIImportDecl {..}) <- IM.toList mod_ffi_decls
+  | ((mk, k), FFIImportDecl {..}) <- M.toList ffiImportDecls
   , let fn = fromString $ recoverWasmImportFunctionName mk k
   ]
 
@@ -627,7 +625,6 @@ generateFFIImportObjectFactory FFIMarshalState {..} =
        ","
        [ string7 (recoverWasmImportFunctionName mk k) <> ":" <>
        generateFFILambda ffi_decl
-       | (mk, mod_ffi_decls) <- M.toList ffiImportDecls
-       , (k, ffi_decl) <- IM.toList mod_ffi_decls
+       | ((mk, k), ffi_decl) <- M.toList ffiImportDecls
        ]) <>
   "}})"
