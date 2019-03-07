@@ -18,7 +18,7 @@ type UnsafeAsteriusModule
      , Map AsteriusEntitySymbol LBS.ByteString
      , Map AsteriusEntitySymbol LBS.ByteString
      , Map AsteriusEntitySymbol LBS.ByteString
-     , Map AsteriusModuleSymbol LBS.ByteString
+     , Map (AsteriusModuleSymbol, Int) LBS.ByteString
      , Map AsteriusModuleSymbol LBS.ByteString)
 
 appendUnsafeAsteriusModule ::
