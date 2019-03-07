@@ -148,7 +148,7 @@ instance Binary AsteriusModuleSymbol
 
 newtype AsteriusEntitySymbol = AsteriusEntitySymbol
   { entityName :: SBS.ShortByteString
-  } deriving (Eq, Ord, IsString, Binary)
+  } deriving (Eq, Ord, IsString, Binary, Semigroup)
 
 deriving newtype instance Show AsteriusEntitySymbol
 
@@ -531,7 +531,7 @@ data FFIExportDecl = FFIExportDecl
 instance Binary FFIExportDecl
 
 data FFIMarshalState = FFIMarshalState
-  { ffiImportDecls :: LM.Map (AsteriusModuleSymbol, Int) FFIImportDecl
+  { ffiImportDecls :: LM.Map AsteriusEntitySymbol FFIImportDecl
   , ffiExportDecls :: LM.Map AsteriusModuleSymbol (LM.Map AsteriusEntitySymbol FFIExportDecl)
   } deriving (Eq, Show, Data)
 
