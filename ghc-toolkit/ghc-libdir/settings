@@ -19,7 +19,7 @@
  ("dllwrap command", "/bin/false"),
  ("windres command", "/bin/false"),
  ("libtool command", "libtool"),
- ("perl command", "/usr/bin/perl"),
+ ("perl command", "@SettingsPerlCommand@"),
  ("cross compiling", "NO"),
  ("target os", "OSLinux"),
  ("target arch", "ArchX86_64"),
