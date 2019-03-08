@@ -100,6 +100,8 @@ void PassRegistry::registerPasses() {
   registerPass("minify-imports-and-exports", "minifies both import and export names, and emits a mapping to the minified ones", createMinifyImportsAndExportsPass);
   registerPass("nm", "name list", createNameListPass);
   registerPass("no-exit-runtime", "removes calls to atexit(), which is valid if the C runtime will never be exited", createNoExitRuntimePass);
+  registerPass("optimize-added-constants", "optimizes added constants into load/store offsets", createOptimizeAddedConstantsPass);
+  registerPass("optimize-added-constants-propagate", "optimizes added constants into load/store offsets, propagating them across locals too", createOptimizeAddedConstantsPropagatePass);
   registerPass("optimize-instructions", "optimizes instruction combinations", createOptimizeInstructionsPass);
   registerPass("optimize-stack-ir", "optimize Stack IR", createOptimizeStackIRPass);
   registerPass("pick-load-signs", "pick load signs based on their uses", createPickLoadSignsPass);
@@ -156,9 +158,7 @@ void PassRunner::addDefaultFunctionOptimizationPasses() {
     add("flatten");
     add("local-cse");
   }
-  if (!options.debugInfo) { // debug info must be preserved, do not dce it
-    add("dce");
-  }
+  add("dce");
   add("remove-unused-brs");
   add("remove-unused-names");
   add("optimize-instructions");
@@ -170,6 +170,13 @@ void PassRunner::addDefaultFunctionOptimizationPasses() {
     add("precompute-propagate");
   } else {
     add("precompute");
+  }
+  if (options.lowMemoryUnused) {
+    if (options.optimizeLevel >= 3 || options.shrinkLevel >= 1) {
+      add("optimize-added-constants-propagate");
+    } else {
+      add("optimize-added-constants");
+    }
   }
   if (options.optimizeLevel >= 2 || options.shrinkLevel >= 2) {
     add("code-pushing");
@@ -214,13 +221,12 @@ void PassRunner::addDefaultGlobalOptimizationPrePasses() {
 }
 
 void PassRunner::addDefaultGlobalOptimizationPostPasses() {
+  // inlining/dae+optimizing can remove debug annotations
   if (options.optimizeLevel >= 2 || options.shrinkLevel >= 1) {
     add("dae-optimizing");
   }
   // inline when working hard, and when not preserving debug info
-  // (inlining+optimizing can remove the annotations)
-  if ((options.optimizeLevel >= 2 || options.shrinkLevel >= 2) &&
-      !options.debugInfo) {
+  if (options.optimizeLevel >= 2 || options.shrinkLevel >= 2) {
     add("inlining-optimizing");
   }
   add("duplicate-function-elimination"); // optimizations show more functions as duplicate

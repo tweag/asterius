@@ -98,12 +98,6 @@ struct Address {
   Address& operator++() { ++addr; return *this; }
 };
 
-// An offset into memory
-typedef int32_t Offset;
-
-// Types
-
-
 // Operators
 
 enum UnaryOp {
@@ -625,7 +619,7 @@ class MemoryInit : public SpecificExpression<Expression::MemoryInitId> {
   MemoryInit() = default;
   MemoryInit(MixedArena& allocator) : MemoryInit() {}
 
-  uint32_t segment;
+  Index segment;
   Expression* dest;
   Expression* offset;
   Expression* size;
@@ -638,7 +632,7 @@ class DataDrop : public SpecificExpression<Expression::DataDropId> {
   DataDrop() = default;
   DataDrop(MixedArena& allocator) : DataDrop() {}
 
-  uint32_t segment;
+  Index segment;
 
   void finalize();
 };
@@ -977,6 +971,7 @@ public:
   FunctionType* addFunctionType(std::unique_ptr<FunctionType> curr);
   void addExport(Export* curr);
   void addFunction(Function* curr);
+  void addFunction(std::unique_ptr<Function> curr);
   void addGlobal(Global* curr);
 
   void addStart(const Name& s);
