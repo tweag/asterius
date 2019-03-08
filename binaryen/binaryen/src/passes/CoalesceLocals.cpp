@@ -75,6 +75,10 @@ struct CoalesceLocals : public WalkerPass<LivenessWalker<CoalesceLocals, Visitor
     interferences[low * numLocals + high] = 1;
   }
 
+  void unInterfere(Index i, Index j) {
+    interferences[std::min(i, j) * numLocals + std::max(i, j)] = 0;
+  }
+
   bool interferes(Index i, Index j) {
     return interferences[std::min(i, j) * numLocals + std::max(i, j)];
   }
@@ -277,11 +281,6 @@ void CoalesceLocals::pickIndices(std::vector<Index>& indices) {
   if (numLocals == 0) return;
   if (numLocals == 1) {
     indices.push_back(0);
-    return;
-  }
-  if (getFunction()->getNumVars() <= 1) {
-    // nothing to think about here, since we can't reorder params
-    indices = makeIdentity(numLocals);
     return;
   }
   // take into account total copies. but we must keep params in place, so give them max priority
