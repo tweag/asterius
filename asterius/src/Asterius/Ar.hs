@@ -16,5 +16,5 @@ import Prelude hiding (IO)
 loadAr :: FilePath -> IO AsteriusModule
 loadAr p = do
   GHC.Archive entries <- GHC.loadAr p
-  let Just mod_entry = find (("MODULE" `isPrefixOf`) . GHC.filename) entries
+  let Just mod_entry = find (("MODULE" ==) . GHC.filename) entries
   pure $ decode $ LBS.fromStrict $ GHC.filedata mod_entry

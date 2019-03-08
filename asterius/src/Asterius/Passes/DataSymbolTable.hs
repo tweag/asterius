@@ -78,7 +78,15 @@ makeMemory AsteriusModule {..} sym_map last_addr =
                    in case static of
                         SymbolStatic sym o ->
                           flush_static_segs $
-                          encodeStorable $ sym_map ! sym + fromIntegral o
+                          encodeStorable $
+                          case Map.lookup sym sym_map of
+                            Just addr -> addr + fromIntegral o
+                            _ ->
+                              error $
+                              "Asterius.Passes.DataSymbolTable.makeMemory: unfound " <>
+                              show sym <>
+                              " in " <>
+                              show statics_sym
                         Uninitialized l ->
                           (static_segs, static_tail_addr - fromIntegral l)
                         Serialized buf -> flush_static_segs buf)

@@ -281,18 +281,9 @@ genPinnedStaticClosures ::
 genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
   "new Set(" <>
   string7
-    (show (map ((sym_map !) . ffiExportClosure . (export_decls !)) export_funcs)) <>
+    (show
+       (map ((sym_map !) . ffiExportClosure . (ffiExportDecls !)) export_funcs)) <>
   ")"
-  where
-    export_decls =
-      M.foldl'
-        (M.unionWithKey
-           (\k _ _ ->
-              error $
-              "Asterius.Main.genPinnedStaticClosures: conflicted export function " <>
-              show k))
-        M.empty
-        ffiExportDecls
 
 genWasm :: Task -> LBS.ByteString -> Builder
 genWasm Task {..} _ =
