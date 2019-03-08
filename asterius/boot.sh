@@ -92,4 +92,10 @@ $ASTERIUS_TMP_DIR/Setup-simple build --builddir=$ASTERIUS_TMP_DIR/dist/xhtml $AS
 $ASTERIUS_TMP_DIR/Setup-simple install --builddir=$ASTERIUS_TMP_DIR/dist/xhtml $ASTERIUS_INSTALL_OPTIONS
 cd ..
 
+cd filepath
+$ASTERIUS_TMP_DIR/Setup-simple configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/filepath --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AHCAR $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_TMP_DIR/Setup-simple build --builddir=$ASTERIUS_TMP_DIR/dist/filepath $ASTERIUS_BUILD_OPTIONS
+$ASTERIUS_TMP_DIR/Setup-simple install --builddir=$ASTERIUS_TMP_DIR/dist/filepath $ASTERIUS_INSTALL_OPTIONS
+cd ..
+
 cd ..
