@@ -86,70 +86,78 @@ mergeSymbols ::
   -> S.Set AsteriusEntitySymbol
   -> (AsteriusModule, LinkReport)
 mergeSymbols debug store_mod root_syms =
-  (final_m, final_rep {bundledFFIMarshalState = ffiMarshalState store_mod})
+  (final_m, final_rep {bundledFFIMarshalState = ffi_this})
   where
+    ffi_all = ffiMarshalState store_mod
+    ffi_this =
+      ffi_all
+        { ffiImportDecls =
+            flip LM.filterWithKey (ffiImportDecls ffi_all) $ \k _ ->
+              (k <> "_wrapper") `LM.member` functionMap final_m
+        }
     (_, _, final_rep, final_m) = go (root_syms, S.empty, mempty, mempty)
     go i@(i_staging_syms, _, _, _)
       | S.null i_staging_syms = i
       | otherwise = go $ iter i
     iter (i_staging_syms, i_acc_syms, i_rep, i_m) =
-      let o_acc_syms = i_staging_syms <> i_acc_syms
-          (o_unavailable_syms, i_child_syms, o_m) =
-            S.foldr'
-              (\i_staging_sym (i_unavailable_syms_acc, i_child_syms_acc, o_m_acc) ->
-                 case LM.lookup i_staging_sym (staticsMap store_mod) of
-                   Just ss ->
-                     ( i_unavailable_syms_acc
-                     , collectAsteriusEntitySymbols ss i_child_syms_acc
-                     , o_m_acc
-                         { staticsMap =
-                             LM.insert i_staging_sym ss (staticsMap o_m_acc)
-                         })
-                   _ ->
-                     case LM.lookup i_staging_sym (functionMap store_mod) of
-                       Just func ->
+      (o_staging_syms, o_acc_syms, o_rep, o_m)
+      where
+        o_acc_syms = i_staging_syms <> i_acc_syms
+        (o_unavailable_syms, i_child_syms, o_m) =
+          S.foldr'
+            (\i_staging_sym (i_unavailable_syms_acc, i_child_syms_acc, o_m_acc) ->
+               case LM.lookup i_staging_sym (staticsMap store_mod) of
+                 Just ss ->
+                   ( i_unavailable_syms_acc
+                   , collectAsteriusEntitySymbols ss i_child_syms_acc
+                   , o_m_acc
+                       { staticsMap =
+                           LM.insert i_staging_sym ss (staticsMap o_m_acc)
+                       })
+                 _ ->
+                   case LM.lookup i_staging_sym (functionMap store_mod) of
+                     Just func ->
+                       ( i_unavailable_syms_acc
+                       , collectAsteriusEntitySymbols func i_child_syms_acc
+                       , o_m_acc
+                           { functionMap =
+                               LM.insert
+                                 i_staging_sym
+                                 func
+                                 (functionMap o_m_acc)
+                           })
+                     _
+                       | LM.member i_staging_sym (functionErrorMap store_mod) ->
                          ( i_unavailable_syms_acc
-                         , collectAsteriusEntitySymbols func i_child_syms_acc
+                         , i_child_syms_acc
                          , o_m_acc
                              { functionMap =
                                  LM.insert
                                    i_staging_sym
-                                   func
+                                   AsteriusFunction
+                                     { functionType =
+                                         FunctionType
+                                           { paramTypes = []
+                                           , returnTypes = [I64]
+                                           }
+                                     , body =
+                                         emitErrorMessage [I64] $
+                                         entityName i_staging_sym <>
+                                         " failed: it was marked as broken by code generator, with error message: " <>
+                                         showSBS
+                                           (functionErrorMap store_mod !
+                                            i_staging_sym)
+                                     }
                                    (functionMap o_m_acc)
                              })
-                       _
-                         | LM.member i_staging_sym (functionErrorMap store_mod) ->
-                           ( i_unavailable_syms_acc
-                           , i_child_syms_acc
-                           , o_m_acc
-                               { functionMap =
-                                   LM.insert
-                                     i_staging_sym
-                                     AsteriusFunction
-                                       { functionType =
-                                           FunctionType
-                                             { paramTypes = []
-                                             , returnTypes = [I64]
-                                             }
-                                       , body =
-                                           emitErrorMessage [I64] $
-                                           entityName i_staging_sym <>
-                                           " failed: it was marked as broken by code generator, with error message: " <>
-                                           showSBS
-                                             (functionErrorMap store_mod !
-                                              i_staging_sym)
-                                       }
-                                     (functionMap o_m_acc)
-                               })
-                         | otherwise ->
-                           ( S.insert i_staging_sym i_unavailable_syms_acc
-                           , i_child_syms_acc
-                           , o_m_acc))
-              (unavailableSymbols i_rep, S.empty, i_m)
-              i_staging_syms
-          o_rep = i_rep {unavailableSymbols = o_unavailable_syms}
-          o_staging_syms = i_child_syms `S.difference` o_acc_syms
-       in (o_staging_syms, o_acc_syms, o_rep, o_m)
+                       | otherwise ->
+                         ( S.insert i_staging_sym i_unavailable_syms_acc
+                         , i_child_syms_acc
+                         , o_m_acc))
+            (unavailableSymbols i_rep, S.empty, i_m)
+            i_staging_syms
+        o_rep = i_rep {unavailableSymbols = o_unavailable_syms}
+        o_staging_syms = i_child_syms `S.difference` o_acc_syms
 
 makeInfoTableSet ::
      AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> S.Set Int64
