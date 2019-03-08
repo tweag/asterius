@@ -7,7 +7,17 @@ module Asterius.Passes.MergeSymbolOffset
 
 import Asterius.Internals.SYB
 import Asterius.Types
+import Data.Word
 import Type.Reflection
+
+noNeg :: Expression -> Int -> Word32
+noNeg e n
+  | n >= 0 = fromIntegral n
+  | otherwise =
+    error $
+    "Asterius.Passes.MergeSymbolOffset.noNeg: negative index " <> show n <>
+    " when merging " <>
+    show e
 
 {-# INLINEABLE mergeSymbolOffset #-}
 mergeSymbolOffset :: Monad m => GenericM m
@@ -16,19 +26,23 @@ mergeSymbolOffset t =
   case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
     Just HRefl ->
       case t of
-        Load {ptr = sym@Symbol {..}, ..} ->
+        Load {ptr = Unary {unaryOp = WrapInt64, operand0 = sym@Symbol {..}}, ..} ->
           Load
             { signed = signed
             , bytes = bytes
-            , offset = fromIntegral $ symbolOffset + fromIntegral offset
+            , offset = noNeg t $ symbolOffset + fromIntegral offset
             , valueType = valueType
-            , ptr = sym {symbolOffset = 0}
+            , ptr =
+                Unary {unaryOp = WrapInt64, operand0 = sym {symbolOffset = 0}}
             }
-        Store {ptr = sym@Symbol {..}, ..} ->
+        Store { ptr = Unary {unaryOp = WrapInt64, operand0 = sym@Symbol {..}}
+              , ..
+              } ->
           Store
             { bytes = bytes
-            , offset = fromIntegral $ symbolOffset + fromIntegral offset
-            , ptr = sym {symbolOffset = 0}
+            , offset = noNeg t $ symbolOffset + fromIntegral offset
+            , ptr =
+                Unary {unaryOp = WrapInt64, operand0 = sym {symbolOffset = 0}}
             , value = value
             , valueType = valueType
             }
