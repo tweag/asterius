@@ -93,7 +93,7 @@ mergeSymbols debug store_mod root_syms =
       ffi_all
         { ffiImportDecls =
             flip LM.filterWithKey (ffiImportDecls ffi_all) $ \k _ ->
-              (k <> "_wrapper") `LM.member` functionMap store_mod
+              (k <> "_wrapper") `LM.member` functionMap final_m
         }
     (_, _, final_rep, final_m) = go (root_syms, S.empty, mempty, mempty)
     go i@(i_staging_syms, _, _, _)
