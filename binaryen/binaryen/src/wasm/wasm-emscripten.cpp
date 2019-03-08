@@ -36,8 +36,7 @@ cashew::IString EM_JS_PREFIX("__em_js__");
 static Name STACK_SAVE("stackSave"),
             STACK_RESTORE("stackRestore"),
             STACK_ALLOC("stackAlloc"),
-            STACK_INIT("stack$init"),
-            DUMMY_FUNC("__wasm_nullptr");
+            STACK_INIT("stack$init");
 
 void addExportedFunction(Module& wasm, Function* function) {
   wasm.addFunction(function);
@@ -181,17 +180,20 @@ void EmscriptenGlueGenerator::generateDynCallThunks() {
     tableSegmentData = wasm.table.segments[0].data;
   }
   for (const auto& indirectFunc : tableSegmentData) {
-    if (indirectFunc == DUMMY_FUNC) {
-      continue;
-    }
     std::string sig = getSig(wasm.getFunction(indirectFunc));
     auto* funcType = ensureFunctionType(sig, &wasm);
-    if (!sigs.insert(sig).second) continue; // Sig is already in the set
+    if (!sigs.insert(sig).second) {
+      continue; // sig is already in the set
+    }
+    Name name = std::string("dynCall_") + sig;
+    if (wasm.getFunctionOrNull(name) || wasm.getExportOrNull(name)) {
+      continue; // module already contains this dyncall
+    }
     std::vector<NameType> params;
     params.emplace_back("fptr", i32); // function pointer param
     int p = 0;
     for (const auto& ty : funcType->params) params.emplace_back(std::to_string(p++), ty);
-    Function* f = builder.makeFunction(std::string("dynCall_") + sig, std::move(params), funcType->result, {});
+    Function* f = builder.makeFunction(name, std::move(params), funcType->result, {});
     Expression* fptr = builder.makeGetLocal(0, i32);
     std::vector<Expression*> args;
     for (unsigned i = 0; i < funcType->params.size(); ++i) {

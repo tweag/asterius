@@ -481,6 +481,7 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
   m_bin <-
     if binaryen
       then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+               when debug $ c_BinaryenSetDebugInfo 1
                c_BinaryenSetOptimizeLevel 0
                c_BinaryenSetShrinkLevel 0
                m_ref <-
