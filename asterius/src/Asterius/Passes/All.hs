@@ -10,6 +10,7 @@ import Asterius.Passes.Common
 import Asterius.Passes.Events
 import Asterius.Passes.GlobalRegs
 import Asterius.Passes.LocalRegs
+import Asterius.Passes.MergeSymbolOffset
 import Asterius.Passes.Relooper
 import Asterius.Passes.ResolveSymbols
 import Asterius.Types
@@ -41,4 +42,5 @@ allPasses debug sym_map export_funcs whoami ft event_map t =
       relooperShallow <=<
       resolveLocalRegs ft <=<
       resolveSymbols sym_map <=<
+      mergeSymbolOffset <=<
       maskUnknownCCallTargets whoami export_funcs <=< resolveGlobalRegs
