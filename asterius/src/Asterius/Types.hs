@@ -532,7 +532,7 @@ instance Binary FFIExportDecl
 
 data FFIMarshalState = FFIMarshalState
   { ffiImportDecls :: LM.Map AsteriusEntitySymbol FFIImportDecl
-  , ffiExportDecls :: LM.Map AsteriusModuleSymbol (LM.Map AsteriusEntitySymbol FFIExportDecl)
+  , ffiExportDecls :: LM.Map AsteriusEntitySymbol FFIExportDecl
   } deriving (Eq, Show, Data)
 
 instance Semigroup FFIMarshalState where

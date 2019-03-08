@@ -278,18 +278,18 @@ processFFI mod_sym = w
                               , ..
                               } -> do
               (old_state@FFIMarshalState {..}, old_us) <- get
-              let old_decls = ffiExportDecls ! mod_sym
-                  Just ffi_ftype =
+              let Just ffi_ftype =
                     marshalToFFIFunctionType $ GHC.hsImplicitBody fd_sig_ty
-                  new_decls =
-                    M.insert
-                      AsteriusEntitySymbol
-                        {entityName = SBS.toShort $ GHC.bytesFS lbl}
-                      FFIExportDecl
-                        {ffiFunctionType = ffi_ftype, ffiExportClosure = ""}
-                      old_decls
               put
-                ( old_state {ffiExportDecls = M.singleton mod_sym new_decls}
+                ( old_state
+                    { ffiExportDecls =
+                        M.insert
+                          AsteriusEntitySymbol
+                            {entityName = SBS.toShort $ GHC.bytesFS lbl}
+                          FFIExportDecl
+                            {ffiFunctionType = ffi_ftype, ffiExportClosure = ""}
+                          ffiExportDecls
+                    }
                 , old_us)
               pure
                 t
@@ -334,9 +334,7 @@ addFFIProcessor c = do
                           mod_sym
                           parsed_mod
                           FFIMarshalState
-                            { ffiImportDecls = M.empty
-                            , ffiExportDecls = M.insert mod_sym mempty mempty
-                            }
+                            {ffiImportDecls = M.empty, ffiExportDecls = M.empty}
                           old_us
                    in ( (M.insert mod_sym ffi_state ffi_states, new_us)
                       , patched_mod)
@@ -376,18 +374,17 @@ addFFIProcessor c = do
                     where
                       go = mconcat $ gmapQ f t
               liftIO $
-                atomicModifyIORef' ffi_states_ref $ \(ffi_state, old_us) ->
+                atomicModifyIORef' ffi_states_ref $ \(ffi_states, old_us) ->
                   ( ( M.adjust
-                        (\s ->
-                           s
+                        (\ffi_state ->
+                           ffi_state
                              { ffiExportDecls =
-                                 M.adjust
-                                   (appEndo $ f $ GHC.tcg_fords tc_mod)
-                                   mod_sym $
-                                 ffiExportDecls s
+                                 appEndo
+                                   (f $ GHC.tcg_fords tc_mod)
+                                   (ffiExportDecls ffi_state)
                              })
                         mod_sym
-                        ffi_state
+                        ffi_states
                     , old_us)
                   , tc_mod)
         }
@@ -570,8 +567,7 @@ generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =
       ]
     export_funcs =
       [ (k, generateFFIExportFunction ffi_decl)
-      | mod_ffi_decls <- M.elems ffiExportDecls
-      , (k, ffi_decl) <- M.toList mod_ffi_decls
+      | (k, ffi_decl) <- M.toList ffiExportDecls
       ]
     export_wrapper_funcs =
       [ ( AsteriusEntitySymbol
