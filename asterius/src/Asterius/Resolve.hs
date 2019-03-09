@@ -171,19 +171,19 @@ resolveAsteriusModule ::
   -> FFIMarshalState
   -> [AsteriusEntitySymbol]
   -> AsteriusModule
+  -> Int64
+  -> Int64
   -> m ( Module
        , LM.Map AsteriusEntitySymbol Int64
        , LM.Map AsteriusEntitySymbol Int64
        , [Event]
        , Int)
-resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = do
+resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr = do
   let (func_sym_map, _) =
-        makeFunctionSymbolTable
-          m_globals_resolved
-          (1 .|. functionTag `shiftL` 32)
+        makeFunctionSymbolTable m_globals_resolved func_start_addr
       func_table = makeFunctionTable func_sym_map
       (ss_sym_map, last_addr) =
-        makeDataSymbolTable m_globals_resolved (dataTag `shiftL` 32)
+        makeDataSymbolTable m_globals_resolved data_start_addr
       all_sym_map = func_sym_map <> ss_sym_map
   let func_imports =
         rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
@@ -256,6 +256,8 @@ linkStart debug store root_syms export_funcs = do
       (bundledFFIMarshalState report)
       export_funcs
       merged_m
+      (1 .|. functionTag `shiftL` 32)
+      (dataTag `shiftL` 32)
   pure
     ( result_m
     , err_msgs
