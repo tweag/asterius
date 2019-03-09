@@ -59,17 +59,17 @@ rtsUsedSymbols =
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
   final_store <- loadTheWorld defaultBuiltinsOptions ld_task
-  ld_result <-
-    linkStart
-      debug
-      final_store
-      (Set.unions
-         [ Set.fromList rootSymbols
-         , rtsUsedSymbols
-         , Set.fromList
-             [ AsteriusEntitySymbol {entityName = internalName}
-             | FunctionExport {..} <- rtsAsteriusFunctionExports debug
-             ]
-         ])
-      exportFunctions
+  let ld_result =
+        linkStart
+          debug
+          final_store
+          (Set.unions
+             [ Set.fromList rootSymbols
+             , rtsUsedSymbols
+             , Set.fromList
+                 [ AsteriusEntitySymbol {entityName = internalName}
+                 | FunctionExport {..} <- rtsAsteriusFunctionExports debug
+                 ]
+             ])
+          exportFunctions
   encodeFile linkOutput ld_result
