@@ -112,4 +112,11 @@ $ASTERIUS_TMP_DIR/Setup-autoconf build --builddir=$ASTERIUS_TMP_DIR/dist/unix $A
 $ASTERIUS_TMP_DIR/Setup-autoconf install --builddir=$ASTERIUS_TMP_DIR/dist/unix $ASTERIUS_INSTALL_OPTIONS
 cd ..
 
+cd directory
+autoreconf -i
+$ASTERIUS_TMP_DIR/Setup-autoconf configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/directory --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AHCAR $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_TMP_DIR/Setup-autoconf build --builddir=$ASTERIUS_TMP_DIR/dist/directory $ASTERIUS_BUILD_OPTIONS
+$ASTERIUS_TMP_DIR/Setup-autoconf install --builddir=$ASTERIUS_TMP_DIR/dist/directory $ASTERIUS_INSTALL_OPTIONS
+cd ..
+
 cd ..
