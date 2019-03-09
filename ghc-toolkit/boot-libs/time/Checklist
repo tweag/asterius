@@ -1,0 +1,95 @@
+Before release:
+
+1. Check milestone is complete
+
+    https://github.com/haskell/time/milestones
+
+2. Pull upstream changes
+
+    git checkout master
+    git pull
+
+3. Update version numbers
+
+    https://pvp.haskell.org/
+    time.cabal
+    configure.ac
+
+4. Update changelog
+
+    changelog.md
+
+5. Use latest LTS resolver
+
+    https://www.stackage.org/lts
+    stack.yaml
+    fullcheck
+    (not necessarily benchmark/stack.yaml)
+    .travis.yml (if present)
+
+6. Use latest stack
+
+    stack upgrade
+    stack --version
+
+7. Build & test
+
+    ./fullcheck
+
+8. Build benchmark
+
+    cd benchmark
+    stack build
+        (ignore missing modules warning)
+    stack exec -- time-bench
+
+9. Inspect generated haddock
+
+    .stack-work/install/[PLATFORM]/[RESOLVER]/[COMPILER]/doc/index.html
+
+10. Commit and push changes to repo
+
+    git commit -a
+    git push
+
+11. Check Travis build
+
+    https://travis-ci.org/haskell/time
+
+12. Build and test on 32-bit Linux machine
+
+    stack upgrade
+    stack --version
+    git pull
+    ./fullcheck
+
+13. Build and test on Windows
+
+    stack upgrade
+    stack --version
+    git pull
+    ./fullcheck
+
+14. Upload to Hackage
+
+    stack upload .
+    http://hackage.haskell.org/package/time
+
+15. Tag commit
+
+    git tag -a -s [TAG]
+    git push --tags
+
+16. Update ghc branch
+
+    git checkout ghc
+    git merge master
+    git push
+
+17. Restore local branch for next development
+
+    git checkout master
+
+18. Delete completed milestone
+
+    https://github.com/haskell/time/milestones
