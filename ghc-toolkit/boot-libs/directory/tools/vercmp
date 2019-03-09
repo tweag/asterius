@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+import sys
+
+def parse_version(s):
+    return tuple(map(int, s.split(".")))
+
+def cmp(x, y):
+    return (x > y) - (x < y)
+
+print(cmp(parse_version(sys.argv[1]), parse_version(sys.argv[2])))
