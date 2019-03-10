@@ -166,102 +166,100 @@ makeInfoTableSet AsteriusModule {..} sym_map =
   LM.keysSet $ LM.filter ((== InfoTable) . staticsType) staticsMap
 
 resolveAsteriusModule ::
-     Monad m
-  => Bool
+     Bool
   -> FFIMarshalState
   -> [AsteriusEntitySymbol]
   -> AsteriusModule
-  -> m ( Module
-       , LM.Map AsteriusEntitySymbol Int64
-       , LM.Map AsteriusEntitySymbol Int64
-       , [Event]
-       , Int)
-resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved = do
-  let (func_sym_map, _) =
-        makeFunctionSymbolTable
-          m_globals_resolved
-          (1 .|. functionTag `shiftL` 32)
-      func_table = makeFunctionTable func_sym_map
-      (ss_sym_map, last_addr) =
-        makeDataSymbolTable m_globals_resolved (dataTag `shiftL` 32)
-      all_sym_map = func_sym_map <> ss_sym_map
-  let func_imports =
-        rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-      export_func_set = S.fromList export_funcs
-      (new_function_map, all_event_map) =
-        unsafeCoerce $
-        flip runState LM.empty $
-        flip LM.traverseWithKey (functionMap m_globals_resolved) $ \sym AsteriusFunction {..} ->
-          state $ \event_map ->
-            let (body_locals_resolved, local_reg_table, event_map') =
-                  allPasses
-                    debug
-                    all_sym_map
-                    export_func_set
-                    sym
-                    functionType
-                    event_map
-                    body
-             in ( Function
-                    { functionType = functionType
-                    , varTypes = local_reg_table
-                    , body = body_locals_resolved
-                    }
-                , event_map')
-      mem = makeMemory m_globals_resolved all_sym_map last_addr
-      new_mod =
-        Module
-          { functionMap' = new_function_map
-          , functionImports = func_imports
-          , functionExports =
-              rtsAsteriusFunctionExports debug <>
-              [ FunctionExport
-                { internalName = "__asterius_jsffi_export_" <> k
-                , externalName = k
-                }
-              | k <- map entityName export_funcs
-              ]
-          , functionTable = func_table
-          , memory = mem
-          }
-      err_msgs = eventTable all_event_map
-  pure
-    ( new_mod
-    , ss_sym_map
-    , func_sym_map
-    , err_msgs
-    , fromIntegral (initialPages mem) `quot` (mblock_size `quot` wasmPageSize))
+  -> Int64
+  -> Int64
+  -> ( Module
+     , LM.Map AsteriusEntitySymbol Int64
+     , LM.Map AsteriusEntitySymbol Int64
+     , [Event]
+     , Int)
+resolveAsteriusModule debug bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
+  ( new_mod
+  , ss_sym_map
+  , func_sym_map
+  , err_msgs
+  , fromIntegral (initialPages mem) `quot` (mblock_size `quot` wasmPageSize))
+  where
+    (func_sym_map, _) =
+      makeFunctionSymbolTable m_globals_resolved func_start_addr
+    func_table = makeFunctionTable func_sym_map
+    (ss_sym_map, last_addr) =
+      makeDataSymbolTable m_globals_resolved data_start_addr
+    all_sym_map = func_sym_map <> ss_sym_map
+    func_imports =
+      rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
+    export_func_set = S.fromList export_funcs
+    (new_function_map, all_event_map) =
+      unsafeCoerce $
+      flip runState LM.empty $
+      flip LM.traverseWithKey (functionMap m_globals_resolved) $ \sym AsteriusFunction {..} ->
+        state $ \event_map ->
+          let (body_locals_resolved, local_reg_table, event_map') =
+                allPasses
+                  debug
+                  all_sym_map
+                  export_func_set
+                  sym
+                  functionType
+                  event_map
+                  body
+           in ( Function
+                  { functionType = functionType
+                  , varTypes = local_reg_table
+                  , body = body_locals_resolved
+                  }
+              , event_map')
+    mem = makeMemory m_globals_resolved all_sym_map last_addr
+    new_mod =
+      Module
+        { functionMap' = new_function_map
+        , functionImports = func_imports
+        , functionExports =
+            rtsAsteriusFunctionExports debug <>
+            [ FunctionExport
+              {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
+            | k <- map entityName export_funcs
+            ]
+        , functionTable = func_table
+        , memory = mem
+        }
+    err_msgs = eventTable all_event_map
 
 linkStart ::
-     Monad m
-  => Bool
+     Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> m (Module, [Event], LinkReport)
-linkStart debug store root_syms export_funcs = do
-  let (merged_m, report) =
-        mergeSymbols
-          debug
-          store
-          (root_syms <>
-           S.fromList
-             [ AsteriusEntitySymbol
-               {entityName = "__asterius_jsffi_export_" <> entityName k}
-             | k <- export_funcs
-             ])
-  (result_m, ss_sym_map, func_sym_map, err_msgs, static_mbs) <-
-    resolveAsteriusModule
-      debug
-      (bundledFFIMarshalState report)
-      export_funcs
-      merged_m
-  pure
-    ( result_m
-    , err_msgs
-    , report
-        { staticsSymbolMap = ss_sym_map
-        , functionSymbolMap = func_sym_map
-        , infoTableSet = makeInfoTableSet merged_m ss_sym_map
-        , staticMBlocks = static_mbs
-        })
+  -> (Module, [Event], LinkReport)
+linkStart debug store root_syms export_funcs =
+  ( result_m
+  , err_msgs
+  , report
+      { staticsSymbolMap = ss_sym_map
+      , functionSymbolMap = func_sym_map
+      , infoTableSet = makeInfoTableSet merged_m ss_sym_map
+      , staticMBlocks = static_mbs
+      })
+  where
+    (merged_m, report) =
+      mergeSymbols
+        debug
+        store
+        (root_syms <>
+         S.fromList
+           [ AsteriusEntitySymbol
+             {entityName = "__asterius_jsffi_export_" <> entityName k}
+           | k <- export_funcs
+           ])
+    (result_m, ss_sym_map, func_sym_map, err_msgs, static_mbs) =
+      resolveAsteriusModule
+        debug
+        (bundledFFIMarshalState report)
+        export_funcs
+        merged_m
+        (1 .|. functionTag `shiftL` 32)
+        (dataTag `shiftL` 32)
