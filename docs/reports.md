@@ -2,6 +2,35 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-03-10
+
+Covers this week.
+
+Ongoing work:
+
+* About the `iserv` experiment:
+    * Started implementing `ahc-iserv`, which is capable of receiving messages from the host `ghc` process.
+    * Originally, GHC compiles TH splices to bytecode and sends them to `iserv`. Given we don't support bytecode (yet), we hacked on that direction a little bit, and now we can compile splices to wasm modules using our regular cmm to wasm functionality.
+    * Updated `ghc` again, and included several new packages into the boot libs: `filepath`/`time`/`unix`/`directory`/`ghc-boot`/`ghc-heap`/`ghci`. A lot of functionalities in these packages won't work yet, they exist to support `ghci`, which includes necessary code to run TH and communicate with the host `ghc` process.
+* Miscellaneous other improvements:
+    * Implemented more accurate dependency analysis for JSFFI. Previously, whenever something in a module was included in linker output, all JSFFI info of that module is also included, resulting in potentially bloated wasm import section and generated wrapper js module. Now the output wasm code and wrapper js modules are even slimmer.
+    * Removed the legacy `AsteriusStore` type and related logic from the linker. It was a combination of two mappings: from symbols to module names and from module names to lazily loaded modules. It was closely related to the legacy "object store" mechanism which stores wasm objects elsewhere and doesn't respect ghc's object output path, and since we fixed that for Cabal support, it's time to pull this weed and simplify things. The linker now solely operates on the `AsteriusModule` type.
+    * Implemented lazier deserialization for `AsteriusModule`. Now when loading a wasm object, we defer the deserialization of individual entities(data segments or functions) until they're actually included into the output module. Compared to the old module-level lazy loading mechanism, there's no noticable increase on memory usage.
+    * Optimized the code of dependency analysis.
+    * Enabled the `binaryen` backend to output wasm name section in debug mode. Previously, when wasm execution traps, V8 would output a stack trace, with only function ids for wasm functions. Now we spare the trouble of reading the linker report and remapping ids to function names when debugging. Note that the `wasm-toolkit` backend doesn't handle the name section yet.
+
+Planned work for next week:
+
+* The plumbings from `ahc` to `ahc-iserv` are ready, now we need to implement an eval server running on `node` and the RPC logic between it and `ahc-iserv`. The eval server should be capable of:
+    * Initializing rts state
+    * Receiving a wasm module from `ahc-iserv` and remapping existing wasm memory and table
+    * Running a splice, sending serialized results to `ahc-iserv`
+    * Sending necessary ghc queries when running splices
+* The requirements listed above also implies that we need to finish the linker's incremental mode first.
+* The runtime also needs to support:
+    * Interleaved static/non-static memory regions, and reserving an address range for data segments in new incoming wasm modules
+    * Minimal Haskell exception handling support, so we can reply a `QFail` in `ahc-iserv` correctly when an exception is thrown instead of silently dying. (Informative error messages which include information recovered from `Show` instance of `SomeException` are harder to implement)
+
 ## 2019-03-04
 
 Covers last week.
