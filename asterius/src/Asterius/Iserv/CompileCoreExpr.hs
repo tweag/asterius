@@ -4,7 +4,7 @@ module Asterius.Iserv.CompileCoreExpr
 
 import Asterius.CodeGen
 import Asterius.Iserv.Trace
-import Asterius.Linker.Packages
+import Asterius.Linker.LinkExpr
 import qualified CmmInfo as GHC
 import Control.Exception
 import qualified CorePrep as GHC
@@ -65,5 +65,5 @@ compileCoreExpr us_ref hsc_env src_span ds_expr = do
     either throwIO pure $
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
   trace True $ show m
-  packageArchives hsc_env >>= trace True . show
+  trace True $ show $ coreExprModules prepd_expr
   GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
