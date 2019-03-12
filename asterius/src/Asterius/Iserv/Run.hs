@@ -32,6 +32,7 @@ run pipe msg =
   case msg of
     InitLinker -> pure ()
     LoadArchive _ -> pure ()
+    LoadObj _ -> pure ()
     AddLibrarySearchPath _ -> pure $ RemotePtr 0
     RemoveLibrarySearchPath _ -> pure True
     ResolveObjs -> pure True
