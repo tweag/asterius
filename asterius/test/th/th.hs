@@ -1,5 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 {-# OPTIONS_GHC -Wall #-}
 
+import Fib
+
 main :: IO ()
-main = print $([|6 * 7 :: Int|])
+main = print $([|fib 5|])
