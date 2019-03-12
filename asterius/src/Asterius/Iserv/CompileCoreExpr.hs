@@ -49,7 +49,7 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
           (GHC.mkModuleName $ "ASDF" <> show u)
       occ_n = GHC.mkVarOcc "asdf"
       n = GHC.mkExternalName u this_mod occ_n src_span
-      b = GHC.mkVanillaGlobal n (GHC.exprType ds_expr)
+      b = GHC.mkVanillaGlobal n (GHC.exprType prepd_expr)
       prepd_binds = [GHC.NonRec b prepd_expr]
       (stg_binds, _) = GHC.coreToStg dflags this_mod prepd_binds
   stg_binds2 <- GHC.stg2stg dflags this_mod stg_binds
@@ -65,8 +65,6 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
   m <-
     either throwIO pure $
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
-  trace verbose $ show ds_expr
-  trace verbose $ show $ GHC.exprType ds_expr
   trace verbose $ show m
   linkCoreExpr verbose hsc_env src_span prepd_expr
   GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
