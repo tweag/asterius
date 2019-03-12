@@ -7,6 +7,7 @@ import Asterius.Iserv.Trace
 import Asterius.Linker.LinkExpr
 import qualified CmmInfo as GHC
 import Control.Exception
+import qualified CoreLint as GHC
 import qualified CorePrep as GHC
 import qualified CoreSyn as GHC
 import qualified CoreTidy as GHC
@@ -42,6 +43,10 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
   simpl_expr <- GHC.simplifyExpr dflags ds_expr
   let tidy_expr = GHC.tidyExpr GHC.emptyTidyEnv simpl_expr
   prepd_expr <- GHC.corePrepExpr dflags hsc_env tidy_expr
+  GHC.lintInteractiveExpr
+    "Asterius.Iserv.CompileCoreExpr.compileCoreExpr"
+    hsc_env
+    prepd_expr
   u <- atomicModifyIORef' us_ref $ swap . GHC.takeUniqFromSupply
   let this_mod =
         GHC.mkModule
