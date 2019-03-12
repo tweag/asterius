@@ -31,12 +31,13 @@ import Unsafe.Coerce
 import qualified VarEnv as GHC
 
 compileCoreExpr ::
-     IORef GHC.UniqSupply
+     Bool
+  -> IORef GHC.UniqSupply
   -> GHC.HscEnv
   -> GHC.SrcSpan
   -> GHC.CoreExpr
   -> IO GHC.ForeignHValue
-compileCoreExpr us_ref hsc_env src_span ds_expr = do
+compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
   let dflags = GHC.hsc_dflags hsc_env
   simpl_expr <- GHC.simplifyExpr dflags ds_expr
   let tidy_expr = GHC.tidyExpr GHC.emptyTidyEnv simpl_expr
@@ -64,6 +65,6 @@ compileCoreExpr us_ref hsc_env src_span ds_expr = do
   m <-
     either throwIO pure $
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
-  trace True $ show m
-  trace True $ show $ coreExprModules prepd_expr
+  trace verbose $ show m
+  linkCoreExpr verbose hsc_env src_span prepd_expr
   GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())

@@ -32,7 +32,7 @@ frontendPlugin =
     (c, get_ffi_mod) <-
       addFFIProcessor
         mempty
-          { compileCoreExpr = Just $ Iserv.compileCoreExpr us_ref
+          { compileCoreExpr = Just $ Iserv.compileCoreExpr True us_ref
           , withHaskellIR =
               \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
                 dflags <- GHC.getDynFlags

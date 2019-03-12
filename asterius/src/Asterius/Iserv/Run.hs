@@ -30,6 +30,11 @@ runTH pipe _ _ _ _ = do
 run :: Pipe -> Message a -> IO a
 run pipe msg =
   case msg of
+    InitLinker -> pure ()
+    LoadArchive _ -> pure ()
+    AddLibrarySearchPath _ -> pure $ RemotePtr 0
+    RemoveLibrarySearchPath _ -> pure True
+    ResolveObjs -> pure True
     StartTH -> startTH
     RunTH rstate rhv ty mb_loc -> runTH pipe rstate rhv ty mb_loc
     _ -> fail $ "Asterius.Iserv.Run.run: unsupported message: " <> show msg
