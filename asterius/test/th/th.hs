@@ -2,6 +2,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
 import Fib
+import Language.Haskell.TH.Syntax
 
 main :: IO ()
-main = print $([|fib 5|])
+main = print $(lift $ fib 5)

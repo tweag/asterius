@@ -66,6 +66,7 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
     either throwIO pure $
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
   trace verbose $ show ds_expr
+  trace verbose $ show $ GHC.exprType ds_expr
   trace verbose $ show m
   linkCoreExpr verbose hsc_env src_span prepd_expr
   GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
