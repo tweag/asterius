@@ -5,6 +5,9 @@ module Asterius.Iserv.CompileCoreExpr
 import Asterius.CodeGen
 import Asterius.Iserv.Trace
 import Asterius.Linker.LinkExpr
+import Asterius.Types
+import Asterius.TypesConv
+import qualified CLabel as GHC
 import qualified CmmInfo as GHC
 import Control.Exception
 import qualified CoreLint as GHC
@@ -15,11 +18,13 @@ import qualified CoreToStg as GHC
 import qualified CoreUtils as GHC
 import qualified CostCentre as GHC
 import Data.IORef
+import Data.String
 import Data.Tuple
 import qualified GHCi.RemoteTypes as GHC
 import qualified HscMain as GHC
 import qualified HscTypes as GHC
 import qualified Id as GHC
+import qualified IdInfo as GHC
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import qualified Module as GHC
 import qualified Name as GHC
@@ -54,6 +59,8 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
           (GHC.mkModuleName $ "ASDF" <> show u)
       occ_n = GHC.mkVarOcc "asdf"
       n = GHC.mkExternalName u this_mod occ_n src_span
+      clbl = GHC.mkClosureLabel n GHC.MayHaveCafRefs
+      sym = fromString $ asmPpr dflags clbl :: AsteriusEntitySymbol
       b = GHC.mkVanillaGlobal n (GHC.exprType prepd_expr)
       prepd_binds = [GHC.NonRec b prepd_expr]
       (stg_binds, _) = GHC.coreToStg dflags this_mod prepd_binds
@@ -71,5 +78,6 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
     either throwIO pure $
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
   trace verbose $ show m
+  trace verbose $ show sym
   linkCoreExpr verbose hsc_env src_span prepd_expr
   GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
