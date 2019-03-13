@@ -4,6 +4,7 @@ module Asterius.Iserv.Run
   ( run
   ) where
 
+import Asterius.Iserv.State
 import Control.Monad.Fail
 import Data.ByteString (ByteString)
 import Data.IORef
@@ -27,12 +28,12 @@ runTH pipe _ _ _ _ = do
   writePipe pipe $ putTHMessage RunTHDone
   pure $ QFail "Asterius.Iserv.Run.runTH"
 
-run :: Pipe -> Message a -> IO a
-run pipe msg =
+run :: IORef IservState -> Pipe -> Message a -> IO a
+run s pipe msg =
   case msg of
     InitLinker -> pure ()
-    LoadArchive _ -> pure ()
-    LoadObj _ -> pure ()
+    LoadArchive p -> addArchive s p
+    LoadObj p -> addObj s p
     AddLibrarySearchPath _ -> pure $ RemotePtr 0
     RemoveLibrarySearchPath _ -> pure True
     ResolveObjs -> pure True
