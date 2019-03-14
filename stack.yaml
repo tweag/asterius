@@ -83,10 +83,10 @@ ghc-build: standard
 setup-info:
   ghc:
     linux64:
-      8.9.20190308:
-        url: https://2967-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190308-x86_64-unknown-linux.tar.xz
-        sha256: b0d9a4242effbc44bed0d24f6f679e79098a913ad5bc38d0f651b45e76c70659
+      8.9.20190312:
+        url: https://2995-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190312-x86_64-unknown-linux.tar.xz
+        sha256: 9c424053684f9f96929289af09a18198174920a2b88ecd4015213151461a52fd
     macosx:
-      8.9.20190308:
-        url: https://2965-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190308-x86_64-apple-darwin.tar.xz
-        sha256: 435007979652bb625912c147c593e217df1b51c763f14d397cd13f29ec8ecd45
+      8.9.20190312:
+        url: https://2996-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190312-x86_64-apple-darwin.tar.xz
+        sha256: 74100a3a7de45617af46feaa43c3766623ad978d7b2176f874d05a9d8ed9cf7c

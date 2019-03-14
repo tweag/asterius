@@ -49,7 +49,6 @@ rtsUsedSymbols =
     , "ghczmprim_GHCziTypes_ZC_con_info"
     , "ghczmprim_GHCziTypes_ZMZN_closure"
     , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
-    , "Main_main_closure"
     , "stg_ARR_WORDS_info"
     , "stg_DEAD_WEAK_info"
     , "stg_NO_FINALIZER_closure"
@@ -59,17 +58,18 @@ rtsUsedSymbols =
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
   final_store <- loadTheWorld defaultBuiltinsOptions ld_task
-  ld_result <-
-    linkStart
-      debug
-      final_store
-      (Set.unions
-         [ Set.fromList rootSymbols
-         , rtsUsedSymbols
-         , Set.fromList
-             [ AsteriusEntitySymbol {entityName = internalName}
-             | FunctionExport {..} <- rtsAsteriusFunctionExports debug
-             ]
-         ])
-      exportFunctions
+  let ld_result =
+        linkStart
+          debug
+          True
+          final_store
+          (Set.unions
+             [ Set.fromList rootSymbols
+             , rtsUsedSymbols
+             , Set.fromList
+                 [ AsteriusEntitySymbol {entityName = internalName}
+                 | FunctionExport {..} <- rtsAsteriusFunctionExports debug True
+                 ]
+             ])
+          exportFunctions
   encodeFile linkOutput ld_result
