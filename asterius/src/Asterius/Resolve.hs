@@ -179,11 +179,7 @@ resolveAsteriusModule ::
      , [Event]
      , Int)
 resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
-  ( new_mod
-  , ss_sym_map
-  , func_sym_map
-  , err_msgs
-  , fromIntegral (initialPages mem) `quot` (mblock_size `quot` wasmPageSize))
+  (new_mod, ss_sym_map, func_sym_map, err_msgs, initial_mblocks)
   where
     (func_sym_map, _) =
       makeFunctionSymbolTable m_globals_resolved func_start_addr
@@ -214,7 +210,9 @@ resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_re
                   , body = body_locals_resolved
                   }
               , event_map')
-    mem = makeMemory m_globals_resolved all_sym_map last_addr
+    (initial_pages, segs) = makeMemory m_globals_resolved all_sym_map last_addr
+    initial_mblocks =
+      fromIntegral initial_pages `quot` (mblock_size `quot` wasmPageSize)
     new_mod =
       Module
         { functionMap' = new_function_map
@@ -226,7 +224,18 @@ resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_re
             | k <- map entityName export_funcs
             ]
         , functionTable = func_table
-        , memory = mem
+        , memorySegments = segs
+        , memoryImport =
+            MemoryImport
+              { internalName = "__asterius_memory"
+              , externalModuleName = "WasmMemory"
+              , externalBaseName = "memory"
+              , shared = False
+              }
+        , memoryExport =
+            MemoryExport
+              {internalName = "__asterius_memory", externalName = "memory"}
+        , memoryMBlocks = initial_mblocks
         }
     err_msgs = eventTable all_event_map
 

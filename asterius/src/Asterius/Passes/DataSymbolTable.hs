@@ -46,53 +46,49 @@ makeDataSymbolTable AsteriusModule {..} l =
 
 {-# INLINABLE makeMemory #-}
 makeMemory ::
-     AsteriusModule -> Map AsteriusEntitySymbol Int64 -> Int64 -> Memory
+     AsteriusModule
+  -> Map AsteriusEntitySymbol Int64
+  -> Int64
+  -> (BinaryenIndex, [DataSegment])
 makeMemory AsteriusModule {..} sym_map last_addr =
-  Memory
-    { initialPages =
-        fromIntegral $
-        (fromIntegral (unTag last_addr) `roundup` mblock_size) `quot` 65536
-    , memoryExportName = "memory"
-    , dataSegments =
-        Map.foldrWithKey'
-          (\statics_sym ss@AsteriusStatics {..} statics_segs ->
-             fst $
-             foldr'
-               (\static (static_segs, static_tail_addr) ->
-                  let flush_static_segs buf =
-                        ( case static_segs of
-                            DataSegment {..}:static_segs'
-                              | offset == static_tail_addr ->
-                                DataSegment
-                                  { content = buf <> content
-                                  , offset = static_addr
-                                  } :
-                                static_segs'
-                            _ ->
-                              DataSegment {content = buf, offset = static_addr} :
-                              static_segs
-                        , static_addr)
-                        where
-                          static_addr =
-                            static_tail_addr - fromIntegral (SBS.length buf)
-                   in case static of
-                        SymbolStatic sym o ->
-                          flush_static_segs $
-                          encodeStorable $
-                          case Map.lookup sym sym_map of
-                            Just addr -> addr + fromIntegral o
-                            _ ->
-                              error $
-                              "Asterius.Passes.DataSymbolTable.makeMemory: unfound " <>
-                              show sym <>
-                              " in " <>
-                              show statics_sym
-                        Uninitialized l ->
-                          (static_segs, static_tail_addr - fromIntegral l)
-                        Serialized buf -> flush_static_segs buf)
-               ( statics_segs
-               , fromIntegral $ unTag $ sym_map ! statics_sym + sizeofStatics ss)
-               asteriusStatics)
-          []
-          staticsMap
-    }
+  ( fromIntegral $
+    (fromIntegral (unTag last_addr) `roundup` mblock_size) `quot` 65536
+  , Map.foldrWithKey'
+      (\statics_sym ss@AsteriusStatics {..} statics_segs ->
+         fst $
+         foldr'
+           (\static (static_segs, static_tail_addr) ->
+              let flush_static_segs buf =
+                    ( case static_segs of
+                        DataSegment {..}:static_segs'
+                          | offset == static_tail_addr ->
+                            DataSegment
+                              {content = buf <> content, offset = static_addr} :
+                            static_segs'
+                        _ ->
+                          DataSegment {content = buf, offset = static_addr} :
+                          static_segs
+                    , static_addr)
+                    where
+                      static_addr =
+                        static_tail_addr - fromIntegral (SBS.length buf)
+               in case static of
+                    SymbolStatic sym o ->
+                      flush_static_segs $
+                      encodeStorable $
+                      case Map.lookup sym sym_map of
+                        Just addr -> addr + fromIntegral o
+                        _ ->
+                          error $
+                          "Asterius.Passes.DataSymbolTable.makeMemory: unfound " <>
+                          show sym <>
+                          " in " <>
+                          show statics_sym
+                    Uninitialized l ->
+                      (static_segs, static_tail_addr - fromIntegral l)
+                    Serialized buf -> flush_static_segs buf)
+           ( statics_segs
+           , fromIntegral $ unTag $ sym_map ! statics_sym + sizeofStatics ss)
+           asteriusStatics)
+      []
+      staticsMap)
