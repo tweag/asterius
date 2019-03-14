@@ -1554,7 +1554,7 @@ foreign import ccall unsafe "BinaryenAddTableImport" c_BinaryenAddTableImport
 
 foreign import ccall unsafe "BinaryenAddMemoryImport" c_BinaryenAddMemoryImport
   :: BinaryenModuleRef ->
-  Ptr CChar -> Ptr CChar -> Ptr CChar -> Ptr Word8 -> IO ()
+  Ptr CChar -> Ptr CChar -> Ptr CChar -> Word8 -> IO ()
 
 foreign import ccall unsafe "BinaryenAddGlobalImport" c_BinaryenAddGlobalImport
   :: BinaryenModuleRef ->
