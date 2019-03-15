@@ -30,7 +30,6 @@ main =
             pwd <- getCurrentDirectory
             let pkg_descr = packageDescription g_pkg_descr
                 binaryen_builddir = absBuildDir </> "binaryen"
-                cbits_builddir = absBuildDir </> "cbits"
                 binaryen_installdirs =
                   absoluteInstallDirs pkg_descr lbi NoCopyDest
                 binaryen_libdir = libdir binaryen_installdirs
@@ -49,7 +48,6 @@ main =
                           {progInvokeInput = Just stdin_s}
             for_
               [ binaryen_builddir
-              , cbits_builddir
               , binaryen_libdir
               , binaryen_bindir
               ] $
@@ -64,28 +62,12 @@ main =
                   ]
                 , ["--build", binaryen_builddir]
                 ] $ \args -> run (simpleProgram "cmake") args ""
-            run
-              gccProgram
-              [ pwd </> "cbits" </> "cbits.c"
-              , "-I" ++ pwd </> "binaryen" </> "src"
-              , "-c"
-              , "-fPIC"
-              , "-Wall"
-              , "-Wextra"
-              , "-O2"
-              , "-o"
-              , cbits_builddir </> "cbits.o"
-              ]
-              ""
             binaryen_libs <- listDirectory $ binaryen_builddir </> "lib"
 #if defined(darwin_HOST_OS)
             let output_fn = binaryen_libdir </> "libHSbinaryen-binaryen.a"
-                modules = [cbits_builddir </> "cbits.o"]
                 archives = [ binaryen_builddir </> "lib" </> l
                            | l <- binaryen_libs ]
-            ar <- foldl mappend
-                 <$> (Archive <$> mapM loadObj modules)
-                 <*> mapM loadAr archives
+            ar <- foldl mappend <$> mapM loadAr archives
             writeBSDAr output_fn $ afilter (not . isBSDSymdef) ar
             run' "ranlib" [output_fn] ""
 #else
@@ -97,8 +79,7 @@ main =
               [ "addlib " ++ binaryen_builddir </> "lib" </> l ++ "\n"
               | l <- binaryen_libs
               ] ++
-              [ "addmod " ++ cbits_builddir </> "cbits.o" ++ "\n"
-              , "save\n"
+              [ "save\n"
               , "end\n"
               ]
 #endif

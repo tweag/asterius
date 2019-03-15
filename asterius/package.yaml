@@ -15,7 +15,6 @@ extra-source-files:
   - test/fib/**/*.hs
   - test/jsffi/**/*.hs
   - test/jsffi/jsffi.mjs
-  - test/node-compile/node-compile.js
   - test/rtsapi/**/*.hs
   - test/rtsapi/rtsapi.mjs
   - test/stableptr/**/*.hs
@@ -154,16 +153,6 @@ executables:
       - asterius
 
 tests:
-  nir-test:
-    source-dirs: test
-    main: nir-test.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - asterius
-    other-extensions:
-      - OverloadedLists
-      - OverloadedStrings
-
   fib:
     source-dirs: test
     main: fib.hs
@@ -205,14 +194,6 @@ tests:
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
-
-  node-compile:
-    source-dirs: test
-    main: node-compile.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - asterius
-      - QuickCheck
 
   teletype:
     source-dirs: test
