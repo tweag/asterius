@@ -2423,15 +2423,6 @@ void BinaryenSetMemory(BinaryenModuleRef module, BinaryenIndex initial, Binaryen
   }
 }
 
-void BinaryenAddSegments(BinaryenModuleRef module, const char** segments,
-  BinaryenExpressionRef* segmentOffsets, BinaryenIndex* segmentSizes, BinaryenIndex numSegments) {
-  auto* wasm = (Module*)module;
-  for (BinaryenIndex i = 0; i < numSegments; i++) {
-    wasm->memory.segments.emplace_back(
-      (Expression*)segmentOffsets[i], segments[i], segmentSizes[i]);
-  }
-}
-
 // Start function. One per module
 
 void BinaryenSetStart(BinaryenModuleRef module, BinaryenFunctionRef start) {

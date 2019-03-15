@@ -426,8 +426,7 @@ data FunctionImport = FunctionImport
 instance Binary FunctionImport
 
 data MemoryImport = MemoryImport
-  { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
-  , shared :: Bool
+  { externalModuleName, externalBaseName :: SBS.ShortByteString
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary MemoryImport
@@ -438,8 +437,8 @@ data FunctionExport = FunctionExport
 
 instance Binary FunctionExport
 
-data MemoryExport = MemoryExport
-  { internalName, externalName :: SBS.ShortByteString
+newtype MemoryExport = MemoryExport
+  { externalName :: SBS.ShortByteString
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary MemoryExport

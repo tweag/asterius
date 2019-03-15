@@ -26,6 +26,7 @@ import Data.Traversable
 import Foreign hiding (void)
 import Foreign.C
 import GHC.Exts
+import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 
 newtype MarshalError =
@@ -338,40 +339,42 @@ marshalFunctionTable pool m FunctionTable {..} = do
   (fnp, fnl) <- marshalV pool func_name_ptrs
   let l = fromIntegral $ length functionNames
   c_BinaryenSetFunctionTable m l (-1) fnp fnl
-  tbl_name <- marshalSBS pool tableExportName
-  unless (tbl_name == nullPtr) $ do
+  unless (SBS.null tableExportName) $ do
+    tbl_name <- marshalSBS pool tableExportName
     tbl_internal_name <- marshalSBS pool "0"
-    void $ c_BinaryenAddMemoryExport m tbl_internal_name tbl_name
+    void $ c_BinaryenAddTableExport m tbl_internal_name tbl_name
 
-marshalMemorySegments :: Pool -> BinaryenModuleRef -> [DataSegment] -> IO ()
-marshalMemorySegments pool m segs = do
+marshalMemorySegments ::
+     Pool -> BinaryenModuleRef -> Int -> [DataSegment] -> IO ()
+marshalMemorySegments pool m mbs segs = do
   (seg_bufs, _ :: Int) <- marshalV pool =<< for segs (marshalSBS pool . content)
   (seg_offsets, _ :: Int) <-
     marshalV pool =<<
     for segs (\DataSegment {..} -> marshalExpression pool m $ ConstI32 offset)
   (seg_sizes, _ :: Int) <-
     marshalV pool $ map (fromIntegral . SBS.length . content) segs
-  c_BinaryenAddSegments
+  c_BinaryenSetMemory
     m
+    (fromIntegral $ mbs * (mblock_size `quot` 65536))
+    (-1)
+    nullPtr
     seg_bufs
     seg_offsets
     seg_sizes
     (fromIntegral $ length segs)
+    0
 
 marshalMemoryImport :: Pool -> BinaryenModuleRef -> MemoryImport -> IO ()
 marshalMemoryImport pool m MemoryImport {..} = do
-  inp <- marshalSBS pool internalName
+  inp <- marshalSBS pool "0"
   emp <- marshalSBS pool externalModuleName
   ebp <- marshalSBS pool externalBaseName
-  c_BinaryenAddMemoryImport m inp emp ebp $
-    if shared
-      then 1
-      else 0
+  c_BinaryenAddMemoryImport m inp emp ebp 0
 
 marshalMemoryExport ::
      Pool -> BinaryenModuleRef -> MemoryExport -> IO BinaryenExportRef
 marshalMemoryExport pool m MemoryExport {..} = do
-  inp <- marshalSBS pool internalName
+  inp <- marshalSBS pool "0"
   enp <- marshalSBS pool externalName
   c_BinaryenAddMemoryExport m inp enp
 
@@ -390,7 +393,7 @@ marshalModule pool hs_mod@Module {..} = do
     marshalFunctionImport pool m (ftps ! functionType) fi
   forM_ functionExports $ marshalFunctionExport pool m
   marshalFunctionTable pool m functionTable
-  marshalMemorySegments pool m memorySegments
+  marshalMemorySegments pool m memoryMBlocks memorySegments
   marshalMemoryImport pool m memoryImport
   void $ marshalMemoryExport pool m memoryExport
   pure m

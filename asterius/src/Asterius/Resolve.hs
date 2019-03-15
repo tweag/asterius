@@ -227,14 +227,8 @@ resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_re
         , memorySegments = segs
         , memoryImport =
             MemoryImport
-              { internalName = "__asterius_memory"
-              , externalModuleName = "WasmMemory"
-              , externalBaseName = "memory"
-              , shared = False
-              }
-        , memoryExport =
-            MemoryExport
-              {internalName = "__asterius_memory", externalName = "memory"}
+              {externalModuleName = "WasmMemory", externalBaseName = "memory"}
+        , memoryExport = MemoryExport {externalName = "memory"}
         , memoryMBlocks = initial_mblocks
         }
     err_msgs = eventTable all_event_map

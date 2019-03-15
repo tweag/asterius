@@ -1609,12 +1609,6 @@ foreign import ccall unsafe "BinaryenSetMemory" c_BinaryenSetMemory
           Ptr BinaryenExpressionRef ->
             Ptr BinaryenIndex -> BinaryenIndex -> Word8 -> IO ()
 
-foreign import ccall unsafe "BinaryenAddSegments" c_BinaryenAddSegments
-  :: BinaryenModuleRef ->
-  Ptr (Ptr CChar) ->
-    Ptr BinaryenExpressionRef ->
-      Ptr BinaryenIndex -> BinaryenIndex -> IO ()
-
 foreign import ccall unsafe "BinaryenSetStart" c_BinaryenSetStart
   :: BinaryenModuleRef -> BinaryenFunctionRef -> IO ()
 
