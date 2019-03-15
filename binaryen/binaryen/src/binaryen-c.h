@@ -187,6 +187,14 @@ struct BinaryenLiteral BinaryenLiteralVec128(const uint8_t x[16]);
 struct BinaryenLiteral BinaryenLiteralFloat32Bits(int32_t x);
 struct BinaryenLiteral BinaryenLiteralFloat64Bits(int64_t x);
 
+void* BinaryenConstInt32(BinaryenModuleRef module, int32_t x);
+void* BinaryenConstInt64(BinaryenModuleRef module, int64_t x);
+void* BinaryenConstFloat32(BinaryenModuleRef module, float x);
+void* BinaryenConstFloat64(BinaryenModuleRef module, double x);
+void* BinaryenConstVec128(BinaryenModuleRef module, const uint8_t x[16]);
+void* BinaryenConstFloat32Bits(BinaryenModuleRef module, int32_t x);
+void* BinaryenConstFloat64Bits(BinaryenModuleRef module, int64_t x);
+
 // Expressions
 //
 // Some expressions have a BinaryenOp, which is the more
@@ -618,6 +626,7 @@ int32_t BinaryenConstGetValueI64Low(BinaryenExpressionRef expr);
 int32_t BinaryenConstGetValueI64High(BinaryenExpressionRef expr);
 float BinaryenConstGetValueF32(BinaryenExpressionRef expr);
 double BinaryenConstGetValueF64(BinaryenExpressionRef expr);
+void BinaryenConstGetValueV128(BinaryenExpressionRef expr, uint8_t* out);
 
 BinaryenOp BinaryenUnaryGetOp(BinaryenExpressionRef expr);
 BinaryenExpressionRef BinaryenUnaryGetValue(BinaryenExpressionRef expr);
@@ -745,6 +754,8 @@ void BinaryenSetFunctionTable(BinaryenModuleRef module, BinaryenIndex initial, B
 // exportName can be NULL
 void BinaryenSetMemory(BinaryenModuleRef module, BinaryenIndex initial, BinaryenIndex maximum, const char* exportName, const char** segments, BinaryenExpressionRef* segmentOffsets, BinaryenIndex* segmentSizes, BinaryenIndex numSegments, uint8_t shared);
 
+void BinaryenAddSegments(BinaryenModuleRef module, const char** segments, BinaryenExpressionRef* segmentOffsets, BinaryenIndex* segmentSizes, BinaryenIndex numSegments);
+
 // Start function. One per module
 
 void BinaryenSetStart(BinaryenModuleRef module, BinaryenFunctionRef start);
@@ -830,6 +841,9 @@ typedef struct BinaryenModuleAllocateAndWriteResult {
 // Differs from BinaryenModuleWrite in that it implicitly allocates appropriate buffers
 // using malloc(), and expects the user to free() them manually once not needed anymore.
 BinaryenModuleAllocateAndWriteResult BinaryenModuleAllocateAndWrite(BinaryenModuleRef module, const char* sourceMapUrl);
+
+void BinaryenModuleAllocateAndWriteMut(BinaryenModuleRef module, const char* sourceMapUrl,
+  void** binary, size_t* binaryBytes, char** sourceMap);
 
 // Deserialize a module from binary form.
 BinaryenModuleRef BinaryenModuleRead(char* input, size_t inputSize);

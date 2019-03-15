@@ -9,7 +9,6 @@ github: tweag/asterius
 
 extra-source-files:
   - binaryen/**/**
-  - cbits/**/**
   - CHANGELOG.md
   - LICENSE
   - README.md

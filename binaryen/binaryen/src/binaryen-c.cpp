@@ -370,6 +370,14 @@ BinaryenLiteral BinaryenLiteralVec128(const uint8_t x[16]) { return toBinaryenLi
 BinaryenLiteral BinaryenLiteralFloat32Bits(int32_t x) { return toBinaryenLiteral(Literal(x).castToF32()); }
 BinaryenLiteral BinaryenLiteralFloat64Bits(int64_t x) { return toBinaryenLiteral(Literal(x).castToF64()); }
 
+BinaryenExpressionRef BinaryenConstInt32(BinaryenModuleRef module, int32_t x) { return BinaryenConst(module, BinaryenLiteralInt32(x)); }
+BinaryenExpressionRef BinaryenConstInt64(BinaryenModuleRef module, int64_t x) { return BinaryenConst(module, BinaryenLiteralInt64(x)); }
+BinaryenExpressionRef BinaryenConstFloat32(BinaryenModuleRef module, float x) { return BinaryenConst(module, BinaryenLiteralFloat32(x)); }
+BinaryenExpressionRef BinaryenConstFloat64(BinaryenModuleRef module, double x) { return BinaryenConst(module, BinaryenLiteralFloat64(x)); }
+BinaryenExpressionRef BinaryenConstVec128(BinaryenModuleRef module, const uint8_t x[16]) { return BinaryenConst(module, BinaryenLiteralVec128(x)); }
+BinaryenExpressionRef BinaryenConstFloat32Bits(BinaryenModuleRef module, int32_t x) { return BinaryenConst(module, BinaryenLiteralFloat32Bits(x)); }
+BinaryenExpressionRef BinaryenConstFloat64Bits(BinaryenModuleRef module, int64_t x) { return BinaryenConst(module, BinaryenLiteralFloat64Bits(x)); }
+
 // Expressions
 
 BinaryenOp BinaryenClzInt32(void) { return ClzInt32; }
@@ -1616,6 +1624,15 @@ double BinaryenConstGetValueF64(BinaryenExpressionRef expr) {
   assert(expression->is<Const>());
   return static_cast<Const*>(expression)->value.getf64();
 }
+void BinaryenConstGetValueV128(BinaryenExpressionRef expr, uint8_t* out) {
+  if (tracing) {
+    std::cout << "  BinaryenConstGetValueV128(expressions[" << expressions[expr] << "], " << out << ");\n";
+  }
+
+  auto* expression = (Expression*)expr;
+  assert(expression->is<Const>());
+  memcpy(out, static_cast<Const*>(expression)->value.getv128().data(), 16);
+}
 // Unary
 BinaryenOp BinaryenUnaryGetOp(BinaryenExpressionRef expr) {
   if (tracing) {
@@ -1945,7 +1962,7 @@ BinaryenExpressionRef BinaryenSIMDShuffleGetRight(BinaryenExpressionRef expr) {
 }
 void BinaryenSIMDShuffleGetMask(BinaryenExpressionRef expr, uint8_t *mask) {
   if (tracing) {
-    std::cout << "  BinaryenSIMDShuffleGetMask(expressions[" << expressions[expr] << "]);\n";
+    std::cout << "  BinaryenSIMDShuffleGetMask(expressions[" << expressions[expr] << "], " << mask << ");\n";
   }
 
   auto* expression = (Expression*)expr;
@@ -2406,6 +2423,15 @@ void BinaryenSetMemory(BinaryenModuleRef module, BinaryenIndex initial, Binaryen
   }
 }
 
+void BinaryenAddSegments(BinaryenModuleRef module, const char** segments,
+  BinaryenExpressionRef* segmentOffsets, BinaryenIndex* segmentSizes, BinaryenIndex numSegments) {
+  auto* wasm = (Module*)module;
+  for (BinaryenIndex i = 0; i < numSegments; i++) {
+    wasm->memory.segments.emplace_back(
+      (Expression*)segmentOffsets[i], segments[i], segmentSizes[i]);
+  }
+}
+
 // Start function. One per module
 
 void BinaryenSetStart(BinaryenModuleRef module, BinaryenFunctionRef start) {
@@ -2630,6 +2656,14 @@ BinaryenModuleAllocateAndWriteResult BinaryenModuleAllocateAndWrite(BinaryenModu
     std::copy_n(str.c_str(), str.length() + 1, sourceMap);
   }
   return { binary, buffer.size(), sourceMap };
+}
+
+void BinaryenModuleAllocateAndWriteMut(BinaryenModuleRef module, const char* sourceMapUrl,
+  void** binary, size_t* binaryBytes, char** sourceMap) {
+  BinaryenModuleAllocateAndWriteResult r = BinaryenModuleAllocateAndWrite(module, sourceMapUrl);
+  *binary = r.binary;
+  *binaryBytes = r.binaryBytes;
+  *sourceMap = r.sourceMap;
 }
 
 BinaryenModuleRef BinaryenModuleRead(char* input, size_t inputSize) {
@@ -3065,6 +3099,12 @@ int atexit(void (*function)(void)) {
 EMSCRIPTEN_KEEPALIVE
 size_t BinaryenSizeofLiteral(void) {
   return sizeof(Literal);
+}
+
+// Returns the size of an allocate and write result object.
+EMSCRIPTEN_KEEPALIVE
+size_t BinaryenSizeofAllocateAndWriteResult(void) {
+  return sizeof(BinaryenModuleAllocateAndWriteResult);
 }
 
 #endif

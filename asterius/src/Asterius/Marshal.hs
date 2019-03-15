@@ -343,30 +343,37 @@ marshalFunctionTable pool m FunctionTable {..} = do
     tbl_internal_name <- marshalSBS pool "0"
     void $ c_BinaryenAddMemoryExport m tbl_internal_name tbl_name
 
-marshalMemory :: Pool -> BinaryenModuleRef -> Memory -> IO ()
-marshalMemory pool m Memory {..} = do
-  (cps, os) <-
-    fmap unzip $
-    forM dataSegments $ \DataSegment {..} -> do
-      o <- marshalExpression pool m $ ConstI32 offset
-      cp <- marshalSBS pool content
-      pure (cp, o)
-  (cp, _ :: Int) <- marshalV pool cps
-  (ofs, _ :: Int) <- marshalV pool os
-  (sps, _ :: Int) <-
-    marshalV pool $
-    map (\DataSegment {..} -> fromIntegral $ SBS.length content) dataSegments
-  enp <- marshalSBS pool memoryExportName
-  c_BinaryenSetMemory
+marshalMemorySegments :: Pool -> BinaryenModuleRef -> [DataSegment] -> IO ()
+marshalMemorySegments pool m segs = do
+  (seg_bufs, _ :: Int) <- marshalV pool =<< for segs (marshalSBS pool . content)
+  (seg_offsets, _ :: Int) <-
+    marshalV pool =<<
+    for segs (\DataSegment {..} -> marshalExpression pool m $ ConstI32 offset)
+  (seg_sizes, _ :: Int) <-
+    marshalV pool $ map (fromIntegral . SBS.length . content) segs
+  c_BinaryenAddSegments
     m
-    initialPages
-    (-1)
-    enp
-    cp
-    ofs
-    sps
-    (fromIntegral $ length dataSegments)
-    0
+    seg_bufs
+    seg_offsets
+    seg_sizes
+    (fromIntegral $ length segs)
+
+marshalMemoryImport :: Pool -> BinaryenModuleRef -> MemoryImport -> IO ()
+marshalMemoryImport pool m MemoryImport {..} = do
+  inp <- marshalSBS pool internalName
+  emp <- marshalSBS pool externalModuleName
+  ebp <- marshalSBS pool externalBaseName
+  c_BinaryenAddMemoryImport m inp emp ebp $
+    if shared
+      then 1
+      else 0
+
+marshalMemoryExport ::
+     Pool -> BinaryenModuleRef -> MemoryExport -> IO BinaryenExportRef
+marshalMemoryExport pool m MemoryExport {..} = do
+  inp <- marshalSBS pool internalName
+  enp <- marshalSBS pool externalName
+  c_BinaryenAddMemoryExport m inp enp
 
 marshalModule :: Pool -> Module -> IO BinaryenModuleRef
 marshalModule pool hs_mod@Module {..} = do
@@ -383,7 +390,9 @@ marshalModule pool hs_mod@Module {..} = do
     marshalFunctionImport pool m (ftps ! functionType) fi
   forM_ functionExports $ marshalFunctionExport pool m
   marshalFunctionTable pool m functionTable
-  marshalMemory pool m memory
+  marshalMemorySegments pool m memorySegments
+  marshalMemoryImport pool m memoryImport
+  void $ marshalMemoryExport pool m memoryExport
   pure m
 
 relooperAddBlock ::

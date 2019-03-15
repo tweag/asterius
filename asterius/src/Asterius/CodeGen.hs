@@ -12,6 +12,7 @@ module Asterius.CodeGen
   , runCodeGen
   , marshalHaskellIR
   , marshalCmmIR
+  , marshalRawCmm
   ) where
 
 import Asterius.Builtins
@@ -1033,8 +1034,10 @@ marshalCmmDecl decl =
           Right f -> mempty {functionMap = M.fromList [(sym, f)]}
 
 marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
-marshalHaskellIR _ HaskellIR {..} =
-  mconcat <$> for (concat cmmRaw) marshalCmmDecl
+marshalHaskellIR this_mod HaskellIR {..} = marshalRawCmm this_mod cmmRaw
 
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
-marshalCmmIR _ CmmIR {..} = mconcat <$> for (concat cmmRaw) marshalCmmDecl
+marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
+
+marshalRawCmm :: GHC.Module -> [[GHC.RawCmmDecl]] -> CodeGen AsteriusModule
+marshalRawCmm _ = fmap mconcat . traverse marshalCmmDecl . mconcat

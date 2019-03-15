@@ -22,6 +22,7 @@ import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import Data.Traversable
 import Data.Word
+import Language.Haskell.GHC.Toolkit.Constants
 import qualified Language.WebAssembly.WireFormat as Wasm
 
 data MarshalError
@@ -86,6 +87,21 @@ makeImportSection Module {..} ModuleSymbolTable {..} =
   pure
     Wasm.ImportSection
       { imports =
+          (case memoryImport of
+             MemoryImport {..} ->
+               Wasm.Import
+                 { moduleName = coerce externalModuleName
+                 , importName = coerce externalBaseName
+                 , importDescription =
+                     Wasm.ImportMemory $
+                     Wasm.MemoryType $
+                     Wasm.Limits
+                       { minLimit =
+                           fromIntegral $
+                           memoryMBlocks * (mblock_size `quot` 65536)
+                       , maxLimit = Nothing
+                       }
+                 }) :
           [ Wasm.Import
             { moduleName = coerce externalModuleName
             , importName = coerce externalBaseName
@@ -128,24 +144,6 @@ makeTableSection Module {..} =
           ]
       }
 
-makeMemorySection :: MonadError MarshalError m => Module -> m Wasm.Section
-makeMemorySection Module {..} =
-  pure
-    Wasm.MemorySection
-      { memories =
-          case memory of
-            Memory {..} ->
-              [ Wasm.Memory
-                  { memoryType =
-                      Wasm.MemoryType
-                        { memoryLimits =
-                            Wasm.Limits
-                              {minLimit = initialPages, maxLimit = Nothing}
-                        }
-                  }
-              ]
-      }
-
 makeExportSection ::
      MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
 makeExportSection Module {..} ModuleSymbolTable {..} =
@@ -159,16 +157,13 @@ makeExportSection Module {..} ModuleSymbolTable {..} =
             }
           | FunctionExport {..} <- functionExports
           ] <>
-          (case memory of
-             Memory {..}
-               | not $ SBS.null memoryExportName ->
-                 [ Wasm.Export
-                     { exportName = coerce memoryExportName
-                     , exportDescription =
-                         Wasm.ExportMemory $ Wasm.MemoryIndex 0
-                     }
-                 ]
-               | otherwise -> []) <>
+          (case memoryExport of
+             MemoryExport {..} ->
+               [ Wasm.Export
+                   { exportName = coerce externalName
+                   , exportDescription = Wasm.ExportMemory $ Wasm.MemoryIndex 0
+                   }
+               ]) <>
           (case functionTable of
              FunctionTable {..}
                | not $ SBS.null tableExportName ->
@@ -610,19 +605,17 @@ makeCodeSection _mod@Module {..} _module_symtable =
 
 makeDataSection ::
      MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
-makeDataSection Module {..} _module_symtable =
-  case memory of
-    Memory {..} -> do
-      segs <-
-        for dataSegments $ \DataSegment {..} ->
-          pure
-            Wasm.DataSegment
-              { memoryIndex = Wasm.MemoryIndex 0
-              , memoryOffset =
-                  Wasm.Expression {instructions = [Wasm.I32Const offset]}
-              , memoryInitialBytes = content
-              }
-      pure Wasm.DataSection {dataSegments = segs}
+makeDataSection Module {..} _module_symtable = do
+  segs <-
+    for memorySegments $ \DataSegment {..} ->
+      pure
+        Wasm.DataSegment
+          { memoryIndex = Wasm.MemoryIndex 0
+          , memoryOffset =
+              Wasm.Expression {instructions = [Wasm.I32Const offset]}
+          , memoryInitialBytes = content
+          }
+  pure Wasm.DataSection {dataSegments = segs}
 
 makeModule :: MonadError MarshalError m => Module -> m Wasm.Module
 makeModule m = do
@@ -631,7 +624,6 @@ makeModule m = do
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
   _table_sec <- makeTableSection m
-  _mem_sec <- makeMemorySection m
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection m _module_symtable
   _code_sec <- makeCodeSection m _module_symtable
@@ -642,7 +634,6 @@ makeModule m = do
       , _import_sec
       , _func_sec
       , _table_sec
-      , _mem_sec
       , _export_sec
       , _elem_sec
       , _code_sec

@@ -28,10 +28,11 @@ module Asterius.Types
   , Expression(..)
   , Function(..)
   , FunctionImport(..)
+  , MemoryImport(..)
   , FunctionExport(..)
+  , MemoryExport(..)
   , FunctionTable(..)
   , DataSegment(..)
-  , Memory(..)
   , Module(..)
   , RelooperAddBlock(..)
   , RelooperAddBranch(..)
@@ -424,11 +425,24 @@ data FunctionImport = FunctionImport
 
 instance Binary FunctionImport
 
+data MemoryImport = MemoryImport
+  { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
+  , shared :: Bool
+  } deriving (Eq, Show, Data, Generic)
+
+instance Binary MemoryImport
+
 data FunctionExport = FunctionExport
   { internalName, externalName :: SBS.ShortByteString
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary FunctionExport
+
+data MemoryExport = MemoryExport
+  { internalName, externalName :: SBS.ShortByteString
+  } deriving (Eq, Show, Data, Generic)
+
+instance Binary MemoryExport
 
 data FunctionTable = FunctionTable
   { functionNames :: [SBS.ShortByteString]
@@ -444,20 +458,15 @@ data DataSegment = DataSegment
 
 instance Binary DataSegment
 
-data Memory = Memory
-  { initialPages :: BinaryenIndex
-  , memoryExportName :: SBS.ShortByteString
-  , dataSegments :: [DataSegment]
-  } deriving (Eq, Show, Data, Generic)
-
-instance Binary Memory
-
 data Module = Module
   { functionMap' :: LM.Map SBS.ShortByteString Function
   , functionImports :: [FunctionImport]
   , functionExports :: [FunctionExport]
   , functionTable :: FunctionTable
-  , memory :: Memory
+  , memorySegments :: [DataSegment]
+  , memoryImport :: MemoryImport
+  , memoryExport :: MemoryExport
+  , memoryMBlocks :: Int
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary Module

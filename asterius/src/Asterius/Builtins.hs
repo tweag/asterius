@@ -32,12 +32,13 @@ wasmPageSize :: Int
 wasmPageSize = 65536
 
 data BuiltinsOptions = BuiltinsOptions
-  { nurseryMBlocks, threadStateSize :: Int
+  { threadStateSize :: Int
+  , hasMain :: Bool
   }
 
 defaultBuiltinsOptions :: BuiltinsOptions
 defaultBuiltinsOptions =
-  BuiltinsOptions {nurseryMBlocks = 512, threadStateSize = 65536}
+  BuiltinsOptions {threadStateSize = 65536, hasMain = True}
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -451,8 +452,8 @@ rtsFunctionImports debug =
      else []) <>
   map (fst . snd) byteStringCBits
 
-rtsAsteriusFunctionExports :: Bool -> [FunctionExport]
-rtsAsteriusFunctionExports debug =
+rtsAsteriusFunctionExports :: Bool -> Bool -> [FunctionExport]
+rtsAsteriusFunctionExports debug has_main =
   [ FunctionExport {internalName = f <> "_wrapper", externalName = f}
   | f <-
       [ "loadI64"
@@ -493,7 +494,8 @@ rtsAsteriusFunctionExports debug =
               , "__asterius_Load_HpLim"
               ]
          else []) <>
-      ["hs_init", "main"]
+      ["hs_init"] <>
+      ["main" | has_main]
   ]
 
 emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
