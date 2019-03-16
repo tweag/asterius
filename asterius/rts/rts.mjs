@@ -22,6 +22,7 @@ export function newAsteriusInstance(req) {
   let __asterius_logger = new EventLogManager(req.symbolTable),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
     __asterius_wasm_instance = null,
+    __asterius_wasm_table = new WebAssembly.Table({element: "anyfunc", initial: req.tableSlots}),
     __asterius_wasm_memory = new WebAssembly.Memory({initial: req.staticMBlocks * (settings.mblock_size / 65536)}),
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable),
@@ -108,6 +109,9 @@ export function newAsteriusInstance(req) {
         log: x => Math.log(x),
         exp: x => Math.exp(x),
         pow: (x, y) => Math.pow(x, y)
+      },
+      WasmTable: {
+        table: __asterius_wasm_table
       },
       WasmMemory: {
         memory: __asterius_wasm_memory

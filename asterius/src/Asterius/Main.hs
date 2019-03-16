@@ -330,6 +330,8 @@ genLib Task {..} LinkReport {..} err_msgs =
       staticsSymbolMap
       exportFunctions
       bundledFFIMarshalState
+  , ", tableSlots: "
+  , intDec tableSlots
   , ", staticMBlocks: "
   , intDec staticMBlocks
   , if sync

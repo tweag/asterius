@@ -28,8 +28,10 @@ module Asterius.Types
   , Expression(..)
   , Function(..)
   , FunctionImport(..)
+  , TableImport(..)
   , MemoryImport(..)
   , FunctionExport(..)
+  , TableExport(..)
   , MemoryExport(..)
   , FunctionTable(..)
   , DataSegment(..)
@@ -425,6 +427,12 @@ data FunctionImport = FunctionImport
 
 instance Binary FunctionImport
 
+data TableImport = TableImport
+  { externalModuleName, externalBaseName :: SBS.ShortByteString
+  } deriving (Eq, Show, Data, Generic)
+
+instance Binary TableImport
+
 data MemoryImport = MemoryImport
   { externalModuleName, externalBaseName :: SBS.ShortByteString
   } deriving (Eq, Show, Data, Generic)
@@ -437,6 +445,12 @@ data FunctionExport = FunctionExport
 
 instance Binary FunctionExport
 
+newtype TableExport = TableExport
+  { externalName :: SBS.ShortByteString
+  } deriving (Eq, Show, Data, Generic)
+
+instance Binary TableExport
+
 newtype MemoryExport = MemoryExport
   { externalName :: SBS.ShortByteString
   } deriving (Eq, Show, Data, Generic)
@@ -444,8 +458,8 @@ newtype MemoryExport = MemoryExport
 instance Binary MemoryExport
 
 data FunctionTable = FunctionTable
-  { functionNames :: [SBS.ShortByteString]
-  , tableExportName :: SBS.ShortByteString
+  { tableFunctionNames :: [SBS.ShortByteString]
+  , tableOffset :: BinaryenIndex
   } deriving (Eq, Show, Data, Generic)
 
 instance Binary FunctionTable
@@ -462,6 +476,9 @@ data Module = Module
   , functionImports :: [FunctionImport]
   , functionExports :: [FunctionExport]
   , functionTable :: FunctionTable
+  , tableImport :: TableImport
+  , tableExport :: TableExport
+  , tableSlots :: Int
   , memorySegments :: [DataSegment]
   , memoryImport :: MemoryImport
   , memoryExport :: MemoryExport
