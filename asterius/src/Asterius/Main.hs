@@ -330,6 +330,8 @@ genLib Task {..} LinkReport {..} err_msgs =
       staticsSymbolMap
       exportFunctions
       bundledFFIMarshalState
+  , ", tableSlots: "
+  , intDec tableSlots
   , ", staticMBlocks: "
   , intDec staticMBlocks
   , if sync
@@ -488,6 +490,10 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                c_BinaryenSetShrinkLevel 0
                m_ref <-
                  withPool $ \pool -> OldMarshal.marshalModule pool final_m
+               putStrLn "[INFO] Validating binaryen IR"
+               pass_validation <- c_BinaryenModuleValidate m_ref
+               when (pass_validation /= 1) $
+                 fail "[ERROR] binaryen validation failed"
                m_bin <- LBS.fromStrict <$> OldMarshal.serializeModule m_ref
                putStrLn $
                  "[INFO] Writing WebAssembly binary to " <> show out_wasm

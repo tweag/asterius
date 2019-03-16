@@ -896,11 +896,7 @@ stgRun init_f = do
   putLVal f init_f
   loop' [] $ \loop_lbl ->
     if' [] (eqZInt64 (getLVal f)) mempty $ do
-      f' <-
-        callIndirect'
-          (getLVal f `subInt64` constI64 1)
-          []
-          (FunctionType [] [I64])
+      f' <- callIndirect' (getLVal f) [] (FunctionType [] [I64])
       putLVal f f'
       break' loop_lbl Nothing
   pure $ getLVal r1

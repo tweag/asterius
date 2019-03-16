@@ -51,7 +51,7 @@ data LinkReport = LinkReport
   { unavailableSymbols :: S.Set AsteriusEntitySymbol
   , staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64
   , infoTableSet :: S.Set Int64
-  , staticMBlocks :: Int
+  , tableSlots, staticMBlocks :: Int
   , bundledFFIMarshalState :: FFIMarshalState
   } deriving (Generic, Show)
 
@@ -64,6 +64,7 @@ instance Semigroup LinkReport where
       , staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
       , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
       , infoTableSet = infoTableSet r0 <> infoTableSet r1
+      , tableSlots = 0
       , staticMBlocks = 0
       , bundledFFIMarshalState =
           bundledFFIMarshalState r0 <> bundledFFIMarshalState r1
@@ -76,6 +77,7 @@ instance Monoid LinkReport where
       , staticsSymbolMap = mempty
       , functionSymbolMap = mempty
       , infoTableSet = mempty
+      , tableSlots = 0
       , staticMBlocks = 0
       , bundledFFIMarshalState = mempty
       }
@@ -177,14 +179,16 @@ resolveAsteriusModule ::
      , LM.Map AsteriusEntitySymbol Int64
      , LM.Map AsteriusEntitySymbol Int64
      , [Event]
+     , Int
      , Int)
 resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
-  (new_mod, ss_sym_map, func_sym_map, err_msgs, initial_mblocks)
+  (new_mod, ss_sym_map, func_sym_map, err_msgs, table_slots, initial_mblocks)
   where
-    (func_sym_map, _) =
+    (func_sym_map, last_func_addr) =
       makeFunctionSymbolTable m_globals_resolved func_start_addr
-    func_table = makeFunctionTable func_sym_map
-    (ss_sym_map, last_addr) =
+    table_slots = fromIntegral $ last_func_addr .&. 0xFFFFFFFF
+    func_table = makeFunctionTable func_sym_map func_start_addr
+    (ss_sym_map, last_data_addr) =
       makeDataSymbolTable m_globals_resolved data_start_addr
     all_sym_map = func_sym_map <> ss_sym_map
     func_imports =
@@ -210,7 +214,8 @@ resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_re
                   , body = body_locals_resolved
                   }
               , event_map')
-    (initial_pages, segs) = makeMemory m_globals_resolved all_sym_map last_addr
+    (initial_pages, segs) =
+      makeMemory m_globals_resolved all_sym_map last_data_addr
     initial_mblocks =
       fromIntegral initial_pages `quot` (mblock_size `quot` wasmPageSize)
     new_mod =
@@ -224,17 +229,16 @@ resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_re
             | k <- map entityName export_funcs
             ]
         , functionTable = func_table
+        , tableImport =
+            TableImport
+              {externalModuleName = "WasmTable", externalBaseName = "table"}
+        , tableExport = TableExport {externalName = "table"}
+        , tableSlots = table_slots
         , memorySegments = segs
         , memoryImport =
             MemoryImport
-              { internalName = "__asterius_memory"
-              , externalModuleName = "WasmMemory"
-              , externalBaseName = "memory"
-              , shared = False
-              }
-        , memoryExport =
-            MemoryExport
-              {internalName = "__asterius_memory", externalName = "memory"}
+              {externalModuleName = "WasmMemory", externalBaseName = "memory"}
+        , memoryExport = MemoryExport {externalName = "memory"}
         , memoryMBlocks = initial_mblocks
         }
     err_msgs = eventTable all_event_map
@@ -253,6 +257,7 @@ linkStart debug has_main store root_syms export_funcs =
       { staticsSymbolMap = ss_sym_map
       , functionSymbolMap = func_sym_map
       , infoTableSet = makeInfoTableSet merged_m ss_sym_map
+      , Asterius.Resolve.tableSlots = tbl_slots
       , staticMBlocks = static_mbs
       })
   where
@@ -266,7 +271,7 @@ linkStart debug has_main store root_syms export_funcs =
              {entityName = "__asterius_jsffi_export_" <> entityName k}
            | k <- export_funcs
            ])
-    (result_m, ss_sym_map, func_sym_map, err_msgs, static_mbs) =
+    (result_m, ss_sym_map, func_sym_map, err_msgs, tbl_slots, static_mbs) =
       resolveAsteriusModule
         debug
         has_main

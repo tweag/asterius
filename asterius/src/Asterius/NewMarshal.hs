@@ -102,6 +102,17 @@ makeImportSection Module {..} ModuleSymbolTable {..} =
                        , maxLimit = Nothing
                        }
                  }) :
+          (case tableImport of
+             TableImport {..} ->
+               Wasm.Import
+                 { moduleName = coerce externalModuleName
+                 , importName = coerce externalBaseName
+                 , importDescription =
+                     Wasm.ImportTable $
+                     Wasm.TableType Wasm.AnyFunc $
+                     Wasm.Limits
+                       {minLimit = fromIntegral tableSlots, maxLimit = Nothing}
+                 }) :
           [ Wasm.Import
             { moduleName = coerce externalModuleName
             , importName = coerce externalBaseName
@@ -120,27 +131,6 @@ makeFunctionSection Module {..} ModuleSymbolTable {..} =
       { functionTypeIndices =
           [ functionTypeSymbols ! functionType
           | Function {..} <- Map.elems functionMap'
-          ]
-      }
-
-makeTableSection :: MonadError MarshalError m => Module -> m Wasm.Section
-makeTableSection Module {..} =
-  pure
-    Wasm.TableSection
-      { tables =
-          [ Wasm.Table
-              { tableType =
-                  Wasm.TableType
-                    { elementType = Wasm.AnyFunc
-                    , tableLimits =
-                        Wasm.Limits
-                          { minLimit =
-                              fromIntegral $
-                              length $ functionNames functionTable
-                          , maxLimit = Nothing
-                          }
-                    }
-              }
           ]
       }
 
@@ -164,15 +154,13 @@ makeExportSection Module {..} ModuleSymbolTable {..} =
                    , exportDescription = Wasm.ExportMemory $ Wasm.MemoryIndex 0
                    }
                ]) <>
-          (case functionTable of
-             FunctionTable {..}
-               | not $ SBS.null tableExportName ->
-                 [ Wasm.Export
-                     { exportName = coerce tableExportName
-                     , exportDescription = Wasm.ExportTable $ Wasm.TableIndex 0
-                     }
-                 ]
-               | otherwise -> [])
+          (case tableExport of
+             TableExport {..} ->
+               [ Wasm.Export
+                   { exportName = coerce externalName
+                   , exportDescription = Wasm.ExportTable $ Wasm.TableIndex 0
+                   }
+               ])
       }
 
 makeElementSection ::
@@ -187,9 +175,15 @@ makeElementSection Module {..} ModuleSymbolTable {..} =
                   { tableIndex = Wasm.TableIndex 0
                   , tableOffset =
                       Wasm.Expression
-                        {instructions = [Wasm.I32Const {i32ConstValue = 0}]}
+                        { instructions =
+                            [ Wasm.I32Const
+                                {i32ConstValue = fromIntegral tableOffset}
+                            ]
+                        }
                   , tableInitialValues =
-                      [functionSymbols ! _func_sym | _func_sym <- functionNames]
+                      [ functionSymbols ! _func_sym
+                      | _func_sym <- tableFunctionNames
+                      ]
                   }
               ]
       }
@@ -623,7 +617,6 @@ makeModule m = do
   _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
-  _table_sec <- makeTableSection m
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection m _module_symtable
   _code_sec <- makeCodeSection m _module_symtable
@@ -633,7 +626,6 @@ makeModule m = do
       [ _type_sec
       , _import_sec
       , _func_sec
-      , _table_sec
       , _export_sec
       , _elem_sec
       , _code_sec

@@ -1,5 +1,3 @@
-{-# LANGUAGE MagicHash #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Passes.FunctionSymbolTable
@@ -8,30 +6,23 @@ module Asterius.Passes.FunctionSymbolTable
   ) where
 
 import Asterius.Types
+import Data.Bits
 import Data.Coerce
-import qualified Data.IntMap.Strict as IMap
+import Data.Int
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
 import Data.Tuple
-import GHC.Exts
-import GHC.Int
 
 {-# INLINABLE makeFunctionSymbolTable #-}
 makeFunctionSymbolTable ::
      AsteriusModule -> Int64 -> (Map AsteriusEntitySymbol Int64, Int64)
-makeFunctionSymbolTable AsteriusModule {..} l =
-  swap $ Map.mapAccum (\a _ -> (succ a, a)) l functionMap
+makeFunctionSymbolTable AsteriusModule {..} func_start_addr =
+  swap $ Map.mapAccum (\a _ -> (succ a, a)) func_start_addr functionMap
 
 {-# INLINABLE makeFunctionTable #-}
-makeFunctionTable :: Map AsteriusEntitySymbol Int64 -> FunctionTable
-makeFunctionTable sym_map =
+makeFunctionTable :: Map AsteriusEntitySymbol Int64 -> Int64 -> FunctionTable
+makeFunctionTable func_sym_map func_start_addr =
   FunctionTable
-    { functionNames =
-        coerce $
-        IMap.elems $
-        Map.foldlWithKey'
-          (\tot sym (I64# addr) -> IMap.insert (I# addr) sym tot)
-          IMap.empty
-          sym_map
-    , tableExportName = "table"
+    { tableFunctionNames = coerce $ Map.keys func_sym_map
+    , tableOffset = fromIntegral $ func_start_addr .&. 0xFFFFFFFF
     }

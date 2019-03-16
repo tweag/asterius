@@ -2342,7 +2342,12 @@ void BinaryenRemoveExport(BinaryenModuleRef module, const char* externalName) {
 
 // Function table. One per module
 
-void BinaryenSetFunctionTable(BinaryenModuleRef module, BinaryenIndex initial, BinaryenIndex maximum, const char** funcNames, BinaryenIndex numFuncNames) {
+void BinaryenSetFunctionTable(BinaryenModuleRef module, BinaryenIndex initial,
+  BinaryenIndex maximum, const char** funcNames, BinaryenIndex numFuncNames) {
+  BinaryenSetFunctionTableWithOffset(module, initial, maximum, 0, funcNames, numFuncNames);
+}
+
+void BinaryenSetFunctionTableWithOffset(BinaryenModuleRef module, BinaryenIndex initial, BinaryenIndex maximum, BinaryenIndex offset, const char** funcNames, BinaryenIndex numFuncNames) {
   if (tracing) {
     std::cout << "  {\n";
     std::cout << "    const char* funcNames[] = { ";
@@ -2356,7 +2361,7 @@ void BinaryenSetFunctionTable(BinaryenModuleRef module, BinaryenIndex initial, B
   }
 
   auto* wasm = (Module*)module;
-  Table::Segment segment(wasm->allocator.alloc<Const>()->set(Literal(int32_t(0))));
+  Table::Segment segment(wasm->allocator.alloc<Const>()->set(Literal(int32_t(offset))));
   for (BinaryenIndex i = 0; i < numFuncNames; i++) {
     segment.data.push_back(funcNames[i]);
   }
@@ -2420,15 +2425,6 @@ void BinaryenSetMemory(BinaryenModuleRef module, BinaryenIndex initial, Binaryen
   }
   for (BinaryenIndex i = 0; i < numSegments; i++) {
     wasm->memory.segments.emplace_back((Expression*)segmentOffsets[i], segments[i], segmentSizes[i]);
-  }
-}
-
-void BinaryenAddSegments(BinaryenModuleRef module, const char** segments,
-  BinaryenExpressionRef* segmentOffsets, BinaryenIndex* segmentSizes, BinaryenIndex numSegments) {
-  auto* wasm = (Module*)module;
-  for (BinaryenIndex i = 0; i < numSegments; i++) {
-    wasm->memory.segments.emplace_back(
-      (Expression*)segmentOffsets[i], segments[i], segmentSizes[i]);
   }
 }
 
