@@ -748,13 +748,13 @@ void BinaryenRemoveGlobal(BinaryenModuleRef module, const char* name);
 
 void BinaryenSetFunctionTable(BinaryenModuleRef module, BinaryenIndex initial, BinaryenIndex maximum, const char** funcNames, BinaryenIndex numFuncNames);
 
+void BinaryenSetFunctionTableWithOffset(BinaryenModuleRef module, BinaryenIndex initial, BinaryenIndex maximum, BinaryenIndex offset, const char** funcNames, BinaryenIndex numFuncNames);
+
 // Memory. One per module
 
 // Each segment has data in segments, a start offset in segmentOffsets, and a size in segmentSizes.
 // exportName can be NULL
 void BinaryenSetMemory(BinaryenModuleRef module, BinaryenIndex initial, BinaryenIndex maximum, const char* exportName, const char** segments, BinaryenExpressionRef* segmentOffsets, BinaryenIndex* segmentSizes, BinaryenIndex numSegments, uint8_t shared);
-
-void BinaryenAddSegments(BinaryenModuleRef module, const char** segments, BinaryenExpressionRef* segmentOffsets, BinaryenIndex* segmentSizes, BinaryenIndex numSegments);
 
 // Start function. One per module
 
