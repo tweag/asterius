@@ -1600,6 +1600,12 @@ foreign import ccall unsafe "BinaryenSetFunctionTable" c_BinaryenSetFunctionTabl
   BinaryenIndex ->
     BinaryenIndex -> Ptr (Ptr CChar) -> BinaryenIndex -> IO ()
 
+foreign import ccall unsafe "BinaryenSetFunctionTableWithOffset" c_BinaryenSetFunctionTableWithOffset
+  :: BinaryenModuleRef ->
+  BinaryenIndex ->
+    BinaryenIndex ->
+      BinaryenIndex -> Ptr (Ptr CChar) -> BinaryenIndex -> IO ()
+
 foreign import ccall unsafe "BinaryenSetMemory" c_BinaryenSetMemory
   :: BinaryenModuleRef ->
   BinaryenIndex ->
