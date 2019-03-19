@@ -57,7 +57,10 @@ rtsUsedSymbols =
 
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
-  final_store <- loadTheWorld defaultBuiltinsOptions ld_task
+  final_store <-
+    loadTheWorld
+      defaultBuiltinsOptions {Asterius.Builtins.debug = debug}
+      ld_task
   let ld_result =
         linkStart
           debug

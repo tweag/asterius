@@ -32,7 +32,7 @@ resolveGlobalRegs t =
               where (b, o, vt) = globalRegInfo unresolvedGlobalReg
         UnresolvedSetGlobal {..} ->
           case unresolvedGlobalReg of
-            BaseReg -> error "Asterius.Passes.GlobalRegs: Assignment to BaseReg"
+            BaseReg -> Nop
             _ ->
               Store
                 { bytes = b

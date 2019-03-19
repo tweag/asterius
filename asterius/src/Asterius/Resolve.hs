@@ -88,7 +88,7 @@ mergeSymbols ::
   -> S.Set AsteriusEntitySymbol
   -> (AsteriusModule, LinkReport)
 mergeSymbols debug store_mod root_syms =
-  (final_m, final_rep {bundledFFIMarshalState = ffi_this})
+  (store_mod, final_rep {bundledFFIMarshalState = ffi_all})
   where
     ffi_all = ffiMarshalState store_mod
     ffi_this =

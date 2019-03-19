@@ -8,6 +8,7 @@ module Asterius.Passes.DataSymbolTable
   ) where
 
 import Asterius.Internals
+import Asterius.Internals.MagicNumber
 import Asterius.Types
 import Data.Bits
 import qualified Data.ByteString.Short as SBS
@@ -78,12 +79,7 @@ makeMemory AsteriusModule {..} sym_map last_addr =
                       encodeStorable $
                       case Map.lookup sym sym_map of
                         Just addr -> addr + fromIntegral o
-                        _ ->
-                          error $
-                          "Asterius.Passes.DataSymbolTable.makeMemory: unfound " <>
-                          show sym <>
-                          " in " <>
-                          show statics_sym
+                        _ -> invalidAddress
                     Uninitialized l ->
                       (static_segs, static_tail_addr - fromIntegral l)
                     Serialized buf -> flush_static_segs buf)
