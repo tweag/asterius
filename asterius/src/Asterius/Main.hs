@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# OPTIONS_GHC -Wno-missing-fields #-}
 
 module Asterius.Main
   ( Target(..)
@@ -65,7 +64,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
+  , gcSections, fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -97,6 +96,7 @@ parseTask args =
         , str_opt "input-mjs" $ \s t -> t {inputEntryMJS = Just s}
         , str_opt "output-directory" $ \s t -> t {outputDirectory = s}
         , str_opt "output-prefix" $ \s t -> t {outputBaseName = s}
+        , bool_opt "no-gc-sections" $ \t -> t {gcSections = False}
         , bool_opt "full-sym-table" $ \t -> t {fullSymTable = True}
         , bool_opt "bundle" $ \t -> t {bundle = True}
         , bool_opt "no-streaming" $ \t -> t {noStreaming = True}
@@ -120,7 +120,13 @@ parseTask args =
         (flip ($))
         Task
           { target = Node
+          , inputHS = error "Asterius.Main.parseTask: missing inputHS"
+          , outputDirectory =
+              error "Asterius.Main.parseTask: missing outputDirectory"
+          , outputBaseName =
+              error "Asterius.Main.parseTask: missing outputBaseName"
           , inputEntryMJS = Nothing
+          , gcSections = True
           , fullSymTable = False
           , bundle = False
           , noStreaming = False
@@ -456,6 +462,7 @@ ahcLink Task {..} = do
     [ "-optl--export-function=" <> c8SBS (entityName export_func)
     | export_func <- exportFunctions
     ] <>
+    ["-optl--no-gc-sections" | not gcSections] <>
     extraGHCFlags <>
     ["-o", ld_output, inputHS]
   r <- decodeFile ld_output

@@ -23,7 +23,7 @@ import Prelude hiding (IO)
 data LinkTask = LinkTask
   { linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
-  , debug :: Bool
+  , debug, gcSections :: Bool
   , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
   } deriving (Show)
 
@@ -65,6 +65,7 @@ linkExe ld_task@LinkTask {..} = do
         linkStart
           debug
           True
+          gcSections
           final_store
           (Set.unions
              [ Set.fromList rootSymbols

@@ -84,11 +84,13 @@ instance Monoid LinkReport where
 
 mergeSymbols ::
      Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> (AsteriusModule, LinkReport)
-mergeSymbols debug store_mod root_syms =
-  (store_mod, final_rep {bundledFFIMarshalState = ffi_all})
+mergeSymbols debug gc_sections store_mod root_syms
+  | not gc_sections = (store_mod, final_rep {bundledFFIMarshalState = ffi_all})
+  | otherwise = (final_m, mempty {bundledFFIMarshalState = ffi_this})
   where
     ffi_all = ffiMarshalState store_mod
     ffi_this =
@@ -222,11 +224,12 @@ resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_re
 linkStart ::
      Bool
   -> Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
   -> (Module, [Event], LinkReport)
-linkStart debug has_main store root_syms export_funcs =
+linkStart debug has_main gc_sections store root_syms export_funcs =
   ( result_m
   , err_msgs
   , report
@@ -240,6 +243,7 @@ linkStart debug has_main store root_syms export_funcs =
     (merged_m, report) =
       mergeSymbols
         debug
+        gc_sections
         store
         (root_syms <>
          S.fromList
