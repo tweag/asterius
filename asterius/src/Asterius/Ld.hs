@@ -23,7 +23,7 @@ import Prelude hiding (IO)
 data LinkTask = LinkTask
   { linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
-  , debug :: Bool
+  , debug, gcSections :: Bool
   , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
   } deriving (Show)
 
@@ -57,11 +57,15 @@ rtsUsedSymbols =
 
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
-  final_store <- loadTheWorld defaultBuiltinsOptions ld_task
+  final_store <-
+    loadTheWorld
+      defaultBuiltinsOptions {Asterius.Builtins.debug = debug}
+      ld_task
   let ld_result =
         linkStart
           debug
           True
+          gcSections
           final_store
           (Set.unions
              [ Set.fromList rootSymbols

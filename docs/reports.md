@@ -2,6 +2,24 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-03-18
+
+Covers last week.
+
+Ongoing work:
+
+* Removed the memory & table sections in output wasm binaries; now we initiate wasm memory/table in js, and it's possible to transfer them across multiple asterius instances.
+    * Rationale: The wasm spec includes data/element segment sections to initialize certain ranges of the memory/table, and also separate memory/table sections to implicitly create an empty memory/table. When incrementally linking multiple compilation units, we need to take memory/table of the previous asterius instance, "append" some data & code while preserving previous content.
+    * This involved some unexpected debugging sessions, and we also needed to patch the in-tree `binaryen` library to avoid dropping the `binaryen` backend. Thankfully we sorted out that mess
+* Figured out that running regular linker passes on all loaded boot library archives is *incredibly* slow, and it was also harder than expected to add an incremental mode.
+    * Besides regular wasm function/data, there are also other stuff in asterius compilation units like FFI marshal info, pooled error messages, etc, which used to work nicely with "one-shot" linking, but harder for incremental mode.
+    * A failed attempt to speed things up: use global string interning for symbols, which are central to almost every function in asterius modules. Surprisingly no noticable speedup after the patch is applied, so this remains unmerged.
+
+Planned work for this week:
+
+* Factor out a set of self-contained "linker state" and "runtime state" types, which are guaranteed serializable and thus easy to transfer. Memory/table was not enough, we also needed to take care of things like JSFFI imports/exports, SPT, eventlogs, error message pools, etc.
+* Generate both "vanilla" and "dynamic" ways of wasm code in asterius object files. The "dynamic" code should already be wasm binaries without requiring whole-program rewriting passes, and we also include a custom section with symbol locations in the binary, so only a fast link-time relocating pass is required when loading a "dynamic" way wasm binary.
+
 ## 2019-03-10
 
 Covers this week.

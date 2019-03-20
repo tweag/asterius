@@ -88,6 +88,10 @@ Switch on the debug mode. Emits a ton of event logs suitable for piping to `grep
 
 Contain the full symbol table into `xx.lib.mjs`. Automatically implied by `--debug`.
 
+### `--no-gc-sections`
+
+Do not run dead code elimination.
+
 ## Options affecting the linker
 
 ### `--export-function ARG`

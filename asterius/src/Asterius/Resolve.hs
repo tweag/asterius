@@ -84,11 +84,13 @@ instance Monoid LinkReport where
 
 mergeSymbols ::
      Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> (AsteriusModule, LinkReport)
-mergeSymbols debug store_mod root_syms =
-  (final_m, final_rep {bundledFFIMarshalState = ffi_this})
+mergeSymbols debug gc_sections store_mod root_syms
+  | not gc_sections = (store_mod, final_rep {bundledFFIMarshalState = ffi_all})
+  | otherwise = (final_m, mempty {bundledFFIMarshalState = ffi_this})
   where
     ffi_all = ffiMarshalState store_mod
     ffi_this =
@@ -128,34 +130,10 @@ mergeSymbols debug store_mod root_syms =
                                  func
                                  (functionMap o_m_acc)
                            })
-                     _
-                       | LM.member i_staging_sym (functionErrorMap store_mod) ->
-                         ( i_unavailable_syms_acc
-                         , i_child_syms_acc
-                         , o_m_acc
-                             { functionMap =
-                                 LM.insert
-                                   i_staging_sym
-                                   AsteriusFunction
-                                     { functionType =
-                                         FunctionType
-                                           { paramTypes = []
-                                           , returnTypes = [I64]
-                                           }
-                                     , body =
-                                         emitErrorMessage [I64] $
-                                         entityName i_staging_sym <>
-                                         " failed: it was marked as broken by code generator, with error message: " <>
-                                         showSBS
-                                           (functionErrorMap store_mod !
-                                            i_staging_sym)
-                                     }
-                                   (functionMap o_m_acc)
-                             })
-                       | otherwise ->
-                         ( S.insert i_staging_sym i_unavailable_syms_acc
-                         , i_child_syms_acc
-                         , o_m_acc))
+                     _ ->
+                       ( S.insert i_staging_sym i_unavailable_syms_acc
+                       , i_child_syms_acc
+                       , o_m_acc))
             (unavailableSymbols i_rep, S.empty, i_m)
             i_staging_syms
         o_rep = i_rep {unavailableSymbols = o_unavailable_syms}
@@ -246,11 +224,12 @@ resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_re
 linkStart ::
      Bool
   -> Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
   -> (Module, [Event], LinkReport)
-linkStart debug has_main store root_syms export_funcs =
+linkStart debug has_main gc_sections store root_syms export_funcs =
   ( result_m
   , err_msgs
   , report
@@ -264,6 +243,7 @@ linkStart debug has_main store root_syms export_funcs =
     (merged_m, report) =
       mergeSymbols
         debug
+        gc_sections
         store
         (root_syms <>
          S.fromList
