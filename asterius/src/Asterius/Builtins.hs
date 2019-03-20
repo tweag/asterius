@@ -33,12 +33,12 @@ wasmPageSize = 65536
 
 data BuiltinsOptions = BuiltinsOptions
   { threadStateSize :: Int
-  , hasMain :: Bool
+  , debug, hasMain :: Bool
   }
 
 defaultBuiltinsOptions :: BuiltinsOptions
 defaultBuiltinsOptions =
-  BuiltinsOptions {threadStateSize = 65536, hasMain = True}
+  BuiltinsOptions {threadStateSize = 65536, debug = False, hasMain = True}
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -64,6 +64,25 @@ rtsAsteriusModule opts =
           ]
     , functionMap =
         Map.fromList $
+        (if debug opts
+           then [ ("__asterius_Load_Sp", getF64GlobalRegFunction opts Sp)
+                , ("__asterius_Load_SpLim", getF64GlobalRegFunction opts SpLim)
+                , ("__asterius_Load_Hp", getF64GlobalRegFunction opts Hp)
+                , ("__asterius_Load_HpLim", getF64GlobalRegFunction opts HpLim)
+                , ("__asterius_trap_load_i8", trapLoadI8Function opts)
+                , ("__asterius_trap_store_i8", trapStoreI8Function opts)
+                , ("__asterius_trap_load_i16", trapLoadI16Function opts)
+                , ("__asterius_trap_store_i16", trapStoreI16Function opts)
+                , ("__asterius_trap_load_i32", trapLoadI32Function opts)
+                , ("__asterius_trap_store_i32", trapStoreI32Function opts)
+                , ("__asterius_trap_load_i64", trapLoadI64Function opts)
+                , ("__asterius_trap_store_i64", trapStoreI64Function opts)
+                , ("__asterius_trap_load_f32", trapLoadF32Function opts)
+                , ("__asterius_trap_store_f32", trapStoreF32Function opts)
+                , ("__asterius_trap_load_f64", trapLoadF64Function opts)
+                , ("__asterius_trap_store_f64", trapStoreF64Function opts)
+                ]
+           else []) <>
         [ ("main", mainFunction opts)
         , ("hs_init", hsInitFunction opts)
         , ("rts_apply", rtsApplyFunction opts)
@@ -158,22 +177,6 @@ rtsAsteriusModule opts =
         , ("print_i64", printI64Function opts)
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
-        , ("__asterius_Load_Sp", getF64GlobalRegFunction opts Sp)
-        , ("__asterius_Load_SpLim", getF64GlobalRegFunction opts SpLim)
-        , ("__asterius_Load_Hp", getF64GlobalRegFunction opts Hp)
-        , ("__asterius_Load_HpLim", getF64GlobalRegFunction opts HpLim)
-        , ("__asterius_trap_load_i8", trapLoadI8Function opts)
-        , ("__asterius_trap_store_i8", trapStoreI8Function opts)
-        , ("__asterius_trap_load_i16", trapLoadI16Function opts)
-        , ("__asterius_trap_store_i16", trapStoreI16Function opts)
-        , ("__asterius_trap_load_i32", trapLoadI32Function opts)
-        , ("__asterius_trap_store_i32", trapStoreI32Function opts)
-        , ("__asterius_trap_load_i64", trapLoadI64Function opts)
-        , ("__asterius_trap_store_i64", trapStoreI64Function opts)
-        , ("__asterius_trap_load_f32", trapLoadF32Function opts)
-        , ("__asterius_trap_store_f32", trapStoreF32Function opts)
-        , ("__asterius_trap_load_f64", trapLoadF64Function opts)
-        , ("__asterius_trap_store_f64", trapStoreF64Function opts)
         , ("strlen", strlenFunction opts)
         , ("memchr", memchrFunction opts)
         , ("memcpy", memcpyFunction opts)
@@ -536,7 +539,7 @@ generateRTSWrapper ::
   -> (FunctionImport, AsteriusFunction)
 generateRTSWrapper mod_sym func_sym param_vts ret_vts =
   ( FunctionImport
-      { internalName = func_sym
+      { internalName = "__asterius_" <> func_sym
       , externalModuleName = mod_sym
       , externalBaseName = func_sym
       , functionType =
@@ -549,7 +552,7 @@ generateRTSWrapper mod_sym func_sym param_vts ret_vts =
           snd
             ret
             CallImport
-              { target' = func_sym
+              { target' = "__asterius_" <> func_sym
               , operands = map snd xs
               , callImportReturnTypes = fst ret
               }
