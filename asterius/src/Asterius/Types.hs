@@ -393,6 +393,7 @@ data Expression
           , operand0 :: Expression }
   | Binary { binaryOp :: BinaryOp
            , operand0, operand1 :: Expression }
+  | Return
   | Host { hostOp :: HostOp
          , operands :: [Expression] }
   | Nop

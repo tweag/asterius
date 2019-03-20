@@ -24,6 +24,7 @@ import Data.Set (Set)
 allPasses ::
      Data a
   => Bool
+  -> Bool
   -> Map AsteriusEntitySymbol Int64
   -> Set AsteriusEntitySymbol
   -> AsteriusEntitySymbol
@@ -31,7 +32,7 @@ allPasses ::
   -> Map Event Int
   -> a
   -> (a, [ValueType], Map Event Int)
-allPasses debug sym_map export_funcs whoami ft event_map t =
+allPasses debug binaryen sym_map export_funcs whoami ft event_map t =
   (result, localRegTable ps, eventMap ps)
   where
     (result, ps) =
@@ -39,8 +40,12 @@ allPasses debug sym_map export_funcs whoami ft event_map t =
     pipeline =
       everywhereM $
       rewriteEmitEvent <=<
-      relooperShallow <=<
+      relooper_pass <=<
       resolveLocalRegs ft <=<
       resolveSymbols sym_map <=<
       mergeSymbolOffset <=<
       maskUnknownCCallTargets whoami export_funcs <=< resolveGlobalRegs
+    relooper_pass :: Monad m => GenericM m
+    relooper_pass
+      | binaryen = pure
+      | otherwise = relooperShallow

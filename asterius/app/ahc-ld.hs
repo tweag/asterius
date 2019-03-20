@@ -17,6 +17,7 @@ parseLinkTask args = do
       , linkLibs = link_libs
       , debug = "--debug" `elem` args
       , gcSections = "--no-gc-sections" `notElem` args
+      , binaryen = "--binaryen" `elem` args
       , rootSymbols =
           map (AsteriusEntitySymbol . fromString) $
           str_args "--extra-root-symbol="

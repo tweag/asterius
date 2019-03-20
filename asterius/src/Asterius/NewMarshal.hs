@@ -543,6 +543,7 @@ makeInstructions _module_symtable@ModuleSymbolTable {..} _de_bruijn_ctx _local_c
           GtFloat64 -> pure Wasm.F64Gt
           GeFloat64 -> pure Wasm.F64Ge
       pure $ x <> y <> op
+    Return -> pure $ DList.singleton Wasm.Return
     Host {..} -> do
       let op =
             DList.singleton $

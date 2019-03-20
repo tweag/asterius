@@ -148,6 +148,7 @@ makeInfoTableSet AsteriusModule {..} sym_map =
 resolveAsteriusModule ::
      Bool
   -> Bool
+  -> Bool
   -> FFIMarshalState
   -> [AsteriusEntitySymbol]
   -> AsteriusModule
@@ -159,7 +160,7 @@ resolveAsteriusModule ::
      , [Event]
      , Int
      , Int)
-resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
+resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
   (new_mod, ss_sym_map, func_sym_map, err_msgs, table_slots, initial_mblocks)
   where
     (func_sym_map, last_func_addr) =
@@ -180,6 +181,7 @@ resolveAsteriusModule debug has_main bundled_ffi_state export_funcs m_globals_re
           let (body_locals_resolved, local_reg_table, event_map') =
                 allPasses
                   debug
+                  binaryen
                   all_sym_map
                   export_func_set
                   sym
@@ -225,11 +227,12 @@ linkStart ::
      Bool
   -> Bool
   -> Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
   -> (Module, [Event], LinkReport)
-linkStart debug has_main gc_sections store root_syms export_funcs =
+linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
   ( result_m
   , err_msgs
   , report
@@ -255,6 +258,7 @@ linkStart debug has_main gc_sections store root_syms export_funcs =
       resolveAsteriusModule
         debug
         has_main
+        binaryen
         (bundledFFIMarshalState report)
         export_funcs
         merged_m

@@ -463,6 +463,7 @@ ahcLink Task {..} = do
     | export_func <- exportFunctions
     ] <>
     ["-optl--no-gc-sections" | not gcSections] <>
+    ["-optl--binaryen" | binaryen] <>
     extraGHCFlags <>
     ["-o", ld_output, inputHS]
   r <- decodeFile ld_output

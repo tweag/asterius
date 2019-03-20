@@ -45,7 +45,7 @@ module Asterius.EDSL
   , call'
   , callImport
   , callImport'
-  , callIndirect'
+  , callIndirect
   , Label
   , block'
   , loop'
@@ -318,17 +318,14 @@ callImport' f xs vt = do
     CallImport {target' = f, operands = xs, callImportReturnTypes = [vt]}
   pure $ getLVal lr
 
-callIndirect' :: Expression -> [Expression] -> FunctionType -> EDSL Expression
-callIndirect' f xs ft@FunctionType {returnTypes = [rt]} = do
-  lr <- mutLocal rt
-  putLVal
-    lr
+callIndirect :: Expression -> EDSL ()
+callIndirect f =
+  emit
     CallIndirect
-      {indirectTarget = wrapInt64 f, operands = xs, functionType = ft}
-  pure $ getLVal lr
-callIndirect' _ _ ft =
-  Control.Monad.Fail.fail $
-  "callIndirect': unsupported function type: " <> show ft
+      { indirectTarget = wrapInt64 f
+      , operands = []
+      , functionType = FunctionType {paramTypes = [], returnTypes = []}
+      }
 
 newtype Label = Label
   { unLabel :: SBS.ShortByteString

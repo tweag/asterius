@@ -283,6 +283,7 @@ marshalExpression pool m e =
       x <- marshalExpression pool m operand0
       y <- marshalExpression pool m operand1
       c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
+    Return -> c_BinaryenReturn m nullPtr
     Host {..} -> do
       xs <- forM operands $ marshalExpression pool m
       (es, en) <- marshalV pool xs
