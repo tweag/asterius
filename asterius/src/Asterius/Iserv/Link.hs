@@ -18,6 +18,7 @@ iservLink IservState {..} root_sym =
     False
     False
     True
+    False
     (rtsAsteriusModule defaultBuiltinsOptions <>
      Map.foldl' (<>) iservArchives iservObjs)
     (Set.singleton root_sym <> rtsUsedSymbols <>
