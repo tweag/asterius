@@ -920,7 +920,13 @@ marshalCmmBlockBranch instr =
           [AddBranch {to = dest_def, addBranchCondition = Nothing}])
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
-      pure ([SetLocal {index = 2, value = t}], Nothing, [])
+      pure
+        ( [ case t of
+              Symbol {..} -> ReturnCall {returnCallTarget64 = unresolvedSymbol}
+              _ -> ReturnCallIndirect {returnCallIndirectTarget64 = t}
+          ]
+        , Nothing
+        , [])
     _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
 
 marshalCmmBlock ::
@@ -997,21 +1003,14 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
         ]
   pure
     AsteriusFunction
-      { functionType = FunctionType {paramTypes = [], returnTypes = [I64]}
+      { functionType = FunctionType {paramTypes = [], returnTypes = []}
       , body =
-          Block
-            { name = ""
-            , bodys =
-                [ CFG
-                    RelooperRun
-                      { entry = blocks_key_subst entry_k
-                      , blockMap = M.fromList blocks_resolved
-                      , labelHelper = 0
-                      }
-                , GetLocal {index = 2, valueType = I64}
-                ]
-            , blockReturnTypes = [I64]
-            }
+          CFG
+            RelooperRun
+              { entry = blocks_key_subst entry_k
+              , blockMap = M.fromList blocks_resolved
+              , labelHelper = 0
+              }
       }
 
 marshalCmmDecl ::

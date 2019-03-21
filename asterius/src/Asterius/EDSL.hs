@@ -20,7 +20,6 @@ module Asterius.EDSL
   , i64Local
   , i32Local
   , i64MutLocal
-  , i32MutLocal
   , global
   , pointer
   , pointerI64
@@ -45,7 +44,7 @@ module Asterius.EDSL
   , call'
   , callImport
   , callImport'
-  , callIndirect'
+  , callIndirect
   , Label
   , block'
   , loop'
@@ -218,10 +217,8 @@ i64Local = local I64
 
 i32Local = local I32
 
-i64MutLocal, i32MutLocal :: EDSL LVal
+i64MutLocal :: EDSL LVal
 i64MutLocal = mutLocal I64
-
-i32MutLocal = mutLocal I32
 
 global :: UnresolvedGlobalReg -> LVal
 global gr =
@@ -318,17 +315,14 @@ callImport' f xs vt = do
     CallImport {target' = f, operands = xs, callImportReturnTypes = [vt]}
   pure $ getLVal lr
 
-callIndirect' :: Expression -> [Expression] -> FunctionType -> EDSL Expression
-callIndirect' f xs ft@FunctionType {returnTypes = [rt]} = do
-  lr <- mutLocal rt
-  putLVal
-    lr
+callIndirect :: Expression -> EDSL ()
+callIndirect f =
+  emit
     CallIndirect
-      {indirectTarget = wrapInt64 f, operands = xs, functionType = ft}
-  pure $ getLVal lr
-callIndirect' _ _ ft =
-  Control.Monad.Fail.fail $
-  "callIndirect': unsupported function type: " <> show ft
+      { indirectTarget = wrapInt64 f
+      , operands = []
+      , functionType = FunctionType {paramTypes = [], returnTypes = []}
+      }
 
 newtype Label = Label
   { unLabel :: SBS.ShortByteString
