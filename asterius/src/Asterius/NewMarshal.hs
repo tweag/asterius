@@ -11,6 +11,7 @@ module Asterius.NewMarshal
 
 import Asterius.Internals
 import qualified Asterius.Internals.DList as DList
+import Asterius.Internals.MagicNumber
 import Asterius.TypeInfer
 import Asterius.Types
 import Asterius.TypesConv
@@ -664,11 +665,18 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
     ReturnCall {..}
       | tail_calls ->
         pure $
-        DList.singleton
-          Wasm.ReturnCall
-            { returnCallFunctionIndex =
-                functionSymbols ! coerce returnCallTarget64
-            }
+        case Map.lookup (coerce returnCallTarget64) functionSymbols of
+          Just i ->
+            DList.singleton Wasm.ReturnCall {returnCallFunctionIndex = i}
+          _ ->
+            DList.singleton
+              (Wasm.I32Const (fromIntegral $ invalidAddress .&. 0xFFFFFFFF)) <>
+            DList.singleton
+              Wasm.ReturnCallIndirect
+                { returnCallIndirectFunctionTypeIndex =
+                    functionTypeSymbols !
+                    FunctionType {paramTypes = [], returnTypes = []}
+                }
       | otherwise ->
         makeInstructions
           tail_calls
@@ -682,7 +690,7 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
             , ptr =
                 ConstI32 $
                 fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-            , value = ConstI64 $ sym_map ! returnCallTarget64
+            , value = ConstI64 $ sym_map !? returnCallTarget64
             , valueType = I64
             }
     ReturnCallIndirect {..}

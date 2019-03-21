@@ -299,7 +299,7 @@ marshalExpression pool sym_map m e =
             , ptr =
                 ConstI32 $
                 fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-            , value = ConstI64 $ sym_map ! returnCallTarget64
+            , value = ConstI64 $ sym_map !? returnCallTarget64
             , valueType = I64
             }
       r <- c_BinaryenReturn m nullPtr
