@@ -64,7 +64,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , gcSections, fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
+  , tailCalls, gcSections, fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -96,6 +96,7 @@ parseTask args =
         , str_opt "input-mjs" $ \s t -> t {inputEntryMJS = Just s}
         , str_opt "output-directory" $ \s t -> t {outputDirectory = s}
         , str_opt "output-prefix" $ \s t -> t {outputBaseName = s}
+        , bool_opt "tail-calls" $ \t -> t {tailCalls = True}
         , bool_opt "no-gc-sections" $ \t -> t {gcSections = False}
         , bool_opt "full-sym-table" $ \t -> t {fullSymTable = True}
         , bool_opt "bundle" $ \t -> t {bundle = True}
@@ -126,6 +127,7 @@ parseTask args =
           , outputBaseName =
               error "Asterius.Main.parseTask: missing outputBaseName"
           , inputEntryMJS = Nothing
+          , tailCalls = False
           , gcSections = True
           , fullSymTable = False
           , bundle = False
@@ -463,6 +465,7 @@ ahcLink Task {..} = do
     | export_func <- exportFunctions
     ] <>
     ["-optl--no-gc-sections" | not gcSections] <>
+    ["-optl--binaryen" | binaryen] <>
     extraGHCFlags <>
     ["-o", ld_output, inputHS]
   r <- decodeFile ld_output
@@ -494,7 +497,11 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                c_BinaryenSetOptimizeLevel 0
                c_BinaryenSetShrinkLevel 0
                m_ref <-
-                 withPool $ \pool -> OldMarshal.marshalModule pool final_m
+                 withPool $ \pool ->
+                   OldMarshal.marshalModule
+                     pool
+                     (staticsSymbolMap report <> functionSymbolMap report)
+                     final_m
                putStrLn "[INFO] Validating binaryen IR"
                pass_validation <- c_BinaryenModuleValidate m_ref
                when (pass_validation /= 1) $
@@ -514,7 +521,12 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                    _ -> fail "[ERROR] Re-parsing failed"
                pure m_bin)
       else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
-               let conv_result = runExcept $ NewMarshal.makeModule final_m
+               let conv_result =
+                     runExcept $
+                     NewMarshal.makeModule
+                       tailCalls
+                       (staticsSymbolMap report <> functionSymbolMap report)
+                       final_m
                r <-
                  case conv_result of
                    Left err ->
@@ -579,10 +591,14 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
     if bundle
       then do
         putStrLn $ "[INFO] Running " <> out_js
-        callProcess "node" [takeFileName out_js]
+        callProcess "node" $
+          ["--experimental-wasm-return-call" | tailCalls] <>
+          [takeFileName out_js]
       else do
         putStrLn $ "[INFO] Running " <> out_entry
-        callProcess "node" ["--experimental-modules", takeFileName out_entry]
+        callProcess "node" $
+          ["--experimental-wasm-return-call" | tailCalls] <>
+          ["--experimental-modules", takeFileName out_entry]
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do

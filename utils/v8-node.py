@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
 from io import BytesIO
-from os import getcwd
 from html.parser import HTMLParser
+import os
 from urllib.request import urlopen
 from zipfile import ZipFile
 
@@ -50,8 +50,10 @@ def get_node_zip_url():
 
 def extract_node_zip(node_zip_bytes, path):
     with ZipFile(BytesIO(node_zip_bytes)) as z:
-        z.extractall(path)
+        for i in z.infolist():
+            z.extract(i.filename, path)
+            os.chmod(os.path.join(path, i.filename), i.external_attr >> 16)
 
 
 if __name__ == "__main__":
-    extract_node_zip(get_bytes(get_node_zip_url()), getcwd())
+    extract_node_zip(get_bytes(get_node_zip_url()), os.getcwd())

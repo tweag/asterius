@@ -17,6 +17,7 @@ module Asterius.Builtins
 
 import Asterius.EDSL
 import Asterius.Internals
+import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
@@ -60,6 +61,11 @@ rtsAsteriusModule opts =
                       SBS.pack $
                       replicate (8 * roundup_bytes_to_words sizeof_Capability) 0
                     ]
+                })
+          , ( "__asterius_pc"
+            , AsteriusStatics
+                { staticsType = Bytes
+                , asteriusStatics = [Serialized $ encodeStorable invalidAddress]
                 })
           ]
     , functionMap =
@@ -895,19 +901,18 @@ newCAFFunction _ =
 
 stgRun :: Expression -> EDSL Expression
 stgRun init_f = do
-  f <- i64MutLocal
-  putLVal f init_f
-  loop' [] $ \loop_lbl ->
-    if' [] (eqZInt64 (getLVal f)) mempty $ do
-      f' <- callIndirect' (getLVal f) [] (FunctionType [] [I64])
-      putLVal f f'
+  let pc = pointerI64 (symbol "__asterius_pc") 0
+  pc_reg <- i64MutLocal
+  putLVal pc init_f
+  loop' [] $ \loop_lbl -> do
+    putLVal pc_reg $ getLVal pc
+    if' [] (eqZInt64 (getLVal pc_reg)) mempty $ do
+      callIndirect (getLVal pc_reg)
       break' loop_lbl Nothing
   pure $ getLVal r1
 
 stgReturnFunction _ =
-  runEDSL [I64] $ do
-    setReturnTypes [I64]
-    emit $ constI64 0
+  runEDSL [] $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0
 
 getStablePtrWrapperFunction _ =
   runEDSL [I64] $ do
