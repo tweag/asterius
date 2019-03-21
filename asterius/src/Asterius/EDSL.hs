@@ -20,7 +20,6 @@ module Asterius.EDSL
   , i64Local
   , i32Local
   , i64MutLocal
-  , i32MutLocal
   , global
   , pointer
   , pointerI64
@@ -218,10 +217,8 @@ i64Local = local I64
 
 i32Local = local I32
 
-i64MutLocal, i32MutLocal :: EDSL LVal
+i64MutLocal :: EDSL LVal
 i64MutLocal = mutLocal I64
-
-i32MutLocal = mutLocal I32
 
 global :: UnresolvedGlobalReg -> LVal
 global gr =

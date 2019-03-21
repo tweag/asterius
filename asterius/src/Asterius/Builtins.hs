@@ -901,11 +901,13 @@ newCAFFunction _ =
 
 stgRun :: Expression -> EDSL Expression
 stgRun init_f = do
-  let f = pointerI64 (symbol "__asterius_pc") 0
-  putLVal f init_f
-  loop' [] $ \loop_lbl ->
-    if' [] (eqZInt64 (getLVal f)) mempty $ do
-      callIndirect (getLVal f)
+  let pc = pointerI64 (symbol "__asterius_pc") 0
+  pc_reg <- i64MutLocal
+  putLVal pc init_f
+  loop' [] $ \loop_lbl -> do
+    putLVal pc_reg $ getLVal pc
+    if' [] (eqZInt64 (getLVal pc_reg)) mempty $ do
+      callIndirect (getLVal pc_reg)
       break' loop_lbl Nothing
   pure $ getLVal r1
 
