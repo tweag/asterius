@@ -921,23 +921,9 @@ marshalCmmBlockBranch instr =
     GHC.CmmCall {..} -> do
       t <- marshalAndCastCmmExpr cml_target I64
       pure
-        ( [ Store
-              { bytes = 8
-              , offset = 0
-              , ptr =
-                  Unary
-                    { unaryOp = WrapInt64
-                    , operand0 =
-                        Symbol
-                          { unresolvedSymbol = "__asterius_pc"
-                          , symbolOffset = 0
-                          , resolvedSymbol = Nothing
-                          }
-                    }
-              , value = t
-              , valueType = I64
-              }
-          , Return
+        ( [ case t of
+              Symbol {..} -> ReturnCall {returnCallTarget64 = unresolvedSymbol}
+              _ -> ReturnCallIndirect {returnCallIndirectTarget64 = t}
           ]
         , Nothing
         , [])

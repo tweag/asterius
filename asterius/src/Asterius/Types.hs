@@ -393,7 +393,8 @@ data Expression
           , operand0 :: Expression }
   | Binary { binaryOp :: BinaryOp
            , operand0, operand1 :: Expression }
-  | Return
+  | ReturnCall { returnCallTarget64 :: AsteriusEntitySymbol }
+  | ReturnCallIndirect { returnCallIndirectTarget64 :: Expression }
   | Host { hostOp :: HostOp
          , operands :: [Expression] }
   | Nop

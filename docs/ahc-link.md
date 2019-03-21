@@ -43,6 +43,12 @@ Specifies the prefix of the output files. Defaults to the base filename of `--in
 
 ## Common options for controlling outputs
 
+### `--tail-calls`
+
+Enable the WebAssembly tail call opcodes in output binary. This requires Node.js/Chromium to be built with a fairly recent revision of V8, and called with the `--experimental-wasm-return-call` flag. Doesn't work with the binaryen backend yet.
+
+See the "Using experimental WebAssembly features" section for more details.
+
 ### `--ghc-option ARG`
 
 Specify additional ghc options. The `{-# OPTIONS_GHC #-}` pragma also works.
@@ -78,7 +84,9 @@ Runs the output code using `node`. Ignored for browser targets.
 
 ### `--binaryen`
 
-Use the binaryen backend for generating `.wasm` files. If you observe any different behavior of output code when this option is on, it's a bug!
+Use the binaryen backend for generating `.wasm` files. Also note that with the binaryen backend, we use the binaryen relooper instead of our own relooper, which at the moment may give better runtime performance.
+
+If you observe any different runtime behavior of output code when this option is on, it's a bug!
 
 ### `--debug`
 
