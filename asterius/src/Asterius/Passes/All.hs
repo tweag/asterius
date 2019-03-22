@@ -10,7 +10,6 @@ import Asterius.Passes.Common
 import Asterius.Passes.Events
 import Asterius.Passes.GlobalRegs
 import Asterius.Passes.LocalRegs
-import Asterius.Passes.MergeSymbolOffset
 import Asterius.Passes.Relooper
 import Asterius.Passes.ResolveSymbols
 import Asterius.Types
@@ -43,7 +42,6 @@ allPasses debug binaryen sym_map export_funcs whoami ft event_map t =
       relooper_pass <=<
       resolveLocalRegs ft <=<
       resolveSymbols sym_map <=<
-      mergeSymbolOffset <=<
       maskUnknownCCallTargets whoami export_funcs <=< resolveGlobalRegs
     relooper_pass :: Monad m => GenericM m
     relooper_pass
