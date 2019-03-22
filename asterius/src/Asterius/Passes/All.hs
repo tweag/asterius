@@ -5,7 +5,6 @@ module Asterius.Passes.All
 import Asterius.Internals.SYB
 import Asterius.Passes.Common
 import Asterius.Passes.Events
-import Asterius.Passes.GlobalRegs
 import Asterius.Passes.LocalRegs
 import Asterius.Passes.Relooper
 import Asterius.Types
@@ -28,9 +27,7 @@ allPasses debug binaryen ft event_map t =
     (result, ps) =
       runState (pipeline t) defaultPassesState {eventMap = event_map}
     pipeline =
-      relooper_pass <=<
-      everywhereM
-        (rewriteEmitEvent <=< resolveLocalRegs ft <=< resolveGlobalRegs)
+      relooper_pass <=< everywhereM (rewriteEmitEvent <=< resolveLocalRegs ft)
     relooper_pass
       | binaryen = pure
       | otherwise = relooperShallow

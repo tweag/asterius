@@ -99,6 +99,7 @@ module Asterius.EDSL
   ) where
 
 import Asterius.Internals
+import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import Control.Monad.Fail
 import Control.Monad.State.Strict
@@ -223,10 +224,7 @@ i64MutLocal = mutLocal I64
 global :: UnresolvedGlobalReg -> LVal
 global gr =
   LVal
-    { getLVal = UnresolvedGetGlobal {unresolvedGlobalReg = gr}
-    , putLVal =
-        \v -> emit $ UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}
-    }
+    {getLVal = unresolvedGetGlobal gr, putLVal = emit . unresolvedSetGlobal gr}
 
 pointer :: ValueType -> BinaryenIndex -> Expression -> Int -> LVal
 pointer vt b bp o =

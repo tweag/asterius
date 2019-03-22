@@ -405,9 +405,6 @@ data Expression
   | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
-  | UnresolvedGetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg }
-  | UnresolvedSetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg
-                        , value :: Expression }
   | EmitEvent { event :: Event }
   deriving (Eq, Show, Generic, Data)
 

@@ -44,10 +44,4 @@ infer expr =
         QuotRemI64X -> [I64]
         QuotRemI64Y -> [I64]
     UnresolvedSetLocal {} -> []
-    UnresolvedGetGlobal {..} ->
-      case unresolvedGlobalReg of
-        FloatReg {} -> [F32]
-        DoubleReg {} -> [F64]
-        _ -> [I64]
-    UnresolvedSetGlobal {} -> []
     _ -> error $ "Asterius.TypeInfer.infer: " <> show expr

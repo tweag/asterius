@@ -17,6 +17,7 @@ module Asterius.CodeGen
 
 import Asterius.Builtins
 import Asterius.Internals
+import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
 import Asterius.Types
 import Asterius.TypesConv
@@ -204,16 +205,10 @@ marshalCmmLit lit =
         (ConstF64 $ fromRational x, F64)
     GHC.CmmLabel clbl -> do
       sym <- marshalCLabel clbl
-      pure
-        ( Symbol
-            {unresolvedSymbol = sym, symbolOffset = 0}
-        , I64)
+      pure (Symbol {unresolvedSymbol = sym, symbolOffset = 0}, I64)
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
-      pure
-        ( Symbol
-            {unresolvedSymbol = sym, symbolOffset = o}
-        , I64)
+      pure (Symbol {unresolvedSymbol = sym, symbolOffset = o}, I64)
     _ -> throwError $ UnsupportedCmmLit $ showSBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
@@ -259,9 +254,7 @@ marshalCmmReg r =
       pure (UnresolvedGetLocal {unresolvedLocalReg = lr_k}, lr_vt)
     GHC.CmmGlobal gr -> do
       gr_k <- marshalCmmGlobalReg gr
-      pure
-        ( UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
-        , unresolvedGlobalRegType gr_k)
+      pure (unresolvedGetGlobal gr_k, unresolvedGlobalRegType gr_k)
 
 marshalCmmRegOff :: GHC.CmmReg -> Int -> CodeGen (Expression, ValueType)
 marshalCmmRegOff r o = do
@@ -841,7 +834,7 @@ marshalCmmInstr instr =
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       gr <- marshalCmmGlobalReg r
       v <- marshalAndCastCmmExpr e $ unresolvedGlobalRegType gr
-      pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
+      pure [unresolvedSetGlobal gr v]
     GHC.CmmStore p e -> do
       pv <- marshalAndCastCmmExpr p I32
       (dflags, _) <- ask
