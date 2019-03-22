@@ -474,12 +474,10 @@ andInt32 = Binary AndInt32
 orInt32 = Binary OrInt32
 
 symbol :: AsteriusEntitySymbol -> Expression
-symbol sym =
-  Symbol {unresolvedSymbol = sym, symbolOffset = 0, resolvedSymbol = Nothing}
+symbol = flip symbol' 0
 
 symbol' :: AsteriusEntitySymbol -> Int -> Expression
-symbol' sym o =
-  Symbol {unresolvedSymbol = sym, symbolOffset = o, resolvedSymbol = Nothing}
+symbol' sym o = Symbol {unresolvedSymbol = sym, symbolOffset = o}
 
 constI32, constI64, constF64 :: Int -> Expression
 constI32 = ConstI32 . fromIntegral

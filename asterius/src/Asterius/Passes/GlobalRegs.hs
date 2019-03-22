@@ -45,12 +45,7 @@ resolveGlobalRegs t =
         _ -> t
     _ -> t
   where
-    mainCap =
-      Symbol
-        { unresolvedSymbol = "MainCapability"
-        , symbolOffset = 0
-        , resolvedSymbol = Nothing
-        }
+    mainCap = Symbol {unresolvedSymbol = "MainCapability", symbolOffset = 0}
     mainCap32 = Unary {unaryOp = WrapInt64, operand0 = mainCap}
     baseReg = mainCap {symbolOffset = offset_Capability_r}
     globalRegInfo gr =

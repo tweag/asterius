@@ -182,7 +182,6 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
                 allPasses
                   debug
                   binaryen
-                  all_sym_map
                   export_func_set
                   sym
                   functionType

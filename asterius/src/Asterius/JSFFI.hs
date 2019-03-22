@@ -506,7 +506,6 @@ generateFFIExportFunction FFIExportDecl {..} =
                                 Symbol
                                   { unresolvedSymbol = ffiExportClosure
                                   , symbolOffset = 0
-                                  , resolvedSymbol = Nothing
                                   }
                                 (zip [0 ..] $ ffiParamTypes ffiFunctionType)
                             ]

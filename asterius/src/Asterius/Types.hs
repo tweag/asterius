@@ -401,8 +401,7 @@ data Expression
   | Unreachable
   | CFG { graph :: RelooperRun }
   | Symbol { unresolvedSymbol :: AsteriusEntitySymbol
-           , symbolOffset :: Int
-           , resolvedSymbol :: Maybe Int64 }
+           , symbolOffset :: Int }
   | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }

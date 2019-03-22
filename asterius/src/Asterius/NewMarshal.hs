@@ -744,10 +744,15 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
       pure $ mconcat xs <> op
     Nop -> pure $ DList.singleton Wasm.Nop
     Unreachable -> pure $ DList.singleton Wasm.Unreachable
-    Symbol {resolvedSymbol = Just x, ..} ->
+    Symbol {..} ->
       pure $
       DList.singleton
-        Wasm.I64Const {i64ConstValue = x + fromIntegral symbolOffset}
+        Wasm.I64Const
+          { i64ConstValue =
+              case Map.lookup unresolvedSymbol sym_map of
+                Just x -> x + fromIntegral symbolOffset
+                _ -> invalidAddress
+          }
     _ -> throwError $ UnsupportedExpression expr
 
 makeInstructionsMaybe ::

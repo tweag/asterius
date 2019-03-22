@@ -11,6 +11,7 @@ module Asterius.Marshal
   ) where
 
 import Asterius.Internals
+import Asterius.Internals.MagicNumber
 import Asterius.Types
 import Asterius.TypesConv
 import Bindings.Binaryen.Raw
@@ -330,8 +331,11 @@ marshalExpression pool sym_map m e =
     Nop -> c_BinaryenNop m
     Unreachable -> c_BinaryenUnreachable m
     CFG {..} -> relooperRun pool sym_map m graph
-    Symbol {resolvedSymbol = Just x, ..} ->
-      c_BinaryenConstInt64 m (x + fromIntegral symbolOffset)
+    Symbol {..} ->
+      c_BinaryenConstInt64 m $
+      case M.lookup unresolvedSymbol sym_map of
+        Just x -> x + fromIntegral symbolOffset
+        _ -> invalidAddress
     _ -> throwIO $ UnsupportedExpression e
 
 marshalMaybeExpression ::

@@ -206,13 +206,13 @@ marshalCmmLit lit =
       sym <- marshalCLabel clbl
       pure
         ( Symbol
-            {unresolvedSymbol = sym, symbolOffset = 0, resolvedSymbol = Nothing}
+            {unresolvedSymbol = sym, symbolOffset = 0}
         , I64)
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
       pure
         ( Symbol
-            {unresolvedSymbol = sym, symbolOffset = o, resolvedSymbol = Nothing}
+            {unresolvedSymbol = sym, symbolOffset = o}
         , I64)
     _ -> throwError $ UnsupportedCmmLit $ showSBS lit
 
