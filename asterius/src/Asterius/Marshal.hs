@@ -241,12 +241,14 @@ marshalExpression pool sym_map m e =
       (nsp, nl) <- marshalV pool ns
       dn <- marshalSBS pool defaultName
       c_BinaryenSwitch m nsp nl dn c nullPtr
-    Call {..} -> do
-      os <- forM operands $ marshalExpression pool sym_map m
-      (ops, osl) <- marshalV pool os
-      tp <- marshalSBS pool (entityName target)
-      rts <- marshalReturnTypes callReturnTypes
-      c_BinaryenCall m tp ops osl rts
+    Call {..}
+      | M.member target sym_map -> do
+        os <- forM operands $ marshalExpression pool sym_map m
+        (ops, osl) <- marshalV pool os
+        tp <- marshalSBS pool (entityName target)
+        rts <- marshalReturnTypes callReturnTypes
+        c_BinaryenCall m tp ops osl rts
+      | otherwise -> c_BinaryenUnreachable m
     CallImport {..} -> do
       os <- forM operands $ marshalExpression pool sym_map m
       (ops, osl) <- marshalV pool os

@@ -371,19 +371,19 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
             { branchTableLabels = map (extractLabel _de_bruijn_ctx) names
             , branchTableFallbackLabel = extractLabel _de_bruijn_ctx defaultName
             }
-    Call {..} -> do
-      xs <-
-        for operands $
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-      pure $
-        mconcat xs <>
-        DList.singleton
-          Wasm.Call {callFunctionIndex = functionSymbols ! coerce target}
+    Call {..} ->
+      case Map.lookup (coerce target) functionSymbols of
+        Just i -> do
+          xs <-
+            for operands $
+            makeInstructions
+              tail_calls
+              sym_map
+              _module_symtable
+              _de_bruijn_ctx
+              _local_ctx
+          pure $ mconcat xs <> DList.singleton Wasm.Call {callFunctionIndex = i}
+        _ -> pure $ DList.singleton Wasm.Unreachable
     CallImport {..} -> do
       xs <-
         for operands $

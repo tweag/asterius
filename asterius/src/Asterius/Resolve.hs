@@ -26,6 +26,7 @@ import Data.Data (Data, gmapQl)
 import Data.List
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
+import Data.Traversable
 import Foreign
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
@@ -172,21 +173,13 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
     all_sym_map = func_sym_map <> ss_sym_map
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-    export_func_set = S.fromList export_funcs
     (new_function_map, all_event_map) =
       unsafeCoerce $
       flip runState LM.empty $
-      flip LM.traverseWithKey (functionMap m_globals_resolved) $ \sym AsteriusFunction {..} ->
+      for (functionMap m_globals_resolved) $ \AsteriusFunction {..} ->
         state $ \event_map ->
           let (body_locals_resolved, local_reg_table, event_map') =
-                allPasses
-                  debug
-                  binaryen
-                  export_func_set
-                  sym
-                  functionType
-                  event_map
-                  body
+                allPasses debug binaryen functionType event_map body
            in ( Function
                   { functionType = functionType
                   , varTypes = local_reg_table
