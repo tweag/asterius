@@ -1,5 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
-
 module Asterius.Passes.All
   ( allPasses
   ) where
@@ -37,13 +35,12 @@ allPasses debug binaryen sym_map export_funcs whoami ft event_map t =
     (result, ps) =
       runState (pipeline t) defaultPassesState {eventMap = event_map}
     pipeline =
-      everywhereM $
-      rewriteEmitEvent <=<
       relooper_pass <=<
-      resolveLocalRegs ft <=<
-      resolveSymbols sym_map <=<
-      maskUnknownCCallTargets whoami export_funcs <=< resolveGlobalRegs
-    relooper_pass :: Monad m => GenericM m
+      everywhereM
+        (rewriteEmitEvent <=<
+         resolveLocalRegs ft <=<
+         resolveSymbols sym_map <=<
+         maskUnknownCCallTargets whoami export_funcs <=< resolveGlobalRegs)
     relooper_pass
       | binaryen = pure
       | otherwise = relooperShallow
