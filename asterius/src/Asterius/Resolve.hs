@@ -172,19 +172,19 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
     all_sym_map = func_sym_map <> ss_sym_map
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-    (new_function_map, (_, all_event_stack)) =
+    (new_function_map, all_event_stack) =
       unsafeCoerce $
-      flip runState (LM.empty, []) $
+      flip runState [] $
       for (functionMap m_globals_resolved) $ \AsteriusFunction {..} ->
-        state $ \(event_map, event_stack) ->
-          let (body_locals_resolved, local_reg_table, event_map', event_stack') =
-                allPasses debug binaryen functionType event_map event_stack body
+        state $ \event_stack ->
+          let (body_locals_resolved, local_reg_table, event_stack') =
+                allPasses debug binaryen functionType event_stack body
            in ( Function
                   { functionType = functionType
                   , varTypes = local_reg_table
                   , body = body_locals_resolved
                   }
-              , (event_map', event_stack'))
+              , event_stack')
     (initial_pages, segs) =
       makeMemory m_globals_resolved all_sym_map last_data_addr
     initial_mblocks =

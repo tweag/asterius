@@ -15,7 +15,6 @@ module Asterius.CodeGen
   , marshalRawCmm
   ) where
 
-import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
@@ -966,15 +965,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   let blocks_unresolved =
         ( "__asterius_unreachable"
         , RelooperBlock
-            { addBlock =
-                AddBlock
-                  { code =
-                      emitErrorMessage
-                        []
-                        "__asterius_unreachable block is entered"
-                  }
-            , addBranches = []
-            }) :
+            {addBlock = AddBlock {code = Unreachable}, addBranches = []}) :
         rbs
       blocks_key_map =
         M.fromList

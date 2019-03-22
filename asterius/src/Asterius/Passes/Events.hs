@@ -11,7 +11,6 @@ import Asterius.Internals.SYB
 import Asterius.Passes.Common
 import Asterius.Types
 import Control.Monad.State.Strict
-import qualified Data.Map.Strict as Map
 import Type.Reflection
 
 {-# INLINABLE rewriteEmitEvent #-}
@@ -22,15 +21,8 @@ rewriteEmitEvent t =
       case t of
         EmitEvent {..} ->
           state $ \ps@PassesState {..} ->
-            case Map.lookup event eventMap of
-              Just i -> (emit i, ps)
-              _ ->
-                ( emit i
-                , ps
-                    { eventMap = Map.insert event i eventMap
-                    , eventStack = event : eventStack
-                    })
-                where i = fromIntegral $ Map.size eventMap
+            ( emit eventCount
+            , ps {eventCount = succ eventCount, eventStack = event : eventStack})
         _ -> pure t
     _ -> pure t
   where

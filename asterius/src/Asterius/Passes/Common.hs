@@ -12,7 +12,7 @@ import qualified Data.Map.Strict as Map
 data PassesState = PassesState
   { localRegMap :: Map UnresolvedLocalReg Int
   , localRegStack :: [ValueType]
-  , eventMap :: Map Event Int
+  , eventCount :: Int
   , eventStack :: [Event]
   }
 
@@ -21,6 +21,6 @@ defaultPassesState =
   PassesState
     { localRegMap = Map.empty
     , localRegStack = []
-    , eventMap = Map.empty
+    , eventCount = 0
     , eventStack = []
     }
