@@ -17,7 +17,6 @@ import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
 import Asterius.Passes.All
 import Asterius.Passes.DataSymbolTable
-import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Types
 import Control.Monad.State.Strict
@@ -173,19 +172,19 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
     all_sym_map = func_sym_map <> ss_sym_map
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-    (new_function_map, all_event_map) =
+    (new_function_map, (_, all_event_stack)) =
       unsafeCoerce $
-      flip runState LM.empty $
+      flip runState (LM.empty, []) $
       for (functionMap m_globals_resolved) $ \AsteriusFunction {..} ->
-        state $ \event_map ->
-          let (body_locals_resolved, local_reg_table, event_map') =
-                allPasses debug binaryen functionType event_map body
+        state $ \(event_map, event_stack) ->
+          let (body_locals_resolved, local_reg_table, event_map', event_stack') =
+                allPasses debug binaryen functionType event_map event_stack body
            in ( Function
                   { functionType = functionType
                   , varTypes = local_reg_table
                   , body = body_locals_resolved
                   }
-              , event_map')
+              , (event_map', event_stack'))
     (initial_pages, segs) =
       makeMemory m_globals_resolved all_sym_map last_data_addr
     initial_mblocks =
@@ -213,7 +212,7 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
         , memoryExport = MemoryExport {externalName = "memory"}
         , memoryMBlocks = initial_mblocks
         }
-    err_msgs = eventTable all_event_map
+    err_msgs = reverse all_event_stack
 
 linkStart ::
      Bool

@@ -19,13 +19,16 @@ allPasses ::
   -> Bool
   -> FunctionType
   -> Map Event Int
+  -> [Event]
   -> a
-  -> (a, [ValueType], Map Event Int)
-allPasses debug binaryen ft event_map t =
-  (result, localRegTable ps, eventMap ps)
+  -> (a, [ValueType], Map Event Int, [Event])
+allPasses debug binaryen ft event_map event_stack t =
+  (result, localRegTable ps, eventMap ps, eventStack ps)
   where
     (result, ps) =
-      runState (pipeline t) defaultPassesState {eventMap = event_map}
+      runState
+        (pipeline t)
+        defaultPassesState {eventMap = event_map, eventStack = event_stack}
     pipeline =
       relooper_pass <=< everywhereM (rewriteEmitEvent <=< resolveLocalRegs ft)
     relooper_pass

@@ -5,16 +5,13 @@
 
 module Asterius.Passes.Events
   ( rewriteEmitEvent
-  , eventTable
   ) where
 
-import Asterius.Internals.Containers
 import Asterius.Internals.SYB
 import Asterius.Passes.Common
 import Asterius.Types
 import Control.Monad.State.Strict
 import qualified Data.Map.Strict as Map
-import Data.Map.Strict (Map)
 import Type.Reflection
 
 {-# INLINABLE rewriteEmitEvent #-}
@@ -27,7 +24,12 @@ rewriteEmitEvent t =
           state $ \ps@PassesState {..} ->
             case Map.lookup event eventMap of
               Just i -> (emit i, ps)
-              _ -> (emit i, ps {eventMap = Map.insert event i eventMap})
+              _ ->
+                ( emit i
+                , ps
+                    { eventMap = Map.insert event i eventMap
+                    , eventStack = event : eventStack
+                    })
                 where i = fromIntegral $ Map.size eventMap
         _ -> pure t
     _ -> pure t
@@ -38,7 +40,3 @@ rewriteEmitEvent t =
         , operands = [ConstI32 $ fromIntegral i]
         , callImportReturnTypes = []
         }
-
-{-# INLINABLE eventTable #-}
-eventTable :: Map Event Int -> [Event]
-eventTable = sortKeysByIntValue

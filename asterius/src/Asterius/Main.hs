@@ -489,7 +489,7 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
   when outputIR $ do
     let p = out_wasm -<.> "bin"
     putStrLn $ "[INFO] Serializing linked IR to " <> show p
-    encodeFile p final_m
+    encodeFile p $ show final_m
   m_bin <-
     if binaryen
       then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
