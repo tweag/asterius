@@ -408,7 +408,6 @@ data Expression
   | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
-  | EmitEvent { event :: Event }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary Expression

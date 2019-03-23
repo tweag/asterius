@@ -511,7 +511,14 @@ emitErrorMessage :: [ValueType] -> Event -> Expression
 emitErrorMessage vts ev =
   Block
     { name = ""
-    , bodys = [EmitEvent {event = ev}, Unreachable]
+    , bodys =
+        [ CallImport
+            { target' = "__asterius_eventI32"
+            , operands = [ConstI32 $ fromIntegral $ fromEnum ev]
+            , callImportReturnTypes = []
+            }
+        , Unreachable
+        ]
     , blockReturnTypes = vts
     }
 
