@@ -507,11 +507,11 @@ rtsAsteriusFunctionExports debug has_main =
       ["main" | has_main]
   ]
 
-emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
-emitErrorMessage vts msg =
+emitErrorMessage :: [ValueType] -> Event -> Expression
+emitErrorMessage vts ev =
   Block
     { name = ""
-    , bodys = [EmitEvent {event = Event msg}, Unreachable]
+    , bodys = [EmitEvent {event = ev}, Unreachable]
     , blockReturnTypes = vts
     }
 
@@ -698,10 +698,7 @@ rtsCheckSchedStatusFunction _ =
     tid <- param I32
     stat <- call' "rts_getSchedStatus" [tid] I32
     if' [] (stat `eqInt32` constI32 scheduler_Success) mempty $
-      emit $
-      emitErrorMessage
-        []
-        "rts_checkSchedStatus failed: illegal scheduler status code"
+      emit $ emitErrorMessage [] IllegalSchedulerStatusCode
 
 dirtyTSO :: Expression -> Expression -> EDSL ()
 dirtyTSO _ tso =
@@ -727,7 +724,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
         if'
           []
           (loadI8 mainCapability offset_Capability_in_haskell)
-          (emit (emitErrorMessage [] "Scheduler reentered from Haskell"))
+          (emit (emitErrorMessage [] SchedulerReenteredFromHaskell))
           mempty
         storeI64
           mainCapability
@@ -752,7 +749,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                      if'
                        []
                        (eqZInt64 bytes)
-                       (emit $ emitErrorMessage [] "HeapOverflow with HpAlloc=0")
+                       (emit $ emitErrorMessage [] HeapOverflowWithZeroHpAlloc)
                        mempty
                      truncUFloat64ToInt64 <$>
                        callImport'
@@ -761,9 +758,9 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                          F64 >>=
                        putLVal currentNursery
                      break' sched_loop_lbl Nothing)
-              , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
+              , (ret_StackOverflow, emit $ emitErrorMessage [] StackOverflow)
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
-              , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
+              , (ret_ThreadBlocked, emit $ emitErrorMessage [] ThreadBlocked)
               , ( ret_ThreadFinished
                 , if'
                     []
@@ -795,7 +792,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                           ]
                         break' sched_block_lbl Nothing))
               ]
-            , emit $ emitErrorMessage [] "Illegal thread return code")
+            , emit $ emitErrorMessage [] IllegalThreadReturnCode)
     callImport "__asterius_gcRootTSO" [convertUInt64ToFloat64 t]
 
 createThreadFunction _ =

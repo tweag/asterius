@@ -189,11 +189,14 @@ data UnresolvedGlobalReg
 
 instance Binary UnresolvedGlobalReg
 
-newtype Event = Event
-  { eventMessage :: SBS.ShortByteString
-  } deriving (Eq, Ord, Generic, Data)
-
-deriving newtype instance Show Event
+data Event
+  = IllegalSchedulerStatusCode
+  | SchedulerReenteredFromHaskell
+  | HeapOverflowWithZeroHpAlloc
+  | StackOverflow
+  | ThreadBlocked
+  | IllegalThreadReturnCode
+  deriving (Eq, Show, Generic, Data, Bounded, Enum)
 
 instance Binary Event
 

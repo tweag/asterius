@@ -324,7 +324,7 @@ genLib Task {..} LinkReport {..} err_msgs =
   [ "import * as rts from \"./rts.mjs\";\n"
   , "export const newInstance = module => \n"
   , "rts.newAsteriusInstance({events: ["
-  , mconcat (intersperse "," [string7 $ show msg | msg <- err_msgs])
+  , mconcat (intersperse "," [string7 $ show $ show msg | msg <- err_msgs])
   , "], module: module"
   ] <>
   [ ", jsffiFactory: "
