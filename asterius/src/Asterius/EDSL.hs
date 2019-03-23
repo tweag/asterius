@@ -99,6 +99,7 @@ module Asterius.EDSL
   ) where
 
 import Asterius.Internals
+import Asterius.Passes.All
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import Control.Monad.Fail
@@ -157,11 +158,13 @@ bundleExpressions vts el =
     [e] -> e
     _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
-runEDSL :: [ValueType] -> EDSL () -> AsteriusFunction
+runEDSL :: [ValueType] -> EDSL () -> Function
 runEDSL vts (EDSL m) =
-  AsteriusFunction
+  adjustLocalRegs $
+  Function
     { functionType =
         FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
+    , varTypes = []
     , body = bundleExpressions vts $ fromDList exprBuf
     }
   where

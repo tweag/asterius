@@ -12,6 +12,7 @@ module Asterius.NewMarshal
 import Asterius.Internals
 import qualified Asterius.Internals.DList as DList
 import Asterius.Internals.MagicNumber
+import Asterius.Passes.Relooper
 import Asterius.TypeInfer
 import Asterius.Types
 import Asterius.TypesConv
@@ -744,6 +745,14 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
       pure $ mconcat xs <> op
     Nop -> pure $ DList.singleton Wasm.Nop
     Unreachable -> pure $ DList.singleton Wasm.Unreachable
+    CFG {..} ->
+      makeInstructions
+        tail_calls
+        sym_map
+        _module_symtable
+        _de_bruijn_ctx
+        _local_ctx $
+      relooper graph
     Symbol {..} ->
       pure $
       DList.singleton

@@ -9,7 +9,7 @@ module Asterius.Builtins
   , rtsAsteriusModuleSymbol
   , rtsAsteriusModule
   , rtsFunctionImports
-  , rtsAsteriusFunctionExports
+  , rtsFunctionExports
   , emitErrorMessage
   , wasmPageSize
   , generateWrapperFunction
@@ -461,8 +461,8 @@ rtsFunctionImports debug =
      else []) <>
   map (fst . snd) byteStringCBits
 
-rtsAsteriusFunctionExports :: Bool -> Bool -> [FunctionExport]
-rtsAsteriusFunctionExports debug has_main =
+rtsFunctionExports :: Bool -> Bool -> [FunctionExport]
+rtsFunctionExports debug has_main =
   [ FunctionExport {internalName = f <> "_wrapper", externalName = f}
   | f <-
       [ "loadI64"
@@ -522,7 +522,7 @@ emitErrorMessage vts ev =
     , blockReturnTypes = vts
     }
 
-byteStringCBits :: [(AsteriusEntitySymbol, (FunctionImport, AsteriusFunction))]
+byteStringCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
 byteStringCBits =
   map
     (\(func_sym, param_vts, ret_vts) ->
@@ -549,7 +549,7 @@ generateRTSWrapper ::
   -> SBS.ShortByteString
   -> [ValueType]
   -> [ValueType]
-  -> (FunctionImport, AsteriusFunction)
+  -> (FunctionImport, Function)
 generateRTSWrapper mod_sym func_sym param_vts ret_vts =
   ( FunctionImport
       { internalName = "__asterius_" <> func_sym
@@ -558,9 +558,10 @@ generateRTSWrapper mod_sym func_sym param_vts ret_vts =
       , functionType =
           FunctionType {paramTypes = map fst xs, returnTypes = fst ret}
       }
-  , AsteriusFunction
+  , Function
       { functionType =
           FunctionType {paramTypes = param_vts, returnTypes = ret_vts}
+      , varTypes = []
       , body =
           snd
             ret
@@ -586,10 +587,9 @@ generateRTSWrapper mod_sym func_sym param_vts ret_vts =
         [I64] -> ([F64], truncUFloat64ToInt64)
         _ -> (ret_vts, id)
 
-generateWrapperFunction ::
-     AsteriusEntitySymbol -> AsteriusFunction -> AsteriusFunction
-generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {..}} =
-  AsteriusFunction
+generateWrapperFunction :: AsteriusEntitySymbol -> Function -> Function
+generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
+  Function
     { functionType =
         FunctionType
           { paramTypes =
@@ -598,6 +598,7 @@ generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {
               ]
           , returnTypes = wrapper_return_types
           }
+    , varTypes = []
     , body =
         to_wrapper_return_types $
         Call
@@ -624,7 +625,7 @@ generateWrapperFunction func_sym AsteriusFunction {functionType = FunctionType {
         _ -> (returnTypes, id)
 
 mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
-     BuiltinsOptions -> AsteriusFunction
+     BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {} =
   runEDSL [] $ do
     tid <- call' "rts_evalLazyIO" [symbol "Main_main_closure"] I32
@@ -939,7 +940,7 @@ freeStablePtrWrapperFunction _ =
     sp64 <- param I64
     callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
 
-rtsMkHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> AsteriusFunction
+rtsMkHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> Function
 rtsMkHelper _ con_sym =
   runEDSL [I64] $ do
     setReturnTypes [I64]
@@ -1130,16 +1131,16 @@ dirtyMutVarFunction _ =
       (storeI64 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
       mempty
 
-getF64GlobalRegFunction ::
-     BuiltinsOptions -> UnresolvedGlobalReg -> AsteriusFunction
+getF64GlobalRegFunction :: BuiltinsOptions -> UnresolvedGlobalReg -> Function
 getF64GlobalRegFunction _ gr =
   runEDSL [F64] $ do
     setReturnTypes [F64]
     emit $ convertSInt64ToFloat64 $ getLVal $ global gr
 
 trapLoadI8Function _ =
-  AsteriusFunction
+  Function
     { functionType = FunctionType {paramTypes = [I64, I32], returnTypes = [I32]}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1167,9 +1168,10 @@ trapLoadI8Function _ =
     v = Load {signed = False, bytes = 1, offset = 0, valueType = I32, ptr = p}
 
 trapStoreI8Function _ =
-  AsteriusFunction
+  Function
     { functionType =
         FunctionType {paramTypes = [I64, I32, I32], returnTypes = []}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1198,8 +1200,9 @@ trapStoreI8Function _ =
     v = GetLocal {index = 2, valueType = I32}
 
 trapLoadI16Function _ =
-  AsteriusFunction
+  Function
     { functionType = FunctionType {paramTypes = [I64, I32], returnTypes = [I32]}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1227,9 +1230,10 @@ trapLoadI16Function _ =
     v = Load {signed = False, bytes = 2, offset = 0, valueType = I32, ptr = p}
 
 trapStoreI16Function _ =
-  AsteriusFunction
+  Function
     { functionType =
         FunctionType {paramTypes = [I64, I32, I32], returnTypes = []}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1258,8 +1262,9 @@ trapStoreI16Function _ =
     v = GetLocal {index = 2, valueType = I32}
 
 trapLoadI32Function _ =
-  AsteriusFunction
+  Function
     { functionType = FunctionType {paramTypes = [I64, I32], returnTypes = [I32]}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1287,9 +1292,10 @@ trapLoadI32Function _ =
     v = Load {signed = False, bytes = 4, offset = 0, valueType = I32, ptr = p}
 
 trapStoreI32Function _ =
-  AsteriusFunction
+  Function
     { functionType =
         FunctionType {paramTypes = [I64, I32, I32], returnTypes = []}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1318,8 +1324,9 @@ trapStoreI32Function _ =
     v = GetLocal {index = 2, valueType = I32}
 
 trapLoadI64Function _ =
-  AsteriusFunction
+  Function
     { functionType = FunctionType {paramTypes = [I64, I32], returnTypes = [I64]}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1354,9 +1361,10 @@ trapLoadI64Function _ =
         }
 
 trapStoreI64Function _ =
-  AsteriusFunction
+  Function
     { functionType =
         FunctionType {paramTypes = [I64, I32, I64], returnTypes = []}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1392,8 +1400,9 @@ trapStoreI64Function _ =
         }
 
 trapLoadF32Function _ =
-  AsteriusFunction
+  Function
     { functionType = FunctionType {paramTypes = [I64, I32], returnTypes = [F32]}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1421,9 +1430,10 @@ trapLoadF32Function _ =
     v = Load {signed = True, bytes = 4, offset = 0, valueType = F32, ptr = p}
 
 trapStoreF32Function _ =
-  AsteriusFunction
+  Function
     { functionType =
         FunctionType {paramTypes = [I64, I32, F32], returnTypes = []}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1452,8 +1462,9 @@ trapStoreF32Function _ =
     v = GetLocal {index = 2, valueType = F32}
 
 trapLoadF64Function _ =
-  AsteriusFunction
+  Function
     { functionType = FunctionType {paramTypes = [I64, I32], returnTypes = [F64]}
+    , varTypes = []
     , body =
         Block
           { name = ""
@@ -1481,9 +1492,10 @@ trapLoadF64Function _ =
     v = Load {signed = True, bytes = 8, offset = 0, valueType = F64, ptr = p}
 
 trapStoreF64Function _ =
-  AsteriusFunction
+  Function
     { functionType =
         FunctionType {paramTypes = [I64, I32, F64], returnTypes = []}
+    , varTypes = []
     , body =
         Block
           { name = ""

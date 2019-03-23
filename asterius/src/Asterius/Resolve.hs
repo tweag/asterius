@@ -15,7 +15,6 @@ import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
-import Asterius.Passes.All
 import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Types
@@ -170,16 +169,7 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
     all_sym_map = func_sym_map <> ss_sym_map
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-    new_function_map =
-      unsafeCoerce $
-      flip LM.map (functionMap m_globals_resolved) $ \AsteriusFunction {..} ->
-        let (body_locals_resolved, local_reg_table) =
-              allPasses debug binaryen functionType body
-         in Function
-              { functionType = functionType
-              , varTypes = local_reg_table
-              , body = body_locals_resolved
-              }
+    new_function_map = unsafeCoerce $ functionMap m_globals_resolved
     (initial_pages, segs) =
       makeMemory m_globals_resolved all_sym_map last_data_addr
     initial_mblocks =
@@ -189,7 +179,7 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
         { functionMap' = new_function_map
         , functionImports = func_imports
         , functionExports =
-            rtsAsteriusFunctionExports debug has_main <>
+            rtsFunctionExports debug has_main <>
             [ FunctionExport
               {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
             | k <- map entityName export_funcs

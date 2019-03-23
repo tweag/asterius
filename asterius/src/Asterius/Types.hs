@@ -12,7 +12,6 @@ module Asterius.Types
   , AsteriusStatic(..)
   , AsteriusStaticsType(..)
   , AsteriusStatics(..)
-  , AsteriusFunction(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
   , AsteriusEntitySymbol(..)
@@ -101,17 +100,10 @@ data AsteriusStatics = AsteriusStatics
 
 instance Binary AsteriusStatics
 
-data AsteriusFunction = AsteriusFunction
-  { functionType :: FunctionType
-  , body :: Expression
-  } deriving (Eq, Show, Generic, Data)
-
-instance Binary AsteriusFunction
-
 data AsteriusModule = AsteriusModule
   { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics
   , staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
-  , functionMap :: LM.Map AsteriusEntitySymbol AsteriusFunction
+  , functionMap :: LM.Map AsteriusEntitySymbol Function
   , functionErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
   , ffiMarshalState :: FFIMarshalState
   } deriving (Eq, Show, Generic, Data)

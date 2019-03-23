@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Passes.Relooper
-  ( relooperExpression
+  ( relooper
   ) where
 
 import Asterius.Internals
@@ -98,10 +98,3 @@ relooper RelooperRun {..} = result_expr
             ]
         , blockReturnTypes = []
         }
-
-{-# INLINABLE relooperExpression #-}
-relooperExpression :: Expression -> Expression
-relooperExpression t =
-  case t of
-    CFG {..} -> relooper graph
-    _ -> t
