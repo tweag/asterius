@@ -278,8 +278,8 @@ genSymbolDict sym_map =
        ]) <>
   "}"
 
-genInfoTables :: S.Set Int64 -> Builder
-genInfoTables sym_set = "new Set(" <> string7 (show (S.toList sym_set)) <> ")"
+genInfoTables :: [Int64] -> Builder
+genInfoTables sym_set = "new Set(" <> string7 (show sym_set) <> ")"
 
 genPinnedStaticClosures ::
      M.Map AsteriusEntitySymbol Int64

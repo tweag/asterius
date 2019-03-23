@@ -12,7 +12,6 @@ module Asterius.Resolve
   ) where
 
 import Asterius.Builtins
-import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
 import Asterius.Passes.DataSymbolTable
@@ -47,7 +46,7 @@ collectAsteriusEntitySymbols t acc =
 data LinkReport = LinkReport
   { unavailableSymbols :: S.Set AsteriusEntitySymbol
   , staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64
-  , infoTableSet :: S.Set Int64
+  , infoTableSet :: [Int64]
   , tableSlots, staticMBlocks :: Int
   , bundledFFIMarshalState :: FFIMarshalState
   } deriving (Generic, Show)
@@ -137,9 +136,10 @@ mergeSymbols debug gc_sections store_mod root_syms
         o_staging_syms = i_child_syms `S.difference` o_acc_syms
 
 makeInfoTableSet ::
-     AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> S.Set Int64
+     AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> [Int64]
 makeInfoTableSet AsteriusModule {..} sym_map =
-  S.map (sym_map !) $
+  LM.elems $
+  LM.restrictKeys sym_map $
   LM.keysSet $ LM.filter ((== InfoTable) . staticsType) staticsMap
 
 resolveAsteriusModule ::
