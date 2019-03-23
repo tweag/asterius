@@ -3,6 +3,7 @@
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -46,6 +47,7 @@ module Asterius.Types
   , FFIMarshalState(..)
   ) where
 
+import Asterius.Internals.Binary
 import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.Exception
 import Data.Binary
@@ -108,7 +110,15 @@ data AsteriusModule = AsteriusModule
   , ffiMarshalState :: FFIMarshalState
   } deriving (Eq, Show, Generic, Data)
 
-instance Binary AsteriusModule
+instance Binary AsteriusModule where
+  put AsteriusModule {..} =
+    lazyMapPut staticsMap *> lazyMapPut staticsErrorMap *>
+    lazyMapPut functionMap *>
+    lazyMapPut functionErrorMap *>
+    put ffiMarshalState
+  get =
+    AsteriusModule <$> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*>
+    get
 
 instance Semigroup AsteriusModule where
   AsteriusModule sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 fe1 mod_ffi_state1 =
@@ -538,7 +548,7 @@ instance Binary FFIExportDecl
 data FFIMarshalState = FFIMarshalState
   { ffiImportDecls :: LM.Map AsteriusEntitySymbol FFIImportDecl
   , ffiExportDecls :: LM.Map AsteriusEntitySymbol FFIExportDecl
-  } deriving (Eq, Show, Generic, Data)
+  } deriving (Eq, Show, Data)
 
 instance Semigroup FFIMarshalState where
   s0 <> s1 =
@@ -550,4 +560,7 @@ instance Semigroup FFIMarshalState where
 instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
 
-instance Binary FFIMarshalState
+instance Binary FFIMarshalState where
+  put FFIMarshalState {..} =
+    lazyMapPut ffiImportDecls *> lazyMapPut ffiExportDecls
+  get = FFIMarshalState <$> lazyMapGet <*> lazyMapGet
