@@ -1,4 +1,5 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Asterius.Ar
@@ -17,5 +18,11 @@ import Prelude hiding (IO)
 loadAr :: FilePath -> IO AsteriusModule
 loadAr p = do
   GHC.Archive entries <- GHC.loadAr p
-  let Just mod_entry = find (("MODULE" ==) . GHC.filename) entries
-  evaluate $ decode $ LBS.fromStrict $ GHC.filedata mod_entry
+  evaluate $
+    foldl'
+      (\acc GHC.ArchiveEntry {..} ->
+         case decodeOrFail $ LBS.fromStrict filedata of
+           Left _ -> acc
+           Right (_, _, m) -> m <> acc)
+      mempty
+      entries
