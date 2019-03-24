@@ -12,15 +12,11 @@ module Asterius.Resolve
   ) where
 
 import Asterius.Builtins
-import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
-import Asterius.Passes.All
 import Asterius.Passes.DataSymbolTable
-import Asterius.Passes.Events
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Types
-import Control.Monad.State.Strict
 import Data.Binary
 import Data.Data (Data, gmapQl)
 import Data.List
@@ -50,7 +46,7 @@ collectAsteriusEntitySymbols t acc =
 data LinkReport = LinkReport
   { unavailableSymbols :: S.Set AsteriusEntitySymbol
   , staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64
-  , infoTableSet :: S.Set Int64
+  , infoTableSet :: [Int64]
   , tableSlots, staticMBlocks :: Int
   , bundledFFIMarshalState :: FFIMarshalState
   } deriving (Generic, Show)
@@ -140,9 +136,10 @@ mergeSymbols debug gc_sections store_mod root_syms
         o_staging_syms = i_child_syms `S.difference` o_acc_syms
 
 makeInfoTableSet ::
-     AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> S.Set Int64
+     AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> [Int64]
 makeInfoTableSet AsteriusModule {..} sym_map =
-  S.map (sym_map !) $
+  LM.elems $
+  LM.restrictKeys sym_map $
   LM.keysSet $ LM.filter ((== InfoTable) . staticsType) staticsMap
 
 resolveAsteriusModule ::
@@ -172,28 +169,7 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
     all_sym_map = func_sym_map <> ss_sym_map
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-    export_func_set = S.fromList export_funcs
-    (new_function_map, all_event_map) =
-      unsafeCoerce $
-      flip runState LM.empty $
-      flip LM.traverseWithKey (functionMap m_globals_resolved) $ \sym AsteriusFunction {..} ->
-        state $ \event_map ->
-          let (body_locals_resolved, local_reg_table, event_map') =
-                allPasses
-                  debug
-                  binaryen
-                  all_sym_map
-                  export_func_set
-                  sym
-                  functionType
-                  event_map
-                  body
-           in ( Function
-                  { functionType = functionType
-                  , varTypes = local_reg_table
-                  , body = body_locals_resolved
-                  }
-              , event_map')
+    new_function_map = unsafeCoerce $ functionMap m_globals_resolved
     (initial_pages, segs) =
       makeMemory m_globals_resolved all_sym_map last_data_addr
     initial_mblocks =
@@ -203,7 +179,7 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
         { functionMap' = new_function_map
         , functionImports = func_imports
         , functionExports =
-            rtsAsteriusFunctionExports debug has_main <>
+            rtsFunctionExports debug has_main <>
             [ FunctionExport
               {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
             | k <- map entityName export_funcs
@@ -221,7 +197,7 @@ resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_g
         , memoryExport = MemoryExport {externalName = "memory"}
         , memoryMBlocks = initial_mblocks
         }
-    err_msgs = eventTable all_event_map
+    err_msgs = enumFromTo minBound maxBound
 
 linkStart ::
      Bool

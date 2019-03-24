@@ -15,8 +15,9 @@ module Asterius.CodeGen
   , marshalRawCmm
   ) where
 
-import Asterius.Builtins
 import Asterius.Internals
+import Asterius.Passes.All
+import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
 import Asterius.Types
 import Asterius.TypesConv
@@ -204,16 +205,10 @@ marshalCmmLit lit =
         (ConstF64 $ fromRational x, F64)
     GHC.CmmLabel clbl -> do
       sym <- marshalCLabel clbl
-      pure
-        ( Symbol
-            {unresolvedSymbol = sym, symbolOffset = 0, resolvedSymbol = Nothing}
-        , I64)
+      pure (Symbol {unresolvedSymbol = sym, symbolOffset = 0}, I64)
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
-      pure
-        ( Symbol
-            {unresolvedSymbol = sym, symbolOffset = o, resolvedSymbol = Nothing}
-        , I64)
+      pure (Symbol {unresolvedSymbol = sym, symbolOffset = o}, I64)
     _ -> throwError $ UnsupportedCmmLit $ showSBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
@@ -259,9 +254,7 @@ marshalCmmReg r =
       pure (UnresolvedGetLocal {unresolvedLocalReg = lr_k}, lr_vt)
     GHC.CmmGlobal gr -> do
       gr_k <- marshalCmmGlobalReg gr
-      pure
-        ( UnresolvedGetGlobal {unresolvedGlobalReg = gr_k}
-        , unresolvedGlobalRegType gr_k)
+      pure (unresolvedGetGlobal gr_k, unresolvedGlobalRegType gr_k)
 
 marshalCmmRegOff :: GHC.CmmReg -> Int -> CodeGen (Expression, ValueType)
 marshalCmmRegOff r o = do
@@ -841,7 +834,7 @@ marshalCmmInstr instr =
     GHC.CmmAssign (GHC.CmmGlobal r) e -> do
       gr <- marshalCmmGlobalReg r
       v <- marshalAndCastCmmExpr e $ unresolvedGlobalRegType gr
-      pure [UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}]
+      pure [unresolvedSetGlobal gr v]
     GHC.CmmStore p e -> do
       pv <- marshalAndCastCmmExpr p I32
       (dflags, _) <- ask
@@ -962,7 +955,7 @@ marshalCmmBlock inner_nodes exit_node = do
         [e] -> e
         _ -> Block {name = "", bodys = es, blockReturnTypes = []}
 
-marshalCmmProc :: GHC.CmmGraph -> CodeGen AsteriusFunction
+marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
   rbs <-
@@ -973,15 +966,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   let blocks_unresolved =
         ( "__asterius_unreachable"
         , RelooperBlock
-            { addBlock =
-                AddBlock
-                  { code =
-                      emitErrorMessage
-                        []
-                        "__asterius_unreachable block is entered"
-                  }
-            , addBranches = []
-            }) :
+            {addBlock = AddBlock {code = Unreachable}, addBranches = []}) :
         rbs
       blocks_key_map =
         M.fromList
@@ -1001,17 +986,19 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
               })
         | (k, b) <- blocks_unresolved
         ]
-  pure
-    AsteriusFunction
-      { functionType = FunctionType {paramTypes = [], returnTypes = []}
-      , body =
-          CFG
-            RelooperRun
-              { entry = blocks_key_subst entry_k
-              , blockMap = M.fromList blocks_resolved
-              , labelHelper = 0
-              }
-      }
+  pure $
+    adjustLocalRegs
+      Function
+        { functionType = FunctionType {paramTypes = [], returnTypes = []}
+        , varTypes = []
+        , body =
+            CFG
+              RelooperRun
+                { entry = blocks_key_subst entry_k
+                , blockMap = M.fromList blocks_resolved
+                , labelHelper = 0
+                }
+        }
 
 marshalCmmDecl ::
      GHC.GenCmmDecl GHC.CmmStatics h GHC.CmmGraph -> CodeGen AsteriusModule

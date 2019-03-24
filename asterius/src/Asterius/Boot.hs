@@ -70,7 +70,6 @@ bootCreateProcess args@BootArgs {..} = do
           ("ASTERIUS_GHCLIBDIR", ghcLibDir) :
           ("ASTERIUS_AHC", ahc) :
           ("ASTERIUS_AHCPKG", ahcPkg) :
-          ("ASTERIUS_AHCAR", ahcAr) :
           ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
           ("ASTERIUS_BUILD_OPTIONS", buildOptions) :
           ("ASTERIUS_INSTALL_OPTIONS", installOptions) :
@@ -123,7 +122,7 @@ bootRTSCmm BootArgs {..} =
       hPutStr rsp_h $ unlines obj_paths
       hClose rsp_h
       callProcess
-        ahcAr
+        "ar"
         ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
       removeFile rsp_path
   where

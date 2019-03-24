@@ -1,20 +1,16 @@
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Passes.Relooper
-  ( relooperShallow
+  ( relooper
   ) where
 
 import Asterius.Internals
-import Asterius.Internals.SYB
 import Asterius.Types
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.String
-import Type.Reflection
 
 relooper :: RelooperRun -> Expression
 relooper RelooperRun {..} = result_expr
@@ -102,14 +98,3 @@ relooper RelooperRun {..} = result_expr
             ]
         , blockReturnTypes = []
         }
-
-{-# INLINABLE relooperShallow #-}
-relooperShallow :: Monad m => GenericM m
-relooperShallow t =
-  pure $
-  case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
-    Just HRefl ->
-      case t of
-        CFG {..} -> relooper graph
-        _ -> t
-    _ -> t

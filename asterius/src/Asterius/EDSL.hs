@@ -99,6 +99,8 @@ module Asterius.EDSL
   ) where
 
 import Asterius.Internals
+import Asterius.Passes.All
+import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import Control.Monad.Fail
 import Control.Monad.State.Strict
@@ -156,11 +158,13 @@ bundleExpressions vts el =
     [e] -> e
     _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
-runEDSL :: [ValueType] -> EDSL () -> AsteriusFunction
+runEDSL :: [ValueType] -> EDSL () -> Function
 runEDSL vts (EDSL m) =
-  AsteriusFunction
+  adjustLocalRegs $
+  Function
     { functionType =
         FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
+    , varTypes = []
     , body = bundleExpressions vts $ fromDList exprBuf
     }
   where
@@ -223,10 +227,7 @@ i64MutLocal = mutLocal I64
 global :: UnresolvedGlobalReg -> LVal
 global gr =
   LVal
-    { getLVal = UnresolvedGetGlobal {unresolvedGlobalReg = gr}
-    , putLVal =
-        \v -> emit $ UnresolvedSetGlobal {unresolvedGlobalReg = gr, value = v}
-    }
+    {getLVal = unresolvedGetGlobal gr, putLVal = emit . unresolvedSetGlobal gr}
 
 pointer :: ValueType -> BinaryenIndex -> Expression -> Int -> LVal
 pointer vt b bp o =
@@ -474,12 +475,10 @@ andInt32 = Binary AndInt32
 orInt32 = Binary OrInt32
 
 symbol :: AsteriusEntitySymbol -> Expression
-symbol sym =
-  Symbol {unresolvedSymbol = sym, symbolOffset = 0, resolvedSymbol = Nothing}
+symbol = flip symbol' 0
 
 symbol' :: AsteriusEntitySymbol -> Int -> Expression
-symbol' sym o =
-  Symbol {unresolvedSymbol = sym, symbolOffset = o, resolvedSymbol = Nothing}
+symbol' sym o = Symbol {unresolvedSymbol = sym, symbolOffset = o}
 
 constI32, constI64, constF64 :: Int -> Expression
 constI32 = ConstI32 . fromIntegral

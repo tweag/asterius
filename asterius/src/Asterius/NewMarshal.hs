@@ -12,6 +12,7 @@ module Asterius.NewMarshal
 import Asterius.Internals
 import qualified Asterius.Internals.DList as DList
 import Asterius.Internals.MagicNumber
+import Asterius.Passes.Relooper
 import Asterius.TypeInfer
 import Asterius.Types
 import Asterius.TypesConv
@@ -371,19 +372,19 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
             { branchTableLabels = map (extractLabel _de_bruijn_ctx) names
             , branchTableFallbackLabel = extractLabel _de_bruijn_ctx defaultName
             }
-    Call {..} -> do
-      xs <-
-        for operands $
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-      pure $
-        mconcat xs <>
-        DList.singleton
-          Wasm.Call {callFunctionIndex = functionSymbols ! coerce target}
+    Call {..} ->
+      case Map.lookup (coerce target) functionSymbols of
+        Just i -> do
+          xs <-
+            for operands $
+            makeInstructions
+              tail_calls
+              sym_map
+              _module_symtable
+              _de_bruijn_ctx
+              _local_ctx
+          pure $ mconcat xs <> DList.singleton Wasm.Call {callFunctionIndex = i}
+        _ -> pure $ DList.singleton Wasm.Unreachable
     CallImport {..} -> do
       xs <-
         for operands $
@@ -744,10 +745,23 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
       pure $ mconcat xs <> op
     Nop -> pure $ DList.singleton Wasm.Nop
     Unreachable -> pure $ DList.singleton Wasm.Unreachable
-    Symbol {resolvedSymbol = Just x, ..} ->
+    CFG {..} ->
+      makeInstructions
+        tail_calls
+        sym_map
+        _module_symtable
+        _de_bruijn_ctx
+        _local_ctx $
+      relooper graph
+    Symbol {..} ->
       pure $
       DList.singleton
-        Wasm.I64Const {i64ConstValue = x + fromIntegral symbolOffset}
+        Wasm.I64Const
+          { i64ConstValue =
+              case Map.lookup unresolvedSymbol sym_map of
+                Just x -> x + fromIntegral symbolOffset
+                _ -> invalidAddress
+          }
     _ -> throwError $ UnsupportedExpression expr
 
 makeInstructionsMaybe ::

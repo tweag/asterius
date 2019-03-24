@@ -117,13 +117,6 @@ executables:
     dependencies:
       - asterius
 
-  ahc-ar:
-    source-dirs: app
-    main: ahc-ar.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - asterius
-
   ahc-ld:
     source-dirs: app
     main: ahc-ld.hs
