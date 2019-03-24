@@ -8,10 +8,9 @@ module Asterius.Ar
 
 import qualified Ar as GHC
 import Asterius.Internals
+import Asterius.Internals.Binary
 import Asterius.Types
 import Control.Exception
-import Data.Binary
-import qualified Data.ByteString.Lazy as LBS
 import Data.List
 import Prelude hiding (IO)
 
@@ -21,8 +20,8 @@ loadAr p = do
   evaluate $
     foldl'
       (\acc GHC.ArchiveEntry {..} ->
-         case decodeOrFail $ LBS.fromStrict filedata of
-           Left _ -> acc
-           Right (_, _, m) -> m <> acc)
+         case decodeMaybe filedata of
+           Just m -> m <> acc
+           _ -> acc)
       mempty
       entries
