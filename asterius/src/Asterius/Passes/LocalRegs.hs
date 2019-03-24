@@ -9,7 +9,6 @@ module Asterius.Passes.LocalRegs
   , localRegTable
   ) where
 
-import Asterius.Internals.Containers
 import Asterius.Internals.SYB
 import Asterius.Passes.Common
 import Asterius.Types
@@ -53,10 +52,15 @@ resolveLocalRegs FunctionType {..} t =
       state $ \ps@PassesState {..} ->
         case Map.lookup reg localRegMap of
           Just i -> (fromIntegral i, ps)
-          _ -> (fromIntegral i, ps {localRegMap = Map.insert reg i localRegMap})
+          _ ->
+            ( fromIntegral i
+            , ps
+                { localRegMap = Map.insert reg i localRegMap
+                , localRegStack =
+                    unresolvedLocalRegValueType reg : localRegStack
+                })
             where i = base_idx + Map.size localRegMap
 
 {-# INLINABLE localRegTable #-}
 localRegTable :: PassesState -> [ValueType]
-localRegTable PassesState {..} =
-  I32 : I32 : map unresolvedLocalRegValueType (sortKeysByIntValue localRegMap)
+localRegTable PassesState {..} = I32 : I32 : reverse localRegStack

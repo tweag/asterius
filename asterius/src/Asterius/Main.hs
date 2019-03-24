@@ -278,8 +278,8 @@ genSymbolDict sym_map =
        ]) <>
   "}"
 
-genInfoTables :: S.Set Int64 -> Builder
-genInfoTables sym_set = "new Set(" <> string7 (show (S.toList sym_set)) <> ")"
+genInfoTables :: [Int64] -> Builder
+genInfoTables sym_set = "new Set(" <> string7 (show sym_set) <> ")"
 
 genPinnedStaticClosures ::
      M.Map AsteriusEntitySymbol Int64
@@ -324,7 +324,7 @@ genLib Task {..} LinkReport {..} err_msgs =
   [ "import * as rts from \"./rts.mjs\";\n"
   , "export const newInstance = module => \n"
   , "rts.newAsteriusInstance({events: ["
-  , mconcat (intersperse "," [string7 $ show msg | msg <- err_msgs])
+  , mconcat (intersperse "," [string7 $ show $ show msg | msg <- err_msgs])
   , "], module: module"
   ] <>
   [ ", jsffiFactory: "
@@ -489,7 +489,7 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
   when outputIR $ do
     let p = out_wasm -<.> "bin"
     putStrLn $ "[INFO] Serializing linked IR to " <> show p
-    encodeFile p final_m
+    encodeFile p $ show final_m
   m_bin <-
     if binaryen
       then (do putStrLn "[INFO] Converting linked IR to binaryen IR"

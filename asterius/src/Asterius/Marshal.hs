@@ -11,6 +11,7 @@ module Asterius.Marshal
   ) where
 
 import Asterius.Internals
+import Asterius.Internals.MagicNumber
 import Asterius.Types
 import Asterius.TypesConv
 import Bindings.Binaryen.Raw
@@ -240,12 +241,14 @@ marshalExpression pool sym_map m e =
       (nsp, nl) <- marshalV pool ns
       dn <- marshalSBS pool defaultName
       c_BinaryenSwitch m nsp nl dn c nullPtr
-    Call {..} -> do
-      os <- forM operands $ marshalExpression pool sym_map m
-      (ops, osl) <- marshalV pool os
-      tp <- marshalSBS pool (entityName target)
-      rts <- marshalReturnTypes callReturnTypes
-      c_BinaryenCall m tp ops osl rts
+    Call {..}
+      | M.member target sym_map -> do
+        os <- forM operands $ marshalExpression pool sym_map m
+        (ops, osl) <- marshalV pool os
+        tp <- marshalSBS pool (entityName target)
+        rts <- marshalReturnTypes callReturnTypes
+        c_BinaryenCall m tp ops osl rts
+      | otherwise -> c_BinaryenUnreachable m
     CallImport {..} -> do
       os <- forM operands $ marshalExpression pool sym_map m
       (ops, osl) <- marshalV pool os
@@ -330,8 +333,11 @@ marshalExpression pool sym_map m e =
     Nop -> c_BinaryenNop m
     Unreachable -> c_BinaryenUnreachable m
     CFG {..} -> relooperRun pool sym_map m graph
-    Symbol {resolvedSymbol = Just x, ..} ->
-      c_BinaryenConstInt64 m (x + fromIntegral symbolOffset)
+    Symbol {..} ->
+      c_BinaryenConstInt64 m $
+      case M.lookup unresolvedSymbol sym_map of
+        Just x -> x + fromIntegral symbolOffset
+        _ -> invalidAddress
     _ -> throwIO $ UnsupportedExpression e
 
 marshalMaybeExpression ::

@@ -73,7 +73,7 @@ linkExe ld_task@LinkTask {..} = do
              , rtsUsedSymbols
              , Set.fromList
                  [ AsteriusEntitySymbol {entityName = internalName}
-                 | FunctionExport {..} <- rtsAsteriusFunctionExports debug True
+                 | FunctionExport {..} <- rtsFunctionExports debug True
                  ]
              ])
           exportFunctions

@@ -13,7 +13,6 @@ module Asterius.Types
   , AsteriusStatic(..)
   , AsteriusStaticsType(..)
   , AsteriusStatics(..)
-  , AsteriusFunction(..)
   , AsteriusModule(..)
   , AsteriusModuleSymbol(..)
   , AsteriusEntitySymbol(..)
@@ -103,29 +102,20 @@ data AsteriusStatics = AsteriusStatics
 
 instance Binary AsteriusStatics
 
-data AsteriusFunction = AsteriusFunction
-  { functionType :: FunctionType
-  , body :: Expression
-  } deriving (Eq, Show, Generic, Data)
-
-instance Binary AsteriusFunction
-
 data AsteriusModule = AsteriusModule
   { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics
   , staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
-  , functionMap :: LM.Map AsteriusEntitySymbol AsteriusFunction
+  , functionMap :: LM.Map AsteriusEntitySymbol Function
   , functionErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
   , ffiMarshalState :: FFIMarshalState
-  } deriving (Eq, Show, Data)
+  } deriving (Eq, Show, Generic, Data)
 
 instance Binary AsteriusModule where
-  {-# INLINE put #-}
   put AsteriusModule {..} =
     lazyMapPut staticsMap *> lazyMapPut staticsErrorMap *>
     lazyMapPut functionMap *>
     lazyMapPut functionErrorMap *>
     put ffiMarshalState
-  {-# INLINE get #-}
   get =
     AsteriusModule <$> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*>
     get
@@ -189,11 +179,14 @@ data UnresolvedGlobalReg
 
 instance Binary UnresolvedGlobalReg
 
-newtype Event = Event
-  { eventMessage :: SBS.ShortByteString
-  } deriving (Eq, Ord, Generic, Data)
-
-deriving newtype instance Show Event
+data Event
+  = IllegalSchedulerStatusCode
+  | SchedulerReenteredFromHaskell
+  | HeapOverflowWithZeroHpAlloc
+  | StackOverflow
+  | ThreadBlocked
+  | IllegalThreadReturnCode
+  deriving (Eq, Show, Generic, Data, Bounded, Enum)
 
 instance Binary Event
 
@@ -401,15 +394,10 @@ data Expression
   | Unreachable
   | CFG { graph :: RelooperRun }
   | Symbol { unresolvedSymbol :: AsteriusEntitySymbol
-           , symbolOffset :: Int
-           , resolvedSymbol :: Maybe Int64 }
+           , symbolOffset :: Int }
   | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
-  | UnresolvedGetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg }
-  | UnresolvedSetGlobal { unresolvedGlobalReg :: UnresolvedGlobalReg
-                        , value :: Expression }
-  | EmitEvent { event :: Event }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary Expression
@@ -573,8 +561,6 @@ instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
 
 instance Binary FFIMarshalState where
-  {-# INLINE put #-}
   put FFIMarshalState {..} =
     lazyMapPut ffiImportDecls *> lazyMapPut ffiExportDecls
-  {-# INLINE get #-}
   get = FFIMarshalState <$> lazyMapGet <*> lazyMapGet
