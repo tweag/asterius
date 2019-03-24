@@ -24,6 +24,6 @@ iservLink IservState {..} root_sym =
     (Set.singleton root_sym <> rtsUsedSymbols <>
      Set.fromList
        [ AsteriusEntitySymbol {entityName = internalName}
-       | FunctionExport {..} <- rtsAsteriusFunctionExports False False
+       | FunctionExport {..} <- rtsFunctionExports False False
        ])
     []
