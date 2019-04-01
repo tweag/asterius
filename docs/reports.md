@@ -2,6 +2,24 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-04-01
+
+Covers last week.
+
+Ongoing work:
+
+* Refactored `inline-js-core`/`inline-js` and implemented the binary IPC interface. This is a part of the work on the `node` side of `iserv`.
+    * `inline-js` was based on a textual IPC interface using JSON messages via `readline`. When writing `iserv` logic this proved to be an annoyance; we'd like to reuse the `Message` type and its `Binary` instance in `libiserv`, instead of coming up with a JSON schema for every message; also it doesn't play nice with messages with blobs. Now `inline-js-core` directly transmits binary IPC, and it can be backed by any backend (e.g. stdio or network).
+* `inline-js-core` now supports evaluating ES6 module code containing dynamic `import()`s. This is critical to `iserv` implementation since our code generator also generates ES6 modules.
+* Did some linker profiling and revealed that repeated serialization is a previously undiscovered bottleneck:
+    * In `ahc-ld`, we pick up all library archives and object files, emit a persistent "linker state" as a pseudo-executable, which is later read by `ahc-dist` to produce executable wasm/js.
+    * When no-DCE mode is on, the linker state contains data/functions in all libraries, and although we have some degree of lazy-loading, we can't lazily save things without forcing their evaluation. Thus come the extra costs.
+
+Estimated work for this week:
+
+* Support evaluating static `import` declarations in `inline-js-core`, since they are included in our js stubs. If proven to be hard, we add a switch in the code generator to only emit `import()`s instead.
+* Implement the `iserv` message handlers in node.
+
 ## 2019-03-25
 
 Covers last week.
