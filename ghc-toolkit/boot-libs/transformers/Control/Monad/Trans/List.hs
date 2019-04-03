@@ -145,8 +145,8 @@ instance (Monad m) => MonadPlus (ListT m) where
 
 instance (MonadFix m) => MonadFix (ListT m) where
     mfix f = ListT $ mfix (runListT . f . head) >>= \ xs -> case xs of
-        [] -> pure []
-        x:_ -> (x:) <$> (runListT . mfix) ((mapListT . fmap) tail . f)
+        [] -> return []
+        x:_ -> liftM (x:) (runListT (mfix (mapListT (liftM tail) . f)))
     {-# INLINE mfix #-}
 
 instance MonadTrans ListT where

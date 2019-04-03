@@ -1,76 +1,98 @@
 resolver: ghc-8.9
 allow-newer: true
 extra-deps:
-  - aeson-1.4.2.0
-  - ansi-terminal-0.8.2
+  - http://head.hackage.haskell.org/package/aeson-1.4.2.0.tar.gz
+  - alex-3.2.4
+  - ansi-terminal-0.9
   - ansi-wl-pprint-0.6.8.2
-  - appar-0.1.7
+  - http://head.hackage.haskell.org/package/appar-0.1.7.tar.gz
   - async-2.2.1
-  - attoparsec-0.13.2.2
+  - http://head.hackage.haskell.org/package/attoparsec-0.13.2.2.tar.gz
   - auto-update-0.1.4
   - base-compat-0.10.5
   - base64-bytestring-1.0.0.2
-  - basement-0.0.8
+  - http://head.hackage.haskell.org/package/basement-0.0.10.tar.gz
   - blaze-builder-0.4.1.0
   - blaze-html-0.9.1.1
   - blaze-markup-0.8.2.2
   - bsb-http-chunked-0.0.0.4
   - byteorder-1.0.4
+  - call-stack-0.1.0
   - case-insensitive-1.2.0.11
-  - colour-2.3.4
+  - clock-0.7.2
+  - http://head.hackage.haskell.org/package/colour-2.3.4.tar.gz
   - cookie-0.4.4
   - cryptonite-0.25
   - data-default-class-0.1.2.0
-  - dlist-0.8.0.5
+  - http://head.hackage.haskell.org/package/dlist-0.8.0.5.tar.gz
   - easy-file-0.2.2
   - erf-2.0.0.0
-  - exceptions-0.10.0
+  - http://head.hackage.haskell.org/package/exceptions-0.10.0.tar.gz
   - fast-logger-2.4.11
   - file-embed-0.0.11
+  - gauge-0.2.4
+  - http://head.hackage.haskell.org/package/happy-1.19.9.tar.gz
   - hashable-1.2.7.0
+  - hspec-2.7.0
+  - hspec-core-2.7.0
+  - hspec-discover-2.7.0
+  - hspec-expectations-0.8.2
   - http-date-0.0.8
   - http-types-0.12.2
   - http2-1.6.4
   - integer-logarithms-1.0.2.2
   - iproute-1.7.7
-  - memory-0.14.18
+  - http://head.hackage.haskell.org/package/logict-0.6.0.2.tar.gz
+  - http://head.hackage.haskell.org/package/memory-0.14.18.tar.gz
+  - HUnit-1.6.0.0
+  - language-javascript-0.6.0.11
   - mime-types-0.1.0.8
   - mintty-0.1.2
   - network-2.8.0.0
   - network-byte-order-0.0.0.0
   - old-locale-1.0.0.7
   - old-time-1.1.0.3
-  - optparse-applicative-0.14.3.0
+  - http://head.hackage.haskell.org/package/optparse-applicative-0.14.3.0.tar.gz
   - http://head.hackage.haskell.org/package/primitive-0.6.4.0.tar.gz
   - psqueues-0.2.7.0
-  - QuickCheck-2.12.6.1
+  - http://head.hackage.haskell.org/package/QuickCheck-2.12.6.1.tar.gz
   - quickcheck-instances-0.3.19
+  - quickcheck-io-0.2.0
   - random-1.1
   - resourcet-1.2.2
   - scientific-0.3.6.2
   - semigroups-0.18.5
+  - setenv-0.1.1.3
   - simple-sendfile-0.2.27
+  - smallcheck-1.1.5
   - streaming-commons-0.2.1.0
   - tagged-0.8.6
+  - tasty-1.2.1
+  - tasty-hspec-1.1.5.1
+  - tasty-quickcheck-0.10
+  - tasty-smallcheck-0.8.1
   - tf-random-0.5
-  # - http://head.hackage.haskell.org/package/th-abstraction-0.2.10.0.tar.gz
+  - http://head.hackage.haskell.org/package/th-abstraction-0.2.11.0.tar.gz
   - time-locale-compat-0.1.1.5
   - transformers-compat-0.6.2
+  - unbounded-delays-0.1.1.0
   - unix-compat-0.5.1
   - unordered-containers-0.2.9.0
+  - utf8-string-1.0.1.1
   - vault-0.3.1.2
   - unix-time-0.3.8
   - uuid-types-1.0.3
   - unliftio-core-0.1.2.0
-  - vector-0.12.0.2
+  - http://head.hackage.haskell.org/package/vector-0.12.0.2.tar.gz
   - void-0.7.2
   - wai-3.2.1.2
   - wai-app-static-3.1.6.2
   - wai-extra-3.0.24.3
   - wai-logger-2.3.2
   - warp-3.2.25
+  - wcwidth-0.0.2
   - word8-0.1.3
-  - zlib-0.6.2
+  - http://head.hackage.haskell.org/package/zlib-0.6.2.tar.gz
 packages:
   - asterius
   - binaryen
@@ -83,10 +105,10 @@ ghc-build: standard
 setup-info:
   ghc:
     linux64:
-      8.9.20190312:
-        url: https://2995-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190312-x86_64-unknown-linux.tar.xz
-        sha256: 9c424053684f9f96929289af09a18198174920a2b88ecd4015213151461a52fd
+      8.9.20190403:
+        url: https://3157-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190403-x86_64-unknown-linux.tar.xz
+        sha256: 85871914180e77d3c00664c7bd38986846ffe67da1276278ca49414078914035
     macosx:
-      8.9.20190312:
-        url: https://2996-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190312-x86_64-apple-darwin.tar.xz
-        sha256: 74100a3a7de45617af46feaa43c3766623ad978d7b2176f874d05a9d8ed9cf7c
+      8.9.20190403:
+        url: https://3156-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.9.20190403-x86_64-apple-darwin.tar.xz
+        sha256: 6188db4ba5cf75326101c99e24b7fa7dabaa2e1aff2ef0125663de87ef1f4fa7
