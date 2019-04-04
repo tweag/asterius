@@ -497,11 +497,9 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                c_BinaryenSetOptimizeLevel 0
                c_BinaryenSetShrinkLevel 0
                m_ref <-
-                 withPool $ \pool ->
-                   OldMarshal.marshalModule
-                     pool
-                     (staticsSymbolMap report <> functionSymbolMap report)
-                     final_m
+                 OldMarshal.marshalModule
+                   (staticsSymbolMap report <> functionSymbolMap report)
+                   final_m
                putStrLn "[INFO] Validating binaryen IR"
                pass_validation <- c_BinaryenModuleValidate m_ref
                when (pass_validation /= 1) $

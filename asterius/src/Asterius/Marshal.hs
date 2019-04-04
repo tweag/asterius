@@ -11,6 +11,7 @@ module Asterius.Marshal
   ) where
 
 import Asterius.Internals
+import Asterius.Internals.Marshal
 import Asterius.Internals.MagicNumber
 import Asterius.Types
 import Asterius.TypesConv
@@ -24,7 +25,7 @@ import Data.Foldable
 import qualified Data.Map.Strict as M
 import qualified Data.Set as Set
 import Data.Traversable
-import Foreign hiding (void)
+import Foreign hiding (void, withPool)
 import Foreign.C
 import GHC.Exts
 import Language.Haskell.GHC.Toolkit.Constants
@@ -197,333 +198,329 @@ marshalHostOp op =
     GrowMemory -> c_BinaryenGrowMemory
 
 marshalFunctionType ::
-     Pool
-  -> BinaryenModuleRef
+     BinaryenModuleRef
   -> SBS.ShortByteString
   -> FunctionType
   -> IO BinaryenFunctionTypeRef
-marshalFunctionType pool m k FunctionType {..} = do
-  (pts, ptl) <- marshalV pool $ map marshalValueType paramTypes
-  rts <- marshalReturnTypes returnTypes
-  np <- marshalSBS pool k
-  c_BinaryenAddFunctionType m np rts pts ptl
+marshalFunctionType m k FunctionType {..} =
+  withPool $ \pool -> do
+    (pts, ptl) <- marshalV pool $ map marshalValueType paramTypes
+    rts <- marshalReturnTypes returnTypes
+    np <- marshalSBS pool k
+    c_BinaryenAddFunctionType m np rts pts (fromIntegral ptl)
 
 marshalExpression ::
-     Pool
-  -> M.Map AsteriusEntitySymbol Int64
+     M.Map AsteriusEntitySymbol Int64
   -> BinaryenModuleRef
   -> Expression
   -> IO BinaryenExpressionRef
-marshalExpression pool sym_map m e =
-  case e of
-    Block {..} -> do
-      bs <- forM bodys $ marshalExpression pool sym_map m
-      (bsp, bl) <- marshalV pool bs
-      np <- marshalSBS pool name
-      rts <- marshalReturnTypes blockReturnTypes
-      c_BinaryenBlock m np bsp bl rts
-    If {..} -> do
-      c <- marshalExpression pool sym_map m condition
-      t <- marshalExpression pool sym_map m ifTrue
-      f <- marshalMaybeExpression pool sym_map m ifFalse
-      c_BinaryenIf m c t f
-    Loop {..} -> do
-      b <- marshalExpression pool sym_map m body
-      np <- marshalSBS pool name
-      c_BinaryenLoop m np b
-    Break {..} -> do
-      c <- marshalMaybeExpression pool sym_map m breakCondition
-      np <- marshalSBS pool name
-      c_BinaryenBreak m np c nullPtr
-    Switch {..} -> do
-      c <- marshalExpression pool sym_map m condition
-      ns <- forM names $ marshalSBS pool
-      (nsp, nl) <- marshalV pool ns
-      dn <- marshalSBS pool defaultName
-      c_BinaryenSwitch m nsp nl dn c nullPtr
-    Call {..}
-      | M.member target sym_map -> do
-        os <- forM operands $ marshalExpression pool sym_map m
+marshalExpression sym_map m e =
+  withPool $ \pool ->
+    case e of
+      Block {..} -> do
+        bs <- forM bodys $ marshalExpression sym_map m
+        (bsp, bl) <- marshalV pool bs
+        np <- marshalSBS pool name
+        rts <- marshalReturnTypes blockReturnTypes
+        c_BinaryenBlock m np bsp (fromIntegral bl) rts
+      If {..} -> do
+        c <- marshalExpression sym_map m condition
+        t <- marshalExpression sym_map m ifTrue
+        f <- marshalMaybeExpression sym_map m ifFalse
+        c_BinaryenIf m c t f
+      Loop {..} -> do
+        b <- marshalExpression sym_map m body
+        np <- marshalSBS pool name
+        c_BinaryenLoop m np b
+      Break {..} -> do
+        c <- marshalMaybeExpression sym_map m breakCondition
+        np <- marshalSBS pool name
+        c_BinaryenBreak m np c nullPtr
+      Switch {..} -> do
+        c <- marshalExpression sym_map m condition
+        ns <- forM names $ marshalSBS pool
+        (nsp, nl) <- marshalV pool ns
+        dn <- marshalSBS pool defaultName
+        c_BinaryenSwitch m nsp (fromIntegral nl) dn c nullPtr
+      Call {..}
+        | M.member target sym_map -> do
+          os <- forM operands $ marshalExpression sym_map m
+          (ops, osl) <- marshalV pool os
+          tp <- marshalSBS pool (entityName target)
+          rts <- marshalReturnTypes callReturnTypes
+          c_BinaryenCall m tp ops (fromIntegral osl) rts
+        | otherwise -> c_BinaryenUnreachable m
+      CallImport {..} -> do
+        os <- forM operands $ marshalExpression sym_map m
         (ops, osl) <- marshalV pool os
-        tp <- marshalSBS pool (entityName target)
-        rts <- marshalReturnTypes callReturnTypes
-        c_BinaryenCall m tp ops osl rts
-      | otherwise -> c_BinaryenUnreachable m
-    CallImport {..} -> do
-      os <- forM operands $ marshalExpression pool sym_map m
-      (ops, osl) <- marshalV pool os
-      tp <- marshalSBS pool target'
-      rts <- marshalReturnTypes callImportReturnTypes
-      c_BinaryenCall m tp ops osl rts
-    CallIndirect {..} -> do
-      t <- marshalExpression pool sym_map m indirectTarget
-      os <- forM operands $ marshalExpression pool sym_map m
-      (ops, osl) <- marshalV pool os
-      tp <- marshalSBS pool $ showSBS functionType
-      c_BinaryenCallIndirect m t ops osl tp
-    GetLocal {..} -> c_BinaryenGetLocal m index $ marshalValueType valueType
-    SetLocal {..} -> do
-      v <- marshalExpression pool sym_map m value
-      c_BinaryenSetLocal m index v
-    Load {..} -> do
-      p <- marshalExpression pool sym_map m ptr
-      c_BinaryenLoad
-        m
-        bytes
-        (marshalBool signed)
-        offset
-        1
-        (marshalValueType valueType)
-        p
-    Store {..} -> do
-      p <- marshalExpression pool sym_map m ptr
-      v <- marshalExpression pool sym_map m value
-      c_BinaryenStore m bytes offset 1 p v (marshalValueType valueType)
-    ConstI32 x -> c_BinaryenConstInt32 m x
-    ConstI64 x -> c_BinaryenConstInt64 m x
-    ConstF32 x -> c_BinaryenConstFloat32 m x
-    ConstF64 x -> c_BinaryenConstFloat64 m x
-    Unary {..} -> do
-      x <- marshalExpression pool sym_map m operand0
-      c_BinaryenUnary m (marshalUnaryOp unaryOp) x
-    Binary {..} -> do
-      x <- marshalExpression pool sym_map m operand0
-      y <- marshalExpression pool sym_map m operand1
-      c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
-    ReturnCall {..} -> do
-      s <-
-        marshalExpression
-          pool
-          sym_map
+        tp <- marshalSBS pool target'
+        rts <- marshalReturnTypes callImportReturnTypes
+        c_BinaryenCall m tp ops (fromIntegral osl) rts
+      CallIndirect {..} -> do
+        t <- marshalExpression sym_map m indirectTarget
+        os <- forM operands $ marshalExpression sym_map m
+        (ops, osl) <- marshalV pool os
+        tp <- marshalSBS pool $ showSBS functionType
+        c_BinaryenCallIndirect m t ops (fromIntegral osl) tp
+      GetLocal {..} -> c_BinaryenGetLocal m index $ marshalValueType valueType
+      SetLocal {..} -> do
+        v <- marshalExpression sym_map m value
+        c_BinaryenSetLocal m index v
+      Load {..} -> do
+        p <- marshalExpression sym_map m ptr
+        c_BinaryenLoad
           m
-          Store
-            { bytes = 8
-            , offset = 0
-            , ptr =
-                ConstI32 $
-                fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-            , value = ConstI64 $ sym_map !? returnCallTarget64
-            , valueType = I64
-            }
-      r <- c_BinaryenReturn m nullPtr
-      arr <- pooledNewArray pool [s, r]
-      c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
-    ReturnCallIndirect {..} -> do
-      s <-
-        marshalExpression
-          pool
-          sym_map
-          m
-          Store
-            { bytes = 8
-            , offset = 0
-            , ptr =
-                ConstI32 $
-                fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-            , value = returnCallIndirectTarget64
-            , valueType = I64
-            }
-      r <- c_BinaryenReturn m nullPtr
-      arr <- pooledNewArray pool [s, r]
-      c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
-    Host {..} -> do
-      xs <- forM operands $ marshalExpression pool sym_map m
-      (es, en) <- marshalV pool xs
-      c_BinaryenHost m (marshalHostOp hostOp) nullPtr es en
-    Nop -> c_BinaryenNop m
-    Unreachable -> c_BinaryenUnreachable m
-    CFG {..} -> relooperRun pool sym_map m graph
-    Symbol {..} ->
-      c_BinaryenConstInt64 m $
-      case M.lookup unresolvedSymbol sym_map of
-        Just x -> x + fromIntegral symbolOffset
-        _ -> invalidAddress
-    _ -> throwIO $ UnsupportedExpression e
+          bytes
+          (marshalBool signed)
+          offset
+          1
+          (marshalValueType valueType)
+          p
+      Store {..} -> do
+        p <- marshalExpression sym_map m ptr
+        v <- marshalExpression sym_map m value
+        c_BinaryenStore m bytes offset 1 p v (marshalValueType valueType)
+      ConstI32 x -> c_BinaryenConstInt32 m x
+      ConstI64 x -> c_BinaryenConstInt64 m x
+      ConstF32 x -> c_BinaryenConstFloat32 m x
+      ConstF64 x -> c_BinaryenConstFloat64 m x
+      Unary {..} -> do
+        x <- marshalExpression sym_map m operand0
+        c_BinaryenUnary m (marshalUnaryOp unaryOp) x
+      Binary {..} -> do
+        x <- marshalExpression sym_map m operand0
+        y <- marshalExpression sym_map m operand1
+        c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
+      ReturnCall {..} -> do
+        s <-
+          marshalExpression
+            sym_map
+            m
+            Store
+              { bytes = 8
+              , offset = 0
+              , ptr =
+                  ConstI32 $
+                  fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
+              , value = ConstI64 $ sym_map !? returnCallTarget64
+              , valueType = I64
+              }
+        r <- c_BinaryenReturn m nullPtr
+        (arr, _) <- marshalV pool [s, r]
+        c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
+      ReturnCallIndirect {..} -> do
+        s <-
+          marshalExpression
+            sym_map
+            m
+            Store
+              { bytes = 8
+              , offset = 0
+              , ptr =
+                  ConstI32 $
+                  fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
+              , value = returnCallIndirectTarget64
+              , valueType = I64
+              }
+        r <- c_BinaryenReturn m nullPtr
+        (arr, _) <- marshalV pool [s, r]
+        c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
+      Host {..} -> do
+        xs <- forM operands $ marshalExpression sym_map m
+        (es, en) <- marshalV pool xs
+        c_BinaryenHost m (marshalHostOp hostOp) nullPtr es (fromIntegral en)
+      Nop -> c_BinaryenNop m
+      Unreachable -> c_BinaryenUnreachable m
+      CFG {..} -> relooperRun sym_map m graph
+      Symbol {..} ->
+        c_BinaryenConstInt64 m $
+        case M.lookup unresolvedSymbol sym_map of
+          Just x -> x + fromIntegral symbolOffset
+          _ -> invalidAddress
+      _ -> throwIO $ UnsupportedExpression e
 
 marshalMaybeExpression ::
-     Pool
-  -> M.Map AsteriusEntitySymbol Int64
+     M.Map AsteriusEntitySymbol Int64
   -> BinaryenModuleRef
   -> Maybe Expression
   -> IO BinaryenExpressionRef
-marshalMaybeExpression pool sym_map m x =
+marshalMaybeExpression sym_map m x =
   case x of
-    Just e -> marshalExpression pool sym_map m e
+    Just e -> marshalExpression sym_map m e
     _ -> pure nullPtr
 
 marshalFunction ::
-     Pool
-  -> M.Map AsteriusEntitySymbol Int64
+     M.Map AsteriusEntitySymbol Int64
   -> BinaryenModuleRef
   -> SBS.ShortByteString
   -> BinaryenFunctionTypeRef
   -> Function
   -> IO BinaryenFunctionRef
-marshalFunction pool sym_map m k ft Function {..} = do
-  b <- marshalExpression pool sym_map m body
-  (vtp, vtl) <- marshalV pool $ map marshalValueType varTypes
-  np <- marshalSBS pool k
-  c_BinaryenAddFunction m np ft vtp vtl b
+marshalFunction sym_map m k ft Function {..} =
+  withPool $ \pool -> do
+    b <- marshalExpression sym_map m body
+    (vtp, vtl) <- marshalV pool $ map marshalValueType varTypes
+    np <- marshalSBS pool k
+    c_BinaryenAddFunction m np ft vtp (fromIntegral vtl) b
 
 marshalFunctionImport ::
-     Pool
-  -> BinaryenModuleRef
-  -> BinaryenFunctionTypeRef
-  -> FunctionImport
-  -> IO ()
-marshalFunctionImport pool m ft FunctionImport {..} = do
-  inp <- marshalSBS pool internalName
-  emp <- marshalSBS pool externalModuleName
-  ebp <- marshalSBS pool externalBaseName
-  c_BinaryenAddFunctionImport m inp emp ebp ft
+     BinaryenModuleRef -> BinaryenFunctionTypeRef -> FunctionImport -> IO ()
+marshalFunctionImport m ft FunctionImport {..} =
+  withPool $ \pool -> do
+    inp <- marshalSBS pool internalName
+    emp <- marshalSBS pool externalModuleName
+    ebp <- marshalSBS pool externalBaseName
+    c_BinaryenAddFunctionImport m inp emp ebp ft
 
 marshalFunctionExport ::
-     Pool -> BinaryenModuleRef -> FunctionExport -> IO BinaryenExportRef
-marshalFunctionExport pool m FunctionExport {..} = do
-  inp <- marshalSBS pool internalName
-  enp <- marshalSBS pool externalName
-  c_BinaryenAddFunctionExport m inp enp
+     BinaryenModuleRef -> FunctionExport -> IO BinaryenExportRef
+marshalFunctionExport m FunctionExport {..} =
+  withPool $ \pool -> do
+    inp <- marshalSBS pool internalName
+    enp <- marshalSBS pool externalName
+    c_BinaryenAddFunctionExport m inp enp
 
-marshalFunctionTable ::
-     Pool -> BinaryenModuleRef -> Int -> FunctionTable -> IO ()
-marshalFunctionTable pool m tbl_slots FunctionTable {..} = do
-  func_name_ptrs <- for tableFunctionNames $ marshalSBS pool
-  (fnp, fnl) <- marshalV pool func_name_ptrs
-  c_BinaryenSetFunctionTableWithOffset
-    m
-    (fromIntegral tbl_slots)
-    (-1)
-    tableOffset
-    fnp
-    fnl
+marshalFunctionTable :: BinaryenModuleRef -> Int -> FunctionTable -> IO ()
+marshalFunctionTable m tbl_slots FunctionTable {..} =
+  withPool $ \pool -> do
+    func_name_ptrs <- for tableFunctionNames $ marshalSBS pool
+    (fnp, fnl) <- marshalV pool func_name_ptrs
+    c_BinaryenSetFunctionTableWithOffset
+      m
+      (fromIntegral tbl_slots)
+      (-1)
+      tableOffset
+      fnp
+      (fromIntegral fnl)
 
 marshalMemorySegments ::
-     Pool
-  -> M.Map AsteriusEntitySymbol Int64
+     M.Map AsteriusEntitySymbol Int64
   -> BinaryenModuleRef
   -> Int
   -> [DataSegment]
   -> IO ()
-marshalMemorySegments pool sym_map m mbs segs = do
-  (seg_bufs, _ :: Int) <- marshalV pool =<< for segs (marshalSBS pool . content)
-  (seg_offsets, _ :: Int) <-
-    marshalV pool =<<
-    for
-      segs
-      (\DataSegment {..} -> marshalExpression pool sym_map m $ ConstI32 offset)
-  (seg_sizes, _ :: Int) <-
-    marshalV pool $ map (fromIntegral . SBS.length . content) segs
-  c_BinaryenSetMemory
-    m
-    (fromIntegral $ mbs * (mblock_size `quot` 65536))
-    (-1)
-    nullPtr
-    seg_bufs
-    seg_offsets
-    seg_sizes
-    (fromIntegral $ length segs)
-    0
+marshalMemorySegments sym_map m mbs segs =
+  withPool $ \pool -> do
+    (seg_bufs, _ :: Int) <-
+      marshalV pool =<< for segs (marshalSBS pool . content)
+    (seg_offsets, _ :: Int) <-
+      marshalV pool =<<
+      for
+        segs
+        (\DataSegment {..} -> marshalExpression sym_map m $ ConstI32 offset)
+    (seg_sizes, _ :: Int) <-
+      marshalV pool $ map (fromIntegral . SBS.length . content) segs
+    c_BinaryenSetMemory
+      m
+      (fromIntegral $ mbs * (mblock_size `quot` 65536))
+      (-1)
+      nullPtr
+      seg_bufs
+      seg_offsets
+      seg_sizes
+      (fromIntegral $ length segs)
+      0
 
-marshalTableImport :: Pool -> BinaryenModuleRef -> TableImport -> IO ()
-marshalTableImport pool m TableImport {..} = do
-  inp <- marshalSBS pool "0"
-  emp <- marshalSBS pool externalModuleName
-  ebp <- marshalSBS pool externalBaseName
-  c_BinaryenAddTableImport m inp emp ebp
+marshalTableImport :: BinaryenModuleRef -> TableImport -> IO ()
+marshalTableImport m TableImport {..} =
+  withPool $ \pool -> do
+    inp <- marshalSBS pool "0"
+    emp <- marshalSBS pool externalModuleName
+    ebp <- marshalSBS pool externalBaseName
+    c_BinaryenAddTableImport m inp emp ebp
 
-marshalMemoryImport :: Pool -> BinaryenModuleRef -> MemoryImport -> IO ()
-marshalMemoryImport pool m MemoryImport {..} = do
-  inp <- marshalSBS pool "0"
-  emp <- marshalSBS pool externalModuleName
-  ebp <- marshalSBS pool externalBaseName
-  c_BinaryenAddMemoryImport m inp emp ebp 0
+marshalMemoryImport :: BinaryenModuleRef -> MemoryImport -> IO ()
+marshalMemoryImport m MemoryImport {..} =
+  withPool $ \pool -> do
+    inp <- marshalSBS pool "0"
+    emp <- marshalSBS pool externalModuleName
+    ebp <- marshalSBS pool externalBaseName
+    c_BinaryenAddMemoryImport m inp emp ebp 0
 
-marshalTableExport ::
-     Pool -> BinaryenModuleRef -> TableExport -> IO BinaryenExportRef
-marshalTableExport pool m TableExport {..} = do
-  inp <- marshalSBS pool "0"
-  enp <- marshalSBS pool externalName
-  c_BinaryenAddTableExport m inp enp
+marshalTableExport :: BinaryenModuleRef -> TableExport -> IO BinaryenExportRef
+marshalTableExport m TableExport {..} =
+  withPool $ \pool -> do
+    inp <- marshalSBS pool "0"
+    enp <- marshalSBS pool externalName
+    c_BinaryenAddTableExport m inp enp
 
-marshalMemoryExport ::
-     Pool -> BinaryenModuleRef -> MemoryExport -> IO BinaryenExportRef
-marshalMemoryExport pool m MemoryExport {..} = do
-  inp <- marshalSBS pool "0"
-  enp <- marshalSBS pool externalName
-  c_BinaryenAddMemoryExport m inp enp
+marshalMemoryExport :: BinaryenModuleRef -> MemoryExport -> IO BinaryenExportRef
+marshalMemoryExport m MemoryExport {..} =
+  withPool $ \pool -> do
+    inp <- marshalSBS pool "0"
+    enp <- marshalSBS pool externalName
+    c_BinaryenAddMemoryExport m inp enp
 
 marshalModule ::
-     Pool -> M.Map AsteriusEntitySymbol Int64 -> Module -> IO BinaryenModuleRef
-marshalModule pool sym_map hs_mod@Module {..} = do
+     M.Map AsteriusEntitySymbol Int64 -> Module -> IO BinaryenModuleRef
+marshalModule sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
   m <- c_BinaryenModuleCreate
   ftps <-
     fmap M.fromList $
     for (Set.toList fts) $ \ft -> do
-      ftp <- marshalFunctionType pool m (showSBS ft) ft
+      ftp <- marshalFunctionType m (showSBS ft) ft
       pure (ft, ftp)
   for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
-    marshalFunction pool sym_map m k (ftps ! functionType) f
+    marshalFunction sym_map m k (ftps ! functionType) f
   forM_ functionImports $ \fi@FunctionImport {..} ->
-    marshalFunctionImport pool m (ftps ! functionType) fi
-  forM_ functionExports $ marshalFunctionExport pool m
-  marshalFunctionTable pool m tableSlots functionTable
-  marshalTableImport pool m tableImport
-  void $ marshalTableExport pool m tableExport
-  marshalMemorySegments pool sym_map m memoryMBlocks memorySegments
-  marshalMemoryImport pool m memoryImport
-  void $ marshalMemoryExport pool m memoryExport
+    marshalFunctionImport m (ftps ! functionType) fi
+  forM_ functionExports $ marshalFunctionExport m
+  marshalFunctionTable m tableSlots functionTable
+  marshalTableImport m tableImport
+  void $ marshalTableExport m tableExport
+  marshalMemorySegments sym_map m memoryMBlocks memorySegments
+  marshalMemoryImport m memoryImport
+  void $ marshalMemoryExport m memoryExport
   pure m
 
 relooperAddBlock ::
-     Pool
-  -> M.Map AsteriusEntitySymbol Int64
+     M.Map AsteriusEntitySymbol Int64
   -> BinaryenModuleRef
   -> RelooperRef
   -> RelooperAddBlock
   -> IO RelooperBlockRef
-relooperAddBlock pool sym_map m r ab =
+relooperAddBlock sym_map m r ab =
   case ab of
     AddBlock {..} -> do
-      c <- marshalExpression pool sym_map m code
+      c <- marshalExpression sym_map m code
       c_RelooperAddBlock r c
     AddBlockWithSwitch {..} -> do
-      _code <- marshalExpression pool sym_map m code
-      _cond <- marshalExpression pool sym_map m condition
+      _code <- marshalExpression sym_map m code
+      _cond <- marshalExpression sym_map m condition
       c_RelooperAddBlockWithSwitch r _code _cond
 
 relooperAddBranch ::
-     Pool
-  -> M.Map AsteriusEntitySymbol Int64
+     M.Map AsteriusEntitySymbol Int64
   -> BinaryenModuleRef
   -> M.Map SBS.ShortByteString RelooperBlockRef
   -> SBS.ShortByteString
   -> RelooperAddBranch
   -> IO ()
-relooperAddBranch pool sym_map m bm k ab =
-  case ab of
-    AddBranch {..} -> do
-      _cond <- marshalMaybeExpression pool sym_map m addBranchCondition
-      c_RelooperAddBranch (bm ! k) (bm ! to) _cond nullPtr
-    AddBranchForSwitch {..} -> do
-      (idp, idn) <- marshalV pool indexes
-      c_RelooperAddBranchForSwitch (bm ! k) (bm ! to) idp idn nullPtr
+relooperAddBranch sym_map m bm k ab =
+  withPool $ \pool ->
+    case ab of
+      AddBranch {..} -> do
+        _cond <- marshalMaybeExpression sym_map m addBranchCondition
+        c_RelooperAddBranch (bm ! k) (bm ! to) _cond nullPtr
+      AddBranchForSwitch {..} -> do
+        (idp, idn) <- marshalV pool indexes
+        c_RelooperAddBranchForSwitch (bm ! k) (bm ! to) idp (fromIntegral idn) nullPtr
 
 relooperRun ::
-     Pool
-  -> M.Map AsteriusEntitySymbol Int64
+     M.Map AsteriusEntitySymbol Int64
   -> BinaryenModuleRef
   -> RelooperRun
   -> IO BinaryenExpressionRef
-relooperRun pool sym_map m RelooperRun {..} = do
+relooperRun sym_map m RelooperRun {..} = do
   r <- c_RelooperCreate m
   bpm <-
     fmap fromList $
     for (M.toList blockMap) $ \(k, RelooperBlock {..}) -> do
-      bp <- relooperAddBlock pool sym_map m r addBlock
+      bp <- relooperAddBlock sym_map m r addBlock
       pure (k, bp)
   for_ (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
-    forM_ addBranches $ relooperAddBranch pool sym_map m bpm k
+    forM_ addBranches $ relooperAddBranch sym_map m bpm k
   c_RelooperRenderAndDispose r (bpm ! entry) labelHelper
 
 serializeModule :: BinaryenModuleRef -> IO BS.ByteString
