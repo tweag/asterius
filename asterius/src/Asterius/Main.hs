@@ -32,6 +32,7 @@ import Control.Monad
 import Control.Monad.Except
 import Data.Binary.Get
 import Data.Binary.Put
+import qualified Data.ByteString as BS
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable
@@ -293,8 +294,8 @@ genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
        (map ((sym_map !) . ffiExportClosure . (ffiExportDecls !)) export_funcs)) <>
   ")"
 
-genWasm :: Task -> LBS.ByteString -> Builder
-genWasm Task {..} _ =
+genWasm :: Task -> Builder
+genWasm Task {..} =
   mconcat
     [ case target of
         Node -> "import fs from \"fs\";\n"
@@ -490,55 +491,50 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
     let p = out_wasm -<.> "bin"
     putStrLn $ "[INFO] Serializing linked IR to " <> show p
     encodeFile p $ show final_m
-  m_bin <-
-    if binaryen
-      then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
-               c_BinaryenSetDebugInfo 1
-               c_BinaryenSetOptimizeLevel 0
-               c_BinaryenSetShrinkLevel 0
-               m_ref <-
-                 Binaryen.marshalModule
-                   (staticsSymbolMap report <> functionSymbolMap report)
-                   final_m
-               putStrLn "[INFO] Validating binaryen IR"
-               pass_validation <- c_BinaryenModuleValidate m_ref
-               when (pass_validation /= 1) $
-                 fail "[ERROR] binaryen validation failed"
-               m_bin <- LBS.fromStrict <$> Binaryen.serializeModule m_ref
+  if binaryen
+    then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+             c_BinaryenSetDebugInfo 1
+             c_BinaryenSetOptimizeLevel 0
+             c_BinaryenSetShrinkLevel 0
+             m_ref <-
+               Binaryen.marshalModule
+                 (staticsSymbolMap report <> functionSymbolMap report)
+                 final_m
+             putStrLn "[INFO] Validating binaryen IR"
+             pass_validation <- c_BinaryenModuleValidate m_ref
+             when (pass_validation /= 1) $
+               fail "[ERROR] binaryen validation failed"
+             m_bin <- Binaryen.serializeModule m_ref
+             putStrLn $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+             BS.writeFile out_wasm m_bin
+             when outputIR $ do
+               let p = out_wasm -<.> "binaryen.txt"
                putStrLn $
-                 "[INFO] Writing WebAssembly binary to " <> show out_wasm
-               LBS.writeFile out_wasm m_bin
-               when outputIR $ do
-                 let p = out_wasm -<.> "binaryen.txt"
-                 putStrLn $
-                   "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
-                 case runGetOrFail Wasm.getModule m_bin of
-                   Right (rest, _, r)
-                     | LBS.null rest -> writeFile p (show r)
-                     | otherwise -> fail "[ERROR] Re-parsing produced residule"
-                   _ -> fail "[ERROR] Re-parsing failed"
-               pure m_bin)
-      else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
-               let conv_result =
-                     runExcept $
-                     WasmToolkit.makeModule
-                       tailCalls
-                       (staticsSymbolMap report <> functionSymbolMap report)
-                       final_m
-               r <-
-                 case conv_result of
-                   Left err ->
-                     fail $ "[ERROR] Conversion failed with " <> show err
-                   Right r -> pure r
-               when outputIR $ do
-                 let p = out_wasm -<.> "wasm-toolkit.txt"
-                 putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
-                 writeFile p $ show r
-               let m_bin = runPut $ putModule r
-               putStrLn $
-                 "[INFO] Writing WebAssembly binary to " <> show out_wasm
-               LBS.writeFile out_wasm m_bin
-               pure m_bin)
+                 "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
+               case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
+                 Right (rest, _, r)
+                   | LBS.null rest -> writeFile p (show r)
+                   | otherwise -> fail "[ERROR] Re-parsing produced residule"
+                 _ -> fail "[ERROR] Re-parsing failed")
+    else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
+             let conv_result =
+                   runExcept $
+                   WasmToolkit.makeModule
+                     tailCalls
+                     (staticsSymbolMap report <> functionSymbolMap report)
+                     final_m
+             r <-
+               case conv_result of
+                 Left err ->
+                   fail $ "[ERROR] Conversion failed with " <> show err
+                 Right r -> pure r
+             when outputIR $ do
+               let p = out_wasm -<.> "wasm-toolkit.txt"
+               putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
+               writeFile p $ show r
+             putStrLn $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+             withBinaryFile out_wasm WriteMode $ \h ->
+               hPutBuilder h $ execPut $ putModule r)
   putStrLn $
     "[INFO] Writing JavaScript runtime settings to " <> show out_rts_settings
   builderWriteFile out_rts_settings $ genRTSSettings task
@@ -548,7 +544,7 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
   for_ rts_files $ \f ->
     copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
   putStrLn $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
-  builderWriteFile out_wasm_lib $ genWasm task m_bin
+  builderWriteFile out_wasm_lib $ genWasm task
   putStrLn $ "[INFO] Writing JavaScript lib module to " <> show out_lib
   builderWriteFile out_lib $ genLib task report err_msgs
   putStrLn $ "[INFO] Writing JavaScript entry module to " <> show out_entry
