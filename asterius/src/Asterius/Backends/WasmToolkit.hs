@@ -4,7 +4,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
-module Asterius.NewMarshal
+module Asterius.Backends.WasmToolkit
   ( MarshalError(..)
   , makeModule
   ) where

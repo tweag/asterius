@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
-module Asterius.Marshal
+module Asterius.Backends.Binaryen
   ( MarshalError(..)
   , marshalModule
   , serializeModule

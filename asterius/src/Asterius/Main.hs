@@ -11,14 +11,14 @@ module Asterius.Main
   , ahcLinkMain
   ) where
 
+import qualified Asterius.Backends.Binaryen as Binaryen
+import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.BuildInfo
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.Ld (rtsUsedSymbols)
-import qualified Asterius.Marshal as OldMarshal
-import qualified Asterius.NewMarshal as NewMarshal
 import Asterius.Resolve
 import Asterius.Types
   ( AsteriusEntitySymbol(..)
@@ -497,14 +497,14 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                c_BinaryenSetOptimizeLevel 0
                c_BinaryenSetShrinkLevel 0
                m_ref <-
-                 OldMarshal.marshalModule
+                 Binaryen.marshalModule
                    (staticsSymbolMap report <> functionSymbolMap report)
                    final_m
                putStrLn "[INFO] Validating binaryen IR"
                pass_validation <- c_BinaryenModuleValidate m_ref
                when (pass_validation /= 1) $
                  fail "[ERROR] binaryen validation failed"
-               m_bin <- LBS.fromStrict <$> OldMarshal.serializeModule m_ref
+               m_bin <- LBS.fromStrict <$> Binaryen.serializeModule m_ref
                putStrLn $
                  "[INFO] Writing WebAssembly binary to " <> show out_wasm
                LBS.writeFile out_wasm m_bin
@@ -521,7 +521,7 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
       else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
                let conv_result =
                      runExcept $
-                     NewMarshal.makeModule
+                     WasmToolkit.makeModule
                        tailCalls
                        (staticsSymbolMap report <> functionSymbolMap report)
                        final_m
