@@ -18,20 +18,24 @@ import os
 import shutil
 import subprocess
 import sys
+import unittest
 
 from scripts.test.support import run_command, split_wast, node_test_glue, node_has_webassembly
 from scripts.test.shared import (
-    BIN_DIR, MOZJS, NATIVECC, NATIVEXX, NODEJS, BINARYEN_JS,
-    WASM_AS, WASM_CTOR_EVAL, WASM_OPT, WASM_SHELL, WASM_MERGE, WASM_METADCE,
-    WASM_DIS, WASM_REDUCE, binary_format_check, delete_from_orbit, fail, fail_with_error,
+    BIN_DIR, MOZJS, NATIVECC, NATIVEXX, NODEJS, BINARYEN_JS, WASM_AS,
+    WASM_CTOR_EVAL, WASM_OPT, WASM_SHELL, WASM_METADCE, WASM_DIS, WASM_REDUCE,
+    binary_format_check, delete_from_orbit, fail, fail_with_error,
     fail_if_not_identical, fail_if_not_contained, has_vanilla_emcc,
-    has_vanilla_llvm, minify_check, num_failures, options, tests,
-    requested, warnings, has_shell_timeout, fail_if_not_identical_to_file
+    has_vanilla_llvm, minify_check, options, tests, requested, warnings,
+    has_shell_timeout, fail_if_not_identical_to_file
 )
 
-import scripts.test.asm2wasm as asm2wasm
-import scripts.test.lld as lld
-import scripts.test.wasm2js as wasm2js
+# For shared.num_failures. Cannot import directly because modifications made in
+# shared.py would not affect the version imported here.
+from scripts.test import shared
+from scripts.test import asm2wasm
+from scripts.test import lld
+from scripts.test import wasm2js
 
 if options.interpreter:
   print '[ using wasm interpreter at "%s" ]' % options.interpreter
@@ -199,33 +203,6 @@ def run_wasm_dis_tests():
       with_pass_debug(check)
 
 
-def run_wasm_merge_tests():
-  print '\n[ checking wasm-merge... ]\n'
-
-  test_dir = os.path.join(options.binaryen_test, 'merge')
-  for t in os.listdir(test_dir):
-    if t.endswith(('.wast', '.wasm')):
-      print '..', t
-      t = os.path.join(test_dir, t)
-      u = t + '.toMerge'
-      for finalize in [0, 1]:
-        for opt in [0, 1]:
-          cmd = WASM_MERGE + [t, u, '-o', 'a.wast', '-S', '--verbose']
-          if finalize:
-            cmd += ['--finalize-memory-base=1024', '--finalize-table-base=8']
-          if opt:
-            cmd += ['-O']
-          stdout = run_command(cmd)
-          actual = open('a.wast').read()
-          out = t + '.combined'
-          if finalize:
-            out += '.finalized'
-          if opt:
-            out += '.opt'
-          fail_if_not_identical_to_file(actual, out)
-          fail_if_not_identical_to_file(stdout, out + '.stdout')
-
-
 def run_crash_tests():
   print "\n[ checking we don't crash on tricky inputs... ]\n"
 
@@ -321,7 +298,7 @@ def run_spec_tests():
 
   if len(requested) == 0:
     # FIXME we support old and new memory formats, for now, until 0xc, and so can't pass this old-style test.
-    BLACKLIST = ['memory.wast', 'binary.wast']
+    BLACKLIST = ['binary.wast']
     # FIXME to update the spec to 0xd, we need to implement (register "name") for import.wast
     spec_tests = [os.path.join('spec', t) for t in sorted(os.listdir(os.path.join(options.binaryen_test, 'spec'))) if t not in BLACKLIST]
   else:
@@ -592,6 +569,17 @@ def run_gcc_tests():
       fail_if_not_identical_to_file(actual, expected)
 
 
+def run_unittest():
+  print '\n[ checking unit tests...]\n'
+
+  # equivalent to `python -m unittest discover -s ./test -v`
+  suite = unittest.defaultTestLoader.discover(os.path.dirname(options.binaryen_test))
+  result = unittest.TextTestRunner(verbosity=2, failfast=options.abort_on_first_failure).run(suite)
+  shared.num_failures += len(result.errors) + len(result.failures)
+  if options.abort_on_first_failure and shared.num_failures:
+    raise Exception("unittest failed")
+
+
 # Run all the tests
 def main():
   run_help_tests()
@@ -599,7 +587,6 @@ def main():
   asm2wasm.test_asm2wasm()
   asm2wasm.test_asm2wasm_binary()
   run_wasm_dis_tests()
-  run_wasm_merge_tests()
   run_crash_tests()
   run_dylink_tests()
   run_ctor_eval_tests()
@@ -618,17 +605,20 @@ def main():
   if options.run_gcc_tests:
     run_gcc_tests()
 
+  run_unittest()
+
   # Check/display the results
-  if num_failures == 0:
+  if shared.num_failures == 0:
     print '\n[ success! ]'
 
   if warnings:
     print '\n' + '\n'.join(warnings)
 
-  if num_failures > 0:
-    print '\n[ ' + str(num_failures) + ' failures! ]'
+  if shared.num_failures > 0:
+    print '\n[ ' + str(shared.num_failures) + ' failures! ]'
+    return 1
 
-  return num_failures
+  return 0
 
 
 if __name__ == '__main__':

@@ -152,6 +152,7 @@ private:
     return stringToType(str.str, allowError, prefix);
   }
   Type stringToType(const char* str, bool allowError=false, bool prefix=false);
+  Type stringToLaneType(const char* str);
   bool isType(cashew::IString str) {
     return stringToType(str, true) != none;
   }
@@ -190,7 +191,7 @@ private:
   Expression* makeAtomicRMW(Element& s, Type type, uint8_t bytes, const char* extra);
   Expression* makeAtomicCmpxchg(Element& s, Type type, uint8_t bytes, const char* extra);
   Expression* makeAtomicWait(Element& s, Type type);
-  Expression* makeAtomicWake(Element& s);
+  Expression* makeAtomicNotify(Element& s);
   Expression* makeSIMDExtract(Element& s, SIMDExtractOp op, size_t lanes);
   Expression* makeSIMDReplace(Element& s, SIMDReplaceOp op, size_t lanes);
   Expression* makeSIMDShuffle(Element& s);

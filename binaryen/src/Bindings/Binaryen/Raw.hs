@@ -111,7 +111,7 @@ foreign import ccall unsafe "BinaryenAtomicRMWId" c_BinaryenAtomicRMWId
 foreign import ccall unsafe "BinaryenAtomicWaitId" c_BinaryenAtomicWaitId
   :: BinaryenExpressionId
 
-foreign import ccall unsafe "BinaryenAtomicWakeId" c_BinaryenAtomicWakeId
+foreign import ccall unsafe "BinaryenAtomicNotifyId" c_BinaryenAtomicNotifyId
   :: BinaryenExpressionId
 
 foreign import ccall unsafe "BinaryenSIMDExtractId" c_BinaryenSIMDExtractId
@@ -1151,7 +1151,7 @@ foreign import ccall unsafe "BinaryenAtomicWait" c_BinaryenAtomicWait
     BinaryenExpressionRef ->
       BinaryenExpressionRef -> BinaryenType -> IO BinaryenExpressionRef
 
-foreign import ccall unsafe "BinaryenAtomicWake" c_BinaryenAtomicWake
+foreign import ccall unsafe "BinaryenAtomicNotify" c_BinaryenAtomicNotify
   :: BinaryenModuleRef ->
   BinaryenExpressionRef ->
     BinaryenExpressionRef -> IO BinaryenExpressionRef
@@ -1440,10 +1440,10 @@ foreign import ccall unsafe "BinaryenAtomicWaitGetTimeout" c_BinaryenAtomicWaitG
 foreign import ccall unsafe "BinaryenAtomicWaitGetExpectedType" c_BinaryenAtomicWaitGetExpectedType
   :: BinaryenExpressionRef -> IO BinaryenType
 
-foreign import ccall unsafe "BinaryenAtomicWakeGetPtr" c_BinaryenAtomicWakeGetPtr
+foreign import ccall unsafe "BinaryenAtomicNotifyGetPtr" c_BinaryenAtomicNotifyGetPtr
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
-foreign import ccall unsafe "BinaryenAtomicWakeGetWakeCount" c_BinaryenAtomicWakeGetWakeCount
+foreign import ccall unsafe "BinaryenAtomicNotifyGetWakeCount" c_BinaryenAtomicNotifyGetWakeCount
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenSIMDExtractGetOp" c_BinaryenSIMDExtractGetOp
