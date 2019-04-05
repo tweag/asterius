@@ -46,8 +46,8 @@ int main(int argc, const char *argv[]) {
   std::string dataSegmentFile;
   bool emitBinary = true;
   bool debugInfo = false;
+  bool isSideModule = false;
   bool legalizeJavaScriptFFI = true;
-  unsigned numReservedFunctionPointers = 0;
   uint64_t globalBase = INVALID_BASE;
   uint64_t initialStackPointer = INVALID_BASE;
   Options options("wasm-emscripten-finalize",
@@ -70,14 +70,6 @@ int main(int argc, const char *argv[]) {
            [&emitBinary](Options*, const std::string& ) {
              emitBinary = false;
            })
-      .add("--emscripten-reserved-function-pointers", "",
-           "Number of reserved function pointers for emscripten addFunction "
-           "support",
-           Options::Arguments::One,
-           [&numReservedFunctionPointers](Options *,
-                                          const std::string &argument) {
-             numReservedFunctionPointers = std::stoi(argument);
-           })
       .add("--global-base", "", "The address at which static globals were placed",
            Options::Arguments::One,
            [&globalBase](Options*, const std::string&argument ) {
@@ -88,7 +80,11 @@ int main(int argc, const char *argv[]) {
            [&initialStackPointer](Options*, const std::string&argument ) {
              initialStackPointer = std::stoull(argument);
            })
-
+      .add("--side-module", "", "Input is an emscripten side module",
+           Options::Arguments::Zero,
+           [&isSideModule](Options *o, const std::string& argument) {
+             isSideModule = true;
+           })
       .add("--input-source-map", "-ism", "Consume source map from the specified file",
            Options::Arguments::One,
            [&inputSourceMapFilename](Options *o, const std::string& argument) { inputSourceMapFilename = argument; })
@@ -139,7 +135,6 @@ int main(int argc, const char *argv[]) {
     WasmPrinter::printModule(&wasm, std::cerr);
   }
 
-  bool isSideModule = false;
   for (const UserSection& section : wasm.userSections) {
     if (section.name == BinaryConsts::UserSections::Dylink) {
       isSideModule = true;
@@ -175,12 +170,6 @@ int main(int argc, const char *argv[]) {
 
   std::vector<Name> initializerFunctions;
 
-  // The names of standard imports/exports used by lld doesn't quite match that
-  // expected by emscripten.
-  // TODO(sbc): Unify these
-  if (Export* ex = wasm.getExportOrNull("__wasm_call_ctors")) {
-    ex->name = "__post_instantiate";
-  }
   if (wasm.table.imported()) {
     if (wasm.table.base != "table") wasm.table.base = Name("table");
   }
@@ -191,19 +180,21 @@ int main(int argc, const char *argv[]) {
 
   if (isSideModule) {
     generator.replaceStackPointerGlobal();
+    generator.generatePostInstantiateFunction();
   } else {
     generator.generateRuntimeFunctions();
     generator.generateMemoryGrowthFunction();
     generator.generateStackInitialization(initialStackPointer);
-    // emscripten calls this by default for side libraries so we only need
-    // to include in as a static ctor for main module case.
-    if (wasm.getExportOrNull("__post_instantiate")) {
-      initializerFunctions.push_back("__post_instantiate");
+    // For side modules these gets called via __post_instantiate
+    if (Function* F = generator.generateAssignGOTEntriesFunction()) {
+      initializerFunctions.push_back(F->name);
+    }
+    if (auto* e = wasm.getExportOrNull(WASM_CALL_CTORS)) {
+      initializerFunctions.push_back(e->value);
     }
   }
 
   generator.generateDynCallThunks();
-  generator.generateJSCallThunks(numReservedFunctionPointers);
 
   // Legalize the wasm.
   {
@@ -214,11 +205,12 @@ int main(int argc, const char *argv[]) {
       legalizeJavaScriptFFI ? ABI::LegalizationLevel::Full
                             : ABI::LegalizationLevel::Minimal
     ));
+    passRunner.add("strip-target-features");
     passRunner.run();
   }
 
   // Substantial changes to the wasm are done, enough to create the metadata.
-  std::string metadata = generator.generateEmscriptenMetadata(dataSize, initializerFunctions, numReservedFunctionPointers);
+  std::string metadata = generator.generateEmscriptenMetadata(dataSize, initializerFunctions);
 
   // Finally, separate out data segments if relevant (they may have been needed
   // for metadata).

@@ -36,7 +36,9 @@ public:
 
   void generateRuntimeFunctions();
   Function* generateMemoryGrowthFunction();
+  Function* generateAssignGOTEntriesFunction();
   void generateStackInitialization(Address addr);
+  void generatePostInstantiateFunction();
 
   // Create thunks for use with emscripten Runtime.dynCall. Creates one for each
   // signature in the indirect function table.
@@ -46,14 +48,8 @@ public:
   // and restore functions.
   void replaceStackPointerGlobal();
 
-  // Create thunks to support emscripten's addFunction functionality. Creates (#
-  // of reserved function pointers) thunks for each indirectly called function
-  // signature.
-  void generateJSCallThunks(unsigned numReservedFunctionPointers);
-
   std::string generateEmscriptenMetadata(
-      Address staticBump, std::vector<Name> const& initializerFunctions,
-      unsigned numReservedFunctionPointers);
+    Address staticBump, std::vector<Name> const& initializerFunctions);
 
   void fixInvokeFunctionNames();
 

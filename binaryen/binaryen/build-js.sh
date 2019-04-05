@@ -98,6 +98,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/passes/ConstHoisting.cpp \
   $BINARYEN_SRC/passes/DataFlowOpts.cpp \
   $BINARYEN_SRC/passes/DeadCodeElimination.cpp \
+  $BINARYEN_SRC/passes/Directize.cpp \
   $BINARYEN_SRC/passes/DuplicateFunctionElimination.cpp \
   $BINARYEN_SRC/passes/ExtractFunction.cpp \
   $BINARYEN_SRC/passes/Flatten.cpp \
@@ -204,7 +205,7 @@ export_function "_BinaryenUnreachableId"
 export_function "_BinaryenAtomicCmpxchgId"
 export_function "_BinaryenAtomicRMWId"
 export_function "_BinaryenAtomicWaitId"
-export_function "_BinaryenAtomicWakeId"
+export_function "_BinaryenAtomicNotifyId"
 export_function "_BinaryenSIMDExtractId"
 export_function "_BinaryenSIMDReplaceId"
 export_function "_BinaryenSIMDShuffleId"
@@ -540,7 +541,7 @@ export_function "_BinaryenAtomicStore"
 export_function "_BinaryenAtomicRMW"
 export_function "_BinaryenAtomicCmpxchg"
 export_function "_BinaryenAtomicWait"
-export_function "_BinaryenAtomicWake"
+export_function "_BinaryenAtomicNotify"
 export_function "_BinaryenSIMDExtract"
 export_function "_BinaryenSIMDReplace"
 export_function "_BinaryenSIMDShuffle"
@@ -635,6 +636,7 @@ export_function "_BinaryenConstGetValueI64Low"
 export_function "_BinaryenConstGetValueI64High"
 export_function "_BinaryenConstGetValueF32"
 export_function "_BinaryenConstGetValueF64"
+export_function "_BinaryenConstGetValueV128"
 
 # 'Unary' expression operations
 export_function "_BinaryenUnaryGetOp"
@@ -676,9 +678,9 @@ export_function "_BinaryenAtomicWaitGetExpected"
 export_function "_BinaryenAtomicWaitGetTimeout"
 export_function "_BinaryenAtomicWaitGetExpectedType"
 
-# 'AtomicWake' expression operations
-export_function "_BinaryenAtomicWakeGetPtr"
-export_function "_BinaryenAtomicWakeGetWakeCount"
+# 'AtomicNotify' expression operations
+export_function "_BinaryenAtomicNotifyGetPtr"
+export_function "_BinaryenAtomicNotifyGetNotifyCount"
 
 # 'SIMDExtract' expression operations
 export_function "_BinaryenSIMDExtractGetOp"

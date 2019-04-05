@@ -75,6 +75,7 @@ void PassRegistry::registerPasses() {
   registerPass("code-folding", "fold code, merging duplicates", createCodeFoldingPass);
   registerPass("const-hoisting", "hoist repeated constants to a local", createConstHoistingPass);
   registerPass("dce", "removes unreachable code", createDeadCodeEliminationPass);
+  registerPass("directize", "turns indirect calls into direct ones", createDirectizePass);
   registerPass("dfo", "optimizes using the DataFlow SSA IR", createDataFlowOptsPass);
   registerPass("duplicate-function-elimination", "removes duplicate functions", createDuplicateFunctionEliminationPass);
   registerPass("extract-function", "leaves just one function (useful for debugging)", createExtractFunctionPass);
@@ -135,9 +136,11 @@ void PassRegistry::registerPasses() {
   registerPass("souperify-single-use", "emit Souper IR in text form (single-use nodes only)", createSouperifySingleUsePass);
   registerPass("spill-pointers", "spill pointers to the C stack (useful for Boehm-style GC)", createSpillPointersPass);
   registerPass("ssa", "ssa-ify variables so that they have a single assignment", createSSAifyPass);
+  registerPass("ssa-nomerge", "ssa-ify variables so that they have a single assignment, ignoring merges", createSSAifyNoMergePass);
   registerPass("strip", "deprecated; same as strip-debug", createStripDebugPass);
   registerPass("strip-debug", "strip debug info (including the names section)", createStripDebugPass);
   registerPass("strip-producers", "strip the wasm producers section", createStripProducersPass);
+  registerPass("strip-target-features", "strip the wasm target features section", createStripTargetFeaturesPass);
   registerPass("trap-mode-clamp", "replace trapping operations with clamping semantics", createTrapModeClamp);
   registerPass("trap-mode-js", "replace trapping operations with js semantics", createTrapModeJS);
   registerPass("untee", "removes local.tees, replacing them with sets and gets", createUnteePass);
@@ -152,6 +155,11 @@ void PassRunner::addDefaultOptimizationPasses() {
 }
 
 void PassRunner::addDefaultFunctionOptimizationPasses() {
+  // Untangling to semi-ssa form is helpful (but best to ignore merges
+  // so as to not introduce new copies).
+  if (options.optimizeLevel >= 3 || options.shrinkLevel >= 1) {
+    add("ssa-nomerge");
+  }
   // if we are willing to work very very hard, flatten the IR and do opts
   // that depend on flat IR
   if (options.optimizeLevel >= 4) {
@@ -203,13 +211,13 @@ void PassRunner::addDefaultFunctionOptimizationPasses() {
   add("remove-unused-brs"); // coalesce-locals opens opportunities
   add("remove-unused-names"); // remove-unused-brs opens opportunities
   add("merge-blocks"); // clean up remove-unused-brs new blocks
-  add("optimize-instructions");
   // late propagation
   if (options.optimizeLevel >= 3 || options.shrinkLevel >= 2) {
     add("precompute-propagate");
   } else {
     add("precompute");
   }
+  add("optimize-instructions");
   if (options.optimizeLevel >= 2 || options.shrinkLevel >= 1) {
     add("rse"); // after all coalesce-locals, and before a final vacuum
   }
@@ -221,17 +229,16 @@ void PassRunner::addDefaultGlobalOptimizationPrePasses() {
 }
 
 void PassRunner::addDefaultGlobalOptimizationPostPasses() {
-  // inlining/dae+optimizing can remove debug annotations
   if (options.optimizeLevel >= 2 || options.shrinkLevel >= 1) {
     add("dae-optimizing");
   }
-  // inline when working hard, and when not preserving debug info
   if (options.optimizeLevel >= 2 || options.shrinkLevel >= 2) {
     add("inlining-optimizing");
   }
   add("duplicate-function-elimination"); // optimizations show more functions as duplicate
   add("remove-unused-module-elements");
   add("memory-packing");
+  add("directize"); // may allow more inlining/dae/etc., need --converge for that
   // perform Stack IR optimizations here, at the very end of the
   // optimization pipeline
   if (options.optimizeLevel >= 2 || options.shrinkLevel >= 1) {

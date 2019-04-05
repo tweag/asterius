@@ -17,10 +17,10 @@
 #include <algorithm>
 #include <fstream>
 
-#include "support/bits.h"
 #include "wasm-binary.h"
 #include "wasm-stack.h"
 #include "ir/module-utils.h"
+#include "support/bits.h"
 
 namespace wasm {
 
@@ -394,7 +394,7 @@ void WasmBinaryWriter::writeDataSegments() {
         if (combined.data.size() < needed) {
           combined.data.resize(needed);
         }
-        std::copy(segment.data.begin(), segment.data.end(), combined.data.begin() + offset - start);
+        std::copy(segment.data.begin(), segment.data.end(), combined.data.begin() + (offset - start));
       }
       emit(combined);
       break;
@@ -860,14 +860,6 @@ Type WasmBinaryBuilder::getConcreteType() {
     throw ParseException("non-concrete type when one expected");
   }
   return type;
-}
-
-Name WasmBinaryBuilder::getString() {
-  if (debug) std::cerr << "<==" << std::endl;
-  size_t offset = getInt32();
-  Name ret = cashew::IString((&input[0]) + offset, false);
-  if (debug) std::cerr << "getString: " << ret << " ==>" << std::endl;
-  return ret;
 }
 
 Name WasmBinaryBuilder::getInlineString() {
@@ -1711,7 +1703,7 @@ BinaryConsts::ASTNodes WasmBinaryBuilder::readExpression(Expression*& curr) {
       if (maybeVisitAtomicRMW(curr, code)) break;
       if (maybeVisitAtomicCmpxchg(curr, code)) break;
       if (maybeVisitAtomicWait(curr, code)) break;
-      if (maybeVisitAtomicWake(curr, code)) break;
+      if (maybeVisitAtomicNotify(curr, code)) break;
       throwError("invalid code after atomic prefix: " + std::to_string(code));
       break;
     }
@@ -2223,17 +2215,17 @@ bool WasmBinaryBuilder::maybeVisitAtomicWait(Expression*& out, uint8_t code) {
   return true;
 }
 
-bool WasmBinaryBuilder::maybeVisitAtomicWake(Expression*& out, uint8_t code) {
-  if (code != BinaryConsts::AtomicWake) return false;
-  auto* curr = allocator.alloc<AtomicWake>();
-  if (debug) std::cerr << "zz node: AtomicWake" << std::endl;
+bool WasmBinaryBuilder::maybeVisitAtomicNotify(Expression*& out, uint8_t code) {
+  if (code != BinaryConsts::AtomicNotify) return false;
+  auto* curr = allocator.alloc<AtomicNotify>();
+  if (debug) std::cerr << "zz node: AtomicNotify" << std::endl;
 
   curr->type = i32;
-  curr->wakeCount = popNonVoidExpression();
+  curr->notifyCount = popNonVoidExpression();
   curr->ptr = popNonVoidExpression();
   Address readAlign;
   readMemoryAccess(readAlign, curr->offset);
-  if (readAlign != getTypeSize(curr->type)) throwError("Align of AtomicWake must match size");
+  if (readAlign != getTypeSize(curr->type)) throwError("Align of AtomicNotify must match size");
   curr->finalize();
   out = curr;
   return true;
