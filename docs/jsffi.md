@@ -94,6 +94,6 @@ After the parsed AST is processed, a "stub module" of type `AsteriusModule` is g
 
 Look at the following places:
 
-* `Asterius.JSFFI` module. All JavaScript reference types are uniformly handled as `FFI_JSREF`, while value types are treated as `FFI_VAL`. Assuming we are adding a value type. Add logic to:
+* `Asterius.JSFFI` module. All JavaScript reference types are uniformly handled as `FFI_JSVAL`, while value types are treated as `FFI_VAL`. Assuming we are adding a value type. Add logic to:
     * `marshalToFFIValueType`: Recognize the value type in parsed AST, and translate to `FFI_VAL`
 * `Asterius.Builtins` module. Add the corresponding `rts_mkXX`/`rts_getXX` builtin functions. They are required for stub functions of `foreign export javascript`.
