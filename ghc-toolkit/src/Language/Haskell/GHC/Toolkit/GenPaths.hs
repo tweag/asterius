@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
@@ -29,7 +30,10 @@ genPaths GenPathsOptions {..} h =
         \t f -> do
           lbi@LocalBuildInfo {localPkgDescr = pkg_descr@PackageDescription {library = Just lib@Library {libBuildInfo = lib_bi}}} <-
             confHook h t f
-          let [clbi] = componentNameMap lbi M.! CLibName LMainLibName
+          let [clbi] = componentNameMap lbi M.! CLibName
+#if MIN_VERSION_Cabal (2,5,0)
+                    LMainLibName
+#endif
               mod_path = autogenComponentModulesDir lbi clbi
               mod_name = fromString targetModuleName
               ghc_libdir = compilerProperties (compiler lbi) M.! "LibDir"
