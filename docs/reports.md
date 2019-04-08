@@ -2,6 +2,29 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-04-08
+
+Covers last week.
+
+Ongoing work:
+
+* Finished all required `inline-js` improvements to make it feasible as an `iserv` component. Notable changes include:
+    * The half-baked JSON implementation is removed. All JSON-related logic is now based on `aeson` and the higher-level `inline-js` package is required.
+    * We used to only pass encoded JSON messages via the IPC interface. Now we pass binary messages, and thus we can directly allocate a node `Buffer` from a Haskell `ByteString`, and return the `JSVal` handle to Haskell.
+    * We implemented send/receive queues and fixed a race condition related to multiple receivers to a same `Transport`.
+    * We switched the Haskell/`node` pipes from `stdin`/`stdout` to using file descriptors. This fixes the issue when `inline-js-core` executes wasm/js code produced by asterius, but due to calling `console` API in generated code, the pipes are corrupt and leaves the `ahc-iserv` process in an undefined state.
+    * We investigated the issue of supporting both static/dynamic `import` in the eval server's input code and did a prototype using the experimental `vm.SourceTextModule` interface in nodejs. Conclusion: it's not worth the trouble, and although static `import`s aren't supported by the eval server, the issue can be worked around without major changes in the asterius js codegen.
+* Updated ghc and fixed #98, working around a Cabal bug (#4651) impacting our Cabal support.
+
+Third-party contributions:
+
+* Thanks to Stuart Geipel(@pimlu) for discovering an issue in the garbage collector and providing a minimal repro (#97). Investigation of this issue required fixing the "memory traps"/"tracing" rewriting passes previously removed in order to speed up the linker, so is currently scheduled behind ongoing TH work.
+* Thanks to Yuji Yamamoto(@igrep) for discovering an issue in the Cabal support (#98), and an issue in the JSFFI implementation (#102).
+
+Estimated work for the week:
+
+* Just finish the `iserv` implementation (on the node side; nothing left to do on the Haskell side), get a `th` unit test up and running.
+
 ## 2019-04-01
 
 Covers last week.
