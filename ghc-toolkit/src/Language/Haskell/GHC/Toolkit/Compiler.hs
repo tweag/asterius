@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE StrictData #-}
 
@@ -20,7 +21,11 @@ data HaskellIR = HaskellIR
   { parsed :: HsParsedModule
   , typechecked :: TcGblEnv
   , core :: CgGuts
+#if MIN_VERSION_ghc(8,7,0)
   , stg :: [CgStgTopBinding]
+#else
+  , stg :: [StgTopBinding]
+#endif
   , cmm :: [[CmmDecl]]
   , cmmRaw :: [[RawCmmDecl]]
   }
