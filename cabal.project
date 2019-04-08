@@ -1,0 +1,8 @@
+packages:
+  asterius
+  binaryen
+  ghc-toolkit
+  inline-js/inline-js
+  npm-utils
+  wabt
+  wasm-toolkit
