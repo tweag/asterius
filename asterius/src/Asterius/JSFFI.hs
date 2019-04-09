@@ -487,12 +487,7 @@ generateFFIExportFunction FFIExportDecl {..} =
                                                { target =
                                                    AsteriusEntitySymbol
                                                      { entityName =
-                                                         "rts_mk" <>
-                                                         (case ffi_param_t of
-                                                            FFI_VAL {..} ->
-                                                              hsTyCon
-                                                            FFI_JSVAL ->
-                                                              "StablePtr")
+                                                         "rts_mk" <> getHsTyCon ffi_param_t
                                                      }
                                                , operands =
                                                    [ GetLocal
@@ -527,7 +522,7 @@ generateFFIExportFunction FFIExportDecl {..} =
                     [ Call
                         { target =
                             AsteriusEntitySymbol
-                              {entityName = "rts_get" <> hsTyCon ffi_result_t}
+                              {entityName = "rts_get" <> getHsTyCon ffi_result_t}
                         , operands =
                             [ Unary TruncUFloat64ToInt64 $
                               CallImport
@@ -550,6 +545,8 @@ generateFFIExportFunction FFIExportDecl {..} =
       }
   where
     tid = UniqueLocalReg 0 I32
+    getHsTyCon FFI_VAL {..} = hsTyCon
+    getHsTyCon FFI_JSVAL    = "StablePtr"
 
 generateFFIWrapperModule :: FFIMarshalState -> AsteriusModule
 generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =
