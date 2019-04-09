@@ -24,10 +24,10 @@ extra-deps:
   - cookie-0.4.4
   - cryptonite-0.25
   - data-default-class-0.1.2.0
-  - http://head.hackage.haskell.org/package/dlist-0.8.0.5.tar.gz
+  - http://head.hackage.haskell.org/package/dlist-0.8.0.6.tar.gz
   - easy-file-0.2.2
   - erf-2.0.0.0
-  - http://head.hackage.haskell.org/package/exceptions-0.10.0.tar.gz
+  - http://head.hackage.haskell.org/package/exceptions-0.10.1.tar.gz
   - fast-logger-2.4.11
   - file-embed-0.0.11
   - gauge-0.2.4
