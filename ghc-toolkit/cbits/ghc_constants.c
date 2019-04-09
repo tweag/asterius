@@ -1,3 +1,4 @@
+#undef TABLES_NEXT_TO_CODE
 #include <Rts.h>
 #include <Schedule.h>
 #include <Capability.h>
