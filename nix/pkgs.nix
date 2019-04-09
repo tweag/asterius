@@ -5,12 +5,12 @@
         "http-client".revision = (((hackage."http-client")."0.6.3").revisions).default;
         "http-client".flags.network-uri = true;
         "cookie".revision = (((hackage."cookie")."0.4.4").revisions).default;
-        "ghc".revision = (((hackage."ghc")."8.6.3").revisions).default;
+        "ghc".revision = (((hackage."ghc")."8.6.4").revisions).default;
         "cereal".revision = (((hackage."cereal")."0.5.8.0").revisions).default;
         "cereal".flags.bytestring-builder = false;
         "exceptions".revision = (((hackage."exceptions")."0.10.1").revisions).default;
         "binary".revision = (((hackage."binary")."0.8.6.0").revisions).default;
-        "ghc-boot".revision = (((hackage."ghc-boot")."8.6.3").revisions).default;
+        "ghc-boot".revision = (((hackage."ghc-boot")."8.6.4").revisions).default;
         "ghc-prim".revision = (((hackage."ghc-prim")."0.5.3").revisions).default;
         "text-metrics".revision = (((hackage."text-metrics")."0.3.0").revisions).default;
         "text-metrics".flags.dev = false;
@@ -24,7 +24,7 @@
         "hourglass".revision = (((hackage."hourglass")."0.2.12").revisions).default;
         "case-insensitive".revision = (((hackage."case-insensitive")."1.2.0.11").revisions).default;
         "unix".revision = (((hackage."unix")."2.7.2.2").revisions).default;
-        "ghc-heap".revision = (((hackage."ghc-heap")."8.6.3").revisions).default;
+        "ghc-heap".revision = (((hackage."ghc-heap")."8.6.4").revisions).default;
         "mtl".revision = (((hackage."mtl")."2.2.2").revisions).default;
         "network-uri".revision = (((hackage."network-uri")."2.6.1.0").revisions).default;
         "asn1-parse".revision = (((hackage."asn1-parse")."0.9.4").revisions).default;
@@ -32,7 +32,7 @@
         "zlib".flags.non-blocking-ffi = false;
         "zlib".flags.pkg-config = false;
         "rts".revision = (((hackage."rts")."1.0").revisions).default;
-        "ghci".revision = (((hackage."ghci")."8.6.3").revisions).default;
+        "ghci".revision = (((hackage."ghci")."8.6.4").revisions).default;
         "cryptonite".revision = (((hackage."cryptonite")."0.25").revisions).default;
         "cryptonite".flags.support_sse = false;
         "cryptonite".flags.integer-gmp = true;
@@ -129,7 +129,8 @@
         "contravariant".flags.statevar = true;
         "contravariant".flags.safe = false;
         "text".revision = (((hackage."text")."1.2.3.1").revisions).default;
-        "Cabal".revision = (((hackage."Cabal")."2.4.0.1").revisions).default;
+        "Cabal".revision = (((hackage."Cabal")."2.4.1.0").revisions).default;
+        "Cabal".flags.bundled-binary-generic = false;
         "unordered-containers".revision = (((hackage."unordered-containers")."0.2.10.0").revisions).default;
         "unordered-containers".flags.debug = false;
         "base".revision = (((hackage."base")."4.12.0.0").revisions).default;
@@ -148,7 +149,7 @@
         "vector-algorithms".flags.boundschecks = true;
         "vector-algorithms".flags.bench = true;
         "vector-algorithms".flags.properties = true;
-        "transformers".revision = (((hackage."transformers")."0.5.5.0").revisions).r0;
+        "transformers".revision = (((hackage."transformers")."0.5.6.2").revisions).default;
         "hashable".revision = (((hackage."hashable")."1.2.7.0").revisions).default;
         "hashable".flags.sse2 = true;
         "hashable".flags.integer-gmp = true;
@@ -163,7 +164,7 @@
         "hpc".revision = (((hackage."hpc")."0.6.0.3").revisions).default;
         "filepath".revision = (((hackage."filepath")."1.4.2.1").revisions).default;
         "asn1-types".revision = (((hackage."asn1-types")."0.3.2").revisions).default;
-        "process".revision = (((hackage."process")."1.6.3.0").revisions).default;
+        "process".revision = (((hackage."process")."1.6.5.0").revisions).default;
         "tls".revision = (((hackage."tls")."1.4.1").revisions).default;
         "tls".flags.compat = true;
         "tls".flags.network = true;
@@ -181,7 +182,7 @@
         "aeson".flags.bytestring-builder = false;
         "aeson".flags.developer = false;
         "http-types".revision = (((hackage."http-types")."0.12.3").revisions).default;
-        "ghc-boot-th".revision = (((hackage."ghc-boot-th")."8.6.3").revisions).default;
+        "ghc-boot-th".revision = (((hackage."ghc-boot-th")."8.6.4").revisions).default;
         "base-orphans".revision = (((hackage."base-orphans")."0.8.1").revisions).default;
         "th-abstraction".revision = (((hackage."th-abstraction")."0.2.11.0").revisions).default;
         "memory".revision = (((hackage."memory")."0.14.18").revisions).default;
@@ -193,19 +194,19 @@
         "integer-gmp".revision = (((hackage."integer-gmp")."1.0.2.0").revisions).default;
         };
       compiler = {
-        version = "8.6.3";
-        nix-name = "ghc863";
+        version = "8.6.4";
+        nix-name = "ghc864";
         packages = {
-          "ghc" = "8.6.3";
+          "ghc" = "8.6.4";
           "binary" = "0.8.6.0";
-          "ghc-boot" = "8.6.3";
+          "ghc-boot" = "8.6.4";
           "ghc-prim" = "0.5.3";
           "stm" = "2.5.0.0";
           "unix" = "2.7.2.2";
-          "ghc-heap" = "8.6.3";
+          "ghc-heap" = "8.6.4";
           "mtl" = "2.2.2";
           "rts" = "1.0";
-          "ghci" = "8.6.3";
+          "ghci" = "8.6.4";
           "deepseq" = "1.4.4.0";
           "parsec" = "3.1.13.0";
           "directory" = "1.3.3.0";
@@ -213,16 +214,15 @@
           "containers" = "0.6.0.1";
           "bytestring" = "0.10.8.2";
           "text" = "1.2.3.1";
-          "Cabal" = "2.4.0.1";
           "base" = "4.12.0.0";
           "time" = "1.8.0.2";
           "terminfo" = "0.4.1.2";
-          "transformers" = "0.5.5.0";
+          "transformers" = "0.5.6.2";
           "hpc" = "0.6.0.3";
           "filepath" = "1.4.2.1";
-          "process" = "1.6.3.0";
+          "process" = "1.6.5.0";
           "pretty" = "1.1.3.6";
-          "ghc-boot-th" = "8.6.3";
+          "ghc-boot-th" = "8.6.4";
           "array" = "0.5.3.0";
           "integer-gmp" = "1.0.2.0";
           };
