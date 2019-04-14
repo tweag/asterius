@@ -56,7 +56,7 @@ dependencies:
   - ghc-prim
   - ghc-toolkit
   - ghci
-  - inline-js
+  - inline-js-core
   - libiserv
   - mtl
   - npm-utils

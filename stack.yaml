@@ -97,7 +97,7 @@ packages:
   - asterius
   - binaryen
   - ghc-toolkit
-  - inline-js/inline-js
+  - inline-js/inline-js-core
   - npm-utils
   - wabt
   - wasm-toolkit
