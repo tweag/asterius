@@ -1,5 +1,17 @@
 -*-change-log-*-
 
+0.5.6.2 Ross Paterson <R.Paterson@city.ac.uk> Feb 2019
+	* Further backward compatability fix
+
+0.5.6.1 Ross Paterson <R.Paterson@city.ac.uk> Feb 2019
+	* Backward compatability fix for MonadFix ListT instance
+
+0.5.6.0 Ross Paterson <R.Paterson@city.ac.uk> Feb 2019
+	* Generalized type of except
+	* Added Control.Monad.Trans.Writer.CPS and Control.Monad.Trans.RWS.CPS
+	* Added Contravariant instances
+	* Added MonadFix instance for ListT
+
 0.5.5.0 Ross Paterson <R.Paterson@city.ac.uk> Oct 2017
 	* Added mapSelect and mapSelectT
 	* Renamed selectToCont to selectToContT for consistency

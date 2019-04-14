@@ -5,8 +5,6 @@
 
 module Asterius.Internals
   ( IO
-  , marshalSBS
-  , marshalV
   , encodeStorable
   , reinterpretCast
   , encodeFile
@@ -25,7 +23,6 @@ import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short.Internal as SBS
 import qualified Data.Map.Lazy as LM
 import Foreign
-import Foreign.C
 import GHC.Exts
 import GHC.Stack
 import qualified GHC.Types
@@ -34,20 +31,6 @@ import Prelude hiding (IO)
 type IO a
    = HasCallStack =>
        GHC.Types.IO a
-
-{-# INLINE marshalSBS #-}
-marshalSBS :: Pool -> SBS.ShortByteString -> IO (Ptr CChar)
-marshalSBS pool sbs
-  | SBS.null sbs = pure nullPtr
-  | otherwise = castPtr <$> pooledNewArray0 pool 0 (SBS.unpack sbs)
-
-{-# INLINE marshalV #-}
-marshalV :: (Storable a, Num n) => Pool -> [a] -> IO (Ptr a, n)
-marshalV pool v
-  | null v = pure (nullPtr, 0)
-  | otherwise = do
-    buf <- pooledNewArray pool v
-    pure (buf, fromIntegral $ length v)
 
 unI# :: Int -> Int#
 unI# (I# x) = x

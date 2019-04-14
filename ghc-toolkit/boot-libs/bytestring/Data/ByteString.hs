@@ -548,7 +548,7 @@ foldl1 f ps
     | otherwise = foldl f (unsafeHead ps) (unsafeTail ps)
 {-# INLINE foldl1 #-}
 
--- | 'foldl1\'' is like 'foldl1', but strict in the accumulator.
+-- | 'foldl1'' is like 'foldl1', but strict in the accumulator.
 -- An exception will be thrown in the case of an empty ByteString.
 foldl1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldl1' f ps
@@ -565,7 +565,7 @@ foldr1 f ps
     | otherwise      = foldr f (unsafeLast ps) (unsafeInit ps)
 {-# INLINE foldr1 #-}
 
--- | 'foldr1\'' is a variant of 'foldr1', but is strict in the
+-- | 'foldr1'' is a variant of 'foldr1', but is strict in the
 -- accumulator.
 foldr1' :: (Word8 -> Word8 -> Word8) -> ByteString -> Word8
 foldr1' f ps
@@ -1413,7 +1413,7 @@ findSubstring pat src
 
 {-# DEPRECATED findSubstring "findSubstring is deprecated in favour of breakSubstring." #-}
 
--- | Find the indexes of all (possibly overlapping) occurances of a
+-- | Find the indexes of all (possibly overlapping) occurences of a
 -- substring in a string.
 --
 findSubstrings :: ByteString -- ^ String to search for.
@@ -1775,7 +1775,7 @@ illegalBufferSize handle fn sz =
 -- | Read a handle's entire contents strictly into a 'ByteString'.
 --
 -- This function reads chunks at a time, increasing the chunk size on each
--- read. The final string is then realloced to the appropriate size. For
+-- read. The final string is then reallocated to the appropriate size. For
 -- files > half of available memory, this may lead to memory exhaustion.
 -- Consider using 'readFile' in this case.
 --

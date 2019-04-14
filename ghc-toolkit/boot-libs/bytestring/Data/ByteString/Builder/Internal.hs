@@ -6,7 +6,7 @@
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK not-home #-}
 -- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
 --
@@ -134,7 +134,7 @@ module Data.ByteString.Builder.Internal (
 
 import           Control.Arrow (second)
 
-#if MIN_VERSION_base(4,9,0)
+#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
 import           Data.Semigroup (Semigroup((<>)))
 #endif
 #if !(MIN_VERSION_base(4,8,0))
@@ -974,7 +974,7 @@ byteString :: S.ByteString -> Builder
 byteString = byteStringThreshold maximalCopySize
 
 -- | Create a 'Builder' denoting the same sequence of bytes as a lazy
--- 'S.ByteString'.
+-- 'L.ByteString'.
 -- The 'Builder' inserts large chunks of the lazy 'L.ByteString' directly,
 -- but copies small ones to ensure that the generated chunks are large on
 -- average.

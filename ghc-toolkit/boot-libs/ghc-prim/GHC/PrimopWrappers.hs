@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, MagicHash, NoImplicitPrelude, UnboxedTuples #-}
-{-# OPTIONS_GHC -Wno-deprecations #-}
+{-# OPTIONS_GHC -Wno-deprecations -O0 #-}
 module GHC.PrimopWrappers where
 import qualified GHC.Prim
 import GHC.Tuple ()
@@ -451,6 +451,21 @@ byteSwap64# a1 = (GHC.Prim.byteSwap64#) a1
 {-# NOINLINE byteSwap# #-}
 byteSwap# :: Word# -> Word#
 byteSwap# a1 = (GHC.Prim.byteSwap#) a1
+{-# NOINLINE bitReverse8# #-}
+bitReverse8# :: Word# -> Word#
+bitReverse8# a1 = (GHC.Prim.bitReverse8#) a1
+{-# NOINLINE bitReverse16# #-}
+bitReverse16# :: Word# -> Word#
+bitReverse16# a1 = (GHC.Prim.bitReverse16#) a1
+{-# NOINLINE bitReverse32# #-}
+bitReverse32# :: Word# -> Word#
+bitReverse32# a1 = (GHC.Prim.bitReverse32#) a1
+{-# NOINLINE bitReverse64# #-}
+bitReverse64# :: Word# -> Word#
+bitReverse64# a1 = (GHC.Prim.bitReverse64#) a1
+{-# NOINLINE bitReverse# #-}
+bitReverse# :: Word# -> Word#
+bitReverse# a1 = (GHC.Prim.bitReverse#) a1
 {-# NOINLINE narrow8Int# #-}
 narrow8Int# :: Int# -> Int#
 narrow8Int# a1 = (GHC.Prim.narrow8Int#) a1
@@ -1587,6 +1602,9 @@ newBCO# a1 a2 a3 a4 a5 a6 = (GHC.Prim.newBCO#) a1 a2 a3 a4 a5 a6
 {-# NOINLINE unpackClosure# #-}
 unpackClosure# :: a -> (# Addr#,ByteArray#,Array# b #)
 unpackClosure# a1 = (GHC.Prim.unpackClosure#) a1
+{-# NOINLINE closureSize# #-}
+closureSize# :: a -> Int#
+closureSize# a1 = (GHC.Prim.closureSize#) a1
 {-# NOINLINE getApStackVal# #-}
 getApStackVal# :: a -> Int# -> (# Int#,b #)
 getApStackVal# a1 a2 = (GHC.Prim.getApStackVal#) a1 a2

@@ -151,6 +151,10 @@ instance (Applicative m) => Applicative (ReaderT r m) where
     u <* v = ReaderT $ \ r -> runReaderT u r <* runReaderT v r
     {-# INLINE (<*) #-}
 #endif
+#if MIN_VERSION_base(4,10,0)
+    liftA2 f x y = ReaderT $ \ r -> liftA2 f (runReaderT x r) (runReaderT y r)
+    {-# INLINE liftA2 #-}
+#endif
 
 instance (Alternative m) => Alternative (ReaderT r m) where
     empty   = liftReaderT empty

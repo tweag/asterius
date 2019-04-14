@@ -32,10 +32,18 @@ const char* SourceMapUrl = "sourceMappingURL";
 const char* Dylink = "dylink";
 const char* Linking = "linking";
 const char* Producers = "producers";
+const char* TargetFeatures = "target_features";
+const char* AtomicsFeature = "atomics";
+const char* BulkMemoryFeature = "bulk-memory";
+const char* ExceptionHandlingFeature = "exception-handling";
+const char* TruncSatFeature = "nontrapping-fptoint";
+const char* SignExtFeature = "sign-ext";
+const char* SIMD128Feature = "simd128";
 }
 }
 
 Name GROW_WASM_MEMORY("__growWasmMemory"),
+     WASM_CALL_CTORS("__wasm_call_ctors"),
      MEMORY_BASE("__memory_base"),
      TABLE_BASE("__table_base"),
      GET_TEMP_RET0("getTempRet0"),
@@ -104,7 +112,7 @@ const char* getExpressionName(Expression* curr) {
     case Expression::Id::AtomicCmpxchgId: return "atomic_cmpxchg";
     case Expression::Id::AtomicRMWId: return "atomic_rmw";
     case Expression::Id::AtomicWaitId: return "atomic_wait";
-    case Expression::Id::AtomicWakeId: return "atomic_wake";
+    case Expression::Id::AtomicNotifyId: return "atomic_notify";
     case Expression::Id::SIMDExtractId: return "simd_extract";
     case Expression::Id::SIMDReplaceId: return "simd_replace";
     case Expression::Id::SIMDShuffleId: return "simd_shuffle";
@@ -419,9 +427,9 @@ void AtomicWait::finalize() {
   }
 }
 
-void AtomicWake::finalize() {
+void AtomicNotify::finalize() {
   type = i32;
-  if (ptr->type == unreachable || wakeCount->type == unreachable) {
+  if (ptr->type == unreachable || notifyCount->type == unreachable) {
     type = unreachable;
   }
 }

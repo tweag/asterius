@@ -142,8 +142,6 @@ This repository contains code that builds the following tools in `bin/`:
    optimizer infrastructure. This is used by Emscripten in Binaryen mode when it
    uses Emscripten's fastcomp asm.js backend.
  * **wasm2js**: A WebAssembly-to-JS compiler (still experimental).
- * **wasm-merge**: Combines wasm files into a single big wasm file (without
-   sophisticated linking).
  * **wasm-ctor-eval**: A tool that can execute C++ global constructors ahead of
    time. Used by Emscripten.
  * **wasm-emscripten-finalize**: Takes a wasm binary produced by llvm+lld and
@@ -368,7 +366,7 @@ under **Windows 10 x64** with with **CMake** and **Visual Studio 2015**. Help
 would be appreciated on Windows and OS X as most of the core devs are on Linux.
 
 [compiling to WebAssembly]: https://github.com/WebAssembly/binaryen/wiki/Compiling-to-WebAssembly-with-Binaryen
-[win32]: https://github.com/brakmic/brakmic/blob/master/webassembly/COMPILING_WIN32.ms
+[win32]: https://github.com/brakmic/bazaar/blob/master/webassembly/COMPILING_WIN32.md
 [C API]: https://github.com/WebAssembly/binaryen/wiki/Compiling-to-WebAssembly-with-Binaryen#c-api-1
 [control flow graph]: https://github.com/WebAssembly/binaryen/wiki/Compiling-to-WebAssembly-with-Binaryen#cfg-api
 [JS_API]: https://github.com/WebAssembly/binaryen/wiki/binaryen.js-API
