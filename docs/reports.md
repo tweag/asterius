@@ -2,6 +2,25 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-04-15
+
+Covers last week.
+
+Ongoing work:
+
+* Trying to use `inline-js-core` to run asterius compiled wasm/js. Works for:
+    * Running regular `main` actions and retrieving results.
+    * Calling exported rts internals to manipulate closures on the Haskell heap.
+* Currently into a debugging rabbit hole related to getting simple expression splices to run and return serialized result:
+    * We can compile a splice of type like `Q Exp`, obtain the wasm closure, then use utilities from `ghci` to initiate a TH state and actually run it.
+    * We're hit with `unreachable`s at runtime; they're due to unresolved symbols substituted to an invalid address so to let linking pass, meaning there's hidden bug in the logic of either the linker itself, or how we obtain and compile the splices.
+* Miscellaneous other improvements in [`inline-js`](https://github.com/tweag/inline-js).
+    * No more radical API changes are planned from now, and we have proper haddock documentation. Spread the word, give it a try in your projects too :)
+
+Estimated work for the week:
+
+* Solve the runtime error related to the TH splices.
+
 ## 2019-04-08
 
 Covers last week.
