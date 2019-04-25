@@ -38,7 +38,7 @@ jobs:
               xz-utils \
               zlib1g-dev
             curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_11.x sid main" > /etc/apt/sources.list.d/nodesource.list
+            echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
             apt update
             apt install -y nodejs
             mkdir -p /root/.local/bin
@@ -72,10 +72,6 @@ jobs:
             stack --no-terminal test asterius:teletype --test-arguments="--debug" > /dev/null
             # stack --no-terminal test asterius:bytearray --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:bigint --test-arguments="--debug" > /dev/null
-
-            cd ~/.local
-            $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
-            cd $CIRCLE_WORKING_DIRECTORY
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls"
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
 
