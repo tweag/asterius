@@ -151,11 +151,7 @@ getTask = parseTask <$> getArgs
 genRTSSettings :: Task -> Builder
 genRTSSettings Task {..} =
   mconcat $
-  [ "export const platform = "
-  , case target of
-      Node -> "\"node\";\n"
-      Browser -> "\"browser\";\n"
-  , "export const dataTag = "
+  [ "export const dataTag = "
   , int64Dec dataTag
   , ";\nexport const functionTag = "
   , int64Dec functionTag
