@@ -3,7 +3,7 @@ FROM debian:unstable
 COPY asterius /root/asterius/asterius
 COPY binaryen /root/asterius/binaryen
 COPY ghc-toolkit /root/asterius/ghc-toolkit
-COPY inline-js /root/asterius/inline-js
+COPY inline-js/inline-js-core /root/asterius/inline-js/inline-js-core
 COPY npm-utils /root/asterius/npm-utils
 COPY wabt /root/asterius/wabt
 COPY wasm-toolkit /root/asterius/wasm-toolkit

@@ -54,7 +54,7 @@ dependencies:
   - ghc
   - ghc-prim
   - ghc-toolkit
-  - inline-js
+  - inline-js-core
   - mtl
   - npm-utils
   - parsec
