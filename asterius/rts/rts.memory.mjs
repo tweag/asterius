@@ -1,4 +1,4 @@
-import * as settings from "./rts.settings.mjs";
+import * as rtsConstants from "./rts.constants.mjs";
 
 export class Memory {
   constructor() {
@@ -20,10 +20,10 @@ export class Memory {
   static unTag(p) { return Number(BigInt(p) & BigInt(0xffffffff)); }
   static getTag(p) { return Number(BigInt(p) >> BigInt(32)); }
   static tagData(p) {
-    return Number((BigInt(settings.dataTag) << BigInt(32)) | BigInt(p));
+    return Number((BigInt(rtsConstants.dataTag) << BigInt(32)) | BigInt(p));
   }
   static tagFunction(p) {
-    return Number((BigInt(settings.functionTag) << BigInt(32)) | BigInt(p));
+    return Number((BigInt(rtsConstants.functionTag) << BigInt(32)) | BigInt(p));
   }
   static unDynTag(p) { return Number((BigInt(p) >> BigInt(3)) << BigInt(3)); }
   static getDynTag(p) { return Number(BigInt(p) & BigInt(7)); }
@@ -46,7 +46,7 @@ export class Memory {
   f32Store(p, v) { this.dataView.setFloat32(Memory.unTag(p), Number(v), true); }
   f64Load(p) { return this.dataView.getFloat64(Memory.unTag(p), true); }
   f64Store(p, v) { this.dataView.setFloat64(Memory.unTag(p), Number(v), true); }
-  heapAlloced(p) { return Memory.unTag(p) >= (this.staticMBlocks << Math.log2(settings.mblock_size)); }
+  heapAlloced(p) { return Memory.unTag(p) >= (this.staticMBlocks << Math.log2(rtsConstants.mblock_size)); }
   strlen(_str) { return this.i8View.subarray(Memory.unTag(_str)).indexOf(0); }
   memchr(_ptr, val, num) {
     const ptr = Memory.unTag(_ptr),

@@ -15,9 +15,9 @@ import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.BuildInfo
 import Asterius.Internals
-import Asterius.Internals.MagicNumber
 import Asterius.Internals.Temp
 import Asterius.JSFFI
+import Asterius.JSGen.Constants
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Resolve
 import Asterius.Types
@@ -42,7 +42,6 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.String
 import Foreign
-import Language.Haskell.GHC.Toolkit.Constants
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import NPM.Parcel
@@ -147,105 +146,6 @@ parseTask args =
 
 getTask :: IO Task
 getTask = parseTask <$> getArgs
-
-genRTSSettings :: Task -> Builder
-genRTSSettings Task {..} =
-  mconcat $
-  [ "export const dataTag = "
-  , int64Dec dataTag
-  , ";\nexport const functionTag = "
-  , int64Dec functionTag
-  , ";\nexport const mblock_size = "
-  , intDec mblock_size
-  , ";\nexport const block_size = "
-  , intDec block_size
-  , ";\nexport const blocks_per_mblock = "
-  , intDec blocks_per_mblock
-  , ";\nexport const sizeof_bdescr = "
-  , intDec sizeof_bdescr
-  , ";\nexport const offset_first_bdescr = "
-  , intDec offset_first_bdescr
-  , ";\nexport const offset_first_block = "
-  , intDec offset_first_block
-  , ";\nexport const sizeof_first_mblock = "
-  , intDec $ mblock_size - offset_first_block
-  , ";\nexport const offset_bdescr_start = "
-  , intDec offset_bdescr_start
-  , ";\nexport const offset_bdescr_free = "
-  , intDec offset_bdescr_free
-  , ";\nexport const offset_bdescr_link = "
-  , intDec offset_bdescr_link
-  , ";\nexport const offset_bdescr_flags = "
-  , intDec offset_bdescr_flags
-  , ";\nexport const offset_bdescr_blocks = "
-  , intDec offset_bdescr_blocks
-  , ";\nexport const BF_PINNED = "
-  , intDec bf_PINNED
-  , ";\nexport const pageSize = 65536;\n"
-  ] <>
-  [ "export const " <> k <> " = " <> intDec v <> ";\n"
-  | (k, v) <-
-      [ ("sizeof_StgAP", sizeof_StgAP)
-      , ("offset_StgAP_arity", offset_StgAP_arity)
-      , ("offset_StgAP_n_args", offset_StgAP_n_args)
-      , ("offset_StgAP_fun", offset_StgAP_fun)
-      , ("offset_StgAP_payload", offset_StgAP_payload)
-      , ("sizeof_StgAP_STACK", sizeof_StgAP_STACK)
-      , ("offset_StgAP_STACK_size", offset_StgAP_STACK_size)
-      , ("offset_StgAP_STACK_fun", offset_StgAP_STACK_fun)
-      , ("offset_StgAP_STACK_payload", offset_StgAP_STACK_payload)
-      , ("sizeof_StgArrBytes", sizeof_StgArrBytes)
-      , ("offset_StgArrBytes_bytes", offset_StgArrBytes_bytes)
-      , ( "offset_StgFunInfoExtraFwd_fun_type"
-        , offset_StgFunInfoExtraFwd_fun_type)
-      , ("offset_StgFunInfoExtraFwd_srt", offset_StgFunInfoExtraFwd_srt)
-      , ("offset_StgFunInfoExtraFwd_b", offset_StgFunInfoExtraFwd_b)
-      , ("offset_StgFunInfoTable_i", offset_StgFunInfoTable_i)
-      , ("offset_StgFunInfoTable_f", offset_StgFunInfoTable_f)
-      , ("sizeof_StgInd", sizeof_StgInd)
-      , ("offset_StgInd_indirectee", offset_StgInd_indirectee)
-      , ("sizeof_StgIndStatic", sizeof_StgIndStatic)
-      , ("offset_StgIndStatic_indirectee", offset_StgIndStatic_indirectee)
-      , ("offset_StgInfoTable_layout", offset_StgInfoTable_layout)
-      , ("offset_StgInfoTable_type", offset_StgInfoTable_type)
-      , ("offset_StgInfoTable_srt", offset_StgInfoTable_srt)
-      , ("offset_StgLargeBitmap_size", offset_StgLargeBitmap_size)
-      , ("offset_StgLargeBitmap_bitmap", offset_StgLargeBitmap_bitmap)
-      , ("sizeof_StgMutArrPtrs", sizeof_StgMutArrPtrs)
-      , ("offset_StgMutArrPtrs_ptrs", offset_StgMutArrPtrs_ptrs)
-      , ("offset_StgMutArrPtrs_payload", offset_StgMutArrPtrs_payload)
-      , ("sizeof_StgPAP", sizeof_StgPAP)
-      , ("offset_StgPAP_arity", offset_StgPAP_arity)
-      , ("offset_StgPAP_n_args", offset_StgPAP_n_args)
-      , ("offset_StgPAP_fun", offset_StgPAP_fun)
-      , ("offset_StgPAP_payload", offset_StgPAP_payload)
-      , ("sizeof_StgRetFun", sizeof_StgRetFun)
-      , ("offset_StgRetFun_size", offset_StgRetFun_size)
-      , ("offset_StgRetFun_fun", offset_StgRetFun_fun)
-      , ("offset_StgRetFun_payload", offset_StgRetFun_payload)
-      , ("offset_StgRetInfoTable_i", offset_StgRetInfoTable_i)
-      , ("offset_StgRetInfoTable_srt", offset_StgRetInfoTable_srt)
-      , ("sizeof_StgSelector", sizeof_StgSelector)
-      , ("offset_StgSelector_selectee", offset_StgSelector_selectee)
-      , ("sizeof_StgSmallMutArrPtrs", sizeof_StgSmallMutArrPtrs)
-      , ("offset_StgSmallMutArrPtrs_ptrs", offset_StgSmallMutArrPtrs_ptrs)
-      , ("offset_StgSmallMutArrPtrs_payload", offset_StgSmallMutArrPtrs_payload)
-      , ("sizeof_StgThunk", sizeof_StgThunk)
-      , ("offset_StgThunk_payload", offset_StgThunk_payload)
-      , ("offset_StgThunkInfoTable_i", offset_StgThunkInfoTable_i)
-      , ("offset_StgThunkInfoTable_srt", offset_StgThunkInfoTable_srt)
-      , ("offset_StgTSO_id", offset_StgTSO_id)
-      , ("offset_StgTSO_stackobj", offset_StgTSO_stackobj)
-      , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
-      , ("offset_StgStack_sp", offset_StgStack_sp)
-      , ("offset_StgStack_stack", offset_StgStack_stack)
-      , ("offset_StgWeak_cfinalizers", offset_StgWeak_cfinalizers)
-      , ("offset_StgWeak_key", offset_StgWeak_key)
-      , ("offset_StgWeak_value", offset_StgWeak_value)
-      , ("offset_StgWeak_finalizer", offset_StgWeak_finalizer)
-      , ("offset_StgWeak_link", offset_StgWeak_link)
-      ]
-  ]
 
 genPackageJSON :: Task -> Builder
 genPackageJSON Task {..} =
@@ -468,7 +368,7 @@ ahcLink Task {..} = do
 ahcDistMain :: Task -> (Asterius.Types.Module, [Event], LinkReport) -> IO ()
 ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
   let out_package_json = outputDirectory </> "package.json"
-      out_rts_settings = outputDirectory </> "rts.settings.mjs"
+      out_rts_constants = outputDirectory </> "rts.constants.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
       out_wasm_lib = outputDirectory </> outputBaseName <.> "wasm.mjs"
       out_lib = outputDirectory </> outputBaseName <.> "lib.mjs"
@@ -528,8 +428,8 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
              withBinaryFile out_wasm WriteMode $ \h ->
                hPutBuilder h $ execPut $ putModule r)
   putStrLn $
-    "[INFO] Writing JavaScript runtime settings to " <> show out_rts_settings
-  builderWriteFile out_rts_settings $ genRTSSettings task
+    "[INFO] Writing JavaScript runtime constants to " <> show out_rts_constants
+  builderWriteFile out_rts_constants rtsConstants
   putStrLn $
     "[INFO] Writing JavaScript runtime modules to " <> show outputDirectory
   rts_files <- listDirectory $ dataDir </> "rts"
