@@ -151,11 +151,7 @@ getTask = parseTask <$> getArgs
 genRTSSettings :: Task -> Builder
 genRTSSettings Task {..} =
   mconcat $
-  [ "export const debug = "
-  , if debug
-      then "true;\n"
-      else "false;\n"
-  , "export const platform = "
+  [ "export const platform = "
   , case target of
       Node -> "\"node\";\n"
       Browser -> "\"browser\";\n"
