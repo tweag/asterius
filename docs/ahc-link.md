@@ -63,10 +63,6 @@ Instead of copying the runtime `.mjs` modules to the target directory, generate 
 
 `--bundle` is supported by [`Parcel`](https://parceljs.org/) under the hood and performs minification on the bundled JavaScript file. It's likely beneficial since it reduces total size of scripts and doesn't require multiple requests for fetching them.
 
-## `--no-streaming`
-
-Do not use `WebAssembly.compileStreaming`/`WebAssembly.instantiateStreaming` in output code. This option only works with `--browser`; when the target is Node.js it's ignored.
-
 ## `--sync`
 
 Use synchronous `WebAssembly.Module`/`WebAssembly.Instance` constructors in output code. Additionally,

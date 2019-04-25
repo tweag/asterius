@@ -64,7 +64,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , tailCalls, gcSections, fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
+  , tailCalls, gcSections, fullSymTable, bundle, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -100,7 +100,6 @@ parseTask args =
         , bool_opt "no-gc-sections" $ \t -> t {gcSections = False}
         , bool_opt "full-sym-table" $ \t -> t {fullSymTable = True}
         , bool_opt "bundle" $ \t -> t {bundle = True}
-        , bool_opt "no-streaming" $ \t -> t {noStreaming = True}
         , bool_opt "sync" $ \t -> t {sync = True}
         , bool_opt "binaryen" $ \t -> t {binaryen = True}
         , bool_opt "debug" $ \t ->
@@ -131,7 +130,6 @@ parseTask args =
           , gcSections = True
           , fullSymTable = False
           , bundle = False
-          , noStreaming = False
           , sync = False
           , binaryen = False
           , debug = False
@@ -200,12 +198,7 @@ genWasm Task {..} =
           | otherwise ->
             "new Promise((resolve, reject) => fs.readFile(" <> out_wasm <>
             ", (err, buf) => err ? reject(err) : resolve(buf))).then(buf => WebAssembly.compile(buf))"
-        Browser
-          | noStreaming ->
-            "fetch (" <> out_wasm <>
-            ").then(resp => resp.arrayBuffer()).then(buf => WebAssembly.compile(buf))"
-          | otherwise ->
-            "WebAssembly.compileStreaming(fetch(" <> out_wasm <> "))"
+        Browser -> "WebAssembly.compileStreaming(fetch(" <> out_wasm <> "))"
     , ";\n"
     ]
   where
