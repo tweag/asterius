@@ -21,10 +21,8 @@ extra-source-files:
   - test/todomvc/**/*.hs
   - test/todomvc/**/*.html
   - test/teletype/**/*.hs
-  - test/teletype/teletype.mjs
   - test/bytearray/**/*.hs
   - test/bigint/**/*.hs
-  - test/bigint/bigint.mjs
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
 

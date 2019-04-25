@@ -5,10 +5,4 @@ main :: IO ()
 main = do
   args <- getArgs
   callProcess "ahc-link" $
-    [ "--input-hs"
-    , "test/bigint/bigint.hs"
-    , "--input-mjs"
-    , "test/bigint/bigint.mjs"
-    , "--run"
-    ] <>
-    args
+    ["--input-hs", "test/bigint/bigint.hs", "--run"] <> args
