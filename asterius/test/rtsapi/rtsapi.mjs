@@ -1,9 +1,9 @@
 import module from "./rtsapi.wasm.mjs";
-import * as rtsapi from "./rtsapi.lib.mjs";
+import rtsapi from "./rtsapi.lib.mjs";
 
 process.on("unhandledRejection", err => { throw err; });
 
-module.then(m => rtsapi.newInstance(m)).then(i => {
+module.then(m => rtsapi(m)).then(i => {
     i.wasmInstance.exports.hs_init();
     i.wasmInstance.exports.main();
     i.wasmInstance.exports.rts_evalLazyIO(i.wasmInstance.exports.rts_apply(i.symbolTable.Main_printInt_closure, i.wasmInstance.exports.rts_apply(i.symbolTable.Main_fact_closure, i.wasmInstance.exports.rts_mkInt(5))));

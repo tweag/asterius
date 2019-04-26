@@ -189,7 +189,7 @@ genLib :: Task -> LinkReport -> [Event] -> Builder
 genLib Task {..} LinkReport {..} err_msgs =
   mconcat $
   [ "import * as rts from \"./rts.mjs\";\n"
-  , "export const newInstance = module => \n"
+  , "export default module => \n"
   , "rts.newAsteriusInstance({events: ["
   , mconcat (intersperse "," [string7 $ show $ show msg | msg <- err_msgs])
   , "], module: module"
@@ -229,7 +229,7 @@ genDefEntry Task {..} =
     [ "import module from \"./"
     , out_base
     , ".wasm.mjs\";\n"
-    , "import * as "
+    , "import "
     , out_base
     , " from \"./"
     , out_base
@@ -239,7 +239,7 @@ genDefEntry Task {..} =
         Browser -> mempty
     , if sync
         then mconcat
-               [ "let i = " <> out_base <> ".newInstance(module);\n"
+               [ "let i = " <> out_base <> "(module);\n"
                , if debug
                    then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
@@ -257,7 +257,7 @@ genDefEntry Task {..} =
         else mconcat
                [ "module.then(m => "
                , out_base
-               , ".newInstance(m)).then(i => {\n"
+               , "(m)).then(i => {\n"
                , if debug
                    then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
