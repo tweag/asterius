@@ -1,4 +1,4 @@
-import {module} from "./rtsapi.wasm.mjs";
+import module from "./rtsapi.wasm.mjs";
 import * as rtsapi from "./rtsapi.lib.mjs";
 
 process.on("unhandledRejection", err => { throw err; });

@@ -18,6 +18,7 @@ import Asterius.Internals
 import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.JSGen.Constants
+import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Resolve
 import Asterius.Types
@@ -184,26 +185,6 @@ genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
        (map ((sym_map !) . ffiExportClosure . (ffiExportDecls !)) export_funcs)) <>
   ")"
 
-genWasm :: Task -> Builder
-genWasm Task {..} =
-  mconcat
-    [ case target of
-        Node -> "import fs from \"fs\";\n"
-        Browser -> mempty
-    , "export const module = "
-    , case target of
-        Node
-          | sync ->
-            "new WebAssembly.Module(fs.readFileSync(" <> out_wasm <> "))"
-          | otherwise ->
-            "new Promise((resolve, reject) => fs.readFile(" <> out_wasm <>
-            ", (err, buf) => err ? reject(err) : resolve(buf))).then(buf => WebAssembly.compile(buf))"
-        Browser -> "WebAssembly.compileStreaming(fetch(" <> out_wasm <> "))"
-    , ";\n"
-    ]
-  where
-    out_wasm = string7 $ show $ outputBaseName <.> "wasm"
-
 genLib :: Task -> LinkReport -> [Event] -> Builder
 genLib Task {..} LinkReport {..} err_msgs =
   mconcat $
@@ -245,7 +226,7 @@ genLib Task {..} LinkReport {..} err_msgs =
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =
   mconcat
-    [ "import {module} from \"./"
+    [ "import module from \"./"
     , out_base
     , ".wasm.mjs\";\n"
     , "import * as "
@@ -429,7 +410,7 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
   for_ rts_files $ \f ->
     copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
   putStrLn $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
-  builderWriteFile out_wasm_lib $ genWasm task
+  builderWriteFile out_wasm_lib $ genWasm (target == Node) sync outputBaseName
   putStrLn $ "[INFO] Writing JavaScript lib module to " <> show out_lib
   builderWriteFile out_lib $ genLib task report err_msgs
   putStrLn $ "[INFO] Writing JavaScript entry module to " <> show out_entry

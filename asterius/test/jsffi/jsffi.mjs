@@ -1,4 +1,4 @@
-import {module} from "./jsffi.wasm.mjs";
+import module from "./jsffi.wasm.mjs";
 import * as jsffi from "./jsffi.lib.mjs";
 
 process.on("unhandledRejection", err => { throw err; });
