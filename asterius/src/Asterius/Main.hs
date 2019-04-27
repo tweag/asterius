@@ -321,6 +321,8 @@ ahcLink Task {..} = do
     [ "--make"
     , "-O"
     , "-i" <> takeDirectory inputHS
+    , "-fexternal-interpreter"
+    , "-pgmi" <> ahcIserv
     , "-pgml" <> ahcLd
     , "-clear-package-db"
     , "-global-package-db"

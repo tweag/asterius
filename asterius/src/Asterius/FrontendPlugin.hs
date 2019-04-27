@@ -6,6 +6,7 @@ module Asterius.FrontendPlugin
 
 import Asterius.CodeGen
 import Asterius.Internals
+import qualified Asterius.Iserv.CompileCoreExpr as Iserv
 import Asterius.JSFFI
 import Asterius.TypesConv
 import Control.Exception
@@ -34,10 +35,12 @@ frontendPlugin =
         GHC.Opt_DoCmmLinting
     liftIO $ do
       get_ffi_mod_ref <- newIORef $ error "get_ffi_mod_ref not initialized"
+      us_ref <- GHC.mkSplitUniqSupply 'A' >>= newIORef
       (c, get_ffi_mod) <-
         addFFIProcessor
           mempty
-            { withHaskellIR =
+            { compileCoreExpr = Just $ Iserv.compileCoreExpr True us_ref
+            , withHaskellIR =
                 \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
                   dflags <- GHC.getDynFlags
                   setDynFlagsRef dflags

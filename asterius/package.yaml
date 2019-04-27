@@ -25,6 +25,7 @@ extra-source-files:
   - test/bigint/**/*.hs
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
+  - test/th/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -52,11 +53,14 @@ dependencies:
   - ghc
   - ghc-prim
   - ghc-toolkit
+  - ghci
   - inline-js-core
+  - libiserv
   - mtl
   - npm-utils
   - parsec
   - process
+  - template-haskell
   - transformers
   - wasm-toolkit
 
@@ -132,6 +136,13 @@ executables:
     dependencies:
       - asterius
 
+  ahc-iserv:
+    source-dirs: app
+    main: ahc-iserv.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
 tests:
   fib:
     source-dirs: test
@@ -199,6 +210,13 @@ tests:
   cloudflare:
     source-dirs: test
     main: cloudflare.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  th:
+    source-dirs: test
+    main: th.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
