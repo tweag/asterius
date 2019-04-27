@@ -72,6 +72,10 @@ jobs:
             stack --no-terminal test asterius:teletype --test-arguments="--debug" > /dev/null
             # stack --no-terminal test asterius:bytearray --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:bigint --test-arguments="--debug" > /dev/null
+
+            cd ~/.local
+            $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
+            cd $CIRCLE_WORKING_DIRECTORY
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls"
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
 
