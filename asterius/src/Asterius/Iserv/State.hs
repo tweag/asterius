@@ -3,7 +3,7 @@
 
 module Asterius.Iserv.State
   ( IservState(..)
-  , initIservState
+  , withIservState
   , addArchive
   , addObj
   ) where
@@ -24,6 +24,11 @@ data IservState = IservState
 initIservState :: IO (IORef IservState)
 initIservState =
   newIORef $ IservState {iservArchives = mempty, iservObjs = Map.empty}
+
+withIservState :: (IORef IservState -> IO r) -> IO r
+withIservState c = do
+  s <- initIservState
+  c s
 
 addArchive :: IORef IservState -> FilePath -> IO ()
 addArchive ref p = do

@@ -5,13 +5,11 @@ module Asterius.Iserv.Run
   ) where
 
 import Asterius.Iserv.State
-import Control.Monad.Fail
 import Data.ByteString (ByteString)
 import Data.IORef
 import GHCi.Message
 import GHCi.RemoteTypes
 import qualified Language.Haskell.TH.Syntax as TH
-import Prelude hiding (fail)
 import Unsafe.Coerce
 
 startTH :: IO (RemoteRef (IORef QState))
