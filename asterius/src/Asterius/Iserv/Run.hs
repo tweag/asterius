@@ -26,7 +26,7 @@ runTH pipe _ _ _ _ = do
   writePipe pipe $ putTHMessage RunTHDone
   pure $ QFail "Asterius.Iserv.Run.runTH"
 
-run :: IORef IservState -> Pipe -> Message a -> IO a
+run :: IservState -> Pipe -> Message a -> IO a
 run s pipe msg =
   case msg of
     InitLinker -> pure ()

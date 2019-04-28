@@ -1,8 +1,10 @@
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Iserv.State
-  ( IservState(..)
+  ( IservModules(..)
+  , IservState(..)
   , withIservState
   , addArchive
   , addObj
@@ -14,28 +16,32 @@ import Asterius.Types
 import Data.IORef
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
+import Language.JavaScript.Inline.Core
 import Prelude hiding (IO)
 
-data IservState = IservState
+data IservModules = IservModules
   { iservArchives :: AsteriusModule
   , iservObjs :: Map FilePath AsteriusModule
   }
 
-initIservState :: IO (IORef IservState)
-initIservState =
-  newIORef $ IservState {iservArchives = mempty, iservObjs = Map.empty}
+data IservState = IservState
+  { iservModulesRef :: IORef IservModules
+  , iservJSSession :: JSSession
+  }
 
-withIservState :: (IORef IservState -> IO r) -> IO r
+withIservState :: (IservState -> IO r) -> IO r
 withIservState c = do
-  s <- initIservState
-  c s
+  mods_ref <- newIORef IservModules {iservArchives = mempty, iservObjs = mempty}
+  withJSSession defJSSessionOpts $ \s ->
+    c IservState {iservModulesRef = mods_ref, iservJSSession = s}
 
-addArchive :: IORef IservState -> FilePath -> IO ()
-addArchive ref p = do
+addArchive :: IservState -> FilePath -> IO ()
+addArchive IservState {..} p = do
   m <- loadAr p
-  modifyIORef' ref $ \s -> s {iservArchives = m <> iservArchives s}
+  modifyIORef' iservModulesRef $ \s -> s {iservArchives = m <> iservArchives s}
 
-addObj :: IORef IservState -> FilePath -> IO ()
-addObj ref p = do
+addObj :: IservState -> FilePath -> IO ()
+addObj IservState {..} p = do
   m <- decodeFile p
-  modifyIORef' ref $ \s -> s {iservObjs = Map.insert p m $ iservObjs s}
+  modifyIORef' iservModulesRef $ \s ->
+    s {iservObjs = Map.insert p m $ iservObjs s}
