@@ -52,6 +52,7 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
     "Asterius.Iserv.CompileCoreExpr.compileCoreExpr"
     hsc_env
     prepd_expr
+  linkCoreExpr verbose hsc_env src_span prepd_expr
   u <- atomicModifyIORef' us_ref $ swap . GHC.takeUniqFromSupply
   let this_mod =
         GHC.mkModule
@@ -79,5 +80,4 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
   trace verbose $ show m
   trace verbose $ show sym
-  linkCoreExpr verbose hsc_env src_span prepd_expr
   GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
