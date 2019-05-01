@@ -13,6 +13,12 @@
       synopsis = "";
       description = "";
       buildType = "Custom";
+      setup-depends = [
+        (hsPkgs.buildPackages.Cabal or (pkgs.buildPackages.Cabal))
+        (hsPkgs.buildPackages.base or (pkgs.buildPackages.base))
+        (hsPkgs.buildPackages.directory or (pkgs.buildPackages.directory))
+        (hsPkgs.buildPackages.filepath or (pkgs.buildPackages.filepath))
+        ];
       };
     components = { "library" = { depends = [ (hsPkgs.base) ]; }; };
     } // rec { src = (pkgs.lib).mkDefault .././../wabt; }) // {

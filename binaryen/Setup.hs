@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
+import Data.Maybe (fromMaybe)
 import Ar
 import Data.Foldable
 import Distribution.Simple
@@ -37,7 +38,8 @@ main =
                     (simpleProgramInvocation prog args)
                       {progInvokeInput = Just stdin_s}
                 run prog args stdin_s =
-                  let Just conf_prog = lookupProgram prog (withPrograms lbi)
+                  let conf_prog = fromMaybe (error $ "unable to find " <> show prog) $
+                        lookupProgram prog (withPrograms lbi)
                    in runProgramInvocation
                         (fromFlagOrDefault
                            normal

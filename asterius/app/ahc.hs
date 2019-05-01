@@ -4,9 +4,10 @@ import Language.Haskell.GHC.Toolkit.FakeGHC
 import System.FilePath
 
 main :: IO ()
-main =
+main = do
+  bootDir <- A.getBootDir
   fakeGHCMain $
-  FakeGHCOptions
-    A.ghc
-    (A.dataDir </> ".boot" </> "asterius_lib")
-    A.frontendPlugin
+    FakeGHCOptions
+      A.ghc
+      (bootDir </> ".boot" </> "asterius_lib")
+      A.frontendPlugin

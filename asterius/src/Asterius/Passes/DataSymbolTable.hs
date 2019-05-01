@@ -20,11 +20,15 @@ import Data.Tuple
 import GHC.Int
 import Language.Haskell.GHC.Toolkit.Constants
 
+-- TODO replace with foldMap' once we drop GHC 8.6 support
+foldMapStrict :: (Foldable t, Monoid m) => (a -> m) -> t a -> m
+foldMapStrict f = foldl' (\ acc a -> acc <> f a) mempty
+
 sizeofStatics :: AsteriusStatics -> Int64
 sizeofStatics =
   fromIntegral .
   getSum .
-  foldMap'
+  foldMapStrict
     (Sum . \case
        SymbolStatic {} -> 8
        Uninitialized x -> x

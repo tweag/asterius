@@ -28,6 +28,9 @@ dependencies:
 
 library:
   source-dirs: src
+  build-tools:
+    - cmake
+    - python
 
 tests:
   binaryen-test:

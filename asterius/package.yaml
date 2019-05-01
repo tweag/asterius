@@ -62,7 +62,6 @@ dependencies:
   - inline-js-core
   - libiserv
   - mtl
-  - npm-utils
   - parsec
   - process
   - template-haskell

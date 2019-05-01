@@ -129,8 +129,7 @@
         "contravariant".flags.statevar = true;
         "contravariant".flags.safe = false;
         "text".revision = (((hackage."text")."1.2.3.1").revisions).default;
-        "Cabal".revision = (((hackage."Cabal")."2.4.1.0").revisions).default;
-        "Cabal".flags.bundled-binary-generic = false;
+        "Cabal".revision = (((hackage."Cabal")."2.4.0.1").revisions).default;
         "unordered-containers".revision = (((hackage."unordered-containers")."0.2.10.0").revisions).default;
         "unordered-containers".flags.debug = false;
         "base".revision = (((hackage."base")."4.12.0.0").revisions).default;
@@ -214,6 +213,7 @@
           "containers" = "0.6.0.1";
           "bytestring" = "0.10.8.2";
           "text" = "1.2.3.1";
+          "Cabal" = "2.4.0.1";
           "base" = "4.12.0.0";
           "time" = "1.8.0.2";
           "terminfo" = "0.4.1.2";
@@ -235,7 +235,6 @@
         ghc-toolkit = ./.plan.nix/ghc-toolkit.nix;
         inline-js = ./.plan.nix/inline-js.nix;
         asterius = ./.plan.nix/asterius.nix;
-        npm-utils = ./.plan.nix/npm-utils.nix;
         wabt = ./.plan.nix/wabt.nix;
         wasm-toolkit = ./.plan.nix/wasm-toolkit.nix;
         };

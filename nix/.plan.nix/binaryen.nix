@@ -13,9 +13,22 @@
       synopsis = "";
       description = "";
       buildType = "Custom";
+      setup-depends = [
+        (hsPkgs.buildPackages.Cabal or (pkgs.buildPackages.Cabal))
+        (hsPkgs.buildPackages.base or (pkgs.buildPackages.base))
+        (hsPkgs.buildPackages.directory or (pkgs.buildPackages.directory))
+        (hsPkgs.buildPackages.filepath or (pkgs.buildPackages.filepath))
+        (hsPkgs.buildPackages.ghc or (pkgs.buildPackages.ghc))
+        ];
       };
     components = {
-      "library" = { depends = [ (hsPkgs.base) ]; };
+      "library" = {
+        depends = [ (hsPkgs.base) ];
+        build-tools = [
+          (hsPkgs.buildPackages.cmake or (pkgs.buildPackages.cmake))
+          (hsPkgs.buildPackages.python or (pkgs.buildPackages.python))
+          ];
+        };
       tests = {
         "binaryen-test" = { depends = [ (hsPkgs.base) (hsPkgs.binaryen) ]; };
         };
