@@ -1,6 +1,9 @@
 #!/bin/sh -e
 
+set -x
+
 cp -r $ASTERIUS_BOOT_LIBS_DIR .
+chmod +w -R .
 cd boot-libs
 
 $ASTERIUS_GHC ghc-prim/Setup.hs -no-keep-hi-files -no-keep-o-files -threaded -rtsopts -with-rtsopts="-I0 -qg -qb" -o $ASTERIUS_TMP_DIR/Setup-ghc-prim

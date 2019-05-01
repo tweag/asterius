@@ -56,7 +56,6 @@ dependencies:
   - ghc-toolkit
   - inline-js
   - mtl
-  - npm-utils
   - parsec
   - process
   - transformers

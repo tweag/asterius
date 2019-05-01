@@ -41,4 +41,19 @@ let
   };
 
 in
-  pkgSet.config.hsPkgs // { _config = pkgSet.config; }
+  pkgSet.config.hsPkgs // {
+    _config = pkgSet.config;
+    asterius-boot = pkgs.runCommand "asterius-boot" {
+      preferLocalBuild = true;
+      nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compiler.nix-name} ];
+    } ''
+      mkdir -p $out/bin
+      mkdir -p $out/boot
+      ${pkgs.lib.concatMapStringsSep "\n" (exe: ''
+        makeWrapper ${pkgSet.config.hsPkgs.asterius.components.exes.${exe}}/bin/${exe} $out/bin/${exe} \
+          --set asterius_bindir $out/bin \
+          --set asterius_bootdir $out/boot
+      '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
+      $out/bin/ahc-boot
+    '';
+  }

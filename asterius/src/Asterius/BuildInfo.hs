@@ -1,23 +1,34 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Asterius.BuildInfo
   ( ghc
   , ghcPkg
   , ghcLibDir
-  , ahc
-  , ahcPkg
-  , ahcLd
-  , ahcDist
-  , dataDir
+  , getAhc
+  , getAhcPkg
+  , getAhcLd
+  , getAhcDist
+  , getDataDir
+  , getBootDir
   ) where
 
+import Control.Exception (catch, IOException)
+import System.Environment (getEnv)
 import BuildInfo_asterius
+import Paths_asterius
 import System.Directory
 import System.FilePath
 
-ahc, ahcPkg, ahcLd, ahcDist :: FilePath
-ahc = binDir </> "ahc" <.> exeExtension
+getBin :: FilePath -> IO FilePath
+getBin a = (\binDir -> binDir </> a <.> exeExtension) <$> getBinDir
 
-ahcPkg = binDir </> "ahc-pkg" <.> exeExtension
+getAhc, getAhcPkg, getAhcLd, getAhcDist, getBootDir :: IO FilePath
+getAhc = getBin "ahc"
 
-ahcLd = binDir </> "ahc-ld" <.> exeExtension
+getAhcPkg = getBin "ahc-pkg"
 
-ahcDist = binDir </> "ahc-dist" <.> exeExtension
+getAhcLd = getBin "ahc-ld"
+
+getAhcDist = getBin "ahc-dist"
+
+getBootDir = catch (getEnv "asterius_bootdir")
+  (\(_ :: IOException) -> getDataDir)

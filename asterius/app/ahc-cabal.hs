@@ -6,6 +6,9 @@ import System.Process
 main :: IO ()
 main = do
   args <- getArgs
+  ahc <- getAhc
+  ahcPkg <- getAhcPkg
+  ahcLd <- getAhcLd
   let extra_prog_args =
         [ "--with-ghc=" <> ahc
         , "--with-ghc-pkg=" <> ahcPkg

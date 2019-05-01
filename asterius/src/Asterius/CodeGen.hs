@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 module Asterius.CodeGen
@@ -102,6 +103,16 @@ dispatchAllCmmWidth w r8 r16 r32 r64 =
     GHC.W64 -> pure r64
     _ -> throwError $ UnsupportedCmmWidth $ showSBS w
 
+-- TODO remove once GHC 8.6 support is dropped
+class IsShortByteString a where
+  fromShortByteString :: a -> SBS.ShortByteString
+
+instance IsShortByteString BS.ByteString where
+  fromShortByteString = SBS.toShort
+
+instance IsShortByteString [Word8] where
+  fromShortByteString = SBS.pack
+
 marshalCmmStatic :: GHC.CmmStatic -> CodeGen AsteriusStatic
 marshalCmmStatic st =
   case st of
@@ -135,7 +146,7 @@ marshalCmmStatic st =
           pure $ SymbolStatic sym o
         _ -> throwError $ UnsupportedCmmLit $ showSBS lit
     GHC.CmmUninitialised s -> pure $ Uninitialized s
-    GHC.CmmString s -> pure $ Serialized $ SBS.toShort s <> "\0"
+    GHC.CmmString s -> pure $ Serialized $ fromShortByteString s <> "\0"
 
 marshalCmmSectionType ::
      AsteriusEntitySymbol -> GHC.Section -> AsteriusStaticsType
