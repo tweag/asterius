@@ -1,4 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module NoMain where
 
-x :: Int
-x = 42
+import Asterius.ByteString
+import Asterius.Types
+
+x :: JSArrayBuffer
+x = byteStringToJSArrayBuffer "Lorem ipsum"
