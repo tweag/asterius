@@ -337,6 +337,7 @@ ahcLink Task {..} = do
     ["-optl--no-gc-sections" | not gcSections] <>
     ["-optl--binaryen" | binaryen] <>
     extraGHCFlags <>
+    ["-optl--output-ir=" <> (outputBaseName <.> "unlinked.txt") | outputIR] <>
     ["-o", ld_output, inputHS]
   r <- decodeFile ld_output
   removeFile ld_output
@@ -357,9 +358,9 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
     putStrLn $ "[INFO] Writing linking report to " <> show out_link
     writeFile out_link $ show report
   when outputIR $ do
-    let p = out_wasm -<.> "bin"
-    putStrLn $ "[INFO] Serializing linked IR to " <> show p
-    encodeFile p $ show final_m
+    let p = out_wasm -<.> "linked.txt"
+    putStrLn $ "[INFO] Printing linked IR to " <> show p
+    writeFile p $ show final_m
   if binaryen
     then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
              c_BinaryenSetDebugInfo 1

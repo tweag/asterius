@@ -17,17 +17,18 @@ iservLink ::
      IservState -> AsteriusEntitySymbol -> IO (Module, [Event], LinkReport)
 iservLink IservState {..} root_sym = do
   IservModules {..} <- readIORef iservModulesRef
-  pure $
-    linkStart
-      False
-      False
-      True
-      False
-      (rtsAsteriusModule defaultBuiltinsOptions <>
-       Map.foldl' (<>) iservArchives iservObjs)
-      (Set.singleton root_sym <> rtsUsedSymbols <>
-       Set.fromList
-         [ AsteriusEntitySymbol {entityName = internalName}
-         | FunctionExport {..} <- rtsFunctionExports False False
-         ])
-      []
+  let (_, m, events, link_report) =
+        linkStart
+          False
+          False
+          True
+          False
+          (rtsAsteriusModule defaultBuiltinsOptions <>
+           Map.foldl' (<>) iservArchives iservObjs)
+          (Set.singleton root_sym <> rtsUsedSymbols <>
+           Set.fromList
+             [ AsteriusEntitySymbol {entityName = internalName}
+             | FunctionExport {..} <- rtsFunctionExports False False
+             ])
+          []
+  pure (m, events, link_report)

@@ -18,6 +18,8 @@ parseLinkTask args = do
       , debug = "--debug" `elem` args
       , gcSections = "--no-gc-sections" `notElem` args
       , binaryen = "--binaryen" `elem` args
+      , outputIR =
+          find ("--output-ir=" `isPrefixOf`) args >>= stripPrefix "--output-ir="
       , rootSymbols =
           map (AsteriusEntitySymbol . fromString) $
           str_args "--extra-root-symbol="

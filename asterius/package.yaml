@@ -26,6 +26,7 @@ extra-source-files:
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
   - test/th/**/*.hs
+  - test/nomain/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -217,6 +218,13 @@ tests:
   th:
     source-dirs: test
     main: th.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  nomain:
+    source-dirs: test
+    main: nomain.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius

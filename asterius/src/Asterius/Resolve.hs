@@ -207,9 +207,10 @@ linkStart ::
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> (Module, [Event], LinkReport)
+  -> (AsteriusModule, Module, [Event], LinkReport)
 linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
-  ( result_m
+  ( merged_m
+  , result_m
   , err_msgs
   , report
       { staticsSymbolMap = ss_sym_map

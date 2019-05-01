@@ -24,6 +24,7 @@ data LinkTask = LinkTask
   { linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
   , debug, gcSections, binaryen :: Bool
+  , outputIR :: Maybe FilePath
   , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
   } deriving (Show)
 
@@ -61,7 +62,7 @@ linkExe ld_task@LinkTask {..} = do
     loadTheWorld
       defaultBuiltinsOptions {Asterius.Builtins.debug = debug}
       ld_task
-  let ld_result =
+  let (pre_m, m, events, link_report) =
         linkStart
           debug
           True
@@ -77,4 +78,7 @@ linkExe ld_task@LinkTask {..} = do
                  ]
              ])
           exportFunctions
-  encodeFile linkOutput ld_result
+  encodeFile linkOutput (m, events, link_report)
+  case outputIR of
+    Just p -> writeFile p $ show pre_m
+    _ -> pure ()
