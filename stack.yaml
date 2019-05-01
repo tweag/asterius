@@ -1,7 +1,7 @@
 resolver: ghc-8.9
 allow-newer: true
 extra-deps:
-  - http://head.hackage.haskell.org/package/aeson-1.4.2.0.tar.gz
+  - http://head.hackage.haskell.org/package/aeson-1.4.3.0.tar.gz
   - alex-3.2.4
   - ansi-terminal-0.9
   - ansi-wl-pprint-0.6.8.2
