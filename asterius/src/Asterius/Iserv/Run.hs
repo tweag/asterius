@@ -30,11 +30,13 @@ run :: IservState -> Pipe -> Message a -> IO a
 run s pipe msg =
   case msg of
     InitLinker -> pure ()
+    LoadDLL _ -> pure Nothing
     LoadArchive p -> addArchive s p
     LoadObj p -> addObj s p
     AddLibrarySearchPath _ -> pure $ RemotePtr 0
     RemoveLibrarySearchPath _ -> pure True
     ResolveObjs -> pure True
+    FindSystemLibrary _ -> pure $ Just ""
     CreateBCOs [m] -> (: []) <$> createSplice s m
     StartTH -> startTH
     RunTH rstate rhv ty mb_loc -> runTH pipe rstate rhv ty mb_loc

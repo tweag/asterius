@@ -53,7 +53,7 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
     "Asterius.Iserv.CompileCoreExpr.compileCoreExpr"
     hsc_env
     prepd_expr
-  linkCoreExpr verbose hsc_env src_span prepd_expr
+  linkCoreExpr verbose hsc_env prepd_expr
   u <- atomicModifyIORef' us_ref $ swap . GHC.takeUniqFromSupply
   let this_mod =
         GHC.mkModule
