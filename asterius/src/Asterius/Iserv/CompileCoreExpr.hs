@@ -17,9 +17,11 @@ import qualified CoreTidy as GHC
 import qualified CoreToStg as GHC
 import qualified CoreUtils as GHC
 import qualified CostCentre as GHC
+import Data.Binary
 import Data.IORef
 import Data.String
 import Data.Tuple
+import qualified GHCi as GHC
 import qualified GHCi.RemoteTypes as GHC
 import qualified HscMain as GHC
 import qualified HscTypes as GHC
@@ -33,7 +35,6 @@ import qualified SimplStg as GHC
 import qualified SrcLoc as GHC
 import qualified Stream
 import qualified UniqSupply as GHC
-import Unsafe.Coerce
 import qualified VarEnv as GHC
 
 compileCoreExpr ::
@@ -78,6 +79,7 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
   m <-
     either throwIO pure $
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
+  [m_hv] <- GHC.iservCmd hsc_env $ GHC.CreateBCOs [encode m]
   trace verbose $ show m
   trace verbose $ show sym
-  GHC.mkForeignRef (unsafeCoerce $ GHC.RemotePtr 0) (pure ())
+  GHC.mkForeignRef m_hv (pure ())

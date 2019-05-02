@@ -35,6 +35,7 @@ run s pipe msg =
     AddLibrarySearchPath _ -> pure $ RemotePtr 0
     RemoveLibrarySearchPath _ -> pure True
     ResolveObjs -> pure True
+    CreateBCOs [m] -> (: []) <$> createSplice s m
     StartTH -> startTH
     RunTH rstate rhv ty mb_loc -> runTH pipe rstate rhv ty mb_loc
     _ -> fail $ "Asterius.Iserv.Run.run: unsupported message: " <> show msg
