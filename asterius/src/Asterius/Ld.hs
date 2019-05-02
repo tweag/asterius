@@ -5,6 +5,7 @@
 
 module Asterius.Ld
   ( LinkTask(..)
+  , linkModules
   , linkExe
   , rtsUsedSymbols
   ) where
@@ -28,13 +29,12 @@ data LinkTask = LinkTask
   , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
   } deriving (Show)
 
-loadTheWorld :: BuiltinsOptions -> LinkTask -> IO AsteriusModule
-loadTheWorld builtins_opts LinkTask {..} = do
+loadTheWorld :: LinkTask -> IO AsteriusModule
+loadTheWorld LinkTask {..} = do
   lib <- mconcat <$> for linkLibs loadAr
   objrs <- for linkObjs tryDecodeFile
   let objs = rights objrs
-      builtins_mod = rtsAsteriusModule builtins_opts
-  pure $ mconcat objs <> builtins_mod <> lib
+  pure $ mconcat objs <> lib
 
 rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
@@ -56,28 +56,34 @@ rtsUsedSymbols =
     , "stg_WEAK_info"
     ]
 
+linkModules ::
+     LinkTask -> AsteriusModule -> (AsteriusModule, Module, [Event], LinkReport)
+linkModules LinkTask {..} m =
+  linkStart
+    debug
+    True
+    gcSections
+    binaryen
+    (rtsAsteriusModule defaultBuiltinsOptions {Asterius.Builtins.debug = debug} <>
+     m)
+    (Set.unions
+       [ Set.fromList rootSymbols
+       , rtsUsedSymbols
+       , Set.fromList
+           [ AsteriusEntitySymbol {entityName = internalName}
+           | FunctionExport {..} <- rtsFunctionExports debug True
+           ]
+       ])
+    exportFunctions
+
+linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, [Event], LinkReport)
+linkExeInMemory ld_task = do
+  final_store <- loadTheWorld ld_task
+  pure $ linkModules ld_task final_store
+
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
-  final_store <-
-    loadTheWorld
-      defaultBuiltinsOptions {Asterius.Builtins.debug = debug}
-      ld_task
-  let (pre_m, m, events, link_report) =
-        linkStart
-          debug
-          True
-          gcSections
-          binaryen
-          final_store
-          (Set.unions
-             [ Set.fromList rootSymbols
-             , rtsUsedSymbols
-             , Set.fromList
-                 [ AsteriusEntitySymbol {entityName = internalName}
-                 | FunctionExport {..} <- rtsFunctionExports debug True
-                 ]
-             ])
-          exportFunctions
+  (pre_m, m, events, link_report) <- linkExeInMemory ld_task
   encodeFile linkOutput (m, events, link_report)
   case outputIR of
     Just p -> writeFile p $ show pre_m
