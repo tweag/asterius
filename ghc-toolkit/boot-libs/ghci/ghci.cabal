@@ -50,6 +50,7 @@ library
     if flag(ghci)
         CPP-Options: -DGHCI
         exposed-modules:
+            Asterius.GHCi
             GHCi.Run
             GHCi.CreateBCO
             GHCi.ObjLink
@@ -79,8 +80,11 @@ library
         ghc-boot         == 8.9,
         ghc-boot-th      == 8.9,
         ghc-heap         == 8.9,
+        mtl              == 2.2.*,
         template-haskell == 2.15.*,
         transformers     == 0.5.*
 
     if !os(windows)
         Build-Depends: unix >= 2.7 && < 2.9
+
+    ghc-options: -this-unit-id ghci
