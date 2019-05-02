@@ -86,5 +86,5 @@ linkExe ld_task@LinkTask {..} = do
   (pre_m, m, events, link_report) <- linkExeInMemory ld_task
   encodeFile linkOutput (m, events, link_report)
   case outputIR of
-    Just p -> writeFile p $ show pre_m
+    Just p -> encodeFile p pre_m
     _ -> pure ()

@@ -337,7 +337,10 @@ ahcLink Task {..} = do
     ["-optl--no-gc-sections" | not gcSections] <>
     ["-optl--binaryen" | binaryen] <>
     extraGHCFlags <>
-    ["-optl--output-ir=" <> (outputBaseName <.> "unlinked.txt") | outputIR] <>
+    [ "-optl--output-ir=" <> outputDirectory </>
+    (outputBaseName <.> "unlinked.bin")
+    | outputIR
+    ] <>
     ["-o", ld_output, inputHS]
   r <- decodeFile ld_output
   removeFile ld_output
