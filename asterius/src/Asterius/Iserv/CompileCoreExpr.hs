@@ -79,7 +79,7 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
   m <-
     either throwIO pure $
     runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
-  [m_hv] <- GHC.iservCmd hsc_env $ GHC.CreateBCOs [encode m]
+  [m_hv] <- GHC.iservCmd hsc_env $ GHC.CreateBCOs [encode sym, encode m]
   trace verbose $ show m
   trace verbose $ show sym
   GHC.mkForeignRef m_hv (pure ())

@@ -37,7 +37,7 @@ run s pipe msg =
     RemoveLibrarySearchPath _ -> pure True
     ResolveObjs -> pure True
     FindSystemLibrary _ -> pure $ Just ""
-    CreateBCOs [m] -> (: []) <$> createSplice s m
+    CreateBCOs [sym_buf, m_buf] -> (: []) <$> createSplice s sym_buf m_buf
     StartTH -> startTH
     RunTH rstate rhv ty mb_loc -> runTH pipe rstate rhv ty mb_loc
     _ -> fail $ "Asterius.Iserv.Run.run: unsupported message: " <> show msg

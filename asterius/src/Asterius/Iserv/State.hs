@@ -29,7 +29,7 @@ import Unsafe.Coerce
 data IservModules = IservModules
   { iservArchives :: AsteriusModule
   , iservObjs :: Map FilePath AsteriusModule
-  , iservSplices :: IntMap AsteriusModule
+  , iservSplices :: IntMap (AsteriusEntitySymbol, AsteriusModule)
   }
 
 data IservState = IservState
@@ -57,9 +57,13 @@ addObj IservState {..} p = do
   modifyIORef' iservModulesRef $ \s ->
     s {iservObjs = Map.insert p m $ iservObjs s}
 
-createSplice :: IservState -> LBS.ByteString -> IO GHC.HValueRef
-createSplice IservState {..} buf = do
+createSplice ::
+     IservState -> LBS.ByteString -> LBS.ByteString -> IO GHC.HValueRef
+createSplice IservState {..} sym_buf m_buf = do
   JSVal v <- alloc iservJSSession LBS.empty
   modifyIORef' iservModulesRef $ \s ->
-    s {iservSplices = IntMap.insert v (decode buf) $ iservSplices s}
+    s
+      { iservSplices =
+          IntMap.insert v (decode sym_buf, decode m_buf) $ iservSplices s
+      }
   pure $ unsafeCoerce $ GHC.RemotePtr $ fromIntegral v
