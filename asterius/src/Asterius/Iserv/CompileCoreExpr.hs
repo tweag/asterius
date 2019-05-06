@@ -63,7 +63,7 @@ compileCoreExpr verbose us_ref hsc_env src_span ds_expr = do
       n = GHC.mkExternalName u this_mod occ_n src_span
       clbl = GHC.mkClosureLabel n GHC.MayHaveCafRefs
       sym = fromString $ asmPpr dflags clbl :: AsteriusEntitySymbol
-      b = GHC.mkVanillaGlobal n (GHC.exprType prepd_expr)
+      b = GHC.mkVanillaGlobal n (GHC.exprType ds_expr)
       prepd_binds = [GHC.NonRec b prepd_expr]
       (stg_binds, _) = GHC.coreToStg dflags this_mod prepd_binds
   stg_binds2 <- GHC.stg2stg dflags this_mod stg_binds
