@@ -2,6 +2,36 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-05-06
+
+Covers the paralyzed few weeks since last report.
+
+To provide some context for further discussion, here is a brief summary of our attempts since we started to implement TH support, listing the approaches and encountered obstacles:
+
+* Radical refactorings to make the linker faster.
+    * Linking for TH is quite unlike linking for regular Haskell modules: we need to support dynamic loading of compiled object files and libraries, along with splices, and the linking & execution requests may be interleaved. This required the linker to rapidly process the load requests and generate working wasm/js.
+    * This part of work is done and benefits regular linking as well.
+* Implement `ahc-iserv` and TH message handlers.
+    * Delegating TH logic to the `iserv` process enables some degree of customization on how TH requests are handled, so we can implement wasm/js linking on the host platform.
+    * This part of work is done.
+* Implement TH running logic.
+    * This means we need to be able to start a persistent runtime, occasionally send some pieces of wasm code, and run them to retrieve serialized results (and the wasm world may call back into the host world).
+    * To smoothen Haskell/node interaction, we revived the `inline-js` project and added loads of new functionality to it. It works well even outside the scope of asterius.
+    * TH runner is still the roadblock:
+        * Our first attempt was trying to support incrementally loading wasm objects, running wasm code, and transfer required runtime state through some global vars. This dragged us into a long debuggathon.
+        * We're currently at the second attempt: implementing an even more naive TH runner and reducing the debugging surface. Compared to a qualified TH runner which can be shipped, the naive version:
+            * Reuses the linking logic for regular Haskell modules.
+            * Always re-links upon running a splice.
+            * Always initiates a fresh TH state to run a splice.
+        * So. Another round of debugging here.
+
+Implementing TH is a large and challenging project which already consumed much more energy than once anticipated. At this point it might be nice to adjust our strategy a bit:
+
+* Keep working on TH delivery, evaluate new means of debugging (e.g. reviving the previously lost debugging tracer, using V8 inspection of node, etc) to boost the process. Since it's likely not the last time we need to perform low-level debugging, the lessons we learn here should also be recorded and help later project contributors.
+* Spare a part of time to work on other stuff, including but not limited to:
+    * Improve the currently ad hoc test suite, start integrating ghc tests. This will give us better idea on what's currently broken and what's not.
+    * Do some housekeeping on the issue tracker. There are a few issues reported long ago but remained since TH got all the attention.
+
 ## 2019-04-15
 
 Covers last week.
