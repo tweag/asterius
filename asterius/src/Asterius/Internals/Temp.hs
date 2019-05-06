@@ -4,7 +4,6 @@ module Asterius.Internals.Temp
   ) where
 
 import Distribution.Simple.Utils
-import Distribution.Verbosity
 import System.Directory
 import System.IO
 
@@ -18,4 +17,5 @@ temp p = do
 withTempDir :: String -> (FilePath -> IO r) -> IO r
 withTempDir t c = do
   tmpdir <- getTemporaryDirectory
-  withTempDirectory silent tmpdir t c
+  p <- createTempDirectory tmpdir t
+  c p
