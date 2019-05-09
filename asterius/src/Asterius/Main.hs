@@ -298,16 +298,22 @@ genWasm :: Task -> Builder
 genWasm Task {..} =
   mconcat
     [ case target of
-        Node -> "import fs from \"fs\";\n"
+        Node ->
+            "import fs from \"fs\";\n" <>
+            "import path from \"path\";\n" <>
+            if bundle
+               then mempty
+               else "const __dirname = path.dirname(new URL(import.meta.url).pathname);"
+               
         Browser -> mempty
     , "export const module = "
     , case target of
         Node
           | sync ->
-            "new WebAssembly.Module(fs.readFileSync(" <> out_wasm <> "))"
+            "new WebAssembly.Module(fs.readFileSync(path.join(__dirname," <> out_wasm <> ")))"
           | otherwise ->
-            "new Promise((resolve, reject) => fs.readFile(" <> out_wasm <>
-            ", (err, buf) => err ? reject(err) : resolve(buf))).then(buf => WebAssembly.compile(buf))"
+            "new Promise((resolve, reject) => fs.readFile(path.join(__dirname," <> out_wasm <>
+            "), (err, buf) => err ? reject(err) : resolve(buf))).then(buf => WebAssembly.compile(buf))"
         Browser
           | noStreaming ->
             "fetch (" <> out_wasm <>
