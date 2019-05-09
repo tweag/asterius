@@ -40,7 +40,7 @@ data BuiltinsOptions = BuiltinsOptions
   { progName :: String
   , threadStateSize :: Int
   , debug, hasMain :: Bool
-  }
+  } deriving (Show)
 
 defaultBuiltinsOptions :: BuiltinsOptions
 defaultBuiltinsOptions =

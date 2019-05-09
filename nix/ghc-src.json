@@ -1,0 +1,7 @@
+{
+  "url": "https://github.com/ghc/ghc",
+  "rev": "bf6dbe3d1046573cb71fd534a326a9a0e6f1b220",
+  "date": "2019-04-03T00:41:05-04:00",
+  "sha256": "111dxnjq43f1x3i5j8bvm4chl6ml8l1yrfm69q83pb38znc75ifb",
+  "fetchSubmodules": true
+}
