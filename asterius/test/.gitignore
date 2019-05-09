@@ -1,0 +1,10 @@
+# Ignore the build artefacts of tests to make sure we do not check them
+# into the source tree accidentally.
+*.mjs
+*.o
+*.wasm
+*.hi
+*.html 
+*.js
+package.json
+jsffi_stub.h
