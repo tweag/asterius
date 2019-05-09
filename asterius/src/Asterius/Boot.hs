@@ -21,7 +21,6 @@ import Data.IORef
 import Data.Maybe
 import qualified DynFlags as GHC
 import qualified GHC
-import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath, sandboxGhcLibDir)
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show
 import Language.Haskell.GHC.Toolkit.Run (defaultConfig, ghcFlags, runCmm)
@@ -38,7 +37,7 @@ data BootArgs = BootArgs
   { bootDir :: FilePath
   , configureOptions, buildOptions, installOptions :: String
   , builtinsOptions :: BuiltinsOptions
-  }
+  } deriving (Show)
 
 getDefaultBootArgs :: IO BootArgs
 getDefaultBootArgs = do
@@ -60,6 +59,8 @@ bootCreateProcess args@BootArgs {..} = do
   e <- getEnvironment
   dataDir <- getDataDir
   rootBootDir <- getBootDir
+  bootLibsPath <- getBootLibsPath
+  sandboxGhcLibDir <- getSandboxGhcLibDir
   ahc <- getAhc
   ahcPkg <- getAhcPkg
   pure
@@ -83,9 +84,11 @@ bootCreateProcess args@BootArgs {..} = do
       }
 
 bootRTSCmm :: BootArgs -> IO ()
-bootRTSCmm BootArgs {..} =
+bootRTSCmm bootArgs@BootArgs {..} =
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
   GHC.runGhc (Just obj_topdir) $ do
+    bootLibsPath <- liftIO getBootLibsPath
+    let rts_path = bootLibsPath </> "rts"
     dflags <- GHC.getSessionDynFlags
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
@@ -129,7 +132,6 @@ bootRTSCmm BootArgs {..} =
         $ ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a"]
           ++ obj_paths
   where
-    rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
 
 runBootCreateProcess :: CreateProcess -> IO ()

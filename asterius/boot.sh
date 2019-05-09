@@ -2,7 +2,7 @@
 
 set -x
 
-cp -r $ASTERIUS_BOOT_LIBS_DIR .
+cp -r $ASTERIUS_BOOT_LIBS_DIR boot-libs
 chmod +w -R .
 cd boot-libs
 

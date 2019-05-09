@@ -35,7 +35,7 @@ wasmPageSize = 65536
 data BuiltinsOptions = BuiltinsOptions
   { threadStateSize :: Int
   , debug, hasMain :: Bool
-  }
+  } deriving (Show)
 
 defaultBuiltinsOptions :: BuiltinsOptions
 defaultBuiltinsOptions =
