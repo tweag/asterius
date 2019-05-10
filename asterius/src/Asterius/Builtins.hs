@@ -1555,13 +1555,11 @@ offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
 
 
 wrapI64ToI8 _ =
-  let v = runEDSL [] $ do
+  let v = runEDSL [I32] $ do
         setReturnTypes [I32]
         x <- param I64
-        -- TODO: add __i64_slot into EDSL.hs
         storeI64 (symbol "__asterius_i64_slot") 0 x
-        v <- i64Local $ loadI64 (symbol "__asterius_i64_slot") 0
-        emit $ v
+        emit $ loadI8 (symbol "__asterius_i64_slot") 0
   in trace (show v) v
 
 wrapI32ToI8 _ =
