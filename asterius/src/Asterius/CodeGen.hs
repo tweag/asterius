@@ -220,11 +220,11 @@ marshalCmmLoad p t = do
       (GHC.typeWidth t)
       (pure
          ( Load
-             {signed = False, bytes = 1, offset = 0, valueType = I32, ptr = pv}
+             {signed = True, bytes = 1, offset = 0, valueType = I32, ptr = pv}
          , I32))
       (pure
          ( Load
-             {signed = False, bytes = 2, offset = 0, valueType = I32, ptr = pv}
+             {signed = True, bytes = 2, offset = 0, valueType = I32, ptr = pv}
          , I32))
       (do vt <- marshalCmmType t
           pure
