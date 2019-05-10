@@ -25,7 +25,6 @@ extra-source-files:
   - test/bigint/**/*.hs
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
-  - test/th/**/*.hs
   - test/nomain/**/*.hs
 
 data-files:
@@ -137,13 +136,6 @@ executables:
     dependencies:
       - asterius
 
-  ahc-iserv:
-    source-dirs: app
-    main: ahc-iserv.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - asterius
-
 tests:
   fib:
     source-dirs: test
@@ -211,13 +203,6 @@ tests:
   cloudflare:
     source-dirs: test
     main: cloudflare.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - asterius
-
-  th:
-    source-dirs: test
-    main: th.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius

@@ -6,7 +6,6 @@ module Asterius.FrontendPlugin
 
 import Asterius.CodeGen
 import Asterius.Internals
-import qualified Asterius.Iserv.CompileCoreExpr as Iserv
 import Asterius.JSFFI
 import Asterius.TypesConv
 import Control.Exception
@@ -39,8 +38,7 @@ frontendPlugin =
       (c, get_ffi_mod) <-
         addFFIProcessor
           mempty
-            { compileCoreExpr = Just $ Iserv.compileCoreExpr True us_ref
-            , withHaskellIR =
+            { withHaskellIR =
                 \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
                   dflags <- GHC.getDynFlags
                   setDynFlagsRef dflags

@@ -10,7 +10,6 @@ main = do
         [ "--with-ghc=" <> ahc
         , "--with-ghc-pkg=" <> ahcPkg
         , "--ghc-option=-fexternal-interpreter"
-        , "--ghc-option=-pgmi" <> ahcIserv
         , "--ghc-option=-pgml" <> ahcLd
         ]
       extra_args =
