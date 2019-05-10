@@ -34,7 +34,6 @@ frontendPlugin =
         GHC.Opt_DoCmmLinting
     liftIO $ do
       get_ffi_mod_ref <- newIORef $ error "get_ffi_mod_ref not initialized"
-      us_ref <- GHC.mkSplitUniqSupply 'A' >>= newIORef
       (c, get_ffi_mod) <-
         addFFIProcessor
           mempty
