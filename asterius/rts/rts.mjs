@@ -118,6 +118,7 @@ export function newAsteriusInstance(req) {
       },
       rts: {
         printI64: x => __asterius_fs.writeSync(__asterius_fs.stdout(), __asterius_show_I64(x) + "\n"),
+        assertEqI64: function(x, y) { if(x != y) {   throw new WebAssembly.RuntimeError("unequal I64: " + x + ", " + y); } },
         print: x => __asterius_fs.writeSync(__asterius_fs.stdout(), x + "\n"),
         emitEvent: ev => __asterius_logger.logEvent(req.events[ev])
       },
