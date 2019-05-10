@@ -1,6 +1,6 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE UnboxedTuples #-}
-{-# OPTIONS_GHC
+{-# OPTIONS_GHC -O2 -fforce-recomp
   -Wall -ddump-to-file -ddump-simpl -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 import GHC.Exts
