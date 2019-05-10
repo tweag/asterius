@@ -28,6 +28,7 @@ import Data.Maybe
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
+import Debug.Trace
 
 wasmPageSize :: Int
 wasmPageSize = 65536
@@ -67,6 +68,17 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ encodeStorable invalidAddress]
                 })
+          , ("__asterius_i32_slot"
+            , AsteriusStatics
+              { staticsType=Bytes
+              , asteriusStatics = [Serialized $ SBS.pack $ replicate (roundup_bytes_to_words 4) 0]
+              })
+
+          , ("__asterius_i64_slot"
+            , AsteriusStatics
+              { staticsType=Bytes
+              , asteriusStatics = [Serialized $ SBS.pack $ replicate (roundup_bytes_to_words 8) 0]
+              })
           ]
     , functionMap =
         Map.fromList $
@@ -184,6 +196,8 @@ rtsAsteriusModule opts =
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
         , ("assert_eq_i64", assertEqI64Function opts)
+        , ("wrapI64ToI8", wrapI64ToI8 opts)
+        , ("wrapI32ToI8", wrapI32ToI8 opts)
         , ("strlen", strlenFunction opts)
         , ("memchr", memchrFunction opts)
         , ("memcpy", memcpyFunction opts)
@@ -631,7 +645,7 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function, wrapI64ToI8, wrapI32ToI8 ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {} =
   runEDSL [] $ do
@@ -1538,3 +1552,22 @@ trapStoreF64Function _ =
 
 offset_StgTSO_StgStack :: Int
 offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
+
+
+wrapI64ToI8 _ =
+  let v = runEDSL [] $ do
+        setReturnTypes [I32]
+        x <- param I64
+        -- TODO: add __i64_slot into EDSL.hs
+        storeI64 (symbol "__asterius_i64_slot") 0 x
+        v <- i64Local $ loadI64 (symbol "__asterius_i64_slot") 0
+        emit $ v
+  in trace (show v) v
+
+wrapI32ToI8 _ =
+    runEDSL [I32] $ do
+    setReturnTypes [I32]
+    x <- param I32
+    storeI32  (symbol "__asterius_i32_slot") 0 x
+    emit $ loadI8 (symbol "__asterius_i32_slot") 0
+

@@ -42,6 +42,7 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Prelude hiding (IO)
 import qualified Unique as GHC
+import Debug.Trace
 
 type CodeGenContext = (GHC.DynFlags, String)
 
@@ -311,10 +312,29 @@ marshalCmmHomoConvMachOp ::
   -> GHC.Width
   -> GHC.CmmExpr
   -> CodeGen (Expression, ValueType)
-marshalCmmHomoConvMachOp o36 o63 t32 t64 _ w1 x = do
-  (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
-  xe <- marshalAndCastCmmExpr x t
-  pure (Unary {unaryOp = o, operand0 = xe}, tr)
+marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x = do
+  if w1 == GHC.W32 || w1 == GHC.W64
+  then do
+    (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
+    xe <- marshalAndCastCmmExpr x t
+    pure (Unary {unaryOp = o, operand0 = xe}, tr)
+  else do
+    traceM $ "in marshal: " <> show w0 <> " -> " <> show w1
+    -- TODO: we are assuming that always wrap to I8, it could be I16 as well
+    (xe, _) <- marshalCmmExpr x
+    let c = Call
+              { target = if w0 == GHC.W32 then "wrapI32ToI8" else "wrapI64ToI8"
+              , operands = [xe]
+              , callReturnTypes = [I32]
+              }
+
+    let c' = CallImport
+              { target' = if w0 == GHC.W32 then "__asterius_wrapI32ToI8" else "__asterius_wrapI64ToI8"
+              , operands = [xe]
+              , callImportReturnTypes = [I32]
+              }
+    pure (c, I32)
+
 
 marshalCmmHeteroConvMachOp ::
      UnaryOp
