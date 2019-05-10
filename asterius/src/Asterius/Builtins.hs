@@ -198,6 +198,8 @@ rtsAsteriusModule opts =
         , ("assert_eq_i64", assertEqI64Function opts)
         , ("wrapI64ToI8", wrapI64ToI8 opts)
         , ("wrapI32ToI8", wrapI32ToI8 opts)
+        , ("wrapI64ToI16", wrapI64ToI16 opts)
+        , ("wrapI32ToI16", wrapI32ToI16 opts)
         , ("strlen", strlenFunction opts)
         , ("memchr", memchrFunction opts)
         , ("memcpy", memcpyFunction opts)
@@ -645,7 +647,7 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function, wrapI64ToI8, wrapI32ToI8 ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function, wrapI64ToI8, wrapI32ToI8, wrapI64ToI16, wrapI32ToI16 ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {} =
   runEDSL [] $ do
@@ -1569,3 +1571,18 @@ wrapI32ToI8 _ =
     storeI32  (symbol "__asterius_i32_slot") 0 x
     emit $ loadI8 (symbol "__asterius_i32_slot") 0
 
+wrapI64ToI16 _ =
+  let v = runEDSL [I32] $ do
+        setReturnTypes [I32]
+        x <- param I64
+        storeI64 (symbol "__asterius_i64_slot") 0 x
+        emit $ loadI16 (symbol "__asterius_i64_slot") 0
+  in trace (show v) v
+
+
+wrapI32ToI16 _ =
+    runEDSL [I32] $ do
+    setReturnTypes [I32]
+    x <- param I32
+    storeI32 (symbol "__asterius_i32_slot") 0 x
+    emit $ loadI16 (symbol "__asterius_i32_slot") 0

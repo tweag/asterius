@@ -303,6 +303,15 @@ marshalCmmBinMachOp o32 tx32 ty32 tr32 o64 tx64 ty64 tr64 w x y =
         ye <- marshalAndCastCmmExpr y ty64
         pure (Binary {binaryOp = o64, operand0 = xe, operand1 = ye}, tr64))
 
+widthToInt :: GHC.Width -> Int
+widthToInt (GHC.W8) = 8
+widthToInt (GHC.W16) = 16
+widthToInt (GHC.W32) = 32
+widthToInt (GHC.W64) = 64
+widthToInt (GHC.W128) = 128
+widthToInt (GHC.W256) = 256
+widthToInt (GHC.W512) = 512
+
 marshalCmmHomoConvMachOp ::
      UnaryOp
   -> UnaryOp
@@ -320,19 +329,14 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x = do
     pure (Unary {unaryOp = o, operand0 = xe}, tr)
   else do
     traceM $ "in marshal: " <> show w0 <> " -> " <> show w1
-    -- TODO: we are assuming that always wrap to I8, it could be I16 as well
+    let name = AsteriusEntitySymbol $ "wrapI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
     (xe, _) <- marshalCmmExpr x
     let c = Call
-              { target = if w0 == GHC.W32 then "wrapI32ToI8" else "wrapI64ToI8"
+              { target = name
               , operands = [xe]
               , callReturnTypes = [I32]
               }
 
-    let c' = CallImport
-              { target' = if w0 == GHC.W32 then "__asterius_wrapI32ToI8" else "__asterius_wrapI64ToI8"
-              , operands = [xe]
-              , callImportReturnTypes = [I32]
-              }
     pure (c, I32)
 
 
