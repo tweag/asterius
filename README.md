@@ -47,6 +47,14 @@ What works currently:
 
 Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs), [`array`](asterius/test/array/array.hs), [`rtsapi`](asterius/test/rtsapi.hs) and [`teletype`](asterius/test/teletype/teletype.hs) test suites first to get some idea on current capabilities of `asterius`.
 
+## Building from source
+
+install the following:
+
+- `nodejs` 12.x. Binaries can be downloaded from [`noderesource/distributions`](https://github.com/nodesource/distributions) for common `*nix` platforms.
+
+and then follow the commands in the `Dockerfile`. 
+
 ## Sponsors
 
 [<img src="https://www.tweag.io/img/tweag-med.png" height="65">](https://tweag.io)
