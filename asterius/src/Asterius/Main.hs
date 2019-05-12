@@ -345,8 +345,12 @@ ahcLink Task {..} = do
   removeFile ld_output
   pure r
 
-ahcDistMain :: Task -> (Asterius.Types.Module, [Event], LinkReport) -> IO ()
-ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
+ahcDistMain ::
+     (String -> IO ())
+  -> Task
+  -> (Asterius.Types.Module, [Event], LinkReport)
+  -> IO ()
+ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
   let out_package_json = outputDirectory </> "package.json"
       out_rts_constants = outputDirectory </> "rts.constants.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
@@ -357,14 +361,14 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
       out_html = outputDirectory </> outputBaseName <.> "html"
       out_link = outputDirectory </> outputBaseName <.> "link.txt"
   when outputLinkReport $ do
-    putStrLn $ "[INFO] Writing linking report to " <> show out_link
+    logger $ "[INFO] Writing linking report to " <> show out_link
     writeFile out_link $ show report
   when outputIR $ do
     let p = out_wasm -<.> "linked.txt"
-    putStrLn $ "[INFO] Printing linked IR to " <> show p
+    logger $ "[INFO] Printing linked IR to " <> show p
     writeFile p $ show final_m
   if binaryen
-    then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+    then (do logger "[INFO] Converting linked IR to binaryen IR"
              c_BinaryenSetDebugInfo 1
              c_BinaryenSetOptimizeLevel 0
              c_BinaryenSetShrinkLevel 0
@@ -372,23 +376,22 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                Binaryen.marshalModule
                  (staticsSymbolMap report <> functionSymbolMap report)
                  final_m
-             putStrLn "[INFO] Validating binaryen IR"
+             logger "[INFO] Validating binaryen IR"
              pass_validation <- c_BinaryenModuleValidate m_ref
              when (pass_validation /= 1) $
                fail "[ERROR] binaryen validation failed"
              m_bin <- Binaryen.serializeModule m_ref
-             putStrLn $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+             logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
              BS.writeFile out_wasm m_bin
              when outputIR $ do
                let p = out_wasm -<.> "binaryen.txt"
-               putStrLn $
-                 "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
+               logger $ "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
                case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
                  Right (rest, _, r)
                    | LBS.null rest -> writeFile p (show r)
                    | otherwise -> fail "[ERROR] Re-parsing produced residule"
                  _ -> fail "[ERROR] Re-parsing failed")
-    else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
+    else (do logger "[INFO] Converting linked IR to wasm-toolkit IR"
              let conv_result =
                    runExcept $
                    WasmToolkit.makeModule
@@ -402,34 +405,33 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                  Right r -> pure r
              when outputIR $ do
                let p = out_wasm -<.> "wasm-toolkit.txt"
-               putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
+               logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
                writeFile p $ show r
-             putStrLn $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+             logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
              withBinaryFile out_wasm WriteMode $ \h ->
                hPutBuilder h $ execPut $ putModule r)
-  putStrLn $
+  logger $
     "[INFO] Writing JavaScript runtime constants to " <> show out_rts_constants
   builderWriteFile out_rts_constants rtsConstants
-  putStrLn $
+  logger $
     "[INFO] Writing JavaScript runtime modules to " <> show outputDirectory
   rts_files <- listDirectory $ dataDir </> "rts"
   for_ rts_files $ \f ->
     copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
-  putStrLn $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
+  logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
   builderWriteFile out_wasm_lib $ genWasm (target == Node) sync outputBaseName
-  putStrLn $ "[INFO] Writing JavaScript lib module to " <> show out_lib
+  logger $ "[INFO] Writing JavaScript lib module to " <> show out_lib
   builderWriteFile out_lib $ genLib task report err_msgs
-  putStrLn $ "[INFO] Writing JavaScript entry module to " <> show out_entry
+  logger $ "[INFO] Writing JavaScript entry module to " <> show out_entry
   case inputEntryMJS of
     Just in_entry -> copyFile in_entry out_entry
     _ -> builderWriteFile out_entry $ genDefEntry task
   when bundle $ do
     package_json_exist <- doesFileExist out_package_json
     unless package_json_exist $ do
-      putStrLn $
-        "[INFO] Writing a stub package.json to " <> show out_package_json
+      logger $ "[INFO] Writing a stub package.json to " <> show out_package_json
       builderWriteFile out_package_json $ genPackageJSON task
-    putStrLn $ "[INFO] Writing JavaScript bundled script to " <> show out_js
+    logger $ "[INFO] Writing JavaScript bundled script to " <> show out_js
     withCurrentDirectory outputDirectory $
       callProcess
         "node"
@@ -450,18 +452,18 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
         , takeFileName out_entry
         ]
   when (target == Browser) $ do
-    putStrLn $ "[INFO] Writing HTML to " <> show out_html
+    logger $ "[INFO] Writing HTML to " <> show out_html
     builderWriteFile out_html $ genHTML task
   when (target == Node && run) $
     withCurrentDirectory (takeDirectory out_wasm) $
     if bundle
       then do
-        putStrLn $ "[INFO] Running " <> out_js
+        logger $ "[INFO] Running " <> out_js
         callProcess "node" $
           ["--experimental-wasm-return-call" | tailCalls] <>
           [takeFileName out_js]
       else do
-        putStrLn $ "[INFO] Running " <> out_entry
+        logger $ "[INFO] Running " <> out_entry
         case inputEntryMJS of
           Just _ ->
             callProcess "node" $
@@ -479,4 +481,4 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do
   ld_result <- ahcLink task
-  ahcDistMain task ld_result
+  ahcDistMain putStrLn task ld_result

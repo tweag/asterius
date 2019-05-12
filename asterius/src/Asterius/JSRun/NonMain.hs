@@ -5,7 +5,7 @@ module Asterius.JSRun.NonMain
   ) where
 
 import Asterius.Ld (LinkTask(..), linkModules)
-import Asterius.Main
+import Asterius.Main (Target(..), Task(..), ahcDistMain)
 import Asterius.Resolve
 import Asterius.Types (AsteriusEntitySymbol, AsteriusModule, Event, Module)
 import qualified Data.ByteString.Lazy as LBS
@@ -38,6 +38,7 @@ distNonMain ::
   -> IO ()
 distNonMain p extra_syms =
   ahcDistMain
+    (\_ -> pure ())
     Task
       { target = Node
       , inputHS = p
