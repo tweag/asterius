@@ -3,7 +3,9 @@
 module Asterius.JSRun.Main
   ( newAsteriusInstance
   , hsInit
-  , jsRun
+  , hsMain
+  , hsStdOut
+  , hsStdErr
   ) where
 
 import qualified Data.ByteString.Lazy as LBS
@@ -20,14 +22,11 @@ newAsteriusInstance s lib_path mod_buf = do
 hsInit :: JSSession -> JSVal -> IO ()
 hsInit s i = eval s $ deRefJSVal i <> ".wasmInstance.exports.hs_init()"
 
-jsRunWith :: JSSession -> FilePath -> LBS.ByteString -> IO LBS.ByteString
-jsRunWith s lib_path mod_buf = do
-  i_val <- newAsteriusInstance s lib_path mod_buf
-  hsInit s i_val
-  () <- eval s $ deRefJSVal i_val <> ".wasmInstance.exports.main()"
-  eval s $ deRefJSVal i_val <> ".stdio.stdout()"
+hsMain :: JSSession -> JSVal -> IO ()
+hsMain s i = eval s $ deRefJSVal i <> ".wasmInstance.exports.main()"
 
-jsRun :: [String] -> FilePath -> LBS.ByteString -> IO LBS.ByteString
-jsRun node_args lib_path mod_buf =
-  withJSSession defJSSessionOpts {nodeExtraArgs = node_args} $ \s ->
-    jsRunWith s lib_path mod_buf
+hsStdOut :: JSSession -> JSVal -> IO LBS.ByteString
+hsStdOut s i = eval s $ deRefJSVal i <> ".stdio.stdout()"
+
+hsStdErr :: JSSession -> JSVal -> IO LBS.ByteString
+hsStdErr s i = eval s $ deRefJSVal i <> ".stdio.stderr()"

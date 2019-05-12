@@ -44,6 +44,7 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.String
 import Foreign
+import Language.JavaScript.Inline.Core
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import NPM.Parcel
@@ -471,12 +472,16 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
             ["--experimental-modules", takeFileName out_entry]
           _ -> do
             mod_buf <- LBS.readFile $ takeFileName out_wasm
-            wasm_stdout <-
-              jsRun
-                ["--experimental-wasm-return-call" | tailCalls]
-                (takeFileName out_lib)
-                mod_buf
-            LBS.putStr wasm_stdout
+            withJSSession
+              defJSSessionOpts
+                { nodeExtraArgs =
+                    ["--experimental-wasm-return-call" | tailCalls]
+                } $ \s -> do
+              i <- newAsteriusInstance s (takeFileName out_lib) mod_buf
+              hsInit s i
+              hsMain s i
+              wasm_stdout <- hsStdOut s i
+              LBS.putStr wasm_stdout
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do
