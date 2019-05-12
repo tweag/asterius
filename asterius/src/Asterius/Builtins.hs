@@ -183,6 +183,7 @@ rtsAsteriusModule opts =
         , ("print_i64", printI64Function opts)
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
+        , ("assert_eq_i64", assertEqI64Function opts)
         , ("strlen", strlenFunction opts)
         , ("memchr", memchrFunction opts)
         , ("memcpy", memcpyFunction opts)
@@ -253,6 +254,12 @@ rtsFunctionImports debug =
       , externalModuleName = "rts"
       , externalBaseName = "printI64"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "assertEqI64"
+      , externalModuleName = "rts"
+      , externalBaseName = "assertEqI64"
+      , functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
       }
   , FunctionImport
       { internalName = "printF32"
@@ -624,7 +631,7 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {} =
   runEDSL [] $ do
@@ -1024,6 +1031,12 @@ printI64Function _ =
   runEDSL [] $ do
     x <- param I64
     callImport "printI64" [convertSInt64ToFloat64 x]
+
+assertEqI64Function _ =
+  runEDSL [] $ do
+    x <- param I64
+    y <- param I64
+    callImport "assertEqI64" [convertSInt64ToFloat64 x, convertSInt64ToFloat64 y]
 
 printF32Function _ =
   runEDSL [] $ do
