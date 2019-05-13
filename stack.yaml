@@ -5,7 +5,7 @@ extra-deps:
   - alex-3.2.4
   - ansi-terminal-0.9
   - ansi-wl-pprint-0.6.8.2
-  - http://head.hackage.haskell.org/package/appar-0.1.7.tar.gz
+  - appar-0.1.8
   - async-2.2.1
   - http://head.hackage.haskell.org/package/attoparsec-0.13.2.2.tar.gz
   - auto-update-0.1.4
@@ -20,18 +20,18 @@ extra-deps:
   - call-stack-0.1.0
   - case-insensitive-1.2.0.11
   - clock-0.7.2
-  - http://head.hackage.haskell.org/package/colour-2.3.4.tar.gz
+  - colour-2.3.5
   - cookie-0.4.4
   - cryptonite-0.25
   - data-default-class-0.1.2.0
   - http://head.hackage.haskell.org/package/dlist-0.8.0.6.tar.gz
   - easy-file-0.2.2
   - erf-2.0.0.0
-  - http://head.hackage.haskell.org/package/exceptions-0.10.1.tar.gz
+  - exceptions-0.10.2
   - fast-logger-2.4.11
   - file-embed-0.0.11
   - gauge-0.2.4
-  - http://head.hackage.haskell.org/package/happy-1.19.9.tar.gz
+  - http://head.hackage.haskell.org/package/happy-1.19.10.tar.gz
   - hashable-1.2.7.0
   - hspec-2.7.0
   - hspec-core-2.7.0
@@ -42,7 +42,7 @@ extra-deps:
   - http2-1.6.4
   - integer-logarithms-1.0.2.2
   - iproute-1.7.7
-  - http://head.hackage.haskell.org/package/logict-0.6.0.2.tar.gz
+  - logict-0.6.0.3
   - http://head.hackage.haskell.org/package/memory-0.14.18.tar.gz
   - HUnit-1.6.0.0
   - language-javascript-0.6.0.11
@@ -73,7 +73,7 @@ extra-deps:
   - tasty-quickcheck-0.10
   - tasty-smallcheck-0.8.1
   - tf-random-0.5
-  - http://head.hackage.haskell.org/package/th-abstraction-0.2.11.0.tar.gz
+  - th-abstraction-0.3.1.0
   - time-locale-compat-0.1.1.5
   - transformers-compat-0.6.2
   - unbounded-delays-0.1.1.0
@@ -84,7 +84,7 @@ extra-deps:
   - unix-time-0.3.8
   - uuid-types-1.0.3
   - unliftio-core-0.1.2.0
-  - http://head.hackage.haskell.org/package/vector-0.12.0.2.tar.gz
+  - vector-0.12.0.3
   - void-0.7.2
   - wai-3.2.1.2
   - wai-app-static-3.1.6.2
@@ -98,7 +98,7 @@ packages:
   - asterius
   - binaryen
   - ghc-toolkit
-  - inline-js/inline-js
+  - inline-js/inline-js-core
   - npm-utils
   - wabt
   - wasm-toolkit

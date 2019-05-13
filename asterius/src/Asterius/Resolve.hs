@@ -84,7 +84,7 @@ mergeSymbols ::
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> (AsteriusModule, LinkReport)
-mergeSymbols debug gc_sections store_mod root_syms
+mergeSymbols _ gc_sections store_mod root_syms
   | not gc_sections = (store_mod, final_rep {bundledFFIMarshalState = ffi_all})
   | otherwise = (final_m, mempty {bundledFFIMarshalState = ffi_this})
   where
@@ -157,7 +157,7 @@ resolveAsteriusModule ::
      , [Event]
      , Int
      , Int)
-resolveAsteriusModule debug has_main binaryen bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
+resolveAsteriusModule debug has_main _ bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
   (new_mod, ss_sym_map, func_sym_map, err_msgs, table_slots, initial_mblocks)
   where
     (func_sym_map, last_func_addr) =
@@ -207,9 +207,10 @@ linkStart ::
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> (Module, [Event], LinkReport)
+  -> (AsteriusModule, Module, [Event], LinkReport)
 linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
-  ( result_m
+  ( merged_m
+  , result_m
   , err_msgs
   , report
       { staticsSymbolMap = ss_sym_map

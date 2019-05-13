@@ -16,14 +16,14 @@ import { IntegerManager } from "./rts.integer.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { GC } from "./rts.gc.mjs";
-import * as settings from "./rts.settings.mjs";
+import * as rtsConstants from "./rts.constants.mjs";
 
 export function newAsteriusInstance(req) {
   let __asterius_logger = new EventLogManager(req.symbolTable),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
     __asterius_wasm_instance = null,
     __asterius_wasm_table = new WebAssembly.Table({element: "anyfunc", initial: req.tableSlots}),
-    __asterius_wasm_memory = new WebAssembly.Memory({initial: req.staticMBlocks * (settings.mblock_size / 65536)}),
+    __asterius_wasm_memory = new WebAssembly.Memory({initial: req.staticMBlocks * (rtsConstants.mblock_size / 65536)}),
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable),
     __asterius_mblockalloc = new MBlockAlloc(),

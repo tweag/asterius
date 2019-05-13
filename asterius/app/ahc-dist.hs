@@ -6,4 +6,4 @@ main :: IO ()
 main = do
   task <- getTask
   ld_result <- decodeFile $ inputHS task
-  ahcDistMain task ld_result
+  ahcDistMain putStrLn task ld_result

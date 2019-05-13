@@ -21,12 +21,11 @@ extra-source-files:
   - test/todomvc/**/*.hs
   - test/todomvc/**/*.html
   - test/teletype/**/*.hs
-  - test/teletype/teletype.mjs
   - test/bytearray/**/*.hs
   - test/bigint/**/*.hs
-  - test/bigint/bigint.mjs
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
+  - test/nomain/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -54,11 +53,14 @@ dependencies:
   - ghc
   - ghc-prim
   - ghc-toolkit
-  - inline-js
+  - ghci
+  - inline-js-core
+  - libiserv
   - mtl
   - npm-utils
   - parsec
   - process
+  - template-haskell
   - transformers
   - wasm-toolkit
 
@@ -201,6 +203,13 @@ tests:
   cloudflare:
     source-dirs: test
     main: cloudflare.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  nomain:
+    source-dirs: test
+    main: nomain.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius

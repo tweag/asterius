@@ -1,4 +1,4 @@
-import * as settings from "./rts.settings.mjs";
+import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
 
 export class MemoryTrap {
@@ -13,7 +13,7 @@ export class MemoryTrap {
 
   trap(_p, o) {
     const p = _p + o;
-    if (Memory.getTag(p) != settings.dataTag) {
+    if (Memory.getTag(p) != rtsConstants.dataTag) {
       const err =
           new WebAssembly.RuntimeError("Invalid address " + this.showI64(p));
       this.logger.logError(err);

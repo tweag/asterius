@@ -15,9 +15,11 @@ import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.BuildInfo
 import Asterius.Internals
-import Asterius.Internals.MagicNumber
 import Asterius.Internals.Temp
 import Asterius.JSFFI
+import Asterius.JSGen.Constants
+import Asterius.JSGen.Wasm
+import Asterius.JSRun.Main
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Resolve
 import Asterius.Types
@@ -42,7 +44,7 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.String
 import Foreign
-import Language.Haskell.GHC.Toolkit.Constants
+import Language.JavaScript.Inline.Core
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import NPM.Parcel
@@ -65,7 +67,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , tailCalls, gcSections, fullSymTable, bundle, noStreaming, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
+  , tailCalls, gcSections, fullSymTable, bundle, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -101,7 +103,6 @@ parseTask args =
         , bool_opt "no-gc-sections" $ \t -> t {gcSections = False}
         , bool_opt "full-sym-table" $ \t -> t {fullSymTable = True}
         , bool_opt "bundle" $ \t -> t {bundle = True}
-        , bool_opt "no-streaming" $ \t -> t {noStreaming = True}
         , bool_opt "sync" $ \t -> t {sync = True}
         , bool_opt "binaryen" $ \t -> t {binaryen = True}
         , bool_opt "debug" $ \t ->
@@ -132,7 +133,6 @@ parseTask args =
           , gcSections = True
           , fullSymTable = False
           , bundle = False
-          , noStreaming = False
           , sync = False
           , binaryen = False
           , debug = False
@@ -147,113 +147,6 @@ parseTask args =
 
 getTask :: IO Task
 getTask = parseTask <$> getArgs
-
-genRTSSettings :: Task -> Builder
-genRTSSettings Task {..} =
-  mconcat $
-  [ "export const debug = "
-  , if debug
-      then "true;\n"
-      else "false;\n"
-  , "export const platform = "
-  , case target of
-      Node -> "\"node\";\n"
-      Browser -> "\"browser\";\n"
-  , "export const dataTag = "
-  , int64Dec dataTag
-  , ";\nexport const functionTag = "
-  , int64Dec functionTag
-  , ";\nexport const mblock_size = "
-  , intDec mblock_size
-  , ";\nexport const block_size = "
-  , intDec block_size
-  , ";\nexport const blocks_per_mblock = "
-  , intDec blocks_per_mblock
-  , ";\nexport const sizeof_bdescr = "
-  , intDec sizeof_bdescr
-  , ";\nexport const offset_first_bdescr = "
-  , intDec offset_first_bdescr
-  , ";\nexport const offset_first_block = "
-  , intDec offset_first_block
-  , ";\nexport const sizeof_first_mblock = "
-  , intDec $ mblock_size - offset_first_block
-  , ";\nexport const offset_bdescr_start = "
-  , intDec offset_bdescr_start
-  , ";\nexport const offset_bdescr_free = "
-  , intDec offset_bdescr_free
-  , ";\nexport const offset_bdescr_link = "
-  , intDec offset_bdescr_link
-  , ";\nexport const offset_bdescr_flags = "
-  , intDec offset_bdescr_flags
-  , ";\nexport const offset_bdescr_blocks = "
-  , intDec offset_bdescr_blocks
-  , ";\nexport const BF_PINNED = "
-  , intDec bf_PINNED
-  , ";\nexport const pageSize = 65536;\n"
-  ] <>
-  [ "export const " <> k <> " = " <> intDec v <> ";\n"
-  | (k, v) <-
-      [ ("sizeof_StgAP", sizeof_StgAP)
-      , ("offset_StgAP_arity", offset_StgAP_arity)
-      , ("offset_StgAP_n_args", offset_StgAP_n_args)
-      , ("offset_StgAP_fun", offset_StgAP_fun)
-      , ("offset_StgAP_payload", offset_StgAP_payload)
-      , ("sizeof_StgAP_STACK", sizeof_StgAP_STACK)
-      , ("offset_StgAP_STACK_size", offset_StgAP_STACK_size)
-      , ("offset_StgAP_STACK_fun", offset_StgAP_STACK_fun)
-      , ("offset_StgAP_STACK_payload", offset_StgAP_STACK_payload)
-      , ("sizeof_StgArrBytes", sizeof_StgArrBytes)
-      , ("offset_StgArrBytes_bytes", offset_StgArrBytes_bytes)
-      , ( "offset_StgFunInfoExtraFwd_fun_type"
-        , offset_StgFunInfoExtraFwd_fun_type)
-      , ("offset_StgFunInfoExtraFwd_srt", offset_StgFunInfoExtraFwd_srt)
-      , ("offset_StgFunInfoExtraFwd_b", offset_StgFunInfoExtraFwd_b)
-      , ("offset_StgFunInfoTable_i", offset_StgFunInfoTable_i)
-      , ("offset_StgFunInfoTable_f", offset_StgFunInfoTable_f)
-      , ("sizeof_StgInd", sizeof_StgInd)
-      , ("offset_StgInd_indirectee", offset_StgInd_indirectee)
-      , ("sizeof_StgIndStatic", sizeof_StgIndStatic)
-      , ("offset_StgIndStatic_indirectee", offset_StgIndStatic_indirectee)
-      , ("offset_StgInfoTable_layout", offset_StgInfoTable_layout)
-      , ("offset_StgInfoTable_type", offset_StgInfoTable_type)
-      , ("offset_StgInfoTable_srt", offset_StgInfoTable_srt)
-      , ("offset_StgLargeBitmap_size", offset_StgLargeBitmap_size)
-      , ("offset_StgLargeBitmap_bitmap", offset_StgLargeBitmap_bitmap)
-      , ("sizeof_StgMutArrPtrs", sizeof_StgMutArrPtrs)
-      , ("offset_StgMutArrPtrs_ptrs", offset_StgMutArrPtrs_ptrs)
-      , ("offset_StgMutArrPtrs_payload", offset_StgMutArrPtrs_payload)
-      , ("sizeof_StgPAP", sizeof_StgPAP)
-      , ("offset_StgPAP_arity", offset_StgPAP_arity)
-      , ("offset_StgPAP_n_args", offset_StgPAP_n_args)
-      , ("offset_StgPAP_fun", offset_StgPAP_fun)
-      , ("offset_StgPAP_payload", offset_StgPAP_payload)
-      , ("sizeof_StgRetFun", sizeof_StgRetFun)
-      , ("offset_StgRetFun_size", offset_StgRetFun_size)
-      , ("offset_StgRetFun_fun", offset_StgRetFun_fun)
-      , ("offset_StgRetFun_payload", offset_StgRetFun_payload)
-      , ("offset_StgRetInfoTable_i", offset_StgRetInfoTable_i)
-      , ("offset_StgRetInfoTable_srt", offset_StgRetInfoTable_srt)
-      , ("sizeof_StgSelector", sizeof_StgSelector)
-      , ("offset_StgSelector_selectee", offset_StgSelector_selectee)
-      , ("sizeof_StgSmallMutArrPtrs", sizeof_StgSmallMutArrPtrs)
-      , ("offset_StgSmallMutArrPtrs_ptrs", offset_StgSmallMutArrPtrs_ptrs)
-      , ("offset_StgSmallMutArrPtrs_payload", offset_StgSmallMutArrPtrs_payload)
-      , ("sizeof_StgThunk", sizeof_StgThunk)
-      , ("offset_StgThunk_payload", offset_StgThunk_payload)
-      , ("offset_StgThunkInfoTable_i", offset_StgThunkInfoTable_i)
-      , ("offset_StgThunkInfoTable_srt", offset_StgThunkInfoTable_srt)
-      , ("offset_StgTSO_id", offset_StgTSO_id)
-      , ("offset_StgTSO_stackobj", offset_StgTSO_stackobj)
-      , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
-      , ("offset_StgStack_sp", offset_StgStack_sp)
-      , ("offset_StgStack_stack", offset_StgStack_stack)
-      , ("offset_StgWeak_cfinalizers", offset_StgWeak_cfinalizers)
-      , ("offset_StgWeak_key", offset_StgWeak_key)
-      , ("offset_StgWeak_value", offset_StgWeak_value)
-      , ("offset_StgWeak_finalizer", offset_StgWeak_finalizer)
-      , ("offset_StgWeak_link", offset_StgWeak_link)
-      ]
-  ]
 
 genPackageJSON :: Task -> Builder
 genPackageJSON Task {..} =
@@ -294,36 +187,11 @@ genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
        (map ((sym_map !) . ffiExportClosure . (ffiExportDecls !)) export_funcs)) <>
   ")"
 
-genWasm :: Task -> Builder
-genWasm Task {..} =
-  mconcat
-    [ case target of
-        Node -> "import fs from \"fs\";\n"
-        Browser -> mempty
-    , "export const module = "
-    , case target of
-        Node
-          | sync ->
-            "new WebAssembly.Module(fs.readFileSync(" <> out_wasm <> "))"
-          | otherwise ->
-            "new Promise((resolve, reject) => fs.readFile(" <> out_wasm <>
-            ", (err, buf) => err ? reject(err) : resolve(buf))).then(buf => WebAssembly.compile(buf))"
-        Browser
-          | noStreaming ->
-            "fetch (" <> out_wasm <>
-            ").then(resp => resp.arrayBuffer()).then(buf => WebAssembly.compile(buf))"
-          | otherwise ->
-            "WebAssembly.compileStreaming(fetch(" <> out_wasm <> "))"
-    , ";\n"
-    ]
-  where
-    out_wasm = string7 $ show $ outputBaseName <.> "wasm"
-
 genLib :: Task -> LinkReport -> [Event] -> Builder
 genLib Task {..} LinkReport {..} err_msgs =
   mconcat $
   [ "import * as rts from \"./rts.mjs\";\n"
-  , "export const newInstance = module => \n"
+  , "export default module => \n"
   , "rts.newAsteriusInstance({events: ["
   , mconcat (intersperse "," [string7 $ show $ show msg | msg <- err_msgs])
   , "], module: module"
@@ -360,10 +228,10 @@ genLib Task {..} LinkReport {..} err_msgs =
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =
   mconcat
-    [ "import {module} from \"./"
+    [ "import module from \"./"
     , out_base
     , ".wasm.mjs\";\n"
-    , "import * as "
+    , "import "
     , out_base
     , " from \"./"
     , out_base
@@ -373,7 +241,7 @@ genDefEntry Task {..} =
         Browser -> mempty
     , if sync
         then mconcat
-               [ "let i = " <> out_base <> ".newInstance(module);\n"
+               [ "let i = " <> out_base <> "(module);\n"
                , if debug
                    then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
@@ -391,7 +259,7 @@ genDefEntry Task {..} =
         else mconcat
                [ "module.then(m => "
                , out_base
-               , ".newInstance(m)).then(i => {\n"
+               , "(m)).then(i => {\n"
                , if debug
                    then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
                    else mempty
@@ -454,6 +322,7 @@ ahcLink Task {..} = do
     [ "--make"
     , "-O"
     , "-i" <> takeDirectory inputHS
+    , "-fexternal-interpreter"
     , "-pgml" <> ahcLd
     , "-clear-package-db"
     , "-global-package-db"
@@ -468,15 +337,23 @@ ahcLink Task {..} = do
     ["-optl--no-gc-sections" | not gcSections] <>
     ["-optl--binaryen" | binaryen] <>
     extraGHCFlags <>
+    [ "-optl--output-ir=" <> outputDirectory </>
+    (outputBaseName <.> "unlinked.bin")
+    | outputIR
+    ] <>
     ["-o", ld_output, inputHS]
   r <- decodeFile ld_output
   removeFile ld_output
   pure r
 
-ahcDistMain :: Task -> (Asterius.Types.Module, [Event], LinkReport) -> IO ()
-ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
+ahcDistMain ::
+     (String -> IO ())
+  -> Task
+  -> (Asterius.Types.Module, [Event], LinkReport)
+  -> IO ()
+ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
   let out_package_json = outputDirectory </> "package.json"
-      out_rts_settings = outputDirectory </> "rts.settings.mjs"
+      out_rts_constants = outputDirectory </> "rts.constants.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
       out_wasm_lib = outputDirectory </> outputBaseName <.> "wasm.mjs"
       out_lib = outputDirectory </> outputBaseName <.> "lib.mjs"
@@ -485,14 +362,14 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
       out_html = outputDirectory </> outputBaseName <.> "html"
       out_link = outputDirectory </> outputBaseName <.> "link.txt"
   when outputLinkReport $ do
-    putStrLn $ "[INFO] Writing linking report to " <> show out_link
+    logger $ "[INFO] Writing linking report to " <> show out_link
     writeFile out_link $ show report
   when outputIR $ do
-    let p = out_wasm -<.> "bin"
-    putStrLn $ "[INFO] Serializing linked IR to " <> show p
-    encodeFile p $ show final_m
+    let p = out_wasm -<.> "linked.txt"
+    logger $ "[INFO] Printing linked IR to " <> show p
+    writeFile p $ show final_m
   if binaryen
-    then (do putStrLn "[INFO] Converting linked IR to binaryen IR"
+    then (do logger "[INFO] Converting linked IR to binaryen IR"
              c_BinaryenSetDebugInfo 1
              c_BinaryenSetOptimizeLevel 0
              c_BinaryenSetShrinkLevel 0
@@ -500,23 +377,22 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                Binaryen.marshalModule
                  (staticsSymbolMap report <> functionSymbolMap report)
                  final_m
-             putStrLn "[INFO] Validating binaryen IR"
+             logger "[INFO] Validating binaryen IR"
              pass_validation <- c_BinaryenModuleValidate m_ref
              when (pass_validation /= 1) $
                fail "[ERROR] binaryen validation failed"
              m_bin <- Binaryen.serializeModule m_ref
-             putStrLn $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+             logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
              BS.writeFile out_wasm m_bin
              when outputIR $ do
                let p = out_wasm -<.> "binaryen.txt"
-               putStrLn $
-                 "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
+               logger $ "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
                case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
                  Right (rest, _, r)
                    | LBS.null rest -> writeFile p (show r)
                    | otherwise -> fail "[ERROR] Re-parsing produced residule"
                  _ -> fail "[ERROR] Re-parsing failed")
-    else (do putStrLn "[INFO] Converting linked IR to wasm-toolkit IR"
+    else (do logger "[INFO] Converting linked IR to wasm-toolkit IR"
              let conv_result =
                    runExcept $
                    WasmToolkit.makeModule
@@ -530,34 +406,33 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
                  Right r -> pure r
              when outputIR $ do
                let p = out_wasm -<.> "wasm-toolkit.txt"
-               putStrLn $ "[INFO] Writing wasm-toolkit IR to " <> show p
+               logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
                writeFile p $ show r
-             putStrLn $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+             logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
              withBinaryFile out_wasm WriteMode $ \h ->
                hPutBuilder h $ execPut $ putModule r)
-  putStrLn $
-    "[INFO] Writing JavaScript runtime settings to " <> show out_rts_settings
-  builderWriteFile out_rts_settings $ genRTSSettings task
-  putStrLn $
+  logger $
+    "[INFO] Writing JavaScript runtime constants to " <> show out_rts_constants
+  builderWriteFile out_rts_constants rtsConstants
+  logger $
     "[INFO] Writing JavaScript runtime modules to " <> show outputDirectory
   rts_files <- listDirectory $ dataDir </> "rts"
   for_ rts_files $ \f ->
     copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
-  putStrLn $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
-  builderWriteFile out_wasm_lib $ genWasm task
-  putStrLn $ "[INFO] Writing JavaScript lib module to " <> show out_lib
+  logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
+  builderWriteFile out_wasm_lib $ genWasm (target == Node) sync outputBaseName
+  logger $ "[INFO] Writing JavaScript lib module to " <> show out_lib
   builderWriteFile out_lib $ genLib task report err_msgs
-  putStrLn $ "[INFO] Writing JavaScript entry module to " <> show out_entry
+  logger $ "[INFO] Writing JavaScript entry module to " <> show out_entry
   case inputEntryMJS of
     Just in_entry -> copyFile in_entry out_entry
     _ -> builderWriteFile out_entry $ genDefEntry task
   when bundle $ do
     package_json_exist <- doesFileExist out_package_json
     unless package_json_exist $ do
-      putStrLn $
-        "[INFO] Writing a stub package.json to " <> show out_package_json
+      logger $ "[INFO] Writing a stub package.json to " <> show out_package_json
       builderWriteFile out_package_json $ genPackageJSON task
-    putStrLn $ "[INFO] Writing JavaScript bundled script to " <> show out_js
+    logger $ "[INFO] Writing JavaScript bundled script to " <> show out_js
     withCurrentDirectory outputDirectory $
       callProcess
         "node"
@@ -578,23 +453,37 @@ ahcDistMain task@Task {..} (final_m, err_msgs, report) = do
         , takeFileName out_entry
         ]
   when (target == Browser) $ do
-    putStrLn $ "[INFO] Writing HTML to " <> show out_html
+    logger $ "[INFO] Writing HTML to " <> show out_html
     builderWriteFile out_html $ genHTML task
   when (target == Node && run) $
     withCurrentDirectory (takeDirectory out_wasm) $
     if bundle
       then do
-        putStrLn $ "[INFO] Running " <> out_js
+        logger $ "[INFO] Running " <> out_js
         callProcess "node" $
           ["--experimental-wasm-return-call" | tailCalls] <>
           [takeFileName out_js]
       else do
-        putStrLn $ "[INFO] Running " <> out_entry
-        callProcess "node" $
-          ["--experimental-wasm-return-call" | tailCalls] <>
-          ["--experimental-modules", takeFileName out_entry]
+        logger $ "[INFO] Running " <> out_entry
+        case inputEntryMJS of
+          Just _ ->
+            callProcess "node" $
+            ["--experimental-wasm-return-call" | tailCalls] <>
+            ["--experimental-modules", takeFileName out_entry]
+          _ -> do
+            mod_buf <- LBS.readFile $ takeFileName out_wasm
+            withJSSession
+              defJSSessionOpts
+                { nodeExtraArgs =
+                    ["--experimental-wasm-return-call" | tailCalls]
+                } $ \s -> do
+              i <- newAsteriusInstance s (takeFileName out_lib) mod_buf
+              hsInit s i
+              hsMain s i
+              wasm_stdout <- hsStdOut s i
+              LBS.putStr wasm_stdout
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do
   ld_result <- ahcLink task
-  ahcDistMain task ld_result
+  ahcDistMain putStrLn task ld_result

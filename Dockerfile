@@ -3,7 +3,7 @@ FROM debian:unstable
 COPY asterius /root/asterius/asterius
 COPY binaryen /root/asterius/binaryen
 COPY ghc-toolkit /root/asterius/ghc-toolkit
-COPY inline-js /root/asterius/inline-js
+COPY inline-js/inline-js-core /root/asterius/inline-js/inline-js-core
 COPY npm-utils /root/asterius/npm-utils
 COPY wabt /root/asterius/wabt
 COPY wasm-toolkit /root/asterius/wasm-toolkit
@@ -35,7 +35,7 @@ RUN \
     xz-utils \
     zlib1g-dev && \
   curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
-  echo "deb https://deb.nodesource.com/node_11.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
+  echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
   apt update && \
   apt install -y nodejs && \
   mkdir -p /root/.local/bin && \
