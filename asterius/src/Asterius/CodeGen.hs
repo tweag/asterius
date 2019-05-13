@@ -312,6 +312,8 @@ widthToInt (GHC.W128) = 128
 widthToInt (GHC.W256) = 256
 widthToInt (GHC.W512) = 512
 
+data ShouldSext = Sext | NoSext
+
 marshalCmmHomoConvMachOp ::
      UnaryOp
   -> UnaryOp
@@ -324,8 +326,46 @@ marshalCmmHomoConvMachOp ::
 marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x =
   if ((w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32))
   then do
+      let name = AsteriusEntitySymbol $ "extendI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1) <> "Sext"
+      traceM $ "* in marshal SIGNED: " <> show w0 <> " -> " <> show w1 <> " (" <> show name <> ")"
+      (xe, _) <- marshalCmmExpr x
+      let c = Call
+                { target = name
+                , operands = [xe]
+                , callReturnTypes = [if w1 == GHC.W64 then I64 else I32]
+                }
+      pure (c, if w1 == GHC.W64 then I64 else I32)
+  else if w1 == GHC.W32 || w1 == GHC.W64
+  then do
+    traceM $ "# in marshal: " <> show w0 <> " -> " <> show w1
+    (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
+    xe <- marshalAndCastCmmExpr x t
+    pure (Unary {unaryOp = o, operand0 = xe}, tr)
+  else do
+    let name = AsteriusEntitySymbol $ "wrapI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
+    traceM $ "$ in marshal: " <> show w0 <> " -> " <> show w1 <> "(" <> show name <> ")"
+    (xe, _) <- marshalCmmExpr x
+    let c = Call
+              { target = name
+              , operands = [xe]
+              , callReturnTypes = [I32]
+              }
+    pure (c, I32)
+
+marshalCmmHomoConvMachOpNoSext ::
+     UnaryOp
+  -> UnaryOp
+  -> ValueType
+  -> ValueType
+  -> GHC.Width
+  -> GHC.Width
+  -> GHC.CmmExpr
+  -> CodeGen (Expression, ValueType)
+marshalCmmHomoConvMachOpNoSext o36 o63 t32 t64 w0 w1 x =
+  if ((w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32))
+  then do
       let name = AsteriusEntitySymbol $ "extendI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
-      traceM $ "* in marshal: " <> show w0 <> " -> " <> show w1 <> " (" <> show name <> ")"
+      traceM $ "* in marshal UNSIGNED: " <> show w0 <> " -> " <> show w1 <> " (" <> show name <> ")"
       (xe, _) <- marshalCmmExpr x
       let c = Call
                 { target = name
@@ -515,7 +555,7 @@ marshalCmmMachOp (GHC.MO_FS_Conv w0 w1) [x] =
 marshalCmmMachOp (GHC.MO_SS_Conv w0 w1) [x] =
   marshalCmmHomoConvMachOp ExtendSInt32 WrapInt64 I32 I64 w0 w1 x
 marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] =
-  marshalCmmHomoConvMachOp ExtendUInt32 WrapInt64 I32 I64 w0 w1 x
+  marshalCmmHomoConvMachOpNoSext ExtendUInt32 WrapInt64 I32 I64 w0 w1 x
 marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
   marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 x
 marshalCmmMachOp op xs =
