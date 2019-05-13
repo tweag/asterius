@@ -1580,7 +1580,6 @@ wrapI64ToI16 _ =
         emit $ loadI16 (symbol "__asterius_i64_slot") 0
   in trace (show v) v
 
-
 wrapI32ToI16 _ =
     runEDSL [I32] $ do
     setReturnTypes [I32]
@@ -1589,15 +1588,29 @@ wrapI32ToI16 _ =
     emit $ loadI16 (symbol "__asterius_i32_slot") 0
 
 extendI8ToI64 _ =
-    runEDSL [] $ do
+    runEDSL [I64] $ do
     setReturnTypes [I64]
     x <- param I32
-    storeI32 (symbol "__asterius_i32_slot") 0 x
-    emit $ Load{ signed=True, bytes=1, offset=0, valueType=I64, ptr = wrapInt64(symbol "__asterius_i32_slot")  }
+    storeI32 (symbol "__asterius_i64_slot") 0 x
+    emit $ Load{ signed=True, bytes=1, offset=0, valueType=I64, ptr = wrapInt64(symbol "__asterius_i64_slot")  }
 
 extendI16ToI64 _ =
-    runEDSL [] $ do
+    runEDSL [I64] $ do
     setReturnTypes [I64]
     x <- param I32
+    storeI32 (symbol "__asterius_i64_slot") 0 x
+    emit $ Load{ signed=True, bytes=2, offset=0, valueType=I64, ptr = wrapInt64 (symbol "__asterius_i64_slot")  }
+
+extendI8ToI32 _ =
+    runEDSL [I64] $ do
+    setReturnTypes [I32]
+    x <- param I32
     storeI32 (symbol "__asterius_i32_slot") 0 x
-    emit $ Load{ signed=True, bytes=2, offset=0, valueType=I64, ptr = wrapInt64 (symbol "__asterius_i32_slot")  }
+    emit $ Load{ signed=True, bytes=1, offset=0, valueType=I32, ptr = wrapInt64(symbol "__asterius_i32_slot")  }
+
+extendI16ToI32 _ =
+    runEDSL [I64] $ do
+    setReturnTypes [I32]
+    x <- param I32
+    storeI32 (symbol "__asterius_i32_slot") 0 x
+    emit $ Load{ signed=True, bytes=2, offset=0, valueType=I32, ptr = wrapInt64 (symbol "__asterius_i32_slot")  }

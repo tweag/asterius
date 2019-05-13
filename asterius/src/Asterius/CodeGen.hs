@@ -322,16 +322,15 @@ marshalCmmHomoConvMachOp ::
   -> GHC.CmmExpr
   -> CodeGen (Expression, ValueType)
 marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x =
-  if (w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32)
+  if False && ((w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32))
   then do
-      traceM $ "* in marshal: " <> show w0 <> " -> " <> show w1
       let name = AsteriusEntitySymbol $ "extendI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
       traceM $ "* in marshal: " <> show w0 <> " -> " <> show w1 <> " (" <> show name <> ")"
       (xe, _) <- marshalCmmExpr x
       let c = Call
                 { target = name
                 , operands = [xe]
-                , callReturnTypes = [I64]
+                , callReturnTypes = [if w1 == GHC.W64 then I64 else I32]
                 }
       pure (c, I32)
   else if w1 == GHC.W32 || w1 == GHC.W64
@@ -341,8 +340,8 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x =
     xe <- marshalAndCastCmmExpr x t
     pure (Unary {unaryOp = o, operand0 = xe}, tr)
   else do
-    traceM $ "$ in marshal: " <> show w0 <> " -> " <> show w1
     let name = AsteriusEntitySymbol $ "wrapI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
+    traceM $ "$ in marshal: " <> show w0 <> " -> " <> show w1 <> "(" <> show name <> ")"
     (xe, _) <- marshalCmmExpr x
     let c = Call
               { target = name
