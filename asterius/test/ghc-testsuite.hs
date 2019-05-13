@@ -50,13 +50,12 @@ runTestCase TestCase {..} = do
     pure (hs_stdout, hs_stderr)
 
 makeTestTree :: TestCase -> IO TestTree
-makeTestTree c@TestCase {..} = do
-  let test_name = takeBaseName casePath
-  testSpec test_name $
-    it test_name $ do
-      (hs_stdout, hs_stderr) <- runTestCase c
-      hs_stdout `shouldBe` caseStdOut
-      hs_stderr `shouldBe` caseStdErr
+makeTestTree c@TestCase {..} =
+  testSpec casePath $
+  it casePath $ do
+    (hs_stdout, hs_stderr) <- runTestCase c
+    hs_stdout `shouldBe` caseStdOut
+    hs_stderr `shouldBe` caseStdErr
 
 main :: IO ()
 main = do
