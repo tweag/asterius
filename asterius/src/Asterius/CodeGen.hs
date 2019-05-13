@@ -312,8 +312,9 @@ widthToInt (GHC.W128) = 128
 widthToInt (GHC.W256) = 256
 widthToInt (GHC.W512) = 512
 
-data ShouldSext = Sext | NoSext
+data ShouldSext = Sext | NoSext deriving(Eq)
 
+-- Should this logic be pushed into `marshalAndCastCmmExpr?
 marshalCmmHomoConvMachOp ::
      UnaryOp
   -> UnaryOp
@@ -321,29 +322,27 @@ marshalCmmHomoConvMachOp ::
   -> ValueType
   -> GHC.Width
   -> GHC.Width
+  -> ShouldSext
   -> GHC.CmmExpr
   -> CodeGen (Expression, ValueType)
-marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x =
-  if ((w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32))
+marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 sext x =
+  if (w0 == GHC.W8 || w0 == GHC.W16) && (w1 == GHC.W32 || w1 == GHC.W64)
   then do
-      let name = AsteriusEntitySymbol $ "extendI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1) <> "Sext"
-      traceM $ "* in marshal SIGNED: " <> show w0 <> " -> " <> show w1 <> " (" <> show name <> ")"
-      (xe, _) <- marshalCmmExpr x
-      let c = Call
-                { target = name
-                , operands = [xe]
-                , callReturnTypes = [if w1 == GHC.W64 then I64 else I32]
-                }
-      pure (c, if w1 == GHC.W64 then I64 else I32)
-  else if w1 == GHC.W32 || w1 == GHC.W64
+    -- we are extending from {W8, W16} to {W32, W64}. Sign extension
+    -- semantics matters here.
+    let name = AsteriusEntitySymbol $ "extendI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
+    (xe, _) <- marshalCmmExpr x
+    let c = Call
+              { target = name <> (if sext == Sext then "Sext" else "")
+              , operands = [xe]
+              , callReturnTypes = [if w1 == GHC.W64 then I64 else I32]
+              }
+    pure (c, if w1 == GHC.W64 then I64 else I32)
+  else if (w0 == GHC.W32 || w0 == GHC.W64) && (w1 == GHC.W8 || w1 == GHC.W16)
   then do
-    traceM $ "# in marshal: " <> show w0 <> " -> " <> show w1
-    (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
-    xe <- marshalAndCastCmmExpr x t
-    pure (Unary {unaryOp = o, operand0 = xe}, tr)
-  else do
+    -- we are wrapping from {32, 64} to {8, 16}
     let name = AsteriusEntitySymbol $ "wrapI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
-    traceM $ "$ in marshal: " <> show w0 <> " -> " <> show w1 <> "(" <> show name <> ")"
+    -- traceM $ "$ in marshal: " <> show w0 <> " -> " <> show w1 <> "(" <> show name <> ")"
     (xe, _) <- marshalCmmExpr x
     let c = Call
               { target = name
@@ -351,45 +350,11 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x =
               , callReturnTypes = [I32]
               }
     pure (c, I32)
-
-marshalCmmHomoConvMachOpNoSext ::
-     UnaryOp
-  -> UnaryOp
-  -> ValueType
-  -> ValueType
-  -> GHC.Width
-  -> GHC.Width
-  -> GHC.CmmExpr
-  -> CodeGen (Expression, ValueType)
-marshalCmmHomoConvMachOpNoSext o36 o63 t32 t64 w0 w1 x =
-  if ((w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32))
-  then do
-      let name = AsteriusEntitySymbol $ "extendI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
-      traceM $ "* in marshal UNSIGNED: " <> show w0 <> " -> " <> show w1 <> " (" <> show name <> ")"
-      (xe, _) <- marshalCmmExpr x
-      let c = Call
-                { target = name
-                , operands = [xe]
-                , callReturnTypes = [if w1 == GHC.W64 then I64 else I32]
-                }
-      pure (c, if w1 == GHC.W64 then I64 else I32)
-  else if w1 == GHC.W32 || w1 == GHC.W64
-  then do
-    traceM $ "# in marshal: " <> show w0 <> " -> " <> show w1
+  else do
+    -- we are converting from {32, 64} to {32, 64} of floating point / int
     (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
     xe <- marshalAndCastCmmExpr x t
     pure (Unary {unaryOp = o, operand0 = xe}, tr)
-  else do
-    let name = AsteriusEntitySymbol $ "wrapI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
-    traceM $ "$ in marshal: " <> show w0 <> " -> " <> show w1 <> "(" <> show name <> ")"
-    (xe, _) <- marshalCmmExpr x
-    let c = Call
-              { target = name
-              , operands = [xe]
-              , callReturnTypes = [I32]
-              }
-    pure (c, I32)
-
 
 marshalCmmHeteroConvMachOp ::
      UnaryOp
@@ -553,11 +518,11 @@ marshalCmmMachOp (GHC.MO_FS_Conv w0 w1) [x] =
     w1
     x
 marshalCmmMachOp (GHC.MO_SS_Conv w0 w1) [x] =
-  marshalCmmHomoConvMachOp ExtendSInt32 WrapInt64 I32 I64 w0 w1 x
+  marshalCmmHomoConvMachOp ExtendSInt32 WrapInt64 I32 I64 w0 w1 Sext x
 marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] =
-  marshalCmmHomoConvMachOpNoSext ExtendUInt32 WrapInt64 I32 I64 w0 w1 x
+  marshalCmmHomoConvMachOp ExtendUInt32 WrapInt64 I32 I64 w0 w1 NoSext x
 marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
-  marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 x
+  marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 Sext x
 marshalCmmMachOp op xs =
   throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmMachOp op xs
 
