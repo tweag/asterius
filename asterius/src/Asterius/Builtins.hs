@@ -200,7 +200,10 @@ rtsAsteriusModule opts =
         , ("wrapI32ToI8", wrapI32ToI8 opts)
         , ("wrapI64ToI16", wrapI64ToI16 opts)
         , ("wrapI32ToI16", wrapI32ToI16 opts)
-        , ("extendI8toI64", extendI8ToI64 opts)
+        , ("extendI8ToI64", extendI8ToI64 opts)
+        , ("extendI16ToI64", extendI16ToI64 opts)
+        , ("extendI8ToI32", extendI8ToI32 opts)
+        , ("extendI16ToI32", extendI16ToI32 opts)
         , ("strlen", strlenFunction opts)
         , ("memchr", memchrFunction opts)
         , ("memcpy", memcpyFunction opts)
@@ -1602,14 +1605,14 @@ extendI16ToI64 _ =
     emit $ Load{ signed=True, bytes=2, offset=0, valueType=I64, ptr = wrapInt64 (symbol "__asterius_i64_slot")  }
 
 extendI8ToI32 _ =
-    runEDSL [I64] $ do
+    runEDSL [I32] $ do
     setReturnTypes [I32]
     x <- param I32
     storeI32 (symbol "__asterius_i32_slot") 0 x
     emit $ Load{ signed=True, bytes=1, offset=0, valueType=I32, ptr = wrapInt64(symbol "__asterius_i32_slot")  }
 
 extendI16ToI32 _ =
-    runEDSL [I64] $ do
+    runEDSL [I32] $ do
     setReturnTypes [I32]
     x <- param I32
     storeI32 (symbol "__asterius_i32_slot") 0 x

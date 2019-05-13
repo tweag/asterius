@@ -322,7 +322,7 @@ marshalCmmHomoConvMachOp ::
   -> GHC.CmmExpr
   -> CodeGen (Expression, ValueType)
 marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x =
-  if False && ((w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32))
+  if ((w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32))
   then do
       let name = AsteriusEntitySymbol $ "extendI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
       traceM $ "* in marshal: " <> show w0 <> " -> " <> show w1 <> " (" <> show name <> ")"
@@ -332,7 +332,7 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x =
                 , operands = [xe]
                 , callReturnTypes = [if w1 == GHC.W64 then I64 else I32]
                 }
-      pure (c, I32)
+      pure (c, if w1 == GHC.W64 then I64 else I32)
   else if w1 == GHC.W32 || w1 == GHC.W64
   then do
     traceM $ "# in marshal: " <> show w0 <> " -> " <> show w1

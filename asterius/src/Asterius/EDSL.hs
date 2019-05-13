@@ -228,7 +228,7 @@ global :: UnresolvedGlobalReg -> LVal
 global gr =
   LVal
     {getLVal = unresolvedGetGlobal gr, putLVal = emit . unresolvedSetGlobal gr}
-
+-- pointer valueType=I64 bytes=8 signed=False ptr=wrapInt64 bp offset=0
 pointer :: ValueType -> BinaryenIndex -> Bool -- ^ should sign extend?
   -> Expression -> Int -> LVal
 pointer vt b s bp o =
