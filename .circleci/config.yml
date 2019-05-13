@@ -79,6 +79,9 @@ jobs:
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls"
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
 
+            stack --no-terminal test asterius:nomain
+            stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
+
   asterius-build-docker:
     docker:
       - image: docker:edge-git
