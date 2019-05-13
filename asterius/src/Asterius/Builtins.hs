@@ -201,15 +201,15 @@ rtsAsteriusModule opts =
         , ("wrapI64ToI16", wrapI64ToI16 opts)
         , ("wrapI32ToI16", wrapI32ToI16 opts)
         -- sext
-        , ("extendI8ToI64Sext", extendI8ToI64Sext opts)
-        , ("extendI16ToI64Sext", extendI16ToI64Sext opts)
-        , ("extendI8ToI32Sext", extendI8ToI32Sext opts)
-        , ("extendI16ToI32Sext", extendI16ToI32Sext opts)
+        , ("extendI8ToI64Sext", genExtend 1 I64 Sext)
+        , ("extendI16ToI64Sext", genExtend 2 I64 Sext)
+        , ("extendI8ToI32Sext", genExtend 1 I32 Sext)
+        , ("extendI16ToI32Sext", genExtend 2 I32 Sext)
         -- no SEXT
-        , ("extendI8ToI64", extendI8ToI64 opts)
-        , ("extendI16ToI64", extendI16ToI64 opts)
-        , ("extendI8ToI32", extendI8ToI32 opts)
-        , ("extendI16ToI32", extendI16ToI32 opts)
+        , ("extendI8ToI64", genExtend 1 I64 NoSext)
+        , ("extendI16ToI64", genExtend 2 I64 NoSext)
+        , ("extendI8ToI32", genExtend 1 I32 NoSext)
+        , ("extendI16ToI32", genExtend 2 I32 NoSext)
         , ("strlen", strlenFunction opts)
         , ("memchr", memchrFunction opts)
         , ("memcpy", memcpyFunction opts)
@@ -657,7 +657,7 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function, wrapI64ToI8, wrapI32ToI8, wrapI64ToI16, wrapI32ToI16, extendI8ToI64 ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function, wrapI64ToI8, wrapI32ToI8, wrapI64ToI16, wrapI32ToI16 ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {} =
   runEDSL [] $ do
@@ -1591,68 +1591,30 @@ wrapI64ToI16 _ =
 
 wrapI32ToI16 _ =
     runEDSL [I32] $ do
-    setReturnTypes [I32]
-    x <- param I32
-    storeI32 (symbol "__asterius_i32_slot") 0 x
-    emit $ loadI16 (symbol "__asterius_i32_slot") 0
-
--- SEXT
-
-extendI8ToI64Sext _ =
-    runEDSL [I64] $ do
-    setReturnTypes [I64]
-    x <- param I32
-    storeI32 (symbol "__asterius_i64_slot") 0 x
-    emit $ Load{ signed=True, bytes=1, offset=0, valueType=I64, ptr = wrapInt64(symbol "__asterius_i64_slot")  }
-
-extendI16ToI64Sext _ =
-    runEDSL [I64] $ do
-    setReturnTypes [I64]
-    x <- param I32
-    storeI32 (symbol "__asterius_i64_slot") 0 x
-    emit $ Load{ signed=True, bytes=2, offset=0, valueType=I64, ptr = wrapInt64 (symbol "__asterius_i64_slot")  }
-
-extendI8ToI32Sext _ =
-    runEDSL [I32] $ do
-    setReturnTypes [I32]
-    x <- param I32
-    storeI32 (symbol "__asterius_i32_slot") 0 x
-    emit $ Load{ signed=True, bytes=1, offset=0, valueType=I32, ptr = wrapInt64(symbol "__asterius_i32_slot")  }
-
-extendI16ToI32Sext _ =
-    runEDSL [I32] $ do
-    setReturnTypes [I32]
-    x <- param I32
-    storeI32 (symbol "__asterius_i32_slot") 0 x
-    emit $ Load{ signed=True, bytes=2, offset=0, valueType=I32, ptr = wrapInt64 (symbol "__asterius_i32_slot")  }
+        setReturnTypes [I32]
+        x <- param I32
+        storeI32 (symbol "__asterius_i32_slot") 0 x
+        emit $ loadI16 (symbol "__asterius_i32_slot") 0
 
 
--- NOSEXT
+-- | Whether when generate a sign extended value
+data ShouldSext = Sext | NoSext deriving(Eq)
 
-extendI8ToI64 _ =
-    runEDSL [I64] $ do
-    setReturnTypes [I64]
-    x <- param I32
-    storeI32 (symbol "__asterius_i64_slot") 0 x
-    emit $ Load{ signed=False, bytes=1, offset=0, valueType=I64, ptr = wrapInt64(symbol "__asterius_i64_slot")  }
-
-extendI16ToI64 _ =
-    runEDSL [I64] $ do
-    setReturnTypes [I64]
-    x <- param I32
-    storeI32 (symbol "__asterius_i64_slot") 0 x
-    emit $ Load{ signed=False, bytes=2, offset=0, valueType=I64, ptr = wrapInt64 (symbol "__asterius_i64_slot")  }
-
-extendI8ToI32 _ =
-    runEDSL [I32] $ do
-    setReturnTypes [I32]
-    x <- param I32
-    storeI32 (symbol "__asterius_i32_slot") 0 x
-    emit $ Load{ signed=False, bytes=1, offset=0, valueType=I32, ptr = wrapInt64(symbol "__asterius_i32_slot")  }
-
-extendI16ToI32 _ =
-    runEDSL [I32] $ do
-    setReturnTypes [I32]
-    x <- param I32
-    storeI32 (symbol "__asterius_i32_slot") 0 x
-    emit $ Load{ signed=False, bytes=2, offset=0, valueType=I32, ptr = wrapInt64 (symbol "__asterius_i32_slot")  }
+-- | generate a function to sign extend an input value into an output value.
+-- | We perform the sign extension by storing the old value.
+-- | Note that our input type is always I32. This is because we will only
+-- | ever have to generate sign extension calls from GHC.W8, GHC.W16, GHC.W32,
+-- | all of which are stored as I32, since wasm cannot store smaller types.
+-- | So, our input will _always_ be an I32.
+genExtend :: Int -- ^ number of bytes to load
+    -> ValueType -- ^ output value type
+    -> ShouldSext -- ^ whether the extend should sign-extend or not
+    -> Function
+genExtend b to sext =
+    runEDSL [to] $ do
+        setReturnTypes [to]
+        x <- param I32
+        -- we will just use the i64 slot since it's large enough to hold all
+        -- the wasm datatypes we have.
+        storeI32 (symbol "__asterius_i64_slot") 0 x
+        emit $ Load{ signed=(sext == Sext), bytes=fromIntegral b, offset=0, valueType=to, ptr = wrapInt64(symbol "__asterius_i64_slot")  }
