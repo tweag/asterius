@@ -196,10 +196,11 @@ rtsAsteriusModule opts =
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
         , ("assert_eq_i64", assertEqI64Function opts)
-        , ("wrapI64ToI8", wrapI64ToI8 opts)
-        , ("wrapI32ToI8", wrapI32ToI8 opts)
-        , ("wrapI64ToI16", wrapI64ToI16 opts)
-        , ("wrapI32ToI16", wrapI32ToI16 opts)
+        -- wrap
+        , ("wrapI64ToI8", genWrap I64 1)
+        , ("wrapI32ToI8", genWrap I32 1)
+        , ("wrapI64ToI16", genWrap I64 2)
+        , ("wrapI32ToI16", genWrap I32 2)
         -- sext
         , ("extendI8ToI64Sext", genExtend 1 I64 Sext)
         , ("extendI16ToI64Sext", genExtend 2 I64 Sext)
@@ -657,7 +658,7 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function, wrapI64ToI8, wrapI32ToI8, wrapI64ToI16, wrapI32ToI16 ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {} =
   runEDSL [] $ do
@@ -1566,36 +1567,37 @@ offset_StgTSO_StgStack :: Int
 offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
 
 
-wrapI64ToI8 _ =
-  let v = runEDSL [I32] $ do
-        setReturnTypes [I32]
-        x <- param I64
-        storeI64 (symbol "__asterius_i64_slot") 0 x
-        emit $ loadI8 (symbol "__asterius_i64_slot") 0
-  in trace (show v) v
+-- @cheng: there is a trade-off here: Either I emit the low-level
+-- store and load, or I expose a _lot more_ from the EDSL
+-- to create the correct types of stores and loads I want.
+-- I went with the former, but we can discuss trade-offs.
 
-wrapI32ToI8 _ =
-    runEDSL [I32] $ do
-    setReturnTypes [I32]
-    x <- param I32
-    storeI32  (symbol "__asterius_i32_slot") 0 x
-    emit $ loadI8 (symbol "__asterius_i32_slot") 0
-
-wrapI64ToI16 _ =
-  let v = runEDSL [I32] $ do
-        setReturnTypes [I32]
-        x <- param I64
-        storeI64 (symbol "__asterius_i64_slot") 0 x
-        emit $ loadI16 (symbol "__asterius_i64_slot") 0
-  in trace (show v) v
-
-wrapI32ToI16 _ =
-    runEDSL [I32] $ do
-        setReturnTypes [I32]
-        x <- param I32
-        storeI32 (symbol "__asterius_i32_slot") 0 x
-        emit $ loadI16 (symbol "__asterius_i32_slot") 0
-
+-- | Generate a wrap from the input type to the output type by invoking
+-- | the correct load instruction.
+-- | Since we only generate wrapping from larger types to smaller types,
+-- | our output can only be {32, 16, 8} bits. However, wasm has
+-- | I32 as the smallest type. So, our output is _always_ I32.
+-- | invariant: output type is smaller than input type.
+genWrap :: ValueType -- ^ Input type
+  -> Int -- ^ number of bytes to load for the output type
+  -> Function
+genWrap ti b =
+  runEDSL [I32] $ do
+  setReturnTypes [I32]
+  x <- param ti
+  emit $ Store {
+               bytes=if ti == I32 then 4 else 8
+               , offset=0
+               , ptr = wrapInt64 (symbol "__asterius_i64_slot")
+               , value = x
+               , valueType= ti
+               }
+  emit $ Load { signed=False
+              , bytes=fromIntegral b
+              , offset=0
+              , valueType=I32
+              , ptr = wrapInt64(symbol "__asterius_i64_slot")
+              }
 
 -- | Whether when generate a sign extended value
 data ShouldSext = Sext | NoSext deriving(Eq)
@@ -1617,4 +1619,9 @@ genExtend b to sext =
         -- we will just use the i64 slot since it's large enough to hold all
         -- the wasm datatypes we have.
         storeI32 (symbol "__asterius_i64_slot") 0 x
-        emit $ Load{ signed=(sext == Sext), bytes=fromIntegral b, offset=0, valueType=to, ptr = wrapInt64(symbol "__asterius_i64_slot")  }
+        emit $ Load { signed=(sext == Sext)
+                    , bytes=fromIntegral b
+                    , offset=0
+                    , valueType=to
+                    , ptr = wrapInt64(symbol "__asterius_i64_slot")
+                    }
