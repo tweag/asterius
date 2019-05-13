@@ -157,8 +157,9 @@ bundleExpressions vts el =
     [e] -> e
     _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
-runEDSL :: [ValueType] -> EDSL () -> Function
-runEDSL vts (EDSL m) =
+-- | Given the return values and the function builder, build the function
+runEDSL :: EDSL () -> Function
+runEDSL (EDSL m) =
   adjustLocalRegs $
   Function
     { functionType =
