@@ -6,6 +6,17 @@
 import GHC.Exts
 import GHC.Types
 
+{-
+This test case tests the ability of the compiler to handle casts from I8/I16 to
+I64 in a hand-written test case.
+
+Expected output:
+-1
+255
+-1
+65535
+-}
+
 mainInt8 :: IO ()
 mainInt8 = do
   r <-
