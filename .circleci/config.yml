@@ -82,6 +82,8 @@ jobs:
             stack --no-terminal test asterius:nomain
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
+            stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j8" || true
+
   asterius-build-docker:
     docker:
       - image: docker:edge-git
