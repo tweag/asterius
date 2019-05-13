@@ -29,6 +29,7 @@ module Asterius.EDSL
   , pointerF64
   , pointerF32
   , loadI64
+  , loadI64Sext
   , loadI32
   , loadI16
   , loadI8
@@ -228,12 +229,13 @@ global gr =
   LVal
     {getLVal = unresolvedGetGlobal gr, putLVal = emit . unresolvedSetGlobal gr}
 
-pointer :: ValueType -> BinaryenIndex -> Expression -> Int -> LVal
-pointer vt b bp o =
+pointer :: ValueType -> BinaryenIndex -> Bool -- ^ should sign extend?
+  -> Expression -> Int -> LVal
+pointer vt b s bp o =
   LVal
     { getLVal =
         Load
-          { signed = False
+          { signed = s
           , bytes = b
           , offset = fromIntegral o
           , valueType = vt
@@ -251,23 +253,26 @@ pointer vt b bp o =
             }
     }
 
-pointerI64, pointerI32, pointerI16, pointerI8, pointerF64, pointerF32 ::
+pointerI64, pointerI64Sext, pointerI32, pointerI16, pointerI8, pointerF64, pointerF32 ::
      Expression -> Int -> LVal
-pointerI64 = pointer I64 8
+pointerI64 = pointer I64 8 False
 
-pointerI32 = pointer I32 4
+pointerI64Sext = pointer I64 8 True
 
-pointerI16 = pointer I32 2
+pointerI32 = pointer I32 4 False
 
-pointerI8 = pointer I32 1
+pointerI16 = pointer I32 2 False
 
-pointerF64 = pointer F64 8
+pointerI8 = pointer I32 1 False
 
-pointerF32 = pointer F32 4
+pointerF64 = pointer F64 8 False
+
+pointerF32 = pointer F32 4 False
 
 loadI64, loadI32, loadI16, loadI8, loadF64, loadF32 ::
      Expression -> Int -> Expression
 loadI64 bp o = getLVal $ pointerI64 bp o
+loadI64Sext bp o = getLVal $ pointerI64Sext bp o
 
 loadI32 bp o = getLVal $ pointerI32 bp o
 

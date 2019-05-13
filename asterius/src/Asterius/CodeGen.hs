@@ -220,11 +220,11 @@ marshalCmmLoad p t = do
       (GHC.typeWidth t)
       (pure
          ( Load
-             {signed = True, bytes = 1, offset = 0, valueType = I32, ptr = pv}
+             {signed = False, bytes = 1, offset = 0, valueType = I32, ptr = pv}
          , I32))
       (pure
          ( Load
-             {signed = True, bytes = 2, offset = 0, valueType = I32, ptr = pv}
+             {signed = False, bytes = 2, offset = 0, valueType = I32, ptr = pv}
          , I32))
       (do vt <- marshalCmmType t
           pure
@@ -321,14 +321,27 @@ marshalCmmHomoConvMachOp ::
   -> GHC.Width
   -> GHC.CmmExpr
   -> CodeGen (Expression, ValueType)
-marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x = do
-  if w1 == GHC.W32 || w1 == GHC.W64
+marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x =
+  if (w0 == GHC.W8  || w0 == GHC.W16) && (w1 == GHC.W64 || w1 == GHC.W32)
   then do
+      traceM $ "* in marshal: " <> show w0 <> " -> " <> show w1
+      let name = AsteriusEntitySymbol $ "extendI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
+      traceM $ "* in marshal: " <> show w0 <> " -> " <> show w1 <> " (" <> show name <> ")"
+      (xe, _) <- marshalCmmExpr x
+      let c = Call
+                { target = name
+                , operands = [xe]
+                , callReturnTypes = [I64]
+                }
+      pure (c, I32)
+  else if w1 == GHC.W32 || w1 == GHC.W64
+  then do
+    traceM $ "# in marshal: " <> show w0 <> " -> " <> show w1
     (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
     xe <- marshalAndCastCmmExpr x t
     pure (Unary {unaryOp = o, operand0 = xe}, tr)
   else do
-    traceM $ "in marshal: " <> show w0 <> " -> " <> show w1
+    traceM $ "$ in marshal: " <> show w0 <> " -> " <> show w1
     let name = AsteriusEntitySymbol $ "wrapI" <> showSBS (widthToInt w0) <> "ToI" <> showSBS (widthToInt w1)
     (xe, _) <- marshalCmmExpr x
     let c = Call
@@ -336,7 +349,6 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 x = do
               , operands = [xe]
               , callReturnTypes = [I32]
               }
-
     pure (c, I32)
 
 
