@@ -15,6 +15,7 @@ module Asterius.CodeGen
   , marshalRawCmm
   ) where
 
+import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Passes.All
 import Asterius.Passes.GlobalRegs
@@ -331,15 +332,8 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 sext x =
   else if (w0 == GHC.W32 || w0 == GHC.W64) && (w1 == GHC.W8 || w1 == GHC.W16)
   then do
     -- we are wrapping from {32, 64} to {8, 16}
-    let name = AsteriusEntitySymbol $ "wrapI" <> showSBS (GHC.widthInBits w0) <> "ToI" <> showSBS (GHC.widthInBits w1)
-    -- traceM $ "$ in marshal: " <> show w0 <> " -> " <> show w1 <> "(" <> show name <> ")"
     (xe, _) <- marshalCmmExpr x
-    let c = Call
-              { target = name
-              , operands = [xe]
-              , callReturnTypes = [I32]
-              }
-    pure (c, I32)
+    pure (genWrap (if w0 == GHC.W32 then I32 else I64) (GHC.widthInBytes w1) xe, I32)
   else do
     -- we are converting from {32, 64} to {32, 64} of floating point / int
     (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)

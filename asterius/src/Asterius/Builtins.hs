@@ -13,6 +13,7 @@ module Asterius.Builtins
   , emitErrorMessage
   , wasmPageSize
   , generateWrapperFunction
+  , genWrap
   ) where
 
 import Asterius.EDSL
@@ -189,11 +190,6 @@ rtsAsteriusModule opts =
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
         , ("assert_eq_i64", assertEqI64Function opts)
-        -- wrap
-        , ("wrapI64ToI8", genWrap I64 1)
-        , ("wrapI32ToI8", genWrap I32 1)
-        , ("wrapI64ToI16", genWrap I64 2)
-        , ("wrapI32ToI16", genWrap I32 2)
         -- sext
         , ("extendI8ToI64Sext", genExtend 1 I64 Sext)
         , ("extendI16ToI64Sext", genExtend 2 I64 Sext)
@@ -1573,24 +1569,33 @@ offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
 -- | invariant: output type is smaller than input type.
 genWrap :: ValueType -- ^ Input type
   -> Int -- ^ number of bytes to load for the output type
-  -> Function
-genWrap ti b =
-  runEDSL [I32] $ do
-  setReturnTypes [I32]
-  x <- param ti
-  emit $ Store {
-               bytes=if ti == I32 then 4 else 8
-               , offset=0
-               , ptr = wrapInt64 (symbol "__asterius_i64_slot")
-               , value = x
-               , valueType= ti
-               }
-  emit $ Load { signed=False
-              , bytes=fromIntegral b
-              , offset=0
-              , valueType=I32
-              , ptr = wrapInt64(symbol "__asterius_i64_slot")
-              }
+  -> Expression
+  -> Expression
+genWrap ti b x =
+  Block
+    { name = ""
+    , bodys =
+        [ Store
+            { bytes =
+                if ti == I32
+                  then 4
+                  else 8
+            , offset = 0
+            , ptr = wrapInt64 (symbol "__asterius_i64_slot")
+            , value = x
+            , valueType = ti
+            }
+        , Load
+            { signed = False
+            , bytes = fromIntegral b
+            , offset = 0
+            , valueType = I32
+            , ptr = wrapInt64 (symbol "__asterius_i64_slot")
+            }
+        ]
+    , blockReturnTypes = [I32]
+    }
+
 
 -- | Whether when generate a sign extended value
 data ShouldSext = Sext | NoSext deriving(Eq)
