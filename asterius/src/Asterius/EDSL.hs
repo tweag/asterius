@@ -107,14 +107,18 @@ import qualified Data.ByteString.Short as SBS
 import Data.Monoid
 import Data.Traversable
 
+-- | Difference lists
 type DList a = Endo [a]
 
+-- | Append an element to the end of the list. Opposite of cons
 dListSnoc :: DList a -> a -> DList a
 dListSnoc dl a = dl <> Endo (a :)
 
+-- | Materialize a difference list into a haskell list
 fromDList :: DList a -> [a]
 fromDList = ($ []) . appEndo
 
+-- | State maintained by the EDSL builder.
 data EDSLState = EDSLState
   { retTypes :: [ValueType]
   , paramBuf :: DList ValueType
@@ -150,30 +154,36 @@ emit :: Expression -> EDSL ()
 emit e =
   EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `dListSnoc` e}
 
-bundleExpressions :: [ValueType] -> [Expression] -> Expression
+--  | Create a block from the list of expressions returning the given values.
+bundleExpressions :: [ValueType] -- ^ Return values of the block
+  -> [Expression] -- ^ Expressions in the block
+  -> Expression
 bundleExpressions vts el =
   case el of
     [] -> Nop
     [e] -> e
     _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
-runEDSL :: [ValueType] -> EDSL () -> Function
-runEDSL vts (EDSL m) =
+-- | Given the return values and the function builder, build the function
+runEDSL :: EDSL () -> Function
+runEDSL (EDSL m) =
   adjustLocalRegs $
   Function
     { functionType =
         FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
     , varTypes = []
-    , body = bundleExpressions vts $ fromDList exprBuf
+    , body = bundleExpressions retTypes $ fromDList exprBuf
     }
   where
     EDSLState {..} = execState m initialEDSLState
 
+-- | Any value that can be read from and wrtten to is an LVal
 data LVal = LVal
-  { getLVal :: Expression
-  , putLVal :: Expression -> EDSL ()
+  { getLVal :: Expression -- ^ Read from the LVal
+  , putLVal :: Expression -> EDSL () -- ^ Write into the LVal
   }
 
+-- | set the return type of the EDSL expression
 setReturnTypes :: [ValueType] -> EDSL ()
 setReturnTypes vts = EDSL $ modify' $ \s -> s {retTypes = vts}
 

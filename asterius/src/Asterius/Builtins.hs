@@ -642,7 +642,7 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
 mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
      BuiltinsOptions -> Function
 mainFunction BuiltinsOptions {} =
-  runEDSL [] $ do
+  runEDSL  $ do
     tid <- call' "rts_evalLazyIO" [symbol "Main_main_closure"] I32
     call "rts_checkSchedStatus" [tid]
 
@@ -671,7 +671,7 @@ initCapability = do
     constI64 0
 
 hsInitFunction _ =
-  runEDSL [] $ do
+  runEDSL $ do
     initCapability
     bd_nursery <-
       truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
@@ -690,7 +690,7 @@ rtsEvalHelper BuiltinsOptions {..} create_thread_func_sym = do
   emit $ loadI32 tso offset_StgTSO_id
 
 rtsApplyFunction _ =
-  runEDSL [I64] $ do
+  runEDSL $ do
     setReturnTypes [I64]
     [f, arg] <- params [I64, I64]
     ap <-
@@ -703,21 +703,21 @@ rtsApplyFunction _ =
     storeI64 ap (offset_StgThunk_payload + 8) arg
     emit ap
 
-rtsEvalFunction opts = runEDSL [I32] $ rtsEvalHelper opts "createGenThread"
+rtsEvalFunction opts = runEDSL  $ rtsEvalHelper opts "createGenThread"
 
 rtsEvalIOFunction opts =
-  runEDSL [I32] $ rtsEvalHelper opts "createStrictIOThread"
+  runEDSL $ rtsEvalHelper opts "createStrictIOThread"
 
-rtsEvalLazyIOFunction opts = runEDSL [I32] $ rtsEvalHelper opts "createIOThread"
+rtsEvalLazyIOFunction opts = runEDSL $ rtsEvalHelper opts "createIOThread"
 
 rtsGetSchedStatusFunction _ =
-  runEDSL [I32] $ do
+  runEDSL $ do
     setReturnTypes [I32]
     tid <- param I32
     callImport' "__asterius_getTSOrstat" [tid] I32 >>= emit
 
 rtsCheckSchedStatusFunction _ =
-  runEDSL [] $ do
+  runEDSL $ do
     tid <- param I32
     stat <- call' "rts_getSchedStatus" [tid] I32
     if' [] (stat `eqInt32` constI32 scheduler_Success) mempty $
@@ -740,7 +740,7 @@ dirtySTACK _ stack =
     mempty
 
 scheduleWaitThreadFunction BuiltinsOptions {} =
-  runEDSL [] $ do
+  runEDSL $ do
     t <- param I64
     block' [] $ \sched_block_lbl ->
       loop' [] $ \sched_loop_lbl -> do
@@ -819,7 +819,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
     callImport "__asterius_gcRootTSO" [convertUInt64ToFloat64 t]
 
 createThreadFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [cap, alloc_words] <- params [I64, I64]
     tso_p <- call' "allocatePinned" [cap, alloc_words] I64
@@ -868,16 +868,16 @@ createThreadHelper mk_closures = do
   emit t
 
 createGenThreadFunction _ =
-  runEDSL [I64] $
+  runEDSL  $
   createThreadHelper $ \closure -> [closure, symbol "stg_enter_info"]
 
 createIOThreadFunction _ =
-  runEDSL [I64] $
+  runEDSL  $
   createThreadHelper $ \closure ->
     [symbol "stg_ap_v_info", closure, symbol "stg_enter_info"]
 
 createStrictIOThreadFunction _ =
-  runEDSL [I64] $
+  runEDSL  $
   createThreadHelper $ \closure ->
     [ symbol "stg_forceIO_info"
     , symbol "stg_ap_v_info"
@@ -886,7 +886,7 @@ createStrictIOThreadFunction _ =
     ]
 
 allocateFunction BuiltinsOptions {} =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [_, n] <- params [I64, I64]
     (truncUFloat64ToInt64 <$>
@@ -894,7 +894,7 @@ allocateFunction BuiltinsOptions {} =
       emit
 
 allocatePinnedFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [_, n] <- params [I64, I64]
     (truncUFloat64ToInt64 <$>
@@ -902,7 +902,7 @@ allocatePinnedFunction _ =
       emit
 
 newCAFFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [reg, caf] <- params [I64, I64]
     orig_info <- i64Local $ loadI64 caf 0
@@ -932,10 +932,10 @@ stgRun init_f = do
   pure $ getLVal r1
 
 stgReturnFunction _ =
-  runEDSL [] $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0
+  runEDSL  $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0
 
 getStablePtrWrapperFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     obj64 <- param I64
     sp_f64 <-
@@ -943,7 +943,7 @@ getStablePtrWrapperFunction _ =
     emit $ truncUFloat64ToInt64 sp_f64
 
 deRefStablePtrWrapperFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     sp64 <- param I64
     obj_f64 <-
@@ -951,13 +951,13 @@ deRefStablePtrWrapperFunction _ =
     emit $ truncUFloat64ToInt64 obj_f64
 
 freeStablePtrWrapperFunction _ =
-  runEDSL [] $ do
+  runEDSL  $ do
     sp64 <- param I64
     callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
 
 rtsMkHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> Function
 rtsMkHelper _ con_sym =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [i] <- params [I64]
     p <- call' "allocate" [mainCapability, constI64 2] I64
@@ -966,7 +966,7 @@ rtsMkHelper _ con_sym =
     emit p
 
 rtsMkBoolFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [i] <- params [I64]
     if'
@@ -976,7 +976,7 @@ rtsMkBoolFunction _ =
       (emit $ symbol' "ghczmprim_GHCziTypes_True_closure" 2)
 
 rtsMkDoubleFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [i] <- params [F64]
     p <- call' "allocate" [mainCapability, constI64 2] I64
@@ -985,7 +985,7 @@ rtsMkDoubleFunction _ =
     emit p
 
 rtsMkCharFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [i] <- params [I64]
     p <- call' "allocate" [mainCapability, constI64 2] I64
@@ -1006,7 +1006,7 @@ unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
 rtsGetBoolFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     p <- param I64
     emit $
@@ -1016,7 +1016,7 @@ rtsGetBoolFunction _ =
         (loadI32 (loadI64 (unTagClosure p) 0) offset_StgInfoTable_srt)
 
 rtsGetDoubleFunction _ =
-  runEDSL [F64] $ do
+  runEDSL  $ do
     setReturnTypes [F64]
     p <- param I64
     emit $ loadF64 (unTagClosure p) offset_StgClosure_payload
@@ -1024,24 +1024,24 @@ rtsGetDoubleFunction _ =
 rtsGetCharFunction = rtsGetIntFunction
 
 rtsGetIntFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     p <- param I64
     emit $ loadI64 (unTagClosure p) offset_StgClosure_payload
 
 loadI64Function _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     p <- param I64
     emit $ loadI64 p 0
 
 printI64Function _ =
-  runEDSL [] $ do
+  runEDSL  $ do
     x <- param I64
     callImport "printI64" [convertSInt64ToFloat64 x]
 
 assertEqI64Function _ =
-  runEDSL [] $ do
+  runEDSL  $ do
     x <- param I64
     y <- param I64
     callImport
@@ -1049,24 +1049,24 @@ assertEqI64Function _ =
       [convertSInt64ToFloat64 x, convertSInt64ToFloat64 y]
 
 printF32Function _ =
-  runEDSL [] $ do
+  runEDSL  $ do
     x <- param F32
     callImport "printF32" [x]
 
 printF64Function _ =
-  runEDSL [] $ do
+  runEDSL  $ do
     x <- param F64
     callImport "printF64" [x]
 
 strlenFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [str] <- params [I64]
     len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
     emit $ truncUFloat64ToInt64 len
 
 memchrFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [ptr, val, num] <- params [I64, I64, I64]
     p <-
@@ -1077,21 +1077,21 @@ memchrFunction _ =
     emit $ truncUFloat64ToInt64 p
 
 memcpyFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [dst, src, n] <- params [I64, I64, I64]
     callImport "__asterius_memcpy" $ map convertUInt64ToFloat64 [dst, src, n]
     emit dst
 
 memsetFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [dst, c, n] <- params [I64, I64, I64]
     callImport "__asterius_memset" $ map convertUInt64ToFloat64 [dst, c, n]
     emit dst
 
 memcmpFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [ptr1, ptr2, n] <- params [I64, I64, I64]
     cres <-
@@ -1102,7 +1102,7 @@ memcmpFunction _ =
     emit $ Unary ExtendSInt32 cres
 
 fromJSArrayBufferFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [buf] <- params [I64]
     addr <-
@@ -1114,7 +1114,7 @@ fromJSArrayBufferFunction _ =
     emit addr
 
 toJSArrayBufferFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [addr, len] <- params [I64, I64]
     r <-
@@ -1126,7 +1126,7 @@ toJSArrayBufferFunction _ =
     emit r
 
 fromJSStringFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [s] <- params [I64]
     addr <-
@@ -1135,7 +1135,7 @@ fromJSStringFunction _ =
     emit addr
 
 fromJSArrayFunction _ =
-  runEDSL [I64] $ do
+  runEDSL  $ do
     setReturnTypes [I64]
     [arr] <- params [I64]
     addr <-
@@ -1143,10 +1143,10 @@ fromJSArrayFunction _ =
       callImport' "__asterius_fromJSArray_imp" [convertUInt64ToFloat64 arr] F64
     emit addr
 
-threadPausedFunction _ = runEDSL [] $ void $ params [I64, I64]
+threadPausedFunction _ = runEDSL  $ void $ params [I64, I64]
 
 dirtyMutVarFunction _ =
-  runEDSL [] $ do
+  runEDSL  $ do
     [_, p] <- params [I64, I64]
     if'
       []
@@ -1156,7 +1156,7 @@ dirtyMutVarFunction _ =
 
 getF64GlobalRegFunction :: BuiltinsOptions -> UnresolvedGlobalReg -> Function
 getF64GlobalRegFunction _ gr =
-  runEDSL [F64] $ do
+  runEDSL  $ do
     setReturnTypes [F64]
     emit $ convertSInt64ToFloat64 $ getLVal $ global gr
 
