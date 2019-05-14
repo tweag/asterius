@@ -70,7 +70,7 @@ rtsAsteriusModule opts =
           , ("__asterius_i64_slot"
             , AsteriusStatics
               { staticsType=Bytes
-              , asteriusStatics = [Serialized $ SBS.pack $ replicate (roundup_bytes_to_words 8) 0]
+              , asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
               })
           ]
     , functionMap =
