@@ -104,6 +104,7 @@ import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Short as SBS
+import qualified Data.Map.Lazy as LM
 import Data.Monoid
 import Data.Traversable
 
@@ -164,18 +165,21 @@ bundleExpressions vts el =
     [e] -> e
     _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
--- | Given the return values and the function builder, build the function
-runEDSL :: EDSL () -> Function
-runEDSL (EDSL m) =
-  adjustLocalRegs $
-  Function
-    { functionType =
-        FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
-    , varTypes = []
-    , body = bundleExpressions retTypes $ fromDList exprBuf
-    }
+-- | Build a module containing the function and some auxiliary data
+-- | given its name and a builder.
+runEDSL :: AsteriusEntitySymbol  -- ^ Function name
+  -> EDSL ()  -- ^ Builder
+  -> AsteriusModule -- ^ Final module
+runEDSL n (EDSL m) =
+  mempty { functionMap=LM.fromList [(n, f)] }
   where
     EDSLState {..} = execState m initialEDSLState
+    f = adjustLocalRegs $ Function
+          { functionType =
+              FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
+          , varTypes = []
+          , body = bundleExpressions retTypes $ fromDList exprBuf
+          }
 
 -- | Any value that can be read from and wrtten to is an LVal
 data LVal = LVal
