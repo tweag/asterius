@@ -1617,7 +1617,7 @@ genExtend b to sext x
         [ Store
             { bytes = 4
             , offset = 0
-            , ptr = symbol "__asterius_i64_slot"
+            , ptr = wrapInt64 (symbol "__asterius_i64_slot")
             , value = x
             , valueType = I32
             }
