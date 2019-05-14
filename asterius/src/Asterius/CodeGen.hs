@@ -303,8 +303,6 @@ marshalCmmBinMachOp o32 tx32 ty32 tr32 o64 tx64 ty64 tr64 w x y =
         ye <- marshalAndCastCmmExpr y ty64
         pure (Binary {binaryOp = o64, operand0 = xe, operand1 = ye}, tr64))
 
-data ShouldSext = Sext | NoSext deriving(Eq)
-
 -- Should this logic be pushed into `marshalAndCastCmmExpr?
 marshalCmmHomoConvMachOp ::
      UnaryOp
@@ -321,14 +319,8 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 sext x =
   then do
     -- we are extending from {W8, W16} to {W32, W64}. Sign extension
     -- semantics matters here.
-    let name = AsteriusEntitySymbol $ "extendI" <> showSBS (GHC.widthInBits w0) <> "ToI" <> showSBS (GHC.widthInBits w1)
     (xe, _) <- marshalCmmExpr x
-    let c = Call
-              { target = name <> (if sext == Sext then "Sext" else "")
-              , operands = [xe]
-              , callReturnTypes = [if w1 == GHC.W64 then I64 else I32]
-              }
-    pure (c, if w1 == GHC.W64 then I64 else I32)
+    pure (genExtend (if w1 == GHC.W32 then 4 else 8) (if w1 == GHC.W32 then I32 else I64) sext xe, if w1 == GHC.W64 then I64 else I32)
   else if (w0 == GHC.W32 || w0 == GHC.W64) && (w1 == GHC.W8 || w1 == GHC.W16)
   then do
     -- we are wrapping from {32, 64} to {8, 16}

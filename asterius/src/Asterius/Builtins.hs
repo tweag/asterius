@@ -13,7 +13,9 @@ module Asterius.Builtins
   , emitErrorMessage
   , wasmPageSize
   , generateWrapperFunction
+  , ShouldSext(..)
   , genWrap
+  , genExtend
   ) where
 
 import Asterius.EDSL
@@ -190,16 +192,6 @@ rtsAsteriusModule opts =
         , ("print_f32", printF32Function opts)
         , ("print_f64", printF64Function opts)
         , ("assert_eq_i64", assertEqI64Function opts)
-        -- sext
-        , ("extendI8ToI64Sext", genExtend 1 I64 Sext)
-        , ("extendI16ToI64Sext", genExtend 2 I64 Sext)
-        , ("extendI8ToI32Sext", genExtend 1 I32 Sext)
-        , ("extendI16ToI32Sext", genExtend 2 I32 Sext)
-        -- no SEXT
-        , ("extendI8ToI64", genExtend 1 I64 NoSext)
-        , ("extendI16ToI64", genExtend 2 I64 NoSext)
-        , ("extendI8ToI32", genExtend 1 I32 NoSext)
-        , ("extendI16ToI32", genExtend 2 I32 NoSext)
         , ("strlen", strlenFunction opts)
         , ("memchr", memchrFunction opts)
         , ("memcpy", memcpyFunction opts)
@@ -1609,17 +1601,28 @@ data ShouldSext = Sext | NoSext deriving(Eq)
 genExtend :: Int -- ^ number of bytes to load
     -> ValueType -- ^ output value type
     -> ShouldSext -- ^ whether the extend should sign-extend or not
-    -> Function
-genExtend b to sext =
-    runEDSL [to] $ do
-        setReturnTypes [to]
-        x <- param I32
+    -> Expression
+    -> Expression
+genExtend b to sext x =
         -- we will just use the i64 slot since it's large enough to hold all
         -- the wasm datatypes we have.
-        storeI32 (symbol "__asterius_i64_slot") 0 x
-        emit $ Load { signed=(sext == Sext)
-                    , bytes=fromIntegral b
-                    , offset=0
-                    , valueType=to
-                    , ptr = wrapInt64(symbol "__asterius_i64_slot")
-                    }
+        Block
+          { name = ""
+          , bodys =
+              [ Store
+                  { bytes = 4
+                  , offset = 0
+                  , ptr = symbol "__asterius_i64_slot"
+                  , value = x
+                  , valueType = I32
+                  }
+              , Load
+                  { signed = sext == Sext
+                  , bytes = fromIntegral b
+                  , offset = 0
+                  , valueType = to
+                  , ptr = wrapInt64 (symbol "__asterius_i64_slot")
+                  }
+              ]
+          , blockReturnTypes = [to]
+          }
