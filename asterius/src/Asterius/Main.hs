@@ -459,6 +459,7 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
     withCurrentDirectory (takeDirectory out_wasm) $
     if bundle
       then do
+        putStrLn "BUNDLE: TRUE"
         logger $ "[INFO] Running " <> out_js
         callProcess "node" $
           ["--experimental-wasm-return-call" | tailCalls] <>
@@ -466,22 +467,39 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
       else do
         logger $ "[INFO] Running " <> out_entry
         case inputEntryMJS of
-          Just _ ->
+          Just _ -> do
+            putStrLn "inputEntryMJS: TRUE"
             callProcess "node" $
-            ["--experimental-wasm-return-call" | tailCalls] <>
-            ["--experimental-modules", takeFileName out_entry]
+              ["--experimental-wasm-return-call" | tailCalls] <>
+              ["--experimental-modules", takeFileName out_entry]
           _ -> do
+            putStrLn "inputEntryMJS: FALSE"
+            putStrLn $ "out_wasm: " <> show out_wasm
             mod_buf <- LBS.readFile $ takeFileName out_wasm
             withJSSession
               defJSSessionOpts
                 { nodeExtraArgs =
-                    ["--experimental-wasm-return-call" | tailCalls]
+                    ["--experimental-wasm-return-call" | tailCalls] <>
+                    ["--experimental-modules"]
                 } $ \s -> do
+              putStrLn $ "creating new asterius instance..."
               i <- newAsteriusInstance s (takeFileName out_lib) mod_buf
+              putStrLn $ "calling hsInit..."
               hsInit s i
+              putStrLn $ "calling hsMain..."
+              -- This provides very little information, unfortunately
+              -- when it crashes.
               hsMain s i
+              putStrLn $ "calling hsStdOut..."
               wasm_stdout <- hsStdOut s i
+              putStrLn $ "calling hsStdErr.."
+              wasm_stderr <- hsStdErr s i
+              putStrLn $ "stdout:"
               LBS.putStr wasm_stdout
+              putStrLn $ "----"
+              putStrLn $ "stderr:"
+              LBS.putStr wasm_stderr
+              putStrLn $ "----"
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do

@@ -203,6 +203,7 @@ rtsAsteriusModule opts =
         , ("__asterius_fromJSArray", fromJSArrayFunction opts)
         , ("threadPaused", threadPausedFunction opts)
         , ("dirty_MUT_VAR", dirtyMutVarFunction opts)
+         , ("u_gencat", u_gencatFunction opts)
         ] <>
         map (\(func_sym, (_, func)) -> (func_sym, func)) byteStringCBits
     }
@@ -256,6 +257,12 @@ rtsFunctionImports debug =
       , externalModuleName = "StablePtr"
       , externalBaseName = "freeStablePtr"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_u_gencat"
+      , externalModuleName = "Unicode"
+      , externalBaseName = "u_gencat"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
       { internalName = "printI64"
@@ -1153,6 +1160,15 @@ dirtyMutVarFunction _ =
       (loadI64 p 0 `eqInt64` symbol "stg_MUT_VAR_CLEAN_info")
       (storeI64 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
       mempty
+
+
+u_gencatFunction _ =
+  runEDSL  $ do
+    setReturnTypes [I64]
+    x <- param I64
+    y <- callImport' "__asterius_u_gencat" [convertUInt64ToFloat64 x] F64
+    emit $ truncUFloat64ToInt64 y
+
 
 getF64GlobalRegFunction :: BuiltinsOptions -> UnresolvedGlobalReg -> Function
 getF64GlobalRegFunction _ gr =

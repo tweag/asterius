@@ -16,6 +16,7 @@ import { IntegerManager } from "./rts.integer.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { GC } from "./rts.gc.mjs";
+import { Unicode } from "./rts.unicode.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export function newAsteriusInstance(req) {
@@ -35,7 +36,8 @@ export function newAsteriusInstance(req) {
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_vault = req.vault ? req.vault : new Map(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
-    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable);
+    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable),
+    __asterius_unicode = new Unicode();
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
   }
@@ -130,6 +132,7 @@ export function newAsteriusInstance(req) {
       Memory: modulify(__asterius_memory),
       MemoryTrap: modulify(__asterius_memory_trap),
       StablePtr: modulify(__asterius_stableptr_manager),
+      Unicode: modulify(__asterius_unicode),
       Tracing: modulify(__asterius_tracer),
       TSO: modulify(__asterius_tso_manager)
     }
