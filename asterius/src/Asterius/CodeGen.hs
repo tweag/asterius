@@ -320,7 +320,7 @@ marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 sext x =
     -- we are extending from {W8, W16} to {W32, W64}. Sign extension
     -- semantics matters here.
     (xe, _) <- marshalCmmExpr x
-    pure (genExtend (if w1 == GHC.W32 then 4 else 8) (if w1 == GHC.W32 then I32 else I64) sext xe, if w1 == GHC.W64 then I64 else I32)
+    pure (genExtend (if w0 == GHC.W8 then 1 else 2) (if w1 == GHC.W32 then I32 else I64) sext xe, if w1 == GHC.W64 then I64 else I32)
   else if (w0 == GHC.W32 || w0 == GHC.W64) && (w1 == GHC.W8 || w1 == GHC.W16)
   then do
     -- we are wrapping from {32, 64} to {8, 16}
