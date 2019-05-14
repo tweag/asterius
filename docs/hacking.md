@@ -47,3 +47,11 @@ The `ahc-boot` process is configurable via these environment variables:
 
 A common usage is setting `ASTERIUS_BUILD_OPTIONS=-j8` to enable parallelism in
 booting, reducing your coffee break time.
+
+## Adding a test case
+
+To add a test case, it is best to replicate what has been done for an existing testcase. 
+
+- For example, `git grep bytearraymini` should show all the places where the test case
+`bytearraymini` has been used. Replicating the same files for a new test case
+should "just work".
