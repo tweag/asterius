@@ -67,12 +67,6 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ encodeStorable invalidAddress]
                 })
-          , ("__asterius_i32_slot"
-            , AsteriusStatics
-              { staticsType=Bytes
-              , asteriusStatics = [Serialized $ SBS.pack $ replicate (roundup_bytes_to_words 4) 0]
-              })
-
           , ("__asterius_i64_slot"
             , AsteriusStatics
               { staticsType=Bytes
