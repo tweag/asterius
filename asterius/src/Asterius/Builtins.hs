@@ -70,11 +70,11 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ encodeStorable invalidAddress]
                 })
-          , ("__asterius_i64_slot"
+          , ( "__asterius_i64_slot"
             , AsteriusStatics
-              { staticsType=Bytes
-              , asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
-              })
+                { staticsType = Bytes
+                , asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
+                })
           ]
     , functionMap =
         Map.fromList $
@@ -1044,7 +1044,9 @@ assertEqI64Function _ =
   runEDSL [] $ do
     x <- param I64
     y <- param I64
-    callImport "assertEqI64" [convertSInt64ToFloat64 x, convertSInt64ToFloat64 y]
+    callImport
+      "assertEqI64"
+      [convertSInt64ToFloat64 x, convertSInt64ToFloat64 y]
 
 printF32Function _ =
   runEDSL [] $ do
@@ -1070,7 +1072,7 @@ memchrFunction _ =
     p <-
       callImport'
         "__asterius_memchr"
-        (map (convertUInt64ToFloat64) [ptr, val, num])
+        (map convertUInt64ToFloat64 [ptr, val, num])
         F64
     emit $ truncUFloat64ToInt64 p
 
@@ -1078,14 +1080,14 @@ memcpyFunction _ =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     [dst, src, n] <- params [I64, I64, I64]
-    callImport "__asterius_memcpy" $ map (convertUInt64ToFloat64) [dst, src, n]
+    callImport "__asterius_memcpy" $ map convertUInt64ToFloat64 [dst, src, n]
     emit dst
 
 memsetFunction _ =
   runEDSL [I64] $ do
     setReturnTypes [I64]
     [dst, c, n] <- params [I64, I64, I64]
-    callImport "__asterius_memset" $ map (convertUInt64ToFloat64) [dst, c, n]
+    callImport "__asterius_memset" $ map convertUInt64ToFloat64 [dst, c, n]
     emit dst
 
 memcmpFunction _ =
@@ -1095,7 +1097,7 @@ memcmpFunction _ =
     cres <-
       callImport'
         "__asterius_memcmp"
-        (map (convertUInt64ToFloat64) [ptr1, ptr2, n])
+        (map convertUInt64ToFloat64 [ptr1, ptr2, n])
         I32
     emit $ Unary ExtendSInt32 cres
 
@@ -1119,7 +1121,7 @@ toJSArrayBufferFunction _ =
       truncUFloat64ToInt64 <$>
       callImport'
         "__asterius_toJSArrayBuffer_imp"
-        (map (convertUInt64ToFloat64) [addr, len])
+        (map convertUInt64ToFloat64 [addr, len])
         F64
     emit r
 
@@ -1547,19 +1549,18 @@ trapStoreF64Function _ =
 offset_StgTSO_StgStack :: Int
 offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
 
-
 -- @cheng: there is a trade-off here: Either I emit the low-level
 -- store and load, or I expose a _lot more_ from the EDSL
 -- to create the correct types of stores and loads I want.
 -- I went with the former, but we can discuss trade-offs.
-
 -- | Generate a wrap from the input type to the output type by invoking
 -- | the correct load instruction.
 -- | Since we only generate wrapping from larger types to smaller types,
 -- | our output can only be {32, 16, 8} bits. However, wasm has
 -- | I32 as the smallest type. So, our output is _always_ I32.
 -- | invariant: output type is smaller than input type.
-genWrap :: ValueType -- ^ Input type
+genWrap ::
+     ValueType -- ^ Input type
   -> Int -- ^ number of bytes to load for the output type
   -> Expression
   -> Expression
@@ -1588,9 +1589,11 @@ genWrap ti b x =
     , blockReturnTypes = [I32]
     }
 
-
 -- | Whether when generate a sign extended value
-data ShouldSext = Sext | NoSext deriving(Eq)
+data ShouldSext
+  = Sext
+  | NoSext
+  deriving (Eq)
 
 -- | generate a function to sign extend an input value into an output value.
 -- | We perform the sign extension by storing the old value.
@@ -1598,31 +1601,33 @@ data ShouldSext = Sext | NoSext deriving(Eq)
 -- | ever have to generate sign extension calls from GHC.W8, GHC.W16, GHC.W32,
 -- | all of which are stored as I32, since wasm cannot store smaller types.
 -- | So, our input will _always_ be an I32.
-genExtend :: Int -- ^ number of bytes to load
-    -> ValueType -- ^ output value type
-    -> ShouldSext -- ^ whether the extend should sign-extend or not
-    -> Expression
-    -> Expression
-genExtend b to sext x =
+genExtend ::
+     Int -- ^ number of bytes to load
+  -> ValueType -- ^ output value type
+  -> ShouldSext -- ^ whether the extend should sign-extend or not
+  -> Expression
+  -> Expression
+genExtend b to sext x
         -- we will just use the i64 slot since it's large enough to hold all
         -- the wasm datatypes we have.
-        Block
-          { name = ""
-          , bodys =
-              [ Store
-                  { bytes = 4
-                  , offset = 0
-                  , ptr = symbol "__asterius_i64_slot"
-                  , value = x
-                  , valueType = I32
-                  }
-              , Load
-                  { signed = sext == Sext
-                  , bytes = fromIntegral b
-                  , offset = 0
-                  , valueType = to
-                  , ptr = wrapInt64 (symbol "__asterius_i64_slot")
-                  }
-              ]
-          , blockReturnTypes = [to]
-          }
+ =
+  Block
+    { name = ""
+    , bodys =
+        [ Store
+            { bytes = 4
+            , offset = 0
+            , ptr = symbol "__asterius_i64_slot"
+            , value = x
+            , valueType = I32
+            }
+        , Load
+            { signed = sext == Sext
+            , bytes = fromIntegral b
+            , offset = 0
+            , valueType = to
+            , ptr = wrapInt64 (symbol "__asterius_i64_slot")
+            }
+        ]
+    , blockReturnTypes = [to]
+    }

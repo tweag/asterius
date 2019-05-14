@@ -314,20 +314,40 @@ marshalCmmHomoConvMachOp ::
   -> ShouldSext
   -> GHC.CmmExpr
   -> CodeGen (Expression, ValueType)
-marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 sext x =
-  if (w0 == GHC.W8 || w0 == GHC.W16) && (w1 == GHC.W32 || w1 == GHC.W64)
-  then do
+marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 sext x
+  | (w0 == GHC.W8 || w0 == GHC.W16) && (w1 == GHC.W32 || w1 == GHC.W64)
     -- we are extending from {W8, W16} to {W32, W64}. Sign extension
     -- semantics matters here.
+   = do
     (xe, _) <- marshalCmmExpr x
-    pure (genExtend (if w0 == GHC.W8 then 1 else 2) (if w1 == GHC.W32 then I32 else I64) sext xe, if w1 == GHC.W64 then I64 else I32)
-  else if (w0 == GHC.W32 || w0 == GHC.W64) && (w1 == GHC.W8 || w1 == GHC.W16)
-  then do
+    pure
+      ( genExtend
+          (if w0 == GHC.W8
+             then 1
+             else 2)
+          (if w1 == GHC.W32
+             then I32
+             else I64)
+          sext
+          xe
+      , if w1 == GHC.W64
+          then I64
+          else I32)
+  | (w0 == GHC.W32 || w0 == GHC.W64) && (w1 == GHC.W8 || w1 == GHC.W16)
     -- we are wrapping from {32, 64} to {8, 16}
+   = do
     (xe, _) <- marshalCmmExpr x
-    pure (genWrap (if w0 == GHC.W32 then I32 else I64) (GHC.widthInBytes w1) xe, I32)
-  else do
+    pure
+      ( genWrap
+          (if w0 == GHC.W32
+             then I32
+             else I64)
+          (GHC.widthInBytes w1)
+          xe
+      , I32)
+  | otherwise
     -- we are converting from {32, 64} to {32, 64} of floating point / int
+   = do
     (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
     xe <- marshalAndCastCmmExpr x t
     pure (Unary {unaryOp = o, operand0 = xe}, tr)
