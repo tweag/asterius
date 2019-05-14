@@ -30,7 +30,8 @@ are cases when it needs to be re-run:
 * The `Asterius.CodeGen` module is modified and you're sure different code will
   be generated when compiling the same Haskell/Cmm files.
 
-Most other modifications in the asterius lib/exes need a reboot. Specifically:
+Most other modifications in the asterius lib/exes won't need a reboot.
+Specifically:
 
 * `Asterius.Builtins` modifications don't impact the boot cache. The builtin
   module is generated on the fly with every linker invocation.
