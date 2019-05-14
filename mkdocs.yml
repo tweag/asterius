@@ -15,6 +15,7 @@ pages:
   - 'WebAssembly as a Haskell compilation target': 'webassembly.md'
   - 'About the custom GHC fork': 'custom-ghc.md'
   - 'Using experimental WebAssembly features': 'wasm-experimental.md'
+  - 'Hacking guide': 'hacking.md'
   - 'Reading list': 'readings.md'
   - 'Status reports': 'reports.md'
 theme: readthedocs
