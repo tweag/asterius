@@ -11,7 +11,7 @@ main = do
    let x = wgencat $ ord '1'
    print x
 
-   putStrLn "testing read..."
-   let y = read "12" :: Int
-   print y
+   -- putStrLn "testing read..."
+   -- let y = read "12" :: Int
+   -- print y
 
