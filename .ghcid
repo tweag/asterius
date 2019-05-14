@@ -1,1 +1,1 @@
---command="stack ghci asterius:lib asterius:ahc-link binaryen:lib ghc-toolkit:lib inline-js:lib npm-utils:lib wasm-toolkit:lib --ghci-options=\"-fno-code -j -Wall\""
+--command="stack ghci asterius:lib asterius:ahc-ld binaryen:lib --ghci-options=\"-fno-code -j -Wall\""
