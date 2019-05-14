@@ -15,6 +15,7 @@ module Asterius.CodeGen
   , marshalRawCmm
   ) where
 
+import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Passes.All
 import Asterius.Passes.GlobalRegs
@@ -302,6 +303,7 @@ marshalCmmBinMachOp o32 tx32 ty32 tr32 o64 tx64 ty64 tr64 w x y =
         ye <- marshalAndCastCmmExpr y ty64
         pure (Binary {binaryOp = o64, operand0 = xe, operand1 = ye}, tr64))
 
+-- Should this logic be pushed into `marshalAndCastCmmExpr?
 marshalCmmHomoConvMachOp ::
      UnaryOp
   -> UnaryOp
@@ -309,12 +311,46 @@ marshalCmmHomoConvMachOp ::
   -> ValueType
   -> GHC.Width
   -> GHC.Width
+  -> ShouldSext
   -> GHC.CmmExpr
   -> CodeGen (Expression, ValueType)
-marshalCmmHomoConvMachOp o36 o63 t32 t64 _ w1 x = do
-  (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
-  xe <- marshalAndCastCmmExpr x t
-  pure (Unary {unaryOp = o, operand0 = xe}, tr)
+marshalCmmHomoConvMachOp o36 o63 t32 t64 w0 w1 sext x
+  | (w0 == GHC.W8 || w0 == GHC.W16) && (w1 == GHC.W32 || w1 == GHC.W64)
+    -- we are extending from {W8, W16} to {W32, W64}. Sign extension
+    -- semantics matters here.
+   = do
+    (xe, _) <- marshalCmmExpr x
+    pure
+      ( genExtend
+          (if w0 == GHC.W8
+             then 1
+             else 2)
+          (if w1 == GHC.W32
+             then I32
+             else I64)
+          sext
+          xe
+      , if w1 == GHC.W64
+          then I64
+          else I32)
+  | (w0 == GHC.W32 || w0 == GHC.W64) && (w1 == GHC.W8 || w1 == GHC.W16)
+    -- we are wrapping from {32, 64} to {8, 16}
+   = do
+    (xe, _) <- marshalCmmExpr x
+    pure
+      ( genWrap
+          (if w0 == GHC.W32
+             then I32
+             else I64)
+          (GHC.widthInBytes w1)
+          xe
+      , I32)
+  | otherwise
+    -- we are converting from {32, 64} to {32, 64} of floating point / int
+   = do
+    (o, t, tr) <- dispatchCmmWidth w1 (o63, t64, t32) (o36, t32, t64)
+    xe <- marshalAndCastCmmExpr x t
+    pure (Unary {unaryOp = o, operand0 = xe}, tr)
 
 marshalCmmHeteroConvMachOp ::
      UnaryOp
@@ -478,11 +514,11 @@ marshalCmmMachOp (GHC.MO_FS_Conv w0 w1) [x] =
     w1
     x
 marshalCmmMachOp (GHC.MO_SS_Conv w0 w1) [x] =
-  marshalCmmHomoConvMachOp ExtendSInt32 WrapInt64 I32 I64 w0 w1 x
+  marshalCmmHomoConvMachOp ExtendSInt32 WrapInt64 I32 I64 w0 w1 Sext x
 marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] =
-  marshalCmmHomoConvMachOp ExtendUInt32 WrapInt64 I32 I64 w0 w1 x
+  marshalCmmHomoConvMachOp ExtendUInt32 WrapInt64 I32 I64 w0 w1 NoSext x
 marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
-  marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 x
+  marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 Sext x
 marshalCmmMachOp op xs =
   throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmMachOp op xs
 

@@ -8,6 +8,18 @@ import Data.Foldable
 import GHC.Exts
 import GHC.Types
 
+{-
+This test case tests the ability of the compiler to handle casts from I8 to
+I64 in a real-world example by using the `ByteArray#` primitives.
+
+Expected output:
+(1,63)
+(1,-1)
+(1,-1)
+(1,-1)
+199990000
+-}
+
 unI# :: Int -> Int#
 unI# (I# x) = x
 
