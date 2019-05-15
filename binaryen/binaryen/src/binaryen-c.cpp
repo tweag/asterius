@@ -3114,7 +3114,7 @@ int BinaryenModuleValidate(BinaryenModuleRef module) {
 
   Module* wasm = (Module*)module;
   // TODO(tlively): Add C API for managing features
-  wasm->features = FeatureSet::All;
+  wasm->features = FeatureSet::MVP;
   return WasmValidator().validate(*wasm) ? 1 : 0;
 }
 
