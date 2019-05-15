@@ -383,6 +383,9 @@ bool BinaryReader::IsConcreteType(Type type) {
     case Type::V128:
       return options_.features.simd_enabled();
 
+    case Type::ExceptRef:
+      return options_.features.exceptions_enabled();
+
     case Type::Anyref:
       return options_.features.reference_types_enabled();
 
@@ -493,8 +496,9 @@ Result BinaryReader::ReadInitExpr(Index index, bool require_i32) {
 
 Result BinaryReader::ReadTable(Type* out_elem_type, Limits* out_elem_limits) {
   CHECK_RESULT(ReadType(out_elem_type, "table elem type"));
-  ERROR_UNLESS(*out_elem_type == Type::Anyfunc || *out_elem_type == Type::Anyref,
-               "table elem type must by anyfunc or anyref");
+  ERROR_UNLESS(
+      *out_elem_type == Type::Funcref || *out_elem_type == Type::Anyref,
+      "table elem type must by funcref or anyref");
 
   uint32_t flags;
   uint32_t initial;
@@ -1604,6 +1608,7 @@ Result BinaryReader::ReadRelocSection(Offset section_size) {
     switch (type) {
       case RelocType::MemoryAddressLEB:
       case RelocType::MemoryAddressSLEB:
+      case RelocType::MemoryAddressRelSLEB:
       case RelocType::MemoryAddressI32:
       case RelocType::FunctionOffsetI32:
       case RelocType::SectionOffsetI32:
@@ -1675,15 +1680,25 @@ Result BinaryReader::ReadLinkingSection(Offset section_size) {
           CALLBACK(OnSymbol, i, sym_type, flags);
           switch (sym_type) {
             case SymbolType::Function:
-            case SymbolType::Global: {
+            case SymbolType::Global:
+            case SymbolType::Event:  {
               uint32_t index = 0;
               CHECK_RESULT(ReadU32Leb128(&index, "index"));
-              if ((flags & WABT_SYMBOL_FLAG_UNDEFINED) == 0)
+              if ((flags & WABT_SYMBOL_FLAG_UNDEFINED) == 0 ||
+                  (flags & WASM_SYMBOL_EXPLICIT_NAME) != 0)
                 CHECK_RESULT(ReadStr(&name, "symbol name"));
-              if (sym_type == SymbolType::Function) {
-                CALLBACK(OnFunctionSymbol, i, flags, name, index);
-              } else {
-                CALLBACK(OnGlobalSymbol, i, flags, name, index);
+              switch (sym_type) {
+                case SymbolType::Function:
+                  CALLBACK(OnFunctionSymbol, i, flags, name, index);
+                  break;
+                case SymbolType::Global:
+                  CALLBACK(OnGlobalSymbol, i, flags, name, index);
+                  break;
+                case SymbolType::Event:
+                  CALLBACK(OnEventSymbol, i, flags, name, index);
+                  break;
+                default:
+                  WABT_UNREACHABLE;
               }
               break;
             }
@@ -2063,21 +2078,49 @@ Result BinaryReader::ReadElemSection(Offset section_size) {
     if (flags == SegmentFlags::IndexOther) {
       CHECK_RESULT(ReadIndex(&table_index, "elem segment table index"));
     }
-    CALLBACK(BeginElemSegment, i, table_index, flags == SegmentFlags::Passive);
+    Type elem_type;
+    if (flags == SegmentFlags::Passive) {
+      CHECK_RESULT(ReadType(&elem_type, "table elem type"));
+      ERROR_UNLESS(elem_type == Type::Funcref || elem_type == Type::Anyref,
+                   "segment elem type must by funcref or anyref");
+    } else {
+      elem_type = Type::Funcref;
+    }
+
+    CALLBACK(BeginElemSegment, i, table_index, flags == SegmentFlags::Passive,
+             elem_type);
+
     if (flags != SegmentFlags::Passive) {
       CALLBACK(BeginElemSegmentInitExpr, i);
       CHECK_RESULT(ReadI32InitExpr(i));
       CALLBACK(EndElemSegmentInitExpr, i);
     }
 
-    Index num_function_indexes;
-    CHECK_RESULT(
-        ReadCount(&num_function_indexes, "elem segment function index count"));
-    CALLBACK(OnElemSegmentFunctionIndexCount, i, num_function_indexes);
-    for (Index j = 0; j < num_function_indexes; ++j) {
-      Index func_index;
-      CHECK_RESULT(ReadIndex(&func_index, "elem segment function index"));
-      CALLBACK(OnElemSegmentFunctionIndex, i, func_index);
+    Index num_elem_exprs;
+    CHECK_RESULT(ReadCount(&num_elem_exprs, "elem expr count"));
+    CALLBACK(OnElemSegmentElemExprCount, i, num_elem_exprs);
+    for (Index j = 0; j < num_elem_exprs; ++j) {
+      if (flags == SegmentFlags::Passive) {
+        Opcode opcode;
+        CHECK_RESULT(ReadOpcode(&opcode, "elem expr opcode"));
+        if (opcode == Opcode::RefNull) {
+          CALLBACK(OnElemSegmentElemExpr_RefNull, i);
+        } else if (opcode == Opcode::RefFunc) {
+          Index func_index;
+          CHECK_RESULT(ReadIndex(&func_index, "elem expr func index"));
+          CALLBACK(OnElemSegmentElemExpr_RefFunc, i, func_index);
+        } else {
+          PrintError(
+              "expected ref.null or ref.func in passive element segment");
+        }
+        CHECK_RESULT(ReadOpcode(&opcode, "opcode"));
+        ERROR_UNLESS(opcode == Opcode::End,
+                     "expected END opcode after element expression");
+      } else {
+        Index func_index;
+        CHECK_RESULT(ReadIndex(&func_index, "elem expr func index"));
+        CALLBACK(OnElemSegmentElemExpr_RefFunc, i, func_index);
+      }
     }
     CALLBACK(EndElemSegment, i);
   }
@@ -2108,7 +2151,6 @@ Result BinaryReader::ReadCodeSection(Offset section_size) {
     for (Index k = 0; k < num_local_decls; ++k) {
       Index num_local_types;
       CHECK_RESULT(ReadIndex(&num_local_types, "local type count"));
-      ERROR_UNLESS(num_local_types > 0, "local count must be > 0");
       total_locals += num_local_types;
       ERROR_UNLESS(total_locals < UINT32_MAX,
                    "local count must be < 0x10000000");

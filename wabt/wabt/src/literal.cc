@@ -21,6 +21,8 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
+#include <type_traits>
 
 namespace wabt {
 
@@ -534,10 +536,10 @@ Result ParseHexdigit(char c, uint32_t* out) {
   if (static_cast<unsigned int>(c - '0') <= 9) {
     *out = c - '0';
     return Result::Ok;
-  } else if (static_cast<unsigned int>(c - 'a') <= 6) {
+  } else if (static_cast<unsigned int>(c - 'a') < 6) {
     *out = 10 + (c - 'a');
     return Result::Ok;
-  } else if (static_cast<unsigned int>(c - 'A') <= 6) {
+  } else if (static_cast<unsigned int>(c - 'A') < 6) {
     *out = 10 + (c - 'A');
     return Result::Ok;
   }
@@ -554,20 +556,23 @@ Result ParseUint64(const char* s, const char* end, uint64_t* out) {
     if (s == end) {
       return Result::Error;
     }
+    constexpr uint64_t kMaxDiv16 = UINT64_MAX / 16;
+    constexpr uint64_t kMaxMod16 = UINT64_MAX % 16;
     for (; s < end; ++s) {
       uint32_t digit;
       if (*s == '_') {
         continue;
       }
       CHECK_RESULT(ParseHexdigit(*s, &digit));
-      uint64_t old_value = value;
-      value = value * 16 + digit;
       // Check for overflow.
-      if (old_value > value) {
+      if (value > kMaxDiv16 || (value == kMaxDiv16 && digit > kMaxMod16)) {
         return Result::Error;
       }
+      value = value * 16 + digit;
     }
   } else {
+    constexpr uint64_t kMaxDiv10 = UINT64_MAX / 10;
+    constexpr uint64_t kMaxMod10 = UINT64_MAX % 10;
     for (; s < end; ++s) {
       if (*s == '_') {
         continue;
@@ -576,12 +581,11 @@ Result ParseUint64(const char* s, const char* end, uint64_t* out) {
       if (digit > 9) {
         return Result::Error;
       }
-      uint64_t old_value = value;
-      value = value * 10 + digit;
       // Check for overflow.
-      if (old_value > value) {
+      if (value > kMaxDiv10 || (value == kMaxDiv10 && digit > kMaxMod10)) {
         return Result::Error;
       }
+      value = value * 10 + digit;
     }
   }
   if (s != end) {
@@ -618,10 +622,12 @@ Result ParseInt64(const char* s,
   return result;
 }
 
-Result ParseInt32(const char* s,
-                  const char* end,
-                  uint32_t* out,
-                  ParseIntType parse_type) {
+template <typename U>
+Result ParseInt(const char* s,
+                const char* end,
+                U* out,
+                ParseIntType parse_type) {
+  typedef typename std::make_signed<U>::type S;
   uint64_t value;
   bool has_sign = false;
   if (*s == '-' || *s == '+') {
@@ -636,18 +642,39 @@ Result ParseInt32(const char* s,
   CHECK_RESULT(ParseUint64(s, end, &value));
 
   if (has_sign) {
-    // abs(INT32_MIN) == INT32_MAX + 1.
-    if (value > static_cast<uint64_t>(INT32_MAX) + 1) {
+    // abs(INTN_MIN) == INTN_MAX + 1.
+    if (value > static_cast<uint64_t>(std::numeric_limits<S>::max()) + 1) {
       return Result::Error;
     }
-    value = UINT32_MAX - value + 1;
+    value = std::numeric_limits<U>::max() - value + 1;
   } else {
-    if (value > static_cast<uint64_t>(UINT32_MAX)) {
+    if (value > static_cast<uint64_t>(std::numeric_limits<U>::max())) {
       return Result::Error;
     }
   }
-  *out = static_cast<uint32_t>(value);
+  *out = static_cast<U>(value);
   return Result::Ok;
+}
+
+Result ParseInt8(const char* s,
+                 const char* end,
+                 uint8_t* out,
+                 ParseIntType parse_type) {
+  return ParseInt(s, end, out, parse_type);
+}
+
+Result ParseInt16(const char* s,
+                  const char* end,
+                  uint16_t* out,
+                  ParseIntType parse_type) {
+  return ParseInt(s, end, out, parse_type);
+}
+
+Result ParseInt32(const char* s,
+                  const char* end,
+                  uint32_t* out,
+                  ParseIntType parse_type) {
+  return ParseInt(s, end, out, parse_type);
 }
 
 Result ParseFloat(LiteralType literal_type,

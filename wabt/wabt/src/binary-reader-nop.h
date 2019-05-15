@@ -286,15 +286,22 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   /* Elem section */
   Result BeginElemSection(Offset size) override { return Result::Ok; }
   Result OnElemSegmentCount(Index count) override { return Result::Ok; }
-  Result BeginElemSegment(Index index, Index table_index, bool passive) override {
+  Result BeginElemSegment(Index index,
+                          Index table_index,
+                          bool passive,
+                          Type elem_type) override {
     return Result::Ok;
   }
   Result BeginElemSegmentInitExpr(Index index) override { return Result::Ok; }
   Result EndElemSegmentInitExpr(Index index) override { return Result::Ok; }
-  Result OnElemSegmentFunctionIndexCount(Index index, Index count) override {
+  Result OnElemSegmentElemExprCount(Index index, Index count) override {
     return Result::Ok;
   }
-  Result OnElemSegmentFunctionIndex(Index index, Index func_index) override {
+  Result OnElemSegmentElemExpr_RefNull(Index segment_index) override {
+    return Result::Ok;
+  }
+  Result OnElemSegmentElemExpr_RefFunc(Index segment_index,
+                                       Index func_index) override {
     return Result::Ok;
   }
   Result EndElemSegment(Index index) override { return Result::Ok; }
@@ -424,6 +431,12 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   Result OnSectionSymbol(Index index,
                          uint32_t flags,
                          Index section_index) override {
+    return Result::Ok;
+  }
+  Result OnEventSymbol(Index index,
+                       uint32_t flags,
+                       string_view name,
+                       Index event_index) override {
     return Result::Ok;
   }
   Result OnSegmentInfoCount(Index count) override { return Result::Ok; }

@@ -25,6 +25,8 @@ var FEATURES = [
   'threads',
   'multi_value',
   'tail_call',
+  'bulk_memory',
+  'reference_types',
 ];
 
 /// If value is not undefined, return it. Otherwise return default_.
@@ -148,7 +150,7 @@ OutputBuffer.prototype.toString = function() {
 
   var addr = Module._wabt_output_buffer_get_data(this.addr);
   var size = Module._wabt_output_buffer_get_size(this.addr);
-  return Pointer_stringify(addr, size);
+  return UTF8ToString(addr, size);
 };
 
 OutputBuffer.prototype.destroy = function() {

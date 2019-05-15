@@ -839,7 +839,7 @@ static void InitEnvironment(Environment* env) {
   host_module->AppendFuncExport("print_f64_f64", {{Type::F64, Type::F64}, {}},
                                 PrintCallback);
 
-  host_module->AppendTableExport("table", Type::Anyfunc, Limits(10, 20));
+  host_module->AppendTableExport("table", Type::Funcref, Limits(10, 20));
   host_module->AppendMemoryExport("memory", Limits(1, 2));
 
   host_module->AppendGlobalExport("global_i32", false, uint32_t(666));
@@ -977,18 +977,22 @@ ExecResult CommandRunner::RunAction(int line_number,
 wabt::Result CommandRunner::ReadInvalidTextModule(string_view module_filename,
                                                   Environment* env,
                                                   const std::string& header) {
-  std::unique_ptr<WastLexer> lexer =
-      WastLexer::CreateFileLexer(module_filename);
+  std::vector<uint8_t> file_data;
+  wabt::Result result = ReadFile(module_filename, &file_data);
+  std::unique_ptr<WastLexer> lexer = WastLexer::CreateBufferLexer(
+      module_filename, file_data.data(), file_data.size());
   Errors errors;
-  std::unique_ptr<::Script> script;
-  wabt::Result result = ParseWastScript(lexer.get(), &script, &errors);
   if (Succeeded(result)) {
-    wabt::Module* module = script->GetFirstModule();
-    result = ResolveNamesModule(module, &errors);
+    std::unique_ptr<::Script> script;
+    result = ParseWastScript(lexer.get(), &script, &errors);
     if (Succeeded(result)) {
-      ValidateOptions options(s_features);
-      // Don't do a full validation, just validate the function signatures.
-      result = ValidateFuncSignatures(module, &errors, options);
+      wabt::Module* module = script->GetFirstModule();
+      result = ResolveNamesModule(module, &errors);
+      if (Succeeded(result)) {
+        ValidateOptions options(s_features);
+        // Don't do a full validation, just validate the function signatures.
+        result = ValidateFuncSignatures(module, &errors, options);
+      }
     }
   }
 
@@ -1132,11 +1136,9 @@ wabt::Result CommandRunner::OnRegisterCommand(const RegisterCommand* command) {
 
 wabt::Result CommandRunner::OnAssertUnlinkableCommand(
     const AssertUnlinkableCommand* command) {
-  Environment::MarkPoint mark = env_.Mark();
   wabt::Result result =
       ReadInvalidModule(command->line, command->filename, &env_, command->type,
                         "assert_unlinkable");
-  env_.ResetToMarkPoint(mark);
 
   if (Succeeded(result)) {
     PrintError(command->line, "expected module to be unlinkable: \"%s\"",
@@ -1167,7 +1169,6 @@ wabt::Result CommandRunner::OnAssertUninstantiableCommand(
     const AssertUninstantiableCommand* command) {
   Errors errors;
   DefinedModule* module;
-  Environment::MarkPoint mark = env_.Mark();
   wabt::Result result = ReadModule(command->filename, &env_, &errors, &module);
   FormatErrorsToFile(errors, Location::Type::Binary);
 
@@ -1186,7 +1187,9 @@ wabt::Result CommandRunner::OnAssertUninstantiableCommand(
     result = wabt::Result::Error;
   }
 
-  env_.ResetToMarkPoint(mark);
+  // Don't reset env_ here; if the start function fails, the environment is
+  // still modified. For example, a table may have been populated with a
+  // function from this module.
   return result;
 }
 

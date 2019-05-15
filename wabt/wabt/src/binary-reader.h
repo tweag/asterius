@@ -254,7 +254,8 @@ class BinaryReaderDelegate {
   virtual Result OnRethrowExpr() = 0;
   virtual Result OnReturnExpr() = 0;
   virtual Result OnReturnCallExpr(Index func_index) = 0;
-  virtual Result OnReturnCallIndirectExpr(Index sig_index, Index table_index) = 0;
+  virtual Result OnReturnCallIndirectExpr(Index sig_index,
+                                          Index table_index) = 0;
   virtual Result OnSelectExpr() = 0;
   virtual Result OnStoreExpr(Opcode opcode,
                              uint32_t alignment_log2,
@@ -277,12 +278,14 @@ class BinaryReaderDelegate {
   virtual Result OnElemSegmentCount(Index count) = 0;
   virtual Result BeginElemSegment(Index index,
                                   Index table_index,
-                                  bool passive) = 0;
+                                  bool passive,
+                                  Type elem_type) = 0;
   virtual Result BeginElemSegmentInitExpr(Index index) = 0;
   virtual Result EndElemSegmentInitExpr(Index index) = 0;
-  virtual Result OnElemSegmentFunctionIndexCount(Index index, Index count) = 0;
-  virtual Result OnElemSegmentFunctionIndex(Index segment_index,
-                                            Index func_index) = 0;
+  virtual Result OnElemSegmentElemExprCount(Index index, Index count) = 0;
+  virtual Result OnElemSegmentElemExpr_RefNull(Index segment_index) = 0;
+  virtual Result OnElemSegmentElemExpr_RefFunc(Index segment_index,
+                                               Index func_index) = 0;
   virtual Result EndElemSegment(Index index) = 0;
   virtual Result EndElemSection() = 0;
 
@@ -369,6 +372,10 @@ class BinaryReaderDelegate {
   virtual Result OnSectionSymbol(Index index,
                                  uint32_t flags,
                                  Index section_index) = 0;
+  virtual Result OnEventSymbol(Index index,
+                               uint32_t flags,
+                               string_view name,
+                               Index event_index) = 0;
   virtual Result OnSegmentInfoCount(Index count) = 0;
   virtual Result OnSegmentInfo(Index index,
                                string_view name,
