@@ -40,7 +40,7 @@ fi
 EMCC_ARGS="-std=c++11 --memory-init-file 0"
 EMCC_ARGS="$EMCC_ARGS -s ALLOW_MEMORY_GROWTH=1"
 EMCC_ARGS="$EMCC_ARGS -s DEMANGLE_SUPPORT=1"
-EMCC_ARGS="$EMCC_ARGS -s NO_FILESYSTEM=1"
+EMCC_ARGS="$EMCC_ARGS -s NO_FILESYSTEM=0"
 EMCC_ARGS="$EMCC_ARGS -s WASM=0"
 EMCC_ARGS="$EMCC_ARGS -s ERROR_ON_UNDEFINED_SYMBOLS=1"
 EMCC_ARGS="$EMCC_ARGS -s BINARYEN_ASYNC_COMPILATION=0"
@@ -91,6 +91,8 @@ echo "building shared bitcode"
   $BINARYEN_SRC/ir/LocalGraph.cpp \
   $BINARYEN_SRC/ir/ReFinalize.cpp \
   $BINARYEN_SRC/passes/pass.cpp \
+  $BINARYEN_SRC/passes/AlignmentLowering.cpp \
+  $BINARYEN_SRC/passes/AvoidReinterprets.cpp \
   $BINARYEN_SRC/passes/CoalesceLocals.cpp \
   $BINARYEN_SRC/passes/DeadArgumentElimination.cpp \
   $BINARYEN_SRC/passes/CodeFolding.cpp \
@@ -108,6 +110,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/passes/InstrumentLocals.cpp \
   $BINARYEN_SRC/passes/InstrumentMemory.cpp \
   $BINARYEN_SRC/passes/LegalizeJSInterface.cpp \
+  $BINARYEN_SRC/passes/LimitSegments.cpp \
   $BINARYEN_SRC/passes/LocalCSE.cpp \
   $BINARYEN_SRC/passes/LogExecution.cpp \
   $BINARYEN_SRC/passes/LoopInvariantCodeMotion.cpp \
@@ -124,6 +127,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/passes/PostEmscripten.cpp \
   $BINARYEN_SRC/passes/Precompute.cpp \
   $BINARYEN_SRC/passes/Print.cpp \
+  $BINARYEN_SRC/passes/PrintFeatures.cpp \
   $BINARYEN_SRC/passes/PrintCallGraph.cpp \
   $BINARYEN_SRC/passes/RedundantSetElimination.cpp \
   $BINARYEN_SRC/passes/RelooperJumpThreading.cpp \
@@ -137,12 +141,14 @@ echo "building shared bitcode"
   $BINARYEN_SRC/passes/ReorderLocals.cpp \
   $BINARYEN_SRC/passes/ReReloop.cpp \
   $BINARYEN_SRC/passes/SafeHeap.cpp \
+  $BINARYEN_SRC/passes/SimplifyGlobals.cpp \
   $BINARYEN_SRC/passes/SimplifyLocals.cpp \
   $BINARYEN_SRC/passes/Souperify.cpp \
   $BINARYEN_SRC/passes/SpillPointers.cpp \
   $BINARYEN_SRC/passes/SSAify.cpp \
   $BINARYEN_SRC/passes/StackIR.cpp \
   $BINARYEN_SRC/passes/Strip.cpp \
+  $BINARYEN_SRC/passes/StripTargetFeatures.cpp \
   $BINARYEN_SRC/passes/TrapMode.cpp \
   $BINARYEN_SRC/passes/Untee.cpp \
   $BINARYEN_SRC/passes/Vacuum.cpp \
@@ -175,6 +181,7 @@ export_function "_BinaryenTypeInt64"
 export_function "_BinaryenTypeFloat32"
 export_function "_BinaryenTypeFloat64"
 export_function "_BinaryenTypeVec128"
+export_function "_BinaryenTypeExceptRef"
 export_function "_BinaryenTypeUnreachable"
 export_function "_BinaryenTypeAuto"
 
@@ -787,6 +794,12 @@ export_function "_BinaryenFunctionGetBody"
 export_function "_BinaryenFunctionOptimize"
 export_function "_BinaryenFunctionRunPasses"
 export_function "_BinaryenFunctionSetDebugLocation"
+
+# 'Global' operations
+export_function "_BinaryenGlobalGetName"
+export_function "_BinaryenGlobalGetType"
+export_function "_BinaryenGlobalIsMutable"
+export_function "_BinaryenGlobalGetInitExpr"
 
 # 'Import' operations
 export_function "_BinaryenGlobalImportGetModule"

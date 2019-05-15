@@ -37,6 +37,7 @@ Module['i64'] = Module['_BinaryenTypeInt64']();
 Module['f32'] = Module['_BinaryenTypeFloat32']();
 Module['f64'] = Module['_BinaryenTypeFloat64']();
 Module['v128'] = Module['_BinaryenTypeVec128']();
+Module['except_ref'] = Module['_BinaryenTypeExceptRef']();
 Module['unreachable'] = Module['_BinaryenTypeUnreachable']();
 Module['auto'] = /* deprecated */ Module['undefined'] = Module['_BinaryenTypeAuto']();
 
@@ -1831,8 +1832,8 @@ function wrapModule(module, self) {
       );
     });
   };
-  self['setMemory'] = function(initial, maximum, exportName, segments, shared) {
-    // segments are assumed to be { offset: expression ref, data: array of 8-bit data }
+  self['setMemory'] = function(initial, maximum, exportName, segments, flags, shared) {
+    // segments are assumed to be { passive: bool, offset: expression ref, data: array of 8-bit data }
     if (!segments) segments = [];
     return preserveStack(function() {
       return Module['_BinaryenSetMemory'](
@@ -1840,6 +1841,11 @@ function wrapModule(module, self) {
         i32sToStack(
           segments.map(function(segment) {
             return allocate(segment.data, 'i8', ALLOC_STACK);
+          })
+        ),
+        i8sToStack(
+          segments.map(function(segment) {
+            return segment.passive;
           })
         ),
         i32sToStack(
@@ -2321,12 +2327,14 @@ Module['getFunctionInfo'] = function(func) {
 };
 
 // Obtains information about a 'Global'
-Module['getGlobalInfo'] = function(func) {
+Module['getGlobalInfo'] = function(global) {
   return {
-    'name': UTF8ToString(Module['_BinaryenGlobalGetName'](func)),
-    'module': UTF8ToString(Module['_BinaryenGlobalImportGetModule'](func)),
-    'base': UTF8ToString(Module['_BinaryenGlobalImportGetBase'](func)),
-    'type': UTF8ToString(Module['_BinaryenGlobalGetType'](func))
+    'name': UTF8ToString(Module['_BinaryenGlobalGetName'](global)),
+    'module': UTF8ToString(Module['_BinaryenGlobalImportGetModule'](global)),
+    'base': UTF8ToString(Module['_BinaryenGlobalImportGetBase'](global)),
+    'type': Module['_BinaryenGlobalGetType'](global),
+    'mutable': Boolean(Module['_BinaryenGlobalIsMutable'](global)),
+    'init': Module['_BinaryenGlobalGetInitExpr'](global)
   };
 };
 

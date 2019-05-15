@@ -15,8 +15,36 @@ full changeset diff at the end of each section.
 Current Trunk
 -------------
 
+v84
+---
+
+- Generate dynCall thunks for any signatures used in "invoke" calls.
+
+v81
+---
+
+- Fix AsmConstWalker handling of string address in arg0 with -fPIC code
+
+v80
+---
+
+- Change default feature set in the absence of a target features section from
+  all features to MVP.
+
+v79
+---
+
+- Improve support for side modules
+
+v78
+---
+
+- Add `namedGlobals` to metadata output of wasm-emscripten-finalize
 - Add support for llvm PIC code.
 - Add --side-module option to wasm-emscripten-finalize.
+- Add `segmentPassive` argument to `BinaryenSetMemory` for marking segments
+  passive.
+- Make `-o -` print to stdout instead of a file named "-".
 
 v73
 ---
@@ -51,4 +79,3 @@ older
 
 - Add `shared` parameters to `BinaryenAddMemoryImport` and `BinaryenSetMemory`,
   to support a shared memory. #1686
-

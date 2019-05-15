@@ -20,25 +20,25 @@
 
 #include "asm_v_wasm.h"
 #include "asmjs/shared-constants.h"
+#include "ir/function-type-utils.h"
+#include "ir/import-utils.h"
+#include "ir/module-utils.h"
 #include "shared-constants.h"
 #include "wasm-builder.h"
 #include "wasm-traversal.h"
 #include "wasm.h"
-#include "ir/function-type-utils.h"
-#include "ir/import-utils.h"
-#include "ir/module-utils.h"
 
 namespace wasm {
 
 cashew::IString EMSCRIPTEN_ASM_CONST("emscripten_asm_const");
 cashew::IString EM_JS_PREFIX("__em_js__");
 
-static Name STACK_SAVE("stackSave"),
-            STACK_RESTORE("stackRestore"),
-            STACK_ALLOC("stackAlloc"),
-            STACK_INIT("stack$init"),
-            POST_INSTANTIATE("__post_instantiate"),
-            ASSIGN_GOT_ENTIRES("__assign_got_enties");
+static Name STACK_SAVE("stackSave");
+static Name STACK_RESTORE("stackRestore");
+static Name STACK_ALLOC("stackAlloc");
+static Name STACK_INIT("stack$init");
+static Name POST_INSTANTIATE("__post_instantiate");
+static Name ASSIGN_GOT_ENTIRES("__assign_got_enties");
 
 void addExportedFunction(Module& wasm, Function* function) {
   wasm.addFunction(function);
@@ -48,9 +48,19 @@ void addExportedFunction(Module& wasm, Function* function) {
   wasm.addExport(export_);
 }
 
+// TODO(sbc): There should probably be a better way to do this.
+bool isExported(Module& wasm, Name name) {
+  for (auto& ex : wasm.exports) {
+    if (ex->value == name) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Global* EmscriptenGlueGenerator::getStackPointerGlobal() {
   // Assumption: The stack pointer is either imported as __stack_pointer or
-  // its the first non-imported global.
+  // its the first non-imported and non-exported global.
   // TODO(sbc): Find a better way to discover the stack pointer.  Perhaps the
   // linker could export it by name?
   for (auto& g : wasm.globals) {
@@ -58,7 +68,7 @@ Global* EmscriptenGlueGenerator::getStackPointerGlobal() {
       if (g->base == "__stack_pointer") {
         return g.get();
       }
-    } else {
+    } else if (!isExported(wasm, g->name)) {
       return g.get();
     }
   }
@@ -68,42 +78,42 @@ Global* EmscriptenGlueGenerator::getStackPointerGlobal() {
 Expression* EmscriptenGlueGenerator::generateLoadStackPointer() {
   if (!useStackPointerGlobal) {
     return builder.makeLoad(
-      /* bytes  =*/ 4,
-      /* signed =*/ false,
-      /* offset =*/ stackPointerOffset,
-      /* align  =*/ 4,
-      /* ptr    =*/ builder.makeConst(Literal(0)),
-      /* type   =*/ i32
-    );
+      /* bytes  =*/4,
+      /* signed =*/false,
+      /* offset =*/stackPointerOffset,
+      /* align  =*/4,
+      /* ptr    =*/builder.makeConst(Literal(0)),
+      /* type   =*/i32);
   }
   Global* stackPointer = getStackPointerGlobal();
-  if (!stackPointer)
+  if (!stackPointer) {
     Fatal() << "stack pointer global not found";
+  }
   return builder.makeGetGlobal(stackPointer->name, i32);
 }
 
-Expression* EmscriptenGlueGenerator::generateStoreStackPointer(Expression* value) {
+Expression*
+EmscriptenGlueGenerator::generateStoreStackPointer(Expression* value) {
   if (!useStackPointerGlobal) {
     return builder.makeStore(
-      /* bytes  =*/ 4,
-      /* offset =*/ stackPointerOffset,
-      /* align  =*/ 4,
-      /* ptr    =*/ builder.makeConst(Literal(0)),
-      /* value  =*/ value,
-      /* type   =*/ i32
-    );
+      /* bytes  =*/4,
+      /* offset =*/stackPointerOffset,
+      /* align  =*/4,
+      /* ptr    =*/builder.makeConst(Literal(0)),
+      /* value  =*/value,
+      /* type   =*/i32);
   }
   Global* stackPointer = getStackPointerGlobal();
-  if (!stackPointer)
+  if (!stackPointer) {
     Fatal() << "stack pointer global not found";
+  }
   return builder.makeSetGlobal(stackPointer->name, value);
 }
 
 void EmscriptenGlueGenerator::generateStackSaveFunction() {
-  std::vector<NameType> params { };
-  Function* function = builder.makeFunction(
-    STACK_SAVE, std::move(params), i32, {}
-  );
+  std::vector<NameType> params{};
+  Function* function =
+    builder.makeFunction(STACK_SAVE, std::move(params), i32, {});
 
   function->body = generateLoadStackPointer();
 
@@ -111,10 +121,9 @@ void EmscriptenGlueGenerator::generateStackSaveFunction() {
 }
 
 void EmscriptenGlueGenerator::generateStackAllocFunction() {
-  std::vector<NameType> params { { "0", i32 } };
-  Function* function = builder.makeFunction(
-    STACK_ALLOC, std::move(params), i32, { { "1", i32 } }
-  );
+  std::vector<NameType> params{{"0", i32}};
+  Function* function =
+    builder.makeFunction(STACK_ALLOC, std::move(params), i32, {{"1", i32}});
   Expression* loadStack = generateLoadStackPointer();
   GetLocal* getSizeArg = builder.makeGetLocal(0, i32);
   Binary* sub = builder.makeBinary(SubInt32, loadStack, getSizeArg);
@@ -136,10 +145,9 @@ void EmscriptenGlueGenerator::generateStackAllocFunction() {
 }
 
 void EmscriptenGlueGenerator::generateStackRestoreFunction() {
-  std::vector<NameType> params { { "0", i32 } };
-  Function* function = builder.makeFunction(
-    STACK_RESTORE, std::move(params), none, {}
-  );
+  std::vector<NameType> params{{"0", i32}};
+  Function* function =
+    builder.makeFunction(STACK_RESTORE, std::move(params), none, {});
   GetLocal* getArg = builder.makeGetLocal(0, i32);
   Expression* store = generateStoreStackPointer(getArg);
 
@@ -154,7 +162,8 @@ void EmscriptenGlueGenerator::generateRuntimeFunctions() {
   generateStackRestoreFunction();
 }
 
-static Function* ensureFunctionImport(Module* module, Name name, std::string sig) {
+static Function*
+ensureFunctionImport(Module* module, Name name, std::string sig) {
   // Then see if its already imported
   ImportInfo info(*module);
   if (Function* f = info.getImportedFunction(ENV, name)) {
@@ -172,6 +181,17 @@ static Function* ensureFunctionImport(Module* module, Name name, std::string sig
   return import;
 }
 
+// Convert LLVM PIC ABI to emscripten ABI
+//
+// When generating -fPIC code llvm will generate imports call GOT.mem and
+// GOT.func in order to access the addresses of external global data and
+// functions.
+//
+// However emscripten uses a different ABI where function and data addresses
+// are available at runtime via special `g$foo` and `fp$bar` function calls.
+//
+// Here we internalize all such wasm globals and generte code that sets their
+// value based on the result of call `g$foo` and `fp$bar` functions at runtime.
 Function* EmscriptenGlueGenerator::generateAssignGOTEntriesFunction() {
   std::vector<Global*> got_entries_func;
   std::vector<Global*> got_entries_mem;
@@ -209,10 +229,25 @@ Function* EmscriptenGlueGenerator::generateAssignGOTEntriesFunction() {
   }
 
   for (Global* g : got_entries_func) {
-    Name getter(std::string("f$") + g->base.c_str());
-    if (auto* f = wasm.getFunctionOrNull(g->base)) {
-      getter.set((getter.c_str() + std::string("$") + getSig(f)).c_str(), false);
+    Function* f = nullptr;
+    // The function has to exist either as export or an import.
+    // Note that we don't search for the function by name since its internal
+    // name may be different.
+    auto* ex = wasm.getExportOrNull(g->base);
+    if (ex) {
+      assert(ex->kind == ExternalKind::Function);
+      f = wasm.getFunction(ex->value);
+    } else {
+      ImportInfo info(wasm);
+      f = info.getImportedFunction(ENV, g->base);
+      if (!f) {
+        Fatal() << "GOT.func entry with no import/export: " << g->base;
+      }
     }
+
+    Name getter(
+      (std::string("fp$") + g->base.c_str() + std::string("$") + getSig(f))
+        .c_str());
     ensureFunctionImport(&wasm, getter, "i");
     Expression* call = builder.makeCall(getter, {}, i32);
     SetGlobal* set_global = builder.makeSetGlobal(g->name, call);
@@ -244,7 +279,7 @@ void EmscriptenGlueGenerator::generatePostInstantiateFunction() {
   if (Function* F = generateAssignGOTEntriesFunction()) {
     // call __assign_got_enties from post_instantiate
     Expression* call = builder.makeCall(F->name, {}, none);
-    post_instantiate->body = builder.blockify(call);
+    post_instantiate->body = builder.blockify(post_instantiate->body, call);
   }
 
   // The names of standard imports/exports used by lld doesn't quite match that
@@ -261,20 +296,15 @@ void EmscriptenGlueGenerator::generatePostInstantiateFunction() {
   ex->name = POST_INSTANTIATE;
   ex->kind = ExternalKind::Function;
   wasm.addExport(ex);
-  wasm.updateMaps();
 }
 
 Function* EmscriptenGlueGenerator::generateMemoryGrowthFunction() {
   Name name(GROW_WASM_MEMORY);
-  std::vector<NameType> params { { NEW_SIZE, i32 } };
-  Function* growFunction = builder.makeFunction(
-    name, std::move(params), i32, {}
-  );
-  growFunction->body = builder.makeHost(
-    GrowMemory,
-    Name(),
-    { builder.makeGetLocal(0, i32) }
-  );
+  std::vector<NameType> params{{NEW_SIZE, i32}};
+  Function* growFunction =
+    builder.makeFunction(name, std::move(params), i32, {});
+  growFunction->body =
+    builder.makeHost(GrowMemory, Name(), {builder.makeGetLocal(0, i32)});
 
   addExportedFunction(wasm, growFunction);
 
@@ -284,8 +314,9 @@ Function* EmscriptenGlueGenerator::generateMemoryGrowthFunction() {
 void EmscriptenGlueGenerator::generateStackInitialization(Address addr) {
   auto* stackPointer = getStackPointerGlobal();
   assert(!stackPointer->imported());
-  if (!stackPointer->init || !stackPointer->init->is<Const>())
+  if (!stackPointer->init || !stackPointer->init->is<Const>()) {
     Fatal() << "stack pointer global is not assignable";
+  }
   stackPointer->init->cast<Const>()->value = Literal(int32_t(addr));
 }
 
@@ -294,15 +325,45 @@ inline void exportFunction(Module& wasm, Name name, bool must_export) {
     assert(!must_export);
     return;
   }
-  if (wasm.getExportOrNull(name)) return; // Already exported
+  if (wasm.getExportOrNull(name)) {
+    return; // Already exported
+  }
   auto exp = new Export;
   exp->name = exp->value = name;
   exp->kind = ExternalKind::Function;
   wasm.addExport(exp);
 }
 
+void EmscriptenGlueGenerator::generateDynCallThunk(std::string sig) {
+  auto* funcType = ensureFunctionType(sig, &wasm);
+  if (!sigs.insert(sig).second) {
+    return; // sig is already in the set
+  }
+  Name name = std::string("dynCall_") + sig;
+  if (wasm.getFunctionOrNull(name) || wasm.getExportOrNull(name)) {
+    return; // module already contains this dyncall
+  }
+  std::vector<NameType> params;
+  params.emplace_back("fptr", i32); // function pointer param
+  int p = 0;
+  for (const auto& ty : funcType->params) {
+    params.emplace_back(std::to_string(p++), ty);
+  }
+  Function* f =
+    builder.makeFunction(name, std::move(params), funcType->result, {});
+  Expression* fptr = builder.makeGetLocal(0, i32);
+  std::vector<Expression*> args;
+  for (unsigned i = 0; i < funcType->params.size(); ++i) {
+    args.push_back(builder.makeGetLocal(i + 1, funcType->params[i]));
+  }
+  Expression* call = builder.makeCallIndirect(funcType, fptr, args);
+  f->body = call;
+
+  wasm.addFunction(f);
+  exportFunction(wasm, f->name, true);
+}
+
 void EmscriptenGlueGenerator::generateDynCallThunks() {
-  std::unordered_set<std::string> sigs;
   Builder builder(wasm);
   std::vector<Name> tableSegmentData;
   if (wasm.table.segments.size() > 0) {
@@ -310,29 +371,7 @@ void EmscriptenGlueGenerator::generateDynCallThunks() {
   }
   for (const auto& indirectFunc : tableSegmentData) {
     std::string sig = getSig(wasm.getFunction(indirectFunc));
-    auto* funcType = ensureFunctionType(sig, &wasm);
-    if (!sigs.insert(sig).second) {
-      continue; // sig is already in the set
-    }
-    Name name = std::string("dynCall_") + sig;
-    if (wasm.getFunctionOrNull(name) || wasm.getExportOrNull(name)) {
-      continue; // module already contains this dyncall
-    }
-    std::vector<NameType> params;
-    params.emplace_back("fptr", i32); // function pointer param
-    int p = 0;
-    for (const auto& ty : funcType->params) params.emplace_back(std::to_string(p++), ty);
-    Function* f = builder.makeFunction(name, std::move(params), funcType->result, {});
-    Expression* fptr = builder.makeGetLocal(0, i32);
-    std::vector<Expression*> args;
-    for (unsigned i = 0; i < funcType->params.size(); ++i) {
-      args.push_back(builder.makeGetLocal(i + 1, funcType->params[i]));
-    }
-    Expression* call = builder.makeCallIndirect(funcType, fptr, args);
-    f->body = call;
-
-    wasm.addFunction(f);
-    exportFunction(wasm, f->name, true);
+    generateDynCallThunk(sig);
   }
 }
 
@@ -342,7 +381,9 @@ struct RemoveStackPointer : public PostWalker<RemoveStackPointer> {
   void visitGetGlobal(GetGlobal* curr) {
     if (getModule()->getGlobalOrNull(curr->name) == stackPointer) {
       needStackSave = true;
-      if (!builder) builder = make_unique<Builder>(*getModule());
+      if (!builder) {
+        builder = make_unique<Builder>(*getModule());
+      }
       replaceCurrent(builder->makeCall(STACK_SAVE, {}, i32));
     }
   }
@@ -350,7 +391,9 @@ struct RemoveStackPointer : public PostWalker<RemoveStackPointer> {
   void visitSetGlobal(SetGlobal* curr) {
     if (getModule()->getGlobalOrNull(curr->name) == stackPointer) {
       needStackRestore = true;
-      if (!builder) builder = make_unique<Builder>(*getModule());
+      if (!builder) {
+        builder = make_unique<Builder>(*getModule());
+      }
       replaceCurrent(builder->makeCall(STACK_RESTORE, {curr->value}, none));
     }
   }
@@ -365,8 +408,9 @@ private:
 
 void EmscriptenGlueGenerator::replaceStackPointerGlobal() {
   Global* stackPointer = getStackPointerGlobal();
-  if (!stackPointer)
+  if (!stackPointer) {
     return;
+  }
 
   // Replace all uses of stack pointer global
   RemoveStackPointer walker(stackPointer);
@@ -398,7 +442,7 @@ std::vector<Address> getSegmentOffsets(Module& wasm) {
   return segmentOffsets;
 }
 
-std::string escape(const char *input) {
+std::string escape(const char* input) {
   std::string code = input;
   // replace newlines quotes with escaped newlines
   size_t curr = 0;
@@ -409,11 +453,18 @@ std::string escape(const char *input) {
   // replace double quotes with escaped single quotes
   curr = 0;
   while ((curr = code.find('"', curr)) != std::string::npos) {
-    if (curr == 0 || code[curr-1] != '\\') {
-      code = code.replace(curr, 1, "\\" "\"");
+    if (curr == 0 || code[curr - 1] != '\\') {
+      code = code.replace(curr,
+                          1,
+                          "\\"
+                          "\"");
       curr += 2; // skip this one
-    } else { // already escaped, escape the slash as well
-      code = code.replace(curr, 1, "\\" "\\" "\"");
+    } else {     // already escaped, escape the slash as well
+      code = code.replace(curr,
+                          1,
+                          "\\"
+                          "\\"
+                          "\"");
       curr += 3; // skip this one
     }
   }
@@ -453,11 +504,11 @@ struct AsmConstWalker : public LinearExecutionWalker<AsmConstWalker> {
   std::map<std::string, std::set<std::string>> sigsForCode;
   std::map<std::string, Address> ids;
   std::set<std::string> allSigs;
-  std::map<Index, SetLocal*> sets; // last sets in the current basic block, per index
+  // last sets in the current basic block, per index
+  std::map<Index, SetLocal*> sets;
 
   AsmConstWalker(Module& _wasm)
-    : wasm(_wasm),
-      segmentOffsets(getSegmentOffsets(wasm)) { }
+    : wasm(_wasm), segmentOffsets(getSegmentOffsets(wasm)) {}
 
   void noteNonLinear(Expression* curr);
 
@@ -483,29 +534,47 @@ void AsmConstWalker::noteNonLinear(Expression* curr) {
   sets.clear();
 }
 
-void AsmConstWalker::visitSetLocal(SetLocal* curr) {
-  sets[curr->index] = curr;
-}
+void AsmConstWalker::visitSetLocal(SetLocal* curr) { sets[curr->index] = curr; }
 
 void AsmConstWalker::visitCall(Call* curr) {
   auto* import = wasm.getFunction(curr->target);
+  // Find calls to emscripten_asm_const* functions whose first argument is
+  // is always a string constant.
   if (import->imported() && import->base.hasSubstring(EMSCRIPTEN_ASM_CONST)) {
     auto baseSig = getSig(curr);
     auto sig = fixupNameWithSig(curr->target, baseSig);
     auto* arg = curr->operands[0];
-    // The argument may be a get, in which case, the last set in this basic block
-    // has the value.
-    if (auto* get = arg->dynCast<GetLocal>()) {
-      auto* set = sets[get->index];
-      if (set) {
-        assert(set->index == get->index);
-        arg = set->value;
+    while (!arg->dynCast<Const>()) {
+      if (auto* get = arg->dynCast<GetLocal>()) {
+        // The argument may be a local.get, in which case, the last set in this
+        // basic block has the value.
+        auto* set = sets[get->index];
+        if (set) {
+          assert(set->index == get->index);
+          arg = set->value;
+        }
+      } else if (auto* value = arg->dynCast<Binary>()) {
+        // In the dynamic linking case the address of the string constant
+        // is the result of adding its offset to __memory_base.
+        // In this case are only looking for the offset with the data segment so
+        // the RHS of the addition is just what we want.
+        assert(value->op == AddInt32);
+        arg = value->right;
+      } else {
+        if (!value) {
+          Fatal() << "Unexpected arg0 type (" << getExpressionName(arg)
+                  << ") in call to to: " << import->base;
+        }
       }
     }
+
     auto* value = arg->cast<Const>();
     auto code = codeForConstAddr(wasm, segmentOffsets, value);
-    value->value = idLiteralForCode(code);
     sigsForCode[code].insert(sig);
+
+    // Replace the first argument to the call with a Const index
+    Builder builder(wasm);
+    curr->operands[0] = builder.makeConst(idLiteralForCode(code));
   }
 }
 
@@ -555,7 +624,8 @@ Literal AsmConstWalker::idLiteralForCode(std::string code) {
 std::string AsmConstWalker::asmConstSig(std::string baseSig) {
   std::string sig = "";
   for (size_t i = 0; i < baseSig.size(); ++i) {
-    // Omit the signature of the "code" parameter, taken as a string, as the first argument
+    // Omit the signature of the "code" parameter, taken as a string, as the
+    // first argument
     if (i != 1) {
       sig += baseSig[i];
     }
@@ -610,8 +680,7 @@ struct EmJsWalker : public PostWalker<EmJsWalker> {
   std::map<std::string, std::string> codeByName;
 
   EmJsWalker(Module& _wasm)
-    : wasm(_wasm),
-      segmentOffsets(getSegmentOffsets(wasm)) { }
+    : wasm(_wasm), segmentOffsets(getSegmentOffsets(wasm)) {}
 
   void visitFunction(Function* curr) {
     if (curr->imported()) {
@@ -697,11 +766,13 @@ EmJsWalker fixEmJsFuncsAndReturnWalker(Module& wasm) {
 //    emscripten_longjmp here.
 // 2. Converts invoke wrapper names.
 //    Refer to the comments in fixEmExceptionInvoke below.
-struct FixInvokeFunctionNamesWalker : public PostWalker<FixInvokeFunctionNamesWalker> {
+struct FixInvokeFunctionNamesWalker
+  : public PostWalker<FixInvokeFunctionNamesWalker> {
   Module& wasm;
   std::map<Name, Name> importRenames;
   std::vector<Name> toRemove;
   std::set<Name> newImports;
+  std::set<std::string> invokeSigs;
 
   FixInvokeFunctionNamesWalker(Module& _wasm) : wasm(_wasm) {}
 
@@ -724,7 +795,7 @@ struct FixInvokeFunctionNamesWalker : public PostWalker<FixInvokeFunctionNamesWa
   // This function converts the names of invoke wrappers based on their lowered
   // argument types and a return type. In the example above, the resulting new
   // wrapper name becomes "invoke_vii".
-  static Name fixEmExceptionInvoke(const Name& name, const std::string& sig) {
+  Name fixEmExceptionInvoke(const Name& name, const std::string& sig) {
     std::string nameStr = name.c_str();
     if (nameStr.front() == '"' && nameStr.back() == '"') {
       nameStr = nameStr.substr(1, nameStr.size() - 2);
@@ -733,12 +804,14 @@ struct FixInvokeFunctionNamesWalker : public PostWalker<FixInvokeFunctionNamesWa
       return name;
     }
     std::string sigWoOrigFunc = sig.front() + sig.substr(2, sig.size() - 2);
+    invokeSigs.insert(sigWoOrigFunc);
     return Name("invoke_" + sigWoOrigFunc);
   }
 
-  static Name fixEmEHSjLjNames(const Name &name, const std::string& sig) {
-    if (name == "emscripten_longjmp_jmpbuf")
+  Name fixEmEHSjLjNames(const Name& name, const std::string& sig) {
+    if (name == "emscripten_longjmp_jmpbuf") {
       return "emscripten_longjmp";
+    }
     return fixEmExceptionInvoke(name, sig);
   }
 
@@ -775,22 +848,27 @@ struct FixInvokeFunctionNamesWalker : public PostWalker<FixInvokeFunctionNamesWa
 void EmscriptenGlueGenerator::fixInvokeFunctionNames() {
   FixInvokeFunctionNamesWalker walker(wasm);
   walker.walkModule(&wasm);
+  for (auto sig : walker.invokeSigs) {
+    generateDynCallThunk(sig);
+  }
 }
 
-template<class C>
-void printSet(std::ostream& o, C& c) {
+template<class C> void printSet(std::ostream& o, C& c) {
   o << "[";
   bool first = true;
   for (auto& item : c) {
-    if (first) first = false;
-    else o << ",";
+    if (first) {
+      first = false;
+    } else {
+      o << ",";
+    }
     o << '"' << item << '"';
   }
   o << "]";
 }
 
 std::string EmscriptenGlueGenerator::generateEmscriptenMetadata(
-    Address staticBump, std::vector<Name> const& initializerFunctions) {
+  Address staticBump, std::vector<Name> const& initializerFunctions) {
   bool commaFirst;
   auto nextElement = [&commaFirst]() {
     if (commaFirst) {
@@ -897,9 +975,25 @@ std::string EmscriptenGlueGenerator::generateEmscriptenMetadata(
     meta << "  \"exports\": [";
     commaFirst = true;
     for (const auto& ex : wasm.exports) {
-      meta << nextElement() << '"' << ex->name.str << '"';
+      if (ex->kind == ExternalKind::Function) {
+        meta << nextElement() << '"' << ex->name.str << '"';
+      }
     }
     meta << "\n  ],\n";
+
+    meta << "  \"namedGlobals\": {";
+    commaFirst = true;
+    for (const auto& ex : wasm.exports) {
+      if (ex->kind == ExternalKind::Global) {
+        const Global* g = wasm.getGlobal(ex->value);
+        assert(g->type == i32);
+        Const* init = g->init->cast<Const>();
+        uint32_t addr = init->value.geti32();
+        meta << nextElement() << '"' << ex->name.str << "\" : \"" << addr
+             << '"';
+      }
+    }
+    meta << "\n  },\n";
   }
 
   meta << "  \"invokeFuncs\": [";
@@ -911,15 +1005,30 @@ std::string EmscriptenGlueGenerator::generateEmscriptenMetadata(
       }
     }
   });
+  meta << "\n  ],\n";
+
+  meta << "  \"features\": [";
+  commaFirst = true;
+  wasm.features.iterFeatures([&](FeatureSet::Feature f) {
+    meta << nextElement() << "\"--enable-" << FeatureSet::toString(f) << '"';
+  });
   meta << "\n  ]\n";
+
   meta << "}\n";
 
   return meta.str();
 }
 
-void EmscriptenGlueGenerator::separateDataSegments(Output* outfile, Address base) {
+void EmscriptenGlueGenerator::separateDataSegments(Output* outfile,
+                                                   Address base) {
   size_t lastEnd = 0;
   for (Memory::Segment& seg : wasm.memory.segments) {
+    if (seg.isPassive) {
+      Fatal() << "separating passive segments not implemented";
+    }
+    if (!seg.offset->is<Const>()) {
+      Fatal() << "separating relocatable segments not implemented";
+    }
     size_t offset = seg.offset->cast<Const>()->value.geti32();
     offset -= base;
     size_t fill = offset - lastEnd;

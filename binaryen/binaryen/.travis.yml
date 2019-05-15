@@ -14,7 +14,7 @@ DEPLOY_TO_GITHUB: &DEPLOY_TO_GITHUB
     - PKGNAME="binaryen-$TRAVIS_TAG-$ARCH"
     - mv bin binaryen-$TRAVIS_TAG
     - tar -czf $PKGNAME.tar.gz binaryen-$TRAVIS_TAG
-    - sha256sum $PKGNAME.tar.gz > $PKGNAME.tar.gz.sha256
+    - shasum -a 256 $PKGNAME.tar.gz > $PKGNAME.tar.gz.sha256
   deploy:
     provider: releases
     api_key:
@@ -59,11 +59,14 @@ jobs:
       script:
         - set -o errexit
         - flake8
+        - ./clang-format-diff.sh
         # ensure generated parser is up to date
         - ./scripts/gen-s-parser.py | diff src/gen-s-parser.inc -
         - BUILD_SUBDIR=${BUILD_SUBDIR:-.}
         - mkdir -p ${BUILD_SUBDIR} && cd ${BUILD_SUBDIR}
-        - cmake ${TRAVIS_BUILD_DIR} -DCMAKE_C_FLAGS="$COMPILER_FLAGS" -DCMAKE_CXX_FLAGS="$COMPILER_FLAGS" -DCMAKE_INSTALL_PREFIX=install
+        - cmake ${TRAVIS_BUILD_DIR} -DCMAKE_C_FLAGS="$COMPILER_FLAGS" -DCMAKE_CXX_FLAGS="$COMPILER_FLAGS" -DCMAKE_INSTALL_PREFIX=install -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+        # clang-tidy-diff.sh may not exist when BUILD_SUBDIR is a subdirectory
+        - if [ -f clang-tidy-diff.sh ]; then ./clang-tidy-diff.sh; fi
         - make -j2 install
         - cd ${TRAVIS_BUILD_DIR}
         - ./check.py --binaryen-bin=${BUILD_SUBDIR}/install/bin
