@@ -221,11 +221,16 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
 
   Result BeginElemSection(Offset size) override;
   Result OnElemSegmentCount(Index count) override;
-  Result BeginElemSegment(Index index, Index table_index, bool passive) override;
+  Result BeginElemSegment(Index index,
+                          Index table_index,
+                          bool passive,
+                          Type elem_type) override;
   Result BeginElemSegmentInitExpr(Index index) override;
   Result EndElemSegmentInitExpr(Index index) override;
-  Result OnElemSegmentFunctionIndexCount(Index index, Index count) override;
-  Result OnElemSegmentFunctionIndex(Index index, Index func_index) override;
+  Result OnElemSegmentElemExprCount(Index index, Index count) override;
+  Result OnElemSegmentElemExpr_RefNull(Index segment_index) override;
+  Result OnElemSegmentElemExpr_RefFunc(Index segment_index,
+                                       Index func_index) override;
   Result EndElemSegment(Index index) override;
   Result EndElemSection() override;
 
@@ -302,6 +307,10 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result OnSectionSymbol(Index index,
                          uint32_t flags,
                          Index section_index) override;
+  Result OnEventSymbol(Index index,
+                       uint32_t flags,
+                       string_view name,
+                       Index event_index) override;
   Result OnSegmentInfoCount(Index count) override;
   Result OnSegmentInfo(Index index,
                        string_view name,

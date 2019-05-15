@@ -198,11 +198,16 @@ class BinaryReaderIR : public BinaryReaderNop {
   Result OnSimdShuffleOpExpr(Opcode opcode, v128 value) override;
 
   Result OnElemSegmentCount(Index count) override;
-  Result BeginElemSegment(Index index, Index table_index, bool passive) override;
+  Result BeginElemSegment(Index index,
+                          Index table_index,
+                          bool passive,
+                          Type elem_type) override;
   Result BeginElemSegmentInitExpr(Index index) override;
   Result EndElemSegmentInitExpr(Index index) override;
-  Result OnElemSegmentFunctionIndexCount(Index index, Index count) override;
-  Result OnElemSegmentFunctionIndex(Index index, Index func_index) override;
+  Result OnElemSegmentElemExprCount(Index index, Index count) override;
+  Result OnElemSegmentElemExpr_RefNull(Index segment_index) override;
+  Result OnElemSegmentElemExpr_RefFunc(Index segment_index,
+                                       Index func_index) override;
 
   Result OnDataSegmentCount(Index count) override;
   Result BeginDataSegment(Index index, Index memory_index, bool passive) override;
@@ -982,11 +987,13 @@ Result BinaryReaderIR::OnElemSegmentCount(Index count) {
 
 Result BinaryReaderIR::BeginElemSegment(Index index,
                                         Index table_index,
-                                        bool passive) {
+                                        bool passive,
+                                        Type elem_type) {
   auto field = MakeUnique<ElemSegmentModuleField>(GetLocation());
   ElemSegment& elem_segment = field->elem_segment;
   elem_segment.table_var = Var(table_index, GetLocation());
   elem_segment.passive = passive;
+  elem_segment.elem_type = elem_type;
   module_->AppendField(std::move(field));
   return Result::Ok;
 }
@@ -1003,23 +1010,27 @@ Result BinaryReaderIR::EndElemSegmentInitExpr(Index index) {
   return Result::Ok;
 }
 
-Result BinaryReaderIR::OnElemSegmentFunctionIndexCount(Index index,
-                                                       Index count) {
+Result BinaryReaderIR::OnElemSegmentElemExprCount(Index index, Index count) {
   assert(index == module_->elem_segments.size() - 1);
   ElemSegment* segment = module_->elem_segments[index];
   WABT_TRY
-  segment->vars.reserve(count);
+  segment->elem_exprs.reserve(count);
   WABT_CATCH_BAD_ALLOC
   return Result::Ok;
 }
 
-Result BinaryReaderIR::OnElemSegmentFunctionIndex(Index segment_index,
-                                                  Index func_index) {
+Result BinaryReaderIR::OnElemSegmentElemExpr_RefNull(Index segment_index) {
   assert(segment_index == module_->elem_segments.size() - 1);
   ElemSegment* segment = module_->elem_segments[segment_index];
-  segment->vars.emplace_back();
-  Var* var = &segment->vars.back();
-  *var = Var(func_index, GetLocation());
+  segment->elem_exprs.emplace_back();
+  return Result::Ok;
+}
+
+Result BinaryReaderIR::OnElemSegmentElemExpr_RefFunc(Index segment_index,
+                                                     Index func_index) {
+  assert(segment_index == module_->elem_segments.size() - 1);
+  ElemSegment* segment = module_->elem_segments[segment_index];
+  segment->elem_exprs.emplace_back(Var(func_index, GetLocation()));
   return Result::Ok;
 }
 

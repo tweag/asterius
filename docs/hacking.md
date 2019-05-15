@@ -50,8 +50,24 @@ booting, reducing your coffee break time.
 
 ## Adding a test case
 
-To add a test case, it is best to replicate what has been done for an existing testcase. 
+To add a test case, it is best to replicate what has been done for an existing testcase.
 
 - For example, `git grep bytearraymini` should show all the places where the test case
 `bytearraymini` has been used. Replicating the same files for a new test case
 should "just work".
+
+## Using `wabt`
+
+We also include `wabt` in the source tree and pack it as a Cabal package. So
+`stack build wabt` will build the `wabt` binaries. To install the binaries to a
+specific location (e.g. `~/.local/bin`), set the `WABT_BINDIR` environment
+variables before building; `stack install` doesn't properly copy the binaries
+yet.
+
+The `wabt` setup script uses `make`, so it's possible to use `MAKEFLAGS`
+environment variable to pass additional arguments to `make`, e.g. setting
+`MAKEFLAGS=-j8` to speed it up.
+
+The `wabt` package exposes `Paths_wabt`, so by using `Paths_wabt.getBinDir` you
+can access the `wabt` binary location in Haskell. This can be useful when
+implementing Haskell wrappers.

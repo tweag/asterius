@@ -70,7 +70,7 @@ std::string TypedValueToString(const TypedValue& tv) {
     }
 
     case Type::V128:
-      return StringPrintf("v128:0x%08x 0x%08x 0x%08x 0x%08x",
+      return StringPrintf("v128 i32x4:0x%08x 0x%08x 0x%08x 0x%08x",
                           tv.value.v128_bits.v[0], tv.value.v128_bits.v[1],
                           tv.value.v128_bits.v[2], tv.value.v128_bits.v[3]);
 
@@ -337,6 +337,8 @@ Environment::MarkPoint Environment::Mark() {
   mark.memories_size = memories_.size();
   mark.tables_size = tables_.size();
   mark.globals_size = globals_.size();
+  mark.data_segments_size = data_segments_.size();
+  mark.elem_segments_size = elem_segments_.size();
   mark.istream_size = istream_->data.size();
   return mark;
 }
@@ -367,6 +369,10 @@ void Environment::ResetToMarkPoint(const MarkPoint& mark) {
   memories_.erase(memories_.begin() + mark.memories_size, memories_.end());
   tables_.erase(tables_.begin() + mark.tables_size, tables_.end());
   globals_.erase(globals_.begin() + mark.globals_size, globals_.end());
+  data_segments_.erase(data_segments_.begin() + mark.data_segments_size,
+                       data_segments_.end());
+  elem_segments_.erase(elem_segments_.begin() + mark.elem_segments_size,
+                       elem_segments_.end());
   istream_->data.resize(mark.istream_size);
 }
 
@@ -445,7 +451,6 @@ struct FloatTraits<float> {
   static const uint32_t kNegZero = 0x80000000U;
   static const uint32_t kQuietNan = 0x7fc00000U;
   static const uint32_t kQuietNegNan = 0xffc00000U;
-  static const uint32_t kQuietNanBit = 0x00400000U;
   static const int kSigBits = 23;
   static const uint32_t kSigMask = 0x7fffff;
   static const uint32_t kSignMask = 0x80000000U;
@@ -462,6 +467,10 @@ struct FloatTraits<float> {
 
   static bool IsArithmeticNan(uint32_t bits) {
     return (bits & kQuietNan) == kQuietNan;
+  }
+
+  static uint32_t CanonicalizeNan(uint32_t bits) {
+    return WABT_UNLIKELY(IsNan(bits)) ? kQuietNan : bits;
   }
 };
 
@@ -531,7 +540,6 @@ struct FloatTraits<double> {
   static const uint64_t kNegZero = 0x8000000000000000ULL;
   static const uint64_t kQuietNan = 0x7ff8000000000000ULL;
   static const uint64_t kQuietNegNan = 0xfff8000000000000ULL;
-  static const uint64_t kQuietNanBit = 0x0008000000000000ULL;
   static const int kSigBits = 52;
   static const uint64_t kSigMask = 0xfffffffffffffULL;
   static const uint64_t kSignMask = 0x8000000000000000ULL;
@@ -548,6 +556,10 @@ struct FloatTraits<double> {
 
   static bool IsArithmeticNan(uint64_t bits) {
     return (bits & kQuietNan) == kQuietNan;
+  }
+
+  static uint64_t CanonicalizeNan(uint64_t bits) {
+    return WABT_UNLIKELY(IsNan(bits)) ? kQuietNan : bits;
   }
 };
 
@@ -698,6 +710,21 @@ template<> uint32_t GetValue<float>(Value v) { return v.f32_bits; }
 template<> uint64_t GetValue<double>(Value v) { return v.f64_bits; }
 template<> v128 GetValue<v128>(Value v) { return v.v128_bits; }
 
+template <typename T>
+ValueTypeRep<T> CanonicalizeNan(ValueTypeRep<T> rep) {
+  return rep;
+}
+
+template <>
+ValueTypeRep<float> CanonicalizeNan<float>(ValueTypeRep<float> rep) {
+  return FloatTraits<float>::CanonicalizeNan(rep);
+}
+
+template <>
+ValueTypeRep<double> CanonicalizeNan<double>(ValueTypeRep<double> rep) {
+  return FloatTraits<double>::CanonicalizeNan(rep);
+}
+
 #define TRAP(type) return Result::Trap##type
 #define TRAP_UNLESS(cond, type) TRAP_IF(!(cond), type)
 #define TRAP_IF(cond, type)    \
@@ -723,6 +750,11 @@ Memory* Thread::ReadMemory(const uint8_t** pc) {
   return &env_->memories_[memory_index];
 }
 
+Table* Thread::ReadTable(const uint8_t** pc) {
+  Index table_index = ReadU32(pc);
+  return &env_->tables_[table_index];
+}
+
 template <typename MemType>
 Result Thread::GetAccessAddress(const uint8_t** pc, void** out_address) {
   Memory* memory = ReadMemory(pc);
@@ -742,6 +774,18 @@ Result Thread::GetAtomicAccessAddress(const uint8_t** pc, void** out_address) {
   TRAP_IF((addr & (sizeof(MemType) - 1)) != 0, AtomicMemoryAccessUnaligned);
   *out_address = memory->data.data() + static_cast<IstreamOffset>(addr);
   return Result::Ok;
+}
+
+DataSegment* Thread::ReadDataSegment(const uint8_t** pc) {
+  Index index = ReadU32(pc);
+  assert(index < env_->data_segments_.size());
+  return &env_->data_segments_[index];
+}
+
+ElemSegment* Thread::ReadElemSegment(const uint8_t** pc) {
+  Index index = ReadU32(pc);
+  assert(index < env_->elem_segments_.size());
+  return &env_->elem_segments_[index];
 }
 
 Value& Thread::Top() {
@@ -895,6 +939,126 @@ Result Thread::AtomicRmwCmpxchg(const uint8_t** pc) {
   return Push<ResultType>(static_cast<ExtendedType>(read));
 }
 
+bool ClampToBounds(uint32_t start, uint32_t* length, uint32_t max) {
+  if (start > max) {
+    *length = 0;
+    return false;
+  }
+  uint32_t avail = max - start;
+  if (*length > avail) {
+    *length = avail;
+    return false;
+  }
+  return true;
+}
+
+Result Thread::MemoryInit(const uint8_t** pc) {
+  Memory* memory = ReadMemory(pc);
+  DataSegment* segment = ReadDataSegment(pc);
+  TRAP_IF(segment->dropped, DataSegmentDropped);
+  uint32_t memory_size = memory->data.size();
+  uint32_t segment_size = segment->data.size();
+  uint32_t size = Pop<uint32_t>();
+  uint32_t src = Pop<uint32_t>();
+  uint32_t dst = Pop<uint32_t>();
+  bool ok = ClampToBounds(dst, &size, memory_size);
+  ok &= ClampToBounds(src, &size, segment_size);
+  if (size > 0) {
+    memcpy(memory->data.data() + dst, segment->data.data() + src, size);
+  }
+  TRAP_IF(!ok, MemoryAccessOutOfBounds);
+  return Result::Ok;
+}
+
+Result Thread::DataDrop(const uint8_t** pc) {
+  DataSegment* segment = ReadDataSegment(pc);
+  TRAP_IF(segment->dropped, DataSegmentDropped);
+  segment->dropped = true;
+  return Result::Ok;
+}
+
+Result Thread::MemoryCopy(const uint8_t** pc) {
+  Memory* memory = ReadMemory(pc);
+  uint32_t memory_size = memory->data.size();
+  uint32_t size = Pop<uint32_t>();
+  uint32_t src = Pop<uint32_t>();
+  uint32_t dst = Pop<uint32_t>();
+  bool copy_backward = src < dst && dst - src < size;
+  bool ok = ClampToBounds(dst, &size, memory_size);
+  // When copying backward, if the range is out-of-bounds, then no data will be
+  // written.
+  if (ok || !copy_backward) {
+    ok &= ClampToBounds(src, &size, memory_size);
+    if (size > 0) {
+      char* data = memory->data.data();
+      memmove(data + dst, data + src, size);
+    }
+  }
+  TRAP_IF(!ok, MemoryAccessOutOfBounds);
+  return Result::Ok;
+}
+
+Result Thread::MemoryFill(const uint8_t** pc) {
+  Memory* memory = ReadMemory(pc);
+  uint32_t memory_size = memory->data.size();
+  uint32_t size = Pop<uint32_t>();
+  uint8_t value = static_cast<uint8_t>(Pop<uint32_t>());
+  uint32_t dst = Pop<uint32_t>();
+  bool ok = ClampToBounds(dst, &size, memory_size);
+  if (size > 0) {
+    memset(memory->data.data() + dst, value, size);
+  }
+  TRAP_IF(!ok, MemoryAccessOutOfBounds);
+  return Result::Ok;
+}
+
+Result Thread::TableInit(const uint8_t** pc) {
+  Table* table = ReadTable(pc);
+  ElemSegment* segment = ReadElemSegment(pc);
+  TRAP_IF(segment->dropped, ElemSegmentDropped);
+  uint32_t table_size = table->func_indexes.size();
+  uint32_t segment_size = segment->elems.size();
+  uint32_t size = Pop<uint32_t>();
+  uint32_t src = Pop<uint32_t>();
+  uint32_t dst = Pop<uint32_t>();
+  bool ok = ClampToBounds(dst, &size, table_size);
+  ok &= ClampToBounds(src, &size, segment_size);
+  if (size > 0) {
+    memcpy(table->func_indexes.data() + dst, segment->elems.data() + src,
+           size * sizeof(table->func_indexes[0]));
+  }
+  TRAP_IF(!ok, TableAccessOutOfBounds);
+  return Result::Ok;
+}
+
+Result Thread::ElemDrop(const uint8_t** pc) {
+  ElemSegment* segment = ReadElemSegment(pc);
+  TRAP_IF(segment->dropped, ElemSegmentDropped);
+  segment->dropped = true;
+  return Result::Ok;
+}
+
+Result Thread::TableCopy(const uint8_t** pc) {
+  Table* table = ReadTable(pc);
+  uint32_t table_size = table->func_indexes.size();
+  uint32_t size = Pop<uint32_t>();
+  uint32_t src = Pop<uint32_t>();
+  uint32_t dst = Pop<uint32_t>();
+  bool copy_backward = src < dst && dst - src < size;
+  bool ok = ClampToBounds(dst, &size, table_size);
+  // When copying backward, if the range is out-of-bounds, then no data will be
+  // written.
+  if (ok || !copy_backward) {
+    ok &= ClampToBounds(src, &size, table_size);
+    if (size > 0) {
+      Index* data = table->func_indexes.data();
+      memmove(data + dst, data + src, size * sizeof(Index));
+    }
+  }
+  TRAP_IF(!ok, TableAccessOutOfBounds);
+  return Result::Ok;
+}
+
 template <typename R, typename T>
 Result Thread::Unop(UnopFunc<R, T> func) {
   auto value = PopRep<T>();
@@ -965,6 +1129,34 @@ Result Thread::SimdBinop(BinopFunc<R, P> func) {
   return PushRep<T>(Bitcast<T>(simd_data_ret));
 }
 
+// {i8, i16, 132, i64, f32, f64}{16, 8, 4, 2}.(eq/ne/lt/le/gt/ge)
+template <typename T, typename L, typename R, typename P>
+Result Thread::SimdRelBinop(BinopFunc<R, P> func) {
+  auto rhs_rep = PopRep<T>();
+  auto lhs_rep = PopRep<T>();
+
+  // Calculate how many Lanes according to input lane data type.
+  constexpr int32_t lanes = sizeof(T) / sizeof(L);
+
+  // Define SIMD data array for Simd add by Lanes.
+  L simd_data_ret[lanes];
+  L simd_data_0[lanes];
+  L simd_data_1[lanes];
+
+  // Convert intput SIMD data to array.
+  memcpy(simd_data_0, &lhs_rep, sizeof(T));
+  memcpy(simd_data_1, &rhs_rep, sizeof(T));
+
+  // Constuct the Simd value by Lane data and Lane nums.
+  for (int32_t i = 0; i < lanes; i++) {
+    simd_data_ret[i] = static_cast<L>(
+      func(simd_data_0[i], simd_data_1[i]) == 0? 0 : -1
+    );
+  }
+
+  return PushRep<T>(Bitcast<T>(simd_data_ret));
+}
+
 template <typename R, typename T>
 Result Thread::BinopTrap(BinopTrapFunc<R, T> func) {
   auto rhs_rep = PopRep<T>();
@@ -977,7 +1169,7 @@ Result Thread::BinopTrap(BinopTrapFunc<R, T> func) {
 // {i,f}{32,64}.add
 template <typename T>
 ValueTypeRep<T> Add(ValueTypeRep<T> lhs_rep, ValueTypeRep<T> rhs_rep) {
-  return ToRep(FromRep<T>(lhs_rep) + FromRep<T>(rhs_rep));
+  return CanonicalizeNan<T>(ToRep(FromRep<T>(lhs_rep) + FromRep<T>(rhs_rep)));
 }
 
 template <typename T, typename R>
@@ -1035,13 +1227,13 @@ int32_t SimdIsLaneTrue(ValueTypeRep<T> value, int32_t true_cond) {
 // {i,f}{32,64}.sub
 template <typename T>
 ValueTypeRep<T> Sub(ValueTypeRep<T> lhs_rep, ValueTypeRep<T> rhs_rep) {
-  return ToRep(FromRep<T>(lhs_rep) - FromRep<T>(rhs_rep));
+  return CanonicalizeNan<T>(ToRep(FromRep<T>(lhs_rep) - FromRep<T>(rhs_rep)));
 }
 
 // {i,f}{32,64}.mul
 template <typename T>
 ValueTypeRep<T> Mul(ValueTypeRep<T> lhs_rep, ValueTypeRep<T> rhs_rep) {
-  return ToRep(FromRep<T>(lhs_rep) * FromRep<T>(rhs_rep));
+  return CanonicalizeNan<T>(ToRep(FromRep<T>(lhs_rep) * FromRep<T>(rhs_rep)));
 }
 
 // i{32,64}.{div,rem}_s are special-cased because they trap when dividing the
@@ -1112,16 +1304,15 @@ ValueTypeRep<T> FloatDiv(ValueTypeRep<T> lhs_rep, ValueTypeRep<T> rhs_rep) {
   typedef FloatTraits<T> Traits;
   ValueTypeRep<T> result;
   if (WABT_UNLIKELY(Traits::IsZero(rhs_rep))) {
-    if (Traits::IsNan(lhs_rep)) {
-      result = lhs_rep | Traits::kQuietNan;
-    } else if (Traits::IsZero(lhs_rep)) {
+    if (Traits::IsNan(lhs_rep) || Traits::IsZero(lhs_rep)) {
       result = Traits::kQuietNan;
     } else {
       auto sign = (lhs_rep & Traits::kSignMask) ^ (rhs_rep & Traits::kSignMask);
       result = sign | Traits::kInf;
     }
   } else {
-    result = ToRep(FromRep<T>(lhs_rep) / FromRep<T>(rhs_rep));
+    result =
+        CanonicalizeNan<T>(ToRep(FromRep<T>(lhs_rep) / FromRep<T>(rhs_rep)));
   }
   return result;
 }
@@ -1217,51 +1408,31 @@ ValueTypeRep<T> FloatNeg(ValueTypeRep<T> v_rep) {
 // f{32,64}.ceil
 template <typename T>
 ValueTypeRep<T> FloatCeil(ValueTypeRep<T> v_rep) {
-  auto result = ToRep(std::ceil(FromRep<T>(v_rep)));
-  if (WABT_UNLIKELY(FloatTraits<T>::IsNan(result))) {
-    result |= FloatTraits<T>::kQuietNanBit;
-  }
-  return result;
+  return CanonicalizeNan<T>(ToRep(std::ceil(FromRep<T>(v_rep))));
 }
 
 // f{32,64}.floor
 template <typename T>
 ValueTypeRep<T> FloatFloor(ValueTypeRep<T> v_rep) {
-  auto result = ToRep(std::floor(FromRep<T>(v_rep)));
-  if (WABT_UNLIKELY(FloatTraits<T>::IsNan(result))) {
-    result |= FloatTraits<T>::kQuietNanBit;
-  }
-  return result;
+  return CanonicalizeNan<T>(ToRep(std::floor(FromRep<T>(v_rep))));
 }
 
 // f{32,64}.trunc
 template <typename T>
 ValueTypeRep<T> FloatTrunc(ValueTypeRep<T> v_rep) {
-  auto result = ToRep(std::trunc(FromRep<T>(v_rep)));
-  if (WABT_UNLIKELY(FloatTraits<T>::IsNan(result))) {
-    result |= FloatTraits<T>::kQuietNanBit;
-  }
-  return result;
+  return CanonicalizeNan<T>(ToRep(std::trunc(FromRep<T>(v_rep))));
 }
 
 // f{32,64}.nearest
 template <typename T>
 ValueTypeRep<T> FloatNearest(ValueTypeRep<T> v_rep) {
-  auto result = ToRep(std::nearbyint(FromRep<T>(v_rep)));
-  if (WABT_UNLIKELY(FloatTraits<T>::IsNan(result))) {
-    result |= FloatTraits<T>::kQuietNanBit;
-  }
-  return result;
+  return CanonicalizeNan<T>(ToRep(std::nearbyint(FromRep<T>(v_rep))));
 }
 
 // f{32,64}.sqrt
 template <typename T>
 ValueTypeRep<T> FloatSqrt(ValueTypeRep<T> v_rep) {
-  auto result = ToRep(std::sqrt(FromRep<T>(v_rep)));
-  if (WABT_UNLIKELY(FloatTraits<T>::IsNan(result))) {
-    result |= FloatTraits<T>::kQuietNanBit;
-  }
-  return result;
+  return CanonicalizeNan<T>(ToRep(std::sqrt(FromRep<T>(v_rep))));
 }
 
 // f{32,64}.min
@@ -1269,10 +1440,8 @@ template <typename T>
 ValueTypeRep<T> FloatMin(ValueTypeRep<T> lhs_rep, ValueTypeRep<T> rhs_rep) {
   typedef FloatTraits<T> Traits;
 
-  if (WABT_UNLIKELY(Traits::IsNan(lhs_rep))) {
-    return lhs_rep | Traits::kQuietNanBit;
-  } else if (WABT_UNLIKELY(Traits::IsNan(rhs_rep))) {
-    return rhs_rep | Traits::kQuietNanBit;
+  if (WABT_UNLIKELY(Traits::IsNan(lhs_rep) || Traits::IsNan(rhs_rep))) {
+    return Traits::kQuietNan;
   } else if (WABT_UNLIKELY(Traits::IsZero(lhs_rep) &&
                            Traits::IsZero(rhs_rep))) {
     // min(0.0, -0.0) == -0.0, but std::min won't produce the correct result.
@@ -1289,10 +1458,8 @@ template <typename T>
 ValueTypeRep<T> FloatMax(ValueTypeRep<T> lhs_rep, ValueTypeRep<T> rhs_rep) {
   typedef FloatTraits<T> Traits;
 
-  if (WABT_UNLIKELY(Traits::IsNan(lhs_rep))) {
-    return lhs_rep | Traits::kQuietNanBit;
-  } else if (WABT_UNLIKELY(Traits::IsNan(rhs_rep))) {
-    return rhs_rep | Traits::kQuietNanBit;
+  if (WABT_UNLIKELY(Traits::IsNan(lhs_rep) || Traits::IsNan(rhs_rep))) {
+    return Traits::kQuietNan;
   } else if (WABT_UNLIKELY(Traits::IsZero(lhs_rep) &&
                            Traits::IsZero(rhs_rep))) {
     // min(0.0, -0.0) == -0.0, but std::min won't produce the correct result.
@@ -1614,8 +1781,7 @@ Result Thread::Run(int num_instructions) {
       }
 
       case Opcode::CallIndirect: {
-        Index table_index = ReadU32(&pc);
-        Table* table = &env_->tables_[table_index];
+        Table* table = ReadTable(&pc);
         Index sig_index = ReadU32(&pc);
         Index entry_index = Pop<uint32_t>();
         TRAP_IF(entry_index >= table->func_indexes.size(), UndefinedTableIndex);
@@ -1647,8 +1813,7 @@ Result Thread::Run(int num_instructions) {
       }
 
       case Opcode::ReturnCallIndirect:{
-        Index table_index = ReadU32(&pc);
-        Table* table = &env_->tables_[table_index];
+        Table* table = ReadTable(&pc);
         Index sig_index = ReadU32(&pc);
         Index entry_index = Pop<uint32_t>();
         TRAP_IF(entry_index >= table->func_indexes.size(), UndefinedTableIndex);
@@ -2365,7 +2530,6 @@ Result Thread::Run(int num_instructions) {
 
       case Opcode::F32DemoteF64: {
         typedef FloatTraits<float> F32Traits;
-        typedef FloatTraits<double> F64Traits;
 
         uint64_t value = PopRep<double>();
         if (WABT_LIKELY((IsConversionInRange<float, double>(value)))) {
@@ -2374,15 +2538,12 @@ Result Thread::Run(int num_instructions) {
           CHECK_TRAP(PushRep<float>(F32Traits::kMax));
         } else if (IsInRangeF64DemoteF32RoundToNegF32Max(value)) {
           CHECK_TRAP(PushRep<float>(F32Traits::kNegMax));
+        } else if (FloatTraits<double>::IsNan(value)) {
+          CHECK_TRAP(PushRep<float>(F32Traits::kQuietNan));
         } else {
+          // Infinity.
           uint32_t sign = (value >> 32) & F32Traits::kSignMask;
-          uint32_t tag = 0;
-          if (F64Traits::IsNan(value)) {
-            tag = F32Traits::kQuietNanBit |
-                  ((value >> (F64Traits::kSigBits - F32Traits::kSigBits)) &
-                   F32Traits::kSigMask);
-          }
-          CHECK_TRAP(PushRep<float>(sign | F32Traits::kInf | tag));
+          CHECK_TRAP(PushRep<float>(sign | F32Traits::kInf));
         }
         break;
       }
@@ -2408,9 +2569,15 @@ Result Thread::Run(int num_instructions) {
             Push<double>(wabt_convert_uint64_to_double(Pop<uint64_t>())));
         break;
 
-      case Opcode::F64PromoteF32:
-        CHECK_TRAP(Push<double>(Pop<float>()));
+      case Opcode::F64PromoteF32: {
+        uint32_t value = PopRep<float>();
+        if (WABT_UNLIKELY(FloatTraits<float>::IsNan(value))) {
+          CHECK_TRAP(PushRep<double>(FloatTraits<double>::kQuietNan));
+        } else {
+          CHECK_TRAP(Push<double>(Bitcast<float>(value)));
+        }
         break;
+      }
 
       case Opcode::F64ReinterpretI64:
         CHECK_TRAP(PushRep<double>(Pop<uint64_t>()));
@@ -2970,171 +3137,171 @@ Result Thread::Run(int num_instructions) {
       }
 
       case Opcode::I8X16Eq:
-        CHECK_TRAP(SimdBinop<v128, int8_t>(Eq<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int8_t>(Eq<int32_t>));
         break;
 
       case Opcode::I16X8Eq:
-        CHECK_TRAP(SimdBinop<v128, int16_t>(Eq<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int16_t>(Eq<int32_t>));
         break;
 
       case Opcode::I32X4Eq:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Eq<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Eq<int32_t>));
         break;
 
       case Opcode::F32X4Eq:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Eq<float>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Eq<float>));
         break;
 
       case Opcode::F64X2Eq:
-        CHECK_TRAP(SimdBinop<v128, int64_t>(Eq<double>));
+        CHECK_TRAP(SimdRelBinop<v128, int64_t>(Eq<double>));
         break;
 
       case Opcode::I8X16Ne:
-        CHECK_TRAP(SimdBinop<v128, int8_t>(Ne<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int8_t>(Ne<int32_t>));
         break;
 
       case Opcode::I16X8Ne:
-        CHECK_TRAP(SimdBinop<v128, int16_t>(Ne<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int16_t>(Ne<int32_t>));
         break;
 
       case Opcode::I32X4Ne:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Ne<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Ne<int32_t>));
         break;
 
       case Opcode::F32X4Ne:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Ne<float>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Ne<float>));
         break;
 
       case Opcode::F64X2Ne:
-        CHECK_TRAP(SimdBinop<v128, int64_t>(Ne<double>));
+        CHECK_TRAP(SimdRelBinop<v128, int64_t>(Ne<double>));
         break;
 
       case Opcode::I8X16LtS:
-        CHECK_TRAP(SimdBinop<v128, int8_t>(Lt<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int8_t>(Lt<int32_t>));
         break;
 
       case Opcode::I8X16LtU:
-        CHECK_TRAP(SimdBinop<v128, uint8_t>(Lt<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint8_t>(Lt<uint32_t>));
         break;
 
       case Opcode::I16X8LtS:
-        CHECK_TRAP(SimdBinop<v128, int16_t>(Lt<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int16_t>(Lt<int32_t>));
         break;
 
       case Opcode::I16X8LtU:
-        CHECK_TRAP(SimdBinop<v128, uint16_t>(Lt<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint16_t>(Lt<uint32_t>));
         break;
 
       case Opcode::I32X4LtS:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Lt<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Lt<int32_t>));
         break;
 
       case Opcode::I32X4LtU:
-        CHECK_TRAP(SimdBinop<v128, uint32_t>(Lt<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint32_t>(Lt<uint32_t>));
         break;
 
       case Opcode::F32X4Lt:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Lt<float>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Lt<float>));
         break;
 
       case Opcode::F64X2Lt:
-        CHECK_TRAP(SimdBinop<v128, int64_t>(Lt<double>));
+        CHECK_TRAP(SimdRelBinop<v128, int64_t>(Lt<double>));
         break;
 
       case Opcode::I8X16LeS:
-        CHECK_TRAP(SimdBinop<v128, int8_t>(Le<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int8_t>(Le<int32_t>));
         break;
 
       case Opcode::I8X16LeU:
-        CHECK_TRAP(SimdBinop<v128, uint8_t>(Le<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint8_t>(Le<uint32_t>));
         break;
 
       case Opcode::I16X8LeS:
-        CHECK_TRAP(SimdBinop<v128, int16_t>(Le<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int16_t>(Le<int32_t>));
         break;
 
       case Opcode::I16X8LeU:
-        CHECK_TRAP(SimdBinop<v128, uint16_t>(Le<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint16_t>(Le<uint32_t>));
         break;
 
       case Opcode::I32X4LeS:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Le<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Le<int32_t>));
         break;
 
       case Opcode::I32X4LeU:
-        CHECK_TRAP(SimdBinop<v128, uint32_t>(Le<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint32_t>(Le<uint32_t>));
         break;
 
       case Opcode::F32X4Le:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Le<float>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Le<float>));
         break;
 
       case Opcode::F64X2Le:
-        CHECK_TRAP(SimdBinop<v128, int64_t>(Le<double>));
+        CHECK_TRAP(SimdRelBinop<v128, int64_t>(Le<double>));
         break;
 
       case Opcode::I8X16GtS:
-        CHECK_TRAP(SimdBinop<v128, int8_t>(Gt<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int8_t>(Gt<int32_t>));
         break;
 
       case Opcode::I8X16GtU:
-        CHECK_TRAP(SimdBinop<v128, uint8_t>(Gt<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint8_t>(Gt<uint32_t>));
         break;
 
       case Opcode::I16X8GtS:
-        CHECK_TRAP(SimdBinop<v128, int16_t>(Gt<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int16_t>(Gt<int32_t>));
         break;
 
       case Opcode::I16X8GtU:
-        CHECK_TRAP(SimdBinop<v128, uint16_t>(Gt<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint16_t>(Gt<uint32_t>));
         break;
 
       case Opcode::I32X4GtS:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Gt<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Gt<int32_t>));
         break;
 
       case Opcode::I32X4GtU:
-        CHECK_TRAP(SimdBinop<v128, uint32_t>(Gt<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint32_t>(Gt<uint32_t>));
         break;
 
       case Opcode::F32X4Gt:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Gt<float>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Gt<float>));
         break;
 
       case Opcode::F64X2Gt:
-        CHECK_TRAP(SimdBinop<v128, int64_t>(Gt<double>));
+        CHECK_TRAP(SimdRelBinop<v128, int64_t>(Gt<double>));
         break;
 
       case Opcode::I8X16GeS:
-        CHECK_TRAP(SimdBinop<v128, int8_t>(Ge<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int8_t>(Ge<int32_t>));
         break;
 
       case Opcode::I8X16GeU:
-        CHECK_TRAP(SimdBinop<v128, uint8_t>(Ge<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint8_t>(Ge<uint32_t>));
         break;
 
       case Opcode::I16X8GeS:
-        CHECK_TRAP(SimdBinop<v128, int16_t>(Ge<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int16_t>(Ge<int32_t>));
         break;
 
       case Opcode::I16X8GeU:
-        CHECK_TRAP(SimdBinop<v128, uint16_t>(Ge<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint16_t>(Ge<uint32_t>));
         break;
 
       case Opcode::I32X4GeS:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Ge<int32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Ge<int32_t>));
         break;
 
       case Opcode::I32X4GeU:
-        CHECK_TRAP(SimdBinop<v128, uint32_t>(Ge<uint32_t>));
+        CHECK_TRAP(SimdRelBinop<v128, uint32_t>(Ge<uint32_t>));
         break;
 
       case Opcode::F32X4Ge:
-        CHECK_TRAP(SimdBinop<v128, int32_t>(Ge<float>));
+        CHECK_TRAP(SimdRelBinop<v128, int32_t>(Ge<float>));
         break;
 
       case Opcode::F64X2Ge:
-        CHECK_TRAP(SimdBinop<v128, int64_t>(Ge<double>));
+        CHECK_TRAP(SimdRelBinop<v128, int64_t>(Ge<double>));
         break;
 
       case Opcode::F32X4Neg:
@@ -3247,35 +3414,36 @@ Result Thread::Run(int num_instructions) {
       case Opcode::TableSize:
       case Opcode::RefNull:
       case Opcode::RefIsNull:
+      case Opcode::RefFunc:
         WABT_UNREACHABLE;
         break;
 
       case Opcode::MemoryInit:
-        WABT_UNREACHABLE;
+        CHECK_TRAP(MemoryInit(&pc));
         break;
 
       case Opcode::DataDrop:
-        WABT_UNREACHABLE;
+        CHECK_TRAP(DataDrop(&pc));
         break;
 
       case Opcode::MemoryCopy:
-        WABT_UNREACHABLE;
+        CHECK_TRAP(MemoryCopy(&pc));
         break;
 
       case Opcode::MemoryFill:
-        WABT_UNREACHABLE;
+        CHECK_TRAP(MemoryFill(&pc));
         break;
 
       case Opcode::TableInit:
-        WABT_UNREACHABLE;
+        CHECK_TRAP(TableInit(&pc));
         break;
 
       case Opcode::ElemDrop:
-        WABT_UNREACHABLE;
+        CHECK_TRAP(ElemDrop(&pc));
         break;
 
       case Opcode::TableCopy:
-        WABT_UNREACHABLE;
+        CHECK_TRAP(TableCopy(&pc));
         break;
 
       // The following opcodes are either never generated or should never be

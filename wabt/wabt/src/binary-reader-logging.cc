@@ -359,6 +359,16 @@ Result BinaryReaderLogging::OnSimdShuffleOpExpr(Opcode opcode, v128 value) {
   return reader_->OnSimdShuffleOpExpr(opcode, value);
 }
 
+Result BinaryReaderLogging::BeginElemSegment(Index index,
+                                             Index table_index,
+                                             bool passive,
+                                             Type elem_type) {
+  LOGF("BeginElemSegment(index: %" PRIindex ", table_index: %" PRIindex
+       ", passive: %s, elem_type: %s)\n",
+       index, table_index, passive ? "true" : "false", GetTypeName(elem_type));
+  return reader_->BeginElemSegment(index, table_index, passive, elem_type);
+}
+
 Result BinaryReaderLogging::OnDataSegmentData(Index index,
                                               const void* data,
                                               Address size) {
@@ -538,11 +548,21 @@ Result BinaryReaderLogging::OnSectionSymbol(Index index,
   return reader_->OnSectionSymbol(index, flags, section_index);
 }
 
+Result BinaryReaderLogging::OnEventSymbol(Index index,
+                                          uint32_t flags,
+                                          string_view name,
+                                          Index event_index) {
+  LOGF("OnEventSymbol(name: " PRIstringview " flags: 0x%x index: %" PRIindex
+           ")\n",
+       WABT_PRINTF_STRING_VIEW_ARG(name), flags, event_index);
+  return reader_->OnEventSymbol(index, flags, name, event_index);
+}
+
 Result BinaryReaderLogging::OnSegmentInfo(Index index,
                                           string_view name,
                                           uint32_t alignment,
                                           uint32_t flags) {
-  LOGF("OnSegmentInfos(%d name: " PRIstringview
+  LOGF("OnSegmentInfo(%d name: " PRIstringview
        ", alignment: %d, flags: 0x%x)\n",
        index, WABT_PRINTF_STRING_VIEW_ARG(name), alignment, flags);
   return reader_->OnSegmentInfo(index, name, alignment, flags);
@@ -713,11 +733,11 @@ DEFINE_END(EndCodeSection)
 
 DEFINE_BEGIN(BeginElemSection)
 DEFINE_INDEX(OnElemSegmentCount)
-DEFINE_INDEX_INDEX_BOOL(BeginElemSegment, "index", "table_index", "passive")
 DEFINE_INDEX(BeginElemSegmentInitExpr)
 DEFINE_INDEX(EndElemSegmentInitExpr)
-DEFINE_INDEX_INDEX(OnElemSegmentFunctionIndexCount, "index", "count")
-DEFINE_INDEX_INDEX(OnElemSegmentFunctionIndex, "index", "func_index")
+DEFINE_INDEX_INDEX(OnElemSegmentElemExprCount, "index", "count")
+DEFINE_INDEX(OnElemSegmentElemExpr_RefNull)
+DEFINE_INDEX_INDEX(OnElemSegmentElemExpr_RefFunc, "index", "func_index")
 DEFINE_INDEX(EndElemSegment)
 DEFINE_END(EndElemSection)
 
