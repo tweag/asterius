@@ -18,6 +18,9 @@
 #define wasm_features_h
 
 #include <stdint.h>
+#include <string>
+
+#include "compiler-support.h"
 
 struct FeatureSet {
   enum Feature : uint32_t {
@@ -28,8 +31,31 @@ struct FeatureSet {
     SIMD = 1 << 3,
     BulkMemory = 1 << 4,
     SignExt = 1 << 5,
-    All = Atomics | MutableGlobals | TruncSat | SIMD | BulkMemory | SignExt
+    ExceptionHandling = 1 << 6,
+    All = Atomics | MutableGlobals | TruncSat | SIMD | BulkMemory | SignExt |
+          ExceptionHandling
   };
+
+  static std::string toString(Feature f) {
+    switch (f) {
+      case Atomics:
+        return "threads";
+      case MutableGlobals:
+        return "mutable-globals";
+      case TruncSat:
+        return "nontrapping-float-to-int";
+      case SIMD:
+        return "simd";
+      case BulkMemory:
+        return "bulk-memory";
+      case SignExt:
+        return "sign-ext";
+      case ExceptionHandling:
+        return "exception-handling";
+      default:
+        WASM_UNREACHABLE();
+    }
+  }
 
   FeatureSet() : features(MVP) {}
   FeatureSet(uint32_t features) : features(features) {}
@@ -42,16 +68,20 @@ struct FeatureSet {
   bool hasSIMD() const { return features & SIMD; }
   bool hasBulkMemory() const { return features & BulkMemory; }
   bool hasSignExt() const { return features & SignExt; }
+  bool hasExceptionHandling() const { return features & ExceptionHandling; }
   bool hasAll() const { return features & All; }
 
   void makeMVP() { features = MVP; }
-  void set(Feature f, bool v = true) { features = v ? (features | f) : (features & ~f); }
+  void set(Feature f, bool v = true) {
+    features = v ? (features | f) : (features & ~f);
+  }
   void setAtomics(bool v = true) { set(Atomics, v); }
   void setMutableGlobals(bool v = true) { set(MutableGlobals, v); }
   void setTruncSat(bool v = true) { set(TruncSat, v); }
   void setSIMD(bool v = true) { set(SIMD, v); }
   void setBulkMemory(bool v = true) { set(BulkMemory, v); }
   void setSignExt(bool v = true) { set(SignExt, v); }
+  void setExceptionHandling(bool v = true) { set(ExceptionHandling, v); }
   void setAll(bool v = true) { features = v ? All : MVP; }
 
   void enable(const FeatureSet& other) { features |= other.features; }
@@ -59,9 +89,39 @@ struct FeatureSet {
     features = features & ~other.features & All;
   }
 
-  bool operator<=(const FeatureSet& other) {
+  template<typename F> void iterFeatures(F f) {
+    if (hasAtomics()) {
+      f(Atomics);
+    }
+    if (hasBulkMemory()) {
+      f(BulkMemory);
+    }
+    if (hasExceptionHandling()) {
+      f(ExceptionHandling);
+    }
+    if (hasMutableGlobals()) {
+      f(MutableGlobals);
+    }
+    if (hasTruncSat()) {
+      f(TruncSat);
+    }
+    if (hasSignExt()) {
+      f(SignExt);
+    }
+    if (hasSIMD()) {
+      f(SIMD);
+    }
+  }
+
+  bool operator<=(const FeatureSet& other) const {
     return !(features & ~other.features);
   }
+
+  bool operator==(const FeatureSet& other) const {
+    return *this <= other && other <= *this;
+  }
+
+  bool operator!=(const FeatureSet& other) const { return !(*this == other); }
 
   FeatureSet& operator|=(const FeatureSet& other) {
     features |= other.features;

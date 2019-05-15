@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+#ifndef wasm_tools_tool_options_h
+#define wasm_tools_tool_options_h
+
 #include "ir/module-utils.h"
-#include "support/command-line.h"
 #include "pass.h"
+#include "support/command-line.h"
 
 //
 // Shared optimization options for commandline tools
@@ -28,99 +31,92 @@ struct ToolOptions : public Options {
   PassOptions passOptions;
 
   ToolOptions(const std::string& command, const std::string& description)
-      : Options(command, description) {
+    : Options(command, description) {
     (*this)
-        .add("--mvp-features", "-mvp", "Disable all non-MVP features",
-             Arguments::Zero,
-             [this](Options*, const std::string&) {
-               hasFeatureOptions = true;
-               passOptions.features.makeMVP();
-               enabledFeatures.makeMVP();
-               disabledFeatures.setAll();
-             })
-        .add("--all-features", "-all", "Enable all features "
-             "(default if there is no target features section"
-             " or if any feature options are provided)",
-             Arguments::Zero,
-             [this](Options*, const std::string&) {
-               hasFeatureOptions = true;
-               passOptions.features.setAll();
-               enabledFeatures.setAll();
-               disabledFeatures.makeMVP();
-             })
-        .add("--detect-features", "",
-             "Use features from the target features section"
-             "(default if there is a target features section"
-             " and no feature options are provided)",
-             Arguments::Zero,
-             [this](Options*, const std::string&) {
-               hasFeatureOptions = true;
-               detectFeatures = true;
-               enabledFeatures.makeMVP();
-               disabledFeatures.makeMVP();
-             });
+      .add("--mvp-features",
+           "-mvp",
+           "Disable all non-MVP features",
+           Arguments::Zero,
+           [this](Options*, const std::string&) {
+             hasFeatureOptions = true;
+             enabledFeatures.makeMVP();
+             disabledFeatures.setAll();
+           })
+      .add("--all-features",
+           "-all",
+           "Enable all features",
+           Arguments::Zero,
+           [this](Options*, const std::string&) {
+             hasFeatureOptions = true;
+             enabledFeatures.setAll();
+             disabledFeatures.makeMVP();
+           })
+      .add("--detect-features",
+           "",
+           "Use features from the target features section, or MVP (default)",
+           Arguments::Zero,
+           [this](Options*, const std::string&) {
+             hasFeatureOptions = true;
+             detectFeatures = true;
+             enabledFeatures.makeMVP();
+             disabledFeatures.makeMVP();
+           });
     (*this)
-        .addFeature("sign-ext", "sign extension operations",
-                    FeatureSet::SignExt)
-        .addFeature("threads", "atomic operations",
-                    FeatureSet::Atomics)
-        .addFeature("mutable-globals", "mutable globals",
-                    FeatureSet::MutableGlobals)
-        .addFeature("nontrapping-float-to-int",
-                    "nontrapping float-to-int operations",
-                    FeatureSet::TruncSat)
-        .addFeature("simd", "SIMD operations and types",
-                    FeatureSet::SIMD)
-        .addFeature("bulk-memory", "bulk memory operations",
-                    FeatureSet::BulkMemory)
-        .add("--no-validation", "-n",
-             "Disables validation, assumes inputs are correct",
-             Options::Arguments::Zero,
-             [this](Options* o, const std::string& argument) {
-               passOptions.validate = false;
-             });
+      .addFeature(FeatureSet::SignExt, "sign extension operations")
+      .addFeature(FeatureSet::Atomics, "atomic operations")
+      .addFeature(FeatureSet::MutableGlobals, "mutable globals")
+      .addFeature(FeatureSet::TruncSat, "nontrapping float-to-int operations")
+      .addFeature(FeatureSet::SIMD, "SIMD operations and types")
+      .addFeature(FeatureSet::BulkMemory, "bulk memory operations")
+      .addFeature(FeatureSet::ExceptionHandling,
+                  "exception handling operations")
+      .add("--no-validation",
+           "-n",
+           "Disables validation, assumes inputs are correct",
+           Options::Arguments::Zero,
+           [this](Options* o, const std::string& argument) {
+             passOptions.validate = false;
+           });
   }
 
-  ToolOptions& addFeature(const std::string& name,
-                          const std::string& description,
-                          FeatureSet::Feature feature) {
+  ToolOptions& addFeature(FeatureSet::Feature feature,
+                          const std::string& description) {
     (*this)
-        .add(std::string("--enable-") + name, "",
-             std::string("Enable ") + description, Arguments::Zero,
-             [=](Options*, const std::string&) {
-               hasFeatureOptions = true;
-               passOptions.features.set(feature, true);
-               enabledFeatures.set(feature, true);
-               disabledFeatures.set(feature, false);
-             })
+      .add(std::string("--enable-") + FeatureSet::toString(feature),
+           "",
+           std::string("Enable ") + description,
+           Arguments::Zero,
+           [=](Options*, const std::string&) {
+             hasFeatureOptions = true;
+             enabledFeatures.set(feature, true);
+             disabledFeatures.set(feature, false);
+           })
 
-        .add(std::string("--disable-") + name, "",
-             std::string("Disable ") + description, Arguments::Zero,
-             [=](Options*, const std::string&) {
-               hasFeatureOptions = true;
-               passOptions.features.set(feature, false);
-               enabledFeatures.set(feature, false);
-               disabledFeatures.set(feature, true);
-             });
+      .add(std::string("--disable-") + FeatureSet::toString(feature),
+           "",
+           std::string("Disable ") + description,
+           Arguments::Zero,
+           [=](Options*, const std::string&) {
+             hasFeatureOptions = true;
+             enabledFeatures.set(feature, false);
+             disabledFeatures.set(feature, true);
+           });
     return *this;
   }
 
-  void calculateFeatures(const Module& module) {
-    FeatureSet wasmFeatures;
-    bool wasmHasFeatures =
-        ModuleUtils::readFeaturesSection(module, wasmFeatures);
-
+  void applyFeatures(Module& module) {
     if (hasFeatureOptions) {
-      if (detectFeatures) {
-        wasmFeatures.enable(enabledFeatures);
-        wasmFeatures.disable(disabledFeatures);
-        passOptions.features = wasmFeatures;
-      } else if (!(wasmFeatures <= passOptions.features)) {
-        Fatal() << "module uses features not explicitly specified, "
-                << "use --detect-features to resolve";
+      if (!detectFeatures && module.hasFeaturesSection) {
+        FeatureSet optionsFeatures = FeatureSet::MVP;
+        optionsFeatures.enable(enabledFeatures);
+        optionsFeatures.disable(disabledFeatures);
+        if (module.features != optionsFeatures) {
+          Fatal() << "module features do not match specified features. "
+                  << "Use --detect-features to resolve.";
+        }
       }
-    } else if (wasmHasFeatures) {
-      passOptions.features = wasmFeatures;
+      module.features.enable(enabledFeatures);
+      module.features.disable(disabledFeatures);
     }
   }
 
@@ -132,3 +128,5 @@ private:
 };
 
 } // namespace wasm
+
+#endif
