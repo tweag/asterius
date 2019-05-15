@@ -385,13 +385,24 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
              logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
              BS.writeFile out_wasm m_bin
              when outputIR $ do
-               let p = out_wasm -<.> "binaryen.txt"
-               logger $ "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
+               let p = out_wasm -<.> "binaryen-show.txt"
+               logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
                case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
                  Right (rest, _, r)
                    | LBS.null rest -> writeFile p (show r)
                    | otherwise -> fail "[ERROR] Re-parsing produced residule"
-                 _ -> fail "[ERROR] Re-parsing failed")
+                 _ -> fail "[ERROR] Re-parsing failed"
+               let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
+               logger $ "[info] writing re-parsed wasm-toolkit ir as s-expresions to " <> show out_wasm_binaryen_sexpr
+               -- disable colors when writing out the binaryen module
+               -- to a file, so that we don't get ANSI escape sequences
+               -- for colors. Reset the state after
+               cenabled <- Binaryen.isColorsEnabled
+               Binaryen.setColorsEnabled False
+               m_sexpr <- Binaryen.serializeModuleSExpr m_ref
+               Binaryen.setColorsEnabled cenabled
+
+               BS.writeFile out_wasm_binaryen_sexpr m_sexpr)
     else (do logger "[INFO] Converting linked IR to wasm-toolkit IR"
              let conv_result =
                    runExcept $
