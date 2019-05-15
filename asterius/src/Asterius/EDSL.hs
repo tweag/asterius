@@ -104,6 +104,7 @@ import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Short as SBS
+import qualified Data.Map.Lazy as LM
 import Data.Monoid
 import Data.Traversable
 
@@ -124,6 +125,8 @@ data EDSLState = EDSLState
   , paramBuf :: DList ValueType
   , paramNum, localNum, labelNum :: Int
   , exprBuf :: DList Expression
+  , staticsBuf :: [(AsteriusEntitySymbol, AsteriusStatics)]
+  -- ^ Static variables to be added into the module
   }
 
 initialEDSLState :: EDSLState
@@ -135,6 +138,7 @@ initialEDSLState =
     , localNum = 0
     , labelNum = 0
     , exprBuf = mempty
+    , staticsBuf = mempty
     }
 
 newtype EDSL a =
@@ -164,18 +168,23 @@ bundleExpressions vts el =
     [e] -> e
     _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
--- | Given the return values and the function builder, build the function
-runEDSL :: EDSL () -> Function
-runEDSL (EDSL m) =
-  adjustLocalRegs $
-  Function
-    { functionType =
-        FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
-    , varTypes = []
-    , body = bundleExpressions retTypes $ fromDList exprBuf
-    }
+-- | Build a module containing the function and some auxiliary data
+-- | given its name and a builder.
+runEDSL :: AsteriusEntitySymbol  -- ^ Function name
+  -> EDSL ()  -- ^ Builder
+  -> AsteriusModule -- ^ Final module
+runEDSL n (EDSL m) =
+  mempty { functionMap=LM.fromList [(n, f)]
+         , staticsMap=LM.fromList $ staticsBuf
+         }
   where
     EDSLState {..} = execState m initialEDSLState
+    f = adjustLocalRegs $ Function
+          { functionType =
+              FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
+          , varTypes = []
+          , body = bundleExpressions retTypes $ fromDList exprBuf
+          }
 
 -- | Any value that can be read from and wrtten to is an LVal
 data LVal = LVal
@@ -410,6 +419,29 @@ switchI64 cond make_clauses =
               clause_seq
           def_clause
      in switch_block
+
+-- | Allocate a static region of bytes in the global section. Returns a
+-- | reference to the variable (symbol).
+-- |
+-- | Usage:
+-- | runEDSL $ do
+-- |   x <- allocStaticBytes "x"
+-- |         (Serialized $ SBS.pack $ replicate 8 1)
+-- |   loadi64 x 0
+-- |
+-- |   y <- allocStaticBytes "y" (Uninitialized 8)
+-- |   storei64 x 0 (constI32 32)
+allocStaticBytes :: AsteriusEntitySymbol -- ^ Name of the static region
+  -> AsteriusStatic -- ^ Initializer
+  -> EDSL Expression -- ^ Expression to access the static, referenced by name.
+allocStaticBytes n v  = EDSL $ state $ \st ->
+  let st' = st {
+     staticsBuf =
+       (n, AsteriusStatics { staticsType = Bytes
+                           , asteriusStatics = [v]
+                           }):staticsBuf st
+     }
+  in (symbol n, st')
 
 notInt64, notInt32, eqZInt64, eqZInt32, extendUInt32, wrapInt64, convertUInt64ToFloat64, truncUFloat64ToInt64, convertSInt64ToFloat64, truncSFloat64ToInt64, roundupBytesToWords ::
      Expression -> Expression
