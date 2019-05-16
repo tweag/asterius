@@ -232,3 +232,4 @@ tests:
       - asterius
       - tasty
       - tasty-hspec
+      - aeson
