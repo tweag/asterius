@@ -19,7 +19,6 @@ import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.JSGen.Constants
 import Asterius.JSGen.Wasm
-import Asterius.JSRun.Main
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Resolve
 import Asterius.Types
@@ -44,7 +43,6 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.String
 import Foreign
-import Language.JavaScript.Inline.Core
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import NPM.Parcel
@@ -465,23 +463,9 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
           [takeFileName out_js]
       else do
         logger $ "[INFO] Running " <> out_entry
-        case inputEntryMJS of
-          Just _ ->
-            callProcess "node" $
-            ["--experimental-wasm-return-call" | tailCalls] <>
-            ["--experimental-modules", takeFileName out_entry]
-          _ -> do
-            mod_buf <- LBS.readFile $ takeFileName out_wasm
-            withJSSession
-              defJSSessionOpts
-                { nodeExtraArgs =
-                    ["--experimental-wasm-return-call" | tailCalls]
-                } $ \s -> do
-              i <- newAsteriusInstance s (takeFileName out_lib) mod_buf
-              hsInit s i
-              hsMain s i
-              wasm_stdout <- hsStdOut s i
-              LBS.putStr wasm_stdout
+        callProcess "node" $
+          ["--experimental-wasm-return-call" | tailCalls] <>
+          ["--experimental-modules", takeFileName out_entry]
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do
