@@ -131,7 +131,7 @@ main :: IO ()
 main = do
   tl <- newIORef mempty
   trees <- getTestCases >>= traverse (makeTestTree tl)
-  let treesTest = [trees !! 0]
+  let treesTest = take 50 trees
 
   -- | Path where the JSON is dumped
   let out_path = "test-report.json"
