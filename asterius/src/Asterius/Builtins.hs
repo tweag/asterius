@@ -79,11 +79,7 @@ rtsAsteriusModule opts =
     , functionMap =
         Map.fromList $
         (if debug opts
-           then [ ("__asterius_Load_Sp", getF64GlobalRegFunction opts Sp)
-                , ("__asterius_Load_SpLim", getF64GlobalRegFunction opts SpLim)
-                , ("__asterius_Load_Hp", getF64GlobalRegFunction opts Hp)
-                , ("__asterius_Load_HpLim", getF64GlobalRegFunction opts HpLim)
-                , ("__asterius_trap_load_i8", trapLoadI8Function opts)
+        then    [ ("__asterius_trap_load_i8", trapLoadI8Function opts)
                 , ("__asterius_trap_store_i8", trapStoreI8Function opts)
                 , ("__asterius_trap_load_i16", trapLoadI16Function opts)
                 , ("__asterius_trap_store_i16", trapStoreI16Function opts)
@@ -96,116 +92,79 @@ rtsAsteriusModule opts =
                 , ("__asterius_trap_load_f64", trapLoadF64Function opts)
                 , ("__asterius_trap_store_f64", trapStoreF64Function opts)
                 ]
-           else []) <>
-        [ ("main", mainFunction opts)
-        , ("hs_init", hsInitFunction opts)
-        , ("rts_apply", rtsApplyFunction opts)
-        , ( "rts_apply_wrapper"
-          , generateWrapperFunction "rts_apply" $ rtsApplyFunction opts)
-        , ("rts_eval", rtsEvalFunction opts)
-        , ( "rts_eval_wrapper"
-          , generateWrapperFunction "rts_eval" $ rtsEvalFunction opts)
-        , ("rts_evalIO", rtsEvalIOFunction opts)
-        , ( "rts_evalIO_wrapper"
-          , generateWrapperFunction "rts_evalIO" $ rtsEvalIOFunction opts)
-        , ("rts_evalLazyIO", rtsEvalLazyIOFunction opts)
-        , ( "rts_evalLazyIO_wrapper"
-          , generateWrapperFunction "rts_evalLazyIO" $
-            rtsEvalLazyIOFunction opts)
-        , ("rts_getSchedStatus", rtsGetSchedStatusFunction opts)
-        , ( "rts_getSchedStatus_wrapper"
-          , generateWrapperFunction "rts_getSchedStatus" $
-            rtsGetSchedStatusFunction opts)
-        , ("rts_checkSchedStatus", rtsCheckSchedStatusFunction opts)
-        , ( "rts_checkSchedStatus_wrapper"
-          , generateWrapperFunction "rts_checkSchedStatus" $
-            rtsCheckSchedStatusFunction opts)
-        , ("scheduleWaitThread", scheduleWaitThreadFunction opts)
-        , ("createThread", createThreadFunction opts)
-        , ("createGenThread", createGenThreadFunction opts)
-        , ("createIOThread", createIOThreadFunction opts)
-        , ("createStrictIOThread", createStrictIOThreadFunction opts)
-        , ("allocate", allocateFunction opts)
-        , ("allocateMightFail", allocateFunction opts)
-        , ("allocatePinned", allocatePinnedFunction opts)
-        , ("newCAF", newCAFFunction opts)
-        , ("StgReturn", stgReturnFunction opts)
-        , ("getStablePtr", getStablePtrWrapperFunction opts)
-        , ( "getStablePtr_wrapper"
-          , generateWrapperFunction "getStablePtr" $
-            getStablePtrWrapperFunction opts)
-        , ("deRefStablePtr", deRefStablePtrWrapperFunction opts)
-        , ( "deRefStablePtr_wrapper"
-          , generateWrapperFunction "deRefStablePtr" $
-            deRefStablePtrWrapperFunction opts)
-        , ("hs_free_stable_ptr", freeStablePtrWrapperFunction opts)
-        , ( "hs_free_stable_ptr_wrapper"
-          , generateWrapperFunction "hs_free_stable_ptr" $
-            freeStablePtrWrapperFunction opts)
-        , ("rts_mkBool", rtsMkBoolFunction opts)
-        , ( "rts_mkBool_wrapper"
-          , generateWrapperFunction "rts_mkBool" $ rtsMkBoolFunction opts)
-        , ("rts_mkDouble", rtsMkDoubleFunction opts)
-        , ( "rts_mkDouble_wrapper"
-          , generateWrapperFunction "rts_mkDouble" $ rtsMkDoubleFunction opts)
-        , ("rts_mkChar", rtsMkCharFunction opts)
-        , ( "rts_mkChar_wrapper"
-          , generateWrapperFunction "rts_mkChar" $ rtsMkCharFunction opts)
-        , ("rts_mkInt", rtsMkIntFunction opts)
-        , ( "rts_mkInt_wrapper"
-          , generateWrapperFunction "rts_mkInt" $ rtsMkIntFunction opts)
-        , ("rts_mkWord", rtsMkWordFunction opts)
-        , ( "rts_mkWord_wrapper"
-          , generateWrapperFunction "rts_mkWord" $ rtsMkWordFunction opts)
-        , ("rts_mkPtr", rtsMkPtrFunction opts)
-        , ( "rts_mkPtr_wrapper"
-          , generateWrapperFunction "rts_mkPtr" $ rtsMkPtrFunction opts)
-        , ("rts_mkStablePtr", rtsMkStablePtrFunction opts)
-        , ( "rts_mkStablePtr_wrapper"
-          , generateWrapperFunction "rts_mkStablePtr" $
-            rtsMkStablePtrFunction opts)
-        , ("rts_getBool", rtsGetBoolFunction opts)
-        , ( "rts_getBool_wrapper"
-          , generateWrapperFunction "rts_getBool" $ rtsGetBoolFunction opts)
-        , ("rts_getDouble", rtsGetDoubleFunction opts)
-        , ( "rts_getDouble_wrapper"
-          , generateWrapperFunction "rts_getDouble" $ rtsGetDoubleFunction opts)
-        , ("rts_getChar", rtsGetCharFunction opts)
-        , ( "rts_getChar_wrapper"
-          , generateWrapperFunction "rts_getChar" $ rtsGetCharFunction opts)
-        , ("rts_getInt", rtsGetIntFunction opts)
-        , ( "rts_getInt_wrapper"
-          , generateWrapperFunction "rts_getInt" $ rtsGetIntFunction opts)
-        , ("rts_getWord", rtsGetIntFunction opts)
-        , ( "rts_getWord_wrapper"
-          , generateWrapperFunction "rts_getWord" $ rtsGetIntFunction opts)
-        , ("rts_getPtr", rtsGetIntFunction opts)
-        , ( "rts_getPtr_wrapper"
-          , generateWrapperFunction "rts_getPtr" $ rtsGetIntFunction opts)
-        , ("rts_getStablePtr", rtsGetIntFunction opts)
-        , ( "rts_getStablePtr_wrapper"
-          , generateWrapperFunction "rts_getStablePtr" $ rtsGetIntFunction opts)
-        , ("loadI64", loadI64Function opts)
-        , ( "loadI64_wrapper"
-          , generateWrapperFunction "loadI64" $ loadI64Function opts)
-        , ("print_i64", printI64Function opts)
-        , ("print_f32", printF32Function opts)
-        , ("print_f64", printF64Function opts)
-        , ("assert_eq_i64", assertEqI64Function opts)
-        , ("strlen", strlenFunction opts)
-        , ("memchr", memchrFunction opts)
-        , ("memcpy", memcpyFunction opts)
-        , ("memset", memsetFunction opts)
-        , ("memcmp", memcmpFunction opts)
-        , ("__asterius_fromJSArrayBuffer", fromJSArrayBufferFunction opts)
-        , ("__asterius_toJSArrayBuffer", toJSArrayBufferFunction opts)
-        , ("__asterius_fromJSString", fromJSStringFunction opts)
-        , ("__asterius_fromJSArray", fromJSArrayFunction opts)
-        , ("threadPaused", threadPausedFunction opts)
-        , ("dirty_MUT_VAR", dirtyMutVarFunction opts)
-        ] <>
-        map (\(func_sym, (_, func)) -> (func_sym, func)) byteStringCBits
-    }
+          else [])
+        <> map (\(func_sym, (_, func)) -> (func_sym, func)) byteStringCBits
+    }  <> mainFunction opts
+       <> hsInitFunction opts
+       <> scheduleWaitThreadFunction opts
+       <> createThreadFunction opts
+       <> createGenThreadFunction opts
+       <> createIOThreadFunction opts
+       <> createStrictIOThreadFunction opts
+       <> genAllocateFunction opts "allocate"
+       <> genAllocateFunction opts "allocateMightFail"
+       <> allocatePinnedFunction opts
+       <> newCAFFunction opts
+       <> stgReturnFunction opts
+       <> printI64Function opts
+       <> printF32Function opts
+       <> printF64Function opts
+       <> assertEqI64Function opts
+       <> strlenFunction opts
+       <> memchrFunction opts
+       <> memcpyFunction opts
+       <> memsetFunction opts
+       <> memcmpFunction opts
+       <> fromJSArrayBufferFunction opts
+       <> toJSArrayBufferFunction opts
+       <> fromJSStringFunction opts
+       <> fromJSArrayFunction opts
+       <> threadPausedFunction opts
+       <> dirtyMutVarFunction opts
+       <> (if debug opts then generateRtsAsteriusDebugModule opts else mempty)
+       -- | Add in the module that contain functions which need to be
+       -- | exposed to the outside world. So add in the module, and
+       -- | the module wrapped by using `generateWrapperModule`.
+       <> generateRtsExternalInterfaceModule opts
+       <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
+
+
+-- | Generate the module consisting of functions which need to be wrapped
+-- | for communication with the external runtime.
+generateRtsExternalInterfaceModule :: BuiltinsOptions -> AsteriusModule
+generateRtsExternalInterfaceModule opts = mempty
+  <> rtsApplyFunction opts
+  <> rtsEvalFunction opts
+  <> rtsEvalIOFunction opts
+  <> rtsEvalLazyIOFunction opts
+  <> rtsGetSchedStatusFunction opts
+  <> rtsCheckSchedStatusFunction opts
+  <> getStablePtrWrapperFunction opts
+  <> deRefStablePtrWrapperFunction opts
+  <> freeStablePtrWrapperFunction opts
+  <> rtsMkBoolFunction opts
+  <> rtsMkDoubleFunction opts
+  <> rtsMkCharFunction opts
+  <> rtsMkIntFunction opts
+  <> rtsMkWordFunction opts
+  <> rtsMkPtrFunction opts
+  <> rtsMkStablePtrFunction opts
+  <> rtsGetBoolFunction opts
+  <> rtsGetDoubleFunction opts
+  <> generateRtsGetIntFunction opts "rts_getChar"
+  <> generateRtsGetIntFunction opts "rts_getInt"
+  <> generateRtsGetIntFunction opts "rts_getWord"
+  <> generateRtsGetIntFunction opts "rts_getPtr"
+  <> generateRtsGetIntFunction opts "rts_getStablePtr"
+  <> loadI64Function opts
+
+-- | Generate the module consisting of debug functions
+generateRtsAsteriusDebugModule :: BuiltinsOptions -> AsteriusModule
+generateRtsAsteriusDebugModule opts = mempty
+  <> getF64GlobalRegFunction opts  "__asterius_Load_Sp" Sp
+  <> getF64GlobalRegFunction opts  "__asterius_Load_SpLim" SpLim
+  <> getF64GlobalRegFunction opts  "__asterius_Load_Hp" Hp
+  <> getF64GlobalRegFunction opts  "__asterius_Load_HpLim" SpLim
 
 rtsFunctionImports :: Bool -> [FunctionImport]
 rtsFunctionImports debug =
@@ -639,10 +598,26 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
         [I64] -> ([F64], convertSInt64ToFloat64)
         _ -> (returnTypes, id)
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocateFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, rtsGetCharFunction, rtsGetIntFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, trapLoadI8Function, trapStoreI8Function, trapLoadI16Function, trapStoreI16Function, trapLoadI32Function, trapStoreI32Function, trapLoadI64Function, trapStoreI64Function, trapLoadF32Function, trapStoreF32Function, trapLoadF64Function, trapStoreF64Function ::
-     BuiltinsOptions -> Function
+
+-- | Renames each function in the module to <name>_wrapper, and
+-- | edits their implementation using 'generateWrapperFunction'
+generateWrapperModule :: AsteriusModule -> AsteriusModule
+generateWrapperModule mod = mod {
+	functionMap=Map.fromList $ map (\(n, f) -> (n <> "_wrapper", generateWrapperFunction n f)) (Map.toList $ functionMap mod)
+}
+
+
+
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction :: BuiltinsOptions -> AsteriusModule
+
+-- Not migrated to using runEDSL yet.
+trapLoadI8Function, trapStoreI8Function, trapLoadI16Function,
+  trapStoreI16Function, trapLoadI32Function, trapStoreI32Function,
+  trapLoadI64Function, trapStoreI64Function, trapLoadF32Function,
+  trapStoreF32Function, trapLoadF64Function, trapStoreF64Function :: BuiltinsOptions -> Function
+
 mainFunction BuiltinsOptions {} =
-  runEDSL [] $ do
+  runEDSL  "main" $ do
     tid <- call' "rts_evalLazyIO" [symbol "Main_main_closure"] I32
     call "rts_checkSchedStatus" [tid]
 
@@ -671,7 +646,7 @@ initCapability = do
     constI64 0
 
 hsInitFunction _ =
-  runEDSL [] $ do
+  runEDSL "hs_init" $ do
     initCapability
     bd_nursery <-
       truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
@@ -690,7 +665,7 @@ rtsEvalHelper BuiltinsOptions {..} create_thread_func_sym = do
   emit $ loadI32 tso offset_StgTSO_id
 
 rtsApplyFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "rts_apply" $ do
     setReturnTypes [I64]
     [f, arg] <- params [I64, I64]
     ap <-
@@ -703,21 +678,21 @@ rtsApplyFunction _ =
     storeI64 ap (offset_StgThunk_payload + 8) arg
     emit ap
 
-rtsEvalFunction opts = runEDSL [I32] $ rtsEvalHelper opts "createGenThread"
+rtsEvalFunction opts = runEDSL "rts_eval" $ rtsEvalHelper opts "createGenThread"
 
 rtsEvalIOFunction opts =
-  runEDSL [I32] $ rtsEvalHelper opts "createStrictIOThread"
+  runEDSL "rts_evalIO" $ rtsEvalHelper opts "createStrictIOThread"
 
-rtsEvalLazyIOFunction opts = runEDSL [I32] $ rtsEvalHelper opts "createIOThread"
+rtsEvalLazyIOFunction opts = runEDSL "rts_evalLazyIO" $ rtsEvalHelper opts "createIOThread"
 
 rtsGetSchedStatusFunction _ =
-  runEDSL [I32] $ do
+  runEDSL "rts_getSchedStatus" $ do
     setReturnTypes [I32]
     tid <- param I32
     callImport' "__asterius_getTSOrstat" [tid] I32 >>= emit
 
 rtsCheckSchedStatusFunction _ =
-  runEDSL [] $ do
+  runEDSL"rts_checkSchedStatus" $ do
     tid <- param I32
     stat <- call' "rts_getSchedStatus" [tid] I32
     if' [] (stat `eqInt32` constI32 scheduler_Success) mempty $
@@ -740,7 +715,7 @@ dirtySTACK _ stack =
     mempty
 
 scheduleWaitThreadFunction BuiltinsOptions {} =
-  runEDSL [] $ do
+  runEDSL "scheduleWaitThread" $ do
     t <- param I64
     block' [] $ \sched_block_lbl ->
       loop' [] $ \sched_loop_lbl -> do
@@ -819,7 +794,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
     callImport "__asterius_gcRootTSO" [convertUInt64ToFloat64 t]
 
 createThreadFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "createThread" $ do
     setReturnTypes [I64]
     [cap, alloc_words] <- params [I64, I64]
     tso_p <- call' "allocatePinned" [cap, alloc_words] I64
@@ -868,16 +843,16 @@ createThreadHelper mk_closures = do
   emit t
 
 createGenThreadFunction _ =
-  runEDSL [I64] $
+  runEDSL "createGenThread" $
   createThreadHelper $ \closure -> [closure, symbol "stg_enter_info"]
 
 createIOThreadFunction _ =
-  runEDSL [I64] $
+  runEDSL "createIOThread" $
   createThreadHelper $ \closure ->
     [symbol "stg_ap_v_info", closure, symbol "stg_enter_info"]
 
 createStrictIOThreadFunction _ =
-  runEDSL [I64] $
+  runEDSL "createStrictIOThread"  $
   createThreadHelper $ \closure ->
     [ symbol "stg_forceIO_info"
     , symbol "stg_ap_v_info"
@@ -885,16 +860,30 @@ createStrictIOThreadFunction _ =
     , symbol "stg_enter_info"
     ]
 
-allocateFunction BuiltinsOptions {} =
-  runEDSL [I64] $ do
+
+genAllocateFunction :: BuiltinsOptions
+    -> AsteriusEntitySymbol -- ^ Name of the allocation function
+    ->  AsteriusModule -- ^ Module representing the function
+genAllocateFunction (BuiltinsOptions {}) n =
+  runEDSL n $ do
     setReturnTypes [I64]
     [_, n] <- params [I64, I64]
     (truncUFloat64ToInt64 <$>
      callImport' "__asterius_allocate" [convertUInt64ToFloat64 n] F64) >>=
       emit
 
+{-
+allocateFunction BuiltinsOptions {} =
+  runEDSL "allocate" $ do
+    setReturnTypes [I64]
+    [_, n] <- params [I64, I64]
+    (truncUFloat64ToInt64 <$>
+     callImport' "__asterius_allocate" [convertUInt64ToFloat64 n] F64) >>=
+      emit
+  -}
+
 allocatePinnedFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "allocatePinned" $ do
     setReturnTypes [I64]
     [_, n] <- params [I64, I64]
     (truncUFloat64ToInt64 <$>
@@ -902,7 +891,7 @@ allocatePinnedFunction _ =
       emit
 
 newCAFFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "newCAF" $ do
     setReturnTypes [I64]
     [reg, caf] <- params [I64, I64]
     orig_info <- i64Local $ loadI64 caf 0
@@ -932,10 +921,10 @@ stgRun init_f = do
   pure $ getLVal r1
 
 stgReturnFunction _ =
-  runEDSL [] $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0
+  runEDSL "StgReturn" $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0
 
 getStablePtrWrapperFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "getStablePtr"  $ do
     setReturnTypes [I64]
     obj64 <- param I64
     sp_f64 <-
@@ -943,7 +932,7 @@ getStablePtrWrapperFunction _ =
     emit $ truncUFloat64ToInt64 sp_f64
 
 deRefStablePtrWrapperFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "deRefStablePtr" $ do
     setReturnTypes [I64]
     sp64 <- param I64
     obj_f64 <-
@@ -951,13 +940,17 @@ deRefStablePtrWrapperFunction _ =
     emit $ truncUFloat64ToInt64 obj_f64
 
 freeStablePtrWrapperFunction _ =
-  runEDSL [] $ do
+  runEDSL"hs_free_stable_ptr"  $ do
     sp64 <- param I64
     callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
 
-rtsMkHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> Function
-rtsMkHelper _ con_sym =
-  runEDSL [I64] $ do
+rtsMkHelper ::
+   BuiltinsOptions
+  -> AsteriusEntitySymbol -- ^ Name of the function to be built
+  -> AsteriusEntitySymbol -- ^ Mangled name of the primop constructor
+  -> AsteriusModule
+rtsMkHelper _ n con_sym =
+  runEDSL n  $ do
     setReturnTypes [I64]
     [i] <- params [I64]
     p <- call' "allocate" [mainCapability, constI64 2] I64
@@ -966,7 +959,7 @@ rtsMkHelper _ con_sym =
     emit p
 
 rtsMkBoolFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "rts_mkBool" $ do
     setReturnTypes [I64]
     [i] <- params [I64]
     if'
@@ -976,7 +969,7 @@ rtsMkBoolFunction _ =
       (emit $ symbol' "ghczmprim_GHCziTypes_True_closure" 2)
 
 rtsMkDoubleFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "rts_mkDouble" $ do
     setReturnTypes [I64]
     [i] <- params [F64]
     p <- call' "allocate" [mainCapability, constI64 2] I64
@@ -985,7 +978,7 @@ rtsMkDoubleFunction _ =
     emit p
 
 rtsMkCharFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "rts_mkChar" $ do
     setReturnTypes [I64]
     [i] <- params [I64]
     p <- call' "allocate" [mainCapability, constI64 2] I64
@@ -993,20 +986,20 @@ rtsMkCharFunction _ =
     storeI64 p 8 i
     emit p
 
-rtsMkIntFunction opts = rtsMkHelper opts "ghczmprim_GHCziTypes_Izh_con_info"
+rtsMkIntFunction opts = rtsMkHelper opts "rts_mkInt" "ghczmprim_GHCziTypes_Izh_con_info"
 
-rtsMkWordFunction opts = rtsMkHelper opts "ghczmprim_GHCziTypes_Wzh_con_info"
+rtsMkWordFunction opts = rtsMkHelper opts "rts_mkWord" "ghczmprim_GHCziTypes_Wzh_con_info"
 
-rtsMkPtrFunction opts = rtsMkHelper opts "base_GHCziPtr_Ptr_con_info"
+rtsMkPtrFunction opts = rtsMkHelper opts "rts_mkPtr" "base_GHCziPtr_Ptr_con_info"
 
 rtsMkStablePtrFunction opts =
-  rtsMkHelper opts "base_GHCziStable_StablePtr_con_info"
+  rtsMkHelper opts "rts_mkStablePtr" "base_GHCziStable_StablePtr_con_info"
 
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
 rtsGetBoolFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "rts_getBool" $ do
     setReturnTypes [I64]
     p <- param I64
     emit $
@@ -1016,32 +1009,46 @@ rtsGetBoolFunction _ =
         (loadI32 (loadI64 (unTagClosure p) 0) offset_StgInfoTable_srt)
 
 rtsGetDoubleFunction _ =
-  runEDSL [F64] $ do
+  runEDSL "rts_getDouble" $ do
     setReturnTypes [F64]
     p <- param I64
     emit $ loadF64 (unTagClosure p) offset_StgClosure_payload
 
-rtsGetCharFunction = rtsGetIntFunction
+-- rtsGetCharFunction = rtsGetIntFunction
 
-rtsGetIntFunction _ =
-  runEDSL [I64] $ do
+-- generate a function which internally performs getInt, but is
+-- named differently
+generateRtsGetIntFunction :: BuiltinsOptions
+  -> AsteriusEntitySymbol -- Name of the function
+  -> AsteriusModule
+generateRtsGetIntFunction _ n =
+  runEDSL n $ do
     setReturnTypes [I64]
     p <- param I64
     emit $ loadI64 (unTagClosure p) offset_StgClosure_payload
 
+
+{-
+rtsGetIntFunction _ =
+  runEDSL "rts_getInt" $ do
+    setReturnTypes [I64]
+    p <- param I64
+    emit $ loadI64 (unTagClosure p) offset_StgClosure_payload
+-}
+
 loadI64Function _ =
-  runEDSL [I64] $ do
+  runEDSL "loadI64"  $ do
     setReturnTypes [I64]
     p <- param I64
     emit $ loadI64 p 0
 
 printI64Function _ =
-  runEDSL [] $ do
+  runEDSL "print_i64" $ do
     x <- param I64
     callImport "printI64" [convertSInt64ToFloat64 x]
 
 assertEqI64Function _ =
-  runEDSL [] $ do
+  runEDSL "assert_eq_i64"  $ do
     x <- param I64
     y <- param I64
     callImport
@@ -1049,24 +1056,24 @@ assertEqI64Function _ =
       [convertSInt64ToFloat64 x, convertSInt64ToFloat64 y]
 
 printF32Function _ =
-  runEDSL [] $ do
+  runEDSL "print_f32" $ do
     x <- param F32
     callImport "printF32" [x]
 
 printF64Function _ =
-  runEDSL [] $ do
+  runEDSL "print_f64" $ do
     x <- param F64
     callImport "printF64" [x]
 
 strlenFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "strlen"  $ do
     setReturnTypes [I64]
     [str] <- params [I64]
     len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
     emit $ truncUFloat64ToInt64 len
 
 memchrFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "memchr"  $ do
     setReturnTypes [I64]
     [ptr, val, num] <- params [I64, I64, I64]
     p <-
@@ -1077,21 +1084,21 @@ memchrFunction _ =
     emit $ truncUFloat64ToInt64 p
 
 memcpyFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "memcpy" $ do
     setReturnTypes [I64]
     [dst, src, n] <- params [I64, I64, I64]
     callImport "__asterius_memcpy" $ map convertUInt64ToFloat64 [dst, src, n]
     emit dst
 
 memsetFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "memset" $ do
     setReturnTypes [I64]
     [dst, c, n] <- params [I64, I64, I64]
     callImport "__asterius_memset" $ map convertUInt64ToFloat64 [dst, c, n]
     emit dst
 
 memcmpFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "memcmp" $ do
     setReturnTypes [I64]
     [ptr1, ptr2, n] <- params [I64, I64, I64]
     cres <-
@@ -1102,7 +1109,7 @@ memcmpFunction _ =
     emit $ Unary ExtendSInt32 cres
 
 fromJSArrayBufferFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "__asterius_fromJSArrayBuffer" $ do
     setReturnTypes [I64]
     [buf] <- params [I64]
     addr <-
@@ -1114,7 +1121,7 @@ fromJSArrayBufferFunction _ =
     emit addr
 
 toJSArrayBufferFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "__asterius_toJSArrayBuffer"  $ do
     setReturnTypes [I64]
     [addr, len] <- params [I64, I64]
     r <-
@@ -1126,7 +1133,7 @@ toJSArrayBufferFunction _ =
     emit r
 
 fromJSStringFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "__asterius_fromJSString"  $ do
     setReturnTypes [I64]
     [s] <- params [I64]
     addr <-
@@ -1135,7 +1142,7 @@ fromJSStringFunction _ =
     emit addr
 
 fromJSArrayFunction _ =
-  runEDSL [I64] $ do
+  runEDSL "__asterius_fromJSArray"  $ do
     setReturnTypes [I64]
     [arr] <- params [I64]
     addr <-
@@ -1143,10 +1150,10 @@ fromJSArrayFunction _ =
       callImport' "__asterius_fromJSArray_imp" [convertUInt64ToFloat64 arr] F64
     emit addr
 
-threadPausedFunction _ = runEDSL [] $ void $ params [I64, I64]
+threadPausedFunction _ = runEDSL "threadPaused" $ void $ params [I64, I64]
 
 dirtyMutVarFunction _ =
-  runEDSL [] $ do
+  runEDSL "dirty_MUT_VAR" $ do
     [_, p] <- params [I64, I64]
     if'
       []
@@ -1154,9 +1161,13 @@ dirtyMutVarFunction _ =
       (storeI64 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
       mempty
 
-getF64GlobalRegFunction :: BuiltinsOptions -> UnresolvedGlobalReg -> Function
-getF64GlobalRegFunction _ gr =
-  runEDSL [F64] $ do
+getF64GlobalRegFunction ::
+  BuiltinsOptions
+  -> AsteriusEntitySymbol  -- ^ Name of the function to be created
+  -> UnresolvedGlobalReg -- ^ Global register to be returned
+  -> AsteriusModule -- Module containing the function
+getF64GlobalRegFunction _ n gr =
+  runEDSL n $ do
     setReturnTypes [F64]
     emit $ convertSInt64ToFloat64 $ getLVal $ global gr
 

@@ -204,7 +204,7 @@ enum class Type : int32_t {
   F32 = -0x03,        // 0x7d
   F64 = -0x04,        // 0x7c
   V128 = -0x05,       // 0x7b
-  Anyfunc = -0x10,    // 0x70
+  Funcref = -0x10,    // 0x70
   Anyref = -0x11,     // 0x6f
   ExceptRef = -0x18,  // 0x68
   Func = -0x20,       // 0x60
@@ -215,19 +215,22 @@ enum class Type : int32_t {
 typedef std::vector<Type> TypeVector;
 
 enum class RelocType {
-  FuncIndexLEB = 0,       // e.g. Immediate of call instruction
-  TableIndexSLEB = 1,     // e.g. Loading address of function
-  TableIndexI32 = 2,      // e.g. Function address in DATA
-  MemoryAddressLEB = 3,   // e.g. Memory address in load/store offset immediate
-  MemoryAddressSLEB = 4,  // e.g. Memory address in i32.const
-  MemoryAddressI32 = 5,   // e.g. Memory address in DATA
-  TypeIndexLEB = 6,       // e.g. Immediate type in call_indirect
-  GlobalIndexLEB = 7,     // e.g. Immediate of get_global inst
-  FunctionOffsetI32 = 8,  // e.g. Code offset in DWARF metadata
-  SectionOffsetI32 = 9,   // e.g. Section offset in DWARF metadata
+  FuncIndexLEB = 0,          // e.g. Immediate of call instruction
+  TableIndexSLEB = 1,        // e.g. Loading address of function
+  TableIndexI32 = 2,         // e.g. Function address in DATA
+  MemoryAddressLEB = 3,      // e.g. Memory address in load/store offset immediate
+  MemoryAddressSLEB = 4,     // e.g. Memory address in i32.const
+  MemoryAddressI32 = 5,      // e.g. Memory address in DATA
+  TypeIndexLEB = 6,          // e.g. Immediate type in call_indirect
+  GlobalIndexLEB = 7,        // e.g. Immediate of get_global inst
+  FunctionOffsetI32 = 8,     // e.g. Code offset in DWARF metadata
+  SectionOffsetI32 = 9,      // e.g. Section offset in DWARF metadata
+  EventIndexLEB = 10,        // Used in throw instructions
+  MemoryAddressRelSLEB = 11, // In PIC code, data address relative to __memory_base
+  TableIndexRelSLEB = 12,    // In PIC code, table index relative to __table_base
 
   First = FuncIndexLEB,
-  Last = SectionOffsetI32,
+  Last = TableIndexRelSLEB,
 };
 static const int kRelocTypeCount = WABT_ENUM_COUNT(RelocType);
 
@@ -252,11 +255,13 @@ enum class SymbolType {
   Data = 1,
   Global = 2,
   Section = 3,
+  Event = 4,
 };
 
 #define WABT_SYMBOL_FLAG_UNDEFINED 0x10
 #define WABT_SYMBOL_MASK_VISIBILITY 0x4
 #define WABT_SYMBOL_MASK_BINDING 0x3
+#define WASM_SYMBOL_EXPLICIT_NAME 0x40
 
 enum class SymbolVisibility {
   Default = 0,
@@ -307,8 +312,9 @@ void InitStdio();
 extern const char* g_kind_name[];
 
 static WABT_INLINE const char* GetKindName(ExternalKind kind) {
-  assert(static_cast<int>(kind) < kExternalKindCount);
-  return g_kind_name[static_cast<size_t>(kind)];
+  return static_cast<int>(kind) < kExternalKindCount
+    ? g_kind_name[static_cast<size_t>(kind)]
+    : "<error_kind>";
 }
 
 /* reloc */
@@ -316,8 +322,9 @@ static WABT_INLINE const char* GetKindName(ExternalKind kind) {
 extern const char* g_reloc_type_name[];
 
 static WABT_INLINE const char* GetRelocTypeName(RelocType reloc) {
-  assert(static_cast<int>(reloc) < kRelocTypeCount);
-  return g_reloc_type_name[static_cast<size_t>(reloc)];
+  return static_cast<int>(reloc) < kRelocTypeCount
+    ? g_reloc_type_name[static_cast<size_t>(reloc)]
+    : "<error_reloc_type>";
 }
 
 /* symbol */
@@ -332,8 +339,11 @@ static WABT_INLINE const char* GetSymbolTypeName(SymbolType type) {
       return "data";
     case SymbolType::Section:
       return "section";
+    case SymbolType::Event:
+      return "event";
+    default:
+      return "<error_symbol_type>";
   }
-  WABT_UNREACHABLE;
 }
 
 /* type */
@@ -350,8 +360,8 @@ static WABT_INLINE const char* GetTypeName(Type type) {
       return "f64";
     case Type::V128:
       return "v128";
-    case Type::Anyfunc:
-      return "anyfunc";
+    case Type::Funcref:
+      return "funcref";
     case Type::Func:
       return "func";
     case Type::ExceptRef:
@@ -363,9 +373,8 @@ static WABT_INLINE const char* GetTypeName(Type type) {
     case Type::Anyref:
       return "anyref";
     default:
-      return "<type index>";
+      return "<type_index>";
   }
-  WABT_UNREACHABLE;
 }
 
 static WABT_INLINE bool IsTypeIndex(Type type) {

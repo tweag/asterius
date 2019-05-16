@@ -466,8 +466,9 @@ class LocalTypes {
   const Decls& decls() const { return decls_; }
 
   void AppendDecl(Type type, Index count) {
-    assert(count > 0);
-    decls_.emplace_back(type, count);
+    if (count != 0) {
+      decls_.emplace_back(type, count);
+    }
   }
 
   Index size() const;
@@ -537,14 +538,28 @@ struct Global {
 };
 
 struct Table {
-  explicit Table(string_view name) :
-      name(name.to_string()),
-      elem_type(Type::Anyfunc) {}
+  explicit Table(string_view name)
+      : name(name.to_string()), elem_type(Type::Funcref) {}
 
   std::string name;
   Limits elem_limits;
   Type elem_type;
 };
+
+enum class ElemExprKind {
+  RefNull,
+  RefFunc,
+};
+
+struct ElemExpr {
+  ElemExpr() : kind(ElemExprKind::RefNull) {}
+  explicit ElemExpr(Var var) : kind(ElemExprKind::RefFunc), var(var) {}
+
+  ElemExprKind kind;
+  Var var;  // Only used when kind == RefFunc.
+};
+
+typedef std::vector<ElemExpr> ElemExprVector;
 
 struct ElemSegment {
   explicit ElemSegment(string_view name) : name(name.to_string()) {}
@@ -552,8 +567,9 @@ struct ElemSegment {
   std::string name;
   Var table_var;
   bool passive = false;
+  Type elem_type;  // If passive == false, this is always Type::Funcref.
   ExprList offset;
-  VarVector vars;
+  ElemExprVector elem_exprs;
 };
 
 struct Memory {

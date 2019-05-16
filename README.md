@@ -55,6 +55,8 @@ install the following:
 
 and then follow the commands in the `Dockerfile`. 
 
+For hacking instructions, [there is a `docs/hacking.md` which has advice and common commands](docs/hacking.md)
+
 ## Sponsors
 
 [<img src="https://www.tweag.io/img/tweag-med.png" height="65">](https://tweag.io)

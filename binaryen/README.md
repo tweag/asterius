@@ -1,3 +1,3 @@
 # `binaryen`
 
-Complete raw Haskell bindings to [`binaryen`](https://github.com/TerrorJack/binaryen/tree/689d63cbb0801e4ead9e27010cae9c062c2c10e9).
+Complete raw Haskell bindings to [`binaryen`](https://github.com/TerrorJack/binaryen/tree/3e7cf3c4d2d4bbfdc81de6735c544bb4e0db91ee).

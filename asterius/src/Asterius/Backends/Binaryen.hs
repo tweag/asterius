@@ -413,26 +413,30 @@ marshalMemorySegments ::
   -> [DataSegment]
   -> IO ()
 marshalMemorySegments sym_map m mbs segs =
-  flip runContT pure $ do
-    (seg_bufs, _) <- marshalV =<< for segs (marshalSBS . content)
-    (seg_offsets, _) <-
-      marshalV =<<
-      for
-        segs
-        (\DataSegment {..} ->
-           lift $ marshalExpression sym_map m $ ConstI32 offset)
-    (seg_sizes, _) <- marshalV $ map (fromIntegral . SBS.length . content) segs
-    lift $
-      c_BinaryenSetMemory
-        m
-        (fromIntegral $ mbs * (mblock_size `quot` 65536))
-        (-1)
-        nullPtr
-        seg_bufs
-        seg_offsets
-        seg_sizes
-        (fromIntegral $ length segs)
-        0
+  let segs_len = length segs
+   in flip runContT pure $ do
+        (seg_bufs, _) <- marshalV =<< for segs (marshalSBS . content)
+        (seg_passives, _) <- marshalV $ replicate segs_len 0
+        (seg_offsets, _) <-
+          marshalV =<<
+          for
+            segs
+            (\DataSegment {..} ->
+               lift $ marshalExpression sym_map m $ ConstI32 offset)
+        (seg_sizes, _) <-
+          marshalV $ map (fromIntegral . SBS.length . content) segs
+        lift $
+          c_BinaryenSetMemory
+            m
+            (fromIntegral $ mbs * (mblock_size `quot` 65536))
+            (-1)
+            nullPtr
+            seg_bufs
+            seg_passives
+            seg_offsets
+            seg_sizes
+            (fromIntegral segs_len)
+            0
 
 marshalTableImport :: BinaryenModuleRef -> TableImport -> IO ()
 marshalTableImport m TableImport {..} =

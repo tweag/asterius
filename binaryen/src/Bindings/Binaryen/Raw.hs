@@ -25,6 +25,9 @@ foreign import ccall unsafe "BinaryenTypeFloat64" c_BinaryenTypeFloat64
 foreign import ccall unsafe "BinaryenTypeVec128" c_BinaryenTypeVec128
   :: BinaryenType
 
+foreign import ccall unsafe "BinaryenTypeExceptRef" c_BinaryenTypeExceptRef
+  :: BinaryenType
+
 foreign import ccall unsafe "BinaryenTypeUnreachable" c_BinaryenTypeUnreachable
   :: BinaryenType
 
@@ -1612,8 +1615,9 @@ foreign import ccall unsafe "BinaryenSetMemory" c_BinaryenSetMemory
     BinaryenIndex ->
       Ptr CChar ->
         Ptr (Ptr CChar) ->
-          Ptr BinaryenExpressionRef ->
-            Ptr BinaryenIndex -> BinaryenIndex -> Word8 -> IO ()
+          Ptr Int8 ->
+            Ptr BinaryenExpressionRef ->
+              Ptr BinaryenIndex -> BinaryenIndex -> Word8 -> IO ()
 
 foreign import ccall unsafe "BinaryenSetStart" c_BinaryenSetStart
   :: BinaryenModuleRef -> BinaryenFunctionRef -> IO ()
@@ -1724,10 +1728,22 @@ foreign import ccall unsafe "BinaryenFunctionSetDebugLocation" c_BinaryenFunctio
   BinaryenExpressionRef ->
     BinaryenIndex -> BinaryenIndex -> BinaryenIndex -> IO ()
 
+foreign import ccall unsafe "BinaryenGlobalGetName" c_BinaryenGlobalGetName
+  :: BinaryenGlobalRef -> IO (Ptr CChar)
+
+foreign import ccall unsafe "BinaryenGlobalGetType" c_BinaryenGlobalGetType
+  :: BinaryenGlobalRef -> IO BinaryenType
+
+foreign import ccall unsafe "BinaryenGlobalIsMutable" c_BinaryenGlobalIsMutable
+  :: BinaryenGlobalRef -> IO CInt
+
+foreign import ccall unsafe "BinaryenGlobalGetInitExpr" c_BinaryenGlobalGetInitExpr
+  :: BinaryenGlobalRef -> IO BinaryenExpressionRef
+
 foreign import ccall unsafe "BinaryenFunctionImportGetModule" c_BinaryenFunctionImportGetModule
   :: BinaryenFunctionRef -> IO (Ptr CChar)
 
-foreign import ccall unsafe "BinaryeGlobalImportGetModule" c_BinaryeGlobalImportGetModule
+foreign import ccall unsafe "BinaryenGlobalImportGetModule" c_BinaryenGlobalImportGetModule
   :: BinaryenGlobalRef -> IO (Ptr CChar)
 
 foreign import ccall unsafe "BinaryenFunctionImportGetBase" c_BinaryenFunctionImportGetBase

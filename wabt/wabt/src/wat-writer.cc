@@ -17,6 +17,7 @@
 #include "src/wat-writer.h"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cinttypes>
 #include <cstdarg>
@@ -487,7 +488,7 @@ void WatWriter::WriteConst(const Const& const_) {
 
     case Type::V128: {
       WritePutsSpace(Opcode::V128Const_Opcode.GetName());
-      Writef("i32 0x%08x 0x%08x 0x%08x 0x%08x", const_.v128_bits.v[0],
+      Writef("i32x4 0x%08x 0x%08x 0x%08x 0x%08x", const_.v128_bits.v[0],
              const_.v128_bits.v[1], const_.v128_bits.v[2],
              const_.v128_bits.v[3]);
       WriteNewline(NO_FORCE_NEWLINE);
@@ -943,8 +944,10 @@ Result WatWriter::ExprVisitorDelegate::OnSimdLaneOpExpr(SimdLaneOpExpr* expr) {
 Result WatWriter::ExprVisitorDelegate::OnSimdShuffleOpExpr(
     SimdShuffleOpExpr* expr) {
   writer_->WritePutsSpace(expr->opcode.GetName());
-  writer_->Writef(" 0x%08x 0x%08x 0x%08x 0x%08x", (expr->val.v[0]), (expr->val.v[1]),
-                  (expr->val.v[2]), (expr->val.v[3]));
+  std::array<uint8_t, 16> values = Bitcast<std::array<uint8_t, 16>>(expr->val);
+  for (int32_t lane = 0; lane < 16; ++lane) {
+    writer_->Writef(" %u", values[lane]);
+  }
   writer_->WritePutsNewline("");
   return Result::Ok;
 }
@@ -1486,11 +1489,24 @@ void WatWriter::WriteElemSegment(const ElemSegment& segment) {
   WriteNameOrIndex(segment.name, elem_segment_index_, NextChar::Space);
   if (segment.passive) {
     WritePutsSpace("passive");
+    WriteType(segment.elem_type, NextChar::Space);
   } else {
     WriteInitExpr(segment.offset);
   }
-  for (const Var& var : segment.vars) {
-    WriteVar(var, NextChar::Space);
+  for (const ElemExpr& expr : segment.elem_exprs) {
+    if (segment.passive) {
+      if (expr.kind == ElemExprKind::RefNull) {
+        WriteOpenSpace("ref.null");
+        WriteCloseSpace();
+      } else {
+        WriteOpenSpace("ref.func");
+        WriteVar(expr.var, NextChar::Space);
+        WriteCloseSpace();
+      }
+    } else {
+      assert(expr.kind == ElemExprKind::RefFunc);
+      WriteVar(expr.var, NextChar::Space);
+    }
   }
   WriteCloseNewline();
   elem_segment_index_++;

@@ -22,6 +22,8 @@ namespace wasm {
 class Pass;
 
 // All passes:
+Pass* createAlignmentLoweringPass();
+Pass* createAvoidReinterpretsPass();
 Pass* createCoalesceLocalsPass();
 Pass* createCoalesceLocalsWithLearningPass();
 Pass* createCodeFoldingPass();
@@ -44,6 +46,7 @@ Pass* createInliningPass();
 Pass* createInliningOptimizingPass();
 Pass* createLegalizeJSInterfacePass();
 Pass* createLegalizeJSInterfaceMinimallyPass();
+Pass* createLimitSegmentsPass();
 Pass* createLocalCSEPass();
 Pass* createLogExecutionPass();
 Pass* createInstrumentLocalsPass();
@@ -68,6 +71,7 @@ Pass* createPrecomputePass();
 Pass* createPrecomputePropagatePass();
 Pass* createPrinterPass();
 Pass* createPrintCallGraphPass();
+Pass* createPrintFeaturesPass();
 Pass* createPrintStackIRPass();
 Pass* createRelooperJumpThreadingPass();
 Pass* createRemoveNonJSOpsPass();
@@ -83,6 +87,7 @@ Pass* createReReloopPass();
 Pass* createRedundantSetEliminationPass();
 Pass* createSafeHeapPass();
 Pass* createSimplifyLocalsPass();
+Pass* createSimplifyGlobalsPass();
 Pass* createSimplifyLocalsNoNestingPass();
 Pass* createSimplifyLocalsNoTeePass();
 Pass* createSimplifyLocalsNoStructurePass();
@@ -100,6 +105,6 @@ Pass* createTrapModeJS();
 Pass* createUnteePass();
 Pass* createVacuumPass();
 
-}
+} // namespace wasm
 
 #endif
