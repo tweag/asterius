@@ -94,6 +94,9 @@ extra-deps:
   - wcwidth-0.0.2
   - word8-0.1.3
   - http://head.hackage.haskell.org/package/zlib-0.6.2.tar.gz
+  - aeson-pretty-0.8.7 # for ghc-testsuite report generation
+  - cmdargs-0.10.20 # for ghc-testsuite report generation
+
 packages:
   - asterius
   - binaryen

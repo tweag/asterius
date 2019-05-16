@@ -233,3 +233,4 @@ tests:
       - tasty
       - tasty-hspec
       - aeson
+      - aeson-pretty

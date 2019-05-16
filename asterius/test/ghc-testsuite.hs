@@ -16,7 +16,9 @@ import Test.Tasty.Hspec
 import Control.Exception
 import Data.IORef
 import Data.Aeson
+import Data.Aeson.Encode.Pretty (encodePretty)
 import GHC.Generics
+
 
 data TestCase = TestCase
   { casePath :: FilePath
@@ -79,7 +81,7 @@ logTestFailure :: IORef TestLog -- ^ Reference to the test log
 logTestFailure tl casePath e =
   let r = TestRecord { trOutcome=TestFailure
                      , trPath = casePath
-                     , trErrorMessage = show e
+                     , trErrorMessage = displayException e
                      }
   in consTestLog r tl
 
@@ -123,7 +125,7 @@ saveTestLogToDisk :: IORef TestLog -> FilePath -> IO ()
 saveTestLogToDisk tl out_path = do
       putStrLn $ "[INFO] Writing log file to path: " <> out_path
       tlv <- readIORef tl
-      encodeFile out_path tlv
+      LBS.writeFile out_path (encodePretty tlv)
 
 
 
