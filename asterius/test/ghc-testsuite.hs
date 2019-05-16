@@ -10,6 +10,7 @@ import System.FilePath
 import System.Process
 import Test.Tasty
 import Test.Tasty.Hspec
+import Control.Exception
 
 data TestCase = TestCase
   { casePath :: FilePath
@@ -37,6 +38,12 @@ getTestCases = do
         readFileNullable (c -<.> "stdout") <*>
         readFileNullable (c -<.> "stderr")
 
+catchTestFailure :: String -> SomeException -> IO ()
+catchTestFailure casePath e = pure ()
+
+
+data TestOutcome = TestSuccess | TestFailure deriving(Eq, Show)
+
 runTestCase :: TestCase -> IO (LBS.ByteString, LBS.ByteString)
 runTestCase TestCase {..} = do
   _ <- readProcess "ahc-link" ["--input-hs", casePath] ""
@@ -44,10 +51,13 @@ runTestCase TestCase {..} = do
   withJSSession defJSSessionOpts $ \s -> do
     i <- newAsteriusInstance s (casePath -<.> "lib.mjs") mod_buf
     hsInit s i
-    hsMain s i
+    outcome <- (hsMain s i *> pure TestSuccess) `catch`
+        (\e -> catchTestFailure casePath e *> pure TestFailure)
+    outcome `shouldBe` TestSuccess -- | Make sure that we suceeded.
     hs_stdout <- hsStdOut s i
     hs_stderr <- hsStdErr s i
     pure (hs_stdout, hs_stderr)
+
 
 makeTestTree :: TestCase -> IO TestTree
 makeTestTree c@TestCase {..} =
