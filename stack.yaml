@@ -96,6 +96,9 @@ extra-deps:
   - http://head.hackage.haskell.org/package/zlib-0.6.2.tar.gz
   - aeson-pretty-0.8.7 # for ghc-testsuite report generation
   - cmdargs-0.10.20 # for ghc-testsuite report generation
+  - bytestring-builder-0.10.8.2.0 # for ghc-testsuite report generation
+  - Only-0.1 # for ghc-testsuite report generation
+  - cassava-0.5.1.0 # for ghc-testsuite report generation
 
 packages:
   - asterius

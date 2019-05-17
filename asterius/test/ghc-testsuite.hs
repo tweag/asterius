@@ -31,6 +31,7 @@ import GHC.Generics
 import System.IO (stdout)
 import System.Console.ANSI (hSupportsANSIColor)
 import Control.Arrow ((&&&))
+import Data.Csv
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
@@ -79,6 +80,8 @@ data TestRecord = TestRecord
   } deriving(Generic)
 
 instance ToJSON TestRecord where
+instance ToRecord TestRecord
+
 
 
 -- | Log of tests that have run

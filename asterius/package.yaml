@@ -236,3 +236,4 @@ tests:
       - aeson-pretty
       - stm
       - ansi-terminal
+      - cassava
