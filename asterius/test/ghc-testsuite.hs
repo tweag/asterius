@@ -10,7 +10,6 @@
 import Asterius.JSRun.Main
 import qualified Data.ByteString.Lazy as LBS
 import Data.Traversable
-import Control.Applicative
 import Control.Monad (when)
 import Language.JavaScript.Inline.Core
 import System.Directory
@@ -24,7 +23,6 @@ import Control.Concurrent.STM.TVar
 import Control.Concurrent.STM
 import Test.Tasty.Hspec
 import Test.Tasty.Runners
-import Test.Tasty.Options
 import Control.Exception
 import Data.IORef
 import Data.Aeson
@@ -94,17 +92,6 @@ instance ToJSON TestLog where
 consTestLog :: TestRecord -> IORef TestLog -> IO ()
 consTestLog tr tlref = modifyIORef' tlref (\(TestLog tl) -> TestLog $ tr:tl)
 
-logTestFailure :: IORef TestLog -- ^ Reference to the test log
-  -> FilePath -- ^ Path of the test
-  -> SomeException -- ^ Exception thrown by the test case
-  -> IO ()
-logTestFailure tl casePath e =
-  let r = TestRecord { trOutcome=TestFailure
-                     , trPath = casePath
-                     , trErrorMessage = displayException e
-                     }
-  in consTestLog r tl
-
 
 -- | What happened when you tried to run the test
 data RunOutcome = RunSuccess | RunFailure String deriving(Eq)
@@ -127,18 +114,8 @@ instance ToJSON RunOutcome where
     toJSON RunSuccess = toJSON . show $ RunSuccess
     toJSON (RunFailure f) = toJSON $ "RunFailure(" <> show f <> ")"
 
-logTestSuccess :: IORef TestLog -- ^ Reference to the test log
-  -> FilePath -- ^ Path of the test
-  -> IO ()
-logTestSuccess tl casePath =
-  let r = TestRecord { trOutcome=TestSuccess
-                     , trPath = casePath
-                     , trErrorMessage = ""
-                     }
-  in consTestLog r tl
-
-runTestCase :: IORef TestLog -> TestCase -> IO ()
-runTestCase tl TestCase {..} = do
+runTestCase :: TestCase -> IO ()
+runTestCase TestCase {..} = do
   _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen"] ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
   withJSSession defJSSessionOpts $ \s -> do
@@ -162,22 +139,18 @@ runTestCase tl TestCase {..} = do
 
 -- | @cheng: Why is this called `makeTestTree`? should it not be called
 -- runTestTree?
-makeTestTree :: IORef TestLog -> TestCase -> IO TestTree
-makeTestTree tl c@TestCase {..} =
+makeTestTree :: TestCase -> IO TestTree
+makeTestTree c@TestCase {..} =
   testSpec casePath $
-    it casePath $ runTestCase tl c
+    it casePath $ runTestCase  c
 
 
 -- | save the test log to disk
 saveTestLogToDisk :: IORef TestLog -> FilePath -> IO ()
-saveTestLogToDisk tl out_path = do
+saveTestLogToDisk tlref out_path = do
       putStrLn $ "[INFO] Writing log file to path: " <> out_path
-      tlv <- readIORef tl
+      tlv <- readIORef tlref
       LBS.writeFile out_path (encodePretty tlv)
-
-
-ro :: Test.Tasty.Runners.Result -> Outcome
-ro = resultOutcome
 
 
 -- | Prune the description of the test result to be legible for rendering.
@@ -187,15 +160,15 @@ resultPruneDescription Result{..} =
    Result{resultDescription=takeWhile (/= separator) resultDescription, ..}
 
 -- TestReporter [OptionDescription] (OptionSet -> TestTree -> Maybe (StatusMap -> IO (Time -> IO Bool)))
-consoleOutput ::  IORef TestLog -> Bool -> TestOutput -> StatusMap -> IO ()
-consoleOutput tlref colors toutput smap =
+consoleOutput ::  IORef TestLog -> TestOutput -> StatusMap -> IO ()
+consoleOutput tlref toutput smap =
   getTraversal . fst $ foldTestOutput foldTest foldHeading toutput smap
   where
     foldTest _name printName getResult printResult =
       ( Traversal $ do
           printName :: IO ()
           r <- getResult
-          printResult . resultPruneDescription $ r
+          _ <- printResult . resultPruneDescription $ r
           let tr = if resultSuccessful r
               then TestRecord TestSuccess _name ""
               else TestRecord TestFailure _name (resultDescription r)
@@ -230,11 +203,11 @@ serializeToDisk tlref = TestReporter [] $
   \opts tree -> Just $ \smap ->
   let
   in do
-    let NumThreads numThreads = lookupOption opts
     isTermColor <- hSupportsANSIColor stdout
     let ?colors = isTermColor
-    let toutput = let ?colors = isTermColor in buildTestOutput opts tree
-    consoleOutput tlref True toutput smap
+    -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
+    let toutput = buildTestOutput opts tree
+    consoleOutput tlref toutput smap
     return $ \time -> do
       stats <- computeStatistics smap
       printStatistics stats time
@@ -245,15 +218,15 @@ serializeToDisk tlref = TestReporter [] $
 
 main :: IO ()
 main = do
-  tl <- newIORef mempty
-  trees <- getTestCases >>= traverse (makeTestTree tl)
+  tlref <- newIORef mempty
+  trees <- getTestCases >>= traverse makeTestTree
 
   -- | Path where the JSON is dumped
   let out_path = "test-report.json"
 
   -- | Tasty throws an exception if stuff fails, so re-throw the exception
   -- | in case this happens.
-  (defaultMainWithIngredients [serializeToDisk tl] $ testGroup "asterius ghc-testsuite" trees)
-    `finally` (saveTestLogToDisk tl out_path)
+  (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
+    `finally` (saveTestLogToDisk tlref out_path)
 
 
