@@ -5,7 +5,7 @@
 
 module Asterius.Boot
   ( BootArgs(..)
-  , defaultBootArgs
+  , getDefaultBootArgs
   , boot
   ) where
 
@@ -21,7 +21,6 @@ import Data.IORef
 import Data.Maybe
 import qualified DynFlags as GHC
 import qualified GHC
-import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath, sandboxGhcLibDir)
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show
 import Language.Haskell.GHC.Toolkit.Run (defaultConfig, ghcFlags, runCmm)
@@ -38,12 +37,13 @@ data BootArgs = BootArgs
   { bootDir :: FilePath
   , configureOptions, buildOptions, installOptions :: String
   , builtinsOptions :: BuiltinsOptions
-  }
+  } deriving (Show)
 
-defaultBootArgs :: BootArgs
-defaultBootArgs =
-  BootArgs
-    { bootDir = dataDir </> ".boot"
+getDefaultBootArgs :: IO BootArgs
+getDefaultBootArgs = do
+  bootDir <- getBootDir
+  return BootArgs
+    { bootDir = bootDir </> ".boot"
     , configureOptions =
         "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1"
     , buildOptions = ""
@@ -57,9 +57,15 @@ bootTmpDir BootArgs {..} = bootDir </> "dist"
 bootCreateProcess :: BootArgs -> IO CreateProcess
 bootCreateProcess args@BootArgs {..} = do
   e <- getEnvironment
+  dataDir <- getDataDir
+  rootBootDir <- getBootDir
+  bootLibsPath <- getBootLibsPath
+  sandboxGhcLibDir <- getSandboxGhcLibDir
+  ahc <- getAhc
+  ahcPkg <- getAhcPkg
   pure
-    (proc "sh" ["-e", "boot.sh"])
-      { cwd = Just dataDir
+    (proc "sh" ["-e", dataDir </> "boot.sh"])
+      { cwd = Just rootBootDir
       , env =
           Just $
           ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath) :
@@ -78,9 +84,11 @@ bootCreateProcess args@BootArgs {..} = do
       }
 
 bootRTSCmm :: BootArgs -> IO ()
-bootRTSCmm BootArgs {..} =
+bootRTSCmm bootArgs@BootArgs {..} =
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
   GHC.runGhc (Just obj_topdir) $ do
+    bootLibsPath <- liftIO getBootLibsPath
+    let rts_path = bootLibsPath </> "rts"
     dflags <- GHC.getSessionDynFlags
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
@@ -106,10 +114,12 @@ bootRTSCmm BootArgs {..} =
           in case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
                Left err -> throwIO err
                Right m -> do
-                 encodeFile obj_path m
-                 modifyIORef' obj_paths_ref (obj_path :)
+                 let out_path = bootDir </> makeRelative bootLibsPath obj_path
+                 createDirectoryIfMissing True $ takeDirectory out_path
+                 encodeFile out_path m
+                 modifyIORef' obj_paths_ref (out_path :)
                  when is_debug $ do
-                   let p = (obj_path -<.>)
+                   let p = (out_path -<.>)
                    writeFile (p "dump-wasm-ast") $ show m
                    writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
                    asmPrint dflags (p "dump-cmm-raw") cmmRaw
@@ -117,16 +127,11 @@ bootRTSCmm BootArgs {..} =
                    asmPrint dflags (p "dump-cmm") cmm)
     liftIO $ do
       obj_paths <- readIORef obj_paths_ref
-      tmpdir <- getTemporaryDirectory
-      (rsp_path, rsp_h) <- openTempFile tmpdir "ar.rsp"
-      hPutStr rsp_h $ unlines obj_paths
-      hClose rsp_h
       callProcess
         "ar"
-        ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
-      removeFile rsp_path
+        $ ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a"]
+          ++ obj_paths
   where
-    rts_path = bootLibsPath </> "rts"
     obj_topdir = bootDir </> "asterius_lib"
 
 runBootCreateProcess :: CreateProcess -> IO ()
@@ -140,8 +145,9 @@ runBootCreateProcess =
 boot :: BootArgs -> IO ()
 boot args = do
   cp_boot <- bootCreateProcess args
+  dataDir <- getDataDir
   runBootCreateProcess
-    cp_boot {cmdspec = RawCommand "sh" ["-e", "boot-init.sh"]}
+    cp_boot {cmdspec = RawCommand "sh" ["-e", dataDir </> "boot-init.sh"]}
   bootRTSCmm args
   runBootCreateProcess cp_boot
   is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"

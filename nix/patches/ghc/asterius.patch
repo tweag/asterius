@@ -1,0 +1,1247 @@
+From b7f19d21f7946c936c238887d91ece17c95b097a Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Mon, 20 Aug 2018 14:44:23 -0700
+Subject: [PATCH 01/29] Use the same UnitId `integer` for `integer-gmp` and
+ `integer-simple`
+
+this makes more code in GHC independent of the choice of the integer
+library, which is beneficial for API users, and is a first step towards
+fixing #13477.
+---
+ compiler/basicTypes/Module.hs                 |  6 +-----
+ compiler/prelude/PrelNames.hs                 | 18 +++++-------------
+ libraries/integer-gmp/integer-gmp.cabal       |  2 +-
+ libraries/integer-simple/integer-simple.cabal |  4 ++--
+ 4 files changed, 9 insertions(+), 21 deletions(-)
+
+diff --git a/compiler/basicTypes/Module.hs b/compiler/basicTypes/Module.hs
+index 1851496af1a..9809bc6bd13 100644
+--- a/compiler/basicTypes/Module.hs
++++ b/compiler/basicTypes/Module.hs
+@@ -1067,11 +1067,7 @@ integerUnitId, primUnitId,
+   baseUnitId, rtsUnitId,
+   thUnitId, mainUnitId, thisGhcUnitId, interactiveUnitId  :: UnitId
+ primUnitId        = fsToUnitId (fsLit "ghc-prim")
+-integerUnitId     = fsToUnitId (fsLit n)
+-  where
+-    n = case cIntegerLibraryType of
+-        IntegerGMP    -> "integer-gmp"
+-        IntegerSimple -> "integer-simple"
++integerUnitId     = fsToUnitId (fsLit "integer")
+ baseUnitId        = fsToUnitId (fsLit "base")
+ rtsUnitId         = fsToUnitId (fsLit "rts")
+ thUnitId          = fsToUnitId (fsLit "template-haskell")
+diff --git a/compiler/prelude/PrelNames.hs b/compiler/prelude/PrelNames.hs
+index 90f1f44713f..77afca1369e 100644
+--- a/compiler/prelude/PrelNames.hs
++++ b/compiler/prelude/PrelNames.hs
+@@ -136,7 +136,6 @@ import Unique
+ import Name
+ import SrcLoc
+ import FastString
+-import Config ( cIntegerLibraryType, IntegerLibrary(..) )
+ import Panic ( panic )
+ 
+ {-
+@@ -355,6 +354,7 @@ basicKnownKeyNames
+         gcdIntegerName, lcmIntegerName,
+         andIntegerName, orIntegerName, xorIntegerName, complementIntegerName,
+         shiftLIntegerName, shiftRIntegerName, bitIntegerName,
++        integerSDataConName,naturalSDataConName,
+ 
+         -- Natural
+         naturalTyConName,
+@@ -433,9 +433,7 @@ basicKnownKeyNames
+         , typeErrorVAppendDataConName
+         , typeErrorShowTypeDataConName
+ 
+-    ] ++ case cIntegerLibraryType of
+-           IntegerGMP    -> [integerSDataConName,naturalSDataConName]
+-           IntegerSimple -> []
++    ]
+ 
+ genericTyConNames :: [Name]
+ genericTyConNames = [
+@@ -1117,11 +1115,8 @@ integerTyConName, mkIntegerName, integerSDataConName,
+     gcdIntegerName, lcmIntegerName,
+     andIntegerName, orIntegerName, xorIntegerName, complementIntegerName,
+     shiftLIntegerName, shiftRIntegerName, bitIntegerName :: Name
+-integerTyConName      = tcQual  gHC_INTEGER_TYPE (fsLit "Integer")           integerTyConKey
+-integerSDataConName   = dcQual gHC_INTEGER_TYPE (fsLit n)                    integerSDataConKey
+-  where n = case cIntegerLibraryType of
+-            IntegerGMP    -> "S#"
+-            IntegerSimple -> panic "integerSDataConName evaluated for integer-simple"
++integerTyConName      = tcQual gHC_INTEGER_TYPE (fsLit "Integer")           integerTyConKey
++integerSDataConName   = dcQual gHC_INTEGER_TYPE (fsLit "S#")                integerSDataConKey
+ mkIntegerName         = varQual gHC_INTEGER_TYPE (fsLit "mkInteger")         mkIntegerIdKey
+ integerToWord64Name   = varQual gHC_INTEGER_TYPE (fsLit "integerToWord64")   integerToWord64IdKey
+ integerToInt64Name    = varQual gHC_INTEGER_TYPE (fsLit "integerToInt64")    integerToInt64IdKey
+@@ -1168,10 +1163,7 @@ bitIntegerName        = varQual gHC_INTEGER_TYPE (fsLit "bitInteger")        bit
+ -- GHC.Natural types
+ naturalTyConName, naturalSDataConName :: Name
+ naturalTyConName     = tcQual gHC_NATURAL (fsLit "Natural") naturalTyConKey
+-naturalSDataConName  = dcQual gHC_NATURAL (fsLit n)         naturalSDataConKey
+-  where n = case cIntegerLibraryType of
+-            IntegerGMP    -> "NatS#"
+-            IntegerSimple -> panic "naturalSDataConName evaluated for integer-simple"
++naturalSDataConName  = dcQual gHC_NATURAL (fsLit "NatS#")   naturalSDataConKey
+ 
+ naturalFromIntegerName :: Name
+ naturalFromIntegerName = varQual gHC_NATURAL (fsLit "naturalFromInteger") naturalFromIntegerIdKey
+diff --git a/libraries/integer-gmp/integer-gmp.cabal b/libraries/integer-gmp/integer-gmp.cabal
+index 5d2f89039cc..e4ecc7a9e32 100644
+--- a/libraries/integer-gmp/integer-gmp.cabal
++++ b/libraries/integer-gmp/integer-gmp.cabal
+@@ -60,7 +60,7 @@ library
+     UnliftedFFITypes
+   build-depends:       ghc-prim ^>= 0.5.1.0
+   hs-source-dirs:      src/
+-  ghc-options: -this-unit-id integer-gmp -Wall
++  ghc-options: -this-unit-id integer -Wall
+   cc-options: -std=c99 -Wall
+ 
+   include-dirs: include
+diff --git a/libraries/integer-simple/integer-simple.cabal b/libraries/integer-simple/integer-simple.cabal
+index 231619c6c7c..e6c83dab152 100644
+--- a/libraries/integer-simple/integer-simple.cabal
++++ b/libraries/integer-simple/integer-simple.cabal
+@@ -26,6 +26,6 @@ Library
+     other-modules: GHC.Integer.Type
+     default-extensions: CPP, MagicHash, BangPatterns, UnboxedTuples,
+                 UnliftedFFITypes, NoImplicitPrelude
+-    -- We need to set the unit ID to integer-simple
++    -- We need to set the unit ID to integer
+     -- (without a version number) as it's magic.
+-    ghc-options: -this-unit-id integer-simple -Wall
++    ghc-options: -this-unit-id integer -Wall
+
+From db82a5dc9e33d3ed94d1328211b33bad65e19e5e Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Mon, 20 Aug 2018 14:51:44 -0700
+Subject: [PATCH 02/29] Introduce `integerLibrary :: DynFlags ->
+ IntegerLibrary`
+
+which is initialized via `cIntegerLibraryType`, but can be overriden by
+an API user.
+
+The only place where this is used is in `CorePrep`, to decide whether to
+use the `S#` constructor.
+
+Also removes the unused `cIntegerLibrary`.
+---
+ compiler/coreSyn/CorePrep.hs | 4 ++--
+ compiler/ghc.mk              | 2 --
+ compiler/main/DynFlags.hs    | 4 ++++
+ 3 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/compiler/coreSyn/CorePrep.hs b/compiler/coreSyn/CorePrep.hs
+index 9c2954d4efd..0349c8c552a 100644
+--- a/compiler/coreSyn/CorePrep.hs
++++ b/compiler/coreSyn/CorePrep.hs
+@@ -1538,13 +1538,13 @@ lookupMkNaturalName dflags hsc_env
+       lookupGlobal hsc_env mkNaturalName
+ 
+ lookupIntegerSDataConName :: DynFlags -> HscEnv -> IO (Maybe DataCon)
+-lookupIntegerSDataConName dflags hsc_env = case cIntegerLibraryType of
++lookupIntegerSDataConName dflags hsc_env = case integerLibrary dflags of
+     IntegerGMP -> guardIntegerUse dflags $ liftM (Just . tyThingDataCon) $
+                   lookupGlobal hsc_env integerSDataConName
+     IntegerSimple -> return Nothing
+ 
+ lookupNaturalSDataConName :: DynFlags -> HscEnv -> IO (Maybe DataCon)
+-lookupNaturalSDataConName dflags hsc_env = case cIntegerLibraryType of
++lookupNaturalSDataConName dflags hsc_env = case integerLibrary dflags of
+     IntegerGMP -> guardNaturalUse dflags $ liftM (Just . tyThingDataCon) $
+                   lookupGlobal hsc_env naturalSDataConName
+     IntegerSimple -> return Nothing
+diff --git a/compiler/ghc.mk b/compiler/ghc.mk
+index 9bc6b3f278b..8a4cc4317d0 100644
+--- a/compiler/ghc.mk
++++ b/compiler/ghc.mk
+@@ -84,8 +84,6 @@ compiler/stage%/build/Config.hs : mk/config.mk mk/project.mk | $$(dir $$@)/.
+ 	@echo 'cBooterVersion        = "$(GhcVersion)"'                     >> $@
+ 	@echo 'cStage                :: String'                             >> $@
+ 	@echo 'cStage                = show (STAGE :: Int)'                 >> $@
+-	@echo 'cIntegerLibrary       :: String'                             >> $@
+-	@echo 'cIntegerLibrary       = "$(INTEGER_LIBRARY)"'                >> $@
+ 	@echo 'cIntegerLibraryType   :: IntegerLibrary'                     >> $@
+ ifeq "$(INTEGER_LIBRARY)" "integer-gmp"
+ 	@echo 'cIntegerLibraryType   = IntegerGMP'                          >> $@
+diff --git a/compiler/main/DynFlags.hs b/compiler/main/DynFlags.hs
+index 66c67c352e9..61838a0b9ed 100644
+--- a/compiler/main/DynFlags.hs
++++ b/compiler/main/DynFlags.hs
+@@ -848,6 +848,9 @@ data DynFlags = DynFlags {
+   ghcLink               :: GhcLink,
+   hscTarget             :: HscTarget,
+   settings              :: Settings,
++  integerLibrary        :: IntegerLibrary,
++    -- ^ IntegerGMP or IntegerSimple. Set at configure time, but may be overriden
++    --   by GHC-API users
+   llvmTargets           :: LlvmTargets,
+   llvmPasses            :: LlvmPasses,
+   verbosity             :: Int,         -- ^ Verbosity level: see Note [Verbosity levels]
+@@ -1753,6 +1756,7 @@ defaultDynFlags mySettings (myLlvmTargets, myLlvmPasses) =
+         ghcMode                 = CompManager,
+         ghcLink                 = LinkBinary,
+         hscTarget               = defaultHscTarget (sTargetPlatform mySettings),
++        integerLibrary          = cIntegerLibraryType,
+         verbosity               = 0,
+         optLevel                = 0,
+         debugLevel              = 0,
+
+From 71cff209728c3808b754117963645805b75af5f4 Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Mon, 20 Aug 2018 16:00:15 -0700
+Subject: [PATCH 03/29] Find the `integer` package (either `integer-gmp` or
+ `integer-simple`)
+
+---
+ compiler/main/Packages.hs | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/compiler/main/Packages.hs b/compiler/main/Packages.hs
+index 71354b1463c..9fa5a95e48a 100644
+--- a/compiler/main/Packages.hs
++++ b/compiler/main/Packages.hs
+@@ -975,6 +975,8 @@ findWiredInPackages dflags prec_map pkgs vis_map = do
+   --
+   let
+         matches :: PackageConfig -> String -> Bool
++        pc `matches` "integer"
++            = packageNameString pc `elem` ["integer-gmp", "integer-simple"]
+         pc `matches` pid = packageNameString pc == pid
+ 
+         -- find which package corresponds to each wired-in package
+
+From 6c3076c5e53c2744af9592ca8734f3931c306105 Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Mon, 20 Aug 2018 16:33:34 -0700
+Subject: [PATCH 04/29] Update findWiredInPackages to handle new integer unit
+ name
+
+The code is more robust now; previously it was assuming in multiple
+spots that the wired-in unit name is always equal to the package name;
+now this assumption only made in the `matches` function, with
+special-case for `integer`.
+---
+ compiler/main/Packages.hs | 33 ++++++++++++++++-----------------
+ 1 file changed, 16 insertions(+), 17 deletions(-)
+
+diff --git a/compiler/main/Packages.hs b/compiler/main/Packages.hs
+index 9fa5a95e48a..20f37006fdb 100644
+--- a/compiler/main/Packages.hs
++++ b/compiler/main/Packages.hs
+@@ -954,11 +954,12 @@ pprTrustFlag flag = case flag of
+ -- -----------------------------------------------------------------------------
+ -- Wired-in packages
+ 
+-wired_in_pkgids :: [String]
+-wired_in_pkgids = map unitIdString wiredInUnitIds
+-
++type WiredInUnitId = String
+ type WiredPackagesMap = Map WiredUnitId WiredUnitId
+ 
++wired_in_pkgids :: [WiredInUnitId]
++wired_in_pkgids = map unitIdString wiredInUnitIds
++
+ findWiredInPackages
+    :: DynFlags
+    -> PackagePrecedenceIndex
+@@ -974,7 +975,7 @@ findWiredInPackages dflags prec_map pkgs vis_map = do
+   -- their canonical names (eg. base-1.0 ==> base).
+   --
+   let
+-        matches :: PackageConfig -> String -> Bool
++        matches :: PackageConfig -> WiredInUnitId -> Bool
+         pc `matches` "integer"
+             = packageNameString pc `elem` ["integer-gmp", "integer-simple"]
+         pc `matches` pid = packageNameString pc == pid
+@@ -996,8 +997,8 @@ findWiredInPackages dflags prec_map pkgs vis_map = do
+         -- this works even when there is no exposed wired in package
+         -- available.
+         --
+-        findWiredInPackage :: [PackageConfig] -> String
+-                           -> IO (Maybe PackageConfig)
++        findWiredInPackage :: [PackageConfig] -> WiredInUnitId
++                           -> IO (Maybe (WiredInUnitId, PackageConfig))
+         findWiredInPackage pkgs wired_pkg =
+            let all_ps = [ p | p <- pkgs, p `matches` wired_pkg ]
+                all_exposed_ps =
+@@ -1016,20 +1017,19 @@ findWiredInPackages dflags prec_map pkgs vis_map = do
+                                  <> text " not found."
+                           return Nothing
+                 pick :: PackageConfig
+-                     -> IO (Maybe PackageConfig)
++                     -> IO (Maybe (WiredInUnitId, PackageConfig))
+                 pick pkg = do
+                         debugTraceMsg dflags 2 $
+                             text "wired-in package "
+                                  <> text wired_pkg
+                                  <> text " mapped to "
+                                  <> ppr (unitId pkg)
+-                        return (Just pkg)
++                        return (Just (wired_pkg, pkg))
+ 
+ 
+   mb_wired_in_pkgs <- mapM (findWiredInPackage pkgs) wired_in_pkgids
+   let
+         wired_in_pkgs = catMaybes mb_wired_in_pkgs
+-        wired_in_ids = mapMaybe definitePackageConfigId wired_in_pkgs
+ 
+         -- this is old: we used to assume that if there were
+         -- multiple versions of wired-in packages installed that
+@@ -1045,18 +1045,17 @@ findWiredInPackages dflags prec_map pkgs vis_map = do
+         -}
+ 
+         wiredInMap :: Map WiredUnitId WiredUnitId
+-        wiredInMap = foldl' add_mapping Map.empty pkgs
+-          where add_mapping m pkg
+-                  | Just key <- definitePackageConfigId pkg
+-                  , key `elem` wired_in_ids
+-                  = Map.insert key (DefUnitId (stringToInstalledUnitId (packageNameString pkg))) m
+-                  | otherwise = m
++        wiredInMap = Map.fromList
++          [ (key, DefUnitId (stringToInstalledUnitId wiredInUnitId))
++          | (wiredInUnitId, pkg) <- wired_in_pkgs
++          , Just key <- pure $ definitePackageConfigId pkg
++          ]
+ 
+         updateWiredInDependencies pkgs = map (upd_deps . upd_pkg) pkgs
+           where upd_pkg pkg
+                   | Just def_uid <- definitePackageConfigId pkg
+-                  , def_uid `elem` wired_in_ids
+-                  = let PackageName fs = packageName pkg
++                  , Just wiredInUnitId <- Map.lookup def_uid wiredInMap
++                  = let fs = installedUnitIdFS (unDefUnitId wiredInUnitId)
+                     in pkg {
+                       unitId = fsToInstalledUnitId fs,
+                       componentId = ComponentId fs
+
+From 2eca3a40d0a72cace6fdbba2fa59c83f1591d917 Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Mon, 20 Aug 2018 17:28:49 -0700
+Subject: [PATCH 05/29] Unused import
+
+---
+ compiler/basicTypes/Module.hs | 1 -
+ compiler/prelude/PrelNames.hs | 1 -
+ 2 files changed, 2 deletions(-)
+
+diff --git a/compiler/basicTypes/Module.hs b/compiler/basicTypes/Module.hs
+index 9809bc6bd13..44f841dcc5b 100644
+--- a/compiler/basicTypes/Module.hs
++++ b/compiler/basicTypes/Module.hs
+@@ -137,7 +137,6 @@ module Module
+ 
+ import GhcPrelude
+ 
+-import Config
+ import Outputable
+ import Unique
+ import UniqFM
+diff --git a/compiler/prelude/PrelNames.hs b/compiler/prelude/PrelNames.hs
+index 77afca1369e..be468c019bd 100644
+--- a/compiler/prelude/PrelNames.hs
++++ b/compiler/prelude/PrelNames.hs
+@@ -136,7 +136,6 @@ import Unique
+ import Name
+ import SrcLoc
+ import FastString
+-import Panic ( panic )
+ 
+ {-
+ ************************************************************************
+
+From 2046835af7d49d4331424a9af1388d212c4d887c Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Tue, 21 Aug 2018 09:36:18 -0700
+Subject: [PATCH 06/29] Add a Note and and use integer-wired-in for the unit
+ name
+
+to signpost more clearly that there is something weird going on, and
+that people should not look for a package `integer` somewhere. Also,
+make sure the name is set only once.
+---
+ compiler/basicTypes/Module.hs                 |  3 +-
+ compiler/coreSyn/CorePrep.hs                  |  1 +
+ compiler/main/Packages.hs                     |  4 ++-
+ compiler/prelude/PrelNames.hs                 | 30 +++++++++++++++++++
+ libraries/integer-gmp/integer-gmp.cabal       |  5 +++-
+ libraries/integer-simple/integer-simple.cabal |  5 ++--
+ 6 files changed, 43 insertions(+), 5 deletions(-)
+
+diff --git a/compiler/basicTypes/Module.hs b/compiler/basicTypes/Module.hs
+index 44f841dcc5b..7307a83525e 100644
+--- a/compiler/basicTypes/Module.hs
++++ b/compiler/basicTypes/Module.hs
+@@ -1066,7 +1066,8 @@ integerUnitId, primUnitId,
+   baseUnitId, rtsUnitId,
+   thUnitId, mainUnitId, thisGhcUnitId, interactiveUnitId  :: UnitId
+ primUnitId        = fsToUnitId (fsLit "ghc-prim")
+-integerUnitId     = fsToUnitId (fsLit "integer")
++integerUnitId     = fsToUnitId (fsLit "integer-wired-in")
++   -- See Note [The integer library] in PrelNames
+ baseUnitId        = fsToUnitId (fsLit "base")
+ rtsUnitId         = fsToUnitId (fsLit "rts")
+ thUnitId          = fsToUnitId (fsLit "template-haskell")
+diff --git a/compiler/coreSyn/CorePrep.hs b/compiler/coreSyn/CorePrep.hs
+index 0349c8c552a..26706b1cdd8 100644
+--- a/compiler/coreSyn/CorePrep.hs
++++ b/compiler/coreSyn/CorePrep.hs
+@@ -1537,6 +1537,7 @@ lookupMkNaturalName dflags hsc_env
+     = guardNaturalUse dflags $ liftM tyThingId $
+       lookupGlobal hsc_env mkNaturalName
+ 
++-- See Note [The integer library] in PrelNames
+ lookupIntegerSDataConName :: DynFlags -> HscEnv -> IO (Maybe DataCon)
+ lookupIntegerSDataConName dflags hsc_env = case integerLibrary dflags of
+     IntegerGMP -> guardIntegerUse dflags $ liftM (Just . tyThingDataCon) $
+diff --git a/compiler/main/Packages.hs b/compiler/main/Packages.hs
+index 20f37006fdb..13bac88cb16 100644
+--- a/compiler/main/Packages.hs
++++ b/compiler/main/Packages.hs
+@@ -976,7 +976,9 @@ findWiredInPackages dflags prec_map pkgs vis_map = do
+   --
+   let
+         matches :: PackageConfig -> WiredInUnitId -> Bool
+-        pc `matches` "integer"
++        pc `matches` pid
++            -- See Note [The integer library] in PrelNames
++            | pid == unitIdString integerUnitId
+             = packageNameString pc `elem` ["integer-gmp", "integer-simple"]
+         pc `matches` pid = packageNameString pc == pid
+ 
+diff --git a/compiler/prelude/PrelNames.hs b/compiler/prelude/PrelNames.hs
+index be468c019bd..3a5bb004bc8 100644
+--- a/compiler/prelude/PrelNames.hs
++++ b/compiler/prelude/PrelNames.hs
+@@ -110,6 +110,36 @@ by the user. For those things that *can* appear in source programs,
+      original-name cache.
+ 
+      See also Note [Built-in syntax and the OrigNameCache]
++
++
++Note [The integer library]
++~~~~~~~~~~~~~~~~~~~~~~~~~~
++
++Clearly, we need to know the names of various definitions of the integer
++library, e.g. the type itself, `mkInteger` etc. But there are two possible
++implementations of the integer library:
++
++ * integer-gmp (fast, but uses libgmp, which may not be available on all
++   targets and is GPL licensed)
++ * integer-simple (slow, but pure Haskell and BSD-licensed)
++
++We want the compiler to work with eitherone. The way we achieve this is:
++
++ * When compiling the integer-{gmp,simple} library, we pass
++     -this-unit-id  integer-wired-in
++   to GHC (see the cabal file libraries/integer-{gmp,simple}.
++ * This way, GHC can use just his UnitID (see Module.integerUnitId) when
++   generating code, and the linker will succeed.
++
++Unfortuately, the abstraction is not complete: When using integer-gmp, we
++really want to use the S# constructor directly. This is controlled by
++the `integerLibrary` field of `DynFlags`: If it is IntegerGMP, we use
++this constructor directly (see  CorePrep.lookupIntegerSDataConName)
++
++When we read the package data base, we have to rewrite it to use
++`integer-wired-in` instead of the actual UnitId (which includes the version
++number); just like for `base` and other packages. This is done in
++Packages.findWiredInPackages.
+ -}
+ 
+ {-# LANGUAGE CPP #-}
+diff --git a/libraries/integer-gmp/integer-gmp.cabal b/libraries/integer-gmp/integer-gmp.cabal
+index e4ecc7a9e32..52834bb4ea3 100644
+--- a/libraries/integer-gmp/integer-gmp.cabal
++++ b/libraries/integer-gmp/integer-gmp.cabal
+@@ -60,7 +60,10 @@ library
+     UnliftedFFITypes
+   build-depends:       ghc-prim ^>= 0.5.1.0
+   hs-source-dirs:      src/
+-  ghc-options: -this-unit-id integer -Wall
++  -- We need to set the unit ID to integer-wired-in
++  -- (without a version number) as it's magic.
++  -- See Note [The integer library] in PrelNames
++  ghc-options: -this-unit-id integer-wired-in -Wall
+   cc-options: -std=c99 -Wall
+ 
+   include-dirs: include
+diff --git a/libraries/integer-simple/integer-simple.cabal b/libraries/integer-simple/integer-simple.cabal
+index e6c83dab152..96c2e2358ec 100644
+--- a/libraries/integer-simple/integer-simple.cabal
++++ b/libraries/integer-simple/integer-simple.cabal
+@@ -26,6 +26,7 @@ Library
+     other-modules: GHC.Integer.Type
+     default-extensions: CPP, MagicHash, BangPatterns, UnboxedTuples,
+                 UnliftedFFITypes, NoImplicitPrelude
+-    -- We need to set the unit ID to integer
++    -- We need to set the unit ID to integer-wired-in
+     -- (without a version number) as it's magic.
+-    ghc-options: -this-unit-id integer -Wall
++    -- See Note [The integer library] in PrelNames
++    ghc-options: -this-unit-id integer-wired-in -Wall
+
+From 1658bea60d528c270047441b3087b9025517a38c Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Tue, 21 Aug 2018 09:48:33 -0700
+Subject: [PATCH 07/29] More note references
+
+---
+ compiler/main/DynFlags.hs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/compiler/main/DynFlags.hs b/compiler/main/DynFlags.hs
+index 61838a0b9ed..400f8d973fc 100644
+--- a/compiler/main/DynFlags.hs
++++ b/compiler/main/DynFlags.hs
+@@ -850,7 +850,7 @@ data DynFlags = DynFlags {
+   settings              :: Settings,
+   integerLibrary        :: IntegerLibrary,
+     -- ^ IntegerGMP or IntegerSimple. Set at configure time, but may be overriden
+-    --   by GHC-API users
++    --   by GHC-API users. See Note [The integer library] in PrelNames
+   llvmTargets           :: LlvmTargets,
+   llvmPasses            :: LlvmPasses,
+   verbosity             :: Int,         -- ^ Verbosity level: see Note [Verbosity levels]
+
+From 0993a26241e079e6d8333ef81c206e87f1f6f2c3 Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Mon, 20 Aug 2018 21:29:42 -0700
+Subject: [PATCH 08/29] Make tablesNextToCode a proper dynamic flag (#15548)
+
+There is no more use of the TABLES_NEXT_TO_CODE CPP macro in
+`compiler/`. The default value of `tablesNextToCode` is calculated as
+before, but now users of the GHCI API can modify this flag.
+---
+ compiler/ghc.mk                   |  8 --------
+ compiler/ghci/ByteCodeItbls.hs    |  4 +++-
+ compiler/main/DynFlags.hs         |  8 +++-----
+ compiler/utils/Util.hs            |  8 --------
+ libraries/ghci/GHCi/InfoTable.hsc | 30 ++++++++++++------------------
+ libraries/ghci/GHCi/Message.hs    |  7 ++++---
+ libraries/ghci/GHCi/Run.hs        |  4 ++--
+ 7 files changed, 24 insertions(+), 45 deletions(-)
+
+diff --git a/compiler/ghc.mk b/compiler/ghc.mk
+index 8a4cc4317d0..f846f76b223 100644
+--- a/compiler/ghc.mk
++++ b/compiler/ghc.mk
+@@ -334,14 +334,6 @@ endif
+ ifeq "$(GhcWithInterpreter)" "YES"
+ compiler_stage2_CONFIGURE_OPTS += --flags=ghci
+ 
+-ifeq "$(GhcEnableTablesNextToCode) $(GhcUnregisterised)" "YES NO"
+-# Should GHCI be building info tables in the TABLES_NEXT_TO_CODE style
+-# or not?
+-# XXX This should logically be a CPP option, but there doesn't seem to
+-# be a flag for that
+-compiler_stage2_CONFIGURE_OPTS += --ghc-option=-DGHCI_TABLES_NEXT_TO_CODE
+-endif
+-
+ # Should the debugger commands be enabled?
+ ifeq "$(GhciWithDebugger)" "YES"
+ compiler_stage2_CONFIGURE_OPTS += --ghc-option=-DDEBUGGER
+diff --git a/compiler/ghci/ByteCodeItbls.hs b/compiler/ghci/ByteCodeItbls.hs
+index 7381c8f9263..c17f2133652 100644
+--- a/compiler/ghci/ByteCodeItbls.hs
++++ b/compiler/ghci/ByteCodeItbls.hs
+@@ -71,6 +71,8 @@ make_constr_itbls hsc_env cons =
+ 
+          descr = dataConIdentity dcon
+ 
+-     r <- iservCmd hsc_env (MkConInfoTable ptrs' nptrs_really
++         tables_next_to_code = tablesNextToCode dflags
++
++     r <- iservCmd hsc_env (MkConInfoTable tables_next_to_code ptrs' nptrs_really
+                               conNo (tagForCon dflags dcon) descr)
+      return (getName dcon, ItblPtr r)
+diff --git a/compiler/main/DynFlags.hs b/compiler/main/DynFlags.hs
+index 400f8d973fc..28b302288dd 100644
+--- a/compiler/main/DynFlags.hs
++++ b/compiler/main/DynFlags.hs
+@@ -57,7 +57,7 @@ module DynFlags (
+         fFlags, fLangFlags, xFlags,
+         wWarningFlags,
+         dynFlagDependencies,
+-        tablesNextToCode, mkTablesNextToCode,
++        mkTablesNextToCode,
+         makeDynFlagsConsistent,
+         shouldUseColor,
+         shouldUseHexWordLiterals,
+@@ -851,6 +851,7 @@ data DynFlags = DynFlags {
+   integerLibrary        :: IntegerLibrary,
+     -- ^ IntegerGMP or IntegerSimple. Set at configure time, but may be overriden
+     --   by GHC-API users. See Note [The integer library] in PrelNames
++  tablesNextToCode      :: Bool,
+   llvmTargets           :: LlvmTargets,
+   llvmPasses            :: LlvmPasses,
+   verbosity             :: Int,         -- ^ Verbosity level: see Note [Verbosity levels]
+@@ -1494,10 +1495,6 @@ defaultObjectTarget platform
+   | cGhcWithNativeCodeGen == "YES"      =  HscAsm
+   | otherwise                           =  HscLlvm
+ 
+-tablesNextToCode :: DynFlags -> Bool
+-tablesNextToCode dflags
+-    = mkTablesNextToCode (platformUnregisterised (targetPlatform dflags))
+-
+ -- Determines whether we will be compiling
+ -- info tables that reside just before the entry code, or with an
+ -- indirection to the entry code.  See TABLES_NEXT_TO_CODE in
+@@ -1757,6 +1754,7 @@ defaultDynFlags mySettings (myLlvmTargets, myLlvmPasses) =
+         ghcLink                 = LinkBinary,
+         hscTarget               = defaultHscTarget (sTargetPlatform mySettings),
+         integerLibrary          = cIntegerLibraryType,
++        tablesNextToCode        = mkTablesNextToCode (platformUnregisterised (sTargetPlatform mySettings)),
+         verbosity               = 0,
+         optLevel                = 0,
+         debugLevel              = 0,
+diff --git a/compiler/utils/Util.hs b/compiler/utils/Util.hs
+index 9523c08ff22..07ac253b615 100644
+--- a/compiler/utils/Util.hs
++++ b/compiler/utils/Util.hs
+@@ -10,7 +10,6 @@
+ module Util (
+         -- * Flags dependent on the compiler build
+         ghciSupported, debugIsOn, ncgDebugIsOn,
+-        ghciTablesNextToCode,
+         isWindowsHost, isDarwinHost,
+ 
+         -- * General list processing
+@@ -205,13 +204,6 @@ ncgDebugIsOn = True
+ ncgDebugIsOn = False
+ #endif
+ 
+-ghciTablesNextToCode :: Bool
+-#if defined(GHCI_TABLES_NEXT_TO_CODE)
+-ghciTablesNextToCode = True
+-#else
+-ghciTablesNextToCode = False
+-#endif
+-
+ isWindowsHost :: Bool
+ #if defined(mingw32_HOST_OS)
+ isWindowsHost = True
+diff --git a/libraries/ghci/GHCi/InfoTable.hsc b/libraries/ghci/GHCi/InfoTable.hsc
+index ca5757257c1..848b04df9c5 100644
+--- a/libraries/ghci/GHCi/InfoTable.hsc
++++ b/libraries/ghci/GHCi/InfoTable.hsc
+@@ -23,19 +23,13 @@ import GHC.Exts
+ import GHC.Exts.Heap
+ #endif
+ 
+-ghciTablesNextToCode :: Bool
+-#ifdef TABLES_NEXT_TO_CODE
+-ghciTablesNextToCode = True
+-#else
+-ghciTablesNextToCode = False
+-#endif
+-
+ #ifdef GHCI /* To end */
+ -- NOTE: Must return a pointer acceptable for use in the header of a closure.
+ -- If tables_next_to_code is enabled, then it must point the the 'code' field.
+ -- Otherwise, it should point to the start of the StgInfoTable.
+ mkConInfoTable
+-   :: Int     -- ptr words
++   :: Bool    -- TABLES_NEXT_TO_CODE
++   -> Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -44,20 +38,20 @@ mkConInfoTable
+       -- resulting info table is allocated with allocateExec(), and
+       -- should be freed with freeExec().
+ 
+-mkConInfoTable ptr_words nonptr_words tag ptrtag con_desc =
+-  castFunPtrToPtr <$> newExecConItbl itbl con_desc
++mkConInfoTable tables_next_to_code ptr_words nonptr_words tag ptrtag con_desc =
++  castFunPtrToPtr <$> newExecConItbl tables_next_to_code itbl con_desc
+   where
+      entry_addr = interpConstrEntry !! ptrtag
+      code' = mkJumpToAddr entry_addr
+      itbl  = StgInfoTable {
+-                 entry = if ghciTablesNextToCode
++                 entry = if tables_next_to_code
+                          then Nothing
+                          else Just entry_addr,
+                  ptrs  = fromIntegral ptr_words,
+                  nptrs = fromIntegral nonptr_words,
+                  tipe  = CONSTR,
+                  srtlen = fromIntegral tag,
+-                 code  = if ghciTablesNextToCode
++                 code  = if tables_next_to_code
+                          then Just code'
+                          else Nothing
+               }
+@@ -334,22 +328,22 @@ pokeConItbl wr_ptr _ex_ptr itbl = do
+ #endif
+   pokeItbl (wr_ptr `plusPtr` (#offset StgConInfoTable, i)) (infoTable itbl)
+ 
+-sizeOfEntryCode :: Int
+-sizeOfEntryCode
+-  | not ghciTablesNextToCode = 0
++sizeOfEntryCode :: Bool -> Int
++sizeOfEntryCode tables_next_to_code
++  | not tables_next_to_code = 0
+   | otherwise =
+      case mkJumpToAddr undefined of
+        Left  xs -> sizeOf (head xs) * length xs
+        Right xs -> sizeOf (head xs) * length xs
+ 
+ -- Note: Must return proper pointer for use in a closure
+-newExecConItbl :: StgInfoTable -> [Word8] -> IO (FunPtr ())
+-newExecConItbl obj con_desc
++newExecConItbl :: Bool -> StgInfoTable -> [Word8] -> IO (FunPtr ())
++newExecConItbl tables_next_to_code obj con_desc
+    = alloca $ \pcode -> do
+         let lcon_desc = length con_desc + 1{- null terminator -}
+             -- SCARY
+             -- This size represents the number of bytes in an StgConInfoTable.
+-            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode)
++            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode tables_next_to_code)
+                -- Note: we need to allocate the conDesc string next to the info
+                -- table, because on a 64-bit platform we reference this string
+                -- with a 32-bit offset relative to the info table, so if we
+diff --git a/libraries/ghci/GHCi/Message.hs b/libraries/ghci/GHCi/Message.hs
+index 9b6740cc512..17f7444ea74 100644
+--- a/libraries/ghci/GHCi/Message.hs
++++ b/libraries/ghci/GHCi/Message.hs
+@@ -102,7 +102,8 @@ data Message a where
+ 
+   -- | Create an info table for a constructor
+   MkConInfoTable
+-   :: Int     -- ptr words
++   :: Bool    -- TABLES_NEXT_TO_CODE
++   -> Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -463,7 +464,7 @@ getMessage = do
+       15 -> Msg <$> MallocStrings <$> get
+       16 -> Msg <$> (PrepFFI <$> get <*> get <*> get)
+       17 -> Msg <$> FreeFFI <$> get
+-      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get)
++      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get <*> get)
+       19 -> Msg <$> (EvalStmt <$> get <*> get)
+       20 -> Msg <$> (ResumeStmt <$> get <*> get)
+       21 -> Msg <$> (AbandonStmt <$> get)
+@@ -503,7 +504,7 @@ putMessage m = case m of
+   MallocStrings bss           -> putWord8 15 >> put bss
+   PrepFFI conv args res       -> putWord8 16 >> put conv >> put args >> put res
+   FreeFFI p                   -> putWord8 17 >> put p
+-  MkConInfoTable p n t pt d   -> putWord8 18 >> put p >> put n >> put t >> put pt >> put d
++  MkConInfoTable tc p n t pt d -> putWord8 18 >> put tc >> put p >> put n >> put t >> put pt >> put d
+   EvalStmt opts val           -> putWord8 19 >> put opts >> put val
+   ResumeStmt opts val         -> putWord8 20 >> put opts >> put val
+   AbandonStmt val             -> putWord8 21 >> put val
+diff --git a/libraries/ghci/GHCi/Run.hs b/libraries/ghci/GHCi/Run.hs
+index 8ec7659abec..eaaafdf8aea 100644
+--- a/libraries/ghci/GHCi/Run.hs
++++ b/libraries/ghci/GHCi/Run.hs
+@@ -84,8 +84,8 @@ run m = case m of
+   MallocStrings bss -> mapM mkString0 bss
+   PrepFFI conv args res -> toRemotePtr <$> prepForeignCall conv args res
+   FreeFFI p -> freeForeignCallInfo (fromRemotePtr p)
+-  MkConInfoTable ptrs nptrs tag ptrtag desc ->
+-    toRemotePtr <$> mkConInfoTable ptrs nptrs tag ptrtag desc
++  MkConInfoTable tc ptrs nptrs tag ptrtag desc ->
++    toRemotePtr <$> mkConInfoTable tc ptrs nptrs tag ptrtag desc
+   StartTH -> startTH
+   GetClosure ref -> do
+     clos <- getClosureData =<< localRef ref
+
+From bd277ef6e49dc12159776e1d7b16bfdb18bddcf3 Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Tue, 21 Aug 2018 11:36:24 -0700
+Subject: [PATCH 09/29] Found a few more ifdefs in the GHCi code
+
+---
+ libraries/ghci/GHCi/InfoTable.hsc | 36 +++++++++++++++----------------
+ 1 file changed, 17 insertions(+), 19 deletions(-)
+
+diff --git a/libraries/ghci/GHCi/InfoTable.hsc b/libraries/ghci/GHCi/InfoTable.hsc
+index 848b04df9c5..f495d564755 100644
+--- a/libraries/ghci/GHCi/InfoTable.hsc
++++ b/libraries/ghci/GHCi/InfoTable.hsc
+@@ -312,20 +312,20 @@ data StgConInfoTable = StgConInfoTable {
+ 
+ 
+ pokeConItbl
+-  :: Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
++  :: Bool -> Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
+   -> IO ()
+-pokeConItbl wr_ptr _ex_ptr itbl = do
+-#if defined(TABLES_NEXT_TO_CODE)
+-  -- Write the offset to the con_desc from the end of the standard InfoTable
+-  -- at the first byte.
+-  let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
+-  (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
+-#else
+-  -- Write the con_desc address after the end of the info table.
+-  -- Use itblSize because CPP will not pick up PROFILING when calculating
+-  -- the offset.
+-  pokeByteOff wr_ptr itblSize (conDesc itbl)
+-#endif
++pokeConItbl tables_next_to_code wr_ptr _ex_ptr itbl = do
++  if tables_next_to_code
++  then do
++      -- Write the offset to the con_desc from the end of the standard InfoTable
++      -- at the first byte.
++      let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
++      (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
++  else do
++      -- Write the con_desc address after the end of the info table.
++      -- Use itblSize because CPP will not pick up PROFILING when calculating
++      -- the offset.
++      pokeByteOff wr_ptr itblSize (conDesc itbl)
+   pokeItbl (wr_ptr `plusPtr` (#offset StgConInfoTable, i)) (infoTable itbl)
+ 
+ sizeOfEntryCode :: Bool -> Int
+@@ -352,14 +352,12 @@ newExecConItbl tables_next_to_code obj con_desc
+         ex_ptr <- peek pcode
+         let cinfo = StgConInfoTable { conDesc = ex_ptr `plusPtr` fromIntegral sz
+                                     , infoTable = obj }
+-        pokeConItbl wr_ptr ex_ptr cinfo
++        pokeConItbl tables_next_to_code wr_ptr ex_ptr cinfo
+         pokeArray0 0 (castPtr wr_ptr `plusPtr` fromIntegral sz) con_desc
+         _flushExec sz ex_ptr -- Cache flush (if needed)
+-#if defined(TABLES_NEXT_TO_CODE)
+-        return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
+-#else
+-        return (castPtrToFunPtr ex_ptr)
+-#endif
++        if tables_next_to_code
++          then return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
++          else return (castPtrToFunPtr ex_ptr)
+ 
+ foreign import ccall unsafe "allocateExec"
+   _allocateExec :: CUInt -> Ptr (Ptr a) -> IO (Ptr a)
+
+From 93843a6b95a5a3d1e750bc4618f542a9b37b9141 Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Wed, 22 Aug 2018 12:58:18 -0700
+Subject: [PATCH 10/29] Do not pass -DTABLES_NEXT_TO_CODE to gcc (untested)
+
+The goal of #15548 is to make GHC itself flexible in whether it should
+produce TABLES_NEXT_TO_CODE code or not. Before this patch, it would
+statically set the default set of gcc arguments to include
+`-DTABLES_NEXT_TO_CODE`. But already the header files set
+`-DTABLES_NEXT_TO_CODE`, so maybe this is not needed at all, and can
+simply be removed?
+---
+ compiler/main/SysTools.hs | 8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
+
+diff --git a/compiler/main/SysTools.hs b/compiler/main/SysTools.hs
+index ff36c04ecff..48f8de83ed5 100644
+--- a/compiler/main/SysTools.hs
++++ b/compiler/main/SysTools.hs
+@@ -199,15 +199,9 @@ initSysTools top_dir
+        let unreg_gcc_args = if targetUnregisterised
+                             then ["-DNO_REGS", "-DUSE_MINIINTERPRETER"]
+                             else []
+-           -- TABLES_NEXT_TO_CODE affects the info table layout.
+-           tntc_gcc_args
+-            | mkTablesNextToCode targetUnregisterised
+-               = ["-DTABLES_NEXT_TO_CODE"]
+-            | otherwise = []
+            cpp_args= map Option (words cpp_args_str)
+            gcc_args = map Option (words gcc_args_str
+-                               ++ unreg_gcc_args
+-                               ++ tntc_gcc_args)
++                               ++ unreg_gcc_args)
+        ldSupportsCompactUnwind <- getBooleanSetting "ld supports compact unwind"
+        ldSupportsBuildId       <- getBooleanSetting "ld supports build-id"
+        ldSupportsFilelist      <- getBooleanSetting "ld supports filelist"
+
+From 997d30b8479adf1f330331c1bab942dfaa475680 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Sun, 23 Sep 2018 14:03:17 -0500
+Subject: [PATCH 11/29] Fix asterius hooks
+
+---
+ compiler/cmm/CmmInfo.hs  |  5 +++--
+ compiler/main/Hooks.hs   | 17 +++++++++++++++++
+ compiler/main/HscMain.hs |  8 ++++----
+ 3 files changed, 24 insertions(+), 6 deletions(-)
+
+diff --git a/compiler/cmm/CmmInfo.hs b/compiler/cmm/CmmInfo.hs
+index 43cba2526de..07798d34c77 100644
+--- a/compiler/cmm/CmmInfo.hs
++++ b/compiler/cmm/CmmInfo.hs
+@@ -53,6 +53,7 @@ import UniqSupply
+ import MonadUtils
+ import Util
+ import Outputable
++import Module
+ 
+ import Data.Bits
+ import Data.Word
+@@ -66,9 +67,9 @@ mkEmptyContInfoTable info_lbl
+                  , cit_srt  = Nothing
+                  , cit_clo  = Nothing }
+ 
+-cmmToRawCmm :: DynFlags -> Stream IO CmmGroup ()
++cmmToRawCmm :: DynFlags -> Maybe Module -> Stream IO CmmGroup ()
+             -> IO (Stream IO RawCmmGroup ())
+-cmmToRawCmm dflags cmms
++cmmToRawCmm dflags _ cmms
+   = do { uniqs <- mkSplitUniqSupply 'i'
+        ; let do_one uniqs cmm = do
+                 case initUs uniqs $ concatMapM (mkInfoTable dflags) cmm of
+diff --git a/compiler/main/Hooks.hs b/compiler/main/Hooks.hs
+index f9d420ab619..d3e7bd3abcf 100644
+--- a/compiler/main/Hooks.hs
++++ b/compiler/main/Hooks.hs
+@@ -21,6 +21,9 @@ module Hooks ( Hooks
+              , runRnSpliceHook
+              , getValueSafelyHook
+              , createIservProcessHook
++             , tcRnModuleHook
++             , stgCmmHook
++             , cmmToRawCmmHook
+              ) where
+ 
+ import GhcPrelude
+@@ -44,6 +47,12 @@ import Type
+ import System.Process
+ import BasicTypes
+ import HsExtension
++import Module
++import TyCon
++import CostCentre
++import StgSyn
++import Stream
++import Cmm
+ 
+ import Data.Maybe
+ 
+@@ -73,6 +82,9 @@ emptyHooks = Hooks
+   , runRnSpliceHook        = Nothing
+   , getValueSafelyHook     = Nothing
+   , createIservProcessHook = Nothing
++  , tcRnModuleHook         = Nothing
++  , stgCmmHook             = Nothing
++  , cmmToRawCmmHook        = Nothing
+   }
+ 
+ data Hooks = Hooks
+@@ -95,6 +107,11 @@ data Hooks = Hooks
+   , getValueSafelyHook     :: Maybe (HscEnv -> Name -> Type
+                                                           -> IO (Maybe HValue))
+   , createIservProcessHook :: Maybe (CreateProcess -> IO ProcessHandle)
++  , tcRnModuleHook         :: Maybe (ModSummary -> Bool -> HsParsedModule -> Hsc TcGblEnv)
++  , stgCmmHook             :: Maybe (DynFlags -> Module -> [TyCon] -> CollectedCCs
++            -> [StgTopBinding] -> HpcInfo -> Stream IO CmmGroup ())
++  , cmmToRawCmmHook        :: Maybe (DynFlags -> Maybe Module -> Stream IO CmmGroup ()
++            -> IO (Stream IO RawCmmGroup ()))
+   }
+ 
+ getHooked :: (Functor f, HasDynFlags f) => (Hooks -> Maybe a) -> a -> f a
+diff --git a/compiler/main/HscMain.hs b/compiler/main/HscMain.hs
+index a8a33bfaad8..3f048ec9d77 100644
+--- a/compiler/main/HscMain.hs
++++ b/compiler/main/HscMain.hs
+@@ -440,7 +440,7 @@ hscTypecheck' keep_rn mod_summary mb_rdr_module = do
+          do hpm <- case mb_rdr_module of
+                     Just hpm -> return hpm
+                     Nothing -> hscParse' mod_summary
+-            tc_result0 <- tcRnModule' mod_summary keep_rn hpm
++            tc_result0 <- lookupHook tcRnModuleHook tcRnModule' dflags mod_summary keep_rn hpm
+             if hsc_src == HsigFile
+                 then do (iface, _, _) <- liftIO $ hscSimpleIface hsc_env tc_result0 Nothing
+                         ioMsgMaybe $
+@@ -1344,7 +1344,7 @@ hscGenHardCode hsc_env cgguts mod_summary output_filename = do
+ 
+             ------------------  Code output -----------------------
+             rawcmms0 <- {-# SCC "cmmToRawCmm" #-}
+-                      cmmToRawCmm dflags cmms
++                      lookupHook cmmToRawCmmHook cmmToRawCmm dflags dflags (Just this_mod) cmms
+ 
+             let dump a = do dumpIfSet_dyn dflags Opt_D_dump_cmm_raw "Raw Cmm"
+                               (ppr a)
+@@ -1403,7 +1403,7 @@ hscCompileCmmFile hsc_env filename output_filename = runHsc hsc_env $ do
+             mod_name = mkModuleName $ "Cmm$" ++ FilePath.takeFileName filename
+             cmm_mod = mkModule (thisPackage dflags) mod_name
+         (_, cmmgroup) <- cmmPipeline hsc_env (emptySRT cmm_mod) cmm
+-        rawCmms <- cmmToRawCmm dflags (Stream.yield cmmgroup)
++        rawCmms <- lookupHook cmmToRawCmmHook cmmToRawCmm dflags dflags Nothing (Stream.yield cmmgroup)
+         _ <- codeOutput dflags cmm_mod output_filename no_loc NoStubs [] []
+              rawCmms
+         return ()
+@@ -1428,7 +1428,7 @@ doCodeGen hsc_env this_mod data_tycons
+ 
+     let cmm_stream :: Stream IO CmmGroup ()
+         cmm_stream = {-# SCC "StgCmm" #-}
+-            StgCmm.codeGen dflags this_mod data_tycons
++            lookupHook stgCmmHook StgCmm.codeGen dflags dflags this_mod data_tycons
+                            cost_centre_info stg_binds hpc_info
+ 
+         -- codegen consumes a stream of CmmGroup, and produces a new
+
+From df87765fa346fc2271b07b21e87f66bee44c4947 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Fri, 9 Nov 2018 03:29:28 +0800
+Subject: [PATCH 13/29] Link ghc-pkg with -threaded to save us a ton of trouble
+ in asterius
+
+---
+ utils/ghc-pkg/ghc-pkg.cabal | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/utils/ghc-pkg/ghc-pkg.cabal b/utils/ghc-pkg/ghc-pkg.cabal
+index 4b1aae7631c..3f4c6ed137f 100644
+--- a/utils/ghc-pkg/ghc-pkg.cabal
++++ b/utils/ghc-pkg/ghc-pkg.cabal
+@@ -15,6 +15,11 @@ Category: Development
+ build-type: Simple
+ cabal-version: >=1.10
+ 
++Flag threaded
++    Description: Link the ghc-pkg executable against the threaded RTS
++    Default: True
++    Manual: True
++
+ Flag terminfo
+     Description: Build GHC with terminfo support on non-Windows platforms.
+     Default: True
+@@ -35,6 +40,8 @@ Executable ghc-pkg
+                    binary,
+                    ghc-boot,
+                    bytestring
++    if flag(threaded)
++        ghc-options: -threaded
+     if !os(windows) && flag(terminfo)
+         Build-Depends: terminfo
+         Cpp-Options: -DWITH_TERMINFO
+
+From d5efd45b5badeb82f2c9bc41f697d1ecd19ac603 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Sun, 17 Feb 2019 17:42:40 +0800
+Subject: [PATCH 23/29] Fix libraries/ghci
+
+---
+ libraries/ghci/GHCi/Message.hs | 7 +++----
+ libraries/ghci/GHCi/Run.hs     | 4 ++--
+ 2 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/libraries/ghci/GHCi/Message.hs b/libraries/ghci/GHCi/Message.hs
+index f30cf8101ad..959942e8587 100644
+--- a/libraries/ghci/GHCi/Message.hs
++++ b/libraries/ghci/GHCi/Message.hs
+@@ -103,8 +103,7 @@ data Message a where
+ 
+   -- | Create an info table for a constructor
+   MkConInfoTable
+-   :: Bool    -- TABLES_NEXT_TO_CODE
+-   -> Int     -- ptr words
++   :: Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -468,7 +467,7 @@ getMessage = do
+       15 -> Msg <$> MallocStrings <$> get
+       16 -> Msg <$> (PrepFFI <$> get <*> get <*> get)
+       17 -> Msg <$> FreeFFI <$> get
+-      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get <*> get)
++      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get)
+       19 -> Msg <$> (EvalStmt <$> get <*> get)
+       20 -> Msg <$> (ResumeStmt <$> get <*> get)
+       21 -> Msg <$> (AbandonStmt <$> get)
+@@ -508,7 +507,7 @@ putMessage m = case m of
+   MallocStrings bss           -> putWord8 15 >> put bss
+   PrepFFI conv args res       -> putWord8 16 >> put conv >> put args >> put res
+   FreeFFI p                   -> putWord8 17 >> put p
+-  MkConInfoTable tc p n t pt d -> putWord8 18 >> put tc >> put p >> put n >> put t >> put pt >> put d
++  MkConInfoTable p n t pt d   -> putWord8 18 >> put p >> put n >> put t >> put pt >> put d
+   EvalStmt opts val           -> putWord8 19 >> put opts >> put val
+   ResumeStmt opts val         -> putWord8 20 >> put opts >> put val
+   AbandonStmt val             -> putWord8 21 >> put val
+diff --git a/libraries/ghci/GHCi/Run.hs b/libraries/ghci/GHCi/Run.hs
+index 939d7000e43..72099b205fb 100644
+--- a/libraries/ghci/GHCi/Run.hs
++++ b/libraries/ghci/GHCi/Run.hs
+@@ -85,8 +85,8 @@ run m = case m of
+   MallocStrings bss -> mapM mkString0 bss
+   PrepFFI conv args res -> toRemotePtr <$> prepForeignCall conv args res
+   FreeFFI p -> freeForeignCallInfo (fromRemotePtr p)
+-  MkConInfoTable tc ptrs nptrs tag ptrtag desc ->
+-    toRemotePtr <$> mkConInfoTable tc ptrs nptrs tag ptrtag desc
++  MkConInfoTable ptrs nptrs tag ptrtag desc ->
++    toRemotePtr <$> mkConInfoTable ptrs nptrs tag ptrtag desc
+   StartTH -> startTH
+   GetClosure ref -> do
+     clos <- getClosureData =<< localRef ref
+
+From a7eb2fea4a181abd11e66c5d3ed338f6d08738c1 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Sun, 17 Feb 2019 19:44:17 +0800
+Subject: [PATCH 24/29] Fix compiler/ghci
+
+---
+ compiler/ghci/ByteCodeItbls.hs | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/compiler/ghci/ByteCodeItbls.hs b/compiler/ghci/ByteCodeItbls.hs
+index c17f2133652..7381c8f9263 100644
+--- a/compiler/ghci/ByteCodeItbls.hs
++++ b/compiler/ghci/ByteCodeItbls.hs
+@@ -71,8 +71,6 @@ make_constr_itbls hsc_env cons =
+ 
+          descr = dataConIdentity dcon
+ 
+-         tables_next_to_code = tablesNextToCode dflags
+-
+-     r <- iservCmd hsc_env (MkConInfoTable tables_next_to_code ptrs' nptrs_really
++     r <- iservCmd hsc_env (MkConInfoTable ptrs' nptrs_really
+                               conNo (tagForCon dflags dcon) descr)
+      return (getName dcon, ItblPtr r)
+
+From 321634fcd428aa2da90c50286c7345f8d9c3be82 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Sun, 17 Feb 2019 19:57:45 +0800
+Subject: [PATCH 25/29] Misc other fixes
+
+---
+ compiler/ghc.mk        | 8 ++++++++
+ compiler/utils/Util.hs | 8 ++++++++
+ 2 files changed, 16 insertions(+)
+
+diff --git a/compiler/ghc.mk b/compiler/ghc.mk
+index 5e20648dc1d..6cfa43ac5c9 100644
+--- a/compiler/ghc.mk
++++ b/compiler/ghc.mk
+@@ -334,6 +334,14 @@ endif
+ ifeq "$(GhcWithInterpreter)" "YES"
+ compiler_stage2_CONFIGURE_OPTS += --flags=ghci
+ 
++ifeq "$(GhcEnableTablesNextToCode) $(GhcUnregisterised)" "YES NO"
++# Should GHCI be building info tables in the TABLES_NEXT_TO_CODE style
++# or not?
++# XXX This should logically be a CPP option, but there doesn't seem to
++# be a flag for that
++compiler_stage2_CONFIGURE_OPTS += --ghc-option=-DGHCI_TABLES_NEXT_TO_CODE
++endif
++
+ # Should the debugger commands be enabled?
+ ifeq "$(GhciWithDebugger)" "YES"
+ compiler_stage2_CONFIGURE_OPTS += --ghc-option=-DDEBUGGER
+diff --git a/compiler/utils/Util.hs b/compiler/utils/Util.hs
+index 3e9af16251c..16864fe0171 100644
+--- a/compiler/utils/Util.hs
++++ b/compiler/utils/Util.hs
+@@ -11,6 +11,7 @@
+ module Util (
+         -- * Flags dependent on the compiler build
+         ghciSupported, debugIsOn, ncgDebugIsOn,
++        ghciTablesNextToCode,
+         isWindowsHost, isDarwinHost,
+ 
+         -- * General list processing
+@@ -205,6 +206,13 @@ ncgDebugIsOn = True
+ ncgDebugIsOn = False
+ #endif
+ 
++ghciTablesNextToCode :: Bool
++#if defined(GHCI_TABLES_NEXT_TO_CODE)
++ghciTablesNextToCode = True
++#else
++ghciTablesNextToCode = False
++#endif
++
+ isWindowsHost :: Bool
+ #if defined(mingw32_HOST_OS)
+ isWindowsHost = True
+
+From 40f96bfca3f776347d89617c0d7575a4da877933 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Wed, 6 Mar 2019 12:17:38 +0800
+Subject: [PATCH 26/29] Expose HscMain.doCodeGen
+
+---
+ compiler/main/HscMain.hs | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/compiler/main/HscMain.hs b/compiler/main/HscMain.hs
+index 8b608ad7ac5..fdc2db92078 100644
+--- a/compiler/main/HscMain.hs
++++ b/compiler/main/HscMain.hs
+@@ -80,6 +80,7 @@ module HscMain
+     , ioMsgMaybe
+     , showModuleIndex
+     , hscAddSptEntries
++    , doCodeGen
+     ) where
+ 
+ import GhcPrelude
+
+From 0e056b60b66380ca2b259447c25af00614945fb1 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Mon, 11 Mar 2019 14:56:50 +0800
+Subject: [PATCH 27/29] Expose Linker.getLinkDeps for use of asterius
+
+---
+ compiler/ghci/Linker.hs | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/compiler/ghci/Linker.hs b/compiler/ghci/Linker.hs
+index dad13b7bbb0..c44e7e05c86 100644
+--- a/compiler/ghci/Linker.hs
++++ b/compiler/ghci/Linker.hs
+@@ -17,6 +17,8 @@ module Linker ( getHValue, showLinkerState,
+                 extendLoadedPkgs,
+                 linkPackages,initDynLinker,linkModule,
+                 linkCmdLineLibs
++                ,readPLS
++                ,getLinkDeps
+         ) where
+ 
+ #include "HsVersions.h"
+
+From 48c64a45cef4ee8a85d542508b037550f3990dec Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Tue, 12 Mar 2019 10:22:29 +0800
+Subject: [PATCH 28/29] Revert "Expose Linker.getLinkDeps for use of asterius"
+
+This reverts commit 0e056b60b66380ca2b259447c25af00614945fb1.
+---
+ compiler/ghci/Linker.hs | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/compiler/ghci/Linker.hs b/compiler/ghci/Linker.hs
+index c44e7e05c86..dad13b7bbb0 100644
+--- a/compiler/ghci/Linker.hs
++++ b/compiler/ghci/Linker.hs
+@@ -17,8 +17,6 @@ module Linker ( getHValue, showLinkerState,
+                 extendLoadedPkgs,
+                 linkPackages,initDynLinker,linkModule,
+                 linkCmdLineLibs
+-                ,readPLS
+-                ,getLinkDeps
+         ) where
+ 
+ #include "HsVersions.h"
+
+From 7b44c90fbfd9e05d3c950a667697160415d8d929 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Tue, 12 Mar 2019 10:33:51 +0800
+Subject: [PATCH 29/29] Expose Linker.linkDependencies
+
+---
+ compiler/ghci/Linker.hs | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/compiler/ghci/Linker.hs b/compiler/ghci/Linker.hs
+index dad13b7bbb0..17d9ff08329 100644
+--- a/compiler/ghci/Linker.hs
++++ b/compiler/ghci/Linker.hs
+@@ -17,6 +17,7 @@ module Linker ( getHValue, showLinkerState,
+                 extendLoadedPkgs,
+                 linkPackages,initDynLinker,linkModule,
+                 linkCmdLineLibs
++                ,modifyPLS,linkDependencies
+         ) where
+ 
+ #include "HsVersions.h"

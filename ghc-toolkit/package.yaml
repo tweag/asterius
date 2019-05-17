@@ -58,3 +58,6 @@ library:
     - StandaloneDeriving
     - StrictData
     - UndecidableInstances
+  verbatim: |
+    build-tools:
+        cmake

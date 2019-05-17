@@ -45,7 +45,6 @@ import Data.String
 import Foreign
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
-import NPM.Parcel
 import Prelude hiding (IO)
 import System.Console.GetOpt
 import System.Directory
@@ -316,6 +315,8 @@ ahcLink :: Task -> IO (Asterius.Types.Module, [Event], LinkReport)
 ahcLink Task {..} = do
   ld_output <- temp (takeBaseName inputHS)
   putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
+  ahc <- getAhc
+  ahcLd <- getAhcLd
   callProcess ahc $
     [ "--make"
     , "-O"
@@ -414,6 +415,7 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
   builderWriteFile out_rts_constants rtsConstants
   logger $
     "[INFO] Writing JavaScript runtime modules to " <> show outputDirectory
+  dataDir <- getDataDir
   rts_files <- listDirectory $ dataDir </> "rts"
   for_ rts_files $ \f ->
     copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
@@ -433,9 +435,8 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
     logger $ "[INFO] Writing JavaScript bundled script to " <> show out_js
     withCurrentDirectory outputDirectory $
       callProcess
-        "node"
-        [ parcel
-        , "build"
+        "parcel"
+        [ "build"
         , "--out-dir"
         , "."
         , "--out-file"

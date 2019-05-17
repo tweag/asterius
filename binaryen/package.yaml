@@ -28,6 +28,10 @@ dependencies:
 
 library:
   source-dirs: src
+  verbatim: |
+    build-tools:
+        cmake
+      , python
 
 tests:
   binaryen-test:

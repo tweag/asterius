@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
@@ -24,7 +25,10 @@ main =
                                , withPrograms = prog_db
                                } <- confHook simpleUserHooks t f
             let [clbi@LibComponentLocalBuildInfo {componentUnitId = uid}] =
-                  componentNameMap lbi M.! CLibName LMainLibName
+                  componentNameMap lbi M.! CLibName
+#if MIN_VERSION_Cabal (2,5,0)
+                    LMainLibName
+#endif
                 amp = autogenComponentModulesDir lbi clbi
                 self_installdirs =
                   absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
