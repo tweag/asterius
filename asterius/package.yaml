@@ -235,3 +235,4 @@ tests:
       - aeson
       - aeson-pretty
       - stm
+      - ansi-terminal

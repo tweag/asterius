@@ -25,12 +25,13 @@ import Control.Concurrent.STM
 import Test.Tasty.Hspec
 import Test.Tasty.Runners
 import Test.Tasty.Options
-
 import Control.Exception
 import Data.IORef
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (encodePretty)
 import GHC.Generics
+import System.IO (stdout)
+import System.Console.ANSI (hSupportsANSIColor)
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
@@ -222,17 +223,20 @@ computeStatistics = getApp . foldMap (\var -> Ap $
     <$> getResultFromTVar var)
 
 
+
+-- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter
 serializeToDisk :: IORef TestLog -> Ingredient
 serializeToDisk tlref = TestReporter [] $
   \opts tree -> Just $ \smap ->
   let
-    NumThreads numThreads = lookupOption opts
-    toutput = let ?colors = True in buildTestOutput opts tree
   in do
+    let NumThreads numThreads = lookupOption opts
+    isTermColor <- hSupportsANSIColor stdout
+    let ?colors = isTermColor
+    let toutput = let ?colors = isTermColor in buildTestOutput opts tree
     consoleOutput tlref True toutput smap
     return $ \time -> do
       stats <- computeStatistics smap
-      let ?colors=True -- passed as implicit parameter
       printStatistics stats time
       return $ statFailures stats == 0
 
