@@ -102,7 +102,7 @@ extra-deps:
   - text-short-0.1.2
 
 flags:
-    bytestring:
+    cassava:
         bytestring--lt-0_10_4: false
 
 packages:
