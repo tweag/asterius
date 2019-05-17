@@ -243,14 +243,13 @@ main :: IO ()
 main = do
   tl <- newIORef mempty
   trees <- getTestCases >>= traverse (makeTestTree tl)
-  let treesTest = take 50 trees
 
   -- | Path where the JSON is dumped
   let out_path = "test-report.json"
 
   -- | Tasty throws an exception if stuff fails, so re-throw the exception
   -- | in case this happens.
-  (defaultMainWithIngredients [serializeToDisk tl] $ testGroup "asterius ghc-testsuite" treesTest)
+  (defaultMainWithIngredients [serializeToDisk tl] $ testGroup "asterius ghc-testsuite" trees)
     `finally` (saveTestLogToDisk tl out_path)
 
 
