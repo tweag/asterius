@@ -98,11 +98,8 @@ consTestLog :: TestRecord -> IORef TestLog -> IO ()
 consTestLog tr tlref = atomicModifyIORef'_ tlref (\(TestLog tl) -> TestLog $ tr:tl)
 
 
--- | What happened when you tried to run the test
-data RunOutcome = RunSuccess | RunFailure String deriving(Eq)
 
-
--- [Note: RunOutcome's Show instance]
+-- [Note: Abusing Tasty APIs to get readable console logs]
 -- | Have the Show instance print the exception after the separator  so we can
 -- | strip out the separator in the printer
 -- | This way, our custom ingredient can still serialize all the information
@@ -110,6 +107,10 @@ data RunOutcome = RunSuccess | RunFailure String deriving(Eq)
 -- | and all text that follows it.
 separator :: Char
 separator = 'γ'
+
+
+-- | What happened when we tried to run the test
+data RunOutcome = RunSuccess | RunFailure String deriving(Eq)
 
 instance Show RunOutcome where
   show (RunSuccess) = "RunSuccess"
@@ -119,17 +120,40 @@ instance ToJSON RunOutcome where
     toJSON RunSuccess = toJSON . show $ RunSuccess
     toJSON (RunFailure f) = toJSON $ "RunFailure(" <> show f <> ")"
 
+
+-- | What happened when we tried to compile the test
+data CompileOutcome = CompileFailure String | CompileSuccess JSVal  deriving(Eq)
+
+isCompileSuccess :: CompileOutcome -> Bool
+isCompileSuccess (CompileSuccess _) = True
+isCompileSuccess _ = False
+
+instance Show CompileOutcome where
+  show (CompileSuccess _) = show "CompileSuccess "
+  show (CompileFailure e) = "CompileFailure" <> [separator] <> show e
+
+
 runTestCase :: TestCase -> IO ()
 runTestCase TestCase {..} = do
   _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen"] ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
   withJSSession defJSSessionOpts $ \s -> do
-    i <- newAsteriusInstance s (casePath -<.> "lib.mjs") mod_buf
-    hsInit s i
+    -- | Try to compile and setup the program. If we throw an exception,
+    -- return a CompileFailure with the error message
+    co <-
+        (do
+          i <- newAsteriusInstance s (casePath -<.> "lib.mjs") mod_buf
+          hsInit s i
+          pure (CompileSuccess i))
+            `catch` (\(e :: SomeException) -> pure . CompileFailure . show $ e)
+    co `shouldSatisfy` isCompileSuccess
+
+    let CompileSuccess i = co
+
     -- | Try to run main. If we throw an exception, return a
     -- RunFailure with the error message.
     ro <- (hsMain s i *> pure RunSuccess)
-      `catch` (\(e :: SomeException) -> pure . RunFailure. show $ e)
+      `catch` (\(e :: SomeException) -> pure . RunFailure . show $ e)
     -- | Check that the run succeeded. If it did not, report a failing
     -- test case
     ro `shouldBe` RunSuccess
@@ -142,8 +166,6 @@ runTestCase TestCase {..} = do
     hs_stderr `shouldBe` caseStdErr
 
 
--- | @cheng: Why is this called `makeTestTree`? should it not be called
--- runTestTree?
 makeTestTree :: TestCase -> IO TestTree
 makeTestTree c@TestCase {..} =
   testSpec casePath $
@@ -159,7 +181,7 @@ saveTestLogToDisk tlref out_path = do
 
 
 -- | Prune the description of the test result to be legible for rendering.
--- | See [Note: RunOutcome's Show instance]
+-- | See [Note: Abusing Tasty APIs to get readable console logs]
 resultPruneDescription :: Test.Tasty.Runners.Result -> Test.Tasty.Runners.Result
 resultPruneDescription Result{..} =
    Result{resultDescription=takeWhile (/= separator) resultDescription, ..}
