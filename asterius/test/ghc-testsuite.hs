@@ -1,23 +1,42 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE ImplicitParams #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# LANGUAGE DeriveGeneric #-}
+
 
 import Asterius.JSRun.Main
 import qualified Data.ByteString.Lazy as LBS
 import Data.Traversable
+import Control.Applicative
+import Control.Monad (when)
 import Language.JavaScript.Inline.Core
 import System.Directory
 import System.FilePath
 import System.Process
 import Test.Tasty
+import Test.Tasty.Ingredients
+import Test.Tasty.Ingredients.ConsoleReporter
+import Data.Monoid (Any(..))
+import Control.Concurrent.STM.TVar
+import Control.Concurrent.STM
 import Test.Tasty.Hspec
+import Test.Tasty.Runners
+import Test.Tasty.Options
+
 import Control.Exception
 import Data.IORef
 import Data.Aeson
 import Data.Aeson.Encode.Pretty (encodePretty)
 import GHC.Generics
+
+-- Much of the code is shamelessly stolen from:
+-- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
+--
+-- We need to ask them to open up the internals of the repo.
+-- TODO: send a PR to them asking them to open up the repo.
 
 
 data TestCase = TestCase
@@ -86,6 +105,19 @@ logTestFailure tl casePath e =
   in consTestLog r tl
 
 
+-- | What happened when you tried to run the test
+data RunOutcome = RunSuccess | RunFailure String deriving(Eq)
+
+-- | Have the Show instance print the exception after a `:` so we can
+-- | strip out the `:` in the test runner printer.
+instance Show RunOutcome where
+  show (RunSuccess) = "RunSuccess"
+  show (RunFailure e) = "RunFailure: " <> show e
+
+instance ToJSON RunOutcome where
+    toJSON RunSuccess = toJSON . show $ RunSuccess
+    toJSON (RunFailure f) = toJSON $ "RunFailure(" <> show f <> ")"
+
 logTestSuccess :: IORef TestLog -- ^ Reference to the test log
   -> FilePath -- ^ Path of the test
   -> IO ()
@@ -96,28 +128,35 @@ logTestSuccess tl casePath =
                      }
   in consTestLog r tl
 
-runTestCase :: IORef TestLog -> TestCase -> IO (LBS.ByteString, LBS.ByteString)
+runTestCase :: IORef TestLog -> TestCase -> IO ()
 runTestCase tl TestCase {..} = do
   _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen"] ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
   withJSSession defJSSessionOpts $ \s -> do
     i <- newAsteriusInstance s (casePath -<.> "lib.mjs") mod_buf
     hsInit s i
-    outcome <- (hsMain s i *> logTestSuccess tl casePath *> pure TestSuccess) `catch`
-        (\e -> logTestFailure tl casePath e *> pure TestFailure)
-    outcome `shouldBe` TestSuccess -- | Make sure that we suceeded.
+    -- | Try to run main. If we throw an exception, return a
+    -- RunFailure with the error message.
+    ro <- (hsMain s i *> pure RunSuccess)
+      `catch` (\(e :: SomeException) -> pure . RunFailure. show $ e)
+    -- | Check that the run succeeded. If it did not, report a failing
+    -- test case
+    ro `shouldBe` RunSuccess
+
+    -- | If the run succeded, now compare outputs.
     hs_stdout <- hsStdOut s i
     hs_stderr <- hsStdErr s i
-    pure (hs_stdout, hs_stderr)
+
+    hs_stdout `shouldBe` caseStdOut
+    hs_stderr `shouldBe` caseStdErr
 
 
+-- | @cheng: Why is this called `makeTestTree`? should it not be called
+-- runTestTree?
 makeTestTree :: IORef TestLog -> TestCase -> IO TestTree
 makeTestTree tl c@TestCase {..} =
   testSpec casePath $
-  it casePath $ do
-    (hs_stdout, hs_stderr) <- runTestCase tl c
-    hs_stdout `shouldBe` caseStdOut
-    hs_stderr `shouldBe` caseStdErr
+    it casePath $ runTestCase tl c
 
 
 -- | save the test log to disk
@@ -128,19 +167,76 @@ saveTestLogToDisk tl out_path = do
       LBS.writeFile out_path (encodePretty tlv)
 
 
+ro :: Test.Tasty.Runners.Result -> Outcome
+ro = resultOutcome
+
+
+resultPruneDescription :: Test.Tasty.Runnners.Result -> Test.Tasty.Runners.Result
+resulrPruneDescription Result{..} =
+  Result{resultDescription=takeWhile (!= ':') resultDescription, ..}
+
+-- TestReporter [OptionDescription] (OptionSet -> TestTree -> Maybe (StatusMap -> IO (Time -> IO Bool)))
+consoleOutput ::  Bool -> TestOutput -> StatusMap -> IO ()
+consoleOutput colors toutput smap =
+  getTraversal . fst $ foldTestOutput foldTest foldHeading toutput smap
+  where
+    foldTest _name printName getResult printResult =
+      ( Traversal $ do
+          printName :: IO ()
+          r <- getResult
+          let o = ro r :: Outcome
+          printResult r
+      , Any True)
+    foldHeading _name printHeading (printBody, Any nonempty) =
+      ( Traversal $ do
+          when nonempty $ do printHeading :: IO (); getTraversal printBody
+      , Any nonempty
+      )
+
+
+getResultFromTVar :: TVar Status -> IO Test.Tasty.Runners.Result
+getResultFromTVar var =
+  atomically $ do
+    status <- readTVar var
+    case status of
+      Done r -> return r
+      _ -> retry
+
+computeStatistics :: StatusMap -> IO Statistics
+computeStatistics = getApp . foldMap (\var -> Ap $
+  (\r -> Statistics 1 (if resultSuccessful r then 0 else 1))
+    <$> getResultFromTVar var)
+
+
+serializeToDisk :: Ingredient
+serializeToDisk = TestReporter [] $
+  \opts tree -> Just $ \smap ->
+  let
+    NumThreads numThreads = lookupOption opts
+    toutput = let ?colors = True in buildTestOutput opts tree
+  in do
+    consoleOutput True toutput smap
+    return $ \time -> do
+      stats <- computeStatistics smap
+      let ?colors=True -- passed as implicit parameter
+      printStatistics stats time
+      return $ statFailures stats == 0
+
+
+
 
 main :: IO ()
 main = do
   tl <- newIORef mempty
   trees <- getTestCases >>= traverse (makeTestTree tl)
-  let treesTest = take 30 trees
+  let treesTest = take 50 trees
 
   -- | Path where the JSON is dumped
   let out_path = "test-report.json"
 
   -- | Tasty throws an exception if stuff fails, so re-throw the exception
   -- | in case this happens.
-  (defaultMain $ testGroup "asterius ghc-testsuite" treesTest)
+  (defaultMainWithIngredients [serializeToDisk] $ testGroup "asterius ghc-testsuite" treesTest)
     `finally` (saveTestLogToDisk tl out_path)
 
 

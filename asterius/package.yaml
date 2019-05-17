@@ -234,3 +234,4 @@ tests:
       - tasty-hspec
       - aeson
       - aeson-pretty
+      - stm
