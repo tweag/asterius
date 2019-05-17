@@ -25,8 +25,6 @@ import Test.Tasty.Hspec
 import Test.Tasty.Runners
 import Control.Exception
 import Data.IORef
-import Data.Aeson
-import Data.Aeson.Encode.Pretty (encodePretty)
 import GHC.Generics
 import System.IO (stdout)
 import System.Console.ANSI (hSupportsANSIColor)
@@ -70,8 +68,9 @@ getTestCases = do
 
 
 data TestOutcome = TestSuccess | TestFailure deriving(Eq, Show, Generic)
+instance ToField TestOutcome where
+  toField = toField . show
 
-instance ToJSON TestOutcome where
 
 data TestRecord = TestRecord
   { trOutcome :: !TestOutcome
@@ -79,15 +78,14 @@ data TestRecord = TestRecord
   , trErrorMessage :: !String -- ^ If the test failed, then the error message associated to the failure.
   } deriving(Generic)
 
-instance ToJSON TestRecord where
-instance ToRecord TestRecord
+instance ToRecord TestRecord where
+instance DefaultOrdered TestRecord where
+instance ToNamedRecord TestRecord where
 
 
 
 -- | Log of tests that have run
-newtype TestLog = TestLog [TestRecord] deriving(Semigroup, Monoid, Generic)
-
-instance ToJSON TestLog where
+newtype TestLog = TestLog { unTestLog :: [TestRecord] } deriving(Semigroup, Monoid, Generic)
 
 atomicModifyIORef'_ :: IORef a -> (a -> a) -> IO ()
 atomicModifyIORef'_ r f = atomicModifyIORef' r $ f &&& const ()
@@ -171,12 +169,13 @@ makeTestTree c@TestCase {..} =
     it casePath $ runTestCase  c
 
 
--- | save the test log to disk
-saveTestLogToDisk :: IORef TestLog -> FilePath -> IO ()
-saveTestLogToDisk tlref out_path = do
-      putStrLn $ "[INFO] Writing log file to path: " <> out_path
-      tlv <- readIORef tlref
-      LBS.writeFile out_path (encodePretty tlv)
+-- | save the test log to disk as a CSV file
+saveTestLogToCSV :: IORef TestLog -> FilePath -> IO ()
+saveTestLogToCSV tlref out_csvpath = do
+  putStrLn $ "[INFO] Writing log CSV file to path: " <> out_csvpath
+  tlv <- readIORef tlref
+  LBS.writeFile out_csvpath (encodeDefaultOrderedByName . unTestLog $ tlv)
+
 
 -- | Prune the description of the test result to be legible for rendering.
 -- | See [Note: Abusing Tasty APIs to get readable console logs]
@@ -240,14 +239,13 @@ serializeToDisk tlref = TestReporter [] $
 main :: IO ()
 main = do
   tlref <- newIORef mempty
-  trees <- take 20 <$> getTestCases >>= traverse makeTestTree
+  trees <- take 5 <$> getTestCases >>= traverse makeTestTree
 
-  -- | Path where the JSON is dumped
-  let out_path = "test-report.json"
+  let out_csvpath = "test-report.csv"
 
   -- | Tasty throws an exception if stuff fails, so re-throw the exception
   -- | in case this happens.
   (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
-    `finally` (saveTestLogToDisk tlref out_path)
+    `finally` (saveTestLogToCSV tlref out_csvpath)
 
 
