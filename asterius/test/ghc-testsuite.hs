@@ -108,11 +108,19 @@ logTestFailure tl casePath e =
 -- | What happened when you tried to run the test
 data RunOutcome = RunSuccess | RunFailure String deriving(Eq)
 
--- | Have the Show instance print the exception after a `:` so we can
--- | strip out the `:` in the test runner printer.
+
+-- [Note: RunOutcome's Show instance]
+-- | Have the Show instance print the exception after the separator  so we can
+-- | strip out the separator in the printer
+-- | This way, our custom ingredient can still serialize all the information
+-- | that comes after the ``, but when we print, we strip out the leading `:`
+-- | and all text that follows it.
+separator :: Char
+separator = 'γ'
+
 instance Show RunOutcome where
   show (RunSuccess) = "RunSuccess"
-  show (RunFailure e) = "RunFailure: " <> show e
+  show (RunFailure e) = "RunFailure" <> [separator] <> (show e)
 
 instance ToJSON RunOutcome where
     toJSON RunSuccess = toJSON . show $ RunSuccess
@@ -171,21 +179,27 @@ ro :: Test.Tasty.Runners.Result -> Outcome
 ro = resultOutcome
 
 
-resultPruneDescription :: Test.Tasty.Runnners.Result -> Test.Tasty.Runners.Result
-resulrPruneDescription Result{..} =
-  Result{resultDescription=takeWhile (!= ':') resultDescription, ..}
+-- | Prune the description of the test result to be legible for rendering.
+-- | See [Note: RunOutcome's Show instance]
+resultPruneDescription :: Test.Tasty.Runners.Result -> Test.Tasty.Runners.Result
+resultPruneDescription Result{..} =
+   Result{resultDescription=takeWhile (/= separator) resultDescription, ..}
 
 -- TestReporter [OptionDescription] (OptionSet -> TestTree -> Maybe (StatusMap -> IO (Time -> IO Bool)))
-consoleOutput ::  Bool -> TestOutput -> StatusMap -> IO ()
-consoleOutput colors toutput smap =
+consoleOutput ::  IORef TestLog -> Bool -> TestOutput -> StatusMap -> IO ()
+consoleOutput tlref colors toutput smap =
   getTraversal . fst $ foldTestOutput foldTest foldHeading toutput smap
   where
     foldTest _name printName getResult printResult =
       ( Traversal $ do
           printName :: IO ()
           r <- getResult
-          let o = ro r :: Outcome
-          printResult r
+          printResult . resultPruneDescription $ r
+          let tr = if resultSuccessful r
+              then TestRecord TestSuccess _name ""
+              else TestRecord TestFailure _name (resultDescription r)
+          consTestLog tr tlref
+
       , Any True)
     foldHeading _name printHeading (printBody, Any nonempty) =
       ( Traversal $ do
@@ -208,14 +222,14 @@ computeStatistics = getApp . foldMap (\var -> Ap $
     <$> getResultFromTVar var)
 
 
-serializeToDisk :: Ingredient
-serializeToDisk = TestReporter [] $
+serializeToDisk :: IORef TestLog -> Ingredient
+serializeToDisk tlref = TestReporter [] $
   \opts tree -> Just $ \smap ->
   let
     NumThreads numThreads = lookupOption opts
     toutput = let ?colors = True in buildTestOutput opts tree
   in do
-    consoleOutput True toutput smap
+    consoleOutput tlref True toutput smap
     return $ \time -> do
       stats <- computeStatistics smap
       let ?colors=True -- passed as implicit parameter
@@ -236,7 +250,7 @@ main = do
 
   -- | Tasty throws an exception if stuff fails, so re-throw the exception
   -- | in case this happens.
-  (defaultMainWithIngredients [serializeToDisk] $ testGroup "asterius ghc-testsuite" treesTest)
+  (defaultMainWithIngredients [serializeToDisk tl] $ testGroup "asterius ghc-testsuite" treesTest)
     `finally` (saveTestLogToDisk tl out_path)
 
 
