@@ -30,6 +30,7 @@ import Data.Aeson.Encode.Pretty (encodePretty)
 import GHC.Generics
 import System.IO (stdout)
 import System.Console.ANSI (hSupportsANSIColor)
+import Control.Arrow ((&&&))
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
@@ -88,9 +89,13 @@ newtype TestLog = TestLog [TestRecord] deriving(Semigroup, Monoid, Generic)
 
 instance ToJSON TestLog where
 
+atomicModifyIORef'_ :: IORef a -> (a -> a) -> IO ()
+atomicModifyIORef'_ r f = atomicModifyIORef' r $ f &&& const ()
+
+
 -- | Append a value to the test log in safe way when we have multiple threads
 consTestLog :: TestRecord -> IORef TestLog -> IO ()
-consTestLog tr tlref = modifyIORef' tlref (\(TestLog tl) -> TestLog $ tr:tl)
+consTestLog tr tlref = atomicModifyIORef'_ tlref (\(TestLog tl) -> TestLog $ tr:tl)
 
 
 -- | What happened when you tried to run the test
