@@ -96,7 +96,7 @@ logTestSuccess tl casePath =
 
 runTestCase :: IORef TestLog -> TestCase -> IO (LBS.ByteString, LBS.ByteString)
 runTestCase tl TestCase {..} = do
-  _ <- readProcess "ahc-link" ["--input-hs", casePath] ""
+  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen"] ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
   withJSSession defJSSessionOpts $ \s -> do
     i <- newAsteriusInstance s (casePath -<.> "lib.mjs") mod_buf
