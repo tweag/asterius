@@ -171,11 +171,11 @@ makeTestTree c@TestCase {..} =
 
 -- | save the test log to disk as a CSV file
 saveTestLogToCSV :: IORef TestLog -> FilePath -> IO ()
-saveTestLogToCSV tlref out_csvpath = do
-  putStrLn $ "[INFO] Writing log CSV file to path: " <> out_csvpath
+saveTestLogToCSV tlref out_basepath = do
+  let out_csvpath = out_basepath <.> "csv"
   tlv <- readIORef tlref
+  putStrLn $ "[INFO] Writing log CSV file to path: " <> out_csvpath
   LBS.writeFile out_csvpath (encodeDefaultOrderedByName . unTestLog $ tlv)
-
 
 -- | Prune the description of the test result to be legible for rendering.
 -- | See [Note: Abusing Tasty APIs to get readable console logs]
@@ -241,11 +241,12 @@ main = do
   tlref <- newIORef mempty
   trees <- take 5 <$> getTestCases >>= traverse makeTestTree
 
-  let out_csvpath = "test-report.csv"
+  cwd <- getCurrentDirectory
+  let out_basepath = cwd </> "test-report"
 
   -- | Tasty throws an exception if stuff fails, so re-throw the exception
   -- | in case this happens.
   (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
-    `finally` (saveTestLogToCSV tlref out_csvpath)
+    `finally` (saveTestLogToCSV tlref out_basepath)
 
 
