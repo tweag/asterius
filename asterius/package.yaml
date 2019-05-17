@@ -237,3 +237,6 @@ tests:
       - stm
       - ansi-terminal
       - cassava
+      - bytestring
+      - text-short
+
