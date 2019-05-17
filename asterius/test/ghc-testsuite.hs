@@ -72,7 +72,6 @@ data TestOutcome = TestSuccess | TestFailure deriving(Eq, Show, Generic)
 
 instance ToJSON TestOutcome where
 
-
 data TestRecord = TestRecord
   { trOutcome :: !TestOutcome
   , trPath :: !FilePath -- ^ Path of the test case
@@ -80,8 +79,6 @@ data TestRecord = TestRecord
   } deriving(Generic)
 
 instance ToJSON TestRecord where
-
-
 
 
 -- | Log of tests that have run
@@ -114,11 +111,8 @@ data RunOutcome = RunSuccess | RunFailure String deriving(Eq)
 
 instance Show RunOutcome where
   show (RunSuccess) = "RunSuccess"
-  show (RunFailure e) = "RunFailure" <> [separator] <> (show e)
+  show (RunFailure e) = "RunFailure" <> [separator] <> e
 
-instance ToJSON RunOutcome where
-    toJSON RunSuccess = toJSON . show $ RunSuccess
-    toJSON (RunFailure f) = toJSON $ "RunFailure(" <> show f <> ")"
 
 
 -- | What happened when we tried to compile the test
@@ -130,7 +124,9 @@ isCompileSuccess _ = False
 
 instance Show CompileOutcome where
   show (CompileSuccess _) = show "CompileSuccess "
-  show (CompileFailure e) = "CompileFailure" <> [separator] <> show e
+  show (CompileFailure e) = "CompileFailure" <> [separator] <> e
+
+
 
 
 runTestCase :: TestCase -> IO ()
@@ -179,7 +175,6 @@ saveTestLogToDisk tlref out_path = do
       tlv <- readIORef tlref
       LBS.writeFile out_path (encodePretty tlv)
 
-
 -- | Prune the description of the test result to be legible for rendering.
 -- | See [Note: Abusing Tasty APIs to get readable console logs]
 resultPruneDescription :: Test.Tasty.Runners.Result -> Test.Tasty.Runners.Result
@@ -223,7 +218,6 @@ computeStatistics = getApp . foldMap (\var -> Ap $
     <$> getResultFromTVar var)
 
 
-
 -- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter
 serializeToDisk :: IORef TestLog -> Ingredient
 serializeToDisk tlref = TestReporter [] $
@@ -240,13 +234,10 @@ serializeToDisk tlref = TestReporter [] $
       printStatistics stats time
       return $ statFailures stats == 0
 
-
-
-
 main :: IO ()
 main = do
   tlref <- newIORef mempty
-  trees <- getTestCases >>= traverse makeTestTree
+  trees <- take 20 <$> getTestCases >>= traverse makeTestTree
 
   -- | Path where the JSON is dumped
   let out_path = "test-report.json"
