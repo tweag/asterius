@@ -8,19 +8,13 @@ module Asterius.MemoryTrap
   ) where
 
 import Asterius.Types
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapT)
 import qualified Data.Map.Strict as M
 import Type.Reflection
 
 addMemoryTrap :: AsteriusModule -> AsteriusModule
 addMemoryTrap m =
-  let new_function_map =
-        flip M.mapWithKey (functionMap m) $ \func_sym func ->
-          if "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName func_sym)
-            then func
-            else addMemoryTrapDeep func
+  let new_function_map = M.map addMemoryTrapDeep (functionMap m)
    in m {functionMap = new_function_map}
 
 addMemoryTrapDeep :: Data a => a -> a
