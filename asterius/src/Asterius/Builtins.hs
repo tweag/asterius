@@ -400,7 +400,18 @@ rtsFunctionImports debug =
                 , ("F32", F32)
                 , ("F64", F64)
                 ]
-            ]
+            ] <>
+          [ FunctionImport
+            { internalName = "__asterius_load_" <> k1 <> "_" <> s <> b
+            , externalModuleName = "MemoryTrap"
+            , externalBaseName = "load" <> k1 <> s <> b
+            , functionType =
+                FunctionType {paramTypes = [I64, I32], returnTypes = [t1]}
+            }
+          | (k1, t1) <- [("I32", I32), ("I64", I64)]
+          , s <- ["S", "U"]
+          , b <- ["8", "16"]
+          ]
      else []) <>
   map (fst . snd) byteStringCBits
 

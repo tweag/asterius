@@ -14,50 +14,53 @@ import Type.Reflection
 
 addMemoryTrap :: AsteriusModule -> AsteriusModule
 addMemoryTrap m =
-  let new_function_map = M.mapWithKey addMemoryTrapDeep (functionMap m)
+  let new_function_map = M.map addMemoryTrapDeep (functionMap m)
    in m {functionMap = new_function_map}
 
-addMemoryTrapDeep :: Data a => AsteriusEntitySymbol -> a -> a
-addMemoryTrapDeep func_sym = w
-  where
-    w :: Data b => b -> b
-    w t =
-      case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
-        Just HRefl ->
-          case t of
-            Load {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
-              let new_i64_ptr = w i64_ptr
-               in CallImport
-                    { target' =
-                        "__asterius_load_" <> ty_name func_sym t valueType bytes
-                    , operands = [new_i64_ptr, ConstI32 $ fromIntegral offset]
-                    , callImportReturnTypes = [valueType]
-                    }
-            Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
-              let new_i64_ptr = w i64_ptr
-                  new_value = w value
-               in CallImport
-                    { target' =
-                        "__asterius_store_" <>
-                        ty_name func_sym t valueType bytes
-                    , operands =
-                        [new_i64_ptr, ConstI32 $ fromIntegral offset, new_value]
-                    , callImportReturnTypes = []
-                    }
-            _ -> go
+addMemoryTrapDeep :: Data a => a -> a
+addMemoryTrapDeep t =
+  case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
+    Just HRefl ->
+      case t of
+        Load {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
+          let new_i64_ptr = addMemoryTrapDeep i64_ptr
+           in CallImport
+                { target' =
+                    "__asterius_load_" <> load_fn_suffix valueType bytes signed
+                , operands = [new_i64_ptr, ConstI32 $ fromIntegral offset]
+                , callImportReturnTypes = [valueType]
+                }
+        Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
+          let new_i64_ptr = addMemoryTrapDeep i64_ptr
+              new_value = addMemoryTrapDeep value
+           in CallImport
+                { target' =
+                    "__asterius_store_" <> store_fn_suffix valueType bytes
+                , operands =
+                    [new_i64_ptr, ConstI32 $ fromIntegral offset, new_value]
+                , callImportReturnTypes = []
+                }
         _ -> go
-      where
-        go = gmapT w t
-    ty_name _ _ I32 1 = "I8"
-    ty_name _ _ I32 2 = "I16"
-    ty_name _ _ I32 4 = "I32"
-    ty_name _ _ I64 8 = "I64"
-    ty_name _ _ F32 4 = "F32"
-    ty_name _ _ F64 8 = "F64"
-    ty_name sym e vt b =
-      error $
-      "Asterius.MemoryTrap.addMemoryTrapDeep: " <> show sym <> " " <> show vt <>
-      " " <>
-      show b <>
-      " " <>
-      show e
+    _ -> go
+  where
+    go = gmapT addMemoryTrapDeep t
+    load_fn_suffix I32 1 False = "I32_U8"
+    load_fn_suffix I32 1 True = "I32_S8"
+    load_fn_suffix I32 2 False = "I32_U16"
+    load_fn_suffix I32 2 True = "I32_S16"
+    load_fn_suffix I32 4 _ = "I32"
+    load_fn_suffix I64 1 False = "I64_U8"
+    load_fn_suffix I64 1 True = "I64_S8"
+    load_fn_suffix I64 2 False = "I64_U16"
+    load_fn_suffix I64 2 True = "I64_S16"
+    load_fn_suffix I64 8 _ = "I64"
+    load_fn_suffix F32 4 _ = "F32"
+    load_fn_suffix F64 8 _ = "F64"
+    load_fn_suffix _ _ _ = error "Asterius.MemoryTrap.addMemoryTrapDeep"
+    store_fn_suffix I32 1 = "I8"
+    store_fn_suffix I32 2 = "I16"
+    store_fn_suffix I32 4 = "I32"
+    store_fn_suffix I64 8 = "I64"
+    store_fn_suffix F32 4 = "F32"
+    store_fn_suffix F64 8 = "F64"
+    store_fn_suffix _ _ = error "Asterius.MemoryTrap.addMemoryTrapDeep"

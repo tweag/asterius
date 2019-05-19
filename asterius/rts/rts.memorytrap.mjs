@@ -71,6 +71,46 @@ export class MemoryTrap {
     return this.memory.i64Load(p);
   }
 
+  loadI32S8(bp, o) {
+    const p = bp + BigInt(o);
+    return this.memory.i32LoadS8(p);
+  }
+
+  loadI32U8(bp, o) {
+    const p = bp + BigInt(o);
+    return this.memory.i32LoadU8(p);
+  }
+
+  loadI32S16(bp, o) {
+    const p = bp + BigInt(o);
+    return this.memory.i32LoadS16(p);
+  }
+
+  loadI32U16(bp, o) {
+    const p = bp + BigInt(o);
+    return this.memory.i32LoadU16(p);
+  }
+
+  loadI64S8(bp, o) {
+    const p = bp + BigInt(o);
+    return this.memory.i64LoadS8(p);
+  }
+
+  loadI64U8(bp, o) {
+    const p = bp + BigInt(o);
+    return this.memory.i64LoadU8(p);
+  }
+
+  loadI64S16(bp, o) {
+    const p = bp + BigInt(o);
+    return this.memory.i64LoadS16(p);
+  }
+
+  loadI64U16(bp, o) {
+    const p = bp + BigInt(o);
+    return this.memory.i64LoadU16(p);
+  }
+
   loadF32(bp, o) {
     /*
     this.logger.logInfo([
