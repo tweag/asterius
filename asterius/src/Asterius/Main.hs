@@ -459,11 +459,13 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
       then do
         logger $ "[INFO] Running " <> out_js
         callProcess "node" $
+          ["--experimental-wasm-bigint" | debug] <>
           ["--experimental-wasm-return-call" | tailCalls] <>
           [takeFileName out_js]
       else do
         logger $ "[INFO] Running " <> out_entry
         callProcess "node" $
+          ["--experimental-wasm-bigint" | debug] <>
           ["--experimental-wasm-return-call" | tailCalls] <>
           ["--experimental-modules", takeFileName out_entry]
 

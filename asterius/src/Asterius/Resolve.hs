@@ -14,6 +14,7 @@ module Asterius.Resolve
 import Asterius.Builtins
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
+import Asterius.MemoryTrap
 import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Types
@@ -220,7 +221,7 @@ linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
       , staticMBlocks = static_mbs
       })
   where
-    (merged_m, report) =
+    (merged_m', report) =
       mergeSymbols
         debug
         gc_sections
@@ -231,6 +232,9 @@ linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
              {entityName = "__asterius_jsffi_export_" <> entityName k}
            | k <- export_funcs
            ])
+    merged_m
+      | debug = addMemoryTrap merged_m'
+      | otherwise = merged_m'
     (result_m, ss_sym_map, func_sym_map, err_msgs, tbl_slots, static_mbs) =
       resolveAsteriusModule
         debug
