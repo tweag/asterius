@@ -28,7 +28,7 @@ def unescape_ascii(s):
 if __name__ == "__main__":
     p = parse(sys.argv[1:])
 
-    outpath = os.path.splitext(p.jsonpath)[0] + ".html" if not p.out else p.out
+    outpath = os.path.splitext(p.jsonpath)[0] + ".txt" if not p.out else p.out
     # convert path to absolute path for better error messages
     outpath = os.path.abspath(outpath)
 
@@ -41,6 +41,9 @@ if __name__ == "__main__":
 
 
     # Get ASCII printing working.
-    print(AsciiTable(data.values.tolist()).table)
+    out_ascii = AsciiTable(data.values.tolist()).table
+    with open(outpath, 'w') as f:
+        print("writing ASCII output to: %s" % outpath)
+        f.write(out_ascii)
 
 
