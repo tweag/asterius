@@ -30,6 +30,7 @@ import System.IO (stdout)
 import System.Console.ANSI (hSupportsANSIColor)
 import Control.Arrow ((&&&))
 import Data.Csv
+import Data.List (sort)
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
@@ -54,11 +55,11 @@ readFileNullable p = do
 getTestCases :: IO [TestCase]
 getTestCases = do
   let root = "test" </> "ghc-testsuite"
-  subdirs <- listDirectory root
+  subdirs <- sort <$> listDirectory root
   fmap concat $
     for subdirs $ \subdir -> do
       let subroot = root </> subdir
-      files <- listDirectory subroot
+      files <- sort <$> listDirectory subroot
       let cases = map (subroot </>) $ filter ((== ".hs") . takeExtension) files
       for cases $ \c ->
         TestCase c <$> readFileNullable (c -<.> "stdin") <*>
