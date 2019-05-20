@@ -142,7 +142,7 @@ runTestCase TestCase {..} = do
           i <- newAsteriusInstance s (casePath -<.> "lib.mjs") mod_buf
           hsInit s i
           pure (CompileSuccess i))
-            `catch` (\(e :: SomeException) -> pure . CompileFailure . show $ e)
+            -- `catch` (\(e :: SomeException) -> pure . CompileFailure . show $ e)
     co `shouldSatisfy` isCompileSuccess
 
     let CompileSuccess i = co
@@ -150,7 +150,7 @@ runTestCase TestCase {..} = do
     -- | Try to run main. If we throw an exception, return a
     -- RunFailure with the error message.
     ro <- (hsMain s i *> pure RunSuccess)
-      `catch` (\(e :: SomeException) -> pure . RunFailure . show $ e)
+      -- `catch` (\(e :: SomeException) -> pure . RunFailure . show $ e)
     -- | Check that the run succeeded. If it did not, report a failing
     -- test case
     ro `shouldBe` RunSuccess
