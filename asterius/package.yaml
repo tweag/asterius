@@ -232,10 +232,7 @@ tests:
       - asterius
       - tasty
       - tasty-hspec
-      - aeson
-      - aeson-pretty
-      - stm
       - ansi-terminal
+      - stm
       - cassava
-      - text-short
 
