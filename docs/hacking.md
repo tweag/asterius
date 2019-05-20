@@ -56,7 +56,7 @@ To add a test case, it is best to replicate what has been done for an existing t
 `bytearraymini` has been used. Replicating the same files for a new test case
 should "just work".
 
-## Using `wabt`
+## Using `wabt` 
 
 We also include `wabt` in the source tree and pack it as a Cabal package. So
 `stack build wabt` will build the `wabt` binaries. To install the binaries to a
@@ -71,3 +71,21 @@ environment variable to pass additional arguments to `make`, e.g. setting
 The `wabt` package exposes `Paths_wabt`, so by using `Paths_wabt.getBinDir` you
 can access the `wabt` binary location in Haskell. This can be useful when
 implementing Haskell wrappers.
+
+## Debugging `circleCI`
+
+To run a job with `circleCI` locally for debugging:
+
+1. Install the CLI for circle
+2. Install docker
+3. Get the docker daemon running.
+
+Run:
+```
+$ circleci local execute --job  <job-name>
+```
+
+For example:
+```
+$ circleci local execute --job asterius-test
+```
