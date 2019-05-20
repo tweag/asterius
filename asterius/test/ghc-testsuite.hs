@@ -34,9 +34,10 @@ import Data.Csv
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
 --
--- We need to ask them to open up the internals of the repo.
--- TODO: send a PR to them asking them to open up the repo.
-
+-- TODO: Update the code to not re-implement tasty internals when
+-- the new version is released, since we had a PR that exposes some
+-- tasty internals for us:
+-- https://github.com/feuerbach/tasty/pull/252
 
 data TestCase = TestCase
   { casePath :: FilePath
@@ -101,8 +102,8 @@ consTestLog tr tlref = atomicModifyIORef'_ tlref (\(TestLog tl) -> TestLog $ tr:
 -- | Have the Show instance print the exception after the separator  so we can
 -- | strip out the separator in the printer
 -- | This way, our custom ingredient can still serialize all the information
--- | that comes after the ``, but when we print, we strip out the leading `:`
--- | and all text that follows it.
+-- | that comes after the ``, but when we print, we strip out the leading
+-- | separator and all text that follows it.
 separator :: Char
 separator = 'γ'
 
@@ -119,6 +120,7 @@ instance Show RunOutcome where
 -- | What happened when we tried to compile the test
 data CompileOutcome = CompileFailure String | CompileSuccess JSVal  deriving(Eq)
 
+-- | Test if the compile outcome was true or not.
 isCompileSuccess :: CompileOutcome -> Bool
 isCompileSuccess (CompileSuccess _) = True
 isCompileSuccess _ = False
@@ -126,9 +128,6 @@ isCompileSuccess _ = False
 instance Show CompileOutcome where
   show (CompileSuccess _) = show "CompileSuccess "
   show (CompileFailure e) = "CompileFailure" <> [separator] <> e
-
-
-
 
 runTestCase :: TestCase -> IO ()
 runTestCase TestCase {..} = do
