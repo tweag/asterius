@@ -85,9 +85,15 @@ jobs:
             # run the GHC testsuite and copy the test artifact to `/tmp`
             stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j8" || true
             cp asterius/test/test-report.csv /tmp
+            # install dependencies for the python formatter
+            sudo apt-get install -y python3-numpy python3-pandas python3-terminaltables
+            python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
 
-  store_artifacts:
-    path: /tmp/test-report.csv
+      - store_artifacts:
+          path: /tmp/test-report.csv
+
+      - store_artifacts:
+          path: /tmp/test-report-ascii.txt
 
 
   asterius-build-docker:
