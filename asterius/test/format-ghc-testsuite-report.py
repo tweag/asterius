@@ -37,6 +37,7 @@ if __name__ == "__main__":
             dtype={"trOutcome": object, "trPath": object, "trErrorMessage": str})
     # replace nan with string for the possibly empty error messages.
     data = data.replace(np.nan, '', regex=True)
+    data['trErrorMessage'] = data['trErrorMessage'].apply(unescape_ascii)
 
 
     # Get ASCII printing working.
