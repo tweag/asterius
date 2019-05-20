@@ -28,6 +28,7 @@ import Data.Functor
 import Data.List
 import qualified Data.Map.Strict as Map
 import Data.Maybe
+import Data.Word
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
@@ -64,6 +65,11 @@ rtsAsteriusModule opts =
                       SBS.pack $
                       replicate (8 * roundup_bytes_to_words sizeof_Capability) 0
                     ]
+                })
+          , ( "rts_stop_on_exception"
+            , AsteriusStatics
+                { staticsType = Bytes
+                , asteriusStatics = [Serialized $ encodeStorable (0 :: Word64)]
                 })
           , ( "__asterius_pc"
             , AsteriusStatics
@@ -795,6 +801,8 @@ createThreadFunction _ =
     storeI64 tso_p 0 $ symbol "stg_TSO_info"
     storeI16 tso_p offset_StgTSO_what_next $ constI32 next_ThreadRunGHC
     storeI16 tso_p offset_StgTSO_why_blocked $ constI32 blocked_NotBlocked
+    storeI64 tso_p offset_StgTSO_blocked_exceptions $
+      symbol "stg_END_TSO_QUEUE_closure"
     storeI32 tso_p offset_StgTSO_flags $ constI32 0
     storeI32 tso_p offset_StgTSO_dirty $ constI32 1
     storeI32 tso_p offset_StgTSO_saved_errno $ constI32 0

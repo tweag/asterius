@@ -37,7 +37,7 @@ export function newAsteriusInstance(req) {
     __asterius_vault = req.vault ? req.vault : new Map(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable),
-    __asterius_raise_exception_helper = new RaiseExceptionHelper();
+    __asterius_raise_exception_helper = new RaiseExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable);
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
   }
