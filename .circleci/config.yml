@@ -135,8 +135,7 @@ jobs:
 
       - checkout
       - run:
-            name: run GHC test suite
-            no_output_timeout: 30m
+            name: build GHC
             command: |
               git submodule update --init --recursive
               stack --no-terminal -j8 build --test --no-run-tests
@@ -145,7 +144,11 @@ jobs:
               cd ~/.local
               $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
               cd $CIRCLE_WORKING_DIRECTORY
-            
+
+      - run:
+            name: run GHC test suite
+            no_output_timeout: 30m
+            command: |
               # run the GHC testsuite and copy the test artifact to `/tmp`
               stack --no-terminal test asterius:ghc-testsuite  -j1 || true
               cp asterius/test/test-report.csv /tmp
