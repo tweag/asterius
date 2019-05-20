@@ -21,7 +21,9 @@ export class RaiseExceptionHelper {
     const stackobj = Number(
       this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
     );
-    let p = this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp);
+    let p = Number(
+      this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
+    );
     while (true) {
       const info = Number(this.memory.i64Load(p)),
         type = this.memory.i32Load(
@@ -36,8 +38,8 @@ export class RaiseExceptionHelper {
         );
       switch (type) {
         case ClosureTypes.UPDATE_FRAME: {
-          const p1 = this.memory.i64Load(
-            p + rtsConstants.offset_StgUpdateFrame_updatee
+          const p1 = Number(
+            this.memory.i64Load(p + rtsConstants.offset_StgUpdateFrame_updatee)
           );
           this.memory.i64Store(p1, this.symbolTable.stg_BLACKHOLE_info);
           this.memory.i64Store(
