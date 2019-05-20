@@ -83,7 +83,7 @@ jobs:
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
             # run the GHC testsuite and copy the test artifact to `/tmp`
-            stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j8" || true
+            stack --no-terminal test asterius:ghc-testsuite  || true
             cp asterius/test/test-report.csv /tmp
           no_output_timeout: 4h
 
