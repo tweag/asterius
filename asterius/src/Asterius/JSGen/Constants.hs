@@ -99,6 +99,7 @@ rtsConstants =
       , ("offset_StgStack_stack_size", offset_StgStack_stack_size)
       , ("offset_StgStack_sp", offset_StgStack_sp)
       , ("offset_StgStack_stack", offset_StgStack_stack)
+      , ("offset_StgUpdateFrame_updatee", offset_StgUpdateFrame_updatee)
       , ("offset_StgWeak_cfinalizers", offset_StgWeak_cfinalizers)
       , ("offset_StgWeak_key", offset_StgWeak_key)
       , ("offset_StgWeak_value", offset_StgWeak_value)

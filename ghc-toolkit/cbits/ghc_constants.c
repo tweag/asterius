@@ -387,6 +387,10 @@ HsInt offset_StgTSO_tot_stack_size() {
   return offsetof(StgTSO, tot_stack_size);
 }
 
+HsInt offset_StgUpdateFrame_updatee() {
+  return offsetof(StgUpdateFrame, updatee);
+}
+
 HsInt sizeof_StgWeak() { return sizeof(StgWeak); }
 
 HsInt offset_StgWeak_cfinalizers() { return offsetof(StgWeak, cfinalizers); }

@@ -104,7 +104,13 @@ parseTask args =
         , bool_opt "sync" $ \t -> t {sync = True}
         , bool_opt "binaryen" $ \t -> t {binaryen = True}
         , bool_opt "debug" $ \t ->
-            t {debug = True, outputLinkReport = True, outputIR = True}
+            t
+              { fullSymTable = True
+              , binaryen = True
+              , debug = True
+              , outputLinkReport = True
+              , outputIR = True
+              }
         , bool_opt "output-link-report" $ \t -> t {outputLinkReport = True}
         , bool_opt "output-ir" $ \t -> t {outputIR = True}
         , bool_opt "run" $ \t -> t {run = True}
@@ -217,11 +223,11 @@ genLib Task {..} LinkReport {..} err_msgs =
   ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
-    symbol_table =
-      if fullSymTable || debug
-        then raw_symbol_table
-        else M.restrictKeys raw_symbol_table $
-             S.fromList extraRootSymbols <> rtsUsedSymbols
+    symbol_table
+      | fullSymTable = raw_symbol_table
+      | otherwise =
+        M.restrictKeys raw_symbol_table $
+        S.fromList extraRootSymbols <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =

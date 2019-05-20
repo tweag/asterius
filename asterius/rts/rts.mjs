@@ -16,6 +16,7 @@ import { IntegerManager } from "./rts.integer.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { GC } from "./rts.gc.mjs";
+import { RaiseExceptionHelper } from "./rts.exception.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export function newAsteriusInstance(req) {
@@ -35,7 +36,8 @@ export function newAsteriusInstance(req) {
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_vault = req.vault ? req.vault : new Map(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
-    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable);
+    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable),
+    __asterius_raise_exception_helper = new RaiseExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable);
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
   }
@@ -124,6 +126,7 @@ export function newAsteriusInstance(req) {
       },
       bytestring: modulify(__asterius_bytestring_cbits),
       GC: modulify(__asterius_gc),
+      RaiseExceptionHelper: modulify(__asterius_raise_exception_helper),
       HeapAlloc: modulify(__asterius_heapalloc),
       HeapBuilder: modulify(__asterius_heap_builder),
       MBlockAlloc: modulify(__asterius_mblockalloc),
