@@ -47,7 +47,7 @@ jobs:
       - checkout
 
       - run:
-          name: Build GHC
+          name: Build asterius
           command: |
             git submodule update --init --recursive
             stack --no-terminal -j8 build --test --no-run-tests
@@ -140,7 +140,7 @@ jobs:
 
       - checkout
       - run:
-            name: build GHC
+            name: Build asterius
             command: |
               git submodule update --init --recursive
               stack --no-terminal -j8 build --test --no-run-tests
@@ -151,7 +151,7 @@ jobs:
               cd $CIRCLE_WORKING_DIRECTORY
 
       - run:
-            name: run GHC test suite
+            name: Run GHC test suite on asterius
             no_output_timeout: 30m
             command: |
               # run the GHC testsuite and copy the test artifact to `/tmp`
