@@ -45,7 +45,7 @@ defaultBootArgs =
   BootArgs
     { bootDir = dataDir </> ".boot"
     , configureOptions =
-        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1"
+        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1 --ghc-option=-dsuppress-ticks"
     , buildOptions = ""
     , installOptions = ""
     , builtinsOptions = defaultBuiltinsOptions
@@ -81,6 +81,9 @@ bootRTSCmm :: BootArgs -> IO ()
 bootRTSCmm BootArgs {..} =
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
   GHC.runGhc (Just obj_topdir) $ do
+    dflags0 <- GHC.getSessionDynFlags
+    _ <-
+      GHC.setSessionDynFlags $ GHC.setGeneralFlag' GHC.Opt_SuppressTicks dflags0
     dflags <- GHC.getSessionDynFlags
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")

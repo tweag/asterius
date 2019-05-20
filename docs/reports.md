@@ -2,6 +2,40 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-05-20
+
+Covers the last two weeks.
+
+Note that Siddharth Bhat(@bollu) joined in as a summer intern at Tweag I/O on this project. From this week on all status report entries are our collaborative efforts.
+
+Completed work:
+
+* Fixed a bug in the codegen which ignored sign extension semantics when extending 8-bits/16-bits integers, resulting in wrong results of `Int8#`/`Int16#`/`Word8#`/`Word16#` related primops.
+* Improved the monadic EDSL interface:
+    * Removed a redundant return type annotation in `runEDSL` calls.
+    * Supported declaring "static" memory regions, they can serve as static variables (as known in C-like languages) which persist across function calls.
+* Updated `binaryen` and `wabt`. For `binaryen`, we:
+    * Spotted and worked around a minor problem: by default the validate function in C API implicitly sets the feature set to "All", enabling all wasm experimental features and causing the `DataCount` section to be emitted to wasm binary, which is unsupported in some old versions of V8.
+    * Implemented color API & s-expression API in C bindings, to support dumping s-expression of wasm to file. These two changes are also proposed to upstream.
+* Tracked down the source of an old bug related to `read` crashing due to missing Unicode primitives in the runtime.
+* Improved Cmm IR dumps to ease debugging.
+* Many source comments; improved docs, with a new "hacking" section describing common workflow on hacking this project.
+
+Ongoing work and planned work:
+
+* Integrate a part of ghc testsuite to run with asterius, collect the results into a report.
+    * Motivation: other than missing TH support that we're still stuck with, there are still other missing or broken features that we might be unaware of. To push asterius towards production-grade quality, we need a more comprehensive test suite to help us discover such edge cases.
+    * The single-module `compile_and_run` tests are copied from ghc tree, and we implemented a `tasty` driver to run them. Reusing the original Python-based test driver takes more work and we decide it's less of a priority at the moment.
+    * Roughly ~800 tests are included, and about 50% of them are failing at the moment.
+    * Remaining work: serve the report file as CircleCI artifact, merge back to `master` and start classifying the failed tests.
+* Improve the debugging experience:
+    * Recovered the "memory trap" framework which we unfortunately dropped previously when attempting to get rid of link-time rewriting passes and make the linker faster. The new memory trap now relies on V8's experimental wasm BigInt integration feature, and covers all wasm read/write opcodes, even for builtin rts functions.
+    * Planned work for memory trap: we'll make the memory trap closely collaborate with the linker, block allocator and garbage collector, to achieve the following effects:
+        * There will be read-only/read-write regions, and we put immutable Cmm data in read-only regions to catch more potential data corruption.
+        * The recycled blocks will be marked inaccessible, any access to those blocks will trap.
+    * Basic exception handling is now implemented, the `throw`/`catch` functions in `Control.Exception` now work.
+    * We plan to implement a part of @bgamari's ghc gdb scripts for chrome devtools: inspecting closures and other rts data structures, walking the stack, etc.
+
 ## 2019-05-06
 
 Covers the paralyzed few weeks since last report.

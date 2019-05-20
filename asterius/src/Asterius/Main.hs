@@ -19,7 +19,6 @@ import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.JSGen.Constants
 import Asterius.JSGen.Wasm
-import Asterius.JSRun.Main
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Resolve
 import Asterius.Types
@@ -44,7 +43,6 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.String
 import Foreign
-import Language.JavaScript.Inline.Core
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import NPM.Parcel
@@ -106,7 +104,13 @@ parseTask args =
         , bool_opt "sync" $ \t -> t {sync = True}
         , bool_opt "binaryen" $ \t -> t {binaryen = True}
         , bool_opt "debug" $ \t ->
-            t {debug = True, outputLinkReport = True, outputIR = True}
+            t
+              { fullSymTable = True
+              , binaryen = True
+              , debug = True
+              , outputLinkReport = True
+              , outputIR = True
+              }
         , bool_opt "output-link-report" $ \t -> t {outputLinkReport = True}
         , bool_opt "output-ir" $ \t -> t {outputIR = True}
         , bool_opt "run" $ \t -> t {run = True}
@@ -219,11 +223,11 @@ genLib Task {..} LinkReport {..} err_msgs =
   ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
-    symbol_table =
-      if fullSymTable || debug
-        then raw_symbol_table
-        else M.restrictKeys raw_symbol_table $
-             S.fromList extraRootSymbols <> rtsUsedSymbols
+    symbol_table
+      | fullSymTable = raw_symbol_table
+      | otherwise =
+        M.restrictKeys raw_symbol_table $
+        S.fromList extraRootSymbols <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =
@@ -461,27 +465,15 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
       then do
         logger $ "[INFO] Running " <> out_js
         callProcess "node" $
+          ["--experimental-wasm-bigint" | debug] <>
           ["--experimental-wasm-return-call" | tailCalls] <>
           [takeFileName out_js]
       else do
         logger $ "[INFO] Running " <> out_entry
-        case inputEntryMJS of
-          Just _ ->
-            callProcess "node" $
-            ["--experimental-wasm-return-call" | tailCalls] <>
-            ["--experimental-modules", takeFileName out_entry]
-          _ -> do
-            mod_buf <- LBS.readFile $ takeFileName out_wasm
-            withJSSession
-              defJSSessionOpts
-                { nodeExtraArgs =
-                    ["--experimental-wasm-return-call" | tailCalls]
-                } $ \s -> do
-              i <- newAsteriusInstance s (takeFileName out_lib) mod_buf
-              hsInit s i
-              hsMain s i
-              wasm_stdout <- hsStdOut s i
-              LBS.putStr wasm_stdout
+        callProcess "node" $
+          ["--experimental-wasm-bigint" | debug] <>
+          ["--experimental-wasm-return-call" | tailCalls] <>
+          ["--experimental-modules", takeFileName out_entry]
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do

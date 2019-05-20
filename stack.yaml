@@ -38,7 +38,7 @@ extra-deps:
   - hspec-discover-2.7.0
   - hspec-expectations-0.8.2
   - http-date-0.0.8
-  - http-types-0.12.2
+  - http-types-0.12.3
   - http2-1.6.4
   - integer-logarithms-1.0.2.2
   - iproute-1.7.7
@@ -46,7 +46,7 @@ extra-deps:
   - http://head.hackage.haskell.org/package/memory-0.14.18.tar.gz
   - HUnit-1.6.0.0
   - language-javascript-0.6.0.11
-  - mime-types-0.1.0.8
+  - mime-types-0.1.0.9
   - mintty-0.1.2
   - network-2.8.0.0
   - network-byte-order-0.0.0.0
@@ -78,7 +78,7 @@ extra-deps:
   - transformers-compat-0.6.2
   - unbounded-delays-0.1.1.0
   - unix-compat-0.5.1
-  - unordered-containers-0.2.9.0
+  - unordered-containers-0.2.10.0
   - utf8-string-1.0.1.1
   - vault-0.3.1.2
   - unix-time-0.3.8
@@ -86,11 +86,11 @@ extra-deps:
   - unliftio-core-0.1.2.0
   - vector-0.12.0.3
   - void-0.7.2
-  - wai-3.2.1.2
-  - wai-app-static-3.1.6.2
-  - wai-extra-3.0.24.3
+  - wai-3.2.2
+  - wai-app-static-3.1.6.3
+  - wai-extra-3.0.26
   - wai-logger-2.3.2
-  - warp-3.2.25
+  - warp-3.2.27
   - wcwidth-0.0.2
   - word8-0.1.3
   - http://head.hackage.haskell.org/package/zlib-0.6.2.tar.gz
