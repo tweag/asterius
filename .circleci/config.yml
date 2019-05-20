@@ -47,6 +47,7 @@ jobs:
       - checkout
       - run:
           name: Test asterius
+          no_output_timeout: 4h
           command: |
             git submodule update --init --recursive
             stack --no-terminal -j8 build --test --no-run-tests
@@ -85,16 +86,41 @@ jobs:
             # run the GHC testsuite and copy the test artifact to `/tmp`
             stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j8" || true
             cp asterius/test/test-report.csv /tmp
-            # install dependencies for the python formatter
-            sudo apt-get install -y python3-numpy python3-pandas python3-terminaltables
-            python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
+
 
       - store_artifacts:
           path: /tmp/test-report.csv
 
+
+  asterius-generate-test-report:
+    docker:
+      - image: debian:unstable
+    environment:
+      - ASTERIUS_BUILD_OPTIONS: -j8
+      - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -A512M -I0 -qg -qb -N8
+      - LANG: C.UTF-8
+      - MAKEFLAGS: -j8
+      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - STACK_ROOT: /tmp/.stack
+    resource_class: xlarge
+    working_directory: /tmp/asterius
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt update
+            apt install -y python3-numpy python3-pandas python3-terminaltables
+      - checkout
+      - run:
+            name: generate report
+            no_output_timeout: 4h
+            command: |
+              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
+ 
+
       - store_artifacts:
           path: /tmp/test-report-ascii.txt
-
 
   asterius-build-docker:
     docker:
@@ -169,6 +195,9 @@ workflows:
   build:
     jobs:
       - asterius-test
+      - asterius-generate-test-report:
+          requires:
+            - asterius-test
       - asterius-build-docker
       - asterius-build-docs:
           requires:
