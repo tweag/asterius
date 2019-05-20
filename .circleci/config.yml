@@ -82,9 +82,6 @@ jobs:
             stack --no-terminal test asterius:nomain
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
-            # run the GHC testsuite and copy the test artifact to `/tmp`
-            stack --no-terminal test asterius:ghc-testsuite  || true
-            cp asterius/test/test-report.csv /tmp
           no_output_timeout: 4h
 
 
@@ -92,13 +89,12 @@ jobs:
           path: /tmp/test-report.csv
 
 
-  asterius-generate-test-report:
+  asterius-test-ghc-testsuite:
     docker:
       - image: debian:unstable
     environment:
-      - ASTERIUS_BUILD_OPTIONS: -j8
       - DEBIAN_FRONTEND: noninteractive
-      - GHCRTS: -A512M -I0 -qg -qb -N8
+        # - GHCRTS: -A512M -I0 -qg -qb -N8
       - LANG: C.UTF-8
       - MAKEFLAGS: -j8
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -110,14 +106,45 @@ jobs:
           name: Install dependencies
           command: |
             apt update
+            apt full-upgrade -y
             apt install -y python3-numpy python3-pandas python3-terminaltables
+            apt install -y \
+              automake \
+              cmake \
+              curl \
+              g++ \
+              git \
+              gnupg \
+              libffi-dev \
+              libgmp-dev \
+              libncurses-dev \
+              libnuma-dev \
+              make \
+              openssh-client \
+              python-minimal \
+              python3-minimal \
+              xz-utils \
+              zlib1g-dev
+            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+            echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
+            apt update
+            apt install -y nodejs
+            mkdir -p /root/.local/bin
+            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
+            curl https://downloads.haskell.org/~cabal/cabal-install-latest/cabal-install-2.4.1.0-x86_64-unknown-linux.tar.xz | tar xJ -C /root/.local/bin 'cabal'
+
       - checkout
       - run:
-            name: generate report
+            name: run GHC test suite
             no_output_timeout: 4h
             command: |
+              # run the GHC testsuite and copy the test artifact to `/tmp`
+              stack --no-terminal test asterius:ghc-testsuite  -j1 || true
+              cp asterius/test/test-report.csv /tmp
               python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
  
+      - store_artifacts:
+          path: /tmp/test-report.csv
 
       - store_artifacts:
           path: /tmp/test-report-ascii.txt
@@ -195,9 +222,7 @@ workflows:
   build:
     jobs:
       - asterius-test
-      - asterius-generate-test-report:
-          requires:
-            - asterius-test
+      - asterius-test-ghc-testsuite
       - asterius-build-docker
       - asterius-build-docs:
           requires:
