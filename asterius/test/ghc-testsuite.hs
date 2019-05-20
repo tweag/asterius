@@ -238,7 +238,7 @@ serializeToDisk tlref = TestReporter [] $
 main :: IO ()
 main = do
   tlref <- newIORef mempty
-  trees <- take 5 <$> getTestCases >>= traverse makeTestTree
+  trees <- getTestCases >>= traverse makeTestTree
 
   cwd <- getCurrentDirectory
   let out_basepath = cwd </> "test-report"
