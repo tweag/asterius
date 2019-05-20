@@ -47,7 +47,6 @@ jobs:
       - checkout
       - run:
           name: Test asterius
-          no_output_timeout: 4h
           command: |
             git submodule update --init --recursive
             stack --no-terminal -j8 build --test --no-run-tests
@@ -86,6 +85,7 @@ jobs:
             # run the GHC testsuite and copy the test artifact to `/tmp`
             stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j8" || true
             cp asterius/test/test-report.csv /tmp
+          no_output_timeout: 4h
 
 
       - store_artifacts:
