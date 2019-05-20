@@ -94,9 +94,9 @@ jobs:
       - image: debian:unstable
     environment:
       - DEBIAN_FRONTEND: noninteractive
-        # - GHCRTS: -A512M -I0 -qg -qb -N8
+      #- GHCRTS: -A512M -I0 -qg -qb -N8
       - LANG: C.UTF-8
-      - MAKEFLAGS: -j8
+      #- MAKEFLAGS: -j8
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       - STACK_ROOT: /tmp/.stack
     resource_class: xlarge
