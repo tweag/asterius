@@ -86,8 +86,8 @@ jobs:
             stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j8" || true
             cp asterius/test/test-report.csv /tmp
 
-   store_artifacts:
-       path: /tmp/test-report.csv
+  store_artifacts:
+    path: /tmp/test-report.csv
 
 
   asterius-build-docker:
