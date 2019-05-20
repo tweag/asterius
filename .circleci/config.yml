@@ -82,7 +82,13 @@ jobs:
             stack --no-terminal test asterius:nomain
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
+            # run the GHC testsuite and copy the test artifact to `/tmp`
             stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j8" || true
+            cp asterius/test/test-report.csv /tmp
+
+   store_artifacts:
+       path: /tmp/test-report.csv
+
 
   asterius-build-docker:
     docker:
