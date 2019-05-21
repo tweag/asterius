@@ -66,9 +66,14 @@ jobs:
             stack --no-terminal test asterius:bigint
             stack --no-terminal test asterius:todomvc
             stack --no-terminal test asterius:cloudflare
+            stack --no-terminal test asterius:exception
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--sync"
+
+            cd ~/.local
+            $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
+            cd $CIRCLE_WORKING_DIRECTORY
             stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
@@ -77,10 +82,8 @@ jobs:
             stack --no-terminal test asterius:teletype --test-arguments="--debug" > /dev/null
             # stack --no-terminal test asterius:bytearray --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:bigint --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:exception --test-arguments="--debug" > /dev/null
 
-            cd ~/.local
-            $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
-            cd $CIRCLE_WORKING_DIRECTORY
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls"
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
 

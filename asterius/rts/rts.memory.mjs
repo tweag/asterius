@@ -46,6 +46,14 @@ export class Memory {
   f32Store(p, v) { this.dataView.setFloat32(Memory.unTag(p), Number(v), true); }
   f64Load(p) { return this.dataView.getFloat64(Memory.unTag(p), true); }
   f64Store(p, v) { this.dataView.setFloat64(Memory.unTag(p), Number(v), true); }
+  i32LoadS8(p) { return this.dataView.getInt8(Memory.unTag(p)); }
+  i32LoadU8(p) { return this.dataView.getUint8(Memory.unTag(p)); }
+  i32LoadS16(p) { return this.dataView.getInt16(Memory.unTag(p), true); }
+  i32LoadU16(p) { return this.dataView.getUint16(Memory.unTag(p), true); }
+  i64LoadS8(p) { return BigInt(this.dataView.getInt8(Memory.unTag(p))); }
+  i64LoadU8(p) { return BigInt(this.dataView.getUint8(Memory.unTag(p))); }
+  i64LoadS16(p) { return BigInt(this.dataView.getInt16(Memory.unTag(p), true)); }
+  i64LoadU16(p) { return BigInt(this.dataView.getUint16(Memory.unTag(p), true)); }
   heapAlloced(p) { return Memory.unTag(p) >= (this.staticMBlocks << Math.log2(rtsConstants.mblock_size)); }
   strlen(_str) { return this.i8View.subarray(Memory.unTag(_str)).indexOf(0); }
   memchr(_ptr, val, num) {

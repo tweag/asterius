@@ -424,6 +424,9 @@ foreign import ccall unsafe "offset_StgTSO_alloc_limit" offset_StgTSO_alloc_limi
 foreign import ccall unsafe "offset_StgTSO_tot_stack_size" offset_StgTSO_tot_stack_size
   :: Int
 
+foreign import ccall unsafe "offset_StgUpdateFrame_updatee" offset_StgUpdateFrame_updatee
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgWeak" sizeof_StgWeak :: Int
 
 foreign import ccall unsafe "offset_StgWeak_cfinalizers" offset_StgWeak_cfinalizers

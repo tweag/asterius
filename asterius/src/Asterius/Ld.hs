@@ -51,8 +51,10 @@ rtsUsedSymbols =
     , "ghczmprim_GHCziTypes_ZMZN_closure"
     , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
     , "stg_ARR_WORDS_info"
+    , "stg_BLACKHOLE_info"
     , "stg_DEAD_WEAK_info"
     , "stg_NO_FINALIZER_closure"
+    , "stg_raise_info"
     , "stg_WEAK_info"
     ]
 
