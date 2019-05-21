@@ -1,12 +1,14 @@
 import * as ClosureTypes from "./rts.closuretypes.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
+import { Memory } from "./rts.memory.mjs";
 
-export class RaiseExceptionHelper {
+export class ExceptionHelper {
   constructor(memory, heapalloc, info_tables, symbol_table) {
     this.memory = memory;
     this.heapAlloc = heapalloc;
     this.infoTables = info_tables;
     this.symbolTable = symbol_table;
+    this.decoder = new TextDecoder("utf-8", { fatal: true });
     Object.freeze(this);
   }
   raiseExceptionHelper(reg, tso, exception) {
@@ -81,6 +83,17 @@ export class RaiseExceptionHelper {
             "raiseExceptionHelper: unsupported stack frame"
           );
       }
+    }
+  }
+  barf(s) {
+    if (s) {
+      const v0 = this.memory.i8View.subarray(Memory.unTag(s)),
+        len = v0.indexOf(0),
+        v1 = v0.subarray(0, len),
+        r = this.decoder.decode(v1);
+      throw new WebAssembly.RuntimeError(`barf: ${r}`);
+    } else {
+      throw new WebAssembly.RuntimeError("barf");
     }
   }
 }

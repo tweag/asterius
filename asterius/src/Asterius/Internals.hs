@@ -13,10 +13,8 @@ module Asterius.Internals
   , showSBS
   , c8SBS
   , (!)
-  , (!?)
   ) where
 
-import Asterius.Internals.MagicNumber
 import Control.Exception
 import qualified Data.Binary as Binary
 import qualified Data.ByteString.Char8 as CBS
@@ -102,7 +100,3 @@ c8SBS = CBS.unpack . SBS.fromShort
   case LM.lookup k m of
     Just v -> v
     _ -> error $ show k <> " not found"
-
-{-# INLINE (!?) #-}
-(!?) :: Ord k => LM.Map k Int64 -> k -> Int64
-(!?) = flip $ LM.findWithDefault invalidAddress

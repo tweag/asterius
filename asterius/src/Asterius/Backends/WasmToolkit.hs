@@ -10,6 +10,7 @@ module Asterius.Backends.WasmToolkit
   ) where
 
 import Asterius.Internals
+import Asterius.Internals.Barf
 import qualified Asterius.Internals.DList as DList
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
@@ -376,7 +377,13 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
       case Map.lookup (coerce target) functionSymbols of
         Just i -> do
           xs <-
-            for operands $
+            for
+              (if target == "barf"
+                 then [ case operands of
+                          [] -> ConstI64 0
+                          x:_ -> x
+                      ]
+                 else operands) $
             makeInstructions
               tail_calls
               sym_map
@@ -384,7 +391,16 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
               _de_bruijn_ctx
               _local_ctx
           pure $ mconcat xs <> DList.singleton Wasm.Call {callFunctionIndex = i}
-        _ -> pure $ DList.singleton Wasm.Unreachable
+        _
+          | Map.member ("__asterius_barf_" <> target) sym_map ->
+            makeInstructions
+              tail_calls
+              sym_map
+              _module_symtable
+              _de_bruijn_ctx
+              _local_ctx $
+            barf target callReturnTypes
+          | otherwise -> pure $ DList.singleton Wasm.Unreachable
     CallImport {..} -> do
       xs <-
         for operands $
@@ -665,35 +681,71 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
       pure $ x <> y <> op
     ReturnCall {..}
       | tail_calls ->
-        pure $
         case Map.lookup (coerce returnCallTarget64) functionSymbols of
           Just i ->
-            DList.singleton Wasm.ReturnCall {returnCallFunctionIndex = i}
-          _ ->
-            DList.singleton
-              (Wasm.I32Const (fromIntegral $ invalidAddress .&. 0xFFFFFFFF)) <>
-            DList.singleton
-              Wasm.ReturnCallIndirect
-                { returnCallIndirectFunctionTypeIndex =
-                    functionTypeSymbols !
-                    FunctionType {paramTypes = [], returnTypes = []}
-                }
+            pure $ DList.singleton Wasm.ReturnCall {returnCallFunctionIndex = i}
+          _
+            | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
+              makeInstructions
+                tail_calls
+                sym_map
+                _module_symtable
+                _de_bruijn_ctx
+                _local_ctx $
+              barf returnCallTarget64 []
+            | otherwise ->
+              pure $
+              DList.singleton
+                (Wasm.I32Const (fromIntegral $ invalidAddress .&. 0xFFFFFFFF)) <>
+              DList.singleton
+                Wasm.ReturnCallIndirect
+                  { returnCallIndirectFunctionTypeIndex =
+                      functionTypeSymbols !
+                      FunctionType {paramTypes = [], returnTypes = []}
+                  }
       | otherwise ->
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          Store
-            { bytes = 8
-            , offset = 0
-            , ptr =
-                ConstI32 $
-                fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-            , value = ConstI64 $ sym_map !? returnCallTarget64
-            , valueType = I64
-            }
+        case Map.lookup returnCallTarget64 sym_map of
+          Just t ->
+            makeInstructions
+              tail_calls
+              sym_map
+              _module_symtable
+              _de_bruijn_ctx
+              _local_ctx
+              Store
+                { bytes = 8
+                , offset = 0
+                , ptr =
+                    ConstI32 $
+                    fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
+                , value = ConstI64 t
+                , valueType = I64
+                }
+          _
+            | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
+              makeInstructions
+                tail_calls
+                sym_map
+                _module_symtable
+                _de_bruijn_ctx
+                _local_ctx $
+              barf returnCallTarget64 []
+            | otherwise ->
+              makeInstructions
+                tail_calls
+                sym_map
+                _module_symtable
+                _de_bruijn_ctx
+                _local_ctx
+                Store
+                  { bytes = 8
+                  , offset = 0
+                  , ptr =
+                      ConstI32 $
+                      fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
+                  , value = ConstI64 invalidAddress
+                  , valueType = I64
+                  }
     ReturnCallIndirect {..}
       | tail_calls -> do
         x <-
@@ -754,14 +806,23 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
         _local_ctx $
       relooper graph
     Symbol {..} ->
-      pure $
-      DList.singleton
-        Wasm.I64Const
-          { i64ConstValue =
-              case Map.lookup unresolvedSymbol sym_map of
-                Just x -> x + fromIntegral symbolOffset
-                _ -> invalidAddress
-          }
+      case Map.lookup unresolvedSymbol sym_map of
+        Just x ->
+          pure $
+          DList.singleton
+            Wasm.I64Const {i64ConstValue = x + fromIntegral symbolOffset}
+        _
+          | Map.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
+            makeInstructions
+              tail_calls
+              sym_map
+              _module_symtable
+              _de_bruijn_ctx
+              _local_ctx $
+            barf unresolvedSymbol [I64]
+          | otherwise ->
+            pure $
+            DList.singleton Wasm.I64Const {i64ConstValue = invalidAddress}
     _ -> throwError $ UnsupportedExpression expr
 
 makeInstructionsMaybe ::
