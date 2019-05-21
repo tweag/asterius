@@ -3,7 +3,7 @@ module Main where
 import Debug.Trace
 
 main :: IO ()
-main = print (alg 3 1)
+main = return () -- print (alg 3 1)
 
 alg :: Word -> Word -> Word
 alg a b
