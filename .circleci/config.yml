@@ -159,7 +159,7 @@ jobs:
               # run the GHC testsuite and copy the test artifact to `/tmp`
               nodejs --version
               stack --no-terminal test asterius:ghc-testsuite  -j1 --test-arguments="--timeout=30s" || true
-              cp asterius/test/test-report.csv /tmp
+              cp asterius/test-report.csv /tmp
               python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
  
       - store_artifacts:
