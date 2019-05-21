@@ -56,7 +56,7 @@ To add a test case, it is best to replicate what has been done for an existing t
 `bytearraymini` has been used. Replicating the same files for a new test case
 should "just work".
 
-## Using `wabt` 
+## Using `wabt`
 
 We also include `wabt` in the source tree and pack it as a Cabal package. So
 `stack build wabt` will build the `wabt` binaries. To install the binaries to a

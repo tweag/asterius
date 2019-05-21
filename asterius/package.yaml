@@ -27,7 +27,6 @@ extra-source-files:
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
   - test/nomain/**/*.hs
-  - test/codeGen-T14754/**/*.hs
   - test/ghc-testsuite/**/*.hs
   - test/ghc-testsuite/**/*.stdout
 
@@ -221,13 +220,6 @@ tests:
   nomain:
     source-dirs: test
     main: nomain.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - asterius
-
-  codeGen-T14754:
-    source-dirs: test
-    main: codeGen-T14754.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius

@@ -66,7 +66,6 @@ jobs:
             stack --no-terminal test asterius:bigint
             stack --no-terminal test asterius:todomvc
             stack --no-terminal test asterius:cloudflare
-            stack --no-terminal test asterius:codeGen-T14754
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--sync"
@@ -87,13 +86,6 @@ jobs:
 
             stack --no-terminal test asterius:nomain
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
-
-          no_output_timeout: 30m
-
-
-      - store_artifacts:
-          path: /tmp/test-report.csv
-
 
   asterius-test-ghc-testsuite:
     docker:
@@ -155,6 +147,8 @@ jobs:
 
       - run:
             name: Run GHC test suite on asterius
+            # Allow a large timeout so we have enough time to write out the
+            # CSV file.
             no_output_timeout: 30m
             command: |
               # run the GHC testsuite and copy the test artifact to `/tmp`
