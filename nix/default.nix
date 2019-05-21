@@ -5,14 +5,23 @@
 , ...
 }:
 let
+  cleanSrc =
+    pkgs.lib.cleanSourceWith {
+      src = ./..;
+      filter = path: type:
+        pkgs.lib.all (i: toString i != path) [ ../.DS_Store ../default.nix ../result ../nix ]
+          && pkgs.lib.all (i: i != baseNameOf path) [ ".git" "dist-newstyle" "cabal.project.local" "dist" ".stack-work" ".DS_Store" "result" ]
+          && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ]
+          && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ];
+    };
   # our packages
   # plan-pkgs = import ./pkgs.nix;
   plan-nix = haskell.cabalProjectToNix {
-    src = ./..;
+    src = cleanSrc;
     ghc = pkgs.haskell.compiler.ghc864;
     hackageIndexState = "2019-05-10T00:00:00Z";
   };
-  plan-pkgs = import "${plan-nix}/nix-plan/pkgs.nix";
+  plan-pkgs = import "${plan-nix}";
 
   # Build the packageset with module support.
   # We can essentially override anything in the modules
@@ -80,8 +89,8 @@ let
     ghc-src = pkgs.srcOnly pkgs.haskell.compiler.ghc864;
     ghc-prim = builtins.fetchTarball {
       url = "http://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
-    };
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
+    };
     patch = pkgs.copyPathToStore ./patches/ghc/ghc864-libs.patch;
     ghc-patched-src = pkgs.runCommand "asterius-ghc864-ghc-patched-src" {
       buildInputs = [];
@@ -101,7 +110,7 @@ let
       cp -r ${ghc-patched-src} $out
       chmod +w -R $out
       cd $out/libraries
-      patch -p1 < ${patch} || true
+      patch -p2 < ${patch} || true
       # TODO find a better way to get these
       cp ${ghc-prim}/GHC/Prim.hs ghc-prim/GHC/Prim.hs
       cp ${ghc-prim}/GHC/PrimopWrappers.hs ghc-prim/GHC/PrimopWrappers.hs
@@ -116,7 +125,7 @@ in
     inherit ghc-head ghc864 plan-nix;
     asterius-boot = pkgs.runCommand "asterius-boot" {
       preferLocalBuild = true;
-      nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compiler.nix-name} pkgs.autoconf  ];
+      nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compiler.nix-name} pkgs.autoconf pkgs.automake ];
     } ''
       mkdir -p $out/bin
       mkdir -p $out/boot

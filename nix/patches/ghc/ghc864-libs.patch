@@ -1,6 +1,6 @@
-diff -Nu -r old/base/Asterius/Prim.hs new/base/Asterius/Prim.hs
---- old/base/Asterius/Prim.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/base/Asterius/Prim.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/Asterius/Prim.hs new/libraries/base/Asterius/Prim.hs
+--- old/libraries/base/Asterius/Prim.hs	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/base/Asterius/Prim.hs	2019-05-13 13:38:14.000000000 +1200
 @@ -0,0 +1,12 @@
 +{-# LANGUAGE CPP #-}
 +{-# LANGUAGE NoImplicitPrelude #-}
@@ -14,9 +14,9 @@ diff -Nu -r old/base/Asterius/Prim.hs new/base/Asterius/Prim.hs
 +foreign import javascript "__asterius_jsffi.stdio.putChar(${1},${2})" js_putChar :: Int -> Char -> IO ()
 +
 +#endif
-diff -Nu -r old/base/Asterius/Types.hs new/base/Asterius/Types.hs
---- old/base/Asterius/Types.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/base/Asterius/Types.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/Asterius/Types.hs new/libraries/base/Asterius/Types.hs
+--- old/libraries/base/Asterius/Types.hs	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/base/Asterius/Types.hs	2019-05-13 13:38:14.000000000 +1200
 @@ -0,0 +1,227 @@
 +{-# LANGUAGE MagicHash #-}
 +{-# LANGUAGE NoImplicitPrelude #-}
@@ -245,21 +245,10 @@ diff -Nu -r old/base/Asterius/Types.hs new/base/Asterius/Types.hs
 +
 +foreign import javascript "JSON.stringify(${1})" js_jsonStringify
 +  :: JSVal -> JSString
-diff -Nu -r old/base/Data/Bits.hs new/base/Data/Bits.hs
---- old/base/Data/Bits.hs	2019-05-09 03:21:11.221014414 +0000
-+++ new/base/Data/Bits.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -540,8 +540,8 @@
-    testBit x (I# i) = testBitInteger x i
-    zeroBits   = 0
- 
--   bit (I# i#) = bitInteger i#
--   popCount x  = I# (popCountInteger x)
-+   bit (I# i#) = errorWithoutStackTrace "bitInteger"
-+   popCount x  = errorWithoutStackTrace "popCountInteger"
- 
-    rotate x i = shift x i   -- since an Integer never wraps around
- 
-@@ -563,8 +563,8 @@
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/Data/Bits.hs new/libraries/base/Data/Bits.hs
+--- old/libraries/base/Data/Bits.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/Data/Bits.hs	2019-05-13 13:38:14.000000000 +1200
+@@ -555,8 +555,8 @@
     zeroBits      = wordToNaturalBase 0##
     clearBit x i  = x `xor` (bit i .&. x)
  
@@ -270,9 +259,9 @@ diff -Nu -r old/base/Data/Bits.hs new/base/Data/Bits.hs
  
     rotate x i = shift x i   -- since an Natural never wraps around
  
-diff -Nu -r old/base/GHC/IO/Handle/FD.hs new/base/GHC/IO/Handle/FD.hs
---- old/base/GHC/IO/Handle/FD.hs	2019-05-09 03:21:11.281571539 +0000
-+++ new/base/GHC/IO/Handle/FD.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/GHC/IO/Handle/FD.hs new/libraries/base/GHC/IO/Handle/FD.hs
+--- old/libraries/base/GHC/IO/Handle/FD.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/GHC/IO/Handle/FD.hs	2019-05-13 13:38:14.000000000 +1200
 @@ -6,7 +6,6 @@
  -- Module      :  GHC.IO.Handle.FD
  -- Copyright   :  (c) The University of Glasgow, 1994-2008
@@ -363,18 +352,7 @@ diff -Nu -r old/base/GHC/IO/Handle/FD.hs new/base/GHC/IO/Handle/FD.hs
  
  -- We have to put the FDs into binary mode on Windows to avoid the newline
  -- translation that the CRT IO library does.
-@@ -131,9 +148,7 @@
- --  * 'System.IO.Error.isAlreadyInUseError' if the file is already open and
- --    cannot be reopened;
- --
----  * 'System.IO.Error.isDoesNotExistError' if the file does not exist or
----    (on POSIX systems) is a FIFO without a reader and 'WriteMode' was
----    requested; or
-+--  * 'System.IO.Error.isDoesNotExistError' if the file does not exist; or
- --
- --  * 'System.IO.Error.isPermissionError' if the user does not have permission
- --     to open the file.
-@@ -141,7 +156,7 @@
+@@ -139,7 +156,7 @@
  -- Note: if you will be working with files containing binary data, you'll want to
  -- be using 'openBinaryFile'.
  openFile :: FilePath -> IOMode -> IO Handle
@@ -383,7 +361,7 @@ diff -Nu -r old/base/GHC/IO/Handle/FD.hs new/base/GHC/IO/Handle/FD.hs
    catchException
      (openFile' fp im dEFAULT_OPEN_IN_BINARY_MODE True)
      (\e -> ioError (addFilePathToIOError "openFile" fp e))
-@@ -203,12 +218,14 @@
+@@ -201,12 +218,14 @@
     -> Bool      --  *set* non-blocking mode on the FD
     -> Maybe TextEncoding
     -> IO Handle
@@ -400,7 +378,7 @@ diff -Nu -r old/base/GHC/IO/Handle/FD.hs new/base/GHC/IO/Handle/FD.hs
               then FD.setNonBlockingMode fd0 True
               else return fd0
  #else
-@@ -220,19 +237,20 @@
+@@ -218,19 +237,20 @@
             | otherwise       = noNewlineTranslation
  
      case fd_type of
@@ -425,7 +403,7 @@ diff -Nu -r old/base/GHC/IO/Handle/FD.hs new/base/GHC/IO/Handle/FD.hs
  
  -- | Old API kept to avoid breaking clients
  fdToHandle' :: CInt
-@@ -266,7 +284,7 @@
+@@ -264,7 +284,7 @@
  fdToHandle fdint = do
     iomode <- Posix.fdGetMode fdint
     (fd,fd_type) <- FD.mkFD fdint iomode Nothing
@@ -434,7 +412,7 @@ diff -Nu -r old/base/GHC/IO/Handle/FD.hs new/base/GHC/IO/Handle/FD.hs
                -- NB. the is_socket flag is False, meaning that:
                --  on Windows we're guessing this is not a socket (XXX)
              False{-is_nonblock-}
-@@ -274,12 +292,22 @@
+@@ -272,12 +292,22 @@
                -- not put into non-blocking mode, because that would affect
                -- other users of the file descriptor
     let fd_str = "<file descriptor: " ++ show fd ++ ">"
@@ -458,7 +436,7 @@ diff -Nu -r old/base/GHC/IO/Handle/FD.hs new/base/GHC/IO/Handle/FD.hs
  handleToFd h = case h of
    FileHandle _ mv -> do
      Handle__{haDevice = dev} <- readMVar mv
-@@ -290,7 +318,7 @@
+@@ -288,7 +318,7 @@
    where
      throwErr msg = ioException $ IOError (Just h)
        InappropriateType "handleToFd" msg Nothing Nothing
@@ -467,23 +445,14 @@ diff -Nu -r old/base/GHC/IO/Handle/FD.hs new/base/GHC/IO/Handle/FD.hs
  
  -- ---------------------------------------------------------------------------
  -- Are files opened by default in text or binary mode, if the user doesn't
-diff -Nu -r old/base/GHC/IO/Handle/Internals.hs new/base/GHC/IO/Handle/Internals.hs
---- old/base/GHC/IO/Handle/Internals.hs	2019-05-09 03:21:11.282123374 +0000
-+++ new/base/GHC/IO/Handle/Internals.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/GHC/IO/Handle/Internals.hs new/libraries/base/GHC/IO/Handle/Internals.hs
+--- old/libraries/base/GHC/IO/Handle/Internals.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/GHC/IO/Handle/Internals.hs	2019-05-13 13:38:14.000000000 +1200
 @@ -1,3 +1,4 @@
 +{-# LANGUAGE CPP #-}
  {-# LANGUAGE Trustworthy #-}
  {-# LANGUAGE NoImplicitPrelude
             , RecordWildCards
-@@ -7,7 +8,7 @@
-   #-}
- {-# OPTIONS_GHC -Wno-unused-matches #-}
- {-# OPTIONS_GHC -Wno-name-shadowing #-}
--{-# OPTIONS_HADDOCK not-home #-}
-+{-# OPTIONS_HADDOCK hide #-}
- 
- -----------------------------------------------------------------------------
- -- |
 @@ -26,14 +27,14 @@
  -----------------------------------------------------------------------------
  
@@ -741,18 +710,9 @@ diff -Nu -r old/base/GHC/IO/Handle/Internals.hs new/base/GHC/IO/Handle/Internals
    return cbuf'
  
 +#endif
-diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
---- old/base/GHC/IO/Handle/Text.hs	2019-05-09 03:21:11.282695920 +0000
-+++ new/base/GHC/IO/Handle/Text.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -8,7 +8,7 @@
-   #-}
- {-# OPTIONS_GHC -Wno-name-shadowing #-}
- {-# OPTIONS_GHC -Wno-unused-matches #-}
--{-# OPTIONS_HADDOCK not-home #-}
-+{-# OPTIONS_HADDOCK hide #-}
- 
- -----------------------------------------------------------------------------
- -- |
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/GHC/IO/Handle/Text.hs new/libraries/base/GHC/IO/Handle/Text.hs
+--- old/libraries/base/GHC/IO/Handle/Text.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/GHC/IO/Handle/Text.hs	2019-05-21 13:33:44.000000000 +1200
 @@ -26,7 +26,9 @@
  
  module GHC.IO.Handle.Text (
@@ -810,7 +770,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- ---------------------------------------------------------------------------
  -- hGetLine
-@@ -186,11 +200,18 @@
+@@ -186,9 +200,15 @@
  -- line is returned.
  
  hGetLine :: Handle -> IO String
@@ -825,11 +785,8 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
 +#if !defined(ASTERIUS)
  
  hGetLineBuffered :: Handle__ -> IO String
-+hGetLineBuffered = undefined
  hGetLineBuffered handle_@Handle__{..} = do
-   buf <- readIORef haCharBuffer
-   hGetLineBufferedLoop handle_ buf []
-@@ -254,6 +275,8 @@
+@@ -254,6 +274,8 @@
                    then return Nothing
                    else ioError e)
  
@@ -838,7 +795,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  -- See GHC.IO.Buffer
  #define CHARBUF_UTF32
  -- #define CHARBUF_UTF16
-@@ -375,15 +398,20 @@
+@@ -375,15 +397,21 @@
  --  * 'isEOFError' if the end of file has been reached.
  
  hGetContents :: Handle -> IO String
@@ -856,21 +813,11 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  -- they have to check whether the handle has indeed been closed.
  
 +#if !defined(ASTERIUS)
++
  lazyRead :: Handle -> IO String
  lazyRead handle =
     unsafeInterleaveIO $
-@@ -425,8 +453,10 @@
- 
-                   return (handle_', r)
-         )
-+#endif
- 
- -- ensure we have some characters in the buffer
-+#if !defined(ASTERIUS)
- getSomeCharacters :: Handle__ -> CharBuffer -> IO CharBuffer
- getSomeCharacters handle_@Handle__{..} buf@Buffer{..} =
-   case bufferElems buf of
-@@ -452,6 +482,7 @@
+@@ -452,6 +480,7 @@
      -- buffer has some chars in it already: just return it
      _otherwise ->
        return buf
@@ -878,7 +825,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- ---------------------------------------------------------------------------
  -- hPutChar
-@@ -467,11 +498,16 @@
+@@ -467,11 +496,16 @@
  --  * 'isPermissionError' if another system resource limit would be exceeded.
  
  hPutChar :: Handle -> Char -> IO ()
@@ -895,7 +842,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  hPutcBuffered :: Handle__ -> Char -> IO ()
  hPutcBuffered handle_@Handle__{..} c = do
    buf <- readIORef haCharBuffer
-@@ -497,6 +533,7 @@
+@@ -497,6 +531,7 @@
         debugIO ("putc: " ++ summaryBuffer buf)
         w'  <- writeCharBuf raw w c
         return buf{ bufR = w' }
@@ -903,7 +850,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- ---------------------------------------------------------------------------
  -- hPutStr
-@@ -539,6 +576,12 @@
+@@ -539,6 +574,12 @@
  
  {-# NOINLINE hPutStr' #-}
  hPutStr' :: Handle -> String -> Bool -> IO ()
@@ -916,7 +863,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  hPutStr' handle str add_nl =
    do
      (buffer_mode, nl) <-
-@@ -554,11 +597,13 @@
+@@ -554,11 +595,13 @@
              writeBlocks handle True  add_nl nl buf str
         (BlockBuffering _, buf) -> do
              writeBlocks handle False add_nl nl buf str
@@ -930,7 +877,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  getSpareBuffer :: Handle__ -> IO (BufferMode, CharBuffer)
  getSpareBuffer Handle__{haCharBuffer=ref,
                          haBuffers=spare_ref,
-@@ -576,9 +621,10 @@
+@@ -576,9 +619,10 @@
              BufferListNil -> do
                  new_buf <- newCharBuffer (bufSize buf) WriteBuffer
                  return (mode, new_buf)
@@ -942,7 +889,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  writeBlocks :: Handle -> Bool -> Bool -> Newline -> Buffer CharBufElem -> String -> IO ()
  writeBlocks hdl line_buffered add_nl nl
              buf@Buffer{ bufRaw=raw, bufSize=len } s =
-@@ -612,13 +658,14 @@
+@@ -612,6 +656,7 @@
          shoveString n' cs rest
    in
    shoveString 0 s (if add_nl then "\n" else "")
@@ -950,15 +897,15 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- -----------------------------------------------------------------------------
  -- commitBuffer handle buf sz count flush release
- --
+@@ -619,6 +664,7 @@
  -- Write the contents of the buffer 'buf' ('sz' bytes long, containing
  -- 'count' bytes of data) to handle (handle must be block or line buffered).
--
+ 
 +#if !defined(ASTERIUS)
  commitBuffer
          :: Handle                       -- handle to commit to
          -> RawCharBuffer -> Int         -- address and size (in bytes) of buffer
-@@ -671,6 +718,7 @@
+@@ -671,6 +717,7 @@
                 writeIORef haBuffers (BufferListCons raw spare_bufs)
  
        return this_buf
@@ -966,7 +913,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- ---------------------------------------------------------------------------
  -- Reading/writing sequences of bytes.
-@@ -717,6 +765,9 @@
+@@ -717,6 +764,9 @@
    | count == 0 = return 0
    | count <  0 = illegalBufferSize handle "hPutBuf" count
    | otherwise =
@@ -976,7 +923,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
      wantWritableHandle "hPutBuf" handle $
        \ h_@Handle__{..} -> do
            debugIO ("hPutBuf count=" ++ show count)
-@@ -730,7 +781,9 @@
+@@ -730,7 +780,9 @@
               BlockBuffering _      -> do return ()
               _line_or_no_buffering -> do flushWriteBuffer h_
            return r
@@ -986,7 +933,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  bufWrite :: Handle__-> Ptr Word8 -> Int -> Bool -> IO Int
  bufWrite h_@Handle__{..} ptr count can_block =
    seq count $ do  -- strictness hack
-@@ -788,6 +841,7 @@
+@@ -788,6 +840,7 @@
  writeChunkNonBlocking h_@Handle__{..} ptr bytes
    | Just fd <- cast haDevice  =  RawIO.writeNonBlocking (fd::FD) ptr bytes
    | otherwise = error "Todo: hPutBuf"
@@ -994,17 +941,17 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- ---------------------------------------------------------------------------
  -- hGetBuf
-@@ -808,6 +862,9 @@
+@@ -808,6 +861,9 @@
  -- on the 'Handle', and reads bytes directly.
  
  hGetBuf :: Handle -> Ptr a -> Int -> IO Int
 +#if defined(ASTERIUS)
 +hGetBuf = undefined
 +#else
- hGetBuf h !ptr count
+ hGetBuf h ptr count
    | count == 0 = return 0
    | count <  0 = illegalBufferSize h "hGetBuf" count
-@@ -819,11 +876,13 @@
+@@ -819,11 +875,13 @@
           if isEmptyBuffer buf
              then bufReadEmpty    h_ buf (castPtr ptr) 0 count
              else bufReadNonEmpty h_ buf (castPtr ptr) 0 count
@@ -1018,7 +965,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  bufReadNonEmpty :: Handle__ -> Buffer Word8 -> Ptr Word8 -> Int -> Int -> IO Int
  bufReadNonEmpty h_@Handle__{..}
                  buf@Buffer{ bufRaw=raw, bufR=w, bufL=r, bufSize=sz }
-@@ -868,6 +927,7 @@
+@@ -868,6 +926,7 @@
      if r == 0
          then return (so_far + off)
          else loop fd (off + r) (bytes - r)
@@ -1026,17 +973,17 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- ---------------------------------------------------------------------------
  -- hGetBufSome
-@@ -890,6 +950,9 @@
- -- 'NewlineMode' on the 'Handle', and reads bytes directly.
+@@ -890,6 +949,9 @@
+ -- on the 'Handle', and reads bytes directly.
  
  hGetBufSome :: Handle -> Ptr a -> Int -> IO Int
 +#if defined(ASTERIUS)
 +hGetBufSome = undefined
 +#else
- hGetBufSome h !ptr count
+ hGetBufSome h ptr count
    | count == 0 = return 0
    | count <  0 = illegalBufferSize h "hGetBufSome" count
-@@ -911,9 +974,12 @@
+@@ -911,9 +973,12 @@
              else
                let count' = min count (bufferElems buf)
                in bufReadNBNonEmpty h_ buf (castPtr ptr) 0 count'
@@ -1049,17 +996,17 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- | 'hGetBufNonBlocking' @hdl buf count@ reads data from the handle @hdl@
  -- into the buffer @buf@ until either EOF is reached, or
-@@ -935,6 +1001,9 @@
+@@ -935,6 +1000,9 @@
  -- behaves identically to 'hGetBuf'.
  
  hGetBufNonBlocking :: Handle -> Ptr a -> Int -> IO Int
 +#if defined(ASTERIUS)
 +hGetBufNonBlocking = undefined
 +#else
- hGetBufNonBlocking h !ptr count
+ hGetBufNonBlocking h ptr count
    | count == 0 = return 0
    | count <  0 = illegalBufferSize h "hGetBufNonBlocking" count
-@@ -946,7 +1015,9 @@
+@@ -946,7 +1014,9 @@
           if isEmptyBuffer buf
              then bufReadNBEmpty    h_ buf (castPtr ptr) 0 count
              else bufReadNBNonEmpty h_ buf (castPtr ptr) 0 count
@@ -1069,7 +1016,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  bufReadNBEmpty :: Handle__ -> Buffer Word8 -> Ptr Word8 -> Int -> Int -> IO Int
  bufReadNBEmpty   h_@Handle__{..}
                   buf@Buffer{ bufRaw=raw, bufR=w, bufL=r, bufSize=sz }
-@@ -996,6 +1067,7 @@
+@@ -996,6 +1066,7 @@
          if remaining == 0
             then return so_far'
             else bufReadNBEmpty h_ buf' ptr' so_far' remaining
@@ -1077,23 +1024,9 @@ diff -Nu -r old/base/GHC/IO/Handle/Text.hs new/base/GHC/IO/Handle/Text.hs
  
  -- ---------------------------------------------------------------------------
  -- memcpy wrappers
-@@ -1024,4 +1096,3 @@
-                             InvalidArgument  fn
-                             ("illegal buffer size " ++ showsPrec 9 sz [])
-                             Nothing Nothing)
--
-diff -Nu -r old/base/GHC/IO/Handle/Types.hs new/base/GHC/IO/Handle/Types.hs
---- old/base/GHC/IO/Handle/Types.hs	2019-05-09 03:21:11.282947384 +0000
-+++ new/base/GHC/IO/Handle/Types.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -4,7 +4,7 @@
-            , ExistentialQuantification
-   #-}
- {-# OPTIONS_GHC -funbox-strict-fields #-}
--{-# OPTIONS_HADDOCK not-home #-}
-+{-# OPTIONS_HADDOCK hide #-}
- 
- -----------------------------------------------------------------------------
- -- |
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/GHC/IO/Handle/Types.hs new/libraries/base/GHC/IO/Handle/Types.hs
+--- old/libraries/base/GHC/IO/Handle/Types.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/GHC/IO/Handle/Types.hs	2019-05-21 13:41:17.000000000 +1200
 @@ -21,8 +21,12 @@
  -----------------------------------------------------------------------------
  
@@ -1121,11 +1054,12 @@ diff -Nu -r old/base/GHC/IO/Handle/Types.hs new/base/GHC/IO/Handle/Types.hs
  data Handle
    = FileHandle                          -- A normal handle to a file
          FilePath                        -- the file (used for error messages
-@@ -108,16 +118,29 @@
+@@ -108,16 +118,30 @@
          !(MVar Handle__)                -- The read side
          !(MVar Handle__)                -- The write side
  
 +#endif
++
  -- NOTES:
  --    * A 'FileHandle' is seekable.  A 'DuplexHandle' may or may not be
  --      seekable.
@@ -1151,15 +1085,16 @@ diff -Nu -r old/base/GHC/IO/Handle/Types.hs new/base/GHC/IO/Handle/Types.hs
  data Handle__
    = forall dev enc_state dec_state . (IODevice dev, BufferedIO dev, Typeable dev) =>
      Handle__ {
-@@ -137,6 +160,7 @@
+@@ -137,6 +161,8 @@
                                               -- duplex handle.
      }
  
 +#endif
++
  -- we keep a few spare buffers around in a handle to avoid allocating
  -- a new one for each hPutStr.  These buffers are *guaranteed* to be the
  -- same size as the main buffer.
-@@ -178,6 +202,8 @@
+@@ -178,6 +204,8 @@
  --   * In a read Handle, the byte buffer is always empty (we decode when reading)
  --   * In a wriite Handle, the Char buffer is always empty (we encode when writing)
  --
@@ -1168,7 +1103,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Types.hs new/base/GHC/IO/Handle/Types.hs
  checkHandleInvariants :: Handle__ -> IO ()
  #if defined(DEBUG)
  checkHandleInvariants h_ = do
-@@ -196,6 +222,8 @@
+@@ -196,6 +224,8 @@
  checkHandleInvariants _ = return ()
  #endif
  
@@ -1177,40 +1112,7 @@ diff -Nu -r old/base/GHC/IO/Handle/Types.hs new/base/GHC/IO/Handle/Types.hs
  -- ---------------------------------------------------------------------------
  -- Buffering modes
  
-@@ -351,8 +379,8 @@
- -- Newline translation
- 
- -- | The representation of a newline in the external file or stream.
--data Newline = LF    -- ^ @\'\\n\'@
--             | CRLF  -- ^ @\'\\r\\n\'@
-+data Newline = LF    -- ^ '\n'
-+             | CRLF  -- ^ '\r\n'
-              deriving ( Eq   -- ^ @since 4.2.0.0
-                       , Ord  -- ^ @since 4.3.0.0
-                       , Read -- ^ @since 4.3.0.0
-@@ -361,9 +389,9 @@
- 
- -- | Specifies the translation, if any, of newline characters between
- -- internal Strings and the external file or stream.  Haskell Strings
---- are assumed to represent newlines with the @\'\\n\'@ character; the
---- newline mode specifies how to translate @\'\\n\'@ on output, and what to
---- translate into @\'\\n\'@ on input.
-+-- are assumed to represent newlines with the '\n' character; the
-+-- newline mode specifies how to translate '\n' on output, and what to
-+-- translate into '\n' on input.
- data NewlineMode
-   = NewlineMode { inputNL :: Newline,
-                     -- ^ the representation of newlines on input
-@@ -385,7 +413,7 @@
- nativeNewline = LF
- #endif
- 
---- | Map @\'\\r\\n\'@ into @\'\\n\'@ on input, and @\'\\n\'@ to the native newline
-+-- | Map '\r\n' into '\n' on input, and '\n' to the native newline
- -- represetnation on output.  This mode can be used on any platform, and
- -- works with text files using any newline convention.  The downside is
- -- that @readFile >>= writeFile@ might yield a different file.
-@@ -432,10 +460,18 @@
+@@ -432,10 +462,19 @@
        ReadWriteHandle   -> showString "read-writable"
  
  -- | @since 4.1.0.0
@@ -1229,10 +1131,10 @@ diff -Nu -r old/base/GHC/IO/Handle/Types.hs new/base/GHC/IO/Handle/Types.hs
 +
  showHandle :: FilePath -> String -> String
  showHandle file = showString "{handle: " . showString file . showString "}"
--
-diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
---- old/base/GHC/IO/Handle.hs	2019-05-09 03:21:11.280745821 +0000
-+++ new/base/GHC/IO/Handle.hs	1970-01-01 00:00:01.000000000 +0000
+ 
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/GHC/IO/Handle.hs new/libraries/base/GHC/IO/Handle.hs
+--- old/libraries/base/GHC/IO/Handle.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/GHC/IO/Handle.hs	2019-05-21 13:52:59.000000000 +1200
 @@ -21,16 +21,19 @@
  -----------------------------------------------------------------------------
  
@@ -1336,7 +1238,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  -- ---------------------------------------------------------------------------
  -- isEOF
 @@ -186,8 +206,12 @@
- --  * 'System.IO.Error.isEOFError' if the end of file has been reached.
+ --  * 'isEOFError' if the end of file has been reached.
  
  hLookAhead :: Handle -> IO Char
 +#if defined(ASTERIUS)
@@ -1349,7 +1251,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  -- ---------------------------------------------------------------------------
  -- Buffering Operations
 @@ -213,6 +237,9 @@
- --    buffering mode to be changed.
+ --    to be changed.
  
  hSetBuffering :: Handle -> BufferMode -> IO ()
 +#if defined(ASTERIUS)
@@ -1398,7 +1300,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  -- -----------------------------------------------------------------------------
  -- hFlush
 @@ -302,7 +338,11 @@
- --    discarded or retained under these circumstances.
+ --    or retained under these circumstances.
  
  hFlush :: Handle -> IO ()
 +#if defined(ASTERIUS)
@@ -1410,7 +1312,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  -- | The action 'hFlushAll' @hdl@ flushes all buffered data in @hdl@,
  -- including any buffered read data.  Buffered read data is flushed
 @@ -322,7 +362,11 @@
- --    is not seekable.
+ --    seekable.
  
  hFlushAll :: Handle -> IO ()
 +#if defined(ASTERIUS)
@@ -1421,8 +1323,8 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- -----------------------------------------------------------------------------
  -- Repositioning Handles
-@@ -399,6 +443,9 @@
- --    exceeded.
+@@ -397,6 +441,9 @@
+ --  * 'isPermissionError' if a system resource limit would be exceeded.
  
  hSeek :: Handle -> SeekMode -> Integer -> IO ()
 +#if defined(ASTERIUS)
@@ -1431,7 +1333,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hSeek handle mode offset =
      wantSeekableHandle "hSeek" handle $ \ handle_@Handle__{..} -> do
      debugIO ("hSeek " ++ show (mode,offset))
-@@ -418,7 +465,7 @@
+@@ -416,7 +463,7 @@
      flushCharReadBuffer handle_
      flushByteReadBuffer handle_
      IODevice.seek haDevice mode offset
@@ -1440,8 +1342,8 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- | Computation 'hTell' @hdl@ returns the current position of the
  -- handle @hdl@, as the number of bytes from the beginning of
-@@ -430,6 +477,9 @@
- --  * 'System.IO.Error.isIllegalOperationError' if the Handle is not seekable.
+@@ -428,6 +475,9 @@
+ --  * 'isIllegalOperationError' if the Handle is not seekable.
  --
  hTell :: Handle -> IO Integer
 +#if defined(ASTERIUS)
@@ -1450,7 +1352,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hTell handle =
      wantSeekableHandle "hGetPosn" handle $ \ handle_@Handle__{..} -> do
  
-@@ -451,6 +501,7 @@
+@@ -449,6 +499,7 @@
              "   bbuf: " ++ summaryBuffer bbuf)
  
        return real_posn
@@ -1458,7 +1360,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- -----------------------------------------------------------------------------
  -- Handle Properties
-@@ -460,19 +511,27 @@
+@@ -458,19 +509,27 @@
  -- the specified property, and `False' otherwise.
  
  hIsOpen :: Handle -> IO Bool
@@ -1486,7 +1388,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  {- not defined, nor exported, but mentioned
     here for documentation purposes:
-@@ -485,6 +544,9 @@
+@@ -483,6 +542,9 @@
  -}
  
  hIsReadable :: Handle -> IO Bool
@@ -1496,7 +1398,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hIsReadable (DuplexHandle _ _ _) = return True
  hIsReadable handle =
      withHandle_ "hIsReadable" handle $ \ handle_ -> do
-@@ -492,8 +554,12 @@
+@@ -490,8 +552,12 @@
        ClosedHandle         -> ioe_closedHandle
        SemiClosedHandle     -> ioe_semiclosedHandle
        htype                -> return (isReadableHandleType htype)
@@ -1509,7 +1411,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hIsWritable (DuplexHandle _ _ _) = return True
  hIsWritable handle =
      withHandle_ "hIsWritable" handle $ \ handle_ -> do
-@@ -501,11 +567,15 @@
+@@ -499,11 +565,15 @@
        ClosedHandle         -> ioe_closedHandle
        SemiClosedHandle     -> ioe_semiclosedHandle
        htype                -> return (isWritableHandleType htype)
@@ -1525,7 +1427,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hGetBuffering handle =
      withHandle_ "hGetBuffering" handle $ \ handle_ -> do
      case haType handle_ of
-@@ -514,8 +584,12 @@
+@@ -512,8 +582,12 @@
             -- We're being non-standard here, and allow the buffering
             -- of a semi-closed handle to be queried.   -- sof 6/98
            return (haBufferMode handle_)  -- could be stricter..
@@ -1538,7 +1440,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hIsSeekable handle =
      withHandle_ "hIsSeekable" handle $ \ handle_@Handle__{..} -> do
      case haType of
-@@ -523,6 +597,7 @@
+@@ -521,6 +595,7 @@
        SemiClosedHandle     -> ioe_semiclosedHandle
        AppendHandle         -> return False
        _                    -> IODevice.isSeekable haDevice
@@ -1546,7 +1448,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- -----------------------------------------------------------------------------
  -- Changing echo status
-@@ -530,6 +605,9 @@
+@@ -528,6 +603,9 @@
  -- | Set the echoing status of a handle connected to a terminal.
  
  hSetEcho :: Handle -> Bool -> IO ()
@@ -1556,7 +1458,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hSetEcho handle on = do
      isT   <- hIsTerminalDevice handle
      if not isT
-@@ -539,10 +617,14 @@
+@@ -537,10 +615,14 @@
        case haType of
           ClosedHandle -> ioe_closedHandle
           _            -> IODevice.setEcho haDevice on
@@ -1571,7 +1473,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hGetEcho handle = do
      isT   <- hIsTerminalDevice handle
      if not isT
-@@ -552,15 +634,20 @@
+@@ -550,15 +632,20 @@
         case haType of
           ClosedHandle -> ioe_closedHandle
           _            -> IODevice.getEcho haDevice
@@ -1592,7 +1494,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- -----------------------------------------------------------------------------
  -- hSetBinaryMode
-@@ -572,6 +659,9 @@
+@@ -570,6 +657,9 @@
  -- with 'hSetNewlineMode' with 'noNewlineTranslation'.
  --
  hSetBinaryMode :: Handle -> Bool -> IO ()
@@ -1602,7 +1504,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hSetBinaryMode handle bin =
    withAllHandles__ "hSetBinaryMode" handle $ \ h_@Handle__{..} ->
      do
-@@ -596,6 +686,7 @@
+@@ -594,6 +684,7 @@
                            haCodec    = mb_te,
                            haInputNL  = inputNL nl,
                            haOutputNL = outputNL nl, .. }
@@ -1610,7 +1512,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- -----------------------------------------------------------------------------
  -- hSetNewlineMode
-@@ -603,11 +694,15 @@
+@@ -601,11 +692,15 @@
  -- | Set the 'NewlineMode' on the specified 'Handle'.  All buffered
  -- data is flushed first.
  hSetNewlineMode :: Handle -> NewlineMode -> IO ()
@@ -1618,8 +1520,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
 +hSetNewlineMode = undefined
 +#else
  hSetNewlineMode handle NewlineMode{ inputNL=i, outputNL=o } =
--  withAllHandles__ "hSetNewlineMode" handle $ \h_@Handle__{} ->
-+  withAllHandles__ "hSetNewlineMode" handle $ \h_@Handle__{..} ->
+   withAllHandles__ "hSetNewlineMode" handle $ \h_@Handle__{..} ->
      do
           flushBuffer h_
           return h_{ haInputNL=i, haOutputNL=o }
@@ -1627,7 +1528,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- -----------------------------------------------------------------------------
  -- Duplicating a Handle
-@@ -618,6 +713,9 @@
+@@ -616,6 +711,9 @@
  -- before the handle is duplicated.
  
  hDuplicate :: Handle -> IO Handle
@@ -1637,7 +1538,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hDuplicate h@(FileHandle path m) = do
    withHandle_' "hDuplicate" h m $ \h_ ->
        dupHandle path h Nothing h_ (Just handleFinalizer)
-@@ -629,7 +727,9 @@
+@@ -627,7 +725,9 @@
      withHandle_' "hDuplicate" h r $ \h_ ->
          dupHandle path h (Just write_m) h_  Nothing
    return (DuplexHandle path read_m write_m)
@@ -1647,7 +1548,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  dupHandle :: FilePath
            -> Handle
            -> Maybe (MVar Handle__)
-@@ -659,6 +759,7 @@
+@@ -657,6 +757,7 @@
    mkHandle new_dev filepath haType True{-buffered-} mb_codec
        NewlineMode { inputNL = haInputNL, outputNL = haOutputNL }
        mb_finalizer other_side
@@ -1655,7 +1556,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- -----------------------------------------------------------------------------
  -- Replacing a Handle
-@@ -674,6 +775,9 @@
+@@ -672,6 +773,9 @@
  -}
  
  hDuplicateTo :: Handle -> Handle -> IO ()
@@ -1665,7 +1566,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  hDuplicateTo h1@(FileHandle path m1) h2@(FileHandle _ m2)  = do
   withHandle__' "hDuplicateTo" h2 m2 $ \h2_ -> do
     _ <- hClose_help h2_
-@@ -690,13 +794,16 @@
+@@ -688,13 +792,16 @@
       dupHandleTo path h1 (Just w1) r2_ r1_ Nothing
  hDuplicateTo h1 _ =
    ioe_dupHandlesNotCompatible h1
@@ -1683,16 +1584,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  dupHandleTo :: FilePath
              -> Handle
              -> Maybe (MVar Handle__)
-@@ -705,7 +812,7 @@
-             -> Maybe HandleFinalizer
-             -> IO Handle__
- dupHandleTo filepath h other_side
--            hto_@Handle__{haDevice=devTo}
-+            hto_@Handle__{haDevice=devTo,..}
-             h_@Handle__{haDevice=dev} mb_finalizer = do
-   flushBuffer h_
-   case cast devTo of
-@@ -714,6 +821,7 @@
+@@ -712,6 +819,7 @@
        _ <- IODevice.dup2 dev dev'
        FileHandle _ m <- dupHandle_ dev' filepath other_side h_ mb_finalizer
        takeMVar m
@@ -1700,7 +1592,7 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  
  -- ---------------------------------------------------------------------------
  -- showing Handles.
-@@ -722,9 +830,14 @@
+@@ -720,9 +828,14 @@
  -- than the (pure) instance of 'Show' for 'Handle'.
  
  hShow :: Handle -> IO String
@@ -1715,58 +1607,16 @@ diff -Nu -r old/base/GHC/IO/Handle.hs new/base/GHC/IO/Handle.hs
  showHandle' :: String -> Bool -> Handle -> IO String
  showHandle' filepath is_duplex h =
    withHandle_ "showHandle" h $ \hdl_ ->
-@@ -757,4 +870,4 @@
+@@ -755,4 +868,4 @@
        where
         def :: Int
         def = bufSize buf
 -
 +#endif
-diff -Nu -r old/base/GHC/Natural.hs new/base/GHC/Natural.hs
---- old/base/GHC/Natural.hs	2019-05-09 03:21:11.285619643 +0000
-+++ new/base/GHC/Natural.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -42,15 +42,12 @@
-     , quotRemNatural
-     , quotNatural
-     , remNatural
--    , gcdNatural
--    , lcmNatural
-       -- * Bits
-     , andNatural
-     , orNatural
-     , xorNatural
-     , bitNatural
-     , testBitNatural
--    , popCountNatural
-     , shiftLNatural
-     , shiftRNatural
-       -- * Conversions
-@@ -177,25 +174,6 @@
- naturalFromInteger _        = underflowError
- {-# CONSTANT_FOLDED naturalFromInteger #-}
- 
---- | Compute greatest common divisor.
--gcdNatural :: Natural -> Natural -> Natural
--gcdNatural (NatS# 0##) y       = y
--gcdNatural x       (NatS# 0##) = x
--gcdNatural (NatS# 1##) _       = NatS# 1##
--gcdNatural _       (NatS# 1##) = NatS# 1##
--gcdNatural (NatJ# x) (NatJ# y) = bigNatToNatural (gcdBigNat x y)
--gcdNatural (NatJ# x) (NatS# y) = NatS# (gcdBigNatWord x y)
--gcdNatural (NatS# x) (NatJ# y) = NatS# (gcdBigNatWord y x)
--gcdNatural (NatS# x) (NatS# y) = NatS# (gcdWord x y)
--
---- | Compute least common multiple.
--lcmNatural :: Natural -> Natural -> Natural
--lcmNatural (NatS# 0##) _ = NatS# 0##
--lcmNatural _ (NatS# 0##) = NatS# 0##
--lcmNatural (NatS# 1##) y = y
--lcmNatural x (NatS# 1##) = x
--lcmNatural x y           = (x `quotNatural` (gcdNatural x y)) `timesNatural` y
--
- ----------------------------------------------------------------------------
- 
- quotRemNatural :: Natural -> Natural -> (Natural, Natural)
-@@ -269,11 +247,6 @@
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/GHC/Natural.hs new/libraries/base/GHC/Natural.hs
+--- old/libraries/base/GHC/Natural.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/GHC/Natural.hs	2019-05-13 13:38:31.000000000 +1200
+@@ -272,11 +272,6 @@
  testBitNatural (NatJ# bn) (I# i#)      = testBitBigNat bn i#
  -- {-# CONSTANT_FOLDED testBitNatural #-}
  
@@ -1778,75 +1628,30 @@ diff -Nu -r old/base/GHC/Natural.hs new/base/GHC/Natural.hs
  shiftLNatural :: Natural -> Int -> Natural
  shiftLNatural n           (I# 0#) = n
  shiftLNatural (NatS# 0##) _       = NatS# 0##
-@@ -435,15 +408,6 @@
-   | True                   = underflowError
- {-# INLINE naturalFromInteger #-}
- 
--
---- | Compute greatest common divisor.
--gcdNatural :: Natural -> Natural -> Natural
--gcdNatural (Natural n) (Natural m) = Natural (n `gcdInteger` m)
--
---- | Compute lowest common multiple.
--lcmNatural :: Natural -> Natural -> Natural
--lcmNatural (Natural n) (Natural m) = Natural (n `lcmInteger` m)
--
- -- | 'Natural' subtraction. Returns 'Nothing's for non-positive results.
- --
- -- @since 4.8.0.0
-@@ -500,9 +464,6 @@
- testBitNatural (Natural n) (I# i) = testBitInteger n i
- -- {-# CONSTANT_FOLDED testBitNatural #-}
- 
--popCountNatural :: Natural -> Int
--popCountNatural (Natural n) = I# (popCountInteger n)
--
- bitNatural :: Int# -> Natural
- bitNatural i#
-   | isTrue# (i# <# WORD_SIZE_IN_BITS#) = wordToNaturalBase (1## `uncheckedShiftL#` i#)
-diff -Nu -r old/base/GHC/Real.hs new/base/GHC/Real.hs
---- old/base/GHC/Real.hs	2019-05-09 03:21:11.288538815 +0000
-+++ new/base/GHC/Real.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -752,13 +752,6 @@
- lcm 0 _         =  0
- lcm x y         =  abs ((x `quot` (gcd x y)) * y)
- 
--{-# RULES
--"gcd/Integer->Integer->Integer" gcd = gcdInteger
--"lcm/Integer->Integer->Integer" lcm = lcmInteger
--"gcd/Natural->Natural->Natural" gcd = gcdNatural
--"lcm/Natural->Natural->Natural" lcm = lcmNatural
-- #-}
--
- #if defined(MIN_VERSION_integer_gmp)
- -- GMP defines a more efficient Int# and Word# GCD
- 
-diff -Nu -r old/base/GHC/Show.hs new/base/GHC/Show.hs
---- old/base/GHC/Show.hs	2019-05-09 03:21:11.290667176 +0000
-+++ new/base/GHC/Show.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/GHC/Show.hs new/libraries/base/GHC/Show.hs
+--- old/libraries/base/GHC/Show.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/GHC/Show.hs	2019-05-21 11:36:07.000000000 +1200
 @@ -1,6 +1,6 @@
  {-# LANGUAGE Trustworthy #-}
  {-# LANGUAGE CPP, NoImplicitPrelude, BangPatterns, StandaloneDeriving,
 -             MagicHash, UnboxedTuples #-}
 +             MagicHash, UnboxedTuples, UnliftedFFITypes #-}
- {-# OPTIONS_HADDOCK not-home #-}
+ {-# OPTIONS_HADDOCK hide #-}
  
  #include "MachDeps.h"
-@@ -53,6 +53,13 @@
- import GHC.List ((!!), foldr1, break)
- import GHC.Num
+@@ -55,6 +55,11 @@
  import GHC.Stack.Types
-+import GHC.Types (TypeLitSort (..))
-+
+ import GHC.Types (TypeLitSort (..))
+ 
 +#if defined(ASTERIUS)
 +import Asterius.Magic
 +import GHC.Integer.Simple.Internals
 +import GHC.Prim
 +#endif
  
- 
  -- | The @shows@ functions return a function that prepends the
-@@ -487,6 +494,16 @@
+ -- output 'String' to an existing 'String'.  This allows constant-time
+@@ -488,6 +493,16 @@
  
  -- Divide and conquer implementation of string conversion
  integerToString :: Integer -> String -> String
@@ -1863,7 +1668,7 @@ diff -Nu -r old/base/GHC/Show.hs new/base/GHC/Show.hs
  integerToString n0 cs0
      | n0 < 0    = '-' : integerToString' (- n0) cs0
      | otherwise = integerToString' n0 cs0
-@@ -563,6 +580,7 @@
+@@ -564,6 +579,7 @@
               c@(C# _) -> jblock' (d - 1) q (c : cs)
          where
          (q, r) = n `quotRemInt` 10
@@ -1871,10 +1676,10 @@ diff -Nu -r old/base/GHC/Show.hs new/base/GHC/Show.hs
  
  instance Show KindRep where
    showsPrec d (KindRepVar v) = showParen (d > 10) $
-diff -Nu -r old/base/base.cabal new/base/base.cabal
---- old/base/base.cabal	2019-05-09 03:21:11.310817080 +0000
-+++ new/base/base.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -318,6 +318,9 @@
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/base.cabal new/libraries/base/base.cabal
+--- old/libraries/base/base.cabal	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/base.cabal	2019-05-13 13:38:36.000000000 +1200
+@@ -319,6 +319,9 @@
          Type.Reflection.Unsafe
          Unsafe.Coerce
  
@@ -1884,9 +1689,9 @@ diff -Nu -r old/base/base.cabal new/base/base.cabal
      other-modules:
          Control.Monad.ST.Imp
          Control.Monad.ST.Lazy.Imp
-diff -Nu -r old/base/cbits/fs.c new/base/cbits/fs.c
---- old/base/cbits/fs.c	1970-01-01 00:00:00.000000000 +0000
-+++ new/base/cbits/fs.c	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/cbits/fs.c new/libraries/base/cbits/fs.c
+--- old/libraries/base/cbits/fs.c	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/base/cbits/fs.c	2019-05-13 13:38:36.000000000 +1200
 @@ -0,0 +1,291 @@
 +/* -----------------------------------------------------------------------------
 + *
@@ -2179,9 +1984,9 @@ diff -Nu -r old/base/cbits/fs.c new/base/cbits/fs.c
 +  return fopen (filename, mode);
 +}
 +#endif
-diff -Nu -r old/base/configure.ac new/base/configure.ac
---- old/base/configure.ac	2019-05-09 03:21:11.317524017 +0000
-+++ new/base/configure.ac	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/configure.ac new/libraries/base/configure.ac
+--- old/libraries/base/configure.ac	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/base/configure.ac	2019-05-13 13:38:36.000000000 +1200
 @@ -237,7 +237,7 @@
  CFLAGS="-I../.. -I../../../../includes $CFLAGS"
  dnl Calling AC_CHECK_TYPE(T) makes AC_CHECK_SIZEOF(T) abort on failure
@@ -2191,9 +1996,9 @@ diff -Nu -r old/base/configure.ac new/base/configure.ac
  AC_CHECK_SIZEOF([struct MD5Context], [], [#include "include/md5.h"])
  
  AC_SUBST(EXTRA_LIBS)
-diff -Nu -r old/base/include/fs.h new/base/include/fs.h
---- old/base/include/fs.h	1970-01-01 00:00:00.000000000 +0000
-+++ new/base/include/fs.h	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/include/fs.h new/libraries/base/include/fs.h
+--- old/libraries/base/include/fs.h	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/base/include/fs.h	2019-05-13 13:38:36.000000000 +1200
 @@ -0,0 +1,36 @@
 +/* -----------------------------------------------------------------------------
 + *
@@ -2231,9 +2036,9 @@ diff -Nu -r old/base/include/fs.h new/base/include/fs.h
 +
 +FILE *FS(fopen) (const char* filename, const char* mode);
 +#endif
-diff -Nu -r old/bytestring/Asterius/ByteString.hs new/bytestring/Asterius/ByteString.hs
---- old/bytestring/Asterius/ByteString.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/bytestring/Asterius/ByteString.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/bytestring/Asterius/ByteString.hs new/libraries/bytestring/Asterius/ByteString.hs
+--- old/libraries/bytestring/Asterius/ByteString.hs	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/bytestring/Asterius/ByteString.hs	2019-05-13 13:38:36.000000000 +1200
 @@ -0,0 +1,39 @@
 +{-# LANGUAGE MagicHash #-}
 +
@@ -2274,9 +2079,9 @@ diff -Nu -r old/bytestring/Asterius/ByteString.hs new/bytestring/Asterius/ByteSt
 +  accursedUnutterablePerformIO $
 +  unsafeUseAsCStringLen bs $ \(Ptr addr, len) ->
 +    evaluate $ toJSArrayBuffer addr len
-diff -Nu -r old/bytestring/Data/ByteString/Builder/Internal.hs new/bytestring/Data/ByteString/Builder/Internal.hs
---- old/bytestring/Data/ByteString/Builder/Internal.hs	2019-05-09 03:21:11.496116581 +0000
-+++ new/bytestring/Data/ByteString/Builder/Internal.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/bytestring/Data/ByteString/Builder/Internal.hs new/libraries/bytestring/Data/ByteString/Builder/Internal.hs
+--- old/libraries/bytestring/Data/ByteString/Builder/Internal.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/bytestring/Data/ByteString/Builder/Internal.hs	2019-05-13 13:38:36.000000000 +1200
 @@ -149,8 +149,10 @@
  
  #if __GLASGOW_HASKELL__ >= 611
@@ -2306,9 +2111,9 @@ diff -Nu -r old/bytestring/Data/ByteString/Builder/Internal.hs new/bytestring/Da
  
  -- | Execute a 'Put' and return the computed result and the bytes
  -- written during the computation as a lazy 'L.ByteString'.
-diff -Nu -r old/bytestring/Data/ByteString/Internal.hs new/bytestring/Data/ByteString/Internal.hs
---- old/bytestring/Data/ByteString/Internal.hs	2019-05-09 03:21:11.499083554 +0000
-+++ new/bytestring/Data/ByteString/Internal.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/bytestring/Data/ByteString/Internal.hs new/libraries/bytestring/Data/ByteString/Internal.hs
+--- old/libraries/bytestring/Data/ByteString/Internal.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/bytestring/Data/ByteString/Internal.hs	2019-05-13 13:38:36.000000000 +1200
 @@ -119,6 +119,7 @@
  #endif
  
@@ -2326,9 +2131,9 @@ diff -Nu -r old/bytestring/Data/ByteString/Internal.hs new/bytestring/Data/ByteS
  
  inlinePerformIO :: IO a -> a
  inlinePerformIO = accursedUnutterablePerformIO
-diff -Nu -r old/bytestring/Data/ByteString.hs new/bytestring/Data/ByteString.hs
---- old/bytestring/Data/ByteString.hs	2019-05-09 03:21:11.493700711 +0000
-+++ new/bytestring/Data/ByteString.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/bytestring/Data/ByteString.hs new/libraries/bytestring/Data/ByteString.hs
+--- old/libraries/bytestring/Data/ByteString.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/bytestring/Data/ByteString.hs	2019-05-13 13:38:36.000000000 +1200
 @@ -1598,6 +1598,9 @@
  -- | Read a line from a handle
  
@@ -2347,9 +2152,9 @@ diff -Nu -r old/bytestring/Data/ByteString.hs new/bytestring/Data/ByteString.hs
  
  mkPS :: RawBuffer Word8 -> Int -> Int -> IO ByteString
  mkPS buf start end =
-diff -Nu -r old/bytestring/bytestring.cabal new/bytestring/bytestring.cabal
---- old/bytestring/bytestring.cabal	2019-05-09 03:21:11.505499956 +0000
-+++ new/bytestring/bytestring.cabal	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/bytestring/bytestring.cabal new/libraries/bytestring/bytestring.cabal
+--- old/libraries/bytestring/bytestring.cabal	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/bytestring/bytestring.cabal	2019-05-13 13:38:36.000000000 +1200
 @@ -93,6 +93,8 @@
                       Data.ByteString.Lazy.Builder
                       Data.ByteString.Lazy.Builder.Extras
@@ -2359,152 +2164,9 @@ diff -Nu -r old/bytestring/bytestring.cabal new/bytestring/bytestring.cabal
    other-modules:
                       Data.ByteString.Builder.ASCII
                       Data.ByteString.Builder.Prim.Binary
-diff -Nu -r old/ghc-boot/ghc-boot.cabal new/ghc-boot/ghc-boot.cabal
---- old/ghc-boot/ghc-boot.cabal	1970-01-01 00:00:00.000000000 +0000
-+++ new/ghc-boot/ghc-boot.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,51 @@
-+-- WARNING: ghc-boot.cabal is automatically generated from ghc-boot.cabal.in by
-+-- ../../configure.  Make sure you are editing ghc-boot.cabal.in, not
-+-- ghc-boot.cabal.
-+
-+name:           ghc-boot
-+version:        8.9
-+license:        BSD3
-+license-file:   LICENSE
-+category:       GHC
-+maintainer:     ghc-devs@haskell.org
-+bug-reports:    https://gitlab.haskell.org/ghc/ghc/issues/new
-+synopsis:       Shared functionality between GHC and its boot libraries
-+description:    This library is shared between GHC, ghc-pkg, and other boot
-+                libraries.
-+                .
-+                A note about "GHC.PackageDb": it only deals with the subset of
-+                the package database that the compiler cares about: modules
-+                paths etc and not package metadata like description, authors
-+                etc. It is thus not a library interface to ghc-pkg and is *not*
-+                suitable for modifying GHC package databases.
-+                .
-+                The package database format and this library are constructed in
-+                such a way that while ghc-pkg depends on Cabal, the GHC library
-+                and program do not have to depend on Cabal.
-+cabal-version:  >=1.22
-+build-type:     Simple
-+extra-source-files: changelog.md
-+
-+source-repository head
-+    type:     git
-+    location: http://git.haskell.org/ghc.git
-+    subdir:   libraries/ghc-boot
-+
-+Library
-+    default-language: Haskell2010
-+    other-extensions: DeriveGeneric, RankNTypes, ScopedTypeVariables
-+    default-extensions: NoImplicitPrelude
-+
-+    exposed-modules:
-+            GHC.LanguageExtensions
-+            GHC.PackageDb
-+            GHC.Serialized
-+            GHC.ForeignSrcLang
-+            GHC.HandleEncoding
-+
-+    build-depends: base       >= 4.7 && < 4.14,
-+                   binary     == 0.8.*,
-+                   bytestring == 0.10.*,
-+                   directory  >= 1.2 && < 1.4,
-+                   filepath   >= 1.3 && < 1.5,
-+                   ghc-boot-th == 8.9
-diff -Nu -r old/ghc-boot-th/ghc-boot-th.cabal new/ghc-boot-th/ghc-boot-th.cabal
---- old/ghc-boot-th/ghc-boot-th.cabal	1970-01-01 00:00:00.000000000 +0000
-+++ new/ghc-boot-th/ghc-boot-th.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,39 @@
-+-- WARNING: ghc-boot-th.cabal is automatically generated from
-+-- ghc-boot-th.cabal.in by ../../configure.  Make sure you are editing
-+-- ghc-boot-th.cabal.in, not ghc-boot-th.cabal.
-+
-+name:           ghc-boot-th
-+version:        8.9
-+license:        BSD3
-+license-file:   LICENSE
-+category:       GHC
-+maintainer:     ghc-devs@haskell.org
-+bug-reports:    https://gitlab.haskell.org/ghc/ghc/issues/new
-+synopsis:       Shared functionality between GHC and the @template-haskell@
-+                library
-+description:    This library contains various bits shared between the @ghc@ and
-+                @template-haskell@ libraries.
-+                .
-+                This package exists to ensure that @template-haskell@ has a
-+                minimal set of transitive dependencies, since it is intended to
-+                be depended upon by user code.
-+cabal-version:  >=1.10
-+build-type:     Simple
-+extra-source-files: changelog.md
-+
-+source-repository head
-+    type:     git
-+    location: http://git.haskell.org/ghc.git
-+    subdir:   libraries/ghc-boot-th
-+
-+Library
-+    default-language: Haskell2010
-+    other-extensions: DeriveGeneric
-+    default-extensions: NoImplicitPrelude
-+
-+    exposed-modules:
-+            GHC.LanguageExtensions.Type
-+            GHC.ForeignSrcLang.Type
-+            GHC.Lexeme
-+
-+    build-depends: base       >= 4.7 && < 4.14
-diff -Nu -r old/ghc-heap/ghc-heap.cabal new/ghc-heap/ghc-heap.cabal
---- old/ghc-heap/ghc-heap.cabal	1970-01-01 00:00:00.000000000 +0000
-+++ new/ghc-heap/ghc-heap.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,41 @@
-+cabal-version:  2.1
-+name:           ghc-heap
-+version:        8.9
-+license:        BSD-3-Clause
-+license-file:   LICENSE
-+maintainer:     libraries@haskell.org
-+bug-reports:    https://gitlab.haskell.org/ghc/ghc/issues/new
-+synopsis:       Functions for walking GHC's heap
-+category:       GHC
-+description:
-+    This package provides functions for walking the GHC heap data structures
-+    and retrieving information about those data structures.
-+
-+build-type:     Simple
-+tested-with:    GHC==7.11
-+
-+source-repository head
-+  type:     git
-+  location: http://git.haskell.org/ghc.git
-+  subdir:   libraries/ghc-heap
-+
-+library
-+  default-language: Haskell2010
-+
-+  build-depends:    base             >= 4.9.0 && < 5.0
-+                  , ghc-prim         > 0.2 && <= 0.6.1
-+                  , rts              == 1.0.*
-+
-+  ghc-options:      -Wall
-+  cmm-sources:      cbits/HeapPrim.cmm
-+
-+  default-extensions: NoImplicitPrelude
-+
-+  exposed-modules:  GHC.Exts.Heap
-+                    GHC.Exts.Heap.Closures
-+                    GHC.Exts.Heap.ClosureTypes
-+                    GHC.Exts.Heap.Constants
-+                    GHC.Exts.Heap.InfoTable
-+                    GHC.Exts.Heap.InfoTable.Types
-+                    GHC.Exts.Heap.InfoTableProf
-+                    GHC.Exts.Heap.Utils
-diff -Nu -r old/ghc-prim/Asterius/Magic.hs new/ghc-prim/Asterius/Magic.hs
---- old/ghc-prim/Asterius/Magic.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/ghc-prim/Asterius/Magic.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghc-prim/Asterius/Magic.hs new/libraries/ghc-prim/Asterius/Magic.hs
+--- old/libraries/ghc-prim/Asterius/Magic.hs	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/ghc-prim/Asterius/Magic.hs	2019-05-13 13:38:44.000000000 +1200
 @@ -0,0 +1,63 @@
 +{-# LANGUAGE MagicHash #-}
 +{-# LANGUAGE NoImplicitPrelude #-}
@@ -2569,9 +2231,9 @@ diff -Nu -r old/ghc-prim/Asterius/Magic.hs new/ghc-prim/Asterius/Magic.hs
 +unBool :: Bool -> Int#
 +unBool False = 0#
 +unBool True = 1#
-diff -Nu -r old/ghc-prim/GHC/PrimopWrappers.hs new/ghc-prim/GHC/PrimopWrappers.hs
---- old/ghc-prim/GHC/PrimopWrappers.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/ghc-prim/GHC/PrimopWrappers.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghc-prim/GHC/PrimopWrappers.hs new/libraries/ghc-prim/GHC/PrimopWrappers.hs
+--- old/libraries/ghc-prim/GHC/PrimopWrappers.hs	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/ghc-prim/GHC/PrimopWrappers.hs	2019-05-13 13:38:44.000000000 +1200
 @@ -0,0 +1,1682 @@
 +{-# LANGUAGE CPP, MagicHash, NoImplicitPrelude, UnboxedTuples #-}
 +{-# OPTIONS_GHC -Wno-deprecations -O0 #-}
@@ -4255,11 +3917,11 @@ diff -Nu -r old/ghc-prim/GHC/PrimopWrappers.hs new/ghc-prim/GHC/PrimopWrappers.h
 +{-# NOINLINE prefetchValue0# #-}
 +prefetchValue0# :: a -> State# s -> State# s
 +prefetchValue0# a1 a2 = (GHC.Prim.prefetchValue0#) a1 a2
-diff -Nu -r old/ghc-prim/Setup.hs new/ghc-prim/Setup.hs
---- old/ghc-prim/Setup.hs	2019-05-09 03:21:11.636200961 +0000
-+++ new/ghc-prim/Setup.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghc-prim/Setup.hs new/libraries/ghc-prim/Setup.hs
+--- old/libraries/ghc-prim/Setup.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/ghc-prim/Setup.hs	2019-05-13 13:38:44.000000000 +1200
 @@ -21,10 +21,8 @@
- main = do let hooks = simpleUserHooks {
+ main = do let hooks = autoconfUserHooks {
                    regHook = addPrimModule
                            $ regHook simpleUserHooks,
 -                  buildHook = build_primitive_sources
@@ -4305,10 +3967,10 @@ diff -Nu -r old/ghc-prim/Setup.hs new/ghc-prim/Setup.hs
 -                        when exists $ removeFile target
 -                        renameFile source target
 -
-diff -Nu -r old/ghc-prim/ghc-prim.cabal new/ghc-prim/ghc-prim.cabal
---- old/ghc-prim/ghc-prim.cabal	2019-05-09 03:21:11.641450117 +0000
-+++ new/ghc-prim/ghc-prim.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -49,6 +49,8 @@
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghc-prim/ghc-prim.cabal new/libraries/ghc-prim/ghc-prim.cabal
+--- old/libraries/ghc-prim/ghc-prim.cabal	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/ghc-prim/ghc-prim.cabal	2019-05-13 13:38:44.000000000 +1200
+@@ -59,6 +59,8 @@
          GHC.Tuple
          GHC.Types
  
@@ -4317,10 +3979,10 @@ diff -Nu -r old/ghc-prim/ghc-prim.cabal new/ghc-prim/ghc-prim.cabal
      virtual-modules:
          GHC.Prim
  
-diff -Nu -r old/ghci/ghci.cabal new/ghci/ghci.cabal
---- old/ghci/ghci.cabal	1970-01-01 00:00:00.000000000 +0000
-+++ new/ghci/ghci.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,86 @@
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghci/ghci.cabal new/libraries/ghci/ghci.cabal
+--- old/libraries/ghci/ghci.cabal	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/ghci/ghci.cabal	2019-05-21 15:33:18.000000000 +1200
+@@ -0,0 +1,88 @@
 +-- WARNING: ghci.cabal is automatically generated from ghci.cabal.in by
 +-- ../../configure.  Make sure you are editing ghci.cabal.in, not ghci.cabal.
 +
@@ -4399,25 +4061,40 @@ diff -Nu -r old/ghci/ghci.cabal new/ghci/ghci.cabal
 +        containers       >= 0.5 && < 0.7,
 +        deepseq          == 1.4.*,
 +        filepath         == 1.4.*,
-+        ghc-boot         == 8.9,
-+        ghc-boot-th      == 8.9,
-+        ghc-heap         == 8.9,
-+        template-haskell == 2.15.*,
++        ghc-boot         == 8.6.4,
++        ghc-boot-th      == 8.6.4,
++        ghc-heap         == 8.6.4,
++        template-haskell == 2.14.*,
 +        transformers     == 0.5.*
 +
 +    if !os(windows)
 +        Build-Depends: unix >= 2.7 && < 2.9
-diff -Nu -r old/integer-simple/GHC/Integer/Logarithms/Internals.hs new/integer-simple/GHC/Integer/Logarithms/Internals.hs
---- old/integer-simple/GHC/Integer/Logarithms/Internals.hs	2019-05-09 03:21:11.760059572 +0000
-+++ new/integer-simple/GHC/Integer/Logarithms/Internals.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -1,5 +1,6 @@
++
++    include-dirs: ../includes
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-gmp/integer-gmp.cabal new/libraries/integer-gmp/integer-gmp.cabal
+--- old/libraries/integer-gmp/integer-gmp.cabal	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/integer-gmp/integer-gmp.cabal	2019-05-20 20:51:17.000000000 +1200
+@@ -60,7 +60,10 @@
+     UnliftedFFITypes
+   build-depends:       ghc-prim ^>= 0.5.1.0
+   hs-source-dirs:      src/
+-  ghc-options: -this-unit-id integer-gmp -Wall
++  -- We need to set the unit ID to integer-wired-in
++  -- (without a version number) as it's magic.
++  -- See Note [The integer library] in PrelNames
++  ghc-options: -this-unit-id integer-wired-in -Wall
+   cc-options: -std=c99 -Wall
+ 
+   include-dirs: include
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-simple/GHC/Integer/Logarithms/Internals.hs new/libraries/integer-simple/GHC/Integer/Logarithms/Internals.hs
+--- old/libraries/integer-simple/GHC/Integer/Logarithms/Internals.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/integer-simple/GHC/Integer/Logarithms/Internals.hs	2019-05-20 21:12:35.000000000 +1200
+@@ -1,4 +1,5 @@
  {-# LANGUAGE CPP, MagicHash, UnboxedTuples, NoImplicitPrelude #-}
--{-# OPTIONS_HADDOCK not-home #-}
 +{-# LANGUAGE UnliftedFFITypes #-}
-+{-# OPTIONS_HADDOCK hide #-}
+ {-# OPTIONS_HADDOCK hide #-}
  
  #include "MachDeps.h"
- 
 @@ -17,6 +18,10 @@
      , roundingMode#
      ) where
@@ -4473,9 +4150,9 @@ diff -Nu -r old/integer-simple/GHC/Integer/Logarithms/Internals.hs new/integer-s
 +foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: Int# -> Int#
 +
 +#endif
-diff -Nu -r old/integer-simple/GHC/Integer/Logarithms.hs new/integer-simple/GHC/Integer/Logarithms.hs
---- old/integer-simple/GHC/Integer/Logarithms.hs	2019-05-09 03:21:11.759603046 +0000
-+++ new/integer-simple/GHC/Integer/Logarithms.hs	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-simple/GHC/Integer/Logarithms.hs new/libraries/integer-simple/GHC/Integer/Logarithms.hs
+--- old/libraries/integer-simple/GHC/Integer/Logarithms.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/integer-simple/GHC/Integer/Logarithms.hs	2019-05-13 13:38:44.000000000 +1200
 @@ -1,4 +1,7 @@
 +{-# LANGUAGE CPP #-}
  {-# LANGUAGE MagicHash, UnboxedTuples, NoImplicitPrelude #-}
@@ -4525,18 +4202,9 @@ diff -Nu -r old/integer-simple/GHC/Integer/Logarithms.hs new/integer-simple/GHC/
 +foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, ${2})" js_integerLogBase :: Int# -> Int# -> Int#
 +
 +#endif
-diff -Nu -r old/integer-simple/GHC/Integer/Type.hs new/integer-simple/GHC/Integer/Type.hs
---- old/integer-simple/GHC/Integer/Type.hs	2019-05-09 03:21:11.760982305 +0000
-+++ new/integer-simple/GHC/Integer/Type.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -3,7 +3,7 @@
-              UnliftedFFITypes #-}
- 
- -- Commentary of Integer library is located on the wiki:
---- https://gitlab.haskell.org/ghc/ghc/wikis/commentary/libraries/integer
-+-- http://ghc.haskell.org/trac/ghc/wiki/Commentary/Libraries/Integer
- --
- -- It gives an in-depth description of implementation details and
- -- decisions.
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-simple/GHC/Integer/Type.hs new/libraries/integer-simple/GHC/Integer/Type.hs
+--- old/libraries/integer-simple/GHC/Integer/Type.hs	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/integer-simple/GHC/Integer/Type.hs	2019-05-20 21:32:45.000000000 +1200
 @@ -26,6 +26,270 @@
  
  module GHC.Integer.Type where
@@ -4808,157 +4476,28 @@ diff -Nu -r old/integer-simple/GHC/Integer/Type.hs new/integer-simple/GHC/Intege
  import GHC.Prim
  import GHC.Classes
  import GHC.Types
-@@ -34,9 +298,6 @@
- import GHC.IntWord64
- #endif
- 
---- | Arbitrary precision integers. In contrast with fixed-size integral types
---- such as 'Int', the 'Integer' type represents the entire infinite range of
---- integers.
- data Integer = Positive !Positive | Negative !Positive | Naught
- 
- -------------------------------------------------------------------
-@@ -319,73 +580,12 @@
-     = complementInteger (shiftRInteger (complementInteger j) i)
- shiftRInteger Naught         _ = Naught
- 
--{-# NOINLINE popCountInteger #-}
--popCountInteger :: Integer -> Int#
--popCountInteger (Positive p) = popCountPositive p
--popCountInteger Naught       = 0#
--popCountInteger (Negative n) = negateInt# (popCountPositive n)
--
--popCountPositive :: Positive -> Int#
--popCountPositive p = word2Int# (go 0## p)
--  where
--  go :: Word# -> Positive -> Word#
--  go acc# None = acc#
--  go acc# (Some d ds) = go (popCnt# d `plusWord#` acc#) ds
--
--{-# NOINLINE bitInteger #-}
---- | 'Integer' for which only /n/-th bit is set. Undefined behaviour
---- for negative /n/ values.
--bitInteger :: Int# -> Integer
--bitInteger i# = if isTrue# (i# <# 0#)
--                then Naught
--                else Positive (bitPositive i#)
--
---- Assumes 0 <= i
--bitPositive :: Int# -> Positive
--bitPositive i#
--    = if isTrue# (i# >=# WORD_SIZE_IN_BITS#)
--      then Some 0## (bitPositive (i# -# WORD_SIZE_IN_BITS#))
--      else Some (uncheckedShiftL# 1## i#) None
--
--{-# NOINLINE testBitInteger #-}
-+-- XXX this could be a lot more efficient, but this is a quick
-+-- reimplementation of the default Data.Bits instance, so that we can
-+-- implement the Integer interface
- testBitInteger :: Integer -> Int# -> Bool
--testBitInteger (!_) i# | isTrue# (i# <# 0#) = False
--testBitInteger Naught       _  = False
--testBitInteger (Positive p) i# = isTrue# (testBitPositive p i#)
--  where
--  -- Straightforward decrement of 'j#' by the word size stopping when
--  -- 'j#' is less than the word size or the number runs out.
--  testBitPositive :: Positive -> Int# -> Int#
--  testBitPositive None          _ = 0#
--  testBitPositive (Some w# ws)  j#
--    = if isTrue# (j# >=# WORD_SIZE_IN_BITS#)
--      then testBitPositive ws (j# -# WORD_SIZE_IN_BITS#)
--      else neWord# (uncheckedShiftL# 1## j# `and#` w#) 0##
--testBitInteger (Negative n) i# = isTrue# (testBitNegative n i#)
--  where
--  -- For negative numbers, we want to inspect the correct bit of the two's
--  -- complement. Like for positive numbers, we walk down the words until
--  -- 'j#' is less than the word size (or the number runs out).
--  testBitNegative :: Positive -> Int# -> Int#
--  testBitNegative (Some 0## ws) j#
--    -- If the number starts (on the low end) with a bunch of '0##' and 'j#'
--    -- falls in those, we know that @n - 1@ would have flipped all those
--    -- bits, so @!(n - 1) & i@ is false.
--    = if isTrue# (j# >=# WORD_SIZE_IN_BITS#)
--      then testBitNegative ws (j# -# WORD_SIZE_IN_BITS#)
--      else 1#
--  testBitNegative (Some w# ws) j#
--    -- Yet, as soon as we find something that isn't a '0##', we can subtract
--    -- and forget about the 1 altogether!
--    = testBitNegativeMinus1 (Some (w# `minusWord#` 1##) ws) j#
--  testBitNegative None _ = 0# -- XXX Can't happen due to Positive's invariant
--
--  testBitNegativeMinus1 :: Positive -> Int# -> Int#
--  testBitNegativeMinus1 None         _ = 1#
--  testBitNegativeMinus1 (Some w# ws) j#
--    = if isTrue# (j# >=# WORD_SIZE_IN_BITS#)
--      then testBitNegativeMinus1 ws (j# -# WORD_SIZE_IN_BITS#)
--      else neWord# (uncheckedShiftL# 1## j# `and#` not# w#) 0##
-+testBitInteger x i = (x `andInteger` (oneInteger `shiftLInteger` i))
-+        `neqInteger` Naught
- 
- twosComplementPositive :: Positive -> DigitsOnes
- twosComplementPositive p = flipBits (p `minusPositive` onePositive)
-@@ -481,37 +681,6 @@
- x `remInteger` y = case x `quotRemInteger` y of
-                    (# _, r #) -> r
- 
--{-# NOINLINE gcdInteger #-}
--gcdInteger :: Integer -> Integer -> Integer
--gcdInteger (Positive a) (Positive b) = Positive (gcdPositive a b)
--gcdInteger (Positive a) (Negative b) = Positive (gcdPositive a b)
--gcdInteger (Negative a) (Positive b) = Positive (gcdPositive a b)
--gcdInteger (Negative a) (Negative b) = Positive (gcdPositive a b)
--gcdInteger Naught                  b = absInteger b
--gcdInteger a                  Naught = absInteger a
--
--gcdPositive :: Positive -> Positive -> Positive
--gcdPositive p1 p2 = case p1 `quotRemPositive` p2 of
--                        (# _, Positive r #) -> gcdPositive p2 r
--                        (# _, Naught     #) -> p2
--                        (# _, Negative _ #) -> errorPositive -- XXX Can't happen
--
--
--{-# NOINLINE lcmInteger #-}
--lcmInteger :: Integer -> Integer -> Integer
--lcmInteger (Positive a) (Positive b) = Positive (lcmPositive a b)
--lcmInteger (Positive a) (Negative b) = Positive (lcmPositive a b)
--lcmInteger (Negative a) (Positive b) = Positive (lcmPositive a b)
--lcmInteger (Negative a) (Negative b) = Positive (lcmPositive a b)
--lcmInteger Naught                  _ = Naught
--lcmInteger _                  Naught = Naught
--
--lcmPositive :: Positive -> Positive -> Positive
--lcmPositive p1 p2 = case p1 `quotRemPositive` (p1 `gcdPositive` p2) of
--                        (# Positive q, _ #) -> q `timesPositive` p2
--                        (# _,          _ #) -> errorPositive -- XXX Can't happen
--
--
- {-# NOINLINE compareInteger #-}
- compareInteger :: Integer -> Integer -> Ordering
- Positive x `compareInteger` Positive y = x `comparePositive` y
-@@ -984,3 +1153,4 @@
+@@ -889,3 +1153,5 @@
      orDigits (Some w1 ds1) (Some w2 ds2) = Some ... ...
  -}
  
 +#endif
-diff -Nu -r old/integer-simple/GHC/Integer.hs new/integer-simple/GHC/Integer.hs
---- old/integer-simple/GHC/Integer.hs	2019-05-09 03:21:11.759155830 +0000
-+++ new/integer-simple/GHC/Integer.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -33,10 +33,9 @@
-     divModInteger, quotRemInteger, quotInteger, remInteger,
-     encodeFloatInteger, decodeFloatInteger, floatFromInteger,
-     encodeDoubleInteger, decodeDoubleInteger, doubleFromInteger,
--    gcdInteger, lcmInteger,
-+    -- gcdInteger, lcmInteger, -- XXX
-     andInteger, orInteger, xorInteger, complementInteger,
-     shiftLInteger, shiftRInteger, testBitInteger,
--    popCountInteger, bitInteger,
-     hashInteger,
-  ) where
- 
-diff -Nu -r old/rts/PrimOps.cmm new/rts/PrimOps.cmm
---- old/rts/PrimOps.cmm	2019-05-09 03:21:12.249586059 +0000
-+++ new/rts/PrimOps.cmm	1970-01-01 00:00:01.000000000 +0000
-@@ -923,7 +923,7 @@
++
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-simple/integer-simple.cabal new/libraries/integer-simple/integer-simple.cabal
+--- old/libraries/integer-simple/integer-simple.cabal	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/integer-simple/integer-simple.cabal	2019-05-20 20:51:38.000000000 +1200
+@@ -26,6 +26,6 @@
+     other-modules: GHC.Integer.Type
+     default-extensions: CPP, MagicHash, BangPatterns, UnboxedTuples,
+                 UnliftedFFITypes, NoImplicitPrelude
+-    -- We need to set the unit ID to integer-simple
++    -- We need to set the unit ID to integer-wired-in
+     -- (without a version number) as it's magic.
+-    ghc-options: -this-unit-id integer-simple -Wall
++    ghc-options: -this-unit-id integer-wired-in -Wall
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/rts/PrimOps.cmm new/libraries/rts/PrimOps.cmm
+--- old/libraries/rts/PrimOps.cmm	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/rts/PrimOps.cmm	2019-05-13 13:38:52.000000000 +1200
+@@ -875,7 +875,7 @@
      gcptr threadid;
  
      ("ptr" threadid) = ccall createIOThread( MyCapability() "ptr",
@@ -4967,7 +4506,7 @@ diff -Nu -r old/rts/PrimOps.cmm new/rts/PrimOps.cmm
                                    closure "ptr");
  
      /* start blocked if the current thread is blocked */
-@@ -948,7 +948,7 @@
+@@ -900,7 +900,7 @@
  
      ("ptr" threadid) = ccall createIOThread(
          MyCapability() "ptr",
@@ -4976,7 +4515,7 @@ diff -Nu -r old/rts/PrimOps.cmm new/rts/PrimOps.cmm
          closure "ptr");
  
      /* start blocked if the current thread is blocked */
-@@ -1936,7 +1936,8 @@
+@@ -1888,7 +1888,8 @@
  stg_deRefStablePtrzh ( P_ sp )
  {
      W_ r;
@@ -4986,9 +4525,9 @@ diff -Nu -r old/rts/PrimOps.cmm new/rts/PrimOps.cmm
      return (r);
  }
  
-diff -Nu -r old/rts/rts.conf new/rts/rts.conf
---- old/rts/rts.conf	1970-01-01 00:00:00.000000000 +0000
-+++ new/rts/rts.conf	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/rts/rts.conf new/libraries/rts/rts.conf
+--- old/libraries/rts/rts.conf	1970-01-01 12:00:00.000000000 +1200
++++ new/libraries/rts/rts.conf	2019-05-13 13:38:52.000000000 +1200
 @@ -0,0 +1,10 @@
 +name: rts
 +version: 1.0
@@ -5000,84 +4539,9 @@ diff -Nu -r old/rts/rts.conf new/rts/rts.conf
 +library-dirs: $topdir/rts
 +hs-libraries: HSrts
 +include-dirs: $topdir/include
-diff -Nu -r old/template-haskell/template-haskell.cabal new/template-haskell/template-haskell.cabal
---- old/template-haskell/template-haskell.cabal	1970-01-01 00:00:00.000000000 +0000
-+++ new/template-haskell/template-haskell.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,71 @@
-+-- WARNING: template-haskell.cabal is automatically generated from template-haskell.cabal.in by
-+-- ../../configure.  Make sure you are editing template-haskell.cabal.in, not
-+-- template-haskell.cabal.
-+
-+name:           template-haskell
-+version:        2.15.0.0
-+-- NOTE: Don't forget to update ./changelog.md
-+license:        BSD3
-+license-file:   LICENSE
-+category:       Template Haskell
-+maintainer:     libraries@haskell.org
-+bug-reports:    https://gitlab.haskell.org/ghc/ghc/issues/new
-+synopsis:       Support library for Template Haskell
-+build-type:     Simple
-+Cabal-Version:  >= 1.10
-+description:
-+    This package provides modules containing facilities for manipulating
-+    Haskell source code using Template Haskell.
-+    .
-+    See <http://www.haskell.org/haskellwiki/Template_Haskell> for more
-+    information.
-+
-+extra-source-files: changelog.md
-+
-+source-repository head
-+    type:     git
-+    location: http://git.haskell.org/ghc.git
-+    subdir:   libraries/template-haskell
-+
-+Library
-+    default-language: Haskell2010
-+    other-extensions:
-+        BangPatterns
-+        CPP
-+        DefaultSignatures
-+        DeriveDataTypeable
-+        DeriveGeneric
-+        FlexibleInstances
-+        RankNTypes
-+        RoleAnnotations
-+        ScopedTypeVariables
-+
-+    exposed-modules:
-+        Language.Haskell.TH
-+        Language.Haskell.TH.Lib
-+        Language.Haskell.TH.Ppr
-+        Language.Haskell.TH.PprLib
-+        Language.Haskell.TH.Quote
-+        Language.Haskell.TH.Syntax
-+        Language.Haskell.TH.LanguageExtensions
-+
-+        Language.Haskell.TH.Lib.Internal
-+
-+    other-modules:
-+        Language.Haskell.TH.Lib.Map
-+
-+    build-depends:
-+        base        >= 4.11 && < 4.14,
-+        ghc-boot-th == 8.9,
-+        pretty      == 1.1.*
-+
-+    ghc-options: -Wall
-+
-+    -- We need to set the unit ID to template-haskell (without a
-+    -- version number) as it's magic.
-+    ghc-options: -this-unit-id template-haskell
-+
-+    -- This should match the default-extensions used in 'ghc.cabal'. This way,
-+    -- GHCi can be used to load it along with the compiler.
-+    Default-Extensions:
-+        NoImplicitPrelude
-diff -Nu -r old/unix/System/Posix/IO/Common.hsc new/unix/System/Posix/IO/Common.hsc
---- old/unix/System/Posix/IO/Common.hsc	2019-05-09 03:21:12.005322183 +0000
-+++ new/unix/System/Posix/IO/Common.hsc	1970-01-01 00:00:01.000000000 +0000
+diff -ruN -x '*.rej' -x '*.orig' old/libraries/unix/System/Posix/IO/Common.hsc new/libraries/unix/System/Posix/IO/Common.hsc
+--- old/libraries/unix/System/Posix/IO/Common.hsc	1970-01-01 12:00:01.000000000 +1200
++++ new/libraries/unix/System/Posix/IO/Common.hsc	2019-05-13 13:38:53.000000000 +1200
 @@ -208,6 +208,9 @@
  fdToHandle :: Fd -> IO Handle
  fdToHandle fd = FD.fdToHandle (fromIntegral fd)
