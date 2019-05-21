@@ -246,7 +246,7 @@ main = do
 
   -- | Tasty throws an exception if stuff fails, so re-throw the exception
   -- | in case this happens.
-  (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
+  (defaultMain $ testGroup "asterius ghc-testsuite" trees)
     `finally` (saveTestLogToCSV tlref out_basepath)
 
 
