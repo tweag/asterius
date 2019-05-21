@@ -196,7 +196,7 @@ consoleOutput tlref toutput smap =
           let tr = if resultSuccessful r
               then TestRecord TestSuccess _name ""
               else TestRecord TestFailure _name (resultDescription r)
-          -- | consTestLog tr tlref
+          consTestLog tr tlref
 
       , Any True)
     foldHeading _name printHeading (printBody, Any nonempty) =
@@ -246,7 +246,7 @@ main = do
 
   -- | Tasty throws an exception if stuff fails, so re-throw the exception
   -- | in case this happens.
-  (defaultMain [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
+  (defaultMain $ testGroup "asterius ghc-testsuite" trees)
     `finally` (saveTestLogToCSV tlref out_basepath)
 
 
