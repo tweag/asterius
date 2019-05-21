@@ -331,7 +331,10 @@ marshalExpression sym_map m e =
           r <- lift $ c_BinaryenReturn m nullPtr
           (arr, _) <- marshalV [s, r]
           lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
-        _ -> lift $ marshalExpression sym_map m $ barf returnCallTarget64 []
+        _
+          | M.member returnCallTarget64 sym_map ->
+            lift $ marshalExpression sym_map m $ barf returnCallTarget64 []
+          | otherwise -> lift $ c_BinaryenUnreachable m
     ReturnCallIndirect {..} -> do
       s <-
         lift $

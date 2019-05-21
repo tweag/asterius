@@ -693,16 +693,7 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
                 _de_bruijn_ctx
                 _local_ctx $
               barf returnCallTarget64 []
-            | otherwise ->
-              pure $
-              DList.singleton
-                (Wasm.I32Const (fromIntegral $ invalidAddress .&. 0xFFFFFFFF)) <>
-              DList.singleton
-                Wasm.ReturnCallIndirect
-                  { returnCallIndirectFunctionTypeIndex =
-                      functionTypeSymbols !
-                      FunctionType {paramTypes = [], returnTypes = []}
-                  }
+            | otherwise -> pure $ DList.singleton Wasm.Unreachable
       | otherwise ->
         case Map.lookup returnCallTarget64 sym_map of
           Just t ->
@@ -730,22 +721,7 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
                 _de_bruijn_ctx
                 _local_ctx $
               barf returnCallTarget64 []
-            | otherwise ->
-              makeInstructions
-                tail_calls
-                sym_map
-                _module_symtable
-                _de_bruijn_ctx
-                _local_ctx
-                Store
-                  { bytes = 8
-                  , offset = 0
-                  , ptr =
-                      ConstI32 $
-                      fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-                  , value = ConstI64 invalidAddress
-                  , valueType = I64
-                  }
+            | otherwise -> pure $ DList.singleton Wasm.Unreachable
     ReturnCallIndirect {..}
       | tail_calls -> do
         x <-
