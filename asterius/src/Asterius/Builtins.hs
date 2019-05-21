@@ -113,6 +113,7 @@ rtsAsteriusModule opts =
        <> threadPausedFunction opts
        <> dirtyMutVarFunction opts
        <> raiseExceptionHelperFunction opts
+       <> barfFunction opts
        <> (if debug opts then generateRtsAsteriusDebugModule opts else mempty)
        -- | Add in the module that contain functions which need to be
        -- | exposed to the outside world. So add in the module, and
@@ -360,10 +361,16 @@ rtsFunctionImports debug =
       }
   , FunctionImport
       { internalName = "__asterius_raiseExceptionHelper"
-      , externalModuleName = "RaiseExceptionHelper"
+      , externalModuleName = "ExceptionHelper"
       , externalBaseName = "raiseExceptionHelper"
       , functionType =
           FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_barf"
+      , externalModuleName = "ExceptionHelper"
+      , externalBaseName = "barf"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       }
   ] <>
   (if debug
@@ -603,7 +610,7 @@ generateWrapperModule mod = mod {
 
 
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction ::
      BuiltinsOptions -> AsteriusModule
 mainFunction BuiltinsOptions {} =
   runEDSL  "main" $ do
@@ -1163,6 +1170,11 @@ raiseExceptionHelperFunction _ =
         (map convertUInt64ToFloat64 args)
         F64
     emit frame_type
+
+barfFunction _ =
+  runEDSL "barf" $ do
+    s <- param I64
+    callImport "__asterius_barf" [convertUInt64ToFloat64 s]
 
 getF64GlobalRegFunction ::
   BuiltinsOptions

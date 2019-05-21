@@ -11,6 +11,7 @@ module Asterius.Backends.Binaryen
   ) where
 
 import Asterius.Internals
+import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Types
@@ -246,11 +247,22 @@ marshalExpression sym_map m e =
       lift $ c_BinaryenSwitch m nsp (fromIntegral nl) dn c nullPtr
     Call {..}
       | M.member target sym_map -> do
-        os <- lift $ forM operands $ marshalExpression sym_map m
+        os <-
+          lift $
+          forM
+            (if target == "barf"
+               then [ case operands of
+                        [] -> ConstI64 0
+                        x:_ -> x
+                    ]
+               else operands) $
+          marshalExpression sym_map m
         (ops, osl) <- marshalV os
         tp <- marshalSBS (entityName target)
         rts <- lift $ marshalReturnTypes callReturnTypes
         lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
+      | M.member ("__asterius_barf_" <> target) sym_map ->
+        lift $ marshalExpression sym_map m $ barf target callReturnTypes
       | otherwise -> lift $ c_BinaryenUnreachable m
     CallImport {..} -> do
       os <- lift $ forM operands $ marshalExpression sym_map m
@@ -299,24 +311,30 @@ marshalExpression sym_map m e =
         x <- marshalExpression sym_map m operand0
         y <- marshalExpression sym_map m operand1
         c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
-    ReturnCall {..} -> do
-      s <-
-        lift $
-        marshalExpression
-          sym_map
-          m
-          Store
-            { bytes = 8
-            , offset = 0
-            , ptr =
-                ConstI32 $
-                fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-            , value = ConstI64 $ sym_map !? returnCallTarget64
-            , valueType = I64
-            }
-      r <- lift $ c_BinaryenReturn m nullPtr
-      (arr, _) <- marshalV [s, r]
-      lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
+    ReturnCall {..} ->
+      case M.lookup returnCallTarget64 sym_map of
+        Just t -> do
+          s <-
+            lift $
+            marshalExpression
+              sym_map
+              m
+              Store
+                { bytes = 8
+                , offset = 0
+                , ptr =
+                    ConstI32 $
+                    fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
+                , value = ConstI64 t
+                , valueType = I64
+                }
+          r <- lift $ c_BinaryenReturn m nullPtr
+          (arr, _) <- marshalV [s, r]
+          lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
+        _
+          | M.member returnCallTarget64 sym_map ->
+            lift $ marshalExpression sym_map m $ barf returnCallTarget64 []
+          | otherwise -> lift $ c_BinaryenUnreachable m
     ReturnCallIndirect {..} -> do
       s <-
         lift $
@@ -345,10 +363,12 @@ marshalExpression sym_map m e =
     CFG {..} -> lift $ relooperRun sym_map m graph
     Symbol {..} ->
       lift $
-      c_BinaryenConstInt64 m $
       case M.lookup unresolvedSymbol sym_map of
-        Just x -> x + fromIntegral symbolOffset
-        _ -> invalidAddress
+        Just x -> c_BinaryenConstInt64 m $ x + fromIntegral symbolOffset
+        _
+          | M.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
+            marshalExpression sym_map m $ barf unresolvedSymbol [I64]
+          | otherwise -> c_BinaryenConstInt64 m invalidAddress
     _ -> lift $ throwIO $ UnsupportedExpression e
 
 marshalMaybeExpression ::
