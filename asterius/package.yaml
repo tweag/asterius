@@ -225,6 +225,13 @@ tests:
     dependencies:
       - asterius
 
+  exception:
+    source-dirs: test
+    main: exception.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
   ghc-testsuite:
     source-dirs: test
     main: ghc-testsuite.hs
@@ -233,10 +240,7 @@ tests:
       - asterius
       - tasty
       - tasty-hspec
+      - ansi-terminal
+      - stm
+      - cassava
 
-  exception:
-    source-dirs: test
-    main: exception.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - asterius

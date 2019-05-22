@@ -71,3 +71,35 @@ environment variable to pass additional arguments to `make`, e.g. setting
 The `wabt` package exposes `Paths_wabt`, so by using `Paths_wabt.getBinDir` you
 can access the `wabt` binary location in Haskell. This can be useful when
 implementing Haskell wrappers.
+
+## Debugging `circleCI`
+
+All instructions documented here depend on having the `circleci` command line
+tool installed.
+
+##### Validating config
+
+To validate the circleCI config, use:
+
+```
+circleci config validate
+```
+
+##### Run CircleCI job locally
+
+To run a job with `circleCI` locally for debugging:
+
+1. Install docker
+2. Get the docker daemon running.
+
+Run:
+
+```
+$ circleci local execute --job  <job-name>
+```
+
+For example:
+
+```
+$ circleci local execute --job asterius-test
+```
