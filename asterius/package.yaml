@@ -27,6 +27,8 @@ extra-source-files:
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
   - test/nomain/**/*.hs
+  - test/ghc-testsuite/**/*.hs
+  - test/ghc-testsuite/**/*.stdout
   - test/exception/**/*.hs
 
 data-files:
@@ -229,3 +231,16 @@ tests:
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
+
+  ghc-testsuite:
+    source-dirs: test
+    main: ghc-testsuite.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+      - tasty
+      - tasty-hspec
+      - ansi-terminal
+      - stm
+      - cassava
+
