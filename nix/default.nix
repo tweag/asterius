@@ -16,10 +16,10 @@ let
     };
   # our packages
   # plan-pkgs = import ./pkgs.nix;
-  plan-nix = haskell.cabalProjectToNix {
+  plan-nix = haskell.callCabalProjectToNix {
     src = cleanSrc;
     ghc = pkgs.haskell.compiler.ghc864;
-    hackageIndexState = "2019-05-10T00:00:00Z";
+    index-state = "2019-05-10T00:00:00Z";
   };
   plan-pkgs = import "${plan-nix}";
 
