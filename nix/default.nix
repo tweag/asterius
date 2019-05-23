@@ -24,7 +24,7 @@ let
 
   cabalPatch = pkgs.fetchpatch {
     url = "https://patch-diff.githubusercontent.com/raw/haskell/cabal/pull/6055.diff";
-    sha256 = "04ca20gahspl97msnz68mcjswm0ds6qgcm9zvvqi3pmy0bs3i8q0";
+    sha256 = "145g7s3z9q8d18pxgyngvixgsm6gmwh1rgkzkhacy4krqiq0qyvx";
     stripLen = 1;
   };
 
