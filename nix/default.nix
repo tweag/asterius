@@ -15,13 +15,18 @@ let
           && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ];
     };
   # our packages
-  # plan-pkgs = import ./pkgs.nix;
   plan-nix = haskell.callCabalProjectToNix {
     src = cleanSrc;
     ghc = pkgs.haskell.compiler.ghc864;
     index-state = "2019-05-10T00:00:00Z";
   };
   plan-pkgs = import "${plan-nix}";
+
+  cabalPatch = pkgs.fetchpatch {
+    url = "https://patch-diff.githubusercontent.com/raw/haskell/cabal/pull/6055.diff";
+    sha256 = "04ca20gahspl97msnz68mcjswm0ds6qgcm9zvvqi3pmy0bs3i8q0";
+    stripLen = 1;
+  };
 
   # Build the packageset with module support.
   # We can essentially override anything in the modules
@@ -51,6 +56,7 @@ let
       ({ config, ...}: {
           # packages.hsc2hs.components.exes.hsc2hs.doExactConfig = true;
           packages.ghc.patches = [ ./patches/ghc.patch ];
+          packages.Cabal.patches = [ cabalPatch ];
       })
     ];
   };
