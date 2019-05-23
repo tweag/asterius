@@ -94,7 +94,7 @@ let
   ghc864 = let
     ghc-src = pkgs.srcOnly pkgs.haskell.compiler.ghc864;
     ghc-prim = builtins.fetchTarball {
-      url = "http://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
+      url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
     };
     patch = pkgs.copyPathToStore ./patches/ghc/ghc864-libs.patch;
