@@ -93,7 +93,7 @@ let
   in { inherit ghc-src boot-libs patch; };
   ghc864 = let
     ghc-src = pkgs.srcOnly pkgs.haskell.compiler.ghc864;
-    ghc-prim = builtins.fetchTarball {
+    ghc-prim = pkgs.fetchzip {
       url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
     };
