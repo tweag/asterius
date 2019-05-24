@@ -112,7 +112,8 @@ rtsAsteriusModule opts =
           ]
     , functionMap =
         Map.fromList $
-        map (\(func_sym, (_, func)) -> (func_sym, func)) byteStringCBits
+        map (\(func_sym, (_, func)) -> (func_sym, func))
+            (byteStringCBits <> floatCBits)
     }  <> mainFunction opts
        <> hsInitFunction opts
        <> scheduleWaitThreadFunction opts
@@ -467,7 +468,7 @@ rtsFunctionImports debug =
           , b <- ["8", "16"]
           ]
      else []) <>
-  map (fst . snd) byteStringCBits
+  map (fst . snd) (byteStringCBits <> floatCBits)
 
 rtsFunctionExports :: Bool -> Bool -> [FunctionExport]
 rtsFunctionExports debug has_main =
@@ -551,6 +552,18 @@ byteStringCBits =
     , ("_hs_bytestring_uint_hex", [I64, I64], [I64])
     , ("_hs_bytestring_long_long_uint_hex", [I64, I64], [I64])
     ]
+
+floatCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+floatCBits =
+    map (\(func_sym, param_vts, ret_vts) ->
+       ( AsteriusEntitySymbol func_sym
+       , generateRTSWrapper "float_cbits" func_sym param_vts ret_vts))
+    [ ("isFloatNegativeZero", [F32], [I64])
+    , ("isFloatNaN", [F32], [I64])
+    , ("isFloatInfinite", [F32], [I64])
+    , ("__decodeFloat_Int", [I64, I64, F32], [])
+    ]
+
 
 generateRTSWrapper ::
      SBS.ShortByteString
