@@ -31,7 +31,7 @@ let
             "yarn.lock"
             "package-lock.json"
           ]
-          && pkgs.lib.strings.hasInfix ".dump-" (baseNameOf path) # These are .gitignored sow we should exclude them here
+          && !(pkgs.lib.strings.hasInfix ".dump-" (baseNameOf path)) # These are .gitignored sow we should exclude them here
           && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ]
           && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ];
     };
