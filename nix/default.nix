@@ -9,8 +9,29 @@ let
     pkgs.lib.cleanSourceWith {
       src = ./..;
       filter = path: type:
-        pkgs.lib.all (i: toString i != path) [ ../.DS_Store ../default.nix ../result ../nix ]
-          && pkgs.lib.all (i: i != baseNameOf path) [ ".git" "dist-newstyle" "cabal.project.local" "dist" ".stack-work" ".DS_Store" "result" ]
+        pkgs.lib.all (i: toString i != path) [ ../.DS_Store ../default.nix ../result ../nix
+          # These are .gitignored sow we should exclude them here
+          ../.stack-work
+          ../wabt/wabt/bin
+          ../dist
+          ../dist-newstyle
+          ../site
+          ../.idea
+          ../node_modules
+          ]
+          && pkgs.lib.all (i: i != baseNameOf path) [ ".git" "dist-newstyle" "cabal.project.local" "dist" ".stack-work" ".DS_Store" "result"
+            # These are .gitignored sow we should exclude them here
+            "asterius.cabal"
+            "ghc-toolkit.cabal"
+            "binaryen.cabal"
+            "npm-utils.cabal"
+            "wabt.cabal"
+            "wasm-toolkit.cabal"
+            "inline-js.cabal"
+            "yarn.lock"
+            "package-lock.json"
+          ]
+          && pkgs.lib.strings.hasInfix ".dump-" (baseNameOf path) # These are .gitignored sow we should exclude them here
           && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ]
           && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ];
     };
