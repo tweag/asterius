@@ -17,6 +17,7 @@ import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
+import { FloatCBits } from "./rts.float.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export function newAsteriusInstance(req) {
@@ -37,7 +38,9 @@ export function newAsteriusInstance(req) {
     __asterius_vault = req.vault ? req.vault : new Map(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable),
-    __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable);
+    __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
+    __asterius_float_cbits = new FloatCBits(__asterius_memory);
+
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
   }
@@ -125,6 +128,8 @@ export function newAsteriusInstance(req) {
         emitEvent: ev => __asterius_logger.logEvent(req.events[ev])
       },
       bytestring: modulify(__asterius_bytestring_cbits),
+      // cannot name this float since float is a keyword.
+      floatCBits: modulify(__asterius_float_cbits),
       GC: modulify(__asterius_gc),
       ExceptionHelper: modulify(__asterius_exception_helper),
       HeapAlloc: modulify(__asterius_heapalloc),
