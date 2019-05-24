@@ -93,3 +93,5 @@ main = do
   -- 0! + 1! + 2! + 3! + 4! + 5!
   print_i64 $ sumFacts 5
   assert_eq_i64 (sumFacts 5) (154)
+
+  performGC
