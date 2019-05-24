@@ -557,7 +557,7 @@ floatCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
 floatCBits =
     map (\(func_sym, param_vts, ret_vts) ->
        ( AsteriusEntitySymbol func_sym
-       , generateRTSWrapper "float_cbits" func_sym param_vts ret_vts))
+       , generateRTSWrapper "floatCBits" func_sym param_vts ret_vts))
     [ ("isFloatNegativeZero", [F32], [I64])
     , ("isFloatNaN", [F32], [I64])
     , ("isFloatInfinite", [F32], [I64])

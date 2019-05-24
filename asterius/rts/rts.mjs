@@ -129,7 +129,7 @@ export function newAsteriusInstance(req) {
       },
       bytestring: modulify(__asterius_bytestring_cbits),
       // cannot name this float since float is a keyword.
-      float_cbits: modulify(__asterius_float_cbits),
+      floatCBits: modulify(__asterius_float_cbits),
       GC: modulify(__asterius_gc),
       ExceptionHelper: modulify(__asterius_exception_helper),
       HeapAlloc: modulify(__asterius_heapalloc),
