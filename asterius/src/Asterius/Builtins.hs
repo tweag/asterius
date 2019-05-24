@@ -71,6 +71,16 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ encodeStorable (0 :: Word64)]
                 })
+          , ( "n_capabilities"
+            , AsteriusStatics
+                { staticsType = ConstBytes
+                , asteriusStatics = [Serialized $ encodeStorable (1 :: Word32)]
+                })
+          , ( "enabled_capabilities"
+            , AsteriusStatics
+                { staticsType = ConstBytes
+                , asteriusStatics = [Serialized $ encodeStorable (1 :: Word32)]
+                })
           , ( "__asterius_pc"
             , AsteriusStatics
                 { staticsType = Bytes
