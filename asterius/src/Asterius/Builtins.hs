@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 module Asterius.Builtins
@@ -28,6 +27,7 @@ import Data.Functor
 import Data.List
 import qualified Data.Map.Strict as Map
 import Data.Maybe
+import Data.String
 import Data.Word
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
@@ -37,13 +37,20 @@ wasmPageSize :: Int
 wasmPageSize = 65536
 
 data BuiltinsOptions = BuiltinsOptions
-  { threadStateSize :: Int
+  { progName :: String
+  , threadStateSize :: Int
   , debug, hasMain :: Bool
   }
 
 defaultBuiltinsOptions :: BuiltinsOptions
 defaultBuiltinsOptions =
-  BuiltinsOptions {threadStateSize = 65536, debug = False, hasMain = True}
+  BuiltinsOptions
+    { progName =
+        error "Asterius.Builtins.defaultBuiltinsOptions: unknown progName"
+    , threadStateSize = 65536
+    , debug = False
+    , hasMain = True
+    }
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol =
@@ -80,6 +87,17 @@ rtsAsteriusModule opts =
             , AsteriusStatics
                 { staticsType = ConstBytes
                 , asteriusStatics = [Serialized $ encodeStorable (1 :: Word32)]
+                })
+          , ( "prog_name"
+            , AsteriusStatics
+                { staticsType = ConstBytes
+                , asteriusStatics =
+                    [Serialized $ fromString (progName opts <> "\0")]
+                })
+          , ( "prog_argv"
+            , AsteriusStatics
+                { staticsType = ConstBytes
+                , asteriusStatics = [SymbolStatic "prog_name" 0]
                 })
           , ( "__asterius_pc"
             , AsteriusStatics
@@ -124,6 +142,7 @@ rtsAsteriusModule opts =
        <> dirtyMutVarFunction opts
        <> raiseExceptionHelperFunction opts
        <> barfFunction opts
+       <> getProgArgvFunction opts
        <> (if debug opts then generateRtsAsteriusDebugModule opts else mempty)
        -- | Add in the module that contain functions which need to be
        -- | exposed to the outside world. So add in the module, and
@@ -620,7 +639,7 @@ generateWrapperModule mod = mod {
 
 
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction ::
+mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction ::
      BuiltinsOptions -> AsteriusModule
 mainFunction BuiltinsOptions {} =
   runEDSL  "main" $ do
@@ -1185,6 +1204,12 @@ barfFunction _ =
   runEDSL "barf" $ do
     s <- param I64
     callImport "__asterius_barf" [convertUInt64ToFloat64 s]
+
+getProgArgvFunction _ =
+  runEDSL "getProgArgv" $ do
+    [argc, argv] <- params [I64, I64]
+    storeI64 argc 0 $ constI64 1
+    storeI64 argv 0 $ symbol "prog_argv"
 
 getF64GlobalRegFunction ::
   BuiltinsOptions
