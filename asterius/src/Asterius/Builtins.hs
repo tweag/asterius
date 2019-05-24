@@ -118,7 +118,7 @@ rtsAsteriusModule opts =
     , functionMap =
         Map.fromList $
         map (\(func_sym, (_, func)) -> (func_sym, func))
-            (byteStringCBits <> floatCBits)
+            (byteStringCBits <> floatCBits  <> unicodeCBits)
     }  <> mainFunction opts
        <> hsInitFunction opts
        <> scheduleWaitThreadFunction opts
@@ -474,7 +474,7 @@ rtsFunctionImports debug =
           , b <- ["8", "16"]
           ]
      else []) <>
-  map (fst . snd) (byteStringCBits <> floatCBits)
+  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits)
 
 rtsFunctionExports :: Bool -> Bool -> [FunctionExport]
 rtsFunctionExports debug has_main =
@@ -1227,6 +1227,27 @@ barfFunction _ =
   runEDSL "barf" $ do
     s <- param I64
     callImport "__asterius_barf" [convertUInt64ToFloat64 s]
+
+-- | Note that generateRTSWrapper will treat all our numbers as signed, not
+-- unsigned.   This is OK for ASCII code, since the ints we have will not be
+-- larger than 2^15.  However, for larger numbers, it would "overflow", and
+-- would treat large unsigned  numbers as negative signed numbers.
+unicodeCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+unicodeCBits = map
+    (\(func_sym, param_vts, ret_vts) ->
+       ( AsteriusEntitySymbol func_sym
+       , generateRTSWrapper "Unicode" func_sym param_vts ret_vts))
+    [ ("u_gencat", [I64], [I64])
+    , ("u_iswalpha", [I64], [I64])
+    , ("u_iswalnum", [I64], [I64])
+    , ("u_iswupper", [I64], [I64])
+    , ("u_iswlower", [I64], [I64])
+    , ("u_towlower", [I64], [I64])
+    , ("u_towupper", [I64], [I64])
+    , ("u_towtitle", [I64], [I64])
+    , ("u_iswcntrl", [I64], [I64])
+    , ("u_iswprint", [I64], [I64])
+    ]
 
 getProgArgvFunction _ =
   runEDSL "getProgArgv" $ do

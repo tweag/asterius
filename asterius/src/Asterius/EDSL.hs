@@ -321,12 +321,19 @@ call' f xs vt = do
   putLVal lr Call {target = f, operands = xs, callReturnTypes = [vt]}
   pure $ getLVal lr
 
-callImport :: SBS.ShortByteString -> [Expression] -> EDSL ()
+-- | Call a function with no return value
+callImport :: SBS.ShortByteString -- ^ Function name
+  -> [Expression] -- ^ Parameter list
+  -> EDSL ()
 callImport f xs =
   emit CallImport {target' = f, operands = xs, callImportReturnTypes = []}
 
+-- | Call a function with a return value
 callImport' ::
-     SBS.ShortByteString -> [Expression] -> ValueType -> EDSL Expression
+     SBS.ShortByteString -- ^ Function name
+     -> [Expression] -- ^ Arguments
+     -> ValueType -- ^ Return type of function
+     -> EDSL Expression
 callImport' f xs vt = do
   lr <- mutLocal vt
   putLVal
