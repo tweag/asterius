@@ -128,7 +128,7 @@ let
 in
   pkgSet.config.hsPkgs // {
     _config = pkgSet.config;
-    inherit ghc-head ghc864 plan-nix;
+    inherit ghc-head ghc864 plan-nix pkgs;
     asterius-boot = pkgs.runCommand "asterius-boot" {
       preferLocalBuild = true;
       nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compiler.nix-name} pkgs.autoconf pkgs.automake ];
