@@ -67,7 +67,7 @@ export class FloatCBits {
 
     __decodeFloat_Int(manp, expp, f) {
         // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c#L215
-        var man, exp;
+        let man, exp, sign;
         var high = this.FloatToIEEE(f);
 
 
@@ -76,8 +76,6 @@ export class FloatCBits {
             exp = 0;
         } else {
             exp = ((high >> 23) & 0xff) + this.MY_FMINEXP;
-            var sign = high;
-
             high &= this.FHIGHBIT-1;
             if (exp != this.MY_FMINEXP) /* don't add hidden bit to denorms */
                 high |= this.FHIGHBIT;
@@ -96,12 +94,7 @@ export class FloatCBits {
             }
         }
 
-        console.log("man: ", man);
-        console.log("exp: ", exp);
-
         this.memory.i64Store(manp, man);
         this.memory.i64Store(expp, exp);
-        
-        console.log("wrote man, exp");
     }
 }
