@@ -30,9 +30,9 @@ export class FloatCBits {
         this.FHIGHBIT = 0x00800000;
         this.FMSBIT = 0x80000000;
 
-        // buffer of 4 bytes to hold floats
-        this.bufferFloat = new ArrayBuffer(4);
-        this.viewFloat = new DataView(this.bufferFloat);
+        // buffer of 8 bytes to hold floats/doubles
+        this.buffer = new ArrayBuffer(8);
+        this.view = new DataView(this.buffer);
 
         Object.seal(this);
     }
@@ -54,16 +54,14 @@ export class FloatCBits {
         return Object.is(-0, x);
     }
 
-    // https://stackoverflow.com/questions/2003493/javascript-float-from-to-bits
     FloatToIEEE(f) {
-        this.viewFloat.setFloat32(0, f);
-        return this.viewFloat.getUint32(0);
+        this.view.setFloat32(0, f);
+        return this.view.getUint32(0);
     }
 
-    // https://stackoverflow.com/questions/2003493/javascript-float-from-to-bits
     IEEEToFloat(ieee) {
-        this.viewFloat.setUint32(0, ieee);
-        return this.viewFloat.getFloat32(0);
+        this.view.setUint32(0, ieee);
+        return this.view.getFloat32(0);
     }
 
 
