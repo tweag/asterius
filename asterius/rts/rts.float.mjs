@@ -68,7 +68,7 @@ export class FloatCBits {
     __decodeFloat_Int(manp, expp, f) {
         // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c#L215
         let man, exp, sign;
-        var high = this.FloatToIEEE(f);
+        let high = this.FloatToIEEE(f);
 
 
         if ((high & ~this.FMSBIT) == 0) {
