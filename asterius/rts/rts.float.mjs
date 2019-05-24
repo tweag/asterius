@@ -67,8 +67,6 @@ export class FloatCBits {
 
     __decodeFloat_Int(manp, expp, f) {
         // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c#L215
-        console.log("inside decodeFloat")
-        console.log("f: ", f);
         var man, exp;
         var high = this.FloatToIEEE(f);
 
