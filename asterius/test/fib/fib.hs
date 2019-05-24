@@ -51,7 +51,7 @@ sizeofBinTree :: BinTree -> Int
 sizeofBinTree Tip = 1
 sizeofBinTree (Branch x y) = 1 + sizeofBinTree x + sizeofBinTree y
 
-foreign import ccall unsafe "print_i64" print_i64 :: Int -> IO ()
+foreign import ccall safe "print_i64" print_i64 :: Int -> IO ()
 foreign import ccall unsafe "assert_eq_i64" assert_eq_i64 :: Int -> Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
