@@ -6,6 +6,7 @@ import Control.DeepSeq
 import Control.Monad.State.Strict
 import qualified Data.IntMap.Strict as IM
 import GHC.Generics
+import System.Mem
 
 fib :: Int -> Int
 fib n = go 0 1 0
@@ -58,6 +59,8 @@ foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
 main :: IO ()
 main = do
+  performGC
+
   -- Test that assert_eq works
   assert_eq_i64 10 10
 
