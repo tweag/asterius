@@ -145,23 +145,7 @@ export function newAsteriusInstance(req) {
       TSO: modulify(__asterius_tso_manager)
     }
   );
-  if (req.sync) {
-    const i = new WebAssembly.Instance(req.module, importObject);
-    __asterius_wasm_instance = i;
-    __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
-    __asterius_mblockalloc.init(__asterius_memory, req.staticMBlocks);
-    __asterius_heapalloc.init();
-    __asterius_integer_manager.heap = __asterius_heap_builder;
-    __asterius_bytestring_cbits.memory = __asterius_memory;
-    return Object.assign(__asterius_jsffi_instance, {
-      wasmModule: req.module,
-      wasmInstance: __asterius_wasm_instance,
-      symbolTable: req.symbolTable,
-      vault: __asterius_vault,
-      logger: __asterius_logger
-    });
-  } else
-    return WebAssembly.instantiate(req.module, importObject).then(i => {
+  return WebAssembly.instantiate(req.module, importObject).then(i => {
       __asterius_wasm_instance = i;
       __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
       __asterius_mblockalloc.init(__asterius_memory, req.staticMBlocks);
