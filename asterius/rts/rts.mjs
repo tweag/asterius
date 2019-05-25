@@ -17,6 +17,7 @@ import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
+import { ThreadPaused } from "./rts.threadpaused.mjs";
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
@@ -40,6 +41,7 @@ export function newAsteriusInstance(req) {
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable),
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
+    __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_unicode = new Unicode();
 
@@ -134,6 +136,7 @@ export function newAsteriusInstance(req) {
       floatCBits: modulify(__asterius_float_cbits),
       GC: modulify(__asterius_gc),
       ExceptionHelper: modulify(__asterius_exception_helper),
+      ThreadPaused: modulify(__asterius_threadpaused),
       HeapAlloc: modulify(__asterius_heapalloc),
       HeapBuilder: modulify(__asterius_heap_builder),
       MBlockAlloc: modulify(__asterius_mblockalloc),

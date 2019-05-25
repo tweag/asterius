@@ -412,6 +412,12 @@ rtsFunctionImports debug =
       , externalBaseName = "barf"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       }
+  , FunctionImport
+      { internalName = "__asterius_threadPaused"
+      , externalModuleName = "ThreadPaused"
+      , externalBaseName = "threadPaused"
+      , functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
+      }
   ] <>
   (if debug
      then [ FunctionImport
@@ -1200,7 +1206,10 @@ fromJSArrayFunction _ =
       callImport' "__asterius_fromJSArray_imp" [convertUInt64ToFloat64 arr] F64
     emit addr
 
-threadPausedFunction _ = runEDSL "threadPaused" $ void $ params [I64, I64]
+threadPausedFunction _ =
+  runEDSL "threadPaused" $ do
+    args <- params [I64, I64]
+    callImport "__asterius_threadPaused" $ map convertUInt64ToFloat64 args
 
 dirtyMutVarFunction _ =
   runEDSL "dirty_MUT_VAR" $ do
