@@ -831,7 +831,14 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                         break' sched_block_lbl Nothing)
                     (do callImport
                           "__asterius_setTSOret"
-                          [loadI32 t offset_StgTSO_id, ConstF64 0]
+                          [ loadI32 t offset_StgTSO_id
+                          , convertUInt64ToFloat64 $
+                            loadI64
+                              (loadI64
+                                 (loadI64 t offset_StgTSO_stackobj)
+                                 offset_StgStack_sp)
+                              8
+                          ]
                         callImport
                           "__asterius_setTSOrstat"
                           [ loadI32 t offset_StgTSO_id
