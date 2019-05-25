@@ -667,7 +667,14 @@ mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFuncti
 mainFunction BuiltinsOptions {} =
   runEDSL "main" $ do
     setReturnTypes [I32]
-    tid <- call' "rts_evalLazyIO" [symbol "Main_main_closure"] I32
+    c <-
+      call'
+        "rts_apply"
+        [ symbol "base_AsteriusziTopHandler_runMainIO_closure"
+        , symbol "Main_main_closure"
+        ]
+        I64
+    tid <- call' "rts_evalLazyIO" [c] I32
     emit tid
 
 initCapability :: EDSL ()

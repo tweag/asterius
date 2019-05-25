@@ -319,6 +319,7 @@ Library
         Unsafe.Coerce
 
         Asterius.Prim
+        Asterius.TopHandler
         Asterius.Types
 
     other-modules:
