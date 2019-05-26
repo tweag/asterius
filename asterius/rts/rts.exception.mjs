@@ -89,7 +89,7 @@ export class ExceptionHelper {
         }
         case ClosureTypes.RET_FUN: {
           const size = Number(
-            this.memory.i64Load(c + rtsConstants.offset_StgRetFun_size)
+            this.memory.i64Load(p + rtsConstants.offset_StgRetFun_size)
           );
           p += rtsConstants.sizeof_StgRetFun + (size << 3);
           break;
