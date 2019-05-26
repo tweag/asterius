@@ -36,7 +36,6 @@ export function newAsteriusInstance(req) {
     __asterius_heap_builder = new HeapBuilder(req.symbolTable, __asterius_heapalloc, __asterius_memory, __asterius_stableptr_manager),
     __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager, __asterius_heap_builder),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
-    __asterius_vault = req.vault ? req.vault : new Map(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable),
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
@@ -60,14 +59,6 @@ export function newAsteriusInstance(req) {
     newTmpJSVal: v => __asterius_stableptr_manager.newTmpJSVal(v),
     mutTmpJSVal: (i, f) => __asterius_stableptr_manager.mutTmpJSVal(i, f),
     freezeTmpJSVal: i => __asterius_stableptr_manager.freezeTmpJSVal(i),
-    vaultInsert: (k, v) =>
-      __asterius_jsffi_instance.vault.set(decodeLatin1(k), v),
-    vaultHas: k =>
-      __asterius_jsffi_instance.vault.has(decodeLatin1(k)),
-    vaultLookup: k =>
-      __asterius_jsffi_instance.vault.get(decodeLatin1(k)),
-    vaultDelete: k =>
-      __asterius_jsffi_instance.vault.delete(decodeLatin1(k)),
     makeHaskellCallback: sp => () => {
       const tid = __asterius_wasm_instance.exports.rts_evalLazyIO(__asterius_stableptr_manager.deRefStablePtr(sp));
       __asterius_wasm_instance.exports.rts_checkSchedStatus(tid);
@@ -156,7 +147,6 @@ export function newAsteriusInstance(req) {
         wasmModule: req.module,
         wasmInstance: __asterius_wasm_instance,
         symbolTable: req.symbolTable,
-        vault: __asterius_vault,
         logger: __asterius_logger
       });
     });
