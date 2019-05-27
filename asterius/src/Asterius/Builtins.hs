@@ -155,9 +155,9 @@ rtsAsteriusModule opts =
        <> performGCFunction opts
        <> localeEncodingFunction opts
        <> (if debug opts then generateRtsAsteriusDebugModule opts else mempty)
-       -- | Add in the module that contain functions which need to be
-       -- | exposed to the outside world. So add in the module, and
-       -- | the module wrapped by using `generateWrapperModule`.
+       -- Add in the module that contain functions which need to be
+       -- exposed to the outside world. So add in the module, and
+       -- the module wrapped by using `generateWrapperModule`.
        <> generateRtsExternalInterfaceModule opts
        <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
 

@@ -62,6 +62,7 @@ dependencies:
   - inline-js-core
   - libiserv
   - mtl
+  - network <2.9
   - parsec
   - process
   - template-haskell
