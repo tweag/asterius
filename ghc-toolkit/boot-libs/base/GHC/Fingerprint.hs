@@ -33,9 +33,11 @@ import System.IO
 
 import GHC.Fingerprint.Type
 
--- for SIZEOF_STRUCT_MD5CONTEXT:
--- #include "HsBaseConfig.h"
+#include "HsBaseConfig.h"
 
+-- for SIZEOF_STRUCT_MD5CONTEXT to be correct. For some reason,
+-- configure.ac sets SIZEOF_STRUCT_MD5CONTEXT to be 0. Here, we hardcode
+-- the correct value.
 {- Discovered by running:
   {-# LANGUAGE CPP #-}
 
@@ -44,7 +46,10 @@ import GHC.Fingerprint.Type
   main :: IO ()
   main = print (SIZEOF_STRUCT_MD5CONTEXT :: Int)
 -}
+#ifdef ASTERIUS
+#undef SIZEOF_STRUCT_MD5CONTEXT
 #define SIZEOF_STRUCT_MD5CONTEXT 88
+#endif
 
 -- XXX instance Storable Fingerprint
 -- defined in Foreign.Storable to avoid orphan instance
