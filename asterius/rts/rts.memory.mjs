@@ -59,15 +59,12 @@ export class Memory {
   strLoad(_str) {
       let p = Memory.unTag(_str);
       let s = "";
-      let i = 0;
-      // NOTE: passing a non-null terminated string will give you garbage,
-      // as you deserve.
-      while(1) {
+
+      for(let i = 0; i < this.strlen(_str); ++i) {
           let code = this.i8View[p + i];
-          if (code == 0) { return s; }
           s += String.fromCharCode(code);
-          i += 1;
       }
+      return s;
   }
   memchr(_ptr, val, num) {
     const ptr = Memory.unTag(_ptr),
