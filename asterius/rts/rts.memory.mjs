@@ -56,6 +56,19 @@ export class Memory {
   i64LoadU16(p) { return BigInt(this.dataView.getUint16(Memory.unTag(p), true)); }
   heapAlloced(p) { return Memory.unTag(p) >= (this.staticMBlocks << Math.log2(rtsConstants.mblock_size)); }
   strlen(_str) { return this.i8View.subarray(Memory.unTag(_str)).indexOf(0); }
+  strLoad(_str) {
+      let p = Memory.unTag(_str);
+      let s = "";
+      let i = 0;
+      // NOTE: passing a non-null terminated string will give you garbage,
+      // as you deserve.
+      while(1) {
+          let code = this.i8View[p + i];
+          if (code == 0) { return s; }
+          s += String.fromCharCode(code);
+          i += 1;
+      }
+  }
   memchr(_ptr, val, num) {
     const ptr = Memory.unTag(_ptr),
           off = this.i8View.subarray(ptr, ptr + num).indexOf(val);
