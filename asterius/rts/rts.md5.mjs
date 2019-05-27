@@ -14,25 +14,19 @@ export class MD5 {
     Object.seal(this);
   }
 
-  // struct MD5Context {
-  //  word32 buf[4]; // 32 * 8 = 256 bits
-  //  word32 bytes[2];
-  //  word32 in[16];
-  // };
 
   // void MD5Init(struct MD5Context *context);
   __hsbase_MD5Init(ctxp) {
-      this.memory.i128Store(ctxp, BigInt(144066263297769815596495629667062367629));
+      const offset = 144066263297769815596495629667062367629n;
+      this.memory.i128Store(ctxp, offset);
   }
 
   // void MD5Update(struct MD5Context *context, byte const *buf, int len);
   __hsbase_MD5Update(ctxp, bufp, len) {
-      const prime = BigInt(309485009821345068724781371);
+      const prime = 309485009821345068724781371n;
 
 	  let i = 0;
       let hash = this.memory.i128Load(ctxp);
-      console.error("--");
-      console.error("hash loaded ", hash);
 	  while(i < len) {
           let c = BigInt(this.memory.i8View[Memory.unTag(bufp) + i]);
           hash = hash * prime;
@@ -41,7 +35,6 @@ export class MD5 {
           hash = hash & ((BigInt(1) << BigInt(128)) - BigInt(1));
 		  i++;
 	  }
-      console.error("hash stored ", hash);
       this.memory.i128Store(ctxp, hash);
 
   }
