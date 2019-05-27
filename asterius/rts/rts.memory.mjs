@@ -59,12 +59,14 @@ export class Memory {
   strLoad(_str) {
       let p = Memory.unTag(_str);
       let s = "";
+      let i = 0;
 
-      for(let i = 0; i < this.strlen(_str); ++i) {
-          let code = this.i8View[p + i];
-          s += String.fromCharCode(code);
+      while(1) {
+          let c = this.i8View[p + i];
+          if (c == 0) { return s };
+          s += String.fromCharCode(c);
+          i++;
       }
-      return s;
   }
   memchr(_ptr, val, num) {
     const ptr = Memory.unTag(_ptr),
