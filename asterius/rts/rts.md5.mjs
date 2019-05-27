@@ -1,7 +1,8 @@
 import { Memory } from "./rts.memory.mjs";
 export class MD5 {
-  // We implement the djb2 hash function (http://www.cse.yorku.ca/~oz/hash.html)
-  // rather than MD5, since it is easier, and it is unclear whether GHC
+  // We implement the 128-bit FNV-1a hash function:
+  // https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
+  // This is easier, and it is unclear whether GHC
   // needs cryptographic hash functions. We assume that GHC does not ever 
   // depend on the fact that the hash function _must be MD5_.
 
@@ -21,20 +22,27 @@ export class MD5 {
 
   // void MD5Init(struct MD5Context *context);
   __hsbase_MD5Init(ctxp) {
-      this.memory.i64Store(ctxp, 5381);
+      this.memory.i128Store(ctxp, BigInt(144066263297769815596495629667062367629));
   }
 
   // void MD5Update(struct MD5Context *context, byte const *buf, int len);
   __hsbase_MD5Update(ctxp, bufp, len) {
+      const prime = BigInt(309485009821345068724781371);
+
 	  let i = 0;
-      let hash = this.memory.i64Load(ctxp);
+      let hash = this.memory.i128Load(ctxp);
+      console.error("--");
+      console.error("hash loaded ", hash);
 	  while(i < len) {
           let c = BigInt(this.memory.i8View[Memory.unTag(bufp) + i]);
-          console.error("hash: ", hash, "|c: ", c);
-          hash = ((hash << BigInt(5)) + hash) + c; // hash * 33 + c
+          hash = hash * prime;
+          hash = hash ^ c;
+          // only keep 128 bits, overflow is overflown.
+          hash = hash & ((BigInt(1) << BigInt(128)) - BigInt(1));
 		  i++;
 	  }
-      this.memory.i64Store(ctxp, hash);
+      console.error("hash stored ", hash);
+      this.memory.i128Store(ctxp, hash);
 
   }
 
@@ -42,6 +50,6 @@ export class MD5 {
   // 16 byte = 128 bit.
   // void MD5Final(byte digest[16], struct MD5Context *context);
   __hsbase_MD5Final(digestp, ctxp) {
-      this.memory.i64Store(digestp, this.memory.i64Load(ctxp));
+      this.memory.i128Store(digestp, this.memory.i128Load(ctxp));
   }
 }

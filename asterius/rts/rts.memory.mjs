@@ -42,6 +42,42 @@ export class Memory {
   i32Store(p, v) { this.dataView.setUint32(Memory.unTag(p), Number(v), true); }
   i64Load(p) { return this.dataView.getBigUint64(Memory.unTag(p), true); }
   i64Store(p, v) { this.dataView.setBigUint64(Memory.unTag(p), BigInt(v), true); }
+  i128Load(p) { 
+      console.log("*** load:");
+      // little endian: number with hex digits <0A0B> at address p 
+      // get stored as mem[p] = 0B, mem[p+1] = 0A
+      let low = this.dataView.getBigUint64(Memory.unTag(p), true);
+      console.log("low: ", low);
+      let high = this.dataView.getBigUint64(Memory.unTag(p) + 8, true);
+      console.log("high: ", high);
+      console.log("----");
+      return low | (high << BigInt(64));
+  }
+
+
+  i128Store(p, v) {
+      console.log("*** store v: ", v);
+      // create all 1s of 64 bits.
+      const lowmask = (BigInt(1) << BigInt(64)) - BigInt(1);
+
+      // little endian: number with digits <x y> at address p 
+      // get stored as mem[p] = y, mem[p+1] = x
+      let low = v & lowmask;
+      console.log("v & low: " , low);
+      this.dataView.setBigUint64(Memory.unTag(p), low, true);
+
+      let high = (v >> BigInt(64)) & lowmask;
+      console.log("v & high: " , high);
+
+      let v_recreated = ((high << BigInt(64)) | low);
+      console.log("v_recreated: " , v_recreated);
+      console.assert(v_recreated == BigInt(v));
+
+      // byte addressed, so +8 = 64-bit
+      this.dataView.setBigUint64(Memory.unTag(p) + 8, high, true);
+      console.log("---");
+  }
+
   f32Load(p) { return this.dataView.getFloat32(Memory.unTag(p), true); }
   f32Store(p, v) { this.dataView.setFloat32(Memory.unTag(p), Number(v), true); }
   f64Load(p) { return this.dataView.getFloat64(Memory.unTag(p), true); }
