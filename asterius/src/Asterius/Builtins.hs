@@ -1268,6 +1268,7 @@ suspendThreadFunction _ =
   runEDSL "suspendThread" $ do
     setReturnTypes [I64]
     [reg, _] <- params [I64, I64]
+    call "threadPaused" [mainCapability, getLVal $ global CurrentTSO]
     emit reg
 
 resumeThreadFunction _ =
