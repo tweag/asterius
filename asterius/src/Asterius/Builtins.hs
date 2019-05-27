@@ -136,6 +136,7 @@ rtsAsteriusModule opts =
        <> printF64Function opts
        <> assertEqI64Function opts
        <> strlenFunction opts
+       <> debugBelch2Function opts
        <> memchrFunction opts
        <> memcpyFunction opts
        <> memsetFunction opts
@@ -332,6 +333,12 @@ rtsFunctionImports debug =
       , externalModuleName = "Memory"
       , externalBaseName = "strlen"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_debugBelch2"
+      , externalModuleName = "Messages"
+      , externalBaseName = "debugBelch2"
+      , functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
       }
   , FunctionImport
       { internalName = "__asterius_memchr"
@@ -575,7 +582,6 @@ floatCBits =
     , ("isFloatInfinite", [F32], [I64])
     , ("__decodeFloat_Int", [I64, I64, F32], [])
     ]
-
 
 generateRTSWrapper ::
      SBS.ShortByteString
@@ -1127,6 +1133,12 @@ strlenFunction _ =
     [str] <- params [I64]
     len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
     emit $ truncUFloat64ToInt64 len
+
+
+debugBelch2Function _ =
+  runEDSL "debugBelch2"  $ do
+    [fmt, str] <- params [I64, I64]
+    callImport "__asterius_debugBelch2" [convertUInt64ToFloat64 fmt, convertUInt64ToFloat64 str]
 
 memchrFunction _ =
   runEDSL "memchr"  $ do

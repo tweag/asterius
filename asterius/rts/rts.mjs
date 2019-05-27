@@ -17,6 +17,7 @@ import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
+import { Messages } from "./rts.messages.mjs";
 import { ThreadPaused } from "./rts.threadpaused.mjs";
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
@@ -42,6 +43,7 @@ export function newAsteriusInstance(req) {
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
     __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
+    __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode();
 
   function __asterius_show_I64(x) {
@@ -133,6 +135,7 @@ export function newAsteriusInstance(req) {
       MBlockAlloc: modulify(__asterius_mblockalloc),
       Memory: modulify(__asterius_memory),
       MemoryTrap: modulify(__asterius_memory_trap),
+      Messages: modulify(__asterius_messages),
       StablePtr: modulify(__asterius_stableptr_manager),
       Unicode: modulify(__asterius_unicode),
       Tracing: modulify(__asterius_tracer),
