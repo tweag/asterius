@@ -40,7 +40,12 @@ let
     ghc = pkgs.haskell.compiler.ghc864;
     index-state = "2019-05-23T00:00:00Z";
   };
-  plan-pkgs = import "${plan-nix}";
+  plan-pkgs-0 = import "${plan-nix}";
+  # Hide libiserv from the plan because it does not exist in hackage
+  # TODO find a proper fix for this issue
+  plan-pkgs = plan-pkgs-0 // {
+    pkgs = hackage: let x = (plan-pkgs-0.pkgs hackage);
+    in x // { packages = x.packages // { libiserv = null; }; }; };
 
   cabalPatch = pkgs.fetchpatch {
     url = "https://patch-diff.githubusercontent.com/raw/haskell/cabal/pull/6055.diff";
