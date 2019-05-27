@@ -583,16 +583,6 @@ floatCBits =
     , ("__decodeFloat_Int", [I64, I64, F32], [])
     ]
 
--- messagesCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
--- messagesCBits =
---     map (\(func_sym, param_vts, ret_vts) ->
---        ( AsteriusEntitySymbol func_sym
---        , generateRTSWrapper "Messages" func_sym param_vts ret_vts))
---     -- the type is char*. I have no idea what we do with `Ptr ()`.
---     -- I guess I'll find out.
---     [ ("debugBelch2", [I64, I64], []) ]
-
-
 generateRTSWrapper ::
      SBS.ShortByteString
   -> SBS.ShortByteString
