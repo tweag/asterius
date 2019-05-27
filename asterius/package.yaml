@@ -31,7 +31,6 @@ extra-source-files:
   - test/ghc-testsuite/**/*.stdout
   - test/exception/**/*.hs
   - test/regression60/**/*.hs
-  - test/regression60/**/*.hs
   - test/sizeof_md5context/**/*.hs
 
 data-files:
