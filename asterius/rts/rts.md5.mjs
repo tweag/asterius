@@ -21,20 +21,19 @@ export class MD5 {
 
   // void MD5Init(struct MD5Context *context);
   __hsbase_MD5Init(ctxp) {
-      let hash = 5381;
       this.memory.i64Store(ctxp, 5381);
   }
 
   // void MD5Update(struct MD5Context *context, byte const *buf, int len);
   __hsbase_MD5Update(ctxp, bufp, len) {
 	  let i = 0;
-      let hash = this.memory.i64Load(ctxp, hash);
+      let hash = this.memory.i64Load(ctxp);
 	  while(i < len) {
-          let c = this.memory.i8View[Memory.unTag(bufp) + i];
-          hash = ((hash << 5) + hash) + c; // hash * 33 + c
+          let c = BigInt(this.memory.i8View[Memory.unTag(bufp) + i]);
+          console.error("hash: ", hash, "|c: ", c);
+          hash = ((hash << BigInt(5)) + hash) + c; // hash * 33 + c
 		  i++;
 	  }
-
       this.memory.i64Store(ctxp, hash);
 
   }
