@@ -3,5 +3,6 @@ packages:
   binaryen
   ghc-toolkit
   inline-js/inline-js
+  inline-js/inline-js-core
   wabt
   wasm-toolkit

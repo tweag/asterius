@@ -27,7 +27,6 @@ let
             "npm-utils.cabal"
             "wabt.cabal"
             "wasm-toolkit.cabal"
-            "inline-js.cabal"
             "yarn.lock"
             "package-lock.json"
           ]
@@ -39,7 +38,7 @@ let
   plan-nix = haskell.callCabalProjectToNix {
     src = cleanSrc;
     ghc = pkgs.haskell.compiler.ghc864;
-    index-state = "2019-05-10T00:00:00Z";
+    index-state = "2019-05-23T00:00:00Z";
   };
   plan-pkgs = import "${plan-nix}";
 
@@ -65,6 +64,7 @@ let
     # packages we are interested in. By using the stack-pkgs.extras
     # we restrict our package set to the ones provided in stack.yaml.
     pkg-def-extras = [
+      (hackage: { libiserv = {}; })
       iohk-extras.${compiler.nix-name}
     ];
     modules = [
