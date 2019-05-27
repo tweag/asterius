@@ -118,7 +118,7 @@ rtsAsteriusModule opts =
     , functionMap =
         Map.fromList $
         map (\(func_sym, (_, func)) -> (func_sym, func))
-            (byteStringCBits <> floatCBits  <> unicodeCBits)
+            (byteStringCBits <> floatCBits  <> unicodeCBits <> md5CBits)
     }  <> mainFunction opts
        <> hsInitFunction opts
        <> scheduleWaitThreadFunction opts
@@ -480,7 +480,7 @@ rtsFunctionImports debug =
           , b <- ["8", "16"]
           ]
      else []) <>
-  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits)
+  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits)
 
 rtsFunctionExports :: Bool -> Bool -> [FunctionExport]
 rtsFunctionExports debug has_main =
@@ -576,6 +576,15 @@ floatCBits =
     , ("__decodeFloat_Int", [I64, I64, F32], [])
     ]
 
+md5CBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+md5CBits =
+    map (\(func_sym, param_vts, ret_vts) ->
+       ( AsteriusEntitySymbol func_sym
+       , generateRTSWrapper "MD5" func_sym param_vts ret_vts))
+    [ ("__hsbase_MD5Init", [I64], [])
+    , ("__hsbase_MD5Update", [I64, I64, I64], [])
+    , ("__hsbase_MD5Final", [I64, I64], [])
+    ]
 
 generateRTSWrapper ::
      SBS.ShortByteString

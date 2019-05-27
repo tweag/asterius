@@ -18,6 +18,7 @@ import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
 import { ThreadPaused } from "./rts.threadpaused.mjs";
+import { MD5 } from "./rts.md5.mjs"
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
@@ -42,7 +43,8 @@ export function newAsteriusInstance(req) {
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
     __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
-    __asterius_unicode = new Unicode();
+    __asterius_unicode = new Unicode(),
+    __asterius_md5 = new MD5(__asterius_memory);
 
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
@@ -135,6 +137,7 @@ export function newAsteriusInstance(req) {
       MemoryTrap: modulify(__asterius_memory_trap),
       StablePtr: modulify(__asterius_stableptr_manager),
       Unicode: modulify(__asterius_unicode),
+      MD5: modulify(__asterius_md5),
       Tracing: modulify(__asterius_tracer),
       TSO: modulify(__asterius_tso_manager)
     }
