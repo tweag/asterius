@@ -31,6 +31,8 @@ extra-source-files:
   - test/ghc-testsuite/**/*.stdout
   - test/exception/**/*.hs
   - test/regression60/**/*.hs
+  - test/regression60/**/*.hs
+  - test/sizeof_md5context/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -244,6 +246,13 @@ tests:
       - ansi-terminal
       - stm
       - cassava
+
+  sizeof_md5context:
+    source-dirs: test
+    main: sizeof_md5context.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
 
   regression60:
     source-dirs: test

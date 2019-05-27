@@ -34,7 +34,17 @@ import System.IO
 import GHC.Fingerprint.Type
 
 -- for SIZEOF_STRUCT_MD5CONTEXT:
-#include "HsBaseConfig.h"
+-- #include "HsBaseConfig.h"
+
+{- Discovered by running:
+  {-# LANGUAGE CPP #-}
+
+  #include "HsBaseConfig.h"
+
+  main :: IO ()
+  main = print (SIZEOF_STRUCT_MD5CONTEXT :: Int)
+-}
+#define SIZEOF_STRUCT_MD5CONTEXT 88
 
 -- XXX instance Storable Fingerprint
 -- defined in Foreign.Storable to avoid orphan instance
