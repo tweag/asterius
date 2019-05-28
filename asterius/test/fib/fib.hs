@@ -8,6 +8,7 @@ import qualified Data.IntMap.Strict as IM
 import GHC.Generics
 import System.Mem
 import Debug.Trace (trace)
+import Control.Exception (assert)
 
 fib :: Int -> Int
 fib n = go 0 1 0
@@ -60,6 +61,9 @@ foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
 main :: IO ()
 main = do
+  let x = isNegativeZero (-0.0 :: Double)
+  putStrLn $ "is -0.0 neg0: " <> show x
+  assert (x == True) (pure ())
 
   performGC
 
