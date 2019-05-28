@@ -95,7 +95,9 @@ hex16 i = let hex = showHex i ""
 main :: IO ()
 main = do
   let d = -0.0 :: Double
+  let f = -0.0 :: Float
   putStrLn $ "d: " <> show d <> " | is neg 0: " <> show (isNegativeZero d)
+  putStrLn $ "f: " <> show d <> " | is neg 0: " <> show (isNegativeZero f)
   putStrLn $ "d bytes: " <> hex16  ((reinterpretCast d) :: Word64)
   assert (isNegativeZero d == True) (pure ())
 
