@@ -26,7 +26,7 @@
 
 module GHC.Integer.Type where
 
-#if !defined(ASTERIUS)
+#if defined(ASTERIUS)
 
 import Asterius.Magic
 import GHC.Classes
@@ -165,8 +165,8 @@ floatFromInteger (Integer i) = js_floatFromInteger i
 encodeDoubleInteger :: Integer -> Int# -> Double#
 encodeDoubleInteger (Integer m) n = js_encodeDoubleInteger m n
 
--- decodeDoubleInteger :: Double# -> (# Integer, Int# #)
--- decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m d), js_decodeDoubleInteger_n d #)
+decodeDoubleInteger :: Double# -> (# Integer, Int# #)
+decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m d), js_decodeDoubleInteger_e d #)
 
 
 doubleFromInteger :: Integer -> Double#
@@ -257,7 +257,7 @@ foreign import javascript "__asterius_jsffi.Integer.remInteger(${1},${2})" js_re
 
 foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeFloatInteger :: Int# -> Int# -> Float#
 
-foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeFloatInteger_m :: Float# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.floatCBits.decodeDoubleInteger(${1})[0])" js_decodeFloatInteger_m :: Float# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeFloatInteger_n :: Float# -> Int#
 
@@ -265,9 +265,9 @@ foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_
 
 foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeDoubleInteger :: Int# -> Int# -> Double#
 
-foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.floatCBits.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_n :: Double# -> Int#
+foreign import javascript "__asterius_jsffi.Float.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_e :: Double# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_doubleFromInteger :: Int# -> Double#
 

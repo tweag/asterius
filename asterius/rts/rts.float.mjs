@@ -236,27 +236,29 @@ export class FloatCBits {
     // returns [man_sign, man_high,  man_low, exp]
     __decodeDouble_2IntJS(dbl) {
         let sign, iexp, man_low, man_high, man_sign;
-        const ints = DoubleTo2Int(dbl);
-        const low = ints[0];
-        const high = ints[1];
+        const ints = this.DoubleTo2Int(dbl);
+        let low = ints[0];
+        let high = ints[1];
+        let exp = 0;
 
         if (low == 0 && (high & ~this.DMSBIT) == 0) {
             man_low = 0;
             man_high = 0;
+            man_sign = 0;
             exp = 0;
         } else {
             iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
             sign = high;
 
             high &= this.DHIGHBIT-1;
-            if (iexp != MY_DMINEXP) /* don't add hidden bit to denorms */
+            if (iexp != this.MY_DMINEXP) /* don't add hidden bit to denorms */
                 high |= this.DHIGHBIT;
             else {
                 iexp++;
                 /* A denorm, normalize the mantissa */
                 while (! (high & this.DHIGHBIT)) {
                     high <<= 1;
-                    if (low & DMSBIT)
+                    if (low & this.DMSBIT)
                         high++;
                     low <<= 1;
                     iexp--;
@@ -281,7 +283,7 @@ export class FloatCBits {
         const exp = out[3];
 
         let acc = BigInt(0);
-        acc = BigInt(man_sign) * (BigInt(man_high) * bigInt(1 << 32) + BigInt(man_low));
+        acc = BigInt(man_sign) * (BigInt(man_high) * BigInt(1 << 32) + BigInt(man_low));
         return [acc, exp]
 
     }
