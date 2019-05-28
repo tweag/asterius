@@ -2,7 +2,7 @@
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
+{-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm -fforce-recomp -ddump-simpl #-}
 
 import Control.DeepSeq
 import Control.Monad.State.Strict
