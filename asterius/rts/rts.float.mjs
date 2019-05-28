@@ -45,7 +45,16 @@ export class FloatCBits {
     isFloatNaN(x) {
         return x != x;
     }
+
+    isDoubleNaN(x) {
+        return x != x;
+    }
+
     isFloatInfinite(x) {
+        return !isFinite(x);
+    }
+
+    isDoubleInfinite(x) {
         return !isFinite(x);
     }
 

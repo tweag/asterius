@@ -1,3 +1,5 @@
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
@@ -5,10 +7,21 @@
 import Control.DeepSeq
 import Control.Monad.State.Strict
 import qualified Data.IntMap.Strict as IM
+import Foreign
 import GHC.Generics
+import GHC.Exts
+import GHC.Stack
+import qualified GHC.Types
 import System.Mem
 import Debug.Trace (trace)
 import Control.Exception (assert)
+import Numeric (showHex)
+
+unI# :: Int -> Int#
+unI# (I# x) = x
+
+unIO :: GHC.Types.IO a -> (State# RealWorld -> (# State# RealWorld, a #))
+unIO (GHC.Types.IO m) = m
 
 fib :: Int -> Int
 fib n = go 0 1 0
@@ -59,11 +72,30 @@ foreign import ccall unsafe "assert_eq_i64" assert_eq_i64 :: Int -> Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
+reinterpretCast :: (Storable a, Storable b) => a -> b
+reinterpretCast a =
+  case runRW#
+         (\s0 ->
+            case newPinnedByteArray# (unI# (sizeOf a)) s0 of
+                (# s1, mba #) ->
+                    case unsafeFreezeByteArray# mba s1 of
+                      (# s2, ba #) ->
+                        case byteArrayContents# ba of
+                          addr ->
+                            case unIO (poke (Ptr addr) a) s2 of
+                              (# s3, _ #) -> unIO (peek (Ptr addr)) s3) of
+                                (# _, r #) -> r
+
+-- | Formats a 64 bit number as 16 digits hex.
+hex16 :: Word64 -> String
+hex16 i = let hex = showHex i ""
+         in replicate (16 - length hex) '0' ++ hex
 main :: IO ()
 main = do
-  let x = isNegativeZero (-0.0 :: Double)
-  putStrLn $ "is -0.0 neg0: " <> show x
-  assert (x == True) (pure ())
+  let d = -0.0 :: Double
+  putStrLn $ "d: " <> show d <> " | is neg 0: " <> show (isNegativeZero d)
+  putStrLn $ "d bytes: " <> hex16  ((reinterpretCast d) :: Word64)
+  assert (isNegativeZero d == True) (pure ())
 
   performGC
 
