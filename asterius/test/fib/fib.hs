@@ -17,12 +17,7 @@ import Debug.Trace (trace)
 import Control.Exception (assert)
 import Numeric (showHex)
 
-unI# :: Int -> Int#
-unI# (I# x) = x
-
-unIO :: GHC.Types.IO a -> (State# RealWorld -> (# State# RealWorld, a #))
-unIO (GHC.Types.IO m) = m
-
+{-
 fib :: Int -> Int
 fib n = go 0 1 0
   where
@@ -71,6 +66,13 @@ foreign import ccall safe "print_i64" print_i64 :: Int -> IO ()
 foreign import ccall unsafe "assert_eq_i64" assert_eq_i64 :: Int -> Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
+-}
+
+unI# :: Int -> Int#
+unI# (I# x) = x
+
+unIO :: GHC.Types.IO a -> (State# RealWorld -> (# State# RealWorld, a #))
+unIO (GHC.Types.IO m) = m
 
 reinterpretCast :: (Storable a, Storable b) => a -> b
 reinterpretCast a =
@@ -89,7 +91,7 @@ reinterpretCast a =
 -- | Formats a 64 bit number as 16 digits hex.
 hex16 :: Word64 -> String
 hex16 i = let hex = showHex i ""
-         in replicate (16 - length hex) '0' ++ hex
+         in "0x" <> replicate (16 - length hex) '0' <> hex
 main :: IO ()
 main = do
   let d = -0.0 :: Double
@@ -97,6 +99,7 @@ main = do
   putStrLn $ "d bytes: " <> hex16  ((reinterpretCast d) :: Word64)
   assert (isNegativeZero d == True) (pure ())
 
+  {-
   performGC
 
   putStrLn $ trace "trace message" ""
@@ -135,3 +138,4 @@ main = do
   assert_eq_i64 (sumFacts 5) (154)
 
   performGC
+  -}
