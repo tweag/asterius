@@ -101,6 +101,13 @@ main = do
   putStrLn $ "d bytes: " <> hex16  ((reinterpretCast d) :: Word64)
   assert (isNegativeZero d == True) (pure ())
 
+  let denorms = [4.9406564558412465e-324,
+                 2.2250738585072014e-308,
+                 0] :: [Double]
+
+  forM_ denorms $ \d -> do
+      putStrLn $ show d <> "| is denorm: " <> show (isDenormalized d)
+
   {-
   performGC
 
