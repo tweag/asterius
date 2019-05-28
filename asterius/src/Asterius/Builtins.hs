@@ -425,6 +425,18 @@ rtsFunctionImports debug =
       , externalBaseName = "threadPaused"
       , functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
       }
+  , FunctionImport
+      { internalName = "__asterius_enter"
+      , externalModuleName = "ReentrancyGuard"
+      , externalBaseName = "enter"
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_exit"
+      , externalModuleName = "ReentrancyGuard"
+      , externalBaseName = "exit"
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
+      }
   ] <>
   (if debug
      then [ FunctionImport
@@ -685,7 +697,6 @@ initCapability :: EDSL ()
 initCapability = do
   storeI32 mainCapability offset_Capability_no $ constI32 0
   storeI32 mainCapability offset_Capability_node $ constI32 0
-  storeI8 mainCapability offset_Capability_in_haskell $ constI32 0
   storeI32 mainCapability offset_Capability_idle $ constI32 0
   storeI8 mainCapability offset_Capability_disabled $ constI32 0
   storeI64 mainCapability offset_Capability_total_allocated $ constI64 0
@@ -712,16 +723,23 @@ hsInitFunction _ =
       truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
     putLVal currentNursery bd_nursery
 
+enter, exit :: Int -> EDSL ()
+enter i = callImport "__asterius_enter" [constI32 i]
+
+exit i = callImport "__asterius_exit" [constI32 i]
+
 rtsEvalHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> EDSL ()
 rtsEvalHelper BuiltinsOptions {..} create_thread_func_sym = do
   setReturnTypes [I32]
   p <- param I64
+  enter 0
   tso <-
     call'
       create_thread_func_sym
       [mainCapability, constI64 $ roundup_bytes_to_words threadStateSize, p]
       I64
   call "scheduleWaitThread" [tso]
+  exit 0
   emit $ loadI32 tso offset_StgTSO_id
 
 rtsApplyFunction _ =
@@ -779,23 +797,16 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
     t <- param I64
     block' [] $ \sched_block_lbl ->
       loop' [] $ \sched_loop_lbl -> do
-        if'
-          []
-          (loadI8 mainCapability offset_Capability_in_haskell)
-          (emit (emitErrorMessage [] SchedulerReenteredFromHaskell))
-          mempty
         storeI64
           mainCapability
           (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
           t
         storeI32 mainCapability offset_Capability_interrupt $ constI32 0
-        storeI8 mainCapability offset_Capability_in_haskell $ constI32 1
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
         r <- stgRun $ symbol "stg_returnToStackTop"
         ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
-        storeI8 mainCapability offset_Capability_in_haskell $ constI32 0
         switchI64 ret $
           const
             ( [ ( ret_HeapOverflow
