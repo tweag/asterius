@@ -9,7 +9,7 @@ let
     pkgs.lib.cleanSourceWith {
       src = ./..;
       filter = path: type:
-        pkgs.lib.all (i: toString i != path) [ ../.DS_Store ../default.nix ../result ../nix
+        pkgs.lib.all (i: toString i != path) [ ../.DS_Store ../default.nix ../result ../nix ../asterius-cabal-bin
           # These are .gitignored sow we should exclude them here
           ../.stack-work
           ../wabt/wabt/bin

@@ -6,3 +6,5 @@ packages:
   inline-js/inline-js-core
   wabt
   wasm-toolkit
+
+write-ghc-environment-files: never
