@@ -586,6 +586,7 @@ floatCBits =
     , ("isFloatInfinite", [F32], [I64])
     , ("isDoubleInfinite", [F64], [I64])
     , ("__decodeFloat_Int", [I64, I64, F32], [])
+    , ("__decodeDouble_2Int", [I64, I64, I64, I64, F64], [])
     ]
 
 generateRTSWrapper ::

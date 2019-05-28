@@ -133,8 +133,8 @@ export class FloatCBits {
     // return two 32-bit integers, [low, high] from a 64 bit double;
     DoubleTo2Int(d) {
         this.view.setFloat64(0, d);
-        const low = this.view.getuint32(0);
-        const high = this.view.getuint32(0, /*offset=*/4);
+        const low = this.view.getUint32(0);
+        const high = this.view.getUint32(0, /*offset=*/4);
         return [low, high];
 
     }
@@ -180,14 +180,61 @@ export class FloatCBits {
             }
         }
 
+        // TODO: double check! Is this i32 or i64? I suspect it is i32.
         this.memory.i64Store(manp, man);
         this.memory.i64Store(expp, exp);
     }
 
+    // From StgPrimFloat.c
+    __decodeDouble_2Int(man_signp, man_highp, man_lowp, expp, dbl) {
+        const dbl2i = this.DoubleTo2Int(dbl);
+        let low = dbl2i[0];
+        let high = dbl2i[1];
+        let iexp = 0, sign = 0;
+
+        if (low == 0 && (high & ~this.DMSBIT) == 0) {
+            this.memory.i32Store(man_lowp, 0);
+            this.memory.i32Store(man_highp, 0);
+            this.memory.i32Store(expp, 0);
+            // *man_low = 0;
+            // *man_high = 0;
+            // *exp = 0L;
+        } else {
+            iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
+            sign = high;
+
+            high &= this.DHIGHBIT-1;
+            if (iexp != this.MY_DMINEXP) /* don't add hidden bit to denorms */
+                high |= this.DHIGHBIT;
+            else {
+                iexp++;
+                /* A denorm, normalize the mantissa */
+                while (! (high & this.DHIGHBIT)) {
+                    high <<= 1;
+                    if (low & this.DMSBIT)
+                        high++;
+                    low <<= 1;
+                    iexp--;
+                }
+            }
+ 
+            this.memory.i32Store(expp, iexp);
+            this.memory.i32Store(man_lowp, low);
+            this.memory.i32Store(man_highp, high);
+            this.memory.i32Store(man_signp, (sign < 0) ? (-1) : 1);
+            // *exp = (I_) iexp;
+            // *man_low = low;
+            // *man_high = high;
+            // *man_sign = (sign < 0) ? -1 : 1;
+        }
+
+    }
+    
+
     // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c
     // From StgPrimFloat.c
     // returns [man_sign, man_high,  man_low, exp]
-    __decodeDouble_2Int(dbl) {
+    __decodeDouble_2IntJS(dbl) {
         let sign, iexp, man_low, man_high, man_sign;
         const ints = DoubleTo2Int(dbl);
         const low = ints[0];
@@ -201,13 +248,13 @@ export class FloatCBits {
             iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
             sign = high;
 
-            high &= DHIGHBIT-1;
+            high &= this.DHIGHBIT-1;
             if (iexp != MY_DMINEXP) /* don't add hidden bit to denorms */
-                high |= DHIGHBIT;
+                high |= this.DHIGHBIT;
             else {
                 iexp++;
                 /* A denorm, normalize the mantissa */
-                while (! (high & DHIGHBIT)) {
+                while (! (high & this.DHIGHBIT)) {
                     high <<= 1;
                     if (low & DMSBIT)
                         high++;
@@ -227,7 +274,7 @@ export class FloatCBits {
     // From GHC/Integer/Type.hs
     decodeDoubleInteger(d) {
         console.log("called float: decodeDoubleInteger")
-        const out = this.__decodeDouble_2Int(d);
+        const out = this.__decodeDouble_2IntJS(d);
         const man_sign = out[0];
         const man_high = out[1];
         const man_low = out[2];
