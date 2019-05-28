@@ -87,7 +87,9 @@ export class FloatCBits {
     doubleExponentFromBits(bits) {
         const mask = BigInt((1 << 11) - 1);
         const sign = this.doubleSignFromBits(bits);
-        return ((bits >> BigInt(52)) & mask) ^ (BigInt(sign) << BigInt(63));
+
+        const bitsNoSign = bits ^ (sign << BigInt(63));
+        return bitsNoSign >> BigInt(52) & mask;
     }
 
     doubleSignFromBits(bits) {
@@ -97,8 +99,12 @@ export class FloatCBits {
     // Check if a double is denormal.
     isDoubleDenormalized(x) { 
         const bits = this.DoubleToIEEE(x);
+        
+        console.log("x: %f | bits: %s", x, bits.toString(16));
         const exponent = this.doubleExponentFromBits(bits);
+        console.log("x: %f | exponent: %s",x,  exponent.toString(16));
         const mantissa = this.doubleMantissaFromBits(bits);
+        console.log("x: %f | mantissa: %s", x, mantissa.toString(16));
         return exponent === BigInt(0) && mantissa !== BigInt(0);
     }
 
@@ -121,11 +127,7 @@ export class FloatCBits {
 
     DoubleToIEEE(d) {
         this.view.setFloat64(0, d);
-
-        const high = BigInt(this.view.getUint32(0, true));
-        const low = BigInt(this.view.getUint32(4, true));
-
-        return (high << BigInt(32)) | low;
+        return this.view.getBigUint64(0);
     }
 
     IEEEToFloat(ieee) {
