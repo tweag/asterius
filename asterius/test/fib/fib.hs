@@ -109,7 +109,7 @@ main = do
                  0] :: [Double]
 
   forM_ denorms $ \d -> do
-      putStrLn $ show d <> " | hex: " <> double2hex d <> " | is denorm: " <> show (isDenormalized d)
+      putStrLn $ show d <> " | decode: " <> show (decodeFloat d) <>  " | hex: " <> double2hex d <> " | is denorm: " <> show (isDenormalized d)
 
   {-
   performGC
