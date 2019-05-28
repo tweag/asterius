@@ -134,7 +134,7 @@ export class FloatCBits {
     DoubleTo2Int(d) {
         this.view.setFloat64(0, d);
         const low = this.view.getUint32(0);
-        const high = this.view.getUint32(0, /*offset=*/4);
+        const high = this.view.getUint32(/*offset=*/4);
         return [low, high];
 
     }
@@ -283,7 +283,7 @@ export class FloatCBits {
         const exp = out[3];
 
         let acc = BigInt(0);
-        acc = BigInt(man_sign) * (BigInt(man_high) * BigInt(1 << 32) + BigInt(man_low));
+        acc = BigInt(man_sign) * (BigInt(man_high) * (BigInt(1) << BigInt(32)) + BigInt(man_low));
         return [acc, exp]
 
     }
