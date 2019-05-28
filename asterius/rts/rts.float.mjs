@@ -58,6 +58,57 @@ export class FloatCBits {
         return !isFinite(x);
     }
 
+    // extract the mantissa from the little endian representation of the bits
+    // of the float.
+    // little endian: <0A 0B> stored as mem[p] = 0A, mem[p + 1] = OB
+    floatMantissaFromBits(bits) {
+        const mask = (1 << 23) - 1;
+        return bits & mask;
+    }
+
+
+    // extract the exponent from the little endian representation of the bits
+    // of the float.
+    floatExponentFromBits(bits) {
+        const mask = (1 << 8) - 1;
+        const sign = this.floatSignFromBits(bits);
+        return ((bits >> 23) &  mask) ^ (sign << 31);
+    }
+
+    floatSignFromBits(bits) {
+        return bits >> 31;
+    }
+
+    doubleMantissaFromBits(bits) {
+        const mask = (BigInt(1) << BigInt(52)) - BigInt(1);
+        return bits & mask;
+    }
+
+    doubleExponentFromBits(bits) {
+        const mask = BigInt((1 << 11) - 1);
+        const sign = this.doubleSignFromBits(bits);
+        return ((bits >> BigInt(52)) & mask) ^ (BigInt(sign) << BigInt(63));
+    }
+
+    doubleSignFromBits(bits) {
+        return bits >> BigInt(63);
+    }
+
+    // Check if a double is denormal.
+    isDoubleDenormalized(x) { 
+        const bits = this.DoubleToIEEE(x);
+        const exponent = this.doubleExponentFromBits(bits);
+        const mantissa = this.doubleMantissaFromBits(bits);
+        return exponent === BigInt(0) && mantissa !== BigInt(0);
+    }
+
+    isFloatDenormalized(x) {
+        const bits = this.FloatToIEEE(x);
+        const exponent = this.floatExponentFromBits(bits);
+        const mantissa = this.floatMantissaFromBits(bits);
+        return exponent === 0 && mantissa !== 0;
+    }
+
     // Does it really make sense to have two functions?  probably not...
     isDoubleNegativeZero(x) {
         return Object.is(-0, x);
@@ -68,9 +119,23 @@ export class FloatCBits {
         return this.view.getUint32(0);
     }
 
+    DoubleToIEEE(d) {
+        this.view.setFloat64(0, d);
+
+        const high = BigInt(this.view.getUint32(0, true));
+        const low = BigInt(this.view.getUint32(4, true));
+
+        return (high << BigInt(32)) | low;
+    }
+
     IEEEToFloat(ieee) {
         this.view.setUint32(0, ieee);
         return this.view.getFloat32(0);
+    }
+
+    IEEEToDouble(ieee) {
+        this.view.setUint64(0, ieee);
+        return this.view.getFloat64(0);
     }
 
 

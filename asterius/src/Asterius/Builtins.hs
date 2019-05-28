@@ -581,6 +581,8 @@ floatCBits =
     , ("isDoubleNegativeZero", [F64], [I64])
     , ("isFloatNaN", [F32], [I64])
     , ("isDoubleNaN", [F64], [I64])
+    , ("isFloatDenormalized", [F32], [I64])
+    , ("isDoubleDenormalized", [F64], [I64])
     , ("isFloatInfinite", [F32], [I64])
     , ("isDoubleInfinite", [F64], [I64])
     , ("__decodeFloat_Int", [I64, I64, F32], [])
