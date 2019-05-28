@@ -130,6 +130,15 @@ export class FloatCBits {
         return this.view.getBigUint64(0);
     }
 
+    // return two 32-bit integers, [low, high] from a 64 bit double;
+    DoubleTo2Int(d) {
+        this.view.setFloat64(0, d);
+        const low = this.view.getuint32(0);
+        const high = this.view.getuint32(0, /*offset=*/4);
+        return [low, high];
+
+    }
+
     IEEEToFloat(ieee) {
         this.view.setUint32(0, ieee);
         return this.view.getFloat32(0);
@@ -142,6 +151,7 @@ export class FloatCBits {
 
 
     __decodeFloat_Int(manp, expp, f) {
+        console.error("inside decodeFloat\n");
         // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c#L215
         let man, exp, sign;
         let high = this.FloatToIEEE(f);
@@ -172,5 +182,60 @@ export class FloatCBits {
 
         this.memory.i64Store(manp, man);
         this.memory.i64Store(expp, exp);
+    }
+
+    // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c
+    // From StgPrimFloat.c
+    // returns [man_sign, man_high,  man_low, exp]
+    __decodeDouble_2Int(dbl) {
+        let sign, iexp, man_low, man_high, man_sign;
+        const ints = DoubleTo2Int(dbl);
+        const low = ints[0];
+        const high = ints[1];
+
+        if (low == 0 && (high & ~this.DMSBIT) == 0) {
+            man_low = 0;
+            man_high = 0;
+            exp = 0;
+        } else {
+            iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
+            sign = high;
+
+            high &= DHIGHBIT-1;
+            if (iexp != MY_DMINEXP) /* don't add hidden bit to denorms */
+                high |= DHIGHBIT;
+            else {
+                iexp++;
+                /* A denorm, normalize the mantissa */
+                while (! (high & DHIGHBIT)) {
+                    high <<= 1;
+                    if (low & DMSBIT)
+                        high++;
+                    low <<= 1;
+                    iexp--;
+                }
+            }
+            exp = iexp;
+            man_low = low;
+            man_high = high;
+            man_sign = (sign < 0) ? -1 : 1;
+        }
+        // TODO: just use call by reference
+        return [man_sign, man_high, man_low, exp];
+    }
+
+    // From GHC/Integer/Type.hs
+    decodeDoubleInteger(d) {
+        console.log("called float: decodeDoubleInteger")
+        const out = this.__decodeDouble_2Int(d);
+        const man_sign = out[0];
+        const man_high = out[1];
+        const man_low = out[2];
+        const exp = out[3];
+
+        let acc = BigInt(0);
+        acc = BigInt(man_sign) * (BigInt(man_high) * bigInt(1 << 32) + BigInt(man_low));
+        return [acc, exp]
+
     }
 }

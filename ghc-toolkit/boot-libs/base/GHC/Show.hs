@@ -494,7 +494,7 @@ instance Show Natural where
 
 -- Divide and conquer implementation of string conversion
 integerToString :: Integer -> String -> String
-#if defined(ASTERIUS)
+#if ! defined(ASTERIUS)
 
 integerToString (Integer i) s =
   accursedUnutterableAddrToAny

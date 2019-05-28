@@ -26,7 +26,7 @@
 
 module GHC.Integer.Type where
 
-#if defined(ASTERIUS)
+#if !defined(ASTERIUS)
 
 import Asterius.Magic
 import GHC.Classes
@@ -165,8 +165,9 @@ floatFromInteger (Integer i) = js_floatFromInteger i
 encodeDoubleInteger :: Integer -> Int# -> Double#
 encodeDoubleInteger (Integer m) n = js_encodeDoubleInteger m n
 
-decodeDoubleInteger :: Double# -> (# Integer, Int# #)
-decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m d), js_decodeDoubleInteger_n d #)
+-- decodeDoubleInteger :: Double# -> (# Integer, Int# #)
+-- decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m d), js_decodeDoubleInteger_n d #)
+
 
 doubleFromInteger :: Integer -> Double#
 doubleFromInteger (Integer i) = js_doubleFromInteger i

@@ -13,7 +13,7 @@ import GHC.Integer
 import qualified GHC.Integer.Logarithms.Internals as I
 import GHC.Types
 
-#if defined(ASTERIUS)
+#if !defined(ASTERIUS)
 import Asterius.Magic
 import GHC.Integer.Type (Integer(..))
 #endif
@@ -27,7 +27,8 @@ import GHC.Integer.Type (Integer(..))
 --
 -- for @base > 1@ and @m > 0@.
 integerLogBase# :: Integer -> Integer -> Int#
-#if defined(ASTERIUS)
+#if !defined(ASTERIUS) && false
+    XX
 integerLogBase# (Integer b) (Integer m) = js_integerLogBase m b
 #else
 integerLogBase# b m = case step b of
@@ -55,7 +56,7 @@ integerLog2# = I.integerLog2#
 wordLog2# :: Word# -> Int#
 wordLog2# = I.wordLog2#
 
-#if defined(ASTERIUS)
+#if !defined(ASTERIUS)
 
 foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, ${2})" js_integerLogBase :: Int# -> Int# -> Int#
 

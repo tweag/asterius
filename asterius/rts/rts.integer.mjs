@@ -79,7 +79,9 @@ export class IntegerManager {
   encodeDoubleInteger(i0, i1) {
     return Number(this.decode(i0)) * 2 ** i1;
   }
+
   decodeDoubleInteger(d) {
+      console.error("called integer: decodeDoubleInteger: ", d);
     const [, sgn, i, f] = /^(-?)([01]+)\.?([01]*)$/.exec(d.toString(2));
     let s = i + f, acc = BigInt(0), e = f ? -f.length : 0;
     while (s) {
