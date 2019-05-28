@@ -92,13 +92,16 @@ reinterpretCast a =
 hex16 :: Word64 -> String
 hex16 i = let hex = showHex i ""
          in "0x" <> replicate (16 - length hex) '0' <> hex
+
+double2hex :: Double -> String
+double2hex = hex16 . reinterpretCast
 main :: IO ()
 main = do
   let d = -0.0 :: Double
   let f = -0.0 :: Float
   putStrLn $ "d: " <> show d <> " | is neg 0: " <> show (isNegativeZero d)
   putStrLn $ "f: " <> show d <> " | is neg 0: " <> show (isNegativeZero f)
-  putStrLn $ "d bytes: " <> hex16  ((reinterpretCast d) :: Word64)
+  putStrLn $ "d bytes: " <> double2hex d
   assert (isNegativeZero d == True) (pure ())
 
   let denorms = [4.9406564558412465e-324,
@@ -106,7 +109,7 @@ main = do
                  0] :: [Double]
 
   forM_ denorms $ \d -> do
-      putStrLn $ show d <> "| is denorm: " <> show (isDenormalized d)
+      putStrLn $ show d <> " | hex: " <> double2hex d <> " | is denorm: " <> show (isDenormalized d)
 
   {-
   performGC
