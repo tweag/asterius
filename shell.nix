@@ -22,6 +22,13 @@ in (hsPkgs.shellFor {
       unset CABAL_CONFIG
       export asterius_bootdir=${cached.nix-tools._raw.asterius-boot}/boot
       find . -name package.yaml -exec hpack "{}" \;
+      export asterius_datadir=$(pwd)/asterius
+      export binaryen_datadir=$(pwd)/binaryen
+      export ghc_toolkit_datadir=$(pwd)/ghc-toolkit
+      export inline_js_datadir=$(pwd)/inline-js/inline-js
+      export inline_js_core_datadir=$(pwd)/inline-js/inline-js-core
+      export wabt_datadir=$(pwd)/wabt
+      export wasm_toolkit_datadir=$(pwd)/wasm-toolkit
       mkdir -p asterius-cabal-bin
       cd asterius-cabal-bin
       export asterius_bindir=$(pwd)
