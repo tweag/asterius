@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -8,6 +9,10 @@ module Asterius.Backends.Binaryen
   ( MarshalError(..)
   , marshalModule
   , serializeModule
+  , c_BinaryenSetDebugInfo
+  , c_BinaryenSetOptimizeLevel
+  , c_BinaryenSetShrinkLevel
+  , c_BinaryenModuleValidate
   ) where
 
 import Asterius.Internals
@@ -16,7 +21,13 @@ import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Types
 import Asterius.TypesConv
+
+#if defined(BINARYEN)
+
 import Bindings.Binaryen.Raw
+
+#endif
+
 import Control.Exception
 import Control.Monad
 import Control.Monad.Cont
@@ -38,6 +49,8 @@ newtype MarshalError =
   deriving (Show)
 
 instance Exception MarshalError
+
+#if defined(BINARYEN)
 
 marshalBool :: Bool -> Int8
 marshalBool flag =
@@ -575,3 +588,23 @@ serializeModule m =
         buf <- peek buf_p
         len <- peek len_p
         BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
+
+#else
+
+err =
+  error
+    "The `asterius` package was configured without the `binaryen` Cabal flag."
+
+marshalModule = err
+
+serializeModule = err
+
+c_BinaryenSetDebugInfo = err
+
+c_BinaryenSetOptimizeLevel = err
+
+c_BinaryenSetShrinkLevel = err
+
+c_BinaryenModuleValidate = err
+
+#endif
