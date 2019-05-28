@@ -31,7 +31,7 @@ let
             "package-lock.json"
           ]
           && !(pkgs.lib.strings.hasInfix ".dump-" (baseNameOf path)) # These are .gitignored sow we should exclude them here
-          && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ]
+          && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ".nix" ]
           && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ];
     };
   # our packages
@@ -154,6 +154,7 @@ let
 in
   pkgSet.config.hsPkgs // {
     _config = pkgSet.config;
+    inherit (pkgSet.config) hsPkgs;
     inherit ghc-head ghc864 plan-nix pkgs haskell;
     asterius-boot = pkgs.runCommand "asterius-boot" {
       preferLocalBuild = true;

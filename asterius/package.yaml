@@ -59,6 +59,7 @@ dependencies:
   - ghc-prim
   - ghc-toolkit
   - ghci
+  - hpack # Added for hydra caching and nix-shell
   - inline-js-core
   - libiserv
   - mtl
