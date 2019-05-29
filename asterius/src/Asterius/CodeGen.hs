@@ -444,12 +444,10 @@ marshalCmmMachOp (GHC.MO_F_Neg w) [x] =
     w
     (do xe <- marshalAndCastCmmExpr x F32
         pure
-          ( Binary {binaryOp = SubFloat32, operand0 = ConstF32 0, operand1 = xe}
-          , F32))
+          (Unary { unaryOp = NegFloat32, operand0 = xe }, F32))
     (do xe <- marshalAndCastCmmExpr x F64
         pure
-          ( Binary {binaryOp = SubFloat64, operand0 = ConstF64 0, operand1 = xe}
-          , F64))
+          (Unary { unaryOp= NegFloat64, operand0 = xe }, F64))
 marshalCmmMachOp (GHC.MO_F_Mul w) [x, y] =
   marshalCmmBinMachOp MulFloat32 F32 F32 F32 MulFloat64 F64 F64 F64 w x y
 marshalCmmMachOp (GHC.MO_F_Quot w) [x, y] =

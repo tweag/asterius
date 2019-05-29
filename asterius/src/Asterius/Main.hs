@@ -28,7 +28,6 @@ import Asterius.Types
   , FFIMarshalState(..)
   , Module
   )
-import Bindings.Binaryen.Raw
 import Control.Monad
 import Control.Monad.Except
 import Data.Binary.Get
@@ -341,15 +340,15 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
     writeFile p $ show final_m
   if binaryen
     then (do logger "[INFO] Converting linked IR to binaryen IR"
-             c_BinaryenSetDebugInfo 1
-             c_BinaryenSetOptimizeLevel 0
-             c_BinaryenSetShrinkLevel 0
+             Binaryen.c_BinaryenSetDebugInfo 1
+             Binaryen.c_BinaryenSetOptimizeLevel 0
+             Binaryen.c_BinaryenSetShrinkLevel 0
              m_ref <-
                Binaryen.marshalModule
                  (staticsSymbolMap report <> functionSymbolMap report)
                  final_m
              logger "[INFO] Validating binaryen IR"
-             pass_validation <- c_BinaryenModuleValidate m_ref
+             pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
              when (pass_validation /= 1) $
                fail "[ERROR] binaryen validation failed"
              m_bin <- Binaryen.serializeModule m_ref

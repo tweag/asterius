@@ -118,7 +118,7 @@ rtsAsteriusModule opts =
     , functionMap =
         Map.fromList $
         map (\(func_sym, (_, func)) -> (func_sym, func))
-            (byteStringCBits <> floatCBits  <> unicodeCBits)
+            (byteStringCBits <> floatCBits  <> unicodeCBits <> md5CBits)
     }  <> mainFunction opts
        <> hsInitFunction opts
        <> scheduleWaitThreadFunction opts
@@ -136,6 +136,7 @@ rtsAsteriusModule opts =
        <> printF64Function opts
        <> assertEqI64Function opts
        <> strlenFunction opts
+       <> debugBelch2Function opts
        <> memchrFunction opts
        <> memcpyFunction opts
        <> memsetFunction opts
@@ -334,6 +335,12 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
+      { internalName = "__asterius_debugBelch2"
+      , externalModuleName = "Messages"
+      , externalBaseName = "debugBelch2"
+      , functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
+      }
+  , FunctionImport
       { internalName = "__asterius_memchr"
       , externalModuleName = "Memory"
       , externalBaseName = "memchr"
@@ -418,6 +425,18 @@ rtsFunctionImports debug =
       , externalBaseName = "threadPaused"
       , functionType = FunctionType {paramTypes = [F64, F64], returnTypes = []}
       }
+  , FunctionImport
+      { internalName = "__asterius_enter"
+      , externalModuleName = "ReentrancyGuard"
+      , externalBaseName = "enter"
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_exit"
+      , externalModuleName = "ReentrancyGuard"
+      , externalBaseName = "exit"
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
+      }
   ] <>
   (if debug
      then [ FunctionImport
@@ -480,7 +499,7 @@ rtsFunctionImports debug =
           , b <- ["8", "16"]
           ]
      else []) <>
-  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits)
+  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits)
 
 rtsFunctionExports :: Bool -> Bool -> [FunctionExport]
 rtsFunctionExports debug has_main =
@@ -571,11 +590,25 @@ floatCBits =
        ( AsteriusEntitySymbol func_sym
        , generateRTSWrapper "floatCBits" func_sym param_vts ret_vts))
     [ ("isFloatNegativeZero", [F32], [I64])
+    , ("isDoubleNegativeZero", [F64], [I64])
     , ("isFloatNaN", [F32], [I64])
+    , ("isDoubleNaN", [F64], [I64])
+    , ("isFloatDenormalized", [F32], [I64])
+    , ("isDoubleDenormalized", [F64], [I64])
     , ("isFloatInfinite", [F32], [I64])
+    , ("isDoubleInfinite", [F64], [I64])
     , ("__decodeFloat_Int", [I64, I64, F32], [])
     ]
 
+md5CBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+md5CBits =
+    map (\(func_sym, param_vts, ret_vts) ->
+       ( AsteriusEntitySymbol func_sym
+       , generateRTSWrapper "MD5" func_sym param_vts ret_vts))
+    [ ("__hsbase_MD5Init", [I64], [])
+    , ("__hsbase_MD5Update", [I64, I64, I64], [])
+    , ("__hsbase_MD5Final", [I64, I64], [])
+    ]
 
 generateRTSWrapper ::
      SBS.ShortByteString
@@ -679,7 +712,6 @@ initCapability :: EDSL ()
 initCapability = do
   storeI32 mainCapability offset_Capability_no $ constI32 0
   storeI32 mainCapability offset_Capability_node $ constI32 0
-  storeI8 mainCapability offset_Capability_in_haskell $ constI32 0
   storeI32 mainCapability offset_Capability_idle $ constI32 0
   storeI8 mainCapability offset_Capability_disabled $ constI32 0
   storeI64 mainCapability offset_Capability_total_allocated $ constI64 0
@@ -706,16 +738,23 @@ hsInitFunction _ =
       truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
     putLVal currentNursery bd_nursery
 
+enter, exit :: Int -> EDSL ()
+enter i = callImport "__asterius_enter" [constI32 i]
+
+exit i = callImport "__asterius_exit" [constI32 i]
+
 rtsEvalHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> EDSL ()
 rtsEvalHelper BuiltinsOptions {..} create_thread_func_sym = do
   setReturnTypes [I32]
   p <- param I64
+  enter 0
   tso <-
     call'
       create_thread_func_sym
       [mainCapability, constI64 $ roundup_bytes_to_words threadStateSize, p]
       I64
   call "scheduleWaitThread" [tso]
+  exit 0
   emit $ loadI32 tso offset_StgTSO_id
 
 rtsApplyFunction _ =
@@ -773,23 +812,16 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
     t <- param I64
     block' [] $ \sched_block_lbl ->
       loop' [] $ \sched_loop_lbl -> do
-        if'
-          []
-          (loadI8 mainCapability offset_Capability_in_haskell)
-          (emit (emitErrorMessage [] SchedulerReenteredFromHaskell))
-          mempty
         storeI64
           mainCapability
           (offset_Capability_r + offset_StgRegTable_rCurrentTSO)
           t
         storeI32 mainCapability offset_Capability_interrupt $ constI32 0
-        storeI8 mainCapability offset_Capability_in_haskell $ constI32 1
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
         r <- stgRun $ symbol "stg_returnToStackTop"
         ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
-        storeI8 mainCapability offset_Capability_in_haskell $ constI32 0
         switchI64 ret $
           const
             ( [ ( ret_HeapOverflow
@@ -1128,6 +1160,12 @@ strlenFunction _ =
     len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
     emit $ truncUFloat64ToInt64 len
 
+
+debugBelch2Function _ =
+  runEDSL "debugBelch2"  $ do
+    [fmt, str] <- params [I64, I64]
+    callImport "__asterius_debugBelch2" [convertUInt64ToFloat64 fmt, convertUInt64ToFloat64 str]
+
 memchrFunction _ =
   runEDSL "memchr"  $ do
     setReturnTypes [I64]
@@ -1268,6 +1306,7 @@ suspendThreadFunction _ =
   runEDSL "suspendThread" $ do
     setReturnTypes [I64]
     [reg, _] <- params [I64, I64]
+    call "threadPaused" [mainCapability, getLVal $ global CurrentTSO]
     emit reg
 
 resumeThreadFunction _ =

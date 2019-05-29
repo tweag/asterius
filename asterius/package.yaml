@@ -7,6 +7,11 @@ copyright: (c) 2018 Tweag I/O
 license: BSD3
 github: tweag/asterius
 
+flags:
+  binaryen:
+    default: true
+    manual: true
+
 extra-source-files:
   - CHANGELOG.md
   - LICENSE
@@ -31,6 +36,7 @@ extra-source-files:
   - test/ghc-testsuite/**/*.stdout
   - test/exception/**/*.hs
   - test/regression60/**/*.hs
+  - test/sizeof_md5context/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -48,7 +54,6 @@ ghc-options: -Wall
 dependencies:
   - base
   - binary
-  - binaryen
   - bytestring
   - Cabal
   - containers
@@ -69,6 +74,12 @@ dependencies:
   - template-haskell
   - transformers
   - wasm-toolkit
+
+when:
+  - condition: flag(binaryen)
+    dependencies:
+      - binaryen
+    cpp-options: -DBINARYEN
 
 library:
   source-dirs: src
@@ -250,6 +261,13 @@ tests:
       - ansi-terminal
       - stm
       - cassava
+
+  sizeof_md5context:
+    source-dirs: test
+    main: sizeof_md5context.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
 
   regression60:
     source-dirs: test
