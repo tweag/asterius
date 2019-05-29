@@ -30,6 +30,7 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Data.Monoid
 import Data.String
+import qualified Encoding as GHC
 import qualified ForeignCall as GHC
 import qualified GhcPlugins as GHC
 import qualified HsSyn as GHC
@@ -246,7 +247,7 @@ processFFI mod_sym = w
               let (u, new_us) = GHC.takeUniqFromSupply old_us
                   new_k =
                     "__asterius_jsffi_" <> zEncodeModuleSymbol mod_sym <> "_" <>
-                    show (GHC.getKey u)
+                    GHC.toBase62 (fromIntegral (GHC.getKey u))
               put
                 ( old_state
                     { ffiImportDecls =
