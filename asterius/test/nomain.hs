@@ -27,11 +27,11 @@ main = do
     hsInit s i
     let x_closure = deRefJSVal i <> ".symbolTable.NoMain_x_closure"
         x_tid =
-          deRefJSVal i <> ".wasmInstance.exports.rts_eval(" <> x_closure <> ")"
+          deRefJSVal i <> ".exports.rts_eval(" <> x_closure <> ")"
         x_ret =
-          deRefJSVal i <> ".wasmInstance.exports.getTSOret(" <> x_tid <> ")"
+          deRefJSVal i <> ".exports.getTSOret(" <> x_tid <> ")"
         x_sp =
-          deRefJSVal i <> ".wasmInstance.exports.rts_getStablePtr(" <> x_ret <>
+          deRefJSVal i <> ".exports.rts_getStablePtr(" <> x_ret <>
           ")"
         x_val = deRefJSVal i <> ".getJSVal(" <> x_sp <> ")"
     x <- eval s x_val

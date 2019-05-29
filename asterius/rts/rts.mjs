@@ -155,6 +155,7 @@ export function newAsteriusInstance(req) {
       return Object.assign(__asterius_jsffi_instance, {
         wasmModule: req.module,
         wasmInstance: __asterius_wasm_instance,
+        exports: __asterius_wasm_instance.exports,
         symbolTable: req.symbolTable,
         logger: __asterius_logger
       });
