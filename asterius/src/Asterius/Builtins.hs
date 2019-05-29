@@ -119,13 +119,8 @@ rtsAsteriusModule opts =
         Map.fromList $
         map (\(func_sym, (_, func)) -> (func_sym, func))
             (byteStringCBits <> floatCBits  <> unicodeCBits)
-    }  <> mainFunction opts
-       <> hsInitFunction opts
-       <> scheduleWaitThreadFunction opts
+    }  <> hsInitFunction opts
        <> createThreadFunction opts
-       <> createGenThreadFunction opts
-       <> createIOThreadFunction opts
-       <> createStrictIOThreadFunction opts
        <> genAllocateFunction opts "allocate"
        <> genAllocateFunction opts "allocateMightFail"
        <> allocatePinnedFunction opts
@@ -168,9 +163,10 @@ rtsAsteriusModule opts =
 generateRtsExternalInterfaceModule :: BuiltinsOptions -> AsteriusModule
 generateRtsExternalInterfaceModule opts = mempty
   <> rtsApplyFunction opts
-  <> rtsEvalFunction opts
-  <> rtsEvalIOFunction opts
-  <> rtsEvalLazyIOFunction opts
+  <> createGenThreadFunction opts
+  <> createIOThreadFunction opts
+  <> createStrictIOThreadFunction opts
+  <> scheduleWaitThreadFunction opts
   <> rtsGetSchedStatusFunction opts
   <> rtsCheckSchedStatusFunction opts
   <> getStablePtrWrapperFunction opts
@@ -501,8 +497,8 @@ rtsFunctionImports debug =
      else []) <>
   map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits)
 
-rtsFunctionExports :: Bool -> Bool -> [FunctionExport]
-rtsFunctionExports debug has_main =
+rtsFunctionExports :: Bool -> [FunctionExport]
+rtsFunctionExports debug =
   [ FunctionExport {internalName = f <> "_wrapper", externalName = f}
   | f <-
       [ "loadI64"
@@ -521,9 +517,10 @@ rtsFunctionExports debug has_main =
       , "rts_getPtr"
       , "rts_getStablePtr"
       , "rts_apply"
-      , "rts_eval"
-      , "rts_evalIO"
-      , "rts_evalLazyIO"
+      , "createGenThread"
+      , "createStrictIOThread"
+      , "createIOThread"
+      , "scheduleWaitThread"
       , "rts_getSchedStatus"
       , "rts_checkSchedStatus"
       , "getStablePtr"
@@ -543,8 +540,7 @@ rtsFunctionExports debug has_main =
               , "__asterius_Load_HpLim"
               ]
          else []) <>
-      ["hs_init"] <>
-      ["main" | has_main]
+      ["hs_init"]
   ]
 
 emitErrorMessage :: [ValueType] -> Event -> Expression
@@ -686,13 +682,8 @@ generateWrapperModule mod = mod {
 
 
 
-mainFunction, hsInitFunction, rtsApplyFunction, rtsEvalFunction, rtsEvalIOFunction, rtsEvalLazyIOFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction ::
+hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction ::
      BuiltinsOptions -> AsteriusModule
-mainFunction BuiltinsOptions {} =
-  runEDSL "main" $ do
-    setReturnTypes [I32]
-    tid <- call' "rts_evalLazyIO" [symbol "Main_main_closure"] I32
-    emit tid
 
 initCapability :: EDSL ()
 initCapability = do
@@ -729,20 +720,6 @@ enter i = callImport "__asterius_enter" [constI32 i]
 
 exit i = callImport "__asterius_exit" [constI32 i]
 
-rtsEvalHelper :: BuiltinsOptions -> AsteriusEntitySymbol -> EDSL ()
-rtsEvalHelper BuiltinsOptions {..} create_thread_func_sym = do
-  setReturnTypes [I32]
-  p <- param I64
-  enter 0
-  tso <-
-    call'
-      create_thread_func_sym
-      [mainCapability, constI64 $ roundup_bytes_to_words threadStateSize, p]
-      I64
-  call "scheduleWaitThread" [tso]
-  exit 0
-  emit $ loadI32 tso offset_StgTSO_id
-
 rtsApplyFunction _ =
   runEDSL "rts_apply" $ do
     setReturnTypes [I64]
@@ -756,13 +733,6 @@ rtsApplyFunction _ =
     storeI64 ap offset_StgThunk_payload f
     storeI64 ap (offset_StgThunk_payload + 8) arg
     emit ap
-
-rtsEvalFunction opts = runEDSL "rts_eval" $ rtsEvalHelper opts "createGenThread"
-
-rtsEvalIOFunction opts =
-  runEDSL "rts_evalIO" $ rtsEvalHelper opts "createStrictIOThread"
-
-rtsEvalLazyIOFunction opts = runEDSL "rts_evalLazyIO" $ rtsEvalHelper opts "createIOThread"
 
 rtsGetSchedStatusFunction _ =
   runEDSL "rts_getSchedStatus" $ do
@@ -865,11 +835,11 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
             , emit $ emitErrorMessage [] IllegalThreadReturnCode)
     callImport "__asterius_gcRootTSO" [convertUInt64ToFloat64 t]
 
-createThreadFunction _ =
+createThreadFunction BuiltinsOptions {..} =
   runEDSL "createThread" $ do
     setReturnTypes [I64]
-    [cap, alloc_words] <- params [I64, I64]
-    tso_p <- call' "allocatePinned" [cap, alloc_words] I64
+    let alloc_words = constI64 $ roundup_bytes_to_words threadStateSize
+    tso_p <- call' "allocatePinned" [mainCapability, alloc_words] I64
     stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
     storeI64 stack_p 0 $ symbol "stg_STACK_info"
     stack_size_w <-
@@ -889,7 +859,7 @@ createThreadFunction _ =
     storeI32 tso_p offset_StgTSO_flags $ constI32 0
     storeI32 tso_p offset_StgTSO_dirty $ constI32 1
     storeI32 tso_p offset_StgTSO_saved_errno $ constI32 0
-    storeI64 tso_p offset_StgTSO_cap cap
+    storeI64 tso_p offset_StgTSO_cap mainCapability
     storeI64 tso_p offset_StgTSO_stackobj stack_p
     storeI32 tso_p offset_StgTSO_tot_stack_size $ wrapInt64 stack_size_w
     storeI64 tso_p offset_StgTSO_alloc_limit (constI64 0)
@@ -911,8 +881,8 @@ pushClosure tso c = do
 createThreadHelper :: (Expression -> [Expression]) -> EDSL ()
 createThreadHelper mk_closures = do
   setReturnTypes [I64]
-  [cap, stack_size, closure] <- params [I64, I64, I64]
-  t <- call' "createThread" [cap, stack_size] I64
+  closure <- param I64
+  t <- call' "createThread" [] I64
   for_ (mk_closures closure) $ pushClosure t
   emit t
 

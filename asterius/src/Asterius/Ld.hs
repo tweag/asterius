@@ -52,6 +52,7 @@ rtsUsedSymbols =
     , "ghczmprim_GHCziTypes_ZC_con_info"
     , "ghczmprim_GHCziTypes_ZMZN_closure"
     , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
+    , "Main_main_closure"
     , "stg_ARR_WORDS_info"
     , "stg_BLACKHOLE_info"
     , "stg_DEAD_WEAK_info"
@@ -66,7 +67,6 @@ linkModules ::
 linkModules LinkTask {..} m =
   linkStart
     debug
-    True
     gcSections
     binaryen
     (rtsAsteriusModule
@@ -78,7 +78,7 @@ linkModules LinkTask {..} m =
        , rtsUsedSymbols
        , Set.fromList
            [ AsteriusEntitySymbol {entityName = internalName}
-           | FunctionExport {..} <- rtsFunctionExports debug True
+           | FunctionExport {..} <- rtsFunctionExports debug
            ]
        ])
     exportFunctions

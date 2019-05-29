@@ -1,3 +1,5 @@
+import * as rtsConstants from "./rts.constants.mjs";
+
 class TSO {
   constructor() {
     this.addr = undefined;
@@ -8,22 +10,41 @@ class TSO {
 }
 
 export class TSOManager {
-  constructor() {
+  constructor(memory) {
+    this.memory = memory;
     this.tsos = [];
     Object.freeze(this);
   }
 
-  newTSO() { return this.tsos.push(new TSO()) - 1; }
+  newTSO() {
+    return this.tsos.push(new TSO()) - 1;
+  }
 
-  getTSOaddr(i) { return this.tsos[i].addr; }
+  getTSOaddr(i) {
+    return this.tsos[i].addr;
+  }
 
-  getTSOret(i) { return this.tsos[i].ret; }
+  getTSOret(i) {
+    return this.tsos[i].ret;
+  }
 
-  getTSOrstat(i) { return this.tsos[i].rstat; }
+  getTSOrstat(i) {
+    return this.tsos[i].rstat;
+  }
 
-  setTSOaddr(i, addr) { this.tsos[i].addr = addr; }
+  setTSOaddr(i, addr) {
+    this.tsos[i].addr = addr;
+  }
 
-  setTSOret(i, ret) { this.tsos[i].ret = ret; }
+  setTSOret(i, ret) {
+    this.tsos[i].ret = ret;
+  }
 
-  setTSOrstat(i, rstat) { this.tsos[i].rstat = rstat; }
+  setTSOrstat(i, rstat) {
+    this.tsos[i].rstat = rstat;
+  }
+
+  getTSOid(tso) {
+    return this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
+  }
 }
