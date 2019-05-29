@@ -204,15 +204,17 @@ export class FloatCBits {
             sign = high;
 
             high &= this.DHIGHBIT-1;
-            if (iexp != this.MY_DMINEXP) /* don't add hidden bit to denorms */
+            if (iexp != this.MY_DMINEXP) {
+                /* don't add hidden bit to denorms */
                 high |= this.DHIGHBIT;
-            else {
+            } else {
                 iexp++;
                 /* A denorm, normalize the mantissa */
                 while (! (high & this.DHIGHBIT)) {
                     high <<= 1;
-                    if (low & this.DMSBIT)
+                    if (low & this.DMSBIT) {
                         high++;
+                    }
                     low <<= 1;
                     iexp--;
                 }
@@ -245,8 +247,9 @@ export class FloatCBits {
             man_low = 0;
             man_high = 0;
             man_sign = 0;
-            exp = 0;
+            iexp = 0;
         } else {
+            // 0x7ff is a 64 bit value
             iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
             sign = high;
 
@@ -281,6 +284,8 @@ export class FloatCBits {
         const man_high = out[1];
         const man_low = out[2];
         const exp = out[3];
+
+        console.error("FROM JS **d: ", d, "  **exp: ", exp);
 
         let acc = BigInt(0);
         acc = BigInt(man_sign) * (BigInt(man_high) * (BigInt(1) << BigInt(32)) + BigInt(man_low));
