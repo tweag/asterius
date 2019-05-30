@@ -15,3 +15,6 @@ to `error` fixed this and had us actually raise an error:
 
 Clearly, the throwError thing is borked? On purpose? At any rate, fixing
 this would massively help with debuggging.
+
+At any rate, Add2 has two return values which AFAIK we do not support,
+so this would thing is moot anyway.
