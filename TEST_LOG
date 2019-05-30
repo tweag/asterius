@@ -1,3 +1,17 @@
 Writing this here cause I have no internet at the cafe I am working at...
 
 GHC hangs on: ghc asterius/test/ghc-testsuite/numeric/T15271.hs
+CarryOverflow: "What would a haskell progam be without fibonacci"?
+
+Why can't GHCi handle unboxed stuff?
+
+throwError does not seem to be working. In particular, for example, we had
+an undefined use of MO_Add2 that was not thowing an error. Changing `throwError`
+to `error` fixed this and had us actually raise an error: 
+
+  (GHC version 8.9.20190403 for x86_64-unknown-linux):
+	UnsupportedCmmInstr "CmmUnsafeForeignCall (PrimTarget (MO_Add2 W64)) [LocalReg s7hj (CmmType \"I64\"),LocalReg s7hk (CmmType \"I64\")] [CmmLit (CmmInt 1 W64),CmmLit (CmmInt 1 W64)]"
+
+
+Clearly, the throwError thing is borked? On purpose? At any rate, fixing
+this would massively help with debuggging.

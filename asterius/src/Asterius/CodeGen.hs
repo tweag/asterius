@@ -641,6 +641,7 @@ marshalCmmPrimCall ::
   -> [GHC.LocalReg]
   -> [GHC.CmmExpr]
   -> CodeGen [Expression]
+-- marshalCmmPrimCall (GHC.MO_Add2 _) _ _ = error "undefined MO_Add2"
 marshalCmmPrimCall GHC.MO_F64_Pwr [r] [x, y] =
   marshalCmmBinMathPrimCall "pow" F64 r x y
 marshalCmmPrimCall GHC.MO_F64_Sin [r] [x] =
@@ -816,8 +817,8 @@ marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
 marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall CtzInt64 I64 r x
 marshalCmmPrimCall op rs xs =
-  throwError $
-  UnsupportedCmmInstr $
+  -- throwError $
+  error $ show $ UnsupportedCmmInstr $
   showSBS $ GHC.CmmUnsafeForeignCall (GHC.PrimTarget op) rs xs
 
 marshalCmmUnsafeCall ::

@@ -109,8 +109,23 @@ debugPrintDouble d = do
 
 double2hex :: Double -> String
 double2hex = hex16 . reinterpretCast
+
+
+wordAdd :: IO ()
+wordAdd = do
+    let x = 1 :: Word
+    let y = 1 :: Word
+    let (W# xp) = x
+    let (W# yp) = y
+    let r = case plusWord2# xp yp of
+             (# 0##, _ #) -> False
+             (# 1##, _ #) -> True
+    putStrLn . show$ r
+
 main :: IO ()
 main = do
+  wordAdd
+
   let d = -0.0 :: Double
   let f = -0.0 :: Float
 
