@@ -81,8 +81,9 @@ mergeSymbols ::
   -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
+  -> [AsteriusEntitySymbol]
   -> (AsteriusModule, LinkReport)
-mergeSymbols _ gc_sections store_mod root_syms
+mergeSymbols _ gc_sections store_mod root_syms export_funcs
   | not gc_sections = (store_mod, mempty {bundledFFIMarshalState = ffi_all})
   | otherwise = (final_m, mempty {bundledFFIMarshalState = ffi_this})
   where
@@ -92,6 +93,8 @@ mergeSymbols _ gc_sections store_mod root_syms
         { ffiImportDecls =
             flip LM.filterWithKey (ffiImportDecls ffi_all) $ \k _ ->
               (k <> "_wrapper") `LM.member` functionMap final_m
+        , ffiExportDecls =
+            ffiExportDecls ffi_all `LM.restrictKeys` S.fromList export_funcs
         }
     (_, _, final_m) = go (root_syms, S.empty, mempty)
     go i@(i_staging_syms, _, _)
@@ -234,6 +237,7 @@ linkStart debug gc_sections binaryen store root_syms export_funcs =
              {entityName = "__asterius_jsffi_export_" <> entityName k}
            | k <- export_funcs
            ])
+        export_funcs
     merged_m
       | debug = addMemoryTrap merged_m'
       | otherwise = merged_m'
