@@ -50,12 +50,13 @@ export class FloatCBits {
         return x != x;
     }
 
+    // Remember, floats have 3 states: {finite, infinite, NaN}.
     isFloatInfinite(x) {
-        return !isFinite(x);
+        return !isFinite(x) && !this.isFloatNaN(x);
     }
 
     isDoubleInfinite(x) {
-        return !isFinite(x);
+        return !isFinite(x) && !this.isDoubleNaN(x);
     }
 
     // extract the mantissa from the little endian representation of the bits

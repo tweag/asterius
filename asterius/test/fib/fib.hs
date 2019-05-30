@@ -11,6 +11,7 @@ import Foreign
 import GHC.Generics
 import GHC.Exts
 import GHC.Stack
+import GHC.Integer
 import qualified GHC.Types
 import System.Mem
 import Debug.Trace (trace)
@@ -96,12 +97,31 @@ hex16 i = let hex = showHex i ""
 one :: Double
 one = 1
 
+
+debugPrintDouble :: Double -> IO ()
+debugPrintDouble d = do
+     let (m, e) = decodeFloat d
+     putStrLn $ "double: " <> show d
+     putStrLn $ "\t" <> "mantissa: " <> show m
+     putStrLn $ "\t" <> "exponent: " <> show e <> "|" <> (hex16 . reinterpretCast $ e)
+     putStrLn $ "\t" <> "is infinite: " <> show (isInfinite d)
+
+
 double2hex :: Double -> String
 double2hex = hex16 . reinterpretCast
 main :: IO ()
 main = do
   let d = -0.0 :: Double
   let f = -0.0 :: Float
+
+  debugPrintDouble 1
+  debugPrintDouble (encodeFloat 1  2047)
+  debugPrintDouble (encodeFloat 0xf000000000000 2047)
+  debugPrintDouble $ encodeFloat 1 2048
+  debugPrintDouble $ encodeFloat 1  2047               -- signalling NaN
+  debugPrintDouble $  0/(0::Double)
+
+  {-
   putStrLn $ "one * one: " <> show (one * one)
   putStrLn $ "d: " <> show d <> " | is neg 0: " <> show (isNegativeZero d)
   putStrLn $ "f: " <> show d <> " | is neg 0: " <> show (isNegativeZero f)
@@ -116,6 +136,7 @@ main = do
 
   forM_ denorms $ \d -> do
       putStrLn $ show d <> " | decode: " <> show (decodeFloat d) <>  " | hex: " <> double2hex d <> " | is denorm: " <> show (isDenormalized d)
+  -}
 
   {-
   performGC
