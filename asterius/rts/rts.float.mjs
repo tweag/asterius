@@ -187,6 +187,7 @@ export class FloatCBits {
 
     // From StgPrimFloat.c
     __decodeDouble_2Int(man_signp, man_highp, man_lowp, expp, dbl) {
+
         const dbl2i = this.DoubleTo2Int(dbl);
         let low = dbl2i[0];
         let high = dbl2i[1];
@@ -239,8 +240,8 @@ export class FloatCBits {
     __decodeDouble_2IntJS(dbl) {
         let sign, iexp, man_low, man_high, man_sign;
         const ints = this.DoubleTo2Int(dbl);
-        let low = ints[0];
-        let high = ints[1];
+        let low = ints[1];
+        let high = ints[0];
         let exp = 0;
 
         if (low == 0 && (high & ~this.DMSBIT) == 0) {
@@ -278,17 +279,16 @@ export class FloatCBits {
 
     // From GHC/Integer/Type.hs
     decodeDoubleInteger(d) {
-        console.log("called float: decodeDoubleInteger")
         const out = this.__decodeDouble_2IntJS(d);
         const man_sign = out[0];
         const man_high = out[1];
         const man_low = out[2];
-        const exp = out[3];
+        const exp =  out[3];
 
-        console.error("FROM JS **d: ", d, "  **exp: ", exp);
 
-        let acc = BigInt(0);
-        acc = BigInt(man_sign) * (BigInt(man_high) * (BigInt(1) << BigInt(32)) + BigInt(man_low));
+        const acc = 
+            BigInt(man_sign) * (BigInt(man_high) * (BigInt(1) << BigInt(32)) + BigInt(man_low));
+        console.log("FROM JS **d: ", d, " **acc: ", acc,  "  **exp: ", exp);
         return [acc, exp]
 
     }
