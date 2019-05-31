@@ -12,6 +12,7 @@ import GHC.Generics
 import GHC.Exts
 import GHC.Stack
 import GHC.Integer
+import GHC.Float
 import qualified GHC.Types
 import System.Mem
 import Debug.Trace (trace)
@@ -111,8 +112,8 @@ double2hex :: Double -> String
 double2hex = hex16 . reinterpretCast
 
 
-wordAdd :: IO ()
-wordAdd = do
+mainWordAdd :: IO ()
+mainWordAdd = do
     let x = 1 :: Word
     let y = 1 :: Word
     let (W# xp) = x
@@ -122,10 +123,13 @@ wordAdd = do
              (# 1##, _ #) -> True
     putStrLn . show$ r
 
-main :: IO ()
-main = do
-  wordAdd
+-- stolen from numrun012.hs
+mainRIntDouble :: IO ()
+mainRIntDouble = do
+   print (int2Double (2^31))
 
+mainDebugPrintDouble :: IO ()
+mainDebugPrintDouble = do
   let d = -0.0 :: Double
   let f = -0.0 :: Float
 
@@ -193,3 +197,5 @@ main = do
 
   performGC
   -}
+
+main = mainRIntDouble
