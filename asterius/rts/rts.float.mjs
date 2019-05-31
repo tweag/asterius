@@ -136,32 +136,32 @@ export class FloatCBits {
     }
 
     FloatToIEEE(f) {
-        this.view.setFloat32(0, f);
-        return this.view.getInt32(0);
+        this.view.setFloat32(0, f, true);
+        return this.view.getInt32(0, true);
     }
 
     DoubleToIEEE(d) {
-        this.view.setFloat64(0, d);
-        return this.view.getBigUint64(0);
+        this.view.setFloat64(0, d, true);
+        return this.view.getBigUint64(0, true);
     }
 
     // return two 32-bit integers, [low, high] from a 64 bit double;
     DoubleTo2Int(d) {
-        this.view.setFloat64(0, d);
-        const low = this.view.getUint32(0);
-        const high = this.view.getUint32(/*offset=*/4);
+        this.view.setFloat64(0, d, true);
+        const low = this.view.getUint32(0, true);
+        const high = this.view.getUint32(/*offset=*/4, true);
         return [low, high];
 
     }
 
     IEEEToFloat(ieee) {
-        this.view.setUint32(0, ieee);
-        return this.view.getFloat32(0);
+        this.view.setUint32(0, ieee, true);
+        return this.view.getFloat32(0, true);
     }
 
     IEEEToDouble(ieee) {
-        this.view.setBigUint64(0, ieee);
-        return this.view.getFloat64(0);
+        this.view.setBigUint64(0, ieee, true);
+        return this.view.getFloat64(0, true);
     }
 
 
@@ -204,78 +204,31 @@ export class FloatCBits {
 
     }
 
-    // From StgPrimFloat.c
-    __decodeDouble_2Int(man_signp, man_highp, man_lowp, expp, dbl) {
-
-        const dbl2i = this.DoubleTo2Int(dbl);
-        let low = dbl2i[0];
-        let high = dbl2i[1];
-        let iexp = 0, sign = 0;
-
-        if (low == 0 && (high & ~this.DMSBIT) == 0) {
-            this.memory.i32Store(man_lowp, 0);
-            this.memory.i32Store(man_highp, 0);
-            this.memory.i32Store(expp, 0);
-            // *man_low = 0;
-            // *man_high = 0;
-            // *exp = 0L;
-        } else {
-            iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
-            sign = high;
-
-            high &= this.DHIGHBIT-1;
-            if (iexp != this.MY_DMINEXP) {
-                /* don't add hidden bit to denorms */
-                high |= this.DHIGHBIT;
-            } else {
-                iexp++;
-                /* A denorm, normalize the mantissa */
-                while (! (high & this.DHIGHBIT)) {
-                    high <<= 1;
-                    if (low & this.DMSBIT) {
-                        high++;
-                    }
-                    low <<= 1;
-                    iexp--;
-                }
-            }
- 
-            this.memory.i32Store(expp, iexp);
-            this.memory.i32Store(man_lowp, low);
-            this.memory.i32Store(man_highp, high);
-            this.memory.i32Store(man_signp, (sign < 0) ? (-1) : 1);
-            // *exp = (I_) iexp;
-            // *man_low = low;
-            // *man_high = high;
-            // *man_sign = (sign < 0) ? -1 : 1;
-        }
-
-    }
-    
 
     // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c
     // From StgPrimFloat.c
     // returns [man_sign, man_high,  man_low, exp]
     __decodeDouble_2IntJS(dbl) {
-        let sign, iexp, man_low, man_high, man_sign;
+        let iexp, man_low, man_high, man_sign;
         const ints = this.DoubleTo2Int(dbl);
-        let low = ints[1];
-        let high = ints[0];
+        let low = ints[0];
+        let high = ints[1];
         let exp = 0;
 
         if (low == 0 && (high & ~this.DMSBIT) == 0) {
             man_low = 0;
             man_high = 0;
-            man_sign = 0;
             iexp = 0;
+            man_sign = 1;
         } else {
             // 0x7ff is a 64 bit value
             iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
-            sign = high;
+            const sign = high;
 
             high &= this.DHIGHBIT-1;
-            if (iexp != this.MY_DMINEXP) /* don't add hidden bit to denorms */
+            if (iexp != this.MY_DMINEXP) { /* don't add hidden bit to denorms */
                 high |= this.DHIGHBIT;
+            }
             else {
                 iexp++;
                 /* A denorm, normalize the mantissa */
@@ -305,8 +258,7 @@ export class FloatCBits {
         const exp =  out[3];
 
 
-        const acc = 
-            BigInt(man_sign) * (BigInt(man_high) * (BigInt(1) << BigInt(32)) + BigInt(man_low));
+        const acc = BigInt(man_sign) * (BigInt(man_high) * (BigInt(1) << BigInt(32)) | BigInt(man_low));
         console.log("FROM JS **d: ", d, " **acc: ", acc,  "  **exp: ", exp);
         return [acc, exp]
 
