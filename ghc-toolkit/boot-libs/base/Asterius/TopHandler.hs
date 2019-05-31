@@ -14,7 +14,7 @@ runMainIO :: IO a -> IO a
 runMainIO = (`catch` topHandler)
 
 topHandler :: SomeException -> IO a
-topHandler = throwExitCode $ \err -> catch (realHandler err) topHandler
+topHandler = throwExitCode realHandler
 
 realHandler :: SomeException -> IO a
 realHandler err = do
