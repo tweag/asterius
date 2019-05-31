@@ -29,7 +29,7 @@ export class IntegerManager {
   }
   decode(i) {
     const x = BigInt(i);
-    return x & BigInt(1) ? this.jsvalManager.getJSVal(Number(x))
+    return x & BigInt(1) ? BigInt(this.jsvalManager.newJSVal(Number(x)))
                          : x >> BigInt(1);
   }
   smallInteger(x) { return this.encode(BigInt(x)); }
