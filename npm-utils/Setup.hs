@@ -20,6 +20,7 @@ main =
                 npm_utils_datadir = datadir npm_utils_installdirs
             createDirectoryIfMissing True npm_utils_datadir
             withCurrentDirectory npm_utils_datadir $
-              callCommand "npm install parcel-bundler"
+              callCommand
+                "npm install https://github.com/tweag/parcel/releases/download/parcel-bundler%401.12.3/parcel-bundler-1.12.3.tar.gz"
             pure lbi
       }
