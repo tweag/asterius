@@ -2,6 +2,35 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-05-26
+
+Covers the past week.
+
+Completed work:
+
+* Merged in the `ghc-testsuite` work and it now runs as a regular CircleCI job, producing a CSV report and an ASCII table listing grouped test failures.
+* Improved the runtime error messages related to unresolved symbols.
+    * Previously, when the linker spots unresolved symbols, it still produces a self-contained wasm module, using an invalid address to replace such symbols, resulting in a cryptic `unreachable` error message when an execution path hits that symbol.
+    * Now, the linker dynamically injects a small data segment into the wasm module upon unresolved symbols. The data segment is a runtime error message indicating the missing symbol. At runtime, when the symbol is used, it'll now show the linker-generated error message in the stack trace.
+    * Roughly a half of broken ghc tests are due to unresolved symbols, indicating missing rts functionality. Combined with the binaryen backend's ability to emit the name section, it's now much clearer to spot when a standard library function calls some unimplemented feature.
+* Implemented unicode primitives to make `GHC.Unicode` at least works for ASCII, also fixing a long-standing issue related to crashing `read` calls.
+* Fixed `localeEncoding` in `GHC.IO.Encoding.Iconv`, which always return `UTF-8` at the moment. Combined with the unicode primitives above, this also fixes some other `base` functionality, e.g. `withCString`, and also the non-iconv `TextEncoding`s.
+* Implemented floating-point c functions to fix `GHC.Float`.
+* Fixed the `noDuplicate#` primop, now `unsafePerformIO` works.
+* Fixed `getProgArgv` in `System.Environment`. Now `getProgName` returns the "program name" generated from `ahc-ld` output path, and `getArgs` always return an empty list. This is a sensible default combination sufficient to fix some ghc tests, and we don't plan to implement a richer API to support providing `argv` to a compiled "executable" yet.
+* Fixed `foreign import ccall safe`, since it's used in some places in `base`.
+* Fixed the `performGC`-like functions in `System.Mem`.
+* Fixed the `threadPaused` rts function, which played an essential role in creating gc safepoints.
+* Removed support for "sync mode" code generation, which ensures the output entry js module performs synchronous wasm compilation/instantiation. This is hardly used and it's increasingly likely we'll need to perform async rts startup at some point.
+* Pruned legacy rts code related to the "vault" feature which was a workaround back in the days when we didn't have gc.
+
+Ongoing and planned work:
+
+* Fix `debugBelch`/`errorBelch`, which is used in some places in `base` (e.g. `trace`)
+* Implement "top handler" for main IO closure, which prints uncaught exception to `stderr` before returning. This is required by tests whose expected behavior is throwing, and we need to check their `.stderr` files.
+* Fix `GHC.Fingerprint`, which is required by anything related to `Typeable`, e.g. runtime type checks. This is required by `fromException` to be used by the top handler.
+* Investigate an issue in iohk's fork to add nix support: after `ahc-boot` finishes, `ahc` is failing to pick up the compiled archives.
+
 ## 2019-05-20
 
 Covers the last two weeks.

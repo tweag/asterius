@@ -68,9 +68,9 @@ jobs:
             stack --no-terminal test asterius:cloudflare
             stack --no-terminal test asterius:exception
             stack --no-terminal test asterius:regression60
+            stack --no-terminal test asterius:sizeof_md5context
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
-            stack --no-terminal test asterius:fib --test-arguments="--sync"
 
             cd ~/.local
             $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py

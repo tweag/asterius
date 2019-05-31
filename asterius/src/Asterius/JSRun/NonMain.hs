@@ -49,7 +49,6 @@ distNonMain p extra_syms =
       , Asterius.Main.gcSections = True
       , fullSymTable = True
       , bundle = False
-      , sync = False
       , Asterius.Main.binaryen = False
       , Asterius.Main.debug = False
       , outputLinkReport = False
