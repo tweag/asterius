@@ -196,38 +196,21 @@ floorDoubleInteger (D# x) =
                       putStrLn $ "\tn:" <> show (I# n)
                       return $ smallInteger (n `uncheckedIShiftRA64#` s)
 
+
+
+
 mainLog :: IO ()
 mainLog = do
- -- let vals = [1, 2, 17, 259, 1000, 10000,
- --             2^30 + 9000, 2^31 - 1, 2^31 + 1,
- --             2^32 - 1, 2^32 + 1]
- let n = 100 :: Double
- putStrLn $ "decodeFloat: " <> show (decodeFloat  n)
- let m = negate n
-
- case m of
-   (D# m') -> case (decodeDoubleInteger m') of
-                    (# i, j #) -> putStrLn $  "decodeDoubleInteger: " <> show  (i, I#  j)
- putStrLn $ show $ "negate " <> show n <> ":" <> show m
- fl <- floorDoubleInteger (m)
- putStrLn $ "floor . negate: " <> show fl
- putStrLn $ show (ceilingDoubleInteger n)
- -- putStrLn (show (map log2 vals))
- -- let n = negate $ logBase 2 (fromIntegral 17)
- -- (int, decimal) <- properFractionFloatInteger n
- -- putStrLn $ "decode: " <> show (decodeFloat n)
- -- m <- floorFloatInteger n
- -- putStrLn $ "floorFloatInteger(" <> show  n <> ")" <> ":" <> show m
-
- -- putStrLn $ show n <> " decoded: " <> show (decodeFloat n)
- -- putStrLn $ show n <> " encoded: " <> show (encodeFloat m e)
- -- putStrLn $ "int: " <> show int <> " |decimal: " <> show decimal
- -- putStrLn . show $ (int + 1)
-
- -- let vals = [1, 2, 17, 259, 1000, 10000,
- --         2^30 + 9000, 2^31 - 1, 2^31 + 1,
- --         2^32 - 1, 2^32 + 1]
- -- putStrLn . show . (map log2) $ vals
+    let if_not_32 = when (sizeOf (undefined::Int) > 4)
+    print (fromIntegral ((2^31) :: Int) :: Double)
+    if_not_32 $ print (round ((2^33) :: Double) :: Int)
+    print (fromIntegral ((2^31) :: Int) :: Float)
+    if_not_32 $ print (round ((2^33) :: Float) :: Int)
+    -- The underlying failing internal operations
+    print (int2Double (2^31))
+    if_not_32 $ print (double2Int (2^33))
+    print (int2Float (2^31))
+    if_not_32 $ print (float2Int (2^33))
 
 mainDebugPrintDouble :: IO ()
 mainDebugPrintDouble = do
