@@ -14,15 +14,18 @@ runMainIO :: IO a -> IO a
 runMainIO = (`catch` topHandler)
 
 topHandler :: SomeException -> IO a
-topHandler err = catch (realHandler err) topHandler
+topHandler = throwExitCode $ \err -> catch (realHandler err) topHandler
 
 realHandler :: SomeException -> IO a
-realHandler err =
+realHandler err = do
+  prog <- peekCString prog_name
+  hPutStrLn stderr $ prog <> ": " <> show err
+  throwIO err
+
+throwExitCode :: (SomeException -> IO a) -> SomeException -> IO a
+throwExitCode h err =
   case fromException err of
     Just (_ :: ExitCode) -> throwIO err
-    _ -> do
-      prog <- peekCString prog_name
-      hPutStrLn stderr $ prog <> ": " <> show err
-      throwIO err
+    _ -> h err
 
 foreign import ccall "&" prog_name :: CString
