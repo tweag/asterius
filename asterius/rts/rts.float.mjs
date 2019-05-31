@@ -105,6 +105,12 @@ export class FloatCBits {
         return bits >> BigInt(63);
     }
 
+
+
+    signManExpToDouble(sign, man, exp) {
+	return sign << 63 | exp << 52 | man;
+    }
+    
     // Check if a double is denormal.
     isDoubleDenormalized(x) { 
         const bits = this.DoubleToIEEE(x);
@@ -300,5 +306,134 @@ export class FloatCBits {
         console.log("FROM JS **d: ", d, " **acc: ", acc,  "  **exp: ", exp);
         return [acc, exp]
 
+    }
+
+    rintDouble(d) {
+        // Code stolen from cbits/float.
+        const bits = this.DoubleToIEEE(d);
+        let exp = this.doubleExponentFromBits(bits);
+        let manFull = this.doubleMantissaFromBits(bits);
+        let mant1 = manFull & (BigInt(1) << BigInt(32) - BigInt(1));
+        let mant0 = (manFull >> BigInt(32));
+        let sign = this.doubleSignFromBits(bits);
+
+
+        // put back the double together
+        function reconstructDouble() {
+            let mantFull = (mant0 << BigInt(32)) | mant1;
+            return Number((sign << BigInt(63)) | (exp << BigInt(52)) | mantFull);
+            
+
+        }
+        // union stg_ieee754_dbl u;
+        // u.d = d;
+        /* if real exponent > 51, it's already integral, infinite or nan */
+        // if (u.ieee.exponent > 1074) /* 51 + 1023 */
+        if (exp > 1074) /* 51 + 1023 */
+        {
+            return d;
+        }
+        // if (u.ieee.exponent < 1022)  /* (-1) + 1023, abs(d) < 0.5 */
+        if (exp < 1022)  /* (-1) + 1023, abs(d) < 0.5 */
+        {
+            /* only used for rounding to Integral a, so don't care about -0.0 */
+            return 0.0;
+        }
+        // unsigned int half, mask, mant, frac;
+        if (exp < 1043) /* 20 + 1023, real exponent < 20 */
+        {
+            /* the fractional part meets the higher part of the mantissa */
+            const half = BigInt(1) << (BigInt(1042) - exp);   /* bit for 0.5 */
+            const mask = BigInt(2)*half - BigInt(1);                      /* fraction bits */
+            let mant = man0 | DBL_HIDDEN;   /* add hidden bit */
+            const frac = mant & mask;                     /* get fraction */
+            mant ^= frac;                           /* truncate mantissa */
+            if ((frac < half) ||
+                ((frac == half) && (man1 == 0)  /* a tie */
+                    && ((mant & (2*half)) == 0)))
+            {
+                /* truncate */
+                if (mant == 0)
+                {
+                    /* d = ±0.5, return 0.0 */
+                    return 0.0;
+                }
+                /* remove hidden bit and set mantissa */
+                mant0 = mant ^ DBL_HIDDEN;
+                mant1 = 0;
+
+                // reassemble double here
+                // return u.d;
+                return reconstructDouble();
+           }
+            else    /* round away from zero */
+            {
+                /* zero low mantissa bits */
+                mant1 = 0;
+                /* increment integer part of mantissa */
+                mant += 2*half;
+                if (mant == DBL_POWER2)
+                {
+                    /* power of 2, increment exponent and zero mantissa */
+                    mant0 = 0;
+                    exp += 1;
+                    // reassamble
+                }
+                /* remove hidden bit */
+                mant0 = mant ^ DBL_HIDDEN;
+                // reassemble
+                return -42;
+            }
+        }
+        else
+        {
+            /* 20 <= real exponent < 52, fractional part entirely in mantissa1 */
+            const half = BigInt(1) << (BigInt(1074) - exp);   /* bit for 0.5 */
+            const mask = BigInt(2)*half - BigInt(1);                      /* fraction bits */
+            let mant = mant1;                /* no hidden bit here */
+            let frac = mant & mask;                     /* get fraction */
+            mant ^= frac;                           /* truncate mantissa */
+            if ((frac < half) ||
+                ((frac == half) &&                  /* tie */
+                (((half == LTOP_BIT) ? (u.ieee.mantissa0 & 1)  /* yuck */
+                                    : (mant & (2*half)))
+                                            == 0)))
+            {
+                /* truncate */
+                mant1 = mant;
+                return reconstructDouble();
+            }
+            else
+            {
+                /* round away from zero */
+                /* increment mantissa */
+                mant += BigInt(2)*half;
+                mant1 = mant;
+                if (mant == 0)
+                {
+                    /* low part of mantissa overflowed */
+                    /* increment high part of mantissa */
+                    mant = u.ieee.mantissa0 + 1;
+                    if (mant == DBL_HIDDEN)
+                    {
+                        /* hit power of 2 */
+                        /* zero mantissa */
+                        mant0 = 0;
+                        /* and increment exponent */
+                        exp += BigInt(1);
+                        return reconstructDouble();
+                    }
+                    else
+                    {
+                        u.ieee.mantissa0 = mant;
+                        return reconstructDouble();
+                    }
+                }
+                else
+                {
+                    return reconstructDouble();
+                }
+            }
+        }
     }
 }
