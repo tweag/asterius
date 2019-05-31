@@ -12,7 +12,8 @@ import GHC.Generics
 import GHC.Exts
 import GHC.Stack
 import GHC.Integer
-import GHC.Float
+import GHC.Float hiding (properFractionFloatInteger)
+import GHC.Float.RealFracMethods hiding(properFractionFloatInteger, ceilingFloatInteger, floorFloatInteger)
 import qualified GHC.Types
 import System.Mem
 import Debug.Trace (trace)
@@ -128,6 +129,69 @@ mainRIntDouble :: IO ()
 mainRIntDouble = do
    print (int2Double (2^31))
 
+log2 x = ceiling log_x
+    where log_x :: Double
+          log_x = logBase 2 (fromIntegral (max 1 x))
+
+properFractionFloatInteger :: Float -> IO (Integer, Float)
+properFractionFloatInteger v@(F# x) =
+    case decodeFloat_Int# x of
+      (# m, e #)
+        | isTrue# (e <# 0#) ->
+          case negateInt# e of
+            s | isTrue# (s ># 23#) -> return (0, v)
+              | isTrue# (m <#  0#) ->
+                case negateInt# (negateInt# m `uncheckedIShiftRA#` s) of
+                  k -> return (smallInteger k,
+                                case m -# (k `uncheckedIShiftL#` s) of
+                                  r -> F# (encodeFloatInteger (smallInteger r) e))
+
+              | otherwise           -> do
+                case m `uncheckedIShiftRL#` s of
+                  k -> do
+                      let k' = smallInteger k
+                      let l' = case m -# (k `uncheckedIShiftL#` s) of
+                                      r -> F# (encodeFloatInteger (smallInteger r) e)
+                      return (k', l')
+        | otherwise -> return (shiftLInteger (smallInteger m) e, F# 0.0#)
+
+ceilingFloatInteger :: Float -> Integer
+ceilingFloatInteger (F# x) =
+    negateInteger (floorFloatInteger (F# (negateFloat# x)))
+
+{-# INLINE floorFloatInteger #-}
+floorFloatInteger :: Float -> Integer
+floorFloatInteger (F# x) =
+    case decodeFloat_Int# x of
+      (# m, e #)
+        | isTrue# (e <# 0#) ->
+          case negateInt# e of
+            s | isTrue# (s ># 23#) -> if isTrue# (m <# 0#) then (-1) else 0
+              | otherwise          -> smallInteger (m `uncheckedIShiftRA#` s)
+        | otherwise -> shiftLInteger (smallInteger m) e
+
+mainLog :: IO ()
+mainLog = do
+ let n = logBase 2 (fromIntegral 17)
+ (int, decimal) <- properFractionFloatInteger n
+ putStrLn $ show (int, decimal)
+ putStrLn $ "negateFloat(" <> show n <> ")" <> ":" <> show (negate n)
+ putStrLn $ "floorFloatInteger(" <> show (negate n) <> ")" <> ":" <> show (floorFloatInteger (negate n))
+ putStrLn $  "n: " <> show (n) <> "|ceiling n: " <> show (ceiling n)
+ putStrLn $  "n: " <> show (n) <> "|ceilingFloatInt n: " <> show (ceilingFloatInt n)
+ putStrLn $  "n: " <> show (n) <> "|ceilingFloatInteger n: " <> show (ceilingFloatInteger n)
+ -- let (m, e) = decodeFloat n
+
+ -- putStrLn $ show n <> " decoded: " <> show (decodeFloat n)
+ -- putStrLn $ show n <> " encoded: " <> show (encodeFloat m e)
+ -- putStrLn $ "int: " <> show int <> " |decimal: " <> show decimal
+ -- putStrLn . show $ (int + 1)
+
+ -- let vals = [1, 2, 17, 259, 1000, 10000,
+ --         2^30 + 9000, 2^31 - 1, 2^31 + 1,
+ --         2^32 - 1, 2^32 + 1]
+ -- putStrLn . show . (map log2) $ vals
+
 mainDebugPrintDouble :: IO ()
 mainDebugPrintDouble = do
   let d = -0.0 :: Double
@@ -198,4 +262,4 @@ mainDebugPrintDouble = do
   performGC
   -}
 
-main = mainRIntDouble
+main = mainLog
