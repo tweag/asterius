@@ -155,32 +155,29 @@ properFractionFloatInteger v@(F# x) =
                       return (k', l')
         | otherwise -> return (shiftLInteger (smallInteger m) e, F# 0.0#)
 
-ceilingFloatInteger :: Float -> Integer
-ceilingFloatInteger (F# x) =
-    negateInteger (floorFloatInteger (F# (negateFloat# x)))
+ceilingFloatInteger :: Float -> IO Integer
+ceilingFloatInteger (F# x) = do
+    f <- floorFloatInteger (F# (negateFloat# x))
+    return $ negateInteger f
 
 {-# INLINE floorFloatInteger #-}
-floorFloatInteger :: Float -> Integer
-floorFloatInteger (F# x) =
+floorFloatInteger :: Float -> IO Integer
+floorFloatInteger (F# x) = do
     case decodeFloat_Int# x of
       (# m, e #)
         | isTrue# (e <# 0#) ->
           case negateInt# e of
-            s | isTrue# (s ># 23#) -> if isTrue# (m <# 0#) then (-1) else 0
-              | otherwise          -> smallInteger (m `uncheckedIShiftRA#` s)
-        | otherwise -> shiftLInteger (smallInteger m) e
+            s | isTrue# (s ># 23#) -> return $ if isTrue# (m <# 0#) then (-1) else 0
+              | otherwise          -> return $ smallInteger (m `uncheckedIShiftRA#` s)
+        | otherwise -> return $ shiftLInteger (smallInteger m) e
 
 mainLog :: IO ()
 mainLog = do
- let n = logBase 2 (fromIntegral 17)
+ let n = negate $ logBase 2 (fromIntegral 17)
  (int, decimal) <- properFractionFloatInteger n
- putStrLn $ show (int, decimal)
- putStrLn $ "negateFloat(" <> show n <> ")" <> ":" <> show (negate n)
- putStrLn $ "floorFloatInteger(" <> show (negate n) <> ")" <> ":" <> show (floorFloatInteger (negate n))
- putStrLn $  "n: " <> show (n) <> "|ceiling n: " <> show (ceiling n)
- putStrLn $  "n: " <> show (n) <> "|ceilingFloatInt n: " <> show (ceilingFloatInt n)
- putStrLn $  "n: " <> show (n) <> "|ceilingFloatInteger n: " <> show (ceilingFloatInteger n)
- -- let (m, e) = decodeFloat n
+ putStrLn $ "decode: " <> show (decodeFloat n)
+ m <- floorFloatInteger n
+ putStrLn $ "floorFloatInteger(" <> show  n <> ")" <> ":" <> show m
 
  -- putStrLn $ show n <> " decoded: " <> show (decodeFloat n)
  -- putStrLn $ show n <> " encoded: " <> show (encodeFloat m e)
