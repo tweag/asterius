@@ -42,6 +42,29 @@ export class Memory {
   i32Store(p, v) { this.dataView.setUint32(Memory.unTag(p), Number(v), true); }
   i64Load(p) { return this.dataView.getBigUint64(Memory.unTag(p), true); }
   i64Store(p, v) { this.dataView.setBigUint64(Memory.unTag(p), BigInt(v), true); }
+  i128Load(p) {
+      // little endian: number with hex digits <0A0B> at address p
+      // get stored as mem[p] = 0B, mem[p+1] = 0A
+      let low = this.dataView.getBigUint64(Memory.unTag(p), true);
+      let high = this.dataView.getBigUint64(Memory.unTag(p) + 8, true);
+      return low | (high << BigInt(64));
+  }
+
+
+  i128Store(p, v) {
+      // create all 1s of 64 bits.
+      const lowmask = (BigInt(1) << BigInt(64)) - BigInt(1);
+
+      // little endian: number with digits <x y> at address p
+      // get stored as mem[p] = y, mem[p+1] = x
+      const low = v & lowmask;
+      const high = v >> BigInt(64);
+
+      // byte addressed, so +8 = 64-bit
+      this.dataView.setBigUint64(Memory.unTag(p), low, true);
+      this.dataView.setBigUint64(Memory.unTag(p) + 8, high, true);
+  }
+
   f32Load(p) { return this.dataView.getFloat32(Memory.unTag(p), true); }
   f32Store(p, v) { this.dataView.setFloat32(Memory.unTag(p), Number(v), true); }
   f64Load(p) { return this.dataView.getFloat64(Memory.unTag(p), true); }
