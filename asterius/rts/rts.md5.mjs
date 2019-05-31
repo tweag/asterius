@@ -17,13 +17,13 @@ export class MD5 {
 
   // void MD5Init(struct MD5Context *context);
   __hsbase_MD5Init(ctxp) {
-      const offset = 144066263297769815596495629667062367629n;
+      const offset = BigInt("144066263297769815596495629667062367629");
       this.memory.i128Store(ctxp, offset);
   }
 
   // void MD5Update(struct MD5Context *context, byte const *buf, int len);
   __hsbase_MD5Update(ctxp, bufp, len) {
-      const prime = 309485009821345068724781371n;
+      const prime = BigInt("309485009821345068724781371");
 
 	  let i = 0;
       let hash = this.memory.i128Load(ctxp);
