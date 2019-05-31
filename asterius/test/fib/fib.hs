@@ -19,6 +19,10 @@ import System.Mem
 import Debug.Trace (trace)
 import Control.Exception (assert)
 import Numeric (showHex)
+import GHC.IntWord64
+import GHC.Integer
+import GHC.Base
+
 
 {-
 fib :: Int -> Int
@@ -74,8 +78,10 @@ foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 unI# :: Int -> Int#
 unI# (I# x) = x
 
+{-
 unIO :: GHC.Types.IO a -> (State# RealWorld -> (# State# RealWorld, a #))
 unIO (GHC.Types.IO m) = m
+-}
 
 reinterpretCast :: (Storable a, Storable b) => a -> b
 reinterpretCast a =
@@ -90,6 +96,7 @@ reinterpretCast a =
                             case unIO (poke (Ptr addr) a) s2 of
                               (# s3, _ #) -> unIO (peek (Ptr addr)) s3) of
                                 (# _, r #) -> r
+
 
 -- | Formats a 64 bit number as 16 digits hex.
 hex16 :: Word64 -> String
@@ -174,16 +181,20 @@ floorFloatInteger (F# x) = do
 
 
 {-# INLINE floorDoubleInteger #-}
-floorDoubleInteger :: Double -> Integer
+floorDoubleInteger :: Double -> IO Integer
 floorDoubleInteger (D# x) =
     case decodeDoubleInteger x of
       (# m, e #)
         | isTrue# (e <# 0#) ->
           case negateInt# e of
-            s | isTrue# (s ># 52#) -> if m < 0 then (-1) else 0
+            s | isTrue# (s ># 52#) -> return $ if m < 0 then (-1) else 0
               | otherwise          ->
-                case TO64 m of
-                  n -> FROM64 (n `uncheckedIShiftRA64#` s)
+                case integerToInt m of
+                  n -> do
+                      putStrLn $ "** in floorDoubleInteger **"
+                      putStrLn $ "\tm:" <> show m <> "|" <> " e:" <> show (I# e) <> " |s: " <> show (I# s)
+                      putStrLn $ "\tn:" <> show (I# n)
+                      return $ smallInteger (n `uncheckedIShiftRA64#` s)
 
 mainLog :: IO ()
 mainLog = do
@@ -192,10 +203,14 @@ mainLog = do
  --             2^32 - 1, 2^32 + 1]
  let n = 100 :: Double
  putStrLn $ "decodeFloat: " <> show (decodeFloat  n)
- case n of
-   (D# n') -> case (decodeDoubleInteger n') of
-                    (# i, j #) -> putStrLn $ show $ "decodeDoubleInteger: " <> show  (i, I#  j)
- putStrLn $ "floor . negate: " <> show (floorDoubleInteger (negate n))
+ let m = negate n
+
+ case m of
+   (D# m') -> case (decodeDoubleInteger m') of
+                    (# i, j #) -> putStrLn $  "decodeDoubleInteger: " <> show  (i, I#  j)
+ putStrLn $ show $ "negate " <> show n <> ":" <> show m
+ fl <- floorDoubleInteger (m)
+ putStrLn $ "floor . negate: " <> show fl
  putStrLn $ show (ceilingDoubleInteger n)
  -- putStrLn (show (map log2 vals))
  -- let n = negate $ logBase 2 (fromIntegral 17)
