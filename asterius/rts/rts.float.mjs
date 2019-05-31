@@ -215,6 +215,7 @@ export class FloatCBits {
         let high = ints[1];
         let exp = 0;
 
+        console.error("dbl: ", dbl, "|low: " , low, "high: " , high);
         if (low == 0 && (high & ~this.DMSBIT) == 0) {
             man_low = 0;
             man_high = 0;
@@ -223,7 +224,11 @@ export class FloatCBits {
         } else {
             // 0x7ff is a 64 bit value
             iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
-            const sign = high;
+            // sign is high casted to int32 from uint32
+            this.view.setUint32(0, high, true);
+            const sign = this.view.getInt32(0, true);
+
+            console.error("dbl: ", dbl, "|iexp: ", iexp, "sign: " , sign);
 
             high &= this.DHIGHBIT-1;
             if (iexp != this.MY_DMINEXP) { /* don't add hidden bit to denorms */
