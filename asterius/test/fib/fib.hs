@@ -13,7 +13,7 @@ import GHC.Exts
 import GHC.Stack
 import GHC.Integer
 import GHC.Float hiding (properFractionFloatInteger)
-import GHC.Float.RealFracMethods hiding(properFractionFloatInteger, ceilingFloatInteger, floorFloatInteger)
+import GHC.Float.RealFracMethods hiding(properFractionFloatInteger, ceilingFloatInteger, floorFloatInteger, floorDoubleInteger)
 import qualified GHC.Types
 import System.Mem
 import Debug.Trace (trace)
@@ -131,7 +131,8 @@ mainRIntDouble = do
 
 log2 x = ceiling log_x
     where log_x :: Double
-          log_x = logBase 2 (fromIntegral (max 1 x))
+          -- log_x = logBase 2 (fromIntegral (max 1 x))
+          log_x = 100 -- ((max 1 x))
 
 properFractionFloatInteger :: Float -> IO (Integer, Float)
 properFractionFloatInteger v@(F# x) =
@@ -171,13 +172,37 @@ floorFloatInteger (F# x) = do
               | otherwise          -> return $ smallInteger (m `uncheckedIShiftRA#` s)
         | otherwise -> return $ shiftLInteger (smallInteger m) e
 
+
+{-# INLINE floorDoubleInteger #-}
+floorDoubleInteger :: Double -> Integer
+floorDoubleInteger (D# x) =
+    case decodeDoubleInteger x of
+      (# m, e #)
+        | isTrue# (e <# 0#) ->
+          case negateInt# e of
+            s | isTrue# (s ># 52#) -> if m < 0 then (-1) else 0
+              | otherwise          ->
+                case TO64 m of
+                  n -> FROM64 (n `uncheckedIShiftRA64#` s)
+
 mainLog :: IO ()
 mainLog = do
- let n = negate $ logBase 2 (fromIntegral 17)
- (int, decimal) <- properFractionFloatInteger n
- putStrLn $ "decode: " <> show (decodeFloat n)
- m <- floorFloatInteger n
- putStrLn $ "floorFloatInteger(" <> show  n <> ")" <> ":" <> show m
+ -- let vals = [1, 2, 17, 259, 1000, 10000,
+ --             2^30 + 9000, 2^31 - 1, 2^31 + 1,
+ --             2^32 - 1, 2^32 + 1]
+ let n = 100 :: Double
+ putStrLn $ "decodeFloat: " <> show (decodeFloat  n)
+ case n of
+   (D# n') -> case (decodeDoubleInteger n') of
+                    (# i, j #) -> putStrLn $ show $ "decodeDoubleInteger: " <> show  (i, I#  j)
+ putStrLn $ "floor . negate: " <> show (floorDoubleInteger (negate n))
+ putStrLn $ show (ceilingDoubleInteger n)
+ -- putStrLn (show (map log2 vals))
+ -- let n = negate $ logBase 2 (fromIntegral 17)
+ -- (int, decimal) <- properFractionFloatInteger n
+ -- putStrLn $ "decode: " <> show (decodeFloat n)
+ -- m <- floorFloatInteger n
+ -- putStrLn $ "floorFloatInteger(" <> show  n <> ")" <> ":" <> show m
 
  -- putStrLn $ show n <> " decoded: " <> show (decodeFloat n)
  -- putStrLn $ show n <> " encoded: " <> show (encodeFloat m e)
