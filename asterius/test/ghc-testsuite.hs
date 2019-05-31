@@ -45,6 +45,7 @@ data TestCase = TestCase
   , caseStdIn, caseStdOut, caseStdErr :: LBS.ByteString
   } deriving (Show)
 
+-- | Try to read a file. if file does not exist, then return empty string.
 readFileNullable :: FilePath -> IO LBS.ByteString
 readFileNullable p = do
   exist <- doesFileExist p
@@ -61,10 +62,17 @@ getTestCases = do
       let subroot = root </> subdir
       files <- sort <$> listDirectory subroot
       let cases = map (subroot </>) $ filter ((== ".hs") . takeExtension) files
-      for cases $ \c ->
+      for cases $ \c -> do
+        -- | GHC has some tests that differ for 32 and 64 bit architectures. So,
+        -- we first check if the 64 bit test exists. If it does, we always
+        -- use it. If it does not, we use the default test (which should
+        -- be the same for both architectures).
+        ws64exists <- doesFileExist (c -<.> "stdout-ws-64")
+        let stdoutp = c -<.> ("stdout" <>  if ws64exists then "-ws-64" else "")
+
         TestCase c <$> readFileNullable (c -<.> "stdin") <*>
-        readFileNullable (c -<.> "stdout") <*>
-        readFileNullable (c -<.> "stderr")
+          readFileNullable stdoutp <*>
+          readFileNullable (c -<.> "stderr")
 
 
 
