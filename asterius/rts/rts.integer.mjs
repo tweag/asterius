@@ -69,8 +69,12 @@ export class IntegerManager {
   }
   integerLogBase(i, b) {
     const bi = this.decode(i);
+    console.log("bi: " , bi);
+
+    const dec = this.decode(bi);
+    console.log("dec:", dec);
     return bi > BigInt(0)
-               ? this.decode(bi).toString(Number(this.decode(b))).length - 1
+               ? dec.toString(Number(this.decode(b))).length - 1
                : -1;
   }
   integerIsPowerOf2(i) {

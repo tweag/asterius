@@ -22,6 +22,7 @@ import Numeric (showHex)
 import GHC.IntWord64
 import GHC.Integer
 import GHC.Base
+import Data.Ratio
 
 
 {-
@@ -282,4 +283,15 @@ mainDebugPrintDouble = do
   performGC
   -}
 
-main = mainLog
+-- | This is completely befuddling, I don't understand what the hell is going on.
+-- | inlining fromRational makes it *not crash*.
+numrun011 :: IO ()
+numrun011 = do
+ -- print (rationalToFloat 1 2 :: Float)
+ print ((1 % 2))
+ let fromRational' = fromRational :: Rational -> Float
+ print (rationalToFloat 1 2))
+ print (fromRational' (1 % 2))
+
+
+main = numrun011
