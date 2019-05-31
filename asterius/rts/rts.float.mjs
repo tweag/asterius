@@ -137,7 +137,7 @@ export class FloatCBits {
 
     FloatToIEEE(f) {
         this.view.setFloat32(0, f);
-        return this.view.getUint32(0);
+        return this.view.getInt32(0);
     }
 
     DoubleToIEEE(d) {
@@ -168,7 +168,7 @@ export class FloatCBits {
     __decodeFloat_Int(manp, expp, f) {
         console.error("inside decodeFloat\n");
         // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c#L215
-        let man, exp, sign;
+        let man, exp;
         let high = this.FloatToIEEE(f);
 
 
@@ -177,7 +177,10 @@ export class FloatCBits {
             exp = 0;
         } else {
             exp = ((high >> 23) & 0xff) + this.MY_FMINEXP;
+            const sign = high;
+
             high &= this.FHIGHBIT-1;
+
             if (exp != this.MY_FMINEXP) /* don't add hidden bit to denorms */
                 high |= this.FHIGHBIT;
             else {
@@ -198,6 +201,7 @@ export class FloatCBits {
         // TODO: double check! Is this i32 or i64? I suspect it is i32.
         this.memory.i64Store(manp, man);
         this.memory.i64Store(expp, exp);
+
     }
 
     // From StgPrimFloat.c
