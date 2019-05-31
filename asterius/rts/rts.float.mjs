@@ -160,7 +160,7 @@ export class FloatCBits {
     }
 
     IEEEToDouble(ieee) {
-        this.view.setUint64(0, ieee);
+        this.view.setBigUint64(0, ieee);
         return this.view.getFloat64(0);
     }
 
@@ -308,8 +308,74 @@ export class FloatCBits {
 
     }
 
+    // from cbits/primFloat
+    rintFloat(f) {
+        const bits = this.FloatToIEEE(f);
+        let fexp = this.floatExponentFromBits(bits);
+        let fman = this.floatMantissaFromBits(bits);
+        let fsign = this.floatSignFromBits(bits);
+
+
+        // put back the float together
+        const reconstructFloat = function() {
+            return this.IEEEToFloat((fsign << BigInt(31)) | (fexp << BigInt(23)) | fman);
+        }.bind(this);
+
+        /* if real exponent > 22, it's already integral, infinite or nan */
+        if (fexp > 149)  /* 22 + 127 */
+        {
+            return f;
+        }
+        if (fexp < 126)  /* (-1) + 127, abs(f) < 0.5 */
+        {
+            /* only used for rounding to Integral a, so don't care about -0.0 */
+            return f;
+        }
+        /* 0.5 <= abs(f) < 2^23 */
+        /// let half, mask, mant, frac;
+        const half = BigInt(1) << (BigInt(149) - fexp);    /* bit for 0.5 */
+        const mask = BigInt(2)*half - BigInt(1);                      /* fraction bits */
+        let mant = fman | this.FLT_HIDDEN;    /* add hidden bit */
+        let frac = mant & mask;                     /* get fraction */
+        mant ^= frac;                           /* truncate mantissa */
+        if ((frac < half) || ((frac == half) && ((mant & (2*half)) == 0)))
+        {
+            /* this means we have to truncate */
+            if (mant == 0)
+            {
+                /* f == ±0.5, return 0.0 */
+                return 0.0;
+            }
+            else
+            {
+                /* remove hidden bit and set mantissa */
+                // u.ieee.mantissa = mant ^ FLT_HIDDEN;
+                let fman = mant ^ this.FLT_HIDDEN;
+                return reconstructFloat();
+            }
+        }
+        else
+        {
+            /* round away from zero, increment mantissa */
+            mant += 2*half;
+            if (mant == FLT_POWER2)
+            {
+                /* next power of 2, increase exponent and set mantissa to 0 */
+                fman = 0;
+                fexp += 1;
+                return reconstructFloat();
+            }
+            else
+            {
+                /* remove hidden bit and set mantissa */
+                fman = mant ^ FLT_HIDDEN;
+                return u.f;
+            }
+        }
+    }
+
     rintDouble(d) {
-        // Code stolen from cbits/float.
+        // Code stolen from cbits/primFloat.
         const bits = this.DoubleToIEEE(d);
         let exp = this.doubleExponentFromBits(bits);
         let manFull = this.doubleMantissaFromBits(bits);
@@ -319,12 +385,11 @@ export class FloatCBits {
 
 
         // put back the double together
-        function reconstructDouble() {
+        const reconstructDouble = function() {
             let mantFull = (mant0 << BigInt(32)) | mant1;
-            return Number((sign << BigInt(63)) | (exp << BigInt(52)) | mantFull);
-            
+            return Number(this.IEEEToDouble((sign << BigInt(63)) | (exp << BigInt(52)) | mantFull));
+        }.bind(this);
 
-        }
         // union stg_ieee754_dbl u;
         // u.d = d;
         /* if real exponent > 51, it's already integral, infinite or nan */
