@@ -3,6 +3,7 @@ import { encodeUTF8, decodeUTF8 } from "./rts.utf8.mjs";
 import { encodeUTF16, decodeUTF16 } from "./rts.utf16.mjs";
 import { encodeUTF32, decodeUTF32 } from "./rts.utf32.mjs";
 import { encodeLatin1, decodeLatin1 } from "./rts.latin1.mjs";
+import { ReentrancyGuard } from "./rts.reentrancy.mjs";
 import { EventLogManager } from "./rts.eventlog.mjs";
 import { Tracer } from "./rts.tracing.mjs";
 import { Memory } from "./rts.memory.mjs";
@@ -17,6 +18,7 @@ import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
+import { Messages } from "./rts.messages.mjs";
 import { ThreadPaused } from "./rts.threadpaused.mjs";
 import { MD5 } from "./rts.md5.mjs"
 import { FloatCBits } from "./rts.float.mjs";
@@ -24,7 +26,8 @@ import { Unicode } from "./rts.unicode.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export function newAsteriusInstance(req) {
-  let __asterius_logger = new EventLogManager(req.symbolTable),
+  let __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
+    __asterius_logger = new EventLogManager(req.symbolTable),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
     __asterius_wasm_instance = null,
     __asterius_wasm_table = new WebAssembly.Table({element: "anyfunc", initial: req.tableSlots}),
@@ -39,12 +42,13 @@ export function newAsteriusInstance(req) {
     __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager, __asterius_heap_builder),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
-    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable),
+    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard),
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
     __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_unicode = new Unicode(),
-    __asterius_md5 = new MD5(__asterius_memory);
+    __asterius_md5 = new MD5(__asterius_memory),
+    __asterius_messages = new Messages(__asterius_memory, __asterius_fs);
 
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
@@ -127,6 +131,7 @@ export function newAsteriusInstance(req) {
       bytestring: modulify(__asterius_bytestring_cbits),
       // cannot name this float since float is a keyword.
       floatCBits: modulify(__asterius_float_cbits),
+      ReentrancyGuard: modulify(__asterius_reentrancy_guard),
       GC: modulify(__asterius_gc),
       ExceptionHelper: modulify(__asterius_exception_helper),
       ThreadPaused: modulify(__asterius_threadpaused),
@@ -135,6 +140,7 @@ export function newAsteriusInstance(req) {
       MBlockAlloc: modulify(__asterius_mblockalloc),
       Memory: modulify(__asterius_memory),
       MemoryTrap: modulify(__asterius_memory_trap),
+      Messages: modulify(__asterius_messages),
       StablePtr: modulify(__asterius_stableptr_manager),
       Unicode: modulify(__asterius_unicode),
       MD5: modulify(__asterius_md5),

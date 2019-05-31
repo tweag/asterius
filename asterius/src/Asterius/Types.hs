@@ -48,7 +48,6 @@ module Asterius.Types
   ) where
 
 import Asterius.Internals.Binary
-import Bindings.Binaryen.Raw hiding (RelooperBlock)
 import Control.Exception
 import Data.Binary
 import qualified Data.ByteString.Short as SBS
@@ -57,6 +56,8 @@ import qualified Data.Map.Lazy as LM
 import Data.String
 import Foreign
 import GHC.Generics
+
+type BinaryenIndex = Word32
 
 data AsteriusCodeGenError
   = UnsupportedCmmLit SBS.ShortByteString

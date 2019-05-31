@@ -13,6 +13,7 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
+import Asterius.Internals.Directory
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
@@ -88,9 +89,10 @@ bootRTSCmm BootArgs {..} =
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
     obj_paths_ref <- liftIO $ newIORef []
-    rts_cmm_mods <-
-      map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
-      liftIO (listDirectory rts_path)
+    cmm_files <-
+      liftIO $
+      fmap (filter ((== ".cmm") . takeExtension)) $
+      listFilesRecursive $ takeDirectory rts_path
     runCmm
       defaultConfig
         { ghcFlags =
@@ -101,7 +103,7 @@ bootRTSCmm BootArgs {..} =
             , "-I" <> obj_topdir </> "include"
             ]
         }
-      [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
+      cmm_files
       (\obj_path ir@CmmIR {..} ->
          let ms_mod =
                (GHC.Module GHC.rtsUnitId $
