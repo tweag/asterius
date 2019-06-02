@@ -20,7 +20,6 @@ import Asterius.Passes.FunctionSymbolTable
 import Asterius.Types
 import Data.Binary
 import Data.Data (Data, gmapQl)
-import Data.List
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
 import Foreign
@@ -93,10 +92,17 @@ mergeSymbols _ gc_sections store_mod root_syms export_funcs
         { ffiImportDecls =
             flip LM.filterWithKey (ffiImportDecls ffi_all) $ \k _ ->
               (k <> "_wrapper") `LM.member` functionMap final_m
-        , ffiExportDecls =
-            ffiExportDecls ffi_all `LM.restrictKeys` S.fromList export_funcs
+        , ffiExportDecls = ffi_exports
         }
-    (_, _, final_m) = go (root_syms, S.empty, mempty)
+    ffi_exports
+      | not gc_sections = ffiExportDecls (ffiMarshalState store_mod)
+      | otherwise =
+        ffiExportDecls (ffiMarshalState store_mod) `LM.restrictKeys`
+        S.fromList export_funcs
+    root_syms' =
+      S.fromList [ffiExportClosure | FFIExportDecl {..} <- LM.elems ffi_exports] <>
+      root_syms
+    (_, _, final_m) = go (root_syms', S.empty, mempty)
     go i@(i_staging_syms, _, _)
       | S.null i_staging_syms = i
       | otherwise = go $ iter i
@@ -154,7 +160,6 @@ resolveAsteriusModule ::
      Bool
   -> Bool
   -> FFIMarshalState
-  -> [AsteriusEntitySymbol]
   -> AsteriusModule
   -> Int64
   -> Int64
@@ -164,7 +169,7 @@ resolveAsteriusModule ::
      , [Event]
      , Int
      , Int)
-resolveAsteriusModule debug _ bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
+resolveAsteriusModule debug _ bundled_ffi_state m_globals_resolved func_start_addr data_start_addr =
   (new_mod, ss_sym_map, func_sym_map, err_msgs, table_slots, initial_mblocks)
   where
     (func_sym_map, last_func_addr) =
@@ -185,12 +190,7 @@ resolveAsteriusModule debug _ bundled_ffi_state export_funcs m_globals_resolved 
       Module
         { functionMap' = new_function_map
         , functionImports = func_imports
-        , functionExports =
-            rtsFunctionExports debug <>
-            [ FunctionExport
-              {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
-            | k <- map entityName export_funcs
-            ]
+        , functionExports = rtsFunctionExports debug
         , functionTable = func_table
         , tableImport =
             TableImport
@@ -227,17 +227,7 @@ linkStart debug gc_sections binaryen store root_syms export_funcs =
       })
   where
     (merged_m', report) =
-      mergeSymbols
-        debug
-        gc_sections
-        store
-        (root_syms <>
-         S.fromList
-           [ AsteriusEntitySymbol
-             {entityName = "__asterius_jsffi_export_" <> entityName k}
-           | k <- export_funcs
-           ])
-        export_funcs
+      mergeSymbols debug gc_sections store root_syms export_funcs
     merged_m
       | debug = addMemoryTrap merged_m'
       | otherwise = merged_m'
@@ -246,7 +236,6 @@ linkStart debug gc_sections binaryen store root_syms export_funcs =
         debug
         binaryen
         (bundledFFIMarshalState report)
-        export_funcs
         merged_m
         (1 .|. functionTag `shiftL` 32)
         (dataTag `shiftL` 32)

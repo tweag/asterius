@@ -48,7 +48,7 @@ export function newAsteriusInstance(req) {
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
-    __asterius_exports = new Exports(__asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager);
+    __asterius_exports = new Exports(__asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports);
 
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");

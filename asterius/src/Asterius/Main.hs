@@ -199,6 +199,8 @@ genLib Task {..} LinkReport {..} err_msgs =
   ] <>
   [ ", jsffiFactory: "
   , generateFFIImportObjectFactory bundledFFIMarshalState
+  , ", exports: "
+  , generateFFIExportObject bundledFFIMarshalState
   , ", symbolTable: "
   , genSymbolDict symbol_table
   , ", infoTables: "
@@ -221,7 +223,13 @@ genLib Task {..} LinkReport {..} err_msgs =
       | fullSymTable = raw_symbol_table
       | otherwise =
         M.restrictKeys raw_symbol_table $
-        S.fromList extraRootSymbols <> rtsUsedSymbols
+        S.fromList
+          [ ffiExportClosure
+          | FFIExportDecl {..} <-
+              M.elems $ ffiExportDecls bundledFFIMarshalState
+          ] <>
+        S.fromList extraRootSymbols <>
+        rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =

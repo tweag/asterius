@@ -1,10 +1,11 @@
 export class Exports {
-  constructor(reentrancy_guard, symbol_table, tso_manager) {
+  constructor(reentrancy_guard, symbol_table, tso_manager, exports) {
     this.context = Object.freeze({
       reentrancyGuard: reentrancy_guard,
       symbolTable: symbol_table,
       tsoManager: tso_manager
     });
+    Object.assign(this, exports);
   }
 
   rts_eval(p) {
