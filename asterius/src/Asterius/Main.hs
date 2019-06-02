@@ -15,6 +15,7 @@ import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.BuildInfo
 import Asterius.Internals
+import Asterius.Internals.ByteString
 import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.JSGen.Constants
@@ -168,13 +169,16 @@ genSymbolDict sym_map =
   mconcat
     (intersperse
        ","
-       [ string7 (show sym) <> ":" <> int64Dec sym_idx
+       [ shortByteString (entityName sym) <> ":" <>
+       intHex (fromIntegral sym_idx)
        | (sym, sym_idx) <- M.toList sym_map
        ]) <>
   "})"
 
 genInfoTables :: [Int64] -> Builder
-genInfoTables sym_set = "new Set(" <> string7 (show sym_set) <> ")"
+genInfoTables sym_set =
+  "new Set([" <> mconcat (intersperse "," (map (intHex . fromIntegral) sym_set)) <>
+  "])"
 
 genPinnedStaticClosures ::
      M.Map AsteriusEntitySymbol Int64
@@ -211,9 +215,9 @@ genLib Task {..} LinkReport {..} err_msgs =
       exportFunctions
       bundledFFIMarshalState
   , ", tableSlots: "
-  , intDec tableSlots
+  , intHex tableSlots
   , ", staticMBlocks: "
-  , intDec staticMBlocks
+  , intHex staticMBlocks
   , "})"
   , ";\n"
   ]

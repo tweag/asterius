@@ -489,7 +489,7 @@ generateFFIImportLambda :: FFIImportDecl -> Builder
 generateFFIImportLambda FFIImportDecl { ffiFunctionType = FFIFunctionType {..}
                                       , ..
                                       } =
-  "((" <>
+  "(" <>
   mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
   ")=>" <>
   (case ffiResultTypes of
@@ -504,11 +504,11 @@ generateFFIImportLambda FFIImportDecl { ffiFunctionType = FFIFunctionType {..}
           _ -> "_" <> intDec i
     | chunk <- ffiSourceChunks
     ] <>
-  "))"
+  ")"
 
 generateFFIImportObjectFactory :: FFIMarshalState -> Builder
 generateFFIImportObjectFactory FFIMarshalState {..} =
-  "__asterius_jsffi => ({jsffi: {" <>
+  "__asterius_jsffi=>({jsffi: {" <>
   mconcat
     (intersperse
        ","
