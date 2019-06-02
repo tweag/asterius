@@ -164,14 +164,14 @@ genPackageJSON Task {..} =
 
 genSymbolDict :: M.Map AsteriusEntitySymbol Int64 -> Builder
 genSymbolDict sym_map =
-  "{" <>
+  "Object.freeze({" <>
   mconcat
     (intersperse
        ","
        [ string7 (show sym) <> ":" <> int64Dec sym_idx
        | (sym, sym_idx) <- M.toList sym_map
        ]) <>
-  "}"
+  "})"
 
 genInfoTables :: [Int64] -> Builder
 genInfoTables sym_set = "new Set(" <> string7 (show sym_set) <> ")"

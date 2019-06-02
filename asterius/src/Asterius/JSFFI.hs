@@ -519,7 +519,7 @@ generateFFIImportObjectFactory FFIMarshalState {..} =
 
 generateFFIExportObject :: FFIMarshalState -> Builder
 generateFFIExportObject FFIMarshalState {..} =
-  "{" <>
+  "Object.freeze({" <>
   mconcat
     (intersperse
        ","
@@ -527,7 +527,7 @@ generateFFIExportObject FFIMarshalState {..} =
        generateFFIExportLambda export_decl
        | (k, export_decl) <- M.toList ffiExportDecls
        ]) <>
-  "}"
+  "})"
 
 generateFFIExportLambda :: FFIExportDecl -> Builder
 generateFFIExportLambda FFIExportDecl { ffiFunctionType = FFIFunctionType {..}
