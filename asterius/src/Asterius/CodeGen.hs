@@ -44,6 +44,9 @@ import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Prelude hiding (IO)
 import qualified Unique as GHC
 
+
+asteriusError e = GHC.trace ("CODEGEN: " <> show e) (throwError e)
+
 type CodeGenContext = (GHC.DynFlags, String)
 
 newtype CodeGen a =
@@ -89,7 +92,7 @@ marshalCmmType t
   | GHC.b64 `GHC.cmmEqType_ignoring_ptrhood` t = pure I64
   | GHC.f32 `GHC.cmmEqType_ignoring_ptrhood` t = pure F32
   | GHC.f64 `GHC.cmmEqType_ignoring_ptrhood` t = pure F64
-  | otherwise = throwError $ UnsupportedCmmType $ showSBS t
+  | otherwise = asteriusError $ UnsupportedCmmType $ showSBS t
 
 dispatchCmmWidth :: GHC.Width -> a -> a -> CodeGen a
 dispatchCmmWidth w r32 = dispatchAllCmmWidth w r32 r32 r32
@@ -101,7 +104,7 @@ dispatchAllCmmWidth w r8 r16 r32 r64 =
     GHC.W16 -> pure r16
     GHC.W32 -> pure r32
     GHC.W64 -> pure r64
-    _ -> throwError $ UnsupportedCmmWidth $ showSBS w
+    _ -> asteriusError $ UnsupportedCmmWidth $ showSBS w
 
 marshalCmmStatic :: GHC.CmmStatic -> CodeGen AsteriusStatic
 marshalCmmStatic st =
@@ -134,7 +137,7 @@ marshalCmmStatic st =
         GHC.CmmLabelOff clbl o -> do
           sym <- marshalCLabel clbl
           pure $ SymbolStatic sym o
-        _ -> throwError $ UnsupportedCmmLit $ showSBS lit
+        _ -> asteriusError $ UnsupportedCmmLit $ showSBS lit
     GHC.CmmUninitialised s -> pure $ Uninitialized s
     GHC.CmmString s -> pure $ Serialized $ SBS.toShort s <> "\0"
 
@@ -168,7 +171,7 @@ marshalTypedCmmLocalReg r vt = do
   (lr, vt') <- marshalCmmLocalReg r
   if vt == vt'
     then pure lr
-    else throwError $ UnsupportedCmmExpr $ showSBS r
+    else asteriusError $ UnsupportedCmmExpr $ showSBS r
 
 marshalCmmGlobalReg :: GHC.GlobalReg -> CodeGen UnresolvedGlobalReg
 marshalCmmGlobalReg r =
@@ -189,7 +192,7 @@ marshalCmmGlobalReg r =
     GHC.GCEnter1 -> pure GCEnter1
     GHC.GCFun -> pure GCFun
     GHC.BaseReg -> pure BaseReg
-    _ -> throwError $ UnsupportedCmmGlobalReg $ showSBS r
+    _ -> asteriusError $ UnsupportedCmmGlobalReg $ showSBS r
 
 marshalCmmLit :: GHC.CmmLit -> CodeGen (Expression, ValueType)
 marshalCmmLit lit =
@@ -210,7 +213,7 @@ marshalCmmLit lit =
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
       pure (Symbol {unresolvedSymbol = sym, symbolOffset = o}, I64)
-    _ -> throwError $ UnsupportedCmmLit $ showSBS lit
+    _ -> asteriusError $ UnsupportedCmmLit $ showSBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
 marshalCmmLoad p t = do
@@ -277,7 +280,7 @@ marshalCmmRegOff r o = do
             , operand1 = ConstI64 $ fromIntegral o
             }
         , vt)
-    _ -> throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmRegOff r o
+    _ -> asteriusError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmRegOff r o
 
 marshalCmmBinMachOp ::
      BinaryOp
@@ -518,7 +521,7 @@ marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] =
 marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
   marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 Sext x
 marshalCmmMachOp op xs =
-  throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmMachOp op xs
+  asteriusError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmMachOp op xs
 
 marshalCmmExpr :: GHC.CmmExpr -> CodeGen (Expression, ValueType)
 marshalCmmExpr cmm_expr =
@@ -528,7 +531,7 @@ marshalCmmExpr cmm_expr =
     GHC.CmmReg r -> marshalCmmReg r
     GHC.CmmMachOp op xs -> marshalCmmMachOp op xs
     GHC.CmmRegOff r o -> marshalCmmRegOff r o
-    _ -> throwError $ UnsupportedCmmExpr $ showSBS cmm_expr
+    _ -> asteriusError $ UnsupportedCmmExpr $ showSBS cmm_expr
 
 marshalAndCastCmmExpr :: GHC.CmmExpr -> ValueType -> CodeGen Expression
 marshalAndCastCmmExpr cmm_expr dest_vt = do
@@ -541,7 +544,7 @@ marshalAndCastCmmExpr cmm_expr dest_vt = do
     _
       | src_vt == dest_vt -> pure src_expr
       | otherwise ->
-        throwError $ UnsupportedImplicitCasting src_expr src_vt dest_vt
+        asteriusError $ UnsupportedImplicitCasting src_expr src_vt dest_vt
 
 marshalCmmUnPrimCall ::
      UnaryOp -> ValueType -> GHC.LocalReg -> GHC.CmmExpr -> CodeGen [Expression]
@@ -815,8 +818,72 @@ marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall ClzInt64 I64 r x
 marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall CtzInt64 I64 r x
+
+-- | Similar to MO_{Add,Sub}IntC, but MO_Add2 expects the first element of the
+-- return tuple to be the overflow bit and the second element to contain the
+-- actual result of the addition.
+marshalCmmPrimCall (GHC.MO_Add2 GHC.W64) [o, r] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  -- | overflow = (maxBound - x) > y
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_plus_y = Binary { binaryOp = AddInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let maxbound_minus_x = Binary { binaryOp = SubInt64
+                              , operand0 = ConstI64 0xFFFFFFFFFFFFFFFF
+                              , operand1 = xr
+                              }
+
+  let maxbound_minus_x_gt_y = Binary { binaryOp = GtUInt64
+                                     , operand0 = maxbound_minus_x
+                                     , operand1 = yr
+                                     }
+  let maxbound_minus_x_gt_y_sext = Unary { unaryOp = ExtendUInt32
+                                         , operand0 = maxbound_minus_x_gt_y
+                                         }
+
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_plus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = maxbound_minus_x_gt_y_sext }
+    ]
+
+marshalCmmPrimCall (GHC.MO_SubIntC GHC.W64) [o, r] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_minus_y = Binary { binaryOp = SubInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let overflow = Binary { binaryOp = LtUInt64
+                        , operand0 = xr
+                        , operand1 = yr
+                        }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                              , operand0 = overflow
+                              }
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_minus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+
 marshalCmmPrimCall op rs xs =
-  throwError $
+  asteriusError $
   UnsupportedCmmInstr $
   showSBS $ GHC.CmmUnsafeForeignCall (GHC.PrimTarget op) rs xs
 
@@ -844,11 +911,11 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
             }
         ]
     _ ->
-      throwError $
+      asteriusError $
       UnsupportedCmmInstr $
       showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
 marshalCmmUnsafeCall p f rs xs =
-  throwError $
+  asteriusError $
   UnsupportedCmmInstr $
   showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
 
@@ -893,7 +960,7 @@ marshalCmmInstr instr =
                 Store
                   {bytes = 8, offset = 0, ptr = pv, value = xe, valueType = vt})
       pure [store_instr]
-    _ -> throwError $ UnsupportedCmmInstr $ showSBS instr
+    _ -> asteriusError $ UnsupportedCmmInstr $ showSBS instr
 
 marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [Expression]
 marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
@@ -954,7 +1021,7 @@ marshalCmmBlockBranch instr =
           ]
         , Nothing
         , [])
-    _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
+    _ -> asteriusError $ UnsupportedCmmBranch $ showSBS instr
 
 marshalCmmBlock ::
      [GHC.CmmNode GHC.O GHC.O]
