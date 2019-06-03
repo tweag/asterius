@@ -142,11 +142,6 @@ export class FloatCBits {
     return this.view.getFloat32(0);
   }
 
-  IEEEToDouble(ieee) {
-    this.view.setUint64(0, ieee);
-    return this.view.getFloat64(0);
-  }
-
   __decodeFloat_Int(manp, expp, f) {
     console.error("inside decodeFloat\n");
     // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c#L215
