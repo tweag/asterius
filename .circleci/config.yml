@@ -94,6 +94,7 @@ jobs:
             # run test cases that should pass from ghc-testsuite.
             # At some point, this should cover entire subfolders like "numeric"
             stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun012"
 
   asterius-test-ghc-testsuite:
     docker:
