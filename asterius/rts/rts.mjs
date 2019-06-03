@@ -93,7 +93,6 @@ export function newAsteriusInstance(req) {
       __asterius_wasm_instance.exports.rts_checkSchedStatus(tid);
     },
     Integer: __asterius_integer_manager,
-    floatCBits: __asterius_float_cbits,
     Float: __asterius_float_cbits,
     stdio: {
       putChar: (h, c) => __asterius_fs.writeSync(h, String.fromCodePoint(c)),

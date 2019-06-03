@@ -267,7 +267,7 @@ foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2
 
 foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.floatCBits.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double# -> Int#
 
-foreign import javascript "__asterius_jsffi.Float.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_e :: Double# -> Int#
+foreign import javascript "__asterius_jsffi.floatCBits.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_e :: Double# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_doubleFromInteger :: Int# -> Double#
 
