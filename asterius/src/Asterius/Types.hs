@@ -42,6 +42,7 @@ module Asterius.Types
   , Chunk(..)
   , FFIValueType(..)
   , FFIFunctionType(..)
+  , FFISafety(..)
   , FFIImportDecl(..)
   , FFIExportDecl(..)
   , FFIMarshalState(..)
@@ -532,8 +533,17 @@ data FFIFunctionType = FFIFunctionType
 
 instance Binary FFIFunctionType
 
+data FFISafety
+  = FFIUnsafe
+  | FFISafe
+  | FFIInterruptible
+  deriving (Eq, Show, Generic, Data)
+
+instance Binary FFISafety
+
 data FFIImportDecl = FFIImportDecl
   { ffiFunctionType :: FFIFunctionType
+  , ffiSafety :: FFISafety
   , ffiSourceChunks :: [Chunk Int]
   } deriving (Eq, Show, Generic, Data)
 
