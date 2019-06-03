@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnboxedTuples #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 import Control.DeepSeq
@@ -8,6 +10,9 @@ import qualified Data.IntMap.Strict as IM
 import GHC.Generics
 import System.Mem
 import Debug.Trace (trace)
+import GHC.Prim
+import GHC.Word
+import GHC.Exts
 
 fib :: Int -> Int
 fib n = go 0 1 0
@@ -58,8 +63,8 @@ foreign import ccall unsafe "assert_eq_i64" assert_eq_i64 :: Int -> Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
-main :: IO ()
-main = do
+main_ :: IO ()
+main_ = do
 
   performGC
 
@@ -99,3 +104,13 @@ main = do
   assert_eq_i64 (sumFacts 5) (154)
 
   performGC
+
+main :: IO ()
+main = do
+  forM_ [0] $ \xw ->
+      forM_ [1] $ \yw ->
+          let (W# x) = xw
+              (W# y) = yw
+           in case plusWord2# x y of
+              (# 0##, _ #) -> print False
+              (# 1##, _ #) -> print True
