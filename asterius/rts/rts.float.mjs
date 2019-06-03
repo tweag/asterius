@@ -99,11 +99,8 @@ export class FloatCBits {
   isDoubleDenormalized(x) {
     const bits = this.DoubleToIEEE(x);
 
-    console.log("x: %f | bits: %s", x, bits.toString(16));
     const exponent = this.doubleExponentFromBits(bits);
-    console.log("x: %f | exponent: %s", x, exponent.toString(16));
     const mantissa = this.doubleMantissaFromBits(bits);
-    console.log("x: %f | mantissa: %s", x, mantissa.toString(16));
     return exponent === BigInt(0) && mantissa !== BigInt(0);
   }
 
@@ -143,7 +140,6 @@ export class FloatCBits {
   }
 
   __decodeFloat_Int(manp, expp, f) {
-    console.error("inside decodeFloat\n");
     // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c#L215
     let man, exp, sign;
     let high = this.FloatToIEEE(f);
