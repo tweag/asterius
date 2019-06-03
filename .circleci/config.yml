@@ -91,6 +91,10 @@ jobs:
             stack --no-terminal test asterius:nomain
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
+            # run test cases that should pass from ghc-testsuite.
+            # At some point, this should cover entire subfolders like "numeric"
+            stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
+
   asterius-test-ghc-testsuite:
     docker:
       - image: debian:unstable
@@ -157,6 +161,9 @@ jobs:
             command: |
               # run the GHC testsuite and copy the test artifact to `/tmp`
               nodejs --version
+
+
+              # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite  -j8 --test-arguments="--timeout=30s" || true
               cp asterius/test-report.csv /tmp
               python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
