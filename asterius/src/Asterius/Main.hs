@@ -168,8 +168,8 @@ genSymbolDict sym_map =
   "Object.freeze({" <>
   mconcat
     (intersperse
-       ","
-       [ shortByteString (entityName sym) <> ":" <>
+       ",\""
+       [ shortByteString (entityName sym) <> "\":" <>
        intHex (fromIntegral sym_idx)
        | (sym, sym_idx) <- M.toList sym_map
        ]) <>
