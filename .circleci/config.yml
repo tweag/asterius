@@ -127,6 +127,8 @@ jobs:
 
             stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
             stack test asterius:ghc-testsuite --test-arguments "-p NumDecimals"
+            stack test asterius:ghc-testsuite --test-arguments "-p FloatFnInverses"
+
 
   asterius-test-ghc-testsuite:
     docker:

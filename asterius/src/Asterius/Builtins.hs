@@ -219,6 +219,9 @@ rtsFunctionImports debug =
       , "asin"
       , "acos"
       , "atan"
+      , "asinh"
+      , "acosh"
+      , "atanh"
       , "log"
       , "exp"
       ]

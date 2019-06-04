@@ -32,6 +32,10 @@ export class FloatCBits {
     this.FLT_HIDDEN = 0x800000;
     this.FLT_POWER2 = 0x1000000;
 
+    this.DBL_HIDDEN = 0x100000;
+    this.DBL_POWER2 = 0x200000;
+      
+
     // buffer of 8 bytes to hold floats/doubles
     this.buffer = new ArrayBuffer(8);
     this.view = new DataView(this.buffer);
@@ -299,20 +303,34 @@ export class FloatCBits {
   }
 
   rintDouble(d) {
+      console.error("d: ", d);
+
+
     // Code stolen from cbits/primFloat.
     const bits = this.DoubleToIEEE(d);
     let exp = this.doubleExponentFromBits(bits);
     let manFull = this.doubleMantissaFromBits(bits);
-    let mant1 = manFull & (BigInt(1) << (BigInt(32) - BigInt(1)));
-    let mant0 = manFull >> BigInt(32);
+    this.view.setBigUint64(0, manFull, /*little endian=*/true);
+    let mant1 = BigInt(this.view.getUint32(0, /*little endian=*/true));
+    let mant0 = BigInt(this.view.getUint32(4, /*little endian=*/true));
+    // let mant1 = manFull & ((BigInt(1) << (BigInt(32)) - BigInt(1)));
+    // let mant0 = manFull >> BigInt(32);
     let sign = this.doubleSignFromBits(bits);
+
+    console.log("exp: ", exp, " | mant0: " , mant0, " | mant1: ", mant1, " |sign: ", sign);
+    // let out = 68719476736.000000;
+    // console.log("out: ", out);
+    // return out;
 
     // put back the double together
     const reconstructDouble = () => {
-      let mantFull = (mant0 << BigInt(32)) | mant1;
-      return Number(
+      let mantFull = (mant1 << BigInt(32)) | mant0;
+      let n =  Number(
         this.IEEEToDouble((sign << BigInt(63)) | (exp << BigInt(52)) | mantFull)
       );
+       console.log("exp: ", exp, " | mant0: " , mant0, " | mant1: ", mant1, " |sign: ", sign);
+      console.log("returning:" , n);
+      return n;
     };
 
     // union stg_ieee754_dbl u;
@@ -335,9 +353,10 @@ export class FloatCBits {
       /* the fractional part meets the higher part of the mantissa */
       const half = BigInt(1) << (BigInt(1042) - exp); /* bit for 0.5 */
       const mask = BigInt(2) * half - BigInt(1); /* fraction bits */
-      let mant = man0 | DBL_HIDDEN; /* add hidden bit */
+      let mant = mant0 | BigInt(this.DBL_HIDDEN); /* add hidden bit */
       const frac = mant & mask; /* get fraction */
       mant ^= frac; /* truncate mantissa */
+
       if (
         frac < half ||
         (frac == half && man1 == 0 /* a tie */ && (mant & (2 * half)) == 0)
@@ -348,27 +367,27 @@ export class FloatCBits {
           return 0.0;
         }
         /* remove hidden bit and set mantissa */
-        mant0 = mant ^ DBL_HIDDEN;
-        mant1 = 0;
+        mant0 = mant ^ BigInt(this.DBL_HIDDEN);
+        mant1 = BigInt(0);
 
         // reassemble double here
         // return u.d;
         return reconstructDouble();
       } /* round away from zero */ else {
         /* zero low mantissa bits */
-        mant1 = 0;
+        mant1 = BigInt(0);
         /* increment integer part of mantissa */
-        mant += 2 * half;
-        if (mant == DBL_POWER2) {
+        mant += BigInt(2) * half;
+        if (mant == this.DBL_POWER2) {
           /* power of 2, increment exponent and zero mantissa */
-          mant0 = 0;
-          exp += 1;
+          mant0 = BigInt(0);
+          exp += BigInt(1);
           // reassamble
         }
         /* remove hidden bit */
-        mant0 = mant ^ DBL_HIDDEN;
+        mant0 = mant ^ BigInt(this.DBL_HIDDEN);
         // reassemble
-        return -42;
+        return reconstructDouble();
       }
     } else {
       /* 20 <= real exponent < 52, fractional part entirely in mantissa1 */
@@ -377,8 +396,13 @@ export class FloatCBits {
       let mant = mant1; /* no hidden bit here */
       let frac = mant & mask; /* get fraction */
       mant ^= frac; /* truncate mantissa */
+
+      // console.log("403 ", "exp: ", exp, " | mant0: " , mant0, " | mant1: ", mant1, " |sign: ", sign);
+     // EQUAL TILL HERE
+      console.log(404, " ", half, " ", mask, " ", frac, " ", mant);
+
       if (
-        frac < half ||
+        (frac < half) ||
         (frac == half /* tie */ &&
           (half == LTOP_BIT
             ? u.ieee.mantissa0 & 1 /* yuck */
@@ -392,16 +416,25 @@ export class FloatCBits {
         /* increment mantissa */
         mant += BigInt(2) * half;
         mant1 = mant;
-        if (mant == 0) {
+
+        
+        console.log(421, "CORRECT2", " ", mant);
+        // ORIGINAL CODE: if (mant == 0) { where they exploit 32-bit unsigned
+        // representation.
+        if (mant % (BigInt(1) << BigInt(32)) == 0) {
           /* low part of mantissa overflowed */
           /* increment high part of mantissa */
-          mant = u.ieee.mantissa0 + 1;
-          if (mant == DBL_HIDDEN) {
+          mant = mant0 + BigInt(1);
+          console.log("CORRECT1");
+          if (mant == this.DBL_HIDDEN) {
             /* hit power of 2 */
             /* zero mantissa */
-            mant0 = 0;
+            mant0 = BigInt(0);
             /* and increment exponent */
             exp += BigInt(1);
+            
+            console.log("CORRECT0");
+
             return reconstructDouble();
           } else {
             u.ieee.mantissa0 = mant;

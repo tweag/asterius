@@ -636,6 +636,8 @@ marshalCmmBinMathPrimCall op vt r x y = do
         }
     ]
 
+-- | We follow the order of definition from:
+-- https://github.com/ghc/ghc/blob/master/compiler/cmm/CmmMachOp.hs
 marshalCmmPrimCall ::
      GHC.CallishMachOp
   -> [GHC.LocalReg]
@@ -643,60 +645,89 @@ marshalCmmPrimCall ::
   -> CodeGen [Expression]
 marshalCmmPrimCall GHC.MO_F64_Pwr [r] [x, y] =
   marshalCmmBinMathPrimCall "pow" F64 r x y
+
 marshalCmmPrimCall GHC.MO_F64_Sin [r] [x] =
   marshalCmmUnMathPrimCall "sin" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Cos [r] [x] =
   marshalCmmUnMathPrimCall "cos" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Tan [r] [x] =
   marshalCmmUnMathPrimCall "tan" F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Sinh [r] [x] =
   marshalCmmUnMathPrimCall "sinh" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Cosh [r] [x] =
   marshalCmmUnMathPrimCall "cosh" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Tanh [r] [x] =
   marshalCmmUnMathPrimCall "tanh" F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Asin [r] [x] =
   marshalCmmUnMathPrimCall "asin" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Acos [r] [x] =
   marshalCmmUnMathPrimCall "acos" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F64 r x
+
+marshalCmmPrimCall GHC.MO_F64_Asinh [r] [x] =
+  marshalCmmUnMathPrimCall "asinh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Acosh [r] [x] =
+  marshalCmmUnMathPrimCall "acosh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Atanh [r] [x] =
+  marshalCmmUnMathPrimCall "atanh" F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Exp [r] [x] =
   marshalCmmUnMathPrimCall "exp" F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Fabs [r] [x] =
   marshalCmmUnPrimCall AbsFloat64 F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Sqrt [r] [x] =
   marshalCmmUnPrimCall SqrtFloat64 F64 r x
+
+-- | 32 bit
 marshalCmmPrimCall GHC.MO_F32_Pwr [r] [x, y] =
   marshalCmmBinMathPrimCall "pow" F32 r x y
+
 marshalCmmPrimCall GHC.MO_F32_Sin [r] [x] =
   marshalCmmUnMathPrimCall "sin" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Cos [r] [x] =
   marshalCmmUnMathPrimCall "cos" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Tan [r] [x] =
   marshalCmmUnMathPrimCall "tan" F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Sinh [r] [x] =
   marshalCmmUnMathPrimCall "sinh" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Cosh [r] [x] =
   marshalCmmUnMathPrimCall "cosh" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Tanh [r] [x] =
   marshalCmmUnMathPrimCall "tanh" F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Asin [r] [x] =
   marshalCmmUnMathPrimCall "asin" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Acos [r] [x] =
   marshalCmmUnMathPrimCall "acos" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F32 r x
+
+marshalCmmPrimCall GHC.MO_F32_Asinh [r] [x] =
+  marshalCmmUnMathPrimCall "asinh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Acosh [r] [x] =
+  marshalCmmUnMathPrimCall "acosh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Atanh [r] [x] =
+  marshalCmmUnMathPrimCall "atanh" F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Exp [r] [x] =
   marshalCmmUnMathPrimCall "exp" F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Fabs [r] [x] =
   marshalCmmUnPrimCall AbsFloat32 F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Sqrt [r] [x] =
   marshalCmmUnPrimCall SqrtFloat32 F32 r x
+
 marshalCmmPrimCall (GHC.MO_UF_Conv w) [r] [x] = do
   (op, ft) <-
     dispatchCmmWidth
