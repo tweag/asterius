@@ -70,6 +70,7 @@ getTestCases = do
         ws64exists <- doesFileExist (c -<.> "stdout-ws-64")
         let stdoutp = c -<.> ("stdout" <>  if ws64exists then "-ws-64" else "")
 
+
         ws64exists <- doesFileExist (c -<.> "stderr-ws-64")
         let stderrp = c -<.> ("stderr" <> if ws64exists then "-ws-64" else "")
 
