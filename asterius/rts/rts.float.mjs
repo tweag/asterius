@@ -29,6 +29,9 @@ export class FloatCBits {
     this.FHIGHBIT = 0x00800000;
     this.FMSBIT = 0x80000000;
 
+    this.FLT_HIDDEN = 0x800000
+    this.FLT_POWER2 = 0x1000000
+
     // buffer of 8 bytes to hold floats/doubles
     this.buffer = new ArrayBuffer(8);
     this.view = new DataView(this.buffer);
@@ -99,11 +102,8 @@ export class FloatCBits {
   isDoubleDenormalized(x) {
     const bits = this.DoubleToIEEE(x);
 
-    console.log("x: %f | bits: %s", x, bits.toString(16));
     const exponent = this.doubleExponentFromBits(bits);
-    console.log("x: %f | exponent: %s", x, exponent.toString(16));
     const mantissa = this.doubleMantissaFromBits(bits);
-    console.log("x: %f | mantissa: %s", x, mantissa.toString(16));
     return exponent === BigInt(0) && mantissa !== BigInt(0);
   }
 
@@ -148,7 +148,6 @@ export class FloatCBits {
   }
 
   __decodeFloat_Int(manp, expp, f) {
-    console.error("inside decodeFloat\n");
     // https://github.com/ghc/ghc/blob/610ec224a49e092c802a336570fd9613ea15ef3c/rts/StgPrimFloat.c#L215
     let man, exp, sign;
     let high = this.FloatToIEEE(f);
@@ -244,14 +243,15 @@ export class FloatCBits {
         // from cbits/primFloat
     rintFloat(f) {
         const bits = this.FloatToIEEE(f);
-        let fexp = this.floatExponentFromBits(bits);
-        let fman = this.floatMantissaFromBits(bits);
-        let fsign = this.floatSignFromBits(bits);
+        let fexp = BigInt(this.floatExponentFromBits(bits));
+        let fman = BigInt(this.floatMantissaFromBits(bits));
+        let fsign = BigInt(this.floatSignFromBits(bits));
+
 
 
          // put back the float together
         const reconstructFloat = function() {
-            return this.IEEEToFloat((fsign << BigInt(31)) | (fexp << BigInt(23)) | fman);
+            return this.IEEEToFloat(Number((fsign << BigInt(31)) | (fexp << BigInt(23)) | fman));
         }.bind(this);
 
          /* if real exponent > 22, it's already integral, infinite or nan */
@@ -268,7 +268,7 @@ export class FloatCBits {
         /// let half, mask, mant, frac;
         const half = BigInt(1) << (BigInt(149) - fexp);    /* bit for 0.5 */
         const mask = BigInt(2)*half - BigInt(1);                      /* fraction bits */
-        let mant = fman | this.FLT_HIDDEN;    /* add hidden bit */
+        let mant = fman | BigInt(this.FLT_HIDDEN);    /* add hidden bit */
         let frac = mant & mask;                     /* get fraction */
         mant ^= frac;                           /* truncate mantissa */
         if ((frac < half) || ((frac == half) && ((mant & (2*half)) == 0)))
@@ -283,25 +283,25 @@ export class FloatCBits {
             {
                 /* remove hidden bit and set mantissa */
                 // u.ieee.mantissa = mant ^ FLT_HIDDEN;
-                let fman = mant ^ this.FLT_HIDDEN;
+                fman = mant ^ BigInt(this.FLT_HIDDEN);
                 return reconstructFloat();
             }
         }
         else
         {
             /* round away from zero, increment mantissa */
-            mant += 2*half;
-            if (mant == FLT_POWER2)
+            mant += BigInt(2)*half;
+            if (mant == this.FLT_POWER2)
             {
                 /* next power of 2, increase exponent and set mantissa to 0 */
-                fman = 0;
-                fexp += 1;
+                fman = BigInt(0);
+                fexp += BigInt(1);
                 return reconstructFloat();
             }
             else
             {
                 /* remove hidden bit and set mantissa */
-                fman = mant ^ FLT_HIDDEN;
+                fman = mant ^ BigInt(this.FLT_HIDDEN);
                 return u.f;
             }
         }
@@ -436,3 +436,4 @@ export class FloatCBits {
         }
     }
 }
+
