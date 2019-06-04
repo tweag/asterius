@@ -25,7 +25,7 @@ import System.FilePath
 data LinkTask = LinkTask
   { linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
-  , debug, gcSections, binaryen :: Bool
+  , debug, gcSections, binaryen, verboseErr :: Bool
   , outputIR :: Maybe FilePath
   , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -69,6 +69,7 @@ linkModules LinkTask {..} m =
     True
     gcSections
     binaryen
+    verboseErr
     (rtsAsteriusModule
        defaultBuiltinsOptions
          {progName = takeBaseName linkOutput, Asterius.Builtins.debug = debug} <>

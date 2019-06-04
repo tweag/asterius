@@ -79,10 +79,11 @@ instance Monoid LinkReport where
 mergeSymbols ::
      Bool
   -> Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> (AsteriusModule, LinkReport)
-mergeSymbols _ gc_sections store_mod root_syms
+mergeSymbols _ gc_sections verbose_err store_mod root_syms
   | not gc_sections = (store_mod, mempty {bundledFFIMarshalState = ffi_all})
   | otherwise = (final_m, mempty {bundledFFIMarshalState = ffi_this})
   where
@@ -121,21 +122,23 @@ mergeSymbols _ gc_sections store_mod root_syms
                                  func
                                  (functionMap o_m_acc)
                            })
-                     _ ->
-                       ( i_child_syms_acc
-                       , o_m_acc
-                           { staticsMap =
-                               LM.insert
-                                 ("__asterius_barf_" <> i_staging_sym)
-                                 AsteriusStatics
-                                   { staticsType = ConstBytes
-                                   , asteriusStatics =
-                                       [ Serialized $
-                                         entityName i_staging_sym <> "\0"
-                                       ]
-                                   }
-                                 (staticsMap o_m_acc)
-                           }))
+                     _
+                       | verbose_err ->
+                         ( i_child_syms_acc
+                         , o_m_acc
+                             { staticsMap =
+                                 LM.insert
+                                   ("__asterius_barf_" <> i_staging_sym)
+                                   AsteriusStatics
+                                     { staticsType = ConstBytes
+                                     , asteriusStatics =
+                                         [ Serialized $
+                                           entityName i_staging_sym <> "\0"
+                                         ]
+                                     }
+                                   (staticsMap o_m_acc)
+                             })
+                       | otherwise -> (i_child_syms_acc, o_m_acc))
             (S.empty, i_m)
             i_staging_syms
         o_staging_syms = i_child_syms `S.difference` o_acc_syms
@@ -209,11 +212,12 @@ linkStart ::
   -> Bool
   -> Bool
   -> Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
   -> (AsteriusModule, Module, [Event], LinkReport)
-linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
+linkStart debug has_main gc_sections binaryen verbose_err store root_syms export_funcs =
   ( merged_m
   , result_m
   , err_msgs
@@ -229,6 +233,7 @@ linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
       mergeSymbols
         debug
         gc_sections
+        verbose_err
         store
         (root_syms <>
          S.fromList

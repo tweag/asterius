@@ -64,7 +64,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run :: Bool
+  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -108,10 +108,12 @@ parseTask args =
               , debug = True
               , outputLinkReport = True
               , outputIR = True
+              , verboseErr = True
               }
         , bool_opt "output-link-report" $ \t -> t {outputLinkReport = True}
         , bool_opt "output-ir" $ \t -> t {outputIR = True}
         , bool_opt "run" $ \t -> t {run = True}
+        , bool_opt "verbose-err" $ \t -> t {verboseErr = True}
         , str_opt "ghc-option" $ \s t ->
             t {extraGHCFlags = extraGHCFlags t <> [s]}
         , str_opt "export-function" $ \s t ->
@@ -140,6 +142,7 @@ parseTask args =
           , outputLinkReport = False
           , outputIR = False
           , run = False
+          , verboseErr = False
           , extraGHCFlags = []
           , exportFunctions = []
           , extraRootSymbols = []
@@ -305,6 +308,7 @@ ahcLink Task {..} = do
     ] <>
     ["-optl--no-gc-sections" | not gcSections] <>
     ["-optl--binaryen" | binaryen] <>
+    ["-optl--verbose-err" | verboseErr] <>
     extraGHCFlags <>
     [ "-optl--output-ir=" <> outputDirectory </>
     (outputBaseName <.> "unlinked.bin")
