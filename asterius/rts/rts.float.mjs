@@ -303,9 +303,6 @@ export class FloatCBits {
   }
 
   rintDouble(d) {
-      console.error("d: ", d);
-
-
     // Code stolen from cbits/primFloat.
     const bits = this.DoubleToIEEE(d);
     let exp = this.doubleExponentFromBits(bits);
@@ -313,14 +310,7 @@ export class FloatCBits {
     this.view.setBigUint64(0, manFull, /*little endian=*/true);
     let mant1 = BigInt(this.view.getUint32(0, /*little endian=*/true));
     let mant0 = BigInt(this.view.getUint32(4, /*little endian=*/true));
-    // let mant1 = manFull & ((BigInt(1) << (BigInt(32)) - BigInt(1)));
-    // let mant0 = manFull >> BigInt(32);
     let sign = this.doubleSignFromBits(bits);
-
-    console.log("exp: ", exp, " | mant0: " , mant0, " | mant1: ", mant1, " |sign: ", sign);
-    // let out = 68719476736.000000;
-    // console.log("out: ", out);
-    // return out;
 
     // put back the double together
     const reconstructDouble = () => {
@@ -328,8 +318,6 @@ export class FloatCBits {
       let n =  Number(
         this.IEEEToDouble((sign << BigInt(63)) | (exp << BigInt(52)) | mantFull)
       );
-       console.log("exp: ", exp, " | mant0: " , mant0, " | mant1: ", mant1, " |sign: ", sign);
-      console.log("returning:" , n);
       return n;
     };
 
@@ -397,10 +385,6 @@ export class FloatCBits {
       let frac = mant & mask; /* get fraction */
       mant ^= frac; /* truncate mantissa */
 
-      // console.log("403 ", "exp: ", exp, " | mant0: " , mant0, " | mant1: ", mant1, " |sign: ", sign);
-     // EQUAL TILL HERE
-      console.log(404, " ", half, " ", mask, " ", frac, " ", mant);
-
       if (
         (frac < half) ||
         (frac == half /* tie */ &&
@@ -418,14 +402,12 @@ export class FloatCBits {
         mant1 = mant;
 
         
-        console.log(421, "CORRECT2", " ", mant);
         // ORIGINAL CODE: if (mant == 0) { where they exploit 32-bit unsigned
         // representation.
         if (mant % (BigInt(1) << BigInt(32)) == 0) {
           /* low part of mantissa overflowed */
           /* increment high part of mantissa */
           mant = mant0 + BigInt(1);
-          console.log("CORRECT1");
           if (mant == this.DBL_HIDDEN) {
             /* hit power of 2 */
             /* zero mantissa */
@@ -433,8 +415,6 @@ export class FloatCBits {
             /* and increment exponent */
             exp += BigInt(1);
             
-            console.log("CORRECT0");
-
             return reconstructDouble();
           } else {
             u.ieee.mantissa0 = mant;
