@@ -23,6 +23,7 @@ import Data.Data (Data, gmapQl)
 import Data.List
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
+import Data.String
 import Foreign
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
@@ -133,7 +134,22 @@ mergeSymbols _ gc_sections verbose_err store_mod root_syms
                                      { staticsType = ConstBytes
                                      , asteriusStatics =
                                          [ Serialized $
-                                           entityName i_staging_sym <> "\0"
+                                           entityName i_staging_sym <>
+                                           (case LM.lookup
+                                                   i_staging_sym
+                                                   (functionErrorMap store_mod) of
+                                              Just err ->
+                                                fromString (": " <> show err)
+                                              _ ->
+                                                case LM.lookup
+                                                       i_staging_sym
+                                                       (staticsErrorMap
+                                                          store_mod) of
+                                                  Just err ->
+                                                    fromString
+                                                      (": " <> show err)
+                                                  _ -> mempty) <>
+                                           "\0"
                                          ]
                                      }
                                    (staticsMap o_m_acc)
