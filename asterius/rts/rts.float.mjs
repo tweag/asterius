@@ -248,11 +248,11 @@ export class FloatCBits {
     let fsign = BigInt(this.floatSignFromBits(bits));
 
     // put back the float together
-    const reconstructFloat = function() {
+    const reconstructFloat = () => {
       return this.IEEEToFloat(
         Number((fsign << BigInt(31)) | (fexp << BigInt(23)) | fman)
       );
-    }.bind(this);
+    };
 
     /* if real exponent > 22, it's already integral, infinite or nan */
     if (fexp > 149) {
@@ -308,12 +308,12 @@ export class FloatCBits {
     let sign = this.doubleSignFromBits(bits);
 
     // put back the double together
-    const reconstructDouble = function() {
+    const reconstructDouble = () => {
       let mantFull = (mant0 << BigInt(32)) | mant1;
       return Number(
         this.IEEEToDouble((sign << BigInt(63)) | (exp << BigInt(52)) | mantFull)
       );
-    }.bind(this);
+    };
 
     // union stg_ieee754_dbl u;
     // u.d = d;
