@@ -7,16 +7,15 @@ module Asterius.JSRun.NonMain
 import Asterius.Ld (LinkTask(..), linkModules)
 import Asterius.Main (Target(..), Task(..), ahcDistMain)
 import Asterius.Resolve
-import Asterius.Types (AsteriusEntitySymbol, AsteriusModule, Event, Module)
+import Asterius.Types (AsteriusEntitySymbol, AsteriusModule, Module)
 import qualified Data.ByteString.Lazy as LBS
 import Language.JavaScript.Inline.Core
 import System.FilePath
 
-linkNonMain ::
-     AsteriusModule -> [AsteriusEntitySymbol] -> (Module, [Event], LinkReport)
-linkNonMain store_m extra_syms = (m, events, link_report)
+linkNonMain :: AsteriusModule -> [AsteriusEntitySymbol] -> (Module, LinkReport)
+linkNonMain store_m extra_syms = (m, link_report)
   where
-    (_, m, events, link_report) =
+    (_, m, link_report) =
       linkModules
         LinkTask
           { linkOutput = ""
@@ -33,10 +32,7 @@ linkNonMain store_m extra_syms = (m, events, link_report)
         store_m
 
 distNonMain ::
-     FilePath
-  -> [AsteriusEntitySymbol]
-  -> (Module, [Event], LinkReport)
-  -> IO ()
+     FilePath -> [AsteriusEntitySymbol] -> (Module, LinkReport) -> IO ()
 distNonMain p extra_syms =
   ahcDistMain
     (\_ -> pure ())

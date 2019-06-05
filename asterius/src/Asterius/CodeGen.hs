@@ -18,6 +18,7 @@ module Asterius.CodeGen
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Passes.All
+import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
 import Asterius.Types
@@ -1000,7 +1001,16 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   let blocks_unresolved =
         ( "__asterius_unreachable"
         , RelooperBlock
-            {addBlock = AddBlock {code = Unreachable}, addBranches = []}) :
+            { addBlock =
+                AddBlock
+                  { code =
+                      Barf
+                        { barfMessage = "unreachable block"
+                        , barfReturnTypes = []
+                        }
+                  }
+            , addBranches = []
+            }) :
         rbs
       blocks_key_map =
         M.fromList
@@ -1048,10 +1058,21 @@ marshalCmmDecl decl =
     GHC.CmmProc _ clbl _ g -> do
       sym <- marshalCLabel clbl
       r <- unCodeGen $ marshalCmmProc g
-      pure $
-        case r of
-          Left err -> mempty {functionErrorMap = M.fromList [(sym, err)]}
-          Right f -> mempty {functionMap = M.fromList [(sym, f)]}
+      let f =
+            case r of
+              Left err ->
+                Function
+                  { functionType =
+                      FunctionType {paramTypes = [], returnTypes = []}
+                  , varTypes = []
+                  , body =
+                      Barf
+                        { barfMessage = fromString $ show err
+                        , barfReturnTypes = []
+                        }
+                  }
+              Right f' -> f'
+      pure $ processBarf sym f
 
 marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
 marshalHaskellIR this_mod HaskellIR {..} = marshalRawCmm this_mod cmmRaw

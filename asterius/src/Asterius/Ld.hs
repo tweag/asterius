@@ -62,7 +62,7 @@ rtsUsedSymbols =
     ]
 
 linkModules ::
-     LinkTask -> AsteriusModule -> (AsteriusModule, Module, [Event], LinkReport)
+     LinkTask -> AsteriusModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
     debug
@@ -84,15 +84,15 @@ linkModules LinkTask {..} m =
        ])
     exportFunctions
 
-linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, [Event], LinkReport)
+linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, LinkReport)
 linkExeInMemory ld_task = do
   final_store <- loadTheWorld ld_task
   pure $ linkModules ld_task final_store
 
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
-  (pre_m, m, events, link_report) <- linkExeInMemory ld_task
-  encodeFile linkOutput (m, events, link_report)
+  (pre_m, m, link_report) <- linkExeInMemory ld_task
+  encodeFile linkOutput (m, link_report)
   case outputIR of
     Just p -> encodeFile p pre_m
     _ -> pure ()
