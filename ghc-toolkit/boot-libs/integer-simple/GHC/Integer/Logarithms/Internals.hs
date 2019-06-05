@@ -180,7 +180,7 @@ leadingZeros =
 
 #if defined(ASTERIUS)
 
-foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, 4)" js_integerLog2 :: Int# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, __asterius_jsffi.Integer.encode(2))" js_integerLog2 :: Int# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: Int# -> Int#
 
