@@ -97,7 +97,7 @@ wordLog2# w =
 -- otherwise return -1# arbitrarily
 -- Going up in word-sized steps should not be too bad.
 integerLog2# :: Integer -> Int#
-#if  defined(ASTERIUS)
+#if defined(ASTERIUS)
 integerLog2# (Integer i) = js_integerLog2 i
 #else
 integerLog2# (Positive digits) = step 0# digits
