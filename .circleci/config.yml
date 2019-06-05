@@ -99,6 +99,7 @@ jobs:
             stack test asterius:ghc-testsuite --test-arguments "-p numrun013"
             stack test asterius:ghc-testsuite --test-arguments "-p numrun014"
             stack test asterius:ghc-testsuite --test-arguments "-p numrun015"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun016"
 
 
             stack test asterius:ghc-testsuite --test-arguments "-p arith013"

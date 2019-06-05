@@ -56,6 +56,14 @@ export class FloatCBits {
     return x != x;
   }
 
+  isFloatFinite(x) {
+    return isFinite(x);
+  }
+
+  isDoubleFinite(x) {
+    return isFinite(x);
+  }
+
   // Remember, floats have 3 states: {finite, infinite, NaN}.
   isFloatInfinite(x) {
     return !isFinite(x) && !this.isFloatNaN(x);
