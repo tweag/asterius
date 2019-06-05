@@ -67,12 +67,24 @@ export class IntegerManager {
   testBitInteger(i0, i1) {
     return Boolean((this.decode(i0) >> BigInt(i1)) & BigInt(1));
   }
+  /*
   integerLogBase(i, b) {
-    const bi = this.decode(i);
+ 
+
+    const deci = this.decode(i); const decb = this.decode(b);
+    console.error("integerLogBase: i: " , i, " b: " , b, " deci: " , deci, "
+      "decb: ", decb);
+
     return bi > BigInt(0)
                ? this.decode(bi).toString(Number(this.decode(b))).length - 1
                : -1;
+  }*/
+
+  integerLog2(i) {
+    const deci = this.decode(i);
+    return deci > BigInt(0) ? deci.toString(2).length - 1 : -1;
   }
+
   integerIsPowerOf2(i) {
     return Number(/^10*$/.test(this.decode(i).toString(2)));
   }
