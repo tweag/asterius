@@ -123,6 +123,7 @@ jobs:
             stack test asterius:ghc-testsuite --test-arguments "-p T12136"
             stack test asterius:ghc-testsuite --test-arguments "-p T11702"
             stack test asterius:ghc-testsuite --test-arguments "-p T10011"
+            stack test asterius:ghc-testsuite --test-arguments "-p T10962"
 
 
             stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
