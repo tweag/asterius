@@ -17,10 +17,11 @@ testWords :: [Word]
 testWords = map head . group . sort $
             concatMap (\w -> [w - 1, w, w + 1]) $
             concatMap (\w -> [w, maxBound - w]) $
-            trailingOnes ++ randoms
-  where trailingOnes = takeWhile (/= 0) $ iterate (`div` 2) $ maxBound
+             randoms
+            -- trailingOnes -- ++ randoms
+  where -- trailingOnes = takeWhile (/= 0) $ iterate (`div` 2) $ maxBound
         -- What would a Haskell program be without some Fibonacci numbers?
-        randoms = take 40 $ drop 100 fibs
+        randoms = take 20 $ drop 100 fibs
         fibs = 0 : 1 : zipWith (+) fibs (tail fibs)
 
 
@@ -60,9 +61,10 @@ ways_addIntC# = [ltTest, integerTest, highBitTest, primopTest]
 -- subIntC# (Int# subtraction overflow)
 
 ways_subIntC# :: [Int -> Int -> Bool]
-ways_subIntC# = [ltTest, integerTest, highBitTest, primopTest]
-  where ltTest x y =
-          let r = x - y in (y > 0 && r > x) || (y < 0 && r < x)
+ways_subIntC# = [ltTest, ltTest] -- [ltTest, integerTest, highBitTest, primopTest]
+    where
+        ltTest x y = y > 0
+          -- let r = x - y in (y > 0) -- (y > 0 && r > x) || (y < 0 && r < x)
         integerTest x y =
           let r = fromIntegral x - fromIntegral y :: Integer
           in r < fromIntegral (minBound :: Int) || r > fromIntegral (maxBound :: Int)
@@ -81,9 +83,11 @@ runTest label ways x y = do
 
 main :: IO ()
 main = do
-  forM_ testWords $ \x ->
-    forM_ testWords $ \y -> do
-      runTest "ways_plusWord2#" ways_plusWord2# x y
-      runTest "ways_addIntC#" ways_addIntC# (fromIntegral x) (fromIntegral y)
-      runTest "ways_subIntC#" ways_subIntC# (fromIntegral x) (fromIntegral y)
+  let xy = [(x, y) | x <- testWords, y <- testWords]
+  forM_ xy $ \(x, y) ->
+        print $ map (\f -> f (fromIntegral x) (fromIntegral y)) [\x y -> y > 0, \ x y -> y > 0]
+
+      -- runTest "ways_plusWord2#" ways_plusWord2# x y
+      -- runTest "ways_addIntC#" ways_addIntC# (fromIntegral x) (fromIntegral y)
+      -- runTest "ways_subIntC#" ways_subIntC# (fromIntegral x) (fromIntegral y)
   putStrLn "Passed"
