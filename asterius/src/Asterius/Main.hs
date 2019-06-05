@@ -23,7 +23,6 @@ import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Resolve
 import Asterius.Types
   ( AsteriusEntitySymbol(..)
-  , Event
   , FFIExportDecl(..)
   , FFIMarshalState(..)
   , Module
@@ -64,7 +63,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run :: Bool
+  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -108,10 +107,12 @@ parseTask args =
               , debug = True
               , outputLinkReport = True
               , outputIR = True
+              , verboseErr = True
               }
         , bool_opt "output-link-report" $ \t -> t {outputLinkReport = True}
         , bool_opt "output-ir" $ \t -> t {outputIR = True}
         , bool_opt "run" $ \t -> t {run = True}
+        , bool_opt "verbose-err" $ \t -> t {verboseErr = True}
         , str_opt "ghc-option" $ \s t ->
             t {extraGHCFlags = extraGHCFlags t <> [s]}
         , str_opt "export-function" $ \s t ->
@@ -140,6 +141,7 @@ parseTask args =
           , outputLinkReport = False
           , outputIR = False
           , run = False
+          , verboseErr = False
           , extraGHCFlags = []
           , exportFunctions = []
           , extraRootSymbols = []
@@ -188,33 +190,29 @@ genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
        (map ((sym_map !) . ffiExportClosure . (ffiExportDecls !)) export_funcs)) <>
   ")"
 
-genLib :: Task -> LinkReport -> [Event] -> Builder
-genLib Task {..} LinkReport {..} err_msgs =
-  mconcat $
-  [ "import * as rts from \"./rts.mjs\";\n"
-  , "export default module => \n"
-  , "rts.newAsteriusInstance({events: ["
-  , mconcat (intersperse "," [string7 $ show $ show msg | msg <- err_msgs])
-  , "], module: module"
-  ] <>
-  [ ", jsffiFactory: "
-  , generateFFIImportObjectFactory bundledFFIMarshalState
-  , ", symbolTable: "
-  , genSymbolDict symbol_table
-  , ", infoTables: "
-  , genInfoTables infoTableSet
-  , ", pinnedStaticClosures: "
-  , genPinnedStaticClosures
-      staticsSymbolMap
-      exportFunctions
-      bundledFFIMarshalState
-  , ", tableSlots: "
-  , intDec tableSlots
-  , ", staticMBlocks: "
-  , intDec staticMBlocks
-  , "})"
-  , ";\n"
-  ]
+genLib :: Task -> LinkReport -> Builder
+genLib Task {..} LinkReport {..} =
+  mconcat
+    [ "import * as rts from \"./rts.mjs\";\n"
+    , "export default module => \n"
+    , "rts.newAsteriusInstance({module: module, jsffiFactory: "
+    , generateFFIImportObjectFactory bundledFFIMarshalState
+    , ", symbolTable: "
+    , genSymbolDict symbol_table
+    , ", infoTables: "
+    , genInfoTables infoTableSet
+    , ", pinnedStaticClosures: "
+    , genPinnedStaticClosures
+        staticsSymbolMap
+        exportFunctions
+        bundledFFIMarshalState
+    , ", tableSlots: "
+    , intDec tableSlots
+    , ", staticMBlocks: "
+    , intDec staticMBlocks
+    , "})"
+    , ";\n"
+    ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
     symbol_table
@@ -283,7 +281,7 @@ genHTML Task {..} =
 builderWriteFile :: FilePath -> Builder -> IO ()
 builderWriteFile p b = withBinaryFile p WriteMode $ \h -> hPutBuilder h b
 
-ahcLink :: Task -> IO (Asterius.Types.Module, [Event], LinkReport)
+ahcLink :: Task -> IO (Asterius.Types.Module, LinkReport)
 ahcLink Task {..} = do
   ld_output <- temp (takeBaseName inputHS)
   putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
@@ -305,6 +303,7 @@ ahcLink Task {..} = do
     ] <>
     ["-optl--no-gc-sections" | not gcSections] <>
     ["-optl--binaryen" | binaryen] <>
+    ["-optl--verbose-err" | verboseErr] <>
     extraGHCFlags <>
     [ "-optl--output-ir=" <> outputDirectory </>
     (outputBaseName <.> "unlinked.bin")
@@ -316,11 +315,8 @@ ahcLink Task {..} = do
   pure r
 
 ahcDistMain ::
-     (String -> IO ())
-  -> Task
-  -> (Asterius.Types.Module, [Event], LinkReport)
-  -> IO ()
-ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
+     (String -> IO ()) -> Task -> (Asterius.Types.Module, LinkReport) -> IO ()
+ahcDistMain logger task@Task {..} (final_m, report) = do
   let out_package_json = outputDirectory </> "package.json"
       out_rts_constants = outputDirectory </> "rts.constants.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
@@ -391,7 +387,7 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
   logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
   builderWriteFile out_wasm_lib $ genWasm (target == Node) outputBaseName
   logger $ "[INFO] Writing JavaScript lib module to " <> show out_lib
-  builderWriteFile out_lib $ genLib task report err_msgs
+  builderWriteFile out_lib $ genLib task report
   logger $ "[INFO] Writing JavaScript entry module to " <> show out_entry
   case inputEntryMJS of
     Just in_entry -> copyFile in_entry out_entry

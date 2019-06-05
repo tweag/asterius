@@ -278,12 +278,6 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
       }
   , FunctionImport
-      { internalName = "__asterius_eventI32"
-      , externalModuleName = "rts"
-      , externalBaseName = "emitEvent"
-      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
-      }
-  , FunctionImport
       { internalName = "__asterius_newTSO"
       , externalModuleName = "TSO"
       , externalBaseName = "newTSO"
@@ -550,20 +544,8 @@ rtsFunctionExports debug has_main =
       ["main" | has_main]
   ]
 
-emitErrorMessage :: [ValueType] -> Event -> Expression
-emitErrorMessage vts ev =
-  Block
-    { name = ""
-    , bodys =
-        [ CallImport
-            { target' = "__asterius_eventI32"
-            , operands = [ConstI32 $ fromIntegral $ fromEnum ev]
-            , callImportReturnTypes = []
-            }
-        , Unreachable
-        ]
-    , blockReturnTypes = vts
-    }
+emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
+emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
 
 byteStringCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
 byteStringCBits =
@@ -796,7 +778,7 @@ rtsCheckSchedStatusFunction _ =
     tid <- param I32
     stat <- call' "rts_getSchedStatus" [tid] I32
     if' [] (stat `eqInt32` constI32 scheduler_Success) mempty $
-      emit $ emitErrorMessage [] IllegalSchedulerStatusCode
+      emit $ emitErrorMessage [] "IllegalSchedulerStatusCode"
 
 dirtyTSO :: Expression -> Expression -> EDSL ()
 dirtyTSO _ tso =
@@ -840,7 +822,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                      if'
                        []
                        (eqZInt64 bytes)
-                       (emit $ emitErrorMessage [] HeapOverflowWithZeroHpAlloc)
+                       (emit $ emitErrorMessage [] "HeapOverflowWithZeroHpAlloc")
                        mempty
                      truncUFloat64ToInt64 <$>
                        callImport'
@@ -849,9 +831,9 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                          F64 >>=
                        putLVal currentNursery
                      break' sched_loop_lbl Nothing)
-              , (ret_StackOverflow, emit $ emitErrorMessage [] StackOverflow)
+              , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
-              , (ret_ThreadBlocked, emit $ emitErrorMessage [] ThreadBlocked)
+              , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
               , ( ret_ThreadFinished
                 , if'
                     []
@@ -883,7 +865,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                           ]
                         break' sched_block_lbl Nothing))
               ]
-            , emit $ emitErrorMessage [] IllegalThreadReturnCode)
+            , emit $ emitErrorMessage [] "IllegalThreadReturnCode")
     callImport "__asterius_gcRootTSO" [convertUInt64ToFloat64 t]
 
 createThreadFunction _ =

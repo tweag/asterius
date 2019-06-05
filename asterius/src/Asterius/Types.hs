@@ -18,7 +18,6 @@ module Asterius.Types
   , AsteriusEntitySymbol(..)
   , UnresolvedLocalReg(..)
   , UnresolvedGlobalReg(..)
-  , Event(..)
   , ValueType(..)
   , FunctionType(..)
   , UnaryOp(..)
@@ -107,7 +106,6 @@ data AsteriusModule = AsteriusModule
   { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics
   , staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
   , functionMap :: LM.Map AsteriusEntitySymbol Function
-  , functionErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
   , ffiMarshalState :: FFIMarshalState
   } deriving (Eq, Show, Generic, Data)
 
@@ -115,23 +113,19 @@ instance Binary AsteriusModule where
   put AsteriusModule {..} =
     lazyMapPut staticsMap *> lazyMapPut staticsErrorMap *>
     lazyMapPut functionMap *>
-    lazyMapPut functionErrorMap *>
     put ffiMarshalState
-  get =
-    AsteriusModule <$> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*>
-    get
+  get = AsteriusModule <$> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*> get
 
 instance Semigroup AsteriusModule where
-  AsteriusModule sm0 se0 fm0 fe0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 fe1 mod_ffi_state1 =
+  AsteriusModule sm0 se0 fm0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 mod_ffi_state1 =
     AsteriusModule
       (sm0 <> sm1)
       (se0 <> se1)
       (fm0 <> fm1)
-      (fe0 <> fe1)
       (mod_ffi_state0 <> mod_ffi_state1)
 
 instance Monoid AsteriusModule where
-  mempty = AsteriusModule mempty mempty mempty mempty mempty
+  mempty = AsteriusModule mempty mempty mempty mempty
 
 data AsteriusModuleSymbol = AsteriusModuleSymbol
   { unitId :: SBS.ShortByteString
@@ -179,17 +173,6 @@ data UnresolvedGlobalReg
   deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary UnresolvedGlobalReg
-
-data Event
-  = IllegalSchedulerStatusCode
-  | SchedulerReenteredFromHaskell
-  | HeapOverflowWithZeroHpAlloc
-  | StackOverflow
-  | ThreadBlocked
-  | IllegalThreadReturnCode
-  deriving (Eq, Show, Generic, Data, Bounded, Enum)
-
-instance Binary Event
 
 data ValueType
   = I32
@@ -399,6 +382,8 @@ data Expression
   | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
   | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
                        , value :: Expression }
+  | Barf { barfMessage :: SBS.ShortByteString
+         , barfReturnTypes :: [ValueType] }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary Expression

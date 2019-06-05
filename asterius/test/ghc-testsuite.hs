@@ -158,7 +158,7 @@ instance Show CompileOutcome where
 
 runTestCase :: TestCase -> IO ()
 runTestCase TestCase {..} = do
-  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen"] ""
+  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen", "--verbose-err"] ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
   withJSSession defJSSessionOpts $ \s -> do
     -- | Try to compile and setup the program. If we throw an exception,
