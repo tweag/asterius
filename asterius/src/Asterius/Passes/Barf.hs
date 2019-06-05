@@ -62,5 +62,5 @@ processBarf sym f = mempty {staticsMap = sm, functionMap = M.singleton sym f'}
       where
         go = gmapM w t
     sym_str = unpack (entityName sym)
-    p = "__asterius_barf" <> sym_str <> "_"
+    p = "__asterius_barf_" <> sym_str <> "_"
     unpack = CBS.unpack . SBS.fromShort
