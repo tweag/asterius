@@ -31,6 +31,7 @@ import System.Console.ANSI (hSupportsANSIColor)
 import Control.Arrow ((&&&))
 import Data.Csv
 import Data.List (sort)
+import Data.Word
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
@@ -45,12 +46,25 @@ data TestCase = TestCase
   , caseStdIn, caseStdOut, caseStdErr :: LBS.ByteString
   } deriving (Show)
 
+
+-- | Convert a Char to a Word8
+charToWord8 :: Char -> Word8
+charToWord8 = toEnum . fromEnum
+
 -- | Try to read a file. if file does not exist, then return empty string.
 readFileNullable :: FilePath -> IO LBS.ByteString
 readFileNullable p = do
   exist <- doesFileExist p
   if exist
-    then LBS.readFile p
+    then do
+       bs <- LBS.readFile p
+       -- | Add trailing whitespace if it does not exist.
+       -- | The GHC testsuite also performs normalization:
+       -- | testsuite/driver/testlib.py
+       if LBS.last bs /= charToWord8 '\n'
+       then return $ LBS.snoc bs (charToWord8 '\n')
+       else return bs
+
     else pure LBS.empty
 
 getTestCases :: IO [TestCase]
