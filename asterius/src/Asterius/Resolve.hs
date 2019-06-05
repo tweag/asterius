@@ -19,9 +19,12 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Types
 import Data.Binary
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapQl)
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
+import Data.String
 import Foreign
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
@@ -78,11 +81,12 @@ instance Monoid LinkReport where
 mergeSymbols ::
      Bool
   -> Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
   -> (AsteriusModule, LinkReport)
-mergeSymbols _ gc_sections store_mod root_syms export_funcs
+mergeSymbols _ gc_sections verbose_err store_mod root_syms export_funcs
   | not gc_sections = (store_mod, mempty {bundledFFIMarshalState = ffi_all})
   | otherwise = (final_m, mempty {bundledFFIMarshalState = ffi_this})
   where
@@ -130,21 +134,30 @@ mergeSymbols _ gc_sections store_mod root_syms export_funcs
                                  func
                                  (functionMap o_m_acc)
                            })
-                     _ ->
-                       ( i_child_syms_acc
-                       , o_m_acc
-                           { staticsMap =
-                               LM.insert
-                                 ("__asterius_barf_" <> i_staging_sym)
-                                 AsteriusStatics
-                                   { staticsType = ConstBytes
-                                   , asteriusStatics =
-                                       [ Serialized $
-                                         entityName i_staging_sym <> "\0"
-                                       ]
-                                   }
-                                 (staticsMap o_m_acc)
-                           }))
+                     _
+                       | verbose_err ->
+                         ( i_child_syms_acc
+                         , o_m_acc
+                             { staticsMap =
+                                 LM.insert
+                                   ("__asterius_barf_" <> i_staging_sym)
+                                   AsteriusStatics
+                                     { staticsType = ConstBytes
+                                     , asteriusStatics =
+                                         [ Serialized $
+                                           entityName i_staging_sym <>
+                                           (case LM.lookup
+                                                   i_staging_sym
+                                                   (staticsErrorMap store_mod) of
+                                              Just err ->
+                                                fromString (": " <> show err)
+                                              _ -> mempty) <>
+                                           "\0"
+                                         ]
+                                     }
+                                   (staticsMap o_m_acc)
+                             })
+                       | otherwise -> (i_child_syms_acc, o_m_acc))
             (S.empty, i_m)
             i_staging_syms
         o_staging_syms = i_child_syms `S.difference` o_acc_syms
@@ -166,11 +179,10 @@ resolveAsteriusModule ::
   -> ( Module
      , LM.Map AsteriusEntitySymbol Int64
      , LM.Map AsteriusEntitySymbol Int64
-     , [Event]
      , Int
      , Int)
 resolveAsteriusModule debug _ bundled_ffi_state m_globals_resolved func_start_addr data_start_addr =
-  (new_mod, ss_sym_map, func_sym_map, err_msgs, table_slots, initial_mblocks)
+  (new_mod, ss_sym_map, func_sym_map, table_slots, initial_mblocks)
   where
     (func_sym_map, last_func_addr) =
       makeFunctionSymbolTable m_globals_resolved func_start_addr
@@ -204,20 +216,19 @@ resolveAsteriusModule debug _ bundled_ffi_state m_globals_resolved func_start_ad
         , memoryExport = MemoryExport {externalName = "memory"}
         , memoryMBlocks = initial_mblocks
         }
-    err_msgs = enumFromTo minBound maxBound
 
 linkStart ::
      Bool
   -> Bool
   -> Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> (AsteriusModule, Module, [Event], LinkReport)
-linkStart debug gc_sections binaryen store root_syms export_funcs =
+  -> (AsteriusModule, Module, LinkReport)
+linkStart debug gc_sections binaryen verbose_err store root_syms export_funcs =
   ( merged_m
   , result_m
-  , err_msgs
   , report
       { staticsSymbolMap = ss_sym_map
       , functionSymbolMap = func_sym_map
@@ -226,12 +237,29 @@ linkStart debug gc_sections binaryen store root_syms export_funcs =
       , staticMBlocks = static_mbs
       })
   where
-    (merged_m', report) =
-      mergeSymbols debug gc_sections store root_syms export_funcs
+    (merged_m0, report) =
+      mergeSymbols
+        debug
+        gc_sections
+        verbose_err
+        store
+        root_syms export_funcs
+    merged_m1
+      | debug = addMemoryTrap merged_m0
+      | otherwise = merged_m0
     merged_m
-      | debug = addMemoryTrap merged_m'
-      | otherwise = merged_m'
-    (result_m, ss_sym_map, func_sym_map, err_msgs, tbl_slots, static_mbs) =
+      | verbose_err = merged_m1
+      | otherwise =
+        merged_m1
+          { staticsMap =
+              LM.filterWithKey
+                (\sym _ ->
+                   not
+                     ("__asterius_barf_" `BS.isPrefixOf`
+                      SBS.fromShort (entityName sym))) $
+              staticsMap merged_m1
+          }
+    (result_m, ss_sym_map, func_sym_map, tbl_slots, static_mbs) =
       resolveAsteriusModule
         debug
         binaryen

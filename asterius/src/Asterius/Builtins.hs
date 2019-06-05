@@ -118,7 +118,7 @@ rtsAsteriusModule opts =
     , functionMap =
         Map.fromList $
         map (\(func_sym, (_, func)) -> (func_sym, func))
-            (byteStringCBits <> floatCBits  <> unicodeCBits)
+            (byteStringCBits <> floatCBits  <> unicodeCBits <> md5CBits)
     }  <> hsInitFunction opts
        <> createThreadFunction opts
        <> genAllocateFunction opts "allocate"
@@ -215,6 +215,9 @@ rtsFunctionImports debug =
       , "asin"
       , "acos"
       , "atan"
+      , "asinh"
+      , "acosh"
+      , "atanh"
       , "log"
       , "exp"
       ]
@@ -269,12 +272,6 @@ rtsFunctionImports debug =
       , externalModuleName = "rts"
       , externalBaseName = "print"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
-      }
-  , FunctionImport
-      { internalName = "__asterius_eventI32"
-      , externalModuleName = "rts"
-      , externalBaseName = "emitEvent"
-      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       }
   , FunctionImport
       { internalName = "__asterius_newTSO"
@@ -495,7 +492,7 @@ rtsFunctionImports debug =
           , b <- ["8", "16"]
           ]
      else []) <>
-  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits)
+  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits)
 
 rtsFunctionExports :: Bool -> [FunctionExport]
 rtsFunctionExports debug =
@@ -543,20 +540,8 @@ rtsFunctionExports debug =
       ["hs_init"]
   ]
 
-emitErrorMessage :: [ValueType] -> Event -> Expression
-emitErrorMessage vts ev =
-  Block
-    { name = ""
-    , bodys =
-        [ CallImport
-            { target' = "__asterius_eventI32"
-            , operands = [ConstI32 $ fromIntegral $ fromEnum ev]
-            , callImportReturnTypes = []
-            }
-        , Unreachable
-        ]
-    , blockReturnTypes = vts
-    }
+emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
+emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
 
 byteStringCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
 byteStringCBits =
@@ -586,9 +571,28 @@ floatCBits =
        ( AsteriusEntitySymbol func_sym
        , generateRTSWrapper "floatCBits" func_sym param_vts ret_vts))
     [ ("isFloatNegativeZero", [F32], [I64])
+    , ("isDoubleNegativeZero", [F64], [I64])
     , ("isFloatNaN", [F32], [I64])
+    , ("isDoubleNaN", [F64], [I64])
+    , ("isFloatFinite", [F32], [I64])
+    , ("isDoubleFinite", [F64], [I64])
+    , ("isFloatDenormalized", [F32], [I64])
+    , ("isDoubleDenormalized", [F64], [I64])
     , ("isFloatInfinite", [F32], [I64])
+    , ("isDoubleInfinite", [F64], [I64])
     , ("__decodeFloat_Int", [I64, I64, F32], [])
+    , ("rintDouble", [F64], [F64])
+    , ("rintFloat", [F32], [F32])
+    ]
+
+md5CBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+md5CBits =
+    map (\(func_sym, param_vts, ret_vts) ->
+       ( AsteriusEntitySymbol func_sym
+       , generateRTSWrapper "MD5" func_sym param_vts ret_vts))
+    [ ("__hsbase_MD5Init", [I64], [])
+    , ("__hsbase_MD5Update", [I64, I64, I64], [])
+    , ("__hsbase_MD5Final", [I64, I64], [])
     ]
 
 generateRTSWrapper ::
@@ -745,7 +749,7 @@ rtsCheckSchedStatusFunction _ =
     tid <- param I32
     stat <- call' "rts_getSchedStatus" [tid] I32
     if' [] (stat `eqInt32` constI32 scheduler_Success) mempty $
-      emit $ emitErrorMessage [] IllegalSchedulerStatusCode
+      emit $ emitErrorMessage [] "IllegalSchedulerStatusCode"
 
 dirtyTSO :: Expression -> Expression -> EDSL ()
 dirtyTSO _ tso =
@@ -789,7 +793,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                      if'
                        []
                        (eqZInt64 bytes)
-                       (emit $ emitErrorMessage [] HeapOverflowWithZeroHpAlloc)
+                       (emit $ emitErrorMessage [] "HeapOverflowWithZeroHpAlloc")
                        mempty
                      truncUFloat64ToInt64 <$>
                        callImport'
@@ -798,9 +802,9 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                          F64 >>=
                        putLVal currentNursery
                      break' sched_loop_lbl Nothing)
-              , (ret_StackOverflow, emit $ emitErrorMessage [] StackOverflow)
+              , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
-              , (ret_ThreadBlocked, emit $ emitErrorMessage [] ThreadBlocked)
+              , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
               , ( ret_ThreadFinished
                 , if'
                     []
@@ -832,7 +836,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                           ]
                         break' sched_block_lbl Nothing))
               ]
-            , emit $ emitErrorMessage [] IllegalThreadReturnCode)
+            , emit $ emitErrorMessage [] "IllegalThreadReturnCode")
     callImport "__asterius_gcRootTSO" [convertUInt64ToFloat64 t]
 
 createThreadFunction BuiltinsOptions {..} =

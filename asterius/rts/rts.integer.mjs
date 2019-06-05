@@ -79,20 +79,6 @@ export class IntegerManager {
   encodeDoubleInteger(i0, i1) {
     return Number(this.decode(i0)) * 2 ** i1;
   }
-  decodeDoubleInteger(d) {
-    const [, sgn, i, f] = /^(-?)([01]+)\.?([01]*)$/.exec(d.toString(2));
-    let s = i + f, acc = BigInt(0), e = f ? -f.length : 0;
-    while (s) {
-      const c = s.slice(0, 53);
-      s = s.slice(c.length);
-      acc = (acc << BigInt(c.length)) | BigInt(Number.parseInt(c, 2));
-    }
-    if (acc !== BigInt(0))
-      while ((acc & BigInt(1)) === BigInt(0)) {
-        acc = acc >> BigInt(1);
-        e += 1;
-      }
-    return [ sgn ? -acc : acc, e ];
-  }
+
   doubleFromInteger(i) { return Number(this.decode(i)); }
 }

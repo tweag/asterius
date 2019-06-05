@@ -18,6 +18,7 @@ module Asterius.CodeGen
 import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Passes.All
+import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
 import Asterius.Types
@@ -433,12 +434,10 @@ marshalCmmMachOp (GHC.MO_F_Neg w) [x] =
     w
     (do xe <- marshalAndCastCmmExpr x F32
         pure
-          ( Binary {binaryOp = SubFloat32, operand0 = ConstF32 0, operand1 = xe}
-          , F32))
+          (Unary { unaryOp = NegFloat32, operand0 = xe }, F32))
     (do xe <- marshalAndCastCmmExpr x F64
         pure
-          ( Binary {binaryOp = SubFloat64, operand0 = ConstF64 0, operand1 = xe}
-          , F64))
+          (Unary { unaryOp= NegFloat64, operand0 = xe }, F64))
 marshalCmmMachOp (GHC.MO_F_Mul w) [x, y] =
   marshalCmmBinMachOp MulFloat32 F32 F32 F32 MulFloat64 F64 F64 F64 w x y
 marshalCmmMachOp (GHC.MO_F_Quot w) [x, y] =
@@ -638,6 +637,8 @@ marshalCmmBinMathPrimCall op vt r x y = do
         }
     ]
 
+-- | We follow the order of definition from:
+-- https://github.com/ghc/ghc/blob/master/compiler/cmm/CmmMachOp.hs
 marshalCmmPrimCall ::
      GHC.CallishMachOp
   -> [GHC.LocalReg]
@@ -645,60 +646,89 @@ marshalCmmPrimCall ::
   -> CodeGen [Expression]
 marshalCmmPrimCall GHC.MO_F64_Pwr [r] [x, y] =
   marshalCmmBinMathPrimCall "pow" F64 r x y
+
 marshalCmmPrimCall GHC.MO_F64_Sin [r] [x] =
   marshalCmmUnMathPrimCall "sin" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Cos [r] [x] =
   marshalCmmUnMathPrimCall "cos" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Tan [r] [x] =
   marshalCmmUnMathPrimCall "tan" F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Sinh [r] [x] =
   marshalCmmUnMathPrimCall "sinh" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Cosh [r] [x] =
   marshalCmmUnMathPrimCall "cosh" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Tanh [r] [x] =
   marshalCmmUnMathPrimCall "tanh" F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Asin [r] [x] =
   marshalCmmUnMathPrimCall "asin" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Acos [r] [x] =
   marshalCmmUnMathPrimCall "acos" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F64 r x
+
+marshalCmmPrimCall GHC.MO_F64_Asinh [r] [x] =
+  marshalCmmUnMathPrimCall "asinh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Acosh [r] [x] =
+  marshalCmmUnMathPrimCall "acosh" F64 r x
+marshalCmmPrimCall GHC.MO_F64_Atanh [r] [x] =
+  marshalCmmUnMathPrimCall "atanh" F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Exp [r] [x] =
   marshalCmmUnMathPrimCall "exp" F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Fabs [r] [x] =
   marshalCmmUnPrimCall AbsFloat64 F64 r x
+
 marshalCmmPrimCall GHC.MO_F64_Sqrt [r] [x] =
   marshalCmmUnPrimCall SqrtFloat64 F64 r x
+
+-- | 32 bit
 marshalCmmPrimCall GHC.MO_F32_Pwr [r] [x, y] =
   marshalCmmBinMathPrimCall "pow" F32 r x y
+
 marshalCmmPrimCall GHC.MO_F32_Sin [r] [x] =
   marshalCmmUnMathPrimCall "sin" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Cos [r] [x] =
   marshalCmmUnMathPrimCall "cos" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Tan [r] [x] =
   marshalCmmUnMathPrimCall "tan" F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Sinh [r] [x] =
   marshalCmmUnMathPrimCall "sinh" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Cosh [r] [x] =
   marshalCmmUnMathPrimCall "cosh" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Tanh [r] [x] =
   marshalCmmUnMathPrimCall "tanh" F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Asin [r] [x] =
   marshalCmmUnMathPrimCall "asin" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Acos [r] [x] =
   marshalCmmUnMathPrimCall "acos" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F32 r x
+
+marshalCmmPrimCall GHC.MO_F32_Asinh [r] [x] =
+  marshalCmmUnMathPrimCall "asinh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Acosh [r] [x] =
+  marshalCmmUnMathPrimCall "acosh" F32 r x
+marshalCmmPrimCall GHC.MO_F32_Atanh [r] [x] =
+  marshalCmmUnMathPrimCall "atanh" F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Exp [r] [x] =
   marshalCmmUnMathPrimCall "exp" F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Fabs [r] [x] =
   marshalCmmUnPrimCall AbsFloat32 F32 r x
+
 marshalCmmPrimCall GHC.MO_F32_Sqrt [r] [x] =
   marshalCmmUnPrimCall SqrtFloat32 F32 r x
+
 marshalCmmPrimCall (GHC.MO_UF_Conv w) [r] [x] = do
   (op, ft) <-
     dispatchCmmWidth
@@ -817,6 +847,75 @@ marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall ClzInt64 I64 r x
 marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall CtzInt64 I64 r x
+
+
+-- | r = result, o = overflow
+-- | see also: GHC.Prim.subWordC#
+marshalCmmPrimCall (GHC.MO_SubWordC GHC.W64) [r, o] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_minus_y = Binary { binaryOp = SubInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let overflow = Binary { binaryOp = LtUInt64
+                        , operand0 = xr
+                        , operand1 = yr
+                        }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                              , operand0 = overflow
+                              }
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_minus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+-- | r = result, o = overflow
+-- | see also: GHC.Prim.addWordC#
+marshalCmmPrimCall (GHC.MO_AddWordC GHC.W64) [r, o] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  -- | x + y > maxbound
+  -- | y + x > maxbound
+  -- | y > maxbound - x
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_plus_y = Binary { binaryOp = AddInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let maxbound_minus_x = Binary { binaryOp = SubInt64
+                              , operand0 = ConstI64 0xFFFFFFFFFFFFFFFF
+                              , operand1 = xr
+                              }
+
+  let overflow = Binary { binaryOp = GtUInt64
+                                     , operand0 = yr
+                                     , operand1 = maxbound_minus_x
+                                     }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                            , operand0 = overflow
+                            }
+
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_plus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+
+
 marshalCmmPrimCall op rs xs =
   throwError $
   UnsupportedCmmInstr $
@@ -1002,7 +1101,16 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   let blocks_unresolved =
         ( "__asterius_unreachable"
         , RelooperBlock
-            {addBlock = AddBlock {code = Unreachable}, addBranches = []}) :
+            { addBlock =
+                AddBlock
+                  { code =
+                      Barf
+                        { barfMessage = "unreachable block"
+                        , barfReturnTypes = []
+                        }
+                  }
+            , addBranches = []
+            }) :
         rbs
       blocks_key_map =
         M.fromList
@@ -1050,10 +1158,21 @@ marshalCmmDecl decl =
     GHC.CmmProc _ clbl _ g -> do
       sym <- marshalCLabel clbl
       r <- unCodeGen $ marshalCmmProc g
-      pure $
-        case r of
-          Left err -> mempty {functionErrorMap = M.fromList [(sym, err)]}
-          Right f -> mempty {functionMap = M.fromList [(sym, f)]}
+      let f =
+            case r of
+              Left err ->
+                Function
+                  { functionType =
+                      FunctionType {paramTypes = [], returnTypes = []}
+                  , varTypes = []
+                  , body =
+                      Barf
+                        { barfMessage = fromString $ show err
+                        , barfReturnTypes = []
+                        }
+                  }
+              Right f' -> f'
+      pure $ processBarf sym f
 
 marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
 marshalHaskellIR this_mod HaskellIR {..} = marshalRawCmm this_mod cmmRaw

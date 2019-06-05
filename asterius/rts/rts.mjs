@@ -20,6 +20,7 @@ import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
 import { Messages } from "./rts.messages.mjs";
 import { ThreadPaused } from "./rts.threadpaused.mjs";
+import { MD5 } from "./rts.md5.mjs"
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
@@ -48,7 +49,8 @@ export function newAsteriusInstance(req) {
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
-    __asterius_exports = new Exports(__asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports);
+    __asterius_exports = new Exports(__asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports),
+    __asterius_md5 = new MD5(__asterius_memory);
 
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
@@ -93,6 +95,7 @@ export function newAsteriusInstance(req) {
       __asterius_exports.rts_checkSchedStatus(tid);
     },
     Integer: __asterius_integer_manager,
+    FloatCBits: __asterius_float_cbits,
     stdio: {
       putChar: (h, c) => __asterius_fs.writeSync(h, String.fromCodePoint(c)),
       stdout: () => __asterius_fs.root.get("/dev/stdout"),
@@ -112,6 +115,9 @@ export function newAsteriusInstance(req) {
         asin: x => Math.asin(x),
         acos: x => Math.acos(x),
         atan: x => Math.atan(x),
+        asinh: x => Math.asinh(x),
+        acosh: x => Math.acosh(x),
+        atanh: x => Math.atanh(x),
         log: x => Math.log(x),
         exp: x => Math.exp(x),
         pow: (x, y) => Math.pow(x, y)
@@ -125,8 +131,7 @@ export function newAsteriusInstance(req) {
       rts: {
         printI64: x => __asterius_fs.writeSync(__asterius_fs.stdout(), __asterius_show_I64(x) + "\n"),
         assertEqI64: function(x, y) { if(x != y) {   throw new WebAssembly.RuntimeError("unequal I64: " + x + ", " + y); } },
-        print: x => __asterius_fs.writeSync(__asterius_fs.stdout(), x + "\n"),
-        emitEvent: ev => __asterius_logger.logEvent(req.events[ev])
+        print: x => __asterius_fs.writeSync(__asterius_fs.stdout(), x + "\n")
       },
       bytestring: modulify(__asterius_bytestring_cbits),
       // cannot name this float since float is a keyword.
@@ -143,6 +148,7 @@ export function newAsteriusInstance(req) {
       Messages: modulify(__asterius_messages),
       StablePtr: modulify(__asterius_stableptr_manager),
       Unicode: modulify(__asterius_unicode),
+      MD5: modulify(__asterius_md5),
       Tracing: modulify(__asterius_tracer),
       TSO: modulify(__asterius_tso_manager)
     }

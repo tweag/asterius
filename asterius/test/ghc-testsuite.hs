@@ -31,6 +31,7 @@ import System.Console.ANSI (hSupportsANSIColor)
 import Control.Arrow ((&&&))
 import Data.Csv
 import Data.List (sort)
+import Data.Word
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
@@ -45,11 +46,25 @@ data TestCase = TestCase
   , caseStdIn, caseStdOut, caseStdErr :: LBS.ByteString
   } deriving (Show)
 
+
+-- | Convert a Char to a Word8
+charToWord8 :: Char -> Word8
+charToWord8 = toEnum . fromEnum
+
+-- | Try to read a file. if file does not exist, then return empty string.
 readFileNullable :: FilePath -> IO LBS.ByteString
 readFileNullable p = do
   exist <- doesFileExist p
   if exist
-    then LBS.readFile p
+    then do
+       bs <- LBS.readFile p
+       -- | Add trailing whitespace if it does not exist.
+       -- | The GHC testsuite also performs normalization:
+       -- | testsuite/driver/testlib.py
+       if LBS.last bs /= charToWord8 '\n'
+       then return $ LBS.snoc bs (charToWord8 '\n')
+       else return bs
+
     else pure LBS.empty
 
 getTestCases :: IO [TestCase]
@@ -61,10 +76,21 @@ getTestCases = do
       let subroot = root </> subdir
       files <- sort <$> listDirectory subroot
       let cases = map (subroot </>) $ filter ((== ".hs") . takeExtension) files
-      for cases $ \c ->
+      for cases $ \c -> do
+        -- | GHC has some tests that differ for 32 and 64 bit architectures. So,
+        -- we first check if the 64 bit test exists. If it does, we always
+        -- use it. If it does not, we use the default test (which should
+        -- be the same for both architectures).
+        ws64exists <- doesFileExist (c -<.> "stdout-ws-64")
+        let stdoutp = c -<.> ("stdout" <>  if ws64exists then "-ws-64" else "")
+
+
+        ws64exists <- doesFileExist (c -<.> "stderr-ws-64")
+        let stderrp = c -<.> ("stderr" <> if ws64exists then "-ws-64" else "")
+
         TestCase c <$> readFileNullable (c -<.> "stdin") <*>
-        readFileNullable (c -<.> "stdout") <*>
-        readFileNullable (c -<.> "stderr")
+          readFileNullable stdoutp <*>
+          readFileNullable stderrp
 
 
 
@@ -132,7 +158,7 @@ instance Show CompileOutcome where
 
 runTestCase :: TestCase -> IO ()
 runTestCase TestCase {..} = do
-  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen"] ""
+  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen", "--verbose-err"] ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
   withJSSession defJSSessionOpts $ \s -> do
     -- | Try to compile and setup the program. If we throw an exception,
