@@ -130,6 +130,7 @@ jobs:
             stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
             stack test asterius:ghc-testsuite --test-arguments "-p NumDecimals"
             stack test asterius:ghc-testsuite --test-arguments "-p FloatFnInverses"
+            stack test asterius:ghc-testsuite --test-arguments "-p add2"
 
 
   asterius-test-ghc-testsuite:

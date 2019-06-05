@@ -914,6 +914,108 @@ marshalCmmPrimCall (GHC.MO_AddWordC GHC.W64) [r, o] [x, y] = do
         {  unresolvedLocalReg = lo, value = overflow_sext }
     ]
 
+-- | See also: GHC.Prim.plusWord2
+-- | add unsigned: return (carry, result)
+marshalCmmPrimCall (GHC.MO_Add2 GHC.W64) [o, r] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  -- | y + x > maxbound
+  -- | y > maxbound - x
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_plus_y = Binary { binaryOp = AddInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let x_minus_maxbound = Binary { binaryOp = SubInt64
+                              , operand0 = ConstI64 0xFFFFFFFFFFFFFFFF
+                              , operand1 = xr
+                              }
+
+  let overflow = Binary { binaryOp = GtUInt64
+                                     , operand0 = yr
+                                     , operand1 = x_minus_maxbound
+                                     }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                                         , operand0 = overflow
+                                         }
+
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_plus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+-- | See also: GHC.Prim.addIntC#
+-- | add signed: return (result, overflow)
+marshalCmmPrimCall (GHC.MO_AddIntC GHC.W64) [r, o] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  -- | y + x > maxbound
+  -- | y > maxbound - x
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_plus_y = Binary { binaryOp = AddInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let x_minus_maxbound = Binary { binaryOp = SubInt64
+                              , operand0 = ConstI64 0xFFFFFFFFFFFFFFFF
+                              , operand1 = xr
+                              }
+
+  let overflow = Binary { binaryOp = GtUInt64
+                                     , operand0 = yr
+                                     , operand1 = x_minus_maxbound
+                                     }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                                         , operand0 = overflow
+                                         }
+
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_plus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+-- | subtract signed, reporting overflow:
+-- see also: GHC.Prim.SubIntC#
+-- returns (result, overflow)
+marshalCmmPrimCall (GHC.MO_SubIntC GHC.W64) [r, o] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_minus_y = Binary { binaryOp = SubInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let overflow = Binary { binaryOp = LtUInt64
+                        , operand0 = xr
+                        , operand1 = yr
+                        }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                              , operand0 = overflow
+                              }
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_minus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+
 
 
 marshalCmmPrimCall op rs xs =
