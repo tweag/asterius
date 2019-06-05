@@ -846,6 +846,75 @@ marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall ClzInt64 I64 r x
 marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall CtzInt64 I64 r x
+
+
+-- | r = result, o = overflow
+-- | see also: GHC.Prim.subWordC#
+marshalCmmPrimCall (GHC.MO_SubWordC GHC.W64) [r, o] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_minus_y = Binary { binaryOp = SubInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let overflow = Binary { binaryOp = LtUInt64
+                        , operand0 = xr
+                        , operand1 = yr
+                        }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                              , operand0 = overflow
+                              }
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_minus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+-- | r = result, o = overflow
+-- | see also: GHC.Prim.addWordC#
+marshalCmmPrimCall (GHC.MO_AddWordC GHC.W64) [r, o] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  -- | x + y > maxbound
+  -- | y + x > maxbound
+  -- | y > maxbound - x
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_plus_y = Binary { binaryOp = AddInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let maxbound_minus_x = Binary { binaryOp = SubInt64
+                              , operand0 = ConstI64 0xFFFFFFFFFFFFFFFF
+                              , operand1 = xr
+                              }
+
+  let overflow = Binary { binaryOp = GtUInt64
+                                     , operand0 = yr
+                                     , operand1 = maxbound_minus_x
+                                     }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                            , operand0 = overflow
+                            }
+
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_plus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+
+
 marshalCmmPrimCall op rs xs =
   throwError $
   UnsupportedCmmInstr $
