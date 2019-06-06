@@ -914,6 +914,33 @@ marshalCmmPrimCall (GHC.MO_AddWordC GHC.W64) [r, o] [x, y] = do
         {  unresolvedLocalReg = lo, value = overflow_sext }
     ]
 
+-- | high = high bits of result, low = low bits of result.
+-- | see also: GHC.Prim.timesWord2#
+marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  hir <- marshalTypedCmmLocalReg hi I64
+  lor <- marshalTypedCmmLocalReg lo I64
+
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = hir
+        , value = CallImport
+              { target' = "__asterius_mul2_high"
+              , operands = [xr, yr]
+              , callImportReturnTypes = [I64]
+              }
+        },
+     UnresolvedSetLocal
+        { unresolvedLocalReg = lor
+        , value = CallImport
+              { target' = "__asterius_mul2_low"
+              , operands = [xr, yr]
+              , callImportReturnTypes = [I64]
+              }
+        }]
+
 
 
 marshalCmmPrimCall op rs xs =

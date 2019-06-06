@@ -434,6 +434,19 @@ rtsFunctionImports debug =
       , externalBaseName = "exit"
       , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       }
+
+  , FunctionImport
+      { internalName = "__asterius_mul2_high"
+      , externalModuleName = "Integer"
+      , externalBaseName = "mul2_high"
+      , functionType = FunctionType {paramTypes = [I64, I64], returnTypes = [I64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_mul2_low"
+      , externalModuleName = "Integer"
+      , externalBaseName = "mul2_low"
+      , functionType = FunctionType {paramTypes = [I64, I64], returnTypes = [I64]}
+      }
   ] <>
   (if debug
      then [ FunctionImport

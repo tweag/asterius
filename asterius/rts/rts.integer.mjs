@@ -98,4 +98,14 @@ export class IntegerManager {
   }
 
   doubleFromInteger(i) { return Number(this.decode(i)); }
+
+  mul2_high(hi, lo) {
+    const mul = this.decode(hi) * this.decode(lo);
+    return mul >> BigInt(64);
+  }
+  
+  mul2_low(hi, lo) {
+    const mul = this.decode(hi) * this.decode(lo);
+    return mul & ((BigInt(1) << BigInt(64)) - BigInt(1));
+  }
 }
