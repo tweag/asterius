@@ -928,8 +928,15 @@ marshalCmmUnsafeCall ::
   -> [GHC.LocalReg]
   -> [GHC.CmmExpr]
   -> CodeGen [Expression]
-marshalCmmUnsafeCall ffi_state p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
+marshalCmmUnsafeCall FFIMarshalState {..} p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
   sym <- marshalCLabel clbl
+  let sym_bs = SBS.fromShort $ entityName sym
+      m_imp_key =
+        AsteriusEntitySymbol . SBS.toShort <$> BS.stripSuffix "_wrapper" sym_bs
+      m_imp_key_decl =
+        case m_imp_key of
+          Just imp_key -> Just (imp_key, ffiImportDecls ! imp_key)
+          _ -> Nothing
   xes <-
     for xs $ \x -> do
       (xe, _) <- marshalCmmExpr x
