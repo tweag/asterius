@@ -921,14 +921,11 @@ marshalCmmPrimCall op rs xs =
   UnsupportedCmmInstr $
   showSBS $ GHC.CmmUnsafeForeignCall (GHC.PrimTarget op) rs xs
 
-marshalCmmUnsafeCall ::
+checkSafeCCall ::
      FFIMarshalState
-  -> GHC.CmmExpr
-  -> GHC.ForeignConvention
-  -> [GHC.LocalReg]
-  -> [GHC.CmmExpr]
-  -> CodeGen [Expression]
-marshalCmmUnsafeCall FFIMarshalState {..} p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
+  -> GHC.CLabel
+  -> CodeGen (AsteriusEntitySymbol, Maybe (AsteriusEntitySymbol, FFIImportDecl))
+checkSafeCCall FFIMarshalState {..} clbl = do
   sym <- marshalCLabel clbl
   let sym_bs = SBS.fromShort $ entityName sym
       m_imp_key =
@@ -937,6 +934,17 @@ marshalCmmUnsafeCall FFIMarshalState {..} p@(GHC.CmmLit (GHC.CmmLabel clbl)) f r
         case m_imp_key of
           Just imp_key -> Just (imp_key, ffiImportDecls ! imp_key)
           _ -> Nothing
+  pure (sym, m_imp_key_decl)
+
+marshalCmmUnsafeCall ::
+     FFIMarshalState
+  -> GHC.CmmExpr
+  -> GHC.ForeignConvention
+  -> [GHC.LocalReg]
+  -> [GHC.CmmExpr]
+  -> CodeGen [Expression]
+marshalCmmUnsafeCall ffi_state p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
+  (sym, _) <- checkSafeCCall ffi_state clbl
   xes <-
     for xs $ \x -> do
       (xe, _) <- marshalCmmExpr x
