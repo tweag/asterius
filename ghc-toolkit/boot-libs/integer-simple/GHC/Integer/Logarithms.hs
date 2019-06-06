@@ -27,9 +27,6 @@ import GHC.Integer.Type (Integer(..))
 --
 -- for @base > 1@ and @m > 0@.
 integerLogBase# :: Integer -> Integer -> Int#
-#if defined(ASTERIUS)
-integerLogBase# (Integer b) (Integer m) = js_integerLogBase m b
-#else
 integerLogBase# b m = case step b of
                         (# _, e #) -> e
   where
@@ -41,7 +38,6 @@ integerLogBase# b m = case step b of
                  if q `ltInteger` pw
                    then (# q, 2# *# e #)
                    else (# q `quotInteger` pw, 2# *# e +# 1# #)
-#endif
 
 -- | Calculate the integer base 2 logarithm of an 'Integer'.
 --   The calculation is more efficient than for the general case,
@@ -54,9 +50,3 @@ integerLog2# = I.integerLog2#
 -- | This function calculates the integer base 2 logarithm of a 'Word#'.
 wordLog2# :: Word# -> Int#
 wordLog2# = I.wordLog2#
-
-#if defined(ASTERIUS)
-
-foreign import javascript "__asterius_jsffi.Integer.integerLogBase(${1}, ${2})" js_integerLogBase :: Int# -> Int# -> Int#
-
-#endif
