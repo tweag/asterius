@@ -30,6 +30,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
+import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.String
@@ -941,10 +942,36 @@ checkSafeCCall FFIMarshalState {..} clbl = do
 checkSafeCCallForCmmInstr ::
      FFIMarshalState
   -> GHC.CmmNode GHC.O GHC.O
-  -> CodeGen (Maybe (AsteriusEntitySymbol, FFIImportDecl))
-checkSafeCCallForCmmInstr ffi_state (GHC.CmmUnsafeForeignCall (GHC.ForeignTarget (GHC.CmmLit (GHC.CmmLabel clbl)) c) _ _) =
-  snd <$> checkSafeCCall ffi_state clbl
+  -> CodeGen (Maybe ( AsteriusEntitySymbol
+                    , FFIImportDecl
+                    , [GHC.LocalReg]
+                    , [GHC.CmmExpr]))
+checkSafeCCallForCmmInstr ffi_state (GHC.CmmUnsafeForeignCall (GHC.ForeignTarget (GHC.CmmLit (GHC.CmmLabel clbl)) c) rs xs) = do
+  (_, r) <- checkSafeCCall ffi_state clbl
+  case r of
+    Just (imp_key, imp_decl) -> pure $ Just (imp_key, imp_decl, rs, xs)
+    _ -> pure Nothing
 checkSafeCCallForCmmInstr _ _ = pure Nothing
+
+checkSafeCCallForCmmBlockBody ::
+     FFIMarshalState
+  -> [GHC.CmmNode GHC.O GHC.O]
+  -> CodeGen [Either [GHC.CmmNode GHC.O GHC.O] ( AsteriusEntitySymbol
+                                               , FFIImportDecl
+                                               , [GHC.LocalReg]
+                                               , [GHC.CmmExpr])]
+checkSafeCCallForCmmBlockBody ffi_state =
+  foldrM
+    (\instr acc -> do
+       r <- checkSafeCCallForCmmInstr ffi_state instr
+       pure $
+         case r of
+           Just t -> Right t : acc
+           _ ->
+             case acc of
+               Left is:acc' -> Left (instr : is) : acc'
+               _ -> Left [instr] : acc)
+    []
 
 marshalCmmUnsafeCall ::
      FFIMarshalState
