@@ -1,4 +1,3 @@
-
 {-# LANGUAGE CPP, MagicHash, NoImplicitPrelude, BangPatterns, UnboxedTuples,
              UnliftedFFITypes #-}
 
@@ -51,11 +50,23 @@ mkInteger nonNegative is =
                    case unIO (js_freezeInteger i0) s2 of
                      (# _, I# r #) -> Integer r)
 
+
+-- NOTE: small integer and integers larger than Number.MAX_SAFE_INTEGER
+-- 64 bit = 64 / 16 = 4
 smallInteger :: Int# -> Integer
-smallInteger i = Integer (js_smallInteger i)
+smallInteger i =
+    let w = int2Word# i
+        low32mask# = 4294967295##
+        low = and# w low32mask#
+        high = and# (uncheckedShiftRL# w 32#) low32mask#
+    in Integer (js_smallInteger high low)
 
 wordToInteger :: Word# -> Integer
-wordToInteger w = Integer (js_wordToInteger w)
+wordToInteger w =
+    let low32mask# = 4294967295##
+        low = and# w low32mask#
+        high = and# (uncheckedShiftRL# w 32#) low32mask#
+    in Integer (js_wordToInteger high low)
 
 integerToWord :: Integer -> Word#
 integerToWord (Integer i) = js_integerToWord i
@@ -219,9 +230,9 @@ foreign import javascript "__asterius_jsffi.Integer.prependInteger(${1},${2})" j
 
 foreign import javascript "__asterius_jsffi.Integer.freezeInteger(${1})" js_freezeInteger :: Int -> IO Int
 
-foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_smallInteger :: Int# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1}, ${2})" js_smallInteger :: Word# -> Word# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_wordToInteger :: Word# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.wordToInteger(${1}, ${2})" js_wordToInteger :: Word# -> Word# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1})" js_integerToWord :: Int# -> Word#
 

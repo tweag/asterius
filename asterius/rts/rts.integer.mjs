@@ -2,6 +2,11 @@ export class IntegerManager {
   constructor(jsvalManager, heap) {
     this.jsvalManager = jsvalManager;
     this.heap = heap;
+
+    // buffer of 8 bytes to hold floats/doubles
+    this.buffer = new ArrayBuffer(8);
+    this.view = new DataView(this.buffer);
+
     Object.seal(this);
   }
   integerToString(i, l) {
@@ -32,7 +37,19 @@ export class IntegerManager {
     return x & BigInt(1) ? this.jsvalManager.getJSVal(Number(x))
                          : x >> BigInt(1);
   }
-  smallInteger(x) { return this.encode(BigInt(x)); }
+
+  smallInteger(high, low) { 
+      this.view.setUint32(/*offset=*/0, low,  /*little endian=*/true);
+      this.view.setUint32(/*offset=*/4, high, /*little endian=*/true);
+      return this.encode(this.view.getBigInt64(/*offset=*/0, /*little endian=*/true));
+  }
+
+  wordToInteger(high, low) { 
+      this.view.setUint32(/*offset=*/0, low, /*little endian=*/true);
+      this.view.setUint32( /*offset=*/4, high, /*little endian=*/true);
+      return this.encode(this.view.getBigUint64(/*offset=*/0, /*little endian=*/true));
+  }
+
   integerToWord(i) { return Number(BigInt.asUintN(64, this.decode(i))); }
   integerToInt(i) { return Number(BigInt.asIntN(64, this.decode(i))); }
   plusInteger(i0, i1) { return this.encode(this.decode(i0) + this.decode(i1)); }
