@@ -922,12 +922,13 @@ marshalCmmPrimCall op rs xs =
   showSBS $ GHC.CmmUnsafeForeignCall (GHC.PrimTarget op) rs xs
 
 marshalCmmUnsafeCall ::
-     GHC.CmmExpr
+     FFIMarshalState
+  -> GHC.CmmExpr
   -> GHC.ForeignConvention
   -> [GHC.LocalReg]
   -> [GHC.CmmExpr]
   -> CodeGen [Expression]
-marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
+marshalCmmUnsafeCall ffi_state p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
   sym <- marshalCLabel clbl
   xes <-
     for xs $ \x -> do
@@ -948,20 +949,21 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
       throwError $
       UnsupportedCmmInstr $
       showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
-marshalCmmUnsafeCall p f rs xs =
+marshalCmmUnsafeCall _ p f rs xs =
   throwError $
   UnsupportedCmmInstr $
   showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
 
-marshalCmmInstr :: GHC.CmmNode GHC.O GHC.O -> CodeGen [Expression]
-marshalCmmInstr instr =
+marshalCmmInstr ::
+     FFIMarshalState -> GHC.CmmNode GHC.O GHC.O -> CodeGen [Expression]
+marshalCmmInstr ffi_state instr =
   case instr of
     GHC.CmmComment {} -> pure []
     GHC.CmmTick {} -> pure []
     GHC.CmmUnsafeForeignCall (GHC.PrimTarget op) rs xs ->
       marshalCmmPrimCall op rs xs
     GHC.CmmUnsafeForeignCall (GHC.ForeignTarget t c) rs xs ->
-      marshalCmmUnsafeCall t c rs xs
+      marshalCmmUnsafeCall ffi_state t c rs xs
     GHC.CmmAssign (GHC.CmmLocal r) e -> do
       (lr, vt) <- marshalCmmLocalReg r
       v <- marshalAndCastCmmExpr e vt
@@ -996,8 +998,10 @@ marshalCmmInstr instr =
       pure [store_instr]
     _ -> throwError $ UnsupportedCmmInstr $ showSBS instr
 
-marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [Expression]
-marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
+marshalCmmBlockBody ::
+     FFIMarshalState -> [GHC.CmmNode GHC.O GHC.O] -> CodeGen [Expression]
+marshalCmmBlockBody ffi_state instrs =
+  concat <$> for instrs (marshalCmmInstr ffi_state)
 
 marshalCmmBlockBranch ::
      GHC.CmmNode GHC.O GHC.C
@@ -1058,11 +1062,12 @@ marshalCmmBlockBranch instr =
     _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
 
 marshalCmmBlock ::
-     [GHC.CmmNode GHC.O GHC.O]
+     FFIMarshalState
+  -> [GHC.CmmNode GHC.O GHC.O]
   -> GHC.CmmNode GHC.O GHC.C
   -> CodeGen RelooperBlock
-marshalCmmBlock inner_nodes exit_node = do
-  inner_exprs <- marshalCmmBlockBody inner_nodes
+marshalCmmBlock ffi_state inner_nodes exit_node = do
+  inner_exprs <- marshalCmmBlockBody ffi_state inner_nodes
   (br_helper_exprs, maybe_switch_cond_expr, br_branches) <-
     marshalCmmBlockBranch exit_node
   pure $
@@ -1090,13 +1095,13 @@ marshalCmmBlock inner_nodes exit_node = do
         [e] -> e
         _ -> Block {name = "", bodys = es, blockReturnTypes = []}
 
-marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
-marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
+marshalCmmProc :: FFIMarshalState -> GHC.CmmGraph -> CodeGen Function
+marshalCmmProc ffi_state GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
   rbs <-
     for (GHC.bodyList body) $ \(lbl, GHC.BlockCC _ inner_nodes exit_node) -> do
       k <- marshalLabel lbl
-      b <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
+      b <- marshalCmmBlock ffi_state (GHC.blockToList inner_nodes) exit_node
       pure (k, b)
   let blocks_unresolved =
         ( "__asterius_unreachable"
@@ -1145,8 +1150,10 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
         }
 
 marshalCmmDecl ::
-     GHC.GenCmmDecl GHC.CmmStatics h GHC.CmmGraph -> CodeGen AsteriusModule
-marshalCmmDecl decl =
+     FFIMarshalState
+  -> GHC.GenCmmDecl GHC.CmmStatics h GHC.CmmGraph
+  -> CodeGen AsteriusModule
+marshalCmmDecl ffi_state decl =
   case decl of
     GHC.CmmData sec d@(GHC.Statics clbl _) -> do
       sym <- marshalCLabel clbl
@@ -1157,7 +1164,7 @@ marshalCmmDecl decl =
           Right ass -> mempty {staticsMap = M.fromList [(sym, ass)]}
     GHC.CmmProc _ clbl _ g -> do
       sym <- marshalCLabel clbl
-      r <- unCodeGen $ marshalCmmProc g
+      r <- unCodeGen $ marshalCmmProc ffi_state g
       let f =
             case r of
               Left err ->
@@ -1174,11 +1181,17 @@ marshalCmmDecl decl =
               Right f' -> f'
       pure $ processBarf sym f
 
-marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
+marshalHaskellIR ::
+     GHC.Module -> HaskellIR -> FFIMarshalState -> CodeGen AsteriusModule
 marshalHaskellIR this_mod HaskellIR {..} = marshalRawCmm this_mod cmmRaw
 
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
-marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
+marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw mempty
 
-marshalRawCmm :: GHC.Module -> [[GHC.RawCmmDecl]] -> CodeGen AsteriusModule
-marshalRawCmm _ = fmap mconcat . traverse marshalCmmDecl . mconcat
+marshalRawCmm ::
+     GHC.Module
+  -> [[GHC.RawCmmDecl]]
+  -> FFIMarshalState
+  -> CodeGen AsteriusModule
+marshalRawCmm this_mod cmm_decls ffi_state =
+  mconcat <$> traverse (marshalCmmDecl ffi_state) (mconcat cmm_decls)
