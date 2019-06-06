@@ -69,6 +69,7 @@ jobs:
             stack --no-terminal test asterius:exception
             stack --no-terminal test asterius:regression60
             stack --no-terminal test asterius:sizeof_md5context
+            stack --no-terminal test asterius:largenum
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
 
@@ -95,6 +96,7 @@ jobs:
             # At some point, this should cover entire subfolders like "numeric"
             stack test asterius:ghc-testsuite --test-arguments "-p numrun009"
             stack test asterius:ghc-testsuite --test-arguments "-p numrun010"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun011"
             stack test asterius:ghc-testsuite --test-arguments "-p numrun012"
             stack test asterius:ghc-testsuite --test-arguments "-p numrun013"
             stack test asterius:ghc-testsuite --test-arguments "-p numrun014"

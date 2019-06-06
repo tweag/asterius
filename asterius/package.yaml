@@ -37,6 +37,7 @@ extra-source-files:
   - test/exception/**/*.hs
   - test/regression60/**/*.hs
   - test/sizeof_md5context/**/*.hs
+  - test/largenum/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -266,6 +267,13 @@ tests:
   regression60:
     source-dirs: test
     main: regression60.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  largenum:
+    source-dirs: test
+    main: largenum.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
