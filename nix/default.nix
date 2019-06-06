@@ -134,8 +134,9 @@ let
       cd $out
       cp -r rts libraries
     '';
+    ghc = pkgs.haskell.compiler.${compiler.nix-name};
     boot-libs = pkgs.runCommand "asterius-ghc864-boot-libs" {
-      buildInputs = [ pkgs.haskell.compiler.${compiler.nix-name} ];
+      buildInputs = [ ghc ];
       preferLocalBuild = true;
     } ''
       set +x
@@ -149,7 +150,7 @@ let
       # TODO figure out a better way remove the unwanted stuff from ghc-prim.cabal
       sed -i '96,$ d' ghc-prim/ghc-prim.cabal
       cd $out/libraries/rts
-      runGhc --ghc-arg=-I$(ghc --print-libdir)/include $out/utils/genapply/Main.hs > AutoApply.cmm
+      ${ghc}/bin/runGhc --ghc-arg=-I$(${ghc}/bin/ghc --print-libdir)/include $out/utils/genapply/Main.hs > AutoApply.cmm
   '';
   in { inherit ghc-src ghc-prim ghc-patched-src boot-libs; };
 
