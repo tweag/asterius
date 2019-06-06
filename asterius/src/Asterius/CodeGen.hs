@@ -932,9 +932,19 @@ checkSafeCCall FFIMarshalState {..} clbl = do
         AsteriusEntitySymbol . SBS.toShort <$> BS.stripSuffix "_wrapper" sym_bs
       m_imp_key_decl =
         case m_imp_key of
-          Just imp_key -> Just (imp_key, ffiImportDecls ! imp_key)
+          Just imp_key
+            | ffiSafety imp_decl /= FFIUnsafe -> Just (imp_key, imp_decl)
+            where imp_decl = ffiImportDecls ! imp_key
           _ -> Nothing
   pure (sym, m_imp_key_decl)
+
+checkSafeCCallForCmmInstr ::
+     FFIMarshalState
+  -> GHC.CmmNode GHC.O GHC.O
+  -> CodeGen (Maybe (AsteriusEntitySymbol, FFIImportDecl))
+checkSafeCCallForCmmInstr ffi_state (GHC.CmmUnsafeForeignCall (GHC.ForeignTarget (GHC.CmmLit (GHC.CmmLabel clbl)) c) _ _) =
+  snd <$> checkSafeCCall ffi_state clbl
+checkSafeCCallForCmmInstr _ _ = pure Nothing
 
 marshalCmmUnsafeCall ::
      FFIMarshalState
