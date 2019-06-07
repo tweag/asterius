@@ -239,7 +239,7 @@ processFFI mod_sym = w
       case eqTypeRep (typeOf t) (typeRep :: TypeRep (GHC.ForeignDecl GHC.GhcPs)) of
         Just HRefl ->
           case t of
-            GHC.ForeignImport { GHC.fd_fi = GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) (GHC.unLoc -> safety) _ _ loc_src
+            GHC.ForeignImport { GHC.fd_fi = GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ _ loc_src
                               , ..
                               } -> do
               (old_state@FFIMarshalState {..}, old_us) <- get
@@ -276,12 +276,14 @@ processFFI mod_sym = w
                       FFIImportDecl
                         { ffiFunctionType = ffi_ftype
                         , ffiSafety =
-                            case safety of
-                              GHC.PlaySafe -> FFISafe
+                            case GHC.unLoc loc_safety of
+                              GHC.PlaySafe
+                                | has_safety -> FFISafe
                               GHC.PlayInterruptible -> FFIInterruptible
-                              GHC.PlayRisky -> FFIUnsafe
+                              _ -> FFIUnsafe
                         , ffiSourceChunks = chunks
                         }
+                    has_safety = GHC.isGoodSrcSpan $ GHC.getLoc loc_safety
             GHC.ForeignExport { GHC.fd_fe = GHC.CExport (GHC.unLoc -> GHC.CExportStatic src_txt lbl GHC.JavaScriptCallConv) loc_src
                               , ..
                               } -> do
