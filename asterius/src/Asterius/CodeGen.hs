@@ -928,14 +928,14 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
   let smash32Into64 hi32 lo32 =
           Binary OrInt64
               (Binary ShlInt64
-                 (Unary ExtendUInt32 hi32) (ConstI64 0xFFFFFFFF))
+                 (Unary ExtendUInt32 hi32) (ConstI64 32))
               (Unary ExtendUInt32 lo32)
 
  -- | mask the `n32`th block of v, counting blocks from the lowest bit.
   let mask32 v n32 =
           Unary WrapInt64 $
               Binary AndInt64
-                (Binary ShrUInt64 v (ConstI64 (n32 *32)))
+                (Binary ShrUInt64 v (ConstI64 (n32 * 32)))
                 (ConstI64 0xFFFFFFFF)
 
 
