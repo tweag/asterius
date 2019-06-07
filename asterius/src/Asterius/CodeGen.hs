@@ -922,43 +922,6 @@ marshalCmmPrimCall op rs xs =
   UnsupportedCmmInstr $
   showSBS $ GHC.CmmUnsafeForeignCall (GHC.PrimTarget op) rs xs
 
-checkCCall ::
-     GHC.CLabel -> CodeGen (AsteriusEntitySymbol, Maybe AsteriusEntitySymbol)
-checkCCall clbl = do
-  sym <- marshalCLabel clbl
-  let sym_bs = SBS.fromShort $ entityName sym
-      m_imp_key =
-        AsteriusEntitySymbol . SBS.toShort <$> BS.stripSuffix "_wrapper" sym_bs
-  pure (sym, m_imp_key)
-
-checkCCallForCmmInstr ::
-     GHC.CmmNode GHC.O GHC.O
-  -> CodeGen (Maybe (AsteriusEntitySymbol, [GHC.LocalReg], [GHC.CmmExpr]))
-checkCCallForCmmInstr (GHC.CmmUnsafeForeignCall (GHC.ForeignTarget (GHC.CmmLit (GHC.CmmLabel clbl)) _) rs xs) = do
-  (_, r) <- checkCCall clbl
-  case r of
-    Just imp_key -> pure $ Just (imp_key, rs, xs)
-    _ -> pure Nothing
-checkCCallForCmmInstr _ = pure Nothing
-
-checkCCallForCmmBlockBody ::
-     [GHC.CmmNode GHC.O GHC.O]
-  -> CodeGen [Either [GHC.CmmNode GHC.O GHC.O] ( AsteriusEntitySymbol
-                                               , [GHC.LocalReg]
-                                               , [GHC.CmmExpr])]
-checkCCallForCmmBlockBody =
-  foldrM
-    (\instr acc -> do
-       r <- checkCCallForCmmInstr instr
-       pure $
-         case r of
-           Just t -> Right t : acc
-           _ ->
-             case acc of
-               Left is:acc' -> Left (instr : is) : acc'
-               _ -> Left [instr] : acc)
-    []
-
 marshalCmmUnsafeCall ::
      GHC.CmmExpr
   -> GHC.ForeignConvention
@@ -966,7 +929,7 @@ marshalCmmUnsafeCall ::
   -> [GHC.CmmExpr]
   -> CodeGen [Expression]
 marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
-  (sym, _) <- checkCCall clbl
+  sym <- marshalCLabel clbl
   xes <-
     for xs $ \x -> do
       (xe, _) <- marshalCmmExpr x
