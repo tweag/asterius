@@ -928,7 +928,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
   let smash32Into64 hi32 lo32 =
           Binary OrInt64
               (Binary ShlInt64
-                 (Unary ExtendUInt32 hi32) (ConstI64 0xFFFFFFFFFFFFFFFF))
+                 (Unary ExtendUInt32 hi32) (ConstI64 0xFFFFFFFF))
               (Unary ExtendUInt32 lo32)
 
  -- | mask the `n32`th block of v, counting blocks from the lowest bit.
@@ -961,7 +961,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
 
   let loout =
           UnresolvedSetLocal
-              { unresolvedLocalReg = hir
+              { unresolvedLocalReg = lor
               , value = smash32Into64
                           CallImport
                               { target' = "__asterius_mul2"
