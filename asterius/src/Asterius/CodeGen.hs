@@ -925,7 +925,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
 
   -- | Smash the high and low 32 bits together to create a 64 bit
   -- number.
-  let smash32 hi32 lo32 =
+  let smash32Into64 hi32 lo32 =
           Binary OrInt64
               (Binary ShlInt64
                  (Unary ExtendUInt32 hi32) (ConstI64 0xFFFFFFFFFFFFFFFF))
@@ -942,7 +942,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
   let hiout =
           UnresolvedSetLocal
               { unresolvedLocalReg = hir
-              , value = smash32
+              , value = smash32Into64
                           CallImport
                               { target' = "__asterius_mul2"
                               , operands = [mask32 xr 1, mask32 xr 0,
@@ -962,7 +962,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
   let loout =
           UnresolvedSetLocal
               { unresolvedLocalReg = hir
-              , value = smash32
+              , value = smash32Into64
                           CallImport
                               { target' = "__asterius_mul2"
                               , operands = [mask32 xr 1, mask32 xr 0,
@@ -978,14 +978,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                               , callImportReturnTypes = [I32]
                               }
               }
-  pure [ UnresolvedSetLocal
-      { unresolvedLocalReg = hir
-      , value = hiout
-      },
-   UnresolvedSetLocal
-      { unresolvedLocalReg = lor
-      , value = loout
-      }]
+  pure [hiout, loout]
 
 
 marshalCmmPrimCall op rs xs =
