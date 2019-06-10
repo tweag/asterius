@@ -1446,8 +1446,9 @@ foreign import ccall unsafe "BinaryenAtomicWaitGetExpectedType" c_BinaryenAtomic
 foreign import ccall unsafe "BinaryenAtomicNotifyGetPtr" c_BinaryenAtomicNotifyGetPtr
   :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
-foreign import ccall unsafe "BinaryenAtomicNotifyGetWakeCount" c_BinaryenAtomicNotifyGetWakeCount
-  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
+-- HKM : This seems to be missing when building with nix
+-- foreign import ccall unsafe "BinaryenAtomicNotifyGetWakeCount" c_BinaryenAtomicNotifyGetWakeCount
+--  :: BinaryenExpressionRef -> IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenSIMDExtractGetOp" c_BinaryenSIMDExtractGetOp
   :: BinaryenExpressionRef -> IO BinaryenOp
@@ -1563,8 +1564,9 @@ foreign import ccall unsafe "BinaryenAddGlobalImport" c_BinaryenAddGlobalImport
   :: BinaryenModuleRef ->
   Ptr CChar -> Ptr CChar -> Ptr CChar -> BinaryenType -> IO ()
 
-foreign import ccall unsafe "BinaryenRemoveImport" c_BinaryenRemoveImport
-  :: BinaryenModuleRef -> Ptr CChar -> IO ()
+-- HKM : This seems to be missing when building with nix
+-- foreign import ccall unsafe "BinaryenRemoveImport" c_BinaryenRemoveImport
+--   :: BinaryenModuleRef -> Ptr CChar -> IO ()
 
 data BinaryenExport
 
