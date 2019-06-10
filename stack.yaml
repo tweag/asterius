@@ -101,13 +101,14 @@ extra-deps:
 flags:
     cassava:
         bytestring--lt-0_10_4: false
+    asterius:
+        nix: false
 
 packages:
   - asterius
   - binaryen
   - ghc-toolkit
   - inline-js/inline-js-core
-  - npm-utils
   - wabt
   - wasm-toolkit
 ghc-build: standard

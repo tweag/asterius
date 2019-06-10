@@ -11,6 +11,9 @@ flags:
   binaryen:
     default: true
     manual: true
+  nix:
+    default: true
+    manual: true
 
 extra-source-files:
   - CHANGELOG.md
@@ -64,7 +67,6 @@ dependencies:
   - ghc-prim
   - ghc-toolkit
   - ghci
-  - hpack # Added for hydra caching and nix-shell
   - inline-js-core
   - libiserv
   - mtl
@@ -106,7 +108,10 @@ library:
     build-tool-depends:
         alex:alex -any
       , happy:happy >=1.17.1
-      , hpack:hpack -any
+  when:
+    - condition: flag(nix)
+      dependencies:
+        - hpack # Added for hydra caching and nix-shell
 
 executables:
   ahc:

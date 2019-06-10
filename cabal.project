@@ -1,3 +1,5 @@
+index-state: 2019-05-23T00:00:00Z
+
 packages:
   asterius
   binaryen
@@ -8,6 +10,6 @@ packages:
   wasm-toolkit
 
 package asterius
-  flags: -binaryen
+  flags: +binaryen +nix
 
 write-ghc-environment-files: never
