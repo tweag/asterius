@@ -100,9 +100,6 @@ export class IntegerManager {
   doubleFromInteger(i) { return Number(this.decode(i)); }
 
   mul2(hi_hi, hi_lo, lo_hi, lo_lo, ipiece) {
-      console.log("*** hi_hi: ", hi_hi, " | hi_lo: ", hi_lo, " | lo_hi: ", lo_hi, 
-          " | lo_lo: ", lo_lo, "ipiece: ", ipiece, "***");
-
       this.view.setInt32(/*offset=*/0, hi_lo, /*littleEndian=*/true);
       this.view.setInt32(/*offset=*/4, hi_hi, /*littleEndian=*/true);
       const hi = this.view.getBigUint64(/*offset=*/0, /*littleEndian=*/true);
@@ -112,21 +109,9 @@ export class IntegerManager {
       this.view.setInt32(/*offset=*/4, lo_hi, /*littleEndian=*/true);
       const lo = this.view.getBigUint64(/*offset=*/0, /*littleEndian=*/true);
       
-
-      // ipiece = {0, 1, 2, 3} to return that chunk of 32-bit value, counted
-      // in little endian.
-      // const hi = BigInt(hi_hi) << BigInt(32) | BigInt(hi_lo);
-      // const lo = BigInt(lo_hi) << BigInt(32) | BigInt(lo_lo);
-
-      console.log("hi: ", hi );
-      console.log("lo: ", lo);
-
       const mul = hi * lo;
-      console.log("mul: ",  mul);
-
       // find the correct value that is masked
       const val =  Number((mul >> BigInt(32 * ipiece)) & ((BigInt(1) << BigInt(32)) - BigInt(1)));
-      console.log("val: ",  val);
 
       return Number(retval);
   }
