@@ -127,7 +127,7 @@ jobs:
             stack test asterius:ghc-testsuite --test-arguments "-p T11702"
             stack test asterius:ghc-testsuite --test-arguments "-p T10011"
             stack test asterius:ghc-testsuite --test-arguments "-p T10962"
-
+            stack test asterius:ghc-testsuite --test-arguments "-p T9810"
 
             stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
             stack test asterius:ghc-testsuite --test-arguments "-p NumDecimals"

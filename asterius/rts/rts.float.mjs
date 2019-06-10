@@ -169,6 +169,11 @@ export class FloatCBits {
       exp = 0;
     } else {
       exp = ((high >> 23) & 0xff) + this.MY_FMINEXP;
+
+      // [sign = high] with a [uint -> int] conversion. 
+      this.view.setUint32(0, high);
+      sign = this.view.getInt32(0);
+
       high &= this.FHIGHBIT - 1;
       if (exp != this.MY_FMINEXP)
         /* don't add hidden bit to denorms */
