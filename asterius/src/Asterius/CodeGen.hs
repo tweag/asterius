@@ -915,7 +915,174 @@ marshalCmmPrimCall (GHC.MO_AddWordC GHC.W64) [r, o] [x, y] = do
         {  unresolvedLocalReg = lo, value = overflow_sext }
     ]
 
+-- | See also: GHC.Prim.plusWord2
+-- | add unsigned: return (carry, result)
+marshalCmmPrimCall (GHC.MO_Add2 GHC.W64) [o, r] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
 
+  lr <- marshalTypedCmmLocalReg r I64
+  -- | y + x > maxbound
+  -- | y > maxbound - x
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_plus_y = Binary { binaryOp = AddInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let x_minus_maxbound = Binary { binaryOp = SubInt64
+                              , operand0 = ConstI64 0xFFFFFFFFFFFFFFFF
+                              , operand1 = xr
+                              }
+
+  let overflow = Binary { binaryOp = GtUInt64
+                                     , operand0 = yr
+                                     , operand1 = x_minus_maxbound
+                                     }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                                         , operand0 = overflow
+                                         }
+
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_plus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+-- | See also: GHC.Prim.addIntC#
+-- | add signed: return (result, overflow)
+marshalCmmPrimCall (GHC.MO_AddIntC GHC.W64) [r, o] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  -- | y + x > maxbound
+  -- | y > maxbound - x
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_plus_y = Binary { binaryOp = AddInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let x_minus_maxbound = Binary { binaryOp = SubInt64
+                              , operand0 = ConstI64 0xFFFFFFFFFFFFFFFF
+                              , operand1 = xr
+                              }
+
+  let overflow = Binary { binaryOp = GtUInt64
+                                     , operand0 = yr
+                                     , operand1 = x_minus_maxbound
+                                     }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                                         , operand0 = overflow
+                                         }
+
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_plus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+-- | subtract signed, reporting overflow:
+-- see also: GHC.Prim.SubIntC#
+-- returns (result, overflow)
+marshalCmmPrimCall (GHC.MO_SubIntC GHC.W64) [r, o] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  lr <- marshalTypedCmmLocalReg r I64
+  lo <- marshalTypedCmmLocalReg o I64
+
+  let x_minus_y = Binary { binaryOp = SubInt64
+                     , operand0 = xr
+                     , operand1 = yr
+                     }
+
+  let overflow = Binary { binaryOp = LtUInt64
+                        , operand0 = xr
+                        , operand1 = yr
+                        }
+  let overflow_sext = Unary { unaryOp = ExtendUInt32
+                              , operand0 = overflow
+                              }
+
+  pure
+    [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_minus_y }
+    , UnresolvedSetLocal
+        {  unresolvedLocalReg = lo, value = overflow_sext }
+    ]
+
+
+
+-- | high = high bits of result, low = low bits of result.
+-- | see also: GHC.Prim.timesWord2#
+marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  hir <- marshalTypedCmmLocalReg hi I64
+  lor <- marshalTypedCmmLocalReg lo I64
+
+  -- | Smash the high and low 32 bits together to create a 64 bit
+  -- number.
+  let smash32Into64 hi32 lo32 =
+          Binary OrInt64
+              (Binary ShlInt64
+                 (Unary ExtendUInt32 hi32) (ConstI64 32))
+              (Unary ExtendUInt32 lo32)
+
+ -- | mask the `n32`th block of v, counting blocks from the lowest bit.
+  let mask32 v n32 =
+          Unary WrapInt64 $
+              Binary AndInt64
+                (Binary ShrUInt64 v (ConstI64 (n32 * 32)))
+                (ConstI64 0xFFFFFFFF)
+
+
+  let hiout =
+          UnresolvedSetLocal
+              { unresolvedLocalReg = hir
+              , value = smash32Into64
+                          CallImport
+                              { target' = "__asterius_mul2"
+                              , operands = [mask32 xr 1, mask32 xr 0,
+                                            mask32 yr 1, mask32 yr 0,
+                                            ConstI32 3]
+                              , callImportReturnTypes = [I32]
+                              }
+                          CallImport
+                              { target' = "__asterius_mul2"
+                              , operands = [mask32 xr 1, mask32 xr 0,
+                                            mask32 yr 1, mask32 yr 0,
+                                            ConstI32 2]
+                              , callImportReturnTypes = [I32]
+                              }
+              }
+
+  let loout =
+          UnresolvedSetLocal
+              { unresolvedLocalReg = lor
+              , value = smash32Into64
+                          CallImport
+                              { target' = "__asterius_mul2"
+                              , operands = [mask32 xr 1, mask32 xr 0,
+                                            mask32 yr 1, mask32 yr 0,
+                                            ConstI32 1]
+                              , callImportReturnTypes = [I32]
+                              }
+                          CallImport
+                              { target' = "__asterius_mul2"
+                              , operands = [mask32 xr 1, mask32 xr 0,
+                                            mask32 yr 1, mask32 yr 0,
+                                            ConstI32 0]
+                              , callImportReturnTypes = [I32]
+                              }
+              }
+  pure [hiout, loout]
 
 marshalCmmPrimCall op rs xs =
   throwError $

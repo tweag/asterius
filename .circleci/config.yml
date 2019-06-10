@@ -127,11 +127,13 @@ jobs:
             stack test asterius:ghc-testsuite --test-arguments "-p T11702"
             stack test asterius:ghc-testsuite --test-arguments "-p T10011"
             stack test asterius:ghc-testsuite --test-arguments "-p T10962"
-
+            stack test asterius:ghc-testsuite --test-arguments "-p T9810"
 
             stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
             stack test asterius:ghc-testsuite --test-arguments "-p NumDecimals"
             stack test asterius:ghc-testsuite --test-arguments "-p FloatFnInverses"
+            stack test asterius:ghc-testsuite --test-arguments "-p mul2"
+            stack test asterius:ghc-testsuite --test-arguments "-p add2"
 
 
   asterius-test-ghc-testsuite:
@@ -205,8 +207,8 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite  -j8 --test-arguments="--timeout=30s" || true
               cp asterius/test-report.csv /tmp
-              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
-              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-grouped-by-error-ascii.txt
+              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
+              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
  
       - store_artifacts:
           path: /tmp/test-report.csv
