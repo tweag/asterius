@@ -86,11 +86,12 @@ export class FloatCBits {
   floatExponentFromBits(bits) {
     const mask = (1 << 8) - 1;
     const sign = this.floatSignFromBits(bits);
-    return ((bits >> 23) & mask) ^ (sign << 31);
+    console.log("bits:", bits, "sign: ", sign, "mask: ", mask);
+    return ((bits ^ (sign << 31)) >>> 23) & mask;
   }
 
   floatSignFromBits(bits) {
-    return bits >> 31;
+    return bits >>> 31;
   }
 
   doubleMantissaFromBits(bits) {
@@ -168,7 +169,7 @@ export class FloatCBits {
       man = 0;
       exp = 0;
     } else {
-      exp = ((high >> 23) & 0xff) + this.MY_FMINEXP;
+      exp = ((high >>> 23) & 0xff) + this.MY_FMINEXP;
 
       // [sign = high] with a [uint -> int] conversion. 
       this.view.setUint32(0, high);
@@ -214,7 +215,7 @@ export class FloatCBits {
       man_sign = 0;
       iexp = 0;
     } else {
-      iexp = ((high >> 20) & 0x7ff) + this.MY_DMINEXP;
+      iexp = ((high >>> 20) & 0x7ff) + this.MY_DMINEXP;
 
       // unsigned to signed conversion
       this.view.setUint32(0, high);
@@ -271,6 +272,8 @@ export class FloatCBits {
       );
     };
 
+    console.log("fexp: ", fexp, " fman: " , fman, "fsign: ", fsign);
+
     /* if real exponent > 22, it's already integral, infinite or nan */
     if (fexp > 149) {
       /* 22 + 127 */
@@ -287,8 +290,10 @@ export class FloatCBits {
     const mask = BigInt(2) * half - BigInt(1); /* fraction bits */
     let mant = fman | BigInt(this.FLT_HIDDEN); /* add hidden bit */
     let frac = mant & mask; /* get fraction */
-    mant ^= frac; /* truncate mantissa */
-    if (frac < half || (frac == half && (mant & (2 * half)) == 0)) {
+    mant ^= frac; /* truncate mantissa */ 
+    console.error("mant: " , mant, "mant & 2 * half: ", mant & (BigInt(2) * half));
+
+      if (frac < half || (frac == half && (mant & (BigInt(2) * half)) == 0)) {
       /* this means we have to truncate */
       if (mant == 0) {
         /* f == ±0.5, return 0.0 */
@@ -302,6 +307,7 @@ export class FloatCBits {
     } else {
       /* round away from zero, increment mantissa */
       mant += BigInt(2) * half;
+      console.log("mant: ", mant);
       if (mant == this.FLT_POWER2) {
         /* next power of 2, increase exponent and set mantissa to 0 */
         fman = BigInt(0);
@@ -310,7 +316,7 @@ export class FloatCBits {
       } else {
         /* remove hidden bit and set mantissa */
         fman = mant ^ BigInt(this.FLT_HIDDEN);
-        return u.f;
+        return reconstructFloat();
       }
     }
   }
@@ -360,7 +366,7 @@ export class FloatCBits {
 
       if (
         frac < half ||
-        (frac == half && man1 == 0 /* a tie */ && (mant & (2 * half)) == 0)
+        (frac == half && mant1 == 0 /* a tie */ && (mant & (BigInt(2) * half)) == 0)
       ) {
         /* truncate */
         if (mant == 0) {
