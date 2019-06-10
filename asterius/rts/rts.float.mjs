@@ -281,7 +281,7 @@ export class FloatCBits {
     if (fexp < 126) {
       /* (-1) + 127, abs(f) < 0.5 */
       /* only used for rounding to Integral a, so don't care about -0.0 */
-      return f;
+      return 0.0;
     }
     /* 0.5 <= abs(f) < 2^23 */
     /// let half, mask, mant, frac;
