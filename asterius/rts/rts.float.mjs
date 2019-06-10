@@ -86,7 +86,6 @@ export class FloatCBits {
   floatExponentFromBits(bits) {
     const mask = (1 << 8) - 1;
     const sign = this.floatSignFromBits(bits);
-    console.log("bits:", bits, "sign: ", sign, "mask: ", mask);
     return ((bits ^ (sign << 31)) >>> 23) & mask;
   }
 
@@ -333,10 +332,12 @@ export class FloatCBits {
 
     // put back the double together
     const reconstructDouble = () => {
-      let mantFull = (mant1 << BigInt(32)) | mant0;
-      let n =  Number(
-        this.IEEEToDouble((sign << BigInt(63)) | (exp << BigInt(52)) | mantFull)
-      );
+      const mantFull = (mant0 << BigInt(32)) | mant1;
+
+      const bits = (sign << BigInt(63)) | (exp << BigInt(52)) | mantFull;
+      console.log(d, " ", "sign: ", sign, "exp: " , exp, "mant0: " , mant0, "mant1: ", mant1, "bits:" , bits);
+      const n =  Number(this.IEEEToDouble(bits));
+      
       return n;
     };
 
@@ -390,6 +391,8 @@ export class FloatCBits {
           mant0 = BigInt(0);
           exp += BigInt(1);
           // reassamble
+          return reconstructDouble();
+        
         }
         /* remove hidden bit */
         mant0 = mant ^ BigInt(this.DBL_HIDDEN);
