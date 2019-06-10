@@ -128,11 +128,7 @@ export class IntegerManager {
       const val =  Number((mul >> BigInt(32 * ipiece)) & ((BigInt(1) << BigInt(32)) - BigInt(1)));
       console.log("val: ",  val);
 
-      // convert value to I32
-      this.view.setUint32(/*offset=*/0, val, /*littleEndian=*/true);
-      const retval = this.view.getUint32(/*offset=*/0, /*littleEndian=*/true);
-      console.log("retval: ", retval);
-      return retval;
+      return Number(retval);
   }
   
 }
