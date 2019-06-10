@@ -1017,6 +1017,71 @@ marshalCmmPrimCall (GHC.MO_SubIntC GHC.W64) [r, o] [x, y] = do
 
 
 
+-- | high = high bits of result, low = low bits of result.
+-- | see also: GHC.Prim.timesWord2#
+marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
+  (xr, _) <- marshalCmmExpr x
+  (yr, _) <- marshalCmmExpr y
+
+  hir <- marshalTypedCmmLocalReg hi I64
+  lor <- marshalTypedCmmLocalReg lo I64
+
+  -- | Smash the high and low 32 bits together to create a 64 bit
+  -- number.
+  let smash32Into64 hi32 lo32 =
+          Binary OrInt64
+              (Binary ShlInt64
+                 (Unary ExtendUInt32 hi32) (ConstI64 32))
+              (Unary ExtendUInt32 lo32)
+
+ -- | mask the `n32`th block of v, counting blocks from the lowest bit.
+  let mask32 v n32 =
+          Unary WrapInt64 $
+              Binary AndInt64
+                (Binary ShrUInt64 v (ConstI64 (n32 * 32)))
+                (ConstI64 0xFFFFFFFF)
+
+
+  let hiout =
+          UnresolvedSetLocal
+              { unresolvedLocalReg = hir
+              , value = smash32Into64
+                          CallImport
+                              { target' = "__asterius_mul2"
+                              , operands = [mask32 xr 1, mask32 xr 0,
+                                            mask32 yr 1, mask32 yr 0,
+                                            ConstI32 3]
+                              , callImportReturnTypes = [I32]
+                              }
+                          CallImport
+                              { target' = "__asterius_mul2"
+                              , operands = [mask32 xr 1, mask32 xr 0,
+                                            mask32 yr 1, mask32 yr 0,
+                                            ConstI32 2]
+                              , callImportReturnTypes = [I32]
+                              }
+              }
+
+  let loout =
+          UnresolvedSetLocal
+              { unresolvedLocalReg = lor
+              , value = smash32Into64
+                          CallImport
+                              { target' = "__asterius_mul2"
+                              , operands = [mask32 xr 1, mask32 xr 0,
+                                            mask32 yr 1, mask32 yr 0,
+                                            ConstI32 1]
+                              , callImportReturnTypes = [I32]
+                              }
+                          CallImport
+                              { target' = "__asterius_mul2"
+                              , operands = [mask32 xr 1, mask32 xr 0,
+                                            mask32 yr 1, mask32 yr 0,
+                                            ConstI32 0]
+                              , callImportReturnTypes = [I32]
+                              }
+              }
+  pure [hiout, loout]
 
 marshalCmmPrimCall op rs xs =
   throwError $
