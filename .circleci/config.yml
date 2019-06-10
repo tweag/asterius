@@ -205,8 +205,8 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite  -j8 --test-arguments="--timeout=30s" || true
               cp asterius/test-report.csv /tmp
-              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
-              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-grouped-by-error-ascii.txt
+              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
+              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
  
       - store_artifacts:
           path: /tmp/test-report.csv
