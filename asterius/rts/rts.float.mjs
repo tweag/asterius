@@ -335,8 +335,8 @@ export class FloatCBits {
       const mantFull = (mant0 << BigInt(32)) | mant1;
 
       const bits = (sign << BigInt(63)) | (exp << BigInt(52)) | mantFull;
-      console.log(d, " ", "sign: ", sign, "exp: " , exp, "mant0: " , mant0, "mant1: ", mant1, "bits:" , bits);
       const n =  Number(this.IEEEToDouble(bits));
+      console.log(d, " ", "sign: ", sign, "exp: " , exp, "mant0: " , mant0, "mant1: ", mant1, "bits:" , bits, " round:  " , n);
       
       return n;
     };
