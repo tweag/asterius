@@ -1,8 +1,7 @@
 export class IntegerManager {
-  constructor(jsvalManager, heap, symbol_table) {
+  constructor(jsvalManager, heap) {
     this.jsvalManager = jsvalManager;
     this.heap = heap;
-    this.symbol_table = symbol_table;
 
     // buffer of 8 bytes to hold floats/doubles
     this.buffer = new ArrayBuffer(8);
