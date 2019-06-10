@@ -158,6 +158,8 @@ in
     _config = pkgSet.config;
     inherit (pkgSet.config) hsPkgs;
     inherit ghc-head ghc864 plan-nix pkgs haskell;
+    ghc = pkgs.haskell.compiler.${compiler.nix-name};
+    ghc-boot-libs = ghc864.boot-libs;
     asterius-boot = pkgs.runCommand "asterius-boot" {
       preferLocalBuild = true;
       nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compiler.nix-name} pkgs.autoconf pkgs.automake ];
