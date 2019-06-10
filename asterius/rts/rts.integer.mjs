@@ -113,7 +113,7 @@ export class IntegerManager {
       // find the correct value that is masked
       const val =  Number((mul >> BigInt(32 * ipiece)) & ((BigInt(1) << BigInt(32)) - BigInt(1)));
 
-      return Number(retval);
+      return Number(val);
   }
   
 }
