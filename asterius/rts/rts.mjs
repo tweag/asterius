@@ -161,12 +161,12 @@ export function newAsteriusInstance(req) {
       __asterius_heapalloc.init();
       __asterius_integer_manager.heap = __asterius_heap_builder;
       __asterius_bytestring_cbits.memory = __asterius_memory;
-      return Object.freeze(Object.assign(__asterius_jsffi_instance, {
+      return Object.assign(__asterius_jsffi_instance, {
         wasmModule: req.module,
         wasmInstance: __asterius_wasm_instance,
         exports: Object.freeze(Object.assign(__asterius_exports, __asterius_wasm_instance.exports)),
         symbolTable: req.symbolTable,
         logger: __asterius_logger
-      }));
+      });
     });
 }
