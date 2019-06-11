@@ -250,13 +250,13 @@ genDefEntry Task {..} =
     , mconcat
         [ "module.then(m => "
         , out_base
-        , "(m)).then(i => {\n"
+        , "(m)).then(async i => {\n"
         , if debug
             then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
             else mempty
         , "try {\n"
         , "i.exports.hs_init();\n"
-        , "i.exports.main();\n"
+        , "await i.exports.main();\n"
         , "} catch (err) {\n"
         , "console.log(i.stdio.stdout());\n"
         , "throw err;\n"

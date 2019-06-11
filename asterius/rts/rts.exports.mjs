@@ -8,7 +8,7 @@ export class Exports {
     Object.assign(this, exports);
   }
 
-  rts_eval(p) {
+  async rts_eval(p) {
     this.context.reentrancyGuard.enter(0);
     const tso = this.createGenThread(p);
     this.scheduleWaitThread(tso);
@@ -16,7 +16,7 @@ export class Exports {
     return this.context.tsoManager.getTSOid(tso);
   }
 
-  rts_evalIO(p) {
+  async rts_evalIO(p) {
     this.context.reentrancyGuard.enter(0);
     const tso = this.createStrictIOThread(p);
     this.scheduleWaitThread(tso);
@@ -24,7 +24,7 @@ export class Exports {
     return this.context.tsoManager.getTSOid(tso);
   }
 
-  rts_evalLazyIO(p) {
+  async rts_evalLazyIO(p) {
     this.context.reentrancyGuard.enter(0);
     const tso = this.createIOThread(p);
     this.scheduleWaitThread(tso);
