@@ -23,6 +23,7 @@ import { ThreadPaused } from "./rts.threadpaused.mjs";
 import { MD5 } from "./rts.md5.mjs"
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
+import { AsyncFFI } from "./rts.asyncffi.mjs";
 import { Exports } from "./rts.exports.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
@@ -49,6 +50,7 @@ export function newAsteriusInstance(req) {
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
+    __asterius_asyncffi = new AsyncFFI(),
     __asterius_exports = new Exports(__asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports),
     __asterius_md5 = new MD5(__asterius_memory);
 
@@ -100,7 +102,8 @@ export function newAsteriusInstance(req) {
       putChar: (h, c) => __asterius_fs.writeSync(h, String.fromCodePoint(c)),
       stdout: () => __asterius_fs.root.get("/dev/stdout"),
       stderr: () => __asterius_fs.root.get("/dev/stderr")
-    }
+    },
+    registerAsyncFFI: p => __asterius_asyncffi.register(p)
   };
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),
