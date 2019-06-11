@@ -114,6 +114,12 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
                 })
+          , ( "__asterius_context"
+            , AsteriusStatics
+                {staticsType = Bytes, asteriusStatics = [Uninitialized 1024]})
+          , ( "__asterius_last_func"
+            , AsteriusStatics
+                {staticsType = Bytes, asteriusStatics = [SymbolStatic "stg_returnToStackTop" 0]})
           ]
     , functionMap =
         Map.fromList $
@@ -777,6 +783,7 @@ dirtySTACK _ stack =
 scheduleWaitThreadFunction BuiltinsOptions {} =
   runEDSL "scheduleWaitThread" $ do
     t <- param I64
+    let last_func = pointerI64 (symbol "__asterius_last_func") 0
     block' [] $ \sched_block_lbl ->
       loop' [] $ \sched_loop_lbl -> do
         storeI64
@@ -787,7 +794,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
-        r <- stgRun $ symbol "stg_returnToStackTop"
+        r <- stgRun $ getLVal last_func
         ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
         switchI64 ret $
           const
@@ -811,7 +818,13 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                      break' sched_loop_lbl Nothing)
               , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
-              , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
+              , ( ret_ThreadBlocked
+                , if'
+                    []
+                    (loadI16 t offset_StgTSO_why_blocked `eqInt32`
+                     constI32 blocked_BlockedOnCCall)
+                    mempty
+                    (emit $ emitErrorMessage [] "ThreadBlocked"))
               , ( ret_ThreadFinished
                 , if'
                     []
