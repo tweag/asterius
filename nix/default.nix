@@ -174,5 +174,6 @@ in
           --set sandbox_ghc_lib_dir $(ghc --print-libdir)
       '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
       $out/bin/ahc-boot
+      cp -r ${../asterius/rts} $out/boot/rts
     '';
   }
