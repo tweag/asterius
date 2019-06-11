@@ -7,8 +7,8 @@ let
   # Use this to set the version of asterius to be booted
   cached = import (nixpkgs.fetchgit {
     url = "https://github.com/input-output-hk/asterius";
-    rev = "ec674bd3cada1656537d10eaaf6d5b81d3311643";
-    sha256 = "1wzj29k2367ad35l8c8jm35z6bx580phnx340y67v3f6x56ldaz6";
+    rev = "18160ca02f129f6e5051ea55de65903662ac6fba";
+    sha256 = "1yk3ka4giilf3qskrvj3g5n3m02zl21yl8xg76sna4wmqjx90asv";
     fetchSubmodules = true;
   }) {};
   nix-tools = (import ./. {}).nix-tools;
