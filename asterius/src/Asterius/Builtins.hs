@@ -457,7 +457,10 @@ rtsFunctionImports debug =
       { internalName = "__asterius_quotrem2_remainder"
       , externalModuleName = "Integer"
       , externalBaseName = "quotrem2_remainder"
-      , functionType = FunctionType {paramTypes = [I32, I32, I32, I32, I32], returnTypes = [I32]}
+      , functionType = FunctionType {
+          paramTypes = [I32, I32, I32, I32, I32, I32, I32]
+          , returnTypes = [I32]
+          }
       }
   ] <>
   (if debug
