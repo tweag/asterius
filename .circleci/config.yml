@@ -57,7 +57,7 @@ jobs:
           name: Test asterius
           command: |
             stack --no-terminal test asterius:fib
-            stack --no-terminal test asterius:jsffi
+            # stack --no-terminal test asterius:jsffi
             stack --no-terminal test asterius:array
             stack --no-terminal test asterius:stableptr
             stack --no-terminal test asterius:rtsapi
@@ -77,7 +77,7 @@ jobs:
             $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
             cd $CIRCLE_WORKING_DIRECTORY
             stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
-            stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
+            # stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:stableptr --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:rtsapi --test-arguments="--debug" > /dev/null
