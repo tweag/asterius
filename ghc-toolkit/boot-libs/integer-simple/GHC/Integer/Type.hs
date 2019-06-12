@@ -69,7 +69,7 @@ wordToInteger w =
     in Integer (js_wordToInteger high low)
 
 integerToWord :: Integer -> Word#
-integerToWord (Integer i) = js_integerToWord i
+integerToWord (Integer i) = or# (uncheckedShiftL# (js_integerToWord i 1#) 32#)  (js_integerToWord i 0#)
 
 integerToInt :: Integer -> Int#
 integerToInt (Integer i) = js_integerToInt i
@@ -234,7 +234,8 @@ foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1}, ${2})" js
 
 foreign import javascript "__asterius_jsffi.Integer.wordToInteger(${1}, ${2})" js_wordToInteger :: Word# -> Word# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1})" js_integerToWord :: Int# -> Word#
+-- | Given integer and the _pice_ of the word
+foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1}, ${1})" js_integerToWord :: Int# -> Int# -> Word#
 
 foreign import javascript "__asterius_jsffi.Integer.integerToInt(${1})" js_integerToInt :: Int# -> Int#
 
