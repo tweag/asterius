@@ -59,6 +59,7 @@ rtsUsedSymbols =
     , "stg_marked_upd_frame_info"
     , "stg_NO_FINALIZER_closure"
     , "stg_raise_info"
+    , "stg_returnToStackTop"
     , "stg_WEAK_info"
     ]
 

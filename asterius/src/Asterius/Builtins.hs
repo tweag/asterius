@@ -117,9 +117,6 @@ rtsAsteriusModule opts =
           , ( "__asterius_context"
             , AsteriusStatics
                 {staticsType = Bytes, asteriusStatics = [Uninitialized 1024]})
-          , ( "__asterius_last_func"
-            , AsteriusStatics
-                {staticsType = Bytes, asteriusStatics = [SymbolStatic "stg_returnToStackTop" 0]})
           ]
     , functionMap =
         Map.fromList $
@@ -298,6 +295,12 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [I32, I32], returnTypes = []}
       }
   , FunctionImport
+      { internalName = "__asterius_setTSOfunc"
+      , externalModuleName = "TSO"
+      , externalBaseName = "setTSOfunc"
+      , functionType = FunctionType {paramTypes = [I32, F64], returnTypes = []}
+      }
+  , FunctionImport
       { internalName = "__asterius_getTSOret"
       , externalModuleName = "TSO"
       , externalBaseName = "getTSOret"
@@ -308,6 +311,12 @@ rtsFunctionImports debug =
       , externalModuleName = "TSO"
       , externalBaseName = "getTSOrstat"
       , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_getTSOfunc"
+      , externalModuleName = "TSO"
+      , externalBaseName = "getTSOfunc"
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = [F64]}
       }
   , FunctionImport
       { internalName = "__asterius_hpAlloc"
@@ -783,7 +792,7 @@ dirtySTACK _ stack =
 scheduleWaitThreadFunction BuiltinsOptions {} =
   runEDSL "scheduleWaitThread" $ do
     t <- param I64
-    let last_func = pointerI64 (symbol "__asterius_last_func") 0
+    tid <- i32Local $ loadI32 t offset_StgTSO_id
     block' [] $ \sched_block_lbl ->
       loop' [] $ \sched_loop_lbl -> do
         storeI64
@@ -794,7 +803,9 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
-        r <- stgRun $ getLVal last_func
+        last_func <-
+          truncUFloat64ToInt64 <$> callImport' "__asterius_getTSOfunc" [tid] F64
+        r <- stgRun last_func
         ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
         switchI64 ret $
           const
@@ -832,7 +843,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                      constI32 next_ThreadComplete)
                     (do callImport
                           "__asterius_setTSOret"
-                          [ loadI32 t offset_StgTSO_id
+                          [ tid
                           , convertUInt64ToFloat64 $
                             loadI64
                               (loadI64
@@ -842,18 +853,12 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                           ]
                         callImport
                           "__asterius_setTSOrstat"
-                          [ loadI32 t offset_StgTSO_id
-                          , constI32 scheduler_Success
-                          ]
+                          [tid, constI32 scheduler_Success]
                         break' sched_block_lbl Nothing)
-                    (do callImport
-                          "__asterius_setTSOret"
-                          [loadI32 t offset_StgTSO_id, ConstF64 0]
+                    (do callImport "__asterius_setTSOret" [tid, ConstF64 0]
                         callImport
                           "__asterius_setTSOrstat"
-                          [ loadI32 t offset_StgTSO_id
-                          , constI32 scheduler_Killed
-                          ]
+                          [tid, constI32 scheduler_Killed]
                         break' sched_block_lbl Nothing))
               ]
             , emit $ emitErrorMessage [] "IllegalThreadReturnCode")

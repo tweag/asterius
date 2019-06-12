@@ -1,47 +1,58 @@
 import * as rtsConstants from "./rts.constants.mjs";
 
-class TSO {
-  constructor() {
-    this.addr = undefined;
-    this.ret = undefined;
-    this.rstat = undefined;
-    Object.seal(this);
-  }
-}
-
 export class TSOManager {
-  constructor(memory) {
+  constructor(memory, symbol_table) {
     this.memory = memory;
-    this.tsos = [];
-    Object.freeze(this);
+    this.symbolTable = symbol_table;
+    this.last = 0;
+    this.tsos = new Map();
+    Object.seal(this);
   }
 
   newTSO() {
-    return this.tsos.push(new TSO()) - 1;
+    const tid = ++this.last;
+    this.tsos.set(
+      tid,
+      Object.seal({
+        addr: -1,
+        ret: -1,
+        rstat: -1,
+        func: this.symbolTable.stg_returnToStackTop
+      })
+    );
+    return tid;
   }
 
   getTSOaddr(i) {
-    return this.tsos[i].addr;
+    return this.tsos.get(i).addr;
   }
 
   getTSOret(i) {
-    return this.tsos[i].ret;
+    return this.tsos.get(i).ret;
   }
 
   getTSOrstat(i) {
-    return this.tsos[i].rstat;
+    return this.tsos.get(i).rstat;
+  }
+
+  getTSOfunc(i) {
+    return this.tsos.get(i).func;
   }
 
   setTSOaddr(i, addr) {
-    this.tsos[i].addr = addr;
+    this.tsos.get(i).addr = addr;
   }
 
   setTSOret(i, ret) {
-    this.tsos[i].ret = ret;
+    this.tsos.get(i).ret = ret;
   }
 
   setTSOrstat(i, rstat) {
-    this.tsos[i].rstat = rstat;
+    this.tsos.get(i).rstat = rstat;
+  }
+
+  setTSOfunc(i, func) {
+    this.tsos.get(i).func = func;
   }
 
   getTSOid(tso) {
