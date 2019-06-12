@@ -114,7 +114,7 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
                 })
-          , ( "__asterius_context"
+          , ( "__asterius_regs"
             , AsteriusStatics
                 {staticsType = Bytes, asteriusStatics = [Uninitialized 1024]})
           ]
@@ -301,6 +301,12 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [I32, F64], returnTypes = []}
       }
   , FunctionImport
+      { internalName = "__asterius_setTSOregs"
+      , externalModuleName = "TSO"
+      , externalBaseName = "setTSOregs"
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
+      }
+  , FunctionImport
       { internalName = "__asterius_getTSOret"
       , externalModuleName = "TSO"
       , externalBaseName = "getTSOret"
@@ -317,6 +323,12 @@ rtsFunctionImports debug =
       , externalModuleName = "TSO"
       , externalBaseName = "getTSOfunc"
       , functionType = FunctionType {paramTypes = [I32], returnTypes = [F64]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_getTSOregs"
+      , externalModuleName = "TSO"
+      , externalBaseName = "getTSOregs"
+      , functionType = FunctionType {paramTypes = [I32], returnTypes = []}
       }
   , FunctionImport
       { internalName = "__asterius_hpAlloc"
@@ -803,6 +815,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
+        callImport "__asterius_getTSOregs" [tid]
         last_func <-
           truncUFloat64ToInt64 <$> callImport' "__asterius_getTSOfunc" [tid] F64
         r <- stgRun last_func

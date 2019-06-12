@@ -1,3 +1,4 @@
+import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export class TSOManager {
@@ -17,7 +18,8 @@ export class TSOManager {
         addr: -1,
         ret: -1,
         rstat: -1,
-        func: this.symbolTable.stg_returnToStackTop
+        func: this.symbolTable.stg_returnToStackTop,
+        regs: new Uint8Array(1024)
       })
     );
     return tid;
@@ -39,6 +41,13 @@ export class TSOManager {
     return this.tsos.get(i).func;
   }
 
+  getTSOregs(i) {
+    this.memory.i8View.set(
+      this.tsos.get(i).regs,
+      Memory.unTag(this.symbolTable.__asterius_regs)
+    );
+  }
+
   setTSOaddr(i, addr) {
     this.tsos.get(i).addr = addr;
   }
@@ -53,6 +62,11 @@ export class TSOManager {
 
   setTSOfunc(i, func) {
     this.tsos.get(i).func = func;
+  }
+
+  setTSOregs(i) {
+    const p = Memory.unTag(this.symbolTable.__asterius_regs);
+    this.tsos.get(i).regs.set(this.memory.i8View.subarray(p, p + 1024));
   }
 
   getTSOid(tso) {

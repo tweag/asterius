@@ -40,7 +40,8 @@ loadTheWorld LinkTask {..} = do
 rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
   Set.fromList
-    [ "barf"
+    [ "__asterius_regs"
+    , "barf"
     , "base_GHCziPtr_Ptr_con_info"
     , "base_GHCziStable_StablePtr_con_info"
     , "ghczmprim_GHCziTypes_Czh_con_info"

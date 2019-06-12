@@ -93,8 +93,7 @@ genContext vts e =
         ])
       where
         p_ctx_regs = zip [0,8 ..] ctx_regs
-        pos p =
-          Symbol {unresolvedSymbol = "__asterius_context", symbolOffset = p}
+        pos p = Symbol {unresolvedSymbol = "__asterius_regs", symbolOffset = p}
         bs vt =
           case vt of
             I32 -> 4
