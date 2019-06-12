@@ -140,7 +140,7 @@ export class FloatCBits {
     this.view.setFloat64(0, d);
     return this.view.getBigUint64(0);
   }
-
+  
   // return two 32-bit integers, [low, high] from a 64 bit double;
   DoubleTo2Int(d) {
     this.view.setFloat64(0, d);
