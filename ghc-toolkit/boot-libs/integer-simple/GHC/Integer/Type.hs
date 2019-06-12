@@ -32,7 +32,7 @@ import GHC.Classes
 import GHC.Magic
 import GHC.Prim
 import GHC.Types
-
+ 
 data Integer = Integer Int#
 
 mkInteger :: Bool -> [Int] -> Integer
@@ -235,7 +235,7 @@ foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1}, ${2})" js
 foreign import javascript "__asterius_jsffi.Integer.wordToInteger(${1}, ${2})" js_wordToInteger :: Word# -> Word# -> Int#
 
 -- | Given integer and the _pice_ of the word
-foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1}, ${1})" js_integerToWord :: Int# -> Int# -> Word#
+foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1}, ${2})" js_integerToWord :: Int# -> Int# -> Word#
 
 foreign import javascript "__asterius_jsffi.Integer.integerToInt(${1})" js_integerToInt :: Int# -> Int#
 
