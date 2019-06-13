@@ -166,7 +166,13 @@ in
     } ''
       mkdir -p $out/bin
       mkdir -p $out/boot
-      cp -r $(ghc --print-libdir) $out/ghc-libdir
+      mkdir -p $out/ghc-libdir
+      cp -r $(ghc --print-libdir)/include $out/ghc-libdir
+      cp $(ghc --print-libdir)/llvm-passes $out/ghc-libdir
+      cp $(ghc --print-libdir)/llvm-targets $out/ghc-libdir
+      cp $(ghc --print-libdir)/platformConstants $out/ghc-libdir
+      cp $(ghc --print-libdir)/template-hsc.h $out/ghc-libdir
+      cp -r $(ghc --print-libdir)/settings $out/ghc-libdir
       chmod +w -R $out/ghc-libdir
       cp -r ${../ghc-toolkit/ghc-libdir}/include/* $out/ghc-libdir/include
       ${pkgs.lib.concatMapStringsSep "\n" (exe: ''
