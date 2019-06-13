@@ -166,14 +166,16 @@ in
     } ''
       mkdir -p $out/bin
       mkdir -p $out/boot
+      cp -r $(ghc --print-libdir) $out/ghc-libdir
+      chmod +w -R $out/ghc-libdir
+      cp -r ${../ghc-toolkit/ghc-libdir}/include/* $out/ghc-libdir/include
       ${pkgs.lib.concatMapStringsSep "\n" (exe: ''
         makeWrapper ${pkgSet.config.hsPkgs.asterius.components.exes.${exe}}/bin/${exe} $out/bin/${exe} \
           --set asterius_bindir $out/bin \
           --set asterius_bootdir $out/boot \
           --set boot_libs_path ${ghc864.boot-libs} \
-          --set sandbox_ghc_lib_dir $(ghc --print-libdir)
+          --set sandbox_ghc_lib_dir $out/ghc-libdir
       '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
       $out/bin/ahc-boot
-      cp -r ${../asterius/rts} $out/boot/rts
     '';
   }
