@@ -30,6 +30,7 @@
  ("Unregisterised", "NO"),
  ("LLVM llc command", "llc"),
  ("LLVM opt command", "opt"),
- ("LLVM clang command", "clang")
+ ("LLVM clang command", "clang"),
+ ("perl command", "perl")
  ]
 

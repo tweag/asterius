@@ -68,7 +68,6 @@ dependencies:
   - ghc-toolkit
   - ghci
   - inline-js-core
-  - libiserv
   - mtl
   - network <2.9
   - parsec
