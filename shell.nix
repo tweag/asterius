@@ -16,7 +16,16 @@ let
   cabalSystem = builtins.replaceStrings ["-darwin"] ["-osx"] nixpkgs.stdenv.system;
 in (hsPkgs.shellFor {
     # Shell will provide the dependencies of asterius, but not asterius itself.
-    packages = ps: with ps; [ asterius binaryen ];
+    packages = ps: with ps; [
+      asterius
+      binaryen
+      ghc-toolkit
+      wabt
+      ghc-toolkit
+      inline-js
+      inline-js-core
+      wabt
+      wasm-toolkit ];
   }).overrideAttrs (oldAttrs: {
     shellHook = (oldAttrs.shellHook or "") + ''
       unset CABAL_CONFIG
