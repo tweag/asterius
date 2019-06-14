@@ -9,7 +9,7 @@ let
     pkgs.lib.cleanSourceWith {
       src = ./..;
       filter = path: type:
-        pkgs.lib.all (i: toString i != path) [ ../.DS_Store ../default.nix ../result ../nix ../asterius-cabal-bin
+        pkgs.lib.all (i: toString i != path) [ ../.DS_Store ../default.nix ../result ../nix ../asterius-cabal-bin ../asterius-cabal-boot
           # These are .gitignored sow we should exclude them here
           ../.stack-work
           ../wabt/wabt/bin
@@ -32,7 +32,18 @@ let
           ]
           && !(pkgs.lib.strings.hasInfix ".dump-" (baseNameOf path)) # These are .gitignored sow we should exclude them here
           && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ".nix" ]
-          && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ];
+          && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ]
+          && (pkgs.lib.hasPrefix (toString ../asterius/tests) path || (
+               pkgs.lib.all (i: (!pkgs.lib.hasSuffix i path)) [
+                ".mjs"
+                ".o"
+                ".wasm"
+                ".hi"
+                ".html"
+                ".js" ]
+            && pkgs.lib.all (i: i != baseNameOf path) [
+                "package.json"
+                "jsffi_stub.h" ]));
     };
   # our packages
   plan-nix = haskell.callCabalProjectToNix {
@@ -52,6 +63,10 @@ let
     sha256 = "145g7s3z9q8d18pxgyngvixgsm6gmwh1rgkzkhacy4krqiq0qyvx";
     stripLen = 1;
   };
+
+  # Node
+  nodejs = pkgs.nodejs-10_x;
+  nodePkgs = import ./node { inherit pkgs nodejs; };
 
   # Build the packageset with module support.
   # We can essentially override anything in the modules
@@ -157,7 +172,7 @@ in
   pkgSet.config.hsPkgs // {
     _config = pkgSet.config;
     inherit (pkgSet.config) hsPkgs;
-    inherit ghc-head ghc864 plan-nix pkgs haskell;
+    inherit ghc-head ghc864 plan-nix pkgs haskell nodejs nodePkgs;
     ghc = pkgs.haskell.compiler.${compiler.nix-name};
     ghc-boot-libs = ghc864.boot-libs;
     asterius-boot = pkgs.runCommand "asterius-boot" {

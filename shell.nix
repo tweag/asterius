@@ -12,7 +12,7 @@ let
     fetchSubmodules = true;
   }) {};
   nix-tools = (import ./. {}).nix-tools;
-  hsPkgs = nix-tools._raw.hsPkgs;
+  inherit (nix-tools._raw) hsPkgs nodePkgs nodejs;
   cabalSystem = builtins.replaceStrings ["-darwin"] ["-osx"] nixpkgs.stdenv.system;
 in (hsPkgs.shellFor {
     # Shell will provide the dependencies of asterius, but not asterius itself.
@@ -27,6 +27,7 @@ in (hsPkgs.shellFor {
       wabt
       wasm-toolkit ];
   }).overrideAttrs (oldAttrs: {
+    buildInputs = oldAttrs.buildInputs ++ [ nodejs nodePkgs.parcel-bundler ];
     shellHook = (oldAttrs.shellHook or "") + ''
       unset CABAL_CONFIG
       export asterius_bootdir=${cached.nix-tools._raw.asterius-boot}/boot
