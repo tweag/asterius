@@ -10,11 +10,13 @@ module Asterius.Passes.SafeCCall
   ) where
 
 import Asterius.Internals
+import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
 import Data.List
+import Language.Haskell.GHC.Toolkit.Constants
 
 data SafeCCall =
   SafeCCall AsteriusEntitySymbol
@@ -77,8 +79,19 @@ genContext vts e =
           , valueType = vt
           }
         | (p, (i, vt)) <- p_ctx_regs
+        ] <>
+        [ CallImport
+            { target' = "__asterius_setTSOregs"
+            , operands = [tid]
+            , callImportReturnTypes = []
+            }
         ]
-      , [ SetLocal
+      , CallImport
+          { target' = "__asterius_getTSOregs"
+          , operands = [tid]
+          , callImportReturnTypes = []
+          } :
+        [ SetLocal
           { index = i
           , value =
               Load
@@ -92,6 +105,23 @@ genContext vts e =
         | (p, (i, vt)) <- p_ctx_regs
         ])
       where
+        tid =
+          Load
+            { signed = False
+            , bytes = 4
+            , offset = 0
+            , valueType = I32
+            , ptr =
+                Unary
+                  { unaryOp = WrapInt64
+                  , operand0 =
+                      Binary
+                        { binaryOp = AddInt64
+                        , operand0 = unresolvedGetGlobal CurrentTSO
+                        , operand1 = ConstI64 $ fromIntegral offset_StgTSO_id
+                        }
+                  }
+            }
         p_ctx_regs = zip [0,8 ..] ctx_regs
         pos p = Symbol {unresolvedSymbol = "__asterius_regs", symbolOffset = p}
         bs vt =
