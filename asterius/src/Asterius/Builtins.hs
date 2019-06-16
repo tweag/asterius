@@ -803,7 +803,7 @@ dirtySTACK _ stack =
 
 scheduleWaitThreadFunction BuiltinsOptions {} =
   runEDSL "scheduleWaitThread" $ do
-    t <- param I64
+    [t, load_regs] <- params [I64, I32]
     tid <- i32Local $ loadI32 t offset_StgTSO_id
     block' [] $ \sched_block_lbl ->
       loop' [] $ \sched_loop_lbl -> do
@@ -815,7 +815,8 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
-        callImport "__asterius_getTSOregs" [tid]
+        if' [] (eqZInt32 load_regs) mempty $
+          callImport "__asterius_getTSOregs" [tid]
         last_func <-
           truncUFloat64ToInt64 <$> callImport' "__asterius_getTSOfunc" [tid] F64
         r <- stgRun last_func

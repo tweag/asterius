@@ -19,7 +19,7 @@ export class TSOManager {
         ret: -1,
         rstat: -1,
         func: this.symbolTable.stg_returnToStackTop,
-        regs: new Uint8Array(1024),
+        regs: undefined,
         result: undefined,
         reject: undefined
       })
@@ -75,8 +75,10 @@ export class TSOManager {
   }
 
   setTSOregs(i) {
-    const p = Memory.unTag(this.symbolTable.__asterius_regs);
-    this.tsos.get(i).regs.set(this.memory.i8View.subarray(p, p + 1024));
+    const p = Memory.unTag(this.symbolTable.__asterius_regs),
+      tso = this.tsos.get(i);
+    if (!tso.regs) tso.regs = new Uint8Array(1024);
+    tso.regs.set(this.memory.i8View.subarray(p, p + 1024));
   }
 
   setTSOpromise(i, p) {
