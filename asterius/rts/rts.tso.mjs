@@ -19,7 +19,9 @@ export class TSOManager {
         ret: -1,
         rstat: -1,
         func: this.symbolTable.stg_returnToStackTop,
-        regs: new Uint8Array(1024)
+        regs: new Uint8Array(1024),
+        result: undefined,
+        reject: undefined
       })
     );
     return tid;
@@ -48,6 +50,14 @@ export class TSOManager {
     );
   }
 
+  getTSOresult(i) {
+    return this.tsos.get(i).result;
+  }
+
+  getTSOreject(i) {
+    return this.tsos.get(i).reject;
+  }
+
   setTSOaddr(i, addr) {
     this.tsos.get(i).addr = addr;
   }
@@ -67,6 +77,13 @@ export class TSOManager {
   setTSOregs(i) {
     const p = Memory.unTag(this.symbolTable.__asterius_regs);
     this.tsos.get(i).regs.set(this.memory.i8View.subarray(p, p + 1024));
+  }
+
+  setTSOpromise(i, p) {
+    p.then(
+      r => (this.tsos.get(i).result = r),
+      err => (this.tsos.get(i).reject = err)
+    );
   }
 
   getTSOid(tso) {
