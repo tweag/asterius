@@ -57,16 +57,17 @@ splitBlockBody FFIMarshalState {..} instrs = foldr' w [] es
         Nop -> []
         _ -> [instrs]
 
-genContext ::
-     [ValueType] -> Expression -> ([Expression], Expression, [Expression])
+genContext :: [ValueType] -> Expression -> ([Expression], [Expression])
 genContext vts e =
   case e of
-    Call {} -> (save_instrs, e, load_instrs)
-      where I32:I32:ctx_regs = vts
-            (save_instrs, load_instrs) = gen_save_load $ zip [2 ..] ctx_regs
-    SetLocal {value = e'@Call {}, ..} -> (save_instrs, e', load_instrs)
-      where (I32:I32:ctx_regs_x, _:ctx_regs_y) = genericSplitAt index vts
-            ctx_regs = zip [2 ..] ctx_regs_x <> zip [succ index ..] ctx_regs_y
+    Call {} -> (save_instrs <> [e], load_instrs)
+      where I32:I32:I32:ctx_regs = vts
+            (save_instrs, load_instrs) =
+              gen_save_load $ zip [2 ..] (I32 : ctx_regs)
+    SetLocal {value = e'@Call {}, ..} -> (save_instrs <> [e'], load_instrs)
+      where (I32:I32:I32:ctx_regs_x, _:ctx_regs_y) = genericSplitAt index vts
+            ctx_regs =
+              zip [2 ..] (I32 : ctx_regs_x) <> zip [succ index ..] ctx_regs_y
             (save_instrs, load_instrs) = gen_save_load ctx_regs
     _ -> error "Asterius.Passes.SafeCCall.genContext"
   where
