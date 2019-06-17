@@ -20,10 +20,10 @@ newAsteriusInstance s lib_path mod_buf = do
   eval s $ takeJSVal f_val <> "(" <> takeJSVal mod_val <> ")"
 
 hsInit :: JSSession -> JSVal -> IO ()
-hsInit s i = eval s $ deRefJSVal i <> ".wasmInstance.exports.hs_init()"
+hsInit s i = eval s $ deRefJSVal i <> ".exports.hs_init()"
 
 hsMain :: JSSession -> JSVal -> IO ()
-hsMain s i = eval s $ deRefJSVal i <> ".wasmInstance.exports.main()"
+hsMain s i = eval s $ deRefJSVal i <> ".exports.main()"
 
 hsStdOut :: JSSession -> JSVal -> IO LBS.ByteString
 hsStdOut s i = eval s $ deRefJSVal i <> ".stdio.stdout()"
