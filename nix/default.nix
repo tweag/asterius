@@ -33,7 +33,7 @@ let
           && !(pkgs.lib.strings.hasInfix ".dump-" (baseNameOf path)) # These are .gitignored sow we should exclude them here
           && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ".nix" ]
           && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ]
-          && (pkgs.lib.hasPrefix (toString ../asterius/tests) path || (
+          && !(pkgs.lib.hasPrefix (toString ../asterius/tests) path && (
                pkgs.lib.all (i: (!pkgs.lib.hasSuffix i path)) [
                 ".mjs"
                 ".o"
