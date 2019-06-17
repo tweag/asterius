@@ -875,11 +875,11 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
             , emit $ emitErrorMessage [] "IllegalThreadReturnCode")
     callImport "__asterius_gcRootTSO" [convertUInt64ToFloat64 t]
 
-createThreadFunction _ =
+createThreadFunction BuiltinsOptions {..} =
   runEDSL "createThread" $ do
     setReturnTypes [I64]
-    [cap, alloc_words] <- params [I64, I64]
-    tso_p <- call' "allocatePinned" [cap, alloc_words] I64
+    let alloc_words = constI64 $ roundup_bytes_to_words threadStateSize
+    tso_p <- call' "allocatePinned" [mainCapability, alloc_words] I64
     stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
     storeI64 stack_p 0 $ symbol "stg_STACK_info"
     stack_size_w <-
@@ -899,7 +899,7 @@ createThreadFunction _ =
     storeI32 tso_p offset_StgTSO_flags $ constI32 0
     storeI32 tso_p offset_StgTSO_dirty $ constI32 1
     storeI32 tso_p offset_StgTSO_saved_errno $ constI32 0
-    storeI64 tso_p offset_StgTSO_cap cap
+    storeI64 tso_p offset_StgTSO_cap mainCapability
     storeI64 tso_p offset_StgTSO_stackobj stack_p
     storeI32 tso_p offset_StgTSO_tot_stack_size $ wrapInt64 stack_size_w
     storeI64 tso_p offset_StgTSO_alloc_limit (constI64 0)
@@ -921,8 +921,8 @@ pushClosure tso c = do
 createThreadHelper :: (Expression -> [Expression]) -> EDSL ()
 createThreadHelper mk_closures = do
   setReturnTypes [I64]
-  [cap, stack_size, closure] <- params [I64, I64, I64]
-  t <- call' "createThread" [cap, stack_size] I64
+  closure <- param I64
+  t <- call' "createThread" [] I64
   for_ (mk_closures closure) $ pushClosure t
   emit t
 
