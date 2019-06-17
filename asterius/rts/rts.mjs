@@ -69,12 +69,12 @@ export function newAsteriusInstance(req) {
     newTmpJSVal: v => __asterius_stableptr_manager.newTmpJSVal(v),
     mutTmpJSVal: (i, f) => __asterius_stableptr_manager.mutTmpJSVal(i, f),
     freezeTmpJSVal: i => __asterius_stableptr_manager.freezeTmpJSVal(i),
-    makeHaskellCallback: sp => () => {
-      const tid = __asterius_exports.rts_evalLazyIO(__asterius_stableptr_manager.deRefStablePtr(sp));
+    makeHaskellCallback: sp => async () => {
+      const tid = await __asterius_exports.rts_evalLazyIO(__asterius_stableptr_manager.deRefStablePtr(sp));
       __asterius_exports.rts_checkSchedStatus(tid);
     },
-    makeHaskellCallback1: sp => ev => {
-      const tid = __asterius_exports.rts_evalLazyIO(
+    makeHaskellCallback1: sp => async ev => {
+      const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_exports.rts_apply(
           __asterius_stableptr_manager.deRefStablePtr(sp),
           __asterius_exports.rts_mkInt(
@@ -84,8 +84,8 @@ export function newAsteriusInstance(req) {
       );
       __asterius_exports.rts_checkSchedStatus(tid);
     },
-    makeHaskellCallback2: sp => (x, y) => {
-      const tid = __asterius_exports.rts_evalLazyIO(
+    makeHaskellCallback2: sp => async (x, y) => {
+      const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_exports.rts_apply(
           __asterius_exports.rts_apply(
             __asterius_stableptr_manager.deRefStablePtr(sp), __asterius_exports.rts_mkInt(
