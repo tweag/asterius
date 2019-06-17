@@ -50,8 +50,6 @@ let
     src = cleanSrc;
     ghc = pkgs.haskell.compiler.ghc864;
     index-state = "2019-05-23T00:00:00Z";
-    # Hydra currently has issues reading from files in the store
-    cabalProject = builtins.readFile ../cabal.project;
   };
   plan-pkgs-0 = import "${plan-nix}";
   # Hide libiserv from the plan because it does not exist in hackage
