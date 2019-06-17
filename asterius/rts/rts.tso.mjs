@@ -16,7 +16,7 @@ export class TSOManager {
       tid,
       Object.seal({
         addr: -1,
-        ret: -1,
+        ret: 0,
         rstat: -1,
         func: this.symbolTable.stg_returnToStackTop,
         regs: undefined,
