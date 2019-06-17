@@ -12,7 +12,8 @@ main = mapM_ print
 --    invDeviation @Double exp log <$> [-10, -5 .. 300]
 --  , invDeviation @Float  exp log <$> [-10 .. 60]
    -- @sin@ is only invertible on @[-π/2…π/2] <-> [-1…1]@.
- [invDeviation @Double sin asin (-1.3)]
+-- [invDeviation @Double sin asin (-1.3)]
+   [invDeviation' (-1.3)]
 -- , invDeviation @Float  sin asin <$> [-1.5, -1.4 .. 1.5]
 --   -- @cos@ is invertible on @[0…π] <-> [-1…1]@.
 -- , invDeviation @Double cos acos <$> [0, 0.1 .. 3]
@@ -30,6 +31,11 @@ main = mapM_ print
 -- , invDeviation @Double atanh tanh <$> [-0.99, -0.87 .. 0.9]
 -- , invDeviation @Float  atanh tanh <$> [-0.99, -0.87 .. 0.9]
 -- ]
+
+invDeviation' :: Double -> Double
+invDeviation' v =
+  let x = (asin (sin (x) / x)) - 1
+  in fromIntegral (round $ x * 2^36) / 2^36
 
 invDeviation :: KnownNumDeviation a
           => (a -> a) -- ^ Some numerical function @f@.
