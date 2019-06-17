@@ -98,6 +98,10 @@ let
           # packages.hsc2hs.components.exes.hsc2hs.doExactConfig = true;
           packages.ghc.patches = [ ./patches/ghc.patch ];
           packages.Cabal.patches = [ cabalPatch ];
+          packages.asterius.components.tests =
+          	pkgs.lib.mapAttrs (n: v: { testWrapper = "PATH=${asterius-boot}/bin:$PATH"; })
+          		(haskell.mkCabalProjectPkgSet {inherit plan-pkgs;})
+          			.config.hsPkgs.asterius.components.tests;
       })
     ];
   };
@@ -168,14 +172,7 @@ let
   '';
   in { inherit ghc-src ghc-prim ghc-patched-src boot-libs; };
 
-in
-  pkgSet.config.hsPkgs // {
-    _config = pkgSet.config;
-    inherit (pkgSet.config) hsPkgs;
-    inherit ghc-head ghc864 plan-nix pkgs haskell nodejs nodePkgs;
-    ghc = pkgs.haskell.compiler.${compiler.nix-name};
-    ghc-boot-libs = ghc864.boot-libs;
-    asterius-boot = pkgs.runCommand "asterius-boot" {
+  asterius-boot = pkgs.runCommand "asterius-boot" {
       preferLocalBuild = true;
       nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compiler.nix-name} pkgs.autoconf pkgs.automake ];
     } ''
@@ -199,4 +196,11 @@ in
       '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
       $out/bin/ahc-boot
     '';
+in
+  pkgSet.config.hsPkgs // {
+    _config = pkgSet.config;
+    inherit (pkgSet.config) hsPkgs;
+    inherit ghc-head ghc864 plan-nix pkgs haskell nodejs nodePkgs asterius-boot;
+    ghc = pkgs.haskell.compiler.${compiler.nix-name};
+    ghc-boot-libs = ghc864.boot-libs;
   }
