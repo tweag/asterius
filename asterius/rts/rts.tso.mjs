@@ -26,4 +26,8 @@ export class TSOManager {
   setTSOret(i, ret) { this.tsos[i].ret = ret; }
 
   setTSOrstat(i, rstat) { this.tsos[i].rstat = rstat; }
+
+  getTSOid(tso) {
+    return this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
+  }
 }
