@@ -440,7 +440,7 @@ rtsFunctionImports debug =
       , externalModuleName = "Integer"
       , externalBaseName = "mul2"
       , functionType = FunctionType {
-          paramTypes = [I32, I32, I32, I32, I32, I32, I32]
+          paramTypes = [I32, I32, I32, I32, I32]
           , returnTypes = [I32]
           }
       }
