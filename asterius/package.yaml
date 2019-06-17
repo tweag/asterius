@@ -254,7 +254,6 @@ tests:
       - tasty
       - tasty-hspec
       - ansi-terminal
-      - stm
       - cassava
 
   ghc-testsuite-with-ghc:

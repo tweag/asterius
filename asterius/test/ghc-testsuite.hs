@@ -19,8 +19,6 @@ import Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
 import Data.Monoid (Any(..))
-import Control.Concurrent.STM.TVar
-import Control.Concurrent.STM
 import Test.Tasty.Hspec
 import Test.Tasty.Runners
 import Control.Exception
@@ -35,11 +33,6 @@ import Data.Word
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
---
--- TODO: Update the code to not re-implement tasty internals when
--- the new version is released, since we had a PR that exposes some
--- tasty internals for us:
--- https://github.com/feuerbach/tasty/pull/252
 
 data TestCase = TestCase
   { casePath :: FilePath
@@ -230,20 +223,6 @@ consoleOutput tlref toutput smap =
           when nonempty $ do printHeading :: IO (); getTraversal printBody
       , Any nonempty
       )
-
-
-getResultFromTVar :: TVar Status -> IO Test.Tasty.Runners.Result
-getResultFromTVar var =
-  atomically $ do
-    status <- readTVar var
-    case status of
-      Done r -> return r
-      _ -> retry
-
-computeStatistics :: StatusMap -> IO Statistics
-computeStatistics = getApp . foldMap (\var -> Ap $
-  (\r -> Statistics 1 (if resultSuccessful r then 0 else 1))
-    <$> getResultFromTVar var)
 
 
 -- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter
