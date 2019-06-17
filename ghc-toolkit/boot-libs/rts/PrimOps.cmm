@@ -922,7 +922,9 @@ stg_forkzh ( gcptr closure )
 
     gcptr threadid;
 
-    ("ptr" threadid) = ccall createIOThread( closure "ptr" );
+    ("ptr" threadid) = ccall createIOThread( MyCapability() "ptr",
+                                  TO_W_(RtsFlags_GcFlags_initialStkSize(RtsFlags)),
+                                  closure "ptr");
 
     /* start blocked if the current thread is blocked */
     StgTSO_flags(threadid) = %lobits16(
@@ -945,6 +947,8 @@ again: MAYBE_GC(again);
     gcptr threadid;
 
     ("ptr" threadid) = ccall createIOThread(
+        MyCapability() "ptr",
+        TO_W_(RtsFlags_GcFlags_initialStkSize(RtsFlags)),
         closure "ptr");
 
     /* start blocked if the current thread is blocked */
