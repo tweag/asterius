@@ -28,7 +28,7 @@ export class IntegerManager {
   }
   abs(bi) { return bi < BigInt(0) ? -bi : bi; }
   encode(bi) {
-    return Number(this.abs(bi) >> BigInt(31) > BigInt(0)
+  return Number(this.abs(bi) >> BigInt(31)
                       ? BigInt(this.jsvalManager.newJSVal(bi))
                       : bi << BigInt(1));
   }
@@ -50,7 +50,7 @@ export class IntegerManager {
       this.view.setUint32(/*offset=*/0, low, /*little endian=*/true);
       this.view.setUint32( /*offset=*/4, high, /*little endian=*/true);
       const bi = this.view.getBigUint64(/*offset=*/0, /*little endian=*/true);
-      var n =  this.encode(bi);
+      const n =  this.encode(bi);
       return n;
   }
 
@@ -127,7 +127,7 @@ export class IntegerManager {
       
       const mul = hi * lo;
       // find the correct value that is masked
-      const val =  Number((mul >> bigint(32 * ipiece)) & ((bigint(1) << bigint(32)) - bigint(1)));
+      const val =  Number((mul >> BigInt(32 * ipiece)) & ((BigInt(1) << BigInt(32)) - BigInt(1)));
 
       return Number(val);
   }
