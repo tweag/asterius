@@ -14,7 +14,7 @@ export class TSOManager {
     this.memory = memory;
     this.symbolTable = symbol_table;
     this.last = 0;
-    this.tsos = new Map();
+    this.tsos = [];
     Object.seal(this);
   }
 
