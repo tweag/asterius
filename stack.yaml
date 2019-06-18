@@ -31,7 +31,7 @@ extra-deps:
   - fast-logger-2.4.11
   - file-embed-0.0.11
   - gauge-0.2.4
-  - http://head.hackage.haskell.org/package/happy-1.19.10.tar.gz
+  - http://head.hackage.haskell.org/package/happy-1.19.11.tar.gz
   - hashable-1.2.7.0
   - hspec-2.7.0
   - hspec-core-2.7.0
