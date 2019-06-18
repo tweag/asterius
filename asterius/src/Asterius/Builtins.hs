@@ -38,7 +38,7 @@ wasmPageSize = 65536
 
 data BuiltinsOptions = BuiltinsOptions
   { progName :: String
-  , threadStateSize :: Int
+  , threadStateSize :: Int -- ^ In bytes
   , debug, hasMain :: Bool
   }
 

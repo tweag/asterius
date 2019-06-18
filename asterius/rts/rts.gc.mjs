@@ -16,7 +16,9 @@ export class GC {
     this.pinnedClosures = pinned_closures;
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
+    // Previous closure addr -> new (moved) closure addr
     this.closureIndirects = new Map();
+    // MB = Megablock
     this.liveMBlocks = new Set();
     this.workList = [];
     this.liveJSVals = new Set();
@@ -36,13 +38,19 @@ export class GC {
   }
 
   copyClosure(c, bytes) {
+    // allocate a new heap region.
+    // NOTE: allocate() takes WORDS, not bytes!
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
+    // memcpy the old closure to the new area
     this.memory.memcpy(dest_c, c, bytes);
+    // Add the destination closure to MBlock.
     this.liveMBlocks.add(this.bdescr(dest_c));
     return dest_c;
   }
 
+  // Move closure to new block of memory
   evacuateClosure(c) {
+    // extract the dynamic pointer tagging bits
     const tag = Memory.getDynTag(c), untagged_c = Memory.unDynTag(c);
     let dest_c = this.closureIndirects.get(untagged_c);
     if (dest_c == undefined) {
@@ -149,8 +157,6 @@ export class GC {
                           untagged_c + rtsConstants.offset_StgArrBytes_bytes)));
               break;
             }
-            case ClosureTypes.MUT_ARR_PTRS_CLEAN:
-            case ClosureTypes.MUT_ARR_PTRS_DIRTY:
             case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY:
             case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN: {
               dest_c = this.copyClosure(
@@ -190,10 +196,12 @@ export class GC {
     this.memory.i64Store(p, this.evacuateClosure(this.memory.i64Load(p)));
   }
 
+  // | HEADER | POINTERS | NON POINTERS
   scavengePointersFirst(payload, ptrs) {
     for (let i = 0; i < ptrs; ++i) this.scavengeClosureAt(payload + (i << 3));
   }
 
+  // pointers and words are interleaved.
   scavengeSmallBitmap(payload, bitmap, size) {
     for (let i = 0; i < size; ++i)
       if (!((bitmap >> BigInt(i)) & BigInt(1)))
@@ -498,8 +506,11 @@ export class GC {
     if (this.tsoManager.getTSOret(tid))
       this.tsoManager.setTSOret(tid, this.evacuateClosure(this.tsoManager.getTSOret(tid)));
     for (const c of this.pinnedClosures) this.evacuateClosure(c);
-    for (const[sp, c] of this.stablePtrManager.spt.entries())
+    for (const[sp, c] of this.stablePtrManager.spt.entries()) {
+      // Real stable pointers are tagged with low bit 1
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
+    }
+
     this.evacuateClosure(tso);
     this.scavengeWorkList();
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
