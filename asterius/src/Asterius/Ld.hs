@@ -40,7 +40,10 @@ loadTheWorld LinkTask {..} = do
 rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
   Set.fromList
-    [ "barf"
+    [ "__asterius_func"
+    , "__asterius_regs"
+    , "__asterius_ret"
+    , "barf"
     , "base_GHCziPtr_Ptr_con_info"
     , "base_GHCziStable_StablePtr_con_info"
     , "ghczmprim_GHCziTypes_Czh_con_info"
@@ -52,6 +55,7 @@ rtsUsedSymbols =
     , "ghczmprim_GHCziTypes_ZC_con_info"
     , "ghczmprim_GHCziTypes_ZMZN_closure"
     , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
+    , "MainCapability"
     , "Main_main_closure"
     , "stg_ARR_WORDS_info"
     , "stg_BLACKHOLE_info"
@@ -59,6 +63,7 @@ rtsUsedSymbols =
     , "stg_marked_upd_frame_info"
     , "stg_NO_FINALIZER_closure"
     , "stg_raise_info"
+    , "stg_returnToStackTop"
     , "stg_WEAK_info"
     ]
 

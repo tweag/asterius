@@ -1,6 +1,40 @@
+import * as rtsConstants from "./rts.constants.mjs";
+
+async function rts_eval_common(e, f, p) {
+  e.context.reentrancyGuard.enter(0);
+  const tso = e[f](p);
+  e.context.memory.i64Store(
+    e.context.symbolTable.__asterius_func,
+    e.context.symbolTable.stg_returnToStackTop
+  );
+  while (true) {
+    e.scheduleWaitThread(tso, false);
+    const ret = Number(
+      e.context.memory.i64Load(
+        e.context.symbolTable.MainCapability +
+          rtsConstants.offset_Capability_r +
+          rtsConstants.offset_StgRegTable_rRet
+      )
+    );
+    switch (ret) {
+      case 4: {
+        await e.context.tsoManager.promise;
+        break;
+      }
+      case 5: {
+        e.context.reentrancyGuard.exit(0);
+        return e.context.tsoManager.getTSOid(tso);
+      }
+      default:
+        throw new WebAssembly.RuntimeError(`Invalid rRet ${ret}`);
+    }
+  }
+}
+
 export class Exports {
-  constructor(reentrancy_guard, symbol_table, tso_manager, exports) {
+  constructor(memory, reentrancy_guard, symbol_table, tso_manager, exports) {
     this.context = Object.freeze({
+      memory: memory,
       reentrancyGuard: reentrancy_guard,
       symbolTable: symbol_table,
       tsoManager: tso_manager
@@ -8,28 +42,16 @@ export class Exports {
     Object.assign(this, exports);
   }
 
-  async rts_eval(p) {
-    this.context.reentrancyGuard.enter(0);
-    const tso = this.createGenThread(p);
-    this.scheduleWaitThread(tso, false);
-    this.context.reentrancyGuard.exit(0);
-    return this.context.tsoManager.getTSOid(tso);
+  rts_eval(p) {
+    return rts_eval_common(this, "createGenThread", p);
   }
 
-  async rts_evalIO(p) {
-    this.context.reentrancyGuard.enter(0);
-    const tso = this.createStrictIOThread(p);
-    this.scheduleWaitThread(tso, false);
-    this.context.reentrancyGuard.exit(0);
-    return this.context.tsoManager.getTSOid(tso);
+  rts_evalIO(p) {
+    return rts_eval_common(this, "createStrictIOThread", p);
   }
 
-  async rts_evalLazyIO(p) {
-    this.context.reentrancyGuard.enter(0);
-    const tso = this.createIOThread(p);
-    this.scheduleWaitThread(tso, false);
-    this.context.reentrancyGuard.exit(0);
-    return this.context.tsoManager.getTSOid(tso);
+  rts_evalLazyIO(p) {
+    return rts_eval_common(this, "createIOThread", p);
   }
 
   main() {

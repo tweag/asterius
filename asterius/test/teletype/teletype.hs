@@ -5,7 +5,7 @@ import Data.Char
 import Data.Coerce
 import System.IO
 
-foreign import javascript "(new Date()).toString() + String.fromCodePoint(0x10000)" js_get_str
+foreign import javascript safe "(new Date()).toString() + String.fromCodePoint(0x10000)" js_get_str
   :: IO JSString
 
 foreign import javascript "['asdf', 'zer0']" js_get_arr :: IO JSArray
