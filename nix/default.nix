@@ -33,15 +33,15 @@ let
           && !(pkgs.lib.strings.hasInfix ".dump-" (baseNameOf path)) # These are .gitignored sow we should exclude them here
           && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ".nix" ]
           && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ]
-          && !(pkgs.lib.hasPrefix (toString ../asterius/tests) path && (
-               pkgs.lib.all (i: (!pkgs.lib.hasSuffix i path)) [
+          && !(pkgs.lib.hasPrefix (toString ../asterius/test) path && (
+               pkgs.lib.any (i: pkgs.lib.hasSuffix i path) [
                 ".mjs"
                 ".o"
                 ".wasm"
                 ".hi"
                 ".html"
                 ".js" ]
-            && pkgs.lib.all (i: i != baseNameOf path) [
+            || pkgs.lib.any (i: i == baseNameOf path) [
                 "package.json"
                 "jsffi_stub.h" ]));
     };
@@ -65,7 +65,7 @@ let
   };
 
   # Node
-  nodejs = pkgs.nodejs-10_x;
+  nodejs = pkgs.nodejs-11_x;
   nodePkgs = import ./node { inherit pkgs nodejs; };
 
   # Build the packageset with module support.
@@ -99,9 +99,10 @@ let
           packages.ghc.patches = [ ./patches/ghc.patch ];
           packages.Cabal.patches = [ cabalPatch ];
           packages.asterius.components.tests =
-          	pkgs.lib.mapAttrs (n: v: { testWrapper = "PATH=${asterius-boot}/bin:$PATH"; })
-          		(haskell.mkCabalProjectPkgSet {inherit plan-pkgs;})
-          			.config.hsPkgs.asterius.components.tests;
+           pkgs.lib.mapAttrs (n: v: {
+               build-tools = [ asterius-boot nodejs nodePkgs.parcel-bundler ];
+             }) (haskell.mkCabalProjectPkgSet {inherit plan-pkgs;})
+                 .config.hsPkgs.asterius.components.tests;
       })
     ];
   };
