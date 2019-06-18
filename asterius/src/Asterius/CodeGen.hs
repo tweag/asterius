@@ -1158,7 +1158,7 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] =
 marshalCmmPrimCall op rs xs =
   throwError $
   UnsupportedCmmInstr $
-  "marshalCmmPrimCall" <> (showSBS $ GHC.CmmUnsafeForeignCall (GHC.PrimTarget op) rs xs)
+  showSBS $ GHC.CmmUnsafeForeignCall (GHC.PrimTarget op) rs xs
 
 marshalCmmUnsafeCall ::
      GHC.CmmExpr
@@ -1186,11 +1186,12 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
     _ ->
       throwError $
       UnsupportedCmmInstr $
-      "marshalCmmUnsafeCall from CmmLit: " <>  (showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs)
+      showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
+      
 marshalCmmUnsafeCall p f rs xs =
-    throwError $
+  throwError $
   UnsupportedCmmInstr $
-   "marshalCmmUnsafeCall: " <> (showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs)
+  showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
 
 marshalCmmInstr :: GHC.CmmNode GHC.O GHC.O -> CodeGen [Expression]
 marshalCmmInstr instr =

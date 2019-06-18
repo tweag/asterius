@@ -272,7 +272,6 @@ export class FloatCBits {
       );
     };
 
-    console.log("fexp: ", fexp, " fman: " , fman, "fsign: ", fsign);
 
     /* if real exponent > 22, it's already integral, infinite or nan */
     if (fexp > 149) {
@@ -291,7 +290,6 @@ export class FloatCBits {
     let mant = fman | BigInt(this.FLT_HIDDEN); /* add hidden bit */
     let frac = mant & mask; /* get fraction */
     mant ^= frac; /* truncate mantissa */ 
-    console.error("mant: " , mant, "mant & 2 * half: ", mant & (BigInt(2) * half));
 
       if (frac < half || (frac == half && (mant & (BigInt(2) * half)) == 0)) {
       /* this means we have to truncate */
@@ -307,7 +305,6 @@ export class FloatCBits {
     } else {
       /* round away from zero, increment mantissa */
       mant += BigInt(2) * half;
-      console.log("mant: ", mant);
       if (mant == this.FLT_POWER2) {
         /* next power of 2, increase exponent and set mantissa to 0 */
         fman = BigInt(0);
@@ -339,7 +336,6 @@ export class FloatCBits {
 
       const bits = (sign << BigInt(63)) | (exp << BigInt(52)) | mantFull;
       const n =  Number(this.IEEEToDouble(bits));
-      console.log(d, " ", "sign: ", sign, "exp: " , exp, "mant0: " , mant0, "mant1: ", mant1, "bits:" , bits, " round:  " , n);
       
       return n;
     };
