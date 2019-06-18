@@ -7,6 +7,7 @@ module Asterius.FrontendPlugin
 import Asterius.CodeGen
 import Asterius.Internals
 import Asterius.JSFFI
+import Asterius.Types
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
@@ -42,12 +43,12 @@ frontendPlugin =
                   dflags <- GHC.getDynFlags
                   setDynFlagsRef dflags
                   let mod_sym = marshalToModuleSymbol ms_mod
-                  liftIO $
+                  liftIO $ do
+                    get_ffi_mod <- readIORef get_ffi_mod_ref
+                    ffi_mod <- get_ffi_mod mod_sym
                     case runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod of
                       Left err -> throwIO err
                       Right m' -> do
-                        get_ffi_mod <- readIORef get_ffi_mod_ref
-                        ffi_mod <- get_ffi_mod mod_sym
                         let m = ffi_mod <> m'
                         encodeFile obj_path m
                         when is_debug $ do

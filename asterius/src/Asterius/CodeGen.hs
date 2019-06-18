@@ -30,6 +30,7 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
+import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.String
@@ -1348,4 +1349,5 @@ marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
 
 marshalRawCmm :: GHC.Module -> [[GHC.RawCmmDecl]] -> CodeGen AsteriusModule
-marshalRawCmm _ = fmap mconcat . traverse marshalCmmDecl . mconcat
+marshalRawCmm this_mod cmm_decls =
+  mconcat <$> traverse marshalCmmDecl (mconcat cmm_decls)
