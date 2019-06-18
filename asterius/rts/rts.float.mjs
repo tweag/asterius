@@ -259,6 +259,7 @@ export class FloatCBits {
 
   // from cbits/primFloat
   rintFloat(f) {
+
     const bits = this.FloatToIEEE(f);
     let fexp = BigInt(this.floatExponentFromBits(bits));
     let fman = BigInt(this.floatMantissaFromBits(bits));
@@ -332,8 +333,9 @@ export class FloatCBits {
 
     // put back the double together
     const reconstructDouble = () => {
-      // const mantFull = (mant0 << BigInt(32)) | mant1;
-      const mantFull = (mant1 << BigInt(32)) | mant0;
+      this.view.setInt32(0, Number(mant1), true);
+      this.view.setInt32(4, Number(mant0), true);
+      const mantFull = this.view.getBigUint64(0, true);
 
       const bits = (sign << BigInt(63)) | (exp << BigInt(52)) | mantFull;
       const n =  Number(this.IEEEToDouble(bits));
