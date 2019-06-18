@@ -1,10 +1,9 @@
-{ config ? {} }:
+{ config ? {}, asterius ? { outPath = ./.; rev = "abcdef"; } ,... }@args:
 let
   localLib = import ./nix/lib.nix { inherit config; };
   disabled = [
   ];
 in
-{ asterius ? { outPath = ./.; rev = "abcdef"; } ,... }@args:
 localLib.pkgs.lib.mapAttrsRecursiveCond
 (as: !(as ? "type" && as.type == "derivation"))
 (path: v: if (builtins.elem path disabled) then null else v)
