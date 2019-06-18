@@ -201,6 +201,8 @@ genLib Task {..} LinkReport {..} =
     , "export default module => \n"
     , "rts.newAsteriusInstance({module: module, jsffiFactory: "
     , generateFFIImportObjectFactory bundledFFIMarshalState
+    , ", exports: "
+    , generateFFIExportObject bundledFFIMarshalState
     , ", symbolTable: "
     , genSymbolDict symbol_table
     , ", infoTables: "
@@ -223,7 +225,13 @@ genLib Task {..} LinkReport {..} =
       | fullSymTable = raw_symbol_table
       | otherwise =
         M.restrictKeys raw_symbol_table $
-        S.fromList extraRootSymbols <> rtsUsedSymbols
+        S.fromList
+          [ ffiExportClosure
+          | FFIExportDecl {..} <-
+              M.elems $ ffiExportDecls bundledFFIMarshalState
+          ] <>
+        S.fromList extraRootSymbols <>
+        rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =
@@ -242,13 +250,13 @@ genDefEntry Task {..} =
     , mconcat
         [ "module.then(m => "
         , out_base
-        , "(m)).then(i => {\n"
+        , "(m)).then(async i => {\n"
         , if debug
             then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
             else mempty
         , "try {\n"
-        , "i.wasmInstance.exports.hs_init();\n"
-        , "i.wasmInstance.exports.main();\n"
+        , "i.exports.hs_init();\n"
+        , "await i.exports.main();\n"
         , "} catch (err) {\n"
         , "console.log(i.stdio.stdout());\n"
         , "throw err;\n"
