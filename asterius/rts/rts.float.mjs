@@ -332,8 +332,7 @@ export class FloatCBits {
 
     // put back the double together
     const reconstructDouble = () => {
-      const mantFull = (mant0 << BigInt(32)) | mant1;
-
+      const mantFull = (mant1 << BigInt(32)) | mant0;
       const bits = (sign << BigInt(63)) | (exp << BigInt(52)) | mantFull;
       const n =  Number(this.IEEEToDouble(bits));
       console.log(d, " ", "sign: ", sign, "exp: " , exp, "mant0: " , mant0, "mant1: ", mant1, "bits:" , bits, " round:  " , n);

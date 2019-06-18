@@ -57,7 +57,7 @@ jobs:
           name: Test asterius
           command: |
             stack --no-terminal test asterius:fib
-            stack --no-terminal test asterius:jsffi
+            # stack --no-terminal test asterius:jsffi
             stack --no-terminal test asterius:array
             stack --no-terminal test asterius:stableptr
             stack --no-terminal test asterius:rtsapi
@@ -77,7 +77,7 @@ jobs:
             $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
             cd $CIRCLE_WORKING_DIRECTORY
             stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
-            stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
+            # stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:stableptr --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:rtsapi --test-arguments="--debug" > /dev/null
@@ -112,6 +112,7 @@ jobs:
             stack test asterius:ghc-testsuite --test-arguments "-p arith008"
             stack test asterius:ghc-testsuite --test-arguments "-p arith007"
             stack test asterius:ghc-testsuite --test-arguments "-p arith006"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith005"
             stack test asterius:ghc-testsuite --test-arguments "-p arith004"
             stack test asterius:ghc-testsuite --test-arguments "-p arith002"
             stack test asterius:ghc-testsuite --test-arguments "-p arith001"
@@ -224,6 +225,13 @@ jobs:
     docker:
       - image: docker:edge-git
     steps:
+      - run:
+          name: Ensure we are on `tweag/asterius`
+          command: |
+            if [ -n "$CIRCLE_PR_NUMBER" ]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
       - setup_remote_docker
       - checkout
       - run:
@@ -273,6 +281,13 @@ jobs:
     docker:
       - image: docker:edge-git
     steps:
+      - run:
+          name: Ensure we are on `tweag/asterius`
+          command: |
+            if [ -n "$CIRCLE_PR_NUMBER" ]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
       - setup_remote_docker
       - checkout
       - run:

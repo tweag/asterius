@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 import Control.DeepSeq
@@ -58,8 +59,54 @@ foreign import ccall unsafe "assert_eq_i64" assert_eq_i64 :: Int -> Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
+
 main :: IO ()
 main = do
+  -- print $ "double: "
+  mapM_ print [invDeviation @Double sin asin (-1.3)]
+
+  -- print  ((\(x, y) -> (x, invDeviation @Double sin asin y)) <$> (zip [1,2..] [-1.5, -1.4 .. 1.5]))
+  -- print  ((\x -> invDeviation @Double sin asin x) <$> [-1.5, -1.4 .. 1.5])
+  -- print [(invDeviation @Double sin asin <$> [-1.5, -1.4 .. 1.5])]
+  -- print [(invDeviation @Float sin asin <$> [-1.5, -1.4 .. 1.5])]
+  -- print $ invDeviation @Double cos acos <$> [0, 0.1 .. 3]
+  -- let x = (-1.4 :: Double)
+  -- print $ (asin x :: Double)
+  -- print $ (asin (sin  x) :: Double)
+  -- print $ (asin (sin  x) / x :: Double)
+  -- print $ (asin (sin  x) / x - 1 :: Double)
+  -- print $ (((fromIntegral $ (round $ ((asin (sin  x) / x) - 1) * 2^36)) / (2^36 :: Double)) :: Double)
+  -- print $ invDeviation @Double sin asin x
+  -- print $ "float: "
+  -- mapM_ print $ invDeviation @Float sin asin <$> [-1.5, -1.4 .. 1.5]
+
+invDeviation :: KnownNumDeviation a
+          => (a -> a) -- ^ Some numerical function @f@.
+          -> (a -> a) -- ^ Inverse @g = f⁻¹@ of that function.
+          -> a        -- ^ Value @x@ which to compare with @g (f x)@.
+          -> Double   -- ^ Relative discrepancy between original/expected
+                      --   value and actual function result.
+invDeviation f g 0 = rmNumericDeviation $ (g (f 0) + 1) - 1
+invDeviation f g x = rmNumericDeviation $ (g (f x) / x) - 1
+
+-- | We need to round results to some sensible precision,
+--   because floating-point arithmetic generally makes
+--   it impossible to /exactly/ invert functions.
+--   What precision this is depends on the type. The bounds
+--   here are rather generous; the functions should usually
+--   perform substantially better than that.
+class (Floating a, Eq a) => KnownNumDeviation a where
+  rmNumericDeviation :: a -> Double
+
+instance KnownNumDeviation Double where
+  rmNumericDeviation x = fromIntegral (round $ x * 2^36) / 2^36
+
+instance KnownNumDeviation Float where
+  rmNumericDeviation x = fromIntegral (round $ x * 2^16) / 2^16
+
+
+main_ :: IO ()
+main_ = do
 
   performGC
 
