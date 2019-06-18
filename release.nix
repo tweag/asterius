@@ -19,4 +19,4 @@ localLib.pkgs.lib.mapAttrsRecursiveCond
     jobs.nix-tools.libs.asterius.x86_64-linux
   ];
 
-} (builtins.removeAttrs args ["asterius"]))
+} (builtins.removeAttrs args ["config" "asterius"]))
