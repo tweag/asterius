@@ -15,7 +15,7 @@ localLib.pkgs.lib.mapAttrsRecursiveCond
 
   required-name = "asterius-required-checks";
   required-targets = jobs: [
-    jobs.nix-tools.libs.asterius.x86_64-darwin
+#    jobs.nix-tools.libs.asterius.x86_64-darwin
     jobs.nix-tools.libs.asterius.x86_64-linux
   ];
 
