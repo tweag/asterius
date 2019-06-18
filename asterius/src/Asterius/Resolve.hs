@@ -22,7 +22,6 @@ import Data.Binary
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapQl)
-import Data.List
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
 import Data.String
@@ -85,8 +84,9 @@ mergeSymbols ::
   -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
+  -> [AsteriusEntitySymbol]
   -> (AsteriusModule, LinkReport)
-mergeSymbols _ gc_sections verbose_err store_mod root_syms
+mergeSymbols _ gc_sections verbose_err store_mod root_syms export_funcs
   | not gc_sections = (store_mod, mempty {bundledFFIMarshalState = ffi_all})
   | otherwise = (final_m, mempty {bundledFFIMarshalState = ffi_this})
   where
@@ -96,8 +96,17 @@ mergeSymbols _ gc_sections verbose_err store_mod root_syms
         { ffiImportDecls =
             flip LM.filterWithKey (ffiImportDecls ffi_all) $ \k _ ->
               (k <> "_wrapper") `LM.member` functionMap final_m
+        , ffiExportDecls = ffi_exports
         }
-    (_, _, final_m) = go (root_syms, S.empty, mempty)
+    ffi_exports
+      | not gc_sections = ffiExportDecls (ffiMarshalState store_mod)
+      | otherwise =
+        ffiExportDecls (ffiMarshalState store_mod) `LM.restrictKeys`
+        S.fromList export_funcs
+    root_syms' =
+      S.fromList [ffiExportClosure | FFIExportDecl {..} <- LM.elems ffi_exports] <>
+      root_syms
+    (_, _, final_m) = go (root_syms', S.empty, mempty)
     go i@(i_staging_syms, _, _)
       | S.null i_staging_syms = i
       | otherwise = go $ iter i
@@ -163,9 +172,7 @@ makeInfoTableSet AsteriusModule {..} sym_map =
 resolveAsteriusModule ::
      Bool
   -> Bool
-  -> Bool
   -> FFIMarshalState
-  -> [AsteriusEntitySymbol]
   -> AsteriusModule
   -> Int64
   -> Int64
@@ -174,7 +181,7 @@ resolveAsteriusModule ::
      , LM.Map AsteriusEntitySymbol Int64
      , Int
      , Int)
-resolveAsteriusModule debug has_main _ bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
+resolveAsteriusModule debug _ bundled_ffi_state m_globals_resolved func_start_addr data_start_addr =
   (new_mod, ss_sym_map, func_sym_map, table_slots, initial_mblocks)
   where
     (func_sym_map, last_func_addr) =
@@ -195,12 +202,7 @@ resolveAsteriusModule debug has_main _ bundled_ffi_state export_funcs m_globals_
       Module
         { functionMap' = new_function_map
         , functionImports = func_imports
-        , functionExports =
-            rtsFunctionExports debug has_main <>
-            [ FunctionExport
-              {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
-            | k <- map entityName export_funcs
-            ]
+        , functionExports = rtsFunctionExports debug
         , functionTable = func_table
         , tableImport =
             TableImport
@@ -220,12 +222,11 @@ linkStart ::
   -> Bool
   -> Bool
   -> Bool
-  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
   -> (AsteriusModule, Module, LinkReport)
-linkStart debug has_main gc_sections binaryen verbose_err store root_syms export_funcs =
+linkStart debug gc_sections binaryen verbose_err store root_syms export_funcs =
   ( merged_m
   , result_m
   , report
@@ -242,12 +243,7 @@ linkStart debug has_main gc_sections binaryen verbose_err store root_syms export
         gc_sections
         verbose_err
         store
-        (root_syms <>
-         S.fromList
-           [ AsteriusEntitySymbol
-             {entityName = "__asterius_jsffi_export_" <> entityName k}
-           | k <- export_funcs
-           ])
+        root_syms export_funcs
     merged_m1
       | debug = addMemoryTrap merged_m0
       | otherwise = merged_m0
@@ -266,10 +262,8 @@ linkStart debug has_main gc_sections binaryen verbose_err store root_syms export
     (result_m, ss_sym_map, func_sym_map, tbl_slots, static_mbs) =
       resolveAsteriusModule
         debug
-        has_main
         binaryen
         (bundledFFIMarshalState report)
-        export_funcs
         merged_m
         (1 .|. functionTag `shiftL` 32)
         (dataTag `shiftL` 32)
