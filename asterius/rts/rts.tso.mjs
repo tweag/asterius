@@ -1,16 +1,21 @@
+import { Memory } from "./rts.memory.mjs";
+import * as rtsConstants from "./rts.constants.mjs";
+
 class TSO {
   constructor() {
     this.addr = undefined;
     this.ret = undefined;
     this.rstat = undefined;
-    Object.seal(this);
   }
 }
 
 export class TSOManager {
-  constructor() {
-    this.tsos = [];
-    Object.freeze(this);
+  constructor(memory, symbol_table) {
+    this.memory = memory;
+    this.symbolTable = symbol_table;
+    this.last = 0;
+    this.tsos = new Map();
+    Object.seal(this);
   }
 
   newTSO() { return this.tsos.push(new TSO()) - 1; }
