@@ -15,7 +15,7 @@
 # give us the iohk-nix tooling, which also includes
 # the nix-tools tooling.
 let
-  localLib = import ./nix/lib.nix;
+  localLib = import ./nix/lib.nix {};
 in
 # This file needs to export a function that takes
 # the arguments it is passed and forwards them to

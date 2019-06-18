@@ -1,5 +1,6 @@
+{ config ? {} }:
 let
-  localLib = import ./nix/lib.nix;
+  localLib = import ./nix/lib.nix { inherit config; };
   disabled = [
   ];
 in
