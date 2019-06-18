@@ -254,8 +254,13 @@ tests:
       - tasty
       - tasty-hspec
       - ansi-terminal
-      - stm
       - cassava
+
+  ghc-testsuite-with-ghc:
+    source-dirs: test
+    main: ghc-testsuite-with-ghc.hs
+    ghc-options: -threaded -rtsopts
+    dependencies: []
 
   sizeof_md5context:
     source-dirs: test
