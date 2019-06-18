@@ -1029,7 +1029,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
 
   -- | Smash the high and low 32 bits together to create a 64 bit
   -- number.
-  let smash32Into64 hi32 lo32 =
+  let smash32IntTo64 hi32 lo32 =
           Binary OrInt64
               (Binary ShlInt64
                  (Unary ExtendUInt32 hi32) (ConstI64 32))
@@ -1046,9 +1046,9 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
   let hiout =
           UnresolvedSetLocal
               { unresolvedLocalReg = hir
-              , value = smash32Into64
+              , value = smash32IntTo64
                           CallImport
-                              { target' = "__asterius_mul2"
+                              { target' =  "__asterius_mul2"
                               , operands = [mask32 xr 1, mask32 xr 0,
                                             mask32 yr 1, mask32 yr 0,
                                             ConstI32 3]
@@ -1066,7 +1066,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
   let loout =
           UnresolvedSetLocal
               { unresolvedLocalReg = lor
-              , value = smash32Into64
+              , value = smash32IntTo64
                           CallImport
                               { target' = "__asterius_mul2"
                               , operands = [mask32 xr 1, mask32 xr 0,
@@ -1083,6 +1083,77 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                               }
               }
   pure [hiout, loout]
+ 
+
+-- See also: QuotRemWord2#
+marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] = do
+  quotr <- marshalTypedCmmLocalReg quot I64
+  remr <- marshalTypedCmmLocalReg rem I64
+
+  (lhsHir, _) <- marshalCmmExpr lhsHi
+  (lhsLor, _) <- marshalCmmExpr lhsLo
+  (rhsr, _) <- marshalCmmExpr rhs
+  
+  -- | Smash the high and low 32 bits together to create a 64 bit
+  -- number.
+  let smash32IntTo64 hi32 lo32 =
+          Binary OrInt64
+              (Binary ShlInt64
+                 (Unary ExtendUInt32 hi32) (ConstI64 32))
+              (Unary ExtendUInt32 lo32)
+
+ -- | mask the `n32`th block of v, counting blocks from the lowest bit.
+  let mask32 v n32 =
+          Unary WrapInt64 $
+              Binary AndInt64
+                (Binary ShrUInt64 v (ConstI64 (n32 * 32)))
+                (ConstI64 0xFFFFFFFF)
+
+
+  let quotout =
+          UnresolvedSetLocal
+              { unresolvedLocalReg = quotr
+              ,  value = smash32IntTo64
+                           CallImport
+                              { target' = "__asterius_quotrem2_quotient"
+                              , operands = [mask32 lhsHir 1, mask32 lhsHir 0,
+                                            mask32 lhsLor 1, mask32 lhsLor 0,
+                                            mask32 rhsr 1, mask32 rhsr 0,
+                                            ConstI32 1]
+                              , callImportReturnTypes = [I32]
+                              }
+                           CallImport
+                              { target' = "__asterius_quotrem2_quotient"
+                              , operands = [mask32 lhsHir 1, mask32 lhsHir 0,
+                                            mask32 lhsLor 1, mask32 lhsLor 0,
+                                            mask32 rhsr 1, mask32 rhsr 0,
+                                            ConstI32 0]
+                              , callImportReturnTypes = [I32]
+                              }
+              }
+  let remout =
+          UnresolvedSetLocal
+              { unresolvedLocalReg = remr
+              , value = smash32IntTo64
+                          CallImport
+                              { target' = "__asterius_quotrem2_remainder"
+                              , operands = [mask32 lhsHir 1, mask32 lhsHir 0,
+                                            mask32 lhsLor 1, mask32 lhsLor 0,
+                                            mask32 rhsr 1, mask32 rhsr 0,
+                                            ConstI32 1]
+                              , callImportReturnTypes = [I32]
+                              }
+                          CallImport
+                              { target' = "__asterius_quotrem2_remainder"
+                              , operands = [mask32 lhsHir 1, mask32 lhsHir 0,
+                                            mask32 lhsLor 1, mask32 lhsLor 0,
+                                            mask32 rhsr 1, mask32 rhsr 0,
+                                            ConstI32 0]
+                              , callImportReturnTypes = [I32]
+                              }
+              }
+              
+  pure [quotout, remout]  
 
 marshalCmmPrimCall op rs xs =
   throwError $
@@ -1116,6 +1187,7 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
       throwError $
       UnsupportedCmmInstr $
       showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
+      
 marshalCmmUnsafeCall p f rs xs =
   throwError $
   UnsupportedCmmInstr $
