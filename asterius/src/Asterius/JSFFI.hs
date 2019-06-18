@@ -11,6 +11,7 @@ module Asterius.JSFFI
   ( addFFIProcessor
   , generateFFIFunctionImports
   , generateFFIImportObjectFactory
+  , generateFFIExportObject
   ) where
 
 import Asterius.Builtins
@@ -467,122 +468,20 @@ generateFFIImportWrapperFunction k FFIImportDecl {..} =
     import_func_type = recoverWasmImportFunctionType ffiFunctionType
     wrapper_func_type = recoverWasmWrapperFunctionType ffiFunctionType
 
-generateFFIExportFunction :: FFIExportDecl -> Function
-generateFFIExportFunction FFIExportDecl {..} =
-  adjustLocalRegs
-    Function
-      { functionType = recoverWasmWrapperFunctionType ffiFunctionType
-      , varTypes = []
-      , body =
-          Block
-            { name = ""
-            , bodys =
-                [ UnresolvedSetLocal
-                    { unresolvedLocalReg = tid
-                    , value =
-                        Call
-                          { target =
-                              if ffiInIO ffiFunctionType
-                                then "rts_evalIO"
-                                else "rts_eval"
-                          , operands =
-                              [ foldl'
-                                  (\tot_expr (ffi_param_i, ffi_param_t) ->
-                                     Call
-                                       { target = "rts_apply"
-                                       , operands =
-                                           [ tot_expr
-                                           , Call
-                                               { target =
-                                                   AsteriusEntitySymbol
-                                                     { entityName =
-                                                         "rts_mk" <> getHsTyCon ffi_param_t
-                                                     }
-                                               , operands =
-                                                   [ GetLocal
-                                                       { index = ffi_param_i
-                                                       , valueType =
-                                                           recoverWasmWrapperValueType
-                                                             ffi_param_t
-                                                       }
-                                                   ]
-                                               , callReturnTypes = [I64]
-                                               }
-                                           ]
-                                       , callReturnTypes = [I64]
-                                       })
-                                  Symbol
-                                    { unresolvedSymbol = ffiExportClosure
-                                    , symbolOffset = 0
-                                    }
-                                  (zip [0 ..] $ ffiParamTypes ffiFunctionType)
-                              ]
-                          , callReturnTypes = [I32]
-                          }
-                    }
-                , Call
-                    { target = "rts_checkSchedStatus"
-                    , operands = [UnresolvedGetLocal {unresolvedLocalReg = tid}]
-                    , callReturnTypes = []
-                    }
-                ] <>
-                case ffiResultTypes ffiFunctionType of
-                  [ffi_result_t] ->
-                    [ Call
-                        { target =
-                            AsteriusEntitySymbol
-                              {entityName = "rts_get" <> getHsTyCon ffi_result_t}
-                        , operands =
-                            [ Unary TruncUFloat64ToInt64 $
-                              CallImport
-                                { target' = "__asterius_getTSOret"
-                                , operands =
-                                    [ UnresolvedGetLocal
-                                        {unresolvedLocalReg = tid}
-                                    ]
-                                , callImportReturnTypes = [F64]
-                                }
-                            ]
-                        , callReturnTypes =
-                            [recoverWasmWrapperValueType ffi_result_t]
-                        }
-                    ]
-                  _ -> []
-            , blockReturnTypes =
-                map recoverWasmWrapperValueType $ ffiResultTypes ffiFunctionType
-            }
-      }
-  where
-    tid = UniqueLocalReg 0 I32
-    getHsTyCon FFI_VAL {..} = hsTyCon
-    getHsTyCon FFI_JSVAL    = "StablePtr"
-
 generateFFIWrapperModule :: FFIMarshalState -> AsteriusModule
 generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =
   mempty
     { functionMap =
-        M.fromList $
-        [ (k <> "_wrapper", wrapper_func)
-        | (k, wrapper_func) <- import_wrapper_funcs
-        ] <>
-        export_funcs <>
-        export_wrapper_funcs
+        M.fromList
+          [ (k <> "_wrapper", wrapper_func)
+          | (k, wrapper_func) <- import_wrapper_funcs
+          ]
     , ffiMarshalState = mod_ffi_state
     }
   where
     import_wrapper_funcs =
       [ (k, generateFFIImportWrapperFunction k ffi_decl)
       | (k, ffi_decl) <- M.toList ffiImportDecls
-      ]
-    export_funcs =
-      [ (k, generateFFIExportFunction ffi_decl)
-      | (k, ffi_decl) <- M.toList ffiExportDecls
-      ]
-    export_wrapper_funcs =
-      [ ( AsteriusEntitySymbol
-            {entityName = "__asterius_jsffi_export_" <> entityName k}
-        , generateWrapperFunction k f)
-      | (k, f) <- export_funcs
       ]
 
 generateFFIFunctionImports :: FFIMarshalState -> [FunctionImport]
@@ -625,3 +524,48 @@ generateFFIImportObjectFactory FFIMarshalState {..} =
        | (k, ffi_decl) <- M.toList ffiImportDecls
        ]) <>
   "}})"
+
+generateFFIExportObject :: FFIMarshalState -> Builder
+generateFFIExportObject FFIMarshalState {..} =
+  "Object.freeze({" <>
+  mconcat
+    (intersperse
+       ","
+       [ shortByteString (coerce k) <> ":" <>
+       generateFFIExportLambda export_decl
+       | (k, export_decl) <- M.toList ffiExportDecls
+       ]) <>
+  "})"
+
+generateFFIExportLambda :: FFIExportDecl -> Builder
+generateFFIExportLambda FFIExportDecl { ffiFunctionType = FFIFunctionType {..}
+                                      , ..
+                                      } =
+  "function(" <>
+  mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
+  "){" <>
+  (if null ffiResultTypes
+     then tid
+     else "return " <> ret) <>
+  "}"
+  where
+    ret =
+      case ffiResultTypes of
+        [t] -> "this.rts_get" <> getHsTyCon t <> "(" <> ret_closure <> ")"
+        _ -> error "Asterius.JSFFI.generateFFIExportLambda"
+    ret_closure = "this.context.tsoManager.getTSOret(" <> tid <> ")"
+    tid = "this." <> eval_func <> "(" <> eval_closure <> ")"
+    eval_func
+      | ffiInIO = "rts_evalIO"
+      | otherwise = "rts_eval"
+    eval_closure =
+      foldl'
+        (\acc (i, t) ->
+           "this.rts_apply(" <> acc <> ",this.rts_mk" <> getHsTyCon t <> "(_" <>
+           intDec i <>
+           "))")
+        ("this.context.symbolTable." <>
+         shortByteString (coerce ffiExportClosure))
+        (zip [1 ..] ffiParamTypes)
+    getHsTyCon FFI_VAL {..} = shortByteString hsTyCon
+    getHsTyCon FFI_JSVAL = "StablePtr"
