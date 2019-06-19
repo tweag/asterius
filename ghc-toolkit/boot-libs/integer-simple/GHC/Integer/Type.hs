@@ -72,7 +72,7 @@ integerToWord :: Integer -> Word#
 integerToWord (Integer i) = or# (uncheckedShiftL# (js_integerToWord i 1#) 32#)  (js_integerToWord i 0#)
 
 integerToInt :: Integer -> Int#
-integerToInt i = word2Int# (integerToWord i) -- or# (uncheckedShiftL# (js_integerToInt i 1#) 32#)  (js_integerToInt i 0#)
+integerToInt i = word2Int# (integerToWord i)
 
 plusInteger :: Integer -> Integer -> Integer
 plusInteger (Integer i0) (Integer i1) = Integer (js_plusInteger i0 i1)
@@ -234,10 +234,9 @@ foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1}, ${2})" js
 
 foreign import javascript "__asterius_jsffi.Integer.wordToInteger(${1}, ${2})" js_wordToInteger :: Word# -> Word# -> Int#
 
--- | Given integer and the _pice_ of the word
+-- | Given integer and which 32-bit _piece_ of the word we want, return that piece. 
 foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1}, ${2})" js_integerToWord :: Int# -> Int# -> Word#
 
-foreign import javascript "__asterius_jsffi.Integer.integerToInt(${1}, ${2})" js_integerToInt :: Int# -> Int# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.plusInteger(${1},${2})" js_plusInteger :: Int# -> Int# -> Int#
 
