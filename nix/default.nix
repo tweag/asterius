@@ -45,7 +45,7 @@ let
                     "package.json"
                     "jsffi_stub.h" ])
               # files that look like build artifacts, but are not
-              && !pkgs.lib.any (i: tostring i == path) [
+              && !pkgs.lib.any (i: toString i == path) [
                 ../asterius/test/cloudflare/cloudflare.mjs
                 ../asterius/test/jsffi/jsffi.mjs
                 ../asterius/test/rtsapi/rtsapi.mjs
