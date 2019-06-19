@@ -106,7 +106,12 @@ let
           packages.Cabal.patches = [ cabalPatch ];
           packages.asterius.components.tests =
            pkgs.lib.mapAttrs (n: v: {
-               build-tools = [ asterius-boot nodejs nodePkgs.parcel-bundler ];
+               build-tools = [
+                 asterius-boot
+                 nodejs
+                 nodePkgs.parcel-bundler
+                 nodePkgs.todomvc-app-css
+                 nodePkgs.todomvc-common ];
              }) (haskell.mkCabalProjectPkgSet {inherit plan-pkgs;})
                  .config.hsPkgs.asterius.components.tests;
       })

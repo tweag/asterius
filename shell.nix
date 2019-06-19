@@ -27,7 +27,11 @@ in (hsPkgs.shellFor {
       wabt
       wasm-toolkit ];
   }).overrideAttrs (oldAttrs: {
-    buildInputs = oldAttrs.buildInputs ++ [ nodejs nodePkgs.parcel-bundler ];
+    buildInputs = oldAttrs.buildInputs ++ [
+      nodejs
+      nodePkgs.parcel-bundler
+      nodePkgs.todomvc-app-css
+      nodePkgs.todomvc-common ];
     shellHook = (oldAttrs.shellHook or "") + ''
       unset CABAL_CONFIG
       export asterius_bootdir=${cached.nix-tools._raw.asterius-boot}/boot

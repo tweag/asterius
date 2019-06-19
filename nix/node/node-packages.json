@@ -1,3 +1,4 @@
-[
-  "parcel-bundler"
+[ "parcel-bundler"
+, "todomvc-app-css"
+, "todomvc-common"
 ]

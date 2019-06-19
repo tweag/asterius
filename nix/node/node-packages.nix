@@ -1255,13 +1255,13 @@ let
         sha512 = "Z942RysHXmJrhqk88FmKBVq/v5tqmSkDz7p54G/MGyjMnCFFnC79XWNbg+Vta8W6Wb2qtSZTSxIGkJrRpCFEiA==";
       };
     };
-    "browserslist-4.6.2" = {
+    "browserslist-4.6.3" = {
       name = "browserslist";
       packageName = "browserslist";
-      version = "4.6.2";
+      version = "4.6.3";
       src = fetchurl {
-        url = "https://registry.npmjs.org/browserslist/-/browserslist-4.6.2.tgz";
-        sha512 = "2neU/V0giQy9h3XMPwLhEY3+Ao0uHSwHvU8Q1Ea6AgLVL1sXbX3dzPrJ8NWe5Hi4PoTkCYXOtVR9rfRLI0J/8Q==";
+        url = "https://registry.npmjs.org/browserslist/-/browserslist-4.6.3.tgz";
+        sha512 = "CNBqTCq22RKM8wKJNowcqihHJ4SkI8CGeK7KOR9tPboXUuS5Zk5lQgzzTbs4oxD8x+6HUshZUa2OyNI9lR93bQ==";
       };
     };
     "buffer-4.9.1" = {
@@ -1363,13 +1363,13 @@ let
         sha512 = "bsTwuIg/BZZK/vreVTYYbSWoe2F+71P7K5QGEX+pT250DZbfU1MQ5prOKpPR+LL6uWKK3KMwMCAS74QB3Um1uw==";
       };
     };
-    "caniuse-lite-1.0.30000974" = {
+    "caniuse-lite-1.0.30000975" = {
       name = "caniuse-lite";
       packageName = "caniuse-lite";
-      version = "1.0.30000974";
+      version = "1.0.30000975";
       src = fetchurl {
-        url = "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30000974.tgz";
-        sha512 = "xc3rkNS/Zc3CmpMKuczWEdY2sZgx09BkAxfvkxlAEBTqcMHeL8QnPqhKse+5sRTi3nrw2pJwToD2WvKn1Uhvww==";
+        url = "https://registry.npmjs.org/caniuse-lite/-/caniuse-lite-1.0.30000975.tgz";
+        sha512 = "ZsXA9YWQX6ATu5MNg+Vx/cMQ+hM6vBBSqDeJs8ruk9z0ky4yIHML15MoxcFt088ST2uyjgqyUGRJButkptWf0w==";
       };
     };
     "caseless-0.12.0" = {
@@ -2173,13 +2173,13 @@ let
         sha1 = "590c61156b0ae2f4f0255732a158b266bc56b21d";
       };
     };
-    "electron-to-chromium-1.3.159" = {
+    "electron-to-chromium-1.3.165" = {
       name = "electron-to-chromium";
       packageName = "electron-to-chromium";
-      version = "1.3.159";
+      version = "1.3.165";
       src = fetchurl {
-        url = "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.3.159.tgz";
-        sha512 = "bhiEr8/A97GUBcUzNb9MFNhzQOjakbKmEKBEAa6UMY45zG2e8PM63LOgAPXEJE9bQiaQH6nOdYiYf8X821tZjQ==";
+        url = "https://registry.npmjs.org/electron-to-chromium/-/electron-to-chromium-1.3.165.tgz";
+        sha512 = "iIS8axR524EAnvUtWUNnREnYjQrS0zUvutIKYgTVuN3MzcjrV31EuJYKw7DGOtFO9DQw+JiXeaVDPQWMskG1wQ==";
       };
     };
     "elliptic-6.4.1" = {
@@ -6213,7 +6213,7 @@ in
           sources."pako-1.0.10"
         ];
       })
-      sources."browserslist-4.6.2"
+      sources."browserslist-4.6.3"
       (sources."buffer-4.9.1" // {
         dependencies = [
           sources."isarray-1.0.0"
@@ -6229,7 +6229,7 @@ in
       sources."caller-path-2.0.0"
       sources."callsites-2.0.0"
       sources."caniuse-api-3.0.0"
-      sources."caniuse-lite-1.0.30000974"
+      sources."caniuse-lite-1.0.30000975"
       sources."caseless-0.12.0"
       sources."chalk-2.4.2"
       sources."chokidar-2.1.6"
@@ -6366,7 +6366,7 @@ in
       sources."ecc-jsbn-0.1.2"
       sources."editorconfig-0.15.3"
       sources."ee-first-1.1.1"
-      sources."electron-to-chromium-1.3.159"
+      sources."electron-to-chromium-1.3.165"
       sources."elliptic-6.4.1"
       sources."encodeurl-1.0.2"
       sources."entities-1.1.2"
@@ -6933,6 +6933,40 @@ in
     meta = {
       description = "Blazing fast, zero configuration web application bundler";
       homepage = "https://github.com/parcel-bundler/parcel#readme";
+      license = "MIT";
+    };
+    production = true;
+    bypassCache = true;
+  };
+  todomvc-app-css = nodeEnv.buildNodePackage {
+    name = "todomvc-app-css";
+    packageName = "todomvc-app-css";
+    version = "2.2.0";
+    src = fetchurl {
+      url = "https://registry.npmjs.org/todomvc-app-css/-/todomvc-app-css-2.2.0.tgz";
+      sha512 = "H03oc3QOxiGXv+MqnotcduZIwoGX8A8QbSx9J4U2Z5R96LrK+dvQmRDTgeCc0nlkPBhd3nUL4EbfS7l0TccM5g==";
+    };
+    buildInputs = globalBuildInputs;
+    meta = {
+      description = "CSS for TodoMVC apps";
+      homepage = "https://github.com/tastejs/todomvc-app-css#readme";
+      license = "CC-BY-4.0";
+    };
+    production = true;
+    bypassCache = true;
+  };
+  todomvc-common = nodeEnv.buildNodePackage {
+    name = "todomvc-common";
+    packageName = "todomvc-common";
+    version = "1.0.5";
+    src = fetchurl {
+      url = "https://registry.npmjs.org/todomvc-common/-/todomvc-common-1.0.5.tgz";
+      sha512 = "D8kEJmxVMQIWwztEdH+WeiAfXRbbSCpgXq4NkYi+gduJ2tr8CNq7sYLfJvjpQ10KD9QxJwig57rvMbV2QAESwQ==";
+    };
+    buildInputs = globalBuildInputs;
+    meta = {
+      description = "Common TodoMVC utilities used by our apps";
+      homepage = "https://github.com/tastejs/todomvc-common#readme";
       license = "MIT";
     };
     production = true;
