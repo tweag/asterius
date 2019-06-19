@@ -54,7 +54,6 @@ export class IntegerManager {
 
     integerToWord(i, ipiece) { 
         const n = BigInt.asUintN(64, this.decode(i)); 
-        console.error("n:" , n);
         this.view.setBigUint64(/*offset=*/0, n, /*little endian=*/true);
         const m =  this.view.getUint32(/*offset=*/4*ipiece, /*little endian=*/true);
         return m;
@@ -63,11 +62,9 @@ export class IntegerManager {
   integerToInt(i) { return Number(BigInt.asIntN(64, this.decode(i))); }
   plusInteger(i0, i1) { return this.encode(this.decode(i0) + this.decode(i1)); }
   minusInteger(i0, i1) {
-    console.error("i0:", i0, "i1:", i1);
     return this.encode(this.decode(i0) - this.decode(i1));
   }
   timesInteger(i0, i1) {
-    console.error("i0:", i0, "i1:", i1);
     return this.encode(this.decode(i0) * this.decode(i1));
   }
   negateInteger(i) { return this.encode(-this.decode(i)); }
