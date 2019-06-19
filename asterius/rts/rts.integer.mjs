@@ -39,14 +39,12 @@ export class IntegerManager {
   }
 
   smallInteger(high, low) { 
-      console.error("smallInteger: ", "i0:", high, "i1:", low);
       this.view.setUint32(/*offset=*/0, low,  /*little endian=*/true);
       this.view.setUint32(/*offset=*/4, high, /*little endian=*/true);
       return this.encode(this.view.getBigInt64(/*offset=*/0, /*little endian=*/true));
   }
 
     wordToInteger(high, low) { 
-      console.log("in word2integer...");
       this.view.setUint32(/*offset=*/0, low, /*little endian=*/true);
       this.view.setUint32( /*offset=*/4, high, /*little endian=*/true);
       const bi = this.view.getBigUint64(/*offset=*/0, /*little endian=*/true);
@@ -55,13 +53,10 @@ export class IntegerManager {
   }
 
     integerToWord(i, ipiece) { 
-        console.error("at integer to word...");
         const n = BigInt.asUintN(64, this.decode(i)); 
         console.error("n:" , n);
         this.view.setBigUint64(/*offset=*/0, n, /*little endian=*/true);
-        console.error("ipiece: ", ipiece);
         const m =  this.view.getUint32(/*offset=*/4*ipiece, /*little endian=*/true);
-        console.log("m: ", m);
         return m;
     }
     
