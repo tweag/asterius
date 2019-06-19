@@ -34,16 +34,22 @@ let
           && pkgs.lib.all (i: !(pkgs.lib.hasSuffix i path)) [ ".lkshf" ".nix" ]
           && pkgs.lib.all (i: !(pkgs.lib.hasPrefix i (baseNameOf path))) [ "result-" ".ghc.environment." ]
           && !(pkgs.lib.hasPrefix (toString ../asterius/test) path && (
-               pkgs.lib.any (i: pkgs.lib.hasSuffix i path) [
-                ".mjs"
-                ".o"
-                ".wasm"
-                ".hi"
-                ".html"
-                ".js" ]
-            || pkgs.lib.any (i: i == baseNameOf path) [
-                "package.json"
-                "jsffi_stub.h" ]));
+                   pkgs.lib.any (i: pkgs.lib.hasSuffix i path) [
+                    ".mjs"
+                    ".o"
+                    ".wasm"
+                    ".hi"
+                    ".html"
+                    ".js" ]
+                || pkgs.lib.any (i: i == baseNameOf path) [
+                    "package.json"
+                    "jsffi_stub.h" ])
+              # files that look like build artifacts, but are not
+              && !pkgs.lib.any (i: tostring i == path) [
+                ../asterius/test/cloudflare/cloudflare.mjs
+                ../asterius/test/jsffi/jsffi.mjs
+                ../asterius/test/rtsapi/rtsapi.mjs
+              ]);
     };
   # our packages
   plan-nix = haskell.callCabalProjectToNix {
