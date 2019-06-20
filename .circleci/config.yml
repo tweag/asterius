@@ -137,6 +137,7 @@ jobs:
             stack test asterius:ghc-testsuite --test-arguments "-p mul2"
             stack test asterius:ghc-testsuite --test-arguments "-p add2"
             stack test asterius:ghc-testsuite --test-arguments "-p quotRem"
+            stack test asterius:ghc-testsuite --test-arguments "-p CarryOverflow"
 
   asterius-test-ghc-testsuite:
     docker:
