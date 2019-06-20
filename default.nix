@@ -29,5 +29,4 @@ in
 # hosts.
 # We will instantiate the defaul-nix template with the
 # nix/pkgs.nix file...
-localLib.nix-tools.default-nix ./nix/default.nix
-  (builtins.removeAttrs args ["config" "system" "crossSystem"])
+localLib.nix-tools.default-nix ./nix/default.nix args
