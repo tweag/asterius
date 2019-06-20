@@ -997,15 +997,33 @@ marshalCmmPrimCall (GHC.MO_SubIntC GHC.W64) [r, o] [x, y] = do
   lr <- marshalTypedCmmLocalReg r I64
   lo <- marshalTypedCmmLocalReg o I64
 
+  -- Copied from ghc-testsuite/numeric/CarryOverflow.hs:
+  --  where ltTest x y =
+  --        let r = x - y in (y > 0 && r > x) || (y < 0 && r < x)
+
   let x_minus_y = Binary { binaryOp = SubInt64
                      , operand0 = xr
                      , operand1 = yr
                      }
+  let y_positive_test = Binary { binaryOp = GtSInt64
+                               , operand0 = yr
+                               , operand1 = (ConstI64 0)
+                               }
+  let y_negative_test = Binary { binaryOp = LtSInt64
+                               , operand0 = yr
+                               , operand1 = (ConstI64 0)
+                               }
+  let x_minus_y_gt_x = Binary GtSInt64 x_minus_y xr
+  let x_minus_y_lt_x = Binary LtSInt64 x_minus_y xr
 
-  let overflow = Binary { binaryOp = LtUInt64
-                        , operand0 = xr
-                        , operand1 = yr
-                        }
+  let clause_1 = Binary MulInt32 y_positive_test x_minus_y_gt_x
+  let clause_2 = Binary MulInt32 y_negative_test  x_minus_y_lt_x
+
+  -- | Addition is OK to express OR since only of the clauses can be
+  -- true as they are mutually exclusive.
+  let overflow = Binary AddInt32 clause_1 clause_2
+
+
   let overflow_sext = Unary { unaryOp = ExtendUInt32
                               , operand0 = overflow
                               }
