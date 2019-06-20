@@ -957,6 +957,10 @@ marshalCmmPrimCall (GHC.MO_AddIntC GHC.W64) [r, o] [x, y] = do
   (xr, _) <- marshalCmmExpr x
   (yr, _) <- marshalCmmExpr y
 
+  -- Copied from ghc-testsuite/numeric/CarryOverflow.hs:
+  -- where ltTest x y =
+  --         let r = x + y in (y > 0 && r < x) || (y < 0 && r > x)
+
   lr <- marshalTypedCmmLocalReg r I64
   -- | y + x > maxbound
   -- | y > maxbound - x
@@ -967,18 +971,27 @@ marshalCmmPrimCall (GHC.MO_AddIntC GHC.W64) [r, o] [x, y] = do
                      , operand1 = yr
                      }
 
-  let x_minus_maxbound = Binary { binaryOp = SubInt64
-                              , operand0 = ConstI64 0xFFFFFFFFFFFFFFFF
-                              , operand1 = xr
-                              }
+  let y_positive_test = Binary { binaryOp = GtSInt64
+                               , operand0 = yr
+                               , operand1 = (ConstI64 0)
+                               }
+  let y_negative_test = Binary { binaryOp = LtSInt64
+                               , operand0 = yr
+                               , operand1 = (ConstI64 0)
+                               }
+  let x_plus_y_gt_x = Binary GtSInt64 x_plus_y xr
+  let x_plus_y_lt_x = Binary LtSInt64 x_plus_y xr
 
-  let overflow = Binary { binaryOp = GtUInt64
-                                     , operand0 = yr
-                                     , operand1 = x_minus_maxbound
-                                     }
+  let clause_1 = Binary MulInt32 y_positive_test x_plus_y_lt_x
+  let clause_2 = Binary MulInt32 y_negative_test x_plus_y_gt_x
+
+  -- | Addition is OK to express OR since only of the clauses can be
+  -- true as they are mutually exclusive.
+  let overflow = Binary AddInt32 clause_1 clause_2
+
   let overflow_sext = Unary { unaryOp = ExtendUInt32
-                                         , operand0 = overflow
-                                         }
+                            , operand0 = overflow
+                            }
 
 
   pure
@@ -1025,8 +1038,8 @@ marshalCmmPrimCall (GHC.MO_SubIntC GHC.W64) [r, o] [x, y] = do
 
 
   let overflow_sext = Unary { unaryOp = ExtendUInt32
-                              , operand0 = overflow
-                              }
+                            , operand0 = overflow
+                            }
 
   pure
     [ UnresolvedSetLocal { unresolvedLocalReg = lr, value = x_minus_y }
