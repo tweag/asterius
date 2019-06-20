@@ -14,8 +14,12 @@
 # We will need to import the local lib, which will
 # give us the iohk-nix tooling, which also includes
 # the nix-tools tooling.
+{ config ? {}
+, system ? builtins.currentSystem
+, crossSystem ? null
+, ... }@args:
 let
-  localLib = import ./nix/lib.nix {};
+  localLib = import ./nix/lib.nix { inherit config system crossSystem; };
 in
 # This file needs to export a function that takes
 # the arguments it is passed and forwards them to
@@ -23,7 +27,7 @@ in
 # important so that the release.nix file can properly
 # parameterize this file when targetting different
 # hosts.
-{ ... }@args:
 # We will instantiate the defaul-nix template with the
 # nix/pkgs.nix file...
-localLib.nix-tools.default-nix ./nix/default.nix args
+localLib.nix-tools.default-nix ./nix/default.nix
+  (builtins.removeAttrs args ["config" "system" "crossSystem"])

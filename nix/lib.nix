@@ -1,4 +1,7 @@
-{ config ? {} }:
+{ config ? {}
+, system ? builtins.currentSystem
+, crossSystem ? null
+}:
 let
   # iohk-nix can be overridden for debugging purposes by setting
   # NIX_PATH=iohk_nix=/path/to/iohk-nix
@@ -13,7 +16,7 @@ let
         url = "${spec.url}/archive/${spec.rev}.tar.gz";
         inherit (spec) sha256;
       }) {
-      inherit config;
+      inherit config system crossSystem;
       nixpkgsJsonOverride = ../pins/nixpkgs-src.json;
       haskellNixJsonOverride = ../pins/haskell-nix-src.json;
     };
