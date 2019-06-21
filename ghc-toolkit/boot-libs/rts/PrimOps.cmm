@@ -1893,8 +1893,7 @@ stg_makeStableNamezh ( P_ obj )
     W_ index, sn_obj;
 
     MAYBE_GC_P(stg_makeStableNamezh, obj);
-    sn_obj = ccall makeStableName (obj "ptr");
-
+    (sn_obj) = ccall makeStableName (obj "ptr");
 
     return (sn_obj);
 }
