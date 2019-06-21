@@ -46,7 +46,7 @@ resolveLocalRegs FunctionType {..} t =
         _ -> pure t
     _ -> pure t
   where
-    base_idx = 2 + length paramTypes
+    base_idx = 3 + length paramTypes
     idx :: UnresolvedLocalReg -> m BinaryenIndex
     idx reg =
       state $ \ps@PassesState {..} ->
@@ -63,4 +63,4 @@ resolveLocalRegs FunctionType {..} t =
 
 {-# INLINABLE localRegTable #-}
 localRegTable :: PassesState -> [ValueType]
-localRegTable PassesState {..} = I32 : I32 : reverse localRegStack
+localRegTable PassesState {..} = I32 : I32 : I32 : reverse localRegStack

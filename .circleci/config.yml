@@ -57,7 +57,7 @@ jobs:
           name: Test asterius
           command: |
             stack --no-terminal test asterius:fib
-            stack --no-terminal test asterius:jsffi
+            # stack --no-terminal test asterius:jsffi
             stack --no-terminal test asterius:array
             stack --no-terminal test asterius:stableptr
             stack --no-terminal test asterius:rtsapi
@@ -69,6 +69,7 @@ jobs:
             stack --no-terminal test asterius:exception
             stack --no-terminal test asterius:regression60
             stack --no-terminal test asterius:sizeof_md5context
+            stack --no-terminal test asterius:largenum
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
 
@@ -76,7 +77,7 @@ jobs:
             $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
             cd $CIRCLE_WORKING_DIRECTORY
             stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
-            stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
+            # stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:stableptr --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:rtsapi --test-arguments="--debug" > /dev/null
@@ -93,7 +94,50 @@ jobs:
 
             # run test cases that should pass from ghc-testsuite.
             # At some point, this should cover entire subfolders like "numeric"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun009"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun010"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun011"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun012"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun013"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun014"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun015"
+            stack test asterius:ghc-testsuite --test-arguments "-p numrun016"
+
+
+            stack test asterius:ghc-testsuite --test-arguments "-p arith017"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith013"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith012"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith010"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith009"
+            # stack test asterius:ghc-testsuite --test-arguments "-p arith008"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith007"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith006"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith005"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith004"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith002"
+            stack test asterius:ghc-testsuite --test-arguments "-p arith001"
+
+            stack test asterius:ghc-testsuite --test-arguments "-p T10011"
+            stack test asterius:ghc-testsuite --test-arguments "-p T10011"
+            stack test asterius:ghc-testsuite --test-arguments "-p T10011"
+            stack test asterius:ghc-testsuite --test-arguments "-p T7233"
+            stack test asterius:ghc-testsuite --test-arguments "-p T7014"
+            stack test asterius:ghc-testsuite --test-arguments "-p T5863"
+            stack test asterius:ghc-testsuite --test-arguments "-p T1603"
+            stack test asterius:ghc-testsuite --test-arguments "-p T15301"
+            stack test asterius:ghc-testsuite --test-arguments "-p T12136"
+            stack test asterius:ghc-testsuite --test-arguments "-p T11702"
+            stack test asterius:ghc-testsuite --test-arguments "-p T10011"
+            stack test asterius:ghc-testsuite --test-arguments "-p T10962"
+            stack test asterius:ghc-testsuite --test-arguments "-p T9810"
+
             stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
+            stack test asterius:ghc-testsuite --test-arguments "-p NumDecimals"
+            stack test asterius:ghc-testsuite --test-arguments "-p FloatFnInverses"
+            stack test asterius:ghc-testsuite --test-arguments "-p mul2"
+            stack test asterius:ghc-testsuite --test-arguments "-p add2"
+            stack test asterius:ghc-testsuite --test-arguments "-p quotRem"
+            stack test asterius:ghc-testsuite --test-arguments "-p CarryOverflow"
 
   asterius-test-ghc-testsuite:
     docker:
@@ -166,8 +210,8 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite  -j8 --test-arguments="--timeout=30s" || true
               cp asterius/test-report.csv /tmp
-              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
-              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-grouped-by-error-ascii.txt
+              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
+              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
  
       - store_artifacts:
           path: /tmp/test-report.csv
@@ -182,6 +226,13 @@ jobs:
     docker:
       - image: docker:edge-git
     steps:
+      - run:
+          name: Ensure we are on `tweag/asterius`
+          command: |
+            if [ -n "$CIRCLE_PR_NUMBER" ]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
       - setup_remote_docker
       - checkout
       - run:
@@ -231,6 +282,13 @@ jobs:
     docker:
       - image: docker:edge-git
     steps:
+      - run:
+          name: Ensure we are on `tweag/asterius`
+          command: |
+            if [ -n "$CIRCLE_PR_NUMBER" ]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
       - setup_remote_docker
       - checkout
       - run:

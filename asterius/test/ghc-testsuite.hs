@@ -19,8 +19,6 @@ import Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
 import Data.Monoid (Any(..))
-import Control.Concurrent.STM.TVar
-import Control.Concurrent.STM
 import Test.Tasty.Hspec
 import Test.Tasty.Runners
 import Control.Exception
@@ -31,26 +29,35 @@ import System.Console.ANSI (hSupportsANSIColor)
 import Control.Arrow ((&&&))
 import Data.Csv
 import Data.List (sort)
+import Data.Word
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
---
--- TODO: Update the code to not re-implement tasty internals when
--- the new version is released, since we had a PR that exposes some
--- tasty internals for us:
--- https://github.com/feuerbach/tasty/pull/252
 
 data TestCase = TestCase
   { casePath :: FilePath
   , caseStdIn, caseStdOut, caseStdErr :: LBS.ByteString
   } deriving (Show)
 
+
+-- | Convert a Char to a Word8
+charToWord8 :: Char -> Word8
+charToWord8 = toEnum . fromEnum
+
 -- | Try to read a file. if file does not exist, then return empty string.
 readFileNullable :: FilePath -> IO LBS.ByteString
 readFileNullable p = do
   exist <- doesFileExist p
   if exist
-    then LBS.readFile p
+    then do
+       bs <- LBS.readFile p
+       -- | Add trailing whitespace if it does not exist.
+       -- | The GHC testsuite also performs normalization:
+       -- | testsuite/driver/testlib.py
+       if LBS.last bs /= charToWord8 '\n'
+       then return $ LBS.snoc bs (charToWord8 '\n')
+       else return bs
+
     else pure LBS.empty
 
 getTestCases :: IO [TestCase]
@@ -144,7 +151,7 @@ instance Show CompileOutcome where
 
 runTestCase :: TestCase -> IO ()
 runTestCase TestCase {..} = do
-  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen"] ""
+  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen", "--verbose-err"] ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
   withJSSession defJSSessionOpts $ \s -> do
     -- | Try to compile and setup the program. If we throw an exception,
@@ -216,20 +223,6 @@ consoleOutput tlref toutput smap =
           when nonempty $ do printHeading :: IO (); getTraversal printBody
       , Any nonempty
       )
-
-
-getResultFromTVar :: TVar Status -> IO Test.Tasty.Runners.Result
-getResultFromTVar var =
-  atomically $ do
-    status <- readTVar var
-    case status of
-      Done r -> return r
-      _ -> retry
-
-computeStatistics :: StatusMap -> IO Statistics
-computeStatistics = getApp . foldMap (\var -> Ap $
-  (\r -> Statistics 1 (if resultSuccessful r then 0 else 1))
-    <$> getResultFromTVar var)
 
 
 -- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter

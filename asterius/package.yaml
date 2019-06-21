@@ -40,6 +40,7 @@ extra-source-files:
   - test/exception/**/*.hs
   - test/regression60/**/*.hs
   - test/sizeof_md5context/**/*.hs
+  - test/largenum/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -263,8 +264,13 @@ tests:
       - tasty
       - tasty-hspec
       - ansi-terminal
-      - stm
       - cassava
+
+  ghc-testsuite-with-ghc:
+    source-dirs: test
+    main: ghc-testsuite-with-ghc.hs
+    ghc-options: -threaded -rtsopts
+    dependencies: []
 
   sizeof_md5context:
     source-dirs: test
@@ -276,6 +282,13 @@ tests:
   regression60:
     source-dirs: test
     main: regression60.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  largenum:
+    source-dirs: test
+    main: largenum.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius

@@ -25,7 +25,7 @@ import System.FilePath
 data LinkTask = LinkTask
   { linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
-  , debug, gcSections, binaryen :: Bool
+  , debug, gcSections, binaryen, verboseErr :: Bool
   , outputIR :: Maybe FilePath
   , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -52,6 +52,7 @@ rtsUsedSymbols =
     , "ghczmprim_GHCziTypes_ZC_con_info"
     , "ghczmprim_GHCziTypes_ZMZN_closure"
     , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
+    , "Main_main_closure"
     , "stg_ARR_WORDS_info"
     , "stg_BLACKHOLE_info"
     , "stg_DEAD_WEAK_info"
@@ -62,13 +63,13 @@ rtsUsedSymbols =
     ]
 
 linkModules ::
-     LinkTask -> AsteriusModule -> (AsteriusModule, Module, [Event], LinkReport)
+     LinkTask -> AsteriusModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
     debug
-    True
     gcSections
     binaryen
+    verboseErr
     (rtsAsteriusModule
        defaultBuiltinsOptions
          {progName = takeBaseName linkOutput, Asterius.Builtins.debug = debug} <>
@@ -78,20 +79,20 @@ linkModules LinkTask {..} m =
        , rtsUsedSymbols
        , Set.fromList
            [ AsteriusEntitySymbol {entityName = internalName}
-           | FunctionExport {..} <- rtsFunctionExports debug True
+           | FunctionExport {..} <- rtsFunctionExports debug
            ]
        ])
     exportFunctions
 
-linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, [Event], LinkReport)
+linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, LinkReport)
 linkExeInMemory ld_task = do
   final_store <- loadTheWorld ld_task
   pure $ linkModules ld_task final_store
 
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
-  (pre_m, m, events, link_report) <- linkExeInMemory ld_task
-  encodeFile linkOutput (m, events, link_report)
+  (pre_m, m, link_report) <- linkExeInMemory ld_task
+  encodeFile linkOutput (m, link_report)
   case outputIR of
     Just p -> encodeFile p pre_m
     _ -> pure ()

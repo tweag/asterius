@@ -4,7 +4,13 @@
 *.o
 *.wasm
 *.hi
-*.html 
+*.html
 *.js
 package.json
 jsffi_stub.h
+
+!/cloudflare/cloudflare.mjs
+!/jsffi/index.html
+!/jsffi/jsffi.mjs
+!/rtsapi/rtsapi.mjs
+!/todomvc/index.html
