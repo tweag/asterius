@@ -552,3 +552,11 @@ foreign import ccall unsafe "tso_MARKED" tso_MARKED :: Int
 foreign import ccall unsafe "tso_SQUEEZED" tso_SQUEEZED :: Int
 
 foreign import ccall unsafe "tso_ALLOC_LIMIT" tso_ALLOC_LIMIT :: Int
+
+foreign import ccall unsafe "tso_ALLOC_LIMIT" tso_ALLOC_LIMIT :: Int
+
+foreign import ccall unsafe "sizeof_StgStableName" sizeof_StgStableName :: Int
+
+foreign import ccall unsafe "offsetof_StgStableName_header" offsetof_StgStableName_header :: Int
+
+foreign import ccall unsafe "offsetof_StgStableName_sn" offsetof_StgStableName_sn :: Int
