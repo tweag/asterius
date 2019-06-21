@@ -1893,6 +1893,10 @@ stg_makeStableNamezh ( P_ obj )
     W_ index, sn_obj;
 
     MAYBE_GC_P(stg_makeStableNamezh, obj);
+    sn_obj = ccall makeStableName (obj "ptr");
+
+
+    /*
 
     (index) = ccall lookupStableName(obj "ptr");
 
@@ -1917,6 +1921,7 @@ stg_makeStableNamezh ( P_ obj )
     } else {
         sn_obj = snEntry_sn_obj(W_[stable_name_table] + index*SIZEOF_snEntry);
     }
+    */
 
     return (sn_obj);
 }
@@ -1932,7 +1937,7 @@ stg_makeStablePtrzh ( P_ obj )
 stg_deRefStablePtrzh ( P_ sp )
 {
     W_ r;
-    
+
     ("ptr" r) = ccall deRefStablePtr(sp "ptr");
     return (r);
 }
