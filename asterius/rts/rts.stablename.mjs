@@ -7,14 +7,13 @@ export class StableNameManager {
     this.memory = memory;
     this.heapalloc = heapalloc;
     this.ptr2stable = new Map();
-    this.stable2ptr = new Map();
     this.SymbolTable = symbol_table;
     Object.freeze(this);
   }
-
+  
   makeStableName(ptr) {
       const oldstable = this.ptr2stable.get(ptr);
-      console.log("makeStableName | ptr: ", ptr, " |this.ptr2tag: ", this.ptr2tag, "oldTag: ", oldstable);
+      console.log("makeStableName | ptr: ", ptr, " |this.ptr2stable: ", this.ptr2stable, "oldTag: ", oldstable);
       if (oldstable !== undefined) return oldstable;
 
       const tag = this.ptr2stable.size;
@@ -27,8 +26,6 @@ export class StableNameManager {
       this.memory.i64Store(stableptr + rtsConstants.offset_StgStableName_sn, tag);
 
       this.ptr2stable.set(ptr, stableptr);
-      this.stable2ptr.set(stableptr, ptr);
-
 
       return stableptr;
   }

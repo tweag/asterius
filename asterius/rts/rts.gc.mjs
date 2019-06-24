@@ -5,12 +5,13 @@ import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class GC {
-  constructor(memory, mblockalloc, heapalloc, stableptr_manager, tso_manager, info_tables,
-              pinned_closures, symbol_table, reentrancy_guard) {
+  constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
+    tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
+    this.stableNameManager = stablename_manager;
     this.tsoManager = tso_manager;
     this.infoTables = info_tables;
     this.pinnedClosures = pinned_closures;
@@ -500,6 +501,26 @@ export class GC {
     for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
+
+    // Stage the movement of stable pointers. 
+    // Step 1: Move all the pointers
+    // Step 2: Update the pointer -> stablepointer mapping
+    // We cannot do this at the same time, since moving the pointer while
+    // we walk the ptr2stable map can yield an infinite loop:
+    // eg. (ptr:0 stablename: 42) --MOVE--> (ptr:1 stablename:42) --MOVE--> (ptr:2 stablename:42) ...
+    let ptr2stableMoved = new Map();
+    for (const[ptr, stable] of this.stableNameManager.ptr2stable.entries()) {
+      console.error("GC ptr: ", ptr);
+      const ptrMoved = this.evacuateClosure(ptr);
+      console.log("GC! ptr: ", ptr, " | stable: ", stable, " | moved: ", ptrMoved)
+      ptr2stableMoved.set(ptrMoved, stable);
+    }
+
+    this.stableNameManager.ptr2stable.clear();
+    for (const[ptr, stable] of ptr2stableMoved) {
+      this.stableNameManager.ptr2stable.set(ptr, stable);
+    }
+
     this.evacuateClosure(tso);
     this.scavengeWorkList();
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
