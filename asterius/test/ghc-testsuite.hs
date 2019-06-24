@@ -4,6 +4,7 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 
@@ -291,7 +292,7 @@ parsePatternFile s =
 
 -- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter
 serializeToDisk :: IORef TestLog -> Ingredient
-serializeToDisk tlref = TestReporter [] $
+serializeToDisk tlref = TestReporter [Test.Tasty.Options.Option (Proxy :: Proxy PatternFilePath) ] $
   \opts tree -> Just $ \smap ->
   let
    (PatternFilePath patf) = lookupOption opts
