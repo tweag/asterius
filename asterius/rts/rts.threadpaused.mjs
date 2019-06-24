@@ -5,7 +5,7 @@ export class ThreadPaused {
   constructor(memory, info_tables, symbol_table) {
     this.memory = memory;
     this.infoTables = info_tables;
-
+    this.symbolTable = symbol_table;
     Object.freeze(this);
   }
 

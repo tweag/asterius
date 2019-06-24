@@ -511,12 +511,10 @@ export class GC {
     let ptr2stableMoved = new Map();
     for (const[ptr, stable] of this.stableNameManager.ptr2stable.entries()) {
       const ptrMoved = this.evacuateClosure(ptr);
-      ptr2stableMoved.set(ptrMoved, stable);
+      const stableMoved = this.evacuateClosure(stable);
+      ptr2stableMoved.set(ptrMoved, stableMoved);
     }
-    this.stableNameManager.ptr2stable.clear();
-    for (const[ptr, stable] of ptr2stableMoved) {
-      this.stableNameManager.ptr2stable.set(ptr, stable);
-    }
+    this.stableNameManager.ptr2stable = ptr2stableMoved;
 
     this.evacuateClosure(tso);
     this.scavengeWorkList();

@@ -8,7 +8,7 @@ export class StableNameManager {
     this.heapalloc = heapalloc;
     this.ptr2stable = new Map();
     this.SymbolTable = symbol_table;
-    Object.freeze(this);
+    Object.seal(this);
   }
   
   makeStableName(ptr) {
