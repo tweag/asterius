@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -680,12 +681,14 @@ marshalCmmPrimCall GHC.MO_F64_Acos [r] [x] =
 marshalCmmPrimCall GHC.MO_F64_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F64 r x
 
+#if MIN_VERSION_ghc(8,8,0)
 marshalCmmPrimCall GHC.MO_F64_Asinh [r] [x] =
   marshalCmmUnMathPrimCall "asinh" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Acosh [r] [x] =
   marshalCmmUnMathPrimCall "acosh" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Atanh [r] [x] =
   marshalCmmUnMathPrimCall "atanh" F64 r x
+#endif
 
 marshalCmmPrimCall GHC.MO_F64_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F64 r x
@@ -723,12 +726,14 @@ marshalCmmPrimCall GHC.MO_F32_Acos [r] [x] =
 marshalCmmPrimCall GHC.MO_F32_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F32 r x
 
+#if MIN_VERSION_ghc(8,8,0)
 marshalCmmPrimCall GHC.MO_F32_Asinh [r] [x] =
   marshalCmmUnMathPrimCall "asinh" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Acosh [r] [x] =
   marshalCmmUnMathPrimCall "acosh" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Atanh [r] [x] =
   marshalCmmUnMathPrimCall "atanh" F32 r x
+#endif
 
 marshalCmmPrimCall GHC.MO_F32_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F32 r x
@@ -896,9 +901,9 @@ marshalCmmPrimCall (GHC.MO_AddWordC GHC.W64) [r, o] [x, y] = do
   (yr, _) <- marshalCmmExpr y
 
   lr <- marshalTypedCmmLocalReg r I64
-  -- | x + y > maxbound
-  -- | y + x > maxbound
-  -- | y > maxbound - x
+  -- x + y > maxbound
+  -- y + x > maxbound
+  -- y > maxbound - x
   lo <- marshalTypedCmmLocalReg o I64
 
   let x_plus_y = Binary { binaryOp = AddInt64
@@ -933,8 +938,8 @@ marshalCmmPrimCall (GHC.MO_Add2 GHC.W64) [o, r] [x, y] = do
   (yr, _) <- marshalCmmExpr y
 
   lr <- marshalTypedCmmLocalReg r I64
-  -- | y + x > maxbound
-  -- | y > maxbound - x
+  -- y + x > maxbound
+  -- y > maxbound - x
   lo <- marshalTypedCmmLocalReg o I64
 
   let x_plus_y = Binary { binaryOp = AddInt64
@@ -973,8 +978,8 @@ marshalCmmPrimCall (GHC.MO_AddIntC GHC.W64) [r, o] [x, y] = do
   --         let r = x + y in (y > 0 && r < x) || (y < 0 && r > x)
 
   lr <- marshalTypedCmmLocalReg r I64
-  -- | y + x > maxbound
-  -- | y > maxbound - x
+  -- y + x > maxbound
+  -- y > maxbound - x
   lo <- marshalTypedCmmLocalReg o I64
 
   let x_plus_y = Binary { binaryOp = AddInt64
@@ -996,7 +1001,7 @@ marshalCmmPrimCall (GHC.MO_AddIntC GHC.W64) [r, o] [x, y] = do
   let clause_1 = Binary MulInt32 y_positive_test x_plus_y_lt_x
   let clause_2 = Binary MulInt32 y_negative_test x_plus_y_gt_x
 
-  -- | Addition is OK to express OR since only of the clauses can be
+  -- Addition is OK to express OR since only of the clauses can be
   -- true as they are mutually exclusive.
   let overflow = Binary AddInt32 clause_1 clause_2
 
@@ -1043,7 +1048,7 @@ marshalCmmPrimCall (GHC.MO_SubIntC GHC.W64) [r, o] [x, y] = do
   let clause_1 = Binary MulInt32 y_positive_test x_minus_y_gt_x
   let clause_2 = Binary MulInt32 y_negative_test  x_minus_y_lt_x
 
-  -- | Addition is OK to express OR since only of the clauses can be
+  -- Addition is OK to express OR since only of the clauses can be
   -- true as they are mutually exclusive.
   let overflow = Binary AddInt32 clause_1 clause_2
 
@@ -1069,7 +1074,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
   hir <- marshalTypedCmmLocalReg hi I64
   lor <- marshalTypedCmmLocalReg lo I64
 
-  -- | Smash the high and low 32 bits together to create a 64 bit
+  -- Smash the high and low 32 bits together to create a 64 bit
   -- number.
   let smash32IntTo64 hi32 lo32 =
           Binary OrInt64
@@ -1077,7 +1082,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                  (Unary ExtendUInt32 hi32) (ConstI64 32))
               (Unary ExtendUInt32 lo32)
 
- -- | mask the `n32`th block of v, counting blocks from the lowest bit.
+ -- mask the `n32`th block of v, counting blocks from the lowest bit.
   let mask32 v n32 =
           Unary WrapInt64 $
               Binary AndInt64
@@ -1125,7 +1130,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                               }
               }
   pure [hiout, loout]
- 
+
 
 -- See also: QuotRemWord2#
 marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] = do
@@ -1135,8 +1140,8 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] =
   (lhsHir, _) <- marshalCmmExpr lhsHi
   (lhsLor, _) <- marshalCmmExpr lhsLo
   (rhsr, _) <- marshalCmmExpr rhs
-  
-  -- | Smash the high and low 32 bits together to create a 64 bit
+
+  -- Smash the high and low 32 bits together to create a 64 bit
   -- number.
   let smash32IntTo64 hi32 lo32 =
           Binary OrInt64
@@ -1144,7 +1149,7 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] =
                  (Unary ExtendUInt32 hi32) (ConstI64 32))
               (Unary ExtendUInt32 lo32)
 
- -- | mask the `n32`th block of v, counting blocks from the lowest bit.
+ -- mask the `n32`th block of v, counting blocks from the lowest bit.
   let mask32 v n32 =
           Unary WrapInt64 $
               Binary AndInt64
@@ -1194,8 +1199,8 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] =
                               , callImportReturnTypes = [I32]
                               }
               }
-              
-  pure [quotout, remout]  
+
+  pure [quotout, remout]
 
 marshalCmmPrimCall op rs xs =
   throwError $
@@ -1229,7 +1234,7 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
       throwError $
       UnsupportedCmmInstr $
       showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
-      
+
 marshalCmmUnsafeCall p f rs xs =
   throwError $
   UnsupportedCmmInstr $
