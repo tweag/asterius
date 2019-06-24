@@ -18,7 +18,7 @@ import System.Process
 import Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
-import Data.Monoid (Any(..))
+import Data.Monoid (Any(..), All(..))
 import Test.Tasty.Hspec
 import Test.Tasty.Runners
 import Control.Exception
@@ -32,6 +32,12 @@ import Data.List (sort)
 import Data.Word
 import System.Console.GetOpt
 import Text.Regex.TDFA
+import Data.Typeable
+import Test.Tasty.Options
+import Options.Applicative
+import Options.Applicative.Types
+
+
 
 
 -- Much of the code is shamelessly stolen from:
@@ -254,10 +260,10 @@ noFile = PatternFilePath Nothing
 
 instance IsOption PatternFilePath where
   defaultValue = noFile
-  parseValue = Just
+  parseValue = Just . PatternFilePath . Just
   optionName = return "testfile"
   optionHelp = return "selects tests that match the WHITELIST/BLACKLIST patterns from file"
-  optionCLParser = mkOptionCLParser (short "l" <> metavar "FILE")
+  optionCLParser = mkOptionCLParser (short 'l' <> metavar "FILE")
 
 
 -- | Pattern can be a whitelist or a blacklist
@@ -266,12 +272,12 @@ type Pats = [Pat]
 
 -- | Filter a string against a given pattern
 patFilter :: Pat -> String -> Bool
-patFilter (PatWhite p) s = s ~= p
-patFilter (PatBlack p) s = not $ (s ~= p)
+patFilter (PatWhite p) s = s =~ p
+patFilter (PatBlack p) s = not $ (s =~ p)
 
 -- | Filter a string against *all* patterns
-patsFilter :: Pats -> String -> Bool
-patsFilter ps s = getAll $ mconcat map (All . patFilter) s
+patsFilter :: Pats -> TestName -> Bool
+patsFilter ps s = getAll . mconcat . map (\p -> All (patFilter p s)) $ ps
 
 -- | Parse a file containing patterns into a list of pattenrs
 -- !xx -> blacklist xx
@@ -288,13 +294,14 @@ serializeToDisk :: IORef TestLog -> Ingredient
 serializeToDisk tlref = TestReporter [] $
   \opts tree -> Just $ \smap ->
   let
-   fileopt = lookupOption opts
+   (PatternFilePath patf) = lookupOption opts
   in do
     -- | Filter the test tree if we have a filter
-    tree <- case fileopt of
+    tree <- case patf of
              Nothing -> return tree
              Just fpath -> do
-               f <- readFile fpath
+               pats <- parsePatternFile <$> readFile fpath
+               return $ filterTestTree (patsFilter pats) tree
 
     isTermColor <- hSupportsANSIColor stdout
     let ?colors = isTermColor
