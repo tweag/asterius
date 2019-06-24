@@ -1,0 +1,76 @@
+From ece40a78cfa9295f76237cd2b2aae57cff079084 Mon Sep 17 00:00:00 2001
+From: Luite Stegeman <stegeman@gmail.com>
+Date: Mon, 8 Jan 2018 08:42:30 +0000
+Subject: [PATCH] fix Template Haskell cross compilation on 64 bit compiler
+ with 32 bit target
+
+---
+ deSugar/DsMeta.hs                               | 5 ++++-
+ hsSyn/Convert.hs                                | 4 ++--
+ typecheck/TcSplice.hs                           | 7 ++++---
+ 5 files changed, 17 insertions(+), 13 deletions(-)
+
+diff --git a/deSugar/DsMeta.hs b/deSugar/DsMeta.hs
+index 5de954ae7d..09a4fecbd5 100644
+--- a/deSugar/DsMeta.hs
++++ b/deSugar/DsMeta.hs
+@@ -1947,7 +1947,7 @@ globalVar name
+         ; rep2 mk_varg [pkg,mod,occ] }
+   | otherwise
+   = do  { MkC occ <- nameLit name
+-        ; MkC uni <- coreIntLit (getKey (getUnique name))
++        ; MkC uni <- coreIntegerLit (toInteger $ getKey (getUnique name))
+         ; rep2 mkNameLName [occ,uni] }
+   where
+       mod = ASSERT( isExternalName name) nameModule name
+@@ -2744,6 +2744,9 @@ coreIntLit :: Int -> DsM (Core Int)
+ coreIntLit i = do dflags <- getDynFlags
+                   return (MkC (mkIntExprInt dflags i))
+ 
++coreIntegerLit :: Integer -> DsM (Core Integer)
++coreIntegerLit i = fmap MkC (mkIntegerExpr i)
++
+ coreVar :: Id -> Core TH.Name   -- The Id has type Name
+ coreVar id = MkC (Var id)
+ 
+diff --git a/hsSyn/Convert.hs b/hsSyn/Convert.hs
+index 77ffebe021..cb660df6d2 100644
+--- a/hsSyn/Convert.hs
++++ b/hsSyn/Convert.hs
+@@ -1831,8 +1831,8 @@ thRdrName loc ctxt_ns th_occ th_name
+   = case th_name of
+      TH.NameG th_ns pkg mod -> thOrigRdrName th_occ th_ns pkg mod
+      TH.NameQ mod  -> (mkRdrQual  $! mk_mod mod) $! occ
+-     TH.NameL uniq -> nameRdrName $! (((Name.mkInternalName $! mk_uniq uniq) $! occ) loc)
+-     TH.NameU uniq -> nameRdrName $! (((Name.mkSystemNameAt $! mk_uniq uniq) $! occ) loc)
++     TH.NameL uniq -> nameRdrName $! (((Name.mkInternalName $! mk_uniq (fromInteger uniq)) $! occ) loc)
++     TH.NameU uniq -> nameRdrName $! (((Name.mkSystemNameAt $! mk_uniq (fromInteger uniq)) $! occ) loc)
+      TH.NameS | Just name <- isBuiltInOcc_maybe occ -> nameRdrName $! name
+               | otherwise                           -> mkRdrUnqual $! occ
+               -- We check for built-in syntax here, because the TH
+diff --git a/typecheck/TcSplice.hs b/typecheck/TcSplice.hs
+index 845e2029ed..3434b68615 100644
+--- a/typecheck/TcSplice.hs
++++ b/typecheck/TcSplice.hs
+@@ -922,7 +922,7 @@ To call runQ in the Tc monad, we need to make TcM an instance of Quasi:
+ 
+ instance TH.Quasi TcM where
+   qNewName s = do { u <- newUnique
+-                  ; let i = getKey u
++                  ; let i = toInteger (getKey u)
+                   ; return (TH.mkNameU s i) }
+ 
+   -- 'msg' is forced to ensure exceptions don't escape,
+@@ -1947,8 +1947,9 @@ reify_tc_app tc tys
+ ------------------------------
+ reifyName :: NamedThing n => n -> TH.Name
+ reifyName thing
+-  | isExternalName name = mk_varg pkg_str mod_str occ_str
+-  | otherwise           = TH.mkNameU occ_str (getKey (getUnique name))
++  | isExternalName name
++              = mk_varg pkg_str mod_str occ_str
++  | otherwise = TH.mkNameU occ_str (toInteger $ getKey (getUnique name))
+         -- Many of the things we reify have local bindings, and
+         -- NameL's aren't supposed to appear in binding positions, so
+         -- we use NameU.  When/if we start to reify nested things, that
+

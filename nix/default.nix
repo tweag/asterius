@@ -118,7 +118,7 @@ let
       ({ config, ...}: {
         packages = {
           # packages.hsc2hs.components.exes.hsc2hs.doExactConfig = true;
-          ghc.patches = [ ./patches/ghc.patch ];
+          ghc.patches = [ ./patches/ghc.patch ./patches/ghc/MR948--32bit-cross-th.patch ];
           Cabal.patches = [ cabalPatch ];
         } // (if planOnly then {} else {
           asterius.components.tests =
