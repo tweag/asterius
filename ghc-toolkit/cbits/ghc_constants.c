@@ -502,3 +502,9 @@ HsInt tso_MARKED() { return TSO_MARKED; }
 HsInt tso_SQUEEZED() { return TSO_SQUEEZED; }
 
 HsInt tso_ALLOC_LIMIT() { return TSO_ALLOC_LIMIT; }
+
+HsInt sizeof_StgStableName() { return sizeof(StgStableName); }
+
+HsInt offset_StgStableName_header() { return offsetof(StgStableName, header); }
+
+HsInt offset_StgStableName_sn() { return offsetof(StgStableName, sn); }
