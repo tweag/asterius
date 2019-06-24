@@ -116,12 +116,13 @@ let
       # explicity here.
       iohk-module
       ({ config, ...}: {
+        packages = {
           # packages.hsc2hs.components.exes.hsc2hs.doExactConfig = true;
-          packages.ghc.patches = [ ./patches/ghc.patch ];
-          packages.Cabal.patches = [ cabalPatch ];
-      } // (if planOnly then {} else {
-          packages.asterius.components.tests =
-           pkgs.lib.mapAttrs (n: v: {
+          ghc.patches = [ ./patches/ghc.patch ];
+          Cabal.patches = [ cabalPatch ];
+        } // (if planOnly then {} else {
+          asterius.components.tests =
+            pkgs.lib.mapAttrs (n: v: {
                build-tools = [
                  asterius-boot
                  nodejs
@@ -130,7 +131,8 @@ let
                  nodePkgs.todomvc-common ];
              }) (haskell.mkCabalProjectPkgSet {inherit plan-pkgs;})
                  .config.hsPkgs.asterius.components.tests;
-      }))
+        });
+      })
     ];
   };
   # Patch file that can be applied to the full ghc tree
@@ -229,6 +231,6 @@ in
     _config = pkgSet.config;
     inherit (pkgSet.config) hsPkgs;
     inherit ghc-head ghc864 plan-nix pkgs haskell nodejs nodePkgs asterius-boot;
-    ghc = pkgs.haskell.compiler.${compiler.nix-name};
+    ghc-compiler = pkgs.haskell.compiler.${compiler.nix-name};
     ghc-boot-libs = ghc864.boot-libs;
   }
