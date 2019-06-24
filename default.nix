@@ -29,4 +29,5 @@ in
 # hosts.
 # We will instantiate the defaul-nix template with the
 # nix/pkgs.nix file...
-  localLib.nix-tools.default-nix ./nix/default.nix args
+  (localLib.nix-tools.default-nix ./nix/default.nix args) //
+    { inherit ((localLib.nix-tools.default-nix ./nix/plan-only.nix args).nix-tools._raw) plan-nix; }

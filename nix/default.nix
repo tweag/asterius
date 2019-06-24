@@ -2,10 +2,10 @@
 , iohk-extras ? {}
 , iohk-module ? {}
 , haskell
+, planOnly ? false
 , ...
 }:
 let
-  planOnly = true;
   cleanSrc =
     pkgs.lib.cleanSourceWith {
       src = ./..;
@@ -59,10 +59,12 @@ let
     index-state = "2019-06-22T00:00:00Z";
     index-sha256 = "19v6bqgg886704b8palrzqiydnfjsqqkrx9k6c22kw6kffrrrmd6";
   };
-  plan-pkgs-0 = import "${plan-nix}";
-  # Hide libiserv from the plan because it does not exist in hackage
-  # TODO find a proper fix for this issue
-  plan-pkgs = if planOnly then {
+  plan-pkgs-0 = if planOnly then {
+      # Hydra does not deal with IFD well.  The work arounds is to build
+      # add a job for just the plan-nix and run it on its own to build
+      # and cache all the dependencies needed for the IFD to work.
+      # This empty plan is used instead of the real one when we just
+      # want the plan-nix and do not want to tirgger an IFD.
       extras = hackage: { packages = {}; };
       pkgs = hackage: {
         compiler = {
@@ -70,7 +72,10 @@ let
         };
         packages = {}; };
     }
-    else plan-pkgs-0 // {
+    else import "${plan-nix}";
+  # Hide libiserv from the plan because it does not exist in hackage
+  # TODO find a proper fix for this issue
+  plan-pkgs = plan-pkgs-0 // {
       pkgs = hackage: let x = (plan-pkgs-0.pkgs hackage);
       in x // { packages = removeAttrs x.packages [ "libiserv" ]; }; };
 
