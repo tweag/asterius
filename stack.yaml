@@ -97,6 +97,9 @@ extra-deps:
   - Only-0.1 # for ghc-testsuite report generation
   - http://head.hackage.haskell.org/package/cassava-0.5.1.0.tar.gz # for ghc-testsuite report generation
   - text-short-0.1.2
+  # for ghc-testsuite regex matching for the pattern file
+  - http://head.hackage.haskell.org/package/regex-base-0.93.2.tar.gz
+  - http://head.hackage.haskell.org/package/regex-tdfa-1.2.3.2.tar.gz
 
 flags:
     cassava:

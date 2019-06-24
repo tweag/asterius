@@ -30,6 +30,9 @@ import Control.Arrow ((&&&))
 import Data.Csv
 import Data.List (sort)
 import Data.Word
+import System.Console.GetOpt
+import Text.Regex.TDFA
+
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
@@ -224,13 +227,75 @@ consoleOutput tlref toutput smap =
       , Any nonempty
       )
 
+-- | Helper function to filter the test tree.
+filterTestTree_ :: (TestName -> Bool) -> TestTree -> [TestTree]
+filterTestTree_ f tt =
+    case tt of
+      SingleTest name t -> if (f name) then [tt] else []
+      TestGroup name tt -> [TestGroup name (foldMap (filterTestTree_  f) tt)]
+      _ -> error $ "unknown test tree type"
+
+
+-- | Filter the test tree according to a predicate
+filterTestTree :: (TestName -> Bool) -> TestTree -> TestTree
+filterTestTree f tt = TestGroup "***filtered***" (filterTestTree_ f tt)
+
+
+
+-- | Option that describes whether a test file with
+-- white & black lists has been provided. Modelled after
+-- TestPattern
+newtype PatternFilePath = PatternFilePath (Maybe FilePath)
+  deriving(Typeable, Show, Eq)
+
+noFile :: PatternFilePath
+noFile = PatternFilePath Nothing
+
+
+instance IsOption PatternFilePath where
+  defaultValue = noFile
+  parseValue = Just
+  optionName = return "testfile"
+  optionHelp = return "selects tests that match the WHITELIST/BLACKLIST patterns from file"
+  optionCLParser = mkOptionCLParser (short "l" <> metavar "FILE")
+
+
+-- | Pattern can be a whitelist or a blacklist
+data Pat = PatWhite String | PatBlack String
+type Pats = [Pat]
+
+-- | Filter a string against a given pattern
+patFilter :: Pat -> String -> Bool
+patFilter (PatWhite p) s = s ~= p
+patFilter (PatBlack p) s = not $ (s ~= p)
+
+-- | Filter a string against *all* patterns
+patsFilter :: Pats -> String -> Bool
+patsFilter ps s = getAll $ mconcat map (All . patFilter) s
+
+-- | Parse a file containing patterns into a list of pattenrs
+-- !xx -> blacklist xx
+-- yy -> whitelist yy
+parsePatternFile :: String -> Pats
+parsePatternFile s =
+  map (\(x:xs) -> if x == '!' then PatBlack xs else PatWhite (x:xs)) .
+  filter (not . null) .
+  lines $ s
+
 
 -- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter
 serializeToDisk :: IORef TestLog -> Ingredient
 serializeToDisk tlref = TestReporter [] $
   \opts tree -> Just $ \smap ->
   let
+   fileopt = lookupOption opts
   in do
+    -- | Filter the test tree if we have a filter
+    tree <- case fileopt of
+             Nothing -> return tree
+             Just fpath -> do
+               f <- readFile fpath
+
     isTermColor <- hSupportsANSIColor stdout
     let ?colors = isTermColor
     -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
@@ -243,15 +308,15 @@ serializeToDisk tlref = TestReporter [] $
 
 main :: IO ()
 main = do
-  tlref <- newIORef mempty
-  trees <- getTestCases >>= traverse makeTestTree
+    tlref <- newIORef mempty
+    trees <- getTestCases >>= traverse makeTestTree
 
-  cwd <- getCurrentDirectory
-  let out_basepath = cwd </> "test-report"
+    cwd <- getCurrentDirectory
+    let out_basepath = cwd </> "test-report"
 
-  -- | Tasty throws an exception if stuff fails, so re-throw the exception
-  -- | in case this happens.
-  (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
-    `finally` (saveTestLogToCSV tlref out_basepath)
+    -- | Tasty throws an exception if stuff fails, so re-throw the exception
+    -- | in case this happens.
+    (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
+      `finally` (saveTestLogToCSV tlref out_basepath)
 
 
