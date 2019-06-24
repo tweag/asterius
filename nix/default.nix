@@ -62,9 +62,17 @@ let
   plan-pkgs-0 = import "${plan-nix}";
   # Hide libiserv from the plan because it does not exist in hackage
   # TODO find a proper fix for this issue
-  plan-pkgs = plan-pkgs-0 // {
-    pkgs = hackage: let x = (plan-pkgs-0.pkgs hackage);
-    in if planOnly then {} else x // { packages = removeAttrs x.packages [ "libiserv" ]; }; };
+  plan-pkgs = if planOnly then {
+      extras = hackage: { packages = {}; };
+      pkgs = hackage: {
+        compiler = {
+          nix-name = "ghc864";
+        };
+        packages = {}; };
+    }
+    else plan-pkgs-0 // {
+      pkgs = hackage: let x = (plan-pkgs-0.pkgs hackage);
+      in x // { packages = removeAttrs x.packages [ "libiserv" ]; }; };
 
   cabalPatch = pkgs.fetchpatch {
     url = "https://patch-diff.githubusercontent.com/raw/haskell/cabal/pull/6055.diff";
@@ -106,6 +114,7 @@ let
           # packages.hsc2hs.components.exes.hsc2hs.doExactConfig = true;
           packages.ghc.patches = [ ./patches/ghc.patch ];
           packages.Cabal.patches = [ cabalPatch ];
+      } // (if planOnly then {} else {
           packages.asterius.components.tests =
            pkgs.lib.mapAttrs (n: v: {
                build-tools = [
@@ -116,7 +125,7 @@ let
                  nodePkgs.todomvc-common ];
              }) (haskell.mkCabalProjectPkgSet {inherit plan-pkgs;})
                  .config.hsPkgs.asterius.components.tests;
-      })
+      }))
     ];
   };
   # Patch file that can be applied to the full ghc tree
