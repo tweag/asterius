@@ -510,12 +510,9 @@ export class GC {
     // eg. (ptr:0 stablename: 42) --MOVE--> (ptr:1 stablename:42) --MOVE--> (ptr:2 stablename:42) ...
     let ptr2stableMoved = new Map();
     for (const[ptr, stable] of this.stableNameManager.ptr2stable.entries()) {
-      console.error("GC ptr: ", ptr);
       const ptrMoved = this.evacuateClosure(ptr);
-      console.log("GC! ptr: ", ptr, " | stable: ", stable, " | moved: ", ptrMoved)
       ptr2stableMoved.set(ptrMoved, stable);
     }
-
     this.stableNameManager.ptr2stable.clear();
     for (const[ptr, stable] of ptr2stableMoved) {
       this.stableNameManager.ptr2stable.set(ptr, stable);

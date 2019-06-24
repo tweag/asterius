@@ -13,16 +13,13 @@ export class StableNameManager {
   
   makeStableName(ptr) {
       const oldstable = this.ptr2stable.get(ptr);
-      console.log("makeStableName | ptr: ", ptr, " |this.ptr2stable: ", this.ptr2stable, "oldTag: ", oldstable);
       if (oldstable !== undefined) return oldstable;
 
       const tag = this.ptr2stable.size;
 
       // https://github.com/ghc/ghc/blob/fe819dd637842fb564524a7cf80612a3673ce14c/includes/rts/storage/Closures.h#L197
       let stableptr = this.heapalloc.allocatePinned(rtsConstants.sizeof_StgStableName);
-      console.log("storing stg_stablename_info: ", this.SymbolTable.stg_STABLE_NAME_info);
       this.memory.i64Store(stableptr, this.SymbolTable.stg_STABLE_NAME_info);
-      console.log("storing tag: ", rtsConstants.offset_StgStableName_sn, " ", tag);
       this.memory.i64Store(stableptr + rtsConstants.offset_StgStableName_sn, tag);
 
       this.ptr2stable.set(ptr, stableptr);
