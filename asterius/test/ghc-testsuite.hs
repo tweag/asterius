@@ -301,7 +301,8 @@ serializeToDisk tlref = TestReporter [Test.Tasty.Options.Option (Proxy :: Proxy 
     tree <- case patf of
              Nothing -> return tree
              Just fpath -> do
-               pats <- parsePatternFile <$> readFile fpath
+               cwd <- getCurrentDirectory -- use full path so we get better errors.
+               pats <- parsePatternFile <$> readFile (cwd </> fpath)
                return $ filterTestTree (patsFilter pats) tree
 
     isTermColor <- hSupportsANSIColor stdout
