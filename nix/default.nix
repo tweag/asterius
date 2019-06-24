@@ -55,7 +55,8 @@ let
   plan-nix = haskell.callCabalProjectToNix {
     src = cleanSrc;
     ghc = pkgs.haskell.compiler.ghc864;
-    index-state = "2019-05-23T00:00:00Z";
+    index-state = "2019-06-22T00:00:00Z";
+    index-sha256 = "19v6bqgg886704b8palrzqiydnfjsqqkrx9k6c22kw6kffrrrmd6";
   };
   plan-pkgs-0 = import "${plan-nix}";
   # Hide libiserv from the plan because it does not exist in hackage
