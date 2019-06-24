@@ -5,6 +5,7 @@
 , ...
 }:
 let
+  planOnly = true;
   cleanSrc =
     pkgs.lib.cleanSourceWith {
       src = ./..;
@@ -63,7 +64,7 @@ let
   # TODO find a proper fix for this issue
   plan-pkgs = plan-pkgs-0 // {
     pkgs = hackage: let x = (plan-pkgs-0.pkgs hackage);
-    in x // { packages = removeAttrs x.packages [ "libiserv" ]; }; };
+    in if planOnly then {} else x // { packages = removeAttrs x.packages [ "libiserv" ]; }; };
 
   cabalPatch = pkgs.fetchpatch {
     url = "https://patch-diff.githubusercontent.com/raw/haskell/cabal/pull/6055.diff";
