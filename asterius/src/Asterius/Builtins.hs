@@ -172,6 +172,7 @@ generateRtsExternalInterfaceModule opts = mempty
   <> getStablePtrWrapperFunction opts
   <> deRefStablePtrWrapperFunction opts
   <> freeStablePtrWrapperFunction opts
+  <> makeStableNameWrapperFunction opts
   <> rtsMkBoolFunction opts
   <> rtsMkDoubleFunction opts
   <> rtsMkCharFunction opts
@@ -248,6 +249,12 @@ rtsFunctionImports debug =
       , externalModuleName = "StablePtr"
       , externalBaseName = "freeStablePtr"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_makeStableName"
+      , externalModuleName = "StableName"
+      , externalBaseName = "makeStableName"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
       { internalName = "printI64"
@@ -551,6 +558,7 @@ rtsFunctionExports debug =
       , "getStablePtr"
       , "deRefStablePtr"
       , "hs_free_stable_ptr"
+      ,  "makeStableName"
       ]
   ] <>
   [ FunctionExport {internalName = "__asterius_" <> f, externalName = f}
@@ -1013,6 +1021,14 @@ freeStablePtrWrapperFunction _ =
   runEDSL"hs_free_stable_ptr"  $ do
     sp64 <- param I64
     callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
+
+makeStableNameWrapperFunction _ =
+  runEDSL "makeStableName" $ do
+    setReturnTypes [I64]
+    sp64 <- param I64
+    obj_f64 <-
+      callImport' "__asterius_makeStableName" [convertUInt64ToFloat64 sp64] F64
+    emit $ truncUFloat64ToInt64 obj_f64
 
 rtsMkHelper ::
    BuiltinsOptions
