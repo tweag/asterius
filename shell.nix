@@ -7,8 +7,8 @@ let
   # Use this to set the version of asterius to be booted
   cached = import (nixpkgs.fetchgit {
     url = "https://github.com/input-output-hk/asterius";
-    rev = "30498260aabf4c26e01ac8e264679506c685d4fe";
-    sha256 = "0ljqqaqwlp2sh5j6z8k8hm8alsq2q9npb4ck1arzwfc9pm0jq5b7";
+    rev = "a6786b8701686e733f680765f542321bb55ff2fe";
+    sha256 = "0jawvbjihp7im0smi3ikpxj40pyyc66qrfann4q2wmsq8667rag4";
     fetchSubmodules = true;
   }) {};
   nix-tools = (import ./. {}).nix-tools;
@@ -40,7 +40,7 @@ in (hsPkgs.shellFor {
       export binaryen_datadir=$(pwd)/binaryen
       export ghc_toolkit_datadir=$(pwd)/ghc-toolkit
       # export sandbox_ghc_lib_dir=$(ghc --print-libdir) # does not include `indclude` dir
-      export sandbox_ghc_lib_dir=$(${nix-tools._raw.ghc}/bin/ghc --print-libdir)
+      export sandbox_ghc_lib_dir=$(${nix-tools._raw.ghc-compiler}/bin/ghc --print-libdir)
       export inline_js_datadir=$(pwd)/inline-js/inline-js
       export inline_js_core_datadir=$(pwd)/inline-js/inline-js-core
       export wabt_datadir=$(pwd)/wabt
