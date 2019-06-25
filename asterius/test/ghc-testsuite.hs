@@ -289,6 +289,9 @@ patsFilter ps s = getAll . mconcat . map (\p -> All (patFilter p s)) $ ps
 parsePatternFile :: String -> Pats
 parsePatternFile s =
   map (\(x:xs) -> if x == '!' then PatBlack xs else PatWhite (x:xs)) .
+  -- | filter comments
+  filter (\(x:xs) ->  x /= '#') .
+  -- | remove empty lines
   filter (not . null) .
   lines $ s
 

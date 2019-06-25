@@ -1,1 +1,12 @@
-numeric
+# Syntax: regular expressions. A given pattern will whitelist files. 
+# !<regex> will blacklist stuff in <regex>. <regex> syntax given by whatever
+# is parsed by Regex.TDFA
+# Leading whitespace sensitive.
+numeric/
+!CarryOverflow.hs
+!arith011
+!arith008
+!T3676
+!T15271
+# This seems to be an actual regression -- not sure why this regressed.
+!CarryOverflow
