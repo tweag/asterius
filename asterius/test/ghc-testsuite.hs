@@ -295,48 +295,25 @@ parsePatternFile s =
 serializeToDisk :: IORef TestLog -> Ingredient
 serializeToDisk tlref =
   TestManager [Test.Tasty.Options.Option (Proxy :: Proxy PatternFilePath) ] $
-      \opts tree -> Just $
-          launchTestTree opts tree $ \smap -> do
+      \opts tree -> Just $ do
+          let (PatternFilePath patf) = lookupOption opts
+          treeFiltered <- case patf of
+                      Nothing -> return $ tree
+                      Just fpath -> do
+                           cwd <- getCurrentDirectory -- use full path so we get better errors.
+                           pats <- parsePatternFile <$> readFile (cwd </> fpath)
+                           return $ filterTestTree (patsFilter pats) tree
+          launchTestTree opts treeFiltered $ \smap -> do
             isTermColor <- hSupportsANSIColor stdout
             let ?colors = isTermColor
             -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
-            let toutput = buildTestOutput opts tree
+            let toutput = buildTestOutput opts treeFiltered
             consoleOutput tlref toutput smap
             return $ \time -> do
               stats <- computeStatistics smap
               printStatistics stats time
               return $ statFailures stats == 0
 
--- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter
--- serializeToDisk :: IORef TestLog -> Ingredient
--- serializeToDisk tlref = TestManager [Test.Tasty.Options.Option (Proxy :: Proxy PatternFilePath) ] $
---   \opts tree ->
---   let
---    (PatternFilePath patf) = lookupOption opts
---   in do
---     -- | Filter the test tree if we have a filter
---     tree' <- case patf of
---              Nothing -> return tree
---              Just fpath -> do
---                cwd <- getCurrentDirectory -- use full path so we get better errors.
---                pats <- parsePatternFile <$> readFile (cwd </> fpath)
---                tree' <- catch  (evaluate $ filterTestTree (patsFilter pats) tree)
---                          (\(e :: SomeException) -> die "TREE")
---                return $ tree'
---
---     let tree'' = TestGroup "ALL-DISABLED" []
---
---    launchTestTree opts tree'' $ \smap ->
---         isTermColor <- hSupportsANSIColor stdout
---         let ?colors = isTermColor
---         -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
---         let toutput = buildTestOutput opts tree''
---         consoleOutput tlref toutput smap
---         return $ \time -> do
---           stats <- computeStatistics smap
---           printStatistics stats time
---           return $ statFailures stats == 0
---
 main :: IO ()
 main = do
     tlref <- newIORef mempty
