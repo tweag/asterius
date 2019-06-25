@@ -3,6 +3,7 @@
 , iohk-module ? {}
 , haskell
 , planOnly ? false
+, shellOnly ? false
 , ...
 }:
 let
@@ -123,8 +124,8 @@ let
         } // (if planOnly then {} else {
           asterius.components.tests =
             pkgs.lib.mapAttrs (n: v: {
-               build-tools = [
-                 asterius-boot
+               build-tools =
+                 pkgs.lib.optional (!shellOnly) asterius-boot ++ [
                  nodejs
                  nodePkgs.parcel-bundler
                  nodePkgs.todomvc-app-css
