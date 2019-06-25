@@ -37,6 +37,7 @@ import Data.Typeable
 import Test.Tasty.Options
 import Options.Applicative
 import Options.Applicative.Types
+import System.Exit(die)
 
 
 
@@ -235,17 +236,19 @@ consoleOutput tlref toutput smap =
       )
 
 -- | Helper function to filter the test tree.
-filterTestTree_ :: (TestName -> Bool) -> TestTree -> [TestTree]
+filterTestTree_ :: (TestName -> Bool) -> TestTree -> TestTree
 filterTestTree_ f tt =
     case tt of
-      SingleTest name t -> if (f name) then [tt] else []
-      TestGroup name tt -> [TestGroup name (foldMap (filterTestTree_  f) tt)]
+      SingleTest name t -> if (f name)
+                           then SingleTest (name <> "-ENABLED") t
+                           else TestGroup (name <> "-DISABLED") []
+      TestGroup name tt -> TestGroup (name <> "-FILTERED") (map (filterTestTree_ f) tt)
       _ -> error $ "unknown test tree type"
 
 
 -- | Filter the test tree according to a predicate
 filterTestTree :: (TestName -> Bool) -> TestTree -> TestTree
-filterTestTree f tt = TestGroup "***filtered***" (filterTestTree_ f tt)
+filterTestTree f tt = TestGroup "***filtered***" $ [filterTestTree_ f tt]
 
 
 
@@ -298,17 +301,19 @@ serializeToDisk tlref = TestReporter [Test.Tasty.Options.Option (Proxy :: Proxy 
    (PatternFilePath patf) = lookupOption opts
   in do
     -- | Filter the test tree if we have a filter
-    tree <- case patf of
+    tree' <- case patf of
              Nothing -> return tree
              Just fpath -> do
                cwd <- getCurrentDirectory -- use full path so we get better errors.
                pats <- parsePatternFile <$> readFile (cwd </> fpath)
-               return $ filterTestTree (patsFilter pats) tree
+               tree' <- catch  (evaluate $ filterTestTree (patsFilter pats) tree)
+                         (\(e :: SomeException) -> die "TREE")
+               return $ tree'
 
     isTermColor <- hSupportsANSIColor stdout
     let ?colors = isTermColor
     -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
-    let toutput = buildTestOutput opts tree
+    let toutput = buildTestOutput opts tree'
     consoleOutput tlref toutput smap
     return $ \time -> do
       stats <- computeStatistics smap
