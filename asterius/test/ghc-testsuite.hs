@@ -310,10 +310,12 @@ serializeToDisk tlref = TestReporter [Test.Tasty.Options.Option (Proxy :: Proxy 
                          (\(e :: SomeException) -> die "TREE")
                return $ tree'
 
+    let tree'' = TestGroup "ALL-DISABLED" []
+
     isTermColor <- hSupportsANSIColor stdout
     let ?colors = isTermColor
     -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
-    let toutput = buildTestOutput opts tree'
+    let toutput = buildTestOutput opts tree''
     consoleOutput tlref toutput smap
     return $ \time -> do
       stats <- computeStatistics smap
