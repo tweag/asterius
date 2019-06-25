@@ -59,6 +59,7 @@ let
         wasm-toolkit ];
     }).overrideAttrs (oldAttrs: {
       buildInputs = oldAttrs.buildInputs ++ [
+        pkgs.haskellPackages.hpack
         pkgs.wabt
         nodejs
         nodePkgs.parcel-bundler
