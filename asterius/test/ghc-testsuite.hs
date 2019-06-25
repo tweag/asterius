@@ -41,7 +41,6 @@ import System.Exit(die)
 
 
 
-
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
 
@@ -235,22 +234,19 @@ consoleOutput tlref toutput smap =
       , Any nonempty
       )
 
--- | Helper function to filter the test tree.
-filterTestTree_ :: (TestName -> Bool) -> TestTree -> TestTree
-filterTestTree_ f tt =
-    case tt of
-      SingleTest name t -> if (f name)
-                           then SingleTest (name <> "-ENABLED") t
-                           else TestGroup (name <> "-DISABLED") []
-      TestGroup name tt -> TestGroup (name <> "-FILTERED") (map (filterTestTree_ f) tt)
-      _ -> error $ "unknown test tree type"
-
-
 -- | Filter the test tree according to a predicate
 filterTestTree :: (TestName -> Bool) -> TestTree -> TestTree
-filterTestTree f tt = TestGroup "***filtered***" $ [filterTestTree_ f tt]
-
-
+filterTestTree f tt =
+  TestGroup "***filtered***" $ [go tt]
+  where
+    -- go :: TestTree -> TestTree
+    go (SingleTest name t) =
+      if (f name)
+        then SingleTest (name <> "-ENABLED") t
+        else TestGroup (name <> "-DISABLED") []
+    go (TestGroup name tt) =
+      TestGroup (name <> "-FILTERED") (map go tt)
+    go _ = error $ "unknown test tree type"
 
 -- | Option that describes whether a test file with
 -- white & black lists has been provided. Modelled after
@@ -329,5 +325,3 @@ main = do
     -- | in case this happens.
     (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
       `finally` (saveTestLogToCSV tlref out_basepath)
-
-
