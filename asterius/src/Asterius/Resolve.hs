@@ -14,14 +14,17 @@ module Asterius.Resolve
 import Asterius.Builtins
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
+import Asterius.MemoryTrap
 import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Types
 import Data.Binary
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Short as SBS
 import Data.Data (Data, gmapQl)
-import Data.List
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
+import Data.String
 import Foreign
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
@@ -44,8 +47,7 @@ collectAsteriusEntitySymbols t acc =
     _ -> gmapQl (.) id collectAsteriusEntitySymbols t acc
 
 data LinkReport = LinkReport
-  { unavailableSymbols :: S.Set AsteriusEntitySymbol
-  , staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64
+  { staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64
   , infoTableSet :: [Int64]
   , tableSlots, staticMBlocks :: Int
   , bundledFFIMarshalState :: FFIMarshalState
@@ -56,8 +58,7 @@ instance Binary LinkReport
 instance Semigroup LinkReport where
   r0 <> r1 =
     LinkReport
-      { unavailableSymbols = unavailableSymbols r0 <> unavailableSymbols r1
-      , staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
+      { staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1
       , functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1
       , infoTableSet = infoTableSet r0 <> infoTableSet r1
       , tableSlots = 0
@@ -69,8 +70,7 @@ instance Semigroup LinkReport where
 instance Monoid LinkReport where
   mempty =
     LinkReport
-      { unavailableSymbols = mempty
-      , staticsSymbolMap = mempty
+      { staticsSymbolMap = mempty
       , functionSymbolMap = mempty
       , infoTableSet = mempty
       , tableSlots = 0
@@ -81,11 +81,13 @@ instance Monoid LinkReport where
 mergeSymbols ::
      Bool
   -> Bool
+  -> Bool
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
+  -> [AsteriusEntitySymbol]
   -> (AsteriusModule, LinkReport)
-mergeSymbols _ gc_sections store_mod root_syms
-  | not gc_sections = (store_mod, final_rep {bundledFFIMarshalState = ffi_all})
+mergeSymbols _ gc_sections verbose_err store_mod root_syms export_funcs
+  | not gc_sections = (store_mod, mempty {bundledFFIMarshalState = ffi_all})
   | otherwise = (final_m, mempty {bundledFFIMarshalState = ffi_this})
   where
     ffi_all = ffiMarshalState store_mod
@@ -94,22 +96,29 @@ mergeSymbols _ gc_sections store_mod root_syms
         { ffiImportDecls =
             flip LM.filterWithKey (ffiImportDecls ffi_all) $ \k _ ->
               (k <> "_wrapper") `LM.member` functionMap final_m
+        , ffiExportDecls = ffi_exports
         }
-    (_, _, final_rep, final_m) = go (root_syms, S.empty, mempty, mempty)
-    go i@(i_staging_syms, _, _, _)
+    ffi_exports
+      | not gc_sections = ffiExportDecls (ffiMarshalState store_mod)
+      | otherwise =
+        ffiExportDecls (ffiMarshalState store_mod) `LM.restrictKeys`
+        S.fromList export_funcs
+    root_syms' =
+      S.fromList [ffiExportClosure | FFIExportDecl {..} <- LM.elems ffi_exports] <>
+      root_syms
+    (_, _, final_m) = go (root_syms', S.empty, mempty)
+    go i@(i_staging_syms, _, _)
       | S.null i_staging_syms = i
       | otherwise = go $ iter i
-    iter (i_staging_syms, i_acc_syms, i_rep, i_m) =
-      (o_staging_syms, o_acc_syms, o_rep, o_m)
+    iter (i_staging_syms, i_acc_syms, i_m) = (o_staging_syms, o_acc_syms, o_m)
       where
         o_acc_syms = i_staging_syms <> i_acc_syms
-        (o_unavailable_syms, i_child_syms, o_m) =
+        (i_child_syms, o_m) =
           S.foldr'
-            (\i_staging_sym (i_unavailable_syms_acc, i_child_syms_acc, o_m_acc) ->
+            (\i_staging_sym (i_child_syms_acc, o_m_acc) ->
                case LM.lookup i_staging_sym (staticsMap store_mod) of
                  Just ss ->
-                   ( i_unavailable_syms_acc
-                   , collectAsteriusEntitySymbols ss i_child_syms_acc
+                   ( collectAsteriusEntitySymbols ss i_child_syms_acc
                    , o_m_acc
                        { staticsMap =
                            LM.insert i_staging_sym ss (staticsMap o_m_acc)
@@ -117,8 +126,7 @@ mergeSymbols _ gc_sections store_mod root_syms
                  _ ->
                    case LM.lookup i_staging_sym (functionMap store_mod) of
                      Just func ->
-                       ( i_unavailable_syms_acc
-                       , collectAsteriusEntitySymbols func i_child_syms_acc
+                       ( collectAsteriusEntitySymbols func i_child_syms_acc
                        , o_m_acc
                            { functionMap =
                                LM.insert
@@ -126,13 +134,32 @@ mergeSymbols _ gc_sections store_mod root_syms
                                  func
                                  (functionMap o_m_acc)
                            })
-                     _ ->
-                       ( S.insert i_staging_sym i_unavailable_syms_acc
-                       , i_child_syms_acc
-                       , o_m_acc))
-            (unavailableSymbols i_rep, S.empty, i_m)
+                     _
+                       | verbose_err ->
+                         ( i_child_syms_acc
+                         , o_m_acc
+                             { staticsMap =
+                                 LM.insert
+                                   ("__asterius_barf_" <> i_staging_sym)
+                                   AsteriusStatics
+                                     { staticsType = ConstBytes
+                                     , asteriusStatics =
+                                         [ Serialized $
+                                           entityName i_staging_sym <>
+                                           (case LM.lookup
+                                                   i_staging_sym
+                                                   (staticsErrorMap store_mod) of
+                                              Just err ->
+                                                fromString (": " <> show err)
+                                              _ -> mempty) <>
+                                           "\0"
+                                         ]
+                                     }
+                                   (staticsMap o_m_acc)
+                             })
+                       | otherwise -> (i_child_syms_acc, o_m_acc))
+            (S.empty, i_m)
             i_staging_syms
-        o_rep = i_rep {unavailableSymbols = o_unavailable_syms}
         o_staging_syms = i_child_syms `S.difference` o_acc_syms
 
 makeInfoTableSet ::
@@ -145,20 +172,17 @@ makeInfoTableSet AsteriusModule {..} sym_map =
 resolveAsteriusModule ::
      Bool
   -> Bool
-  -> Bool
   -> FFIMarshalState
-  -> [AsteriusEntitySymbol]
   -> AsteriusModule
   -> Int64
   -> Int64
   -> ( Module
      , LM.Map AsteriusEntitySymbol Int64
      , LM.Map AsteriusEntitySymbol Int64
-     , [Event]
      , Int
      , Int)
-resolveAsteriusModule debug has_main _ bundled_ffi_state export_funcs m_globals_resolved func_start_addr data_start_addr =
-  (new_mod, ss_sym_map, func_sym_map, err_msgs, table_slots, initial_mblocks)
+resolveAsteriusModule debug _ bundled_ffi_state m_globals_resolved func_start_addr data_start_addr =
+  (new_mod, ss_sym_map, func_sym_map, table_slots, initial_mblocks)
   where
     (func_sym_map, last_func_addr) =
       makeFunctionSymbolTable m_globals_resolved func_start_addr
@@ -178,12 +202,7 @@ resolveAsteriusModule debug has_main _ bundled_ffi_state export_funcs m_globals_
       Module
         { functionMap' = new_function_map
         , functionImports = func_imports
-        , functionExports =
-            rtsFunctionExports debug has_main <>
-            [ FunctionExport
-              {internalName = "__asterius_jsffi_export_" <> k, externalName = k}
-            | k <- map entityName export_funcs
-            ]
+        , functionExports = rtsFunctionExports debug
         , functionTable = func_table
         , tableImport =
             TableImport
@@ -197,7 +216,6 @@ resolveAsteriusModule debug has_main _ bundled_ffi_state export_funcs m_globals_
         , memoryExport = MemoryExport {externalName = "memory"}
         , memoryMBlocks = initial_mblocks
         }
-    err_msgs = enumFromTo minBound maxBound
 
 linkStart ::
      Bool
@@ -207,11 +225,10 @@ linkStart ::
   -> AsteriusModule
   -> S.Set AsteriusEntitySymbol
   -> [AsteriusEntitySymbol]
-  -> (AsteriusModule, Module, [Event], LinkReport)
-linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
+  -> (AsteriusModule, Module, LinkReport)
+linkStart debug gc_sections binaryen verbose_err store root_syms export_funcs =
   ( merged_m
   , result_m
-  , err_msgs
   , report
       { staticsSymbolMap = ss_sym_map
       , functionSymbolMap = func_sym_map
@@ -220,24 +237,33 @@ linkStart debug has_main gc_sections binaryen store root_syms export_funcs =
       , staticMBlocks = static_mbs
       })
   where
-    (merged_m, report) =
+    (merged_m0, report) =
       mergeSymbols
         debug
         gc_sections
+        verbose_err
         store
-        (root_syms <>
-         S.fromList
-           [ AsteriusEntitySymbol
-             {entityName = "__asterius_jsffi_export_" <> entityName k}
-           | k <- export_funcs
-           ])
-    (result_m, ss_sym_map, func_sym_map, err_msgs, tbl_slots, static_mbs) =
+        root_syms export_funcs
+    merged_m1
+      | debug = addMemoryTrap merged_m0
+      | otherwise = merged_m0
+    merged_m
+      | verbose_err = merged_m1
+      | otherwise =
+        merged_m1
+          { staticsMap =
+              LM.filterWithKey
+                (\sym _ ->
+                   not
+                     ("__asterius_barf_" `BS.isPrefixOf`
+                      SBS.fromShort (entityName sym))) $
+              staticsMap merged_m1
+          }
+    (result_m, ss_sym_map, func_sym_map, tbl_slots, static_mbs) =
       resolveAsteriusModule
         debug
-        has_main
         binaryen
         (bundledFFIMarshalState report)
-        export_funcs
         merged_m
         (1 .|. functionTag `shiftL` 32)
         (dataTag `shiftL` 32)

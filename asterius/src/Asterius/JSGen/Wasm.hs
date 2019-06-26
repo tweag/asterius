@@ -7,8 +7,8 @@ module Asterius.JSGen.Wasm
 import Data.ByteString.Builder
 import System.FilePath
 
-genWasm :: Bool -> Bool -> FilePath -> Builder
-genWasm is_node is_sync base_name =
+genWasm :: Bool -> FilePath -> Builder
+genWasm is_node base_name =
   mconcat
     [ case () of
         ()
@@ -17,8 +17,6 @@ genWasm is_node is_sync base_name =
     , "export default "
     , case () of
         ()
-          | is_node && is_sync ->
-            "new WebAssembly.Module(fs.readFileSync(" <> out_wasm <> "))"
           | is_node ->
             "fs.promises.readFile(" <> out_wasm <>
             ").then(bufferSource => WebAssembly.compile(bufferSource))"

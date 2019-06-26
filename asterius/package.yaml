@@ -7,6 +7,11 @@ copyright: (c) 2018 Tweag I/O
 license: BSD3
 github: tweag/asterius
 
+flags:
+  binaryen:
+    default: true
+    manual: true
+
 extra-source-files:
   - CHANGELOG.md
   - LICENSE
@@ -27,6 +32,12 @@ extra-source-files:
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
   - test/nomain/**/*.hs
+  - test/ghc-testsuite/**/*.hs
+  - test/ghc-testsuite/**/*.stdout
+  - test/exception/**/*.hs
+  - test/regression60/**/*.hs
+  - test/sizeof_md5context/**/*.hs
+  - test/largenum/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -44,7 +55,6 @@ ghc-options: -Wall
 dependencies:
   - base
   - binary
-  - binaryen
   - bytestring
   - Cabal
   - containers
@@ -64,6 +74,12 @@ dependencies:
   - template-haskell
   - transformers
   - wasm-toolkit
+
+when:
+  - condition: flag(binaryen)
+    dependencies:
+      - binaryen
+    cpp-options: -DBINARYEN
 
 library:
   source-dirs: src
@@ -218,6 +234,51 @@ tests:
   nomain:
     source-dirs: test
     main: nomain.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  exception:
+    source-dirs: test
+    main: exception.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  ghc-testsuite:
+    source-dirs: test
+    main: ghc-testsuite.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+      - tasty
+      - tasty-hspec
+      - ansi-terminal
+      - cassava
+
+  ghc-testsuite-with-ghc:
+    source-dirs: test
+    main: ghc-testsuite-with-ghc.hs
+    ghc-options: -threaded -rtsopts
+    dependencies: []
+
+  sizeof_md5context:
+    source-dirs: test
+    main: sizeof_md5context.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  regression60:
+    source-dirs: test
+    main: regression60.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  largenum:
+    source-dirs: test
+    main: largenum.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius

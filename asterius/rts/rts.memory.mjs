@@ -42,12 +42,55 @@ export class Memory {
   i32Store(p, v) { this.dataView.setUint32(Memory.unTag(p), Number(v), true); }
   i64Load(p) { return this.dataView.getBigUint64(Memory.unTag(p), true); }
   i64Store(p, v) { this.dataView.setBigUint64(Memory.unTag(p), BigInt(v), true); }
+  i128Load(p) {
+      // little endian: number with hex digits <0A0B> at address p
+      // get stored as mem[p] = 0B, mem[p+1] = 0A
+      let low = this.dataView.getBigUint64(Memory.unTag(p), true);
+      let high = this.dataView.getBigUint64(Memory.unTag(p) + 8, true);
+      return low | (high << BigInt(64));
+  }
+
+
+  i128Store(p, v) {
+      // create all 1s of 64 bits.
+      const lowmask = (BigInt(1) << BigInt(64)) - BigInt(1);
+
+      // little endian: number with digits <x y> at address p
+      // get stored as mem[p] = y, mem[p+1] = x
+      const low = v & lowmask;
+      const high = v >> BigInt(64);
+
+      // byte addressed, so +8 = 64-bit
+      this.dataView.setBigUint64(Memory.unTag(p), low, true);
+      this.dataView.setBigUint64(Memory.unTag(p) + 8, high, true);
+  }
+
   f32Load(p) { return this.dataView.getFloat32(Memory.unTag(p), true); }
   f32Store(p, v) { this.dataView.setFloat32(Memory.unTag(p), Number(v), true); }
   f64Load(p) { return this.dataView.getFloat64(Memory.unTag(p), true); }
   f64Store(p, v) { this.dataView.setFloat64(Memory.unTag(p), Number(v), true); }
+  i32LoadS8(p) { return this.dataView.getInt8(Memory.unTag(p)); }
+  i32LoadU8(p) { return this.dataView.getUint8(Memory.unTag(p)); }
+  i32LoadS16(p) { return this.dataView.getInt16(Memory.unTag(p), true); }
+  i32LoadU16(p) { return this.dataView.getUint16(Memory.unTag(p), true); }
+  i64LoadS8(p) { return BigInt(this.dataView.getInt8(Memory.unTag(p))); }
+  i64LoadU8(p) { return BigInt(this.dataView.getUint8(Memory.unTag(p))); }
+  i64LoadS16(p) { return BigInt(this.dataView.getInt16(Memory.unTag(p), true)); }
+  i64LoadU16(p) { return BigInt(this.dataView.getUint16(Memory.unTag(p), true)); }
   heapAlloced(p) { return Memory.unTag(p) >= (this.staticMBlocks << Math.log2(rtsConstants.mblock_size)); }
   strlen(_str) { return this.i8View.subarray(Memory.unTag(_str)).indexOf(0); }
+  strLoad(_str) {
+      let p = Memory.unTag(_str);
+      let s = "";
+      let i = 0;
+
+      while(1) {
+          let c = this.i8View[p + i];
+          if (c == 0) { return s };
+          s += String.fromCharCode(c);
+          i++;
+      }
+  }
   memchr(_ptr, val, num) {
     const ptr = Memory.unTag(_ptr),
           off = this.i8View.subarray(ptr, ptr + num).indexOf(val);

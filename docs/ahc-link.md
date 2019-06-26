@@ -63,15 +63,6 @@ Instead of copying the runtime `.mjs` modules to the target directory, generate 
 
 `--bundle` is supported by [`Parcel`](https://parceljs.org/) under the hood and performs minification on the bundled JavaScript file. It's likely beneficial since it reduces total size of scripts and doesn't require multiple requests for fetching them.
 
-## `--sync`
-
-Use synchronous `WebAssembly.Module`/`WebAssembly.Instance` constructors in output code. Additionally,
-
-* The `module` value exported by `xx.wasm.mjs` is no longer a `Promise`, but the `WebAssembly.Module` value itself.
-* The `newInstance` function exported by `xx.lib.mjs` is no longer async, but returns the Asterius instance synchronously.
-
-We don't recommend using `--sync` for most use cases (even for the Node.js target). It's intended for a special use case: Cloudflare Workers, where any initialization logic must be completed on the first run and can't be put in the event queue.
-
 ## More advanced options for hackers
 
 ### `--run`

@@ -424,6 +424,9 @@ foreign import ccall unsafe "offset_StgTSO_alloc_limit" offset_StgTSO_alloc_limi
 foreign import ccall unsafe "offset_StgTSO_tot_stack_size" offset_StgTSO_tot_stack_size
   :: Int
 
+foreign import ccall unsafe "offset_StgUpdateFrame_updatee" offset_StgUpdateFrame_updatee
+  :: Int
+
 foreign import ccall unsafe "sizeof_StgWeak" sizeof_StgWeak :: Int
 
 foreign import ccall unsafe "offset_StgWeak_cfinalizers" offset_StgWeak_cfinalizers
@@ -549,3 +552,9 @@ foreign import ccall unsafe "tso_MARKED" tso_MARKED :: Int
 foreign import ccall unsafe "tso_SQUEEZED" tso_SQUEEZED :: Int
 
 foreign import ccall unsafe "tso_ALLOC_LIMIT" tso_ALLOC_LIMIT :: Int
+
+foreign import ccall unsafe "sizeof_StgStableName" sizeof_StgStableName :: Int
+
+foreign import ccall unsafe "offset_StgStableName_header" offset_StgStableName_header :: Int
+
+foreign import ccall unsafe "offset_StgStableName_sn" offset_StgStableName_sn :: Int

@@ -15,21 +15,19 @@ import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.BuildInfo
 import Asterius.Internals
+import Asterius.Internals.ByteString
 import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.JSGen.Constants
 import Asterius.JSGen.Wasm
-import Asterius.JSRun.Main
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Resolve
 import Asterius.Types
   ( AsteriusEntitySymbol(..)
-  , Event
   , FFIExportDecl(..)
   , FFIMarshalState(..)
   , Module
   )
-import Bindings.Binaryen.Raw
 import Control.Monad
 import Control.Monad.Except
 import Data.Binary.Get
@@ -44,7 +42,6 @@ import Data.Maybe
 import qualified Data.Set as S
 import Data.String
 import Foreign
-import Language.JavaScript.Inline.Core
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
 import NPM.Parcel
@@ -67,7 +64,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , tailCalls, gcSections, fullSymTable, bundle, sync, binaryen, debug, outputLinkReport, outputIR, run :: Bool
+  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -103,13 +100,20 @@ parseTask args =
         , bool_opt "no-gc-sections" $ \t -> t {gcSections = False}
         , bool_opt "full-sym-table" $ \t -> t {fullSymTable = True}
         , bool_opt "bundle" $ \t -> t {bundle = True}
-        , bool_opt "sync" $ \t -> t {sync = True}
         , bool_opt "binaryen" $ \t -> t {binaryen = True}
         , bool_opt "debug" $ \t ->
-            t {debug = True, outputLinkReport = True, outputIR = True}
+            t
+              { fullSymTable = True
+              , binaryen = True
+              , debug = True
+              , outputLinkReport = True
+              , outputIR = True
+              , verboseErr = True
+              }
         , bool_opt "output-link-report" $ \t -> t {outputLinkReport = True}
         , bool_opt "output-ir" $ \t -> t {outputIR = True}
         , bool_opt "run" $ \t -> t {run = True}
+        , bool_opt "verbose-err" $ \t -> t {verboseErr = True}
         , str_opt "ghc-option" $ \s t ->
             t {extraGHCFlags = extraGHCFlags t <> [s]}
         , str_opt "export-function" $ \s t ->
@@ -133,12 +137,12 @@ parseTask args =
           , gcSections = True
           , fullSymTable = False
           , bundle = False
-          , sync = False
           , binaryen = False
           , debug = False
           , outputLinkReport = False
           , outputIR = False
           , run = False
+          , verboseErr = False
           , extraGHCFlags = []
           , exportFunctions = []
           , extraRootSymbols = []
@@ -163,17 +167,20 @@ genPackageJSON Task {..} =
 
 genSymbolDict :: M.Map AsteriusEntitySymbol Int64 -> Builder
 genSymbolDict sym_map =
-  "{" <>
+  "Object.freeze({" <>
   mconcat
     (intersperse
        ","
-       [ string7 (show sym) <> ":" <> int64Dec sym_idx
+       [ "\"" <> shortByteString (entityName sym) <> "\":" <>
+       intHex (fromIntegral sym_idx)
        | (sym, sym_idx) <- M.toList sym_map
        ]) <>
-  "}"
+  "})"
 
 genInfoTables :: [Int64] -> Builder
-genInfoTables sym_set = "new Set(" <> string7 (show sym_set) <> ")"
+genInfoTables sym_set =
+  "new Set([" <> mconcat (intersperse "," (map (intHex . fromIntegral) sym_set)) <>
+  "])"
 
 genPinnedStaticClosures ::
      M.Map AsteriusEntitySymbol Int64
@@ -187,43 +194,44 @@ genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
        (map ((sym_map !) . ffiExportClosure . (ffiExportDecls !)) export_funcs)) <>
   ")"
 
-genLib :: Task -> LinkReport -> [Event] -> Builder
-genLib Task {..} LinkReport {..} err_msgs =
-  mconcat $
-  [ "import * as rts from \"./rts.mjs\";\n"
-  , "export default module => \n"
-  , "rts.newAsteriusInstance({events: ["
-  , mconcat (intersperse "," [string7 $ show $ show msg | msg <- err_msgs])
-  , "], module: module"
-  ] <>
-  [ ", jsffiFactory: "
-  , generateFFIImportObjectFactory bundledFFIMarshalState
-  , ", symbolTable: "
-  , genSymbolDict symbol_table
-  , ", infoTables: "
-  , genInfoTables infoTableSet
-  , ", pinnedStaticClosures: "
-  , genPinnedStaticClosures
-      staticsSymbolMap
-      exportFunctions
-      bundledFFIMarshalState
-  , ", tableSlots: "
-  , intDec tableSlots
-  , ", staticMBlocks: "
-  , intDec staticMBlocks
-  , if sync
-      then ", sync: true"
-      else ", sync: false"
-  , "})"
-  , ";\n"
-  ]
+genLib :: Task -> LinkReport -> Builder
+genLib Task {..} LinkReport {..} =
+  mconcat
+    [ "import * as rts from \"./rts.mjs\";\n"
+    , "export default module => \n"
+    , "rts.newAsteriusInstance({module: module, jsffiFactory: "
+    , generateFFIImportObjectFactory bundledFFIMarshalState
+    , ", exports: "
+    , generateFFIExportObject bundledFFIMarshalState
+    , ", symbolTable: "
+    , genSymbolDict symbol_table
+    , ", infoTables: "
+    , genInfoTables infoTableSet
+    , ", pinnedStaticClosures: "
+    , genPinnedStaticClosures
+        staticsSymbolMap
+        exportFunctions
+        bundledFFIMarshalState
+    , ", tableSlots: "
+    , intDec tableSlots
+    , ", staticMBlocks: "
+    , intDec staticMBlocks
+    , "})"
+    , ";\n"
+    ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
-    symbol_table =
-      if fullSymTable || debug
-        then raw_symbol_table
-        else M.restrictKeys raw_symbol_table $
-             S.fromList extraRootSymbols <> rtsUsedSymbols
+    symbol_table
+      | fullSymTable = raw_symbol_table
+      | otherwise =
+        M.restrictKeys raw_symbol_table $
+        S.fromList
+          [ ffiExportClosure
+          | FFIExportDecl {..} <-
+              M.elems $ ffiExportDecls bundledFFIMarshalState
+          ] <>
+        S.fromList extraRootSymbols <>
+        rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =
@@ -239,55 +247,26 @@ genDefEntry Task {..} =
     , case target of
         Node -> "process.on(\"unhandledRejection\", err => { throw err; });\n"
         Browser -> mempty
-    , if sync
-        then mconcat
-               [ "let i = " <> out_base <> "(module);\n"
-               , if debug
-                   then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
-                   else mempty
-               , "try {\n"
-               , "i.wasmInstance.exports.hs_init();\n"
-               , "if (i.wasmInstance.exports.main)\n"
-               , "i.wasmInstance.exports.main();\n"
-               , "} catch (err) {\n"
-               , "console.log(i.stdio.stdout());\n"
-               , "throw err;\n"
-               , "}\n"
-               , "console.log(i.stdio.stdout());\n"
-               , exports
-               ]
-        else mconcat
-               [ "module.then(m => "
-               , out_base
-               , "(m)).then(i => {\n"
-               , if debug
-                   then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
-                   else mempty
-               , "try {\n"
-               , "i.wasmInstance.exports.hs_init();\n"
-               , "i.wasmInstance.exports.main();\n"
-               , "} catch (err) {\n"
-               , "console.log(i.stdio.stdout());\n"
-               , "throw err;\n"
-               , "}\n"
-               , "console.log(i.stdio.stdout());\n"
-               , "});\n"
-               ]
+    , mconcat
+        [ "module.then(m => "
+        , out_base
+        , "(m)).then(async i => {\n"
+        , if debug
+            then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
+            else mempty
+        , "try {\n"
+        , "i.exports.hs_init();\n"
+        , "await i.exports.main();\n"
+        , "} catch (err) {\n"
+        , "console.log(i.stdio.stdout());\n"
+        , "throw err;\n"
+        , "}\n"
+        , "console.log(i.stdio.stdout());\n"
+        , "});\n"
+        ]
     ]
   where
     out_base = string7 outputBaseName
-    exports =
-      mconcat $
-      map
-        (\AsteriusEntitySymbol {..} ->
-           mconcat
-             [ "export const "
-             , shortByteString entityName
-             , " = i.wasmInstance.exports."
-             , shortByteString entityName
-             , "\n"
-             ])
-        exportFunctions
 
 genHTML :: Task -> Builder
 genHTML Task {..} =
@@ -314,7 +293,7 @@ genHTML Task {..} =
 builderWriteFile :: FilePath -> Builder -> IO ()
 builderWriteFile p b = withBinaryFile p WriteMode $ \h -> hPutBuilder h b
 
-ahcLink :: Task -> IO (Asterius.Types.Module, [Event], LinkReport)
+ahcLink :: Task -> IO (Asterius.Types.Module, LinkReport)
 ahcLink Task {..} = do
   ld_output <- temp (takeBaseName inputHS)
   putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
@@ -336,6 +315,7 @@ ahcLink Task {..} = do
     ] <>
     ["-optl--no-gc-sections" | not gcSections] <>
     ["-optl--binaryen" | binaryen] <>
+    ["-optl--verbose-err" | verboseErr] <>
     extraGHCFlags <>
     [ "-optl--output-ir=" <> outputDirectory </>
     (outputBaseName <.> "unlinked.bin")
@@ -347,11 +327,8 @@ ahcLink Task {..} = do
   pure r
 
 ahcDistMain ::
-     (String -> IO ())
-  -> Task
-  -> (Asterius.Types.Module, [Event], LinkReport)
-  -> IO ()
-ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
+     (String -> IO ()) -> Task -> (Asterius.Types.Module, LinkReport) -> IO ()
+ahcDistMain logger task@Task {..} (final_m, report) = do
   let out_package_json = outputDirectory </> "package.json"
       out_rts_constants = outputDirectory </> "rts.constants.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
@@ -370,15 +347,15 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
     writeFile p $ show final_m
   if binaryen
     then (do logger "[INFO] Converting linked IR to binaryen IR"
-             c_BinaryenSetDebugInfo 1
-             c_BinaryenSetOptimizeLevel 0
-             c_BinaryenSetShrinkLevel 0
+             Binaryen.c_BinaryenSetDebugInfo 1
+             Binaryen.c_BinaryenSetOptimizeLevel 0
+             Binaryen.c_BinaryenSetShrinkLevel 0
              m_ref <-
                Binaryen.marshalModule
                  (staticsSymbolMap report <> functionSymbolMap report)
                  final_m
              logger "[INFO] Validating binaryen IR"
-             pass_validation <- c_BinaryenModuleValidate m_ref
+             pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
              when (pass_validation /= 1) $
                fail "[ERROR] binaryen validation failed"
              m_bin <- Binaryen.serializeModule m_ref
@@ -431,9 +408,9 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
   for_ rts_files $ \f ->
     copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
   logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
-  builderWriteFile out_wasm_lib $ genWasm (target == Node) sync outputBaseName
+  builderWriteFile out_wasm_lib $ genWasm (target == Node) outputBaseName
   logger $ "[INFO] Writing JavaScript lib module to " <> show out_lib
-  builderWriteFile out_lib $ genLib task report err_msgs
+  builderWriteFile out_lib $ genLib task report
   logger $ "[INFO] Writing JavaScript entry module to " <> show out_entry
   case inputEntryMJS of
     Just in_entry -> copyFile in_entry out_entry
@@ -472,27 +449,15 @@ ahcDistMain logger task@Task {..} (final_m, err_msgs, report) = do
       then do
         logger $ "[INFO] Running " <> out_js
         callProcess "node" $
+          ["--experimental-wasm-bigint" | debug] <>
           ["--experimental-wasm-return-call" | tailCalls] <>
           [takeFileName out_js]
       else do
         logger $ "[INFO] Running " <> out_entry
-        case inputEntryMJS of
-          Just _ ->
-            callProcess "node" $
-            ["--experimental-wasm-return-call" | tailCalls] <>
-            ["--experimental-modules", takeFileName out_entry]
-          _ -> do
-            mod_buf <- LBS.readFile $ takeFileName out_wasm
-            withJSSession
-              defJSSessionOpts
-                { nodeExtraArgs =
-                    ["--experimental-wasm-return-call" | tailCalls]
-                } $ \s -> do
-              i <- newAsteriusInstance s (takeFileName out_lib) mod_buf
-              hsInit s i
-              hsMain s i
-              wasm_stdout <- hsStdOut s i
-              LBS.putStr wasm_stdout
+        callProcess "node" $
+          ["--experimental-wasm-bigint" | debug] <>
+          ["--experimental-wasm-return-call" | tailCalls] <>
+          ["--experimental-modules", takeFileName out_entry]
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do
