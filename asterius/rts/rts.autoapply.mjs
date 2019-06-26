@@ -1,3 +1,4 @@
+// how did we discover these constants?
 export const stg_arg_bitmaps = [
   0,
   0,
