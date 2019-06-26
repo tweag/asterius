@@ -290,9 +290,13 @@ export class GC {
         }
         case ClosureTypes.RET_FUN: {
           const size =
-              Number(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_size)),
-                fun_info = Number(this.memory.i64Load(
-                    this.memory.i64Load(c + rtsConstants.offset_StgRetFun_fun)));
+                Number(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_size));
+          const fun = Number(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_fun));
+          console.log("fun: ", fun);
+          const fun_info = Number(this.memory.i64Load(fun));
+          console.log("fun_info: ", fun_info);
+          console.log("rtsConstants.offset_StgFunInfoTable_f", rtsConstants.offset_StgFunInfoTable_f);
+          console.log("rtsConstants.offset_StgFunInfoExtraFwd_fun_type", rtsConstants.offset_StgFunInfoExtraFwd_fun_type);
           switch (this.memory.i32Load(
               fun_info + rtsConstants.offset_StgFunInfoTable_f +
               rtsConstants.offset_StgFunInfoExtraFwd_fun_type)) {
