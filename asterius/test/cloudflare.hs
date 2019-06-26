@@ -8,7 +8,6 @@ main = do
   callProcess "ahc-link" $
     [ "--bundle"
     , "--browser"
-    , "--sync"
     , "--input-hs"
     , "test/cloudflare/cloudflare.hs"
     , "--input-mjs"

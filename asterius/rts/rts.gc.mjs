@@ -5,16 +5,18 @@ import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class GC {
-  constructor(memory, mblockalloc, heapalloc, stableptr_manager, tso_manager, info_tables,
-              pinned_closures, symbol_table) {
+  constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
+    tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
+    this.stableNameManager = stablename_manager;
     this.tsoManager = tso_manager;
     this.infoTables = info_tables;
     this.pinnedClosures = pinned_closures;
     this.symbolTable = symbol_table;
+    this.reentrancyGuard = reentrancy_guard;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
     this.workList = [];
@@ -491,6 +493,7 @@ export class GC {
   }
 
   gcRootTSO(tso) {
+    this.reentrancyGuard.enter(1);
     const tid = this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
     this.heapAlloc.initUnpinned();
     if (this.tsoManager.getTSOret(tid))
@@ -498,6 +501,21 @@ export class GC {
     for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
+
+    // Stage the movement of stable pointers. 
+    // Step 1: Move all the pointers
+    // Step 2: Update the pointer -> stablepointer mapping
+    // We cannot do this at the same time, since moving the pointer while
+    // we walk the ptr2stable map can yield an infinite loop:
+    // eg. (ptr:0 stablename: 42) --MOVE--> (ptr:1 stablename:42) --MOVE--> (ptr:2 stablename:42) ...
+    let ptr2stableMoved = new Map();
+    for (const[ptr, stable] of this.stableNameManager.ptr2stable.entries()) {
+      const ptrMoved = this.evacuateClosure(ptr);
+      const stableMoved = this.evacuateClosure(stable);
+      ptr2stableMoved.set(ptrMoved, stableMoved);
+    }
+    this.stableNameManager.ptr2stable = ptr2stableMoved;
+
     this.evacuateClosure(tso);
     this.scavengeWorkList();
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
@@ -505,5 +523,6 @@ export class GC {
     this.closureIndirects.clear();
     this.liveMBlocks.clear();
     this.liveJSVals.clear();
+    this.reentrancyGuard.exit(1);
   }
 }

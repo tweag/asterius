@@ -2,6 +2,69 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-05-26
+
+Covers the past week.
+
+Completed work:
+
+* Merged in the `ghc-testsuite` work and it now runs as a regular CircleCI job, producing a CSV report and an ASCII table listing grouped test failures.
+* Improved the runtime error messages related to unresolved symbols.
+    * Previously, when the linker spots unresolved symbols, it still produces a self-contained wasm module, using an invalid address to replace such symbols, resulting in a cryptic `unreachable` error message when an execution path hits that symbol.
+    * Now, the linker dynamically injects a small data segment into the wasm module upon unresolved symbols. The data segment is a runtime error message indicating the missing symbol. At runtime, when the symbol is used, it'll now show the linker-generated error message in the stack trace.
+    * Roughly a half of broken ghc tests are due to unresolved symbols, indicating missing rts functionality. Combined with the binaryen backend's ability to emit the name section, it's now much clearer to spot when a standard library function calls some unimplemented feature.
+* Implemented unicode primitives to make `GHC.Unicode` at least works for ASCII, also fixing a long-standing issue related to crashing `read` calls.
+* Fixed `localeEncoding` in `GHC.IO.Encoding.Iconv`, which always return `UTF-8` at the moment. Combined with the unicode primitives above, this also fixes some other `base` functionality, e.g. `withCString`, and also the non-iconv `TextEncoding`s.
+* Implemented floating-point c functions to fix `GHC.Float`.
+* Fixed the `noDuplicate#` primop, now `unsafePerformIO` works.
+* Fixed `getProgArgv` in `System.Environment`. Now `getProgName` returns the "program name" generated from `ahc-ld` output path, and `getArgs` always return an empty list. This is a sensible default combination sufficient to fix some ghc tests, and we don't plan to implement a richer API to support providing `argv` to a compiled "executable" yet.
+* Fixed `foreign import ccall safe`, since it's used in some places in `base`.
+* Fixed the `performGC`-like functions in `System.Mem`.
+* Fixed the `threadPaused` rts function, which played an essential role in creating gc safepoints.
+* Removed support for "sync mode" code generation, which ensures the output entry js module performs synchronous wasm compilation/instantiation. This is hardly used and it's increasingly likely we'll need to perform async rts startup at some point.
+* Pruned legacy rts code related to the "vault" feature which was a workaround back in the days when we didn't have gc.
+
+Ongoing and planned work:
+
+* Fix `debugBelch`/`errorBelch`, which is used in some places in `base` (e.g. `trace`)
+* Implement "top handler" for main IO closure, which prints uncaught exception to `stderr` before returning. This is required by tests whose expected behavior is throwing, and we need to check their `.stderr` files.
+* Fix `GHC.Fingerprint`, which is required by anything related to `Typeable`, e.g. runtime type checks. This is required by `fromException` to be used by the top handler.
+* Investigate an issue in iohk's fork to add nix support: after `ahc-boot` finishes, `ahc` is failing to pick up the compiled archives.
+
+## 2019-05-20
+
+Covers the last two weeks.
+
+Note that Siddharth Bhat(@bollu) joined in as a summer intern at Tweag I/O on this project. From this week on all status report entries are our collaborative efforts.
+
+Completed work:
+
+* Fixed a bug in the codegen which ignored sign extension semantics when extending 8-bits/16-bits integers, resulting in wrong results of `Int8#`/`Int16#`/`Word8#`/`Word16#` related primops.
+* Improved the monadic EDSL interface:
+    * Removed a redundant return type annotation in `runEDSL` calls.
+    * Supported declaring "static" memory regions, they can serve as static variables (as known in C-like languages) which persist across function calls.
+* Updated `binaryen` and `wabt`. For `binaryen`, we:
+    * Spotted and worked around a minor problem: by default the validate function in C API implicitly sets the feature set to "All", enabling all wasm experimental features and causing the `DataCount` section to be emitted to wasm binary, which is unsupported in some old versions of V8.
+    * Implemented color API & s-expression API in C bindings, to support dumping s-expression of wasm to file. These two changes are also proposed to upstream.
+* Tracked down the source of an old bug related to `read` crashing due to missing Unicode primitives in the runtime.
+* Improved Cmm IR dumps to ease debugging.
+* Many source comments; improved docs, with a new "hacking" section describing common workflow on hacking this project.
+
+Ongoing work and planned work:
+
+* Integrate a part of ghc testsuite to run with asterius, collect the results into a report.
+    * Motivation: other than missing TH support that we're still stuck with, there are still other missing or broken features that we might be unaware of. To push asterius towards production-grade quality, we need a more comprehensive test suite to help us discover such edge cases.
+    * The single-module `compile_and_run` tests are copied from ghc tree, and we implemented a `tasty` driver to run them. Reusing the original Python-based test driver takes more work and we decide it's less of a priority at the moment.
+    * Roughly ~800 tests are included, and about 50% of them are failing at the moment.
+    * Remaining work: serve the report file as CircleCI artifact, merge back to `master` and start classifying the failed tests.
+* Improve the debugging experience:
+    * Recovered the "memory trap" framework which we unfortunately dropped previously when attempting to get rid of link-time rewriting passes and make the linker faster. The new memory trap now relies on V8's experimental wasm BigInt integration feature, and covers all wasm read/write opcodes, even for builtin rts functions.
+    * Planned work for memory trap: we'll make the memory trap closely collaborate with the linker, block allocator and garbage collector, to achieve the following effects:
+        * There will be read-only/read-write regions, and we put immutable Cmm data in read-only regions to catch more potential data corruption.
+        * The recycled blocks will be marked inaccessible, any access to those blocks will trap.
+    * Basic exception handling is now implemented, the `throw`/`catch` functions in `Control.Exception` now work.
+    * We plan to implement a part of @bgamari's ghc gdb scripts for chrome devtools: inspecting closures and other rts data structures, walking the stack, etc.
+
 ## 2019-05-06
 
 Covers the paralyzed few weeks since last report.

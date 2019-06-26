@@ -1,4 +1,3 @@
-
 {-# LANGUAGE CPP, MagicHash, NoImplicitPrelude, BangPatterns, UnboxedTuples,
              UnliftedFFITypes #-}
 
@@ -33,7 +32,7 @@ import GHC.Classes
 import GHC.Magic
 import GHC.Prim
 import GHC.Types
-
+ 
 data Integer = Integer Int#
 
 mkInteger :: Bool -> [Int] -> Integer
@@ -51,17 +50,29 @@ mkInteger nonNegative is =
                    case unIO (js_freezeInteger i0) s2 of
                      (# _, I# r #) -> Integer r)
 
+
+-- NOTE: small integer and integers larger than Number.MAX_SAFE_INTEGER
+-- 64 bit = 64 / 16 = 4
 smallInteger :: Int# -> Integer
-smallInteger i = Integer (js_smallInteger i)
+smallInteger i =
+    let w = int2Word# i
+        low32mask# = 4294967295##
+        low = and# w low32mask#
+        high = and# (uncheckedShiftRL# w 32#) low32mask#
+    in Integer (js_smallInteger high low)
 
 wordToInteger :: Word# -> Integer
-wordToInteger w = Integer (js_wordToInteger w)
+wordToInteger w =
+    let low32mask# = 4294967295##
+        low = and# w low32mask#
+        high = and# (uncheckedShiftRL# w 32#) low32mask#
+    in Integer (js_wordToInteger high low)
 
 integerToWord :: Integer -> Word#
-integerToWord (Integer i) = js_integerToWord i
+integerToWord (Integer i) = or# (uncheckedShiftL# (js_integerToWord i 1#) 32#)  (js_integerToWord i 0#)
 
 integerToInt :: Integer -> Int#
-integerToInt (Integer i) = js_integerToInt i
+integerToInt i = word2Int# (integerToWord i)
 
 plusInteger :: Integer -> Integer -> Integer
 plusInteger (Integer i0) (Integer i1) = Integer (js_plusInteger i0 i1)
@@ -166,7 +177,8 @@ encodeDoubleInteger :: Integer -> Int# -> Double#
 encodeDoubleInteger (Integer m) n = js_encodeDoubleInteger m n
 
 decodeDoubleInteger :: Double# -> (# Integer, Int# #)
-decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m d), js_decodeDoubleInteger_n d #)
+decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m d), js_decodeDoubleInteger_e d #)
+
 
 doubleFromInteger :: Integer -> Double#
 doubleFromInteger (Integer i) = js_doubleFromInteger i
@@ -218,13 +230,13 @@ foreign import javascript "__asterius_jsffi.Integer.prependInteger(${1},${2})" j
 
 foreign import javascript "__asterius_jsffi.Integer.freezeInteger(${1})" js_freezeInteger :: Int -> IO Int
 
-foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_smallInteger :: Int# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1}, ${2})" js_smallInteger :: Word# -> Word# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1})" js_wordToInteger :: Word# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.wordToInteger(${1}, ${2})" js_wordToInteger :: Word# -> Word# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1})" js_integerToWord :: Int# -> Word#
+-- | Given integer and which 32-bit _piece_ of the word we want, return that piece. 
+foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1}, ${2})" js_integerToWord :: Int# -> Int# -> Word#
 
-foreign import javascript "__asterius_jsffi.Integer.integerToInt(${1})" js_integerToInt :: Int# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.plusInteger(${1},${2})" js_plusInteger :: Int# -> Int# -> Int#
 
@@ -256,7 +268,7 @@ foreign import javascript "__asterius_jsffi.Integer.remInteger(${1},${2})" js_re
 
 foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeFloatInteger :: Int# -> Int# -> Float#
 
-foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeFloatInteger_m :: Float# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.FloatCBits.decodeDoubleInteger(${1})[0])" js_decodeFloatInteger_m :: Float# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeFloatInteger_n :: Float# -> Int#
 
@@ -264,9 +276,9 @@ foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_
 
 foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeDoubleInteger :: Int# -> Int# -> Double#
 
-foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.Integer.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.FloatCBits.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double# -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_n :: Double# -> Int#
+foreign import javascript "__asterius_jsffi.FloatCBits.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_e :: Double# -> Int#
 
 foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_doubleFromInteger :: Int# -> Double#
 

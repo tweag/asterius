@@ -6,6 +6,8 @@ import Control.DeepSeq
 import Control.Monad.State.Strict
 import qualified Data.IntMap.Strict as IM
 import GHC.Generics
+import System.Mem
+import Debug.Trace (trace)
 
 fib :: Int -> Int
 fib n = go 0 1 0
@@ -51,13 +53,18 @@ sizeofBinTree :: BinTree -> Int
 sizeofBinTree Tip = 1
 sizeofBinTree (Branch x y) = 1 + sizeofBinTree x + sizeofBinTree y
 
-foreign import ccall unsafe "print_i64" print_i64 :: Int -> IO ()
+foreign import ccall safe "print_i64" print_i64 :: Int -> IO ()
 foreign import ccall unsafe "assert_eq_i64" assert_eq_i64 :: Int -> Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
 main :: IO ()
 main = do
+
+  performGC
+
+  putStrLn $ trace "trace message" ""
+
   -- Test that assert_eq works
   assert_eq_i64 10 10
 
@@ -90,3 +97,5 @@ main = do
   -- 0! + 1! + 2! + 3! + 4! + 5!
   print_i64 $ sumFacts 5
   assert_eq_i64 (sumFacts 5) (154)
+
+  performGC

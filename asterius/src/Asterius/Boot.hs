@@ -13,6 +13,7 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals
+import Asterius.Internals.Directory
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
@@ -45,7 +46,7 @@ defaultBootArgs =
   BootArgs
     { bootDir = dataDir </> ".boot"
     , configureOptions =
-        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1"
+        "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1 --ghc-option=-dsuppress-ticks"
     , buildOptions = ""
     , installOptions = ""
     , builtinsOptions = defaultBuiltinsOptions
@@ -81,13 +82,17 @@ bootRTSCmm :: BootArgs -> IO ()
 bootRTSCmm BootArgs {..} =
   GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
   GHC.runGhc (Just obj_topdir) $ do
+    dflags0 <- GHC.getSessionDynFlags
+    _ <-
+      GHC.setSessionDynFlags $ GHC.setGeneralFlag' GHC.Opt_SuppressTicks dflags0
     dflags <- GHC.getSessionDynFlags
     setDynFlagsRef dflags
     is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
     obj_paths_ref <- liftIO $ newIORef []
-    rts_cmm_mods <-
-      map takeBaseName . filter ((== ".cmm") . takeExtension) <$>
-      liftIO (listDirectory rts_path)
+    cmm_files <-
+      liftIO $
+      fmap (filter ((== ".cmm") . takeExtension)) $
+      listFilesRecursive $ takeDirectory rts_path
     runCmm
       defaultConfig
         { ghcFlags =
@@ -98,7 +103,7 @@ bootRTSCmm BootArgs {..} =
             , "-I" <> obj_topdir </> "include"
             ]
         }
-      [rts_path </> m <.> "cmm" | m <- rts_cmm_mods]
+      cmm_files
       (\obj_path ir@CmmIR {..} ->
          let ms_mod =
                (GHC.Module GHC.rtsUnitId $
