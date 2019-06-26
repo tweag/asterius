@@ -1664,9 +1664,16 @@ foreign import ccall unsafe "BinaryenModuleAutoDrop" c_BinaryenModuleAutoDrop
 foreign import ccall unsafe "BinaryenModuleWrite" c_BinaryenModuleWrite
   :: BinaryenModuleRef -> Ptr CChar -> CSize -> IO CSize
 
+foreign import ccall unsafe "BinaryenModuleWriteSExpr" c_BinaryenModuleWriteSExpr
+  :: BinaryenModuleRef -> Ptr CChar -> CSize -> IO CSize
+
 foreign import ccall unsafe "BinaryenModuleAllocateAndWriteMut" c_BinaryenModuleAllocateAndWriteMut
   :: BinaryenModuleRef ->
   Ptr CChar -> Ptr (Ptr ()) -> Ptr CSize -> Ptr (Ptr CChar) -> IO ()
+
+foreign import ccall unsafe "BinaryenModuleAllocateAndWriteSExpr" c_BinaryenModuleAllocateAndWriteSExpr
+  :: BinaryenModuleRef ->
+  IO (Ptr CChar)
 
 foreign import ccall unsafe "BinaryenModuleRead" c_BinaryenModuleRead
   :: Ptr CChar -> CSize -> IO BinaryenModuleRef
@@ -1802,3 +1809,11 @@ foreign import ccall unsafe "BinaryenGetFunctionTypeBySignature" c_BinaryenGetFu
   :: BinaryenModuleRef ->
   BinaryenType ->
     Ptr BinaryenType -> BinaryenIndex -> IO BinaryenFunctionTypeRef
+
+
+foreign import ccall unsafe "BinaryenSetColorsEnabled" c_BinaryenSetColorsEnabled
+  :: CInt -> IO ()
+
+
+foreign import ccall unsafe "BinaryenIsColorsEnabled" c_BinaryenIsColorsEnabled
+  :: IO CInt
