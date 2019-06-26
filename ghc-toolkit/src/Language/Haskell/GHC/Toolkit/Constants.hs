@@ -558,3 +558,4 @@ foreign import ccall unsafe "sizeof_StgStableName" sizeof_StgStableName :: Int
 foreign import ccall unsafe "offset_StgStableName_header" offset_StgStableName_header :: Int
 
 foreign import ccall unsafe "offset_StgStableName_sn" offset_StgStableName_sn :: Int
+

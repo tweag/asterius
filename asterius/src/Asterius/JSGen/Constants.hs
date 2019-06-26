@@ -67,6 +67,8 @@ rtsConstants =
       , ("offset_StgInd_indirectee", offset_StgInd_indirectee)
       , ("sizeof_StgIndStatic", sizeof_StgIndStatic)
       , ("offset_StgIndStatic_indirectee", offset_StgIndStatic_indirectee)
+      -- Do we compile with TNTC?
+      , ("offset_StgInfoTable_entry", offset_StgInfoTable_entry)
       , ("offset_StgInfoTable_layout", offset_StgInfoTable_layout)
       , ("offset_StgInfoTable_type", offset_StgInfoTable_type)
       , ("offset_StgInfoTable_srt", offset_StgInfoTable_srt)

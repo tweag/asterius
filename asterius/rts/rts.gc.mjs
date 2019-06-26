@@ -254,6 +254,11 @@ export class GC {
 
   scavengeStackChunk(sp, sp_lim) {
     let c = sp;
+    console.log("sp: " , sp);
+    console.log("sp_lim: " , sp_lim);
+
+    // stack grows upwards.
+    console.log("sp_lim - sp: ", sp_lim - sp);
     while (true) {
       if (c > sp_lim) throw new WebAssembly.RuntimeError();
       if (c == sp_lim) break;
@@ -288,15 +293,112 @@ export class GC {
           c += (1 + size) << 3;
           break;
         }
+
+        // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/Printer.c#L609
+        // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/sm/Scav.c#L1944
         case ClosureTypes.RET_FUN: {
+		  console.log("type: ", type, " | RET_FUN: " , ClosureTypes.RET_FUN);
+          // retfun : StgRetFun
+          const retfun = c;
+          console.log("rtsConstants.offset_StgRetFun_size", 
+                rtsConstants.offset_StgRetFun_size);
+          console.log("rtsConstants.offset_StgRetFun_fun", 
+                rtsConstants.offset_StgRetFun_fun);
           const size =
-                Number(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_size));
-          const fun = Number(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_fun));
-          console.log("fun: ", fun);
-          const fun_info = Number(this.memory.i64Load(fun));
+                Number(this.memory.i64Load(retfun + 
+                    rtsConstants.offset_StgRetFun_size));
+            console.log("size:" , size);
+            
+          // fun : StgClosure
+          const fun = Number(this.memory.i64Load(retfun + 
+                    rtsConstants.offset_StgRetFun_fun));
+            
+    // Is there not a redundancy of info tables?
+    // RetFun contains an info table, as does the
+    // StgClosure within the header. What's going on?
+    /*
+	typedef struct StgClosure_ StgClosure;
+
+    typedef struct {
+        const StgInfoTable* info;
+    #if defined(PROFILING)
+        StgProfHeader         prof;
+    #endif
+    } StgHeader;
+
+    typedef struct StgClosure_ {
+        StgHeader   header;
+        struct StgClosure_ *payload[];
+    } *StgClosurePtr;
+
+    typedef struct {
+        const StgInfoTable* info;
+        StgWord        size;
+        StgClosure *   fun;
+        StgClosure *   payload[];
+    } StgRetFun;
+
+    typedef struct StgInfoTable_ {
+
+    #if !defined(TABLES_NEXT_TO_CODE)
+        StgFunPtr       entry;    
+    #endif
+
+    #if defined(PROFILING)
+        StgProfInfo     prof;
+    #endif
+
+        StgClosureInfo  layout;     
+
+        StgHalfWord     type;      
+        StgSRTField     srt;
+
+    #if defined(TABLES_NEXT_TO_CODE)
+        StgCode         code[];
+    #endif
+    } *StgInfoTablePtr; // StgInfoTable defined in rts/Types.h
+
+    typedef struct {
+        #if defined(TABLES_NEXT_TO_CODE)
+        StgFunInfoExtraRev f;
+        StgInfoTable i;
+        #else
+        StgInfoTable i;
+		StgFunInfoExtraFwd f;
+        #endif
+    } StgFunInfoTable;
+
+     typedef struct StgFunInfoExtraFwd_ {
+	      StgHalfWord    fun_type;
+		  StgHalfWord    arity;
+		  StgClosure    *srt;  
+		  union { 
+		  			StgWord        bitmap;
+		  		} b;
+		  StgFun         *slow_apply;
+		} StgFunInfoExtraFwd;
+    */
+          
+          // fun_info: StgClosure at offset 0 -> StgHeader at offset 0 -> 
+          // StgInfoTable *
+          const fun_info_p = fun + 0;
+          // fun_info: StgInfoTable
+          // this is punned into an StgFunInfoTable by "get_fun_itbl"
+
+		  // INLINE_HEADER const StgFunInfoTable *get_fun_itbl(const StgClosure *c) { return FUN_INFO_PTR_TO_STRUCT(c->header.info); }
+		  // INLINE_HEADER StgFunInfoTable *FUN_INFO_PTR_TO_STRUCT(const StgInfoTable *info) {return (StgFunInfoTable *)info;}
+		  // NOTE: Printer.c does NOT contain a call to `unDynTag`, while
+		  // Scav.c DOES contain this call.
+          const fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun_info_p)));
+
           console.log("fun_info: ", fun_info);
           console.log("rtsConstants.offset_StgFunInfoTable_f", rtsConstants.offset_StgFunInfoTable_f);
           console.log("rtsConstants.offset_StgFunInfoExtraFwd_fun_type", rtsConstants.offset_StgFunInfoExtraFwd_fun_type);
+          console.log("rtsConstants.offset_StgFunInfoExtraRev_fun_type", rtsConstants.offset_StgFunInfoExtraRev_fun_type);
+          console.log("rtsConstants.offset_StgInfoTable_entry", rtsConstants.offset_StgInfoTable_entry);
+          console.log("rtsConstants.offset_StgInfoTable_code", rtsConstants.offset_StgInfoTable_code);
+          console.log("rtsConstants.offset_StgInfoTable_code", rtsConstants.offset_StgInfoTable_code);
+
           switch (this.memory.i32Load(
               fun_info + rtsConstants.offset_StgFunInfoTable_f +
               rtsConstants.offset_StgFunInfoExtraFwd_fun_type)) {
@@ -497,6 +599,7 @@ export class GC {
   }
 
   gcRootTSO(tso) {
+    console.log("gcRootTSO...");
     this.reentrancyGuard.enter(1);
     const tid = this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
     this.heapAlloc.initUnpinned();
