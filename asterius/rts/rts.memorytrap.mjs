@@ -27,8 +27,9 @@ export class MemoryTrap {
         console.error("XXXXXXXXXXXXXXXXXXXXXXXXX");
         console.error("XXXXXXXXXXXXXXXXXXXXXXXXX");
       const err =
-          new WebAssembly.RuntimeError("Invalid address " +
-            this.showI64(p) + " raw: " + p + "|" + errstr, "| tag:" + tag);
+          new WebAssembly.RuntimeError("XXXX Invalid address " +
+            this.showI64(p) + " raw: " + p + "|" + errstr + 
+            "| tag:" + Memory.getTag(p));
       this.logger.logError(err);
       throw err;
     }

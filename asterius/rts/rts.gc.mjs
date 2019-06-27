@@ -21,7 +21,9 @@ export class GC {
     this.liveMBlocks = new Set();
     this.workList = [];
     this.liveJSVals = new Set();
-    Object.freeze(this);
+    this.N = 0;
+    this.fuel = 1000;
+    Object.seal(this);
   }
 
   bdescr(c) {
@@ -44,11 +46,13 @@ export class GC {
   }
 
   evacuateClosure(c) {
+    if (this.fuel <= 0) { return c; }
+    this.fuel -= 1;
+
     const tag = Memory.getDynTag(c), untagged_c = Memory.unDynTag(c);
-    console.log("evacuateClosure: ", c, " |tag: ", tag, "|untagged_c:",
-          untagged_c);
+    // console.log("evacuateClosure: ", c, " |tag: ", tag, "|untagged_c:", untagged_c);
     let dest_c = this.closureIndirects.get(untagged_c);
-    console.log("dest_c: " , dest_c);
+    // console.log("dest_c: " , dest_c);
 
     if (dest_c == undefined) {
       if (this.memory.heapAlloced(untagged_c)) {
@@ -188,14 +192,17 @@ export class GC {
       this.closureIndirects.set(untagged_c, dest_c);
       this.workList.push(dest_c);
     }
-    console.log("DONE evacuateClosure: " , c);
+    // console.log("DONE evacuateClosure: " , c);
     return Memory.setDynTag(dest_c, tag);
   }
 
   scavengeClosureAt(p) {
-    console.log("scavengeClosureAt: ", p);
+    if (this.fuel <= 0) { return; }
+    this.fuel -= 1;
+
+    // console.log("scavengeClosureAt: ", p);
     this.memory.i64Store(p, this.evacuateClosure(this.memory.i64Load(p)));
-    console.log("DONE scavengeClosureAt: ", p);
+    // console.log("DONE scavengeClosureAt: ", p);
   }
 
   scavengePointersFirst(payload, ptrs) {
@@ -203,13 +210,13 @@ export class GC {
   }
 
   scavengeSmallBitmap(payload, bitmap, size) {
-    console.log("at scavengeSmallBitmap --- payload:", payload, "|bitmap: ", bitmap, "|size: ", size);
+    // console.log("at scavengeSmallBitmap --- payload:", payload, "|bitmap: ", bitmap, "|size: ", size);
     for (let i = 0; i < size; ++i) {
-      console.log("scavengeSmallBitMap | i:" , i, " size: " , size);
+      // console.log("scavengeSmallBitMap | i:" , i, " size: " , size);
       if (!((bitmap >> BigInt(i)) & BigInt(1)))
         this.scavengeClosureAt(payload + (i << 3));
     }
-    console.log("DONE scavengeSmallBitmap --- payload:", payload, "|bitmap: ", bitmap, "|size: ", size);
+    // console.log("DONE scavengeSmallBitmap --- payload:", payload, "|bitmap: ", bitmap, "|size: ", size);
   }
 
   scavengeLargeBitmap(payload, large_bitmap, size) {
@@ -268,9 +275,9 @@ export class GC {
 
     // stack grows upwards.
     while (true) {
-        console.log("c: " , c);
-        console.log("sp_lim: " , sp_lim);
-        console.log("sp_lim - c: ", sp_lim - c);
+        // console.log("c: " , c);
+        // console.log("sp_lim: " , sp_lim);
+        // console.log("sp_lim - c: ", sp_lim - c);
       if (c > sp_lim) throw new WebAssembly.RuntimeError();
       if (c == sp_lim) break;
       const info = Number(this.memory.i64Load(c)),
@@ -282,7 +289,7 @@ export class GC {
       if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
         this.evacuateClosure(
             this.memory.i64Load(info + rtsConstants.offset_StgRetInfoTable_srt));
-      console.log("type: ", type);
+      // console.log("type: ", type);
       switch (type) {
         case ClosureTypes.RET_SMALL:
         case ClosureTypes.UPDATE_FRAME:
@@ -421,7 +428,7 @@ export class GC {
             const ret_fun_payload = retfun + rtsConstants.offset_StgRetFun_payload;
 
 
-		  // This is the code for scavenge_arg_block
+		       // This is the code for scavenge_arg_block
           // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/sm/Scav.c#L286
           switch (fun_type) {
             case FunTypes.ARG_GEN: {
@@ -458,12 +465,14 @@ export class GC {
               console.log("bitmap: ", bitmap);
 
                 // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/includes/rts/storage/InfoTables.h#L116
-                const bitmap_bits =  bitmap >>> BITMAP_BITS_SHIFT;
+                const bitmap_bits =  BigInt(bitmap) >> BigInt(BITMAP_BITS_SHIFT);
                 const bitmap_size = bitmap & BITMAP_SIZE_MASK;
                 console.log("bitmap_bits: ", bitmap_bits);
                 console.log("bitmap_Size: ", bitmap_size);
-                 this.scavengeSmallBitmap(ret_fun_payload, bitmap_size, bitmap_bits);
-                  // BigInt(stg_arg_bitmaps[this.memory.i32Load(
+                this.scavengeSmallBitmap(ret_fun_payload, bitmap_bits, bitmap_size);
+                
+                // throw new WebAssembly.RuntimeError("QUIT HERE ");
+              // BigInt(stg_arg_bitmaps[this.memory.i32Load(
                   //     fun_info + rtsConstants.offset_StgFunInfoTable_f +
                   //     rtsConstants.offset_StgFunInfoExtraFwd_fun_type)]) >>
                   //     BigInt(6),
@@ -471,6 +480,7 @@ export class GC {
               break;
             } // end case default:
           } // end switch(fun_type)
+          
           c += rtsConstants.sizeof_StgRetFun + (size << 3);
           break;
         }
@@ -485,6 +495,9 @@ export class GC {
   }
 
   scavengeClosure(c) {
+    if (this.fuel <= 0) { return; }
+    this.fuel -= 1;
+
     const info = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
     if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
@@ -635,6 +648,8 @@ export class GC {
   }
 
   gcRootTSO(tso) {
+    this.fuel = 0;
+
     console.log("gcRootTSO...");
     this.reentrancyGuard.enter(1);
     const tid = this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
@@ -658,22 +673,38 @@ export class GC {
       ptr2stableMoved.set(ptrMoved, stableMoved);
     }
     this.stableNameManager.ptr2stable = ptr2stableMoved;
-
+ 
     console.log("evacuating TSO...");
     this.evacuateClosure(tso);
     console.log("evacuated TSO.");
+
+ 
 
     console.log("scavenging worklist...");
     this.scavengeWorkList();
     console.log("scavenged worklist.");
 
+    
+    this.reentrancyGuard.exit(1);
+    return;
+
     console.log("other clearing...");
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+    
+    
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
+    
+    
     this.closureIndirects.clear();
+    
+    
+    
+
     this.liveMBlocks.clear();
     this.liveJSVals.clear();
     this.reentrancyGuard.exit(1);
-    console.log("DONE gcRootTSO");
+
+    console.log("DONE gcRootTSO", " N: " , this.N);
+    this.N += 1;
   }
 }
