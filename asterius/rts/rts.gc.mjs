@@ -46,8 +46,8 @@ export class GC {
   }
 
   evacuateClosure(c) {
-    if (this.fuel <= 0) { return c; }
-    this.fuel -= 1;
+    // if (this.fuel <= 0) { return c; }
+    // this.fuel -= 1;
 
     const tag = Memory.getDynTag(c), untagged_c = Memory.unDynTag(c);
     // console.log("evacuateClosure: ", c, " |tag: ", tag, "|untagged_c:", untagged_c);
@@ -197,8 +197,8 @@ export class GC {
   }
 
   scavengeClosureAt(p) {
-    if (this.fuel <= 0) { return; }
-    this.fuel -= 1;
+    // if (this.fuel <= 0) { return; }
+    // this.fuel -= 1;
 
     // console.log("scavengeClosureAt: ", p);
     this.memory.i64Store(p, this.evacuateClosure(this.memory.i64Load(p)));
@@ -495,8 +495,8 @@ export class GC {
   }
 
   scavengeClosure(c) {
-    if (this.fuel <= 0) { return; }
-    this.fuel -= 1;
+    // if (this.fuel <= 0) { return; }
+    // this.fuel -= 1;
 
     const info = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
@@ -648,7 +648,7 @@ export class GC {
   }
 
   gcRootTSO(tso) {
-    this.fuel = 0;
+    this.fuel = 9999;
 
     console.log("gcRootTSO...");
     this.reentrancyGuard.enter(1);
@@ -685,16 +685,13 @@ export class GC {
     console.log("scavenged worklist.");
 
     
-    this.reentrancyGuard.exit(1);
-    return;
-
     console.log("other clearing...");
-    this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+    //this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
     
     
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     
-    
+
     this.closureIndirects.clear();
     
     
