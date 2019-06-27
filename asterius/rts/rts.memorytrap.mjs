@@ -15,6 +15,17 @@ export class MemoryTrap {
   trap(p, errstr) {
     if (Memory.getTag(p) != rtsConstants.dataTag) {
         console.log("tag: ", Memory.getTag(p));
+        console.log("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.log("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.log("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.log("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.log("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.log("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.error("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.error("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.error("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.error("XXXXXXXXXXXXXXXXXXXXXXXXX");
+        console.error("XXXXXXXXXXXXXXXXXXXXXXXXX");
       const err =
           new WebAssembly.RuntimeError("Invalid address " +
             this.showI64(p) + " raw: " + p + "|" + errstr, "| tag:" + tag);
