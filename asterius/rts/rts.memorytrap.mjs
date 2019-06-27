@@ -12,10 +12,12 @@ export class MemoryTrap {
 
   showI64(x) { return "0x" + x.toString(16).padStart(8, "0"); }
 
-  trap(p) {
+  trap(p, errstr) {
     if (Memory.getTag(p) != rtsConstants.dataTag) {
+        console.log("tag: ", Memory.getTag(p));
       const err =
-          new WebAssembly.RuntimeError("Invalid address " + this.showI64(p));
+          new WebAssembly.RuntimeError("Invalid address " +
+            this.showI64(p) + " raw: " + p + "|" + errstr, "| tag:" + tag);
       this.logger.logError(err);
       throw err;
     }
@@ -23,25 +25,25 @@ export class MemoryTrap {
 
   loadI8(bp, o) {
     const p = bp + BigInt(o);
-    this.trap(p);
+    this.trap(p, "i8");
     return this.memory.i8Load(p);
   }
 
   loadI16(bp, o) {
     const p = bp + BigInt(o);
-    this.trap(p);
+    this.trap(p, "i16");
     return this.memory.i16Load(p);
   }
 
   loadI32(bp, o) {
     const p = bp + BigInt(o);
-    this.trap(p);
+    this.trap(p, "i32");
     return this.memory.i32Load(p);
   }
 
   loadI64(bp, o) {
     const p = bp + BigInt(o);
-    this.trap(p);
+    this.trap(p, "i64");
     return this.memory.i64Load(p);
   }
 
