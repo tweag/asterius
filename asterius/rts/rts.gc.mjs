@@ -686,16 +686,12 @@ export class GC {
 
     
     console.log("other clearing...");
+    console.log("NOTE: disabled mega block clearing");
     //this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
     
     
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
-    
-
-    this.closureIndirects.clear();
-    
-    
-    
+    this.closureIndirects.clear();    
 
     this.liveMBlocks.clear();
     this.liveJSVals.clear();
