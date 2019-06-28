@@ -113,8 +113,8 @@ export class MBlockAlloc {
     // add the block descriptor of the final block as well??
     // we don't have this block descriptor on our list, when do we initialize
     // this block descriptor??
-    // sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) +
-    //                 rtsConstants.offset_first_bdescr);
+    sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) +
+                    rtsConstants.offset_first_bdescr);
     
     // this.freeSegment(
     //     Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
@@ -133,7 +133,7 @@ export class MBlockAlloc {
         
       }
       const ix2_in_all = this.all_bds.findIndex(function(v) { return v == sorted_bds[i+1]});
-      if (ix2_in_all == -1) {
+      if (ix2_in_all == -1 && i + 1 != sorted_bds.length - 1) {
         throw new WebAssembly.RuntimeError("unable to find block descriptor2: " +
                                            sorted_bds[i+1] + " i:"  + i);
         
