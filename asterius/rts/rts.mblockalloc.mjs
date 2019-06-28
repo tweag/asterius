@@ -113,8 +113,8 @@ export class MBlockAlloc {
     // add the block descriptor of the final block as well??
     // we don't have this block descriptor on our list, when do we initialize
     // this block descriptor??
-    sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) +
-                    rtsConstants.offset_first_bdescr);
+    // sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) +
+    //                 rtsConstants.offset_first_bdescr);
     
     // this.freeSegment(
     //     Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
