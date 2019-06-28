@@ -19,6 +19,7 @@ export class GC {
     this.reentrancyGuard = reentrancy_guard;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
+    // workList has UNTAGGED pointer.
     this.workList = [];
     this.liveJSVals = new Set();
     this.N = 0;
@@ -58,6 +59,7 @@ export class GC {
     // if (this.fuel <= 0) { return c; }
     // this.fuel -= 1;
 
+    let LOG = "";
     const tag = Memory.getDynTag(c), untagged_c = Memory.unDynTag(c);
     // console.log("evacuateClosure: ", c, " |tag: ", tag, "|untagged_c:", untagged_c);
     let dest_c = this.closureIndirects.get(untagged_c);
@@ -66,6 +68,7 @@ export class GC {
     if (dest_c == undefined) {
       if (this.memory.heapAlloced(untagged_c)) {
         if (this.isPinned(untagged_c)) {
+          LOG += "TYPE: PINNED";
           dest_c = untagged_c;
           // This is pinned memory, so we need to signal to the block allocator
           // that this block is live.
@@ -74,7 +77,8 @@ export class GC {
           const info = Number(this.memory.i64Load(untagged_c));
           if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
           const type =
-              this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+                this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+          LOG += "TYPE: " +  type;
           switch (type) {
             case ClosureTypes.CONSTR_0_1:
             case ClosureTypes.FUN_0_1:
@@ -199,7 +203,13 @@ export class GC {
         }
       } else {
         dest_c = untagged_c;
+        LOG = "TYPE:= dest != nullptr";
       }
+
+      // How did I cook up a pointer whose megablock does not exist??
+      console.log("->>", LOG, " dest_c:", dest_c, " bdescr:",
+                  this.bdescr(dest_c), "<--");
+      this.liveMBlocks.add(this.bdescr(dest_c));
       this.closureIndirects.set(untagged_c, dest_c);
       this.workList.push(dest_c);
     }
@@ -213,7 +223,6 @@ export class GC {
 
     // console.log("scavengeClosureAt: ", p);
     this.memory.i64Store(p, this.evacuateClosure(this.memory.i64Load(p)));
-    // console.log("DONE scavengeClosureAt: ", p);
   }
 
   scavengePointersFirst(payload, ptrs) {
@@ -505,6 +514,7 @@ export class GC {
     while (this.workList.length) this.scavengeClosure(this.workList.pop());
   }
 
+  // takes an UNTAGGED pointer.
   scavengeClosure(c) {
     // if (this.fuel <= 0) { return; }
     // this.fuel -= 1;
