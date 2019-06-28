@@ -29,6 +29,7 @@ export class Memory {
   static getDynTag(p) { return Number(BigInt(p) & BigInt(7)); }
   static setDynTag(p, t) { return Number(BigInt(p) | BigInt(t)); }
   get buffer() { return this.memory.buffer; }
+  // grow by number of pages. Each page is 64k
   grow(n) {
     const prev_pages = this.memory.grow(n);
     this.initView();

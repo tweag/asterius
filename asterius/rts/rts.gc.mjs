@@ -27,6 +27,14 @@ export class GC {
   }
 
   bdescr(c) {
+    // mblock_size := 2^20 = 1048576
+    // clear the bits upto mblock_size, and then go to the
+    //correct offset. The math is confusing here, I don't trust the
+    // computation.
+    // Also note that this computation is different from the one that GHC performs:
+    // https://gitlab.haskell.org/ghc/ghc/blob/master/includes/rts/storage/Block.h#L163
+    
+    // https://gitlab.haskell.org/ghc/ghc/blob/master/includes/rts/storage/Block.h
     return Number(((BigInt(c) >> BigInt(Math.log2(rtsConstants.mblock_size)))
                    << BigInt(Math.log2(rtsConstants.mblock_size))) |
                   BigInt(rtsConstants.offset_first_bdescr));
@@ -38,6 +46,7 @@ export class GC {
     return Boolean(flags & rtsConstants.BF_PINNED);
   }
 
+  // NOTE: we assume that 'c' is an untagged pointer.
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
@@ -58,6 +67,8 @@ export class GC {
       if (this.memory.heapAlloced(untagged_c)) {
         if (this.isPinned(untagged_c)) {
           dest_c = untagged_c;
+          // This is pinned memory, so we need to signal to the block allocator
+          // that this block is live.
           this.liveMBlocks.add(this.bdescr(dest_c));
         } else {
           const info = Number(this.memory.i64Load(untagged_c));
@@ -687,7 +698,7 @@ export class GC {
     
     console.log("other clearing...");
     console.log("NOTE: disabled mega block clearing");
-    //this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+    this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
     
     
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
@@ -698,6 +709,9 @@ export class GC {
     this.reentrancyGuard.exit(1);
 
     console.log("DONE gcRootTSO", " N: " , this.N);
+    console.log("rtsConstants.mblock_size: ", rtsConstants.mblock_size);
+    console.log("rtsConstants.pageSize", rtsConstants.pageSize);
+
     this.N += 1;
   }
 }
