@@ -24,6 +24,7 @@ export class GC {
     this.liveJSVals = new Set();
     this.N = 0;
     this.fuel = 1000;
+    this.closuretypes = new Set();
     Object.seal(this);
   }
 
@@ -60,7 +61,8 @@ export class GC {
     // this.fuel -= 1;
 
     let LOG = "";
-    const tag = Memory.getDynTag(c), untagged_c = Memory.unDynTag(c);
+    const tag = Memory.getDynTag(c);
+    const untagged_c = Memory.unDynTag(c);
     // console.log("evacuateClosure: ", c, " |tag: ", tag, "|untagged_c:", untagged_c);
     let dest_c = this.closureIndirects.get(untagged_c);
     // console.log("dest_c: " , dest_c);
@@ -78,6 +80,7 @@ export class GC {
           if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
           const type =
                 this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+          this.closuretypes.add(type);
           LOG += "TYPE: " +  type;
           switch (type) {
             case ClosureTypes.CONSTR_0_1:
@@ -201,18 +204,31 @@ export class GC {
               throw new WebAssembly.RuntimeError();
           }
         }
-      } else {
+
+        // add heap allocated block.
+        this.liveMBlocks.add(this.bdescr(dest_c));
+
+      } // end heap-allocated 
+      else {
         dest_c = untagged_c;
-        LOG = "TYPE:= dest != nullptr";
+        const info = Number(this.memory.i64Load(untagged_c));
+        if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+        const type =
+              this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);   
+        this.closuretypes.add(type);
+        LOG = "STACK ALLOCATED: (" + dest_c  + ")  TYPE: " + type;
       }
 
       // How did I cook up a pointer whose megablock does not exist??
-      console.log("->>", LOG, " dest_c:", dest_c, " bdescr:",
+      console.log("->>", LOG,
+                  "untagged_c: ", untagged_c,
+                  " dest_c:", dest_c,
+                  "bdescr:",
                   this.bdescr(dest_c), "<--");
-      this.liveMBlocks.add(this.bdescr(dest_c));
       this.closureIndirects.set(untagged_c, dest_c);
       this.workList.push(dest_c);
-    }
+    } // end destination undefined
+
     // console.log("DONE evacuateClosure: " , c);
     return Memory.setDynTag(dest_c, tag);
   }
@@ -721,6 +737,9 @@ export class GC {
     console.log("DONE gcRootTSO", " N: " , this.N);
     console.log("rtsConstants.mblock_size: ", rtsConstants.mblock_size);
     console.log("rtsConstants.pageSize", rtsConstants.pageSize);
+
+
+    console.log("closure types: ", this.closuretypes)
 
     this.N += 1;
   }

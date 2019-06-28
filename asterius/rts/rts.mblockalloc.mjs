@@ -121,7 +121,6 @@ export class MBlockAlloc {
     //   sorted_bds[0] - rtsConstants.offset_first_bdescr);
     // 
     console.log("sorted_bds: ", sorted_bds);
-
     console.log("all_bds: ", this.all_bds);
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       
