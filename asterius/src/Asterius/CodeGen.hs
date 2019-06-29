@@ -681,7 +681,9 @@ marshalCmmPrimCall GHC.MO_F64_Acos [r] [x] =
 marshalCmmPrimCall GHC.MO_F64_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F64 r x
 
-#if MIN_VERSION_ghc(8,8,0)
+-- It is unfortunate to have CPP in the asterius package.
+-- Perhaps we should move this function to ghc-toolkit?
+#if MIN_VERSION_ghc(8,7,0)
 marshalCmmPrimCall GHC.MO_F64_Asinh [r] [x] =
   marshalCmmUnMathPrimCall "asinh" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Acosh [r] [x] =
@@ -726,7 +728,7 @@ marshalCmmPrimCall GHC.MO_F32_Acos [r] [x] =
 marshalCmmPrimCall GHC.MO_F32_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F32 r x
 
-#if MIN_VERSION_ghc(8,8,0)
+#if MIN_VERSION_ghc(8,7,0)
 marshalCmmPrimCall GHC.MO_F32_Asinh [r] [x] =
   marshalCmmUnMathPrimCall "asinh" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Acosh [r] [x] =
