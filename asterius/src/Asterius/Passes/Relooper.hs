@@ -10,20 +10,18 @@ import Asterius.Internals
 import Asterius.Types
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.String
 
 relooper :: RelooperRun -> Expression
 relooper RelooperRun {..} = result_expr
   where
     lbls = M.keys blockMap
-    def_lbl = fromString $ show $ length lbls - 1
     lbl_map = M.fromList $ zip lbls [0 ..]
     lbl_to_idx = (lbl_map !)
     set_block_lbl lbl = SetLocal {index = 0, value = ConstI32 $ lbl_to_idx lbl}
     initial_expr =
       Switch
         { names = lbls
-        , defaultName = def_lbl
+        , defaultName = "__asterius_unreachable"
         , condition = GetLocal {index = 0, valueType = I32}
         }
     loop_lbl = "__asterius_loop"
