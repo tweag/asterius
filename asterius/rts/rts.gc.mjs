@@ -292,7 +292,7 @@ export class GC {
           const size =
               Number(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_size)),
                 fun_info = Number(this.memory.i64Load(
-                    this.memory.i64Load(c + rtsConstants.offset_StgRetFun_fun)));
+                  Memory.unDynTag(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_fun))));
           switch (this.memory.i32Load(
               fun_info + rtsConstants.offset_StgFunInfoTable_f +
               rtsConstants.offset_StgFunInfoExtraFwd_fun_type)) {
