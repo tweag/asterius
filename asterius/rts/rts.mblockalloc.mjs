@@ -132,16 +132,20 @@ export class MBlockAlloc {
       this.memory.i32Load(this.all_bds[i] + rtsConstants.offset_bdescr_blocks);
       const l_end_used = l_start + (rtsConstants.block_size * l_blocks);
       const l_end_total = l_start + rtsConstants.block_size * rtsConstants.blocks_per_mblock;
-      this.freeSegment(l_end_used, l_end_total, i);
 
-      console.log("->>>> freeSegment: i: ", i,
-      "bd: ", this.all_bds[i],
-      "\n\tl_start: " , l_start,
-      " l_end_total: ", l_end_total,
-      "l_end_used: ", l_end_used,
-      "l_end_total - l_end_used: ", l_end_total - l_end_used); 
+      // if this BD is not live, AND this BD is not the 2nd BD
+      // if we allow this BD to live, then we get to the second GC.
+      if (!bds.has(this.all_bds[i]) && this.all_bds[i] != 9007160603181312n) {
+        this.freeSegment(l_start, l_end_total, i);
+
+        console.log("->>>> freeSegment: i: ", i,
+        "bd: ", this.all_bds[i],
+        "\n\tl_start: " , l_start,
+        " l_end_total: ", l_end_total,
+        "l_end_used: ", l_end_used,
+        "l_end_total - l_end_used: ", l_end_total - l_end_used); 
+      }
     }
-
     /*
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       
