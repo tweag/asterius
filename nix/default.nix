@@ -155,15 +155,17 @@ let
     } ''
       tmp=$(mktemp -d)
       cd $tmp
-      cp -r ${ghc-src}/libraries old
-      ln -s ${boot-libs} new
+      mkdir -p old
+      mkdir -p new
+      cp -r ${ghc-src}/libraries old/libraries
+      ln -s ${boot-libs} new/libraries
       chmod +w -R old
-      mkdir -p old/rts/sm
-      cd new
-      find rts -type f -not -name rts.conf -exec cp ${ghc-src}/"{}" $tmp/old/"{}" \;
+      mkdir -p old/libraries/rts/sm
+      cd new/libraries
+      find rts -type f -not -name rts.conf -exec cp ${ghc-src}/"{}" $tmp/old/libraries/"{}" \;
       cd $tmp
-      for new in new/*; do
-        (diff -Nu -r old/$(basename $new) $new || true) >> $out
+      for new in new/libraries/*; do
+        (diff -ruN -x '*.rej' -x '*.orig' old/libraries/$(basename $new) $new || true) >> $out
       done
     '';
   in { inherit ghc-src boot-libs patch; };
