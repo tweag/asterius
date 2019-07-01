@@ -50,8 +50,8 @@ jobs:
           name: Build asterius
           command: |
             git submodule update --init --recursive
-            mkdir ~/.stack
-            cp .circleci/stack.config.yaml ~/.stack/config.yaml
+            mkdir /root/.stack
+            cp .circleci/stack.config.yaml /root/.stack/config.yaml
             stack --no-terminal -j8 build --test --no-run-tests
             stack --no-terminal exec ahc-boot
 
@@ -193,8 +193,8 @@ jobs:
             name: Build asterius
             command: |
               git submodule update --init --recursive
-              mkdir ~/.stack
-              cp .circleci/stack.config.yaml ~/.stack/config.yaml
+              mkdir /root/.stack
+              cp .circleci/stack.config.yaml /root/.stack/config.yaml
               stack --no-terminal -j8 build --test --no-run-tests
               stack --no-terminal exec ahc-boot
 
@@ -217,7 +217,7 @@ jobs:
               cp asterius/test-report.csv /tmp
               python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
               python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
- 
+
       - store_artifacts:
           path: /tmp/test-report.csv
 
