@@ -122,6 +122,27 @@ export class MBlockAlloc {
     // 
     console.log("sorted_bds: ", sorted_bds);
     console.log("all_bds: ", this.all_bds);
+
+    // do not clear this way. Rather, for each block descriptor we have, clear
+    // the free memory in that block descriptor
+    for(let i = 0; i < this.all_bds.length; ++i) {
+      const l_start = Number(this.memory.i64Load(this.all_bds[i] + rtsConstants.offset_bdescr_start));
+
+      const l_blocks =
+      this.memory.i32Load(this.all_bds[i] + rtsConstants.offset_bdescr_blocks);
+      const l_end_used = l_start + (rtsConstants.block_size * l_blocks);
+      const l_end_total = l_start + rtsConstants.block_size * rtsConstants.blocks_per_mblock;
+      this.freeSegment(l_end_used, l_end_total, i);
+
+      console.log("->>>> freeSegment: i: ", i,
+      "bd: ", this.all_bds[i],
+      "\n\tl_start: " , l_start,
+      " l_end_total: ", l_end_total,
+      "l_end_used: ", l_end_used,
+      "l_end_total - l_end_used: ", l_end_total - l_end_used); 
+    }
+
+    /*
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       
       // ensure that we have actually created the block descriptor
@@ -159,6 +180,7 @@ export class MBlockAlloc {
         l_end, "\n\tr: ", r, " r_prev: ", r_prev, "r_prev - r: ", r_prev - r);
         this.freeSegment(l_end, r_prev, i);
     }
+    */
 
 
   }
