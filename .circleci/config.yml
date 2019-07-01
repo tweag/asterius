@@ -195,8 +195,8 @@ jobs:
               git submodule update --init --recursive
               mkdir /root/.stack
               cp .circleci/stack.config.yaml /root/.stack/config.yaml
-              stack --no-terminal -j8 build --test --no-run-tests --verbose
-              stack --no-terminal exec ahc-boot --verbose
+              stack --no-terminal -j8 build --test --no-run-tests
+              stack --no-terminal exec ahc-boot
 
               cd ~/.local
               $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
