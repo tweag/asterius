@@ -9,6 +9,9 @@ module Asterius.Backends.Binaryen
   ( MarshalError(..)
   , marshalModule
   , serializeModule
+  , serializeModuleSExpr
+  , setColorsEnabled
+  , isColorsEnabled
   , c_BinaryenSetDebugInfo
   , c_BinaryenSetOptimizeLevel
   , c_BinaryenSetShrinkLevel
@@ -588,6 +591,17 @@ serializeModule m =
         buf <- peek buf_p
         len <- peek len_p
         BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
+
+serializeModuleSExpr :: BinaryenModuleRef -> IO BS.ByteString
+serializeModuleSExpr m =
+  c_BinaryenModuleAllocateAndWriteSExpr m >>= BS.unsafePackCString
+
+
+setColorsEnabled :: Bool -> IO ()
+setColorsEnabled b = c_BinaryenSetColorsEnabled . toEnum . fromEnum $ b
+
+isColorsEnabled :: IO Bool
+isColorsEnabled = toEnum . fromEnum <$> c_BinaryenIsColorsEnabled
 
 #else
 
