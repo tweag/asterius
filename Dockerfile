@@ -1,5 +1,6 @@
 FROM debian:unstable
 
+COPY .circleci/stack.config.yaml /root/.stack/config.yaml
 COPY asterius /root/asterius/asterius
 COPY binaryen /root/asterius/binaryen
 COPY ghc-toolkit /root/asterius/ghc-toolkit

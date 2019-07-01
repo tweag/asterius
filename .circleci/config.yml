@@ -50,6 +50,8 @@ jobs:
           name: Build asterius
           command: |
             git submodule update --init --recursive
+            mkdir ~/.stack
+            cp .circleci/stack.config.yaml ~/.stack/config.yaml
             stack --no-terminal -j8 build --test --no-run-tests
             stack --no-terminal exec ahc-boot
 
@@ -191,6 +193,8 @@ jobs:
             name: Build asterius
             command: |
               git submodule update --init --recursive
+              mkdir ~/.stack
+              cp .circleci/stack.config.yaml ~/.stack/config.yaml
               stack --no-terminal -j8 build --test --no-run-tests
               stack --no-terminal exec ahc-boot
 
