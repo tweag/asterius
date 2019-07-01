@@ -252,7 +252,7 @@ filterTestTree f tt =
 -- white & black lists has been provided. Modelled after
 -- TestPattern
 newtype PatternFilePath = PatternFilePath (Maybe FilePath)
-  deriving(Typeable, Show, Eq)
+  deriving(Show, Eq)
 
 noFile :: PatternFilePath
 noFile = PatternFilePath Nothing
@@ -299,8 +299,8 @@ serializeToDisk tlref =
           treeFiltered <- case patf of
                       Nothing -> return $ tree
                       Just fpath -> do
-                           cwd <- getCurrentDirectory -- use full path so we get better errors.
-                           pats <- parsePatternFile <$> readFile (cwd </> fpath)
+                           abspath <- makeAbsolute fpath
+                           pats <- parsePatternFile <$> readFile abspath
                            return $ filterTestTree (patsFilter pats) tree
           launchTestTree opts treeFiltered $ \smap -> do
             isTermColor <- hSupportsANSIColor stdout
