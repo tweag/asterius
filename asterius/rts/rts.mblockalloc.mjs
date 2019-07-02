@@ -91,8 +91,11 @@ export class MBlockAlloc {
   // frees the segment between `l_end` and `r`, COUNTED IN BYTES
   freeSegment(l_end, r, ix) {
     if (l_end < r) {
-      // Change the memset to write 0x42 so we can see a clear pattern in the debug log.
+
+
       this.memory.memset(l_end, 0x42 + ix, r - l_end);
+
+      // Change the memset to write 0x42 so we can see a clear pattern in the debug log.
       // const bd = l_end + rtsConstants.offset_first_bdescr;
       // const start = l_end + rtsConstants.offset_first_block;
       // const blocks = (r - start) / rtsConstants.block_size;
@@ -142,7 +145,7 @@ export class MBlockAlloc {
         if (n != n) {
           throw new WebAssembly.RuntimeError("found NaN in memory!: ix: ", ptr, " n:  ", n);
         }
-        
+
         // create a new chunk every 32 bits.
         if ((ptr - l_start) % 32 == 0 && (ptr - l_start) != 0) datastr += "\n";
         datastr +=  n.toString(16).padEnd(2, "0") + " ";
@@ -152,13 +155,30 @@ export class MBlockAlloc {
         if (err) throw err;
       });
 
-
+      
       // if this BD is not live, AND this BD is not the 2nd BD
       // if we allow this BD to live, then we get to the second GC.
       // if (!bds.has(this.all_bds[i]) && this.all_bds[i] != 9007160603181312n) {
       if (!bds.has(this.all_bds[i])) {
 
-        this.freeSegment(l_start, l_end_total, i);
+        //this.freeSegment(l_start, l_start + 1032192, i); // l_start + Math.floor((l_end_total - l_start) / 10) , i);
+        // l_start + 20: success
+        // l_start + 30: success
+        // l_start + 40: fail
+        // l_start + 41: 0x4444444444444454 | stg_ap_pp_fast
+        // l_start + 42: 0x4444444444444454 | stg_ap_pp_fast
+        // l_start + 45: 0x4444444444444454 | stg_ap_pp_fast
+        // l_start + 50: 0x4444444444444454
+        // at l_start + 96: 0x4444444444444454
+        // at l_start + 100, we get "offset not in bounds of dataview"
+        // at l_start + 101: 0x1fff4444444454
+        // at l_start + 102: 0x1f444444444454
+        // at l_start + 103: 0x44444444444454
+        // at l_start + 110, we get the expected memorytrap
+        // at l_start + 115, we get the expected memorytrap
+        // at l_start + 125, we get the expected memorytrap
+        // at l_start + 150, we get the expected memorytrap 
+        this.freeSegment(l_start, l_start + 30, i); // l_start + Math.floor((l_end_total - l_start) / 10) , i);
 
         console.log("->>>> freeSegment: i: ", i,
         "bd: ", this.all_bds[i],

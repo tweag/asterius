@@ -223,11 +223,11 @@ export class GC {
       }
 
       // How did I cook up a pointer whose megablock does not exist??
-      console.log("->>", LOG,
-                  "untagged_c: ", untagged_c,
-                  " dest_c:", dest_c,
-                  "bdescr:",
-                  this.bdescr(dest_c), "<--");
+      // console.log("->>", LOG,
+      //             "untagged_c: ", untagged_c,
+      //             " dest_c:", dest_c,
+      //             "bdescr:",
+      //             this.bdescr(dest_c), "<--");
       this.closureIndirects.set(untagged_c, dest_c);
       this.workList.push(dest_c);
     } // end destination undefined
@@ -256,6 +256,15 @@ export class GC {
         this.scavengeClosureAt(payload + (i << 3));
     }
     // console.log("DONE scavengeSmallBitmap --- payload:", payload, "|bitmap: ", bitmap, "|size: ", size);
+  }
+
+  scavengeSmallBitmapDebug(payload, bitmap, size) {
+    for (let i = 0; i < size; ++i) {
+      console.log("scavengeSmallBitMap |payload: ", payload, " |i:" , i, " |size: " , size, "At: ", payload + (i << 3));
+      if (!((bitmap >> BigInt(i)) & BigInt(1)))
+        this.scavengeClosureAt(payload + (i << 3));
+    }
+    
   }
 
   scavengeLargeBitmap(payload, large_bitmap, size) {
@@ -509,7 +518,7 @@ export class GC {
                 const bitmap_size = bitmap & BITMAP_SIZE_MASK;
                 console.log("bitmap_bits: ", bitmap_bits);
                 console.log("bitmap_Size: ", bitmap_size);
-                this.scavengeSmallBitmap(ret_fun_payload, bitmap_bits, bitmap_size);
+                this.scavengeSmallBitmapDebug(ret_fun_payload, bitmap_bits, bitmap_size);
                 
                 // throw new WebAssembly.RuntimeError("QUIT HERE ");
               // BigInt(stg_arg_bitmaps[this.memory.i32Load(
@@ -531,6 +540,7 @@ export class GC {
   }
 
   scavengeWorkList() {
+    // console.log("worklist length: ", this.workList.length);
     while (this.workList.length) this.scavengeClosure(this.workList.pop());
   }
 
@@ -689,9 +699,10 @@ export class GC {
   }
 
   gcRootTSO(tso) {
+    this.closuretypes = new Set();
     this.fuel = 9999;
 
-    console.log("gcRootTSO...");
+    // console.log("gcRootTSO...");
     this.reentrancyGuard.enter(1);
     const tid = this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
     this.heapAlloc.initUnpinned();
@@ -744,6 +755,14 @@ export class GC {
 
 
     console.log("closure types: ", this.closuretypes)
+
+    let blocksFromInfoTables = new Set();
+    
+    for(let it of this.infoTables) {
+      blocksFromInfoTables.add(this.bdescr(it));
+    }
+
+    console.log("megablocks that are used by info tables: ", blocksFromInfoTables);
 
     this.N += 1;
   }
