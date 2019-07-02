@@ -2,7 +2,18 @@
 
 newtype FMList = FM {unFM :: forall m. m -> m }
 
-main = print (delete 1000 (FM id) :: Int)
+-- 500 +
+-- 503 +
+-- 504 +
+-- 505 +
+-- what happens between 505 and 506??
+-- 506 -
+-- 507 -
+-- 515 -
+-- 525 -
+-- 550 -
+-- 600 - 
+main = print (delete 505 (FM id) :: Int)
 
 delete :: Int -> FMList -> Int
 delete 0 _ = 0
