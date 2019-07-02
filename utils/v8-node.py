@@ -22,7 +22,7 @@ class P0(HTMLParser):
         self.success_builds = []
 
     def handle_starttag(self, tag, attrs):
-        if attrs == [("class", "status-Success")]:
+        if attrs == [("class", "status SUCCESS")]:
             self.gate = True
         elif self.gate and tag == "a":
             self.success_builds.append("https://ci.chromium.org" + attrs[0][1])
