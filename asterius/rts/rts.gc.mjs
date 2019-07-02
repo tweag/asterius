@@ -56,6 +56,9 @@ export class GC {
     return dest_c;
   }
 
+  // helper around copyClosure to compute number of bytes.
+  // expects c to be a TAGGED POINTER.
+  // returns a new TAGGED POINTER
   evacuateClosure(c) {
     // if (this.fuel <= 0) { return c; }
     // this.fuel -= 1;
@@ -325,7 +328,6 @@ export class GC {
       if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
         this.evacuateClosure(
             this.memory.i64Load(info + rtsConstants.offset_StgRetInfoTable_srt));
-      // console.log("type: ", type);
       switch (type) {
         case ClosureTypes.RET_SMALL:
         case ClosureTypes.UPDATE_FRAME:
@@ -365,8 +367,10 @@ export class GC {
             console.log("size:" , size);
             
           // fun : StgClosure
-          const fun = Number(this.memory.i64Load(retfun + 
+          let fun = Number(this.memory.i64Load(retfun + 
                     rtsConstants.offset_StgRetFun_fun));
+
+          fun = this.evacuateClosure(fun);
             
     // Is there not a redundancy of info tables?
     // RetFun contains an info table, as does the
