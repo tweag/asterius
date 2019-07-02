@@ -164,7 +164,14 @@ export class MBlockAlloc {
         //this.freeSegment(l_start, l_start + 1032192, i); // l_start + Math.floor((l_end_total - l_start) / 10) , i);
         // l_start + 20: success
         // l_start + 30: success
-        // l_start + 40: fail
+        // l_start + 32: success
+        // l_start + 33: barf: stg_ap_pp_ret
+        // l_start + 35: barf: stg_ap_pp_ret
+        // l_start + 36:Offset is outside the bounds of the DataView
+        // l_start + 37: 0x1fff4444444454
+        // l_start + 38: 0x1f444444444454
+        // l_start + 39: 0x44444444444454
+        // l_start + 40: 0x4444444444444454
         // l_start + 41: 0x4444444444444454 | stg_ap_pp_fast
         // l_start + 42: 0x4444444444444454 | stg_ap_pp_fast
         // l_start + 45: 0x4444444444444454 | stg_ap_pp_fast
@@ -178,7 +185,7 @@ export class MBlockAlloc {
         // at l_start + 115, we get the expected memorytrap
         // at l_start + 125, we get the expected memorytrap
         // at l_start + 150, we get the expected memorytrap 
-        this.freeSegment(l_start, l_start + 30, i); // l_start + Math.floor((l_end_total - l_start) / 10) , i);
+        this.freeSegment(l_start, l_start + 33, i); // l_start + Math.floor((l_end_total - l_start) / 10) , i);
 
         console.log("->>>> freeSegment: i: ", i,
         "bd: ", this.all_bds[i],
