@@ -135,6 +135,17 @@ export class MBlockAlloc {
       const l_end_used = l_start + (rtsConstants.block_size * l_blocks);
       const l_end_total = l_start + rtsConstants.block_size * rtsConstants.blocks_per_mblock;
 
+
+      let datastr = ""
+      for(let ptr = l_start; ptr < l_end_total; ptr += 8) {
+        datastr += Number(this.memory.i8Load(ptr).toString(16));
+
+      }
+      writeFileSync("/tmp/mblock" + i + ".txt", datastr, (err) => {
+        if (err) throw err;
+      });
+
+
       // if this BD is not live, AND this BD is not the 2nd BD
       // if we allow this BD to live, then we get to the second GC.
       // if (!bds.has(this.all_bds[i]) && this.all_bds[i] != 9007160603181312n) {
@@ -149,16 +160,7 @@ export class MBlockAlloc {
         "l_end_used: ", l_end_used,
         "l_end_total - l_end_used: ", l_end_total - l_end_used);
 
-        let datastr = ""
-        for(let ptr = l_start; ptr < l_end_total; ptr += 8) {
-          datastr += Number(this.memory.i8Load(ptr).toString(16));
-
-        }
-
-        writeFileSync("/tmp/mblock" + i + ".txt", datastr, (err) => {
-          if (err) throw err;
-        });
-     
+      
       }
     }
 

@@ -1,4 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
+import System.Mem
+
 
 newtype FMList = FM {unFM :: forall m. m -> m }
 
@@ -28,7 +30,7 @@ newtype FMList = FM {unFM :: forall m. m -> m }
 -- 400 -
 -- 500 -
 
-main = print (delete 356 (FM id) :: Int)
+main = print (delete 357 (FM id) :: Int) >> performGC
 
 delete :: Int -> FMList -> Int
 delete 0 _ = 0
