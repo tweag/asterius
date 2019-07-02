@@ -1,8 +1,10 @@
 import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
+import { fstat, open, close, writeFile, writeFileSync } from "fs";
 
 export class MBlockAlloc {
   constructor() {
+    
     this.memory = undefined;
     this.staticMBlocks = undefined;
     this.capacity = undefined;
@@ -145,9 +147,21 @@ export class MBlockAlloc {
         "\n\tl_start: " , l_start,
         " l_end_total: ", l_end_total,
         "l_end_used: ", l_end_used,
-        "l_end_total - l_end_used: ", l_end_total - l_end_used); 
+        "l_end_total - l_end_used: ", l_end_total - l_end_used);
+
+        let datastr = ""
+        for(let ptr = l_start; ptr < l_end_total; ptr += 8) {
+          datastr += Number(this.memory.i8Load(ptr).toString(16));
+
+        }
+
+        writeFileSync("/tmp/mblock" + i + ".txt", datastr, (err) => {
+          if (err) throw err;
+        });
+     
       }
     }
+
     /*
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       
