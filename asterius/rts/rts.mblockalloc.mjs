@@ -185,7 +185,7 @@ export class MBlockAlloc {
         // at l_start + 115, we get the expected memorytrap
         // at l_start + 125, we get the expected memorytrap
         // at l_start + 150, we get the expected memorytrap 
-        this.freeSegment(l_start, l_start + 32, i); // l_start + Math.floor((l_end_total - l_start) / 10) , i);
+        this.freeSegment(l_start, l_start + 64, i); // l_start + Math.floor((l_end_total - l_start) / 10) , i);
 
         console.log("->>>> freeSegment: i: ", i,
         "bd: ", this.all_bds[i],

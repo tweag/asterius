@@ -52,7 +52,13 @@ export class GC {
   copyClosure(c, bytes) {
     // it's a closure in the top 64 bits.
     if (this.bdescr(c) == 9007160603181312 && c - 9007160603197440 <= 64) {
-      console.log("COPYING CRASHING BDESCR");
+      const info = Number(this.memory.i64Load(c));
+      if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+      const type =
+            this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+
+    
+      console.log("COPYING CRASHING BDESCR. Type: " + type + "  |loc: " + (c - 9007160603197440));
       var stack = new Error().stack;
       console.log( stack );
     }
@@ -132,6 +138,25 @@ export class GC {
                                                    ((ptrs + non_ptrs) << 3));
               break;
             }
+
+            case ClosureTypes.BLACKHOLE: {
+              
+              // throw new WebAssembly.RuntimeError("unimplemented");
+              // r = ((StgInd*)q)->indirectee;  
+              /*
+              const indirectee = this.memory.i64Load(untagged_c + rtsConstants.offset_StgInd_indirectee);
+              console.log("indirectee: ", indirectee);
+              dest_c = this.evacuateClosure(indirectee);
+              */
+              
+              const ptrs = this.memory.i32Load(
+                  info + rtsConstants.offset_StgInfoTable_layout),
+                    non_ptrs = this.memory.i32Load(
+                        info + rtsConstants.offset_StgInfoTable_layout + 4);
+              dest_c = this.copyClosure(untagged_c, (1 + ptrs + non_ptrs) << 3);
+              break;
+              
+            }
             case ClosureTypes.FUN:
             case ClosureTypes.CONSTR:
             case ClosureTypes.CONSTR_NOCAF:
@@ -140,7 +165,7 @@ export class GC {
             case ClosureTypes.WEAK:
             case ClosureTypes.PRIM:
             case ClosureTypes.MUT_PRIM:
-            case ClosureTypes.BLACKHOLE: {
+             {
               const ptrs = this.memory.i32Load(
                   info + rtsConstants.offset_StgInfoTable_layout),
                     non_ptrs = this.memory.i32Load(
@@ -226,7 +251,7 @@ export class GC {
         const type =
               this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);   
         this.closuretypes.add(type);
-        LOG = "STACK ALLOCATED: (" + dest_c  + ")  TYPE: " + type;
+        LOG = "STACK ALLOCATED: (" + dest_c  + ")  TYPE: " + type ;
       }
 
       // How did I cook up a pointer whose megablock does not exist??
@@ -383,11 +408,15 @@ export class GC {
             console.log("size:" , size);
             
           // fun : StgClosure
+          /*
           let fun = Number(this.memory.i64Load(retfun + 
                     rtsConstants.offset_StgRetFun_fun));
 
           fun = this.evacuateClosure(fun);
-            
+          */
+
+          this.scavengeClosureAt(retfun + rtsConstants.offset_StgRetFun_fun);
+          let fun = Number(this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_fun));
     // Is there not a redundancy of info tables?
     // RetFun contains an info table, as does the
     // StgClosure within the header. What's going on?
@@ -551,7 +580,7 @@ export class GC {
     while (this.workList.length) this.scavengeClosure(this.workList.pop());
   }
 
-  // takes an UNTAGGED pointer.
+  // takes an UNTAGGED pointer. that is in the NEW memory, and rewrites pointers to the OLD memory.
   scavengeClosure(c) {
     // if (this.fuel <= 0) { return; }
     // this.fuel -= 1;
@@ -597,7 +626,13 @@ export class GC {
         this.scavengePointersFirst(c + 8, ptrs);
         break;
       }
-      case ClosureTypes.BLACKHOLE:
+      case ClosureTypes.BLACKHOLE: {
+        const ptrs =
+            this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_layout);
+        this.scavengePointersFirst(c + 8, ptrs);
+        break;
+      }
+
       case ClosureTypes.MUT_VAR_CLEAN:
       case ClosureTypes.MUT_VAR_DIRTY:
       case ClosureTypes.PRIM:
