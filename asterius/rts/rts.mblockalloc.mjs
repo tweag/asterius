@@ -138,7 +138,11 @@ export class MBlockAlloc {
 
       let datastr = ""
       for(let ptr = l_start; ptr < l_end_total; ptr += 8) {
-        datastr += Number(this.memory.i8Load(ptr).toString(16));
+        const n = Number(this.memory.i8Load(ptr));
+        if (n != n) {
+          throw new WebAssembly.RuntimeError("found NaN in memory!: ix: ", ptr, " n:  ", n);
+        }
+        datastr += n.toString(16);
 
       }
       writeFileSync("/tmp/mblock" + i + ".txt", datastr, (err) => {
