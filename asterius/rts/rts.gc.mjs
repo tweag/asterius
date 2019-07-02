@@ -53,6 +53,8 @@ export class GC {
     // it's a closure in the top 64 bits.
     if (this.bdescr(c) == 9007160603181312 && c - 9007160603197440 <= 64) {
       console.log("COPYING CRASHING BDESCR");
+      var stack = new Error().stack;
+      console.log( stack );
     }
 
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
