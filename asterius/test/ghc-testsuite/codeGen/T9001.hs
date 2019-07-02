@@ -2,6 +2,8 @@
 
 newtype FMList = FM {unFM :: forall m. m -> m }
 
+-- On protecting the first megablock: 
+-- (if (!bds.has(this.all_bds[i]) && this.all_bds[i] != 9007160603181312n))
 -- 500 +
 -- 503 +
 -- 504 +
@@ -13,7 +15,20 @@ newtype FMList = FM {unFM :: forall m. m -> m }
 -- 525 -
 -- 550 -
 -- 600 - 
-main = print (delete 505 (FM id) :: Int)
+
+-- Without protecting the first megablock
+-- 300 +
+-- 350 +
+-- 355 +
+-- 356 +
+-- FAILURE HERE
+-- 357 -
+-- 360 -
+-- 375 -
+-- 400 -
+-- 500 -
+
+main = print (delete 357 (FM id) :: Int)
 
 delete :: Int -> FMList -> Int
 delete 0 _ = 0

@@ -135,7 +135,9 @@ export class MBlockAlloc {
 
       // if this BD is not live, AND this BD is not the 2nd BD
       // if we allow this BD to live, then we get to the second GC.
-      if (!bds.has(this.all_bds[i]) && this.all_bds[i] != 9007160603181312n) {
+      // if (!bds.has(this.all_bds[i]) && this.all_bds[i] != 9007160603181312n) {
+      if (!bds.has(this.all_bds[i])) {
+
         this.freeSegment(l_start, l_end_total, i);
 
         console.log("->>>> freeSegment: i: ", i,
