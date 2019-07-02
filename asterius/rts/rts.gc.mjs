@@ -50,6 +50,11 @@ export class GC {
 
   // NOTE: we assume that 'c' is an untagged pointer.
   copyClosure(c, bytes) {
+    // it's a closure in the top 64 bits.
+    if (this.bdescr(c) == 9007160603181312 && c - 9007160603197440 <= 64) {
+      console.log("COPYING CRASHING BDESCR");
+    }
+
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
     this.liveMBlocks.add(this.bdescr(dest_c));
@@ -363,7 +368,7 @@ export class GC {
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/Printer.c#L609
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/sm/Scav.c#L1944
         case ClosureTypes.RET_FUN: {
-		  console.log("type: ", type, " | RET_FUN: " , ClosureTypes.RET_FUN);
+          console.log("type: ", type, " | RET_FUN: " , ClosureTypes.RET_FUN);
           // retfun : StgRetFun
           const retfun = c;
           console.log("rtsConstants.offset_StgRetFun_size", 
