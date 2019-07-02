@@ -142,7 +142,10 @@ export class MBlockAlloc {
         if (n != n) {
           throw new WebAssembly.RuntimeError("found NaN in memory!: ix: ", ptr, " n:  ", n);
         }
-        datastr += n.toString(16);
+        
+        // create a new chunk every 32 bits.
+        if ((ptr - l_start) % 32 == 0 && (ptr - l_start) != 0) datastr += "\n";
+        datastr +=  n.toString(16).padEnd(2, "0") + " ";
 
       }
       writeFileSync("/tmp/mblock" + i + ".txt", datastr, (err) => {
