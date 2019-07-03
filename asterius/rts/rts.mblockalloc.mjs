@@ -8,6 +8,7 @@ export class MBlockAlloc {
     this.capacity = undefined;
     this.size = undefined;
     this.freeList = [];
+    this.all_bds = [];
     Object.seal(this);
   }
 
@@ -31,6 +32,7 @@ export class MBlockAlloc {
 
   allocMegaGroup(n) {
     const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
+    /*
     for (let i = 0; i < this.freeList.length; ++i) {
       const bd = this.freeList[i],
             blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
@@ -55,6 +57,7 @@ export class MBlockAlloc {
         return bd;
       }
     }
+    */
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
@@ -62,12 +65,13 @@ export class MBlockAlloc {
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
     this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+    this.all_bds.push(bd);
     return bd;
   }
 
-  freeSegment(l_end, r) {
+  freeSegment(l_end, r, ix) {
     if (l_end < r) {
-      this.memory.memset(l_end, 0, r - l_end);
+      this.memory.memset(l_end, 0x42 + ix, r - l_end);
       const bd = l_end + rtsConstants.offset_first_bdescr,
             start = l_end + rtsConstants.offset_first_block,
             blocks = (r - start) / rtsConstants.block_size;
@@ -79,9 +83,34 @@ export class MBlockAlloc {
     }
   }
 
-  preserveMegaGroups(bds) {
+  preserveMegaGroups(to_preserve) {
+    /*
+    console.log(`all_bds: ${this.all_bds}`);
+    to_preserve = new Set(to_preserve);
+    for(let i = 0; i < this.all_bds.length; ++i) {
+      const l_start = Number(
+        this.memory.i64Load(this.all_bds[i] + rtsConstants.offset_bdescr_start));
+      const l_blocks =
+        this.memory.i32Load(this.all_bds[i] + rtsConstants.offset_bdescr_blocks);
+      const l_used = l_start + rtsConstants.block_size * l_blocks; 
+      const l_end = l_start + (rtsConstants.block_size * l_blocks);
+
+      console.log(`freeSegment i: ${i} | l_start: ${l_start} | l_end: ${l_end} | l_block: ${l_blocks} | l_end - l_used: ${l_end - l_used} | `);
+
+      // this BD IS preseved      
+      if (to_preserve.has(this.all_bds[i])) {
+        this.freeSegment(l_used, l_end, i);
+      }
+      else {
+        // wipe the segment
+        this.freeSegment(l_start, l_end, i);
+      }
+
+    }
+    */
+ 
     this.freeList = [];
-    const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
+    const sorted_bds = Array.from(to_preserve).sort((bd0, bd1) => bd0 - bd1);
     sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
     this.freeSegment(
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
@@ -99,4 +128,5 @@ export class MBlockAlloc {
         (bd0, bd1) => this.memory.i32Load(bd0 + rtsConstants.offset_bdescr_blocks) -
                   this.memory.i32Load(bd1 + rtsConstants.offset_bdescr_blocks));
   }
+ 
 }
