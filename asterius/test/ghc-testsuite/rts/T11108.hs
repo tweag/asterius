@@ -44,8 +44,4 @@ main = do
   h <- newIORef 0
   source <- makePull (const $ readIORef h)
   p <- repeatM 10000 incr source
-  print =<< pull' p
-  performGC
-
-
-
+  return ()
