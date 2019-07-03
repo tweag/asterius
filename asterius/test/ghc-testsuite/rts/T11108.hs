@@ -26,23 +26,13 @@ makePull f = do
 
   return foo
 
-
-invalidate :: Pull -> IO ()
-invalidate p = do
-  return ()
-
-
-pull :: Weak Pull -> Pull -> IO Int
-pull weak p = do
-  pull' p
-
 pull' :: Pull -> IO Int
 pull' p = do
       r <- compute p (weakSelf p)
       return r
 
 add :: Pull -> Int -> IO (Pull)
-add p n = makePull (\w -> (+n) <$> pull w p)
+add p n = makePull (\w -> (+n) <$> pull'  p)
 
 main = do
   h <- newIORef 0
