@@ -175,7 +175,7 @@ export class GC {
               break;
             }
             default:
-              throw new WebAssembly.RuntimeError();
+              throw new WebAssembly.RuntimeError("unhandled closure type: " + type);
           }
         }
       } else {
