@@ -50,6 +50,12 @@ checkResults test inputs expected actual =
 -- 126 - succeeds
 -- 125 - fails
 -- 100 - fails
+-- Prelude Data.Word> maxBound  :: Word8
+-- 255
+-- Prelude Data.Word> minBound :: Word8
+-- 0
+-- Prelude> length $ [0..255-125]
+-- 131
 allWord8 :: [Word]
 allWord8 = [ minWord8 .. (maxWord8 - 125)  ]
 
