@@ -345,7 +345,7 @@ export class GC {
   scavengeClosure(c) {
     const info = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
-    if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+    if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError("closure does not have info table: " +  c);
     switch (info) {
       case this.symbolTable.base_GHCziStable_StablePtr_con_info:
       case this.symbolTable.integerzmwiredzmin_GHCziIntegerziType_Integer_con_info: {
