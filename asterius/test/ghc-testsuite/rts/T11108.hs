@@ -11,24 +11,24 @@ import Control.Monad
 import Data.Foldable
 
 data Pull = Pull
-  { weakSelf  :: Weak Pull
-  , compute :: Weak Pull -> IO Int
+  {
+  compute :: Pull -> IO Int
   } deriving(Generic)
 
 
-makePull :: (Weak Pull -> IO Int) -> IO Pull
+makePull :: (Pull -> IO Int) -> IO Pull
 makePull f = do
   rec
     -- This seems to be the culprit, changing the order makes the weakRef get gc'ed
     -- In this configuration it crashes
-    let !foo = Pull weak f
-    weak <- mkWeakPtr foo Nothing
+    let !foo = Pull f
+    -- weak <- mkWeakPtr foo Nothing
 
   return foo
 
 pull' :: Pull -> IO Int
 pull' p = do
-      r <- compute p (weakSelf p)
+      r <- compute p p
       return r
 
 incr :: Pull -> IO Pull 
