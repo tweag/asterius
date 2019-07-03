@@ -53,7 +53,7 @@ export class GC {
           this.liveMBlocks.add(this.bdescr(dest_c));
         } else {
           const info = Number(this.memory.i64Load(untagged_c));
-          if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+          if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError(`cannot find info table for closure when evacuating closure: ${c}`);
           const type =
               this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
           switch (type) {
@@ -175,7 +175,7 @@ export class GC {
               break;
             }
             default:
-              throw new WebAssembly.RuntimeError("unhandled closure type: " + type);
+              throw new WebAssembly.RuntimeError(`unhandled closure type when evacuating closure: ${type}`);
           }
         }
       } else {
@@ -215,7 +215,7 @@ export class GC {
     this.scavengeClosureAt(c + offset_fun);
     const fun = this.memory.i64Load(c + offset_fun),
           fun_info = Number(this.memory.i64Load(fun));
-    if (!this.infoTables.has(fun_info)) throw new WebAssembly.RuntimeError();
+    if (!this.infoTables.has(fun_info)) throw new WebAssembly.RuntimeError(`cannot find info table for closure when scavenging PAP: ${c}`);
     switch (this.memory.i32Load(fun_info + rtsConstants.offset_StgFunInfoTable_f +
                                 rtsConstants.offset_StgFunInfoExtraFwd_fun_type)) {
       case FunTypes.ARG_GEN: {
@@ -237,7 +237,7 @@ export class GC {
         break;
       }
       case FunTypes.ARG_BCO: {
-        throw new WebAssembly.RuntimeError();
+        throw new WebAssembly.RuntimeError("unhndled closure type when scavenging PAP: FunTypes.ARG_BCO");
       }
       default: {
         this.scavengeSmallBitmap(
@@ -255,14 +255,14 @@ export class GC {
   scavengeStackChunk(sp, sp_lim) {
     let c = sp;
     while (true) {
-      if (c > sp_lim) throw new WebAssembly.RuntimeError();
+      if (c > sp_lim) throw new WebAssembly.RuntimeError(`cur sp(${c}) > sp_lim(${sp_lim})`);
       if (c == sp_lim) break;
       const info = Number(this.memory.i64Load(c)),
             type =
                 this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type),
             raw_layout =
                 this.memory.i64Load(info + rtsConstants.offset_StgInfoTable_layout);
-      if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+      if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError(`found closure without info table when scavenging stack: ${c}`);
       if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
         this.evacuateClosure(
             this.memory.i64Load(info + rtsConstants.offset_StgRetInfoTable_srt));
@@ -316,7 +316,7 @@ export class GC {
               break;
             }
             case FunTypes.ARG_BCO: {
-              throw new WebAssembly.RuntimeError();
+              throw new WebAssembly.RuntimeError("unhandled when scavenging stack: FunTypes.ARG_BCO");
             }
             default: {
               this.scavengeSmallBitmap(
@@ -333,7 +333,7 @@ export class GC {
           break;
         }
         default:
-          throw new WebAssembly.RuntimeError();
+          throw new WebAssembly.RuntimeError(`unhandled closure type when scavenging stack: ${type}`);
       }
     }
   }
@@ -345,7 +345,7 @@ export class GC {
   scavengeClosure(c) {
     const info = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
-    if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError("closure does not have info table: " +  c);
+    if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError(`Found closure without info table when scavenging closure: ${c}`);
     switch (info) {
       case this.symbolTable.base_GHCziStable_StablePtr_con_info:
       case this.symbolTable.integerzmwiredzmin_GHCziIntegerziType_Integer_con_info: {
@@ -488,7 +488,7 @@ export class GC {
         break;
       }
       default:
-        throw new WebAssembly.RuntimeError();
+        throw new WebAssembly.RuntimeError(`unhandled closure type when scavenging closure: ${type}`);
     }
   }
 
