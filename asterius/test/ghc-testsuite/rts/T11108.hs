@@ -31,16 +31,19 @@ pull' p = do
       r <- compute p (weakSelf p)
       return r
 
-add :: Pull -> Int -> IO (Pull)
-add p n = makePull (\w -> (+n) <$> pull'  p)
+incr :: Pull -> IO Pull 
+incr p = makePull (\w -> (+1) <$> pull' p)
+
+repeatM :: Monad m => Int -> (a -> m a) -> a -> m a
+repeatM 0 _ a = return a
+repeatM n f a = do 
+  a' <- f a
+  repeatM (n - 1) f a'
 
 main = do
   h <- newIORef 0
-
-  performGC
-
   source <- makePull (const $ readIORef h)
-  p <- foldM add source (take 10000 (repeat 1))   -- 100 is not enough for crash
+  p <- repeatM 10000 incr source
   print =<< pull' p
   performGC
 
