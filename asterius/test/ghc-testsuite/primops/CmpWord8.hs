@@ -28,42 +28,8 @@ main = do
     let expected = [ a == b | (a, b) <- input ]
         actual = [ mkT8 a == mkT8 b | (a, b) <- input ]
     checkResults "(==)" input expected actual
-{-
 
-    --
-    -- (/=)
-    --
-    let expected = [ a /= b | (a, b) <- input ]
-        actual = [ mkT8 a /= mkT8 b | (a, b) <- input ]
-    checkResults "(/=)" input expected actual
 
-    --
-    -- (<)
-    --
-    let expected = [ a < b | (a, b) <- input ]
-        actual = [ mkT8 a < mkT8 b | (a, b) <- input ]
-    checkResults "(<)" input expected actual
-    --
-    -- (>)
-    --
-    let expected = [ a > b | (a, b) <- input ]
-        actual = [ mkT8 a > mkT8 b | (a, b) <- input ]
-    checkResults "(>)" input expected actual
-
-    --
-    -- (<=)
-    --
-    let expected = [ a <= b | (a, b) <- input ]
-        actual = [ mkT8 a <= mkT8 b | (a, b) <- input ]
-    checkResults "(<=)" input expected actual
-
-    --
-    -- (>=)
-    --
-    let expected = [ a >= b | (a, b) <- input ]
-        actual = [ mkT8 a >= mkT8 b | (a, b) <- input ]
-    checkResults "(>=)" input expected actual
--}
 checkResults
     :: (Eq a, Eq b, Show a, Show b) => String -> [a] -> [b] -> [b] -> IO ()
 checkResults test inputs expected actual =
