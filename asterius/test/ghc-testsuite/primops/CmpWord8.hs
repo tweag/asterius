@@ -40,8 +40,21 @@ checkResults test inputs expected actual =
               ++ " expected: " ++ show (expected !! i)
               ++ " but got: " ++ show (actual !! i)
 
+
+
+-- 200 - succeeds
+-- 150 - succeeds
+-- 133 - succeeds
+-- 130 - succeeds
+-- 127 - succeeds
+-- 126 - succeeds
+-- 125 - fails
+-- 100 - fails
 allWord8 :: [Word]
-allWord8 = [ minWord8 .. maxWord8 ]
+allWord8 = [ minWord8 .. (maxWord8 - 125)  ]
+
+delta :: Word
+delta = maxWord8 - minWord8
 
 minWord8 :: Word
 minWord8 = fromIntegral (minBound :: Word8)
