@@ -49,15 +49,20 @@ export class MBlockAlloc {
                              rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
-        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
-                             blocks - req_blocks -
-                                 ((rtsConstants.mblock_size / rtsConstants.block_size) -
-                                  rtsConstants.blocks_per_mblock));
+
+        const rest_blocks = 
+        blocks - req_blocks -
+            ((rtsConstants.mblock_size / rtsConstants.block_size) -
+             rtsConstants.blocks_per_mblock);
+        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks, rest_blocks);
+        console.log(`allocateMegaGroup: consumed bd from freelist. bd: ${bd} | original blocks: ${blocks} | requested blocks: ${req_blocks}`);
+        console.log(`allocateMegaGroup: added new bd  to freelist after consumption. bd: ${rest_bd} | blocks: ${rest_blocks}`);
         this.freeList.splice(i, 1, rest_bd);
         return bd;
       }
       // if we exhausted all blocks, remove from the freelist.
       if (req_blocks == blocks) {
+        console.log(`allocateMegaGroup: consumed bd from freelist. bd: ${bd} | original blocks: ${blocks} | requested blocks: ${req_blocks}`);
         this.freeList.splice(i, 1);
         return bd;
       }
@@ -80,13 +85,14 @@ export class MBlockAlloc {
 
       const bd = l_end + rtsConstants.offset_first_bdescr;
       const start = l_end + rtsConstants.offset_first_block;
-      
+
       const blocks = Math.floor((r - start) / rtsConstants.block_size);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
       this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
       this.freeList.push(bd);
+      console.log(`freeSegment: added bd to freelist: ${bd} | blocks: ${blocks}`);
     }
   }
 
