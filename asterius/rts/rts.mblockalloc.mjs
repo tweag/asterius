@@ -33,15 +33,20 @@ export class MBlockAlloc {
   // allocate n *megablocks*
   allocMegaGroup(n) {
     const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
-    /*
+    
     for (let i = 0; i < this.freeList.length; ++i) {
-      const bd = this.freeList[i],
-            blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
+      const bd = this.freeList[i];
+      const blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
+
+      // if we still have blocks remaining, use that to create a new element in the freelist
       if (req_blocks < blocks) {
         this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
-        const rest_bd = bd + (rtsConstants.mblock_size * n),
-              rest_start = rest_bd - rtsConstants.offset_first_bdescr +
-                           rtsConstants.offset_first_block;
+        // bd -> location of the new megablock descriptor
+        const rest_bd = bd + (rtsConstants.mblock_size * n);
+
+        // location of the first block of the new 
+        const rest_start = rest_bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block;
+
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
                              rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
@@ -53,12 +58,13 @@ export class MBlockAlloc {
         this.freeList.splice(i, 1, rest_bd);
         return bd;
       }
+      // if we exhausted all blocks, remove from the freelist.
       if (req_blocks == blocks) {
         this.freeList.splice(i, 1);
         return bd;
       }
     }
-    */
+    
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
