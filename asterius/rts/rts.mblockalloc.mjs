@@ -40,20 +40,26 @@ export class MBlockAlloc {
 
       // if we still have blocks remaining, use that to create a new element in the freelist
       if (req_blocks < blocks) {
+        // resize bd to only hold the requested number of blocks
         this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
-        // bd -> location of the new megablock descriptor
-        const rest_bd = bd + (rtsConstants.mblock_size * n);
-        const rest_start = rest_bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block;
+      
+        // compute the location of the next block descriptor, which is at the end of the allocation
+        const rest_base = bd + (rtsConstants.mblock_size * n); 
+        const rest_bd = rest_base + rtsConstants.offset_first_bdescr;
+        const rest_start = rest_base + rtsConstants.offset_first_block;
+        // end location
+        const rest_end = bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block + rtsConstants.block_size * blocks; 
+        const rest_blocks = Math.floor((rest_end - rest_start) / rtsConstants.block_size);
 
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
                              rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
-
-        const rest_blocks = 
-        blocks - req_blocks -
-            ((rtsConstants.mblock_size / rtsConstants.block_size) -
-             rtsConstants.blocks_per_mblock);
+        
+        // const rest_blocks = 
+        // blocks - req_blocks -
+        //     ((rtsConstants.mblock_size / rtsConstants.block_size) -
+        //      rtsConstants.blocks_per_mblock);
         this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks, rest_blocks);
         console.log(`allocateMegaGroup: consumed bd from freelist. bd: ${bd} | original blocks: ${blocks} | requested blocks: ${req_blocks}`);
         console.log(`allocateMegaGroup: added new bd  to freelist after consumption. bd: ${rest_bd} | blocks: ${rest_blocks}`);
