@@ -30,6 +30,7 @@ export class MBlockAlloc {
     return Memory.tagData(prev_size * rtsConstants.mblock_size);
   }
 
+  // allocate n *megablocks*
   allocMegaGroup(n) {
     const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
     /*
