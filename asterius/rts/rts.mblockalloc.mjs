@@ -32,7 +32,7 @@ export class MBlockAlloc {
 
   // allocate n *megablocks*
   allocMegaGroup(n) {
-    const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
+    const req_blocks = Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size);
     
     for (let i = 0; i < this.freeList.length; ++i) {
       const bd = this.freeList[i];
@@ -43,8 +43,6 @@ export class MBlockAlloc {
         this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
         // bd -> location of the new megablock descriptor
         const rest_bd = bd + (rtsConstants.mblock_size * n);
-
-        // location of the first block of the new 
         const rest_start = rest_bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block;
 
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
@@ -65,9 +63,9 @@ export class MBlockAlloc {
       }
     }
     
-    const mblock = this.getMBlocks(n),
-          bd = mblock + rtsConstants.offset_first_bdescr,
-          block_addr = mblock + rtsConstants.offset_first_block;
+    const mblock = this.getMBlocks(n);
+    const bd = mblock + rtsConstants.offset_first_bdescr;
+    const block_addr = mblock + rtsConstants.offset_first_block;
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
@@ -79,9 +77,11 @@ export class MBlockAlloc {
   freeSegment(l_end, r, ix) {
     if (l_end < r) {
       this.memory.memset(l_end, 0x42 + ix, r - l_end);
-      const bd = l_end + rtsConstants.offset_first_bdescr,
-            start = l_end + rtsConstants.offset_first_block,
-            blocks = (r - start) / rtsConstants.block_size;
+
+      const bd = l_end + rtsConstants.offset_first_bdescr;
+      const start = l_end + rtsConstants.offset_first_block;
+      
+      const blocks = Math.floor((r - start) / rtsConstants.block_size);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
