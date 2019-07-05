@@ -53,7 +53,7 @@ export class MBlockAlloc {
                                  ((rtsConstants.mblock_size / rtsConstants.block_size) -
                                   rtsConstants.blocks_per_mblock));
         console.log(`bd: ${bd} | rest_bd: ${rest_bd} | freelist (before splice): ${this.freeList}`);
-        // this.freeList.splice(i, 1, rest_bd);
+        this.freeList.splice(i, 1, rest_bd);
         this.freeList.splice(i, 1);
         console.log(`bd: ${bd} | rest_bd: ${rest_bd} | freelist (after splice): ${this.freeList}`);
         return bd;
