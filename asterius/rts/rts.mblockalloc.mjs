@@ -68,20 +68,14 @@ export class MBlockAlloc {
 
       // test the freeList code without involving the freeSegment code. So this
       // appears to pass.
-    for(let i = 0; i < 2; ++i) {
-        const mblock = this.getMBlocks(n);
-        const bd = mblock + rtsConstants.offset_first_bdescr;
-        const block_addr = mblock + rtsConstants.offset_first_block;
-        this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
-        this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
-        this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
-        this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, alloc_blocks);
-        if (i == 0) {
-            this.freeList.push(bd);
-        } else {
-            return bd;
-        }
-    }
+      const mblock = this.getMBlocks(n);
+      const bd = mblock + rtsConstants.offset_first_bdescr;
+      const block_addr = mblock + rtsConstants.offset_first_block;
+      this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
+      this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
+      this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+      this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, alloc_blocks);
+      return bd;
   }
 
   align(num, align) {
@@ -116,14 +110,16 @@ export class MBlockAlloc {
 
       const bd = base + rtsConstants.offset_first_bdescr;
       const start = base + rtsConstants.offset_first_block;
-      // const blocks = Math.floor((r - start) / rtsConstants.block_size);
-      const blocks = 0;
+      const blocks = Math.floor((r - start) / rtsConstants.block_size);
+      if (blocks < 0) {
+          throw new WebAssembly.RuntimeError(`blocks:${blocks} < 0`);
+      }
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
       this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
-
-      // this.freeList.push(bd);
+      console.log(`adding new bd to freelist. bd: ${bd} blocks: ${blocks}`);
+      this.freeList.push(bd);
     }
   }
 
