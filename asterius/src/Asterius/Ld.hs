@@ -37,6 +37,8 @@ loadTheWorld LinkTask {..} = do
   let objs = rights objrs
   pure $ mconcat objs <> lib
 
+-- | The *_info are generated from Cmm using the INFO_TABLE macro.
+-- For example, see StgMiscClosures.cmm / Exception.cmm
 rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
   Set.fromList
@@ -64,6 +66,7 @@ rtsUsedSymbols =
     , "stg_NO_FINALIZER_closure"
     , "stg_raise_info"
     , "stg_returnToStackTop"
+    , "stg_STABLE_NAME_info"
     , "stg_WEAK_info"
     ]
 

@@ -108,5 +108,8 @@ rtsConstants =
       , ("offset_StgWeak_value", offset_StgWeak_value)
       , ("offset_StgWeak_finalizer", offset_StgWeak_finalizer)
       , ("offset_StgWeak_link", offset_StgWeak_link)
+      , ("sizeof_StgStableName", sizeof_StgStableName)
+      , ("offset_StgStableName_header", offset_StgStableName_header)
+      , ("offset_StgStableName_sn", offset_StgStableName_sn)
       ]
   ]

@@ -92,49 +92,9 @@ jobs:
             stack --no-terminal test asterius:nomain
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
-            # run test cases that should pass from ghc-testsuite.
-            # At some point, this should cover entire subfolders like "numeric"
-            stack test asterius:ghc-testsuite --test-arguments "-p numrun009"
-            stack test asterius:ghc-testsuite --test-arguments "-p numrun010"
-            stack test asterius:ghc-testsuite --test-arguments "-p numrun011"
-            stack test asterius:ghc-testsuite --test-arguments "-p numrun012"
-            stack test asterius:ghc-testsuite --test-arguments "-p numrun013"
-            stack test asterius:ghc-testsuite --test-arguments "-p numrun014"
-            stack test asterius:ghc-testsuite --test-arguments "-p numrun015"
-            stack test asterius:ghc-testsuite --test-arguments "-p numrun016"
-
-
-            stack test asterius:ghc-testsuite --test-arguments "-p arith013"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith012"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith010"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith009"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith008"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith007"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith006"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith004"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith002"
-            stack test asterius:ghc-testsuite --test-arguments "-p arith001"
-
-            stack test asterius:ghc-testsuite --test-arguments "-p T10011"
-            stack test asterius:ghc-testsuite --test-arguments "-p T10011"
-            stack test asterius:ghc-testsuite --test-arguments "-p T10011"
-            stack test asterius:ghc-testsuite --test-arguments "-p T7233"
-            stack test asterius:ghc-testsuite --test-arguments "-p T7014"
-            stack test asterius:ghc-testsuite --test-arguments "-p T5863"
-            stack test asterius:ghc-testsuite --test-arguments "-p T1603"
-            stack test asterius:ghc-testsuite --test-arguments "-p T15301"
-            stack test asterius:ghc-testsuite --test-arguments "-p T12136"
-            stack test asterius:ghc-testsuite --test-arguments "-p T11702"
-            stack test asterius:ghc-testsuite --test-arguments "-p T10011"
-            stack test asterius:ghc-testsuite --test-arguments "-p T10962"
-            stack test asterius:ghc-testsuite --test-arguments "-p T9810"
-
-            stack test asterius:ghc-testsuite --test-arguments "-p cgrun044"
-            stack test asterius:ghc-testsuite --test-arguments "-p NumDecimals"
-            stack test asterius:ghc-testsuite --test-arguments "-p FloatFnInverses"
-            stack test asterius:ghc-testsuite --test-arguments "-p mul2"
-            stack test asterius:ghc-testsuite --test-arguments "-p add2"
-
+            # Run parts of the ghc-testuite that we have enabled for
+            # regression testing.
+            stack test asterius:ghc-testsuite --test-arguments="  --timeout=5s -l test/ghc-testsuite-filter";  
 
   asterius-test-ghc-testsuite:
     docker:

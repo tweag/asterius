@@ -255,6 +255,8 @@ tests:
       - tasty-hspec
       - ansi-terminal
       - cassava
+      - regex-tdfa
+      - optparse-applicative
 
   ghc-testsuite-with-ghc:
     source-dirs: test

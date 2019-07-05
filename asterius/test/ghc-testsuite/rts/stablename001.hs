@@ -11,3 +11,4 @@ main = do
   performGC
   n2 <- makeStableName x
   print (n1 == n2)
+

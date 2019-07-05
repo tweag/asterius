@@ -28,7 +28,7 @@ export class IntegerManager {
   }
   abs(bi) { return bi < BigInt(0) ? -bi : bi; }
   encode(bi) {
-    return Number(this.abs(bi) >> BigInt(31)
+  return Number(this.abs(bi) >> BigInt(31)
                       ? BigInt(this.jsvalManager.newJSVal(bi))
                       : bi << BigInt(1));
   }
@@ -44,13 +44,21 @@ export class IntegerManager {
       return this.encode(this.view.getBigInt64(/*offset=*/0, /*little endian=*/true));
   }
 
-  wordToInteger(high, low) { 
+    wordToInteger(high, low) { 
       this.view.setUint32(/*offset=*/0, low, /*little endian=*/true);
       this.view.setUint32( /*offset=*/4, high, /*little endian=*/true);
-      return this.encode(this.view.getBigUint64(/*offset=*/0, /*little endian=*/true));
+      const bi = this.view.getBigUint64(/*offset=*/0, /*little endian=*/true);
+      const n =  this.encode(bi);
+      return n;
   }
 
-  integerToWord(i) { return Number(BigInt.asUintN(64, this.decode(i))); }
+    integerToWord(i, ipiece) { 
+        const n = BigInt.asUintN(64, this.decode(i)); 
+        this.view.setBigUint64(/*offset=*/0, n, /*little endian=*/true);
+        const m =  this.view.getUint32(/*offset=*/4*ipiece, /*little endian=*/true);
+        return m;
+    }
+    
   integerToInt(i) { return Number(BigInt.asIntN(64, this.decode(i))); }
   plusInteger(i0, i1) { return this.encode(this.decode(i0) + this.decode(i1)); }
   minusInteger(i0, i1) {
@@ -115,5 +123,51 @@ export class IntegerManager {
 
       return Number(val);
   }
-  
+
+   quotrem2_quotient(lhs_hi_hi, lhs_hi_lo, lhs_lo_hi, lhs_lo_lo, rhs_hi, rhs_lo, ipiece) {
+      this.view.setInt32(/*offset=*/0, lhs_hi_lo, /*littleEndian=*/true);
+      this.view.setInt32(/*offset=*/4, lhs_hi_hi, /*littleEndian=*/true);
+      const lhs_hi = this.view.getBigUint64(/*offset=*/0, /*littleEndian=*/true);
+
+
+      this.view.setInt32(/*offset=*/0, lhs_lo_lo, /*littleEndian=*/true);
+      this.view.setInt32(/*offset=*/4, lhs_lo_hi, /*littleEndian=*/true);
+      const lhs_lo = this.view.getBigUint64(/*offset=*/0, /*littleEndian=*/true);
+      const lhs = lhs_hi << BigInt(64) | lhs_lo;
+
+      this.view.setInt32(/*offset=*/0, rhs_lo, /*littleEndian=*/true);
+      this.view.setInt32(/*offset=*/4, rhs_hi, /*littleEndian=*/true);
+      const rhs = this.view.getBigUint64(/*offset=*/0, /*littleEndian=*/true);
+
+      
+      const quot = lhs / rhs;
+      // find the correct value that is masked
+      const val =  Number((quot >> BigInt(32 * ipiece)) & ((BigInt(1) << BigInt(32)) - BigInt(1)));
+
+      return Number(val);
+   }
+
+    
+   quotrem2_remainder(lhs_hi_hi, lhs_hi_lo, lhs_lo_hi, lhs_lo_lo, rhs_hi, rhs_lo, ipiece) {
+       this.view.setInt32(/*offset=*/0, lhs_hi_lo, /*littleEndian=*/true);
+      this.view.setInt32(/*offset=*/4, lhs_hi_hi, /*littleEndian=*/true);
+      const lhs_hi = this.view.getBigUint64(/*offset=*/0, /*littleEndian=*/true);
+
+
+      this.view.setInt32(/*offset=*/0, lhs_lo_lo, /*littleEndian=*/true);
+      this.view.setInt32(/*offset=*/4, lhs_lo_hi, /*littleEndian=*/true);
+      const lhs_lo = this.view.getBigUint64(/*offset=*/0, /*littleEndian=*/true);
+      const lhs = lhs_hi << BigInt(64) | lhs_lo;
+
+      this.view.setInt32(/*offset=*/0, rhs_lo, /*littleEndian=*/true);
+      this.view.setInt32(/*offset=*/4, rhs_hi, /*littleEndian=*/true);
+      const rhs = this.view.getBigUint64(/*offset=*/0, /*littleEndian=*/true);
+
+      
+      const rem = lhs % rhs;
+      // find the correct value that is masked
+      const val =  Number((rem >> BigInt(32 * ipiece)) & ((BigInt(1) << BigInt(32)) - BigInt(1)));
+
+       return Number(val);
+   }
 }

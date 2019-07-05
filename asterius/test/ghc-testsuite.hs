@@ -4,6 +4,7 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 
@@ -18,7 +19,7 @@ import System.Process
 import Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
-import Data.Monoid (Any(..))
+import Data.Monoid (Any(..), All(..))
 import Test.Tasty.Hspec
 import Test.Tasty.Runners
 import Control.Exception
@@ -30,6 +31,15 @@ import Control.Arrow ((&&&))
 import Data.Csv
 import Data.List (sort)
 import Data.Word
+import System.Console.GetOpt
+import Text.Regex.TDFA
+import Data.Typeable
+import Test.Tasty.Options
+import Options.Applicative
+import Options.Applicative.Types
+import System.Exit(die)
+
+
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
@@ -224,34 +234,94 @@ consoleOutput tlref toutput smap =
       , Any nonempty
       )
 
+-- | Filter the test tree according to a predicate
+filterTestTree :: (TestName -> Bool) -> TestTree -> TestTree
+filterTestTree f tt =
+  TestGroup "***filtered***" $ [go tt]
+  where
+    -- go :: TestTree -> TestTree
+    go (SingleTest name t) =
+      if (f name)
+        then SingleTest (name <> "-ENABLED") t
+        else TestGroup (name <> "-DISABLED") []
+    go (TestGroup name tt) =
+      TestGroup (name <> "-FILTERED") (map go tt)
+    go _ = error $ "unknown test tree type"
 
--- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter
+-- | Option that describes whether a test file with
+-- white & black lists has been provided. Modelled after
+-- TestPattern
+newtype PatternFilePath = PatternFilePath (Maybe FilePath)
+  deriving(Show, Eq)
+
+noFile :: PatternFilePath
+noFile = PatternFilePath Nothing
+
+
+instance IsOption PatternFilePath where
+  defaultValue = noFile
+  parseValue = Just . PatternFilePath . Just
+  optionName = return "testfile"
+  optionHelp = return "selects tests that match the WHITELIST/BLACKLIST patterns from file"
+  optionCLParser = mkOptionCLParser (short 'l' <> metavar "FILE")
+
+
+-- | Pattern can be a whitelist or a blacklist
+data Pat = PatWhite String | PatBlack String
+type Pats = [Pat]
+
+-- | Filter a string against a given pattern
+patFilter :: Pat -> String -> Bool
+patFilter (PatWhite p) s = s =~ p
+patFilter (PatBlack p) s = not $ (s =~ p)
+
+-- | Filter a string against *all* patterns
+patsFilter :: Pats -> TestName -> Bool
+patsFilter ps s = getAll . mconcat . map (\p -> All (patFilter p s)) $ ps
+
+-- | Parse a file containing patterns into a list of pattenrs
+-- !xx -> blacklist xx
+-- yy -> whitelist yy
+parsePatternFile :: String -> Pats
+parsePatternFile s =
+  map (\(x:xs) -> if x == '!' then PatBlack xs else PatWhite (x:xs)) .
+  -- | filter comments
+  filter (\(x:xs) ->  x /= '#') .
+  -- | remove empty lines
+  filter (not . null) .
+  lines $ s
+
 serializeToDisk :: IORef TestLog -> Ingredient
-serializeToDisk tlref = TestReporter [] $
-  \opts tree -> Just $ \smap ->
-  let
-  in do
-    isTermColor <- hSupportsANSIColor stdout
-    let ?colors = isTermColor
-    -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
-    let toutput = buildTestOutput opts tree
-    consoleOutput tlref toutput smap
-    return $ \time -> do
-      stats <- computeStatistics smap
-      printStatistics stats time
-      return $ statFailures stats == 0
+serializeToDisk tlref =
+  TestManager [Test.Tasty.Options.Option (Proxy :: Proxy PatternFilePath) ] $
+      \opts tree -> Just $ do
+          let (PatternFilePath patf) = lookupOption opts
+          treeFiltered <- case patf of
+                      Nothing -> return $ tree
+                      Just fpath -> do
+                           abspath <- makeAbsolute fpath
+                           pats <- parsePatternFile <$> readFile abspath
+                           return $ filterTestTree (patsFilter pats) tree
+          launchTestTree opts treeFiltered $ \smap -> do
+            isTermColor <- hSupportsANSIColor stdout
+            let ?colors = isTermColor
+            -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
+            let toutput = buildTestOutput opts treeFiltered
+            consoleOutput tlref toutput smap
+            return $ \time -> do
+              stats <- computeStatistics smap
+              printStatistics stats time
+              return $ statFailures stats == 0
 
 main :: IO ()
 main = do
-  tlref <- newIORef mempty
-  trees <- getTestCases >>= traverse makeTestTree
+    tlref <- newIORef mempty
+    trees <- getTestCases >>= traverse makeTestTree
 
-  cwd <- getCurrentDirectory
-  let out_basepath = cwd </> "test-report"
+    cwd <- getCurrentDirectory
+    let out_basepath = cwd </> "test-report"
 
-  -- | Tasty throws an exception if stuff fails, so re-throw the exception
-  -- | in case this happens.
-  (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
-    `finally` (saveTestLogToCSV tlref out_basepath)
-
-
+    -- | Tasty throws an exception if stuff fails, so re-throw the exception
+    -- | in case this happens.
+    (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
+      `finally` (saveTestLogToCSV tlref out_basepath)
