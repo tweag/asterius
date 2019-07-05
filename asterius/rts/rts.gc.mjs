@@ -53,7 +53,7 @@ export class GC {
           this.liveMBlocks.add(this.bdescr(dest_c));
         } else {
           const info = Number(this.memory.i64Load(untagged_c));
-          if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+          if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError(`bdescr: ${this.bdescr(c)}`);
           const type =
               this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
           switch (type) {

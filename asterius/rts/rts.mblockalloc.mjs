@@ -30,52 +30,72 @@ export class MBlockAlloc {
   }
 
   allocMegaGroup(n) {
-    // number of blocks we can allocate in this megablock.
-    console.log(`mblock size: ${rtsConstants.mblock_size} | offset_first_block: ${rtsConstants.offset_first_block} | blockSize: ${rtsConstants.block_size}`);
-    const alloc_blocks = Math.floor(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size);
+	  // number of blocks we can allocate in this megablock.
+	  console.log(`mblock size: ${rtsConstants.mblock_size} | offset_first_block: ${rtsConstants.offset_first_block} | blockSize: ${rtsConstants.block_size}`);
+	  const alloc_blocks = Math.floor(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size);
 
-    for (let i = 0; i < this.freeList.length; ++i) {
-      const bd = this.freeList[i];
-      const blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
+	  for (let i = 0; i < this.freeList.length; ++i) {
+		  const bd = this.freeList[i];
+		  const blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
+		  console.log(`using bd from freelist: i:${i} bd:${bd}`);
 
-      if (alloc_blocks < blocks) {
-        this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, alloc_blocks);
-        const rest_bd = bd + (rtsConstants.mblock_size * n);
-        const rest_start = rest_bd - rtsConstants.offset_first_bdescr +
-                           rtsConstants.offset_first_block;
-        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
-                             rest_start);
-        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
-        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
+		  if (alloc_blocks < blocks) {
+			  this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, alloc_blocks);
+			  const rest_bd = this.align(bd + (rtsConstants.mblock_size * n), rtsConstants.mblock_size);
 
-        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
-                             blocks - alloc_blocks -
-                                 ((rtsConstants.mblock_size / rtsConstants.block_size) -
-                                  rtsConstants.blocks_per_mblock));
-        console.log(`bd: ${bd} | rest_bd: ${rest_bd} | freelist (before splice): ${this.freeList}`);
-        this.freeList.splice(i, 1, rest_bd);
-        this.freeList.splice(i, 1);
-        console.log(`bd: ${bd} | rest_bd: ${rest_bd} | freelist (after splice): ${this.freeList}`);
-        return bd;
-      }
-      if (alloc_blocks == blocks) {
-        console.log(`bd: ${bd} | rest_bd: NONE | freelist (before splice): ${this.freeList}`);
-        this.freeList.splice(i, 1);
-        console.log(`bd: ${bd} | rest_bd: NONE | freelist (after splice): ${this.freeList}`);
-        return bd;
-      }
-    }
+			  if (!((BigInt(rest_bd) >> BigInt(Math.log2(rtsConstants.mblock_size))) <<
+				  BigInt(Math.log2(rtsConstants.mblock_size)) == rest_bd)) {
+				  throw new WebAssembly.RuntimeError(`rest_bd ${rest_bd} is not aligned to ${rtsConstants.mblock_size} -- log2: ${Math.log2(rtsConstants.mblock_size)}`);
+			  }
 
-      // test the freeList code without involving the freeSegment code. So this
-      // appears to pass.
-      const mblock = this.getMBlocks(n);
-      const bd = mblock + rtsConstants.offset_first_bdescr;
-      const block_addr = mblock + rtsConstants.offset_first_block;
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
-      this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, alloc_blocks);
-      return bd;
+			  const rest_start = rest_bd - rtsConstants.offset_first_bdescr +
+				  rtsConstants.offset_first_block;
+
+			  const rest_end = bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block + blocks * rtsConstants.block_size;
+              console.log(`rest_start: ${rest_start} | rest_end: ${rest_end}`);
+
+			//   const rest_nblocks = blocks - alloc_blocks -
+			// 	  ((rtsConstants.mblock_size / rtsConstants.block_size) -
+			// 		  rtsConstants.blocks_per_mblock);
+              const rest_nblocks = Math.floor((rest_end - rest_start) / rtsConstants.block_size);
+              
+			  if (rest_nblocks <= 0) {
+                  continue; 
+				  throw new WebAssembly.RuntimeError(`not enough spce for alignment! rest_nblocks:${rest_nblocks}`);
+			  }
+
+
+			  console.log(`bd: ${bd} | rest_bd: ${rest_bd} | rest_nblocks: ${rest_nblocks} | freelist (before splice): ${this.freeList}`);
+			  this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
+				  rest_start);
+			  this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
+			  this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
+
+			  this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
+				  rest_nblocks);
+
+			  this.freeList.splice(i, 1, rest_bd);
+			  console.log(`bd: ${bd} | rest_bd: ${rest_bd} | freelist (after splice): ${this.freeList}`);
+			  return bd;
+		  }
+		  if (alloc_blocks == blocks) {
+			  console.log(`bd: ${bd} | rest_bd: NONE | freelist (before splice): ${this.freeList}`);
+			  this.freeList.splice(i, 1);
+			  console.log(`bd: ${bd} | rest_bd: NONE | freelist (after splice): ${this.freeList}`);
+			  return bd;
+		  }
+	  }
+
+	  // test the freeList code without involving the freeSegment code. So this
+	  // appears to pass.
+	  const mblock = this.getMBlocks(n);
+	  const bd = mblock + rtsConstants.offset_first_bdescr;
+	  const block_addr = mblock + rtsConstants.offset_first_block;
+	  this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
+	  this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
+	  this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+	  this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, alloc_blocks);
+	  return bd;
   }
 
   align(num, align) {
@@ -99,9 +119,10 @@ export class MBlockAlloc {
       this.memory.memset(l_end, 0, r - l_end);
 
       const base = this.align(l_end, rtsConstants.mblock_size);
-      if(!(base >= l_end)) {
-          throw new WebAssembly.RuntimeError(`base ${base} is encroaching nonfree memory ${l_ed}`);
+      if(!(base >= l_end && base < r)) {
+          throw new WebAssembly.RuntimeError(`base ${base} is encroaching nonfree memory ${l_end} -- ${r}`);
       }
+
 
       if (!((BigInt(base) >> BigInt(Math.log2(rtsConstants.mblock_size))) <<
                 BigInt(Math.log2(rtsConstants.mblock_size)) == base)) {
@@ -118,7 +139,7 @@ export class MBlockAlloc {
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
       this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
-      console.log(`adding new bd to freelist. bd: ${bd} blocks: ${blocks}`);
+      console.log(`freeSegment: adding new bd to freelist. bd: ${bd} blocks: ${blocks}`);
       this.freeList.push(bd);
     }
   }
