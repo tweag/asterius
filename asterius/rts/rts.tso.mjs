@@ -7,7 +7,7 @@ export class TSOManager {
     this.symbolTable = symbol_table;
     this.last = 0;
     this.tsos = new Map();
-    this.promise = Promise.resolve();
+    this.promise = undefined;
     Object.seal(this);
   }
 
@@ -80,5 +80,12 @@ export class TSOManager {
           );
       }
     });
+  }
+
+  resetPromise() {
+    this.promise = undefined;
+    this.memory.memset(this.symbolTable.__asterius_func, 0, 8);
+    this.memory.memset(this.symbolTable.__asterius_regs, 0, 1024);
+    this.memory.memset(this.symbolTable.__asterius_ret, 0, 8);
   }
 }

@@ -8,23 +8,23 @@ import System.IO
 foreign import javascript safe "(new Date()).toString() + String.fromCodePoint(0x10000)" js_get_str
   :: IO JSString
 
-foreign import javascript "['asdf', 'zer0']" js_get_arr :: IO JSArray
+foreign import javascript safe "['asdf', 'zer0']" js_get_arr :: IO JSArray
 
-foreign import javascript "(new Uint8Array([2, 3, 5, 7])).buffer" js_get_buf
+foreign import javascript safe "(new Uint8Array([2, 3, 5, 7])).buffer" js_get_buf
   :: IO JSArrayBuffer
 
-foreign import javascript "console.log(new Uint8Array(${1}))" js_print_buf
+foreign import javascript safe "console.log(new Uint8Array(${1}))" js_print_buf
   :: JSArrayBuffer -> IO ()
 
-foreign import javascript "console.log(${1})" js_print :: JSVal -> IO ()
+foreign import javascript safe "console.log(${1})" js_print :: JSVal -> IO ()
 
-foreign import javascript "setTimeout(${1},${2},${3})" js_setTimeout
+foreign import javascript safe "setTimeout(${1},${2},${3})" js_setTimeout
   :: JSFunction -> Int -> JSVal -> IO ()
 
-foreign import javascript "console.log([${1},${2}])" js_print2
+foreign import javascript safe "console.log([${1},${2}])" js_print2
   :: JSVal -> JSVal -> IO ()
 
-foreign import javascript "setTimeout(${1},${2},${3},${4})" js_setTimeout2
+foreign import javascript safe "setTimeout(${1},${2},${3},${4})" js_setTimeout2
   :: JSFunction -> Int -> JSVal -> JSVal -> IO ()
 
 main :: IO ()

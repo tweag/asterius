@@ -313,6 +313,12 @@ rtsFunctionImports debug =
       , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
       }
   , FunctionImport
+      { internalName = "__asterius_resetPromise"
+      , externalModuleName = "TSO"
+      , externalBaseName = "resetPromise"
+      , functionType = FunctionType {paramTypes = [], returnTypes = []}
+      }
+  , FunctionImport
       { internalName = "__asterius_hpAlloc"
       , externalModuleName = "HeapAlloc"
       , externalBaseName = "hpAlloc"

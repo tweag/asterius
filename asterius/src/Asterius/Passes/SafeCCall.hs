@@ -167,9 +167,15 @@ splitSingleBlock ffi_state save_instrs base_k base_block@RelooperBlock {..} =
             this_preblock_instrs = bsPreBlockInstrs s
             save_target_instr =
               SetLocal {index = 2, value = ConstI32 $ fromIntegral next_id}
+            reset_instr =
+              CallImport
+                { target' = "__asterius_resetPromise"
+                , operands = []
+                , callImportReturnTypes = []
+                }
             (ccall_instr, next_preblock_instrs) =
               case orig_instr of
-                Call {} -> (orig_instr {callReturnTypes = []}, [])
+                Call {} -> (orig_instr {callReturnTypes = []}, [reset_instr])
                 SetLocal {value = c@Call {}} ->
                   ( c {callReturnTypes = []}
                   , [ orig_instr
@@ -206,6 +212,7 @@ splitSingleBlock ffi_state save_instrs base_k base_block@RelooperBlock {..} =
                                     }
                               }
                         }
+                    , reset_instr
                     ])
                 _ ->
                   error
