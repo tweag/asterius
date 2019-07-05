@@ -84,12 +84,40 @@ export class MBlockAlloc {
     }
   }
 
+  align(num, align) {
+      if ((align & (align - 1)) != 0) {
+          throw new WebAssembly.RuntimeError(`${align} is not POT`);
+      }
+    const x =  ((BigInt(num) + (BigInt(align - 1))) & ~BigInt(align - 1));
+    if (!(x >= num)) {
+        throw new WebAssembly.RuntimeError(`${x} is not >= ${num}`);
+    }
+    const x2 = Number(x);
+    if (!(x2 >= num)) {
+        throw new WebAssembly.RuntimeError(`${x2} = Number(${x}) is not >= ${num}`);
+    }
+
+    return x2;
+  }
+
   freeSegment(l_end, r) {
     if (l_end < r) {
       this.memory.memset(l_end, 0, r - l_end);
-      const bd = l_end + rtsConstants.offset_first_bdescr,
-            start = l_end + rtsConstants.offset_first_block,
-            blocks = (r - start) / rtsConstants.block_size;
+
+      const base = this.align(l_end, rtsConstants.mblock_size);
+      if(!(base >= l_end)) {
+          throw new WebAssembly.RuntimeError(`base ${base} is encroaching nonfree memory ${l_ed}`);
+      }
+
+      if (!((BigInt(base) >> BigInt(Math.log2(rtsConstants.mblock_size))) <<
+                BigInt(Math.log2(rtsConstants.mblock_size)) == base)) {
+          throw new WebAssembly.RuntimeError(`base ${base} is not aligned to ${rtsConstants.mblock_size} -- log2: ${Math.log2(rtsConstants.mblock_size)}`);
+      }
+
+      const bd = base + rtsConstants.offset_first_bdescr;
+      const start = base + rtsConstants.offset_first_block;
+      // const blocks = Math.floor((r - start) / rtsConstants.block_size);
+      const blocks = 0;
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
