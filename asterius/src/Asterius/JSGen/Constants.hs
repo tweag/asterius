@@ -46,7 +46,8 @@ rtsConstants =
   ] <>
   [ "export const " <> k <> " = " <> intHex v <> ";\n"
   | (k, v) <-
-      [ ("sizeof_StgAP", sizeof_StgAP)
+      [ ("offset_Capability_r", offset_Capability_r)
+      , ("sizeof_StgAP", sizeof_StgAP)
       , ("offset_StgAP_arity", offset_StgAP_arity)
       , ("offset_StgAP_n_args", offset_StgAP_n_args)
       , ("offset_StgAP_fun", offset_StgAP_fun)
@@ -80,6 +81,7 @@ rtsConstants =
       , ("offset_StgPAP_n_args", offset_StgPAP_n_args)
       , ("offset_StgPAP_fun", offset_StgPAP_fun)
       , ("offset_StgPAP_payload", offset_StgPAP_payload)
+      , ("offset_StgRegTable_rRet", offset_StgRegTable_rRet)
       , ("sizeof_StgRetFun", sizeof_StgRetFun)
       , ("offset_StgRetFun_size", offset_StgRetFun_size)
       , ("offset_StgRetFun_fun", offset_StgRetFun_fun)

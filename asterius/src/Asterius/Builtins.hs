@@ -114,6 +114,15 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
                 })
+          , ( "__asterius_func"
+            , AsteriusStatics
+                {staticsType = Bytes, asteriusStatics = [Uninitialized 8]})
+          , ( "__asterius_regs"
+            , AsteriusStatics
+                {staticsType = Bytes, asteriusStatics = [Uninitialized 1024]})
+          , ( "__asterius_ret"
+            , AsteriusStatics
+                {staticsType = Bytes, asteriusStatics = [Uninitialized 8]})
           ]
     , functionMap =
         Map.fromList $
@@ -309,6 +318,12 @@ rtsFunctionImports debug =
       , externalModuleName = "TSO"
       , externalBaseName = "getTSOrstat"
       , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_resetPromise"
+      , externalModuleName = "TSO"
+      , externalBaseName = "resetPromise"
+      , functionType = FunctionType {paramTypes = [], returnTypes = []}
       }
   , FunctionImport
       { internalName = "__asterius_hpAlloc"
@@ -817,8 +832,10 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
-        r <- stgRun $ symbol "stg_returnToStackTop"
-        ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
+        stgRun $ loadI64 (symbol "__asterius_func") 0
+        ret <-
+          i64Local $
+          loadI64 mainCapability (offset_Capability_r + offset_StgRegTable_rRet)
         switchI64 ret $
           const
             ( [ ( ret_HeapOverflow
@@ -841,7 +858,7 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                      break' sched_loop_lbl Nothing)
               , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
-              , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
+              , (ret_ThreadBlocked, break' sched_block_lbl Nothing)
               , ( ret_ThreadFinished
                 , if'
                     []
@@ -986,7 +1003,7 @@ newCAFFunction _ =
     storeI64 caf 0 $ symbol "stg_IND_STATIC_info"
     emit bh
 
-stgRun :: Expression -> EDSL Expression
+stgRun :: Expression -> EDSL ()
 stgRun init_f = do
   let pc = pointerI64 (symbol "__asterius_pc") 0
   pc_reg <- i64MutLocal
@@ -996,7 +1013,6 @@ stgRun init_f = do
     if' [] (eqZInt64 (getLVal pc_reg)) mempty $ do
       callIndirect (getLVal pc_reg)
       break' loop_lbl Nothing
-  pure $ getLVal r1
 
 stgReturnFunction _ =
   runEDSL "StgReturn" $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0
