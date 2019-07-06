@@ -120,8 +120,13 @@ export class GC {
               break;
             }
             case ClosureTypes.IND: {
-              dest_c = this.copyClosure(untagged_c, rtsConstants.sizeof_StgInd);
-              break;
+              dest_c = this.evacuateClosure(
+                this.memory.i64Load(
+                  untagged_c + rtsConstants.offset_StgInd_indirectee
+                )
+              );
+              this.closureIndirects.set(untagged_c, dest_c);
+              return dest_c;
             }
             case ClosureTypes.PAP: {
               const n_args = this.memory.i32Load(untagged_c +
@@ -460,7 +465,7 @@ export class GC {
         break;
       }
       case ClosureTypes.IND: {
-        this.scavengeClosure(c + rtsConstants.offset_StgInd_indirectee);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgInd_indirectee);
         break;
       }
       case ClosureTypes.IND_STATIC: {
