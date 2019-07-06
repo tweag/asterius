@@ -99,6 +99,8 @@ export class GC {
             case ClosureTypes.FUN:
             case ClosureTypes.CONSTR:
             case ClosureTypes.CONSTR_NOCAF:
+            case ClosureTypes.MVAR_CLEAN:
+            case ClosureTypes.MVAR_DIRTY:
             case ClosureTypes.MUT_VAR_CLEAN:
             case ClosureTypes.MUT_VAR_DIRTY:
             case ClosureTypes.WEAK:
@@ -463,6 +465,13 @@ export class GC {
       }
       case ClosureTypes.IND_STATIC: {
         this.scavengeClosureAt(c + rtsConstants.offset_StgIndStatic_indirectee);
+        break;
+      }
+      case ClosureTypes.MVAR_CLEAN:
+      case ClosureTypes.MVAR_DIRTY: {
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_head);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_tail);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_value);
         break;
       }
       case ClosureTypes.ARR_WORDS: {
