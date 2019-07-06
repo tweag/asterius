@@ -29,8 +29,8 @@
 import pthread_mutex_lock;
 import pthread_mutex_unlock;
 #endif
-import CLOSURE base_ControlziExceptionziBase_blockedIndefinitelyOnMVar_closure;
 import CLOSURE base_ControlziExceptionziBase_nestedAtomically_closure;
+import CLOSURE base_GHCziIOziException_blockedIndefinitelyOnMVar_closure;
 import CLOSURE base_GHCziIOziException_heapOverflow_closure;
 import EnterCriticalSection;
 import LeaveCriticalSection;
@@ -1489,7 +1489,7 @@ stg_takeMVarzh ( P_ mvar /* :: MVar a */ )
      * and wait until we're woken up.
      */
     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
-        jump stg_raisezh(base_ControlziExceptionziBase_blockedIndefinitelyOnMVar_closure);
+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
     }
 
     /* we got the value... */
@@ -1524,7 +1524,7 @@ stg_putMVarzh ( P_ mvar, /* :: MVar a */
     W_ info, tso, q;
 
     if (StgMVar_value(mvar) != stg_END_TSO_QUEUE_closure) {
-        jump stg_raisezh(base_ControlziExceptionziBase_blockedIndefinitelyOnMVar_closure);
+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
     }
 
     StgMVar_value(mvar) = val;
@@ -1561,7 +1561,7 @@ stg_readMVarzh ( P_ mvar, /* :: MVar a */ )
      * list and wait until we're woken up.
      */
     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
-        jump stg_raisezh(base_ControlziExceptionziBase_blockedIndefinitelyOnMVar_closure);
+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
     }
 
     val = StgMVar_value(mvar);
