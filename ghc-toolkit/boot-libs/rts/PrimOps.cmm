@@ -1494,6 +1494,7 @@ stg_takeMVarzh ( P_ mvar /* :: MVar a */ )
 
     /* we got the value... */
     val = StgMVar_value(mvar);
+    StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
 
     return (val);
 }
@@ -1512,6 +1513,7 @@ stg_tryTakeMVarzh ( P_ mvar /* :: MVar a */ )
 
     /* we got the value... */
     val = StgMVar_value(mvar);
+    StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
 
     return (1,val);
 }
