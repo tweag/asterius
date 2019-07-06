@@ -553,7 +553,7 @@ generateFFIImportObjectFactory FFIMarshalState {..} =
 
 generateFFIExportObject :: FFIMarshalState -> Builder
 generateFFIExportObject FFIMarshalState {..} =
-  "Object.freeze({" <>
+  "{" <>
   mconcat
     (intersperse
        ","
@@ -561,13 +561,13 @@ generateFFIExportObject FFIMarshalState {..} =
        generateFFIExportLambda export_decl
        | (k, export_decl) <- M.toList ffiExportDecls
        ]) <>
-  "})"
+  "}"
 
 generateFFIExportLambda :: FFIExportDecl -> Builder
 generateFFIExportLambda FFIExportDecl { ffiFunctionType = FFIFunctionType {..}
                                       , ..
                                       } =
-  "function(" <>
+  "async function(" <>
   mconcat (intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]) <>
   "){" <>
   (if null ffiResultTypes
@@ -580,7 +580,7 @@ generateFFIExportLambda FFIExportDecl { ffiFunctionType = FFIFunctionType {..}
         [t] -> "this.rts_get" <> getHsTyCon t <> "(" <> ret_closure <> ")"
         _ -> error "Asterius.JSFFI.generateFFIExportLambda"
     ret_closure = "this.context.tsoManager.getTSOret(" <> tid <> ")"
-    tid = "this." <> eval_func <> "(" <> eval_closure <> ")"
+    tid = "await this." <> eval_func <> "(" <> eval_closure <> ")"
     eval_func
       | ffiInIO = "rts_evalIO"
       | otherwise = "rts_eval"
