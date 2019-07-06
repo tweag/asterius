@@ -30,6 +30,7 @@ import pthread_mutex_lock;
 import pthread_mutex_unlock;
 #endif
 import CLOSURE base_ControlziExceptionziBase_nestedAtomically_closure;
+import CLOSURE base_GHCziIOziException_blockedIndefinitelyOnMVar_closure;
 import CLOSURE base_GHCziIOziException_heapOverflow_closure;
 import EnterCriticalSection;
 import LeaveCriticalSection;
@@ -1484,92 +1485,17 @@ stg_takeMVarzh ( P_ mvar /* :: MVar a */ )
 {
     W_ val, info, tso, q;
 
-    LOCK_CLOSURE(mvar, info);
-
     /* If the MVar is empty, put ourselves on its blocking queue,
      * and wait until we're woken up.
      */
     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
-        if (info == stg_MVAR_CLEAN_info) {
-            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
-        }
-
-        // We want to put the heap check down here in the slow path,
-        // but be careful to unlock the closure before returning to
-        // the RTS if the check fails.
-        ALLOC_PRIM_WITH_CUSTOM_FAILURE
-            (SIZEOF_StgMVarTSOQueue,
-             unlockClosure(mvar, stg_MVAR_DIRTY_info);
-             GC_PRIM_P(stg_takeMVarzh, mvar));
-
-        q = Hp - SIZEOF_StgMVarTSOQueue + WDS(1);
-
-        SET_HDR(q, stg_MVAR_TSO_QUEUE_info, CCS_SYSTEM);
-        StgMVarTSOQueue_link(q) = END_TSO_QUEUE;
-        StgMVarTSOQueue_tso(q)  = CurrentTSO;
-
-        if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
-            StgMVar_head(mvar) = q;
-        } else {
-            StgMVarTSOQueue_link(StgMVar_tail(mvar)) = q;
-            ccall recordClosureMutated(MyCapability() "ptr",
-                                             StgMVar_tail(mvar));
-        }
-        StgTSO__link(CurrentTSO)       = q;
-        StgTSO_block_info(CurrentTSO)  = mvar;
-        StgTSO_why_blocked(CurrentTSO) = BlockedOnMVar::I16;
-        StgMVar_tail(mvar)             = q;
-
-        jump stg_block_takemvar(mvar);
+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
     }
 
     /* we got the value... */
     val = StgMVar_value(mvar);
+    StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
 
-    q = StgMVar_head(mvar);
-loop:
-    if (q == stg_END_TSO_QUEUE_closure) {
-        /* No further putMVars, MVar is now empty */
-        StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
-        // If the MVar is not already dirty, then we don't need to make
-        // it dirty, as it is empty with nothing blocking on it.
-        unlockClosure(mvar, info);
-        return (val);
-    }
-    if (StgHeader_info(q) == stg_IND_info ||
-        StgHeader_info(q) == stg_MSG_NULL_info) {
-        q = StgInd_indirectee(q);
-        goto loop;
-    }
-
-    // There are putMVar(s) waiting... wake up the first thread on the queue
-
-    if (info == stg_MVAR_CLEAN_info) {
-        ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
-    }
-
-    tso = StgMVarTSOQueue_tso(q);
-    StgMVar_head(mvar) = StgMVarTSOQueue_link(q);
-    if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
-        StgMVar_tail(mvar) = stg_END_TSO_QUEUE_closure;
-    }
-
-    ASSERT(StgTSO_why_blocked(tso) == BlockedOnMVar::I16);
-    ASSERT(StgTSO_block_info(tso) == mvar);
-
-    // actually perform the putMVar for the thread that we just woke up
-    W_ stack;
-    stack = StgTSO_stackobj(tso);
-    PerformPut(stack, StgMVar_value(mvar));
-
-    // indicate that the MVar operation has now completed.
-    StgTSO__link(tso) = stg_END_TSO_QUEUE_closure;
-
-    // no need to mark the TSO dirty, we have only written END_TSO_QUEUE.
-
-    ccall tryWakeupThread(MyCapability() "ptr", tso);
-
-    unlockClosure(mvar, stg_MVAR_DIRTY_info);
     return (val);
 }
 
@@ -1577,13 +1503,8 @@ stg_tryTakeMVarzh ( P_ mvar /* :: MVar a */ )
 {
     W_ val, info, tso, q;
 
-    LOCK_CLOSURE(mvar, info);
-
     /* If the MVar is empty, return 0. */
     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
-#if defined(THREADED_RTS)
-        unlockClosure(mvar, info);
-#endif
         /* HACK: we need a pointer to pass back,
          * so we abuse NO_FINALIZER_closure
          */
@@ -1592,50 +1513,8 @@ stg_tryTakeMVarzh ( P_ mvar /* :: MVar a */ )
 
     /* we got the value... */
     val = StgMVar_value(mvar);
+    StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
 
-    q = StgMVar_head(mvar);
-loop:
-    if (q == stg_END_TSO_QUEUE_closure) {
-        /* No further putMVars, MVar is now empty */
-        StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
-        unlockClosure(mvar, info);
-        return (1, val);
-    }
-
-    if (StgHeader_info(q) == stg_IND_info ||
-        StgHeader_info(q) == stg_MSG_NULL_info) {
-        q = StgInd_indirectee(q);
-        goto loop;
-    }
-
-    // There are putMVar(s) waiting... wake up the first thread on the queue
-
-    if (info == stg_MVAR_CLEAN_info) {
-        ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
-    }
-
-    tso = StgMVarTSOQueue_tso(q);
-    StgMVar_head(mvar) = StgMVarTSOQueue_link(q);
-    if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
-        StgMVar_tail(mvar) = stg_END_TSO_QUEUE_closure;
-    }
-
-    ASSERT(StgTSO_why_blocked(tso) == BlockedOnMVar::I16);
-    ASSERT(StgTSO_block_info(tso) == mvar);
-
-    // actually perform the putMVar for the thread that we just woke up
-    W_ stack;
-    stack = StgTSO_stackobj(tso);
-    PerformPut(stack, StgMVar_value(mvar));
-
-    // indicate that the MVar operation has now completed.
-    StgTSO__link(tso) = stg_END_TSO_QUEUE_closure;
-
-    // no need to mark the TSO dirty, we have only written END_TSO_QUEUE.
-
-    ccall tryWakeupThread(MyCapability() "ptr", tso);
-
-    unlockClosure(mvar, stg_MVAR_DIRTY_info);
     return (1,val);
 }
 
@@ -1644,98 +1523,11 @@ stg_putMVarzh ( P_ mvar, /* :: MVar a */
 {
     W_ info, tso, q;
 
-    LOCK_CLOSURE(mvar, info);
-
     if (StgMVar_value(mvar) != stg_END_TSO_QUEUE_closure) {
-
-        if (info == stg_MVAR_CLEAN_info) {
-            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
-        }
-
-        // We want to put the heap check down here in the slow path,
-        // but be careful to unlock the closure before returning to
-        // the RTS if the check fails.
-        ALLOC_PRIM_WITH_CUSTOM_FAILURE
-            (SIZEOF_StgMVarTSOQueue,
-             unlockClosure(mvar, stg_MVAR_DIRTY_info);
-             GC_PRIM_PP(stg_putMVarzh, mvar, val));
-
-        q = Hp - SIZEOF_StgMVarTSOQueue + WDS(1);
-
-        SET_HDR(q, stg_MVAR_TSO_QUEUE_info, CCS_SYSTEM);
-        StgMVarTSOQueue_link(q) = END_TSO_QUEUE;
-        StgMVarTSOQueue_tso(q)  = CurrentTSO;
-
-        if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
-            StgMVar_head(mvar) = q;
-        } else {
-            StgMVarTSOQueue_link(StgMVar_tail(mvar)) = q;
-            ccall recordClosureMutated(MyCapability() "ptr",
-                                             StgMVar_tail(mvar));
-        }
-        StgTSO__link(CurrentTSO)       = q;
-        StgTSO_block_info(CurrentTSO)  = mvar;
-        StgTSO_why_blocked(CurrentTSO) = BlockedOnMVar::I16;
-        StgMVar_tail(mvar)             = q;
-
-        jump stg_block_putmvar(mvar,val);
+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
     }
 
-    q = StgMVar_head(mvar);
-loop:
-    if (q == stg_END_TSO_QUEUE_closure) {
-        /* No further takes, the MVar is now full. */
-        if (info == stg_MVAR_CLEAN_info) {
-            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
-        }
-        StgMVar_value(mvar) = val;
-        unlockClosure(mvar, stg_MVAR_DIRTY_info);
-        return ();
-    }
-    if (StgHeader_info(q) == stg_IND_info ||
-        StgHeader_info(q) == stg_MSG_NULL_info) {
-        q = StgInd_indirectee(q);
-        goto loop;
-    }
-
-    // There are readMVar/takeMVar(s) waiting: wake up the first one
-
-    tso = StgMVarTSOQueue_tso(q);
-    StgMVar_head(mvar) = StgMVarTSOQueue_link(q);
-    if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
-        StgMVar_tail(mvar) = stg_END_TSO_QUEUE_closure;
-    }
-
-    ASSERT(StgTSO_block_info(tso) == mvar);
-    // save why_blocked here, because waking up the thread destroys
-    // this information
-    W_ why_blocked;
-    why_blocked = TO_W_(StgTSO_why_blocked(tso));
-
-    // actually perform the takeMVar
-    W_ stack;
-    stack = StgTSO_stackobj(tso);
-    PerformTake(stack, val);
-
-    // indicate that the MVar operation has now completed.
-    StgTSO__link(tso) = stg_END_TSO_QUEUE_closure;
-
-    if (TO_W_(StgStack_dirty(stack)) == 0) {
-        ccall dirty_STACK(MyCapability() "ptr", stack "ptr");
-    }
-
-    ccall tryWakeupThread(MyCapability() "ptr", tso);
-
-    // If it was a readMVar, then we can still do work,
-    // so loop back. (XXX: This could take a while)
-    if (why_blocked == BlockedOnMVarRead) {
-        q = StgMVarTSOQueue_link(q);
-        goto loop;
-    }
-
-    ASSERT(why_blocked == BlockedOnMVar);
-
-    unlockClosure(mvar, info);
+    StgMVar_value(mvar) = val;
     return ();
 }
 
@@ -1752,71 +1544,11 @@ stg_tryPutMVarzh ( P_ mvar, /* :: MVar a */
 {
     W_ info, tso, q;
 
-    LOCK_CLOSURE(mvar, info);
-
     if (StgMVar_value(mvar) != stg_END_TSO_QUEUE_closure) {
-#if defined(THREADED_RTS)
-        unlockClosure(mvar, info);
-#endif
         return (0);
     }
 
-    q = StgMVar_head(mvar);
-loop:
-    if (q == stg_END_TSO_QUEUE_closure) {
-        /* No further takes, the MVar is now full. */
-        if (info == stg_MVAR_CLEAN_info) {
-            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
-        }
-
-        StgMVar_value(mvar) = val;
-        unlockClosure(mvar, stg_MVAR_DIRTY_info);
-        return (1);
-    }
-    if (StgHeader_info(q) == stg_IND_info ||
-        StgHeader_info(q) == stg_MSG_NULL_info) {
-        q = StgInd_indirectee(q);
-        goto loop;
-    }
-
-    // There are takeMVar(s) waiting: wake up the first one
-
-    tso = StgMVarTSOQueue_tso(q);
-    StgMVar_head(mvar) = StgMVarTSOQueue_link(q);
-    if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
-        StgMVar_tail(mvar) = stg_END_TSO_QUEUE_closure;
-    }
-
-    ASSERT(StgTSO_block_info(tso) == mvar);
-    // save why_blocked here, because waking up the thread destroys
-    // this information
-    W_ why_blocked;
-    why_blocked = TO_W_(StgTSO_why_blocked(tso));
-
-    // actually perform the takeMVar
-    W_ stack;
-    stack = StgTSO_stackobj(tso);
-    PerformTake(stack, val);
-
-    // indicate that the MVar operation has now completed.
-    StgTSO__link(tso) = stg_END_TSO_QUEUE_closure;
-
-    if (TO_W_(StgStack_dirty(stack)) == 0) {
-        ccall dirty_STACK(MyCapability() "ptr", stack "ptr");
-    }
-
-    ccall tryWakeupThread(MyCapability() "ptr", tso);
-
-    // If it was a readMVar, then we can still do work,
-    // so loop back. (XXX: This could take a while)
-    if (why_blocked == BlockedOnMVarRead) {
-        q = StgMVarTSOQueue_link(q);
-        goto loop;
-    }
-
-    ASSERT(why_blocked == BlockedOnMVar);
-
-    unlockClosure(mvar, info);
+    StgMVar_value(mvar) = val;
     return (1);
 }
 
@@ -1825,45 +1557,15 @@ stg_readMVarzh ( P_ mvar, /* :: MVar a */ )
 {
     W_ val, info, tso, q;
 
-    LOCK_CLOSURE(mvar, info);
-
     /* If the MVar is empty, put ourselves on the blocked readers
      * list and wait until we're woken up.
      */
     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
-
-        if (info == stg_MVAR_CLEAN_info) {
-            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
-        }
-
-        ALLOC_PRIM_WITH_CUSTOM_FAILURE
-            (SIZEOF_StgMVarTSOQueue,
-             unlockClosure(mvar, stg_MVAR_DIRTY_info);
-             GC_PRIM_P(stg_readMVarzh, mvar));
-
-        q = Hp - SIZEOF_StgMVarTSOQueue + WDS(1);
-
-        // readMVars are pushed to the front of the queue, so
-        // they get handled immediately
-        SET_HDR(q, stg_MVAR_TSO_QUEUE_info, CCS_SYSTEM);
-        StgMVarTSOQueue_link(q) = StgMVar_head(mvar);
-        StgMVarTSOQueue_tso(q)  = CurrentTSO;
-
-        StgTSO__link(CurrentTSO)       = q;
-        StgTSO_block_info(CurrentTSO)  = mvar;
-        StgTSO_why_blocked(CurrentTSO) = BlockedOnMVarRead::I16;
-        StgMVar_head(mvar) = q;
-
-        if (StgMVar_tail(mvar) == stg_END_TSO_QUEUE_closure) {
-            StgMVar_tail(mvar) = q;
-        }
-
-        jump stg_block_readmvar(mvar);
+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
     }
 
     val = StgMVar_value(mvar);
 
-    unlockClosure(mvar, info);
     return (val);
 }
 
@@ -1871,16 +1573,12 @@ stg_tryReadMVarzh ( P_ mvar, /* :: MVar a */ )
 {
     W_ val, info, tso, q;
 
-    LOCK_CLOSURE(mvar, info);
-
     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
-        unlockClosure(mvar, info);
         return (0, stg_NO_FINALIZER_closure);
     }
 
     val = StgMVar_value(mvar);
 
-    unlockClosure(mvar, info);
     return (1, val);
 }
 
