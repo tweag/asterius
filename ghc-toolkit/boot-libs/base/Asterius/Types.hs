@@ -1,5 +1,6 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE UnliftedFFITypes #-}
 
@@ -10,6 +11,7 @@ module Asterius.Types
   , JSArray(..)
   , JSObject(..)
   , JSFunction(..)
+  , JSException(..)
   , fromJSArrayBuffer
   , toJSArrayBuffer
   , fromJSString
@@ -24,6 +26,7 @@ module Asterius.Types
   , makeHaskellCallback
   , makeHaskellCallback1
   , makeHaskellCallback2
+  , makeJSException
   , jsStringDecodeUTF8
   , jsStringEncodeUTF8
   , jsStringDecodeLatin1
@@ -36,8 +39,10 @@ module Asterius.Types
   ) where
 
 import Asterius.Magic
+import GHC.Exception.Type
 import GHC.Magic
 import GHC.Prim
+import GHC.Show
 import GHC.Stable
 import GHC.Tuple
 import GHC.Types
@@ -59,6 +64,15 @@ newtype JSObject =
 
 newtype JSFunction =
   JSFunction JSVal
+
+data JSException =
+  JSException JSVal
+              [Char]
+
+instance Show JSException where
+  show (JSException _ msg) = msg
+
+instance Exception JSException
 
 {-# INLINE fromJSArrayBuffer #-}
 fromJSArrayBuffer :: JSArrayBuffer -> ByteArray#
@@ -111,6 +125,10 @@ makeHaskellCallback2 f =
     (\s0 ->
        case makeStablePtr# f s0 of
          (# s1, sp #) -> unIO (js_mk_hs_callback2 sp) s1)
+
+{-# INLINE makeJSException #-}
+makeJSException :: JSVal -> SomeException
+makeJSException v = toException (JSException v (fromJSString (js_err_toString v)))
 
 {-# INLINE fromJSString #-}
 fromJSString :: JSString -> [Char]
@@ -224,4 +242,7 @@ foreign import javascript "__asterius_jsffi.makeHaskellCallback2(${1})" js_mk_hs
 foreign import javascript "JSON.parse(${1})" js_jsonParse :: JSString -> JSVal
 
 foreign import javascript "JSON.stringify(${1})" js_jsonStringify
+  :: JSVal -> JSString
+
+foreign import javascript "${1}.stack ? ${1}.stack : ${1}.toString()" js_err_toString
   :: JSVal -> JSString
