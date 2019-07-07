@@ -2,12 +2,14 @@ import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export class TSOManager {
-  constructor(memory, symbol_table) {
+  constructor(memory, symbol_table, stablePtrManager) {
     this.memory = memory;
     this.symbolTable = symbol_table;
     this.last = 0;
     this.tsos = new Map();
     this.promise = undefined;
+    this.exports = undefined;
+    this.stablePtrManager = stablePtrManager;
     Object.seal(this);
   }
 
@@ -53,33 +55,52 @@ export class TSOManager {
   }
 
   setPromise(vt, p) {
-    this.promise = p.then(r => {
-      switch (vt) {
-        case 0: {
-          break;
+    this.promise = p.then(
+      r => {
+        switch (vt) {
+          case 0: {
+            break;
+          }
+          case 1: {
+            this.memory.i32Store(this.symbolTable.__asterius_ret, r);
+            break;
+          }
+          case 2: {
+            this.memory.i64Store(this.symbolTable.__asterius_ret, r);
+            break;
+          }
+          case 3: {
+            this.memory.f32Store(this.symbolTable.__asterius_ret, r);
+            break;
+          }
+          case 4: {
+            this.memory.f64Store(this.symbolTable.__asterius_ret, r);
+            break;
+          }
+          default:
+            throw new WebAssembly.RuntimeError(
+              `setPromise: invalid value type ${vt}`
+            );
         }
-        case 1: {
-          this.memory.i32Store(this.symbolTable.__asterius_ret, r);
-          break;
-        }
-        case 2: {
-          this.memory.i64Store(this.symbolTable.__asterius_ret, r);
-          break;
-        }
-        case 3: {
-          this.memory.f32Store(this.symbolTable.__asterius_ret, r);
-          break;
-        }
-        case 4: {
-          this.memory.f64Store(this.symbolTable.__asterius_ret, r);
-          break;
-        }
-        default:
-          throw new WebAssembly.RuntimeError(
-            `setPromise: invalid value type ${vt}`
-          );
+      },
+      err => {
+        this.memory.memset(this.symbolTable.__asterius_regs, 0, 1024);
+        this.memory.memset(this.symbolTable.__asterius_ret, 0, 8);
+        this.memory.i64Store(
+          this.symbolTable.MainCapability +
+            rtsConstants.offset_Capability_r +
+            rtsConstants.offset_StgRegTable_rR1,
+          this.exports.rts_apply(
+            this.symbolTable.base_AsteriusziTypes_makeJSException_closure,
+            this.exports.rts_mkStablePtr(this.stablePtrManager.newJSVal(err))
+          )
+        );
+        this.memory.i64Store(
+          this.symbolTable.__asterius_func,
+          this.symbolTable.stg_raisezh
+        );
       }
-    });
+    );
   }
 
   resetPromise() {
