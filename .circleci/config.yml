@@ -89,8 +89,8 @@ jobs:
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls"
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
 
-            stack --no-terminal test asterius:nomain
-            stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
+            # stack --no-terminal test asterius:nomain
+            # stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
             # Run parts of the ghc-testuite that we have enabled for
             # regression testing.
