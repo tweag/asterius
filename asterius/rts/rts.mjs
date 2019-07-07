@@ -79,7 +79,7 @@ export function newAsteriusInstance(req) {
       const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_exports.rts_apply(
           __asterius_stableptr_manager.deRefStablePtr(sp),
-          __asterius_exports.rts_mkInt(
+          __asterius_exports.rts_mkStablePtr(
             __asterius_stableptr_manager.newJSVal(ev)
           )
         )
@@ -90,9 +90,9 @@ export function newAsteriusInstance(req) {
       const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_exports.rts_apply(
           __asterius_exports.rts_apply(
-            __asterius_stableptr_manager.deRefStablePtr(sp), __asterius_exports.rts_mkInt(
+            __asterius_stableptr_manager.deRefStablePtr(sp), __asterius_exports.rts_mkStablePtr(
               __asterius_stableptr_manager.newJSVal(x))),
-          __asterius_exports.rts_mkInt(
+          __asterius_exports.rts_mkStablePtr(
             __asterius_stableptr_manager.newJSVal(y))));
       __asterius_exports.rts_checkSchedStatus(tid);
     },
