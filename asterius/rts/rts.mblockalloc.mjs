@@ -51,16 +51,15 @@ export class MBlockAlloc {
 				  rtsConstants.offset_first_block;
 
 			  const rest_end = bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block + blocks * rtsConstants.block_size;
-              console.log(`rest_start: ${rest_start} | rest_end: ${rest_end}`);
+        console.log(`rest_start: ${rest_start} | rest_end: ${rest_end}`);
 
 			//   const rest_nblocks = blocks - alloc_blocks -
 			// 	  ((rtsConstants.mblock_size / rtsConstants.block_size) -
 			// 		  rtsConstants.blocks_per_mblock);
-              const rest_nblocks = Math.floor((rest_end - rest_start) / rtsConstants.block_size);
+        const rest_nblocks = Math.floor((rest_end - rest_start) / rtsConstants.block_size);
               
 			  if (rest_nblocks <= 0) {
             continue; 
-				    throw new WebAssembly.RuntimeError(`not enough spce for alignment! rest_nblocks:${rest_nblocks}`);
 			  }
 
 
@@ -73,8 +72,12 @@ export class MBlockAlloc {
 			  this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
 				  rest_nblocks);
 
-			  this.freeList.splice(i, 1, rest_bd);
-			  console.log(`bd: ${bd} | rest_bd: ${rest_bd} | freelist (after splice): ${this.freeList}`);
+        // HACK: do not allow block reuse. See if stuff still crashes with just
+        // freeSegment(...) code
+			  // this.freeList.splice(i, 1, rest_bd);
+        this.freeList.splice(i, 1);
+			  
+        console.log(`bd: ${bd} | rest_bd: ${rest_bd} | freelist (after splice): ${this.freeList}`);
 			  return bd;
 		  }
 		  if (alloc_blocks == blocks) {
