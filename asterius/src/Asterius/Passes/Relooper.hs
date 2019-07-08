@@ -8,6 +8,7 @@ module Asterius.Passes.Relooper
 
 import Asterius.Internals
 import Asterius.Types
+import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
 
@@ -40,7 +41,7 @@ relooper RelooperRun {..} = result_expr
                  (case addBranches of
                     [] -> [Break {name = exit_lbl, breakCondition = Nothing}]
                     branches ->
-                      foldr
+                      foldr'
                         (\AddBranch {addBranchCondition = Just cond, to} e ->
                            If
                              { condition = cond
@@ -54,7 +55,7 @@ relooper RelooperRun {..} = result_expr
                               last branches)
                AddBlockWithSwitch {..} ->
                  [code, SetLocal {index = 1, value = condition}] <>
-                 (foldr
+                 (foldr'
                     (\AddBranchForSwitch {to, indexes} e ->
                        If
                          { condition =
@@ -83,7 +84,7 @@ relooper RelooperRun {..} = result_expr
       Block
         { name = exit_lbl
         , bodys =
-            [ SetLocal {index = 0, value = ConstI32 $ lbl_to_idx entry}
+            [ set_block_lbl entry
             , Loop
                 { name = loop_lbl
                 , body =

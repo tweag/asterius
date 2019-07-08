@@ -180,7 +180,7 @@ data ValueType
   | I64
   | F32
   | F64
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Enum, Eq, Ord, Show, Generic, Data)
 
 instance Binary ValueType
 

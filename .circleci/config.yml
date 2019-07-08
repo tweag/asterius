@@ -57,7 +57,7 @@ jobs:
           name: Test asterius
           command: |
             stack --no-terminal test asterius:fib
-            # stack --no-terminal test asterius:jsffi
+            stack --no-terminal test asterius:jsffi
             stack --no-terminal test asterius:array
             stack --no-terminal test asterius:stableptr
             stack --no-terminal test asterius:rtsapi
@@ -77,7 +77,7 @@ jobs:
             $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
             cd $CIRCLE_WORKING_DIRECTORY
             stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
-            # stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:stableptr --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:rtsapi --test-arguments="--debug" > /dev/null
@@ -89,12 +89,12 @@ jobs:
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls"
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
 
-            stack --no-terminal test asterius:nomain
-            stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
+            # stack --no-terminal test asterius:nomain
+            # stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
             # Run parts of the ghc-testuite that we have enabled for
             # regression testing.
-            stack test asterius:ghc-testsuite --test-arguments="  --timeout=5s -l test/ghc-testsuite-filter";  
+            stack test asterius:ghc-testsuite --test-arguments="  --timeout=5s -l test/ghc-testsuite-filter";
 
   asterius-test-ghc-testsuite:
     docker:
@@ -169,7 +169,7 @@ jobs:
               cp asterius/test-report.csv /tmp
               python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
               python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
- 
+
       - store_artifacts:
           path: /tmp/test-report.csv
 

@@ -40,7 +40,7 @@ export function newAsteriusInstance(req) {
     __asterius_heapalloc = new HeapAlloc(__asterius_memory, __asterius_mblockalloc),
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_stablename_manager = new StableNameManager(__asterius_memory, __asterius_heapalloc, req.symbolTable),
-    __asterius_tso_manager = new TSOManager(__asterius_memory, req.symbolTable),
+    __asterius_tso_manager = new TSOManager(__asterius_memory, req.symbolTable, __asterius_stableptr_manager),
     __asterius_heap_builder = new HeapBuilder(req.symbolTable, __asterius_heapalloc, __asterius_memory, __asterius_stableptr_manager),
     __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager, __asterius_heap_builder),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
@@ -51,8 +51,9 @@ export function newAsteriusInstance(req) {
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
-    __asterius_exports = new Exports(__asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports),
+    __asterius_exports = new Exports(__asterius_memory, __asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports),
     __asterius_md5 = new MD5(__asterius_memory);
+  __asterius_tso_manager.exports = __asterius_exports;
 
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
@@ -79,7 +80,7 @@ export function newAsteriusInstance(req) {
       const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_exports.rts_apply(
           __asterius_stableptr_manager.deRefStablePtr(sp),
-          __asterius_exports.rts_mkInt(
+          __asterius_exports.rts_mkStablePtr(
             __asterius_stableptr_manager.newJSVal(ev)
           )
         )
@@ -90,9 +91,9 @@ export function newAsteriusInstance(req) {
       const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_exports.rts_apply(
           __asterius_exports.rts_apply(
-            __asterius_stableptr_manager.deRefStablePtr(sp), __asterius_exports.rts_mkInt(
+            __asterius_stableptr_manager.deRefStablePtr(sp), __asterius_exports.rts_mkStablePtr(
               __asterius_stableptr_manager.newJSVal(x))),
-          __asterius_exports.rts_mkInt(
+          __asterius_exports.rts_mkStablePtr(
             __asterius_stableptr_manager.newJSVal(y))));
       __asterius_exports.rts_checkSchedStatus(tid);
     },
@@ -102,7 +103,8 @@ export function newAsteriusInstance(req) {
       putChar: (h, c) => __asterius_fs.writeSync(h, String.fromCodePoint(c)),
       stdout: () => __asterius_fs.root.get("/dev/stdout"),
       stderr: () => __asterius_fs.root.get("/dev/stderr")
-    }
+    },
+    setPromise: (vt, p) => __asterius_tso_manager.setPromise(vt, p)
   };
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),

@@ -213,6 +213,13 @@ HsInt offset_StgMutArrPtrs_size() { return offsetof(StgMutArrPtrs, size); }
 HsInt offset_StgMutArrPtrs_payload() {
   return offsetof(StgMutArrPtrs, payload);
 }
+
+HsInt offset_StgMVar_head() { return offsetof(StgMVar, head); }
+
+HsInt offset_StgMVar_tail() { return offsetof(StgMVar, tail); }
+
+HsInt offset_StgMVar_value() { return offsetof(StgMVar, value); }
+
 HsInt sizeof_StgPAP() { return sizeof(StgPAP); }
 
 HsInt offset_StgPAP_arity() { return offsetof(StgPAP, arity); }

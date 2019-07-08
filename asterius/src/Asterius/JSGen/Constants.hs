@@ -46,7 +46,8 @@ rtsConstants =
   ] <>
   [ "export const " <> k <> " = " <> intHex v <> ";\n"
   | (k, v) <-
-      [ ("sizeof_StgAP", sizeof_StgAP)
+      [ ("offset_Capability_r", offset_Capability_r)
+      , ("sizeof_StgAP", sizeof_StgAP)
       , ("offset_StgAP_arity", offset_StgAP_arity)
       , ("offset_StgAP_n_args", offset_StgAP_n_args)
       , ("offset_StgAP_fun", offset_StgAP_fun)
@@ -75,11 +76,16 @@ rtsConstants =
       , ("sizeof_StgMutArrPtrs", sizeof_StgMutArrPtrs)
       , ("offset_StgMutArrPtrs_ptrs", offset_StgMutArrPtrs_ptrs)
       , ("offset_StgMutArrPtrs_payload", offset_StgMutArrPtrs_payload)
+      , ("offset_StgMVar_head", offset_StgMVar_head)
+      , ("offset_StgMVar_tail", offset_StgMVar_tail)
+      , ("offset_StgMVar_value", offset_StgMVar_value)
       , ("sizeof_StgPAP", sizeof_StgPAP)
       , ("offset_StgPAP_arity", offset_StgPAP_arity)
       , ("offset_StgPAP_n_args", offset_StgPAP_n_args)
       , ("offset_StgPAP_fun", offset_StgPAP_fun)
       , ("offset_StgPAP_payload", offset_StgPAP_payload)
+      , ("offset_StgRegTable_rR1", offset_StgRegTable_rR1)
+      , ("offset_StgRegTable_rRet", offset_StgRegTable_rRet)
       , ("sizeof_StgRetFun", sizeof_StgRetFun)
       , ("offset_StgRetFun_size", offset_StgRetFun_size)
       , ("offset_StgRetFun_fun", offset_StgRetFun_fun)

@@ -215,6 +215,12 @@ foreign import ccall unsafe "offset_StgMutArrPtrs_size" offset_StgMutArrPtrs_siz
 foreign import ccall unsafe "offset_StgMutArrPtrs_payload" offset_StgMutArrPtrs_payload
   :: Int
 
+foreign import ccall unsafe "offset_StgMVar_head" offset_StgMVar_head :: Int
+
+foreign import ccall unsafe "offset_StgMVar_tail" offset_StgMVar_tail :: Int
+
+foreign import ccall unsafe "offset_StgMVar_value" offset_StgMVar_value :: Int
+
 foreign import ccall unsafe "sizeof_StgPAP" sizeof_StgPAP :: Int
 
 foreign import ccall unsafe "offset_StgPAP_arity" offset_StgPAP_arity :: Int
@@ -555,6 +561,8 @@ foreign import ccall unsafe "tso_ALLOC_LIMIT" tso_ALLOC_LIMIT :: Int
 
 foreign import ccall unsafe "sizeof_StgStableName" sizeof_StgStableName :: Int
 
-foreign import ccall unsafe "offset_StgStableName_header" offset_StgStableName_header :: Int
+foreign import ccall unsafe "offset_StgStableName_header" offset_StgStableName_header
+  :: Int
 
-foreign import ccall unsafe "offset_StgStableName_sn" offset_StgStableName_sn :: Int
+foreign import ccall unsafe "offset_StgStableName_sn" offset_StgStableName_sn
+  :: Int

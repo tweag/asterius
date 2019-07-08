@@ -17,6 +17,7 @@ import Asterius.JSFFI
 import Asterius.MemoryTrap
 import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
+import Asterius.Passes.SafeCCall
 import Asterius.Types
 import Data.Binary
 import qualified Data.ByteString as BS
@@ -238,26 +239,27 @@ linkStart debug gc_sections binaryen verbose_err store root_syms export_funcs =
       })
   where
     (merged_m0, report) =
-      mergeSymbols
-        debug
-        gc_sections
-        verbose_err
-        store
-        root_syms export_funcs
-    merged_m1
-      | debug = addMemoryTrap merged_m0
-      | otherwise = merged_m0
+      mergeSymbols debug gc_sections verbose_err store root_syms export_funcs
+    merged_m1 =
+      merged_m0
+        { functionMap =
+            splitFunctionMap (bundledFFIMarshalState report) $
+            functionMap merged_m0
+        }
+    merged_m2
+      | debug = addMemoryTrap merged_m1
+      | otherwise = merged_m1
     merged_m
-      | verbose_err = merged_m1
+      | verbose_err = merged_m2
       | otherwise =
-        merged_m1
+        merged_m2
           { staticsMap =
               LM.filterWithKey
                 (\sym _ ->
                    not
                      ("__asterius_barf_" `BS.isPrefixOf`
                       SBS.fromShort (entityName sym))) $
-              staticsMap merged_m1
+              staticsMap merged_m2
           }
     (result_m, ss_sym_map, func_sym_map, tbl_slots, static_mbs) =
       resolveAsteriusModule

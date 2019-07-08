@@ -99,6 +99,8 @@ export class GC {
             case ClosureTypes.FUN:
             case ClosureTypes.CONSTR:
             case ClosureTypes.CONSTR_NOCAF:
+            case ClosureTypes.MVAR_CLEAN:
+            case ClosureTypes.MVAR_DIRTY:
             case ClosureTypes.MUT_VAR_CLEAN:
             case ClosureTypes.MUT_VAR_DIRTY:
             case ClosureTypes.WEAK:
@@ -118,8 +120,13 @@ export class GC {
               break;
             }
             case ClosureTypes.IND: {
-              dest_c = this.copyClosure(untagged_c, rtsConstants.sizeof_StgInd);
-              break;
+              dest_c = this.evacuateClosure(
+                this.memory.i64Load(
+                  untagged_c + rtsConstants.offset_StgInd_indirectee
+                )
+              );
+              this.closureIndirects.set(untagged_c, dest_c);
+              return dest_c;
             }
             case ClosureTypes.PAP: {
               const n_args = this.memory.i32Load(untagged_c +
@@ -288,14 +295,30 @@ export class GC {
           c += (1 + size) << 3;
           break;
         }
+        
+        // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/Printer.c#L609
+        // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/sm/Scav.c#L1944
         case ClosureTypes.RET_FUN: {
+          const retfun = c;
           const size =
-              Number(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_size)),
-                fun_info = Number(this.memory.i64Load(
-                  Memory.unDynTag(this.memory.i64Load(c + rtsConstants.offset_StgRetFun_fun))));
-          switch (this.memory.i32Load(
-              fun_info + rtsConstants.offset_StgFunInfoTable_f +
-              rtsConstants.offset_StgFunInfoExtraFwd_fun_type)) {
+              Number(this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_size));
+
+          // NOTE: the order is important. The scavenging will move all the
+          // data inside, so that when we grab "fun", we grab the right fun
+          // that has been moved.
+          this.scavengeClosureAt(retfun + rtsConstants.offset_StgRetFun_fun);
+          let fun = Number(this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_fun));
+          const fun_info_p = fun + 0;
+          const fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun_info_p)));
+
+          const fun_type = this.memory.i32Load(
+            fun_info + rtsConstants.offset_StgFunInfoTable_f +
+            rtsConstants.offset_StgFunInfoExtraFwd_fun_type);
+
+          const ret_fun_payload = retfun + rtsConstants.offset_StgRetFun_payload;
+
+                
+          switch (fun_type) {
             case FunTypes.ARG_GEN: {
               this.scavengeSmallBitmap(
                   c + rtsConstants.offset_StgRetFun_payload,
@@ -319,16 +342,20 @@ export class GC {
               throw new WebAssembly.RuntimeError();
             }
             default: {
-              this.scavengeSmallBitmap(
-                  c + rtsConstants.offset_StgRetFun_payload,
-                  BigInt(stg_arg_bitmaps[this.memory.i32Load(
-                      fun_info + rtsConstants.offset_StgFunInfoTable_f +
-                      rtsConstants.offset_StgFunInfoExtraFwd_fun_type)]) >>
-                      BigInt(6),
-                  size);
+              // https://github.com/ghc/ghc/blob/bf73419518ca550e85188616f860961c7e2a336b/includes/rts/Constants.h#L186
+              const BITMAP_SIZE_MASK = 0x3f;
+              const BITMAP_BITS_SHIFT = 6;
+              const bitmap = stg_arg_bitmaps[fun_type];
+                
+              // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/includes/rts/storage/InfoTables.h#L116
+              const bitmap_bits =  BigInt(bitmap) >> BigInt(BITMAP_BITS_SHIFT);
+              const bitmap_size = bitmap & BITMAP_SIZE_MASK;
+
+              this.scavengeSmallBitmap(ret_fun_payload, bitmap_bits, bitmap_size);
+
               break;
-            }
-          }
+            } // end case default
+          } //end switch (fun_type)
           c += rtsConstants.sizeof_StgRetFun + (size << 3);
           break;
         }
@@ -438,11 +465,18 @@ export class GC {
         break;
       }
       case ClosureTypes.IND: {
-        this.scavengeClosure(c + rtsConstants.offset_StgInd_indirectee);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgInd_indirectee);
         break;
       }
       case ClosureTypes.IND_STATIC: {
         this.scavengeClosureAt(c + rtsConstants.offset_StgIndStatic_indirectee);
+        break;
+      }
+      case ClosureTypes.MVAR_CLEAN:
+      case ClosureTypes.MVAR_DIRTY: {
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_head);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_tail);
+        this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_value);
         break;
       }
       case ClosureTypes.ARR_WORDS: {
