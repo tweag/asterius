@@ -53,7 +53,9 @@ export class GC {
           this.liveMBlocks.add(this.bdescr(dest_c));
         } else {
           const info = Number(this.memory.i64Load(untagged_c));
-          if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError(`bdescr: ${this.bdescr(c)}`);
+          if (!this.infoTables.has(info)) {
+            throw new WebAssembly.RuntimeError(`c: ${c} | bdescr: ${this.bdescr(c)}`);
+          }
           const type =
               this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
           switch (type) {
@@ -372,7 +374,7 @@ export class GC {
   scavengeClosure(c) {
     const info = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
-    if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError(`bdescr: ${this.bdescr(c)}`);
+    if (!this.infoTables.has(info)) { throw new WebAssembly.RuntimeError(`c: ${c} | bdescr: ${this.bdescr(c)}`); }
     switch (info) {
       case this.symbolTable.base_GHCziStable_StablePtr_con_info:
       case this.symbolTable.integerzmwiredzmin_GHCziIntegerziType_Integer_con_info: {

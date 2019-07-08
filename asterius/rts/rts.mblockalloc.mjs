@@ -35,20 +35,19 @@ export class MBlockAlloc {
 	  const alloc_blocks = Math.floor(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size);
 
 	  for (let i = 0; i < this.freeList.length; ++i) {
-		  const bd = this.freeList[i];
+      const bd = this.freeList[i];
+      console.log(`checking that bd is aligned... bd: ${bd} | bd - offset: ${bd - rtsConstants.offset_first_bdescr}`);
+      this.assertAlignment(bd - rtsConstants.offset_first_bdescr, rtsConstants.mblock_size);
 		  const blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
 		  console.log(`using bd from freelist: i:${i} bd:${bd}`);
 
 		  if (alloc_blocks < blocks) {
 			  this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, alloc_blocks);
-			  const rest_bd = this.align(bd + (rtsConstants.mblock_size * n), rtsConstants.mblock_size);
+        const rest_base = this.align(bd - rtsConstants.offset_first_bdescr + (rtsConstants.mblock_size * n),
+          rtsConstants.mblock_size);
 
-			  if (!((BigInt(rest_bd) >> BigInt(Math.log2(rtsConstants.mblock_size))) <<
-				  BigInt(Math.log2(rtsConstants.mblock_size)) == rest_bd)) {
-				  throw new WebAssembly.RuntimeError(`rest_bd ${rest_bd} is not aligned to ${rtsConstants.mblock_size} -- log2: ${Math.log2(rtsConstants.mblock_size)}`);
-			  }
-
-			  const rest_start = rest_bd - rtsConstants.offset_first_bdescr +
+        const rest_bd = rest_base + rtsConstants.offset_first_bdescr;
+			  const rest_start = rest_base +
 				  rtsConstants.offset_first_block;
 
 			  const rest_end = bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block + blocks * rtsConstants.block_size;
@@ -60,12 +59,12 @@ export class MBlockAlloc {
               const rest_nblocks = Math.floor((rest_end - rest_start) / rtsConstants.block_size);
               
 			  if (rest_nblocks <= 0) {
-                  continue; 
-				  throw new WebAssembly.RuntimeError(`not enough spce for alignment! rest_nblocks:${rest_nblocks}`);
+            continue; 
+				    throw new WebAssembly.RuntimeError(`not enough spce for alignment! rest_nblocks:${rest_nblocks}`);
 			  }
 
 
-			  console.log(`bd: ${bd} | rest_bd: ${rest_bd} | rest_nblocks: ${rest_nblocks} | freelist (before splice): ${this.freeList}`);
+			  console.log(`bd: ${bd} | nblocks: ${blocks} | rest_bd: ${rest_bd} | rest_nblocks: ${rest_nblocks} | freelist (before splice): ${this.freeList}`);
 			  this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
 				  rest_start);
 			  this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
@@ -114,6 +113,13 @@ export class MBlockAlloc {
     return x2;
   }
 
+  assertAlignment(num, alignment) {
+    const numaligned = this.align(num, alignment);
+    if (num != numaligned) {
+      throw new WebAssembly.RuntimeError(`not aligned: ${num} | aligned: ${numaligned}`);
+    } 
+  }
+
   freeSegment(l_end, r) {
     if (l_end < r) {
       this.memory.memset(l_end, 0, r - l_end);
@@ -131,10 +137,12 @@ export class MBlockAlloc {
 
       const bd = base + rtsConstants.offset_first_bdescr;
       const start = base + rtsConstants.offset_first_block;
-      const blocks = Math.floor((r - start) / rtsConstants.block_size);
+      // const blocks = Math.floor((r - start) / rtsConstants.block_size);
+      const blocks = Math.floor((r - start) / (2 * rtsConstants.block_size));
       if (blocks < 0) {
           throw new WebAssembly.RuntimeError(`blocks:${blocks} < 0`);
       }
+
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
