@@ -46,6 +46,7 @@ rtsUsedSymbols =
     , "__asterius_regs"
     , "__asterius_ret"
     , "barf"
+    , "base_AsteriusziTopHandler_runMainIO_closure"
     , "base_AsteriusziTypes_makeJSException_closure"
     , "base_GHCziPtr_Ptr_con_info"
     , "base_GHCziStable_StablePtr_con_info"
