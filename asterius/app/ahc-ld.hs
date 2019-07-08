@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 import Asterius.Ld
 import Asterius.Types
 import Data.List
@@ -12,7 +14,8 @@ parseLinkTask args = do
   link_libs <- fmap catMaybes $ for link_libnames $ findFile link_libdirs
   pure
     LinkTask
-      { linkOutput = link_output
+      { progName = prog_name
+      , linkOutput = link_output
       , linkObjs = link_objs
       , linkLibs = link_libs
       , debug = "--debug" `elem` args
@@ -29,6 +32,8 @@ parseLinkTask args = do
           str_args "--export-function="
       }
   where
+    Just (stripPrefix "--prog-name=" -> Just prog_name) =
+      find ("--prog-name=" `isPrefixOf`) args
     link_output = args !! succ output_i
     Just output_i = elemIndex "-o" args
     link_objs = filter ((== "o.") . take 2 . reverse) args

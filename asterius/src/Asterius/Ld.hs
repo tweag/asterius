@@ -20,10 +20,9 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import Data.Traversable
 import Prelude hiding (IO)
-import System.FilePath
 
 data LinkTask = LinkTask
-  { linkOutput :: FilePath
+  { progName, linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
   , debug, gcSections, binaryen, verboseErr :: Bool
   , outputIR :: Maybe FilePath
@@ -83,7 +82,9 @@ linkModules LinkTask {..} m =
     verboseErr
     (rtsAsteriusModule
        defaultBuiltinsOptions
-         {progName = takeBaseName linkOutput, Asterius.Builtins.debug = debug} <>
+         { Asterius.Builtins.progName = progName
+         , Asterius.Builtins.debug = debug
+         } <>
      m)
     (Set.unions
        [ Set.fromList rootSymbols

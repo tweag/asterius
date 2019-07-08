@@ -18,7 +18,8 @@ linkNonMain store_m extra_syms = (m, link_report)
     (_, m, link_report) =
       linkModules
         LinkTask
-          { linkOutput = ""
+          { progName = ""
+          , linkOutput = ""
           , linkObjs = []
           , linkLibs = []
           , Asterius.Ld.debug = False
