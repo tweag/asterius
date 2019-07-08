@@ -1,4 +1,5 @@
 .stack-work/
+stack.yaml.lock
 wabt/wabt/bin
 asterius.cabal
 ghc-toolkit.cabal

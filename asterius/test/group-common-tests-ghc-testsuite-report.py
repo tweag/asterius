@@ -17,7 +17,6 @@ import re
 def parse(s):
     p = argparse.ArgumentParser()
     p.add_argument("jsonpath", help="path to input JSON file")
-    p.add_argument("-o", "--out",  help="path to output HTML file", default="")
     return p.parse_args(s)
 
 def unescape_ascii(s):
@@ -68,11 +67,6 @@ def strip_wasm_line_numbers(s):
 if __name__ == "__main__":
     p = parse(sys.argv[1:])
 
-    outpath = os.path.splitext(p.jsonpath)[0] + "-aggregated.txt" if not p.out else p.out
-    # convert path to absolute path for better error messages
-    outpath = os.path.abspath(outpath)
-
-
     data = pd.read_csv(p.jsonpath, 
             dtype={"trOutcome": object, "trPath": object, "trErrorMessage": str})
     # replace nan with string for the possibly empty error messages.
@@ -96,8 +90,4 @@ if __name__ == "__main__":
 
     # print to table.
     out_ascii = AsciiTable(l).table
-    with open(outpath, 'w') as f:
-        print("writing ASCII output to: %s" % outpath)
-        f.write(out_ascii)
-
-
+    print(out_ascii)

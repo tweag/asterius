@@ -4,6 +4,7 @@
 {-# LANGUAGE ImplicitParams #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 
@@ -18,9 +19,7 @@ import System.Process
 import Test.Tasty
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
-import Data.Monoid (Any(..))
-import Control.Concurrent.STM.TVar
-import Control.Concurrent.STM
+import Data.Monoid (Any(..), All(..))
 import Test.Tasty.Hspec
 import Test.Tasty.Runners
 import Control.Exception
@@ -31,25 +30,44 @@ import System.Console.ANSI (hSupportsANSIColor)
 import Control.Arrow ((&&&))
 import Data.Csv
 import Data.List (sort)
+import Data.Word
+import System.Console.GetOpt
+import Text.Regex.TDFA
+import Data.Typeable
+import Test.Tasty.Options
+import Options.Applicative
+import Options.Applicative.Types
+import System.Exit(die)
+
+
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
---
--- TODO: Update the code to not re-implement tasty internals when
--- the new version is released, since we had a PR that exposes some
--- tasty internals for us:
--- https://github.com/feuerbach/tasty/pull/252
 
 data TestCase = TestCase
   { casePath :: FilePath
   , caseStdIn, caseStdOut, caseStdErr :: LBS.ByteString
   } deriving (Show)
 
+
+-- | Convert a Char to a Word8
+charToWord8 :: Char -> Word8
+charToWord8 = toEnum . fromEnum
+
+-- | Try to read a file. if file does not exist, then return empty string.
 readFileNullable :: FilePath -> IO LBS.ByteString
 readFileNullable p = do
   exist <- doesFileExist p
   if exist
-    then LBS.readFile p
+    then do
+       bs <- LBS.readFile p
+       -- | Add trailing whitespace if it does not exist.
+       -- | The GHC testsuite also performs normalization:
+       -- | testsuite/driver/testlib.py
+       if LBS.last bs /= charToWord8 '\n'
+       then return $ LBS.snoc bs (charToWord8 '\n')
+       else return bs
+
     else pure LBS.empty
 
 getTestCases :: IO [TestCase]
@@ -61,10 +79,21 @@ getTestCases = do
       let subroot = root </> subdir
       files <- sort <$> listDirectory subroot
       let cases = map (subroot </>) $ filter ((== ".hs") . takeExtension) files
-      for cases $ \c ->
+      for cases $ \c -> do
+        -- | GHC has some tests that differ for 32 and 64 bit architectures. So,
+        -- we first check if the 64 bit test exists. If it does, we always
+        -- use it. If it does not, we use the default test (which should
+        -- be the same for both architectures).
+        ws64exists <- doesFileExist (c -<.> "stdout-ws-64")
+        let stdoutp = c -<.> ("stdout" <>  if ws64exists then "-ws-64" else "")
+
+
+        ws64exists <- doesFileExist (c -<.> "stderr-ws-64")
+        let stderrp = c -<.> ("stderr" <> if ws64exists then "-ws-64" else "")
+
         TestCase c <$> readFileNullable (c -<.> "stdin") <*>
-        readFileNullable (c -<.> "stdout") <*>
-        readFileNullable (c -<.> "stderr")
+          readFileNullable stdoutp <*>
+          readFileNullable stderrp
 
 
 
@@ -132,7 +161,7 @@ instance Show CompileOutcome where
 
 runTestCase :: TestCase -> IO ()
 runTestCase TestCase {..} = do
-  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen"] ""
+  _ <- readProcess "ahc-link" ["--input-hs", casePath, "--binaryen", "--verbose-err"] ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
   withJSSession defJSSessionOpts $ \s -> do
     -- | Try to compile and setup the program. If we throw an exception,
@@ -205,48 +234,94 @@ consoleOutput tlref toutput smap =
       , Any nonempty
       )
 
+-- | Filter the test tree according to a predicate
+filterTestTree :: (TestName -> Bool) -> TestTree -> TestTree
+filterTestTree f tt =
+  TestGroup "***filtered***" $ [go tt]
+  where
+    -- go :: TestTree -> TestTree
+    go (SingleTest name t) =
+      if (f name)
+        then SingleTest (name <> "-ENABLED") t
+        else TestGroup (name <> "-DISABLED") []
+    go (TestGroup name tt) =
+      TestGroup (name <> "-FILTERED") (map go tt)
+    go _ = error $ "unknown test tree type"
 
-getResultFromTVar :: TVar Status -> IO Test.Tasty.Runners.Result
-getResultFromTVar var =
-  atomically $ do
-    status <- readTVar var
-    case status of
-      Done r -> return r
-      _ -> retry
+-- | Option that describes whether a test file with
+-- white & black lists has been provided. Modelled after
+-- TestPattern
+newtype PatternFilePath = PatternFilePath (Maybe FilePath)
+  deriving(Show, Eq)
 
-computeStatistics :: StatusMap -> IO Statistics
-computeStatistics = getApp . foldMap (\var -> Ap $
-  (\r -> Statistics 1 (if resultSuccessful r then 0 else 1))
-    <$> getResultFromTVar var)
+noFile :: PatternFilePath
+noFile = PatternFilePath Nothing
 
 
--- | Code stolen from Test.Tasty.Ingredients.ConsoleReporter
+instance IsOption PatternFilePath where
+  defaultValue = noFile
+  parseValue = Just . PatternFilePath . Just
+  optionName = return "testfile"
+  optionHelp = return "selects tests that match the WHITELIST/BLACKLIST patterns from file"
+  optionCLParser = mkOptionCLParser (short 'l' <> metavar "FILE")
+
+
+-- | Pattern can be a whitelist or a blacklist
+data Pat = PatWhite String | PatBlack String
+type Pats = [Pat]
+
+-- | Filter a string against a given pattern
+patFilter :: Pat -> String -> Bool
+patFilter (PatWhite p) s = s =~ p
+patFilter (PatBlack p) s = not $ (s =~ p)
+
+-- | Filter a string against *all* patterns
+patsFilter :: Pats -> TestName -> Bool
+patsFilter ps s = getAll . mconcat . map (\p -> All (patFilter p s)) $ ps
+
+-- | Parse a file containing patterns into a list of pattenrs
+-- !xx -> blacklist xx
+-- yy -> whitelist yy
+parsePatternFile :: String -> Pats
+parsePatternFile s =
+  map (\(x:xs) -> if x == '!' then PatBlack xs else PatWhite (x:xs)) .
+  -- | filter comments
+  filter (\(x:xs) ->  x /= '#') .
+  -- | remove empty lines
+  filter (not . null) .
+  lines $ s
+
 serializeToDisk :: IORef TestLog -> Ingredient
-serializeToDisk tlref = TestReporter [] $
-  \opts tree -> Just $ \smap ->
-  let
-  in do
-    isTermColor <- hSupportsANSIColor stdout
-    let ?colors = isTermColor
-    -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
-    let toutput = buildTestOutput opts tree
-    consoleOutput tlref toutput smap
-    return $ \time -> do
-      stats <- computeStatistics smap
-      printStatistics stats time
-      return $ statFailures stats == 0
+serializeToDisk tlref =
+  TestManager [Test.Tasty.Options.Option (Proxy :: Proxy PatternFilePath) ] $
+      \opts tree -> Just $ do
+          let (PatternFilePath patf) = lookupOption opts
+          treeFiltered <- case patf of
+                      Nothing -> return $ tree
+                      Just fpath -> do
+                           abspath <- makeAbsolute fpath
+                           pats <- parsePatternFile <$> readFile abspath
+                           return $ filterTestTree (patsFilter pats) tree
+          launchTestTree opts treeFiltered $ \smap -> do
+            isTermColor <- hSupportsANSIColor stdout
+            let ?colors = isTermColor
+            -- let toutput = let ?colors = isTermColor in buildTestOutput opts tree
+            let toutput = buildTestOutput opts treeFiltered
+            consoleOutput tlref toutput smap
+            return $ \time -> do
+              stats <- computeStatistics smap
+              printStatistics stats time
+              return $ statFailures stats == 0
 
 main :: IO ()
 main = do
-  tlref <- newIORef mempty
-  trees <- getTestCases >>= traverse makeTestTree
+    tlref <- newIORef mempty
+    trees <- getTestCases >>= traverse makeTestTree
 
-  cwd <- getCurrentDirectory
-  let out_basepath = cwd </> "test-report"
+    cwd <- getCurrentDirectory
+    let out_basepath = cwd </> "test-report"
 
-  -- | Tasty throws an exception if stuff fails, so re-throw the exception
-  -- | in case this happens.
-  (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
-    `finally` (saveTestLogToCSV tlref out_basepath)
-
-
+    -- | Tasty throws an exception if stuff fails, so re-throw the exception
+    -- | in case this happens.
+    (defaultMainWithIngredients [serializeToDisk tlref] $ testGroup "asterius ghc-testsuite" trees)
+      `finally` (saveTestLogToCSV tlref out_basepath)

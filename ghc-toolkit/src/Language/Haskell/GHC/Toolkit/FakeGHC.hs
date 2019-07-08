@@ -7,6 +7,7 @@ module Language.Haskell.GHC.Toolkit.FakeGHC
   ) where
 
 import Control.Monad
+import Data.Foldable
 import Data.List
 import qualified DynFlags as GHC
 import qualified GHC
@@ -21,7 +22,11 @@ data FakeGHCOptions = FakeGHCOptions
 
 fakeGHCMain :: FakeGHCOptions -> IO ()
 fakeGHCMain FakeGHCOptions {..} = do
-  unsetEnv "GHC_PACKAGE_PATH"
+  ks <-
+    filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k) .
+    map fst <$>
+    getEnvironment
+  for_ ks unsetEnv
   args0 <- getArgs
   let (minusB_args, args1) = partition ("-B" `isPrefixOf`) args0
       new_ghc_libdir =
@@ -38,10 +43,7 @@ fakeGHCMain FakeGHCOptions {..} = do
           GHC.parseDynamicFlags dflags0 (map GHC.noLoc args2)
         void $
           GHC.setSessionDynFlags
-            dflags1
-              { GHC.ghcMode = GHC.CompManager
-              , GHC.hscTarget = GHC.HscAsm
-              }
+            dflags1 {GHC.ghcMode = GHC.CompManager, GHC.hscTarget = GHC.HscAsm}
         GHC.frontend
           frontendPlugin
           []

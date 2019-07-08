@@ -34,6 +34,8 @@
 #include "wasm-validator.h"
 #include "wasm.h"
 #include "wasm2js.h"
+#include <iostream>
+#include <sstream>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
@@ -3253,6 +3255,26 @@ BinaryenModuleWrite(BinaryenModuleRef module, char* output, size_t outputSize) {
     .outputBytes;
 }
 
+size_t BinaryenModuleWriteSExpr(BinaryenModuleRef module,
+                                char* output,
+                                size_t outputSize) {
+
+  if (tracing) {
+    std::cout << "  // BinaryenModuleWriteSExpr\n";
+  }
+
+  // use a stringstream as an std::ostream. Extract the std::string
+  // representation, and then store in the output.
+  std::stringstream ss;
+  WasmPrinter::printModule((Module*)module, ss);
+
+  const std::string temp = ss.str();
+  const char* ctemp = temp.c_str();
+
+  strncpy(output, ctemp, outputSize);
+  return std::min(outputSize, temp.size());
+}
+
 BinaryenBufferSizes BinaryenModuleWriteWithSourceMap(BinaryenModuleRef module,
                                                      const char* url,
                                                      char* output,
@@ -3304,6 +3326,20 @@ void BinaryenModuleAllocateAndWriteMut(BinaryenModuleRef module, const char* sou
   *binary = r.binary;
   *binaryBytes = r.binaryBytes;
   *sourceMap = r.sourceMap;
+}
+
+char* BinaryenModuleAllocateAndWriteSExpr(BinaryenModuleRef* module) {
+  if (tracing) {
+    std::cout << " // BinaryenModuleAllocateAndWriteSExpr(the_module);";
+  }
+
+  std::stringstream ss;
+  WasmPrinter::printModule((Module*)module, ss);
+
+  std::string out = ss.str();
+  char* cout = (char *)malloc(out.length() + 1);
+  strcpy(cout, out.c_str());
+  return cout;
 }
 
 BinaryenModuleRef BinaryenModuleRead(char* input, size_t inputSize) {
@@ -3839,6 +3875,10 @@ BinaryenGetFunctionTypeBySignature(BinaryenModuleRef module,
 
   return NULL;
 }
+
+void BinaryenSetColorsEnabled(int enabled) { Colors::setEnabled(enabled); }
+
+int BinaryenIsColorsEnabled() { return Colors::isEnabled(); }
 
 #ifdef __EMSCRIPTEN__
 // Override atexit - we don't need any global ctors to actually run, and

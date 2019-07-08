@@ -21,11 +21,11 @@ The next step is locating the pointer of `fact`. The "asterius instance" type we
 Since we'd like to call `fact`, we need to apply it to an argument, build a thunk representing the result, then evaluate the thunk to WHNF and retrieve the result. Assuming we're passing `--asterius-instance-callback=i=>{ ... }` to `ahc-link`, in the callback body, we can use RTS API like this:
 
 ```JavaScript
-i.wasmInstance.exports.hs_init();
-const argument = i.wasmInstance.exports.rts_mkInt(5);
-const thunk = i.wasmInstance.exports.rts_apply(i.staticsSymbolMap.Main_fact_closure, argument);
-const tid = i.wasmInstance.exports.rts_eval(thunk);
-console.log(i.wasmInstance.exports.rts_getInt(i.wasmInstance.exports.getTSOret(tid)));
+i.exports.hs_init();
+const argument = i.exports.rts_mkInt(5);
+const thunk = i.exports.rts_apply(i.staticsSymbolMap.Main_fact_closure, argument);
+const tid = i.exports.rts_eval(thunk);
+console.log(i.exports.rts_getInt(i.exports.getTSOret(tid)));
 ```
 
 A line-by-line explanation follows:

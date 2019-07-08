@@ -8,22 +8,21 @@ module Asterius.Passes.Relooper
 
 import Asterius.Internals
 import Asterius.Types
+import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.String
 
 relooper :: RelooperRun -> Expression
 relooper RelooperRun {..} = result_expr
   where
     lbls = M.keys blockMap
-    def_lbl = fromString $ show $ length lbls - 1
     lbl_map = M.fromList $ zip lbls [0 ..]
     lbl_to_idx = (lbl_map !)
     set_block_lbl lbl = SetLocal {index = 0, value = ConstI32 $ lbl_to_idx lbl}
     initial_expr =
       Switch
         { names = lbls
-        , defaultName = def_lbl
+        , defaultName = "__asterius_unreachable"
         , condition = GetLocal {index = 0, valueType = I32}
         }
     loop_lbl = "__asterius_loop"
@@ -42,7 +41,7 @@ relooper RelooperRun {..} = result_expr
                  (case addBranches of
                     [] -> [Break {name = exit_lbl, breakCondition = Nothing}]
                     branches ->
-                      foldr
+                      foldr'
                         (\AddBranch {addBranchCondition = Just cond, to} e ->
                            If
                              { condition = cond
@@ -56,7 +55,7 @@ relooper RelooperRun {..} = result_expr
                               last branches)
                AddBlockWithSwitch {..} ->
                  [code, SetLocal {index = 1, value = condition}] <>
-                 (foldr
+                 (foldr'
                     (\AddBranchForSwitch {to, indexes} e ->
                        If
                          { condition =
@@ -85,7 +84,7 @@ relooper RelooperRun {..} = result_expr
       Block
         { name = exit_lbl
         , bodys =
-            [ SetLocal {index = 0, value = ConstI32 $ lbl_to_idx entry}
+            [ set_block_lbl entry
             , Loop
                 { name = loop_lbl
                 , body =

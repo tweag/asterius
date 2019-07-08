@@ -1,4 +1,3 @@
-import {format } from "util";
 export class Messages {
     constructor(memory, fs) {
         this.memory = memory;
@@ -7,7 +6,7 @@ export class Messages {
     }
 
     debugBelch2(fmt, arg) {
-        let s = format(this.memory.strLoad(fmt), this.memory.strLoad(arg));
+        const s = `${this.memory.strLoad(arg)}\n`;
         console.error(s);
         this.fs.writeSync(this.fs.stderr(), s);
     }

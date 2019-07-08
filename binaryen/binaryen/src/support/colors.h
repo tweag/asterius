@@ -20,6 +20,8 @@
 #include <iosfwd>
 
 namespace Colors {
+void setEnabled(bool enabled);
+bool isEnabled();
 void disable();
 
 #if defined(__linux__) || defined(__APPLE__)

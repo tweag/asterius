@@ -100,6 +100,7 @@ module Asterius.EDSL
 
 import Asterius.Internals
 import Asterius.Passes.All
+import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import Control.Monad.State.Strict
@@ -173,18 +174,19 @@ bundleExpressions vts el =
 runEDSL :: AsteriusEntitySymbol  -- ^ Function name
   -> EDSL ()  -- ^ Builder
   -> AsteriusModule -- ^ Final module
-runEDSL n (EDSL m) =
-  mempty { functionMap=LM.fromList [(n, f)]
-         , staticsMap=LM.fromList $ staticsBuf
-         }
+runEDSL n (EDSL m) = m1 {staticsMap = LM.fromList staticsBuf <> staticsMap m1}
   where
     EDSLState {..} = execState m initialEDSLState
-    f = adjustLocalRegs $ Function
-          { functionType =
-              FunctionType {paramTypes = fromDList paramBuf, returnTypes = retTypes}
-          , varTypes = []
-          , body = bundleExpressions retTypes $ fromDList exprBuf
-          }
+    f0 =
+      adjustLocalRegs $
+      Function
+        { functionType =
+            FunctionType
+              {paramTypes = fromDList paramBuf, returnTypes = retTypes}
+        , varTypes = []
+        , body = bundleExpressions retTypes $ fromDList exprBuf
+        }
+    m1 = processBarf n f0
 
 -- | Any value that can be read from and wrtten to is an LVal
 data LVal = LVal

@@ -1002,6 +1002,13 @@ void BinaryenModuleAutoDrop(BinaryenModuleRef module);
 size_t
 BinaryenModuleWrite(BinaryenModuleRef module, char* output, size_t outputSize);
 
+// Serialize a module in s-expression text format.
+// @return how many bytes were written. This will be less than or equal to
+//         outputSize
+size_t BinaryenModuleWriteSExpr(BinaryenModuleRef module,
+                                char* output,
+                                size_t outputSize);
+
 typedef struct BinaryenBufferSizes {
   size_t outputBytes;
   size_t sourceMapBytes;
@@ -1038,6 +1045,11 @@ BinaryenModuleAllocateAndWrite(BinaryenModuleRef module,
 
 void BinaryenModuleAllocateAndWriteMut(BinaryenModuleRef module, const char* sourceMapUrl,
   void** binary, size_t* binaryBytes, char** sourceMap);
+
+// Serialize a module in s-expression form. Implicity allocates the returned
+// char* with malloc(), and expects the user to free() them manually
+// once not needed anymore.
+char* BinaryenModuleAllocateAndWriteSExpr(BinaryenModuleRef* module);
 
 // Deserialize a module from binary form.
 BinaryenModuleRef BinaryenModuleRead(char* input, size_t inputSize);
@@ -1234,6 +1246,11 @@ BinaryenGetFunctionTypeBySignature(BinaryenModuleRef module,
                                    BinaryenType* paramTypes,
                                    BinaryenIndex numParams);
 
+// Enable or disable coloring for the WASM printer
+void BinaryenSetColorsEnabled(int enabled);
+
+// Query whether color is enable for the WASM printer
+int BinaryenIsColorsEnabled();
 #ifdef __cplusplus
 } // extern "C"
 #endif

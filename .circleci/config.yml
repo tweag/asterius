@@ -69,6 +69,7 @@ jobs:
             stack --no-terminal test asterius:exception
             stack --no-terminal test asterius:regression60
             stack --no-terminal test asterius:sizeof_md5context
+            stack --no-terminal test asterius:largenum
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
 
@@ -88,8 +89,12 @@ jobs:
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls"
             stack --no-terminal test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
 
-            stack --no-terminal test asterius:nomain
-            stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
+            # stack --no-terminal test asterius:nomain
+            # stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
+
+            # Run parts of the ghc-testuite that we have enabled for
+            # regression testing.
+            stack test asterius:ghc-testsuite --test-arguments="  --timeout=5s -l test/ghc-testsuite-filter";
 
   asterius-test-ghc-testsuite:
     docker:
@@ -157,11 +162,14 @@ jobs:
             command: |
               # run the GHC testsuite and copy the test artifact to `/tmp`
               nodejs --version
+
+
+              # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite  -j8 --test-arguments="--timeout=30s" || true
               cp asterius/test-report.csv /tmp
-              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-ascii.txt
-              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv -o /tmp/test-report-grouped-by-error-ascii.txt
- 
+              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
+              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
+
       - store_artifacts:
           path: /tmp/test-report.csv
 
@@ -175,6 +183,13 @@ jobs:
     docker:
       - image: docker:edge-git
     steps:
+      - run:
+          name: Ensure we are on `tweag/asterius`
+          command: |
+            if [ -n "$CIRCLE_PR_NUMBER" ]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
       - setup_remote_docker
       - checkout
       - run:
@@ -224,6 +239,13 @@ jobs:
     docker:
       - image: docker:edge-git
     steps:
+      - run:
+          name: Ensure we are on `tweag/asterius`
+          command: |
+            if [ -n "$CIRCLE_PR_NUMBER" ]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
       - setup_remote_docker
       - checkout
       - run:

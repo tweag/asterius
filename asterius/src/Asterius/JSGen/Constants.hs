@@ -4,6 +4,7 @@ module Asterius.JSGen.Constants
   ( rtsConstants
   ) where
 
+import Asterius.Internals.ByteString
 import Asterius.Internals.MagicNumber
 import Data.ByteString.Builder
 import Language.Haskell.GHC.Toolkit.Constants
@@ -12,40 +13,41 @@ rtsConstants :: Builder
 rtsConstants =
   mconcat $
   [ "export const dataTag = "
-  , int64Dec dataTag
+  , intHex (fromIntegral dataTag)
   , ";\nexport const functionTag = "
-  , int64Dec functionTag
+  , intHex (fromIntegral functionTag)
   , ";\nexport const mblock_size = "
-  , intDec mblock_size
+  , intHex mblock_size
   , ";\nexport const block_size = "
-  , intDec block_size
+  , intHex block_size
   , ";\nexport const blocks_per_mblock = "
-  , intDec blocks_per_mblock
+  , intHex blocks_per_mblock
   , ";\nexport const sizeof_bdescr = "
-  , intDec sizeof_bdescr
+  , intHex sizeof_bdescr
   , ";\nexport const offset_first_bdescr = "
-  , intDec offset_first_bdescr
+  , intHex offset_first_bdescr
   , ";\nexport const offset_first_block = "
-  , intDec offset_first_block
+  , intHex offset_first_block
   , ";\nexport const sizeof_first_mblock = "
-  , intDec $ mblock_size - offset_first_block
+  , intHex $ mblock_size - offset_first_block
   , ";\nexport const offset_bdescr_start = "
-  , intDec offset_bdescr_start
+  , intHex offset_bdescr_start
   , ";\nexport const offset_bdescr_free = "
-  , intDec offset_bdescr_free
+  , intHex offset_bdescr_free
   , ";\nexport const offset_bdescr_link = "
-  , intDec offset_bdescr_link
+  , intHex offset_bdescr_link
   , ";\nexport const offset_bdescr_flags = "
-  , intDec offset_bdescr_flags
+  , intHex offset_bdescr_flags
   , ";\nexport const offset_bdescr_blocks = "
-  , intDec offset_bdescr_blocks
+  , intHex offset_bdescr_blocks
   , ";\nexport const BF_PINNED = "
-  , intDec bf_PINNED
+  , intHex bf_PINNED
   , ";\nexport const pageSize = 65536;\n"
   ] <>
-  [ "export const " <> k <> " = " <> intDec v <> ";\n"
+  [ "export const " <> k <> " = " <> intHex v <> ";\n"
   | (k, v) <-
-      [ ("sizeof_StgAP", sizeof_StgAP)
+      [ ("offset_Capability_r", offset_Capability_r)
+      , ("sizeof_StgAP", sizeof_StgAP)
       , ("offset_StgAP_arity", offset_StgAP_arity)
       , ("offset_StgAP_n_args", offset_StgAP_n_args)
       , ("offset_StgAP_fun", offset_StgAP_fun)
@@ -74,11 +76,16 @@ rtsConstants =
       , ("sizeof_StgMutArrPtrs", sizeof_StgMutArrPtrs)
       , ("offset_StgMutArrPtrs_ptrs", offset_StgMutArrPtrs_ptrs)
       , ("offset_StgMutArrPtrs_payload", offset_StgMutArrPtrs_payload)
+      , ("offset_StgMVar_head", offset_StgMVar_head)
+      , ("offset_StgMVar_tail", offset_StgMVar_tail)
+      , ("offset_StgMVar_value", offset_StgMVar_value)
       , ("sizeof_StgPAP", sizeof_StgPAP)
       , ("offset_StgPAP_arity", offset_StgPAP_arity)
       , ("offset_StgPAP_n_args", offset_StgPAP_n_args)
       , ("offset_StgPAP_fun", offset_StgPAP_fun)
       , ("offset_StgPAP_payload", offset_StgPAP_payload)
+      , ("offset_StgRegTable_rR1", offset_StgRegTable_rR1)
+      , ("offset_StgRegTable_rRet", offset_StgRegTable_rRet)
       , ("sizeof_StgRetFun", sizeof_StgRetFun)
       , ("offset_StgRetFun_size", offset_StgRetFun_size)
       , ("offset_StgRetFun_fun", offset_StgRetFun_fun)
@@ -105,5 +112,8 @@ rtsConstants =
       , ("offset_StgWeak_value", offset_StgWeak_value)
       , ("offset_StgWeak_finalizer", offset_StgWeak_finalizer)
       , ("offset_StgWeak_link", offset_StgWeak_link)
+      , ("sizeof_StgStableName", sizeof_StgStableName)
+      , ("offset_StgStableName_header", offset_StgStableName_header)
+      , ("offset_StgStableName_sn", offset_StgStableName_sn)
       ]
   ]
