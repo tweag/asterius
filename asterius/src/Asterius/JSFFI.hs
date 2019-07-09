@@ -577,7 +577,12 @@ generateFFIExportLambda FFIExportDecl { ffiFunctionType = FFIFunctionType {..}
   where
     ret =
       case ffiResultTypes of
-        [t] -> "this.rts_get" <> getHsTyCon t <> "(" <> ret_closure <> ")"
+        [t] ->
+          let r = "this.rts_get" <> getHsTyCon t <> "(" <> ret_closure <> ")"
+           in case t of
+                FFI_JSVAL ->
+                  "this.context.stablePtrManager.getJSVal(" <> r <> ")"
+                _ -> r
         _ -> error "Asterius.JSFFI.generateFFIExportLambda"
     ret_closure = "this.context.tsoManager.getTSOret(" <> tid <> ")"
     tid = "await this." <> eval_func <> "(" <> eval_closure <> ")"
@@ -587,8 +592,12 @@ generateFFIExportLambda FFIExportDecl { ffiFunctionType = FFIFunctionType {..}
     eval_closure =
       foldl'
         (\acc (i, t) ->
-           "this.rts_apply(" <> acc <> ",this.rts_mk" <> getHsTyCon t <> "(_" <>
-           intDec i <>
+           "this.rts_apply(" <> acc <> ",this.rts_mk" <> getHsTyCon t <> "(" <>
+           (let _i = "_" <> intDec i
+             in case t of
+                  FFI_JSVAL ->
+                    "this.context.stablePtrManager.newJSVal(" <> _i <> ")"
+                  _ -> _i) <>
            "))")
         ("this.context.symbolTable." <>
          shortByteString (coerce ffiExportClosure))
