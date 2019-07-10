@@ -64,7 +64,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr :: Bool
+  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr, yolo :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -114,6 +114,7 @@ parseTask args =
         , bool_opt "output-ir" $ \t -> t {outputIR = True}
         , bool_opt "run" $ \t -> t {run = True}
         , bool_opt "verbose-err" $ \t -> t {verboseErr = True}
+        , bool_opt "yolo" $ \t -> t {yolo = True}
         , str_opt "ghc-option" $ \s t ->
             t {extraGHCFlags = extraGHCFlags t <> [s]}
         , str_opt "export-function" $ \s t ->
@@ -143,6 +144,7 @@ parseTask args =
           , outputIR = False
           , run = False
           , verboseErr = False
+          , yolo = False
           , extraGHCFlags = []
           , exportFunctions = []
           , extraRootSymbols = []
@@ -216,6 +218,10 @@ genLib Task {..} LinkReport {..} =
     , intDec tableSlots
     , ", staticMBlocks: "
     , intDec staticMBlocks
+    , ", yolo: "
+    , if yolo
+        then "true"
+        else "false"
     , "})"
     , ";\n"
     ]
