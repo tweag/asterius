@@ -1,4 +1,4 @@
-# Syntax: regular expressions. A given pattern will whitelist files. 
+# Syntax: regular expressions. A given pattern will whitelist files.
 # !<regex> will blacklist stuff in <regex>. <regex> syntax given by whatever
 # is parsed by Regex.TDFA
 # Leading whitespace sensitive.
@@ -10,3 +10,6 @@ numeric/|T9001
 !T15271
 # This seems to be an actual regression -- not sure why this regressed.
 !CarryOverflow
+
+!T8726
+!T9001

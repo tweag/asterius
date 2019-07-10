@@ -20,10 +20,9 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import Data.Traversable
 import Prelude hiding (IO)
-import System.FilePath
 
 data LinkTask = LinkTask
-  { linkOutput :: FilePath
+  { progName, linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
   , debug, gcSections, binaryen, verboseErr :: Bool
   , outputIR :: Maybe FilePath
@@ -46,6 +45,7 @@ rtsUsedSymbols =
     , "__asterius_regs"
     , "__asterius_ret"
     , "barf"
+    , "base_AsteriusziTopHandler_runMainIO_closure"
     , "base_AsteriusziTypes_makeJSException_closure"
     , "base_GHCziPtr_Ptr_con_info"
     , "base_GHCziStable_StablePtr_con_info"
@@ -82,7 +82,9 @@ linkModules LinkTask {..} m =
     verboseErr
     (rtsAsteriusModule
        defaultBuiltinsOptions
-         {progName = takeBaseName linkOutput, Asterius.Builtins.debug = debug} <>
+         { Asterius.Builtins.progName = progName
+         , Asterius.Builtins.debug = debug
+         } <>
      m)
     (Set.unions
        [ Set.fromList rootSymbols

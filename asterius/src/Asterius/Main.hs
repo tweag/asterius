@@ -259,9 +259,11 @@ genDefEntry Task {..} =
         , "await i.exports.main();\n"
         , "} catch (err) {\n"
         , "console.log(i.stdio.stdout());\n"
+        , "console.log(i.stdio.stderr());\n"
         , "throw err;\n"
         , "}\n"
         , "console.log(i.stdio.stdout());\n"
+        , "console.log(i.stdio.stderr());\n"
         , "});\n"
         ]
     ]
@@ -321,6 +323,7 @@ ahcLink Task {..} = do
     (outputBaseName <.> "unlinked.bin")
     | outputIR
     ] <>
+    ["-optl--prog-name=" <> takeBaseName inputHS] <>
     ["-o", ld_output, inputHS]
   r <- decodeFile ld_output
   removeFile ld_output

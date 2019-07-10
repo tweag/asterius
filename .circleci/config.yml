@@ -94,7 +94,7 @@ jobs:
 
             # Run parts of the ghc-testuite that we have enabled for
             # regression testing.
-            stack test asterius:ghc-testsuite --test-arguments="  --timeout=5s -l test/ghc-testsuite-filter";
+            stack test asterius:ghc-testsuite --test-arguments="  --timeout=30s -l test/ghc-testsuite-filter";
 
   asterius-test-ghc-testsuite:
     docker:
