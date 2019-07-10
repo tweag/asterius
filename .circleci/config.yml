@@ -214,26 +214,29 @@ jobs:
             apt update
             apt full-upgrade -y
             apt install -y \
+              curl \
               git \
-              mkdocs \
-              openssh-client
+              gnupg \
+              openssh-client \
+              python3-pip
+            pip3 install recommonmark sphinx
+            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+            echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
+            apt update
+            apt install -y nodejs
+            npm install netlify-cli -g
       - checkout
       - run:
           name: Build & push docs
           command: |
-            if [ -z `ssh-keygen -F github.com` ]; then
-              ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+            cd docs
+            sphinx-build . _build
+            if [ $CIRCLE_BRANCH = "master" ]
+            then
+              netlify deploy --dir=_build --message="$CIRCLE_SHA1" --prod
+            else
+              netlify deploy --dir=_build --message="$CIRCLE_SHA1"
             fi
-            mkdocs build
-            cd site
-            touch .nojekyll
-            git init
-            git config user.email "cheng.shao@tweag.io"
-            git config user.name "Shao Cheng"
-            git checkout -b gh-pages
-            git add --all
-            git commit -q --message="Documentation of tweag/asterius@$CIRCLE_SHA1"
-            git push git@github.com:tweag/asterius.git gh-pages --force
 
   asterius-update-docker-tag:
     docker:
@@ -268,12 +271,7 @@ workflows:
       - asterius-test
       - asterius-test-ghc-testsuite
       - asterius-build-docker
-      - asterius-build-docs:
-          requires:
-            - asterius-test
-          filters:
-            branches:
-              only: master
+      - asterius-build-docs
       - asterius-update-docker-tag:
           requires:
             - asterius-test

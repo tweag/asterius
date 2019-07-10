@@ -32,12 +32,13 @@ async function rts_eval_common(e, f, p) {
 }
 
 export class Exports {
-  constructor(memory, reentrancy_guard, symbol_table, tso_manager, exports) {
+  constructor(memory, reentrancy_guard, symbol_table, tso_manager, exports, stableptr_manager) {
     this.context = Object.freeze({
       memory: memory,
       reentrancyGuard: reentrancy_guard,
       symbolTable: symbol_table,
-      tsoManager: tso_manager
+      tsoManager: tso_manager,
+      stablePtrManager: stableptr_manager
     });
     Object.assign(this, exports);
   }

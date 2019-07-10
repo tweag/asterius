@@ -10,6 +10,7 @@ wasm-toolkit.cabal
 dist/
 dist-newstyle/
 site/
+_build/
 .idea/
 node_modules/
 *.dump-*

@@ -1,12 +1,13 @@
 # Asterius: A Haskell to WebAssembly compiler
 
 [![CircleCI](https://circleci.com/gh/tweag/asterius/tree/master.svg?style=shield)](https://circleci.com/gh/tweag/asterius/tree/master)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://app.netlify.com/sites/asterius/deploys)
 [![Docker Pulls](https://img.shields.io/docker/pulls/terrorjack/asterius.svg)](https://hub.docker.com/r/terrorjack/asterius)
 [![Gitter chat](https://badges.gitter.im/tweag/asterius.png)](https://gitter.im/tweag/asterius)
 
 A Haskell to WebAssembly compiler. Project status: **alpha**, in active development, some simple examples already work.
 
-See the [documentation](https://tweag.github.io/asterius) for further instructions. Or check our blog posts:
+See the [documentation](https://asterius.netlify.com/) for further instructions. Or check our blog posts:
 
 * [Fibonacci compiles end-to-end: Haskell to WebAssembly via GHC](https://www.tweag.io/posts/2018-05-29-hello-asterius.html)
 * [Haskell WebAssembly calling JavaScript and back again](https://www.tweag.io/posts/2018-09-12-asterius-ffi.html)
