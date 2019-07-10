@@ -2,7 +2,7 @@
 # !<regex> will blacklist stuff in <regex>. <regex> syntax given by whatever
 # is parsed by Regex.TDFA
 # Leading whitespace sensitive.
-numeric/|T9001
+numeric/|T9001|CmpWord8
 !CarryOverflow.hs
 !arith011
 !arith008
