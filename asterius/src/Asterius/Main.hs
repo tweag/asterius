@@ -259,9 +259,11 @@ genDefEntry Task {..} =
         , "await i.exports.main();\n"
         , "} catch (err) {\n"
         , "console.log(i.stdio.stdout());\n"
+        , "console.log(i.stdio.stderr());\n"
         , "throw err;\n"
         , "}\n"
         , "console.log(i.stdio.stdout());\n"
+        , "console.log(i.stdio.stderr());\n"
         , "});\n"
         ]
     ]
