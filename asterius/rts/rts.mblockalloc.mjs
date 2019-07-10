@@ -56,7 +56,7 @@ export class MBlockAlloc {
       const blocks = Math.floor((r - start) / rtsConstants.block_size);
     
       if (req_blocks < blocks) {
-        console.log("allocating from free segment");
+        // console.log("allocating from free segment");
         this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
         const rest_bd = bd + (rtsConstants.mblock_size * n);
         assertBdescrAligned(rest_bd);
@@ -88,12 +88,12 @@ export class MBlockAlloc {
       }
 
       if (req_blocks == blocks) {
-        console.log("allocating from free segment");
+        // console.log("allocating from free segment");
         this.freeSegments.splice(i, 1);
         return bd;
       }
     }
-    console.log("allocating from new segment");
+    // console.log("allocating from new segment");
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
