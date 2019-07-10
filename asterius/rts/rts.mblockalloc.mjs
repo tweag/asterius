@@ -44,8 +44,8 @@ export class MBlockAlloc {
 
   allocMegaGroup(n) {
     const req_blocks = 
-          ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
-          rtsConstants.block_size;
+          Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
+          rtsConstants.block_size);
 
     for (let i = 0; i < this.freeSegments.length; ++i) {
       const [bd, r] = this.freeSegments[i];
@@ -60,13 +60,14 @@ export class MBlockAlloc {
         const rest_bd = bd + (rtsConstants.mblock_size * n);
         assertBdescrAligned(rest_bd);
         const rest_start = rest_bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block;
+        const rest_blocks = Math.floor((r - rest_start) / rtsConstants.block_size);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start, rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
         // 0xDEADBEEF = 3735928559
-        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks, 0xDEADBEEF);
-        // this.freeSegments.splice(i, 1, [rest_bd, r]);
-        this.freeSegments.splice(i, 1);
+        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks, rest_blocks);
+        this.freeSegments.splice(i, 1, [rest_bd, r]);
+        // this.freeSegments.splice(i, 1);
 
         
         // this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
@@ -106,7 +107,7 @@ export class MBlockAlloc {
         const bd = l_end + rtsConstants.offset_first_bdescr;
         assertBdescrAligned(bd);
         const start = l_end + rtsConstants.offset_first_block;
-        const blocks = (r - start) / rtsConstants.block_size;
+        const blocks = Math.floor((r - start) / rtsConstants.block_size);
         this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
         this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
         this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
