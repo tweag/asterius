@@ -5,7 +5,7 @@ import * as assert from "assert";
 // check that a megablock is correctly aligned
 function assertMblockAligned(mb) {
     const n = Math.log2(rtsConstants.mblock_size);
-    assert.assertEqual((BigInt(mb) >> BigInt(n)) << BigInt(n), BigInt(mb));
+    assert.equal((BigInt(mb) >> BigInt(n)) << BigInt(n), BigInt(mb));
 }
 
 // check that a block descriptor is correctly aligned
@@ -47,32 +47,49 @@ export class MBlockAlloc {
           ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
           rtsConstants.block_size;
 
-    /*
-    for (let i = 0; i < this.freeList.length; ++i) {
-      const bd = this.freeList[i],
-            blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
+    for (let i = 0; i < this.freeSegments.length; ++i) {
+      const [bd, r] = this.freeSegments[i];
+      assertBdescrAligned(bd);
+      const mblock = bd - rtsConstants.offset_first_bdescr;
+      assertMblockAligned(mblock);
+      const start = mblock + rtsConstants.offset_first_block;
+      const blocks = Math.floor((r - start) / rtsConstants.block_size);
+    
       if (req_blocks < blocks) {
         this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
-        const rest_bd = bd + (rtsConstants.mblock_size * n),
-              rest_start = rest_bd - rtsConstants.offset_first_bdescr +
-                           rtsConstants.offset_first_block;
-        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
-                             rest_start);
+        const rest_bd = bd + (rtsConstants.mblock_size * n);
+        assertBdescrAligned(rest_bd);
+        const rest_start = rest_bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block;
+        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start, rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
-        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
-                             blocks - req_blocks -
-                                 ((rtsConstants.mblock_size / rtsConstants.block_size) -
-                                  rtsConstants.blocks_per_mblock));
-        this.freeList.splice(i, 1, rest_bd);
+        // 0xDEADBEEF = 3735928559
+        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks, 0xDEADBEEF);
+        // this.freeSegments.splice(i, 1, [rest_bd, r]);
+        this.freeSegments.splice(i, 1);
+
+        
+        // this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+        // const rest_bd = bd + (rtsConstants.mblock_size * n),
+        //       rest_start = rest_bd - rtsConstants.offset_first_bdescr +
+        //                    rtsConstants.offset_first_block;
+        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
+        //                      rest_start);
+        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
+        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
+        // this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
+        //                      blocks - req_blocks -
+        //                          ((rtsConstants.mblock_size / rtsConstants.block_size) -
+        //                           rtsConstants.blocks_per_mblock));
+        // this.freeList.splice(i, 1, rest_bd);
         return bd;
       }
+
       if (req_blocks == blocks) {
-        this.freeList.splice(i, 1);
+        this.freeSegments.splice(i, 1);
         return bd;
       }
     }
-    */
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
@@ -85,15 +102,16 @@ export class MBlockAlloc {
 
   freeSegment(l_end, r) {
     if (l_end < r) {
-      this.memory.memset(l_end, 0, r - l_end);
-      const bd = l_end + rtsConstants.offset_first_bdescr,
-            start = l_end + rtsConstants.offset_first_block,
-            blocks = (r - start) / rtsConstants.block_size;
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
-      this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
-      // this.freeList.push(bd);
+        this.memory.memset(l_end, 0, r - l_end);
+        const bd = l_end + rtsConstants.offset_first_bdescr;
+        assertBdescrAligned(bd);
+        const start = l_end + rtsConstants.offset_first_block;
+        const blocks = (r - start) / rtsConstants.block_size;
+        this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
+        this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
+        this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+        this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
+        this.freeSegments.push([bd, r])
     }
   }
 
@@ -101,7 +119,7 @@ export class MBlockAlloc {
     // this.freeList = [];
     this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
-    sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
+    // sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
     this.freeSegment(
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
