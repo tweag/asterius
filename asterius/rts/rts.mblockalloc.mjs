@@ -1,5 +1,17 @@
 import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
+import * as assert from "assert";
+
+// check that a megablock is correctly aligned
+function assertMblockAligned(mb) {
+    const n = Math.log2(rtsConstants.mblock_size);
+    assert.assertEqual((BigInt(mb) >> BigInt(n)) << BigInt(n), BigInt(mb));
+}
+
+// check that a block descriptor is correctly aligned
+function assertBdescrAligned(bd) {
+    assertMblockAligned(bd - rtsConstants.offset_first_bdescr);
+}
 
 export class MBlockAlloc {
   constructor() {
@@ -7,7 +19,8 @@ export class MBlockAlloc {
     this.staticMBlocks = undefined;
     this.capacity = undefined;
     this.size = undefined;
-    this.freeList = [];
+    // this.freeList = [];
+    this.freeSegments = [];
     Object.seal(this);
   }
 
@@ -30,7 +43,11 @@ export class MBlockAlloc {
   }
 
   allocMegaGroup(n) {
-    const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
+    const req_blocks = 
+          ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
+          rtsConstants.block_size;
+
+    /*
     for (let i = 0; i < this.freeList.length; ++i) {
       const bd = this.freeList[i],
             blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
@@ -55,6 +72,7 @@ export class MBlockAlloc {
         return bd;
       }
     }
+    */
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
@@ -75,12 +93,13 @@ export class MBlockAlloc {
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
       this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
       this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
-      this.freeList.push(bd);
+      // this.freeList.push(bd);
     }
   }
 
   preserveMegaGroups(bds) {
-    this.freeList = [];
+    // this.freeList = [];
+    this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
     sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
     this.freeSegment(
@@ -95,8 +114,8 @@ export class MBlockAlloc {
       r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
       this.freeSegment(l_end, r);
     }
-    this.freeList.sort(
-        (bd0, bd1) => this.memory.i32Load(bd0 + rtsConstants.offset_bdescr_blocks) -
-                  this.memory.i32Load(bd1 + rtsConstants.offset_bdescr_blocks));
+    // this.freeList.sort(
+    //     (bd0, bd1) => this.memory.i32Load(bd0 + rtsConstants.offset_bdescr_blocks) -
+    //               this.memory.i32Load(bd1 + rtsConstants.offset_bdescr_blocks));
   }
 }
