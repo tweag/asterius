@@ -1,4 +1,8 @@
-//Megablock allocator. Allocates a "megablock" which is used by the block allocator.
+// Block allocator. This hands out blocks to the heap, and internally uses
+// the megablock allocator to allocate memory. For more information, see:
+// https://gitlab.haskell.org/ghc/ghc/wikis/commentary/rts/storage/block-alloc
+// https://gitlab.haskell.org/ghc/ghc/blob/master/rts/sm/BlockAlloc.c
+// https://gitlab.haskell.org/ghc/ghc/blob/master/includes/rts/storage/Block.h
 import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
 import * as assert from "assert";
@@ -14,7 +18,7 @@ function assertBdescrAligned(bd) {
     assertMblockAligned(bd - rtsConstants.offset_first_bdescr);
 }
 
-export class MBlockAlloc {
+export class BlockAlloc {
   constructor() {
     this.memory = undefined;
     this.staticMBlocks = undefined;
@@ -32,7 +36,7 @@ export class MBlockAlloc {
     this.size = this.capacity;
   }
 
-  getMBlocks(n) {
+  getBlocks(n) {
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
       this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));

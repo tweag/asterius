@@ -8,6 +8,7 @@ import { EventLogManager } from "./rts.eventlog.mjs";
 import { Tracer } from "./rts.tracing.mjs";
 import { Memory } from "./rts.memory.mjs";
 import { MemoryTrap } from "./rts.memorytrap.mjs";
+import { BlockAlloc } from "./rts.blockalloc.mjs";
 import { MBlockAlloc } from "./rts.mblockalloc.mjs";
 import { HeapAlloc } from "./rts.heapalloc.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
@@ -37,7 +38,8 @@ export function newAsteriusInstance(req) {
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable, __asterius_memory),
     __asterius_mblockalloc = new MBlockAlloc(),
-    __asterius_heapalloc = new HeapAlloc(__asterius_memory, __asterius_mblockalloc),
+    __asterius_blockalloc = new BlockAlloc(),
+    __asterius_heapalloc = new HeapAlloc(__asterius_memory, __asterius_blockalloc, __asterius_mblockalloc),
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_stablename_manager = new StableNameManager(__asterius_memory, __asterius_heapalloc, req.symbolTable),
     __asterius_tso_manager = new TSOManager(__asterius_memory, req.symbolTable, __asterius_stableptr_manager),
@@ -45,7 +47,7 @@ export function newAsteriusInstance(req) {
     __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager, __asterius_heap_builder),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
-    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard),
+    __asterius_gc = new GC(__asterius_memory, __asterius_blockalloc, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard),
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
     __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),

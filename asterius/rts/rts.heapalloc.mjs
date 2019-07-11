@@ -1,9 +1,10 @@
 import * as rtsConstants from "./rts.constants.mjs";
 
 export class HeapAlloc {
-  constructor(memory, mblockalloc) {
+  constructor(memory, blockalloc, mblockalloc) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
+    this.blockAlloc = blockalloc;
     this.currentPools = [ undefined, undefined ];
     Object.freeze(this);
   }

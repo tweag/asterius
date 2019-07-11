@@ -5,9 +5,10 @@ import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class GC {
-  constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
+  constructor(memory, blockalloc, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
     tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard) {
     this.memory = memory;
+    this.blockAlloc = blockalloc;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
