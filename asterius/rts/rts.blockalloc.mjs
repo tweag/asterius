@@ -7,6 +7,9 @@ import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
 import * as assert from "assert";
 
+function ptr2bdescr(ptr) {
+    throw new WebAssembly.RuntimeError("unimplemented");
+}
 // check that a megablock is correctly aligned
 function assertMblockAligned(mb) {
     const n = Math.log2(rtsConstants.mblock_size);
@@ -27,6 +30,7 @@ export class BlockAlloc {
     this.bdescr2realbdescr = new Map();
     // this.freeList = [];
     this.freeSegments = [];
+    this.freeMegablocks = [];
     Object.seal(this);
   }
 
@@ -37,6 +41,7 @@ export class BlockAlloc {
     this.size = this.capacity;
   }
 
+  
   getBlocks__(n) {
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
@@ -58,11 +63,105 @@ export class BlockAlloc {
           Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
           rtsConstants.block_size);
 
-    // what we need fits inside a megablock.
-    if (req_mblocks == 1) {
+    // look for free megablocks
+    for(let i = 0; i < this.freeMegablocks.length; ++i) {
+        const [mblock, block_addr, nblocks] = this.freeMegablocks[i];
+        // this megablock has enough space.
+        if (nblocks <= req_blocks) {
+            // get the pointer to block descriptor
+            let bdescr = ptr2bdescr(ptr);
+            this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
+            this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
+            this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+            this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+    
+            // if we have leftover blocks, then add back the megablock to the freelist.
+            if (nblocks < req_blocks) {
+                this.freeMegablocks.splice(i, [mblock, block_addr_next, nblocks_next]);
 
+                // get the next free pointer.
+                let block_addr_next = block_addr + rtsConstants.sizeof_block * req_blocks;
+                nblocks_next = nblocks - req_blocks;
+    
+            } else {
+                assert.equal(nblocks, req_blocks);
+                this.freeMegablocks.splice(i);
+            }
+            return block_addr;
+
+        }
+    }
+
+    // we don't have free megablocks to pull blocks from, so allocate them.
+    const mblock = this.getBlocks__(n),
+    bd = mblock + rtsConstants.offset_first_bdescr,
+    block_addr = mblock + rtsConstants.offset_first_block;
+    this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
+    this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
+    this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+    this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+    return bd;
+
+
+    /*
+    for (let i = 0; i < this.freeSegments.length; ++i) {
+      const [bd, r] = this.freeSegments[i];
+      assertBdescrAligned(bd);
+      const mblock = bd - rtsConstants.offset_first_bdescr;
+      assertMblockAligned(mblock);
+      const start = mblock + rtsConstants.offset_first_block;
+      const blocks = Math.floor((r - start) / rtsConstants.block_size);
+    
+      if (req_blocks < blocks) {
+        // console.log("allocating from free segment");
+        this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+        const rest_bd = bd + (rtsConstants.mblock_size * n);
+        assertBdescrAligned(rest_bd);
+        const rest_start = rest_bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block;
+        const rest_blocks = Math.floor((r - rest_start) / rtsConstants.block_size);
+        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start, rest_start);
+        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
+        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
+        // 0xDEADBEEF = 3735928559
+        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks, rest_blocks);
+        this.freeSegments.splice(i, 1, [rest_bd, r]);
+        // this.freeSegments.splice(i, 1);
+
+        
+        // this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+        // const rest_bd = bd + (rtsConstants.mblock_size * n),
+        //       rest_start = rest_bd - rtsConstants.offset_first_bdescr +
+        //                    rtsConstants.offset_first_block;
+        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
+        //                      rest_start);
+        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
+        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
+        // this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
+        //                      blocks - req_blocks -
+        //                          ((rtsConstants.mblock_size / rtsConstants.block_size) -
+        //                           rtsConstants.blocks_per_mblock));
+        // this.freeList.splice(i, 1, rest_bd);
+        return bd;
+      }
+
+      if (req_blocks == blocks) {
+        // console.log("allocating from free segment");
+        this.freeSegments.splice(i, 1);
+        return bd;
+      }
+     
+    }
+     */
+    // console.log("allocating from new segment");
+    /*
+    */
+
+    // what we need fits inside a megablock.
+    if (req_mblocks <= 1) {
+        throw new WebAssembly.RuntimeError(`have not implemented how to allocate into a single megablock: ${req_mblocks}`);
     } else {
-        throw new WebAssembly.RuntimeError("have not implemented how to allocate into multiple megablocks");
+        
+        throw new WebAssembly.RuntimeError(`have not implemented how to allocate into multiple megablocks: ${req_mblocks}`);
     }
   }
 
@@ -81,7 +180,7 @@ export class BlockAlloc {
     }
   }
 
-  preserveMegaGroups(bds) {
+  preserveGroups(bds) {
       return; 
     // this.freeList = [];
     this.freeSegments = [];

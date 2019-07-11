@@ -553,7 +553,8 @@ export class GC {
 
     this.evacuateClosure(tso);
     this.scavengeWorkList();
-    this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+    // this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+    this.blockAlloc.preserveGroups(this.liveMBlocks);
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
     this.liveMBlocks.clear();
