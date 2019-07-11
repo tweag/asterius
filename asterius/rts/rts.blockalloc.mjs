@@ -24,6 +24,7 @@ export class BlockAlloc {
     this.staticMBlocks = undefined;
     this.capacity = undefined;
     this.size = undefined;
+    this.bdescr2realbdescr = new Map();
     // this.freeList = [];
     this.freeSegments = [];
     Object.seal(this);
@@ -48,65 +49,21 @@ export class BlockAlloc {
   }
 
   allocBlocks(n) {
+    
+    const req_mblocks = 
+          Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
+          rtsConstants.block_size);
+
     const req_blocks = 
           Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
           rtsConstants.block_size);
 
-    for (let i = 0; i < this.freeSegments.length; ++i) {
-      const [bd, r] = this.freeSegments[i];
-      assertBdescrAligned(bd);
-      const mblock = bd - rtsConstants.offset_first_bdescr;
-      assertMblockAligned(mblock);
-      const start = mblock + rtsConstants.offset_first_block;
-      const blocks = Math.floor((r - start) / rtsConstants.block_size);
-    
-      if (req_blocks < blocks) {
-        // console.log("allocating from free segment");
-        this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
-        const rest_bd = bd + (rtsConstants.mblock_size * n);
-        assertBdescrAligned(rest_bd);
-        const rest_start = rest_bd - rtsConstants.offset_first_bdescr + rtsConstants.offset_first_block;
-        const rest_blocks = Math.floor((r - rest_start) / rtsConstants.block_size);
-        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start, rest_start);
-        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
-        this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
-        // 0xDEADBEEF = 3735928559
-        this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks, rest_blocks);
-        this.freeSegments.splice(i, 1, [rest_bd, r]);
-        // this.freeSegments.splice(i, 1);
+    // what we need fits inside a megablock.
+    if (req_mblocks == 1) {
 
-        
-        // this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
-        // const rest_bd = bd + (rtsConstants.mblock_size * n),
-        //       rest_start = rest_bd - rtsConstants.offset_first_bdescr +
-        //                    rtsConstants.offset_first_block;
-        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
-        //                      rest_start);
-        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
-        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
-        // this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
-        //                      blocks - req_blocks -
-        //                          ((rtsConstants.mblock_size / rtsConstants.block_size) -
-        //                           rtsConstants.blocks_per_mblock));
-        // this.freeList.splice(i, 1, rest_bd);
-        return bd;
-      }
-
-      if (req_blocks == blocks) {
-        // console.log("allocating from free segment");
-        this.freeSegments.splice(i, 1);
-        return bd;
-      }
+    } else {
+        throw new WebAssembly.RuntimeError("have not implemented how to allocate into multiple megablocks");
     }
-    // console.log("allocating from new segment");
-    const mblock = this.getBlocks__(n),
-          bd = mblock + rtsConstants.offset_first_bdescr,
-          block_addr = mblock + rtsConstants.offset_first_block;
-    this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
-    this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
-    this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
-    this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
-    return bd;
   }
 
   freeSegment(l_end, r) {
@@ -125,6 +82,7 @@ export class BlockAlloc {
   }
 
   preserveMegaGroups(bds) {
+      return; 
     // this.freeList = [];
     this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);

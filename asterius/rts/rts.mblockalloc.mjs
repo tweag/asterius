@@ -33,6 +33,8 @@ export class MBlockAlloc {
   }
 
   getMBlocks__(n) {
+    throw new WebAssembly.RuntimeError();
+    
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
       this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
@@ -43,7 +45,10 @@ export class MBlockAlloc {
     return Memory.tagData(prev_size * rtsConstants.mblock_size);
   }
 
+  // allocates n mega blocks in a megagroup
   allocMegaGroup(n) {
+    throw new WebAssembly.RuntimeError();
+    
     const req_blocks = 
           Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
           rtsConstants.block_size);
@@ -106,6 +111,8 @@ export class MBlockAlloc {
   }
 
   freeSegment(l_end, r) {
+    throw new WebAssembly.RuntimeError();
+    
     if (l_end < r) {
         this.memory.memset(l_end, 0, r - l_end);
         const bd = l_end + rtsConstants.offset_first_bdescr;
@@ -121,6 +128,8 @@ export class MBlockAlloc {
   }
 
   preserveMegaGroups(bds) {
+    throw new WebAssembly.RuntimeError();
+
     // this.freeList = [];
     this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
