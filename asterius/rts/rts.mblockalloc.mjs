@@ -19,7 +19,6 @@ export class MBlockAlloc {
     this.staticMBlocks = undefined;
     this.capacity = undefined;
     this.size = undefined;
-    // this.freeList = [];
     this.freeSegments = [];
     Object.seal(this);
   }
@@ -56,7 +55,6 @@ export class MBlockAlloc {
       const blocks = Math.floor((r - start) / rtsConstants.block_size);
     
       if (req_blocks < blocks) {
-        // console.log("allocating from free segment");
         this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
         const rest_bd = bd + (rtsConstants.mblock_size * n);
         assertBdescrAligned(rest_bd);
@@ -65,35 +63,18 @@ export class MBlockAlloc {
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start, rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
         this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
-        // 0xDEADBEEF = 3735928559
+
         this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks, rest_blocks);
         this.freeSegments.splice(i, 1, [rest_bd, r]);
-        // this.freeSegments.splice(i, 1);
-
-        
-        // this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
-        // const rest_bd = bd + (rtsConstants.mblock_size * n),
-        //       rest_start = rest_bd - rtsConstants.offset_first_bdescr +
-        //                    rtsConstants.offset_first_block;
-        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_start,
-        //                      rest_start);
-        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_free, rest_start);
-        // this.memory.i64Store(rest_bd + rtsConstants.offset_bdescr_link, 0);
-        // this.memory.i32Store(rest_bd + rtsConstants.offset_bdescr_blocks,
-        //                      blocks - req_blocks -
-        //                          ((rtsConstants.mblock_size / rtsConstants.block_size) -
-        //                           rtsConstants.blocks_per_mblock));
-        // this.freeList.splice(i, 1, rest_bd);
         return bd;
       }
 
       if (req_blocks == blocks) {
-        // console.log("allocating from free segment");
         this.freeSegments.splice(i, 1);
         return bd;
       }
     }
-    // console.log("allocating from new segment");
+
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
@@ -104,9 +85,10 @@ export class MBlockAlloc {
     return bd;
   }
 
-  freeSegment(l_end, r) {
+  freeSegment(i, l_end, r) {
     if (l_end < r) {
-        this.memory.memset(l_end, 0, r - l_end);
+        // memset a custom number purely for debugging help.
+        this.memory.memset(l_end, 0x42 + i, r - l_end);
         const bd = l_end + rtsConstants.offset_first_bdescr;
         assertBdescrAligned(bd);
         const start = l_end + rtsConstants.offset_first_block;
@@ -120,11 +102,9 @@ export class MBlockAlloc {
   }
 
   preserveMegaGroups(bds) {
-    // this.freeList = [];
     this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
-    // sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
-    this.freeSegment(
+    this.freeSegment(0, 
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
@@ -134,7 +114,7 @@ export class MBlockAlloc {
           this.memory.i32Load(sorted_bds[i] + rtsConstants.offset_bdescr_blocks),
       l_end = l_start + (rtsConstants.block_size * l_blocks),
       r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
-      this.freeSegment(l_end, r);
+      this.freeSegment(i+1, l_end, r);
     }
   }
 }
