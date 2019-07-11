@@ -93,13 +93,21 @@ export class BlockAlloc {
     }
 
     // we don't have free megablocks to pull blocks from, so allocate them.
-    const mblock = this.getBlocks__(n),
-    bd = mblock + rtsConstants.offset_first_bdescr,
-    block_addr = mblock + rtsConstants.offset_first_block;
+    const mblock = this.getBlocks__(n);
+    const bd = mblock + rtsConstants.offset_first_bdescr;
+    const block_addr = mblock + rtsConstants.offset_first_block;
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
     this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+
+    // if the whole thing is still happening inside a single megablock, then we still have space.
+    if (req_mblocks <= 1) { 
+        const block_addr = mblock + rtsConstants.offset_first_block;
+        // address of the next block
+        const block_addr_next = block_addr + rtsConstants.block_size * n;
+        this.freeMegablocks.push([mblock,block_addr_next,  ])
+    }
     return bd;
 
 
