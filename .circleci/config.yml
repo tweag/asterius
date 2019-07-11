@@ -43,7 +43,6 @@ jobs:
             apt install -y nodejs
             mkdir -p /root/.local/bin
             curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
-            curl https://downloads.haskell.org/~cabal/cabal-install-latest/cabal-install-2.4.1.0-x86_64-unknown-linux.tar.xz | tar xJ -C /root/.local/bin 'cabal'
       - checkout
 
       - run:
@@ -140,19 +139,14 @@ jobs:
             nodejs --version
             mkdir -p /root/.local/bin
             curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
-            curl https://downloads.haskell.org/~cabal/cabal-install-latest/cabal-install-2.4.1.0-x86_64-unknown-linux.tar.xz | tar xJ -C /root/.local/bin 'cabal'
 
       - checkout
       - run:
             name: Build asterius
             command: |
               git submodule update --init --recursive
-              stack --no-terminal -j8 build --test --no-run-tests
+              stack --no-terminal -j8 build asterius --test --no-run-tests
               stack --no-terminal exec ahc-boot
-
-              cd ~/.local
-              $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
-              cd $CIRCLE_WORKING_DIRECTORY
 
       - run:
             name: Run GHC test suite on asterius
@@ -165,9 +159,86 @@ jobs:
 
 
               # run test cases that can fail.
-              # We have some tests that take quite long, for example, CmpWord8.
-              # make the timeout generous (15 minutes) for these tests
-              stack --no-terminal test asterius:ghc-testsuite  -j8 --test-arguments="--timeout=900s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=30s" || true
+              cp asterius/test-report.csv /tmp
+              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
+              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
+
+      - store_artifacts:
+          path: /tmp/test-report.csv
+
+      - store_artifacts:
+          path: /tmp/test-report-ascii.txt
+
+      - store_artifacts:
+          path: /tmp/test-report-grouped-by-error-ascii.txt
+
+  asterius-test-ghc-testsuite-yolo:
+    docker:
+      - image: debian:unstable
+    environment:
+      - ASTERIUS_BUILD_OPTIONS: -j8
+      - ASTERIUS_GHC_TESTSUITE_OPTIONS: --yolo
+      - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -A512M -I0 -qg -qb -N8
+      - LANG: C.UTF-8
+      - MAKEFLAGS: -j8
+      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - STACK_ROOT: /tmp/.stack
+    resource_class: xlarge
+    working_directory: /tmp/asterius
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt update
+            apt full-upgrade -y
+            apt install -y python3-numpy python3-pandas python3-terminaltables
+            apt install -y \
+              automake \
+              cmake \
+              curl \
+              g++ \
+              git \
+              gnupg \
+              libffi-dev \
+              libgmp-dev \
+              libncurses-dev \
+              libnuma-dev \
+              make \
+              openssh-client \
+              python-minimal \
+              python3-minimal \
+              xz-utils \
+              zlib1g-dev
+            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+            echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
+            apt update
+            apt install -y nodejs
+            nodejs --version
+            mkdir -p /root/.local/bin
+            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
+
+      - checkout
+      - run:
+            name: Build asterius
+            command: |
+              git submodule update --init --recursive
+              stack --no-terminal -j8 build asterius --test --no-run-tests
+              stack --no-terminal exec ahc-boot
+
+      - run:
+            name: Run GHC test suite on asterius
+            # Allow a large timeout so we have enough time to write out the
+            # CSV file.
+            no_output_timeout: 30m
+            command: |
+              # run the GHC testsuite and copy the test artifact to `/tmp`
+              nodejs --version
+
+
+              # run test cases that can fail.
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=900s" || true
               cp asterius/test-report.csv /tmp
               python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
               python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
@@ -272,6 +343,7 @@ workflows:
     jobs:
       - asterius-test
       - asterius-test-ghc-testsuite
+      - asterius-test-ghc-testsuite-yolo
       - asterius-build-docker
       - asterius-build-docs
       - asterius-update-docker-tag:

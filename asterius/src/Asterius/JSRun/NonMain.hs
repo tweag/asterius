@@ -53,6 +53,7 @@ distNonMain p extra_syms =
       , Asterius.Main.outputIR = False
       , run = False
       , Asterius.Main.verboseErr = True
+      , yolo = False
       , extraGHCFlags = ["-no-hs-main"]
       , Asterius.Main.exportFunctions = []
       , extraRootSymbols = extra_syms

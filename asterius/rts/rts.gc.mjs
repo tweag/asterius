@@ -6,7 +6,7 @@ import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 export class GC {
   constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
-    tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard) {
+    tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard, yolo) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
@@ -17,6 +17,7 @@ export class GC {
     this.pinnedClosures = pinned_closures;
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
+    this.yolo = yolo;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
     this.workList = [];
@@ -527,6 +528,7 @@ export class GC {
   }
 
   gcRootTSO(tso) {
+    if(this.yolo) return;
     this.reentrancyGuard.enter(1);
     const tid = this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
     this.heapAlloc.initUnpinned();

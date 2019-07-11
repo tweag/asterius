@@ -7,48 +7,42 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
-
 import Asterius.JSRun.Main
-import qualified Data.ByteString.Lazy as LBS
-import Data.Traversable
+import Control.Arrow ((&&&))
+import Control.Exception
 import Control.Monad (when)
+import qualified Data.ByteString.Lazy as LBS
+import Data.Csv
+import Data.IORef
+import Data.List (sort)
+import Data.Maybe
+import Data.Monoid (All(..), Any(..))
+import Data.Traversable
+import Data.Typeable
+import Data.Word
+import GHC.Generics
 import Language.JavaScript.Inline.Core
+import Options.Applicative
+import System.Console.ANSI (hSupportsANSIColor)
 import System.Directory
+import System.Environment.Blank
 import System.FilePath
+import System.IO (stdout)
 import System.Process
 import Test.Tasty
+import Test.Tasty.Hspec
 import Test.Tasty.Ingredients
 import Test.Tasty.Ingredients.ConsoleReporter
-import Data.Monoid (Any(..), All(..))
-import Test.Tasty.Hspec
-import Test.Tasty.Runners
-import Control.Exception
-import Data.IORef
-import GHC.Generics
-import System.IO (stdout)
-import System.Console.ANSI (hSupportsANSIColor)
-import Control.Arrow ((&&&))
-import Data.Csv
-import Data.List (sort)
-import Data.Word
-import System.Console.GetOpt
-import Text.Regex.TDFA
-import Data.Typeable
 import Test.Tasty.Options
-import Options.Applicative
-import Options.Applicative.Types
-import System.Exit(die)
-
-
+import Test.Tasty.Runners
+import Text.Regex.TDFA
 
 -- Much of the code is shamelessly stolen from:
 -- http://hackage.haskell.org/package/tasty-1.2.2/docs/src/Test.Tasty.Ingredients.ConsoleReporter.html#consoleTestReporter
-
 data TestCase = TestCase
   { casePath :: FilePath
   , caseStdIn, caseStdOut, caseStdErr :: LBS.ByteString
   } deriving (Show)
-
 
 -- | Convert a Char to a Word8
 charToWord8 :: Char -> Word8
@@ -161,11 +155,12 @@ instance Show CompileOutcome where
 
 runTestCase :: TestCase -> IO ()
 runTestCase TestCase {..} = do
+  m_opts <- getEnv "ASTERIUS_GHC_TESTSUITE_OPTIONS"
   _ <-
     readCreateProcess
-      (proc
-         "ahc-link"
-         ["--input-hs", takeFileName casePath, "--binaryen", "--verbose-err"])
+      (proc "ahc-link" $
+       ["--input-hs", takeFileName casePath, "--binaryen", "--verbose-err"] <>
+       (maybeToList m_opts >>= words))
         {cwd = Just $ takeDirectory casePath}
       ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
