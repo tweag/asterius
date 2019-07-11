@@ -32,7 +32,7 @@ export class MBlockAlloc {
     this.size = this.capacity;
   }
 
-  getMBlocks(n) {
+  getMBlocks__(n) {
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
       this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
@@ -95,7 +95,7 @@ export class MBlockAlloc {
       }
     }
     // console.log("allocating from new segment");
-    const mblock = this.getMBlocks(n),
+    const mblock = this.getMBlocks__(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);

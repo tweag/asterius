@@ -165,6 +165,7 @@ export function newAsteriusInstance(req) {
       __asterius_wasm_instance = i;
       __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
       __asterius_mblockalloc.init(__asterius_memory, req.staticMBlocks);
+      __asterius_blockalloc.init(__asterius_memory, req.staticMBlocks);
       __asterius_heapalloc.init();
       __asterius_integer_manager.heap = __asterius_heap_builder;
       __asterius_bytestring_cbits.memory = __asterius_memory;

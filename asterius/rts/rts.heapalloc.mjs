@@ -3,26 +3,26 @@ import * as rtsConstants from "./rts.constants.mjs";
 export class HeapAlloc {
   constructor(memory, blockalloc, mblockalloc) {
     this.memory = memory;
-    this.mblockAlloc = mblockalloc;
+    // this.mblockAlloc = mblockalloc;
     this.blockAlloc = blockalloc;
     this.currentPools = [ undefined, undefined ];
     Object.freeze(this);
   }
   init() {
-    this.currentPools[0] = this.mblockAlloc.allocMegaGroup(1);
-    this.currentPools[1] = this.mblockAlloc.allocMegaGroup(1);
+    this.currentPools[0] = this.blockAlloc.allocBlocks(1);
+    this.currentPools[1] = this.blockAlloc.allocBlocks(1);
     this.memory.i16Store(this.currentPools[1] + rtsConstants.offset_bdescr_flags,
                          rtsConstants.BF_PINNED);
   }
   initUnpinned() {
-    this.currentPools[0] = this.mblockAlloc.allocMegaGroup(1);
+    this.currentPools[0] = this.blockAlloc.allocBlocks(1);
   }
   hpAlloc(b) {
     const mblocks = b <= rtsConstants.sizeof_first_mblock
                         ? 1
                         : 1 + Math.ceil((b - rtsConstants.sizeof_first_mblock) /
                                         rtsConstants.mblock_size),
-          bd = this.mblockAlloc.allocMegaGroup(mblocks);
+          bd = this.blockAlloc.allocBlocks(mblocks);
     if (mblocks > 1)
       this.memory.i16Store(bd + rtsConstants.offset_bdescr_flags,
                            rtsConstants.BF_PINNED);

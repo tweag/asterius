@@ -36,7 +36,7 @@ export class BlockAlloc {
     this.size = this.capacity;
   }
 
-  getBlocks(n) {
+  getBlocks__(n) {
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
       this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
@@ -47,7 +47,7 @@ export class BlockAlloc {
     return Memory.tagData(prev_size * rtsConstants.mblock_size);
   }
 
-  allocMegaGroup(n) {
+  allocBlocks(n) {
     const req_blocks = 
           Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
           rtsConstants.block_size);
@@ -99,7 +99,7 @@ export class BlockAlloc {
       }
     }
     // console.log("allocating from new segment");
-    const mblock = this.getMBlocks(n),
+    const mblock = this.getBlocks__(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
