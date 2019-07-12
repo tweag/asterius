@@ -54,20 +54,16 @@ export class BlockAlloc {
   }
 
   allocBlocks(n) {
-    
-    const req_mblocks = 
-          Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
-          rtsConstants.block_size);
-
-    const req_blocks = 
-          Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
-          rtsConstants.block_size);
+    const req_blocks = n;
+    const req_mblocks = Math.min(1, Math.ceil(n / rtsConstants.mblock_size));
 
     // look for free megablocks
+    
     for(let i = 0; i < this.freeMegablocks.length; ++i) {
         const [mblock, block_addr, nblocks] = this.freeMegablocks[i];
         // this megablock has enough space.
         if (nblocks <= req_blocks) {
+            console.log("Allocating from freeMegaBlocks");
             // get the pointer to block descriptor
             let bdescr = ptr2bdescr(ptr);
             this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
@@ -91,6 +87,7 @@ export class BlockAlloc {
 
         }
     }
+    
 
     // we don't have free megablocks to pull blocks from, so allocate them.
     const mblock = this.getBlocks__(n);
@@ -103,10 +100,14 @@ export class BlockAlloc {
 
     // if the whole thing is still happening inside a single megablock, then we still have space.
     if (req_mblocks <= 1) { 
+        console.log("requested less than 1 megablock");
         const block_addr = mblock + rtsConstants.offset_first_block;
         // address of the next block
         const block_addr_next = block_addr + rtsConstants.block_size * n;
-        this.freeMegablocks.push([mblock,block_addr_next,  ])
+        const nblocks_next = rtsConstants.blocks_per_mblock - req_blocks; 
+        this.freeMegablocks.push([mblock,block_addr_next,  nblocks_next]);
+    } else {
+        console.log(`requested megablocks: ${req_mblocks}`);1
     }
     return bd;
 
