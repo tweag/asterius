@@ -1,39 +1,56 @@
+import { Channel } from "./rts.channel.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
-async function rts_eval_common(e, f, p) {
+async function scheduler_loop(e) {
   e.context.reentrancyGuard.enter(0);
-  const tso = e[f](p);
-  e.context.memory.i64Store(
-    e.context.symbolTable.__asterius_func,
-    e.context.symbolTable.stg_returnToStackTop
-  );
   while (true) {
-    e.scheduleWaitThread(tso, false);
-    const ret = Number(
-      e.context.memory.i64Load(
-        e.context.symbolTable.MainCapability +
-          rtsConstants.offset_Capability_r +
-          rtsConstants.offset_StgRegTable_rRet
-      )
+    const [f, p, resolve, reject] = await e.context.channel.take(),
+      tso = e[f](p);
+    e.context.memory.i64Store(
+      e.context.symbolTable.__asterius_func,
+      e.context.symbolTable.stg_returnToStackTop
     );
-    switch (ret) {
-      case 4: {
-        await e.context.tsoManager.promise;
-        break;
+    let running = true;
+    while (running) {
+      e.scheduleWaitThread(tso, false);
+      const ret = Number(
+        e.context.memory.i64Load(
+          e.context.symbolTable.MainCapability +
+            rtsConstants.offset_Capability_r +
+            rtsConstants.offset_StgRegTable_rRet
+        )
+      );
+      switch (ret) {
+        case 4: {
+          await e.context.tsoManager.promise;
+          break;
+        }
+        case 5: {
+          resolve(e.context.tsoManager.getTSOid(tso));
+          running = false;
+          break;
+        }
+        default: {
+          reject(new WebAssembly.RuntimeError(`Invalid rRet ${ret}`));
+          running = false;
+          break;
+        }
       }
-      case 5: {
-        e.context.reentrancyGuard.exit(0);
-        return e.context.tsoManager.getTSOid(tso);
-      }
-      default:
-        throw new WebAssembly.RuntimeError(`Invalid rRet ${ret}`);
     }
   }
 }
 
 export class Exports {
-  constructor(memory, reentrancy_guard, symbol_table, tso_manager, exports, stableptr_manager) {
+  constructor(
+    memory,
+    reentrancy_guard,
+    symbol_table,
+    tso_manager,
+    exports,
+    stableptr_manager
+  ) {
     this.context = Object.freeze({
+      channel: new Channel(),
       memory: memory,
       reentrancyGuard: reentrancy_guard,
       symbolTable: symbol_table,
@@ -41,18 +58,25 @@ export class Exports {
       stablePtrManager: stableptr_manager
     });
     Object.assign(this, exports);
+    scheduler_loop(this);
   }
 
   rts_eval(p) {
-    return rts_eval_common(this, "createGenThread", p);
+    return new Promise((resolve, reject) =>
+      this.context.channel.resolve(["createGenThread", p, resolve, reject])
+    );
   }
 
   rts_evalIO(p) {
-    return rts_eval_common(this, "createStrictIOThread", p);
+    return new Promise((resolve, reject) =>
+      this.context.channel.resolve(["createStrictIOThread", p, resolve, reject])
+    );
   }
 
   rts_evalLazyIO(p) {
-    return rts_eval_common(this, "createIOThread", p);
+    return new Promise((resolve, reject) =>
+      this.context.channel.resolve(["createIOThread", p, resolve, reject])
+    );
   }
 
   main() {
