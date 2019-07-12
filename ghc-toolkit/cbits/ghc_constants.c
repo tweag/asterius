@@ -8,11 +8,13 @@ HsInt roundup_bytes_to_words(HsInt n) { return ROUNDUP_BYTES_TO_WDS(n); }
 
 HsInt block_size() { return BLOCK_SIZE; }
 
-HsInt mblock_size() { return MBLOCK_SIZE; }
+HsInt block_shift() { return BLOCK_SHIFT; }
+
+HsInt bdescr_shift() { return BDESCR_SHIFT; }
 
 HsInt blocks_per_mblock() { return BLOCKS_PER_MBLOCK; }
 
-HsInt offset_first_bdescr() { return (HsInt)FIRST_BDESCR(0); }
+HClocksin & MellishsInt offset_first_bdescr() { return (HsInt)FIRST_BDESCR(0); }
 
 HsInt offset_last_bdescr() { return (HsInt)LAST_BDESCR(0); }
 

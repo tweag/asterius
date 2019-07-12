@@ -175,6 +175,7 @@ export class BlockAlloc {
   }
 
   freeSegment(i, l_end, r) {
+      return;
     if (l_end < r) {
         this.memory.memset(l_end, 0x42 + i, r - l_end);
         // const bd = l_end + rtsConstants.offset_first_bdescr;
@@ -184,6 +185,7 @@ export class BlockAlloc {
   }
 
   preserveGroups(bds) {
+    return;
     this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
     // sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);

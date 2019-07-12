@@ -26,16 +26,17 @@ export class GC {
   }
 
   bdescr(p) {
-  // #define BLOCK_MASK (BLOCK_SIZE-1)
-  // #define MBLOCK_MASK (MBLOCK_SIZE-1)
-  // #define Bdescr(p) \
-  // ((((p) &  MBLOCK_MASK & ~BLOCK_MASK) >> (BLOCK_SHIFT-BDESCR_SHIFT)) | ((p) & ~MBLOCK_MASK))
-  const BLOCK_MASK = BigInt(rtsConstants.block_size - 1);
-  const MBLOCK_MASK = BigInt(rtsConstants.mblock_size - 1);
-  const BLOCK_SHIFT = BigInt(rtsConstants.block_shift);
-  const BDESCR_SHIFT = BigInt(rtsConstants.bdescr_shift);
-  p = BigInt(p);
+    // #define BLOCK_MASK (BLOCK_SIZE-1)
+    // #define MBLOCK_MASK (MBLOCK_SIZE-1)
+    // #define Bdescr(p) \
+    // ((((p) &  MBLOCK_MASK & ~BLOCK_MASK) >> (BLOCK_SHIFT-BDESCR_SHIFT)) | ((p) & ~MBLOCK_MASK))
+    const BLOCK_MASK = BigInt(rtsConstants.block_size - 1);
+    const MBLOCK_MASK = BigInt(rtsConstants.mblock_size - 1);
+    const BLOCK_SHIFT = BigInt(rtsConstants.block_shift);
+    const BDESCR_SHIFT = BigInt(rtsConstants.bdescr_shift);
 
+    console.log(`BLOCK_MASK: ${BLOCK_MASK} | MBLOCK_MASK: ${MBLOCK_MASK} | BLOCK_SHIFT: ${BLOCK_SHIFT} | BDESCR_SHIFT: ${BDESCR_SHIFT}`);
+    p = BigInt(p);
     return Number((((p) &  MBLOCK_MASK & ~BLOCK_MASK) >> (BLOCK_SHIFT-BDESCR_SHIFT)) | ((p) & ~MBLOCK_MASK));
   }
 

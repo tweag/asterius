@@ -24,6 +24,10 @@ rtsConstants =
   , intHex blocks_per_mblock
   , ";\nexport const sizeof_bdescr = "
   , intHex sizeof_bdescr
+  , ";\nexport const bdescr_shift = "
+  , intHex bdescr_shift
+  , ";\nexport const block_shift = "
+  , intHex block_shift
   , ";\nexport const offset_first_bdescr = "
   , intHex offset_first_bdescr
   , ";\nexport const offset_first_block = "
