@@ -465,10 +465,6 @@ export class GC {
                                         c + rtsConstants.offset_StgAP_STACK_size)));
         break;
       }
-      case ClosureTypes.IND: {
-        this.scavengeClosureAt(c + rtsConstants.offset_StgInd_indirectee);
-        break;
-      }
       case ClosureTypes.IND_STATIC: {
         this.scavengeClosureAt(c + rtsConstants.offset_StgIndStatic_indirectee);
         break;
