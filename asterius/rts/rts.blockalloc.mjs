@@ -83,9 +83,8 @@ export class BlockAlloc {
     for(let i = 0; i < this.freeMegablocks.length; ++i) {
       const [mblock, block_addr, nblocks] = this.freeMegablocks[i];
       console.log(`allocBlocks: req_blocks: ${req_blocks} | i:${i} | mblock: ${mblock} | nblocks: ${nblocks}`);
-      // this megablock has enough space.
       if (req_blocks <= nblocks) {
-        // get the pointer to block descriptor
+        // initialize the block descriptor.
         const bd = ptr2bdescr(block_addr);
         this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
         this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
@@ -94,9 +93,12 @@ export class BlockAlloc {
 
         // if we have leftover blocks, then add back the megablock to the freelist.
         if (req_blocks < nblocks) {
-
           // get the next free pointer.
-          const block_addr_next = block_addr + rtsConstants.sizeof_block * req_blocks;
+          const block_addr_next = block_addr + rtsConstants.sizeof_block * (1 + req_blocks);
+          console.log(`block_addr_next: ${block_addr_next} | sizeof_block: ${rtsConstants.sizeof_block}`);
+          // check that the block descriptor of the new block is not the same
+          // as our block descriptor. Indeed, it should be "ahead".
+          assert(ptr2bdescr(block_addr_next) > bd);
           const nblocks_next = nblocks - req_blocks;
           this.freeMegablocks.splice(i, [mblock, block_addr_next, nblocks_next]);
 
