@@ -104,8 +104,8 @@ export class BlockAlloc {
             throw new WebAssembly.RuntimeError("we are getting the same bd, not the next bd from the new block");
           }
           const nblocks_next = nblocks - req_blocks;
-          // this.freeMegablocks.splice(i, [mblock, block_addr_next, nblocks_next]);
-          this.freeMegablocks.splice(i);
+          this.freeMegablocks.splice(i, [mblock, block_addr_next, nblocks_next]);
+          // this.freeMegablocks.splice(i);
 
         } else {
           assert.equal(nblocks, req_blocks);
