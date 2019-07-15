@@ -80,6 +80,7 @@ export class BlockAlloc {
     const req_mblocks = Math.min(1, Math.ceil(req_blocks / rtsConstants.mblock_size));
     console.log(`req_mblocks: ${req_mblocks}`);
 
+    /*
     for(let i = 0; i < this.freeMegablocks.length; ++i) {
       const [mblock, block_addr, nblocks] = this.freeMegablocks[i];
       console.log(`allocBlocks: req_blocks: ${req_blocks} | i:${i} | mblock: ${mblock} | nblocks: ${nblocks}`);
@@ -94,11 +95,15 @@ export class BlockAlloc {
         // if we have leftover blocks, then add back the megablock to the freelist.
         if (req_blocks < nblocks) {
           // get the next free pointer.
-          const block_addr_next = block_addr + rtsConstants.sizeof_block * (1 + req_blocks);
-          console.log(`block_addr_next: ${block_addr_next} | sizeof_block: ${rtsConstants.sizeof_block}`);
+          console.log(`sizeof_block: ${rtsConstants.block_size}`);
+          const block_addr_next = block_addr + rtsConstants.block_size * (1 + req_blocks);
+          console.log(`block_addr_next: ${block_addr_next} | block_size: ${rtsConstants.block_size}`);
           // check that the block descriptor of the new block is not the same
           // as our block descriptor. Indeed, it should be "ahead".
-          assert(ptr2bdescr(block_addr_next) > bd);
+
+          if (ptr2bdescr(block_addr_next) <= bd) {
+            throw new WebAssembly.RuntimeError("we are getting the same bd, not the next bd from the new block");
+          }
           const nblocks_next = nblocks - req_blocks;
           this.freeMegablocks.splice(i, [mblock, block_addr_next, nblocks_next]);
 
@@ -110,6 +115,7 @@ export class BlockAlloc {
 
       }
     }
+    */
 
     // we don't have free megablocks to pull blocks from, so allocate them.
     const mblock = this.allocMegaGroup(req_mblocks);
