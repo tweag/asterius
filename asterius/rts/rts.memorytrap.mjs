@@ -15,7 +15,7 @@ export class MemoryTrap {
   trap(p) {
     if (Memory.getTag(p) != rtsConstants.dataTag) {
       const err =
-          new WebAssembly.RuntimeError("Invalid address " + this.showI64(p));
+          new WebAssembly.RuntimeError("Invalid address " + this.showI64(p) + "|" + p);
       this.logger.logError(err);
       throw err;
     }
