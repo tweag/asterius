@@ -111,7 +111,7 @@ export class BlockAlloc {
           assert.equal(nblocks, req_blocks);
           this.freeMegablocks.splice(i);
         }
-        console.log("returning: ${block_addr}");
+        console.log(`returning: ${bd}`);
         return bd;
 
       }
