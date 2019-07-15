@@ -64,7 +64,7 @@ export class BlockAlloc {
   }
 
 
-  allocMegaGroup(n) {
+  allocMegaBlocks(n) {
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
       this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
@@ -78,13 +78,12 @@ export class BlockAlloc {
 
   allocBlocks(req_blocks) {
     const req_mblocks = Math.min(1, Math.ceil(req_blocks / rtsConstants.mblock_size));
-    console.log(`req_mblocks: ${req_mblocks}`);
+    console.log(`req_blocks: ${req_blocks} | req_mblocks: ${req_mblocks}`);
 
-    /*
     for(let i = 0; i < this.freeMegablocks.length; ++i) {
       const [mblock, block_addr, nblocks] = this.freeMegablocks[i];
-      console.log(`allocBlocks: req_blocks: ${req_blocks} | i:${i} | mblock: ${mblock} | nblocks: ${nblocks}`);
       if (req_blocks <= nblocks) {
+        console.log(`allocBlocks: req_blocks: ${req_blocks} | i:${i} | mblock: ${mblock} | bdescr: ${ptr2bdescr(block_addr)} | nblocks: ${nblocks}`);
         // initialize the block descriptor.
         const bd = ptr2bdescr(block_addr);
         this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
@@ -105,20 +104,21 @@ export class BlockAlloc {
             throw new WebAssembly.RuntimeError("we are getting the same bd, not the next bd from the new block");
           }
           const nblocks_next = nblocks - req_blocks;
-          this.freeMegablocks.splice(i, [mblock, block_addr_next, nblocks_next]);
+          // this.freeMegablocks.splice(i, [mblock, block_addr_next, nblocks_next]);
+          this.freeMegablocks.splice(i);
 
         } else {
           assert.equal(nblocks, req_blocks);
           this.freeMegablocks.splice(i);
         }
-        return block_addr;
+        console.log("returning: ${block_addr}");
+        return bd;
 
       }
     }
-    */
 
     // we don't have free megablocks to pull blocks from, so allocate them.
-    const mblock = this.allocMegaGroup(req_mblocks);
+    const mblock = this.allocMegaBlocks(req_mblocks);
     const bd = mblock + rtsConstants.offset_first_bdescr;
     const block_addr = mblock + rtsConstants.offset_first_block;
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
@@ -137,6 +137,7 @@ export class BlockAlloc {
     } else {
       console.log(`requested megablocks: ${req_mblocks}`);1
     }
+    console.log(`returning: ${bd}`);
     return bd;
   }
 
