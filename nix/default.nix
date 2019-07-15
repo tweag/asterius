@@ -53,32 +53,18 @@ let
                 ../asterius/test/rtsapi/rtsapi.mjs
               ]);
     };
-  # our packages
-  plan-nix = haskell.callCabalProjectToNix {
-    src = cleanSrc;
-    ghc = pkgs.haskell.compiler.ghc864;
-    index-state = "2019-06-22T00:00:00Z";
-    index-sha256 = "19v6bqgg886704b8palrzqiydnfjsqqkrx9k6c22kw6kffrrrmd6";
-  };
-  plan-pkgs-0 = if planOnly then {
-      # Hydra does not deal with IFD well.  The work arounds is to build
-      # add a job for just the plan-nix and run it on its own to build
-      # and cache all the dependencies needed for the IFD to work.
-      # This empty plan is used instead of the real one when we just
-      # want the plan-nix and do not want to tirgger an IFD.
-      extras = hackage: { packages = {}; };
-      pkgs = hackage: {
-        compiler = {
-          nix-name = "ghc864";
-        };
-        packages = {}; };
-    }
-    else import "${plan-nix}";
+  plan-0 = haskell.callCabalProjectToNix {
+      src = cleanSrc;
+      ghc = pkgs.haskell.compiler.ghc864;
+      index-state = "2019-06-22T00:00:00Z";
+      index-sha256 = "19v6bqgg886704b8palrzqiydnfjsqqkrx9k6c22kw6kffrrrmd6";
+    };
   # Hide libiserv from the plan because it does not exist in hackage
   # TODO find a proper fix for this issue
-  plan-pkgs = plan-pkgs-0 // {
-      pkgs = hackage: let x = (plan-pkgs-0.pkgs hackage);
-      in x // { packages = removeAttrs x.packages [ "libiserv" ]; }; };
+  plan = plan-0 // {
+      pkgs = plan-0.pkgs // {
+        pkgs = hackage: let x = (plan-0.pkgs.pkgs hackage);
+        in x // { packages = removeAttrs x.packages [ "libiserv" ]; }; }; };
 
   cabalPatch = pkgs.fetchpatch {
     url = "https://patch-diff.githubusercontent.com/raw/haskell/cabal/pull/6055.diff";
@@ -97,11 +83,11 @@ let
   #  packages.cbors.patches = [ ./one.patch ];
   #  packages.cbors.flags.optimize-gmp = false;
   #
-  compiler = (plan-pkgs.extras {}).compiler or
-             (plan-pkgs.pkgs {}).compiler;
+  compiler = (plan.pkgs.extras {}).compiler or
+             (plan.pkgs.pkgs {}).compiler;
 
   pkgSet = haskell.mkCabalProjectPkgSet {
-    inherit plan-pkgs;
+    plan-pkgs = plan.pkgs;
     # The extras allow extension or restriction of the set of
     # packages we are interested in. By using the stack-pkgs.extras
     # we restrict our package set to the ones provided in stack.yaml.
@@ -121,7 +107,7 @@ let
           # packages.hsc2hs.components.exes.hsc2hs.doExactConfig = true;
           ghc.patches = [ ./patches/ghc.patch ./patches/ghc/MR948--32bit-cross-th.patch ];
           Cabal.patches = [ cabalPatch ];
-        } // (if planOnly then {} else {
+        } // {
           asterius.components.tests =
             pkgs.lib.mapAttrs (n: v: {
                build-tools =
@@ -130,9 +116,9 @@ let
                  nodePkgs.parcel-bundler
                  nodePkgs.todomvc-app-css
                  nodePkgs.todomvc-common ];
-             }) (haskell.mkCabalProjectPkgSet {inherit plan-pkgs;})
+             }) (haskell.mkCabalProjectPkgSet {plan-pkgs = plan.pkgs;})
                  .config.hsPkgs.asterius.components.tests;
-        });
+        };
       })
     ];
   };
@@ -232,8 +218,9 @@ let
 in
   pkgSet.config.hsPkgs // {
     _config = pkgSet.config;
+    plan-nix = plan.nix;
     inherit (pkgSet.config) hsPkgs;
-    inherit ghc-head ghc864 plan-nix pkgs haskell nodejs nodePkgs asterius-boot;
+    inherit ghc-head ghc864 pkgs haskell nodejs nodePkgs asterius-boot;
     ghc-compiler = pkgs.haskell.compiler.${compiler.nix-name};
     ghc-boot-libs = ghc864.boot-libs;
   }

@@ -30,10 +30,7 @@ let
 # We will instantiate the defaul-nix template with the
 # nix/pkgs.nix file...
   default-nix = localLib.nix-tools.default-nix ./nix/default.nix args;
-  inherit ((localLib.nix-tools.default-nix ./nix/plan-only.nix args).nix-tools._raw) plan-nix;
-
-  shell-nix-tools = (localLib.nix-tools.default-nix ./nix/shell-only.nix args).nix-tools;
-  inherit (shell-nix-tools._raw) pkgs hsPkgs nodePkgs nodejs;
+  inherit (default-nix.nix-tools-raw) plan-nix pkgs hsPkgs nodePkgs nodejs;
   cabalSystem = builtins.replaceStrings ["-darwin"] ["-osx"] pkgs.stdenv.system;
 
   # Use this to set the version of asterius to be booted in the shell.
@@ -67,18 +64,18 @@ let
         nodePkgs.todomvc-common ];
       shellHook = (oldAttrs.shellHook or "") + ''
         unset CABAL_CONFIG
-        export asterius_bootdir=${cached.nix-tools._raw.asterius-boot}/boot
+        export asterius_bootdir=${cached.nix-tools-raw.asterius-boot}/boot
         find . -name package.yaml -exec hpack "{}" \;
         export asterius_datadir=$(pwd)/asterius
         export binaryen_datadir=$(pwd)/binaryen
         export ghc_toolkit_datadir=$(pwd)/ghc-toolkit
         # export sandbox_ghc_lib_dir=$(ghc --print-libdir) # does not include `indclude` dir
-        export sandbox_ghc_lib_dir=$(${shell-nix-tools._raw.ghc-compiler}/bin/ghc --print-libdir)
+        export sandbox_ghc_lib_dir=$(${default-nix.nix-tools-raw.ghc-compiler}/bin/ghc --print-libdir)
         export inline_js_datadir=$(pwd)/inline-js/inline-js
         export inline_js_core_datadir=$(pwd)/inline-js/inline-js-core
         export wabt_datadir=$(pwd)/wabt
         export wasm_toolkit_datadir=$(pwd)/wasm-toolkit
-        export boot_libs_path=${shell-nix-tools._raw.ghc864.boot-libs}
+        export boot_libs_path=${default-nix.nix-tools-raw.ghc864.boot-libs}
         mkdir -p asterius-cabal-bin
         cd asterius-cabal-bin
         export asterius_bindir=$(pwd)
