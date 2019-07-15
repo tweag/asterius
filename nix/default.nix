@@ -215,12 +215,11 @@ let
       '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
       $out/bin/ahc-boot
     '';
-in
-  pkgSet.config.hsPkgs // {
-    _config = pkgSet.config;
-    plan-nix = plan.nix;
-    inherit (pkgSet.config) hsPkgs;
-    inherit ghc-head ghc864 pkgs haskell nodejs nodePkgs asterius-boot;
-    ghc-compiler = pkgs.haskell.compiler.${compiler.nix-name};
-    ghc-boot-libs = ghc864.boot-libs;
-  }
+in {
+  plan-nix = plan.nix;
+  inherit (pkgSet.config) hsPkgs;
+  config = pkgSet.config;
+  inherit ghc-head ghc864 pkgs haskell nodejs nodePkgs asterius-boot;
+  ghc-compiler = pkgs.haskell.compiler.${compiler.nix-name};
+  ghc-boot-libs = ghc864.boot-libs;
+}
