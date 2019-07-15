@@ -37,8 +37,8 @@ let
   # By pinning this we avoid re running ahc-boot for every change.
   cached = import (pkgs.fetchgit {
     url = "https://github.com/input-output-hk/asterius";
-    rev = "a6786b8701686e733f680765f542321bb55ff2fe";
-    sha256 = "0jawvbjihp7im0smi3ikpxj40pyyc66qrfann4q2wmsq8667rag4";
+    rev = "044688a30d4351a723b23cff3d8251fb5ff2e3b9";
+    sha256 = "0fcf3xd5w71igdqid02x14yql9lkyl5rkbg2033awnihzw4mg2d9";
     fetchSubmodules = true;
   }) {};
   shells = {
