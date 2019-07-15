@@ -1,11 +1,12 @@
 import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
-import * as assert from "assert";
 
 // check that a megablock is correctly aligned
 function assertMblockAligned(mb) {
     const n = Math.log2(rtsConstants.mblock_size);
-    assert.equal((BigInt(mb) >> BigInt(n)) << BigInt(n), BigInt(mb));
+    if ((BigInt(mb) >> BigInt(n)) << BigInt(n) != BigInt(mb)) {
+      throw new WebAssembly.RuntimeError(`mb(${mb}) not aligned to 2^${n} (${rtsConstants.mblock_size})`);
+    };
 }
 
 // check that a block descriptor is correctly aligned
@@ -19,6 +20,9 @@ export class MBlockAlloc {
     this.staticMBlocks = undefined;
     this.capacity = undefined;
     this.size = undefined;
+    // Contains segments of the form [(l, r)] of free memory.
+    // invariant: l is a legal block descriptor, and therefore
+    // satisfies assertBdescrAligned
     this.freeSegments = [];
     Object.seal(this);
   }
@@ -97,7 +101,6 @@ export class MBlockAlloc {
     if (l_end < r) {
         // memset a custom number purely for debugging help.
         this.memory.memset(l_end, 0x42 + i, r - l_end);
-
         const bd = l_end + rtsConstants.offset_first_bdescr;
         assertBdescrAligned(bd);
         this.freeSegments.push([bd, r])
