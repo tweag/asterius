@@ -53,6 +53,14 @@ export class MBlockAlloc {
       assertMblockAligned(mblock);
       const start = mblock + rtsConstants.offset_first_block;
       const blocks = Math.floor((r - start) / rtsConstants.block_size);
+
+      // we have enough blocks, so we should initialize bd
+      if (req_blocks <= blocks) {
+        this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
+        this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
+        this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+        this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+      }
     
       if (req_blocks < blocks) {
         this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
@@ -89,14 +97,9 @@ export class MBlockAlloc {
     if (l_end < r) {
         // memset a custom number purely for debugging help.
         this.memory.memset(l_end, 0x42 + i, r - l_end);
+
         const bd = l_end + rtsConstants.offset_first_bdescr;
         assertBdescrAligned(bd);
-        const start = l_end + rtsConstants.offset_first_block;
-        const blocks = Math.floor((r - start) / rtsConstants.block_size);
-        this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
-        this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
-        this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
-        this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
         this.freeSegments.push([bd, r])
     }
   }
