@@ -104,6 +104,10 @@ export class BlockAlloc {
     this.size = undefined;
     // contains (l, r) of the free block groups.
     this.freeBlockGroups = [];
+    // set of megablocks we have ever allocated
+    this.allocatedMegaGroups = new Set();
+    // set of megagroups that are currently free
+    this.freeMegaGroups = new Set();
     Object.seal(this);
   }
 
@@ -124,7 +128,9 @@ export class BlockAlloc {
 
     const prev_size = this.size;
     this.size += n;
-    return Memory.tagData(prev_size * rtsConstants.mblock_size);
+    const mblock = Memory.tagData(prev_size * rtsConstants.mblock_size);
+    this.allocatedMegaGroups.add(mblock);
+    return mblock;
   }
 
   // low level initialization function to initialize a block descriptor
@@ -165,7 +171,6 @@ export class BlockAlloc {
 
   allocBlocks(req_blocks) {
     const req_mblocks = Math.floor(req_blocks / rtsConstants.blocks_per_mblock);
-    console.log("req_mblocks: " + req_mblocks);
     // We need memory larger than a megablock. Just allocate it.
     if (req_mblocks >= 1) {
       const mblock = this.allocMegaBlocks(req_mblocks);
@@ -206,10 +211,11 @@ export class BlockAlloc {
   // invariant: [l_end, r] belong to the same megablock.
   freeBlockGroup(i, l_end, r) {
     assert.equal(ptr2mblock(l_end), ptr2mblock(r));
-    if (l_end >= r) return;
+    assert.equal(l_end <= r, true);
 
     this.memory.memset(l_end, 0x42 + i, r - l_end);
 
+    /*
     for(var i = 0; i < this.freeBlockGroups.length; ++i) {
       const [lcur, rcur] = this.freeBlockGroups[i];
       // the right of the block is to our left
@@ -224,38 +230,42 @@ export class BlockAlloc {
         return;
       }
     }
+    */
 
     this.freeBlockGroups.push([l_end, r]);
   }
 
   preserveGroups(bds) {
-    console.log("preserveGroups:");
-    console.log(`bds: ${Array.from(bds)}`);
     bds = Array.from(bds);
 
     var m = new Map();
     for(var i = 0; i < bds.length; ++i) {
-      console.log(`--- ${i}: bds[${i}] = ${bds[i]}`);
       const mblock =  bdescr2megablock(bds[i]);
       if(m.has(mblock)) {
-        m[mblock].push(bds[i]);
+        const bds_for_m = m.get(mblock);
+        bds_for_m.push(bds[i])
+        m.set(mblock, bds_for_m);
       } else {
-        m[mblock] = [bds[i]];
+        m.set(mblock, [bds[i]]);
       }
     }
-    
-    // current index passed to freeBlockGroup
+
+    const usedMegaGroups = new Set(m.keys());
+    this.freeMegaGroups = new Set([...this.allocatedMegaGroups]
+      .filter(x => !usedMegaGroups.has(x)));
+    console.log(this.freeMegaGroups);
+
     let ix = 0;
-    
     let sorted_megablocks = Array.from(m.keys()).sort((m0, m1) => m0 - m1);
-    // we are allowed to take up an entire megablock if the megablock is free.
+
     for(var i = 0; i < sorted_megablocks.length; ++i) {
       const mblock = sorted_megablocks[i];
-      const bds = m[mblock];
-      for(let j = 0; j < bds; ++j) {
+      const bds = m.get(mblock);
+      for(let j = 0; j < bds.length; ++j) {
         const bd = bds[j];
-        const l = this.memory.i64Load(bd + rtsConstants.offset_bdescr_start);
-        const nblocks = this.memory.i64Load(bd + rtsConstants.offset_bdescr_blocks);
+        const l = Number(this.memory.i64Load(bd + rtsConstants.offset_bdescr_start));
+        const nblocks = Number(this.memory.i64Load(bd + rtsConstants.offset_bdescr_blocks));
+        console.log(`l: ${l} | nblocks: ${nblocks} | block_size: ${rtsConstants.block_size}`);
         const r = l + rtsConstants.block_size * nblocks;
         this.freeBlockGroup(ix++, l, r);
       }
