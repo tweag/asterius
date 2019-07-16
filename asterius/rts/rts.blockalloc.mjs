@@ -60,7 +60,6 @@ class MemoryView {
   // break a pre-existing free slice (if it exists) into two and return the
   // index of the break.
   breakAtIndex(ix) {
-    console.log(`len: ${this.freeSlices.length}`);
     for(let i = 0; i < this.freeSlices.length; ++i) {
       const [l, r] = this.freeSlices[i];
       if (l <= ix && ix <= r) {
@@ -90,11 +89,10 @@ class MemoryView {
     // ---( )|(ixl   ) r
     //
     // Case 3:  l is not contained, r is 
-    // Case 2: l contained, r is not
-    // -l--(        |      )
-    // -l--(        r      ) 
-    // -l--(        |(ixr  ) 
-    // -l--(        |(ixr  )
+    // -l--(      |      )
+    // -l--(      r      ) 
+    // -l--( ixr )|(     ) 
+    // -l--( ixr )|(     )
     //
     assert.equal(l <= r, true);
     let ixl = this.breakAtIndex(l);
@@ -104,11 +102,16 @@ class MemoryView {
       assert.equal(ixl, ixr);
     }
 
-    if (ixr) {
-      this.freeSlices.splice(ixr, 1);
-    } else if (ixl) {
-      this.freeSlices.splice(ixl, 1);
+    if (ixl && ixr) {
+      this.freeSlices.splice(ixl, 1, l, r);
     }
+    else if (ixr) {
+      this.freeSlices.splice(ixr, r);
+    } else if (ixl) {
+      this.freeSlices.splice(ixl, l);
+    }
+
+    console.log(`freeSlices after breaing at: ${[l, r]}: ${this.freeSlices}`);
   }
 
   // how do I safely return an immutable reference?
