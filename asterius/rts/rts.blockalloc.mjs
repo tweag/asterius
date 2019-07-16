@@ -64,8 +64,8 @@ function ptr2bdescr(p) {
 
 // given a pointer, return the megablock to which it belongs to
 function ptr2mblock(p) {
-  const MBLOCK_MASK = BigInt(rtsConstants.mblock_size - 1);
-  return Number(p & MBLOCK_MASK);
+  const n = BigInt(Math.log2(rtsConstants.mblock_size));
+  return Number((BigInt(p) >> n) << n);
 }
 
 // return the megablock a block descriptor belongs to
@@ -194,24 +194,38 @@ export class BlockAlloc {
     // if we have some free blocks, add that to the free list.
     if (req_blocks < rtsConstants.blocks_per_mblock) {
       const rest_l = block_addr + rtsConstants.block_size * req_blocks;
-      const rest_r = block_addr + rtsConstants.block_size * rtsConstants.blocks_per_mblock;
-      this.freeBlockGroups.push([rest_l, rest_r]);
+      const rest_r = block_addr + rtsConstants.block_size * rtsConstants.blocks_per_mblock - 1;
+      this.freeBlockGroup(0, rest_l, rest_r);
     }
 
     return bd;
 
   }
 
-  coalesceFreeBlockGroups() {
-  }
-
+  // free a block group from l_end to r
+  // invariant: [l_end, r] belong to the same megablock.
   freeBlockGroup(i, l_end, r) {
-    if (l_end < r) {
-      this.memory.memset(l_end, 0x42 + i, r - l_end);
-      this.freeBlockGroups.push([l_end, r]);
+    assert.equal(ptr2mblock(l_end), ptr2mblock(r));
+    if (l_end >= r) return;
+
+    this.memory.memset(l_end, 0x42 + i, r - l_end);
+
+    for(var i = 0; i < this.freeBlockGroups.length; ++i) {
+      const [lcur, rcur] = this.freeBlockGroups[i];
+      // the right of the block is to our left
+      // |lcur rcur|l_end r|
+      if (rcur == l_end) {
+        this.freeBlockGroups.splice(i, [lcur, r]);
+        return;
+      }
+      // |l_end r| |lcur rcur|
+      else if (r == lcur) {
+        this.freeBlockGroups.splice(i, [r, lcur]);
+        return;
+      }
     }
 
-    coalesceFreeBlockGroups();
+    this.freeBlockGroups.push([l_end, r]);
   }
 
   preserveGroups(bds) {
