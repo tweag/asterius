@@ -121,6 +121,7 @@ export class BlockAlloc {
       this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
       this.capacity += d;
     }
+
     const prev_size = this.size;
     this.size += n;
     return Memory.tagData(prev_size * rtsConstants.mblock_size);
@@ -139,7 +140,7 @@ export class BlockAlloc {
   // returns a block descriptor if exists, 
   // returns undefined otherwise
   lookupFreeBlockGroupBdescr(req_blocks) {
-    assert(req_blocks < rtsConstants.blocks_per_mblock);
+    assert.equal(req_blocks < rtsConstants.blocks_per_mblock, 1);
     for(let i = 0; i < this.freeBlockGroups.length; ++i) {
       const [l, r] = this.freeBlockGroups[i];
       const nblocks = (r - l) / this.block_size;
@@ -147,7 +148,7 @@ export class BlockAlloc {
       if (nblocks < req_blocks) continue;
 
       const bd = ptr2bdescr(l);
-      this.initBdescr(bd, k, req_blocks);
+      this.initBdescr(bd, l, req_blocks);
 
       // allow splicing off a smaller block.
       if (req_blocks < nblocks) {
@@ -163,9 +164,10 @@ export class BlockAlloc {
   } // end funciion
 
   allocBlocks(req_blocks) {
-    const req_mblocks = Math.ceil(req_blocks / rtsConstants.blocks_per_mblock);
+    const req_mblocks = Math.floor(req_blocks / rtsConstants.blocks_per_mblock);
+    console.log("req_mblocks: " + req_mblocks);
     // We need memory larger than a megablock. Just allocate it.
-    if (req_mblocks > 0) {
+    if (req_mblocks >= 1) {
       const mblock = this.allocMegaBlocks(req_mblocks);
       const bd = mblock + rtsConstants.offset_first_bdescr;
       const block_addr = mblock + rtsConstants.offset_first_block;
@@ -184,7 +186,7 @@ export class BlockAlloc {
 
     // we don't have a free block group. Create a new megablock with those
     // many block groups, and return it.
-    const mblock = this.allocMegaBlocks(req_mblocks);
+    const mblock = this.allocMegaBlocks(1);
     const bd = mblock + rtsConstants.offset_first_bdescr;
     const block_addr = mblock + rtsConstants.offset_first_block;
     this.initBdescr(bd, block_addr, req_blocks);
@@ -192,8 +194,11 @@ export class BlockAlloc {
     // if we have some free blocks, add that to the free list.
     if (req_blocks < rtsConstants.blocks_per_mblock) {
       const rest_l = block_addr + rtsConstants.block_size * req_blocks;
-      const rest_r = block_addr + rtsConstants.block_size * blocks_per_mblock;
+      const rest_r = block_addr + rtsConstants.block_size * rtsConstants.blocks_per_mblock;
+      this.freeBlockGroups.push([rest_l, rest_r]);
     }
+
+    return bd;
 
   }
 
