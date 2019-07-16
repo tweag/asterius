@@ -70,8 +70,14 @@ function ptr2mblock(p) {
 
 // return the megablock a block descriptor belongs to
 function bdescr2megablock(bd) {
-  const MBLOCK_MASK = BigInt(rtsConstants.mblock_size - 1);
-  return Number(BigInt(bd) & MBLOCK_MASK);
+  return ptr2mblock(bd);
+}
+
+function assertLegalBdescr(bd) {
+  const mb = bdescr2megablock(bd);
+  assert.equal((bd - mb) % rtsConstants.sizeof_bdescr, 0);
+  assert.equal(bd >= mb + rtsConstants.offset_first_bdescr, true);
+  assert.equal(bd <= mb + rtsConstants.offset_first_block, true);
 }
 
 // get the count of bdescr in the megablock.
@@ -135,6 +141,7 @@ export class BlockAlloc {
 
   // low level initialization function to initialize a block descriptor
   initBdescr(bd, block_addr, nblocks) {
+    assertLegalBdescr(bd);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
@@ -175,6 +182,7 @@ export class BlockAlloc {
     if (req_mblocks >= 1) {
       const mblock = this.allocMegaBlocks(req_mblocks);
       const bd = mblock + rtsConstants.offset_first_bdescr;
+      assert.equal(ptr2mblock(bd), mblock);
       const block_addr = mblock + rtsConstants.offset_first_block;
       this.initBdescr(bd, block_addr, req_blocks);
     }
@@ -194,6 +202,7 @@ export class BlockAlloc {
     const mblock = this.allocMegaBlocks(1);
     const bd = mblock + rtsConstants.offset_first_bdescr;
     const block_addr = mblock + rtsConstants.offset_first_block;
+    assert.equal(ptr2mblock(bd), mblock);
     this.initBdescr(bd, block_addr, req_blocks);
 
     // if we have some free blocks, add that to the free list.
