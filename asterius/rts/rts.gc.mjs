@@ -19,7 +19,7 @@ export class GC {
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
     this.closureIndirects = new Map();
-    this.liveMBlocks = new Set();
+    this.liveBdescrs = new Set();
     this.workList = [];
     this.liveJSVals = new Set();
     Object.freeze(this);
@@ -34,8 +34,6 @@ export class GC {
     const MBLOCK_MASK = BigInt(rtsConstants.mblock_size - 1);
     const BLOCK_SHIFT = BigInt(rtsConstants.block_shift);
     const BDESCR_SHIFT = BigInt(rtsConstants.bdescr_shift);
-
-    // console.log(`BLOCK_MASK: ${BLOCK_MASK} | MBLOCK_MASK: ${MBLOCK_MASK} | BLOCK_SHIFT: ${BLOCK_SHIFT} | BDESCR_SHIFT: ${BDESCR_SHIFT}`);
     p = BigInt(p);
     return Number((((p) &  MBLOCK_MASK & ~BLOCK_MASK) >> (BLOCK_SHIFT-BDESCR_SHIFT)) | ((p) & ~MBLOCK_MASK));
   }
@@ -49,7 +47,7 @@ export class GC {
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
-    this.liveMBlocks.add(this.bdescr(dest_c));
+    this.liveBdescrs.add(this.bdescr(dest_c));
     return dest_c;
   }
 
@@ -60,7 +58,7 @@ export class GC {
       if (this.memory.heapAlloced(untagged_c)) {
         if (this.isPinned(untagged_c)) {
           dest_c = untagged_c;
-          this.liveMBlocks.add(this.bdescr(dest_c));
+          this.liveBdescrs.add(this.bdescr(dest_c));
         } else {
           const info = Number(this.memory.i64Load(untagged_c));
           if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
@@ -537,6 +535,8 @@ export class GC {
   }
 
   gcRootTSO(tso) {
+    this.liveBdescrs.clear();
+
     this.reentrancyGuard.enter(1);
     const tid = this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
     this.heapAlloc.initUnpinned();
@@ -562,11 +562,10 @@ export class GC {
 
     this.evacuateClosure(tso);
     this.scavengeWorkList();
-    // this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
-    this.blockAlloc.preserveGroups(this.liveMBlocks);
+    this.blockAlloc.preserveGroups(this.liveBdescrs);
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
-    this.liveMBlocks.clear();
+    this.liveBdescrs.clear();
     this.liveJSVals.clear();
     this.reentrancyGuard.exit(1);
   }
