@@ -53,6 +53,9 @@ import * as assert from "assert";
 class MemoryView {
   constructor(l, r) {
     assert.equal(l <= r, true);
+    this.ixmin = l;
+    this.ixmax = r;
+
     this.freeSlices = [[l, r]];
     Object.seal(this);
 
@@ -77,6 +80,12 @@ class MemoryView {
   // [l, r] should be within bounds of the total memory space
   reserveSegment(l, r) {
     assert.equal(l <= r, true);
+    // check that the segment is strictly within [min, max]
+    // assert.equal(this.ixmin <= l, true);
+    // assert.equal(r <= this.ixmax, true);
+
+    console.log("reserveSegment: freeSlices before breaing at" +  [l, r] + " " +
+      this.freeSlices);
 
     let startix = -1;
     let endix = -1;
@@ -126,7 +135,8 @@ class MemoryView {
     this.freeSlices.splice(ixl, len);
 
 
-    console.log(`freeSlices after breaing at: ${[l, r]}: ${this.freeSlices}`);
+    console.log("reserveSegment: freeSlices AFTER breaing at" +  [l, r] + " " +
+      this.freeSlices);
   }
 
   // how do I safely return an immutable reference?
@@ -213,7 +223,7 @@ export class BlockAlloc {
   }
 
 
-  allocMegaBlocks(n) {
+  allocMegaBlocks__(n) {
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
       this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
@@ -228,7 +238,7 @@ export class BlockAlloc {
   }
 
   // low level initialization function to initialize a block descriptor
-  initBdescr(bd, block_addr, nblocks) {
+  initBdescr__(bd, block_addr, nblocks) {
     assertLegalBdescr(bd);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
@@ -251,7 +261,7 @@ export class BlockAlloc {
       if (nblocks < req_blocks) continue;
 
       const bd = ptr2bdescr(l);
-      this.initBdescr(bd, l, req_blocks);
+      this.initBdescr__(bd, l, req_blocks);
 
       // allow splicing off a smaller block.
       if (req_blocks < nblocks) {
@@ -271,12 +281,11 @@ export class BlockAlloc {
     const req_mblocks = Math.floor(req_blocks / rtsConstants.blocks_per_mblock);
     // We need memory larger than a megablock. Just allocate it.
     if (req_mblocks >= 1) {
-      throw new WebAssembly.RuntimeError("expecting allocation larger than a megablock");
-      const mblock = this.allocMegaBlocks(req_mblocks);
+      const mblock = this.allocMegaBlocks__(req_mblocks);
       const bd = mblock + rtsConstants.offset_first_bdescr;
       assert.equal(ptr2mblock(bd), mblock);
       const block_addr = mblock + rtsConstants.offset_first_block;
-      this.initBdescr(bd, block_addr, req_blocks);
+      this.initBdescr__(bd, block_addr, req_blocks);
       return bd;
     }
 
@@ -292,27 +301,27 @@ export class BlockAlloc {
 
     // we don't have a free block group. Create a new megablock with those
     // many block groups, and return it.
-    const mblock = this.allocMegaBlocks(1);
+    const mblock = this.allocMegaBlocks__(1);
     const bd = mblock + rtsConstants.offset_first_bdescr;
     const block_addr = mblock + rtsConstants.offset_first_block;
     assert.equal(ptr2mblock(bd), mblock);
-    this.initBdescr(bd, block_addr, req_blocks);
+    this.initBdescr__(bd, block_addr, req_blocks);
 
     // if we have some free blocks, add that to the free list.
     if (req_blocks < rtsConstants.blocks_per_mblock) {
       const rest_l = block_addr + rtsConstants.block_size * req_blocks;
-      const rest_r = block_addr + rtsConstants.block_size * rtsConstants.blocks_per_mblock - 1;
-      // this.freeBlockGroup(0, rest_l, rest_r);
+      const rest_r = block_addr + rtsConstants.block_size * rtsConstants.blocks_per_mblock;
+      // this.freeBlockGroup__(0, rest_l, rest_r);
     }
 
-    console.log(`allocBlocks: bd: ${bd} | mblock ${ptr2mblock(bd)} | req_blocks: ${req_blocks} | req_mblocks: ${req_mblocks}`);
+    console.log(`allocBlocks: bd: ${bd} | mblock ${ptr2mblock(bd)} | blockaddr: ${block_addr} | req_blocks: ${req_blocks} | right: ${block_addr + rtsConstants.block_size * req_blocks} | req_mblocks: ${req_mblocks}`);
     return bd;
 
   }
 
   // free a block group from l_end to r
   // invariant: [l_end, r] belong to the same megablock.
-  freeBlockGroup(i, l_end, r) {
+  freeBlockGroup__(i, l_end, r) {
     assert.equal(ptr2mblock(l_end), ptr2mblock(r));
     assert.equal(l_end <= r, true);
 
@@ -339,23 +348,8 @@ export class BlockAlloc {
   }
 
   preserveGroups(bds) {
-    // debug logging
-    let logix = 0;
-    const mv = new MemoryView(0, 10);
-    console.log(logix++, mv.getFreeSlices());
-    mv.reserveSegment(5, 6);
-    console.log(logix++, mv.getFreeSlices());
-    mv.reserveSegment(1, 2);
-    console.log(logix++, mv.getFreeSlices());
-    mv.reserveSegment(9, 11);
-    console.log(logix++, mv.getFreeSlices());
-    mv.reserveSegment(9, 11);
-    console.log(logix++, mv.getFreeSlices());
-    mv.reserveSegment(-1, 3);
-    console.log(logix++, mv.getFreeSlices());
-
-
     bds = Array.from(bds);
+    console.log("bds: ", bds);
 
     var m = new Map();
     for(var i = 0; i < bds.length; ++i) {
@@ -369,10 +363,9 @@ export class BlockAlloc {
       }
     }
 
-    const usedMegaGroups = new Set(m.keys());
-    this.freeMegaGroups = new Set([...this.allocatedMegaGroups]
-      .filter(x => !usedMegaGroups.has(x)));
-    console.log(this.freeMegaGroups);
+    // const usedMegaGroups = new Set(m.keys());
+    // this.freeMegaGroups = new Set([...this.allocatedMegaGroups]
+    //   .filter(x => !usedMegaGroups.has(x)));
 
     let ix = 0;
     let sorted_megablocks = Array.from(m.keys()).sort((m0, m1) => m0 - m1);
@@ -384,8 +377,8 @@ export class BlockAlloc {
       const bds = m.get(mblock);
 
       // create a new view of memory of the full megablock as being free.
-      let mv = new MemoryView(mblock + rtsConstants.offset_first_block + 1, 
-          mblock + rtsConstants.offset_first_block + rtsConstants.block_size * rtsConstants.blocks_per_mblock - 1);
+      let mv = new MemoryView(mblock + rtsConstants.offset_first_block, 
+          mblock + rtsConstants.offset_first_block + rtsConstants.block_size * rtsConstants.blocks_per_mblock);
 
       // reserve every occupied block descriptor in this memory view.
       for(let j = 0; j < bds.length; ++j) {
@@ -394,13 +387,17 @@ export class BlockAlloc {
         const l = Number(this.memory.i64Load(bd + rtsConstants.offset_bdescr_start));
         const nblocks = Number(this.memory.i64Load(bd + rtsConstants.offset_bdescr_blocks));
         const r = l + rtsConstants.block_size * nblocks;
-        mv.reserveSegment(l-1, r+1);
+        mv.reserveSegment(l, r);
       }
 
       const freeSlices = mv.getFreeSlices();
+      console.log("num free slices: ", freeSlices.length);
       for(let j = 0; j < freeSlices.length; ++j) {
         const [l, r] = freeSlices[j];
-        this.freeBlockGroup(j, l, r);
+        console.log(`free slices[${j}]: ${freeSlices[j]}`);
+
+        if (l == r) continue;
+        this.freeBlockGroup__(j, l+1, r - 1);
       }
     } // end megablock loop
   } // end preserveGroups 

@@ -9,20 +9,20 @@ export class HeapAlloc {
     Object.freeze(this);
   }
   init() {
-    this.currentPools[0] = this.blockAlloc.allocBlocks(1);
-    this.currentPools[1] = this.blockAlloc.allocBlocks(1);
+    this.currentPools[0] = this.blockAlloc.allocBlocks(1 * rtsConstants.blocks_per_mblock);
+    this.currentPools[1] = this.blockAlloc.allocBlocks(1 * rtsConstants.blocks_per_mblock);
     this.memory.i16Store(this.currentPools[1] + rtsConstants.offset_bdescr_flags,
                          rtsConstants.BF_PINNED);
   }
   initUnpinned() {
-    this.currentPools[0] = this.blockAlloc.allocBlocks(1);
+    this.currentPools[0] = this.blockAlloc.allocBlocks(1 * rtsConstants.blocks_per_mblock);
   }
   hpAlloc(b) {
     const mblocks = b <= rtsConstants.sizeof_first_mblock
                         ? 1
                         : 1 + Math.ceil((b - rtsConstants.sizeof_first_mblock) /
                                         rtsConstants.mblock_size),
-          bd = this.blockAlloc.allocBlocks(mblocks);
+          bd = this.blockAlloc.allocBlocks(mblocks * rtsConstants.blocks_per_mblock);
     if (mblocks > 1)
       this.memory.i16Store(bd + rtsConstants.offset_bdescr_flags,
                            rtsConstants.BF_PINNED);
