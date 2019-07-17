@@ -108,7 +108,7 @@ export async function newAsteriusInstance(req) {
       stdout: () => __asterius_fs.readSync(1),
       stderr: () => __asterius_fs.readSync(2)
     },
-    setPromise: (vt, p) => __asterius_tso_manager.setPromise(vt, p)
+    setPromise: (i, vt, p) => __asterius_tso_manager.setPromise(i, vt, p)
   };
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),

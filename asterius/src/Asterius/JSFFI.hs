@@ -37,12 +37,8 @@ recoverWasmWrapperValueType vt = case vt of
 
 recoverWasmImportFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
-  | is_unsafe =
-    FunctionType
-      { paramTypes = param_types,
-        returnTypes = ret_types
-        }
-  | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
+  | is_unsafe = FunctionType {paramTypes = param_types, returnTypes = ret_types}
+  | otherwise = FunctionType {paramTypes = I32 : param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
     param_types = map recoverWasmImportValueType ffiParamTypes
@@ -50,12 +46,8 @@ recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
 
 recoverWasmWrapperFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
-  | is_unsafe =
-    FunctionType
-      { paramTypes = param_types,
-        returnTypes = ret_types
-        }
-  | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
+  | is_unsafe = FunctionType {paramTypes = param_types, returnTypes = ret_types}
+  | otherwise = FunctionType {paramTypes = I32 : param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
     param_types = map recoverWasmWrapperValueType ffiParamTypes
@@ -123,7 +115,7 @@ generateFFIImportWrapperFunction k FFIImportDecl {..} = Function
                              }
                        | (i, param_t, wrapper_param_t, import_param_t) <-
                            zip4 [0 ..]
-                             (ffiParamTypes ffiFunctionType)
+                             ffi_param_types
                              (paramTypes wrapper_func_type)
                              (paramTypes import_func_type)
                        ],
@@ -131,6 +123,17 @@ generateFFIImportWrapperFunction k FFIImportDecl {..} = Function
           }
     }
   where
+    is_unsafe = ffiSafety == FFIUnsafe
+    ffi_param_types
+      | is_unsafe = ffiParamTypes ffiFunctionType
+      | otherwise =
+        FFI_VAL
+          { ffiWasmValueType = I32
+          , ffiJSValueType = I32
+          , hsTyCon = ""
+          , signed = False
+          } :
+        ffiParamTypes ffiFunctionType
     import_func_type = recoverWasmImportFunctionType ffiSafety ffiFunctionType
     wrapper_func_type = recoverWasmWrapperFunctionType ffiSafety ffiFunctionType
 
@@ -163,7 +166,7 @@ generateFFIFunctionImports FFIMarshalState {..} =
 generateFFIImportLambda :: FFIImportDecl -> Builder
 generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
   | is_unsafe =
-    lamb
+    lamb 1
       <> ( case ffiResultTypes of
              [FFI_JSVAL] -> "__asterius_jsffi.newJSVal("
              _ -> "("
@@ -171,8 +174,8 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
       <> code
       <> ")"
   | otherwise =
-    lamb
-      <> "__asterius_jsffi.setPromise("
+    lamb 0
+      <> "__asterius_jsffi.setPromise(_0,"
       <> intDec
            ( case ffiResultTypes of
                [r] -> succ $ fromEnum $ recoverWasmWrapperValueType r
@@ -188,11 +191,11 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
       <> ")"
   where
     is_unsafe = ffiSafety == FFIUnsafe
-    lamb =
+    lamb l =
       "("
         <> mconcat
              ( intersperse ","
-                 ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
+                 ["_" <> intDec i | i <- [l .. length ffiParamTypes]]
                )
         <> ")=>"
     code =
