@@ -355,6 +355,7 @@ export class BlockAlloc {
 
     // if we do have a free block, return it.
     if (bd_free) {
+      console.log(`using previously freed block: ${bd_free}`);
       return bd_free;
     }
 
