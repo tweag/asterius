@@ -1,17 +1,40 @@
+function newThunk(f) {
+  let t = () => {
+    const r = f();
+    t = () => r;
+    return r;
+  };
+  return () => t();
+}
+
+function newNode() {
+  let r = undefined,
+    p = new Promise(resolve => (r = resolve));
+  return { promise: p, resolve: r, next: newThunk(newNode) };
+}
+
 export class Channel {
   constructor() {
-    this.init();
+    this.takeNode = newNode();
+    this.putNode = this.takeNode;
     Object.seal(this);
   }
 
-  init() {
-    this.promise = new Promise((resolve, reject) => {
-      this.resolve = resolve;
-      this.reject = reject;
-    }).then(r => (this.init(), r), err => (this.init(), Promise.reject(err)));
+  take() {
+    return this.takeNode.promise.then(
+      r => {
+        this.takeNode = this.takeNode.next();
+        return r;
+      },
+      err => {
+        this.takeNode = this.takeNode.next();
+        return Promise.reject(err);
+      }
+    );
   }
 
-  take() {
-    return this.promise;
+  put(r) {
+    this.putNode.resolve(r);
+    this.putNode = this.putNode.next();
   }
 }

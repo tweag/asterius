@@ -63,19 +63,19 @@ export class Exports {
 
   rts_eval(p) {
     return new Promise((resolve, reject) =>
-      this.context.channel.resolve(["createGenThread", p, resolve, reject])
+      this.context.channel.put(["createGenThread", p, resolve, reject])
     );
   }
 
   rts_evalIO(p) {
     return new Promise((resolve, reject) =>
-      this.context.channel.resolve(["createStrictIOThread", p, resolve, reject])
+      this.context.channel.put(["createStrictIOThread", p, resolve, reject])
     );
   }
 
   rts_evalLazyIO(p) {
     return new Promise((resolve, reject) =>
-      this.context.channel.resolve(["createIOThread", p, resolve, reject])
+      this.context.channel.put(["createIOThread", p, resolve, reject])
     );
   }
 
