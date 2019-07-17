@@ -73,12 +73,15 @@ class MemoryView {
         return i;
       }
     }
+    return undefined;
   }
 
   // reserve a section [l, r] in memory. 
   // invariants:
   // [l, r] should be within bounds of the total memory space
   reserveSegment(l, r) {
+    if (this.freeSlices.length == 0) return;
+
     assert.equal(l <= r, true);
     // check that the segment is strictly within [min, max]
     // assert.equal(this.ixmin <= l, true);
@@ -86,18 +89,6 @@ class MemoryView {
 
     console.log("reserveSegment: freeSlices before breaing at" +  [l, r] + " " +
       this.freeSlices);
-
-    let startix = -1;
-    let endix = -1;
-    for(var i = 0; i < this.freeSlices.length; ++i) {
-      const [lcur, rcur] = this.freeSlices[i];
-      if (lcur >= l) {
-        startix = i;
-        break;
-      }
-    }
-
-
     // Case 1: l, r fully contained
     // ---(    |     |  ) 
     // ---(    l     r  )   
