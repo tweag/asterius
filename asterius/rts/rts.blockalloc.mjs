@@ -286,9 +286,9 @@ export class BlockAlloc {
     const bd_free = this.lookupFreeBlockGroupBdescr(req_blocks);
 
     // if we do have a free block, return it.
-    // if (bd_free) {
-    //   return bd_free;
-    // }
+    if (bd_free) {
+      return bd_free;
+    }
 
     // we don't have a free block group. Create a new megablock with those
     // many block groups, and return it.
@@ -302,7 +302,7 @@ export class BlockAlloc {
     if (req_blocks < rtsConstants.blocks_per_mblock) {
       const rest_l = block_addr + rtsConstants.block_size * req_blocks;
       const rest_r = block_addr + rtsConstants.block_size * rtsConstants.blocks_per_mblock;
-      // this.freeBlockGroup__(0, rest_l, rest_r);
+      this.freeBlockGroup__(0, rest_l, rest_r);
     }
 
     console.log(`allocBlocks: bd: ${bd} | mblock ${ptr2mblock(bd)} | blockaddr: ${block_addr} | req_blocks: ${req_blocks} | right: ${block_addr + rtsConstants.block_size * req_blocks} | req_mblocks: ${req_mblocks}`);
@@ -335,7 +335,7 @@ export class BlockAlloc {
     }
     */
 
-    // this.freeBlockGroups.push([l_end, r]);
+    this.freeBlockGroups.push([l_end, r]);
   }
 
   preserveGroups(bds) {
