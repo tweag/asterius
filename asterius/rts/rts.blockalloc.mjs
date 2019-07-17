@@ -245,7 +245,7 @@ export class BlockAlloc {
     assert.equal(req_blocks < rtsConstants.blocks_per_mblock, 1);
     for(let i = 0; i < this.freeBlockGroups.length; ++i) {
       const [l, r] = this.freeBlockGroups[i];
-      assert.equal((r - l) % rtsConstants.block_size, 0);
+      // assert.equal((r - l) % rtsConstants.block_size, 0);
       const nblocks = Math.floor((r - l) / this.block_size);
 
       // we don't have enough blocks, continue
@@ -301,7 +301,7 @@ export class BlockAlloc {
     // if we have some free blocks, add that to the free list.
     if (req_blocks < rtsConstants.blocks_per_mblock) {
       const rest_l = block_addr + rtsConstants.block_size * req_blocks;
-      const rest_r = block_addr + rtsConstants.block_size * rtsConstants.blocks_per_mblock;
+      const rest_r = block_addr + rtsConstants.block_size * rtsConstants.blocks_per_mblock - 1;
       this.freeBlockGroup__(0, rest_l, rest_r);
     }
 
@@ -317,24 +317,6 @@ export class BlockAlloc {
     assert.equal(l_end <= r, true);
 
     this.memory.memset(l_end, 0x42 + i, r - l_end);
-
-    /*
-    for(var i = 0; i < this.freeBlockGroups.length; ++i) {
-      const [lcur, rcur] = this.freeBlockGroups[i];
-      // the right of the block is to our left
-      // |lcur rcur|l_end r|
-      if (rcur == l_end) {
-        this.freeBlockGroups.splice(i, [lcur, r]);
-        return;
-      }
-      // |l_end r| |lcur rcur|
-      else if (r == lcur) {
-        this.freeBlockGroups.splice(i, [r, lcur]);
-        return;
-      }
-    }
-    */
-
     this.freeBlockGroups.push([l_end, r]);
   }
 
