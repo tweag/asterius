@@ -54,7 +54,7 @@ export class TSOManager {
     return this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
   }
 
-  setPromise(vt, p) {
+  setPromise(i, vt, p) {
     this.promise = p.then(
       r => {
         switch (vt) {
@@ -103,7 +103,7 @@ export class TSOManager {
     );
   }
 
-  resetPromise() {
+  resetPromise(i) {
     this.promise = undefined;
     this.memory.memset(this.symbolTable.__asterius_func, 0, 8);
     this.memory.memset(this.symbolTable.__asterius_regs, 0, 1024);

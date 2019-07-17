@@ -170,14 +170,19 @@ splitSingleBlock ffi_state save_instrs base_k base_block@RelooperBlock {..} =
             reset_instr =
               CallImport
                 { target' = "__asterius_resetPromise"
-                , operands = []
+                , operands = [tid]
                 , callImportReturnTypes = []
                 }
             (ccall_instr, next_preblock_instrs) =
               case orig_instr of
-                Call {} -> (orig_instr {callReturnTypes = []}, [reset_instr])
+                Call {} ->
+                  ( orig_instr
+                      { operands = tid : operands orig_instr
+                      , callReturnTypes = []
+                      }
+                  , [reset_instr])
                 SetLocal {value = c@Call {}} ->
-                  ( c {callReturnTypes = []}
+                  ( c {operands = tid : operands c, callReturnTypes = []}
                   , [ orig_instr
                         { value =
                             Load
@@ -345,6 +350,9 @@ genSaveLoad sym vts
         }
       | (i, vt) <- p_ctx_regs
       ]
+
+tid :: Expression
+tid = ConstI32 0
 
 concatExpressions :: [Expression] -> Expression
 concatExpressions es =
