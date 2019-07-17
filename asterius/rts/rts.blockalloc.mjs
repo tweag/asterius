@@ -55,6 +55,7 @@ class MemoryView {
     assert.equal(l <= r, true);
     this.freeSlices = [[l, r]];
     Object.seal(this);
+
   }
 
   // break a pre-existing free slice (if it exists) into two and return the
@@ -76,40 +77,53 @@ class MemoryView {
   // [l, r] should be within bounds of the total memory space
   reserveSegment(l, r) {
 
+    let startix = -1;
+    let endix = -1;
+    for(var i = 0; i < this.freeSlices.length; ++i) {
+      const [lcur, rcur] = this.freeSlices[i];
+      if (lcur >= l) {
+        startix = i;
+        break;
+      }
+    }
+
+
     // Case 1: l, r fully contained
-    // ---(   |     |  ) 
-    // ---(   l     r  )   
-    // ---(  )|(ixl |  ) 
-    // ---(  )|(ixr)|( )
+    // ---(    |     |  ) 
+    // ---(    l     r  )   
+    // ---(ixl)|(    |  ) 
+    // ---(   )|(ixr)|( ) [ixl+1...ixr] to be removed
     //
     // Case 2: l contained, r is not
-    // ---(  |       ) r
-    // ---(  l       ) r
-    // ---( )|(ixl   ) r
-    // ---( )|(ixl   ) r
+    // ---(   |       ) r
+    // ---(   l       ) r
+    // ---(ixl)|(      ) r
+    // ---(ixl)|(      ) r   [ixl...end] to be removed
     //
     // Case 3:  l is not contained, r is 
     // -l--(      |      )
     // -l--(      r      ) 
-    // -l--( ixr )|(     ) 
+    // -l--( ixr )|(     )  [0..ixr] to be removed
     // -l--( ixr )|(     )
     //
     assert.equal(l <= r, true);
     let ixl = this.breakAtIndex(l);
+    if (ixl == undefined) {
+      ixl = -1;
+    }
+
+    ixl += 1;
+
     let ixr = this.breakAtIndex(r);
+    if (ixr == undefined) {
+      ixr = this.freeSlices.length - 1;
+    }
+    console.log(`ixl, ixr: ${ixl}, ${ixr}`);
+    assert.equal(ixr >= ixl, true);
 
-    if (ixl && ixr) {
-      assert.equal(ixl, ixr);
-    }
+    const len = ixr - ixl + 1;
+    this.freeSlices.splice(ixl, len);
 
-    if (ixl && ixr) {
-      this.freeSlices.splice(ixl, 1, l, r);
-    }
-    else if (ixr) {
-      this.freeSlices.splice(ixr, r);
-    } else if (ixl) {
-      this.freeSlices.splice(ixl, l);
-    }
 
     console.log(`freeSlices after breaing at: ${[l, r]}: ${this.freeSlices}`);
   }
@@ -229,8 +243,8 @@ export class BlockAlloc {
     assert.equal(req_blocks < rtsConstants.blocks_per_mblock, 1);
     for(let i = 0; i < this.freeBlockGroups.length; ++i) {
       const [l, r] = this.freeBlockGroups[i];
-      const nblocks = Math.ceil((r - l) / this.block_size);
-      assert.equal((r - l) % this.block_size, 0);
+      assert.equal((r - l) % rtsConstants.block_size, 0);
+      const nblocks = Math.floor((r - l) / this.block_size);
 
       // we don't have enough blocks, continue
       if (nblocks < req_blocks) continue;
@@ -241,7 +255,8 @@ export class BlockAlloc {
       // allow splicing off a smaller block.
       if (req_blocks < nblocks) {
         const rest_l = l + rtsConstants.block_size * req_blocks;
-        this.freeBlockGroups.splice(i, [rest_l, r]);
+        // this.freeBlockGroups.splice(i, [rest_l, r]);
+        this.freeBlockGroups.splice(i);
       }
       else {
         this.freeBlockGroups.splice(i);
@@ -270,9 +285,9 @@ export class BlockAlloc {
     const bd_free = this.lookupFreeBlockGroupBdescr(req_blocks);
 
     // if we do have a free block, return it.
-    if (bd_free) {
-    // return bd_free;
-    }
+    // if (bd_free) {
+    //   return bd_free;
+    // }
 
     // we don't have a free block group. Create a new megablock with those
     // many block groups, and return it.
@@ -319,10 +334,26 @@ export class BlockAlloc {
     }
     */
 
-    // this.freeBlockGroups.push([l_end, r]);
+    this.freeBlockGroups.push([l_end, r]);
   }
 
   preserveGroups(bds) {
+    // debug logging
+    let logix = 0;
+    const mv = new MemoryView(0, 10);
+    console.log(logix++, mv.getFreeSlices());
+    mv.reserveSegment(5, 6);
+    console.log(logix++, mv.getFreeSlices());
+    mv.reserveSegment(1, 2);
+    console.log(logix++, mv.getFreeSlices());
+    mv.reserveSegment(9, 11);
+    console.log(logix++, mv.getFreeSlices());
+    mv.reserveSegment(9, 11);
+    console.log(logix++, mv.getFreeSlices());
+    mv.reserveSegment(-1, 3);
+    console.log(logix++, mv.getFreeSlices());
+
+
     bds = Array.from(bds);
 
     var m = new Map();
