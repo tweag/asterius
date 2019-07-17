@@ -76,6 +76,7 @@ class MemoryView {
   // invariants:
   // [l, r] should be within bounds of the total memory space
   reserveSegment(l, r) {
+    assert.equal(l <= r, true);
 
     let startix = -1;
     let endix = -1;
@@ -334,7 +335,7 @@ export class BlockAlloc {
     }
     */
 
-    this.freeBlockGroups.push([l_end, r]);
+    // this.freeBlockGroups.push([l_end, r]);
   }
 
   preserveGroups(bds) {
@@ -379,18 +380,21 @@ export class BlockAlloc {
 
     for(var i = 0; i < sorted_megablocks.length; ++i) {
       const mblock = sorted_megablocks[i];
+      assertMblockAligned(mblock);
       const bds = m.get(mblock);
+
       // create a new view of memory of the full megablock as being free.
-      let mv = new MemoryView(mblock + rtsConstants.offset_first_block, 
+      let mv = new MemoryView(mblock + rtsConstants.offset_first_block + 1, 
           mblock + rtsConstants.offset_first_block + rtsConstants.block_size * rtsConstants.blocks_per_mblock - 1);
 
       // reserve every occupied block descriptor in this memory view.
       for(let j = 0; j < bds.length; ++j) {
         const bd = bds[j];
+        assertLegalBdescr(bd);
         const l = Number(this.memory.i64Load(bd + rtsConstants.offset_bdescr_start));
         const nblocks = Number(this.memory.i64Load(bd + rtsConstants.offset_bdescr_blocks));
         const r = l + rtsConstants.block_size * nblocks;
-        mv.reserveSegment(l, r);
+        mv.reserveSegment(l-1, r+1);
       }
 
       const freeSlices = mv.getFreeSlices();
