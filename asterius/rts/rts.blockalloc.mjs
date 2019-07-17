@@ -56,14 +56,17 @@ class MemoryView {
     this.ixmin = l;
     this.ixmax = r;
 
+    // contains slices [l, r] of free memory.
+    // INVARIANT 1: slices are arranged in ascending order
+    // INVARIANT 2: slices are disjoint. In that, we can have
+    // slices [x, y][y, z], but NOT [x, y+1] [y-1, z]
     this.freeSlices = [[l, r]];
+
     Object.seal(this);
 
   }
 
-  // break a pre-existing free slice (if it exists) into two and return the
-  // index of the break.
-  breakAtIndex(ix) {
+  breakAtIndex_(ix) {
     for(let i = 0; i < this.freeSlices.length; ++i) {
       const [l, r] = this.freeSlices[i];
       if (l <= ix && ix <= r) {
@@ -75,10 +78,52 @@ class MemoryView {
     }
     return undefined;
   }
+  
+  // fuse contiguous segments together
+  fuseContiguous_() {
+    for(let i = 0; i< this.freeSlices.length - 1; ++i) {
+      let [lcur, rcur] = this.freeSlices[i];
+      let [lnext, rnext] = this.freeSlices[i];
 
-  // reserve a section [l, r] in memory. 
+      if (rcur == lnext)  {
+        this.freeSlices.splice(i, 1, [lcur, rnext]);
+      }
+    }
+  }
+
+  // Check if a segment [l, r] is free.
+  isSegmentFree(l, r) {
+    if (l < this.ixmin) return false;
+    if (r > this.ixmax) return false;
+
+
+    // this is a slightly slower way of performing the computation. First
+    // fuse contiguous segments together.
+    this.fuseContiguous_();
+
+    for(let i = 0; i < this.freeSlices.length; ++i) {
+      let [lcur, rcur] = this.freeSlices[i];
+      // we found a segment [lcur, rcur] that fully contains [l, r].
+      // Note that we only need to look for a single segment, since we are
+      // guaranteed that adjacent segments will have gaps between them.
+      if (lcur <= l && r <= rcur) {
+        return true;
+      }
+
+      // if the segment under consideration has already moved past
+      // the beginning of [l, r], then [l, r] cannot be free.
+      // l-------r
+      //    |
+      //    lcur----rcur
+      if (lcur > l) { return false; }
+    }
+
+    return false;
+  }
+
+  // reserve a section (l, r) in memory. 
   // invariants:
-  // [l, r] should be within bounds of the total memory space
+  // (l, r) should be within bounds of the total memory space
   reserveSegment(l, r) {
     if (this.freeSlices.length == 0) return;
 
@@ -108,14 +153,14 @@ class MemoryView {
     // -l--( ixr )|(     )
     //
     assert.equal(l <= r, true);
-    let ixl = this.breakAtIndex(l);
+    let ixl = this.breakAtIndex_(l);
     if (ixl == undefined) {
       ixl = -1;
     }
 
     ixl += 1;
 
-    let ixr = this.breakAtIndex(r);
+    let ixr = this.breakAtIndex_(r);
     if (ixr == undefined) {
       ixr = this.freeSlices.length - 1;
     }
@@ -133,6 +178,29 @@ class MemoryView {
   // how do I safely return an immutable reference?
   getFreeSlices() {
     return this.freeSlices;
+  }
+
+  // Get free slices that are chunked at boundaries of chunk_size. That is,
+  // if we have memory that looks like:
+  // | 1 |***| 2 || 3 |***| 4 ||  4    ||
+  //      x      ||    y      ||  z    ||
+  // Note that 2 and 3 are separate allocations, since the chunk in which 3
+  // lives (chunk y) has an allocation |***|. Wherease in the case of `4`, 
+  // the chunk `z` does not have any allocation, so `4` can extend and take
+  // up all of that chunk.
+  breakFreeSlicesAtChunkBoundary(chunk_size) {
+    // make queries at every `chunk_size` to see if the chunk is free. If
+    // it is, then don't split it. If it is not, then do split at the
+    // boundary.
+    for(let i = 0; i < Math.floor((this.ixmax - this.ixmin) / chunk_size); ++i) {
+      // if the nth chunk is _fully free_, then don't break it at the chunk boundary
+      // otherwise, break it at the chunk boundary
+      if (!this.isSegmentFree(this.ixmin + i * chunk_size, this.ixmin + (i + 1) * chunk_size)) {
+        // full segment is not free, so break at chunk boundary.
+        this.breakAtIndex_(this.ixmin + i * chunk_size);
+      }
+
+    }
   }
 }
 
