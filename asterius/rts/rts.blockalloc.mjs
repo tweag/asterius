@@ -81,12 +81,14 @@ class MemoryView {
   
   // fuse contiguous segments together
   fuseContiguous_() {
-    for(let i = 0; i< this.freeSlices.length - 1; ++i) {
+    for(let i = 0; i< this.freeSlices.length - 1;) {
       let [lcur, rcur] = this.freeSlices[i];
-      let [lnext, rnext] = this.freeSlices[i];
+      let [lnext, rnext] = this.freeSlices[i+1];
 
       if (rcur == lnext)  {
         this.freeSlices.splice(i, 1, [lcur, rnext]);
+      } else {
+        ++i;
       }
     }
   }
@@ -97,9 +99,6 @@ class MemoryView {
     if (r > this.ixmax) return false;
 
 
-    // this is a slightly slower way of performing the computation. First
-    // fuse contiguous segments together.
-    this.fuseContiguous_();
 
     for(let i = 0; i < this.freeSlices.length; ++i) {
       let [lcur, rcur] = this.freeSlices[i];
@@ -127,13 +126,15 @@ class MemoryView {
   reserveSegment(l, r) {
     if (this.freeSlices.length == 0) return;
 
-    assert.equal(l <= r, true);
+    if (l == r) {
+      return;
+    }
+
+    assert.equal(l < r, true);
     // check that the segment is strictly within [min, max]
     // assert.equal(this.ixmin <= l, true);
     // assert.equal(r <= this.ixmax, true);
 
-    console.log("reserveSegment: freeSlices before breaing at" +  [l, r] + " " +
-      this.freeSlices);
     // Case 1: l, r fully contained
     // ---(    |     |  ) 
     // ---(    l     r  )   
@@ -153,26 +154,21 @@ class MemoryView {
     // -l--( ixr )|(     )
     //
     assert.equal(l <= r, true);
-    let ixl = this.breakAtIndex_(l);
+    let ixl = this.breakAtIndex_(l) + 1;
     if (ixl == undefined) {
-      ixl = -1;
+      ixl = 0;
     }
-
-    ixl += 1;
 
     let ixr = this.breakAtIndex_(r);
     if (ixr == undefined) {
       ixr = this.freeSlices.length - 1;
     }
-    console.log(`ixl, ixr: ${ixl}, ${ixr}`);
+
     assert.equal(ixr >= ixl, true);
 
     const len = ixr - ixl + 1;
     this.freeSlices.splice(ixl, len);
 
-
-    console.log("reserveSegment: freeSlices AFTER breaing at" +  [l, r] + " " +
-      this.freeSlices);
   }
 
   // how do I safely return an immutable reference?
@@ -189,10 +185,47 @@ class MemoryView {
   // the chunk `z` does not have any allocation, so `4` can extend and take
   // up all of that chunk.
   breakFreeSlicesAtChunkBoundary(chunk_size) {
+    // this is a slightly slower way of performing the computation. First
+    // fuse contiguous segments together.
+    this.fuseContiguous_();
+
+    let newFreeSlices = [];
+
+    // we are guaranteed that any other chunk cannot be split.
+    for(let i = 0; i < this.freeSlices.length; ++i) {
+      let [l, r] = this.freeSlices[i];
+      // chunk right before r
+      let r_chunk = r - (r % chunk_size);
+      // next chunk from l that is aligned at chunk boundary
+      let l_chunk = l % chunk_size == 0 ? l : l + chunk_size - (l % chunk_size);
+
+      if (l_chunk > r_chunk) {
+        l_chunk = r_chunk;
+      }
+
+      if (l < l_chunk) {
+        newFreeSlices.concat([l, l_chunk]);
+      }
+
+      if (l_chunk < r) {
+      newFreeSlices.concat([l_chunk, r_chunk]);
+      }
+
+      if (r_chunk < r) {
+        newFreeSlices.concat([r_chunk, r]);
+      }
+    }
+
+    this.freeSlices = newFreeSlices;
+    /*
+
     // make queries at every `chunk_size` to see if the chunk is free. If
     // it is, then don't split it. If it is not, then do split at the
     // boundary.
-    for(let i = 0; i < Math.floor((this.ixmax - this.ixmin) / chunk_size); ++i) {
+    const nchunks = Math.floor((this.ixmax - this.ixmin) / chunk_size)
+    /
+    console.log(`iterating on megablocks, nchunks: ${nchunks}`);
+    for(let i = 0; i < nchunks; ++i) {
       // if the nth chunk is _fully free_, then don't break it at the chunk boundary
       // otherwise, break it at the chunk boundary
       if (!this.isSegmentFree(this.ixmin + i * chunk_size, this.ixmin + (i + 1) * chunk_size)) {
@@ -201,6 +234,7 @@ class MemoryView {
       }
 
     }
+    */
   }
 }
 
@@ -355,7 +389,6 @@ export class BlockAlloc {
 
     // if we do have a free block, return it.
     if (bd_free) {
-      console.log(`using previously freed block: ${bd_free}`);
       return bd_free;
     }
 
@@ -374,9 +407,7 @@ export class BlockAlloc {
       this.freeBlockGroup__(0, rest_l, rest_r);
     }
 
-    console.log(`allocBlocks: bd: ${bd} | mblock ${ptr2mblock(bd)} | blockaddr: ${block_addr} | req_blocks: ${req_blocks} | right: ${block_addr + rtsConstants.block_size * req_blocks} | req_mblocks: ${req_mblocks}`);
     return bd;
-
   }
 
   // free a block group from l_end to r
@@ -391,7 +422,6 @@ export class BlockAlloc {
 
   preserveGroups(bds) {
     bds = Array.from(bds);
-    console.log("bds: ", bds);
 
     var m = new Map();
     for(var i = 0; i < bds.length; ++i) {
@@ -432,22 +462,35 @@ export class BlockAlloc {
       }
     } // end megablock loop
 
-
     mv.breakFreeSlicesAtChunkBoundary(rtsConstants.mblock_size);
+
+
     const freeSlices = mv.getFreeSlices();
-    console.log("num free slices: ", freeSlices.length);
     for(let j = 0; j < freeSlices.length; ++j) {
       const [l, r] = freeSlices[j];
-      console.log(`free slices[${j}]: ${freeSlices[j]}`);
 
       if (l == r) continue;
-
       // the free segment is actually a free megablock segment.
       if (ptr2mblock(l) != ptr2mblock(r)) {
-        this.freeMegaGroups.push(ptr2mblock);
-      }
 
+        // assert that if we have a free segment that spans megablocks,
+        // we end at a megablock boundary.
+        assertMblockAligned(r);
+
+        // break from `l` to end of `l`'s block
+        // then keep l+1...r
+        const l_next_mblock = ptr2mblock(l) + rtsConstants.mblock_size;
+        assertMblockAligned(l_next_mblock);
+        this.freeBlockGroup__(j, l+1, l_next_mblock - 1);
+
+        if (l_next_mblock != r) {
+          throw new WebAssembly.RuntimeError(`adding mblock: ${[l_next_mblock, r]}`);
+          this.freeMegaGroups.add([l_next_mblock, r]);
+        }
+      } 
+      else {
       this.freeBlockGroup__(j, l+1, r - 1);
+      }
     } // end free slices loop
 
   } // end preserveGroups 
