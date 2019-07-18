@@ -411,16 +411,15 @@ export class BlockAlloc {
 
     let ix = 0;
     let sorted_megablocks = Array.from(m.keys()).sort((m0, m1) => m0 - m1);
-
+    // HACK: start with (0), and don't use the first free segment. This is
+    // clearly a hack. Ideally, we should know from where we can start
+    // freeing.
+    let mv = new MemoryView(0,  sorted_megablocks[sorted_megablocks.length - 1] + rtsConstants.block_size * rtsConstants.blocks_per_mblock - 1);
 
     for(var i = 0; i < sorted_megablocks.length; ++i) {
       const mblock = sorted_megablocks[i];
       assertMblockAligned(mblock);
       const bds = m.get(mblock);
-
-      // create a new view of memory of the full megablock as being free.
-      let mv = new MemoryView(mblock + rtsConstants.offset_first_block, 
-          mblock + rtsConstants.offset_first_block + rtsConstants.block_size * rtsConstants.blocks_per_mblock);
 
       // reserve every occupied block descriptor in this memory view.
       for(let j = 0; j < bds.length; ++j) {
@@ -431,16 +430,25 @@ export class BlockAlloc {
         const r = l + rtsConstants.block_size * nblocks;
         mv.reserveSegment(l, r);
       }
-
-      const freeSlices = mv.getFreeSlices();
-      console.log("num free slices: ", freeSlices.length);
-      for(let j = 0; j < freeSlices.length; ++j) {
-        const [l, r] = freeSlices[j];
-        console.log(`free slices[${j}]: ${freeSlices[j]}`);
-
-        if (l == r) continue;
-        this.freeBlockGroup__(j, l+1, r - 1);
-      }
     } // end megablock loop
+
+
+    mv.breakFreeSlicesAtChunkBoundary(rtsConstants.mblock_size);
+    const freeSlices = mv.getFreeSlices();
+    console.log("num free slices: ", freeSlices.length);
+    for(let j = 0; j < freeSlices.length; ++j) {
+      const [l, r] = freeSlices[j];
+      console.log(`free slices[${j}]: ${freeSlices[j]}`);
+
+      if (l == r) continue;
+
+      // the free segment is actually a free megablock segment.
+      if (ptr2mblock(l) != ptr2mblock(r)) {
+        this.freeMegaGroups.push(ptr2mblock);
+      }
+
+      this.freeBlockGroup__(j, l+1, r - 1);
+    } // end free slices loop
+
   } // end preserveGroups 
 }
