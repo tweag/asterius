@@ -9,11 +9,6 @@ function assertMblockAligned(mb) {
     };
 }
 
-// check that a block descriptor is correctly aligned
-function assertBdescrAligned(bd) {
-    assertMblockAligned(bd - rtsConstants.offset_first_bdescr);
-}
-
 export class MBlockAlloc {
   constructor() {
     this.memory = undefined;
@@ -21,8 +16,6 @@ export class MBlockAlloc {
     this.capacity = undefined;
     this.size = undefined;
     // Contains segments of the form [(l, r)] of free memory.
-    // invariant: l is a legal block descriptor, and therefore
-    // satisfies assertBdescrAligned
     this.freeSegments = [];
     Object.seal(this);
   }
@@ -53,13 +46,14 @@ export class MBlockAlloc {
   }
 
   allocMegaGroup(n) {
-    const req_blocks = 
-          Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / 
+    const req_blocks =
+          Math.ceil(((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) /
           rtsConstants.block_size);
 
     for (let i = 0; i < this.freeSegments.length; ++i) {
       const [mblock, r] = this.freeSegments[i];
       assertMblockAligned(mblock);
+      assertMblockAligned(r);
       const bd = mblock + rtsConstants.offset_first_bdescr;
       const start = mblock + rtsConstants.offset_first_block;
       const blocks = Math.floor((r - start) / rtsConstants.block_size);
@@ -71,10 +65,9 @@ export class MBlockAlloc {
       else {
         continue;
       }
-    
+
       // we have extra mblocks, so we should create a new bd.
       if (req_blocks < blocks) {
-        this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
         const rest_mblock = mblock + (rtsConstants.mblock_size * n);
         assertMblockAligned(rest_mblock);
         this.freeSegments.splice(i, 1, [rest_mblock, r]);
@@ -96,10 +89,11 @@ export class MBlockAlloc {
   }
 
   freeSegment(i, l_end, r) {
+    assertMblockAligned(l_end);
+    assertMblockAligned(r);
     if (l_end < r) {
         // memset a custom number purely for debugging help.
         this.memory.memset(l_end, 0x42 + i, r - l_end);
-        assertMblockAligned(l_end);
         this.freeSegments.push([l_end, r])
     }
   }
@@ -107,7 +101,8 @@ export class MBlockAlloc {
   preserveMegaGroups(bds) {
     this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
-    this.freeSegment(0, 
+    sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
+    this.freeSegment(0,
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
@@ -119,5 +114,6 @@ export class MBlockAlloc {
       r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
       this.freeSegment(i+1, l_end, r);
     }
+    this.size = this.capacity;
   }
 }
