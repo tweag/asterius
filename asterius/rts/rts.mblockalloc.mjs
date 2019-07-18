@@ -68,7 +68,11 @@ export class MBlockAlloc {
       if (req_blocks <= blocks) {
         this.setupBdescr(bd, start, req_blocks);
       }
+      else {
+        continue;
+      }
     
+      // we have extra mblocks, so we should create a new bd.
       if (req_blocks < blocks) {
         this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
         const rest_mblock = mblock + (rtsConstants.mblock_size * n);
@@ -76,11 +80,12 @@ export class MBlockAlloc {
         this.freeSegments.splice(i, 1, [rest_mblock, r]);
       }
 
-
+      // we don't have extra.
       if (req_blocks == blocks) {
         this.freeSegments.splice(i, 1);
-        return bd;
       }
+
+      return bd;
     }
 
     const mblock = this.getMBlocks(n),
