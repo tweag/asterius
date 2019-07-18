@@ -101,6 +101,7 @@ export class MBlockAlloc {
   preserveMegaGroups(bds) {
     this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
+    sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
     this.freeSegment(0,
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
@@ -113,5 +114,6 @@ export class MBlockAlloc {
       r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
       this.freeSegment(i+1, l_end, r);
     }
+    this.size = this.capacity;
   }
 }
