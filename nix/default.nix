@@ -102,12 +102,85 @@ let
       # list the packages that require template haskell
       # explicity here.
       iohk-module
+      { reinstallableLibGhc = true; }
       ({ config, ...}: {
         packages = {
           # packages.hsc2hs.components.exes.hsc2hs.doExactConfig = true;
           ghc.patches = [ ./patches/ghc.patch ./patches/ghc/MR948--32bit-cross-th.patch ];
           Cabal.patches = [ cabalPatch ];
-        } // {
+          ghc-toolkit.components.library.extraSrcFiles = [
+            "genapply/**/**"
+            "boot-libs/**/**"
+            "ghc-libdir/**/**"
+            ];
+          wabt.components.library.extraSrcFiles = [
+            "wabt/**/**"
+            ];
+          binaryen.components.library.extraSrcFiles = [
+            "binaryen/**/**"
+            ];
+          asterius.package.dataFiles = [
+            "rts/*.mjs"
+            "boot-init.sh"
+            "boot.sh"
+            ];
+          asterius.components.tests.array.extraSrcFiles = [
+            "test/array/**/*.hs"
+            ];
+          asterius.components.tests.fib.extraSrcFiles = [
+            "test/fib/**/*.hs"
+            ];
+          asterius.components.tests.jsffi.extraSrcFiles = [
+            "test/jsffi/**/*.hs"
+            ];
+          asterius.components.tests.rtsapi.extraSrcFiles = [
+            "test/rtsapi/**/*.hs"
+            ];
+          asterius.components.tests.stableptr.extraSrcFiles = [
+            "test/stableptr/**/*.hs"
+            ];
+          asterius.components.tests.todomvc.extraSrcFiles = [
+            "test/todomvc/**/*.hs"
+            "test/todomvc/**/*.html"
+            ];
+          asterius.components.tests.teletype.extraSrcFiles = [
+            "test/teletype/**/*.hs"
+            ];
+          asterius.components.tests.bytearray.extraSrcFiles = [
+            "test/bytearray/**/*.hs"
+            ];
+          asterius.components.tests.bytearraymini.extraSrcFiles = [
+            "test/bytearraymini/**/*.hs"
+            ];
+          asterius.components.tests.bigint.extraSrcFiles = [
+            "test/bigint/**/*.hs"
+            ];
+          asterius.components.tests.cloudflare.extraSrcFiles = [
+            "test/cloudflare/**/*.hs"
+            ];
+          asterius.components.tests.nomain.extraSrcFiles = [
+            "test/nomain/**/*.hs"
+            ];
+          asterius.components.tests.ghc-testsuite.extraSrcFiles = [
+            "test/ghc-testsuite/**/*.hs"
+            "test/ghc-testsuite/**/*.stdout"
+            ];
+          asterius.components.tests.exception.extraSrcFiles = [
+            "test/exception/**/*.hs"
+            ];
+          asterius.components.tests.regression60.extraSrcFiles = [
+            "test/regression60/**/*.hs"
+            ];
+          asterius.components.tests.sizeof_md5context.extraSrcFiles = [
+            "test/sizeof_md5context/**/*.hs"
+            ];
+          asterius.components.tests.largenum.extraSrcFiles = [
+            "test/largenum/**/*.hs"
+            ];
+        };
+      })
+      ({ config, ...}: {
+        packages = {
           asterius.components.tests =
             pkgs.lib.mapAttrs (n: v: {
                build-tools =
