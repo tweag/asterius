@@ -67,7 +67,7 @@ export class MBlockAlloc {
 
   freeSegment(l_end, r) {
     if (l_end < r) {
-      this.memory.memset(l_end, 0, r - l_end);
+      this.memory.memset(l_end, 0x42, r - l_end);
       const bd = l_end + rtsConstants.offset_first_bdescr,
             start = l_end + rtsConstants.offset_first_block,
             blocks = (r - start) / rtsConstants.block_size;
