@@ -22,6 +22,7 @@ export class GC {
     this.liveMBlocks = new Set();
     this.workList = [];
     this.liveJSVals = new Set();
+    this.tags = new Set();
     Object.freeze(this);
   }
 
@@ -57,6 +58,7 @@ export class GC {
           if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
           const type =
               this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+          this.tags.add(type);
           switch (type) {
             case ClosureTypes.CONSTR_0_1:
             case ClosureTypes.FUN_0_1:
@@ -274,6 +276,7 @@ export class GC {
       if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
         this.evacuateClosure(
             this.memory.i64Load(info + rtsConstants.offset_StgRetInfoTable_srt));
+      this.tags.add(type);
       switch (type) {
         case ClosureTypes.RET_SMALL:
         case ClosureTypes.UPDATE_FRAME:
@@ -383,6 +386,7 @@ export class GC {
         break;
       }
     }
+    this.tags.add(type);
     switch (type) {
       case ClosureTypes.CONSTR:
       case ClosureTypes.CONSTR_1_0:
@@ -529,6 +533,7 @@ export class GC {
 
   gcRootTSO(tso) {
     if(this.yolo) return;
+    this.tags.clear();
     this.reentrancyGuard.enter(1);
     const tid = this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
     this.heapAlloc.initUnpinned();
@@ -554,6 +559,7 @@ export class GC {
 
     this.evacuateClosure(tso);
     this.scavengeWorkList();
+    console.log(`* gcRootTSO tags: [${[...this.tags]}]`);
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
