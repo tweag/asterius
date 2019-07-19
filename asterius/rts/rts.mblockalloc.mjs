@@ -108,17 +108,6 @@ export class MBlockAlloc {
     console.log(`bds = [${[...bds]}] # preserveMegaGroups(${this.ncalls}) `);
     this.freeSegments = [];
 
-    // add all pinned segments
-    for(let i = 0; i < this.all_bds.length; ++i) {
-      const bd = this.all_bds[i];
-      const flag = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags)
-      if (flag == rtsConstants.BF_PINNED) {
-        bds.add(bd);
-      }
-    }
-
-    console.log(`bds_with_pinned = [${[...bds]}] # preserveMegaGroups(${this.ncalls}) `);
-
 
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
     sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
