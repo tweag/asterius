@@ -27,6 +27,7 @@ jobs:
               g++ \
               git \
               gnupg \
+              libdw-dev \
               libffi-dev \
               libgmp-dev \
               libncurses-dev \
@@ -122,6 +123,7 @@ jobs:
               g++ \
               git \
               gnupg \
+              libdw-dev \
               libffi-dev \
               libgmp-dev \
               libncurses-dev \
@@ -201,6 +203,7 @@ jobs:
               g++ \
               git \
               gnupg \
+              libdw-dev \
               libffi-dev \
               libgmp-dev \
               libncurses-dev \

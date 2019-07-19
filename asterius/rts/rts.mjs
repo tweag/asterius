@@ -119,9 +119,6 @@ export function newAsteriusInstance(req) {
         asin: x => Math.asin(x),
         acos: x => Math.acos(x),
         atan: x => Math.atan(x),
-        asinh: x => Math.asinh(x),
-        acosh: x => Math.acosh(x),
-        atanh: x => Math.atanh(x),
         log: x => Math.log(x),
         exp: x => Math.exp(x),
         pow: (x, y) => Math.pow(x, y)
