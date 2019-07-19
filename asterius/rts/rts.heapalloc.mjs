@@ -24,10 +24,12 @@ export class HeapAlloc {
                         : 1 + Math.ceil((b - rtsConstants.sizeof_first_mblock) /
                                         rtsConstants.mblock_size),
           bd = this.mblockAlloc.allocMegaGroup(mblocks);
-    if (mblocks > 1)
+    
+    // if (mblocks > 1)
       this.memory.i16Store(bd + rtsConstants.offset_bdescr_flags,
                            rtsConstants.BF_PINNED);
     console.log(`hpAlloc.append([${bd}]) # pinned? ${mblocks > 1}`);
+    // console.log(`# hpAlloc allocated from: ${new Error().stack}`);
     return bd;
   }
   allocate(n, pinned = false) {
