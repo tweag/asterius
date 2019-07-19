@@ -55,4 +55,17 @@ export class HeapAlloc {
     return current_free;
   }
   allocatePinned(n) { return this.allocate(n, true); }
+
+  getPools() {
+    let pools = []
+    for(let i = 0; i < 2; ++i) {
+      const bd = this.currentPools[i];
+      const start = Number(this.memory.i64Load(bd + rtsConstants.offset_bdescr_start));
+      const blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
+      const end = start + blocks * rtsConstants.block_size;
+
+      pools.push([bd, start, end]);
+    }
+    return pools;
+  }
 }

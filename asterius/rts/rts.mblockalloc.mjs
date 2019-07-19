@@ -10,7 +10,6 @@ export class MBlockAlloc {
     this.freeList = [];
     this.ncalls = 0;
     this.all_bds = new Set();
-    console.log(`freedSegments = []`);
     Object.seal(this);
   }
 
@@ -75,7 +74,7 @@ export class MBlockAlloc {
 
   freeSegment(l_end, r) {
     if (l_end < r) {
-      console.log(`freedSegments.append([${l_end}, ${r}])`)
+      console.log(`segments.append([${l_end}, ${r}, "free"])`)
       this.memory.memset(l_end, 0x42, r - l_end);
       const bd = l_end + rtsConstants.offset_first_bdescr,
             start = l_end + rtsConstants.offset_first_block,
@@ -88,10 +87,15 @@ export class MBlockAlloc {
     }
   }
 
-  preserveMegaGroups(bds) {
-    console.log(`## preserveMegaGroups: ${this.ncalls++}`)
-    console.log(`preserve_bds = [${[...bds]}]`);
-    console.log(`all_bds = []`);
+  preserveMegaGroups(bds, heapPools) {
+    console.log(`### preserveMegaGroups: ${this.ncalls++} ###`)
+    console.log(`segments = []`);
+
+    for(let i = 0; i < heapPools.length; ++i) {
+      const [bd, l, r] = heapPools[i];
+      bds.add(bd);
+      console.log(`segments.append([${l}, ${r}, "heappool"])`);
+    }
 
     const all_bds = [...this.all_bds];
     for(let i = 0; i < all_bds.length; ++i) {
@@ -101,8 +105,11 @@ export class MBlockAlloc {
       l_blocks =
           this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks),
       l_end = l_start + (rtsConstants.block_size * l_blocks);
-      const is_live = bds.has(bd) ? "True" : "False";
-      console.log(`all_bds.append([${l_start}, ${l_end}, ${is_live}])`);
+      if (bds.has(bd)) {
+        console.log(`segments.append([${l_start}, ${l_end}, "live"])`);
+      } else  {
+        console.log(`segments.append([${l_start}, ${l_end}, "dead"])`);
+      }
     }
 
 
@@ -111,7 +118,6 @@ export class MBlockAlloc {
     sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
 
 
-    console.log(`sorted_preserve_bds = [${[...sorted_bds]}]`);
     
     this.freeSegment(
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
@@ -129,5 +135,8 @@ export class MBlockAlloc {
     this.freeList.sort(
         (bd0, bd1) => this.memory.i32Load(bd0 + rtsConstants.offset_bdescr_blocks) -
                   this.memory.i32Load(bd1 + rtsConstants.offset_bdescr_blocks));
+
+    console.log(`draw_segments(segments)`);
+    console.log(`####### run ipython -i draw.py and copy-paste code in between #####`);
   }
 }

@@ -5,7 +5,7 @@ import matplotlib.patches as patches
 # Create figure and axes
 fig,ax = plt.subplots(1)
 
-def draw_bar(minx, maxx, l, r, color):
+def draw_bar(minx, maxx, l, r, height, color):
     print("minx: %s | maxx: %s" % (minx, maxx))
     # normalize
     l = (l - minx) / float(maxx - minx)
@@ -14,27 +14,30 @@ def draw_bar(minx, maxx, l, r, color):
     print("l: %s | r: %s | width: %s" % (l, r, r - l))
 
     Y = 0
-    HEIGHT = 10
-    rect = patches.Rectangle((l, 0), r - l, HEIGHT, linewidth=3, facecolor=color, alpha=0.1)
+    rect = patches.Rectangle((l, 0), r - l, height, linewidth=1, facecolor=color, alpha=0.4)
     ax.add_patch(rect)
 
-def draw_segments(freeSegments, allbds):
+def draw_segments(segments):
     minx = 1e20
     maxx = 0
-    for [l, r] in freeSegments:
+    for [l, r, _] in segments:
         minx = min(minx, l)
         maxx = max(maxx, r)
 
-    for [l, r, _] in allbds:
-        minx = min(minx, l)
-        maxx = max(maxx, r)
+    for [l, r, ty] in segments:
+        if ty == "live":
+            color = "blue"
+            height = 0.5
+        if ty == "dead":
+            color = "red"
+            height = 0.2
+        elif ty == "heappool":
+            color = "green"
+            height = 0.8
+        elif ty == "free":
+            color = "black"
+            height = 1
 
-    for [l, r] in freeSegments:
-        draw_bar(minx, maxx, l, r, 'red')
-
-
-    for [l, r, live] in allbds:
-        draw_bar(minx, maxx, l, r, 'green' if live else 'blue')
-
-def show():
+        assert color is not None
+        draw_bar(minx, maxx, l, r, height, color)
     plt.show()
