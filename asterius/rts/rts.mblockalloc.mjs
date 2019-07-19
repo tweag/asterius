@@ -8,6 +8,9 @@ export class MBlockAlloc {
     this.capacity = undefined;
     this.size = undefined;
     this.freeList = [];
+    this.ncalls = 0;
+    this.all_bds = new Set();
+    console.log(`freedSegments = []`);
     Object.seal(this);
   }
 
@@ -26,7 +29,9 @@ export class MBlockAlloc {
     }
     const prev_size = this.size;
     this.size += n;
-    return Memory.tagData(prev_size * rtsConstants.mblock_size);
+    let mblock =  Memory.tagData(prev_size * rtsConstants.mblock_size);
+    this.all_bds.add(mblock + rtsConstants.offset_first_bdescr);
+    return mblock;
   }
 
   allocMegaGroup(n) {
@@ -48,10 +53,12 @@ export class MBlockAlloc {
                                  ((rtsConstants.mblock_size / rtsConstants.block_size) -
                                   rtsConstants.blocks_per_mblock));
         this.freeList.splice(i, 1, rest_bd);
+        this.all_bds.add(bd);
         return bd;
       }
       if (req_blocks == blocks) {
         this.freeList.splice(i, 1);
+        this.all_bds.add(bd);
         return bd;
       }
     }
@@ -62,11 +69,13 @@ export class MBlockAlloc {
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
     this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+    this.all_bds.add(bd);
     return bd;
   }
 
   freeSegment(l_end, r) {
     if (l_end < r) {
+      console.log(`freedSegments.append([${l_end}, ${r}])`)
       this.memory.memset(l_end, 0x42, r - l_end);
       const bd = l_end + rtsConstants.offset_first_bdescr,
             start = l_end + rtsConstants.offset_first_block,
@@ -80,12 +89,34 @@ export class MBlockAlloc {
   }
 
   preserveMegaGroups(bds) {
+    console.log(`## preserveMegaGroups: ${this.ncalls++}`)
+    console.log(`preserve_bds = [${[...bds]}]`);
+    console.log(`all_bds = []`);
+
+    const all_bds = [...this.all_bds];
+    for(let i = 0; i < all_bds.length; ++i) {
+      let bd = all_bds[i];
+      const l_start = Number(
+          this.memory.i64Load(bd + rtsConstants.offset_bdescr_start)),
+      l_blocks =
+          this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks),
+      l_end = l_start + (rtsConstants.block_size * l_blocks);
+      const is_live = bds.has(bd) ? "True" : "False";
+      console.log(`all_bds.append([${l_start}, ${l_end}, ${is_live}])`);
+    }
+
+
     this.freeList = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
     sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
+
+
+    console.log(`sorted_preserve_bds = [${[...sorted_bds]}]`);
+    
     this.freeSegment(
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
+
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       const l_start = Number(
           this.memory.i64Load(sorted_bds[i] + rtsConstants.offset_bdescr_start)),
