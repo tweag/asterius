@@ -60,42 +60,44 @@ foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
 main :: IO ()
 main = do
-
   performGC
+  print_i64 $ fib 1
 
-  putStrLn $ trace "trace message" ""
+  -- performGC
 
-  -- Test that assert_eq works
-  assert_eq_i64 10 10
+  -- putStrLn $ trace "trace message" ""
 
-  print_i64 $ fib 10
-  assert_eq_i64 (fib 10) 55
+  -- -- Test that assert_eq works
+  -- assert_eq_i64 10 10
 
-  print_i64 $ fact 5
-  assert_eq_i64 (fact 5) 120
+  -- print_i64 $ fib 10
+  -- assert_eq_i64 (fib 10) 55
 
-  print_f64 $ cos 0.5
-  print_f64 $ 2 ** 3
+  -- print_i64 $ fact 5
+  -- assert_eq_i64 (fact 5) 120
 
-  let sizeof3Tree = sizeofBinTree $ force $ genBinTree 3
-  print_i64 $ sizeof3Tree
-  -- 2^4 - 1
-  assert_eq_i64 sizeof3Tree 15
+  -- print_f64 $ cos 0.5
+  -- print_f64 $ 2 ** 3
 
-  let sizeof5Tree = sizeofBinTree $ force $ genBinTree 5
-  print_i64 $ sizeof5Tree
-  -- 2^6 - 1
-  assert_eq_i64 sizeof5Tree 63
+  -- let sizeof3Tree = sizeofBinTree $ force $ genBinTree 3
+  -- print_i64 $ sizeof3Tree
+  -- -- 2^4 - 1
+  -- assert_eq_i64 sizeof3Tree 15
 
-  print_i64 $ facts !! 5
-  assert_eq_i64 (facts !! 5) 120
+  -- let sizeof5Tree = sizeofBinTree $ force $ genBinTree 5
+  -- print_i64 $ sizeof5Tree
+  -- -- 2^6 - 1
+  -- assert_eq_i64 sizeof5Tree 63
 
-  let factmapAt5 = factMap 10 IM.! 5
-  print_i64 $ factmapAt5
-  assert_eq_i64 factmapAt5 120
+  -- print_i64 $ facts !! 5
+  -- assert_eq_i64 (facts !! 5) 120
 
-  -- 0! + 1! + 2! + 3! + 4! + 5!
-  print_i64 $ sumFacts 5
-  assert_eq_i64 (sumFacts 5) (154)
+  -- let factmapAt5 = factMap 10 IM.! 5
+  -- print_i64 $ factmapAt5
+  -- assert_eq_i64 factmapAt5 120
 
-  performGC
+  -- -- 0! + 1! + 2! + 3! + 4! + 5!
+  -- print_i64 $ sumFacts 5
+  -- assert_eq_i64 (sumFacts 5) (154)
+
+  -- performGC
