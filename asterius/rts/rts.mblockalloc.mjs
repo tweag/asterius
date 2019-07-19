@@ -99,6 +99,10 @@ export class MBlockAlloc {
         // memset a custom number purely for debugging help.
         this.memory.memset(l_end, 0x42 + i, r - l_end);
         this.freeSegments.push([l_end, r])
+      const bd = l_end + rtsConstants.offset_first_bdescr,
+        start = l_end + rtsConstants.offset_first_block,
+        blocks = (r - start) / rtsConstants.block_size;
+      this.setupBdescr(bd, start, blocks);
     }
   }
 
