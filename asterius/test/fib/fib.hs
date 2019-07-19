@@ -60,14 +60,15 @@ foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
 main :: IO ()
 main = do
-  performGC
-  print_i64 $ fib 1
-
+  -- ENABLE THIS TO CAUSE THIS TO STOP CRASHING.
   -- performGC
+  -- print_i64 $ fib 1
+
+  performGC
 
   -- putStrLn $ trace "trace message" ""
 
-  -- -- Test that assert_eq works
+  -- Test that assert_eq works
   -- assert_eq_i64 10 10
 
   -- print_i64 $ fib 10
@@ -79,9 +80,9 @@ main = do
   -- print_f64 $ cos 0.5
   -- print_f64 $ 2 ** 3
 
-  -- let sizeof3Tree = sizeofBinTree $ force $ genBinTree 3
-  -- print_i64 $ sizeof3Tree
-  -- -- 2^4 - 1
+  let sizeof3Tree = sizeofBinTree $ force $ genBinTree 1
+  print_i64 $ sizeof3Tree
+  -- 2^4 - 1
   -- assert_eq_i64 sizeof3Tree 15
 
   -- let sizeof5Tree = sizeofBinTree $ force $ genBinTree 5
