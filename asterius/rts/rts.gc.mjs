@@ -45,6 +45,8 @@ export class GC {
     return dest_c;
   }
 
+  // wrapper over copyClosure that knows the size.
+  // adds copied closure to worklist.
   evacuateClosure(c) {
     const tag = Memory.getDynTag(c), untagged_c = Memory.unDynTag(c);
     let dest_c = this.closureIndirects.get(untagged_c);
@@ -373,6 +375,7 @@ export class GC {
     while (this.workList.length) this.scavengeClosure(this.workList.pop());
   }
 
+  // scavenge a moved closure, to setup the non-moved pointers.
   scavengeClosure(c) {
     const info = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
@@ -559,7 +562,8 @@ export class GC {
 
     this.evacuateClosure(tso);
     this.scavengeWorkList();
-    console.log(`* gcRootTSO tags: [${[...this.tags]}]`);
+    // * gcRootTSO tags: [1,2,3,4,14,21,28,30,34,36,52,53]
+    console.log(`* gcRootTSO tags: [${[...this.tags].sort((x, y) => x - y)}]`);
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
