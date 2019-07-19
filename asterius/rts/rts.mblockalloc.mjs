@@ -101,14 +101,14 @@ export class MBlockAlloc {
 
   preserveMegaGroups(bds) {
     this.ncalls += 1;
-    console.log(`preserveMegaGroups(${this.ncalls}) |bd:  [${[...bds]}]`);
+    console.log(`bds = [${[...bds]}] # preserveMegaGroups(${this.ncalls}) `);
     this.freeSegments = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
     sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
     this.freeSegment(0,
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
-    console.log(`preserveMegaGroups(${this.ncalls}) |sorted_bds:  [${[...sorted_bds]}]`);
+    console.log(`sorted_bds =   [${[...sorted_bds]}] # preserveMegaGroups(${this.ncalls})`);
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       const l_start = Number(
           this.memory.i64Load(sorted_bds[i] + rtsConstants.offset_bdescr_start)),

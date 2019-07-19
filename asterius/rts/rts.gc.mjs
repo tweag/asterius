@@ -563,7 +563,7 @@ export class GC {
     this.evacuateClosure(tso);
     this.scavengeWorkList();
     // * gcRootTSO tags: [1,2,3,4,14,21,28,30,34,36,52,53]
-    console.log(`* gcRootTSO tags: [${[...this.tags].sort((x, y) => x - y)}]`);
+    console.log(`gcRootTSO_tags = [${[...this.tags].sort((x, y) => x - y)}]`);
     this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
