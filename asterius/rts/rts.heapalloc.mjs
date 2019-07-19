@@ -13,6 +13,7 @@ export class HeapAlloc {
     this.memory.i16Store(this.currentPools[1] + rtsConstants.offset_bdescr_flags,
                          rtsConstants.BF_PINNED);
     console.log(`hpAlloc = []`);
+    console.log(`allocate = []`);
   }
   initUnpinned() {
     this.currentPools[0] = this.mblockAlloc.allocMegaGroup(1);
@@ -26,7 +27,7 @@ export class HeapAlloc {
     if (mblocks > 1)
       this.memory.i16Store(bd + rtsConstants.offset_bdescr_flags,
                            rtsConstants.BF_PINNED);
-    console.log(`hpAlloc.append([${bd}])`);
+    console.log(`hpAlloc.append([${bd}]) # pinned? ${mblocks > 1}`);
     return bd;
   }
   allocate(n, pinned = false) {
@@ -43,6 +44,7 @@ export class HeapAlloc {
       this.memory.i64Store(
           this.currentPools[pool_i] + rtsConstants.offset_bdescr_free, new_free);
       // console.log(`+ allocate: ${current_free}`);
+      console.log(`allocate.append([${this.currentPools[pool_i]}])`)
       return current_free;
     }
     this.currentPools[pool_i] = this.hpAlloc(b);
@@ -55,7 +57,7 @@ export class HeapAlloc {
     this.memory.i64Store(
         this.currentPools[pool_i] + rtsConstants.offset_bdescr_free,
         current_free + b);
-    console.log(`+ allocate: ${current_free}`);
+    console.log(`allocate.append([${this.currentPools[pool_i]}])`)
     return current_free;
   }
   allocatePinned(n) { return this.allocate(n, true); }

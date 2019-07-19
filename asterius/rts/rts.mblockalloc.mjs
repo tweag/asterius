@@ -18,6 +18,7 @@ export class MBlockAlloc {
     // Contains segments of the form [(l, r)] of free memory.
     this.freeSegments = [];
     this.ncalls = 0;
+    this.all_bds = [];
     Object.seal(this);
   }
 
@@ -44,6 +45,8 @@ export class MBlockAlloc {
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
     this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, nblocks);
+    // this.all_bds.push([bd, start, nblocks]);
+    this.all_bds.push(bd);
   }
 
   allocMegaGroup(n) {
@@ -100,15 +103,22 @@ export class MBlockAlloc {
   }
 
   preserveMegaGroups(bds) {
+
     this.ncalls += 1;
     console.log(`bds = [${[...bds]}] # preserveMegaGroups(${this.ncalls}) `);
     this.freeSegments = [];
+
+
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
     sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
     this.freeSegment(0,
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
+
+
     console.log(`sorted_bds =   [${[...sorted_bds]}] # preserveMegaGroups(${this.ncalls})`);
+    console.log(`all_bds =   [${[...this.all_bds]}] # preserveMegaGroups(${this.ncalls})`);
+
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       const l_start = Number(
           this.memory.i64Load(sorted_bds[i] + rtsConstants.offset_bdescr_start)),
