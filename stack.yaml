@@ -1,6 +1,7 @@
 resolver: lts-13.28
 extra-deps:
   - ansi-terminal-0.9.1
+  - tasty-1.2.3
 packages:
   - asterius
   - binaryen
