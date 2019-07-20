@@ -20,14 +20,15 @@ import subprocess
 import sys
 import unittest
 
-from scripts.test.support import run_command, split_wast, node_test_glue, node_has_webassembly
+from scripts.test.support import run_command, split_wast
 from scripts.test.shared import (
-    BIN_DIR, MOZJS, NATIVECC, NATIVEXX, NODEJS, BINARYEN_JS, WASM_AS,
+    BIN_DIR, NATIVECC, NATIVEXX, NODEJS, WASM_AS,
     WASM_CTOR_EVAL, WASM_OPT, WASM_SHELL, WASM_METADCE, WASM_DIS, WASM_REDUCE,
     binary_format_check, delete_from_orbit, fail, fail_with_error,
     fail_if_not_identical, fail_if_not_contained, has_vanilla_emcc,
     has_vanilla_llvm, minify_check, options, tests, requested, warnings,
-    has_shell_timeout, fail_if_not_identical_to_file, with_pass_debug
+    has_shell_timeout, fail_if_not_identical_to_file, with_pass_debug,
+    validate_binary
 )
 
 # For shared.num_failures. Cannot import directly because modifications made in
@@ -36,6 +37,7 @@ from scripts.test import shared
 from scripts.test import asm2wasm
 from scripts.test import lld
 from scripts.test import wasm2js
+from scripts.test import binaryenjs
 
 if options.interpreter:
   print '[ using wasm interpreter at "%s" ]' % options.interpreter
@@ -187,6 +189,8 @@ def run_wasm_dis_tests():
         run_command(cmd)
 
       with_pass_debug(check)
+
+      validate_binary(t)
 
 
 def run_crash_tests():
@@ -379,64 +383,12 @@ def run_spec_tests():
             o.write(module + '\n' + '\n'.join(asserts))
           run_spec_test('split.wast')  # before binary stuff - just check it's still ok split out
           run_opt_test('split.wast')  # also that our optimizer doesn't break on it
-          result_wast = binary_format_check('split.wast', verify_final_result=False)
+          result_wast = binary_format_check('split.wast', verify_final_result=False, original_wast=wast)
           # add the asserts, and verify that the test still passes
           open(result_wast, 'a').write('\n' + '\n'.join(asserts))
           actual += run_spec_test(result_wast)
         # compare all the outputs to the expected output
         check_expected(actual, os.path.join(options.binaryen_test, 'spec', 'expected-output', os.path.basename(wast) + '.log'))
-
-
-def run_binaryen_js_tests():
-  if not (MOZJS or NODEJS):
-    print 'no vm to run binaryen.js tests'
-    return
-
-  node_has_wasm = NODEJS and node_has_webassembly(NODEJS)
-
-  if not os.path.exists(BINARYEN_JS):
-    print 'no binaryen.js build to test'
-    return
-
-  print '\n[ checking binaryen.js testcases... ]\n'
-
-  for s in sorted(os.listdir(os.path.join(options.binaryen_test, 'binaryen.js'))):
-    if not s.endswith('.js'):
-      continue
-    print s
-    f = open('a.js', 'w')
-    # avoid stdout/stderr ordering issues in some js shells - use just stdout
-    f.write('''
-      console.warn = function(x) { console.log(x) };
-    ''')
-    binaryen_js = open(BINARYEN_JS).read()
-    f.write(binaryen_js)
-    if NODEJS:
-      f.write(node_test_glue())
-    test_path = os.path.join(options.binaryen_test, 'binaryen.js', s)
-    test_src = open(test_path).read()
-    f.write(test_src)
-    f.close()
-
-    def test(engine):
-      cmd = [engine, 'a.js']
-      if 'fatal' not in s:
-        out = run_command(cmd, stderr=subprocess.STDOUT)
-      else:
-        # expect an error - the specific error code will depend on the vm
-        out = run_command(cmd, stderr=subprocess.STDOUT, expected_status=None)
-      expected = open(os.path.join(options.binaryen_test, 'binaryen.js', s + '.txt')).read()
-      if expected not in out:
-        fail(out, expected)
-
-    # run in all possible shells
-    if MOZJS:
-      test(MOZJS)
-    if NODEJS:
-      if node_has_wasm or 'WebAssembly.' not in test_src:
-        test(NODEJS)
-      else:
-        print 'Skipping ' + test_path + ' because WebAssembly might not be supported'
 
 
 def run_validator_tests():
@@ -504,55 +456,53 @@ def run_gcc_tests():
   print '\n[ checking native gcc testcases...]\n'
   if not NATIVECC or not NATIVEXX:
     fail_with_error('Native compiler (e.g. gcc/g++) was not found in PATH!')
-  else:
-    for t in sorted(os.listdir(os.path.join(options.binaryen_test, 'example'))):
-      output_file = os.path.join(options.binaryen_bin, 'example')
-      cmd = ['-I' + os.path.join(options.binaryen_root, 'src'), '-g', '-pthread', '-o', output_file]
-      if t.endswith('.txt'):
-        # check if there is a trace in the file, if so, we should build it
-        out = subprocess.Popen([os.path.join('scripts', 'clean_c_api_trace.py'), os.path.join(options.binaryen_test, 'example', t)], stdout=subprocess.PIPE).communicate()[0]
-        if len(out) == 0:
-          print '  (no trace in ', t, ')'
-          continue
-        print '  (will check trace in ', t, ')'
-        src = 'trace.cpp'
-        with open(src, 'w') as o:
-          o.write(out)
-        expected = os.path.join(options.binaryen_test, 'example', t + '.txt')
-      else:
-        src = os.path.join(options.binaryen_test, 'example', t)
-        expected = os.path.join(options.binaryen_test, 'example', '.'.join(t.split('.')[:-1]) + '.txt')
-      if src.endswith(('.c', '.cpp')):
-        # build the C file separately
-        extra = [NATIVECC, src, '-c', '-o', 'example.o',
-                 '-I' + os.path.join(options.binaryen_root, 'src'), '-g', '-L' + os.path.join(options.binaryen_bin, '..', 'lib'), '-pthread']
-        if src.endswith('.cpp'):
-          extra += ['-std=c++11']
-        print 'build: ', ' '.join(extra)
-        subprocess.check_call(extra)
-        # Link against the binaryen C library DSO, using an executable-relative rpath
-        cmd = ['example.o', '-L' + os.path.join(options.binaryen_bin, '..', 'lib'), '-lbinaryen'] + cmd + ['-Wl,-rpath,$ORIGIN/../lib']
-      else:
-        continue
-      print '  ', t, src, expected
-      if os.environ.get('COMPILER_FLAGS'):
-        for f in os.environ.get('COMPILER_FLAGS').split(' '):
-          cmd.append(f)
-      cmd = [NATIVEXX, '-std=c++11'] + cmd
-      try:
-        print 'link: ', ' '.join(cmd)
-        subprocess.check_call(cmd)
-        print 'run...', output_file
-        proc = subprocess.Popen([output_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        actual, err = proc.communicate()
-        assert proc.returncode == 0, [proc.returncode, actual, err]
-      finally:
-        os.remove(output_file)
-        if sys.platform == 'darwin':
-          # Also removes debug directory produced on Mac OS
-          shutil.rmtree(output_file + '.dSYM')
+    return
 
-      fail_if_not_identical_to_file(actual, expected)
+  for t in sorted(os.listdir(os.path.join(options.binaryen_test, 'example'))):
+    output_file = 'example'
+    cmd = ['-I' + os.path.join(options.binaryen_root, 'src'), '-g', '-pthread', '-o', output_file]
+    if t.endswith('.txt'):
+      # check if there is a trace in the file, if so, we should build it
+      out = subprocess.Popen([os.path.join('scripts', 'clean_c_api_trace.py'), os.path.join(options.binaryen_test, 'example', t)], stdout=subprocess.PIPE).communicate()[0]
+      if len(out) == 0:
+        print '  (no trace in ', t, ')'
+        continue
+      print '  (will check trace in ', t, ')'
+      src = 'trace.cpp'
+      with open(src, 'w') as o:
+        o.write(out)
+      expected = os.path.join(options.binaryen_test, 'example', t + '.txt')
+    else:
+      src = os.path.join(options.binaryen_test, 'example', t)
+      expected = os.path.join(options.binaryen_test, 'example', '.'.join(t.split('.')[:-1]) + '.txt')
+    if src.endswith(('.c', '.cpp')):
+      # build the C file separately
+      libpath = os.path.join(os.path.dirname(options.binaryen_bin),  'lib')
+      extra = [NATIVECC, src, '-c', '-o', 'example.o',
+               '-I' + os.path.join(options.binaryen_root, 'src'), '-g', '-L' + libpath, '-pthread']
+      if src.endswith('.cpp'):
+        extra += ['-std=c++11']
+      print 'build: ', ' '.join(extra)
+      subprocess.check_call(extra)
+      # Link against the binaryen C library DSO, using an executable-relative rpath
+      cmd = ['example.o', '-L' + libpath, '-lbinaryen'] + cmd + ['-Wl,-rpath,' + libpath]
+    else:
+      continue
+    print '  ', t, src, expected
+    if os.environ.get('COMPILER_FLAGS'):
+      for f in os.environ.get('COMPILER_FLAGS').split(' '):
+        cmd.append(f)
+    cmd = [NATIVEXX, '-std=c++11'] + cmd
+    print 'link: ', ' '.join(cmd)
+    subprocess.check_call(cmd)
+    print 'run...', output_file
+    actual = subprocess.check_output([os.path.abspath(output_file)])
+    os.remove(output_file)
+    if sys.platform == 'darwin':
+      # Also removes debug directory produced on Mac OS
+      shutil.rmtree(output_file + '.dSYM')
+
+    fail_if_not_identical_to_file(actual, expected)
 
 
 def run_unittest():
@@ -581,7 +531,7 @@ def main():
     run_wasm_reduce_tests()
 
   run_spec_tests()
-  run_binaryen_js_tests()
+  binaryenjs.test_binaryen_js()
   lld.test_wasm_emscripten_finalize()
   wasm2js.test_wasm2js()
   run_validator_tests()

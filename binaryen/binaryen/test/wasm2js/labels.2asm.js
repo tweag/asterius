@@ -1,11 +1,11 @@
 
 function asmFunc(global, env, buffer) {
- "almost asm";
  var HEAP8 = new global.Int8Array(buffer);
  var HEAP16 = new global.Int16Array(buffer);
  var HEAP32 = new global.Int32Array(buffer);
  var HEAPU8 = new global.Uint8Array(buffer);
  var HEAPU16 = new global.Uint16Array(buffer);
+ var HEAPU32 = new global.Uint32Array(buffer);
  var HEAPF32 = new global.Float32Array(buffer);
  var HEAPF64 = new global.Float64Array(buffer);
  var Math_imul = global.Math.imul;
@@ -166,54 +166,39 @@ function asmFunc(global, env, buffer) {
  
  function $8($0_1) {
   $0_1 = $0_1 | 0;
-  var $2_2 = 0, $3_2 = 0;
+  var $2_1 = 0, $3_1 = 0;
   ret : {
    exit : {
     $0_2 : {
-     default_ : {
-      $3_1 : {
-       $2_1 : {
-        $1_1 : {
-         switch ($0_1 | 0) {
-         case 0:
-          break $0_2;
-         case 1:
-          break $1_1;
-         case 2:
-          break $2_1;
-         case 3:
-          break $3_1;
-         default:
-          break default_;
-         };
-        }
-       }
-       $2_2 = 2;
-       break exit;
-      }
-      $3_2 = 3;
+     switch ($0_1 | 0) {
+     case 1:
+     case 2:
+      $2_1 = 2;
+      break exit;
+     case 3:
+      $3_1 = 3;
       break ret;
-     }
+     default:
+     case 0:
+      break $0_2;
+     };
     }
-    $2_2 = 5;
+    $2_1 = 5;
    }
-   $3_2 = Math_imul(10, $2_2);
+   $3_1 = Math_imul(10, $2_1);
   }
-  return $3_2 | 0;
+  return $3_1 | 0;
  }
  
  function $9($0_1) {
   $0_1 = $0_1 | 0;
   $1_1 : {
-   $0_2 : {
-    switch ($0_1 | 0) {
-    case 0:
-     break $0_2;
-    default:
-     break $1_1;
-    };
-   }
-   return 0 | 0;
+   switch ($0_1 | 0) {
+   case 0:
+    return 0 | 0;
+   default:
+    break $1_1;
+   };
   }
   return 2 | 0;
  }
@@ -250,41 +235,41 @@ function asmFunc(global, env, buffer) {
  }
  
  function $11() {
-  var $2_2 = 0, $0_1 = 0;
+  var $2_1 = 0, $0_1 = 0;
   l0 : {
    l1 : {
     $0_1 = 1;
     break l1;
    }
-   $2_2 = $0_1;
+   $2_1 = $0_1;
    if (1) {
     break l0
    }
-   $2_2 = 1;
+   $2_1 = 1;
   }
-  return $2_2 | 0;
+  return $2_1 | 0;
  }
  
  function $12() {
-  var $2_2 = 0, $0_1 = 0;
+  var $2_1 = 0, $0_1 = 0;
   l0 : {
    l1 : {
     $0_1 = 1;
     break l1;
    }
-   $2_2 = $0_1;
+   $2_1 = $0_1;
    break l0;
   }
-  return $2_2 | 0;
+  return $2_1 | 0;
  }
  
  function $13() {
-  var i1 = 0, $7_1 = 0, $3_2 = 0;
+  var i1 = 0, $7_1 = 0, $3_1 = 0;
   l0 : {
    i1 = 1;
-   $3_2 = i1;
+   $3_1 = i1;
    i1 = 2;
-   $7_1 = $3_2;
+   $7_1 = $3_1;
    if (i1) {
     break l0
    }
@@ -294,16 +279,16 @@ function asmFunc(global, env, buffer) {
  }
  
  function $14() {
-  var $2_2 = 0, $0_1 = 0, $3_2 = 0;
+  var $2_1 = 0, $0_1 = 0, $3_1 = 0;
   l0 : {
    l1 : {
     $0_1 = 1;
     break l1;
    }
-   $2_2 = $0_1;
+   $2_1 = $0_1;
    break l0;
   }
-  return $2_2 | 0;
+  return $2_1 | 0;
  }
  
  function $15() {
@@ -316,15 +301,15 @@ function asmFunc(global, env, buffer) {
  }
  
  function $16() {
-  var $1_2 = 0, $2_2 = 0;
+  var $1_2 = 0, $2_1 = 0;
   l1 : {
    $1_2 = 2;
    l113 : {
-    $2_2 = 3;
+    $2_1 = 3;
     break l113;
    }
   }
-  return $1_2 + $2_2 | 0 | 0;
+  return $1_2 + $2_1 | 0 | 0;
  }
  
  var FUNCTION_TABLE = [];

@@ -64,7 +64,7 @@ Name set_f32("set_f32");
 Name set_f64("set_f64");
 
 struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
-  void visitGetLocal(GetLocal* curr) {
+  void visitLocalGet(LocalGet* curr) {
     Builder builder(*getModule());
     Name import;
     switch (curr->type) {
@@ -81,7 +81,7 @@ struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
         break;
       case v128:
         assert(false && "v128 not implemented yet");
-      case except_ref:
+      case exnref:
         assert(false && "not implemented yet");
       case none:
         WASM_UNREACHABLE();
@@ -96,7 +96,7 @@ struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
                        curr->type));
   }
 
-  void visitSetLocal(SetLocal* curr) {
+  void visitLocalSet(LocalSet* curr) {
     Builder builder(*getModule());
     Name import;
     switch (curr->value->type) {
@@ -113,8 +113,8 @@ struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
         break;
       case v128:
         assert(false && "v128 not implemented yet");
-      case except_ref:
-        assert(false && "except_ref not implemented yet");
+      case exnref:
+        assert(false && "exnref not implemented yet");
       case unreachable:
         return; // nothing to do here
       case none:

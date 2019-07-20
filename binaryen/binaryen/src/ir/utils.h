@@ -118,10 +118,10 @@ struct ReFinalize
   void visitSwitch(Switch* curr);
   void visitCall(Call* curr);
   void visitCallIndirect(CallIndirect* curr);
-  void visitGetLocal(GetLocal* curr);
-  void visitSetLocal(SetLocal* curr);
-  void visitGetGlobal(GetGlobal* curr);
-  void visitSetGlobal(SetGlobal* curr);
+  void visitLocalGet(LocalGet* curr);
+  void visitLocalSet(LocalSet* curr);
+  void visitGlobalGet(GlobalGet* curr);
+  void visitGlobalSet(GlobalSet* curr);
   void visitLoad(Load* curr);
   void visitStore(Store* curr);
   void visitAtomicRMW(AtomicRMW* curr);
@@ -146,6 +146,8 @@ struct ReFinalize
   void visitHost(Host* curr);
   void visitNop(Nop* curr);
   void visitUnreachable(Unreachable* curr);
+  void visitPush(Push* curr);
+  void visitPop(Pop* curr);
 
   void visitFunction(Function* curr);
 
@@ -154,6 +156,7 @@ struct ReFinalize
   void visitGlobal(Global* curr);
   void visitTable(Table* curr);
   void visitMemory(Memory* curr);
+  void visitEvent(Event* curr);
   void visitModule(Module* curr);
 
 private:
@@ -174,10 +177,10 @@ struct ReFinalizeNode : public OverriddenVisitor<ReFinalizeNode> {
   void visitSwitch(Switch* curr) { curr->finalize(); }
   void visitCall(Call* curr) { curr->finalize(); }
   void visitCallIndirect(CallIndirect* curr) { curr->finalize(); }
-  void visitGetLocal(GetLocal* curr) { curr->finalize(); }
-  void visitSetLocal(SetLocal* curr) { curr->finalize(); }
-  void visitGetGlobal(GetGlobal* curr) { curr->finalize(); }
-  void visitSetGlobal(SetGlobal* curr) { curr->finalize(); }
+  void visitLocalGet(LocalGet* curr) { curr->finalize(); }
+  void visitLocalSet(LocalSet* curr) { curr->finalize(); }
+  void visitGlobalGet(GlobalGet* curr) { curr->finalize(); }
+  void visitGlobalSet(GlobalSet* curr) { curr->finalize(); }
   void visitLoad(Load* curr) { curr->finalize(); }
   void visitStore(Store* curr) { curr->finalize(); }
   void visitAtomicRMW(AtomicRMW* curr) { curr->finalize(); }
@@ -202,12 +205,15 @@ struct ReFinalizeNode : public OverriddenVisitor<ReFinalizeNode> {
   void visitHost(Host* curr) { curr->finalize(); }
   void visitNop(Nop* curr) { curr->finalize(); }
   void visitUnreachable(Unreachable* curr) { curr->finalize(); }
+  void visitPush(Push* curr) { curr->finalize(); }
+  void visitPop(Pop* curr) { curr->finalize(); }
 
   void visitFunctionType(FunctionType* curr) { WASM_UNREACHABLE(); }
   void visitExport(Export* curr) { WASM_UNREACHABLE(); }
   void visitGlobal(Global* curr) { WASM_UNREACHABLE(); }
   void visitTable(Table* curr) { WASM_UNREACHABLE(); }
   void visitMemory(Memory* curr) { WASM_UNREACHABLE(); }
+  void visitEvent(Event* curr) { WASM_UNREACHABLE(); }
   void visitModule(Module* curr) { WASM_UNREACHABLE(); }
 
   // given a stack of nested expressions, update them all from child to parent
@@ -302,19 +308,19 @@ struct I64Utilities {
 
   static Expression* recreateI64(Builder& builder, Index low, Index high) {
     return recreateI64(
-      builder, builder.makeGetLocal(low, i32), builder.makeGetLocal(high, i32));
+      builder, builder.makeLocalGet(low, i32), builder.makeLocalGet(high, i32));
   };
 
   static Expression* getI64High(Builder& builder, Index index) {
     return builder.makeUnary(
       WrapInt64,
       builder.makeBinary(ShrUInt64,
-                         builder.makeGetLocal(index, i64),
+                         builder.makeLocalGet(index, i64),
                          builder.makeConst(Literal(int64_t(32)))));
   }
 
   static Expression* getI64Low(Builder& builder, Index index) {
-    return builder.makeUnary(WrapInt64, builder.makeGetLocal(index, i64));
+    return builder.makeUnary(WrapInt64, builder.makeLocalGet(index, i64));
   }
 };
 

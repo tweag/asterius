@@ -57,7 +57,8 @@ static Name printableLocal(Index index, Function* func) {
 
 // Prints the internal contents of an expression: everything but
 // the children.
-struct PrintExpressionContents : public Visitor<PrintExpressionContents> {
+struct PrintExpressionContents
+  : public OverriddenVisitor<PrintExpressionContents> {
   Function* currFunction = nullptr;
   std::ostream& o;
 
@@ -105,16 +106,25 @@ struct PrintExpressionContents : public Visitor<PrintExpressionContents> {
     o << ' ' << curr->default_;
   }
   void visitCall(Call* curr) {
-    printMedium(o, "call ");
+    if (curr->isReturn) {
+      printMedium(o, "return_call ");
+    } else {
+      printMedium(o, "call ");
+    }
     printName(curr->target, o);
   }
   void visitCallIndirect(CallIndirect* curr) {
-    printMedium(o, "call_indirect (type ") << curr->fullType << ')';
+    if (curr->isReturn) {
+      printMedium(o, "return_call_indirect (type ");
+    } else {
+      printMedium(o, "call_indirect (type ");
+    }
+    o << curr->fullType << ')';
   }
-  void visitGetLocal(GetLocal* curr) {
+  void visitLocalGet(LocalGet* curr) {
     printMedium(o, "local.get ") << printableLocal(curr->index, currFunction);
   }
-  void visitSetLocal(SetLocal* curr) {
+  void visitLocalSet(LocalSet* curr) {
     if (curr->isTee()) {
       printMedium(o, "local.tee ");
     } else {
@@ -122,11 +132,11 @@ struct PrintExpressionContents : public Visitor<PrintExpressionContents> {
     }
     o << printableLocal(curr->index, currFunction);
   }
-  void visitGetGlobal(GetGlobal* curr) {
+  void visitGlobalGet(GlobalGet* curr) {
     printMedium(o, "global.get ");
     printName(curr->name, o);
   }
-  void visitSetGlobal(SetGlobal* curr) {
+  void visitGlobalSet(GlobalSet* curr) {
     printMedium(o, "global.set ");
     printName(curr->name, o);
   }
@@ -1140,21 +1150,27 @@ struct PrintExpressionContents : public Visitor<PrintExpressionContents> {
   void visitReturn(Return* curr) { printMedium(o, "return"); }
   void visitHost(Host* curr) {
     switch (curr->op) {
-      case CurrentMemory:
-        printMedium(o, "current_memory");
+      case MemorySize:
+        printMedium(o, "memory.size");
         break;
-      case GrowMemory:
-        printMedium(o, "grow_memory");
+      case MemoryGrow:
+        printMedium(o, "memory.grow");
         break;
     }
   }
   void visitNop(Nop* curr) { printMinor(o, "nop"); }
   void visitUnreachable(Unreachable* curr) { printMinor(o, "unreachable"); }
+  void visitPush(Push* curr) { prepareColor(o) << "push"; }
+  void visitPop(Pop* curr) {
+    prepareColor(o) << printType(curr->type);
+    o << ".pop";
+    restoreNormalColor(o);
+  }
 };
 
 // Prints an expression in s-expr format, including both the
 // internal contents and the nested children.
-struct PrintSExpression : public Visitor<PrintSExpression> {
+struct PrintSExpression : public OverriddenVisitor<PrintSExpression> {
   std::ostream& o;
   unsigned indent = 0;
 
@@ -1205,7 +1221,7 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
 
   void visit(Expression* curr) {
     printDebugLocation(curr);
-    Visitor<PrintSExpression>::visit(curr);
+    OverriddenVisitor<PrintSExpression>::visit(curr);
   }
 
   void setMinify(bool minify_) {
@@ -1402,24 +1418,24 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     printFullLine(curr->target);
     decIndent();
   }
-  void visitGetLocal(GetLocal* curr) {
+  void visitLocalGet(LocalGet* curr) {
     o << '(';
     PrintExpressionContents(currFunction, o).visit(curr);
     o << ')';
   }
-  void visitSetLocal(SetLocal* curr) {
+  void visitLocalSet(LocalSet* curr) {
     o << '(';
     PrintExpressionContents(currFunction, o).visit(curr);
     incIndent();
     printFullLine(curr->value);
     decIndent();
   }
-  void visitGetGlobal(GetGlobal* curr) {
+  void visitGlobalGet(GlobalGet* curr) {
     o << '(';
     PrintExpressionContents(currFunction, o).visit(curr);
     o << ')';
   }
-  void visitSetGlobal(SetGlobal* curr) {
+  void visitGlobalSet(GlobalSet* curr) {
     o << '(';
     PrintExpressionContents(currFunction, o).visit(curr);
     incIndent();
@@ -1600,13 +1616,13 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     o << '(';
     PrintExpressionContents(currFunction, o).visit(curr);
     switch (curr->op) {
-      case GrowMemory: {
+      case MemoryGrow: {
         incIndent();
         printFullLine(curr->operands[0]);
         decIndent();
         break;
       }
-      case CurrentMemory: {
+      case MemorySize: {
         o << ')';
       }
     }
@@ -1617,6 +1633,18 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     o << ')';
   }
   void visitUnreachable(Unreachable* curr) {
+    o << '(';
+    PrintExpressionContents(currFunction, o).visit(curr);
+    o << ')';
+  }
+  void visitPush(Push* curr) {
+    o << '(';
+    PrintExpressionContents(currFunction, o).visit(curr);
+    incIndent();
+    printFullLine(curr->value);
+    decIndent();
+  }
+  void visitPop(Pop* curr) {
     o << '(';
     PrintExpressionContents(currFunction, o).visit(curr);
     o << ')';
@@ -1659,6 +1687,9 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
         break;
       case ExternalKind::Global:
         o << "global";
+        break;
+      case ExternalKind::Event:
+        o << "event";
         break;
       case ExternalKind::Invalid:
         WASM_UNREACHABLE();
@@ -1805,6 +1836,25 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
     }
     o << maybeNewLine;
   }
+  void visitEvent(Event* curr) {
+    doIndent(o, indent);
+    if (curr->imported()) {
+      o << '(';
+      emitImportHeader(curr);
+    }
+    o << "(event ";
+    printName(curr->name, o);
+    o << maybeSpace << "(attr " << curr->attribute << ')' << maybeSpace << '(';
+    printMinor(o, "param");
+    for (auto& param : curr->params) {
+      o << ' ' << printType(param);
+    }
+    o << "))";
+    if (curr->imported()) {
+      o << ')';
+    }
+    o << maybeNewLine;
+  }
   void printTableHeader(Table* curr) {
     o << '(';
     printMedium(o, "table") << ' ';
@@ -1948,12 +1998,16 @@ struct PrintSExpression : public Visitor<PrintSExpression> {
       *curr, [&](Global* global) { visitGlobal(global); });
     ModuleUtils::iterImportedFunctions(
       *curr, [&](Function* func) { visitFunction(func); });
+    ModuleUtils::iterImportedEvents(*curr,
+                                    [&](Event* event) { visitEvent(event); });
     ModuleUtils::iterDefinedMemories(
       *curr, [&](Memory* memory) { visitMemory(memory); });
     ModuleUtils::iterDefinedTables(*curr,
                                    [&](Table* table) { visitTable(table); });
     ModuleUtils::iterDefinedGlobals(
       *curr, [&](Global* global) { visitGlobal(global); });
+    ModuleUtils::iterDefinedEvents(*curr,
+                                   [&](Event* event) { visitEvent(event); });
     for (auto& child : curr->exports) {
       doIndent(o, indent);
       visitExport(child.get());
@@ -2049,10 +2103,8 @@ Pass* createPrintStackIRPass() { return new PrintStackIR(); }
 // Print individual expressions
 
 std::ostream& WasmPrinter::printModule(Module* module, std::ostream& o) {
-  PassRunner passRunner(module);
-  passRunner.setIsNested(true);
-  passRunner.add<Printer>(&o);
-  passRunner.run();
+  PassRunner runner(module);
+  Printer(&o).run(&runner, module);
   return o;
 }
 

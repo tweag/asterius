@@ -95,8 +95,8 @@ private:
         // v128 not implemented yet
         return false;
       }
-      case except_ref: {
-        // except_ref cannot have literals
+      case exnref: {
+        // exnref cannot have literals
         return false;
       }
       case none:
@@ -127,9 +127,9 @@ private:
     auto type = (*(vec[0]))->type;
     Builder builder(*getModule());
     auto temp = builder.addVar(getFunction(), type);
-    auto* ret = builder.makeSetLocal(temp, *(vec[0]));
+    auto* ret = builder.makeLocalSet(temp, *(vec[0]));
     for (auto item : vec) {
-      *item = builder.makeGetLocal(temp, type);
+      *item = builder.makeLocalGet(temp, type);
     }
     return ret;
   }

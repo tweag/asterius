@@ -57,8 +57,7 @@ static void optimizeWasm(Module& wasm, PassOptions options) {
   };
 
   PassRunner runner(&wasm, options);
-  runner.add<OptimizeForJS>();
-  runner.run();
+  OptimizeForJS().run(&runner, &wasm);
 }
 
 template<typename T> static void printJS(Ref ast, T& output) {
@@ -128,22 +127,37 @@ static void traversePost(Ref node, std::function<void(Ref)> visit) {
   traversePrePost(node, [](Ref node) {}, visit);
 }
 
-#if 0
 static void replaceInPlace(Ref target, Ref value) {
   assert(target->isArray() && value->isArray());
-  target->resize(value->size());
+  target->setSize(value->size());
   for (size_t i = 0; i < value->size(); i++) {
     target[i] = value[i];
   }
 }
-#endif
+
+static void replaceInPlaceIfPossible(Ref target, Ref value) {
+  if (target->isArray() && value->isArray()) {
+    replaceInPlace(target, value);
+  }
+}
 
 static void optimizeJS(Ref ast) {
   // Helpers
 
-  auto isOrZero = [](Ref node) {
+  auto isBinary = [](Ref node, IString op) {
     return node->isArray() && !node->empty() && node[0] == BINARY &&
-           node[1] == OR && node[3]->isNumber() && node[3]->getNumber() == 0;
+           node[1] == op;
+  };
+
+  auto isConstantBinary = [&](Ref node, IString op, int num) {
+    return isBinary(node, op) && node[3]->isNumber() &&
+           node[3]->getNumber() == num;
+  };
+
+  auto isOrZero = [&](Ref node) { return isConstantBinary(node, OR, 0); };
+
+  auto isTrshiftZero = [&](Ref node) {
+    return isConstantBinary(node, TRSHIFT, 0);
   };
 
   auto isPlus = [](Ref node) {
@@ -168,11 +182,6 @@ static void optimizeJS(Ref ast) {
   auto isUnary = [](Ref node, IString op) {
     return node->isArray() && !node->empty() && node[0] == UNARY_PREFIX &&
            node[1] == op;
-  };
-
-  auto isConstantBitwise = [](Ref node, IString op, int num) {
-    return node->isArray() && !node->empty() && node[0] == BINARY &&
-           node[1] == op && node[3]->isNumber() && node[3]->getNumber() == num;
   };
 
   auto isWhile = [](Ref node) {
@@ -239,11 +248,14 @@ static void optimizeJS(Ref ast) {
   };
 
   auto optimizeBoolean = [&](Ref node) {
-    // x ^ 1  =>  !x
-    if (isConstantBitwise(node, XOR, 1)) {
+    if (isConstantBinary(node, XOR, 1)) {
+      // x ^ 1  =>  !x
       node[0]->setString(UNARY_PREFIX);
       node[1]->setString(L_NOT);
       node[3]->setNull();
+    } else if (isOrZero(node) || isTrshiftZero(node)) {
+      // Just being different from 0 is enough, casts don't matter.
+      return node[2];
     }
     return node;
   };
@@ -253,7 +265,7 @@ static void optimizeJS(Ref ast) {
   // Pre-simplification
   traversePost(ast, [&](Ref node) {
     // x >> 0  =>  x | 0
-    if (isConstantBitwise(node, RSHIFT, 0)) {
+    if (isConstantBinary(node, RSHIFT, 0)) {
       node[1]->setString(OR);
     }
   });
@@ -266,24 +278,47 @@ static void optimizeJS(Ref ast) {
       // x | 0 | 0  =>  x | 0
       if (isOrZero(node)) {
         if (isBitwise(node[2])) {
-          auto child = node[2];
-          node[1] = child[1];
-          node[2] = child[2];
-          node[3] = child[3];
+          replaceInPlace(node, node[2]);
         }
       }
-      // A load into an & may allow using a simpler heap, e.g. HEAPU8[..] & 1
-      // (a load of a boolean) may be HEAP8[..] & 1. The signed heaps are more
-      // commonly used, so it compresses better, and also they seem to have
-      // better performance (perhaps since HEAPU32 is at risk of not being a
-      // smallint).
-      if (node[1] == AND && isHeapAccess(node[2])) {
+      if (isHeapAccess(node[2])) {
         auto heap = getHeapFromAccess(node[2]);
-        if (isConstantBitwise(node, AND, 1)) {
-          if (heap == HEAPU8) {
-            setHeapOnAccess(node[2], HEAP8);
+        IString replacementHeap;
+        // We can avoid a cast of a load by using the load to do it instead.
+        if (isOrZero(node)) {
+          if (isIntegerHeap(heap)) {
+            replacementHeap = heap;
+          }
+        } else if (isTrshiftZero(node)) {
+          // For signed or unsigned loads smaller than 32 bits, doing an | 0
+          // was safe either way - they aren't in the range an | 0 can affect.
+          // For >>> 0 however, a negative value would change, so we still
+          // need the cast.
+          if (heap == HEAP32 || heap == HEAPU32) {
+            replacementHeap = HEAPU32;
           } else if (heap == HEAPU16) {
-            setHeapOnAccess(node[2], HEAP16);
+            replacementHeap = HEAPU16;
+          } else if (heap == HEAPU8) {
+            replacementHeap = HEAPU8;
+          }
+        }
+        if (!replacementHeap.isNull()) {
+          setHeapOnAccess(node[2], replacementHeap);
+          replaceInPlace(node, node[2]);
+          return;
+        }
+        // A load into an & may allow using a simpler heap, e.g. HEAPU8[..] & 1
+        // (a load of a boolean) may be HEAP8[..] & 1. The signed heaps are more
+        // commonly used, so it compresses better, and also they seem to have
+        // better performance (perhaps since HEAPU32 is at risk of not being a
+        // smallint).
+        if (node[1] == AND) {
+          if (isConstantBinary(node, AND, 1)) {
+            if (heap == HEAPU8) {
+              setHeapOnAccess(node[2], HEAP8);
+            } else if (heap == HEAPU16) {
+              setHeapOnAccess(node[2], HEAP16);
+            }
           }
         }
       }
@@ -318,6 +353,21 @@ static void optimizeJS(Ref ast) {
     } else if (isUnary(node, L_NOT)) {
       node[2] = optimizeBoolean(node[2]);
     }
+    // Add/subtract can merge coercions up.
+    else if (isBinary(node, PLUS) || isBinary(node, MINUS)) {
+      auto left = node[2];
+      auto right = node[3];
+      if (isOrZero(left) && isOrZero(right)) {
+        auto op = node[1]->getIString();
+        // Add a coercion on top.
+        node[1]->setString(OR);
+        node[2] = left;
+        node[3] = ValueBuilder::makeNum(0);
+        // Add/subtract the inner uncoerced values.
+        left[1]->setString(op);
+        left[3] = right[2];
+      }
+    }
     // Assignment into a heap coerces.
     else if (node->isAssign()) {
       auto assign = node->asAssign();
@@ -327,12 +377,12 @@ static void optimizeJS(Ref ast) {
         if (isIntegerHeap(heap)) {
           if (heap == HEAP8 || heap == HEAPU8) {
             while (isOrZero(assign->value()) ||
-                   isConstantBitwise(assign->value(), AND, 255)) {
+                   isConstantBinary(assign->value(), AND, 255)) {
               assign->value() = assign->value()[2];
             }
           } else if (heap == HEAP16 || heap == HEAPU16) {
             while (isOrZero(assign->value()) ||
-                   isConstantBitwise(assign->value(), AND, 65535)) {
+                   isConstantBinary(assign->value(), AND, 65535)) {
               assign->value() = assign->value()[2];
             }
           } else {
@@ -353,7 +403,8 @@ static void optimizeJS(Ref ast) {
     }
   });
 
-  // Remove unnecessary break/continue labels, when referring to the top level.
+  // Remove unnecessary break/continue labels, when the name is that of the
+  // highest target anyhow, which we would reach without the name.
 
   std::vector<Ref> breakCapturers;
   std::vector<Ref> continueCapturers;
@@ -413,6 +464,30 @@ static void optimizeJS(Ref ast) {
         }
       }
     });
+
+  // Remove unnecessary block/loop labels.
+
+  std::set<IString> usedLabelNames;
+
+  traversePost(ast, [&](Ref node) {
+    if (node->isArray() && !node->empty()) {
+      if (node[0] == BREAK || node[0] == CONTINUE) {
+        if (!node[1]->isNull()) {
+          auto label = node[1]->getIString();
+          usedLabelNames.insert(label);
+        }
+      } else if (node[0] == LABEL) {
+        auto label = node[1]->getIString();
+        if (usedLabelNames.count(label)) {
+          // It's used; just erase it from the data structure.
+          usedLabelNames.erase(label);
+        } else {
+          // It's not used - get rid of it.
+          replaceInPlaceIfPossible(node, node[2]);
+        }
+      }
+    }
+  });
 }
 
 static void emitWasm(Module& wasm,
@@ -739,7 +814,7 @@ int main(int argc, const char* argv[]) {
          Options::Arguments::One,
          [](Options* o, const std::string& argument) {
            o->extra["output"] = argument;
-           Colors::disable();
+           Colors::setEnabled(false);
          })
     .add("--allow-asserts",
          "",
@@ -762,6 +837,14 @@ int main(int argc, const char* argv[]) {
       "form)",
       Options::Arguments::Zero,
       [&](Options* o, const std::string& argument) { flags.emscripten = true; })
+    .add(
+      "--symbols-file",
+      "",
+      "Emit a symbols file that maps function indexes to their original names",
+      Options::Arguments::One,
+      [&](Options* o, const std::string& argument) {
+        flags.symbolsFile = argument;
+      })
     .add_positional("INFILE",
                     Options::Arguments::One,
                     [](Options* o, const std::string& argument) {

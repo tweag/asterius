@@ -39,7 +39,7 @@ struct PassRegistry {
   typedef std::function<Pass*()> Creator;
 
   void registerPass(const char* name, const char* description, Creator create);
-  Pass* createPass(std::string name);
+  std::unique_ptr<Pass> createPass(std::string name);
   std::vector<std::string> getRegisteredNames();
   std::string getPassDescription(std::string name);
 
@@ -56,6 +56,29 @@ private:
   std::map<std::string, PassInfo> passInfos;
 };
 
+struct InliningOptions {
+  // Function size at which we always inline.
+  // Typically a size so small that after optimizations, the inlined code will
+  // be smaller than the call instruction itself. 2 is a safe number because
+  // there is no risk of things like
+  //  (func $reverse (param $x i32) (param $y i32)
+  //   (call $something (local.get $y) (local.get $x))
+  //  )
+  // in which case the reversing of the params means we'll possibly need
+  // a block and a temp local. But that takes at least 3 nodes, and 2 < 3.
+  // More generally, with 2 items we may have a local.get, but no way to
+  // require it to be saved instead of directly consumed.
+  Index alwaysInlineMaxSize = 2;
+  // Function size which we inline when functions are lightweight (no loops
+  // and calls) and we are doing aggressive optimisation for speed (-O3).
+  // In particular it's nice that with this limit we can inline the clamp
+  // functions (i32s-div, f64-to-int, etc.), that can affect perf.
+  Index flexibleInlineMaxSize = 20;
+  // Function size which we inline when there is only one caller.
+  // FIXME: this should logically be higher than flexibleInlineMaxSize.
+  Index oneCallerInlineMaxSize = 15;
+};
+
 struct PassOptions {
   // Run passes in debug mode, doing extra validation and timing checks.
   bool debug = false;
@@ -67,6 +90,8 @@ struct PassOptions {
   int optimizeLevel = 0;
   // 0, 1, 2 correspond to -O0, -Os, -Oz
   int shrinkLevel = 0;
+  // Tweak thresholds for the Inlining pass.
+  InliningOptions inlining;
   // Optimize assuming things like div by 0, bad load/store, will not trap.
   bool ignoreImplicitTraps = false;
   // Optimize assuming that the low 1K of memory is not valid memory for the
@@ -102,6 +127,13 @@ struct PassOptions {
     }
     return arguments[key];
   }
+
+  std::string getArgumentOrDefault(std::string key, std::string default_) {
+    if (arguments.count(key) == 0) {
+      return default_;
+    }
+    return arguments[key];
+  }
 };
 
 //
@@ -110,7 +142,7 @@ struct PassOptions {
 struct PassRunner {
   Module* wasm;
   MixedArena* allocator;
-  std::vector<Pass*> passes;
+  std::vector<std::unique_ptr<Pass>> passes;
   PassOptions options;
 
   PassRunner(Module* wasm) : wasm(wasm), allocator(&wasm->allocator) {}
@@ -131,17 +163,19 @@ struct PassRunner {
     options.validateGlobally = validate;
   }
 
+  // Add a pass using its name.
   void add(std::string passName) {
     auto pass = PassRegistry::get()->createPass(passName);
     if (!pass) {
       Fatal() << "Could not find pass: " << passName << "\n";
     }
-    doAdd(pass);
+    doAdd(std::move(pass));
   }
 
-  template<class P> void add() { doAdd(new P()); }
-
-  template<class P, class Arg> void add(Arg arg) { doAdd(new P(arg)); }
+  // Add a pass given an instance.
+  template<class P> void add(std::unique_ptr<P> pass) {
+    doAdd(std::move(pass));
+  }
 
   // Adds the default set of optimization passes; this is
   // what -O does.
@@ -173,8 +207,6 @@ struct PassRunner {
   // Get the last pass that was already executed of a certain type.
   template<class P> P* getLast();
 
-  ~PassRunner();
-
   // When running a pass runner within another pass runner, this
   // flag should be set. This influences how pass debugging works,
   // and may influence other things in the future too.
@@ -195,7 +227,7 @@ protected:
   bool isNested = false;
 
 private:
-  void doAdd(Pass* pass);
+  void doAdd(std::unique_ptr<Pass> pass);
 
   void runPass(Pass* pass);
   void runPassOnFunction(Pass* pass, Function* func);
@@ -283,6 +315,17 @@ protected:
 
 public:
   void run(PassRunner* runner, Module* module) override {
+    // Parallel pass running is implemented in the PassRunner.
+    if (isFunctionParallel()) {
+      PassRunner runner(module);
+      runner.setIsNested(true);
+      std::unique_ptr<Pass> copy;
+      copy.reset(create());
+      runner.add(std::move(copy));
+      runner.run();
+      return;
+    }
+    // Single-thread running just calls the walkModule traversal.
     setPassRunner(runner);
     WalkerType::setModule(module);
     WalkerType::walkModule(module);

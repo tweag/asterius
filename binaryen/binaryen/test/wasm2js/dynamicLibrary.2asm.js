@@ -2,13 +2,13 @@ import { memoryBase } from 'env';
 import { tableBase } from 'env';
 
 function asmFunc(global, env, buffer) {
- "almost asm";
  var memory = env.memory;
  var HEAP8 = new global.Int8Array(buffer);
  var HEAP16 = new global.Int16Array(buffer);
  var HEAP32 = new global.Int32Array(buffer);
  var HEAPU8 = new global.Uint8Array(buffer);
  var HEAPU16 = new global.Uint16Array(buffer);
+ var HEAPU32 = new global.Uint32Array(buffer);
  var HEAPF32 = new global.Float32Array(buffer);
  var HEAPF64 = new global.Float64Array(buffer);
  var Math_imul = global.Math.imul;
@@ -50,12 +50,13 @@ var assignasmFunc = (
     function(mem) {
       var _mem = new Uint8Array(mem);
       return function(offset, s) {
+        var bytes;
         if (typeof Buffer === 'undefined') {
-          var bytes = atob(s);
+          bytes = atob(s);
           for (var i = 0; i < bytes.length; i++)
             _mem[offset + i] = bytes.charCodeAt(i);
         } else {
-          var bytes = Buffer.from(s, 'base64');
+          bytes = Buffer.from(s, 'base64');
           for (var i = 0; i < bytes.length; i++)
             _mem[offset + i] = bytes[i];
         }

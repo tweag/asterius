@@ -145,7 +145,7 @@ private:
     std::map<Name, Name> oldToNew;
     auto process = [&](Name& name) {
       // do not minifiy special imports, they must always exist
-      if (name == MEMORY_BASE || name == TABLE_BASE) {
+      if (name == MEMORY_BASE || name == TABLE_BASE || name == STACK_POINTER) {
         return;
       }
       auto newName = names.getName(soFar++);
@@ -159,6 +159,7 @@ private:
     };
     ModuleUtils::iterImportedGlobals(*module, processImport);
     ModuleUtils::iterImportedFunctions(*module, processImport);
+    ModuleUtils::iterImportedEvents(*module, processImport);
 
     if (minifyExports) {
       // Minify the exported names.

@@ -259,10 +259,10 @@ public:
   void visitCall(Call* curr);
   void visitCallIndirect(CallIndirect* curr);
   void visitConst(Const* curr);
-  void visitGetLocal(GetLocal* curr);
-  void visitSetLocal(SetLocal* curr);
-  void visitGetGlobal(GetGlobal* curr);
-  void visitSetGlobal(SetGlobal* curr);
+  void visitLocalGet(LocalGet* curr);
+  void visitLocalSet(LocalSet* curr);
+  void visitGlobalGet(GlobalGet* curr);
+  void visitGlobalSet(GlobalSet* curr);
   void visitLoad(Load* curr);
   void visitStore(Store* curr);
   void visitAtomicRMW(AtomicRMW* curr);
@@ -569,6 +569,9 @@ void FunctionValidator::visitSwitch(Switch* curr) {
 }
 
 void FunctionValidator::visitCall(Call* curr) {
+  shouldBeTrue(!curr->isReturn || getModule()->features.hasTailCall(),
+               curr,
+               "return_call requires tail calls to be enabled");
   if (!info.validateGlobally) {
     return;
   }
@@ -593,6 +596,9 @@ void FunctionValidator::visitCall(Call* curr) {
 }
 
 void FunctionValidator::visitCallIndirect(CallIndirect* curr) {
+  shouldBeTrue(!curr->isReturn || getModule()->features.hasTailCall(),
+               curr,
+               "return_call_indirect requires tail calls to be enabled");
   if (!info.validateGlobally) {
     return;
   }
@@ -624,7 +630,7 @@ void FunctionValidator::visitConst(Const* curr) {
                "all used features should be allowed");
 }
 
-void FunctionValidator::visitGetLocal(GetLocal* curr) {
+void FunctionValidator::visitLocalGet(LocalGet* curr) {
   shouldBeTrue(curr->index < getFunction()->getNumLocals(),
                curr,
                "local.get index must be small enough");
@@ -637,7 +643,7 @@ void FunctionValidator::visitGetLocal(GetLocal* curr) {
                "local.get must have proper type");
 }
 
-void FunctionValidator::visitSetLocal(SetLocal* curr) {
+void FunctionValidator::visitLocalSet(LocalSet* curr) {
   shouldBeTrue(curr->index < getFunction()->getNumLocals(),
                curr,
                "local.set index must be small enough");
@@ -653,7 +659,7 @@ void FunctionValidator::visitSetLocal(SetLocal* curr) {
   }
 }
 
-void FunctionValidator::visitGetGlobal(GetGlobal* curr) {
+void FunctionValidator::visitGlobalGet(GlobalGet* curr) {
   if (!info.validateGlobally) {
     return;
   }
@@ -662,7 +668,7 @@ void FunctionValidator::visitGetGlobal(GetGlobal* curr) {
                "global.get name must be valid");
 }
 
-void FunctionValidator::visitSetGlobal(SetGlobal* curr) {
+void FunctionValidator::visitGlobalSet(GlobalSet* curr) {
   if (!info.validateGlobally) {
     return;
   }
@@ -1053,7 +1059,7 @@ void FunctionValidator::validateMemBytes(uint8_t bytes,
       shouldBeEqual(
         bytes, uint8_t(16), curr, "expected v128 operation to touch 16 bytes");
       break;
-    case except_ref: // except_ref cannot be stored in memory
+    case exnref: // exnref cannot be stored in memory
     case none:
       WASM_UNREACHABLE();
     case unreachable:
@@ -1490,19 +1496,21 @@ void FunctionValidator::visitReturn(Return* curr) {
 }
 
 void FunctionValidator::visitHost(Host* curr) {
+  shouldBeTrue(
+    getModule()->memory.exists, curr, "Memory operations require a memory");
   switch (curr->op) {
-    case GrowMemory: {
+    case MemoryGrow: {
       shouldBeEqual(curr->operands.size(),
                     size_t(1),
                     curr,
-                    "grow_memory must have 1 operand");
+                    "memory.grow must have 1 operand");
       shouldBeEqualOrFirstIsUnreachable(curr->operands[0]->type,
                                         i32,
                                         curr,
-                                        "grow_memory must have i32 operand");
+                                        "memory.grow must have i32 operand");
       break;
     }
-    case CurrentMemory:
+    case MemorySize:
       break;
   }
 }
@@ -1563,7 +1571,7 @@ void FunctionValidator::visitFunction(Function* curr) {
 }
 
 static bool checkOffset(Expression* curr, Address add, Address max) {
-  if (curr->is<GetGlobal>()) {
+  if (curr->is<GlobalGet>()) {
     return true;
   }
   auto* c = curr->dynCast<Const>();
@@ -1617,7 +1625,7 @@ void FunctionValidator::validateAlignment(
     case v128:
     case unreachable:
       break;
-    case except_ref: // except_ref cannot be stored in memory
+    case exnref: // exnref cannot be stored in memory
     case none:
       WASM_UNREACHABLE();
   }
@@ -1743,6 +1751,10 @@ static void validateExports(Module& module, ValidationInfo& info) {
       info.shouldBeTrue(name == Name("0") || name == module.memory.name,
                         name,
                         "module memory exports must be found");
+    } else if (exp->kind == ExternalKind::Event) {
+      info.shouldBeTrue(module.getEventOrNull(name),
+                        name,
+                        "module event exports must be found");
     } else {
       WASM_UNREACHABLE();
     }
@@ -1761,7 +1773,8 @@ static void validateGlobals(Module& module, ValidationInfo& info) {
                       "all used types should be allowed");
     info.shouldBeTrue(
       curr->init != nullptr, curr->name, "global init must be non-null");
-    info.shouldBeTrue(curr->init->is<Const>() || curr->init->is<GetGlobal>(),
+    assert(curr->init);
+    info.shouldBeTrue(curr->init->is<Const>() || curr->init->is<GlobalGet>(),
                       curr->name,
                       "global init must be valid");
     if (!info.shouldBeEqual(curr->type,
@@ -1852,6 +1865,36 @@ static void validateTable(Module& module, ValidationInfo& info) {
   }
 }
 
+static void validateEvents(Module& module, ValidationInfo& info) {
+  if (!module.events.empty()) {
+    info.shouldBeTrue(module.features.hasExceptionHandling(),
+                      module.events[0]->name,
+                      "Module has events (event-handling is disabled)");
+  }
+  for (auto& curr : module.events) {
+    info.shouldBeTrue(
+      curr->type.is(), curr->name, "Event should have a valid type");
+    FunctionType* ft = module.getFunctionType(curr->type);
+    info.shouldBeEqual(
+      ft->result, none, curr->name, "Event type's result type should be none");
+    info.shouldBeTrue(!curr->params.empty(),
+                      curr->name,
+                      "There should be 1 or more values in an event type");
+    info.shouldBeEqual(curr->attribute,
+                       (unsigned)0,
+                       curr->attribute,
+                       "Currently only attribute 0 is supported");
+    for (auto type : curr->params) {
+      info.shouldBeTrue(isIntegerType(type) || isFloatType(type),
+                        curr->name,
+                        "Values in an event should have integer or float type");
+    }
+    info.shouldBeTrue(curr->params == ft->params,
+                      curr->name,
+                      "Event's function type and internal type should match");
+  }
+}
+
 static void validateModule(Module& module, ValidationInfo& info) {
   // start
   if (module.start.is()) {
@@ -1876,9 +1919,7 @@ bool WasmValidator::validate(Module& module, Flags flags) {
   info.quiet = (flags & Quiet) != 0;
   // parallel wasm logic validation
   PassRunner runner(&module);
-  runner.add<FunctionValidator>(&info);
-  runner.setIsNested(true);
-  runner.run();
+  FunctionValidator(&info).run(&runner, &module);
   // validate globally
   if (info.validateGlobally) {
     validateImports(module, info);
@@ -1886,6 +1927,7 @@ bool WasmValidator::validate(Module& module, Flags flags) {
     validateGlobals(module, info);
     validateMemory(module, info);
     validateTable(module, info);
+    validateEvents(module, info);
     validateModule(module, info);
   }
   // validate additional internal IR details when in pass-debug mode
