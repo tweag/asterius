@@ -5,14 +5,12 @@ jobs:
     docker:
       - image: debian:unstable
     environment:
-      - ASTERIUS_BUILD_OPTIONS: -j8
+      - ASTERIUS_BUILD_OPTIONS: -j2
       - DEBIAN_FRONTEND: noninteractive
-      - GHCRTS: -A512M -I0 -qg -qb -N8
       - LANG: C.UTF-8
-      - MAKEFLAGS: -j8
+      - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       - STACK_ROOT: /tmp/.stack
-    resource_class: xlarge
     working_directory: /tmp/asterius
     steps:
       - run:
@@ -49,7 +47,7 @@ jobs:
           name: Build asterius
           command: |
             git submodule update --init --recursive
-            stack --no-terminal -j8 build --test --no-run-tests
+            stack --no-terminal -j2 build --test --no-run-tests
             stack --no-terminal exec ahc-boot
 
       - run:
@@ -99,14 +97,12 @@ jobs:
     docker:
       - image: debian:unstable
     environment:
-      - ASTERIUS_BUILD_OPTIONS: -j8
+      - ASTERIUS_BUILD_OPTIONS: -j2
       - DEBIAN_FRONTEND: noninteractive
-      - GHCRTS: -A512M -I0 -qg -qb -N8
       - LANG: C.UTF-8
-      - MAKEFLAGS: -j8
+      - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       - STACK_ROOT: /tmp/.stack
-    resource_class: xlarge
     working_directory: /tmp/asterius
     steps:
       - run:
@@ -145,7 +141,7 @@ jobs:
             name: Build asterius
             command: |
               git submodule update --init --recursive
-              stack --no-terminal -j8 build asterius --test --no-run-tests
+              stack --no-terminal -j2 build asterius --test --no-run-tests
               stack --no-terminal exec ahc-boot
 
       - run:
@@ -161,31 +157,21 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=30s" || true
               cp asterius/test-report.csv /tmp
-              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
-              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
 
       - store_artifacts:
           path: /tmp/test-report.csv
-
-      - store_artifacts:
-          path: /tmp/test-report-ascii.txt
-
-      - store_artifacts:
-          path: /tmp/test-report-grouped-by-error-ascii.txt
 
   asterius-test-ghc-testsuite-yolo:
     docker:
       - image: debian:unstable
     environment:
-      - ASTERIUS_BUILD_OPTIONS: -j8
+      - ASTERIUS_BUILD_OPTIONS: -j2
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --yolo
       - DEBIAN_FRONTEND: noninteractive
-      - GHCRTS: -A512M -I0 -qg -qb -N8
       - LANG: C.UTF-8
-      - MAKEFLAGS: -j8
+      - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
       - STACK_ROOT: /tmp/.stack
-    resource_class: xlarge
     working_directory: /tmp/asterius
     steps:
       - run:
@@ -224,7 +210,7 @@ jobs:
             name: Build asterius
             command: |
               git submodule update --init --recursive
-              stack --no-terminal -j8 build asterius --test --no-run-tests
+              stack --no-terminal -j2 build asterius --test --no-run-tests
               stack --no-terminal exec ahc-boot
 
       - run:
@@ -240,17 +226,9 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=30s" || true
               cp asterius/test-report.csv /tmp
-              python3 asterius/test/format-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-ascii.txt
-              python3 asterius/test/group-common-tests-ghc-testsuite-report.py /tmp/test-report.csv > /tmp/test-report-grouped-by-error-ascii.txt
 
       - store_artifacts:
           path: /tmp/test-report.csv
-
-      - store_artifacts:
-          path: /tmp/test-report-ascii.txt
-
-      - store_artifacts:
-          path: /tmp/test-report-grouped-by-error-ascii.txt
 
   asterius-build-docker:
     docker:
