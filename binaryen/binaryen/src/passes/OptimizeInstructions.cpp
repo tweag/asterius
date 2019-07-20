@@ -166,10 +166,10 @@ Index getMaxBits(Expression* curr, LocalInfoProvider* localInfoProvider) {
         return std::min(Index(32), getMaxBits(unary->value, localInfoProvider));
       default: {}
     }
-  } else if (auto* set = curr->dynCast<SetLocal>()) {
+  } else if (auto* set = curr->dynCast<LocalSet>()) {
     // a tee passes through the value
     return getMaxBits(set->value, localInfoProvider);
-  } else if (auto* get = curr->dynCast<GetLocal>()) {
+  } else if (auto* get = curr->dynCast<LocalGet>()) {
     return localInfoProvider->getMaxBitsForLocal(get);
   } else if (auto* load = curr->dynCast<Load>()) {
     // if signed, then the sign-extension might fill all the bits
@@ -226,7 +226,7 @@ struct LocalScanner : PostWalker<LocalScanner> {
     }
   }
 
-  void visitSetLocal(SetLocal* curr) {
+  void visitLocalSet(LocalSet* curr) {
     auto* func = getFunction();
     if (func->isParam(curr->index)) {
       return;
@@ -257,7 +257,7 @@ struct LocalScanner : PostWalker<LocalScanner> {
 
   // define this for the templated getMaxBits method. we know nothing here yet
   // about locals, so return the maxes
-  Index getMaxBitsForLocal(GetLocal* get) { return getBitsForType(get->type); }
+  Index getMaxBitsForLocal(LocalGet* get) { return getBitsForType(get->type); }
 
   Index getBitsForType(Type type) {
     switch (type) {
@@ -728,9 +728,9 @@ struct OptimizeInstructions
           return unary;
         }
       }
-    } else if (auto* set = curr->dynCast<SetGlobal>()) {
+    } else if (auto* set = curr->dynCast<GlobalSet>()) {
       // optimize out a set of a get
-      auto* get = set->value->dynCast<GetGlobal>();
+      auto* get = set->value->dynCast<GlobalGet>();
       if (get && get->name == set->name) {
         ExpressionManipulator::nop(curr);
       }
@@ -874,7 +874,7 @@ struct OptimizeInstructions
     return nullptr;
   }
 
-  Index getMaxBitsForLocal(GetLocal* get) {
+  Index getMaxBitsForLocal(LocalGet* get) {
     // check what we know about the local
     return localInfo[get->index].maxBits;
   }
@@ -906,7 +906,7 @@ private:
       return;
     }
     // Prefer a get on the right.
-    if (binary->left->is<GetLocal>() && !binary->right->is<GetLocal>()) {
+    if (binary->left->is<LocalGet>() && !binary->right->is<LocalGet>()) {
       return maybeSwap();
     }
     // Sort by the node id type, if different.
@@ -929,8 +929,8 @@ private:
         return maybeSwap();
       }
     }
-    if (auto* left = binary->left->dynCast<GetLocal>()) {
-      auto* right = binary->right->cast<GetLocal>();
+    if (auto* left = binary->left->dynCast<LocalGet>()) {
+      auto* right = binary->right->cast<LocalGet>();
       if (left->index > right->index) {
         return maybeSwap();
       }
@@ -939,6 +939,7 @@ private:
 
   // Optimize given that the expression is flowing into a boolean context
   Expression* optimizeBoolean(Expression* boolean) {
+    // TODO use a general getFallthroughs
     if (auto* unary = boolean->dynCast<Unary>()) {
       if (unary && unary->op == EqZInt32) {
         auto* unary2 = unary->value->dynCast<Unary>();
@@ -975,6 +976,9 @@ private:
         iff->ifTrue = optimizeBoolean(iff->ifTrue);
         iff->ifFalse = optimizeBoolean(iff->ifFalse);
       }
+    } else if (auto* select = boolean->dynCast<Select>()) {
+      select->ifTrue = optimizeBoolean(select->ifTrue);
+      select->ifFalse = optimizeBoolean(select->ifFalse);
     }
     // TODO: recurse into br values?
     return boolean;
@@ -986,46 +990,57 @@ private:
   Expression* optimizeAddedConstants(Binary* binary) {
     uint32_t constant = 0;
     std::vector<Const*> constants;
-    std::function<void(Expression*, int)> seek = [&](Expression* curr,
-                                                     int mul) {
+
+    struct SeekState {
+      Expression* curr;
+      int mul;
+      SeekState(Expression* curr, int mul) : curr(curr), mul(mul) {}
+    };
+    std::vector<SeekState> seekStack;
+    seekStack.emplace_back(binary, 1);
+    while (!seekStack.empty()) {
+      auto state = seekStack.back();
+      seekStack.pop_back();
+      auto curr = state.curr;
+      auto mul = state.mul;
       if (auto* c = curr->dynCast<Const>()) {
         uint32_t value = c->value.geti32();
         if (value != 0) {
           constant += value * mul;
           constants.push_back(c);
         }
-        return;
+        continue;
       } else if (auto* binary = curr->dynCast<Binary>()) {
         if (binary->op == AddInt32) {
-          seek(binary->left, mul);
-          seek(binary->right, mul);
-          return;
+          seekStack.emplace_back(binary->right, mul);
+          seekStack.emplace_back(binary->left, mul);
+          continue;
         } else if (binary->op == SubInt32) {
           // if the left is a zero, ignore it, it's how we negate ints
           auto* left = binary->left->dynCast<Const>();
+          seekStack.emplace_back(binary->right, -mul);
           if (!left || left->value.geti32() != 0) {
-            seek(binary->left, mul);
+            seekStack.emplace_back(binary->left, mul);
           }
-          seek(binary->right, -mul);
-          return;
+          continue;
         } else if (binary->op == ShlInt32) {
           if (auto* c = binary->right->dynCast<Const>()) {
-            seek(binary->left, mul * Pow2(Bits::getEffectiveShifts(c)));
-            return;
+            seekStack.emplace_back(binary->left,
+                                   mul * Pow2(Bits::getEffectiveShifts(c)));
+            continue;
           }
         } else if (binary->op == MulInt32) {
           if (auto* c = binary->left->dynCast<Const>()) {
-            seek(binary->right, mul * c->value.geti32());
-            return;
+            seekStack.emplace_back(binary->right, mul * c->value.geti32());
+            continue;
           } else if (auto* c = binary->right->dynCast<Const>()) {
-            seek(binary->left, mul * c->value.geti32());
-            return;
+            seekStack.emplace_back(binary->left, mul * c->value.geti32());
+            continue;
           }
         }
       }
     };
     // find all factors
-    seek(binary, 1);
     if (constants.size() <= 1) {
       // nothing much to do, except for the trivial case of adding/subbing a
       // zero
@@ -1208,9 +1223,9 @@ private:
       // don't do this if it would wrap the pointer
       uint64_t value64 = last->value.geti32();
       uint64_t offset64 = offset;
-      if (value64 <= std::numeric_limits<int32_t>::max() &&
-          offset64 <= std::numeric_limits<int32_t>::max() &&
-          value64 + offset64 <= std::numeric_limits<int32_t>::max()) {
+      if (value64 <= uint64_t(std::numeric_limits<int32_t>::max()) &&
+          offset64 <= uint64_t(std::numeric_limits<int32_t>::max()) &&
+          value64 + offset64 <= uint64_t(std::numeric_limits<int32_t>::max())) {
         last->value = Literal(int32_t(value64 + offset64));
         offset = 0;
       }
@@ -1270,7 +1285,7 @@ private:
     if (Properties::getSignExtValue(curr)) {
       return Properties::getSignExtBits(curr) == bits;
     }
-    if (auto* get = curr->dynCast<GetLocal>()) {
+    if (auto* get = curr->dynCast<LocalGet>()) {
       // check what we know about the local
       return localInfo[get->index].signExtedBits == bits;
     }

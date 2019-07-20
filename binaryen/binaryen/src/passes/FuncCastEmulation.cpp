@@ -66,8 +66,8 @@ static Expression* toABI(Expression* value, Module* module) {
       assert(false && "v128 not implemented yet");
       WASM_UNREACHABLE();
     }
-    case except_ref: {
-      assert(false && "except_ref cannot be converted to i64");
+    case exnref: {
+      assert(false && "exnref cannot be converted to i64");
       WASM_UNREACHABLE();
     }
     case none: {
@@ -108,8 +108,8 @@ static Expression* fromABI(Expression* value, Type type, Module* module) {
       assert(false && "v128 not implemented yet");
       WASM_UNREACHABLE();
     }
-    case except_ref: {
-      assert(false && "except_ref cannot be converted from i64");
+    case exnref: {
+      assert(false && "exnref cannot be converted from i64");
       WASM_UNREACHABLE();
     }
     case none: {
@@ -185,10 +185,7 @@ struct FuncCastEmulation : public Pass {
       }
     }
     // update call_indirects
-    PassRunner subRunner(module, runner->options);
-    subRunner.setIsNested(true);
-    subRunner.add<ParallelFuncCastEmulation>(ABIType);
-    subRunner.run();
+    ParallelFuncCastEmulation(ABIType).run(runner, module);
   }
 
 private:
@@ -210,7 +207,7 @@ private:
     std::vector<Expression*> callOperands;
     for (Index i = 0; i < params.size(); i++) {
       callOperands.push_back(
-        fromABI(builder.makeGetLocal(i, i64), params[i], module));
+        fromABI(builder.makeLocalGet(i, i64), params[i], module));
     }
     auto* call = builder.makeCall(name, callOperands, type);
     std::vector<Type> thunkParams;

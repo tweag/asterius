@@ -65,7 +65,7 @@ Global* EmscriptenGlueGenerator::getStackPointerGlobal() {
   // linker could export it by name?
   for (auto& g : wasm.globals) {
     if (g->imported()) {
-      if (g->base == "__stack_pointer") {
+      if (g->base == STACK_POINTER) {
         return g.get();
       }
     } else if (!isExported(wasm, g->name)) {
@@ -89,7 +89,7 @@ Expression* EmscriptenGlueGenerator::generateLoadStackPointer() {
   if (!stackPointer) {
     Fatal() << "stack pointer global not found";
   }
-  return builder.makeGetGlobal(stackPointer->name, i32);
+  return builder.makeGlobalGet(stackPointer->name, i32);
 }
 
 Expression*
@@ -107,7 +107,7 @@ EmscriptenGlueGenerator::generateStoreStackPointer(Expression* value) {
   if (!stackPointer) {
     Fatal() << "stack pointer global not found";
   }
-  return builder.makeSetGlobal(stackPointer->name, value);
+  return builder.makeGlobalSet(stackPointer->name, value);
 }
 
 void EmscriptenGlueGenerator::generateStackSaveFunction() {
@@ -125,18 +125,18 @@ void EmscriptenGlueGenerator::generateStackAllocFunction() {
   Function* function =
     builder.makeFunction(STACK_ALLOC, std::move(params), i32, {{"1", i32}});
   Expression* loadStack = generateLoadStackPointer();
-  GetLocal* getSizeArg = builder.makeGetLocal(0, i32);
+  LocalGet* getSizeArg = builder.makeLocalGet(0, i32);
   Binary* sub = builder.makeBinary(SubInt32, loadStack, getSizeArg);
   const static uint32_t bitAlignment = 16;
   const static uint32_t bitMask = bitAlignment - 1;
   Const* subConst = builder.makeConst(Literal(~bitMask));
   Binary* maskedSub = builder.makeBinary(AndInt32, sub, subConst);
-  SetLocal* teeStackLocal = builder.makeTeeLocal(1, maskedSub);
+  LocalSet* teeStackLocal = builder.makeLocalTee(1, maskedSub);
   Expression* storeStack = generateStoreStackPointer(teeStackLocal);
 
   Block* block = builder.makeBlock();
   block->list.push_back(storeStack);
-  GetLocal* getStackLocal2 = builder.makeGetLocal(1, i32);
+  LocalGet* getStackLocal2 = builder.makeLocalGet(1, i32);
   block->list.push_back(getStackLocal2);
   block->type = i32;
   function->body = block;
@@ -148,7 +148,7 @@ void EmscriptenGlueGenerator::generateStackRestoreFunction() {
   std::vector<NameType> params{{"0", i32}};
   Function* function =
     builder.makeFunction(STACK_RESTORE, std::move(params), none, {});
-  GetLocal* getArg = builder.makeGetLocal(0, i32);
+  LocalGet* getArg = builder.makeLocalGet(0, i32);
   Expression* store = generateStoreStackPointer(getArg);
 
   function->body = store;
@@ -193,16 +193,16 @@ ensureFunctionImport(Module* module, Name name, std::string sig) {
 // Here we internalize all such wasm globals and generte code that sets their
 // value based on the result of call `g$foo` and `fp$bar` functions at runtime.
 Function* EmscriptenGlueGenerator::generateAssignGOTEntriesFunction() {
-  std::vector<Global*> got_entries_func;
-  std::vector<Global*> got_entries_mem;
+  std::vector<Global*> gotFuncEntries;
+  std::vector<Global*> gotMemEntries;
   for (auto& g : wasm.globals) {
     if (!g->imported()) {
       continue;
     }
     if (g->module == "GOT.func") {
-      got_entries_func.push_back(g.get());
+      gotFuncEntries.push_back(g.get());
     } else if (g->module == "GOT.mem") {
-      got_entries_mem.push_back(g.get());
+      gotMemEntries.push_back(g.get());
     } else {
       continue;
     }
@@ -211,24 +211,24 @@ Function* EmscriptenGlueGenerator::generateAssignGOTEntriesFunction() {
     g->init = Builder(wasm).makeConst(Literal(0));
   }
 
-  if (!got_entries_func.size() && !got_entries_mem.size()) {
+  if (!gotFuncEntries.size() && !gotMemEntries.size()) {
     return nullptr;
   }
 
-  Function* assign_func =
+  Function* assignFunc =
     builder.makeFunction(ASSIGN_GOT_ENTIRES, std::vector<NameType>{}, none, {});
   Block* block = builder.makeBlock();
-  assign_func->body = block;
+  assignFunc->body = block;
 
-  for (Global* g : got_entries_mem) {
+  for (Global* g : gotMemEntries) {
     Name getter(std::string("g$") + g->base.c_str());
     ensureFunctionImport(&wasm, getter, "i");
     Expression* call = builder.makeCall(getter, {}, i32);
-    SetGlobal* set_global = builder.makeSetGlobal(g->name, call);
-    block->list.push_back(set_global);
+    GlobalSet* globalSet = builder.makeGlobalSet(g->name, call);
+    block->list.push_back(globalSet);
   }
 
-  for (Global* g : got_entries_func) {
+  for (Global* g : gotFuncEntries) {
     Function* f = nullptr;
     // The function has to exist either as export or an import.
     // Note that we don't search for the function by name since its internal
@@ -250,12 +250,12 @@ Function* EmscriptenGlueGenerator::generateAssignGOTEntriesFunction() {
         .c_str());
     ensureFunctionImport(&wasm, getter, "i");
     Expression* call = builder.makeCall(getter, {}, i32);
-    SetGlobal* set_global = builder.makeSetGlobal(g->name, call);
-    block->list.push_back(set_global);
+    GlobalSet* globalSet = builder.makeGlobalSet(g->name, call);
+    block->list.push_back(globalSet);
   }
 
-  wasm.addFunction(assign_func);
-  return assign_func;
+  wasm.addFunction(assignFunc);
+  return assignFunc;
 }
 
 // For emscripten SIDE_MODULE we generate a single exported function called
@@ -304,20 +304,11 @@ Function* EmscriptenGlueGenerator::generateMemoryGrowthFunction() {
   Function* growFunction =
     builder.makeFunction(name, std::move(params), i32, {});
   growFunction->body =
-    builder.makeHost(GrowMemory, Name(), {builder.makeGetLocal(0, i32)});
+    builder.makeHost(MemoryGrow, Name(), {builder.makeLocalGet(0, i32)});
 
   addExportedFunction(wasm, growFunction);
 
   return growFunction;
-}
-
-void EmscriptenGlueGenerator::generateStackInitialization(Address addr) {
-  auto* stackPointer = getStackPointerGlobal();
-  assert(!stackPointer->imported());
-  if (!stackPointer->init || !stackPointer->init->is<Const>()) {
-    Fatal() << "stack pointer global is not assignable";
-  }
-  stackPointer->init->cast<Const>()->value = Literal(int32_t(addr));
 }
 
 inline void exportFunction(Module& wasm, Name name, bool must_export) {
@@ -351,10 +342,10 @@ void EmscriptenGlueGenerator::generateDynCallThunk(std::string sig) {
   }
   Function* f =
     builder.makeFunction(name, std::move(params), funcType->result, {});
-  Expression* fptr = builder.makeGetLocal(0, i32);
+  Expression* fptr = builder.makeLocalGet(0, i32);
   std::vector<Expression*> args;
   for (unsigned i = 0; i < funcType->params.size(); ++i) {
-    args.push_back(builder.makeGetLocal(i + 1, funcType->params[i]));
+    args.push_back(builder.makeLocalGet(i + 1, funcType->params[i]));
   }
   Expression* call = builder.makeCallIndirect(funcType, fptr, args);
   f->body = call;
@@ -378,7 +369,7 @@ void EmscriptenGlueGenerator::generateDynCallThunks() {
 struct RemoveStackPointer : public PostWalker<RemoveStackPointer> {
   RemoveStackPointer(Global* stackPointer) : stackPointer(stackPointer) {}
 
-  void visitGetGlobal(GetGlobal* curr) {
+  void visitGlobalGet(GlobalGet* curr) {
     if (getModule()->getGlobalOrNull(curr->name) == stackPointer) {
       needStackSave = true;
       if (!builder) {
@@ -388,7 +379,7 @@ struct RemoveStackPointer : public PostWalker<RemoveStackPointer> {
     }
   }
 
-  void visitSetGlobal(SetGlobal* curr) {
+  void visitGlobalSet(GlobalSet* curr) {
     if (getModule()->getGlobalOrNull(curr->name) == stackPointer) {
       needStackRestore = true;
       if (!builder) {
@@ -405,6 +396,32 @@ private:
   std::unique_ptr<Builder> builder;
   Global* stackPointer;
 };
+
+// lld can sometimes produce a build with an imported mutable __stack_pointer
+// (i.e.  when linking with -fpie).  This method internalizes the
+// __stack_pointer and initializes it from an immutable global instead.
+// For -shared builds we instead call replaceStackPointerGlobal.
+void EmscriptenGlueGenerator::internalizeStackPointerGlobal() {
+  Global* stackPointer = getStackPointerGlobal();
+  if (!stackPointer || !stackPointer->imported() || !stackPointer->mutable_) {
+    return;
+  }
+
+  Name internalName = stackPointer->name;
+  Name externalName = internalName.c_str() + std::string("_import");
+
+  // Rename the imported global, and make it immutable
+  stackPointer->name = externalName;
+  stackPointer->mutable_ = false;
+  wasm.updateMaps();
+
+  // Create a new global with the old name that is not imported.
+  Builder builder(wasm);
+  auto* init = builder.makeGlobalGet(externalName, stackPointer->type);
+  auto* sp = builder.makeGlobal(
+    internalName, stackPointer->type, init, Builder::Mutable);
+  wasm.addGlobal(sp);
+}
 
 void EmscriptenGlueGenerator::replaceStackPointerGlobal() {
   Global* stackPointer = getStackPointerGlobal();
@@ -427,10 +444,43 @@ void EmscriptenGlueGenerator::replaceStackPointerGlobal() {
   wasm.removeGlobal(stackPointer->name);
 }
 
+const Address UNKNOWN_OFFSET(uint32_t(-1));
+
 std::vector<Address> getSegmentOffsets(Module& wasm) {
+  std::unordered_map<Index, Address> passiveOffsets;
+  if (wasm.features.hasBulkMemory()) {
+    // Fetch passive segment offsets out of memory.init instructions
+    struct OffsetSearcher : PostWalker<OffsetSearcher> {
+      std::unordered_map<Index, Address>& offsets;
+      OffsetSearcher(std::unordered_map<unsigned, Address>& offsets)
+        : offsets(offsets) {}
+      void visitMemoryInit(MemoryInit* curr) {
+        auto* dest = curr->dest->dynCast<Const>();
+        if (!dest) {
+          return;
+        }
+        auto it = offsets.find(curr->segment);
+        if (it != offsets.end()) {
+          Fatal() << "Cannot get offset of passive segment initialized "
+                     "multiple times";
+        }
+        offsets[curr->segment] = dest->value.geti32();
+      }
+    } searcher(passiveOffsets);
+    searcher.walkModule(&wasm);
+  }
   std::vector<Address> segmentOffsets;
   for (unsigned i = 0; i < wasm.memory.segments.size(); ++i) {
-    if (auto* addrConst = wasm.memory.segments[i].offset->dynCast<Const>()) {
+    auto& segment = wasm.memory.segments[i];
+    if (segment.isPassive) {
+      auto it = passiveOffsets.find(i);
+      if (it != passiveOffsets.end()) {
+        segmentOffsets.push_back(it->second);
+      } else {
+        // This was a non-constant offset (perhaps TLS)
+        segmentOffsets.push_back(UNKNOWN_OFFSET);
+      }
+    } else if (auto* addrConst = segment.offset->dynCast<Const>()) {
       auto address = addrConst->value.geti32();
       segmentOffsets.push_back(address);
     } else {
@@ -477,7 +527,8 @@ const char* stringAtAddr(Module& wasm,
   for (unsigned i = 0; i < wasm.memory.segments.size(); ++i) {
     Memory::Segment& segment = wasm.memory.segments[i];
     Address offset = segmentOffsets[i];
-    if (address >= offset && address < offset + segment.data.size()) {
+    if (offset != UNKNOWN_OFFSET && address >= offset &&
+        address < offset + segment.data.size()) {
       return &segment.data[address - offset];
     }
   }
@@ -505,14 +556,14 @@ struct AsmConstWalker : public LinearExecutionWalker<AsmConstWalker> {
   std::map<std::string, Address> ids;
   std::set<std::string> allSigs;
   // last sets in the current basic block, per index
-  std::map<Index, SetLocal*> sets;
+  std::map<Index, LocalSet*> sets;
 
   AsmConstWalker(Module& _wasm)
     : wasm(_wasm), segmentOffsets(getSegmentOffsets(wasm)) {}
 
   void noteNonLinear(Expression* curr);
 
-  void visitSetLocal(SetLocal* curr);
+  void visitLocalSet(LocalSet* curr);
   void visitCall(Call* curr);
   void visitTable(Table* curr);
 
@@ -534,7 +585,7 @@ void AsmConstWalker::noteNonLinear(Expression* curr) {
   sets.clear();
 }
 
-void AsmConstWalker::visitSetLocal(SetLocal* curr) { sets[curr->index] = curr; }
+void AsmConstWalker::visitLocalSet(LocalSet* curr) { sets[curr->index] = curr; }
 
 void AsmConstWalker::visitCall(Call* curr) {
   auto* import = wasm.getFunction(curr->target);
@@ -545,7 +596,7 @@ void AsmConstWalker::visitCall(Call* curr) {
     auto sig = fixupNameWithSig(curr->target, baseSig);
     auto* arg = curr->operands[0];
     while (!arg->dynCast<Const>()) {
-      if (auto* get = arg->dynCast<GetLocal>()) {
+      if (auto* get = arg->dynCast<LocalGet>()) {
         // The argument may be a local.get, in which case, the last set in this
         // basic block has the value.
         auto* set = sets[get->index];
@@ -690,35 +741,14 @@ struct EmJsWalker : public PostWalker<EmJsWalker> {
       return;
     }
     auto funcName = std::string(curr->name.stripPrefix(EM_JS_PREFIX.str));
-    auto addrConst = curr->body->dynCast<Const>();
-    if (addrConst == nullptr) {
-      auto block = curr->body->dynCast<Block>();
-      Expression* value = nullptr;
-      if (block && block->list.size() > 0) {
-        value = block->list[0];
-        // first item may be a set of a local that we get later
-        auto* set = value->dynCast<SetLocal>();
-        if (set) {
-          value = block->list[1];
-        }
-        // look into a return value
-        if (auto* ret = value->dynCast<Return>()) {
-          value = ret->value;
-        }
-        // if it's a get of that set, use that value
-        if (auto* get = value->dynCast<GetLocal>()) {
-          if (set && get->index == set->index) {
-            value = set->value;
-          }
-        }
-      }
-      if (value) {
-        addrConst = value->dynCast<Const>();
-      }
-    }
-    if (addrConst == nullptr) {
+    // An EM_JS has a single const in the body. Typically it is just returned,
+    // but in unoptimized code it might be stored to a local and loaded from
+    // there, and in relocatable code it might get added to __memory_base etc.
+    FindAll<Const> consts(curr->body);
+    if (consts.list.size() != 1) {
       Fatal() << "Unexpected generated __em_js__ function body: " << curr->name;
     }
+    auto* addrConst = consts.list[0];
     auto code = codeForConstAddr(wasm, segmentOffsets, addrConst);
     codeByName[funcName] = code;
   }

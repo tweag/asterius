@@ -45,8 +45,6 @@ using namespace cashew;
 
 extern Name WASM, RETURN_FLOW;
 
-enum { maxCallDepth = 250 };
-
 // Stuff that flows around during executing expressions: a literal, or a change
 // in control flow.
 class Flow {
@@ -128,8 +126,19 @@ public:
 // Execute an expression
 template<typename SubType>
 class ExpressionRunner : public OverriddenVisitor<SubType, Flow> {
+protected:
+  Index maxDepth;
+
+  Index depth = 0;
+
 public:
+  ExpressionRunner(Index maxDepth) : maxDepth(maxDepth) {}
+
   Flow visit(Expression* curr) {
+    depth++;
+    if (depth > maxDepth) {
+      trap("interpreter recursion limit");
+    }
     auto ret = OverriddenVisitor<SubType, Flow>::visit(curr);
     if (!ret.breaking() &&
         (isConcreteType(curr->type) || isConcreteType(ret.value.type))) {
@@ -142,6 +151,7 @@ public:
 #endif
       assert(ret.value.type == curr->type);
     }
+    depth--;
     return ret;
   }
 
@@ -1022,9 +1032,9 @@ public:
 
   Flow visitCall(Call*) { WASM_UNREACHABLE(); }
   Flow visitCallIndirect(CallIndirect*) { WASM_UNREACHABLE(); }
-  Flow visitGetLocal(GetLocal*) { WASM_UNREACHABLE(); }
-  Flow visitSetLocal(SetLocal*) { WASM_UNREACHABLE(); }
-  Flow visitSetGlobal(SetGlobal*) { WASM_UNREACHABLE(); }
+  Flow visitLocalGet(LocalGet*) { WASM_UNREACHABLE(); }
+  Flow visitLocalSet(LocalSet*) { WASM_UNREACHABLE(); }
+  Flow visitGlobalSet(GlobalSet*) { WASM_UNREACHABLE(); }
   Flow visitLoad(Load* curr) { WASM_UNREACHABLE(); }
   Flow visitStore(Store* curr) { WASM_UNREACHABLE(); }
   Flow visitHost(Host* curr) { WASM_UNREACHABLE(); }
@@ -1036,6 +1046,8 @@ public:
   Flow visitAtomicCmpxchg(AtomicCmpxchg*) { WASM_UNREACHABLE(); }
   Flow visitAtomicWait(AtomicWait*) { WASM_UNREACHABLE(); }
   Flow visitAtomicNotify(AtomicNotify*) { WASM_UNREACHABLE(); }
+  Flow visitPush(Push*) { WASM_UNREACHABLE(); }
+  Flow visitPop(Pop*) { WASM_UNREACHABLE(); }
 
   virtual void trap(const char* why) { WASM_UNREACHABLE(); }
 };
@@ -1047,9 +1059,11 @@ class ConstantExpressionRunner
   GlobalManager& globals;
 
 public:
-  ConstantExpressionRunner(GlobalManager& globals) : globals(globals) {}
+  ConstantExpressionRunner(GlobalManager& globals, Index maxDepth)
+    : ExpressionRunner<ConstantExpressionRunner<GlobalManager>>(maxDepth),
+      globals(globals) {}
 
-  Flow visitGetGlobal(GetGlobal* curr) { return Flow(globals[curr->name]); }
+  Flow visitGlobalGet(GlobalGet* curr) { return Flow(globals[curr->name]); }
 };
 
 //
@@ -1124,7 +1138,7 @@ public:
           return Literal(load64u(addr)).castToF64();
         case v128:
           return Literal(load128(addr).data());
-        case except_ref: // except_ref cannot be loaded from memory
+        case exnref: // exnref cannot be loaded from memory
         case none:
         case unreachable:
           WASM_UNREACHABLE();
@@ -1178,7 +1192,7 @@ public:
         case v128:
           store128(addr, value.getv128());
           break;
-        case except_ref: // except_ref cannot be stored in memory
+        case exnref: // exnref cannot be stored in memory
         case none:
         case unreachable:
           WASM_UNREACHABLE();
@@ -1215,6 +1229,9 @@ public:
   // Values of globals
   GlobalManager globals;
 
+  // Multivalue ABI support (see push/pop).
+  std::vector<Literal> multiValues;
+
   ModuleInstanceBase(Module& wasm, ExternalInterface* externalInterface)
     : wasm(wasm), externalInterface(externalInterface) {
     // import globals from the outside
@@ -1223,9 +1240,10 @@ public:
     memorySize = wasm.memory.initial;
     // generate internal (non-imported) globals
     ModuleUtils::iterDefinedGlobals(wasm, [&](Global* global) {
-      globals[global->name] = ConstantExpressionRunner<GlobalManager>(globals)
-                                .visit(global->init)
-                                .value;
+      globals[global->name] =
+        ConstantExpressionRunner<GlobalManager>(globals, maxDepth)
+          .visit(global->init)
+          .value;
     });
 
     // initialize the rest of the external interface
@@ -1288,7 +1306,7 @@ private:
   void initializeTableContents() {
     for (auto& segment : wasm.table.segments) {
       Address offset =
-        (uint32_t)ConstantExpressionRunner<GlobalManager>(globals)
+        (uint32_t)ConstantExpressionRunner<GlobalManager>(globals, maxDepth)
           .visit(segment.offset)
           .value.geti32();
       if (offset + segment.data.size() > wasm.table.initial) {
@@ -1331,7 +1349,7 @@ private:
       // the memory.init and data.drop instructions.
       Function dummyFunc;
       FunctionScope dummyScope(&dummyFunc, {});
-      RuntimeExpressionRunner runner(*this, dummyScope);
+      RuntimeExpressionRunner runner(*this, dummyScope, maxDepth);
       runner.visit(&init);
       runner.visit(&drop);
     }
@@ -1378,8 +1396,11 @@ private:
     FunctionScope& scope;
 
   public:
-    RuntimeExpressionRunner(ModuleInstanceBase& instance, FunctionScope& scope)
-      : instance(instance), scope(scope) {}
+    RuntimeExpressionRunner(ModuleInstanceBase& instance,
+                            FunctionScope& scope,
+                            Index maxDepth)
+      : ExpressionRunner<RuntimeExpressionRunner>(maxDepth), instance(instance),
+        scope(scope) {}
 
     Flow generateArguments(const ExpressionList& operands,
                            LiteralList& arguments) {
@@ -1432,15 +1453,15 @@ private:
         index, arguments, curr->type, *instance.self());
     }
 
-    Flow visitGetLocal(GetLocal* curr) {
-      NOTE_ENTER("GetLocal");
+    Flow visitLocalGet(LocalGet* curr) {
+      NOTE_ENTER("LocalGet");
       auto index = curr->index;
       NOTE_EVAL1(index);
       NOTE_EVAL1(scope.locals[index]);
       return scope.locals[index];
     }
-    Flow visitSetLocal(SetLocal* curr) {
-      NOTE_ENTER("SetLocal");
+    Flow visitLocalSet(LocalSet* curr) {
+      NOTE_ENTER("LocalSet");
       auto index = curr->index;
       Flow flow = this->visit(curr->value);
       if (flow.breaking()) {
@@ -1453,16 +1474,16 @@ private:
       return curr->isTee() ? flow : Flow();
     }
 
-    Flow visitGetGlobal(GetGlobal* curr) {
-      NOTE_ENTER("GetGlobal");
+    Flow visitGlobalGet(GlobalGet* curr) {
+      NOTE_ENTER("GlobalGet");
       auto name = curr->name;
       NOTE_EVAL1(name);
       assert(instance.globals.find(name) != instance.globals.end());
       NOTE_EVAL1(instance.globals[name]);
       return instance.globals[name];
     }
-    Flow visitSetGlobal(SetGlobal* curr) {
-      NOTE_ENTER("SetGlobal");
+    Flow visitGlobalSet(GlobalSet* curr) {
+      NOTE_ENTER("GlobalSet");
       auto name = curr->name;
       Flow flow = this->visit(curr->value);
       if (flow.breaking()) {
@@ -1616,9 +1637,9 @@ private:
     Flow visitHost(Host* curr) {
       NOTE_ENTER("Host");
       switch (curr->op) {
-        case CurrentMemory:
+        case MemorySize:
           return Literal(int32_t(instance.memorySize));
-        case GrowMemory: {
+        case MemoryGrow: {
           auto fail = Literal(int32_t(-1));
           Flow flow = this->visit(curr->operands[0]);
           if (flow.breaking()) {
@@ -1674,11 +1695,6 @@ private:
       Address offsetVal(uint32_t(offset.value.geti32()));
       Address sizeVal(uint32_t(size.value.geti32()));
 
-      instance.checkLoadAddress(destVal, 0);
-      if (offsetVal > segment.data.size()) {
-        trap("segment offset out of bounds");
-      }
-
       for (size_t i = 0; i < sizeVal; ++i) {
         if (offsetVal + i >= segment.data.size()) {
           trap("out of bounds segment access in memory.init");
@@ -1718,20 +1734,16 @@ private:
       Address sourceVal(uint32_t(source.value.geti32()));
       Address sizeVal(uint32_t(size.value.geti32()));
 
-      instance.checkLoadAddress(destVal, 0);
-      instance.checkLoadAddress(sourceVal, 0);
-
-      size_t start = 0;
-      size_t end = sizeVal;
+      int64_t start = 0;
+      int64_t end = sizeVal;
       int step = 1;
-      // Reverse direction if source is below dest and they overlap
-      if (sourceVal < destVal &&
-          (sourceVal + sizeVal > destVal || sourceVal + sizeVal < sourceVal)) {
-        start = sizeVal - 1;
+      // Reverse direction if source is below dest
+      if (sourceVal < destVal) {
+        start = int64_t(sizeVal) - 1;
         end = -1;
         step = -1;
       }
-      for (size_t i = start; i != end; i += step) {
+      for (int64_t i = start; i != end; i += step) {
         if (i + destVal >= std::numeric_limits<uint32_t>::max()) {
           trap("Out of bounds memory access");
         }
@@ -1762,14 +1774,28 @@ private:
       Address destVal(uint32_t(dest.value.geti32()));
       Address sizeVal(uint32_t(size.value.geti32()));
 
-      instance.checkLoadAddress(destVal, 0);
-
       uint8_t val(value.value.geti32());
       for (size_t i = 0; i < sizeVal; ++i) {
         instance.externalInterface->store8(
           instance.getFinalAddress(Literal(uint32_t(destVal + i)), 1), val);
       }
       return {};
+    }
+    Flow visitPush(Push* curr) {
+      NOTE_ENTER("Push");
+      Flow value = this->visit(curr->value);
+      if (value.breaking()) {
+        return value;
+      }
+      instance.multiValues.push_back(value.value);
+      return Flow();
+    }
+    Flow visitPop(Pop* curr) {
+      NOTE_ENTER("Pop");
+      assert(!instance.multiValues.empty());
+      auto ret = instance.multiValues.back();
+      instance.multiValues.pop_back();
+      return ret;
     }
 
     void trap(const char* why) override {
@@ -1790,7 +1816,7 @@ public:
   // Internal function call. Must be public so that callTable implementations
   // can use it (refactor?)
   Literal callFunctionInternal(Name name, const LiteralList& arguments) {
-    if (callDepth > maxCallDepth) {
+    if (callDepth > maxDepth) {
       externalInterface->trap("stack limit");
     }
     auto previousCallDepth = callDepth;
@@ -1809,7 +1835,8 @@ public:
     }
 #endif
 
-    Flow flow = RuntimeExpressionRunner(*this, scope).visit(function->body);
+    Flow flow =
+      RuntimeExpressionRunner(*this, scope, maxDepth).visit(function->body);
     // cannot still be breaking, it means we missed our stop
     assert(!flow.breaking() || flow.breakTo == RETURN_FLOW);
     Literal ret = flow.value;
@@ -1832,6 +1859,8 @@ public:
 
 protected:
   Address memorySize; // in pages
+
+  static const Index maxDepth = 250;
 
   void trapIfGt(uint64_t lhs, uint64_t rhs, const char* msg) {
     if (lhs > rhs) {

@@ -32,6 +32,7 @@
 
 #include <atomic>
 
+#include "ir/debug.h"
 #include "ir/literal-utils.h"
 #include "ir/module-utils.h"
 #include "ir/utils.h"
@@ -42,26 +43,6 @@
 #include "wasm.h"
 
 namespace wasm {
-
-// A limit on how big a function to inline when being careful about size
-static const int CAREFUL_SIZE_LIMIT = 15;
-
-// A limit on how big a function to inline when being more flexible. In
-// particular it's nice that with this limit we can inline the clamp
-// functions (i32s-div, f64-to-int, etc.), that can affect perf.
-static const int FLEXIBLE_SIZE_LIMIT = 20;
-
-// A size so small that after optimizations, the inlined code will be
-// smaller than the call instruction itself. 2 is a safe number because
-// there is no risk of things like
-//  (func $reverse (param $x i32) (param $y i32)
-//   (call $something (local.get $y) (local.get $x))
-//  )
-// in which case the reversing of the params means we'll possibly need
-// a block and a temp local. But that takes at least 3 nodes, and 2 < 3.
-// More generally, with 2 items we may have a local.get, but no way to
-// require it to be saved instead of directly consumed.
-static const int INLINING_OPTIMIZING_WILL_DECREASE_SIZE_LIMIT = 2;
 
 // Useful into on a function, helping us decide if we can inline it
 struct FunctionInfo {
@@ -77,20 +58,25 @@ struct FunctionInfo {
     usedGlobally = false;
   }
 
+  // See pass.h for how defaults for these options were chosen.
   bool worthInlining(PassOptions& options) {
     // if it's big, it's just not worth doing (TODO: investigate more)
-    if (size > FLEXIBLE_SIZE_LIMIT) {
+    if (size > options.inlining.flexibleInlineMaxSize) {
       return false;
     }
     // if it's so small we have a guarantee that after we optimize the
     // size will not increase, inline it
-    if (size <= INLINING_OPTIMIZING_WILL_DECREASE_SIZE_LIMIT) {
+    if (size <= options.inlining.alwaysInlineMaxSize) {
       return true;
     }
     // if it has one use, then inlining it would likely reduce code size
     // since we are just moving code around, + optimizing, so worth it
     // if small enough that we are pretty sure its ok
-    if (calls == 1 && !usedGlobally && size <= CAREFUL_SIZE_LIMIT) {
+    // FIXME: move this check to be first in this function, since we should
+    // return true if oneCallerInlineMaxSize is bigger than
+    // flexibleInlineMaxSize (which it typically should be).
+    if (calls == 1 && !usedGlobally &&
+        size <= options.inlining.oneCallerInlineMaxSize) {
       return true;
     }
     // more than one use, so we can't eliminate it after inlining,
@@ -174,8 +160,6 @@ struct Planner : public WalkerPass<PostWalker<Planner>> {
     }
   }
 
-  void doWalkFunction(Function* func) { walk(func->body); }
-
 private:
   InliningState* state;
 };
@@ -190,7 +174,7 @@ doInlining(Module* module, Function* into, InliningAction& action) {
   auto* block = Builder(*module).makeBlock();
   block->name = Name(std::string("__inlined_func$") + from->name.str);
   *action.callSite = block;
-  // set up a locals mapping
+  // Prepare to update the inlined code's locals and other things.
   struct Updater : public PostWalker<Updater> {
     std::map<Index, Index> localMapping;
     Name returnName;
@@ -199,42 +183,46 @@ doInlining(Module* module, Function* into, InliningAction& action) {
     void visitReturn(Return* curr) {
       replaceCurrent(builder->makeBreak(returnName, curr->value));
     }
-    void visitGetLocal(GetLocal* curr) {
+    void visitLocalGet(LocalGet* curr) {
       curr->index = localMapping[curr->index];
     }
-    void visitSetLocal(SetLocal* curr) {
+    void visitLocalSet(LocalSet* curr) {
       curr->index = localMapping[curr->index];
     }
   } updater;
   updater.returnName = block->name;
   updater.builder = &builder;
+  // Set up a locals mapping
   for (Index i = 0; i < from->getNumLocals(); i++) {
     updater.localMapping[i] = builder.addVar(into, from->getLocalType(i));
   }
-  // assign the operands into the params
+  // Assign the operands into the params
   for (Index i = 0; i < from->params.size(); i++) {
     block->list.push_back(
-      builder.makeSetLocal(updater.localMapping[i], call->operands[i]));
+      builder.makeLocalSet(updater.localMapping[i], call->operands[i]));
   }
-  // zero out the vars (as we may be in a loop, and may depend on their
+  // Zero out the vars (as we may be in a loop, and may depend on their
   // zero-init value
   for (Index i = 0; i < from->vars.size(); i++) {
     block->list.push_back(
-      builder.makeSetLocal(updater.localMapping[from->getVarIndexBase() + i],
+      builder.makeLocalSet(updater.localMapping[from->getVarIndexBase() + i],
                            LiteralUtils::makeZero(from->vars[i], *module)));
   }
-  // generate and update the inlined contents
+  // Generate and update the inlined contents
   auto* contents = ExpressionManipulator::copy(from->body, *module);
+  if (!from->debugLocations.empty()) {
+    debug::copyDebugInfo(from->body, contents, from, into);
+  }
   updater.walk(contents);
   block->list.push_back(contents);
   block->type = call->type;
-  // if the function returned a value, we just set the block containing the
+  // If the function returned a value, we just set the block containing the
   // inlined code to have that type. or, if the function was void and
   // contained void, that is fine too. a bad case is a void function in which
   // we have unreachable code, so we would be replacing a void call with an
   // unreachable; we need to handle
   if (contents->type == unreachable && block->type == none) {
-    // make the block reachable by adding a break to it
+    // Make the block reachable by adding a break to it
     block->list.push_back(builder.makeBreak(block->name));
   }
   return block;
@@ -278,9 +266,7 @@ struct Inlining : public Pass {
       infos[func->name];
     }
     PassRunner runner(module);
-    runner.setIsNested(true);
-    runner.add<FunctionInfoScanner>(&infos);
-    runner.run();
+    FunctionInfoScanner(&infos).run(&runner, module);
     // fill in global uses
     // anything exported or used in a table should not be inlined
     for (auto& ex : module->exports) {
@@ -312,12 +298,7 @@ struct Inlining : public Pass {
       state.actionsForFunction[func->name];
     }
     // find and plan inlinings
-    {
-      PassRunner runner(module);
-      runner.setIsNested(true);
-      runner.add<Planner>(&state);
-      runner.run();
-    }
+    Planner(&state).run(runner, module);
     // perform inlinings TODO: parallelize
     std::unordered_map<Name, Index> inlinedUses; // how many uses we inlined
     // which functions were inlined into

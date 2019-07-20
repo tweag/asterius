@@ -44,7 +44,7 @@ EMCC_ARGS="$EMCC_ARGS -s NO_FILESYSTEM=0"
 EMCC_ARGS="$EMCC_ARGS -s WASM=0"
 EMCC_ARGS="$EMCC_ARGS -s ERROR_ON_UNDEFINED_SYMBOLS=1"
 EMCC_ARGS="$EMCC_ARGS -s BINARYEN_ASYNC_COMPILATION=0"
-# TODO: enable this (need nearbyint in emscripten tag) EMCC_ARGS="$EMCC_ARGS -s ERROR_ON_UNDEFINED_SYMBOLS=1"
+EMCC_ARGS="$EMCC_ARGS -s ERROR_ON_UNDEFINED_SYMBOLS=1"
 EMCC_ARGS="$EMCC_ARGS -s DISABLE_EXCEPTION_CATCHING=0" # Exceptions are thrown and caught when optimizing endless loops
 OUT_FILE_SUFFIX=
 
@@ -69,14 +69,15 @@ BINARYEN_SRC="$(dirname $0)/src"
 BINARYEN_SCRIPTS="$(dirname $0)/scripts"
 
 # output binaries relative to current working directory
-BINARYEN_BIN="$PWD/bin"
+OUT="$PWD/out"
 
 echo "generate embedded intrinsics module"
 
 python $BINARYEN_SCRIPTS/embedwast.py $BINARYEN_SRC/passes/wasm-intrinsics.wast $BINARYEN_SRC/passes/WasmIntrinsics.cpp
 
-echo "building shared bitcode"
+echo "compiling source files"
 
+mkdir -p ${OUT}
 "$EMSCRIPTEN/em++" \
   $EMCC_ARGS \
   $BINARYEN_SRC/asmjs/asm_v_wasm.cpp \
@@ -92,6 +93,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/ir/ReFinalize.cpp \
   $BINARYEN_SRC/passes/pass.cpp \
   $BINARYEN_SRC/passes/AlignmentLowering.cpp \
+  $BINARYEN_SRC/passes/Asyncify.cpp \
   $BINARYEN_SRC/passes/AvoidReinterprets.cpp \
   $BINARYEN_SRC/passes/CoalesceLocals.cpp \
   $BINARYEN_SRC/passes/DeadArgumentElimination.cpp \
@@ -128,6 +130,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/passes/Precompute.cpp \
   $BINARYEN_SRC/passes/Print.cpp \
   $BINARYEN_SRC/passes/PrintFeatures.cpp \
+  $BINARYEN_SRC/passes/PrintFunctionMap.cpp \
   $BINARYEN_SRC/passes/PrintCallGraph.cpp \
   $BINARYEN_SRC/passes/RedundantSetElimination.cpp \
   $BINARYEN_SRC/passes/RelooperJumpThreading.cpp \
@@ -168,7 +171,7 @@ echo "building shared bitcode"
   $BINARYEN_SRC/wasm/wasm-validator.cpp \
   $BINARYEN_SRC/wasm/wasm.cpp \
   -I$BINARYEN_SRC \
-  -o shared.bc
+  -o ${OUT}/shared.o
 
 echo "building binaryen.js"
 
@@ -181,7 +184,7 @@ export_function "_BinaryenTypeInt64"
 export_function "_BinaryenTypeFloat32"
 export_function "_BinaryenTypeFloat64"
 export_function "_BinaryenTypeVec128"
-export_function "_BinaryenTypeExceptRef"
+export_function "_BinaryenTypeExnref"
 export_function "_BinaryenTypeUnreachable"
 export_function "_BinaryenTypeAuto"
 
@@ -194,10 +197,10 @@ export_function "_BinaryenBreakId"
 export_function "_BinaryenSwitchId"
 export_function "_BinaryenCallId"
 export_function "_BinaryenCallIndirectId"
-export_function "_BinaryenGetLocalId"
-export_function "_BinaryenSetLocalId"
-export_function "_BinaryenGetGlobalId"
-export_function "_BinaryenSetGlobalId"
+export_function "_BinaryenLocalGetId"
+export_function "_BinaryenLocalSetId"
+export_function "_BinaryenGlobalGetId"
+export_function "_BinaryenGlobalSetId"
 export_function "_BinaryenLoadId"
 export_function "_BinaryenStoreId"
 export_function "_BinaryenConstId"
@@ -228,6 +231,18 @@ export_function "_BinaryenExternalFunction"
 export_function "_BinaryenExternalTable"
 export_function "_BinaryenExternalMemory"
 export_function "_BinaryenExternalGlobal"
+export_function "_BinaryenExternalEvent"
+
+# Features
+export_function "_BinaryenFeatureMVP"
+export_function "_BinaryenFeatureAtomics"
+export_function "_BinaryenFeatureBulkMemory"
+export_function "_BinaryenFeatureMutableGlobals"
+export_function "_BinaryenFeatureNontrappingFPToInt"
+export_function "_BinaryenFeatureSignExt"
+export_function "_BinaryenFeatureSIMD128"
+export_function "_BinaryenFeatureExceptionHandling"
+export_function "_BinaryenFeatureAll"
 
 # Literals
 export_function "_BinaryenLiteralInt32"
@@ -375,8 +390,8 @@ export_function "_BinaryenLtFloat64"
 export_function "_BinaryenLeFloat64"
 export_function "_BinaryenGtFloat64"
 export_function "_BinaryenGeFloat64"
-export_function "_BinaryenCurrentMemory"
-export_function "_BinaryenGrowMemory"
+export_function "_BinaryenMemorySize"
+export_function "_BinaryenMemoryGrow"
 export_function "_BinaryenAtomicRMWAdd"
 export_function "_BinaryenAtomicRMWSub"
 export_function "_BinaryenAtomicRMWAnd"
@@ -527,11 +542,13 @@ export_function "_BinaryenBreak"
 export_function "_BinaryenSwitch"
 export_function "_BinaryenCall"
 export_function "_BinaryenCallIndirect"
-export_function "_BinaryenGetLocal"
-export_function "_BinaryenSetLocal"
-export_function "_BinaryenTeeLocal"
-export_function "_BinaryenGetGlobal"
-export_function "_BinaryenSetGlobal"
+export_function "_BinaryenReturnCall"
+export_function "_BinaryenReturnCallIndirect"
+export_function "_BinaryenLocalGet"
+export_function "_BinaryenLocalSet"
+export_function "_BinaryenLocalTee"
+export_function "_BinaryenGlobalGet"
+export_function "_BinaryenGlobalSet"
 export_function "_BinaryenLoad"
 export_function "_BinaryenStore"
 export_function "_BinaryenConst"
@@ -600,20 +617,20 @@ export_function "_BinaryenCallIndirectGetTarget"
 export_function "_BinaryenCallIndirectGetNumOperands"
 export_function "_BinaryenCallIndirectGetOperand"
 
-# 'GetLocal' expression operations
-export_function "_BinaryenGetLocalGetIndex"
+# 'LocalGet' expression operations
+export_function "_BinaryenLocalGetGetIndex"
 
-# 'SetLocal' expression operations
-export_function "_BinaryenSetLocalIsTee"
-export_function "_BinaryenSetLocalGetIndex"
-export_function "_BinaryenSetLocalGetValue"
+# 'LocalSet' expression operations
+export_function "_BinaryenLocalSetIsTee"
+export_function "_BinaryenLocalSetGetIndex"
+export_function "_BinaryenLocalSetGetValue"
 
-# 'GetGlobal' expression operations
-export_function "_BinaryenGetGlobalGetName"
+# 'GlobalGet' expression operations
+export_function "_BinaryenGlobalGetGetName"
 
-# 'SetGlobal' expression operations
-export_function "_BinaryenSetGlobalGetName"
-export_function "_BinaryenSetGlobalGetValue"
+# 'GlobalSet' expression operations
+export_function "_BinaryenGlobalSetGetName"
+export_function "_BinaryenGlobalSetGetValue"
 
 # 'Host' expression operations
 export_function "_BinaryenHostGetOp"
@@ -744,19 +761,27 @@ export_function "_BinaryenAddFunction"
 export_function "_BinaryenGetFunction"
 export_function "_BinaryenRemoveFunction"
 export_function "_BinaryenAddGlobal"
+export_function "_BinaryenGetGlobal"
 export_function "_BinaryenRemoveGlobal"
+export_function "_BinaryenAddEvent"
+export_function "_BinaryenGetEvent"
+export_function "_BinaryenRemoveEvent"
 export_function "_BinaryenAddFunctionImport"
 export_function "_BinaryenAddTableImport"
 export_function "_BinaryenAddMemoryImport"
 export_function "_BinaryenAddGlobalImport"
+export_function "_BinaryenAddEventImport"
 export_function "_BinaryenAddFunctionExport"
 export_function "_BinaryenAddTableExport"
 export_function "_BinaryenAddMemoryExport"
 export_function "_BinaryenAddGlobalExport"
+export_function "_BinaryenAddEventExport"
 export_function "_BinaryenRemoveExport"
 export_function "_BinaryenSetFunctionTable"
 export_function "_BinaryenSetMemory"
 export_function "_BinaryenSetStart"
+export_function "_BinaryenModuleGetFeatures"
+export_function "_BinaryenModuleSetFeatures"
 export_function "_BinaryenModuleParse"
 export_function "_BinaryenModulePrint"
 export_function "_BinaryenModulePrintAsmjs"
@@ -801,11 +826,20 @@ export_function "_BinaryenGlobalGetType"
 export_function "_BinaryenGlobalIsMutable"
 export_function "_BinaryenGlobalGetInitExpr"
 
+# 'Event' operations
+export_function "_BinaryenEventGetName"
+export_function "_BinaryenEventGetType"
+export_function "_BinaryenEventGetNumParams"
+export_function "_BinaryenEventGetParam"
+export_function "_BinaryenEventGetAttribute"
+
 # 'Import' operations
 export_function "_BinaryenGlobalImportGetModule"
 export_function "_BinaryenGlobalImportGetBase"
 export_function "_BinaryenFunctionImportGetModule"
 export_function "_BinaryenFunctionImportGetBase"
+export_function "_BinaryenEventImportGetModule"
+export_function "_BinaryenEventImportGetBase"
 
 # 'Export' operations
 export_function "_BinaryenExportGetKind"
@@ -826,10 +860,10 @@ export_function "_BinaryenSetAPITracing"
 "$EMSCRIPTEN/em++" \
   $EMCC_ARGS \
   $BINARYEN_SRC/binaryen-c.cpp \
-  shared.bc \
+  $OUT/shared.o \
   -I$BINARYEN_SRC/ \
   -s EXPORTED_FUNCTIONS=[${EXPORTED_FUNCTIONS}] \
-  -o $BINARYEN_BIN/binaryen${OUT_FILE_SUFFIX}.js \
+  -o $OUT/binaryen${OUT_FILE_SUFFIX}.js \
   -s MODULARIZE_INSTANCE=1 \
   -s 'EXPORT_NAME="Binaryen"' \
   --post-js $BINARYEN_SRC/js/binaryen.js-post.js

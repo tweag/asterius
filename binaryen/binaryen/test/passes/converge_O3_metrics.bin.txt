@@ -1,6 +1,8 @@
 total
+ [events]       : 0       
  [exports]      : 2       
  [funcs]        : 8       
+ [globals]      : 1       
  [imports]      : 3       
  [memory-data]  : 28      
  [table-data]   : 429     
@@ -241,8 +243,10 @@ total
  )
 )
 total
+ [events]       : 0       
  [exports]      : 2       
  [funcs]        : 8       
+ [globals]      : 1       
  [imports]      : 3       
  [memory-data]  : 28      
  [table-data]   : 429     
@@ -484,8 +488,10 @@ total
  )
 )
 total
+ [events]       : 0       
  [exports]      : 2       
  [funcs]        : 8       
+ [globals]      : 1       
  [imports]      : 3       
  [memory-data]  : 28      
  [table-data]   : 429     

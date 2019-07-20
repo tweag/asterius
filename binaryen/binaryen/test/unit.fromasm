@@ -24,7 +24,6 @@
  (import "asm2wasm" "f64-to-int" (func $f64-to-int (param f64) (result i32)))
  (import "asm2wasm" "f64-rem" (func $f64-rem (param f64 f64) (result f64)))
  (global $Int (mut i32) (i32.const 0))
- (global $Double f64 (f64.const 0))
  (global $nonZero (mut i32) (i32.const 1337))
  (global $exportedNumber i32 (i32.const 42))
  (export "big_negative" (func $big_negative))
@@ -53,8 +52,8 @@
  (export "phi" (func $phi))
  (export "smallIf" (func $smallIf))
  (export "dropCall" (func $dropCall))
- (export "useSetGlobal" (func $useSetGlobal))
- (export "usesSetGlobal2" (func $usesSetGlobal2))
+ (export "useGlobalSet" (func $useGlobalSet))
+ (export "usesGlobalSet2" (func $usesGlobalSet2))
  (export "breakThroughMany" (func $breakThroughMany))
  (export "ifChainEmpty" (func $ifChainEmpty))
  (export "heap8NoShift" (func $heap8NoShift))
@@ -92,7 +91,7 @@
   )
   (if
    (f64.gt
-    (global.get $Double)
+    (f64.const 0)
     (f64.const 0)
    )
    (return
@@ -520,7 +519,7 @@
   )
   (call $phi)
  )
- (func $useSetGlobal (; 35 ;) (; has Stack IR ;) (result i32)
+ (func $useGlobalSet (; 35 ;) (; has Stack IR ;) (result i32)
   (global.set $Int
    (i32.const 10)
   )
@@ -532,7 +531,7 @@
   )
   (global.get $Int)
  )
- (func $usesSetGlobal2 (; 36 ;) (; has Stack IR ;) (result i32)
+ (func $usesGlobalSet2 (; 36 ;) (; has Stack IR ;) (result i32)
   (global.set $Int
    (i32.const 40)
   )
@@ -705,19 +704,17 @@
   )
  )
  (func $loophi (; 45 ;) (; has Stack IR ;) (param $0 i32) (param $1 i32)
-  (local $2 i32)
   (loop $while-in
    (block $while-out
     (call $loophi
      (local.get $0)
      (i32.const 0)
     )
-    (if
-     (local.tee $2
+    (br_if $while-out
+     (select
       (local.get $0)
-     )
-     (br_if $while-out
-      (local.get $2)
+      (i32.const 0)
+      (local.get $0)
      )
     )
     (br_if $while-in
@@ -747,9 +744,10 @@
      (local.set $2
       (local.get $0)
      )
-     (if
-      (call $return_int)
-      (br_if $label$break$L7
+     (br_if $label$break$L7
+      (select
+       (call $return_int)
+       (i32.const 0)
        (local.get $2)
       )
      )
@@ -779,9 +777,10 @@
      (local.set $1
       (local.get $0)
      )
-     (if
-      (call $return_int)
-      (br_if $label$break$L7
+     (br_if $label$break$L7
+      (select
+       (call $return_int)
+       (i32.const 0)
        (local.get $1)
       )
      )

@@ -378,7 +378,7 @@ enum BinaryOp {
   InvalidBinary
 };
 
-enum HostOp { CurrentMemory, GrowMemory };
+enum HostOp { MemorySize, MemoryGrow };
 
 enum AtomicRMWOp { Add, Sub, And, Or, Xor, Xchg };
 
@@ -449,10 +449,10 @@ public:
     SwitchId,
     CallId,
     CallIndirectId,
-    GetLocalId,
-    SetLocalId,
-    GetGlobalId,
-    SetGlobalId,
+    LocalGetId,
+    LocalSetId,
+    GlobalGetId,
+    GlobalSetId,
     LoadId,
     StoreId,
     ConstId,
@@ -477,6 +477,8 @@ public:
     DataDropId,
     MemoryCopyId,
     MemoryFillId,
+    PushId,
+    PopId,
     NumExpressionIds
   };
   Id _id;
@@ -619,6 +621,7 @@ public:
 
   ExpressionList operands;
   Name target;
+  bool isReturn = false;
 
   void finalize();
 };
@@ -632,6 +635,7 @@ public:
   FunctionType() = default;
 
   bool structuralComparison(FunctionType& b);
+  bool structuralComparison(const std::vector<Type>& params, Type result);
 
   bool operator==(FunctionType& b);
   bool operator!=(FunctionType& b);
@@ -644,22 +648,23 @@ public:
   ExpressionList operands;
   Name fullType;
   Expression* target;
+  bool isReturn = false;
 
   void finalize();
 };
 
-class GetLocal : public SpecificExpression<Expression::GetLocalId> {
+class LocalGet : public SpecificExpression<Expression::LocalGetId> {
 public:
-  GetLocal() = default;
-  GetLocal(MixedArena& allocator) {}
+  LocalGet() = default;
+  LocalGet(MixedArena& allocator) {}
 
   Index index;
 };
 
-class SetLocal : public SpecificExpression<Expression::SetLocalId> {
+class LocalSet : public SpecificExpression<Expression::LocalSetId> {
 public:
-  SetLocal() = default;
-  SetLocal(MixedArena& allocator) {}
+  LocalSet() = default;
+  LocalSet(MixedArena& allocator) {}
 
   void finalize();
 
@@ -670,18 +675,18 @@ public:
   void setTee(bool is);
 };
 
-class GetGlobal : public SpecificExpression<Expression::GetGlobalId> {
+class GlobalGet : public SpecificExpression<Expression::GlobalGetId> {
 public:
-  GetGlobal() = default;
-  GetGlobal(MixedArena& allocator) {}
+  GlobalGet() = default;
+  GlobalGet(MixedArena& allocator) {}
 
   Name name;
 };
 
-class SetGlobal : public SpecificExpression<Expression::SetGlobalId> {
+class GlobalSet : public SpecificExpression<Expression::GlobalSetId> {
 public:
-  SetGlobal() = default;
-  SetGlobal(MixedArena& allocator) {}
+  GlobalSet() = default;
+  GlobalSet(MixedArena& allocator) {}
 
   Name name;
   Expression* value;
@@ -973,6 +978,31 @@ public:
   Unreachable(MixedArena& allocator) : Unreachable() {}
 };
 
+// A multivalue push. This represents a push of a value, which will be
+// used in the next return. That is, a multivalue return is done by
+// pushing some values, then doing a return (with a value as well).
+// For more on this design, see the readme.
+class Push : public SpecificExpression<Expression::PushId> {
+public:
+  Push() = default;
+  Push(MixedArena& allocator) {}
+
+  Expression* value;
+
+  void finalize();
+};
+
+// A multivalue pop. This represents a pop of a value, which arrived
+// from a multivalue call or other situation where there are things on
+// the stack. That is, a multivalue-returning call is done by doing
+// the call, receiving the first value normally, and receiving the others
+// via calls to pop.
+class Pop : public SpecificExpression<Expression::PopId> {
+public:
+  Pop() = default;
+  Pop(MixedArena& allocator) {}
+};
+
 // Globals
 
 struct Importable {
@@ -1062,6 +1092,7 @@ enum class ExternalKind {
   Table = 1,
   Memory = 2,
   Global = 3,
+  Event = 4,
   Invalid = -1
 };
 
@@ -1155,6 +1186,24 @@ public:
   bool mutable_ = false;
 };
 
+// Kinds of event attributes.
+enum WasmEventAttribute : unsigned { WASM_EVENT_ATTRIBUTE_EXCEPTION = 0x0 };
+
+class Event : public Importable {
+public:
+  Name name;
+  // Kind of event. Currently only WASM_EVENT_ATTRIBUTE_EXCEPTION is possible.
+  uint32_t attribute;
+  // Type string in the format of function type. Return type is considered as a
+  // void type. So if you have an event whose type is (i32, i32), the type
+  // string will be "vii".
+  Name type;
+  // This is duplicate info of 'Name type', but we store this anyway because
+  // we plan to remove FunctionType in future.
+  // TODO remove either this or FunctionType
+  std::vector<Type> params;
+};
+
 // "Opaque" data, not part of the core wasm spec, that is held in binaries.
 // May be parsed/handled by utility code elsewhere, but not in wasm.h
 class UserSection {
@@ -1171,6 +1220,7 @@ public:
   std::vector<std::unique_ptr<Export>> exports;
   std::vector<std::unique_ptr<Function>> functions;
   std::vector<std::unique_ptr<Global>> globals;
+  std::vector<std::unique_ptr<Event>> events;
 
   Table table;
   Memory memory;
@@ -1196,6 +1246,7 @@ private:
   std::map<Name, Export*> exportsMap;
   std::map<Name, Function*> functionsMap;
   std::map<Name, Global*> globalsMap;
+  std::map<Name, Event*> eventsMap;
 
 public:
   Module() = default;
@@ -1204,17 +1255,20 @@ public:
   Export* getExport(Name name);
   Function* getFunction(Name name);
   Global* getGlobal(Name name);
+  Event* getEvent(Name name);
 
   FunctionType* getFunctionTypeOrNull(Name name);
   Export* getExportOrNull(Name name);
   Function* getFunctionOrNull(Name name);
   Global* getGlobalOrNull(Name name);
+  Event* getEventOrNull(Name name);
 
   FunctionType* addFunctionType(std::unique_ptr<FunctionType> curr);
   Export* addExport(Export* curr);
   Function* addFunction(Function* curr);
   Function* addFunction(std::unique_ptr<Function> curr);
   Global* addGlobal(Global* curr);
+  Event* addEvent(Event* curr);
 
   void addStart(const Name& s);
 
@@ -1222,6 +1276,7 @@ public:
   void removeExport(Name name);
   void removeFunction(Name name);
   void removeGlobal(Name name);
+  void removeEvent(Name name);
 
   void updateMaps();
 

@@ -62,10 +62,11 @@ struct Metrics
     walkTable(&module->table);
     walkMemory(&module->memory);
 
-    // add imports
+    // add imports / funcs / globals/ exports
     counts["[imports]"] = imports.getNumImports();
-    // add functions
     counts["[funcs]"] = imports.getNumDefinedFunctions();
+    counts["[globals]"] = imports.getNumDefinedGlobals();
+    counts["[events]"] = imports.getNumDefinedEvents();
     counts["[exports]"] = module->exports.size();
     // add memory and table
     if (module->memory.exists) {

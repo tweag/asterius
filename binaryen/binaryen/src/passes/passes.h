@@ -23,6 +23,7 @@ class Pass;
 
 // All passes:
 Pass* createAlignmentLoweringPass();
+Pass* createAsyncifyPass();
 Pass* createAvoidReinterpretsPass();
 Pass* createCoalesceLocalsPass();
 Pass* createCoalesceLocalsWithLearningPass();
@@ -35,6 +36,7 @@ Pass* createDataFlowOptsPass();
 Pass* createDeadCodeEliminationPass();
 Pass* createDirectizePass();
 Pass* createDuplicateFunctionEliminationPass();
+Pass* createEmitTargetFeaturesPass();
 Pass* createExtractFunctionPass();
 Pass* createFlattenPass();
 Pass* createFuncCastEmulationPass();
@@ -72,6 +74,7 @@ Pass* createPrecomputePropagatePass();
 Pass* createPrinterPass();
 Pass* createPrintCallGraphPass();
 Pass* createPrintFeaturesPass();
+Pass* createPrintFunctionMapPass();
 Pass* createPrintStackIRPass();
 Pass* createRelooperJumpThreadingPass();
 Pass* createRemoveNonJSOpsPass();

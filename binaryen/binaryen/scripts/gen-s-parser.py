@@ -28,19 +28,26 @@ instructions = [
     ("br_if",          "makeBreak(s)"),
     ("br_table",       "makeBreakTable(s)"),
     ("return",         "makeReturn(s)"),
-    ("call",           "makeCall(s)"),
-    ("call_indirect",  "makeCallIndirect(s)"),
+    ("call",           "makeCall(s, /*isReturn=*/false)"),
+    ("call_indirect",  "makeCallIndirect(s, /*isReturn=*/false)"),
+    ("return_call",    "makeCall(s, /*isReturn=*/true)"),
+    ("return_call_indirect", "makeCallIndirect(s, /*isReturn=*/true)"),
     ("drop",           "makeDrop(s)"),
     ("select",         "makeSelect(s)"),
-    ("local.get",      "makeGetLocal(s)"),
-    ("local.set",      "makeSetLocal(s)"),
-    ("local.tee",      "makeTeeLocal(s)"),
-    ("global.get",     "makeGetGlobal(s)"),
-    ("global.set",     "makeSetGlobal(s)"),
+    ("local.get",      "makeLocalGet(s)"),
+    ("local.set",      "makeLocalSet(s)"),
+    ("local.tee",      "makeLocalTee(s)"),
+    ("global.get",     "makeGlobalGet(s)"),
+    ("global.set",     "makeGlobalSet(s)"),
     ("memory.init",    "makeMemoryInit(s)"),
     ("data.drop",      "makeDataDrop(s)"),
     ("memory.copy",    "makeMemoryCopy(s)"),
     ("memory.fill",    "makeMemoryFill(s)"),
+    ("push",           "makePush(s)"),
+    ("i32.pop",        "makePop(i32)"),
+    ("i64.pop",        "makePop(i64)"),
+    ("f32.pop",        "makePop(f32)"),
+    ("f64.pop",        "makePop(f64)"),
     ("i32.load",       "makeLoad(s, i32, /*isAtomic=*/false)"),
     ("i64.load",       "makeLoad(s, i64, /*isAtomic=*/false)"),
     ("f32.load",       "makeLoad(s, f32, /*isAtomic=*/false)"),
@@ -64,8 +71,8 @@ instructions = [
     ("i64.store8",     "makeStore(s, i64, /*isAtomic=*/false)"),
     ("i64.store16",    "makeStore(s, i64, /*isAtomic=*/false)"),
     ("i64.store32",    "makeStore(s, i64, /*isAtomic=*/false)"),
-    ("current_memory", "makeHost(s, HostOp::CurrentMemory)"),
-    ("grow_memory",    "makeHost(s, HostOp::GrowMemory)"),
+    ("memory.size",    "makeHost(s, HostOp::MemorySize)"),
+    ("memory.grow",    "makeHost(s, HostOp::MemoryGrow)"),
     ("i32.const",      "makeConst(s, i32)"),
     ("i64.const",      "makeConst(s, i64)"),
     ("f32.const",      "makeConst(s, f32)"),
@@ -528,7 +535,7 @@ def instruction_parser():
   emit(trie)
   printer.print_line("parse_error:")
   with printer.indent():
-    printer.print_line("throw ParseException(std::string(op));")
+    printer.print_line("throw ParseException(std::string(op), s.line, s.col);")
 
 
 def print_header():
