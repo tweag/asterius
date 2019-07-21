@@ -125,9 +125,9 @@ jobs:
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
 
-            cd ~/.local
-            $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
-            cd $CIRCLE_WORKING_DIRECTORY
+            cd /root/.local
+            /root/project/utils/v8-node.py
+            cd /root/project
             stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
@@ -325,9 +325,9 @@ jobs:
             # CSV file.
             no_output_timeout: 30m
             command: |
-              cd ~/.local
-              $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
-              cd $CIRCLE_WORKING_DIRECTORY
+              cd /root/.local
+              /root/project/utils/v8-node.py
+              cd /root/project
 
               # run the GHC testsuite and copy the test artifact to `/tmp`
               nodejs --version
@@ -392,9 +392,9 @@ jobs:
             # CSV file.
             no_output_timeout: 30m
             command: |
-              cd ~/.local
-              $CIRCLE_WORKING_DIRECTORY/utils/v8-node.py
-              cd $CIRCLE_WORKING_DIRECTORY
+              cd /root/.local
+              /root/project/utils/v8-node.py
+              cd /root/project
 
               # run the GHC testsuite and copy the test artifact to `/tmp`
               nodejs --version
