@@ -7,6 +7,7 @@ jobs:
     environment:
       - ASTERIUS_BUILD_OPTIONS: -j2
       - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -N2
       - LANG: C.UTF-8
       - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -69,6 +70,7 @@ jobs:
       - image: debian:unstable
     environment:
       - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -N2
       - LANG: C.UTF-8
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
@@ -146,13 +148,14 @@ jobs:
 
             # Run parts of the ghc-testuite that we have enabled for
             # regression testing.
-            stack test asterius:ghc-testsuite --test-arguments="  --timeout=30s -l test/ghc-testsuite-filter";
+            stack test asterius:ghc-testsuite --test-arguments="--timeout=30s -l test/ghc-testsuite-filter";
 
   asterius-test-ghc-testsuite:
     docker:
       - image: debian:unstable
     environment:
       - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -N2
       - LANG: C.UTF-8
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
@@ -216,6 +219,7 @@ jobs:
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --yolo
       - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -N2
       - LANG: C.UTF-8
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
@@ -279,6 +283,7 @@ jobs:
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --debug
       - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -N2
       - LANG: C.UTF-8
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
@@ -346,6 +351,7 @@ jobs:
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --debug --yolo
       - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -N2
       - LANG: C.UTF-8
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:

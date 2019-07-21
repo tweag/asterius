@@ -7,6 +7,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
+import Asterius.Internals.Temp
 import Asterius.JSRun.Main
 import Control.Arrow ((&&&))
 import Control.Exception
@@ -154,17 +155,19 @@ instance Show CompileOutcome where
   show (CompileFailure e) = "CompileFailure" <> [separator] <> e
 
 runTestCase :: TestCase -> IO ()
-runTestCase TestCase {..} = do
+runTestCase TestCase {..} = withTempDir "" $ \tmp_dir -> do
+  let tmp_case_path = tmp_dir </> takeFileName casePath
+  copyFile casePath tmp_case_path
   m_opts <- getEnv "ASTERIUS_GHC_TESTSUITE_OPTIONS"
   let l_opts = maybeToList m_opts >>= words
   _ <-
     readCreateProcess
       (proc "ahc-link" $
-       ["--input-hs", takeFileName casePath, "--binaryen", "--verbose-err"] <>
+       ["--input-hs", takeFileName tmp_case_path, "--binaryen", "--verbose-err"] <>
        l_opts)
-        {cwd = Just $ takeDirectory casePath}
+        {cwd = Just tmp_dir}
       ""
-  mod_buf <- LBS.readFile $ casePath -<.> "wasm"
+  mod_buf <- LBS.readFile $ tmp_case_path -<.> "wasm"
   withJSSession
     defJSSessionOpts
       { nodeExtraArgs =
@@ -175,7 +178,7 @@ runTestCase TestCase {..} = do
     -- return a CompileFailure with the error message
     co <-
         (do
-          i <- newAsteriusInstance s (casePath -<.> "lib.mjs") mod_buf
+          i <- newAsteriusInstance s (tmp_case_path -<.> "lib.mjs") mod_buf
           hsInit s i
           pure (CompileSuccess i))
             `catch` (\(e :: SomeException) -> pure . CompileFailure . show $ e)
