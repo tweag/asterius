@@ -156,15 +156,21 @@ instance Show CompileOutcome where
 runTestCase :: TestCase -> IO ()
 runTestCase TestCase {..} = do
   m_opts <- getEnv "ASTERIUS_GHC_TESTSUITE_OPTIONS"
+  let l_opts = maybeToList m_opts >>= words
   _ <-
     readCreateProcess
       (proc "ahc-link" $
        ["--input-hs", takeFileName casePath, "--binaryen", "--verbose-err"] <>
-       (maybeToList m_opts >>= words))
+       l_opts)
         {cwd = Just $ takeDirectory casePath}
       ""
   mod_buf <- LBS.readFile $ casePath -<.> "wasm"
-  withJSSession defJSSessionOpts $ \s -> do
+  withJSSession
+    defJSSessionOpts
+      { nodeExtraArgs =
+          ["--experimental-wasm-bigint" | "--debug" `elem` l_opts] <>
+          ["--experimental-wasm-return-call" | "--tail-calls" `elem` l_opts]
+      } $ \s -> do
     -- | Try to compile and setup the program. If we throw an exception,
     -- return a CompileFailure with the error message
     co <-
