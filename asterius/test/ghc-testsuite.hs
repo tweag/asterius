@@ -7,6 +7,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
+import Asterius.Internals.Temp
 import Asterius.JSRun.Main
 import Control.Arrow ((&&&))
 import Control.Exception
@@ -154,22 +155,30 @@ instance Show CompileOutcome where
   show (CompileFailure e) = "CompileFailure" <> [separator] <> e
 
 runTestCase :: TestCase -> IO ()
-runTestCase TestCase {..} = do
+runTestCase TestCase {..} = withTempDir "" $ \tmp_dir -> do
+  let tmp_case_path = tmp_dir </> takeFileName casePath
+  copyFile casePath tmp_case_path
   m_opts <- getEnv "ASTERIUS_GHC_TESTSUITE_OPTIONS"
+  let l_opts = maybeToList m_opts >>= words
   _ <-
     readCreateProcess
       (proc "ahc-link" $
-       ["--input-hs", takeFileName casePath, "--binaryen", "--verbose-err"] <>
-       (maybeToList m_opts >>= words))
-        {cwd = Just $ takeDirectory casePath}
+       ["--input-hs", takeFileName tmp_case_path, "--binaryen", "--verbose-err"] <>
+       l_opts)
+        {cwd = Just tmp_dir}
       ""
-  mod_buf <- LBS.readFile $ casePath -<.> "wasm"
-  withJSSession defJSSessionOpts $ \s -> do
+  mod_buf <- LBS.readFile $ tmp_case_path -<.> "wasm"
+  withJSSession
+    defJSSessionOpts
+      { nodeExtraArgs =
+          ["--experimental-wasm-bigint" | "--debug" `elem` l_opts] <>
+          ["--experimental-wasm-return-call" | "--tail-calls" `elem` l_opts]
+      } $ \s -> do
     -- | Try to compile and setup the program. If we throw an exception,
     -- return a CompileFailure with the error message
     co <-
         (do
-          i <- newAsteriusInstance s (casePath -<.> "lib.mjs") mod_buf
+          i <- newAsteriusInstance s (tmp_case_path -<.> "lib.mjs") mod_buf
           hsInit s i
           pure (CompileSuccess i))
             `catch` (\(e :: SomeException) -> pure . CompileFailure . show $ e)
