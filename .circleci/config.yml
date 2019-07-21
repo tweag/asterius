@@ -183,7 +183,7 @@ jobs:
             echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
             apt update
             apt install -y nodejs
-            nodejs --version
+            node --version
 
       - checkout
       - run:
@@ -200,7 +200,7 @@ jobs:
             no_output_timeout: 30m
             command: |
               # run the GHC testsuite and copy the test artifact to `/tmp`
-              nodejs --version
+              node --version
 
 
               # run test cases that can fail.
@@ -246,7 +246,7 @@ jobs:
             echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
             apt update
             apt install -y nodejs
-            nodejs --version
+            node --version
 
       - checkout
       - run:
@@ -263,7 +263,7 @@ jobs:
             no_output_timeout: 30m
             command: |
               # run the GHC testsuite and copy the test artifact to `/tmp`
-              nodejs --version
+              node --version
 
 
               # run test cases that can fail.
@@ -309,7 +309,7 @@ jobs:
             echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
             apt update
             apt install -y nodejs
-            nodejs --version
+            node --version
 
       - checkout
       - run:
@@ -330,7 +330,7 @@ jobs:
               cd /root/project
 
               # run the GHC testsuite and copy the test artifact to `/tmp`
-              nodejs --version
+              node --version
 
 
               # run test cases that can fail.
@@ -376,7 +376,7 @@ jobs:
             echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
             apt update
             apt install -y nodejs
-            nodejs --version
+            node --version
 
       - checkout
       - run:
@@ -397,7 +397,7 @@ jobs:
               cd /root/project
 
               # run the GHC testsuite and copy the test artifact to `/tmp`
-              nodejs --version
+              node --version
 
 
               # run test cases that can fail.
