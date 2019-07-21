@@ -129,10 +129,10 @@ void ReFinalize::visitSwitch(Switch* curr) {
 }
 void ReFinalize::visitCall(Call* curr) { curr->finalize(); }
 void ReFinalize::visitCallIndirect(CallIndirect* curr) { curr->finalize(); }
-void ReFinalize::visitGetLocal(GetLocal* curr) { curr->finalize(); }
-void ReFinalize::visitSetLocal(SetLocal* curr) { curr->finalize(); }
-void ReFinalize::visitGetGlobal(GetGlobal* curr) { curr->finalize(); }
-void ReFinalize::visitSetGlobal(SetGlobal* curr) { curr->finalize(); }
+void ReFinalize::visitLocalGet(LocalGet* curr) { curr->finalize(); }
+void ReFinalize::visitLocalSet(LocalSet* curr) { curr->finalize(); }
+void ReFinalize::visitGlobalGet(GlobalGet* curr) { curr->finalize(); }
+void ReFinalize::visitGlobalSet(GlobalSet* curr) { curr->finalize(); }
 void ReFinalize::visitLoad(Load* curr) { curr->finalize(); }
 void ReFinalize::visitStore(Store* curr) { curr->finalize(); }
 void ReFinalize::visitAtomicRMW(AtomicRMW* curr) { curr->finalize(); }
@@ -157,6 +157,8 @@ void ReFinalize::visitReturn(Return* curr) { curr->finalize(); }
 void ReFinalize::visitHost(Host* curr) { curr->finalize(); }
 void ReFinalize::visitNop(Nop* curr) { curr->finalize(); }
 void ReFinalize::visitUnreachable(Unreachable* curr) { curr->finalize(); }
+void ReFinalize::visitPush(Push* curr) { curr->finalize(); }
+void ReFinalize::visitPop(Pop* curr) { curr->finalize(); }
 
 void ReFinalize::visitFunction(Function* curr) {
   // we may have changed the body from unreachable to none, which might be bad
@@ -172,6 +174,7 @@ void ReFinalize::visitExport(Export* curr) { WASM_UNREACHABLE(); }
 void ReFinalize::visitGlobal(Global* curr) { WASM_UNREACHABLE(); }
 void ReFinalize::visitTable(Table* curr) { WASM_UNREACHABLE(); }
 void ReFinalize::visitMemory(Memory* curr) { WASM_UNREACHABLE(); }
+void ReFinalize::visitEvent(Event* curr) { WASM_UNREACHABLE(); }
 void ReFinalize::visitModule(Module* curr) { WASM_UNREACHABLE(); }
 
 void ReFinalize::updateBreakValueType(Name name, Type type) {

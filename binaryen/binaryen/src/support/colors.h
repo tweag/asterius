@@ -22,7 +22,6 @@
 namespace Colors {
 void setEnabled(bool enabled);
 bool isEnabled();
-void disable();
 
 #if defined(__linux__) || defined(__APPLE__)
 void outputColorCode(std::ostream& stream, const char* colorCode);

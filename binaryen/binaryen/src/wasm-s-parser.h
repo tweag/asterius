@@ -24,6 +24,7 @@
 
 #include "mixed_arena.h"
 #include "parsing.h" // for UniqueNameMapper. TODO: move dependency to cpp file?
+#include "wasm-builder.h"
 #include "wasm.h"
 
 namespace wasm {
@@ -111,10 +112,11 @@ class SExpressionWasmBuilder {
   Module& wasm;
   MixedArena& allocator;
   std::vector<Name> functionNames;
-  std::vector<Name> functionTypeNames;
   std::vector<Name> globalNames;
-  int functionCounter;
+  std::vector<Name> eventNames;
+  int functionCounter = 0;
   int globalCounter = 0;
+  int eventCounter = 0;
   // we need to know function return types before we parse their contents
   std::map<Name, Type> functionTypes;
   std::unordered_map<cashew::IString, Index> debugInfoFileIndices;
@@ -135,9 +137,6 @@ private:
 
   // function parsing state
   std::unique_ptr<Function> currFunction;
-  std::map<Name, Type> currLocalTypes;
-  size_t localIndex; // params and vars
-  size_t otherIndex;
   bool brokeToAutoBlock;
 
   UniqueNameMapper nameMapper;
@@ -145,6 +144,7 @@ private:
   Name getFunctionName(Element& s);
   Name getFunctionTypeName(Element& s);
   Name getGlobalName(Element& s);
+  Name getEventName(Element& s);
   void parseStart(Element& s) { wasm.addStart(getFunctionName(*s[1])); }
 
   // returns the next index in s
@@ -177,11 +177,11 @@ private:
   Expression* makeDrop(Element& s);
   Expression* makeHost(Element& s, HostOp op);
   Index getLocalIndex(Element& s);
-  Expression* makeGetLocal(Element& s);
-  Expression* makeTeeLocal(Element& s);
-  Expression* makeSetLocal(Element& s);
-  Expression* makeGetGlobal(Element& s);
-  Expression* makeSetGlobal(Element& s);
+  Expression* makeLocalGet(Element& s);
+  Expression* makeLocalTee(Element& s);
+  Expression* makeLocalSet(Element& s);
+  Expression* makeGlobalGet(Element& s);
+  Expression* makeGlobalSet(Element& s);
   Expression* makeBlock(Element& s);
   Expression* makeThenOrElse(Element& s);
   Expression* makeConst(Element& s, Type type);
@@ -203,11 +203,13 @@ private:
   Expression* makeDataDrop(Element& s);
   Expression* makeMemoryCopy(Element& s);
   Expression* makeMemoryFill(Element& s);
+  Expression* makePush(Element& s);
+  Expression* makePop(Type type);
   Expression* makeIf(Element& s);
   Expression* makeMaybeBlock(Element& s, size_t i, Type type);
   Expression* makeLoop(Element& s);
-  Expression* makeCall(Element& s);
-  Expression* makeCallIndirect(Element& s);
+  Expression* makeCall(Element& s, bool isReturn);
+  Expression* makeCallIndirect(Element& s, bool isReturn);
   template<class T>
   void parseCallOperands(Element& s, Index i, Index j, T* call) {
     while (i < j) {
@@ -220,8 +222,24 @@ private:
   Expression* makeBreakTable(Element& s);
   Expression* makeReturn(Element& s);
 
+  // Helper functions
   Type parseOptionalResultType(Element& s, Index& i);
   Index parseMemoryLimits(Element& s, Index i);
+  std::vector<Type> parseParamOrLocal(Element& s);
+  std::vector<NameType> parseParamOrLocal(Element& s, size_t& localIndex);
+  Type parseResult(Element& s);
+  FunctionType* parseTypeRef(Element& s);
+  size_t parseTypeUse(Element& s,
+                      size_t startPos,
+                      FunctionType*& functionType,
+                      std::vector<NameType>& namedParams,
+                      Type& result);
+  size_t parseTypeUse(Element& s,
+                      size_t startPos,
+                      FunctionType*& functionType,
+                      std::vector<Type>& params,
+                      Type& result);
+  size_t parseTypeUse(Element& s, size_t startPos, FunctionType*& functionType);
 
   void stringToBinary(const char* input, size_t size, std::vector<char>& data);
   void parseMemory(Element& s, bool preParseImport = false);
@@ -234,6 +252,7 @@ private:
   void parseElem(Element& s);
   void parseInnerElem(Element& s, Index i = 1, Expression* offset = nullptr);
   void parseType(Element& s);
+  void parseEvent(Element& s, bool preParseImport = false);
 
   Function::DebugLocation getDebugLocation(const SourceLocation& loc);
 };

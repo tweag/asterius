@@ -84,7 +84,7 @@ public:
     auto* export_ = new Export();
     export_->name = name;
     export_->value = value;
-    export_->kind = ExternalKind::Function;
+    export_->kind = kind;
     return export_;
   }
 
@@ -187,72 +187,76 @@ public:
     ret->condition = condition;
     return ret;
   }
-  Call* makeCall(Name target, const std::vector<Expression*>& args, Type type) {
+  Call* makeCall(Name target,
+                 const std::vector<Expression*>& args,
+                 Type type,
+                 bool isReturn = false) {
     auto* call = allocator.alloc<Call>();
     // not all functions may exist yet, so type must be provided
     call->type = type;
     call->target = target;
     call->operands.set(args);
+    call->isReturn = isReturn;
     return call;
   }
-  template<typename T> Call* makeCall(Name target, const T& args, Type type) {
+  template<typename T>
+  Call* makeCall(Name target, const T& args, Type type, bool isReturn = false) {
     auto* call = allocator.alloc<Call>();
     // not all functions may exist yet, so type must be provided
     call->type = type;
     call->target = target;
     call->operands.set(args);
+    call->isReturn = isReturn;
     return call;
   }
   CallIndirect* makeCallIndirect(FunctionType* type,
                                  Expression* target,
-                                 const std::vector<Expression*>& args) {
-    auto* call = allocator.alloc<CallIndirect>();
-    call->fullType = type->name;
-    call->type = type->result;
-    call->target = target;
-    call->operands.set(args);
-    return call;
+                                 const std::vector<Expression*>& args,
+                                 bool isReturn = false) {
+    return makeCallIndirect(type->name, target, args, type->result, isReturn);
   }
   CallIndirect* makeCallIndirect(Name fullType,
                                  Expression* target,
                                  const std::vector<Expression*>& args,
-                                 Type type) {
+                                 Type type,
+                                 bool isReturn = false) {
     auto* call = allocator.alloc<CallIndirect>();
     call->fullType = fullType;
     call->type = type;
     call->target = target;
     call->operands.set(args);
+    call->isReturn = isReturn;
     return call;
   }
   // FunctionType
-  GetLocal* makeGetLocal(Index index, Type type) {
-    auto* ret = allocator.alloc<GetLocal>();
+  LocalGet* makeLocalGet(Index index, Type type) {
+    auto* ret = allocator.alloc<LocalGet>();
     ret->index = index;
     ret->type = type;
     return ret;
   }
-  SetLocal* makeSetLocal(Index index, Expression* value) {
-    auto* ret = allocator.alloc<SetLocal>();
+  LocalSet* makeLocalSet(Index index, Expression* value) {
+    auto* ret = allocator.alloc<LocalSet>();
     ret->index = index;
     ret->value = value;
     ret->finalize();
     return ret;
   }
-  SetLocal* makeTeeLocal(Index index, Expression* value) {
-    auto* ret = allocator.alloc<SetLocal>();
+  LocalSet* makeLocalTee(Index index, Expression* value) {
+    auto* ret = allocator.alloc<LocalSet>();
     ret->index = index;
     ret->value = value;
     ret->setTee(true);
     return ret;
   }
-  GetGlobal* makeGetGlobal(Name name, Type type) {
-    auto* ret = allocator.alloc<GetGlobal>();
+  GlobalGet* makeGlobalGet(Name name, Type type) {
+    auto* ret = allocator.alloc<GlobalGet>();
     ret->name = name;
     ret->type = type;
     return ret;
   }
-  SetGlobal* makeSetGlobal(Name name, Expression* value) {
-    auto* ret = allocator.alloc<SetGlobal>();
+  GlobalSet* makeGlobalSet(Name name, Expression* value) {
+    auto* ret = allocator.alloc<GlobalSet>();
     ret->name = name;
     ret->value = value;
     ret->finalize();
@@ -492,6 +496,18 @@ public:
     return ret;
   }
   Unreachable* makeUnreachable() { return allocator.alloc<Unreachable>(); }
+  Push* makePush(Expression* value) {
+    auto* ret = allocator.alloc<Push>();
+    ret->value = value;
+    ret->finalize();
+    return ret;
+  }
+  Pop* makePop(Type type) {
+    auto* ret = allocator.alloc<Pop>();
+    ret->type = type;
+    ret->finalize();
+    return ret;
+  }
 
   // Additional helpers
 
@@ -659,9 +675,9 @@ public:
         value = Literal(bytes.data());
         break;
       }
-      case except_ref:
+      case exnref:
         // TODO Implement and return nullref
-        assert(false && "except_ref not implemented yet");
+        assert(false && "exnref not implemented yet");
       case none:
         return ExpressionManipulator::nop(curr);
       case unreachable:
@@ -682,6 +698,19 @@ public:
     glob->init = init;
     glob->mutable_ = mutable_ == Mutable;
     return glob;
+  }
+
+  // TODO Remove 'type' parameter once we remove FunctionType
+  static Event* makeEvent(Name name,
+                          uint32_t attribute,
+                          Name type,
+                          std::vector<Type>&& params) {
+    auto* event = new Event;
+    event->name = name;
+    event->attribute = attribute;
+    event->type = type;
+    event->params = params;
+    return event;
   }
 };
 

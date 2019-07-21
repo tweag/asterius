@@ -24,8 +24,7 @@ bool colors_enabled = true;
 } // anonymous namespace
 
 void Colors::setEnabled(bool enabled) { colors_enabled = enabled; }
-bool Colors::isEnabled() { return !colors_enabled; }
-void Colors::disable() { setEnabled(false); }
+bool Colors::isEnabled() { return colors_enabled; }
 
 #if defined(__linux__) || defined(__APPLE__)
 #include <unistd.h>

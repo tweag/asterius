@@ -6,6 +6,7 @@ add_custom_command(
 SET(passes_SOURCES
   pass.cpp
   AlignmentLowering.cpp
+  Asyncify.cpp
   AvoidReinterprets.cpp
   CoalesceLocals.cpp
   CodePushing.cpp
@@ -43,6 +44,7 @@ SET(passes_SOURCES
   Print.cpp
   PrintCallGraph.cpp
   PrintFeatures.cpp
+  PrintFunctionMap.cpp
   StackIR.cpp
   Strip.cpp
   StripTargetFeatures.cpp
