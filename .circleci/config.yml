@@ -1,7 +1,7 @@
 version: 2
 
 jobs:
-  asterius-test:
+  asterius-boot:
     docker:
       - image: debian:unstable
     environment:
@@ -10,8 +10,7 @@ jobs:
       - LANG: C.UTF-8
       - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      - STACK_ROOT: /tmp/.stack
-    working_directory: /tmp/asterius
+      - WABT_BINDIR: /root/.local/bin
     steps:
       - run:
           name: Install dependencies
@@ -44,12 +43,68 @@ jobs:
       - checkout
 
       - run:
-          name: Build asterius
+          name: Boot
           command: |
             git submodule update --init --recursive
             stack --no-terminal -j2 build --test --no-run-tests
             stack --no-terminal exec ahc-boot
 
+      - persist_to_workspace:
+          root: /root
+          paths:
+            - .local
+            - .stack
+            - project/.stack-work
+            - project/asterius/.stack-work
+            - project/binaryen/.stack-work
+            - project/ghc-toolkit/.stack-work
+            - project/inline-js/inline-js-core/.stack-work
+            - project/npm-utils/.stack-work
+            - project/wabt/.stack-work
+            - project/wasm-toolkit/.stack-work
+            - project/stack.yaml.lock
+
+  asterius-test:
+    docker:
+      - image: debian:unstable
+    environment:
+      - DEBIAN_FRONTEND: noninteractive
+      - LANG: C.UTF-8
+      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt update
+            apt full-upgrade -y
+            apt install -y \
+              automake \
+              cmake \
+              curl \
+              g++ \
+              git \
+              gnupg \
+              libffi-dev \
+              libgmp-dev \
+              libncurses-dev \
+              libnuma-dev \
+              make \
+              openssh-client \
+              python-minimal \
+              python3-minimal \
+              xz-utils \
+              zlib1g-dev
+            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+            echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list
+            apt update
+            apt install -y nodejs
+      - checkout
+      - run:
+          name: Initialize submodules
+          command: |
+            git submodule update --init --recursive
+      - attach_workspace:
+          at: /root
       - run:
           name: Test asterius
           command: |
@@ -97,13 +152,9 @@ jobs:
     docker:
       - image: debian:unstable
     environment:
-      - ASTERIUS_BUILD_OPTIONS: -j2
       - DEBIAN_FRONTEND: noninteractive
       - LANG: C.UTF-8
-      - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      - STACK_ROOT: /tmp/.stack
-    working_directory: /tmp/asterius
     steps:
       - run:
           name: Install dependencies
@@ -133,16 +184,14 @@ jobs:
             apt update
             apt install -y nodejs
             nodejs --version
-            mkdir -p /root/.local/bin
-            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
 
       - checkout
       - run:
-            name: Build asterius
-            command: |
-              git submodule update --init --recursive
-              stack --no-terminal -j2 build asterius --test --no-run-tests
-              stack --no-terminal exec ahc-boot
+          name: Initialize submodules
+          command: |
+            git submodule update --init --recursive
+      - attach_workspace:
+          at: /root
 
       - run:
             name: Run GHC test suite on asterius
@@ -165,14 +214,10 @@ jobs:
     docker:
       - image: debian:unstable
     environment:
-      - ASTERIUS_BUILD_OPTIONS: -j2
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --yolo
       - DEBIAN_FRONTEND: noninteractive
       - LANG: C.UTF-8
-      - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      - STACK_ROOT: /tmp/.stack
-    working_directory: /tmp/asterius
     steps:
       - run:
           name: Install dependencies
@@ -202,16 +247,14 @@ jobs:
             apt update
             apt install -y nodejs
             nodejs --version
-            mkdir -p /root/.local/bin
-            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
 
       - checkout
       - run:
-            name: Build asterius
-            command: |
-              git submodule update --init --recursive
-              stack --no-terminal -j2 build asterius --test --no-run-tests
-              stack --no-terminal exec ahc-boot
+          name: Initialize submodules
+          command: |
+            git submodule update --init --recursive
+      - attach_workspace:
+          at: /root
 
       - run:
             name: Run GHC test suite on asterius
@@ -234,14 +277,10 @@ jobs:
     docker:
       - image: debian:unstable
     environment:
-      - ASTERIUS_BUILD_OPTIONS: -j2
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --debug
       - DEBIAN_FRONTEND: noninteractive
       - LANG: C.UTF-8
-      - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      - STACK_ROOT: /tmp/.stack
-    working_directory: /tmp/asterius
     steps:
       - run:
           name: Install dependencies
@@ -271,16 +310,14 @@ jobs:
             apt update
             apt install -y nodejs
             nodejs --version
-            mkdir -p /root/.local/bin
-            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
 
       - checkout
       - run:
-            name: Build asterius
-            command: |
-              git submodule update --init --recursive
-              stack --no-terminal -j2 build asterius --test --no-run-tests
-              stack --no-terminal exec ahc-boot
+          name: Initialize submodules
+          command: |
+            git submodule update --init --recursive
+      - attach_workspace:
+          at: /root
 
       - run:
             name: Run GHC test suite on asterius
@@ -307,14 +344,10 @@ jobs:
     docker:
       - image: debian:unstable
     environment:
-      - ASTERIUS_BUILD_OPTIONS: -j2
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --debug --yolo
       - DEBIAN_FRONTEND: noninteractive
       - LANG: C.UTF-8
-      - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-      - STACK_ROOT: /tmp/.stack
-    working_directory: /tmp/asterius
     steps:
       - run:
           name: Install dependencies
@@ -344,16 +377,14 @@ jobs:
             apt update
             apt install -y nodejs
             nodejs --version
-            mkdir -p /root/.local/bin
-            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
 
       - checkout
       - run:
-            name: Build asterius
-            command: |
-              git submodule update --init --recursive
-              stack --no-terminal -j2 build asterius --test --no-run-tests
-              stack --no-terminal exec ahc-boot
+          name: Initialize submodules
+          command: |
+            git submodule update --init --recursive
+      - attach_workspace:
+          at: /root
 
       - run:
             name: Run GHC test suite on asterius
@@ -405,6 +436,13 @@ jobs:
       DEBIAN_FRONTEND: noninteractive
       LANG: C.UTF-8
     steps:
+      - run:
+          name: Ensure we are on `tweag/asterius`
+          command: |
+            if [ -n "$CIRCLE_PR_NUMBER" ]; then
+              echo "Nothing to do for forked PRs, so marking this step successful"
+              circleci step halt
+            fi
       - run:
           name: Install dependencies
           command: |
@@ -465,11 +503,22 @@ workflows:
   version: 2
   build:
     jobs:
-      - asterius-test
-      - asterius-test-ghc-testsuite
-      - asterius-test-ghc-testsuite-yolo
-      - asterius-test-ghc-testsuite-debug
-      - asterius-test-ghc-testsuite-debug-yolo
+      - asterius-boot
+      - asterius-test:
+          requires:
+            - asterius-boot
+      - asterius-test-ghc-testsuite:
+          requires:
+            - asterius-boot
+      - asterius-test-ghc-testsuite-yolo:
+          requires:
+            - asterius-boot
+      - asterius-test-ghc-testsuite-debug:
+          requires:
+            - asterius-boot
+      - asterius-test-ghc-testsuite-debug-yolo:
+          requires:
+            - asterius-boot
       - asterius-build-docker
       - asterius-build-docs
       - asterius-update-docker-tag:
