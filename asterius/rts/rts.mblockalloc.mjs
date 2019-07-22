@@ -74,7 +74,7 @@ export class MBlockAlloc {
           // ---
           // this.freeList.splice(i, 1, [rest_start, r]);
           // this.freeList.splice(i, 1, [rest_start, r]);
-          this.freeList.splice(i, 1);
+          this.freeList.splice(i, 1, [rest_bd, r]);
         } else {
           this.freeList.splice(i, 1);
         } // end req_blocks < blocks
