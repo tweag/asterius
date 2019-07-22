@@ -55,4 +55,9 @@ export class HeapAlloc {
     return current_free;
   }
   allocatePinned(n) { return this.allocate(n, true); }
+
+  // return a set of heap pool block descriptors
+  getPoolBdescrs() {
+    return new Set([...this.currentPools]);
+  }
 }

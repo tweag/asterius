@@ -31,6 +31,7 @@ export class MBlockAlloc {
 
   allocMegaGroup(n) {
     const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
+    /*
     for (let i = 0; i < this.freeList.length; ++i) {
       const bd = this.freeList[i],
             blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
@@ -55,6 +56,7 @@ export class MBlockAlloc {
         return bd;
       }
     }
+    */
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
@@ -67,7 +69,7 @@ export class MBlockAlloc {
 
   freeSegment(l_end, r) {
     if (l_end < r) {
-      this.memory.memset(l_end, 0, r - l_end);
+      this.memory.memset(l_end, 0x42, r - l_end);
       const bd = l_end + rtsConstants.offset_first_bdescr,
             start = l_end + rtsConstants.offset_first_block,
             blocks = (r - start) / rtsConstants.block_size;
@@ -79,20 +81,29 @@ export class MBlockAlloc {
     }
   }
 
-  preserveMegaGroups(bds) {
+  preserveMegaGroups(bds, heapPoolBdescrs) {
     this.freeList = [];
-    const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
+    const sorted_bds = Array.from([...bds].concat([...heapPoolBdescrs])).sort((bd0, bd1) => bd0 - bd1);
     sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
+
     this.freeSegment(
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
+
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       const l_start = Number(
           this.memory.i64Load(sorted_bds[i] + rtsConstants.offset_bdescr_start)),
       l_blocks =
-          this.memory.i32Load(sorted_bds[i] + rtsConstants.offset_bdescr_blocks),
-      l_end = l_start + (rtsConstants.block_size * l_blocks),
-      r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
+          this.memory.i32Load(sorted_bds[i] + rtsConstants.offset_bdescr_blocks);
+      let l_end = l_start + (rtsConstants.block_size * l_blocks);
+
+      // IVNARIANT: size of a heap pool is always a megablock, so we can
+      // skip one megablock to reach the end of the pool
+      if (heapPoolBdescrs.has(sorted_bds[i])) {
+        l_end = l_start - rtsConstants.offset_first_bdescr + rtsConstants.mblock_size;
+      }
+
+      const r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
       this.freeSegment(l_end, r);
     }
     this.freeList.sort(
