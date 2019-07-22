@@ -100,7 +100,7 @@ export class MBlockAlloc {
       // skip one megablock to reach the end of the pool
       if (heapPoolBdescrs.has(sorted_bds[i])) {
         continue;
-        // l_end = l_start - rtsConstants.offset_first_bdescr + rtsConstants.mblock_size;
+        // l_end = sorted_bds[i] + rtsConstants.mblock_size;
       }
 
       const r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
