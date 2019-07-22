@@ -31,7 +31,6 @@ export class MBlockAlloc {
 
   allocMegaGroup(n) {
     const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
-    /*
     for (let i = 0; i < this.freeList.length; ++i) {
       const bd = this.freeList[i],
             blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
@@ -56,7 +55,7 @@ export class MBlockAlloc {
         return bd;
       }
     }
-    */
+
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
@@ -100,7 +99,8 @@ export class MBlockAlloc {
       // IVNARIANT: size of a heap pool is always a megablock, so we can
       // skip one megablock to reach the end of the pool
       if (heapPoolBdescrs.has(sorted_bds[i])) {
-        l_end = l_start - rtsConstants.offset_first_bdescr + rtsConstants.mblock_size;
+        continue;
+        // l_end = l_start - rtsConstants.offset_first_bdescr + rtsConstants.mblock_size;
       }
 
       const r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
