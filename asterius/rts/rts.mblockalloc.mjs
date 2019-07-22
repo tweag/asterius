@@ -81,10 +81,6 @@ export class MBlockAlloc {
       const bd = l_end + rtsConstants.offset_first_bdescr,
             start = l_end + rtsConstants.offset_first_block,
             blocks = (r - start) / rtsConstants.block_size;
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
-      this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
       this.freeList.push(bd);
     }
   }
@@ -94,7 +90,11 @@ export class MBlockAlloc {
     console.log(`segments = []`);
 
     for(let i = 0; i < heapPools.length; ++i) {
-      const [bd, l, r] = heapPools[i];
+      const bd = heapPools[i];
+      const l = Number(this.memory.i64Load(bd + rtsConstants.offset_bdescr_start));
+      const blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
+      const r = l + blocks * rtsConstants.block_size;
+
       // add the heap pool into the used block descriptors list.
       bds.add(bd);
       console.log(`segments.append([${l}, ${r}, "heappool"])`);
@@ -122,17 +122,24 @@ export class MBlockAlloc {
 
 
     
+    const heapPoolsSet = new Set([...heapPools]);
     this.freeSegment(
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
 
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
       const l_start = Number(
-          this.memory.i64Load(sorted_bds[i] + rtsConstants.offset_bdescr_start)),
-      l_blocks =
-          this.memory.i32Load(sorted_bds[i] + rtsConstants.offset_bdescr_blocks),
-      l_end = l_start + (rtsConstants.block_size * l_blocks),
-      r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
+          this.memory.i64Load(sorted_bds[i] + rtsConstants.offset_bdescr_start));
+      const l_blocks =
+          this.memory.i32Load(sorted_bds[i] + rtsConstants.offset_bdescr_blocks);
+      let l_end = l_start + (rtsConstants.block_size * l_blocks);
+
+      // if we are in a heap region, then just don't touch it
+      if (heapPoolsSet.has(sorted_bds[i])) {
+        l_end = l_start - rtsConstants.offset_bdescr_start + rtsConstants.mblock_size;
+      }
+
+      const r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
       this.freeSegment(l_end, r);
     }
     this.freeList.sort(
