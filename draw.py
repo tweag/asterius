@@ -17,7 +17,10 @@ def draw_bar(minx, maxx, l, r, height, color):
     rect = patches.Rectangle((l, 0), r - l, height, linewidth=1, facecolor=color, alpha=0.4)
     ax.add_patch(rect)
 
-def draw_segments(segments):
+def draw_tick(minx, maxx, pos, color):
+    draw_bar(minx, maxx, pos, pos + 0.005 * (maxx - minx), 1.0, color)
+
+def draw():
     minx = 1e20
     maxx = 0
     for [l, r, _] in segments:
@@ -36,8 +39,11 @@ def draw_segments(segments):
             height = 0.8
         elif ty == "free":
             color = "black"
-            height = 1
+            height = 0.9
 
         assert color is not None
         draw_bar(minx, maxx, l, r, height, color)
+
+    for (tickname, tickpos) in ticks:
+        draw_tick(minx, maxx, tickpos, "purple")
     plt.show()

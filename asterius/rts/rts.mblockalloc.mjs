@@ -1,5 +1,6 @@
 import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
+import * as assert from "assert"
 
 export class MBlockAlloc {
   constructor() {
@@ -21,6 +22,7 @@ export class MBlockAlloc {
   }
 
   getMBlocks(n) {
+    assert.equal(n > 0, true);
     if (this.size + n > this.capacity) {
       const d = Math.max(n, this.capacity);
       this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
@@ -28,7 +30,7 @@ export class MBlockAlloc {
     }
     const prev_size = this.size;
     this.size += n;
-    let mblock =  Memory.tagData(prev_size * rtsConstants.mblock_size);
+    let mblock = Memory.tagData(prev_size * rtsConstants.mblock_size);
     this.all_bds.add(mblock + rtsConstants.offset_first_bdescr);
     return mblock;
   }
@@ -93,6 +95,7 @@ export class MBlockAlloc {
 
     for(let i = 0; i < heapPools.length; ++i) {
       const [bd, l, r] = heapPools[i];
+      // add the heap pool into the used block descriptors list.
       bds.add(bd);
       console.log(`segments.append([${l}, ${r}, "heappool"])`);
     }
@@ -115,7 +118,7 @@ export class MBlockAlloc {
 
     this.freeList = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
-    sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
+    // sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
 
 
     
@@ -136,7 +139,7 @@ export class MBlockAlloc {
         (bd0, bd1) => this.memory.i32Load(bd0 + rtsConstants.offset_bdescr_blocks) -
                   this.memory.i32Load(bd1 + rtsConstants.offset_bdescr_blocks));
 
-    console.log(`draw_segments(segments)`);
+    // console.log(`draw_segments(segments)`);
     console.log(`####### run ipython -i draw.py and copy-paste code in between #####`);
   }
 }
