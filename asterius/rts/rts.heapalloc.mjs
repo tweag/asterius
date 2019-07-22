@@ -37,12 +37,19 @@ export class HeapAlloc {
                                              rtsConstants.offset_bdescr_blocks),
         current_limit = current_start + rtsConstants.block_size * current_blocks,
         new_free = current_free + b;
+
     if (new_free <= current_limit) {
       this.memory.i64Store(
           this.currentPools[pool_i] + rtsConstants.offset_bdescr_free, new_free);
       return current_free;
     }
-    this.currentPools[pool_i] = this.hpAlloc(b);
+
+    const new_pool = this.hpAlloc(b);
+    console.log(`# pool_i: ${pool_i}`);
+    console.log(`# | currentPools: [${[...this.currentPools]}]`);
+    console.log(`# | overwriting old heap pool: ${this.currentPools[pool_i]}`);
+    console.log(`# | new pool: ${new_pool}`);
+    this.currentPools[pool_i] = new_pool;
     if (pool_i)
       this.memory.i16Store(
           this.currentPools[pool_i] + rtsConstants.offset_bdescr_flags,

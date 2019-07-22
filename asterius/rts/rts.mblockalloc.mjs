@@ -37,6 +37,7 @@ export class MBlockAlloc {
 
   allocMegaGroup(n) {
     const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
+    /*
     for (let i = 0; i < this.freeList.length; ++i) {
       const bd = this.freeList[i],
             blocks = this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
@@ -63,6 +64,7 @@ export class MBlockAlloc {
         return bd;
       }
     }
+    */
     const mblock = this.getMBlocks(n),
           bd = mblock + rtsConstants.offset_first_bdescr,
           block_addr = mblock + rtsConstants.offset_first_block;
@@ -88,6 +90,7 @@ export class MBlockAlloc {
   preserveMegaGroups(bds, heapPools) {
     console.log(`### preserveMegaGroups: ${this.ncalls++} ###`)
     console.log(`segments = []`);
+
 
     for(let i = 0; i < heapPools.length; ++i) {
       const bd = heapPools[i];
@@ -118,30 +121,36 @@ export class MBlockAlloc {
 
     this.freeList = [];
     const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
-    // sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.capacity) + rtsConstants.offset_first_bdescr);
-
-
-    
     const heapPoolsSet = new Set([...heapPools]);
+
     this.freeSegment(
         Memory.tagData(rtsConstants.mblock_size * this.staticMBlocks),
         sorted_bds[0] - rtsConstants.offset_first_bdescr);
 
+
+    console.log(`# all_bds: [${[...this.all_bds]}] | sorted_bds: [${sorted_bds}] | heapPools: [${heapPools}]`);
     for (let i = 0; i < (sorted_bds.length-1); ++i) {
+      const bd = sorted_bds[i];
+      const bd_next = sorted_bds[i+1];
+
       const l_start = Number(
-          this.memory.i64Load(sorted_bds[i] + rtsConstants.offset_bdescr_start));
+          this.memory.i64Load(bd + rtsConstants.offset_bdescr_start));
       const l_blocks =
-          this.memory.i32Load(sorted_bds[i] + rtsConstants.offset_bdescr_blocks);
+          this.memory.i32Load(bd + rtsConstants.offset_bdescr_blocks);
       let l_end = l_start + (rtsConstants.block_size * l_blocks);
 
+      const flags = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags);
       // if we are in a heap region, then just don't touch it
-      if (heapPoolsSet.has(sorted_bds[i])) {
-        l_end = l_start - rtsConstants.offset_bdescr_start + rtsConstants.mblock_size;
+      // similarly, if we are in a pinned region, don't touch it
+      if (heapPoolsSet.has(bd) || flags & rtsConstants.BF_PINNED) {
+        continue;
+        // l_end = l_start - rtsConstants.offset_bdescr_start + rtsConstants.mblock_size;
       }
 
-      const r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
+      const r = bd_next - rtsConstants.offset_first_bdescr;
       this.freeSegment(l_end, r);
     }
+
     this.freeList.sort(
         (bd0, bd1) => this.memory.i32Load(bd0 + rtsConstants.offset_bdescr_blocks) -
                   this.memory.i32Load(bd1 + rtsConstants.offset_bdescr_blocks));
