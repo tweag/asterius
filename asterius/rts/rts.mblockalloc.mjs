@@ -142,9 +142,8 @@ export class MBlockAlloc {
       const flags = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags);
       // if we are in a heap region, then just don't touch it
       // similarly, if we are in a pinned region, don't touch it
-      if (heapPoolsSet.has(bd) || flags & rtsConstants.BF_PINNED) {
-        continue;
-        // l_end = l_start - rtsConstants.offset_bdescr_start + rtsConstants.mblock_size;
+      if (heapPoolsSet.has(bd)) {
+        l_end = l_start - rtsConstants.offset_bdescr_start + rtsConstants.mblock_size;
       }
 
       const r = bd_next - rtsConstants.offset_first_bdescr;
