@@ -96,11 +96,9 @@ export class MBlockAlloc {
           this.memory.i32Load(sorted_bds[i] + rtsConstants.offset_bdescr_blocks);
       let l_end = l_start + (rtsConstants.block_size * l_blocks);
 
-      // IVNARIANT: size of a heap pool is always a megablock, so we can
-      // skip one megablock to reach the end of the pool
+      // if we see a heap pool, we skip it entirely.
       if (heapPoolBdescrs.has(sorted_bds[i])) {
         continue;
-        // l_end = sorted_bds[i] + rtsConstants.mblock_size;
       }
 
       const r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
