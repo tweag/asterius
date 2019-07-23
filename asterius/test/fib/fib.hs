@@ -6,6 +6,7 @@ import Control.DeepSeq
 import Control.Monad.State.Strict
 import qualified Data.IntMap.Strict as IM
 import GHC.Generics
+import Data.Semigroup ((<>))
 -- import GHC.Float
 import System.Mem
 import Data.Char(intToDigit)
@@ -65,62 +66,21 @@ foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 data FFFormat = FFExponent | FFFixed | FFGeneric
 
 showFloat :: (RealFloat a) => a -> ShowS
-showFloat x  =  showString (formatRealFloat FFGeneric Nothing x)
+showFloat x  =  showString (formatRealFloat Nothing x)
 
--- This is just a compatibility stub, as the "alt" argument formerly
--- didn't exist.
-formatRealFloat :: (RealFloat a) => FFFormat -> Maybe Int -> a -> String
-formatRealFloat fmt decs x = formatRealFloatAlt fmt decs False x
-
-formatRealFloatAlt :: (RealFloat a) => FFFormat -> Maybe Int -> Bool -> a
+formatRealFloat :: (RealFloat a) => Maybe Int -> a
                  -> String
-formatRealFloatAlt fmt decs alt x
+formatRealFloat decs x
    | isNaN x                   = "NaN"
    | isInfinite x              = if x < 0 then "-Infinity" else "Infinity"
-   | x < 0 || isNegativeZero x = '-':doFmt fmt (floatToDigits (toInteger base) (-x))
-   | otherwise                 = doFmt fmt (floatToDigits (toInteger base) x)
+   | x < 0 || isNegativeZero x = '-':doFmt (floatToDigits (toInteger base) (-x))
+   | otherwise                 = doFmt (floatToDigits (toInteger base) x)
  where
   base = 10
 
-  doFmt format (is, e) =
-    let ds = map intToDigit is in
-    case format of
-     FFGeneric ->
-      doFmt (if e < 0 || e > 7 then FFExponent else FFFixed)
-            (is,e)
-     FFExponent ->
-      case decs of
-       Nothing ->
-        let show_e' = show (e-1) in
-        case ds of
-          "0"     -> "0.0e0"
-          [d]     -> d : ".0e" ++ show_e'
-          (d:ds') -> d : '.' : ds' ++ "e" ++ show_e'
-          []      -> errorWithoutStackTrace "formatRealFloat/doFmt/FFExponent: []"
-       Just d | d <= 0 ->
-        -- handle this case specifically since we need to omit the
-        -- decimal point as well (#15115).
-        -- Note that this handles negative precisions as well for consistency
-        -- (see #15509).
-        case is of
-          [0] -> "0e0"
-          _ ->
-           let
-             (ei,is') = roundTo base 1 is
-             n:_ = map intToDigit (if ei > 0 then init is' else is')
-           in n : 'e' : show (e-1+ei)
-       Just dec ->
-        let dec' = max dec 1 in
-        case is of
-         [0] -> '0' :'.' : take dec' (repeat '0') ++ "e0"
-         _ ->
-          let
-           (ei,is') = roundTo base (dec'+1) is
-           (d:ds') = map intToDigit (if ei > 0 then init is' else is')
-          in
-          d:'.':ds' ++ 'e':show (e-1+ei)
-     FFFixed ->
-      let
+  doFmt (is, e) =
+    let ds = map intToDigit is
+    in let
        mk0 ls = case ls of { "" -> "0" ; _ -> ls}
       in
       case decs of
@@ -140,13 +100,13 @@ formatRealFloatAlt fmt decs alt x
           (ei,is') = roundTo base (dec' + e) is
           (ls,rs)  = splitAt (e+ei) (map intToDigit is')
          in
-         mk0 ls ++ (if null rs && not alt then "" else '.':rs)
+         mk0 ls ++ (if null rs then "" else '.':rs)
         else
          let
           (ei,is') = roundTo base dec' (replicate (-e) 0 ++ is)
           d:ds' = map intToDigit (if ei > 0 then is' else 0:is')
          in
-         d : (if null ds' && not alt then "" else '.':ds')
+         d : (if null ds' then "" else '.':ds')
 
 minExpt, maxExpt :: Int
 minExpt = 0
@@ -195,6 +155,7 @@ floatToDigits :: (RealFloat a) => Integer -> a -> ([Int], Int)
 floatToDigits _ 0 = ([0], 0)
 floatToDigits base x =
  let
+  -- (f0, e0) = trace ("x:" <> show x <> "| f0: " <> show f0 <> " | e0: " <> show e0 ) $ decodeFloat x
   (f0, e0) = decodeFloat x
   (minExp0, _) = floatRange x
   p = floatDigits x
@@ -285,6 +246,11 @@ floatToDigits base x =
 main :: IO ()
 main = do
   let dbl = read "1.2" :: Double
+  let flt = read "1.2" :: Float
+  -- putStrLn $ showFloat 1.2 ""
+  -- putStrLn $ showFloat 1.3 ""
+
+  putStrLn $ showFloat flt ""
   putStrLn $ showFloat dbl ""
 
 mainold :: IO ()
