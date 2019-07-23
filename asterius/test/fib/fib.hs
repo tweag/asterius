@@ -39,7 +39,7 @@ import GHC.Arr
 import GHC.Num
 import GHC.Base
 import GHC.Integer
--- import GHC.Float hiding(showFloat, expt, expts10, minExpt, maxExpt, maxExpt10, rationalToDouble, fromRat'', floatToDigits, )
+-- import GHC.Float hiding(showFloat, expt, expts10, minExpt, maxExpt, maxExpt10, rationalToDouble, fromRat''_, floatToDigits, )
 import GHC.Float.RealFracMethods
 import GHC.Float.ConversionUtils
 import GHC.Integer.Logarithms ( integerLogBase# )
@@ -126,10 +126,6 @@ sizeofBinTree :: BinTree -> Int
 sizeofBinTree Tip = 1
 sizeofBinTree (Branch x y) = 1 + sizeofBinTree x + sizeofBinTree y
 
-foreign import ccall safe "print_i64" print_i64 :: Int -> IO ()
-foreign import ccall unsafe "assert_eq_i64" assert_eq_i64 :: Int -> Int -> IO ()
-
-foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
 
 data FFFormat = FFExponent | FFFixed | FFGeneric
@@ -355,9 +351,13 @@ rationalToDouble n d
         minEx       = DBL_MIN_EXP
         mantDigs    = DBL_MANT_DIG
 
-fromRat'' :: RealFloat a => Int -> Int -> Integer -> Integer -> a
+fromRat'' minEx mantDigs n d = let out = fromRat''_ minEx mantDigs n d
+ in trace ("out fromRat'': " <> show out) $ out
+
+fromRat''_ :: RealFloat a => Int -> Int -> Integer -> Integer -> a
 -- Invariant: n and d strictly positive
-fromRat'' minEx@(I# me#) mantDigs@(I# md#) n d =
+fromRat''_ minEx@(I# me#) mantDigs@(I# md#) n d =
+  trace ("fromRat''_ : n" <> show n <> " d: " <> show d) $
     case integerLog2IsPowerOf2# d of
       (# ld#, pw# #)
         | isTrue# (pw# ==# 0#) ->
@@ -432,7 +432,7 @@ main = do
   putStrLn $ showFloat dbl ""
 
   putStrLn $ showFloat 1.2 ""
-  putStrLn $ showFloat 1.3 ""
+  putStrLn $ showFloat 1.2 ""
 
 mainold :: IO ()
 mainold = do
@@ -440,36 +440,3 @@ mainold = do
   performGC
 
   putStrLn $ trace "trace message" ""
-
-  -- Test that assert_eq works
-  assert_eq_i64 10 10
-
-  print_i64 $ fib 10
-  assert_eq_i64 (fib 10) 55
-
-
-  print_i64 $ fact 5
-  assert_eq_i64 (fact 5) 120
-
-  print_f64 $ cos 0.5
-  print_f64 $ 2 ** 3
-
-  let sizeof3Tree = sizeofBinTree $ force $ genBinTree 3
-  print_i64 $ sizeof3Tree
-  -- 2^4 - 1
-  assert_eq_i64 sizeof3Tree 15
-
-  let sizeof5Tree = sizeofBinTree $ force $ genBinTree 5
-  print_i64 $ sizeof5Tree
-  -- 2^6 - 1
-  assert_eq_i64 sizeof5Tree 63
-
-  print_i64 $ facts !! 5
-  assert_eq_i64 (facts !! 5) 120
-
-  let factmapAt5 = factMap 10 IM.! 5
-  print_i64 $ factmapAt5
-  assert_eq_i64 factmapAt5 120
-
-
-  performGC
