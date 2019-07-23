@@ -1,17 +1,66 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 import Control.DeepSeq
-import Control.Monad.State.Strict
+import qualified Text.Read.Lex as L
 import qualified Data.IntMap.Strict as IM
+import Text.ParserCombinators.ReadPrec
 import GHC.Generics
+import GHC.Unicode
 import Data.Semigroup ((<>))
 -- import GHC.Float
 import System.Mem
 import Data.Char(intToDigit)
 import Debug.Trace (trace)
 import GHC.Arr
+import Text.ParserCombinators.ReadPrec
+
+paren :: ReadPrec a -> ReadPrec a
+-- ^ @(paren p)@ parses \"(P0)\"
+--      where @p@ parses \"P0\" in precedence context zero
+paren p = skipSpacesThenP (paren' p)
+
+paren' :: ReadPrec a -> ReadPrec a
+paren' p = expectCharP '(' $ reset p >>= \x ->
+              skipSpacesThenP (expectCharP ')' (pure x))
+
+
+expectCharP :: Char -> ReadPrec a -> ReadPrec a
+expectCharP c a = do
+  q <- get
+  if q == c
+    then a
+    else pfail
+{-# INLINE expectCharP #-}
+
+parens :: ReadPrec a -> ReadPrec a
+-- ^ @(parens p)@ parses \"P\", \"(P0)\", \"((P0))\", etc,
+--      where @p@ parses \"P\"  in the current precedence context
+--          and parses \"P0\" in precedence context zero
+parens p = optional
+  where
+    optional = skipSpacesThenP (p +++ mandatory)
+    mandatory = paren' optional
+
+lexP :: ReadPrec L.Lexeme
+-- ^ Parse a single lexeme
+lexP = lift L.lex
+
+
+
+skipSpacesThenP :: ReadPrec a -> ReadPrec a
+skipSpacesThenP m =
+  do s <- look
+     skip s
+ where
+   skip (c:s) | isSpace c = get *> skip s
+   skip _ = m
+
+
+
 
 fib :: Int -> Int
 fib n = go 0 1 0
@@ -29,15 +78,6 @@ facts = scanl (*) 1 [1 ..]
 
 factMap :: Int -> IM.IntMap Int
 factMap n = IM.fromList $ take n $ zip [0 ..] facts
-
-sumFacts :: Int -> Int
-sumFacts n =
-  fst $
-  flip execState (0, 0) $
-  fix $ \w -> do
-    (tot, i) <- get
-    put (tot + facts !! i, i + 1)
-    when (i < n) w
 
 data BinTree
   = Tip
@@ -243,15 +283,41 @@ floatToDigits base x =
  (map fromIntegral (reverse rds), k)
 
 
+
+readNumber :: Num a => (L.Lexeme -> ReadPrec a) -> ReadPrec a
+readNumber convert =
+  parens
+  ( do x <- lexP
+       case x of
+         L.Symbol "-" -> do y <- lexP
+                            n <- convert y
+                            return (negate n)
+
+         _   -> convert x
+  )
+
+
+convertFrac :: forall a . RealFloat a => L.Lexeme -> ReadPrec a
+convertFrac (L.Ident "NaN")      = return (0 / 0)
+convertFrac (L.Ident "Infinity") = return (1 / 0)
+convertFrac (L.Number n) = let resRange = floatRange (undefined :: a)
+                           in case L.numberToRangedRational resRange n of
+                              Nothing -> return (1 / 0)
+                              Just rat -> return $ fromRational rat
+convertFrac _            = pfail
+
+
+
 main :: IO ()
 main = do
-  let dbl = read "1.2" :: Double
+  let [(dbl :: Double, _)] = readPrec_to_S (readNumber convertFrac) 0 "1.2"
   let flt = read "1.2" :: Float
-  -- putStrLn $ showFloat 1.2 ""
-  -- putStrLn $ showFloat 1.3 ""
 
   putStrLn $ showFloat flt ""
   putStrLn $ showFloat dbl ""
+
+  putStrLn $ showFloat 1.2 ""
+  putStrLn $ showFloat 1.3 ""
 
 mainold :: IO ()
 mainold = do
@@ -290,8 +356,5 @@ mainold = do
   print_i64 $ factmapAt5
   assert_eq_i64 factmapAt5 120
 
-  -- 0! + 1! + 2! + 3! + 4! + 5!
-  print_i64 $ sumFacts 5
-  assert_eq_i64 (sumFacts 5) (154)
 
   performGC
