@@ -296,7 +296,7 @@ export class GC {
           c += (1 + size) << 3;
           break;
         }
-        
+
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/Printer.c#L609
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/sm/Scav.c#L1944
         case ClosureTypes.RET_FUN: {
@@ -318,7 +318,7 @@ export class GC {
 
           const ret_fun_payload = retfun + rtsConstants.offset_StgRetFun_payload;
 
-                
+
           switch (fun_type) {
             case FunTypes.ARG_GEN: {
               this.scavengeSmallBitmap(
@@ -347,7 +347,7 @@ export class GC {
               const BITMAP_SIZE_MASK = 0x3f;
               const BITMAP_BITS_SHIFT = 6;
               const bitmap = stg_arg_bitmaps[fun_type];
-                
+
               // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/includes/rts/storage/InfoTables.h#L116
               const bitmap_bits =  BigInt(bitmap) >> BigInt(BITMAP_BITS_SHIFT);
               const bitmap_size = bitmap & BITMAP_SIZE_MASK;
@@ -534,7 +534,7 @@ export class GC {
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
 
-    // Stage the movement of stable pointers. 
+    // Stage the movement of stable pointers.
     // Step 1: Move all the pointers
     // Step 2: Update the pointer -> stablepointer mapping
     // We cannot do this at the same time, since moving the pointer while
@@ -550,7 +550,7 @@ export class GC {
 
     this.evacuateClosure(tso);
     this.scavengeWorkList();
-    this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+    this.heapAlloc.preserveMegaGroups(this.liveMBlocks);
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
     this.liveMBlocks.clear();

@@ -1,4 +1,5 @@
 import * as rtsConstants from "./rts.constants.mjs";
+import { Memory } from "./rts.memory.mjs";
 
 export class HeapAlloc {
   constructor(memory, mblockalloc) {
@@ -55,4 +56,25 @@ export class HeapAlloc {
     return current_free;
   }
   allocatePinned(n) { return this.allocate(n, true); }
+
+  preserveMegaGroups(bds) {
+    this.mblockAlloc.freeList = [];
+    const sorted_bds = Array.from(bds).sort((bd0, bd1) => bd0 - bd1);
+    sorted_bds.push(Memory.tagData(rtsConstants.mblock_size * this.mblockAlloc.capacity) + rtsConstants.offset_first_bdescr);
+    this.mblockAlloc.freeSegment(
+        Memory.tagData(rtsConstants.mblock_size * this.mblockAlloc.staticMBlocks),
+        sorted_bds[0] - rtsConstants.offset_first_bdescr);
+    for (let i = 0; i < (sorted_bds.length-1); ++i) {
+      const l_start = Number(
+          this.memory.i64Load(sorted_bds[i] + rtsConstants.offset_bdescr_start)),
+      l_blocks =
+          this.memory.i32Load(sorted_bds[i] + rtsConstants.offset_bdescr_blocks),
+      l_end = l_start + (rtsConstants.block_size * l_blocks),
+      r = sorted_bds[i + 1] - rtsConstants.offset_first_bdescr;
+      this.mblockAlloc.freeSegment(l_end, r);
+    }
+    this.mblockAlloc.freeList.sort(
+        (bd0, bd1) => this.memory.i32Load(bd0 + rtsConstants.offset_bdescr_blocks) -
+                  this.memory.i32Load(bd1 + rtsConstants.offset_bdescr_blocks));
+  }
 }
