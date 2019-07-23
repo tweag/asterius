@@ -1,10 +1,25 @@
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE Trustworthy #-}
+{-# LANGUAGE CApiFFI #-}
+{-# LANGUAGE MagicHash, UnboxedTuples #-}
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE Rank2Types #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
+-- #include <iostream>
+-- #include <float.h>
+-- int main() {
+--     std::cout << DBL_MANT_DIG << "\n";
+-- }
+
+#define DBL_MIN_EXP (-1021)
+#define DBL_MAX_EXP 1024
+#define DBL_MANT_DIG 53
+
 import Control.DeepSeq
+import Data.Ratio
 import qualified Text.Read.Lex as L
 import qualified Data.IntMap.Strict as IM
 import Text.ParserCombinators.ReadPrec
@@ -16,7 +31,21 @@ import System.Mem
 import Data.Char(intToDigit)
 import Debug.Trace (trace)
 import GHC.Arr
+import Data.Bits
 import Text.ParserCombinators.ReadPrec
+import GHC.Real
+import GHC.Word
+import GHC.Arr
+import GHC.Num
+import GHC.Base
+import GHC.Integer
+-- import GHC.Float hiding(showFloat, expt, expts10, minExpt, maxExpt, maxExpt10, rationalToDouble, fromRat'', floatToDigits, )
+import GHC.Float.RealFracMethods
+import GHC.Float.ConversionUtils
+import GHC.Integer.Logarithms ( integerLogBase# )
+import GHC.Integer.Logarithms.Internals
+
+-- https://github.com/ghc/ghc/blob/f737033329817335bc01ab16a385b4b5ec5b3b5d/libraries/base/GHC/Float.hs
 
 paren :: ReadPrec a -> ReadPrec a
 -- ^ @(paren p)@ parses \"(P0)\"
@@ -298,20 +327,106 @@ readNumber convert =
 
 
 convertFrac :: forall a . RealFloat a => L.Lexeme -> ReadPrec a
-convertFrac (L.Ident "NaN")      = return (0 / 0)
-convertFrac (L.Ident "Infinity") = return (1 / 0)
 convertFrac (L.Number n) = let resRange = floatRange (undefined :: a)
-                           in case L.numberToRangedRational resRange n of
-                              Nothing -> return (1 / 0)
-                              Just rat -> return $ fromRational rat
-convertFrac _            = pfail
+                               rangedRational = L.numberToRangedRational resRange n
+                           in (trace $ "L.number n: " <> show n <> " |rangedRational: " <> show rangedRational) $
+                                 case rangedRational of
+                                    Nothing -> error $ "number not in range"
+                                    Just rat -> return $ fromRational rat
 
+
+
+readNumber' :: (RealFloat a, Num a) => ReadPrec a
+readNumber' = do
+  x <- lexP
+  convertFrac x
+
+rationalToDouble :: Integer -> Integer -> Double
+{-# NOINLINE [1] rationalToDouble #-}
+rationalToDouble n 0
+    | n == 0        = 0/0
+    | n < 0         = (-1)/0
+    | otherwise     = 1/0
+rationalToDouble n d
+    | n == 0        = encodeFloat 0 0
+    | n < 0         = -(fromRat'' minEx mantDigs (-n) d)
+    | otherwise     = fromRat'' minEx mantDigs n d
+      where
+        minEx       = DBL_MIN_EXP
+        mantDigs    = DBL_MANT_DIG
+
+fromRat'' :: RealFloat a => Int -> Int -> Integer -> Integer -> a
+-- Invariant: n and d strictly positive
+fromRat'' minEx@(I# me#) mantDigs@(I# md#) n d =
+    case integerLog2IsPowerOf2# d of
+      (# ld#, pw# #)
+        | isTrue# (pw# ==# 0#) ->
+          case integerLog2# n of
+            ln# | isTrue# (ln# >=# (ld# +# me# -# 1#)) ->
+                  -- this means n/d >= 2^(minEx-1), i.e. we are guaranteed to get
+                  -- a normalised number, round to mantDigs bits
+                  if isTrue# (ln# <# md#)
+                    then encodeFloat n (I# (negateInt# ld#))
+                    else let n'  = n `shiftR` (I# (ln# +# 1# -# md#))
+                             n'' = case roundingMode# n (ln# -# md#) of
+                                    0# -> n'
+                                    2# -> n' + 1
+                                    _  -> case fromInteger n' .&. (1 :: Int) of
+                                            0 -> n'
+                                            _ -> n' + 1
+                         in encodeFloat n'' (I# (ln# -# ld# +# 1# -# md#))
+                | otherwise ->
+                  -- n/d < 2^(minEx-1), a denorm or rounded to 2^(minEx-1)
+                  -- the exponent for encoding is always minEx-mantDigs
+                  -- so we must shift right by (minEx-mantDigs) - (-ld)
+                  case ld# +# (me# -# md#) of
+                    ld'# | isTrue# (ld'# <=# 0#) -> -- we would shift left, so we don't shift
+                           encodeFloat n (I# ((me# -# md#) -# ld'#))
+                         | isTrue# (ld'# <=# ln#) ->
+                           let n' = n `shiftR` (I# ld'#)
+                           in case roundingMode# n (ld'# -# 1#) of
+                                0# -> encodeFloat n' (minEx - mantDigs)
+                                1# -> if fromInteger n' .&. (1 :: Int) == 0
+                                        then encodeFloat n' (minEx-mantDigs)
+                                        else encodeFloat (n' + 1) (minEx-mantDigs)
+                                _  -> encodeFloat (n' + 1) (minEx-mantDigs)
+                         | isTrue# (ld'# ># (ln# +# 1#)) -> encodeFloat 0 0 -- result of shift < 0.5
+                         | otherwise ->  -- first bit of n shifted to 0.5 place
+                           case integerLog2IsPowerOf2# n of
+                            (# _, 0# #) -> encodeFloat 0 0  -- round to even
+                            (# _, _ #)  -> encodeFloat 1 (minEx - mantDigs)
+        | otherwise ->
+          let ln = I# (integerLog2# n)
+              ld = I# ld#
+              -- 2^(ln-ld-1) < n/d < 2^(ln-ld+1)
+              p0 = max minEx (ln - ld)
+              (n', d')
+                | p0 < mantDigs = (n `shiftL` (mantDigs - p0), d)
+                | p0 == mantDigs = (n, d)
+                | otherwise     = (n, d `shiftL` (p0 - mantDigs))
+              -- if ln-ld < minEx, then n'/d' < 2^mantDigs, else
+              -- 2^(mantDigs-1) < n'/d' < 2^(mantDigs+1) and we
+              -- may need one scaling step
+              scale p a b
+                | (b `shiftL` mantDigs) <= a = (p+1, a, b `shiftL` 1)
+                | otherwise = (p, a, b)
+              (p', n'', d'') = scale (p0-mantDigs) n' d'
+              -- n''/d'' < 2^mantDigs and p' == minEx-mantDigs or n''/d'' >= 2^(mantDigs-1)
+              rdq = case n'' `quotRem` d'' of
+                     (q,r) -> case compare (r `shiftL` 1) d'' of
+                                LT -> q
+                                EQ -> if fromInteger q .&. (1 :: Int) == 0
+                                        then q else q+1
+                                GT -> q+1
+          in  encodeFloat rdq p'
 
 
 main :: IO ()
 main = do
-  let [(dbl :: Double, _)] = readPrec_to_S (readNumber convertFrac) 0 "1.2"
-  let flt = read "1.2" :: Float
+  putStrLn $ "6 % 5 as float: " <> show (rationalToDouble 6 5 :: Double)
+
+  let [(dbl :: Double, _)] = readPrec_to_S (lexP >>= convertFrac) 0 "1.2"
+  let [(flt :: Float, _)] = readPrec_to_S (lexP >>= convertFrac) 0 "1.2"
 
   putStrLn $ showFloat flt ""
   putStrLn $ showFloat dbl ""
