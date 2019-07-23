@@ -4,6 +4,14 @@ import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
+function bdescr(c) {
+  return Number(
+    ((BigInt(c) >> BigInt(Math.log2(rtsConstants.mblock_size))) <<
+      BigInt(Math.log2(rtsConstants.mblock_size))) |
+      BigInt(rtsConstants.offset_first_bdescr)
+  );
+}
+
 export class GC {
   constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
     tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard, yolo) {
@@ -25,14 +33,8 @@ export class GC {
     Object.freeze(this);
   }
 
-  bdescr(c) {
-    return Number(((BigInt(c) >> BigInt(Math.log2(rtsConstants.mblock_size)))
-                   << BigInt(Math.log2(rtsConstants.mblock_size))) |
-                  BigInt(rtsConstants.offset_first_bdescr));
-  }
-
   isPinned(c) {
-    const bd = this.bdescr(c),
+    const bd = bdescr(c),
           flags = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags);
     return Boolean(flags & rtsConstants.BF_PINNED);
   }
@@ -40,7 +42,7 @@ export class GC {
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
-    this.liveMBlocks.add(this.bdescr(dest_c));
+    this.liveMBlocks.add(bdescr(dest_c));
     return dest_c;
   }
 
@@ -51,7 +53,7 @@ export class GC {
       if (this.memory.heapAlloced(untagged_c)) {
         if (this.isPinned(untagged_c)) {
           dest_c = untagged_c;
-          this.liveMBlocks.add(this.bdescr(dest_c));
+          this.liveMBlocks.add(bdescr(dest_c));
         } else {
           const info = Number(this.memory.i64Load(untagged_c));
           if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
