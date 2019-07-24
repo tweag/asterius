@@ -22,9 +22,6 @@ export class HeapAlloc {
                         : 1 + Math.ceil((b - rtsConstants.sizeof_first_mblock) /
                                         rtsConstants.mblock_size),
           bd = this.allocMegaGroup(mblocks);
-    if (mblocks > 1)
-      this.memory.i16Store(bd + rtsConstants.offset_bdescr_flags,
-                           rtsConstants.BF_PINNED);
     return bd;
   }
   allocate(n, pinned = false) {
@@ -54,6 +51,7 @@ export class HeapAlloc {
         current_free + b);
     return current_free;
   }
+
   allocatePinned(n) { return this.allocate(n, true); }
 
   allocMegaGroup(n) {
