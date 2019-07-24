@@ -7,7 +7,6 @@ export class MBlockAlloc {
     this.staticMBlocks = undefined;
     this.capacity = undefined;
     this.size = undefined;
-    this.freeList = [];
     Object.seal(this);
   }
 
@@ -27,19 +26,5 @@ export class MBlockAlloc {
     const prev_size = this.size;
     this.size += n;
     return Memory.tagData(prev_size * rtsConstants.mblock_size);
-  }
-
-  freeSegment(l_end, r) {
-    if (l_end < r) {
-      this.memory.memset(l_end, 0, r - l_end);
-      const bd = l_end + rtsConstants.offset_first_bdescr,
-            start = l_end + rtsConstants.offset_first_block,
-            blocks = (r - start) / rtsConstants.block_size;
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, start);
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, start);
-      this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
-      this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, blocks);
-      this.freeList.push(bd);
-    }
   }
 }
