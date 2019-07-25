@@ -363,7 +363,7 @@ fromRat''_ minEx@(I# me#) mantDigs@(I# md#) n d =
   trace ("fromRat''_ : n: " <> show n <> "|d: " <> show d) $
     case integerLog2IsPowerOf2# d of
       (# ld#, pw# #)
-        | isTrue# (pw# ==# 0#) ->
+        | isTrue# (pw# ==# 0#) -> trace ("ERRORXXXXERRRORXXXERRORXXX: " <> show (box2 (integerLog2IsPowerOf2# d))) $
           case integerLog2# n of
             ln# | isTrue# (ln# >=# (ld# +# me# -# 1#)) ->
                   -- this means n/d >= 2^(minEx-1), i.e. we are guaranteed to get
@@ -398,7 +398,7 @@ fromRat''_ minEx@(I# me#) mantDigs@(I# md#) n d =
                            case integerLog2IsPowerOf2# n of
                             (# _, 0# #) -> encodeFloat 0 0  -- round to even
                             (# _, _ #)  -> encodeFloat 1 (minEx - mantDigs)
-        | otherwise ->
+        | otherwise -> trace ("OTHERWISE: " <> show (box2 (integerLog2IsPowerOf2# d))) $
           let ln = I# (integerLog2# n)
               ld = I# ld#
               -- 2^(ln-ld-1) < n/d < 2^(ln-ld+1)
@@ -424,12 +424,45 @@ fromRat''_ minEx@(I# me#) mantDigs@(I# md#) n d =
           in  encodeFloat rdq p'
 
 
+--
 box2 :: (# Int#, Int# #) -> (Int, Int)
 box2 (# a, b #) = (I# a, I# b)
 
 main :: IO ()
 main = do
-  putStrLn $ "5 log 2: " <> show (box2 (integerLog2IsPowerOf2# 5))
+  let mantDigs = DBL_MANT_DIG
+  -- putStrLn $ "5 log 2: " <> show (box2 (integerLog2IsPowerOf2# 5))
+  let n = 6
+  let d = 5
+  let (# ld#, pw# #) =  integerLog2IsPowerOf2# d
+  let ln = I# (integerLog2# n)
+  let ld = I# ld#
+  let p0 = max DBL_MIN_EXP (ln - ld)
+  let (n', d')
+        | p0 < mantDigs = (n `shiftL` (mantDigs - p0), d)
+        | p0 == mantDigs = (n, d)
+        | otherwise     = (n, d `shiftL` (p0 - mantDigs))
+  let scale p a b
+        | (b `shiftL` mantDigs) <= a = (p+1, a, b `shiftL` 1)
+        | otherwise = (p, a, b)
+  let (p', n'', d'') = scale (p0-mantDigs) n' d'
+  let rdq = case n'' `quotRem` d'' of
+               (q,r) -> case compare (r `shiftL` 1) d'' of
+                          LT -> q
+                          EQ -> if fromInteger q .&. (1 :: Int) == 0
+                                  then q else q+1
+                          GT -> q+1
+  putStrLn $ "-----"
+  putStrLn $ "(ld, pw): " <> show (I# ld#, I# pw#)
+  putStrLn $ "ln: " <> show ln
+  putStrLn $ "ld: " <> show ld
+  putStrLn $ "p0: " <> show p0
+  putStrLn $ "n', d': " <> show (n', d')
+  putStrLn $ "p', n'', d'': " <> show (p', n'', d'')
+  putStrLn $ "rdq: " <> show rdq
+  putStrLn $ "-----"
+
+
   putStrLn $ "6 % 5 as float: " <> show (fromRat'' DBL_MIN_EXP DBL_MANT_DIG 6 5 :: Double)
 
   -- let [(dbl :: Double, _)] = readPrec_to_S (lexP >>= convertFrac) 0 "1.2"
