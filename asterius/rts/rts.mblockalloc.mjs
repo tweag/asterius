@@ -30,4 +30,10 @@ export class MBlockAlloc {
     this.bitset |= ((BigInt(1) << BigInt(n)) - BigInt(1)) << BigInt(prev_size);
     return Memory.tagData(prev_size * rtsConstants.mblock_size);
   }
+
+  free(p, n) {
+    const mblock_no =
+      BigInt(Memory.unTag(p)) >> BigInt(Math.log2(rtsConstants.mblock_size));
+    this.bitset &= ~(((BigInt(1) << BigInt(n)) - BigInt(1)) << mblock_no);
+  }
 }

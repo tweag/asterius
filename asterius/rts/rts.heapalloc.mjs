@@ -70,4 +70,25 @@ export class HeapAlloc {
     this.mgroups.add(bd);
     return bd;
   }
+
+  handleLiveness(live_mblocks, dead_mblocks) {
+    for (const bd of live_mblocks) {
+      if (!this.mgroups.has(bd)) {
+        throw new WebAssembly.RuntimeError(
+          `Invalid live mblock 0x${bd.toString(16)}`
+        );
+      }
+    }
+    for (const bd of dead_mblocks) {
+      if (!this.mgroups.has(bd)) {
+        throw new WebAssembly.RuntimeError(
+          `Invalid dead mblock 0x${bd.toString(16)}`
+        );
+      }
+      this.mgroups.delete(bd);
+      const p = bd - rtsConstants.offset_first_bdescr,
+        n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
+      this.mblockAlloc.free(p, n);
+    }
+  }
 }
