@@ -98,8 +98,11 @@ export class IntegerManager {
     return deci > BigInt(0) ? deci.toString(2).length - 1 : -1;
   }
 
+  // return 0 if the number is power of 2, since it seems that
+  // it is internally implement as IsPowerOf2 = x & (x - 1), which is 0
+  // if x IS a power of 2.
   integerIsPowerOf2(i) {
-    return Number(/^10*$/.test(this.decode(i).toString(2)));
+    return Number(!/^10*$/.test(this.decode(i).toString(2)));
   }
   encodeDoubleInteger(i0, i1) {
     return Number(this.decode(i0)) * 2 ** i1;
