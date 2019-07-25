@@ -99,15 +99,7 @@ export class IntegerManager {
   }
 
   integerIsPowerOf2(i) {
-    let idec = this.decode(i);
-    return Number(i & (i - 1));
-    // let idec = this.decode(i);
-    // const val =  idec.toString(2);
-    // console.log(`${idec} | integerIsPowerOf2: ${val}`);
-    // console.log(`${idec} | regex against value:${/^10*$/.test(val)}`);
-    // let isPot =  /^10*$/.test(this.decode(i).toString(2));
-    // console.log(`${idec} | num of is power of 2: ${num}`);
-    // return isPot ? 0 : 1;
+    return Number(/^10*$/.test(this.decode(i).toString(2)));
   }
   encodeDoubleInteger(i0, i1) {
     return Number(this.decode(i0)) * 2 ** i1;
