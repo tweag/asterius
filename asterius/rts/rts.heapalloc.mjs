@@ -5,6 +5,7 @@ export class HeapAlloc {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.currentPools = [ undefined, undefined ];
+    this.mgroups = new Set();
     Object.freeze(this);
   }
   init() {
@@ -55,14 +56,18 @@ export class HeapAlloc {
   allocatePinned(n) { return this.allocate(n, true); }
 
   allocMegaGroup(n) {
-    const req_blocks = ((rtsConstants.mblock_size * n) - rtsConstants.offset_first_block) / rtsConstants.block_size;
-    const mblock = this.mblockAlloc.getMBlocks(n),
-          bd = mblock + rtsConstants.offset_first_bdescr,
-          block_addr = mblock + rtsConstants.offset_first_block;
+    const req_blocks =
+        (rtsConstants.mblock_size * n - rtsConstants.offset_first_block) /
+        rtsConstants.block_size,
+      mblock = this.mblockAlloc.getMBlocks(n),
+      bd = mblock + rtsConstants.offset_first_bdescr,
+      block_addr = mblock + rtsConstants.offset_first_block;
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_free, block_addr);
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_link, 0);
+    this.memory.i16Store(bd + rtsConstants.offset_bdescr_node, n);
     this.memory.i32Store(bd + rtsConstants.offset_bdescr_blocks, req_blocks);
+    this.mgroups.add(bd);
     return bd;
   }
 }

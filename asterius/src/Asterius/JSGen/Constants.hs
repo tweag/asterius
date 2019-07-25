@@ -36,6 +36,8 @@ rtsConstants =
   , intHex offset_bdescr_free
   , ";\nexport const offset_bdescr_link = "
   , intHex offset_bdescr_link
+  , ";\nexport const offset_bdescr_node = "
+  , intHex offset_bdescr_node
   , ";\nexport const offset_bdescr_flags = "
   , intHex offset_bdescr_flags
   , ";\nexport const offset_bdescr_blocks = "
