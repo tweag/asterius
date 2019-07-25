@@ -5,7 +5,9 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE Rank2Types #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 -- #include <iostream>
@@ -39,6 +41,7 @@ import GHC.Arr
 import GHC.Num
 import GHC.Base
 import GHC.Integer
+import GHC.Types
 -- import GHC.Float hiding(showFloat, expt, expts10, minExpt, maxExpt, maxExpt10, rationalToDouble, fromRat''_, floatToDigits, )
 import GHC.Float.RealFracMethods
 import GHC.Float.ConversionUtils
@@ -357,7 +360,7 @@ fromRat'' minEx mantDigs n d = let out = fromRat''_ minEx mantDigs n d
 fromRat''_ :: RealFloat a => Int -> Int -> Integer -> Integer -> a
 -- Invariant: n and d strictly positive
 fromRat''_ minEx@(I# me#) mantDigs@(I# md#) n d =
-  trace ("fromRat''_ : n" <> show n <> " d: " <> show d) $
+  trace ("fromRat''_ : n: " <> show n <> "|d: " <> show d) $
     case integerLog2IsPowerOf2# d of
       (# ld#, pw# #)
         | isTrue# (pw# ==# 0#) ->
@@ -421,15 +424,19 @@ fromRat''_ minEx@(I# me#) mantDigs@(I# md#) n d =
           in  encodeFloat rdq p'
 
 
+box2 :: (# Int#, Int# #) -> (Int, Int)
+box2 (# a, b #) = (I# a, I# b)
+
 main :: IO ()
 main = do
-  putStrLn $ "6 % 5 as float: " <> show (rationalToDouble 6 5 :: Double)
+  putStrLn $ "5 log 2: " <> show (box2 (integerLog2IsPowerOf2# 5))
+  putStrLn $ "6 % 5 as float: " <> show (fromRat'' DBL_MIN_EXP DBL_MANT_DIG 6 5 :: Double)
 
-  let [(dbl :: Double, _)] = readPrec_to_S (lexP >>= convertFrac) 0 "1.2"
-  let [(flt :: Float, _)] = readPrec_to_S (lexP >>= convertFrac) 0 "1.2"
+  -- let [(dbl :: Double, _)] = readPrec_to_S (lexP >>= convertFrac) 0 "1.2"
+  -- let [(flt :: Float, _)] = readPrec_to_S (lexP >>= convertFrac) 0 "1.2"
 
-  putStrLn $ showFloat flt ""
-  putStrLn $ showFloat dbl ""
+  -- putStrLn $ showFloat flt ""
+  -- putStrLn $ showFloat dbl ""
 
   putStrLn $ showFloat 1.2 ""
   putStrLn $ showFloat 1.2 ""
