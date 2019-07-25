@@ -28,6 +28,7 @@ export class GC {
     this.yolo = yolo;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
+    this.deadMBlocks = new Set();
     this.workList = [];
     this.liveJSVals = new Set();
     Object.freeze(this);
@@ -43,6 +44,7 @@ export class GC {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
     this.liveMBlocks.add(bdescr(dest_c));
+    this.deadMBlocks.add(bdescr(c));
     return dest_c;
   }
 
@@ -555,6 +557,7 @@ export class GC {
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
     this.liveMBlocks.clear();
+    this.deadMBlocks.clear();
     this.liveJSVals.clear();
     this.reentrancyGuard.exit(1);
   }
