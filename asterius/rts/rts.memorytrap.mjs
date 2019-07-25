@@ -2,20 +2,26 @@ import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
 
 export class MemoryTrap {
-  constructor(logger, syms, memory) {
+  constructor(logger, syms, memory, mblock_alloc) {
     this.logger = logger;
     this.symbolLookupTable = {};
     for (const[k, v] of Object.entries(syms)) this.symbolLookupTable[v] = k;
     this.memory = memory;
+    this.mblockAlloc = mblock_alloc;
     Object.freeze(this);
   }
 
   showI64(x) { return "0x" + x.toString(16).padStart(8, "0"); }
 
   trap(p) {
-    if (Memory.getTag(p) != rtsConstants.dataTag) {
-      const err =
-          new WebAssembly.RuntimeError("Invalid address " + this.showI64(p));
+    const tag = Memory.getTag(p),
+      untagged = BigInt(Memory.unTag(p)),
+      mblock_no = untagged >> BigInt(Math.log2(rtsConstants.mblock_size)),
+      mblock_live = Boolean((this.mblockAlloc.bitset >> mblock_no) & BigInt(1));
+    if (tag != rtsConstants.dataTag || !mblock_live) {
+      const err = new WebAssembly.RuntimeError(
+        "Invalid address " + this.showI64(p)
+      );
       this.logger.logError(err);
       throw err;
     }

@@ -7,6 +7,7 @@ export class MBlockAlloc {
     this.staticMBlocks = undefined;
     this.capacity = undefined;
     this.size = undefined;
+    this.bitset = undefined;
     Object.seal(this);
   }
 
@@ -15,6 +16,7 @@ export class MBlockAlloc {
     this.staticMBlocks = static_mblocks;
     this.capacity = this.memory.buffer.byteLength / rtsConstants.mblock_size;
     this.size = this.capacity;
+    this.bitset = (BigInt(1) << BigInt(this.size)) - BigInt(1);
   }
 
   getMBlocks(n) {
@@ -25,6 +27,7 @@ export class MBlockAlloc {
     }
     const prev_size = this.size;
     this.size += n;
+    this.bitset |= ((BigInt(1) << BigInt(n)) - BigInt(1)) << BigInt(prev_size);
     return Memory.tagData(prev_size * rtsConstants.mblock_size);
   }
 }
