@@ -510,7 +510,7 @@ rtsFunctionImports debug =
                   , externalModuleName = "MemoryTrap"
                   , externalBaseName = "load" <> k
                   , functionType =
-                      FunctionType {paramTypes = [I64, I32], returnTypes = [t]}
+                      FunctionType {paramTypes = [I64, I64, I32], returnTypes = [t]}
                   }
               , FunctionImport
                   { internalName = "__asterius_store_" <> k
@@ -518,7 +518,7 @@ rtsFunctionImports debug =
                   , externalBaseName = "store" <> k
                   , functionType =
                       FunctionType
-                        {paramTypes = [I64, I32, t], returnTypes = []}
+                        {paramTypes = [I64, I64, I32, t], returnTypes = []}
                   }
             ]
             | (k, t) <-
@@ -535,7 +535,7 @@ rtsFunctionImports debug =
             , externalModuleName = "MemoryTrap"
             , externalBaseName = "load" <> k1 <> s <> b
             , functionType =
-                FunctionType {paramTypes = [I64, I32], returnTypes = [t1]}
+                FunctionType {paramTypes = [I64, I64, I32], returnTypes = [t1]}
             }
           | (k1, t1) <- [("I32", I32), ("I64", I64)]
           , s <- ["S", "U"]
