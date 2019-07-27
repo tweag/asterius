@@ -842,19 +842,6 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                 , do callImport
                        "__asterius_gcRootTSO"
                        [convertUInt64ToFloat64 t]
-                     bytes <- i64Local $ getLVal hpAlloc
-                     putLVal hpAlloc $ constI64 0
-                     if'
-                       []
-                       (eqZInt64 bytes)
-                       (emit $ emitErrorMessage [] "HeapOverflowWithZeroHpAlloc")
-                       mempty
-                     truncUFloat64ToInt64 <$>
-                       callImport'
-                         "__asterius_hpAlloc"
-                         [convertUInt64ToFloat64 bytes]
-                         F64 >>=
-                       putLVal currentNursery
                      break' sched_loop_lbl Nothing)
               , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)

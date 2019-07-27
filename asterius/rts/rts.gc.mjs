@@ -556,6 +556,19 @@ export class GC {
     this.scavengeWorkList();
 
     this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
+    const base_reg =
+        this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
+      hp_alloc = Number(
+        this.memory.i64Load(base_reg + rtsConstants.offset_StgRegTable_rHpAlloc)
+      );
+    this.memory.i64Store(
+      base_reg + rtsConstants.offset_StgRegTable_rHpAlloc,
+      0
+    );
+    this.memory.i64Store(
+      base_reg + rtsConstants.offset_StgRegTable_rCurrentNursery,
+      this.heapAlloc.hpAlloc(hp_alloc)
+    );
 
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
