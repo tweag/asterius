@@ -1,39 +1,44 @@
 import * as rtsConstants from "./rts.constants.mjs";
 import { Memory } from "./rts.memory.mjs";
 
+function mask(n) {
+  return (BigInt(1) << BigInt(n)) - BigInt(1);
+}
+
 export class MBlockAlloc {
   constructor() {
     this.memory = undefined;
-    this.staticMBlocks = undefined;
     this.capacity = undefined;
-    this.size = undefined;
     this.bitset = undefined;
     Object.seal(this);
   }
 
-  init(memory, static_mblocks) {
+  init(memory) {
     this.memory = memory;
-    this.staticMBlocks = static_mblocks;
     this.capacity = this.memory.buffer.byteLength / rtsConstants.mblock_size;
-    this.size = this.capacity;
-    this.bitset = (BigInt(1) << BigInt(this.size)) - BigInt(1);
+    this.bitset = mask(this.capacity);
   }
 
   getMBlocks(n) {
-    if (this.size + n > this.capacity) {
-      const d = Math.max(n, this.capacity);
-      this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
-      this.capacity += d;
+    const m = mask(n);
+    for (let i = BigInt(0); i <= BigInt(this.capacity - n); ++i) {
+      const mi = m << i;
+      if (!(this.bitset & mi)) {
+        this.bitset |= mi;
+        return Memory.tagData(Number(i) * rtsConstants.mblock_size);
+      }
     }
-    const prev_size = this.size;
-    this.size += n;
-    this.bitset |= ((BigInt(1) << BigInt(n)) - BigInt(1)) << BigInt(prev_size);
-    return Memory.tagData(prev_size * rtsConstants.mblock_size);
+    const d = Math.max(n, this.capacity),
+      prev_capacity = this.capacity;
+    this.memory.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
+    this.capacity += d;
+    this.bitset |= m << BigInt(prev_capacity);
+    return Memory.tagData(prev_capacity * rtsConstants.mblock_size);
   }
 
   free(p, n) {
     const mblock_no =
       BigInt(Memory.unTag(p)) >> BigInt(Math.log2(rtsConstants.mblock_size));
-    this.bitset &= ~(((BigInt(1) << BigInt(n)) - BigInt(1)) << mblock_no);
+    this.bitset &= ~(mask(n) << mblock_no);
   }
 }
