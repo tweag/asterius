@@ -90,5 +90,34 @@ export class HeapAlloc {
         n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
       this.mblockAlloc.free(p, n);
     }
+    for (const bd of Array.from(this.mgroups)) {
+      if (!live_mblocks.has(bd)) {
+        if (
+          !(
+            this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags) &
+            rtsConstants.BF_PINNED
+          )
+        )
+          throw new WebAssembly.RuntimeError(
+            `Invalid unpinned mblock 0x${bd.toString(16)}`
+          );
+        this.mgroups.delete(bd);
+        const p = bd - rtsConstants.offset_first_bdescr,
+          n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
+        this.mblockAlloc.free(p, n);
+      }
+    }
+    if (!this.mgroups.has(this.currentPools[0])) {
+      throw new WebAssembly.RuntimeError(
+        `Invalid unpinned pool 0x${this.currentPools[0].toString(16)}`
+      );
+    }
+    if (!this.mgroups.has(this.currentPools[1])) {
+      this.currentPools[1] = this.allocMegaGroup(1);
+      this.memory.i16Store(
+        this.currentPools[1] + rtsConstants.offset_bdescr_flags,
+        rtsConstants.BF_PINNED
+      );
+    }
   }
 }
