@@ -288,11 +288,26 @@ let
       '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
       $out/bin/ahc-boot
     '';
+  wasm-asterius-ghc = (pkgs.runCommand "wasm-asterius-ghc" {
+      version = "0.0.1";
+      preferLocalBuild = true;
+      passthru = {
+        targetPrefix = "wasm-asterius-";
+      };
+    } ''
+      mkdir -p $out/bin
+      mkdir -p $out/lib
+      ${pkgs.lib.concatMapStringsSep "\n" (exe: ''
+        ln -s ${asterius-boot}/bin/${exe} $out/bin/wasm-asterius-ghc${pkgs.lib.strings.substring 3 ((pkgs.lib.strings.stringLength) exe - 3) exe}
+      '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
+      cp -r ${asterius-boot}/boot/.boot/asterius_lib $out/lib/wasm-asterius-ghc-0.0.1
+      ln -s ${pkgs.haskell.compiler.${compiler.nix-name}}/bin/hsc2hs $out/bin/wasm-asterius-hsc2hs
+    '');
 in {
   plan-nix = plan.nix;
   inherit (pkgSet.config) hsPkgs;
   config = pkgSet.config;
-  inherit ghc-head ghc864 pkgs haskell nodejs nodePkgs asterius-boot;
+  inherit ghc-head ghc864 pkgs haskell nodejs nodePkgs asterius-boot wasm-asterius-ghc;
   ghc-compiler = pkgs.haskell.compiler.${compiler.nix-name};
   ghc-boot-libs = ghc864.boot-libs;
 }
