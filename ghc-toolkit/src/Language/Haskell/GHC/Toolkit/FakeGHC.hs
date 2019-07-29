@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE StrictData #-}
 
 module Language.Haskell.GHC.Toolkit.FakeGHC
@@ -18,10 +18,11 @@ import System.Process
 data FakeGHCOptions = FakeGHCOptions
   { ghc, ghcLibDir :: FilePath
   , frontendPlugin :: GHC.FrontendPlugin
+  , extraMakeArgs  :: [String]
   }
 
 fakeGHCMain :: FakeGHCOptions -> IO ()
-fakeGHCMain FakeGHCOptions {..} = do
+fakeGHCMain FakeGHCOptions {ghc, ghcLibDir, frontendPlugin, extraMakeArgs} = do
   ks <-
     filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k) .
     map fst <$>
@@ -40,7 +41,7 @@ fakeGHCMain FakeGHCOptions {..} = do
       GHC.runGhc (Just new_ghc_libdir) $ do
         dflags0 <- GHC.getSessionDynFlags
         (dflags1, fileish_args, _) <-
-          GHC.parseDynamicFlags dflags0 (map GHC.noLoc args2)
+          GHC.parseDynamicFlags dflags0 (map GHC.noLoc (args2 ++ extraMakeArgs))
         void $
           GHC.setSessionDynFlags
             dflags1 {GHC.ghcMode = GHC.CompManager, GHC.hscTarget = GHC.HscAsm}

@@ -6,8 +6,10 @@ import System.FilePath
 main :: IO ()
 main = do
   bootDir <- A.getBootDir
+  ahcLd <- A.getAhcLd
   fakeGHCMain $
     FakeGHCOptions
       A.ghc
       (bootDir </> ".boot" </> "asterius_lib")
       A.frontendPlugin
+      ["-pgml" <> ahcLd]
