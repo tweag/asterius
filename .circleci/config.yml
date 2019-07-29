@@ -145,7 +145,7 @@ jobs:
 
             # Run parts of the ghc-testuite that we have enabled for
             # regression testing.
-            stack test asterius:ghc-testsuite --test-arguments="--timeout=300s -l test/ghc-testsuite-filter";
+            stack test asterius:ghc-testsuite --test-arguments="--timeout=180s -l test/ghc-testsuite-filter";
 
   asterius-test-ghc-testsuite:
     docker:
@@ -204,7 +204,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=300s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=180s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -268,7 +268,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=300s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=180s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -332,7 +332,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=300s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=180s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -396,7 +396,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=300s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=180s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
