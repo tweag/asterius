@@ -510,7 +510,7 @@ rtsFunctionImports debug =
                   , externalModuleName = "MemoryTrap"
                   , externalBaseName = "load" <> k
                   , functionType =
-                      FunctionType {paramTypes = [I64, I32], returnTypes = [t]}
+                      FunctionType {paramTypes = [I64, I64, I32], returnTypes = [t]}
                   }
               , FunctionImport
                   { internalName = "__asterius_store_" <> k
@@ -518,7 +518,7 @@ rtsFunctionImports debug =
                   , externalBaseName = "store" <> k
                   , functionType =
                       FunctionType
-                        {paramTypes = [I64, I32, t], returnTypes = []}
+                        {paramTypes = [I64, I64, I32, t], returnTypes = []}
                   }
             ]
             | (k, t) <-
@@ -535,7 +535,7 @@ rtsFunctionImports debug =
             , externalModuleName = "MemoryTrap"
             , externalBaseName = "load" <> k1 <> s <> b
             , functionType =
-                FunctionType {paramTypes = [I64, I32], returnTypes = [t1]}
+                FunctionType {paramTypes = [I64, I64, I32], returnTypes = [t1]}
             }
           | (k1, t1) <- [("I32", I32), ("I64", I64)]
           , s <- ["S", "U"]
@@ -842,19 +842,6 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
                 , do callImport
                        "__asterius_gcRootTSO"
                        [convertUInt64ToFloat64 t]
-                     bytes <- i64Local $ getLVal hpAlloc
-                     putLVal hpAlloc $ constI64 0
-                     if'
-                       []
-                       (eqZInt64 bytes)
-                       (emit $ emitErrorMessage [] "HeapOverflowWithZeroHpAlloc")
-                       mempty
-                     truncUFloat64ToInt64 <$>
-                       callImport'
-                         "__asterius_hpAlloc"
-                         [convertUInt64ToFloat64 bytes]
-                         F64 >>=
-                       putLVal currentNursery
                      break' sched_loop_lbl Nothing)
               , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)

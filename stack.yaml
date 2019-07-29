@@ -1,7 +1,7 @@
 resolver: ghc-8.9
 allow-newer: true
 extra-deps:
-  - http://head.hackage.haskell.org/package/aeson-1.4.3.0.tar.gz
+  - aeson-1.4.4.0
   - alex-3.2.4
   - ansi-terminal-0.9
   - ansi-wl-pprint-0.6.8.2
@@ -11,7 +11,7 @@ extra-deps:
   - auto-update-0.1.4
   - base-compat-0.10.5
   - base64-bytestring-1.0.0.2
-  - http://head.hackage.haskell.org/package/basement-0.0.10.tar.gz
+  - basement-0.0.11
   - blaze-builder-0.4.1.0
   - blaze-html-0.9.1.1
   - blaze-markup-0.8.2.2
@@ -52,10 +52,10 @@ extra-deps:
   - network-byte-order-0.0.0.0
   - old-locale-1.0.0.7
   - old-time-1.1.0.3
-  - http://head.hackage.haskell.org/package/optparse-applicative-0.14.3.0.tar.gz
-  - http://head.hackage.haskell.org/package/primitive-0.6.4.0.tar.gz
+  - optparse-applicative-0.15.0.0
+  - primitive-0.7.0.0
   - psqueues-0.2.7.0
-  - http://head.hackage.haskell.org/package/QuickCheck-2.13.1.tar.gz
+  - QuickCheck-2.13.2
   - quickcheck-instances-0.3.19
   - quickcheck-io-0.2.0
   - random-1.1

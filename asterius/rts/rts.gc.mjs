@@ -4,6 +4,14 @@ import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
+function bdescr(c) {
+  return Number(
+    ((BigInt(c) >> BigInt(Math.log2(rtsConstants.mblock_size))) <<
+      BigInt(Math.log2(rtsConstants.mblock_size))) |
+      BigInt(rtsConstants.offset_first_bdescr)
+  );
+}
+
 export class GC {
   constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
     tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard, yolo) {
@@ -20,19 +28,14 @@ export class GC {
     this.yolo = yolo;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
+    this.deadMBlocks = new Set();
     this.workList = [];
     this.liveJSVals = new Set();
     Object.freeze(this);
   }
 
-  bdescr(c) {
-    return Number(((BigInt(c) >> BigInt(Math.log2(rtsConstants.mblock_size)))
-                   << BigInt(Math.log2(rtsConstants.mblock_size))) |
-                  BigInt(rtsConstants.offset_first_bdescr));
-  }
-
   isPinned(c) {
-    const bd = this.bdescr(c),
+    const bd = bdescr(c),
           flags = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags);
     return Boolean(flags & rtsConstants.BF_PINNED);
   }
@@ -40,7 +43,8 @@ export class GC {
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
-    this.liveMBlocks.add(this.bdescr(dest_c));
+    this.liveMBlocks.add(bdescr(dest_c));
+    this.deadMBlocks.add(bdescr(c));
     return dest_c;
   }
 
@@ -51,7 +55,7 @@ export class GC {
       if (this.memory.heapAlloced(untagged_c)) {
         if (this.isPinned(untagged_c)) {
           dest_c = untagged_c;
-          this.liveMBlocks.add(this.bdescr(dest_c));
+          this.liveMBlocks.add(bdescr(dest_c));
         } else {
           const info = Number(this.memory.i64Load(untagged_c));
           if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
@@ -296,7 +300,7 @@ export class GC {
           c += (1 + size) << 3;
           break;
         }
-        
+
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/Printer.c#L609
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/sm/Scav.c#L1944
         case ClosureTypes.RET_FUN: {
@@ -318,7 +322,7 @@ export class GC {
 
           const ret_fun_payload = retfun + rtsConstants.offset_StgRetFun_payload;
 
-                
+
           switch (fun_type) {
             case FunTypes.ARG_GEN: {
               this.scavengeSmallBitmap(
@@ -347,7 +351,7 @@ export class GC {
               const BITMAP_SIZE_MASK = 0x3f;
               const BITMAP_BITS_SHIFT = 6;
               const bitmap = stg_arg_bitmaps[fun_type];
-                
+
               // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/includes/rts/storage/InfoTables.h#L116
               const bitmap_bits =  BigInt(bitmap) >> BigInt(BITMAP_BITS_SHIFT);
               const bitmap_size = bitmap & BITMAP_SIZE_MASK;
@@ -534,7 +538,7 @@ export class GC {
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
 
-    // Stage the movement of stable pointers. 
+    // Stage the movement of stable pointers.
     // Step 1: Move all the pointers
     // Step 2: Update the pointer -> stablepointer mapping
     // We cannot do this at the same time, since moving the pointer while
@@ -550,10 +554,26 @@ export class GC {
 
     this.evacuateClosure(tso);
     this.scavengeWorkList();
-    this.mblockAlloc.preserveMegaGroups(this.liveMBlocks);
+
+    this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
+    const base_reg =
+        this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
+      hp_alloc = Number(
+        this.memory.i64Load(base_reg + rtsConstants.offset_StgRegTable_rHpAlloc)
+      );
+    this.memory.i64Store(
+      base_reg + rtsConstants.offset_StgRegTable_rHpAlloc,
+      0
+    );
+    this.memory.i64Store(
+      base_reg + rtsConstants.offset_StgRegTable_rCurrentNursery,
+      this.heapAlloc.hpAlloc(hp_alloc)
+    );
+
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
     this.liveMBlocks.clear();
+    this.deadMBlocks.clear();
     this.liveJSVals.clear();
     this.reentrancyGuard.exit(1);
   }

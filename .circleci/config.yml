@@ -127,9 +127,6 @@ jobs:
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
 
-            cd /root/.local
-            /root/project/utils/v8-node.py
-            cd /root/project
             stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
             stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
@@ -148,7 +145,7 @@ jobs:
 
             # Run parts of the ghc-testuite that we have enabled for
             # regression testing.
-            stack test asterius:ghc-testsuite --test-arguments="--timeout=30s -l test/ghc-testsuite-filter";
+            stack test asterius:ghc-testsuite --test-arguments="--timeout=180s -l test/ghc-testsuite-filter";
 
   asterius-test-ghc-testsuite:
     docker:
@@ -207,7 +204,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=30s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=180s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -271,7 +268,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=30s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=180s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -330,16 +327,12 @@ jobs:
             # CSV file.
             no_output_timeout: 30m
             command: |
-              cd /root/.local
-              /root/project/utils/v8-node.py
-              cd /root/project
-
               # run the GHC testsuite and copy the test artifact to `/tmp`
               node --version
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=30s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=180s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -398,16 +391,12 @@ jobs:
             # CSV file.
             no_output_timeout: 30m
             command: |
-              cd /root/.local
-              /root/project/utils/v8-node.py
-              cd /root/project
-
               # run the GHC testsuite and copy the test artifact to `/tmp`
               node --version
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=30s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="--timeout=180s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
