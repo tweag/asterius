@@ -1,9 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wall #-}
 
-import Data.Maybe (fromMaybe)
 import Ar
+import Control.Concurrent
 import Data.Foldable
+import Data.Functor
+import Data.Maybe
 import Distribution.Simple
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
@@ -15,6 +18,25 @@ import Distribution.Types.PackageDescription
 import Distribution.Verbosity
 import System.Directory
 import System.FilePath
+import System.IO
+
+-- Let the user (or CI system) know that it
+-- is not unusual for there to be no output for a
+-- long time.
+displayTimeTaken :: IO ()
+displayTimeTaken = void . forkIO $ do
+  let maxMinutes :: Int = 40
+      extraMinutes = 5
+  forM_ [1 .. maxMinutes] $ \n -> do
+    threadDelay 60000000
+    putStrLn $ "binaryen has been building for "
+      <> show n <> " min (this is not unusual)."
+    hFlush stdout
+  threadDelay (extraMinutes * 60000000)
+  putStrLn $ "binaryen has been building for over "
+    <> show (maxMinutes + extraMinutes)
+    <> " min (there might be a problem)."
+  hFlush stdout
 
 main :: IO ()
 main =
@@ -23,6 +45,7 @@ main =
       { hookedPrograms = [simpleProgram "cmake"]
       , confHook =
           \t@(g_pkg_descr, _) c -> do
+            displayTimeTaken
             lbi <- confHook simpleUserHooks t c
             absBuildDir <- makeAbsolute $ buildDir lbi
             pwd <- getCurrentDirectory
