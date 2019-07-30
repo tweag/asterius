@@ -33,6 +33,41 @@ Wabt has been compiled to JavaScript via emscripten. Some of the functionality i
 - [wat2wasm](https://webassembly.github.io/wabt/demo/wat2wasm/)
 - [wasm2wat](https://webassembly.github.io/wabt/demo/wasm2wat/)
 
+## Supported Proposals
+
+* Proposal: Name and link to the WebAssembly proposal repo
+* flag: Flag to pass to the tool to enable support for the feature
+* binary: Whether wabt can read/write the binary format
+* text: Whether wabt can read/write the text format
+* validate: Whether wabt can validate the syntax
+* interpret: Whether wabt can execute these operations in `wasm-interp` or `spectest-interp`
+
+| Proposal | flag | binary | text | validate | interpret |
+| - | - | - | - | - | - |
+| [exception handling][] | `--enable-exceptions` | ✓ | ✓ | ✓ | |
+| [mutable globals][] | `--enable-mutable-globals` | ✓ | ✓ | ✓ | ✓ |
+| [nontrapping float-to-int conversions][] | `--enable-saturating-float-to-int` | ✓ | ✓ | ✓ | ✓ |
+| [sign extension][] | `--enable-sign-extension` | ✓ | ✓ | ✓ | ✓ |
+| [simd][] | `--enable-simd` | ✓ | ✓ | ✓ | ✓ |
+| [threads][] | `--enable-threads` | ✓ | ✓ | ✓ | |
+| [multi-value][] | `--enable-multi-value` | ✓ | ✓ | ✓ | ✓ |
+| [tail-call][] | `--enable-tail-call` | ✓ | ✓ | ✓ | ✓ |
+| [bulk memory][] | `--enable-bulk-memory` | ✓ | ✓ | ✓ | ✓ |
+| [reference types][] | `--enable-reference-types` | ✓ | ✓ | ✓ | |
+| [annotations][] | `--enable-annotations` | | ✓ | | |
+
+[exception handling]: https://github.com/WebAssembly/exception-handling
+[mutable globals]: https://github.com/WebAssembly/mutable-global
+[nontrapping float-to-int conversions]: https://github.com/WebAssembly/nontrapping-float-to-int-conversions
+[sign extension]: https://github.com/WebAssembly/sign-extension-ops
+[simd]: https://github.com/WebAssembly/simd
+[threads]: https://github.com/WebAssembly/threads
+[multi-value]: https://github.com/WebAssembly/multi-value
+[tail-call]: https://github.com/WebAssembly/tail-call
+[bulk memory]: https://github.com/WebAssembly/bulk-memory-operations
+[reference types]: https://github.com/WebAssembly/reference-types
+[annotations]: https://github.com/WebAssembly/annotations
+
 ## Cloning
 
 Clone as normal, but don't forget to get the submodules as well:
@@ -100,8 +135,12 @@ $ make gcc-debug-no-tests
 ## Building (Windows)
 
 You'll need [CMake](https://cmake.org). You'll also need
-[Visual Studio](https://www.visualstudio.com/) (2015 or newer) or 
+[Visual Studio](https://www.visualstudio.com/) (2015 or newer) or
 [MinGW](http://www.mingw.org/).
+
+_Note: Visual Studio 2017 and later come with CMake (and the Ninja build system)
+out of the box, and should be on your PATH if you open a Developer Command prompt.
+See <https://aka.ms/cmake> for more details._
 
 You can run CMake from the command prompt, or use the CMake GUI tool. See
 [Running CMake](https://cmake.org/runningcmake/) for more information.
@@ -133,7 +172,7 @@ So, for example, if you want to build the debug configuration on Visual Studio 2
 ```console
 > mkdir build
 > cd build
-> cmake .. -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_INSTALL_PREFIX=..\bin -G "Visual Studio 14 2015"
+> cmake .. -DCMAKE_BUILD_TYPE=DEBUG -DCMAKE_INSTALL_PREFIX=..\ -G "Visual Studio 14 2015"
 > cmake --build . --config DEBUG --target install
 ```
 

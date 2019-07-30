@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <cerrno>
+#include <cinttypes>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -93,7 +94,9 @@ class FloatParser {
                                const char* end,
                                const char* prefix);
   static Uint Make(bool sign, int exp, Uint sig);
-  static Uint ShiftAndRoundToNearest(Uint significand, int shift);
+  static Uint ShiftAndRoundToNearest(Uint significand,
+                                     int shift,
+                                     bool seen_trailing_non_zero);
 
   static Result ParseFloat(const char* s, const char* end, Uint* out_bits);
   static Result ParseNan(const char* s, const char* end, Uint* out_bits);
@@ -188,10 +191,11 @@ typename FloatParser<T>::Uint FloatParser<T>::Make(bool sign,
 template <typename T>
 typename FloatParser<T>::Uint FloatParser<T>::ShiftAndRoundToNearest(
     Uint significand,
-    int shift) {
+    int shift,
+    bool seen_trailing_non_zero) {
   assert(shift > 0);
   // Round ties to even.
-  if (significand & (Uint(1) << shift)) {
+  if ((significand & (Uint(1) << shift)) || seen_trailing_non_zero) {
     significand += Uint(1) << (shift - 1);
   }
   significand >>= shift;
@@ -220,6 +224,9 @@ Result FloatParser<T>::ParseNan(const char* s,
     s += 3;
 
     for (; s < end; ++s) {
+      if (*s == '_') {
+        continue;
+      }
       uint32_t digit;
       CHECK_RESULT(ParseHexdigit(*s, &digit));
       tag = tag * 16 + digit;
@@ -264,6 +271,7 @@ Result FloatParser<T>::ParseHex(const char* s,
   // 0x10000000.0p0 => significand = 1, significand_exponent = 28
   // 0x0.000001p0 => significand = 1, significand_exponent = -24
   bool seen_dot = false;
+  bool seen_trailing_non_zero = false;
   Uint significand = 0;
   int significand_exponent = 0;  // Exponent adjustment due to dot placement.
   for (; s < end; ++s) {
@@ -278,8 +286,13 @@ Result FloatParser<T>::ParseHex(const char* s,
         if (seen_dot) {
           significand_exponent -= 4;
         }
-      } else if (!seen_dot) {
-        significand_exponent += 4;
+      } else {
+        if (!seen_trailing_non_zero && digit != 0) {
+          seen_trailing_non_zero = true;
+        }
+        if (!seen_dot) {
+          significand_exponent += 4;
+        }
       }
     } else {
       break;
@@ -334,18 +347,28 @@ Result FloatParser<T>::ParseHex(const char* s,
 
   if (exponent <= Traits::kMinExp) {
     // Maybe subnormal.
+    auto update_seen_trailing_non_zero = [&](int shift) {
+      assert(shift > 0);
+      auto mask = (Uint(1) << (shift - 1)) - 1;
+      seen_trailing_non_zero |= (significand & mask) != 0;
+    };
+
+    // Normalize significand.
     if (significand_bits > Traits::kSigBits) {
-      significand = ShiftAndRoundToNearest(significand,
-                                           significand_bits - Traits::kSigBits);
+      int shift = significand_bits - Traits::kSigBits;
+      update_seen_trailing_non_zero(shift);
+      significand >>= shift;
     } else if (significand_bits < Traits::kSigBits) {
       significand <<= (Traits::kSigBits - significand_bits);
     }
 
     int shift = Traits::kMinExp - exponent;
-    if (shift < Traits::kSigBits) {
+    if (shift <= Traits::kSigBits) {
       if (shift) {
+        update_seen_trailing_non_zero(shift);
         significand =
-            ShiftAndRoundToNearest(significand, shift) & Traits::kSigMask;
+            ShiftAndRoundToNearest(significand, shift, seen_trailing_non_zero) &
+            Traits::kSigMask;
       }
       exponent = Traits::kMinExp;
 
@@ -361,7 +384,8 @@ Result FloatParser<T>::ParseHex(const char* s,
     // Maybe Normal value.
     if (significand_bits > Traits::kSigPlusOneBits) {
       significand = ShiftAndRoundToNearest(
-          significand, significand_bits - Traits::kSigPlusOneBits);
+          significand, significand_bits - Traits::kSigPlusOneBits,
+          seen_trailing_non_zero);
       if (significand > Traits::kSigPlusOneMask) {
         exponent++;
       }
@@ -622,6 +646,77 @@ Result ParseInt64(const char* s,
   return result;
 }
 
+namespace {
+uint32_t AddWithCarry(uint32_t x, uint32_t y, uint32_t* carry) {
+  // Increments *carry if the addition overflows, otherwise leaves carry alone.
+  if ((0xffffffff - x) < y) ++*carry;
+  return x + y;
+}
+
+void Mul10(v128* v) {
+  // Multiply-by-10 decomposes into (x << 3) + (x << 1). We implement those
+  // operations with carrying from smaller quads of the v128 to the larger
+  // quads.
+
+  constexpr uint32_t kTopThreeBits = 0xe0000000;
+  constexpr uint32_t kTopBit = 0x80000000;
+
+  uint32_t carry_into_v1 = ((v->v[0] & kTopThreeBits) >> 29) +
+                           ((v->v[0] & kTopBit) >> 31);
+  v->v[0] = AddWithCarry(v->v[0] << 3, v->v[0] << 1, &carry_into_v1);
+  uint32_t carry_into_v2 = ((v->v[1] & kTopThreeBits) >> 29) +
+                           ((v->v[1] & kTopBit) >> 31);
+  v->v[1] = AddWithCarry(v->v[1] << 3, v->v[1] << 1, &carry_into_v2);
+  v->v[1] = AddWithCarry(v->v[1], carry_into_v1, &carry_into_v2);
+  uint32_t carry_into_v3 = ((v->v[2] & kTopThreeBits) >> 29) +
+                           ((v->v[2] & kTopBit) >> 31);
+  v->v[2] = AddWithCarry(v->v[2] << 3, v->v[2] << 1, &carry_into_v3);
+  v->v[2] = AddWithCarry(v->v[2], carry_into_v2, &carry_into_v3);
+  v->v[3] = v->v[3] * 10 + carry_into_v3;
+}
+}
+
+Result ParseUint128(const char* s,
+                    const char* end,
+                    v128* out) {
+  if (s == end) {
+    return Result::Error;
+  }
+
+  out->v[0] = 0;
+  out->v[1] = 0;
+  out->v[2] = 0;
+  out->v[3] = 0;
+
+  while (true) {
+    uint32_t digit = (*s - '0');
+    if (digit > 9) {
+      return Result::Error;
+    }
+
+    uint32_t carry_into_v1 = 0;
+    uint32_t carry_into_v2 = 0;
+    uint32_t carry_into_v3 = 0;
+    uint32_t overflow = 0;
+    out->v[0] = AddWithCarry(out->v[0], digit, &carry_into_v1);
+    out->v[1] = AddWithCarry(out->v[1], carry_into_v1, &carry_into_v2);
+    out->v[2] = AddWithCarry(out->v[2], carry_into_v2, &carry_into_v3);
+    out->v[3] = AddWithCarry(out->v[3], carry_into_v3, &overflow);
+    if (overflow) {
+      return Result::Error;
+    }
+
+    ++s;
+
+    if (s == end) {
+      break;
+    }
+
+    Mul10(out);
+  }
+  return Result::Ok;
+}
+
 template <typename U>
 Result ParseInt(const char* s,
                 const char* end,
@@ -697,6 +792,42 @@ void WriteFloatHex(char* buffer, size_t size, uint32_t bits) {
 
 void WriteDoubleHex(char* buffer, size_t size, uint64_t bits) {
   return FloatWriter<double>::WriteHex(buffer, size, bits);
+}
+
+void WriteUint128(char* buffer, size_t size, v128 bits) {
+  uint64_t digits;
+  uint64_t remainder;
+  char reversed_buffer[40];
+  size_t len = 0;
+  do {
+    remainder = bits.v[3];
+
+    for (int i = 3; i != 0; --i) {
+      digits = remainder / 10;
+      remainder = ((remainder - digits * 10) << 32) + bits.v[i-1];
+      bits.v[i] = digits;
+    }
+
+    digits = remainder / 10;
+    remainder = remainder - digits * 10;
+    bits.v[0] = digits;
+
+    char remainder_buffer[21];
+    snprintf(remainder_buffer, 21, "%" PRIu64, remainder);
+    int remainder_buffer_len = strlen(remainder_buffer);
+    assert(len + remainder_buffer_len < sizeof(reversed_buffer));
+    memcpy(&reversed_buffer[len], remainder_buffer, remainder_buffer_len);
+    len += remainder_buffer_len;
+  } while (bits.v[0] || bits.v[1] || bits.v[2] || bits.v[3]);
+  size_t truncated_tail = 0;
+  if (len >= size) {
+    truncated_tail = len - size + 1;
+    len = size - 1;
+  }
+  std::reverse_copy(reversed_buffer + truncated_tail,
+                    reversed_buffer + len + truncated_tail,
+                    buffer);
+  buffer[len] = '\0';
 }
 
 }  // namespace wabt

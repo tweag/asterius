@@ -18,6 +18,7 @@ cmake_minimum_required(VERSION 2.6)
 project(WABT)
 
 option(BUILD_TESTS "Build GTest-based tests" ON)
+option(USE_SYSTEM_GTEST "Use system GTest, instead of building" OFF)
 option(BUILD_TOOLS "Build wabt commandline tools" ON)
 option(USE_ASAN "Use address sanitizer" OFF)
 option(USE_MSAN "Use memory sanitizer" OFF)
@@ -27,19 +28,19 @@ option(CODE_COVERAGE "Build with code coverage enabled" OFF)
 option(WITH_EXCEPTIONS "Build with exceptions enabled" OFF)
 option(WERROR "Build with warnings as errors" OFF)
 
-if (${CMAKE_C_COMPILER_ID} STREQUAL "Clang")
+if (CMAKE_C_COMPILER_ID MATCHES "Clang")
   set(COMPILER_IS_CLANG 1)
   set(COMPILER_IS_GNU 0)
   set(COMPILER_IS_MSVC 0)
-elseif (${CMAKE_C_COMPILER_ID} STREQUAL "GNU")
+elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
   set(COMPILER_IS_CLANG 0)
   set(COMPILER_IS_GNU 1)
   set(COMPILER_IS_MSVC 0)
-elseif (${CMAKE_C_COMPILER_ID} STREQUAL "MSVC")
+elseif (MSVC)
   set(COMPILER_IS_CLANG 0)
   set(COMPILER_IS_GNU 0)
   set(COMPILER_IS_MSVC 1)
-elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(COMPILER_IS_CLANG 1)
   set(COMPILER_IS_GNU 0)
   set(COMPILER_IS_MSVC 0)
@@ -373,30 +374,35 @@ if (NOT EMSCRIPTEN)
 
   find_package(Threads)
   if (BUILD_TESTS)
-    if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/gtest/googletest)
-      message(FATAL_ERROR "Can't find third_party/gtest. Run git submodule update --init, or disable with CMake -DBUILD_TESTS=OFF.")
+    if (NOT USE_SYSTEM_GTEST)
+      if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/gtest/googletest)
+        message(FATAL_ERROR "Can't find third_party/gtest. Run git submodule update --init, or disable with CMake -DBUILD_TESTS=OFF.")
+      endif ()
+
+      include_directories(
+        third_party/gtest/googletest
+        third_party/gtest/googletest/include
+      )
+
+      # gtest
+      add_library(gtest STATIC
+        third_party/gtest/googletest/src/gtest-all.cc
+      )
+
+      add_library(gtest_main STATIC
+        third_party/gtest/googletest/src/gtest_main.cc
+      )
     endif ()
-
-    include_directories(
-      third_party/gtest/googletest
-      third_party/gtest/googletest/include
-    )
-
-    # gtest
-    add_library(libgtest STATIC
-      third_party/gtest/googletest/src/gtest-all.cc
-    )
 
     # hexfloat-test
     set(HEXFLOAT_TEST_SRCS
       src/literal.cc
       src/test-hexfloat.cc
-      third_party/gtest/googletest/src/gtest_main.cc
     )
     wabt_executable(
       NAME hexfloat_test
       SOURCES ${HEXFLOAT_TEST_SRCS}
-      LIBS libgtest ${CMAKE_THREAD_LIBS_INIT}
+      LIBS gtest_main gtest ${CMAKE_THREAD_LIBS_INIT}
     )
 
     # wabt-unittests
@@ -406,16 +412,16 @@ if (NOT EMSCRIPTEN)
       src/test-interp.cc
       src/test-intrusive-list.cc
       src/test-literal.cc
+      src/test-option-parser.cc
       src/test-string-view.cc
       src/test-filenames.cc
       src/test-utf8.cc
       src/test-wast-parser.cc
-      third_party/gtest/googletest/src/gtest_main.cc
     )
     wabt_executable(
       NAME wabt-unittests
       SOURCES ${UNITTESTS_SRCS}
-      LIBS libgtest ${CMAKE_THREAD_LIBS_INIT}
+      LIBS gtest_main gtest ${CMAKE_THREAD_LIBS_INIT}
     )
 
     if (NOT CMAKE_VERSION VERSION_LESS "3.2")
