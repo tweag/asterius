@@ -196,6 +196,9 @@ class BinaryReaderIR : public BinaryReaderNop {
   Result EndFunctionBody(Index index) override;
   Result OnSimdLaneOpExpr(Opcode opcode, uint64_t value) override;
   Result OnSimdShuffleOpExpr(Opcode opcode, v128 value) override;
+  Result OnLoadSplatExpr(Opcode opcode,
+                         uint32_t alignment_log2,
+                         Address offset) override;
 
   Result OnElemSegmentCount(Index count) override;
   Result BeginElemSegment(Index index,
@@ -237,6 +240,7 @@ class BinaryReaderIR : public BinaryReaderNop {
   Result OnInitExprGlobalGetExpr(Index index, Index global_index) override;
   Result OnInitExprI32ConstExpr(Index index, uint32_t value) override;
   Result OnInitExprI64ConstExpr(Index index, uint64_t value) override;
+  Result OnInitExprRefNull(Index index) override;
 
  private:
   Location GetLocation() const;
@@ -978,6 +982,13 @@ Result BinaryReaderIR::OnSimdShuffleOpExpr(Opcode opcode, v128 value) {
   return AppendExpr(MakeUnique<SimdShuffleOpExpr>(opcode, value));
 }
 
+Result BinaryReaderIR::OnLoadSplatExpr(Opcode opcode,
+                                       uint32_t alignment_log2,
+                                       Address offset) {
+  return AppendExpr(
+      MakeUnique<LoadSplatExpr>(opcode, 1 << alignment_log2, offset));
+}
+
 Result BinaryReaderIR::OnElemSegmentCount(Index count) {
   WABT_TRY
   module_->elem_segments.reserve(count);
@@ -1165,6 +1176,12 @@ Result BinaryReaderIR::OnInitExprI64ConstExpr(Index index, uint64_t value) {
   Location loc = GetLocation();
   current_init_expr_->push_back(
       MakeUnique<ConstExpr>(Const::I64(value, loc), loc));
+  return Result::Ok;
+}
+
+Result BinaryReaderIR::OnInitExprRefNull(Index index) {
+  Location loc = GetLocation();
+  current_init_expr_->push_back(MakeUnique<RefNullExpr>(loc));
   return Result::Ok;
 }
 

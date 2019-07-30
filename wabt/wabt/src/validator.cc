@@ -104,6 +104,7 @@ class Validator : public ExprVisitor::Delegate {
   Result OnTernaryExpr(TernaryExpr*) override;
   Result OnSimdLaneOpExpr(SimdLaneOpExpr*) override;
   Result OnSimdShuffleOpExpr(SimdShuffleOpExpr*) override;
+  Result OnLoadSplatExpr(LoadSplatExpr*) override;
 
  private:
   struct ActionResult {
@@ -982,6 +983,15 @@ Result Validator::OnSimdShuffleOpExpr(SimdShuffleOpExpr* expr) {
   return Result::Ok;
 }
 
+Result Validator::OnLoadSplatExpr(LoadSplatExpr* expr) {
+  expr_loc_ = &expr->loc;
+  CheckHasMemory(&expr->loc, expr->opcode);
+  CheckAlign(&expr->loc, expr->align,
+             get_opcode_natural_alignment(expr->opcode));
+  typechecker_.OnLoad(expr->opcode);
+  return Result::Ok;
+}
+
 void Validator::CheckFuncSignature(const Location* loc,
                                    const FuncDeclaration& decl) {
   if (decl.has_func_type) {
@@ -1059,6 +1069,10 @@ void Validator::CheckConstInitExpr(const Location* loc,
         break;
       }
 
+      case ExprType::RefNull:
+        type = Type::Anyref;
+        break;
+      
       default:
         PrintConstExprError(loc, desc);
         return;

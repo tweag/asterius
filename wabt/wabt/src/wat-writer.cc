@@ -579,6 +579,7 @@ class WatWriter::ExprVisitorDelegate : public ExprVisitor::Delegate {
   Result OnTernaryExpr(TernaryExpr*) override;
   Result OnSimdLaneOpExpr(SimdLaneOpExpr*) override;
   Result OnSimdShuffleOpExpr(SimdShuffleOpExpr*) override;
+  Result OnLoadSplatExpr(LoadSplatExpr*) override;
 
  private:
   WatWriter* writer_;
@@ -949,6 +950,11 @@ Result WatWriter::ExprVisitorDelegate::OnSimdShuffleOpExpr(
     writer_->Writef(" %u", values[lane]);
   }
   writer_->WritePutsNewline("");
+  return Result::Ok;
+}
+
+Result WatWriter::ExprVisitorDelegate::OnLoadSplatExpr(LoadSplatExpr* expr) {
+  writer_->WriteLoadStoreExpr<LoadSplatExpr>(expr);
   return Result::Ok;
 }
 
@@ -1488,7 +1494,6 @@ void WatWriter::WriteElemSegment(const ElemSegment& segment) {
   WriteOpenSpace("elem");
   WriteNameOrIndex(segment.name, elem_segment_index_, NextChar::Space);
   if (segment.passive) {
-    WritePutsSpace("passive");
     WriteType(segment.elem_type, NextChar::Space);
   } else {
     WriteInitExpr(segment.offset);
@@ -1525,9 +1530,7 @@ void WatWriter::WriteMemory(const Memory& memory) {
 void WatWriter::WriteDataSegment(const DataSegment& segment) {
   WriteOpenSpace("data");
   WriteNameOrIndex(segment.name, data_segment_index_, NextChar::Space);
-  if (segment.passive) {
-    WritePutsSpace("passive");
-  } else {
+  if (!segment.passive) {
     WriteInitExpr(segment.offset);
   }
   WriteQuotedData(segment.data.data(), segment.data.size());

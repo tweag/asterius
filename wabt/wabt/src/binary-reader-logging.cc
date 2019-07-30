@@ -114,9 +114,10 @@ Result BinaryReaderLogging::BeginModule(uint32_t version) {
   return reader_->BeginModule(version);
 }
 
-Result BinaryReaderLogging::BeginSection(BinarySection section_type,
+Result BinaryReaderLogging::BeginSection(Index section_index,
+                                         BinarySection section_type,
                                          Offset size) {
-  return reader_->BeginSection(section_type, size);
+  return reader_->BeginSection(section_index, section_type, size);
 }
 
 Result BinaryReaderLogging::BeginCustomSection(Offset size,
@@ -574,6 +575,20 @@ Result BinaryReaderLogging::OnInitFunction(uint32_t priority,
   return reader_->OnInitFunction(priority, func_index);
 }
 
+Result BinaryReaderLogging::OnComdatBegin(string_view name,
+                                          uint32_t flags,
+                                          Index count) {
+  LOGF("OnComdatBegin(" PRIstringview ", flags: %d, count: %" PRIindex ")\n",
+       WABT_PRINTF_STRING_VIEW_ARG(name), flags, count);
+  return reader_->OnComdatBegin(name, flags, count);
+}
+
+Result BinaryReaderLogging::OnComdatEntry(ComdatType kind, Index index) {
+  LOGF("OnComdatEntry(kind: %d, index: %" PRIindex ")\n",
+       static_cast<int>(kind), index);
+  return reader_->OnComdatEntry(kind, index);
+}
+
 #define DEFINE_BEGIN(name)                        \
   Result BinaryReaderLogging::name(Offset size) { \
     LOGF(#name "(%" PRIzd ")\n", size);           \
@@ -724,6 +739,7 @@ DEFINE_INDEX_DESC(OnReturnCallExpr, "func_index")
 DEFINE_INDEX_INDEX(OnReturnCallIndirectExpr, "sig_index", "table_index")
 DEFINE0(OnReturnExpr)
 DEFINE0(OnSelectExpr)
+DEFINE_LOAD_STORE_OPCODE(OnLoadSplatExpr);
 DEFINE_LOAD_STORE_OPCODE(OnStoreExpr);
 DEFINE_INDEX_DESC(OnThrowExpr, "event_index")
 DEFINE0(OnUnreachableExpr)
@@ -761,7 +777,9 @@ DEFINE_END(EndNamesSection)
 
 DEFINE_BEGIN(BeginRelocSection)
 DEFINE_END(EndRelocSection)
+
 DEFINE_INDEX_INDEX(OnInitExprGlobalGetExpr, "index", "global_index")
+DEFINE_INDEX(OnInitExprRefNull)
 
 DEFINE_BEGIN(BeginDylinkSection)
 DEFINE_INDEX(OnDylinkNeededCount)
@@ -771,6 +789,7 @@ DEFINE_BEGIN(BeginLinkingSection)
 DEFINE_INDEX(OnSymbolCount)
 DEFINE_INDEX(OnSegmentInfoCount)
 DEFINE_INDEX(OnInitFunctionCount)
+DEFINE_INDEX(OnComdatCount)
 DEFINE_END(EndLinkingSection)
 
 DEFINE_BEGIN(BeginEventSection);
