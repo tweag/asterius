@@ -6,55 +6,63 @@ import Distribution.Simple
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
-import Distribution.Types.GenericPackageDescription
-import Distribution.Verbosity
+import Distribution.Simple.Utils
 import System.Directory
-import System.Environment.Blank
 import System.FilePath
 
 main :: IO ()
 main =
   defaultMainWithHooks
     simpleUserHooks
-      { hookedPrograms = map simpleProgram ["cmake"]
+      { hookedPrograms = [simpleProgram "cmake"]
       , confHook =
-          \t@(g_pkg_descr, _) c -> do
+          \t c -> do
             lbi <- confHook simpleUserHooks t c
-            absBuildDir <- makeAbsolute $ buildDir lbi
-            pwd <- getCurrentDirectory
-            wabt_extra_bindir <- getEnv "WABT_BINDIR"
-            let pkg_descr = packageDescription g_pkg_descr
-                wabt_builddir = absBuildDir </> "wabt"
-                wabt_installdirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-                wabt_prefix = takeDirectory $ bindir wabt_installdirs
-                run prog args =
-                  let Just conf_prog =
-                        lookupProgram (simpleProgram prog) (withPrograms lbi)
-                   in runProgramInvocation
-                        (fromFlagOrDefault
-                           normal
-                           (configVerbosity (configFlags lbi)))
-                        (programInvocation conf_prog args)
-                          {progInvokeInput = Nothing}
-            createDirectoryIfMissing True wabt_builddir
-            withCurrentDirectory wabt_builddir $
-              for_
-                [ [ "-DBUILD_TESTS=OFF"
-                  , "-DCMAKE_BUILD_TYPE=Release"
-                  , "-DCMAKE_INSTALL_PREFIX=" <> wabt_prefix
-                  , "-G"
-                  , "Unix Makefiles"
-                  , pwd </> "wabt"
-                  ]
-                , ["--build", wabt_builddir, "--target", "install"]
-                ] $ \args -> run "cmake" args
-            case wabt_extra_bindir of
-              Just p -> do
-                wabt_bins <- listDirectory $ pwd </> "wabt" </> "bin"
-                createDirectoryIfMissing True p
-                for_ wabt_bins $ \b ->
-                  copyFile (pwd </> "wabt" </> "bin" </> b) (p </> b)
-              _ -> pure ()
-            removePathForcibly $ pwd </> "wabt" </> "bin"
+            let verbosity = fromFlag $ configVerbosity $ configFlags lbi
+                hs_wabt_builddir = buildDir lbi
+                hs_wabt_build_bindir = hs_wabt_builddir </> "wabt"
+                run prog args cwd =
+                  runProgramInvocation
+                    verbosity
+                    (programInvocation conf_prog args)
+                      {progInvokeCwd = Just cwd, progInvokeInput = Nothing}
+                  where
+                    Just conf_prog =
+                      lookupProgram (simpleProgram prog) (withPrograms lbi)
+            tmpdir <- getTemporaryDirectory
+            withTempDirectory verbosity tmpdir "HSwabt" $ \wabt_buildroot -> do
+              copyDirectoryRecursive verbosity "wabt" wabt_buildroot
+              let wabt_builddir = wabt_buildroot </> "build"
+              createDirectory wabt_builddir
+              run
+                "cmake"
+                [ "-DBUILD_TESTS=OFF"
+                , "-DCMAKE_BUILD_TYPE=Release"
+                , "-G"
+                , "Unix Makefiles"
+                , wabt_buildroot
+                ]
+                wabt_builddir
+              run "cmake" ["--build", wabt_builddir] wabt_builddir
+              createDirectoryIfMissing True hs_wabt_build_bindir
+              bins <- listDirectory $ wabt_buildroot </> "bin"
+              for_ bins $ \b ->
+                copyFileWithMetadata
+                  (wabt_buildroot </> "bin" </> b)
+                  (hs_wabt_build_bindir </> b)
             pure lbi
+      , copyHook =
+          \pkg_descr lbi h flags -> do
+            copyHook simpleUserHooks pkg_descr lbi h flags
+            let hs_wabt_builddir = buildDir lbi
+                hs_wabt_build_bindir = hs_wabt_builddir </> "wabt"
+                uid = localUnitId lbi
+                copydest = fromFlag (copyDest flags)
+                installDirs =
+                  absoluteComponentInstallDirs pkg_descr lbi uid copydest
+                binDir = bindir installDirs
+            createDirectoryIfMissing True binDir
+            bins <- listDirectory hs_wabt_build_bindir
+            for_ bins $ \b ->
+              copyFileWithMetadata (hs_wabt_build_bindir </> b) (binDir </> b)
       }
