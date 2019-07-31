@@ -208,9 +208,6 @@ handleToFd :: Handle -> IO Fd
 fdToHandle :: Fd -> IO Handle
 fdToHandle fd = FD.fdToHandle (fromIntegral fd)
 
-#if defined(ASTERIUS)
-handleToFd (Handle h) = pure (Fd (fromIntegral h))
-#else
 handleToFd h@(FileHandle _ m) = do
   withHandle' "handleToFd" h m $ handleToFd' h
 handleToFd h@(DuplexHandle _ r w) = do
@@ -219,9 +216,7 @@ handleToFd h@(DuplexHandle _ r w) = do
   -- for a DuplexHandle, make sure we mark both sides as closed,
   -- otherwise a finalizer will come along later and close the other
   -- side. (#3914)
-#endif
 
-#if !defined(ASTERIUS)
 handleToFd' :: Handle -> Handle__ -> IO (Handle__, Fd)
 handleToFd' h h_@Handle__{haType=_,..} = do
   case cast haDevice of
@@ -235,7 +230,7 @@ handleToFd' h h_@Handle__{haType=_,..} = do
      flushWriteBuffer h_
      FD.release fd
      return (Handle__{haType=ClosedHandle,..}, Fd (FD.fdFD fd))
-#endif
+
 
 -- -----------------------------------------------------------------------------
 -- Fd options

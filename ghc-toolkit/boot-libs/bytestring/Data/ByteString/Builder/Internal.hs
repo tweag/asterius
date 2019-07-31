@@ -149,10 +149,8 @@ import qualified Data.ByteString.Short.Internal as Sh
 
 #if __GLASGOW_HASKELL__ >= 611
 import qualified GHC.IO.Buffer as IO (Buffer(..), newByteBuffer)
-#if !defined(ASTERIUS)
 import           GHC.IO.Handle.Internals (wantWritableHandle, flushWriteBuffer)
 import           GHC.IO.Handle.Types (Handle__, haByteBuffer, haBufferMode)
-#endif
 import           System.IO (hFlush, BufferMode(..))
 import           Data.IORef
 #else
@@ -614,9 +612,6 @@ putLiftIO io = put $ \k br -> io >>= (`k` br)
 -- buffer is too small to execute one step of the 'Put' action, then
 -- it is replaced with a large enough buffer.
 hPut :: forall a. Handle -> Put a -> IO a
-#if defined(ASTERIUS)
-hPut = undefined
-#else
 #if __GLASGOW_HASKELL__ >= 611
 hPut h p = do
     fillHandle 1 (runPut p)
@@ -726,7 +721,6 @@ hPut h p =
 
     go (Finished buf x) = S.hPut h (byteStringFromBuffer buf) >> return x
     go (Yield1 bs io)   = S.hPut h bs >> io >>= go
-#endif
 #endif
 
 -- | Execute a 'Put' and return the computed result and the bytes

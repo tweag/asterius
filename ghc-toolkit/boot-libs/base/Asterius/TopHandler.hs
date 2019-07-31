@@ -6,12 +6,13 @@ module Asterius.TopHandler
 
 import Control.Exception
 import Foreign.C
+import GHC.TopHandler (flushStdHandles)
 import Prelude
 import System.Exit
 import System.IO
 
 runMainIO :: IO a -> IO a
-runMainIO = (`catch` topHandler)
+runMainIO = (`finally` flushStdHandles) . (`catch` topHandler)
 
 topHandler :: SomeException -> IO a
 topHandler = throwExitCode realHandler

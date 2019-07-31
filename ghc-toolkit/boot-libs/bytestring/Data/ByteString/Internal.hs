@@ -119,7 +119,6 @@ import GHC.Base                 (unpackCString#)
 #endif
 
 import GHC.Prim                 (Addr#)
-import GHC.Magic                (runRW#)
 
 #if __GLASGOW_HASKELL__ >= 611
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
@@ -590,7 +589,7 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 --
 {-# INLINE accursedUnutterablePerformIO #-}
 accursedUnutterablePerformIO :: IO a -> a
-accursedUnutterablePerformIO (IO m) = case runRW# m of (# _, r #) -> r
+accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 
 inlinePerformIO :: IO a -> a
 inlinePerformIO = accursedUnutterablePerformIO

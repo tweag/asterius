@@ -159,6 +159,10 @@ rtsAsteriusModule opts =
        <> performMajorGCFunction opts
        <> performGCFunction opts
        <> localeEncodingFunction opts
+       <> isattyFunction opts
+       <> fdReadyFunction opts
+       <> rtsSupportsBoundThreadsFunction opts
+       <> writeFunction opts
        <> (if debug opts then generateRtsAsteriusDebugModule opts else mempty)
        -- | Add in the module that contain functions which need to be
        -- | exposed to the outside world. So add in the module, and
@@ -480,6 +484,13 @@ rtsFunctionImports debug =
           , returnTypes = [I32]
           }
       }
+  , FunctionImport
+      { internalName = "__asterius_write"
+      , externalModuleName = "fs"
+      , externalBaseName = "write"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = []}
+      }
   ] <>
   (if debug
      then [ FunctionImport
@@ -737,7 +748,7 @@ generateWrapperModule mod = mod {
 
 
 
-hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction ::
+hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction, isattyFunction, fdReadyFunction, rtsSupportsBoundThreadsFunction, writeFunction ::
      BuiltinsOptions -> AsteriusModule
 
 initCapability :: EDSL ()
@@ -1328,6 +1339,30 @@ localeEncodingFunction _ =
   runEDSL "localeEncoding" $ do
     setReturnTypes [I64]
     emit $ symbol "__asterius_localeEncoding"
+
+isattyFunction _ =
+  runEDSL "isatty" $ do
+    setReturnTypes [I64]
+    _ <- param I64
+    emit $ constI64 0
+
+fdReadyFunction _ =
+  runEDSL "fdReady" $ do
+    setReturnTypes [I64]
+    _ <- params [I64, I64, I64, I64]
+    emit $ constI64 1
+
+rtsSupportsBoundThreadsFunction _ =
+  runEDSL "rtsSupportsBoundThreads" $ do
+    setReturnTypes [I64]
+    emit $ constI64 0
+
+writeFunction _ =
+  runEDSL "ghczuwrapperZC20ZCbaseZCSystemziPosixziInternalsZCwrite" $ do
+    setReturnTypes [I64]
+    [fd, buf, count] <- params [I64, I64, I64]
+    callImport "__asterius_write" $ map convertUInt64ToFloat64 [fd, buf, count]
+    emit count
 
 getF64GlobalRegFunction ::
   BuiltinsOptions
