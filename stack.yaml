@@ -3,108 +3,59 @@ allow-newer: true
 extra-deps:
   - aeson-1.4.4.0
   - alex-3.2.4
-  - ansi-terminal-0.9
-  - ansi-wl-pprint-0.6.8.2
-  - appar-0.1.8
-  - async-2.2.1
+  - ansi-terminal-0.9.1
+  - ansi-wl-pprint-0.6.9
+  - async-2.2.2
   - http://head.hackage.haskell.org/package/attoparsec-0.13.2.2.tar.gz
-  - auto-update-0.1.4
   - base-compat-0.10.5
+  - base-orphans-0.8.1
   - base64-bytestring-1.0.0.2
-  - basement-0.0.11
   - blaze-builder-0.4.1.0
-  - blaze-html-0.9.1.1
-  - blaze-markup-0.8.2.2
-  - bsb-http-chunked-0.0.0.4
-  - byteorder-1.0.4
   - call-stack-0.1.0
-  - case-insensitive-1.2.0.11
-  - clock-0.7.2
+  - http://head.hackage.haskell.org/package/cassava-0.5.1.0.tar.gz
+  - clock-0.8
   - colour-2.3.5
-  - cookie-0.4.4
-  - cryptonite-0.25
-  - data-default-class-0.1.2.0
   - http://head.hackage.haskell.org/package/dlist-0.8.0.6.tar.gz
-  - easy-file-0.2.2
-  - erf-2.0.0.0
-  - exceptions-0.10.2
-  - fast-logger-2.4.11
-  - file-embed-0.0.11
-  - gauge-0.2.4
   - http://head.hackage.haskell.org/package/happy-1.19.11.tar.gz
-  - hashable-1.2.7.0
-  - hspec-2.7.0
-  - hspec-core-2.7.0
-  - hspec-discover-2.7.0
+  - hashable-1.3.0.0
+  - hspec-2.7.1
+  - hspec-core-2.7.1
+  - hspec-discover-2.7.1
   - hspec-expectations-0.8.2
-  - http-date-0.0.8
-  - http-types-0.12.3
-  - http2-1.6.4
-  - integer-logarithms-1.0.2.2
-  - iproute-1.7.7
-  - logict-0.6.0.3
-  - http://head.hackage.haskell.org/package/memory-0.14.18.tar.gz
+  - integer-logarithms-1.0.3
+  - logict-0.7.0.2
   - HUnit-1.6.0.0
-  - language-javascript-0.6.0.11
-  - mime-types-0.1.0.9
-  - mintty-0.1.2
-  - network-2.8.0.0
-  - network-byte-order-0.0.0.0
-  - old-locale-1.0.0.7
-  - old-time-1.1.0.3
+  - language-javascript-0.6.0.13
+  - Only-0.1
   - optparse-applicative-0.15.0.0
   - primitive-0.7.0.0
-  - psqueues-0.2.7.0
   - QuickCheck-2.13.2
-  - quickcheck-instances-0.3.19
   - quickcheck-io-0.2.0
   - random-1.1
-  - resourcet-1.2.2
   - scientific-0.3.6.2
-  - semigroups-0.18.5
   - setenv-0.1.1.3
-  - simple-sendfile-0.2.27
   - smallcheck-1.1.5
-  - splitmix-0.0.2
-  - streaming-commons-0.2.1.0
+  - splitmix-0.0.3
   - tagged-0.8.6
   - tasty-1.2.3
   - tasty-hspec-1.1.5.1
-  - tasty-quickcheck-0.10
+  - tasty-hunit-0.10.0.2
+  - tasty-quickcheck-0.10.1
   - tasty-smallcheck-0.8.1
+  - text-short-0.1.3
+  - time-compat-1.9.2.2
   - tf-random-0.5
   - th-abstraction-0.3.1.0
-  - time-locale-compat-0.1.1.5
-  - transformers-compat-0.6.2
+  - transformers-compat-0.6.5
   - unbounded-delays-0.1.1.0
-  - unix-compat-0.5.1
   - unordered-containers-0.2.10.0
   - utf8-string-1.0.1.1
-  - vault-0.3.1.2
-  - unix-time-0.3.8
   - uuid-types-1.0.3
-  - unliftio-core-0.1.2.0
   - vector-0.12.0.3
-  - void-0.7.2
-  - wai-3.2.2
-  - wai-app-static-3.1.6.3
-  - wai-extra-3.0.26
-  - wai-logger-2.3.2
-  - warp-3.2.27
   - wcwidth-0.0.2
-  - word8-0.1.3
-  - http://head.hackage.haskell.org/package/zlib-0.6.2.tar.gz
-  - Only-0.1 # for ghc-testsuite report generation
-  - http://head.hackage.haskell.org/package/cassava-0.5.1.0.tar.gz # for ghc-testsuite report generation
-  - text-short-0.1.2
-  # for ghc-testsuite regex matching for the pattern file
-  - http://head.hackage.haskell.org/package/regex-base-0.93.2.tar.gz
-  - http://head.hackage.haskell.org/package/regex-tdfa-1.2.3.2.tar.gz
-
 flags:
-    cassava:
-        bytestring--lt-0_10_4: false
-
+  cassava:
+    bytestring--lt-0_10_4: false
 packages:
   - asterius
   - binaryen
