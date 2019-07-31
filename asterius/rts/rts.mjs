@@ -100,9 +100,8 @@ export function newAsteriusInstance(req) {
     Integer: __asterius_integer_manager,
     FloatCBits: __asterius_float_cbits,
     stdio: {
-      putChar: (h, c) => __asterius_fs.writeSync(h, String.fromCodePoint(c)),
-      stdout: () => __asterius_fs.root.get("/dev/stdout"),
-      stderr: () => __asterius_fs.root.get("/dev/stderr")
+      stdout: () => __asterius_fs.readSync(1),
+      stderr: () => __asterius_fs.readSync(2)
     },
     setPromise: (vt, p) => __asterius_tso_manager.setPromise(vt, p)
   };
@@ -133,9 +132,16 @@ export function newAsteriusInstance(req) {
         memory: __asterius_wasm_memory
       },
       rts: {
-        printI64: x => __asterius_fs.writeSync(__asterius_fs.stdout(), __asterius_show_I64(x) + "\n"),
+        printI64: x => __asterius_fs.writeSync(1, __asterius_show_I64(x) + "\n"),
         assertEqI64: function(x, y) { if(x != y) {   throw new WebAssembly.RuntimeError("unequal I64: " + x + ", " + y); } },
-        print: x => __asterius_fs.writeSync(__asterius_fs.stdout(), x + "\n")
+        print: x => __asterius_fs.writeSync(1, x + "\n")
+      },
+      fs: {
+        write: (fd, buf, count) => {
+          const p = Memory.unTag(buf);
+          __asterius_fs.writeSync(fd, __asterius_memory.i8View.subarray(p, p + count));
+          return count;
+        }
       },
       bytestring: modulify(__asterius_bytestring_cbits),
       // cannot name this float since float is a keyword.
