@@ -252,10 +252,8 @@ tests:
     dependencies:
       - asterius
       - tasty
-      - tasty-hspec
-      - ansi-terminal
+      - tasty-hunit
       - cassava
-      - regex-tdfa
       - optparse-applicative
 
   ghc-testsuite-with-ghc:
