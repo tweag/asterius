@@ -226,7 +226,7 @@ export class GC {
   scavengePAP(c, offset_fun, payload, n_args) {
     this.scavengeClosureAt(c + offset_fun);
     const fun = this.memory.i64Load(c + offset_fun),
-          fun_info = Number(this.memory.i64Load(fun));
+          fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun)));
     if (!this.infoTables.has(fun_info)) throw new WebAssembly.RuntimeError();
     switch (this.memory.i32Load(fun_info + rtsConstants.offset_StgFunInfoTable_f +
                                 rtsConstants.offset_StgFunInfoExtraFwd_fun_type)) {
