@@ -1,18 +1,13 @@
 {-# LANGUAGE MagicHash, UnboxedTuples, NoImplicitPrelude #-}
-{-# LANGUAGE UnliftedFFITypes #-}
-
 module GHC.Integer.Logarithms
     ( integerLogBase#
     , integerLog2#
     , wordLog2#
     ) where
 
-import Asterius.Magic
+import GHC.Prim
 import GHC.Integer
 import qualified GHC.Integer.Logarithms.Internals as I
-import GHC.Integer.Type (Integer(..))
-import GHC.Prim
-import GHC.Types
 
 -- | Calculate the integer logarithm for an arbitrary base.
 --   The base must be greater than 1, the second argument, the number
