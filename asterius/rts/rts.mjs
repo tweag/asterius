@@ -42,7 +42,7 @@ export function newAsteriusInstance(req) {
     __asterius_stablename_manager = new StableNameManager(__asterius_memory, __asterius_heapalloc, req.symbolTable),
     __asterius_tso_manager = new TSOManager(__asterius_memory, req.symbolTable, __asterius_stableptr_manager),
     __asterius_heap_builder = new HeapBuilder(req.symbolTable, __asterius_heapalloc, __asterius_memory, __asterius_stableptr_manager),
-    __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager, __asterius_heap_builder),
+    __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard, req.yolo),
@@ -170,7 +170,6 @@ export function newAsteriusInstance(req) {
       __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
       __asterius_mblockalloc.init(__asterius_memory);
       __asterius_heapalloc.init();
-      __asterius_integer_manager.heap = __asterius_heap_builder;
       __asterius_bytestring_cbits.memory = __asterius_memory;
       return Object.assign(__asterius_jsffi_instance, {
         wasmModule: req.module,

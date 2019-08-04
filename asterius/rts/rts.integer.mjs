@@ -19,18 +19,14 @@ function popCount(a) {
 }
 
 export class IntegerManager {
-  constructor(jsvalManager, heap) {
+  constructor(jsvalManager) {
     this.jsvalManager = jsvalManager;
-    this.heap = heap;
 
     // buffer of 8 bytes to hold floats/doubles
     this.buffer = new ArrayBuffer(8);
     this.view = new DataView(this.buffer);
 
-    Object.seal(this);
-  }
-  integerToString(i, l) {
-    return this.heap.newHaskellString(this.decode(i).toString(), l);
+    Object.freeze(this);
   }
   newInteger(non_neg) {
     return this.jsvalManager.newTmpJSVal(
