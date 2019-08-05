@@ -42,12 +42,15 @@ module GHC.Natural
     , quotRemNatural
     , quotNatural
     , remNatural
+    , gcdNatural
+    , lcmNatural
       -- * Bits
     , andNatural
     , orNatural
     , xorNatural
     , bitNatural
     , testBitNatural
+    , popCountNatural
     , shiftLNatural
     , shiftRNatural
       -- * Conversions
@@ -174,6 +177,25 @@ naturalFromInteger (Jp# bn) = bigNatToNatural bn
 naturalFromInteger _        = underflowError
 {-# CONSTANT_FOLDED naturalFromInteger #-}
 
+-- | Compute greatest common divisor.
+gcdNatural :: Natural -> Natural -> Natural
+gcdNatural (NatS# 0##) y       = y
+gcdNatural x       (NatS# 0##) = x
+gcdNatural (NatS# 1##) _       = NatS# 1##
+gcdNatural _       (NatS# 1##) = NatS# 1##
+gcdNatural (NatJ# x) (NatJ# y) = bigNatToNatural (gcdBigNat x y)
+gcdNatural (NatJ# x) (NatS# y) = NatS# (gcdBigNatWord x y)
+gcdNatural (NatS# x) (NatJ# y) = NatS# (gcdBigNatWord y x)
+gcdNatural (NatS# x) (NatS# y) = NatS# (gcdWord x y)
+
+-- | Compute least common multiple.
+lcmNatural :: Natural -> Natural -> Natural
+lcmNatural (NatS# 0##) _ = NatS# 0##
+lcmNatural _ (NatS# 0##) = NatS# 0##
+lcmNatural (NatS# 1##) y = y
+lcmNatural x (NatS# 1##) = x
+lcmNatural x y           = (x `quotNatural` (gcdNatural x y)) `timesNatural` y
+
 ----------------------------------------------------------------------------
 
 quotRemNatural :: Natural -> Natural -> (Natural, Natural)
@@ -246,6 +268,11 @@ testBitNatural (NatS# w) (I# i#)
   | True                               = False
 testBitNatural (NatJ# bn) (I# i#)      = testBitBigNat bn i#
 -- {-# CONSTANT_FOLDED testBitNatural #-}
+
+popCountNatural :: Natural -> Int
+popCountNatural (NatS# w)  = I# (word2Int# (popCnt# w))
+popCountNatural (NatJ# bn) = I# (popCountBigNat bn)
+-- {-# CONSTANT_FOLDED popCountNatural #-}
 
 shiftLNatural :: Natural -> Int -> Natural
 shiftLNatural n           (I# 0#) = n
@@ -408,6 +435,15 @@ naturalFromInteger n
   | True                   = underflowError
 {-# INLINE naturalFromInteger #-}
 
+
+-- | Compute greatest common divisor.
+gcdNatural :: Natural -> Natural -> Natural
+gcdNatural (Natural n) (Natural m) = Natural (n `gcdInteger` m)
+
+-- | Compute lowest common multiple.
+lcmNatural :: Natural -> Natural -> Natural
+lcmNatural (Natural n) (Natural m) = Natural (n `lcmInteger` m)
+
 -- | 'Natural' subtraction. Returns 'Nothing's for non-positive results.
 --
 -- @since 4.8.0.0
@@ -463,6 +499,9 @@ naturalToInteger (Natural i) = i
 testBitNatural :: Natural -> Int -> Bool
 testBitNatural (Natural n) (I# i) = testBitInteger n i
 -- {-# CONSTANT_FOLDED testBitNatural #-}
+
+popCountNatural :: Natural -> Int
+popCountNatural (Natural n) = I# (popCountInteger n)
 
 bitNatural :: Int# -> Natural
 bitNatural i#

@@ -71,7 +71,9 @@ class BinaryReaderDelegate {
   virtual Result BeginModule(uint32_t version) = 0;
   virtual Result EndModule() = 0;
 
-  virtual Result BeginSection(BinarySection section_type, Offset size) = 0;
+  virtual Result BeginSection(Index section_index,
+                              BinarySection section_type,
+                              Offset size) = 0;
 
   /* Custom section */
   virtual Result BeginCustomSection(Offset size, string_view section_name) = 0;
@@ -273,6 +275,10 @@ class BinaryReaderDelegate {
   virtual Result OnSimdLaneOpExpr(Opcode opcode, uint64_t value) = 0;
   virtual Result OnSimdShuffleOpExpr(Opcode opcode, v128 value) = 0;
 
+  virtual Result OnLoadSplatExpr(Opcode opcode,
+                                 uint32_t alignment_log2,
+                                 Address offset) = 0;
+
   /* Elem section */
   virtual Result BeginElemSection(Offset size) = 0;
   virtual Result OnElemSegmentCount(Index count) = 0;
@@ -383,6 +389,11 @@ class BinaryReaderDelegate {
                                uint32_t flags) = 0;
   virtual Result OnInitFunctionCount(Index count) = 0;
   virtual Result OnInitFunction(uint32_t priority, Index function_index) = 0;
+  virtual Result OnComdatCount(Index count) = 0;
+  virtual Result OnComdatBegin(string_view name,
+                               uint32_t flags,
+                               Index count) = 0;
+  virtual Result OnComdatEntry(ComdatType kind, Index index) = 0;
   virtual Result EndLinkingSection() = 0;
 
   /* Event section */
@@ -399,6 +410,7 @@ class BinaryReaderDelegate {
   virtual Result OnInitExprGlobalGetExpr(Index index, Index global_index) = 0;
   virtual Result OnInitExprI32ConstExpr(Index index, uint32_t value) = 0;
   virtual Result OnInitExprI64ConstExpr(Index index, uint64_t value) = 0;
+  virtual Result OnInitExprRefNull(Index index) = 0;
 
   const State* state = nullptr;
 };

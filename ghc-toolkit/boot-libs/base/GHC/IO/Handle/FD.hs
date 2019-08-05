@@ -6,6 +6,7 @@
 -- Module      :  GHC.IO.Handle.FD
 -- Copyright   :  (c) The University of Glasgow, 1994-2008
 -- License     :  see libraries/base/LICENSE
+-- 
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  internal
 -- Portability :  non-portable
@@ -14,7 +15,7 @@
 --
 -----------------------------------------------------------------------------
 
-module GHC.IO.Handle.FD (
+module GHC.IO.Handle.FD ( 
   stdin, stdout, stderr,
   openFile, openBinaryFile, openFileBlocking,
   mkHandleFromFD, fdToHandle, fdToHandle', handleToFd
@@ -36,10 +37,6 @@ import GHC.IO.Handle.Internals
 import qualified GHC.IO.FD as FD
 import qualified System.Posix.Internals as Posix
 
-#if defined(ASTERIUS)
-import GHC.Real (fromIntegral)
-#endif
-
 -- ---------------------------------------------------------------------------
 -- Standard Handles
 
@@ -51,9 +48,6 @@ import GHC.Real (fromIntegral)
 -- | A handle managing input from the Haskell program's standard input channel.
 stdin :: Handle
 {-# NOINLINE stdin #-}
-#if defined(ASTERIUS)
-stdin = Handle 0
-#else
 stdin = unsafePerformIO $ do
    -- ToDo: acquire lock
    setBinaryMode FD.stdin
@@ -61,14 +55,10 @@ stdin = unsafePerformIO $ do
    mkHandle FD.stdin "<stdin>" ReadHandle True (Just enc)
                 nativeNewlineMode{-translate newlines-}
                 (Just stdHandleFinalizer) Nothing
-#endif
 
 -- | A handle managing output to the Haskell program's standard output channel.
 stdout :: Handle
 {-# NOINLINE stdout #-}
-#if defined(ASTERIUS)
-stdout = Handle 1
-#else
 stdout = unsafePerformIO $ do
    -- ToDo: acquire lock
    setBinaryMode FD.stdout
@@ -76,34 +66,27 @@ stdout = unsafePerformIO $ do
    mkHandle FD.stdout "<stdout>" WriteHandle True (Just enc)
                 nativeNewlineMode{-translate newlines-}
                 (Just stdHandleFinalizer) Nothing
-#endif
 
 -- | A handle managing output to the Haskell program's standard error channel.
 stderr :: Handle
 {-# NOINLINE stderr #-}
-#if defined(ASTERIUS)
-stderr = Handle 2
-#else
 stderr = unsafePerformIO $ do
     -- ToDo: acquire lock
    setBinaryMode FD.stderr
    enc <- getLocaleEncoding
-   mkHandle FD.stderr "<stderr>" WriteHandle False{-stderr is unbuffered-}
+   mkHandle FD.stderr "<stderr>" WriteHandle False{-stderr is unbuffered-} 
                 (Just enc)
                 nativeNewlineMode{-translate newlines-}
                 (Just stdHandleFinalizer) Nothing
-#endif
 
-#if !defined(ASTERIUS)
 stdHandleFinalizer :: FilePath -> MVar Handle__ -> IO ()
 stdHandleFinalizer fp m = do
   h_ <- takeMVar m
   flushWriteBuffer h_
-  case haType h_ of
+  case haType h_ of 
       ClosedHandle -> return ()
       _other       -> closeTextCodecs h_
   putMVar m (ioe_finalizedHandle fp)
-#endif
 
 -- We have to put the FDs into binary mode on Windows to avoid the newline
 -- translation that the CRT IO library does.
@@ -148,7 +131,9 @@ addFilePathToIOError fun fp ioe
 --  * 'System.IO.Error.isAlreadyInUseError' if the file is already open and
 --    cannot be reopened;
 --
---  * 'System.IO.Error.isDoesNotExistError' if the file does not exist; or
+--  * 'System.IO.Error.isDoesNotExistError' if the file does not exist or
+--    (on POSIX systems) is a FIFO without a reader and 'WriteMode' was
+--    requested; or
 --
 --  * 'System.IO.Error.isPermissionError' if the user does not have permission
 --     to open the file.
@@ -156,7 +141,7 @@ addFilePathToIOError fun fp ioe
 -- Note: if you will be working with files containing binary data, you'll want to
 -- be using 'openBinaryFile'.
 openFile :: FilePath -> IOMode -> IO Handle
-openFile fp im =
+openFile fp im = 
   catchException
     (openFile' fp im dEFAULT_OPEN_IN_BINARY_MODE True)
     (\e -> ioError (addFilePathToIOError "openFile" fp e))
@@ -218,14 +203,12 @@ mkHandleFromFD
    -> Bool      --  *set* non-blocking mode on the FD
    -> Maybe TextEncoding
    -> IO Handle
-#if defined(ASTERIUS)
-mkHandleFromFD fd _ _ _ _ _ = pure (Handle (fromIntegral (FD.fdFD fd)))
-#else
+
 mkHandleFromFD fd0 fd_type filepath iomode set_non_blocking mb_codec
   = do
 #if !defined(mingw32_HOST_OS)
     -- turn on non-blocking mode
-    fd <- if set_non_blocking
+    fd <- if set_non_blocking 
              then FD.setNonBlockingMode fd0 True
              else return fd0
 #else
@@ -237,20 +220,19 @@ mkHandleFromFD fd0 fd_type filepath iomode set_non_blocking mb_codec
            | otherwise       = noNewlineTranslation
 
     case fd_type of
-        Directory ->
+        Directory -> 
            ioException (IOError Nothing InappropriateType "openFile"
                            "is a directory" Nothing Nothing)
 
         Stream
            -- only *Streams* can be DuplexHandles.  Other read/write
            -- Handles must share a buffer.
-           | ReadWriteMode <- iomode ->
+           | ReadWriteMode <- iomode -> 
                 mkDuplexHandle fd filepath mb_codec nl
+                   
 
-
-        _other ->
+        _other -> 
            mkFileHandle fd filepath iomode mb_codec nl
-#endif
 
 -- | Old API kept to avoid breaking clients
 fdToHandle' :: CInt
@@ -284,7 +266,7 @@ fdToHandle :: Posix.FD -> IO Handle
 fdToHandle fdint = do
    iomode <- Posix.fdGetMode fdint
    (fd,fd_type) <- FD.mkFD fdint iomode Nothing
-            False{-is_socket-}
+            False{-is_socket-} 
               -- NB. the is_socket flag is False, meaning that:
               --  on Windows we're guessing this is not a socket (XXX)
             False{-is_nonblock-}
@@ -292,22 +274,12 @@ fdToHandle fdint = do
               -- not put into non-blocking mode, because that would affect
               -- other users of the file descriptor
    let fd_str = "<file descriptor: " ++ show fd ++ ">"
-   mkHandleFromFD fd fd_type fd_str iomode False{-non-block-}
+   mkHandleFromFD fd fd_type fd_str iomode False{-non-block-} 
                   Nothing -- bin mode
 
 -- | Turn an existing Handle into a file descriptor. This function throws an
 -- IOError if the Handle does not reference a file descriptor.
 handleToFd :: Handle -> IO FD.FD
-#if defined(ASTERIUS)
-handleToFd (Handle h) = pure FD.FD {
-  FD.fdFD = fromIntegral h,
-#if defined(mingw32_HOST_OS)
-  FD.fdIsSocket_ = 0
-#else
-  FD.fdIsNonBlocking = 0
-#endif
-}
-#else
 handleToFd h = case h of
   FileHandle _ mv -> do
     Handle__{haDevice = dev} <- readMVar mv
@@ -318,7 +290,7 @@ handleToFd h = case h of
   where
     throwErr msg = ioException $ IOError (Just h)
       InappropriateType "handleToFd" msg Nothing Nothing
-#endif
+
 
 -- ---------------------------------------------------------------------------
 -- Are files opened by default in text or binary mode, if the user doesn't

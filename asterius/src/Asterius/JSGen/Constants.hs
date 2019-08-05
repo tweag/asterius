@@ -36,6 +36,8 @@ rtsConstants =
   , intHex offset_bdescr_free
   , ";\nexport const offset_bdescr_link = "
   , intHex offset_bdescr_link
+  , ";\nexport const offset_bdescr_node = "
+  , intHex offset_bdescr_node
   , ";\nexport const offset_bdescr_flags = "
   , intHex offset_bdescr_flags
   , ";\nexport const offset_bdescr_blocks = "
@@ -85,6 +87,8 @@ rtsConstants =
       , ("offset_StgPAP_fun", offset_StgPAP_fun)
       , ("offset_StgPAP_payload", offset_StgPAP_payload)
       , ("offset_StgRegTable_rR1", offset_StgRegTable_rR1)
+      , ("offset_StgRegTable_rCurrentNursery", offset_StgRegTable_rCurrentNursery)
+      , ("offset_StgRegTable_rHpAlloc", offset_StgRegTable_rHpAlloc)
       , ("offset_StgRegTable_rRet", offset_StgRegTable_rRet)
       , ("sizeof_StgRetFun", sizeof_StgRetFun)
       , ("offset_StgRetFun_size", offset_StgRetFun_size)

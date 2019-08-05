@@ -14,36 +14,48 @@ import Type.Reflection
 
 addMemoryTrap :: AsteriusModule -> AsteriusModule
 addMemoryTrap m =
-  let new_function_map = M.map addMemoryTrapDeep (functionMap m)
+  let new_function_map = M.mapWithKey addMemoryTrapDeep (functionMap m)
    in m {functionMap = new_function_map}
 
-addMemoryTrapDeep :: Data a => a -> a
-addMemoryTrapDeep t =
-  case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
-    Just HRefl ->
-      case t of
-        Load {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
-          let new_i64_ptr = addMemoryTrapDeep i64_ptr
-           in CallImport
-                { target' =
-                    "__asterius_load_" <> load_fn_suffix valueType bytes signed
-                , operands = [new_i64_ptr, ConstI32 $ fromIntegral offset]
-                , callImportReturnTypes = [valueType]
-                }
-        Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
-          let new_i64_ptr = addMemoryTrapDeep i64_ptr
-              new_value = addMemoryTrapDeep value
-           in CallImport
-                { target' =
-                    "__asterius_store_" <> store_fn_suffix valueType bytes
-                , operands =
-                    [new_i64_ptr, ConstI32 $ fromIntegral offset, new_value]
-                , callImportReturnTypes = []
-                }
-        _ -> go
-    _ -> go
+addMemoryTrapDeep :: Data a => AsteriusEntitySymbol -> a -> a
+addMemoryTrapDeep sym = w
   where
-    go = gmapT addMemoryTrapDeep t
+    w :: Data a => a -> a
+    w t =
+      case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
+        Just HRefl ->
+          case t of
+            Load {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
+              let new_i64_ptr = w i64_ptr
+               in CallImport
+                    { target' =
+                        "__asterius_load_" <>
+                        load_fn_suffix valueType bytes signed
+                    , operands =
+                        [ Symbol {unresolvedSymbol = sym, symbolOffset = 0}
+                        , new_i64_ptr
+                        , ConstI32 $ fromIntegral offset
+                        ]
+                    , callImportReturnTypes = [valueType]
+                    }
+            Store {ptr = Unary {unaryOp = WrapInt64, operand0 = i64_ptr}, ..} ->
+              let new_i64_ptr = w i64_ptr
+                  new_value = w value
+               in CallImport
+                    { target' =
+                        "__asterius_store_" <> store_fn_suffix valueType bytes
+                    , operands =
+                        [ Symbol {unresolvedSymbol = sym, symbolOffset = 0}
+                        , new_i64_ptr
+                        , ConstI32 $ fromIntegral offset
+                        , new_value
+                        ]
+                    , callImportReturnTypes = []
+                    }
+            _ -> go
+        _ -> go
+      where
+        go = gmapT w t
     load_fn_suffix I32 1 False = "I32_U8"
     load_fn_suffix I32 1 True = "I32_S8"
     load_fn_suffix I32 2 False = "I32_U16"

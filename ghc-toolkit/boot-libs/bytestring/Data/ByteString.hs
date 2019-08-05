@@ -1598,9 +1598,6 @@ getLine = hGetLine stdin
 -- | Read a line from a handle
 
 hGetLine :: Handle -> IO ByteString
-#if defined(ASTERIUS)
-hGetLine = undefined
-#else
 hGetLine h =
   wantReadableHandle_ "Data.ByteString.hGetLine" h $
     \ h_@Handle__{haByteBuffer} -> do
@@ -1645,7 +1642,6 @@ hGetLine h =
             if c == fromIntegral (ord '\n')
                 then return r -- NB. not r+1: don't include the '\n'
                 else findEOL (r+1) w raw
-#endif
 
 mkPS :: RawBuffer Word8 -> Int -> Int -> IO ByteString
 mkPS buf start end =

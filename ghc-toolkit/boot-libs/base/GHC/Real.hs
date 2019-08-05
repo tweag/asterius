@@ -752,6 +752,13 @@ lcm _ 0         =  0
 lcm 0 _         =  0
 lcm x y         =  abs ((x `quot` (gcd x y)) * y)
 
+{-# RULES
+"gcd/Integer->Integer->Integer" gcd = gcdInteger
+"lcm/Integer->Integer->Integer" lcm = lcmInteger
+"gcd/Natural->Natural->Natural" gcd = gcdNatural
+"lcm/Natural->Natural->Natural" lcm = lcmNatural
+ #-}
+
 #if defined(MIN_VERSION_integer_gmp)
 -- GMP defines a more efficient Int# and Word# GCD
 
