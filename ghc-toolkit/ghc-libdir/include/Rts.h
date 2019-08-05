@@ -6,7 +6,7 @@
  * exposes externally.
  *
  * To understand the structure of the RTS headers, see the wiki:
- *   https://gitlab.haskell.org/ghc/ghc/wikis/commentary/source-tree/includes
+ *   http://ghc.haskell.org/trac/ghc/wiki/Commentary/SourceTree/Includes
  *
  * ---------------------------------------------------------------------------*/
 
@@ -58,13 +58,7 @@ extern "C" {
 #if __GNUC__ >= 4
 #define RTS_UNLIKELY(p) __builtin_expect((p),0)
 #else
-#define RTS_UNLIKELY(p) (p)
-#endif
-
-#if __GNUC__ >= 4
-#define RTS_LIKELY(p) __builtin_expect(!!(p), 1)
-#else
-#define RTS_LIKELY(p) (p)
+#define RTS_UNLIKELY(p) p
 #endif
 
 /* __builtin_unreachable is supported since GNU C 4.5 */
@@ -204,8 +198,7 @@ void _assertFail(const char *filename, unsigned int linenum)
 #include "rts/Linker.h"
 #include "rts/Ticky.h"
 #include "rts/Timer.h"
-#include "rts/StablePtr.h"
-#include "rts/StableName.h"
+#include "rts/Stable.h"
 #include "rts/TTY.h"
 #include "rts/Utils.h"
 #include "rts/PrimFloat.h"

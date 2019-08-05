@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric, NoImplicitPrelude, MagicHash,
              ExistentialQuantification, ImplicitParams #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -273,8 +273,7 @@ instance Show ArrayException where
         . (if not (null s) then showString ": " . showString s
                            else id)
 
--- | The exception thrown when an infinite cycle is detected in
--- 'System.IO.fixIO'.
+-- | The exception thrown when an infinite cycle is detected in 'fixIO'.
 --
 -- @since 4.11.0.0
 data FixIOException = FixIOException

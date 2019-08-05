@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP, MagicHash, NoImplicitPrelude, UnliftedFFITypes #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  GHC.IntWord64

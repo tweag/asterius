@@ -3,7 +3,7 @@
            , MagicHash
            , UnboxedTuples
   #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -57,7 +57,7 @@ newStablePtr a = IO $ \ s ->
 -- |
 -- Obtain the Haskell value referenced by a stable pointer, i.e., the
 -- same value that was passed to the corresponding call to
--- 'newStablePtr'.  If the argument to 'deRefStablePtr' has
+-- 'makeStablePtr'.  If the argument to 'deRefStablePtr' has
 -- already been freed using 'freeStablePtr', the behaviour of
 -- 'deRefStablePtr' is undefined.
 --

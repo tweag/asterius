@@ -1,4 +1,6 @@
 {-# OPTIONS -fno-warn-unused-imports #-}
+#include "HsConfigure.h"
+-- #hide
 module Data.Time.Calendar.Days
 (
     -- * Days
@@ -8,10 +10,18 @@ module Data.Time.Calendar.Days
 import Control.DeepSeq
 import Data.Ix
 import Data.Typeable
+#if LANGUAGE_Rank2Types
 import Data.Data
+#endif
 
 -- | The Modified Julian Day is a standard count of days, with zero being the day 1858-11-17.
-newtype Day = ModifiedJulianDay {toModifiedJulianDay :: Integer} deriving (Eq,Ord,Data, Typeable)
+newtype Day = ModifiedJulianDay {toModifiedJulianDay :: Integer} deriving (Eq,Ord
+#if LANGUAGE_DeriveDataTypeable
+#if LANGUAGE_Rank2Types
+    ,Data, Typeable
+#endif
+#endif
+    )
 
 instance NFData Day where
     rnf (ModifiedJulianDay a) = rnf a

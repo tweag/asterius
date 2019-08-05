@@ -30,9 +30,7 @@ import Data.Binary.Get
 import Data.Binary.Put
 import Data.Bits
 import Data.Word
-#if !MIN_VERSION_base(4,11,0)
 import Data.Monoid ((<>))
-#endif
 #ifdef HAS_DATA_KIND
 import Data.Kind
 #endif

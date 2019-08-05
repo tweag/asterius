@@ -1,15 +1,11 @@
--- WARNING: template-haskell.cabal is automatically generated from template-haskell.cabal.in by
--- ../../configure.  Make sure you are editing template-haskell.cabal.in, not
--- template-haskell.cabal.
-
 name:           template-haskell
-version:        2.15.0.0
+version:        2.14.0.0
 -- NOTE: Don't forget to update ./changelog.md
 license:        BSD3
 license-file:   LICENSE
 category:       Template Haskell
 maintainer:     libraries@haskell.org
-bug-reports:    https://gitlab.haskell.org/ghc/ghc/issues/new
+bug-reports:    http://ghc.haskell.org/trac/ghc/newticket?component=Template%20Haskell
 synopsis:       Support library for Template Haskell
 build-type:     Simple
 Cabal-Version:  >= 1.10
@@ -55,8 +51,8 @@ Library
         Language.Haskell.TH.Lib.Map
 
     build-depends:
-        base        >= 4.11 && < 4.14,
-        ghc-boot-th == 8.9,
+        base        >= 4.9 && < 4.13,
+        ghc-boot-th == 8.6.*,
         pretty      == 1.1.*
 
     ghc-options: -Wall
@@ -64,8 +60,3 @@ Library
     -- We need to set the unit ID to template-haskell (without a
     -- version number) as it's magic.
     ghc-options: -this-unit-id template-haskell
-
-    -- This should match the default-extensions used in 'ghc.cabal'. This way,
-    -- GHCi can be used to load it along with the compiler.
-    Default-Extensions:
-        NoImplicitPrelude

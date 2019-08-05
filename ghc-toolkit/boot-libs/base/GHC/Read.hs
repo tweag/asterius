@@ -1,6 +1,6 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE CPP, NoImplicitPrelude, StandaloneDeriving, ScopedTypeVariables #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -383,7 +383,7 @@ readField fieldName readVal = do
 -- second argument is a parser for the field value.
 --
 -- Note that 'readField' does not suffice for this purpose due to
--- <https://gitlab.haskell.org/ghc/ghc/issues/5041 #5041>.
+-- <https://ghc.haskell.org/trac/ghc/ticket/5041 Trac #5041>.
 readFieldHash :: String -> ReadPrec a -> ReadPrec a
 readFieldHash fieldName readVal = do
         expectP (L.Ident fieldName)
@@ -420,7 +420,7 @@ readSymField fieldName readVal = do
 -- parsers. For large record types (e.g. 500 fields), this produces a
 -- significant performance boost.
 --
--- See also #14364.
+-- See also Trac #14364.
 
 
 --------------------------------------------------------------
@@ -618,10 +618,17 @@ instance Read Integer where
   readList     = readListDefault
 
 
+#if defined(MIN_VERSION_integer_gmp)
 -- | @since 4.8.0.0
 instance Read Natural where
   readsPrec d = map (\(n, s) -> (fromInteger n, s))
                   . filter ((>= 0) . (\(x,_)->x)) . readsPrec d
+#else
+-- | @since 4.8.0.0
+instance Read Natural where
+    readsPrec d = map (\(n, s) -> (Natural n, s))
+                  . filter ((>= 0) . (\(x,_)->x)) . readsPrec d
+#endif
 
 -- | @since 2.01
 instance Read Float where

@@ -1,5 +1,5 @@
 name:           time
-version:        1.9.2
+version:        1.8.0.2
 stability:      stable
 license:        BSD3
 license-file:   LICENSE
@@ -8,7 +8,7 @@ maintainer:     <ashley@semantic.org>
 homepage:       https://github.com/haskell/time
 bug-reports:    https://github.com/haskell/time/issues
 synopsis:       A time library
-description:    Time, clocks and calendars
+description:    A time library
 category:       Time
 build-type:     Configure
 cabal-version:  >=1.10
@@ -20,6 +20,7 @@ extra-source-files:
     aclocal.m4
     configure.ac
     configure
+    lib/include/HsConfigure.h
     lib/include/HsTime.h
     lib/include/HsTimeConfig.h.in
     test/unix/Test/Format/*.c
@@ -37,13 +38,17 @@ source-repository head
 library
     hs-source-dirs: lib
     default-language: Haskell2010
-    default-extensions:
-        Rank2Types
-        DeriveDataTypeable
-        StandaloneDeriving
-        CPP
+    if impl(ghc)
+        default-extensions:
+            Rank2Types
+            DeriveDataTypeable
+            StandaloneDeriving
+        cpp-options: -DLANGUAGE_Rank2Types -DLANGUAGE_DeriveDataTypeable -DLANGUAGE_StandaloneDeriving
+    else
+        if impl(hugs)
+            default-extensions: Rank2Types
+            cpp-options: -DLANGUAGE_Rank2Types
     ghc-options: -Wall -fwarn-tabs
-    c-sources: lib/cbits/HsTime.c
     build-depends:
         base >= 4.7 && < 5,
         deepseq >= 1.1
@@ -62,16 +67,13 @@ library
         Data.Time.Clock.TAI,
         Data.Time.LocalTime,
         Data.Time.Format,
-        Data.Time.Format.Internal,
-        Data.Time.Format.ISO8601,
         Data.Time
+    default-extensions:    CPP
+    c-sources: lib/cbits/HsTime.c
     other-modules:
-        Data.Format
         Data.Time.Calendar.Private,
         Data.Time.Calendar.Days,
         Data.Time.Calendar.Gregorian,
-        Data.Time.Calendar.CalendarDiffDays,
-        Data.Time.Calendar.Week,
         Data.Time.Calendar.JulianYearDay,
         Data.Time.Clock.Internal.DiffTime,
         Data.Time.Clock.Internal.AbsoluteTime,
@@ -85,15 +87,10 @@ library
         Data.Time.Clock.Internal.UTCDiff,
         Data.Time.LocalTime.Internal.TimeZone,
         Data.Time.LocalTime.Internal.TimeOfDay,
-        Data.Time.LocalTime.Internal.CalendarDiffTime
         Data.Time.LocalTime.Internal.LocalTime,
         Data.Time.LocalTime.Internal.ZonedTime,
-        Data.Time.Format.Parse,
-        Data.Time.Format.Locale,
-        Data.Time.Format.Format.Class,
-        Data.Time.Format.Format.Instances,
-        Data.Time.Format.Parse.Class,
-        Data.Time.Format.Parse.Instances
+        Data.Time.Format.Parse
+        Data.Time.Format.Locale
     include-dirs: lib/include
     if os(windows)
         install-includes:
@@ -140,7 +137,6 @@ test-suite test-main
     main-is: Main.hs
     other-modules:
         Test.TestUtil
-        Test.Arbitrary
         Test.Calendar.AddDays
         Test.Calendar.AddDaysRef
         Test.Calendar.Calendars
@@ -148,7 +144,6 @@ test-suite test-main
         Test.Calendar.ClipDates
         Test.Calendar.ClipDatesRef
         Test.Calendar.ConvertBack
-        Test.Calendar.Duration
         Test.Calendar.Easter
         Test.Calendar.EasterRef
         Test.Calendar.LongWeekYears
@@ -156,16 +151,12 @@ test-suite test-main
         Test.Calendar.MonthDay
         Test.Calendar.MonthDayRef
         Test.Calendar.Valid
-        Test.Calendar.Week
         Test.Clock.Conversion
         Test.Clock.Resolution
         Test.Clock.TAI
         Test.Format.Format
         Test.Format.ParseTime
-        Test.Format.ISO8601
-        Test.LocalTime.CalendarDiffTime
         Test.LocalTime.Time
-        Test.LocalTime.TimeOfDay
         Test.LocalTime.TimeRef
 
 test-suite test-unix

@@ -5,7 +5,7 @@
 -- | This module was written based on
 --   <http://hackage.haskell.org/package/reinterpret-cast-0.1.0/docs/src/Data-ReinterpretCast-Internal-ImplArray.html>.
 --
---   Implements casting via a 1-element STUArray, as described in
+--   Implements casting via a 1-elemnt STUArray, as described in
 --   <http://stackoverflow.com/a/7002812/263061>.
 module Data.Binary.FloatCast
   ( floatToWord

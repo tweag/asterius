@@ -3,16 +3,16 @@ module Test.Format.ParseTime(testParseTime,test_parse_format) where
 
 import Control.Monad
 import Data.Char
-import Text.Read
+import Data.Ratio
 import Data.Time
 import Data.Time.Calendar.OrdinalDate
 import Data.Time.Calendar.WeekDate
+import Data.Time.Clock.POSIX
 import Test.QuickCheck.Property
 import Test.Tasty
 import Test.Tasty.HUnit
 import Test.Tasty.QuickCheck hiding (reason)
 import Test.TestUtil
-import Test.Arbitrary()
 
 
 testParseTime :: TestTree
@@ -61,7 +61,7 @@ readTest expected target = let
     found = reads target
     result = assertEqual "" expected found
     name = show target
-    in Test.Tasty.HUnit.testCase name result
+    in testCase name result
 
 readTestsParensSpaces :: forall a. (Eq a,Show a,Read a) => a -> String -> TestTree
 readTestsParensSpaces expected target = testGroup target
@@ -127,7 +127,7 @@ simpleFormatTests = testGroup "simple"
         found = readSTime False defaultTimeLocale formatStr target
         result = assertEqual "" expected found
         name = (show formatStr) ++ " of " ++ (show target)
-        in Test.Tasty.HUnit.testCase name result
+        in testCase name result
 
 spacingTests :: (Show t, Eq t, ParseTime t) => t -> String -> String -> TestTree
 spacingTests expected formatStr target = testGroup "particular"
@@ -198,7 +198,7 @@ parseTest sp expected formatStr target = let
     found = parse sp formatStr target
     result = assertEqual "" expected found
     name = (show formatStr) ++ " of " ++ (show target) ++ (if sp then " allowing spaces" else "")
-    in Test.Tasty.HUnit.testCase name result
+    in testCase name result
 {-
 readsTest :: forall t. (Show t, Eq t, ParseTime t) => Maybe t -> String -> String -> TestTree
 readsTest (Just e) = readsTest' [(e,"")]
@@ -233,6 +233,61 @@ parse sp f t = parseTimeM sp defaultTimeLocale f t
 format :: (FormatTime t) => String -> t -> String
 format f t = formatTime defaultTimeLocale f t
 
+instance Arbitrary Day where
+    arbitrary = liftM ModifiedJulianDay $ choose (-313698, 2973483) -- 1000-01-1 to 9999-12-31
+
+instance CoArbitrary Day where
+    coarbitrary (ModifiedJulianDay d) = coarbitrary d
+
+instance Arbitrary DiffTime where
+    arbitrary = oneof [intSecs, fracSecs] -- up to 1 leap second
+        where intSecs = liftM secondsToDiffTime' $ choose (0, 86400)
+              fracSecs = liftM picosecondsToDiffTime' $ choose (0, 86400 * 10^(12::Int))
+              secondsToDiffTime' :: Integer -> DiffTime
+              secondsToDiffTime' = fromInteger
+              picosecondsToDiffTime' :: Integer -> DiffTime
+              picosecondsToDiffTime' x = fromRational (x % 10^(12::Int))
+
+instance CoArbitrary DiffTime where
+    coarbitrary t = coarbitrary (fromEnum t)
+
+instance Arbitrary TimeOfDay where
+    arbitrary = liftM timeToTimeOfDay arbitrary
+
+instance CoArbitrary TimeOfDay where
+    coarbitrary t = coarbitrary (timeOfDayToTime t)
+
+instance Arbitrary LocalTime where
+    arbitrary = liftM2 LocalTime arbitrary arbitrary
+
+instance CoArbitrary LocalTime where
+    coarbitrary t = coarbitrary (floor (utcTimeToPOSIXSeconds (localTimeToUTC utc t)) :: Integer)
+
+instance Arbitrary TimeZone where
+    arbitrary = liftM minutesToTimeZone $ choose (-720,720)
+
+instance CoArbitrary TimeZone where
+    coarbitrary tz = coarbitrary (timeZoneMinutes tz)
+
+instance Arbitrary ZonedTime where
+    arbitrary = liftM2 ZonedTime arbitrary arbitrary
+
+instance CoArbitrary ZonedTime where
+    coarbitrary t = coarbitrary (floor (utcTimeToPOSIXSeconds (zonedTimeToUTC t)) :: Integer)
+
+instance Arbitrary UTCTime where
+    arbitrary = liftM2 UTCTime arbitrary arbitrary
+
+instance CoArbitrary UTCTime where
+    coarbitrary t = coarbitrary (floor (utcTimeToPOSIXSeconds t) :: Integer)
+
+instance Arbitrary UniversalTime where
+    arbitrary = liftM (\n -> ModJulianDate $ n % k) $ choose (-313698 * k, 2973483 * k) where -- 1000-01-1 to 9999-12-31
+        k = 86400
+
+instance CoArbitrary UniversalTime where
+    coarbitrary (ModJulianDate d) = coarbitrary d
+
 -- missing from the time package
 instance Eq ZonedTime where
     ZonedTime t1 tz1 == ZonedTime t2 tz2 = t1 == t2 && tz1 == tz2
@@ -260,7 +315,7 @@ test_parse_format f t = let s = format f t in (show t, s, parse False f s `asTyp
 --
 
 prop_read_show :: (Read a, Show a, Eq a) => a -> Result
-prop_read_show t = compareResult (Just t) (readMaybe (show t))
+prop_read_show t = compareResult [(t,"")] (reads (show t))
 
 --
 -- * special show functions
@@ -306,7 +361,7 @@ prop_parse_format_upper (FormatString f) t = compareParse t f (map toUpper $ for
 prop_parse_format_lower :: (Eq t, FormatTime t, ParseTime t, Show t) => FormatString t -> t -> Result
 prop_parse_format_lower (FormatString f) t = compareParse t f (map toLower $ format f t)
 
-prop_format_parse_format :: (FormatTime t, ParseTime t) => FormatString t -> t -> Result
+prop_format_parse_format :: (FormatTime t, ParseTime t, Show t) => FormatString t -> t -> Result
 prop_format_parse_format (FormatString f) t = compareResult
     (Just (format f t))
     (fmap (format f) (parse False f (format f t) `asTypeOf` Just t))
@@ -345,6 +400,7 @@ formatType _ = undefined
 instance Show (FormatString a) where
     show (FormatString f) = show f
 
+
 typedTests :: (forall t. (Eq t, FormatTime t, ParseTime t, Show t) => FormatString t -> t -> Result) -> [TestTree]
 typedTests prop = [
     nameTest "Day" $ tgroup dayFormats prop,
@@ -352,13 +408,8 @@ typedTests prop = [
     nameTest "LocalTime" $ tgroup localTimeFormats prop,
     nameTest "TimeZone" $ tgroup timeZoneFormats prop,
     nameTest "ZonedTime" $ tgroup zonedTimeFormats prop,
-    nameTest "ZonedTime" $ tgroup zonedTimeAlmostFormats $ \fmt t -> (todSec $ localTimeOfDay $ zonedTimeToLocalTime t) < 60 ==> prop fmt t,
-    nameTest "UTCTime" $ tgroup utcTimeAlmostFormats $ \fmt t -> utctDayTime t < 86400 ==> prop fmt t,
-    nameTest "UniversalTime" $ tgroup universalTimeFormats prop,
-    nameTest "CalendarDiffDays" $ tgroup calendarDiffDaysFormats prop,
-    nameTest "CalenderDiffTime" $ tgroup calendarDiffTimeFormats prop,
-    nameTest "DiffTime" $ tgroup diffTimeFormats prop,
-    nameTest "NominalDiffTime" $ tgroup nominalDiffTimeFormats prop
+    nameTest "UTCTime" $ tgroup utcTimeFormats prop,
+    nameTest "UniversalTime" $ tgroup universalTimeFormats prop
     ]
 
 formatParseFormatTests :: TestTree
@@ -377,8 +428,8 @@ badInputTests = nameTest "no_crash_bad_input" [
     nameTest "TimeOfDay" $ tgroup (timeOfDayFormats ++ partialTimeOfDayFormats) prop_no_crash_bad_input,
     nameTest "LocalTime" $ tgroup (localTimeFormats ++ partialLocalTimeFormats) prop_no_crash_bad_input,
     nameTest "TimeZone" $ tgroup (timeZoneFormats) prop_no_crash_bad_input,
-    nameTest "ZonedTime" $ tgroup (zonedTimeFormats ++ zonedTimeAlmostFormats ++ partialZonedTimeFormats) prop_no_crash_bad_input,
-    nameTest "UTCTime" $ tgroup (utcTimeAlmostFormats ++ partialUTCTimeFormats) prop_no_crash_bad_input,
+    nameTest "ZonedTime" $ tgroup (zonedTimeFormats ++ partialZonedTimeFormats) prop_no_crash_bad_input,
+    nameTest "UTCTime" $ tgroup (utcTimeFormats ++ partialUTCTimeFormats) prop_no_crash_bad_input,
     nameTest "UniversalTime" $ tgroup (universalTimeFormats ++ partialUniversalTimeFormats) prop_no_crash_bad_input
     ]
 
@@ -391,8 +442,6 @@ readShowTests = nameTest "read_show" [
     nameTest "ZonedTime" (prop_read_show :: ZonedTime -> Result),
     nameTest "UTCTime" (prop_read_show :: UTCTime -> Result),
     nameTest "UniversalTime" (prop_read_show :: UniversalTime -> Result)
-    --nameTest "CalendarDiffDays" (prop_read_show :: CalendarDiffDays -> Result),
-    --nameTest "CalendarDiffTime" (prop_read_show :: CalendarDiffTime -> Result)
     ]
 
 parseShowTests :: TestTree
@@ -452,29 +501,15 @@ timeZoneFormats = map FormatString ["%z","%z%Z","%Z%z","%Z"]
 
 zonedTimeFormats :: [FormatString ZonedTime]
 zonedTimeFormats = map FormatString
-  ["%a, %d %b %Y %H:%M:%S.%q %z", "%a, %d %b %Y %H:%M:%S%Q %z",
-   "%a, %d %b %Y %H:%M:%S.%q %Z", "%a, %d %b %Y %H:%M:%S%Q %Z"]
+  ["%a, %d %b %Y %H:%M:%S.%q %z", "%a, %d %b %Y %H:%M:%S%Q %z", "%s.%q %z", "%s%Q %z",
+   "%a, %d %b %Y %H:%M:%S.%q %Z", "%a, %d %b %Y %H:%M:%S%Q %Z", "%s.%q %Z", "%s%Q %Z"]
 
-zonedTimeAlmostFormats :: [FormatString ZonedTime]
-zonedTimeAlmostFormats = map FormatString  ["%s.%q %z", "%s%Q %z", "%s.%q %Z", "%s%Q %Z"]
-
-utcTimeAlmostFormats :: [FormatString UTCTime]
-utcTimeAlmostFormats = map FormatString  ["%s.%q","%s%Q"]
+utcTimeFormats :: [FormatString UTCTime]
+utcTimeFormats = map FormatString
+  ["%s.%q","%s%Q"]
 
 universalTimeFormats :: [FormatString UniversalTime]
 universalTimeFormats = map FormatString []
-
-calendarDiffDaysFormats :: [FormatString CalendarDiffDays]
-calendarDiffDaysFormats = map FormatString ["%yy%Bm%ww%Dd","%yy%Bm%dd","%bm%ww%Dd","%bm%dd"]
-
-calendarDiffTimeFormats :: [FormatString CalendarDiffTime]
-calendarDiffTimeFormats = map FormatString ["%yy%Bm%ww%Dd%Hh%Mm%ESs","%bm%ww%Dd%Hh%Mm%ESs","%bm%dd%Hh%Mm%ESs","%bm%hh%Mm%ESs","%bm%mm%ESs","%bm%mm%0ESs","%bm%Ess","%bm%0Ess"]
-
-diffTimeFormats :: [FormatString DiffTime]
-diffTimeFormats = map FormatString ["%ww%Dd%Hh%Mm%ESs","%dd%Hh%Mm%ESs","%hh%Mm%ESs","%mm%ESs","%mm%0ESs","%Ess","%0Ess"]
-
-nominalDiffTimeFormats :: [FormatString NominalDiffTime]
-nominalDiffTimeFormats = map FormatString ["%ww%Dd%Hh%Mm%ESs","%dd%Hh%Mm%ESs","%hh%Mm%ESs","%mm%ESs","%mm%0ESs","%Ess","%0Ess"]
 
 --
 -- * Formats that do not include all the information

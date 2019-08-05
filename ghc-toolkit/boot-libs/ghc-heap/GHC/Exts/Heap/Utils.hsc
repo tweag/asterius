@@ -6,7 +6,6 @@ module GHC.Exts.Heap.Utils (
 
 #include "Rts.h"
 
-import Prelude -- See note [Why do we import Prelude here?]
 import GHC.Exts.Heap.Constants
 import GHC.Exts.Heap.InfoTable
 

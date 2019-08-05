@@ -5,7 +5,7 @@
  * Capabilities
  *
  * For details on the high-level design, see
- *   https://gitlab.haskell.org/ghc/ghc/wikis/commentary/rts/scheduler
+ *   http://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Scheduler
  *
  * A Capability holds all the state an OS thread/task needs to run
  * Haskell code: its STG registers, a pointer to its TSO, a nursery
@@ -109,7 +109,7 @@ struct Capability_ {
     int interrupt;
 
     // Total words allocated by this cap since rts start
-    // See Note [allocation accounting] in Storage.c
+    // See [Note allocation accounting] in Storage.c
     W_ total_allocated;
 
 #if defined(THREADED_RTS)
@@ -264,10 +264,7 @@ typedef enum {
 //
 typedef struct {
     SyncType type;              // The kind of synchronisation
-    bool *idle;                 // Array of size n_capabilities. idle[i] is true
-                                // if capability i will be idle during this GC
-                                // cycle. Only available when doing GC (when
-                                // type is SYNC_GC_*).
+    bool *idle;
     Task *task;                 // The Task performing the sync
 } PendingSync;
 

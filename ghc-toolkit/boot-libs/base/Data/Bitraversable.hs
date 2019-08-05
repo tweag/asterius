@@ -44,19 +44,16 @@ import GHC.Generics (K1(..))
 --
 -- A definition of 'bitraverse' must satisfy the following laws:
 --
--- [Naturality]
+-- [/naturality/]
 --   @'bitraverse' (t . f) (t . g) ≡ t . 'bitraverse' f g@
 --   for every applicative transformation @t@
 --
--- [Identity]
+-- [/identity/]
 --   @'bitraverse' 'Identity' 'Identity' ≡ 'Identity'@
 --
--- [Composition]
---   @'Data.Functor.Compose.Compose' .
---    'fmap' ('bitraverse' g1 g2) .
---    'bitraverse' f1 f2
---     ≡ 'bitraverse' ('Data.Functor.Compose.Compose' . 'fmap' g1 . f1)
---                  ('Data.Functor.Compose.Compose' . 'fmap' g2 . f2)@
+-- [/composition/]
+--   @'Compose' . 'fmap' ('bitraverse' g1 g2) . 'bitraverse' f1 f2
+--     ≡ 'traverse' ('Compose' . 'fmap' g1 . f1) ('Compose' . 'fmap' g2 . f2)@
 --
 -- where an /applicative transformation/ is a function
 --
@@ -69,9 +66,26 @@ import GHC.Generics (K1(..))
 -- t (f '<*>' x) = t f '<*>' t x
 -- @
 --
--- and the identity functor 'Identity' and composition functors
--- 'Data.Functor.Compose.Compose' are from "Data.Functor.Identity" and
--- "Data.Functor.Compose".
+-- and the identity functor 'Identity' and composition functors 'Compose' are
+-- defined as
+--
+-- > newtype Identity a = Identity { runIdentity :: a }
+-- >
+-- > instance Functor Identity where
+-- >   fmap f (Identity x) = Identity (f x)
+-- >
+-- > instance Applicative Identity where
+-- >   pure = Identity
+-- >   Identity f <*> Identity x = Identity (f x)
+-- >
+-- > newtype Compose f g a = Compose (f (g a))
+-- >
+-- > instance (Functor f, Functor g) => Functor (Compose f g) where
+-- >   fmap f (Compose x) = Compose (fmap (fmap f) x)
+-- >
+-- > instance (Applicative f, Applicative g) => Applicative (Compose f g) where
+-- >   pure = Compose . pure . pure
+-- >   Compose f <*> Compose x = Compose ((<*>) <$> f <*> x)
 --
 -- Some simple examples are 'Either' and '(,)':
 --

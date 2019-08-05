@@ -81,7 +81,7 @@ traceIO :: String -> IO ()
 traceIO msg = do
     withCString "%s\n" $ \cfmt -> do
      -- NB: debugBelch can't deal with null bytes, so filter them
-     -- out so we don't accidentally truncate the message.  See #9395
+     -- out so we don't accidentally truncate the message.  See Trac #9395
      let (nulls, msg') = partition (=='\0') msg
      withCString msg' $ \cmsg ->
       debugBelch cfmt cmsg
@@ -169,9 +169,8 @@ Note that the application of 'traceM' is not an action in the 'Applicative'
 context, as 'traceIO' is in the 'IO' type. While the fresh bindings in the
 following example will force the 'traceM' expressions to be reduced every time
 the @do@-block is executed, @traceM "not crashed"@ would only be reduced once,
-and the message would only be printed once.  If your monad is in
-'Control.Monad.IO.Class.MonadIO', @'Control.Monad.IO.Class.liftIO' . 'traceIO'@
-may be a better option.
+and the message would only be printed once.  If your monad is in 'MonadIO',
+@liftIO . traceIO@ may be a better option.
 
 >>> :{
 do

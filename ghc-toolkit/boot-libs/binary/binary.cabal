@@ -158,7 +158,6 @@ benchmark get
     Data.Binary.Class
     Data.Binary.FloatCast
     Data.Binary.Generic
-    Data.Binary.Get
     Data.Binary.Get.Internal
     Data.Binary.Internal
     Data.Binary.Put
@@ -191,7 +190,6 @@ benchmark put
     Data.Binary.Get
     Data.Binary.Get.Internal
     Data.Binary.Internal
-    Data.Binary.Put
   build-depends:
     base >= 4.5.0.0 && < 5,
     bytestring >= 0.10.4,

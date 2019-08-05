@@ -1,13 +1,4 @@
-resolver: lts-12.4
+resolver: lts-8.13
 packages:
 - '.'
 allow-newer: true
-
-build:
-    haddock: true
-    test: true
-    test-arguments:
-        additional-args: [--hide-successes]
-
-ghc-options:
-    "$locals": -Werror -Wincomplete-uni-patterns -Wincomplete-record-updates -Wredundant-constraints -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances

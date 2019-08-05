@@ -11,7 +11,6 @@ module GHC.Exts.Heap.InfoTableProf
 #define PROFILING
 #include "Rts.h"
 
-import Prelude -- See note [Why do we import Prelude here?]
 import GHC.Exts.Heap.InfoTable.Types
 #if !defined(TABLES_NEXT_TO_CODE)
 import GHC.Exts.Heap.Constants

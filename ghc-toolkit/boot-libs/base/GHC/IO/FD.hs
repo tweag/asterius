@@ -5,7 +5,7 @@
   #-}
 {-# OPTIONS_GHC -Wno-identities #-}
 -- Whether there are identities depends on the platform
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |

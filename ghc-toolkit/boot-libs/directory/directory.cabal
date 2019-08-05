@@ -1,5 +1,5 @@
 name:           directory
-version:        1.3.3.2
+version:        1.3.3.0
 -- NOTE: Don't forget to update ./changelog.md
 license:        BSD3
 license-file:   LICENSE
@@ -55,7 +55,7 @@ Library
     include-dirs: .
 
     build-depends:
-        base     >= 4.5 && < 4.14,
+        base     >= 4.5 && < 4.13,
         time     >= 1.4 && < 1.10,
         filepath >= 1.3 && < 1.5
     if os(windows)
@@ -107,7 +107,6 @@ test-suite test
         RenameFile001
         RenamePath
         Safe
-        Simplify
         T8482
         WithCurrentDirectory
         Xdg

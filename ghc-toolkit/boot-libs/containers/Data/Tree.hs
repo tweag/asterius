@@ -81,8 +81,6 @@ import Data.Coerce
 
 #if MIN_VERSION_base(4,9,0)
 import Data.Functor.Classes
-#endif
-#if (!MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup (..))
 #endif
 
@@ -301,7 +299,7 @@ levels t =
 -- | Fold a tree into a "summary" value in depth-first order.
 --
 -- For each node in the tree, apply @f@ to the @rootLabel@ and the result
--- of applying @f@ to each @subForest@.
+-- of applying @f@ to each @subForent@.
 --
 -- This is also known as the catamorphism on trees.
 --
@@ -314,18 +312,6 @@ levels t =
 -- Find the maximum value in the tree:
 --
 -- > foldTree (\x xs -> maximum (x:xs)) (Node 1 [Node 2 [], Node 3 []]) == 3
---
--- Count the number of leaves in the tree:
---
--- > foldTree (\_ xs -> if null xs then 1 else sum xs) (Node 1 [Node 2 [], Node 3 []]) == 2
---
--- Find depth of the tree; i.e. the number of branches from the root of the tree to the furthest leaf:
---
--- > foldTree (\_ xs -> if null xs then 0 else 1 + maximum xs) (Node 1 [Node 2[], Node 3 []]) == 1
---
--- You can even implement traverse using foldTree:
---
--- > traverse' f = foldTree (\x xs -> liftA2 Node (f x) (sequenceA xs))
 --
 --
 -- @since 0.5.8

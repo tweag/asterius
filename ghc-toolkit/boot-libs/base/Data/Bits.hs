@@ -63,6 +63,10 @@ import GHC.Num
 import GHC.Base
 import GHC.Real
 
+#if defined(MIN_VERSION_integer_gmp)
+import GHC.Integer.GMP.Internals (bitInteger, popCountInteger)
+#endif
+
 infixl 8 `shift`, `rotate`, `shiftL`, `shiftR`, `rotateL`, `rotateR`
 infixl 7 .&.
 infixl 6 `xor`
@@ -205,8 +209,7 @@ class Eq a => Bits a where
     x `complementBit` i = x `xor` bit i
 
     {-| Shift the argument left by the specified number of bits
-        (which must be non-negative). Some instances may throw an
-        'Control.Exception.Overflow' exception if given a negative input.
+        (which must be non-negative).
 
         An instance can define either this and 'shiftR' or the unified
         'shift', depending on which is more convenient for the type in
@@ -228,8 +231,7 @@ class Eq a => Bits a where
 
     {-| Shift the first argument right by the specified number of bits. The
         result is undefined for negative shift amounts and shift amounts
-        greater or equal to the 'bitSize'. Some instances may throw an
-        'Control.Exception.Overflow' exception if given a negative input.
+        greater or equal to the 'bitSize'.
 
         Right shifts perform sign extension on signed number types;
         i.e. they fill the top bits with 1 if the @x@ is negative
@@ -438,9 +440,6 @@ instance Bits Int where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    -- We want popCnt# to be inlined in user code so that `ghc -msse4.2`
-    -- can compile it down to a popcnt instruction without an extra function call
-    {-# INLINE popCount #-}
 
     zeroBits = 0
 
@@ -455,13 +454,9 @@ instance Bits Int where
     (I# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)      = I# (x# `iShiftL#` i#)
         | otherwise                = I# (x# `iShiftRA#` negateInt# i#)
-    (I# x#) `shiftL` (I# i#)
-        | isTrue# (i# >=# 0#)      = I# (x# `iShiftL#` i#)
-        | otherwise                = overflowError
+    (I# x#) `shiftL` (I# i#)       = I# (x# `iShiftL#` i#)
     (I# x#) `unsafeShiftL` (I# i#) = I# (x# `uncheckedIShiftL#` i#)
-    (I# x#) `shiftR` (I# i#)
-        | isTrue# (i# >=# 0#)      = I# (x# `iShiftRA#` i#)
-        | otherwise                = overflowError
+    (I# x#) `shiftR` (I# i#)       = I# (x# `iShiftRA#` i#)
     (I# x#) `unsafeShiftR` (I# i#) = I# (x# `uncheckedIShiftRA#` i#)
 
     {-# INLINE rotate #-}       -- See Note [Constant folding for rotate]
@@ -481,16 +476,13 @@ instance Bits Int where
 instance FiniteBits Int where
     finiteBitSize _ = WORD_SIZE_IN_BITS
     countLeadingZeros  (I# x#) = I# (word2Int# (clz# (int2Word# x#)))
-    {-# INLINE countLeadingZeros #-}
     countTrailingZeros (I# x#) = I# (word2Int# (ctz# (int2Word# x#)))
-    {-# INLINE countTrailingZeros #-}
 
 -- | @since 2.01
 instance Bits Word where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (W# x#) .&.   (W# y#)    = W# (x# `and#` y#)
     (W# x#) .|.   (W# y#)    = W# (x# `or#`  y#)
@@ -500,13 +492,9 @@ instance Bits Word where
     (W# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)      = W# (x# `shiftL#` i#)
         | otherwise                = W# (x# `shiftRL#` negateInt# i#)
-    (W# x#) `shiftL` (I# i#)
-        | isTrue# (i# >=# 0#)      = W# (x# `shiftL#` i#)
-        | otherwise                = overflowError
+    (W# x#) `shiftL` (I# i#)       = W# (x# `shiftL#` i#)
     (W# x#) `unsafeShiftL` (I# i#) = W# (x# `uncheckedShiftL#` i#)
-    (W# x#) `shiftR` (I# i#)
-        | isTrue# (i# >=# 0#)      = W# (x# `shiftRL#` i#)
-        | otherwise                = overflowError
+    (W# x#) `shiftR` (I# i#)       = W# (x# `shiftRL#` i#)
     (W# x#) `unsafeShiftR` (I# i#) = W# (x# `uncheckedShiftRL#` i#)
     (W# x#) `rotate` (I# i#)
         | isTrue# (i'# ==# 0#) = W# x#
@@ -525,9 +513,7 @@ instance Bits Word where
 instance FiniteBits Word where
     finiteBitSize _ = WORD_SIZE_IN_BITS
     countLeadingZeros  (W# x#) = I# (word2Int# (clz# x#))
-    {-# INLINE countLeadingZeros #-}
     countTrailingZeros (W# x#) = I# (word2Int# (ctz# x#))
-    {-# INLINE countTrailingZeros #-}
 
 -- | @since 2.01
 instance Bits Integer where
@@ -540,8 +526,13 @@ instance Bits Integer where
    testBit x (I# i) = testBitInteger x i
    zeroBits   = 0
 
+#if defined(MIN_VERSION_integer_gmp)
    bit (I# i#) = bitInteger i#
    popCount x  = I# (popCountInteger x)
+#else
+   bit        = bitDefault
+   popCount   = popCountDefault
+#endif
 
    rotate x i = shift x i   -- since an Integer never wraps around
 
@@ -549,6 +540,7 @@ instance Bits Integer where
    bitSize _  = errorWithoutStackTrace "Data.Bits.bitSize(Integer)"
    isSigned _ = True
 
+#if defined(MIN_VERSION_integer_gmp)
 -- | @since 4.8.0
 instance Bits Natural where
    (.&.) = andNatural
@@ -571,6 +563,50 @@ instance Bits Natural where
    bitSizeMaybe _ = Nothing
    bitSize _  = errorWithoutStackTrace "Data.Bits.bitSize(Natural)"
    isSigned _ = False
+#else
+-- | @since 4.8.0.0
+instance Bits Natural where
+  Natural n .&. Natural m = Natural (n .&. m)
+  {-# INLINE (.&.) #-}
+  Natural n .|. Natural m = Natural (n .|. m)
+  {-# INLINE (.|.) #-}
+  xor (Natural n) (Natural m) = Natural (xor n m)
+  {-# INLINE xor #-}
+  complement _ = errorWithoutStackTrace "Bits.complement: Natural complement undefined"
+  {-# INLINE complement #-}
+  shift (Natural n) = Natural . shift n
+  {-# INLINE shift #-}
+  rotate (Natural n) = Natural . rotate n
+  {-# INLINE rotate #-}
+  bit = Natural . bit
+  {-# INLINE bit #-}
+  setBit (Natural n) = Natural . setBit n
+  {-# INLINE setBit #-}
+  clearBit (Natural n) = Natural . clearBit n
+  {-# INLINE clearBit #-}
+  complementBit (Natural n) = Natural . complementBit n
+  {-# INLINE complementBit #-}
+  testBit (Natural n) = testBit n
+  {-# INLINE testBit #-}
+  bitSizeMaybe _ = Nothing
+  {-# INLINE bitSizeMaybe #-}
+  bitSize = errorWithoutStackTrace "Natural: bitSize"
+  {-# INLINE bitSize #-}
+  isSigned _ = False
+  {-# INLINE isSigned #-}
+  shiftL (Natural n) = Natural . shiftL n
+  {-# INLINE shiftL #-}
+  shiftR (Natural n) = Natural . shiftR n
+  {-# INLINE shiftR #-}
+  rotateL (Natural n) = Natural . rotateL n
+  {-# INLINE rotateL #-}
+  rotateR (Natural n) = Natural . rotateR n
+  {-# INLINE rotateR #-}
+  popCount (Natural n) = popCount n
+  {-# INLINE popCount #-}
+  zeroBits = Natural 0
+
+#endif
 
 -----------------------------------------------------------------------------
 

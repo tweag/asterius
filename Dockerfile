@@ -25,6 +25,7 @@ RUN \
     g++ \
     gcc \
     gnupg \
+    libdw-dev \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \

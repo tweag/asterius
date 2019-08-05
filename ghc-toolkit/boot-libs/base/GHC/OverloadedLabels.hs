@@ -19,7 +19,7 @@
 --
 -- This module defines the 'IsLabel' class is used by the
 -- @OverloadedLabels@ extension.  See the
--- <https://gitlab.haskell.org/ghc/ghc/wikis/records/overloaded-record-fields/overloaded-labels wiki page>
+-- <https://ghc.haskell.org/trac/ghc/wiki/Records/OverloadedRecordFields/OverloadedLabels wiki page>
 -- for more details.
 --
 -- When @OverloadedLabels@ is enabled, if GHC sees an occurrence of

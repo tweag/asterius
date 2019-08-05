@@ -13,12 +13,25 @@ executable time-bench
     other-modules:
         Data.Time.Clock.Internal.CTimespec
     default-language: Haskell2010
-    default-extensions:
-        Rank2Types
-        DeriveDataTypeable
-        StandaloneDeriving
-        CPP
+    if impl(ghc)
+        default-extensions:
+            Rank2Types
+            DeriveDataTypeable
+            StandaloneDeriving
+        cpp-options: -DLANGUAGE_Rank2Types -DLANGUAGE_DeriveDataTypeable -DLANGUAGE_StandaloneDeriving
+    else
+        if impl(hugs)
+            default-extensions: Rank2Types
+            cpp-options: -DLANGUAGE_Rank2Types
     ghc-options: -Wall -fwarn-tabs
+    build-depends:
+        base >= 4.7 && < 5,
+        deepseq >= 1.1,
+        time,
+        criterion
+    if os(windows)
+        build-depends: Win32
+    default-extensions:    CPP
     c-sources: ../lib/cbits/HsTime.c
     include-dirs: ../lib/include
     if os(windows)
@@ -28,10 +41,3 @@ executable time-bench
         install-includes:
             HsTime.h
             HsTimeConfig.h
-    build-depends:
-        base >= 4.7 && < 5,
-        deepseq >= 1.1,
-        time,
-        criterion
-    if os(windows)
-        build-depends: Win32

@@ -3,7 +3,7 @@
            , RankNTypes
            , ExistentialQuantification
   #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |

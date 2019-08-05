@@ -97,9 +97,6 @@
 /* Define to 1 if you have the <bfd.h> header file. */
 /* #undef HAVE_BFD_H */
 
-/* Does GCC support __atomic primitives? */
-#define HAVE_C11_ATOMICS $CONF_GCC_SUPPORTS__ATOMICS
-
 /* Define to 1 if you have the `clock_gettime' function. */
 #define HAVE_CLOCK_GETTIME 1
 
@@ -204,7 +201,7 @@
 /* #undef HAVE_MINGWEX */
 
 /* Define to 1 if you have the <nlist.h> header file. */
-/* #undef HAVE_NLIST_H */
+#define HAVE_NLIST_H 1
 
 /* Define to 1 if you have the <numaif.h> header file. */
 #define HAVE_NUMAIF_H 1
@@ -453,7 +450,7 @@
 #define USE_LARGE_ADDRESS_SPACE 1
 
 /* Set to 1 to use libdw */
-#define USE_LIBDW 0
+#define USE_LIBDW 1
 
 /* Enable extensions on AIX 3, Interix.  */
 #ifndef _ALL_SOURCE
@@ -526,7 +523,7 @@
 /* #undef pid_t */
 
 /* The supported LLVM version number */
-#define sUPPORTED_LLVM_VERSION (7,0)
+#define sUPPORTED_LLVM_VERSION (6,0)
 
 /* Define to `unsigned int' if <sys/types.h> does not define. */
 /* #undef size_t */

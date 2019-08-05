@@ -7,7 +7,7 @@ import Test.Tasty.QuickCheck hiding (reason)
 
 assertFailure' :: String -> IO a
 assertFailure' s = do
-    _ <- assertFailure s -- returns () in some versions
+    assertFailure s
     return undefined
 
 assertJust :: Maybe a -> IO a
@@ -21,7 +21,7 @@ instance NameTest [TestTree] where
     nameTest = testGroup
 
 instance NameTest Assertion where
-    nameTest = Test.Tasty.HUnit.testCase
+    nameTest = testCase
 
 instance NameTest Property where
     nameTest = testProperty

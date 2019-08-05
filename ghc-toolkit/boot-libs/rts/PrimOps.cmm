@@ -404,7 +404,7 @@ stg_newSmallArrayzh ( W_ n /* words */, gcptr init )
 
     words = BYTES_TO_WDS(SIZEOF_StgSmallMutArrPtrs) + n;
     ("ptr" arr) = ccall allocateMightFail(MyCapability() "ptr",words);
-    if (arr == NULL) (likely: False) {
+    if (arr == NULL) {
         jump stg_raisezh(base_GHCziIOziException_heapOverflow_closure);
     }
     TICK_ALLOC_PRIM(SIZEOF_StgSmallMutArrPtrs, WDS(n), 0);
@@ -414,11 +414,8 @@ stg_newSmallArrayzh ( W_ n /* words */, gcptr init )
 
     // Initialise all elements of the array with the value in R2
     p = arr + SIZEOF_StgSmallMutArrPtrs;
-    // Avoid the shift for `WDS(n)` in the inner loop
-    W_ limit;
-    limit = arr + SIZEOF_StgSmallMutArrPtrs + WDS(n);
   for:
-    if (p < limit) (likely: True) {
+    if (p < arr + SIZEOF_StgSmallMutArrPtrs + WDS(n)) (likely: True) {
         W_[p] = init;
         p = p + WDS(1);
         goto for;
@@ -568,9 +565,9 @@ stg_casMutVarzh ( gcptr mv, gcptr old, gcptr new )
 #endif
 }
 
-stg_atomicModifyMutVar2zh ( gcptr mv, gcptr f )
+stg_atomicModifyMutVarzh ( gcptr mv, gcptr f )
 {
-    W_ z, x, y, h;
+    W_ z, x, y, r, h;
 
     /* If x is the current contents of the MutVar#, then
        We want to make the new contents point to
@@ -579,12 +576,13 @@ stg_atomicModifyMutVar2zh ( gcptr mv, gcptr f )
 
        and the return value is
 
-         (# x, (f x) #)
+         (sel_1 (f x))
 
         obviously we can share (f x).
 
          z = [stg_ap_2 f x]  (max (HS + 2) MIN_UPD_SIZE)
          y = [stg_sel_0 z]   (max (HS + 1) MIN_UPD_SIZE)
+         r = [stg_sel_1 z]   (max (HS + 1) MIN_UPD_SIZE)
     */
 
 #if defined(MIN_UPD_SIZE) && MIN_UPD_SIZE > 1
@@ -603,7 +601,7 @@ stg_atomicModifyMutVar2zh ( gcptr mv, gcptr f )
 #define TICK_ALLOC_THUNK_2() TICK_ALLOC_UP_THK(WDS(2),0)
 #endif
 
-#define SIZE (THUNK_2_SIZE + THUNK_1_SIZE)
+#define SIZE (THUNK_2_SIZE + THUNK_1_SIZE + THUNK_1_SIZE)
 
     HP_CHK_GEN_TICKY(SIZE);
 
@@ -621,6 +619,13 @@ stg_atomicModifyMutVar2zh ( gcptr mv, gcptr f )
     LDV_RECORD_CREATE(y);
     StgThunk_payload(y,0) = z;
 
+    TICK_ALLOC_THUNK_1();
+    CCCS_ALLOC(THUNK_1_SIZE);
+    r = y - THUNK_1_SIZE;
+    SET_HDR(r, stg_sel_1_upd_info, CCCS);
+    LDV_RECORD_CREATE(r);
+    StgThunk_payload(r,0) = z;
+
   retry:
     x = StgMutVar_var(mv);
     StgThunk_payload(z,1) = x;
@@ -635,61 +640,8 @@ stg_atomicModifyMutVar2zh ( gcptr mv, gcptr f )
         ccall dirty_MUT_VAR(BaseReg "ptr", mv "ptr");
     }
 
-    return (x,z);
+    return (r);
 }
-
-stg_atomicModifyMutVarzuzh ( gcptr mv, gcptr f )
-{
-    W_ z, x, h;
-
-    /* If x is the current contents of the MutVar#, then
-       We want to make the new contents point to
-
-         (f x)
-
-       and the return value is
-
-         (# x, (f x) #)
-
-        obviously we can share (f x).
-
-         z = [stg_ap_2 f x]  (max (HS + 2) MIN_UPD_SIZE)
-    */
-
-#if defined(MIN_UPD_SIZE) && MIN_UPD_SIZE > 2
-#define THUNK_SIZE (SIZEOF_StgThunkHeader + WDS(MIN_UPD_SIZE))
-#define TICK_ALLOC_THUNK() TICK_ALLOC_UP_THK(WDS(2),WDS(MIN_UPD_SIZE-2))
-#else
-#define THUNK_SIZE (SIZEOF_StgThunkHeader + WDS(2))
-#define TICK_ALLOC_THUNK() TICK_ALLOC_UP_THK(WDS(2),0)
-#endif
-
-    HP_CHK_GEN_TICKY(THUNK_SIZE);
-
-    TICK_ALLOC_THUNK();
-    CCCS_ALLOC(THUNK_SIZE);
-    z = Hp - THUNK_SIZE + WDS(1);
-    SET_HDR(z, stg_ap_2_upd_info, CCCS);
-    LDV_RECORD_CREATE(z);
-    StgThunk_payload(z,0) = f;
-
-  retry:
-    x = StgMutVar_var(mv);
-    StgThunk_payload(z,1) = x;
-#if defined(THREADED_RTS)
-    (h) = prim %cmpxchgW(mv + SIZEOF_StgHeader + OFFSET_StgMutVar_var, x, z);
-    if (h != x) { goto retry; }
-#else
-    StgMutVar_var(mv) = z;
-#endif
-
-    if (GET_INFO(mv) == stg_MUT_VAR_CLEAN_info) {
-        ccall dirty_MUT_VAR(BaseReg "ptr", mv "ptr");
-    }
-
-    return (x,z);
-}
-
 
 /* -----------------------------------------------------------------------------
    Weak Pointer Primitives
@@ -1716,13 +1668,6 @@ for:
     return (info, dat_arr, ptrArray);
 }
 
-stg_closureSizzezh (P_ clos)
-{
-    W_ len;
-    (len) = foreign "C" heap_view_closureSize(UNTAG(clos) "ptr");
-    return (len);
-}
-
 /* -----------------------------------------------------------------------------
    Thread I/O blocking primitives
    -------------------------------------------------------------------------- */
@@ -2094,14 +2039,6 @@ stg_traceEventzh ( W_ msg )
       ccall dtraceUserMsgWrapper(MyCapability() "ptr", msg "ptr");
     }
 
-#endif
-    return ();
-}
-
-stg_traceBinaryEventzh ( W_ msg, W_ len )
-{
-#if defined(TRACING) || defined(DEBUG)
-    ccall traceUserBinaryMsg(MyCapability() "ptr", msg "ptr", len);
 #endif
     return ();
 }

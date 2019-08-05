@@ -3,7 +3,7 @@
            , MagicHash
            , UnboxedTuples
   #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -96,8 +96,7 @@ times (on a multiprocessor), and you should therefore ensure that
 it gives the same results each time. It may even happen that one
 of the duplicated IO actions is only run partially, and then interrupted
 in the middle without an exception being raised. Therefore, functions
-like 'Control.Exception.bracket' cannot be used safely within
-'unsafeDupablePerformIO'.
+like 'bracket' cannot be used safely within 'unsafeDupablePerformIO'.
 
 @since 4.4.0.0
 -}

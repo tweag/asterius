@@ -4,7 +4,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# OPTIONS_GHC -Wno-inline-rule-shadowing #-}
     -- The RULES for the methods of class Category may never fire
-    -- e.g. identity/left, identity/right, association;  see #10528
+    -- e.g. identity/left, identity/right, association;  see Trac #10528
 
 -----------------------------------------------------------------------------
 -- |
@@ -16,7 +16,7 @@
 -- Stability   :  experimental
 -- Portability :  portable
 
--- https://gitlab.haskell.org/ghc/ghc/issues/1773
+-- http://ghc.haskell.org/trac/ghc/ticket/1773
 
 module Control.Category where
 
@@ -30,10 +30,11 @@ infixr 1 >>>, <<<
 
 -- | A class for categories. Instances should satisfy the laws
 --
--- [Right identity] @f '.' 'id'  =  f@
--- [Left identity]  @'id' '.' f  =  f@
--- [Associativity]  @f '.' (g '.' h)  =  (f '.' g) '.' h@
---
+-- @
+-- f '.' 'id'  =  f  -- (right identity)
+-- 'id' '.' f  =  f  -- (left identity)
+-- f '.' (g '.' h)  =  (f '.' g) '.' h  -- (associativity)
+-- @
 class Category cat where
     -- | the identity morphism
     id :: cat a a
