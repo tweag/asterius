@@ -1,3 +1,5 @@
+-- {-# OPTIONS -fno-warn-unused-imports #-}
+#include "HsConfigure.h"
 -- | TAI and leap-second maps for converting to UTC: most people won't need this module.
 module Data.Time.Clock.Internal.AbsoluteTime
 (
@@ -7,14 +9,24 @@ module Data.Time.Clock.Internal.AbsoluteTime
 ) where
 
 import Data.Typeable
+#if LANGUAGE_Rank2Types
 import Data.Data
+#endif
 import Control.DeepSeq
 import Data.Time.Calendar.Days
 import Data.Time.Clock.Internal.DiffTime
 
 
 -- | AbsoluteTime is TAI, time as measured by a clock.
-newtype AbsoluteTime = MkAbsoluteTime DiffTime deriving (Eq,Ord,Data,Typeable)
+newtype AbsoluteTime = MkAbsoluteTime DiffTime deriving (Eq,Ord
+#if LANGUAGE_DeriveDataTypeable
+#if LANGUAGE_Rank2Types
+#if HAS_DataPico
+    ,Data, Typeable
+#endif
+#endif
+#endif
+    )
 
 instance NFData AbsoluteTime where
     rnf (MkAbsoluteTime a) = rnf a

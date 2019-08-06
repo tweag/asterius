@@ -26,18 +26,19 @@ import Data.Proxy
 import qualified Data.List.NonEmpty as NE
 import GHC.Generics
 
--- | Instances should satisfy the laws:
+-- | `MonadZip` type class. Minimal definition: `mzip` or `mzipWith`
 --
--- [Naturality]
+-- Instances should satisfy the laws:
 --
---     @'liftM' (f 'Control.Arrow.***' g) ('mzip' ma mb)
---         = 'mzip' ('liftM' f ma) ('liftM' g mb)@
+-- * Naturality :
 --
--- [Information Preservation]
+--   > liftM (f *** g) (mzip ma mb) = mzip (liftM f ma) (liftM g mb)
 --
---     @'liftM' ('Prelude.const' ()) ma = 'liftM' ('Prelude.const' ()) mb@
---         implies
---     @'munzip' ('mzip' ma mb) = (ma, mb)@
+-- * Information Preservation:
+--
+--   > liftM (const ()) ma = liftM (const ()) mb
+--   > ==>
+--   > munzip (mzip ma mb) = (ma, mb)
 --
 class Monad m => MonadZip m where
     {-# MINIMAL mzip | mzipWith #-}
@@ -52,7 +53,7 @@ class Monad m => MonadZip m where
     munzip mab = (liftM fst mab, liftM snd mab)
     -- munzip is a member of the class because sometimes
     -- you can implement it more efficiently than the
-    -- above default code.  See #4370 comment by giorgidze
+    -- above default code.  See Trac #4370 comment by giorgidze
 
 -- | @since 4.3.1.0
 instance MonadZip [] where

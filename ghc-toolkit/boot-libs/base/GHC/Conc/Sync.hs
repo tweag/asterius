@@ -367,7 +367,7 @@ to avoid contention with other processes in the machine.
 -}
 setNumCapabilities :: Int -> IO ()
 setNumCapabilities i
-  | i <= 0    = failIO $ "setNumCapabilities: Capability count ("++show i++") must be positive"
+  | i <= 0    = fail $ "setNumCapabilities: Capability count ("++show i++") must be positive"
   | otherwise = c_setNumCapabilities (fromIntegral i)
 
 foreign import ccall safe "setNumCapabilities"
@@ -543,8 +543,8 @@ data BlockReason
         -- ^currently in a foreign call
   | BlockedOnOther
         -- ^blocked on some other resource.  Without @-threaded@,
-        -- I\/O and 'Control.Concurrent.threadDelay' show up as
-        -- 'BlockedOnOther', with @-threaded@ they show up as 'BlockedOnMVar'.
+        -- I\/O and 'threadDelay' show up as 'BlockedOnOther', with @-threaded@
+        -- they show up as 'BlockedOnMVar'.
   deriving ( Eq   -- ^ @since 4.3.0.0
            , Ord  -- ^ @since 4.3.0.0
            , Show -- ^ @since 4.3.0.0
@@ -720,11 +720,8 @@ unsafeIOToSTM (IO m) = STM m
 --
 -- However, there are functions for creating transactional variables that
 -- can always be safely called in 'unsafePerformIO'. See: 'newTVarIO',
--- 'Control.Concurrent.STM.TChan.newTChanIO',
--- 'Control.Concurrent.STM.TChan.newBroadcastTChanIO',
--- 'Control.Concurrent.STM.TQueue.newTQueueIO',
--- 'Control.Concurrent.STM.TBQueue.newTBQueueIO', and
--- 'Control.Concurrent.STM.TMVar.newTMVarIO'.
+-- 'newTChanIO', 'newBroadcastTChanIO', 'newTQueueIO', 'newTBQueueIO',
+-- and 'newTMVarIO'.
 --
 -- Using 'unsafePerformIO' inside of 'atomically' is also dangerous but for
 -- different reasons. See 'unsafeIOToSTM' for more on this.
@@ -752,12 +749,7 @@ orElse (STM m) e = STM $ \s -> catchRetry# m (unSTM e) s
 -- | A variant of 'throw' that can only be used within the 'STM' monad.
 --
 -- Throwing an exception in @STM@ aborts the transaction and propagates the
--- exception. If the exception is caught via 'catchSTM', only the changes
--- enclosed by the catch are rolled back; changes made outside of 'catchSTM'
--- persist.
---
--- If the exception is not caught inside of the 'STM', it is re-thrown by
--- 'atomically', and the entire 'STM' is rolled back.
+-- exception.
 --
 -- Although 'throwSTM' has a type that is an instance of the type of 'throw', the
 -- two functions are subtly different:
@@ -775,12 +767,7 @@ orElse (STM m) e = STM $ \s -> catchRetry# m (unSTM e) s
 throwSTM :: Exception e => e -> STM a
 throwSTM e = STM $ raiseIO# (toException e)
 
--- | Exception handling within STM actions.
---
--- @'catchSTM' m f@ catches any exception thrown by @m@ using 'throwSTM',
--- using the function @f@ to handle the exception. If an exception is
--- thrown, any changes made by @m@ are rolled back, but changes prior to
--- @m@ persist.
+-- |Exception handling within STM actions.
 catchSTM :: Exception e => STM a -> (e -> STM a) -> STM a
 catchSTM (STM m) handler = STM $ catchSTM# m handler'
     where

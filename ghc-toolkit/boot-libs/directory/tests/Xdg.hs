@@ -25,9 +25,6 @@ main _t = do
   setEnv "XDG_CONFIG_DIRS" "/d:/e:/f"
   T(expectEq) () ["/a", "/b", "/c"] =<< getXdgDirectoryList XdgDataDirs
   T(expectEq) () ["/d", "/e", "/f"] =<< getXdgDirectoryList XdgConfigDirs
-
-  setEnv "XDG_CACHE_HOME" "g"
-  T(expectEq) () "g/h" =<< getXdgDirectory XdgCache "h"
 #endif
 
   return ()

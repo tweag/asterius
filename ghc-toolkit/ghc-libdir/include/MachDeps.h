@@ -9,7 +9,7 @@
  * NB: THIS FILE IS INCLUDED IN HASKELL SOURCE!
  *
  * To understand the structure of the RTS headers, see the wiki:
- *   https://gitlab.haskell.org/ghc/ghc/wikis/commentary/source-tree/includes
+ *   http://ghc.haskell.org/trac/ghc/wiki/Commentary/SourceTree/Includes
  *
  * ---------------------------------------------------------------------------*/
 
@@ -18,7 +18,7 @@
 /* Don't allow stage1 (cross-)compiler embed assumptions about target
  * platform. When ghc-stage1 is being built by ghc-stage0 is should not
  * refer to target defines. A few past examples:
- *  - https://gitlab.haskell.org/ghc/ghc/issues/13491
+ *  - https://ghc.haskell.org/trac/ghc/ticket/13491
  *  - https://phabricator.haskell.org/D3122
  *  - https://phabricator.haskell.org/D3405
  *

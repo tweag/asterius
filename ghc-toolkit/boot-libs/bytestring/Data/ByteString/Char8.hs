@@ -348,7 +348,7 @@ foldl :: (a -> Char -> a) -> a -> ByteString -> a
 foldl f = B.foldl (\a c -> f a (w2c c))
 {-# INLINE foldl #-}
 
--- | 'foldl'' is like foldl, but strict in the accumulator.
+-- | 'foldl\'' is like foldl, but strict in the accumulator.
 foldl' :: (a -> Char -> a) -> a -> ByteString -> a
 foldl' f = B.foldl' (\a c -> f a (w2c c))
 {-# INLINE foldl' #-}
@@ -360,7 +360,7 @@ foldr :: (Char -> a -> a) -> a -> ByteString -> a
 foldr f = B.foldr (\c a -> f (w2c c) a)
 {-# INLINE foldr #-}
 
--- | 'foldr'' is a strict variant of foldr
+-- | 'foldr\'' is a strict variant of foldr
 foldr' :: (Char -> a -> a) -> a -> ByteString -> a
 foldr' f = B.foldr' (\c a -> f (w2c c) a)
 {-# INLINE foldr' #-}

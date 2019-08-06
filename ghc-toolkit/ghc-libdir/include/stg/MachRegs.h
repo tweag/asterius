@@ -8,7 +8,7 @@
  * Do not #include this file directly: #include "Rts.h" instead.
  *
  * To understand the structure of the RTS headers, see the wiki:
- *   https://gitlab.haskell.org/ghc/ghc/wikis/commentary/source-tree/includes
+ *   http://ghc.haskell.org/trac/ghc/wiki/Commentary/SourceTree/Includes
  *
  * ---------------------------------------------------------------------------*/
 
@@ -279,6 +279,8 @@ the stack. See Note [Overlapping global registers] for implications.
    1            SP              (callee-save, non-volatile)
    2            AIX, powerpc64-linux:
                     RTOC        (a strange special case)
+                darwin:
+                                (caller-save, volatile)
                 powerpc32-linux:
                                 reserved for use by system
 
@@ -312,8 +314,18 @@ the stack. See Note [Overlapping global registers] for implications.
 #define REG_R6          r19
 #define REG_R7          r20
 #define REG_R8          r21
-#define REG_R9          r22
-#define REG_R10         r23
+
+#if defined(MACHREGS_darwin)
+
+#define REG_F1          f14
+#define REG_F2          f15
+#define REG_F3          f16
+#define REG_F4          f17
+
+#define REG_D1          f18
+#define REG_D2          f19
+
+#else
 
 #define REG_F1          fr14
 #define REG_F2          fr15
@@ -329,13 +341,14 @@ the stack. See Note [Overlapping global registers] for implications.
 #define REG_D5          fr24
 #define REG_D6          fr25
 
-#define REG_Sp          r24
-#define REG_SpLim       r25
-#define REG_Hp          r26
-#define REG_Base        r27
+#endif
 
-#define MAX_REAL_FLOAT_REG   6
-#define MAX_REAL_DOUBLE_REG  6
+#define REG_Sp          r22
+#define REG_SpLim       r24
+
+#define REG_Hp          r25
+
+#define REG_Base        r27
 
 /* -----------------------------------------------------------------------------
    The Sun SPARC register mapping

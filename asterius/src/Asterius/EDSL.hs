@@ -103,6 +103,7 @@ import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
+import Control.Monad.Fail
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Short as SBS
 import qualified Data.Map.Lazy as LM

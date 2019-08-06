@@ -24,7 +24,7 @@ sizeofStatics :: AsteriusStatics -> Int64
 sizeofStatics =
   fromIntegral .
   getSum .
-  foldMap'
+  foldMap
     (Sum . \case
        SymbolStatic {} -> 8
        Uninitialized x -> x

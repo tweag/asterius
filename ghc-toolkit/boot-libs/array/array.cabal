@@ -1,5 +1,5 @@
 name:          array
-version:       0.5.4.0
+version:       0.5.3.0
 -- NOTE: Don't forget to update ./changelog.md
 license:       BSD3
 license-file:  LICENSE
@@ -36,7 +36,7 @@ library
       Trustworthy,
       UnboxedTuples,
       UnliftedFFITypes
-  build-depends: base >= 4.9 && < 4.14
+  build-depends: base >= 4.9 && < 4.13
   ghc-options: -Wall
   exposed-modules:
       Data.Array

@@ -15,15 +15,12 @@ module GHCi.InfoTable
 #endif
   ) where
 
-import Prelude -- See note [Why do we import Prelude here?]
 #ifdef GHCI
 import Foreign
 import Foreign.C
 import GHC.Ptr
 import GHC.Exts
 import GHC.Exts.Heap
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
 #endif
 
 ghciTablesNextToCode :: Bool
@@ -42,7 +39,7 @@ mkConInfoTable
    -> Int     -- non-ptr words
    -> Int     -- constr tag
    -> Int     -- pointer tag
-   -> ByteString  -- con desc
+   -> [Word8]  -- con desc
    -> IO (Ptr StgInfoTable)
       -- resulting info table is allocated with allocateExec(), and
       -- should be freed with freeExec().
@@ -346,10 +343,10 @@ sizeOfEntryCode
        Right xs -> sizeOf (head xs) * length xs
 
 -- Note: Must return proper pointer for use in a closure
-newExecConItbl :: StgInfoTable -> ByteString -> IO (FunPtr ())
+newExecConItbl :: StgInfoTable -> [Word8] -> IO (FunPtr ())
 newExecConItbl obj con_desc
    = alloca $ \pcode -> do
-        let lcon_desc = BS.length con_desc + 1{- null terminator -}
+        let lcon_desc = length con_desc + 1{- null terminator -}
             -- SCARY
             -- This size represents the number of bytes in an StgConInfoTable.
             sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode)
@@ -362,10 +359,7 @@ newExecConItbl obj con_desc
         let cinfo = StgConInfoTable { conDesc = ex_ptr `plusPtr` fromIntegral sz
                                     , infoTable = obj }
         pokeConItbl wr_ptr ex_ptr cinfo
-        BS.useAsCStringLen con_desc $ \(src, len) ->
-            copyBytes (castPtr wr_ptr `plusPtr` fromIntegral sz) src len
-        let null_off = fromIntegral sz + fromIntegral (BS.length con_desc)
-        poke (castPtr wr_ptr `plusPtr` null_off) (0 :: Word8)
+        pokeArray0 0 (castPtr wr_ptr `plusPtr` fromIntegral sz) con_desc
         _flushExec sz ex_ptr -- Cache flush (if needed)
 #if defined(TABLES_NEXT_TO_CODE)
         return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))

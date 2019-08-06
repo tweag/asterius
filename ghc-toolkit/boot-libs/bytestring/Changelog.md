@@ -1,7 +1,3 @@
-0.10.10.0 TBD
-
- * Add conversions between ShortByteString and CString (#126)
-
 0.10.8.2 Duncan Coutts <duncan@community.haskell.org> Feb 2017
 
  * Make readFile work for files with no size like /dev/null

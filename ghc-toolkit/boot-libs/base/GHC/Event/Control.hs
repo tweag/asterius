@@ -126,7 +126,7 @@ newControl shouldRegister = allocaArray 2 $ \fds -> do
 -- file after it has been closed.
 closeControl :: Control -> IO ()
 closeControl w = do
-  _ <- atomicSwapIORef (controlIsDead w) True
+  atomicModifyIORef (controlIsDead w) (\_ -> (True, ()))
   _ <- c_close . fromIntegral . controlReadFd $ w
   _ <- c_close . fromIntegral . controlWriteFd $ w
   when (didRegisterWakeupFd w) $ c_setIOManagerWakeupFd (-1)

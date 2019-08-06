@@ -39,17 +39,17 @@ import System.IO
 -- | Monads having fixed points with a \'knot-tying\' semantics.
 -- Instances of 'MonadFix' should satisfy the following laws:
 --
--- [Purity]
---      @'mfix' ('Control.Monad.return' . h)  =  'Control.Monad.return' ('fix' h)@
+-- [/purity/]
+--      @'mfix' ('return' . h)  =  'return' ('fix' h)@
 --
--- [Left shrinking (or Tightening)]
+-- [/left shrinking/ (or /tightening/)]
 --      @'mfix' (\\x -> a >>= \\y -> f x y)  =  a >>= \\y -> 'mfix' (\\x -> f x y)@
 --
--- [Sliding]
+-- [/sliding/]
 --      @'mfix' ('Control.Monad.liftM' h . f)  =  'Control.Monad.liftM' h ('mfix' (f . h))@,
 --      for strict @h@.
 --
--- [Nesting]
+-- [/nesting/]
 --      @'mfix' (\\x -> 'mfix' (\\y -> f x y))  =  'mfix' (\\x -> f x x)@
 --
 -- This class is used in the translation of the recursive @do@ notation

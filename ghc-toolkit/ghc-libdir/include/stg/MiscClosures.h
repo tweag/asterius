@@ -8,12 +8,12 @@
  * our Cmm code generator doesn't know how to generate local symbols
  * for the RTS bits (it assumes all RTS symbols are external).
  *
- * See wiki:commentary/compiler/backends/ppr-c#prototypes
+ * See wiki:Commentary/Compiler/Backends/PprC#Prototypes
  *
  * Do not #include this file directly: #include "Rts.h" instead.
  *
  * To understand the structure of the RTS headers, see the wiki:
- *   https://gitlab.haskell.org/ghc/ghc/wikis/commentary/source-tree/includes
+ *   http://ghc.haskell.org/trac/ghc/wiki/Commentary/SourceTree/Includes
  *
  * --------------------------------------------------------------------------*/
 
@@ -390,8 +390,7 @@ RTS_FUN_DECL(stg_copySmallMutableArrayzh);
 RTS_FUN_DECL(stg_casSmallArrayzh);
 
 RTS_FUN_DECL(stg_newMutVarzh);
-RTS_FUN_DECL(stg_atomicModifyMutVar2zh);
-RTS_FUN_DECL(stg_atomicModifyMutVarzuzh);
+RTS_FUN_DECL(stg_atomicModifyMutVarzh);
 RTS_FUN_DECL(stg_casMutVarzh);
 
 RTS_FUN_DECL(stg_isEmptyMVarzh);
@@ -470,7 +469,6 @@ RTS_FUN_DECL(stg_readTVarIOzh);
 RTS_FUN_DECL(stg_writeTVarzh);
 
 RTS_FUN_DECL(stg_unpackClosurezh);
-RTS_FUN_DECL(stg_closureSizzezh);
 RTS_FUN_DECL(stg_getApStackValzh);
 RTS_FUN_DECL(stg_getSparkzh);
 RTS_FUN_DECL(stg_numSparkszh);
@@ -480,14 +478,13 @@ RTS_FUN_DECL(stg_noDuplicatezh);
 RTS_FUN_DECL(stg_traceCcszh);
 RTS_FUN_DECL(stg_clearCCSzh);
 RTS_FUN_DECL(stg_traceEventzh);
-RTS_FUN_DECL(stg_traceBinaryEventzh);
 RTS_FUN_DECL(stg_traceMarkerzh);
 RTS_FUN_DECL(stg_getThreadAllocationCounterzh);
 RTS_FUN_DECL(stg_setThreadAllocationCounterzh);
 
 
 /* Other misc stuff */
-// See wiki:commentary/compiler/backends/ppr-c#prototypes
+// See wiki:Commentary/Compiler/Backends/PprC#Prototypes
 
 #if IN_STG_CODE && !IN_STGCRUN
 
@@ -515,17 +512,19 @@ extern StgWord RTS_VAR(atomic_modify_mutvar_mutex);
 // RtsFlags
 extern StgWord RTS_VAR(RtsFlags); // bogus type
 
-// StablePtr.c
+// Stable.c
 extern StgWord RTS_VAR(stable_ptr_table);
-
-// StableName.c
 extern StgWord RTS_VAR(stable_name_table);
 
 // Profiling.c
 extern unsigned int RTS_VAR(era);
 extern unsigned int RTS_VAR(entering_PAP);
+extern StgWord      RTS_VAR(CC_LIST);          /* registered CC list */
+extern StgWord      RTS_VAR(CCS_LIST);         /* registered CCS list */
 extern StgWord      CCS_OVERHEAD[];
 extern StgWord      CCS_SYSTEM[];
+extern unsigned int RTS_VAR(CC_ID);            /* global ids */
+extern unsigned int RTS_VAR(CCS_ID);
 
 // Calls to these rts functions are generated directly
 // by codegen (see compiler/codeGen/StgCmmProf.hs)

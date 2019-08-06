@@ -344,9 +344,7 @@ import Data.Functor((<$>))
 #endif
 import Control.Applicative (Applicative (..), liftA2)
 import qualified Data.Foldable as Foldable
-#if !MIN_VERSION_base(4,8,0)
 import Data.Foldable (Foldable())
-#endif
 
 {--------------------------------------------------------------------
   Query
@@ -609,14 +607,14 @@ alter f !k t =
 -- @
 -- interactiveAlter :: Int -> IntMap String -> IO (IntMap String)
 -- interactiveAlter k m = alterF f k m where
---   f Nothing = do
+--   f Nothing -> do
 --      putStrLn $ show k ++
 --          " was not found in the map. Would you like to add it?"
 --      getUserResponse1 :: IO (Maybe String)
---   f (Just old) = do
---      putStrLn $ "The key is currently bound to " ++ show old ++
+--   f (Just old) -> do
+--      putStrLn "The key is currently bound to " ++ show old ++
 --          ". Would you like to change or delete it?"
---      getUserResponse2 :: IO (Maybe String)
+--      getUserresponse2 :: IO (Maybe String)
 -- @
 --
 -- 'alterF' is the most general operation for working with an individual

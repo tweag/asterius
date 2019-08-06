@@ -107,13 +107,10 @@ instance Show a => Show (IORef a) where
 
 deriving instance Show CoercionHole
 
-deriving instance Show MCoercionN
-
 deriving instance Show Coercion
 
-deriving instance Show TyCoVarBinder
-
-deriving instance Show AnonArgFlag
+deriving instance
+         (Show tyvar, Show argf) => Show (TyVarBndr tyvar argf)
 
 deriving instance Show Type
 
@@ -142,35 +139,29 @@ deriving instance Show AltType
 
 deriving instance Show AltCon
 
-deriving instance Show StgArg
-
-instance Show NoExtSilent where
-  show = fakeShow "NoExtSilent"
+deriving instance Show occ => Show (GenStgArg occ)
 
 deriving instance
-         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
-          Show (XRhsClosure pass)) =>
-         Show (GenStgExpr pass)
+         (Show bndr, Show occ) => Show (GenStgExpr bndr occ)
 
 instance Show CostCentreStack where
   show = fakeShow "CostCentreStack"
 
 deriving instance Show UpdateFlag
 
-deriving instance
-         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
-          Show (XRhsClosure pass)) =>
-         Show (GenStgRhs pass)
+instance Show StgBinderInfo where
+  show binder_info
+    | satCallsOnly binder_info = "SatCallsOnly"
+    | otherwise = "NoStgBinderInfo"
 
 deriving instance
-         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
-          Show (XRhsClosure pass)) =>
-         Show (GenStgBinding pass)
+         (Show bndr, Show occ) => Show (GenStgRhs bndr occ)
 
 deriving instance
-         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
-          Show (XRhsClosure pass)) =>
-         Show (GenStgTopBinding pass)
+         (Show bndr, Show occ) => Show (GenStgBinding bndr occ)
+
+deriving instance
+         (Show bndr, Show occ) => Show (GenStgTopBinding bndr occ)
 
 instance Show Name where
   show = fakeShow "Name"

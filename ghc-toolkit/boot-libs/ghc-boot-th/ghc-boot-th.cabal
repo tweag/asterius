@@ -3,12 +3,12 @@
 -- ghc-boot-th.cabal.in, not ghc-boot-th.cabal.
 
 name:           ghc-boot-th
-version:        8.9
+version:        8.6.5
 license:        BSD3
 license-file:   LICENSE
 category:       GHC
 maintainer:     ghc-devs@haskell.org
-bug-reports:    https://gitlab.haskell.org/ghc/ghc/issues/new
+bug-reports:    https://ghc.haskell.org/trac/ghc/newticket
 synopsis:       Shared functionality between GHC and the @template-haskell@
                 library
 description:    This library contains various bits shared between the @ghc@ and
@@ -19,7 +19,6 @@ description:    This library contains various bits shared between the @ghc@ and
                 be depended upon by user code.
 cabal-version:  >=1.10
 build-type:     Simple
-extra-source-files: changelog.md
 
 source-repository head
     type:     git
@@ -29,11 +28,10 @@ source-repository head
 Library
     default-language: Haskell2010
     other-extensions: DeriveGeneric
-    default-extensions: NoImplicitPrelude
 
     exposed-modules:
             GHC.LanguageExtensions.Type
             GHC.ForeignSrcLang.Type
             GHC.Lexeme
 
-    build-depends: base       >= 4.7 && < 4.14
+    build-depends: base       >= 4.7 && < 4.13

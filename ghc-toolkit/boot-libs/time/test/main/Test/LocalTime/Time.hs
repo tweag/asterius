@@ -100,9 +100,7 @@ testTimeOfDayToDayFraction
     in unlines [ show $ f $ TimeOfDay 12 34 56.789
                , show $ f $ TimeOfDay 12 34 56.789123
                , show $ f $ TimeOfDay 12 34 56.789123456
-               , show $ f $ TimeOfDay 12 34 56.789123456789
-               , show $ f $ TimeOfDay minBound 0 0
-               ]
+               , show $ f $ TimeOfDay 12 34 56.789123456789 ]
 
 testTime :: TestTree
 testTime = testCase "testTime" $

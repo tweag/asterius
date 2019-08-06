@@ -1,3 +1,4 @@
+#include "HsConfigure.h"
 module Data.Time.Clock.Internal.UTCTime
 (
     -- * UTC
@@ -13,7 +14,9 @@ module Data.Time.Clock.Internal.UTCTime
 ) where
 
 import Data.Typeable
+#if LANGUAGE_Rank2Types
 import Data.Data
+#endif
 import Control.DeepSeq
 import Data.Time.Calendar.Days
 import Data.Time.Clock.Internal.DiffTime
@@ -27,7 +30,14 @@ data UTCTime = UTCTime {
     utctDay :: Day,
     -- | the time from midnight, 0 <= t < 86401s (because of leap-seconds)
     utctDayTime :: DiffTime
-} deriving (Data, Typeable)
+}
+#if LANGUAGE_DeriveDataTypeable
+#if LANGUAGE_Rank2Types
+#if HAS_DataPico
+    deriving (Data, Typeable)
+#endif
+#endif
+#endif
 
 instance NFData UTCTime where
     rnf (UTCTime d t) = rnf d `seq` rnf t `seq` ()

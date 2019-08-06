@@ -42,16 +42,9 @@ main _t = do
     atime3 <- getAccessTime file
     mtime3 <- getModificationTime file
 
-    when setAtime $ do
-      -- access time should be set with at worst 1 sec resolution
-      T(expectNearTime) file atime atime3 1
+    -- access time should be set with at worst 1 sec resolution
+    T(expectNearTime) file atime  atime3 1
 
     -- modification time should not change, although it may lose some precision
     -- on POSIX systems without 'utimensat'
     T(expectNearTime) file mtime2 mtime3 1
-
-  where
-
-    testname = "FileTime"
-
-    setAtime = T.readArg _t testname "set-atime" True

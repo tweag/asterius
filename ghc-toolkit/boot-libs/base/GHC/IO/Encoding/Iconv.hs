@@ -3,7 +3,7 @@
            , NoImplicitPrelude
            , NondecreasingIndentation
   #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |

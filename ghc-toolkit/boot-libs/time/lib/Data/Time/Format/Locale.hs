@@ -32,7 +32,7 @@ data TimeLocale = TimeLocale {
 --
 -- 'knownTimeZones' contains only the ten time-zones mentioned in RFC 822 sec. 5:
 -- \"UT\", \"GMT\", \"EST\", \"EDT\", \"CST\", \"CDT\", \"MST\", \"MDT\", \"PST\", \"PDT\".
--- Note that the parsing functions will regardless parse "UTC", single-letter military time-zones, and +HHMM format.
+-- Note that the parsing functions will regardless parse single-letter military time-zones and +HHMM format.
 defaultTimeLocale :: TimeLocale
 defaultTimeLocale =  TimeLocale {
         wDays  = [("Sunday",   "Sun"),  ("Monday",    "Mon"),

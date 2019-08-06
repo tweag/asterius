@@ -4,17 +4,14 @@
  *
  * Support for fast binary event logging.
  *
- * Do not #include this file directly: #include "Rts.h" instead.
- *
- * To understand the structure of the RTS headers, see the wiki:
- *   https://gitlab.haskell.org/ghc/ghc/wikis/commentary/source-tree/includes
- *
  * ---------------------------------------------------------------------------*/
 
 #pragma once
 
 #include <stddef.h>
 #include <stdbool.h>
+
+#include "Rts.h"
 
 /*
  *  Abstraction for writing eventlog data.

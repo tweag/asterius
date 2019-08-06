@@ -62,9 +62,9 @@ library
         buildable: False
 
     build-depends:
-        base        >= 4.5     && < 4.14,
+        base        >= 4.5     && < 4.13,
         bytestring  >= 0.9.2   && < 0.11,
-        time        >= 1.2     && < 1.10
+        time        >= 1.2     && < 1.9
 
     exposed-modules:
         System.Posix

@@ -664,12 +664,8 @@ runtimeRepTypeRep r =
       SumRep rs   -> kindedTypeRep @_ @'SumRep
                      `kApp` buildList (map runtimeRepTypeRep rs)
       IntRep      -> rep @'IntRep
-      Int8Rep     -> rep @'Int8Rep
-      Int16Rep    -> rep @'Int16Rep
-      Int64Rep    -> rep @'Int64Rep
       WordRep     -> rep @'WordRep
-      Word8Rep    -> rep @'Word8Rep
-      Word16Rep   -> rep @'Word16Rep
+      Int64Rep    -> rep @'Int64Rep
       Word64Rep   -> rep @'Word64Rep
       AddrRep     -> rep @'AddrRep
       FloatRep    -> rep @'FloatRep
@@ -777,11 +773,7 @@ showTypeable _ TrType = showChar '*'
 showTypeable _ rep
   | isListTyCon tc, [ty] <- tys =
     showChar '[' . shows ty . showChar ']'
-
-    -- Take care only to render saturated tuple tycon applications
-    -- with tuple notation (#14341).
-  | isTupleTyCon tc,
-    Just _ <- TrType `eqTypeRep` typeRepKind rep =
+  | isTupleTyCon tc =
     showChar '(' . showArgs (showChar ',') tys . showChar ')'
   where (tc, tys) = splitApps rep
 showTypeable _ (TrTyCon {trTyCon = tycon, trKindVars = []})
@@ -830,7 +822,7 @@ splitApps = go []
 -- appropriate module and constructor names.
 --
 -- The ticket to find a better way to deal with this is
--- #14480.
+-- Trac #14480.
 tyConTYPE :: TyCon
 tyConTYPE = mkTyCon (tyConPackage liftedRepTyCon) "GHC.Prim" "TYPE" 0
        (KindRepFun (KindRepTyConApp liftedRepTyCon []) (KindRepTYPE LiftedRep))

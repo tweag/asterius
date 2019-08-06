@@ -7,13 +7,12 @@ env:
  - GHCVER=7.6.3 CABALVER=1.16
  - GHCVER=7.8.4 CABALVER=1.18
  - GHCVER=7.10.3 CABALVER=1.22
- - GHCVER=8.0.2 CABALVER=1.24
- - GHCVER=8.2.2 CABALVER=2.0
- - GHCVER=head  CABALVER=2.0
+ - GHCVER=8.0.1 CABALVER=1.24
+ - GHCVER=head  CABALVER=1.24
 
 matrix:
   allow_failures:
-   - env: GHCVER=head  CABALVER=2.0
+   - env: GHCVER=head  CABALVER=1.24
 
 before_install:
  - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
@@ -25,7 +24,7 @@ before_install:
 install:
  - travis_retry cabal update
  # can't use "cabal install --only-dependencies --enable-tests" due to dep-cycle
- - cabal install "QuickCheck >=2.4 && <2.10" "byteorder ==1.0.*" "dlist >=0.5 && <0.8" "mtl >=2.0 && <2.3" deepseq test-framework-hunit test-framework-quickcheck2
+ - cabal install "QuickCheck >=2.4" "byteorder ==1.0.*" "dlist >=0.5 && <0.8" "mtl >=2.0 && <2.3" deepseq test-framework-hunit test-framework-quickcheck2
 
 script:
  - cabal configure --enable-tests -v2
@@ -34,7 +33,7 @@ script:
  - if [ "$(echo -e "1.20\n$CABALVER" | sort -rV | head -n1)" = "$CABALVER" ]; then
      cabal test --show-details=streaming;
    else
-     travis_wait cabal test --show-details=always;
+     cabal test --show-details=always;
    fi
  - cabal sdist
  # "cabal check" disabled due to -O2 warning

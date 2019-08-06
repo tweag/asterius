@@ -1,34 +1,5 @@
 # Change Log
 
-## [1.9.2]
-- add Data and Typeable instance for CalendarDiffDays and CalendarDiffTime
-- "@since" annotations for everything after 1.9
-- fix import issue with GHC 8.6
-
-## [1.9.1]
-- new functions secondsToNominalDiffTime & nominalDiffTimeToSeconds
-- expose FormatTime and ParseTime in Data.Time.Format.Internal
-
-## [1.9]
-- new conversion functions timeToDaysAndTimeOfDay & daysAndTimeOfDayToTime
-- new DayOfWeek type
-- new CalendarDiffDays and CalendarDiffTime types
-- new ISO8601 module for ISO 8601 formatting & parsing
-- new addLocalTime, diffLocalTime
-- hide members of FormatTime and ParseTime classes
-- formatting & parsing for diff types (NominalDiffTime, DiffTime, CalendarDiffDays, CalendarDiffTime)
-- formatting: %Ez and %EZ for ±HH:MM format
-- parseTimeM: use MonadFail constraint when supported
-- parsing: reject invalid (and empty) time-zones with %z and %Z
-- parsing: reject invalid hour/minute/second specifiers
-
-## [1.8.0.4]
-- Fix "show minBound" bug
-- haddock: example for parseTimeM
-
-## [1.8.0.3]
-- Add "Quick start" documentation
-
 ## [1.8.0.2]
 - Fix behaviour of %Q in format
 

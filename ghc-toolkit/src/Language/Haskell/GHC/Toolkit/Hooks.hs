@@ -80,7 +80,7 @@ hooksFromCompiler Compiler {..} = do
                 r@(_, obj_output_fn) <-
                   do output_fn <-
                        GHC.phaseOutputFilename $
-                       GHC.hscPostBackendPhase src_flavour $
+                       GHC.hscPostBackendPhase dflags src_flavour $
                        GHC.hscTarget dflags
                      GHC.PipeState {GHC.hsc_env = hsc_env'} <- GHC.getPipeState
                      void $

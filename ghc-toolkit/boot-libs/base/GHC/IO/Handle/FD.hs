@@ -128,15 +128,13 @@ addFilePathToIOError fun fp ioe
 --
 -- This operation may fail with:
 --
---  * 'System.IO.Error.isAlreadyInUseError' if the file is already open and
---    cannot be reopened;
+--  * 'isAlreadyInUseError' if the file is already open and cannot be reopened;
 --
---  * 'System.IO.Error.isDoesNotExistError' if the file does not exist or
+--  * 'isDoesNotExistError' if the file does not exist or
 --    (on POSIX systems) is a FIFO without a reader and 'WriteMode' was
 --    requested; or
 --
---  * 'System.IO.Error.isPermissionError' if the user does not have permission
---     to open the file.
+--  * 'isPermissionError' if the user does not have permission to open the file.
 --
 -- Note: if you will be working with files containing binary data, you'll want to
 -- be using 'openBinaryFile'.

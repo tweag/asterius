@@ -1,19 +1,8 @@
 module System.Directory.Internal.Common where
 import Prelude ()
 import System.Directory.Internal.Prelude
-import System.FilePath
-  ( addTrailingPathSeparator
-  , hasTrailingPathSeparator
-  , isPathSeparator
-  , isRelative
-  , joinDrive
-  , joinPath
-  , normalise
-  , pathSeparator
-  , pathSeparators
-  , splitDirectories
-  , splitDrive
-  )
+import System.FilePath ((</>), isPathSeparator, isRelative,
+                        pathSeparator, splitDrive, takeDrive)
 
 -- | A generator with side-effects.
 newtype ListT m a = ListT { unListT :: m (Maybe (a, ListT m a)) }
@@ -95,88 +84,6 @@ ioeAddLocation e loc = do
     newLoc = loc <> if null oldLoc then "" else ":" <> oldLoc
     oldLoc = ioeGetLocation e
 
--- | Given a list of path segments, expand @.@ and @..@.  The path segments
--- must not contain path separators.
-expandDots :: [FilePath] -> [FilePath]
-expandDots = reverse . go []
-  where
-    go ys' xs' =
-      case xs' of
-        [] -> ys'
-        x : xs ->
-          case x of
-            "." -> go ys' xs
-            ".." ->
-              case ys' of
-                [] -> go (x : ys') xs
-                ".." : _ -> go (x : ys') xs
-                _ : ys -> go ys xs
-            _ -> go (x : ys') xs
-
--- | Convert to the right kind of slashes.
-normalisePathSeps :: FilePath -> FilePath
-normalisePathSeps p = (\ c -> if isPathSeparator c then pathSeparator else c) <$> p
-
--- | Remove redundant trailing slashes and pick the right kind of slash.
-normaliseTrailingSep :: FilePath -> FilePath
-normaliseTrailingSep path = do
-  let path' = reverse path
-  let (sep, path'') = span isPathSeparator path'
-  let addSep = if null sep then id else (pathSeparator :)
-  reverse (addSep path'')
-
--- | Convert empty paths to the current directory, otherwise leave it
--- unchanged.
-emptyToCurDir :: FilePath -> FilePath
-emptyToCurDir ""   = "."
-emptyToCurDir path = path
-
--- | Similar to 'normalise' but empty paths stay empty.
-simplifyPosix :: FilePath -> FilePath
-simplifyPosix ""   = ""
-simplifyPosix path = normalise path
-
--- | Similar to 'normalise' but:
---
--- * empty paths stay empty,
--- * parent dirs (@..@) are expanded, and
--- * paths starting with @\\\\?\\@ are preserved.
---
--- The goal is to preserve the meaning of paths better than 'normalise'.
-simplifyWindows :: FilePath -> FilePath
-simplifyWindows "" = ""
-simplifyWindows path =
-  case drive' of
-    "\\\\?\\" -> drive' <> subpath
-    _ -> simplifiedPath
-  where
-    simplifiedPath = joinDrive drive' subpath'
-    (drive, subpath) = splitDrive path
-    drive' = upperDrive (normaliseTrailingSep (normalisePathSeps drive))
-    subpath' = appendSep . avoidEmpty . prependSep . joinPath .
-               stripPardirs . expandDots . skipSeps .
-               splitDirectories $ subpath
-
-    upperDrive d = case d of
-      c : ':' : s | isAlpha c && all isPathSeparator s -> toUpper c : ':' : s
-      _ -> d
-    skipSeps = filter (not . (`elem` (pure <$> pathSeparators)))
-    stripPardirs | pathIsAbsolute || subpathIsAbsolute = dropWhile (== "..")
-                 | otherwise = id
-    prependSep | subpathIsAbsolute = (pathSeparator :)
-               | otherwise = id
-    avoidEmpty | not pathIsAbsolute
-                 && (null drive || hasTrailingPathSep) -- prefer "C:" over "C:."
-                 = emptyToCurDir
-               | otherwise = id
-    appendSep p | hasTrailingPathSep
-                  && not (pathIsAbsolute && null p)
-                  = addTrailingPathSeparator p
-                | otherwise = p
-    pathIsAbsolute = not (isRelative path)
-    subpathIsAbsolute = any isPathSeparator (take 1 subpath)
-    hasTrailingPathSep = hasTrailingPathSeparator subpath
-
 data FileType = File
               | SymbolicLink -- ^ POSIX: either file or directory link; Windows: file link
               | Directory
@@ -185,7 +92,7 @@ data FileType = File
 
 -- | Check whether the given 'FileType' is considered a directory by the
 -- operating system.  This affects the choice of certain functions
--- e.g. 'System.Directory.removeDirectory' vs 'System.Directory.removeFile'.
+-- e.g. `removeDirectory` vs `removeFile`.
 fileTypeIsDirectory :: FileType -> Bool
 fileTypeIsDirectory Directory     = True
 fileTypeIsDirectory DirectoryLink = True
@@ -204,6 +111,32 @@ data Permissions
   , executable :: Bool
   , searchable :: Bool
   } deriving (Eq, Ord, Read, Show)
+
+-- | Convert a path into an absolute path.  If the given path is relative, the
+-- current directory is prepended.  If the path is already absolute, the path
+-- is returned unchanged.  The function preserves the presence or absence of
+-- the trailing path separator.
+--
+-- If the path is already absolute, the operation never fails.  Otherwise, the
+-- operation may fail with the same exceptions as 'getCurrentDirectory'.
+--
+-- (internal API)
+prependCurrentDirectoryWith :: IO FilePath -> FilePath -> IO FilePath
+prependCurrentDirectoryWith getCurrentDirectory path =
+  ((`ioeAddLocation` "prependCurrentDirectory") .
+   (`ioeSetFileName` path)) `modifyIOError` do
+    if isRelative path -- avoid the call to `getCurrentDirectory` if we can
+    then do
+      cwd <- getCurrentDirectory
+      let curDrive = takeWhile (not . isPathSeparator) (takeDrive cwd)
+      let (drive, subpath) = splitDrive path
+      -- handle drive-relative paths (Windows only)
+      pure . (</> subpath) $
+        case drive of
+          _ : _ | (toUpper <$> drive) /= (toUpper <$> curDrive) ->
+                    drive <> [pathSeparator]
+          _ -> cwd
+    else pure path
 
 -- | Truncate the destination file and then copy the contents of the source
 -- file to the destination file.  If the destination file already exists, its

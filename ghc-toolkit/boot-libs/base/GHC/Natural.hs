@@ -42,15 +42,19 @@ module GHC.Natural
     , quotRemNatural
     , quotNatural
     , remNatural
+#if defined(MIN_VERSION_integer_gmp)
     , gcdNatural
     , lcmNatural
+#endif
       -- * Bits
     , andNatural
     , orNatural
     , xorNatural
     , bitNatural
     , testBitNatural
+#if defined(MIN_VERSION_integer_gmp)
     , popCountNatural
+#endif
     , shiftLNatural
     , shiftRNatural
       -- * Conversions
@@ -98,7 +102,7 @@ default ()
 -- TODO: Note that some functions have commented CONSTANT_FOLDED annotations,
 -- that's because the Integer counter-parts of these functions do actually have
 -- a builtinRule in PrelRules, where the Natural functions do not. The plan is
--- to eventually also add builtin rules for those functions on Natural.
+-- to eventually also add builtin rules for those function on Natural.
 #define CONSTANT_FOLDED NOINLINE
 
 -------------------------------------------------------------------------------
@@ -128,8 +132,7 @@ divZeroError = raise# divZeroException
 -- >>> 2^100 :: Natural
 -- 1267650600228229401496703205376
 --
--- Operations whose result would be negative @'Control.Exception.throw'
--- ('Control.Exception.Underflow' :: 'Control.Exception.ArithException')@,
+-- Operations whose result would be negative @'throw' ('Underflow' :: 'ArithException')@,
 --
 -- >>> -1 :: Natural
 -- *** Exception: arithmetic underflow
@@ -188,7 +191,7 @@ gcdNatural (NatJ# x) (NatS# y) = NatS# (gcdBigNatWord x y)
 gcdNatural (NatS# x) (NatJ# y) = NatS# (gcdBigNatWord y x)
 gcdNatural (NatS# x) (NatS# y) = NatS# (gcdWord x y)
 
--- | Compute least common multiple.
+-- | compute least common multiplier.
 lcmNatural :: Natural -> Natural -> Natural
 lcmNatural (NatS# 0##) _ = NatS# 0##
 lcmNatural _ (NatS# 0##) = NatS# 0##
@@ -322,8 +325,7 @@ timesNatural (NatJ# x) (NatS# y) = NatJ# (timesBigNatWord x y)
 timesNatural (NatJ# x) (NatJ# y) = NatJ# (timesBigNat     x y)
 {-# CONSTANT_FOLDED timesNatural #-}
 
--- | 'Natural' subtraction. May @'Control.Exception.throw'
--- 'Control.Exception.Underflow'@.
+-- | 'Natural' subtraction. May @'throw' 'Underflow'@.
 minusNatural :: Natural -> Natural -> Natural
 minusNatural x         (NatS# 0##) = x
 minusNatural (NatS# x) (NatS# y) = case subWordC# x y of
@@ -354,7 +356,7 @@ minusNaturalMaybe (NatJ# x) (NatJ# y)
     res = minusBigNat x y
 
 -- | Convert 'BigNat' to 'Natural'.
--- Throws 'Control.Exception.Underflow' if passed a 'nullBigNat'.
+-- Throws 'Underflow' if passed a 'nullBigNat'.
 bigNatToNatural :: BigNat -> Natural
 bigNatToNatural bn
   | isTrue# (sizeofBigNat# bn ==# 1#) = NatS# (bigNatToWord bn)
@@ -396,8 +398,8 @@ wordToNaturalBase w# = NatS# w#
 
 -- | Type representing arbitrary-precision non-negative integers.
 --
--- Operations whose result would be negative @'Control.Exception.throw'
--- ('Control.Exception.Underflow' :: 'Control.Exception.ArithException')@.
+-- Operations whose result would be negative
+-- @'throw' ('Underflow' :: 'ArithException')@.
 --
 -- @since 4.8.0.0
 newtype Natural = Natural Integer -- ^ __Invariant__: non-negative 'Integer'
@@ -413,15 +415,15 @@ newtype Natural = Natural Integer -- ^ __Invariant__: non-negative 'Integer'
 isValidNatural :: Natural -> Bool
 isValidNatural (Natural i) = i >= wordToInteger 0##
 
--- | Convert a 'Word#' into a 'Natural'
+-- | Convert a Word# into a Natural
 --
--- Built-in rule ensures that applications of this function to literal 'Word#'
--- are lifted into 'Natural' literals.
+-- Built-in rule ensures that applications of this function to literal Word# are
+-- lifted into Natural literals.
 wordToNatural# :: Word# -> Natural
 wordToNatural# w## = Natural (wordToInteger w##)
 {-# CONSTANT_FOLDED wordToNatural# #-}
 
--- | Convert a 'Word#' into a Natural
+-- | Convert a Word# into a Natural
 --
 -- In base we can't use wordToNatural# as built-in rules transform some of them
 -- into Natural literals. Use this function instead.
@@ -434,15 +436,6 @@ naturalFromInteger n
   | n >= wordToInteger 0## = Natural n
   | True                   = underflowError
 {-# INLINE naturalFromInteger #-}
-
-
--- | Compute greatest common divisor.
-gcdNatural :: Natural -> Natural -> Natural
-gcdNatural (Natural n) (Natural m) = Natural (n `gcdInteger` m)
-
--- | Compute lowest common multiple.
-lcmNatural :: Natural -> Natural -> Natural
-lcmNatural (Natural n) (Natural m) = Natural (n `lcmInteger` m)
 
 -- | 'Natural' subtraction. Returns 'Nothing's for non-positive results.
 --
@@ -465,9 +458,7 @@ plusNatural (Natural x) (Natural y) = Natural (x `plusInteger` y)
 {-# CONSTANT_FOLDED plusNatural #-}
 
 minusNatural :: Natural -> Natural -> Natural
-minusNatural (Natural x) (Natural y)
-  = if z `ltInteger` wordToInteger 0## then underflowError else Natural z
-  where z = x `minusInteger` y
+minusNatural (Natural x) (Natural y) = Natural (x `minusInteger` y)
 {-# CONSTANT_FOLDED minusNatural #-}
 
 timesNatural :: Natural -> Natural -> Natural
@@ -499,9 +490,6 @@ naturalToInteger (Natural i) = i
 testBitNatural :: Natural -> Int -> Bool
 testBitNatural (Natural n) (I# i) = testBitInteger n i
 -- {-# CONSTANT_FOLDED testBitNatural #-}
-
-popCountNatural :: Natural -> Int
-popCountNatural (Natural n) = I# (popCountInteger n)
 
 bitNatural :: Int# -> Natural
 bitNatural i#
@@ -615,7 +603,7 @@ mkNatural (W# i : is') = wordToNaturalBase (i `and#` 0xffffffff##) `orNatural`
 {-# CONSTANT_FOLDED mkNatural #-}
 
 -- | Convert 'Int' to 'Natural'.
--- Throws 'Control.Exception.Underflow' when passed a negative 'Int'.
+-- Throws 'Underflow' when passed a negative 'Int'.
 intToNatural :: Int -> Natural
 intToNatural (I# i#)
   | isTrue# (i# <# 0#) = underflowError

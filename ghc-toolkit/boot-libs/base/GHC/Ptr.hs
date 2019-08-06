@@ -1,6 +1,6 @@
 {-# LANGUAGE Unsafe #-}
 {-# LANGUAGE CPP, NoImplicitPrelude, MagicHash, RoleAnnotations #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |

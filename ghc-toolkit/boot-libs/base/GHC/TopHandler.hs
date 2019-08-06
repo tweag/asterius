@@ -5,7 +5,7 @@
            , UnboxedTuples
            , UnliftedFFITypes
   #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -241,7 +241,7 @@ safeExit = exitHelper useSafeExit
 fastExit = exitHelper useFastExit
 
 unreachable :: IO a
-unreachable = failIO "If you can read this, shutdownHaskellAndExit did not exit."
+unreachable = fail "If you can read this, shutdownHaskellAndExit did not exit."
 
 exitHelper :: CInt -> Int -> IO a
 #if defined(mingw32_HOST_OS)

@@ -1,10 +1,11 @@
 {-# OPTIONS -fno-warn-orphans #-}
+#include "HsConfigure.h"
+
+-- #hide
 module Data.Time.LocalTime.Internal.LocalTime
 (
     -- * Local Time
     LocalTime(..),
-
-    addLocalTime,diffLocalTime,
 
     -- converting UTC and UT1 times to LocalTime
     utcToLocalTime,localTimeToUTC,ut1ToLocalTime,localTimeToUT1,
@@ -14,12 +15,12 @@ module Data.Time.LocalTime.Internal.LocalTime
 
 import Control.DeepSeq
 import Data.Typeable
+#if LANGUAGE_Rank2Types
 import Data.Data
+#endif
 import Data.Time.Calendar.Days
 import Data.Time.Calendar.Gregorian
-import Data.Time.Clock.Internal.NominalDiffTime
 import Data.Time.Clock.Internal.UniversalTime
-import Data.Time.Clock.Internal.UTCDiff
 import Data.Time.Clock.Internal.UTCTime
 import Data.Time.LocalTime.Internal.TimeOfDay
 import Data.Time.LocalTime.Internal.TimeZone
@@ -32,21 +33,21 @@ import Data.Time.LocalTime.Internal.TimeZone
 data LocalTime = LocalTime {
     localDay    :: Day,
     localTimeOfDay   :: TimeOfDay
-} deriving (Eq,Ord,Data, Typeable)
+} deriving (Eq,Ord
+#if LANGUAGE_DeriveDataTypeable
+#if LANGUAGE_Rank2Types
+#if HAS_DataPico
+    ,Data, Typeable
+#endif
+#endif
+#endif
+    )
 
 instance NFData LocalTime where
     rnf (LocalTime d t) = rnf d `seq` rnf t `seq` ()
 
 instance Show LocalTime where
     show (LocalTime d t) = (showGregorian d) ++ " " ++ (show t)
-
--- | addLocalTime a b = a + b
-addLocalTime :: NominalDiffTime -> LocalTime -> LocalTime
-addLocalTime x = utcToLocalTime utc . addUTCTime x . localTimeToUTC utc
-
--- | diffLocalTime a b = a - b
-diffLocalTime :: LocalTime -> LocalTime -> NominalDiffTime
-diffLocalTime a b = diffUTCTime (localTimeToUTC utc a) (localTimeToUTC utc b)
 
 -- | Get the local time of a UTC time in a time zone.
 utcToLocalTime :: TimeZone -> UTCTime -> LocalTime

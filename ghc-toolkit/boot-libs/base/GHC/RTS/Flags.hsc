@@ -51,7 +51,7 @@ import GHC.IO
 import GHC.Real
 import GHC.Show
 
--- | 'RtsTime' is defined as a @StgWord64@ in @stg/Types.h@
+-- | @'Time'@ is defined as a @'StgWord64'@ in @stg/Types.h@
 --
 -- @since 4.8.2.0
 type RtsTime = Word64
@@ -139,7 +139,6 @@ data MiscFlags = MiscFlags
     , generateStackTrace    :: Bool
     , machineReadable       :: Bool
     , internalCounters      :: Bool
-    , linkerAlwaysPic       :: Bool
     , linkerMemBase         :: Word
       -- ^ address to ask the OS for memory for the linker, 0 ==> off
     } deriving ( Show -- ^ @since 4.8.0.0
@@ -150,21 +149,21 @@ data MiscFlags = MiscFlags
 --
 -- @since 4.8.0.0
 data DebugFlags = DebugFlags
-    { scheduler   :: Bool -- ^ @s@
-    , interpreter :: Bool -- ^ @i@
-    , weak        :: Bool -- ^ @w@
-    , gccafs      :: Bool -- ^ @G@
-    , gc          :: Bool -- ^ @g@
-    , block_alloc :: Bool -- ^ @b@
-    , sanity      :: Bool -- ^ @S@
-    , stable      :: Bool -- ^ @t@
-    , prof        :: Bool -- ^ @p@
-    , linker      :: Bool -- ^ @l@ the object linker
-    , apply       :: Bool -- ^ @a@
-    , stm         :: Bool -- ^ @m@
-    , squeeze     :: Bool -- ^ @z@ stack squeezing & lazy blackholing
-    , hpc         :: Bool -- ^ @c@ coverage
-    , sparks      :: Bool -- ^ @r@
+    { scheduler   :: Bool -- ^ 's'
+    , interpreter :: Bool -- ^ 'i'
+    , weak        :: Bool -- ^ 'w'
+    , gccafs      :: Bool -- ^ 'G'
+    , gc          :: Bool -- ^ 'g'
+    , block_alloc :: Bool -- ^ 'b'
+    , sanity      :: Bool -- ^ 'S'
+    , stable      :: Bool -- ^ 't'
+    , prof        :: Bool -- ^ 'p'
+    , linker      :: Bool -- ^ 'l' the object linker
+    , apply       :: Bool -- ^ 'a'
+    , stm         :: Bool -- ^ 'm'
+    , squeeze     :: Bool -- ^ 'z' stack squeezing & lazy blackholing
+    , hpc         :: Bool -- ^ 'c' coverage
+    , sparks      :: Bool -- ^ 'r'
     } deriving ( Show -- ^ @since 4.8.0.0
                )
 
@@ -445,8 +444,6 @@ getMiscFlags = do
                   (#{peek MISC_FLAGS, machineReadable} ptr :: IO CBool))
             <*> (toBool <$>
                   (#{peek MISC_FLAGS, internalCounters} ptr :: IO CBool))
-            <*> (toBool <$>
-                  (#{peek MISC_FLAGS, linkerAlwaysPic} ptr :: IO CBool))
             <*> #{peek MISC_FLAGS, linkerMemBase} ptr
 
 getDebugFlags :: IO DebugFlags

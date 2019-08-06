@@ -10,7 +10,7 @@
 -- We believe we could deorphan this module, by moving lots of things
 -- around, but we haven't got there yet:
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -65,13 +65,12 @@ infixr 8  **
 
 -- | Trigonometric and hyperbolic functions and related functions.
 --
--- The Haskell Report defines no laws for 'Floating'. However, @('+')@, @('*')@
+-- The Haskell Report defines no laws for 'Floating'. However, '(+)', '(*)'
 -- and 'exp' are customarily expected to define an exponential field and have
 -- the following properties:
 --
--- * @exp (a + b)@ = @exp a * exp b@
+-- * @exp (a + b)@ = @exp a * exp b
 -- * @exp (fromInteger 0)@ = @fromInteger 1@
---
 class  (Fractional a) => Floating a  where
     pi                  :: a
     exp, log, sqrt      :: a -> a
@@ -167,7 +166,7 @@ class  (RealFrac a, Floating a) => RealFloat a  where
     decodeFloat         :: a -> (Integer,Int)
     -- | 'encodeFloat' performs the inverse of 'decodeFloat' in the
     -- sense that for finite @x@ with the exception of @-0.0@,
-    -- @'Prelude.uncurry' 'encodeFloat' ('decodeFloat' x) = x@.
+    -- @'uncurry' 'encodeFloat' ('decodeFloat' x) = x@.
     -- @'encodeFloat' m n@ is one of the two closest representable
     -- floating-point numbers to @m*b^^n@ (or @&#177;Infinity@ if overflow
     -- occurs); usually the closer, but if @m@ contains too many bits,
@@ -391,9 +390,13 @@ instance  Floating Float  where
     (**) x y            =  powerFloat x y
     logBase x y         =  log y / log x
 
-    asinh x             =  asinhFloat x
-    acosh x             =  acoshFloat x
-    atanh x             =  atanhFloat x
+    asinh x
+      | x > huge   = log 2 + log x
+      | x < 0      = -asinh (-x)
+      | otherwise  = log (x + sqrt (1 + x*x))
+     where huge = 1e10
+    acosh x = log (x + (x+1.0) * sqrt ((x-1.0)/(x+1.0)))
+    atanh x = 0.5 * log ((1.0+x) / (1.0-x))
 
     log1p = log1pFloat
     expm1 = expm1Float
@@ -532,9 +535,13 @@ instance  Floating Double  where
     (**) x y            =  powerDouble x y
     logBase x y         =  log y / log x
 
-    asinh x             =  asinhDouble x
-    acosh x             =  acoshDouble x
-    atanh x             =  atanhDouble x
+    asinh x
+      | x > huge   = log 2 + log x
+      | x < 0      = -asinh (-x)
+      | otherwise  = log (x + sqrt (1 + x*x))
+     where huge = 1e20
+    acosh x = log (x + (x+1.0) * sqrt ((x-1.0)/(x+1.0)))
+    atanh x = 0.5 * log ((1.0+x) / (1.0-x))
 
     log1p = log1pDouble
     expm1 = expm1Double
@@ -1144,7 +1151,6 @@ expFloat, logFloat, sqrtFloat, fabsFloat :: Float -> Float
 sinFloat, cosFloat, tanFloat  :: Float -> Float
 asinFloat, acosFloat, atanFloat  :: Float -> Float
 sinhFloat, coshFloat, tanhFloat  :: Float -> Float
-asinhFloat, acoshFloat, atanhFloat  :: Float -> Float
 expFloat    (F# x) = F# (expFloat# x)
 logFloat    (F# x) = F# (logFloat# x)
 sqrtFloat   (F# x) = F# (sqrtFloat# x)
@@ -1158,9 +1164,6 @@ atanFloat   (F# x) = F# (atanFloat# x)
 sinhFloat   (F# x) = F# (sinhFloat# x)
 coshFloat   (F# x) = F# (coshFloat# x)
 tanhFloat   (F# x) = F# (tanhFloat# x)
-asinhFloat  (F# x) = F# (asinhFloat# x)
-acoshFloat  (F# x) = F# (acoshFloat# x)
-atanhFloat  (F# x) = F# (atanhFloat# x)
 
 powerFloat :: Float -> Float -> Float
 powerFloat  (F# x) (F# y) = F# (powerFloat# x y)
@@ -1193,7 +1196,6 @@ expDouble, logDouble, sqrtDouble, fabsDouble :: Double -> Double
 sinDouble, cosDouble, tanDouble  :: Double -> Double
 asinDouble, acosDouble, atanDouble  :: Double -> Double
 sinhDouble, coshDouble, tanhDouble  :: Double -> Double
-asinhDouble, acoshDouble, atanhDouble  :: Double -> Double
 expDouble    (D# x) = D# (expDouble# x)
 logDouble    (D# x) = D# (logDouble# x)
 sqrtDouble   (D# x) = D# (sqrtDouble# x)
@@ -1207,9 +1209,6 @@ atanDouble   (D# x) = D# (atanDouble# x)
 sinhDouble   (D# x) = D# (sinhDouble# x)
 coshDouble   (D# x) = D# (coshDouble# x)
 tanhDouble   (D# x) = D# (tanhDouble# x)
-asinhDouble  (D# x) = D# (asinhDouble# x)
-acoshDouble  (D# x) = D# (acoshDouble# x)
-atanhDouble  (D# x) = D# (atanhDouble# x)
 
 powerDouble :: Double -> Double -> Double
 powerDouble  (D# x) (D# y) = D# (x **## y)
@@ -1294,7 +1293,7 @@ And with the rule:
 The running time of the program goes from 120 seconds to 0.198 seconds
 with the native backend, and 0.143 seconds with the C backend.
 
-A few more details in #2251, and the patch message
+A few more details in Trac #2251, and the patch message
 "Add RULES for realToFrac from Int".
 -}
 

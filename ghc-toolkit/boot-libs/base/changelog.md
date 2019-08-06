@@ -1,32 +1,6 @@
 # Changelog for [`base` package](http://hackage.haskell.org/package/base)
 
-## 4.14.0.0 *TBA*
-  * Bundled with GHC *TBA*
-
-  * Add a `TestEquality` instance for the `Compose` newtype.
-
-## 4.13.0.0 *TBA*
-  * Bundled with GHC *TBA*
-
-  * Fix `Show` instance of `Data.Fixed`: Negative numbers are now parenthesized
-    according to their surrounding context. I.e. `Data.Fixed.show` produces
-    syntactically correct Haskell for expressions like `Just (-1 :: Fixed E2)`.
-    (#16031)
-
-  * Support the characters from recent versions of Unicode (up to v. 12) in
-    literals (#5518).
-
-  * The `StableName` type parameter now has a phantom role instead of
-    a representational one. There is really no reason to care about the
-    type of the underlying object.
-
-  * Add `foldMap'`, a strict version of `foldMap`, to `Foldable`.
-
-  * The `shiftL` and `shiftR` methods in the `Bits` instances of `Int`, `IntN`,
-    `Word`, and `WordN` now throw an overflow exception for negative shift
-    values (instead of being undefined behaviour).
-
-## 4.12.0.0 *21 September 2018*
+## 4.12.0.0 *August 2018*
   * Bundled with GHC 8.6.1
 
   * The STM invariant-checking mechanism (`always` and `alwaysSucceeds`), which
@@ -54,8 +28,8 @@
   * `asinh` for `Float` and `Double` is now numerically stable in the face of
     non-small negative arguments and enormous arguments of either sign. (#14927)
 
-  * `Numeric.showEFloat (Just 0)` now respects the user's requested precision.
-    (#15115)
+  * `Numeric.showEFloat (Just 0)` and `Numeric.showGFloat (Just 0)`
+    now respect the user's requested precision. (#15115)
 
   * `Data.Monoid.Alt` now has `Foldable` and `Traversable` instances. (#15099)
 
@@ -68,13 +42,13 @@
     `Read1`, `Show1`, `Generic`, `Generic1`. (#15098)
 
 
-## 4.11.1.0 *19 April 2018*
+## 4.11.1.0 *April 2018*
   * Bundled with GHC 8.4.2
 
   * Add the `readFieldHash` function to `GHC.Read` which behaves like
     `readField`, but for a field that ends with a `#` symbol (#14918).
 
-## 4.11.0.0 *8 March 2018*
+## 4.11.0.0 *March 2018*
   * Bundled with GHC 8.4.1
 
   * `System.IO.openTempFile` is now thread-safe on Windows.

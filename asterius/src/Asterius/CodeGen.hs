@@ -137,7 +137,7 @@ marshalCmmStatic st =
           pure $ SymbolStatic sym o
         _ -> throwError $ UnsupportedCmmLit $ showSBS lit
     GHC.CmmUninitialised s -> pure $ Uninitialized s
-    GHC.CmmString s -> pure $ Serialized $ SBS.toShort s <> "\0"
+    GHC.CmmString s -> pure $ Serialized $ SBS.pack $ s <> [0]
 
 marshalCmmSectionType ::
      AsteriusEntitySymbol -> GHC.Section -> AsteriusStaticsType
@@ -668,13 +668,6 @@ marshalCmmPrimCall GHC.MO_F64_Acos [r] [x] =
 marshalCmmPrimCall GHC.MO_F64_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F64 r x
 
-marshalCmmPrimCall GHC.MO_F64_Asinh [r] [x] =
-  marshalCmmUnMathPrimCall "asinh" F64 r x
-marshalCmmPrimCall GHC.MO_F64_Acosh [r] [x] =
-  marshalCmmUnMathPrimCall "acosh" F64 r x
-marshalCmmPrimCall GHC.MO_F64_Atanh [r] [x] =
-  marshalCmmUnMathPrimCall "atanh" F64 r x
-
 marshalCmmPrimCall GHC.MO_F64_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F64 r x
 marshalCmmPrimCall GHC.MO_F64_Exp [r] [x] =
@@ -710,13 +703,6 @@ marshalCmmPrimCall GHC.MO_F32_Acos [r] [x] =
   marshalCmmUnMathPrimCall "acos" F32 r x
 marshalCmmPrimCall GHC.MO_F32_Atan [r] [x] =
   marshalCmmUnMathPrimCall "atan" F32 r x
-
-marshalCmmPrimCall GHC.MO_F32_Asinh [r] [x] =
-  marshalCmmUnMathPrimCall "asinh" F32 r x
-marshalCmmPrimCall GHC.MO_F32_Acosh [r] [x] =
-  marshalCmmUnMathPrimCall "acosh" F32 r x
-marshalCmmPrimCall GHC.MO_F32_Atanh [r] [x] =
-  marshalCmmUnMathPrimCall "atanh" F32 r x
 
 marshalCmmPrimCall GHC.MO_F32_Log [r] [x] =
   marshalCmmUnMathPrimCall "log" F32 r x
@@ -1113,7 +1099,7 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
                               }
               }
   pure [hiout, loout]
- 
+
 
 -- See also: QuotRemWord2#
 marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] = do
@@ -1123,7 +1109,7 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] =
   (lhsHir, _) <- marshalCmmExpr lhsHi
   (lhsLor, _) <- marshalCmmExpr lhsLo
   (rhsr, _) <- marshalCmmExpr rhs
-  
+
   -- | Smash the high and low 32 bits together to create a 64 bit
   -- number.
   let smash32IntTo64 hi32 lo32 =
@@ -1182,8 +1168,8 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] =
                               , callImportReturnTypes = [I32]
                               }
               }
-              
-  pure [quotout, remout]  
+
+  pure [quotout, remout]
 
 marshalCmmPrimCall op rs xs =
   throwError $
@@ -1217,7 +1203,7 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
       throwError $
       UnsupportedCmmInstr $
       showSBS $ GHC.CmmUnsafeForeignCall (GHC.ForeignTarget p f) rs xs
-      
+
 marshalCmmUnsafeCall p f rs xs =
   throwError $
   UnsupportedCmmInstr $

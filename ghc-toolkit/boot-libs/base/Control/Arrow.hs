@@ -2,7 +2,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# OPTIONS_GHC -Wno-inline-rule-shadowing #-}
     -- The RULES for the methods of class Arrow may never fire
-    -- e.g. compose/arr;  see #10528
+    -- e.g. compose/arr;  see Trac #10528
 
 -----------------------------------------------------------------------------
 -- |
@@ -76,7 +76,7 @@ infixr 1 ^<<, <<^
 --
 --  * @'first' f >>> 'arr' ('id' *** g) = 'arr' ('id' *** g) >>> 'first' f@
 --
---  * @'first' ('first' f) >>> 'arr' assoc = 'arr' assoc >>> 'first' f@
+--  * @'first' ('first' f) >>> 'arr' 'assoc' = 'arr' 'assoc' >>> 'first' f@
 --
 -- where
 --
@@ -209,7 +209,7 @@ instance MonadPlus m => ArrowPlus (Kleisli m) where
 --
 --  * @'left' f >>> 'arr' ('id' +++ g) = 'arr' ('id' +++ g) >>> 'left' f@
 --
---  * @'left' ('left' f) >>> 'arr' assocsum = 'arr' assocsum >>> 'left' f@
+--  * @'left' ('left' f) >>> 'arr' 'assocsum' = 'arr' 'assocsum' >>> 'left' f@
 --
 -- where
 --

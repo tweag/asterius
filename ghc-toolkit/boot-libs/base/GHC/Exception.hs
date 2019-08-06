@@ -6,7 +6,7 @@
            , PatternSynonyms
   #-}
 {-# LANGUAGE TypeInType #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |

@@ -1,6 +1,6 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE CPP, NoImplicitPrelude, StandaloneDeriving #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -71,7 +71,7 @@ import GHC.Show ( Show )
 -- >>> enumFromTo ModifierLetter SpacingCombiningMark
 -- [ModifierLetter,OtherLetter,NonSpacingMark,SpacingCombiningMark]
 --
--- 'Text.Read.Read' instance:
+-- 'Read' instance:
 --
 -- >>> read "DashPunctuation" :: GeneralCategory
 -- DashPunctuation

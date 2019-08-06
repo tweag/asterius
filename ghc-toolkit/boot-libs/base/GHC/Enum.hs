@@ -4,7 +4,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE Trustworthy #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -632,9 +632,9 @@ instance Bounded Word where
     -- use unboxed literals for maxBound, because GHC doesn't optimise
     -- (fromInteger 0xffffffff :: Word).
 #if WORD_SIZE_IN_BITS == 32
-    maxBound = W# 0xFFFFFFFF##
+    maxBound = W# (int2Word# 0xFFFFFFFF#)
 #elif WORD_SIZE_IN_BITS == 64
-    maxBound = W# 0xFFFFFFFFFFFFFFFF##
+    maxBound = W# (int2Word# 0xFFFFFFFFFFFFFFFF#)
 #else
 #error Unhandled value for WORD_SIZE_IN_BITS
 #endif
@@ -919,6 +919,7 @@ dn_list x0 delta lim = go (x0 :: Integer)
 -- Natural
 ------------------------------------------------------------------------
 
+#if defined(MIN_VERSION_integer_gmp)
 -- | @since 4.8.0.0
 instance Enum Natural where
     succ n = n `plusNatural`  wordToNaturalBase 1##
@@ -926,13 +927,11 @@ instance Enum Natural where
 
     toEnum = intToNatural
 
-#if defined(MIN_VERSION_integer_gmp)
     fromEnum (NatS# w)
       | i >= 0    = i
       | otherwise = errorWithoutStackTrace "fromEnum: out of Int range"
       where
         i = I# (word2Int# w)
-#endif
     fromEnum n = fromEnum (naturalToInteger n)
 
     enumFrom x        = enumDeltaNatural      x (wordToNaturalBase 1##)
@@ -963,6 +962,31 @@ enumNegDeltaToNatural x0 ndelta lim = go x0
          | x >= ndelta = x : go (x-ndelta)
          | otherwise   = [x]
 
+#else
+
+-- | @since 4.8.0.0
+instance Enum Natural where
+  pred (Natural 0) = errorWithoutStackTrace "Natural.pred: 0"
+  pred (Natural n) = Natural (pred n)
+  {-# INLINE pred #-}
+  succ (Natural n) = Natural (succ n)
+  {-# INLINE succ #-}
+  fromEnum (Natural n) = fromEnum n
+  {-# INLINE fromEnum #-}
+  toEnum n | n < 0     = errorWithoutStackTrace "Natural.toEnum: negative"
+           | otherwise = Natural (toEnum n)
+  {-# INLINE toEnum #-}
+
+  enumFrom     = coerce (enumFrom     :: Integer -> [Integer])
+  enumFromThen x y
+    | x <= y    = coerce (enumFromThen :: Integer -> Integer -> [Integer]) x y
+    | otherwise = enumFromThenTo x y (wordToNaturalBase 0##)
+
+  enumFromTo   = coerce (enumFromTo   :: Integer -> Integer -> [Integer])
+  enumFromThenTo
+    = coerce (enumFromThenTo :: Integer -> Integer -> Integer -> [Integer])
+
+#endif
 
 -- Instances from GHC.Types
 

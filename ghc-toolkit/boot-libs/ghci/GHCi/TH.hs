@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, StandaloneDeriving, DeriveGeneric,
-    TupleSections, RecordWildCards, InstanceSigs, CPP #-}
+    TupleSections, RecordWildCards, InstanceSigs #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 -- |
@@ -91,7 +91,6 @@ Other Notes on TH / Remote GHCi
     compiler/typecheck/TcSplice.hs
 -}
 
-import Prelude -- See note [Why do we import Prelude here?]
 import GHCi.Message
 import GHCi.RemoteTypes
 import GHC.Serialized
@@ -144,9 +143,7 @@ instance Monad GHCiQ where
     do (m', s')  <- runGHCiQ m s
        (a,  s'') <- runGHCiQ (f m') s'
        return (a, s'')
-#if !MIN_VERSION_base(4,13,0)
   fail = Fail.fail
-#endif
 
 instance Fail.MonadFail GHCiQ where
   fail err  = GHCiQ $ \s -> throwIO (GHCiQException s err)
@@ -265,7 +262,7 @@ runTH pipe rstate rhv ty mb_loc = do
 runTHQ
   :: Binary a => Pipe -> RemoteRef (IORef QState) -> Maybe TH.Loc -> TH.Q a
   -> IO ByteString
-runTHQ pipe rstate mb_loc ghciq = do
+runTHQ pipe@Pipe{..} rstate mb_loc ghciq = do
   qstateref <- localRef rstate
   qstate <- readIORef qstateref
   let st = qstate { qsLocation = mb_loc, qsPipe = pipe }

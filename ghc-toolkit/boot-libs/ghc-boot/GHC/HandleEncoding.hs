@@ -1,7 +1,6 @@
 -- | See GHC #10762 and #15021.
 module GHC.HandleEncoding (configureHandleEncoding) where
 
-import Prelude -- See note [Why do we import Prelude here?]
 import GHC.IO.Encoding (textEncodingName)
 import System.Environment
 import System.IO

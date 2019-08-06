@@ -12,7 +12,7 @@ homepage:       https://github.com/haskell/filepath#readme
 category:       System
 build-type:     Simple
 synopsis:       Library for manipulating FilePaths in a cross platform way.
-tested-with:    GHC==8.6.3, GHC==8.4.4, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2
+tested-with:    GHC==8.4.3, GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4, GHC==7.6.3, GHC==7.4.2
 description:
     This package provides functionality for manipulating @FilePath@ values, and is shipped with both <https://www.haskell.org/ghc/ GHC> and the <https://www.haskell.org/platform/ Haskell Platform>. It provides three modules:
     .
@@ -48,7 +48,7 @@ library
         System.FilePath.Windows
 
     build-depends:
-        base >= 4 && < 4.14
+        base >= 4 && < 4.13
 
     ghc-options: -Wall
 
@@ -64,4 +64,4 @@ test-suite filepath-tests
     build-depends:
         filepath,
         base,
-        QuickCheck >= 2.7 && < 2.13
+        QuickCheck >= 2.7 && < 2.12

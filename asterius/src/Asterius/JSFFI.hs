@@ -299,7 +299,7 @@ processFFI mod_sym = w
                     { ffiExportDecls =
                         M.insert
                           AsteriusEntitySymbol
-                            {entityName = SBS.toShort $ GHC.bytesFS lbl}
+                            {entityName = SBS.toShort $ GHC.fastStringToByteString lbl}
                           FFIExportDecl
                             {ffiFunctionType = ffi_ftype, ffiExportClosure = ""}
                           ffiExportDecls
@@ -377,7 +377,7 @@ addFFIProcessor c = do
                                   export_func_name =
                                     AsteriusEntitySymbol
                                       { entityName =
-                                          SBS.toShort $ GHC.bytesFS lbl
+                                          SBS.toShort $ GHC.fastStringToByteString lbl
                                       }
                                   export_closure =
                                     fromString $

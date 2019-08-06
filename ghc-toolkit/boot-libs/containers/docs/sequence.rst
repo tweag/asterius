@@ -222,7 +222,7 @@ Pattern Matching
 *Since 0.5.10*
 
 Just like you can pattern match (aka. destructure) a list ``[a]``, you can do
-the same with sequences. Let's first look at how we do this with lists::
+the same with sequneces. Let's first look at how we do this with lists::
 
     case [1, 2, 3] of
       [] -> "empty list"

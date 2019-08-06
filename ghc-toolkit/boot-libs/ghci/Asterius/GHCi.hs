@@ -9,6 +9,7 @@ module Asterius.GHCi
 
 import Asterius.ByteString
 import Asterius.Types
+import Control.Monad.Fail
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.Binary
