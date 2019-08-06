@@ -2,6 +2,95 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-08-06
+
+Covers many past weeks :) We're now resuming the status reports.
+
+First of all, here's a list of landed work since last report:
+
+* Async JSFFI is delivered.
+    * By adding `safe`/`interruptible` specifiers to `foreign import
+      javascript`, the expression is assumed to be a JavaScript `Promise` which
+      resolves to the returned result.
+    * The linker rewrites async import calls to add runtime suspending/resuming
+      logic. There's now implicit asynchronousity in all exported rts api, so
+      they're all made JavaScript async functions.
+    * JavaScript `Promise` rejections are converted to Haskell exceptions and
+      thrown in the calling thread.
+* Migration to ghc-8.6.5 is delivered.
+    * We've gotten `asterius` to build with ghc-8.6.5 and a recent stackage lts
+      resolver. The boot libs are also adjusted to use the versions shipped in
+      ghc-8.6.5.
+    * We've cleaned up our ghc fork's history and factored out the patches to
+      apply on top of upstream ghc releases.
+    * We've also removed a lot of hacks in our boot libs which previously was
+      implemented to workaround missing/buggy runtime features.
+* Many, many, many bugfixes. A non-comprehensive list:
+    * `GHC.Fingerprint` is implemented using FNV hashes. This fixes
+      `Typeable`-related logic, e.g. handling exceptions other than
+      `SomeException` type.
+    * Fixes of many numerics-related primops and standard library functions.
+    * Fixes in the garbage collector: missing dynamic pointer untaggings, bad
+      behavior in `IND` closure scavenging, etc.
+    * Fixes of some missing Unicode utilities which used to cause problems for
+      functions like `read`.
+    * Fixes `MVar#` related primops; they now "works" in a single-threaded
+      setting and the blocking behavior is replaced with throwing
+      `BlockedIndefinitelyOnMVar`. This is sufficient to support some hidden
+      `MVar` usages in the standard library, e.g. `Handle` or `fixIO`.
+    * Fixes `Debug.Trace` functions.
+    * Fixes `StableName#` related primops.
+    * Fixes the browser target accidentally broken by node-only imports.
+* Debugging-related improvements
+    * The debugging mode's "memory trap" now collaborates with the mblock
+      allocator and traps on access to addresses pointing to non-live mblocks.
+      This feature helped spotting a use-after-free runtime bug related to
+      `performGC`.
+    * There's now a runtime "YOLO mode" which skips evacuating/scavenging in the
+      garbage collector and only moves the nurseries to new mblocks. By diffing
+      test results with/without YOLO mode it's convenient to quickly determine
+      whether a runtime crash is likely related to garbage collection bugs. The
+      `ghc-testsuite` job on CI always run with 4 flavours now: vanilla, debug,
+      yolo, debug+yolo.
+    * We've implemented a "verbose mode" for enriched runtime error messages.
+      When turned on it reports more informative errors, e.g. missing symbols
+      when they're invoked. The error messages are in the wasm data segments,
+      and they're dropped by default for smaller wasm binary output.
+* CI-related improvements
+    * We now use CircleCI workspaces to reuse project building/booting artifacts
+      across several different testing jobs for increased efficiency.
+    * We moved away from GitHub Pages to Netlify for hosting the generated
+      documentation. Each CI run performs a Netlify deployment, so it's possible
+      to preview changes before merging to `master`, reducing the chance of
+      breaking.
+    * CI is now run for pull requests from forked repos. Note that the jobs for
+      building the Docker image and docs are skipped to avoid leaking
+      credentials.
+    * We stopped using V8 team's node builds since recent node 12 versions
+      already support the experimental wasm features we use.
+* `binaryen`/`wabt` updates and fixes
+    * The history of `tweag`/`binaryen` is cleaned up; we rebased our changes on
+      top of upstream `master` branch.
+    * The custom `Setup.hs` build script of `wabt` now ensures all binaries are
+      accessible in the directory returned by `Paths_wabt.getBinDir`.
+
+The project continues to evolve as time passes, and it's definitely more usable
+since the last report. On the other hand, since the list of potential
+improvements is still huge and given the limited manpower we've got, we need to
+concentrate on the challenges which impacts the project's usability
+significantly if left unsolved.
+
+We're now resuming our efforts to deliver Template Haskell support in 2019 Q3.
+Some lessons are learnt from the previously failed attempt:
+
+* Avoid major architectural changes when they're not strictly a blocker to the
+  target milestone. It's an advanced form of yak-shaving.
+* A smooth runtime debugging workflow is absolutely critical. Although the wasm
+  debugging story is far from ideal, we can still work on our own tools to
+  enforce stricter checks, move crash sites early, output more informative error
+  messages, etc. Avoid long and arduous debugging sessions; in such cases, spend
+  the time on improving the debugging tools instead.
+
 ## 2019-05-26
 
 Covers the past week.
