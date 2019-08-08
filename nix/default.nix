@@ -107,18 +107,22 @@ let
         packages = {
           # packages.hsc2hs.components.exes.hsc2hs.doExactConfig = true;
           ghc.patches = [ ./patches/ghc.patch ./patches/ghc/MR948--32bit-cross-th.patch ];
-          Cabal.patches = [ cabalPatch ];
+          wasm-toolkit.package.cleanHpack = true;
+          ghc-toolkit.package.cleanHpack = true;
           ghc-toolkit.components.library.extraSrcFiles = [
             "genapply/**/**"
             "boot-libs/**/**"
             "ghc-libdir/**/**"
             ];
+          wabt.package.cleanHpack = true;
           wabt.components.library.extraSrcFiles = [
             "wabt/**/**"
             ];
+          binaryen.package.cleanHpack = true;
           binaryen.components.library.extraSrcFiles = [
             "binaryen/**/**"
             ];
+          asterius.package.cleanHpack = true;
           asterius.package.dataFiles = [
             "rts/*.mjs"
             "boot-init.sh"
@@ -281,6 +285,7 @@ let
       cp -r ${../ghc-toolkit/ghc-libdir}/include/* $out/ghc-libdir/include
       ${pkgs.lib.concatMapStringsSep "\n" (exe: ''
         makeWrapper ${pkgSet.config.hsPkgs.asterius.components.exes.${exe}}/bin/${exe} $out/bin/${exe} \
+          --prefix PATH : ${nodePkgs.parcel-bundler}/bin \
           --set asterius_bindir $out/bin \
           --set asterius_bootdir $out/boot \
           --set boot_libs_path ${ghc864.boot-libs} \
