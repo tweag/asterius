@@ -1,10 +1,13 @@
+import Asterius.Internals (decodeFile)
 import Asterius.Ld
+import qualified Asterius.Main as Main
 import Asterius.Types
 import Data.List
 import Data.Maybe
 import Data.String
 import Data.Traversable
 import System.Directory
+import System.FilePath
 import System.Environment.Blank
 
 parseLinkTask :: [String] -> IO LinkTask
@@ -46,5 +49,20 @@ main = do
       let Just ('@':rsp_path) = find ((== '@') . head) args
       rsp <- readFile rsp_path
       let rsp_args = map read $ lines rsp
-      task <- parseLinkTask rsp_args
-      linkExe task
+      linkTask' <- parseLinkTask rsp_args
+      let wexe = linkOutput linkTask' <.> "wexe"
+          baseName = takeBaseName $ linkOutput linkTask'
+          linkTask = linkTask' { linkOutput = wexe </> "link.out" }
+      createDirectoryIfMissing False wexe
+      linkExe linkTask
+      let task = Main.parseTask []
+      ld_result <- decodeFile $ linkOutput linkTask
+      Main.ahcDistMain putStrLn task
+        { Main.target = Main.Node
+        , Main.inputHS = linkOutput linkTask
+        , Main.inputEntryMJS = Nothing
+        , Main.outputDirectory = wexe
+        , Main.outputBaseName = baseName
+        , Main.run = False
+        , Main.bundle = True
+        } ld_result

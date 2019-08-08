@@ -9,6 +9,7 @@ module Asterius.Main
   , getTask
   , ahcDistMain
   , ahcLinkMain
+  , parseTask
   ) where
 
 import qualified Asterius.Backends.Binaryen as Binaryen
