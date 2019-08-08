@@ -7,7 +7,6 @@ module Language.Haskell.GHC.Toolkit.GenPaths
   , genPaths
   ) where
 
-import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import Distribution.ModuleName
 import Distribution.Simple
@@ -75,4 +74,5 @@ genPaths GenPathsOptions {..} h =
                                 }
                         }
                   }
+            _ -> error "CLibName not found in genPaths"
     }
