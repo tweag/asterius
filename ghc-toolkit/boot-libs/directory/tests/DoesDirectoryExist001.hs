@@ -10,9 +10,7 @@ main _t = do
 
   createDirectory "somedir"
 
-  T(expect) () . not =<< doesDirectoryExist ""
   T(expect) () . not =<< doesDirectoryExist "nonexistent"
-  T(expect) () =<< doesDirectoryExist "."
   T(expect) () =<< doesDirectoryExist "somedir"
 #if defined(mingw32_HOST_OS)
   T(expect) () =<< doesDirectoryExist "SoMeDiR"

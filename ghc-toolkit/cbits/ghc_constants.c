@@ -214,6 +214,13 @@ HsInt offset_StgMutArrPtrs_size() { return offsetof(StgMutArrPtrs, size); }
 HsInt offset_StgMutArrPtrs_payload() {
   return offsetof(StgMutArrPtrs, payload);
 }
+
+HsInt offset_StgMVar_head() { return offsetof(StgMVar, head); }
+
+HsInt offset_StgMVar_tail() { return offsetof(StgMVar, tail); }
+
+HsInt offset_StgMVar_value() { return offsetof(StgMVar, value); }
+
 HsInt sizeof_StgPAP() { return sizeof(StgPAP); }
 
 HsInt offset_StgPAP_arity() { return offsetof(StgPAP, arity); }
@@ -503,3 +510,9 @@ HsInt tso_MARKED() { return TSO_MARKED; }
 HsInt tso_SQUEEZED() { return TSO_SQUEEZED; }
 
 HsInt tso_ALLOC_LIMIT() { return TSO_ALLOC_LIMIT; }
+
+HsInt sizeof_StgStableName() { return sizeof(StgStableName); }
+
+HsInt offset_StgStableName_header() { return offsetof(StgStableName, header); }
+
+HsInt offset_StgStableName_sn() { return offsetof(StgStableName, sn); }

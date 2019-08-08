@@ -175,7 +175,9 @@ Token WastLexer::GetToken(WastParser* parser) {
 }
 
 Location WastLexer::GetLocation() {
-  auto column = [=](const char* p) { return p - line_start_ + 1; };
+  auto column = [=](const char* p) {
+    return std::max(1, static_cast<int>(p - line_start_ + 1));
+  };
   return Location(filename_, line_, column(token_start_), column(cursor_));
 }
 
@@ -196,11 +198,11 @@ Token WastLexer::TextToken(TokenType token_type, size_t offset) {
 }
 
 int WastLexer::PeekChar() {
-  return cursor_ < buffer_end_ ? *cursor_ : kEof;
+  return cursor_ < buffer_end_ ? static_cast<uint8_t>(*cursor_) : kEof;
 }
 
 int WastLexer::ReadChar() {
-  return cursor_ < buffer_end_ ? *cursor_++ : kEof;
+  return cursor_ < buffer_end_ ? static_cast<uint8_t>(*cursor_++) : kEof;
 }
 
 bool WastLexer::MatchChar(char c) {
@@ -288,8 +290,10 @@ void WastLexer::ReadWhitespace() {
 }
 
 Token WastLexer::GetStringToken(WastParser* parser) {
-  ReadChar();
+  const char* saved_token_start = token_start_;
+  bool has_error = false;
   bool in_string = true;
+  ReadChar();
   while (in_string) {
     switch (ReadChar()) {
       case kEof:
@@ -298,6 +302,7 @@ Token WastLexer::GetStringToken(WastParser* parser) {
       case '\n':
         token_start_ = cursor_ - 1;
         ERROR("newline in string");
+        has_error = true;
         Newline();
         continue;
 
@@ -338,8 +343,10 @@ Token WastLexer::GetStringToken(WastParser* parser) {
           case 'D':
           case 'E':
           case 'F':  // Hex byte escape.
-            if (!IsHexDigit(ReadChar())) {
-              token_start_ = cursor_ - 3;
+            if (IsHexDigit(PeekChar())) {
+              ReadChar();
+            } else {
+              token_start_ = cursor_ - 2;
               goto error;
             }
             break;
@@ -351,12 +358,18 @@ Token WastLexer::GetStringToken(WastParser* parser) {
           error:
             ERROR("bad escape \"%.*s\"",
                   static_cast<int>(cursor_ - token_start_), token_start_);
+            has_error = true;
             break;
         }
         break;
       }
     }
   }
+  token_start_ = saved_token_start;
+  if (has_error) {
+    return Token(GetLocation(), TokenType::Invalid);
+  }
+
   return TextToken(TokenType::Text);
 }
 
@@ -459,7 +472,7 @@ Token WastLexer::GetHexNumberToken(TokenType token_type) {
     if (MatchChar('p') || MatchChar('P')) {
       token_type = TokenType::Float;
       ReadSign();
-      if (!ReadHexNum()) {
+      if (!ReadNum()) {
         return GetReservedToken();
       }
     }

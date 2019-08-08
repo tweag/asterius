@@ -13,7 +13,7 @@ import System.Directory.Internal.Common
 import System.Directory.Internal.Config (exeExtension)
 import Data.Time (UTCTime)
 import Data.Time.Clock.POSIX (POSIXTime)
-import System.FilePath ((</>), isRelative, splitSearchPath)
+import System.FilePath ((</>), isRelative, normalise, splitSearchPath)
 import qualified Data.Time.Clock.POSIX as POSIXTime
 import qualified GHC.Foreign as GHC
 import qualified System.Posix as Posix
@@ -28,10 +28,6 @@ removePathInternal False = Posix.removeLink
 renamePathInternal :: FilePath -> FilePath -> IO ()
 renamePathInternal = Posix.rename
 
--- | On POSIX, equivalent to 'simplifyPosix'.
-simplify :: FilePath -> FilePath
-simplify = simplifyPosix
-
 -- we use the 'free' from the standard library here since it's not entirely
 -- clear whether Haskell's 'free' corresponds to the same one
 foreign import ccall unsafe "free" c_free :: Ptr a -> IO ()
@@ -41,9 +37,7 @@ c_PATH_MAX :: Maybe Int
 c_PATH_MAX | c_PATH_MAX' > toInteger maxValue = Nothing
            | otherwise                        = Just (fromInteger c_PATH_MAX')
   where c_PATH_MAX' = (#const PATH_MAX)
-        maxValue = maxBound `asTypeInMaybe` c_PATH_MAX
-        asTypeInMaybe :: a -> Maybe a -> a
-        asTypeInMaybe = const
+        maxValue    = maxBound `asTypeOf` case c_PATH_MAX of ~(Just x) -> x
 #else
 c_PATH_MAX = Nothing
 #endif
@@ -102,22 +96,8 @@ getDirectoryContentsInternal path =
 getCurrentDirectoryInternal :: IO FilePath
 getCurrentDirectoryInternal = Posix.getWorkingDirectory
 
--- | Convert a path into an absolute path.  If the given path is relative, the
--- current directory is prepended and the path may or may not be simplified.
--- If the path is already absolute, the path is returned unchanged.  The
--- function preserves the presence or absence of the trailing path separator.
---
--- If the path is already absolute, the operation never fails.  Otherwise, the
--- operation may throw exceptions.
---
--- Empty paths are treated as the current directory.
 prependCurrentDirectory :: FilePath -> IO FilePath
-prependCurrentDirectory path
-  | isRelative path =
-    ((`ioeAddLocation` "prependCurrentDirectory") .
-     (`ioeSetFileName` path)) `modifyIOError` do
-      (</> path) <$> getCurrentDirectoryInternal
-  | otherwise = pure path
+prependCurrentDirectory = prependCurrentDirectoryWith getCurrentDirectoryInternal
 
 setCurrentDirectoryInternal :: FilePath -> IO ()
 setCurrentDirectoryInternal = Posix.changeWorkingDirectory
@@ -133,11 +113,13 @@ readSymbolicLink = Posix.readSymbolicLink
 
 type Metadata = Posix.FileStatus
 
+-- note: normalise is needed to handle empty paths
+
 getSymbolicLinkMetadata :: FilePath -> IO Metadata
-getSymbolicLinkMetadata = Posix.getSymbolicLinkStatus
+getSymbolicLinkMetadata = Posix.getSymbolicLinkStatus . normalise
 
 getFileMetadata :: FilePath -> IO Metadata
-getFileMetadata = Posix.getFileStatus
+getFileMetadata = Posix.getFileStatus . normalise
 
 fileTypeFromMetadata :: Metadata -> FileType
 fileTypeFromMetadata stat
@@ -293,8 +275,10 @@ getXdgDirectoryInternal getHomeDirectory xdgDir = do
     get name fallback = do
       env <- lookupEnv name
       case env of
-        Nothing   -> (</> fallback) <$> getHomeDirectory
-        Just path -> pure path
+        Nothing                     -> fallback'
+        Just path | isRelative path -> fallback'
+                  | otherwise       -> pure path
+      where fallback' = (</> fallback) <$> getHomeDirectory
 
 getXdgDirectoryListInternal :: XdgDirectoryList -> IO [FilePath]
 getXdgDirectoryListInternal xdgDirs =

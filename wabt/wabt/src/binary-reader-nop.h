@@ -29,7 +29,9 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   Result BeginModule(uint32_t version) override { return Result::Ok; }
   Result EndModule() override { return Result::Ok; }
 
-  Result BeginSection(BinarySection section_type, Offset size) override {
+  Result BeginSection(Index section_index,
+                      BinarySection section_type,
+                      Offset size) override {
     return Result::Ok;
   }
 
@@ -282,6 +284,11 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   Result OnSimdShuffleOpExpr(Opcode opcode, v128 value) override {
     return Result::Ok;
   }
+  Result OnLoadSplatExpr(Opcode opcode,
+                         uint32_t alignment_log2,
+                         Address offset) override {
+    return Result::Ok;
+  }
 
   /* Elem section */
   Result BeginElemSection(Offset size) override { return Result::Ok; }
@@ -450,6 +457,13 @@ class BinaryReaderNop : public BinaryReaderDelegate {
   Result OnInitFunction(uint32_t priority, Index function_index) override {
     return Result::Ok;
   }
+  Result OnComdatCount(Index count) override { return Result::Ok; }
+  Result OnComdatBegin(string_view name, uint32_t flags, Index count) override {
+    return Result::Ok;
+  }
+  Result OnComdatEntry(ComdatType kind, Index index) override {
+    return Result::Ok;
+  }
   Result EndLinkingSection() override { return Result::Ok; }
 
   /* InitExpr - used by elem, data and global sections; these functions are
@@ -470,6 +484,9 @@ class BinaryReaderNop : public BinaryReaderDelegate {
     return Result::Ok;
   }
   Result OnInitExprI64ConstExpr(Index index, uint64_t value) override {
+    return Result::Ok;
+  }
+  Result OnInitExprRefNull(Index index) override {
     return Result::Ok;
   }
 };

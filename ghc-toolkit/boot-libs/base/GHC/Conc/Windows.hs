@@ -131,7 +131,7 @@ waitForDelayEvent :: Int -> IO ()
 waitForDelayEvent usecs = do
   m <- newEmptyMVar
   target <- calculateTarget usecs
-  _ <- atomicModifyIORef'_ pendingDelays (\xs -> Delay target m : xs)
+  atomicModifyIORef pendingDelays (\xs -> (Delay target m : xs, ()))
   prodServiceThread
   takeMVar m
 
@@ -140,7 +140,7 @@ waitForDelayEventSTM :: Int -> IO (TVar Bool)
 waitForDelayEventSTM usecs = do
    t <- atomically $ newTVar False
    target <- calculateTarget usecs
-   _ <- atomicModifyIORef'_ pendingDelays (\xs -> DelaySTM target t : xs)
+   atomicModifyIORef pendingDelays (\xs -> (DelaySTM target t : xs, ()))
    prodServiceThread
    return t
 
@@ -219,10 +219,10 @@ foreign import ccall unsafe "getOrSetGHCConcWindowsProddingStore"
 
 prodServiceThread :: IO ()
 prodServiceThread = do
-  -- NB. use atomicSwapIORef here, otherwise there are race
+  -- NB. use atomicModifyIORef here, otherwise there are race
   -- conditions in which prodding is left at True but the server is
   -- blocked in select().
-  was_set <- atomicSwapIORef prodding True
+  was_set <- atomicModifyIORef prodding $ \b -> (True,b)
   when (not was_set) wakeupIOManager
 
 -- ----------------------------------------------------------------------------
@@ -239,7 +239,7 @@ service_loop :: HANDLE          -- read end of pipe
 
 service_loop wakeup old_delays = do
   -- pick up new delay requests
-  new_delays <- atomicSwapIORef pendingDelays []
+  new_delays <- atomicModifyIORef pendingDelays (\a -> ([],a))
   let  delays = foldr insertDelay old_delays new_delays
 
   now <- getMonotonicUSec
@@ -262,7 +262,8 @@ service_loop wakeup old_delays = do
 
 service_cont :: HANDLE -> [DelayReq] -> IO ()
 service_cont wakeup delays = do
-  _ <- atomicSwapIORef prodding False
+  r <- atomicModifyIORef prodding (\_ -> (False,False))
+  r `seq` return () -- avoid space leak
   service_loop wakeup delays
 
 -- must agree with rts/win32/ThrIOManager.c

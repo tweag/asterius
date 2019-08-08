@@ -1,7 +1,6 @@
 {-# LANGUAGE CPP #-}
 module GHCi.Signals (installSignalHandlers) where
 
-import Prelude -- See note [Why do we import Prelude here?]
 import Control.Concurrent
 import Control.Exception
 import System.Mem.Weak  ( deRefWeak )

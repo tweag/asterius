@@ -197,19 +197,19 @@ module System.IO (
     -- * Newline conversion
 
     -- | In Haskell, a newline is always represented by the character
-    -- @\'\\n\'@.  However, in files and external character streams, a
+    -- '\n'.  However, in files and external character streams, a
     -- newline may be represented by another character sequence, such
-    -- as @\'\\r\\n\'@.
+    -- as '\r\n'.
     --
     -- A text-mode 'Handle' has an associated 'NewlineMode' that
     -- specifies how to transate newline characters.  The
     -- 'NewlineMode' specifies the input and output translation
-    -- separately, so that for instance you can translate @\'\\r\\n\'@
-    -- to @\'\\n\'@ on input, but leave newlines as @\'\\n\'@ on output.
+    -- separately, so that for instance you can translate '\r\n'
+    -- to '\n' on input, but leave newlines as '\n' on output.
     --
     -- The default 'NewlineMode' for a 'Handle' is
     -- 'nativeNewlineMode', which does no translation on Unix systems,
-    -- but translates @\'\\r\\n\'@ to @\'\\n\'@ and back on Windows.
+    -- but translates '\r\n' to '\n' and back on Windows.
     --
     -- Binary-mode 'Handle's do no newline translation at all.
     --
@@ -236,7 +236,7 @@ import System.Posix.Types
 
 import GHC.Base
 import GHC.List
-#if !defined(mingw32_HOST_OS)
+#ifndef mingw32_HOST_OS
 import GHC.IORef
 #endif
 import GHC.Num
@@ -381,8 +381,7 @@ hReady h        =  hWaitForInput h 0
 --
 --  * 'System.IO.Error.isFullError' if the device is full; or
 --
---  * 'System.IO.Error.isPermissionError' if another system resource limit
---    would be exceeded.
+--  * 'System.IO.Error.isPermissionError' if another system resource limit would be exceeded.
 
 hPrint          :: Show a => Handle -> a -> IO ()
 hPrint hdl      =  hPutStrLn hdl . show
@@ -392,7 +391,7 @@ hPrint hdl      =  hPutStrLn hdl . show
 -- closed on exit from 'withFile', whether by normal termination or by
 -- raising an exception.  If closing the handle raises an exception, then
 -- this exception will be raised by 'withFile' rather than any exception
--- raised by @act@.
+-- raised by 'act'.
 withFile :: FilePath -> IOMode -> (Handle -> IO r) -> IO r
 withFile name mode = bracket (openFile name mode) hClose
 
@@ -406,8 +405,8 @@ withBinaryFile name mode = bracket (openBinaryFile name mode) hClose
 -- ---------------------------------------------------------------------------
 -- fixIO
 
--- | The implementation of 'Control.Monad.Fix.mfix' for 'IO'. If the function
--- passed to 'fixIO' inspects its argument, the resulting action will throw
+-- | The implementation of 'mfix' for 'IO'. If the function passed
+-- to 'fixIO' inspects its argument, the resulting action will throw
 -- 'FixIOException'.
 fixIO :: (a -> IO a) -> IO a
 fixIO k = do
@@ -485,7 +484,7 @@ openTempFile' :: String -> FilePath -> String -> Bool -> CMode
               -> IO (FilePath, Handle)
 openTempFile' loc tmp_dir template binary mode
     | pathSeparator template
-    = failIO $ "openTempFile': Template string must not contain path separator characters: "++template
+    = fail $ "openTempFile': Template string must not contain path separator characters: "++template
     | otherwise = findTempName
   where
     -- We split off the last extension, so we can use .foo.ext files
@@ -584,7 +583,7 @@ tempCounter = unsafePerformIO $ newIORef 0
 rand_string :: IO String
 rand_string = do
   r1 <- c_getpid
-  (r2, _) <- atomicModifyIORef'_ tempCounter (+1)
+  r2 <- atomicModifyIORef tempCounter (\n -> (n+1, n))
   return $ show r1 ++ "-" ++ show r2
 
 data OpenNewFileResult

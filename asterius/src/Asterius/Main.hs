@@ -64,7 +64,7 @@ data Task = Task
   , inputEntryMJS :: Maybe FilePath
   , outputDirectory :: FilePath
   , outputBaseName :: String
-  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr :: Bool
+  , tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr, yolo :: Bool
   , extraGHCFlags :: [String]
   , exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
   } deriving (Show)
@@ -114,6 +114,7 @@ parseTask args =
         , bool_opt "output-ir" $ \t -> t {outputIR = True}
         , bool_opt "run" $ \t -> t {run = True}
         , bool_opt "verbose-err" $ \t -> t {verboseErr = True}
+        , bool_opt "yolo" $ \t -> t {yolo = True}
         , str_opt "ghc-option" $ \s t ->
             t {extraGHCFlags = extraGHCFlags t <> [s]}
         , str_opt "export-function" $ \s t ->
@@ -143,6 +144,7 @@ parseTask args =
           , outputIR = False
           , run = False
           , verboseErr = False
+          , yolo = False
           , extraGHCFlags = []
           , exportFunctions = []
           , extraRootSymbols = []
@@ -216,6 +218,10 @@ genLib Task {..} LinkReport {..} =
     , intDec tableSlots
     , ", staticMBlocks: "
     , intDec staticMBlocks
+    , ", yolo: "
+    , if yolo
+        then "true"
+        else "false"
     , "})"
     , ";\n"
     ]
@@ -259,9 +265,11 @@ genDefEntry Task {..} =
         , "await i.exports.main();\n"
         , "} catch (err) {\n"
         , "console.log(i.stdio.stdout());\n"
+        , "console.log(i.stdio.stderr());\n"
         , "throw err;\n"
         , "}\n"
         , "console.log(i.stdio.stdout());\n"
+        , "console.log(i.stdio.stderr());\n"
         , "});\n"
         ]
     ]
@@ -323,6 +331,7 @@ ahcLink Task {..} = do
     (outputBaseName <.> "unlinked.bin")
     | outputIR
     ] <>
+    ["-optl--prog-name=" <> takeBaseName inputHS] <>
     ["-o", ld_output, inputHS]
   r <- decodeFile ld_output
   removeFile ld_output
@@ -364,13 +373,24 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
              logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
              BS.writeFile out_wasm m_bin
              when outputIR $ do
-               let p = out_wasm -<.> "binaryen.txt"
-               logger $ "[INFO] Writing re-parsed wasm-toolkit IR to " <> show p
+               let p = out_wasm -<.> "binaryen-show.txt"
+               logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
                case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
                  Right (rest, _, r)
                    | LBS.null rest -> writeFile p (show r)
                    | otherwise -> fail "[ERROR] Re-parsing produced residule"
-                 _ -> fail "[ERROR] Re-parsing failed")
+                 _ -> fail "[ERROR] Re-parsing failed"
+               let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
+               logger $ "[info] writing re-parsed wasm-toolkit ir as s-expresions to " <> show out_wasm_binaryen_sexpr
+               -- disable colors when writing out the binaryen module
+               -- to a file, so that we don't get ANSI escape sequences
+               -- for colors. Reset the state after
+               cenabled <- Binaryen.isColorsEnabled
+               Binaryen.setColorsEnabled False
+               m_sexpr <- Binaryen.serializeModuleSExpr m_ref
+               Binaryen.setColorsEnabled cenabled
+
+               BS.writeFile out_wasm_binaryen_sexpr m_sexpr)
     else (do logger "[INFO] Converting linked IR to wasm-toolkit IR"
              let conv_result =
                    runExcept $

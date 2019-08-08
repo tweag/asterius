@@ -119,10 +119,7 @@ struct LegalizeJSInterface : public Pass {
         }
       };
 
-      PassRunner passRunner(module);
-      passRunner.setIsNested(true);
-      passRunner.add<FixImports>(&illegalImportsToLegal);
-      passRunner.run();
+      FixImports(&illegalImportsToLegal).run(runner, module);
     }
   }
 
@@ -176,7 +173,7 @@ private:
         legal->params.push_back(i32);
       } else {
         call->operands.push_back(
-          builder.makeGetLocal(legal->params.size(), param));
+          builder.makeLocalGet(legal->params.size(), param));
         legal->params.push_back(param);
       }
     }
@@ -186,7 +183,7 @@ private:
       legal->result = i32;
       auto index = Builder::addVar(legal, Name(), i64);
       auto* block = builder.makeBlock();
-      block->list.push_back(builder.makeSetLocal(index, call));
+      block->list.push_back(builder.makeLocalSet(index, call));
       block->list.push_back(builder.makeCall(
         f->name, {I64Utilities::getI64High(builder, index)}, none));
       block->list.push_back(I64Utilities::getI64Low(builder, index));
@@ -233,7 +230,7 @@ private:
         type->params.push_back(i32);
       } else {
         call->operands.push_back(
-          builder.makeGetLocal(func->params.size(), param));
+          builder.makeLocalGet(func->params.size(), param));
         type->params.push_back(param);
       }
       func->params.push_back(param);

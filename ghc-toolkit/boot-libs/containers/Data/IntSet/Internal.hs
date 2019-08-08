@@ -195,13 +195,7 @@ import Data.Monoid (Monoid(..))
 import Data.Word (Word)
 #endif
 #if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup(stimes))
-#endif
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
-#endif
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (stimesIdempotentMonoid)
+import Data.Semigroup (Semigroup((<>), stimes), stimesIdempotentMonoid)
 #endif
 import Data.Typeable
 import Prelude hiding (filter, foldr, foldl, null, map)
@@ -223,9 +217,7 @@ import GHC.Prim (indexInt8OffAddr#)
 #endif
 
 import qualified Data.Foldable as Foldable
-#if !MIN_VERSION_base(4,8,0)
 import Data.Foldable (Foldable())
-#endif
 
 infixl 9 \\{-This comment teaches CPP correct behaviour -}
 

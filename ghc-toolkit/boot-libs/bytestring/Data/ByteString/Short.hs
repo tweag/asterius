@@ -78,15 +78,6 @@ module Data.ByteString.Short (
 
     -- * Other operations
     empty, null, length, index,
-
-    -- * Low level conversions
-    -- ** Packing 'CString's and pointers
-    packCString,
-    packCStringLen,
-
-    -- ** Using ByteStrings as 'CString's
-    useAsCString,
-    useAsCStringLen
   ) where
 
 import Data.ByteString.Short.Internal

@@ -1,15 +1,12 @@
-import {format } from "util";
 export class Messages {
-    constructor(memory, fs) {
-        this.memory = memory;
-        this.fs = fs
-        Object.seal(this);
-    }
+  constructor(memory, fs) {
+    this.memory = memory;
+    this.fs = fs;
+    Object.freeze(this);
+  }
 
-    debugBelch2(fmt, arg) {
-        let s = format(this.memory.strLoad(fmt), this.memory.strLoad(arg));
-        console.error(s);
-        this.fs.writeSync(this.fs.stderr(), s);
-    }
-
+  debugBelch2(fmt, arg) {
+    const s = `${this.memory.strLoad(arg)}\n`;
+    this.fs.writeSync(2, s);
+  }
 }

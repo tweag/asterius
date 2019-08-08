@@ -1,7 +1,7 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE NoImplicitPrelude, MagicHash, ImplicitParams #-}
 {-# LANGUAGE RankNTypes, PolyKinds, DataKinds #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -29,9 +29,7 @@ import GHC.Stack.Types
 import GHC.Prim
 import GHC.Integer ()   -- Make sure Integer and Natural are compiled first
 import GHC.Natural ()   -- because GHC depends on it in a wired-in way
-                        -- so the build system doesn't see the dependency.
-                        -- See Note [Depend on GHC.Integer] and
-                        -- Note [Depend on GHC.Natural] in GHC.Base.
+                        -- so the build system doesn't see the dependency
 import {-# SOURCE #-} GHC.Exception
   ( errorCallWithCallStackException
   , errorCallException )

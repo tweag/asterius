@@ -1,6 +1,6 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 {-# LANGUAGE Unsafe #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -24,7 +24,7 @@ module Control.Monad.ST.Imp (
         runST,
         fixST,
 
-        -- * Converting 'ST' to 'Prelude.IO'
+        -- * Converting 'ST' to 'IO'
         RealWorld,              -- abstract
         stToIO,
 
@@ -45,7 +45,7 @@ import Control.Exception.Base
                         ( catch, throwIO, NonTermination (..)
                         , BlockedIndefinitelyOnMVar (..) )
 
--- | Allow the result of an 'ST' computation to be used (lazily)
+-- | Allow the result of a state transformer computation to be used (lazily)
 -- inside the computation.
 --
 -- Note that if @f@ is strict, @'fixST' f = _|_@.
@@ -75,7 +75,7 @@ using liftST:
 
 We knew that lazy blackholing could cause the computation to be re-run if the
 result was demanded strictly, but we thought that would be okay in the case of
-ST. However, that is not the case (see #15349). Notably, the first time
+ST. However, that is not the case (see Trac #15349). Notably, the first time
 the computation is executed, it may mutate variables that cause it to behave
 *differently* the second time it's run. That may allow it to terminate when it
 should not. More frighteningly, Arseniy Alekseyev produced a somewhat contrived

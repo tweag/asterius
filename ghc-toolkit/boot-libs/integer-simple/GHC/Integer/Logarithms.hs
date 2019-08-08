@@ -1,7 +1,4 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE MagicHash, UnboxedTuples, NoImplicitPrelude #-}
-{-# LANGUAGE UnliftedFFITypes #-}
-
 module GHC.Integer.Logarithms
     ( integerLogBase#
     , integerLog2#
@@ -11,12 +8,6 @@ module GHC.Integer.Logarithms
 import GHC.Prim
 import GHC.Integer
 import qualified GHC.Integer.Logarithms.Internals as I
-import GHC.Types
-
-#if defined(ASTERIUS)
-import Asterius.Magic
-import GHC.Integer.Type (Integer(..))
-#endif
 
 -- | Calculate the integer logarithm for an arbitrary base.
 --   The base must be greater than 1, the second argument, the number

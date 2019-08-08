@@ -44,10 +44,10 @@ template<typename SubType, typename ReturnType = void> struct Visitor {
   ReturnType visitSwitch(Switch* curr) { return ReturnType(); }
   ReturnType visitCall(Call* curr) { return ReturnType(); }
   ReturnType visitCallIndirect(CallIndirect* curr) { return ReturnType(); }
-  ReturnType visitGetLocal(GetLocal* curr) { return ReturnType(); }
-  ReturnType visitSetLocal(SetLocal* curr) { return ReturnType(); }
-  ReturnType visitGetGlobal(GetGlobal* curr) { return ReturnType(); }
-  ReturnType visitSetGlobal(SetGlobal* curr) { return ReturnType(); }
+  ReturnType visitLocalGet(LocalGet* curr) { return ReturnType(); }
+  ReturnType visitLocalSet(LocalSet* curr) { return ReturnType(); }
+  ReturnType visitGlobalGet(GlobalGet* curr) { return ReturnType(); }
+  ReturnType visitGlobalSet(GlobalSet* curr) { return ReturnType(); }
   ReturnType visitLoad(Load* curr) { return ReturnType(); }
   ReturnType visitStore(Store* curr) { return ReturnType(); }
   ReturnType visitAtomicRMW(AtomicRMW* curr) { return ReturnType(); }
@@ -72,6 +72,8 @@ template<typename SubType, typename ReturnType = void> struct Visitor {
   ReturnType visitHost(Host* curr) { return ReturnType(); }
   ReturnType visitNop(Nop* curr) { return ReturnType(); }
   ReturnType visitUnreachable(Unreachable* curr) { return ReturnType(); }
+  ReturnType visitPush(Push* curr) { return ReturnType(); }
+  ReturnType visitPop(Pop* curr) { return ReturnType(); }
   // Module-level visitors
   ReturnType visitFunctionType(FunctionType* curr) { return ReturnType(); }
   ReturnType visitExport(Export* curr) { return ReturnType(); }
@@ -79,6 +81,7 @@ template<typename SubType, typename ReturnType = void> struct Visitor {
   ReturnType visitFunction(Function* curr) { return ReturnType(); }
   ReturnType visitTable(Table* curr) { return ReturnType(); }
   ReturnType visitMemory(Memory* curr) { return ReturnType(); }
+  ReturnType visitEvent(Event* curr) { return ReturnType(); }
   ReturnType visitModule(Module* curr) { return ReturnType(); }
 
   ReturnType visit(Expression* curr) {
@@ -103,14 +106,14 @@ template<typename SubType, typename ReturnType = void> struct Visitor {
         DELEGATE(Call);
       case Expression::Id::CallIndirectId:
         DELEGATE(CallIndirect);
-      case Expression::Id::GetLocalId:
-        DELEGATE(GetLocal);
-      case Expression::Id::SetLocalId:
-        DELEGATE(SetLocal);
-      case Expression::Id::GetGlobalId:
-        DELEGATE(GetGlobal);
-      case Expression::Id::SetGlobalId:
-        DELEGATE(SetGlobal);
+      case Expression::Id::LocalGetId:
+        DELEGATE(LocalGet);
+      case Expression::Id::LocalSetId:
+        DELEGATE(LocalSet);
+      case Expression::Id::GlobalGetId:
+        DELEGATE(GlobalGet);
+      case Expression::Id::GlobalSetId:
+        DELEGATE(GlobalSet);
       case Expression::Id::LoadId:
         DELEGATE(Load);
       case Expression::Id::StoreId:
@@ -159,6 +162,10 @@ template<typename SubType, typename ReturnType = void> struct Visitor {
         DELEGATE(Nop);
       case Expression::Id::UnreachableId:
         DELEGATE(Unreachable);
+      case Expression::Id::PushId:
+        DELEGATE(Push);
+      case Expression::Id::PopId:
+        DELEGATE(Pop);
       case Expression::Id::InvalidId:
       default:
         WASM_UNREACHABLE();
@@ -189,10 +196,10 @@ struct OverriddenVisitor {
   UNIMPLEMENTED(Switch);
   UNIMPLEMENTED(Call);
   UNIMPLEMENTED(CallIndirect);
-  UNIMPLEMENTED(GetLocal);
-  UNIMPLEMENTED(SetLocal);
-  UNIMPLEMENTED(GetGlobal);
-  UNIMPLEMENTED(SetGlobal);
+  UNIMPLEMENTED(LocalGet);
+  UNIMPLEMENTED(LocalSet);
+  UNIMPLEMENTED(GlobalGet);
+  UNIMPLEMENTED(GlobalSet);
   UNIMPLEMENTED(Load);
   UNIMPLEMENTED(Store);
   UNIMPLEMENTED(AtomicRMW);
@@ -217,12 +224,15 @@ struct OverriddenVisitor {
   UNIMPLEMENTED(Host);
   UNIMPLEMENTED(Nop);
   UNIMPLEMENTED(Unreachable);
+  UNIMPLEMENTED(Push);
+  UNIMPLEMENTED(Pop);
   UNIMPLEMENTED(FunctionType);
   UNIMPLEMENTED(Export);
   UNIMPLEMENTED(Global);
   UNIMPLEMENTED(Function);
   UNIMPLEMENTED(Table);
   UNIMPLEMENTED(Memory);
+  UNIMPLEMENTED(Event);
   UNIMPLEMENTED(Module);
 
 #undef UNIMPLEMENTED
@@ -249,14 +259,14 @@ struct OverriddenVisitor {
         DELEGATE(Call);
       case Expression::Id::CallIndirectId:
         DELEGATE(CallIndirect);
-      case Expression::Id::GetLocalId:
-        DELEGATE(GetLocal);
-      case Expression::Id::SetLocalId:
-        DELEGATE(SetLocal);
-      case Expression::Id::GetGlobalId:
-        DELEGATE(GetGlobal);
-      case Expression::Id::SetGlobalId:
-        DELEGATE(SetGlobal);
+      case Expression::Id::LocalGetId:
+        DELEGATE(LocalGet);
+      case Expression::Id::LocalSetId:
+        DELEGATE(LocalSet);
+      case Expression::Id::GlobalGetId:
+        DELEGATE(GlobalGet);
+      case Expression::Id::GlobalSetId:
+        DELEGATE(GlobalSet);
       case Expression::Id::LoadId:
         DELEGATE(Load);
       case Expression::Id::StoreId:
@@ -305,6 +315,10 @@ struct OverriddenVisitor {
         DELEGATE(Nop);
       case Expression::Id::UnreachableId:
         DELEGATE(Unreachable);
+      case Expression::Id::PushId:
+        DELEGATE(Push);
+      case Expression::Id::PopId:
+        DELEGATE(Pop);
       case Expression::Id::InvalidId:
       default:
         WASM_UNREACHABLE();
@@ -344,16 +358,16 @@ struct UnifiedExpressionVisitor : public Visitor<SubType, ReturnType> {
   ReturnType visitCallIndirect(CallIndirect* curr) {
     return static_cast<SubType*>(this)->visitExpression(curr);
   }
-  ReturnType visitGetLocal(GetLocal* curr) {
+  ReturnType visitLocalGet(LocalGet* curr) {
     return static_cast<SubType*>(this)->visitExpression(curr);
   }
-  ReturnType visitSetLocal(SetLocal* curr) {
+  ReturnType visitLocalSet(LocalSet* curr) {
     return static_cast<SubType*>(this)->visitExpression(curr);
   }
-  ReturnType visitGetGlobal(GetGlobal* curr) {
+  ReturnType visitGlobalGet(GlobalGet* curr) {
     return static_cast<SubType*>(this)->visitExpression(curr);
   }
-  ReturnType visitSetGlobal(SetGlobal* curr) {
+  ReturnType visitGlobalSet(GlobalSet* curr) {
     return static_cast<SubType*>(this)->visitExpression(curr);
   }
   ReturnType visitLoad(Load* curr) {
@@ -428,6 +442,12 @@ struct UnifiedExpressionVisitor : public Visitor<SubType, ReturnType> {
   ReturnType visitUnreachable(Unreachable* curr) {
     return static_cast<SubType*>(this)->visitExpression(curr);
   }
+  ReturnType visitPush(Push* curr) {
+    return static_cast<SubType*>(this)->visitExpression(curr);
+  }
+  ReturnType visitPop(Pop* curr) {
+    return static_cast<SubType*>(this)->visitExpression(curr);
+  }
 };
 
 //
@@ -484,6 +504,10 @@ struct Walker : public VisitorType {
     static_cast<SubType*>(this)->doWalkFunction(func);
     static_cast<SubType*>(this)->visitFunction(func);
     setFunction(nullptr);
+  }
+
+  void walkEvent(Event* event) {
+    static_cast<SubType*>(this)->visitEvent(event);
   }
 
   void walkFunctionInModule(Function* func, Module* module) {
@@ -543,6 +567,13 @@ struct Walker : public VisitorType {
         self->visitFunction(curr.get());
       } else {
         self->walkFunction(curr.get());
+      }
+    }
+    for (auto& curr : module->events) {
+      if (curr->imported()) {
+        self->visitEvent(curr.get());
+      } else {
+        self->walkEvent(curr.get());
       }
     }
     self->walkTable(&module->table);
@@ -614,17 +645,17 @@ struct Walker : public VisitorType {
   static void doVisitCallIndirect(SubType* self, Expression** currp) {
     self->visitCallIndirect((*currp)->cast<CallIndirect>());
   }
-  static void doVisitGetLocal(SubType* self, Expression** currp) {
-    self->visitGetLocal((*currp)->cast<GetLocal>());
+  static void doVisitLocalGet(SubType* self, Expression** currp) {
+    self->visitLocalGet((*currp)->cast<LocalGet>());
   }
-  static void doVisitSetLocal(SubType* self, Expression** currp) {
-    self->visitSetLocal((*currp)->cast<SetLocal>());
+  static void doVisitLocalSet(SubType* self, Expression** currp) {
+    self->visitLocalSet((*currp)->cast<LocalSet>());
   }
-  static void doVisitGetGlobal(SubType* self, Expression** currp) {
-    self->visitGetGlobal((*currp)->cast<GetGlobal>());
+  static void doVisitGlobalGet(SubType* self, Expression** currp) {
+    self->visitGlobalGet((*currp)->cast<GlobalGet>());
   }
-  static void doVisitSetGlobal(SubType* self, Expression** currp) {
-    self->visitSetGlobal((*currp)->cast<SetGlobal>());
+  static void doVisitGlobalSet(SubType* self, Expression** currp) {
+    self->visitGlobalSet((*currp)->cast<GlobalSet>());
   }
   static void doVisitLoad(SubType* self, Expression** currp) {
     self->visitLoad((*currp)->cast<Load>());
@@ -697,6 +728,12 @@ struct Walker : public VisitorType {
   }
   static void doVisitUnreachable(SubType* self, Expression** currp) {
     self->visitUnreachable((*currp)->cast<Unreachable>());
+  }
+  static void doVisitPush(SubType* self, Expression** currp) {
+    self->visitPush((*currp)->cast<Push>());
+  }
+  static void doVisitPop(SubType* self, Expression** currp) {
+    self->visitPop((*currp)->cast<Pop>());
   }
 
   void setModule(Module* module) { currModule = module; }
@@ -772,23 +809,23 @@ struct PostWalker : public Walker<SubType, VisitorType> {
         }
         break;
       }
-      case Expression::Id::GetLocalId: {
+      case Expression::Id::LocalGetId: {
         // TODO: optimize leaves with a direct call?
-        self->pushTask(SubType::doVisitGetLocal, currp);
+        self->pushTask(SubType::doVisitLocalGet, currp);
         break;
       }
-      case Expression::Id::SetLocalId: {
-        self->pushTask(SubType::doVisitSetLocal, currp);
-        self->pushTask(SubType::scan, &curr->cast<SetLocal>()->value);
+      case Expression::Id::LocalSetId: {
+        self->pushTask(SubType::doVisitLocalSet, currp);
+        self->pushTask(SubType::scan, &curr->cast<LocalSet>()->value);
         break;
       }
-      case Expression::Id::GetGlobalId: {
-        self->pushTask(SubType::doVisitGetGlobal, currp);
+      case Expression::Id::GlobalGetId: {
+        self->pushTask(SubType::doVisitGlobalGet, currp);
         break;
       }
-      case Expression::Id::SetGlobalId: {
-        self->pushTask(SubType::doVisitSetGlobal, currp);
-        self->pushTask(SubType::scan, &curr->cast<SetGlobal>()->value);
+      case Expression::Id::GlobalSetId: {
+        self->pushTask(SubType::doVisitGlobalSet, currp);
+        self->pushTask(SubType::scan, &curr->cast<GlobalSet>()->value);
         break;
       }
       case Expression::Id::LoadId: {
@@ -930,6 +967,14 @@ struct PostWalker : public Walker<SubType, VisitorType> {
       }
       case Expression::Id::UnreachableId: {
         self->pushTask(SubType::doVisitUnreachable, currp);
+        break;
+      }
+      case Expression::Id::PushId: {
+        self->pushTask(SubType::doVisitPush, currp);
+        break;
+      }
+      case Expression::Id::PopId: {
+        self->pushTask(SubType::doVisitPop, currp);
         break;
       }
       case Expression::Id::NumExpressionIds:

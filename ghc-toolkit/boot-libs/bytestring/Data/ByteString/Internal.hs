@@ -4,7 +4,7 @@
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -- |
 -- Module      : Data.ByteString.Internal
@@ -91,7 +91,7 @@ import Foreign.C.Types          (CInt, CSize, CULong)
 
 import Foreign.C.String         (CString)
 
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
+#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup           (Semigroup((<>)))
 #endif
 #if !(MIN_VERSION_base(4,8,0))
@@ -119,7 +119,6 @@ import GHC.Base                 (unpackCString#)
 #endif
 
 import GHC.Prim                 (Addr#)
-import GHC.Magic                (runRW#)
 
 #if __GLASGOW_HASKELL__ >= 611
 import GHC.IO                   (IO(IO),unsafeDupablePerformIO)
@@ -590,7 +589,7 @@ overflowError fun = error $ "Data.ByteString." ++ fun ++ ": size overflow"
 --
 {-# INLINE accursedUnutterablePerformIO #-}
 accursedUnutterablePerformIO :: IO a -> a
-accursedUnutterablePerformIO (IO m) = case runRW# m of (# _, r #) -> r
+accursedUnutterablePerformIO (IO m) = case m realWorld# of (# _, r #) -> r
 
 inlinePerformIO :: IO a -> a
 inlinePerformIO = accursedUnutterablePerformIO

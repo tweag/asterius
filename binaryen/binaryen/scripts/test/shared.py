@@ -72,7 +72,6 @@ def parse_args(args):
       action='store_true', default=False,
       help=('If specified, all unfreed (but still referenced) pointers at the'
             ' end of execution are considered memory leaks. Default: disabled.'))
-
   parser.add_argument(
       'positional_args', metavar='tests', nargs=argparse.REMAINDER,
       help='Names specific tests to run.')
@@ -106,11 +105,10 @@ if not options.binaryen_bin:
   else:
     options.binaryen_bin = 'bin'
 
-# ensure BINARYEN_ROOT is set up
-os.environ['BINARYEN_ROOT'] = os.path.dirname(os.path.abspath(
-    options.binaryen_bin))
+options.binaryen_bin = os.path.normpath(os.path.abspath(options.binaryen_bin))
 
-options.binaryen_bin = os.path.normpath(options.binaryen_bin)
+# ensure BINARYEN_ROOT is set up
+os.environ['BINARYEN_ROOT'] = os.path.dirname(options.binaryen_bin)
 
 wasm_dis_filenames = ['wasm-dis', 'wasm-dis.exe']
 if not any(os.path.isfile(os.path.join(options.binaryen_bin, f))
@@ -159,6 +157,7 @@ NATIVEXX = (os.environ.get('CXX') or which('mingw32-g++') or
             which('g++') or which('clang++'))
 NODEJS = os.getenv('NODE', which('nodejs') or which('node'))
 MOZJS = which('mozjs') or which('spidermonkey')
+V8 = which('v8') or which('d8')
 EMCC = which('emcc')
 
 BINARYEN_INSTALL_DIR = os.path.dirname(options.binaryen_bin)
@@ -173,7 +172,7 @@ WASM_REDUCE = [os.path.join(options.binaryen_bin, 'wasm-reduce')]
 WASM_METADCE = [os.path.join(options.binaryen_bin, 'wasm-metadce')]
 WASM_EMSCRIPTEN_FINALIZE = [os.path.join(options.binaryen_bin,
                                          'wasm-emscripten-finalize')]
-BINARYEN_JS = os.path.join(options.binaryen_bin, 'binaryen.js')
+BINARYEN_JS = os.path.join(options.binaryen_root, 'out', 'binaryen.js')
 
 
 def wrap_with_valgrind(cmd):
@@ -192,7 +191,13 @@ if options.valgrind:
   ASM2WASM = wrap_with_valgrind(ASM2WASM)
   WASM_SHELL = wrap_with_valgrind(WASM_SHELL)
 
-os.environ['BINARYEN'] = os.getcwd()
+
+def in_binaryen(*args):
+  __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+  return os.path.join(__rootpath__, *args)
+
+
+os.environ['BINARYEN'] = in_binaryen()
 
 
 def get_platform():
@@ -205,6 +210,19 @@ def get_platform():
 def has_shell_timeout():
   return get_platform() != 'windows' and os.system('timeout 1s pwd') == 0
 
+
+# Default options to pass to v8. These enable all features.
+V8_OPTS = [
+  '--experimental-wasm-eh',
+  '--experimental-wasm-mv',
+  '--experimental-wasm-sat-f2i-conversions',
+  '--experimental-wasm-se',
+  '--experimental-wasm-threads',
+  '--experimental-wasm-simd',
+  '--experimental-wasm-anyref',
+  '--experimental-wasm-bulk-memory',
+  '--experimental-wasm-return-call'
+]
 
 has_vanilla_llvm = False
 
@@ -379,8 +397,18 @@ if not has_vanilla_emcc:
 
 # check utilities
 
+
+def validate_binary(wasm):
+  if V8:
+    cmd = [V8] + V8_OPTS + [in_binaryen('scripts', 'validation_shell.js'), '--', wasm]
+    print '      ', ' '.join(cmd)
+    subprocess.check_call(cmd, stdout=subprocess.PIPE)
+  else:
+    print '(skipping v8 binary validation)'
+
+
 def binary_format_check(wast, verify_final_result=True, wasm_as_args=['-g'],
-                        binary_suffix='.fromBinary'):
+                        binary_suffix='.fromBinary', original_wast=None):
   # checks we can convert the wast to binary and back
 
   print '     (binary format check)'
@@ -390,6 +418,13 @@ def binary_format_check(wast, verify_final_result=True, wasm_as_args=['-g'],
     os.unlink('a.wasm')
   subprocess.check_call(cmd, stdout=subprocess.PIPE)
   assert os.path.exists('a.wasm')
+
+  # make sure it is a valid wasm, using a real wasm VM
+  if os.path.basename(original_wast or wast) not in [
+    'atomics.wast',  # https://bugs.chromium.org/p/v8/issues/detail?id=9425
+    'simd.wast',  # https://bugs.chromium.org/p/v8/issues/detail?id=8460
+  ]:
+    validate_binary('a.wasm')
 
   cmd = WASM_DIS + ['a.wasm', '-o', 'ab.wast']
   print '      ', ' '.join(cmd)

@@ -25,9 +25,6 @@ module Data.Word
         -- * byte swapping
         byteSwap16, byteSwap32, byteSwap64,
 
-        -- * bit reversal
-
-        bitReverse8, bitReverse16, bitReverse32, bitReverse64
         -- * Notes
 
         -- $notes

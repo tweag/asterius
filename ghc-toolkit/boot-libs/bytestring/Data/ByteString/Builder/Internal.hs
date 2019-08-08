@@ -6,7 +6,7 @@
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 -- | Copyright : (c) 2010 - 2011 Simon Meier
 -- License     : BSD3-style (see LICENSE)
 --
@@ -134,7 +134,7 @@ module Data.ByteString.Builder.Internal (
 
 import           Control.Arrow (second)
 
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
+#if MIN_VERSION_base(4,9,0)
 import           Data.Semigroup (Semigroup((<>)))
 #endif
 #if !(MIN_VERSION_base(4,8,0))
@@ -149,10 +149,8 @@ import qualified Data.ByteString.Short.Internal as Sh
 
 #if __GLASGOW_HASKELL__ >= 611
 import qualified GHC.IO.Buffer as IO (Buffer(..), newByteBuffer)
-#if !defined(ASTERIUS)
 import           GHC.IO.Handle.Internals (wantWritableHandle, flushWriteBuffer)
 import           GHC.IO.Handle.Types (Handle__, haByteBuffer, haBufferMode)
-#endif
 import           System.IO (hFlush, BufferMode(..))
 import           Data.IORef
 #else
@@ -614,9 +612,6 @@ putLiftIO io = put $ \k br -> io >>= (`k` br)
 -- buffer is too small to execute one step of the 'Put' action, then
 -- it is replaced with a large enough buffer.
 hPut :: forall a. Handle -> Put a -> IO a
-#if defined(ASTERIUS)
-hPut = undefined
-#else
 #if __GLASGOW_HASKELL__ >= 611
 hPut h p = do
     fillHandle 1 (runPut p)
@@ -726,7 +721,6 @@ hPut h p =
 
     go (Finished buf x) = S.hPut h (byteStringFromBuffer buf) >> return x
     go (Yield1 bs io)   = S.hPut h bs >> io >>= go
-#endif
 #endif
 
 -- | Execute a 'Put' and return the computed result and the bytes
@@ -974,7 +968,7 @@ byteString :: S.ByteString -> Builder
 byteString = byteStringThreshold maximalCopySize
 
 -- | Create a 'Builder' denoting the same sequence of bytes as a lazy
--- 'L.ByteString'.
+-- 'S.ByteString'.
 -- The 'Builder' inserts large chunks of the lazy 'L.ByteString' directly,
 -- but copies small ones to ensure that the generated chunks are large on
 -- average.

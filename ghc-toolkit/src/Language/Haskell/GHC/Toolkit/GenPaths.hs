@@ -1,4 +1,3 @@
-{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
@@ -7,7 +6,6 @@ module Language.Haskell.GHC.Toolkit.GenPaths
   , genPaths
   ) where
 
-import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 import Distribution.ModuleName
 import Distribution.Simple
@@ -24,11 +22,6 @@ newtype GenPathsOptions = GenPathsOptions
   { targetModuleName :: String
   }
 
-cLibName = CLibName
-#if MIN_VERSION_Cabal (2,5,0)
-  LMainLibName
-#endif
-
 genPaths :: GenPathsOptions -> UserHooks -> UserHooks
 genPaths GenPathsOptions {..} h =
   h
@@ -36,43 +29,56 @@ genPaths GenPathsOptions {..} h =
         \t f -> do
           lbi@LocalBuildInfo {localPkgDescr = pkg_descr@PackageDescription {library = Just lib@Library {libBuildInfo = lib_bi}}} <-
             confHook h t f
-
-          case M.lookup cLibName $ componentNameMap lbi of
-            Nothing -> pure lbi
-            Just [clbi] -> do
-              let mod_path = autogenComponentModulesDir lbi clbi
-                  mod_name = fromString targetModuleName
-                  ghc_libdir = compilerProperties (compiler lbi) M.! "LibDir"
-              createDirectoryIfMissing True mod_path
-              writeFile (mod_path </> targetModuleName <.> "hs") $
-                "module " ++
-                targetModuleName ++
-                " where\n\n" ++
-                concat
-                  [ let Just conf_prog = lookupProgram prog (withPrograms lbi)
-                     in prog_name ++
-                        " :: FilePath\n" ++
-                        prog_name ++ " = " ++ show (programPath conf_prog) ++ "\n\n"
-                  | (prog_name, prog) <-
-                      [("ghc", ghcProgram), ("ghcPkg", ghcPkgProgram)]
-                  ] ++
-                "ghcLibDir :: FilePath\nghcLibDir = " ++
-                show ghc_libdir
-              pure
-                lbi
-                  { localPkgDescr =
-                      pkg_descr
-                        { library =
-                            Just
-                              lib
-                                { libBuildInfo =
-                                    lib_bi
-                                      { otherModules =
-                                          mod_name : otherModules lib_bi
-                                      , autogenModules =
-                                          mod_name : autogenModules lib_bi
-                                      }
-                                }
-                        }
-                  }
+          let [clbi] = componentNameMap lbi M.! CLibName
+              mod_path = autogenComponentModulesDir lbi clbi
+              mod_name = fromString targetModuleName
+              ghc_libdir = compilerProperties (compiler lbi) M.! "LibDir"
+          createDirectoryIfMissing True mod_path
+          writeFile (mod_path </> targetModuleName <.> "hs") $
+            "module " ++
+            targetModuleName ++
+            " where\n\n" ++
+            concat
+              [ let Just conf_prog = lookupProgram prog (withPrograms lbi)
+                 in prog_name ++
+                    " :: FilePath\n" ++
+                    prog_name ++ " = " ++ show (programPath conf_prog) ++ "\n\n"
+              | (prog_name, prog) <-
+                  [("ghc", ghcProgram), ("ghcPkg", ghcPkgProgram)]
+              ] ++
+            "ghcLibDir :: FilePath\nghcLibDir = " ++
+            show ghc_libdir ++
+            "\n\n" ++
+            concat
+              [ k ++
+              " :: FilePath\n" ++
+              k ++
+              " = " ++
+              show
+                (d $
+                 absoluteComponentInstallDirs
+                   pkg_descr
+                   lbi
+                   (componentUnitId clbi)
+                   NoCopyDest) ++
+              "\n\n"
+              | (k, d) <- [("binDir", bindir), ("dataDir", datadir)]
+              ]
+          pure
+            lbi
+              { localPkgDescr =
+                  pkg_descr
+                    { library =
+                        Just
+                          lib
+                            { libBuildInfo =
+                                lib_bi
+                                  { otherModules =
+                                      mod_name : otherModules lib_bi
+                                  , autogenModules =
+                                      mod_name : autogenModules lib_bi
+                                  }
+                            }
+                    }
+              }
     }

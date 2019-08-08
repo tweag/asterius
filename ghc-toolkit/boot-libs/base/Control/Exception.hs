@@ -264,7 +264,7 @@ to write something like
 >                 (\e -> handler)
 
 If you need to unmask asynchronous exceptions again in the exception
-handler, @restore@ can be used there too.
+handler, 'restore' can be used there too.
 
 Note that 'try' and friends /do not/ have a similar default, because
 there is no exception handler in this case.  Don't use 'try' for
@@ -332,24 +332,21 @@ kind of situation:
 
 The following operations are guaranteed not to be interruptible:
 
- * operations on 'Data.IORef.IORef' from "Data.IORef"
+ * operations on 'IORef' from "Data.IORef"
 
- * STM transactions that do not use 'GHC.Conc.retry'
+ * STM transactions that do not use 'retry'
 
  * everything from the @Foreign@ modules
 
- * everything from "Control.Exception" except for 'throwTo'
+ * everything from @Control.Exception@ except for 'throwTo'
 
- * 'Control.Concurrent.MVar.tryTakeMVar', 'Control.Concurrent.MVar.tryPutMVar',
-   'Control.Concurrent.MVar.isEmptyMVar'
+ * @tryTakeMVar@, @tryPutMVar@, @isEmptyMVar@
 
- * 'Control.Concurrent.MVar.takeMVar' if the 'Control.Concurrent.MVar.MVar' is
-   definitely full, and conversely 'Control.Concurrent.MVar.putMVar' if the
-   'Control.Concurrent.MVar.MVar' is definitely empty
+ * @takeMVar@ if the @MVar@ is definitely full, and conversely @putMVar@ if the @MVar@ is definitely empty
 
- * 'Control.Concurrent.MVar.newEmptyMVar', 'Control.Concurrent.MVar.newMVar'
+ * @newEmptyMVar@, @newMVar@
 
- * 'Control.Concurrent.forkIO', 'Control.Concurrent.myThreadId'
+ * @forkIO@, @forkIOUnmasked@, @myThreadId@
 
 -}
 

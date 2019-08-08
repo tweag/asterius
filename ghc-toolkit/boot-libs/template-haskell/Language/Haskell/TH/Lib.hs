@@ -26,7 +26,7 @@ module Language.Haskell.TH.Lib (
     -- ** Constructors lifted to 'Q'
     -- *** Literals
         intPrimL, wordPrimL, floatPrimL, doublePrimL, integerL, rationalL,
-        charL, stringL, stringPrimL, charPrimL, bytesPrimL, mkBytes,
+        charL, stringL, stringPrimL, charPrimL,
     -- *** Patterns
         litP, varP, tupP, unboxedTupP, unboxedSumP, conP, uInfixP, parensP,
         infixP, tildeP, bangP, asP, wildP, recP,
@@ -37,8 +37,8 @@ module Language.Haskell.TH.Lib (
         normalB, guardedB, normalG, normalGE, patG, patGE, match, clause,
 
     -- *** Expressions
-        dyn, varE, unboundVarE, labelE, implicitParamVarE, conE, litE, staticE,
-        appE, appTypeE, uInfixE, parensE, infixE, infixApp, sectionL, sectionR,
+        dyn, varE, unboundVarE, labelE,  conE, litE, appE, appTypeE, uInfixE, parensE,
+        staticE, infixE, infixApp, sectionL, sectionR,
         lamE, lam1E, lamCaseE, tupE, unboxedTupE, unboxedSumE, condE, multiIfE,
         letE, caseE, appsE, listE, sigE, recConE, recUpdE, stringE, fieldExp,
     -- **** Ranges
@@ -48,14 +48,13 @@ module Language.Haskell.TH.Lib (
     arithSeqE,
     fromR, fromThenR, fromToR, fromThenToR,
     -- **** Statements
-    doE, mdoE, compE,
-    bindS, letS, noBindS, parS, recS,
+    doE, compE,
+    bindS, letS, noBindS, parS,
 
     -- *** Types
-        forallT, forallVisT, varT, conT, appT, appKindT, arrowT, infixT,
-        uInfixT, parensT, equalityT, listT, tupleT, unboxedTupleT, unboxedSumT,
-        sigT, litT, wildCardT, promotedT, promotedTupleT, promotedNilT,
-        promotedConsT, implicitParamT,
+        forallT, varT, conT, appT, arrowT, infixT, uInfixT, parensT, equalityT,
+        listT, tupleT, unboxedTupleT, unboxedSumT, sigT, litT, wildCardT,
+        promotedT, promotedTupleT, promotedNilT, promotedConsT,
     -- **** Type literals
     numTyLit, strTyLit,
     -- **** Strictness
@@ -114,9 +113,6 @@ module Language.Haskell.TH.Lib (
     patSynD, patSynSigD, unidir, implBidir, explBidir, prefixPatSyn,
     infixPatSyn, recordPatSyn,
 
-    -- **** Implicit Parameters
-    implicitParamBindD,
-
     -- ** Reify
     thisModule
 
@@ -127,13 +123,11 @@ import Language.Haskell.TH.Lib.Internal hiding
   , dataD
   , newtypeD
   , classD
-  , pragRuleD
   , dataInstD
   , newtypeInstD
   , dataFamilyD
   , openTypeFamilyD
   , closedTypeFamilyD
-  , tySynEqn
   , forallC
 
   , forallT
@@ -157,9 +151,6 @@ import Language.Haskell.TH.Lib.Internal hiding
 import Language.Haskell.TH.Syntax
 
 import Control.Monad (liftM2)
-import Foreign.ForeignPtr
-import Data.Word
-import Prelude
 
 -- All definitions below represent the "old" API, since their definitions are
 -- different in Language.Haskell.TH.Lib.Internal. Please think carefully before
@@ -197,33 +188,25 @@ classD ctxt cls tvs fds decs =
     ctxt1 <- ctxt
     return $ ClassD ctxt1 cls tvs fds decs1
 
-pragRuleD :: String -> [RuleBndrQ] -> ExpQ -> ExpQ -> Phases -> DecQ
-pragRuleD n bndrs lhs rhs phases
-  = do
-      bndrs1 <- sequence bndrs
-      lhs1   <- lhs
-      rhs1   <- rhs
-      return $ PragmaD $ RuleP n Nothing bndrs1 lhs1 rhs1 phases
-
 dataInstD :: CxtQ -> Name -> [TypeQ] -> Maybe Kind -> [ConQ] -> [DerivClauseQ]
           -> DecQ
 dataInstD ctxt tc tys ksig cons derivs =
   do
     ctxt1 <- ctxt
-    ty1 <- foldl appT (conT tc) tys
+    tys1  <- sequence tys
     cons1 <- sequence cons
     derivs1 <- sequence derivs
-    return (DataInstD ctxt1 Nothing ty1 ksig cons1 derivs1)
+    return (DataInstD ctxt1 tc tys1 ksig cons1 derivs1)
 
 newtypeInstD :: CxtQ -> Name -> [TypeQ] -> Maybe Kind -> ConQ -> [DerivClauseQ]
              -> DecQ
 newtypeInstD ctxt tc tys ksig con derivs =
   do
     ctxt1 <- ctxt
-    ty1 <- foldl appT (conT tc) tys
+    tys1  <- sequence tys
     con1  <- con
     derivs1 <- sequence derivs
-    return (NewtypeInstD ctxt1 Nothing ty1 ksig con1 derivs1)
+    return (NewtypeInstD ctxt1 tc tys1 ksig con1 derivs1)
 
 dataFamilyD :: Name -> [TyVarBndr] -> Maybe Kind -> DecQ
 dataFamilyD tc tvs kind
@@ -239,13 +222,6 @@ closedTypeFamilyD :: Name -> [TyVarBndr] -> FamilyResultSig
 closedTypeFamilyD tc tvs result injectivity eqns =
   do eqns1 <- sequence eqns
      return (ClosedTypeFamilyD (TypeFamilyHead tc tvs result injectivity) eqns1)
-
-tySynEqn :: (Maybe [TyVarBndr]) -> TypeQ -> TypeQ -> TySynEqnQ
-tySynEqn tvs lhs rhs =
-  do
-    lhs1 <- lhs
-    rhs1 <- rhs
-    return (TySynEqn tvs lhs1 rhs1)
 
 forallC :: [TyVarBndr] -> CxtQ -> ConQ -> ConQ
 forallC ns ctxt con = liftM2 (ForallC ns) ctxt con
@@ -305,17 +281,3 @@ standaloneDerivWithStrategyD mds ctxt ty = do
   ctxt' <- ctxt
   ty'   <- ty
   return $ StandaloneDerivD mds ctxt' ty'
-
--------------------------------------------------------------------------------
--- * Bytes literals
-
--- | Create a Bytes datatype representing raw bytes to be embedded into the
--- program/library binary.
---
--- @since 2.16.0.0
-mkBytes
-   :: ForeignPtr Word8 -- ^ Pointer to the data
-   -> Word             -- ^ Offset from the pointer
-   -> Word             -- ^ Number of bytes
-   -> Bytes
-mkBytes = Bytes

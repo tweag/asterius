@@ -1,6 +1,8 @@
 global
+ [events]       : 0       
  [exports]      : 0       
  [funcs]        : 3       
+ [globals]      : 1       
  [imports]      : 0       
  [memory-data]  : 9       
  [table-data]   : 3       
@@ -31,16 +33,16 @@ func: ifs
  if             : 4       
 (module
  (type $0 (func (param i32)))
- (type $1 (func))
+ (type $FUNCSIG$v (func))
  (memory $0 256 256)
  (data (i32.const 0) "\ff\ef\0f\1f 0@P\99")
  (table $0 256 256 funcref)
  (elem (i32.const 0) $ifs $ifs $ifs)
  (global $glob i32 (i32.const 1337))
- (func $empty (; 0 ;) (type $1)
+ (func $empty (; 0 ;) (type $FUNCSIG$v)
   (nop)
  )
- (func $small (; 1 ;) (type $1)
+ (func $small (; 1 ;) (type $FUNCSIG$v)
   (nop)
   (drop
    (i32.const 100421)
@@ -88,15 +90,19 @@ func: ifs
  )
 )
 global
+ [events]       : 0       
  [exports]      : 0       
  [funcs]        : 0       
+ [globals]      : 0       
  [imports]      : 0       
  [total]        : 0       
 (module
 )
 global
+ [events]       : 0       
  [exports]      : 2       
  [funcs]        : 3       
+ [globals]      : 0       
  [imports]      : 1       
  [total]        : 0       
 func: func_a
@@ -168,8 +174,10 @@ export: b (func_b)
  )
 )
 global
+ [events]       : 0       
  [exports]      : 1       
  [funcs]        : 1       
+ [globals]      : 0       
  [imports]      : 1       
  [total]        : 0       
 func: func_a
@@ -198,8 +206,10 @@ start: func_a
  )
 )
 global
+ [events]       : 0       
  [exports]      : 0       
  [funcs]        : 1       
+ [globals]      : 0       
  [imports]      : 1       
  [total]        : 0       
 func: func_a
@@ -224,8 +234,10 @@ start: func_a
  )
 )
 global
+ [events]       : 0       
  [exports]      : 1       
  [funcs]        : 1       
+ [globals]      : 1       
  [imports]      : 1       
  [total]        : 1       
  global.get     : 1       

@@ -33,7 +33,9 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result BeginModule(uint32_t version) override;
   Result EndModule() override;
 
-  Result BeginSection(BinarySection section_type, Offset size) override;
+  Result BeginSection(Index section_index,
+                      BinarySection section_type,
+                      Offset size) override;
 
   Result BeginCustomSection(Offset size, string_view section_name) override;
   Result EndCustomSection() override;
@@ -218,6 +220,9 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result EndCodeSection() override;
   Result OnSimdLaneOpExpr(Opcode opcode, uint64_t value) override;
   Result OnSimdShuffleOpExpr(Opcode opcode, v128 value) override;
+  Result OnLoadSplatExpr(Opcode opcode,
+                         uint32_t alignment_log2,
+                         Address offset) override;
 
   Result BeginElemSection(Offset size) override;
   Result OnElemSegmentCount(Index count) override;
@@ -318,6 +323,9 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
                        uint32_t flags) override;
   Result OnInitFunctionCount(Index count) override;
   Result OnInitFunction(uint32_t priority, Index function_index) override;
+  Result OnComdatCount(Index count) override;
+  Result OnComdatBegin(string_view name, uint32_t flags, Index count) override;
+  Result OnComdatEntry(ComdatType kind, Index index) override;
   Result EndLinkingSection() override;
 
   Result BeginEventSection(Offset size) override;
@@ -331,6 +339,7 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result OnInitExprGlobalGetExpr(Index index, Index global_index) override;
   Result OnInitExprI32ConstExpr(Index index, uint32_t value) override;
   Result OnInitExprI64ConstExpr(Index index, uint64_t value) override;
+  Result OnInitExprRefNull(Index index) override;
 
  private:
   void Indent();

@@ -26,9 +26,7 @@
 
 module GHC.IO.Handle.Text (
         hWaitForInput, hGetChar, hGetLine, hGetContents, hPutChar, hPutStr,
-#if !defined(ASTERIUS)
         commitBuffer',       -- hack, see below
-#endif
         hGetBuf, hGetBufSome, hGetBufNonBlocking, hPutBuf, hPutBufNonBlocking,
         memcpy, hPutStrLn,
     ) where
@@ -58,10 +56,6 @@ import GHC.Real
 import GHC.Num
 import GHC.Show
 import GHC.List
-
-#if defined(ASTERIUS)
-import Asterius.Prim
-#endif
 
 -- ---------------------------------------------------------------------------
 -- Simple input operations
@@ -95,9 +89,6 @@ import Asterius.Prim
 --
 
 hWaitForInput :: Handle -> Int -> IO Bool
-#if defined(ASTERIUS)
-hWaitForInput = undefined
-#else
 hWaitForInput h msecs = do
   wantReadableHandle_ "hWaitForInput" h $ \ handle_@Handle__{..} -> do
   cbuf <- readIORef haCharBuffer
@@ -126,7 +117,6 @@ hWaitForInput h msecs = do
                 -- and re-running IODevice.ready if we don't have any full
                 -- characters; but we don't know how long we've waited
                 -- so far.
-#endif
 
 -- ---------------------------------------------------------------------------
 -- hGetChar
@@ -139,9 +129,6 @@ hWaitForInput h msecs = do
 --  * 'isEOFError' if the end of file has been reached.
 
 hGetChar :: Handle -> IO Char
-#if defined(ASTERIUS)
-hGetChar = undefined
-#else
 hGetChar handle =
   wantReadableHandle_ "hGetChar" handle $ \handle_@Handle__{..} -> do
 
@@ -182,7 +169,6 @@ hGetChar handle =
      else do
             writeIORef haCharBuffer buf2
             return c1
-#endif
 
 -- ---------------------------------------------------------------------------
 -- hGetLine
@@ -200,18 +186,11 @@ hGetChar handle =
 -- line is returned.
 
 hGetLine :: Handle -> IO String
-#if defined(ASTERIUS)
-hGetLine = undefined
-#else
 hGetLine h =
   wantReadableHandle_ "hGetLine" h $ \ handle_ -> do
      hGetLineBuffered handle_
-#endif
-
-#if !defined(ASTERIUS)
 
 hGetLineBuffered :: Handle__ -> IO String
-hGetLineBuffered = undefined
 hGetLineBuffered handle_@Handle__{..} = do
   buf <- readIORef haCharBuffer
   hGetLineBufferedLoop handle_ buf []
@@ -274,8 +253,6 @@ maybeFillReadBuffer handle_ buf
      (\e -> do if isEOFError e
                   then return Nothing
                   else ioError e)
-
-#endif
 
 -- See GHC.IO.Buffer
 #define CHARBUF_UTF32
@@ -376,10 +353,10 @@ unpack_nl !buf !r !w acc0
 -- list returned by 'hGetContents' @hdl@.
 --
 -- Any operation that fails because a handle is closed,
--- also fails if a handle is semi-closed.  The only exception is
--- 'System.IO.hClose'.  A semi-closed handle becomes closed:
+-- also fails if a handle is semi-closed.  The only exception is 'hClose'.
+-- A semi-closed handle becomes closed:
 --
---  * if 'System.IO.hClose' is applied to it;
+--  * if 'hClose' is applied to it;
 --
 --  * if an I\/O error occurs when reading an item from the handle;
 --
@@ -398,20 +375,15 @@ unpack_nl !buf !r !w acc0
 --  * 'isEOFError' if the end of file has been reached.
 
 hGetContents :: Handle -> IO String
-#if defined(ASTERIUS)
-hGetContents = undefined
-#else
 hGetContents handle =
    wantReadableHandle "hGetContents" handle $ \handle_ -> do
       xs <- lazyRead handle
       return (handle_{ haType=SemiClosedHandle}, xs )
-#endif
 
 -- Note that someone may close the semi-closed handle (or change its
 -- buffering), so each time these lazy read functions are pulled on,
 -- they have to check whether the handle has indeed been closed.
 
-#if !defined(ASTERIUS)
 lazyRead :: Handle -> IO String
 lazyRead handle =
    unsafeInterleaveIO $
@@ -453,10 +425,8 @@ lazyReadBuffered h handle_@Handle__{..} = do
 
                   return (handle_', r)
         )
-#endif
 
 -- ensure we have some characters in the buffer
-#if !defined(ASTERIUS)
 getSomeCharacters :: Handle__ -> CharBuffer -> IO CharBuffer
 getSomeCharacters handle_@Handle__{..} buf@Buffer{..} =
   case bufferElems buf of
@@ -482,7 +452,6 @@ getSomeCharacters handle_@Handle__{..} buf@Buffer{..} =
     -- buffer has some chars in it already: just return it
     _otherwise ->
       return buf
-#endif
 
 -- ---------------------------------------------------------------------------
 -- hPutChar
@@ -498,16 +467,11 @@ getSomeCharacters handle_@Handle__{..} buf@Buffer{..} =
 --  * 'isPermissionError' if another system resource limit would be exceeded.
 
 hPutChar :: Handle -> Char -> IO ()
-#if defined(ASTERIUS)
-hPutChar (Handle h) c = js_putChar h c
-#else
 hPutChar handle c = do
     c `seq` return ()
     wantWritableHandle "hPutChar" handle $ \ handle_  -> do
      hPutcBuffered handle_ c
-#endif
 
-#if !defined(ASTERIUS)
 hPutcBuffered :: Handle__ -> Char -> IO ()
 hPutcBuffered handle_@Handle__{..} c = do
   buf <- readIORef haCharBuffer
@@ -533,7 +497,6 @@ hPutcBuffered handle_@Handle__{..} c = do
        debugIO ("putc: " ++ summaryBuffer buf)
        w'  <- writeCharBuf raw w c
        return buf{ bufR = w' }
-#endif
 
 -- ---------------------------------------------------------------------------
 -- hPutStr
@@ -576,12 +539,6 @@ hPutStrLn handle str = hPutStr' handle str True
 
 {-# NOINLINE hPutStr' #-}
 hPutStr' :: Handle -> String -> Bool -> IO ()
-#if defined(ASTERIUS)
-hPutStr' handle str add_nl =
-  do
-    hPutChars handle str
-    when add_nl $ hPutChar handle '\n'
-#else
 hPutStr' handle str add_nl =
   do
     (buffer_mode, nl) <-
@@ -597,13 +554,11 @@ hPutStr' handle str add_nl =
             writeBlocks handle True  add_nl nl buf str
        (BlockBuffering _, buf) -> do
             writeBlocks handle False add_nl nl buf str
-#endif
 
 hPutChars :: Handle -> [Char] -> IO ()
 hPutChars _      [] = return ()
 hPutChars handle (c:cs) = hPutChar handle c >> hPutChars handle cs
 
-#if !defined(ASTERIUS)
 getSpareBuffer :: Handle__ -> IO (BufferMode, CharBuffer)
 getSpareBuffer Handle__{haCharBuffer=ref,
                         haBuffers=spare_ref,
@@ -621,10 +576,9 @@ getSpareBuffer Handle__{haCharBuffer=ref,
             BufferListNil -> do
                 new_buf <- newCharBuffer (bufSize buf) WriteBuffer
                 return (mode, new_buf)
-#endif
+
 
 -- NB. performance-critical code: eyeball the Core.
-#if !defined(ASTERIUS)
 writeBlocks :: Handle -> Bool -> Bool -> Newline -> Buffer CharBufElem -> String -> IO ()
 writeBlocks hdl line_buffered add_nl nl
             buf@Buffer{ bufRaw=raw, bufSize=len } s =
@@ -658,14 +612,13 @@ writeBlocks hdl line_buffered add_nl nl
         shoveString n' cs rest
   in
   shoveString 0 s (if add_nl then "\n" else "")
-#endif
 
 -- -----------------------------------------------------------------------------
 -- commitBuffer handle buf sz count flush release
 --
 -- Write the contents of the buffer 'buf' ('sz' bytes long, containing
 -- 'count' bytes of data) to handle (handle must be block or line buffered).
-#if !defined(ASTERIUS)
+
 commitBuffer
         :: Handle                       -- handle to commit to
         -> RawCharBuffer -> Int         -- address and size (in bytes) of buffer
@@ -718,7 +671,6 @@ commitBuffer' raw sz@(I# _) count@(I# _) flush release h_@Handle__{..}
                writeIORef haBuffers (BufferListCons raw spare_bufs)
 
       return this_buf
-#endif
 
 -- ---------------------------------------------------------------------------
 -- Reading/writing sequences of bytes.
@@ -732,7 +684,7 @@ commitBuffer' raw sz@(I# _) count@(I# _) flush release h_@Handle__{..}
 -- 'hPutBuf' ignores any text encoding that applies to the 'Handle',
 -- writing the bytes directly to the underlying file or device.
 --
--- 'hPutBuf' ignores the prevailing 'System.IO.TextEncoding' and
+-- 'hPutBuf' ignores the prevailing 'TextEncoding' and
 -- 'NewlineMode' on the 'Handle', and writes bytes directly.
 --
 -- This operation may fail with:
@@ -765,9 +717,6 @@ hPutBuf' handle ptr count can_block
   | count == 0 = return 0
   | count <  0 = illegalBufferSize handle "hPutBuf" count
   | otherwise =
-#if defined(ASTERIUS)
-    undefined
-#else
     wantWritableHandle "hPutBuf" handle $
       \ h_@Handle__{..} -> do
           debugIO ("hPutBuf count=" ++ show count)
@@ -781,9 +730,7 @@ hPutBuf' handle ptr count can_block
              BlockBuffering _      -> do return ()
              _line_or_no_buffering -> do flushWriteBuffer h_
           return r
-#endif
 
-#if !defined(ASTERIUS)
 bufWrite :: Handle__-> Ptr Word8 -> Int -> Bool -> IO Int
 bufWrite h_@Handle__{..} ptr count can_block =
   seq count $ do  -- strictness hack
@@ -841,7 +788,6 @@ writeChunkNonBlocking :: Handle__ -> Ptr Word8 -> Int -> IO Int
 writeChunkNonBlocking h_@Handle__{..} ptr bytes
   | Just fd <- cast haDevice  =  RawIO.writeNonBlocking (fd::FD) ptr bytes
   | otherwise = error "Todo: hPutBuf"
-#endif
 
 -- ---------------------------------------------------------------------------
 -- hGetBuf
@@ -858,14 +804,11 @@ writeChunkNonBlocking h_@Handle__{..} ptr bytes
 -- If the handle is a pipe or socket, and the writing end
 -- is closed, 'hGetBuf' will behave as if EOF was reached.
 --
--- 'hGetBuf' ignores the prevailing 'System.IO.TextEncoding' and 'NewlineMode'
+-- 'hGetBuf' ignores the prevailing 'TextEncoding' and 'NewlineMode'
 -- on the 'Handle', and reads bytes directly.
 
 hGetBuf :: Handle -> Ptr a -> Int -> IO Int
-#if defined(ASTERIUS)
-hGetBuf = undefined
-#else
-hGetBuf h !ptr count
+hGetBuf h ptr count
   | count == 0 = return 0
   | count <  0 = illegalBufferSize h "hGetBuf" count
   | otherwise =
@@ -876,13 +819,11 @@ hGetBuf h !ptr count
          if isEmptyBuffer buf
             then bufReadEmpty    h_ buf (castPtr ptr) 0 count
             else bufReadNonEmpty h_ buf (castPtr ptr) 0 count
-#endif
 
 -- small reads go through the buffer, large reads are satisfied by
 -- taking data first from the buffer and then direct from the file
 -- descriptor.
 
-#if !defined(ASTERIUS)
 bufReadNonEmpty :: Handle__ -> Buffer Word8 -> Ptr Word8 -> Int -> Int -> IO Int
 bufReadNonEmpty h_@Handle__{..}
                 buf@Buffer{ bufRaw=raw, bufR=w, bufL=r, bufSize=sz }
@@ -927,7 +868,6 @@ bufReadEmpty h_@Handle__{..}
     if r == 0
         then return (so_far + off)
         else loop fd (off + r) (bytes - r)
-#endif
 
 -- ---------------------------------------------------------------------------
 -- hGetBufSome
@@ -946,14 +886,11 @@ bufReadEmpty h_@Handle__{..}
 -- If the handle is a pipe or socket, and the writing end
 -- is closed, 'hGetBufSome' will behave as if EOF was reached.
 --
--- 'hGetBufSome' ignores the prevailing 'System.IO.TextEncoding' and
--- 'NewlineMode' on the 'Handle', and reads bytes directly.
+-- 'hGetBufSome' ignores the prevailing 'TextEncoding' and 'NewlineMode'
+-- on the 'Handle', and reads bytes directly.
 
 hGetBufSome :: Handle -> Ptr a -> Int -> IO Int
-#if defined(ASTERIUS)
-hGetBufSome = undefined
-#else
-hGetBufSome h !ptr count
+hGetBufSome h ptr count
   | count == 0 = return 0
   | count <  0 = illegalBufferSize h "hGetBufSome" count
   | otherwise =
@@ -974,12 +911,9 @@ hGetBufSome h !ptr count
             else
               let count' = min count (bufferElems buf)
               in bufReadNBNonEmpty h_ buf (castPtr ptr) 0 count'
-#endif
 
-#if !defined(ASTERIUS)
 haFD :: Handle__ -> Maybe FD
 haFD h_@Handle__{..} = cast haDevice
-#endif
 
 -- | 'hGetBufNonBlocking' @hdl buf count@ reads data from the handle @hdl@
 -- into the buffer @buf@ until either EOF is reached, or
@@ -994,17 +928,14 @@ haFD h_@Handle__{..} = cast haDevice
 -- If the handle is a pipe or socket, and the writing end
 -- is closed, 'hGetBufNonBlocking' will behave as if EOF was reached.
 --
--- 'hGetBufNonBlocking' ignores the prevailing 'System.IO.TextEncoding' and
+-- 'hGetBufNonBlocking' ignores the prevailing 'TextEncoding' and
 -- 'NewlineMode' on the 'Handle', and reads bytes directly.
 --
 -- NOTE: on Windows, this function does not work correctly; it
 -- behaves identically to 'hGetBuf'.
 
 hGetBufNonBlocking :: Handle -> Ptr a -> Int -> IO Int
-#if defined(ASTERIUS)
-hGetBufNonBlocking = undefined
-#else
-hGetBufNonBlocking h !ptr count
+hGetBufNonBlocking h ptr count
   | count == 0 = return 0
   | count <  0 = illegalBufferSize h "hGetBufNonBlocking" count
   | otherwise =
@@ -1015,9 +946,7 @@ hGetBufNonBlocking h !ptr count
          if isEmptyBuffer buf
             then bufReadNBEmpty    h_ buf (castPtr ptr) 0 count
             else bufReadNBNonEmpty h_ buf (castPtr ptr) 0 count
-#endif
 
-#if !defined(ASTERIUS)
 bufReadNBEmpty :: Handle__ -> Buffer Word8 -> Ptr Word8 -> Int -> Int -> IO Int
 bufReadNBEmpty   h_@Handle__{..}
                  buf@Buffer{ bufRaw=raw, bufR=w, bufL=r, bufSize=sz }
@@ -1067,7 +996,6 @@ bufReadNBNonEmpty h_@Handle__{..}
         if remaining == 0
            then return so_far'
            else bufReadNBEmpty h_ buf' ptr' so_far' remaining
-#endif
 
 -- ---------------------------------------------------------------------------
 -- memcpy wrappers
@@ -1096,3 +1024,4 @@ illegalBufferSize handle fn sz =
                             InvalidArgument  fn
                             ("illegal buffer size " ++ showsPrec 9 sz [])
                             Nothing Nothing)
+

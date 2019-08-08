@@ -58,12 +58,20 @@ foreign import ccall unsafe "assert_eq_i64" assert_eq_i64 :: Int -> Int -> IO ()
 
 foreign import ccall unsafe "print_f64" print_f64 :: Double -> IO ()
 
+readDouble :: IO ()
+readDouble = let r = read "1.2"
+  in if (r :: Double) == 1.2
+       then pure ()
+       else fail $ "read value: " <> show r
+
 main :: IO ()
 main = do
 
   performGC
 
   putStrLn $ trace "trace message" ""
+
+  readDouble
 
   -- Test that assert_eq works
   assert_eq_i64 10 10

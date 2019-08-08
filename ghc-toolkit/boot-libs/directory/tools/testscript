@@ -18,7 +18,7 @@ prepare() {
                 if [ "${LOCALAPPDATA-}" ]; then
                     dir=`cygpath -u "$LOCALAPPDATA"`/Programs/stack/x86_64-windows
                     mkdir -p "$dir"
-                    curl -fsLS "https://downloads.haskell.org/~ghc/7.8.4/ghc-7.8.4-x86_64-unknown-mingw32.tar.xz" | tar -C "$dir" -xJ
+                    curl -L "https://downloads.haskell.org/~ghc/7.8.4/ghc-7.8.4-x86_64-unknown-mingw32.tar.xz" | tar -C "$dir" -xJ
                     echo installed >"$dir/ghc-7.8.4.installed"
                 fi;;
         esac
@@ -82,11 +82,6 @@ build() {
                     sed -i.bak 's/WithHooks autoconfUserHooks//' Setup.hs
                     $stack exec sh ./configure
                 fi;;
-        esac
-
-        case `uname` in
-            # work around buggy utimensat on Travis OS X
-            Darwin) testflags="FileTime.set-atime=False $testflags";;
         esac
 
         $stack test --haddock --no-haddock-deps \

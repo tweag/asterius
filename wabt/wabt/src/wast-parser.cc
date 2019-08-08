@@ -396,10 +396,11 @@ TokenType WastParser::Peek(size_t n) {
     if (cur.token_type() != TokenType::LparAnn) {
       tokens_.push_back(cur);
     } else {
-      // Custom annotation. For now, discard until matching Rpar
+      // Custom annotation. For now, discard until matching Rpar.
       if (!options_->features.annotations_enabled()) {
         Error(cur.loc, "annotations not enabled: %s", cur.to_string().c_str());
-        return TokenType::Invalid;
+        tokens_.push_back(Token(cur.loc, TokenType::Invalid));
+        continue;
       }
       int indent = 1;
       while (indent > 0) {
@@ -587,15 +588,24 @@ bool WastParser::ParseVarOpt(Var* out_var, Var default_var) {
 
 Result WastParser::ParseOffsetExpr(ExprList* out_expr_list) {
   WABT_TRACE(ParseOffsetExpr);
-  if (MatchLpar(TokenType::Offset)) {
-    CHECK_RESULT(ParseTerminatingInstrList(out_expr_list));
-    EXPECT(Rpar);
-  } else if (PeekMatchExpr()) {
-    CHECK_RESULT(ParseExpr(out_expr_list));
-  } else {
+  if (!ParseOffsetExprOpt(out_expr_list)) {
     return ErrorExpected({"an offset expr"}, "(i32.const 123)");
   }
   return Result::Ok;
+}
+
+bool WastParser::ParseOffsetExprOpt(ExprList* out_expr_list) {
+  WABT_TRACE(ParseOffsetExprOpt);
+  if (MatchLpar(TokenType::Offset)) {
+    CHECK_RESULT(ParseTerminatingInstrList(out_expr_list));
+    EXPECT(Rpar);
+    return true;
+  } else if (PeekMatchExpr()) {
+    CHECK_RESULT(ParseExpr(out_expr_list));
+    return true;
+  } else {
+    return false;
+  }
 }
 
 Result WastParser::ParseTextList(std::vector<uint8_t>* out_data) {
@@ -696,6 +706,22 @@ Result WastParser::ParseRefType(Type* out_type) {
 
   *out_type = type;
   return Result::Ok;
+}
+
+bool WastParser::ParseRefTypeOpt(Type* out_type) {
+  WABT_TRACE(ParseRefTypeOpt);
+  if (!PeekMatch(TokenType::ValueType)) {
+    return false;
+  }
+
+  Token token = Consume();
+  Type type = token.type();
+  if (type == Type::Anyref && !options_->features.reference_types_enabled()) {
+    return false;
+  }
+
+  *out_type = type;
+  return true;
 }
 
 Result WastParser::ParseQuotedText(std::string* text) {
@@ -889,13 +915,12 @@ Result WastParser::ParseDataModuleField(Module* module) {
   ParseBindVarOpt(&name);
   auto field = MakeUnique<DataSegmentModuleField>(loc, name);
 
-  if (Peek() == TokenType::Passive) {
-    Consume();
-    field->data_segment.passive = true;
-  } else {
-    ParseVarOpt(&field->data_segment.memory_var, Var(0, loc));
+  if (ParseVarOpt(&field->data_segment.memory_var, Var(0, loc))) {
     CHECK_RESULT(ParseOffsetExpr(&field->data_segment.offset));
+  } else if (!ParseOffsetExprOpt(&field->data_segment.offset)) {
+    field->data_segment.passive = true;
   }
+
   ParseTextListOpt(&field->data_segment.data);
   EXPECT(Rpar);
   module->AppendField(std::move(field));
@@ -911,10 +936,8 @@ Result WastParser::ParseElemModuleField(Module* module) {
   ParseBindVarOpt(&name);
   auto field = MakeUnique<ElemSegmentModuleField>(loc, name);
 
-  if (Peek() == TokenType::Passive) {
-    Consume();
+  if (ParseRefTypeOpt(&field->elem_segment.elem_type)) {
     field->elem_segment.passive = true;
-    CHECK_RESULT(ParseRefType(&field->elem_segment.elem_type));
     // Parse a potentially empty sequence of ElemExprs.
     while (true) {
       Var var;
@@ -1575,9 +1598,12 @@ Result WastParser::ParsePlainInstr(std::unique_ptr<Expr>* out_expr) {
       break;
     }
 
-    case TokenType::Binary:
-      out_expr->reset(new BinaryExpr(Consume().opcode(), loc));
+    case TokenType::Binary: {
+      Token token = Consume();
+      ErrorUnlessOpcodeEnabled(token);
+      out_expr->reset(new BinaryExpr(token.opcode(), loc));
       break;
+    }
 
     case TokenType::Compare:
       out_expr->reset(new CompareExpr(Consume().opcode(), loc));
@@ -2377,6 +2403,7 @@ Result WastParser::ParseModuleCommand(Script* script, CommandPtr* out_command) {
     case ScriptModuleType::Binary: {
       auto* bsm = cast<BinaryScriptModule>(script_module.get());
       ReadBinaryOptions options;
+      options.features = options_->features;
       Errors errors;
       const char* filename = "<text>";
       ReadBinaryIr(filename, bsm->data.data(), bsm->data.size(), options,

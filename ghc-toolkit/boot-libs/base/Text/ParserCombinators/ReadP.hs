@@ -17,7 +17,7 @@
 -- This is a library of parser combinators, originally written by Koen Claessen.
 -- It parses all alternatives in parallel, so it never keeps hold of
 -- the beginning of the input string, a common source of space leaks with
--- other parsers.  The @('+++')@ choice combinator is genuinely commutative;
+-- other parsers.  The '(+++)' choice combinator is genuinely commutative;
 -- it makes no difference which branch is \"shorter\".
 
 -----------------------------------------------------------------------------
@@ -99,7 +99,7 @@ data P a
   | Look (String -> P a)
   | Fail
   | Result a (P a)
-  | Final (NonEmpty (a,String))
+  | Final [(a,String)] -- invariant: list is non-empty!
   deriving Functor -- ^ @since 4.8.0.0
 
 -- Monad, MonadPlus
@@ -114,11 +114,13 @@ instance MonadPlus P
 
 -- | @since 2.01
 instance Monad P where
-  (Get f)         >>= k = Get (\c -> f c >>= k)
-  (Look f)        >>= k = Look (\s -> f s >>= k)
-  Fail            >>= _ = Fail
-  (Result x p)    >>= k = k x <|> (p >>= k)
-  (Final (r:|rs)) >>= k = final [ys' | (x,s) <- (r:rs), ys' <- run (k x) s]
+  (Get f)      >>= k = Get (\c -> f c >>= k)
+  (Look f)     >>= k = Look (\s -> f s >>= k)
+  Fail         >>= _ = Fail
+  (Result x p) >>= k = k x <|> (p >>= k)
+  (Final r)    >>= k = final [ys' | (x,s) <- r, ys' <- run (k x) s]
+
+  fail _ = Fail
 
 -- | @since 4.9.0.0
 instance MonadFail P where
@@ -142,15 +144,11 @@ instance Alternative P where
   -- two finals are combined
   -- final + look becomes one look and one final (=optimization)
   -- final + sthg else becomes one look and one final
-  Final r       <|> Final t = Final (r <> t)
-  Final (r:|rs) <|> Look f  = Look (\s -> Final (r:|(rs ++ run (f s) s)))
-  Final (r:|rs) <|> p       = Look (\s -> Final (r:|(rs ++ run p s)))
-  Look f        <|> Final r = Look (\s -> Final (case run (f s) s of
-                                []     -> r
-                                (x:xs) -> (x:|xs) <> r))
-  p             <|> Final r = Look (\s -> Final (case run p s of
-                                []     -> r
-                                (x:xs) -> (x:|xs) <> r))
+  Final r    <|> Final t    = Final (r ++ t)
+  Final r    <|> Look f     = Look (\s -> Final (r ++ run (f s) s))
+  Final r    <|> p          = Look (\s -> Final (r ++ run p s))
+  Look f     <|> Final r    = Look (\s -> Final (run (f s) s ++ r))
+  p          <|> Final r    = Look (\s -> Final (run p s ++ r))
 
   -- two looks are combined (=optimization)
   -- look + sthg else floats upwards
@@ -175,6 +173,7 @@ instance Applicative ReadP where
 
 -- | @since 2.01
 instance Monad ReadP where
+  fail _    = R (\_ -> Fail)
   R m >>= f = R (\k -> m (\a -> let R m' = f a in m' k))
 
 -- | @since 4.9.0.0
@@ -193,15 +192,16 @@ instance MonadPlus ReadP
 -- Operations over P
 
 final :: [(a,String)] -> P a
-final []     = Fail
-final (r:rs) = Final (r:|rs)
+-- Maintains invariant for Final constructor
+final [] = Fail
+final r  = Final r
 
 run :: P a -> ReadS a
-run (Get f)         (c:s) = run (f c) s
-run (Look f)        s     = run (f s) s
-run (Result x p)    s     = (x,s) : run p s
-run (Final (r:|rs)) _     = (r:rs)
-run _               _     = []
+run (Get f)      (c:s) = run (f c) s
+run (Look f)     s     = run (f s) s
+run (Result x p) s     = (x,s) : run p s
+run (Final r)    _     = r
+run _            _     = []
 
 -- ---------------------------------------------------------------------------
 -- Operations over ReadP

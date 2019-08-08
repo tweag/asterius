@@ -1,7 +1,7 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE CPP, NoImplicitPrelude, MagicHash, UnboxedTuples, BangPatterns #-}
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -31,8 +31,12 @@ import {-# SOURCE #-} GHC.Exception( divZeroException, overflowException
                                    , underflowException
                                    , ratioZeroDenomException )
 
-#if defined(MIN_VERSION_integer_gmp)
+#if defined(OPTIMISE_INTEGER_GCD_LCM)
+# if defined(MIN_VERSION_integer_gmp)
 import GHC.Integer.GMP.Internals
+# else
+#  error unsupported OPTIMISE_INTEGER_GCD_LCM configuration
+# endif
 #endif
 
 infixr 8  ^, ^^
@@ -134,7 +138,7 @@ class  (Num a, Ord a) => Real a  where
 --
 -- The Haskell Report defines no laws for 'Integral'. However, 'Integral'
 -- instances are customarily expected to define a Euclidean domain and have the
--- following properties for the `div`\/`mod` and `quot`\/`rem` pairs, given
+-- following properties for the 'div'/'mod' and 'quot'/'rem' pairs, given
 -- suitable Euclidean functions @f@ and @g@:
 --
 -- * @x@ = @y * quot x y + rem x y@ with @rem x y@ = @fromInteger 0@ or
@@ -178,21 +182,21 @@ class  (Real a, Enum a) => Integral a  where
 
 -- | Fractional numbers, supporting real division.
 --
--- The Haskell Report defines no laws for 'Fractional'. However, @('+')@ and
--- @('*')@ are customarily expected to define a division ring and have the
+-- The Haskell Report defines no laws for 'Fractional'. However, '(+)' and
+-- '(*)' are customarily expected to define a division ring and have the
 -- following properties:
 --
 -- [__'recip' gives the multiplicative inverse__]:
 -- @x * recip x@ = @recip x * x@ = @fromInteger 1@
 --
 -- Note that it /isn't/ customarily expected that a type instance of
--- 'Fractional' implement a field. However, all instances in @base@ do.
+-- 'Fractional' implement a field. However, all instances in 'base' do.
 class  (Num a) => Fractional a  where
     {-# MINIMAL fromRational, (recip | (/)) #-}
 
-    -- | Fractional division.
+    -- | fractional division
     (/)                 :: a -> a -> a
-    -- | Reciprocal fraction.
+    -- | reciprocal fraction
     recip               :: a -> a
     -- | Conversion from a 'Rational' (that is @'Ratio' 'Integer'@).
     -- A floating literal stands for an application of 'fromRational'
@@ -295,7 +299,7 @@ never reach the condition in `numericEnumFromTo`
 
     9007199254740990 + 1 + 1 + ... > 9007199254740991 + 1/2
 
-We would fall into infinite loop (as reported in #15081).
+We would fall into infinite loop (as reported in Trac #15081).
 
 To remedy the situation, we record the number of `1` that needed to be added
 to the start number, rather than increasing `1` at every time. This approach
@@ -313,7 +317,7 @@ The benchmark on T7954.hs shows that this approach leads to significant
 degeneration on performance (33% increase allocation and 300% increase on
 elapsed time).
 
-See #15081 and Phab:D4650 for the related discussion about this problem.
+See Trac #15081 and Phab:D4650 for the related discussion about this problem.
 -}
 
 --------------------------------------------------------------
@@ -408,9 +412,17 @@ instance Integral Word where
 instance  Real Integer  where
     toRational x        =  x :% 1
 
+#if defined(MIN_VERSION_integer_gmp)
 -- | @since 4.8.0.0
 instance Real Natural where
-    toRational n = naturalToInteger n :% 1
+    toRational (NatS# w)  = toRational (W# w)
+    toRational (NatJ# bn) = toRational (Jp# bn)
+#else
+-- | @since 4.8.0.0
+instance Real Natural where
+  toRational (Natural a) = toRational a
+  {-# INLINE toRational #-}
+#endif
 
 -- Note [Integer division constant folding]
 -- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -454,6 +466,7 @@ instance  Integral Integer where
     n `quotRem` d = case n `quotRemInteger` d of
                       (# q, r #) -> (q, r)
 
+#if defined(MIN_VERSION_integer_gmp)
 -- | @since 4.8.0.0
 instance Integral Natural where
     toInteger = naturalToInteger
@@ -465,6 +478,26 @@ instance Integral Natural where
     quotRem = quotRemNatural
     quot    = quotNatural
     rem     = remNatural
+#else
+-- | @since 4.8.0.0
+instance Integral Natural where
+  quot (Natural a) (Natural b) = Natural (quot a b)
+  {-# INLINE quot #-}
+  rem (Natural a) (Natural b) = Natural (rem a b)
+  {-# INLINE rem #-}
+  div (Natural a) (Natural b) = Natural (div a b)
+  {-# INLINE div #-}
+  mod (Natural a) (Natural b) = Natural (mod a b)
+  {-# INLINE mod #-}
+  divMod (Natural a) (Natural b) = (Natural q, Natural r)
+    where (q,r) = divMod a b
+  {-# INLINE divMod #-}
+  quotRem (Natural a) (Natural b) = (Natural q, Natural r)
+    where (q,r) = quotRem a b
+  {-# INLINE quotRem #-}
+  toInteger (Natural a) = a
+  {-# INLINE toInteger #-}
+#endif
 
 --------------------------------------------------------------
 -- Instances for @Ratio@
@@ -752,20 +785,24 @@ lcm _ 0         =  0
 lcm 0 _         =  0
 lcm x y         =  abs ((x `quot` (gcd x y)) * y)
 
-#if defined(MIN_VERSION_integer_gmp)
--- GMP defines a more efficient Int# and Word# GCD
+#if defined(OPTIMISE_INTEGER_GCD_LCM)
+{-# RULES
+"gcd/Int->Int->Int"             gcd = gcdInt'
+"gcd/Integer->Integer->Integer" gcd = gcdInteger
+"lcm/Integer->Integer->Integer" lcm = lcmInteger
+"gcd/Natural->Natural->Natural" gcd = gcdNatural
+"lcm/Natural->Natural->Natural" lcm = lcmNatural
+ #-}
 
 gcdInt' :: Int -> Int -> Int
 gcdInt' (I# x) (I# y) = I# (gcdInt x y)
 
-gcdWord' :: Word -> Word -> Word
-gcdWord' (W# x) (W# y) = W# (gcdWord x y)
-
 {-# RULES
-"gcd/Int->Int->Int"             gcd = gcdInt'
 "gcd/Word->Word->Word"          gcd = gcdWord'
  #-}
 
+gcdWord' :: Word -> Word -> Word
+gcdWord' (W# x) (W# y) = W# (gcdWord x y)
 #endif
 
 integralEnumFrom :: (Integral a, Bounded a) => a -> [a]

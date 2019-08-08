@@ -142,6 +142,7 @@ class BinaryReaderInterp : public BinaryReaderNop {
   wabt::Result OnLocalDeclCount(Index count) override;
   wabt::Result OnLocalDecl(Index decl_index, Index count, Type type) override;
 
+  wabt::Result OnOpcode(Opcode Opcode) override;
   wabt::Result OnAtomicLoadExpr(Opcode opcode,
                                 uint32_t alignment_log2,
                                 Address offset) override;
@@ -212,12 +213,16 @@ class BinaryReaderInterp : public BinaryReaderNop {
   wabt::Result EndFunctionBody(Index index) override;
   wabt::Result OnSimdLaneOpExpr(wabt::Opcode opcode, uint64_t value) override;
   wabt::Result OnSimdShuffleOpExpr(wabt::Opcode opcode, v128 value) override;
+  wabt::Result OnLoadSplatExpr(wabt::Opcode opcode,
+                               uint32_t alignment_log2,
+                               Address offset) override;
 
   wabt::Result OnElemSegmentCount(Index count) override;
   wabt::Result BeginElemSegment(Index index,
                                 Index table_index,
                                 bool passive,
                                 Type elem_type) override;
+  wabt::Result BeginElemSegmentInitExpr(Index index) override;
   wabt::Result EndElemSegmentInitExpr(Index index) override;
   wabt::Result OnElemSegmentElemExprCount(Index index, Index count) override;
   wabt::Result OnElemSegmentElemExpr_RefNull(Index segment_index) override;
@@ -228,6 +233,7 @@ class BinaryReaderInterp : public BinaryReaderNop {
   wabt::Result BeginDataSegment(Index index,
                                 Index memory_index,
                                 bool passive) override;
+  wabt::Result BeginDataSegmentInitExpr(Index index) override;
   wabt::Result OnDataSegmentData(Index index,
                                  const void* data,
                                  Address size) override;
@@ -239,6 +245,7 @@ class BinaryReaderInterp : public BinaryReaderNop {
                                        Index global_index) override;
   wabt::Result OnInitExprI32ConstExpr(Index index, uint32_t value) override;
   wabt::Result OnInitExprI64ConstExpr(Index index, uint64_t value) override;
+  wabt::Result OnInitExprRefNull(Index index) override;
 
  private:
   Label* GetLabel(Index depth);
@@ -280,11 +287,18 @@ class BinaryReaderInterp : public BinaryReaderNop {
   wabt::Result AppendFixup(IstreamOffsetVectorVector* fixups_vector,
                            Index index);
   wabt::Result EmitBrOffset(Index depth, IstreamOffset offset);
+  wabt::Result GetDropCount(Index keep_count,
+                            size_t type_stack_limit,
+                            Index* out_drop_count);
   wabt::Result GetBrDropKeepCount(Index depth,
                                   Index* out_drop_count,
                                   Index* out_keep_count);
   wabt::Result GetReturnDropKeepCount(Index* out_drop_count,
                                       Index* out_keep_count);
+  wabt::Result GetReturnCallDropKeepCount(FuncSignature* sig,
+                                          Index keep_extra,
+                                          Index* out_drop_count,
+                                          Index* out_keep_count);
   wabt::Result EmitBr(Index depth, Index drop_count, Index keep_count);
   wabt::Result EmitBrTableOffset(Index depth);
   wabt::Result FixupTopLabel();
@@ -302,6 +316,7 @@ class BinaryReaderInterp : public BinaryReaderNop {
   wabt::Result CheckAlign(uint32_t alignment_log2, Address natural_alignment);
   wabt::Result CheckAtomicAlign(uint32_t alignment_log2,
                                 Address natural_alignment);
+  wabt::Result CheckInFunction();
 
   wabt::Result AppendExport(Module* module,
                             ExternalKind kind,
@@ -528,19 +543,28 @@ wabt::Result BinaryReaderInterp::EmitBrOffset(Index depth,
   return wabt::Result::Ok;
 }
 
+wabt::Result BinaryReaderInterp::GetDropCount(Index keep_count,
+                                              size_t type_stack_limit,
+                                              Index* out_drop_count) {
+  assert(typechecker_.type_stack_size() >= type_stack_limit);
+  Index type_stack_count = typechecker_.type_stack_size() - type_stack_limit;
+  // The keep_count may be larger than the type_stack_count if the typechecker
+  // is currently unreachable. In that case, it doesn't matter what value we
+  // drop, but 0 is a reasonable choice.
+  *out_drop_count =
+      type_stack_count >= keep_count ? type_stack_count - keep_count : 0;
+  return wabt::Result::Ok;
+}
+
 wabt::Result BinaryReaderInterp::GetBrDropKeepCount(Index depth,
                                                     Index* out_drop_count,
                                                     Index* out_keep_count) {
   TypeChecker::Label* label;
   CHECK_RESULT(typechecker_.GetLabel(depth, &label));
-  *out_keep_count = label->br_types().size();
-  if (typechecker_.IsUnreachable()) {
-    *out_drop_count = 0;
-  } else {
-    *out_drop_count =
-        (typechecker_.type_stack_size() - label->type_stack_limit) -
-        *out_keep_count;
-  }
+  Index keep_count = label->br_types().size();
+  CHECK_RESULT(
+      GetDropCount(keep_count, label->type_stack_limit, out_drop_count));
+  *out_keep_count = keep_count;
   return wabt::Result::Ok;
 }
 
@@ -549,6 +573,18 @@ wabt::Result BinaryReaderInterp::GetReturnDropKeepCount(Index* out_drop_count,
   CHECK_RESULT(GetBrDropKeepCount(label_stack_.size() - 1, out_drop_count,
                                   out_keep_count));
   *out_drop_count += current_func_->param_and_local_types.size();
+  return wabt::Result::Ok;
+}
+
+wabt::Result BinaryReaderInterp::GetReturnCallDropKeepCount(
+    FuncSignature* sig,
+    Index keep_extra,
+    Index* out_drop_count,
+    Index* out_keep_count) {
+  Index keep_count = static_cast<Index>(sig->param_types.size()) + keep_extra;
+  CHECK_RESULT(GetDropCount(keep_count, 0, out_drop_count));
+  *out_drop_count += current_func_->param_and_local_types.size();
+  *out_keep_count = keep_count;
   return wabt::Result::Ok;
 }
 
@@ -981,6 +1017,11 @@ wabt::Result BinaryReaderInterp::OnInitExprI64ConstExpr(Index index,
   return wabt::Result::Ok;
 }
 
+wabt::Result BinaryReaderInterp::OnInitExprRefNull(Index index) {
+  PrintError("ref.null global init expressions unimplemented by interpreter");
+  return wabt::Result::Error;
+}
+
 wabt::Result BinaryReaderInterp::OnExport(Index index,
                                           ExternalKind kind,
                                           Index item_index,
@@ -1047,9 +1088,22 @@ wabt::Result BinaryReaderInterp::BeginElemSegment(Index index,
   return wabt::Result::Ok;
 }
 
+wabt::Result BinaryReaderInterp::BeginElemSegmentInitExpr(Index index) {
+  init_expr_value_.type = Type::Void;
+  return wabt::Result::Ok;
+}
+
 wabt::Result BinaryReaderInterp::EndElemSegmentInitExpr(Index index) {
   assert(segment_is_passive_ == false);
-  assert(init_expr_value_.type == Type::I32);
+
+  if (init_expr_value_.type != Type::I32) {
+    PrintError(
+        "type mismatch in elem segment initializer expression, expected i32 "
+        "but got %s",
+        GetTypeName(init_expr_value_.type));
+    return wabt::Result::Error;
+  }
+
   table_offset_ = init_expr_value_.value.i32;
   return wabt::Result::Ok;
 }
@@ -1114,6 +1168,11 @@ wabt::Result BinaryReaderInterp::BeginDataSegment(Index index,
   return wabt::Result::Ok;
 }
 
+wabt::Result BinaryReaderInterp::BeginDataSegmentInitExpr(Index index) {
+  init_expr_value_.type = Type::Void;
+  return wabt::Result::Ok;
+}
+
 wabt::Result BinaryReaderInterp::OnDataSegmentData(Index index,
                                                    const void* src_data,
                                                    Address size) {
@@ -1124,6 +1183,14 @@ wabt::Result BinaryReaderInterp::OnDataSegmentData(Index index,
       memcpy(segment->data.data(), src_data, size);
     }
   } else {
+    if (init_expr_value_.type != Type::I32) {
+      PrintError(
+          "type mismatch in data segment initializer expression, expected i32 "
+          "but got %s",
+          GetTypeName(init_expr_value_.type));
+      return wabt::Result::Error;
+    }
+
     // An active segment still is present in the segment index space, but
     // cannot be used with `memory.init` (it's as if it has already been
     // dropped).
@@ -1131,7 +1198,6 @@ wabt::Result BinaryReaderInterp::OnDataSegmentData(Index index,
 
     assert(module_->memory_index != kInvalidIndex);
     Memory* memory = env_->GetMemory(module_->memory_index);
-    assert(init_expr_value_.type == Type::I32);
     Address address = init_expr_value_.value.i32;
     data_segment_infos_.emplace_back(memory, address, src_data, size);
   }
@@ -1251,6 +1317,14 @@ wabt::Result BinaryReaderInterp::CheckAtomicAlign(uint32_t alignment_log2,
   return wabt::Result::Ok;
 }
 
+wabt::Result BinaryReaderInterp::OnOpcode(Opcode opcode) {
+  if (current_func_ == nullptr || label_stack_.size() == 0) {
+    PrintError("Unexpected instruction after end of function");
+    return wabt::Result::Error;
+  }
+  return wabt::Result::Ok;
+}
+
 wabt::Result BinaryReaderInterp::OnUnaryExpr(wabt::Opcode opcode) {
   CHECK_RESULT(typechecker_.OnUnary(opcode));
   CHECK_RESULT(EmitOpcode(opcode));
@@ -1276,6 +1350,18 @@ wabt::Result BinaryReaderInterp::OnSimdShuffleOpExpr(wabt::Opcode opcode,
   CHECK_RESULT(typechecker_.OnSimdShuffleOp(opcode, value));
   CHECK_RESULT(EmitOpcode(opcode));
   CHECK_RESULT(EmitV128(value));
+  return wabt::Result::Ok;
+}
+
+wabt::Result BinaryReaderInterp::OnLoadSplatExpr(wabt::Opcode opcode,
+                                                 uint32_t alignment_log2,
+                                                 Address offset) {
+  CHECK_RESULT(CheckHasMemory(opcode));
+  CHECK_RESULT(CheckAlign(alignment_log2, opcode.GetMemorySize()));
+  CHECK_RESULT(typechecker_.OnLoad(opcode));
+  CHECK_RESULT(EmitOpcode(opcode));
+  CHECK_RESULT(EmitI32(module_->memory_index));
+  CHECK_RESULT(EmitI32(offset));
   return wabt::Result::Ok;
 }
 
@@ -1445,7 +1531,8 @@ wabt::Result BinaryReaderInterp::OnCallExpr(Index func_index) {
   return wabt::Result::Ok;
 }
 
-wabt::Result BinaryReaderInterp::OnCallIndirectExpr(Index sig_index, Index table_index) {
+wabt::Result BinaryReaderInterp::OnCallIndirectExpr(Index sig_index,
+                                                    Index table_index) {
   if (module_->table_index == kInvalidIndex) {
     PrintError("found call_indirect operator, but no table");
     return wabt::Result::Error;
@@ -1463,13 +1550,12 @@ wabt::Result BinaryReaderInterp::OnCallIndirectExpr(Index sig_index, Index table
 wabt::Result BinaryReaderInterp::OnReturnCallExpr(Index func_index) {
   Func* func = GetFuncByModuleIndex(func_index);
   FuncSignature* sig = env_->GetFuncSignature(func->sig_index);
-  CHECK_RESULT(typechecker_.OnReturnCall(sig->param_types, sig->result_types));
 
   Index drop_count, keep_count;
-  CHECK_RESULT(GetReturnDropKeepCount(&drop_count, &keep_count));
-
-  keep_count = static_cast<Index>(sig->param_types.size());
-
+  CHECK_RESULT(GetReturnCallDropKeepCount(sig, 0, &drop_count, &keep_count));
+  // The typechecker must be run after we get the drop/keep counts, since it
+  // will change the type stack.
+  CHECK_RESULT(typechecker_.OnReturnCall(sig->param_types, sig->result_types));
   CHECK_RESULT(EmitDropKeep(drop_count, keep_count));
 
   if (func->is_host) {
@@ -1484,20 +1570,21 @@ wabt::Result BinaryReaderInterp::OnReturnCallExpr(Index func_index) {
   return wabt::Result::Ok;
 }
 
-wabt::Result BinaryReaderInterp::OnReturnCallIndirectExpr(Index sig_index, Index table_index) {
+wabt::Result BinaryReaderInterp::OnReturnCallIndirectExpr(Index sig_index,
+                                                          Index table_index) {
   if (module_->table_index == kInvalidIndex) {
     PrintError("found return_call_indirect operator, but no table");
     return wabt::Result::Error;
   }
   FuncSignature* sig = GetSignatureByModuleIndex(sig_index);
-  CHECK_RESULT(
-    typechecker_.OnReturnCallIndirect(sig->param_types, sig->result_types));
 
   Index drop_count, keep_count;
-  CHECK_RESULT(GetReturnDropKeepCount(&drop_count, &keep_count));
-
-  keep_count = static_cast<Index>(sig->param_types.size()+1); // Include the index of the function
-
+  // +1 to include the index of the function.
+  CHECK_RESULT(GetReturnCallDropKeepCount(sig, +1, &drop_count, &keep_count));
+  // The typechecker must be run after we get the drop/keep counts, since it
+  // changes the type stack.
+  CHECK_RESULT(
+      typechecker_.OnReturnCallIndirect(sig->param_types, sig->result_types));
   CHECK_RESULT(EmitDropKeep(drop_count, keep_count));
 
   CHECK_RESULT(EmitOpcode(Opcode::ReturnCallIndirect));

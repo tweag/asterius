@@ -11,6 +11,7 @@ import { MemoryTrap } from "./rts.memorytrap.mjs";
 import { MBlockAlloc } from "./rts.mblockalloc.mjs";
 import { HeapAlloc } from "./rts.heapalloc.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
+import { StableNameManager } from "./rts.stablename.mjs";
 import { TSOManager } from "./rts.tso.mjs";
 import { HeapBuilder } from "./rts.heapbuilder.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
@@ -34,23 +35,25 @@ export function newAsteriusInstance(req) {
     __asterius_wasm_table = new WebAssembly.Table({element: "anyfunc", initial: req.tableSlots}),
     __asterius_wasm_memory = new WebAssembly.Memory({initial: req.staticMBlocks * (rtsConstants.mblock_size / 65536)}),
     __asterius_memory = new Memory(),
-    __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable, __asterius_memory),
     __asterius_mblockalloc = new MBlockAlloc(),
+    __asterius_memory_trap = new MemoryTrap(__asterius_logger, req.symbolTable, __asterius_memory, __asterius_mblockalloc),
     __asterius_heapalloc = new HeapAlloc(__asterius_memory, __asterius_mblockalloc),
     __asterius_stableptr_manager = new StablePtrManager(),
-    __asterius_tso_manager = new TSOManager(__asterius_memory, req.symbolTable),
+    __asterius_stablename_manager = new StableNameManager(__asterius_memory, __asterius_heapalloc, req.symbolTable),
+    __asterius_tso_manager = new TSOManager(__asterius_memory, req.symbolTable, __asterius_stableptr_manager),
     __asterius_heap_builder = new HeapBuilder(req.symbolTable, __asterius_heapalloc, __asterius_memory, __asterius_stableptr_manager),
-    __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager, __asterius_heap_builder),
+    __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
-    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard),
+    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard, req.yolo),
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
     __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
-    __asterius_exports = new Exports(__asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports),
+    __asterius_exports = new Exports(__asterius_memory, __asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports, __asterius_stableptr_manager),
     __asterius_md5 = new MD5(__asterius_memory);
+  __asterius_tso_manager.exports = __asterius_exports;
 
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
@@ -77,7 +80,7 @@ export function newAsteriusInstance(req) {
       const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_exports.rts_apply(
           __asterius_stableptr_manager.deRefStablePtr(sp),
-          __asterius_exports.rts_mkInt(
+          __asterius_exports.rts_mkStablePtr(
             __asterius_stableptr_manager.newJSVal(ev)
           )
         )
@@ -88,19 +91,19 @@ export function newAsteriusInstance(req) {
       const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_exports.rts_apply(
           __asterius_exports.rts_apply(
-            __asterius_stableptr_manager.deRefStablePtr(sp), __asterius_exports.rts_mkInt(
+            __asterius_stableptr_manager.deRefStablePtr(sp), __asterius_exports.rts_mkStablePtr(
               __asterius_stableptr_manager.newJSVal(x))),
-          __asterius_exports.rts_mkInt(
+          __asterius_exports.rts_mkStablePtr(
             __asterius_stableptr_manager.newJSVal(y))));
       __asterius_exports.rts_checkSchedStatus(tid);
     },
     Integer: __asterius_integer_manager,
     FloatCBits: __asterius_float_cbits,
     stdio: {
-      putChar: (h, c) => __asterius_fs.writeSync(h, String.fromCodePoint(c)),
-      stdout: () => __asterius_fs.root.get("/dev/stdout"),
-      stderr: () => __asterius_fs.root.get("/dev/stderr")
-    }
+      stdout: () => __asterius_fs.readSync(1),
+      stderr: () => __asterius_fs.readSync(2)
+    },
+    setPromise: (vt, p) => __asterius_tso_manager.setPromise(vt, p)
   };
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),
@@ -115,9 +118,6 @@ export function newAsteriusInstance(req) {
         asin: x => Math.asin(x),
         acos: x => Math.acos(x),
         atan: x => Math.atan(x),
-        asinh: x => Math.asinh(x),
-        acosh: x => Math.acosh(x),
-        atanh: x => Math.atanh(x),
         log: x => Math.log(x),
         exp: x => Math.exp(x),
         pow: (x, y) => Math.pow(x, y)
@@ -129,9 +129,16 @@ export function newAsteriusInstance(req) {
         memory: __asterius_wasm_memory
       },
       rts: {
-        printI64: x => __asterius_fs.writeSync(__asterius_fs.stdout(), __asterius_show_I64(x) + "\n"),
+        printI64: x => __asterius_fs.writeSync(1, __asterius_show_I64(x) + "\n"),
         assertEqI64: function(x, y) { if(x != y) {   throw new WebAssembly.RuntimeError("unequal I64: " + x + ", " + y); } },
-        print: x => __asterius_fs.writeSync(__asterius_fs.stdout(), x + "\n")
+        print: x => __asterius_fs.writeSync(1, x + "\n")
+      },
+      fs: {
+        write: (fd, buf, count) => {
+          const p = Memory.unTag(buf);
+          __asterius_fs.writeSync(fd, __asterius_memory.i8View.subarray(p, p + count));
+          return count;
+        }
       },
       bytestring: modulify(__asterius_bytestring_cbits),
       // cannot name this float since float is a keyword.
@@ -148,6 +155,7 @@ export function newAsteriusInstance(req) {
       MemoryTrap: modulify(__asterius_memory_trap),
       Messages: modulify(__asterius_messages),
       StablePtr: modulify(__asterius_stableptr_manager),
+      StableName: modulify(__asterius_stablename_manager),
       Unicode: modulify(__asterius_unicode),
       MD5: modulify(__asterius_md5),
       Tracing: modulify(__asterius_tracer),
@@ -157,9 +165,8 @@ export function newAsteriusInstance(req) {
   return WebAssembly.instantiate(req.module, importObject).then(i => {
       __asterius_wasm_instance = i;
       __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
-      __asterius_mblockalloc.init(__asterius_memory, req.staticMBlocks);
+      __asterius_mblockalloc.init(__asterius_memory);
       __asterius_heapalloc.init();
-      __asterius_integer_manager.heap = __asterius_heap_builder;
       __asterius_bytestring_cbits.memory = __asterius_memory;
       return Object.assign(__asterius_jsffi_instance, {
         wasmModule: req.module,

@@ -7,10 +7,8 @@
 -- This module is full of orphans, unfortunately
 module GHCi.TH.Binary () where
 
-import Prelude -- See note [Why do we import Prelude here?]
 import Data.Binary
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Internal as B
 import GHC.Serialized
 import qualified Language.Haskell.TH        as TH
 import qualified Language.Haskell.TH.Syntax as TH
@@ -73,10 +71,3 @@ instance Binary TH.PatSynArgs
 instance Binary Serialized where
     put (Serialized tyrep wds) = put tyrep >> put (B.pack wds)
     get = Serialized <$> get <*> (B.unpack <$> get)
-
-instance Binary TH.Bytes where
-   put (TH.Bytes ptr off sz) = put bs
-      where bs = B.PS ptr (fromIntegral off) (fromIntegral sz)
-   get = do
-      B.PS ptr off sz <- get
-      return (TH.Bytes ptr (fromIntegral off) (fromIntegral sz))

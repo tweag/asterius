@@ -17,7 +17,6 @@
 #include <algorithm>
 #include <fstream>
 
-#include "ir/module-utils.h"
 #include "support/bits.h"
 #include "wasm-binary.h"
 #include "wasm-stack.h"
@@ -34,10 +33,6 @@ void WasmBinaryWriter::prepare() {
     // https://github.com/WebAssembly/spec/pull/301 might want this:
     // assert(!func->type.isNull());
   }
-  ModuleUtils::BinaryIndexes indexes(*wasm);
-  mappedFunctions = std::move(indexes.functionIndexes);
-  mappedGlobals = std::move(indexes.globalIndexes);
-
   importInfo = wasm::make_unique<ImportInfo>(*wasm);
 }
 
@@ -57,6 +52,7 @@ void WasmBinaryWriter::write() {
   writeFunctionTableDeclaration();
   writeMemory();
   writeGlobals();
+  writeEvents();
   writeExports();
   writeStart();
   writeTableElements();
@@ -245,6 +241,15 @@ void WasmBinaryWriter::writeImports() {
     o << binaryType(global->type);
     o << U32LEB(global->mutable_);
   });
+  ModuleUtils::iterImportedEvents(*wasm, [&](Event* event) {
+    if (debug) {
+      std::cerr << "write one event" << std::endl;
+    }
+    writeImportHeader(event);
+    o << U32LEB(int32_t(ExternalKind::Event));
+    o << U32LEB(event->attribute);
+    o << U32LEB(getFunctionTypeIndex(event->type));
+  });
   if (wasm->memory.imported()) {
     if (debug) {
       std::cerr << "write one memory" << std::endl;
@@ -401,6 +406,9 @@ void WasmBinaryWriter::writeExports() {
       case ExternalKind::Global:
         o << U32LEB(getGlobalIndex(curr->value));
         break;
+      case ExternalKind::Event:
+        o << U32LEB(getEventIndex(curr->value));
+        break;
       default:
         WASM_UNREACHABLE();
     }
@@ -444,13 +452,18 @@ void WasmBinaryWriter::writeDataSegments() {
 }
 
 uint32_t WasmBinaryWriter::getFunctionIndex(Name name) {
-  assert(mappedFunctions.count(name));
-  return mappedFunctions[name];
+  assert(indexes.functionIndexes.count(name));
+  return indexes.functionIndexes[name];
 }
 
 uint32_t WasmBinaryWriter::getGlobalIndex(Name name) {
-  assert(mappedGlobals.count(name));
-  return mappedGlobals[name];
+  assert(indexes.globalIndexes.count(name));
+  return indexes.globalIndexes[name];
+}
+
+uint32_t WasmBinaryWriter::getEventIndex(Name name) {
+  assert(indexes.eventIndexes.count(name));
+  return indexes.eventIndexes[name];
 }
 
 void WasmBinaryWriter::writeFunctionTableDeclaration() {
@@ -493,15 +506,32 @@ void WasmBinaryWriter::writeTableElements() {
   finishSection(start);
 }
 
-void WasmBinaryWriter::writeNames() {
-  bool hasContents = false;
-  if (wasm->functions.size() > 0) {
-    hasContents = true;
-    getFunctionIndex(wasm->functions[0]->name); // generate mappedFunctions
-  }
-  if (!hasContents) {
+void WasmBinaryWriter::writeEvents() {
+  if (importInfo->getNumDefinedEvents() == 0) {
     return;
   }
+  if (debug) {
+    std::cerr << "== writeEvents" << std::endl;
+  }
+  auto start = startSection(BinaryConsts::Section::Event);
+  auto num = importInfo->getNumDefinedEvents();
+  o << U32LEB(num);
+  ModuleUtils::iterDefinedEvents(*wasm, [&](Event* event) {
+    if (debug) {
+      std::cerr << "write one" << std::endl;
+    }
+    o << U32LEB(event->attribute);
+    o << U32LEB(getFunctionTypeIndex(event->type));
+  });
+
+  finishSection(start);
+}
+
+void WasmBinaryWriter::writeNames() {
+  if (wasm->functions.empty()) {
+    return;
+  }
+
   if (debug) {
     std::cerr << "== writeNames" << std::endl;
   }
@@ -509,7 +539,7 @@ void WasmBinaryWriter::writeNames() {
   writeInlineString(BinaryConsts::UserSections::Name);
   auto substart =
     startSubsection(BinaryConsts::UserSections::Subsection::NameFunction);
-  o << U32LEB(mappedFunctions.size());
+  o << U32LEB(indexes.functionIndexes.size());
   Index emitted = 0;
   auto add = [&](Function* curr) {
     o << U32LEB(emitted);
@@ -518,7 +548,7 @@ void WasmBinaryWriter::writeNames() {
   };
   ModuleUtils::iterImportedFunctions(*wasm, add);
   ModuleUtils::iterDefinedFunctions(*wasm, add);
-  assert(emitted == mappedFunctions.size());
+  assert(emitted == indexes.functionIndexes.size());
   finishSubsection(substart);
   /* TODO: locals */
   finishSection(start);
@@ -636,19 +666,21 @@ void WasmBinaryWriter::writeFeaturesSection() {
   auto toString = [](FeatureSet::Feature f) {
     switch (f) {
       case FeatureSet::Atomics:
-        return "atomics";
+        return BinaryConsts::UserSections::AtomicsFeature;
       case FeatureSet::MutableGlobals:
-        return "mutable-globals";
+        return BinaryConsts::UserSections::MutableGlobalsFeature;
       case FeatureSet::TruncSat:
-        return "nontrapping-fptoint";
+        return BinaryConsts::UserSections::TruncSatFeature;
       case FeatureSet::SIMD:
-        return "simd128";
+        return BinaryConsts::UserSections::SIMD128Feature;
       case FeatureSet::BulkMemory:
-        return "bulk-memory";
+        return BinaryConsts::UserSections::BulkMemoryFeature;
       case FeatureSet::SignExt:
-        return "sign-ext";
+        return BinaryConsts::UserSections::SignExtFeature;
       case FeatureSet::ExceptionHandling:
-        return "exception-handling";
+        return BinaryConsts::UserSections::ExceptionHandlingFeature;
+      case FeatureSet::TailCall:
+        return BinaryConsts::UserSections::TailCallFeature;
       default:
         WASM_UNREACHABLE();
     }
@@ -816,10 +848,9 @@ void WasmBinaryBuilder::read() {
       case BinaryConsts::Section::Element:
         readTableElements();
         break;
-      case BinaryConsts::Section::Global: {
+      case BinaryConsts::Section::Global:
         readGlobals();
         break;
-      }
       case BinaryConsts::Section::Data:
         readDataSegments();
         break;
@@ -828,6 +859,9 @@ void WasmBinaryBuilder::read() {
         break;
       case BinaryConsts::Section::Table:
         readFunctionTableDeclaration();
+        break;
+      case BinaryConsts::Section::Event:
+        readEvents();
         break;
       default: {
         readUserSection(payloadLen);
@@ -1051,8 +1085,8 @@ Type WasmBinaryBuilder::getType() {
       return f64;
     case BinaryConsts::EncodedType::v128:
       return v128;
-    case BinaryConsts::EncodedType::except_ref:
-      return except_ref;
+    case BinaryConsts::EncodedType::exnref:
+      return exnref;
     default: { throwError("invalid wasm type: " + std::to_string(type)); }
   }
   WASM_UNREACHABLE();
@@ -1211,6 +1245,13 @@ Name WasmBinaryBuilder::getGlobalName(Index index) {
   return wasm.globals[index]->name;
 }
 
+Name WasmBinaryBuilder::getEventName(Index index) {
+  if (index >= wasm.events.size()) {
+    throwError("invalid event index");
+  }
+  return wasm.events[index]->name;
+}
+
 void WasmBinaryBuilder::getResizableLimits(Address& initial,
                                            Address& max,
                                            bool& shared,
@@ -1309,6 +1350,23 @@ void WasmBinaryBuilder::readImports() {
         curr->module = module;
         curr->base = base;
         wasm.addGlobal(curr);
+        break;
+      }
+      case ExternalKind::Event: {
+        auto name = Name(std::string("eimport$") + std::to_string(i));
+        auto attribute = getU32LEB();
+        auto index = getU32LEB();
+        if (index >= wasm.functionTypes.size()) {
+          throwError("invalid event index " + std::to_string(index) + " / " +
+                     std::to_string(wasm.functionTypes.size()));
+        }
+        Name type = wasm.functionTypes[index]->name;
+        std::vector<Type> params = wasm.functionTypes[index]->params;
+        auto* curr =
+          builder.makeEvent(name, attribute, type, std::move(params));
+        curr->module = module;
+        curr->base = base;
+        wasm.addEvent(curr);
         break;
       }
       default: { throwError("bad import kind"); }
@@ -1799,8 +1857,8 @@ Expression* WasmBinaryBuilder::popNonVoidExpression() {
   auto type = block->list[0]->type;
   if (isConcreteType(type)) {
     auto local = builder.addVar(currFunction, type);
-    block->list[0] = builder.makeSetLocal(local, block->list[0]);
-    block->list.push_back(builder.makeGetLocal(local, type));
+    block->list[0] = builder.makeLocalSet(local, block->list[0]);
+    block->list.push_back(builder.makeLocalGet(local, type));
   } else {
     assert(type == unreachable);
     // nothing to do here - unreachable anyhow
@@ -1841,6 +1899,9 @@ void WasmBinaryBuilder::processFunctions() {
         break;
       case ExternalKind::Global:
         curr->value = getGlobalName(index);
+        break;
+      case ExternalKind::Event:
+        curr->value = getEventName(index);
         break;
       default:
         throwError("bad export kind");
@@ -1955,6 +2016,31 @@ void WasmBinaryBuilder::readTableElements() {
   }
 }
 
+void WasmBinaryBuilder::readEvents() {
+  if (debug) {
+    std::cerr << "== readEvents" << std::endl;
+  }
+  size_t numEvents = getU32LEB();
+  if (debug) {
+    std::cerr << "num: " << numEvents << std::endl;
+  }
+  for (size_t i = 0; i < numEvents; i++) {
+    if (debug) {
+      std::cerr << "read one" << std::endl;
+    }
+    auto attribute = getU32LEB();
+    auto typeIndex = getU32LEB();
+    if (typeIndex >= wasm.functionTypes.size()) {
+      throwError("invalid event index " + std::to_string(typeIndex) + " / " +
+                 std::to_string(wasm.functionTypes.size()));
+    }
+    Name type = wasm.functionTypes[typeIndex]->name;
+    std::vector<Type> params = wasm.functionTypes[typeIndex]->params;
+    wasm.addEvent(Builder::makeEvent(
+      "event$" + std::to_string(i), attribute, type, std::move(params)));
+  }
+}
+
 static bool isIdChar(char ch) {
   return (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') ||
          (ch >= 'a' && ch <= 'z') || ch == '!' || ch == '#' || ch == '$' ||
@@ -2048,9 +2134,11 @@ void WasmBinaryBuilder::readFeatures(size_t payloadLen) {
     uint8_t prefix = getInt8();
     if (prefix != BinaryConsts::FeatureUsed) {
       if (prefix == BinaryConsts::FeatureRequired) {
-        throwError("Required features not supported");
+        std::cerr
+          << "warning: required features in feature section are ignored";
       } else if (prefix == BinaryConsts::FeatureDisallowed) {
-        throwError("Disallowed features not supported");
+        std::cerr
+          << "warning: disallowed features in feature section are ignored";
       } else {
         throwError("Unrecognized feature policy prefix");
       }
@@ -2061,18 +2149,24 @@ void WasmBinaryBuilder::readFeatures(size_t payloadLen) {
       throwError("ill-formed string extends beyond section");
     }
 
-    if (name == BinaryConsts::UserSections::AtomicsFeature) {
-      wasm.features.setAtomics();
-    } else if (name == BinaryConsts::UserSections::BulkMemoryFeature) {
-      wasm.features.setBulkMemory();
-    } else if (name == BinaryConsts::UserSections::ExceptionHandlingFeature) {
-      wasm.features.setExceptionHandling();
-    } else if (name == BinaryConsts::UserSections::TruncSatFeature) {
-      wasm.features.setTruncSat();
-    } else if (name == BinaryConsts::UserSections::SignExtFeature) {
-      wasm.features.setSignExt();
-    } else if (name == BinaryConsts::UserSections::SIMD128Feature) {
-      wasm.features.setSIMD();
+    if (prefix != BinaryConsts::FeatureDisallowed) {
+      if (name == BinaryConsts::UserSections::AtomicsFeature) {
+        wasm.features.setAtomics();
+      } else if (name == BinaryConsts::UserSections::BulkMemoryFeature) {
+        wasm.features.setBulkMemory();
+      } else if (name == BinaryConsts::UserSections::ExceptionHandlingFeature) {
+        wasm.features.setExceptionHandling();
+      } else if (name == BinaryConsts::UserSections::MutableGlobalsFeature) {
+        wasm.features.setMutableGlobals();
+      } else if (name == BinaryConsts::UserSections::TruncSatFeature) {
+        wasm.features.setTruncSat();
+      } else if (name == BinaryConsts::UserSections::SignExtFeature) {
+        wasm.features.setSignExt();
+      } else if (name == BinaryConsts::UserSections::SIMD128Feature) {
+        wasm.features.setSIMD();
+      } else if (name == BinaryConsts::UserSections::TailCallFeature) {
+        wasm.features.setTailCall();
+      }
     }
   }
   if (pos != sectionPos + payloadLen) {
@@ -2110,7 +2204,7 @@ BinaryConsts::ASTNodes WasmBinaryBuilder::readExpression(Expression*& curr) {
     case BinaryConsts::BrIf:
       visitBreak((curr = allocator.alloc<Break>())->cast<Break>(), code);
       break; // code distinguishes br from br_if
-    case BinaryConsts::TableSwitch:
+    case BinaryConsts::BrTable:
       visitSwitch((curr = allocator.alloc<Switch>())->cast<Switch>());
       break;
     case BinaryConsts::CallFunction:
@@ -2120,19 +2214,33 @@ BinaryConsts::ASTNodes WasmBinaryBuilder::readExpression(Expression*& curr) {
       visitCallIndirect(
         (curr = allocator.alloc<CallIndirect>())->cast<CallIndirect>());
       break;
-    case BinaryConsts::GetLocal:
-      visitGetLocal((curr = allocator.alloc<GetLocal>())->cast<GetLocal>());
+    case BinaryConsts::RetCallFunction: {
+      auto call = allocator.alloc<Call>();
+      call->isReturn = true;
+      curr = call;
+      visitCall(call);
       break;
-    case BinaryConsts::TeeLocal:
-    case BinaryConsts::SetLocal:
-      visitSetLocal((curr = allocator.alloc<SetLocal>())->cast<SetLocal>(),
+    }
+    case BinaryConsts::RetCallIndirect: {
+      auto call = allocator.alloc<CallIndirect>();
+      call->isReturn = true;
+      curr = call;
+      visitCallIndirect(call);
+      break;
+    }
+    case BinaryConsts::LocalGet:
+      visitLocalGet((curr = allocator.alloc<LocalGet>())->cast<LocalGet>());
+      break;
+    case BinaryConsts::LocalTee:
+    case BinaryConsts::LocalSet:
+      visitLocalSet((curr = allocator.alloc<LocalSet>())->cast<LocalSet>(),
                     code);
       break;
-    case BinaryConsts::GetGlobal:
-      visitGetGlobal((curr = allocator.alloc<GetGlobal>())->cast<GetGlobal>());
+    case BinaryConsts::GlobalGet:
+      visitGlobalGet((curr = allocator.alloc<GlobalGet>())->cast<GlobalGet>());
       break;
-    case BinaryConsts::SetGlobal:
-      visitSetGlobal((curr = allocator.alloc<SetGlobal>())->cast<SetGlobal>());
+    case BinaryConsts::GlobalSet:
+      visitGlobalSet((curr = allocator.alloc<GlobalSet>())->cast<GlobalSet>());
       break;
     case BinaryConsts::Select:
       visitSelect((curr = allocator.alloc<Select>())->cast<Select>());
@@ -2303,8 +2411,8 @@ void WasmBinaryBuilder::pushBlockElements(Block* curr,
     Builder builder(wasm);
     auto* item = curr->list[consumable]->cast<Drop>()->value;
     auto temp = builder.addVar(currFunction, item->type);
-    curr->list[consumable] = builder.makeSetLocal(temp, item);
-    curr->list.push_back(builder.makeGetLocal(temp, item->type));
+    curr->list[consumable] = builder.makeLocalSet(temp, item);
+    curr->list.push_back(builder.makeLocalGet(temp, item->type));
   }
 }
 
@@ -2545,9 +2653,9 @@ void WasmBinaryBuilder::visitCallIndirect(CallIndirect* curr) {
   curr->finalize();
 }
 
-void WasmBinaryBuilder::visitGetLocal(GetLocal* curr) {
+void WasmBinaryBuilder::visitLocalGet(LocalGet* curr) {
   if (debug) {
-    std::cerr << "zz node: GetLocal " << pos << std::endl;
+    std::cerr << "zz node: LocalGet " << pos << std::endl;
   }
   requireFunctionContext("local.get");
   curr->index = getU32LEB();
@@ -2558,9 +2666,9 @@ void WasmBinaryBuilder::visitGetLocal(GetLocal* curr) {
   curr->finalize();
 }
 
-void WasmBinaryBuilder::visitSetLocal(SetLocal* curr, uint8_t code) {
+void WasmBinaryBuilder::visitLocalSet(LocalSet* curr, uint8_t code) {
   if (debug) {
-    std::cerr << "zz node: Set|TeeLocal" << std::endl;
+    std::cerr << "zz node: Set|LocalTee" << std::endl;
   }
   requireFunctionContext("local.set outside of function");
   curr->index = getU32LEB();
@@ -2569,22 +2677,22 @@ void WasmBinaryBuilder::visitSetLocal(SetLocal* curr, uint8_t code) {
   }
   curr->value = popNonVoidExpression();
   curr->type = curr->value->type;
-  curr->setTee(code == BinaryConsts::TeeLocal);
+  curr->setTee(code == BinaryConsts::LocalTee);
   curr->finalize();
 }
 
-void WasmBinaryBuilder::visitGetGlobal(GetGlobal* curr) {
+void WasmBinaryBuilder::visitGlobalGet(GlobalGet* curr) {
   if (debug) {
-    std::cerr << "zz node: GetGlobal " << pos << std::endl;
+    std::cerr << "zz node: GlobalGet " << pos << std::endl;
   }
   auto index = getU32LEB();
   curr->name = getGlobalName(index);
   curr->type = wasm.getGlobal(curr->name)->type;
 }
 
-void WasmBinaryBuilder::visitSetGlobal(SetGlobal* curr) {
+void WasmBinaryBuilder::visitGlobalSet(GlobalSet* curr) {
   if (debug) {
-    std::cerr << "zz node: SetGlobal" << std::endl;
+    std::cerr << "zz node: GlobalSet" << std::endl;
   }
   auto index = getU32LEB();
   curr->name = getGlobalName(index);
@@ -3178,15 +3286,15 @@ bool WasmBinaryBuilder::maybeVisitUnary(Expression*& out, uint8_t code) {
       curr->op = ConvertSInt64ToFloat64;
       break;
 
-    case BinaryConsts::I64STruncI32:
+    case BinaryConsts::I64SExtendI32:
       curr = allocator.alloc<Unary>();
       curr->op = ExtendSInt32;
       break;
-    case BinaryConsts::I64UTruncI32:
+    case BinaryConsts::I64UExtendI32:
       curr = allocator.alloc<Unary>();
       curr->op = ExtendUInt32;
       break;
-    case BinaryConsts::I32ConvertI64:
+    case BinaryConsts::I32WrapI64:
       curr = allocator.alloc<Unary>();
       curr->op = WrapInt64;
       break;
@@ -3233,11 +3341,11 @@ bool WasmBinaryBuilder::maybeVisitUnary(Expression*& out, uint8_t code) {
       curr->op = TruncFloat64;
       break;
 
-    case BinaryConsts::F32ConvertF64:
+    case BinaryConsts::F32DemoteI64:
       curr = allocator.alloc<Unary>();
       curr->op = DemoteFloat64;
       break;
-    case BinaryConsts::F64ConvertF32:
+    case BinaryConsts::F64PromoteF32:
       curr = allocator.alloc<Unary>();
       curr->op = PromoteFloat32;
       break;
@@ -4192,14 +4300,14 @@ void WasmBinaryBuilder::visitReturn(Return* curr) {
 bool WasmBinaryBuilder::maybeVisitHost(Expression*& out, uint8_t code) {
   Host* curr;
   switch (code) {
-    case BinaryConsts::CurrentMemory: {
+    case BinaryConsts::MemorySize: {
       curr = allocator.alloc<Host>();
-      curr->op = CurrentMemory;
+      curr->op = MemorySize;
       break;
     }
-    case BinaryConsts::GrowMemory: {
+    case BinaryConsts::MemoryGrow: {
       curr = allocator.alloc<Host>();
-      curr->op = GrowMemory;
+      curr->op = MemoryGrow;
       curr->operands.resize(1);
       curr->operands[0] = popNonVoidExpression();
       break;
@@ -4212,7 +4320,7 @@ bool WasmBinaryBuilder::maybeVisitHost(Expression*& out, uint8_t code) {
   }
   auto reserved = getU32LEB();
   if (reserved != 0) {
-    throwError("Invalid reserved field on grow_memory/current_memory");
+    throwError("Invalid reserved field on memory.grow/memory.size");
   }
   curr->finalize();
   out = curr;

@@ -36,9 +36,11 @@ const char* TargetFeatures = "target_features";
 const char* AtomicsFeature = "atomics";
 const char* BulkMemoryFeature = "bulk-memory";
 const char* ExceptionHandlingFeature = "exception-handling";
+const char* MutableGlobalsFeature = "mutable-globals";
 const char* TruncSatFeature = "nontrapping-fptoint";
 const char* SignExtFeature = "sign-ext";
 const char* SIMD128Feature = "simd128";
+const char* TailCallFeature = "tail-call";
 } // namespace UserSections
 } // namespace BinaryConsts
 
@@ -46,6 +48,7 @@ Name GROW_WASM_MEMORY("__growWasmMemory");
 Name WASM_CALL_CTORS("__wasm_call_ctors");
 Name MEMORY_BASE("__memory_base");
 Name TABLE_BASE("__table_base");
+Name STACK_POINTER("__stack_pointer");
 Name GET_TEMP_RET0("getTempRet0");
 Name SET_TEMP_RET0("setTempRet0");
 Name NEW_SIZE("newSize");
@@ -81,6 +84,9 @@ Name MUT("mut");
 Name SPECTEST("spectest");
 Name PRINT("print");
 Name EXIT("exit");
+Name SHARED("shared");
+Name EVENT("event");
+Name ATTR("attr");
 
 // Expressions
 
@@ -102,13 +108,13 @@ const char* getExpressionName(Expression* curr) {
       return "call";
     case Expression::Id::CallIndirectId:
       return "call_indirect";
-    case Expression::Id::GetLocalId:
+    case Expression::Id::LocalGetId:
       return "local.get";
-    case Expression::Id::SetLocalId:
+    case Expression::Id::LocalSetId:
       return "local.set";
-    case Expression::Id::GetGlobalId:
+    case Expression::Id::GlobalGetId:
       return "global.get";
-    case Expression::Id::SetGlobalId:
+    case Expression::Id::GlobalSetId:
       return "global.set";
     case Expression::Id::LoadId:
       return "load";
@@ -158,6 +164,10 @@ const char* getExpressionName(Expression* curr) {
       return "memory_copy";
     case Expression::Id::MemoryFillId:
       return "memory_fill";
+    case Expression::Id::PushId:
+      return "push";
+    case Expression::Id::PopId:
+      return "pop";
     case Expression::Id::NumExpressionIds:
       WASM_UNREACHABLE();
   }
@@ -405,14 +415,19 @@ void CallIndirect::finalize() {
 }
 
 bool FunctionType::structuralComparison(FunctionType& b) {
-  if (result != b.result) {
+  return structuralComparison(b.params, b.result);
+}
+
+bool FunctionType::structuralComparison(const std::vector<Type>& otherParams,
+                                        Type otherResult) {
+  if (result != otherResult) {
     return false;
   }
-  if (params.size() != b.params.size()) {
+  if (params.size() != otherParams.size()) {
     return false;
   }
   for (size_t i = 0; i < params.size(); i++) {
-    if (params[i] != b.params[i]) {
+    if (params[i] != otherParams[i]) {
       return false;
     }
   }
@@ -427,9 +442,9 @@ bool FunctionType::operator==(FunctionType& b) {
 }
 bool FunctionType::operator!=(FunctionType& b) { return !(*this == b); }
 
-bool SetLocal::isTee() { return type != none; }
+bool LocalSet::isTee() { return type != none; }
 
-void SetLocal::setTee(bool is) {
+void LocalSet::setTee(bool is) {
   if (is) {
     type = value->type;
   } else {
@@ -438,7 +453,7 @@ void SetLocal::setTee(bool is) {
   finalize(); // type may need to be unreachable
 }
 
-void SetLocal::finalize() {
+void LocalSet::finalize() {
   if (value->type == unreachable) {
     type = unreachable;
   } else if (isTee()) {
@@ -448,7 +463,7 @@ void SetLocal::finalize() {
   }
 }
 
-void SetGlobal::finalize() {
+void GlobalSet::finalize() {
   if (value->type == unreachable) {
     type = unreachable;
   }
@@ -797,11 +812,11 @@ void Drop::finalize() {
 
 void Host::finalize() {
   switch (op) {
-    case CurrentMemory: {
+    case MemorySize: {
       type = i32;
       break;
     }
-    case GrowMemory: {
+    case MemoryGrow: {
       // if the single operand is not reachable, so are we
       if (operands[0]->type == unreachable) {
         type = unreachable;
@@ -810,6 +825,14 @@ void Host::finalize() {
       }
       break;
     }
+  }
+}
+
+void Push::finalize() {
+  if (value->type == unreachable) {
+    type = unreachable;
+  } else {
+    type = none;
   }
 }
 
@@ -902,7 +925,16 @@ Function* Module::getFunction(Name name) {
 Global* Module::getGlobal(Name name) {
   auto iter = globalsMap.find(name);
   if (iter == globalsMap.end()) {
+    assert(false);
     Fatal() << "Module::getGlobal: " << name << " does not exist";
+  }
+  return iter->second;
+}
+
+Event* Module::getEvent(Name name) {
+  auto iter = eventsMap.find(name);
+  if (iter == eventsMap.end()) {
+    Fatal() << "Module::getEvent: " << name << " does not exist";
   }
   return iter->second;
 }
@@ -934,6 +966,14 @@ Function* Module::getFunctionOrNull(Name name) {
 Global* Module::getGlobalOrNull(Name name) {
   auto iter = globalsMap.find(name);
   if (iter == globalsMap.end()) {
+    return nullptr;
+  }
+  return iter->second;
+}
+
+Event* Module::getEventOrNull(Name name) {
+  auto iter = eventsMap.find(name);
+  if (iter == eventsMap.end()) {
     return nullptr;
   }
   return iter->second;
@@ -1003,6 +1043,20 @@ Global* Module::addGlobal(Global* curr) {
   return curr;
 }
 
+Event* Module::addEvent(Event* curr) {
+  if (!curr->name.is()) {
+    Fatal() << "Module::addEvent: empty name";
+  }
+  if (getEventOrNull(curr->name)) {
+    Fatal() << "Module::addEvent: " << curr->name << " already exists";
+  }
+
+  events.emplace_back(curr);
+
+  eventsMap[curr->name] = curr;
+  return curr;
+}
+
 void Module::addStart(const Name& s) { start = s; }
 
 void Module::removeFunctionType(Name name) {
@@ -1045,6 +1099,16 @@ void Module::removeGlobal(Name name) {
   globalsMap.erase(name);
 }
 
+void Module::removeEvent(Name name) {
+  for (size_t i = 0; i < events.size(); i++) {
+    if (events[i]->name == name) {
+      events.erase(events.begin() + i);
+      break;
+    }
+  }
+  eventsMap.erase(name);
+}
+
 // TODO: remove* for other elements
 
 void Module::updateMaps() {
@@ -1063,6 +1127,10 @@ void Module::updateMaps() {
   globalsMap.clear();
   for (auto& curr : globals) {
     globalsMap[curr->name] = curr.get();
+  }
+  eventsMap.clear();
+  for (auto& curr : events) {
+    eventsMap[curr->name] = curr.get();
   }
 }
 

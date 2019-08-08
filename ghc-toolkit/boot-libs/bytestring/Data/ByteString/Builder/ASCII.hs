@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables, CPP, ForeignFunctionInterface,
              MagicHash, UnboxedTuples #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 #if __GLASGOW_HASKELL__ >= 701
 {-# LANGUAGE Trustworthy #-}
 #endif

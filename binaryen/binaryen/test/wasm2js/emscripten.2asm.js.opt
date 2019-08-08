@@ -1,7 +1,6 @@
 function instantiate(asmLibraryArg, wasmMemory, wasmTable) {
 
 function asmFunc(global, env, buffer) {
- "almost asm";
  var memory = env.memory;
  var FUNCTION_TABLE = wasmTable;
  var HEAP8 = new global.Int8Array(buffer);
@@ -9,6 +8,7 @@ function asmFunc(global, env, buffer) {
  var HEAP32 = new global.Int32Array(buffer);
  var HEAPU8 = new global.Uint8Array(buffer);
  var HEAPU16 = new global.Uint16Array(buffer);
+ var HEAPU32 = new global.Uint32Array(buffer);
  var HEAPF32 = new global.Float32Array(buffer);
  var HEAPF64 = new global.Float64Array(buffer);
  var Math_imul = global.Math.imul;
@@ -46,6 +46,84 @@ function asmFunc(global, env, buffer) {
   HEAPF64[2] = 11;
   HEAP8[16] = 15;
   HEAP16[8] = 19;
+  if (HEAP32[25] == 1) {
+   bar()
+  }
+  if (HEAP32[26] < 2) {
+   bar()
+  }
+  if (HEAPU32[27] < 3) {
+   bar()
+  }
+  if (HEAP16[56] == 1) {
+   bar()
+  }
+  if (HEAP16[58] < 2) {
+   bar()
+  }
+  if (HEAPU16[60] < 2) {
+   bar()
+  }
+  if (HEAP16[62] >>> 0 < 3) {
+   bar()
+  }
+  if (HEAPU16[64] < 3) {
+   bar()
+  }
+  if (HEAP8[132] < 2) {
+   bar()
+  }
+  if (HEAPU8[136] < 2) {
+   bar()
+  }
+  if (HEAP8[140] >>> 0 < 3) {
+   bar()
+  }
+  if (HEAPU8[144] < 3) {
+   bar()
+  }
+  if (bools(314159) >>> 7) {
+   bar()
+  }
+  if (bools(314159) >> 8) {
+   bar()
+  }
+  if (~~getf32()) {
+   bar()
+  }
+  if (~~getf32()) {
+   bar()
+  }
+  if (~~getf64()) {
+   bar()
+  }
+  if (~~getf64()) {
+   bar()
+  }
+  if ((geti32() + geti32() | 0) + geti32()) {
+   bar()
+  }
+  if (geti32() + (geti32() + geti32() | 0)) {
+   bar()
+  }
+  if (geti32() + geti32() + (geti32() + geti32())) {
+   bar()
+  }
+  if (geti32() + geti32() + (geti32() + geti32()) + (geti32() + geti32() + (geti32() + geti32()))) {
+   bar()
+  }
+ }
+ 
+ function geti32() {
+  return geti32();
+ }
+ 
+ function getf32() {
+  return getf32();
+ }
+ 
+ function getf64() {
+  return getf64();
  }
  
  function __growWasmMemory($0) {
@@ -105,12 +183,13 @@ var writeSegment = (
     function(mem) {
       var _mem = new Uint8Array(mem);
       return function(offset, s) {
+        var bytes;
         if (typeof Buffer === 'undefined') {
-          var bytes = atob(s);
+          bytes = atob(s);
           for (var i = 0; i < bytes.length; i++)
             _mem[offset + i] = bytes.charCodeAt(i);
         } else {
-          var bytes = Buffer.from(s, 'base64');
+          bytes = Buffer.from(s, 'base64');
           for (var i = 0; i < bytes.length; i++)
             _mem[offset + i] = bytes[i];
         }

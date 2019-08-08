@@ -296,22 +296,14 @@ import Data.Traversable (Traversable(traverse))
 import Data.Word (Word)
 #endif
 #if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup(stimes))
-#endif
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
-#endif
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (stimesIdempotentMonoid)
+import Data.Semigroup (Semigroup((<>), stimes), stimesIdempotentMonoid)
 import Data.Functor.Classes
 #endif
 
 import Control.DeepSeq (NFData(rnf))
 import Data.Bits
 import qualified Data.Foldable as Foldable
-#if !MIN_VERSION_base(4,8,0)
 import Data.Foldable (Foldable())
-#endif
 import Data.Maybe (fromMaybe)
 import Data.Typeable
 import Prelude hiding (lookup, map, filter, foldr, foldl, null)
@@ -971,14 +963,14 @@ alter f k Nil     = case f Nothing of
 -- @
 -- interactiveAlter :: Int -> IntMap String -> IO (IntMap String)
 -- interactiveAlter k m = alterF f k m where
---   f Nothing = do
+--   f Nothing -> do
 --      putStrLn $ show k ++
 --          " was not found in the map. Would you like to add it?"
 --      getUserResponse1 :: IO (Maybe String)
---   f (Just old) = do
---      putStrLn $ "The key is currently bound to " ++ show old ++
+--   f (Just old) -> do
+--      putStrLn "The key is currently bound to " ++ show old ++
 --          ". Would you like to change or delete it?"
---      getUserResponse2 :: IO (Maybe String)
+--      getUserresponse2 :: IO (Maybe String)
 -- @
 --
 -- 'alterF' is the most general operation for working with an individual

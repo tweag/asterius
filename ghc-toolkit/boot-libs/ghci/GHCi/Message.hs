@@ -22,7 +22,6 @@ module GHCi.Message
   , Pipe(..), remoteCall, remoteTHCall, readPipe, writePipe
   ) where
 
-import Prelude -- See note [Why do we import Prelude here?]
 import GHCi.RemoteTypes
 import GHCi.FFI
 import GHCi.TH.Binary ()
@@ -44,7 +43,6 @@ import Data.Dynamic
 import Data.Typeable (TypeRep)
 import Data.IORef
 import Data.Map (Map)
-import Foreign
 import GHC.Generics
 import GHC.Stack.CCS
 import qualified Language.Haskell.TH        as TH
@@ -61,7 +59,6 @@ import System.IO.Error
 data Message a where
   -- | Exit the iserv process
   Shutdown :: Message ()
-  RtsRevertCAFs :: Message ()
 
   -- RTS Linker -------------------------------------------
 
@@ -108,7 +105,7 @@ data Message a where
    -> Int     -- non-ptr words
    -> Int     -- constr tag
    -> Int     -- pointer tag
-   -> ByteString -- constructor desccription
+   -> [Word8] -- constructor desccription
    -> Message (RemotePtr StgInfoTable)
 
   -- | Evaluate a statement
@@ -204,18 +201,6 @@ data Message a where
   RunModFinalizers :: RemoteRef (IORef QState)
                    -> [RemoteRef (TH.Q ())]
                    -> Message (QResult ())
-
-  -- | Remote interface to GHC.Exts.Heap.getClosureData. This is used by
-  -- the GHCi debugger to inspect values in the heap for :print and
-  -- type reconstruction.
-  GetClosure
-    :: HValueRef
-    -> Message (GenClosure HValueRef)
-
-  -- | Evaluate something. This is used to support :force in GHCi.
-  Seq
-    :: HValueRef
-    -> Message (EvalResult ())
 
 deriving instance Show (Message a)
 
@@ -428,22 +413,6 @@ data QState = QState
   }
 instance Show QState where show _ = "<QState>"
 
--- Orphan instances of Binary for Ptr / FunPtr by conversion to Word64.
--- This is to support Binary StgInfoTable which includes these.
-instance Binary (Ptr a) where
-  put p = put (fromIntegral (ptrToWordPtr p) :: Word64)
-  get = (wordPtrToPtr . fromIntegral) <$> (get :: Get Word64)
-
-instance Binary (FunPtr a) where
-  put = put . castFunPtrToPtr
-  get = castPtrToFunPtr <$> get
-
--- Binary instances to support the GetClosure message
-instance Binary StgInfoTable
-instance Binary ClosureType
-instance Binary PrimType
-instance Binary a => Binary (GenClosure a)
-
 data Msg = forall a . (Binary a, Show a) => Msg (Message a)
 
 getMessage :: Get Msg
@@ -484,11 +453,7 @@ getMessage = do
       31 -> Msg <$> return StartTH
       32 -> Msg <$> (RunModFinalizers <$> get <*> get)
       33 -> Msg <$> (AddSptEntry <$> get <*> get)
-      34 -> Msg <$> (RunTH <$> get <*> get <*> get <*> get)
-      35 -> Msg <$> (GetClosure <$> get)
-      36 -> Msg <$> (Seq <$> get)
-      37 -> Msg <$> return RtsRevertCAFs
-      _  -> error $ "Unknown Message code " ++ (show b)
+      _  -> Msg <$> (RunTH <$> get <*> get <*> get <*> get)
 
 putMessage :: Message a -> Put
 putMessage m = case m of
@@ -527,9 +492,6 @@ putMessage m = case m of
   RunModFinalizers a b        -> putWord8 32 >> put a >> put b
   AddSptEntry a b             -> putWord8 33 >> put a >> put b
   RunTH st q loc ty           -> putWord8 34 >> put st >> put q >> put loc >> put ty
-  GetClosure a                -> putWord8 35 >> put a
-  Seq a                       -> putWord8 36 >> put a
-  RtsRevertCAFs               -> putWord8 37
 
 -- -----------------------------------------------------------------------------
 -- Reading/writing messages

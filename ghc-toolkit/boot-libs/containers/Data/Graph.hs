@@ -36,7 +36,7 @@
 -- The implementation is based on
 --
 --   * /Structuring Depth-First Search Algorithms in Haskell/,
---     by David King and John Launchbury, <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.52.6526>
+--     by David King and John Launchbury.
 --
 -----------------------------------------------------------------------------
 
@@ -124,8 +124,6 @@ import qualified Data.Array as UA
 import Data.List
 #if MIN_VERSION_base(4,9,0)
 import Data.Functor.Classes
-#endif
-#if (!MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup (..))
 #endif
 #ifdef __GLASGOW_HASKELL__
@@ -219,13 +217,8 @@ flattenSCC :: SCC vertex -> [vertex]
 flattenSCC (AcyclicSCC v) = [v]
 flattenSCC (CyclicSCC vs) = vs
 
--- | The strongly connected components of a directed graph, reverse topologically
+-- | The strongly connected components of a directed graph, topologically
 -- sorted.
---
--- ==== __Examples__
---
--- > stronglyConnComp [("a",0,[1]),("b",1,[2,3]),("c",2,[1]),("d",3,[3])]
--- >   == [CyclicSCC ["d"],CyclicSCC ["b","c"],AcyclicSCC "a"]
 stronglyConnComp
         :: Ord key
         => [(node, key, [key])]
@@ -241,17 +234,12 @@ stronglyConnComp edges0
     get_node (AcyclicSCC (n, _, _)) = AcyclicSCC n
     get_node (CyclicSCC triples)     = CyclicSCC [n | (n,_,_) <- triples]
 
--- | The strongly connected components of a directed graph, reverse topologically
+-- | The strongly connected components of a directed graph, topologically
 -- sorted.  The function is the same as 'stronglyConnComp', except that
 -- all the information about each node retained.
 -- This interface is used when you expect to apply 'SCC' to
 -- (some of) the result of 'SCC', so you don't want to lose the
 -- dependency information.
---
--- ==== __Examples__
---
--- > stronglyConnCompR [("a",0,[1]),("b",1,[2,3]),("c",2,[1]),("d",3,[3])]
--- >  == [CyclicSCC [("d",3,[3])],CyclicSCC [("b",1,[2,3]),("c",2,[1])],AcyclicSCC ("a",0,[1])]
 stronglyConnCompR
         :: Ord key
         => [(node, key, [key])]
@@ -259,7 +247,7 @@ stronglyConnCompR
                 -- with a list of keys of nodes this node has edges to.
                 -- The out-list may contain keys that don't correspond to
                 -- nodes of the graph; such edges are ignored.
-        -> [SCC (node, key, [key])]     -- ^ Reverse topologically sorted
+        -> [SCC (node, key, [key])]     -- ^ Topologically sorted
 
 stronglyConnCompR [] = []  -- added to avoid creating empty array in graphFromEdges -- SOF
 stronglyConnCompR edges0
@@ -632,14 +620,7 @@ undirected g  = buildG (bounds g) (edges g ++ reverseE g)
 
 -- Algorithm 4: strongly connected components
 
--- | The strongly connected components of a graph, in reverse topological order.
---
--- ==== __Examples__
---
--- > scc (buildG (0,3) [(3,1),(1,2),(2,0),(0,1)])
--- >   == [Node {rootLabel = 0, subForest = [Node {rootLabel = 1, subForest = [Node {rootLabel = 2, subForest = []}]}]}
--- >      ,Node {rootLabel = 3, subForest = []}]
-
+-- | The strongly connected components of a graph.
 scc  :: Graph -> Forest Vertex
 scc g = dfs g (reverse (postOrd (transposeG g)))
 

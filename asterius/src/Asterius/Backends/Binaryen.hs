@@ -9,6 +9,9 @@ module Asterius.Backends.Binaryen
   ( MarshalError(..)
   , marshalModule
   , serializeModule
+  , serializeModuleSExpr
+  , setColorsEnabled
+  , isColorsEnabled
   , c_BinaryenSetDebugInfo
   , c_BinaryenSetOptimizeLevel
   , c_BinaryenSetShrinkLevel
@@ -209,8 +212,8 @@ marshalBinaryOp op =
 marshalHostOp :: HostOp -> BinaryenOp
 marshalHostOp op =
   case op of
-    CurrentMemory -> c_BinaryenCurrentMemory
-    GrowMemory -> c_BinaryenGrowMemory
+    CurrentMemory -> c_BinaryenMemorySize
+    GrowMemory -> c_BinaryenMemoryGrow
 
 marshalFunctionType ::
      BinaryenModuleRef
@@ -290,11 +293,11 @@ marshalExpression sym_map m e =
       tp <- marshalSBS $ showSBS functionType
       lift $ c_BinaryenCallIndirect m t ops (fromIntegral osl) tp
     GetLocal {..} ->
-      lift $ c_BinaryenGetLocal m index $ marshalValueType valueType
+      lift $ c_BinaryenLocalGet m index $ marshalValueType valueType
     SetLocal {..} ->
       lift $ do
         v <- marshalExpression sym_map m value
-        c_BinaryenSetLocal m index v
+        c_BinaryenLocalSet m index v
     Load {..} ->
       lift $ do
         p <- marshalExpression sym_map m ptr
@@ -589,6 +592,17 @@ serializeModule m =
         len <- peek len_p
         BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
 
+serializeModuleSExpr :: BinaryenModuleRef -> IO BS.ByteString
+serializeModuleSExpr m =
+
+  c_BinaryenModuleAllocateAndWriteText m >>= BS.unsafePackCString
+
+setColorsEnabled :: Bool -> IO ()
+setColorsEnabled b = c_BinaryenSetColorsEnabled . toEnum . fromEnum $ b
+
+isColorsEnabled :: IO Bool
+
+isColorsEnabled = toEnum . fromEnum <$> c_BinaryenAreColorsEnabled
 #else
 
 err =

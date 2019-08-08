@@ -114,6 +114,15 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
                 })
+          , ( "__asterius_func"
+            , AsteriusStatics
+                {staticsType = Bytes, asteriusStatics = [Uninitialized 8]})
+          , ( "__asterius_regs"
+            , AsteriusStatics
+                {staticsType = Bytes, asteriusStatics = [Uninitialized 1024]})
+          , ( "__asterius_ret"
+            , AsteriusStatics
+                {staticsType = Bytes, asteriusStatics = [Uninitialized 8]})
           ]
     , functionMap =
         Map.fromList $
@@ -150,6 +159,10 @@ rtsAsteriusModule opts =
        <> performMajorGCFunction opts
        <> performGCFunction opts
        <> localeEncodingFunction opts
+       <> isattyFunction opts
+       <> fdReadyFunction opts
+       <> rtsSupportsBoundThreadsFunction opts
+       <> writeFunction opts
        <> (if debug opts then generateRtsAsteriusDebugModule opts else mempty)
        -- Add in the module that contain functions which need to be
        -- exposed to the outside world. So add in the module, and
@@ -172,6 +185,7 @@ generateRtsExternalInterfaceModule opts = mempty
   <> getStablePtrWrapperFunction opts
   <> deRefStablePtrWrapperFunction opts
   <> freeStablePtrWrapperFunction opts
+  <> makeStableNameWrapperFunction opts
   <> rtsMkBoolFunction opts
   <> rtsMkDoubleFunction opts
   <> rtsMkCharFunction opts
@@ -215,9 +229,6 @@ rtsFunctionImports debug =
       , "asin"
       , "acos"
       , "atan"
-      , "asinh"
-      , "acosh"
-      , "atanh"
       , "log"
       , "exp"
       ]
@@ -248,6 +259,12 @@ rtsFunctionImports debug =
       , externalModuleName = "StablePtr"
       , externalBaseName = "freeStablePtr"
       , functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+      }
+  , FunctionImport
+      { internalName = "__asterius_makeStableName"
+      , externalModuleName = "StableName"
+      , externalBaseName = "makeStableName"
+      , functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   , FunctionImport
       { internalName = "printI64"
@@ -302,6 +319,12 @@ rtsFunctionImports debug =
       , externalModuleName = "TSO"
       , externalBaseName = "getTSOrstat"
       , functionType = FunctionType {paramTypes = [I32], returnTypes = [I32]}
+      }
+  , FunctionImport
+      { internalName = "__asterius_resetPromise"
+      , externalModuleName = "TSO"
+      , externalBaseName = "resetPromise"
+      , functionType = FunctionType {paramTypes = [], returnTypes = []}
       }
   , FunctionImport
       { internalName = "__asterius_hpAlloc"
@@ -458,6 +481,13 @@ rtsFunctionImports debug =
           , returnTypes = [I32]
           }
       }
+  , FunctionImport
+      { internalName = "__asterius_write"
+      , externalModuleName = "fs"
+      , externalBaseName = "write"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = []}
+      }
   ] <>
   (if debug
      then [ FunctionImport
@@ -488,7 +518,7 @@ rtsFunctionImports debug =
                   , externalModuleName = "MemoryTrap"
                   , externalBaseName = "load" <> k
                   , functionType =
-                      FunctionType {paramTypes = [I64, I32], returnTypes = [t]}
+                      FunctionType {paramTypes = [I64, I64, I32], returnTypes = [t]}
                   }
               , FunctionImport
                   { internalName = "__asterius_store_" <> k
@@ -496,7 +526,7 @@ rtsFunctionImports debug =
                   , externalBaseName = "store" <> k
                   , functionType =
                       FunctionType
-                        {paramTypes = [I64, I32, t], returnTypes = []}
+                        {paramTypes = [I64, I64, I32, t], returnTypes = []}
                   }
             ]
             | (k, t) <-
@@ -513,7 +543,7 @@ rtsFunctionImports debug =
             , externalModuleName = "MemoryTrap"
             , externalBaseName = "load" <> k1 <> s <> b
             , functionType =
-                FunctionType {paramTypes = [I64, I32], returnTypes = [t1]}
+                FunctionType {paramTypes = [I64, I64, I32], returnTypes = [t1]}
             }
           | (k1, t1) <- [("I32", I32), ("I64", I64)]
           , s <- ["S", "U"]
@@ -551,6 +581,7 @@ rtsFunctionExports debug =
       , "getStablePtr"
       , "deRefStablePtr"
       , "hs_free_stable_ptr"
+      ,  "makeStableName"
       ]
   ] <>
   [ FunctionExport {internalName = "__asterius_" <> f, externalName = f}
@@ -714,7 +745,7 @@ generateWrapperModule mod = mod {
 
 
 
-hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction ::
+hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction, isattyFunction, fdReadyFunction, rtsSupportsBoundThreadsFunction, writeFunction ::
      BuiltinsOptions -> AsteriusModule
 
 initCapability :: EDSL ()
@@ -809,31 +840,20 @@ scheduleWaitThreadFunction BuiltinsOptions {} =
         storeI32 mainCapability offset_Capability_idle $ constI32 0
         dirtyTSO mainCapability t
         dirtySTACK mainCapability (loadI64 t offset_StgTSO_stackobj)
-        r <- stgRun $ symbol "stg_returnToStackTop"
-        ret <- i64Local $ loadI64 r offset_StgRegTable_rRet
+        stgRun $ loadI64 (symbol "__asterius_func") 0
+        ret <-
+          i64Local $
+          loadI64 mainCapability (offset_Capability_r + offset_StgRegTable_rRet)
         switchI64 ret $
           const
             ( [ ( ret_HeapOverflow
                 , do callImport
                        "__asterius_gcRootTSO"
                        [convertUInt64ToFloat64 t]
-                     bytes <- i64Local $ getLVal hpAlloc
-                     putLVal hpAlloc $ constI64 0
-                     if'
-                       []
-                       (eqZInt64 bytes)
-                       (emit $ emitErrorMessage [] "HeapOverflowWithZeroHpAlloc")
-                       mempty
-                     truncUFloat64ToInt64 <$>
-                       callImport'
-                         "__asterius_hpAlloc"
-                         [convertUInt64ToFloat64 bytes]
-                         F64 >>=
-                       putLVal currentNursery
                      break' sched_loop_lbl Nothing)
               , (ret_StackOverflow, emit $ emitErrorMessage [] "StackOverflow")
               , (ret_ThreadYielding, break' sched_loop_lbl Nothing)
-              , (ret_ThreadBlocked, emit $ emitErrorMessage [] "ThreadBlocked")
+              , (ret_ThreadBlocked, break' sched_block_lbl Nothing)
               , ( ret_ThreadFinished
                 , if'
                     []
@@ -978,7 +998,7 @@ newCAFFunction _ =
     storeI64 caf 0 $ symbol "stg_IND_STATIC_info"
     emit bh
 
-stgRun :: Expression -> EDSL Expression
+stgRun :: Expression -> EDSL ()
 stgRun init_f = do
   let pc = pointerI64 (symbol "__asterius_pc") 0
   pc_reg <- i64MutLocal
@@ -988,7 +1008,6 @@ stgRun init_f = do
     if' [] (eqZInt64 (getLVal pc_reg)) mempty $ do
       callIndirect (getLVal pc_reg)
       break' loop_lbl Nothing
-  pure $ getLVal r1
 
 stgReturnFunction _ =
   runEDSL "StgReturn" $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0
@@ -1013,6 +1032,14 @@ freeStablePtrWrapperFunction _ =
   runEDSL"hs_free_stable_ptr"  $ do
     sp64 <- param I64
     callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
+
+makeStableNameWrapperFunction _ =
+  runEDSL "makeStableName" $ do
+    setReturnTypes [I64]
+    sp64 <- param I64
+    obj_f64 <-
+      callImport' "__asterius_makeStableName" [convertUInt64ToFloat64 sp64] F64
+    emit $ truncUFloat64ToInt64 obj_f64
 
 rtsMkHelper ::
    BuiltinsOptions
@@ -1309,6 +1336,30 @@ localeEncodingFunction _ =
   runEDSL "localeEncoding" $ do
     setReturnTypes [I64]
     emit $ symbol "__asterius_localeEncoding"
+
+isattyFunction _ =
+  runEDSL "isatty" $ do
+    setReturnTypes [I64]
+    _ <- param I64
+    emit $ constI64 0
+
+fdReadyFunction _ =
+  runEDSL "fdReady" $ do
+    setReturnTypes [I64]
+    _ <- params [I64, I64, I64, I64]
+    emit $ constI64 1
+
+rtsSupportsBoundThreadsFunction _ =
+  runEDSL "rtsSupportsBoundThreads" $ do
+    setReturnTypes [I64]
+    emit $ constI64 0
+
+writeFunction _ =
+  runEDSL "ghczuwrapperZC20ZCbaseZCSystemziPosixziInternalsZCwrite" $ do
+    setReturnTypes [I64]
+    [fd, buf, count] <- params [I64, I64, I64]
+    callImport "__asterius_write" $ map convertUInt64ToFloat64 [fd, buf, count]
+    emit count
 
 getF64GlobalRegFunction ::
   BuiltinsOptions

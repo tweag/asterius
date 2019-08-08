@@ -1,6 +1,6 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE CPP, NoImplicitPrelude, BangPatterns, MagicHash, UnboxedTuples #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -30,12 +30,6 @@ module GHC.Word (
     byteSwap16,
     byteSwap32,
     byteSwap64,
-
-    -- * Bit reversal
-    bitReverse8,
-    bitReverse16,
-    bitReverse32,
-    bitReverse64,
 
     -- * Equality operators
     -- | See GHC.Classes#matching_overloaded_methods_in_rules
@@ -174,7 +168,6 @@ instance Bits Word8 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (W8# x#) .&.   (W8# y#)   = W8# (x# `and#` y#)
     (W8# x#) .|.   (W8# y#)   = W8# (x# `or#`  y#)
@@ -184,14 +177,10 @@ instance Bits Word8 where
     (W8# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#) = W8# (narrow8Word# (x# `shiftL#` i#))
         | otherwise           = W8# (x# `shiftRL#` negateInt# i#)
-    (W8# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#) = W8# (narrow8Word# (x# `shiftL#` i#))
-        | otherwise           = overflowError
+    (W8# x#) `shiftL`       (I# i#) = W8# (narrow8Word# (x# `shiftL#` i#))
     (W8# x#) `unsafeShiftL` (I# i#) =
         W8# (narrow8Word# (x# `uncheckedShiftL#` i#))
-    (W8# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#) = W8# (x# `shiftRL#` i#)
-        | otherwise           = overflowError
+    (W8# x#) `shiftR`       (I# i#) = W8# (x# `shiftRL#` i#)
     (W8# x#) `unsafeShiftR` (I# i#) = W8# (x# `uncheckedShiftRL#` i#)
     (W8# x#) `rotate`       (I# i#)
         | isTrue# (i'# ==# 0#) = W8# x#
@@ -208,8 +197,6 @@ instance Bits Word8 where
 
 -- | @since 4.6.0.0
 instance FiniteBits Word8 where
-    {-# INLINE countLeadingZeros #-}
-    {-# INLINE countTrailingZeros #-}
     finiteBitSize _ = 8
     countLeadingZeros  (W8# x#) = I# (word2Int# (clz8# x#))
     countTrailingZeros (W8# x#) = I# (word2Int# (ctz8# x#))
@@ -365,7 +352,6 @@ instance Bits Word16 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (W16# x#) .&.   (W16# y#)  = W16# (x# `and#` y#)
     (W16# x#) .|.   (W16# y#)  = W16# (x# `or#`  y#)
@@ -375,14 +361,10 @@ instance Bits Word16 where
     (W16# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)  = W16# (narrow16Word# (x# `shiftL#` i#))
         | otherwise            = W16# (x# `shiftRL#` negateInt# i#)
-    (W16# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#)  = W16# (narrow16Word# (x# `shiftL#` i#))
-        | otherwise            = overflowError
+    (W16# x#) `shiftL` (I# i#)       = W16# (narrow16Word# (x# `shiftL#` i#))
     (W16# x#) `unsafeShiftL` (I# i#) =
         W16# (narrow16Word# (x# `uncheckedShiftL#` i#))
-    (W16# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#)  = W16# (x# `shiftRL#` i#)
-        | otherwise            = overflowError
+    (W16# x#) `shiftR`       (I# i#) = W16# (x# `shiftRL#` i#)
     (W16# x#) `unsafeShiftR` (I# i#) = W16# (x# `uncheckedShiftRL#` i#)
     (W16# x#) `rotate`       (I# i#)
         | isTrue# (i'# ==# 0#) = W16# x#
@@ -399,8 +381,6 @@ instance Bits Word16 where
 
 -- | @since 4.6.0.0
 instance FiniteBits Word16 where
-    {-# INLINE countLeadingZeros #-}
-    {-# INLINE countTrailingZeros #-}
     finiteBitSize _ = 16
     countLeadingZeros  (W16# x#) = I# (word2Int# (clz16# x#))
     countTrailingZeros (W16# x#) = I# (word2Int# (ctz16# x#))
@@ -602,7 +582,6 @@ instance Bits Word32 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (W32# x#) .&.   (W32# y#)  = W32# (x# `and#` y#)
     (W32# x#) .|.   (W32# y#)  = W32# (x# `or#`  y#)
@@ -612,14 +591,10 @@ instance Bits Word32 where
     (W32# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)  = W32# (narrow32Word# (x# `shiftL#` i#))
         | otherwise            = W32# (x# `shiftRL#` negateInt# i#)
-    (W32# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#)  = W32# (narrow32Word# (x# `shiftL#` i#))
-        | otherwise            = overflowError
+    (W32# x#) `shiftL`       (I# i#) = W32# (narrow32Word# (x# `shiftL#` i#))
     (W32# x#) `unsafeShiftL` (I# i#) =
         W32# (narrow32Word# (x# `uncheckedShiftL#` i#))
-    (W32# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#)  = W32# (x# `shiftRL#` i#)
-        | otherwise            = overflowError
+    (W32# x#) `shiftR`       (I# i#) = W32# (x# `shiftRL#` i#)
     (W32# x#) `unsafeShiftR` (I# i#) = W32# (x# `uncheckedShiftRL#` i#)
     (W32# x#) `rotate`       (I# i#)
         | isTrue# (i'# ==# 0#) = W32# x#
@@ -636,8 +611,6 @@ instance Bits Word32 where
 
 -- | @since 4.6.0.0
 instance FiniteBits Word32 where
-    {-# INLINE countLeadingZeros #-}
-    {-# INLINE countTrailingZeros #-}
     finiteBitSize _ = 32
     countLeadingZeros  (W32# x#) = I# (word2Int# (clz32# x#))
     countTrailingZeros (W32# x#) = I# (word2Int# (ctz32# x#))
@@ -777,7 +750,6 @@ instance Bits Word64 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (W64# x#) .&.   (W64# y#)  = W64# (x# `and64#` y#)
     (W64# x#) .|.   (W64# y#)  = W64# (x# `or64#`  y#)
@@ -786,13 +758,9 @@ instance Bits Word64 where
     (W64# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)  = W64# (x# `shiftL64#` i#)
         | otherwise            = W64# (x# `shiftRL64#` negateInt# i#)
-    (W64# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#)  = W64# (x# `shiftL64#` i#)
-        | otherwise            = overflowError
+    (W64# x#) `shiftL`       (I# i#) = W64# (x# `shiftL64#` i#)
     (W64# x#) `unsafeShiftL` (I# i#) = W64# (x# `uncheckedShiftL64#` i#)
-    (W64# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#)  = W64# (x# `shiftRL64#` i#)
-        | otherwise            = overflowError
+    (W64# x#) `shiftR`       (I# i#) = W64# (x# `shiftRL64#` i#)
     (W64# x#) `unsafeShiftR` (I# i#) = W64# (x# `uncheckedShiftRL64#` i#)
     (W64# x#) `rotate` (I# i#)
         | isTrue# (i'# ==# 0#) = W64# x#
@@ -930,7 +898,6 @@ instance Bits Word64 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (W64# x#) .&.   (W64# y#)  = W64# (x# `and#` y#)
     (W64# x#) .|.   (W64# y#)  = W64# (x# `or#`  y#)
@@ -940,13 +907,9 @@ instance Bits Word64 where
     (W64# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)  = W64# (x# `shiftL#` i#)
         | otherwise            = W64# (x# `shiftRL#` negateInt# i#)
-    (W64# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#)  = W64# (x# `shiftL#` i#)
-        | otherwise            = overflowError
+    (W64# x#) `shiftL`       (I# i#) = W64# (x# `shiftL#` i#)
     (W64# x#) `unsafeShiftL` (I# i#) = W64# (x# `uncheckedShiftL#` i#)
-    (W64# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#)  = W64# (x# `shiftRL#` i#)
-        | otherwise            = overflowError
+    (W64# x#) `shiftR`       (I# i#) = W64# (x# `shiftRL#` i#)
     (W64# x#) `unsafeShiftR` (I# i#) = W64# (x# `uncheckedShiftRL#` i#)
     (W64# x#) `rotate` (I# i#)
         | isTrue# (i'# ==# 0#) = W64# x#
@@ -976,8 +939,6 @@ uncheckedShiftRL64# = uncheckedShiftRL#
 
 -- | @since 4.6.0.0
 instance FiniteBits Word64 where
-    {-# INLINE countLeadingZeros #-}
-    {-# INLINE countTrailingZeros #-}
     finiteBitSize _ = 64
     countLeadingZeros  (W64# x#) = I# (word2Int# (clz64# x#))
     countTrailingZeros (W64# x#) = I# (word2Int# (ctz64# x#))
@@ -1010,35 +971,6 @@ byteSwap64 (W64# w#) = W64# (byteSwap64# w#)
 #else
 byteSwap64 :: Word64 -> Word64
 byteSwap64 (W64# w#) = W64# (byteSwap# w#)
-#endif
-
--- | Reverse the order of the bits in a 'Word8'.
---
--- @since 4.12.0.0
-bitReverse8 :: Word8 -> Word8
-bitReverse8 (W8# w#) = W8# (narrow8Word# (bitReverse8# w#))
-
--- | Reverse the order of the bits in a 'Word16'.
---
--- @since 4.12.0.0
-bitReverse16 :: Word16 -> Word16
-bitReverse16 (W16# w#) = W16# (narrow16Word# (bitReverse16# w#))
-
--- | Reverse the order of the bits in a 'Word32'.
---
--- @since 4.12.0.0
-bitReverse32 :: Word32 -> Word32
-bitReverse32 (W32# w#) = W32# (narrow32Word# (bitReverse32# w#))
-
--- | Reverse the order of the bits in a 'Word64'.
---
--- @since 4.12.0.0
-#if WORD_SIZE_IN_BITS < 64
-bitReverse64 :: Word64 -> Word64
-bitReverse64 (W64# w#) = W64# (bitReverse64# w#)
-#else
-bitReverse64 :: Word64 -> Word64
-bitReverse64 (W64# w#) = W64# (bitReverse# w#)
 #endif
 
 -------------------------------------------------------------------------------

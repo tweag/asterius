@@ -1,4 +1,5 @@
 {-# OPTIONS -fno-warn-orphans #-}
+#include "HsConfigure.h"
 -- | TAI and leap-second maps for converting to UTC: most people won't need this module.
 module Data.Time.Clock.TAI
 (

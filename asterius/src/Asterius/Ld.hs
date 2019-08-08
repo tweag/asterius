@@ -20,10 +20,9 @@ import qualified Data.Set as Set
 import Data.Set (Set)
 import Data.Traversable
 import Prelude hiding (IO)
-import System.FilePath
 
 data LinkTask = LinkTask
-  { linkOutput :: FilePath
+  { progName, linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
   , debug, gcSections, binaryen, verboseErr :: Bool
   , outputIR :: Maybe FilePath
@@ -37,10 +36,17 @@ loadTheWorld LinkTask {..} = do
   let objs = rights objrs
   pure $ mconcat objs <> lib
 
+-- | The *_info are generated from Cmm using the INFO_TABLE macro.
+-- For example, see StgMiscClosures.cmm / Exception.cmm
 rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
   Set.fromList
-    [ "barf"
+    [ "__asterius_func"
+    , "__asterius_regs"
+    , "__asterius_ret"
+    , "barf"
+    , "base_AsteriusziTopHandler_runMainIO_closure"
+    , "base_AsteriusziTypes_makeJSException_closure"
     , "base_GHCziPtr_Ptr_con_info"
     , "base_GHCziStable_StablePtr_con_info"
     , "ghczmprim_GHCziTypes_Czh_con_info"
@@ -52,6 +58,7 @@ rtsUsedSymbols =
     , "ghczmprim_GHCziTypes_ZC_con_info"
     , "ghczmprim_GHCziTypes_ZMZN_closure"
     , "integerzmwiredzmin_GHCziIntegerziType_Integer_con_info"
+    , "MainCapability"
     , "Main_main_closure"
     , "stg_ARR_WORDS_info"
     , "stg_BLACKHOLE_info"
@@ -59,6 +66,9 @@ rtsUsedSymbols =
     , "stg_marked_upd_frame_info"
     , "stg_NO_FINALIZER_closure"
     , "stg_raise_info"
+    , "stg_raisezh"
+    , "stg_returnToStackTop"
+    , "stg_STABLE_NAME_info"
     , "stg_WEAK_info"
     ]
 
@@ -72,7 +82,9 @@ linkModules LinkTask {..} m =
     verboseErr
     (rtsAsteriusModule
        defaultBuiltinsOptions
-         {progName = takeBaseName linkOutput, Asterius.Builtins.debug = debug} <>
+         { Asterius.Builtins.progName = progName
+         , Asterius.Builtins.debug = debug
+         } <>
      m)
     (Set.unions
        [ Set.fromList rootSymbols

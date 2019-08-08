@@ -38,20 +38,12 @@ switch (op[0]) {
     }
   }
   case 'c': {
-    switch (op[1]) {
-      case 'a': {
-        switch (op[4]) {
-          case '\0':
-            if (strcmp(op, "call") == 0) { return makeCall(s); }
-            goto parse_error;
-          case '_':
-            if (strcmp(op, "call_indirect") == 0) { return makeCallIndirect(s); }
-            goto parse_error;
-          default: goto parse_error;
-        }
-      }
-      case 'u':
-        if (strcmp(op, "current_memory") == 0) { return makeHost(s, HostOp::CurrentMemory); }
+    switch (op[4]) {
+      case '\0':
+        if (strcmp(op, "call") == 0) { return makeCall(s, /*isReturn=*/false); }
+        goto parse_error;
+      case '_':
+        if (strcmp(op, "call_indirect") == 0) { return makeCallIndirect(s, /*isReturn=*/false); }
         goto parse_error;
       default: goto parse_error;
     }
@@ -208,6 +200,9 @@ switch (op[0]) {
                   default: goto parse_error;
                 }
               }
+              case 'p':
+                if (strcmp(op, "f32.pop") == 0) { return makePop(f32); }
+                goto parse_error;
               case 'r':
                 if (strcmp(op, "f32.reinterpret_i32") == 0) { return makeUnary(s, UnaryOp::ReinterpretInt32); }
                 goto parse_error;
@@ -467,9 +462,17 @@ switch (op[0]) {
                   default: goto parse_error;
                 }
               }
-              case 'p':
-                if (strcmp(op, "f64.promote_f32") == 0) { return makeUnary(s, UnaryOp::PromoteFloat32); }
-                goto parse_error;
+              case 'p': {
+                switch (op[5]) {
+                  case 'o':
+                    if (strcmp(op, "f64.pop") == 0) { return makePop(f64); }
+                    goto parse_error;
+                  case 'r':
+                    if (strcmp(op, "f64.promote_f32") == 0) { return makeUnary(s, UnaryOp::PromoteFloat32); }
+                    goto parse_error;
+                  default: goto parse_error;
+                }
+              }
               case 'r':
                 if (strcmp(op, "f64.reinterpret_i64") == 0) { return makeUnary(s, UnaryOp::ReinterpretInt64); }
                 goto parse_error;
@@ -605,20 +608,12 @@ switch (op[0]) {
     }
   }
   case 'g': {
-    switch (op[1]) {
-      case 'l': {
-        switch (op[7]) {
-          case 'g':
-            if (strcmp(op, "global.get") == 0) { return makeGetGlobal(s); }
-            goto parse_error;
-          case 's':
-            if (strcmp(op, "global.set") == 0) { return makeSetGlobal(s); }
-            goto parse_error;
-          default: goto parse_error;
-        }
-      }
-      case 'r':
-        if (strcmp(op, "grow_memory") == 0) { return makeHost(s, HostOp::GrowMemory); }
+    switch (op[7]) {
+      case 'g':
+        if (strcmp(op, "global.get") == 0) { return makeGlobalGet(s); }
+        goto parse_error;
+      case 's':
+        if (strcmp(op, "global.set") == 0) { return makeGlobalSet(s); }
         goto parse_error;
       default: goto parse_error;
     }
@@ -1105,9 +1100,17 @@ switch (op[0]) {
               case 'o':
                 if (strcmp(op, "i32.or") == 0) { return makeBinary(s, BinaryOp::OrInt32); }
                 goto parse_error;
-              case 'p':
-                if (strcmp(op, "i32.popcnt") == 0) { return makeUnary(s, UnaryOp::PopcntInt32); }
-                goto parse_error;
+              case 'p': {
+                switch (op[7]) {
+                  case '\0':
+                    if (strcmp(op, "i32.pop") == 0) { return makePop(i32); }
+                    goto parse_error;
+                  case 'c':
+                    if (strcmp(op, "i32.popcnt") == 0) { return makeUnary(s, UnaryOp::PopcntInt32); }
+                    goto parse_error;
+                  default: goto parse_error;
+                }
+              }
               case 'r': {
                 switch (op[5]) {
                   case 'e': {
@@ -1773,9 +1776,17 @@ switch (op[0]) {
               case 'o':
                 if (strcmp(op, "i64.or") == 0) { return makeBinary(s, BinaryOp::OrInt64); }
                 goto parse_error;
-              case 'p':
-                if (strcmp(op, "i64.popcnt") == 0) { return makeUnary(s, UnaryOp::PopcntInt64); }
-                goto parse_error;
+              case 'p': {
+                switch (op[7]) {
+                  case '\0':
+                    if (strcmp(op, "i64.pop") == 0) { return makePop(i64); }
+                    goto parse_error;
+                  case 'c':
+                    if (strcmp(op, "i64.popcnt") == 0) { return makeUnary(s, UnaryOp::PopcntInt64); }
+                    goto parse_error;
+                  default: goto parse_error;
+                }
+              }
               case 'r': {
                 switch (op[5]) {
                   case 'e': {
@@ -2174,13 +2185,13 @@ switch (op[0]) {
       case 'c': {
         switch (op[6]) {
           case 'g':
-            if (strcmp(op, "local.get") == 0) { return makeGetLocal(s); }
+            if (strcmp(op, "local.get") == 0) { return makeLocalGet(s); }
             goto parse_error;
           case 's':
-            if (strcmp(op, "local.set") == 0) { return makeSetLocal(s); }
+            if (strcmp(op, "local.set") == 0) { return makeLocalSet(s); }
             goto parse_error;
           case 't':
-            if (strcmp(op, "local.tee") == 0) { return makeTeeLocal(s); }
+            if (strcmp(op, "local.tee") == 0) { return makeLocalTee(s); }
             goto parse_error;
           default: goto parse_error;
         }
@@ -2199,8 +2210,14 @@ switch (op[0]) {
       case 'f':
         if (strcmp(op, "memory.fill") == 0) { return makeMemoryFill(s); }
         goto parse_error;
+      case 'g':
+        if (strcmp(op, "memory.grow") == 0) { return makeHost(s, HostOp::MemoryGrow); }
+        goto parse_error;
       case 'i':
         if (strcmp(op, "memory.init") == 0) { return makeMemoryInit(s); }
+        goto parse_error;
+      case 's':
+        if (strcmp(op, "memory.size") == 0) { return makeHost(s, HostOp::MemorySize); }
         goto parse_error;
       default: goto parse_error;
     }
@@ -2208,9 +2225,28 @@ switch (op[0]) {
   case 'n':
     if (strcmp(op, "nop") == 0) { return makeNop(); }
     goto parse_error;
-  case 'r':
-    if (strcmp(op, "return") == 0) { return makeReturn(s); }
+  case 'p':
+    if (strcmp(op, "push") == 0) { return makePush(s); }
     goto parse_error;
+  case 'r': {
+    switch (op[6]) {
+      case '\0':
+        if (strcmp(op, "return") == 0) { return makeReturn(s); }
+        goto parse_error;
+      case '_': {
+        switch (op[11]) {
+          case '\0':
+            if (strcmp(op, "return_call") == 0) { return makeCall(s, /*isReturn=*/true); }
+            goto parse_error;
+          case '_':
+            if (strcmp(op, "return_call_indirect") == 0) { return makeCallIndirect(s, /*isReturn=*/true); }
+            goto parse_error;
+          default: goto parse_error;
+        }
+      }
+      default: goto parse_error;
+    }
+  }
   case 's':
     if (strcmp(op, "select") == 0) { return makeSelect(s); }
     goto parse_error;
@@ -2260,7 +2296,7 @@ switch (op[0]) {
   default: goto parse_error;
 }
 parse_error:
-  throw ParseException(std::string(op));
+  throw ParseException(std::string(op), s.line, s.col);
 #endif // INSTRUCTION_PARSER
 
 // clang-format on

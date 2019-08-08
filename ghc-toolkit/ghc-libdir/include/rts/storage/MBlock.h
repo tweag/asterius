@@ -5,7 +5,7 @@
  * MegaBlock Allocator interface.
  *
  * See wiki commentary at
- *  https://gitlab.haskell.org/ghc/ghc/wikis/commentary/heap-alloced
+ *  http://ghc.haskell.org/trac/ghc/wiki/Commentary/HeapAlloced
  *
  * ---------------------------------------------------------------------------*/
 

@@ -262,9 +262,9 @@ tests:
     dependencies:
       - asterius
       - tasty
-      - tasty-hspec
-      - ansi-terminal
+      - tasty-hunit
       - cassava
+      - optparse-applicative
 
   ghc-testsuite-with-ghc:
     source-dirs: test

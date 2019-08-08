@@ -372,21 +372,13 @@ import Data.Traversable (Traversable(traverse))
 #endif
 #if MIN_VERSION_base(4,9,0)
 import Data.Functor.Classes
-import Data.Semigroup (stimesIdempotentMonoid)
-#endif
-#if MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup(stimes))
-#endif
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
-import Data.Semigroup (Semigroup((<>)))
+import Data.Semigroup (Semigroup((<>), stimes), stimesIdempotentMonoid)
 #endif
 import Control.Applicative (Const (..))
 import Control.DeepSeq (NFData(rnf))
 import Data.Bits (shiftL, shiftR)
 import qualified Data.Foldable as Foldable
-#if !MIN_VERSION_base(4,8,0)
 import Data.Foldable (Foldable())
-#endif
 import Data.Typeable
 import Prelude hiding (lookup, map, filter, foldr, foldl, null, splitAt, take, drop)
 
@@ -1175,14 +1167,14 @@ data AreWeStrict = Strict | Lazy
 -- @
 -- interactiveAlter :: Int -> Map Int String -> IO (Map Int String)
 -- interactiveAlter k m = alterF f k m where
---   f Nothing = do
+--   f Nothing -> do
 --      putStrLn $ show k ++
 --          " was not found in the map. Would you like to add it?"
 --      getUserResponse1 :: IO (Maybe String)
---   f (Just old) = do
---      putStrLn $ "The key is currently bound to " ++ show old ++
+--   f (Just old) -> do
+--      putStrLn "The key is currently bound to " ++ show old ++
 --          ". Would you like to change or delete it?"
---      getUserResponse2 :: IO (Maybe String)
+--      getUserresponse2 :: IO (Maybe String)
 -- @
 --
 -- 'alterF' is the most general operation for working with an individual
@@ -2862,7 +2854,7 @@ dropWhileAntitone p (Bin _ kx x l r)
 --
 -- @
 -- spanAntitone p xs = ('takeWhileAntitone' p xs, 'dropWhileAntitone' p xs)
--- spanAntitone p xs = partitionWithKey (\k _ -> p k) xs
+-- spanAntitone p xs = partition p xs
 -- @
 --
 -- Note: if @p@ is not actually antitone, then @spanAntitone@ will split the map

@@ -5,7 +5,6 @@
 --
 module GHCi.BinaryArray(putArray, getArray) where
 
-import Prelude
 import Foreign.Ptr
 import Data.Binary
 import Data.Binary.Put (putBuilder)

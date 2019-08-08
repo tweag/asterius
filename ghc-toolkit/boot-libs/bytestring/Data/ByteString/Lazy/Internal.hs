@@ -3,7 +3,7 @@
 #if __GLASGOW_HASKELL__ >= 703
 {-# LANGUAGE Unsafe #-}
 #endif
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -- |
 -- Module      : Data.ByteString.Lazy.Internal
@@ -51,7 +51,7 @@ import qualified Data.ByteString          as S (length, take, drop)
 import Data.Word        (Word8)
 import Foreign.Storable (Storable(sizeOf))
 
-#if !(MIN_VERSION_base(4,11,0)) && MIN_VERSION_base(4,9,0)
+#if MIN_VERSION_base(4,9,0)
 import Data.Semigroup   (Semigroup((<>)))
 #endif
 #if !(MIN_VERSION_base(4,8,0))

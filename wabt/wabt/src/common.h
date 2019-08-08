@@ -102,6 +102,14 @@
 
 struct v128 {
   uint32_t v[4];
+
+  bool operator==(const v128& other) const {
+    return v[0] == other.v[0] &&
+           v[1] == other.v[1] &&
+           v[2] == other.v[2] &&
+           v[3] == other.v[3];
+  }
+  bool operator!=(const v128& other) const { return !(*this == other); }
 };
 
 namespace wabt {
@@ -258,6 +266,11 @@ enum class SymbolType {
   Event = 4,
 };
 
+enum class ComdatType {
+  Data = 0x0,
+  Function = 0x1,
+};
+
 #define WABT_SYMBOL_FLAG_UNDEFINED 0x10
 #define WABT_SYMBOL_MASK_VISIBILITY 0x4
 #define WABT_SYMBOL_MASK_BINDING 0x3
@@ -397,6 +410,9 @@ static WABT_INLINE TypeVector GetInlineTypeVector(Type type) {
     case Type::F32:
     case Type::F64:
     case Type::V128:
+    case Type::Funcref:
+    case Type::Anyref:
+    case Type::ExceptRef:
       return TypeVector(&type, &type + 1);
 
     default:

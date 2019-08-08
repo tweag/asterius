@@ -7,15 +7,12 @@ module Data.Time.Calendar.Julian
     -- calendrical arithmetic
     -- e.g. "one month after March 31st"
     addJulianMonthsClip,addJulianMonthsRollOver,
-    addJulianYearsClip,addJulianYearsRollOver,
-    addJulianDurationClip,addJulianDurationRollOver,
-    diffJulianDurationClip,diffJulianDurationRollOver,
+    addJulianYearsClip,addJulianYearsRollOver
 ) where
 
 import Data.Time.Calendar.MonthDay
 import Data.Time.Calendar.JulianYearDay
 import Data.Time.Calendar.Days
-import Data.Time.Calendar.CalendarDiffDays
 import Data.Time.Calendar.Private
 
 -- | Convert to proleptic Julian calendar. First element of result is year, second month number (1-12), third day (1-31).
@@ -74,42 +71,3 @@ addJulianYearsClip n = addJulianMonthsClip (n * 12)
 -- For instance, 2004-02-29 + 2 years = 2006-03-01.
 addJulianYearsRollOver :: Integer -> Day -> Day
 addJulianYearsRollOver n = addJulianMonthsRollOver (n * 12)
-
--- | Add months (clipped to last day), then add days
-addJulianDurationClip :: CalendarDiffDays -> Day -> Day
-addJulianDurationClip (CalendarDiffDays m d) day = addDays d $ addJulianMonthsClip m day
-
--- | Add months (rolling over to next month), then add days
-addJulianDurationRollOver :: CalendarDiffDays -> Day -> Day
-addJulianDurationRollOver (CalendarDiffDays m d) day = addDays d $ addJulianMonthsRollOver m day
-
--- | Calendrical difference, with as many whole months as possible
-diffJulianDurationClip :: Day -> Day -> CalendarDiffDays
-diffJulianDurationClip day2 day1 = let
-    (y1,m1,d1) = toJulian day1
-    (y2,m2,d2) = toJulian day2
-    ym1 = y1 * 12 + toInteger m1
-    ym2 = y2 * 12 + toInteger m2
-    ymdiff = ym2 - ym1
-    ymAllowed =
-        if day2 >= day1 then
-        if d2 >= d1 then ymdiff else ymdiff - 1
-        else if d2 <= d1 then ymdiff else ymdiff + 1
-    dayAllowed = addJulianDurationClip (CalendarDiffDays ymAllowed 0) day1
-    in CalendarDiffDays ymAllowed $ diffDays day2 dayAllowed
-
--- | Calendrical difference, with as many whole months as possible.
--- Same as 'diffJulianDurationClip' for positive durations.
-diffJulianDurationRollOver :: Day -> Day -> CalendarDiffDays
-diffJulianDurationRollOver day2 day1 = let
-    (y1,m1,d1) = toJulian day1
-    (y2,m2,d2) = toJulian day2
-    ym1 = y1 * 12 + toInteger m1
-    ym2 = y2 * 12 + toInteger m2
-    ymdiff = ym2 - ym1
-    ymAllowed =
-        if day2 >= day1 then
-        if d2 >= d1 then ymdiff else ymdiff - 1
-        else if d2 <= d1 then ymdiff else ymdiff + 1
-    dayAllowed = addJulianDurationRollOver (CalendarDiffDays ymAllowed 0) day1
-    in CalendarDiffDays ymAllowed $ diffDays day2 dayAllowed

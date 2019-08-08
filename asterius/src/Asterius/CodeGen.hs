@@ -33,7 +33,6 @@ import Control.Monad.Reader
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
-import Data.List
 import qualified Data.Map.Strict as M
 import Data.String
 import Data.Traversable
@@ -83,7 +82,7 @@ marshalCLabel clbl = do
 marshalLabel :: GHC.Label -> CodeGen SBS.ShortByteString
 marshalLabel lbl = do
   (dflags, _) <- ask
-  pure $ fromString $ asmPpr dflags $ GHC.mkLocalBlockLabel $ GHC.getUnique lbl
+  pure $ fromString $ asmPpr dflags lbl
 
 marshalCmmType :: GHC.CmmType -> CodeGen ValueType
 marshalCmmType t
@@ -1401,24 +1400,6 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
             , addBranches = []
             }) :
         rbs
-      blocks_key_map =
-        M.fromList
-          (zip (sort (map fst blocks_unresolved)) (map showSBS [(0 :: Int) ..]))
-      blocks_key_subst = (blocks_key_map !)
-      blocks_resolved =
-        [ ( blocks_key_subst k
-          , b
-              { addBranches =
-                  map
-                    (\br ->
-                       case br of
-                         AddBranch {..} -> br {to = blocks_key_subst to}
-                         AddBranchForSwitch {..} ->
-                           br {to = blocks_key_subst to})
-                    (addBranches b)
-              })
-        | (k, b) <- blocks_unresolved
-        ]
   pure $
     adjustLocalRegs
       Function
@@ -1427,8 +1408,8 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
         , body =
             CFG
               RelooperRun
-                { entry = blocks_key_subst entry_k
-                , blockMap = M.fromList blocks_resolved
+                { entry = entry_k
+                , blockMap = M.fromList blocks_unresolved
                 , labelHelper = 0
                 }
         }
@@ -1470,5 +1451,5 @@ marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
 
 marshalRawCmm :: GHC.Module -> [[GHC.RawCmmDecl]] -> CodeGen AsteriusModule
-marshalRawCmm this_mod cmm_decls =
+marshalRawCmm _ cmm_decls =
   mconcat <$> traverse marshalCmmDecl (mconcat cmm_decls)

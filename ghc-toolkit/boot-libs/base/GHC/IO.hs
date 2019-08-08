@@ -7,7 +7,7 @@
            , UnboxedTuples
   #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -53,8 +53,8 @@ import {-# SOURCE #-} GHC.IO.Exception ( userError, IOError )
 -- The IO Monad
 
 {-
-The IO Monad is just an instance of the ST monad, where the state thread
-is the real world.  We use the exception mechanism (in GHC.Exception) to
+The IO Monad is just an instance of the ST monad, where the state is
+the real world.  We use the exception mechanism (in GHC.Exception) to
 implement IO exceptions.
 
 NOTE: The IO representation is deeply wired in to various parts of the
@@ -84,7 +84,7 @@ failIO s = IO (raiseIO# (toException (userError s)))
 -- ---------------------------------------------------------------------------
 -- Coercions between IO and ST
 
--- | Embed a strict state thread in an 'IO'
+-- | Embed a strict state transformer in an 'IO'
 -- action.  The 'RealWorld' parameter indicates that the internal state
 -- used by the 'ST' computation is a special one supplied by the 'IO'
 -- monad, and thus distinct from those used by invocations of 'runST'.
@@ -92,20 +92,20 @@ stToIO        :: ST RealWorld a -> IO a
 stToIO (ST m) = IO m
 
 -- | Convert an 'IO' action into an 'ST' action. The type of the result
--- is constrained to use a 'RealWorld' state thread, and therefore the
--- result cannot be passed to 'runST'.
+-- is constrained to use a 'RealWorld' state, and therefore the result cannot
+-- be passed to 'runST'.
 ioToST        :: IO a -> ST RealWorld a
 ioToST (IO m) = (ST m)
 
 -- | Convert an 'IO' action to an 'ST' action.
 -- This relies on 'IO' and 'ST' having the same representation modulo the
--- constraint on the state thread type parameter.
+-- constraint on the type of the state.
 unsafeIOToST        :: IO a -> ST s a
 unsafeIOToST (IO io) = ST $ \ s -> (unsafeCoerce# io) s
 
 -- | Convert an 'ST' action to an 'IO' action.
 -- This relies on 'IO' and 'ST' having the same representation modulo the
--- constraint on the state thread type parameter.
+-- constraint on the type of the state.
 --
 -- For an example demonstrating why this is unsafe, see
 -- https://mail.haskell.org/pipermail/haskell-cafe/2009-April/060719.html
@@ -440,7 +440,7 @@ evaluate a = IO $ \s -> seq# a s -- NB. see #2273, #5129
 {- $exceptions_and_strictness
 
 Laziness can interact with @catch@-like operations in non-obvious ways (see,
-e.g. GHC #11555 and #13330). For instance, consider these subtly-different
+e.g. GHC Trac #11555 and #13330). For instance, consider these subtly-different
 examples:
 
 > test1 = Control.Exception.catch (error "uh oh") (\(_ :: SomeException) -> putStrLn "it failed")

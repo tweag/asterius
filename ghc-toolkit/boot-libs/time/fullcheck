@@ -1,7 +1,0 @@
-#!/bin/bash -e
-# latest LTS resolver for each GHC x.y version
-for r in lts-9 lts-11 lts-12
-do
-stack --resolver $r build
-done
-echo OK

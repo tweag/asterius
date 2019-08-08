@@ -1,7 +1,7 @@
 {-# LANGUAGE Trustworthy #-}
 {-# LANGUAGE CPP, NoImplicitPrelude, BangPatterns, MagicHash, UnboxedTuples,
              StandaloneDeriving, NegativeLiterals #-}
-{-# OPTIONS_HADDOCK not-home #-}
+{-# OPTIONS_HADDOCK hide #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -177,7 +177,6 @@ instance Bits Int8 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (I8# x#) .&.   (I8# y#)   = I8# (word2Int# (int2Word# x# `and#` int2Word# y#))
     (I8# x#) .|.   (I8# y#)   = I8# (word2Int# (int2Word# x# `or#`  int2Word# y#))
@@ -186,13 +185,9 @@ instance Bits Int8 where
     (I8# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#) = I8# (narrow8Int# (x# `iShiftL#` i#))
         | otherwise           = I8# (x# `iShiftRA#` negateInt# i#)
-    (I8# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#) = I8# (narrow8Int# (x# `iShiftL#` i#))
-        | otherwise           = overflowError
+    (I8# x#) `shiftL`       (I# i#) = I8# (narrow8Int# (x# `iShiftL#` i#))
     (I8# x#) `unsafeShiftL` (I# i#) = I8# (narrow8Int# (x# `uncheckedIShiftL#` i#))
-    (I8# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#) = I8# (x# `iShiftRA#` i#)
-        | otherwise           = overflowError
+    (I8# x#) `shiftR`       (I# i#) = I8# (x# `iShiftRA#` i#)
     (I8# x#) `unsafeShiftR` (I# i#) = I8# (x# `uncheckedIShiftRA#` i#)
     (I8# x#) `rotate` (I# i#)
         | isTrue# (i'# ==# 0#)
@@ -212,8 +207,6 @@ instance Bits Int8 where
 
 -- | @since 4.6.0.0
 instance FiniteBits Int8 where
-    {-# INLINE countLeadingZeros #-}
-    {-# INLINE countTrailingZeros #-}
     finiteBitSize _ = 8
     countLeadingZeros  (I8# x#) = I# (word2Int# (clz8# (int2Word# x#)))
     countTrailingZeros (I8# x#) = I# (word2Int# (ctz8# (int2Word# x#)))
@@ -384,7 +377,6 @@ instance Bits Int16 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (I16# x#) .&.   (I16# y#)  = I16# (word2Int# (int2Word# x# `and#` int2Word# y#))
     (I16# x#) .|.   (I16# y#)  = I16# (word2Int# (int2Word# x# `or#`  int2Word# y#))
@@ -393,13 +385,9 @@ instance Bits Int16 where
     (I16# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)  = I16# (narrow16Int# (x# `iShiftL#` i#))
         | otherwise            = I16# (x# `iShiftRA#` negateInt# i#)
-    (I16# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#)  = I16# (narrow16Int# (x# `iShiftL#` i#))
-        | otherwise            = overflowError
+    (I16# x#) `shiftL`       (I# i#) = I16# (narrow16Int# (x# `iShiftL#` i#))
     (I16# x#) `unsafeShiftL` (I# i#) = I16# (narrow16Int# (x# `uncheckedIShiftL#` i#))
-    (I16# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#)  = I16# (x# `iShiftRA#` i#)
-        | otherwise            = overflowError
+    (I16# x#) `shiftR`       (I# i#) = I16# (x# `iShiftRA#` i#)
     (I16# x#) `unsafeShiftR` (I# i#) = I16# (x# `uncheckedIShiftRA#` i#)
     (I16# x#) `rotate` (I# i#)
         | isTrue# (i'# ==# 0#)
@@ -419,8 +407,6 @@ instance Bits Int16 where
 
 -- | @since 4.6.0.0
 instance FiniteBits Int16 where
-    {-# INLINE countLeadingZeros #-}
-    {-# INLINE countTrailingZeros #-}
     finiteBitSize _ = 16
     countLeadingZeros  (I16# x#) = I# (word2Int# (clz16# (int2Word# x#)))
     countTrailingZeros (I16# x#) = I# (word2Int# (ctz16# (int2Word# x#)))
@@ -593,7 +579,6 @@ instance Bits Int32 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (I32# x#) .&.   (I32# y#)  = I32# (word2Int# (int2Word# x# `and#` int2Word# y#))
     (I32# x#) .|.   (I32# y#)  = I32# (word2Int# (int2Word# x# `or#`  int2Word# y#))
@@ -602,14 +587,10 @@ instance Bits Int32 where
     (I32# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)  = I32# (narrow32Int# (x# `iShiftL#` i#))
         | otherwise            = I32# (x# `iShiftRA#` negateInt# i#)
-    (I32# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#)  = I32# (narrow32Int# (x# `iShiftL#` i#))
-        | otherwise            = overflowError
+    (I32# x#) `shiftL`       (I# i#) = I32# (narrow32Int# (x# `iShiftL#` i#))
     (I32# x#) `unsafeShiftL` (I# i#) =
         I32# (narrow32Int# (x# `uncheckedIShiftL#` i#))
-    (I32# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#)  = I32# (x# `iShiftRA#` i#)
-        | otherwise            = overflowError
+    (I32# x#) `shiftR`       (I# i#) = I32# (x# `iShiftRA#` i#)
     (I32# x#) `unsafeShiftR` (I# i#) = I32# (x# `uncheckedIShiftRA#` i#)
     (I32# x#) `rotate` (I# i#)
         | isTrue# (i'# ==# 0#)
@@ -629,8 +610,6 @@ instance Bits Int32 where
 
 -- | @since 4.6.0.0
 instance FiniteBits Int32 where
-    {-# INLINE countLeadingZeros #-}
-    {-# INLINE countTrailingZeros #-}
     finiteBitSize _ = 32
     countLeadingZeros  (I32# x#) = I# (word2Int# (clz32# (int2Word# x#)))
     countTrailingZeros (I32# x#) = I# (word2Int# (ctz32# (int2Word# x#)))
@@ -834,7 +813,6 @@ instance Bits Int64 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (I64# x#) .&.   (I64# y#)  = I64# (word64ToInt64# (int64ToWord64# x# `and64#` int64ToWord64# y#))
     (I64# x#) .|.   (I64# y#)  = I64# (word64ToInt64# (int64ToWord64# x# `or64#`  int64ToWord64# y#))
@@ -843,13 +821,9 @@ instance Bits Int64 where
     (I64# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)  = I64# (x# `iShiftL64#` i#)
         | otherwise            = I64# (x# `iShiftRA64#` negateInt# i#)
-    (I64# x#) `shiftL` (I# i#)
-        | isTrue# (i# >=# 0#)  = I64# (x# `iShiftL64#` i#)
-        | otherwise            = overflowError
+    (I64# x#) `shiftL` (I# i#) = I64# (x# `iShiftL64#` i#)
     (I64# x#) `unsafeShiftL` (I# i#) = I64# (x# `uncheckedIShiftL64#` i#)
-    (I64# x#) `shiftR` (I# i#)
-        | isTrue# (i# >=# 0#)  = I64# (x# `iShiftRA64#` i#)
-        | otherwise            = overflowError
+    (I64# x#) `shiftR` (I# i#) = I64# (x# `iShiftRA64#` i#)
     (I64# x#) `unsafeShiftR` (I# i#) = I64# (x# `uncheckedIShiftRA64#` i#)
     (I64# x#) `rotate` (I# i#)
         | isTrue# (i'# ==# 0#)
@@ -1012,7 +986,6 @@ instance Bits Int64 where
     {-# INLINE shift #-}
     {-# INLINE bit #-}
     {-# INLINE testBit #-}
-    {-# INLINE popCount #-}
 
     (I64# x#) .&.   (I64# y#)  = I64# (word2Int# (int2Word# x# `and#` int2Word# y#))
     (I64# x#) .|.   (I64# y#)  = I64# (word2Int# (int2Word# x# `or#`  int2Word# y#))
@@ -1021,13 +994,9 @@ instance Bits Int64 where
     (I64# x#) `shift` (I# i#)
         | isTrue# (i# >=# 0#)  = I64# (x# `iShiftL#` i#)
         | otherwise            = I64# (x# `iShiftRA#` negateInt# i#)
-    (I64# x#) `shiftL`       (I# i#)
-        | isTrue# (i# >=# 0#)  = I64# (x# `iShiftL#` i#)
-        | otherwise            = overflowError
+    (I64# x#) `shiftL`       (I# i#) = I64# (x# `iShiftL#` i#)
     (I64# x#) `unsafeShiftL` (I# i#) = I64# (x# `uncheckedIShiftL#` i#)
-    (I64# x#) `shiftR`       (I# i#)
-        | isTrue# (i# >=# 0#)  = I64# (x# `iShiftRA#` i#)
-        | otherwise            = overflowError
+    (I64# x#) `shiftR`       (I# i#) = I64# (x# `iShiftRA#` i#)
     (I64# x#) `unsafeShiftR` (I# i#) = I64# (x# `uncheckedIShiftRA#` i#)
     (I64# x#) `rotate` (I# i#)
         | isTrue# (i'# ==# 0#)
@@ -1089,8 +1058,6 @@ uncheckedIShiftRA64# = uncheckedIShiftRA#
 
 -- | @since 4.6.0.0
 instance FiniteBits Int64 where
-    {-# INLINE countLeadingZeros #-}
-    {-# INLINE countTrailingZeros #-}
     finiteBitSize _ = 64
 #if WORD_SIZE_IN_BITS < 64
     countLeadingZeros  (I64# x#) = I# (word2Int# (clz64# (int64ToWord64# x#)))
@@ -1148,7 +1115,7 @@ instance Ix Int64 where
 
 {- Note [Order of tests]
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-(See #3065, #5161.) Suppose we had a definition like:
+(See Trac #3065, #5161.) Suppose we had a definition like:
 
     quot x y
      | y == 0                     = divZeroError

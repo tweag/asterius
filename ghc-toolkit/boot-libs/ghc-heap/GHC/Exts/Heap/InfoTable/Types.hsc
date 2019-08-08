@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 module GHC.Exts.Heap.InfoTable.Types
     ( StgInfoTable(..)
     , EntryFunPtr
@@ -8,8 +7,6 @@ module GHC.Exts.Heap.InfoTable.Types
 
 #include "Rts.h"
 
-import Prelude -- See note [Why do we import Prelude here?]
-import GHC.Generics
 import GHC.Exts.Heap.ClosureTypes
 import Foreign
 
@@ -28,7 +25,7 @@ type HalfWord = Word16
 type EntryFunPtr = FunPtr (Ptr () -> IO (Ptr ()))
 
 -- | This is a somewhat faithful representation of an info table. See
--- <https://gitlab.haskell.org/ghc/ghc/blob/master/includes/rts/storage/InfoTables.h>
+-- <http://hackage.haskell.org/trac/ghc/browser/includes/rts/storage/InfoTables.h>
 -- for more details on this data structure.
 data StgInfoTable = StgInfoTable {
    entry  :: Maybe EntryFunPtr, -- Just <=> not ghciTablesNextToCode
@@ -37,4 +34,4 @@ data StgInfoTable = StgInfoTable {
    tipe   :: ClosureType,
    srtlen :: HalfWord,
    code   :: Maybe ItblCodes -- Just <=> ghciTablesNextToCode
-  } deriving (Show, Generic)
+  } deriving (Show)

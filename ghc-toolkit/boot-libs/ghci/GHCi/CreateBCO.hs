@@ -13,7 +13,6 @@
 -- | Create real byte-code objects from 'ResolvedBCO's.
 module GHCi.CreateBCO (createBCOs) where
 
-import Prelude -- See note [Why do we import Prelude here?]
 import GHCi.ResolvedBCO
 import GHCi.RemoteTypes
 import GHCi.BreakArray
@@ -26,7 +25,7 @@ import Foreign hiding (newArray)
 import GHC.Arr          ( Array(..) )
 import GHC.Exts
 import GHC.IO
-import Control.Exception ( ErrorCall(..) )
+import Control.Exception (throwIO, ErrorCall(..))
 
 createBCOs :: [ResolvedBCO] -> IO [HValueRef]
 createBCOs bcos = do

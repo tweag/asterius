@@ -97,22 +97,6 @@ type family Any :: k where { }
 *                                                                      *
 ********************************************************************* -}
 
--- | The builtin list type, usually written in its non-prefix form @[a]@.
---
--- ==== __Examples__
---
--- Unless the OverloadedLists extension is enabled, list literals are
--- syntatic sugar for repeated applications of @:@ and @[]@.
---
--- >>> 1:2:3:4:[] == [1,2,3,4]
--- True
---
--- Similarly, unless the OverloadedStrings extension is enabled, string
--- literals are syntactic sugar for a lists of characters.
---
--- >>> ['h','e','l','l','o'] == "hello"
--- True
---
 data [] a = [] | a : [a]
 
 
@@ -140,8 +124,7 @@ Haskell has type 'Char'.
 
 To convert a 'Char' to or from the corresponding 'Int' value defined
 by Unicode, use 'Prelude.toEnum' and 'Prelude.fromEnum' from the
-'Prelude.Enum' class respectively (or equivalently 'Data.Char.ord' and
-'Data.Char.chr').
+'Prelude.Enum' class respectively (or equivalently 'ord' and 'chr').
 -}
 data {-# CTYPE "HsChar" #-} Char = C# Char#
 
@@ -181,8 +164,7 @@ function, unless that function is itself in the 'IO' monad and called
 at some point, directly or indirectly, from @Main.main@.
 
 'IO' is a monad, so 'IO' actions can be combined using either the do-notation
-or the 'Prelude.>>' and 'Prelude.>>=' operations from the 'Prelude.Monad'
-class.
+or the '>>' and '>>=' operations from the 'Monad' class.
 -}
 newtype IO a = IO (State# RealWorld -> (# State# RealWorld, a #))
 type role IO representational
@@ -227,12 +209,6 @@ inside GHC, to change the kind and type.
 -- homogeneous equality @~@, this is printed as @~@ unless
 -- @-fprint-equality-relations@ is set.
 class a ~~ b
-  -- See also Note [The equality types story] in TysPrim
-
--- | Lifted, homogeneous equality. By lifted, we mean that it
--- can be bogus (deferred type error). By homogeneous, the two
--- types @a@ and @b@ must have the same kinds.
-class a ~ b
   -- See also Note [The equality types story] in TysPrim
 
 -- | @Coercible@ is a two-parameter class that has instances for types @a@ and @b@ if
@@ -394,12 +370,8 @@ data RuntimeRep = VecRep VecCount VecElem   -- ^ a SIMD vector type
                 | LiftedRep       -- ^ lifted; represented by a pointer
                 | UnliftedRep     -- ^ unlifted; represented by a pointer
                 | IntRep          -- ^ signed, word-sized value
-                | Int8Rep         -- ^ signed,  8-bit value
-                | Int16Rep        -- ^ signed, 16-bit value
-                | Int64Rep        -- ^ signed, 64-bit value (on 32-bit only)
                 | WordRep         -- ^ unsigned, word-sized value
-                | Word8Rep        -- ^ unsigned,  8-bit value
-                | Word16Rep       -- ^ unsigned, 16-bit value
+                | Int64Rep        -- ^ signed, 64-bit value (on 32-bit only)
                 | Word64Rep       -- ^ unsigned, 64-bit value (on 32-bit only)
                 | AddrRep         -- ^ A pointer, but /not/ to a Haskell value
                 | FloatRep        -- ^ a 32-bit floating point number
@@ -472,9 +444,7 @@ type KindBndr = Int
 #endif
 
 -- | The representation produced by GHC for conjuring up the kind of a
--- 'Data.Typeable.TypeRep'.
-
--- See Note [Representing TyCon kinds: KindRep] in TcTypeable.
+-- 'TypeRep'.  See Note [Representing TyCon kinds: KindRep] in TcTypeable.
 data KindRep = KindRepTyConApp TyCon [KindRep]
              | KindRepVar !KindBndr
              | KindRepApp KindRep KindRep

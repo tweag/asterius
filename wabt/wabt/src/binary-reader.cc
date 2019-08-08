@@ -112,6 +112,7 @@ class BinaryReader {
   Index NumTotalTables();
   Index NumTotalMemories();
   Index NumTotalGlobals();
+  Index NumTotalEvents();
 
   Result ReadI32InitExpr(Index index) WABT_WARN_UNUSED;
   Result ReadInitExpr(Index index, bool require_i32 = false) WABT_WARN_UNUSED;
@@ -422,6 +423,10 @@ Index BinaryReader::NumTotalGlobals() {
   return num_global_imports_ + num_globals_;
 }
 
+Index BinaryReader::NumTotalEvents() {
+  return num_event_imports_ + num_events_;
+}
+
 Result BinaryReader::ReadI32InitExpr(Index index) {
   return ReadInitExpr(index, true);
 }
@@ -474,6 +479,10 @@ Result BinaryReader::ReadInitExpr(Index index, bool require_i32) {
       CALLBACK(OnInitExprGlobalGetExpr, index, global_index);
       break;
     }
+
+    case Opcode::RefNull:
+      CALLBACK(OnInitExprRefNull, index);
+      break;
 
     case Opcode::End:
       return Result::Ok;
@@ -971,6 +980,7 @@ Result BinaryReader::ReadFunctionBody(Offset end_offset) {
       case Opcode::F64X2Div:
       case Opcode::F32X4Mul:
       case Opcode::F64X2Mul:
+      case Opcode::V8X16Swizzle:
         CALLBACK(OnBinaryExpr, opcode);
         CALLBACK0(OnOpcodeBare);
         break;
@@ -1136,6 +1146,19 @@ Result BinaryReader::ReadFunctionBody(Offset end_offset) {
         break;
       }
 
+      case Opcode::I8X16LoadSplat:
+      case Opcode::I16X8LoadSplat:
+      case Opcode::I32X4LoadSplat:
+      case Opcode::I64X2LoadSplat: {
+        uint32_t alignment_log2;
+        CHECK_RESULT(ReadU32Leb128(&alignment_log2, "load alignment"));
+        Address offset;
+        CHECK_RESULT(ReadU32Leb128(&offset, "load offset"));
+
+        CALLBACK(OnLoadSplatExpr, opcode, alignment_log2, offset);
+        CALLBACK(OnOpcodeUint32Uint32, alignment_log2, offset);
+        break;
+      }
       case Opcode::I32TruncF32S:
       case Opcode::I32TruncF64S:
       case Opcode::I32TruncF32U:
@@ -1748,6 +1771,27 @@ Result BinaryReader::ReadLinkingSection(Offset section_size) {
           CALLBACK(OnInitFunction, priority, func);
         }
         break;
+      case LinkingEntryType::ComdatInfo:
+        CHECK_RESULT(ReadU32Leb128(&count, "count"));
+        CALLBACK(OnComdatCount, count);
+        while (count--) {
+          uint32_t flags;
+          uint32_t entry_count;
+          string_view name;
+          CHECK_RESULT(ReadStr(&name, "comdat name"));
+          CHECK_RESULT(ReadU32Leb128(&flags, "flags"));
+          CHECK_RESULT(ReadU32Leb128(&entry_count, "entry count"));
+          CALLBACK(OnComdatBegin, name, flags, entry_count);
+          while (entry_count--) {
+            uint32_t kind;
+            uint32_t index;
+            CHECK_RESULT(ReadU32Leb128(&kind, "kind"));
+            CHECK_RESULT(ReadU32Leb128(&index, "index"));
+            ComdatType comdat_type = static_cast<ComdatType>(kind);
+            CALLBACK(OnComdatEntry, comdat_type, index);
+          }
+        }
+        break;
       default:
         // Unknown subsection, skip it.
         state_.offset = subsection_end;
@@ -1766,6 +1810,8 @@ Result BinaryReader::ReadEventType(Index* out_sig_index) {
   CHECK_RESULT(ReadU32Leb128(&attribute, "event attribute"));
   ERROR_UNLESS(attribute == 0, "event attribute must be 0");
   CHECK_RESULT(ReadIndex(out_sig_index, "event signature index"));
+  ERROR_UNLESS(*out_sig_index < num_signatures_,
+               "invalid event signature index");
   return Result::Ok;
 }
 
@@ -2038,9 +2084,10 @@ Result BinaryReader::ReadExportSection(Offset section_size) {
                      "invalid export global index: %" PRIindex, item_index);
         break;
       case ExternalKind::Event:
-        // Note: Can't check if index valid, the event section comes later.
         ERROR_UNLESS(options_.features.exceptions_enabled(),
                      "invalid export event kind: exceptions not allowed");
+        ERROR_UNLESS(item_index < NumTotalEvents(),
+                     "invalid export event index: %" PRIindex, item_index);
         break;
     }
 
@@ -2217,8 +2264,9 @@ Result BinaryReader::ReadDataCountSection(Offset section_size) {
 
 Result BinaryReader::ReadSections() {
   Result result = Result::Ok;
+  Index section_index = 0;
 
-  while (state_.offset < state_.size) {
+  for (; state_.offset < state_.size; ++section_index) {
     uint32_t section_code;
     Offset section_size;
     CHECK_RESULT(ReadU32Leb128(&section_code, "section code"));
@@ -2245,7 +2293,7 @@ Result BinaryReader::ReadSections() {
                  "%s section can not occur after Name section",
                  GetSectionName(section));
 
-    CALLBACK(BeginSection, section, section_size);
+    CALLBACK(BeginSection, section_index, section, section_size);
 
     bool stop_on_first_error = options_.stop_on_first_error;
     Result section_result = Result::Error;
@@ -2304,13 +2352,15 @@ Result BinaryReader::ReadSections() {
         break;
       case BinarySection::Event:
         ERROR_UNLESS(options_.features.exceptions_enabled(),
-                     "invalid section code: %u", section);
+                     "invalid section code: %u",
+                     static_cast<unsigned int>(section));
         section_result = ReadEventSection(section_size);
         result |= section_result;
         break;
       case BinarySection::DataCount:
         ERROR_UNLESS(options_.features.bulk_memory_enabled(),
-                     "invalid section code: %u", section);
+                     "invalid section code: %u",
+                     static_cast<unsigned int>(section));
         section_result = ReadDataCountSection(section_size);
         result |= section_result;
         break;
