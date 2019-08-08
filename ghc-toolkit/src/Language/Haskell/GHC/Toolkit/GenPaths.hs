@@ -56,7 +56,23 @@ genPaths GenPathsOptions {..} h =
                       [("ghc", ghcProgram), ("ghcPkg", ghcPkgProgram)]
                   ] ++
                 "ghcLibDir :: FilePath\nghcLibDir = " ++
-                show ghc_libdir
+                show ghc_libdir ++
+                "\n\n" ++
+                concat
+                  [ k ++
+                  " :: FilePath\n" ++
+                  k ++
+                  " = " ++
+                  show
+                    (d $
+                     absoluteComponentInstallDirs
+                       pkg_descr
+                       lbi
+                       (componentUnitId clbi)
+                       NoCopyDest) ++
+                  "\n\n"
+                  | (k, d) <- [("binDir", bindir), ("dataDir", datadir)]
+                  ]
               pure
                 lbi
                   { localPkgDescr =
