@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -80,7 +81,11 @@ hooksFromCompiler Compiler {..} = do
                 r@(_, obj_output_fn) <-
                   do output_fn <-
                        GHC.phaseOutputFilename $
-                       GHC.hscPostBackendPhase dflags src_flavour $
+                       GHC.hscPostBackendPhase
+#if !MIN_VERSION_ghc(8,7,0)
+                         dflags
+#endif
+                         src_flavour $
                        GHC.hscTarget dflags
                      GHC.PipeState {GHC.hsc_env = hsc_env'} <- GHC.getPipeState
                      void $

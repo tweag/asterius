@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE StandaloneDeriving #-}
@@ -34,7 +35,9 @@ import System.IO.Unsafe
 import Text.Show.Functions ()
 import TyCoRep
 import TyCon
+#if MIN_VERSION_ghc(8,7,0)
 import UniqDSet
+#endif
 import Var
 
 {-# NOINLINE dynFlagsRef #-}
@@ -107,10 +110,22 @@ instance Show a => Show (IORef a) where
 
 deriving instance Show CoercionHole
 
+#if MIN_VERSION_ghc(8,7,0)
+deriving instance Show MCoercionN
+#endif
+
 deriving instance Show Coercion
 
+#if MIN_VERSION_ghc(8,7,0)
+deriving instance Show TyCoVarBinder
+#else
 deriving instance
          (Show tyvar, Show argf) => Show (TyVarBndr tyvar argf)
+#endif
+
+#if MIN_VERSION_ghc(8,7,0)
+deriving instance Show AnonArgFlag
+#endif
 
 deriving instance Show Type
 
@@ -139,6 +154,37 @@ deriving instance Show AltType
 
 deriving instance Show AltCon
 
+#if MIN_VERSION_ghc(8,7,0)
+deriving instance Show StgArg
+
+instance Show NoExtSilent where
+  show = fakeShow "NoExtSilent"
+
+deriving instance
+         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
+          Show (XRhsClosure pass)) =>
+         Show (GenStgExpr pass)
+
+instance Show CostCentreStack where
+  show = fakeShow "CostCentreStack"
+
+deriving instance Show UpdateFlag
+
+deriving instance
+         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
+          Show (XRhsClosure pass)) =>
+         Show (GenStgRhs pass)
+
+deriving instance
+         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
+          Show (XRhsClosure pass)) =>
+         Show (GenStgBinding pass)
+
+deriving instance
+         (Show (BinderP pass), Show (XLet pass), Show (XLetNoEscape pass),
+          Show (XRhsClosure pass)) =>
+         Show (GenStgTopBinding pass)
+#else
 deriving instance Show occ => Show (GenStgArg occ)
 
 deriving instance
@@ -162,6 +208,7 @@ deriving instance
 
 deriving instance
          (Show bndr, Show occ) => Show (GenStgTopBinding bndr occ)
+#endif
 
 instance Show Name where
   show = fakeShow "Name"
@@ -254,5 +301,7 @@ deriving instance Show CmmStackInfo
 
 deriving instance Show CmmTopInfo
 
+#if MIN_VERSION_ghc(8,7,0)
 instance Show a => Show (UniqDSet a) where
   showsPrec p = showsPrec p . uniqDSetToList
+#endif
