@@ -133,10 +133,6 @@ deriving instance Show LitNumType
 
 deriving instance Show Literal
 
-#if !MIN_VERSION_ghc(8,7,0)
-deriving instance Show occ => Show (GenStgArg occ)
-#endif
-
 instance Show DataCon where
   show = fakeShow "DataCon"
 
