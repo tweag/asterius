@@ -12,9 +12,9 @@ setup-info:
   ghc:
     linux64:
       8.6.5:
-        url: https://5566-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        sha256: 4547f0dbb95ce23b486f04278d737024595b6e33328c1be9f04c8473c591c43e
+        url: https://6218-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        sha256: 3fb0667f5412b660b62a828d171dcab2f8c225f83376b2147532297cb10c07f1
     macosx:
       8.6.5:
-        url: https://5563-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
-        sha256: 12a2f64b69e1f93a3d281f6f80cc8ff99b9827b49c1c444c6557a6886a4c6e94
+        url: https://6220-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
+        sha256: 2d694689b5cd099ec4729672cfec07ff09a037d38b913b49a5d016f81c7affb9

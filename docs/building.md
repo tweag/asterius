@@ -1,6 +1,6 @@
 # Building guide
 
-`asterius` is tested on Linux x64. Windows/macOS x64 may also work.
+`asterius` is tested on Linux x64. macOS x64 may also work.
 
 A pre-built Docker image is provided for your convenience.
 
@@ -19,11 +19,7 @@ root@76bcb511663d:/mirror# ahc-link --help
 
 ## Building custom `ghc`
 
-`asterius` requires a forked `ghc` which can be found [here](https://github.com/TerrorJack/ghc/tree/asterius). We are looking forward to building `asterius` with vanilla `ghc-head` in the long run, but at the moment, we use our own `ghc` fork so it's easy to test radical changes on `ghc` itself.
-
-The building guide of `ghc` can be found [here](https://ghc.haskell.org/trac/ghc/wiki/Building).
-
-On Linux/macOS, a prebuilt `ghc` tarball is provided. It's already included in [`stack.yaml`](https://github.com/tweag/asterius/blob/master/stack.yaml). Note that the Windows bindist does not provide prof libs/haddock (due to AppVeyor build time restriction).
+See the relevant [section](custom-ghc.md) for details.
 
 ## Extra dependencies
 
