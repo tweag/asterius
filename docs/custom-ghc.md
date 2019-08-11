@@ -1,11 +1,24 @@
 # About the custom GHC fork
 
-Asterius currently is based on a custom GHC fork maintained [here](https://github.com/TerrorJack/ghc/tree/asterius). We regularly merge `master` commits back, build new bindists and use them on CI, to ensure our fork doesn't get bit-rotten and become painful to upstream back.
+Asterius is currently based on a custom GHC fork maintained
+[here](https://github.com/TerrorJack/ghc). The default branch is `asterius-8.6`,
+adding a few custom patches on top of the latest GHC 8.6.x release.
 
-Here is a *complete* list of differences we've made in the fork (surprisingly few at the moment):
+See the [commits](https://github.com/TerrorJack/ghc/commits/asterius-8.6) on top
+of the upstream release commit for our modifications:
 
-* Enable [D5079](https://phabricator.haskell.org/D5079) and [D5082](https://phabricator.haskell.org/D5082), which are kindly offered by Joachim Breitner but not all landed in `master` yet.
-* Implement additional [`Hooks`](https://github.com/TerrorJack/ghc/blob/asterius/compiler/main/Hooks.hs): `tcRnModuleHook`, `stgCmmHook`, `cmmToRawCmmHook`.
+* Enable Michael Sloan's [D4986](https://phabricator.haskell.org/D4986) and
+  [D4904](https://phabricator.haskell.org/D4904) for hacking the custom GHC with
+  `ghcid`.
+* Enable Joachim Breitner's [D5079](https://phabricator.haskell.org/D5079) and
+  [D5082](https://phabricator.haskell.org/D5082) for configurable integer
+  library and tables-next-to-code in `DynFlags`.
+* Implement additional
+  [`Hooks`](https://github.com/TerrorJack/ghc/blob/asterius-8.6/compiler/main/Hooks.hs):
+  `tcRnModuleHook`, `stgCmmHook`, `cmmToRawCmmHook` for accessing in-memory GHC
+  IRs.
 * Link `ghc-pkg`/`hsc2hs` with `-threaded`.
 
-See the `circleci-ghc-bindist`/`appveyor-ghc-bindist` branches of `asterius` repo for CI scripts to build bindists for the fork. The AppVeyor script is broken for now.
+See the [`circleci-ghc-8.6`](circleci-ghc-8.6) branch of `asterius` repo for CI
+scripts to build ghc bindists for the fork. The bindist artifacts are then used
+in `stack.yaml` of `asterius`.
