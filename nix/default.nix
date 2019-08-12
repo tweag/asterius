@@ -55,7 +55,7 @@ let
     };
   plan-0 = haskell.callCabalProjectToNix {
       src = cleanSrc;
-      ghc = pkgs.haskell.compiler.ghc864;
+      ghc = pkgs.haskell.compiler.ghc865;
       index-state = "2019-06-22T00:00:00Z";
       index-sha256 = "19v6bqgg886704b8palrzqiydnfjsqqkrx9k6c22kw6kffrrrmd6";
     };
@@ -204,11 +204,10 @@ let
   ghc-head = let
     # Only gitlab has the right submoudle refs (the ones in github mirror do not work)
     # and only fetchgit seems to get the submoudles from gitlab
-    ghc-src = pkgs.fetchgit {
-      url = "https://gitlab.haskell.org/ghc/ghc";
-      rev = "bf6dbe3d1046573cb71fd534a326a9a0e6f1b220";
-      sha256 = "1hyq37vdicri96k05fm4w1ikdb87c430dh4aiy6ml9i3xzyxjdva";
-      fetchSubmodules = true;
+    ghc-src = pkgs.srcOnly pkgs.haskell.compiler.ghc865;
+    ghc-prim = pkgs.fetchzip {
+      url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
+      sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
     };
     # The patched libs are currently in the repo
     boot-libs = pkgs.copyPathToStore ../ghc-toolkit/boot-libs;
@@ -223,6 +222,15 @@ let
       cp -r ${ghc-src}/libraries old/libraries
       ln -s ${boot-libs} new/libraries
       chmod +w -R old
+      rm \
+        old/libraries/*/configure \
+        old/libraries/*/GNUmakefile \
+        old/libraries/*/ghc.mk \
+        old/libraries/*/Hs*Config.h.in \
+        old/libraries/*/*/Hs*Config.h.in \
+        old/libraries/*/*/*/Hs*Config.h.in \
+        old/libraries/ghc-prim/primops.txt.pp
+      cp ${ghc-prim}/GHC/PrimopWrappers.hs old/libraries/ghc-prim/GHC/PrimopWrappers.hs
       mkdir -p old/libraries/rts/sm
       cd new/libraries
       find rts -type f -not -name rts.conf -exec cp ${ghc-src}/"{}" $tmp/old/libraries/"{}" \;
@@ -232,14 +240,14 @@ let
       done
     '';
   in { inherit ghc-src boot-libs patch; };
-  ghc864 = let
-    ghc-src = pkgs.srcOnly pkgs.haskell.compiler.ghc864;
+  ghc865 = let
+    ghc-src = pkgs.srcOnly pkgs.haskell.compiler.ghc865;
     ghc-prim = pkgs.fetchzip {
       url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
     };
-    patch = pkgs.copyPathToStore ./patches/ghc/ghc864-libs.patch;
-    ghc-patched-src = pkgs.runCommand "asterius-ghc864-ghc-patched-src" {
+    patch = pkgs.copyPathToStore ./patches/ghc/ghc865-libs.patch;
+    ghc-patched-src = pkgs.runCommand "asterius-ghc865-ghc-patched-src" {
       buildInputs = [];
       preferLocalBuild = true;
     } ''
@@ -249,7 +257,7 @@ let
       cd $out
       cp -r rts libraries
     '';
-    boot-libs = pkgs.runCommand "asterius-ghc864-boot-libs" {
+    boot-libs = pkgs.runCommand "asterius-ghc865-boot-libs" {
       buildInputs = [ pkgs.haskell.compiler.${compiler.nix-name} ];
       preferLocalBuild = true;
     } ''
@@ -288,7 +296,7 @@ let
           --prefix PATH : ${nodePkgs.parcel-bundler}/bin \
           --set asterius_bindir $out/bin \
           --set asterius_bootdir $out/boot \
-          --set boot_libs_path ${ghc864.boot-libs} \
+          --set boot_libs_path ${ghc865.boot-libs} \
           --set sandbox_ghc_lib_dir $out/ghc-libdir
       '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
       $out/bin/ahc-boot
@@ -312,7 +320,7 @@ in {
   plan-nix = plan.nix;
   inherit (pkgSet.config) hsPkgs;
   config = pkgSet.config;
-  inherit ghc-head ghc864 pkgs haskell nodejs nodePkgs asterius-boot wasm-asterius-ghc;
+  inherit ghc-head ghc865 pkgs haskell nodejs nodePkgs asterius-boot wasm-asterius-ghc;
   ghc-compiler = pkgs.haskell.compiler.${compiler.nix-name};
-  ghc-boot-libs = ghc864.boot-libs;
+  ghc-boot-libs = ghc865.boot-libs;
 }

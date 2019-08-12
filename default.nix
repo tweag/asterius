@@ -75,7 +75,7 @@ let
         export inline_js_core_datadir=$(pwd)/inline-js/inline-js-core
         export wabt_datadir=$(pwd)/wabt
         export wasm_toolkit_datadir=$(pwd)/wasm-toolkit
-        export boot_libs_path=${default-nix.nix-tools-raw.ghc864.boot-libs}
+        export boot_libs_path=${default-nix.nix-tools-raw.ghc865.boot-libs}
         mkdir -p asterius-cabal-bin
         cd asterius-cabal-bin
         export asterius_bindir=$(pwd)
