@@ -2,6 +2,22 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-08-13
+
+Ongoing work:
+
+* When moving previous TH work to current `master`, we discovered a
+  linker-related error related to non-main linking and JSFFI. The `ahc-iserv`
+  process needs to pass `-no-hs-main` to `ahc` when using the splice closure
+  rather than `Main_main_closure` as the linker root closure. Now the JSFFI
+  post-processor complains about missing functions in the loaded object files.
+  The attempts to workaround this problem by ignoring unfound JSFFI import
+  closures would cause even greater regression: breaking async JSFFI completely.
+
+For this week we need to work on getting rid of the link-time post-processor
+approach and moving JSFFI logic to typechecking/desugaring time, much like the
+ghcjs's existing approach.
+
 ## 2019-08-06
 
 Covers many past weeks :) We're now resuming the status reports.
