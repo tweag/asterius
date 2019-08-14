@@ -24,7 +24,6 @@ import DataCon
 import DsCCall
 import DsMonad
 import DynFlags
-import Encoding
 import ErrUtils
 import FamInst
 import FamInstEnv
@@ -35,7 +34,6 @@ import HsSyn
 import HscTypes
 import Id
 import Literal
-import Module
 import Name
 import OrdList
 import Outputable
@@ -75,7 +73,7 @@ asteriusDsForeigns fos = do
     do_decl ForeignImport {fd_name = id, fd_i_ext = co, fd_fi = spec} = do
       traceIf (text "fi start" <+> ppr id)
       let id' = unLoc id
-      (bs, h, c) <- dsFImport id' co spec
+      (bs, h, c) <- asteriusDsFImport id' co spec
       traceIf (text "fi end" <+> ppr id)
       return (h, c, [], bs)
     do_decl
@@ -88,11 +86,12 @@ asteriusDsForeigns fos = do
         return (h, c, [id], [])
     do_decl (XForeignDecl _) = panic "asteriusDsForeigns"
 
-dsFImport :: Id -> Coercion -> ForeignImport -> DsM ([Binding], SDoc, SDoc)
-dsFImport id co (CImport cconv safety mHeader spec _) =
-  dsCImport id co spec (unLoc cconv) (unLoc safety) mHeader
+asteriusDsFImport
+  :: Id -> Coercion -> ForeignImport -> DsM ([Binding], SDoc, SDoc)
+asteriusDsFImport id co (CImport cconv safety mHeader spec _) =
+  asteriusDsCImport id co spec (unLoc cconv) (unLoc safety) mHeader
 
-dsCImport
+asteriusDsCImport
   :: Id
   -> Coercion
   -> CImportSpec
@@ -100,7 +99,7 @@ dsCImport
   -> Safety
   -> Maybe Header
   -> DsM ([Binding], SDoc, SDoc)
-dsCImport id co (CLabel cid) cconv _ _ = do
+asteriusDsCImport id co (CLabel cid) cconv _ _ = do
   dflags <- getDynFlags
   let ty = pFst $ coercionKind co
       fod =
@@ -113,11 +112,11 @@ dsCImport id co (CLabel cid) cconv _ _ = do
       rhs' = Cast rhs co
       stdcall_info = funTypeArgStdcallInfo dflags cconv ty
    in return ([(id, rhs')], empty, empty)
-dsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
+asteriusDsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
   dsPrimCall id co (CCall (CCallSpec target cconv safety))
-dsCImport id co (CFunction target) cconv safety mHeader =
+asteriusDsCImport id co (CFunction target) cconv safety mHeader =
   dsFCall id co (CCall (CCallSpec target cconv safety)) mHeader
-dsCImport id co CWrapper cconv _ _ = dsFExportDynamic id co cconv
+asteriusDsCImport _ _ _ _ _ _ = panic "asteriusDsCImport"
 
 funTypeArgStdcallInfo :: DynFlags -> CCallConv -> Type -> Maybe Int
 funTypeArgStdcallInfo dflags StdCallConv ty
@@ -265,55 +264,6 @@ dsFExport fn_id co ext_name cconv isDyn = do
         res_ty
         is_IO_res_ty
         cconv
-
-dsFExportDynamic :: Id -> Coercion -> CCallConv -> DsM ([Binding], SDoc, SDoc)
-dsFExportDynamic id co0 cconv = do
-  mod <- getModule
-  dflags <- getDynFlags
-  let fe_nm =
-        mkFastString
-          $ zEncodeString (moduleStableString mod ++ "$" ++ toCName dflags id)
-  cback <- newSysLocalDs arg_ty
-  newStablePtrId <- dsLookupGlobalId newStablePtrName
-  stable_ptr_tycon <- dsLookupTyCon stablePtrTyConName
-  let stable_ptr_ty = mkTyConApp stable_ptr_tycon [arg_ty]
-      export_ty = mkFunTy stable_ptr_ty arg_ty
-  bindIOId <- dsLookupGlobalId bindIOName
-  stbl_value <- newSysLocalDs stable_ptr_ty
-  (h_code, c_code, typestring, args_size) <-
-    dsFExport id (mkRepReflCo export_ty) fe_nm cconv True
-  let adj_args =
-        [ mkIntLitInt dflags (ccallConvToInt cconv),
-          Var stbl_value,
-          Lit (MachLabel fe_nm mb_sz_args IsFunction),
-          Lit (mkMachString typestring)
-          ]
-      adjustor = fsLit "createAdjustor"
-      mb_sz_args =
-        case cconv of
-          StdCallConv -> Just args_size
-          _ -> Nothing
-  ccall_adj <- dsCCall adjustor adj_args PlayRisky (mkTyConApp io_tc [res_ty])
-  let io_app =
-        mkLams tvs
-          $ Lam cback
-          $ mkApps
-              (Var bindIOId)
-              [ Type stable_ptr_ty,
-                Type res_ty,
-                mkApps (Var newStablePtrId) [Type arg_ty, Var cback],
-                Lam stbl_value ccall_adj
-                ]
-      fed = (id `setInlineActivation` NeverActive, Cast io_app co0)
-  return ([fed], h_code, c_code)
-  where
-    ty = pFst (coercionKind co0)
-    (tvs, sans_foralls) = tcSplitForAllTys ty
-    ([arg_ty], fn_res_ty) = tcSplitFunTys sans_foralls
-    Just (io_tc, res_ty) = tcSplitIOType_maybe fn_res_ty
-
-toCName :: DynFlags -> Id -> String
-toCName dflags i = showSDoc dflags (pprCode CStyle (ppr (idName i)))
 
 mkFExportCBits
   :: DynFlags
@@ -662,12 +612,13 @@ checkNewtypeFFI rdr_env tc
 asteriusTcForeignImports
   :: [LForeignDecl GhcRn] -> TcM ([Id], [LForeignDecl GhcTc], Bag GlobalRdrElt)
 asteriusTcForeignImports decls = do
-  (ids, decls, gres) <- mapAndUnzip3M tcFImport $ filter isForeignImport decls
+  (ids, decls, gres) <-
+    mapAndUnzip3M asteriusTcFImport $ filter isForeignImport decls
   return (ids, decls, unionManyBags gres)
 
-tcFImport
+asteriusTcFImport
   :: LForeignDecl GhcRn -> TcM (Id, LForeignDecl GhcTc, Bag GlobalRdrElt)
-tcFImport
+asteriusTcFImport
   ( L
       dloc
       fo@ForeignImport
@@ -683,7 +634,7 @@ tcFImport
       let (bndrs, res_ty) = tcSplitPiTys norm_sig_ty
           arg_tys = mapMaybe binderRelevantType_maybe bndrs
           id = mkLocalId nm sig_ty
-      imp_decl' <- tcCheckFIType arg_tys res_ty imp_decl
+      imp_decl' <- asteriusTcCheckFIType arg_tys res_ty imp_decl
       let fi_decl =
             ForeignImport
               { fd_name = L nloc id,
@@ -692,31 +643,17 @@ tcFImport
                 fd_fi = imp_decl'
                 }
       return (id, L dloc fi_decl, gres)
-tcFImport d = pprPanic "tcFImport" (ppr d)
+asteriusTcFImport d = pprPanic "asteriusTcFImport" (ppr d)
 
-tcCheckFIType :: [Type] -> Type -> ForeignImport -> TcM ForeignImport
-tcCheckFIType arg_tys res_ty (CImport (L lc cconv) safety mh l@(CLabel _) src) = do
+asteriusTcCheckFIType :: [Type] -> Type -> ForeignImport -> TcM ForeignImport
+asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) safety mh l@(CLabel _) src) = do
   checkCg checkCOrAsmOrLlvmOrInterp
   check
     (isFFILabelTy (mkFunTys arg_tys res_ty))
     (illegalForeignTyErr Outputable.empty)
   cconv' <- checkCConv cconv
   return (CImport (L lc cconv') safety mh l src)
-tcCheckFIType arg_tys res_ty (CImport (L lc cconv) safety mh CWrapper src) = do
-  checkCg checkCOrAsmOrLlvmOrInterp
-  cconv' <- checkCConv cconv
-  case arg_tys of
-    [arg1_ty] -> do
-      checkForeignArgs isFFIExternalTy arg1_tys
-      checkForeignRes nonIOok checkSafe isFFIExportResultTy res1_ty
-      checkForeignRes mustBeIO checkSafe (isFFIDynTy arg1_ty) res_ty
-      where
-        (arg1_tys, res1_ty) = tcSplitFunTys arg1_ty
-    _ ->
-      addErrTc
-        (illegalForeignTyErr Outputable.empty (text "One argument expected"))
-  return (CImport (L lc cconv') safety mh CWrapper src)
-tcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) mh (CFunction target) src)
+asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) mh (CFunction target) src)
   | isDynamicTarget target =
     do
       checkCg checkCOrAsmOrLlvmOrInterp
@@ -766,6 +703,7 @@ tcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) mh (CFunc
             addErrTc (text "`value' imports cannot have function types")
         _ -> return ()
       return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
+asteriusTcCheckFIType _ _ _ = panic "asteriusTcCheckFIType"
 
 checkCTarget :: CCallTarget -> TcM ()
 checkCTarget (StaticTarget _ str _ _) = do
@@ -851,10 +789,8 @@ checkForeignRes non_io_result_ok check_safe pred_res_ty ty
     safeHsErr =
       text "Safe Haskell is on, all FFI imports must be in the IO monad"
 
-nonIOok, mustBeIO :: Bool
+nonIOok :: Bool
 nonIOok = True
-
-mustBeIO = False
 
 checkSafe, noCheckSafe :: Bool
 checkSafe = True
