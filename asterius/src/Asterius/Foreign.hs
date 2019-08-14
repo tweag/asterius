@@ -3,15 +3,19 @@
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module Asterius.Foreign
-  ( asteriusDsForeigns
+  ( asteriusDsForeigns,
+    asteriusTcForeignImports,
+    asteriusTcForeignExports
     )
 where
 
+import Bag
 import BasicTypes
 import CmmExpr
 import CmmUtils
 import Coercion
 import Config
+import Control.Monad
 import CoreSyn
 import CoreUnfold
 import Data.List
@@ -21,8 +25,12 @@ import DsCCall
 import DsMonad
 import DynFlags
 import Encoding
+import ErrUtils
+import FamInst
+import FamInstEnv
 import FastString
 import ForeignCall
+import qualified GHC.LanguageExtensions as LangExt
 import HsSyn
 import HscTypes
 import Id
@@ -34,9 +42,12 @@ import Outputable
 import Pair
 import Platform
 import PrelNames
+import RdrName
 import RepType
 import SrcLoc
 import TcEnv
+import TcExpr
+import TcHsType
 import TcRnMonad
 import TcType
 import TyCon
@@ -565,3 +576,374 @@ primTyDescChar dflags ty
       | wORD_SIZE dflags == 4 = ('W', 'w')
       | wORD_SIZE dflags == 8 = ('L', 'l')
       | otherwise = panic "primTyDescChar"
+
+isForeignImport :: LForeignDecl name -> Bool
+isForeignImport (L _ ForeignImport {}) = True
+isForeignImport _ = False
+
+isForeignExport :: LForeignDecl name -> Bool
+isForeignExport (L _ ForeignExport {}) = True
+isForeignExport _ = False
+
+normaliseFfiType :: Type -> TcM (Coercion, Type, Bag GlobalRdrElt)
+normaliseFfiType ty = do
+  fam_envs <- tcGetFamInstEnvs
+  normaliseFfiType' fam_envs ty
+
+normaliseFfiType'
+  :: FamInstEnvs -> Type -> TcM (Coercion, Type, Bag GlobalRdrElt)
+normaliseFfiType' env = go initRecTc
+  where
+    go :: RecTcChecker -> Type -> TcM (Coercion, Type, Bag GlobalRdrElt)
+    go rec_nts ty
+      | Just ty' <- tcView ty = go rec_nts ty'
+      | Just (tc, tys) <- splitTyConApp_maybe ty = go_tc_app rec_nts tc tys
+      | (bndrs, inner_ty) <- splitForAllTyVarBndrs ty,
+        not (null bndrs) =
+        do
+          (coi, nty1, gres1) <- go rec_nts inner_ty
+          return
+            ( mkHomoForAllCos (binderVars bndrs) coi,
+              mkForAllTys bndrs nty1,
+              gres1
+              )
+      | otherwise = return (mkRepReflCo ty, ty, emptyBag)
+    go_tc_app
+      :: RecTcChecker
+      -> TyCon
+      -> [Type]
+      -> TcM (Coercion, Type, Bag GlobalRdrElt)
+    go_tc_app rec_nts tc tys
+      | tc_key `elem` [ioTyConKey, funPtrTyConKey, funTyConKey] = children_only
+      | isNewTyCon tc,
+        Just rec_nts' <- checkRecTc rec_nts tc =
+        do
+          rdr_env <- getGlobalRdrEnv
+          case checkNewtypeFFI rdr_env tc of
+            Nothing -> nothing
+            Just gre -> do
+              (co', ty', gres) <- go rec_nts' nt_rhs
+              return (mkTransCo nt_co co', ty', gre `consBag` gres)
+      | isFamilyTyCon tc,
+        (co, ty) <- normaliseTcApp env Representational tc tys,
+        not (isReflexiveCo co) =
+        do
+          (co', ty', gres) <- go rec_nts ty
+          return (mkTransCo co co', ty', gres)
+      | otherwise = nothing
+      where
+        tc_key = getUnique tc
+        children_only = do
+          xs <- mapM (go rec_nts) tys
+          let (cos, tys', gres) = unzip3 xs
+              cos' =
+                zipWith3
+                  downgradeRole
+                  (tyConRoles tc)
+                  (repeat Representational)
+                  cos
+          return
+            ( mkTyConAppCo Representational tc cos',
+              mkTyConApp tc tys',
+              unionManyBags gres
+              )
+        nt_co = mkUnbranchedAxInstCo Representational (newTyConCo tc) tys []
+        nt_rhs = newTyConInstRhs tc tys
+        ty = mkTyConApp tc tys
+        nothing = return (mkRepReflCo ty, ty, emptyBag)
+
+checkNewtypeFFI :: GlobalRdrEnv -> TyCon -> Maybe GlobalRdrElt
+checkNewtypeFFI rdr_env tc
+  | Just con <- tyConSingleDataCon_maybe tc,
+    Just gre <- lookupGRE_Name rdr_env (dataConName con) =
+    Just gre
+  | otherwise = Nothing
+
+asteriusTcForeignImports
+  :: [LForeignDecl GhcRn] -> TcM ([Id], [LForeignDecl GhcTc], Bag GlobalRdrElt)
+asteriusTcForeignImports decls = do
+  (ids, decls, gres) <- mapAndUnzip3M tcFImport $ filter isForeignImport decls
+  return (ids, decls, unionManyBags gres)
+
+tcFImport
+  :: LForeignDecl GhcRn -> TcM (Id, LForeignDecl GhcTc, Bag GlobalRdrElt)
+tcFImport
+  ( L
+      dloc
+      fo@ForeignImport
+        { fd_name = L nloc nm,
+          fd_sig_ty = hs_ty,
+          fd_fi = imp_decl
+          }
+    ) =
+    setSrcSpan dloc
+      $ addErrCtxt (foreignDeclCtxt fo) $ do
+      sig_ty <- tcHsSigType (ForSigCtxt nm) hs_ty
+      (norm_co, norm_sig_ty, gres) <- normaliseFfiType sig_ty
+      let (bndrs, res_ty) = tcSplitPiTys norm_sig_ty
+          arg_tys = mapMaybe binderRelevantType_maybe bndrs
+          id = mkLocalId nm sig_ty
+      imp_decl' <- tcCheckFIType arg_tys res_ty imp_decl
+      let fi_decl =
+            ForeignImport
+              { fd_name = L nloc id,
+                fd_sig_ty = undefined,
+                fd_i_ext = mkSymCo norm_co,
+                fd_fi = imp_decl'
+                }
+      return (id, L dloc fi_decl, gres)
+tcFImport d = pprPanic "tcFImport" (ppr d)
+
+tcCheckFIType :: [Type] -> Type -> ForeignImport -> TcM ForeignImport
+tcCheckFIType arg_tys res_ty (CImport (L lc cconv) safety mh l@(CLabel _) src) = do
+  checkCg checkCOrAsmOrLlvmOrInterp
+  check
+    (isFFILabelTy (mkFunTys arg_tys res_ty))
+    (illegalForeignTyErr Outputable.empty)
+  cconv' <- checkCConv cconv
+  return (CImport (L lc cconv') safety mh l src)
+tcCheckFIType arg_tys res_ty (CImport (L lc cconv) safety mh CWrapper src) = do
+  checkCg checkCOrAsmOrLlvmOrInterp
+  cconv' <- checkCConv cconv
+  case arg_tys of
+    [arg1_ty] -> do
+      checkForeignArgs isFFIExternalTy arg1_tys
+      checkForeignRes nonIOok checkSafe isFFIExportResultTy res1_ty
+      checkForeignRes mustBeIO checkSafe (isFFIDynTy arg1_ty) res_ty
+      where
+        (arg1_tys, res1_ty) = tcSplitFunTys arg1_ty
+    _ ->
+      addErrTc
+        (illegalForeignTyErr Outputable.empty (text "One argument expected"))
+  return (CImport (L lc cconv') safety mh CWrapper src)
+tcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) mh (CFunction target) src)
+  | isDynamicTarget target =
+    do
+      checkCg checkCOrAsmOrLlvmOrInterp
+      cconv' <- checkCConv cconv
+      case arg_tys of
+        [] ->
+          addErrTc
+            ( illegalForeignTyErr
+                Outputable.empty
+                (text "At least one argument expected")
+              )
+        (arg1_ty : arg_tys) -> do
+          dflags <- getDynFlags
+          let curried_res_ty = mkFunTys arg_tys res_ty
+          check (isFFIDynTy curried_res_ty arg1_ty) (illegalForeignTyErr argument)
+          checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
+          checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
+      return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
+  | cconv == PrimCallConv =
+    do
+      dflags <- getDynFlags
+      checkTc
+        (xopt LangExt.GHCForeignImportPrim dflags)
+        (text "Use GHCForeignImportPrim to allow `foreign import prim'.")
+      checkCg checkCOrAsmOrLlvmOrInterp
+      checkCTarget target
+      checkTc
+        (playSafe safety)
+        ( text
+            "The safe/unsafe annotation should not be used with `foreign import prim'."
+          )
+      checkForeignArgs (isFFIPrimArgumentTy dflags) arg_tys
+      checkForeignRes nonIOok checkSafe (isFFIPrimResultTy dflags) res_ty
+      return idecl
+  | otherwise =
+    do
+      checkCg checkCOrAsmOrLlvmOrInterp
+      cconv' <- checkCConv cconv
+      checkCTarget target
+      dflags <- getDynFlags
+      checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
+      checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
+      checkMissingAmpersand dflags arg_tys res_ty
+      case target of
+        StaticTarget _ _ _ False
+          | not (null arg_tys) ->
+            addErrTc (text "`value' imports cannot have function types")
+        _ -> return ()
+      return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
+
+checkCTarget :: CCallTarget -> TcM ()
+checkCTarget (StaticTarget _ str _ _) = do
+  checkCg checkCOrAsmOrLlvmOrInterp
+  checkTc (isCLabelString str) (badCName str)
+checkCTarget DynamicTarget = panic "checkCTarget DynamicTarget"
+
+checkMissingAmpersand :: DynFlags -> [Type] -> Type -> TcM ()
+checkMissingAmpersand dflags arg_tys res_ty
+  | null arg_tys && isFunPtrTy res_ty && wopt Opt_WarnDodgyForeignImports dflags =
+    addWarn
+      (Reason Opt_WarnDodgyForeignImports)
+      (text "possible missing & in foreign import of FunPtr")
+  | otherwise = return ()
+
+asteriusTcForeignExports
+  :: [LForeignDecl GhcRn]
+  -> TcM (LHsBinds GhcTcId, [LForeignDecl GhcTcId], Bag GlobalRdrElt)
+asteriusTcForeignExports decls =
+  foldlM combine (emptyLHsBinds, [], emptyBag) (filter isForeignExport decls)
+  where
+    combine (binds, fs, gres1) (L loc fe) = do
+      (b, f, gres2) <- setSrcSpan loc (tcFExport fe)
+      return (b `consBag` binds, L loc f : fs, gres1 `unionBags` gres2)
+
+tcFExport
+  :: ForeignDecl GhcRn
+  -> TcM (LHsBind GhcTc, ForeignDecl GhcTc, Bag GlobalRdrElt)
+tcFExport fo@ForeignExport {fd_name = L loc nm, fd_sig_ty = hs_ty, fd_fe = spec} =
+  addErrCtxt (foreignDeclCtxt fo) $ do
+    sig_ty <- tcHsSigType (ForSigCtxt nm) hs_ty
+    rhs <- tcPolyExpr (nlHsVar nm) sig_ty
+    (norm_co, norm_sig_ty, gres) <- normaliseFfiType sig_ty
+    spec' <- tcCheckFEType norm_sig_ty spec
+    id <- mkStableIdFromName nm sig_ty loc mkForeignExportOcc
+    return
+      ( mkVarBind id rhs,
+        ForeignExport
+          { fd_name = L loc id,
+            fd_sig_ty = undefined,
+            fd_e_ext = norm_co,
+            fd_fe = spec'
+            },
+        gres
+        )
+tcFExport d = pprPanic "tcFExport" (ppr d)
+
+tcCheckFEType :: Type -> ForeignExport -> TcM ForeignExport
+tcCheckFEType sig_ty (CExport (L l (CExportStatic esrc str cconv)) src) = do
+  checkCg checkCOrAsmOrLlvm
+  checkTc (isCLabelString str) (badCName str)
+  cconv' <- checkCConv cconv
+  checkForeignArgs isFFIExternalTy arg_tys
+  checkForeignRes nonIOok noCheckSafe isFFIExportResultTy res_ty
+  return (CExport (L l (CExportStatic esrc str cconv')) src)
+  where
+    (bndrs, res_ty) = tcSplitPiTys sig_ty
+    arg_tys = mapMaybe binderRelevantType_maybe bndrs
+
+checkForeignArgs :: (Type -> Validity) -> [Type] -> TcM ()
+checkForeignArgs pred = mapM_ go
+  where
+    go ty = check (pred ty) (illegalForeignTyErr argument)
+
+checkForeignRes :: Bool -> Bool -> (Type -> Validity) -> Type -> TcM ()
+checkForeignRes non_io_result_ok check_safe pred_res_ty ty
+  | Just (_, res_ty) <- tcSplitIOType_maybe ty =
+    check (pred_res_ty res_ty) (illegalForeignTyErr result)
+  | not non_io_result_ok =
+    addErrTc $ illegalForeignTyErr result (text "IO result type expected")
+  | otherwise =
+    do
+      dflags <- getDynFlags
+      case pred_res_ty ty of
+        NotValid msg -> addErrTc $ illegalForeignTyErr result msg
+        _
+          | check_safe && safeInferOn dflags -> recordUnsafeInfer emptyBag
+        _
+          | check_safe && safeLanguageOn dflags ->
+            addErrTc (illegalForeignTyErr result safeHsErr)
+        _ -> return ()
+  where
+    safeHsErr =
+      text "Safe Haskell is on, all FFI imports must be in the IO monad"
+
+nonIOok, mustBeIO :: Bool
+nonIOok = True
+
+mustBeIO = False
+
+checkSafe, noCheckSafe :: Bool
+checkSafe = True
+
+noCheckSafe = False
+
+checkCOrAsmOrLlvm :: HscTarget -> Validity
+checkCOrAsmOrLlvm HscC = IsValid
+checkCOrAsmOrLlvm HscAsm = IsValid
+checkCOrAsmOrLlvm HscLlvm = IsValid
+checkCOrAsmOrLlvm _ =
+  NotValid
+    ( text
+        "requires unregisterised, llvm (-fllvm) or native code generation (-fasm)"
+      )
+
+checkCOrAsmOrLlvmOrInterp :: HscTarget -> Validity
+checkCOrAsmOrLlvmOrInterp HscC = IsValid
+checkCOrAsmOrLlvmOrInterp HscAsm = IsValid
+checkCOrAsmOrLlvmOrInterp HscLlvm = IsValid
+checkCOrAsmOrLlvmOrInterp HscInterpreted = IsValid
+checkCOrAsmOrLlvmOrInterp _ =
+  NotValid
+    (text "requires interpreted, unregisterised, llvm or native code generation")
+
+checkCg :: (HscTarget -> Validity) -> TcM ()
+checkCg check = do
+  dflags <- getDynFlags
+  let target = hscTarget dflags
+  case target of
+    HscNothing -> return ()
+    _ ->
+      case check target of
+        IsValid -> return ()
+        NotValid err -> addErrTc (text "Illegal foreign declaration:" <+> err)
+
+checkCConv :: CCallConv -> TcM CCallConv
+checkCConv CCallConv = return CCallConv
+checkCConv CApiConv = return CApiConv
+checkCConv StdCallConv = do
+  dflags <- getDynFlags
+  let platform = targetPlatform dflags
+  if platformArch platform == ArchX86
+  then return StdCallConv
+  else
+    do
+      when (wopt Opt_WarnUnsupportedCallingConventions dflags)
+        $ addWarnTc
+            (Reason Opt_WarnUnsupportedCallingConventions)
+            ( text
+                "the 'stdcall' calling convention is unsupported on this platform,"
+                $$ text "treating as ccall"
+              )
+      return CCallConv
+checkCConv PrimCallConv = do
+  addErrTc
+    (text "The `prim' calling convention can only be used with `foreign import'")
+  return PrimCallConv
+checkCConv JavaScriptCallConv = do
+  dflags <- getDynFlags
+  if platformArch (targetPlatform dflags) == ArchJavaScript
+  then return JavaScriptCallConv
+  else
+    do
+      addErrTc
+        ( text
+            "The `javascript' calling convention is unsupported on this platform"
+          )
+      return JavaScriptCallConv
+
+check :: Validity -> (MsgDoc -> MsgDoc) -> TcM ()
+check IsValid _ = return ()
+check (NotValid doc) err_fn = addErrTc (err_fn doc)
+
+illegalForeignTyErr :: SDoc -> SDoc -> SDoc
+illegalForeignTyErr arg_or_res = hang msg 2
+  where
+    msg =
+      hsep
+        [text "Unacceptable", arg_or_res, text "type in foreign declaration:"]
+
+argument, result :: SDoc
+argument = text "argument"
+
+result = text "result"
+
+badCName :: CLabelString -> MsgDoc
+badCName target =
+  sep [quotes (ppr target) <+> text "is not a valid C identifier"]
+
+foreignDeclCtxt :: ForeignDecl GhcRn -> SDoc
+foreignDeclCtxt fo = hang (text "When checking declaration:") 2 (ppr fo)
