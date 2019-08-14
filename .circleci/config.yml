@@ -1,4 +1,4 @@
-version: 2
+version: 2.1
 
 jobs:
   asterius-boot:
@@ -491,10 +491,10 @@ workflows:
       - asterius-test-ghc-testsuite-debug-yolo:
           requires:
             - asterius-test-ghc-testsuite-yolo
-      - asterius-build-docker
+      - asterius-build-docker:
+          requires:
+            - asterius-test
           filters:
             branches:
               only: master
-          requires:
-            - asterius-test
       - asterius-build-docs
