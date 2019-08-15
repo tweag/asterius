@@ -10,48 +10,33 @@ module Asterius.Foreign
 where
 
 import Bag
-import BasicTypes
 import CmmExpr
 import CmmUtils
-import Coercion
-import Config
 import Control.Monad
-import CoreSyn
 import CoreUnfold
 import Data.List
 import Data.Maybe
-import DataCon
 import DsCCall
 import DsMonad
-import DynFlags
 import ErrUtils
 import FamInst
 import FamInstEnv
-import FastString
 import ForeignCall
 import qualified GHC.LanguageExtensions as LangExt
+import GhcPlugins
 import HsSyn
-import HscTypes
-import Id
-import Literal
-import Name
 import OrdList
 import Outputable
 import Pair
 import Platform
 import PrelNames
-import RdrName
 import RepType
-import SrcLoc
 import TcEnv
 import TcExpr
 import TcHsType
 import TcRnMonad
 import TcType
-import TyCon
-import Type
 import TysPrim
-import TysWiredIn
 import Prelude hiding ((<>))
 
 type Binding = (Id, CoreExpr)
@@ -79,11 +64,9 @@ asteriusDsForeigns fos = do
     do_decl
       ForeignExport
         { fd_name = L _ id,
-          fd_e_ext = co,
-          fd_fe = CExport (L _ (CExportStatic _ ext_nm cconv)) _
-          } = do
-        (h, c, _, _) <- dsFExport id co ext_nm cconv False
-        return (h, c, [id], [])
+          fd_e_ext = _,
+          fd_fe = CExport (L _ CExportStatic {}) _
+          } = return (empty, empty, [id], [])
     do_decl (XForeignDecl _) = panic "asteriusDsForeigns"
 
 asteriusDsFImport
@@ -233,180 +216,6 @@ dsPrimCall fn_id co fcall = do
       rhs' = Cast rhs co
   return ([(fn_id, rhs')], empty, empty)
 
-dsFExport
-  :: Id
-  -> Coercion
-  -> CLabelString
-  -> CCallConv
-  -> Bool
-  -> DsM (SDoc, SDoc, String, Int)
-dsFExport fn_id co ext_name cconv isDyn = do
-  let ty = pSnd $ coercionKind co
-      (bndrs, orig_res_ty) = tcSplitPiTys ty
-      fe_arg_tys' = mapMaybe binderRelevantType_maybe bndrs
-      fe_arg_tys
-        | isDyn = tail fe_arg_tys'
-        | otherwise = fe_arg_tys'
-      (res_ty, is_IO_res_ty) =
-        case tcSplitIOType_maybe orig_res_ty of
-          Just (_ioTyCon, res_ty) -> (res_ty, True)
-          Nothing -> (orig_res_ty, False)
-  dflags <- getDynFlags
-  return
-    $ mkFExportCBits
-        dflags
-        ext_name
-        ( if isDyn
-          then Nothing
-          else Just fn_id
-          )
-        fe_arg_tys
-        res_ty
-        is_IO_res_ty
-        cconv
-
-mkFExportCBits
-  :: DynFlags
-  -> FastString
-  -> Maybe Id
-  -> [Type]
-  -> Type
-  -> Bool
-  -> CCallConv
-  -> (SDoc, SDoc, String, Int)
-mkFExportCBits dflags c_nm maybe_target arg_htys res_hty is_IO_res_ty cc =
-  ( header_bits,
-    c_bits,
-    type_string,
-    sum [widthInBytes (typeWidth rep) | (_, _, _, rep) <- aug_arg_info]
-    )
-  where
-    arg_info :: [(SDoc, SDoc, Type, CmmType)]
-    arg_info =
-      [ let stg_type = showStgType ty
-         in ( arg_cname n stg_type,
-              stg_type,
-              ty,
-              typeCmmType dflags (getPrimTyOf ty)
-              )
-        | (ty, n) <- zip arg_htys [1 :: Int ..]
-        ]
-    arg_cname n stg_ty
-      | libffi =
-        char '*'
-          <> parens (stg_ty <> char '*')
-          <> text "args"
-          <> brackets (int (n - 1))
-      | otherwise = text ('a' : show n)
-    libffi = cLibFFI && isNothing maybe_target
-    type_string
-      | libffi = primTyDescChar dflags res_hty : arg_type_string
-      | otherwise = arg_type_string
-    arg_type_string = [primTyDescChar dflags ty | (_, _, ty, _) <- arg_info]
-    aug_arg_info
-      | isNothing maybe_target =
-        stable_ptr_arg : insertRetAddr dflags cc arg_info
-      | otherwise = arg_info
-    stable_ptr_arg =
-      ( text "the_stableptr",
-        text "StgStablePtr",
-        undefined,
-        typeCmmType dflags (mkStablePtrPrimTy alphaTy)
-        )
-    res_hty_is_unit = res_hty `eqType` unitTy
-    cResType
-      | res_hty_is_unit = text "void"
-      | otherwise = showStgType res_hty
-    ffi_cResType
-      | is_ffi_arg_type = text "ffi_arg"
-      | otherwise = cResType
-      where
-        res_ty_key = getUnique (getName (typeTyCon res_hty))
-        is_ffi_arg_type =
-          res_ty_key
-            `notElem` [floatTyConKey, doubleTyConKey, int64TyConKey, word64TyConKey]
-    pprCconv = ccallConvAttribute cc
-    header_bits = text "extern" <+> fun_proto <> semi
-    fun_args
-      | null aug_arg_info = text "void"
-      | otherwise =
-        hsep $ punctuate comma $ map (\(nm, ty, _, _) -> ty <+> nm) aug_arg_info
-    fun_proto
-      | libffi =
-        text "void"
-          <+> ftext c_nm
-          <> parens
-               ( text
-                   "void *cif STG_UNUSED, void* resp, void** args, void* the_stableptr"
-                 )
-      | otherwise = cResType <+> pprCconv <+> ftext c_nm <> parens fun_args
-    the_cfun =
-      case maybe_target of
-        Nothing -> text "(StgClosure*)deRefStablePtr(the_stableptr)"
-        Just hs_fn -> char '&' <> ppr hs_fn <> text "_closure"
-    cap = text "cap" <> comma
-    expr_to_run = foldl appArg the_cfun arg_info
-      where
-        appArg acc (arg_cname, _, arg_hty, _) =
-          text "rts_apply"
-            <> parens
-                 (cap <> acc <> comma <> mkHObj arg_hty <> parens (cap <> arg_cname))
-    declareResult = text "HaskellObj ret;"
-    declareCResult
-      | res_hty_is_unit = empty
-      | otherwise = cResType <+> text "cret;"
-    assignCResult
-      | res_hty_is_unit = empty
-      | otherwise =
-        text "cret=" <> unpackHObj res_hty <> parens (text "ret") <> semi
-    extern_decl =
-      case maybe_target of
-        Nothing -> empty
-        Just hs_fn ->
-          text "extern StgClosure " <> ppr hs_fn <> text "_closure" <> semi
-    c_bits =
-      space $$ extern_decl $$ fun_proto
-        $$ vcat
-             [ lbrace,
-               text "Capability *cap;",
-               declareResult,
-               declareCResult,
-               text "cap = rts_lock();",
-               text "rts_evalIO"
-                 <> parens
-                      ( char '&'
-                          <> cap
-                          <> text "rts_apply"
-                          <> parens
-                               ( cap
-                                   <> text "(HaskellObj)"
-                                   <> ptext
-                                        ( if is_IO_res_ty
-                                          then sLit "runIO_closure"
-                                          else sLit "runNonIO_closure"
-                                          )
-                                   <> comma
-                                   <> expr_to_run
-                                 )
-                          <+> comma
-                          <> text "&ret"
-                        )
-                 <> semi,
-               text "rts_checkSchedStatus"
-                 <> parens (doubleQuotes (ftext c_nm) <> comma <> text "cap")
-                 <> semi,
-               assignCResult,
-               text "rts_unlock(cap);",
-               ppUnless res_hty_is_unit
-                 $ if libffi
-                 then
-                   char '*'
-                     <> parens (ffi_cResType <> char '*')
-                     <> text "resp = cret;"
-                 else text "return cret;",
-               rbrace
-               ]
-
 foreignExportInitialiser :: Id -> SDoc
 foreignExportInitialiser hs_fn =
   vcat
@@ -420,18 +229,6 @@ foreignExportInitialiser hs_fn =
             <> semi
           )
       ]
-
-mkHObj :: Type -> SDoc
-mkHObj t = text "rts_mk" <> text (showFFIType t)
-
-unpackHObj :: Type -> SDoc
-unpackHObj t = text "rts_get" <> text (showFFIType t)
-
-showStgType :: Type -> SDoc
-showStgType t = text "Hs" <> text (showFFIType t)
-
-showFFIType :: Type -> String
-showFFIType t = getOccString (getName (typeTyCon t))
 
 toCType :: Type -> (Maybe Header, SDoc)
 toCType = f False
@@ -452,52 +249,6 @@ toCType = f False
       | voidOK = (Nothing, text "void")
       | otherwise = pprPanic "toCType" (ppr t)
 
-typeTyCon :: Type -> TyCon
-typeTyCon ty
-  | Just (tc, _) <- tcSplitTyConApp_maybe (unwrapType ty) = tc
-  | otherwise = pprPanic "DsForeign.typeTyCon" (ppr ty)
-
-insertRetAddr
-  :: DynFlags
-  -> CCallConv
-  -> [(SDoc, SDoc, Type, CmmType)]
-  -> [(SDoc, SDoc, Type, CmmType)]
-insertRetAddr dflags CCallConv args =
-  case platformArch platform of
-    ArchX86_64
-      | platformOS platform == OSMinGW32 ->
-        let go
-              :: Int
-              -> [(SDoc, SDoc, Type, CmmType)]
-              -> [(SDoc, SDoc, Type, CmmType)]
-            go 4 args = retAddrArg dflags : args
-            go n (arg : args) = arg : go (n + 1) args
-            go _ [] = []
-         in go 0 args
-      | otherwise ->
-        let go
-              :: Int
-              -> [(SDoc, SDoc, Type, CmmType)]
-              -> [(SDoc, SDoc, Type, CmmType)]
-            go 6 args = retAddrArg dflags : args
-            go n (arg@(_, _, _, rep) : args)
-              | cmmEqType_ignoring_ptrhood rep b64 = arg : go (n + 1) args
-              | otherwise = arg : go n args
-            go _ [] = []
-         in go 0 args
-    _ -> retAddrArg dflags : args
-  where
-    platform = targetPlatform dflags
-insertRetAddr _ _ args = args
-
-retAddrArg :: DynFlags -> (SDoc, SDoc, Type, CmmType)
-retAddrArg dflags =
-  ( text "original_return_addr",
-    text "void*",
-    undefined,
-    typeCmmType dflags addrPrimTy
-    )
-
 getPrimTyOf :: Type -> UnaryType
 getPrimTyOf ty
   | isBoolTy rep_ty = intPrimTy
@@ -507,25 +258,6 @@ getPrimTyOf ty
       _other -> pprPanic "DsForeign.getPrimTyOf" (ppr ty)
   where
     rep_ty = unwrapType ty
-
-primTyDescChar :: DynFlags -> Type -> Char
-primTyDescChar dflags ty
-  | ty `eqType` unitTy = 'v'
-  | otherwise =
-    case typePrimRep1 (getPrimTyOf ty) of
-      IntRep -> signed_word
-      WordRep -> unsigned_word
-      Int64Rep -> 'L'
-      Word64Rep -> 'l'
-      AddrRep -> 'p'
-      FloatRep -> 'f'
-      DoubleRep -> 'd'
-      _ -> pprPanic "primTyDescChar" (ppr ty)
-  where
-    (signed_word, unsigned_word)
-      | wORD_SIZE dflags == 4 = ('W', 'w')
-      | wORD_SIZE dflags == 8 = ('L', 'l')
-      | otherwise = panic "primTyDescChar"
 
 isForeignImport :: LForeignDecl name -> Bool
 isForeignImport (L _ ForeignImport {}) = True
