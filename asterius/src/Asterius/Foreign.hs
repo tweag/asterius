@@ -45,28 +45,22 @@ asteriusDsForeigns
   :: [LForeignDecl GhcTc] -> DsM (ForeignStubs, OrdList Binding)
 asteriusDsForeigns [] = return (NoStubs, nilOL)
 asteriusDsForeigns fos = do
-  fives <- mapM do_ldecl fos
-  let (hs, cs, idss, bindss) = unzip4 fives
-      fe_ids = concat idss
-      fe_init_code = map foreignExportInitialiser fe_ids
-  return
-    ( ForeignStubs (vcat hs) (vcat cs $$ vcat fe_init_code),
-      foldr (appOL . toOL) nilOL bindss
-      )
+  bindss <- mapM do_ldecl fos
+  return (NoStubs, foldr (appOL . toOL) nilOL bindss)
   where
     do_ldecl (L loc decl) = putSrcSpanDs loc (do_decl decl)
     do_decl ForeignImport {fd_name = id, fd_i_ext = co, fd_fi = spec} = do
       traceIf (text "fi start" <+> ppr id)
       let id' = unLoc id
-      (bs, h, c) <- asteriusDsFImport id' co spec
+      (bs, _, _) <- asteriusDsFImport id' co spec
       traceIf (text "fi end" <+> ppr id)
-      return (h, c, [], bs)
+      return bs
     do_decl
       ForeignExport
-        { fd_name = L _ id,
+        { fd_name = L _ _,
           fd_e_ext = _,
           fd_fe = CExport (L _ CExportStatic {}) _
-          } = return (empty, empty, [id], [])
+          } = return []
     do_decl (XForeignDecl _) = panic "asteriusDsForeigns"
 
 asteriusDsFImport
@@ -215,20 +209,6 @@ dsPrimCall fn_id co fcall = do
       rhs = mkLams tvs (mkLams args call_app)
       rhs' = Cast rhs co
   return ([(fn_id, rhs')], empty, empty)
-
-foreignExportInitialiser :: Id -> SDoc
-foreignExportInitialiser hs_fn =
-  vcat
-    [ text "static void stginit_export_"
-        <> ppr hs_fn
-        <> text "() __attribute__((constructor));",
-      text "static void stginit_export_" <> ppr hs_fn <> text "()",
-      braces
-        ( text "foreignExportStablePtr"
-            <> parens (text "(StgPtr) &" <> ppr hs_fn <> text "_closure")
-            <> semi
-          )
-      ]
 
 toCType :: Type -> (Maybe Header, SDoc)
 toCType = f False
