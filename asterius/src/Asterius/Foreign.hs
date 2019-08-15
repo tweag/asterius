@@ -52,7 +52,7 @@ asteriusDsForeigns fos = do
     do_decl ForeignImport {fd_name = id, fd_i_ext = co, fd_fi = spec} = do
       traceIf (text "fi start" <+> ppr id)
       let id' = unLoc id
-      (bs, _, _) <- asteriusDsFImport id' co spec
+      bs <- asteriusDsFImport id' co spec
       traceIf (text "fi end" <+> ppr id)
       return bs
     do_decl
@@ -63,8 +63,7 @@ asteriusDsForeigns fos = do
           } = return []
     do_decl (XForeignDecl _) = panic "asteriusDsForeigns"
 
-asteriusDsFImport
-  :: Id -> Coercion -> ForeignImport -> DsM ([Binding], SDoc, SDoc)
+asteriusDsFImport :: Id -> Coercion -> ForeignImport -> DsM [Binding]
 asteriusDsFImport id co (CImport cconv safety mHeader spec _) =
   asteriusDsCImport id co spec (unLoc cconv) (unLoc safety) mHeader
 
@@ -75,7 +74,7 @@ asteriusDsCImport
   -> CCallConv
   -> Safety
   -> Maybe Header
-  -> DsM ([Binding], SDoc, SDoc)
+  -> DsM [Binding]
 asteriusDsCImport id co (CLabel cid) cconv _ _ = do
   dflags <- getDynFlags
   let ty = pFst $ coercionKind co
@@ -88,11 +87,11 @@ asteriusDsCImport id co (CLabel cid) cconv _ _ = do
   let rhs = foRhs (Lit (MachLabel cid stdcall_info fod))
       rhs' = Cast rhs co
       stdcall_info = funTypeArgStdcallInfo dflags cconv ty
-   in return ([(id, rhs')], empty, empty)
+   in return [(id, rhs')]
 asteriusDsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
-  dsPrimCall id co (CCall (CCallSpec target cconv safety))
-asteriusDsCImport id co (CFunction target) cconv safety mHeader =
-  dsFCall id co (CCall (CCallSpec target cconv safety)) mHeader
+  asteriusDsPrimCall id co (CCall (CCallSpec target cconv safety))
+asteriusDsCImport id co (CFunction target) cconv safety _ =
+  asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
 asteriusDsCImport _ _ _ _ _ _ = panic "asteriusDsCImport"
 
 funTypeArgStdcallInfo :: DynFlags -> CCallConv -> Type -> Maybe Int
@@ -109,13 +108,8 @@ funTypeArgStdcallInfo dflags StdCallConv ty
                 )
 funTypeArgStdcallInfo _ _other_conv _ = Nothing
 
-dsFCall
-  :: Id
-  -> Coercion
-  -> ForeignCall
-  -> Maybe Header
-  -> DsM ([(Id, Expr TyVar)], SDoc, SDoc)
-dsFCall fn_id co fcall mDeclHeader = do
+asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
+asteriusDsFCall fn_id co fcall = do
   let ty = pFst $ coercionKind co
       (tv_bndrs, rho) = tcSplitForAllTyVarBndrs ty
       (arg_tys, io_res_ty) = tcSplitFunTys rho
@@ -126,9 +120,9 @@ dsFCall fn_id co fcall mDeclHeader = do
   ccall_uniq <- newUnique
   work_uniq <- newUnique
   dflags <- getDynFlags
-  (fcall', cDoc) <-
+  fcall' <-
     case fcall of
-      CCall (CCallSpec (StaticTarget _ cName mUnitId isFun) CApiConv safety) -> do
+      CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety) -> do
         wrapperName <- mkWrapperName "ghc_wrapper" (unpackFS cName)
         let fcall' =
               CCall
@@ -137,48 +131,8 @@ dsFCall fn_id co fcall mDeclHeader = do
                     CApiConv
                     safety
                   )
-            c = includes $$ fun_proto <+> braces (cRet <> semi)
-            includes =
-              vcat
-                [ text "#include \"" <> ftext h <> text "\""
-                  | Header _ h <- nub headers
-                  ]
-            fun_proto =
-              cResType <+> pprCconv <+> ppr wrapperName <> parens argTypes
-            cRet
-              | isVoidRes = cCall
-              | otherwise = text "return" <+> cCall
-            cCall
-              | isFun = ppr cName <> parens argVals
-              | null arg_tys = ppr cName
-              | otherwise =
-                panic "dsFCall: Unexpected arguments to FFI value import"
-            raw_res_ty =
-              case tcSplitIOType_maybe io_res_ty of
-                Just (_ioTyCon, res_ty) -> res_ty
-                Nothing -> io_res_ty
-            isVoidRes = raw_res_ty `eqType` unitTy
-            (mHeader, cResType)
-              | isVoidRes = (Nothing, text "void")
-              | otherwise = toCType raw_res_ty
-            pprCconv = ccallConvAttribute CApiConv
-            mHeadersArgTypeList =
-              [ (header, cType <+> char 'a' <> int n)
-                | (t, n) <- zip arg_tys [1 ..],
-                  let (header, cType) = toCType t
-                ]
-            (mHeaders, argTypeList) = unzip mHeadersArgTypeList
-            argTypes =
-              if null argTypeList
-              then text "void"
-              else hsep $ punctuate comma argTypeList
-            mHeaders' = mDeclHeader : mHeader : mHeaders
-            headers = catMaybes mHeaders'
-            argVals =
-              hsep
-                $ punctuate comma [char 'a' <> int n | (_, n) <- zip arg_tys [1 ..]]
-        return (fcall', c)
-      _ -> return (fcall, empty)
+        return fcall'
+      _ -> return fcall
   let worker_ty =
         mkForAllTys
           tv_bndrs
@@ -194,11 +148,10 @@ dsFCall fn_id co fcall mDeclHeader = do
       fn_id_w_inl =
         fn_id
           `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
-  return ([(work_id, work_rhs), (fn_id_w_inl, wrap_rhs')], empty, cDoc)
+  return [(work_id, work_rhs), (fn_id_w_inl, wrap_rhs')]
 
-dsPrimCall
-  :: Id -> Coercion -> ForeignCall -> DsM ([(Id, Expr TyVar)], SDoc, SDoc)
-dsPrimCall fn_id co fcall = do
+asteriusDsPrimCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
+asteriusDsPrimCall fn_id co fcall = do
   let ty = pFst $ coercionKind co
       (tvs, fun_ty) = tcSplitForAllTys ty
       (arg_tys, io_res_ty) = tcSplitFunTys fun_ty
@@ -208,26 +161,7 @@ dsPrimCall fn_id co fcall = do
   let call_app = mkFCall dflags ccall_uniq fcall (map Var args) io_res_ty
       rhs = mkLams tvs (mkLams args call_app)
       rhs' = Cast rhs co
-  return ([(fn_id, rhs')], empty, empty)
-
-toCType :: Type -> (Maybe Header, SDoc)
-toCType = f False
-  where
-    f voidOK t
-      | Just (ptr, [t']) <- splitTyConApp_maybe t,
-        tyConName ptr `elem` [ptrTyConName, funPtrTyConName] =
-        case f True t' of
-          (mh, cType') -> (mh, cType' <> char '*')
-      | Just tycon <- tyConAppTyConPicky_maybe t,
-        Just (CType _ mHeader (_, cType)) <- tyConCType_maybe tycon =
-        (mHeader, ftext cType)
-      | Just t' <- coreView t = f voidOK t'
-      | Just byteArrayPrimTyCon == tyConAppTyConPicky_maybe t =
-        (Nothing, text "const void*")
-      | Just mutableByteArrayPrimTyCon == tyConAppTyConPicky_maybe t =
-        (Nothing, text "void*")
-      | voidOK = (Nothing, text "void")
-      | otherwise = pprPanic "toCType" (ppr t)
+  return [(fn_id, rhs')]
 
 getPrimTyOf :: Type -> UnaryType
 getPrimTyOf ty
