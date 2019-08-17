@@ -55,12 +55,7 @@ asteriusDsForeigns fos = do
       bs <- asteriusDsFImport id' co spec
       traceIf (text "fi end" <+> ppr id)
       return bs
-    do_decl
-      ForeignExport
-        { fd_name = L _ _,
-          fd_e_ext = _,
-          fd_fe = CExport (L _ CExportStatic {}) _
-          } = return []
+    do_decl ForeignExport {} = return []
     do_decl (XForeignDecl _) = panic "asteriusDsForeigns"
 
 asteriusDsFImport :: Id -> Coercion -> ForeignImport -> DsM [Binding]
