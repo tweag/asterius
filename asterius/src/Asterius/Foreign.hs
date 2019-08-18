@@ -9,6 +9,7 @@ module Asterius.Foreign
     )
 where
 
+import Asterius.Foreign.Internals
 import Bag
 import CmmExpr
 import CmmUtils
@@ -276,12 +277,14 @@ asteriusTcFImport
           arg_tys = mapMaybe binderRelevantType_maybe bndrs
           id = mkLocalId nm sig_ty
       imp_decl' <- asteriusTcCheckFIType arg_tys res_ty imp_decl
+      imp_decl'' <-
+        processFFIImport globalFFIHookState sig_ty norm_sig_ty imp_decl'
       let fi_decl =
             ForeignImport
               { fd_name = L nloc id,
                 fd_sig_ty = undefined,
                 fd_i_ext = mkSymCo norm_co,
-                fd_fi = imp_decl'
+                fd_fi = imp_decl''
                 }
       return (id, L dloc fi_decl, gres)
 asteriusTcFImport d = pprPanic "asteriusTcFImport" (ppr d)
@@ -333,7 +336,6 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
     do
       checkCg checkCOrAsmOrLlvmOrInterp
       cconv' <- asteriusCheckCConv cconv
-      checkCTarget target
       dflags <- getDynFlags
       checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
       checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
