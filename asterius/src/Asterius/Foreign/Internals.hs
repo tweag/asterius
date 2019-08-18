@@ -1,14 +1,37 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Foreign.Internals
-  ( parseFFIFunctionType
+  ( FFIHookState (..),
+    globalFFIHookState,
+    processFFIImport
     )
 where
 
 import Asterius.Types
+import Asterius.TypesConv
+import Control.Applicative
+import Control.Monad.IO.Class
+import Data.Functor
+import Data.IORef
+import qualified Data.Map.Strict as M
+import Data.String
+import qualified ForeignCall as GHC
 import qualified GhcPlugins as GHC
+import qualified HsSyn as GHC
 import qualified PrelNames as GHC
+import System.IO.Unsafe
+import qualified TcRnMonad as GHC
+import Text.Parsec
+  ( anyChar,
+    char,
+    digit,
+    parse,
+    try
+    )
+import Text.Parsec.String (Parser)
 import qualified TyCoRep as GHC
 
 ffiValueTypeMap0, ffiValueTypeMap1 :: GHC.NameEnv FFIValueType
@@ -140,3 +163,96 @@ parseFFIFunctionType sig_ty norm_sig_ty = case (sig_ty, norm_sig_ty) of
           ffiResultTypes = [r],
           ffiInIO = False
           }
+
+parseField :: Parser a -> Parser (Chunk a)
+parseField f = do
+  void $ char '$'
+  void $ char '{'
+  v <- f
+  void $ char '}'
+  pure $ Field v
+
+parseChunk :: Parser (Chunk a) -> Parser (Chunk a)
+parseChunk f = try f <|> do
+  c <- anyChar
+  pure $ Lit [c]
+
+parseChunks :: Parser (Chunk a) -> Parser [Chunk a]
+parseChunks = many
+
+combineChunks :: [Chunk a] -> [Chunk a]
+combineChunks =
+  foldr
+    ( curry $ \case
+        (Lit l, Lit l' : cs) -> Lit (l <> l') : cs
+        (c, cs) -> c : cs
+      )
+    []
+
+parseFFIChunks :: Parser [Chunk Int]
+parseFFIChunks =
+  combineChunks <$> parseChunks (parseChunk (parseField (read <$> some digit)))
+
+newtype FFIHookState = FFIHookState {ffiHookState :: M.Map AsteriusModuleSymbol FFIMarshalState}
+
+{-# NOINLINE globalFFIHookState #-}
+globalFFIHookState :: IORef FFIHookState
+globalFFIHookState =
+  unsafePerformIO $ newIORef FFIHookState {ffiHookState = M.empty}
+
+processFFIImport
+  :: IORef FFIHookState
+  -> GHC.Type
+  -> GHC.Type
+  -> GHC.ForeignImport
+  -> GHC.TcM GHC.ForeignImport
+processFFIImport hook_state_ref sig_ty norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ _ (GHC.unLoc -> GHC.SourceText src)) =
+  do
+    dflags <- GHC.getDynFlags
+    mod_sym <- marshalToModuleSymbol <$> GHC.getModule
+    u <- GHC.getUniqueM
+    let Just ffi_ftype = parseFFIFunctionType sig_ty norm_sig_ty
+        Right chunks = parse parseFFIChunks src (read src)
+        new_k =
+          "__asterius_jsffi_"
+            <> zEncodeModuleSymbol mod_sym
+            <> "_"
+            <> asmPpr dflags u
+        new_decl = FFIImportDecl
+          { ffiFunctionType = ffi_ftype,
+            ffiSafety = case GHC.unLoc loc_safety of
+              GHC.PlaySafe | GHC.isGoodSrcSpan $ GHC.getLoc loc_safety -> FFISafe
+              GHC.PlayInterruptible -> FFIInterruptible
+              _ -> FFIUnsafe,
+            ffiSourceChunks = chunks
+            }
+        alter_hook_state (Just ffi_state) =
+          Just
+            ffi_state
+              { ffiImportDecls = M.insert (fromString new_k) new_decl
+                  $ ffiImportDecls ffi_state
+                }
+        alter_hook_state _ =
+          Just mempty {ffiImportDecls = M.singleton (fromString new_k) new_decl}
+    liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
+      ( hook_state
+          { ffiHookState = M.alter alter_hook_state
+                             mod_sym
+                             (ffiHookState hook_state)
+            },
+        ()
+        )
+    pure
+      $ GHC.CImport
+          (GHC.noLoc GHC.CCallConv)
+          (GHC.noLoc GHC.PlayRisky)
+          Nothing
+          ( GHC.CFunction
+              $ GHC.StaticTarget
+                  GHC.NoSourceText
+                  (GHC.mkFastString $ new_k <> "_wrapper")
+                  Nothing
+                  True
+            )
+          (GHC.noLoc GHC.NoSourceText)
+processFFIImport _ _ _ imp_decl = pure imp_decl
