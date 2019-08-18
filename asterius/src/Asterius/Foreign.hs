@@ -387,13 +387,14 @@ asteriusTcFExport
       (norm_co, norm_sig_ty, gres) <- normaliseFfiType sig_ty
       spec' <- asteriusTcCheckFEType norm_sig_ty spec
       id <- mkStableIdFromName nm sig_ty loc mkForeignExportOcc
+      spec'' <- processFFIExport globalFFIHookState sig_ty norm_sig_ty id spec'
       return
         ( mkVarBind id rhs,
           ForeignExport
             { fd_name = L loc id,
               fd_sig_ty = undefined,
               fd_e_ext = norm_co,
-              fd_fe = spec'
+              fd_fe = spec''
               },
           gres
           )

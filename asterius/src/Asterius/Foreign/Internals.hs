@@ -6,14 +6,17 @@
 module Asterius.Foreign.Internals
   ( FFIHookState (..),
     globalFFIHookState,
-    processFFIImport
+    processFFIImport,
+    processFFIExport
     )
 where
 
 import Asterius.Types
 import Asterius.TypesConv
+import qualified CLabel as GHC
 import Control.Applicative
 import Control.Monad.IO.Class
+import qualified Data.ByteString.Short as SBS
 import Data.Functor
 import Data.IORef
 import qualified Data.Map.Strict as M
@@ -320,9 +323,8 @@ processFFIImport hook_state_ref sig_ty norm_sig_ty (GHC.CImport (GHC.unLoc -> GH
           Just mempty {ffiImportDecls = M.singleton (fromString new_k) new_decl}
     liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
       ( hook_state
-          { ffiHookState = M.alter alter_hook_state
-                             mod_sym
-                             (ffiHookState hook_state)
+          { ffiHookState = M.alter alter_hook_state mod_sym
+              $ ffiHookState hook_state
             },
         ()
         )
@@ -340,3 +342,47 @@ processFFIImport hook_state_ref sig_ty norm_sig_ty (GHC.CImport (GHC.unLoc -> GH
             )
           (GHC.noLoc GHC.NoSourceText)
 processFFIImport _ _ _ imp_decl = pure imp_decl
+
+processFFIExport
+  :: IORef FFIHookState
+  -> GHC.Type
+  -> GHC.Type
+  -> GHC.Id
+  -> GHC.ForeignExport
+  -> GHC.TcM GHC.ForeignExport
+processFFIExport hook_state_ref sig_ty norm_sig_ty export_id (GHC.CExport (GHC.unLoc -> GHC.CExportStatic src_txt lbl GHC.JavaScriptCallConv) loc_src) =
+  do
+    dflags <- GHC.getDynFlags
+    mod_sym <- marshalToModuleSymbol <$> GHC.getModule
+    let Just ffi_ftype = parseFFIFunctionType False sig_ty norm_sig_ty
+        new_k = AsteriusEntitySymbol
+          { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
+            }
+        export_closure =
+          fromString $ asmPpr dflags
+            $ GHC.mkClosureLabel
+                (GHC.getName export_id)
+                GHC.NoCafRefs
+        new_decl = FFIExportDecl
+          { ffiFunctionType = ffi_ftype,
+            ffiExportClosure = export_closure
+            }
+        alter_hook_state (Just ffi_state) =
+          Just
+            ffi_state
+              { ffiExportDecls = M.insert new_k new_decl $ ffiExportDecls ffi_state
+                }
+        alter_hook_state _ =
+          Just mempty {ffiExportDecls = M.singleton new_k new_decl}
+    liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
+      ( hook_state
+          { ffiHookState = M.alter alter_hook_state mod_sym
+              $ ffiHookState hook_state
+            },
+        ()
+        )
+    pure
+      $ GHC.CExport
+          (GHC.noLoc $ GHC.CExportStatic src_txt lbl GHC.CCallConv)
+          loc_src
+processFFIExport _ _ _ _ exp_decl = pure exp_decl
