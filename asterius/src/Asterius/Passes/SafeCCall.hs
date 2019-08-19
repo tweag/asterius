@@ -20,7 +20,6 @@ import Language.Haskell.GHC.Toolkit.Constants
 data SafeCCall
   = SafeCCall
       AsteriusEntitySymbol
-      FFIImportDecl
       Expression
 
 data BlockChunk
@@ -42,27 +41,21 @@ data BSState
         }
 
 splitFunctionMap
-  :: FFIMarshalState
-  -> M.Map AsteriusEntitySymbol Function
-  -> M.Map AsteriusEntitySymbol Function
-splitFunctionMap = M.mapWithKey . splitFunction
+  :: M.Map AsteriusEntitySymbol Function -> M.Map AsteriusEntitySymbol Function
+splitFunctionMap = M.mapWithKey splitFunction
 
-splitFunction :: FFIMarshalState -> AsteriusEntitySymbol -> Function -> Function
-splitFunction ffi_state sym Function {..} = Function
+splitFunction :: AsteriusEntitySymbol -> Function -> Function
+splitFunction sym Function {..} = Function
   { functionType = functionType,
     varTypes = varTypes,
     body = case body of
-      CFG g -> CFG $ splitAllBlocks ffi_state sym varTypes g
+      CFG g -> CFG $ splitAllBlocks sym varTypes g
       _ -> body
     }
 
 splitAllBlocks
-  :: FFIMarshalState
-  -> AsteriusEntitySymbol
-  -> [ValueType]
-  -> RelooperRun
-  -> RelooperRun
-splitAllBlocks ffi_state sym vts r@RelooperRun {..}
+  :: AsteriusEntitySymbol -> [ValueType] -> RelooperRun -> RelooperRun
+splitAllBlocks sym vts r@RelooperRun {..}
   | has_safe_ccall =
     r
       { entry = entry_hook_k,
@@ -73,8 +66,7 @@ splitAllBlocks ffi_state sym vts r@RelooperRun {..}
     init_state = initBSState entry
     final_state =
       execState
-        ( M.foldlWithKey'
-            (\m k b -> splitSingleBlock ffi_state save_instrs k b *> m)
+        ( M.foldlWithKey' (\m k b -> splitSingleBlock vts save_instrs k b *> m)
             (pure ())
             blockMap
           )
@@ -112,13 +104,13 @@ entryHookBlock BSState {..} load_instrs =
     )
 
 splitSingleBlock
-  :: FFIMarshalState
+  :: [ValueType]
   -> [Expression]
   -> SBS.ShortByteString
   -> RelooperBlock
   -> State BSState ()
-splitSingleBlock ffi_state save_instrs base_k base_block@RelooperBlock {..} =
-  case splitBlockBody ffi_state $ code addBlock of
+splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
+  case splitBlockBody $ code addBlock of
     BlockChunks [] _ -> insert_block base_k base_block
     BlockChunks chunks rest_instrs -> do
       for_ (zip chunks (True : repeat False)) produce_block
@@ -148,7 +140,7 @@ splitSingleBlock ffi_state save_instrs base_k base_block@RelooperBlock {..} =
     insert_block new_k new_block =
       modify' $ \s -> s {bsMap = M.insert new_k new_block $ bsMap s}
     produce_block :: (BlockChunk, Bool) -> State BSState ()
-    produce_block (BlockChunk block_instrs (SafeCCall _ FFIImportDecl {ffiFunctionType = FFIFunctionType {..}} orig_instr), is_head) =
+    produce_block (BlockChunk block_instrs (SafeCCall _ orig_instr), is_head) =
       modify' w
       where
         w s =
@@ -177,27 +169,17 @@ splitSingleBlock ffi_state save_instrs base_k base_block@RelooperBlock {..} =
                 }
             (ccall_instr, next_preblock_instrs) = case orig_instr of
               Call {} -> (orig_instr {callReturnTypes = []}, [reset_instr])
-              SetLocal {value = c@Call {}} ->
+              SetLocal {value = c@Call {}, ..} ->
                 ( c {callReturnTypes = []},
                   [ orig_instr
                       { value = Load
                           { signed = False,
-                            bytes = case ffiResultTypes of
-                              [FFI_VAL {..}] -> case ffiWasmValueType of
-                                I32 -> 4
-                                F32 -> 4
-                                _ -> 8
-                              [FFI_JSVAL] -> 8
-                              _ ->
-                                error
-                                  "Asterius.SafeCCall.splitSingleBlock: invalid ffi type",
+                            bytes = case vts !! fromIntegral index of
+                              I32 -> 4
+                              F32 -> 4
+                              _ -> 8,
                             offset = 0,
-                            valueType = case ffiResultTypes of
-                              [FFI_VAL {..}] -> ffiWasmValueType
-                              [FFI_JSVAL] -> I64
-                              _ ->
-                                error
-                                  "Asterius.SafeCCall.splitSingleBlock: invalid ffi type",
+                            valueType = vts !! fromIntegral index,
                             ptr = Unary
                               { unaryOp = WrapInt64,
                                 operand0 = Symbol
@@ -226,17 +208,12 @@ splitSingleBlock ffi_state save_instrs base_k base_block@RelooperBlock {..} =
                 addBranches = []
                 }
 
-splitBlockBody :: FFIMarshalState -> Expression -> BlockChunks
-splitBlockBody FFIMarshalState {..} instrs = foldr' w (BlockChunks [] []) es
+splitBlockBody :: Expression -> BlockChunks
+splitBlockBody instrs = foldr' w (BlockChunks [] []) es
   where
     get_safe t =
       case AsteriusEntitySymbol . SBS.toShort <$> BS.stripSuffix "_wrapper" bs_t of
-        Just k
-          | "__asterius_jsffi_async_" `BS.isPrefixOf` bs_t ->
-            Just
-              (k, imp_decl)
-          where
-            imp_decl = ffiImportDecls ! k
+        Just k | "__asterius_jsffi_async_" `BS.isPrefixOf` bs_t -> Just k
         _ -> Nothing
       where
         bs_t = SBS.fromShort (entityName t)
@@ -244,13 +221,13 @@ splitBlockBody FFIMarshalState {..} instrs = foldr' w (BlockChunks [] []) es
       BlockChunks (BlockChunk (instr : chunk_instrs) ccall : cs) tail_instrs
     add_regular instr (BlockChunks [] tail_instrs) =
       BlockChunks [] (instr : tail_instrs)
-    add_ccall k imp_decl instr (BlockChunks cs tail_instrs) =
-      BlockChunks (BlockChunk [] (SafeCCall k imp_decl instr) : cs) tail_instrs
+    add_ccall k instr (BlockChunks cs tail_instrs) =
+      BlockChunks (BlockChunk [] (SafeCCall k instr) : cs) tail_instrs
     w instr@Call {..} cs = case get_safe target of
-      Just (k, imp_decl) -> add_ccall k imp_decl instr cs
+      Just k -> add_ccall k instr cs
       _ -> add_regular instr cs
     w orig_instr@SetLocal {value = Call {..}} cs = case get_safe target of
-      Just (k, imp_decl) -> add_ccall k imp_decl orig_instr cs
+      Just k -> add_ccall k orig_instr cs
       _ -> add_regular orig_instr cs
     w instr cs = add_regular instr cs
     es = case instrs of
