@@ -299,18 +299,22 @@ processFFIImport hook_state_ref sig_ty norm_sig_ty (GHC.CImport (GHC.unLoc -> GH
     mod_sym <- marshalToModuleSymbol <$> GHC.getModule
     u <- GHC.getUniqueM
     let Just ffi_ftype = parseFFIFunctionType True sig_ty norm_sig_ty
+        ffi_safety = case GHC.unLoc loc_safety of
+          GHC.PlaySafe | GHC.isGoodSrcSpan $ GHC.getLoc loc_safety -> FFISafe
+          GHC.PlayInterruptible -> FFIInterruptible
+          _ -> FFIUnsafe
+        ffi_safety_prefix
+          | ffi_safety == FFIUnsafe = "__asterius_jsffi_"
+          | otherwise = "__asterius_jsffi_async_"
         Right chunks = parse parseFFIChunks src (read src)
         new_k =
-          "__asterius_jsffi_"
+          ffi_safety_prefix
             <> zEncodeModuleSymbol mod_sym
             <> "_"
             <> asmPpr dflags u
         new_decl = FFIImportDecl
           { ffiFunctionType = ffi_ftype,
-            ffiSafety = case GHC.unLoc loc_safety of
-              GHC.PlaySafe | GHC.isGoodSrcSpan $ GHC.getLoc loc_safety -> FFISafe
-              GHC.PlayInterruptible -> FFIInterruptible
-              _ -> FFIUnsafe,
+            ffiSafety = ffi_safety,
             ffiSourceChunks = chunks
             }
         alter_hook_state (Just ffi_state) =
