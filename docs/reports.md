@@ -2,6 +2,24 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-08-19
+
+Delivered work:
+
+* The JSFFI mechanism is improved in two ways:
+    * The compile-time logic for handling foreign declarations with the
+      `javascript` convention has been moved to the type-checker/desugarer, and
+      it now takes the normalized FFI type signature into account. This means
+      that we now properly support type synonyms and newtypes in JSFFI types.
+      Performance should also be improved since we no longer perform syb-style
+      traversal over the parsed AST.
+    * The link-time rewriting pass for handling async imports has been moved to
+      compile time, and no longer requires the relevant `FFIMarshalState` to be
+      in scope. So no more mysterious "key not found" errors when attempting to
+      link against modules with async imports when non-main linking is enabled.
+
+So, back to TH stuff this week.
+
 ## 2019-08-13
 
 Ongoing work:

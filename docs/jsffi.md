@@ -32,15 +32,6 @@ typechecking to enforce e.g. an actual array is passed via `JSArray`.
 The result can be wrapped in `IO` or not. The usual caveats of C FFI regarding
 `IO` also apply here.
 
-It's worth noting that when writing JSFFI imports/exports, no type synonyms or
-newtypes can be used for JSFFI types yet. The restriction rises from the hacky
-way we implement JSFFI: processing the `HsSyn` AST at the parser phase, rather
-than renamer/typechecker, therefore we only recognize types by strings at the
-moment. This restriction will be solved in the long run; meanwhile, the common
-practice of making newtype wrappers for distinction of various JavaScript types
-is still possible via separating the actual interface with the underlying
-import, and using `coerce` or manual wrapping/unwrapping.
-
 When the `MagicHash`/`UnliftedFFITypes` extensions are on, these unlifted types
 can also be used as JSFFI types. However, when used as return types, the result
 can't be wrapped in `IO`.
@@ -149,30 +140,34 @@ based on the information flow from syntactic sugar to generated
 WebAssembly/JavaScript code. It's not a required reading for *users* of the
 JSFFI feature.
 
+### Hooking typechecker/desugarer
+
+Vanilla GHC doesn't support typechecking/desugaring foreign declarations whose
+calling convention is `javascript`. However, it does provide `dsForeignsHook`,
+`tcForeignImportsHook` and `tcForeignExportsHook` for overriding
+typechecker/desugarer behavior. The mechanism was intended for use by ghcjs.
+We've implemented our JSFFI-related hooks in
+[`Asterius.Foreign`](https://github.com/tweag/asterius/blob/master/asterius/src/Asterius/Foreign.hs).
+
 ### Rewriting from JSFFI to C FFI
 
 As documented in previous sections, one can write `foreign import javascript` or
 `foreign export javascript` clauses in a `.hs` module. The logic to process this
-syntax resides in
-[`Asterius.JSFFI`](https://github.com/tweag/asterius/blob/master/asterius/src/Asterius/JSFFI.hs).
+syntax at compile-time resides in
+[`Asterius.Foreign.Internals`](https://github.com/tweag/asterius/blob/master/asterius/src/Asterius/Foreign/Internals.hs).
 
-First, the entry to JSFFI-related logic is `addFFIProcessor`, which given a
-`Compiler` (defined in `ghc-toolkit`), returns a new `Compiler` and a callback
-to fetch a stub module. The details of `Compiler`'s implementation are not
-relevant here, just think of it as some sort of "middleware" to fetch/modify GHC
-IRs without dealing with all the details of GHC API.
+The hooks we described in the previous subsection imports
+`Asterius.Foreign.Internals`, and call `processFFIImport` or `processFFIExport`
+when it's handling a foreign declaration. When the calling convention is
+`javascript`, they parse the type signature, store the info in a mutable
+variable, and then rewrite the original declaration's calling convention to
+normal `ccall`, so subsequent desugar and codegen can proceed as normal.
 
-`addFFIProcessor` layers a specific functionality upon the input `Compiler`:
-rewrite *parsed* Haskell AST and handle the `foreign import javascript` &
-`foreign export javascript` syntactic sugar. After rewriting, JavaScript FFI is
-really turned into C FFI under the hood, so type-checking and desugaring
-proceeds as normal.
-
-After the parsed AST is processed, a "stub module" of type `AsteriusModule` is
-generated and can be later fetched given the current `AsteriusModuleSymbol`. The
-stub module contains JSFFI related information of type `FFIMarshalState`. Both
-`AsteriusModule` and `FFIMarshalState` types has `Semigroup` & `Monoid`
-instances so they can be combined later at link-time.
+After all foreign declarations in a module are processed, the relevant
+`FFIMarshalState` indexed by the module name can be fetched, and a "stub module"
+of type `AsteriusModule` can be fetched given the current
+`AsteriusModuleSymbol`. Both `AsteriusModule` and `FFIMarshalState` types has
+`Semigroup` & `Monoid` instances so they can be combined later at link-time.
 
 ### The JSFFI types
 
@@ -193,14 +188,11 @@ normal wasm code:
   JavaScript, internally, different `rts_eval*` functions are needed for
   triggering evaluation.
 
-The `marshalToFFIValueType` function is called to marshal a Haskell type in the
-parsed JSFFI declaration to an `FFIValueType`. It recognizes the Haskell types
-by strings, e.g. if it is `Int` then we consider it an `Int`, if it starts with
-`JS` then we consider it a `JSVal`. Since we're working with only a parsed AST
-here and don't have access to the renamer/type-checker environments, it's
-impossible to properly deal with type synonyms and `newtype`s, so if you define
-`type MyInt = Int` and use `MyInt` in a JSFFI declaration, it will choke the
-compiler.
+The `parseFFIValueType` function is called to marshal a pair of Haskell types to
+an `FFIValueType`. When parsing JSFFI types from Haskell types, we mainly check
+the normalized Haskell type which strips away type synonyms and newtypes; but we
+also need to check the pre-normalization type, since `JSVal` is still a newtype
+of `StablePtr`, but it can't be recognized in the normalized type.
 
 ### Across the JavaScript/WebAssembly boundary
 
