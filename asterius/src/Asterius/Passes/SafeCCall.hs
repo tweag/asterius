@@ -3,7 +3,7 @@
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Passes.SafeCCall
-  ( splitFunctionMap
+  ( splitFunction
     )
 where
 
@@ -39,10 +39,6 @@ data BSState
         bsHookMap :: IM.IntMap SBS.ShortByteString,
         bsPreBlockInstrs :: [Expression]
         }
-
-splitFunctionMap
-  :: M.Map AsteriusEntitySymbol Function -> M.Map AsteriusEntitySymbol Function
-splitFunctionMap = M.mapWithKey splitFunction
 
 splitFunction :: AsteriusEntitySymbol -> Function -> Function
 splitFunction sym Function {..} = Function

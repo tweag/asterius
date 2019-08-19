@@ -20,6 +20,7 @@ import Asterius.Internals
 import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
+import Asterius.Passes.SafeCCall
 import Asterius.Resolve
 import Asterius.Types
 import Asterius.TypesConv
@@ -1346,8 +1347,8 @@ marshalCmmBlock inner_nodes exit_node = do
         [e] -> e
         _ -> Block {name = "", bodys = es, blockReturnTypes = []}
 
-marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
-marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
+marshalCmmProc :: AsteriusEntitySymbol -> GHC.CmmGraph -> CodeGen Function
+marshalCmmProc sym GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
   rbs <-
     for (GHC.bodyList body) $ \(lbl, GHC.BlockCC _ inner_nodes exit_node) -> do
@@ -1369,7 +1370,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
             }) :
         rbs
   pure $
-    adjustLocalRegs
+    splitFunction sym $ adjustLocalRegs
       Function
         { functionType = FunctionType {paramTypes = [], returnTypes = []}
         , varTypes = []
@@ -1395,7 +1396,7 @@ marshalCmmDecl decl =
           Right ass -> mempty {staticsMap = M.fromList [(sym, ass)]}
     GHC.CmmProc _ clbl _ g -> do
       sym <- marshalCLabel clbl
-      r <- unCodeGen $ marshalCmmProc g
+      r <- unCodeGen $ marshalCmmProc sym g
       let f =
             case r of
               Left err ->
