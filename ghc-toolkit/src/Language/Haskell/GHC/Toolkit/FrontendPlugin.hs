@@ -20,45 +20,44 @@ makeFrontendPlugin init_c =
   defaultFrontendPlugin
     { frontend = \_ targets -> do
         c <- init_c
-        flip gfinally (finalize c) $ do
-          dflags <- getSessionDynFlags
-          h <- liftIO $ hooksFromCompiler c (hooks dflags)
-          let (hs_targets, non_hs_targets) = partition isHaskellishTarget targets
-          if null hs_targets
-          then
-            do
-              void
-                $ setSessionDynFlags
-                    dflags
-                      { integerLibrary = IntegerSimple,
-                        tablesNextToCode = False,
-                        hooks = h
-                        }
-              getSessionDynFlags >>= setDynFlagsRef
-              env <- getSession
-              liftIO $ oneShot env StopLn targets
-          else
-            do
-              void
-                $ setSessionDynFlags
-                    dflags
-                      { integerLibrary = IntegerSimple,
-                        tablesNextToCode = False,
-                        hooks = h
-                        }
-              env <- getSession
-              o_files <- liftIO $ traverse (compileFile env StopLn) non_hs_targets
-              dflags' <- getSessionDynFlags
-              void
-                $ setSessionDynFlags
-                    dflags'
-                      { ghcMode = CompManager,
-                        ldInputs = map (FileOption "") o_files ++ ldInputs dflags'
-                        }
-              traverse (uncurry GHC.guessTarget) hs_targets >>= setTargets
-              getSessionDynFlags >>= setDynFlagsRef
-              ok_flag <- load LoadAllTargets
-              when (failed ok_flag) $ liftIO $ throwGhcExceptionIO
-                $ Panic
-                    "GHC.load returned Failed."
+        dflags <- getSessionDynFlags
+        h <- liftIO $ hooksFromCompiler c (hooks dflags)
+        let (hs_targets, non_hs_targets) = partition isHaskellishTarget targets
+        if null hs_targets
+        then
+          do
+            void
+              $ setSessionDynFlags
+                  dflags
+                    { integerLibrary = IntegerSimple,
+                      tablesNextToCode = False,
+                      hooks = h
+                      }
+            getSessionDynFlags >>= setDynFlagsRef
+            env <- getSession
+            liftIO $ oneShot env StopLn targets
+        else
+          do
+            void
+              $ setSessionDynFlags
+                  dflags
+                    { integerLibrary = IntegerSimple,
+                      tablesNextToCode = False,
+                      hooks = h
+                      }
+            env <- getSession
+            o_files <- liftIO $ traverse (compileFile env StopLn) non_hs_targets
+            dflags' <- getSessionDynFlags
+            void
+              $ setSessionDynFlags
+                  dflags'
+                    { ghcMode = CompManager,
+                      ldInputs = map (FileOption "") o_files ++ ldInputs dflags'
+                      }
+            traverse (uncurry GHC.guessTarget) hs_targets >>= setTargets
+            getSessionDynFlags >>= setDynFlagsRef
+            ok_flag <- load LoadAllTargets
+            when (failed ok_flag) $ liftIO $ throwGhcExceptionIO
+              $ Panic
+                  "GHC.load returned Failed."
       }

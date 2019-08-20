@@ -27,29 +27,12 @@ import qualified Stream
 hooksFromCompiler :: Compiler -> GHC.Hooks -> IO GHC.Hooks
 hooksFromCompiler Compiler {..} h = do
   mods_set_ref <- newMVar Set.empty
-  parsed_map_ref <- newMVar Map.empty
-  typechecked_map_ref <- newMVar Map.empty
   stg_map_ref <- newMVar Map.empty
-  cmm_map_ref <- newMVar Map.empty
   cmm_raw_map_ref <- newMVar Map.empty
-  cmm_ref <- newEmptyMVar
   cmm_raw_ref <- newEmptyMVar
   pure
     h
-      { GHC.tcRnModuleHook = Just
-          $ \mod_summary@GHC.ModSummary {..} save_rn_syntax parsed_module_orig ->
-            do
-              parsed_module <- patchParsed mod_summary parsed_module_orig
-              typechecked_module <-
-                GHC.tcRnModule' mod_summary save_rn_syntax parsed_module
-                  >>= patchTypechecked mod_summary
-              let store :: MVar (Map.Map GHC.Module v) -> v -> IO ()
-                  store ref v = modifyMVar_ ref $ pure . Map.insert ms_mod v
-              liftIO $ do
-                store parsed_map_ref parsed_module
-                store typechecked_map_ref typechecked_module
-              pure typechecked_module,
-        GHC.stgCmmHook = Just
+      { GHC.stgCmmHook = Just
           $ \dflags this_mod data_tycons cost_centre_info stg_binds hpc_info -> do
             Stream.liftIO
               $ modifyMVar_ stg_map_ref
@@ -67,13 +50,9 @@ hooksFromCompiler Compiler {..} h = do
             Just ms_mod -> do
               let store :: MVar (Map.Map GHC.Module v) -> v -> IO ()
                   store ref v = modifyMVar_ ref $ pure . Map.insert ms_mod v
-              store cmm_map_ref cmms
               store cmm_raw_map_ref rawcmms
-            _ -> do
-              putMVar cmm_ref cmms
-              putMVar cmm_raw_ref rawcmms
+            _ -> putMVar cmm_raw_ref rawcmms
           pure rawcmms,
-        GHC.hscCompileCoreExprHook = compileCoreExpr,
         GHC.runPhaseHook = Just $ \phase input_fn dflags -> case phase of
           GHC.HscOut src_flavour _ (GHC.HscRecomp cgguts mod_summary@GHC.ModSummary {..}) ->
             do
@@ -100,10 +79,7 @@ hooksFromCompiler Compiler {..} h = do
                 liftIO $ do
                   let clean :: MVar (Map.Map GHC.Module a) -> IO ()
                       clean ref = modifyMVar_ ref $ pure . Map.delete ms_mod
-                  clean parsed_map_ref
-                  clean typechecked_map_ref
                   clean stg_map_ref
-                  clean cmm_map_ref
                   clean cmm_raw_map_ref
               else
                 ( do
@@ -122,22 +98,14 @@ hooksFromCompiler Compiler {..} h = do
                     ir <-
                       liftIO
                         $ HaskellIR
-                        <$> fetch parsed_map_ref
-                        <*> fetch typechecked_map_ref
-                        <*> pure cgguts
-                        <*> fetch stg_map_ref
-                        <*> (fetch cmm_map_ref >>= Stream.collect)
+                        <$> fetch stg_map_ref
                         <*> (fetch cmm_raw_map_ref >>= Stream.collect)
                     withHaskellIR mod_summary ir obj_output_fn
                   )
               pure r
           GHC.RealPhase GHC.Cmm -> do
             void $ GHC.runPhase phase input_fn dflags
-            ir <-
-              liftIO
-                $ CmmIR
-                <$> (takeMVar cmm_ref >>= Stream.collect)
-                <*> (takeMVar cmm_raw_ref >>= Stream.collect)
+            ir <- liftIO $ CmmIR <$> (takeMVar cmm_raw_ref >>= Stream.collect)
             obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
             withCmmIR ir obj_output_fn
             pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
