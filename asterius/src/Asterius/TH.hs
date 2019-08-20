@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE InstanceSigs #-}
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
@@ -54,8 +53,6 @@ import FileCleanup
     newTempName
     )
 import Finder
-import GHC.Desugar (AnnotationWrapper (..))
-import GHC.Exts (unsafeCoerce#)
 import GHC.Serialized
 import GHCi
 import GHCi.Message
@@ -103,24 +100,9 @@ import Var
 import VarSet
 import Prelude hiding ((<>))
 
-convertAnnotationWrapper :: ForeignHValue -> TcM (Either MsgDoc Serialized)
-convertAnnotationWrapper fhv = do
-  dflags <- getDynFlags
-  if gopt Opt_ExternalInterpreter dflags
-  then Right <$> runTH THAnnWrapper fhv
-  else
-    do
-      annotation_wrapper <- liftIO $ wormhole dflags fhv
-      return $ Right $ case unsafeCoerce# annotation_wrapper of
-        AnnotationWrapper value
-          | let serialized = toSerialized serializeWithData value ->
-            seqSerialized serialized `seq` serialized
-
-seqSerialized :: Serialized -> ()
-seqSerialized (Serialized the_type bytes) = the_type `seq` bytes `seqList` ()
-
-runQuasi :: TH.Q a -> TcM a
-runQuasi = TH.runQ
+asteriusConvertAnnotationWrapper
+  :: ForeignHValue -> TcM (Either MsgDoc Serialized)
+asteriusConvertAnnotationWrapper fhv = Right <$> asteriusRunTH THAnnWrapper fhv
 
 runQResult
   :: (a -> String)
@@ -136,15 +118,19 @@ runQResult show_th f runQ expr_span hval = do
 
 asteriusRunMeta :: MetaHook TcM
 asteriusRunMeta (MetaE r) =
-  fmap r . runMeta' True ppr (runQResult TH.pprint convertToHsExpr runTHExp)
+  fmap r
+    . runMeta' True ppr (runQResult TH.pprint convertToHsExpr asteriusRunTHExp)
 asteriusRunMeta (MetaP r) =
-  fmap r . runMeta' True ppr (runQResult TH.pprint convertToPat runTHPat)
+  fmap r
+    . runMeta' True ppr (runQResult TH.pprint convertToPat asteriusRunTHPat)
 asteriusRunMeta (MetaT r) =
-  fmap r . runMeta' True ppr (runQResult TH.pprint convertToHsType runTHType)
+  fmap r
+    . runMeta' True ppr (runQResult TH.pprint convertToHsType asteriusRunTHType)
 asteriusRunMeta (MetaD r) =
-  fmap r . runMeta' True ppr (runQResult TH.pprint convertToHsDecls runTHDec)
+  fmap r
+    . runMeta' True ppr (runQResult TH.pprint convertToHsDecls asteriusRunTHDec)
 asteriusRunMeta (MetaAW r) =
-  fmap r . runMeta' False (const empty) (const convertAnnotationWrapper)
+  fmap r . runMeta' False (const empty) (const asteriusConvertAnnotationWrapper)
 
 runMeta'
   :: Bool
@@ -340,37 +326,29 @@ addModFinalizerRef finRef = do
         "addModFinalizer was called when no finalizers were collected"
         (ppr th_stage)
 
-runTHExp :: ForeignHValue -> TcM TH.Exp
-runTHExp = runTH THExp
+asteriusRunTHExp :: ForeignHValue -> TcM TH.Exp
+asteriusRunTHExp = asteriusRunTH THExp
 
-runTHPat :: ForeignHValue -> TcM TH.Pat
-runTHPat = runTH THPat
+asteriusRunTHPat :: ForeignHValue -> TcM TH.Pat
+asteriusRunTHPat = asteriusRunTH THPat
 
-runTHType :: ForeignHValue -> TcM TH.Type
-runTHType = runTH THType
+asteriusRunTHType :: ForeignHValue -> TcM TH.Type
+asteriusRunTHType = asteriusRunTH THType
 
-runTHDec :: ForeignHValue -> TcM [TH.Dec]
-runTHDec = runTH THDec
+asteriusRunTHDec :: ForeignHValue -> TcM [TH.Dec]
+asteriusRunTHDec = asteriusRunTH THDec
 
-runTH :: Binary a => THResultType -> ForeignHValue -> TcM a
-runTH ty fhv = do
+asteriusRunTH :: Binary a => THResultType -> ForeignHValue -> TcM a
+asteriusRunTH ty fhv = do
   hsc_env <- env_top <$> getEnv
-  dflags <- getDynFlags
-  if not (gopt Opt_ExternalInterpreter dflags)
-  then
-    do
-      hv <- liftIO $ wormhole dflags fhv
-      runQuasi (unsafeCoerce# hv :: TH.Q a)
-  else
-    withIServ hsc_env $ \i -> do
-      rstate <- getTHState i
-      loc <- TH.qLocation
-      liftIO $ withForeignRef rstate $ \state_hv ->
-        withForeignRef fhv $ \q_hv ->
-          writeIServ i (putMessage (RunTH state_hv q_hv ty (Just loc)))
-      runRemoteTH i []
-      bs <- readQResult i
-      return $! runGet get (LB.fromStrict bs)
+  withIServ hsc_env $ \i -> do
+    rstate <- getTHState i
+    loc <- TH.qLocation
+    liftIO $ withForeignRef rstate $ \state_hv -> withForeignRef fhv
+      $ \q_hv -> writeIServ i (putMessage (RunTH state_hv q_hv ty (Just loc)))
+    runRemoteTH i []
+    bs <- readQResult i
+    return $! runGet get (LB.fromStrict bs)
 
 runRemoteTH :: IServ -> [Messages] -> TcM ()
 runRemoteTH iserv recovers = do
