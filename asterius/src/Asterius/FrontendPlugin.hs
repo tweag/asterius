@@ -65,12 +65,8 @@ frontendPlugin = makeFrontendPlugin $ do
                   writeFile (p "dump-wasm-ast") $ show m
                   writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
                   asmPrint dflags (p "dump-cmm-raw") cmmRaw
-                  writeFile (p "dump-cmm-ast") $ show cmm
-                  asmPrint dflags (p "dump-cmm") cmm
                   writeFile (p "dump-stg-ast") $ show stg
-                  asmPrint dflags (p "dump-stg") stg
-                  writeFile (p "dump-core-ast") $ show core
-                  asmPrint dflags (p "dump-core") $ GHC.cg_binds core,
+                  asmPrint dflags (p "dump-stg") stg,
         withCmmIR = \ir@CmmIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
           setDynFlagsRef dflags
@@ -85,6 +81,4 @@ frontendPlugin = makeFrontendPlugin $ do
                 writeFile (p "dump-wasm-ast") $ show m
                 writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
                 asmPrint dflags (p "dump-cmm-raw") cmmRaw
-                writeFile (p "dump-cmm-ast") $ show cmm
-                asmPrint dflags (p "dump-cmm") cmm
         }

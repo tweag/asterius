@@ -20,8 +20,6 @@ import Data.Maybe
 import DsCCall
 import DsMonad
 import ErrUtils
-import FamInst
-import FamInstEnv
 import ForeignCall
 import qualified GHC.LanguageExtensions as LangExt
 import GhcPlugins
@@ -34,6 +32,7 @@ import PrelNames
 import RepType
 import TcEnv
 import TcExpr
+import TcForeign
 import TcHsType
 import TcRnMonad
 import TcType
@@ -169,88 +168,6 @@ getPrimTyOf ty
   where
     rep_ty = unwrapType ty
 
-isForeignImport :: LForeignDecl name -> Bool
-isForeignImport (L _ ForeignImport {}) = True
-isForeignImport _ = False
-
-isForeignExport :: LForeignDecl name -> Bool
-isForeignExport (L _ ForeignExport {}) = True
-isForeignExport _ = False
-
-normaliseFfiType :: Type -> TcM (Coercion, Type, Bag GlobalRdrElt)
-normaliseFfiType ty = do
-  fam_envs <- tcGetFamInstEnvs
-  normaliseFfiType' fam_envs ty
-
-normaliseFfiType'
-  :: FamInstEnvs -> Type -> TcM (Coercion, Type, Bag GlobalRdrElt)
-normaliseFfiType' env = go initRecTc
-  where
-    go :: RecTcChecker -> Type -> TcM (Coercion, Type, Bag GlobalRdrElt)
-    go rec_nts ty
-      | Just ty' <- tcView ty = go rec_nts ty'
-      | Just (tc, tys) <- splitTyConApp_maybe ty = go_tc_app rec_nts tc tys
-      | (bndrs, inner_ty) <- splitForAllTyVarBndrs ty,
-        not (null bndrs) =
-        do
-          (coi, nty1, gres1) <- go rec_nts inner_ty
-          return
-            ( mkHomoForAllCos (binderVars bndrs) coi,
-              mkForAllTys bndrs nty1,
-              gres1
-              )
-      | otherwise = return (mkRepReflCo ty, ty, emptyBag)
-    go_tc_app
-      :: RecTcChecker
-      -> TyCon
-      -> [Type]
-      -> TcM (Coercion, Type, Bag GlobalRdrElt)
-    go_tc_app rec_nts tc tys
-      | tc_key `elem` [ioTyConKey, funPtrTyConKey, funTyConKey] = children_only
-      | isNewTyCon tc,
-        Just rec_nts' <- checkRecTc rec_nts tc =
-        do
-          rdr_env <- getGlobalRdrEnv
-          case checkNewtypeFFI rdr_env tc of
-            Nothing -> nothing
-            Just gre -> do
-              (co', ty', gres) <- go rec_nts' nt_rhs
-              return (mkTransCo nt_co co', ty', gre `consBag` gres)
-      | isFamilyTyCon tc,
-        (co, ty) <- normaliseTcApp env Representational tc tys,
-        not (isReflexiveCo co) =
-        do
-          (co', ty', gres) <- go rec_nts ty
-          return (mkTransCo co co', ty', gres)
-      | otherwise = nothing
-      where
-        tc_key = getUnique tc
-        children_only = do
-          xs <- mapM (go rec_nts) tys
-          let (cos, tys', gres) = unzip3 xs
-              cos' =
-                zipWith3
-                  downgradeRole
-                  (tyConRoles tc)
-                  (repeat Representational)
-                  cos
-          return
-            ( mkTyConAppCo Representational tc cos',
-              mkTyConApp tc tys',
-              unionManyBags gres
-              )
-        nt_co = mkUnbranchedAxInstCo Representational (newTyConCo tc) tys []
-        nt_rhs = newTyConInstRhs tc tys
-        ty = mkTyConApp tc tys
-        nothing = return (mkRepReflCo ty, ty, emptyBag)
-
-checkNewtypeFFI :: GlobalRdrEnv -> TyCon -> Maybe GlobalRdrElt
-checkNewtypeFFI rdr_env tc
-  | Just con <- tyConSingleDataCon_maybe tc,
-    Just gre <- lookupGRE_Name rdr_env (dataConName con) =
-    Just gre
-  | otherwise = Nothing
-
 asteriusTcForeignImports
   :: [LForeignDecl GhcRn] -> TcM ([Id], [LForeignDecl GhcTc], Bag GlobalRdrElt)
 asteriusTcForeignImports decls = do
@@ -348,12 +265,6 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
       return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
 asteriusTcCheckFIType _ _ _ = panic "asteriusTcCheckFIType"
 
-checkCTarget :: CCallTarget -> TcM ()
-checkCTarget (StaticTarget _ str _ _) = do
-  checkCg checkCOrAsmOrLlvmOrInterp
-  checkTc (isCLabelString str) (badCName str)
-checkCTarget DynamicTarget = panic "checkCTarget DynamicTarget"
-
 checkMissingAmpersand :: DynFlags -> [Type] -> Type -> TcM ()
 checkMissingAmpersand dflags arg_tys res_ty
   | null arg_tys && isFunPtrTy res_ty && wopt Opt_WarnDodgyForeignImports dflags =
@@ -411,40 +322,6 @@ asteriusTcCheckFEType sig_ty (CExport (L l (CExportStatic esrc str cconv)) src) 
   where
     (bndrs, res_ty) = tcSplitPiTys sig_ty
     arg_tys = mapMaybe binderRelevantType_maybe bndrs
-
-checkForeignArgs :: (Type -> Validity) -> [Type] -> TcM ()
-checkForeignArgs pred = mapM_ go
-  where
-    go ty = check (pred ty) (illegalForeignTyErr argument)
-
-checkForeignRes :: Bool -> Bool -> (Type -> Validity) -> Type -> TcM ()
-checkForeignRes non_io_result_ok check_safe pred_res_ty ty
-  | Just (_, res_ty) <- tcSplitIOType_maybe ty =
-    check (pred_res_ty res_ty) (illegalForeignTyErr result)
-  | not non_io_result_ok =
-    addErrTc $ illegalForeignTyErr result (text "IO result type expected")
-  | otherwise =
-    do
-      dflags <- getDynFlags
-      case pred_res_ty ty of
-        NotValid msg -> addErrTc $ illegalForeignTyErr result msg
-        _
-          | check_safe && safeInferOn dflags -> recordUnsafeInfer emptyBag
-        _
-          | check_safe && safeLanguageOn dflags ->
-            addErrTc (illegalForeignTyErr result safeHsErr)
-        _ -> return ()
-  where
-    safeHsErr =
-      text "Safe Haskell is on, all FFI imports must be in the IO monad"
-
-nonIOok :: Bool
-nonIOok = True
-
-checkSafe, noCheckSafe :: Bool
-checkSafe = True
-
-noCheckSafe = False
 
 checkCOrAsmOrLlvm :: HscTarget -> Validity
 checkCOrAsmOrLlvm HscC = IsValid
@@ -511,10 +388,8 @@ illegalForeignTyErr arg_or_res = hang msg 2
       hsep
         [text "Unacceptable", arg_or_res, text "type in foreign declaration:"]
 
-argument, result :: SDoc
+argument :: SDoc
 argument = text "argument"
-
-result = text "result"
 
 badCName :: CLabelString -> MsgDoc
 badCName target =
