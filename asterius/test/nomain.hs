@@ -18,6 +18,7 @@ main = do
     , "--full-sym-table"
     , "--ghc-option=-no-hs-main"
     , "--extra-root-symbol=NoMain_x_closure"
+    , "--no-gc-sections"
     ] <>
     args
   m <- decodeFile "test/nomain/NoMain.unlinked.bin"
