@@ -7,8 +7,10 @@ where
 
 import Asterius.CodeGen
 import Asterius.Foreign
+import Asterius.GHCi.Internals
 import Asterius.Internals
 import Asterius.JSFFI
+import Asterius.TH
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
@@ -31,13 +33,14 @@ frontendPlugin = makeFrontendPlugin $ do
     void
       $ GHC.setSessionDynFlags
           dflags
-            { GHC.hooks = (GHC.hooks dflags)
-                { GHC.dsForeignsHook = Just asteriusDsForeigns,
-                  GHC.tcForeignImportsHook = Just
-                                               asteriusTcForeignImports,
-                  GHC.tcForeignExportsHook = Just
-                                               asteriusTcForeignExports
-                  }
+            { GHC.hooks =
+                (GHC.hooks dflags)
+                  { GHC.dsForeignsHook = Just asteriusDsForeigns,
+                    GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
+                    GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
+                    GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
+                    GHC.runMetaHook = Just asteriusRunMeta
+                    }
               }
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags
