@@ -42,6 +42,12 @@ frontendPlugin = makeFrontendPlugin $ do
                     GHC.runMetaHook = Just asteriusRunMeta
                     }
               }
+  do
+    dflags <- GHC.getSessionDynFlags
+    void
+      $ GHC.setSessionDynFlags
+      $ dflags {GHC.settings = (GHC.settings dflags) {GHC.sPgm_i = "false"}}
+      `GHC.gopt_set` GHC.Opt_ExternalInterpreter
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags
     void
