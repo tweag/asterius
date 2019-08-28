@@ -42,6 +42,8 @@ frontendPlugin = makeFrontendPlugin $ do
                     GHC.runMetaHook = Just asteriusRunMeta,
                     GHC.startIServHook = Just asteriusStartIServ,
                     GHC.iservCallHook = Just asteriusIservCall,
+                    GHC.readIServHook = Just asteriusReadIServ,
+                    GHC.writeIServHook = Just asteriusWriteIServ,
                     GHC.stopIServHook = Just asteriusStopIServ
                     }
               }

@@ -7,6 +7,8 @@ module Asterius.GHCi.Internals
   ( asteriusStartIServ,
     asteriusStopIServ,
     asteriusIservCall,
+    asteriusReadIServ,
+    asteriusWriteIServ,
     asteriusHscCompileCoreExpr
     )
 where
@@ -23,6 +25,7 @@ import qualified CoreTidy as GHC
 import qualified CoreToStg as GHC
 import qualified CostCentre as GHC
 import Data.Binary
+import qualified Data.ByteString as BS
 import Data.Data
   ( Data,
     gmapQl
@@ -70,12 +73,30 @@ asteriusIservCall _ msg = do
     GHC.InitLinker -> pure ()
     GHC.LoadDLL _ -> pure Nothing
     GHC.LoadArchive _ -> pure ()
+    GHC.LoadObj _ -> pure ()
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
     GHC.RemoveLibrarySearchPath _ -> pure True
     GHC.ResolveObjs -> pure True
     GHC.FindSystemLibrary lib -> pure $ Just lib
-    GHC.StartTH -> newIORef (error "asteriusIservCall.StartTH") >>= GHC.mkRemoteRef
+    GHC.StartTH ->
+      newIORef (error "asteriusIservCall.StartTH") >>= GHC.mkRemoteRef
     _ -> fail "asteriusIservCall"
+
+asteriusReadIServ :: Typeable a => GHC.DynFlags -> GHC.IServ -> IO a
+asteriusReadIServ = undefined
+
+asteriusWriteIServ :: Typeable a => GHC.DynFlags -> GHC.IServ -> a -> IO ()
+asteriusWriteIServ _ _ a
+  | Just HRefl <-
+      eqTypeRep
+        (typeOf a)
+        (typeRep @(GHC.Message (GHC.QResult BS.ByteString))) =
+    case a of
+      GHC.RunTH {} -> do
+        putStrLn $ "[INFO] " <> show a
+        fail "asteriusWriteIServ"
+  | otherwise =
+    fail $ "asteriusWriteIServ: unsupported type " <> show (typeOf a)
 
 asteriusHscCompileCoreExpr
   :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO GHC.ForeignHValue
@@ -113,7 +134,8 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
   m <-
     either throwIO pure
       $ runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
-  GHC.mkRemoteRef (error "asteriusHscCompileCoreExpr.mkRemoteRef") >>= flip GHC.mkForeignRef (pure ())
+  GHC.mkRemoteRef (error "asteriusHscCompileCoreExpr.mkRemoteRef")
+    >>= flip GHC.mkForeignRef (pure ())
 
 asteriusLinkExpr :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO ()
 asteriusLinkExpr hsc_env srcspan prepd_expr = do
