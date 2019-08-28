@@ -131,12 +131,13 @@ neededModules = GHC.uniqDSetToList . w
   where
     w :: Data a => a -> GHC.UniqDSet GHC.Module
     w t
-      | Just HRefl <- eqTypeRep (typeOf t) (typeRep @GHC.Name) =
-        case GHC.nameModule_maybe t of
-          Just m
-            | GHC.isExternalName t && not (GHC.isWiredInName t) ->
-              GHC.unitUniqDSet m
-          _ -> GHC.emptyUniqDSet
+      | Just HRefl <- eqTypeRep (typeOf t) (typeRep @GHC.CoreBndr) =
+        let n = GHC.getName t
+         in case GHC.nameModule_maybe n of
+              Just m
+                | GHC.isExternalName n && not (GHC.isWiredInName n) ->
+                  GHC.unitUniqDSet m
+              _ -> GHC.emptyUniqDSet
       | otherwise =
         gmapQl GHC.unionUniqDSets GHC.emptyUniqDSet w t
 
