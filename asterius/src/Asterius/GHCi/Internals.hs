@@ -4,7 +4,10 @@
 {-# LANGUAGE TypeApplications #-}
 
 module Asterius.GHCi.Internals
-  ( asteriusHscCompileCoreExpr
+  ( asteriusStartIServ,
+    asteriusStopIServ,
+    asteriusIservCall,
+    asteriusHscCompileCoreExpr
     )
 where
 
@@ -19,12 +22,14 @@ import qualified CorePrep as GHC
 import qualified CoreTidy as GHC
 import qualified CoreToStg as GHC
 import qualified CostCentre as GHC
+import Data.Binary
 import Data.Data
   ( Data,
     gmapQl
     )
 import Data.IORef
 import Data.String
+import qualified GHCi.Message as GHC
 import qualified GHCi.RemoteTypes as GHC
 import qualified GhcPlugins as GHC
 import qualified HscMain as GHC
@@ -44,6 +49,33 @@ globalGHCiState :: IORef GHCiState
 globalGHCiState = unsafePerformIO $ do
   us <- GHC.mkSplitUniqSupply 'A'
   newIORef GHCiState {ghciUniqSupply = us}
+
+asteriusStartIServ :: GHC.DynFlags -> IO GHC.IServ
+asteriusStartIServ _ = do
+  cache_ref <- newIORef GHC.emptyUFM
+  pure GHC.IServ
+    { GHC.iservPipe = error "asteriusStartIServ.iservPipe",
+      GHC.iservProcess = error "asteriusStartIServ.iservProcess",
+      GHC.iservLookupSymbolCache = cache_ref,
+      GHC.iservPendingFrees = []
+      }
+
+asteriusStopIServ :: GHC.HscEnv -> IO ()
+asteriusStopIServ _ = pure ()
+
+asteriusIservCall :: Binary a => GHC.IServ -> GHC.Message a -> IO a
+asteriusIservCall _ msg = do
+  putStrLn $ "[INFO] " <> show msg
+  case msg of
+    GHC.InitLinker -> pure ()
+    GHC.LoadDLL _ -> pure Nothing
+    GHC.LoadArchive _ -> pure ()
+    GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
+    GHC.RemoveLibrarySearchPath _ -> pure True
+    GHC.ResolveObjs -> pure True
+    GHC.FindSystemLibrary lib -> pure $ Just lib
+    GHC.StartTH -> newIORef (error "asteriusIservCall.StartTH") >>= GHC.mkRemoteRef
+    _ -> fail "asteriusIservCall"
 
 asteriusHscCompileCoreExpr
   :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO GHC.ForeignHValue
@@ -81,7 +113,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
   m <-
     either throwIO pure
       $ runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
-  undefined m
+  GHC.mkRemoteRef (error "asteriusHscCompileCoreExpr.mkRemoteRef") >>= flip GHC.mkForeignRef (pure ())
 
 asteriusLinkExpr :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO ()
 asteriusLinkExpr hsc_env srcspan prepd_expr = do

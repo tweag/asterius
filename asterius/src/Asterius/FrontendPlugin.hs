@@ -39,7 +39,10 @@ frontendPlugin = makeFrontendPlugin $ do
                     GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
                     GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
                     GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
-                    GHC.runMetaHook = Just asteriusRunMeta
+                    GHC.runMetaHook = Just asteriusRunMeta,
+                    GHC.startIServHook = Just asteriusStartIServ,
+                    GHC.iservCallHook = Just asteriusIservCall,
+                    GHC.stopIServHook = Just asteriusStopIServ
                     }
               }
   do
