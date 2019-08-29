@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -249,12 +250,12 @@ linkStart debug gc_sections binaryen verbose_err store root_syms export_funcs =
         }
     )
   where
-    (merged_m0, report) =
+    (merged_m0, !report) =
       mergeSymbols debug gc_sections verbose_err store root_syms export_funcs
     merged_m1
       | debug = addMemoryTrap merged_m0
       | otherwise = merged_m0
-    merged_m
+    !merged_m
       | verbose_err = merged_m1
       | otherwise =
         merged_m1
@@ -267,7 +268,7 @@ linkStart debug gc_sections binaryen verbose_err store root_syms export_funcs =
                              )
               $ staticsMap merged_m1
             }
-    (result_m, ss_sym_map, func_sym_map, tbl_slots, static_mbs) =
+    (!result_m, !ss_sym_map, !func_sym_map, !tbl_slots, !static_mbs) =
       resolveAsteriusModule debug
         binaryen
         (bundledFFIMarshalState report)
