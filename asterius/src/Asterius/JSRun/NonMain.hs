@@ -22,6 +22,7 @@ linkNonMain store_m extra_syms = (m, link_report)
           , linkOutput = ""
           , linkObjs = []
           , linkLibs = []
+          , linkModule = mempty
           , Asterius.Ld.debug = False
           , Asterius.Ld.gcSections = True
           , Asterius.Ld.binaryen = False

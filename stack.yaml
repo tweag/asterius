@@ -1,4 +1,4 @@
-resolver: lts-14.0
+resolver: lts-14.3
 packages:
   - asterius
   - binaryen
@@ -7,14 +7,13 @@ packages:
   - npm-utils
   - wabt
   - wasm-toolkit
-ghc-build: standard
 setup-info:
   ghc:
-    linux64:
+    linux64-tinfo6:
       8.6.5:
-        url: https://6218-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        sha256: 3fb0667f5412b660b62a828d171dcab2f8c225f83376b2147532297cb10c07f1
+        url: https://6507-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        sha256: 3243867786e5920ceb9f42f12a8e7270293097018ed5d32b7c8559551146e442
     macosx:
       8.6.5:
-        url: https://6220-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
-        sha256: 2d694689b5cd099ec4729672cfec07ff09a037d38b913b49a5d016f81c7affb9
+        url: https://6508-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
+        sha256: c1615bcc78443f1fe466fb44b685850341e25a7aad405b31f930014cbf981870

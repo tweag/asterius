@@ -6,6 +6,7 @@
 module Asterius.Ld
   ( LinkTask(..)
   , linkModules
+  , linkExeInMemory
   , linkExe
   , rtsUsedSymbols
   ) where
@@ -15,6 +16,7 @@ import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Resolve
 import Asterius.Types
+import Control.Exception
 import Data.Either
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -24,6 +26,7 @@ import Prelude hiding (IO)
 data LinkTask = LinkTask
   { progName, linkOutput :: FilePath
   , linkObjs, linkLibs :: [FilePath]
+  , linkModule :: AsteriusModule
   , debug, gcSections, binaryen, verboseErr :: Bool
   , outputIR :: Maybe FilePath
   , rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
@@ -34,7 +37,7 @@ loadTheWorld LinkTask {..} = do
   lib <- mconcat <$> for linkLibs loadAr
   objrs <- for linkObjs tryDecodeFile
   let objs = rights objrs
-  pure $ mconcat objs <> lib
+  evaluate $ linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm
@@ -99,7 +102,7 @@ linkModules LinkTask {..} m =
 linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, LinkReport)
 linkExeInMemory ld_task = do
   final_store <- loadTheWorld ld_task
-  pure $ linkModules ld_task final_store
+  evaluate $ linkModules ld_task final_store
 
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do

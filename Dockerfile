@@ -12,6 +12,7 @@ ENV \
   DEBIAN_FRONTEND=noninteractive \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
+  LC_CTYPE=C.UTF-8 \
   PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 WORKDIR /root/asterius
 
@@ -50,10 +51,10 @@ RUN \
     g++ \
     gnupg \
     make \
-    python-minimal \
     python3-minimal \
     xz-utils && \
   apt autoremove --purge -y && \
+  apt clean && \
   rm -rf \
     /root/.stack/programs/x86_64-linux/*.tar.xz \
     /var/lib/apt/lists/* \
@@ -61,4 +62,5 @@ RUN \
   mv /root/.stack/programs /tmp/ && \
   rm -rf /root/.stack && \
   mkdir /root/.stack && \
-  mv /tmp/programs /root/.stack/
+  mv /tmp/programs /root/.stack/ && \
+  node --version
