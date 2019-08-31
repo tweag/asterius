@@ -7,10 +7,9 @@ packages:
   - npm-utils
   - wabt
   - wasm-toolkit
-ghc-build: standard
 setup-info:
   ghc:
-    linux64:
+    linux64-tinfo6:
       8.6.5:
         url: https://6507-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
         sha256: 3243867786e5920ceb9f42f12a8e7270293097018ed5d32b7c8559551146e442

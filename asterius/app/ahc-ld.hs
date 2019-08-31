@@ -18,6 +18,7 @@ parseLinkTask args = do
       , linkOutput = link_output
       , linkObjs = link_objs
       , linkLibs = link_libs
+      , linkModule = mempty
       , debug = "--debug" `elem` args
       , gcSections = "--no-gc-sections" `notElem` args
       , binaryen = "--binaryen" `elem` args
