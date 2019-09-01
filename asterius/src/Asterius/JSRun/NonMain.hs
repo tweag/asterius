@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Asterius.JSRun.NonMain
-  ( newAsteriusInstanceNonMain
+  ( distNonMain, newAsteriusInstanceNonMain
   ) where
 
 import Asterius.Ld (LinkTask(..), linkModules)
@@ -37,7 +37,7 @@ distNonMain ::
      FilePath -> [AsteriusEntitySymbol] -> (Module, LinkReport) -> IO ()
 distNonMain p extra_syms =
   ahcDistMain
-    (\_ -> pure ())
+    putStrLn
     Task
       { target = Node
       , inputHS = p

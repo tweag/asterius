@@ -4,4 +4,4 @@ import Fib
 import Language.Haskell.TH.Syntax
 
 main :: IO ()
-main = print $(lift $ fib 5)
+main = print $(lift $ fib 10)
