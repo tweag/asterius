@@ -53,12 +53,15 @@ let
                 ../asterius/test/rtsapi/rtsapi.mjs
               ]);
     };
-  plan-0 = haskell.callCabalProjectToNix {
+  stack = haskell.importAndFilterProject (haskell.callStackToNix {
+      src = cleanSrc;
+    });
+  plan-0 = haskell.importAndFilterProject (haskell.callCabalProjectToNix {
       src = cleanSrc;
       ghc = pkgs.haskell.compiler.ghc865;
       index-state = "2019-06-22T00:00:00Z";
       index-sha256 = "19v6bqgg886704b8palrzqiydnfjsqqkrx9k6c22kw6kffrrrmd6";
-    };
+    });
   # Hide libiserv from the plan because it does not exist in hackage
   # TODO find a proper fix for this issue
   plan = plan-0 // {
@@ -83,17 +86,21 @@ let
   #  packages.cbors.patches = [ ./one.patch ];
   #  packages.cbors.flags.optimize-gmp = false;
   #
-  compiler = (plan.pkgs.extras {}).compiler or
-             (plan.pkgs.pkgs {}).compiler;
+  # compiler = (plan.pkgs.extras {}).compiler or
+  #            (plan.pkgs.pkgs {}).compiler;
+  compilerName = "ghc865";
+  # project = stack;
+  # mkProjectPkgSet = args: haskell.mkStackPkgSet (args // { stack-pkgs = stack.pkgs; });
+  project = plan;
+  mkProjectPkgSet = args: haskell.mkCabalProjectPkgSet (args // { plan-pkgs = plan.pkgs; });
 
-  pkgSet = haskell.mkCabalProjectPkgSet {
-    plan-pkgs = plan.pkgs;
+  pkgSet = mkProjectPkgSet {
     # The extras allow extension or restriction of the set of
     # packages we are interested in. By using the stack-pkgs.extras
     # we restrict our package set to the ones provided in stack.yaml.
     pkg-def-extras = [
       (hackage: { libiserv = {}; })
-      iohk-extras.${compiler.nix-name}
+      iohk-extras.${compilerName}
     ];
     modules = [
       # the iohk-module will supply us with the necessary
@@ -193,7 +200,7 @@ let
                  nodePkgs.parcel-bundler
                  nodePkgs.todomvc-app-css
                  nodePkgs.todomvc-common ];
-             }) (haskell.mkCabalProjectPkgSet {plan-pkgs = plan.pkgs;})
+             }) (mkProjectPkgSet {})
                  .config.hsPkgs.asterius.components.tests;
         };
       })
@@ -258,7 +265,7 @@ let
       cp -r rts libraries
     '';
     boot-libs = pkgs.runCommand "asterius-ghc865-boot-libs" {
-      buildInputs = [ pkgs.haskell.compiler.${compiler.nix-name} ];
+      buildInputs = [ pkgs.haskell.compiler.${compilerName} ];
       preferLocalBuild = true;
     } ''
       set +x
@@ -278,7 +285,7 @@ let
 
   asterius-boot = pkgs.runCommand "asterius-boot" {
       preferLocalBuild = true;
-      nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compiler.nix-name} pkgs.autoconf pkgs.automake ];
+      nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compilerName} pkgs.autoconf pkgs.automake ];
     } ''
       mkdir -p $out/bin
       mkdir -p $out/boot
@@ -314,13 +321,13 @@ let
         ln -s ${asterius-boot}/bin/${exe} $out/bin/wasm-asterius-ghc${pkgs.lib.strings.substring 3 ((pkgs.lib.strings.stringLength) exe - 3) exe}
       '') (pkgs.lib.attrNames pkgSet.config.hsPkgs.asterius.components.exes)}
       cp -r ${asterius-boot}/boot/.boot/asterius_lib $out/lib/wasm-asterius-ghc-0.0.1
-      ln -s ${pkgs.haskell.compiler.${compiler.nix-name}}/bin/hsc2hs $out/bin/wasm-asterius-hsc2hs
+      ln -s ${pkgs.haskell.compiler.${compilerName}}/bin/hsc2hs $out/bin/wasm-asterius-hsc2hs
     '');
 in {
-  plan-nix = plan.nix;
+  project-nix = stack.nix;
   inherit (pkgSet.config) hsPkgs;
   config = pkgSet.config;
   inherit ghc-head ghc865 pkgs haskell nodejs nodePkgs asterius-boot wasm-asterius-ghc;
-  ghc-compiler = pkgs.haskell.compiler.${compiler.nix-name};
+  ghc-compiler = pkgs.haskell.compiler.${compilerName};
   ghc-boot-libs = ghc865.boot-libs;
 }
