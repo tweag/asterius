@@ -24,14 +24,17 @@ import Asterius.Ld
 import Asterius.Resolve
 import qualified Asterius.Types
 import Asterius.TypesConv
+import qualified BasicTypes as GHC
 import qualified CLabel as GHC
 import qualified CmmInfo as GHC
 import Control.Concurrent
 import Control.Exception
 import qualified CoreLint as GHC
 import qualified CorePrep as GHC
+import qualified CoreSyn as GHC
 import qualified CoreTidy as GHC
 import qualified CoreToStg as GHC
+import qualified CoreUtils as GHC
 import qualified CostCentre as GHC
 import Data.Binary
 import qualified Data.ByteString as BS
@@ -43,27 +46,38 @@ import Data.Data
     )
 import Data.IORef
 import Data.String
+import qualified ErrUtils as GHC
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import qualified GHCi.Message as GHC
 import qualified GHCi.RemoteTypes as GHC
-import qualified GhcPlugins as GHC
 import qualified HscMain as GHC
+import qualified HscTypes as GHC
+import qualified Id as GHC
+import qualified IdInfo as GHC
 import Language.Haskell.TH
 import Language.JavaScript.Inline.Core
 import qualified Linker as GHC
+import qualified Module as GHC
+import qualified Name as GHC
+import qualified Outputable as GHC
+import qualified Packages as GHC
 import qualified Panic as GHC
 import qualified SimplCore as GHC
 import qualified SimplStg as GHC
+import qualified SrcLoc as GHC
 import qualified Stream
 import System.Directory
 import System.FilePath
 import System.IO.Unsafe
 import Type.Reflection
 import qualified UniqDSet as GHC
+import qualified UniqFM as GHC
+import qualified UniqSupply as GHC
 import Unsafe.Coerce
+import qualified VarEnv as GHC
 
-data GHCiState = GHCiState {ghciUniqSupply :: !GHC.UniqSupply, ghciLibs, ghciObjs :: ![FilePath], ghciJSSession :: JSSession, ghciQResult :: GHC.QResult BS.ByteString, ghciTemp :: (Asterius.Types.Module, LinkReport)}
+data GHCiState = GHCiState {ghciUniqSupply :: !GHC.UniqSupply, ghciLibs, ghciObjs :: ![FilePath], ghciJSSession :: Maybe JSSession, ghciQResult :: GHC.QResult BS.ByteString, ghciTemp :: (Asterius.Types.Module, LinkReport)}
 
 {-# NOINLINE globalGHCiState #-}
 globalGHCiState :: MVar GHCiState
@@ -73,16 +87,16 @@ globalGHCiState = unsafePerformIO $ do
     { ghciUniqSupply = us,
       ghciLibs = [],
       ghciObjs = [],
-      ghciJSSession = error "JSSession not available yet",
+      ghciJSSession = Nothing,
       ghciQResult = error "QResult not ready yet",
       ghciTemp = error "Temp not ready yet"
       }
 
 asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
-asteriusStartIServ _ = do
-  putStrLn "[INFO] startIServ"
+asteriusStartIServ hsc_env = do
+  GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
   s <- newJSSession defJSSessionOpts {nodeStdErrInherit = True}
-  modifyMVar_ globalGHCiState $ \st -> pure st {ghciJSSession = s}
+  modifyMVar_ globalGHCiState $ \st -> pure st {ghciJSSession = Just s}
   cache_ref <- newIORef GHC.emptyUFM
   pure GHC.IServ
     { GHC.iservPipe = error "asteriusStartIServ.iservPipe",
@@ -92,17 +106,19 @@ asteriusStartIServ _ = do
       }
 
 asteriusStopIServ :: GHC.HscEnv -> IO ()
-asteriusStopIServ _ = do
-  putStrLn "[INFO] stopIServ"
-  modifyMVar_ globalGHCiState $ \st -> do
-    closeJSSession $ ghciJSSession st
-    pure st {ghciJSSession = error "JSSession closed"}
+asteriusStopIServ hsc_env = do
+  GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStopIServ"
+  modifyMVar_ globalGHCiState $ \st -> case ghciJSSession st of
+    Just s -> do
+      closeJSSession s
+      pure st {ghciJSSession = Nothing}
+    _ -> pure st
   pure ()
 
 asteriusIservCall
   :: Binary a => GHC.HscEnv -> GHC.IServ -> GHC.Message a -> IO a
-asteriusIservCall _ _ msg = do
-  putStrLn $ "[INFO] " <> show msg
+asteriusIservCall hsc_env _ msg = do
+  GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show msg
   case msg of
     GHC.InitLinker -> pure ()
     GHC.LoadDLL _ -> pure Nothing
@@ -137,14 +153,17 @@ asteriusWriteIServ hsc_env i a
         (typeRep @(GHC.Message (GHC.QResult BS.ByteString))) =
     case a of
       GHC.RunTH st q ty loc -> do
-        putStrLn $ "[INFO] " <> show a
+        GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show a
         modifyMVar_ globalGHCiState $ \s -> do
-          qr <- asteriusRunTH hsc_env i st q ty loc (ghciJSSession s) (ghciTemp s)
+          js_s <-
+            maybe (fail "asteriusWriteIServ: no JSSession") pure
+              $ ghciJSSession s
+          qr <- asteriusRunTH hsc_env i st q ty loc js_s (ghciTemp s)
           pure s {ghciQResult = qr, ghciTemp = error "Temp cleaned"}
   | Just HRefl <- eqTypeRep (typeOf a) (typeRep @(GHC.Message (GHC.QResult ()))) =
     case a of
       GHC.RunModFinalizers {} -> do
-        putStrLn $ "[INFO] " <> show a
+        GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show a
         pure ()
   | otherwise =
     fail $ "asteriusWriteIServ: unsupported type " <> show (typeOf a)
