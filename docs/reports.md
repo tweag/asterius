@@ -2,6 +2,29 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-09-04
+
+Ongoing work:
+
+* The proof-of-concept TH runner is working; see the `asterius-TH` branch, the
+  `th` unit test runs a `fib` computation in the `Q` monad on the wasm end.
+* Fixed a regression in the prebuilt Docker images, where `nodejs` is accidently
+  uninstalled during cleanup, resulting in broken `--run` flags and `--browser
+  --bundle` flag combination.
+* Misc code cleanups and improvements.
+
+Planned work in the remaining weeks of Q3:
+
+* Stablize and stage TH implementation. Most notably, these current restrictions need to be lifted:
+    * The `QState` is not shared across different splices of the same module.
+      This requires the linker/runner to support incremental linking, but imho
+      we won't need huge and risky refactorings like we attempted earlier this
+      year.
+    * Queries back to the host `ahc` process currently don't work due to missing
+      `Quasi` instance implementation of our custom TH runner's monad.
+    * Proper error handling, either on the wasm end's TH runner, or in the host
+      `ahc` process when running queries from the runner.
+
 ## 2019-08-19
 
 Delivered work:
