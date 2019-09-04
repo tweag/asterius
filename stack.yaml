@@ -4,6 +4,7 @@ packages:
   - binaryen
   - ghc-toolkit
   - inline-js/inline-js-core
+  - inline-js/inline-js
   - npm-utils
   - wabt
   - wasm-toolkit

@@ -78,7 +78,7 @@ globalGHCiState = unsafePerformIO $ do
       ghciTemp = error "Temp not ready yet"
       }
 
-asteriusStartIServ :: GHC.DynFlags -> IO GHC.IServ
+asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
 asteriusStartIServ _ = do
   putStrLn "[INFO] startIServ"
   s <- newJSSession defJSSessionOpts {nodeStdErrInherit = True}
@@ -99,8 +99,9 @@ asteriusStopIServ _ = do
     pure st {ghciJSSession = error "JSSession closed"}
   pure ()
 
-asteriusIservCall :: Binary a => GHC.IServ -> GHC.Message a -> IO a
-asteriusIservCall _ msg = do
+asteriusIservCall
+  :: Binary a => GHC.HscEnv -> GHC.IServ -> GHC.Message a -> IO a
+asteriusIservCall _ _ msg = do
   putStrLn $ "[INFO] " <> show msg
   case msg of
     GHC.InitLinker -> pure ()
@@ -116,7 +117,7 @@ asteriusIservCall _ msg = do
     GHC.StartTH -> pure $ unsafeCoerce $ GHC.RemotePtr 233
     _ -> fail "asteriusIservCall"
 
-asteriusReadIServ :: forall a. Typeable a => GHC.DynFlags -> GHC.IServ -> IO a
+asteriusReadIServ :: forall a. Typeable a => GHC.HscEnv -> GHC.IServ -> IO a
 asteriusReadIServ _ _
   | Just HRefl <- eqTypeRep (typeRep @a) (typeRep @GHC.THMsg) =
     pure $ GHC.THMsg GHC.RunTHDone
@@ -128,8 +129,8 @@ asteriusReadIServ _ _
   | otherwise =
     fail $ "asteriusReadIServ: unsupported type " <> show (typeRep @a)
 
-asteriusWriteIServ :: Typeable a => GHC.DynFlags -> GHC.IServ -> a -> IO ()
-asteriusWriteIServ dflags i a
+asteriusWriteIServ :: Typeable a => GHC.HscEnv -> GHC.IServ -> a -> IO ()
+asteriusWriteIServ hsc_env i a
   | Just HRefl <-
       eqTypeRep
         (typeOf a)
@@ -138,7 +139,7 @@ asteriusWriteIServ dflags i a
       GHC.RunTH st q ty loc -> do
         putStrLn $ "[INFO] " <> show a
         modifyMVar_ globalGHCiState $ \s -> do
-          qr <- asteriusRunTH dflags i st q ty loc (ghciJSSession s) (ghciTemp s)
+          qr <- asteriusRunTH hsc_env i st q ty loc (ghciJSSession s) (ghciTemp s)
           pure s {ghciQResult = qr, ghciTemp = error "Temp cleaned"}
   | Just HRefl <- eqTypeRep (typeOf a) (typeRep @(GHC.Message (GHC.QResult ()))) =
     case a of
@@ -149,7 +150,7 @@ asteriusWriteIServ dflags i a
     fail $ "asteriusWriteIServ: unsupported type " <> show (typeOf a)
 
 asteriusRunTH
-  :: GHC.DynFlags
+  :: GHC.HscEnv
   -> GHC.IServ
   -> GHC.RemoteRef (IORef GHC.QState)
   -> GHC.HValueRef
@@ -290,7 +291,7 @@ linkRts hsc_env = do
           (GHC.hsc_dflags hsc_env)
           (GHC.toInstalledUnitId GHC.rtsUnitId)
   Just rts_path <- findFile (GHC.libraryDirs pkg_cfg) "libHSrts.a"
-  asteriusIservCall (error "linkRts") $ GHC.LoadArchive rts_path
+  asteriusIservCall hsc_env (error "linkRts") $ GHC.LoadArchive rts_path
 
 linkGhci :: GHC.HscEnv -> IO ()
 linkGhci hsc_env =

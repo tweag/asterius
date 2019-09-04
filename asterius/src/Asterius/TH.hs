@@ -157,22 +157,22 @@ asteriusRunTH ty fhv = do
   withIServ hsc_env $ \i -> do
     rstate <- getTHState i
     loc <- TH.qLocation
-    liftIO $ withForeignRef rstate $ \state_hv -> withForeignRef fhv $ \q_hv ->
-      writeIServ (hsc_dflags hsc_env) i (RunTH state_hv q_hv ty (Just loc))
-    runRemoteTH (hsc_dflags hsc_env) i []
-    bs <- readQResult (hsc_dflags hsc_env) i
+    liftIO $ withForeignRef rstate $ \state_hv -> withForeignRef fhv
+      $ \q_hv -> writeIServ hsc_env i (RunTH state_hv q_hv ty (Just loc))
+    runRemoteTH hsc_env i []
+    bs <- readQResult hsc_env i
     return $! runGet get (LB.fromStrict bs)
 
-runRemoteTH :: DynFlags -> IServ -> [Messages] -> TcM ()
-runRemoteTH dflags iserv recovers = do
-  THMsg msg <- liftIO $ readIServ dflags iserv
+runRemoteTH :: HscEnv -> IServ -> [Messages] -> TcM ()
+runRemoteTH hsc_env iserv recovers = do
+  THMsg msg <- liftIO $ readIServ hsc_env iserv
   case msg of
     RunTHDone -> return ()
     StartRecover -> do
       v <- getErrsVar
       msgs <- readTcRef v
       writeTcRef v emptyMessages
-      runRemoteTH dflags iserv (msgs : recovers)
+      runRemoteTH hsc_env iserv (msgs : recovers)
     EndRecover caught_error -> do
       let (prev_msgs@(prev_warns, prev_errs), rest) = case recovers of
             [] -> panic "EndRecover"
@@ -183,15 +183,15 @@ runRemoteTH dflags iserv recovers = do
         $ if caught_error
           then prev_msgs
           else (prev_warns `unionBags` warn_msgs, prev_errs)
-      runRemoteTH dflags iserv rest
+      runRemoteTH hsc_env iserv rest
     _other -> do
       r <- handleTHMessage msg
-      liftIO $ writeIServ dflags iserv r
-      runRemoteTH dflags iserv recovers
+      liftIO $ writeIServ hsc_env iserv r
+      runRemoteTH hsc_env iserv recovers
 
-readQResult :: (Binary a, Typeable a) => DynFlags -> IServ -> TcM a
-readQResult dflags i = do
-  qr <- liftIO $ readIServ dflags i
+readQResult :: (Binary a, Typeable a) => HscEnv -> IServ -> TcM a
+readQResult hsc_env i = do
+  qr <- liftIO $ readIServ hsc_env i
   case qr of
     QDone a -> return a
     QException str -> liftIO $ throwIO (ErrorCall str)
@@ -205,7 +205,7 @@ getTHState i = do
     Just rhv -> return rhv
     Nothing -> do
       hsc_env <- env_top <$> getEnv
-      fhv <- liftIO $ mkFinalizedHValue hsc_env =<< iservCall (hsc_dflags hsc_env) i StartTH
+      fhv <- liftIO $ mkFinalizedHValue hsc_env =<< iservCall hsc_env i StartTH
       writeTcRef (tcg_th_remote_state tcg) (Just fhv)
       return fhv
 
