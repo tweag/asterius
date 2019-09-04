@@ -14,9 +14,8 @@ of the upstream release commit for our modifications:
   [D5082](https://phabricator.haskell.org/D5082) for configurable integer
   library and tables-next-to-code in `DynFlags`.
 * Implement additional
-  [`Hooks`](https://github.com/TerrorJack/ghc/blob/asterius-8.6/compiler/main/Hooks.hs):
-  `tcRnModuleHook`, `stgCmmHook`, `cmmToRawCmmHook` for accessing in-memory GHC
-  IRs.
+  [`Hooks`](https://github.com/TerrorJack/ghc/blob/asterius-8.6/compiler/main/Hooks.hs).
+* Various modifications due to changed type signatures in the hooked functions.
 * Link `ghc-pkg`/`hsc2hs` with `-threaded`.
 
 See the [`circleci-ghc-8.6`](circleci-ghc-8.6) branch of `asterius` repo for CI
