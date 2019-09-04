@@ -10,7 +10,6 @@ import Asterius.Foreign
 import Asterius.GHCi.Internals
 import Asterius.Internals
 import Asterius.JSFFI
-import Asterius.TH
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
@@ -39,7 +38,6 @@ frontendPlugin = makeFrontendPlugin $ do
                     GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
                     GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
                     GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
-                    GHC.runMetaHook = Just asteriusRunMeta,
                     GHC.startIServHook = Just asteriusStartIServ,
                     GHC.iservCallHook = Just asteriusIservCall,
                     GHC.readIServHook = Just asteriusReadIServ,
