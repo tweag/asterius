@@ -1,48 +1,33 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module Asterius.GHCi
-  ( asteriusRunQExp
-  , asteriusRunQPat
-  , asteriusRunQType
-  , asteriusRunQDec
-  ) where
+  ( asteriusRunQExp,
+    asteriusRunQPat,
+    asteriusRunQType,
+    asteriusRunQDec
+    )
+where
 
 import Asterius.ByteString
 import Asterius.Types
-import Control.Monad.Fail
-import Control.Monad.IO.Class
-import Control.Monad.Reader
-import Data.Binary
-import qualified Data.ByteString.Lazy as LBS
-import Data.IORef
 import GHCi.Message
-import GHCi.TH.Binary ()
-import qualified Language.Haskell.TH.Syntax as TH
-import Prelude
+import GHCi.RemoteTypes
+import GHCi.TH
+import Language.Haskell.TH.Syntax
 
-newtype AsteriusQ a = AsteriusQ
-  { unAsteriusQ :: ReaderT (IORef QState) IO a
-  } deriving (Functor, Applicative, Monad, MonadFail, MonadIO)
+asteriusRunQ :: THResultType -> Q a -> IO JSArrayBuffer
+asteriusRunQ ty hv = do
+  rstate <- startTH
+  rhv <- toHValueRef <$> mkRemoteRef hv
+  byteStringToJSArrayBuffer
+    <$> runTH (error "asteriusRunQ: no pipe") rstate rhv ty Nothing
 
-instance TH.Quasi AsteriusQ
+asteriusRunQExp :: Q Exp -> IO JSArrayBuffer
+asteriusRunQExp = asteriusRunQ THExp
 
-emptyQState :: QState
-emptyQState = QState mempty Nothing (error "Asterius.GHCi: no pipe")
+asteriusRunQPat :: Q Pat -> IO JSArrayBuffer
+asteriusRunQPat = asteriusRunQ THPat
 
-asteriusRunQ :: Binary a => TH.Q a -> IO JSArrayBuffer
-asteriusRunQ m = do
-  qs_ref <- newIORef emptyQState
-  r <- runReaderT (unAsteriusQ (TH.runQ m)) qs_ref
-  pure (byteStringToJSArrayBuffer (LBS.toStrict (encode r)))
+asteriusRunQType :: Q Type -> IO JSArrayBuffer
+asteriusRunQType = asteriusRunQ THType
 
-asteriusRunQExp :: TH.Q TH.Exp -> IO JSArrayBuffer
-asteriusRunQExp = asteriusRunQ
-
-asteriusRunQPat :: TH.Q TH.Pat -> IO JSArrayBuffer
-asteriusRunQPat = asteriusRunQ
-
-asteriusRunQType :: TH.Q TH.Type -> IO JSArrayBuffer
-asteriusRunQType = asteriusRunQ
-
-asteriusRunQDec :: TH.Q [TH.Dec] -> IO JSArrayBuffer
-asteriusRunQDec = asteriusRunQ
+asteriusRunQDec :: Q [Dec] -> IO JSArrayBuffer
+asteriusRunQDec = asteriusRunQ THDec
