@@ -212,7 +212,7 @@ asteriusRunTH _ _ _ q ty _ s ahc_dist_input = case ty of
         val' = deRefJSVal i <> ".getJSVal(" <> sp <> ")"
         val = "(async () => " <> val' <> ")()"
     result_lbs <- eval s val
-    pure $ GHC.QDone $ LBS.toStrict result_lbs
+    evaluate $ decode result_lbs
   _ -> fail $ "asteriusRunTH: unsupported THResultType " <> show ty
 
 asteriusHscCompileCoreExpr
