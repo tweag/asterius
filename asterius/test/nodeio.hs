@@ -1,10 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
+import qualified Data.ByteString as BS
+import GHC.IO.Device
 import GHC.IO.Handle.FD
 import System.Environment.Blank
 import System.IO
+import System.Posix.Internals
 import System.Process
-import qualified Data.ByteString as BS
+
+deriving instance Show IODeviceType
 
 main :: IO ()
 main = do
