@@ -18,6 +18,7 @@ of the upstream release commit for our modifications:
 * Various modifications due to changed type signatures in the hooked functions.
 * Link `ghc-pkg`/`hsc2hs` with `-threaded`.
 
-See the [`circleci-ghc-8.6`](circleci-ghc-8.6) branch of `asterius` repo for CI
-scripts to build ghc bindists for the fork. The bindist artifacts are then used
-in `stack.yaml` of `asterius`.
+See the
+[`circleci-ghc-8.6`](https://github.com/tweag/asterius/tree/circleci-ghc-8.6)
+branch of `asterius` repo for CI scripts to build ghc bindists for the fork. The
+bindist artifacts are then used in `stack.yaml` of `asterius`.
