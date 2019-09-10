@@ -2,6 +2,88 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-09-10
+
+Ongoing work:
+
+* If an exception is thrown when a splice is being run, it's now properly
+  returned back to the host `ahc` process and displayed in the error message.
+  Before, the runner always assumed it ran to completion, then attempted to
+  fetch a buffer from `undefined`, causing cryptic errors reported by
+  `inline-js-core`.
+* Working on fixing message passing between `ahc` and splice code on `node`.
+    * Multiple possible options were considered; we chose to preserve the
+      original `ghci` logic, using `Handle`s created from file descriptors of
+      posix pipes.
+    * We used to have a very limited implementation of `write` which works for
+      pseudo `stdout` and `stderr` devices. Now regular `read` and `write` calls
+      are working for regular file descriptors as well.
+
+Planned work:
+
+* Complete the fix for TH message passing, and document it. At this point we can
+  add more TH tests and merge the work in process, since even when sesssion
+  state is not properly preserved, the incomplete TH implementation is already
+  better than having nothing at all.
+* Clean up legacy issues and PRs, improve docs, etc.
+
+## 2019-09-04
+
+Ongoing work:
+
+* The proof-of-concept TH runner is working; see the `asterius-TH` branch, the
+  `th` unit test runs a `fib` computation in the `Q` monad on the wasm end.
+* Fixed a regression in the prebuilt Docker images, where `nodejs` is accidently
+  uninstalled during cleanup, resulting in broken `--run` flags and `--browser
+  --bundle` flag combination.
+* Misc code cleanups and improvements.
+
+Planned work in the remaining weeks of Q3:
+
+* Stablize and stage TH implementation. Most notably, these current restrictions need to be lifted:
+    * The `QState` is not shared across different splices of the same module.
+      This requires the linker/runner to support incremental linking, but imho
+      we won't need huge and risky refactorings like we attempted earlier this
+      year.
+    * Queries back to the host `ahc` process currently don't work due to missing
+      `Quasi` instance implementation of our custom TH runner's monad.
+    * Proper error handling, either on the wasm end's TH runner, or in the host
+      `ahc` process when running queries from the runner.
+
+## 2019-08-19
+
+Delivered work:
+
+* The JSFFI mechanism is improved in two ways:
+    * The compile-time logic for handling foreign declarations with the
+      `javascript` convention has been moved to the type-checker/desugarer, and
+      it now takes the normalized FFI type signature into account. This means
+      that we now properly support type synonyms and newtypes in JSFFI types.
+      Performance should also be improved since we no longer perform syb-style
+      traversal over the parsed AST.
+    * The link-time rewriting pass for handling async imports has been moved to
+      compile time, and no longer requires the relevant `FFIMarshalState` to be
+      in scope. So no more mysterious "key not found" errors when attempting to
+      link against modules with async imports when non-main linking is enabled.
+
+So, back to TH stuff this week.
+
+## 2019-08-13
+
+Ongoing work:
+
+* When moving previous TH work to current `master`, we discovered a
+  linker-related error related to non-main linking and JSFFI. The `ahc-iserv`
+  process needs to pass `-no-hs-main` to `ahc` when using the splice closure
+  rather than `Main_main_closure` as the linker root closure. Now the JSFFI
+  post-processor complains about missing functions in the loaded object files.
+  The attempts to workaround this problem by ignoring unfound JSFFI import
+  closures would cause even greater regression: breaking async JSFFI completely.
+
+For this week we need to work on getting rid of the link-time post-processor
+approach and moving JSFFI logic to typechecking/desugaring time, much like the
+ghcjs's existing approach.
+
 ## 2019-08-06
 
 Covers many past weeks :) We're now resuming the status reports.

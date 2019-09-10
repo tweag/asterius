@@ -13,7 +13,7 @@ See the [documentation](https://asterius.netlify.com/) for further instructions.
 * [Haskell WebAssembly calling JavaScript and back again](https://www.tweag.io/posts/2018-09-12-asterius-ffi.html)
 * [Asterius GHC WebAssembly backend reaches TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
 
-Also, we've added [Weekly Status Reports](https://tweag.github.io/asterius/reports) in case you're interested where the bleeding edge has reached.
+Also, we've added [Weekly Status Reports](https://asterius.netlify.com/reports.html) in case you're interested where the bleeding edge has reached.
 
 ## Quick start
 
@@ -26,7 +26,7 @@ root@76bcb511663d:/mirror# ahc-link --input-hs xxx.hs
 ...
 ```
 
-See the [help text](https://tweag.github.io/asterius/ahc-link) of `ahc-link` for further instructions.
+See the [help text](https://asterius.netlify.com/ahc-link.html) of `ahc-link` for further instructions.
 
 What works currently:
 
@@ -54,7 +54,7 @@ install the following:
 
 - `nodejs` 12.x. Binaries can be downloaded from [`noderesource/distributions`](https://github.com/nodesource/distributions) for common `*nix` platforms.
 
-and then follow the commands in the `Dockerfile`. 
+and then follow the commands in the `Dockerfile`.
 
 For hacking instructions, [there is a `docs/hacking.md` which has advice and common commands](docs/hacking.md)
 

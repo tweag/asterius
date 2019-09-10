@@ -2,75 +2,46 @@
 {-# LANGUAGE StrictData #-}
 
 module Language.Haskell.GHC.Toolkit.Compiler
-  ( HaskellIR(..)
-  , CmmIR(..)
-  , Compiler(..)
-  ) where
+  ( HaskellIR (..),
+    CmmIR (..),
+    Compiler (..)
+    )
+where
 
 import Cmm
-import CoreSyn
 import GHC
-import HscTypes
-import Maybes
 import PipelineMonad
 import StgSyn
-import TcRnTypes
 
-data HaskellIR = HaskellIR
-  { parsed :: HsParsedModule
-  , typechecked :: TcGblEnv
-  , core :: CgGuts
-  , stg :: [StgTopBinding]
-  , cmm :: [[CmmDecl]]
-  , cmmRaw :: [[RawCmmDecl]]
-  }
+data HaskellIR
+  = HaskellIR
+      { stg :: [StgTopBinding],
+        cmmRaw :: [[RawCmmDecl]]
+        }
 
-data CmmIR = CmmIR
-  { cmm :: [[CmmDecl]]
-  , cmmRaw :: [[RawCmmDecl]]
-  }
+newtype CmmIR
+  = CmmIR
+      { cmmRaw :: [[RawCmmDecl]]
+        }
 
-data Compiler = Compiler
-  { patchParsed :: ModSummary -> HsParsedModule -> Hsc HsParsedModule
-  , patchTypechecked :: ModSummary -> TcGblEnv -> Hsc TcGblEnv
-  , compileCoreExpr :: Maybe (HscEnv -> SrcSpan -> CoreExpr -> IO ForeignHValue)
-  , withHaskellIR :: ModSummary -> HaskellIR -> FilePath -> CompPipeline ()
-  , withCmmIR :: CmmIR -> FilePath -> CompPipeline ()
-  , finalize :: Ghc ()
-  }
+data Compiler
+  = Compiler
+      { withHaskellIR :: ModSummary -> HaskellIR -> FilePath -> CompPipeline (),
+        withCmmIR :: CmmIR -> FilePath -> CompPipeline ()
+        }
 
 instance Semigroup Compiler where
-  c0 <> c1 =
-    Compiler
-      { patchParsed =
-          \mod_summary parsed_mod -> do
-            parsed_mod' <- patchParsed c0 mod_summary parsed_mod
-            patchParsed c1 mod_summary parsed_mod'
-      , patchTypechecked =
-          \mod_summary tc_mod -> do
-            tc_mod' <- patchTypechecked c0 mod_summary tc_mod
-            patchTypechecked c1 mod_summary tc_mod'
-      , compileCoreExpr = firstJust (compileCoreExpr c0) (compileCoreExpr c1)
-      , withHaskellIR =
-          \mod_summary hs_ir obj_path -> do
-            withHaskellIR c0 mod_summary hs_ir obj_path
-            withHaskellIR c1 mod_summary hs_ir obj_path
-      , withCmmIR =
-          \cmm_ir obj_path -> do
-            withCmmIR c0 cmm_ir obj_path
-            withCmmIR c1 cmm_ir obj_path
-      , finalize =
-          do finalize c0
-             finalize c1
+
+  c0 <> c1 = Compiler
+    { withHaskellIR = \mod_summary hs_ir obj_path -> do
+        withHaskellIR c0 mod_summary hs_ir obj_path
+        withHaskellIR c1 mod_summary hs_ir obj_path,
+      withCmmIR = \cmm_ir obj_path -> do
+        withCmmIR c0 cmm_ir obj_path
+        withCmmIR c1 cmm_ir obj_path
       }
 
 instance Monoid Compiler where
+
   mempty =
-    Compiler
-      { patchParsed = const pure
-      , patchTypechecked = const pure
-      , compileCoreExpr = Nothing
-      , withHaskellIR = \_ _ _ -> pure ()
-      , withCmmIR = \_ _ -> pure ()
-      , finalize = pure ()
-      }
+    Compiler {withHaskellIR = \_ _ _ -> pure (), withCmmIR = \_ _ -> pure ()}

@@ -12,6 +12,7 @@ ENV \
   DEBIAN_FRONTEND=noninteractive \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
+  LC_CTYPE=C.UTF-8 \
   PATH=/root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 WORKDIR /root/asterius
 
@@ -41,8 +42,7 @@ RUN \
   apt install -y nodejs && \
   mkdir -p /root/.local/bin && \
   curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack' && \
-  curl https://downloads.haskell.org/~cabal/cabal-install-latest/cabal-install-2.4.1.0-x86_64-unknown-linux.tar.xz | tar xJ -C /root/.local/bin 'cabal' && \
-  stack --no-terminal install asterius wabt && \
+  stack --no-terminal install asterius && \
   stack --no-terminal exec ahc-boot && \
   apt purge -y \
     automake \
@@ -51,10 +51,10 @@ RUN \
     g++ \
     gnupg \
     make \
-    python-minimal \
     python3-minimal \
     xz-utils && \
   apt autoremove --purge -y && \
+  apt clean && \
   rm -rf \
     /root/.stack/programs/x86_64-linux/*.tar.xz \
     /var/lib/apt/lists/* \
@@ -62,4 +62,5 @@ RUN \
   mv /root/.stack/programs /tmp/ && \
   rm -rf /root/.stack && \
   mkdir /root/.stack && \
-  mv /tmp/programs /root/.stack/
+  mv /tmp/programs /root/.stack/ && \
+  node --version

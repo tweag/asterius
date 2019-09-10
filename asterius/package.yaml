@@ -65,6 +65,7 @@ dependencies:
   - directory
   - filepath
   - ghc
+  - ghc-boot
   - ghc-prim
   - ghc-toolkit
   - ghci

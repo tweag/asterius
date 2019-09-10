@@ -1,4 +1,4 @@
-resolver: lts-14.0
+resolver: lts-14.4
 packages:
   - asterius
   - binaryen
@@ -6,14 +6,25 @@ packages:
   - inline-js/inline-js-core
   - wabt
   - wasm-toolkit
-ghc-build: standard
+
+
+ghc-variant: asterius
+
 setup-info:
   ghc:
-    linux64:
+    linux64-custom-asterius-tinfo6:
       8.6.5:
-        url: https://5566-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        sha256: 4547f0dbb95ce23b486f04278d737024595b6e33328c1be9f04c8473c591c43e
-    macosx:
+        url: https://6575-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        sha256: a0ebc4ef111fe4d12a24448e01abedc4975d339d685c4cb572cef6f055762f2d
+    linux64-custom-asterius:
       8.6.5:
-        url: https://5563-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
-        sha256: 12a2f64b69e1f93a3d281f6f80cc8ff99b9827b49c1c444c6557a6886a4c6e94
+        url: https://6577-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        sha256: 10d9bf87cf876ad8ea360dbe0071fa32cf60dded9d6695cda91c418cefc8256f
+    linux64-custom-asterius-musl:
+      8.6.5:
+        url: https://6576-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-alpine-linux.tar.xz
+        sha256: 862f92489691607edf319102b7c533dd6b18d84929fa0551a05e5336966f9f1d
+    macosx-custom-asterius:
+      8.6.5:
+        url: https://6578-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
+        sha256: d743e30ded14b02a4e0cb123a94f663b8096b34af5f4d82ed4a13924718344f9
