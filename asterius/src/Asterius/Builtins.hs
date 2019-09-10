@@ -127,7 +127,7 @@ rtsAsteriusModule opts =
     , functionMap =
         Map.fromList $
         map (\(func_sym, (_, func)) -> (func_sym, func))
-            (byteStringCBits <> floatCBits  <> unicodeCBits <> md5CBits)
+            (byteStringCBits <> floatCBits  <> unicodeCBits <> md5CBits <> textCBits)
     }  <> hsInitFunction opts
        <> createThreadFunction opts
        <> genAllocateFunction opts "allocate"
@@ -550,7 +550,7 @@ rtsFunctionImports debug =
           , b <- ["8", "16"]
           ]
      else []) <>
-  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits)
+  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits <> textCBits)
 
 rtsFunctionExports :: Bool -> [FunctionExport]
 rtsFunctionExports debug =
@@ -622,6 +622,16 @@ byteStringCBits =
     , ("_hs_bytestring_long_long_int_dec_padded18", [I64, I64], [])
     , ("_hs_bytestring_uint_hex", [I64, I64], [I64])
     , ("_hs_bytestring_long_long_uint_hex", [I64, I64], [I64])
+    ]
+
+textCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+textCBits =
+  map
+    (\(func_sym, param_vts, ret_vts) ->
+       ( AsteriusEntitySymbol func_sym
+       , generateRTSWrapper "text" func_sym param_vts ret_vts))
+    [ ("_hs_text_memcpy", [I64, I64, I64, I64, I64], [])
+    , ("_hs_text_memcmp", [I64, I64, I64, I64, I64], [I64])
     ]
 
 floatCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
