@@ -283,3 +283,10 @@ tests:
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
+
+  text:
+    source-dirs: test
+    main: text.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius

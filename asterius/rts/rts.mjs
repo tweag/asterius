@@ -17,6 +17,7 @@ import { HeapBuilder } from "./rts.heapbuilder.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
+import { TextCBits } from "./rts.text.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
 import { Messages } from "./rts.messages.mjs";
@@ -45,6 +46,7 @@ export function newAsteriusInstance(req) {
     __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager),
     __asterius_fs = new MemoryFileSystem(__asterius_logger),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
+    __asterius_text_cbits = new TextCBits(__asterius_memory),
     __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard, req.yolo),
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
     __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
@@ -141,6 +143,7 @@ export function newAsteriusInstance(req) {
         }
       },
       bytestring: modulify(__asterius_bytestring_cbits),
+      text: modulify(__asterius_text_cbits),
       // cannot name this float since float is a keyword.
       floatCBits: modulify(__asterius_float_cbits),
       ReentrancyGuard: modulify(__asterius_reentrancy_guard),
