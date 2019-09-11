@@ -85,5 +85,3 @@ library
 
     if !os(windows)
         Build-Depends: unix >= 2.7 && < 2.9
-        
-    ghc-options: -this-unit-id ghci
