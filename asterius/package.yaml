@@ -290,3 +290,10 @@ tests:
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
+
+  parsec:
+    source-dirs: test
+    main: parsec.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
