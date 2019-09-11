@@ -1,15 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
+import Control.Concurrent
 import qualified Data.ByteString as BS
-import GHC.IO.Device
 import GHC.IO.Handle.FD
 import System.Environment.Blank
 import System.IO
-import System.Posix.Internals
 import System.Process
-
-deriving instance Show IODeviceType
 
 main :: IO ()
 main = do
@@ -23,11 +19,14 @@ main = do
   setEnv "ASTERIUS_NODE_WRITE_FD" (show node_write_fd) True
   args <- getArgs
   BS.hPut host_write_handle "ALICE"
-  callProcess "ahc-link"
-    $ [ "--input-hs",
-        "test/nodeio/nodeio.hs",
-        "--binaryen",
-        "--verbose-err",
-        "--run"
-        ]
-    <> args
+  _ <-
+    forkIO
+      $ callProcess "ahc-link"
+      $ [ "--input-hs",
+          "test/nodeio/nodeio.hs",
+          "--binaryen",
+          "--verbose-err",
+          "--run"
+          ]
+        <> args
+  BS.hGet host_read_handle 5 >>= print
