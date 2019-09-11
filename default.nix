@@ -1,14 +1,13 @@
-{ pkgs ? import nixpkgs ({ overlays = overlays; } // nixpkgsArgs)
+{ pkgs ? import nixpkgs ({
+    overlays = import ((builtins.fetchTarball {
+      url = "https://github.com/input-output-hk/haskell.nix/archive/8d660d8843088264c2f2c2a98c6824264af2efaa.tar.gz";
+      sha256 = "03nvscgpi0fak7ssxwyi7zk97als05dmj644a0pn3g60688m8ya7";
+    }) + "/overlays"); })
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , nixpkgs ? builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/61f0936d1cd73760312712615233cd80195a9b47.tar.gz";
     sha256 = "1fkmp99lxd827km8mk3cqqsfmgzpj0rvaz5hgdmgzzyji70fa2f8";
   }
-# default config we provide to nixpkgs.
-, overlays ? import ../../iohk/haskell.nix/overlays
-# Provide additional args to the nixpkgs instantiation. This can also override
-# config and overlays.
-, nixpkgsArgs ? { }
 , shellOnly ? false
 }:
 let
@@ -255,13 +254,12 @@ let
 
   # Use this to set the version of asterius to be booted in the shell.
   # By pinning this we avoid re running ahc-boot for every change.
-  cached = import ./. {};
-#  cached = import (pkgs.fetchgit {
-#    url = "https://github.com/input-output-hk/asterius";
-#    rev = "bed3bf7a34b5540aa953cbccd6ae04824fce8253";
-#    sha256 = "155r0q4c246f0sv5ppgm0d7qgfdvl5nn2rmd2gp52jxc2psq1y3p";
-#    fetchSubmodules = true;
-#  }) {};
+  cached = import (pkgs.fetchgit {
+    url = "https://github.com/input-output-hk/asterius";
+    rev = "7e2708293982fbc0bd158985d31ad7baad7b3a34";
+    sha256 = "0rz8bs3yajrb0ra5wzdkg1gjnp8lxjsjf6dspa9qbbf4qry7vpf7";
+    fetchSubmodules = true;
+  }) {};
   ghc-compiler = pkgs.haskell.compiler.${compilerName};
   shells = {
     ghc = (project.shellFor {
