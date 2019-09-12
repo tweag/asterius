@@ -1,64 +1,45 @@
 module Asterius.Internals.Name
-  ( lookupRdrNameInModule
+  ( fakeClosureSymbol
     )
 where
 
-import HscTypes
-  ( HscEnv (..),
-    ModIface (..)
-    )
-import LoadIface (loadSysInterface)
-import Module (ModuleName)
-import Name (Name)
-import Outputable (text)
-import Packages
-  ( LookupResult (..),
-    lookupModuleWithSuggestions
-    )
-import RdrName
-  ( ImpDeclSpec (..),
-    ImpItemSpec (..),
-    ImportSpec (..),
-    RdrName,
-    gre_name,
-    lookupGRE_RdrName,
-    mkGlobalRdrEnv
-    )
-import RnNames (gresFromAvails)
-import SrcLoc (noSrcSpan)
-import TcRnMonad
-  ( initIfaceTcRn,
-    initTcInteractive
-    )
+import Asterius.Types (AsteriusEntitySymbol)
+import Asterius.TypesConv
+import qualified CLabel as GHC
+import Data.String
+import qualified DynFlags as GHC
+import qualified FastString as GHC
+import qualified IdInfo as GHC
+import qualified Module as GHC
+import qualified Name as GHC
+import qualified Packages as GHC
+import qualified SrcLoc as GHC
+import qualified Unique as GHC
 
-lookupRdrNameInModule :: HscEnv -> ModuleName -> RdrName -> IO Name
-lookupRdrNameInModule hsc_env mod_name rdr_name = do
-  let found_module =
-        lookupModuleWithSuggestions (hsc_dflags hsc_env) mod_name Nothing
-  case found_module of
-    LookupFound mod _ -> do
-      (_, mb_iface) <-
-        initTcInteractive hsc_env $ initIfaceTcRn $ loadSysInterface doc mod
-      case mb_iface of
-        Just iface -> do
-          let decl_spec = ImpDeclSpec
-                { is_mod = mod_name,
-                  is_as = mod_name,
-                  is_qual = False,
-                  is_dloc = noSrcSpan
-                  }
-              imp_spec = ImpSpec decl_spec ImpAll
-              env =
-                mkGlobalRdrEnv
-                  (gresFromAvails (Just imp_spec) (mi_exports iface))
-          case lookupGRE_RdrName rdr_name env of
-            [gre] -> return (gre_name gre)
-            _ ->
-              fail
-                "Asterius.Internals.Name.lookupRdrNameInModule: lookupGRE_RdrName failed"
-        Nothing ->
-          fail
-            "Asterius.Internals.Name.lookupRdrNameInModule: could not determine the exports of the module"
-    _ -> fail "Asterius.Internals.Name.lookupRdrNameInModule: name not found"
+fakeName
+  :: GHC.DynFlags
+  -> GHC.PackageName
+  -> GHC.ModuleName
+  -> GHC.OccName
+  -> GHC.Name
+fakeName dflags pkg_name mod_name occ_name = name
   where
-    doc = text "contains a name used in an invocation of lookupRdrNameInModule"
+    dummy_uniq = GHC.mkUniqueGrimily 0
+    Just comp_id = GHC.lookupPackageName dflags pkg_name
+    inst_unit_id = GHC.componentIdToInstalledUnitId comp_id
+    Just pkg_conf = GHC.lookupInstalledPackage dflags inst_unit_id
+    unit_id = GHC.packageConfigId pkg_conf
+    m = GHC.mkModule unit_id mod_name
+    name = GHC.mkExternalName dummy_uniq m occ_name GHC.noSrcSpan
+
+fakeClosureSymbol
+  :: GHC.DynFlags -> String -> String -> String -> AsteriusEntitySymbol
+fakeClosureSymbol dflags pkg_name mod_name occ_name = sym
+  where
+    name =
+      fakeName dflags
+        (GHC.PackageName (GHC.mkFastString pkg_name))
+        (GHC.mkModuleName mod_name)
+        (GHC.mkVarOcc occ_name)
+    clbl = GHC.mkClosureLabel name GHC.MayHaveCafRefs
+    sym = fromString $ asmPpr dflags clbl
