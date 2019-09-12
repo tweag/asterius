@@ -127,7 +127,7 @@ rtsAsteriusModule opts =
     , functionMap =
         Map.fromList $
         map (\(func_sym, (_, func)) -> (func_sym, func))
-            (byteStringCBits <> floatCBits  <> unicodeCBits <> md5CBits)
+            (byteStringCBits <> floatCBits  <> unicodeCBits <> md5CBits <> textCBits)
     }  <> hsInitFunction opts
        <> createThreadFunction opts
        <> genAllocateFunction opts "allocate"
@@ -162,6 +162,7 @@ rtsAsteriusModule opts =
        <> isattyFunction opts
        <> fdReadyFunction opts
        <> rtsSupportsBoundThreadsFunction opts
+       <> readFunction opts
        <> writeFunction opts
        <> (if debug opts then generateRtsAsteriusDebugModule opts else mempty)
        -- | Add in the module that contain functions which need to be
@@ -482,11 +483,18 @@ rtsFunctionImports debug =
           }
       }
   , FunctionImport
+      { internalName = "__asterius_read"
+      , externalModuleName = "fs"
+      , externalBaseName = "read"
+      , functionType =
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
+      }
+  , FunctionImport
       { internalName = "__asterius_write"
       , externalModuleName = "fs"
       , externalBaseName = "write"
       , functionType =
-          FunctionType {paramTypes = [F64, F64, F64], returnTypes = []}
+          FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
       }
   ] <>
   (if debug
@@ -550,7 +558,7 @@ rtsFunctionImports debug =
           , b <- ["8", "16"]
           ]
      else []) <>
-  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits)
+  map (fst . snd) (byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits <> textCBits)
 
 rtsFunctionExports :: Bool -> [FunctionExport]
 rtsFunctionExports debug =
@@ -622,6 +630,16 @@ byteStringCBits =
     , ("_hs_bytestring_long_long_int_dec_padded18", [I64, I64], [])
     , ("_hs_bytestring_uint_hex", [I64, I64], [I64])
     , ("_hs_bytestring_long_long_uint_hex", [I64, I64], [I64])
+    ]
+
+textCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+textCBits =
+  map
+    (\(func_sym, param_vts, ret_vts) ->
+       ( AsteriusEntitySymbol func_sym
+       , generateRTSWrapper "text" func_sym param_vts ret_vts))
+    [ ("_hs_text_memcpy", [I64, I64, I64, I64, I64], [])
+    , ("_hs_text_memcmp", [I64, I64, I64, I64, I64], [I64])
     ]
 
 floatCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
@@ -745,7 +763,7 @@ generateWrapperModule mod = mod {
 
 
 
-hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction, isattyFunction, fdReadyFunction, rtsSupportsBoundThreadsFunction, writeFunction ::
+hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleWaitThreadFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction, isattyFunction, fdReadyFunction, rtsSupportsBoundThreadsFunction, readFunction, writeFunction ::
      BuiltinsOptions -> AsteriusModule
 
 initCapability :: EDSL ()
@@ -1354,12 +1372,27 @@ rtsSupportsBoundThreadsFunction _ =
     setReturnTypes [I64]
     emit $ constI64 0
 
+readFunction _ =
+  runEDSL "ghczuwrapperZC22ZCbaseZCSystemziPosixziInternalsZCread" $ do
+    setReturnTypes [I64]
+    [fd, buf, count] <- params [I64, I64, I64]
+    r <-
+      truncSFloat64ToInt64
+        <$> callImport' "__asterius_read"
+              (map convertUInt64ToFloat64 [fd, buf, count])
+              F64
+    emit r
+
 writeFunction _ =
   runEDSL "ghczuwrapperZC20ZCbaseZCSystemziPosixziInternalsZCwrite" $ do
     setReturnTypes [I64]
     [fd, buf, count] <- params [I64, I64, I64]
-    callImport "__asterius_write" $ map convertUInt64ToFloat64 [fd, buf, count]
-    emit count
+    r <-
+      truncSFloat64ToInt64
+        <$> callImport' "__asterius_write"
+              (map convertUInt64ToFloat64 [fd, buf, count])
+              F64
+    emit r
 
 getF64GlobalRegFunction ::
   BuiltinsOptions

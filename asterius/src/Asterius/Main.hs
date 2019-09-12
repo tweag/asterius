@@ -285,6 +285,7 @@ genHTML Task {..} =
     , "<title>"
     , out_base
     , "</title>\n"
+    , "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n"
     , "</head>\n"
     , "<body>\n"
     , if bundle

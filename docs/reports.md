@@ -2,6 +2,31 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-09-10
+
+Ongoing work:
+
+* If an exception is thrown when a splice is being run, it's now properly
+  returned back to the host `ahc` process and displayed in the error message.
+  Before, the runner always assumed it ran to completion, then attempted to
+  fetch a buffer from `undefined`, causing cryptic errors reported by
+  `inline-js-core`.
+* Working on fixing message passing between `ahc` and splice code on `node`.
+    * Multiple possible options were considered; we chose to preserve the
+      original `ghci` logic, using `Handle`s created from file descriptors of
+      posix pipes.
+    * We used to have a very limited implementation of `write` which works for
+      pseudo `stdout` and `stderr` devices. Now regular `read` and `write` calls
+      are working for regular file descriptors as well.
+
+Planned work:
+
+* Complete the fix for TH message passing, and document it. At this point we can
+  add more TH tests and merge the work in process, since even when sesssion
+  state is not properly preserved, the incomplete TH implementation is already
+  better than having nothing at all.
+* Clean up legacy issues and PRs, improve docs, etc.
+
 ## 2019-09-04
 
 Ongoing work:

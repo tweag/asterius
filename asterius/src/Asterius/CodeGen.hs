@@ -1103,9 +1103,9 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
 
 
 -- See also: QuotRemWord2#
-marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [quot, rem] [lhsHi, lhsLo, rhs] = do
-  quotr <- marshalTypedCmmLocalReg quot I64
-  remr <- marshalTypedCmmLocalReg rem I64
+marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
+  quotr <- marshalTypedCmmLocalReg q I64
+  remr <- marshalTypedCmmLocalReg r I64
 
   (lhsHir, _) <- marshalCmmExpr lhsHi
   (lhsLor, _) <- marshalCmmExpr lhsLo

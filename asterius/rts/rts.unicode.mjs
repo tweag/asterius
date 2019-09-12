@@ -29,7 +29,7 @@ export class Unicode {
     }
 
     u_towtitle(code){
-        return u_toupper(code);
+        return this.u_towupper(code); //FIXME
     }
 
     // Generated from asterius/asterius/rts/genunicode.hs

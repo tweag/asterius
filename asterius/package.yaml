@@ -38,6 +38,7 @@ extra-source-files:
   - test/regression60/**/*.hs
   - test/sizeof_md5context/**/*.hs
   - test/largenum/**/*.hs
+  - test/nodeio/**/*.hs
 
 data-files:
   - rts/*.mjs
@@ -287,6 +288,27 @@ tests:
   th:
     source-dirs: test
     main: th.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  nodeio:
+    source-dirs: test
+    main: nodeio.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  text:
+    source-dirs: test
+    main: text.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  parsec:
+    source-dirs: test
+    main: parsec.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
