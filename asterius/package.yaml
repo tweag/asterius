@@ -291,3 +291,17 @@ tests:
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
+
+  text:
+    source-dirs: test
+    main: text.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  parsec:
+    source-dirs: test
+    main: parsec.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius

@@ -16,3 +16,6 @@ node_modules/
 *.dump-*
 yarn.lock
 package-lock.json
+*.linked.txt
+*.unlinked.bin
+*.wasm-toolkit.txt

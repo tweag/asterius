@@ -1,0 +1,7 @@
+-- see http://cabal.readthedocs.io/en/latest/nix-local-build-overview.html
+
+packages: .
+
+package parsec
+  tests: True
+  benchmarks: False
