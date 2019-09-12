@@ -178,9 +178,9 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
                [r] -> succ $ fromEnum $ recoverWasmWrapperValueType r
                _ -> 0
              )
-      <> ",Promise.resolve("
+      <> ",(async () => ("
       <> code
-      <> ")"
+      <> "))()"
       <> ( case ffiResultTypes of
              [FFI_JSVAL] -> ".then(v => __asterius_jsffi.newJSVal(v))"
              _ -> mempty

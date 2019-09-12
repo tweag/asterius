@@ -26,9 +26,10 @@ import { MD5 } from "./rts.md5.mjs"
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
+import { getNodeModules } from "./rts.node.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
-export function newAsteriusInstance(req) {
+export async function newAsteriusInstance(req) {
   let __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_logger = new EventLogManager(req.symbolTable),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
@@ -44,7 +45,7 @@ export function newAsteriusInstance(req) {
     __asterius_tso_manager = new TSOManager(__asterius_memory, req.symbolTable, __asterius_stableptr_manager),
     __asterius_heap_builder = new HeapBuilder(req.symbolTable, __asterius_heapalloc, __asterius_memory, __asterius_stableptr_manager),
     __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager),
-    __asterius_fs = new MemoryFileSystem(__asterius_logger),
+    __asterius_fs = new MemoryFileSystem(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_text_cbits = new TextCBits(__asterius_memory),
     __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard, req.yolo),
@@ -56,6 +57,8 @@ export function newAsteriusInstance(req) {
     __asterius_exports = new Exports(__asterius_memory, __asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports, __asterius_stableptr_manager),
     __asterius_md5 = new MD5(__asterius_memory);
   __asterius_tso_manager.exports = __asterius_exports;
+
+  const __asterius_node_modules = await getNodeModules();
 
   function __asterius_show_I64(x) {
     return "0x" + x.toString(16).padStart(8, "0");
@@ -136,10 +139,22 @@ export function newAsteriusInstance(req) {
         print: x => __asterius_fs.writeSync(1, x + "\n")
       },
       fs: {
+        read: (fd, buf, count) => {
+          const p = Memory.unTag(buf);
+          return __asterius_node_modules.fs.readSync(
+            fd,
+            __asterius_memory.i8View,
+            p,
+            count,
+            null
+          );
+        },
         write: (fd, buf, count) => {
           const p = Memory.unTag(buf);
-          __asterius_fs.writeSync(fd, __asterius_memory.i8View.subarray(p, p + count));
-          return count;
+          return (fd <= 2
+            ? __asterius_fs
+            : __asterius_node_modules.fs
+          ).writeSync(fd, __asterius_memory.i8View.subarray(p, p + count));
         }
       },
       bytestring: modulify(__asterius_bytestring_cbits),
