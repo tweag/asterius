@@ -17,12 +17,14 @@ where
 
 import Asterius.CodeGen
 import Asterius.Internals ((!))
+import Asterius.Internals.Name
 import Asterius.Internals.Temp
 import Asterius.JSRun.Main
 import Asterius.JSRun.NonMain
 import Asterius.Ld
 import Asterius.Resolve
 import qualified Asterius.Types
+import Asterius.Types
 import Asterius.TypesConv
 import qualified BasicTypes as GHC
 import qualified CLabel as GHC
@@ -40,6 +42,7 @@ import Data.Binary
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as LBS
+import Data.Coerce
 import Data.Data
   ( Data,
     gmapQl
@@ -178,10 +181,10 @@ asteriusRunTH
   -> JSSession
   -> (Asterius.Types.Module, LinkReport)
   -> IO (GHC.QResult BS.ByteString)
-asteriusRunTH _ _ _ q ty _ s ahc_dist_input = case ty of
+asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input = case ty of
   GHC.THExp -> withTempDir "asdf" $ \tmp_dir -> do
     let p = tmp_dir </> "asdf"
-    distNonMain p ["ghci_AsteriusziGHCi_asteriusRunQExp_closure"] ahc_dist_input
+    distNonMain p [run_q_exp_sym] ahc_dist_input
     mod_buf <- LBS.readFile $ p -<.> "wasm"
     lib_val <- importMJS s $ p -<.> "lib.mjs"
     f_val <- eval s $ takeJSVal lib_val <> ".default"
@@ -190,8 +193,9 @@ asteriusRunTH _ _ _ q ty _ s ahc_dist_input = case ty of
     i <- eval s $ takeJSVal f_val <> "(" <> takeJSVal mod_val <> ")"
     hsInit s i
     let run_q_exp_closure =
-          deRefJSVal i
-            <> ".symbolTable.ghci_AsteriusziGHCi_asteriusRunQExp_closure"
+          deRefJSVal i <> ".symbolTable."
+            <> coerce
+                 (shortByteString (coerce run_q_exp_sym))
         GHC.RemotePtr q_addr = unsafeCoerce q
         q_exp_closure = "0x" <> JSCode (word64Hex q_addr)
         applied_closure =
@@ -214,11 +218,15 @@ asteriusRunTH _ _ _ q ty _ s ahc_dist_input = case ty of
     result_lbs <- eval s val
     evaluate $ decode result_lbs
   _ -> fail $ "asteriusRunTH: unsupported THResultType " <> show ty
+  where
+    run_q_exp_sym = ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQExp"
 
 asteriusHscCompileCoreExpr
   :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO GHC.ForeignHValue
 asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
   let dflags = GHC.hsc_dflags hsc_env
+      run_q_exp_sym =
+        ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQExp"
   simpl_expr <- GHC.simplifyExpr dflags ds_expr
   let tidy_expr = GHC.tidyExpr GHC.emptyTidyEnv simpl_expr
   prepd_expr <- GHC.corePrepExpr dflags hsc_env tidy_expr
@@ -266,7 +274,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
             binaryen = False,
             verboseErr = True,
             outputIR = Nothing,
-            rootSymbols = ["ghci_AsteriusziGHCi_asteriusRunQExp_closure", sym],
+            rootSymbols = [run_q_exp_sym, sym],
             exportFunctions = []
             }
       pure (s {ghciTemp = (final_m, link_report)}, r)
@@ -275,7 +283,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
     $ wordPtrToPtr
     $ fromIntegral
     $ staticsSymbolMap
-    ! sym
+      ! sym
 
 asteriusLinkExpr :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO ()
 asteriusLinkExpr hsc_env srcspan prepd_expr = do
@@ -320,3 +328,6 @@ linkGhci hsc_env =
   where
     Just ghci_comp_id =
       GHC.lookupPackageName (GHC.hsc_dflags hsc_env) (GHC.PackageName "ghci")
+
+ghciClosureSymbol :: GHC.HscEnv -> String -> String -> AsteriusEntitySymbol
+ghciClosureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env) "ghci"
