@@ -52,7 +52,9 @@ import Data.String
 import qualified ErrUtils as GHC
 import Foreign.ForeignPtr
 import Foreign.Ptr
+import GHC.IO.Handle.FD
 import qualified GHCi.Message as GHC
+import GHCi.Message
 import qualified GHCi.RemoteTypes as GHC
 import qualified HscMain as GHC
 import qualified HscTypes as GHC
@@ -71,8 +73,11 @@ import qualified SimplStg as GHC
 import qualified SrcLoc as GHC
 import qualified Stream
 import System.Directory
+import System.Environment.Blank
 import System.FilePath
+import System.IO
 import System.IO.Unsafe
+import System.Process
 import Type.Reflection
 import qualified UniqDSet as GHC
 import qualified UniqFM as GHC
@@ -80,7 +85,7 @@ import qualified UniqSupply as GHC
 import Unsafe.Coerce
 import qualified VarEnv as GHC
 
-data GHCiState = GHCiState {ghciUniqSupply :: !GHC.UniqSupply, ghciLibs, ghciObjs :: ![FilePath], ghciJSSession :: Maybe JSSession, ghciQResult :: GHC.QResult BS.ByteString, ghciTemp :: (Asterius.Types.Module, LinkReport)}
+data GHCiState = GHCiState {ghciUniqSupply :: !GHC.UniqSupply, ghciLibs, ghciObjs :: ![FilePath], ghciJSSession :: Maybe (JSSession, Pipe), ghciQResult :: GHC.QResult BS.ByteString, ghciTemp :: (Asterius.Types.Module, LinkReport)}
 
 {-# NOINLINE globalGHCiState #-}
 globalGHCiState :: MVar GHCiState
@@ -98,8 +103,22 @@ globalGHCiState = unsafePerformIO $ do
 asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
 asteriusStartIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
+  (node_read_fd, host_write_fd) <- createPipeFd
+  (host_read_fd, node_write_fd) <- createPipeFd
+  setEnv "ASTERIUS_NODE_READ_FD" (show node_read_fd) True
+  setEnv "ASTERIUS_NODE_WRITE_FD" (show node_write_fd) True
+  host_read_handle <- fdToHandle host_read_fd
+  host_write_handle <- fdToHandle host_write_fd
+  hSetBuffering host_read_handle NoBuffering
+  hSetBuffering host_write_handle NoBuffering
+  lo_ref <- newIORef Nothing
+  let p = Pipe
+        { pipeRead = host_read_handle,
+          pipeWrite = host_write_handle,
+          pipeLeftovers = lo_ref
+          }
   s <- newJSSession defJSSessionOpts {nodeStdErrInherit = True}
-  modifyMVar_ globalGHCiState $ \st -> pure st {ghciJSSession = Just s}
+  modifyMVar_ globalGHCiState $ \st -> pure st {ghciJSSession = Just (s, p)}
   cache_ref <- newIORef GHC.emptyUFM
   pure GHC.IServ
     { GHC.iservPipe = error "asteriusStartIServ.iservPipe",
@@ -112,7 +131,7 @@ asteriusStopIServ :: GHC.HscEnv -> IO ()
 asteriusStopIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStopIServ"
   modifyMVar_ globalGHCiState $ \st -> case ghciJSSession st of
-    Just s -> do
+    Just (s, _) -> do
       closeJSSession s
       pure st {ghciJSSession = Nothing}
     _ -> pure st
@@ -160,7 +179,8 @@ asteriusWriteIServ hsc_env i a
         modifyMVar_ globalGHCiState $ \s -> do
           js_s <-
             maybe (fail "asteriusWriteIServ: no JSSession") pure
-              $ ghciJSSession s
+              $ fst
+                <$> ghciJSSession s
           qr <- asteriusRunTH hsc_env i st q ty loc js_s (ghciTemp s)
           pure s {ghciQResult = qr, ghciTemp = error "Temp cleaned"}
   | Just HRefl <- eqTypeRep (typeOf a) (typeRep @(GHC.Message (GHC.QResult ()))) =
