@@ -1,17 +1,18 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Asterius.GHCi
   ( asteriusRunQExp,
     asteriusRunQPat,
     asteriusRunQType,
-    asteriusRunQDec
+    asteriusRunQDec,
+    asteriusRunModFinalizers
     )
 where
 
-import Asterius.ByteString
-import Asterius.Types
 import Control.DeepSeq
 import Control.Exception
 import Data.Binary
-import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString as BS
 import Data.IORef
 import GHC.IO.Device
 import GHC.IO.Handle.FD
@@ -22,18 +23,21 @@ import Language.Haskell.TH.Syntax
 import System.IO
 import System.IO.Unsafe
 
-asteriusRunQ :: THResultType -> Q a -> IO JSArrayBuffer
+asteriusRunQ :: THResultType -> Q a -> IO ()
 asteriusRunQ ty hv = do
   r <-
     try $ do
       rstate <- startTH
       rhv <- toHValueRef <$> mkRemoteRef hv
       runTH globalPipe rstate rhv ty Nothing
-  byteStringToJSArrayBuffer . LBS.toStrict . encode <$> case r of
-    Left e
-      | Just (GHCiQException _ err) <- fromException e -> pure $ QFail err
-      | otherwise -> QException <$> showException e
-    Right a -> pure $ QDone a
+  writePipe globalPipe $ putTHMessage RunTHDone
+  resp <-
+    case r of
+      Left e
+        | Just (GHCiQException _ err) <- fromException e -> pure $ QFail err
+        | otherwise -> QException <$> showException e
+      Right (a :: BS.ByteString) -> pure $ QDone a
+  writePipe globalPipe $ put resp
 
 showException :: SomeException -> IO String
 showException e0 = do
@@ -42,17 +46,22 @@ showException e0 = do
     Left e -> showException e
     Right str -> pure str
 
-asteriusRunQExp :: Q Exp -> IO JSArrayBuffer
+asteriusRunQExp :: Q Exp -> IO ()
 asteriusRunQExp = asteriusRunQ THExp
 
-asteriusRunQPat :: Q Pat -> IO JSArrayBuffer
+asteriusRunQPat :: Q Pat -> IO ()
 asteriusRunQPat = asteriusRunQ THPat
 
-asteriusRunQType :: Q Type -> IO JSArrayBuffer
+asteriusRunQType :: Q Type -> IO ()
 asteriusRunQType = asteriusRunQ THType
 
-asteriusRunQDec :: Q [Dec] -> IO JSArrayBuffer
+asteriusRunQDec :: Q [Dec] -> IO ()
 asteriusRunQDec = asteriusRunQ THDec
+
+asteriusRunModFinalizers :: IO ()
+asteriusRunModFinalizers = writePipe globalPipe $ do
+  putTHMessage RunTHDone
+  put $ QDone ()
 
 {-# NOINLINE globalPipe #-}
 globalPipe :: Pipe
