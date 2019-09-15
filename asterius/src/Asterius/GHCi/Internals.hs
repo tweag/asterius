@@ -39,7 +39,6 @@ import qualified CoreToStg as GHC
 import qualified CoreUtils as GHC
 import qualified CostCentre as GHC
 import Data.Binary
-import qualified Data.ByteString as BS
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as LBS
 import Data.Coerce
@@ -160,29 +159,18 @@ asteriusIservCall hsc_env _ msg = do
     GHC.StartTH -> pure $ unsafeCoerce $ GHC.RemotePtr 233
     _ -> fail "asteriusIservCall"
 
-asteriusReadIServ :: forall a. Typeable a => GHC.HscEnv -> GHC.IServ -> IO a
-asteriusReadIServ _ _
-  | Just HRefl <- eqTypeRep (typeRep @a) (typeRep @GHC.THMsg) =
-    withMVar globalGHCiState
-      $ \s -> let Just (_, p, _) = ghciJSSession s in readPipe p getTHMessage
-  | Just HRefl <- eqTypeRep (typeRep @a) (typeRep @(GHC.QResult BS.ByteString)) =
-    withMVar globalGHCiState
-      $ \s -> let Just (_, p, _) = ghciJSSession s in readPipe p get
-  | Just HRefl <- eqTypeRep (typeRep @a) (typeRep @(GHC.QResult ())) =
-    withMVar globalGHCiState
-      $ \s -> let Just (_, p, _) = ghciJSSession s in readPipe p get
-  | otherwise =
-    fail $ "asteriusReadIServ: unsupported type " <> show (typeRep @a)
+asteriusReadIServ
+  :: forall a. (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> IO a
+asteriusReadIServ _ _ = withMVar globalGHCiState
+  $ \s -> let Just (_, p, _) = ghciJSSession s in readPipe p get
 
-asteriusWriteIServ :: Typeable a => GHC.HscEnv -> GHC.IServ -> a -> IO ()
+asteriusWriteIServ
+  :: (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> a -> IO ()
 asteriusWriteIServ hsc_env i a
-  | Just HRefl <-
-      eqTypeRep
-        (typeOf a)
-        (typeRep @(GHC.Message (GHC.QResult BS.ByteString))) =
+  | Just HRefl <- eqTypeRep (typeOf a) (typeRep @GHC.Msg) =
     case a of
-      GHC.RunTH st q ty loc -> do
-        GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show a
+      GHC.Msg m@(GHC.RunTH st q ty loc) -> do
+        GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
         modifyMVar_ globalGHCiState $ \s -> do
           js_s <-
             maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure
@@ -196,18 +184,18 @@ asteriusWriteIServ hsc_env i a
                    in Just (x, y, v),
                 ghciTemp = error "Temp cleaned"
                 }
-  | Just HRefl <- eqTypeRep (typeOf a) (typeRep @(GHC.Message (GHC.QResult ()))) =
-    case a of
-      GHC.RunModFinalizers {} -> do
-        GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show a
+      GHC.Msg m@GHC.RunModFinalizers {} -> do
+        GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
         withMVar globalGHCiState $ \s -> do
           (js_s, v) <-
             maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure
               $ (\(x, _, v) -> (x, v))
                 <$> ghciJSSession s
           asteriusRunModFinalizers hsc_env js_s v
+      GHC.Msg m -> fail $ "asteriusWriteIServ: unsupported message " <> show m
   | otherwise =
-    fail $ "asteriusWriteIServ: unsupported type " <> show (typeOf a)
+    withMVar globalGHCiState
+      $ \s -> let Just (_, p, _) = ghciJSSession s in writePipe p $ put a
 
 asteriusRunTH
   :: GHC.HscEnv

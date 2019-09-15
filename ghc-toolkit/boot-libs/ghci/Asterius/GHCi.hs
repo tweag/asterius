@@ -30,14 +30,15 @@ asteriusRunQ ty hv = do
       rstate <- startTH
       rhv <- toHValueRef <$> mkRemoteRef hv
       runTH globalPipe rstate rhv ty Nothing
-  writePipe globalPipe $ putTHMessage RunTHDone
   resp <-
     case r of
       Left e
         | Just (GHCiQException _ err) <- fromException e -> pure $ QFail err
         | otherwise -> QException <$> showException e
       Right (a :: BS.ByteString) -> pure $ QDone a
-  writePipe globalPipe $ put resp
+  writePipe globalPipe $ do
+    putTHMessage RunTHDone
+    put resp
 
 showException :: SomeException -> IO String
 showException e0 = do
