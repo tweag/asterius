@@ -1,82 +1,35 @@
-import { Channel } from "./rts.channel.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
-
-async function scheduler_loop(e) {
-  e.context.reentrancyGuard.enter(0);
-  while (true) {
-    const [f, p, resolve, reject] = await e.context.channel.take(),
-      tso = e[f](p);
-    e.context.memory.i64Store(
-      e.context.symbolTable.__asterius_func,
-      e.context.symbolTable.stg_returnToStackTop
-    );
-    let running = true;
-    while (running) {
-      e.scheduleWaitThread(tso, false);
-      const ret = Number(
-        e.context.memory.i64Load(
-          e.context.symbolTable.MainCapability +
-            rtsConstants.offset_Capability_r +
-            rtsConstants.offset_StgRegTable_rRet
-        )
-      );
-      switch (ret) {
-        case 4: {
-          await e.context.tsoManager.promise;
-          break;
-        }
-        case 5: {
-          resolve(e.context.tsoManager.getTSOid(tso));
-          running = false;
-          break;
-        }
-        default: {
-          reject(new WebAssembly.RuntimeError(`Invalid rRet ${ret}`));
-          running = false;
-          break;
-        }
-      }
-    }
-  }
-}
 
 export class Exports {
   constructor(
     memory,
     reentrancy_guard,
     symbol_table,
-    tso_manager,
+    scheduler,
     exports,
     stableptr_manager
   ) {
     this.context = Object.freeze({
-      channel: new Channel(),
       memory: memory,
       reentrancyGuard: reentrancy_guard,
       symbolTable: symbol_table,
-      tsoManager: tso_manager,
+      scheduler: scheduler,
       stablePtrManager: stableptr_manager
     });
     Object.assign(this, exports);
-    scheduler_loop(this);
+    scheduler.run(this);
   }
 
   rts_eval(p) {
-    return new Promise((resolve, reject) =>
-      this.context.channel.put(["createGenThread", p, resolve, reject])
-    );
+    return this.context.scheduler.submitCmdCreateThread("createGenThread", p);
   }
 
   rts_evalIO(p) {
-    return new Promise((resolve, reject) =>
-      this.context.channel.put(["createStrictIOThread", p, resolve, reject])
-    );
+    return this.context.scheduler.submitCmdCreateThread("createStrictIOThread", p);
   }
 
   rts_evalLazyIO(p) {
-    return new Promise((resolve, reject) =>
-      this.context.channel.put(["createIOThread", p, resolve, reject])
-    );
+    return this.context.scheduler.submitCmdCreateThread("createIOThread", p);
   }
 
   main() {

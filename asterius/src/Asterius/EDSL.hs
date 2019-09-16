@@ -94,6 +94,8 @@ module Asterius.EDSL
   , baseReg
   , r1
   , currentNursery
+  , currentTSO
+  , currentTID
   , hpAlloc
   , mainCapability
   ) where
@@ -109,6 +111,7 @@ import qualified Data.ByteString.Short as SBS
 import qualified Data.Map.Lazy as LM
 import Data.Monoid
 import Data.Traversable
+import Language.Haskell.GHC.Toolkit.Constants
 
 -- | Difference lists
 type DList a = Endo [a]
@@ -538,14 +541,19 @@ constI64 = ConstI64 . fromIntegral
 
 constF64 = ConstF64 . fromIntegral
 
-baseReg, r1, currentNursery, hpAlloc :: LVal
+baseReg, r1, currentNursery, currentTSO, hpAlloc :: LVal
 baseReg = global BaseReg
 
 r1 = global $ VanillaReg 1
 
 currentNursery = global CurrentNursery
 
+currentTSO = global CurrentTSO
+
 hpAlloc = global HpAlloc
 
 mainCapability :: Expression
 mainCapability = symbol "MainCapability"
+
+currentTID :: Expression
+currentTID = loadI32 (getLVal currentTSO) offset_StgTSO_id

@@ -430,6 +430,15 @@ foreign import ccall unsafe "offset_StgTSO_alloc_limit" offset_StgTSO_alloc_limi
 foreign import ccall unsafe "offset_StgTSO_tot_stack_size" offset_StgTSO_tot_stack_size
   :: Int
 
+foreign import ccall unsafe "offset_StgTSO_saved_regs" offset_StgTSO_saved_regs
+  :: Int
+
+foreign import ccall unsafe "offset_StgTSO_ffi_func" offset_StgTSO_ffi_func
+  :: Int
+
+foreign import ccall unsafe "offset_StgTSO_ffi_return" offset_StgTSO_ffi_return
+  :: Int
+
 foreign import ccall unsafe "offset_StgUpdateFrame_updatee" offset_StgUpdateFrame_updatee
   :: Int
 

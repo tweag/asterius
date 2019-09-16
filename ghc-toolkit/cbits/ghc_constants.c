@@ -394,6 +394,10 @@ HsInt offset_StgTSO_tot_stack_size() {
   return offsetof(StgTSO, tot_stack_size);
 }
 
+HsInt offset_StgTSO_ffi_func()   { return offsetof(StgTSO, ffi_func); }
+HsInt offset_StgTSO_ffi_return() { return offsetof(StgTSO, ffi_return); }
+HsInt offset_StgTSO_saved_regs() { return offsetof(StgTSO, saved_regs); }
+
 HsInt offset_StgUpdateFrame_updatee() {
   return offsetof(StgUpdateFrame, updatee);
 }

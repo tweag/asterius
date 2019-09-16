@@ -14,13 +14,13 @@ function bdescr(c) {
 
 export class GC {
   constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
-    tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard, yolo) {
+    scheduler, info_tables, pinned_closures, symbol_table, reentrancy_guard, yolo) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
     this.stableNameManager = stablename_manager;
-    this.tsoManager = tso_manager;
+    this.scheduler = scheduler;
     this.infoTables = info_tables;
     this.pinnedClosures = pinned_closures;
     this.symbolTable = symbol_table;
@@ -527,13 +527,19 @@ export class GC {
     }
   }
 
-  gcRootTSO(tso) {
+  /**
+   * Perform GC, using scheduler TSOs as roots
+   */
+  performGC() {
     if(this.yolo) return;
     this.reentrancyGuard.enter(1);
-    const tid = this.memory.i32Load(tso + rtsConstants.offset_StgTSO_id);
     this.heapAlloc.initUnpinned();
-    if (this.tsoManager.getTSOret(tid))
-      this.tsoManager.setTSOret(tid, this.evacuateClosure(this.tsoManager.getTSOret(tid)));
+
+    // evacuate TSOs
+    for (const [tid,tso_info] of this.scheduler.tsos) {
+      tso_info.addr = this.evacuateClosure(tso_info.addr);
+    }
+
     for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
@@ -552,10 +558,23 @@ export class GC {
     }
     this.stableNameManager.ptr2stable = ptr2stableMoved;
 
-    this.evacuateClosure(tso);
+    // do the rest of the scavenging work
     this.scavengeWorkList();
 
+    // update the ret pointer in the complete TSOs
+    for (const [tid,tso_info] of this.scheduler.tsos) {
+      if (tso_info.ret) {
+          const tso      = tso_info.addr;
+          const stackobj = Number(this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj));
+          const sp       = Number(this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp));
+          tso_info.ret   = Number(this.memory.i64Load(sp + 8));
+      }
+    }
+
+    // mark unused MBlocks
     this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
+
+    // update registers
     const base_reg =
         this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
       hp_alloc = Number(

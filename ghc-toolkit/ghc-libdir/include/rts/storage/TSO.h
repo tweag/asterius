@@ -133,6 +133,10 @@ typedef struct StgTSO_ {
 
     struct StgTRecHeader_ * trec;       /* STM transaction record */
 
+    StgWord64               saved_regs[128]; /* Asterius: saved local regs */
+    StgWord64               ffi_return;      /* Asterius: async ffi returned value */
+    StgWord64               ffi_func;        /* Astarius: async ffi return addr */
+
     /*
      * A list of threads blocked on this TSO waiting to throw exceptions.
     */
