@@ -13,9 +13,9 @@ rtsConstants :: Builder
 rtsConstants =
   mconcat $
   [ "export const dataTag = "
-  , intHex (fromIntegral dataTag)
+  , intHex dataTag
   , ";\nexport const functionTag = "
-  , intHex (fromIntegral functionTag)
+  , intHex functionTag
   , ";\nexport const mblock_size = "
   , intHex mblock_size
   , ";\nexport const block_size = "

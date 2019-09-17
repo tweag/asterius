@@ -48,7 +48,7 @@ export async function newAsteriusInstance(req) {
     __asterius_fs = new MemoryFileSystem(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_text_cbits = new TextCBits(__asterius_memory),
-    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard, req.yolo),
+    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.exportStablePtrs, req.symbolTable, __asterius_reentrancy_guard, req.yolo),
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
     __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),

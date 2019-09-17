@@ -174,27 +174,31 @@ genSymbolDict sym_map =
     (intersperse
        ","
        [ "\"" <> shortByteString (entityName sym) <> "\":" <>
-       intHex (fromIntegral sym_idx)
+       intHex sym_idx
        | (sym, sym_idx) <- M.toList sym_map
        ]) <>
   "})"
 
 genInfoTables :: [Int64] -> Builder
 genInfoTables sym_set =
-  "new Set([" <> mconcat (intersperse "," (map (intHex . fromIntegral) sym_set)) <>
+  "new Set([" <> mconcat (intersperse "," (map intHex sym_set)) <>
   "])"
 
-genPinnedStaticClosures ::
-     M.Map AsteriusEntitySymbol Int64
+genExportStablePtrs
+  :: M.Map AsteriusEntitySymbol Int64
   -> [AsteriusEntitySymbol]
   -> FFIMarshalState
   -> Builder
-genPinnedStaticClosures sym_map export_funcs FFIMarshalState {..} =
-  "new Set(" <>
-  string7
-    (show
-       (map ((sym_map !) . ffiExportClosure . (ffiExportDecls !)) export_funcs)) <>
-  ")"
+genExportStablePtrs sym_map export_funcs FFIMarshalState {..} =
+  "["
+    <> mconcat
+         ( intersperse
+             ","
+             ( map (intHex . (sym_map !) . ffiExportClosure . (ffiExportDecls !))
+                 export_funcs
+             )
+         )
+    <> "]"
 
 genLib :: Task -> LinkReport -> Builder
 genLib Task {..} LinkReport {..} =
@@ -214,8 +218,8 @@ genLib Task {..} LinkReport {..} =
               genInfoTables infoTableSet
             ]
         else mempty
-    , ", pinnedStaticClosures: "
-    , genPinnedStaticClosures
+    , ", exportStablePtrs: "
+    , genExportStablePtrs
         staticsSymbolMap
         exportFunctions
         bundledFFIMarshalState

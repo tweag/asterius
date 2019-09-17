@@ -14,7 +14,7 @@ function bdescr(c) {
 
 export class GC {
   constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
-    tso_manager, info_tables, pinned_closures, symbol_table, reentrancy_guard, yolo) {
+    tso_manager, info_tables, export_stableptrs, symbol_table, reentrancy_guard, yolo) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
@@ -22,7 +22,8 @@ export class GC {
     this.stableNameManager = stablename_manager;
     this.tsoManager = tso_manager;
     this.infoTables = info_tables;
-    this.pinnedClosures = pinned_closures;
+    for (const p of export_stableptrs)
+      this.stablePtrManager.newStablePtr(p);
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
     this.yolo = yolo;
@@ -546,7 +547,6 @@ export class GC {
     this.heapAlloc.initUnpinned();
     if (this.tsoManager.getTSOret(tid))
       this.tsoManager.setTSOret(tid, this.evacuateClosure(this.tsoManager.getTSOret(tid)));
-    for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
 
