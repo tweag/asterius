@@ -207,8 +207,13 @@ genLib Task {..} LinkReport {..} =
     , generateFFIExportObject bundledFFIMarshalState
     , ", symbolTable: "
     , genSymbolDict symbol_table
-    , ", infoTables: "
-    , genInfoTables infoTableSet
+    , if debug
+        then
+          mconcat
+            [ ", infoTables: ",
+              genInfoTables infoTableSet
+            ]
+        else mempty
     , ", pinnedStaticClosures: "
     , genPinnedStaticClosures
         staticsSymbolMap
