@@ -266,9 +266,6 @@ genDefEntry Task {..} =
         [ "module.then(m => "
         , out_base
         , "(m)).then(async i => {\n"
-        , if debug
-            then "i.logger.onEvent = ev => console.log(`[${ev.level}] ${ev.event}`);\n"
-            else mempty
         , "try {\n"
         , "i.exports.hs_init();\n"
         , "await i.exports.main();\n"

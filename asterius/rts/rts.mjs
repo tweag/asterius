@@ -187,11 +187,8 @@ export async function newAsteriusInstance(req) {
       __asterius_heapalloc.init();
       __asterius_bytestring_cbits.memory = __asterius_memory;
       return Object.assign(__asterius_jsffi_instance, {
-        wasmModule: req.module,
-        wasmInstance: __asterius_wasm_instance,
         exports: Object.freeze(Object.assign(__asterius_exports, __asterius_wasm_instance.exports)),
-        symbolTable: req.symbolTable,
-        logger: __asterius_logger
+        symbolTable: req.symbolTable
       });
     });
 }
