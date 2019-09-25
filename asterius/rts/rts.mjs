@@ -30,7 +30,8 @@ import { getNodeModules } from "./rts.node.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
-  let __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
+  let __asterius_persistent_state = req.persistentState ? req.persistentState : {},
+    __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_logger = new EventLogManager(req.symbolTable),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
     __asterius_wasm_instance = null,
@@ -188,7 +189,8 @@ export async function newAsteriusInstance(req) {
       __asterius_bytestring_cbits.memory = __asterius_memory;
       return Object.assign(__asterius_jsffi_instance, {
         exports: Object.freeze(Object.assign(__asterius_exports, __asterius_wasm_instance.exports)),
-        symbolTable: req.symbolTable
+        symbolTable: req.symbolTable,
+        persistentState: __asterius_persistent_state
       });
     });
 }
