@@ -257,7 +257,7 @@ export class Scheduler {
       ( () => { exports.context.reentrancyGuard.exit(0); }
       , e  => {
           // signal all the TSOs that they won't complete
-          for (var [tid,tso_info] of this.tsos) {
+          for (const [tid,tso_info] of this.tsos) {
             tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
           }
           exports.context.reentrancyGuard.exit(0);
@@ -272,9 +272,7 @@ export class Scheduler {
   async scheduler_loop(e) {
     while (true) {
       // read a command from the channel
-      this.running = false;
       const cmd = await this.channel.take();
-      this.running = true;
 
       switch (cmd.type) {
 
