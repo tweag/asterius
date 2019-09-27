@@ -114,9 +114,6 @@ rtsAsteriusModule opts =
                 { staticsType = Bytes
                 , asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
                 })
-          , ( "__asterius_func"
-            , AsteriusStatics
-                {staticsType = Bytes, asteriusStatics = [Uninitialized 8]})
           ]
     , functionMap =
         Map.fromList $
@@ -843,11 +840,11 @@ dirtySTACK _ stack =
     (storeI32 stack offset_StgStack_dirty $ constI32 1)
     mempty
 
--- | `_scheduleTSO(t)` executes the TSO t, starting with the function pointed by
--- `__asterius_func`.
+-- | `_scheduleTSO(tso,func)` executes the given tso starting at the given
+-- function
 scheduleTSOFunction BuiltinsOptions {} =
   runEDSL "scheduleTSO" $ do
-    [tso] <- params [I64]
+    [tso,func] <- params [I64,I64]
     -- store the current TSO
     putLVal currentTSO tso
     -- indicate in the Capability that we are running the TSO
@@ -861,7 +858,7 @@ scheduleTSOFunction BuiltinsOptions {} =
     dirtyTSO mainCapability tso
     dirtySTACK mainCapability (loadI64 tso offset_StgTSO_stackobj)
     -- execute the TSO (using stgRun trampolining machinery)
-    stgRun $ loadI64 (symbol "__asterius_func") 0
+    stgRun func
     -- indicate in the Capability that we are not running anything
     storeI64
       mainCapability

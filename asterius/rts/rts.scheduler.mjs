@@ -45,7 +45,7 @@ export class Scheduler {
         addr: -1,                   // TSO struct address in Wasm memory
         ret: 0,                     // returned object address in Wasm memory
         rstat: -1,                  // thread status
-        ffiAsyncFunc: 0,            // FFI asynchronous func
+        ffiAsyncFunc: undefined,    // FFI asynchronous func
         ffiRet:undefined,           // FFI returned value
         ffiRetType:0,               // FFI returned value type
         ffiRetErr:undefined,        // FFI returned error
@@ -304,13 +304,16 @@ export class Scheduler {
 
             //console.log(`Thread ${tid}: active`);
 
-            // Note that __asterius_func points to the first function that will
-            // be executed into scheduleTSO (it initializes the stgRun
-            // trampolining loop).
+            // By default we enter the Haskell code by "returning" to the
+            // closure on top of the stack.
+            var entryFunc = this.symbolTable.stg_returnToStackTop;
 
             // Returning from blocking FFI
             if (tso_info.ffiRetErr) {
               //console.log(`Thread ${tid}: FFI error`);
+
+              // Put an exception closure in R1 and use stg_raise# as the entry
+              // function.
               this.memory.i64Store(
                 this.symbolTable.MainCapability +
                   rtsConstants.offset_Capability_r +
@@ -320,17 +323,13 @@ export class Scheduler {
                   this.exports.rts_mkStablePtr(this.stablePtrManager.newJSVal(tso_info.ffiRetErr))
                 )
               );
-              this.memory.i64Store(
-                this.symbolTable.__asterius_func,
-                this.symbolTable.stg_raisezh
-              );
+              entryFunc = this.symbolTable.stg_raisezh;
             }
             else if (tso_info.ffiAsyncFunc) {
               //console.log(`Thread ${tid}: returned from FFI ${tso_info.ffiAsyncFunc}`);
-              this.memory.i64Store(
-                this.symbolTable.__asterius_func,
-                tso_info.ffiAsyncFunc
-              );
+
+              // the entry function was saved before the safe FFI call
+              entryFunc = Number(tso_info.ffiAsyncFunc);
 
               // Restore FFI async value
               const ffi_ret  = tso_info.addr + rtsConstants.offset_StgTSO_ffi_return;
@@ -369,23 +368,14 @@ export class Scheduler {
                   break;
               }
             }
-            else {
-              // We enter the Haskell code by "returning" to the closure on top
-              // of the stack.
-              this.memory.i64Store(
-                this.symbolTable.__asterius_func,
-                this.symbolTable.stg_returnToStackTop
-              );
-            }
 
-            tso_info.ffiAsyncFunc = 0;
+            tso_info.ffiAsyncFunc = undefined;
             tso_info.ffiRet       = undefined;
             tso_info.ffiRetType   = 0;
             tso_info.ffiRetErr    = undefined;
 
-
             // execute the TSO.
-            e.scheduleTSO(tso);
+            e.scheduleTSO(tso,entryFunc);
             this.returnedFromTSO(tid);
           }
           break;
