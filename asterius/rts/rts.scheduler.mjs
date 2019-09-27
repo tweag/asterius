@@ -39,26 +39,19 @@ export class Scheduler {
    */
   newTSO() {
     const tid = ++this.lastTid;
-    let promise_res = undefined;
-    let promise_rej = undefined;
-    let p = new Promise( (res,rej) =>
-                  { promise_res = res
-                  ; promise_rej = rej
-                  });
     this.tsos.set(
       tid,
       Object.seal({
-        addr: -1,         // TSO struct address in Wasm memory
-        ret: 0,           // returned object address in Wasm memory
-        rstat: -1,        // thread status
-        ffiAsyncFunc: 0,  // FFI asynchronous func
-        ffiRet:undefined, // FFI returned value
-        ffiRetType:0,     // FFI returned value type
-        ffiRetErr:undefined, // FFI returned error
-        promise: p,       // Promise used by user code to wait on this thread
-        promise_resolve: promise_res,
-        promise_reject:  promise_rej,
-        blockingPromise: undefined // Promise used to block on JS FFI code
+        addr: -1,                   // TSO struct address in Wasm memory
+        ret: 0,                     // returned object address in Wasm memory
+        rstat: -1,                  // thread status
+        ffiAsyncFunc: 0,            // FFI asynchronous func
+        ffiRet:undefined,           // FFI returned value
+        ffiRetType:0,               // FFI returned value type
+        ffiRetErr:undefined,        // FFI returned error
+        promise_resolve: undefined, // Settle the promise used by user
+        promise_reject:  undefined, // code to wait on this thread
+        blockingPromise: undefined  // Promise used to block on JS FFI code
       })
     );
     return tid;
@@ -123,7 +116,7 @@ export class Scheduler {
         // put the thread back into the run-queue
         // TODO: we should put it in front if it hasn't exceeded its time splice
         this.runQueue.push(tid);
-        this.submitCmdYield();
+        this.submitCmdWakeUp();
         break;
       }
       case 2: { // StackOverflow
@@ -133,7 +126,7 @@ export class Scheduler {
       case 3: { // ThreadYielding
         // put the thread back into the run-queue
         this.runQueue.push(tid);
-        this.submitCmdYield();
+        this.submitCmdWakeUp();
         break;
       }
       case 4: { // ThreadBlocked
@@ -157,7 +150,7 @@ export class Scheduler {
 
                     this.blockedTSOs.delete(tid);
                     this.runQueue.push(tid);
-                    this.submitCmdYield();
+                    this.submitCmdWakeUp();
                   }
               , e => {
                     tso_info.ffiRetErr = e;
@@ -176,7 +169,7 @@ export class Scheduler {
             tso_info.blockingPromise.then
               ( () => { this.blockedTSOs.delete(tid);
                         this.runQueue.push(tid);
-                        this.submitCmdYield();
+                        this.submitCmdWakeUp();
                       }
               , e => { throw new WebAssembly.RuntimeError(`Scheduler: blocking TSO Promise rejected with ${e}`); }
               )
@@ -200,8 +193,8 @@ export class Scheduler {
             }
         }
 
-        // May execute another TSO during while this one is blocked
-        this.submitCmdYield();
+        // May execute another thread while this one is blocked
+        this.submitCmdWakeUp();
         break;
       }
       case 5: { // ThreadFinished
@@ -210,21 +203,23 @@ export class Scheduler {
         switch(what_next) {
           case 1: { // ThreadRunGHC
             this.runQueue.push(tid);
-            this.submitCmdYield();
+            this.submitCmdWakeUp();
             break;
           }
           case 2: { // ThreadInterpret
             throw new WebAssembly.RuntimeError("Scheduler: unsupported ThreadInterpret");
             this.completeTSOs.add(tid);
-            this.submitCmdYield();
+            this.submitCmdWakeUp();
             break;
           }
           case 3: { // ThreadKilled
             tso_info.ret   = 0;
             tso_info.rstat = 2; // Killed (SchedulerStatus)
-            tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
+            if (tso_info.promise_resolve) {
+              tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
+            }
             this.completeTSOs.add(tid);
-            this.submitCmdYield();
+            this.submitCmdWakeUp();
             break;
           }
           case 4: { // ThreadComplete
@@ -233,9 +228,11 @@ export class Scheduler {
             const sp       = Number(this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp));
             tso_info.ret   = Number(this.memory.i64Load(sp + 8));
             tso_info.rstat = 1; // Success (SchedulerStatus)
-            tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
+            if (tso_info.promise_resolve) {
+              tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
+            }
             this.completeTSOs.add(tid);
-            this.submitCmdYield();
+            this.submitCmdWakeUp();
             break;
           }
         }
@@ -258,7 +255,9 @@ export class Scheduler {
       , e  => {
           // signal all the TSOs that they won't complete
           for (const [tid,tso_info] of this.tsos) {
-            tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
+            if (tso_info.promise_reject) {
+              tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
+            }
           }
           exports.context.reentrancyGuard.exit(0);
           throw new WebAssembly.RuntimeError(e);
@@ -276,7 +275,7 @@ export class Scheduler {
 
       switch (cmd.type) {
 
-        case Cmd.createThread: {
+        case Cmd.CreateThread: {
           // call any "createThread" variant. This calls newTSO to get a fresh
           // ThreadId.
           const tso = e[cmd.createThread](cmd.closure);
@@ -286,10 +285,8 @@ export class Scheduler {
 
           // Link the Promise returned synchronously on command submission with
           // the TSO promise.
-          tso_info.promise.then
-            (r => cmd.resolve(r)
-            ,e => cmd.reject(e)
-            );
+          tso_info.promise_resolve = cmd.resolve;
+          tso_info.promise_reject  = cmd.reject;
 
           // Add the thread into the run-queue
           this.enqueueTSO(tso);
@@ -297,7 +294,7 @@ export class Scheduler {
           break;
         }
 
-        case Cmd.yield: {
+        case Cmd.WakeUp: {
           if (this.runQueue.length > 0) {
             const tid = this.runQueue.shift();
             const tso_info = this.tsos.get(tid);
@@ -411,8 +408,8 @@ export class Scheduler {
     // Add the thread into the run-queue
     this.runQueue.push(tid);
 
-    // Ensure that we yield at least once to execute this thread
-    this.submitCmdYield();
+    // Ensure that we wake up the scheduler at least once to execute this thread
+    this.submitCmdWakeUp();
   }
 
   /**
@@ -425,7 +422,7 @@ export class Scheduler {
   submitCmdCreateThread(createThread,closure) {
     return new Promise((resolve, reject) =>
       this.channel.put(
-          { type: Cmd.createThread
+          { type: Cmd.CreateThread
           , createThread : createThread
           , closure: closure
           , resolve: resolve
@@ -435,22 +432,33 @@ export class Scheduler {
   }
 
   /**
-   * Submit a yield command.
+   * Submit a WakeUp command. A WakeUp command doesn't provide any additional
+   * information. It is only used to wake-up the scheduler so that it can check
+   * if there are some threads to run in its run-queue (unblocked threads, etc.)
+   * 
    *
    */
-  submitCmdYield() {
+  submitCmdWakeUp() {
     this.channel.put(
-      { type: Cmd.yield
+      { type: Cmd.WakeUp
       });
   }
 }
+
+/* Note [WakeUp command]
+ * ~~~~~~~~~~~~~~~~~~~~~
+ *
+ * Submit a WakeUp command. A WakeUp command doesn't provide any additional
+ * information. It is only used to wake up the scheduler so that it can check
+ * if there are some threads to run in its run-queue (unblocked threads, etc.)
+ */
 
 /**
  * Scheduler command types enum
  */
 const Cmd =
-  { createThread: 1 // create a new TSO
-  , yield: 2        // switch to another TSO from the run-queue
+  { CreateThread: 1 // Create a new thread
+  , WakeUp: 2       // Wake up the scheduler (see Note [WakeUp command])
   };
 
 /**
