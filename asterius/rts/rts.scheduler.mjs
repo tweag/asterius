@@ -99,7 +99,7 @@ export class Scheduler {
   /**
    * Called when a thread stops for some reason.
    */
-  returnFromTSO(tid) {
+  returnedFromTSO(tid) {
     const tso_info = this.tsos.get(tid);
     const tso = tso_info.addr;
     const reason = Number(this.memory.i64Load(
@@ -296,6 +296,8 @@ export class Scheduler {
 
         case Cmd.WakeUp: {
           if (this.runQueue.length > 0) {
+            // TODO: Array.shift is O(n). We should use a more efficient queue
+            // structure
             const tid = this.runQueue.shift();
             const tso_info = this.tsos.get(tid);
             const tso = tso_info.addr;
@@ -384,7 +386,7 @@ export class Scheduler {
 
             // execute the TSO.
             e.scheduleTSO(tso);
-            this.returnFromTSO(tid);
+            this.returnedFromTSO(tid);
           }
           break;
         }
