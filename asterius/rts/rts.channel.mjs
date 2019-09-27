@@ -8,8 +8,10 @@ function newThunk(f) {
 }
 
 function newNode() {
-  let r = undefined,
-    p = new Promise(resolve => (r = resolve));
+  let r,
+    p = new Promise(resolve => {
+      r = resolve;
+    });
   return { promise: p, resolve: r, next: newThunk(newNode) };
 }
 
@@ -21,16 +23,9 @@ export class Channel {
   }
 
   take() {
-    return this.takeNode.promise.then(
-      r => {
-        this.takeNode = this.takeNode.next();
-        return r;
-      },
-      err => {
-        this.takeNode = this.takeNode.next();
-        return Promise.reject(err);
-      }
-    );
+    const r = this.takeNode.promise;
+    this.takeNode = this.takeNode.next();
+    return r;
   }
 
   put(r) {
