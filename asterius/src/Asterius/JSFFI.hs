@@ -180,9 +180,11 @@ generateFFIFunctionImports FFIMarshalState {..} =
 
 -- | Generate FFI import lambda
 --
--- Unsafe, no return value:   (_1,_2,...,_N) => (code)
--- Unsafe, with return value: (_1,_2,...,_N) => __asterius_jsffi.newJSVal(code)
--- Safe: (_0,_1,_2,...,_N) => __asterius_jsffi.returnFFIPromise(_0, Promise.resolve(code).then(v => [returnTypes,v]))
+-- Unsafe:
+--    * Return a JSVal: (_1,_2,...,_N) => __asterius_jsffi.newJSVal(code)
+--    * Otherwise:      (_1,_2,...,_N) => (code)
+-- Safe:
+--    * (_0,_1,_2,...,_N) => __asterius_jsffi.returnFFIPromise(_0, Promise.resolve(code).then(v => [returnTypes,v]))
 generateFFIImportLambda :: FFIImportDecl -> Builder
 generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
   | is_unsafe =
