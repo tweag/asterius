@@ -127,7 +127,7 @@ export class Scheduler {
         break;
       }
       case 2: { // StackOverflow
-        throw "StackOverflow";
+        throw new WebAssembly.RuntimeError("StackOverflow");
         break;
       }
       case 3: { // ThreadYielding
@@ -178,7 +178,7 @@ export class Scheduler {
                         this.runQueue.push(tid);
                         this.submitCmdYield();
                       }
-              , e => { throw `Scheduler: blocking TSO Promise rejected with ${e}`; }
+              , e => { throw new WebAssembly.RuntimeError(`Scheduler: blocking TSO Promise rejected with ${e}`); }
               )
             break;
           }
@@ -195,7 +195,7 @@ export class Scheduler {
           case Blocked.ThreadMigrating:
           default:
             {
-            throw `Unhandled thread blocking reason: ${why_blocked}`;
+            throw new WebAssembly.RuntimeError(`Unhandled thread blocking reason: ${why_blocked}`);
             break;
             }
         }
@@ -214,7 +214,7 @@ export class Scheduler {
             break;
           }
           case 2: { // ThreadInterpret
-            throw "Scheduler: unsupported ThreadInterpret";
+            throw new WebAssembly.RuntimeError("Scheduler: unsupported ThreadInterpret");
             this.completeTSOs.add(tid);
             this.submitCmdYield();
             break;
@@ -242,7 +242,7 @@ export class Scheduler {
         break;
       }
       default: {
-        throw `returnFFIPromise: unsupported thread stopping reason ${reason}`;
+        throw new WebAssembly.RuntimeError(`returnFFIPromise: unsupported thread stopping reason ${reason}`);
         break;
       }
     }
@@ -261,7 +261,7 @@ export class Scheduler {
             tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
           }
           exports.context.reentrancyGuard.exit(0);
-          throw e;
+          throw new WebAssembly.RuntimeError(e);
       }
       );
   }
@@ -368,7 +368,7 @@ export class Scheduler {
                 default:
                   // FIXME: add support for multiple return values: the tag already
                   // supports it and we get a list of values in tso_info.ffiRet
-                  throw `Unsupported FFI return value type tag ${tso_info.ffiRetType} (more than one value?): ${tso_info.ffiRet}`;
+                  throw  new WebAssembly.RuntimeError(`Unsupported FFI return value type tag ${tso_info.ffiRetType} (more than one value?): ${tso_info.ffiRet}`);
                   break;
               }
             }
@@ -395,7 +395,7 @@ export class Scheduler {
         }
 
         default: {
-          throw `Unrecognized scheduler command type: ${cmd.type}`;
+          throw new WebAssembly.RuntimeError(`Unrecognized scheduler command type: ${cmd.type}`);
           break;
         }
       }
