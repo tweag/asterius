@@ -184,11 +184,15 @@ generateFFIFunctionImports FFIMarshalState {..} =
 --    * Return a JSVal: (_1,_2,...,_N) => __asterius_jsffi.newJSVal(code)
 --    * Otherwise:      (_1,_2,...,_N) => (code)
 -- Safe:
---    * (_0,_1,_2,...,_N) => __asterius_jsffi.returnFFIPromise(_0, Promise.resolve(code).then(v => [returnTypes,v]))
+--    * (tid,_1,_2,...,_N) => __asterius_jsffi.returnFFIPromise(tid, (async () => (code))().then(v => [returnTypes,v]))
+--
+-- Note: we use `(async () => (code))()` instead of `Promise.resolve(code)` to
+-- handle `code` throwing synchronously instead of returning a rejected Promise.
+--
 generateFFIImportLambda :: FFIImportDecl -> Builder
 generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
   | is_unsafe =
-    lamb 1
+    lamb False
       <> ( case ffiResultTypes of
              [FFI_JSVAL] -> "__asterius_jsffi.newJSVal("
              _ -> "("
@@ -196,18 +200,20 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
       <> code
       <> ")"
   | otherwise =
-    lamb 0
-      <> "__asterius_jsffi.returnFFIPromise(_0,"
-      <> "Promise.resolve(" <> code <> ").then(v => ["
+    lamb True
+      <> "__asterius_jsffi.returnFFIPromise(tid,"
+      <> "(async () => (" <> code <> "))().then(v => ["
       <> integerDec (ffiValueTypesTag ffiResultTypes)
       <> ",v]))"
   where
     is_unsafe = ffiSafety == FFIUnsafe
-    lamb l =
+    lamb hasTID =
       "("
         <> mconcat
              ( intersperse ","
-                 ["_" <> intDec i | i <- [l .. length ffiParamTypes]]
+                 ((if hasTID then ["tid"] else [])
+                  ++ ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
+                 )
                )
         <> ")=>"
     code =
