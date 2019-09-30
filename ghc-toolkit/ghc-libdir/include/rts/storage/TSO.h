@@ -188,7 +188,7 @@ typedef struct StgTSO_ {
     // the original one. Hence it assumes some offsets in the structure (see the
     // generated constants by the deriveConstants program).
     //
-    // Hopefully the size of TSO structure isn't a constant used by the
+    // Luckily the size of TSO structure isn't a constant used by the
     // generated code. The allocation of the structure is done in Cmm (see createThread)
     // hence it uses this header.
     StgWord64               saved_regs[128]; /* Asterius: saved local regs */
