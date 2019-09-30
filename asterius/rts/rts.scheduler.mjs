@@ -155,6 +155,9 @@ export class Scheduler {
               , e => {
                     tso_info.ffiRetErr = e;
                     //console.log(`Thread ${tid}: blocking FFI Promise rejected with ${e.stack}`);
+                    this.blockedTSOs.delete(tid);
+                    this.runQueue.push(tid);
+                    this.submitCmdWakeUp();
                   }
               )
             break;
