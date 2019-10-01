@@ -14,7 +14,7 @@ function bdescr(c) {
 
 export class GC {
   constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
-    scheduler, info_tables, pinned_closures, symbol_table, reentrancy_guard, yolo) {
+    scheduler, info_tables, export_stableptrs, symbol_table, reentrancy_guard, yolo) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
@@ -22,7 +22,8 @@ export class GC {
     this.stableNameManager = stablename_manager;
     this.scheduler = scheduler;
     this.infoTables = info_tables;
-    this.pinnedClosures = pinned_closures;
+    for (const p of export_stableptrs)
+      this.stablePtrManager.newStablePtr(p);
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
     this.yolo = yolo;
@@ -58,7 +59,10 @@ export class GC {
           this.liveMBlocks.add(bdescr(dest_c));
         } else {
           const info = Number(this.memory.i64Load(untagged_c));
-          if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+          if (this.infoTables && !this.infoTables.has(info))
+            throw new WebAssembly.RuntimeError(
+              `Invalid info table 0x${info.toString(16)}`
+            );
           const type =
               this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
           switch (type) {
@@ -227,7 +231,10 @@ export class GC {
     this.scavengeClosureAt(c + offset_fun);
     const fun = this.memory.i64Load(c + offset_fun),
           fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun)));
-    if (!this.infoTables.has(fun_info)) throw new WebAssembly.RuntimeError();
+    if (this.infoTables && !this.infoTables.has(fun_info))
+      throw new WebAssembly.RuntimeError(
+        `Invalid info table 0x${fun_info.toString(16)}`
+      );
     switch (this.memory.i32Load(fun_info + rtsConstants.offset_StgFunInfoTable_f +
                                 rtsConstants.offset_StgFunInfoExtraFwd_fun_type)) {
       case FunTypes.ARG_GEN: {
@@ -274,7 +281,10 @@ export class GC {
                 this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type),
             raw_layout =
                 this.memory.i64Load(info + rtsConstants.offset_StgInfoTable_layout);
-      if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+      if (this.infoTables && !this.infoTables.has(info))
+        throw new WebAssembly.RuntimeError(
+          `Invalid info table 0x${info.toString(16)}`
+        );
       if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
         this.evacuateClosure(
             this.memory.i64Load(info + rtsConstants.offset_StgRetInfoTable_srt));
@@ -377,7 +387,10 @@ export class GC {
   scavengeClosure(c) {
     const info = Number(this.memory.i64Load(c)),
           type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
-    if (!this.infoTables.has(info)) throw new WebAssembly.RuntimeError();
+    if (this.infoTables && !this.infoTables.has(info))
+      throw new WebAssembly.RuntimeError(
+        `Invalid info table 0x${info.toString(16)}`
+      );
     switch (info) {
       case this.symbolTable.base_GHCziStable_StablePtr_con_info:
       case this.symbolTable.integerzmwiredzmin_GHCziIntegerziType_Integer_con_info: {
@@ -540,7 +553,6 @@ export class GC {
       tso_info.addr = this.evacuateClosure(tso_info.addr);
     }
 
-    for (const c of this.pinnedClosures) this.evacuateClosure(c);
     for (const[sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
 
