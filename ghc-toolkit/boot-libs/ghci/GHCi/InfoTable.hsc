@@ -23,19 +23,13 @@ import GHC.Exts
 import GHC.Exts.Heap
 #endif
 
-ghciTablesNextToCode :: Bool
-#ifdef TABLES_NEXT_TO_CODE
-ghciTablesNextToCode = True
-#else
-ghciTablesNextToCode = False
-#endif
-
 #ifdef GHCI /* To end */
 -- NOTE: Must return a pointer acceptable for use in the header of a closure.
 -- If tables_next_to_code is enabled, then it must point the the 'code' field.
 -- Otherwise, it should point to the start of the StgInfoTable.
 mkConInfoTable
-   :: Int     -- ptr words
+   :: Bool    -- TABLES_NEXT_TO_CODE
+   -> Int     -- ptr words
    -> Int     -- non-ptr words
    -> Int     -- constr tag
    -> Int     -- pointer tag
@@ -44,20 +38,20 @@ mkConInfoTable
       -- resulting info table is allocated with allocateExec(), and
       -- should be freed with freeExec().
 
-mkConInfoTable ptr_words nonptr_words tag ptrtag con_desc =
-  castFunPtrToPtr <$> newExecConItbl itbl con_desc
+mkConInfoTable tables_next_to_code ptr_words nonptr_words tag ptrtag con_desc =
+  castFunPtrToPtr <$> newExecConItbl tables_next_to_code itbl con_desc
   where
      entry_addr = interpConstrEntry !! ptrtag
      code' = mkJumpToAddr entry_addr
      itbl  = StgInfoTable {
-                 entry = if ghciTablesNextToCode
+                 entry = if tables_next_to_code
                          then Nothing
                          else Just entry_addr,
                  ptrs  = fromIntegral ptr_words,
                  nptrs = fromIntegral nonptr_words,
                  tipe  = CONSTR,
                  srtlen = fromIntegral tag,
-                 code  = if ghciTablesNextToCode
+                 code  = if tables_next_to_code
                          then Just code'
                          else Nothing
               }
@@ -318,38 +312,38 @@ data StgConInfoTable = StgConInfoTable {
 
 
 pokeConItbl
-  :: Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
+  :: Bool -> Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
   -> IO ()
-pokeConItbl wr_ptr _ex_ptr itbl = do
-#if defined(TABLES_NEXT_TO_CODE)
-  -- Write the offset to the con_desc from the end of the standard InfoTable
-  -- at the first byte.
-  let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
-  (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
-#else
-  -- Write the con_desc address after the end of the info table.
-  -- Use itblSize because CPP will not pick up PROFILING when calculating
-  -- the offset.
-  pokeByteOff wr_ptr itblSize (conDesc itbl)
-#endif
+pokeConItbl tables_next_to_code wr_ptr _ex_ptr itbl = do
+  if tables_next_to_code
+  then do
+      -- Write the offset to the con_desc from the end of the standard InfoTable
+      -- at the first byte.
+      let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
+      (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
+  else do
+      -- Write the con_desc address after the end of the info table.
+      -- Use itblSize because CPP will not pick up PROFILING when calculating
+      -- the offset.
+      pokeByteOff wr_ptr itblSize (conDesc itbl)
   pokeItbl (wr_ptr `plusPtr` (#offset StgConInfoTable, i)) (infoTable itbl)
 
-sizeOfEntryCode :: Int
-sizeOfEntryCode
-  | not ghciTablesNextToCode = 0
+sizeOfEntryCode :: Bool -> Int
+sizeOfEntryCode tables_next_to_code
+  | not tables_next_to_code = 0
   | otherwise =
      case mkJumpToAddr undefined of
        Left  xs -> sizeOf (head xs) * length xs
        Right xs -> sizeOf (head xs) * length xs
 
 -- Note: Must return proper pointer for use in a closure
-newExecConItbl :: StgInfoTable -> [Word8] -> IO (FunPtr ())
-newExecConItbl obj con_desc
+newExecConItbl :: Bool -> StgInfoTable -> [Word8] -> IO (FunPtr ())
+newExecConItbl tables_next_to_code obj con_desc
    = alloca $ \pcode -> do
         let lcon_desc = length con_desc + 1{- null terminator -}
             -- SCARY
             -- This size represents the number of bytes in an StgConInfoTable.
-            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode)
+            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode tables_next_to_code)
                -- Note: we need to allocate the conDesc string next to the info
                -- table, because on a 64-bit platform we reference this string
                -- with a 32-bit offset relative to the info table, so if we
@@ -358,14 +352,12 @@ newExecConItbl obj con_desc
         ex_ptr <- peek pcode
         let cinfo = StgConInfoTable { conDesc = ex_ptr `plusPtr` fromIntegral sz
                                     , infoTable = obj }
-        pokeConItbl wr_ptr ex_ptr cinfo
+        pokeConItbl tables_next_to_code wr_ptr ex_ptr cinfo
         pokeArray0 0 (castPtr wr_ptr `plusPtr` fromIntegral sz) con_desc
         _flushExec sz ex_ptr -- Cache flush (if needed)
-#if defined(TABLES_NEXT_TO_CODE)
-        return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
-#else
-        return (castPtrToFunPtr ex_ptr)
-#endif
+        if tables_next_to_code
+          then return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
+          else return (castPtrToFunPtr ex_ptr)
 
 foreign import ccall unsafe "allocateExec"
   _allocateExec :: CUInt -> Ptr (Ptr a) -> IO (Ptr a)
