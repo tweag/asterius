@@ -1,48 +1,95 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Asterius.GHCi
-  ( asteriusRunQExp
-  , asteriusRunQPat
-  , asteriusRunQType
-  , asteriusRunQDec
-  ) where
+  ( asteriusRunQExp,
+    asteriusRunQPat,
+    asteriusRunQType,
+    asteriusRunQDec,
+    asteriusRunModFinalizers
+    )
+where
 
-import Asterius.ByteString
-import Asterius.Types
-import Control.Monad.Fail
-import Control.Monad.IO.Class
-import Control.Monad.Reader
+import Control.DeepSeq
+import Control.Exception
 import Data.Binary
-import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString as BS
 import Data.IORef
+import GHC.IO.Device
+import GHC.IO.Handle.FD
 import GHCi.Message
-import GHCi.TH.Binary ()
-import qualified Language.Haskell.TH.Syntax as TH
-import Prelude
+import GHCi.RemoteTypes
+import GHCi.TH
+import Language.Haskell.TH.Syntax
+import System.IO
+import System.IO.Unsafe
 
-newtype AsteriusQ a = AsteriusQ
-  { unAsteriusQ :: ReaderT (IORef QState) IO a
-  } deriving (Functor, Applicative, Monad, MonadFail, MonadIO)
+asteriusRunQ :: THResultType -> Q a -> IO ()
+asteriusRunQ ty hv = do
+  r <-
+    try $ do
+      rstate <- startTH
+      rhv <- toHValueRef <$> mkRemoteRef hv
+      runTH globalPipe rstate rhv ty Nothing
+  resp <-
+    case r of
+      Left e
+        | Just (GHCiQException _ err) <- fromException e -> pure $ QFail err
+        | otherwise -> QException <$> showException e
+      Right (a :: BS.ByteString) -> pure $ QDone a
+  writePipe globalPipe $ do
+    putTHMessage RunTHDone
+    put resp
 
-instance TH.Quasi AsteriusQ
+showException :: SomeException -> IO String
+showException e0 = do
+  r <- try $ evaluate $ force $ show e0
+  case r of
+    Left e -> showException e
+    Right str -> pure str
 
-emptyQState :: QState
-emptyQState = QState mempty Nothing (error "Asterius.GHCi: no pipe")
+asteriusRunQExp :: Q Exp -> IO ()
+asteriusRunQExp = asteriusRunQ THExp
 
-asteriusRunQ :: Binary a => TH.Q a -> IO JSArrayBuffer
-asteriusRunQ m = do
-  qs_ref <- newIORef emptyQState
-  r <- runReaderT (unAsteriusQ (TH.runQ m)) qs_ref
-  pure (byteStringToJSArrayBuffer (LBS.toStrict (encode r)))
+asteriusRunQPat :: Q Pat -> IO ()
+asteriusRunQPat = asteriusRunQ THPat
 
-asteriusRunQExp :: TH.Q TH.Exp -> IO JSArrayBuffer
-asteriusRunQExp = asteriusRunQ
+asteriusRunQType :: Q Type -> IO ()
+asteriusRunQType = asteriusRunQ THType
 
-asteriusRunQPat :: TH.Q TH.Pat -> IO JSArrayBuffer
-asteriusRunQPat = asteriusRunQ
+asteriusRunQDec :: Q [Dec] -> IO ()
+asteriusRunQDec = asteriusRunQ THDec
 
-asteriusRunQType :: TH.Q TH.Type -> IO JSArrayBuffer
-asteriusRunQType = asteriusRunQ
+asteriusRunModFinalizers :: IO ()
+asteriusRunModFinalizers = writePipe globalPipe $ do
+  putTHMessage RunTHDone
+  put $ QDone ()
 
-asteriusRunQDec :: TH.Q [TH.Dec] -> IO JSArrayBuffer
-asteriusRunQDec = asteriusRunQ
+{-# NOINLINE globalPipe #-}
+globalPipe :: Pipe
+globalPipe = unsafePerformIO $ do
+  read_handle <-
+    fdToHandle' (fromIntegral read_fd)
+      (Just Stream)
+      False
+      ""
+      ReadMode
+      True
+  write_handle <-
+    fdToHandle' (fromIntegral write_fd)
+      (Just Stream)
+      False
+      ""
+      WriteMode
+      True
+  hSetBuffering read_handle NoBuffering
+  hSetBuffering write_handle NoBuffering
+  lo_ref <- newIORef Nothing
+  pure Pipe
+    { pipeRead = read_handle,
+      pipeWrite = write_handle,
+      pipeLeftovers = lo_ref
+      }
+
+foreign import javascript "Number(process.env.ASTERIUS_NODE_READ_FD)" read_fd :: Int
+
+foreign import javascript "Number(process.env.ASTERIUS_NODE_WRITE_FD)" write_fd :: Int

@@ -40,7 +40,7 @@ import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as LB
 import Data.Dynamic
-import Data.Typeable (TypeRep)
+import Data.Typeable (Typeable, TypeRep)
 import Data.IORef
 import Data.Map (Map)
 import GHC.Generics
@@ -101,7 +101,8 @@ data Message a where
 
   -- | Create an info table for a constructor
   MkConInfoTable
-   :: Int     -- ptr words
+   :: Bool    -- TABLES_NEXT_TO_CODE
+   -> Int     -- ptr words
    -> Int     -- non-ptr words
    -> Int     -- constr tag
    -> Int     -- pointer tag
@@ -253,7 +254,7 @@ data THMessage a where
 
 deriving instance Show (THMessage a)
 
-data THMsg = forall a . (Binary a, Show a) => THMsg (THMessage a)
+data THMsg = forall a . (Binary a, Show a, Typeable a) => THMsg (THMessage a)
 
 getTHMessage :: Get THMsg
 getTHMessage = do
@@ -307,6 +308,9 @@ putTHMessage m = case m of
   AddForeignFilePath lang a   -> putWord8 20 >> put lang >> put a
   AddCorePlugin a             -> putWord8 21 >> put a
 
+instance Binary THMsg where
+  get = getTHMessage
+  put (THMsg m) = putTHMessage m
 
 data EvalOpts = EvalOpts
   { useSandboxThread :: Bool
@@ -413,7 +417,7 @@ data QState = QState
   }
 instance Show QState where show _ = "<QState>"
 
-data Msg = forall a . (Binary a, Show a) => Msg (Message a)
+data Msg = forall a . (Binary a, Show a, Typeable a) => Msg (Message a)
 
 getMessage :: Get Msg
 getMessage = do
@@ -437,7 +441,7 @@ getMessage = do
       15 -> Msg <$> MallocStrings <$> get
       16 -> Msg <$> (PrepFFI <$> get <*> get <*> get)
       17 -> Msg <$> FreeFFI <$> get
-      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get)
+      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get <*> get)
       19 -> Msg <$> (EvalStmt <$> get <*> get)
       20 -> Msg <$> (ResumeStmt <$> get <*> get)
       21 -> Msg <$> (AbandonStmt <$> get)
@@ -475,7 +479,7 @@ putMessage m = case m of
   MallocStrings bss           -> putWord8 15 >> put bss
   PrepFFI conv args res       -> putWord8 16 >> put conv >> put args >> put res
   FreeFFI p                   -> putWord8 17 >> put p
-  MkConInfoTable p n t pt d   -> putWord8 18 >> put p >> put n >> put t >> put pt >> put d
+  MkConInfoTable tc p n t pt d -> putWord8 18 >> put tc >> put p >> put n >> put t >> put pt >> put d
   EvalStmt opts val           -> putWord8 19 >> put opts >> put val
   ResumeStmt opts val         -> putWord8 20 >> put opts >> put val
   AbandonStmt val             -> putWord8 21 >> put val
@@ -492,6 +496,10 @@ putMessage m = case m of
   RunModFinalizers a b        -> putWord8 32 >> put a >> put b
   AddSptEntry a b             -> putWord8 33 >> put a >> put b
   RunTH st q loc ty           -> putWord8 34 >> put st >> put q >> put loc >> put ty
+
+instance Binary Msg where
+  get = getMessage
+  put (Msg m) = putMessage m
 
 -- -----------------------------------------------------------------------------
 -- Reading/writing messages
