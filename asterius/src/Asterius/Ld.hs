@@ -44,10 +44,7 @@ loadTheWorld LinkTask {..} = do
 rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
   Set.fromList
-    [ "__asterius_func"
-    , "__asterius_regs"
-    , "__asterius_ret"
-    , "barf"
+    [ "barf"
     , "base_AsteriusziTopHandler_runMainIO_closure"
     , "base_AsteriusziTypes_makeJSException_closure"
     , "base_GHCziPtr_Ptr_con_info"

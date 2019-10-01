@@ -9,6 +9,7 @@ where
 
 import Asterius.Internals
 import Asterius.Types
+import Asterius.EDSL (currentTID, currentTSO, getLVal)
 import Control.Monad.State.Strict
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
@@ -158,15 +159,59 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
             this_preblock_instrs = bsPreBlockInstrs s
             save_target_instr =
               SetLocal {index = 2, value = ConstI32 $ fromIntegral next_id}
-            reset_instr = CallImport
-              { target' = "__asterius_resetPromise",
-                operands = [],
-                callImportReturnTypes = []
-                }
+
+
+            reset_instrs =
+               -- Reset:
+               --  * saved local regs
+               --  * ffi_func
+               --  * ffi_return
+               --
+               [ Store
+                   { bytes  = 8
+                   , offset = fromIntegral offset_StgTSO_ffi_func
+                   , ptr = Unary
+                       { unaryOp = WrapInt64
+                       , operand0 = getLVal currentTSO
+                       }
+                   , value = ConstI64 0
+                   , valueType = I64
+                   }
+               ]
+               ++ [ Store
+                   { bytes  = 8
+                   , offset = fromIntegral offset_StgTSO_ffi_return
+                   , ptr = Unary
+                       { unaryOp = WrapInt64
+                       , operand0 = getLVal currentTSO
+                       }
+                   , value = ConstI64 0
+                   , valueType = I64
+                   }
+               ]
+               ++ [ Store
+                   { bytes  = 8
+                   , offset = i*8 + fromIntegral offset_StgTSO_saved_regs
+                   , ptr = Unary
+                       { unaryOp = WrapInt64
+                       , operand0 = getLVal currentTSO
+                       }
+                   , value = ConstI64 0
+                   , valueType = I64
+                   }
+                 | i <- [0..fromIntegral maxLocalRegs-1] -- TODO: use a loop
+                 ]
             (ccall_instr, next_preblock_instrs) = case orig_instr of
-              Call {} -> (orig_instr {callReturnTypes = []}, [reset_instr])
+              Call {} -> (orig_instr
+                            { operands = currentTID : operands orig_instr
+                            , callReturnTypes = []
+                            }
+                          , reset_instrs
+                          )
               SetLocal {value = c@Call {}, ..} ->
-                ( c {callReturnTypes = []},
+                ( c { operands = currentTID : operands c
+                    , callReturnTypes = []
+                    },
                   [ orig_instr
                       { value = Load
                           { signed = False,
@@ -174,20 +219,16 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
                               I32 -> 4
                               F32 -> 4
                               _ -> 8,
-                            offset = 0,
+                            offset = fromIntegral offset_StgTSO_ffi_return,
                             valueType = vts !! fromIntegral index,
                             ptr = Unary
                               { unaryOp = WrapInt64,
-                                operand0 = Symbol
-                                  { unresolvedSymbol = "__asterius_ret",
-                                    symbolOffset = 0
-                                    }
-                                }
-                            }
-                        },
-                    reset_instr
-                    ]
-                  )
+                                operand0 = getLVal currentTSO
+                              }
+                          }
+                      }
+                  ] ++ reset_instrs
+                )
               _ ->
                 error
                   "Asterius.Passes.SafeCCall.splitSingleBlock: invalid ccall instruction"
@@ -235,14 +276,23 @@ splitBlockBody instrs = foldr' w (BlockChunks [] []) es
       Nop -> []
       _ -> [instrs]
 
+-- | Maximal number of local registers
+--
+-- IMPORTANT: this number must match StgTSO.saved_regs fields (in
+-- ghc/include/rts/storage/TSO.h)
+maxLocalRegs :: Word
+maxLocalRegs = 128
+
 genSaveLoad
   :: AsteriusEntitySymbol -> [ValueType] -> ([Expression], [Expression])
 genSaveLoad sym vts
-  | length vts > 128 =
+  | fromIntegral (length vts) > maxLocalRegs =
     error
       "Asterius.Passes.SafeCCall.genSaveLoad: too many local regs!"
   | otherwise = (save_instrs, load_instrs)
   where
+    -- Don't save local registers 0 and 1 (reserved by the relooper and the
+    -- block splitter)
     I32 : I32 : ctx_regs@(I32 : _) = vts
     p_ctx_regs = zip [2 ..] ctx_regs
     pos i = (i - 2) * 8
@@ -253,33 +303,27 @@ genSaveLoad sym vts
     save_instrs =
       [ Store
           { bytes = bs vt,
-            offset = pos i,
+            offset = pos i + fromIntegral offset_StgTSO_saved_regs,
             ptr = Unary
               { unaryOp = WrapInt64,
-                operand0 = Symbol
-                  { unresolvedSymbol = "__asterius_regs",
-                    symbolOffset = 0
-                    }
-                },
+                operand0 = getLVal currentTSO
+              },
             value = GetLocal {index = i, valueType = vt},
             valueType = vt
             }
         | (i, vt) <- p_ctx_regs
         ]
         <> [ Store
-               { bytes = 8,
-                 offset = 0,
-                 ptr = Unary
-                   { unaryOp = WrapInt64,
-                     operand0 = Symbol
-                       { unresolvedSymbol = "__asterius_func",
-                         symbolOffset = 0
-                         }
-                     },
-                 value = Symbol {unresolvedSymbol = sym, symbolOffset = 0},
-                 valueType = I64
-                 },
-             Store
+               { bytes = 8
+               , offset = fromIntegral $ offset_StgTSO_ffi_func
+               , ptr = Unary
+                   { unaryOp  = WrapInt64,
+                     operand0 = getLVal currentTSO
+                   }
+               , value = Symbol {unresolvedSymbol = sym, symbolOffset = 0}
+               , valueType = I64
+               }
+           , Store
                { bytes = 8,
                  offset = fromIntegral
                    $ offset_Capability_r
@@ -293,26 +337,34 @@ genSaveLoad sym vts
                      },
                  value = ConstI64 $ fromIntegral ret_ThreadBlocked,
                  valueType = I64
-                 },
-             ReturnCall {returnCallTarget64 = "StgReturn"}
-             ]
+                 }
+           , Store
+               { bytes = 2
+               , offset = fromIntegral
+                   $ offset_StgTSO_why_blocked
+               , ptr = Unary
+                   { unaryOp = WrapInt64,
+                     operand0 = getLVal currentTSO
+                   }
+               , value = ConstI32 $ fromIntegral blocked_BlockedOnCCall
+               , valueType = I32
+               }
+           , ReturnCall {returnCallTarget64 = "StgReturn"}
+           ]
     load_instrs =
       [ SetLocal
           { index = i,
             value = Load
               { signed = False,
                 bytes = bs vt,
-                offset = pos i,
+                offset = pos i + fromIntegral offset_StgTSO_saved_regs,
                 valueType = vt,
                 ptr = Unary
                   { unaryOp = WrapInt64,
-                    operand0 = Symbol
-                      { unresolvedSymbol = "__asterius_regs",
-                        symbolOffset = 0
-                        }
-                    }
-                }
-            }
+                    operand0 = getLVal currentTSO
+                  }
+              }
+          }
         | (i, vt) <- p_ctx_regs
         ]
 

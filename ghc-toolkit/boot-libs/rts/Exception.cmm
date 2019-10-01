@@ -68,39 +68,39 @@ INFO_TABLE_RET(stg_unmaskAsyncExceptionszh_ret, RET_SMALL, W_ info_ptr)
       TO_W_(StgTSO_flags(CurrentTSO)) & ~(TSO_BLOCKEX|TSO_INTERRUPTIBLE));
 
     /* Eagerly raise a masked exception, if there is one */
-    if (StgTSO_blocked_exceptions(CurrentTSO) != END_TSO_QUEUE) {
+    //if (StgTSO_blocked_exceptions(CurrentTSO) != END_TSO_QUEUE) {
 
-        STK_CHK_P_LL (WDS(2), stg_unmaskAsyncExceptionszh_ret_info, R1);
-        /*
-         * We have to be very careful here, as in killThread#, since
-         * we are about to raise an async exception in the current
-         * thread, which might result in the thread being killed.
-         */
-        Sp_adj(-2);
-        Sp(1) = ret;
-        Sp(0) = stg_ret_p_info;
-        SAVE_THREAD_STATE();
-        (r) = ccall maybePerformBlockedException (MyCapability() "ptr",
-                                                      CurrentTSO "ptr");
-        if (r != 0::CInt) {
-            if (StgTSO_what_next(CurrentTSO) == ThreadKilled::I16) {
-                jump stg_threadFinished [];
-            } else {
-                LOAD_THREAD_STATE();
-                ASSERT(StgTSO_what_next(CurrentTSO) == ThreadRunGHC::I16);
-                R1 = ret;
-                jump %ENTRY_CODE(Sp(0)) [R1];
-            }
-        }
-        else {
-            /*
-               the thread might have been removed from the
-               blocked_exception list by someone else in the meantime.
-               Just restore the stack pointer and continue.
-            */
-            Sp_adj(2);
-        }
-    }
+    //    STK_CHK_P_LL (WDS(2), stg_unmaskAsyncExceptionszh_ret_info, R1);
+    //    /*
+    //     * We have to be very careful here, as in killThread#, since
+    //     * we are about to raise an async exception in the current
+    //     * thread, which might result in the thread being killed.
+    //     */
+    //    Sp_adj(-2);
+    //    Sp(1) = ret;
+    //    Sp(0) = stg_ret_p_info;
+    //    SAVE_THREAD_STATE();
+    //    (r) = ccall maybePerformBlockedException (MyCapability() "ptr",
+    //                                                  CurrentTSO "ptr");
+    //    if (r != 0::CInt) {
+    //        if (StgTSO_what_next(CurrentTSO) == ThreadKilled::I16) {
+    //            jump stg_threadFinished [];
+    //        } else {
+    //            LOAD_THREAD_STATE();
+    //            ASSERT(StgTSO_what_next(CurrentTSO) == ThreadRunGHC::I16);
+    //            R1 = ret;
+    //            jump %ENTRY_CODE(Sp(0)) [R1];
+    //        }
+    //    }
+    //    else {
+    //        /*
+    //           the thread might have been removed from the
+    //           blocked_exception list by someone else in the meantime.
+    //           Just restore the stack pointer and continue.
+    //        */
+    //        Sp_adj(2);
+    //    }
+    //}
 
     Sp_adj(1);
     R1 = ret;
@@ -223,41 +223,41 @@ stg_unmaskAsyncExceptionszh /* explicit stack */
             TO_W_(StgTSO_flags(CurrentTSO)) & ~(TSO_BLOCKEX|TSO_INTERRUPTIBLE));
 
         /* Eagerly raise a masked exception, if there is one */
-        if (StgTSO_blocked_exceptions(CurrentTSO) != END_TSO_QUEUE) {
-            /*
-             * We have to be very careful here, as in killThread#, since
-             * we are about to raise an async exception in the current
-             * thread, which might result in the thread being killed.
-             *
-             * Now, if we are to raise an exception in the current
-             * thread, there might be an update frame above us on the
-             * stack due to unsafePerformIO.  Hence, the stack must
-             * make sense, because it is about to be snapshotted into
-             * an AP_STACK.
-             */
-            Sp_adj(-3);
-            Sp(2) = stg_ap_v_info;
-            Sp(1) = io;
-            Sp(0) = stg_enter_info;
+        //if (StgTSO_blocked_exceptions(CurrentTSO) != END_TSO_QUEUE) {
+        //    /*
+        //     * We have to be very careful here, as in killThread#, since
+        //     * we are about to raise an async exception in the current
+        //     * thread, which might result in the thread being killed.
+        //     *
+        //     * Now, if we are to raise an exception in the current
+        //     * thread, there might be an update frame above us on the
+        //     * stack due to unsafePerformIO.  Hence, the stack must
+        //     * make sense, because it is about to be snapshotted into
+        //     * an AP_STACK.
+        //     */
+        //    Sp_adj(-3);
+        //    Sp(2) = stg_ap_v_info;
+        //    Sp(1) = io;
+        //    Sp(0) = stg_enter_info;
 
-            SAVE_THREAD_STATE();
-            (r) = ccall maybePerformBlockedException (MyCapability() "ptr",
-                                                      CurrentTSO "ptr");
+        //    SAVE_THREAD_STATE();
+        //    (r) = ccall maybePerformBlockedException (MyCapability() "ptr",
+        //                                              CurrentTSO "ptr");
 
-            if (r != 0::CInt) {
-                if (StgTSO_what_next(CurrentTSO) == ThreadKilled::I16) {
-                    jump stg_threadFinished [];
-                } else {
-                    LOAD_THREAD_STATE();
-                    ASSERT(StgTSO_what_next(CurrentTSO) == ThreadRunGHC::I16);
-                    R1 = io;
-                    jump %ENTRY_CODE(Sp(0)) [R1];
-                }
-            } else {
-                /* we'll just call R1 directly, below */
-                Sp_adj(3);
-            }
-        }
+        //    if (r != 0::CInt) {
+        //        if (StgTSO_what_next(CurrentTSO) == ThreadKilled::I16) {
+        //            jump stg_threadFinished [];
+        //        } else {
+        //            LOAD_THREAD_STATE();
+        //            ASSERT(StgTSO_what_next(CurrentTSO) == ThreadRunGHC::I16);
+        //            R1 = io;
+        //            jump %ENTRY_CODE(Sp(0)) [R1];
+        //        }
+        //    } else {
+        //        /* we'll just call R1 directly, below */
+        //        Sp_adj(3);
+        //    }
+        //}
 
     }
     TICK_UNKNOWN_CALL();

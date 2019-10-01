@@ -2,6 +2,28 @@
 
 This page maintains a list of weekly status reports for the project.
 
+## 2019-09-16
+
+Ongoing work:
+
+* Did a round of cleanup in the issue tracker. Legacy issues are closed, and all
+  short/mid-term goals are written into issues and grouped into several
+  projects. We now use a set of tags to identify the priority of each issue;
+  some are labeled as "good first issue", to help newcomers to the project to
+  get some stuff done.
+* Started to add missing boot libs; `text` and `parsec` are included, more are
+  on their way.
+* Added documentation about the pipeline and TH implementation.
+* TH message passing between host/node is implemented. Most `Quasi` methods
+  should work now since they just send queries back to host and get responses.
+* Misc fixes:
+    * JSFFI: when the code of an async import immediately throws, the error is
+      now properly handled as a regular `Promise` rejection.
+
+Planned work:
+
+* Start working on proper Template Haskell state management.
+
 ## 2019-09-10
 
 Ongoing work:

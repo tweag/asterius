@@ -312,3 +312,10 @@ tests:
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
+
+  rts:
+    source-dirs: test
+    main: rts.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
