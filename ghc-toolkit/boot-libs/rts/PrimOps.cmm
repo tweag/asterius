@@ -1753,27 +1753,8 @@ stg_delayzh ( W_ us_delay )
 
 #else
 
+    StgTSO_block_info(CurrentTSO) = us_delay;
 
-    (target) = ccall getDelayTarget(us_delay);
-
-    StgTSO_block_info(CurrentTSO) = target;
-
-    /* Insert the new thread in the sleeping queue. */
-    prev = NULL;
-    t = W_[sleeping_queue];
-while:
-    if (t != END_TSO_QUEUE && StgTSO_block_info(t) < target) {
-        prev = t;
-        t = StgTSO__link(t);
-        goto while;
-    }
-
-    StgTSO__link(CurrentTSO) = t;
-    if (prev == NULL) {
-        W_[sleeping_queue] = CurrentTSO;
-    } else {
-        ccall setTSOLink(MyCapability() "ptr", prev "ptr", CurrentTSO);
-    }
     jump stg_block_noregs();
 #endif
 #endif /* !THREADED_RTS */

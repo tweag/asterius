@@ -12,7 +12,7 @@ import { MBlockAlloc } from "./rts.mblockalloc.mjs";
 import { HeapAlloc } from "./rts.heapalloc.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
 import { StableNameManager } from "./rts.stablename.mjs";
-import { TSOManager } from "./rts.tso.mjs";
+import { Scheduler } from "./rts.scheduler.mjs";
 import { HeapBuilder } from "./rts.heapbuilder.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
@@ -42,21 +42,21 @@ export async function newAsteriusInstance(req) {
     __asterius_heapalloc = new HeapAlloc(__asterius_memory, __asterius_mblockalloc),
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_stablename_manager = new StableNameManager(__asterius_memory, __asterius_heapalloc, req.symbolTable),
-    __asterius_tso_manager = new TSOManager(__asterius_memory, req.symbolTable, __asterius_stableptr_manager),
+    __asterius_scheduler = new Scheduler(__asterius_memory, req.symbolTable, __asterius_stableptr_manager),
     __asterius_heap_builder = new HeapBuilder(req.symbolTable, __asterius_heapalloc, __asterius_memory, __asterius_stableptr_manager),
     __asterius_integer_manager = new IntegerManager(__asterius_stableptr_manager),
     __asterius_fs = new MemoryFileSystem(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_text_cbits = new TextCBits(__asterius_memory),
-    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_tso_manager, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard, req.yolo),
+    __asterius_gc = new GC(__asterius_memory, __asterius_mblockalloc, __asterius_heapalloc, __asterius_stableptr_manager, __asterius_stablename_manager, __asterius_scheduler, req.infoTables, req.pinnedStaticClosures, req.symbolTable, __asterius_reentrancy_guard, req.yolo),
     __asterius_exception_helper = new ExceptionHelper(__asterius_memory, __asterius_heapalloc, req.infoTables, req.symbolTable),
     __asterius_threadpaused = new ThreadPaused(__asterius_memory, req.infoTables, req.symbolTable),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
-    __asterius_exports = new Exports(__asterius_memory, __asterius_reentrancy_guard, req.symbolTable, __asterius_tso_manager, req.exports, __asterius_stableptr_manager),
+    __asterius_exports = new Exports(__asterius_memory, __asterius_reentrancy_guard, req.symbolTable, __asterius_scheduler, req.exports, __asterius_stableptr_manager),
     __asterius_md5 = new MD5(__asterius_memory);
-  __asterius_tso_manager.exports = __asterius_exports;
+  __asterius_scheduler.exports = __asterius_exports;
 
   const __asterius_node_modules = await getNodeModules();
 
@@ -108,7 +108,7 @@ export async function newAsteriusInstance(req) {
       stdout: () => __asterius_fs.readSync(1),
       stderr: () => __asterius_fs.readSync(2)
     },
-    setPromise: (vt, p) => __asterius_tso_manager.setPromise(vt, p)
+    returnFFIPromise: (tid, promise) => __asterius_scheduler.returnFFIPromise(tid, promise)
   };
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),
@@ -177,7 +177,7 @@ export async function newAsteriusInstance(req) {
       Unicode: modulify(__asterius_unicode),
       MD5: modulify(__asterius_md5),
       Tracing: modulify(__asterius_tracer),
-      TSO: modulify(__asterius_tso_manager)
+      Scheduler: modulify(__asterius_scheduler)
     }
   );
   return WebAssembly.instantiate(req.module, importObject).then(i => {
@@ -186,6 +186,7 @@ export async function newAsteriusInstance(req) {
       __asterius_mblockalloc.init(__asterius_memory);
       __asterius_heapalloc.init();
       __asterius_bytestring_cbits.memory = __asterius_memory;
+      __asterius_scheduler.setGC(__asterius_gc);
       return Object.assign(__asterius_jsffi_instance, {
         wasmModule: req.module,
         wasmInstance: __asterius_wasm_instance,

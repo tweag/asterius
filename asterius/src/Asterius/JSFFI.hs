@@ -9,7 +9,9 @@ module Asterius.JSFFI
   ( getFFIModule,
     generateFFIFunctionImports,
     generateFFIImportObjectFactory,
-    generateFFIExportObject
+    generateFFIExportObject,
+    ffiValueTypeTag,
+    ffiValueTypesTag
     )
 where
 
@@ -20,6 +22,7 @@ import Data.ByteString.Builder
 import Data.Coerce
 import Data.IORef
 import Data.List
+import Data.Bits
 import qualified Data.Map.Strict as M
 import Data.Monoid
 import Prelude hiding (IO)
@@ -35,14 +38,22 @@ recoverWasmWrapperValueType vt = case vt of
   FFI_VAL {..} -> ffiWasmValueType
   FFI_JSVAL -> I64
 
+-- | Get a tag for an FFIValueType
+ffiValueTypeTag :: FFIValueType -> Integer
+ffiValueTypeTag FFI_JSVAL    = 1
+ffiValueTypeTag FFI_VAL {..} = fromIntegral (2 + fromEnum ffiWasmValueType)
+
+-- | Get a tag for a list of FFIValueTypes
+ffiValueTypesTag :: [FFIValueType] -> Integer
+ffiValueTypesTag []     = 0
+ffiValueTypesTag [r]    = ffiValueTypeTag r
+ffiValueTypesTag (r:rs) = ffiValueTypeTag r .|. (ffiValueTypesTag rs `shiftL` 3)
+
+
 recoverWasmImportFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
-  | is_unsafe =
-    FunctionType
-      { paramTypes = param_types,
-        returnTypes = ret_types
-        }
-  | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
+  | is_unsafe = FunctionType {paramTypes = param_types, returnTypes = ret_types}
+  | otherwise = FunctionType {paramTypes = I32 : param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
     param_types = map recoverWasmImportValueType ffiParamTypes
@@ -50,12 +61,8 @@ recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
 
 recoverWasmWrapperFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
-  | is_unsafe =
-    FunctionType
-      { paramTypes = param_types,
-        returnTypes = ret_types
-        }
-  | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
+  | is_unsafe = FunctionType {paramTypes = param_types, returnTypes = ret_types}
+  | otherwise = FunctionType {paramTypes = I32 : param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
     param_types = map recoverWasmWrapperValueType ffiParamTypes
@@ -123,7 +130,7 @@ generateFFIImportWrapperFunction k FFIImportDecl {..} = Function
                              }
                        | (i, param_t, wrapper_param_t, import_param_t) <-
                            zip4 [0 ..]
-                             (ffiParamTypes ffiFunctionType)
+                             ffi_param_types
                              (paramTypes wrapper_func_type)
                              (paramTypes import_func_type)
                        ],
@@ -131,6 +138,17 @@ generateFFIImportWrapperFunction k FFIImportDecl {..} = Function
           }
     }
   where
+    is_unsafe = ffiSafety == FFIUnsafe
+    ffi_param_types
+      | is_unsafe = ffiParamTypes ffiFunctionType
+      | otherwise =
+        FFI_VAL
+          { ffiWasmValueType = I32
+          , ffiJSValueType = I32
+          , hsTyCon = ""
+          , signed = False
+          } :
+        ffiParamTypes ffiFunctionType
     import_func_type = recoverWasmImportFunctionType ffiSafety ffiFunctionType
     wrapper_func_type = recoverWasmWrapperFunctionType ffiSafety ffiFunctionType
 
@@ -160,10 +178,21 @@ generateFFIFunctionImports FFIMarshalState {..} =
     | (k, FFIImportDecl {..}) <- M.toList ffiImportDecls
     ]
 
+-- | Generate FFI import lambda
+--
+-- Unsafe:
+--    * Return a JSVal: (_1,_2,...,_N) => __asterius_jsffi.newJSVal(code)
+--    * Otherwise:      (_1,_2,...,_N) => (code)
+-- Safe:
+--    * (tid,_1,_2,...,_N) => __asterius_jsffi.returnFFIPromise(tid, (async () => (code))().then(v => [returnTypes,v]))
+--
+-- Note: we use `(async () => (code))()` instead of `Promise.resolve(code)` to
+-- handle `code` throwing synchronously instead of returning a rejected Promise.
+--
 generateFFIImportLambda :: FFIImportDecl -> Builder
 generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
   | is_unsafe =
-    lamb
+    lamb False
       <> ( case ffiResultTypes of
              [FFI_JSVAL] -> "__asterius_jsffi.newJSVal("
              _ -> "("
@@ -171,28 +200,20 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
       <> code
       <> ")"
   | otherwise =
-    lamb
-      <> "__asterius_jsffi.setPromise("
-      <> intDec
-           ( case ffiResultTypes of
-               [r] -> succ $ fromEnum $ recoverWasmWrapperValueType r
-               _ -> 0
-             )
-      <> ",(async () => ("
-      <> code
-      <> "))()"
-      <> ( case ffiResultTypes of
-             [FFI_JSVAL] -> ".then(v => __asterius_jsffi.newJSVal(v))"
-             _ -> mempty
-           )
-      <> ")"
+    lamb True
+      <> "__asterius_jsffi.returnFFIPromise(tid,"
+      <> "(async () => (" <> code <> "))().then(v => ["
+      <> integerDec (ffiValueTypesTag ffiResultTypes)
+      <> ",v]))"
   where
     is_unsafe = ffiSafety == FFIUnsafe
-    lamb =
+    lamb hasTID =
       "("
         <> mconcat
              ( intersperse ","
-                 ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
+                 ((if hasTID then ["tid"] else [])
+                  ++ ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
+                 )
                )
         <> ")=>"
     code =
@@ -250,7 +271,7 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
               FFI_JSVAL -> "this.context.stablePtrManager.getJSVal(" <> r <> ")"
               _ -> r
       _ -> error "Asterius.JSFFI.generateFFIExportLambda"
-    ret_closure = "this.context.tsoManager.getTSOret(" <> tid <> ")"
+    ret_closure = "this.context.scheduler.getTSOret(" <> tid <> ")"
     tid = "await this." <> eval_func <> "(" <> eval_closure <> ")"
     eval_func
       | ffiInIO = "rts_evalIO"

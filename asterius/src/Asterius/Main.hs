@@ -268,8 +268,8 @@ genDefEntry Task {..} =
         , "console.log(i.stdio.stderr());\n"
         , "throw err;\n"
         , "}\n"
-        , "console.log(i.stdio.stdout());\n"
-        , "console.log(i.stdio.stderr());\n"
+        , "if (i.stdio.stdout().toString().length) console.log(i.stdio.stdout());\n"
+        , "if (i.stdio.stderr().toString().length) console.log(i.stdio.stderr());\n"
         , "});\n"
         ]
     ]
