@@ -5,8 +5,9 @@ module Asterius.GHCi
     asteriusRunQPat,
     asteriusRunQType,
     asteriusRunQDec,
-    asteriusRunModFinalizers
-    )
+    asteriusRunAnnWrapper,
+    asteriusRunModFinalizers,
+  )
 where
 
 import Control.DeepSeq
@@ -14,6 +15,7 @@ import Control.Exception
 import Data.Binary
 import qualified Data.ByteString as BS
 import Data.IORef
+import GHC.Desugar
 import GHC.IO.Device
 import GHC.IO.Handle.FD
 import GHCi.Message
@@ -23,7 +25,7 @@ import Language.Haskell.TH.Syntax
 import System.IO
 import System.IO.Unsafe
 
-asteriusRunQ :: THResultType -> Q a -> IO ()
+asteriusRunQ :: THResultType -> a -> IO ()
 asteriusRunQ ty hv = do
   r <-
     try $ do
@@ -59,6 +61,9 @@ asteriusRunQType = asteriusRunQ THType
 asteriusRunQDec :: Q [Dec] -> IO ()
 asteriusRunQDec = asteriusRunQ THDec
 
+asteriusRunAnnWrapper :: AnnotationWrapper -> IO ()
+asteriusRunAnnWrapper = asteriusRunQ THAnnWrapper
+
 asteriusRunModFinalizers :: IO ()
 asteriusRunModFinalizers = writePipe globalPipe $ do
   putTHMessage RunTHDone
@@ -88,7 +93,7 @@ globalPipe = unsafePerformIO $ do
     { pipeRead = read_handle,
       pipeWrite = write_handle,
       pipeLeftovers = lo_ref
-      }
+    }
 
 foreign import javascript "Number(process.env.ASTERIUS_NODE_READ_FD)" read_fd :: Int
 
