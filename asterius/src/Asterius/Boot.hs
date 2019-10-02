@@ -108,6 +108,8 @@ bootRTSCmm BootArgs {..} =
                          "rts",
                          "-dcmm-lint",
                          "-O2",
+                         "-DASTERIUS",
+                         "-optc=-DASTERIUS",
                          "-I" <> obj_topdir </> "include"
                          ]
             }
