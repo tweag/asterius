@@ -11,8 +11,8 @@ module Asterius.GHCi.Internals
     asteriusIservCall,
     asteriusReadIServ,
     asteriusWriteIServ,
-    asteriusHscCompileCoreExpr
-    )
+    asteriusHscCompileCoreExpr,
+  )
 where
 
 import Asterius.CodeGen
@@ -44,8 +44,8 @@ import qualified Data.ByteString.Lazy as LBS
 import Data.Coerce
 import Data.Data
   ( Data,
-    gmapQl
-    )
+    gmapQl,
+  )
 import Data.IORef
 import Data.String
 import qualified ErrUtils as GHC
@@ -96,7 +96,7 @@ globalGHCiState = unsafePerformIO $ do
       ghciObjs = [],
       ghciJSSession = Nothing,
       ghciTemp = error "Temp not ready yet"
-      }
+    }
 
 asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
 asteriusStartIServ hsc_env = do
@@ -114,7 +114,7 @@ asteriusStartIServ hsc_env = do
         { pipeRead = host_read_handle,
           pipeWrite = host_write_handle,
           pipeLeftovers = lo_ref
-          }
+        }
   s <- newJSSession defJSSessionOpts {nodeStdErrInherit = True}
   modifyMVar_ globalGHCiState $ \st ->
     pure
@@ -122,14 +122,14 @@ asteriusStartIServ hsc_env = do
         { ghciJSSession =
             Just
               (s, p, error "JSVal of asterius instance uninitialized")
-          }
+        }
   cache_ref <- newIORef GHC.emptyUFM
   pure GHC.IServ
     { GHC.iservPipe = error "asteriusStartIServ.iservPipe",
       GHC.iservProcess = error "asteriusStartIServ.iservProcess",
       GHC.iservLookupSymbolCache = cache_ref,
       GHC.iservPendingFrees = []
-      }
+    }
 
 asteriusStopIServ :: GHC.HscEnv -> IO ()
 asteriusStopIServ hsc_env = do
@@ -141,8 +141,8 @@ asteriusStopIServ hsc_env = do
     _ -> pure st
   pure ()
 
-asteriusIservCall
-  :: Binary a => GHC.HscEnv -> GHC.IServ -> GHC.Message a -> IO a
+asteriusIservCall ::
+  Binary a => GHC.HscEnv -> GHC.IServ -> GHC.Message a -> IO a
 asteriusIservCall hsc_env _ msg = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show msg
   case msg of
@@ -159,58 +159,56 @@ asteriusIservCall hsc_env _ msg = do
     GHC.StartTH -> pure $ unsafeCoerce $ GHC.RemotePtr 233
     _ -> fail "asteriusIservCall"
 
-asteriusReadIServ
-  :: forall a. (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> IO a
+asteriusReadIServ ::
+  forall a. (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> IO a
 asteriusReadIServ _ _ = withMVar globalGHCiState
   $ \s -> let Just (_, p, _) = ghciJSSession s in readPipe p get
 
-asteriusWriteIServ
-  :: (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> a -> IO ()
+asteriusWriteIServ ::
+  (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> a -> IO ()
 asteriusWriteIServ hsc_env i a
-  | Just HRefl <- eqTypeRep (typeOf a) (typeRep @GHC.Msg) =
-    case a of
-      GHC.Msg m@(GHC.RunTH st q ty loc) -> do
-        GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
-        modifyMVar_ globalGHCiState $ \s -> do
-          js_s <-
-            maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure
-              $ (\(x, _, _) -> x)
-                <$> ghciJSSession s
-          v <- asteriusRunTH hsc_env i st q ty loc js_s (ghciTemp s)
-          pure
-            s
-              { ghciJSSession =
-                  let Just (x, y, _) = ghciJSSession s
-                   in Just (x, y, v),
-                ghciTemp = error "Temp cleaned"
-                }
-      GHC.Msg m@GHC.RunModFinalizers {} -> do
-        GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
-        withMVar globalGHCiState $ \s -> do
-          (js_s, v) <-
-            maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure
-              $ (\(x, _, v) -> (x, v))
-                <$> ghciJSSession s
-          asteriusRunModFinalizers hsc_env js_s v
-      GHC.Msg m -> fail $ "asteriusWriteIServ: unsupported message " <> show m
-  | otherwise =
-    withMVar globalGHCiState
-      $ \s -> let Just (_, p, _) = ghciJSSession s in writePipe p $ put a
+  | Just HRefl <- eqTypeRep (typeOf a) (typeRep @GHC.Msg) = case a of
+    GHC.Msg m@(GHC.RunTH st q ty loc) -> do
+      GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
+      modifyMVar_ globalGHCiState $ \s -> do
+        js_s <-
+          maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure
+            $ (\(x, _, _) -> x)
+              <$> ghciJSSession s
+        v <- asteriusRunTH hsc_env i st q ty loc js_s (ghciTemp s)
+        pure
+          s
+            { ghciJSSession =
+                let Just (x, y, _) = ghciJSSession s
+                 in Just (x, y, v),
+              ghciTemp = error "Temp cleaned"
+            }
+    GHC.Msg m@GHC.RunModFinalizers {} -> do
+      GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
+      withMVar globalGHCiState $ \s -> do
+        (js_s, v) <-
+          maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure
+            $ (\(x, _, v) -> (x, v))
+              <$> ghciJSSession s
+        asteriusRunModFinalizers hsc_env js_s v
+    GHC.Msg m -> fail $ "asteriusWriteIServ: unsupported message " <> show m
+  | otherwise = withMVar globalGHCiState
+    $ \s -> let Just (_, p, _) = ghciJSSession s in writePipe p $ put a
 
-asteriusRunTH
-  :: GHC.HscEnv
-  -> GHC.IServ
-  -> GHC.RemoteRef (IORef GHC.QState)
-  -> GHC.HValueRef
-  -> GHC.THResultType
-  -> Maybe Loc
-  -> JSSession
-  -> (Asterius.Types.Module, LinkReport)
-  -> IO JSVal
-asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input = case ty of
-  GHC.THExp -> withTempDir "asdf" $ \tmp_dir -> do
+asteriusRunTH ::
+  GHC.HscEnv ->
+  GHC.IServ ->
+  GHC.RemoteRef (IORef GHC.QState) ->
+  GHC.HValueRef ->
+  GHC.THResultType ->
+  Maybe Loc ->
+  JSSession ->
+  (Asterius.Types.Module, LinkReport) ->
+  IO JSVal
+asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
+  withTempDir "asdf" $ \tmp_dir -> do
     let p = tmp_dir </> "asdf"
-    distNonMain p [run_q_exp_sym, run_mod_fin_sym] ahc_dist_input
+    distNonMain p [run_q_sym, run_mod_fin_sym] ahc_dist_input
     mod_buf <- LBS.readFile $ p -<.> "wasm"
     lib_val <- importMJS s $ p -<.> "lib.mjs"
     f_val <- eval s $ takeJSVal lib_val <> ".default"
@@ -221,7 +219,7 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input = case ty of
     let run_q_exp_closure =
           deRefJSVal i <> ".symbolTable."
             <> coerce
-                 (shortByteString (coerce run_q_exp_sym))
+                 (shortByteString (coerce run_q_sym))
         GHC.RemotePtr q_addr = unsafeCoerce q
         q_exp_closure = "0x" <> JSCode (word64Hex q_addr)
         applied_closure =
@@ -235,9 +233,13 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input = case ty of
           deRefJSVal i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
     (_ :: IO ()) <- eval' s tid
     pure i
-  _ -> fail $ "asteriusRunTH: unsupported THResultType " <> show ty
   where
-    run_q_exp_sym = ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQExp"
+    run_q_sym = ghciClosureSymbol hsc_env "Asterius.GHCi" $ case ty of
+      GHC.THExp -> "asteriusRunQExp"
+      GHC.THPat -> "asteriusRunQPat"
+      GHC.THType -> "asteriusRunQType"
+      GHC.THDec -> "asteriusRunQDec"
+      _ -> error $ "asteriusRunTH: unsupported THResultType " <> show ty
     run_mod_fin_sym =
       ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
 
@@ -255,12 +257,15 @@ asteriusRunModFinalizers hsc_env s i = do
     run_mod_fin_sym =
       ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
 
-asteriusHscCompileCoreExpr
-  :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO GHC.ForeignHValue
+asteriusHscCompileCoreExpr ::
+  GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO GHC.ForeignHValue
 asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
   let dflags = GHC.hsc_dflags hsc_env
-      run_q_exp_sym =
-        ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQExp"
+      run_q_exp_sym = ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQExp"
+      run_q_pat_sym = ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQPat"
+      run_q_type_sym =
+        ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQType"
+      run_q_dec_sym = ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQDec"
       run_mod_fin_sym =
         ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
   simpl_expr <- GHC.simplifyExpr dflags ds_expr
@@ -310,9 +315,16 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
             binaryen = False,
             verboseErr = True,
             outputIR = Nothing,
-            rootSymbols = [run_q_exp_sym, run_mod_fin_sym, sym],
+            rootSymbols =
+              [ run_q_exp_sym,
+                run_q_pat_sym,
+                run_q_type_sym,
+                run_q_dec_sym,
+                run_mod_fin_sym,
+                sym
+              ],
             exportFunctions = []
-            }
+          }
       pure (s {ghciTemp = (final_m, link_report)}, r)
   fmap unsafeCoerce
     $ newForeignPtr_
