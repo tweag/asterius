@@ -143,6 +143,10 @@ rtsAsteriusModule opts =
        <> fromJSArrayFunction opts
        <> threadPausedFunction opts
        <> dirtyMutVarFunction opts
+       <> dirtyMVarFunction opts
+       <> dirtyStackFunction opts
+       <> recordClosureMutatedFunction opts
+       <> tryWakeupThreadFunction opts
        <> raiseExceptionHelperFunction opts
        <> barfFunction opts
        <> getProgArgvFunction opts
@@ -759,7 +763,7 @@ generateWrapperModule m = m
 
 
 
-hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleTSOFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, getThreadIdFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, scheduleThreadFunction, scheduleThreadOnFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction, isattyFunction, fdReadyFunction, rtsSupportsBoundThreadsFunction, readFunction, writeFunction ::
+hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleTSOFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, getThreadIdFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, dirtyMVarFunction, dirtyStackFunction, recordClosureMutatedFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, scheduleThreadFunction, scheduleThreadOnFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction, isattyFunction, fdReadyFunction, rtsSupportsBoundThreadsFunction, readFunction, writeFunction, tryWakeupThreadFunction ::
      BuiltinsOptions -> AsteriusModule
 
 initCapability :: EDSL ()
@@ -1271,6 +1275,26 @@ dirtyMutVarFunction _ =
       (loadI64 p 0 `eqInt64` symbol "stg_MUT_VAR_CLEAN_info")
       (storeI64 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
       mempty
+
+dirtyMVarFunction _ =
+  runEDSL "dirty_MVAR" $ do
+    [_basereg,_mvar] <- params [I64,I64]
+    mempty
+
+dirtyStackFunction _ =
+  runEDSL "dirty_STACK" $ do
+    [cap,stack] <- params [I64,I64]
+    dirtySTACK cap stack
+
+recordClosureMutatedFunction _ =
+  runEDSL "recordClosureMutated" $ do
+    [_cap,_closure] <- params [I64,I64]
+    mempty
+
+tryWakeupThreadFunction _ =
+  runEDSL "tryWakeupThread" $ do
+    [_cap, tso] <- params [I64, I64]
+    callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
 
 raiseExceptionHelperFunction _ =
   runEDSL "raiseExceptionHelper" $ do

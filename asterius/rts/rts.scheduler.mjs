@@ -19,7 +19,6 @@ export class Scheduler {
     this.lastTid = 0;
     this.tsos = new Map();         // all the TSOs
     this.runQueue = [];            // Runnable TSO IDs
-    this.blockedTSOs = new Set();  // Blocked TSO IDs
     this.completeTSOs = new Set(); // Finished TSO IDs
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
@@ -130,7 +129,6 @@ export class Scheduler {
         break;
       }
       case 4: { // ThreadBlocked
-        this.blockedTSOs.add(tid);
 
         const why_blocked = Number(this.memory.i16Load(tso + rtsConstants.offset_StgTSO_why_blocked));
 
@@ -148,14 +146,12 @@ export class Scheduler {
                     // Store return block symbol
                     tso_info.ffiAsyncFunc = this.memory.i64Load(tso + rtsConstants.offset_StgTSO_ffi_func);
 
-                    this.blockedTSOs.delete(tid);
                     this.runQueue.push(tid);
                     this.submitCmdWakeUp();
                   }
               , e => {
                     tso_info.ffiRetErr = e;
                     //console.log(`Thread ${tid}: blocking FFI Promise rejected with ${e.stack}`);
-                    this.blockedTSOs.delete(tid);
                     this.runQueue.push(tid);
                     this.submitCmdWakeUp();
                   }
@@ -170,8 +166,7 @@ export class Scheduler {
               });
             // Wait for the timer blocking promise and then requeue the TSO
             tso_info.blockingPromise.then
-              ( () => { this.blockedTSOs.delete(tid);
-                        this.runQueue.push(tid);
+              ( () => { this.runQueue.push(tid);
                         this.submitCmdWakeUp();
                       }
               , e => { throw new WebAssembly.RuntimeError(`Scheduler: blocking TSO Promise rejected with ${e}`); }
@@ -179,9 +174,12 @@ export class Scheduler {
             break;
           }
 
-          case Blocked.NotBlocked:
           case Blocked.OnMVar:
-          case Blocked.OnMVarRead:
+          case Blocked.OnMVarRead: {
+            //console.log(`Thread ${tid}: blocked on MVar`);
+            break;
+          }
+          case Blocked.NotBlocked:
           case Blocked.OnBlackHole:
           case Blocked.OnRead:
           case Blocked.OnWrite:
@@ -393,12 +391,16 @@ export class Scheduler {
   }
 
   /**
-   * Add it into the run-queue
+   * Enqueue the TSO in the run-queue and wake-up the scheduler.
    */
   enqueueTSO(tso) {
     const tid = this.getTSOid(tso);
+
+    // When the TSO has just been created, we need to store its address
     const tso_info = this.tsos.get(tid);
-    tso_info.addr = Number(tso);
+    if (tso_info.addr == -1) {
+      tso_info.addr = Number(tso);
+    }
 
     // Add the thread into the run-queue
     this.runQueue.push(tid);
