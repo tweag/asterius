@@ -48,6 +48,7 @@ import Data.Data
     gmapQl,
   )
 import Data.IORef
+import qualified Data.Map.Strict as M
 import Data.String
 import qualified ErrUtils as GHC
 import Foreign.ForeignPtr
@@ -89,7 +90,7 @@ data GHCiState
   = GHCiState
       { ghciUniqSupply :: !GHC.UniqSupply,
         ghciLibs :: !AsteriusModule,
-        ghciObjs :: ![FilePath],
+        ghciObjs :: !(M.Map FilePath AsteriusModule),
         ghciJSSession :: !(Maybe (JSSession, Pipe, JSVal)),
         ghciTemp :: (Asterius.Types.Module, LinkReport)
       }
@@ -101,7 +102,7 @@ globalGHCiState = unsafePerformIO $ do
   newMVar GHCiState
     { ghciUniqSupply = us,
       ghciLibs = mempty,
-      ghciObjs = [],
+      ghciObjs = M.empty,
       ghciJSSession = Nothing,
       ghciTemp = error "Temp not ready yet"
     }
@@ -159,8 +160,9 @@ asteriusIservCall hsc_env _ msg = do
     GHC.LoadArchive p -> modifyMVar_ globalGHCiState $ \s -> do
       lib <- loadAr p
       evaluate s {ghciLibs = lib <> ghciLibs s}
-    GHC.LoadObj obj -> modifyMVar_ globalGHCiState $
-      \s -> pure s {ghciObjs = obj : ghciObjs s}
+    GHC.LoadObj p -> modifyMVar_ globalGHCiState $ \s -> do
+      obj <- decodeFile p
+      evaluate s {ghciObjs = M.insert p obj $ ghciObjs s}
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
     GHC.RemoveLibrarySearchPath _ -> pure True
     GHC.ResolveObjs -> pure True
@@ -318,9 +320,9 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
         linkExeInMemory LinkTask
           { progName = "",
             linkOutput = "",
-            linkObjs = ghciObjs s,
+            linkObjs = [],
             linkLibs = [],
-            linkModule = m <> ghciLibs s,
+            linkModule = m <> M.foldr' (<>) (ghciLibs s) (ghciObjs s),
             debug = False,
             gcSections = True,
             binaryen = False,
