@@ -57,12 +57,19 @@ module Asterius.EDSL
   , eqZInt64
   , eqZInt32
   , extendUInt32
+  , extendSInt32
   , wrapInt64
   , convertUInt64ToFloat64
   , truncUFloat64ToInt64
   , convertSInt64ToFloat64
   , truncSFloat64ToInt64
   , roundupBytesToWords
+  , popCntInt32
+  , clzInt32
+  , ctzInt32
+  , popCntInt64
+  , clzInt64
+  , ctzInt64
   , addInt64
   , subInt64
   , mulInt64
@@ -75,6 +82,7 @@ module Asterius.EDSL
   , addInt32
   , subInt32
   , mulInt32
+  , shlInt32
   , eqInt64
   , eqInt32
   , ltUInt64
@@ -456,7 +464,7 @@ allocStaticBytes n v  = EDSL $ state $ \st ->
      }
   in (symbol n, st')
 
-notInt64, notInt32, eqZInt64, eqZInt32, extendUInt32, wrapInt64, convertUInt64ToFloat64, truncUFloat64ToInt64, convertSInt64ToFloat64, truncSFloat64ToInt64, roundupBytesToWords ::
+notInt64, notInt32, eqZInt64, eqZInt32, extendUInt32, extendSInt32, wrapInt64, convertUInt64ToFloat64, truncUFloat64ToInt64, convertSInt64ToFloat64, truncSFloat64ToInt64, roundupBytesToWords, popCntInt32, clzInt32, ctzInt32, popCntInt64, clzInt64, ctzInt64 ::
      Expression -> Expression
 notInt64 = eqZInt64
 
@@ -467,6 +475,8 @@ eqZInt64 = Unary EqZInt64
 eqZInt32 = Unary EqZInt32
 
 extendUInt32 = Unary ExtendUInt32
+
+extendSInt32 = Unary ExtendSInt32
 
 wrapInt64 = Unary WrapInt64
 
@@ -480,7 +490,15 @@ truncSFloat64ToInt64 = Unary TruncSFloat64ToInt64
 
 roundupBytesToWords n = (n `addInt64` constI64 7) `divUInt64` constI64 8
 
-addInt64, subInt64, mulInt64, divUInt64, gtUInt64, geUInt64, shlInt64, shrUInt64, geUInt32, addInt32, subInt32, mulInt32, eqInt64, eqInt32, ltUInt64, leUInt64, ltUInt32, neInt64, neInt32, andInt64, orInt64, andInt32, orInt32 ::
+popCntInt32 = Unary PopcntInt32
+clzInt32    = Unary ClzInt32
+ctzInt32    = Unary CtzInt32
+
+popCntInt64 = Unary PopcntInt64
+clzInt64    = Unary ClzInt64
+ctzInt64    = Unary CtzInt64
+
+addInt64, subInt64, mulInt64, divUInt64, gtUInt64, geUInt64, shlInt64, shrUInt64, geUInt32, addInt32, subInt32, mulInt32, eqInt64, eqInt32, ltUInt64, leUInt64, ltUInt32, neInt64, neInt32, andInt64, orInt64, andInt32, orInt32, shlInt32 ::
      Expression -> Expression -> Expression
 addInt64 = Binary AddInt64
 
@@ -505,6 +523,8 @@ addInt32 = Binary AddInt32
 subInt32 = Binary SubInt32
 
 mulInt32 = Binary MulInt32
+
+shlInt32 = Binary ShlInt32
 
 eqInt64 = Binary EqInt64
 
