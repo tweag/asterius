@@ -15,6 +15,7 @@ module Asterius.GHCi.Internals
   )
 where
 
+import Asterius.Ar
 import Asterius.CodeGen
 import Asterius.Internals ((!))
 import Asterius.Internals.Name
@@ -84,7 +85,14 @@ import qualified UniqSupply as GHC
 import Unsafe.Coerce
 import qualified VarEnv as GHC
 
-data GHCiState = GHCiState {ghciUniqSupply :: !GHC.UniqSupply, ghciLibs, ghciObjs :: ![FilePath], ghciJSSession :: !(Maybe (JSSession, Pipe, JSVal)), ghciTemp :: (Asterius.Types.Module, LinkReport)}
+data GHCiState
+  = GHCiState
+      { ghciUniqSupply :: !GHC.UniqSupply,
+        ghciLibs :: !AsteriusModule,
+        ghciObjs :: ![FilePath],
+        ghciJSSession :: !(Maybe (JSSession, Pipe, JSVal)),
+        ghciTemp :: (Asterius.Types.Module, LinkReport)
+      }
 
 {-# NOINLINE globalGHCiState #-}
 globalGHCiState :: MVar GHCiState
@@ -92,7 +100,7 @@ globalGHCiState = unsafePerformIO $ do
   us <- GHC.mkSplitUniqSupply 'A'
   newMVar GHCiState
     { ghciUniqSupply = us,
-      ghciLibs = [],
+      ghciLibs = mempty,
       ghciObjs = [],
       ghciJSSession = Nothing,
       ghciTemp = error "Temp not ready yet"
@@ -148,8 +156,9 @@ asteriusIservCall hsc_env _ msg = do
   case msg of
     GHC.InitLinker -> pure ()
     GHC.LoadDLL _ -> pure Nothing
-    GHC.LoadArchive lib ->
-      modifyMVar_ globalGHCiState $ \s -> pure s {ghciLibs = lib : ghciLibs s}
+    GHC.LoadArchive p -> modifyMVar_ globalGHCiState $ \s -> do
+      lib <- loadAr p
+      evaluate s {ghciLibs = lib <> ghciLibs s}
     GHC.LoadObj obj -> modifyMVar_ globalGHCiState $
       \s -> pure s {ghciObjs = obj : ghciObjs s}
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
@@ -310,8 +319,8 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
           { progName = "",
             linkOutput = "",
             linkObjs = ghciObjs s,
-            linkLibs = ghciLibs s,
-            linkModule = m,
+            linkLibs = [],
+            linkModule = m <> ghciLibs s,
             debug = False,
             gcSections = True,
             binaryen = False,

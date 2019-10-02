@@ -1,3 +1,5 @@
+{-# LANGUAGE BangPatterns #-}
+
 module Asterius.Internals.Binary
   ( decodeMaybe
   , lazyMapPut
@@ -28,7 +30,7 @@ decodeMaybe buf =
   case runGetIncremental get of
     Partial k ->
       case k (Just buf) of
-        Done _ _ r -> Just r
+        Done _ _ !r -> Just r
         _ -> Nothing
     _ -> Nothing
 
