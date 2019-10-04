@@ -3,7 +3,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.GHCi.Internals
   ( asteriusStartIServ,
@@ -52,7 +51,6 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.String
 import qualified ErrUtils as GHC
-import Foreign.ForeignPtr
 import Foreign.Ptr
 import GHC.IO.Handle.FD
 import qualified GHCi.Message as GHC
@@ -197,7 +195,7 @@ asteriusWriteIServ hsc_env i a
               ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunAnnWrapper"
             run_mod_fin_sym =
               ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
-            GHC.RemotePtr (fromIntegral -> this_id) = unsafeCoerce q
+            this_id = coerce $ ptrToIntPtr $ GHC.fromRemotePtr $ unsafeCoerce q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
         (_, final_m, link_report) <- linkExeInMemory LinkTask
           { progName = "",
@@ -225,14 +223,15 @@ asteriusWriteIServ hsc_env i a
           maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure $
             (\(x, _, _) -> x)
               <$> ghciJSSession s
-        q' <-
-          fmap unsafeCoerce
-            $ newForeignPtr_
-            $ wordPtrToPtr
-            $ fromIntegral
-            $ staticsSymbolMap link_report
-              ! sym
-        v <- asteriusRunTH hsc_env i st q' ty loc js_s (final_m, link_report)
+        v <-
+          asteriusRunTH hsc_env
+            i
+            st
+            (fromIntegral (staticsSymbolMap link_report ! sym))
+            ty
+            loc
+            js_s
+            (final_m, link_report)
         pure
           s
             { ghciCompiledCoreExprs = IM.delete this_id $ ghciCompiledCoreExprs s,
@@ -256,7 +255,7 @@ asteriusRunTH ::
   GHC.HscEnv ->
   GHC.IServ ->
   GHC.RemoteRef (IORef GHC.QState) ->
-  GHC.HValueRef ->
+  Word64 ->
   GHC.THResultType ->
   Maybe Loc ->
   JSSession ->
@@ -277,8 +276,7 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
           deRefJSVal i <> ".symbolTable."
             <> coerce
                  (shortByteString (coerce runner_sym))
-        GHC.RemotePtr hv_addr = unsafeCoerce q
-        hv_closure = "0x" <> JSCode (word64Hex hv_addr)
+        hv_closure = "0x" <> JSCode (word64Hex q)
         applied_closure =
           deRefJSVal i
             <> ".exports.rts_apply("
@@ -361,7 +359,9 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
           },
         this_id
       )
-  fmap unsafeCoerce $ newForeignPtr_ $ intPtrToPtr $ coerce this_id
+  GHC.mkForeignRef
+    (unsafeCoerce (GHC.toRemotePtr (intPtrToPtr (coerce this_id))))
+    (pure ())
 
 asteriusLinkExpr :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO ()
 asteriusLinkExpr hsc_env srcspan prepd_expr = do
