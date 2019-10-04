@@ -195,7 +195,7 @@ asteriusWriteIServ hsc_env i a
               ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunAnnWrapper"
             run_mod_fin_sym =
               ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
-            this_id = coerce $ ptrToIntPtr $ GHC.fromRemotePtr $ unsafeCoerce q
+            this_id = remoteRefToInt q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
         (_, final_m, link_report) <- linkExeInMemory LinkTask
           { progName = "",
@@ -359,9 +359,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
           },
         this_id
       )
-  GHC.mkForeignRef
-    (unsafeCoerce (GHC.toRemotePtr (intPtrToPtr (coerce this_id))))
-    (pure ())
+  GHC.mkForeignRef (intToRemoteRef this_id) (pure ())
 
 asteriusLinkExpr :: GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO ()
 asteriusLinkExpr hsc_env srcspan prepd_expr = do
@@ -409,3 +407,9 @@ linkGhci hsc_env =
 
 ghciClosureSymbol :: GHC.HscEnv -> String -> String -> AsteriusEntitySymbol
 ghciClosureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env) "ghci"
+
+intToRemoteRef :: Int -> GHC.RemoteRef a
+intToRemoteRef = unsafeCoerce . GHC.toRemotePtr . intPtrToPtr . coerce
+
+remoteRefToInt :: GHC.RemoteRef a -> Int
+remoteRefToInt = coerce . ptrToIntPtr . GHC.fromRemotePtr . unsafeCoerce
