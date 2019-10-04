@@ -24,6 +24,7 @@ import Asterius.Passes.SafeCCall
 import Asterius.Resolve
 import Asterius.Types
 import Asterius.TypesConv
+import Asterius.EDSL
 import qualified CLabel as GHC
 import qualified Cmm as GHC
 import qualified CmmSwitch as GHC
@@ -545,14 +546,19 @@ marshalAndCastCmmExpr cmm_expr dest_vt = do
       | otherwise ->
         throwError $ UnsupportedImplicitCasting src_expr src_vt dest_vt
 
-marshalCmmUnPrimCall ::
-     UnaryOp -> ValueType -> GHC.LocalReg -> GHC.CmmExpr -> CodeGen [Expression]
-marshalCmmUnPrimCall op vt r x = do
-  lr <- marshalTypedCmmLocalReg r vt
-  xe <- marshalAndCastCmmExpr x vt
+marshalCmmUnPrimCall
+     :: ValueType    -- result type
+     -> GHC.LocalReg -- result destination
+     -> ValueType    -- operand type
+     -> GHC.CmmExpr  -- operand
+     -> (Expression -> Expression) -- operation
+     -> CodeGen [Expression]
+marshalCmmUnPrimCall retTyp ret vTyp v op = do
+  lr <- marshalTypedCmmLocalReg ret retTyp
+  xe <- marshalAndCastCmmExpr v vTyp
   pure
     [ UnresolvedSetLocal
-        {unresolvedLocalReg = lr, value = Unary {unaryOp = op, operand0 = xe}}
+        {unresolvedLocalReg = lr, value = op xe}
     ]
 
 marshalCmmQuotRemPrimCall ::
@@ -675,10 +681,10 @@ marshalCmmPrimCall GHC.MO_F64_Exp [r] [x] =
   marshalCmmUnMathPrimCall "exp" F64 r x
 
 marshalCmmPrimCall GHC.MO_F64_Fabs [r] [x] =
-  marshalCmmUnPrimCall AbsFloat64 F64 r x
+  marshalCmmUnPrimCall F64 r F64 x (Unary AbsFloat64)
 
 marshalCmmPrimCall GHC.MO_F64_Sqrt [r] [x] =
-  marshalCmmUnPrimCall SqrtFloat64 F64 r x
+  marshalCmmUnPrimCall F64 r F64 x (Unary SqrtFloat64)
 
 -- | 32 bit
 marshalCmmPrimCall GHC.MO_F32_Pwr [r] [x, y] =
@@ -711,10 +717,10 @@ marshalCmmPrimCall GHC.MO_F32_Exp [r] [x] =
   marshalCmmUnMathPrimCall "exp" F32 r x
 
 marshalCmmPrimCall GHC.MO_F32_Fabs [r] [x] =
-  marshalCmmUnPrimCall AbsFloat32 F32 r x
+  marshalCmmUnPrimCall F32 r F32 x (Unary AbsFloat32)
 
 marshalCmmPrimCall GHC.MO_F32_Sqrt [r] [x] =
-  marshalCmmUnPrimCall SqrtFloat32 F32 r x
+  marshalCmmUnPrimCall F32 r F32 x (Unary SqrtFloat32)
 
 marshalCmmPrimCall (GHC.MO_UF_Conv w) [r] [x] = do
   (op, ft) <-
@@ -829,11 +835,31 @@ marshalCmmPrimCall (GHC.MO_Memcmp _) [_cres] [_ptr1, _ptr2, _n] = do
         }
     ]
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =
-  marshalCmmUnPrimCall PopcntInt64 I64 r x
+  marshalCmmUnPrimCall I64 r I64 x popCntInt64
+marshalCmmPrimCall (GHC.MO_PopCnt GHC.W32) [r] [x] = do
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popCntInt32)
+marshalCmmPrimCall (GHC.MO_PopCnt GHC.W16) [r] [x] = do
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popCntInt32 . andInt32 (constI32 0xFFFF))
+marshalCmmPrimCall (GHC.MO_PopCnt GHC.W8) [r] [x] = do
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popCntInt32 . andInt32 (constI32 0xFF))
+
 marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
-  marshalCmmUnPrimCall ClzInt64 I64 r x
+  marshalCmmUnPrimCall I64 r I64 x clzInt64
+marshalCmmPrimCall (GHC.MO_Clz GHC.W32) [r] [x] =
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . clzInt32)
+marshalCmmPrimCall (GHC.MO_Clz GHC.W16) [r] [x] =
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . clzInt32 . orInt32 (constI32 0x8000) . (`shlInt32` constI32 16))
+marshalCmmPrimCall (GHC.MO_Clz GHC.W8) [r] [x] =
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . clzInt32 . orInt32 (constI32 0x800000) . (`shlInt32` constI32 24))
+
 marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
-  marshalCmmUnPrimCall CtzInt64 I64 r x
+  marshalCmmUnPrimCall I64 r I64 x ctzInt64
+marshalCmmPrimCall (GHC.MO_Ctz GHC.W32) [r] [x] =
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . ctzInt32)
+marshalCmmPrimCall (GHC.MO_Ctz GHC.W16) [r] [x] =
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . ctzInt32 . orInt32 (constI32 0x10000))
+marshalCmmPrimCall (GHC.MO_Ctz GHC.W8) [r] [x] =
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . ctzInt32 . orInt32 (constI32 0x100))
 
 
 -- | r = result, o = overflow
