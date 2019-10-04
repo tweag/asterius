@@ -168,6 +168,7 @@ asteriusIservCall hsc_env _ msg = do
     GHC.RemoveLibrarySearchPath _ -> pure True
     GHC.ResolveObjs -> pure True
     GHC.FindSystemLibrary lib -> pure $ Just lib
+    GHC.FreeHValueRefs _ -> pure ()
     GHC.StartTH -> pure $ unsafeCoerce $ GHC.RemotePtr 0
     _ -> fail "asteriusIservCall"
 
