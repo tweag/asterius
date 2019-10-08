@@ -91,7 +91,7 @@ data GHCiState
         ghciObjs :: M.Map FilePath AsteriusModule,
         ghciCompiledCoreExprs :: IM.IntMap (AsteriusEntitySymbol, AsteriusModule),
         ghciLastCompiledCoreExpr :: Int,
-        ghciJSSession :: Maybe (JSSession, Pipe, JSVal)
+        ghciJSSession :: ~(JSSession, Pipe, JSVal)
       }
 
 {-# NOINLINE globalGHCiState #-}
@@ -104,24 +104,17 @@ globalGHCiState = unsafePerformIO $ do
       ghciObjs = M.empty,
       ghciCompiledCoreExprs = IM.empty,
       ghciLastCompiledCoreExpr = 0,
-      ghciJSSession = Nothing
+      ghciJSSession = error "ghciJSSession not initialized"
     }
 
-asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
-asteriusStartIServ hsc_env = do
-  GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
+newGHCiJSSession :: IO (JSSession, Pipe)
+newGHCiJSSession = do
   (node_read_fd, host_write_fd) <- createPipeFd
   (host_read_fd, node_write_fd) <- createPipeFd
   host_read_handle <- fdToHandle host_read_fd
   host_write_handle <- fdToHandle host_write_fd
   hSetBuffering host_read_handle NoBuffering
   hSetBuffering host_write_handle NoBuffering
-  lo_ref <- newIORef Nothing
-  let p = Pipe
-        { pipeRead = host_read_handle,
-          pipeWrite = host_write_handle,
-          pipeLeftovers = lo_ref
-        }
   s <-
     newJSSession
       defJSSessionOpts
@@ -131,13 +124,19 @@ asteriusStartIServ hsc_env = do
             ],
           nodeStdErrInherit = True
         }
-  modifyMVar_ globalGHCiState $ \st ->
-    pure
-      st
-        { ghciJSSession =
-            Just
-              (s, p, error "JSVal of asterius instance uninitialized")
+  lo_ref <- newIORef Nothing
+  pure
+    ( s,
+      Pipe
+        { pipeRead = host_read_handle,
+          pipeWrite = host_write_handle,
+          pipeLeftovers = lo_ref
         }
+    )
+
+asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
+asteriusStartIServ hsc_env = do
+  GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
   cache_ref <- newIORef GHC.emptyUFM
   pure GHC.IServ
     { GHC.iservPipe = error "asteriusStartIServ.iservPipe",
@@ -147,14 +146,8 @@ asteriusStartIServ hsc_env = do
     }
 
 asteriusStopIServ :: GHC.HscEnv -> IO ()
-asteriusStopIServ hsc_env = do
+asteriusStopIServ hsc_env =
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStopIServ"
-  modifyMVar_ globalGHCiState $ \st -> case ghciJSSession st of
-    Just (s, _, _) -> do
-      closeJSSession s
-      pure st {ghciJSSession = Nothing}
-    _ -> pure st
-  pure ()
 
 asteriusIservCall ::
   Binary a => GHC.HscEnv -> GHC.IServ -> GHC.Message a -> IO a
@@ -180,7 +173,7 @@ asteriusIservCall hsc_env _ msg = do
 asteriusReadIServ ::
   forall a. (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> IO a
 asteriusReadIServ _ _ = withMVar globalGHCiState $
-  \s -> let Just (_, p, _) = ghciJSSession s in readPipe p get
+  \s -> let (_, p, _) = ghciJSSession s in readPipe p get
 
 asteriusWriteIServ ::
   (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> a -> IO ()
@@ -188,6 +181,17 @@ asteriusWriteIServ hsc_env i a
   | Just HRefl <- eqTypeRep (typeOf a) (typeRep @GHC.Msg) = case a of
     GHC.Msg msg@(GHC.RunTH st q ty loc) -> do
       GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show msg
+      modifyMVar_ globalGHCiState $ \s ->
+        bracketOnError newGHCiJSSession (\(js_s, _) -> closeJSSession js_s) $
+          \(js_s, p) ->
+            pure
+              s
+                { ghciJSSession =
+                    ( js_s,
+                      p,
+                      error "asterius instance not initialized"
+                    )
+                }
       modifyMVar_ globalGHCiState $ \s -> do
         let run_q_exp_sym =
               ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQExp"
@@ -203,6 +207,7 @@ asteriusWriteIServ hsc_env i a
               ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
             this_id = remoteRefToInt q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
+            (js_s, p, _) = ghciJSSession s
         (_, final_m, link_report) <- linkExeInMemory LinkTask
           { progName = "",
             linkOutput = "",
@@ -225,10 +230,6 @@ asteriusWriteIServ hsc_env i a
               ],
             exportFunctions = []
           }
-        js_s <-
-          maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure $
-            (\(x, _, _) -> x)
-              <$> ghciJSSession s
         v <-
           asteriusRunTH
             hsc_env
@@ -242,21 +243,16 @@ asteriusWriteIServ hsc_env i a
         pure
           s
             { ghciCompiledCoreExprs = IM.delete this_id $ ghciCompiledCoreExprs s,
-              ghciJSSession =
-                let Just (x, y, _) = ghciJSSession s
-                 in Just (x, y, v)
+              ghciJSSession = (js_s, p, v)
             }
     GHC.Msg m@GHC.RunModFinalizers {} -> do
       GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
       withMVar globalGHCiState $ \s -> do
-        (js_s, v) <-
-          maybe (fail "asteriusWriteIServ: RunTH: no JSSession") pure $
-            (\(x, _, v) -> (x, v))
-              <$> ghciJSSession s
+        let (js_s, _, v) = ghciJSSession s
         asteriusRunModFinalizers hsc_env js_s v
     GHC.Msg m -> fail $ "asteriusWriteIServ: unsupported message " <> show m
   | otherwise = withMVar globalGHCiState $
-    \s -> let Just (_, p, _) = ghciJSSession s in writePipe p $ put a
+    \s -> let (_, p, _) = ghciJSSession s in writePipe p $ put a
 
 asteriusRunTH ::
   GHC.HscEnv ->
