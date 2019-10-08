@@ -73,7 +73,6 @@ import qualified SimplStg as GHC
 import qualified SrcLoc as GHC
 import qualified Stream
 import System.Directory
-import System.Environment.Blank
 import System.FilePath
 import System.IO
 import System.IO.Unsafe
@@ -113,8 +112,6 @@ asteriusStartIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
   (node_read_fd, host_write_fd) <- createPipeFd
   (host_read_fd, node_write_fd) <- createPipeFd
-  setEnv "ASTERIUS_NODE_READ_FD" (show node_read_fd) True
-  setEnv "ASTERIUS_NODE_WRITE_FD" (show node_write_fd) True
   host_read_handle <- fdToHandle host_read_fd
   host_write_handle <- fdToHandle host_write_fd
   hSetBuffering host_read_handle NoBuffering
@@ -125,7 +122,15 @@ asteriusStartIServ hsc_env = do
           pipeWrite = host_write_handle,
           pipeLeftovers = lo_ref
         }
-  s <- newJSSession defJSSessionOpts {nodeStdErrInherit = True}
+  s <-
+    newJSSession
+      defJSSessionOpts
+        { nodeExtraEnv =
+            [ ("ASTERIUS_NODE_READ_FD", show node_read_fd),
+              ("ASTERIUS_NODE_WRITE_FD", show node_write_fd)
+            ],
+          nodeStdErrInherit = True
+        }
   modifyMVar_ globalGHCiState $ \st ->
     pure
       st
@@ -225,7 +230,8 @@ asteriusWriteIServ hsc_env i a
             (\(x, _, _) -> x)
               <$> ghciJSSession s
         v <-
-          asteriusRunTH hsc_env
+          asteriusRunTH
+            hsc_env
             i
             st
             (fromIntegral (staticsSymbolMap link_report ! sym))
@@ -276,7 +282,7 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
     let runner_closure =
           deRefJSVal i <> ".symbolTable."
             <> coerce
-                 (shortByteString (coerce runner_sym))
+              (shortByteString (coerce runner_sym))
         hv_closure = "0x" <> JSCode (word64Hex q)
         applied_closure =
           deRefJSVal i
@@ -304,7 +310,7 @@ asteriusRunModFinalizers hsc_env s i = do
   let run_mod_fin_closure =
         deRefJSVal i <> ".symbolTable."
           <> coerce
-               (shortByteString (coerce run_mod_fin_sym))
+            (shortByteString (coerce run_mod_fin_sym))
       tid =
         deRefJSVal i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
   (_ :: IO ()) <- eval' s tid
@@ -328,7 +334,8 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
     let (u, s') = GHC.takeUniqFromSupply $ ghciUniqSupply s
      in pure (s {ghciUniqSupply = s'}, u)
   let this_mod =
-        GHC.mkModule (GHC.stringToUnitId "asdf")
+        GHC.mkModule
+          (GHC.stringToUnitId "asdf")
           (GHC.mkModuleName $ "ASDF" <> show u)
       occ_n = GHC.mkVarOcc "asdf"
       n = GHC.mkExternalName u this_mod occ_n srcspan
@@ -339,7 +346,8 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
       (stg_binds, _) = GHC.coreToStg dflags this_mod prepd_binds
   stg_binds2 <- GHC.stg2stg dflags stg_binds
   cmms <-
-    GHC.doCodeGen hsc_env
+    GHC.doCodeGen
+      hsc_env
       this_mod
       []
       GHC.emptyCollectedCCs
