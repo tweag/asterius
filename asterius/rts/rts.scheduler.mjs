@@ -261,7 +261,7 @@ export class Scheduler {
             }
           }
           exports.context.reentrancyGuard.exit(0);
-          throw new WebAssembly.RuntimeError(e);
+          throw new WebAssembly.RuntimeError(e.stack);
       }
       );
   }
