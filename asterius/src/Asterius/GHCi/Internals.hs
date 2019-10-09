@@ -134,6 +134,11 @@ newGHCiJSSession = do
         }
     )
 
+tryCloseGHCiJSSession :: JSSession -> IO ()
+tryCloseGHCiJSSession s = do
+  (_ :: Either SomeException ()) <- try $ closeJSSession s
+  pure ()
+
 asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
 asteriusStartIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
@@ -146,8 +151,12 @@ asteriusStartIServ hsc_env = do
     }
 
 asteriusStopIServ :: GHC.HscEnv -> IO ()
-asteriusStopIServ hsc_env =
+asteriusStopIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStopIServ"
+  modifyMVar_ globalGHCiState $ \s -> do
+    let ~(js_s, _, _) = ghciJSSession s
+    tryCloseGHCiJSSession js_s
+    pure s {ghciJSSession = error "ghciJSSession already finalized"}
 
 asteriusIservCall ::
   Binary a => GHC.HscEnv -> GHC.IServ -> GHC.Message a -> IO a
@@ -183,12 +192,14 @@ asteriusWriteIServ hsc_env i a
       GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show msg
       modifyMVar_ globalGHCiState $ \s ->
         bracketOnError newGHCiJSSession (\(js_s, _) -> closeJSSession js_s) $
-          \(js_s, p) ->
+          \(new_js_s, new_p) -> do
+            let ~(prev_js_s, _, _) = ghciJSSession s
+            tryCloseGHCiJSSession prev_js_s
             pure
               s
                 { ghciJSSession =
-                    ( js_s,
-                      p,
+                    ( new_js_s,
+                      new_p,
                       error "asterius instance not initialized"
                     )
                 }
