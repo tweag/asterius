@@ -134,11 +134,16 @@ newGHCiJSSession = do
         }
     )
 
+-- | Attempts to close the passed in 'JSSession', but won't throw in case of
+-- exceptions. The parameter may come from an irrefutable pattern matching on an
+-- uninitialized tuple.
 tryCloseGHCiJSSession :: JSSession -> IO ()
 tryCloseGHCiJSSession s = do
   (_ :: Either SomeException ()) <- try $ closeJSSession s
   pure ()
 
+-- | Returns a dummy 'GHC.IServ' to GHC. We don't start a 'JSSession' yet; it is
+-- only started upon 'GHC.RunTH' messages.
 asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
 asteriusStartIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
@@ -150,6 +155,7 @@ asteriusStartIServ hsc_env = do
       GHC.iservPendingFrees = []
     }
 
+-- | Finalizes the global 'JSSession' if present.
 asteriusStopIServ :: GHC.HscEnv -> IO ()
 asteriusStopIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStopIServ"
@@ -158,6 +164,8 @@ asteriusStopIServ hsc_env = do
     tryCloseGHCiJSSession js_s
     pure s {ghciJSSession = error "ghciJSSession already finalized"}
 
+-- | Handles all 'GHC.Message's where the responses are synchronously returned.
+-- The messages handled here are mainly related to linking.
 asteriusIservCall ::
   Binary a => GHC.HscEnv -> GHC.IServ -> GHC.Message a -> IO a
 asteriusIservCall hsc_env _ msg = do
@@ -179,11 +187,39 @@ asteriusIservCall hsc_env _ msg = do
     GHC.StartTH -> pure $ unsafeCoerce $ GHC.RemotePtr 0
     _ -> fail "asteriusIservCall"
 
+-- | When GHC expects to read something from the 'Pipe', it calls this function.
 asteriusReadIServ ::
   forall a. (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> IO a
 asteriusReadIServ _ _ = withMVar globalGHCiState $
   \s -> let (_, p, _) = ghciJSSession s in readPipe p get
 
+-- | When GHC expects to write something to the 'Pipe', it calls this function.
+-- We need to overload the 'Pipe' write logic and add special handlers for
+-- specific variants of 'GHC.Message's, because the underlying @node@ process is
+-- managed by @inline-js-core@ and isn't a true @iserv@ process, and while most
+-- message passing are still done via the 'Pipe', some messages are really
+-- implemented in the host @ahc@ process.
+--
+-- When GHC runs a TH splice, it issues a 'GHC.RunTH' message. Upon such a
+-- message, we initialize a fresh 'JSSession' and assign it to our global linker
+-- state (closing the previous one if possible), then combine the loaded
+-- archives, objects and the Wasm code compiled from the 'GHC.CoreExpr' of the
+-- splice, perform final linking, and load the emitted Wasm/JS code via
+-- @inline-js-core@.
+--
+-- The logic of loading/running linked Wasm/JS code is implemented in the
+-- 'asteriusRunTH' function. 'asteriusRunTH' returns a 'JSVal' which is the
+-- @inline-js-core@ reference of the already initialized asterius instance. We
+-- keep it along the 'JSSession' as a part of our global linker state, since it
+-- may be used later when the TH module finalizer is invoked.
+--
+-- When all splices in a module are run, GHC issues a 'GHC.RunModFinalizers'
+-- message, which is then handled by the 'asteriusRunModFinalizers' function. We
+-- don't really run TH module finalizers for now; the @node@ side will simply
+-- send a 'QDone' message back to make GHC happy. And since each 'GHC.RunTH'
+-- message of a TH splice is handled by overwriting the global 'JSSession' (and
+-- the 'JSVal' of the initialized asterius instance), the dummy TH module
+-- finalizer is run by the 'JSSession' of the last TH splice of that module.
 asteriusWriteIServ ::
   (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> a -> IO ()
 asteriusWriteIServ hsc_env i a
@@ -326,6 +362,17 @@ asteriusRunModFinalizers hsc_env s i = do
     run_mod_fin_sym =
       ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
 
+-- | Compiles the 'GHC.CoreExpr' of a 'Q' splice to Cmm, then unlinked Wasm, and
+-- returns the associated id as a 'GHC.ForeignHValue'. This is invoked by GHC
+-- each time when a TH splice is run. The logic is largely based on
+-- 'GHC.hscCompileCoreExpr', but we don't emit BCOs due to lack of BCO support.
+--
+-- When compiling a 'GHC.CoreExpr', we also link its dependencies; The linking
+-- requests are handled by our 'asteriusIservCall' handler, which in turn
+-- modifies our own global linker state, deserializes the required archives and
+-- objects for future use. The final linking which combines the loaded archives,
+-- objects, splices and produce a runnable Wasm bundle happens when the
+-- 'GHC.RunTH' message is handled.
 asteriusHscCompileCoreExpr ::
   GHC.HscEnv -> GHC.SrcSpan -> GHC.CoreExpr -> IO GHC.ForeignHValue
 asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
