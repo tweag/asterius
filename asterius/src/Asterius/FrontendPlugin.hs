@@ -7,6 +7,7 @@ where
 
 import Asterius.CodeGen
 import Asterius.Foreign
+import Asterius.GHCi.Internals
 import Asterius.Internals
 import Asterius.JSFFI
 import Asterius.TypesConv
@@ -31,14 +32,25 @@ frontendPlugin = makeFrontendPlugin $ do
     void
       $ GHC.setSessionDynFlags
           dflags
-            { GHC.hooks = (GHC.hooks dflags)
-                { GHC.dsForeignsHook = Just asteriusDsForeigns,
-                  GHC.tcForeignImportsHook = Just
-                                               asteriusTcForeignImports,
-                  GHC.tcForeignExportsHook = Just
-                                               asteriusTcForeignExports
-                  }
+            { GHC.hooks =
+                (GHC.hooks dflags)
+                  { GHC.dsForeignsHook = Just asteriusDsForeigns,
+                    GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
+                    GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
+                    GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
+                    GHC.startIServHook = Just asteriusStartIServ,
+                    GHC.iservCallHook = Just asteriusIservCall,
+                    GHC.readIServHook = Just asteriusReadIServ,
+                    GHC.writeIServHook = Just asteriusWriteIServ,
+                    GHC.stopIServHook = Just asteriusStopIServ
+                    }
               }
+  do
+    dflags <- GHC.getSessionDynFlags
+    void
+      $ GHC.setSessionDynFlags
+      $ dflags {GHC.settings = (GHC.settings dflags) {GHC.sPgm_i = "false"}}
+      `GHC.gopt_set` GHC.Opt_ExternalInterpreter
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags
     void

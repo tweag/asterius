@@ -285,6 +285,13 @@ tests:
     dependencies:
       - asterius
 
+  th:
+    source-dirs: test
+    main: th.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
   nodeio:
     source-dirs: test
     main: nodeio.hs

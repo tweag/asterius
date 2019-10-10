@@ -13,6 +13,7 @@ and in active development.
 * [Cabal support](cabal.md)
 * [Using ahc-dist/ahc-link](ahc-link.md)
 * [JavaScript FFI](jsffi.md)
+* [Template Haskell](th.md)
 * [Invoking RTS API in JavaScript](rts-api.md)
 * [IR types and transformation passes](ir.md)
 * [The runtime debugging feature](debugging.md)

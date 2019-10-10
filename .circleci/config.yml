@@ -144,6 +144,8 @@ jobs:
             stack --no-terminal test asterius:nomain
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
+            stack --no-terminal test asterius:th
+
   asterius-test-ghc-testsuite:
     docker:
       - image: debian:unstable
