@@ -232,8 +232,12 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
         dflags <- getDynFlags
         let curried_res_ty = mkFunTys arg_tys res_ty
         check (isFFIDynTy curried_res_ty arg1_ty) (illegalForeignTyErr argument)
-        checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
-        checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
+        checkForeignArgs (asteriusIsFFIArgumentTy dflags safety) arg_tys
+        checkForeignRes
+          nonIOok
+          checkSafe
+          (asteriusIsFFIImportResultTy dflags)
+          res_ty
     return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
   | cconv == PrimCallConv = do
     dflags <- getDynFlags
@@ -254,8 +258,12 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
     checkCg checkCOrAsmOrLlvmOrInterp
     cconv' <- asteriusCheckCConv cconv
     dflags <- getDynFlags
-    checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
-    checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
+    checkForeignArgs (asteriusIsFFIArgumentTy dflags safety) arg_tys
+    checkForeignRes
+      nonIOok
+      checkSafe
+      (asteriusIsFFIImportResultTy dflags)
+      res_ty
     checkMissingAmpersand dflags arg_tys res_ty
     case target of
       StaticTarget _ _ _ False
@@ -316,12 +324,73 @@ asteriusTcCheckFEType sig_ty (CExport (L l (CExportStatic esrc str cconv)) src) 
   checkCg checkCOrAsmOrLlvm
   checkTc (isCLabelString str) (badCName str)
   cconv' <- asteriusCheckCConv cconv
-  checkForeignArgs isFFIExternalTy arg_tys
-  checkForeignRes nonIOok noCheckSafe isFFIExportResultTy res_ty
+  checkForeignArgs asteriusIsFFIExternalTy arg_tys
+  checkForeignRes nonIOok noCheckSafe asteriusIsFFIExportResultTy res_ty
   return (CExport (L l (CExportStatic esrc str cconv')) src)
   where
     (bndrs, res_ty) = tcSplitPiTys sig_ty
     arg_tys = mapMaybe binderRelevantType_maybe bndrs
+
+asteriusIsFFIArgumentTy :: DynFlags -> Safety -> Type -> Validity
+asteriusIsFFIArgumentTy dflags safety ty
+  | isJSValTy ty = IsValid
+  | otherwise = isFFIArgumentTy dflags safety ty
+
+asteriusIsFFIImportResultTy :: DynFlags -> Type -> Validity
+asteriusIsFFIImportResultTy dflags ty
+  | isJSValTy ty = IsValid
+  | otherwise = isFFIImportResultTy dflags ty
+
+asteriusIsFFIExternalTy :: Type -> Validity
+asteriusIsFFIExternalTy ty
+  | isJSValTy ty = IsValid
+  | otherwise = isFFIExternalTy ty
+
+asteriusIsFFIExportResultTy :: Type -> Validity
+asteriusIsFFIExportResultTy ty
+  | isJSValTy ty = IsValid
+  | otherwise = isFFIExportResultTy ty
+
+isJSValTy :: Type -> Bool
+isJSValTy = isValid . checkRepTyCon isJSValTyCon
+
+isJSValTyCon :: TyCon -> Validity
+isJSValTyCon tc
+  | nameModule_maybe n == Just asteriusTypesModule
+      && nameOccName n == jsValTyConOccName =
+    IsValid
+  | otherwise = NotValid $ text "isJSValTyCon: not JSVal TyCon"
+  where
+    n = tyConName tc
+
+{-# NOINLINE asteriusTypesModule #-}
+asteriusTypesModule :: Module
+asteriusTypesModule = mkModule primUnitId (mkModuleName "Asterius.Types")
+
+{-# NOINLINE jsValTyConOccName #-}
+jsValTyConOccName :: OccName
+jsValTyConOccName = mkTcOcc "JSVal"
+
+checkRepTyCon :: (TyCon -> Validity) -> Type -> Validity
+checkRepTyCon check_tc ty =
+  case splitTyConApp_maybe ty of
+    Just (tc, tys)
+      | isNewTyCon tc -> NotValid (hang msg 2 (mk_nt_reason tc tys $$ nt_fix))
+      | otherwise ->
+        case check_tc tc of
+          IsValid -> IsValid
+          NotValid extra -> NotValid (msg $$ extra)
+    Nothing -> NotValid (quotes (ppr ty) <+> text "is not a data type")
+  where
+    msg = quotes (ppr ty) <+> text "cannot be marshalled in a foreign call"
+    mk_nt_reason tc tys
+      | null tys = text "because its data constructor is not in scope"
+      | otherwise =
+        text "because the data constructor for"
+          <+> quotes (ppr tc)
+          <+> text "is not in scope"
+    nt_fix =
+      text "Possible fix: import the data constructor to bring it into scope"
 
 asteriusUnboxArg :: CoreExpr -> DsM (CoreExpr, CoreExpr -> CoreExpr)
 asteriusUnboxArg arg
