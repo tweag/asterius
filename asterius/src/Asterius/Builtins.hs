@@ -192,6 +192,7 @@ generateRtsExternalInterfaceModule opts = mempty
   <> rtsMkWordFunction opts
   <> rtsMkPtrFunction opts
   <> rtsMkStablePtrFunction opts
+  <> rtsMkJSValFunction opts
   <> rtsGetBoolFunction opts
   <> rtsGetDoubleFunction opts
   <> generateRtsGetIntFunction opts "rts_getChar"
@@ -199,6 +200,7 @@ generateRtsExternalInterfaceModule opts = mempty
   <> generateRtsGetIntFunction opts "rts_getWord"
   <> generateRtsGetIntFunction opts "rts_getPtr"
   <> generateRtsGetIntFunction opts "rts_getStablePtr"
+  <> generateRtsGetIntFunction opts "rts_getJSVal"
   <> loadI64Function opts
 
 -- | Generate the module consisting of debug functions
@@ -570,6 +572,7 @@ rtsFunctionExports debug =
       , "rts_mkWord"
       , "rts_mkPtr"
       , "rts_mkStablePtr"
+      , "rts_mkJSVal"
       , "rts_getBool"
       , "rts_getDouble"
       , "rts_getChar"
@@ -577,6 +580,7 @@ rtsFunctionExports debug =
       , "rts_getWord"
       , "rts_getPtr"
       , "rts_getStablePtr"
+      , "rts_getJSVal"
       , "rts_apply"
       , "createGenThread"
       , "createStrictIOThread"
@@ -763,7 +767,7 @@ generateWrapperModule m = m
 
 
 
-hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleTSOFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, getThreadIdFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, dirtyMVarFunction, dirtyStackFunction, recordClosureMutatedFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, scheduleThreadFunction, scheduleThreadOnFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction, isattyFunction, fdReadyFunction, rtsSupportsBoundThreadsFunction, readFunction, writeFunction, tryWakeupThreadFunction ::
+hsInitFunction, rtsApplyFunction, rtsGetSchedStatusFunction, rtsCheckSchedStatusFunction, scheduleTSOFunction, createThreadFunction, createGenThreadFunction, createIOThreadFunction, createStrictIOThreadFunction, getThreadIdFunction, allocatePinnedFunction, newCAFFunction, stgReturnFunction, getStablePtrWrapperFunction, deRefStablePtrWrapperFunction, freeStablePtrWrapperFunction, rtsMkBoolFunction, rtsMkDoubleFunction, rtsMkCharFunction, rtsMkIntFunction, rtsMkWordFunction, rtsMkPtrFunction, rtsMkStablePtrFunction, rtsMkJSValFunction, rtsGetBoolFunction, rtsGetDoubleFunction, loadI64Function, printI64Function, assertEqI64Function, printF32Function, printF64Function, strlenFunction, memchrFunction, memcpyFunction, memsetFunction, memcmpFunction, fromJSArrayBufferFunction, toJSArrayBufferFunction, fromJSStringFunction, fromJSArrayFunction, threadPausedFunction, dirtyMutVarFunction, dirtyMVarFunction, dirtyStackFunction, recordClosureMutatedFunction, raiseExceptionHelperFunction, barfFunction, getProgArgvFunction, suspendThreadFunction, scheduleThreadFunction, scheduleThreadOnFunction, resumeThreadFunction, performMajorGCFunction, performGCFunction, localeEncodingFunction, isattyFunction, fdReadyFunction, rtsSupportsBoundThreadsFunction, readFunction, writeFunction, tryWakeupThreadFunction ::
      BuiltinsOptions -> AsteriusModule
 
 initCapability :: EDSL ()
@@ -1071,8 +1075,8 @@ rtsMkBoolFunction _ =
     if'
       [I64]
       (eqZInt64 i)
-      (emit $ symbol' "ghczmprim_GHCziTypes_False_closure" 1)
-      (emit $ symbol' "ghczmprim_GHCziTypes_True_closure" 2)
+      (emit $ symbol "ghczmprim_GHCziTypes_False_closure")
+      (emit $ symbol "ghczmprim_GHCziTypes_True_closure")
 
 rtsMkDoubleFunction _ =
   runEDSL "rts_mkDouble" $ do
@@ -1100,6 +1104,9 @@ rtsMkPtrFunction opts = rtsMkHelper opts "rts_mkPtr" "base_GHCziPtr_Ptr_con_info
 
 rtsMkStablePtrFunction opts =
   rtsMkHelper opts "rts_mkStablePtr" "base_GHCziStable_StablePtr_con_info"
+
+rtsMkJSValFunction opts =
+  rtsMkHelper opts "rts_mkJSVal" "ghczmprim_AsteriusziPrim_JSVal_con_info"
 
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8

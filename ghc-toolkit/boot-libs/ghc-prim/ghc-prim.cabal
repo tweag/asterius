@@ -50,6 +50,7 @@ Library
         GHC.Types
 
         Asterius.Magic
+        Asterius.Prim
 
     virtual-modules:
         GHC.Prim

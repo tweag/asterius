@@ -93,12 +93,10 @@ wordLog2# w =
 -- Assumption: Integer is strictly positive,
 -- otherwise return -1# arbitrarily
 -- Going up in word-sized steps should not be too bad.
-integerLog2# :: Integer -> Int#
-integerLog2# (Integer i) = js_integerLog2 i
 
 -- Again, integer should be strictly positive
 integerLog2IsPowerOf2# :: Integer -> (# Int#, Int# #)
-integerLog2IsPowerOf2# (Integer i) = (# js_integerLog2 i, js_integerIsPowerOf2 i #)
+integerLog2IsPowerOf2# i = (# integerLog2# i, js_integerIsPowerOf2 i #)
 
 -- Assumption: Integer and Int# are strictly positive, Int# is less
 -- than logBase 2 of Integer, otherwise havoc ensues.
@@ -147,6 +145,6 @@ leadingZeros =
     in case mkArr realWorld# of
         b -> BA b
 
-foreign import javascript "__asterius_jsffi.Integer.integerLog2(${1})" js_integerLog2 :: Int# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.integerLog2(${1})" integerLog2# :: Integer -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: Int# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: Integer -> Int#

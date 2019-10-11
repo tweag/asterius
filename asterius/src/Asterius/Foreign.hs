@@ -80,7 +80,7 @@ asteriusDsCImport id co (CLabel cid) cconv _ _ = do
           Just tycon
             | tyConUnique tycon == funPtrTyConKey -> IsFunction
           _ -> IsData
-  (_, foRhs) <- resultWrapper ty
+  (_, foRhs) <- asteriusResultWrapper ty
   let rhs = foRhs (Lit (MachLabel cid stdcall_info fod))
       rhs' = Cast rhs co
       stdcall_info = funTypeArgStdcallInfo dflags cconv ty
@@ -197,8 +197,7 @@ asteriusTcFImport
             arg_tys = mapMaybe binderRelevantType_maybe bndrs
             id = mkLocalId nm sig_ty
         imp_decl' <- asteriusTcCheckFIType arg_tys res_ty imp_decl
-        imp_decl'' <-
-          processFFIImport globalFFIHookState sig_ty norm_sig_ty imp_decl'
+        imp_decl'' <- processFFIImport globalFFIHookState norm_sig_ty imp_decl'
         let fi_decl =
               ForeignImport
                 { fd_name = L nloc id,
@@ -306,7 +305,7 @@ asteriusTcFExport
       (norm_co, norm_sig_ty, gres) <- normaliseFfiType sig_ty
       spec' <- asteriusTcCheckFEType norm_sig_ty spec
       id <- mkStableIdFromName nm sig_ty loc mkForeignExportOcc
-      spec'' <- processFFIExport globalFFIHookState sig_ty norm_sig_ty id spec'
+      spec'' <- processFFIExport globalFFIHookState norm_sig_ty id spec'
       return
         ( mkVarBind id rhs,
           ForeignExport
@@ -333,67 +332,37 @@ asteriusTcCheckFEType sig_ty (CExport (L l (CExportStatic esrc str cconv)) src) 
 
 asteriusIsFFIArgumentTy :: DynFlags -> Safety -> Type -> Validity
 asteriusIsFFIArgumentTy dflags safety ty
+  | isAnyTy ty = IsValid
   | isJSValTy ty = IsValid
   | otherwise = isFFIArgumentTy dflags safety ty
 
 asteriusIsFFIImportResultTy :: DynFlags -> Type -> Validity
 asteriusIsFFIImportResultTy dflags ty
+  | isAnyTy ty = IsValid
   | isJSValTy ty = IsValid
   | otherwise = isFFIImportResultTy dflags ty
 
 asteriusIsFFIExternalTy :: Type -> Validity
 asteriusIsFFIExternalTy ty
+  | isAnyTy ty = IsValid
   | isJSValTy ty = IsValid
   | otherwise = isFFIExternalTy ty
 
 asteriusIsFFIExportResultTy :: Type -> Validity
 asteriusIsFFIExportResultTy ty
+  | isAnyTy ty = IsValid
   | isJSValTy ty = IsValid
   | otherwise = isFFIExportResultTy ty
 
-isJSValTy :: Type -> Bool
-isJSValTy = isValid . checkRepTyCon isJSValTyCon
-
-isJSValTyCon :: TyCon -> Validity
-isJSValTyCon tc
-  | nameModule_maybe n == Just asteriusTypesModule
-      && nameOccName n == jsValTyConOccName =
-    IsValid
-  | otherwise = NotValid $ text "isJSValTyCon: not JSVal TyCon"
-  where
-    n = tyConName tc
-
-{-# NOINLINE asteriusTypesModule #-}
-asteriusTypesModule :: Module
-asteriusTypesModule = mkModule primUnitId (mkModuleName "Asterius.Types")
-
-{-# NOINLINE jsValTyConOccName #-}
-jsValTyConOccName :: OccName
-jsValTyConOccName = mkTcOcc "JSVal"
-
-checkRepTyCon :: (TyCon -> Validity) -> Type -> Validity
-checkRepTyCon check_tc ty =
-  case splitTyConApp_maybe ty of
-    Just (tc, tys)
-      | isNewTyCon tc -> NotValid (hang msg 2 (mk_nt_reason tc tys $$ nt_fix))
-      | otherwise ->
-        case check_tc tc of
-          IsValid -> IsValid
-          NotValid extra -> NotValid (msg $$ extra)
-    Nothing -> NotValid (quotes (ppr ty) <+> text "is not a data type")
-  where
-    msg = quotes (ppr ty) <+> text "cannot be marshalled in a foreign call"
-    mk_nt_reason tc tys
-      | null tys = text "because its data constructor is not in scope"
-      | otherwise =
-        text "because the data constructor for"
-          <+> quotes (ppr tc)
-          <+> text "is not in scope"
-    nt_fix =
-      text "Possible fix: import the data constructor to bring it into scope"
+isAnyTy :: Type -> Bool
+isAnyTy ty =
+  case tcSplitTyConApp_maybe ty of
+    Just (tc, _) -> anyTyConKey == getUnique tc
+    Nothing -> False
 
 asteriusUnboxArg :: CoreExpr -> DsM (CoreExpr, CoreExpr -> CoreExpr)
 asteriusUnboxArg arg
+  | isAnyTy arg_ty = return (arg, id)
   | isPrimitiveType arg_ty = return (arg, id)
   | Just (co, _rep_ty) <- topNormaliseNewType_maybe arg_ty =
     asteriusUnboxArg (mkCastDs arg co)
@@ -459,7 +428,7 @@ asteriusUnboxArg arg
 asteriusBoxResult :: Type -> DsM (Type, CoreExpr -> CoreExpr)
 asteriusBoxResult result_ty
   | Just (io_tycon, io_res_ty) <- tcSplitIOType_maybe result_ty = do
-    res <- resultWrapper io_res_ty
+    res <- asteriusResultWrapper io_res_ty
     let extra_result_tys =
           case res of
             (Just ty, _)
@@ -488,7 +457,7 @@ asteriusBoxResult result_ty
             ]
     return (realWorldStatePrimTy `mkFunTy` ccall_res_ty, wrap)
 asteriusBoxResult result_ty = do
-  res <- resultWrapper result_ty
+  res <- asteriusResultWrapper result_ty
   (ccall_res_ty, the_alt) <- mkAlt return_result res
   let wrap the_call =
         mkWildCase
@@ -500,6 +469,11 @@ asteriusBoxResult result_ty = do
   where
     return_result _ [ans] = ans
     return_result _ _ = panic "return_result: expected single result"
+
+asteriusResultWrapper :: Type -> DsM (Maybe Type, CoreExpr -> CoreExpr)
+asteriusResultWrapper result_ty
+  | isAnyTy result_ty = return (Just result_ty, id)
+  | otherwise = resultWrapper result_ty
 
 mkAlt ::
   (Expr Var -> [Expr Var] -> Expr Var) ->

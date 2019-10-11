@@ -295,4 +295,4 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
         ("this.context.symbolTable." <> shortByteString (coerce ffiExportClosure))
         (zip [1 ..] ffiParamTypes)
     getHsTyCon FFI_VAL {..} = shortByteString hsTyCon
-    getHsTyCon FFI_JSVAL = "StablePtr"
+    getHsTyCon FFI_JSVAL = "JSVal"
