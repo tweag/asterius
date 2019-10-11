@@ -13,6 +13,7 @@ import System.Exit
 import System.FilePath
 import System.Directory
 import System.IO
+import System.Process
 
 main :: IO ()
 main = do
@@ -22,7 +23,7 @@ main = do
   if
     | "--install-executable" `elem` args ->
         installExecutable $ parseInstallExeArgs args
-    | "--run" `elem` args -> run args
+    | "--run-executable" `elem` args -> runExecutable $ filter (/= "--run-executable") args
     | otherwise ->
         fakeGHCMain $
           FakeGHCOptions
@@ -82,6 +83,15 @@ installExecutable InstallExeArgs
         (output <.> wexeExtension)
 installExecutable _ = hPutStrLn stderr "Please provide an output path (`-o`) and exactly one input path"
 
-run :: [String] -> IO ()
-run args = putStrLn $ "TODO " <> show args
+runExecutable :: [String] -> IO ()
+runExecutable (exePath:args) = do
+  exit_code <- withCreateProcess (proc "node" ((exePath <.> "wexe" </> takeFileName exePath <.> "js")
+--      :"--experimental-modules"
+--      :"--experimental-wasm-bigint"
+      :"--experimental-wasm-return-call":args))
+    { delegate_ctlc = True, cwd = Just $ exePath <.> "wexe" } $ \_ _ _ p ->
+      waitForProcess p
+  case exit_code of
+    ExitSuccess   -> return ()
+    ExitFailure r -> error $ "run ahc executable " <> exePath <> " " <> show args <> " " <> show r
 

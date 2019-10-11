@@ -4,5 +4,5 @@ import System.Process
 main :: IO ()
 main = do
   args <- getArgs
-  callProcess "ahc-link" $
-    ["--input-hs", "test/bytearray/bytearray.hs", "--run"] <> args
+  callProcess "cabal" $
+    ["new-run", "--project-file", "test.project", "--builddir", "dist-ahc", "asterius-test:exe:bytearray", "--with-ghc=ahc", "--with-ghc-pkg=ahc-pkg"] <> args

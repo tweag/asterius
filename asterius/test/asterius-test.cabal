@@ -1,0 +1,148 @@
+cabal-version: 1.24
+name:           asterius-test
+version:        0.0.1
+category:       Compiler
+stability:      alpha
+homepage:       https://github.com/tweag/asterius#readme
+bug-reports:    https://github.com/tweag/asterius/issues
+maintainer:     Shao Cheng <cheng.shao@tweag.io>
+copyright:      (c) 2018 Tweag I/O
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+
+source-repository head
+  type: git
+  location: https://github.com/tweag/asterius
+
+executable fib
+  main-is: fib.hs
+  hs-source-dirs: fib
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=fib
+  build-depends:
+      base
+    , deepseq
+    , mtl
+    , containers
+  default-language: Haskell2010
+
+executable jsffi
+  main-is: jsffi.hs
+  hs-source-dirs: jsffi
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=jsffi
+  build-depends:
+      base
+  default-language: Haskell2010
+
+executable array
+  main-is: array.hs
+  hs-source-dirs: array
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=array
+  build-depends:
+      base
+    , array
+  default-language: Haskell2010
+
+executable stableptr
+  main-is: stableptr.hs
+  hs-source-dirs: stableptr
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=stableptr
+  build-depends:
+      base
+  default-language: Haskell2010
+
+executable rtsapi
+  main-is: rtsapi.hs
+  hs-source-dirs: rtsapi
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=rtsapi
+  build-depends:
+      base
+  default-language: Haskell2010
+
+executable todomvc
+  main-is: todomvc.hs
+  hs-source-dirs: todomvc
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=todomvc
+  build-depends:
+      base
+    , binary
+    , bytestring
+  default-language: Haskell2010
+
+executable teletype
+  main-is: teletype.hs
+  hs-source-dirs: teletype
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=teletype
+  build-depends:
+      base
+    , bytestring
+  default-language: Haskell2010
+
+executable bytearray
+  main-is: bytearray.hs
+  hs-source-dirs: bytearray
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=bytearray
+  build-depends:
+      base
+    , ghc-prim
+  default-language: Haskell2010
+
+executable bytearraymini
+  main-is: bytearraymini.hs
+  hs-source-dirs: bytearraymini
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=bytearraymini
+  build-depends:
+      base
+    , ghc-prim
+  default-language: Haskell2010
+
+executable bigint
+  main-is: bigint.hs
+  hs-source-dirs: bigint
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=bigint
+  build-depends:
+      base
+  default-language: Haskell2010
+
+executable cloudflare
+  main-is: cloudflare.hs
+  hs-source-dirs: cloudflare
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=cloudflare --browser --bundle --input-mjs cloudflare/cloudflare.mjs
+  build-depends:
+      base
+  default-language: Haskell2010
+
+executable exception
+  main-is: exception.hs
+  hs-source-dirs: exception
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=exception
+  build-depends:
+      base
+  default-language: Haskell2010
+
+executable sizeof_md5context
+  main-is: sizeof_md5context.hs
+  hs-source-dirs: sizeof_md5context
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=sizeof_md5context
+  build-depends:
+      base
+  default-language: Haskell2010
+
+executable regression60
+  main-is: regression60.hs
+  hs-source-dirs: regression60
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=regression60
+  build-depends:
+      base
+  default-language: Haskell2010
+
+executable largenum
+  main-is: largenum.hs
+  hs-source-dirs: largenum
+  ghc-options: -Wall -threaded -rtsopts -optl--prog-name=largenum
+  build-depends:
+      base
+    , deepseq
+    , mtl
+    , containers
+  default-language: Haskell2010
