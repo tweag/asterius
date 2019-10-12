@@ -483,19 +483,19 @@ workflows:
             - asterius-boot
       - asterius-test-ghc-testsuite:
           requires:
-            - asterius-test
+            - asterius-boot
       - asterius-test-ghc-testsuite-yolo:
           requires:
-            - asterius-test
+            - asterius-boot
       - asterius-test-ghc-testsuite-debug:
           requires:
-            - asterius-test-ghc-testsuite
+            - asterius-boot
       - asterius-test-ghc-testsuite-debug-yolo:
           requires:
-            - asterius-test-ghc-testsuite-yolo
+            - asterius-boot
       - asterius-build-docker:
           requires:
-            - asterius-test
+            - asterius-boot
           filters:
             branches:
               only: master
