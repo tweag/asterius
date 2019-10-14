@@ -4,59 +4,60 @@
 {-# LANGUAGE StrictData #-}
 
 module Language.WebAssembly.WireFormat
-  ( Name(..)
-  , ValueType(..)
-  , FunctionType(..)
-  , Limits(..)
-  , MemoryType(..)
-  , ElementType(..)
-  , TableType(..)
-  , Mutability(..)
-  , GlobalType(..)
-  , MemoryArgument(..)
-  , Instruction(..)
-  , Expression(..)
-  , Custom(..)
-  , FunctionTypeIndex(..)
-  , FunctionIndex(..)
-  , TableIndex(..)
-  , MemoryIndex(..)
-  , GlobalIndex(..)
-  , LocalIndex(..)
-  , LabelIndex(..)
-  , ImportDescription(..)
-  , Import(..)
-  , Table(..)
-  , Memory(..)
-  , Global(..)
-  , ExportDescription(..)
-  , Export(..)
-  , Element(..)
-  , Locals(..)
-  , Function(..)
-  , DataSegment(..)
-  , LinkingSymbolFlags(..)
-  , LinkingSymbolInfo(..)
-  , LinkingSubSection(..)
-  , RelocationType(..)
-  , RelocationEntry(..)
-  , Section(..)
-  , Module(..)
-  , getVU32
-  , putVU32
-  , getVS32
-  , putVS32
-  , getVS64
-  , putVS64
-  , getF32
-  , putF32
-  , getF64
-  , putF64
-  , getModule
-  , putModule
-  , getLinkingSymbolInfo
-  , putLinkingSymbolInfo
-  ) where
+  ( Name (..),
+    ValueType (..),
+    FunctionType (..),
+    Limits (..),
+    MemoryType (..),
+    ElementType (..),
+    TableType (..),
+    Mutability (..),
+    GlobalType (..),
+    MemoryArgument (..),
+    Instruction (..),
+    Expression (..),
+    Custom (..),
+    FunctionTypeIndex (..),
+    FunctionIndex (..),
+    TableIndex (..),
+    MemoryIndex (..),
+    GlobalIndex (..),
+    LocalIndex (..),
+    LabelIndex (..),
+    ImportDescription (..),
+    Import (..),
+    Table (..),
+    Memory (..),
+    Global (..),
+    ExportDescription (..),
+    Export (..),
+    Element (..),
+    Locals (..),
+    Function (..),
+    DataSegment (..),
+    LinkingSymbolFlags (..),
+    LinkingSymbolInfo (..),
+    LinkingSubSection (..),
+    RelocationType (..),
+    RelocationEntry (..),
+    Section (..),
+    Module (..),
+    getVU32,
+    putVU32,
+    getVS32,
+    putVS32,
+    getVS64,
+    putVS64,
+    getF32,
+    putF32,
+    getF64,
+    putF64,
+    getModule,
+    putModule,
+    getLinkingSymbolInfo,
+    putLinkingSymbolInfo,
+  )
+where
 
 import Control.Applicative hiding (Const)
 import Control.Monad hiding (fail)
@@ -74,8 +75,8 @@ import Data.Word
 import GHC.Generics (Generic)
 import Prelude hiding (fail)
 
-newtype Name =
-  Name SBS.ShortByteString
+newtype Name
+  = Name SBS.ShortByteString
   deriving (Eq, Generic, Ord, Show)
 
 getName :: Get Name
@@ -102,33 +103,36 @@ getValueType = do
     _ -> fail "Language.WebAssembly.WireFormat.getValueType"
 
 putValueType :: ValueType -> Put
-putValueType vt =
-  putWord8 $
-  case vt of
-    I32 -> 0x7F
-    I64 -> 0x7E
-    F32 -> 0x7D
-    F64 -> 0x7C
+putValueType vt = putWord8 $ case vt of
+  I32 -> 0x7F
+  I64 -> 0x7E
+  F32 -> 0x7D
+  F64 -> 0x7C
 
 getResultType :: Get [ValueType]
 getResultType =
-  (do b <- getWord8
+  ( do
+      b <- getWord8
       case b of
         0x40 -> pure []
-        _ -> fail "Language.WebAssembly.WireFormat.getResultType") <|>
-  (do vt <- getValueType
-      pure [vt])
+        _ -> fail "Language.WebAssembly.WireFormat.getResultType"
+  )
+    <|> ( do
+            vt <- getValueType
+            pure [vt]
+        )
 
 putResultType :: [ValueType] -> Put
-putResultType resultValueTypes =
-  case resultValueTypes of
-    [] -> putWord8 0x40
-    [t] -> putValueType t
-    _ -> error "Language.WebAssembly.WireFormat.putResultType"
+putResultType resultValueTypes = case resultValueTypes of
+  [] -> putWord8 0x40
+  [t] -> putValueType t
+  _ -> error "Language.WebAssembly.WireFormat.putResultType"
 
-data FunctionType = FunctionType
-  { parameterTypes, resultTypes :: [ValueType]
-  } deriving (Eq, Generic, Ord, Show)
+data FunctionType
+  = FunctionType
+      { parameterTypes, resultTypes :: [ValueType]
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getFunctionType :: Get FunctionType
 getFunctionType = do
@@ -143,10 +147,12 @@ putFunctionType FunctionType {..} = do
   putVec putValueType parameterTypes
   putVec putValueType resultTypes
 
-data Limits = Limits
-  { minLimit :: Word32
-  , maxLimit :: Maybe Word32
-  } deriving (Eq, Generic, Ord, Show)
+data Limits
+  = Limits
+      { minLimit :: Word32,
+        maxLimit :: Maybe Word32
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getLimits :: Get Limits
 getLimits = do
@@ -157,19 +163,20 @@ getLimits = do
     _ -> fail "Language.WebAssembly.WireFormat.getLimits"
 
 putLimits :: Limits -> Put
-putLimits Limits {..} =
-  case maxLimit of
-    Just _max_limit -> do
-      putWord8 0x01
-      putVU32 minLimit
-      putVU32 _max_limit
-    _ -> do
-      putWord8 0x00
-      putVU32 minLimit
+putLimits Limits {..} = case maxLimit of
+  Just _max_limit -> do
+    putWord8 0x01
+    putVU32 minLimit
+    putVU32 _max_limit
+  _ -> do
+    putWord8 0x00
+    putVU32 minLimit
 
-newtype MemoryType = MemoryType
-  { memoryLimits :: Limits
-  } deriving (Eq, Generic, Ord, Show)
+newtype MemoryType
+  = MemoryType
+      { memoryLimits :: Limits
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getMemoryType :: Get MemoryType
 getMemoryType = coerce getLimits
@@ -177,8 +184,8 @@ getMemoryType = coerce getLimits
 putMemoryType :: MemoryType -> Put
 putMemoryType = coerce putLimits
 
-data ElementType =
-  AnyFunc
+data ElementType
+  = AnyFunc
   deriving (Eq, Generic, Ord, Show)
 
 getElementType :: Get ElementType
@@ -189,15 +196,15 @@ getElementType = do
     _ -> fail "Language.WebAssembly.WireFormat.getElementType"
 
 putElementType :: ElementType -> Put
-putElementType et =
-  putWord8 $
-  case et of
-    AnyFunc -> 0x70
+putElementType et = putWord8 $ case et of
+  AnyFunc -> 0x70
 
-data TableType = TableType
-  { elementType :: ElementType
-  , tableLimits :: Limits
-  } deriving (Eq, Generic, Ord, Show)
+data TableType
+  = TableType
+      { elementType :: ElementType,
+        tableLimits :: Limits
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getTableType :: Get TableType
 getTableType = TableType <$> getElementType <*> getLimits
@@ -221,16 +228,16 @@ getMutability = do
     _ -> fail "Language.WebAssembly.WireFormat.getMutability"
 
 putMutability :: Mutability -> Put
-putMutability m =
-  putWord8 $
-  case m of
-    Const -> 0x00
-    Var -> 0x01
+putMutability m = putWord8 $ case m of
+  Const -> 0x00
+  Var -> 0x01
 
-data GlobalType = GlobalType
-  { globalValueType :: ValueType
-  , globalMutability :: Mutability
-  } deriving (Eq, Generic, Ord, Show)
+data GlobalType
+  = GlobalType
+      { globalValueType :: ValueType,
+        globalMutability :: Mutability
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getGlobalType :: Get GlobalType
 getGlobalType = GlobalType <$> getValueType <*> getMutability
@@ -240,9 +247,11 @@ putGlobalType GlobalType {..} = do
   putValueType globalValueType
   putMutability globalMutability
 
-data MemoryArgument = MemoryArgument
-  { memoryArgumentAlignment, memoryArgumentOffset :: Word32
-  } deriving (Eq, Generic, Ord, Show)
+data MemoryArgument
+  = MemoryArgument
+      { memoryArgumentAlignment, memoryArgumentOffset :: Word32
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getMemoryArgument :: Get MemoryArgument
 getMemoryArgument = MemoryArgument <$> getVU32 <*> getVU32
@@ -255,58 +264,142 @@ putMemoryArgument MemoryArgument {..} = do
 data Instruction
   = Unreachable
   | Nop
-  | Block { blockResultType :: [ValueType]
-          , blockInstructions :: [Instruction] }
-  | Loop { loopResultType :: [ValueType]
-         , loopInstructions :: [Instruction] }
-  | If { ifResultType :: [ValueType]
-       , thenInstructions :: [Instruction]
-       , elseInstructions :: Maybe [Instruction] }
-  | Branch { branchLabel :: LabelIndex }
-  | BranchIf { branchIfLabel :: LabelIndex }
-  | BranchTable { branchTableLabels :: [LabelIndex]
-                , branchTableFallbackLabel :: LabelIndex }
+  | Block
+      { blockResultType :: [ValueType],
+        blockInstructions :: [Instruction]
+      }
+  | Loop
+      { loopResultType :: [ValueType],
+        loopInstructions :: [Instruction]
+      }
+  | If
+      { ifResultType :: [ValueType],
+        thenInstructions :: [Instruction],
+        elseInstructions :: Maybe [Instruction]
+      }
+  | Branch
+      { branchLabel :: LabelIndex
+      }
+  | BranchIf
+      { branchIfLabel :: LabelIndex
+      }
+  | BranchTable
+      { branchTableLabels :: [LabelIndex],
+        branchTableFallbackLabel :: LabelIndex
+      }
   | Return
-  | Call { callFunctionIndex :: FunctionIndex }
-  | CallIndirect { callIndirectFuctionTypeIndex :: FunctionTypeIndex }
-  | ReturnCall { returnCallFunctionIndex :: FunctionIndex }
-  | ReturnCallIndirect { returnCallIndirectFunctionTypeIndex :: FunctionTypeIndex }
+  | Call
+      { callFunctionIndex :: FunctionIndex
+      }
+  | CallIndirect
+      { callIndirectFuctionTypeIndex :: FunctionTypeIndex
+      }
+  | ReturnCall
+      { returnCallFunctionIndex :: FunctionIndex
+      }
+  | ReturnCallIndirect
+      { returnCallIndirectFunctionTypeIndex :: FunctionTypeIndex
+      }
   | Drop
   | Select
-  | GetLocal { getLocalIndex :: LocalIndex }
-  | SetLocal { setLocalIndex :: LocalIndex }
-  | TeeLocal { teeLocalIndex :: LocalIndex }
-  | GetGlobal { getGlobalIndex :: GlobalIndex }
-  | SetGlobal { setGlobalIndex :: GlobalIndex }
-  | I32Load { i32LoadMemoryArgument :: MemoryArgument }
-  | I64Load { i64LoadMemoryArgument :: MemoryArgument }
-  | F32Load { f32LoadMemoryArgument :: MemoryArgument }
-  | F64Load { f64LoadMemoryArgument :: MemoryArgument }
-  | I32Load8Signed { i32Load8SignedMemoryArgument :: MemoryArgument }
-  | I32Load8Unsigned { i32Load8UnsignedMemoryArgument :: MemoryArgument }
-  | I32Load16Signed { i32Load16SignedMemoryArument :: MemoryArgument }
-  | I32Load16Unsigned { i32Load16UnsignedMemoryArgument :: MemoryArgument }
-  | I64Load8Signed { i64Load8SignedMemoryArgument :: MemoryArgument }
-  | I64Load8Unsigned { i64Load8UnsignedMemoryArgument :: MemoryArgument }
-  | I64Load16Signed { i64Load16SignedMemoryArgument :: MemoryArgument }
-  | I64Load16Unsigned { i64Load16UnsignedMemoryArgument :: MemoryArgument }
-  | I64Load32Signed { i64Load32SignedMemoryArgument :: MemoryArgument }
-  | I64Load32Unsigned { i64Load32UnsignedMemoryArgument :: MemoryArgument }
-  | I32Store { i32StoreMemoryArgument :: MemoryArgument }
-  | I64Store { i64StoreMemoryArgument :: MemoryArgument }
-  | F32Store { f32StoreMemoryArgument :: MemoryArgument }
-  | F64Store { f64StoreMemoryArgument :: MemoryArgument }
-  | I32Store8 { i32Store8MemoryArgument :: MemoryArgument }
-  | I32Store16 { i32Store16MemoryArgument :: MemoryArgument }
-  | I64Store8 { i64Store8MemoryArgument :: MemoryArgument }
-  | I64Store16 { i64Store16MemoryArgument :: MemoryArgument }
-  | I64Store32 { i64Store32MemoryArgument :: MemoryArgument }
+  | GetLocal
+      { getLocalIndex :: LocalIndex
+      }
+  | SetLocal
+      { setLocalIndex :: LocalIndex
+      }
+  | TeeLocal
+      { teeLocalIndex :: LocalIndex
+      }
+  | GetGlobal
+      { getGlobalIndex :: GlobalIndex
+      }
+  | SetGlobal
+      { setGlobalIndex :: GlobalIndex
+      }
+  | I32Load
+      { i32LoadMemoryArgument :: MemoryArgument
+      }
+  | I64Load
+      { i64LoadMemoryArgument :: MemoryArgument
+      }
+  | F32Load
+      { f32LoadMemoryArgument :: MemoryArgument
+      }
+  | F64Load
+      { f64LoadMemoryArgument :: MemoryArgument
+      }
+  | I32Load8Signed
+      { i32Load8SignedMemoryArgument :: MemoryArgument
+      }
+  | I32Load8Unsigned
+      { i32Load8UnsignedMemoryArgument :: MemoryArgument
+      }
+  | I32Load16Signed
+      { i32Load16SignedMemoryArument :: MemoryArgument
+      }
+  | I32Load16Unsigned
+      { i32Load16UnsignedMemoryArgument :: MemoryArgument
+      }
+  | I64Load8Signed
+      { i64Load8SignedMemoryArgument :: MemoryArgument
+      }
+  | I64Load8Unsigned
+      { i64Load8UnsignedMemoryArgument :: MemoryArgument
+      }
+  | I64Load16Signed
+      { i64Load16SignedMemoryArgument :: MemoryArgument
+      }
+  | I64Load16Unsigned
+      { i64Load16UnsignedMemoryArgument :: MemoryArgument
+      }
+  | I64Load32Signed
+      { i64Load32SignedMemoryArgument :: MemoryArgument
+      }
+  | I64Load32Unsigned
+      { i64Load32UnsignedMemoryArgument :: MemoryArgument
+      }
+  | I32Store
+      { i32StoreMemoryArgument :: MemoryArgument
+      }
+  | I64Store
+      { i64StoreMemoryArgument :: MemoryArgument
+      }
+  | F32Store
+      { f32StoreMemoryArgument :: MemoryArgument
+      }
+  | F64Store
+      { f64StoreMemoryArgument :: MemoryArgument
+      }
+  | I32Store8
+      { i32Store8MemoryArgument :: MemoryArgument
+      }
+  | I32Store16
+      { i32Store16MemoryArgument :: MemoryArgument
+      }
+  | I64Store8
+      { i64Store8MemoryArgument :: MemoryArgument
+      }
+  | I64Store16
+      { i64Store16MemoryArgument :: MemoryArgument
+      }
+  | I64Store32
+      { i64Store32MemoryArgument :: MemoryArgument
+      }
   | MemorySize
   | MemoryGrow
-  | I32Const { i32ConstValue :: Int32 }
-  | I64Const { i64ConstValue :: Int64 }
-  | F32Const { f32ConstValue :: Float }
-  | F64Const { f64ConstValue :: Double }
+  | I32Const
+      { i32ConstValue :: Int32
+      }
+  | I64Const
+      { i64ConstValue :: Int64
+      }
+  | F32Const
+      { f32ConstValue :: Float
+      }
+  | F64Const
+      { f64ConstValue :: Double
+      }
   | I32Eqz
   | I64Eqz
   | I32Clz
@@ -443,9 +536,13 @@ getInstruction = do
     0x03 ->
       Loop <$> getResultType <*> getMany getInstruction <* expectWord8 0x0B
     0x04 ->
-      If <$> getResultType <*> getMany getInstruction <*>
-      ((expectWord8 0x05 *> (Just <$> getMany getInstruction)) <|> pure Nothing) <*
-      expectWord8 0x0B
+      If
+        <$> getResultType
+        <*> getMany getInstruction
+        <*> ( (expectWord8 0x05 *> (Just <$> getMany getInstruction))
+                <|> pure Nothing
+            )
+        <* expectWord8 0x0B
     0x0C -> Branch <$> getLabelIndex
     0x0D -> BranchIf <$> getLabelIndex
     0x0E -> BranchTable <$> getVec getLabelIndex <*> getLabelIndex
@@ -616,286 +713,287 @@ getInstruction = do
     _ -> fail "Language.WebAssembly.WireFormat.getInstruction"
 
 putInstruction :: Instruction -> Put
-putInstruction instr =
-  case instr of
-    I32Eqz -> putWord8 0x45
-    I64Eqz -> putWord8 0x50
-    I32Clz -> putWord8 0x67
-    I32Ctz -> putWord8 0x68
-    I32Popcnt -> putWord8 0x69
-    I64Clz -> putWord8 0x79
-    I64Ctz -> putWord8 0x7A
-    I64Popcnt -> putWord8 0x7B
-    F32Abs -> putWord8 0x8B
-    F32Neg -> putWord8 0x8C
-    F32Ceil -> putWord8 0x8D
-    F32Floor -> putWord8 0x8E
-    F32Trunc -> putWord8 0x8F
-    F32Nearest -> putWord8 0x90
-    F32Sqrt -> putWord8 0x91
-    F64Abs -> putWord8 0x99
-    F64Neg -> putWord8 0x9A
-    F64Ceil -> putWord8 0x9B
-    F64Floor -> putWord8 0x9C
-    F64Trunc -> putWord8 0x9D
-    F64Nearest -> putWord8 0x9E
-    F64Sqrt -> putWord8 0x9F
-    I32WrapFromI64 -> putWord8 0xA7
-    I32TruncSFromF32 -> putWord8 0xA8
-    I32TruncUFromF32 -> putWord8 0xA9
-    I32TruncSFromF64 -> putWord8 0xAA
-    I32TruncUFromF64 -> putWord8 0xAB
-    I64ExtendSFromI32 -> putWord8 0xAC
-    I64ExtendUFromI32 -> putWord8 0xAD
-    I64TruncSFromF32 -> putWord8 0xAE
-    I64TruncUFromF32 -> putWord8 0xAF
-    I64TruncSFromF64 -> putWord8 0xB0
-    I64TruncUFromF64 -> putWord8 0xB1
-    F32ConvertSFromI32 -> putWord8 0xB2
-    F32ConvertUFromI32 -> putWord8 0xB3
-    F32ConvertSFromI64 -> putWord8 0xB4
-    F32ConvertUFromI64 -> putWord8 0xB5
-    F32DemoteFromF64 -> putWord8 0xB6
-    F64ConvertSFromI32 -> putWord8 0xB7
-    F64ConvertUFromI32 -> putWord8 0xB8
-    F64ConvertSFromI64 -> putWord8 0xB9
-    F64ConvertUFromI64 -> putWord8 0xBA
-    F64PromoteFromF32 -> putWord8 0xBB
-    I32ReinterpretFromF32 -> putWord8 0xBC
-    I64ReinterpretFromF64 -> putWord8 0xBD
-    F32ReinterpretFromI32 -> putWord8 0xBE
-    F64ReinterpretFromI64 -> putWord8 0xBF
-    I32Eq -> putWord8 0x46
-    I32Ne -> putWord8 0x47
-    I32LtS -> putWord8 0x48
-    I32LtU -> putWord8 0x49
-    I32GtS -> putWord8 0x4A
-    I32GtU -> putWord8 0x4B
-    I32LeS -> putWord8 0x4C
-    I32LeU -> putWord8 0x4D
-    I32GeS -> putWord8 0x4E
-    I32GeU -> putWord8 0x4F
-    I64Eq -> putWord8 0x51
-    I64Ne -> putWord8 0x52
-    I64LtS -> putWord8 0x53
-    I64LtU -> putWord8 0x54
-    I64GtS -> putWord8 0x55
-    I64GtU -> putWord8 0x56
-    I64LeS -> putWord8 0x57
-    I64LeU -> putWord8 0x58
-    I64GeS -> putWord8 0x59
-    I64GeU -> putWord8 0x5A
-    F32Eq -> putWord8 0x5B
-    F32Ne -> putWord8 0x5C
-    F32Lt -> putWord8 0x5D
-    F32Gt -> putWord8 0x5E
-    F32Le -> putWord8 0x5F
-    F32Ge -> putWord8 0x60
-    F64Eq -> putWord8 0x61
-    F64Ne -> putWord8 0x62
-    F64Lt -> putWord8 0x63
-    F64Gt -> putWord8 0x64
-    F64Le -> putWord8 0x65
-    F64Ge -> putWord8 0x66
-    I32Add -> putWord8 0x6A
-    I32Sub -> putWord8 0x6B
-    I32Mul -> putWord8 0x6C
-    I32DivS -> putWord8 0x6D
-    I32DivU -> putWord8 0x6E
-    I32RemS -> putWord8 0x6F
-    I32RemU -> putWord8 0x70
-    I32And -> putWord8 0x71
-    I32Or -> putWord8 0x72
-    I32Xor -> putWord8 0x73
-    I32Shl -> putWord8 0x74
-    I32ShrS -> putWord8 0x75
-    I32ShrU -> putWord8 0x76
-    I32RotL -> putWord8 0x77
-    I32RotR -> putWord8 0x78
-    I64Add -> putWord8 0x7C
-    I64Sub -> putWord8 0x7D
-    I64Mul -> putWord8 0x7E
-    I64DivS -> putWord8 0x7F
-    I64DivU -> putWord8 0x80
-    I64RemS -> putWord8 0x81
-    I64RemU -> putWord8 0x82
-    I64And -> putWord8 0x83
-    I64Or -> putWord8 0x84
-    I64Xor -> putWord8 0x85
-    I64Shl -> putWord8 0x86
-    I64ShrS -> putWord8 0x87
-    I64ShrU -> putWord8 0x88
-    I64RotL -> putWord8 0x89
-    I64RotR -> putWord8 0x8A
-    F32Add -> putWord8 0x92
-    F32Sub -> putWord8 0x93
-    F32Mul -> putWord8 0x94
-    F32Div -> putWord8 0x95
-    F32Min -> putWord8 0x96
-    F32Max -> putWord8 0x97
-    F32Copysign -> putWord8 0x98
-    F64Add -> putWord8 0xA0
-    F64Sub -> putWord8 0xA1
-    F64Mul -> putWord8 0xA2
-    F64Div -> putWord8 0xA3
-    F64Min -> putWord8 0xA4
-    F64Max -> putWord8 0xA5
-    F64Copysign -> putWord8 0xA6
-    Unreachable -> putWord8 0x00
-    Nop -> putWord8 0x01
-    Block {..} -> do
-      putWord8 0x02
-      putResultType blockResultType
-      putMany putInstruction blockInstructions
-      putWord8 0x0B
-    Loop {..} -> do
-      putWord8 0x03
-      putResultType loopResultType
-      putMany putInstruction loopInstructions
-      putWord8 0x0B
-    If {..} -> do
-      putWord8 0x04
-      putResultType ifResultType
-      putMany putInstruction thenInstructions
-      case elseInstructions of
-        Just _else_instrs -> do
-          putWord8 0x05
-          putMany putInstruction _else_instrs
-        _ -> pure ()
-      putWord8 0x0B
-    Branch {..} -> do
-      putWord8 0x0C
-      putLabelIndex branchLabel
-    BranchIf {..} -> do
-      putWord8 0x0D
-      putLabelIndex branchIfLabel
-    BranchTable {..} -> do
-      putWord8 0x0E
-      putVec putLabelIndex branchTableLabels
-      putLabelIndex branchTableFallbackLabel
-    Return -> putWord8 0x0F
-    Call {..} -> do
-      putWord8 0x10
-      putFunctionIndex callFunctionIndex
-    CallIndirect {..} -> do
-      putWord8 0x11
-      putFunctionTypeIndex callIndirectFuctionTypeIndex
-      putWord8 0x00
-    ReturnCall {..} -> do
-      putWord8 0x12
-      putFunctionIndex returnCallFunctionIndex
-    ReturnCallIndirect {..} -> do
-      putWord8 0x13
-      putFunctionTypeIndex returnCallIndirectFunctionTypeIndex
-      putWord8 0x00
-    Drop -> putWord8 0x1A
-    Select -> putWord8 0x1B
-    GetLocal {..} -> do
-      putWord8 0x20
-      putLocalIndex getLocalIndex
-    SetLocal {..} -> do
-      putWord8 0x21
-      putLocalIndex setLocalIndex
-    TeeLocal {..} -> do
-      putWord8 0x22
-      putLocalIndex teeLocalIndex
-    GetGlobal {..} -> do
-      putWord8 0x23
-      putGlobalIndex getGlobalIndex
-    SetGlobal {..} -> do
-      putWord8 0x24
-      putGlobalIndex setGlobalIndex
-    I32Load {..} -> do
-      putWord8 0x28
-      putMemoryArgument i32LoadMemoryArgument
-    I64Load {..} -> do
-      putWord8 0x29
-      putMemoryArgument i64LoadMemoryArgument
-    F32Load {..} -> do
-      putWord8 0x2A
-      putMemoryArgument f32LoadMemoryArgument
-    F64Load {..} -> do
-      putWord8 0x2B
-      putMemoryArgument f64LoadMemoryArgument
-    I32Load8Signed {..} -> do
-      putWord8 0x2C
-      putMemoryArgument i32Load8SignedMemoryArgument
-    I32Load8Unsigned {..} -> do
-      putWord8 0x2D
-      putMemoryArgument i32Load8UnsignedMemoryArgument
-    I32Load16Signed {..} -> do
-      putWord8 0x2E
-      putMemoryArgument i32Load16SignedMemoryArument
-    I32Load16Unsigned {..} -> do
-      putWord8 0x2F
-      putMemoryArgument i32Load16UnsignedMemoryArgument
-    I64Load8Signed {..} -> do
-      putWord8 0x30
-      putMemoryArgument i64Load8SignedMemoryArgument
-    I64Load8Unsigned {..} -> do
-      putWord8 0x31
-      putMemoryArgument i64Load8UnsignedMemoryArgument
-    I64Load16Signed {..} -> do
-      putWord8 0x32
-      putMemoryArgument i64Load16SignedMemoryArgument
-    I64Load16Unsigned {..} -> do
-      putWord8 0x33
-      putMemoryArgument i64Load16UnsignedMemoryArgument
-    I64Load32Signed {..} -> do
-      putWord8 0x34
-      putMemoryArgument i64Load32SignedMemoryArgument
-    I64Load32Unsigned {..} -> do
-      putWord8 0x35
-      putMemoryArgument i64Load32UnsignedMemoryArgument
-    I32Store {..} -> do
-      putWord8 0x36
-      putMemoryArgument i32StoreMemoryArgument
-    I64Store {..} -> do
-      putWord8 0x37
-      putMemoryArgument i64StoreMemoryArgument
-    F32Store {..} -> do
-      putWord8 0x38
-      putMemoryArgument f32StoreMemoryArgument
-    F64Store {..} -> do
-      putWord8 0x39
-      putMemoryArgument f64StoreMemoryArgument
-    I32Store8 {..} -> do
-      putWord8 0x3A
-      putMemoryArgument i32Store8MemoryArgument
-    I32Store16 {..} -> do
-      putWord8 0x3B
-      putMemoryArgument i32Store16MemoryArgument
-    I64Store8 {..} -> do
-      putWord8 0x3C
-      putMemoryArgument i64Store8MemoryArgument
-    I64Store16 {..} -> do
-      putWord8 0x3D
-      putMemoryArgument i64Store16MemoryArgument
-    I64Store32 {..} -> do
-      putWord8 0x3E
-      putMemoryArgument i64Store32MemoryArgument
-    MemorySize -> do
-      putWord8 0x3F
-      putWord8 0x00
-    MemoryGrow -> do
-      putWord8 0x40
-      putWord8 0x00
-    I32Const {..} -> do
-      putWord8 0x41
-      putVS32 i32ConstValue
-    I64Const {..} -> do
-      putWord8 0x42
-      putVS64 i64ConstValue
-    F32Const {..} -> do
-      putWord8 0x43
-      putF32 f32ConstValue
-    F64Const {..} -> do
-      putWord8 0x44
-      putF64 f64ConstValue
+putInstruction instr = case instr of
+  I32Eqz -> putWord8 0x45
+  I64Eqz -> putWord8 0x50
+  I32Clz -> putWord8 0x67
+  I32Ctz -> putWord8 0x68
+  I32Popcnt -> putWord8 0x69
+  I64Clz -> putWord8 0x79
+  I64Ctz -> putWord8 0x7A
+  I64Popcnt -> putWord8 0x7B
+  F32Abs -> putWord8 0x8B
+  F32Neg -> putWord8 0x8C
+  F32Ceil -> putWord8 0x8D
+  F32Floor -> putWord8 0x8E
+  F32Trunc -> putWord8 0x8F
+  F32Nearest -> putWord8 0x90
+  F32Sqrt -> putWord8 0x91
+  F64Abs -> putWord8 0x99
+  F64Neg -> putWord8 0x9A
+  F64Ceil -> putWord8 0x9B
+  F64Floor -> putWord8 0x9C
+  F64Trunc -> putWord8 0x9D
+  F64Nearest -> putWord8 0x9E
+  F64Sqrt -> putWord8 0x9F
+  I32WrapFromI64 -> putWord8 0xA7
+  I32TruncSFromF32 -> putWord8 0xA8
+  I32TruncUFromF32 -> putWord8 0xA9
+  I32TruncSFromF64 -> putWord8 0xAA
+  I32TruncUFromF64 -> putWord8 0xAB
+  I64ExtendSFromI32 -> putWord8 0xAC
+  I64ExtendUFromI32 -> putWord8 0xAD
+  I64TruncSFromF32 -> putWord8 0xAE
+  I64TruncUFromF32 -> putWord8 0xAF
+  I64TruncSFromF64 -> putWord8 0xB0
+  I64TruncUFromF64 -> putWord8 0xB1
+  F32ConvertSFromI32 -> putWord8 0xB2
+  F32ConvertUFromI32 -> putWord8 0xB3
+  F32ConvertSFromI64 -> putWord8 0xB4
+  F32ConvertUFromI64 -> putWord8 0xB5
+  F32DemoteFromF64 -> putWord8 0xB6
+  F64ConvertSFromI32 -> putWord8 0xB7
+  F64ConvertUFromI32 -> putWord8 0xB8
+  F64ConvertSFromI64 -> putWord8 0xB9
+  F64ConvertUFromI64 -> putWord8 0xBA
+  F64PromoteFromF32 -> putWord8 0xBB
+  I32ReinterpretFromF32 -> putWord8 0xBC
+  I64ReinterpretFromF64 -> putWord8 0xBD
+  F32ReinterpretFromI32 -> putWord8 0xBE
+  F64ReinterpretFromI64 -> putWord8 0xBF
+  I32Eq -> putWord8 0x46
+  I32Ne -> putWord8 0x47
+  I32LtS -> putWord8 0x48
+  I32LtU -> putWord8 0x49
+  I32GtS -> putWord8 0x4A
+  I32GtU -> putWord8 0x4B
+  I32LeS -> putWord8 0x4C
+  I32LeU -> putWord8 0x4D
+  I32GeS -> putWord8 0x4E
+  I32GeU -> putWord8 0x4F
+  I64Eq -> putWord8 0x51
+  I64Ne -> putWord8 0x52
+  I64LtS -> putWord8 0x53
+  I64LtU -> putWord8 0x54
+  I64GtS -> putWord8 0x55
+  I64GtU -> putWord8 0x56
+  I64LeS -> putWord8 0x57
+  I64LeU -> putWord8 0x58
+  I64GeS -> putWord8 0x59
+  I64GeU -> putWord8 0x5A
+  F32Eq -> putWord8 0x5B
+  F32Ne -> putWord8 0x5C
+  F32Lt -> putWord8 0x5D
+  F32Gt -> putWord8 0x5E
+  F32Le -> putWord8 0x5F
+  F32Ge -> putWord8 0x60
+  F64Eq -> putWord8 0x61
+  F64Ne -> putWord8 0x62
+  F64Lt -> putWord8 0x63
+  F64Gt -> putWord8 0x64
+  F64Le -> putWord8 0x65
+  F64Ge -> putWord8 0x66
+  I32Add -> putWord8 0x6A
+  I32Sub -> putWord8 0x6B
+  I32Mul -> putWord8 0x6C
+  I32DivS -> putWord8 0x6D
+  I32DivU -> putWord8 0x6E
+  I32RemS -> putWord8 0x6F
+  I32RemU -> putWord8 0x70
+  I32And -> putWord8 0x71
+  I32Or -> putWord8 0x72
+  I32Xor -> putWord8 0x73
+  I32Shl -> putWord8 0x74
+  I32ShrS -> putWord8 0x75
+  I32ShrU -> putWord8 0x76
+  I32RotL -> putWord8 0x77
+  I32RotR -> putWord8 0x78
+  I64Add -> putWord8 0x7C
+  I64Sub -> putWord8 0x7D
+  I64Mul -> putWord8 0x7E
+  I64DivS -> putWord8 0x7F
+  I64DivU -> putWord8 0x80
+  I64RemS -> putWord8 0x81
+  I64RemU -> putWord8 0x82
+  I64And -> putWord8 0x83
+  I64Or -> putWord8 0x84
+  I64Xor -> putWord8 0x85
+  I64Shl -> putWord8 0x86
+  I64ShrS -> putWord8 0x87
+  I64ShrU -> putWord8 0x88
+  I64RotL -> putWord8 0x89
+  I64RotR -> putWord8 0x8A
+  F32Add -> putWord8 0x92
+  F32Sub -> putWord8 0x93
+  F32Mul -> putWord8 0x94
+  F32Div -> putWord8 0x95
+  F32Min -> putWord8 0x96
+  F32Max -> putWord8 0x97
+  F32Copysign -> putWord8 0x98
+  F64Add -> putWord8 0xA0
+  F64Sub -> putWord8 0xA1
+  F64Mul -> putWord8 0xA2
+  F64Div -> putWord8 0xA3
+  F64Min -> putWord8 0xA4
+  F64Max -> putWord8 0xA5
+  F64Copysign -> putWord8 0xA6
+  Unreachable -> putWord8 0x00
+  Nop -> putWord8 0x01
+  Block {..} -> do
+    putWord8 0x02
+    putResultType blockResultType
+    putMany putInstruction blockInstructions
+    putWord8 0x0B
+  Loop {..} -> do
+    putWord8 0x03
+    putResultType loopResultType
+    putMany putInstruction loopInstructions
+    putWord8 0x0B
+  If {..} -> do
+    putWord8 0x04
+    putResultType ifResultType
+    putMany putInstruction thenInstructions
+    case elseInstructions of
+      Just _else_instrs -> do
+        putWord8 0x05
+        putMany putInstruction _else_instrs
+      _ -> pure ()
+    putWord8 0x0B
+  Branch {..} -> do
+    putWord8 0x0C
+    putLabelIndex branchLabel
+  BranchIf {..} -> do
+    putWord8 0x0D
+    putLabelIndex branchIfLabel
+  BranchTable {..} -> do
+    putWord8 0x0E
+    putVec putLabelIndex branchTableLabels
+    putLabelIndex branchTableFallbackLabel
+  Return -> putWord8 0x0F
+  Call {..} -> do
+    putWord8 0x10
+    putFunctionIndex callFunctionIndex
+  CallIndirect {..} -> do
+    putWord8 0x11
+    putFunctionTypeIndex callIndirectFuctionTypeIndex
+    putWord8 0x00
+  ReturnCall {..} -> do
+    putWord8 0x12
+    putFunctionIndex returnCallFunctionIndex
+  ReturnCallIndirect {..} -> do
+    putWord8 0x13
+    putFunctionTypeIndex returnCallIndirectFunctionTypeIndex
+    putWord8 0x00
+  Drop -> putWord8 0x1A
+  Select -> putWord8 0x1B
+  GetLocal {..} -> do
+    putWord8 0x20
+    putLocalIndex getLocalIndex
+  SetLocal {..} -> do
+    putWord8 0x21
+    putLocalIndex setLocalIndex
+  TeeLocal {..} -> do
+    putWord8 0x22
+    putLocalIndex teeLocalIndex
+  GetGlobal {..} -> do
+    putWord8 0x23
+    putGlobalIndex getGlobalIndex
+  SetGlobal {..} -> do
+    putWord8 0x24
+    putGlobalIndex setGlobalIndex
+  I32Load {..} -> do
+    putWord8 0x28
+    putMemoryArgument i32LoadMemoryArgument
+  I64Load {..} -> do
+    putWord8 0x29
+    putMemoryArgument i64LoadMemoryArgument
+  F32Load {..} -> do
+    putWord8 0x2A
+    putMemoryArgument f32LoadMemoryArgument
+  F64Load {..} -> do
+    putWord8 0x2B
+    putMemoryArgument f64LoadMemoryArgument
+  I32Load8Signed {..} -> do
+    putWord8 0x2C
+    putMemoryArgument i32Load8SignedMemoryArgument
+  I32Load8Unsigned {..} -> do
+    putWord8 0x2D
+    putMemoryArgument i32Load8UnsignedMemoryArgument
+  I32Load16Signed {..} -> do
+    putWord8 0x2E
+    putMemoryArgument i32Load16SignedMemoryArument
+  I32Load16Unsigned {..} -> do
+    putWord8 0x2F
+    putMemoryArgument i32Load16UnsignedMemoryArgument
+  I64Load8Signed {..} -> do
+    putWord8 0x30
+    putMemoryArgument i64Load8SignedMemoryArgument
+  I64Load8Unsigned {..} -> do
+    putWord8 0x31
+    putMemoryArgument i64Load8UnsignedMemoryArgument
+  I64Load16Signed {..} -> do
+    putWord8 0x32
+    putMemoryArgument i64Load16SignedMemoryArgument
+  I64Load16Unsigned {..} -> do
+    putWord8 0x33
+    putMemoryArgument i64Load16UnsignedMemoryArgument
+  I64Load32Signed {..} -> do
+    putWord8 0x34
+    putMemoryArgument i64Load32SignedMemoryArgument
+  I64Load32Unsigned {..} -> do
+    putWord8 0x35
+    putMemoryArgument i64Load32UnsignedMemoryArgument
+  I32Store {..} -> do
+    putWord8 0x36
+    putMemoryArgument i32StoreMemoryArgument
+  I64Store {..} -> do
+    putWord8 0x37
+    putMemoryArgument i64StoreMemoryArgument
+  F32Store {..} -> do
+    putWord8 0x38
+    putMemoryArgument f32StoreMemoryArgument
+  F64Store {..} -> do
+    putWord8 0x39
+    putMemoryArgument f64StoreMemoryArgument
+  I32Store8 {..} -> do
+    putWord8 0x3A
+    putMemoryArgument i32Store8MemoryArgument
+  I32Store16 {..} -> do
+    putWord8 0x3B
+    putMemoryArgument i32Store16MemoryArgument
+  I64Store8 {..} -> do
+    putWord8 0x3C
+    putMemoryArgument i64Store8MemoryArgument
+  I64Store16 {..} -> do
+    putWord8 0x3D
+    putMemoryArgument i64Store16MemoryArgument
+  I64Store32 {..} -> do
+    putWord8 0x3E
+    putMemoryArgument i64Store32MemoryArgument
+  MemorySize -> do
+    putWord8 0x3F
+    putWord8 0x00
+  MemoryGrow -> do
+    putWord8 0x40
+    putWord8 0x00
+  I32Const {..} -> do
+    putWord8 0x41
+    putVS32 i32ConstValue
+  I64Const {..} -> do
+    putWord8 0x42
+    putVS64 i64ConstValue
+  F32Const {..} -> do
+    putWord8 0x43
+    putF32 f32ConstValue
+  F64Const {..} -> do
+    putWord8 0x44
+    putF64 f64ConstValue
 
-newtype Expression = Expression
-  { instructions :: [Instruction]
-  } deriving (Eq, Generic, Ord, Show)
+newtype Expression
+  = Expression
+      { instructions :: [Instruction]
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getExpression :: Get Expression
 getExpression = coerce (getMany getInstruction) <* expectWord8 0x0B
@@ -905,10 +1003,12 @@ putExpression expr = do
   putMany putInstruction $ coerce expr
   putWord8 0x0B
 
-data Custom = Custom
-  { customName :: Name
-  , customContent :: SBS.ShortByteString
-  } deriving (Eq, Generic, Ord, Show)
+data Custom
+  = Custom
+      { customName :: Name,
+        customContent :: SBS.ShortByteString
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getCustomName :: Get (Name, Word32)
 getCustomName = do
@@ -917,8 +1017,8 @@ getCustomName = do
   o1 <- bytesRead
   pure (n, fromIntegral $ o1 - o0)
 
-newtype FunctionTypeIndex =
-  FunctionTypeIndex Word32
+newtype FunctionTypeIndex
+  = FunctionTypeIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
 getFunctionTypeIndex :: Get FunctionTypeIndex
@@ -927,8 +1027,8 @@ getFunctionTypeIndex = coerce getVU32
 putFunctionTypeIndex :: FunctionTypeIndex -> Put
 putFunctionTypeIndex = coerce putVU32
 
-newtype FunctionIndex =
-  FunctionIndex Word32
+newtype FunctionIndex
+  = FunctionIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
 getFunctionIndex :: Get FunctionIndex
@@ -937,8 +1037,8 @@ getFunctionIndex = coerce getVU32
 putFunctionIndex :: FunctionIndex -> Put
 putFunctionIndex = coerce putVU32
 
-newtype TableIndex =
-  TableIndex Word32
+newtype TableIndex
+  = TableIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
 getTableIndex :: Get TableIndex
@@ -947,8 +1047,8 @@ getTableIndex = coerce getVU32
 putTableIndex :: TableIndex -> Put
 putTableIndex = coerce putVU32
 
-newtype MemoryIndex =
-  MemoryIndex Word32
+newtype MemoryIndex
+  = MemoryIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
 getMemoryIndex :: Get MemoryIndex
@@ -957,8 +1057,8 @@ getMemoryIndex = coerce getVU32
 putMemoryIndex :: MemoryIndex -> Put
 putMemoryIndex = coerce putVU32
 
-newtype GlobalIndex =
-  GlobalIndex Word32
+newtype GlobalIndex
+  = GlobalIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
 getGlobalIndex' :: Get GlobalIndex
@@ -967,8 +1067,8 @@ getGlobalIndex' = coerce getVU32
 putGlobalIndex :: GlobalIndex -> Put
 putGlobalIndex = coerce putVU32
 
-newtype LocalIndex =
-  LocalIndex Word32
+newtype LocalIndex
+  = LocalIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
 getLocalIndex' :: Get LocalIndex
@@ -977,8 +1077,8 @@ getLocalIndex' = coerce getVU32
 putLocalIndex :: LocalIndex -> Put
 putLocalIndex = coerce putVU32
 
-newtype LabelIndex =
-  LabelIndex Word32
+newtype LabelIndex
+  = LabelIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
 getLabelIndex :: Get LabelIndex
@@ -1005,25 +1105,26 @@ getImportDescription = do
     _ -> fail "Language.WebAssembly.WireFormat.getImportDescription"
 
 putImportDescription :: ImportDescription -> Put
-putImportDescription desc =
-  case desc of
-    ImportFunction x -> do
-      putWord8 0x00
-      putFunctionTypeIndex x
-    ImportTable tt -> do
-      putWord8 0x01
-      putTableType tt
-    ImportMemory mt -> do
-      putWord8 0x02
-      putMemoryType mt
-    ImportGlobal gt -> do
-      putWord8 0x03
-      putGlobalType gt
+putImportDescription desc = case desc of
+  ImportFunction x -> do
+    putWord8 0x00
+    putFunctionTypeIndex x
+  ImportTable tt -> do
+    putWord8 0x01
+    putTableType tt
+  ImportMemory mt -> do
+    putWord8 0x02
+    putMemoryType mt
+  ImportGlobal gt -> do
+    putWord8 0x03
+    putGlobalType gt
 
-data Import = Import
-  { moduleName, importName :: Name
-  , importDescription :: ImportDescription
-  } deriving (Eq, Generic, Ord, Show)
+data Import
+  = Import
+      { moduleName, importName :: Name,
+        importDescription :: ImportDescription
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getImport :: Get Import
 getImport = Import <$> getName <*> getName <*> getImportDescription
@@ -1034,9 +1135,11 @@ putImport Import {..} = do
   putName importName
   putImportDescription importDescription
 
-newtype Table = Table
-  { tableType :: TableType
-  } deriving (Eq, Generic, Ord, Show)
+newtype Table
+  = Table
+      { tableType :: TableType
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getTable :: Get Table
 getTable = coerce getTableType
@@ -1044,9 +1147,11 @@ getTable = coerce getTableType
 putTable :: Table -> Put
 putTable = coerce putTableType
 
-newtype Memory = Memory
-  { memoryType :: MemoryType
-  } deriving (Eq, Generic, Ord, Show)
+newtype Memory
+  = Memory
+      { memoryType :: MemoryType
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getMemory :: Get Memory
 getMemory = coerce getMemoryType
@@ -1054,10 +1159,12 @@ getMemory = coerce getMemoryType
 putMemory :: Memory -> Put
 putMemory = coerce putMemoryType
 
-data Global = Global
-  { globalType :: GlobalType
-  , globalInitialValue :: Expression
-  } deriving (Eq, Generic, Ord, Show)
+data Global
+  = Global
+      { globalType :: GlobalType,
+        globalInitialValue :: Expression
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getGlobal :: Get Global
 getGlobal = Global <$> getGlobalType <*> getExpression
@@ -1085,25 +1192,26 @@ getExportDescription = do
     _ -> fail "Language.WebAssembly.WireFormat.getExportDescription"
 
 putExportDescription :: ExportDescription -> Put
-putExportDescription d =
-  case d of
-    ExportFunction x -> do
-      putWord8 0x00
-      putFunctionIndex x
-    ExportTable x -> do
-      putWord8 0x01
-      putTableIndex x
-    ExportMemory x -> do
-      putWord8 0x02
-      putMemoryIndex x
-    ExportGlobal x -> do
-      putWord8 0x03
-      putGlobalIndex x
+putExportDescription d = case d of
+  ExportFunction x -> do
+    putWord8 0x00
+    putFunctionIndex x
+  ExportTable x -> do
+    putWord8 0x01
+    putTableIndex x
+  ExportMemory x -> do
+    putWord8 0x02
+    putMemoryIndex x
+  ExportGlobal x -> do
+    putWord8 0x03
+    putGlobalIndex x
 
-data Export = Export
-  { exportName :: Name
-  , exportDescription :: ExportDescription
-  } deriving (Eq, Generic, Ord, Show)
+data Export
+  = Export
+      { exportName :: Name,
+        exportDescription :: ExportDescription
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getExport :: Get Export
 getExport = Export <$> getName <*> getExportDescription
@@ -1113,11 +1221,13 @@ putExport Export {..} = do
   putName exportName
   putExportDescription exportDescription
 
-data Element = Element
-  { tableIndex :: TableIndex
-  , tableOffset :: Expression
-  , tableInitialValues :: [FunctionIndex]
-  } deriving (Eq, Generic, Ord, Show)
+data Element
+  = Element
+      { tableIndex :: TableIndex,
+        tableOffset :: Expression,
+        tableInitialValues :: [FunctionIndex]
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getElement :: Get Element
 getElement =
@@ -1129,10 +1239,12 @@ putElement Element {..} = do
   putExpression tableOffset
   putVec putFunctionIndex tableInitialValues
 
-data Locals = Locals
-  { localsCount :: Word32
-  , localsType :: ValueType
-  } deriving (Eq, Generic, Ord, Show)
+data Locals
+  = Locals
+      { localsCount :: Word32,
+        localsType :: ValueType
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getLocals :: Get Locals
 getLocals = Locals <$> getVU32 <*> getValueType
@@ -1142,10 +1254,12 @@ putLocals Locals {..} = do
   putVU32 localsCount
   putValueType localsType
 
-data Function = Function
-  { functionLocals :: [Locals]
-  , functionBody :: Expression
-  } deriving (Eq, Generic, Ord, Show)
+data Function
+  = Function
+      { functionLocals :: [Locals],
+        functionBody :: Expression
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getFunction :: Get Function
 getFunction = Function <$> getVec getLocals <*> getExpression
@@ -1155,11 +1269,13 @@ putFunction Function {..} = do
   putVec putLocals functionLocals
   putExpression functionBody
 
-data DataSegment = DataSegment
-  { memoryIndex :: MemoryIndex
-  , memoryOffset :: Expression
-  , memoryInitialBytes :: SBS.ShortByteString
-  } deriving (Eq, Generic, Ord, Show)
+data DataSegment
+  = DataSegment
+      { memoryIndex :: MemoryIndex,
+        memoryOffset :: Expression,
+        memoryInitialBytes :: SBS.ShortByteString
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getDataSegment :: Get DataSegment
 getDataSegment = DataSegment <$> getMemoryIndex <*> getExpression <*> getVecSBS
@@ -1170,50 +1286,50 @@ putDataSegment DataSegment {..} = do
   putExpression memoryOffset
   putVecSBS memoryInitialBytes
 
-data LinkingSymbolFlags = LinkingSymbolFlags
-  { linkingWasmSymBindingWeak, linkingWasmSymBindingLocal, linkingWasmSymVisibilityHidden, linkingWasmSymUndefined :: Bool
-  } deriving (Eq, Generic, Ord, Show)
+data LinkingSymbolFlags
+  = LinkingSymbolFlags
+      { linkingWasmSymBindingWeak, linkingWasmSymBindingLocal, linkingWasmSymVisibilityHidden, linkingWasmSymUndefined :: Bool
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getLinkingSymbolFlags :: Get LinkingSymbolFlags
 getLinkingSymbolFlags = do
   f <- getVU32
-  pure
-    LinkingSymbolFlags
-      { linkingWasmSymBindingWeak = testBit f 0
-      , linkingWasmSymBindingLocal = testBit f 1
-      , linkingWasmSymVisibilityHidden = testBit f 2
-      , linkingWasmSymUndefined = testBit f 4
-      }
+  pure LinkingSymbolFlags
+    { linkingWasmSymBindingWeak = testBit f 0,
+      linkingWasmSymBindingLocal = testBit f 1,
+      linkingWasmSymVisibilityHidden = testBit f 2,
+      linkingWasmSymUndefined = testBit f 4
+    }
 
 putLinkingSymbolFlags :: LinkingSymbolFlags -> Put
 putLinkingSymbolFlags LinkingSymbolFlags {..} =
-  putVU32 $
-  (if linkingWasmSymUndefined
-     then flip setBit 4
-     else id) $
-  (if linkingWasmSymVisibilityHidden
-     then flip setBit 2
-     else id) $
-  (if linkingWasmSymBindingLocal
-     then flip setBit 1
-     else id) $
-  (if linkingWasmSymBindingWeak
-     then flip setBit 0
-     else id)
-    0
+  putVU32
+    $ (if linkingWasmSymUndefined then flip setBit 4 else id)
+    $ (if linkingWasmSymVisibilityHidden then flip setBit 2 else id)
+    $ (if linkingWasmSymBindingLocal then flip setBit 1 else id)
+    $ (if linkingWasmSymBindingWeak then flip setBit 0 else id) 0
 
 data LinkingSymbolInfo
-  = LinkingFunctionSymbolInfo { linkingFunctionSymbolFlags :: LinkingSymbolFlags
-                              , linkingFunctionSymbolIndex :: Word32
-                              , linkingFunctionSymbolName :: Maybe Name }
-  | LinkingDataSymbolInfo { linkingDataSymbolFlags :: LinkingSymbolFlags
-                          , linkingDataSymbolName :: Name
-                          , linkingDataSymbolIndex, linkingDataSymbolOffset, linkingDataSymbolSize :: Maybe Word32 }
-  | LinkingGlobalSymbolInfo { linkingGlobalSymbolFlags :: LinkingSymbolFlags
-                            , linkingGlobalSymbolIndex :: Word32
-                            , linkingGlobalSymbolName :: Maybe Name }
-  | LinkingSectionSymbolInfo { linkingSectionSymbolFlags :: LinkingSymbolFlags
-                             , linkingSectionSymbolIndex :: Word32 }
+  = LinkingFunctionSymbolInfo
+      { linkingFunctionSymbolFlags :: LinkingSymbolFlags,
+        linkingFunctionSymbolIndex :: Word32,
+        linkingFunctionSymbolName :: Maybe Name
+      }
+  | LinkingDataSymbolInfo
+      { linkingDataSymbolFlags :: LinkingSymbolFlags,
+        linkingDataSymbolName :: Name,
+        linkingDataSymbolIndex, linkingDataSymbolOffset, linkingDataSymbolSize :: Maybe Word32
+      }
+  | LinkingGlobalSymbolInfo
+      { linkingGlobalSymbolFlags :: LinkingSymbolFlags,
+        linkingGlobalSymbolIndex :: Word32,
+        linkingGlobalSymbolName :: Maybe Name
+      }
+  | LinkingSectionSymbolInfo
+      { linkingSectionSymbolFlags :: LinkingSymbolFlags,
+        linkingSectionSymbolIndex :: Word32
+      }
   deriving (Eq, Generic, Ord, Show)
 
 getLinkingSymbolInfo :: Get LinkingSymbolInfo
@@ -1224,54 +1340,65 @@ getLinkingSymbolInfo = do
     0 ->
       if linkingWasmSymUndefined
         then LinkingFunctionSymbolInfo _sym_flags <$> getVU32 <*> pure Nothing
-        else LinkingFunctionSymbolInfo _sym_flags <$> getVU32 <*>
-             fmap Just getName
+        else LinkingFunctionSymbolInfo _sym_flags <$> getVU32 <*> fmap Just getName
     1 ->
       if linkingWasmSymUndefined
-        then LinkingDataSymbolInfo _sym_flags <$> getName <*> pure Nothing <*>
-             pure Nothing <*>
-             pure Nothing
-        else LinkingDataSymbolInfo _sym_flags <$> getName <*> fmap Just getVU32 <*>
-             fmap Just getVU32 <*>
-             fmap Just getVU32
+        then
+          LinkingDataSymbolInfo _sym_flags
+            <$> getName
+            <*> pure Nothing
+            <*> pure Nothing
+            <*> pure Nothing
+        else
+          LinkingDataSymbolInfo _sym_flags
+            <$> getName
+            <*> fmap Just getVU32
+            <*> fmap Just getVU32
+            <*> fmap Just getVU32
     2 ->
       if linkingWasmSymUndefined
         then LinkingGlobalSymbolInfo _sym_flags <$> getVU32 <*> pure Nothing
-        else LinkingGlobalSymbolInfo _sym_flags <$> getVU32 <*>
-             fmap Just getName
+        else LinkingGlobalSymbolInfo _sym_flags <$> getVU32 <*> fmap Just getName
     3 -> LinkingSectionSymbolInfo _sym_flags <$> getVU32
     _ -> fail "Language.WebAssembly.WireFormat.getLinkingSymbolInfo"
 
 putLinkingSymbolInfo :: LinkingSymbolInfo -> Put
-putLinkingSymbolInfo sym_info =
-  case sym_info of
-    LinkingFunctionSymbolInfo {..} -> do
-      putWord8 0
-      putLinkingSymbolFlags linkingFunctionSymbolFlags
-      putVU32 linkingFunctionSymbolIndex
-      putMaybe putName linkingFunctionSymbolName
-    LinkingDataSymbolInfo {..} -> do
-      putWord8 1
-      putLinkingSymbolFlags linkingDataSymbolFlags
-      putName linkingDataSymbolName
-      putMaybe putVU32 linkingDataSymbolIndex
-      putMaybe putVU32 linkingDataSymbolOffset
-      putMaybe putVU32 linkingDataSymbolSize
-    LinkingGlobalSymbolInfo {..} -> do
-      putWord8 2
-      putLinkingSymbolFlags linkingGlobalSymbolFlags
-      putVU32 linkingGlobalSymbolIndex
-      putMaybe putName linkingGlobalSymbolName
-    LinkingSectionSymbolInfo {..} -> do
-      putWord8 3
-      putLinkingSymbolFlags linkingSectionSymbolFlags
-      putVU32 linkingSectionSymbolIndex
+putLinkingSymbolInfo sym_info = case sym_info of
+  LinkingFunctionSymbolInfo {..} -> do
+    putWord8 0
+    putLinkingSymbolFlags linkingFunctionSymbolFlags
+    putVU32 linkingFunctionSymbolIndex
+    putMaybe putName linkingFunctionSymbolName
+  LinkingDataSymbolInfo {..} -> do
+    putWord8 1
+    putLinkingSymbolFlags linkingDataSymbolFlags
+    putName linkingDataSymbolName
+    putMaybe putVU32 linkingDataSymbolIndex
+    putMaybe putVU32 linkingDataSymbolOffset
+    putMaybe putVU32 linkingDataSymbolSize
+  LinkingGlobalSymbolInfo {..} -> do
+    putWord8 2
+    putLinkingSymbolFlags linkingGlobalSymbolFlags
+    putVU32 linkingGlobalSymbolIndex
+    putMaybe putName linkingGlobalSymbolName
+  LinkingSectionSymbolInfo {..} -> do
+    putWord8 3
+    putLinkingSymbolFlags linkingSectionSymbolFlags
+    putVU32 linkingSectionSymbolIndex
 
 data LinkingSubSection
-  = LinkingWasmSegmentInfo { linkingWasmSegmentInfoPayload :: SBS.ShortByteString }
-  | LinkingWasmInitFuncs { linkingWasmInitFuncsPayload :: SBS.ShortByteString }
-  | LinkingWasmComdatInfo { linkingWasmComdatInfoPayload :: SBS.ShortByteString }
-  | LinkingWasmSymbolTable { linkingWasmSymbolTable :: SBS.ShortByteString }
+  = LinkingWasmSegmentInfo
+      { linkingWasmSegmentInfoPayload :: SBS.ShortByteString
+      }
+  | LinkingWasmInitFuncs
+      { linkingWasmInitFuncsPayload :: SBS.ShortByteString
+      }
+  | LinkingWasmComdatInfo
+      { linkingWasmComdatInfoPayload :: SBS.ShortByteString
+      }
+  | LinkingWasmSymbolTable
+      { linkingWasmSymbolTable :: SBS.ShortByteString
+      }
   deriving (Eq, Generic, Ord, Show)
 
 getLinkingSubSection :: Get LinkingSubSection
@@ -1285,20 +1412,19 @@ getLinkingSubSection = do
     _ -> fail "Language.WebAssembly.WireFormat.getLinkingSubSection"
 
 putLinkingSubSection :: LinkingSubSection -> Put
-putLinkingSubSection sec =
-  case sec of
-    LinkingWasmSegmentInfo {..} -> do
-      putWord8 5
-      putVecSBS linkingWasmSegmentInfoPayload
-    LinkingWasmInitFuncs {..} -> do
-      putWord8 6
-      putVecSBS linkingWasmInitFuncsPayload
-    LinkingWasmComdatInfo {..} -> do
-      putWord8 7
-      putVecSBS linkingWasmComdatInfoPayload
-    LinkingWasmSymbolTable {..} -> do
-      putWord8 8
-      putVecSBS linkingWasmSymbolTable
+putLinkingSubSection sec = case sec of
+  LinkingWasmSegmentInfo {..} -> do
+    putWord8 5
+    putVecSBS linkingWasmSegmentInfoPayload
+  LinkingWasmInitFuncs {..} -> do
+    putWord8 6
+    putVecSBS linkingWasmInitFuncsPayload
+  LinkingWasmComdatInfo {..} -> do
+    putWord8 7
+    putVecSBS linkingWasmComdatInfoPayload
+  LinkingWasmSymbolTable {..} -> do
+    putWord8 8
+    putVecSBS linkingWasmSymbolTable
 
 data RelocationType
   = RWebAssemblyFunctionIndexLEB
@@ -1313,30 +1439,60 @@ data RelocationType
   | RWebAssemblySectionOffsetI32
   deriving (Eq, Generic, Ord, Show)
 
-data RelocationEntry = RelocationEntry
-  { relocationType :: RelocationType
-  , relocationOffset, relocationIndex :: Word32
-  , relocationAddEnd :: Maybe Word32
-  } deriving (Eq, Generic, Ord, Show)
+data RelocationEntry
+  = RelocationEntry
+      { relocationType :: RelocationType,
+        relocationOffset, relocationIndex :: Word32,
+        relocationAddEnd :: Maybe Word32
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 data Section
-  = LinkingSection { linkingSectionVersion :: Word32
-                   , linkingSubSections :: [LinkingSubSection] }
-  | RelocationSection { relocationSectionName :: Name
-                      , relocationSectionIndex :: Word32
-                      , relocationEntries :: [RelocationEntry] }
-  | CustomSection { custom :: Custom }
-  | TypeSection { types :: [FunctionType] }
-  | ImportSection { imports :: [Import] }
-  | FunctionSection { functionTypeIndices :: [FunctionTypeIndex] }
-  | TableSection { tables :: [Table] }
-  | MemorySection { memories :: [Memory] }
-  | GlobalSection { globals :: [Global] }
-  | ExportSection { exports :: [Export] }
-  | StartSection { startFunctionIndex :: FunctionIndex }
-  | ElementSection { elements :: [Element] }
-  | CodeSection { functions' :: [Function] }
-  | DataSection { dataSegments :: [DataSegment] }
+  = LinkingSection
+      { linkingSectionVersion :: Word32,
+        linkingSubSections :: [LinkingSubSection]
+      }
+  | RelocationSection
+      { relocationSectionName :: Name,
+        relocationSectionIndex :: Word32,
+        relocationEntries :: [RelocationEntry]
+      }
+  | CustomSection
+      { custom :: Custom
+      }
+  | TypeSection
+      { types :: [FunctionType]
+      }
+  | ImportSection
+      { imports :: [Import]
+      }
+  | FunctionSection
+      { functionTypeIndices :: [FunctionTypeIndex]
+      }
+  | TableSection
+      { tables :: [Table]
+      }
+  | MemorySection
+      { memories :: [Memory]
+      }
+  | GlobalSection
+      { globals :: [Global]
+      }
+  | ExportSection
+      { exports :: [Export]
+      }
+  | StartSection
+      { startFunctionIndex :: FunctionIndex
+      }
+  | ElementSection
+      { elements :: [Element]
+      }
+  | CodeSection
+      { functions' :: [Function]
+      }
+  | DataSection
+      { dataSegments :: [DataSegment]
+      }
   deriving (Eq, Generic, Ord, Show)
 
 getSection :: Get Section
@@ -1350,49 +1506,52 @@ getSection = do
       isolate (fromIntegral _payload_len) $
         if _sec_name == Name "linking"
           then LinkingSection <$> getVU32 <*> getMany getLinkingSubSection
-          else if "reloc." `BS.isPrefixOf` SBS.fromShort (coerce _sec_name)
-                 then RelocationSection
-                        (Name $
-                         SBS.toShort $
-                         BS.drop 6 $ SBS.fromShort $ coerce _sec_name) <$>
-                      getVU32 <*>
-                      getVec
-                        (do _reloc_type_tag <- getWord8
-                            _reloc_type <-
-                              case _reloc_type_tag of
-                                0 -> pure RWebAssemblyFunctionIndexLEB
-                                1 -> pure RWebAssemblyTableIndexSLEB
-                                2 -> pure RWebAssemblyTableIndexI32
-                                3 -> pure RWebAssemblyMemoryAddrLEB
-                                4 -> pure RWebAssemblyMemoryAddrSLEB
-                                5 -> pure RWebAssemblyMemoryAddrI32
-                                6 -> pure RWebAssemblyTypeIndexLEB
-                                7 -> pure RWebAssemblyGlobalIndexLEB
-                                8 -> pure RWebAssemblyFunctionOffsetI32
-                                9 -> pure RWebAssemblySectionOffsetI32
-                                _ ->
-                                  fail
-                                    "Language.WebAssembly.WireFormat.getRelocationType"
-                            _reloc_offset <- getVU32
-                            _reloc_index <- getVU32
-                            _reloc_addend <-
-                              if _reloc_type `elem`
-                                 [ RWebAssemblyMemoryAddrLEB
-                                 , RWebAssemblyMemoryAddrSLEB
-                                 , RWebAssemblyMemoryAddrI32
-                                 , RWebAssemblyFunctionOffsetI32
-                                 , RWebAssemblySectionOffsetI32
-                                 ]
-                                then Just <$> getVU32
-                                else pure Nothing
-                            pure $
-                              RelocationEntry
-                                _reloc_type
-                                _reloc_offset
-                                _reloc_index
-                                _reloc_addend)
-                 else CustomSection . Custom _sec_name . SBS.toShort <$>
-                      getByteString (fromIntegral _payload_len)
+          else
+            if "reloc." `BS.isPrefixOf` SBS.fromShort (coerce _sec_name)
+              then
+                RelocationSection
+                  ( Name $ SBS.toShort $ BS.drop 6 $ SBS.fromShort $ coerce _sec_name
+                  )
+                  <$> getVU32
+                  <*> getVec
+                    ( do
+                        _reloc_type_tag <- getWord8
+                        _reloc_type <- case _reloc_type_tag of
+                          0 -> pure RWebAssemblyFunctionIndexLEB
+                          1 -> pure RWebAssemblyTableIndexSLEB
+                          2 -> pure RWebAssemblyTableIndexI32
+                          3 -> pure RWebAssemblyMemoryAddrLEB
+                          4 -> pure RWebAssemblyMemoryAddrSLEB
+                          5 -> pure RWebAssemblyMemoryAddrI32
+                          6 -> pure RWebAssemblyTypeIndexLEB
+                          7 -> pure RWebAssemblyGlobalIndexLEB
+                          8 -> pure RWebAssemblyFunctionOffsetI32
+                          9 -> pure RWebAssemblySectionOffsetI32
+                          _ ->
+                            fail "Language.WebAssembly.WireFormat.getRelocationType"
+                        _reloc_offset <- getVU32
+                        _reloc_index <- getVU32
+                        _reloc_addend <-
+                          if _reloc_type
+                            `elem` [ RWebAssemblyMemoryAddrLEB,
+                                     RWebAssemblyMemoryAddrSLEB,
+                                     RWebAssemblyMemoryAddrI32,
+                                     RWebAssemblyFunctionOffsetI32,
+                                     RWebAssemblySectionOffsetI32
+                                   ]
+                            then Just <$> getVU32
+                            else pure Nothing
+                        pure $
+                          RelocationEntry
+                            _reloc_type
+                            _reloc_offset
+                            _reloc_index
+                            _reloc_addend
+                    )
+              else
+                CustomSection . Custom _sec_name . SBS.toShort
+                  <$> getByteString
+                    (fromIntegral _payload_len)
     1 -> getCheckedRegion (TypeSection <$> getVec getFunctionType)
     2 -> getCheckedRegion (ImportSection <$> getVec getImport)
     3 -> getCheckedRegion (FunctionSection <$> getVec getFunctionTypeIndex)
@@ -1408,77 +1567,77 @@ getSection = do
     _ -> fail "Language.WebAssembly.WireFormat.getSection"
 
 putSection :: Section -> Put
-putSection sec =
-  case sec of
-    LinkingSection {..} -> do
-      putWord8 0
-      putWithLength $ do
-        putName $ Name "linking"
-        putVU32 linkingSectionVersion
-        putMany putLinkingSubSection linkingSubSections
-    RelocationSection {..} -> do
-      putWord8 0
-      putWithLength $ do
-        putName $ Name $ "reloc." <> coerce relocationSectionName
-        putVU32 relocationSectionIndex
-        flip putVec relocationEntries $ \RelocationEntry {..} -> do
-          putWord8 $
-            case relocationType of
-              RWebAssemblyFunctionIndexLEB -> 0
-              RWebAssemblyTableIndexSLEB -> 1
-              RWebAssemblyTableIndexI32 -> 2
-              RWebAssemblyMemoryAddrLEB -> 3
-              RWebAssemblyMemoryAddrSLEB -> 4
-              RWebAssemblyMemoryAddrI32 -> 5
-              RWebAssemblyTypeIndexLEB -> 6
-              RWebAssemblyGlobalIndexLEB -> 7
-              RWebAssemblyFunctionOffsetI32 -> 8
-              RWebAssemblySectionOffsetI32 -> 9
-          putVU32 relocationOffset
-          putVU32 relocationIndex
-          putMaybe putVU32 relocationAddEnd
-    CustomSection {custom = Custom {..}} -> do
-      putWord8 0
-      putWithLength $ do
-        putName customName
-        putSBS customContent
-    TypeSection {..} -> do
-      putWord8 1
-      putWithLength $ putVec putFunctionType types
-    ImportSection {..} -> do
-      putWord8 2
-      putWithLength $ putVec putImport imports
-    FunctionSection {..} -> do
-      putWord8 3
-      putWithLength $ putVec putFunctionTypeIndex functionTypeIndices
-    TableSection {..} -> do
-      putWord8 4
-      putWithLength $ putVec putTable tables
-    MemorySection {..} -> do
-      putWord8 5
-      putWithLength $ putVec putMemory memories
-    GlobalSection {..} -> do
-      putWord8 6
-      putWithLength $ putVec putGlobal globals
-    ExportSection {..} -> do
-      putWord8 7
-      putWithLength $ putVec putExport exports
-    StartSection {..} -> do
-      putWord8 8
-      putWithLength $ putFunctionIndex startFunctionIndex
-    ElementSection {..} -> do
-      putWord8 9
-      putWithLength $ putVec putElement elements
-    CodeSection {..} -> do
-      putWord8 10
-      putWithLength $ putVec (putWithLength . putFunction) functions'
-    DataSection {..} -> do
-      putWord8 11
-      putWithLength $ putVec putDataSegment dataSegments
+putSection sec = case sec of
+  LinkingSection {..} -> do
+    putWord8 0
+    putWithLength $ do
+      putName $ Name "linking"
+      putVU32 linkingSectionVersion
+      putMany putLinkingSubSection linkingSubSections
+  RelocationSection {..} -> do
+    putWord8 0
+    putWithLength $ do
+      putName $ Name $ "reloc." <> coerce relocationSectionName
+      putVU32 relocationSectionIndex
+      flip putVec relocationEntries $ \RelocationEntry {..} -> do
+        putWord8 $ case relocationType of
+          RWebAssemblyFunctionIndexLEB -> 0
+          RWebAssemblyTableIndexSLEB -> 1
+          RWebAssemblyTableIndexI32 -> 2
+          RWebAssemblyMemoryAddrLEB -> 3
+          RWebAssemblyMemoryAddrSLEB -> 4
+          RWebAssemblyMemoryAddrI32 -> 5
+          RWebAssemblyTypeIndexLEB -> 6
+          RWebAssemblyGlobalIndexLEB -> 7
+          RWebAssemblyFunctionOffsetI32 -> 8
+          RWebAssemblySectionOffsetI32 -> 9
+        putVU32 relocationOffset
+        putVU32 relocationIndex
+        putMaybe putVU32 relocationAddEnd
+  CustomSection {custom = Custom {..}} -> do
+    putWord8 0
+    putWithLength $ do
+      putName customName
+      putSBS customContent
+  TypeSection {..} -> do
+    putWord8 1
+    putWithLength $ putVec putFunctionType types
+  ImportSection {..} -> do
+    putWord8 2
+    putWithLength $ putVec putImport imports
+  FunctionSection {..} -> do
+    putWord8 3
+    putWithLength $ putVec putFunctionTypeIndex functionTypeIndices
+  TableSection {..} -> do
+    putWord8 4
+    putWithLength $ putVec putTable tables
+  MemorySection {..} -> do
+    putWord8 5
+    putWithLength $ putVec putMemory memories
+  GlobalSection {..} -> do
+    putWord8 6
+    putWithLength $ putVec putGlobal globals
+  ExportSection {..} -> do
+    putWord8 7
+    putWithLength $ putVec putExport exports
+  StartSection {..} -> do
+    putWord8 8
+    putWithLength $ putFunctionIndex startFunctionIndex
+  ElementSection {..} -> do
+    putWord8 9
+    putWithLength $ putVec putElement elements
+  CodeSection {..} -> do
+    putWord8 10
+    putWithLength $ putVec (putWithLength . putFunction) functions'
+  DataSection {..} -> do
+    putWord8 11
+    putWithLength $ putVec putDataSegment dataSegments
 
-newtype Module = Module
-  { sections :: [Section]
-  } deriving (Eq, Generic, Ord, Show)
+newtype Module
+  = Module
+      { sections :: [Section]
+      }
+  deriving (Eq, Generic, Ord, Show)
 
 getModule :: Get Module
 getModule = do
@@ -1493,11 +1652,12 @@ putModule Module {..} = do
 expectWord8 :: Word8 -> Get ()
 expectWord8 x = do
   b <- getWord8
-  unless (b == x) $
-    fail $
-    "Language.WebAssembly.WireFormat.expectWord8: expected " <> show x <>
-    ", but got " <>
-    show b
+  unless (b == x)
+    $ fail
+    $ "Language.WebAssembly.WireFormat.expectWord8: expected "
+      <> show x
+      <> ", but got "
+      <> show b
 
 getVUN :: Int -> Get Word64
 getVUN n
@@ -1518,10 +1678,7 @@ getVSN n
     b <- getWord8
     let x = fromIntegral $ b .&. 0x7F
     if b .&. 0x80 == 0
-      then pure $
-           if b .&. 0x40 == 0
-             then x
-             else x .|. ((-1) `xor` 0x7F)
+      then pure $ if b .&. 0x40 == 0 then x else x .|. ((-1) `xor` 0x7F)
       else do
         r <- getVSN (n - 7)
         pure $ x .|. r `shiftL` 7

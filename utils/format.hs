@@ -16,19 +16,16 @@ main = do
   fs' <- listFilesRecursive bp
   q <- newMVar $ filter ("-ast" `isSuffixOf`) fs'
   n <- read <$> getEnv "FORMAT_N"
-  replicateConcurrently_ n $
-    fix $ \w -> do
-      mf <-
-        modifyMVar q $ \case
-          f:r -> pure (r, Just f)
-          [] -> pure ([], Nothing)
-      case mf of
-        Just f -> do
-          s' <- readFile f
-          writeFile (f <.> "pretty") $
-            case parseValue s' of
-              Just v -> valToStr v
-              _ -> s'
-          removeFile f
-          w
-        _ -> pure ()
+  replicateConcurrently_ n $ fix $ \w -> do
+    mf <- modifyMVar q $ \case
+      f : r -> pure (r, Just f)
+      [] -> pure ([], Nothing)
+    case mf of
+      Just f -> do
+        s' <- readFile f
+        writeFile (f <.> "pretty") $ case parseValue s' of
+          Just v -> valToStr v
+          _ -> s'
+        removeFile f
+        w
+      _ -> pure ()

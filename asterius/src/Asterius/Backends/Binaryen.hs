@@ -24,13 +24,9 @@ import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Types
 import Asterius.TypesConv
-
 #if defined(BINARYEN)
-
 import Bindings.Binaryen.Raw
-
 #endif
-
 import Control.Exception
 import Control.Monad
 import Control.Monad.Cont
@@ -52,9 +48,7 @@ newtype MarshalError =
   deriving (Show)
 
 instance Exception MarshalError
-
 #if defined(BINARYEN)
-
 marshalBool :: Bool -> Int8
 marshalBool flag =
   if flag
@@ -594,17 +588,14 @@ serializeModule m =
 
 serializeModuleSExpr :: BinaryenModuleRef -> IO BS.ByteString
 serializeModuleSExpr m =
-
   c_BinaryenModuleAllocateAndWriteText m >>= BS.unsafePackCString
 
 setColorsEnabled :: Bool -> IO ()
 setColorsEnabled b = c_BinaryenSetColorsEnabled . toEnum . fromEnum $ b
 
 isColorsEnabled :: IO Bool
-
 isColorsEnabled = toEnum . fromEnum <$> c_BinaryenAreColorsEnabled
 #else
-
 err =
   error
     "The `asterius` package was configured without the `binaryen` Cabal flag."
@@ -620,5 +611,4 @@ c_BinaryenSetOptimizeLevel = err
 c_BinaryenSetShrinkLevel = err
 
 c_BinaryenModuleValidate = err
-
 #endif

@@ -5,8 +5,8 @@
 module Asterius.Foreign
   ( asteriusDsForeigns,
     asteriusTcForeignImports,
-    asteriusTcForeignExports
-    )
+    asteriusTcForeignExports,
+  )
 where
 
 import Asterius.Foreign.Internals
@@ -41,8 +41,8 @@ import Prelude hiding ((<>))
 
 type Binding = (Id, CoreExpr)
 
-asteriusDsForeigns
-  :: [LForeignDecl GhcTc] -> DsM (ForeignStubs, OrdList Binding)
+asteriusDsForeigns ::
+  [LForeignDecl GhcTc] -> DsM (ForeignStubs, OrdList Binding)
 asteriusDsForeigns [] = return (NoStubs, nilOL)
 asteriusDsForeigns fos = do
   bindss <- mapM do_ldecl fos
@@ -62,14 +62,14 @@ asteriusDsFImport :: Id -> Coercion -> ForeignImport -> DsM [Binding]
 asteriusDsFImport id co (CImport cconv safety mHeader spec _) =
   asteriusDsCImport id co spec (unLoc cconv) (unLoc safety) mHeader
 
-asteriusDsCImport
-  :: Id
-  -> Coercion
-  -> CImportSpec
-  -> CCallConv
-  -> Safety
-  -> Maybe Header
-  -> DsM [Binding]
+asteriusDsCImport ::
+  Id ->
+  Coercion ->
+  CImportSpec ->
+  CCallConv ->
+  Safety ->
+  Maybe Header ->
+  DsM [Binding]
 asteriusDsCImport id co (CLabel cid) cconv _ _ = do
   dflags <- getDynFlags
   let ty = pFst $ coercionKind co
@@ -95,12 +95,12 @@ funTypeArgStdcallInfo dflags StdCallConv ty
     tyConUnique tc == funPtrTyConKey =
     let (bndrs, _) = tcSplitPiTys arg_ty
         fe_arg_tys = mapMaybe binderRelevantType_maybe bndrs
-     in Just
-          $ sum
-              ( map
-                  (widthInBytes . typeWidth . typeCmmType dflags . getPrimTyOf)
-                  fe_arg_tys
-                )
+     in Just $
+          sum
+            ( map
+                (widthInBytes . typeWidth . typeCmmType dflags . getPrimTyOf)
+                fe_arg_tys
+            )
 funTypeArgStdcallInfo _ _other_conv _ = Nothing
 
 asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
@@ -125,7 +125,7 @@ asteriusDsFCall fn_id co fcall = do
                     (StaticTarget NoSourceText wrapperName mUnitId True)
                     CApiConv
                     safety
-                  )
+                )
         return fcall'
       _ -> return fcall
   let worker_ty =
@@ -168,15 +168,15 @@ getPrimTyOf ty
   where
     rep_ty = unwrapType ty
 
-asteriusTcForeignImports
-  :: [LForeignDecl GhcRn] -> TcM ([Id], [LForeignDecl GhcTc], Bag GlobalRdrElt)
+asteriusTcForeignImports ::
+  [LForeignDecl GhcRn] -> TcM ([Id], [LForeignDecl GhcTc], Bag GlobalRdrElt)
 asteriusTcForeignImports decls = do
   (ids, decls, gres) <-
     mapAndUnzip3M asteriusTcFImport $ filter isForeignImport decls
   return (ids, decls, unionManyBags gres)
 
-asteriusTcFImport
-  :: LForeignDecl GhcRn -> TcM (Id, LForeignDecl GhcTc, Bag GlobalRdrElt)
+asteriusTcFImport ::
+  LForeignDecl GhcRn -> TcM (Id, LForeignDecl GhcTc, Bag GlobalRdrElt)
 asteriusTcFImport
   ( L
       dloc
@@ -184,26 +184,27 @@ asteriusTcFImport
         { fd_name = L nloc nm,
           fd_sig_ty = hs_ty,
           fd_fi = imp_decl
-          }
+        }
     ) =
     setSrcSpan dloc
-      $ addErrCtxt (foreignDeclCtxt fo) $ do
-      sig_ty <- tcHsSigType (ForSigCtxt nm) hs_ty
-      (norm_co, norm_sig_ty, gres) <- normaliseFfiType sig_ty
-      let (bndrs, res_ty) = tcSplitPiTys norm_sig_ty
-          arg_tys = mapMaybe binderRelevantType_maybe bndrs
-          id = mkLocalId nm sig_ty
-      imp_decl' <- asteriusTcCheckFIType arg_tys res_ty imp_decl
-      imp_decl'' <-
-        processFFIImport globalFFIHookState sig_ty norm_sig_ty imp_decl'
-      let fi_decl =
-            ForeignImport
-              { fd_name = L nloc id,
-                fd_sig_ty = undefined,
-                fd_i_ext = mkSymCo norm_co,
-                fd_fi = imp_decl''
+      $ addErrCtxt (foreignDeclCtxt fo)
+      $ do
+        sig_ty <- tcHsSigType (ForSigCtxt nm) hs_ty
+        (norm_co, norm_sig_ty, gres) <- normaliseFfiType sig_ty
+        let (bndrs, res_ty) = tcSplitPiTys norm_sig_ty
+            arg_tys = mapMaybe binderRelevantType_maybe bndrs
+            id = mkLocalId nm sig_ty
+        imp_decl' <- asteriusTcCheckFIType arg_tys res_ty imp_decl
+        imp_decl'' <-
+          processFFIImport globalFFIHookState sig_ty norm_sig_ty imp_decl'
+        let fi_decl =
+              ForeignImport
+                { fd_name = L nloc id,
+                  fd_sig_ty = undefined,
+                  fd_i_ext = mkSymCo norm_co,
+                  fd_fi = imp_decl''
                 }
-      return (id, L dloc fi_decl, gres)
+        return (id, L dloc fi_decl, gres)
 asteriusTcFImport d = pprPanic "asteriusTcFImport" (ppr d)
 
 asteriusTcCheckFIType :: [Type] -> Type -> ForeignImport -> TcM ForeignImport
@@ -215,54 +216,51 @@ asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) safety mh l@(CLabel _
   cconv' <- asteriusCheckCConv cconv
   return (CImport (L lc cconv') safety mh l src)
 asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) mh (CFunction target) src)
-  | isDynamicTarget target =
-    do
-      checkCg checkCOrAsmOrLlvmOrInterp
-      cconv' <- asteriusCheckCConv cconv
-      case arg_tys of
-        [] ->
-          addErrTc
-            ( illegalForeignTyErr
-                Outputable.empty
-                (text "At least one argument expected")
-              )
-        (arg1_ty : arg_tys) -> do
-          dflags <- getDynFlags
-          let curried_res_ty = mkFunTys arg_tys res_ty
-          check (isFFIDynTy curried_res_ty arg1_ty) (illegalForeignTyErr argument)
-          checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
-          checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
-      return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
-  | cconv == PrimCallConv =
-    do
-      dflags <- getDynFlags
-      checkTc
-        (xopt LangExt.GHCForeignImportPrim dflags)
-        (text "Use GHCForeignImportPrim to allow `foreign import prim'.")
-      checkCg checkCOrAsmOrLlvmOrInterp
-      checkCTarget target
-      checkTc
-        (playSafe safety)
-        ( text
-            "The safe/unsafe annotation should not be used with `foreign import prim'."
+  | isDynamicTarget target = do
+    checkCg checkCOrAsmOrLlvmOrInterp
+    cconv' <- asteriusCheckCConv cconv
+    case arg_tys of
+      [] ->
+        addErrTc
+          ( illegalForeignTyErr
+              Outputable.empty
+              (text "At least one argument expected")
           )
-      checkForeignArgs (isFFIPrimArgumentTy dflags) arg_tys
-      checkForeignRes nonIOok checkSafe (isFFIPrimResultTy dflags) res_ty
-      return idecl
-  | otherwise =
-    do
-      checkCg checkCOrAsmOrLlvmOrInterp
-      cconv' <- asteriusCheckCConv cconv
-      dflags <- getDynFlags
-      checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
-      checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
-      checkMissingAmpersand dflags arg_tys res_ty
-      case target of
-        StaticTarget _ _ _ False
-          | not (null arg_tys) ->
-            addErrTc (text "`value' imports cannot have function types")
-        _ -> return ()
-      return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
+      (arg1_ty : arg_tys) -> do
+        dflags <- getDynFlags
+        let curried_res_ty = mkFunTys arg_tys res_ty
+        check (isFFIDynTy curried_res_ty arg1_ty) (illegalForeignTyErr argument)
+        checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
+        checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
+    return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
+  | cconv == PrimCallConv = do
+    dflags <- getDynFlags
+    checkTc
+      (xopt LangExt.GHCForeignImportPrim dflags)
+      (text "Use GHCForeignImportPrim to allow `foreign import prim'.")
+    checkCg checkCOrAsmOrLlvmOrInterp
+    checkCTarget target
+    checkTc
+      (playSafe safety)
+      ( text
+          "The safe/unsafe annotation should not be used with `foreign import prim'."
+      )
+    checkForeignArgs (isFFIPrimArgumentTy dflags) arg_tys
+    checkForeignRes nonIOok checkSafe (isFFIPrimResultTy dflags) res_ty
+    return idecl
+  | otherwise = do
+    checkCg checkCOrAsmOrLlvmOrInterp
+    cconv' <- asteriusCheckCConv cconv
+    dflags <- getDynFlags
+    checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
+    checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
+    checkMissingAmpersand dflags arg_tys res_ty
+    case target of
+      StaticTarget _ _ _ False
+        | not (null arg_tys) ->
+          addErrTc (text "`value' imports cannot have function types")
+      _ -> return ()
+    return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
 asteriusTcCheckFIType _ _ _ = panic "asteriusTcCheckFIType"
 
 checkMissingAmpersand :: DynFlags -> [Type] -> Type -> TcM ()
@@ -273,9 +271,9 @@ checkMissingAmpersand dflags arg_tys res_ty
       (text "possible missing & in foreign import of FunPtr")
   | otherwise = return ()
 
-asteriusTcForeignExports
-  :: [LForeignDecl GhcRn]
-  -> TcM (LHsBinds GhcTcId, [LForeignDecl GhcTcId], Bag GlobalRdrElt)
+asteriusTcForeignExports ::
+  [LForeignDecl GhcRn] ->
+  TcM (LHsBinds GhcTcId, [LForeignDecl GhcTcId], Bag GlobalRdrElt)
 asteriusTcForeignExports decls =
   foldlM combine (emptyLHsBinds, [], emptyBag) (filter isForeignExport decls)
   where
@@ -283,15 +281,15 @@ asteriusTcForeignExports decls =
       (b, f, gres2) <- setSrcSpan loc (asteriusTcFExport fe)
       return (b `consBag` binds, L loc f : fs, gres1 `unionBags` gres2)
 
-asteriusTcFExport
-  :: ForeignDecl GhcRn
-  -> TcM (LHsBind GhcTc, ForeignDecl GhcTc, Bag GlobalRdrElt)
+asteriusTcFExport ::
+  ForeignDecl GhcRn ->
+  TcM (LHsBind GhcTc, ForeignDecl GhcTc, Bag GlobalRdrElt)
 asteriusTcFExport
   fo@ForeignExport
     { fd_name = L loc nm,
       fd_sig_ty = hs_ty,
       fd_fe = spec
-      } =
+    } =
     addErrCtxt (foreignDeclCtxt fo) $ do
       sig_ty <- tcHsSigType (ForSigCtxt nm) hs_ty
       rhs <- tcPolyExpr (nlHsVar nm) sig_ty
@@ -306,9 +304,9 @@ asteriusTcFExport
               fd_sig_ty = undefined,
               fd_e_ext = norm_co,
               fd_fe = spec''
-              },
+            },
           gres
-          )
+        )
 asteriusTcFExport d = pprPanic "asteriusTcFExport" (ppr d)
 
 asteriusTcCheckFEType :: Type -> ForeignExport -> TcM ForeignExport
@@ -331,7 +329,7 @@ checkCOrAsmOrLlvm _ =
   NotValid
     ( text
         "requires unregisterised, llvm (-fllvm) or native code generation (-fasm)"
-      )
+    )
 
 checkCOrAsmOrLlvmOrInterp :: HscTarget -> Validity
 checkCOrAsmOrLlvmOrInterp HscC = IsValid
@@ -360,16 +358,15 @@ asteriusCheckCConv StdCallConv = do
   dflags <- getDynFlags
   let platform = targetPlatform dflags
   if platformArch platform == ArchX86
-  then return StdCallConv
-  else
-    do
-      when (wopt Opt_WarnUnsupportedCallingConventions dflags)
-        $ addWarnTc
-            (Reason Opt_WarnUnsupportedCallingConventions)
-            ( text
-                "the 'stdcall' calling convention is unsupported on this platform,"
-                $$ text "treating as ccall"
-              )
+    then return StdCallConv
+    else do
+      when (wopt Opt_WarnUnsupportedCallingConventions dflags) $
+        addWarnTc
+          (Reason Opt_WarnUnsupportedCallingConventions)
+          ( text
+              "the 'stdcall' calling convention is unsupported on this platform,"
+              $$ text "treating as ccall"
+          )
       return CCallConv
 asteriusCheckCConv PrimCallConv = do
   addErrTc

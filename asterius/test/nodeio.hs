@@ -23,7 +23,7 @@ main = do
         { pipeRead = host_read_handle,
           pipeWrite = host_write_handle,
           pipeLeftovers = lo_ref
-          }
+        }
   setEnv "ASTERIUS_NODE_READ_FD" (show node_read_fd) True
   setEnv "ASTERIUS_NODE_WRITE_FD" (show node_write_fd) True
   args <- getArgs
@@ -36,7 +36,7 @@ main = do
           "--binaryen",
           "--verbose-err",
           "--run"
-          ]
+        ]
         <> args
   (r :: CBS.ByteString) <- readPipe p get
   print r

@@ -3,8 +3,9 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Asterius.Ar
-  ( loadAr
-  ) where
+  ( loadAr,
+  )
+where
 
 import qualified Ar as GHC
 import Asterius.Internals
@@ -19,9 +20,9 @@ loadAr p = do
   GHC.Archive entries <- GHC.loadAr p
   evaluate $
     foldl'
-      (\acc GHC.ArchiveEntry {..} ->
-         case decodeMaybe filedata of
-           Just m -> m <> acc
-           _ -> acc)
+      ( \acc GHC.ArchiveEntry {..} -> case decodeMaybe filedata of
+          Just m -> m <> acc
+          _ -> acc
+      )
       mempty
       entries

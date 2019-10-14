@@ -2,11 +2,12 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Asterius.Internals.FList
-  ( FList
-  , cons
-  , snoc
-  , concat
-  ) where
+  ( FList,
+    cons,
+    snoc,
+    concat,
+  )
+where
 
 import Data.Binary
 import GHC.Exts
@@ -35,39 +36,40 @@ instance Monoid (FList a) where
   mempty = Empty
 
 instance Foldable FList where
-  foldr f b l =
-    case l of
-      Empty -> b
-      Singleton a -> f a b
-      Cons a l0 -> f a (foldr f b l0)
-      Snoc l0 a -> foldr f (f a b) l0
-      Append l0 l1 -> foldr f (foldr f b l1) l0
-      FromFoldable l0 -> Prelude.foldr f b l0
-      Map g l0 -> foldr (f . g) b l0
-      Join l0 -> foldr (flip (foldr f)) b l0
-  null l =
-    case l of
-      Empty -> True
-      Singleton {} -> False
-      Cons {} -> False
-      Snoc {} -> False
-      Append l0 l1 -> null l0 && null l1
-      FromFoldable l0 -> null l0
-      Map _ l0 -> null l0
-      Join l0 -> and (fmap null l0)
+
+  foldr f b l = case l of
+    Empty -> b
+    Singleton a -> f a b
+    Cons a l0 -> f a (foldr f b l0)
+    Snoc l0 a -> foldr f (f a b) l0
+    Append l0 l1 -> foldr f (foldr f b l1) l0
+    FromFoldable l0 -> Prelude.foldr f b l0
+    Map g l0 -> foldr (f . g) b l0
+    Join l0 -> foldr (flip (foldr f)) b l0
+
+  null l = case l of
+    Empty -> True
+    Singleton {} -> False
+    Cons {} -> False
+    Snoc {} -> False
+    Append l0 l1 -> null l0 && null l1
+    FromFoldable l0 -> null l0
+    Map _ l0 -> null l0
+    Join l0 -> and (fmap null l0)
 
 instance Functor FList where
   {-# INLINE fmap #-}
-  fmap f l =
-    case l of
-      Empty -> Empty
-      Singleton a -> Singleton (f a)
-      Map g l0 -> Map (f . g) l0
-      _ -> Map f l
+  fmap f l = case l of
+    Empty -> Empty
+    Singleton a -> Singleton (f a)
+    Map g l0 -> Map (f . g) l0
+    _ -> Map f l
 
 instance Applicative FList where
+
   {-# INLINE pure #-}
   pure = Singleton
+
   {-# INLINE (<*>) #-}
   f <*> a = Join (fmap (`fmap` a) f)
 
@@ -76,9 +78,12 @@ instance Monad FList where
   l >>= f = Join (fmap f l)
 
 instance IsList (FList a) where
+
   type Item (FList a) = a
+
   {-# INLINE fromList #-}
   fromList = FromFoldable
+
   {-# INLINE toList #-}
   toList = foldr (:) []
 
@@ -87,7 +92,9 @@ instance Show a => Show (FList a) where
   showsPrec i = showsPrec i . toList
 
 instance Binary a => Binary (FList a) where
+
   get = fromList <$> get
+
   put = put . toList
 
 {-# INLINE cons #-}

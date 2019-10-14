@@ -6,7 +6,7 @@ import System.FilePath
 main :: IO ()
 main =
   fakeGHCMain $
-  FakeGHCOptions
-    A.ghc
-    (A.dataDir </> ".boot" </> "asterius_lib")
-    A.frontendPlugin
+    FakeGHCOptions
+      A.ghc
+      (A.dataDir </> ".boot" </> "asterius_lib")
+      A.frontendPlugin

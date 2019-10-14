@@ -1,8 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Asterius.JSGen.Wasm
-  ( genWasm
-  ) where
+  ( genWasm,
+  )
+where
 
 import Data.ByteString.Builder
 import System.FilePath
@@ -13,16 +14,17 @@ genWasm is_node base_name =
     [ case () of
         ()
           | is_node -> "import fs from \"fs\";\n"
-          | otherwise -> mempty
-    , "export default "
-    , case () of
+          | otherwise -> mempty,
+      "export default ",
+      case () of
         ()
           | is_node ->
-            "fs.promises.readFile(" <> out_wasm <>
-            ").then(bufferSource => WebAssembly.compile(bufferSource))"
+            "fs.promises.readFile("
+              <> out_wasm
+              <> ").then(bufferSource => WebAssembly.compile(bufferSource))"
           | otherwise ->
-            "WebAssembly.compileStreaming(fetch(" <> out_wasm <> "))"
-    , ";\n"
+            "WebAssembly.compileStreaming(fetch(" <> out_wasm <> "))",
+      ";\n"
     ]
   where
     out_wasm = string7 $ show $ base_name <.> "wasm"

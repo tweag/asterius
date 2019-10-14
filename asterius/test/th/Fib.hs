@@ -1,6 +1,6 @@
 module Fib
-  ( fib
-    )
+  ( fib,
+  )
 where
 
 fib :: Int -> Int

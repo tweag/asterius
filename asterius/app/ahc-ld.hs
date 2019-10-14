@@ -12,26 +12,26 @@ import System.Environment.Blank
 parseLinkTask :: [String] -> IO LinkTask
 parseLinkTask args = do
   link_libs <- fmap catMaybes $ for link_libnames $ findFile link_libdirs
-  pure
-    LinkTask
-      { progName = prog_name
-      , linkOutput = link_output
-      , linkObjs = link_objs
-      , linkLibs = link_libs
-      , linkModule = mempty
-      , debug = "--debug" `elem` args
-      , gcSections = "--no-gc-sections" `notElem` args
-      , binaryen = "--binaryen" `elem` args
-      , verboseErr = "--verbose-err" `elem` args
-      , outputIR =
-          find ("--output-ir=" `isPrefixOf`) args >>= stripPrefix "--output-ir="
-      , rootSymbols =
-          map (AsteriusEntitySymbol . fromString) $
-          str_args "--extra-root-symbol="
-      , exportFunctions =
-          map (AsteriusEntitySymbol . fromString) $
+  pure LinkTask
+    { progName = prog_name,
+      linkOutput = link_output,
+      linkObjs = link_objs,
+      linkLibs = link_libs,
+      linkModule = mempty,
+      debug = "--debug" `elem` args,
+      gcSections = "--no-gc-sections" `notElem` args,
+      binaryen = "--binaryen" `elem` args,
+      verboseErr = "--verbose-err" `elem` args,
+      outputIR =
+        find ("--output-ir=" `isPrefixOf`) args
+          >>= stripPrefix "--output-ir=",
+      rootSymbols =
+        map (AsteriusEntitySymbol . fromString) $
+          str_args "--extra-root-symbol=",
+      exportFunctions =
+        map (AsteriusEntitySymbol . fromString) $
           str_args "--export-function="
-      }
+    }
   where
     Just (stripPrefix "--prog-name=" -> Just prog_name) =
       find ("--prog-name=" `isPrefixOf`) args
@@ -47,9 +47,9 @@ main :: IO ()
 main = do
   args <- getArgs
   case args of
-    "-Wl,--version":_ -> putStr "LLD"
+    "-Wl,--version" : _ -> putStr "LLD"
     _ -> do
-      let Just ('@':rsp_path) = find ((== '@') . head) args
+      let Just ('@' : rsp_path) = find ((== '@') . head) args
       rsp <- readFile rsp_path
       let rsp_args = map read $ lines rsp
       task <- parseLinkTask rsp_args

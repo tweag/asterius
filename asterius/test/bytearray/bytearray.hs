@@ -19,38 +19,34 @@ Expected output:
 (1,-1)
 199990000
 -}
-
 unI# :: Int -> Int#
 unI# (I# x) = x
 
 fill ::
-     MutableByteArray# RealWorld
-  -> (Int -> Int)
-  -> State# RealWorld
-  -> State# RealWorld
-fill mba f s0 =
-  case getSizeofMutableByteArray# mba s0 of
-    (# s1, len #) -> w len 0# s1
+  MutableByteArray# RealWorld ->
+  (Int -> Int) ->
+  State# RealWorld ->
+  State# RealWorld
+fill mba f s0 = case getSizeofMutableByteArray# mba s0 of
+  (# s1, len #) -> w len 0# s1
   where
     w :: Int# -> Int# -> State# RealWorld -> State# RealWorld
-    w len i s =
-      case i ==# len of
-        0# -> w len (i +# 1#) (writeInt8Array# mba i (unI# (f (I# i))) s)
-        _ -> s
+    w len i s = case i ==# len of
+      0# -> w len (i +# 1#) (writeInt8Array# mba i (unI# (f (I# i))) s)
+      _ -> s
 
 m :: Int -> IO (Int, Int)
 m (I# len) =
   IO
-    (\s0 ->
-       case newPinnedByteArray# len s0 of
-         (# s1, mba #) ->
-           case fill mba (+ 1) s1 of
-             s2 ->
-               case unsafeFreezeByteArray# mba s2 of
-                 (# s3, ba #) ->
-                   (# s3
-                    , ( I# (indexInt8Array# ba 0#)
-                      , I# (indexInt8Array# ba (len -# 1#)))#))
+    ( \s0 -> case newPinnedByteArray# len s0 of
+        (# s1, mba #) -> case fill mba (+ 1) s1 of
+          s2 -> case unsafeFreezeByteArray# mba s2 of
+            (# s3, ba #) ->
+              (#
+                s3,
+                (I# (indexInt8Array# ba 0#), I# (indexInt8Array# ba (len -# 1#)))
+              #)
+    )
 
 src :: [Int]
 src = w 0 []

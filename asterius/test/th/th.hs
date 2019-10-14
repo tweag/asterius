@@ -11,4 +11,4 @@ main =
          y <- newName "x"
          exts <- extsEnabled
          liftString $ show x <> ", " <> show y <> ", " <> show exts
-       )
+     )

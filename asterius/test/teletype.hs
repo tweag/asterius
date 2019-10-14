@@ -5,4 +5,5 @@ main :: IO ()
 main = do
   args <- getArgs
   callProcess "ahc-link" $
-    ["--input-hs", "test/teletype/teletype.hs", "--run"] <> args
+    ["--input-hs", "test/teletype/teletype.hs", "--run"]
+      <> args
