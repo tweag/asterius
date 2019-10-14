@@ -50,7 +50,14 @@ export class GC {
   }
 
   evacuateClosure(c) {
-    const tag = Memory.getDynTag(c), untagged_c = Memory.unDynTag(c);
+    if (!Memory.getTag(c)) {
+      if (!(BigInt(c) & BigInt(1)))
+        throw new WebAssembly.RuntimeError(`Illegal JSVal 0x${c.toString(16)}`);
+      this.liveJSVals.add(Number(c));
+      return c;
+    }
+    const tag = Memory.getDynTag(c),
+      untagged_c = Memory.unDynTag(c);
     let dest_c = this.closureIndirects.get(untagged_c);
     if (dest_c == undefined) {
       if (this.memory.heapAlloced(untagged_c)) {
@@ -392,11 +399,11 @@ export class GC {
         `Invalid info table 0x${info.toString(16)}`
       );
     switch (info) {
-      case this.symbolTable.base_GHCziStable_StablePtr_con_info:
-      case this.symbolTable.integerzmwiredzmin_GHCziIntegerziType_Integer_con_info: {
-        const raw_stable_ptr = Number(this.memory.i64Load(c + 8)), stable_ptr_tag = raw_stable_ptr & 1;
-        if (stable_ptr_tag)
-          this.liveJSVals.add(raw_stable_ptr);
+      case this.symbolTable
+        .integerzmwiredzmin_GHCziIntegerziType_Integer_con_info: {
+        const raw_stable_ptr = Number(this.memory.i64Load(c + 8)),
+          stable_ptr_tag = raw_stable_ptr & 1;
+        if (stable_ptr_tag) this.liveJSVals.add(raw_stable_ptr);
         break;
       }
     }

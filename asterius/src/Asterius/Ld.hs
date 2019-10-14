@@ -51,7 +51,6 @@ rtsUsedSymbols =
       "base_AsteriusziTopHandler_runMainIO_closure",
       "base_AsteriusziTypes_makeJSException_closure",
       "base_GHCziPtr_Ptr_con_info",
-      "base_GHCziStable_StablePtr_con_info",
       "ghczmprim_GHCziTypes_Czh_con_info",
       "ghczmprim_GHCziTypes_Dzh_con_info",
       "ghczmprim_GHCziTypes_False_closure",
