@@ -1,10 +1,11 @@
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 module Main
-  ( printInt
-  , fact
-  , main
-  ) where
+  ( printInt,
+    fact,
+    main,
+  )
+where
 
 foreign import javascript "console.log(${1})" js_print_int :: Int -> IO ()
 

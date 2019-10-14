@@ -7,4 +7,5 @@ main = do
   args <- getArgs
   withCurrentDirectory "test/todomvc" $ callCommand "npm install"
   callProcess "ahc-link" $
-    ["--browser", "--bundle", "--input-hs", "test/todomvc/todomvc.hs"] <> args
+    ["--browser", "--bundle", "--input-hs", "test/todomvc/todomvc.hs"]
+      <> args

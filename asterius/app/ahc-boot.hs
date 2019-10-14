@@ -8,7 +8,7 @@ main = do
   install_opts <- getEnvDefault "ASTERIUS_INSTALL_OPTIONS" ""
   boot
     defaultBootArgs
-      { configureOptions = configureOptions defaultBootArgs <> " " <> conf_opts
-      , buildOptions = buildOptions defaultBootArgs <> " " <> build_opts
-      , installOptions = installOptions defaultBootArgs <> " " <> install_opts
+      { configureOptions = configureOptions defaultBootArgs <> " " <> conf_opts,
+        buildOptions = buildOptions defaultBootArgs <> " " <> build_opts,
+        installOptions = installOptions defaultBootArgs <> " " <> install_opts
       }

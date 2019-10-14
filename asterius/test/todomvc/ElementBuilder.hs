@@ -2,10 +2,11 @@
 {-# LANGUAGE StrictData #-}
 
 module ElementBuilder
-  ( Element(..)
-  , emptyElement
-  , buildElement
-  ) where
+  ( Element (..),
+    emptyElement,
+    buildElement,
+  )
+where
 
 import Asterius.Types
 import Control.Monad
@@ -13,22 +14,23 @@ import Data.Foldable
 import WebAPI
 
 data Element
-  = Element { className :: String
-            , attributes :: [(String, String)]
-            , children :: [Element]
-            , hidden :: Bool
-            , eventHandlers :: [(String, JSObject -> IO ())] }
+  = Element
+      { className :: String,
+        attributes :: [(String, String)],
+        children :: [Element],
+        hidden :: Bool,
+        eventHandlers :: [(String, JSObject -> IO ())]
+      }
   | TextNode String
 
 emptyElement :: Element
-emptyElement =
-  Element
-    { className = ""
-    , attributes = mempty
-    , children = mempty
-    , hidden = False
-    , eventHandlers = mempty
-    }
+emptyElement = Element
+  { className = "",
+    attributes = mempty,
+    children = mempty,
+    hidden = False,
+    eventHandlers = mempty
+  }
 
 buildElement :: Element -> IO JSVal
 buildElement Element {..} = do

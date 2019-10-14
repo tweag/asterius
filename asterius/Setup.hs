@@ -6,6 +6,6 @@ import Language.Haskell.GHC.Toolkit.GenPaths
 main :: IO ()
 main =
   defaultMainWithHooks $
-  genPaths
-    GenPathsOptions {targetModuleName = "BuildInfo_asterius"}
-    simpleUserHooks
+    genPaths
+      GenPathsOptions {targetModuleName = "BuildInfo_asterius"}
+      simpleUserHooks

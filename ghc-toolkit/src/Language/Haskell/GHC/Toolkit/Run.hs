@@ -7,8 +7,8 @@ module Language.Haskell.GHC.Toolkit.Run
     ghcLibDir,
     compiler,
     defaultConfig,
-    runCmm
-    )
+    runCmm,
+  )
 where
 
 import Config
@@ -27,14 +27,14 @@ data Config
       { ghcFlags :: [String],
         ghcLibDir :: FilePath,
         compiler :: Compiler
-        }
+      }
 
 defaultConfig :: Config
 defaultConfig = Config
   { ghcFlags = ["-Wall", "-O"],
     ghcLibDir = BI.ghcLibDir,
     compiler = mempty
-    }
+  }
 
 runCmm :: Config -> [FilePath] -> (FilePath -> CmmIR -> IO ()) -> GHC.Ghc ()
 runCmm Config {..} cmm_fns write_obj_cont = do
@@ -44,22 +44,22 @@ runCmm Config {..} cmm_fns write_obj_cont = do
       (dflags `gopt_set` Opt_ForceRecomp `gopt_unset` Opt_KeepOFiles)
       $ map noLoc ghcFlags
   h <-
-    liftIO
-      $ hooksFromCompiler
-          ( compiler
-              <> mempty
-                { withCmmIR = \ir obj_path -> liftIO $ write_obj_cont obj_path ir
-                  }
-            )
-          (hooks dflags')
-  void
-    $ setSessionDynFlags
-        dflags'
-          { ghcMode = OneShot,
-            ghcLink = NoLink,
-            integerLibrary = IntegerSimple,
-            tablesNextToCode = False,
-            hooks = h
-            }
+    liftIO $
+      hooksFromCompiler
+        ( compiler
+            <> mempty
+              { withCmmIR = \ir obj_path -> liftIO $ write_obj_cont obj_path ir
+              }
+        )
+        (hooks dflags')
+  void $
+    setSessionDynFlags
+      dflags'
+        { ghcMode = OneShot,
+          ghcLink = NoLink,
+          integerLibrary = IntegerSimple,
+          tablesNextToCode = False,
+          hooks = h
+        }
   env <- getSession
   liftIO $ oneShot env StopLn [(cmm_fn, Just CmmCpp) | cmm_fn <- cmm_fns]

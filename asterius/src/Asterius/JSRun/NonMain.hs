@@ -46,38 +46,38 @@ linkNonMain store_m extra_syms = (m, link_report)
           }
         store_m
 
-distNonMain
-  :: FilePath -> [AsteriusEntitySymbol] -> (Module, LinkReport) -> IO ()
+distNonMain ::
+  FilePath -> [AsteriusEntitySymbol] -> (Module, LinkReport) -> IO ()
 distNonMain p extra_syms = ahcDistMain
-                             putStrLn
-                             Task
-                               { target = Node,
-                                 inputHS = p,
-                                 outputDirectory = takeDirectory p,
-                                 outputBaseName = takeBaseName p,
-                                 inputEntryMJS = Nothing,
-                                 tailCalls = False,
-                                 Asterius.Main.gcSections = True,
-                                 fullSymTable = True,
-                                 bundle = False,
-                                 Asterius.Main.binaryen = False,
-                                 Asterius.Main.debug = False,
-                                 outputLinkReport = False,
-                                 Asterius.Main.outputIR = False,
-                                 run = False,
-                                 Asterius.Main.verboseErr = True,
-                                 yolo = False,
-                                 extraGHCFlags = ["-no-hs-main"],
-                                 Asterius.Main.exportFunctions = [],
-                                 extraRootSymbols = extra_syms
-                               }
+  putStrLn
+  Task
+    { target = Node,
+      inputHS = p,
+      outputDirectory = takeDirectory p,
+      outputBaseName = takeBaseName p,
+      inputEntryMJS = Nothing,
+      tailCalls = False,
+      Asterius.Main.gcSections = True,
+      fullSymTable = True,
+      bundle = False,
+      Asterius.Main.binaryen = False,
+      Asterius.Main.debug = False,
+      outputLinkReport = False,
+      Asterius.Main.outputIR = False,
+      run = False,
+      Asterius.Main.verboseErr = True,
+      yolo = False,
+      extraGHCFlags = ["-no-hs-main"],
+      Asterius.Main.exportFunctions = [],
+      extraRootSymbols = extra_syms
+    }
 
-newAsteriusInstanceNonMain
-  :: JSSession
-  -> FilePath
-  -> [AsteriusEntitySymbol]
-  -> AsteriusModule
-  -> IO JSVal
+newAsteriusInstanceNonMain ::
+  JSSession ->
+  FilePath ->
+  [AsteriusEntitySymbol] ->
+  AsteriusModule ->
+  IO JSVal
 newAsteriusInstanceNonMain s p extra_syms m = do
   distNonMain p extra_syms $ linkNonMain m extra_syms
   let lib_path = p -<.> "lib.mjs"
@@ -85,8 +85,8 @@ newAsteriusInstanceNonMain s p extra_syms m = do
   lib_val <- importMJS s lib_path
   f_val <- eval s $ takeJSVal lib_val <> ".default"
   mod_val <-
-    eval s
-      $ "import('fs').then(fs => fs.promises.readFile("
+    eval s $
+      "import('fs').then(fs => fs.promises.readFile("
         <> fromString (show wasm_path)
         <> ")).then(buf => WebAssembly.compile(buf))"
   eval s $ takeJSVal f_val <> "(" <> takeJSVal mod_val <> ")"

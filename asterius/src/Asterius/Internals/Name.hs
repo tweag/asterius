@@ -1,6 +1,6 @@
 module Asterius.Internals.Name
-  ( fakeClosureSymbol
-    )
+  ( fakeClosureSymbol,
+  )
 where
 
 import Asterius.Types (AsteriusEntitySymbol)
@@ -16,12 +16,12 @@ import qualified Packages as GHC
 import qualified SrcLoc as GHC
 import qualified Unique as GHC
 
-fakeName
-  :: GHC.DynFlags
-  -> GHC.PackageName
-  -> GHC.ModuleName
-  -> GHC.OccName
-  -> GHC.Name
+fakeName ::
+  GHC.DynFlags ->
+  GHC.PackageName ->
+  GHC.ModuleName ->
+  GHC.OccName ->
+  GHC.Name
 fakeName dflags pkg_name mod_name occ_name = name
   where
     dummy_uniq = GHC.mkUniqueGrimily 0
@@ -32,12 +32,13 @@ fakeName dflags pkg_name mod_name occ_name = name
     m = GHC.mkModule unit_id mod_name
     name = GHC.mkExternalName dummy_uniq m occ_name GHC.noSrcSpan
 
-fakeClosureSymbol
-  :: GHC.DynFlags -> String -> String -> String -> AsteriusEntitySymbol
+fakeClosureSymbol ::
+  GHC.DynFlags -> String -> String -> String -> AsteriusEntitySymbol
 fakeClosureSymbol dflags pkg_name mod_name occ_name = sym
   where
     name =
-      fakeName dflags
+      fakeName
+        dflags
         (GHC.PackageName (GHC.mkFastString pkg_name))
         (GHC.mkModuleName mod_name)
         (GHC.mkVarOcc occ_name)

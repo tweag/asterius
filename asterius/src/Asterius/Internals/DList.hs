@@ -2,30 +2,37 @@
 {-# LANGUAGE TypeFamilies #-}
 
 module Asterius.Internals.DList
-  ( DList
-  , fromList
-  , toList
-  , singleton
-  , cons
-  , foldr
-  , map
-  ) where
+  ( DList,
+    fromList,
+    toList,
+    singleton,
+    cons,
+    foldr,
+    map,
+  )
+where
 
 import Control.Monad
 import Data.Coerce
 import Data.Monoid
 import qualified GHC.Exts
-import Prelude hiding (foldr, map)
+import Prelude hiding
+  ( foldr,
+    map,
+  )
 import qualified Prelude
 
-newtype DList a =
-  DList (Endo [a])
+newtype DList a
+  = DList (Endo [a])
   deriving (Semigroup, Monoid)
 
 instance GHC.Exts.IsList (DList a) where
+
   type Item (DList a) = a
+
   {-# INLINE fromList #-}
   fromList = fromList
+
   {-# INLINE toList #-}
   toList = toList
 

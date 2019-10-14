@@ -7,8 +7,8 @@ module Asterius.Foreign.Internals
   ( FFIHookState (..),
     globalFFIHookState,
     processFFIImport,
-    processFFIExport
-    )
+    processFFIExport,
+  )
 where
 
 import Asterius.Types
@@ -32,8 +32,8 @@ import Text.Parsec
     char,
     digit,
     parse,
-    try
-    )
+    try,
+  )
 import Text.Parsec.String (Parser)
 import qualified TyCoRep as GHC
 import qualified TysPrim as GHC
@@ -43,8 +43,8 @@ ffiBoxedValueTypeMap0,
   ffiPrimValueTypeMap0,
   ffiPrimValueTypeMap1,
   ffiValueTypeMap0,
-  ffiValueTypeMap1
-    :: GHC.NameEnv FFIValueType
+  ffiValueTypeMap1 ::
+    GHC.NameEnv FFIValueType
 ffiBoxedValueTypeMap0 =
   GHC.mkNameEnv
     [ ( GHC.charTyConName,
@@ -53,50 +53,49 @@ ffiBoxedValueTypeMap0 =
             ffiJSValueType = F64,
             hsTyCon = "Char",
             signed = False
-            }
-        ),
+          }
+      ),
       ( GHC.boolTyConName,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "Bool",
             signed = False
-            }
-        ),
+          }
+      ),
       ( GHC.intTyConName,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "Int",
             signed = True
-            }
-        ),
+          }
+      ),
       ( GHC.wordTyConName,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "Word",
             signed = False
-            }
-        ),
+          }
+      ),
       ( GHC.floatTyConName,
         FFI_VAL
           { ffiWasmValueType = F32,
             ffiJSValueType = F32,
             hsTyCon = "Float",
             signed = True
-            }
-        ),
+          }
+      ),
       ( GHC.doubleTyConName,
         FFI_VAL
           { ffiWasmValueType = F64,
             ffiJSValueType = F64,
             hsTyCon = "Double",
             signed = True
-            }
-        )
-      ]
-
+          }
+      )
+    ]
 ffiBoxedValueTypeMap1 =
   GHC.mkNameEnv
     [ ( GHC.ptrTyConName,
@@ -105,26 +104,25 @@ ffiBoxedValueTypeMap1 =
             ffiJSValueType = F64,
             hsTyCon = "Ptr",
             signed = False
-            }
-        ),
+          }
+      ),
       ( GHC.funPtrTyConName,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "FunPtr",
             signed = False
-            }
-        ),
+          }
+      ),
       ( GHC.stablePtrTyConName,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "StablePtr",
             signed = False
-            }
-        )
-      ]
-
+          }
+      )
+    ]
 ffiPrimValueTypeMap0 =
   GHC.mkNameEnv
     [ ( GHC.charPrimTyConName,
@@ -133,42 +131,41 @@ ffiPrimValueTypeMap0 =
             ffiJSValueType = F64,
             hsTyCon = "",
             signed = False
-            }
-        ),
+          }
+      ),
       ( GHC.intPrimTyConName,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "",
             signed = True
-            }
-        ),
+          }
+      ),
       ( GHC.wordPrimTyConName,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "",
             signed = False
-            }
-        ),
+          }
+      ),
       ( GHC.floatPrimTyConName,
         FFI_VAL
           { ffiWasmValueType = F32,
             ffiJSValueType = F32,
             hsTyCon = "",
             signed = True
-            }
-        ),
+          }
+      ),
       ( GHC.doublePrimTyConName,
         FFI_VAL
           { ffiWasmValueType = F64,
             ffiJSValueType = F64,
             hsTyCon = "",
             signed = True
-            }
-        )
-      ]
-
+          }
+      )
+    ]
 ffiPrimValueTypeMap1 =
   GHC.mkNameEnv
     [ ( GHC.addrPrimTyConName,
@@ -177,20 +174,18 @@ ffiPrimValueTypeMap1 =
             ffiJSValueType = F64,
             hsTyCon = "",
             signed = False
-            }
-        ),
+          }
+      ),
       ( GHC.getName GHC.stablePtrPrimTyCon,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "",
             signed = False
-            }
-        )
-      ]
-
+          }
+      )
+    ]
 ffiValueTypeMap0 = ffiBoxedValueTypeMap0 `GHC.plusNameEnv` ffiPrimValueTypeMap0
-
 ffiValueTypeMap1 = ffiBoxedValueTypeMap1 `GHC.plusNameEnv` ffiPrimValueTypeMap1
 
 parseFFIValueType :: Bool -> GHC.Type -> GHC.Type -> Maybe FFIValueType
@@ -223,33 +218,27 @@ parseFFIFunctionType accept_prim sig_ty norm_sig_ty =
       ft <- parseFFIFunctionType accept_prim t2 norm_t2
       pure ft {ffiParamTypes = vt : ffiParamTypes ft}
     (GHC.TyConApp _ tys1, GHC.TyConApp norm_tc norm_tys1)
-      | GHC.getName norm_tc == GHC.ioTyConName ->
-        case (tys1, norm_tys1) of
-          (_, [GHC.TyConApp u []])
-            | u == GHC.unitTyCon ->
-              pure
-                FFIFunctionType
-                  { ffiParamTypes = [],
-                    ffiResultTypes = [],
-                    ffiInIO = True
-                    }
-          ([t1], [norm_t1]) -> do
-            r <- parseFFIValueType False t1 norm_t1
-            pure
-              FFIFunctionType
-                { ffiParamTypes = [],
-                  ffiResultTypes = [r],
-                  ffiInIO = True
-                  }
-          _ -> Nothing
+      | GHC.getName norm_tc == GHC.ioTyConName -> case (tys1, norm_tys1) of
+        (_, [GHC.TyConApp u []]) | u == GHC.unitTyCon -> pure FFIFunctionType
+          { ffiParamTypes = [],
+            ffiResultTypes = [],
+            ffiInIO = True
+          }
+        ([t1], [norm_t1]) -> do
+          r <- parseFFIValueType False t1 norm_t1
+          pure FFIFunctionType
+            { ffiParamTypes = [],
+              ffiResultTypes = [r],
+              ffiInIO = True
+            }
+        _ -> Nothing
     _ -> do
       r <- parseFFIValueType accept_prim sig_ty norm_sig_ty
-      pure
-        FFIFunctionType
-          { ffiParamTypes = [],
-            ffiResultTypes = [r],
-            ffiInIO = False
-            }
+      pure FFIFunctionType
+        { ffiParamTypes = [],
+          ffiResultTypes = [r],
+          ffiInIO = False
+        }
 
 parseField :: Parser a -> Parser (Chunk a)
 parseField f = do
@@ -273,7 +262,7 @@ combineChunks =
     ( curry $ \case
         (Lit l, Lit l' : cs) -> Lit (l <> l') : cs
         (c, cs) -> c : cs
-      )
+    )
     []
 
 parseFFIChunks :: Parser [Chunk Int]
@@ -287,12 +276,12 @@ globalFFIHookState :: IORef FFIHookState
 globalFFIHookState =
   unsafePerformIO $ newIORef FFIHookState {ffiHookState = M.empty}
 
-processFFIImport
-  :: IORef FFIHookState
-  -> GHC.Type
-  -> GHC.Type
-  -> GHC.ForeignImport
-  -> GHC.TcM GHC.ForeignImport
+processFFIImport ::
+  IORef FFIHookState ->
+  GHC.Type ->
+  GHC.Type ->
+  GHC.ForeignImport ->
+  GHC.TcM GHC.ForeignImport
 processFFIImport hook_state_ref sig_ty norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ _ (GHC.unLoc -> GHC.SourceText src)) =
   do
     dflags <- GHC.getDynFlags
@@ -316,44 +305,46 @@ processFFIImport hook_state_ref sig_ty norm_sig_ty (GHC.CImport (GHC.unLoc -> GH
           { ffiFunctionType = ffi_ftype,
             ffiSafety = ffi_safety,
             ffiSourceChunks = chunks
-            }
+          }
         alter_hook_state (Just ffi_state) =
           Just
             ffi_state
-              { ffiImportDecls = M.insert (fromString new_k) new_decl
-                  $ ffiImportDecls ffi_state
-                }
+              { ffiImportDecls =
+                  M.insert (fromString new_k) new_decl $
+                    ffiImportDecls ffi_state
+              }
         alter_hook_state _ =
           Just mempty {ffiImportDecls = M.singleton (fromString new_k) new_decl}
     liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
       ( hook_state
-          { ffiHookState = M.alter alter_hook_state mod_sym
-              $ ffiHookState hook_state
-            },
+          { ffiHookState =
+              M.alter alter_hook_state mod_sym $
+                ffiHookState hook_state
+          },
         ()
+      )
+    pure $
+      GHC.CImport
+        (GHC.noLoc GHC.CCallConv)
+        (GHC.noLoc GHC.PlayRisky)
+        Nothing
+        ( GHC.CFunction $
+            GHC.StaticTarget
+              GHC.NoSourceText
+              (GHC.mkFastString $ new_k <> "_wrapper")
+              Nothing
+              True
         )
-    pure
-      $ GHC.CImport
-          (GHC.noLoc GHC.CCallConv)
-          (GHC.noLoc GHC.PlayRisky)
-          Nothing
-          ( GHC.CFunction
-              $ GHC.StaticTarget
-                  GHC.NoSourceText
-                  (GHC.mkFastString $ new_k <> "_wrapper")
-                  Nothing
-                  True
-            )
-          (GHC.noLoc GHC.NoSourceText)
+        (GHC.noLoc GHC.NoSourceText)
 processFFIImport _ _ _ imp_decl = pure imp_decl
 
-processFFIExport
-  :: IORef FFIHookState
-  -> GHC.Type
-  -> GHC.Type
-  -> GHC.Id
-  -> GHC.ForeignExport
-  -> GHC.TcM GHC.ForeignExport
+processFFIExport ::
+  IORef FFIHookState ->
+  GHC.Type ->
+  GHC.Type ->
+  GHC.Id ->
+  GHC.ForeignExport ->
+  GHC.TcM GHC.ForeignExport
 processFFIExport hook_state_ref sig_ty norm_sig_ty export_id (GHC.CExport (GHC.unLoc -> GHC.CExportStatic src_txt lbl GHC.JavaScriptCallConv) loc_src) =
   do
     dflags <- GHC.getDynFlags
@@ -361,32 +352,33 @@ processFFIExport hook_state_ref sig_ty norm_sig_ty export_id (GHC.CExport (GHC.u
     let Just ffi_ftype = parseFFIFunctionType False sig_ty norm_sig_ty
         new_k = AsteriusEntitySymbol
           { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
-            }
+          }
         export_closure =
-          fromString $ asmPpr dflags
-            $ GHC.mkClosureLabel
-                (GHC.getName export_id)
-                GHC.NoCafRefs
+          fromString $ asmPpr dflags $
+            GHC.mkClosureLabel
+              (GHC.getName export_id)
+              GHC.NoCafRefs
         new_decl = FFIExportDecl
           { ffiFunctionType = ffi_ftype,
             ffiExportClosure = export_closure
-            }
+          }
         alter_hook_state (Just ffi_state) =
           Just
             ffi_state
               { ffiExportDecls = M.insert new_k new_decl $ ffiExportDecls ffi_state
-                }
+              }
         alter_hook_state _ =
           Just mempty {ffiExportDecls = M.singleton new_k new_decl}
     liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
       ( hook_state
-          { ffiHookState = M.alter alter_hook_state mod_sym
-              $ ffiHookState hook_state
-            },
+          { ffiHookState =
+              M.alter alter_hook_state mod_sym $
+                ffiHookState hook_state
+          },
         ()
-        )
-    pure
-      $ GHC.CExport
-          (GHC.noLoc $ GHC.CExportStatic src_txt lbl GHC.CCallConv)
-          loc_src
+      )
+    pure $
+      GHC.CExport
+        (GHC.noLoc $ GHC.CExportStatic src_txt lbl GHC.CCallConv)
+        loc_src
 processFFIExport _ _ _ _ exp_decl = pure exp_decl

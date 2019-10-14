@@ -6,8 +6,8 @@
 module Asterius.Boot
   ( BootArgs (..),
     defaultBootArgs,
-    boot
-    )
+    boot,
+  )
 where
 
 import Asterius.BuildInfo
@@ -25,15 +25,15 @@ import qualified DynFlags as GHC
 import qualified GHC
 import Language.Haskell.GHC.Toolkit.BuildInfo
   ( bootLibsPath,
-    sandboxGhcLibDir
-    )
+    sandboxGhcLibDir,
+  )
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show
 import Language.Haskell.GHC.Toolkit.Run
   ( defaultConfig,
     ghcFlags,
-    runCmm
-    )
+    runCmm,
+  )
 import qualified Module as GHC
 import System.Directory
 import System.Environment
@@ -48,16 +48,17 @@ data BootArgs
       { bootDir :: FilePath,
         configureOptions, buildOptions, installOptions :: String,
         builtinsOptions :: BuiltinsOptions
-        }
+      }
 
 defaultBootArgs :: BootArgs
 defaultBootArgs = BootArgs
   { bootDir = dataDir </> ".boot",
-    configureOptions = "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1 --ghc-option=-dsuppress-ticks",
+    configureOptions =
+      "--disable-shared --disable-profiling --disable-debug-info --disable-library-for-ghci --disable-split-objs --disable-split-sections --disable-library-stripping -O2 --ghc-option=-v1 --ghc-option=-dsuppress-ticks",
     buildOptions = "",
     installOptions = "",
     builtinsOptions = defaultBuiltinsOptions
-    }
+  }
 
 bootTmpDir :: BootArgs -> FilePath
 bootTmpDir BootArgs {..} = bootDir </> "dist"
@@ -68,21 +69,22 @@ bootCreateProcess args@BootArgs {..} = do
   pure
     (proc "sh" ["-e", "boot.sh"])
       { cwd = Just dataDir,
-        env = Just
-          $ ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath)
-          : ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir)
-          : ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib")
-          : ("ASTERIUS_TMP_DIR", bootTmpDir args)
-          : ("ASTERIUS_GHC", ghc)
-          : ("ASTERIUS_GHCLIBDIR", ghcLibDir)
-          : ("ASTERIUS_AHC", ahc)
-          : ("ASTERIUS_AHCPKG", ahcPkg)
-          : ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions)
-          : ("ASTERIUS_BUILD_OPTIONS", buildOptions)
-          : ("ASTERIUS_INSTALL_OPTIONS", installOptions)
-          : [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
+        env =
+          Just $
+            ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath)
+              : ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir)
+              : ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib")
+              : ("ASTERIUS_TMP_DIR", bootTmpDir args)
+              : ("ASTERIUS_GHC", ghc)
+              : ("ASTERIUS_GHCLIBDIR", ghcLibDir)
+              : ("ASTERIUS_AHC", ahc)
+              : ("ASTERIUS_AHCPKG", ahcPkg)
+              : ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions)
+              : ("ASTERIUS_BUILD_OPTIONS", buildOptions)
+              : ("ASTERIUS_INSTALL_OPTIONS", installOptions)
+              : [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
         delegate_ctlc = True
-        }
+      }
 
 bootRTSCmm :: BootArgs -> IO ()
 bootRTSCmm BootArgs {..} =
@@ -91,8 +93,8 @@ bootRTSCmm BootArgs {..} =
     $ do
       dflags0 <- GHC.getSessionDynFlags
       _ <-
-        GHC.setSessionDynFlags
-          $ GHC.setGeneralFlag' GHC.Opt_SuppressTicks dflags0
+        GHC.setSessionDynFlags $
+          GHC.setGeneralFlag' GHC.Opt_SuppressTicks dflags0
       dflags <- GHC.getSessionDynFlags
       setDynFlagsRef dflags
       is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
@@ -104,22 +106,23 @@ bootRTSCmm BootArgs {..} =
           $ takeDirectory rts_path
       runCmm
         defaultConfig
-          { ghcFlags = [ "-this-unit-id",
-                         "rts",
-                         "-dcmm-lint",
-                         "-O2",
-                         "-DASTERIUS",
-                         "-optc=-DASTERIUS",
-                         "-I" <> obj_topdir </> "include"
-                         ]
-            }
+          { ghcFlags =
+              [ "-this-unit-id",
+                "rts",
+                "-dcmm-lint",
+                "-O2",
+                "-DASTERIUS",
+                "-optc=-DASTERIUS",
+                "-I" <> obj_topdir </> "include"
+              ]
+          }
         cmm_files
         ( \obj_path ir@CmmIR {..} ->
             let ms_mod =
-                  ( GHC.Module GHC.rtsUnitId $ GHC.mkModuleName
-                      $ takeBaseName
-                          obj_path
-                    )
+                  ( GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $
+                      takeBaseName
+                        obj_path
+                  )
              in case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
                   Left err -> throwIO err
                   Right m -> do
@@ -130,7 +133,7 @@ bootRTSCmm BootArgs {..} =
                       writeFile (p "dump-wasm-ast") $ show m
                       writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
                       asmPrint dflags (p "dump-cmm-raw") cmmRaw
-          )
+        )
       liftIO $ do
         obj_paths <- readIORef obj_paths_ref
         tmpdir <- getTemporaryDirectory
@@ -158,7 +161,7 @@ boot args = do
   runBootCreateProcess
     cp_boot
       { cmdspec = RawCommand "sh" ["-e", "boot-init.sh"]
-        }
+      }
   bootRTSCmm args
   runBootCreateProcess cp_boot
   is_debug <- isJust <$> lookupEnv "ASTERIUS_DEBUG"

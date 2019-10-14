@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Asterius.JSRun.Main
-  ( newAsteriusInstance
-  , hsInit
-  , hsMain
-  , hsStdOut
-  , hsStdErr
-  ) where
+  ( newAsteriusInstance,
+    hsInit,
+    hsMain,
+    hsStdOut,
+    hsStdErr,
+  )
+where
 
 import qualified Data.ByteString.Lazy as LBS
 import Language.JavaScript.Inline.Core

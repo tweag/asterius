@@ -1,24 +1,25 @@
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-rn -ddump-foreign -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
 module AsteriusPrim
-  ( emptyJSString
-  , concatJSString
-  , indexJSString
-  , toJSString
-  , fromJSString
-  , emptyJSArray
-  , concatJSArray
-  , indexJSArray
-  , toJSArray
-  , fromJSArray
-  , emptyJSObject
-  , indexJSObject
-  , callJSObjectMethod
-  , json
-  , callJSFunction
-  ) where
+  ( emptyJSString,
+    concatJSString,
+    indexJSString,
+    toJSString,
+    fromJSString,
+    emptyJSArray,
+    concatJSArray,
+    indexJSArray,
+    toJSArray,
+    fromJSArray,
+    emptyJSObject,
+    indexJSObject,
+    callJSObjectMethod,
+    json,
+    callJSFunction,
+  )
+where
 
-import Asterius.Types (JSVal(..))
+import Asterius.Types (JSVal (..))
 import Data.List
 
 {-# INLINEABLE emptyJSString #-}
@@ -35,7 +36,8 @@ indexJSString = js_string_tochar
 
 {-# INLINEABLE toJSString #-}
 toJSString :: String -> JSVal
-toJSString = foldl' (\s c -> js_concat s (js_string_fromchar c)) js_string_empty
+toJSString =
+  foldl' (\s c -> js_concat s (js_string_fromchar c)) js_string_empty
 
 {-# INLINEABLE fromJSString #-}
 fromJSString :: JSVal -> String
@@ -84,16 +86,16 @@ callJSFunction f args = js_function_apply f js_object_empty (toJSArray args)
 
 foreign import javascript "\"\"" js_string_empty :: JSVal
 
-foreign import javascript "${1}.concat(${2})" js_concat
-  :: JSVal -> JSVal -> JSVal
+foreign import javascript "${1}.concat(${2})"
+  js_concat :: JSVal -> JSVal -> JSVal
 
 foreign import javascript "${1}.length" js_length :: JSVal -> Int
 
-foreign import javascript "String.fromCodePoint(${1})" js_string_fromchar
-  :: Char -> JSVal
+foreign import javascript "String.fromCodePoint(${1})"
+  js_string_fromchar :: Char -> JSVal
 
-foreign import javascript "${1}.codePointAt(${2})" js_string_tochar
-  :: JSVal -> Int -> Char
+foreign import javascript "${1}.codePointAt(${2})"
+  js_string_tochar :: JSVal -> Int -> Char
 
 foreign import javascript "[]" js_array_empty :: JSVal
 
@@ -101,10 +103,10 @@ foreign import javascript "${1}[${2}]" js_index_by_int :: JSVal -> Int -> JSVal
 
 foreign import javascript "{}" js_object_empty :: JSVal
 
-foreign import javascript "${1}[${2}]" js_index_by_jsref
-  :: JSVal -> JSVal -> JSVal
+foreign import javascript "${1}[${2}]"
+  js_index_by_jsref :: JSVal -> JSVal -> JSVal
 
 foreign import javascript "JSON" js_json :: JSVal
 
-foreign import javascript "${1}.apply(${2}, ${3})" js_function_apply
-  :: JSVal -> JSVal -> JSVal -> JSVal
+foreign import javascript "${1}.apply(${2}, ${3})"
+  js_function_apply :: JSVal -> JSVal -> JSVal -> JSVal

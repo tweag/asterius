@@ -8,7 +8,7 @@ foreign import ccall unsafe "print_i64" print_i64 :: Int -> IO ()
 
 main :: IO ()
 main = do
-  sps <- for [233..250] newStablePtr
+  sps <- for [233 .. 250] newStablePtr
   xs <- for sps deRefStablePtr
   for_ xs print_i64
   for_ sps freeStablePtr

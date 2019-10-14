@@ -11,20 +11,21 @@ import System.Process
 main :: IO ()
 main = do
   args <- getArgs
-  callProcess "ahc-link"
-    $ [ "--input-hs",
-        "test/nomain/NoMain.hs",
-        "--output-ir",
-        "--full-sym-table",
-        "--ghc-option=-no-hs-main",
-        "--extra-root-symbol=NoMain_x_closure",
-        "--no-gc-sections"
-      ]
+  callProcess "ahc-link" $
+    [ "--input-hs",
+      "test/nomain/NoMain.hs",
+      "--output-ir",
+      "--full-sym-table",
+      "--ghc-option=-no-hs-main",
+      "--extra-root-symbol=NoMain_x_closure",
+      "--no-gc-sections"
+    ]
       <> args
   m <- decodeFile "test/nomain/NoMain.unlinked.bin"
   withJSSession defJSSessionOpts {nodeStdErrInherit = True} $ \s -> do
     i <-
-      newAsteriusInstanceNonMain s
+      newAsteriusInstanceNonMain
+        s
         "test/nomain/NoMain"
         ["NoMain_x_closure"]
         m

@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Asterius.Internals.Session
-  ( fakeSession
-    )
+  ( fakeSession,
+  )
 where
 
 import qualified Asterius.BuildInfo as A
@@ -26,12 +26,12 @@ fakeSession m = do
     $ GHC.runGhc (Just (A.dataDir </> ".boot" </> "asterius_lib"))
     $ do
       dflags0 <- GHC.getSessionDynFlags
-      void
-        $ GHC.setSessionDynFlags
-            dflags0
-              { GHC.ghcMode = GHC.CompManager,
-                GHC.hscTarget = GHC.HscAsm,
-                GHC.integerLibrary = GHC.IntegerSimple,
-                GHC.tablesNextToCode = False
-                }
+      void $
+        GHC.setSessionDynFlags
+          dflags0
+            { GHC.ghcMode = GHC.CompManager,
+              GHC.hscTarget = GHC.HscAsm,
+              GHC.integerLibrary = GHC.IntegerSimple,
+              GHC.tablesNextToCode = False
+            }
       m
