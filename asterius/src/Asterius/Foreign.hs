@@ -24,6 +24,7 @@ import ForeignCall
 import qualified GHC.LanguageExtensions as LangExt
 import GhcPlugins
 import HsSyn
+import MkId
 import OrdList
 import Outputable
 import Pair
@@ -78,7 +79,7 @@ asteriusDsCImport id co (CLabel cid) cconv _ _ = do
           Just tycon
             | tyConUnique tycon == funPtrTyConKey -> IsFunction
           _ -> IsData
-  (_, foRhs) <- resultWrapper ty
+  (_, foRhs) <- asteriusResultWrapper ty
   let rhs = foRhs (Lit (MachLabel cid stdcall_info fod))
       rhs' = Cast rhs co
       stdcall_info = funTypeArgStdcallInfo dflags cconv ty
@@ -109,9 +110,9 @@ asteriusDsFCall fn_id co fcall = do
       (tv_bndrs, rho) = tcSplitForAllTyVarBndrs ty
       (arg_tys, io_res_ty) = tcSplitFunTys rho
   args <- newSysLocalsDs arg_tys
-  (val_args, arg_wrappers) <- mapAndUnzipM unboxArg (map Var args)
+  (val_args, arg_wrappers) <- mapAndUnzipM asteriusUnboxArg (map Var args)
   let work_arg_ids = [v | Var v <- val_args]
-  (ccall_result_ty, res_wrapper) <- boxResult io_res_ty
+  (ccall_result_ty, res_wrapper) <- asteriusBoxResult io_res_ty
   ccall_uniq <- newUnique
   work_uniq <- newUnique
   dflags <- getDynFlags
@@ -230,8 +231,12 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
         dflags <- getDynFlags
         let curried_res_ty = mkFunTys arg_tys res_ty
         check (isFFIDynTy curried_res_ty arg1_ty) (illegalForeignTyErr argument)
-        checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
-        checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
+        checkForeignArgs (asteriusIsFFIArgumentTy dflags safety) arg_tys
+        checkForeignRes
+          nonIOok
+          checkSafe
+          (asteriusIsFFIImportResultTy dflags)
+          res_ty
     return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
   | cconv == PrimCallConv = do
     dflags <- getDynFlags
@@ -252,8 +257,12 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
     checkCg checkCOrAsmOrLlvmOrInterp
     cconv' <- asteriusCheckCConv cconv
     dflags <- getDynFlags
-    checkForeignArgs (isFFIArgumentTy dflags safety) arg_tys
-    checkForeignRes nonIOok checkSafe (isFFIImportResultTy dflags) res_ty
+    checkForeignArgs (asteriusIsFFIArgumentTy dflags safety) arg_tys
+    checkForeignRes
+      nonIOok
+      checkSafe
+      (asteriusIsFFIImportResultTy dflags)
+      res_ty
     checkMissingAmpersand dflags arg_tys res_ty
     case target of
       StaticTarget _ _ _ False
@@ -314,12 +323,118 @@ asteriusTcCheckFEType sig_ty (CExport (L l (CExportStatic esrc str cconv)) src) 
   checkCg checkCOrAsmOrLlvm
   checkTc (isCLabelString str) (badCName str)
   cconv' <- asteriusCheckCConv cconv
-  checkForeignArgs isFFIExternalTy arg_tys
-  checkForeignRes nonIOok noCheckSafe isFFIExportResultTy res_ty
+  checkForeignArgs asteriusIsFFIExternalTy arg_tys
+  checkForeignRes nonIOok noCheckSafe asteriusIsFFIExportResultTy res_ty
   return (CExport (L l (CExportStatic esrc str cconv')) src)
   where
     (bndrs, res_ty) = tcSplitPiTys sig_ty
     arg_tys = mapMaybe binderRelevantType_maybe bndrs
+
+asteriusIsFFIArgumentTy :: DynFlags -> Safety -> Type -> Validity
+asteriusIsFFIArgumentTy dflags safety ty
+  | isAnyTy ty = IsValid
+  | isJSValTy ty = IsValid
+  | otherwise = isFFIArgumentTy dflags safety ty
+
+asteriusIsFFIImportResultTy :: DynFlags -> Type -> Validity
+asteriusIsFFIImportResultTy dflags ty
+  | isAnyTy ty = IsValid
+  | isJSValTy ty = IsValid
+  | otherwise = isFFIImportResultTy dflags ty
+
+asteriusIsFFIExternalTy :: Type -> Validity
+asteriusIsFFIExternalTy ty
+  | isAnyTy ty = IsValid
+  | isJSValTy ty = IsValid
+  | otherwise = isFFIExternalTy ty
+
+asteriusIsFFIExportResultTy :: Type -> Validity
+asteriusIsFFIExportResultTy ty
+  | isAnyTy ty = IsValid
+  | isJSValTy ty = IsValid
+  | otherwise = isFFIExportResultTy ty
+
+isAnyTy :: Type -> Bool
+isAnyTy ty =
+  case tcSplitTyConApp_maybe ty of
+    Just (tc, _) -> anyTyConKey == getUnique tc
+    Nothing -> False
+
+asteriusUnboxArg :: CoreExpr -> DsM (CoreExpr, CoreExpr -> CoreExpr)
+asteriusUnboxArg arg
+  | isAnyTy arg_ty = return (arg, id)
+  | otherwise = unboxArg arg
+  where
+    arg_ty = exprType arg
+
+asteriusBoxResult :: Type -> DsM (Type, CoreExpr -> CoreExpr)
+asteriusBoxResult result_ty
+  | Just (io_tycon, io_res_ty) <- tcSplitIOType_maybe result_ty = do
+    res <- asteriusResultWrapper io_res_ty
+    let extra_result_tys =
+          case res of
+            (Just ty, _)
+              | isUnboxedTupleType ty ->
+                let Just ls = tyConAppArgs_maybe ty
+                 in tail ls
+            _ -> []
+        return_result state anss =
+          mkCoreUbxTup
+            (realWorldStatePrimTy : io_res_ty : extra_result_tys)
+            (state : anss)
+    (ccall_res_ty, the_alt) <- mkAlt return_result res
+    state_id <- newSysLocalDs realWorldStatePrimTy
+    let io_data_con = head (tyConDataCons io_tycon)
+        toIOCon = dataConWrapId io_data_con
+        wrap the_call =
+          mkApps
+            (Var toIOCon)
+            [ Type io_res_ty,
+              Lam state_id $
+                mkWildCase
+                  (App the_call (Var state_id))
+                  ccall_res_ty
+                  (coreAltType the_alt)
+                  [the_alt]
+            ]
+    return (realWorldStatePrimTy `mkFunTy` ccall_res_ty, wrap)
+asteriusBoxResult result_ty = do
+  res <- asteriusResultWrapper result_ty
+  (ccall_res_ty, the_alt) <- mkAlt return_result res
+  let wrap the_call =
+        mkWildCase
+          (App the_call (Var realWorldPrimId))
+          ccall_res_ty
+          (coreAltType the_alt)
+          [the_alt]
+  return (realWorldStatePrimTy `mkFunTy` ccall_res_ty, wrap)
+  where
+    return_result _ [ans] = ans
+    return_result _ _ = panic "return_result: expected single result"
+
+asteriusResultWrapper :: Type -> DsM (Maybe Type, CoreExpr -> CoreExpr)
+asteriusResultWrapper result_ty
+  | isAnyTy result_ty = return (Just result_ty, id)
+  | otherwise = resultWrapper result_ty
+
+mkAlt ::
+  (Expr Var -> [Expr Var] -> Expr Var) ->
+  (Maybe Type, Expr Var -> Expr Var) ->
+  DsM (Type, (AltCon, [Id], Expr Var))
+mkAlt return_result (Nothing, wrap_result) = do
+  state_id <- newSysLocalDs realWorldStatePrimTy
+  let the_rhs = return_result (Var state_id) [wrap_result (panic "boxResult")]
+      ccall_res_ty = mkTupleTy Unboxed [realWorldStatePrimTy]
+      the_alt = (DataAlt (tupleDataCon Unboxed 1), [state_id], the_rhs)
+  return (ccall_res_ty, the_alt)
+mkAlt return_result (Just prim_res_ty, wrap_result) = do
+  result_id <- newSysLocalDs prim_res_ty
+  state_id <- newSysLocalDs realWorldStatePrimTy
+  let the_rhs = return_result (Var state_id) [wrap_result (Var result_id)]
+      ccall_res_ty = mkTupleTy Unboxed [realWorldStatePrimTy, prim_res_ty]
+      the_alt =
+        (DataAlt (tupleDataCon Unboxed 2), [state_id, result_id], the_rhs)
+  return (ccall_res_ty, the_alt)
 
 checkCOrAsmOrLlvm :: HscTarget -> Validity
 checkCOrAsmOrLlvm HscC = IsValid
