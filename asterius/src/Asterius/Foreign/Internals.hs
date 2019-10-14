@@ -8,6 +8,7 @@ module Asterius.Foreign.Internals
     globalFFIHookState,
     processFFIImport,
     processFFIExport,
+    isJSValTy,
   )
 where
 
@@ -21,6 +22,7 @@ import Data.Functor
 import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.String
+import qualified ErrUtils as GHC
 import qualified ForeignCall as GHC
 import qualified GhcPlugins as GHC
 import qualified HsSyn as GHC
@@ -269,7 +271,10 @@ parseFFIChunks :: Parser [Chunk Int]
 parseFFIChunks =
   combineChunks <$> parseChunks (parseChunk (parseField (read <$> some digit)))
 
-newtype FFIHookState = FFIHookState {ffiHookState :: M.Map AsteriusModuleSymbol FFIMarshalState}
+newtype FFIHookState
+  = FFIHookState
+      { ffiHookState :: M.Map AsteriusModuleSymbol FFIMarshalState
+      }
 
 {-# NOINLINE globalFFIHookState #-}
 globalFFIHookState :: IORef FFIHookState
@@ -382,3 +387,52 @@ processFFIExport hook_state_ref sig_ty norm_sig_ty export_id (GHC.CExport (GHC.u
         (GHC.noLoc $ GHC.CExportStatic src_txt lbl GHC.CCallConv)
         loc_src
 processFFIExport _ _ _ _ exp_decl = pure exp_decl
+
+isJSValTy :: GHC.Type -> Bool
+isJSValTy = GHC.isValid . checkRepTyCon isJSValTyCon
+
+isJSValTyCon :: GHC.TyCon -> GHC.Validity
+isJSValTyCon tc
+  | GHC.nameModule_maybe n
+      == Just asteriusPrimModule
+      && GHC.nameOccName n
+      == jsValTyConOccName =
+    GHC.IsValid
+  | otherwise =
+    GHC.NotValid $ GHC.text "isJSValTyCon: not JSVal TyCon"
+  where
+    n = GHC.tyConName tc
+
+{-# NOINLINE asteriusPrimModule #-}
+asteriusPrimModule :: GHC.Module
+asteriusPrimModule =
+  GHC.mkModule GHC.primUnitId (GHC.mkModuleName "Asterius.Prim")
+
+{-# NOINLINE jsValTyConOccName #-}
+jsValTyConOccName :: GHC.OccName
+jsValTyConOccName = GHC.mkTcOcc "JSVal"
+
+checkRepTyCon :: (GHC.TyCon -> GHC.Validity) -> GHC.Type -> GHC.Validity
+checkRepTyCon check_tc ty = case GHC.splitTyConApp_maybe ty of
+  Just (tc, tys)
+    | GHC.isNewTyCon tc ->
+      GHC.NotValid
+        (GHC.hang msg 2 (mk_nt_reason tc tys GHC.$$ nt_fix))
+    | otherwise -> case check_tc tc of
+      GHC.IsValid -> GHC.IsValid
+      GHC.NotValid extra -> GHC.NotValid (msg GHC.$$ extra)
+  Nothing ->
+    GHC.NotValid (GHC.quotes (GHC.ppr ty) GHC.<+> GHC.text "is not a data type")
+  where
+    msg =
+      GHC.quotes (GHC.ppr ty)
+        GHC.<+> GHC.text "cannot be marshalled in a foreign call"
+    mk_nt_reason tc tys
+      | null tys =
+        GHC.text "because its data constructor is not in scope"
+      | otherwise =
+        GHC.text "because the data constructor for"
+          GHC.<+> GHC.quotes (GHC.ppr tc)
+          GHC.<+> GHC.text "is not in scope"
+    nt_fix =
+      GHC.text "Possible fix: import the data constructor to bring it into scope"
