@@ -5,6 +5,13 @@ function showI64(x) {
   return `0x${x.toString(16)}`;
 }
 
+/**
+ * Debug memory accesses through symbols.
+ *
+ * In debug mode, symbols load/store use the primitives defined in this object
+ * instead of those in Memory object. These primitives check the validity of the
+ * pointer and report invalid accesses.
+ */
 export class MemoryTrap {
   constructor(logger, syms, memory, mblock_alloc) {
     this.logger = logger;

@@ -1,5 +1,22 @@
 import * as rtsConstants from "./rts.constants.mjs";
 
+/**
+ * Heap allocator
+ *
+ * The HeapAllocator allocates in two "pools" (groups of MBlocks):
+ *   - one for unpinned objects smaller than a block
+ *   - one for pinned objects or objects larger than a block
+ *
+ * When a pool isn't large enough to alloc an object, a new pool is allocated.
+ *
+ * Currently we only use a single block_descriptor which covers the whole group
+ * of MBlocks. We don't provide a way to allocate a certain number of Blocks.
+ *
+ * Warning: bdescr "node" field is currently used to store the number of MBlocks
+ *
+ * @property mgroups All the active pools
+ *
+ */
 export class HeapAlloc {
   constructor(memory, mblockalloc) {
     this.memory = memory;
@@ -25,6 +42,10 @@ export class HeapAlloc {
           bd = this.allocMegaGroup(mblocks);
     return bd;
   }
+
+  /**
+   * Allocate n Words
+   */
   allocate(n, pinned = false) {
     let b = n << 3, pool_i = Number(pinned || b >= rtsConstants.block_size),
         current_start = Number(this.memory.i64Load(
@@ -55,6 +76,9 @@ export class HeapAlloc {
 
   allocatePinned(n) { return this.allocate(n, true); }
 
+  /**
+   * Allocate a MegaGroup of n MBlocks
+   */
   allocMegaGroup(n) {
     const req_blocks =
         (rtsConstants.mblock_size * n - rtsConstants.offset_first_block) /
