@@ -190,19 +190,14 @@ ffiPrimValueTypeMap1 =
 ffiValueTypeMap0 = ffiBoxedValueTypeMap0 `GHC.plusNameEnv` ffiPrimValueTypeMap0
 ffiValueTypeMap1 = ffiBoxedValueTypeMap1 `GHC.plusNameEnv` ffiPrimValueTypeMap1
 
-parseFFIValueType :: Bool -> GHC.Type -> GHC.Type -> Maybe FFIValueType
-parseFFIValueType accept_prim sig_ty norm_sig_ty =
-  case (sig_ty, norm_sig_ty) of
-    (GHC.TyConApp _ _, GHC.TyConApp norm_tc []) ->
+parseFFIValueType :: Bool -> GHC.Type -> Maybe FFIValueType
+parseFFIValueType accept_prim norm_sig_ty
+  | isJSValTy norm_sig_ty = pure FFI_JSVAL
+  | otherwise = case norm_sig_ty of
+    GHC.TyConApp norm_tc [] ->
       GHC.lookupNameEnv ffi_valuetype_map0 (GHC.getName norm_tc)
-    (GHC.TyConApp tc _, GHC.TyConApp norm_tc [_])
-      | take 2 (GHC.occNameString (GHC.getOccName tc))
-          == "JS"
-          && GHC.getName norm_tc
-          == GHC.stablePtrTyConName ->
-        pure FFI_JSVAL
-      | otherwise ->
-        GHC.lookupNameEnv ffi_valuetype_map1 (GHC.getName norm_tc)
+    GHC.TyConApp norm_tc [_] ->
+      GHC.lookupNameEnv ffi_valuetype_map1 (GHC.getName norm_tc)
     _ -> Nothing
   where
     ffi_valuetype_map0
@@ -212,35 +207,34 @@ parseFFIValueType accept_prim sig_ty norm_sig_ty =
       | accept_prim = ffiValueTypeMap1
       | otherwise = ffiBoxedValueTypeMap1
 
-parseFFIFunctionType :: Bool -> GHC.Type -> GHC.Type -> Maybe FFIFunctionType
-parseFFIFunctionType accept_prim sig_ty norm_sig_ty =
-  case (sig_ty, norm_sig_ty) of
-    (GHC.FunTy t1 t2, GHC.FunTy norm_t1 norm_t2) -> do
-      vt <- parseFFIValueType accept_prim t1 norm_t1
-      ft <- parseFFIFunctionType accept_prim t2 norm_t2
-      pure ft {ffiParamTypes = vt : ffiParamTypes ft}
-    (GHC.TyConApp _ tys1, GHC.TyConApp norm_tc norm_tys1)
-      | GHC.getName norm_tc == GHC.ioTyConName -> case (tys1, norm_tys1) of
-        (_, [GHC.TyConApp u []]) | u == GHC.unitTyCon -> pure FFIFunctionType
+parseFFIFunctionType :: Bool -> GHC.Type -> Maybe FFIFunctionType
+parseFFIFunctionType accept_prim norm_sig_ty = case norm_sig_ty of
+  GHC.FunTy norm_t1 norm_t2 -> do
+    vt <- parseFFIValueType accept_prim norm_t1
+    ft <- parseFFIFunctionType accept_prim norm_t2
+    pure ft {ffiParamTypes = vt : ffiParamTypes ft}
+  GHC.TyConApp norm_tc norm_tys1 | GHC.getName norm_tc == GHC.ioTyConName ->
+    case norm_tys1 of
+      [GHC.TyConApp u []] | u == GHC.unitTyCon -> pure FFIFunctionType
+        { ffiParamTypes = [],
+          ffiResultTypes = [],
+          ffiInIO = True
+        }
+      [norm_t1] -> do
+        r <- parseFFIValueType False norm_t1
+        pure FFIFunctionType
           { ffiParamTypes = [],
-            ffiResultTypes = [],
+            ffiResultTypes = [r],
             ffiInIO = True
           }
-        ([t1], [norm_t1]) -> do
-          r <- parseFFIValueType False t1 norm_t1
-          pure FFIFunctionType
-            { ffiParamTypes = [],
-              ffiResultTypes = [r],
-              ffiInIO = True
-            }
-        _ -> Nothing
-    _ -> do
-      r <- parseFFIValueType accept_prim sig_ty norm_sig_ty
-      pure FFIFunctionType
-        { ffiParamTypes = [],
-          ffiResultTypes = [r],
-          ffiInIO = False
-        }
+      _ -> Nothing
+  _ -> do
+    r <- parseFFIValueType accept_prim norm_sig_ty
+    pure FFIFunctionType
+      { ffiParamTypes = [],
+        ffiResultTypes = [r],
+        ffiInIO = False
+      }
 
 parseField :: Parser a -> Parser (Chunk a)
 parseField f = do
@@ -284,15 +278,14 @@ globalFFIHookState =
 processFFIImport ::
   IORef FFIHookState ->
   GHC.Type ->
-  GHC.Type ->
   GHC.ForeignImport ->
   GHC.TcM GHC.ForeignImport
-processFFIImport hook_state_ref sig_ty norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ _ (GHC.unLoc -> GHC.SourceText src)) =
+processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ _ (GHC.unLoc -> GHC.SourceText src)) =
   do
     dflags <- GHC.getDynFlags
     mod_sym <- marshalToModuleSymbol <$> GHC.getModule
     u <- GHC.getUniqueM
-    let Just ffi_ftype = parseFFIFunctionType True sig_ty norm_sig_ty
+    let Just ffi_ftype = parseFFIFunctionType True norm_sig_ty
         ffi_safety = case GHC.unLoc loc_safety of
           GHC.PlaySafe | GHC.isGoodSrcSpan $ GHC.getLoc loc_safety -> FFISafe
           GHC.PlayInterruptible -> FFIInterruptible
@@ -341,20 +334,19 @@ processFFIImport hook_state_ref sig_ty norm_sig_ty (GHC.CImport (GHC.unLoc -> GH
               True
         )
         (GHC.noLoc GHC.NoSourceText)
-processFFIImport _ _ _ imp_decl = pure imp_decl
+processFFIImport _ _ imp_decl = pure imp_decl
 
 processFFIExport ::
   IORef FFIHookState ->
   GHC.Type ->
-  GHC.Type ->
   GHC.Id ->
   GHC.ForeignExport ->
   GHC.TcM GHC.ForeignExport
-processFFIExport hook_state_ref sig_ty norm_sig_ty export_id (GHC.CExport (GHC.unLoc -> GHC.CExportStatic src_txt lbl GHC.JavaScriptCallConv) loc_src) =
+processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc -> GHC.CExportStatic src_txt lbl GHC.JavaScriptCallConv) loc_src) =
   do
     dflags <- GHC.getDynFlags
     mod_sym <- marshalToModuleSymbol <$> GHC.getModule
-    let Just ffi_ftype = parseFFIFunctionType False sig_ty norm_sig_ty
+    let Just ffi_ftype = parseFFIFunctionType False norm_sig_ty
         new_k = AsteriusEntitySymbol
           { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
           }
@@ -386,7 +378,7 @@ processFFIExport hook_state_ref sig_ty norm_sig_ty export_id (GHC.CExport (GHC.u
       GHC.CExport
         (GHC.noLoc $ GHC.CExportStatic src_txt lbl GHC.CCallConv)
         loc_src
-processFFIExport _ _ _ _ exp_decl = pure exp_decl
+processFFIExport _ _ _ exp_decl = pure exp_decl
 
 isJSValTy :: GHC.Type -> Bool
 isJSValTy = GHC.isValid . checkRepTyCon isJSValTyCon

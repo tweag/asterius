@@ -196,8 +196,7 @@ asteriusTcFImport
             arg_tys = mapMaybe binderRelevantType_maybe bndrs
             id = mkLocalId nm sig_ty
         imp_decl' <- asteriusTcCheckFIType arg_tys res_ty imp_decl
-        imp_decl'' <-
-          processFFIImport globalFFIHookState sig_ty norm_sig_ty imp_decl'
+        imp_decl'' <- processFFIImport globalFFIHookState norm_sig_ty imp_decl'
         let fi_decl =
               ForeignImport
                 { fd_name = L nloc id,
@@ -305,7 +304,7 @@ asteriusTcFExport
       (norm_co, norm_sig_ty, gres) <- normaliseFfiType sig_ty
       spec' <- asteriusTcCheckFEType norm_sig_ty spec
       id <- mkStableIdFromName nm sig_ty loc mkForeignExportOcc
-      spec'' <- processFFIExport globalFFIHookState sig_ty norm_sig_ty id spec'
+      spec'' <- processFFIExport globalFFIHookState norm_sig_ty id spec'
       return
         ( mkVarBind id rhs,
           ForeignExport

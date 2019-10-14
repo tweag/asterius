@@ -321,7 +321,7 @@ export class Scheduler {
                   rtsConstants.offset_StgRegTable_rR1,
                 this.exports.rts_apply(
                   this.symbolTable.base_AsteriusziTypes_makeJSException_closure,
-                  this.exports.rts_mkStablePtr(this.stablePtrManager.newJSVal(tso_info.ffiRetErr))
+                  this.exports.rts_mkJSVal(this.stablePtrManager.newJSVal(tso_info.ffiRetErr))
                 )
               );
               entryFunc = this.symbolTable.stg_raisezh;
@@ -432,7 +432,7 @@ export class Scheduler {
    * Submit a WakeUp command. A WakeUp command doesn't provide any additional
    * information. It is only used to wake-up the scheduler so that it can check
    * if there are some threads to run in its run-queue (unblocked threads, etc.)
-   * 
+   *
    *
    */
   submitCmdWakeUp() {
