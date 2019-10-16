@@ -32,6 +32,7 @@ RUN \
     libncurses-dev \
     libnuma-dev \
     make \
+    netbase \
     python-minimal \
     python3-minimal \
     xz-utils \
