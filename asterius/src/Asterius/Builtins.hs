@@ -41,7 +41,8 @@ data BuiltinsOptions
   = BuiltinsOptions
       { progName :: String,
         threadStateSize :: Int,
-        debug, hasMain :: Bool
+        debug, hasMain :: Bool,
+        jsvalConInfo :: Maybe AsteriusEntitySymbol
       }
 
 defaultBuiltinsOptions :: BuiltinsOptions
@@ -51,7 +52,9 @@ defaultBuiltinsOptions = BuiltinsOptions
         "Asterius.Builtins.defaultBuiltinsOptions: unknown progName",
     threadStateSize = 65536,
     debug = False,
-    hasMain = True
+    hasMain = True,
+    jsvalConInfo =
+      error "Asterius.Builtins.defaultBuiltinsOptions: unknown jsvalConInfo"
   }
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
@@ -220,7 +223,10 @@ generateRtsExternalInterfaceModule opts =
     <> generateRtsGetIntFunction opts "rts_getWord"
     <> generateRtsGetIntFunction opts "rts_getPtr"
     <> generateRtsGetIntFunction opts "rts_getStablePtr"
-    <> generateRtsGetIntFunction opts "rts_getJSVal"
+    <> maybe
+      mempty
+      (\_ -> generateRtsGetIntFunction opts "rts_getJSVal")
+      (jsvalConInfo opts)
     <> loadI64Function opts
 
 -- Generate the module consisting of debug functions
@@ -1282,7 +1288,7 @@ rtsMkStablePtrFunction opts =
   rtsMkHelper opts "rts_mkStablePtr" "base_GHCziStable_StablePtr_con_info"
 
 rtsMkJSValFunction opts =
-  rtsMkHelper opts "rts_mkJSVal" "ghczmprim_AsteriusziPrim_JSVal_con_info"
+  maybe mempty (rtsMkHelper opts "rts_mkJSVal") (jsvalConInfo opts)
 
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8

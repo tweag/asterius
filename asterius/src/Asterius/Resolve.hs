@@ -216,7 +216,18 @@ resolveAsteriusModule debug _ bundled_ffi_state m_globals_resolved func_start_ad
     new_mod = Module
       { functionMap' = new_function_map,
         functionImports = func_imports,
-        functionExports = rtsFunctionExports debug,
+        functionExports =
+          filter
+            ( \FunctionExport {internalName = e} ->
+                e
+                  `LM.member` new_function_map
+                  || any
+                    ( \FunctionImport {internalName = i} ->
+                        i == e
+                    )
+                    func_imports
+            )
+            $ rtsFunctionExports debug,
         functionTable = func_table,
         tableImport = TableImport
           { externalModuleName = "WasmTable",
