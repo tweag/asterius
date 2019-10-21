@@ -320,7 +320,6 @@ Library
         Unsafe.Coerce
 
         Asterius.TopHandler
-        Asterius.Types
 
     other-modules:
         Control.Monad.ST.Imp

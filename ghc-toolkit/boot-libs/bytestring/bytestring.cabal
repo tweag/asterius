@@ -93,8 +93,6 @@ library
                      Data.ByteString.Lazy.Builder
                      Data.ByteString.Lazy.Builder.Extras
                      Data.ByteString.Lazy.Builder.ASCII
-
-                     Asterius.ByteString
   other-modules:
                      Data.ByteString.Builder.ASCII
                      Data.ByteString.Builder.Prim.Binary
