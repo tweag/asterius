@@ -80,13 +80,21 @@ newAsteriusInstanceNonMain ::
   IO JSVal
 newAsteriusInstanceNonMain s p extra_syms m = do
   distNonMain p extra_syms $ linkNonMain m extra_syms
-  let lib_path = p -<.> "lib.mjs"
+  let rts_path = p `replaceFileName` "rts.mjs"
+      req_path = p -<.> "req.mjs"
       wasm_path = p -<.> "wasm"
-  lib_val <- importMJS s lib_path
-  f_val <- eval s $ takeJSVal lib_val <> ".default"
+  rts_val <- importMJS s rts_path
+  req_mod_val <- importMJS s req_path
+  req_val <- eval s $ takeJSVal req_mod_val <> ".default"
   mod_val <-
     eval s $
       "import('fs').then(fs => fs.promises.readFile("
         <> fromString (show wasm_path)
         <> ")).then(buf => WebAssembly.compile(buf))"
-  eval s $ takeJSVal f_val <> "(" <> takeJSVal mod_val <> ")"
+  eval s $
+    takeJSVal rts_val
+      <> ".newAsteriusInstance(Object.assign("
+      <> takeJSVal req_val
+      <> ",{module:"
+      <> takeJSVal mod_val
+      <> "}))"

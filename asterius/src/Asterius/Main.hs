@@ -202,12 +202,10 @@ genExportStablePtrs sym_map export_funcs FFIMarshalState {..} =
       )
     <> "]"
 
-genLib :: Task -> LinkReport -> Builder
-genLib Task {..} LinkReport {..} =
+genReq :: Task -> LinkReport -> Builder
+genReq Task {..} LinkReport {..} =
   mconcat
-    [ "import * as rts from \"./rts.mjs\";\n",
-      "export default module => \n",
-      "rts.newAsteriusInstance({module: module, jsffiFactory: ",
+    [ "export default {jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
       ", exports: ",
       generateFFIExportObject bundledFFIMarshalState,
@@ -224,7 +222,7 @@ genLib Task {..} LinkReport {..} =
       intDec staticMBlocks,
       ", yolo: ",
       if yolo then "true" else "false",
-      "})",
+      "}",
       ";\n"
     ]
   where
@@ -246,21 +244,22 @@ genLib Task {..} LinkReport {..} =
 genDefEntry :: Task -> Builder
 genDefEntry Task {..} =
   mconcat
-    [ "import module from \"./",
+    [ "import * as rts from \"./rts.mjs\";\n",
+      "import module from \"./",
       out_base,
       ".wasm.mjs\";\n",
       "import ",
       out_base,
       " from \"./",
       out_base,
-      ".lib.mjs\";\n",
+      ".req.mjs\";\n",
       case target of
         Node -> "process.on(\"unhandledRejection\", err => { throw err; });\n"
         Browser -> mempty,
       mconcat
-        [ "module.then(m => ",
+        [ "module.then(m => rts.newAsteriusInstance(Object.assign(",
           out_base,
-          "(m)).then(async i => {\n",
+          ", {module: m}))).then(async i => {\n",
           "try {\n",
           "i.exports.hs_init();\n",
           "await i.exports.main();\n",
@@ -345,7 +344,7 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
       out_rts_constants = outputDirectory </> "rts.constants.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
       out_wasm_lib = outputDirectory </> outputBaseName <.> "wasm.mjs"
-      out_lib = outputDirectory </> outputBaseName <.> "lib.mjs"
+      out_req = outputDirectory </> outputBaseName <.> "req.mjs"
       out_entry = outputDirectory </> outputBaseName <.> "mjs"
       out_js = outputDirectory </> outputBaseName <.> "js"
       out_html = outputDirectory </> outputBaseName <.> "html"
@@ -427,8 +426,8 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
     \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
   logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
   builderWriteFile out_wasm_lib $ genWasm (target == Node) outputBaseName
-  logger $ "[INFO] Writing JavaScript lib module to " <> show out_lib
-  builderWriteFile out_lib $ genLib task report
+  logger $ "[INFO] Writing JavaScript req module to " <> show out_req
+  builderWriteFile out_req $ genReq task report
   logger $ "[INFO] Writing JavaScript entry module to " <> show out_entry
   case inputEntryMJS of
     Just in_entry -> copyFile in_entry out_entry
