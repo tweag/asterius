@@ -7,6 +7,7 @@ where
 
 import Control.Exception (assert)
 import Data.Bits ((.|.), zeroBits)
+import qualified Data.Char as Char
 import Data.Int (Int32)
 import Data.List (findIndex, foldl', groupBy, intersperse, sortOn)
 import qualified Data.Map.Strict as Map
@@ -57,18 +58,47 @@ toFlag = (2 ^) . fromEnum
 catUnion :: [Category] -> CategoryFlag
 catUnion = foldl (.|.) zeroBits . map toFlag
 
-f_cntrl, f_print, f_space, f_upper, f_lower, f_alpha, f_digit, f_alnum :: CategoryFlag
-f_cntrl = toFlag Cc
-f_print = catUnion [Lu .. Zs]
-f_space = toFlag Zs
-f_upper = toFlag Lu .|. toFlag Lt
-f_lower = toFlag Ll
-f_alpha = catUnion [Lu .. Lo]
-f_digit = toFlag Nd
-f_alnum = f_alpha .|. catUnion [Nd .. No]
+data CompoundCategory
+  = Upper
+  | Lower
+  | Space
+  | Alpha
+  | Digit
+  | Alnum
+  | Print
+  | Cntrl
+  deriving (Show, Bounded, Enum)
 
-flags :: [(String, CategoryFlag)]
-flags = [("f_cntrl", f_cntrl), ("f_print", f_print), ("f_space", f_space), ("f_upper", f_upper), ("f_lower", f_lower), ("f_alpha", f_alpha), ("f_digit", f_digit), ("f_alnum", f_alnum)]
+flag :: CompoundCategory -> CategoryFlag
+flag Upper = toFlag Lu .|. toFlag Lt
+flag Lower = toFlag Ll
+flag Space = toFlag Zs
+flag Alpha = catUnion [Lu .. Lo]
+flag Digit = toFlag Nd
+flag Alnum = flag Alpha .|. catUnion [Nd .. No]
+flag Print = catUnion [Lu .. Zs]
+flag Cntrl = toFlag Cc
+
+jsFlag :: CompoundCategory -> String
+jsFlag cc = "const _f_" ++ map Char.toLower (show cc) ++ " = " ++ show (flag cc) ++ ";"
+
+jsFlagFunction :: CompoundCategory -> String
+jsFlagFunction cc =
+  unlines
+    [ "function u_isw" ++ cat ++ "(code) {",
+      "  return _property(_generalCategory, code) & _f_" ++ cat ++ ";",
+      "}"
+    ]
+  where
+    cat = map Char.toLower (show cc)
+
+jsConversionFunction :: String -> String
+jsConversionFunction cat =
+  unlines
+    [ "function u_tow" ++ cat ++ "(code) {",
+      "  return code + _property(_to" ++ cat ++ ", code);",
+      "}"
+    ]
 
 data Character
   = Character
@@ -139,23 +169,17 @@ readCharacter s = case splitOn ';' s of
     splitOn :: Char -> String -> [String]
     splitOn sep = map (dropWhile (== sep)) . groupBy (\a b -> b /= sep)
 
-toJS :: Character -> String
-toJS Character {..} = "new Character(" ++ args ++ ")"
-  where
-    args =
-      concat $
-        intersperse
-          ","
-          [ showCode c_code,
-            show c_generalCategory,
-            showCode c_simpleUppercaseMapping,
-            showCode c_simpleLowercaseMapping,
-            showCode c_simpleTitlecaseMapping
-          ]
+data Block
+  = Block
+      { b_first :: Character,
+        b_last :: Character,
+        b_index :: Word8
+      }
+  deriving (Eq, Show)
 
 data LookupBuilder
   = LookupBuilder
-      { b_charBlocks :: [(Character, Word8)],
+      { b_blocks :: [Block],
         b_propIndex :: Map.Map Properties Word8,
         b_nextIndex :: Word8
       }
@@ -163,7 +187,7 @@ data LookupBuilder
 
 instance Semigroup LookupBuilder where
   l1 <> l2 = LookupBuilder
-    { b_charBlocks = b_charBlocks l1 <> b_charBlocks l2,
+    { b_blocks = b_blocks l1 <> b_blocks l2,
       b_propIndex = b_propIndex l1 <> b_propIndex l2,
       b_nextIndex = max (b_nextIndex l1) (b_nextIndex l2)
     }
@@ -171,19 +195,32 @@ instance Semigroup LookupBuilder where
 instance Monoid LookupBuilder where
   mempty = LookupBuilder [] Map.empty 0
 
+-- Assumes ascending order of Characters!
 include :: LookupBuilder -> Character -> LookupBuilder
-include LookupBuilder {b_charBlocks = [], ..} char =
-  LookupBuilder [(char, b_nextIndex)] (Map.singleton (asProps char) b_nextIndex) (succ b_nextIndex)
-include l@LookupBuilder {b_charBlocks = ((blkStart, _) : _), ..} char@Character {..}
-  | asProps blkStart == props = l
-  | props `Map.member` b_propIndex = LookupBuilder [(char, b_propIndex Map.! props)] mempty 0 <> l
-  | otherwise = LookupBuilder [(char, b_nextIndex)] (Map.singleton props b_nextIndex) (succ b_nextIndex) <> l
+include LookupBuilder {b_blocks = [], ..} char =
+  LookupBuilder [Block char char b_nextIndex] (Map.singleton (asProps char) b_nextIndex) (succ b_nextIndex)
+include l@LookupBuilder {b_blocks = Block {..} : bs, ..} char@Character {..}
+  | asProps b_first == props = l {b_blocks = Block {b_last = char, ..} : bs}
+  | props `Map.member` b_propIndex = LookupBuilder [Block char char (b_propIndex Map.! props)] mempty 0 <> l
+  | otherwise = LookupBuilder [Block char char b_nextIndex] (Map.singleton props b_nextIndex) (succ b_nextIndex) <> l
   where
     props = asProps char
 
+mkLookup :: [Character] -> Lookup
+mkLookup = build . foldl' include mempty
+
+ghcProps :: Char -> Properties
+ghcProps c = Properties
+  { p_generalCategory = toEnum $ fromEnum $ Char.generalCategory c,
+    p_toUpper = fromInteger $ toInteger $ fromEnum (Char.toUpper c) - fromEnum c,
+    p_toLower = fromInteger $ toInteger $ fromEnum (Char.toLower c) - fromEnum c,
+    p_toTitle = fromInteger $ toInteger $ fromEnum (Char.toTitle c) - fromEnum c
+  }
+
 data Lookup
   = Lookup
-      { l_codeBlocks :: [Code],
+      { l_blockFirst :: [Code],
+        l_blockLast :: [Code],
         l_propIndex :: [Word8],
         l_generalCategory :: [Category],
         l_toUpper :: [Int32],
@@ -196,30 +233,53 @@ build :: LookupBuilder -> Lookup
 build LookupBuilder {..} = Lookup {..}
   where
     props = fst $ unzip $ sortOn snd $ Map.toList b_propIndex
-    charBlocks = reverse b_charBlocks
-    l_codeBlocks = map (c_code . fst) charBlocks
-    l_propIndex = map snd charBlocks
+    blocks = reverse b_blocks
+    l_blockFirst = map (c_code . b_first) blocks
+    l_blockLast = map (c_code . b_last) blocks
+    l_propIndex = map b_index blocks
     l_generalCategory = map p_generalCategory props
     l_toUpper = map p_toUpper props
     l_toLower = map p_toLower props
     l_toTitle = map p_toTitle props
 
+jsPrelude :: String
+jsPrelude =
+  unlines
+    [ "function _bbsearch(key, first, last, start, end) {",
+      "  const isBaseCase = start + 1 == end;",
+      "  const pivot = ~~((start + end) / 2)",
+      "  if (key < first[pivot]) {",
+      "    return isBaseCase ? -1 : _bbsearch(key, first, last, start, pivot);",
+      "  } else if (key <= last[pivot]) {",
+      "    return pivot;",
+      "  } else {",
+      "    return isBaseCase ? -1 : _bbsearch(key, first, last, pivot, end);",
+      "  }",
+      "}",
+      "",
+      "function _property(propTable, code) {",
+      "  const idx = _bbsearch(code, _blockFirst, _blockLast, 0, code + 1);",
+      "  return idx == -1 ? 0 : propTable[_propIndex[idx]];",
+      "}"
+    ]
+
 toJS' :: Lookup -> [String]
 toJS' Lookup {..} =
-  [ "const _codeBlocks = Uint32Array.of(" ++ showArray l_codeBlocks ++ ");",
+  [ "const _blockFirst = Uint32Array.of(" ++ showArray l_blockFirst ++ ");",
+    "const _blockLast = Uint32Array.of(" ++ showArray l_blockLast ++ ");",
     "const _propIndex = Uint8Array.of(" ++ showArray l_propIndex ++ ");",
     "const _generalCategory = Uint32Array.of(" ++ showArray (map toFlag l_generalCategory) ++ ");",
-    "const _toUpper = Int32Array.of(" ++ showArray l_toUpper ++ ");",
-    "const _toLower = Int32Array.of(" ++ showArray l_toLower ++ ");",
-    "const _toTitle = Int32Array.of(" ++ showArray l_toTitle ++ ");"
+    "const _toupper = Int32Array.of(" ++ showArray l_toUpper ++ ");",
+    "const _tolower = Int32Array.of(" ++ showArray l_toLower ++ ");",
+    "const _totitle = Int32Array.of(" ++ showArray l_toTitle ++ ");"
   ]
   where
-    showArray :: (Show a) => [a] -> String
+    showArray :: Show a => [a] -> String
     showArray = concat . intersperse "," . map show
 
 lookup' :: Lookup -> Code -> Properties
 lookup' Lookup {..} code =
-  let idx = case findIndex (> code) l_codeBlocks of
+  let idx = case findIndex (> code) l_blockFirst of
         Just idx -> idx - 1
         Nothing -> (length l_propIndex) - 1
       idx' = fromInteger (toInteger $ idx) :: Int
@@ -235,59 +295,10 @@ main :: IO ()
 main = do
   db <- lines <$> getContents
   let chars = map readCharacter db
-  mapM_ (\c -> putStrLn $ (show $ c_code c) ++ " " ++ (show $ toFlag $ c_generalCategory c)) chars
-  let look = build $ foldl' include mempty chars
-  let mismatches = [(c_code char, asProps char, lookup' look (c_code char)) | char <- chars, asProps char /= lookup' look (c_code char)]
-  mapM_ print mismatches
--- mapM_ putStrLn (toJS' look)
--- print (length characters)
--- let c = map readCharacter l
--- let pmap = Map.fromList [(asProps ch, 1) | ch <- c]
--- print $ Map.size pmap
--- let catRanges = map (\l -> (c_code $ head l, c_code $ last l)) $ groupBy (\a b -> asProps a == asProps b) characters
--- let lengths = map (\(a, b) -> b - a) catRanges
--- let e = length $ filter (== 0) lengths
--- print e
--- mapM_ (print . \(a, b) -> b - a) catRanges
--- let m = Map.fromDistinctAscList [(c_code ch, ch) | ch <- c]
--- let notUpperLower = [ch | ch <- c, c_simpleUppercaseMapping ch /= 0, c_simpleLowercaseMapping (m Map.! (c_simpleUppercaseMapping ch)) /= c_code ch]
--- let notTitleLower = [ch | ch <- c, c_simpleTitlecaseMapping ch /= 0, c_simpleLowercaseMapping (m Map.! (c_simpleTitlecaseMapping ch)) /= c_code ch]
--- putStrLn "notUpperLower"
--- mapM_ (putStrLn . show) notUpperLower
--- putStrLn "notTitleLower"
--- mapM_ (putStrLn . show) notTitleLower
--- mapM_ (putStrLn . (++ ",") . toJS) c
--- mapM_ (putStrLn . uncurry (\n f -> "const _" ++ n ++ " = " ++ show f ++ ";")) flags
-
--- Line format (columns separated by ';'):
--- 0. Code
--- 1. Name
--- 2. General_Category
--- 3. Canonical_Combining_Class
--- 4. Bidi_Class
--- 5. Decomposition_Type
--- 6. Decomposition_Mapping
--- 7. Numeric_Type
--- 8. Numeric_Value
--- 9. Bidi_Mirrored
--- 10. Unicode_1_Name
--- 11. ISO_Comment
--- 12. Simple_Uppercase_Mapping
--- 13. Simple_Lowercase_Mapping
--- 14. Simple_Titlecase_Mapping
-
--- 01C5;
--- LATIN CAPITAL LETTER D WITH SMALL LETTER Z WITH CARON;
--- Lt;
--- 0;
--- L;
--- <compat> 0044 017E;
--- ;
--- ;
--- ;
--- N;
--- LATIN LETTER CAPITAL D SMALL Z HACEK;
--- ;
--- 01C4;
--- 01C6;
--- 01C5
+  mapM_ putStrLn $ toJS' $ mkLookup chars
+  putStrLn ""
+  putStrLn jsPrelude
+  mapM_ (putStrLn . jsFlag) [minBound ..]
+  putStrLn ""
+  mapM_ (putStrLn . jsFlagFunction) [minBound ..]
+  mapM_ (putStrLn . jsConversionFunction) ["lower", "upper", "title"]
