@@ -76,20 +76,3 @@ function u_towtitle(code) {
   return code + _property(_totitle, code);
 }
 
-function cinfo(letter) {
-  const code = letter.codePointAt(0);
-  console.info(letter, code);
-  console.info('cat', _property(_generalCategory, code));
-  console.info('al?', !!u_iswalpha(code));
-  console.info('cn?', !!u_iswcntrl(code));
-  console.info('lo?', !!u_iswlower(code));
-  console.info('>lo', u_towlower(code), String.fromCodePoint(u_towlower(code)));
-  console.info('>hi', u_towupper(code), String.fromCodePoint(u_towupper(code)));
-  console.info('>ti', u_towtitle(code), String.fromCodePoint(u_towtitle(code)));
-}
-
-cinfo('a');
-cinfo('X');
-cinfo('{');
-cinfo('ǅ');
-cinfo('\n');
