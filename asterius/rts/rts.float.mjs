@@ -34,7 +34,6 @@ export class FloatCBits {
 
     this.DBL_HIDDEN = 0x100000;
     this.DBL_POWER2 = 0x200000;
-      
 
     // buffer of 8 bytes to hold floats/doubles
     this.buffer = new ArrayBuffer(8);
@@ -170,7 +169,7 @@ export class FloatCBits {
     } else {
       exp = ((high >>> 23) & 0xff) + this.MY_FMINEXP;
 
-      // [sign = high] with a [uint -> int] conversion. 
+      // [sign = high] with a [uint -> int] conversion.
       this.view.setUint32(0, high);
       sign = this.view.getInt32(0);
 
@@ -259,7 +258,6 @@ export class FloatCBits {
 
   // from cbits/primFloat
   rintFloat(f) {
-
     const bits = this.FloatToIEEE(f);
     let fexp = BigInt(this.floatExponentFromBits(bits));
     let fman = BigInt(this.floatMantissaFromBits(bits));
@@ -271,7 +269,6 @@ export class FloatCBits {
         Number((fsign << BigInt(31)) | (fexp << BigInt(23)) | fman)
       );
     };
-
 
     /* if real exponent > 22, it's already integral, infinite or nan */
     if (fexp > 149) {
@@ -289,9 +286,9 @@ export class FloatCBits {
     const mask = BigInt(2) * half - BigInt(1); /* fraction bits */
     let mant = fman | BigInt(this.FLT_HIDDEN); /* add hidden bit */
     let frac = mant & mask; /* get fraction */
-    mant ^= frac; /* truncate mantissa */ 
+    mant ^= frac; /* truncate mantissa */
 
-      if (frac < half || (frac == half && (mant & (BigInt(2) * half)) == 0)) {
+    if (frac < half || (frac == half && (mant & (BigInt(2) * half)) == 0)) {
       /* this means we have to truncate */
       if (mant == 0) {
         /* f == ±0.5, return 0.0 */
@@ -323,9 +320,9 @@ export class FloatCBits {
     const bits = this.DoubleToIEEE(d);
     let exp = this.doubleExponentFromBits(bits);
     let manFull = this.doubleMantissaFromBits(bits);
-    this.view.setBigUint64(0, manFull, /*little endian=*/true);
-    let mant1 = BigInt(this.view.getUint32(0, /*little endian=*/true));
-    let mant0 = BigInt(this.view.getUint32(4, /*little endian=*/true));
+    this.view.setBigUint64(0, manFull, /*little endian=*/ true);
+    let mant1 = BigInt(this.view.getUint32(0, /*little endian=*/ true));
+    let mant0 = BigInt(this.view.getUint32(4, /*little endian=*/ true));
     let sign = this.doubleSignFromBits(bits);
 
     // put back the double together
@@ -335,8 +332,8 @@ export class FloatCBits {
       const mantFull = this.view.getBigUint64(0, true);
 
       const bits = (sign << BigInt(63)) | (exp << BigInt(52)) | mantFull;
-      const n =  Number(this.IEEEToDouble(bits));
-      
+      const n = Number(this.IEEEToDouble(bits));
+
       return n;
     };
 
@@ -366,7 +363,9 @@ export class FloatCBits {
 
       if (
         frac < half ||
-        (frac == half && mant1 == 0 /* a tie */ && (mant & (BigInt(2) * half)) == 0)
+        (frac == half &&
+        mant1 == 0 /* a tie */ &&
+          (mant & (BigInt(2) * half)) == 0)
       ) {
         /* truncate */
         if (mant == 0) {
@@ -391,7 +390,6 @@ export class FloatCBits {
           exp += BigInt(1);
           // reassamble
           return reconstructDouble();
-        
         }
         /* remove hidden bit */
         mant0 = mant ^ BigInt(this.DBL_HIDDEN);
@@ -407,7 +405,7 @@ export class FloatCBits {
       mant ^= frac; /* truncate mantissa */
 
       if (
-        (frac < half) ||
+        frac < half ||
         (frac == half /* tie */ &&
           (half == LTOP_BIT
             ? u.ieee.mantissa0 & 1 /* yuck */
@@ -422,7 +420,6 @@ export class FloatCBits {
         mant += BigInt(2) * half;
         mant1 = mant;
 
-        
         // ORIGINAL CODE: if (mant == 0) { where they exploit 32-bit unsigned
         // representation.
         if (mant % (BigInt(1) << BigInt(32)) == 0) {
@@ -435,7 +432,7 @@ export class FloatCBits {
             mant0 = BigInt(0);
             /* and increment exponent */
             exp += BigInt(1);
-            
+
             return reconstructDouble();
           } else {
             u.ieee.mantissa0 = mant;

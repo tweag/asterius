@@ -13,8 +13,19 @@ function bdescr(c) {
 }
 
 export class GC {
-  constructor(memory, mblockalloc, heapalloc, stableptr_manager, stablename_manager,
-    scheduler, info_tables, export_stableptrs, symbol_table, reentrancy_guard, yolo) {
+  constructor(
+    memory,
+    mblockalloc,
+    heapalloc,
+    stableptr_manager,
+    stablename_manager,
+    scheduler,
+    info_tables,
+    export_stableptrs,
+    symbol_table,
+    reentrancy_guard,
+    yolo
+  ) {
     this.memory = memory;
     this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
@@ -22,8 +33,7 @@ export class GC {
     this.stableNameManager = stablename_manager;
     this.scheduler = scheduler;
     this.infoTables = info_tables;
-    for (const p of export_stableptrs)
-      this.stablePtrManager.newStablePtr(p);
+    for (const p of export_stableptrs) this.stablePtrManager.newStablePtr(p);
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
     this.yolo = yolo;
@@ -37,7 +47,7 @@ export class GC {
 
   isPinned(c) {
     const bd = bdescr(c),
-          flags = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags);
+      flags = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags);
     return Boolean(flags & rtsConstants.BF_PINNED);
   }
 
@@ -70,8 +80,9 @@ export class GC {
             throw new WebAssembly.RuntimeError(
               `Invalid info table 0x${info.toString(16)}`
             );
-          const type =
-              this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+          const type = this.memory.i32Load(
+            info + rtsConstants.offset_StgInfoTable_type
+          );
           switch (type) {
             case ClosureTypes.CONSTR_0_1:
             case ClosureTypes.FUN_0_1:
@@ -82,15 +93,19 @@ export class GC {
             }
             case ClosureTypes.THUNK_1_0:
             case ClosureTypes.THUNK_0_1: {
-              dest_c =
-                  this.copyClosure(untagged_c, rtsConstants.sizeof_StgThunk + 8);
+              dest_c = this.copyClosure(
+                untagged_c,
+                rtsConstants.sizeof_StgThunk + 8
+              );
               break;
             }
             case ClosureTypes.THUNK_1_1:
             case ClosureTypes.THUNK_2_0:
             case ClosureTypes.THUNK_0_2: {
-              dest_c =
-                  this.copyClosure(untagged_c, rtsConstants.sizeof_StgThunk + 16);
+              dest_c = this.copyClosure(
+                untagged_c,
+                rtsConstants.sizeof_StgThunk + 16
+              );
               break;
             }
             case ClosureTypes.FUN_1_1:
@@ -104,12 +119,15 @@ export class GC {
             }
             case ClosureTypes.THUNK: {
               const ptrs = this.memory.i32Load(
-                  info + rtsConstants.offset_StgInfoTable_layout),
-                    non_ptrs = this.memory.i32Load(
-                        info + rtsConstants.offset_StgInfoTable_layout + 4);
-              dest_c =
-                  this.copyClosure(untagged_c, rtsConstants.sizeof_StgThunk +
-                                                   ((ptrs + non_ptrs) << 3));
+                  info + rtsConstants.offset_StgInfoTable_layout
+                ),
+                non_ptrs = this.memory.i32Load(
+                  info + rtsConstants.offset_StgInfoTable_layout + 4
+                );
+              dest_c = this.copyClosure(
+                untagged_c,
+                rtsConstants.sizeof_StgThunk + ((ptrs + non_ptrs) << 3)
+              );
               break;
             }
             case ClosureTypes.FUN:
@@ -124,15 +142,19 @@ export class GC {
             case ClosureTypes.MUT_PRIM:
             case ClosureTypes.BLACKHOLE: {
               const ptrs = this.memory.i32Load(
-                  info + rtsConstants.offset_StgInfoTable_layout),
-                    non_ptrs = this.memory.i32Load(
-                        info + rtsConstants.offset_StgInfoTable_layout + 4);
+                  info + rtsConstants.offset_StgInfoTable_layout
+                ),
+                non_ptrs = this.memory.i32Load(
+                  info + rtsConstants.offset_StgInfoTable_layout + 4
+                );
               dest_c = this.copyClosure(untagged_c, (1 + ptrs + non_ptrs) << 3);
               break;
             }
             case ClosureTypes.THUNK_SELECTOR: {
-              dest_c =
-                  this.copyClosure(untagged_c, rtsConstants.sizeof_StgSelector);
+              dest_c = this.copyClosure(
+                untagged_c,
+                rtsConstants.sizeof_StgSelector
+              );
               break;
             }
             case ClosureTypes.IND: {
@@ -145,32 +167,47 @@ export class GC {
               return dest_c;
             }
             case ClosureTypes.PAP: {
-              const n_args = this.memory.i32Load(untagged_c +
-                                                 rtsConstants.offset_StgPAP_n_args);
-              dest_c = this.copyClosure(untagged_c,
-                                        rtsConstants.sizeof_StgPAP + (n_args << 3));
+              const n_args = this.memory.i32Load(
+                untagged_c + rtsConstants.offset_StgPAP_n_args
+              );
+              dest_c = this.copyClosure(
+                untagged_c,
+                rtsConstants.sizeof_StgPAP + (n_args << 3)
+              );
               break;
             }
             case ClosureTypes.AP: {
-              const n_args = this.memory.i32Load(untagged_c +
-                                                 rtsConstants.offset_StgAP_n_args);
-              dest_c = this.copyClosure(untagged_c,
-                                        rtsConstants.sizeof_StgAP + (n_args << 3));
+              const n_args = this.memory.i32Load(
+                untagged_c + rtsConstants.offset_StgAP_n_args
+              );
+              dest_c = this.copyClosure(
+                untagged_c,
+                rtsConstants.sizeof_StgAP + (n_args << 3)
+              );
               break;
             }
             case ClosureTypes.AP_STACK: {
-              const size = Number(this.memory.i64Load(
-                  untagged_c + rtsConstants.offset_StgAP_STACK_size));
+              const size = Number(
+                this.memory.i64Load(
+                  untagged_c + rtsConstants.offset_StgAP_STACK_size
+                )
+              );
               dest_c = this.copyClosure(
-                  untagged_c, rtsConstants.sizeof_StgAP_STACK + (size << 3));
+                untagged_c,
+                rtsConstants.sizeof_StgAP_STACK + (size << 3)
+              );
               break;
             }
             case ClosureTypes.ARR_WORDS: {
               dest_c = this.copyClosure(
-                  untagged_c,
-                  rtsConstants.sizeof_StgArrBytes +
-                      Number(this.memory.i64Load(
-                          untagged_c + rtsConstants.offset_StgArrBytes_bytes)));
+                untagged_c,
+                rtsConstants.sizeof_StgArrBytes +
+                  Number(
+                    this.memory.i64Load(
+                      untagged_c + rtsConstants.offset_StgArrBytes_bytes
+                    )
+                  )
+              );
               break;
             }
             case ClosureTypes.MUT_ARR_PTRS_CLEAN:
@@ -178,11 +215,15 @@ export class GC {
             case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY:
             case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN: {
               dest_c = this.copyClosure(
-                  untagged_c,
-                  rtsConstants.sizeof_StgMutArrPtrs +
-                      (Number(this.memory.i64Load(
-                           untagged_c + rtsConstants.offset_StgMutArrPtrs_ptrs))
-                       << 3));
+                untagged_c,
+                rtsConstants.sizeof_StgMutArrPtrs +
+                  (Number(
+                    this.memory.i64Load(
+                      untagged_c + rtsConstants.offset_StgMutArrPtrs_ptrs
+                    )
+                  ) <<
+                    3)
+              );
               break;
             }
             case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN:
@@ -190,11 +231,15 @@ export class GC {
             case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY:
             case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
               dest_c = this.copyClosure(
-                  untagged_c, rtsConstants.sizeof_StgSmallMutArrPtrs +
-                                  (Number(this.memory.i64Load(
-                                       untagged_c +
-                                       rtsConstants.offset_StgSmallMutArrPtrs_ptrs))
-                                   << 3));
+                untagged_c,
+                rtsConstants.sizeof_StgSmallMutArrPtrs +
+                  (Number(
+                    this.memory.i64Load(
+                      untagged_c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs
+                    )
+                  ) <<
+                    3)
+              );
               break;
             }
             default:
@@ -227,7 +272,8 @@ export class GC {
   scavengeLargeBitmap(payload, large_bitmap, size) {
     for (let j = 0; j < size; j += 64) {
       const bitmap = this.memory.i64Load(
-          large_bitmap + rtsConstants.offset_StgLargeBitmap_bitmap + (j >> 3));
+        large_bitmap + rtsConstants.offset_StgLargeBitmap_bitmap + (j >> 3)
+      );
       for (let i = j; i - j < 64 && i < size; ++i)
         if (!((bitmap >> BigInt(i - j)) & BigInt(1)))
           this.scavengeClosureAt(payload + (i << 3));
@@ -237,29 +283,42 @@ export class GC {
   scavengePAP(c, offset_fun, payload, n_args) {
     this.scavengeClosureAt(c + offset_fun);
     const fun = this.memory.i64Load(c + offset_fun),
-          fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun)));
+      fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun)));
     if (this.infoTables && !this.infoTables.has(fun_info))
       throw new WebAssembly.RuntimeError(
         `Invalid info table 0x${fun_info.toString(16)}`
       );
-    switch (this.memory.i32Load(fun_info + rtsConstants.offset_StgFunInfoTable_f +
-                                rtsConstants.offset_StgFunInfoExtraFwd_fun_type)) {
+    switch (
+      this.memory.i32Load(
+        fun_info +
+          rtsConstants.offset_StgFunInfoTable_f +
+          rtsConstants.offset_StgFunInfoExtraFwd_fun_type
+      )
+    ) {
       case FunTypes.ARG_GEN: {
         this.scavengeSmallBitmap(
-            payload,
-            this.memory.i64Load(fun_info + rtsConstants.offset_StgFunInfoTable_f +
-                                rtsConstants.offset_StgFunInfoExtraFwd_b) >>
-                BigInt(6),
-            n_args);
+          payload,
+          this.memory.i64Load(
+            fun_info +
+              rtsConstants.offset_StgFunInfoTable_f +
+              rtsConstants.offset_StgFunInfoExtraFwd_b
+          ) >> BigInt(6),
+          n_args
+        );
         break;
       }
       case FunTypes.ARG_GEN_BIG: {
         this.scavengeLargeBitmap(
-            payload,
-            Number(this.memory.i64Load(fun_info +
-                                       rtsConstants.offset_StgFunInfoTable_f +
-                                       rtsConstants.offset_StgFunInfoExtraFwd_b)),
-            n_args);
+          payload,
+          Number(
+            this.memory.i64Load(
+              fun_info +
+                rtsConstants.offset_StgFunInfoTable_f +
+                rtsConstants.offset_StgFunInfoExtraFwd_b
+            )
+          ),
+          n_args
+        );
         break;
       }
       case FunTypes.ARG_BCO: {
@@ -267,12 +326,18 @@ export class GC {
       }
       default: {
         this.scavengeSmallBitmap(
-            payload,
-            BigInt(stg_arg_bitmaps[this.memory.i32Load(
-                fun_info + rtsConstants.offset_StgFunInfoTable_f +
-                rtsConstants.offset_StgFunInfoExtraFwd_fun_type)]) >>
-                BigInt(6),
-            n_args);
+          payload,
+          BigInt(
+            stg_arg_bitmaps[
+              this.memory.i32Load(
+                fun_info +
+                  rtsConstants.offset_StgFunInfoTable_f +
+                  rtsConstants.offset_StgFunInfoExtraFwd_fun_type
+              )
+            ]
+          ) >> BigInt(6),
+          n_args
+        );
         break;
       }
     }
@@ -284,17 +349,20 @@ export class GC {
       if (c > sp_lim) throw new WebAssembly.RuntimeError();
       if (c == sp_lim) break;
       const info = Number(this.memory.i64Load(c)),
-            type =
-                this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type),
-            raw_layout =
-                this.memory.i64Load(info + rtsConstants.offset_StgInfoTable_layout);
+        type = this.memory.i32Load(
+          info + rtsConstants.offset_StgInfoTable_type
+        ),
+        raw_layout = this.memory.i64Load(
+          info + rtsConstants.offset_StgInfoTable_layout
+        );
       if (this.infoTables && !this.infoTables.has(info))
         throw new WebAssembly.RuntimeError(
           `Invalid info table 0x${info.toString(16)}`
         );
       if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
         this.evacuateClosure(
-            this.memory.i64Load(info + rtsConstants.offset_StgRetInfoTable_srt));
+          this.memory.i64Load(info + rtsConstants.offset_StgRetInfoTable_srt)
+        );
       switch (type) {
         case ClosureTypes.RET_SMALL:
         case ClosureTypes.UPDATE_FRAME:
@@ -305,14 +373,17 @@ export class GC {
         case ClosureTypes.CATCH_RETRY_FRAME:
         case ClosureTypes.CATCH_STM_FRAME: {
           const size = Number(raw_layout & BigInt(0x3f)),
-                bitmap = raw_layout >> BigInt(6);
+            bitmap = raw_layout >> BigInt(6);
           this.scavengeSmallBitmap(c + 8, bitmap, size);
           c += (1 + size) << 3;
           break;
         }
         case ClosureTypes.RET_BIG: {
-          const size = Number(this.memory.i64Load(
-              Number(raw_layout) + rtsConstants.offset_StgLargeBitmap_size));
+          const size = Number(
+            this.memory.i64Load(
+              Number(raw_layout) + rtsConstants.offset_StgLargeBitmap_size
+            )
+          );
           this.scavengeLargeBitmap(c + 8, Number(raw_layout), size);
           c += (1 + size) << 3;
           break;
@@ -322,42 +393,56 @@ export class GC {
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/sm/Scav.c#L1944
         case ClosureTypes.RET_FUN: {
           const retfun = c;
-          const size =
-              Number(this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_size));
+          const size = Number(
+            this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_size)
+          );
 
           // NOTE: the order is important. The scavenging will move all the
           // data inside, so that when we grab "fun", we grab the right fun
           // that has been moved.
           this.scavengeClosureAt(retfun + rtsConstants.offset_StgRetFun_fun);
-          let fun = Number(this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_fun));
+          let fun = Number(
+            this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_fun)
+          );
           const fun_info_p = fun + 0;
-          const fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun_info_p)));
+          const fun_info = Number(
+            this.memory.i64Load(Memory.unDynTag(fun_info_p))
+          );
 
           const fun_type = this.memory.i32Load(
-            fun_info + rtsConstants.offset_StgFunInfoTable_f +
-            rtsConstants.offset_StgFunInfoExtraFwd_fun_type);
+            fun_info +
+              rtsConstants.offset_StgFunInfoTable_f +
+              rtsConstants.offset_StgFunInfoExtraFwd_fun_type
+          );
 
-          const ret_fun_payload = retfun + rtsConstants.offset_StgRetFun_payload;
-
+          const ret_fun_payload =
+            retfun + rtsConstants.offset_StgRetFun_payload;
 
           switch (fun_type) {
             case FunTypes.ARG_GEN: {
               this.scavengeSmallBitmap(
-                  c + rtsConstants.offset_StgRetFun_payload,
-                  this.memory.i64Load(fun_info +
-                                      rtsConstants.offset_StgFunInfoTable_f +
-                                      rtsConstants.offset_StgFunInfoExtraFwd_b) >>
-                      BigInt(6),
-                  size);
+                c + rtsConstants.offset_StgRetFun_payload,
+                this.memory.i64Load(
+                  fun_info +
+                    rtsConstants.offset_StgFunInfoTable_f +
+                    rtsConstants.offset_StgFunInfoExtraFwd_b
+                ) >> BigInt(6),
+                size
+              );
               break;
             }
             case FunTypes.ARG_GEN_BIG: {
               this.scavengeLargeBitmap(
-                  c + rtsConstants.offset_StgRetFun_payload,
-                  Number(this.memory.i64Load(
-                      fun_info + rtsConstants.offset_StgFunInfoTable_f +
-                      rtsConstants.offset_StgFunInfoExtraFwd_b)),
-                  size);
+                c + rtsConstants.offset_StgRetFun_payload,
+                Number(
+                  this.memory.i64Load(
+                    fun_info +
+                      rtsConstants.offset_StgFunInfoTable_f +
+                      rtsConstants.offset_StgFunInfoExtraFwd_b
+                  )
+                ),
+                size
+              );
               break;
             }
             case FunTypes.ARG_BCO: {
@@ -370,10 +455,14 @@ export class GC {
               const bitmap = stg_arg_bitmaps[fun_type];
 
               // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/includes/rts/storage/InfoTables.h#L116
-              const bitmap_bits =  BigInt(bitmap) >> BigInt(BITMAP_BITS_SHIFT);
+              const bitmap_bits = BigInt(bitmap) >> BigInt(BITMAP_BITS_SHIFT);
               const bitmap_size = bitmap & BITMAP_SIZE_MASK;
 
-              this.scavengeSmallBitmap(ret_fun_payload, bitmap_bits, bitmap_size);
+              this.scavengeSmallBitmap(
+                ret_fun_payload,
+                bitmap_bits,
+                bitmap_size
+              );
 
               break;
             } // end case default
@@ -393,7 +482,7 @@ export class GC {
 
   scavengeClosure(c) {
     const info = Number(this.memory.i64Load(c)),
-          type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+      type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
     if (this.infoTables && !this.infoTables.has(info))
       throw new WebAssembly.RuntimeError(
         `Invalid info table 0x${info.toString(16)}`
@@ -415,8 +504,9 @@ export class GC {
       case ClosureTypes.CONSTR_1_1:
       case ClosureTypes.CONSTR_0_2:
       case ClosureTypes.CONSTR_NOCAF: {
-        const ptrs =
-            this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_layout);
+        const ptrs = this.memory.i32Load(
+          info + rtsConstants.offset_StgInfoTable_layout
+        );
         this.scavengePointersFirst(c + 8, ptrs);
         break;
       }
@@ -429,10 +519,15 @@ export class GC {
       case ClosureTypes.FUN_STATIC: {
         if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
           this.evacuateClosure(
-              this.memory.i64Load(info + rtsConstants.offset_StgFunInfoTable_f +
-                                  rtsConstants.offset_StgFunInfoExtraFwd_srt));
-        const ptrs =
-            this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_layout);
+            this.memory.i64Load(
+              info +
+                rtsConstants.offset_StgFunInfoTable_f +
+                rtsConstants.offset_StgFunInfoExtraFwd_srt
+            )
+          );
+        const ptrs = this.memory.i32Load(
+          info + rtsConstants.offset_StgInfoTable_layout
+        );
         this.scavengePointersFirst(c + 8, ptrs);
         break;
       }
@@ -442,8 +537,9 @@ export class GC {
       case ClosureTypes.PRIM:
       case ClosureTypes.MUT_PRIM:
       case ClosureTypes.COMPACT_NFDATA: {
-        const ptrs =
-            this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_layout);
+        const ptrs = this.memory.i32Load(
+          info + rtsConstants.offset_StgInfoTable_layout
+        );
         this.scavengePointersFirst(c + 8, ptrs);
         break;
       }
@@ -455,38 +551,58 @@ export class GC {
       case ClosureTypes.THUNK_1_1:
       case ClosureTypes.THUNK_0_2: {
         if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
-          this.evacuateClosure(this.memory.i64Load(
-              info + rtsConstants.offset_StgThunkInfoTable_srt));
-        const ptrs =
-            this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_layout);
-        this.scavengePointersFirst(c + rtsConstants.offset_StgThunk_payload, ptrs);
+          this.evacuateClosure(
+            this.memory.i64Load(
+              info + rtsConstants.offset_StgThunkInfoTable_srt
+            )
+          );
+        const ptrs = this.memory.i32Load(
+          info + rtsConstants.offset_StgInfoTable_layout
+        );
+        this.scavengePointersFirst(
+          c + rtsConstants.offset_StgThunk_payload,
+          ptrs
+        );
         break;
       }
       case ClosureTypes.THUNK_SELECTOR: {
         if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
-          this.evacuateClosure(this.memory.i64Load(
-              info + rtsConstants.offset_StgThunkInfoTable_srt));
+          this.evacuateClosure(
+            this.memory.i64Load(
+              info + rtsConstants.offset_StgThunkInfoTable_srt
+            )
+          );
         this.scavengeClosureAt(c + rtsConstants.offset_StgSelector_selectee);
         break;
       }
       case ClosureTypes.AP: {
-        this.scavengePAP(c, rtsConstants.offset_StgAP_fun,
-                         c + rtsConstants.offset_StgAP_payload,
-                         this.memory.i32Load(c + rtsConstants.offset_StgAP_n_args));
+        this.scavengePAP(
+          c,
+          rtsConstants.offset_StgAP_fun,
+          c + rtsConstants.offset_StgAP_payload,
+          this.memory.i32Load(c + rtsConstants.offset_StgAP_n_args)
+        );
         break;
       }
       case ClosureTypes.PAP: {
         this.scavengePAP(
-            c, rtsConstants.offset_StgPAP_fun, c + rtsConstants.offset_StgPAP_payload,
-            this.memory.i32Load(c + rtsConstants.offset_StgPAP_n_args));
+          c,
+          rtsConstants.offset_StgPAP_fun,
+          c + rtsConstants.offset_StgPAP_payload,
+          this.memory.i32Load(c + rtsConstants.offset_StgPAP_n_args)
+        );
         break;
       }
       case ClosureTypes.AP_STACK: {
         this.scavengeClosureAt(c + rtsConstants.offset_StgAP_STACK_fun);
-        this.scavengeStackChunk(c + rtsConstants.offset_StgAP_STACK_payload,
-                                c + rtsConstants.offset_StgAP_STACK_payload +
-                                    Number(this.memory.i64Load(
-                                        c + rtsConstants.offset_StgAP_STACK_size)));
+        this.scavengeStackChunk(
+          c + rtsConstants.offset_StgAP_STACK_payload,
+          c +
+            rtsConstants.offset_StgAP_STACK_payload +
+            Number(
+              this.memory.i64Load(c + rtsConstants.offset_StgAP_STACK_size)
+            )
+        );
         break;
       }
       case ClosureTypes.IND_STATIC: {
@@ -507,10 +623,13 @@ export class GC {
       case ClosureTypes.MUT_ARR_PTRS_DIRTY:
       case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY:
       case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN: {
-        const ptrs =
-            Number(this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs));
-        this.scavengePointersFirst(c + rtsConstants.offset_StgMutArrPtrs_payload,
-                                   ptrs);
+        const ptrs = Number(
+          this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs)
+        );
+        this.scavengePointersFirst(
+          c + rtsConstants.offset_StgMutArrPtrs_payload,
+          ptrs
+        );
         break;
       }
       case ClosureTypes.WEAK: {
@@ -525,10 +644,11 @@ export class GC {
         break;
       }
       case ClosureTypes.STACK: {
-        const stack_size =
-            this.memory.i32Load(c + rtsConstants.offset_StgStack_stack_size),
-              sp = Number(this.memory.i64Load(c + rtsConstants.offset_StgStack_sp)),
-              sp_lim = c + rtsConstants.offset_StgStack_stack + (stack_size << 3);
+        const stack_size = this.memory.i32Load(
+            c + rtsConstants.offset_StgStack_stack_size
+          ),
+          sp = Number(this.memory.i64Load(c + rtsConstants.offset_StgStack_sp)),
+          sp_lim = c + rtsConstants.offset_StgStack_stack + (stack_size << 3);
         this.scavengeStackChunk(sp, sp_lim);
         break;
       }
@@ -537,9 +657,11 @@ export class GC {
       case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY:
       case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
         this.scavengePointersFirst(
-            c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
-            Number(this.memory.i64Load(
-                c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)));
+          c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
+          Number(
+            this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
+          )
+        );
         break;
       }
       default:
@@ -551,16 +673,16 @@ export class GC {
    * Perform GC, using scheduler TSOs as roots
    */
   performGC() {
-    if(this.yolo) return;
+    if (this.yolo) return;
     this.reentrancyGuard.enter(1);
     this.heapAlloc.initUnpinned();
 
     // evacuate TSOs
-    for (const [tid,tso_info] of this.scheduler.tsos) {
+    for (const [tid, tso_info] of this.scheduler.tsos) {
       tso_info.addr = this.evacuateClosure(tso_info.addr);
     }
 
-    for (const[sp, c] of this.stablePtrManager.spt.entries())
+    for (const [sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
 
     // Stage the movement of stable pointers.
@@ -570,7 +692,7 @@ export class GC {
     // we walk the ptr2stable map can yield an infinite loop:
     // eg. (ptr:0 stablename: 42) --MOVE--> (ptr:1 stablename:42) --MOVE--> (ptr:2 stablename:42) ...
     let ptr2stableMoved = new Map();
-    for (const[ptr, stable] of this.stableNameManager.ptr2stable.entries()) {
+    for (const [ptr, stable] of this.stableNameManager.ptr2stable.entries()) {
       const ptrMoved = this.evacuateClosure(ptr);
       const stableMoved = this.evacuateClosure(stable);
       ptr2stableMoved.set(ptrMoved, stableMoved);
@@ -581,12 +703,16 @@ export class GC {
     this.scavengeWorkList();
 
     // update the ret pointer in the complete TSOs
-    for (const [tid,tso_info] of this.scheduler.tsos) {
+    for (const [tid, tso_info] of this.scheduler.tsos) {
       if (tso_info.ret) {
-          const tso      = tso_info.addr;
-          const stackobj = Number(this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj));
-          const sp       = Number(this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp));
-          tso_info.ret   = Number(this.memory.i64Load(sp + 8));
+        const tso = tso_info.addr;
+        const stackobj = Number(
+          this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+        );
+        const sp = Number(
+          this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
+        );
+        tso_info.ret = Number(this.memory.i64Load(sp + 8));
       }
     }
 

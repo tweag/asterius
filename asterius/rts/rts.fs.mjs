@@ -24,9 +24,11 @@ export class MemoryFileSystem {
     this.files = [undefined, new TextFile(), new TextFile()];
     Object.freeze(this);
   }
+
   readSync(fd) {
     return this.files[fd].read();
   }
+
   writeSync(fd, buf) {
     return this.files[fd].write(buf);
   }

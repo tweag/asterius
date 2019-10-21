@@ -25,7 +25,10 @@ export class Exports {
   }
 
   rts_evalIO(p) {
-    return this.context.scheduler.submitCmdCreateThread("createStrictIOThread", p);
+    return this.context.scheduler.submitCmdCreateThread(
+      "createStrictIOThread",
+      p
+    );
   }
 
   rts_evalLazyIO(p) {

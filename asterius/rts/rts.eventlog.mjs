@@ -16,21 +16,31 @@ export class EventLogManager {
     Object.seal(this);
   }
 
-  isEnabled() { return this.enabled; }
+  isEnabled() {
+    return this.enabled;
+  }
 
-  setEnabled(f) { this.enabled = Boolean(f); }
+  setEnabled(f) {
+    this.enabled = Boolean(f);
+  }
 
   log(lv, _ev) {
     if (this.enabled) {
       const ev = new Event(lv, _ev);
       this.events.push(ev);
       this.onEvent(ev);
-    };
+    }
   }
 
-  logInfo(ev) { this.log("INFO", ev); }
+  logInfo(ev) {
+    this.log("INFO", ev);
+  }
 
-  logError(ev) { this.log("ERROR", ev); }
+  logError(ev) {
+    this.log("ERROR", ev);
+  }
 
-  logEvent(ev) { this.log("EVENT", ev); }
+  logEvent(ev) {
+    this.log("EVENT", ev);
+  }
 }
