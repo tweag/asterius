@@ -1,6 +1,6 @@
 { pkgs ? import nixpkgs ((import (builtins.fetchTarball {
-      url = "https://github.com/input-output-hk/haskell.nix/archive/46fad8195472cf52f1604930003a43bf8f5d3d56.tar.gz";
-      sha256 = "14f8iyc4f051ankv845mafp0rba8ih5l692cmi0khfdfbh1xq1qd";
+      url = "https://github.com/input-output-hk/haskell.nix/archive/67209e46bb36c80f668f71e1104d94b4fc11520f.tar.gz";
+      sha256 = "0hkz1kq3j2vcw9qy580ar14ib12v1cjl74hijzkfq2k8dz807ydf";
     })) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , nixpkgs ? builtins.fetchTarball {
@@ -27,7 +27,8 @@ let
   # project = plan;
   # mkProjectPkgSet = args: haskell.mkCabalProjectPkgSet (args // { plan-pkgs = plan.pkgs; });
   
-  project = pkgs.haskell-nix.cabalProject {
+  project = pkgs.haskell-nix.cabalProject' {
+    name = "asterius";
     src = pkgs.haskell-nix.haskellLib.cleanGit { src = ./.; };
     pkg-def-extras = [ pkgs.ghc-boot-packages.ghc865 ];
     modules = [
@@ -123,11 +124,11 @@ let
                  nodePkgs.parcel-bundler
                  nodePkgs.todomvc-app-css
                  nodePkgs.todomvc-common ];
-             }) (pkgs.haskell-nix.cabalProject {
+             }) (pkgs.haskell-nix.cabalProject' {
                src = pkgs.haskell-nix.haskellLib.cleanGit { src = ./.; };
                pkg-def-extras = [ pkgs.ghc-boot-packages.ghc865 ];
                modules = [];
-             }).asterius.components.tests;
+             }).hsPkgs.asterius.components.tests;
         };
       })
     ];
@@ -225,13 +226,13 @@ let
       chmod +w -R $out/ghc-libdir
       cp -r ${./ghc-toolkit/ghc-libdir}/include/* $out/ghc-libdir/include
       ${pkgs.lib.concatMapStringsSep "\n" (exe: ''
-        makeWrapper ${project.asterius.components.exes.${exe}}/bin/${exe} $out/bin/${exe} \
+        makeWrapper ${project.hsPkgs.asterius.components.exes.${exe}}/bin/${exe} $out/bin/${exe} \
           --prefix PATH : ${nodePkgs.parcel-bundler}/bin \
           --set asterius_bindir $out/bin \
           --set asterius_bootdir $out/boot \
           --set boot_libs_path ${ghc865.boot-libs} \
           --set sandbox_ghc_lib_dir $out/ghc-libdir
-      '') (pkgs.lib.attrNames project.asterius.components.exes)}
+      '') (pkgs.lib.attrNames project.hsPkgs.asterius.components.exes)}
       $out/bin/ahc-boot
     '';
   wasm-asterius-ghc = (pkgs.runCommand "wasm-asterius-ghc" {
@@ -245,7 +246,7 @@ let
       mkdir -p $out/lib
       ${pkgs.lib.concatMapStringsSep "\n" (exe: ''
         ln -s ${asterius-boot}/bin/${exe} $out/bin/wasm-asterius-ghc${pkgs.lib.strings.substring 3 ((pkgs.lib.strings.stringLength) exe - 3) exe}
-      '') (pkgs.lib.attrNames project.asterius.components.exes)}
+      '') (pkgs.lib.attrNames project.hsPkgs.asterius.components.exes)}
       cp -r ${asterius-boot}/boot/.boot/asterius_lib $out/lib/wasm-asterius-ghc-0.0.1
       ln -s ${pkgs.haskell.compiler.${compilerName}}/bin/hsc2hs $out/bin/wasm-asterius-hsc2hs
     '');
@@ -262,7 +263,7 @@ let
   }) {};
   ghc-compiler = pkgs.haskell.compiler.${compilerName};
   shells = {
-    ghc = (project.shellFor {
+    ghc = (project.hsPkgs.shellFor {
       # Shell will provide the dependencies of asterius, but not asterius itself.
       packages = ps: with ps; [
         asterius
@@ -276,7 +277,7 @@ let
         wasm-toolkit ];
     }).overrideAttrs (oldAttrs: {
       buildInputs = oldAttrs.buildInputs ++ [
-        project.hpack.components.exes.hpack
+        project.hsPkgs.hpack.components.exes.hpack
         pkgs.wabt
         pkgs.cmake
         nodejs
@@ -311,10 +312,6 @@ let
     });
   };
 in project // {
-#  project-nix = stack.nix;
-#  inherit (pkgSet.config) hsPkgs;
-#  config = pkgSet.config;
   inherit ghc-head ghc865 pkgs nodejs nodePkgs asterius-boot wasm-asterius-ghc shells;
-#  ghc-compiler = pkgs.haskell.compiler.${compilerName};
   ghc-boot-libs = ghc865.boot-libs;
 }
