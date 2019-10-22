@@ -10,40 +10,44 @@ import Data.Word (Word32, Word8)
 import Numeric (readHex)
 import System.Environment (getProgName)
 
--- Generating the lookup table
+----------------------------------------------------------------------------
+-- Lookup tables
+
+-- | Relevant properties of a Unicode character.
 data Properties
   = Properties
-      { p_generalCategory :: Char.GeneralCategory,
+      { -- | Unicode "general property" of the character
+        p_generalCategory :: Char.GeneralCategory,
+        -- | Add this to the code point to get to its uppercase code point
         p_toUpper :: Int32,
+        -- | Add this to the code point to get to its lowercase code point
         p_toLower :: Int32,
+        -- | Add this to the code point to get to its titlecase code point
         p_toTitle :: Int32
       }
   deriving (Eq, Ord)
 
+-- | Block of adjacent Unicode characters with the same Unicode properties.
 data Block
   = Block
-      { b_first :: Char,
+      { -- | First character in the block (inclusive)
+        b_first :: Char,
+        -- | Last character in the block (inclusive)
         b_last :: Char,
+        -- | Index into the properties arrays
         b_index :: Word8
       }
   deriving (Eq)
 
+-- | Used to build an instance of 'Lookup'.
 data LookupBuilder
   = LookupBuilder
-      { b_blocks :: [Block],
+      { -- | Non-overlapping blocks of characters, in descending order
+        b_blocks :: [Block],
+        -- | Maps each 'Properties' to its index in the final array in 'Lookup'
         b_propIndex :: Map.Map Properties Word8,
+        -- | Index to associate the next unseen 'Properties' with
         b_nextIndex :: Word8
-      }
-
-data Lookup
-  = Lookup
-      { l_first :: [Char],
-        l_last :: [Char],
-        l_propIndex :: [Word8],
-        l_generalCategory :: [Char.GeneralCategory],
-        l_toUpper :: [Int32],
-        l_toLower :: [Int32],
-        l_toTitle :: [Int32]
       }
 
 instance Semigroup LookupBuilder where
@@ -56,7 +60,41 @@ instance Semigroup LookupBuilder where
 instance Monoid LookupBuilder where
   mempty = LookupBuilder [] Map.empty 0
 
-mkLookup :: (Char -> Maybe Properties) -> Lookup
+-- | Lookup tables for Unicode character properties. 'l_first', 'l_last' and
+-- 'l_propIndex' have the same length and together represent adjacent blocks
+-- of characters which share all properties.
+--
+-- 'l_generalCategory', 'l_toUpper', 'l_toLower' and 'l_toTitle' together
+-- represent character properties and have the same length.
+--
+-- 'l_propIndex' is the index into the property lists. As an example, to
+-- find the general category of "X", find i such that l_first[i] <= "X" and
+-- X <= l_last[i]. Then, l_generalCategory[l_propIndex[i]] will be the
+-- general category of "X".
+data Lookup
+  = Lookup
+      { -- | First characters of blocks (inclusive)
+        l_first :: [Char],
+        -- | Last characters of blocks (inclusive)
+        l_last :: [Char],
+        -- | Index into properties arrays
+        l_propIndex :: [Word8],
+        -- | Unicode "general category"
+        l_generalCategory :: [Char.GeneralCategory],
+        -- | Add this to the code point to get to its uppercase code point
+        l_toUpper :: [Int32],
+        -- | Add this to the code point to get to its lowercase code point
+        l_toLower :: [Int32],
+        -- | Add this to the code point to get to its titlecase code point
+        l_toTitle :: [Int32]
+      }
+
+-- | Create the 'Lookup' table for all Unicode characters.
+mkLookup ::
+  -- | Not every 'Char' represents a Unicode character. This function should map
+  -- each valid Char to its 'Properties'.
+  (Char -> Maybe Properties) ->
+  Lookup
 mkLookup props = build $ List.foldl' addChar mempty [minBound ..]
   where
     props' :: Char -> Properties
@@ -87,7 +125,10 @@ mkLookup props = build $ List.foldl' addChar mempty [minBound ..]
         l_toLower = map p_toLower props
         l_toTitle = map p_toTitle props
 
--- Figuring out props
+----------------------------------------------------------------------------
+-- Unicode properties
+
+-- | Determine 'Properties' using the base library.
 ghcProps :: Char -> Maybe Properties
 ghcProps c = Just Properties
   { p_generalCategory = Char.generalCategory c,
@@ -96,7 +137,12 @@ ghcProps c = Just Properties
     p_toTitle = fromInteger $ toInteger $ fromEnum (Char.toTitle c) - fromEnum c
   }
 
-unicodeDataProps :: [String] -> Char -> Maybe Properties
+-- | Determine 'Properties' using the Unicode database file.
+unicodeDataProps ::
+  -- | Unicode database file, line by line
+  [String] ->
+  Char ->
+  Maybe Properties
 unicodeDataProps db = flip Map.lookup (Map.fromAscList (map parse db))
   where
     readCode :: String -> Maybe Char
@@ -140,7 +186,10 @@ unicodeDataProps db = flip Map.lookup (Map.fromAscList (map parse db))
           where
             Just c = readCode code
 
+----------------------------------------------------------------------------
 -- Generating the JS
+
+-- | Combinations of 'Char.GeneralCategory'.
 data Kind
   = Upper
   | Lower
@@ -152,12 +201,14 @@ data Kind
   | Cntrl
   deriving (Show, Enum, Bounded)
 
+-- | Flag representing the union of the given 'Char.GeneralCategory's.
 categoryUnion :: [Char.GeneralCategory] -> Word32
 categoryUnion = foldl (.|.) zeroBits . map categoryFlag
   where
     categoryFlag :: Char.GeneralCategory -> Word32
     categoryFlag = (2 ^) . fromEnum
 
+-- | Flag representing the given 'Kind'.
 kindFlag :: Kind -> Word32
 kindFlag Upper = categoryUnion [Char.UppercaseLetter, Char.TitlecaseLetter]
 kindFlag Lower = categoryUnion [Char.LowercaseLetter]
@@ -168,9 +219,11 @@ kindFlag Alnum = kindFlag Alpha .|. categoryUnion [Char.DecimalNumber .. Char.Ot
 kindFlag Print = categoryUnion [Char.UppercaseLetter .. Char.Space]
 kindFlag Cntrl = categoryUnion [Char.Control]
 
+-- | Represents the different types of JavaScript Typed Arrays.
 data JsArrayType = Uint8 | Uint16 | Uint32 | Int8 | Int16 | Int32
   deriving (Show)
 
+-- | JavaScript template.
 js :: Lookup -> [String]
 js Lookup {..} =
   [ "const _first = " ++ mkTypedJsArray Uint32 l_first ++ ";",
@@ -230,10 +283,14 @@ js Lookup {..} =
     mkTypedJsArray :: Enum a => JsArrayType -> [a] -> String
     mkTypedJsArray typ xs = show typ ++ "Array.of(" ++ concat (List.intersperse "," (map (show . fromEnum) xs)) ++ ")"
 
+----------------------------------------------------------------------------
+-- Do it!
+
 main :: IO ()
 main = do
   progName <- getProgName
-  putStrLn $ "// Generated using " ++ progName
+  putStrLn $ "// Generated by " ++ progName
+  -- Read Unicode database from stdin
   db <- getContents
+  -- Write JavaScript to stdout
   mapM_ putStrLn $ js $ mkLookup $ unicodeDataProps $ lines db
--- mapM_ putStrLn $ js $ mkLookup ghcProps
