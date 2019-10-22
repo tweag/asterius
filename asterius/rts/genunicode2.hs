@@ -85,8 +85,8 @@ jsFlag cc = "const _f_" ++ map Char.toLower (show cc) ++ " = " ++ show (flag cc)
 jsFlagFunction :: CompoundCategory -> String
 jsFlagFunction cc =
   unlines
-    [ "function u_isw" ++ cat ++ "(code) {",
-      "  return _property(_generalCategory, code) & _f_" ++ cat ++ ";",
+    [ "u_isw" ++ cat ++ "(code) {",
+      "  return !!((1 << this.u_gencat(code)) & _f_" ++ cat ++ ");",
       "}"
     ]
   where
@@ -95,7 +95,7 @@ jsFlagFunction cc =
 jsConversionFunction :: String -> String
 jsConversionFunction cat =
   unlines
-    [ "function u_tow" ++ cat ++ "(code) {",
+    [ "u_tow" ++ cat ++ "(code) {",
       "  return code + _property(_to" ++ cat ++ ", code);",
       "}"
     ]
@@ -268,7 +268,7 @@ toJS' Lookup {..} =
   [ "const _blockFirst = Uint32Array.of(" ++ showArray l_blockFirst ++ ");",
     "const _blockLast = Uint32Array.of(" ++ showArray l_blockLast ++ ");",
     "const _propIndex = Uint8Array.of(" ++ showArray l_propIndex ++ ");",
-    "const _generalCategory = Uint32Array.of(" ++ showArray (map toFlag l_generalCategory) ++ ");",
+    "const _generalCategory = Uint8Array.of(" ++ showArray (map fromEnum l_generalCategory) ++ ");",
     "const _toupper = Int32Array.of(" ++ showArray l_toUpper ++ ");",
     "const _tolower = Int32Array.of(" ++ showArray l_toLower ++ ");",
     "const _totitle = Int32Array.of(" ++ showArray l_toTitle ++ ");"
@@ -291,6 +291,21 @@ lookup' Lookup {..} code =
           p_toTitle = l_toTitle !! idx''
         }
 
+jsClassPrelude =
+  unlines
+    [ "export class Unicode {",
+      "    constructor(logger) {",
+      "        Object.seal(this);",
+      "    }"
+    ]
+
+jsGenCatFunction =
+  unlines
+    [ "u_gencat(code) {",
+      "  return _property(_generalCategory, code);",
+      "}"
+    ]
+
 main :: IO ()
 main = do
   db <- lines <$> getContents
@@ -300,5 +315,8 @@ main = do
   putStrLn jsPrelude
   mapM_ (putStrLn . jsFlag) [minBound ..]
   putStrLn ""
+  putStrLn jsClassPrelude
   mapM_ (putStrLn . jsFlagFunction) [minBound ..]
   mapM_ (putStrLn . jsConversionFunction) ["lower", "upper", "title"]
+  putStrLn jsGenCatFunction
+  putStrLn "}"
