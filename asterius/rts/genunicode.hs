@@ -10,10 +10,10 @@ import qualified Data.Char as Char
 import Data.Int (Int32)
 import qualified Data.List as List
 import qualified Data.Map.Strict as Map
-import Data.Word (Word32, Word8)
-import System.Environment (getProgName)
-import Numeric (readHex)
 import Data.Maybe (fromJust, isNothing)
+import Data.Word (Word32, Word8)
+import Numeric (readHex)
+import System.Environment (getProgName)
 
 -- Generating the lookup table
 data Properties
@@ -66,7 +66,6 @@ mkLookup props = build $ List.foldl' addChar mempty [minBound ..]
   where
     props' :: Char -> Properties
     props' = fromJust . props
-
     addChar :: LookupBuilder -> Char -> LookupBuilder
     addChar builder char | isNothing (props char) = builder
     addChar LookupBuilder {b_blocks = [], ..} char =
@@ -80,7 +79,6 @@ mkLookup props = build $ List.foldl' addChar mempty [minBound ..]
         LookupBuilder [Block char char b_nextIndex] (Map.singleton p b_nextIndex) (succ b_nextIndex) <> l
       where
         p = props' char
-
     build :: LookupBuilder -> Lookup
     build LookupBuilder {..} = Lookup {..}
       where
@@ -108,20 +106,16 @@ unicodeDataProps db = flip Map.lookup (Map.fromAscList (map parse db))
   where
     readCode :: String -> Maybe Char
     readCode "" = Nothing
-    readCode c  = case readHex c of
+    readCode c = case readHex c of
       [(i, "")] -> Just (toEnum i)
       _ -> error "parsing codepoint failed"
-
     readGeneralCategory :: String -> Char.GeneralCategory
     readGeneralCategory s = toEnum $ fromJust $ List.findIndex (== s) ["Lu", "Ll", "Lt", "Lm", "Lo", "Mn", "Mc", "Me", "Nd", "Nl", "No", "Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po", "Sm", "Sc", "Sk", "So", "Zs", "Zl", "Zp", "Cc", "Cf", "Cs", "Co", "Cn"]
-
     splitOn :: Char -> String -> [String]
     splitOn sep = map (dropWhile (== sep)) . List.groupBy (\a b -> b /= sep)
-
     distance :: Char -> Maybe Char -> Int32
-    distance from Nothing   = 0
+    distance from Nothing = 0
     distance from (Just to) = toEnum $ fromEnum to - fromEnum from
-
     parse :: String -> (Char, Properties)
     parse s = case splitOn ';' s of
       [ code,
@@ -140,12 +134,14 @@ unicodeDataProps db = flip Map.lookup (Map.fromAscList (map parse db))
         simpleLowercaseMapping,
         simpleTitlecaseMapping
         ] ->
-          (c, Properties
-            { p_generalCategory = readGeneralCategory generalCategory,
-              p_toUpper = distance c (readCode simpleUppercaseMapping),
-              p_toLower = distance c (readCode simpleLowercaseMapping),
-              p_toTitle = distance c (readCode simpleTitlecaseMapping)
-            })
+          ( c,
+            Properties
+              { p_generalCategory = readGeneralCategory generalCategory,
+                p_toUpper = distance c (readCode simpleUppercaseMapping),
+                p_toLower = distance c (readCode simpleLowercaseMapping),
+                p_toTitle = distance c (readCode simpleTitlecaseMapping)
+              }
+          )
           where
             Just c = readCode code
 
@@ -244,5 +240,5 @@ main = do
   progName <- getProgName
   putStrLn $ "// Generated using " ++ progName
   mapM_ putStrLn $ js $ mkLookup ghcProps
-  -- db <- getContents
-  -- mapM_ putStrLn $ js $ mkLookup $ unicodeDataProps $ lines db
+-- db <- getContents
+-- mapM_ putStrLn $ js $ mkLookup $ unicodeDataProps $ lines db
