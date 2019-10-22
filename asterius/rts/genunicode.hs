@@ -1,10 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module GenUnicode3
-  ( main,
-  )
-where
-
 import Data.Bits ((.|.), zeroBits)
 import qualified Data.Char as Char
 import Data.Int (Int32)
@@ -239,6 +234,6 @@ main :: IO ()
 main = do
   progName <- getProgName
   putStrLn $ "// Generated using " ++ progName
-  mapM_ putStrLn $ js $ mkLookup ghcProps
--- db <- getContents
--- mapM_ putStrLn $ js $ mkLookup $ unicodeDataProps $ lines db
+  db <- getContents
+  mapM_ putStrLn $ js $ mkLookup $ unicodeDataProps $ lines db
+-- mapM_ putStrLn $ js $ mkLookup ghcProps
