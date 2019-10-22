@@ -1,14 +1,14 @@
-{ pkgs ? import nixpkgs ({
-    overlays = import ((builtins.fetchTarball {
-      url = "https://github.com/input-output-hk/haskell.nix/archive/8d660d8843088264c2f2c2a98c6824264af2efaa.tar.gz";
-      sha256 = "03nvscgpi0fak7ssxwyi7zk97als05dmj644a0pn3g60688m8ya7";
-    }) + "/overlays"); })
+{ pkgs ? import nixpkgs ((import (builtins.fetchTarball {
+      url = "https://github.com/input-output-hk/haskell.nix/archive/46fad8195472cf52f1604930003a43bf8f5d3d56.tar.gz";
+      sha256 = "14f8iyc4f051ankv845mafp0rba8ih5l692cmi0khfdfbh1xq1qd";
+    })) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , nixpkgs ? builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/61f0936d1cd73760312712615233cd80195a9b47.tar.gz";
-    sha256 = "1fkmp99lxd827km8mk3cqqsfmgzpj0rvaz5hgdmgzzyji70fa2f8";
+    url = "https://github.com/NixOS/nixpkgs/archive/f6dac8083874408fe287525007d3da9decd9bf44.tar.gz";
+    sha256 = "13hxl8gcyqrpranh12fa14sg2lxx2glbgzkx10z4i2x3gh59yl1n";
   }
 , shellOnly ? false
+, system    ? null
 }:
 let
   cabalPatch = pkgs.fetchpatch {
@@ -290,7 +290,7 @@ let
         export asterius_datadir=$(pwd)/asterius
         export binaryen_datadir=$(pwd)/binaryen
         export ghc_toolkit_datadir=$(pwd)/ghc-toolkit
-        # export sandbox_ghc_lib_dir=$(ghc --print-libdir) # does not include `indclude` dir
+        # export sandbox_ghc_lib_dir=$(ghc --print-libdir) # does not include `include` dir
         export sandbox_ghc_lib_dir=$(${ghc-compiler}/bin/ghc --print-libdir)
         export inline_js_datadir=$(pwd)/inline-js/inline-js
         export inline_js_core_datadir=$(pwd)/inline-js/inline-js-core
