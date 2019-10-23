@@ -257,8 +257,8 @@ let
   # By pinning this we avoid re running ahc-boot for every change.
   cached = import (pkgs.fetchgit {
     url = "https://github.com/input-output-hk/asterius";
-    rev = "fa8babf4e74c13fde6f2d9d2f1e31af547e6c75e";
-    sha256 = "1akbg5yl2kvcm9hi5c1n84hxc40ycf1n8qan346c5r25akfhdm26";
+    rev = "572b17398602a435650d7409cc7f00d1dd278eda";
+    sha256 = "153qa86jcr4zl8haxdqrjp96v8mmv4r5w4p8b8cclic619cklidm";
     fetchSubmodules = true;
   }) {};
   ghc-compiler = pkgs.haskell.compiler.${compilerName};
@@ -312,6 +312,6 @@ let
     });
   };
 in project // {
-  inherit ghc-head ghc865 pkgs nodejs nodePkgs asterius-boot wasm-asterius-ghc shells;
+  inherit ghc-head ghc865 pkgs nodejs nodePkgs asterius-boot wasm-asterius-ghc shells cached;
   ghc-boot-libs = ghc865.boot-libs;
 }
