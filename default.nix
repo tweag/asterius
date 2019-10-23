@@ -257,8 +257,8 @@ let
   # By pinning this we avoid re running ahc-boot for every change.
   cached = import (pkgs.fetchgit {
     url = "https://github.com/input-output-hk/asterius";
-    rev = "996cc2db2235cc95d67bb9f4dc1b3e61b8f9d7b3";
-    sha256 = "0j0dbfljbzgnyksplpn1jpmyj3c4fsi1p1my8ymd9cy2pxzvsxdh";
+    rev = "fa8babf4e74c13fde6f2d9d2f1e31af547e6c75e";
+    sha256 = "1akbg5yl2kvcm9hi5c1n84hxc40ycf1n8qan346c5r25akfhdm26";
     fetchSubmodules = true;
   }) {};
   ghc-compiler = pkgs.haskell.compiler.${compilerName};
