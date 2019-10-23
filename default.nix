@@ -18,7 +18,7 @@ let
   };
 
   # Node
-  nodejs = pkgs.nodejs-11_x;
+  nodejs = pkgs.nodejs-12_x;
   nodePkgs = import ./nix/node { inherit pkgs nodejs; };
 
   compilerName = "ghc865";
