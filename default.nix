@@ -1,6 +1,6 @@
 { pkgs ? import nixpkgs ((import (builtins.fetchTarball {
-      url = "https://github.com/input-output-hk/haskell.nix/archive/6748fce721a68c7a677cc9f2e07a13d317a02f7a.tar.gz";
-      sha256 = "0v076k85bw39fbnidmazqr0inmriyks7dp3js5gslvrcr8gw81xp";
+      url = "https://github.com/input-output-hk/haskell.nix/archive/3daa31d60e394a3a97a07c3d03c45f658e01489b.tar.gz";
+      sha256 = "1crfiny3riacciac3lrpjgwby2vcyashfgqsh32sjq24vzhqq2bm";
     })) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , nixpkgs ? builtins.fetchTarball {
