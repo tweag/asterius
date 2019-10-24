@@ -1,6 +1,6 @@
 { pkgs ? import nixpkgs ((import (builtins.fetchTarball {
-      url = "https://github.com/input-output-hk/haskell.nix/archive/67209e46bb36c80f668f71e1104d94b4fc11520f.tar.gz";
-      sha256 = "0hkz1kq3j2vcw9qy580ar14ib12v1cjl74hijzkfq2k8dz807ydf";
+      url = "https://github.com/input-output-hk/haskell.nix/archive/839714fbdae7170dfce15df0f55792dfd68e0635.tar.gz";
+      sha256 = "0zdryphnqnyjagx3pjq9hd4sjc5nmw8r476ff5ds6xhpqscafk44";
     })) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , nixpkgs ? builtins.fetchTarball {
@@ -255,12 +255,13 @@ let
 
   # Use this to set the version of asterius to be booted in the shell.
   # By pinning this we avoid re running ahc-boot for every change.
-  cached = import (pkgs.fetchgit {
-    url = "https://github.com/input-output-hk/asterius";
-    rev = "572b17398602a435650d7409cc7f00d1dd278eda";
-    sha256 = "153qa86jcr4zl8haxdqrjp96v8mmv4r5w4p8b8cclic619cklidm";
-    fetchSubmodules = true;
-  }) {};
+  cached = import ./. {}; # Pin an old commit once stuff works again
+  #pkgs.fetchgit {
+  #  url = "https://github.com/input-output-hk/asterius";
+  #  rev = "572b17398602a435650d7409cc7f00d1dd278eda";
+  #  sha256 = "153qa86jcr4zl8haxdqrjp96v8mmv4r5w4p8b8cclic619cklidm";
+  #  fetchSubmodules = true;
+  #}) {};
   ghc-compiler = pkgs.haskell.compiler.${compilerName};
   shells = {
     ghc = (project.hsPkgs.shellFor {
