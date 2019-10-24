@@ -128,63 +128,22 @@ mkLookup props = build $ List.foldl' addChar mempty [minBound ..]
 ----------------------------------------------------------------------------
 -- Unicode properties
 
+-- | Define the "general categories" we care about.
+isRelevantCategory :: Char.GeneralCategory -> Bool
+isRelevantCategory Char.Surrogate = False
+isRelevantCategory Char.PrivateUse = False
+isRelevantCategory Char.NotAssigned = False
+isRelevantCategory _ = True
+
 -- | Determine 'Properties' using the base library.
 ghcProps :: Char -> Maybe Properties
+ghcProps c | not (relevantCategory . Char.generalCategory c) = Nothing
 ghcProps c = Just Properties
   { p_generalCategory = Char.generalCategory c,
     p_toUpper = fromInteger $ toInteger $ fromEnum (Char.toUpper c) - fromEnum c,
     p_toLower = fromInteger $ toInteger $ fromEnum (Char.toLower c) - fromEnum c,
     p_toTitle = fromInteger $ toInteger $ fromEnum (Char.toTitle c) - fromEnum c
   }
-
--- | Determine 'Properties' using the Unicode database file.
-unicodeDataProps ::
-  -- | Unicode database file, line by line
-  [String] ->
-  Char ->
-  Maybe Properties
-unicodeDataProps db = flip Map.lookup (Map.fromAscList (map parse db))
-  where
-    readCode :: String -> Maybe Char
-    readCode "" = Nothing
-    readCode c = case readHex c of
-      [(i, "")] -> Just (toEnum i)
-      _ -> error "parsing codepoint failed"
-    readGeneralCategory :: String -> Char.GeneralCategory
-    readGeneralCategory s = toEnum $ fromJust $ List.findIndex (== s) ["Lu", "Ll", "Lt", "Lm", "Lo", "Mn", "Mc", "Me", "Nd", "Nl", "No", "Pc", "Pd", "Ps", "Pe", "Pi", "Pf", "Po", "Sm", "Sc", "Sk", "So", "Zs", "Zl", "Zp", "Cc", "Cf", "Cs", "Co", "Cn"]
-    splitOn :: Char -> String -> [String]
-    splitOn sep = map (dropWhile (== sep)) . List.groupBy (\a b -> b /= sep)
-    distance :: Char -> Maybe Char -> Int32
-    distance from Nothing = 0
-    distance from (Just to) = toEnum $ fromEnum to - fromEnum from
-    parse :: String -> (Char, Properties)
-    parse s = case splitOn ';' s of
-      [ code,
-        _name,
-        generalCategory,
-        _generalCombiningClass,
-        _canonicalCombiningClass,
-        _bidi_class,
-        _decompositionType,
-        _decompositionMapping,
-        _numericType,
-        _numericValue,
-        _bidiMirrored,
-        _isoComment,
-        simpleUppercaseMapping,
-        simpleLowercaseMapping,
-        simpleTitlecaseMapping
-        ] ->
-          ( c,
-            Properties
-              { p_generalCategory = readGeneralCategory generalCategory,
-                p_toUpper = distance c (readCode simpleUppercaseMapping),
-                p_toLower = distance c (readCode simpleLowercaseMapping),
-                p_toTitle = distance c (readCode simpleTitlecaseMapping)
-              }
-          )
-          where
-            Just c = readCode code
 
 ----------------------------------------------------------------------------
 -- Generating the JS
