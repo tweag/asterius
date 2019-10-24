@@ -10,8 +10,75 @@ import Data.Word (Word32, Word8)
 import Numeric (readHex)
 import System.Environment (getProgName)
 
-----------------------------------------------------------------------------
--- Lookup tables
+-- | This script generates a JavaScript module that can classify and convert
+-- Unicode code points. The generated module contains one class, called
+-- Unicode, with the following methods:
+--
+-- > class Unicode {
+-- >   u_gencat(code)
+-- >   u_iswupper(code)
+-- >   u_iswlower(code)
+-- >   u_iswspace(code)
+-- >   u_iswalpha(code)
+-- >   u_iswdigit(code)
+-- >   u_iswalnum(code)
+-- >   u_iswprint(code)
+-- >   u_iswcntrl(code)
+-- >   u_towlower(code)
+-- >   u_towupper(code)
+-- >   u_towtitle(code)
+-- > }
+--
+-- In order to implement these methods, we need to know, for each Unicode code
+-- point:
+--
+-- * its "general category", for example lowercase letter, digit, or control
+--   character;
+-- * how to find the code point representing its uppercase, lowercase, and
+--   titlecase version (if applicable).
+--
+-- The Unicode standard defines just under 33,000 code points, so lookup tables
+-- mapping each code point directly to its properties need a lot of space. This
+-- script exploits patterns in the code point data to represent it using less
+-- space.
+--
+-- Firstly, there are many characters whose code point conversions are equal in
+-- terms of code point _difference_. As an example, to go from any capital
+-- ASCII to its lowercase code point, just add 32.
+--
+-- 'Properties' thus represents the uppercase, lowercase and titlecase
+-- conversion as (relative) code point differences, rather than (absolute) code
+-- points. In addition, 'Properties' contains the general category of the
+-- character.
+--
+-- Represented in such a way, the characteristics of any Unicode character can
+-- be represented as one of just over 200 different 'Properties' instances.
+--
+-- Secondly, characters with adjacent code points often share the same
+-- properties. We exploit this by associating 'Properties' not with characters,
+-- but with 'Block's of characters.
+--
+-- In order to avoid object creation and hashing in the JavaScript
+-- implementation, we use a "structure of arrays" representation using only
+-- "typed" (that is, integer) arrays:
+--
+-- * Each 'Block' is represented as an entry @i@ in the following arrays:
+--     * @first[i]@, containing the first character in the block,
+--     * @last[i]@, containing the last character in the block, and
+--     * @idx[i]@, containing the index into the property tables.
+--
+-- * 'Properties' are represented as an entry @j@ in the following arrays:
+--     * @gencat[j]@, containing the numeric code for the general category,
+--     * @tolower[j]@, @toupper[j]@, and @totitle[j]@, containing the code
+--       point difference to the relevant lowercase, uppercase, and titlecase
+--       character, respectively.
+--
+-- This compact representation complicates accessing properties, but not too
+-- much so. Here is how the JavaScript implementation finds the properties of
+-- a Unicode character:
+--
+-- 1. Find @i@ such that @first[i] <= code <= last[i]@ via binary search;
+-- 2. @gencat[idx[i]]@ is the general category of the character.
 
 -- | Relevant properties of a Unicode character.
 data Properties
@@ -125,7 +192,7 @@ mkLookup props = build $ List.foldl' addChar mempty [minBound ..]
         l_toLower = map p_toLower props
         l_toTitle = map p_toTitle props
 
-----------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Unicode properties
 
 -- | Define the "general categories" we care about.
@@ -137,7 +204,7 @@ isRelevantCategory _ = True
 
 -- | Determine 'Properties' using the base library.
 ghcProps :: Char -> Maybe Properties
-ghcProps c | not (relevantCategory . Char.generalCategory c) = Nothing
+ghcProps c | not (isRelevantCategory (Char.generalCategory c)) = Nothing
 ghcProps c = Just Properties
   { p_generalCategory = Char.generalCategory c,
     p_toUpper = fromInteger $ toInteger $ fromEnum (Char.toUpper c) - fromEnum c,
@@ -145,8 +212,8 @@ ghcProps c = Just Properties
     p_toTitle = fromInteger $ toInteger $ fromEnum (Char.toTitle c) - fromEnum c
   }
 
-----------------------------------------------------------------------------
--- Generating the JS
+-------------------------------------------------------------------------------
+-- Generating the JavaScript module
 
 -- | Combinations of 'Char.GeneralCategory'.
 data Kind
@@ -247,7 +314,7 @@ js Lookup {..} =
     mkTypedJsArray :: Enum a => JsArrayType -> [a] -> String
     mkTypedJsArray typ xs = show typ ++ "Array.of(" ++ concat (List.intersperse "," (map (show . fromEnum) xs)) ++ ")"
 
-----------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 -- Do it!
 
 main :: IO ()
@@ -255,7 +322,4 @@ main = do
   progName <- getProgName
   putStrLn $ "// Generated by " ++ progName
   putStrLn ""
-  -- Read Unicode database from stdin
-  db <- getContents
-  -- Write JavaScript to stdout
-  mapM_ putStrLn $ js $ mkLookup $ unicodeDataProps $ lines db
+  mapM_ putStrLn $ js $ mkLookup $ ghcProps
