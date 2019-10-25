@@ -120,7 +120,7 @@ jobs:
             stack --no-terminal test asterius:bytearray
             stack --no-terminal test asterius:bigint
             stack --no-terminal test asterius:todomvc
-            stack --no-terminal test asterius:cloudflare
+            # stack --no-terminal test asterius:cloudflare
             stack --no-terminal test asterius:exception
             stack --no-terminal test asterius:regression60
             stack --no-terminal test asterius:sizeof_md5context
