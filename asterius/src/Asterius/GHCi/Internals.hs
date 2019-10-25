@@ -315,12 +315,20 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
   withTempDir "asdf" $ \tmp_dir -> do
     let p = tmp_dir </> "asdf"
     distNonMain p [runner_sym, run_mod_fin_sym] ahc_dist_input
+    rts_val <- importMJS s $ p `replaceFileName` "rts.mjs"
     mod_buf <- LBS.readFile $ p -<.> "wasm"
-    lib_val <- importMJS s $ p -<.> "lib.mjs"
-    f_val <- eval s $ takeJSVal lib_val <> ".default"
+    req_mod_val <- importMJS s $ p -<.> "req.mjs"
+    req_val <- eval s $ takeJSVal req_mod_val <> ".default"
     buf_val <- alloc s mod_buf
     mod_val <- eval s $ "WebAssembly.compile(" <> takeJSVal buf_val <> ")"
-    i <- eval s $ takeJSVal f_val <> "(" <> takeJSVal mod_val <> ")"
+    i <-
+      eval s $
+        takeJSVal rts_val
+          <> ".newAsteriusInstance(Object.assign("
+          <> takeJSVal req_val
+          <> ",{module:"
+          <> takeJSVal mod_val
+          <> "}))"
     hsInit s i
     let runner_closure =
           deRefJSVal i <> ".symbolTable."
