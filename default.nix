@@ -1,6 +1,6 @@
 { pkgs ? import nixpkgs ((import (builtins.fetchTarball {
-      url = "https://github.com/input-output-hk/haskell.nix/archive/8f2e78271f85033203c80d3800c84acfcb711493.tar.gz";
-      sha256 = "0jvi3ww7vk92a0dbzprpfbv6dhsjgdsw0az8y728hjsrrpwcnhpc";
+      url = "https://github.com/input-output-hk/haskell.nix/archive/7b9f5ae359654f16197bd20eb895ce17046f348e.tar.gz";
+      sha256 = "17jg9yblr729bqb9k7kbv5y16w72v3hac766h6mlql9ad723agrz";
     })) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , nixpkgs ? builtins.fetchTarball {
@@ -125,6 +125,7 @@ let
                  nodePkgs.todomvc-app-css
                  nodePkgs.todomvc-common ];
              }) (pkgs.haskell-nix.cabalProject' {
+               name = "asterius-tests";
                src = pkgs.haskell-nix.haskellLib.cleanGit { src = ./.; };
                pkg-def-extras = [ pkgs.ghc-boot-packages.ghc865 ];
                modules = [];
