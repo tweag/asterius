@@ -1,11 +1,12 @@
-{ pkgs ? import nixpkgs ((import (builtins.fetchTarball {
-      url = "https://github.com/input-output-hk/haskell.nix/archive/8885577a64de3f3629322fc0388b48c28c52ddcd.tar.gz";
-      sha256 = "14jmw09qchfd2cb4hqmcylq8yxs9nf1xbjbj0mm3yfcqi889ksi1";
-    })) // (if system == null then {} else { inherit system; }))
+{ pkgs ? import nixpkgs ((import haskellNix) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , nixpkgs ? builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/f6dac8083874408fe287525007d3da9decd9bf44.tar.gz";
     sha256 = "13hxl8gcyqrpranh12fa14sg2lxx2glbgzkx10z4i2x3gh59yl1n";
+  }
+, haskellNix ? builtins.fetchTarball {
+    url = "https://github.com/input-output-hk/haskell.nix/archive/fcba9447b31a0802fab15f46fa18d6b9675ab528.tar.gz";
+    sha256 = "0s7gdcjxv8y7bmbi7wd5cp8jlvdcn2bgf8kaqyy25x0bqcdafaz3";
   }
 , shellOnly ? false
 , system    ? null
@@ -139,7 +140,7 @@ let
   ghc-head = let
     # Only gitlab has the right submoudle refs (the ones in github mirror do not work)
     # and only fetchgit seems to get the submoudles from gitlab
-    ghc-src = pkgs.srcOnly pkgs.haskell.compiler.ghc865;
+    ghc-src = pkgs.srcOnly pkgs.haskell-nix.compiler.ghc865;
     ghc-prim = pkgs.fetchzip {
       url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
@@ -176,7 +177,7 @@ let
     '';
   in { inherit ghc-src boot-libs patch; };
   ghc865 = let
-    ghc-src = pkgs.haskell.compiler.ghc865.passthru.configured-src;
+    ghc-src = pkgs.haskell-nix.compiler.ghc865.passthru.configured-src;
     ghc-prim = pkgs.fetchzip {
       url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
@@ -193,7 +194,7 @@ let
       cp -r rts libraries
     '';
     boot-libs = pkgs.runCommand "asterius-ghc865-boot-libs" {
-      buildInputs = [ pkgs.haskell.compiler.${compilerName} ];
+      buildInputs = [ pkgs.haskell-nix.compiler.${compilerName} ];
       preferLocalBuild = true;
     } ''
       set +x
@@ -213,7 +214,7 @@ let
 
   asterius-boot = pkgs.runCommand "asterius-boot" {
       preferLocalBuild = true;
-      nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell.compiler.${compilerName} pkgs.autoconf pkgs.automake ];
+      nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell-nix.compiler.${compilerName} pkgs.autoconf pkgs.automake ];
     } ''
       mkdir -p $out/bin
       mkdir -p $out/boot
@@ -249,7 +250,7 @@ let
         ln -s ${asterius-boot}/bin/${exe} $out/bin/wasm-asterius-ghc${pkgs.lib.strings.substring 3 ((pkgs.lib.strings.stringLength) exe - 3) exe}
       '') (pkgs.lib.attrNames project.hsPkgs.asterius.components.exes)}
       cp -r ${asterius-boot}/boot/.boot/asterius_lib $out/lib/wasm-asterius-ghc-0.0.1
-      ln -s ${pkgs.haskell.compiler.${compilerName}}/bin/hsc2hs $out/bin/wasm-asterius-hsc2hs
+      ln -s ${pkgs.haskell-nix.compiler.${compilerName}}/bin/hsc2hs $out/bin/wasm-asterius-hsc2hs
     '');
 
   cabalSystem = builtins.replaceStrings ["-darwin"] ["-osx"] pkgs.stdenv.system;
@@ -263,7 +264,7 @@ let
   #  sha256 = "153qa86jcr4zl8haxdqrjp96v8mmv4r5w4p8b8cclic619cklidm";
   #  fetchSubmodules = true;
   #}) {};
-  ghc-compiler = pkgs.haskell.compiler.${compilerName};
+  ghc-compiler = pkgs.haskell-nix.compiler.${compilerName};
   shells = {
     ghc = (project.hsPkgs.shellFor {
       # Shell will provide the dependencies of asterius, but not asterius itself.
