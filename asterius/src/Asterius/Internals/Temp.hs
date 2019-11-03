@@ -1,7 +1,8 @@
 module Asterius.Internals.Temp
-  ( temp
-  , withTempDir
-  ) where
+  ( temp,
+    withTempDir,
+  )
+where
 
 import Distribution.Simple.Utils
 import Distribution.Verbosity

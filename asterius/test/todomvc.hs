@@ -6,4 +6,5 @@ main :: IO ()
 main = do
   args <- getArgs
   callProcess "ahc-link" $
-    ["--browser", "--bundle", "--input-hs", "test/todomvc/todomvc.hs"] <> args
+    ["--browser", "--bundle", "--input-hs", "test/todomvc/todomvc.hs"]
+      <> args

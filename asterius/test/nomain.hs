@@ -12,19 +12,23 @@ main :: IO ()
 main = do
   args <- getArgs
   callProcess "ahc-link" $
-    [ "--input-hs"
-    , "test/nomain/NoMain.hs"
-    , "--output-ir"
-    , "--full-sym-table"
-    , "--ghc-option=-no-hs-main"
-    , "--extra-root-symbol=NoMain_x_closure"
-    , "--no-gc-sections"
-    ] <>
-    args
+    [ "--input-hs",
+      "test/nomain/NoMain.hs",
+      "--output-ir",
+      "--full-sym-table",
+      "--ghc-option=-no-hs-main",
+      "--extra-root-symbol=NoMain_x_closure",
+      "--no-gc-sections"
+    ]
+      <> args
   m <- decodeFile "test/nomain/NoMain.unlinked.bin"
-  withJSSession defJSSessionOpts $ \s -> do
+  withJSSession defJSSessionOpts {nodeStdErrInherit = True} $ \s -> do
     i <-
-      newAsteriusInstanceNonMain s "test/nomain/NoMain" ["NoMain_x_closure"] m
+      newAsteriusInstanceNonMain
+        s
+        "test/nomain/NoMain"
+        ["NoMain_x_closure"]
+        m
     hsInit s i
     let x_closure = deRefJSVal i <> ".symbolTable.NoMain_x_closure"
         x_tid =

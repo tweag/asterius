@@ -5,4 +5,5 @@ main :: IO ()
 main = do
   args <- getArgs
   callProcess "cabal" $
-    ["new-run", "--project-file", "test.project", "--builddir", "dist-ahc", "asterius-test:exe:bytearraymini", "--with-ghc=ahc", "--with-ghc-pkg=ahc-pkg"] <> args
+    ["new-run", "--project-file", "test.project", "--builddir", "dist-ahc", "asterius-test:exe:bytearraymini", "--with-ghc=ahc", "--with-ghc-pkg=ahc-pkg"]
+      <> args

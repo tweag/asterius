@@ -319,9 +319,7 @@ Library
         Type.Reflection.Unsafe
         Unsafe.Coerce
 
-        Asterius.Prim
         Asterius.TopHandler
-        Asterius.Types
 
     other-modules:
         Control.Monad.ST.Imp

@@ -4,48 +4,49 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StrictData #-}
 
 module Asterius.Types
-  ( BinaryenIndex
-  , AsteriusCodeGenError(..)
-  , AsteriusStatic(..)
-  , AsteriusStaticsType(..)
-  , AsteriusStatics(..)
-  , AsteriusModule(..)
-  , AsteriusModuleSymbol(..)
-  , AsteriusEntitySymbol(..)
-  , UnresolvedLocalReg(..)
-  , UnresolvedGlobalReg(..)
-  , ValueType(..)
-  , FunctionType(..)
-  , UnaryOp(..)
-  , BinaryOp(..)
-  , HostOp(..)
-  , Expression(..)
-  , Function(..)
-  , FunctionImport(..)
-  , TableImport(..)
-  , MemoryImport(..)
-  , FunctionExport(..)
-  , TableExport(..)
-  , MemoryExport(..)
-  , FunctionTable(..)
-  , DataSegment(..)
-  , Module(..)
-  , RelooperAddBlock(..)
-  , RelooperAddBranch(..)
-  , RelooperBlock(..)
-  , RelooperRun(..)
-  , Chunk(..)
-  , FFIValueType(..)
-  , FFIFunctionType(..)
-  , FFISafety(..)
-  , FFIImportDecl(..)
-  , FFIExportDecl(..)
-  , FFIMarshalState(..)
-  ) where
+  ( BinaryenIndex,
+    AsteriusCodeGenError (..),
+    AsteriusStatic (..),
+    AsteriusStaticsType (..),
+    AsteriusStatics (..),
+    AsteriusModule (..),
+    AsteriusModuleSymbol (..),
+    AsteriusEntitySymbol (..),
+    UnresolvedLocalReg (..),
+    UnresolvedGlobalReg (..),
+    ValueType (..),
+    FunctionType (..),
+    UnaryOp (..),
+    BinaryOp (..),
+    HostOp (..),
+    Expression (..),
+    Function (..),
+    FunctionImport (..),
+    TableImport (..),
+    MemoryImport (..),
+    FunctionExport (..),
+    TableExport (..),
+    MemoryExport (..),
+    FunctionTable (..),
+    DataSegment (..),
+    Module (..),
+    RelooperAddBlock (..),
+    RelooperAddBranch (..),
+    RelooperBlock (..),
+    RelooperRun (..),
+    Chunk (..),
+    FFIValueType (..),
+    FFIFunctionType (..),
+    FFISafety (..),
+    FFIImportDecl (..),
+    FFIExportDecl (..),
+    FFIMarshalState (..),
+  )
+where
 
 import Asterius.Internals.Binary
 import Control.Exception
@@ -68,9 +69,7 @@ data AsteriusCodeGenError
   | UnsupportedCmmGlobalReg SBS.ShortByteString
   | UnsupportedCmmExpr SBS.ShortByteString
   | UnsupportedCmmSectionType SBS.ShortByteString
-  | UnsupportedImplicitCasting Expression
-                               ValueType
-                               ValueType
+  | UnsupportedImplicitCasting Expression ValueType ValueType
   | AssignToImmutableGlobalReg UnresolvedGlobalReg
   deriving (Eq, Show, Generic, Data)
 
@@ -79,8 +78,7 @@ instance Binary AsteriusCodeGenError
 instance Exception AsteriusCodeGenError
 
 data AsteriusStatic
-  = SymbolStatic AsteriusEntitySymbol
-                 Int
+  = SymbolStatic AsteriusEntitySymbol Int
   | Uninitialized Int
   | Serialized SBS.ShortByteString
   deriving (Eq, Ord, Show, Generic, Data)
@@ -96,25 +94,32 @@ data AsteriusStaticsType
 
 instance Binary AsteriusStaticsType
 
-data AsteriusStatics = AsteriusStatics
-  { staticsType :: AsteriusStaticsType
-  , asteriusStatics :: [AsteriusStatic]
-  } deriving (Eq, Ord, Show, Generic, Data)
+data AsteriusStatics
+  = AsteriusStatics
+      { staticsType :: AsteriusStaticsType,
+        asteriusStatics :: [AsteriusStatic]
+      }
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary AsteriusStatics
 
-data AsteriusModule = AsteriusModule
-  { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics
-  , staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError
-  , functionMap :: LM.Map AsteriusEntitySymbol Function
-  , ffiMarshalState :: FFIMarshalState
-  } deriving (Eq, Show, Generic, Data)
+data AsteriusModule
+  = AsteriusModule
+      { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics,
+        staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError,
+        functionMap :: LM.Map AsteriusEntitySymbol Function,
+        ffiMarshalState :: FFIMarshalState
+      }
+  deriving (Eq, Show, Generic, Data)
 
 instance Binary AsteriusModule where
+
   put AsteriusModule {..} =
-    lazyMapPut staticsMap *> lazyMapPut staticsErrorMap *>
-    lazyMapPut functionMap *>
-    put ffiMarshalState
+    lazyMapPut staticsMap
+      *> lazyMapPut staticsErrorMap
+      *> lazyMapPut functionMap
+      *> put ffiMarshalState
+
   get = AsteriusModule <$> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*> get
 
 instance Semigroup AsteriusModule where
@@ -128,24 +133,27 @@ instance Semigroup AsteriusModule where
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty
 
-data AsteriusModuleSymbol = AsteriusModuleSymbol
-  { unitId :: SBS.ShortByteString
-  , moduleName :: [SBS.ShortByteString]
-  } deriving (Eq, Ord, Show, Generic, Data)
+data AsteriusModuleSymbol
+  = AsteriusModuleSymbol
+      { unitId :: SBS.ShortByteString,
+        moduleName :: [SBS.ShortByteString]
+      }
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary AsteriusModuleSymbol
 
-newtype AsteriusEntitySymbol = AsteriusEntitySymbol
-  { entityName :: SBS.ShortByteString
-  } deriving (Eq, Ord, IsString, Binary, Semigroup)
+newtype AsteriusEntitySymbol
+  = AsteriusEntitySymbol
+      { entityName :: SBS.ShortByteString
+      }
+  deriving (Eq, Ord, IsString, Binary, Semigroup)
 
 deriving newtype instance Show AsteriusEntitySymbol
 
 deriving instance Data AsteriusEntitySymbol
 
 data UnresolvedLocalReg
-  = UniqueLocalReg Int
-                   ValueType
+  = UniqueLocalReg Int ValueType
   | QuotRemI32X
   | QuotRemI32Y
   | QuotRemI64X
@@ -184,9 +192,11 @@ data ValueType
 
 instance Binary ValueType
 
-data FunctionType = FunctionType
-  { paramTypes, returnTypes :: [ValueType]
-  } deriving (Eq, Ord, Show, Generic, Data)
+data FunctionType
+  = FunctionType
+      { paramTypes, returnTypes :: [ValueType]
+      }
+  deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary FunctionType
 
@@ -331,167 +341,243 @@ data HostOp
 instance Binary HostOp
 
 data Expression
-  = Block { name :: SBS.ShortByteString
-          , bodys :: [Expression]
-          , blockReturnTypes :: [ValueType] }
-  | If { condition, ifTrue :: Expression
-       , ifFalse :: Maybe Expression }
-  | Loop { name :: SBS.ShortByteString
-         , body :: Expression }
-  | Break { name :: SBS.ShortByteString
-          , breakCondition :: Maybe Expression }
-  | Switch { names :: [SBS.ShortByteString]
-           , defaultName :: SBS.ShortByteString
-           , condition :: Expression }
-  | Call { target :: AsteriusEntitySymbol
-         , operands :: [Expression]
-         , callReturnTypes :: [ValueType] }
-  | CallImport { target' :: SBS.ShortByteString
-               , operands :: [Expression]
-               , callImportReturnTypes :: [ValueType] }
-  | CallIndirect { indirectTarget :: Expression
-                 , operands :: [Expression]
-                 , functionType :: FunctionType }
-  | GetLocal { index :: BinaryenIndex
-             , valueType :: ValueType }
-  | SetLocal { index :: BinaryenIndex
-             , value :: Expression }
-  | Load { signed :: Bool
-         , bytes, offset :: BinaryenIndex
-         , valueType :: ValueType
-         , ptr :: Expression }
-  | Store { bytes, offset :: BinaryenIndex
-          , ptr, value :: Expression
-          , valueType :: ValueType }
+  = Block
+      { name :: SBS.ShortByteString,
+        bodys :: [Expression],
+        blockReturnTypes :: [ValueType]
+      }
+  | If
+      { condition, ifTrue :: Expression,
+        ifFalse :: Maybe Expression
+      }
+  | Loop
+      { name :: SBS.ShortByteString,
+        body :: Expression
+      }
+  | Break
+      { name :: SBS.ShortByteString,
+        breakCondition :: Maybe Expression
+      }
+  | Switch
+      { names :: [SBS.ShortByteString],
+        defaultName :: SBS.ShortByteString,
+        condition :: Expression
+      }
+  | Call
+      { target :: AsteriusEntitySymbol,
+        operands :: [Expression],
+        callReturnTypes :: [ValueType]
+      }
+  | CallImport
+      { target' :: SBS.ShortByteString,
+        operands :: [Expression],
+        callImportReturnTypes :: [ValueType]
+      }
+  | CallIndirect
+      { indirectTarget :: Expression,
+        operands :: [Expression],
+        functionType :: FunctionType
+      }
+  | GetLocal
+      { index :: BinaryenIndex,
+        valueType :: ValueType
+      }
+  | SetLocal
+      { index :: BinaryenIndex,
+        value :: Expression
+      }
+  | Load
+      { signed :: Bool,
+        bytes, offset :: BinaryenIndex,
+        valueType :: ValueType,
+        ptr :: Expression
+      }
+  | Store
+      { bytes, offset :: BinaryenIndex,
+        ptr, value :: Expression,
+        valueType :: ValueType
+      }
   | ConstI32 Int32
   | ConstI64 Int64
   | ConstF32 Float
   | ConstF64 Double
-  | Unary { unaryOp :: UnaryOp
-          , operand0 :: Expression }
-  | Binary { binaryOp :: BinaryOp
-           , operand0, operand1 :: Expression }
-  | ReturnCall { returnCallTarget64 :: AsteriusEntitySymbol }
-  | ReturnCallIndirect { returnCallIndirectTarget64 :: Expression }
-  | Host { hostOp :: HostOp
-         , operands :: [Expression] }
+  | Unary
+      { unaryOp :: UnaryOp,
+        operand0 :: Expression
+      }
+  | Binary
+      { binaryOp :: BinaryOp,
+        operand0, operand1 :: Expression
+      }
+  | ReturnCall
+      { returnCallTarget64 :: AsteriusEntitySymbol
+      }
+  | ReturnCallIndirect
+      { returnCallIndirectTarget64 :: Expression
+      }
+  | Host
+      { hostOp :: HostOp,
+        operands :: [Expression]
+      }
   | Nop
   | Unreachable
-  | CFG { graph :: RelooperRun }
-  | Symbol { unresolvedSymbol :: AsteriusEntitySymbol
-           , symbolOffset :: Int }
-  | UnresolvedGetLocal { unresolvedLocalReg :: UnresolvedLocalReg }
-  | UnresolvedSetLocal { unresolvedLocalReg :: UnresolvedLocalReg
-                       , value :: Expression }
-  | Barf { barfMessage :: SBS.ShortByteString
-         , barfReturnTypes :: [ValueType] }
+  | CFG
+      { graph :: RelooperRun
+      }
+  | Symbol
+      { unresolvedSymbol :: AsteriusEntitySymbol,
+        symbolOffset :: Int
+      }
+  | UnresolvedGetLocal
+      { unresolvedLocalReg :: UnresolvedLocalReg
+      }
+  | UnresolvedSetLocal
+      { unresolvedLocalReg :: UnresolvedLocalReg,
+        value :: Expression
+      }
+  | Barf
+      { barfMessage :: SBS.ShortByteString,
+        barfReturnTypes :: [ValueType]
+      }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary Expression
 
-data Function = Function
-  { functionType :: FunctionType
-  , varTypes :: [ValueType]
-  , body :: Expression
-  } deriving (Eq, Show, Generic, Data)
+data Function
+  = Function
+      { functionType :: FunctionType,
+        varTypes :: [ValueType],
+        body :: Expression
+      }
+  deriving (Eq, Show, Generic, Data)
 
 instance Binary Function
 
-data FunctionImport = FunctionImport
-  { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString
-  , functionType :: FunctionType
-  } deriving (Eq, Show, Data, Generic)
+data FunctionImport
+  = FunctionImport
+      { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString,
+        functionType :: FunctionType
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary FunctionImport
 
-data TableImport = TableImport
-  { externalModuleName, externalBaseName :: SBS.ShortByteString
-  } deriving (Eq, Show, Data, Generic)
+data TableImport
+  = TableImport
+      { externalModuleName, externalBaseName :: SBS.ShortByteString
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary TableImport
 
-data MemoryImport = MemoryImport
-  { externalModuleName, externalBaseName :: SBS.ShortByteString
-  } deriving (Eq, Show, Data, Generic)
+data MemoryImport
+  = MemoryImport
+      { externalModuleName, externalBaseName :: SBS.ShortByteString
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary MemoryImport
 
-data FunctionExport = FunctionExport
-  { internalName, externalName :: SBS.ShortByteString
-  } deriving (Eq, Show, Data, Generic)
+data FunctionExport
+  = FunctionExport
+      { internalName, externalName :: SBS.ShortByteString
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary FunctionExport
 
-newtype TableExport = TableExport
-  { externalName :: SBS.ShortByteString
-  } deriving (Eq, Show, Data, Generic)
+newtype TableExport
+  = TableExport
+      { externalName :: SBS.ShortByteString
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary TableExport
 
-newtype MemoryExport = MemoryExport
-  { externalName :: SBS.ShortByteString
-  } deriving (Eq, Show, Data, Generic)
+newtype MemoryExport
+  = MemoryExport
+      { externalName :: SBS.ShortByteString
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary MemoryExport
 
-data FunctionTable = FunctionTable
-  { tableFunctionNames :: [SBS.ShortByteString]
-  , tableOffset :: BinaryenIndex
-  } deriving (Eq, Show, Data, Generic)
+data FunctionTable
+  = FunctionTable
+      { tableFunctionNames :: [SBS.ShortByteString],
+        tableOffset :: BinaryenIndex
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary FunctionTable
 
-data DataSegment = DataSegment
-  { content :: SBS.ShortByteString
-  , offset :: Int32
-  } deriving (Eq, Show, Data, Generic)
+data DataSegment
+  = DataSegment
+      { content :: SBS.ShortByteString,
+        offset :: Int32
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary DataSegment
 
-data Module = Module
-  { functionMap' :: LM.Map SBS.ShortByteString Function
-  , functionImports :: [FunctionImport]
-  , functionExports :: [FunctionExport]
-  , functionTable :: FunctionTable
-  , tableImport :: TableImport
-  , tableExport :: TableExport
-  , tableSlots :: Int
-  , memorySegments :: [DataSegment]
-  , memoryImport :: MemoryImport
-  , memoryExport :: MemoryExport
-  , memoryMBlocks :: Int
-  } deriving (Eq, Show, Data, Generic)
+data Module
+  = Module
+      { functionMap' :: LM.Map SBS.ShortByteString Function,
+        functionImports :: [FunctionImport],
+        functionExports :: [FunctionExport],
+        functionTable :: FunctionTable,
+        tableImport :: TableImport,
+        tableExport :: TableExport,
+        tableSlots :: Int,
+        memorySegments :: [DataSegment],
+        memoryImport :: MemoryImport,
+        memoryExport :: MemoryExport,
+        memoryMBlocks :: Int
+      }
+  deriving (Eq, Show, Data, Generic)
 
 instance Binary Module
 
 data RelooperAddBlock
-  = AddBlock { code :: Expression }
-  | AddBlockWithSwitch { code, condition :: Expression }
+  = AddBlock
+      { code :: Expression
+      }
+  | AddBlockWithSwitch
+      { code, condition :: Expression
+      }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary RelooperAddBlock
 
 data RelooperAddBranch
-  = AddBranch { to :: SBS.ShortByteString
-              , addBranchCondition :: Maybe Expression }
-  | AddBranchForSwitch { to :: SBS.ShortByteString
-                       , indexes :: [BinaryenIndex] }
+  = AddBranch
+      { to :: SBS.ShortByteString,
+        addBranchCondition :: Maybe Expression
+      }
+  | AddBranchForSwitch
+      { to :: SBS.ShortByteString,
+        indexes :: [BinaryenIndex]
+      }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary RelooperAddBranch
 
-data RelooperBlock = RelooperBlock
-  { addBlock :: RelooperAddBlock
-  , addBranches :: [RelooperAddBranch]
-  } deriving (Eq, Show, Generic, Data)
+data RelooperBlock
+  = RelooperBlock
+      { addBlock :: RelooperAddBlock,
+        addBranches :: [RelooperAddBranch]
+      }
+  deriving (Eq, Show, Generic, Data)
 
 instance Binary RelooperBlock
 
-data RelooperRun = RelooperRun
-  { entry :: SBS.ShortByteString
-  , blockMap :: LM.Map SBS.ShortByteString RelooperBlock
-  , labelHelper :: BinaryenIndex
-  } deriving (Eq, Show, Generic, Data)
+data RelooperRun
+  = RelooperRun
+      { entry :: SBS.ShortByteString,
+        blockMap :: LM.Map SBS.ShortByteString RelooperBlock,
+        labelHelper :: BinaryenIndex
+      }
+  deriving (Eq, Show, Generic, Data)
 
 instance Binary RelooperRun
 
@@ -503,18 +589,22 @@ data Chunk a
 instance Binary a => Binary (Chunk a)
 
 data FFIValueType
-  = FFI_VAL { ffiWasmValueType, ffiJSValueType :: ValueType
-            , hsTyCon :: SBS.ShortByteString
-            , signed :: Bool }
+  = FFI_VAL
+      { ffiWasmValueType, ffiJSValueType :: ValueType,
+        hsTyCon :: SBS.ShortByteString,
+        signed :: Bool
+      }
   | FFI_JSVAL
   deriving (Eq, Show, Generic, Data)
 
 instance Binary FFIValueType
 
-data FFIFunctionType = FFIFunctionType
-  { ffiParamTypes, ffiResultTypes :: [FFIValueType]
-  , ffiInIO :: Bool
-  } deriving (Eq, Show, Generic, Data)
+data FFIFunctionType
+  = FFIFunctionType
+      { ffiParamTypes, ffiResultTypes :: [FFIValueType],
+        ffiInIO :: Bool
+      }
+  deriving (Eq, Show, Generic, Data)
 
 instance Binary FFIFunctionType
 
@@ -526,37 +616,44 @@ data FFISafety
 
 instance Binary FFISafety
 
-data FFIImportDecl = FFIImportDecl
-  { ffiFunctionType :: FFIFunctionType
-  , ffiSafety :: FFISafety
-  , ffiSourceChunks :: [Chunk Int]
-  } deriving (Eq, Show, Generic, Data)
+data FFIImportDecl
+  = FFIImportDecl
+      { ffiFunctionType :: FFIFunctionType,
+        ffiSafety :: FFISafety,
+        ffiSourceChunks :: [Chunk Int]
+      }
+  deriving (Eq, Show, Generic, Data)
 
 instance Binary FFIImportDecl
 
-data FFIExportDecl = FFIExportDecl
-  { ffiFunctionType :: FFIFunctionType
-  , ffiExportClosure :: AsteriusEntitySymbol
-  } deriving (Eq, Show, Generic, Data)
+data FFIExportDecl
+  = FFIExportDecl
+      { ffiFunctionType :: FFIFunctionType,
+        ffiExportClosure :: AsteriusEntitySymbol
+      }
+  deriving (Eq, Show, Generic, Data)
 
 instance Binary FFIExportDecl
 
-data FFIMarshalState = FFIMarshalState
-  { ffiImportDecls :: LM.Map AsteriusEntitySymbol FFIImportDecl
-  , ffiExportDecls :: LM.Map AsteriusEntitySymbol FFIExportDecl
-  } deriving (Eq, Show, Data)
+data FFIMarshalState
+  = FFIMarshalState
+      { ffiImportDecls :: LM.Map AsteriusEntitySymbol FFIImportDecl,
+        ffiExportDecls :: LM.Map AsteriusEntitySymbol FFIExportDecl
+      }
+  deriving (Eq, Show, Data)
 
 instance Semigroup FFIMarshalState where
-  s0 <> s1 =
-    FFIMarshalState
-      { ffiImportDecls = ffiImportDecls s0 <> ffiImportDecls s1
-      , ffiExportDecls = ffiExportDecls s0 <> ffiExportDecls s1
-      }
+  s0 <> s1 = FFIMarshalState
+    { ffiImportDecls = ffiImportDecls s0 <> ffiImportDecls s1,
+      ffiExportDecls = ffiExportDecls s0 <> ffiExportDecls s1
+    }
 
 instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
 
 instance Binary FFIMarshalState where
+
   put FFIMarshalState {..} =
     lazyMapPut ffiImportDecls *> lazyMapPut ffiExportDecls
+
   get = FFIMarshalState <$> lazyMapGet <*> lazyMapGet

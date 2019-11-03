@@ -5,27 +5,27 @@ import Data.Char
 import Data.Coerce
 import System.IO
 
-foreign import javascript safe "(new Date()).toString() + String.fromCodePoint(0x10000)" js_get_str
-  :: IO JSString
+foreign import javascript safe "(new Date()).toString() + String.fromCodePoint(0x10000)"
+  js_get_str :: IO JSString
 
 foreign import javascript safe "['asdf', 'zer0']" js_get_arr :: IO JSArray
 
-foreign import javascript safe "(new Uint8Array([2, 3, 5, 7])).buffer" js_get_buf
-  :: IO JSArrayBuffer
+foreign import javascript safe "(new Uint8Array([2, 3, 5, 7])).buffer"
+  js_get_buf :: IO JSArrayBuffer
 
-foreign import javascript safe "console.log(new Uint8Array(${1}))" js_print_buf
-  :: JSArrayBuffer -> IO ()
+foreign import javascript safe "console.log(new Uint8Array(${1}))"
+  js_print_buf :: JSArrayBuffer -> IO ()
 
 foreign import javascript safe "console.log(${1})" js_print :: JSVal -> IO ()
 
-foreign import javascript safe "setTimeout(${1},${2},${3})" js_setTimeout
-  :: JSFunction -> Int -> JSVal -> IO ()
+foreign import javascript safe "setTimeout(${1},${2},${3})"
+  js_setTimeout :: JSFunction -> Int -> JSVal -> IO ()
 
-foreign import javascript safe "console.log([${1},${2}])" js_print2
-  :: JSVal -> JSVal -> IO ()
+foreign import javascript safe "console.log([${1},${2}])"
+  js_print2 :: JSVal -> JSVal -> IO ()
 
-foreign import javascript safe "setTimeout(${1},${2},${3},${4})" js_setTimeout2
-  :: JSFunction -> Int -> JSVal -> JSVal -> IO ()
+foreign import javascript safe "setTimeout(${1},${2},${3},${4})"
+  js_setTimeout2 :: JSFunction -> Int -> JSVal -> JSVal -> IO ()
 
 main :: IO ()
 main = do
@@ -35,9 +35,10 @@ main = do
     "The trouble with the world is that the stupid are cocksure and the intelligent are full of doubt."
   js_str <- js_get_str
   let hs_str = fromJSString js_str
-  js_print $
-    coerce $
-    toJSString $ "From Haskell: " <> hs_str <> " " <> show (ord (last hs_str))
+  js_print $ coerce $ toJSString $
+    "From Haskell: " <> hs_str <> " "
+      <> show
+        (ord (last hs_str))
   js_arr <- js_get_arr
   js_print $ coerce $ toJSArray $ fromJSArray js_arr
   js_buf <- js_get_buf

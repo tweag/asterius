@@ -11,25 +11,37 @@ export class StablePtrManager {
     return sp;
   }
 
-  newStablePtr(addr) { return this.newWithTag(addr, 0); }
+  newStablePtr(addr) {
+    return this.newWithTag(addr, 0);
+  }
 
-  deRefStablePtr(sp) { return this.spt.get(sp); }
+  deRefStablePtr(sp) {
+    return this.spt.get(sp);
+  }
 
   freeStablePtr(sp) {
     this.spt.delete(sp);
   }
 
-  newJSVal(v) { return this.newWithTag(v, 1); }
+  newJSVal(v) {
+    return this.newWithTag(v, 1);
+  }
 
-  getJSVal(sp) { return this.deRefStablePtr(sp); }
+  getJSVal(sp) {
+    return this.deRefStablePtr(sp);
+  }
 
-  freeJSVal(sp) { this.freeStablePtr(sp); }
+  freeJSVal(sp) {
+    this.freeStablePtr(sp);
+  }
 
   newTmpJSVal(v) {
     return this.newJSVal(v);
   }
 
-  mutTmpJSVal(sp, f) { this.spt.set(sp, f(this.spt.get(sp))); }
+  mutTmpJSVal(sp, f) {
+    this.spt.set(sp, f(this.spt.get(sp)));
+  }
 
   freezeTmpJSVal(sp) {
     const v = this.spt.get(sp);
@@ -43,7 +55,6 @@ export class StablePtrManager {
 
   preserveJSVals(sps) {
     for (const sp of Array.from(this.spt.keys()))
-      if ((sp & 1) && (!sps.has(sp)))
-        this.freeJSVal(sp);
+      if (sp & 1 && !sps.has(sp)) this.freeJSVal(sp);
   }
 }

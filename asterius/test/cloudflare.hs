@@ -8,11 +8,11 @@ main = do
 --  callProcess "cabal" $
 --    ["new-run", "--project-file", "test.project", "--builddir", "dist-ahc", "asterius-test:exe:cloudflare", "--with-ghc=ahc", "--with-ghc-pkg=ahc-pkg"] <> args
   callProcess "ahc-link" $
-    [ "--bundle"
-    , "--browser"
-    , "--input-hs"
-    , "asterius/test/cloudflare/cloudflare.hs"
-    , "--input-mjs"
-    , "asterius/test/cloudflare/cloudflare.mjs"
-    ] <>
-    args
+    [ "--bundle",
+      "--browser",
+      "--input-hs",
+      "asterius/test/cloudflare/cloudflare.hs",
+      "--input-mjs",
+      "asterius/test/cloudflare/cloudflare.mjs"
+    ]
+      <> args

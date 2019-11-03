@@ -14,20 +14,22 @@ class TextFile {
       this.buffer += buf;
     } else {
       this.buffer += this.decoder.decode(buf, { stream: true });
+      return buf.length;
     }
   }
 }
 
 export class MemoryFileSystem {
-  constructor(logger) {
+  constructor() {
     this.files = [undefined, new TextFile(), new TextFile()];
-    this.logger = logger;
     Object.freeze(this);
   }
+
   readSync(fd) {
     return this.files[fd].read();
   }
+
   writeSync(fd, buf) {
-    this.files[fd].write(buf);
+    return this.files[fd].write(buf);
   }
 }

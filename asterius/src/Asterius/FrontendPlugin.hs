@@ -1,12 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.FrontendPlugin
-  ( frontendPlugin
-    )
+  ( frontendPlugin,
+  )
 where
 
 import Asterius.CodeGen
 import Asterius.Foreign
+import Asterius.GHCi.Internals
 import Asterius.Internals
 import Asterius.JSFFI
 import Asterius.TypesConv
@@ -28,27 +29,38 @@ frontendPlugin = makeFrontendPlugin $ do
   is_debug <- liftIO $ isJust <$> getEnv "ASTERIUS_DEBUG"
   do
     dflags <- GHC.getSessionDynFlags
+    void $
+      GHC.setSessionDynFlags
+        dflags
+          { GHC.hooks =
+              (GHC.hooks dflags)
+                { GHC.dsForeignsHook = Just asteriusDsForeigns,
+                  GHC.tcForeignImportsHook = Just asteriusTcForeignImports,
+                  GHC.tcForeignExportsHook = Just asteriusTcForeignExports,
+                  GHC.hscCompileCoreExprHook = Just asteriusHscCompileCoreExpr,
+                  GHC.startIServHook = Just asteriusStartIServ,
+                  GHC.iservCallHook = Just asteriusIservCall,
+                  GHC.readIServHook = Just asteriusReadIServ,
+                  GHC.writeIServHook = Just asteriusWriteIServ,
+                  GHC.stopIServHook = Just asteriusStopIServ
+                }
+          }
+  do
+    dflags <- GHC.getSessionDynFlags
     void
       $ GHC.setSessionDynFlags
-          dflags
-            { GHC.hooks = (GHC.hooks dflags)
-                { GHC.dsForeignsHook = Just asteriusDsForeigns,
-                  GHC.tcForeignImportsHook = Just
-                                               asteriusTcForeignImports,
-                  GHC.tcForeignExportsHook = Just
-                                               asteriusTcForeignExports
-                  }
-              }
+      $ dflags {GHC.settings = (GHC.settings dflags) {GHC.sPgm_i = "false"}}
+        `GHC.gopt_set` GHC.Opt_ExternalInterpreter
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags
     void
       $ GHC.setSessionDynFlags
       $ dflags
-      `GHC.gopt_set` GHC.Opt_DoCoreLinting
-      `GHC.gopt_set` GHC.Opt_DoStgLinting
-      `GHC.gopt_set` GHC.Opt_DoCmmLinting
-  pure
-    $ mempty
+        `GHC.gopt_set` GHC.Opt_DoCoreLinting
+        `GHC.gopt_set` GHC.Opt_DoStgLinting
+        `GHC.gopt_set` GHC.Opt_DoCmmLinting
+  pure $
+    mempty
       { withHaskellIR = \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
           setDynFlagsRef dflags
@@ -81,4 +93,4 @@ frontendPlugin = makeFrontendPlugin $ do
                 writeFile (p "dump-wasm-ast") $ show m
                 writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
                 asmPrint dflags (p "dump-cmm-raw") cmmRaw
-        }
+      }

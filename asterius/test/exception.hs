@@ -5,4 +5,5 @@ main :: IO ()
 main = do
   args <- getArgs
   callProcess "ahc-link" $
-    ["--input-hs", "test/exception/exception.hs", "--run"] <> args
+    ["--input-hs", "test/exception/exception.hs", "--run"]
+      <> args

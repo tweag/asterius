@@ -2,9 +2,10 @@
 {-# LANGUAGE StrictData #-}
 
 module Language.Haskell.GHC.Toolkit.FakeGHC
-  ( FakeGHCOptions(..)
-  , fakeGHCMain
-  ) where
+  ( FakeGHCOptions (..),
+    fakeGHCMain,
+  )
+where
 
 import Control.Monad
 import Data.Foldable
@@ -15,37 +16,43 @@ import qualified Plugins as GHC
 import System.Environment.Blank
 import System.Process
 
-data FakeGHCOptions = FakeGHCOptions
-  { ghc, ghcLibDir :: FilePath
-  , frontendPlugin :: GHC.FrontendPlugin
-  , extraMakeArgs  :: [String]
-  }
+data FakeGHCOptions
+  = FakeGHCOptions
+      { ghc, ghcLibDir :: FilePath,
+        frontendPlugin :: GHC.FrontendPlugin,
+        extraMakeArgs  :: [String]
+      }
 
 fakeGHCMain :: FakeGHCOptions -> IO ()
 fakeGHCMain FakeGHCOptions {ghc, ghcLibDir, frontendPlugin, extraMakeArgs} = do
   ks <-
-    filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k) .
-    map fst <$>
-    getEnvironment
+    filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k)
+      . map fst
+      <$> getEnvironment
   for_ ks unsetEnv
   args0 <- getArgs
   let (minusB_args, args1) = partition ("-B" `isPrefixOf`) args0
-      new_ghc_libdir =
-        case minusB_args of
-          [minusB_arg] -> drop 2 minusB_arg
-          _ -> ghcLibDir
+      new_ghc_libdir = case minusB_args of
+        [minusB_arg] -> drop 2 minusB_arg
+        _ -> ghcLibDir
   case partition (== "--make") args1 of
     ([], _) -> callProcess ghc $ ("-B" <> new_ghc_libdir) : args1
     (_, args2) ->
-      GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut $
-      GHC.runGhc (Just new_ghc_libdir) $ do
-        dflags0 <- GHC.getSessionDynFlags
-        (dflags1, fileish_args, _) <-
-          GHC.parseDynamicFlags dflags0 (map GHC.noLoc (args2 ++ extraMakeArgs))
-        void $
-          GHC.setSessionDynFlags
-            dflags1 {GHC.ghcMode = GHC.CompManager, GHC.hscTarget = GHC.HscAsm}
-        GHC.frontend
-          frontendPlugin
-          []
-          [(GHC.unLoc m, Nothing) | m <- fileish_args]
+      GHC.defaultErrorHandler GHC.defaultFatalMessager GHC.defaultFlushOut
+        $ GHC.runGhc (Just new_ghc_libdir)
+        $ do
+          dflags0 <- GHC.getSessionDynFlags
+          (dflags1, fileish_args, _) <-
+            GHC.parseDynamicFlags
+              dflags0
+              (map GHC.noLoc (args2 ++ extraMakeArgs))
+          void $
+            GHC.setSessionDynFlags
+              dflags1
+                { GHC.ghcMode = GHC.CompManager,
+                  GHC.hscTarget = GHC.HscAsm
+                }
+          GHC.frontend
+            frontendPlugin
+            []
+            [(GHC.unLoc m, Nothing) | m <- fileish_args]

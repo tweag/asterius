@@ -50,9 +50,9 @@ export class ExceptionHelper {
         raw_layout = this.memory.i64Load(
           info + rtsConstants.offset_StgInfoTable_layout
         );
-      if (!this.infoTables.has(info))
+      if (this.infoTables && !this.infoTables.has(info))
         throw new WebAssembly.RuntimeError(
-          "raiseExceptionHelper: invalid info pointer"
+          `Invalid info table 0x${info.toString(16)}`
         );
       switch (type) {
         case ClosureTypes.UPDATE_FRAME: {

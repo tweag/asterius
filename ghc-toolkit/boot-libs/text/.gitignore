@@ -1,0 +1,10 @@
+/dist/
+/dist-boot/
+/dist-install/
+/dist-newstyle/
+/cabal-dev/
+/cabal.sandbox.config
+/ghc.mk
+/GNUmakefile
+/.ghc.environment.*
+/cabal.project.local

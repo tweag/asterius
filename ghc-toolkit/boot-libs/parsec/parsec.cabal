@@ -1,0 +1,127 @@
+cabal-version:  1.12
+name:           parsec
+version:        3.1.13.0
+
+synopsis:       Monadic parser combinators
+description:    Parsec is designed from scratch as an industrial-strength parser
+                library.  It is simple, safe, well documented (on the package
+                homepage), has extensive libraries, good error messages,
+                and is fast.  It is defined as a monad transformer that can be
+                stacked on arbitrary monads, and it is also parametric in the
+                input stream type.
+                .
+                The main entry point is the "Text.Parsec" module which provides
+                defaults for parsing 'Char'acter data.
+                .
+                The "Text.ParserCombinators.Parsec" module hierarchy contains
+                the legacy @parsec-2@ API and may be removed at some point in
+                the future.
+
+license:        BSD3
+license-file:   LICENSE
+author:         Daan Leijen <daan@microsoft.com>, Paolo Martini <paolo@nemail.it>, Antoine Latter <aslatter@gmail.com>
+maintainer:     Herbert Valerio Riedel <hvr@gnu.org>
+homepage:       https://github.com/haskell/parsec
+bug-reports:    https://github.com/haskell/parsec/issues
+category:       Parsing
+
+build-type:     Simple
+tested-with:    GHC ==8.6.1 || ==8.4.3 || ==8.2.2 || ==8.0.2 || ==7.10.3 || ==7.8.4 || ==7.6.3 || ==7.4.2 || ==7.4.1
+
+extra-source-files: ChangeLog.md, README.md
+
+source-repository head
+    type: git
+    location: https://github.com/haskell/parsec
+
+library
+    hs-source-dirs: src
+    exposed-modules:
+        Text.Parsec
+        Text.Parsec.String
+        Text.Parsec.ByteString
+        Text.Parsec.ByteString.Lazy
+        Text.Parsec.Text
+        Text.Parsec.Text.Lazy
+        Text.Parsec.Pos
+        Text.Parsec.Error
+        Text.Parsec.Prim
+        Text.Parsec.Char
+        Text.Parsec.Combinator
+        Text.Parsec.Token
+        Text.Parsec.Expr
+        Text.Parsec.Language
+        Text.Parsec.Perm
+        Text.ParserCombinators.Parsec
+        Text.ParserCombinators.Parsec.Char
+        Text.ParserCombinators.Parsec.Combinator
+        Text.ParserCombinators.Parsec.Error
+        Text.ParserCombinators.Parsec.Expr
+        Text.ParserCombinators.Parsec.Language
+        Text.ParserCombinators.Parsec.Perm
+        Text.ParserCombinators.Parsec.Pos
+        Text.ParserCombinators.Parsec.Prim
+        Text.ParserCombinators.Parsec.Token
+
+    build-depends:
+        base       >= 4.5.0   && < 4.13,
+        mtl        >= 1.1.1   && < 2.3,
+        bytestring >= 0.9.2.1 && < 0.11,
+        text       >= 0.11.3  && < 1.3
+
+    default-language: Haskell2010
+    other-extensions:
+        CPP
+        DeriveDataTypeable
+        ExistentialQuantification
+        FlexibleContexts
+        FlexibleInstances
+        FunctionalDependencies
+        MultiParamTypeClasses
+        PolymorphicComponents
+        StandaloneDeriving
+        Safe
+        Trustworthy
+        UndecidableInstances
+
+    ghc-options: -Wall
+    if impl(ghc >= 8.0)
+        ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances -Wno-trustworthy-safe
+    else
+        -- provide/emulate `Control.Monad.Fail` and `Semigroup` API for pre-GHC8
+        build-depends: fail == 4.9.*, semigroups == 0.18.*
+
+        if impl(ghc >= 7.10)
+            ghc-options: -fno-warn-trustworthy-safe
+
+test-suite parsec.
+    type: exitcode-stdio-1.0
+
+    hs-source-dirs: test
+    main-is: Main.hs
+    other-modules:
+        Bugs
+        Bugs.Bug2
+        Bugs.Bug6
+        Bugs.Bug9
+        Bugs.Bug35
+        Features
+        Features.Feature80
+        Util
+
+    build-depends:
+        base,
+        mtl,
+        parsec,
+        -- dependencies whose version bounds are not inherited via lib:parsec
+        HUnit                == 1.6.* || (>= 1.3.1.2 && < 1.4),
+        test-framework       == 0.8.*,
+        test-framework-hunit == 0.3.*
+
+    default-language: Haskell2010
+
+    ghc-options: -Wall
+    if impl(ghc >= 8.0)
+        ghc-options: -Wcompat -Wnoncanonical-monad-instances -Wnoncanonical-monadfail-instances
+    else
+        build-depends: semigroups == 0.18.*

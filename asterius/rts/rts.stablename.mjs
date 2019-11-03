@@ -10,21 +10,22 @@ export class StableNameManager {
     this.SymbolTable = symbol_table;
     Object.seal(this);
   }
-  
+
   makeStableName(ptr) {
-      const oldstable = this.ptr2stable.get(ptr);
-      if (oldstable !== undefined) return oldstable;
+    const oldstable = this.ptr2stable.get(ptr);
+    if (oldstable !== undefined) return oldstable;
 
-      const tag = this.ptr2stable.size;
+    const tag = this.ptr2stable.size;
 
-      // https://github.com/ghc/ghc/blob/fe819dd637842fb564524a7cf80612a3673ce14c/includes/rts/storage/Closures.h#L197
-      let stableptr = this.heapalloc.allocatePinned(rtsConstants.sizeof_StgStableName);
-      this.memory.i64Store(stableptr, this.SymbolTable.stg_STABLE_NAME_info);
-      this.memory.i64Store(stableptr + rtsConstants.offset_StgStableName_sn, tag);
+    // https://github.com/ghc/ghc/blob/fe819dd637842fb564524a7cf80612a3673ce14c/includes/rts/storage/Closures.h#L197
+    let stableptr = this.heapalloc.allocatePinned(
+      rtsConstants.sizeof_StgStableName
+    );
+    this.memory.i64Store(stableptr, this.SymbolTable.stg_STABLE_NAME_info);
+    this.memory.i64Store(stableptr + rtsConstants.offset_StgStableName_sn, tag);
 
-      this.ptr2stable.set(ptr, stableptr);
+    this.ptr2stable.set(ptr, stableptr);
 
-      return stableptr;
+    return stableptr;
   }
-
 }
