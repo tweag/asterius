@@ -18,15 +18,6 @@ In general, when the boot libs source or the wasm codegen logic is changed, the
 existing boot cache becomes out of date and thus must be rebuilt. Pick
 `coffee-break.sh` or `noon-break.sh` and get some rest then :)
 
-## Fetching V8 team's Node.js integration build
-
-`utils/v8-node.py` fetches the V8 team's Node.js integration build described
-[here](https://v8.dev/docs/node-integration). The script extracts to
-`$(pwd)/bin/node`, which is a Node.js v13 pre-release build with the latest V8
-revision. This is useful for testing bleeding edge V8 wasm features.
-
-Note that the V8 team's build doesn't bundle `npm`.
-
 ## Formatting IR dumps with `pretty-show`
 
 `utils/format.hs` is a script to format IR dumps with `pretty-show`. It's used
