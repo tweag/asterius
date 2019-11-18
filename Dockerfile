@@ -37,7 +37,7 @@ RUN \
     xz-utils \
     zlib1g-dev && \
   curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
-  echo "deb https://deb.nodesource.com/node_12.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
+  echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
   apt update && \
   apt install -y nodejs && \
   mkdir -p /root/.local/bin && \
