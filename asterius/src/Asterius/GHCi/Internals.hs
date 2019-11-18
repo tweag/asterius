@@ -15,6 +15,7 @@ module Asterius.GHCi.Internals
 where
 
 import Asterius.Ar
+import Asterius.BuildInfo
 import Asterius.CodeGen
 import Asterius.Internals ((!))
 import Asterius.Internals.Name
@@ -315,7 +316,7 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
   withTempDir "asdf" $ \tmp_dir -> do
     let p = tmp_dir </> "asdf"
     distNonMain p [runner_sym, run_mod_fin_sym] ahc_dist_input
-    rts_val <- importMJS s $ p `replaceFileName` "rts.mjs"
+    rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
     mod_buf <- LBS.readFile $ p -<.> "wasm"
     req_mod_val <- importMJS s $ p -<.> "req.mjs"
     req_val <- eval s $ takeJSVal req_mod_val <> ".default"
