@@ -19,7 +19,6 @@ import Asterius.Internals
 import Asterius.Internals.ByteString
 import Asterius.Internals.Temp
 import Asterius.JSFFI
-import Asterius.JSGen.Constants
 import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Resolve
@@ -341,7 +340,6 @@ ahcDistMain ::
   (String -> IO ()) -> Task -> (Asterius.Types.Module, LinkReport) -> IO ()
 ahcDistMain logger task@Task {..} (final_m, report) = do
   let out_package_json = outputDirectory </> "package.json"
-      out_rts_constants = outputDirectory </> "rts.constants.mjs"
       out_wasm = outputDirectory </> outputBaseName <.> "wasm"
       out_wasm_lib = outputDirectory </> outputBaseName <.> "wasm.mjs"
       out_req = outputDirectory </> outputBaseName <.> "req.mjs"
@@ -414,10 +412,6 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
           withBinaryFile out_wasm WriteMode $
             \h -> hPutBuilder h $ execPut $ putModule r
       )
-  logger $
-    "[INFO] Writing JavaScript runtime constants to "
-      <> show out_rts_constants
-  builderWriteFile out_rts_constants rtsConstants
   logger $
     "[INFO] Writing JavaScript runtime modules to "
       <> show outputDirectory

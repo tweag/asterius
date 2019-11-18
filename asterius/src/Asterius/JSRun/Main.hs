@@ -9,13 +9,14 @@ module Asterius.JSRun.Main
   )
 where
 
+import Asterius.BuildInfo
 import qualified Data.ByteString.Lazy as LBS
 import Language.JavaScript.Inline.Core
 import System.FilePath
 
 newAsteriusInstance :: JSSession -> FilePath -> LBS.ByteString -> IO JSVal
 newAsteriusInstance s req_path mod_buf = do
-  rts_val <- importMJS s $ req_path `replaceFileName` "rts.mjs"
+  rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
   req_mod_val <- importMJS s req_path
   req_val <- eval s $ takeJSVal req_mod_val <> ".default"
   buf_val <- alloc s mod_buf
