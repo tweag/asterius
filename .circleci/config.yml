@@ -547,8 +547,6 @@ workflows:
           requires:
             - asterius-boot
       - asterius-build-docker:
-          requires:
-            - asterius-boot
           filters:
             branches:
               only: master
