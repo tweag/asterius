@@ -33,8 +33,14 @@ parseLinkTask args = do
           str_args "--export-function="
     }
   where
-    Just (stripPrefix "--prog-name=" -> Just prog_name) =
-      find ("--prog-name=" `isPrefixOf`) args
+    prog_name
+      | Just (stripPrefix "--prog-name=" -> Just v) <-
+          find
+            ("--prog-name=" `isPrefixOf`)
+            args =
+        v
+      | otherwise =
+        ""
     link_output = args !! succ output_i
     Just output_i = elemIndex "-o" args
     link_objs = filter ((== "o.") . take 2 . reverse) args
