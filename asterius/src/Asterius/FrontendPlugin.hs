@@ -5,6 +5,7 @@ module Asterius.FrontendPlugin
   )
 where
 
+import Asterius.BuildInfo
 import Asterius.CodeGen
 import Asterius.Foreign
 import Asterius.GHCi.Internals
@@ -49,7 +50,13 @@ frontendPlugin = makeFrontendPlugin $ do
     dflags <- GHC.getSessionDynFlags
     void
       $ GHC.setSessionDynFlags
-      $ dflags {GHC.settings = (GHC.settings dflags) {GHC.sPgm_i = "false"}}
+      $ dflags
+        { GHC.settings =
+            (GHC.settings dflags)
+              { GHC.sPgm_l = (ahcLd, []),
+                GHC.sPgm_i = "false"
+              }
+        }
         `GHC.gopt_set` GHC.Opt_ExternalInterpreter
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags

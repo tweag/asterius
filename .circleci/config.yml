@@ -41,13 +41,14 @@ jobs:
             apt install -y nodejs
             mkdir -p /root/.local/bin
             curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
+            curl -L https://downloads.haskell.org/~cabal/cabal-install-latest/cabal-install-3.0.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C /root/.local/bin 'cabal'
       - checkout
 
       - run:
           name: Boot
           command: |
             git submodule update --init --recursive
-            stack --no-terminal -j2 build --test --no-run-tests
+            stack --no-terminal -j2 install --test --no-run-tests asterius
             stack --no-terminal exec ahc-boot
 
       - persist_to_workspace:
@@ -145,6 +146,55 @@ jobs:
             stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 
             stack --no-terminal test asterius:th
+
+  asterius-test-cabal:
+    docker:
+      - image: debian:unstable
+    environment:
+      - DEBIAN_FRONTEND: noninteractive
+      - LANG: C.UTF-8
+      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt update
+            apt full-upgrade -y
+            apt install -y \
+              automake \
+              cmake \
+              curl \
+              g++ \
+              git \
+              gnupg \
+              libdw-dev \
+              libffi-dev \
+              libgmp-dev \
+              libncurses-dev \
+              libnuma-dev \
+              make \
+              openssh-client \
+              python-minimal \
+              python3-minimal \
+              xz-utils \
+              zlib1g-dev
+            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
+            apt update
+            apt install -y nodejs
+      - checkout
+      - run:
+          name: Initialize submodules
+          command: |
+            git submodule update --init --recursive
+      - attach_workspace:
+          at: /root
+      - run:
+          name: Test ahc-cabal
+          command: |
+            ahc-cabal new-update
+            ahc-cabal new-install --installdir . hello
+            ahc-dist --input-exe hello --run
 
   asterius-test-ghc-testsuite:
     docker:
@@ -479,6 +529,9 @@ workflows:
     jobs:
       - asterius-boot
       - asterius-test:
+          requires:
+            - asterius-boot
+      - asterius-test-cabal:
           requires:
             - asterius-boot
       - asterius-test-ghc-testsuite:
