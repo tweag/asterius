@@ -18,7 +18,7 @@ export class MemoryTrap {
     const tag = Memory.getTag(p),
       untagged = BigInt(Memory.unTag(p)),
       mblock_no = untagged >> BigInt(Math.log2(rtsConstants.mblock_size)),
-      mblock_live = Boolean((this.memory.bitset >> mblock_no) & BigInt(1));
+      mblock_live = Boolean((this.memory.liveBitset >> mblock_no) & BigInt(1));
     if (tag != rtsConstants.dataTag || !mblock_live) {
       const err = new WebAssembly.RuntimeError(
         `Invalid address ${showI64(p)} accessed in ${this.symbolLookupTable.get(

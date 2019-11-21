@@ -11,7 +11,7 @@ export class Memory {
     this.i8View = undefined;
     this.dataView = undefined;
     this.capacity = undefined;
-    this.bitset = undefined;
+    this.liveBitset = undefined;
     Object.seal(this);
   }
 
@@ -20,7 +20,7 @@ export class Memory {
     this.staticMBlocks = static_mblocks;
     this.initView();
     this.capacity = this.buffer.byteLength / rtsConstants.mblock_size;
-    this.bitset = mask(this.capacity);
+    this.liveBitset = mask(this.capacity);
   }
 
   initView() {
@@ -179,8 +179,8 @@ export class Memory {
     const m = mask(n);
     for (let i = BigInt(0); i <= BigInt(this.capacity - n); ++i) {
       const mi = m << i;
-      if (!(this.bitset & mi)) {
-        this.bitset |= mi;
+      if (!(this.liveBitset & mi)) {
+        this.liveBitset |= mi;
         return Memory.tagData(Number(i) * rtsConstants.mblock_size);
       }
     }
@@ -188,14 +188,14 @@ export class Memory {
       prev_capacity = this.capacity;
     this.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
     this.capacity += d;
-    this.bitset |= m << BigInt(prev_capacity);
+    this.liveBitset |= m << BigInt(prev_capacity);
     return Memory.tagData(prev_capacity * rtsConstants.mblock_size);
   }
 
   freeMBlocks(p, n) {
     const mblock_no =
       BigInt(Memory.unTag(p)) >> BigInt(Math.log2(rtsConstants.mblock_size));
-    this.bitset &= ~(mask(n) << mblock_no);
+    this.liveBitset &= ~(mask(n) << mblock_no);
   }
 
   strlen(_str) {
