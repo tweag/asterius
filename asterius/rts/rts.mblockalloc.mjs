@@ -36,7 +36,7 @@ export class MBlockAlloc {
     return Memory.tagData(prev_capacity * rtsConstants.mblock_size);
   }
 
-  free(p, n) {
+  freeMBlocks(p, n) {
     const mblock_no =
       BigInt(Memory.unTag(p)) >> BigInt(Math.log2(rtsConstants.mblock_size));
     this.bitset &= ~(mask(n) << mblock_no);

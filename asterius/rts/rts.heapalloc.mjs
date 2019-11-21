@@ -114,14 +114,14 @@ export class HeapAlloc {
       this.mgroups.delete(bd);
       const p = bd - rtsConstants.offset_first_bdescr,
         n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
-      this.mblockAlloc.free(p, n);
+      this.mblockAlloc.freeMBlocks(p, n);
     }
     for (const bd of Array.from(this.mgroups)) {
       if (!live_mblocks.has(bd)) {
         this.mgroups.delete(bd);
         const p = bd - rtsConstants.offset_first_bdescr,
           n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
-        this.mblockAlloc.free(p, n);
+        this.mblockAlloc.freeMBlocks(p, n);
       }
     }
     if (!this.mgroups.has(this.currentPools[0])) {
