@@ -6,12 +6,11 @@ function showI64(x) {
 }
 
 export class MemoryTrap {
-  constructor(logger, syms, memory, mblock_alloc) {
+  constructor(logger, syms, memory) {
     this.logger = logger;
     this.symbolLookupTable = new Map();
     for (const [k, v] of Object.entries(syms)) this.symbolLookupTable.set(v, k);
     this.memory = memory;
-    this.mblockAlloc = mblock_alloc;
     Object.freeze(this);
   }
 
@@ -19,7 +18,7 @@ export class MemoryTrap {
     const tag = Memory.getTag(p),
       untagged = BigInt(Memory.unTag(p)),
       mblock_no = untagged >> BigInt(Math.log2(rtsConstants.mblock_size)),
-      mblock_live = Boolean((this.mblockAlloc.bitset >> mblock_no) & BigInt(1));
+      mblock_live = Boolean((this.memory.bitset >> mblock_no) & BigInt(1));
     if (tag != rtsConstants.dataTag || !mblock_live) {
       const err = new WebAssembly.RuntimeError(
         `Invalid address ${showI64(p)} accessed in ${this.symbolLookupTable.get(

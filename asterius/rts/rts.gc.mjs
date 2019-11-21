@@ -15,7 +15,6 @@ function bdescr(c) {
 export class GC {
   constructor(
     memory,
-    mblockalloc,
     heapalloc,
     stableptr_manager,
     stablename_manager,
@@ -27,7 +26,6 @@ export class GC {
     yolo
   ) {
     this.memory = memory;
-    this.mblockAlloc = mblockalloc;
     this.heapAlloc = heapalloc;
     this.stablePtrManager = stableptr_manager;
     this.stableNameManager = stablename_manager;

@@ -1,9 +1,8 @@
 import * as rtsConstants from "./rts.constants.mjs";
 
 export class HeapAlloc {
-  constructor(memory, mblockalloc) {
+  constructor(memory) {
     this.memory = memory;
-    this.mblockAlloc = mblockalloc;
     this.currentPools = [undefined, undefined];
     this.mgroups = new Set();
     Object.freeze(this);
@@ -85,7 +84,7 @@ export class HeapAlloc {
     const req_blocks =
         (rtsConstants.mblock_size * n - rtsConstants.offset_first_block) /
         rtsConstants.block_size,
-      mblock = this.mblockAlloc.getMBlocks(n),
+      mblock = this.memory.getMBlocks(n),
       bd = mblock + rtsConstants.offset_first_bdescr,
       block_addr = mblock + rtsConstants.offset_first_block;
     this.memory.i64Store(bd + rtsConstants.offset_bdescr_start, block_addr);
@@ -114,14 +113,14 @@ export class HeapAlloc {
       this.mgroups.delete(bd);
       const p = bd - rtsConstants.offset_first_bdescr,
         n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
-      this.mblockAlloc.freeMBlocks(p, n);
+      this.memory.freeMBlocks(p, n);
     }
     for (const bd of Array.from(this.mgroups)) {
       if (!live_mblocks.has(bd)) {
         this.mgroups.delete(bd);
         const p = bd - rtsConstants.offset_first_bdescr,
           n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
-        this.mblockAlloc.freeMBlocks(p, n);
+        this.memory.freeMBlocks(p, n);
       }
     }
     if (!this.mgroups.has(this.currentPools[0])) {

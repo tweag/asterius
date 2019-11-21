@@ -8,7 +8,6 @@ import { EventLogManager } from "./rts.eventlog.mjs";
 import { Tracer } from "./rts.tracing.mjs";
 import { Memory } from "./rts.memory.mjs";
 import { MemoryTrap } from "./rts.memorytrap.mjs";
-import { MBlockAlloc } from "./rts.mblockalloc.mjs";
 import { HeapAlloc } from "./rts.heapalloc.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
 import { StableNameManager } from "./rts.stablename.mjs";
@@ -45,16 +44,13 @@ export async function newAsteriusInstance(req) {
       initial: req.staticMBlocks * (rtsConstants.mblock_size / 65536)
     }),
     __asterius_memory = new Memory(),
-    __asterius_mblockalloc = new MBlockAlloc(),
     __asterius_memory_trap = new MemoryTrap(
       __asterius_logger,
       req.symbolTable,
-      __asterius_memory,
-      __asterius_mblockalloc
+      __asterius_memory
     ),
     __asterius_heapalloc = new HeapAlloc(
-      __asterius_memory,
-      __asterius_mblockalloc
+      __asterius_memory
     ),
     __asterius_stableptr_manager = new StablePtrManager(),
     __asterius_stablename_manager = new StableNameManager(
@@ -81,7 +77,6 @@ export async function newAsteriusInstance(req) {
     __asterius_text_cbits = new TextCBits(__asterius_memory),
     __asterius_gc = new GC(
       __asterius_memory,
-      __asterius_mblockalloc,
       __asterius_heapalloc,
       __asterius_stableptr_manager,
       __asterius_stablename_manager,
@@ -243,7 +238,6 @@ export async function newAsteriusInstance(req) {
       HeapAlloc: modulify(__asterius_heapalloc),
       HeapBuilder: modulify(__asterius_heap_builder),
       Integer: modulify(__asterius_integer_manager),
-      MBlockAlloc: modulify(__asterius_mblockalloc),
       Memory: modulify(__asterius_memory),
       MemoryTrap: modulify(__asterius_memory_trap),
       Messages: modulify(__asterius_messages),
@@ -259,7 +253,6 @@ export async function newAsteriusInstance(req) {
   return WebAssembly.instantiate(req.module, importObject).then(i => {
     __asterius_wasm_instance = i;
     __asterius_memory.init(__asterius_wasm_memory, req.staticMBlocks);
-    __asterius_mblockalloc.init(__asterius_memory);
     __asterius_heapalloc.init();
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
