@@ -39,6 +39,7 @@ import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath
+import System.Info
 import System.IO hiding (IO)
 import System.Process
 import Prelude hiding (IO)
@@ -142,7 +143,7 @@ bootRTSCmm BootArgs {..} =
         hClose rsp_h
         callProcess
           "ar"
-          ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
+          ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a", (if os == "darwin" then id else ('@' :)) rsp_path]
         removeFile rsp_path
   where
     rts_path = bootLibsPath </> "rts"
