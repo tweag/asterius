@@ -1,5 +1,6 @@
 import Asterius.BuildInfo
 import Control.Monad
+import Data.Foldable
 import Data.List
 import Distribution.Simple.Utils
 import Distribution.Verbosity
@@ -12,6 +13,9 @@ main :: IO ()
 main = do
   args0 <- getArgs
   env <- getEnvironment
+  traverse_ unsetEnv
+    $ filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k)
+    $ map fst env
   unsetEnv "CABAL_CONFIG"
   (args1, old_cabal_config_path) <-
     case findIndex ("--config-file" `isPrefixOf`) args0 of

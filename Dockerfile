@@ -57,6 +57,7 @@ RUN \
   apt autoremove --purge -y && \
   apt clean && \
   rm -rf \
+    /root/.cabal \
     /root/.stack/programs/x86_64-linux/*.tar.xz \
     /var/lib/apt/lists/* \
     /tmp/* && \
