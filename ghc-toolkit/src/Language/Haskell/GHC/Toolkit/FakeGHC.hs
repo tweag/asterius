@@ -8,12 +8,14 @@ module Language.Haskell.GHC.Toolkit.FakeGHC
 where
 
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Foldable
 import Data.List
 import qualified DynFlags as GHC
 import qualified GHC
 import qualified Plugins as GHC
 import System.Environment.Blank
+import System.FilePath
 import System.Process
 
 data FakeGHCOptions
@@ -45,13 +47,34 @@ fakeGHCMain FakeGHCOptions {..} = do
             GHC.parseDynamicFlags
               dflags0
               (map GHC.noLoc args2)
-          void $
-            GHC.setSessionDynFlags
-              dflags1
-                { GHC.ghcMode = GHC.CompManager,
-                  GHC.hscTarget = GHC.HscAsm
-                }
-          GHC.frontend
-            frontendPlugin
-            []
-            [(GHC.unLoc m, Nothing) | m <- fileish_args]
+          -- If the output seems to be a Cabal setup executable, we just call
+          -- the host GHC to compile it, using only the host GHC's own global
+          -- pkgdb. This is an ugly workaround to support Cabal packages with
+          -- custom Setup.hs scripts, see #342 and related PR for details.
+          case GHC.outputFile dflags1 of
+            Just p
+              | seemsToBeCabalSetup p ->
+                liftIO
+                  $ callProcess ghc
+                  $ ["--make", "-o", p, "-threaded"]
+                    <> map GHC.unLoc fileish_args
+            _ -> do
+              void $
+                GHC.setSessionDynFlags
+                  dflags1
+                    { GHC.ghcMode = GHC.CompManager,
+                      GHC.hscTarget = GHC.HscAsm
+                    }
+              GHC.frontend
+                frontendPlugin
+                []
+                [(GHC.unLoc m, Nothing) | m <- fileish_args]
+
+-- | Uses a heuristic to determine if a GHC output path looks like the Cabal
+-- setup file: if the path matches "**/dist/setup/setup*", then we consider the
+-- output to be the Cabal setup executable being compiled by cabal-install at
+-- the moment. False positives are possible but unlikely.
+seemsToBeCabalSetup :: FilePath -> Bool
+seemsToBeCabalSetup p = case reverse $ splitDirectories p of
+  (('s' : 'e' : 't' : 'u' : 'p' : _) : "setup" : "dist" : _) -> True
+  _ -> False
