@@ -47,6 +47,10 @@ fakeGHCMain FakeGHCOptions {..} = do
             GHC.parseDynamicFlags
               dflags0
               (map GHC.noLoc args2)
+          -- If the output seems to be a Cabal setup executable, we just call
+          -- the host GHC to compile it, using only the host GHC's own global
+          -- pkgdb. This is an ugly workaround to support Cabal packages with
+          -- custom Setup.hs scripts, see #342 and related PR for details.
           case GHC.outputFile dflags1 of
             Just p
               | seemsToBeCabalSetup p ->
@@ -66,6 +70,10 @@ fakeGHCMain FakeGHCOptions {..} = do
                 []
                 [(GHC.unLoc m, Nothing) | m <- fileish_args]
 
+-- | Uses a heuristic to determine if a GHC output path looks like the Cabal
+-- setup file: if the path matches "**/dist/setup/setup*", then we consider the
+-- output to be the Cabal setup executable being compiled by cabal-install at
+-- the moment. False positives are possible but unlikely.
 seemsToBeCabalSetup :: FilePath -> Bool
 seemsToBeCabalSetup p = case reverse $ splitDirectories p of
   (('s' : 'e' : 't' : 'u' : 'p' : _) : "setup" : "dist" : _) -> True
