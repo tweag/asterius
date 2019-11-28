@@ -477,6 +477,8 @@ jobs:
             docker login -u terrorjack -p $DOCKER_PASS
             docker build -t terrorjack/asterius:$ASTERIUS_REV -t terrorjack/asterius:master -t terrorjack/asterius:latest .
             docker push terrorjack/asterius:$ASTERIUS_REV
+            docker push terrorjack/asterius:master
+            docker push terrorjack/asterius:latest
 
   asterius-build-docs:
     docker:
@@ -545,5 +547,8 @@ workflows:
       - asterius-test-ghc-testsuite-debug-yolo:
           requires:
             - asterius-boot
-      - asterius-build-docker
+      - asterius-build-docker:
+          filters:
+            branches:
+              only: master
       - asterius-build-docs
