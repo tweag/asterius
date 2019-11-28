@@ -28,6 +28,7 @@ import MkId
 import OrdList
 import Outputable
 import Pair
+import Panic
 import Platform
 import PrelNames
 import RepType
@@ -88,7 +89,9 @@ asteriusDsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
   asteriusDsPrimCall id co (CCall (CCallSpec target cconv safety))
 asteriusDsCImport id co (CFunction target) cconv safety _ =
   asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
-asteriusDsCImport _ _ _ _ _ _ = panic "asteriusDsCImport"
+asteriusDsCImport id co _ cconv safety mHeader =
+  panicDoc "asteriusDsCImport" $
+    vcat [ppr id, ppr co, ppr cconv, ppr safety, ppr mHeader]
 
 funTypeArgStdcallInfo :: DynFlags -> CCallConv -> Type -> Maybe Int
 funTypeArgStdcallInfo dflags StdCallConv ty
@@ -269,7 +272,9 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
           addErrTc (text "`value' imports cannot have function types")
       _ -> return ()
     return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
-asteriusTcCheckFIType _ _ _ = panic "asteriusTcCheckFIType"
+asteriusTcCheckFIType arg_tys res_ty imp_decl =
+  panicDoc "asteriusTcCheckFIType" $
+    vcat [ppr arg_tys, ppr res_ty, ppr imp_decl]
 
 checkMissingAmpersand :: DynFlags -> [Type] -> Type -> TcM ()
 checkMissingAmpersand dflags arg_tys res_ty

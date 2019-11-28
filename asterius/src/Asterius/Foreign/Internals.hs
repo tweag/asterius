@@ -73,11 +73,75 @@ ffiBoxedValueTypeMap0 =
             signed = True
           }
       ),
+      ( GHC.int8TyConName,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "Int8",
+            signed = True
+          }
+      ),
+      ( GHC.int16TyConName,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "Int16",
+            signed = True
+          }
+      ),
+      ( GHC.int32TyConName,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "Int32",
+            signed = True
+          }
+      ),
+      ( GHC.int64TyConName,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "Int64",
+            signed = True
+          }
+      ),
       ( GHC.wordTyConName,
         FFI_VAL
           { ffiWasmValueType = I64,
             ffiJSValueType = F64,
             hsTyCon = "Word",
+            signed = False
+          }
+      ),
+      ( GHC.word8TyConName,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "Word8",
+            signed = False
+          }
+      ),
+      ( GHC.word16TyConName,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "Word16",
+            signed = False
+          }
+      ),
+      ( GHC.word32TyConName,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "Word32",
+            signed = False
+          }
+      ),
+      ( GHC.word64TyConName,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "Word64",
             signed = False
           }
       ),
