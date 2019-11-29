@@ -7,7 +7,7 @@ COPY inline-js/inline-js-core /root/asterius/inline-js/inline-js-core
 COPY npm-utils /root/asterius/npm-utils
 COPY wabt /root/asterius/wabt
 COPY wasm-toolkit /root/asterius/wasm-toolkit
-COPY lts-14.16.sh /root/asterius/lts-14.16.sh
+COPY lts.sh /root/asterius/lts.sh
 COPY stack.yaml /root/asterius/stack.yaml
 ENV \
   DEBIAN_FRONTEND=noninteractive \
@@ -48,7 +48,8 @@ RUN \
   stack --no-terminal exec ahc-boot && \
   export ASTERIUS_LIB_DIR=$(stack path --local-install-root)/share/x86_64-linux-ghc-8.6.5/asterius-0.0.1/.boot/asterius_lib && \
   cp ghc-toolkit/boot-libs/cabal.config . && \
-  stack --no-terminal exec ./lts-14.16.sh && \
+  stack --no-terminal exec ./lts.sh && \
+  rm cabal.config && \
   apt purge -y \
     automake \
     cmake \
