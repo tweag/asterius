@@ -146,11 +146,9 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   app-settings \
   appar \
   appendmap \
-  # apply-refact \
   apportionment \
   approximate \
   arbor-lru-cache \
-  arithmoi \
   array-memoize \
   arrow-extras \
   ascii-progress \
@@ -164,8 +162,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   astro \
   async \
   async-extra \
-  async-refresh \
-  async-refresh-tokens \
   async-timer \
   atom-basic \
   atomic-primops \
@@ -222,7 +218,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   bench-show \
   benchpress \
   bencode \
-  bencoding \
   between \
   bibtex \
   bifunctors \
@@ -243,7 +238,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   bindings-GLFW \
   bindings-libzip \
   bindings-uname \
-  bins \
   bitarray \
   bitcoin-block \
   bitcoin-script \
@@ -282,7 +276,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   bower-json \
   boxes \
   brick \
-  brittany \
   bsb-http-chunked \
   bson \
   bson-lens \
@@ -290,11 +283,9 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   buffer-builder \
   buffer-pipe \
   bugsnag-haskell \
-  bulletproofs \
   butcher \
   butter \
   bv \
-  bv-little \
   byteable \
   bytedump \
   byteorder \
@@ -394,7 +385,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   colorful-monoids \
   colorize-haskell \
   colour \
-  columnar \
   combinatorial \
   comfort-array \
   comfort-graph \
@@ -500,7 +490,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   currency \
   cusparse \
   cutter \
-  cyclotomic \
   czipwith \
   data-accessor \
   data-accessor-mtl \
@@ -591,8 +580,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   dockerfile \
   docopt \
   doctemplates \
-  doctest \
-  doctest-discover \
   doctest-driver-gen \
   doldol \
   dom-parser \
@@ -632,17 +619,13 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   eliminators \
   elm-bridge \
   elm-core-sources \
-  elm-export \
   elm-street \
   elm2nix \
   emacs-module \
   email-validate \
-  emd \
   enclosed-exceptions \
   entropy \
   enum-subset-generate \
-  enum-text \
-  enum-text-rio \
   enummapset \
   enumset \
   envelope \
@@ -687,7 +670,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   fakedata \
   farmhash \
   fast-builder \
-  fast-digits \
   fast-logger \
   fast-math \
   fb \
@@ -697,7 +679,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   feed \
   fft \
   fgl \
-  fib \
   file-embed \
   file-embed-lzma \
   file-modules \
@@ -721,14 +702,11 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   flac \
   flac-picture \
   flags-applicative \
-  flat-mcmc \
   flay \
   flexible-defaults \
   floatshow \
   flow \
   fmlist \
-  fmt \
-  fmt-for-rio \
   fn \
   focus \
   focuslist \
@@ -743,7 +721,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   forkable-monad \
   forma \
   format-numbers \
-  formatting \
   foundation \
   free \
   free-vl \
@@ -764,7 +741,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   fuzzcheck \
   fuzzy-dates \
   fuzzyset \
-  galois-field \
   gauge \
   gc \
   gd \
@@ -802,17 +778,10 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   getopt-generics \
   ghc-compact \
   ghc-core \
-  ghc-exactprint \
   ghc-lib \
   ghc-lib-parser \
-  ghc-parser \
   ghc-paths \
   ghc-prof \
-  ghc-syntax-highlighter \
-  ghc-tcplugins-extra \
-  ghc-typelits-extra \
-  ghc-typelits-knownnat \
-  ghc-typelits-natnormalise \
   ghci-hexcalc \
   ghcid \
   ghcjs-codemirror \
@@ -878,9 +847,7 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   haddock-library \
   hadolint \
   half \
-  hamilton \
   hamtsolo \
-  hapistrano \
   happy \
   hasbolt \
   hashable \
@@ -902,7 +869,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   haskell-src-exts-util \
   haskell-src-meta \
   haskey-btree \
-  haskintex \
   haskoin-core \
   hasql \
   hasql-optparse-applicative \
@@ -937,7 +903,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   highlighting-kate \
   hinfo \
   hinotify \
-  hint \
   hjsmin \
   hkgr \
   hledger \
@@ -950,7 +915,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   hlibsass \
   hlint \
   hmatrix \
-  hmatrix-backprop \
   hmatrix-gsl \
   hmatrix-gsl-stats \
   hmatrix-morpheus \
@@ -985,7 +949,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   hschema-prettyprinter \
   hschema-quickcheck \
   hscolour \
-  hsdev \
   hsdns \
   hsebaysdk \
   hsemail \
@@ -1092,7 +1055,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   ieee754 \
   if \
   iff \
-  ihaskell \
   ihs \
   ilist \
   imagesize-conduit \
@@ -1114,7 +1076,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   inline-r \
   inliterate \
   insert-ordered-containers \
-  inspection-testing \
   instance-control \
   int-cast \
   integer-logarithms \
@@ -1202,7 +1163,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   language-java \
   language-javascript \
   language-nix \
-  language-puppet \
   lapack \
   lapack-carray \
   lapack-comfort-array \
@@ -1270,7 +1230,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   logging-facade-syslog \
   logict \
   loop \
-  loopbreaker \
   lrucache \
   lrucaching \
   lsp-test \
@@ -1300,13 +1259,11 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   matrices \
   matrix \
   matrix-market-attoparsec \
-  matrix-static \
   maximal-cliques \
   mbox \
   mbtiles \
   mcmc-types \
   median-stream \
-  mega-sdist \
   megaparsec \
   megaparsec-tests \
   memory \
@@ -1345,14 +1302,11 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   mltool \
   mmap \
   mmark \
-  mmark-cli \
-  mmark-ext \
   mmorph \
   mmtf \
   mnist-idx \
   mockery \
   modern-uri \
-  modular \
   monad-control \
   monad-control-aligned \
   monad-coroutine \
@@ -1387,7 +1341,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   monoidal-containers \
   more-containers \
   mountpoints \
-  mpi-hs \
   msgpack \
   msgpack-aeson \
   mtl \
@@ -1473,7 +1426,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   nvvm \
   oauthenticated \
   oblivious-transfer \
-  odbc \
   oeis \
   oeis2 \
   ofx \
@@ -1495,7 +1447,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   optional-args \
   options \
   optparse-applicative \
-  optparse-enum \
   optparse-generic \
   optparse-simple \
   optparse-text \
@@ -1505,7 +1456,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   packcheck \
   pager \
   pagination \
-  pairing \
   palette \
   pandoc \
   pandoc-citeproc \
@@ -1513,7 +1463,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   pandoc-markdown-ghci-filter \
   pandoc-pyplot \
   pandoc-types \
-  pantry \
   parallel \
   parallel-io \
   paripari \
@@ -1600,13 +1549,10 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   pointedlist \
   pointless-fun \
   poll \
-  poly \
   poly-arity \
   polynomials-bernstein \
   polyparse \
   polysemy \
-  polysemy-plugin \
-  polysemy-zoo \
   pooled-io \
   port-utils \
   posix-paths \
@@ -1684,11 +1630,9 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   qnap-decrypt \
   qrcode-core \
   qrcode-juicypixels \
-  quadratic-irrational \
   quickbench \
   quickcheck-arbitrary-adt \
   quickcheck-assertions \
-  quickcheck-classes \
   quickcheck-instances \
   quickcheck-io \
   quickcheck-simple \
@@ -1729,7 +1673,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   reanimate \
   reanimate-svg \
   rebase \
-  record-dot-preprocessor \
   record-hasfield \
   records-sop \
   recursion-schemes \
@@ -1778,7 +1721,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   rev-state \
   rfc1751 \
   rfc5051 \
-  rg \
   rhine \
   rhine-gloss \
   rigel-viz \
@@ -1815,7 +1757,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   sandman \
   say \
   sbp \
-  sbv \
   scalpel \
   scalpel-core \
   scanf \
@@ -1841,7 +1782,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   semigroupoids \
   semigroups \
   semiring-simple \
-  semirings \
   semver \
   sendfile \
   seqalign \
@@ -1868,7 +1808,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   servant-foreign \
   servant-http-streams \
   servant-js \
-  servant-kotlin \
   servant-lucid \
   servant-machines \
   servant-mock \
@@ -1969,7 +1908,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   sqlite-simple-errors \
   srcloc \
   stache \
-  stack \
   starter \
   state-codes \
   stateref \
@@ -1988,7 +1926,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   storable-record \
   storable-tuple \
   storablevector \
-  store \
   store-core \
   stratosphere \
   streaming \
@@ -2096,7 +2033,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   text-binary \
   text-builder \
   text-conversions \
-  text-format \
   text-icu \
   text-latin1 \
   text-ldap \
@@ -2106,8 +2042,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   text-printer \
   text-region \
   text-short \
-  text-show \
-  text-show-instances \
   text-zipper \
   textlocal \
   tf-random \
@@ -2401,7 +2335,6 @@ ahc-cabal v1-install --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB
   xmlgen \
   xmonad \
   xmonad-contrib \
-  xmonad-extras \
   xss-sanitize \
   xxhash-ffi \
   yaml \
