@@ -4,6 +4,7 @@ rm -rf ~/.cabal
 
 ahc-cabal v1-update
 
+ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global Cabal
 ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
   backprop \
   cassava-megaparsec \
@@ -18,7 +19,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   genvalidity-aeson \
   graphite \
   groundhog-th \
-  JuicyPixels-extra \
   microlens-platform \
   persistent \
   relational-query \
