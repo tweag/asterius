@@ -324,7 +324,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   cprng-aes \
   cpu \
   cpuinfo \
-  cql \
   crackNum \
   criterion \
   criterion-measurement \
@@ -374,7 +373,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   data-default-instances-dlist \
   data-default-instances-old-locale \
   data-diverse \
-  data-dword \
   data-endian \
   data-fix \
   data-has \
@@ -517,8 +515,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   fitspec \
   fixed \
   fixed-length \
-  fixed-vector \
-  fixed-vector-hetero \
   flags-applicative \
   flay \
   flexible-defaults \
@@ -595,7 +591,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   ginger \
   githash \
   github-types \
-  github-webhooks \
   gitrev \
   gnuplot \
   google-isbn \
@@ -653,7 +648,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   hostname \
   hostname-validate \
   hourglass \
-  hourglass-orphans \
   hpc \
   hquantlib-time \
   hreader \
@@ -724,7 +718,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   hw-rankselect-base \
   hw-streams \
   hw-string-parse \
-  hweblib \
   hxt \
   hxt-charproperties \
   hxt-css \
@@ -750,7 +743,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   indexed-list-literals \
   infer-license \
   inflections \
-  ini \
   inj \
   inline-c \
   inline-c-cpp \
@@ -808,7 +800,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   koofr-client \
   kraken \
   l10n \
-  labels \
   language-ecmascript \
   language-haskell-extract \
   largeword \
@@ -834,7 +825,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   linux-file-extents \
   linux-namespaces \
   listsafe \
-  llvm-hs-pure \
   load-env \
   loc \
   locators \
@@ -897,7 +887,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   mime-mail-ses \
   mime-types \
   minimorph \
-  minio-hs \
   miniutter \
   mintty \
   missing-foreign \
@@ -976,7 +965,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   network-conduit-tls \
   network-house \
   network-info \
-  network-ip \
   network-multicast \
   network-simple \
   network-simple-tls \
@@ -1004,7 +992,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   oauthenticated \
   oblivious-transfer \
   oeis \
-  ofx \
   old-locale \
   old-time \
   once \
@@ -1066,7 +1053,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   persistent-iproute \
   persistent-template \
   persistent-typed-db \
-  pg-harness-client \
   pgp-wordlist \
   phantom-state \
   pid1 \
@@ -1090,13 +1076,11 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   poll \
   poly-arity \
   polyparse \
-  polysemy \
   pooled-io \
   port-utils \
   posix-paths \
   possibly \
   post-mess-age \
-  postgresql-binary \
   pptable \
   pqueue \
   prefix-units \
@@ -1129,8 +1113,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   prompt \
   protobuf \
   protobuf-simple \
-  protocol-buffers \
-  protocol-buffers-descriptor \
   protocol-radius \
   protocol-radius-test \
   protolude \
@@ -1313,7 +1295,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   spreadsheet \
   sql-words \
   srcloc \
-  stache \
   starter \
   state-codes \
   stateref \
@@ -1482,7 +1463,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   transformers-bifunctors \
   transformers-compat \
   transformers-fix \
-  traverse-with-class \
   tree-diff \
   tree-fun \
   triplesec \
@@ -1501,7 +1481,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   type-hint \
   type-level-integers \
   type-level-kv-list \
-  type-level-numbers \
   type-map \
   type-of-html \
   type-of-html-static \
@@ -1527,7 +1506,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   unification-fd \
   union-find \
   uniplate \
-  uniprot-kb \
   unique \
   unique-logic \
   unique-logic-tf \
