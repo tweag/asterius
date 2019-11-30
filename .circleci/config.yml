@@ -470,7 +470,7 @@ jobs:
       - checkout
       - run:
           name: Make Docker image
-          no_output_timeout: 1h
+          no_output_timeout: 5h
           command: |
             git submodule update --init --recursive
             export ASTERIUS_REV=$(git rev-parse --short HEAD)
