@@ -136,7 +136,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   base32string \
   base58string \
   base64-bytestring \
-  base64-bytestring-type \
   base64-string \
   basement \
   basic-prelude \
@@ -160,7 +159,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   binary-parsers \
   binary-search \
   binary-shared \
-  binary-tagged \
   bindings-DSL \
   bindings-uname \
   bitarray \
@@ -220,8 +218,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   cast \
   caster \
   category \
-  cborg \
-  cborg-json \
   cereal \
   cereal-conduit \
   cereal-text \
@@ -460,7 +456,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   enumset \
   envelope \
   envy \
-  epub-metadata \
   erf \
   error-util \
   errors \
@@ -494,7 +489,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   fast-logger \
   fast-math \
   fb \
-  fclabels \
   feature-flags \
   fedora-dists \
   feed \
@@ -557,7 +551,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   generic-random \
   generics-eot \
   generics-mrsop \
-  generics-sop \
   genvalidity \
   genvalidity-aeson \
   genvalidity-bytestring \
@@ -576,7 +569,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   genvalidity-unordered-containers \
   genvalidity-uuid \
   genvalidity-vector \
-  getopt-generics \
   ghc-boot \
   ghc-boot-th \
   ghc-compact \
@@ -588,7 +580,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   ghcid \
   ghcjs-codemirror \
   ghost-buster \
-  ginger \
   githash \
   github-types \
   gitrev \
@@ -597,9 +588,7 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   gpolyline \
   graph-core \
   graph-wrapper \
-  graphite \
   graphs \
-  graphviz \
   gravatar \
   graylog \
   greskell \
@@ -867,7 +856,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   megaparsec \
   megaparsec-tests \
   memory \
-  menshen \
   merkle-tree \
   mersenne-random-pure64 \
   messagepack \
@@ -1070,7 +1058,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   pkcs10 \
   placeholders \
   planb-token-introspection \
-  plotlyhs \
   pointedlist \
   pointless-fun \
   poll \
@@ -1140,7 +1127,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   rando \
   random \
   random-shuffle \
-  random-source \
   range-set-list \
   rank1dynamic \
   ratel \
@@ -1155,19 +1141,14 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   read-env-var \
   readable \
   record-hasfield \
-  records-sop \
   refact \
   reflection \
   regex-applicative \
   regex-applicative-text \
   regex-base \
   regex-compat \
-  regex-compat-tdfa \
   regex-pcre-builtin \
-  regex-pcre-text \
   regex-posix \
-  regex-tdfa \
-  regex-tdfa-text \
   reinterpret-cast \
   relapse \
   relational-query \
@@ -1199,7 +1180,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   rosezipper \
   rot13 \
   runmemo \
-  rvar \
   s3-signer \
   safe \
   safe-exceptions \
@@ -1215,8 +1195,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   sample-frame \
   sample-frame-np \
   say \
-  scalpel \
-  scalpel-core \
   scanf \
   scanner \
   scheduler \
@@ -1233,7 +1211,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   sendfile \
   seqalign \
   serf \
-  serialise \
   servant-auth \
   serversession \
   serversession-frontend-wai \
@@ -1242,7 +1219,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   setlocale \
   sexpr-parser \
   shake \
-  shake-language-c \
   shakespeare \
   shared-memory \
   shell-escape \
@@ -1280,7 +1256,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   soap-tls \
   socket-activation \
   socks \
-  sop-core \
   sort \
   sorted-list \
   sourcemap \
@@ -1374,7 +1349,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   tasty-leancheck \
   tasty-program \
   tasty-quickcheck \
-  tasty-silver \
   tasty-smallcheck \
   tce-conf \
   tcp-streams \
@@ -1472,7 +1446,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   ttl-hashtables \
   ttrie \
   tuple \
-  tuple-sop \
   tuple-th \
   tuples-homogenous-h98 \
   type-errors \
@@ -1597,7 +1570,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   weeder \
   weigh \
   wide-word \
-  wikicfp-scraper \
   wild-bind \
   winery \
   wire-streams \
@@ -1624,7 +1596,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   xeno \
   xenstore \
   xhtml \
-  xls \
   xml \
   xml-basic \
   xml-conduit \
