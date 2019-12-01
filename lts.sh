@@ -21,8 +21,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   GenericPretty \
   Glob \
   HCodecs \
-  HDBC \
-  HDBC-session \
   HSet \
   HSlippyMap \
   HStringTemplate \
@@ -122,7 +120,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   authenticate-oauth \
   auto-update \
   autoexporter \
-  aws-lambda-haskell-runtime \
   backprop \
   bank-holidays-england \
   base \
@@ -147,7 +144,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   between \
   bibtex \
   bimap \
-  bimap-server \
   binary \
   binary-bits \
   binary-conduit \
@@ -441,10 +437,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   edit-distance-vector \
   editor-open \
   either-both \
-  ekg \
-  ekg-core \
-  ekg-json \
-  ekg-statsd \
   elerea \
   elf \
   elm-bridge \
@@ -515,7 +507,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   floatshow \
   flow \
   fmlist \
-  fn \
   focus \
   fold-debounce \
   fold-debounce-conduit \
@@ -591,9 +582,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   graphs \
   gravatar \
   graylog \
-  greskell \
-  greskell-core \
-  greskell-websocket \
   groundhog \
   groundhog-th \
   groups \
@@ -626,12 +614,10 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   hexml \
   hexstring \
   hformat \
-  hi-file-parser \
   hidden-char \
   highlighting-kate \
   hinfo \
   hinotify \
-  hoauth2 \
   hopfli \
   hosc \
   hostname \
@@ -666,7 +652,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   hspec-meta \
   hspec-need-env \
   hspec-smallcheck \
-  hspec-wai \
   hstatsd \
   hsyslog \
   html \
@@ -685,28 +670,12 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   http-download \
   http-link-header \
   http-media \
-  http-reverse-proxy \
   http-types \
   http2 \
   httpd-shed \
   human-readable-duration \
   hvect \
   hvega \
-  hw-balancedparens \
-  hw-bits \
-  hw-conduit \
-  hw-conduit-merges \
-  hw-diagnostics \
-  hw-excess \
-  hw-fingertree \
-  hw-fingertree-strict \
-  hw-int \
-  hw-packed-vector \
-  hw-parser \
-  hw-prim \
-  hw-rankselect-base \
-  hw-streams \
-  hw-string-parse \
   hxt \
   hxt-charproperties \
   hxt-css \
@@ -773,7 +742,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   json-rpc \
   json-rpc-client \
   json-rpc-generic \
-  json-rpc-server \
   jsonpath \
   justified-containers \
   jwt \
@@ -845,7 +813,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   massiv-test \
   math-functions \
   mathexpr \
-  matplotlib \
   matrices \
   matrix \
   matrix-market-attoparsec \
@@ -894,7 +861,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   monad-logger-syslog \
   monad-loops \
   monad-memo \
-  monad-metrics \
   monad-par \
   monad-par-extras \
   monad-parallel \
@@ -1054,7 +1020,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   pipes-parse \
   pipes-random \
   pipes-safe \
-  pipes-wai \
   pkcs10 \
   placeholders \
   planb-token-introspection \
@@ -1130,7 +1095,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   range-set-list \
   rank1dynamic \
   ratel \
-  ratel-wai \
   rattle \
   rattletrap \
   raw-strings-qq \
@@ -1152,7 +1116,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   reinterpret-cast \
   relapse \
   relational-query \
-  relational-query-HDBC \
   relational-schemas \
   relude \
   renderable \
@@ -1199,7 +1162,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   scanner \
   scheduler \
   scientific \
-  scotty \
   scrypt \
   securemem \
   selda \
@@ -1211,9 +1173,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   sendfile \
   seqalign \
   serf \
-  servant-auth \
-  serversession \
-  serversession-frontend-wai \
   set-cover \
   setenv \
   setlocale \
@@ -1248,9 +1207,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   skylighting-core \
   smallcheck \
   smallcheck-series \
-  snap-blaze \
-  snap-core \
-  snap-server \
   snowflake \
   soap \
   soap-tls \
@@ -1295,7 +1251,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   streaming-bytestring \
   streaming-cassava \
   streaming-commons \
-  streaming-wai \
   streamly \
   streamproc \
   strict \
@@ -1376,7 +1331,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   text-ldap \
   text-manipulate \
   text-metrics \
-  text-postgresql \
   text-printer \
   text-short \
   text-zipper \
@@ -1425,9 +1379,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   tmapchan \
   tmapmvar \
   token-bucket \
-  tonalude \
-  tonaparser \
-  tonatona \
   torsor \
   tostring \
   tracing \
@@ -1541,32 +1492,13 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   vivid-osc \
   vivid-supercollider \
   void \
-  wai \
-  wai-conduit \
-  wai-cors \
-  wai-eventsource \
-  wai-extra \
-  wai-handler-launch \
-  wai-logger \
-  wai-middleware-caching \
-  wai-middleware-static \
-  wai-middleware-throttle \
-  wai-middleware-travisci \
-  wai-session \
-  wai-slack-middleware \
-  warp \
-  warp-tls \
   wave \
   wcwidth \
   web-routes \
   web-routes-hsp \
-  web-routes-wai \
-  webdriver \
   webex-teams-api \
   webex-teams-conduit \
   webex-teams-pipes \
-  webrtc-vad \
-  websockets \
   weeder \
   weigh \
   wide-word \
@@ -1586,7 +1518,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   writer-cps-exceptions \
   writer-cps-mtl \
   writer-cps-transformers \
-  wuss \
   x509 \
   x509-store \
   x509-system \
@@ -1613,9 +1544,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   xxhash-ffi \
   yaml \
   yes-precure5-command \
-  yeshql \
-  yeshql-core \
-  yeshql-hdbc \
   yi-rope \
   yjtools \
   zero \
