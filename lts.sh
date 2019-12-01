@@ -6,32 +6,53 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
 ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
   backprop \
   base64-bytestring-type \
+  bibtex \
   binary-tagged \
+  blaze-bootstrap \
+  blaze-svg \
+  blaze-textual \
+  bson \
+  buffer-builder \
+  bytestring-strict-builder \
+  bytestring-tree-builder \
   cassava-megaparsec \
   cborg-json \
   cheapskate-highlight \
   cheapskate-lucid \
+  chronos \
+  classyplate \
   cmark \
   cmark-gfm \
   composition-extra \
   concurrency \
   concurrent-extra \
   concurrent-supply \
+  constraint \
   contravariant-extras \
   control-monad-free \
   criterion \
+  data-memocombinators \
+  data-reify \
+  dependent-map \
+  dependent-sum-template \
   dimensional \
   distributed-closure \
   do-notation \
   doctemplates \
   Earley \
   elerea \
+  extrapolate \
   free-vl \
   freer-simple \
   frisby \
   fused-effects \
   gauge \
   general-games \
+  generic-arbitrary \
+  generic-data-surgery \
+  generic-random \
+  generics-eot \
+  generics-mrsop \
   genvalidity-aeson \
   genvalidity-bytestring \
   genvalidity-containers \
@@ -46,14 +67,35 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   genvalidity-uuid \
   ginger \
   graphite \
+  gravatar \
+  groundhog-th \
+  haddock-library \
+  HandsomeSoup \
   HaTeX \
+  haxl \
+  hreader \
   http-client-tls \
+  hxt-css \
+  hxt-tagsoup \
   integration \
+  interpolation \
+  intro \
   JuicyPixels-extra \
+  kind-generics-th \
+  lens-simple \
   lift-generics \
   markdown \
+  matrices \
   megaparsec-tests \
+  microlens-aeson \
+  microlens-contra \
   microlens-platform \
+  microspec \
+  monad-unlift-ref \
+  msgpack-aeson \
+  nanospec \
+  neat-interpolation \
+  network-ip \
   operational-class \
   persistent-iproute \
   persistent-typed-db \
@@ -65,6 +107,10 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   pipes-safe \
   polysemy \
   pooled-io \
+  protobuf \
+  protobuf-simple \
+  protocol-buffers-descriptor \
+  protolude \
   qrcode-juicypixels \
   quickcheck-arbitrary-adt \
   quickcheck-simple \
@@ -83,13 +129,15 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   selda-json \
   shake \
   skylighting \
+  stache \
   streaming-attoparsec \
   streaming-bytestring \
   streaming-cassava \
   streaming-commons \
   streamly \
+  svg-builder \
   swish \
-  tagsoup \
+  tagchup \
   tardis \
   tasty-ant-xml \
   tasty-discover \
@@ -109,9 +157,31 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   th-strict-compat \
   th-test-utils \
   th-utilities \
+  time-lens \
   tree-diff \
   tuple-sop \
+  type-level-integers \
+  type-level-kv-list \
+  type-level-numbers \
+  typelits-witnesses \
+  type-map \
+  type-of-html-static \
+  unicode-transforms \
   unification-fd \
-  urlpath
+  urlpath \
+  vault \
+  vector-builder \
+  winery \
+  writer-cps-exceptions \
+  xeno \
+  xml-conduit-parse \
+  xml-conduit-writer \
+  xml-hamlet \
+  xml-html-qq \
+  xml-indexed-cursor \
+  xml-picklers \
+  xml-to-json-fast \
+  xmlbf \
+  xmlgen
 
 rm -rf ~/.cabal
