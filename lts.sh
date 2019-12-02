@@ -4,50 +4,31 @@ ahc-cabal v1-update
 
 ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global Cabal
 ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
-  base64-bytestring-type \
   bibtex \
   binary-tagged \
   blaze-bootstrap \
   blaze-svg \
   blaze-textual \
-  buffer-builder \
-  bytestring-strict-builder \
-  bytestring-tree-builder \
   cassava-megaparsec \
-  chronos \
-  classyplate \
   cmark \
   cmark-gfm \
-  composition-extra \
   concurrency \
   concurrent-extra \
   concurrent-supply \
-  constraint \
   contravariant-extras \
-  control-monad-free \
   criterion \
-  data-memocombinators \
   data-reify \
-  dependent-map \
-  dependent-sum-template \
-  dimensional \
   distributed-closure \
-  do-notation \
   doctemplates \
   Earley \
   elerea \
   extrapolate \
-  free-vl \
-  freer-simple \
   frisby \
-  fused-effects \
   gauge \
   general-games \
   generic-arbitrary \
   generic-data-surgery \
   generic-random \
-  generics-eot \
-  generics-mrsop \
   genvalidity-aeson \
   genvalidity-bytestring \
   genvalidity-containers \
@@ -67,32 +48,19 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   HandsomeSoup \
   HaTeX \
   haxl \
-  hreader \
   http-client-tls \
   hxt-css \
   hxt-tagsoup \
   integration \
-  interpolation \
-  intro \
   JuicyPixels-extra \
-  kind-generics-th \
-  lens-simple \
-  lift-generics \
   lucid-extras \
   matrices \
   megaparsec-tests \
   microlens-aeson \
   microlens-contra \
-  microlens-platform \
-  monad-unlift-ref \
-  neat-interpolation \
-  network-ip \
-  operational-class \
   persistent-iproute \
   persistent-typed-db \
-  polysemy \
   pooled-io \
-  protolude \
   qrcode-juicypixels \
   quickcheck-arbitrary-adt \
   quickcheck-simple \
@@ -100,12 +68,9 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   quickcheck-text \
   quickcheck-transformer \
   quickcheck-unicode \
-  records-sop \
   regex-applicative-text \
   regex-compat-tdfa \
   relational-schemas \
-  rio-orphans \
-  rio-prettyprint \
   rvar \
   safe-money \
   selda-json \
@@ -114,34 +79,19 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   svg-builder \
   tagchup \
   tardis \
-  tasty-discover \
   tasty-expected-failure \
   tasty-hspec \
   tasty-hunit \
   tasty-kat \
-  tasty-leancheck \
   texmath \
   th-desugar \
-  th-nowq \
   th-printf \
-  th-strict-compat \
-  th-test-utils \
   th-utilities \
-  time-lens \
   tree-diff \
-  tuple-sop \
-  type-level-integers \
-  type-level-kv-list \
-  type-level-numbers \
-  typelits-witnesses \
-  type-map \
-  type-of-html-static \
   unicode-transforms \
   unification-fd \
   urlpath \
   vault \
-  vector-builder \
-  winery \
-  writer-cps-exceptions
+  vector-builder
 
 rm -rf ~/.cabal
