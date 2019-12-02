@@ -139,17 +139,12 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   swish \
   tagchup \
   tardis \
-  tasty-ant-xml \
   tasty-discover \
   tasty-expected-failure \
   tasty-hspec \
   tasty-hunit \
   tasty-kat \
   tasty-leancheck \
-  test-framework-hunit \
-  test-framework-leancheck \
-  test-framework-quickcheck2 \
-  test-framework-smallcheck \
   texmath \
   th-desugar \
   th-nowq \
@@ -172,16 +167,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   vault \
   vector-builder \
   winery \
-  writer-cps-exceptions \
-  xeno \
-  xml-conduit-parse \
-  xml-conduit-writer \
-  xml-hamlet \
-  xml-html-qq \
-  xml-indexed-cursor \
-  xml-picklers \
-  xml-to-json-fast \
-  xmlbf \
-  xmlgen
+  writer-cps-exceptions
 
 rm -rf ~/.cabal
