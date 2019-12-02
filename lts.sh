@@ -4,7 +4,6 @@ ahc-cabal v1-update
 
 ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global Cabal
 ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
-  backprop \
   base64-bytestring-type \
   bibtex \
   binary-tagged \
@@ -15,9 +14,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   bytestring-strict-builder \
   bytestring-tree-builder \
   cassava-megaparsec \
-  cborg-json \
-  cheapskate-highlight \
-  cheapskate-lucid \
   chronos \
   classyplate \
   cmark \
@@ -64,7 +60,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   genvalidity-property \
   genvalidity-time \
   genvalidity-uuid \
-  ginger \
   graphite \
   gravatar \
   groundhog-th \
@@ -83,26 +78,18 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   kind-generics-th \
   lens-simple \
   lift-generics \
-  markdown \
+  lucid-extras \
   matrices \
   megaparsec-tests \
   microlens-aeson \
   microlens-contra \
   microlens-platform \
-  microspec \
   monad-unlift-ref \
-  nanospec \
   neat-interpolation \
   network-ip \
   operational-class \
   persistent-iproute \
   persistent-typed-db \
-  pipes-attoparsec \
-  pipes-concurrency \
-  pipes-csv \
-  pipes-parse \
-  pipes-random \
-  pipes-safe \
   polysemy \
   pooled-io \
   protolude \
@@ -124,13 +111,7 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   selda-json \
   shake \
   skylighting \
-  streaming-attoparsec \
-  streaming-bytestring \
-  streaming-cassava \
-  streaming-commons \
-  streamly \
   svg-builder \
-  swish \
   tagchup \
   tardis \
   tasty-discover \
