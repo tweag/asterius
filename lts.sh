@@ -11,7 +11,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   blaze-bootstrap \
   blaze-svg \
   blaze-textual \
-  bson \
   buffer-builder \
   bytestring-strict-builder \
   bytestring-tree-builder \
@@ -92,7 +91,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   microlens-platform \
   microspec \
   monad-unlift-ref \
-  msgpack-aeson \
   nanospec \
   neat-interpolation \
   network-ip \
@@ -107,9 +105,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   pipes-safe \
   polysemy \
   pooled-io \
-  protobuf \
-  protobuf-simple \
-  protocol-buffers-descriptor \
   protolude \
   qrcode-juicypixels \
   quickcheck-arbitrary-adt \
@@ -129,7 +124,6 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   selda-json \
   shake \
   skylighting \
-  stache \
   streaming-attoparsec \
   streaming-bytestring \
   streaming-cassava \
