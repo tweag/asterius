@@ -9,14 +9,14 @@ export class MD5 {
 
   // void MD5Init(struct MD5Context *context);
   __hsbase_MD5Init(ctxp) {
-    this.memory.i128Store(ctxp, fnv.init());
+    this.memory.i128Store(ctxp, this.fnv.init());
   }
 
   // void MD5Update(struct MD5Context *context, byte const *buf, int len);
   __hsbase_MD5Update(ctxp, bufp, len) {
     this.memory.i128Store(
       ctxp,
-      fnv.update(this.memory.i128Load(ctxp), bufp, len)
+      this.fnv.update(this.memory.i128Load(ctxp), bufp, len)
     );
   }
 
