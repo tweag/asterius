@@ -23,4 +23,35 @@ export class TextCBits {
     }
     return 0;
   }
+
+  _hs_text_decode_utf8(dest, destoffp, src, srcend) {
+    const dec = new TextDecoder("utf-8", { fatal: true }),
+      s = dec.decode(
+        this.memory.i8View.subarray(Memory.unTag(src), Memory.unTag(srcend))
+      );
+    for (let i = 0; i < s.length; ++i)
+      this.memory.i16Store(dest + i * 2, s.charCodeAt(i));
+    this.memory.i64Store(destoffp, s.length);
+    return srcend;
+  }
+
+  _hs_text_encode_utf8(destp, src, srcoff, srclen) {
+    const dec = new TextDecoder("utf-16le", { fatal: true }),
+      s = dec.decode(
+        this.memory.i8View.subarray(
+          Memory.unTag(src + srcoff * 2),
+          Memory.unTag(src + srcoff * 2 + srclen * 2)
+        )
+      ),
+      dest = Number(this.memory.i64Load(destp)),
+      enc = new TextEncoder(),
+      l = enc.encodeInto(
+        s,
+        this.memory.i8View.subarray(
+          Memory.unTag(dest),
+          Memory.unTag(dest + srclen * 3)
+        )
+      ).written;
+    this.memory.i64Store(destp, dest + l);
+  }
 }

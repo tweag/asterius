@@ -761,7 +761,9 @@ textCBits =
         )
     )
     [ ("_hs_text_memcpy", [I64, I64, I64, I64, I64], []),
-      ("_hs_text_memcmp", [I64, I64, I64, I64, I64], [I64])
+      ("_hs_text_memcmp", [I64, I64, I64, I64, I64], [I64]),
+      ("_hs_text_decode_utf8", [I64, I64, I64, I64], [I64]),
+      ("_hs_text_encode_utf8", [I64, I64, I64, I64], [])
     ]
 
 floatCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
