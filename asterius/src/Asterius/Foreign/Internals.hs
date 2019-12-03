@@ -26,6 +26,7 @@ import qualified ErrUtils as GHC
 import qualified ForeignCall as GHC
 import qualified GhcPlugins as GHC
 import qualified HsSyn as GHC
+import qualified Panic as GHC
 import qualified PrelNames as GHC
 import System.IO.Unsafe
 import qualified TcRnMonad as GHC
@@ -272,7 +273,7 @@ parseFFIValueType accept_prim norm_sig_ty
       | otherwise = ffiBoxedValueTypeMap1
 
 parseFFIFunctionType :: Bool -> GHC.Type -> Maybe FFIFunctionType
-parseFFIFunctionType accept_prim norm_sig_ty = case norm_sig_ty of
+parseFFIFunctionType accept_prim norm_sig_ty = case res_ty of
   GHC.FunTy norm_t1 norm_t2 -> do
     vt <- parseFFIValueType accept_prim norm_t1
     ft <- parseFFIFunctionType accept_prim norm_t2
@@ -293,12 +294,14 @@ parseFFIFunctionType accept_prim norm_sig_ty = case norm_sig_ty of
           }
       _ -> Nothing
   _ -> do
-    r <- parseFFIValueType accept_prim norm_sig_ty
+    r <- parseFFIValueType accept_prim res_ty
     pure FFIFunctionType
       { ffiParamTypes = [],
         ffiResultTypes = [r],
         ffiInIO = False
       }
+  where
+    res_ty = GHC.dropForAlls norm_sig_ty
 
 parseField :: Parser a -> Parser (Chunk a)
 parseField f = do
@@ -349,7 +352,9 @@ processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaS
     dflags <- GHC.getDynFlags
     mod_sym <- marshalToModuleSymbol <$> GHC.getModule
     u <- GHC.getUniqueM
-    let Just ffi_ftype = parseFFIFunctionType True norm_sig_ty
+    let ffi_ftype = case parseFFIFunctionType True norm_sig_ty of
+          Just r -> r
+          _ -> GHC.panicDoc "processFFIImport" $ GHC.ppr norm_sig_ty
         ffi_safety = case GHC.unLoc loc_safety of
           GHC.PlaySafe | GHC.isGoodSrcSpan $ GHC.getLoc loc_safety -> FFISafe
           GHC.PlayInterruptible -> FFIInterruptible
@@ -410,7 +415,9 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
   do
     dflags <- GHC.getDynFlags
     mod_sym <- marshalToModuleSymbol <$> GHC.getModule
-    let Just ffi_ftype = parseFFIFunctionType False norm_sig_ty
+    let ffi_ftype = case parseFFIFunctionType False norm_sig_ty of
+          Just r -> r
+          _ -> GHC.panicDoc "processFFIExport" $ GHC.ppr norm_sig_ty
         new_k = AsteriusEntitySymbol
           { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
           }
