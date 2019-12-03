@@ -45,6 +45,13 @@ export class TextCBits {
       ),
       dest = Number(this.memory.i64Load(destp)),
       enc = new TextEncoder(),
+      // `Data.Text.Encoding.encodeUtf8` allocates a `ByteArray#` of size
+      // `srclen * 3` to ensure enough space for a single-pass encoding from
+      // UTF-16 to UTF-8. See the comment near
+      // `https://github.com/haskell/text/blob/2176eb38b5238e763e8076b0d0db8c2f2014ab8b/Data/Text/Encoding.hs#L432`
+      // and the "Buffer Sizing" section of
+      // `https://developer.mozilla.org/en-US/docs/Web/API/TextEncoder/encodeInto`
+      // for details.
       l = enc.encodeInto(
         s,
         this.memory.i8View.subarray(
