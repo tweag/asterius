@@ -93,6 +93,9 @@ decodeLatin1 = foldr (chunk . TE.decodeLatin1) empty . B.toChunks
 
 -- | Decode a 'ByteString' containing UTF-8 encoded text.
 decodeUtf8With :: OnDecodeError -> B.ByteString -> Text
+#if defined(ASTERIUS)
+decodeUtf8With onErr lbs = Chunk (TE.decodeUtf8With onErr (B.toStrict lbs)) Empty
+#else
 decodeUtf8With onErr (B.Chunk b0 bs0) =
     case TE.streamDecodeUtf8With onErr b0 of
       TE.Some t l f -> chunk t (go f l bs0)
@@ -107,6 +110,7 @@ decodeUtf8With onErr (B.Chunk b0 bs0) =
                       Just c  -> Chunk (T.singleton c) Empty
     desc = "Data.Text.Lazy.Encoding.decodeUtf8With: Invalid UTF-8 stream"
 decodeUtf8With _ _ = empty
+#endif
 
 -- | Decode a 'ByteString' containing UTF-8 encoded text that is known
 -- to be valid.
