@@ -17,8 +17,7 @@ main = do
       "--output-ir",
       "--full-sym-table",
       "--ghc-option=-no-hs-main",
-      "--extra-root-symbol=NoMain_x_closure",
-      "--no-gc-sections"
+      "--extra-root-symbol=NoMain_x_closure"
     ]
       <> args
   m <- decodeFile "test/nomain/NoMain.unlinked.bin"
