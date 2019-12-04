@@ -42,13 +42,10 @@ ahc-cabal v1-install -j --keep-going --minimize-conflict-set --prefix=$ASTERIUS_
   genvalidity-time \
   genvalidity-uuid \
   graphite \
-  gravatar \
   groundhog-th \
   haddock-library \
-  HandsomeSoup \
   HaTeX \
   haxl \
-  http-client-tls \
   hxt-css \
   hxt-tagsoup \
   integration \
