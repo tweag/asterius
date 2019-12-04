@@ -64,6 +64,8 @@ main = do
         "-a",
         "library-stripping: False",
         "-a",
+        "package-env: -",
+        "-a",
         "profiling: False",
         "-a",
         "relocatable: False",
