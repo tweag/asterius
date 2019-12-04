@@ -78,6 +78,7 @@ module Asterius.EDSL
     geUInt64,
     shlInt64,
     shrUInt64,
+    xorInt64,
     geUInt32,
     addInt32,
     subInt32,
@@ -527,6 +528,7 @@ addInt64,
   geUInt64,
   shlInt64,
   shrUInt64,
+  xorInt64,
   geUInt32,
   addInt32,
   subInt32,
@@ -552,6 +554,7 @@ gtUInt64 = Binary GtUInt64
 geUInt64 = Binary GeUInt64
 shlInt64 = Binary ShlInt64
 shrUInt64 = Binary ShrUInt64
+xorInt64 = Binary XorInt64
 geUInt32 = Binary GeUInt32
 addInt32 = Binary AddInt32
 subInt32 = Binary SubInt32

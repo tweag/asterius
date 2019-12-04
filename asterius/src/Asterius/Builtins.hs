@@ -18,6 +18,7 @@ module Asterius.Builtins
   )
 where
 
+import Asterius.Builtins.Hashable
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
@@ -191,6 +192,7 @@ rtsAsteriusModule opts =
     -- the module wrapped by using `generateWrapperModule`.
     <> generateRtsExternalInterfaceModule opts
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
+    <> hashableCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
