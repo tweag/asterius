@@ -17,6 +17,7 @@ import { IntegerManager } from "./rts.integer.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { TextCBits } from "./rts.text.mjs";
+import { TimeCBits } from "./rts.time.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
 import { Messages } from "./rts.messages.mjs";
@@ -75,6 +76,7 @@ export async function newAsteriusInstance(req) {
     __asterius_fs = new MemoryFileSystem(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_text_cbits = new TextCBits(__asterius_memory),
+    __asterius_time_cbits = new TimeCBits(__asterius_memory),
     __asterius_gc = new GC(
       __asterius_memory,
       __asterius_heapalloc,
@@ -229,6 +231,7 @@ export async function newAsteriusInstance(req) {
       },
       bytestring: modulify(__asterius_bytestring_cbits),
       text: modulify(__asterius_text_cbits),
+      time: modulify(__asterius_time_cbits),
       // cannot name this float since float is a keyword.
       floatCBits: modulify(__asterius_float_cbits),
       ReentrancyGuard: modulify(__asterius_reentrancy_guard),

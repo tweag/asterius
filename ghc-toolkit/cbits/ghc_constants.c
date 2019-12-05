@@ -2,6 +2,10 @@
 #include <Schedule.h>
 #include <Capability.h>
 
+HsInt offset_timespec_tv_sec() { return offsetof(struct timespec, tv_sec); }
+
+HsInt offset_timespec_tv_nsec() { return offsetof(struct timespec, tv_nsec); }
+
 HsInt roundup(HsInt x, HsInt n) { return (x + (n - 1)) & (~(n - 1)); }
 
 HsInt roundup_bytes_to_words(HsInt n) { return ROUNDUP_BYTES_TO_WDS(n); }

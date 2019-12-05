@@ -19,6 +19,7 @@ module Asterius.Builtins
 where
 
 import Asterius.Builtins.Hashable
+import Asterius.Builtins.Time
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
@@ -193,6 +194,7 @@ rtsAsteriusModule opts =
     <> generateRtsExternalInterfaceModule opts
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
     <> hashableCBits
+    <> timeCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
@@ -675,6 +677,7 @@ rtsFunctionImports debug =
       (fst . snd)
       ( byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits <> textCBits
       )
+    <> timeImports
 
 rtsFunctionExports :: Bool -> [FunctionExport]
 rtsFunctionExports debug =
