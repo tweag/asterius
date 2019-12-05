@@ -455,31 +455,6 @@ jobs:
       - store_artifacts:
           path: /tmp/test-report.csv
 
-  asterius-build-docker:
-    docker:
-      - image: docker:edge-git
-    steps:
-      - run:
-          name: Ensure we are on `tweag/asterius`
-          command: |
-            if [ -n "$CIRCLE_PR_NUMBER" ]; then
-              echo "Nothing to do for forked PRs, so marking this step successful"
-              circleci step halt
-            fi
-      - setup_remote_docker
-      - checkout
-      - run:
-          name: Make Docker image
-          no_output_timeout: 5h
-          command: |
-            git submodule update --init --recursive
-            export ASTERIUS_REV=$(git rev-parse --short HEAD)
-            docker login -u terrorjack -p $DOCKER_PASS
-            docker build -t terrorjack/asterius:$ASTERIUS_REV -t terrorjack/asterius:master -t terrorjack/asterius:latest .
-            docker push terrorjack/asterius:$ASTERIUS_REV
-            docker push terrorjack/asterius:master
-            docker push terrorjack/asterius:latest
-
   asterius-build-docs:
     docker:
       - image: debian:unstable
@@ -547,8 +522,4 @@ workflows:
       - asterius-test-ghc-testsuite-debug-yolo:
           requires:
             - asterius-boot
-      - asterius-build-docker:
-          filters:
-            branches:
-              only: master
       - asterius-build-docs
