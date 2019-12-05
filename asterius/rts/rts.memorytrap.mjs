@@ -17,7 +17,7 @@ export class MemoryTrap {
   trap(sym, p) {
     const tag = Memory.getTag(p),
       untagged = BigInt(Memory.unTag(p)),
-      mblock_no = untagged >> BigInt(Math.log2(rtsConstants.mblock_size)),
+      mblock_no = untagged >> BigInt(rtsConstants.mblock_size_log2),
       mblock_live = Boolean((this.memory.liveBitset >> mblock_no) & BigInt(1));
     if (tag != rtsConstants.dataTag || !mblock_live) {
       const err = new WebAssembly.RuntimeError(

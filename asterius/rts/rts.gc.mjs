@@ -6,8 +6,8 @@ import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 function bdescr(c) {
   return Number(
-    ((BigInt(c) >> BigInt(Math.log2(rtsConstants.mblock_size))) <<
-      BigInt(Math.log2(rtsConstants.mblock_size))) |
+    ((BigInt(c) >> BigInt(rtsConstants.mblock_size_log2)) <<
+      BigInt(rtsConstants.mblock_size_log2)) |
       BigInt(rtsConstants.offset_first_bdescr)
   );
 }

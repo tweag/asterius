@@ -29,7 +29,7 @@ export class Memory {
   }
 
   static unTag(p) {
-    return Number(BigInt(p) & BigInt(0xffffffff));
+    return Number(p) & 0xffffffff;
   }
 
   static getTag(p) {
@@ -49,7 +49,7 @@ export class Memory {
   }
 
   static getDynTag(p) {
-    return Number(BigInt(p) & BigInt(7));
+    return Number(p) & 7;
   }
 
   static setDynTag(p, t) {
@@ -171,7 +171,7 @@ export class Memory {
   heapAlloced(p) {
     return (
       Memory.unTag(p) >=
-      this.staticMBlocks << Math.log2(rtsConstants.mblock_size)
+      this.staticMBlocks << rtsConstants.mblock_size_log2
     );
   }
 
@@ -194,7 +194,7 @@ export class Memory {
 
   freeMBlocks(p, n) {
     const mblock_no =
-      BigInt(Memory.unTag(p)) >> BigInt(Math.log2(rtsConstants.mblock_size));
+      BigInt(Memory.unTag(p)) >> BigInt(rtsConstants.mblock_size_log2);
     this.liveBitset &= ~(mask(n) << mblock_no);
   }
 
