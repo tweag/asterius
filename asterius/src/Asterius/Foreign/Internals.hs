@@ -250,6 +250,14 @@ ffiPrimValueTypeMap1 =
             hsTyCon = "",
             signed = False
           }
+      ),
+      ( GHC.getName GHC.stableNamePrimTyCon,
+        FFI_VAL
+          { ffiWasmValueType = I64,
+            ffiJSValueType = F64,
+            hsTyCon = "",
+            signed = False
+          }
       )
     ]
 ffiValueTypeMap0 = ffiBoxedValueTypeMap0 `GHC.plusNameEnv` ffiPrimValueTypeMap0
