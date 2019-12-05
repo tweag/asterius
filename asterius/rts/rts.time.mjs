@@ -3,6 +3,7 @@ import * as rtsConstants from "./rts.constants.mjs";
 export class TimeCBits {
   constructor(memory) {
     this.memory = memory;
+    this.epoch = Date.now();
     Object.freeze(this);
   }
 
@@ -23,5 +24,9 @@ export class TimeCBits {
       this.memory.i64Store(tp + rtsConstants.offset_timespec_tv_nsec, ns);
     }
     return 0;
+  }
+
+  getMonotonicNSec() {
+    return (Date.now() - this.epoch) * 1000000;
   }
 }

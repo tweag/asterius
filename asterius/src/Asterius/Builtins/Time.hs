@@ -29,13 +29,29 @@ timeImports =
           { paramTypes = [F64, F64],
             returnTypes = [F64]
           }
+      },
+    FunctionImport
+      { internalName = "__asterius_getMonotonicNSec",
+        externalModuleName = "time",
+        externalBaseName = "getMonotonicNSec",
+        functionType = FunctionType {paramTypes = [], returnTypes = [F64]}
       }
   ]
 
 timeCBits :: AsteriusModule
-timeCBits = clockGetRes <> clockGetTime <> capiClockGetRes <> capiClockGetTime
+timeCBits =
+  clockGetRes
+    <> clockGetTime
+    <> capiClockGetRes
+    <> capiClockGetTime
+    <> getMonotonicNSec
 
-clockGetRes, clockGetTime, capiClockGetRes, capiClockGetTime :: AsteriusModule
+clockGetRes,
+  clockGetTime,
+  capiClockGetRes,
+  capiClockGetTime,
+  getMonotonicNSec ::
+    AsteriusModule
 clockGetRes = runEDSL "clock_getres" $ do
   setReturnTypes [I64]
   args <- params [I64, I64]
@@ -68,3 +84,8 @@ capiClockGetTime =
       setReturnTypes [I64]
       args <- params [I64, I64]
       call' "clock_gettime" args I64 >>= emit
+getMonotonicNSec = runEDSL "getMonotonicNSec" $ do
+  setReturnTypes [I64]
+  truncUFloat64ToInt64
+    <$> callImport' "__asterius_getMonotonicNSec" [] F64
+    >>= emit
