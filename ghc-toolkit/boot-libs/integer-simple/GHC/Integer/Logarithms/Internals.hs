@@ -147,6 +147,6 @@ leadingZeros =
     in case mkArr realWorld# of
         b -> BA b
 
-foreign import javascript "__asterius_jsffi.Integer.integerLog2(${1})" js_integerLog2 :: Int# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.integerLog2(${1})" js_integerLog2 :: StableName# () -> Int#
 
-foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: Int# -> Int#
+foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: StableName# () -> Int#
