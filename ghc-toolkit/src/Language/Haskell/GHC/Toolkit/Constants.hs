@@ -1,5 +1,13 @@
 module Language.Haskell.GHC.Toolkit.Constants where
 
+foreign import ccall unsafe "offset_timespec_tv_sec"
+  offset_timespec_tv_sec ::
+    Int
+
+foreign import ccall unsafe "offset_timespec_tv_nsec"
+  offset_timespec_tv_nsec ::
+    Int
+
 foreign import ccall unsafe "roundup" roundup :: Int -> Int -> Int
 
 foreign import ccall unsafe "roundup_bytes_to_words"
