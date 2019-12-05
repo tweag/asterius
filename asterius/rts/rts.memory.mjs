@@ -33,19 +33,21 @@ export class Memory {
   }
 
   static getTag(p) {
-    return Number(BigInt(p) >> BigInt(32));
+    //return Number(BigInt(p) >> BigInt(32));
+    return Math.floor(Number(p) / (2**32));
   }
 
   static tagData(p) {
-    return Number((BigInt(rtsConstants.dataTag) << BigInt(32)) | BigInt(p));
+    return rtsConstants.dataTag * (2**32) + Number(p);
   }
 
   static tagFunction(p) {
-    return Number((BigInt(rtsConstants.functionTag) << BigInt(32)) | BigInt(p));
+    return rtsConstants.functionTag * (2**32) + Number(p);
   }
 
   static unDynTag(p) {
-    return Number((BigInt(p) >> BigInt(3)) << BigInt(3));
+    const np = Number(p);
+    return np - (np & 7);
   }
 
   static getDynTag(p) {
@@ -53,7 +55,8 @@ export class Memory {
   }
 
   static setDynTag(p, t) {
-    return Number(BigInt(p) | BigInt(t));
+    const np = Number(p);
+    return np - (np & 7) + t;
   }
 
   get buffer() {
