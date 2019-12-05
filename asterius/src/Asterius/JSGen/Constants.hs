@@ -9,6 +9,7 @@ import Asterius.Internals.ByteString
 import Asterius.Internals.MagicNumber
 import Data.ByteString.Builder
 import Language.Haskell.GHC.Toolkit.Constants
+import Data.Bits
 
 rtsConstants :: Builder
 rtsConstants =
@@ -19,6 +20,8 @@ rtsConstants =
       intHex functionTag,
       ";\nexport const mblock_size = ",
       intHex mblock_size,
+      ";\nexport const mblock_size_log2 = ",
+      intHex (countTrailingZeros mblock_size),
       ";\nexport const block_size = ",
       intHex block_size,
       ";\nexport const blocks_per_mblock = ",

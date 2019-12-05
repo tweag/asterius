@@ -1,6 +1,7 @@
 export const dataTag = 0x1ffff7;
 export const functionTag = 0x1fffed;
 export const mblock_size = 0x100000;
+export const mblock_size_log2 = 0x14;
 export const block_size = 0x1000;
 export const blocks_per_mblock = 0xfc;
 export const offset_timespec_tv_sec = 0x0;
