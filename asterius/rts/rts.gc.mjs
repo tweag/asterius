@@ -664,11 +664,30 @@ export class GC {
     }
   }
 
+  updateNursery() {
+    const base_reg =
+        this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
+      hp_alloc = Number(
+        this.memory.i64Load(base_reg + rtsConstants.offset_StgRegTable_rHpAlloc)
+      );
+    this.memory.i64Store(
+      base_reg + rtsConstants.offset_StgRegTable_rHpAlloc,
+      0
+    );
+    this.memory.i64Store(
+      base_reg + rtsConstants.offset_StgRegTable_rCurrentNursery,
+      this.heapAlloc.hpAlloc(hp_alloc)
+    );
+  }
+
   /**
    * Perform GC, using scheduler TSOs as roots
    */
   performGC() {
-    if (this.yolo) return;
+    if (this.yolo) {
+      this.updateNursery();
+      return;
+    }
     this.reentrancyGuard.enter(1);
     this.heapAlloc.initUnpinned();
 
@@ -714,20 +733,7 @@ export class GC {
     // mark unused MBlocks
     this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
 
-    // update registers
-    const base_reg =
-        this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
-      hp_alloc = Number(
-        this.memory.i64Load(base_reg + rtsConstants.offset_StgRegTable_rHpAlloc)
-      );
-    this.memory.i64Store(
-      base_reg + rtsConstants.offset_StgRegTable_rHpAlloc,
-      0
-    );
-    this.memory.i64Store(
-      base_reg + rtsConstants.offset_StgRegTable_rCurrentNursery,
-      this.heapAlloc.hpAlloc(hp_alloc)
-    );
+    this.updateNursery();
 
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     this.closureIndirects.clear();
