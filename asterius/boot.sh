@@ -36,8 +36,8 @@ cd ..
 ahc-cabal v1-update || true
 ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global $ASTERIUS_CONFIGURE_OPTIONS \
   ghc-boot \
+  mtl \
   pretty \
-  transformers \
   unix
 
 cd template-haskell
@@ -60,7 +60,6 @@ cd ..
 
 ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global $ASTERIUS_CONFIGURE_OPTIONS \
   aeson \
-  mtl \
   parsec \
   xhtml
 
