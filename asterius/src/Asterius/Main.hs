@@ -67,7 +67,8 @@ data Task
         outputBaseName :: String,
         tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr, yolo :: Bool,
         extraGHCFlags :: [String],
-        exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol]
+        exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol],
+        nurserySize :: Int
       }
   deriving (Show)
 
@@ -121,7 +122,8 @@ parseTask args = case err_msgs of
           str_opt "export-function" $
             \s t -> t {exportFunctions = fromString s : exportFunctions t},
           str_opt "extra-root-symbol" $
-            \s t -> t {extraRootSymbols = fromString s : extraRootSymbols t}
+            \s t -> t {extraRootSymbols = fromString s : extraRootSymbols t},
+          str_opt "nursery-size" $ \s t -> t {nurserySize = read s}
         ]
         args
     task =
@@ -148,7 +150,8 @@ parseTask args = case err_msgs of
             yolo = False,
             extraGHCFlags = [],
             exportFunctions = [],
-            extraRootSymbols = []
+            extraRootSymbols = [],
+            nurserySize = 64
           }
         task_trans_list
 
@@ -221,6 +224,8 @@ genReq Task {..} LinkReport {..} =
       intDec staticMBlocks,
       ", yolo: ",
       if yolo then "true" else "false",
+      ", nurserySize: ",
+      intHex nurserySize,
       "}",
       ";\n"
     ]

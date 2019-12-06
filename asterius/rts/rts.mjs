@@ -87,7 +87,8 @@ export async function newAsteriusInstance(req) {
       req.exportStablePtrs,
       req.symbolTable,
       __asterius_reentrancy_guard,
-      req.yolo
+      req.yolo,
+      req.nurserySize
     ),
     __asterius_exception_helper = new ExceptionHelper(
       __asterius_memory,

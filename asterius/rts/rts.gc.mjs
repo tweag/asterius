@@ -20,7 +20,8 @@ export class GC {
     export_stableptrs,
     symbol_table,
     reentrancy_guard,
-    yolo
+    yolo,
+    nursery_size
   ) {
     this.memory = memory;
     this.heapAlloc = heapalloc;
@@ -32,6 +33,7 @@ export class GC {
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
     this.yolo = yolo;
+    this.nurserySize = nursery_size;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
     this.deadMBlocks = new Set();
@@ -667,8 +669,13 @@ export class GC {
   updateNursery() {
     const base_reg =
         this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
-      hp_alloc = Number(
-        this.memory.i64Load(base_reg + rtsConstants.offset_StgRegTable_rHpAlloc)
+      hp_alloc = Math.max(
+        Number(
+          this.memory.i64Load(
+            base_reg + rtsConstants.offset_StgRegTable_rHpAlloc
+          )
+        ),
+        this.nurserySize * rtsConstants.mblock_size
       );
     this.memory.i64Store(
       base_reg + rtsConstants.offset_StgRegTable_rHpAlloc,
