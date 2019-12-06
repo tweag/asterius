@@ -5,11 +5,8 @@ import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 function bdescr(c) {
-  return Number(
-    ((BigInt(c) >> BigInt(rtsConstants.mblock_size_log2)) <<
-      BigInt(rtsConstants.mblock_size_log2)) |
-      BigInt(rtsConstants.offset_first_bdescr)
-  );
+  const nc = Number(c);
+  return nc - (nc & (rtsConstants.mblock_size - 1)) + rtsConstants.offset_first_bdescr;
 }
 
 export class GC {
@@ -59,7 +56,7 @@ export class GC {
 
   evacuateClosure(c) {
     if (!Memory.getTag(c)) {
-      if (!(BigInt(c) & BigInt(1)))
+      if (!(Number(c) & 1))
         throw new WebAssembly.RuntimeError(`Illegal JSVal 0x${c.toString(16)}`);
       this.liveJSVals.add(Number(c));
       return c;
@@ -263,7 +260,7 @@ export class GC {
 
   scavengeSmallBitmap(payload, bitmap, size) {
     for (let i = 0; i < size; ++i)
-      if (!((bitmap >> BigInt(i)) & BigInt(1)))
+      if (!(Number(bitmap >> BigInt(i)) & 1))
         this.scavengeClosureAt(payload + (i << 3));
   }
 
@@ -273,7 +270,7 @@ export class GC {
         large_bitmap + rtsConstants.offset_StgLargeBitmap_bitmap + (j >> 3)
       );
       for (let i = j; i - j < 64 && i < size; ++i)
-        if (!((bitmap >> BigInt(i - j)) & BigInt(1)))
+        if (!(Number(bitmap >> BigInt(i - j)) & 1))
           this.scavengeClosureAt(payload + (i << 3));
     }
   }
@@ -370,7 +367,7 @@ export class GC {
         case ClosureTypes.ATOMICALLY_FRAME:
         case ClosureTypes.CATCH_RETRY_FRAME:
         case ClosureTypes.CATCH_STM_FRAME: {
-          const size = Number(raw_layout & BigInt(0x3f)),
+          const size = Number(raw_layout) & 0x3f,
             bitmap = raw_layout >> BigInt(6);
           this.scavengeSmallBitmap(c + 8, bitmap, size);
           c += (1 + size) << 3;
