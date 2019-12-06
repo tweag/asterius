@@ -1,3 +1,0 @@
-[submodule "docs/_extensions/haddock-autolink"]
-	path = docs/_extensions/haddock-autolink
-	url = https://github.com/m-renaud/haddock-autolink
