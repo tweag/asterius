@@ -134,4 +134,12 @@ export class HeapAlloc {
       );
     }
   }
+
+  liveSize() {
+    let acc = 0;
+    for (const bd of this.mgroups) {
+      acc += this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
+    }
+    return acc;
+  }
 }

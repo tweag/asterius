@@ -127,6 +127,7 @@ jobs:
             stack --no-terminal test asterius:sizeof_md5context
             stack --no-terminal test asterius:largenum
             stack --no-terminal test asterius:bytearray --test-arguments="--yolo"
+            stack --no-terminal test asterius:bytearray --test-arguments="--gc-threshold=128"
             stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
             stack --no-terminal test asterius:fib --test-arguments="--binaryen --no-gc-sections"
 

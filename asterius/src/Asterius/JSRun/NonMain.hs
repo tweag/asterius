@@ -70,7 +70,8 @@ distNonMain p extra_syms = ahcDistMain
       yolo = False,
       extraGHCFlags = ["-no-hs-main"],
       Asterius.Main.exportFunctions = [],
-      extraRootSymbols = extra_syms
+      extraRootSymbols = extra_syms,
+      gcThreshold = 64
     }
 
 newAsteriusInstanceNonMain ::
