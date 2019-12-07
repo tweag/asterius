@@ -43,7 +43,7 @@ RUN \
   apt install -y nodejs && \
   mkdir -p /root/.local/bin && \
   curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack' && \
-  curl -L https://downloads.haskell.org/~cabal/cabal-install-latest/cabal-install-3.0.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C /root/.local/bin 'cabal' && \
+  curl -L https://downloads.haskell.org/~cabal/cabal-install-2.4.1.0/cabal-install-2.4.1.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
   stack --no-terminal install asterius && \
   stack --no-terminal exec ahc-boot && \
   export ASTERIUS_LIB_DIR=$(stack path --local-install-root)/share/x86_64-linux-ghc-8.6.5/asterius-0.0.1/.boot/asterius_lib && \

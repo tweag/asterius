@@ -41,7 +41,7 @@ jobs:
             apt install -y nodejs
             mkdir -p /root/.local/bin
             curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C /root/.local/bin '*/stack'
-            curl -L https://downloads.haskell.org/~cabal/cabal-install-latest/cabal-install-3.0.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C /root/.local/bin 'cabal'
+            curl -L https://downloads.haskell.org/~cabal/cabal-install-2.4.1.0/cabal-install-2.4.1.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal'
       - checkout
 
       - run:
@@ -194,7 +194,7 @@ jobs:
           name: Test ahc-cabal
           command: |
             ahc-cabal new-update
-            ahc-cabal new-install --installdir . \
+            ahc-cabal new-install --symlink-bindir . \
               hello \
               lens
             ahc-dist --input-exe hello --run
