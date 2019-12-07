@@ -1,4 +1,4 @@
-FROM debian:unstable
+FROM debian:sid
 
 COPY asterius /root/asterius/asterius
 COPY binaryen /root/asterius/binaryen
@@ -25,9 +25,9 @@ RUN \
     cmake \
     curl \
     g++ \
+    gawk \
     gcc \
     gnupg \
-    libdw-dev \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
@@ -57,6 +57,7 @@ RUN \
     g++ \
     gnupg \
     make \
+    mawk \
     python3-minimal \
     xz-utils && \
   apt autoremove --purge -y && \
