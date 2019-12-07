@@ -194,7 +194,7 @@ jobs:
           name: Test ahc-cabal
           command: |
             ahc-cabal new-update
-            ahc-cabal new-install --symlink-bindir . \
+            ahc-cabal new-install -j1 --symlink-bindir . \
               hello \
               lens
             ahc-dist --input-exe hello --run
