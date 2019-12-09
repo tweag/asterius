@@ -20,7 +20,8 @@ export class GC {
     export_stableptrs,
     symbol_table,
     reentrancy_guard,
-    yolo
+    yolo,
+    gc_threshold
   ) {
     this.memory = memory;
     this.heapAlloc = heapalloc;
@@ -32,6 +33,7 @@ export class GC {
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
     this.yolo = yolo;
+    this.gcThreshold = gc_threshold;
     this.closureIndirects = new Map();
     this.liveMBlocks = new Set();
     this.deadMBlocks = new Set();
@@ -684,7 +686,7 @@ export class GC {
    * Perform GC, using scheduler TSOs as roots
    */
   performGC() {
-    if (this.yolo) {
+    if (this.yolo || this.heapAlloc.liveSize() < this.gcThreshold) {
       this.updateNursery();
       return;
     }
