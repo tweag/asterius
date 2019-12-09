@@ -155,6 +155,10 @@ executables:
     dependencies:
       - asterius
 
+  unlit:
+    source-dirs: app
+    main: unlit.c
+
   genconstants:
     source-dirs: app
     main: genconstants.hs

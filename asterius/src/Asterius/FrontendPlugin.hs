@@ -53,7 +53,8 @@ frontendPlugin = makeFrontendPlugin $ do
       $ dflags
         { GHC.settings =
             (GHC.settings dflags)
-              { GHC.sPgm_l = (ahcLd, []),
+              { GHC.sPgm_L = unlit,
+                GHC.sPgm_l = (ahcLd, []),
                 GHC.sPgm_i = "false"
               }
         }
