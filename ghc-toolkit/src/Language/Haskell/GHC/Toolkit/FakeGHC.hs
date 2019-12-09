@@ -1,4 +1,5 @@
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 
 module Language.Haskell.GHC.Toolkit.FakeGHC
@@ -7,6 +8,7 @@ module Language.Haskell.GHC.Toolkit.FakeGHC
   )
 where
 
+import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Foldable
@@ -52,12 +54,24 @@ fakeGHCMain FakeGHCOptions {..} = do
           -- pkgdb. This is an ugly workaround to support Cabal packages with
           -- custom Setup.hs scripts, see #342 and related PR for details.
           case GHC.outputFile dflags1 of
-            Just p
-              | seemsToBeCabalSetup p ->
-                liftIO
-                  $ callProcess ghc
-                  $ ["--make", "-o", p, "-threaded"]
-                    <> map GHC.unLoc fileish_args
+            Just p | seemsToBeCabalSetup p ->
+              liftIO
+                $ catch
+                  ( callProcess
+                      ghc
+                      ( ["--make", "-o", p, "-threaded"]
+                          <> map GHC.unLoc fileish_args
+                      )
+                  )
+                $ \(_ :: IOError) -> do
+                  writeFile
+                    (GHC.unLoc (head fileish_args))
+                    "import Distribution.Simple\nmain = defaultMain\n"
+                  callProcess
+                    ghc
+                    ( ["--make", "-o", p, "-threaded"]
+                        <> map GHC.unLoc fileish_args
+                    )
             _ -> do
               void $
                 GHC.setSessionDynFlags
