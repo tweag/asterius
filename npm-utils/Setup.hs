@@ -19,6 +19,6 @@ main =
               npm_utils_datadir = datadir npm_utils_installdirs
           createDirectoryIfMissing True npm_utils_datadir
           withCurrentDirectory npm_utils_datadir $
-            callCommand "npm install parcel-bundler"
+            callCommand "npm install parcel-bundler@1.12.4"
           pure lbi
       }
