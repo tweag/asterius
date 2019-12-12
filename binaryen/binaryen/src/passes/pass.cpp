@@ -107,6 +107,9 @@ void PassRegistry::registerPasses() {
     "directize", "turns indirect calls into direct ones", createDirectizePass);
   registerPass(
     "dfo", "optimizes using the DataFlow SSA IR", createDataFlowOptsPass);
+  registerPass("duplicate-import-elimination",
+               "removes duplicate imports",
+               createDuplicateImportEliminationPass);
   registerPass("duplicate-function-elimination",
                "removes duplicate functions",
                createDuplicateFunctionEliminationPass);
@@ -126,6 +129,8 @@ void PassRegistry::registerPasses() {
     "func-metrics", "reports function metrics", createFunctionMetricsPass);
   registerPass(
     "generate-stack-ir", "generate Stack IR", createGenerateStackIRPass);
+  registerPass(
+    "inline-main", "inline __original_main into main", createInlineMainPass);
   registerPass("inlining",
                "inline functions (you probably want inlining-optimizing)",
                createInliningPass);
@@ -177,6 +182,13 @@ void PassRegistry::registerPasses() {
                "minifies both import and export names, and emits a mapping to "
                "the minified ones",
                createMinifyImportsAndExportsPass);
+  registerPass("mod-asyncify-always-and-only-unwind",
+               "apply the assumption that asyncify imports always unwind, "
+               "and we never rewind",
+               createModAsyncifyAlwaysOnlyUnwindPass);
+  registerPass("mod-asyncify-never-unwind",
+               "apply the assumption that asyncify never unwinds",
+               createModAsyncifyNeverUnwindPass);
   registerPass("nm", "name list", createNameListPass);
   registerPass("no-exit-runtime",
                "removes calls to atexit(), which is valid if the C runtime "
@@ -197,6 +209,12 @@ void PassRegistry::registerPasses() {
   registerPass("pick-load-signs",
                "pick load signs based on their uses",
                createPickLoadSignsPass);
+  registerPass("post-assemblyscript",
+               "eliminates redundant ARC patterns in AssemblyScript output",
+               createPostAssemblyScriptPass);
+  registerPass("post-assemblyscript-finalize",
+               "eliminates collapsed ARC patterns after other optimizations",
+               createPostAssemblyScriptFinalizePass);
   registerPass("post-emscripten",
                "miscellaneous optimizations for Emscripten-generated code",
                createPostEmscriptenPass);
@@ -258,12 +276,19 @@ void PassRegistry::registerPasses() {
                createReReloopPass);
   registerPass(
     "rse", "remove redundant local.sets", createRedundantSetEliminationPass);
+  registerPass("roundtrip",
+               "write the module to binary, then read it",
+               createRoundTripPass);
   registerPass("safe-heap",
                "instrument loads and stores to check for invalid behavior",
                createSafeHeapPass);
   registerPass("simplify-globals",
                "miscellaneous globals-related optimizations",
                createSimplifyGlobalsPass);
+  registerPass("simplify-globals-optimizing",
+               "miscellaneous globals-related optimizations, and optimizes "
+               "where we replaced global.gets with constants",
+               createSimplifyGlobalsOptimizingPass);
   registerPass("simplify-locals",
                "miscellaneous locals-related optimizations",
                createSimplifyLocalsPass);
@@ -300,6 +325,7 @@ void PassRegistry::registerPasses() {
   registerPass("strip-debug",
                "strip debug info (including the names section)",
                createStripDebugPass);
+  registerPass("strip-dwarf", "strip dwarf debug info", createStripDWARFPass);
   registerPass("strip-producers",
                "strip the wasm producers section",
                createStripProducersPass);
@@ -412,7 +438,12 @@ void PassRunner::addDefaultGlobalOptimizationPostPasses() {
   }
   // optimizations show more functions as duplicate
   add("duplicate-function-elimination");
-  add("simplify-globals");
+  add("duplicate-import-elimination");
+  if (options.optimizeLevel >= 2 || options.shrinkLevel >= 2) {
+    add("simplify-globals-optimizing");
+  } else {
+    add("simplify-globals");
+  }
   add("remove-unused-module-elements");
   add("memory-packing");
   // may allow more inlining/dae/etc., need --converge for that
@@ -426,7 +457,7 @@ void PassRunner::addDefaultGlobalOptimizationPostPasses() {
 }
 
 static void dumpWast(Name name, Module* wasm) {
-  // write out the wast
+  // write out the wat
   static int counter = 0;
   std::string numstr = std::to_string(counter++);
   while (numstr.size() < 3) {

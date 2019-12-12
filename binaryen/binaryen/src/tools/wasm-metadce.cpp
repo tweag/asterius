@@ -29,11 +29,12 @@
 #include "ir/module-utils.h"
 #include "pass.h"
 #include "support/colors.h"
-#include "support/command-line.h"
 #include "support/file.h"
 #include "support/json.h"
+#include "tool-options.h"
 #include "wasm-builder.h"
 #include "wasm-io.h"
+#include "wasm-validator.h"
 
 using namespace wasm;
 
@@ -403,7 +404,7 @@ int main(int argc, const char* argv[]) {
   std::string graphFile;
   bool dump = false;
 
-  Options options(
+  ToolOptions options(
     "wasm-metadce",
     "This tool performs dead code elimination (DCE) on a larger space "
     "that the wasm module is just a part of. For example, if you have "
@@ -488,8 +489,7 @@ int main(int argc, const char* argv[]) {
     Fatal() << "no graph file provided.";
   }
 
-  auto input(read_file<std::string>(
-    options.extra["infile"], Flags::Text, Flags::Release));
+  auto input(read_file<std::string>(options.extra["infile"], Flags::Text));
 
   Module wasm;
 
@@ -498,8 +498,6 @@ int main(int argc, const char* argv[]) {
       std::cerr << "reading...\n";
     }
     ModuleReader reader;
-    reader.setDebug(options.debug);
-
     try {
       reader.read(options.extra["infile"], wasm);
     } catch (ParseException& p) {
@@ -508,8 +506,16 @@ int main(int argc, const char* argv[]) {
     }
   }
 
-  auto graphInput(
-    read_file<std::string>(graphFile, Flags::Text, Flags::Release));
+  options.applyFeatures(wasm);
+
+  if (options.passOptions.validate) {
+    if (!WasmValidator().validate(wasm)) {
+      WasmPrinter::printModule(&wasm);
+      Fatal() << "error in validating input";
+    }
+  }
+
+  auto graphInput(read_file<std::string>(graphFile, Flags::Text));
   auto* copy = strdup(graphInput.c_str());
   json::Value outside;
   outside.parse(copy);

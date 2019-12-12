@@ -1,18 +1,19 @@
-from scripts.test.shared import WASM_OPT, run_process
-from utils import BinaryenTestCase
 import os
 
+from scripts.test import shared
+from . import utils
 
-class ParsingErrorTest(BinaryenTestCase):
-  def test_parsing_error_msg(self):
-    module = '''
-    (module
-     (func $foo
-      (abc)
-     )
-    )
-    '''
-    p = run_process(WASM_OPT + ['--print', '-o', os.devnull], input=module,
-                    check=False, capture_output=True)
-    self.assertNotEqual(p.returncode, 0)
-    self.assertIn("parse exception: abc (at 4:6)", p.stderr)
+
+class ParsingErrorTest(utils.BinaryenTestCase):
+    def test_parsing_error_msg(self):
+        module = '''
+(module
+  (func $foo
+    (abc)
+  )
+)
+'''
+        p = shared.run_process(shared.WASM_OPT + ['--print', '-o', os.devnull],
+                               input=module, check=False, capture_output=True)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("parse exception: abc (at 4:4)", p.stderr)

@@ -155,7 +155,7 @@ public:
       frees[type].pop_back();
     } else {
       size_t index = temps[type]++;
-      ret = IString((std::string("wasm2js_") + printType(type) + "$" +
+      ret = IString((std::string("wasm2js_") + type.toString() + "$" +
                      std::to_string(index))
                       .c_str(),
                     false);
@@ -255,6 +255,7 @@ private:
   void addTable(Ref ast, Module* wasm);
   void addExports(Ref ast, Module* wasm);
   void addGlobal(Ref ast, Global* global);
+  void addMemoryFuncs(Ref ast, Module* wasm);
   void addMemoryGrowthFuncs(Ref ast, Module* wasm);
 
   Wasm2JSBuilder() = delete;
@@ -333,7 +334,7 @@ Ref Wasm2JSBuilder::processWasm(Module* wasm, Name funcName) {
   }
 
   if (flags.symbolsFile.size() > 0) {
-    Output out(flags.symbolsFile, wasm::Flags::Text, wasm::Flags::Release);
+    Output out(flags.symbolsFile, wasm::Flags::Text);
     Index i = 0;
     for (auto& func : wasm->functions) {
       out.getStream() << i++ << ':' << func->name.str << '\n';
@@ -405,14 +406,11 @@ Ref Wasm2JSBuilder::processWasm(Module* wasm, Name funcName) {
   });
   if (generateFetchHighBits) {
     Builder builder(allocator);
-    std::vector<Type> params;
-    std::vector<Type> vars;
     asmFunc[3]->push_back(processFunction(
       wasm,
       builder.makeFunction(WASM_FETCH_HIGH_BITS,
-                           std::move(params),
-                           i32,
-                           std::move(vars),
+                           Signature(Type::none, Type::i32),
+                           {},
                            builder.makeReturn(builder.makeGlobalGet(
                              INT64_TO_32_HIGH_BITS, i32)))));
     auto e = new Export();
@@ -562,7 +560,7 @@ void Wasm2JSBuilder::addTable(Ref ast, Module* wasm) {
             PLUS,
             ValueBuilder::makeNum(i));
         } else {
-          WASM_UNREACHABLE();
+          WASM_UNREACHABLE("unexpected expr type");
         }
         ast->push_back(ValueBuilder::makeStatement(ValueBuilder::makeBinary(
           ValueBuilder::makeSub(ValueBuilder::makeName(FUNCTION_TABLE), index),
@@ -608,8 +606,8 @@ void Wasm2JSBuilder::addExports(Ref ast, Module* wasm) {
         exports, fromName(export_->name, NameScope::Top), memory);
     }
   }
-  if (wasm->memory.exists && wasm->memory.max > wasm->memory.initial) {
-    addMemoryGrowthFuncs(ast, wasm);
+  if (wasm->memory.exists) {
+    addMemoryFuncs(ast, wasm);
   }
   ast->push_back(
     ValueBuilder::makeStatement(ValueBuilder::makeReturn(exports)));
@@ -1013,43 +1011,6 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
     Expression* defaultBody = nullptr; // default must be last in asm.js
 
     Ref visitSwitch(Switch* curr) {
-#if 0
-      // Simple switch emitting. This is valid but may lead to block nesting of a size
-      // that JS engines can't handle.
-      Ref ret = ValueBuilder::makeBlock();
-      Ref condition = visit(curr->condition, EXPRESSION_RESULT);
-      Ref theSwitch =
-        ValueBuilder::makeSwitch(makeAsmCoercion(condition, ASM_INT));
-      ret[1]->push_back(theSwitch);
-      // First, group the switch targets.
-      std::map<Name, std::vector<Index>> targetIndexes;
-      for (size_t i = 0; i < curr->targets.size(); i++) {
-        targetIndexes[curr->targets[i]].push_back(i);
-      }
-      // Emit group by group.
-      for (auto& pair : targetIndexes) {
-        auto target = pair.first;
-        auto& indexes = pair.second;
-        if (target != curr->default_) {
-          for (auto i : indexes) {
-            ValueBuilder::appendCaseToSwitch(theSwitch,
-                                             ValueBuilder::makeNum(i));
-          }
-          ValueBuilder::appendCodeToSwitch(
-            theSwitch, blockify(makeBreakOrContinue(target)), false);
-        } else {
-          // For the group going to the same place as the default, we can just
-          // emit the default itself, which we do at the end.
-        }
-      }
-      // TODO: if the group the default is in is not the largest, we can turn
-      // the largest into
-      //       the default by using a local and a check on the range
-      ValueBuilder::appendDefaultToSwitch(theSwitch);
-      ValueBuilder::appendCodeToSwitch(
-        theSwitch, blockify(makeBreakOrContinue(curr->default_)), false);
-      return ret;
-#else
       // Even without optimizations, we work hard here to emit minimal and
       // especially minimally-nested code, since otherwise we may get block
       // nesting of a size that JS engines can't handle.
@@ -1064,6 +1025,7 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
       // Emit first any hoisted groups.
       auto& hoistedCases = switchProcessor.hoistedSwitchCases[curr];
       std::set<Name> emittedTargets;
+      bool hoistedEndsWithUnreachable = false;
       for (auto& case_ : hoistedCases) {
         auto target = case_.target;
         auto& code = case_.code;
@@ -1080,8 +1042,23 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
         for (auto* c : code) {
           ValueBuilder::appendCodeToSwitch(
             theSwitch, blockify(visit(c, NO_RESULT)), false);
+          hoistedEndsWithUnreachable = c->type == unreachable;
         }
       }
+      // After the hoisted cases, if any remain we must make sure not to
+      // fall through into them. If no code was hoisted, this is unnecessary,
+      // and if the hoisted code ended with an unreachable it also is not
+      // necessary.
+      bool stoppedFurtherFallthrough = false;
+      auto stopFurtherFallthrough = [&]() {
+        if (!stoppedFurtherFallthrough && !hoistedCases.empty() &&
+            !hoistedEndsWithUnreachable) {
+          stoppedFurtherFallthrough = true;
+          ValueBuilder::appendCodeToSwitch(
+            theSwitch, blockify(ValueBuilder::makeBreak(IString())), false);
+        }
+      };
+
       // Emit any remaining groups by just emitting branches to their code,
       // which will appear outside the switch.
       for (auto& pair : targetIndexes) {
@@ -1090,6 +1067,7 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
         if (emittedTargets.count(target)) {
           continue;
         }
+        stopFurtherFallthrough();
         if (target != curr->default_) {
           for (auto i : indexes) {
             ValueBuilder::appendCaseToSwitch(theSwitch,
@@ -1106,15 +1084,18 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
       // the largest into
       //       the default by using a local and a check on the range
       if (!emittedTargets.count(curr->default_)) {
+        stopFurtherFallthrough();
         ValueBuilder::appendDefaultToSwitch(theSwitch);
         ValueBuilder::appendCodeToSwitch(
           theSwitch, blockify(makeBreakOrContinue(curr->default_)), false);
       }
       return theSwitch;
-#endif
     }
 
     Ref visitCall(Call* curr) {
+      if (curr->isReturn) {
+        Fatal() << "tail calls not yet supported in wasm2js";
+      }
       Ref theCall =
         ValueBuilder::makeCall(fromName(curr->target, NameScope::Top));
       // For wasm => wasm calls, we don't need coercions. TODO: even imports
@@ -1136,6 +1117,9 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
     }
 
     Ref visitCallIndirect(CallIndirect* curr) {
+      if (curr->isReturn) {
+        Fatal() << "tail calls not yet supported in wasm2js";
+      }
       // If the target has effects that interact with the operands, we must
       // reorder it to the start.
       bool mustReorder = false;
@@ -1408,9 +1392,7 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
             }
             case CtzInt32:
             case PopcntInt32: {
-              std::cerr << "i32 unary should have been removed: " << curr
-                        << std::endl;
-              WASM_UNREACHABLE();
+              WASM_UNREACHABLE("i32 unary should have been removed");
             }
             case EqZInt32: {
               // XXX !x does change the type to bool, which is correct, but may
@@ -1537,15 +1519,11 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
             case NearestFloat64:
             case TruncFloat32:
             case TruncFloat64:
-              std::cerr
-                << "operation should have been removed in previous passes"
-                << std::endl;
-              WASM_UNREACHABLE();
+              WASM_UNREACHABLE(
+                "operation should have been removed in previous passes");
 
             default:
-              std::cerr << "Unhandled unary float operator: " << curr
-                        << std::endl;
-              abort();
+              WASM_UNREACHABLE("unhandled unary float operator");
           }
           if (curr->type == f32) { // doubles need much less coercing
             return makeAsmCoercion(ret, ASM_FLOAT);
@@ -1681,13 +1659,9 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
               return ValueBuilder::makeBinary(left, LT, right);
             case RotLInt32:
             case RotRInt32:
-              std::cerr << "should be removed already" << std::endl;
-              WASM_UNREACHABLE();
-            default: {
-              std::cerr << "Unhandled i32 binary operator: " << curr
-                        << std::endl;
-              abort();
-            }
+              WASM_UNREACHABLE("should be removed already");
+            default:
+              WASM_UNREACHABLE("unhandled i32 binary operator");
           }
           break;
         }
@@ -1803,7 +1777,7 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
       } else if (curr->op == HostOp::MemorySize) {
         return ValueBuilder::makeCall(WASM_MEMORY_SIZE);
       }
-      WASM_UNREACHABLE(); // TODO
+      WASM_UNREACHABLE("unexpected expr type"); // TODO
     }
 
     Ref visitNop(Nop* curr) { return ValueBuilder::makeToplevel(); }
@@ -1816,63 +1790,87 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
 
     Ref visitAtomicRMW(AtomicRMW* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitAtomicCmpxchg(AtomicCmpxchg* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitAtomicWait(AtomicWait* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitAtomicNotify(AtomicNotify* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
+    }
+    Ref visitAtomicFence(AtomicFence* curr) {
+      // Sequentially consistent fences can be lowered to no operation
+      return ValueBuilder::makeToplevel();
     }
     Ref visitSIMDExtract(SIMDExtract* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitSIMDReplace(SIMDReplace* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitSIMDShuffle(SIMDShuffle* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
-    Ref visitSIMDBitselect(SIMDBitselect* curr) {
+    Ref visitSIMDTernary(SIMDTernary* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitSIMDShift(SIMDShift* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
+    }
+    Ref visitSIMDLoad(SIMDLoad* curr) {
+      unimplemented(curr);
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitMemoryInit(MemoryInit* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitDataDrop(DataDrop* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitMemoryCopy(MemoryCopy* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitMemoryFill(MemoryFill* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
+    }
+    Ref visitTry(Try* curr) {
+      unimplemented(curr);
+      WASM_UNREACHABLE("unimp");
+    }
+    Ref visitThrow(Throw* curr) {
+      unimplemented(curr);
+      WASM_UNREACHABLE("unimp");
+    }
+    Ref visitRethrow(Rethrow* curr) {
+      unimplemented(curr);
+      WASM_UNREACHABLE("unimp");
+    }
+    Ref visitBrOnExn(BrOnExn* curr) {
+      unimplemented(curr);
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitPush(Push* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
     Ref visitPop(Pop* curr) {
       unimplemented(curr);
-      WASM_UNREACHABLE();
+      WASM_UNREACHABLE("unimp");
     }
 
   private:
@@ -1892,6 +1890,22 @@ Ref Wasm2JSBuilder::processFunctionBody(Module* m,
   };
 
   return ExpressionProcessor(this, m, func, standaloneFunction).process();
+}
+
+void Wasm2JSBuilder::addMemoryFuncs(Ref ast, Module* wasm) {
+  Ref memorySizeFunc = ValueBuilder::makeFunction(WASM_MEMORY_SIZE);
+  memorySizeFunc[3]->push_back(ValueBuilder::makeReturn(
+    makeAsmCoercion(ValueBuilder::makeBinary(
+                      ValueBuilder::makeDot(ValueBuilder::makeName(BUFFER),
+                                            IString("byteLength")),
+                      DIV,
+                      ValueBuilder::makeInt(Memory::kPageSize)),
+                    AsmType::ASM_INT)));
+  ast->push_back(memorySizeFunc);
+
+  if (wasm->memory.max > wasm->memory.initial) {
+    addMemoryGrowthFuncs(ast, wasm);
+  }
 }
 
 void Wasm2JSBuilder::addMemoryGrowthFuncs(Ref ast, Module* wasm) {
@@ -2010,16 +2024,7 @@ void Wasm2JSBuilder::addMemoryGrowthFuncs(Ref ast, Module* wasm) {
   memoryGrowFunc[3]->push_back(
     ValueBuilder::makeReturn(ValueBuilder::makeName(IString("oldPages"))));
 
-  Ref memorySizeFunc = ValueBuilder::makeFunction(WASM_MEMORY_SIZE);
-  memorySizeFunc[3]->push_back(ValueBuilder::makeReturn(
-    makeAsmCoercion(ValueBuilder::makeBinary(
-                      ValueBuilder::makeDot(ValueBuilder::makeName(BUFFER),
-                                            IString("byteLength")),
-                      DIV,
-                      ValueBuilder::makeInt(Memory::kPageSize)),
-                    AsmType::ASM_INT)));
   ast->push_back(memoryGrowFunc);
-  ast->push_back(memorySizeFunc);
 }
 
 // Wasm2JSGlue emits the core of the module - the functions etc. that would
@@ -2081,7 +2086,8 @@ void Wasm2JSGlue::emitPreES6() {
     }
     baseModuleMap[base] = module;
 
-    out << "import { " << base.str << " } from '" << module.str << "';\n";
+    out << "import { " << asmangle(base.str) << " } from '" << module.str
+        << "';\n";
   };
 
   ImportInfo imports(wasm);
@@ -2179,7 +2185,7 @@ void Wasm2JSGlue::emitPostES6() {
     if (ABI::wasm2js::isScratchMemoryHelper(import->base)) {
       return;
     }
-    out << "," << import->base.str;
+    out << "," << asmangle(import->base.str);
   });
   out << "},mem" << moduleName.str << ");\n";
 
@@ -2224,14 +2230,14 @@ void Wasm2JSGlue::emitMemory(
     function(mem) {
       var _mem = new Uint8Array(mem);
       return function(offset, s) {
-        var bytes;
+        var bytes, i;
         if (typeof Buffer === 'undefined') {
           bytes = atob(s);
-          for (var i = 0; i < bytes.length; i++)
+          for (i = 0; i < bytes.length; i++)
             _mem[offset + i] = bytes.charCodeAt(i);
         } else {
           bytes = Buffer.from(s, 'base64');
-          for (var i = 0; i < bytes.length; i++)
+          for (i = 0; i < bytes.length; i++)
             _mem[offset + i] = bytes[i];
         }
       }

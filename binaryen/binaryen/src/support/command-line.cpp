@@ -15,6 +15,8 @@
  */
 
 #include "support/command-line.h"
+#include "config.h"
+#include "support/debug.h"
 
 using namespace wasm;
 
@@ -51,6 +53,14 @@ void printWrap(std::ostream& os, int leftPad, const std::string& content) {
 
 Options::Options(const std::string& command, const std::string& description)
   : debug(false), positional(Arguments::Zero) {
+  add("--version",
+      "",
+      "Output version information and exit",
+      Arguments::Zero,
+      [command](Options*, const std::string&) {
+        std::cout << command << " " << BINARYEN_VERSION_INFO << "\n";
+        exit(0);
+      });
   add("--help",
       "-h",
       "Show this help message and exit",
@@ -82,8 +92,11 @@ Options::Options(const std::string& command, const std::string& description)
   add("--debug",
       "-d",
       "Print debug information to stderr",
-      Arguments::Zero,
-      [&](Options* o, const std::string& arguments) { debug = true; });
+      Arguments::Optional,
+      [&](Options* o, const std::string& arguments) {
+        debug = true;
+        setDebugEnabled(arguments.c_str());
+      });
 }
 
 Options::~Options() {}

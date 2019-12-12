@@ -156,6 +156,12 @@ This repository contains code that builds the following tools in `bin/`:
    (going through Binaryen IR).
  * **wasm2js**: A WebAssembly-to-JS compiler. This is used by Emscripten to
    generate JavaScript as an alternative to WebAssembly.
+ * **wasm-reduce**: A testcase reducer for WebAssembly files. Given a wasm file
+   that is interesting for some reason (say, it crashes a specific VM),
+   wasm-reduce can find a smaller wasm file that has the same property, which is
+   often easier to debug. See the
+   [docs](https://github.com/WebAssembly/binaryen/wiki/Fuzzing#reducing)
+   for more details.
  * **wasm-shell**: A shell that can load and interpret WebAssembly code. It can
    also run the spec test suite.
  * **wasm-emscripten-finalize**: Takes a wasm binary produced by llvm+lld and
@@ -220,14 +226,14 @@ passes on it, as well as print it (before and/or after the transformations). For
 example, try
 
 ````
-bin/wasm-opt test/passes/lower-if-else.wast --print
+bin/wasm-opt test/passes/lower-if-else.wat --print
 ````
 
 That will pretty-print out one of the test cases in the test suite. To run a
 transformation pass on it, try
 
 ````
-bin/wasm-opt test/passes/lower-if-else.wast --print --lower-if-else
+bin/wasm-opt test/passes/lower-if-else.wat --print --lower-if-else
 ````
 
 The `lower-if-else` pass lowers if-else into a block and a break. You can see
@@ -256,7 +262,7 @@ This will print out JavaScript to the console.
 For example, try
 
 ```
-$ bin/wasm2js test/hello_world.wast
+$ bin/wasm2js test/hello_world.wat
 ```
 
 That output contains
@@ -280,13 +286,33 @@ as a translation of
  )
 ```
 
-You can also tell wasm2js to optimize, using the normal optimization flags
-wasm-opt and other tools receive (such as `-Os`). For optimal code size,
-you should both optimize and run a JavaScript minifier afterwards.
+wasm2js's output is in ES6 module format - basically, it converts a wasm
+module into an ES6 module (to run on older browsers and Node.js versions
+you can use Babel etc. to convert it to ES5). Let's look at a full example
+of calling that hello world wat; first, create the main JS file:
 
-Things to keep in mind with wasm2js's output:
+```javascript
+// main.mjs
+import { add } from "./hello_world.mjs";
+console.log('the sum of 1 and 2 is:', add(1, 2));
+```
 
- * It is not possible to match WebAssemblty semantics 100% precisely with fast
+The run this (note that you need a new enough Node.js with ES6 module
+support):
+
+```shell
+$ bin/wasm2js test/hello_world.wat -o hello_world.mjs
+$ node --experimental-modules main.mjs
+the sum of 1 and 2 is: 3
+```
+
+Things keep to in mind with wasm2js's output:
+
+ * You should run wasm2js with optimizations for release builds, using `-O`
+   or another optimization level. That will optimize along the entire pipeline
+   (wasm and JS). It won't do everything a JS minifer would, though, like
+   minify whitespace, so you should still run a normal JS minifer afterwards.
+ * It is not possible to match WebAssembly semantics 100% precisely with fast
    JavaScript code. For example, every load and store may trap, and to make
    JavaScript do the same we'd need to add checks everywhere, which would be
    large and slow. Instead, wasm2js assumes loads and stores do not trap, that
@@ -363,7 +389,7 @@ The `check.py` script supports some options:
  * If an interpreter is provided, we run the output through it, checking for
    parse errors.
  * If tests are provided, we run exactly those. If none are provided, we run
-   them all.
+   them all. To see what tests are available, run `./check.py --list-suites`.
  * Some tests require `emcc` or `nodejs` in the path. They will not run if the
    tool cannot be found, and you'll see a warning.
  * We have tests from upstream in `tests/spec`, in git submodules. Running

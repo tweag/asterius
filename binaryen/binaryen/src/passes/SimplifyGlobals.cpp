@@ -22,12 +22,24 @@
 //  * If an immutable global is a copy of another, use the earlier one,
 //    to allow removal of the copies later.
 //  * Apply the constant values of immutable globals.
+//  * Apply the constant values of previous global.sets, in a linear
+//    execution trace.
+//
+// Some globals may not have uses after these changes, which we leave
+// to other passes to optimize.
+//
+// This pass has a "optimize" variant (similar to inlining and DAE)
+// that also runs general function optimizations where we managed to replace
+// a constant value. That is helpful as such a replacement often opens up
+// further optimization opportunities.
 //
 
 #include <atomic>
 
+#include "ir/effects.h"
 #include "ir/utils.h"
 #include "pass.h"
+#include "wasm-builder.h"
 #include "wasm.h"
 
 namespace wasm {
@@ -80,34 +92,101 @@ private:
 };
 
 struct ConstantGlobalApplier
-  : public WalkerPass<PostWalker<ConstantGlobalApplier>> {
+  : public WalkerPass<
+      LinearExecutionWalker<ConstantGlobalApplier,
+                            UnifiedExpressionVisitor<ConstantGlobalApplier>>> {
   bool isFunctionParallel() override { return true; }
 
-  ConstantGlobalApplier(NameSet* constantGlobals)
-    : constantGlobals(constantGlobals) {}
+  ConstantGlobalApplier(NameSet* constantGlobals, bool optimize)
+    : constantGlobals(constantGlobals), optimize(optimize) {}
 
   ConstantGlobalApplier* create() override {
-    return new ConstantGlobalApplier(constantGlobals);
+    return new ConstantGlobalApplier(constantGlobals, optimize);
   }
 
-  void visitGlobalGet(GlobalGet* curr) {
-    if (constantGlobals->count(curr->name)) {
-      auto* global = getModule()->getGlobal(curr->name);
-      assert(global->init->is<Const>());
-      replaceCurrent(ExpressionManipulator::copy(global->init, *getModule()));
+  void visitExpression(Expression* curr) {
+    if (auto* set = curr->dynCast<GlobalSet>()) {
+      if (auto* c = set->value->dynCast<Const>()) {
+        currConstantGlobals[set->name] = c->value;
+      } else {
+        currConstantGlobals.erase(set->name);
+      }
+      return;
+    } else if (auto* get = curr->dynCast<GlobalGet>()) {
+      // Check if the global is known to be constant all the time.
+      if (constantGlobals->count(get->name)) {
+        auto* global = getModule()->getGlobal(get->name);
+        assert(global->init->is<Const>());
+        replaceCurrent(ExpressionManipulator::copy(global->init, *getModule()));
+        replaced = true;
+        return;
+      }
+      // Check if the global has a known value in this linear trace.
+      auto iter = currConstantGlobals.find(get->name);
+      if (iter != currConstantGlobals.end()) {
+        Builder builder(*getModule());
+        replaceCurrent(builder.makeConst(iter->second));
+        replaced = true;
+      }
+      return;
+    }
+    // Otherwise, invalidate if we need to.
+    EffectAnalyzer effects(getPassOptions());
+    effects.visit(curr);
+    assert(effects.globalsWritten.empty()); // handled above
+    if (effects.calls) {
+      currConstantGlobals.clear();
+    }
+  }
+
+  static void doNoteNonLinear(ConstantGlobalApplier* self, Expression** currp) {
+    self->currConstantGlobals.clear();
+  }
+
+  void visitFunction(Function* curr) {
+    if (replaced && optimize) {
+      PassRunner runner(getModule(), getPassRunner()->options);
+      runner.setIsNested(true);
+      runner.addDefaultFunctionOptimizationPasses();
+      runner.runOnFunction(curr);
     }
   }
 
 private:
   NameSet* constantGlobals;
+  bool optimize;
+  bool replaced = false;
+
+  // The globals currently constant in the linear trace.
+  std::map<Name, Literal> currConstantGlobals;
 };
 
 } // anonymous namespace
 
 struct SimplifyGlobals : public Pass {
-  void run(PassRunner* runner, Module* module) override {
+  PassRunner* runner;
+  Module* module;
+
+  GlobalInfoMap map;
+  bool optimize;
+
+  SimplifyGlobals(bool optimize = false) : optimize(optimize) {}
+
+  void run(PassRunner* runner_, Module* module_) override {
+    runner = runner_;
+    module = module_;
+
+    analyze();
+
+    preferEarlierImports();
+
+    propagateConstantsToGlobals();
+
+    propagateConstantsToCode();
+  }
+
+  void analyze() {
     // First, find out all the relevant info.
-    GlobalInfoMap map;
     for (auto& global : module->globals) {
       auto& info = map[global->name];
       if (global->imported()) {
@@ -128,6 +207,9 @@ struct SimplifyGlobals : public Pass {
         global->mutable_ = false;
       }
     }
+  }
+
+  void preferEarlierImports() {
     // Optimize uses of immutable globals, prefer the earlier import when
     // there is a copy.
     NameNameMap copiedParentMap;
@@ -155,9 +237,34 @@ struct SimplifyGlobals : public Pass {
       // Apply to the gets.
       GlobalUseModifier(&copiedParentMap).run(runner, module);
     }
-    // If any immutable globals have constant values, we can just apply them
-    // (the global itself will be removed by another pass, as it/ won't have
-    // any uses).
+  }
+
+  // Constant propagation part 1: even an mutable global with a constant
+  // value can have that value propagated to another global that reads it,
+  // since we do know the value during startup, it can't be modified until
+  // code runs.
+  void propagateConstantsToGlobals() {
+    // Go over the list of globals in order, which is the order of
+    // initialization as well, tracking their constant values.
+    std::map<Name, Literal> constantGlobals;
+    for (auto& global : module->globals) {
+      if (!global->imported()) {
+        if (auto* c = global->init->dynCast<Const>()) {
+          constantGlobals[global->name] = c->value;
+        } else if (auto* get = global->init->dynCast<GlobalGet>()) {
+          auto iter = constantGlobals.find(get->name);
+          if (iter != constantGlobals.end()) {
+            Builder builder(*module);
+            global->init = builder.makeConst(iter->second);
+          }
+        }
+      }
+    }
+  }
+
+  // Constant propagation part 2: apply the values of immutable globals
+  // with constant values to to global.gets in the code.
+  void propagateConstantsToCode() {
     NameSet constantGlobals;
     for (auto& global : module->globals) {
       if (!global->mutable_ && !global->imported() &&
@@ -165,14 +272,14 @@ struct SimplifyGlobals : public Pass {
         constantGlobals.insert(global->name);
       }
     }
-    if (!constantGlobals.empty()) {
-      ConstantGlobalApplier(&constantGlobals).run(runner, module);
-    }
-    // TODO a mutable global's initial value can be applied to another global
-    // after it, as the mutable one can't mutate during instance startup
+    ConstantGlobalApplier(&constantGlobals, optimize).run(runner, module);
   }
 };
 
-Pass* createSimplifyGlobalsPass() { return new SimplifyGlobals(); }
+Pass* createSimplifyGlobalsPass() { return new SimplifyGlobals(false); }
+
+Pass* createSimplifyGlobalsOptimizingPass() {
+  return new SimplifyGlobals(true);
+}
 
 } // namespace wasm

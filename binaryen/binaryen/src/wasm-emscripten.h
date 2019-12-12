@@ -54,6 +54,10 @@ public:
 
   void fixInvokeFunctionNames();
 
+  void enforceStackLimit();
+
+  void exportWasiStart();
+
   // Emits the data segments to a file. The file contains data from address base
   // onwards (we must pass in base, as we can't tell it from the wasm - the
   // first segment may start after a run of zeros, but we need those zeros in
@@ -67,15 +71,17 @@ private:
   bool useStackPointerGlobal;
   // Used by generateDynCallThunk to track all the dynCall functions created
   // so far.
-  std::unordered_set<std::string> sigs;
+  std::unordered_set<Signature> sigs;
 
   Global* getStackPointerGlobal();
   Expression* generateLoadStackPointer();
-  Expression* generateStoreStackPointer(Expression* value);
-  void generateDynCallThunk(std::string sig);
+  Expression* generateStoreStackPointer(Function* func, Expression* value);
+  void generateDynCallThunk(Signature sig);
   void generateStackSaveFunction();
   void generateStackAllocFunction();
   void generateStackRestoreFunction();
+  void generateSetStackLimitFunction();
+  Name importStackOverflowHandler();
 };
 
 } // namespace wasm
