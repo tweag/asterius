@@ -36,13 +36,16 @@ interp::Result TrapCallback(const interp::HostFunc* func,
                             const interp::FuncSignature* sig,
                             const interp::TypedValues& args,
                             interp::TypedValues& results) {
-  return interp::Result::TrapHostTrapped;
+  return interp::ResultType::TrapHostTrapped;
 }
+
+Features s_features;
 
 class HostTrapTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    interp::HostModule* host_module = env_.AppendHostModule("host");
+    env_ = MakeUnique<interp::Environment>(s_features);
+    interp::HostModule* host_module = env_->AppendHostModule("host");
     host_module->AppendFuncExport("a", {{}, {}}, TrapCallback);
   }
 
@@ -53,19 +56,19 @@ class HostTrapTest : public ::testing::Test {
     Errors errors;
     interp::DefinedModule* module = nullptr;
     ReadBinaryOptions options;
-    Result result = ReadBinaryInterp(&env_, data.data(), data.size(), options,
-                                     &errors, &module);
+    Result result = ReadBinaryInterp(env_.get(), data.data(), data.size(),
+                                     options, &errors, &module);
     EXPECT_EQ(Result::Ok, result);
 
     if (result == Result::Ok) {
-      interp::Executor executor(&env_);
-      return executor.RunStartFunction(module);
+      interp::Executor executor(env_.get());
+      return executor.Initialize(module);
     } else {
       return {};
     }
   }
 
-  interp::Environment env_;
+  std::unique_ptr<interp::Environment> env_;
 };
 
 }  // end of anonymous namespace
@@ -80,8 +83,8 @@ TEST_F(HostTrapTest, Call) {
       0x01, 0x61, 0x00, 0x00, 0x03, 0x02, 0x01, 0x00, 0x08, 0x01, 0x01,
       0x0a, 0x06, 0x01, 0x04, 0x00, 0x10, 0x00, 0x0b,
   };
-  ASSERT_EQ(interp::Result::TrapHostTrapped,
-            LoadModuleAndRunStartFunction(data).result);
+  ASSERT_EQ(LoadModuleAndRunStartFunction(data).result.type,
+            interp::ResultType::TrapHostTrapped);
 }
 
 TEST_F(HostTrapTest, CallIndirect) {
@@ -96,8 +99,8 @@ TEST_F(HostTrapTest, CallIndirect) {
       0x01, 0x08, 0x01, 0x01, 0x09, 0x07, 0x01, 0x00, 0x41, 0x00, 0x0b, 0x01,
       0x00, 0x0a, 0x09, 0x01, 0x07, 0x00, 0x41, 0x00, 0x11, 0x00, 0x00, 0x0b,
   };
-  ASSERT_EQ(interp::Result::TrapHostTrapped,
-            LoadModuleAndRunStartFunction(data).result);
+  ASSERT_EQ(LoadModuleAndRunStartFunction(data).result.type,
+            interp::ResultType::TrapHostTrapped);
 }
 
 namespace {
@@ -105,8 +108,9 @@ namespace {
 class HostMemoryTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    interp::HostModule* host_module = env_.AppendHostModule("host");
-    executor_ = MakeUnique<interp::Executor>(&env_);
+    env_ = MakeUnique<interp::Environment>(s_features);
+    interp::HostModule* host_module = env_->AppendHostModule("host");
+    executor_ = MakeUnique<interp::Executor>(env_.get());
     std::pair<interp::Memory*, Index> pair =
         host_module->AppendMemoryExport("mem", Limits(1));
 
@@ -128,8 +132,8 @@ class HostMemoryTest : public ::testing::Test {
   Result LoadModule(const std::vector<uint8_t>& data) {
     Errors errors;
     ReadBinaryOptions options;
-    return ReadBinaryInterp(&env_, data.data(), data.size(), options, &errors,
-                            &module_);
+    return ReadBinaryInterp(env_.get(), data.data(), data.size(), options,
+                            &errors, &module_);
   }
 
   std::string string_data;
@@ -155,7 +159,7 @@ class HostMemoryTest : public ::testing::Test {
               memory_->data.begin() + ptr);
 
     results[0].set_i32(size);
-    return interp::Result::Ok;
+    return interp::ResultType::Ok;
   }
 
   interp::Result BufDoneCallback(const interp::HostFunc* func,
@@ -177,10 +181,10 @@ class HostMemoryTest : public ::testing::Test {
     std::copy(memory_->data.begin() + ptr, memory_->data.begin() + ptr + size,
               string_data.begin());
 
-    return interp::Result::Ok;
+    return interp::ResultType::Ok;
   }
 
-  interp::Environment env_;
+  std::unique_ptr<interp::Environment> env_;
   interp::Memory* memory_;
   interp::DefinedModule* module_;
   std::unique_ptr<interp::Executor> executor_;
@@ -270,13 +274,11 @@ TEST_F(HostMemoryTest, Rot13) {
 
   string_data = "Hello, WebAssembly!";
 
-  ASSERT_EQ(interp::Result::Ok,
-            executor_->RunExportByName(module_, "rot13", {}).result);
+  ASSERT_TRUE(executor_->RunExportByName(module_, "rot13", {}).ok());
 
   ASSERT_EQ("Uryyb, JroNffrzoyl!", string_data);
 
-  ASSERT_EQ(interp::Result::Ok,
-            executor_->RunExportByName(module_, "rot13", {}).result);
+  ASSERT_TRUE(executor_->RunExportByName(module_, "rot13", {}).ok());
 
   ASSERT_EQ("Hello, WebAssembly!", string_data);
 }

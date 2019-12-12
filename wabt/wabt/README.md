@@ -1,3 +1,4 @@
+[![Github CI Status](https://github.com/WebAssembly/wabt/workflows/CI/badge.svg)](https://github.com/WebAssembly/wabt)
 [![Build Status](https://travis-ci.org/WebAssembly/wabt.svg?branch=master)](https://travis-ci.org/WebAssembly/wabt) [![Windows status](https://ci.appveyor.com/api/projects/status/8vl5jwtk5ch6r84t/branch/master?svg=true)](https://ci.appveyor.com/project/WebAssembly/wabt/branch/master)
 
 # WABT: The WebAssembly Binary Toolkit
@@ -44,12 +45,12 @@ Wabt has been compiled to JavaScript via emscripten. Some of the functionality i
 
 | Proposal | flag | binary | text | validate | interpret |
 | - | - | - | - | - | - |
-| [exception handling][] | `--enable-exceptions` | ✓ | ✓ | ✓ | |
-| [mutable globals][] | `--enable-mutable-globals` | ✓ | ✓ | ✓ | ✓ |
+| [exception handling][] | `--enable-exceptions` | ✓ | ✓ | ✓ | ✓ |
+| [mutable globals][] | `--disable-mutable-globals` | ✓ | ✓ | ✓ | ✓ |
 | [nontrapping float-to-int conversions][] | `--enable-saturating-float-to-int` | ✓ | ✓ | ✓ | ✓ |
 | [sign extension][] | `--enable-sign-extension` | ✓ | ✓ | ✓ | ✓ |
 | [simd][] | `--enable-simd` | ✓ | ✓ | ✓ | ✓ |
-| [threads][] | `--enable-threads` | ✓ | ✓ | ✓ | |
+| [threads][] | `--enable-threads` | ✓ | ✓ | ✓ | ✓ |
 | [multi-value][] | `--enable-multi-value` | ✓ | ✓ | ✓ | ✓ |
 | [tail-call][] | `--enable-tail-call` | ✓ | ✓ | ✓ | ✓ |
 | [bulk memory][] | `--enable-bulk-memory` | ✓ | ✓ | ✓ | ✓ |

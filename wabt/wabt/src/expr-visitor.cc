@@ -95,12 +95,11 @@ Result ExprVisitor::VisitExpr(Expr* root_expr) {
         if (iter != try_expr->block.exprs.end()) {
           PushDefault(&*iter++);
         } else {
+          CHECK_RESULT(delegate_->OnCatchExpr(try_expr));
+          PopExprlist();
           if (try_expr->catch_.empty()) {
             CHECK_RESULT(delegate_->EndTryExpr(try_expr));
-            PopExprlist();
           } else {
-            CHECK_RESULT(delegate_->OnCatchExpr(try_expr));
-            PopExprlist();
             PushExprlist(State::Catch, expr, try_expr->catch_);
           }
         }
@@ -304,6 +303,14 @@ Result ExprVisitor::HandleDefaultState(Expr* expr) {
 
     case ExprType::TableSize:
       CHECK_RESULT(delegate_->OnTableSizeExpr(cast<TableSizeExpr>(expr)));
+      break;
+
+    case ExprType::TableFill:
+      CHECK_RESULT(delegate_->OnTableFillExpr(cast<TableFillExpr>(expr)));
+      break;
+
+    case ExprType::RefFunc:
+      CHECK_RESULT(delegate_->OnRefFuncExpr(cast<RefFuncExpr>(expr)));
       break;
 
     case ExprType::RefNull:

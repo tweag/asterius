@@ -78,7 +78,7 @@ void BinaryReaderLogging::WriteIndent() {
 
 void BinaryReaderLogging::LogType(Type type) {
   if (IsTypeIndex(type)) {
-    LOGF_NOINDENT("funcidx[%d]", static_cast<int>(type));
+    LOGF_NOINDENT("typeidx[%d]", static_cast<int>(type));
   } else {
     LOGF_NOINDENT("%s", GetTypeName(type));
   }
@@ -143,13 +143,14 @@ Result BinaryReaderLogging::OnType(Index index,
 }
 
 Result BinaryReaderLogging::OnImport(Index index,
+                                     ExternalKind kind,
                                      string_view module_name,
                                      string_view field_name) {
-  LOGF("OnImport(index: %" PRIindex ", module: \"" PRIstringview
+  LOGF("OnImport(index: %" PRIindex ", kind: %s, module: \"" PRIstringview
        "\", field: \"" PRIstringview "\")\n",
-       index, WABT_PRINTF_STRING_VIEW_ARG(module_name),
+       index, GetKindName(kind), WABT_PRINTF_STRING_VIEW_ARG(module_name),
        WABT_PRINTF_STRING_VIEW_ARG(field_name));
-  return reader_->OnImport(index, module_name, field_name);
+  return reader_->OnImport(index, kind, module_name, field_name);
 }
 
 Result BinaryReaderLogging::OnImportFunc(Index import_index,
@@ -342,6 +343,11 @@ Result BinaryReaderLogging::OnLoopExpr(Type sig_type) {
   return reader_->OnLoopExpr(sig_type);
 }
 
+Result BinaryReaderLogging::OnSelectExpr(Type return_type) {
+  LOGF("OnSelectExpr(return_type: %s)\n", GetTypeName(return_type));
+  return reader_->OnSelectExpr(return_type);
+}
+
 Result BinaryReaderLogging::OnTryExpr(Type sig_type) {
   LOGF("OnTryExpr(sig: ");
   LogType(sig_type);
@@ -362,12 +368,12 @@ Result BinaryReaderLogging::OnSimdShuffleOpExpr(Opcode opcode, v128 value) {
 
 Result BinaryReaderLogging::BeginElemSegment(Index index,
                                              Index table_index,
-                                             bool passive,
+                                             uint8_t flags,
                                              Type elem_type) {
   LOGF("BeginElemSegment(index: %" PRIindex ", table_index: %" PRIindex
-       ", passive: %s, elem_type: %s)\n",
-       index, table_index, passive ? "true" : "false", GetTypeName(elem_type));
-  return reader_->BeginElemSegment(index, table_index, passive, elem_type);
+       ", flags: %d, elem_type: %s)\n",
+       index, table_index, flags, GetTypeName(elem_type));
+  return reader_->BeginElemSegment(index, table_index, flags, elem_type);
 }
 
 Result BinaryReaderLogging::OnDataSegmentData(Index index,
@@ -622,12 +628,13 @@ Result BinaryReaderLogging::OnComdatEntry(ComdatType kind, Index index) {
     return reader_->name(value0, value1);                                \
   }
 
-#define DEFINE_INDEX_INDEX_BOOL(name, desc0, desc1, desc2)                     \
-  Result BinaryReaderLogging::name(Index value0, Index value1, bool value2) {  \
-    LOGF(#name "(" desc0 ": %" PRIindex ", " desc1 ": %" PRIindex              \
-               ", " desc2 ": %s)\n",                                           \
-         value0, value1, value2 ? "true" : "false");                           \
-    return reader_->name(value0, value1, value2);                              \
+#define DEFINE_INDEX_INDEX_U8(name, desc0, desc1, desc2)                     \
+  Result BinaryReaderLogging::name(Index value0, Index value1,               \
+                                   uint8_t value2) {                         \
+    LOGF(#name "(" desc0 ": %" PRIindex ", " desc1 ": %" PRIindex ", " desc2 \
+               ": %d)\n",                                                    \
+         value0, value1, value2);                                            \
+    return reader_->name(value0, value1, value2);                            \
   }
 
 #define DEFINE_OPCODE(name)                                            \
@@ -723,13 +730,15 @@ DEFINE0(OnMemoryFillExpr)
 DEFINE0(OnMemoryGrowExpr)
 DEFINE_INDEX(OnMemoryInitExpr)
 DEFINE0(OnMemorySizeExpr)
-DEFINE0(OnTableCopyExpr)
+DEFINE_INDEX_INDEX(OnTableCopyExpr, "dst_index", "src_index")
 DEFINE_INDEX(OnElemDropExpr)
-DEFINE_INDEX(OnTableInitExpr)
+DEFINE_INDEX_INDEX(OnTableInitExpr, "segment_index", "table_index")
 DEFINE_INDEX(OnTableSetExpr)
 DEFINE_INDEX(OnTableGetExpr)
 DEFINE_INDEX(OnTableGrowExpr)
 DEFINE_INDEX(OnTableSizeExpr)
+DEFINE_INDEX_DESC(OnTableFillExpr, "table index")
+DEFINE_INDEX(OnRefFuncExpr)
 DEFINE0(OnRefNullExpr)
 DEFINE0(OnRefIsNullExpr)
 DEFINE0(OnNopExpr)
@@ -738,7 +747,6 @@ DEFINE_INDEX_DESC(OnReturnCallExpr, "func_index")
 
 DEFINE_INDEX_INDEX(OnReturnCallIndirectExpr, "sig_index", "table_index")
 DEFINE0(OnReturnExpr)
-DEFINE0(OnSelectExpr)
 DEFINE_LOAD_STORE_OPCODE(OnLoadSplatExpr);
 DEFINE_LOAD_STORE_OPCODE(OnStoreExpr);
 DEFINE_INDEX_DESC(OnThrowExpr, "event_index")
@@ -759,7 +767,7 @@ DEFINE_END(EndElemSection)
 
 DEFINE_BEGIN(BeginDataSection)
 DEFINE_INDEX(OnDataSegmentCount)
-DEFINE_INDEX_INDEX_BOOL(BeginDataSegment, "index", "memory_index", "passive")
+DEFINE_INDEX_INDEX_U8(BeginDataSegment, "index", "memory_index", "flags")
 DEFINE_INDEX(BeginDataSegmentInitExpr)
 DEFINE_INDEX(EndDataSegmentInitExpr)
 DEFINE_INDEX(EndDataSegment)
@@ -780,6 +788,7 @@ DEFINE_END(EndRelocSection)
 
 DEFINE_INDEX_INDEX(OnInitExprGlobalGetExpr, "index", "global_index")
 DEFINE_INDEX(OnInitExprRefNull)
+DEFINE_INDEX_INDEX(OnInitExprRefFunc, "index", "func_index")
 
 DEFINE_BEGIN(BeginDylinkSection)
 DEFINE_INDEX(OnDylinkNeededCount)

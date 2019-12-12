@@ -42,6 +42,7 @@ class NameApplier : public ExprVisitor::DelegateNop {
   Result OnBrOnExnExpr(BrOnExnExpr*) override;
   Result OnBrTableExpr(BrTableExpr*) override;
   Result OnCallExpr(CallExpr*) override;
+  Result OnRefFuncExpr(RefFuncExpr*) override;
   Result OnCallIndirectExpr(CallIndirectExpr*) override;
   Result OnReturnCallExpr(ReturnCallExpr*) override;
   Result OnReturnCallIndirectExpr(ReturnCallIndirectExpr*) override;
@@ -62,6 +63,7 @@ class NameApplier : public ExprVisitor::DelegateNop {
   Result OnTableSetExpr(TableSetExpr*) override;
   Result OnTableGrowExpr(TableGrowExpr*) override;
   Result OnTableSizeExpr(TableSizeExpr*) override;
+  Result OnTableFillExpr(TableFillExpr*) override;
   Result BeginTryExpr(TryExpr*) override;
   Result EndTryExpr(TryExpr*) override;
   Result OnThrowExpr(ThrowExpr*) override;
@@ -258,7 +260,8 @@ Result NameApplier::OnElemDropExpr(ElemDropExpr* expr)  {
 }
 
 Result NameApplier::OnTableInitExpr(TableInitExpr* expr)  {
-  CHECK_RESULT(UseNameForElemSegmentVar(&expr->var));
+  CHECK_RESULT(UseNameForElemSegmentVar(&expr->segment_index));
+  CHECK_RESULT(UseNameForTableVar(&expr->table_index));
   return Result::Ok;
 }
 
@@ -278,6 +281,11 @@ Result NameApplier::OnTableGrowExpr(TableGrowExpr* expr)  {
 }
 
 Result NameApplier::OnTableSizeExpr(TableSizeExpr* expr)  {
+  CHECK_RESULT(UseNameForTableVar(&expr->var));
+  return Result::Ok;
+}
+
+Result NameApplier::OnTableFillExpr(TableFillExpr* expr)  {
   CHECK_RESULT(UseNameForTableVar(&expr->var));
   return Result::Ok;
 }
@@ -328,6 +336,11 @@ Result NameApplier::OnThrowExpr(ThrowExpr* expr) {
 }
 
 Result NameApplier::OnCallExpr(CallExpr* expr) {
+  CHECK_RESULT(UseNameForFuncVar(&expr->var));
+  return Result::Ok;
+}
+
+Result NameApplier::OnRefFuncExpr(RefFuncExpr* expr) {
   CHECK_RESULT(UseNameForFuncVar(&expr->var));
   return Result::Ok;
 }

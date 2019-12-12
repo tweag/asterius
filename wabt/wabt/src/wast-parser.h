@@ -113,7 +113,7 @@ class WastParser {
   // synchronized.
   Result Synchronize(SynchronizeFunc);
 
-  void ParseBindVarOpt(std::string* name);
+  bool ParseBindVarOpt(std::string* name);
   Result ParseVar(Var* out_var);
   bool ParseVarOpt(Var* out_var, Var default_var = Var());
   Result ParseOffsetExpr(ExprList* out_expr_list);
@@ -164,6 +164,7 @@ class WastParser {
   Result ParseInstr(ExprList*);
   Result ParsePlainInstr(std::unique_ptr<Expr>*);
   Result ParseConst(Const*);
+  Result ParseHostRef(Const*);
   Result ParseConstList(ConstVector*);
   Result ParseBlockInstr(std::unique_ptr<Expr>*);
   Result ParseLabelOpt(std::string*);
@@ -185,6 +186,7 @@ class WastParser {
   Result ParseAssertInvalidCommand(CommandPtr*);
   Result ParseAssertMalformedCommand(CommandPtr*);
   Result ParseAssertReturnCommand(CommandPtr*);
+  Result ParseAssertReturnFuncCommand(CommandPtr*);
   Result ParseAssertReturnArithmeticNanCommand(CommandPtr*);
   Result ParseAssertReturnCanonicalNanCommand(CommandPtr*);
   Result ParseAssertTrapCommand(CommandPtr*);
@@ -220,12 +222,12 @@ class WastParser {
 Result ParseWatModule(WastLexer* lexer,
                       std::unique_ptr<Module>* out_module,
                       Errors*,
-                      WastParseOptions* options = nullptr);
+                      WastParseOptions* options);
 
 Result ParseWastScript(WastLexer* lexer,
                        std::unique_ptr<Script>* out_script,
                        Errors*,
-                       WastParseOptions* options = nullptr);
+                       WastParseOptions* options);
 
 }  // namespace wabt
 

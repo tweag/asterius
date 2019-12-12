@@ -28,7 +28,11 @@ option(CODE_COVERAGE "Build with code coverage enabled" OFF)
 option(WITH_EXCEPTIONS "Build with exceptions enabled" OFF)
 option(WERROR "Build with warnings as errors" OFF)
 
-if (CMAKE_C_COMPILER_ID MATCHES "Clang")
+if (MSVC)
+  set(COMPILER_IS_CLANG 0)
+  set(COMPILER_IS_GNU 0)
+  set(COMPILER_IS_MSVC 1)
+elseif (CMAKE_C_COMPILER_ID MATCHES "Clang")
   set(COMPILER_IS_CLANG 1)
   set(COMPILER_IS_GNU 0)
   set(COMPILER_IS_MSVC 0)
@@ -36,10 +40,6 @@ elseif (CMAKE_C_COMPILER_ID STREQUAL "GNU")
   set(COMPILER_IS_CLANG 0)
   set(COMPILER_IS_GNU 1)
   set(COMPILER_IS_MSVC 0)
-elseif (MSVC)
-  set(COMPILER_IS_CLANG 0)
-  set(COMPILER_IS_GNU 0)
-  set(COMPILER_IS_MSVC 1)
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
   set(COMPILER_IS_CLANG 1)
   set(COMPILER_IS_GNU 0)
@@ -66,6 +66,22 @@ endif ()
 include(CheckTypeSize)
 check_type_size(ssize_t SSIZE_T)
 check_type_size(size_t SIZEOF_SIZE_T)
+
+FIND_PACKAGE(Git QUIET REQUIRED)
+EXECUTE_PROCESS(COMMAND
+        "${GIT_EXECUTABLE}" --git-dir=${CMAKE_CURRENT_SOURCE_DIR}/.git describe --tags
+        RESULT_VARIABLE
+            GIT_HASH_RESULT
+        OUTPUT_VARIABLE
+            GIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+IF(${GIT_HASH_RESULT} EQUAL 0)
+    SET(WABT_VERSION_INFO "${GIT_HASH}")
+ELSE()
+    MESSAGE(WARNING "Error running git describe to determine version")
+    SET(WABT_VERSION_INFO "(unable to determine version)")
+ENDIF()
 
 configure_file(
   ${WABT_SOURCE_DIR}/src/config.h.in
@@ -106,7 +122,7 @@ else ()
   endif ()
 
   if (NOT WITH_EXCEPTIONS)
-    add_definitions(-fno-exceptions)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
   endif ()
 
   # Need to define __STDC_*_MACROS because C99 specifies that C++ shouldn't
@@ -170,7 +186,7 @@ endif ()
 
 set(USE_SANITIZER FALSE)
 
-function(SANITIZER NAME FLAGS)
+function(sanitizer NAME FLAGS)
   if (${NAME})
     if (USE_SANITIZER)
       message(FATAL_ERROR "Only one sanitizer allowed")
@@ -180,22 +196,22 @@ function(SANITIZER NAME FLAGS)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FLAGS}" PARENT_SCOPE)
   endif ()
 endfunction()
-SANITIZER(USE_ASAN "-fsanitize=address")
-SANITIZER(USE_MSAN "-fsanitize=memory")
-SANITIZER(USE_LSAN "-fsanitize=leak")
+sanitizer(USE_ASAN "-fsanitize=address")
+sanitizer(USE_MSAN "-fsanitize=memory")
+sanitizer(USE_LSAN "-fsanitize=leak")
 
 if (USE_UBSAN)
   # -fno-sanitize-recover was deprecated, see if we are compiling with a newer
   # clang that requires -fno-sanitize-recover=all.
   set(UBSAN_BLACKLIST ${WABT_SOURCE_DIR}/ubsan.blacklist)
   include(CheckCXXCompilerFlag)
-  CHECK_CXX_COMPILER_FLAG("-fsanitize=undefined -fno-sanitize-recover -Wall -Werror" HAS_UBSAN_RECOVER_BARE)
+  check_cxx_compiler_flag("-fsanitize=undefined -fno-sanitize-recover -Wall -Werror" HAS_UBSAN_RECOVER_BARE)
   if (HAS_UBSAN_RECOVER_BARE)
-    SANITIZER(USE_UBSAN "-fsanitize=undefined -fno-sanitize-recover -fsanitize-blacklist=${UBSAN_BLACKLIST}")
+    sanitizer(USE_UBSAN "-fsanitize=undefined -fno-sanitize-recover -fsanitize-blacklist=${UBSAN_BLACKLIST}")
   endif ()
-  CHECK_CXX_COMPILER_FLAG("-fsanitize=undefined -fno-sanitize-recover=all -Wall -Werror" HAS_UBSAN_RECOVER_ALL)
+  check_cxx_compiler_flag("-fsanitize=undefined -fno-sanitize-recover=all -Wall -Werror" HAS_UBSAN_RECOVER_ALL)
   if (HAS_UBSAN_RECOVER_ALL)
-    SANITIZER(USE_UBSAN "-fsanitize=undefined -fno-sanitize-recover=all -fsanitize-blacklist=${UBSAN_BLACKLIST}")
+    sanitizer(USE_UBSAN "-fsanitize=undefined -fno-sanitize-recover=all -fsanitize-blacklist=${UBSAN_BLACKLIST}")
   endif ()
   if (NOT USE_SANITIZER)
     message(FATAL_ERROR "UBSAN is not supported")
@@ -207,45 +223,89 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${WABT_SOURCE_DIR}/cmake)
 add_custom_target(everything)
 
 add_library(wabt STATIC
+  src/apply-names.h
   src/apply-names.cc
+  src/binary.h
   src/binary.cc
+  src/binary-reader.h
   src/binary-reader.cc
+  src/binary-reader-ir.h
   src/binary-reader-ir.cc
+  src/binary-reader-logging.h
   src/binary-reader-logging.cc
+  src/binary-writer.h
   src/binary-writer.cc
+  src/binary-writer-spec.h
   src/binary-writer-spec.cc
+  src/binding-hash.h
   src/binding-hash.cc
+  src/color.h
   src/color.cc
+  src/common.h
   src/common.cc
+  src/config.h
   src/config.cc
+  src/decompiler.h
+  src/decompiler-ast.h
+  src/decompiler-ls.h
+  src/decompiler.cc
+  src/error-formatter.h
   src/error-formatter.cc
+  src/expr-visitor.h
   src/expr-visitor.cc
+  src/feature.h
   src/feature.cc
+  src/filenames.h
   src/filenames.cc
+  src/generate-names.h
   src/generate-names.cc
+  src/hash-util.h
   src/hash-util.cc
+  src/ir.h
   src/ir.cc
+  src/ir-util.h
+  src/ir-util.cc
+  src/leb128.h
   src/leb128.cc
+  src/lexer-source.h
   src/lexer-source.cc
+  src/lexer-source-line-finder.h
   src/lexer-source-line-finder.cc
+  src/literal.h
   src/literal.cc
+  src/opcode.h
   src/opcode.cc
+  src/opcode-code-table.h
   src/opcode-code-table.c
+  src/option-parser.h
   src/option-parser.cc
+  src/resolve-names.h
   src/resolve-names.cc
+  src/stream.h
   src/stream.cc
+  src/string-view.h
   src/string-view.cc
+  src/token.h
   src/token.cc
+  src/tracing.h
   src/tracing.cc
+  src/type-checker.h
   src/type-checker.cc
+  src/utf8.h
   src/utf8.cc
+  src/validator.h
   src/validator.cc
+  src/wast-lexer.h
   src/wast-lexer.cc
+  src/wast-parser.h
   src/wast-parser.cc
+  src/wat-writer.h
   src/wat-writer.cc
 
   # TODO(binji): Move this into its own library?
+  src/interp/binary-reader-interp.h
   src/interp/binary-reader-interp.cc
+  src/interp/interp.h
   src/interp/interp.cc
   src/interp/interp-disassemble.cc
   src/interp/interp-trace.cc
@@ -370,6 +430,13 @@ if (NOT EMSCRIPTEN)
       SOURCES src/tools/wasm-strip.cc
       INSTALL
     )
+
+    # wasm-decompile
+    wabt_executable(
+      NAME wasm-decompile
+      SOURCES src/tools/wasm-decompile.cc
+      INSTALL
+    )
   endif ()
 
   find_package(Threads)
@@ -429,15 +496,29 @@ if (NOT EMSCRIPTEN)
     endif ()
 
     # test running
-    find_package(PythonInterp 2.7 REQUIRED)
+    # TODO(sbc): Requrie python3 for running tests.
+    # For now we don't set a version here due to and issue with github actions
+    # where python 2.7 is in the PATH as "python.exe" but a mingw version is
+    # installed as "python2.7.exe" and cmake will alwasy choose the later (which
+    # we don't want) if we specify 2.7 explictly here.
+    # See: https://github.com/actions/setup-python/issues/40
+    find_package(PythonInterp REQUIRED)
     set(RUN_TESTS_PY ${WABT_SOURCE_DIR}/test/run-tests.py)
     add_custom_target(run-tests
-      COMMAND ${CMAKE_BINARY_DIR}/wabt-unittests
-      COMMAND ${PYTHON_EXECUTABLE} ${RUN_TESTS_PY} --bindir ${CMAKE_BINARY_DIR}
+      COMMAND ${PYTHON_EXECUTABLE} ${RUN_TESTS_PY} --bindir $<TARGET_FILE_DIR:wat2wasm>
       DEPENDS ${WABT_EXECUTABLES}
       WORKING_DIRECTORY ${WABT_SOURCE_DIR}
       ${USES_TERMINAL}
     )
+
+    add_custom_target(run-unittests
+      COMMAND $<TARGET_FILE:wabt-unittests>
+      DEPENDS wabt-unittests
+      WORKING_DIRECTORY ${WABT_SOURCE_DIR}
+      ${USES_TERMINAL}
+    )
+
+    add_custom_target(check DEPENDS run-tests wabt-unittests)
   endif ()
 
   # install

@@ -172,19 +172,21 @@ class BinaryReaderIR : public BinaryReaderNop {
   Result OnMemoryGrowExpr() override;
   Result OnMemoryInitExpr(Index segment_index) override;
   Result OnMemorySizeExpr() override;
-  Result OnTableCopyExpr() override;
+  Result OnTableCopyExpr(Index dst_index, Index src_index) override;
   Result OnElemDropExpr(Index segment_index) override;
-  Result OnTableInitExpr(Index segment_index) override;
+  Result OnTableInitExpr(Index segment_index, Index table_index) override;
   Result OnTableGetExpr(Index table_index) override;
   Result OnTableSetExpr(Index table_index) override;
   Result OnTableGrowExpr(Index table_index) override;
   Result OnTableSizeExpr(Index table_index) override;
+  Result OnTableFillExpr(Index table_index) override;
+  Result OnRefFuncExpr(Index func_index) override;
   Result OnRefNullExpr() override;
   Result OnRefIsNullExpr() override;
   Result OnNopExpr() override;
   Result OnRethrowExpr() override;
   Result OnReturnExpr() override;
-  Result OnSelectExpr() override;
+  Result OnSelectExpr(Type result_type) override;
   Result OnStoreExpr(Opcode opcode,
                      uint32_t alignment_log2,
                      Address offset) override;
@@ -203,7 +205,7 @@ class BinaryReaderIR : public BinaryReaderNop {
   Result OnElemSegmentCount(Index count) override;
   Result BeginElemSegment(Index index,
                           Index table_index,
-                          bool passive,
+                          uint8_t flags,
                           Type elem_type) override;
   Result BeginElemSegmentInitExpr(Index index) override;
   Result EndElemSegmentInitExpr(Index index) override;
@@ -213,7 +215,9 @@ class BinaryReaderIR : public BinaryReaderNop {
                                        Index func_index) override;
 
   Result OnDataSegmentCount(Index count) override;
-  Result BeginDataSegment(Index index, Index memory_index, bool passive) override;
+  Result BeginDataSegment(Index index,
+                          Index memory_index,
+                          uint8_t flags) override;
   Result BeginDataSegmentInitExpr(Index index) override;
   Result EndDataSegmentInitExpr(Index index) override;
   Result OnDataSegmentData(Index index,
@@ -854,16 +858,16 @@ Result BinaryReaderIR::OnMemorySizeExpr() {
   return AppendExpr(MakeUnique<MemorySizeExpr>());
 }
 
-Result BinaryReaderIR::OnTableCopyExpr() {
-  return AppendExpr(MakeUnique<TableCopyExpr>());
+Result BinaryReaderIR::OnTableCopyExpr(Index dst_index, Index src_index) {
+  return AppendExpr(MakeUnique<TableCopyExpr>(Var(dst_index), Var(src_index)));
 }
 
 Result BinaryReaderIR::OnElemDropExpr(Index segment) {
   return AppendExpr(MakeUnique<ElemDropExpr>(Var(segment)));
 }
 
-Result BinaryReaderIR::OnTableInitExpr(Index segment) {
-  return AppendExpr(MakeUnique<TableInitExpr>(Var(segment)));
+Result BinaryReaderIR::OnTableInitExpr(Index segment, Index table_index) {
+  return AppendExpr(MakeUnique<TableInitExpr>(Var(segment), Var(table_index)));
 }
 
 Result BinaryReaderIR::OnTableGetExpr(Index table_index) {
@@ -880,6 +884,14 @@ Result BinaryReaderIR::OnTableGrowExpr(Index table_index) {
 
 Result BinaryReaderIR::OnTableSizeExpr(Index table_index) {
   return AppendExpr(MakeUnique<TableSizeExpr>(Var(table_index)));
+}
+
+Result BinaryReaderIR::OnTableFillExpr(Index table_index) {
+  return AppendExpr(MakeUnique<TableFillExpr>(Var(table_index)));
+}
+
+Result BinaryReaderIR::OnRefFuncExpr(Index func_index) {
+  return AppendExpr(MakeUnique<RefFuncExpr>(Var(func_index)));
 }
 
 Result BinaryReaderIR::OnRefNullExpr() {
@@ -902,8 +914,8 @@ Result BinaryReaderIR::OnReturnExpr() {
   return AppendExpr(MakeUnique<ReturnExpr>());
 }
 
-Result BinaryReaderIR::OnSelectExpr() {
-  return AppendExpr(MakeUnique<SelectExpr>());
+Result BinaryReaderIR::OnSelectExpr(Type result_type) {
+  return AppendExpr(MakeUnique<SelectExpr>(TypeVector{result_type}));
 }
 
 Result BinaryReaderIR::OnGlobalSetExpr(Index global_index) {
@@ -998,12 +1010,12 @@ Result BinaryReaderIR::OnElemSegmentCount(Index count) {
 
 Result BinaryReaderIR::BeginElemSegment(Index index,
                                         Index table_index,
-                                        bool passive,
+                                        uint8_t flags,
                                         Type elem_type) {
   auto field = MakeUnique<ElemSegmentModuleField>(GetLocation());
   ElemSegment& elem_segment = field->elem_segment;
   elem_segment.table_var = Var(table_index, GetLocation());
-  elem_segment.passive = passive;
+  elem_segment.flags = flags;
   elem_segment.elem_type = elem_type;
   module_->AppendField(std::move(field));
   return Result::Ok;
@@ -1054,11 +1066,11 @@ Result BinaryReaderIR::OnDataSegmentCount(Index count) {
 
 Result BinaryReaderIR::BeginDataSegment(Index index,
                                         Index memory_index,
-                                        bool passive) {
+                                        uint8_t flags) {
   auto field = MakeUnique<DataSegmentModuleField>(GetLocation());
   DataSegment& data_segment = field->data_segment;
   data_segment.memory_var = Var(memory_index, GetLocation());
-  data_segment.passive = passive;
+  data_segment.flags = flags;
   module_->AppendField(std::move(field));
   return Result::Ok;
 }

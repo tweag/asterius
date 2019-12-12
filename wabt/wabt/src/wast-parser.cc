@@ -21,6 +21,7 @@
 #include "src/cast.h"
 #include "src/expr-visitor.h"
 #include "src/make-unique.h"
+#include "src/stream.h"
 #include "src/utf8.h"
 
 #define WABT_TRACING 0
@@ -143,8 +144,10 @@ bool IsPlainInstr(TokenType token_type) {
     case TokenType::TableSet:
     case TokenType::TableGrow:
     case TokenType::TableSize:
+    case TokenType::TableFill:
     case TokenType::Throw:
     case TokenType::Rethrow:
+    case TokenType::RefFunc:
     case TokenType::RefNull:
     case TokenType::RefIsNull:
     case TokenType::AtomicLoad:
@@ -219,6 +222,7 @@ bool IsCommand(TokenTypePair pair) {
     case TokenType::AssertInvalid:
     case TokenType::AssertMalformed:
     case TokenType::AssertReturn:
+    case TokenType::AssertReturnFunc:
     case TokenType::AssertReturnArithmeticNan:
     case TokenType::AssertReturnCanonicalNan:
     case TokenType::AssertTrap:
@@ -540,12 +544,14 @@ Result WastParser::ErrorIfLpar(const std::vector<std::string>& expected,
   return Result::Ok;
 }
 
-void WastParser::ParseBindVarOpt(std::string* name) {
+bool WastParser::ParseBindVarOpt(std::string* name) {
   WABT_TRACE(ParseBindVarOpt);
-  if (PeekMatch(TokenType::Var)) {
-    Token token = Consume();
-    *name = token.text().to_string();
+  if (!PeekMatch(TokenType::Var)) {
+    return false;
   }
+  Token token = Consume();
+  *name = token.text().to_string();
+  return true;
 }
 
 Result WastParser::ParseVar(Var* out_var) {
@@ -667,6 +673,9 @@ Result WastParser::ParseValueType(Type* out_type) {
       is_enabled = options_->features.simd_enabled();
       break;
     case Type::Anyref:
+    case Type::Funcref:
+    case Type::Hostref:
+    case Type::Exnref:
       is_enabled = options_->features.reference_types_enabled();
       break;
     default:
@@ -915,10 +924,16 @@ Result WastParser::ParseDataModuleField(Module* module) {
   ParseBindVarOpt(&name);
   auto field = MakeUnique<DataSegmentModuleField>(loc, name);
 
-  if (ParseVarOpt(&field->data_segment.memory_var, Var(0, loc))) {
+  if (PeekMatchLpar(TokenType::Memory)) {
+    EXPECT(Lpar);
+    EXPECT(Memory);
+    CHECK_RESULT(ParseVar(&field->data_segment.memory_var));
+    EXPECT(Rpar);
+    CHECK_RESULT(ParseOffsetExpr(&field->data_segment.offset));
+  } else if (ParseVarOpt(&field->data_segment.memory_var, Var(0, loc))) {
     CHECK_RESULT(ParseOffsetExpr(&field->data_segment.offset));
   } else if (!ParseOffsetExprOpt(&field->data_segment.offset)) {
-    field->data_segment.passive = true;
+    field->data_segment.flags |= SegPassive;
   }
 
   ParseTextListOpt(&field->data_segment.data);
@@ -932,12 +947,47 @@ Result WastParser::ParseElemModuleField(Module* module) {
   EXPECT(Lpar);
   Location loc = GetLocation();
   EXPECT(Elem);
-  std::string name;
-  ParseBindVarOpt(&name);
-  auto field = MakeUnique<ElemSegmentModuleField>(loc, name);
+
+  // With MVP text format the name here was intended to refer to the table
+  // that the elem segment was part of, but we never did anything with this name
+  // since there was only one table anyway.
+  // With bulk-memory enabled this introduces a new name for the particualr
+  // elem segment.
+  std::string initial_name;
+  bool has_name = ParseBindVarOpt(&initial_name);
+
+  std::string segment_name = initial_name;
+  if (!options_->features.bulk_memory_enabled()) {
+    segment_name = "";
+  }
+  auto field = MakeUnique<ElemSegmentModuleField>(loc, segment_name);
+
+  // Optional table specifier
+  if (options_->features.bulk_memory_enabled()) {
+    if (PeekMatchLpar(TokenType::Table)) {
+      field->elem_segment.flags |= SegExplicitIndex;
+      EXPECT(Lpar);
+      EXPECT(Table);
+      CHECK_RESULT(ParseVar(&field->elem_segment.table_var));
+      EXPECT(Rpar);
+    } else {
+      ParseVarOpt(&field->elem_segment.table_var, Var(0, loc));
+    }
+  } else {
+    if (has_name) {
+      field->elem_segment.table_var = Var(initial_name, loc);
+      field->elem_segment.flags |= SegExplicitIndex;
+    } else {
+      ParseVarOpt(&field->elem_segment.table_var, Var(0, loc));
+    }
+  }
+
+  if (!ParseOffsetExprOpt(&field->elem_segment.offset)) {
+    field->elem_segment.flags |= SegPassive;
+  }
 
   if (ParseRefTypeOpt(&field->elem_segment.elem_type)) {
-    field->elem_segment.passive = true;
+    field->elem_segment.flags |= (SegPassive | SegUseElemExprs);
     // Parse a potentially empty sequence of ElemExprs.
     while (true) {
       Var var;
@@ -948,10 +998,6 @@ Result WastParser::ParseElemModuleField(Module* module) {
         CHECK_RESULT(ParseVar(&var));
         field->elem_segment.elem_exprs.emplace_back(var);
         EXPECT(Rpar);
-      } else if (ParseVarOpt(&var)) {
-        // TODO: This format will be removed by
-        // https://github.com/WebAssembly/bulk-memory-operations/pull/84
-        field->elem_segment.elem_exprs.emplace_back(var);
       } else {
         CHECK_RESULT(ErrorIfLpar({"ref.null", "ref.func"}));
         break;
@@ -959,8 +1005,9 @@ Result WastParser::ParseElemModuleField(Module* module) {
     }
   } else {
     field->elem_segment.elem_type = Type::Funcref;
-    ParseVarOpt(&field->elem_segment.table_var, Var(0, loc));
-    CHECK_RESULT(ParseOffsetExpr(&field->elem_segment.offset));
+    if (PeekMatch(TokenType::Func)) {
+      EXPECT(Func);
+    }
     ParseElemExprVarListOpt(&field->elem_segment.elem_exprs);
   }
   EXPECT(Rpar);
@@ -1224,6 +1271,10 @@ Result WastParser::ParseStartModuleField(Module* module) {
   WABT_TRACE(ParseStartModuleField);
   EXPECT(Lpar);
   Location loc = GetLocation();
+  if (module->starts.size() > 0) {
+    Error(loc, "multiple start sections");
+    return Result::Error;
+  }
   EXPECT(Start);
   Var var;
   CHECK_RESULT(ParseVar(&var));
@@ -1262,8 +1313,11 @@ Result WastParser::ParseTableModuleField(Module* module) {
     auto elem_segment_field = MakeUnique<ElemSegmentModuleField>(loc);
     ElemSegment& elem_segment = elem_segment_field->elem_segment;
     elem_segment.table_var = Var(module->tables.size());
+    if (module->tables.size() > 0)
+      elem_segment.flags |= SegExplicitIndex;
     elem_segment.offset.push_back(MakeUnique<ConstExpr>(Const::I32(0)));
     elem_segment.offset.back().loc = loc;
+    elem_segment.elem_type = elem_type;
     CHECK_RESULT(ParseElemExprVarList(&elem_segment.elem_exprs));
     EXPECT(Rpar);
 
@@ -1480,10 +1534,19 @@ Result WastParser::ParsePlainInstr(std::unique_ptr<Expr>* out_expr) {
       out_expr->reset(new DropExpr(loc));
       break;
 
-    case TokenType::Select:
+    case TokenType::Select: {
       Consume();
-      out_expr->reset(new SelectExpr(loc));
+      TypeVector result;
+      if (options_->features.reference_types_enabled() &&
+          MatchLpar(TokenType::Result)) {
+        CHECK_RESULT(ParseValueTypeList(&result));
+        EXPECT(Rpar);
+      } else {
+        result.push_back(Type::Any);
+      }
+      out_expr->reset(new SelectExpr(result, loc));
       break;
+    }
 
     case TokenType::Br:
       Consume();
@@ -1527,9 +1590,9 @@ Result WastParser::ParsePlainInstr(std::unique_ptr<Expr>* out_expr) {
     case TokenType::CallIndirect: {
       Consume();
       auto expr = MakeUnique<CallIndirectExpr>(loc);
+      ParseVarOpt(&expr->table, Var(0));
       CHECK_RESULT(ParseTypeUseOpt(&expr->decl));
       CHECK_RESULT(ParseUnboundFuncSignature(&expr->decl.sig));
-      ParseVarOpt(&expr->table, Var(0));
       *out_expr = std::move(expr);
       break;
     }
@@ -1646,20 +1709,31 @@ Result WastParser::ParsePlainInstr(std::unique_ptr<Expr>* out_expr) {
       out_expr->reset(new MemoryGrowExpr(loc));
       break;
 
-    case TokenType::TableCopy:
+    case TokenType::TableCopy: {
       ErrorUnlessOpcodeEnabled(Consume());
-      out_expr->reset(new TableCopyExpr(loc));
+      Var dst(0);
+      Var src(0);
+      if (options_->features.reference_types_enabled()) {
+        CHECK_RESULT(ParseVar(&dst));
+        CHECK_RESULT(ParseVar(&src));
+      }
+      out_expr->reset(new TableCopyExpr(dst, src, loc));
       break;
+    }
 
     case TokenType::ElemDrop:
       ErrorUnlessOpcodeEnabled(Consume());
       CHECK_RESULT(ParsePlainInstrVar<ElemDropExpr>(loc, out_expr));
       break;
 
-    case TokenType::TableInit:
+    case TokenType::TableInit: {
       ErrorUnlessOpcodeEnabled(Consume());
-      CHECK_RESULT(ParsePlainInstrVar<TableInitExpr>(loc, out_expr));
+      Var segment_index(0);
+      CHECK_RESULT(ParseVar(&segment_index));
+      Var table_index(0);
+      out_expr->reset(new TableInitExpr(segment_index, table_index, loc));
       break;
+    }
 
     case TokenType::TableGet:
       ErrorUnlessOpcodeEnabled(Consume());
@@ -1679,6 +1753,16 @@ Result WastParser::ParsePlainInstr(std::unique_ptr<Expr>* out_expr) {
     case TokenType::TableSize:
       ErrorUnlessOpcodeEnabled(Consume());
       CHECK_RESULT(ParsePlainInstrVar<TableSizeExpr>(loc, out_expr));
+      break;
+
+    case TokenType::TableFill:
+      ErrorUnlessOpcodeEnabled(Consume());
+      CHECK_RESULT(ParsePlainInstrVar<TableFillExpr>(loc, out_expr));
+      break;
+
+    case TokenType::RefFunc:
+      ErrorUnlessOpcodeEnabled(Consume());
+      CHECK_RESULT(ParsePlainInstrVar<RefFuncExpr>(loc, out_expr));
       break;
 
     case TokenType::RefNull:
@@ -1851,12 +1935,10 @@ Result WastParser::ParseSimdV128Const(Const* const_, TokenType token_type) {
     Location loc = GetLocation();
 
     // Check that the lane literal type matches the element type of the v128:
-    if (integer) {
-      if (!(PeekMatch(TokenType::Int) || PeekMatch(TokenType::Nat))) {
+    if (!PeekMatch(TokenType::Int) && !PeekMatch(TokenType::Nat)) {
+      if (integer) {
         return ErrorExpected({"a Nat or Integer literal"}, "123");
-      }
-    } else {
-      if (!PeekMatch(TokenType::Float)) {
+      } else if (!PeekMatch(TokenType::Float)) {
         return ErrorExpected({"a Float literal"}, "42.0");
       }
     }
@@ -1912,7 +1994,7 @@ Result WastParser::ParseSimdV128Const(Const* const_, TokenType token_type) {
     }
   }
 
-  memcpy(&const_->v128_bits.v, v128_bytes.data(), 16);
+  memcpy(&const_->vec128.v, v128_bytes.data(), 16);
 
   return Result::Ok;
 }
@@ -1996,12 +2078,75 @@ Result WastParser::ParseConst(Const* const_) {
   return Result::Ok;
 }
 
+Result WastParser::ParseHostRef(Const* const_) {
+  WABT_TRACE(ParseHostRef);
+  Token token = Consume();
+  if (!options_->features.reference_types_enabled()) {
+    Error(token.loc, "hostref not allowed");
+    return Result::Error;
+  }
+
+  Literal literal;
+  string_view sv;
+  const char* s;
+  const char* end;
+  const_->loc = GetLocation();
+  TokenType token_type = Peek();
+
+  switch (token_type) {
+    case TokenType::Nat:
+    case TokenType::Int: {
+      literal = Consume().literal();
+      sv = literal.text;
+      s = sv.begin();
+      end = sv.end();
+      break;
+    }
+    default:
+      return ErrorExpected({"a numeric literal"}, "123");
+  }
+
+  uint64_t ref_bits;
+  Result result = ParseInt64(s, end, &ref_bits, ParseIntType::UnsignedOnly);
+
+  const_->type = Type::Hostref;
+  const_->ref_bits = static_cast<uintptr_t>(ref_bits);
+
+  if (Failed(result)) {
+    Error(const_->loc, "invalid literal \"" PRIstringview "\"",
+          WABT_PRINTF_STRING_VIEW_ARG(literal.text));
+    // Return if parser get errors.
+    return Result::Error;
+  }
+
+  return Result::Ok;
+}
+
 Result WastParser::ParseConstList(ConstVector* consts) {
   WABT_TRACE(ParseConstList);
-  while (PeekMatchLpar(TokenType::Const)) {
+  while (PeekMatchLpar(TokenType::Const) || PeekMatchLpar(TokenType::RefNull) ||
+         PeekMatchLpar(TokenType::RefHost)) {
     Consume();
     Const const_;
-    CHECK_RESULT(ParseConst(&const_));
+    switch (Peek()) {
+      case TokenType::Const:
+        CHECK_RESULT(ParseConst(&const_));
+        break;
+      case TokenType::RefNull: {
+        auto token = Consume();
+        ErrorUnlessOpcodeEnabled(token);
+        const_.loc = GetLocation();
+        const_.type = Type::Nullref;
+        const_.ref_bits = 0;
+        break;
+      }
+      case TokenType::RefHost:
+        CHECK_RESULT(ParseHostRef(&const_));
+        break;
+      default:
+        assert(!"unreachable");
+        return Result::Error;
+    }
     EXPECT(Rpar);
     consts->push_back(const_);
   }
@@ -2282,6 +2427,9 @@ Result WastParser::ParseCommand(Script* script, CommandPtr* out_command) {
     case TokenType::AssertReturn:
       return ParseAssertReturnCommand(out_command);
 
+    case TokenType::AssertReturnFunc:
+      return ParseAssertReturnFuncCommand(out_command);
+
     case TokenType::AssertReturnArithmeticNan:
       return ParseAssertReturnArithmeticNanCommand(out_command);
 
@@ -2335,6 +2483,17 @@ Result WastParser::ParseAssertReturnCommand(CommandPtr* out_command) {
   auto command = MakeUnique<AssertReturnCommand>();
   CHECK_RESULT(ParseAction(&command->action));
   CHECK_RESULT(ParseConstList(&command->expected));
+  EXPECT(Rpar);
+  *out_command = std::move(command);
+  return Result::Ok;
+}
+
+Result WastParser::ParseAssertReturnFuncCommand(CommandPtr* out_command) {
+  WABT_TRACE(ParseAssertReturnFuncCommand);
+  EXPECT(Lpar);
+  EXPECT(AssertReturnFunc);
+  auto command = MakeUnique<AssertReturnFuncCommand>();
+  CHECK_RESULT(ParseAction(&command->action));
   EXPECT(Rpar);
   *out_command = std::move(command);
   return Result::Ok;
@@ -2403,6 +2562,10 @@ Result WastParser::ParseModuleCommand(Script* script, CommandPtr* out_command) {
     case ScriptModuleType::Binary: {
       auto* bsm = cast<BinaryScriptModule>(script_module.get());
       ReadBinaryOptions options;
+#if WABT_TRACING
+      auto log_stream = FileStream::CreateStdout();
+      options.log_stream = log_stream.get();
+#endif
       options.features = options_->features;
       Errors errors;
       const char* filename = "<text>";
@@ -2600,6 +2763,7 @@ Result ParseWatModule(WastLexer* lexer,
                       Errors* errors,
                       WastParseOptions* options) {
   assert(out_module != nullptr);
+  assert(options != nullptr);
   WastParser parser(lexer, errors, options);
   return parser.ParseModule(out_module);
 }
@@ -2609,6 +2773,7 @@ Result ParseWastScript(WastLexer* lexer,
                        Errors* errors,
                        WastParseOptions* options) {
   assert(out_script != nullptr);
+  assert(options != nullptr);
   WastParser parser(lexer, errors, options);
   return parser.ParseScript(out_script);
 }

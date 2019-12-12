@@ -78,7 +78,6 @@ class OptionParser {
                  const char* metavar,
                  const char* help,
                  const Callback&);
-  void AddHelpOption();
 
  private:
   static int Match(const char* s, const std::string& full, bool has_argument);

@@ -27,6 +27,7 @@
 
 #include "src/binding-hash.h"
 #include "src/common.h"
+#include "src/feature.h"
 #include "src/opcode.h"
 #include "src/stream.h"
 
@@ -79,10 +80,18 @@ namespace interp {
   /* the expected export kind doesn't match. */                             \
   V(ExportKindMismatch, "export kind mismatch")
 
-enum class Result {
+enum class ResultType {
 #define V(Name, str) Name,
   FOREACH_INTERP_RESULT(V)
 #undef V
+};
+
+struct Result {
+  Result(ResultType type) : type(type) {}
+  Result(ResultType type, std::string msg) : type(type), message(msg) {}
+  bool ok() const { return type == ResultType::Ok; }
+  ResultType type;
+  std::string message;
 };
 
 typedef uint32_t IstreamOffset;
@@ -90,25 +99,42 @@ static const IstreamOffset kInvalidIstreamOffset = ~0;
 
 struct FuncSignature {
   FuncSignature() = default;
-  FuncSignature(std::vector<Type> param_types, std::vector<Type> result_types);
+  FuncSignature(TypeVector param_types, TypeVector result_types);
   FuncSignature(Index param_count,
                 Type* param_types,
                 Index result_count,
                 Type* result_types);
 
-  std::vector<Type> param_types;
-  std::vector<Type> result_types;
+  TypeVector param_types;
+  TypeVector result_types;
+};
+
+enum class RefType {
+  Func,
+  Null,
+  Host,
+};
+
+struct Ref {
+  RefType kind;
+  Index index;  // Not meaningful for RefType::Null
 };
 
 struct Table {
   explicit Table(Type elem_type, const Limits& limits)
-      : elem_type(elem_type),
-        limits(limits),
-        func_indexes(limits.initial, kInvalidIndex) {}
+      : elem_type(elem_type), limits(limits) {
+    resize(limits.initial, {RefType::Null, kInvalidIndex});
+  }
+
+  size_t size() const { return entries.size(); }
+
+  void resize(size_t new_size, Ref init_elem) {
+    entries.resize(new_size, init_elem);
+  }
 
   Type elem_type;
   Limits limits;
-  std::vector<Index> func_indexes;
+  std::vector<Ref> entries;
 };
 
 struct Memory {
@@ -130,15 +156,37 @@ struct DataSegment {
 struct ElemSegment {
   ElemSegment() = default;
 
-  std::vector<Index> elems;
+  std::vector<Ref> elems;
   bool dropped = false;
 };
+
+struct ElemSegmentInfo {
+  ElemSegmentInfo(Table* table, Index dst) : table(table), dst(dst) {}
+
+  Table* table;
+  Index dst;
+  std::vector<Ref> src;
+};
+
+struct DataSegmentInfo {
+  DataSegmentInfo(Memory* memory,
+                  Address dst)
+      : memory(memory), dst(dst) {}
+
+  Memory* memory;
+  Address dst;
+  std::vector<char> data;
+};
+
+// Opaque handle to a host object.
+struct HostObject {};
 
 // ValueTypeRep converts from one type to its representation on the
 // stack. For example, float -> uint32_t. See Value below.
 template <typename T>
 struct ValueTypeRepT;
 
+template <> struct ValueTypeRepT<Ref> { typedef Ref type; };
 template <> struct ValueTypeRepT<int32_t> { typedef uint32_t type; };
 template <> struct ValueTypeRepT<uint32_t> { typedef uint32_t type; };
 template <> struct ValueTypeRepT<int64_t> { typedef uint64_t type; };
@@ -155,20 +203,49 @@ union Value {
   uint64_t i64;
   ValueTypeRep<float> f32_bits;
   ValueTypeRep<double> f64_bits;
-  ValueTypeRep<v128> v128_bits;
+  ValueTypeRep<v128> vec128;
+  Ref ref;
 };
 
 struct TypedValue {
   TypedValue() {}
   explicit TypedValue(Type type) : type(type) {}
-  TypedValue(Type type, const Value& value) : type(type), value(value) {}
+  TypedValue(Type basetype, const Value& value) : type(basetype), value(value) {
+    UpdateType();
+  }
+
+  void UpdateType() {
+    if (!IsRefType(type)) {
+      return;
+    }
+
+    // For references types, the concrete type of TypedValue can change as it
+    // gets its value changed.  For example assigning a RefType::Func value to
+    // an Anyref will cause type of the TypedValue to be changed into a Funcref.
+    switch (value.ref.kind) {
+      case RefType::Func:
+        type = Type::Funcref;
+        break;
+      case RefType::Host:
+        type = Type::Hostref;
+        break;
+      case RefType::Null:
+        type = Type::Nullref;
+        break;
+    }
+  }
 
   void SetZero() { ZeroMemory(value); }
+  void set_ref(Ref x) {
+    value.ref = x;
+    UpdateType();
+  }
   void set_i32(uint32_t x) { value.i32 = x; }
   void set_i64(uint64_t x) { value.i64 = x; }
   void set_f32(float x) { memcpy(&value.f32_bits, &x, sizeof(x)); }
   void set_f64(double x) { memcpy(&value.f64_bits, &x, sizeof(x)); }
 
+  Ref get_ref() const { return value.ref; }
   uint32_t get_i32() const { return value.i32; }
   uint64_t get_i64() const { return value.i64; }
   float get_f32() const {
@@ -190,16 +267,17 @@ typedef std::vector<TypedValue> TypedValues;
 
 struct Global {
   Global() : mutable_(false), import_index(kInvalidIndex) {}
-  Global(const TypedValue& typed_value, bool mutable_)
-      : typed_value(typed_value), mutable_(mutable_) {}
+  Global(Type& type, bool mutable_) : type(type), mutable_(mutable_) {
+    typed_value.type = type;
+  }
 
+  Type type;
   TypedValue typed_value;
   bool mutable_;
-  Index import_index; /* or INVALID_INDEX if not imported */
+  Index import_index = kInvalidIndex; /* kInvalidIndex if not imported */
 };
 
 struct Import {
-  explicit Import(ExternalKind kind) : kind(kind) {}
   Import(ExternalKind kind, string_view module_name, string_view field_name)
       : kind(kind),
         module_name(module_name.to_string()),
@@ -209,47 +287,6 @@ struct Import {
   std::string module_name;
   std::string field_name;
 };
-
-struct FuncImport : Import {
-  FuncImport() : Import(ExternalKind::Func) {}
-  FuncImport(string_view module_name, string_view field_name)
-      : Import(ExternalKind::Func, module_name, field_name) {}
-
-  Index sig_index = kInvalidIndex;
-};
-
-struct TableImport : Import {
-  TableImport() : Import(ExternalKind::Table) {}
-  TableImport(string_view module_name, string_view field_name)
-      : Import(ExternalKind::Table, module_name, field_name) {}
-
-  Limits limits;
-};
-
-struct MemoryImport : Import {
-  MemoryImport() : Import(ExternalKind::Memory) {}
-  MemoryImport(string_view module_name, string_view field_name)
-      : Import(ExternalKind::Memory, module_name, field_name) {}
-
-  Limits limits;
-};
-
-struct GlobalImport : Import {
-  GlobalImport() : Import(ExternalKind::Global) {}
-  GlobalImport(string_view module_name, string_view field_name)
-      : Import(ExternalKind::Global, module_name, field_name) {}
-
-  Type type = Type::Void;
-  bool mutable_ = false;
-};
-
-struct EventImport : Import {
-  EventImport() : Import(ExternalKind::Event) {}
-  EventImport(string_view module_name, string_view field_name)
-      : Import(ExternalKind::Event, module_name, field_name) {}
-};
-
-struct Func;
 
 struct Func {
   WABT_DISALLOW_COPY_AND_ASSIGN(Func);
@@ -308,13 +345,11 @@ struct Export {
 };
 
 class Environment;
-struct DefinedModule;
-struct HostModule;
 
 struct Module {
   WABT_DISALLOW_COPY_AND_ASSIGN(Module);
-  explicit Module(bool is_host);
-  Module(string_view name, bool is_host);
+  Module(Environment* env, bool is_host);
+  Module(Environment* env, string_view name, bool is_host);
   virtual ~Module() = default;
 
   // Function exports are special-cased to allow for overloading functions by
@@ -330,26 +365,33 @@ struct Module {
   std::vector<Export> exports;
   BindingHash export_bindings;
   Index memory_index; /* kInvalidIndex if not defined */
-  Index table_index;  /* kInvalidIndex if not defined */
   bool is_host;
+
+ protected:
+  Environment* env;
 };
 
 struct DefinedModule : Module {
-  DefinedModule();
+  explicit DefinedModule(Environment* env);
   static bool classof(const Module* module) { return !module->is_host; }
 
   Index OnUnknownFuncExport(string_view name, Index sig_index) override {
     return kInvalidIndex;
   }
 
-  std::vector<FuncImport> func_imports;
-  std::vector<TableImport> table_imports;
-  std::vector<MemoryImport> memory_imports;
-  std::vector<GlobalImport> global_imports;
-  std::vector<EventImport> event_imports;
   Index start_func_index; /* kInvalidIndex if not defined */
   IstreamOffset istream_start;
   IstreamOffset istream_end;
+
+  // Changes to linear memory and tables should not apply if a validation error
+  // occurs; these vectors cache the changes that must be applied after we know
+  // that there are no validation errors.
+  //
+  // Note that this behavior changed after the bulk memory proposal; in that
+  // case each segment is initialized as it is encountered. If one fails, then
+  // no further segments are processed.
+  std::vector<ElemSegmentInfo> active_elem_segments_;
+  std::vector<DataSegmentInfo> active_data_segments_;
 };
 
 struct HostModule : Module {
@@ -391,9 +433,6 @@ struct HostModule : Module {
   std::function<
       Index(Environment*, HostModule*, string_view name, Index sig_index)>
       on_unknown_func_export;
-
- private:
-  Environment* env_;
 };
 
 class Environment {
@@ -411,7 +450,7 @@ class Environment {
     size_t istream_size = 0;
   };
 
-  Environment();
+  explicit Environment(const Features& features);
 
   OutputBuffer& istream() { return *istream_; }
   void SetIstream(std::unique_ptr<OutputBuffer> istream) {
@@ -427,6 +466,7 @@ class Environment {
   Index GetDataSegmentCount() const { return data_segments_.size(); }
   Index GetElemSegmentCount() const { return elem_segments_.size(); }
   Index GetModuleCount() const { return modules_.size(); }
+  Index GetHostCount() const { return host_objects_.size(); }
 
   Index GetLastModuleIndex() const {
     return modules_.empty() ? kInvalidIndex : modules_.size() - 1;
@@ -518,6 +558,12 @@ class Environment {
   }
 
   template <typename... Args>
+  HostObject* EmplaceBackHostObject(Args&&... args) {
+    host_objects_.emplace_back(std::forward<Args>(args)...);
+    return &host_objects_.back();
+  }
+
+  template <typename... Args>
   void EmplaceModuleBinding(Args&&... args) {
     module_bindings_.emplace(std::forward<Args>(args)...);
   }
@@ -542,6 +588,8 @@ class Environment {
   // this name and return true.
   std::function<bool(Environment*, string_view name)> on_unknown_module;
 
+  Features features_;
+
  private:
   friend class Thread;
 
@@ -553,6 +601,7 @@ class Environment {
   std::vector<Global> globals_;
   std::vector<DataSegment> data_segments_;
   std::vector<ElemSegment> elem_segments_;
+  std::vector<HostObject> host_objects_;
   std::unique_ptr<OutputBuffer> istream_;
   BindingHash module_bindings_;
   BindingHash registered_module_bindings_;
@@ -651,8 +700,12 @@ class Thread {
   Result MemoryCopy(const uint8_t** pc) WABT_WARN_UNUSED;
   Result MemoryFill(const uint8_t** pc) WABT_WARN_UNUSED;
   Result TableInit(const uint8_t** pc) WABT_WARN_UNUSED;
+  Result TableGet(const uint8_t** pc) WABT_WARN_UNUSED;
+  Result TableSet(const uint8_t** pc) WABT_WARN_UNUSED;
+  Result TableFill(const uint8_t** pc) WABT_WARN_UNUSED;
   Result ElemDrop(const uint8_t** pc) WABT_WARN_UNUSED;
   Result TableCopy(const uint8_t** pc) WABT_WARN_UNUSED;
+  Result RefFunc(const uint8_t** pc) WABT_WARN_UNUSED;
 
   template <typename R, typename T = R>
   Result Unop(UnopFunc<R, T> func) WABT_WARN_UNUSED;
@@ -684,10 +737,11 @@ class Thread {
 struct ExecResult {
   ExecResult() = default;
   explicit ExecResult(Result result) : result(result) {}
+  bool ok() const { return result.ok(); }
   ExecResult(Result result, const TypedValues& values)
       : result(result), values(values) {}
 
-  Result result = Result::Ok;
+  Result result = ResultType::Ok;
   TypedValues values;
 };
 
@@ -698,13 +752,15 @@ class Executor {
                     const Thread::Options& options = Thread::Options());
 
   ExecResult RunFunction(Index func_index, const TypedValues& args);
-  ExecResult RunStartFunction(DefinedModule* module);
+  ExecResult Initialize(DefinedModule* module);
   ExecResult RunExport(const Export*, const TypedValues& args);
   ExecResult RunExportByName(Module* module,
                              string_view name,
                              const TypedValues& args);
 
  private:
+  ExecResult RunStartFunction(DefinedModule* module);
+  Result InitializeSegments(DefinedModule* module);
   Result RunDefinedFunction(IstreamOffset function_offset);
   Result PushArgs(const FuncSignature*, const TypedValues& args);
   void CopyResults(const FuncSignature*, TypedValues* out_results);
@@ -719,8 +775,10 @@ bool IsCanonicalNan(uint64_t f64_bits);
 bool IsArithmeticNan(uint32_t f32_bits);
 bool IsArithmeticNan(uint64_t f64_bits);
 
+std::string RefTypeToString(RefType t);
 std::string TypedValueToString(const TypedValue&);
-const char* ResultToString(Result);
+std::string ResultToString(Result);
+const char* ResultTypeToString(ResultType);
 
 bool ClampToBounds(uint32_t start, uint32_t* length, uint32_t max);
 

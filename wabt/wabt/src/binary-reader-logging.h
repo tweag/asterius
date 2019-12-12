@@ -52,6 +52,7 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result BeginImportSection(Offset size) override;
   Result OnImportCount(Index count) override;
   Result OnImport(Index index,
+                  ExternalKind kind,
                   string_view module_name,
                   string_view field_name) override;
   Result OnImportFunc(Index import_index,
@@ -187,13 +188,15 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result OnMemoryGrowExpr() override;
   Result OnMemoryInitExpr(Index segment_index) override;
   Result OnMemorySizeExpr() override;
-  Result OnTableCopyExpr() override;
+  Result OnTableCopyExpr(Index dst_index, Index src_index) override;
   Result OnElemDropExpr(Index segment_index) override;
-  Result OnTableInitExpr(Index segment_index) override;
+  Result OnTableInitExpr(Index segment_index, Index table_index) override;
   Result OnTableGetExpr(Index table) override;
   Result OnTableSetExpr(Index table) override;
   Result OnTableGrowExpr(Index table) override;
   Result OnTableSizeExpr(Index table) override;
+  Result OnTableFillExpr(Index table) override;
+  Result OnRefFuncExpr(Index index) override;
   Result OnRefNullExpr() override;
   Result OnRefIsNullExpr() override;
   Result OnNopExpr() override;
@@ -201,7 +204,7 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result OnReturnCallExpr(Index func_index) override;
   Result OnReturnCallIndirectExpr(Index sig_index, Index table_index) override;
   Result OnReturnExpr() override;
-  Result OnSelectExpr() override;
+  Result OnSelectExpr(Type result_type) override;
   Result OnStoreExpr(Opcode opcode,
                      uint32_t alignment_log2,
                      Address offset) override;
@@ -228,7 +231,7 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result OnElemSegmentCount(Index count) override;
   Result BeginElemSegment(Index index,
                           Index table_index,
-                          bool passive,
+                          uint8_t flags,
                           Type elem_type) override;
   Result BeginElemSegmentInitExpr(Index index) override;
   Result EndElemSegmentInitExpr(Index index) override;
@@ -241,7 +244,9 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
 
   Result BeginDataSection(Offset size) override;
   Result OnDataSegmentCount(Index count) override;
-  Result BeginDataSegment(Index index, Index memory_index, bool passive) override;
+  Result BeginDataSegment(Index index,
+                          Index memory_index,
+                          uint8_t flags) override;
   Result BeginDataSegmentInitExpr(Index index) override;
   Result EndDataSegmentInitExpr(Index index) override;
   Result OnDataSegmentData(Index index,
@@ -340,6 +345,7 @@ class BinaryReaderLogging : public BinaryReaderDelegate {
   Result OnInitExprI32ConstExpr(Index index, uint32_t value) override;
   Result OnInitExprI64ConstExpr(Index index, uint64_t value) override;
   Result OnInitExprRefNull(Index index) override;
+  Result OnInitExprRefFunc(Index index, Index func_index) override;
 
  private:
   void Indent();
