@@ -168,10 +168,32 @@ Result TypeChecker::CheckTypeStackEnd(const char* desc) {
   return result;
 }
 
+static bool IsSubtype(Type sub, Type super) {
+  if (super == sub) {
+    return true;
+  }
+  if (IsRefType(super) != IsRefType(sub)) {
+    return false;
+  }
+  if (super == Type::Anyref) {
+    return IsRefType(sub);
+  }
+  if (IsNullableRefType(super)) {
+    return sub == Type::Nullref;
+  }
+  return false;
+}
+
 Result TypeChecker::CheckType(Type actual, Type expected) {
-  return (expected == actual || expected == Type::Any || actual == Type::Any)
-             ? Result::Ok
-             : Result::Error;
+  if (expected == Type::Any || actual == Type::Any) {
+    return Result::Ok;
+  }
+
+  if (!IsSubtype(actual, expected)) {
+    return Result::Error;
+  }
+
+  return Result::Ok;
 }
 
 Result TypeChecker::CheckTypes(const TypeVector& actual,
@@ -385,7 +407,7 @@ Result TypeChecker::OnBrIf(Index depth) {
 }
 
 Result TypeChecker::OnBrOnExn(Index depth, const TypeVector& types) {
-  Result result = PopAndCheck1Type(Type::ExceptRef, "br_on_exn");
+  Result result = PopAndCheck1Type(Type::Exnref, "br_on_exn");
   Label* label;
   CHECK_RESULT(GetLabel(depth, &label));
   if (Failed(CheckTypes(types, label->br_types()))) {
@@ -394,7 +416,7 @@ Result TypeChecker::OnBrOnExn(Index depth, const TypeVector& types) {
                TypesToString(types).c_str());
     result = Result::Error;
   }
-  PushType(Type::ExceptRef);
+  PushType(Type::Exnref);
   return result;
 }
 
@@ -481,7 +503,7 @@ Result TypeChecker::OnCatch() {
   ResetTypeStackToLabel(label);
   label->label_type = LabelType::Catch;
   label->unreachable = false;
-  PushType(Type::ExceptRef);
+  PushType(Type::Exnref);
   return result;
 }
 
@@ -625,34 +647,42 @@ Result TypeChecker::OnElemDrop(uint32_t segment) {
   return Result::Ok;
 }
 
-Result TypeChecker::OnTableInit(uint32_t segment) {
+Result TypeChecker::OnTableInit(uint32_t table, uint32_t segment) {
   return CheckOpcode3(Opcode::TableInit);
 }
 
-Result TypeChecker::OnTableGet(Index segment) {
+Result TypeChecker::OnTableGet(Type elem_type) {
   Result result = PopAndCheck1Type(Type::I32, "table.get");
-  PushType(Type::Anyref); // TODO: should be the table's type
+  PushType(elem_type);
   return result;
 }
 
-Result TypeChecker::OnTableSet(Index segment) {
-  // TODO: anyref here should be the table's type
-  return PopAndCheck2Types(Type::I32, Type::Anyref, "table.set");
+Result TypeChecker::OnTableSet(Type elem_type) {
+  return PopAndCheck2Types(Type::I32, elem_type, "table.set");
 }
 
-Result TypeChecker::OnTableGrow(Index segment) {
-  Result result = PopAndCheck2Types(Type::Anyref, Type::I32, "table.grow");
+Result TypeChecker::OnTableGrow(Type elem_type) {
+  Result result = PopAndCheck2Types(elem_type, Type::I32, "table.grow");
   PushType(Type::I32);
   return result;
 }
 
-Result TypeChecker::OnTableSize(Index segment) {
+Result TypeChecker::OnTableSize() {
   PushType(Type::I32);
   return Result::Ok;
 }
 
+Result TypeChecker::OnTableFill(Type elem_type) {
+  return PopAndCheck3Types(Type::I32, elem_type, Type::I32, "table.fill");
+}
+
+Result TypeChecker::OnRefFuncExpr(Index) {
+  PushType(Type::Funcref);
+  return Result::Ok;
+}
+
 Result TypeChecker::OnRefNullExpr() {
-  PushType(Type::Anyref);
+  PushType(Type::Nullref);
   return Result::Ok;
 }
 
@@ -663,7 +693,7 @@ Result TypeChecker::OnRefIsNullExpr() {
 }
 
 Result TypeChecker::OnRethrow() {
-  Result result = PopAndCheck1Type(Type::ExceptRef, "rethrow");
+  Result result = PopAndCheck1Type(Type::Exnref, "rethrow");
   CHECK_RESULT(SetUnreachable());
   return result;
 }
@@ -684,15 +714,28 @@ Result TypeChecker::OnReturn() {
   return result;
 }
 
-Result TypeChecker::OnSelect() {
+Result TypeChecker::OnSelect(Type expected) {
   Result result = Result::Ok;
-  Type type = Type::Any;
+  Type type1 = Type::Any;
+  Type type2 = Type::Any;
+  Type result_type = Type::Any;
   result |= PeekAndCheckType(0, Type::I32);
-  result |= PeekType(1, &type);
-  result |= PeekAndCheckType(2, type);
-  PrintStackIfFailed(result, "select", Type::I32, type, type);
+  result |= PeekType(1, &type1);
+  result |= PeekType(2, &type2);
+  if (expected == Type::Any) {
+    if (IsRefType(type1) || IsRefType(type2)) {
+      result = Result::Error;
+    } else {
+      result |= CheckType(type1, type2);
+      result_type = type1;
+    }
+  } else {
+    result |= CheckType(type1, expected);
+    result |= CheckType(type2, expected);
+  }
+  PrintStackIfFailed(result, "select", result_type, result_type, Type::I32);
   result |= DropTypes(3);
-  PushType(type);
+  PushType(result_type);
   return result;
 }
 

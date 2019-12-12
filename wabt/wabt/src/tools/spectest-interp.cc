@@ -70,7 +70,6 @@ static void ParseOptions(int argc, char** argv) {
     s_verbose++;
     s_log_stream = FileStream::CreateStdout();
   });
-  parser.AddHelpOption();
   s_features.AddOptions(&parser);
   parser.AddOption('V', "value-stack-size", "SIZE",
                    "Size in elements of the value stack",
@@ -166,6 +165,12 @@ class AssertReturnCommand : public CommandMixin<CommandType::AssertReturn> {
  public:
   Action action;
   TypedValues expected;
+};
+
+class AssertReturnFuncCommand
+    : public CommandMixin<CommandType::AssertReturnFunc> {
+ public:
+  Action action;
 };
 
 template <CommandType TypeEnum>
@@ -448,6 +453,12 @@ wabt::Result JSONParser::ParseTypeObject(Type* out_type) {
   } else if (type_str == "v128") {
     *out_type = Type::V128;
     return wabt::Result::Ok;
+  } else if (type_str == "funcref") {
+    *out_type = Type::Funcref;
+    return wabt::Result::Ok;
+  } else if (type_str == "anyref") {
+    *out_type = Type::Anyref;
+    return wabt::Result::Ok;
   } else {
     PrintError("unknown type: \"%s\"", type_str.c_str());
     return wabt::Result::Error;
@@ -514,10 +525,28 @@ wabt::Result JSONParser::ParseConst(TypedValue* out_value) {
     v128 value_bits;
     CHECK_RESULT(ParseUint128(value_start, value_end, &value_bits));
     out_value->type = Type::V128;
-    out_value->value.v128_bits = value_bits;
+    out_value->value.vec128 = value_bits;
+    return wabt::Result::Ok;
+  } else if (type_str == "nullref") {
+    out_value->type = Type::Nullref;
+    out_value->value.ref = {RefType::Null, 0};
+    return wabt::Result::Ok;
+  } else if (type_str == "hostref") {
+    uint32_t value;
+    CHECK_RESULT(
+        ParseInt32(value_start, value_end, &value, ParseIntType::UnsignedOnly));
+    out_value->type = Type::Hostref;
+    out_value->value.ref = {RefType::Host, value};
+    return wabt::Result::Ok;
+  } else if (type_str == "funcref") {
+    uint32_t value;
+    CHECK_RESULT(
+        ParseInt32(value_start, value_end, &value, ParseIntType::UnsignedOnly));
+    out_value->type = Type::Funcref;
+    out_value->value.ref = {RefType::Func, value};
     return wabt::Result::Ok;
   } else {
-    PrintError("unknown type: \"%s\"", type_str.c_str());
+    PrintError("unknown concrete type: \"%s\"", type_str.c_str());
     return wabt::Result::Error;
   }
 }
@@ -712,6 +741,13 @@ wabt::Result JSONParser::ParseCommand(CommandPtr* out_command) {
     EXPECT_KEY("expected");
     CHECK_RESULT(ParseConstVector(&command->expected));
     *out_command = std::move(command);
+  } else if (Match("\"assert_return_func\"")) {
+    auto command = MakeUnique<AssertReturnFuncCommand>();
+    EXPECT(",");
+    CHECK_RESULT(ParseLine(&command->line));
+    EXPECT(",");
+    CHECK_RESULT(ParseAction(&command->action));
+    *out_command = std::move(command);
   } else if (Match("\"assert_return_canonical_nan\"")) {
     auto command = MakeUnique<AssertReturnCanonicalNanCommand>();
     EXPECT(",");
@@ -805,6 +841,7 @@ class CommandRunner {
   wabt::Result OnAssertUninstantiableCommand(
       const AssertUninstantiableCommand*);
   wabt::Result OnAssertReturnCommand(const AssertReturnCommand*);
+  wabt::Result OnAssertReturnFuncCommand(const AssertReturnFuncCommand*);
   template <typename NanCommand>
   wabt::Result OnAssertReturnNanCommand(const NanCommand*);
   wabt::Result OnAssertTrapCommand(const AssertTrapCommand*);
@@ -820,6 +857,11 @@ class CommandRunner {
                                  Environment* env,
                                  ModuleType module_type,
                                  const char* desc);
+  wabt::Result ReadUnlinkableModule(int line_number,
+                                    string_view module_filename,
+                                    Environment* env,
+                                    ModuleType module_type,
+                                    const char* desc);
 
   Environment env_;
   Executor executor_;
@@ -836,8 +878,8 @@ static interp::Result PrintCallback(const HostFunc* func,
                                     TypedValues& results) {
   printf("called host ");
   WriteCall(s_stdout_stream.get(), func->module_name, func->field_name, args,
-            results, interp::Result::Ok);
-  return interp::Result::Ok;
+            results, interp::ResultType::Ok);
+  return interp::ResultType::Ok;
 }
 
 static void InitEnvironment(Environment* env) {
@@ -861,7 +903,7 @@ static void InitEnvironment(Environment* env) {
 }
 
 CommandRunner::CommandRunner()
-    : executor_(&env_, s_trace_stream, s_thread_options) {
+    : env_(s_features), executor_(&env_, s_trace_stream, s_thread_options) {
   InitEnvironment(&env_);
 }
 
@@ -907,6 +949,11 @@ wabt::Result CommandRunner::Run(const Script& script) {
             OnAssertReturnCommand(cast<AssertReturnCommand>(command.get())));
         break;
 
+      case CommandType::AssertReturnFunc:
+        TallyCommand(
+            OnAssertReturnFuncCommand(cast<AssertReturnFuncCommand>(command.get())));
+        break;
+
       case CommandType::AssertReturnCanonicalNan:
         TallyCommand(OnAssertReturnNanCommand(
             cast<AssertReturnCanonicalNanCommand>(command.get())));
@@ -942,14 +989,14 @@ static ExecResult GetGlobalExportByName(Environment* env,
                                         string_view name) {
   interp::Export* export_ = module->GetExport(name);
   if (!export_) {
-    return ExecResult(interp::Result::UnknownExport);
+    return ExecResult(interp::ResultType::UnknownExport);
   }
   if (export_->kind != ExternalKind::Global) {
-    return ExecResult(interp::Result::ExportKindMismatch);
+    return ExecResult(interp::ResultType::ExportKindMismatch);
   }
 
   interp::Global* global = env->GetGlobal(export_->index);
-  return ExecResult(interp::Result::Ok, {global->typed_value});
+  return ExecResult(interp::ResultType::Ok, {global->typed_value});
 }
 
 ExecResult CommandRunner::RunAction(int line_number,
@@ -996,7 +1043,8 @@ wabt::Result CommandRunner::ReadInvalidTextModule(string_view module_filename,
   Errors errors;
   if (Succeeded(result)) {
     std::unique_ptr<::Script> script;
-    result = ParseWastScript(lexer.get(), &script, &errors);
+    WastParseOptions options(s_features);
+    result = ParseWastScript(lexer.get(), &script, &errors, &options);
     if (Succeeded(result)) {
       wabt::Module* module = script->GetFirstModule();
       result = ResolveNamesModule(module, &errors);
@@ -1059,8 +1107,11 @@ wabt::Result CommandRunner::ReadInvalidModule(int line_number,
       DefinedModule* module;
       Errors errors;
       wabt::Result result = ReadModule(module_filename, env, &errors, &module);
-      FormatErrorsToFile(errors, Location::Type::Binary, {}, stdout, header,
-                         PrintHeader::Once);
+      if (Failed(result)) {
+        FormatErrorsToFile(errors, Location::Type::Binary, {}, stdout, header,
+                           PrintHeader::Once);
+        return result;
+      }
       return result;
     }
   }
@@ -1082,10 +1133,10 @@ wabt::Result CommandRunner::OnModuleCommand(const ModuleCommand* command) {
     return wabt::Result::Error;
   }
 
-  ExecResult exec_result = executor_.RunStartFunction(last_module_);
-  if (exec_result.result != interp::Result::Ok) {
+  ExecResult exec_result = executor_.Initialize(last_module_);
+  if (!exec_result.ok()) {
     env_.ResetToMarkPoint(mark);
-    WriteResult(s_stdout_stream.get(), "error running start function",
+    WriteResult(s_stdout_stream.get(), "error initializing module",
                 exec_result.result);
     return wabt::Result::Error;
   }
@@ -1103,9 +1154,9 @@ wabt::Result CommandRunner::OnActionCommand(const ActionCommand* command) {
   ExecResult exec_result =
       RunAction(command->line, &command->action, RunVerbosity::Verbose);
 
-  if (exec_result.result != interp::Result::Ok) {
+  if (!exec_result.ok()) {
     PrintError(command->line, "unexpected trap: %s",
-               ResultToString(exec_result.result));
+               ResultToString(exec_result.result).c_str());
     return wabt::Result::Error;
   }
 
@@ -1114,7 +1165,7 @@ wabt::Result CommandRunner::OnActionCommand(const ActionCommand* command) {
 
 wabt::Result CommandRunner::OnAssertMalformedCommand(
     const AssertMalformedCommand* command) {
-  Environment env;
+  Environment env(s_features);
   InitEnvironment(&env);
 
   wabt::Result result =
@@ -1148,22 +1199,33 @@ wabt::Result CommandRunner::OnRegisterCommand(const RegisterCommand* command) {
 
 wabt::Result CommandRunner::OnAssertUnlinkableCommand(
     const AssertUnlinkableCommand* command) {
+  Errors errors;
   wabt::Result result =
-      ReadInvalidModule(command->line, command->filename, &env_, command->type,
-                        "assert_unlinkable");
+      ReadModule(command->filename, &env_, &errors, &last_module_);
 
-  if (Succeeded(result)) {
+  if (Failed(result)) {
+    std::string header = StringPrintf("%s:%d: assert_unlinkable passed",
+                                      source_filename_.c_str(), command->line);
+    FormatErrorsToFile(errors, Location::Type::Binary, {}, stdout, header,
+                       PrintHeader::Once);
+    return wabt::Result::Ok;
+  }
+
+  ExecResult exec_result = executor_.Initialize(last_module_);
+  if (exec_result.ok()) {
     PrintError(command->line, "expected module to be unlinkable: \"%s\"",
                command->filename.c_str());
     return wabt::Result::Error;
   }
 
+  WriteResult(s_stdout_stream.get(), "assert_unlinkable passed",
+              exec_result.result);
   return wabt::Result::Ok;
 }
 
 wabt::Result CommandRunner::OnAssertInvalidCommand(
     const AssertInvalidCommand* command) {
-  Environment env;
+  Environment env(s_features);
   InitEnvironment(&env);
 
   wabt::Result result = ReadInvalidModule(
@@ -1185,9 +1247,9 @@ wabt::Result CommandRunner::OnAssertUninstantiableCommand(
   FormatErrorsToFile(errors, Location::Type::Binary);
 
   if (Succeeded(result)) {
-    ExecResult exec_result = executor_.RunStartFunction(module);
-    if (exec_result.result == interp::Result::Ok) {
-      PrintError(command->line, "expected error running start function: \"%s\"",
+    ExecResult exec_result = executor_.Initialize(module);
+    if (exec_result.ok()) {
+      PrintError(command->line, "expected instantiation error: \"%s\"",
                  command->filename.c_str());
       result = wabt::Result::Error;
     } else {
@@ -1220,10 +1282,45 @@ static bool TypedValuesAreEqual(const TypedValue& tv1, const TypedValue& tv2) {
     case Type::F64:
       return tv1.value.f64_bits == tv2.value.f64_bits;
     case Type::V128:
-      return tv1.value.v128_bits == tv2.value.v128_bits;
+      return tv1.value.vec128 == tv2.value.vec128;
+    case Type::Nullref:
+      return true;
+    case Type::Funcref:
+      return tv1.value.ref.index == tv2.value.ref.index;
+    case Type::Hostref:
+      return tv1.value.ref.index == tv2.value.ref.index;
     default:
       WABT_UNREACHABLE;
   }
+}
+
+wabt::Result CommandRunner::OnAssertReturnFuncCommand(
+    const AssertReturnFuncCommand* command) {
+  ExecResult exec_result =
+      RunAction(command->line, &command->action, RunVerbosity::Quiet);
+
+  if (!exec_result.ok()) {
+    PrintError(command->line, "unexpected trap: %s",
+               ResultToString(exec_result.result).c_str());
+    return wabt::Result::Error;
+  }
+
+  if (exec_result.values.size() != 1) {
+    PrintError(command->line,
+               "expected 1 result in assert_return_func, got %" PRIzd,
+               exec_result.values.size());
+    return wabt::Result::Error;
+  }
+
+  const TypedValue& result = exec_result.values[0];
+  if (result.type != Type::Funcref) {
+    PrintError(command->line,
+               "mismatch in result of assert_return_func: expected %s, got %s",
+               GetTypeName(Type::Funcref), TypedValueToString(result).c_str());
+    return wabt::Result::Error;
+  }
+
+  return wabt::Result::Ok;
 }
 
 wabt::Result CommandRunner::OnAssertReturnCommand(
@@ -1231,9 +1328,9 @@ wabt::Result CommandRunner::OnAssertReturnCommand(
   ExecResult exec_result =
       RunAction(command->line, &command->action, RunVerbosity::Quiet);
 
-  if (exec_result.result != interp::Result::Ok) {
+  if (!exec_result.ok()) {
     PrintError(command->line, "unexpected trap: %s",
-               ResultToString(exec_result.result));
+               ResultToString(exec_result.result).c_str());
     return wabt::Result::Error;
   }
 
@@ -1268,9 +1365,9 @@ wabt::Result CommandRunner::OnAssertReturnNanCommand(
   ExecResult exec_result =
       RunAction(command->line, &command->action, RunVerbosity::Quiet);
 
-  if (exec_result.result != interp::Result::Ok) {
+  if (!exec_result.ok()) {
     PrintError(command->line, "unexpected trap: %s",
-               ResultToString(exec_result.result));
+               ResultToString(exec_result.result).c_str());
     return wabt::Result::Error;
   }
 
@@ -1320,11 +1417,13 @@ wabt::Result CommandRunner::OnAssertTrapCommand(
     const AssertTrapCommand* command) {
   ExecResult exec_result =
       RunAction(command->line, &command->action, RunVerbosity::Quiet);
-  if (exec_result.result == interp::Result::Ok) {
+  if (exec_result.ok()) {
     PrintError(command->line, "expected trap: \"%s\"", command->text.c_str());
     return wabt::Result::Error;
   }
 
+  PrintError(command->line, "assert_trap passed: %s",
+             ResultToString(exec_result.result).c_str());
   return wabt::Result::Ok;
 }
 
@@ -1332,8 +1431,8 @@ wabt::Result CommandRunner::OnAssertExhaustionCommand(
     const AssertExhaustionCommand* command) {
   ExecResult exec_result =
       RunAction(command->line, &command->action, RunVerbosity::Quiet);
-  if (exec_result.result != interp::Result::TrapCallStackExhausted &&
-      exec_result.result != interp::Result::TrapValueStackExhausted) {
+  if (exec_result.result.type != interp::ResultType::TrapCallStackExhausted &&
+      exec_result.result.type != interp::ResultType::TrapValueStackExhausted) {
     PrintError(command->line, "expected call stack exhaustion");
     return wabt::Result::Error;
   }

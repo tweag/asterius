@@ -207,20 +207,37 @@ struct Location {
 
 // Matches binary format, do not change.
 enum class Type : int32_t {
-  I32 = -0x01,        // 0x7f
-  I64 = -0x02,        // 0x7e
-  F32 = -0x03,        // 0x7d
-  F64 = -0x04,        // 0x7c
-  V128 = -0x05,       // 0x7b
-  Funcref = -0x10,    // 0x70
-  Anyref = -0x11,     // 0x6f
-  ExceptRef = -0x18,  // 0x68
-  Func = -0x20,       // 0x60
-  Void = -0x40,       // 0x40
-  ___ = Void,         // Convenient for the opcode table in opcode.h
-  Any = 0,            // Not actually specified, but useful for type-checking
+  I32 = -0x01,      // 0x7f
+  I64 = -0x02,      // 0x7e
+  F32 = -0x03,      // 0x7d
+  F64 = -0x04,      // 0x7c
+  V128 = -0x05,     // 0x7b
+  Funcref = -0x10,  // 0x70
+  Anyref = -0x11,   // 0x6f
+  Exnref = -0x18,   // 0x68
+  Func = -0x20,     // 0x60
+  Void = -0x40,     // 0x40
+  ___ = Void,       // Convenient for the opcode table in opcode.h
+  Any = 0,          // Not actually specified, but useful for type-checking
+  Nullref = 1,      // Not actually specified, but used in testing and type-checking
+  Hostref = 2,      // Not actually specified, but used in testing and type-checking
+  I8 = 3,           // Not actually specified, but used internally with load/store
+  I8U = 4,          // Not actually specified, but used internally with load/store
+  I16 = 5,          // Not actually specified, but used internally with load/store
+  I16U = 6,         // Not actually specified, but used internally with load/store
+  I32U = 7,         // Not actually specified, but used internally with load/store
 };
 typedef std::vector<Type> TypeVector;
+
+// Matches binary format, do not change.
+enum SegmentFlags : uint8_t {
+  SegFlagsNone = 0,
+  SegPassive = 1,        // bit 0: Is passive
+  SegExplicitIndex = 2,  // bit 1: Has explict index (Inplies table 0 if absent)
+  SegUseElemExprs = 4,   // bit 2: Is elemexpr (Or else index sequence)
+
+  SegFlagMax = SegUseElemExprs,
+};
 
 enum class RelocType {
   FuncIndexLEB = 0,          // e.g. Immediate of call instruction
@@ -271,10 +288,13 @@ enum class ComdatType {
   Function = 0x1,
 };
 
-#define WABT_SYMBOL_FLAG_UNDEFINED 0x10
 #define WABT_SYMBOL_MASK_VISIBILITY 0x4
 #define WABT_SYMBOL_MASK_BINDING 0x3
-#define WASM_SYMBOL_EXPLICIT_NAME 0x40
+#define WABT_SYMBOL_FLAG_UNDEFINED 0x10
+#define WABT_SYMBOL_FLAG_EXPORTED 0x20
+#define WABT_SYMBOL_FLAG_EXPLICIT_NAME 0x40
+#define WABT_SYMBOL_FLAG_NO_STRIP 0x80
+#define WABT_SYMBOL_FLAG_MAX 0xff
 
 enum class SymbolVisibility {
   Default = 0,
@@ -361,6 +381,16 @@ static WABT_INLINE const char* GetSymbolTypeName(SymbolType type) {
 
 /* type */
 
+static WABT_INLINE bool IsRefType(Type t) {
+  return t == Type::Anyref || t == Type::Funcref || t == Type::Nullref ||
+         t == Type::Hostref;
+}
+
+static WABT_INLINE bool IsNullableRefType(Type t) {
+  /* Currently all reftypes are nullable */
+  return IsRefType(t);
+}
+
 static WABT_INLINE const char* GetTypeName(Type type) {
   switch (type) {
     case Type::I32:
@@ -377,14 +407,16 @@ static WABT_INLINE const char* GetTypeName(Type type) {
       return "funcref";
     case Type::Func:
       return "func";
-    case Type::ExceptRef:
-      return "except_ref";
+    case Type::Exnref:
+      return "exnref";
     case Type::Void:
       return "void";
     case Type::Any:
       return "any";
     case Type::Anyref:
       return "anyref";
+    case Type::Nullref:
+      return "nullref";
     default:
       return "<type_index>";
   }
@@ -412,7 +444,7 @@ static WABT_INLINE TypeVector GetInlineTypeVector(Type type) {
     case Type::V128:
     case Type::Funcref:
     case Type::Anyref:
-    case Type::ExceptRef:
+    case Type::Exnref:
       return TypeVector(&type, &type + 1);
 
     default:

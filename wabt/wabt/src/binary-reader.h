@@ -93,6 +93,7 @@ class BinaryReaderDelegate {
   virtual Result BeginImportSection(Offset size) = 0;
   virtual Result OnImportCount(Index count) = 0;
   virtual Result OnImport(Index index,
+                          ExternalKind kind,
                           string_view module_name,
                           string_view field_name) = 0;
   virtual Result OnImportFunc(Index import_index,
@@ -243,13 +244,15 @@ class BinaryReaderDelegate {
   virtual Result OnMemoryGrowExpr() = 0;
   virtual Result OnMemoryInitExpr(Index segment_index) = 0;
   virtual Result OnMemorySizeExpr() = 0;
-  virtual Result OnTableCopyExpr() = 0;
+  virtual Result OnTableCopyExpr(Index dst_index, Index src_index) = 0;
   virtual Result OnElemDropExpr(Index segment_index) = 0;
-  virtual Result OnTableInitExpr(Index segment_index) = 0;
+  virtual Result OnTableInitExpr(Index segment_index, Index table_index) = 0;
   virtual Result OnTableGetExpr(Index table_index) = 0;
   virtual Result OnTableSetExpr(Index table_index) = 0;
   virtual Result OnTableGrowExpr(Index table_index) = 0;
   virtual Result OnTableSizeExpr(Index table_index) = 0;
+  virtual Result OnTableFillExpr(Index table_index) = 0;
+  virtual Result OnRefFuncExpr(Index func_index) = 0;
   virtual Result OnRefNullExpr() = 0;
   virtual Result OnRefIsNullExpr() = 0;
   virtual Result OnNopExpr() = 0;
@@ -258,7 +261,7 @@ class BinaryReaderDelegate {
   virtual Result OnReturnCallExpr(Index func_index) = 0;
   virtual Result OnReturnCallIndirectExpr(Index sig_index,
                                           Index table_index) = 0;
-  virtual Result OnSelectExpr() = 0;
+  virtual Result OnSelectExpr(Type result_type) = 0;
   virtual Result OnStoreExpr(Opcode opcode,
                              uint32_t alignment_log2,
                              Address offset) = 0;
@@ -284,7 +287,7 @@ class BinaryReaderDelegate {
   virtual Result OnElemSegmentCount(Index count) = 0;
   virtual Result BeginElemSegment(Index index,
                                   Index table_index,
-                                  bool passive,
+                                  uint8_t flags,
                                   Type elem_type) = 0;
   virtual Result BeginElemSegmentInitExpr(Index index) = 0;
   virtual Result EndElemSegmentInitExpr(Index index) = 0;
@@ -300,7 +303,7 @@ class BinaryReaderDelegate {
   virtual Result OnDataSegmentCount(Index count) = 0;
   virtual Result BeginDataSegment(Index index,
                                   Index memory_index,
-                                  bool passive) = 0;
+                                  uint8_t flags) = 0;
   virtual Result BeginDataSegmentInitExpr(Index index) = 0;
   virtual Result EndDataSegmentInitExpr(Index index) = 0;
   virtual Result OnDataSegmentData(Index index,
@@ -411,6 +414,7 @@ class BinaryReaderDelegate {
   virtual Result OnInitExprI32ConstExpr(Index index, uint32_t value) = 0;
   virtual Result OnInitExprI64ConstExpr(Index index, uint64_t value) = 0;
   virtual Result OnInitExprRefNull(Index index) = 0;
+  virtual Result OnInitExprRefFunc(Index index, Index func_index) = 0;
 
   const State* state = nullptr;
 };

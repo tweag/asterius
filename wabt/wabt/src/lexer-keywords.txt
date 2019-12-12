@@ -22,6 +22,7 @@ assert_malformed, TokenType::AssertMalformed
 assert_return_arithmetic_nan, TokenType::AssertReturnArithmeticNan
 assert_return_canonical_nan, TokenType::AssertReturnCanonicalNan
 assert_return, TokenType::AssertReturn
+assert_return_func, TokenType::AssertReturnFunc
 assert_trap, TokenType::AssertTrap
 assert_unlinkable, TokenType::AssertUnlinkable
 atomic.notify, TokenType::AtomicNotify, Opcode::AtomicNotify
@@ -447,6 +448,7 @@ quote, TokenType::Quote
 ref.func, TokenType::RefFunc, Opcode::RefFunc
 ref.is_null, TokenType::RefIsNull, Opcode::RefIsNull
 ref.null, TokenType::RefNull, Opcode::RefNull
+ref.host, TokenType::RefHost
 register, TokenType::Register
 result, TokenType::Result
 rethrow, TokenType::Rethrow, Opcode::Rethrow
@@ -462,6 +464,7 @@ table.grow, TokenType::TableGrow, Opcode::TableGrow
 table.init, TokenType::TableInit, Opcode::TableInit
 table.set, TokenType::TableSet, Opcode::TableSet
 table.size, TokenType::TableSize, Opcode::TableSize
+table.fill, TokenType::TableFill, Opcode::TableFill
 table, TokenType::Table
 then, TokenType::Then
 throw, TokenType::Throw, Opcode::Throw

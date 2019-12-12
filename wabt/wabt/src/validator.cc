@@ -80,6 +80,8 @@ class Validator : public ExprVisitor::Delegate {
   Result OnTableSetExpr(TableSetExpr*) override;
   Result OnTableGrowExpr(TableGrowExpr*) override;
   Result OnTableSizeExpr(TableSizeExpr*) override;
+  Result OnTableFillExpr(TableFillExpr*) override;
+  Result OnRefFuncExpr(RefFuncExpr*) override;
   Result OnRefNullExpr(RefNullExpr*) override;
   Result OnRefIsNullExpr(RefIsNullExpr*) override;
   Result OnNopExpr(NopExpr*) override;
@@ -160,14 +162,10 @@ class Validator : public ExprVisitor::Delegate {
                   const TypeVector& expected,
                   const char* desc,
                   const char* index_kind);
-  void CheckConstTypes(const Location* loc,
-                       const TypeVector& actual,
-                       const ConstVector& expected,
-                       const char* desc);
-  void CheckConstType(const Location* loc,
-                      Type actual,
-                      const ConstVector& expected,
-                      const char* desc);
+  void CheckResultTypes(const Location* loc,
+                        const TypeVector& actual,
+                        const TypeVector& expected,
+                        const char* desc);
   void CheckAssertReturnNanType(const Location* loc,
                                 Type actual,
                                 const char* desc);
@@ -265,8 +263,9 @@ Result Validator::CheckVar(Index max_index,
     }
     return Result::Ok;
   }
-  PrintError(&var->loc, "%s variable out of range (max %" PRIindex ")", desc,
-             max_index);
+  PrintError(&var->loc,
+             "%s variable out of range: %" PRIindex " (max %" PRIindex ")",
+             desc, var->index(), max_index - 1);
   return Result::Error;
 }
 
@@ -412,7 +411,7 @@ void Validator::CheckType(const Location* loc,
                           Type actual,
                           Type expected,
                           const char* desc) {
-  if (expected != actual) {
+  if (Failed(TypeChecker::CheckType(actual, expected))) {
     PrintError(loc, "type mismatch at %s. got %s, expected %s", desc,
                GetTypeName(actual), GetTypeName(expected));
   }
@@ -424,7 +423,7 @@ void Validator::CheckTypeIndex(const Location* loc,
                                const char* desc,
                                Index index,
                                const char* index_kind) {
-  if (expected != actual && expected != Type::Any && actual != Type::Any) {
+  if (Failed(TypeChecker::CheckType(actual, expected))) {
     PrintError(
         loc, "type mismatch for %s %" PRIindex " of %s. got %s, expected %s",
         index_kind, index, desc, GetTypeName(actual), GetTypeName(expected));
@@ -446,29 +445,18 @@ void Validator::CheckTypes(const Location* loc,
   }
 }
 
-void Validator::CheckConstTypes(const Location* loc,
-                                const TypeVector& actual,
-                                const ConstVector& expected,
-                                const char* desc) {
+void Validator::CheckResultTypes(const Location* loc,
+                                 const TypeVector& actual,
+                                 const TypeVector& expected,
+                                 const char* desc) {
   if (actual.size() == expected.size()) {
     for (size_t i = 0; i < actual.size(); ++i) {
-      CheckTypeIndex(loc, actual[i], expected[i].type, desc, i, "result");
+      CheckTypeIndex(loc, actual[i], expected[i], desc, i, "result");
     }
   } else {
     PrintError(loc, "expected %" PRIzd " results, got %" PRIzd, expected.size(),
                actual.size());
   }
-}
-
-void Validator::CheckConstType(const Location* loc,
-                               Type actual,
-                               const ConstVector& expected,
-                               const char* desc) {
-  TypeVector actual_types;
-  if (actual != Type::Void) {
-    actual_types.push_back(actual);
-  }
-  CheckConstTypes(loc, actual_types, expected, desc);
 }
 
 void Validator::CheckAssertReturnNanType(const Location* loc,
@@ -792,37 +780,64 @@ Result Validator::OnElemDropExpr(ElemDropExpr* expr) {
 
 Result Validator::OnTableInitExpr(TableInitExpr* expr) {
   expr_loc_ = &expr->loc;
-  CheckHasTable(&expr->loc, Opcode::TableInit);
-  CheckElemSegmentVar(&expr->var);
-  typechecker_.OnTableInit(expr->var.index());
+  typechecker_.OnTableInit(expr->table_index.index(),
+                           expr->segment_index.index());
+  if (!CheckHasTable(&expr->loc, Opcode::TableInit))
+    return Result::Ok;
+  CheckTableVar(&expr->table_index, nullptr);
+  CheckElemSegmentVar(&expr->segment_index);
   return Result::Ok;
 }
 
 Result Validator::OnTableGetExpr(TableGetExpr* expr) {
+  const Table* table;
+  CheckTableVar(&expr->var, &table);
   expr_loc_ = &expr->loc;
   CheckHasTable(&expr->loc, Opcode::TableGet, expr->var.index());
-  typechecker_.OnTableGet(expr->var.index());
+  typechecker_.OnTableGet(table->elem_type);
   return Result::Ok;
 }
 
 Result Validator::OnTableSetExpr(TableSetExpr* expr) {
+  const Table* table;
+  CheckTableVar(&expr->var, &table);
   expr_loc_ = &expr->loc;
   CheckHasTable(&expr->loc, Opcode::TableSet, expr->var.index());
-  typechecker_.OnTableSet(expr->var.index());
+  typechecker_.OnTableSet(table->elem_type);
   return Result::Ok;
 }
 
 Result Validator::OnTableGrowExpr(TableGrowExpr* expr) {
+  const Table* table;
+  CheckTableVar(&expr->var, &table);
   expr_loc_ = &expr->loc;
   CheckHasTable(&expr->loc, Opcode::TableGrow, expr->var.index());
-  typechecker_.OnTableGrow(expr->var.index());
+  typechecker_.OnTableGrow(table->elem_type);
   return Result::Ok;
 }
 
 Result Validator::OnTableSizeExpr(TableSizeExpr* expr) {
   expr_loc_ = &expr->loc;
   CheckHasTable(&expr->loc, Opcode::TableSize, expr->var.index());
-  typechecker_.OnTableSize(expr->var.index());
+  typechecker_.OnTableSize();
+  return Result::Ok;
+}
+
+Result Validator::OnTableFillExpr(TableFillExpr* expr) {
+  const Table* table;
+  CheckTableVar(&expr->var, &table);
+  expr_loc_ = &expr->loc;
+  CheckHasTable(&expr->loc, Opcode::TableFill, expr->var.index());
+  typechecker_.OnTableFill(table->elem_type);
+  return Result::Ok;
+}
+
+Result Validator::OnRefFuncExpr(RefFuncExpr* expr) {
+  expr_loc_ = &expr->loc;
+  const Func* callee;
+  if (Succeeded(CheckFuncVar(&expr->var, &callee))) {
+    typechecker_.OnRefFuncExpr(expr->var.index());
+  }
   return Result::Ok;
 }
 
@@ -870,8 +885,8 @@ Result Validator::OnReturnCallIndirectExpr(ReturnCallIndirectExpr* expr) {
 
 Result Validator::OnSelectExpr(SelectExpr* expr) {
   expr_loc_ = &expr->loc;
-  typechecker_.OnSelect();
-  return Result::Ok;
+  assert(expr->result_type.size());
+  return typechecker_.OnSelect(expr->result_type[0]);
 }
 
 Result Validator::OnStoreExpr(StoreExpr* expr) {
@@ -1069,10 +1084,14 @@ void Validator::CheckConstInitExpr(const Location* loc,
         break;
       }
 
-      case ExprType::RefNull:
-        type = Type::Anyref;
+      case ExprType::RefFunc:
+        type = Type::Funcref;
         break;
-      
+
+      case ExprType::RefNull:
+        type = Type::Nullref;
+        break;
+
       default:
         PrintConstExprError(loc, desc);
         return;
@@ -1133,17 +1152,16 @@ void Validator::CheckElemSegments(const Module* module) {
   for (const ModuleField& field : module->fields) {
     if (auto elem_segment_field = dyn_cast<ElemSegmentModuleField>(&field)) {
       auto&& elem_segment = elem_segment_field->elem_segment;
-      const Table* table;
       for (const ElemExpr& elem_expr : elem_segment.elem_exprs) {
         if (elem_expr.kind == ElemExprKind::RefFunc) {
           CheckFuncVar(&elem_expr.var, nullptr);
         }
       }
 
-      if (elem_segment.passive)  {
+      if (elem_segment.is_passive()) {
         continue;
       }
-      if (Failed(CheckTableVar(&elem_segment.table_var, &table))) {
+      if (Failed(CheckTableVar(&elem_segment.table_var, nullptr))) {
         continue;
       }
       CheckConstInitExpr(&field.loc, elem_segment.offset, Type::I32,
@@ -1172,7 +1190,7 @@ void Validator::CheckDataSegments(const Module* module) {
     if (auto data_segment_field = dyn_cast<DataSegmentModuleField>(&field)) {
       auto&& data_segment = data_segment_field->data_segment;
       const Memory* memory;
-      if (data_segment.passive)  {
+      if (data_segment.is_passive()) {
         continue;
       }
       if (Failed(CheckMemoryVar(&data_segment.memory_var, &memory))) {
@@ -1491,19 +1509,30 @@ void Validator::CheckCommand(const Command* command) {
       // Ignore.
       break;
 
+    case CommandType::AssertReturnFunc: {
+      auto* cmd = cast<AssertReturnFuncCommand>(command);
+      const Action* action = cmd->action.get();
+      CheckAction(action);
+      break;
+    }
+
     case CommandType::AssertReturn: {
       auto* assert_return_command = cast<AssertReturnCommand>(command);
       const Action* action = assert_return_command->action.get();
       ActionResult result = CheckAction(action);
+      // Here we take the concrete expected output types verify those actains
+      // the types that are the result of the action.
+      TypeVector actual_types;
+      for (auto ex : assert_return_command->expected) {
+        actual_types.push_back(ex.type);
+      }
       switch (result.kind) {
         case ActionResult::Kind::Types:
-          CheckConstTypes(&action->loc, *result.types,
-                          assert_return_command->expected, "action");
+          CheckResultTypes(&action->loc, actual_types, *result.types, "action");
           break;
 
         case ActionResult::Kind::Type:
-          CheckConstType(&action->loc, result.type,
-                         assert_return_command->expected, "action");
+          CheckResultTypes(&action->loc, actual_types, {result.type}, "action");
           break;
 
         case ActionResult::Kind::Error:

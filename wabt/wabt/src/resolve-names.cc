@@ -63,6 +63,8 @@ class NameResolver : public ExprVisitor::DelegateNop {
   Result OnTableSetExpr(TableSetExpr*) override;
   Result OnTableGrowExpr(TableGrowExpr*) override;
   Result OnTableSizeExpr(TableSizeExpr*) override;
+  Result OnTableFillExpr(TableFillExpr*) override;
+  Result OnRefFuncExpr(RefFuncExpr*) override;
   Result BeginTryExpr(TryExpr*) override;
   Result EndTryExpr(TryExpr*) override;
   Result OnThrowExpr(ThrowExpr*) override;
@@ -353,7 +355,8 @@ Result NameResolver::OnElemDropExpr(ElemDropExpr* expr) {
 }
 
 Result NameResolver::OnTableInitExpr(TableInitExpr* expr) {
-  ResolveElemSegmentVar(&expr->var);
+  ResolveElemSegmentVar(&expr->segment_index);
+  ResolveTableVar(&expr->table_index);
   return Result::Ok;
 }
 
@@ -374,6 +377,16 @@ Result NameResolver::OnTableGrowExpr(TableGrowExpr* expr) {
 
 Result NameResolver::OnTableSizeExpr(TableSizeExpr* expr) {
   ResolveTableVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnTableFillExpr(TableFillExpr* expr) {
+  ResolveTableVar(&expr->var);
+  return Result::Ok;
+}
+
+Result NameResolver::OnRefFuncExpr(RefFuncExpr* expr) {
+  ResolveFuncVar(&expr->var);
   return Result::Ok;
 }
 
@@ -461,6 +474,7 @@ void NameResolver::VisitDataSegment(DataSegment* segment) {
 
 Result NameResolver::VisitModule(Module* module) {
   current_module_ = module;
+  CheckDuplicateBindings(&module->elem_segment_bindings, "elem");
   CheckDuplicateBindings(&module->func_bindings, "function");
   CheckDuplicateBindings(&module->global_bindings, "global");
   CheckDuplicateBindings(&module->func_type_bindings, "function type");
@@ -500,6 +514,7 @@ void NameResolver::VisitCommand(Command* command) {
 
     case CommandType::Action:
     case CommandType::AssertReturn:
+    case CommandType::AssertReturnFunc:
     case CommandType::AssertReturnCanonicalNan:
     case CommandType::AssertReturnArithmeticNan:
     case CommandType::AssertTrap:

@@ -101,7 +101,8 @@ struct Const {
     uint64_t u64;
     uint32_t f32_bits;
     uint64_t f64_bits;
-    v128 v128_bits;
+    uintptr_t ref_bits;
+    v128 vec128;
   };
 
  private:
@@ -110,12 +111,14 @@ struct Const {
   struct I64Tag {};
   struct F32Tag {};
   struct F64Tag {};
+  struct RefTag {};
   struct V128Tag {};
 
   Const(I32Tag, uint32_t val = 0, const Location& loc = Location());
   Const(I64Tag, uint64_t val = 0, const Location& loc = Location());
   Const(F32Tag, uint32_t val = 0, const Location& loc = Location());
   Const(F64Tag, uint64_t val = 0, const Location& loc = Location());
+  Const(RefTag, uintptr_t val = 0, const Location& loc = Location());
   Const(V128Tag, v128 val = {{0, 0, 0, 0}}, const Location& loc = Location());
 };
 typedef std::vector<Const> ConstVector;
@@ -190,6 +193,7 @@ enum class ExprType {
   MemorySize,
   Nop,
   RefIsNull,
+  RefFunc,
   RefNull,
   Rethrow,
   Return,
@@ -207,6 +211,7 @@ enum class ExprType {
   TableGrow,
   TableSize,
   TableSet,
+  TableFill,
   Ternary,
   Throw,
   Try,
@@ -266,11 +271,9 @@ typedef ExprMixin<ExprType::MemoryGrow> MemoryGrowExpr;
 typedef ExprMixin<ExprType::MemorySize> MemorySizeExpr;
 typedef ExprMixin<ExprType::MemoryCopy> MemoryCopyExpr;
 typedef ExprMixin<ExprType::MemoryFill> MemoryFillExpr;
-typedef ExprMixin<ExprType::TableCopy> TableCopyExpr;
 typedef ExprMixin<ExprType::Nop> NopExpr;
 typedef ExprMixin<ExprType::Rethrow> RethrowExpr;
 typedef ExprMixin<ExprType::Return> ReturnExpr;
-typedef ExprMixin<ExprType::Select> SelectExpr;
 typedef ExprMixin<ExprType::Unreachable> UnreachableExpr;
 typedef ExprMixin<ExprType::RefNull> RefNullExpr;
 typedef ExprMixin<ExprType::RefIsNull> RefIsNullExpr;
@@ -320,6 +323,7 @@ class VarExpr : public ExprMixin<TypeEnum> {
 typedef VarExpr<ExprType::Br> BrExpr;
 typedef VarExpr<ExprType::BrIf> BrIfExpr;
 typedef VarExpr<ExprType::Call> CallExpr;
+typedef VarExpr<ExprType::RefFunc> RefFuncExpr;
 typedef VarExpr<ExprType::GlobalGet> GlobalGetExpr;
 typedef VarExpr<ExprType::GlobalSet> GlobalSetExpr;
 typedef VarExpr<ExprType::LocalGet> LocalGetExpr;
@@ -330,12 +334,43 @@ typedef VarExpr<ExprType::Throw> ThrowExpr;
 
 typedef VarExpr<ExprType::MemoryInit> MemoryInitExpr;
 typedef VarExpr<ExprType::DataDrop> DataDropExpr;
-typedef VarExpr<ExprType::TableInit> TableInitExpr;
 typedef VarExpr<ExprType::ElemDrop> ElemDropExpr;
 typedef VarExpr<ExprType::TableGet> TableGetExpr;
 typedef VarExpr<ExprType::TableSet> TableSetExpr;
 typedef VarExpr<ExprType::TableGrow> TableGrowExpr;
 typedef VarExpr<ExprType::TableSize> TableSizeExpr;
+typedef VarExpr<ExprType::TableFill> TableFillExpr;
+
+class SelectExpr : public ExprMixin<ExprType::Select> {
+ public:
+  SelectExpr(TypeVector type, const Location& loc = Location())
+      : ExprMixin<ExprType::Select>(loc), result_type(type) {}
+  TypeVector result_type;
+};
+
+class TableInitExpr : public ExprMixin<ExprType::TableInit> {
+ public:
+  TableInitExpr(const Var& segment_index,
+                const Var& table_index,
+                const Location& loc = Location())
+      : ExprMixin<ExprType::TableInit>(loc),
+        segment_index(segment_index),
+        table_index(table_index) {}
+
+  Var segment_index;
+  Var table_index;
+};
+
+class TableCopyExpr : public ExprMixin<ExprType::TableCopy> {
+ public:
+  TableCopyExpr(const Var& dst,
+                const Var& src,
+                const Location& loc = Location())
+      : ExprMixin<ExprType::TableCopy>(loc), dst_table(dst), src_table(src) {}
+
+  Var dst_table;
+  Var src_table;
+};
 
 class CallIndirectExpr : public ExprMixin<ExprType::CallIndirect> {
  public:
@@ -565,11 +600,12 @@ typedef std::vector<ElemExpr> ElemExprVector;
 
 struct ElemSegment {
   explicit ElemSegment(string_view name) : name(name.to_string()) {}
+  bool is_passive() const { return flags & SegPassive; }
 
   std::string name;
   Var table_var;
-  bool passive = false;
-  Type elem_type;  // If passive == false, this is always Type::Funcref.
+  uint8_t flags = 0;
+  Type elem_type;
   ExprList offset;
   ElemExprVector elem_exprs;
 };
@@ -583,10 +619,11 @@ struct Memory {
 
 struct DataSegment {
   explicit DataSegment(string_view name) : name(name.to_string()) {}
+  bool is_passive() const { return flags & SegPassive; }
 
   std::string name;
   Var memory_var;
-  bool passive = false;
+  uint8_t flags = 0;
   ExprList offset;
   std::vector<uint8_t> data;
 };
@@ -1007,6 +1044,7 @@ enum class CommandType {
   AssertUnlinkable,
   AssertUninstantiable,
   AssertReturn,
+  AssertReturnFunc,
   AssertReturnCanonicalNan,
   AssertReturnArithmeticNan,
   AssertTrap,
@@ -1066,6 +1104,12 @@ class AssertReturnCommand : public CommandMixin<CommandType::AssertReturn> {
  public:
   ActionPtr action;
   ConstVector expected;
+};
+
+class AssertReturnFuncCommand
+    : public CommandMixin<CommandType::AssertReturnFunc> {
+ public:
+  ActionPtr action;
 };
 
 template <CommandType TypeEnum>

@@ -59,6 +59,7 @@ const char* ExprTypeName[] = {
   "MemorySize",
   "Nop",
   "RefIsNull",
+  "RefFunc",
   "RefNull",
   "Rethrow",
   "Return",
@@ -76,6 +77,7 @@ const char* ExprTypeName[] = {
   "TableGrow",
   "TableSize",
   "TableSet",
+  "TableFill",
   "Ternary",
   "Throw",
   "Try",
@@ -647,6 +649,6 @@ Const::Const(F64Tag, uint64_t value, const Location& loc_)
     : loc(loc_), type(Type::F64), f64_bits(value) {}
 
 Const::Const(V128Tag, v128 value, const Location& loc_)
-    : loc(loc_), type(Type::V128), v128_bits(value) {}
+    : loc(loc_), type(Type::V128), vec128(value) {}
 
 }  // namespace wabt

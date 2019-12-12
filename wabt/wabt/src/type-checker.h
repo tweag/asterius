@@ -101,16 +101,18 @@ class TypeChecker {
   Result OnMemorySize();
   Result OnTableCopy();
   Result OnElemDrop(Index);
-  Result OnTableInit(Index);
-  Result OnTableGet(Index);
-  Result OnTableSet(Index);
-  Result OnTableGrow(Index);
-  Result OnTableSize(Index);
+  Result OnTableInit(Index, Index);
+  Result OnTableGet(Type elem_type);
+  Result OnTableSet(Type elem_type);
+  Result OnTableGrow(Type elem_type);
+  Result OnTableSize();
+  Result OnTableFill(Type elem_type);
+  Result OnRefFuncExpr(Index func_index);
   Result OnRefNullExpr();
   Result OnRefIsNullExpr();
   Result OnRethrow();
   Result OnReturn();
-  Result OnSelect();
+  Result OnSelect(Type expected);
   Result OnSimdLaneOp(Opcode, uint64_t);
   Result OnSimdShuffleOp(Opcode, v128);
   Result OnStore(Opcode);
@@ -120,6 +122,8 @@ class TypeChecker {
   Result OnUnary(Opcode);
   Result OnUnreachable();
   Result EndFunction();
+
+  static Result CheckType(Type actual, Type expected);
 
  private:
   void WABT_PRINTF_FORMAT(2, 3) PrintError(const char* fmt, ...);
@@ -138,7 +142,6 @@ class TypeChecker {
   void PushType(Type type);
   void PushTypes(const TypeVector& types);
   Result CheckTypeStackEnd(const char* desc);
-  Result CheckType(Type actual, Type expected);
   Result CheckTypes(const TypeVector &actual, const TypeVector &expected);
   Result CheckSignature(const TypeVector& sig, const char* desc);
   Result CheckReturnSignature(const TypeVector& sig, const TypeVector &expected,const char *desc);

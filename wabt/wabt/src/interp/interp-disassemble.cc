@@ -43,6 +43,7 @@ void Environment::Disassemble(Stream* stream,
     assert(!opcode.IsInvalid());
     switch (opcode) {
       case Opcode::Select:
+      case Opcode::SelectT:
       case Opcode::V128BitSelect:
         stream->Writef("%s %%[-3], %%[-2], %%[-1]\n", opcode.GetName());
         break;
@@ -586,13 +587,32 @@ void Environment::Disassemble(Stream* stream,
       }
 
       case Opcode::TableGet:
+        stream->Writef("%s %u %%[-1]\n", opcode.GetName(), ReadU32(&pc));
+        break;
+
       case Opcode::TableSet:
+        stream->Writef("%s $%u %%[-1] %%[-2]\n", opcode.GetName(), ReadU32(&pc));
+        break;
+
       case Opcode::TableGrow:
       case Opcode::TableSize:
+        break;
+
+      case Opcode::TableFill:
+        stream->Writef("%s %u %%[-3], %%[-2], %%[-1]\n", opcode.GetName(),
+                       ReadU32(&pc));
+        break;
+
       case Opcode::RefNull:
-      case Opcode::RefIsNull:
+        stream->Writef("%s\n", opcode.GetName());
+        break;
+
       case Opcode::RefFunc:
-        WABT_UNREACHABLE;
+        stream->Writef("%s $%u\n", opcode.GetName(), ReadU32(&pc));
+        break;
+
+      case Opcode::RefIsNull:
+        stream->Writef("%s %%[-1]\n", opcode.GetName());
         break;
 
       case Opcode::MemoryInit:
@@ -611,10 +631,14 @@ void Environment::Disassemble(Stream* stream,
         break;
 
       case Opcode::MemoryCopy:
-      case Opcode::TableCopy:
       case Opcode::MemoryFill:
         stream->Writef("%s $%u, %%[-3], %%[-2], %%[-1]\n", opcode.GetName(),
                        ReadU32(&pc));
+        break;
+
+      case Opcode::TableCopy:
+        stream->Writef("%s $%u, $%u, %%[-3], %%[-2], %%[-1]\n",
+                       opcode.GetName(), ReadU32(&pc), ReadU32(&pc));
         break;
 
       // The following opcodes are either never generated or should never be
@@ -630,6 +654,7 @@ void Environment::Disassemble(Stream* stream,
       case Opcode::Rethrow:
       case Opcode::Throw:
       case Opcode::Try:
+        fprintf(stderr, "unknown opcode: %#x\n", static_cast<uint32_t>(opcode));
         WABT_UNREACHABLE;
         break;
     }

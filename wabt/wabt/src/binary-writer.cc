@@ -54,8 +54,8 @@ void WriteOpcode(Stream* stream, Opcode opcode) {
   }
 }
 
-void WriteType(Stream* stream, Type type) {
-  WriteS32Leb128(stream, type, GetTypeName(type));
+void WriteType(Stream* stream, Type type, const char* desc) {
+  WriteS32Leb128(stream, type, desc ? desc : GetTypeName(type));
 }
 
 void WriteLimits(Stream* stream, const Limits* limits) {
@@ -498,7 +498,7 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
           break;
         case Type::V128:
           WriteOpcode(stream_, Opcode::V128Const);
-          stream_->WriteU128(const_.v128_bits, "v128 literal");
+          stream_->WriteU128(const_.vec128, "v128 literal");
           break;
         default:
           assert(0);
@@ -594,11 +594,15 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
       WriteOpcode(stream_, Opcode::MemorySize);
       WriteU32Leb128(stream_, 0, "memory.size reserved");
       break;
-    case ExprType::TableCopy:
+    case ExprType::TableCopy: {
+      auto* copy_expr = cast<TableCopyExpr>(expr);
+      Index dst = module_->GetTableIndex(copy_expr->dst_table);
+      Index src = module_->GetTableIndex(copy_expr->src_table);
       WriteOpcode(stream_, Opcode::TableCopy);
-      WriteU32Leb128(stream_, 0, "table.copy reserved");
-      WriteU32Leb128(stream_, 0, "table.copy reserved");
+      WriteU32Leb128(stream_, dst, "table.copy dst_table");
+      WriteU32Leb128(stream_, src, "table.copy src_table");
       break;
+    }
     case ExprType::ElemDrop: {
       Index index =
           module_->GetElemSegmentIndex(cast<ElemDropExpr>(expr)->var);
@@ -607,11 +611,13 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
       break;
     }
     case ExprType::TableInit: {
-      Index index =
-          module_->GetElemSegmentIndex(cast<TableInitExpr>(expr)->var);
+      auto* init_expr = cast<TableInitExpr>(expr);
+      Index table_index = module_->GetTableIndex(init_expr->table_index);
+      Index segment_index =
+          module_->GetElemSegmentIndex(init_expr->segment_index);
       WriteOpcode(stream_, Opcode::TableInit);
-      WriteU32Leb128(stream_, index, "table.init segment");
-      WriteU32Leb128(stream_, 0, "table.init reserved");
+      WriteU32Leb128(stream_, segment_index, "table.init segment");
+      WriteU32Leb128(stream_, table_index, "table.init table");
       break;
     }
     case ExprType::TableGet: {
@@ -642,6 +648,19 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
       WriteU32Leb128(stream_, index, "table.size table index");
       break;
     }
+    case ExprType::TableFill: {
+      Index index =
+          module_->GetTableIndex(cast<TableFillExpr>(expr)->var);
+      WriteOpcode(stream_, Opcode::TableFill);
+      WriteU32Leb128(stream_, index, "table.fill table index");
+      break;
+    }
+    case ExprType::RefFunc: {
+      WriteOpcode(stream_, Opcode::RefFunc);
+      Index index = module_->GetFuncIndex(cast<RefFuncExpr>(expr)->var);
+      WriteU32Leb128WithReloc(index, "function index", RelocType::FuncIndexLEB);
+      break;
+    }
     case ExprType::RefNull: {
       WriteOpcode(stream_, Opcode::RefNull);
       break;
@@ -659,9 +678,21 @@ void BinaryWriter::WriteExpr(const Func* func, const Expr* expr) {
     case ExprType::Return:
       WriteOpcode(stream_, Opcode::Return);
       break;
-    case ExprType::Select:
-      WriteOpcode(stream_, Opcode::Select);
+    case ExprType::Select: {
+      auto* select_expr = cast<SelectExpr>(expr);
+      if (select_expr->result_type.size() == 1 &&
+          select_expr->result_type[0] == Type::Any) {
+        WriteOpcode(stream_, Opcode::Select);
+      } else {
+        WriteOpcode(stream_, Opcode::SelectT);
+        WriteU32Leb128(stream_, select_expr->result_type.size(),
+                       "num result types");
+        for (Type t : select_expr->result_type) {
+          WriteType(stream_, t, "result type");
+        }
+      }
       break;
+    }
     case ExprType::Store:
       WriteLoadStoreExpr<StoreExpr>(func, expr, "store offset");
       break;
@@ -1020,16 +1051,31 @@ Result BinaryWriter::WriteModule() {
     for (size_t i = 0; i < module_->elem_segments.size(); ++i) {
       ElemSegment* segment = module_->elem_segments[i];
       WriteHeader("elem segment header", i);
-      if (segment->passive) {
-        stream_->WriteU8(static_cast<uint8_t>(SegmentFlags::Passive));
-        WriteType(stream_, segment->elem_type);
-      } else {
-        assert(module_->GetTableIndex(segment->table_var) == 0);
-        stream_->WriteU8(static_cast<uint8_t>(SegmentFlags::IndexZero));
+      // 1. flags
+      stream_->WriteU8(segment->flags, "segment flags");
+      // 2. optional target table
+      if (segment->flags & SegExplicitIndex) {
+        WriteU32Leb128(stream_, module_->GetTableIndex(segment->table_var), "table index");
+      }
+      // 3. optional target location within the table (active segments only)
+      if (!segment->is_passive()) {
         WriteInitExpr(segment->offset);
       }
-      WriteU32Leb128(stream_, segment->elem_exprs.size(), "num elem exprs");
-      if (segment->passive) {
+      // 4. type of item in the following list
+      bool legacy =
+          !segment->is_passive() && !(segment->flags & SegExplicitIndex);
+      if (!legacy) {
+        if (segment->flags & SegUseElemExprs) {
+          WriteType(stream_, segment->elem_type, "elem expr list type");
+        } else {
+          assert(segment->elem_type == Type::Funcref);
+          stream_->WriteU8Enum(ExternalKind::Func, "elem list type");
+        }
+      }
+      // 5. actual list of elements (with extern indexes or elem expr's)
+      // preceeded by length
+      WriteU32Leb128(stream_, segment->elem_exprs.size(), "num elems");
+      if (segment->flags & SegUseElemExprs) {
         for (const ElemExpr& elem_expr : segment->elem_exprs) {
           switch (elem_expr.kind) {
             case ElemExprKind::RefNull:
@@ -1046,11 +1092,10 @@ Result BinaryWriter::WriteModule() {
           WriteOpcode(stream_, Opcode::End);
         }
       } else {
-        // Active segment.
         for (const ElemExpr& elem_expr : segment->elem_exprs) {
           assert(elem_expr.kind == ElemExprKind::RefFunc);
           WriteU32Leb128WithReloc(module_->GetFuncIndex(elem_expr.var),
-                                  "elem expr function index",
+                                  "elem function index",
                                   RelocType::FuncIndexLEB);
         }
       }
@@ -1089,11 +1134,9 @@ Result BinaryWriter::WriteModule() {
     for (size_t i = 0; i < module_->data_segments.size(); ++i) {
       const DataSegment* segment = module_->data_segments[i];
       WriteHeader("data segment header", i);
-      if (segment->passive) {
-        stream_->WriteU8(static_cast<uint8_t>(SegmentFlags::Passive));
-      } else {
+      stream_->WriteU8(segment->flags, "segment flags");
+      if (!segment->is_passive()) {
         assert(module_->GetMemoryIndex(segment->memory_var) == 0);
-        stream_->WriteU8(static_cast<uint8_t>(SegmentFlags::IndexZero));
         WriteInitExpr(segment->offset);
       }
       WriteU32Leb128(stream_, segment->data.size(), "data segment size");

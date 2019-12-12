@@ -130,6 +130,7 @@ void BinaryWriterSpec::WriteCommandType(const Command& command) {
       "assert_unlinkable",
       "assert_uninstantiable",
       "assert_return",
+      "assert_return_func",
       "assert_return_canonical_nan",
       "assert_return_arithmetic_nan",
       "assert_trap",
@@ -201,18 +202,43 @@ void BinaryWriterSpec::WriteConst(const Const& const_) {
       break;
     }
 
+    case Type::Nullref:
+      WriteString("nullref");
+      WriteSeparator();
+      WriteKey("value");
+      json_stream_->Writef("\"0\"");
+      break;
+
+    case Type::Funcref: {
+      WriteString("funcref");
+      WriteSeparator();
+      WriteKey("value");
+      int64_t ref_bits = static_cast<int64_t>(const_.ref_bits);
+      json_stream_->Writef("\"%" PRIu64 "\"", ref_bits);
+      break;
+    }
+
+    case Type::Hostref: {
+      WriteString("hostref");
+      WriteSeparator();
+      WriteKey("value");
+      int64_t ref_bits = static_cast<int64_t>(const_.ref_bits);
+      json_stream_->Writef("\"%" PRIu64 "\"", ref_bits);
+      break;
+    }
+
     case Type::V128: {
       WriteString("v128");
       WriteSeparator();
       WriteKey("value");
       char buffer[128];
-      WriteUint128(buffer, 128, const_.v128_bits);
+      WriteUint128(buffer, 128, const_.vec128);
       json_stream_->Writef("\"%s\"", buffer);
       break;
     }
 
     default:
-      assert(0);
+      WABT_UNREACHABLE;
   }
 
   json_stream_->Writef("}");
@@ -453,6 +479,14 @@ void BinaryWriterSpec::WriteCommands() {
         WriteSeparator();
         WriteKey("expected");
         WriteConstVector(assert_return_command->expected);
+        break;
+      }
+
+      case CommandType::AssertReturnFunc: {
+        auto* assert_return_command = cast<AssertReturnFuncCommand>(command);
+        WriteLocation(assert_return_command->action->loc);
+        WriteSeparator();
+        WriteAction(*assert_return_command->action);
         break;
       }
 
