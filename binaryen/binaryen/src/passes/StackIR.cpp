@@ -36,27 +36,10 @@ struct GenerateStackIR : public WalkerPass<PostWalker<GenerateStackIR>> {
   bool modifiesBinaryenIR() override { return false; }
 
   void doWalkFunction(Function* func) {
-    BufferWithRandomAccess buffer;
-    // a shim for the parent that a stackWriter expects - we don't need
-    // it to do anything, as we are just writing to Stack IR
-    struct Parent {
-      Module* module;
-      Parent(Module* module) : module(module) {}
-
-      Module* getModule() { return module; }
-      void writeDebugLocation(Expression* curr, Function* func) {
-        WASM_UNREACHABLE();
-      }
-      Index getFunctionIndex(Name name) { WASM_UNREACHABLE(); }
-      Index getFunctionTypeIndex(Name name) { WASM_UNREACHABLE(); }
-      Index getGlobalIndex(Name name) { WASM_UNREACHABLE(); }
-    } parent(getModule());
-    StackWriter<StackWriterMode::Binaryen2Stack, Parent> stackWriter(
-      parent, buffer, false);
-    stackWriter.setFunction(func);
-    stackWriter.visitPossibleBlockContents(func->body);
+    StackIRGenerator stackIRGen(getModule()->allocator, func);
+    stackIRGen.write();
     func->stackIR = make_unique<StackIR>();
-    func->stackIR->swap(stackWriter.stackIR);
+    func->stackIR->swap(stackIRGen.getStackIR());
   }
 };
 
@@ -186,7 +169,7 @@ private:
         values.clear();
       }
       // This is something we should handle, look into it.
-      if (isConcreteType(inst->type)) {
+      if (inst->type.isConcrete()) {
         bool optimized = false;
         if (auto* get = inst->origin->dynCast<LocalGet>()) {
           // This is a potential optimization opportunity! See if we
@@ -255,7 +238,7 @@ private:
         continue;
       }
       if (auto* block = inst->origin->dynCast<Block>()) {
-        if (!BranchUtils::BranchSeeker::hasNamed(block, block->name)) {
+        if (!BranchUtils::BranchSeeker::has(block, block->name)) {
           // TODO optimize, maybe run remove-unused-names
           inst = nullptr;
         }
@@ -272,7 +255,9 @@ private:
       case StackInst::BlockEnd:
       case StackInst::IfElse:
       case StackInst::IfEnd:
-      case StackInst::LoopEnd: {
+      case StackInst::LoopEnd:
+      case StackInst::Catch:
+      case StackInst::TryEnd: {
         return true;
       }
       default: { return false; }
@@ -284,7 +269,8 @@ private:
     switch (inst->op) {
       case StackInst::BlockBegin:
       case StackInst::IfBegin:
-      case StackInst::LoopBegin: {
+      case StackInst::LoopBegin:
+      case StackInst::TryBegin: {
         return true;
       }
       default: { return false; }
@@ -296,7 +282,8 @@ private:
     switch (inst->op) {
       case StackInst::BlockEnd:
       case StackInst::IfEnd:
-      case StackInst::LoopEnd: {
+      case StackInst::LoopEnd:
+      case StackInst::TryEnd: {
         return true;
       }
       default: { return false; }

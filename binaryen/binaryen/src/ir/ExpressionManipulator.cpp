@@ -24,7 +24,7 @@ namespace ExpressionManipulator {
 
 Expression*
 flexibleCopy(Expression* original, Module& wasm, CustomCopier custom) {
-  struct Copier : public Visitor<Copier, Expression*> {
+  struct Copier : public OverriddenVisitor<Copier, Expression*> {
     Module& wasm;
     CustomCopier custom;
 
@@ -41,7 +41,7 @@ flexibleCopy(Expression* original, Module& wasm, CustomCopier custom) {
       if (ret) {
         return ret;
       }
-      return Visitor<Copier, Expression*>::visit(curr);
+      return OverriddenVisitor<Copier, Expression*>::visit(curr);
     }
 
     Expression* visitBlock(Block* curr) {
@@ -71,19 +71,20 @@ flexibleCopy(Expression* original, Module& wasm, CustomCopier custom) {
                                 copy(curr->value));
     }
     Expression* visitCall(Call* curr) {
-      auto* ret = builder.makeCall(curr->target, {}, curr->type);
+      auto* ret =
+        builder.makeCall(curr->target, {}, curr->type, curr->isReturn);
       for (Index i = 0; i < curr->operands.size(); i++) {
         ret->operands.push_back(copy(curr->operands[i]));
       }
       return ret;
     }
     Expression* visitCallIndirect(CallIndirect* curr) {
-      auto* ret = builder.makeCallIndirect(
-        curr->fullType, copy(curr->target), {}, curr->type);
-      for (Index i = 0; i < curr->operands.size(); i++) {
-        ret->operands.push_back(copy(curr->operands[i]));
+      std::vector<Expression*> copiedOps;
+      for (auto op : curr->operands) {
+        copiedOps.push_back(copy(op));
       }
-      return ret;
+      return builder.makeCallIndirect(
+        copy(curr->target), copiedOps, curr->sig, curr->isReturn);
     }
     Expression* visitLocalGet(LocalGet* curr) {
       return builder.makeLocalGet(curr->index, curr->type);
@@ -156,6 +157,9 @@ flexibleCopy(Expression* original, Module& wasm, CustomCopier custom) {
       return builder.makeAtomicNotify(
         copy(curr->ptr), copy(curr->notifyCount), curr->offset);
     }
+    Expression* visitAtomicFence(AtomicFence* curr) {
+      return builder.makeAtomicFence();
+    }
     Expression* visitSIMDExtract(SIMDExtract* curr) {
       return builder.makeSIMDExtract(curr->op, copy(curr->vec), curr->index);
     }
@@ -167,13 +171,17 @@ flexibleCopy(Expression* original, Module& wasm, CustomCopier custom) {
       return builder.makeSIMDShuffle(
         copy(curr->left), copy(curr->right), curr->mask);
     }
-    Expression* visitSIMDBitselect(SIMDBitselect* curr) {
-      return builder.makeSIMDBitselect(
-        copy(curr->left), copy(curr->right), copy(curr->cond));
+    Expression* visitSIMDTernary(SIMDTernary* curr) {
+      return builder.makeSIMDTernary(
+        curr->op, copy(curr->a), copy(curr->b), copy(curr->c));
     }
     Expression* visitSIMDShift(SIMDShift* curr) {
       return builder.makeSIMDShift(
         curr->op, copy(curr->vec), copy(curr->shift));
+    }
+    Expression* visitSIMDLoad(SIMDLoad* curr) {
+      return builder.makeSIMDLoad(
+        curr->op, curr->offset, curr->align, copy(curr->ptr));
     }
     Expression* visitConst(Const* curr) {
       return builder.makeConst(curr->value);
@@ -218,10 +226,32 @@ flexibleCopy(Expression* original, Module& wasm, CustomCopier custom) {
         builder.makeHost(curr->op, curr->nameOperand, std::move(operands));
       return ret;
     }
+    Expression* visitTry(Try* curr) {
+      return builder.makeTry(
+        copy(curr->body), copy(curr->catchBody), curr->type);
+    }
+    Expression* visitThrow(Throw* curr) {
+      std::vector<Expression*> operands;
+      for (Index i = 0; i < curr->operands.size(); i++) {
+        operands.push_back(copy(curr->operands[i]));
+      }
+      return builder.makeThrow(curr->event, std::move(operands));
+    }
+    Expression* visitRethrow(Rethrow* curr) {
+      return builder.makeRethrow(copy(curr->exnref));
+    }
+    Expression* visitBrOnExn(BrOnExn* curr) {
+      return builder.makeBrOnExn(
+        curr->name, curr->event, copy(curr->exnref), curr->sent);
+    }
     Expression* visitNop(Nop* curr) { return builder.makeNop(); }
     Expression* visitUnreachable(Unreachable* curr) {
       return builder.makeUnreachable();
     }
+    Expression* visitPush(Push* curr) {
+      return builder.makePush(copy(curr->value));
+    }
+    Expression* visitPop(Pop* curr) { return builder.makePop(curr->type); }
   };
 
   Copier copier(wasm, custom);

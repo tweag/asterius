@@ -353,11 +353,13 @@ static void optimizeJS(Ref ast) {
     } else if (isUnary(node, L_NOT)) {
       node[2] = optimizeBoolean(node[2]);
     }
-    // Add/subtract can merge coercions up.
+    // Add/subtract can merge coercions up, except when a child is a division,
+    // which needs to be eagerly truncated to remove fractional results.
     else if (isBinary(node, PLUS) || isBinary(node, MINUS)) {
       auto left = node[2];
       auto right = node[3];
-      if (isOrZero(left) && isOrZero(right)) {
+      if (isOrZero(left) && isOrZero(right) && !isBinary(left[2], DIV) &&
+          !isBinary(right[2], DIV)) {
         auto op = node[1]->getIString();
         // Add a coercion on top.
         node[1]->setString(OR);
@@ -515,7 +517,7 @@ public:
                    SExpressionWasmBuilder& sexpBuilder,
                    Output& out,
                    Wasm2JSBuilder::Flags flags,
-                   PassOptions options)
+                   const ToolOptions& options)
     : root(root), sexpBuilder(sexpBuilder), out(out), flags(flags),
       options(options) {}
 
@@ -526,7 +528,7 @@ private:
   SExpressionWasmBuilder& sexpBuilder;
   Output& out;
   Wasm2JSBuilder::Flags flags;
-  PassOptions options;
+  ToolOptions options;
   Module tempAllocationModule;
 
   Ref emitAssertReturnFunc(Builder& wasmBuilder,
@@ -545,7 +547,7 @@ private:
   void fixCalls(Ref asmjs, Name asmModule);
 
   Ref processFunction(Function* func) {
-    Wasm2JSBuilder sub(flags, options);
+    Wasm2JSBuilder sub(flags, options.passOptions);
     return sub.processStandaloneFunction(&tempAllocationModule, func);
   }
 
@@ -769,8 +771,9 @@ void AssertionEmitter::emit() {
       Name funcName(funcNameS.str().c_str());
       asmModule = Name(moduleNameS.str().c_str());
       Module wasm;
+      options.applyFeatures(wasm);
       SExpressionWasmBuilder builder(wasm, e);
-      emitWasm(wasm, out, flags, options, funcName);
+      emitWasm(wasm, out, flags, options.passOptions, funcName);
       continue;
     }
     if (!isAssertHandled(e)) {
@@ -806,7 +809,7 @@ void AssertionEmitter::emit() {
 int main(int argc, const char* argv[]) {
   Wasm2JSBuilder::Flags flags;
   OptimizationOptions options("wasm2js",
-                              "Transform .wasm/.wast files to asm.js");
+                              "Transform .wasm/.wat files to asm.js");
   options
     .add("--output",
          "-o",
@@ -857,6 +860,7 @@ int main(int argc, const char* argv[]) {
 
   Element* root = nullptr;
   Module wasm;
+  options.applyFeatures(wasm);
   Ref js;
   std::unique_ptr<SExpressionParser> sexprParser;
   std::unique_ptr<SExpressionWasmBuilder> sexprBuilder;
@@ -869,7 +873,7 @@ int main(int argc, const char* argv[]) {
 
   try {
     // If the input filename ends in `.wasm`, then parse it in binary form,
-    // otherwise assume it's a `*.wast` file and go from there.
+    // otherwise assume it's a `*.wat` file and go from there.
     //
     // Note that we're not using the built-in `ModuleReader` which will also do
     // similar logic here because when testing JS files we use the
@@ -878,14 +882,10 @@ int main(int argc, const char* argv[]) {
     // is defined.
     if (binaryInput) {
       ModuleReader reader;
-      reader.setDebug(options.debug);
       reader.read(input, wasm, "");
-      options.applyFeatures(wasm);
     } else {
-      auto input(read_file<std::vector<char>>(options.extra["infile"],
-                                              Flags::Text,
-                                              options.debug ? Flags::Debug
-                                                            : Flags::Release));
+      auto input(
+        read_file<std::vector<char>>(options.extra["infile"], Flags::Text));
       if (options.debug) {
         std::cerr << "s-parsing..." << std::endl;
       }
@@ -915,12 +915,9 @@ int main(int argc, const char* argv[]) {
   if (options.debug) {
     std::cerr << "j-printing..." << std::endl;
   }
-  Output output(options.extra["output"],
-                Flags::Text,
-                options.debug ? Flags::Debug : Flags::Release);
+  Output output(options.extra["output"], Flags::Text);
   if (!binaryInput && options.extra["asserts"] == "1") {
-    AssertionEmitter(*root, *sexprBuilder, output, flags, options.passOptions)
-      .emit();
+    AssertionEmitter(*root, *sexprBuilder, output, flags, options).emit();
   } else {
     emitWasm(wasm, output, flags, options.passOptions, "asmFunc");
   }

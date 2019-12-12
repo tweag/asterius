@@ -24,31 +24,11 @@
 #include "ir/hashed.h"
 #include "ir/module-utils.h"
 #include "ir/utils.h"
+#include "opt-utils.h"
 #include "pass.h"
 #include "wasm.h"
 
 namespace wasm {
-
-struct FunctionReplacer : public WalkerPass<PostWalker<FunctionReplacer>> {
-  bool isFunctionParallel() override { return true; }
-
-  FunctionReplacer(std::map<Name, Name>* replacements)
-    : replacements(replacements) {}
-
-  FunctionReplacer* create() override {
-    return new FunctionReplacer(replacements);
-  }
-
-  void visitCall(Call* curr) {
-    auto iter = replacements->find(curr->target);
-    if (iter != replacements->end()) {
-      curr->target = iter->second;
-    }
-  }
-
-private:
-  std::map<Name, Name>* replacements;
-};
 
 struct DuplicateFunctionElimination : public Pass {
   void run(PassRunner* runner, Module* module) override {
@@ -109,39 +89,9 @@ struct DuplicateFunctionElimination : public Pass {
       // perform replacements
       if (replacements.size() > 0) {
         // remove the duplicates
-        auto& v = module->functions;
-        v.erase(std::remove_if(v.begin(),
-                               v.end(),
-                               [&](const std::unique_ptr<Function>& curr) {
-                                 return duplicates.count(curr->name) > 0;
-                               }),
-                v.end());
-        module->updateMaps();
-        // replace direct calls
-        FunctionReplacer(&replacements).run(runner, module);
-        // replace in table
-        for (auto& segment : module->table.segments) {
-          for (auto& name : segment.data) {
-            auto iter = replacements.find(name);
-            if (iter != replacements.end()) {
-              name = iter->second;
-            }
-          }
-        }
-        // replace in start
-        if (module->start.is()) {
-          auto iter = replacements.find(module->start);
-          if (iter != replacements.end()) {
-            module->start = iter->second;
-          }
-        }
-        // replace in exports
-        for (auto& exp : module->exports) {
-          auto iter = replacements.find(exp->value);
-          if (iter != replacements.end()) {
-            exp->value = iter->second;
-          }
-        }
+        module->removeFunctions(
+          [&](Function* func) { return duplicates.count(func->name) > 0; });
+        OptUtils::replaceFunctions(runner, *module, replacements);
       } else {
         break;
       }

@@ -43,15 +43,13 @@ public:
   // make* functions, other globals
 
   Function* makeFunction(Name name,
-                         std::vector<Type>&& params,
-                         Type resultType,
+                         Signature sig,
                          std::vector<Type>&& vars,
                          Expression* body = nullptr) {
     auto* func = new Function;
     func->name = name;
-    func->result = resultType;
+    func->sig = sig;
     func->body = body;
-    func->params.swap(params);
     func->vars.swap(vars);
     return func;
   }
@@ -63,14 +61,15 @@ public:
                          Expression* body = nullptr) {
     auto* func = new Function;
     func->name = name;
-    func->result = resultType;
     func->body = body;
+    std::vector<Type> paramVec;
     for (auto& param : params) {
-      func->params.push_back(param.type);
+      paramVec.push_back(param.type);
       Index index = func->localNames.size();
       func->localIndices[param.name] = index;
       func->localNames[index] = param.name;
     }
+    func->sig = Signature(Type(paramVec), resultType);
     for (auto& var : vars) {
       func->vars.push_back(var.type);
       Index index = func->localNames.size();
@@ -207,28 +206,22 @@ public:
     call->target = target;
     call->operands.set(args);
     call->isReturn = isReturn;
+    call->finalize();
     return call;
   }
-  CallIndirect* makeCallIndirect(FunctionType* type,
-                                 Expression* target,
+  CallIndirect* makeCallIndirect(Expression* target,
                                  const std::vector<Expression*>& args,
-                                 bool isReturn = false) {
-    return makeCallIndirect(type->name, target, args, type->result, isReturn);
-  }
-  CallIndirect* makeCallIndirect(Name fullType,
-                                 Expression* target,
-                                 const std::vector<Expression*>& args,
-                                 Type type,
+                                 Signature sig,
                                  bool isReturn = false) {
     auto* call = allocator.alloc<CallIndirect>();
-    call->fullType = fullType;
-    call->type = type;
+    call->sig = sig;
+    call->type = sig.results;
     call->target = target;
     call->operands.set(args);
     call->isReturn = isReturn;
+    call->finalize();
     return call;
   }
-  // FunctionType
   LocalGet* makeLocalGet(Index index, Type type) {
     auto* ret = allocator.alloc<LocalGet>();
     ret->index = index;
@@ -307,6 +300,7 @@ public:
     notify->finalize();
     return notify;
   }
+  AtomicFence* makeAtomicFence() { return allocator.alloc<AtomicFence>(); }
   Store* makeStore(unsigned bytes,
                    uint32_t offset,
                    unsigned align,
@@ -322,7 +316,7 @@ public:
     ret->value = value;
     ret->valueType = type;
     ret->finalize();
-    assert(isConcreteType(ret->value->type) ? ret->value->type == type : true);
+    assert(ret->value->type.isConcrete() ? ret->value->type == type : true);
     return ret;
   }
   Store* makeAtomicStore(unsigned bytes,
@@ -397,12 +391,15 @@ public:
     ret->finalize();
     return ret;
   }
-  SIMDBitselect*
-  makeSIMDBitselect(Expression* left, Expression* right, Expression* cond) {
-    auto* ret = allocator.alloc<SIMDBitselect>();
-    ret->left = left;
-    ret->right = right;
-    ret->cond = cond;
+  SIMDTernary* makeSIMDTernary(SIMDTernaryOp op,
+                               Expression* a,
+                               Expression* b,
+                               Expression* c) {
+    auto* ret = allocator.alloc<SIMDTernary>();
+    ret->op = op;
+    ret->a = a;
+    ret->b = b;
+    ret->c = c;
     ret->finalize();
     return ret;
   }
@@ -411,6 +408,16 @@ public:
     ret->op = op;
     ret->vec = vec;
     ret->shift = shift;
+    ret->finalize();
+    return ret;
+  }
+  SIMDLoad*
+  makeSIMDLoad(SIMDLoadOp op, Address offset, Address align, Expression* ptr) {
+    auto* ret = allocator.alloc<SIMDLoad>();
+    ret->op = op;
+    ret->offset = offset;
+    ret->align = align;
+    ret->ptr = ptr;
     ret->finalize();
     return ret;
   }
@@ -451,7 +458,6 @@ public:
     return ret;
   }
   Const* makeConst(Literal value) {
-    assert(isConcreteType(value.type));
     auto* ret = allocator.alloc<Const>();
     ret->value = value;
     ret->type = value.type;
@@ -495,6 +501,50 @@ public:
     ret->finalize();
     return ret;
   }
+  Try* makeTry(Expression* body, Expression* catchBody) {
+    auto* ret = allocator.alloc<Try>();
+    ret->body = body;
+    ret->catchBody = catchBody;
+    ret->finalize();
+    return ret;
+  }
+  Try* makeTry(Expression* body, Expression* catchBody, Type type) {
+    auto* ret = allocator.alloc<Try>();
+    ret->body = body;
+    ret->catchBody = catchBody;
+    ret->finalize(type);
+    return ret;
+  }
+  Throw* makeThrow(Event* event, const std::vector<Expression*>& args) {
+    return makeThrow(event->name, args);
+  }
+  Throw* makeThrow(Name event, const std::vector<Expression*>& args) {
+    auto* ret = allocator.alloc<Throw>();
+    ret->event = event;
+    ret->operands.set(args);
+    ret->finalize();
+    return ret;
+  }
+  Rethrow* makeRethrow(Expression* exnref) {
+    auto* ret = allocator.alloc<Rethrow>();
+    ret->exnref = exnref;
+    ret->finalize();
+    return ret;
+  }
+  BrOnExn* makeBrOnExn(Name name, Event* event, Expression* exnref) {
+    return makeBrOnExn(name, event->name, exnref, event->sig.params);
+  }
+  BrOnExn* makeBrOnExn(Name name, Name event, Expression* exnref, Type sent) {
+    auto* ret = allocator.alloc<BrOnExn>();
+    ret->name = name;
+    ret->event = event;
+    ret->exnref = exnref;
+    // Copy params info into BrOnExn, because it is necessary when BrOnExn is
+    // refinalized without the module.
+    ret->sent = sent;
+    ret->finalize();
+    return ret;
+  }
   Unreachable* makeUnreachable() { return allocator.alloc<Unreachable>(); }
   Push* makePush(Expression* value) {
     auto* ret = allocator.alloc<Push>();
@@ -523,9 +573,11 @@ public:
 
   static Index addParam(Function* func, Name name, Type type) {
     // only ok to add a param if no vars, otherwise indices are invalidated
-    assert(func->localIndices.size() == func->params.size());
+    assert(func->localIndices.size() == func->sig.params.size());
     assert(name.is());
-    func->params.push_back(type);
+    std::vector<Type> params = func->sig.params.expand();
+    params.push_back(type);
+    func->sig.params = Type(params);
     Index index = func->localNames.size();
     func->localIndices[name] = index;
     func->localNames[index] = name;
@@ -534,7 +586,7 @@ public:
 
   static Index addVar(Function* func, Name name, Type type) {
     // always ok to add a var, it does not affect other indices
-    assert(isConcreteType(type));
+    assert(type.isConcrete());
     Index index = func->getNumLocals();
     if (name.is()) {
       func->localIndices[name] = index;
@@ -554,7 +606,7 @@ public:
   }
 
   static void clearLocals(Function* func) {
-    func->params.clear();
+    func->sig.params = Type::none;
     func->vars.clear();
     clearLocalNames(func);
   }
@@ -639,7 +691,7 @@ public:
 
   // Drop an expression if it has a concrete type
   Expression* dropIfConcretelyTyped(Expression* curr) {
-    if (!isConcreteType(curr->type)) {
+    if (!curr->type.isConcrete()) {
       return curr;
     }
     return makeDrop(curr);
@@ -675,6 +727,9 @@ public:
         value = Literal(bytes.data());
         break;
       }
+      case anyref:
+        // TODO Implement and return nullref
+        assert(false && "anyref not implemented yet");
       case exnref:
         // TODO Implement and return nullref
         assert(false && "exnref not implemented yet");
@@ -700,16 +755,11 @@ public:
     return glob;
   }
 
-  // TODO Remove 'type' parameter once we remove FunctionType
-  static Event* makeEvent(Name name,
-                          uint32_t attribute,
-                          Name type,
-                          std::vector<Type>&& params) {
+  static Event* makeEvent(Name name, uint32_t attribute, Signature sig) {
     auto* event = new Event;
     event->name = name;
     event->attribute = attribute;
-    event->type = type;
-    event->params = params;
+    event->sig = sig;
     return event;
   }
 };

@@ -45,7 +45,6 @@
 
 #include "asm_v_wasm.h"
 #include "asmjs/shared-constants.h"
-#include "ir/function-type-utils.h"
 #include "shared-constants.h"
 #include <pass.h>
 #include <wasm-builder.h>
@@ -57,11 +56,15 @@ Name get_i32("get_i32");
 Name get_i64("get_i64");
 Name get_f32("get_f32");
 Name get_f64("get_f64");
+Name get_anyref("get_anyref");
+Name get_exnref("get_exnref");
 
 Name set_i32("set_i32");
 Name set_i64("set_i64");
 Name set_f32("set_f32");
 Name set_f64("set_f64");
+Name set_anyref("set_anyref");
+Name set_exnref("set_exnref");
 
 struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
   void visitLocalGet(LocalGet* curr) {
@@ -81,12 +84,15 @@ struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
         break;
       case v128:
         assert(false && "v128 not implemented yet");
+      case anyref:
+        import = get_anyref;
+        break;
       case exnref:
-        assert(false && "not implemented yet");
+        import = get_exnref;
+        break;
       case none:
-        WASM_UNREACHABLE();
       case unreachable:
-        WASM_UNREACHABLE();
+        WASM_UNREACHABLE("unexpected type");
     }
     replaceCurrent(
       builder.makeCall(import,
@@ -97,6 +103,13 @@ struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
   }
 
   void visitLocalSet(LocalSet* curr) {
+    // We don't instrument pop instructions. They are automatically deleted when
+    // writing binary and generated when reading binary, so they don't work with
+    // local set/get instrumentation.
+    if (curr->value->is<Pop>()) {
+      return;
+    }
+
     Builder builder(*getModule());
     Name import;
     switch (curr->value->type) {
@@ -113,12 +126,16 @@ struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
         break;
       case v128:
         assert(false && "v128 not implemented yet");
+      case anyref:
+        import = set_anyref;
+        break;
       case exnref:
-        assert(false && "exnref not implemented yet");
+        import = set_exnref;
+        break;
       case unreachable:
         return; // nothing to do here
       case none:
-        WASM_UNREACHABLE();
+        WASM_UNREACHABLE("unexpected type");
     }
     curr->value =
       builder.makeCall(import,
@@ -129,27 +146,38 @@ struct InstrumentLocals : public WalkerPass<PostWalker<InstrumentLocals>> {
   }
 
   void visitModule(Module* curr) {
-    addImport(curr, get_i32, "iiii");
-    addImport(curr, get_i64, "jiij");
-    addImport(curr, get_f32, "fiif");
-    addImport(curr, get_f64, "diid");
-    addImport(curr, set_i32, "iiii");
-    addImport(curr, set_i64, "jiij");
-    addImport(curr, set_f32, "fiif");
-    addImport(curr, set_f64, "diid");
+    addImport(curr, get_i32, {Type::i32, Type::i32, Type::i32}, Type::i32);
+    addImport(curr, get_i64, {Type::i32, Type::i32, Type::i64}, Type::i64);
+    addImport(curr, get_f32, {Type::i32, Type::i32, Type::f32}, Type::f32);
+    addImport(curr, get_f64, {Type::i32, Type::i32, Type::f64}, Type::f64);
+    addImport(curr, set_i32, {Type::i32, Type::i32, Type::i32}, Type::i32);
+    addImport(curr, set_i64, {Type::i32, Type::i32, Type::i64}, Type::i64);
+    addImport(curr, set_f32, {Type::i32, Type::i32, Type::f32}, Type::f32);
+    addImport(curr, set_f64, {Type::i32, Type::i32, Type::f64}, Type::f64);
+
+    if (curr->features.hasReferenceTypes()) {
+      addImport(
+        curr, get_anyref, {Type::i32, Type::i32, Type::anyref}, Type::anyref);
+      addImport(
+        curr, set_anyref, {Type::i32, Type::i32, Type::anyref}, Type::anyref);
+    }
+    if (curr->features.hasExceptionHandling()) {
+      addImport(
+        curr, get_exnref, {Type::i32, Type::i32, Type::exnref}, Type::exnref);
+      addImport(
+        curr, set_exnref, {Type::i32, Type::i32, Type::exnref}, Type::exnref);
+    }
   }
 
 private:
   Index id = 0;
 
-  void addImport(Module* wasm, Name name, std::string sig) {
+  void addImport(Module* wasm, Name name, Type params, Type results) {
     auto import = new Function;
     import->name = name;
     import->module = ENV;
     import->base = name;
-    auto* functionType = ensureFunctionType(sig, wasm);
-    import->type = functionType->name;
-    FunctionTypeUtils::fillFunction(import, functionType);
+    import->sig = Signature(params, results);
     wasm->addFunction(import);
   }
 };

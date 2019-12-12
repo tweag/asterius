@@ -57,6 +57,16 @@ struct DAEFunctionInfo {
   // Map of all calls that are dropped, to their drops' locations (so that
   // if we can optimize out the drop, we can replace the drop there).
   std::unordered_map<Call*, Expression**> droppedCalls;
+  // Whether this function contains any tail calls (including indirect tail
+  // calls) and the set of functions this function tail calls. Tail-callers and
+  // tail-callees cannot have their dropped returns removed because of the
+  // constraint that tail-callees must have the same return type as
+  // tail-callers. Indirectly tail called functions are already not optimized
+  // because being in a table inhibits DAE. TODO: Allow the removal of dropped
+  // returns from tail-callers if their tail-callees can have their returns
+  // removed as well.
+  bool hasTailCalls = false;
+  std::unordered_set<Name> tailCallees;
   // Whether the function can be called from places that
   // affect what we can do. For now, any call we don't
   // see inhibits our optimizations, but TODO: an export
@@ -116,6 +126,16 @@ struct DAEScanner
   void visitCall(Call* curr) {
     if (!getModule()->getFunction(curr->target)->imported()) {
       info->calls[curr->target].push_back(curr);
+    }
+    if (curr->isReturn) {
+      info->hasTailCalls = true;
+      info->tailCallees.insert(curr->target);
+    }
+  }
+
+  void visitCallIndirect(CallIndirect* curr) {
+    if (curr->isReturn) {
+      info->hasTailCalls = true;
     }
   }
 
@@ -239,6 +259,7 @@ struct DAE : public Pass {
     DAEScanner(&infoMap).run(runner, module);
     // Combine all the info.
     std::unordered_map<Name, std::vector<Call*>> allCalls;
+    std::unordered_set<Name> tailCallees;
     for (auto& pair : infoMap) {
       auto& info = pair.second;
       for (auto& pair : info.calls) {
@@ -246,6 +267,9 @@ struct DAE : public Pass {
         auto& calls = pair.second;
         auto& allCallsToName = allCalls[name];
         allCallsToName.insert(allCallsToName.end(), calls.begin(), calls.end());
+      }
+      for (auto& callee : info.tailCallees) {
+        tailCallees.insert(callee);
       }
       for (auto& pair : info.droppedCalls) {
         allDroppedCalls[pair.first] = pair.second;
@@ -314,14 +338,11 @@ struct DAE : public Pass {
           // Great, it's not used. Check if none of the calls has a param with
           // side effects, as that would prevent us removing them (flattening
           // should have been done earlier).
-          bool canRemove = true;
-          for (auto* call : calls) {
-            auto* operand = call->operands[i];
-            if (EffectAnalyzer(runner->options, operand).hasSideEffects()) {
-              canRemove = false;
-              break;
-            }
-          }
+          bool canRemove =
+            std::none_of(calls.begin(), calls.end(), [&](Call* call) {
+              auto* operand = call->operands[i];
+              return EffectAnalyzer(runner->options, operand).hasSideEffects();
+            });
           if (canRemove) {
             // Wonderful, nothing stands in our way! Do it.
             // TODO: parallelize this?
@@ -341,11 +362,17 @@ struct DAE : public Pass {
     // once to remove a param, once to drop the return value).
     if (changed.empty()) {
       for (auto& func : module->functions) {
-        if (func->result == none) {
+        if (func->sig.results == Type::none) {
           continue;
         }
         auto name = func->name;
         if (infoMap[name].hasUnseenCalls) {
+          continue;
+        }
+        if (infoMap[name].hasTailCalls) {
+          continue;
+        }
+        if (tailCallees.find(name) != tailCallees.end()) {
           continue;
         }
         auto iter = allCalls.find(name);
@@ -353,13 +380,10 @@ struct DAE : public Pass {
           continue;
         }
         auto& calls = iter->second;
-        bool allDropped = true;
-        for (auto* call : calls) {
-          if (!allDroppedCalls.count(call)) {
-            allDropped = false;
-            break;
-          }
-        }
+        bool allDropped =
+          std::all_of(calls.begin(), calls.end(), [&](Call* call) {
+            return allDroppedCalls.count(call);
+          });
         if (!allDropped) {
           continue;
         }
@@ -379,15 +403,15 @@ private:
   std::unordered_map<Call*, Expression**> allDroppedCalls;
 
   void removeParameter(Function* func, Index i, std::vector<Call*>& calls) {
-    // Clear the type, which is no longer accurate.
-    func->type = Name();
     // It's cumbersome to adjust local names - TODO don't clear them?
     Builder::clearLocalNames(func);
     // Remove the parameter from the function. We must add a new local
     // for uses of the parameter, but cannot make it use the same index
     // (in general).
-    auto type = func->getLocalType(i);
-    func->params.erase(func->params.begin() + i);
+    std::vector<Type> params = func->sig.params.expand();
+    auto type = params[i];
+    params.erase(params.begin() + i);
+    func->sig.params = Type(params);
     Index newIndex = Builder::addVar(func, type);
     // Update local operations.
     struct LocalUpdater : public PostWalker<LocalUpdater> {
@@ -415,9 +439,7 @@ private:
 
   void
   removeReturnValue(Function* func, std::vector<Call*>& calls, Module* module) {
-    // Clear the type, which is no longer accurate.
-    func->type = Name();
-    func->result = none;
+    func->sig.results = Type::none;
     Builder builder(*module);
     // Remove any return values.
     struct ReturnUpdater : public PostWalker<ReturnUpdater> {
@@ -434,7 +456,7 @@ private:
       }
     } returnUpdater(func, module);
     // Remove any value flowing out.
-    if (isConcreteType(func->body->type)) {
+    if (func->body->type.isConcrete()) {
       func->body = builder.makeDrop(func->body);
     }
     // Remove the drops on the calls.

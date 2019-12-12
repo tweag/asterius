@@ -23,7 +23,6 @@
 #include "asm_v_wasm.h"
 #include "asmjs/shared-constants.h"
 #include "ir/bits.h"
-#include "ir/function-type-utils.h"
 #include "ir/import-utils.h"
 #include "ir/load-utils.h"
 #include "pass.h"
@@ -32,13 +31,16 @@
 
 namespace wasm {
 
-const Name DYNAMICTOP_PTR_IMPORT("DYNAMICTOP_PTR");
-const Name SEGFAULT_IMPORT("segfault");
-const Name ALIGNFAULT_IMPORT("alignfault");
+static const Name DYNAMICTOP_PTR_IMPORT("DYNAMICTOP_PTR");
+static const Name GET_SBRK_PTR_IMPORT("emscripten_get_sbrk_ptr");
+static const Name GET_SBRK_PTR_EXPORT("_emscripten_get_sbrk_ptr");
+static const Name SBRK("sbrk");
+static const Name SEGFAULT_IMPORT("segfault");
+static const Name ALIGNFAULT_IMPORT("alignfault");
 
 static Name getLoadName(Load* curr) {
   std::string ret = "SAFE_HEAP_LOAD_";
-  ret += printType(curr->type);
+  ret += curr->type.toString();
   ret += "_" + std::to_string(curr->bytes) + "_";
   if (LoadUtils::isSignRelevant(curr) && !curr->signed_) {
     ret += "U_";
@@ -53,7 +55,7 @@ static Name getLoadName(Load* curr) {
 
 static Name getStoreName(Store* curr) {
   std::string ret = "SAFE_HEAP_STORE_";
-  ret += printType(curr->valueType);
+  ret += curr->valueType.toString();
   ret += "_" + std::to_string(curr->bytes) + "_";
   if (curr->isAtomic) {
     ret += "A";
@@ -111,19 +113,31 @@ struct SafeHeap : public Pass {
     addGlobals(module, module->features);
   }
 
-  Name dynamicTopPtr, segfault, alignfault;
+  Name dynamicTopPtr, getSbrkPtr, sbrk, segfault, alignfault;
 
   void addImports(Module* module) {
     ImportInfo info(*module);
+    // Older emscripten imports env.DYNAMICTOP_PTR.
+    // Newer emscripten imports emscripten_get_sbrk_ptr(), which is later
+    // optimized to have the number in the binary (or in the case of fastcomp,
+    // emscripten_get_sbrk_ptr is an asm.js library function so it is inside
+    // the wasm, and discoverable via an export).
     if (auto* existing = info.getImportedGlobal(ENV, DYNAMICTOP_PTR_IMPORT)) {
       dynamicTopPtr = existing->name;
+    } else if (auto* existing =
+                 info.getImportedFunction(ENV, GET_SBRK_PTR_IMPORT)) {
+      getSbrkPtr = existing->name;
+    } else if (auto* existing = module->getExportOrNull(GET_SBRK_PTR_EXPORT)) {
+      getSbrkPtr = existing->value;
+    } else if (auto* existing = info.getImportedFunction(ENV, SBRK)) {
+      sbrk = existing->name;
     } else {
-      auto* import = new Global;
-      import->name = dynamicTopPtr = DYNAMICTOP_PTR_IMPORT;
+      auto* import = new Function;
+      import->name = getSbrkPtr = GET_SBRK_PTR_IMPORT;
       import->module = ENV;
-      import->base = DYNAMICTOP_PTR_IMPORT;
-      import->type = i32;
-      module->addGlobal(import);
+      import->base = GET_SBRK_PTR_IMPORT;
+      import->sig = Signature(Type::none, Type::i32);
+      module->addFunction(import);
     }
     if (auto* existing = info.getImportedFunction(ENV, SEGFAULT_IMPORT)) {
       segfault = existing->name;
@@ -132,9 +146,7 @@ struct SafeHeap : public Pass {
       import->name = segfault = SEGFAULT_IMPORT;
       import->module = ENV;
       import->base = SEGFAULT_IMPORT;
-      auto* functionType = ensureFunctionType("v", module);
-      import->type = functionType->name;
-      FunctionTypeUtils::fillFunction(import, functionType);
+      import->sig = Signature(Type::none, Type::none);
       module->addFunction(import);
     }
     if (auto* existing = info.getImportedFunction(ENV, ALIGNFAULT_IMPORT)) {
@@ -144,16 +156,14 @@ struct SafeHeap : public Pass {
       import->name = alignfault = ALIGNFAULT_IMPORT;
       import->module = ENV;
       import->base = ALIGNFAULT_IMPORT;
-      auto* functionType = ensureFunctionType("v", module);
-      import->type = functionType->name;
-      FunctionTypeUtils::fillFunction(import, functionType);
+      import->sig = Signature(Type::none, Type::none);
       module->addFunction(import);
     }
   }
 
   bool
   isPossibleAtomicOperation(Index align, Index bytes, bool shared, Type type) {
-    return align == bytes && shared && isIntegerType(type);
+    return align == bytes && shared && type.isInteger();
   }
 
   void addGlobals(Module* module, FeatureSet features) {
@@ -172,7 +182,7 @@ struct SafeHeap : public Pass {
         }
         for (auto signed_ : {true, false}) {
           load.signed_ = signed_;
-          if (isFloatType(type) && signed_) {
+          if (type.isFloat() && signed_) {
             continue;
           }
           for (Index align : {1, 2, 4, 8, 16}) {
@@ -234,10 +244,9 @@ struct SafeHeap : public Pass {
     }
     auto* func = new Function;
     func->name = name;
-    func->params.push_back(i32); // pointer
-    func->params.push_back(i32); // offset
+    // pointer, offset
+    func->sig = Signature({Type::i32, Type::i32}, style.type);
     func->vars.push_back(i32);   // pointer + offset
-    func->result = style.type;
     Builder builder(*module);
     auto* block = builder.makeBlock();
     block->list.push_back(builder.makeLocalSet(
@@ -274,11 +283,9 @@ struct SafeHeap : public Pass {
     }
     auto* func = new Function;
     func->name = name;
-    func->params.push_back(i32);             // pointer
-    func->params.push_back(i32);             // offset
-    func->params.push_back(style.valueType); // value
+    // pointer, offset, value
+    func->sig = Signature({Type::i32, Type::i32, style.valueType}, Type::none);
     func->vars.push_back(i32);               // pointer + offset
-    func->result = none;
     Builder builder(*module);
     auto* block = builder.makeBlock();
     block->list.push_back(builder.makeLocalSet(
@@ -315,6 +322,19 @@ struct SafeHeap : public Pass {
   makeBoundsCheck(Type type, Builder& builder, Index local, Index bytes) {
     auto upperOp = options.lowMemoryUnused ? LtUInt32 : EqInt32;
     auto upperBound = options.lowMemoryUnused ? PassOptions::LowMemoryBound : 0;
+    Expression* brkLocation;
+    if (sbrk.is()) {
+      brkLocation =
+        builder.makeCall(sbrk, {builder.makeConst(Literal(int32_t(0)))}, i32);
+    } else {
+      Expression* sbrkPtr;
+      if (dynamicTopPtr.is()) {
+        sbrkPtr = builder.makeGlobalGet(dynamicTopPtr, i32);
+      } else {
+        sbrkPtr = builder.makeCall(getSbrkPtr, {}, i32);
+      }
+      brkLocation = builder.makeLoad(4, false, 0, 4, sbrkPtr, i32);
+    }
     return builder.makeIf(
       builder.makeBinary(
         OrInt32,
@@ -326,8 +346,7 @@ struct SafeHeap : public Pass {
           builder.makeBinary(AddInt32,
                              builder.makeLocalGet(local, i32),
                              builder.makeConst(Literal(int32_t(bytes)))),
-          builder.makeLoad(
-            4, false, 0, 4, builder.makeGlobalGet(dynamicTopPtr, i32), i32))),
+          brkLocation)),
       builder.makeCall(segfault, {}, none));
   }
 };

@@ -23,7 +23,6 @@
 #include "asm_v_wasm.h"
 #include "asmjs/shared-constants.h"
 #include "ir/branch-utils.h"
-#include "ir/function-type-utils.h"
 #include "shared-constants.h"
 #include "wasm-binary.h"
 
@@ -342,7 +341,7 @@ SExpressionWasmBuilder::SExpressionWasmBuilder(Module& wasm,
         stringToBinary(str, size, data);
       }
     }
-    WasmBinaryBuilder binaryBuilder(wasm, data, false);
+    WasmBinaryBuilder binaryBuilder(wasm, data);
     binaryBuilder.read();
     return;
   }
@@ -452,16 +451,20 @@ Name SExpressionWasmBuilder::getFunctionName(Element& s) {
   }
 }
 
-Name SExpressionWasmBuilder::getFunctionTypeName(Element& s) {
+Signature SExpressionWasmBuilder::getFunctionSignature(Element& s) {
   if (s.dollared()) {
-    return s.str();
+    auto it = signatureIndices.find(s.str().str);
+    if (it == signatureIndices.end()) {
+      throw ParseException("unknown function type in getFunctionSignature");
+    }
+    return signatures[it->second];
   } else {
     // index
     size_t offset = atoi(s.str().c_str());
-    if (offset >= wasm.functionTypes.size()) {
-      throw ParseException("unknown function type in getFunctionTypeName");
+    if (offset >= signatures.size()) {
+      throw ParseException("unknown function type in getFunctionSignature");
     }
-    return wasm.functionTypes[offset]->name;
+    return signatures[offset];
   }
 }
 
@@ -539,7 +542,7 @@ SExpressionWasmBuilder::parseParamOrLocal(Element& s, size_t& localIndex) {
 }
 
 // Parses (result type) element. (e.g. (result i32))
-Type SExpressionWasmBuilder::parseResult(Element& s) {
+Type SExpressionWasmBuilder::parseResults(Element& s) {
   assert(elementStartsWith(s, RESULT));
   if (s.size() != 2) {
     throw ParseException("invalid result arity", s.line, s.col);
@@ -550,131 +553,95 @@ Type SExpressionWasmBuilder::parseResult(Element& s) {
 // Parses an element that references an entry in the type section. The element
 // should be in the form of (type name) or (type index).
 // (e.g. (type $a), (type 0))
-FunctionType* SExpressionWasmBuilder::parseTypeRef(Element& s) {
+Signature SExpressionWasmBuilder::parseTypeRef(Element& s) {
   assert(elementStartsWith(s, TYPE));
   if (s.size() != 2) {
     throw ParseException("invalid type reference", s.line, s.col);
   }
-  IString name = getFunctionTypeName(*s[1]);
-  FunctionType* functionType = wasm.getFunctionTypeOrNull(name);
-  if (!functionType) {
-    throw ParseException("bad function type for import", s[1]->line, s[1]->col);
-  }
-  return functionType;
+  return getFunctionSignature(*s[1]);
 }
 
 // Prases typeuse, a reference to a type definition. It is in the form of either
 // (type index) or (type name), possibly augmented by inlined (param) and
-// (result) nodes. (type) node can be omitted as well, in which case we get an
-// existing type if there's one with the same structure or create one.
-// Outputs are returned by parameter references.
+// (result) nodes. (type) node can be omitted as well. Outputs are returned by
+// parameter references.
 // typeuse ::= (type index|name)+ |
 //             (type index|name)+ (param ..)* (result ..)* |
 //             (param ..)* (result ..)*
-// TODO Remove FunctionType* parameter and the related logic to create
-// FunctionType once we remove FunctionType class.
-size_t SExpressionWasmBuilder::parseTypeUse(Element& s,
-                                            size_t startPos,
-                                            FunctionType*& functionType,
-                                            std::vector<NameType>& namedParams,
-                                            Type& result) {
+size_t
+SExpressionWasmBuilder::parseTypeUse(Element& s,
+                                     size_t startPos,
+                                     Signature& functionSignature,
+                                     std::vector<NameType>& namedParams) {
+  std::vector<Type> params, results;
   size_t i = startPos;
-  bool typeExists = false, paramOrResultExists = false;
+
+  bool typeExists = false, paramsOrResultsExist = false;
   if (i < s.size() && elementStartsWith(*s[i], TYPE)) {
     typeExists = true;
-    functionType = parseTypeRef(*s[i++]);
+    functionSignature = parseTypeRef(*s[i++]);
   }
-  size_t paramPos = i;
 
+  size_t paramPos = i;
   size_t localIndex = 0;
+
   while (i < s.size() && elementStartsWith(*s[i], PARAM)) {
-    paramOrResultExists = true;
+    paramsOrResultsExist = true;
     auto newParams = parseParamOrLocal(*s[i++], localIndex);
     namedParams.insert(namedParams.end(), newParams.begin(), newParams.end());
-  }
-  result = none;
-  if (i < s.size() && elementStartsWith(*s[i], RESULT)) {
-    paramOrResultExists = true;
-    result = parseResult(*s[i++]);
-  }
-  // If none of type/param/result exists, this is equivalent to a type that does
-  // not have parameters and returns nothing.
-  if (!typeExists && !paramOrResultExists) {
-    paramOrResultExists = true;
-  }
-
-  // verify if (type) and (params)/(result) match, if both are specified
-  if (typeExists && paramOrResultExists) {
-    size_t line = s[paramPos]->line, col = s[paramPos]->col;
-    const char* msg = "type and param/result don't match";
-    if (functionType->result != result) {
-      throw ParseException(msg, line, col);
-    }
-    if (functionType->params.size() != namedParams.size()) {
-      throw ParseException(msg, line, col);
-    }
-    for (size_t i = 0, n = namedParams.size(); i < n; i++) {
-      if (functionType->params[i] != namedParams[i].type) {
-        throw ParseException(msg, line, col);
-      }
-    }
-  }
-
-  // If only (param)/(result) is specified, check if there's a matching type,
-  // and if there isn't, create one.
-  if (!typeExists) {
-    bool need = true;
-    std::vector<Type> params;
-    for (auto& p : namedParams) {
+    for (auto p : newParams) {
       params.push_back(p.type);
     }
-    for (auto& existing : wasm.functionTypes) {
-      if (existing->structuralComparison(params, result)) {
-        functionType = existing.get();
-        need = false;
-        break;
-      }
-    }
-    if (need) {
-      functionType = ensureFunctionType(params, result, &wasm);
+  }
+
+  while (i < s.size() && elementStartsWith(*s[i], RESULT)) {
+    paramsOrResultsExist = true;
+    // TODO: make parseResults return a vector
+    results.push_back(parseResults(*s[i++]));
+  }
+
+  auto inlineSig = Signature(Type(params), Type(results));
+
+  // If none of type/param/result exists, this is equivalent to a type that does
+  // not have parameters and returns nothing.
+  if (!typeExists && !paramsOrResultsExist) {
+    paramsOrResultsExist = true;
+  }
+
+  if (!typeExists) {
+    functionSignature = inlineSig;
+  } else if (paramsOrResultsExist) {
+    // verify that (type) and (params)/(result) match
+    if (inlineSig != functionSignature) {
+      throw ParseException("type and param/result don't match",
+                           s[paramPos]->line,
+                           s[paramPos]->col);
     }
   }
 
-  // If only (type) is specified, populate params and result.
-  if (!paramOrResultExists) {
-    assert(functionType);
-    result = functionType->result;
-    for (size_t index = 0, e = functionType->params.size(); index < e;
-         index++) {
-      Type type = functionType->params[index];
-      namedParams.emplace_back(Name::fromInt(index), type);
+  // Add implicitly defined type to global list so it has an index
+  if (std::find(signatures.begin(), signatures.end(), functionSignature) ==
+      signatures.end()) {
+    signatures.push_back(functionSignature);
+  }
+
+  // If only (type) is specified, populate `namedParams`
+  if (!paramsOrResultsExist) {
+    const std::vector<Type>& funcParams = functionSignature.params.expand();
+    for (size_t index = 0, e = funcParams.size(); index < e; index++) {
+      namedParams.emplace_back(Name::fromInt(index), funcParams[index]);
     }
   }
 
   return i;
 }
 
-// Parses a typeuse. Ignores all parameter names.
-size_t SExpressionWasmBuilder::parseTypeUse(Element& s,
-                                            size_t startPos,
-                                            FunctionType*& functionType,
-                                            std::vector<Type>& params,
-                                            Type& result) {
-  std::vector<NameType> namedParams;
-  size_t nextPos = parseTypeUse(s, startPos, functionType, namedParams, result);
-  for (auto& p : namedParams) {
-    params.push_back(p.type);
-  }
-  return nextPos;
-}
-
 // Parses a typeuse. Use this when only FunctionType* is needed.
 size_t SExpressionWasmBuilder::parseTypeUse(Element& s,
                                             size_t startPos,
-                                            FunctionType*& functionType) {
-  std::vector<Type> params;
-  Type result;
-  return parseTypeUse(s, startPos, functionType, params, result);
+                                            Signature& functionSignature) {
+  std::vector<NameType> params;
+  return parseTypeUse(s, startPos, functionSignature, params);
 }
 
 void SExpressionWasmBuilder::preParseFunctionType(Element& s) {
@@ -694,11 +661,9 @@ void SExpressionWasmBuilder::preParseFunctionType(Element& s) {
   }
   functionNames.push_back(name);
   functionCounter++;
-  FunctionType* type = nullptr;
-  std::vector<Type> params;
-  parseTypeUse(s, i, type);
-  assert(type && "type should've been set by parseTypeUse");
-  functionTypes[name] = type->result;
+  Signature sig;
+  parseTypeUse(s, i, sig);
+  functionTypes[name] = sig.results;
 }
 
 size_t SExpressionWasmBuilder::parseFunctionNames(Element& s,
@@ -771,11 +736,9 @@ void SExpressionWasmBuilder::parseFunction(Element& s, bool preParseImport) {
   }
 
   // parse typeuse: type/param/result
-  FunctionType* functionType = nullptr;
+  Signature sig;
   std::vector<NameType> params;
-  Type result = none;
-  i = parseTypeUse(s, i, functionType, params, result);
-  assert(functionType && "functionType should've been set by parseTypeUse");
+  i = parseTypeUse(s, i, sig, params);
 
   // when (import) is inside a (func) element, this is not a function definition
   // but an import.
@@ -790,9 +753,8 @@ void SExpressionWasmBuilder::parseFunction(Element& s, bool preParseImport) {
     im->name = name;
     im->module = importModule;
     im->base = importBase;
-    im->type = functionType->name;
-    FunctionTypeUtils::fillFunction(im.get(), functionType);
-    functionTypes[name] = im->result;
+    im->sig = sig;
+    functionTypes[name] = sig.results;
     if (wasm.getFunctionOrNull(im->name)) {
       throw ParseException("duplicate import", s.line, s.col);
     }
@@ -808,7 +770,6 @@ void SExpressionWasmBuilder::parseFunction(Element& s, bool preParseImport) {
     throw ParseException("preParseImport in func");
   }
 
-  result = functionType->result;
   size_t localIndex = params.size(); // local index for params and locals
 
   // parse locals
@@ -820,8 +781,7 @@ void SExpressionWasmBuilder::parseFunction(Element& s, bool preParseImport) {
 
   // make a new function
   currFunction = std::unique_ptr<Function>(Builder(wasm).makeFunction(
-    name, std::move(params), result, std::move(vars)));
-  currFunction->type = functionType->name;
+    name, std::move(params), sig.results, std::move(vars)));
 
   // parse body
   Block* autoBlock = nullptr; // may need to add a block for the very top level
@@ -847,13 +807,10 @@ void SExpressionWasmBuilder::parseFunction(Element& s, bool preParseImport) {
     autoBlock->name = FAKE_RETURN;
   }
   if (autoBlock) {
-    autoBlock->finalize(result);
+    autoBlock->finalize(sig.results);
   }
   if (!currFunction->body) {
     currFunction->body = allocator.alloc<Nop>();
-  }
-  if (currFunction->result != result) {
-    throw ParseException("bad func declaration", s.line, s.col);
   }
   if (s.startLoc) {
     currFunction->prologLocation.insert(getDebugLocation(*s.startLoc));
@@ -892,6 +849,9 @@ Type SExpressionWasmBuilder::stringToType(const char* str,
         (prefix || str[4] == 0)) {
       return v128;
     }
+  }
+  if (strncmp(str, "anyref", 6) == 0 && (prefix || str[6] == 0)) {
+    return anyref;
   }
   if (strncmp(str, "exnref", 6) == 0 && (prefix || str[6] == 0)) {
     return exnref;
@@ -1248,10 +1208,10 @@ static uint8_t parseMemBytes(const char*& s, uint8_t fallback) {
 static size_t parseMemAttributes(Element& s,
                                  Address* offset,
                                  Address* align,
-                                 Address fallback) {
+                                 Address fallbackAlign) {
   size_t i = 1;
   *offset = 0;
-  *align = fallback;
+  *align = fallbackAlign;
   while (!s[i]->isList()) {
     const char* str = s[i]->c_str();
     const char* eq = strchr(str, '=');
@@ -1418,6 +1378,10 @@ Expression* SExpressionWasmBuilder::makeAtomicNotify(Element& s) {
   return ret;
 }
 
+Expression* SExpressionWasmBuilder::makeAtomicFence(Element& s) {
+  return allocator.alloc<AtomicFence>();
+}
+
 static uint8_t parseLaneIndex(const Element* s, size_t lanes) {
   const char* str = s->c_str();
   char* end;
@@ -1466,11 +1430,13 @@ Expression* SExpressionWasmBuilder::makeSIMDShuffle(Element& s) {
   return ret;
 }
 
-Expression* SExpressionWasmBuilder::makeSIMDBitselect(Element& s) {
-  auto ret = allocator.alloc<SIMDBitselect>();
-  ret->left = parseExpression(s[1]);
-  ret->right = parseExpression(s[2]);
-  ret->cond = parseExpression(s[3]);
+Expression* SExpressionWasmBuilder::makeSIMDTernary(Element& s,
+                                                    SIMDTernaryOp op) {
+  auto ret = allocator.alloc<SIMDTernary>();
+  ret->op = op;
+  ret->a = parseExpression(s[1]);
+  ret->b = parseExpression(s[2]);
+  ret->c = parseExpression(s[3]);
   ret->finalize();
   return ret;
 }
@@ -1480,6 +1446,36 @@ Expression* SExpressionWasmBuilder::makeSIMDShift(Element& s, SIMDShiftOp op) {
   ret->op = op;
   ret->vec = parseExpression(s[1]);
   ret->shift = parseExpression(s[2]);
+  ret->finalize();
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeSIMDLoad(Element& s, SIMDLoadOp op) {
+  auto ret = allocator.alloc<SIMDLoad>();
+  ret->op = op;
+  Address defaultAlign;
+  switch (op) {
+    case LoadSplatVec8x16:
+      defaultAlign = 1;
+      break;
+    case LoadSplatVec16x8:
+      defaultAlign = 2;
+      break;
+    case LoadSplatVec32x4:
+      defaultAlign = 4;
+      break;
+    case LoadSplatVec64x2:
+    case LoadExtSVec8x8ToVecI16x8:
+    case LoadExtUVec8x8ToVecI16x8:
+    case LoadExtSVec16x4ToVecI32x4:
+    case LoadExtUVec16x4ToVecI32x4:
+    case LoadExtSVec32x2ToVecI64x2:
+    case LoadExtUVec32x2ToVecI64x2:
+      defaultAlign = 8;
+      break;
+  }
+  size_t i = parseMemAttributes(s, &ret->offset, &ret->align, defaultAlign);
+  ret->ptr = parseExpression(s[i]);
   ret->finalize();
   return ret;
 }
@@ -1554,11 +1550,11 @@ Expression* SExpressionWasmBuilder::makeIf(Element& s) {
   ret->finalize(type);
   nameMapper.popLabelName(label);
   // create a break target if we must
-  if (BranchUtils::BranchSeeker::hasNamed(ret, label)) {
+  if (BranchUtils::BranchSeeker::has(ret, label)) {
     auto* block = allocator.alloc<Block>();
     block->name = label;
     block->list.push_back(ret);
-    block->finalize(ret->type);
+    block->finalize(type);
     return block;
   }
   return ret;
@@ -1638,13 +1634,9 @@ Expression* SExpressionWasmBuilder::makeCallIndirect(Element& s,
   if (!wasm.table.exists) {
     throw ParseException("no table");
   }
-  auto ret = allocator.alloc<CallIndirect>();
   Index i = 1;
-  FunctionType* functionType = nullptr;
-  i = parseTypeUse(s, i, functionType);
-  assert(functionType && "functionType should've been set by parseTypeUse");
-  ret->fullType = functionType->name;
-  ret->type = functionType->result;
+  auto ret = allocator.alloc<CallIndirect>();
+  i = parseTypeUse(s, i, ret->sig);
   parseCallOperands(s, i, s.size() - 1, ret);
   ret->target = parseExpression(s[s.size() - 1]);
   ret->isReturn = isReturn;
@@ -1723,6 +1715,105 @@ Expression* SExpressionWasmBuilder::makeReturn(Element& s) {
   if (s.size() >= 2) {
     ret->value = parseExpression(s[1]);
   }
+  return ret;
+}
+
+// try-catch-end is written in the folded wast format as
+// (try
+//   ...
+//  (catch
+//    ...
+//  )
+// )
+// The parenthesis wrapping 'catch' is just a syntax and does not affect nested
+// depths of instructions within.
+Expression* SExpressionWasmBuilder::makeTry(Element& s) {
+  auto ret = allocator.alloc<Try>();
+  Index i = 1;
+  Name sName;
+  if (s[i]->dollared()) {
+    // the try is labeled
+    sName = s[i++]->str();
+  } else {
+    sName = "try";
+  }
+  auto label = nameMapper.pushLabelName(sName);
+  Type type = parseOptionalResultType(s, i); // signature
+  if (elementStartsWith(*s[i], "catch")) {   // empty try body
+    ret->body = makeNop();
+  } else {
+    ret->body = parseExpression(*s[i++]);
+  }
+  if (!elementStartsWith(*s[i], "catch")) {
+    throw ParseException("catch clause does not exist", s[i]->line, s[i]->col);
+  }
+  ret->catchBody = makeCatch(*s[i++], type);
+  ret->finalize(type);
+  nameMapper.popLabelName(label);
+  // create a break target if we must
+  if (BranchUtils::BranchSeeker::has(ret, label)) {
+    auto* block = allocator.alloc<Block>();
+    block->name = label;
+    block->list.push_back(ret);
+    block->finalize(type);
+    return block;
+  }
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeCatch(Element& s, Type type) {
+  if (!elementStartsWith(s, "catch")) {
+    throw ParseException("invalid catch clause", s.line, s.col);
+  }
+  auto ret = allocator.alloc<Block>();
+  for (size_t i = 1; i < s.size(); i++) {
+    ret->list.push_back(parseExpression(s[i]));
+  }
+  if (ret->list.size() == 1) {
+    return ret->list[0];
+  }
+  ret->finalize(type);
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeThrow(Element& s) {
+  auto ret = allocator.alloc<Throw>();
+  Index i = 1;
+
+  ret->event = getEventName(*s[i++]);
+  if (!wasm.getEventOrNull(ret->event)) {
+    throw ParseException("bad event name", s[1]->line, s[1]->col);
+  }
+  for (; i < s.size(); i++) {
+    ret->operands.push_back(parseExpression(s[i]));
+  }
+  ret->finalize();
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeRethrow(Element& s) {
+  auto ret = allocator.alloc<Rethrow>();
+  ret->exnref = parseExpression(*s[1]);
+  ret->finalize();
+  return ret;
+}
+
+Expression* SExpressionWasmBuilder::makeBrOnExn(Element& s) {
+  auto ret = allocator.alloc<BrOnExn>();
+  size_t i = 1;
+  ret->name = getLabel(*s[i++]);
+  ret->event = getEventName(*s[i++]);
+  if (!wasm.getEventOrNull(ret->event)) {
+    throw ParseException("bad event name", s[1]->line, s[1]->col);
+  }
+  ret->exnref = parseExpression(s[i]);
+
+  Event* event = wasm.getEventOrNull(ret->event);
+  assert(event && "br_on_exn's event must exist");
+  // Copy params info into BrOnExn, because it is necessary when BrOnExn is
+  // refinalized without the module.
+  ret->sent = event->sig.params;
+  ret->finalize();
   return ret;
 }
 
@@ -1997,14 +2088,13 @@ void SExpressionWasmBuilder::parseImport(Element& s) {
   Element& inner = newStyle ? *s[3] : s;
   Index j = newStyle ? newStyleInner : i;
   if (kind == ExternalKind::Function) {
-    FunctionType* functionType = nullptr;
     auto func = make_unique<Function>();
-    j = parseTypeUse(inner, j, functionType, func->params, func->result);
+
+    j = parseTypeUse(inner, j, func->sig);
     func->name = name;
     func->module = module;
     func->base = base;
-    func->type = functionType->name;
-    functionTypes[name] = func->result;
+    functionTypes[name] = func->sig.results;
     wasm.addFunction(func.release());
   } else if (kind == ExternalKind::Global) {
     Type type;
@@ -2055,7 +2145,6 @@ void SExpressionWasmBuilder::parseImport(Element& s) {
       j = parseMemoryLimits(inner, j);
     }
   } else if (kind == ExternalKind::Event) {
-    FunctionType* functionType = nullptr;
     auto event = make_unique<Event>();
     if (j >= inner.size()) {
       throw ParseException("event does not have an attribute", s.line, s.col);
@@ -2065,12 +2154,10 @@ void SExpressionWasmBuilder::parseImport(Element& s) {
       throw ParseException("invalid attribute", attrElem.line, attrElem.col);
     }
     event->attribute = atoi(attrElem[1]->c_str());
-    Type fakeResult; // just to call parseTypeUse
-    j = parseTypeUse(inner, j, functionType, event->params, fakeResult);
+    j = parseTypeUse(inner, j, event->sig);
     event->name = name;
     event->module = module;
     event->base = base;
-    event->type = functionType->name;
     wasm.addEvent(event.release());
   }
   // If there are more elements, they are invalid
@@ -2267,10 +2354,15 @@ void SExpressionWasmBuilder::parseInnerElem(Element& s,
 }
 
 void SExpressionWasmBuilder::parseType(Element& s) {
-  std::unique_ptr<FunctionType> type = make_unique<FunctionType>();
+  std::vector<Type> params;
+  std::vector<Type> results;
   size_t i = 1;
   if (s[i]->isStr()) {
-    type->name = s[i]->str();
+    std::string name = s[i]->str().str;
+    if (signatureIndices.find(name) != signatureIndices.end()) {
+      throw ParseException("duplicate function type", s.line, s.col);
+    }
+    signatureIndices[name] = signatures.size();
     i++;
   }
   Element& func = *s[i];
@@ -2278,25 +2370,13 @@ void SExpressionWasmBuilder::parseType(Element& s) {
     Element& curr = *func[k];
     if (elementStartsWith(curr, PARAM)) {
       auto newParams = parseParamOrLocal(curr);
-      type->params.insert(
-        type->params.end(), newParams.begin(), newParams.end());
+      params.insert(params.end(), newParams.begin(), newParams.end());
     } else if (elementStartsWith(curr, RESULT)) {
-      type->result = parseResult(curr);
+      // TODO: Parse multiple results at once
+      results.push_back(parseResults(curr));
     }
   }
-  while (type->name.is() && wasm.getFunctionTypeOrNull(type->name)) {
-    throw ParseException("duplicate function type", s.line, s.col);
-  }
-  // We allow duplicate types in the type section, i.e., we can have
-  // (func (param i32) (result i32)) many times. For unnamed types, find a name
-  // that does not clash with existing ones.
-  if (!type->name.is()) {
-    type->name = "FUNCSIG$" + getSig(type.get());
-  }
-  while (wasm.getFunctionTypeOrNull(type->name)) {
-    type->name = Name(std::string(type->name.c_str()) + "_");
-  }
-  wasm.addFunctionType(std::move(type));
+  signatures.emplace_back(Type(params), Type(results));
 }
 
 void SExpressionWasmBuilder::parseEvent(Element& s, bool preParseImport) {
@@ -2376,11 +2456,7 @@ void SExpressionWasmBuilder::parseEvent(Element& s, bool preParseImport) {
   event->attribute = atoi(attrElem[1]->c_str());
 
   // Parse typeuse
-  FunctionType* functionType = nullptr;
-  Type fakeResult; // just co call parseTypeUse
-  i = parseTypeUse(s, i, functionType, event->params, fakeResult);
-  assert(functionType && "functionType should've been set by parseTypeUse");
-  event->type = functionType->name;
+  i = parseTypeUse(s, i, event->sig);
 
   // If there are more elements, they are invalid
   if (i < s.size()) {

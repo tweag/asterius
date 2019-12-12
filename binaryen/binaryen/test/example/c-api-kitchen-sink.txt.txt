@@ -2,13 +2,12 @@
  (f32.const -33.61199951171875)
 )
 (module
- (type $iiIfF (func (param i32 i64 f32 f64) (result i32)))
- (type $vi (func (param i32)))
- (type $fiF (func (param i32 f64) (result f32)))
- (type $v (func))
- (type $4 (func))
+ (type $i32_i64_f32_f64_=>_i32 (func (param i32 i64 f32 f64) (result i32)))
+ (type $none_=>_none (func))
+ (type $i32_=>_none (func (param i32)))
+ (type $i32_f64_=>_f32 (func (param i32 f64) (result f32)))
  (import "module" "base" (func $an-imported (param i32 f64) (result f32)))
- (memory $0 1 256)
+ (memory $0 (shared 1 256))
  (data (i32.const 10) "hello, world")
  (data passive "I am passive")
  (table $0 1 1 funcref)
@@ -19,8 +18,9 @@
  (export "kitchen_sinker" (func "$kitchen()sinker"))
  (export "mem" (memory $0))
  (start $starter)
- (func "$kitchen()sinker" (; 1 ;) (type $iiIfF) (param $0 i32) (param $1 i64) (param $2 f32) (param $3 f64) (result i32)
+ (func "$kitchen()sinker" (; 1 ;) (param $0 i32) (param $1 i64) (param $2 f32) (param $3 f64) (result i32)
   (local $4 i32)
+  (local $5 exnref)
   (block $the-body (result i32)
    (block $the-nothing
     (drop
@@ -407,6 +407,46 @@
       )
       (drop
        (f64x2.convert_i64x2_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.widen_low_i8x16_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.widen_high_i8x16_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.widen_low_i8x16_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.widen_high_i8x16_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.widen_low_i16x8_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.widen_high_i16x8_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.widen_low_i16x8_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.widen_high_i16x8_u
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
        )
       )
@@ -873,6 +913,12 @@
        )
       )
       (drop
+       (v128.andnot
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
        (i8x16.add
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
@@ -957,6 +1003,30 @@
        )
       )
       (drop
+       (i16x8.min_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.min_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.max_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.max_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
        (i32x4.add
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
@@ -970,6 +1040,30 @@
       )
       (drop
        (i32x4.mul
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i8x16.min_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i8x16.min_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i8x16.max_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i8x16.max_u
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
        )
@@ -1000,6 +1094,36 @@
       )
       (drop
        (f32x4.mul
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.min_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.min_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.max_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.max_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i32x4.dot_i16x8_s
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
        )
@@ -1054,6 +1178,36 @@
       )
       (drop
        (f64x2.max
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i8x16.narrow_i16x8_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i8x16.narrow_i16x8_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.narrow_i32x4_s
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (i16x8.narrow_i32x4_u
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (v8x16.swizzle
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
        )
@@ -1207,6 +1361,56 @@
        )
       )
       (drop
+       (v8x16.load_splat
+        (i32.const 128)
+       )
+      )
+      (drop
+       (v16x8.load_splat offset=16 align=1
+        (i32.const 128)
+       )
+      )
+      (drop
+       (v32x4.load_splat offset=16
+        (i32.const 128)
+       )
+      )
+      (drop
+       (v64x2.load_splat align=4
+        (i32.const 128)
+       )
+      )
+      (drop
+       (i16x8.load8x8_s
+        (i32.const 128)
+       )
+      )
+      (drop
+       (i16x8.load8x8_u
+        (i32.const 128)
+       )
+      )
+      (drop
+       (i32x4.load16x4_s
+        (i32.const 128)
+       )
+      )
+      (drop
+       (i32x4.load16x4_u
+        (i32.const 128)
+       )
+      )
+      (drop
+       (i64x2.load32x2_s
+        (i32.const 128)
+       )
+      )
+      (drop
+       (i64x2.load32x2_u
+        (i32.const 128)
+       )
+      )
+      (drop
        (v8x16.shuffle 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
@@ -1214,6 +1418,34 @@
       )
       (drop
        (v128.bitselect
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (f32x4.qfma
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (f32x4.qfms
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (f64x2.qfma
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+        (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
+       )
+      )
+      (drop
+       (f64x2.qfms
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
         (v128.const i32x4 0x04030201 0x08070605 0x0c0b0a09 0x100f0e0d)
@@ -1304,7 +1536,7 @@
       )
       (drop
        (i32.eqz
-        (call_indirect (type $iiIfF)
+        (call_indirect (type $i32_i64_f32_f64_=>_i32)
          (i32.const 13)
          (i64.const 37)
          (f32.const 1.2999999523162842)
@@ -1362,22 +1594,75 @@
       (return
        (i32.const 1337)
       )
-      (drop
-       (return_call "$kitchen()sinker"
-        (i32.const 13)
-        (i64.const 37)
-        (f32.const 1.2999999523162842)
-        (f64.const 3.7)
+      (return_call "$kitchen()sinker"
+       (i32.const 13)
+       (i64.const 37)
+       (f32.const 1.2999999523162842)
+       (f64.const 3.7)
+      )
+      (return_call_indirect (type $i32_i64_f32_f64_=>_i32)
+       (i32.const 13)
+       (i64.const 37)
+       (f32.const 1.2999999523162842)
+       (f64.const 3.7)
+       (i32.const 2449)
+      )
+      (try
+       (throw $a-event
+        (i32.const 0)
+       )
+       (catch
+        (local.set $5
+         (exnref.pop)
+        )
+        (drop
+         (block $try-block (result i32)
+          (rethrow
+           (br_on_exn $try-block $a-event
+            (local.get $5)
+           )
+          )
+         )
+        )
+       )
+      )
+      (i32.atomic.store
+       (i32.const 0)
+       (i32.atomic.load
+        (i32.const 0)
        )
       )
       (drop
-       (return_call_indirect (type $iiIfF)
-        (i32.const 13)
-        (i64.const 37)
-        (f32.const 1.2999999523162842)
-        (f64.const 3.7)
-        (i32.const 2449)
+       (i32.atomic.wait
+        (i32.const 0)
+        (i32.const 0)
+        (i64.const 111)
        )
+      )
+      (drop
+       (atomic.notify
+        (i32.const 0)
+        (i32.const 0)
+       )
+      )
+      (atomic.fence)
+      (push
+       (i32.pop)
+      )
+      (push
+       (i64.pop)
+      )
+      (push
+       (f32.pop)
+      )
+      (push
+       (f64.pop)
+      )
+      (push
+       (anyref.pop)
+      )
+      (push
+       (exnref.pop)
       )
       (nop)
       (unreachable)
@@ -1387,22 +1672,22 @@
    (i32.const 42)
   )
  )
- (func $starter (; 2 ;) (type $v)
+ (func $starter (; 2 ;)
   (nop)
  )
 )
 (module
- (type $v (func))
- (type $vi (func (param i32)))
- (type $i (func (result i32)))
+ (type $none_=>_none (func))
+ (type $i32_=>_none (func (param i32)))
+ (type $none_=>_i32 (func (result i32)))
  (import "module" "check" (func $check (param i32)))
- (func $just-one-block (; 1 ;) (type $v)
+ (func $just-one-block (; 1 ;)
   (local $0 i32)
   (call $check
    (i32.const 1337)
   )
  )
- (func $two-blocks (; 2 ;) (type $v)
+ (func $two-blocks (; 2 ;)
   (local $0 i32)
   (block
    (call $check
@@ -1413,7 +1698,7 @@
    )
   )
  )
- (func $two-blocks-plus-code (; 3 ;) (type $v)
+ (func $two-blocks-plus-code (; 3 ;)
   (local $0 i32)
   (block
    (block
@@ -1429,7 +1714,7 @@
    )
   )
  )
- (func $loop (; 4 ;) (type $v)
+ (func $loop (; 4 ;)
   (local $0 i32)
   (loop $shape$0$continue
    (block
@@ -1445,7 +1730,7 @@
    )
   )
  )
- (func $loop-plus-code (; 5 ;) (type $v)
+ (func $loop-plus-code (; 5 ;)
   (local $0 i32)
   (loop $shape$0$continue
    (block
@@ -1469,7 +1754,7 @@
    )
   )
  )
- (func $split (; 6 ;) (type $v)
+ (func $split (; 6 ;)
   (local $0 i32)
   (call $check
    (i32.const 0)
@@ -1488,7 +1773,7 @@
    )
   )
  )
- (func $split-plus-code (; 7 ;) (type $v)
+ (func $split-plus-code (; 7 ;)
   (local $0 i32)
   (call $check
    (i32.const 0)
@@ -1517,7 +1802,7 @@
    )
   )
  )
- (func $if (; 8 ;) (type $v)
+ (func $if (; 8 ;)
   (local $0 i32)
   (block $block$3$break
    (call $check
@@ -1542,7 +1827,7 @@
    )
   )
  )
- (func $if-plus-code (; 9 ;) (type $v)
+ (func $if-plus-code (; 9 ;)
   (local $0 i32)
   (block $block$3$break
    (call $check
@@ -1580,7 +1865,7 @@
    )
   )
  )
- (func $if-else (; 10 ;) (type $v)
+ (func $if-else (; 10 ;)
   (local $0 i32)
   (block $block$4$break
    (call $check
@@ -1612,7 +1897,7 @@
    )
   )
  )
- (func $loop-tail (; 11 ;) (type $v)
+ (func $loop-tail (; 11 ;)
   (local $0 i32)
   (block $block$3$break
    (loop $shape$0$continue
@@ -1637,7 +1922,7 @@
    )
   )
  )
- (func $nontrivial-loop-plus-phi-to-head (; 12 ;) (type $v)
+ (func $nontrivial-loop-plus-phi-to-head (; 12 ;)
   (local $0 i32)
   (block $block$2$break
    (call $check
@@ -1724,7 +2009,7 @@
    )
   )
  )
- (func $switch (; 13 ;) (type $v)
+ (func $switch (; 13 ;)
   (local $0 i32)
   (call $check
    (i32.const 0)
@@ -1768,7 +2053,7 @@
    (br $switch$1$leave)
   )
  )
- (func $duffs-device (; 14 ;) (type $v)
+ (func $duffs-device (; 14 ;)
   (local $0 i32)
   (local $1 i32)
   (local $2 i64)
@@ -1843,7 +2128,7 @@
    )
   )
  )
- (func $return (; 15 ;) (type $i) (result i32)
+ (func $return (; 15 ;) (result i32)
   (local $0 i32)
   (block
    (call $check

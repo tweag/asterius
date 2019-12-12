@@ -19,7 +19,10 @@ custom-setup:
     - Cabal
     - directory
     - filepath
-    - ghc
+
+extra-libraries:
+  - stdc++
+  - binaryen
 
 ghc-options: -Wall
 
@@ -28,11 +31,3 @@ dependencies:
 
 library:
   source-dirs: src
-
-tests:
-  binaryen-test:
-    source-dirs: test
-    main: binaryen-test.hs
-    ghc-options: -threaded -rtsopts
-    dependencies:
-      - binaryen

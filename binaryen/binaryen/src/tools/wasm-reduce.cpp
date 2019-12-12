@@ -44,7 +44,7 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
-#include <Windows.h>
+#include <windows.h>
 // Create a string with last error message
 std::string GetLastErrorStdStr() {
   DWORD error = GetLastError();
@@ -466,7 +466,7 @@ struct Reducer
       if (tryToReduceCurrentToNop()) {
         return;
       }
-    } else if (isConcreteType(curr->type)) {
+    } else if (curr->type.isConcrete()) {
       if (tryToReduceCurrentToConst()) {
         return;
       }
@@ -517,7 +517,7 @@ struct Reducer
       // replace a singleton
       auto& list = block->list;
       if (list.size() == 1 &&
-          !BranchUtils::BranchSeeker::hasNamed(block, block->name)) {
+          !BranchUtils::BranchSeeker::has(block, block->name)) {
         if (tryToReplaceCurrent(block->list[0])) {
           return;
         }
@@ -549,14 +549,14 @@ struct Reducer
       return; // nothing more to do
     } else if (auto* loop = curr->dynCast<Loop>()) {
       if (shouldTryToReduce() &&
-          !BranchUtils::BranchSeeker::hasNamed(loop, loop->name)) {
+          !BranchUtils::BranchSeeker::has(loop, loop->name)) {
         tryToReplaceCurrent(loop->body);
       }
       return; // nothing more to do
     }
     // Finally, try to replace with a child.
     for (auto* child : ChildIterator(curr)) {
-      if (isConcreteType(child->type) && curr->type == none) {
+      if (child->type.isConcrete() && curr->type == none) {
         if (tryToReplaceCurrent(builder->makeDrop(child))) {
           return;
         }
@@ -567,13 +567,13 @@ struct Reducer
       }
     }
     // If that didn't work, try to replace with a child + a unary conversion
-    if (isConcreteType(curr->type) &&
+    if (curr->type.isConcrete() &&
         !curr->is<Unary>()) { // but not if it's already unary
       for (auto* child : ChildIterator(curr)) {
         if (child->type == curr->type) {
           continue; // already tried
         }
-        if (!isConcreteType(child->type)) {
+        if (!child->type.isConcrete()) {
           continue; // no conversion
         }
         Expression* fixed = nullptr;
@@ -581,7 +581,7 @@ struct Reducer
           case i32: {
             switch (child->type) {
               case i32:
-                WASM_UNREACHABLE();
+                WASM_UNREACHABLE("invalid type");
               case i64:
                 fixed = builder->makeUnary(WrapInt64, child);
                 break;
@@ -592,11 +592,12 @@ struct Reducer
                 fixed = builder->makeUnary(TruncSFloat64ToInt32, child);
                 break;
               case v128:
+              case anyref:
               case exnref:
                 continue; // not implemented yet
               case none:
               case unreachable:
-                WASM_UNREACHABLE();
+                WASM_UNREACHABLE("unexpected type");
             }
             break;
           }
@@ -606,7 +607,7 @@ struct Reducer
                 fixed = builder->makeUnary(ExtendSInt32, child);
                 break;
               case i64:
-                WASM_UNREACHABLE();
+                WASM_UNREACHABLE("invalid type");
               case f32:
                 fixed = builder->makeUnary(TruncSFloat32ToInt64, child);
                 break;
@@ -614,11 +615,12 @@ struct Reducer
                 fixed = builder->makeUnary(TruncSFloat64ToInt64, child);
                 break;
               case v128:
+              case anyref:
               case exnref:
                 continue; // not implemented yet
               case none:
               case unreachable:
-                WASM_UNREACHABLE();
+                WASM_UNREACHABLE("unexpected type");
             }
             break;
           }
@@ -631,16 +633,17 @@ struct Reducer
                 fixed = builder->makeUnary(ConvertSInt64ToFloat32, child);
                 break;
               case f32:
-                WASM_UNREACHABLE();
+                WASM_UNREACHABLE("unexpected type");
               case f64:
                 fixed = builder->makeUnary(DemoteFloat64, child);
                 break;
               case v128:
+              case anyref:
               case exnref:
                 continue; // not implemented yet
               case none:
               case unreachable:
-                WASM_UNREACHABLE();
+                WASM_UNREACHABLE("unexpected type");
             }
             break;
           }
@@ -656,22 +659,24 @@ struct Reducer
                 fixed = builder->makeUnary(PromoteFloat32, child);
                 break;
               case f64:
-                WASM_UNREACHABLE();
+                WASM_UNREACHABLE("unexpected type");
               case v128:
+              case anyref:
               case exnref:
                 continue; // not implemented yet
               case none:
               case unreachable:
-                WASM_UNREACHABLE();
+                WASM_UNREACHABLE("unexpected type");
             }
             break;
           }
           case v128:
+          case anyref:
           case exnref:
             continue; // not implemented yet
           case none:
           case unreachable:
-            WASM_UNREACHABLE();
+            WASM_UNREACHABLE("unexpected type");
         }
         assert(fixed->type == curr->type);
         if (tryToReplaceCurrent(fixed)) {
@@ -861,17 +866,15 @@ struct Reducer
       auto* func = module->functions[0].get();
       // We can't remove something that might have breaks to it.
       if (!func->imported() && !Properties::isNamedControlFlow(func->body)) {
-        auto funcType = func->type;
-        auto funcResult = func->result;
+        auto funcSig = func->sig;
         auto* funcBody = func->body;
         for (auto* child : ChildIterator(func->body)) {
-          if (!(isConcreteType(child->type) || child->type == none)) {
+          if (!(child->type.isConcrete() || child->type == none)) {
             continue; // not something a function can return
           }
           // Try to replace the body with the child, fixing up the function
           // to accept it.
-          func->type = Name();
-          func->result = child->type;
+          func->sig.results = child->type;
           func->body = child;
           if (writeAndTestReduction()) {
             // great, we succeeded!
@@ -880,8 +883,7 @@ struct Reducer
             break;
           }
           // Undo.
-          func->type = funcType;
-          func->result = funcResult;
+          func->sig = funcSig;
           func->body = funcBody;
         }
       }
@@ -1028,6 +1030,8 @@ struct Reducer
 
 int main(int argc, const char* argv[]) {
   std::string input, test, working, command;
+  // By default, look for binaries alongside our own binary.
+  std::string binDir = Path::getDirName(argv[0]);
   bool binary = true, deNan = false, verbose = false, debugInfo = false,
        force = false;
   Options options("wasm-reduce",
@@ -1061,7 +1065,7 @@ int main(int argc, const char* argv[]) {
          Options::Arguments::One,
          [&](Options* o, const std::string& argument) {
            // Add separator just in case
-           Path::setBinaryenBinDir(argument + Path::getPathSeparator());
+           binDir = argument + Path::getPathSeparator();
          })
     .add("--text",
          "-S",
@@ -1116,10 +1120,13 @@ int main(int argc, const char* argv[]) {
     Colors::setEnabled(false);
   }
 
+  Path::setBinaryenBinDir(binDir);
+
   std::cerr << "|wasm-reduce\n";
   std::cerr << "|input: " << input << '\n';
   std::cerr << "|test: " << test << '\n';
   std::cerr << "|working: " << working << '\n';
+  std::cerr << "|bin dir: " << binDir << '\n';
 
   // get the expected output
   copy_file(input, test);

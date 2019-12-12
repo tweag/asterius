@@ -174,6 +174,8 @@ enum UnaryOp {
   AbsVecF64x2,
   NegVecF64x2,
   SqrtVecF64x2,
+
+  // SIMD conversions
   TruncSatSVecF32x4ToVecI32x4,
   TruncSatUVecF32x4ToVecI32x4,
   TruncSatSVecF64x2ToVecI64x2,
@@ -182,6 +184,14 @@ enum UnaryOp {
   ConvertUVecI32x4ToVecF32x4,
   ConvertSVecI64x2ToVecF64x2,
   ConvertUVecI64x2ToVecF64x2,
+  WidenLowSVecI8x16ToVecI16x8,
+  WidenHighSVecI8x16ToVecI16x8,
+  WidenLowUVecI8x16ToVecI16x8,
+  WidenHighUVecI8x16ToVecI16x8,
+  WidenLowSVecI16x8ToVecI32x4,
+  WidenHighSVecI16x8ToVecI32x4,
+  WidenLowUVecI16x8ToVecI32x4,
+  WidenHighUVecI16x8ToVecI32x4,
 
   InvalidUnary
 };
@@ -343,6 +353,7 @@ enum BinaryOp {
   AndVec128,
   OrVec128,
   XorVec128,
+  AndNotVec128,
   AddVecI8x16,
   AddSatSVecI8x16,
   AddSatUVecI8x16,
@@ -350,6 +361,10 @@ enum BinaryOp {
   SubSatSVecI8x16,
   SubSatUVecI8x16,
   MulVecI8x16,
+  MinSVecI8x16,
+  MinUVecI8x16,
+  MaxSVecI8x16,
+  MaxUVecI8x16,
   AddVecI16x8,
   AddSatSVecI16x8,
   AddSatUVecI16x8,
@@ -357,9 +372,18 @@ enum BinaryOp {
   SubSatSVecI16x8,
   SubSatUVecI16x8,
   MulVecI16x8,
+  MinSVecI16x8,
+  MinUVecI16x8,
+  MaxSVecI16x8,
+  MaxUVecI16x8,
   AddVecI32x4,
   SubVecI32x4,
   MulVecI32x4,
+  MinSVecI32x4,
+  MinUVecI32x4,
+  MaxSVecI32x4,
+  MaxUVecI32x4,
+  DotSVecI16x8ToVecI32x4,
   AddVecI64x2,
   SubVecI64x2,
   AddVecF32x4,
@@ -374,6 +398,15 @@ enum BinaryOp {
   DivVecF64x2,
   MinVecF64x2,
   MaxVecF64x2,
+
+  // SIMD Conversion
+  NarrowSVecI16x8ToVecI8x16,
+  NarrowUVecI16x8ToVecI8x16,
+  NarrowSVecI32x4ToVecI16x8,
+  NarrowUVecI32x4ToVecI16x8,
+
+  // SIMD Swizzle
+  SwizzleVec8x16,
 
   InvalidBinary
 };
@@ -416,6 +449,21 @@ enum SIMDShiftOp {
   ShrSVecI64x2,
   ShrUVecI64x2
 };
+
+enum SIMDLoadOp {
+  LoadSplatVec8x16,
+  LoadSplatVec16x8,
+  LoadSplatVec32x4,
+  LoadSplatVec64x2,
+  LoadExtSVec8x8ToVecI16x8,
+  LoadExtUVec8x8ToVecI16x8,
+  LoadExtSVec16x4ToVecI32x4,
+  LoadExtUVec16x4ToVecI32x4,
+  LoadExtSVec32x2ToVecI64x2,
+  LoadExtUVec32x2ToVecI64x2
+};
+
+enum SIMDTernaryOp { Bitselect, QFMAF32x4, QFMSF32x4, QFMAF64x2, QFMSF64x2 };
 
 //
 // Expressions
@@ -468,17 +516,23 @@ public:
     AtomicCmpxchgId,
     AtomicWaitId,
     AtomicNotifyId,
+    AtomicFenceId,
     SIMDExtractId,
     SIMDReplaceId,
     SIMDShuffleId,
-    SIMDBitselectId,
+    SIMDTernaryId,
     SIMDShiftId,
+    SIMDLoadId,
     MemoryInitId,
     DataDropId,
     MemoryCopyId,
     MemoryFillId,
     PushId,
     PopId,
+    TryId,
+    ThrowId,
+    RethrowId,
+    BrOnExnId,
     NumExpressionIds
   };
   Id _id;
@@ -626,27 +680,11 @@ public:
   void finalize();
 };
 
-class FunctionType {
-public:
-  Name name;
-  Type result = none;
-  std::vector<Type> params;
-
-  FunctionType() = default;
-
-  bool structuralComparison(FunctionType& b);
-  bool structuralComparison(const std::vector<Type>& params, Type result);
-
-  bool operator==(FunctionType& b);
-  bool operator!=(FunctionType& b);
-};
-
 class CallIndirect : public SpecificExpression<Expression::CallIndirectId> {
 public:
   CallIndirect(MixedArena& allocator) : operands(allocator) {}
-
+  Signature sig;
   ExpressionList operands;
-  Name fullType;
   Expression* target;
   bool isReturn = false;
 
@@ -781,6 +819,17 @@ public:
   void finalize();
 };
 
+class AtomicFence : public SpecificExpression<Expression::AtomicFenceId> {
+public:
+  AtomicFence() = default;
+  AtomicFence(MixedArena& allocator) : AtomicFence() {}
+
+  // Current wasm threads only supports sequentialy consistent atomics, but
+  // other orderings may be added in the future. This field is reserved for
+  // that, and currently set to 0.
+  uint8_t order = 0;
+};
+
 class SIMDExtract : public SpecificExpression<Expression::SIMDExtractId> {
 public:
   SIMDExtract() = default;
@@ -818,14 +867,15 @@ public:
   void finalize();
 };
 
-class SIMDBitselect : public SpecificExpression<Expression::SIMDBitselectId> {
+class SIMDTernary : public SpecificExpression<Expression::SIMDTernaryId> {
 public:
-  SIMDBitselect() = default;
-  SIMDBitselect(MixedArena& allocator) : SIMDBitselect() {}
+  SIMDTernary() = default;
+  SIMDTernary(MixedArena& allocator) : SIMDTernary() {}
 
-  Expression* left;
-  Expression* right;
-  Expression* cond;
+  SIMDTernaryOp op;
+  Expression* a;
+  Expression* b;
+  Expression* c;
 
   void finalize();
 };
@@ -839,6 +889,20 @@ public:
   Expression* vec;
   Expression* shift;
 
+  void finalize();
+};
+
+class SIMDLoad : public SpecificExpression<Expression::SIMDLoadId> {
+public:
+  SIMDLoad() = default;
+  SIMDLoad(MixedArena& allocator) {}
+
+  SIMDLoadOp op;
+  Address offset;
+  Address align;
+  Expression* ptr;
+
+  Index getMemBytes();
   void finalize();
 };
 
@@ -1003,6 +1067,51 @@ public:
   Pop(MixedArena& allocator) {}
 };
 
+class Try : public SpecificExpression<Expression::TryId> {
+public:
+  Try(MixedArena& allocator) {}
+
+  Expression* body;
+  Expression* catchBody;
+
+  void finalize();
+  void finalize(Type type_);
+};
+
+class Throw : public SpecificExpression<Expression::ThrowId> {
+public:
+  Throw(MixedArena& allocator) : operands(allocator) {}
+
+  Name event;
+  ExpressionList operands;
+
+  void finalize();
+};
+
+class Rethrow : public SpecificExpression<Expression::RethrowId> {
+public:
+  Rethrow(MixedArena& allocator) {}
+
+  Expression* exnref;
+
+  void finalize();
+};
+
+class BrOnExn : public SpecificExpression<Expression::BrOnExnId> {
+public:
+  BrOnExn() { type = unreachable; }
+  BrOnExn(MixedArena& allocator) : BrOnExn() {}
+
+  Name name;
+  Name event;
+  Expression* exnref;
+  // This is duplicate info of param types stored in Event, but this is required
+  // for us to know the type of the value sent to the target block.
+  Type sent;
+
+  void finalize();
+};
+
 // Globals
 
 struct Importable {
@@ -1022,10 +1131,8 @@ typedef std::vector<StackInst*> StackIR;
 class Function : public Importable {
 public:
   Name name;
-  Type result = none;
-  std::vector<Type> params; // function locals are
+  Signature sig;
   std::vector<Type> vars;   // params plus vars
-  Name type;                // if null, it is implicit in params and result
 
   // The body of the function
   Expression* body = nullptr;
@@ -1193,15 +1300,8 @@ class Event : public Importable {
 public:
   Name name;
   // Kind of event. Currently only WASM_EVENT_ATTRIBUTE_EXCEPTION is possible.
-  uint32_t attribute;
-  // Type string in the format of function type. Return type is considered as a
-  // void type. So if you have an event whose type is (i32, i32), the type
-  // string will be "vii".
-  Name type;
-  // This is duplicate info of 'Name type', but we store this anyway because
-  // we plan to remove FunctionType in future.
-  // TODO remove either this or FunctionType
-  std::vector<Type> params;
+  uint32_t attribute = WASM_EVENT_ATTRIBUTE_EXCEPTION;
+  Signature sig;
 };
 
 // "Opaque" data, not part of the core wasm spec, that is held in binaries.
@@ -1216,7 +1316,6 @@ class Module {
 public:
   // wasm contents (generally you shouldn't access these from outside, except
   // maybe for iterating; use add*() and the get() functions)
-  std::vector<std::unique_ptr<FunctionType>> functionTypes;
   std::vector<std::unique_ptr<Export>> exports;
   std::vector<std::unique_ptr<Function>> functions;
   std::vector<std::unique_ptr<Global>> globals;
@@ -1241,7 +1340,6 @@ public:
 private:
   // TODO: add a build option where Names are just indices, and then these
   // methods are not needed
-  std::map<Name, FunctionType*> functionTypesMap;
   // exports map is by the *exported* name, which is unique
   std::map<Name, Export*> exportsMap;
   std::map<Name, Function*> functionsMap;
@@ -1251,19 +1349,16 @@ private:
 public:
   Module() = default;
 
-  FunctionType* getFunctionType(Name name);
   Export* getExport(Name name);
   Function* getFunction(Name name);
   Global* getGlobal(Name name);
   Event* getEvent(Name name);
 
-  FunctionType* getFunctionTypeOrNull(Name name);
   Export* getExportOrNull(Name name);
   Function* getFunctionOrNull(Name name);
   Global* getGlobalOrNull(Name name);
   Event* getEventOrNull(Name name);
 
-  FunctionType* addFunctionType(std::unique_ptr<FunctionType> curr);
   Export* addExport(Export* curr);
   Function* addFunction(Function* curr);
   Function* addFunction(std::unique_ptr<Function> curr);
@@ -1272,11 +1367,15 @@ public:
 
   void addStart(const Name& s);
 
-  void removeFunctionType(Name name);
   void removeExport(Name name);
   void removeFunction(Name name);
   void removeGlobal(Name name);
   void removeEvent(Name name);
+
+  void removeExports(std::function<bool(Export*)> pred);
+  void removeFunctions(std::function<bool(Function*)> pred);
+  void removeGlobals(std::function<bool(Global*)> pred);
+  void removeEvents(std::function<bool(Event*)> pred);
 
   void updateMaps();
 

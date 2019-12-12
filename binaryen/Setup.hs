@@ -1,16 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wall -threaded -rtsopts #-}
 
-import Ar
 import Data.Foldable
 import Distribution.Simple
 import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
-import Distribution.System
-import Distribution.Types.BuildInfo
-import Distribution.Types.GenericPackageDescription
-import Distribution.Types.PackageDescription
+import Distribution.Types.LocalBuildInfo
 import Distribution.Verbosity
 import System.Directory
 import System.FilePath
@@ -20,19 +16,10 @@ main =
   defaultMainWithHooks
     simpleUserHooks
       { hookedPrograms = [simpleProgram "cmake"],
-        confHook = \t@(g_pkg_descr, _) c -> do
-          lbi <- confHook simpleUserHooks t c
-          absBuildDir <- makeAbsolute $ buildDir lbi
-          pwd <- getCurrentDirectory
-          let pkg_descr = packageDescription g_pkg_descr
-              binaryen_builddir = absBuildDir </> "binaryen"
-              binaryen_installdirs = absoluteInstallDirs pkg_descr lbi NoCopyDest
-              binaryen_libdir = libdir binaryen_installdirs
-              binaryen_bindir = bindir binaryen_installdirs
-              run' prog args stdin_s =
-                runProgramInvocation
-                  normal
-                  (simpleProgramInvocation prog args) {progInvokeInput = Just stdin_s}
+        postConf = \_ _ _ _ -> pure (),
+        buildHook = \pkg_descr lbi hooks flags -> do
+          buildHook simpleUserHooks pkg_descr lbi hooks flags
+          let binaryen_builddir = binaryenBuildDir lbi
               run prog args stdin_s =
                 let Just conf_prog = lookupProgram prog (withPrograms lbi)
                  in runProgramInvocation
@@ -42,42 +29,39 @@ main =
                             Just
                               stdin_s
                         }
-          for_ [binaryen_builddir, binaryen_libdir, binaryen_bindir] $
-            createDirectoryIfMissing True
-          withCurrentDirectory binaryen_builddir
-            $ for_
-              [ [ "-DCMAKE_BUILD_TYPE=Release",
-                  "-DBUILD_STATIC_LIB=ON",
-                  "-G",
-                  "Unix Makefiles",
-                  pwd </> "binaryen"
-                ],
-                ["--build", binaryen_builddir]
-              ]
-            $ \args -> run (simpleProgram "cmake") args ""
-          binaryen_libs <- listDirectory $ binaryen_builddir </> "lib"
-          let output_fn = binaryen_libdir </> "libHSbinaryen-binaryen.a"
-              archives = [binaryen_builddir </> "lib" </> l | l <- binaryen_libs]
-              (write_ar, is_symdef)
-                | buildOS == OSX = (writeBSDAr, isBSDSymdef)
-                | otherwise = (writeGNUAr, isGNUSymdef)
-          ar <- foldlM (\acc p -> (<> acc) <$> loadAr p) mempty archives
-          write_ar output_fn $ afilter (not . is_symdef) ar
-          run' "ranlib" [output_fn] ""
+          for_
+            [ [ "-DCMAKE_BUILD_TYPE=Release",
+                "-DBUILD_STATIC_LIB=ON",
+                "-G",
+                "Unix Makefiles",
+                "-S",
+                "binaryen",
+                "-B",
+                binaryen_builddir
+              ],
+              ["--build", binaryen_builddir]
+            ]
+            $ \args -> run (simpleProgram "cmake") args "",
+        copyHook = \pkg_descr lbi hooks flags -> do
+          copyHook simpleUserHooks pkg_descr lbi hooks flags
+          let binaryen_builddir = binaryenBuildDir lbi
+              [clbi] = componentNameCLBIs lbi CLibName
+              binaryen_installdirs =
+                absoluteComponentInstallDirs
+                  pkg_descr
+                  lbi
+                  (componentUnitId clbi)
+                  (fromFlag (copyDest flags))
+              binaryen_libdir = libdir binaryen_installdirs
+              binaryen_bindir = bindir binaryen_installdirs
+          for_ [binaryen_libdir, binaryen_bindir] $ createDirectoryIfMissing True
+          copyFile
+            (binaryen_builddir </> "lib" </> "libbinaryen.a")
+            (binaryen_libdir </> "libbinaryen.a")
           binaryen_bins <- listDirectory $ binaryen_builddir </> "bin"
           for_ binaryen_bins $ \b ->
             copyFile (binaryen_builddir </> "bin" </> b) (binaryen_bindir </> b)
-          pure
-            lbi
-              { localPkgDescr =
-                  updatePackageDescription
-                    ( Just
-                        emptyBuildInfo
-                          { extraLibs = ["HSbinaryen-binaryen", "stdc++"],
-                            extraLibDirs = [binaryen_libdir]
-                          },
-                      []
-                    )
-                    $ localPkgDescr lbi
-              }
       }
+
+binaryenBuildDir :: LocalBuildInfo -> FilePath
+binaryenBuildDir = (</> "binaryen") . buildDir

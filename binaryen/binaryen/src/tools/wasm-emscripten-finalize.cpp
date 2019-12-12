@@ -24,6 +24,7 @@
 #include "abi/js.h"
 #include "ir/trapping.h"
 #include "support/colors.h"
+#include "support/debug.h"
 #include "support/file.h"
 #include "tool-options.h"
 #include "wasm-binary.h"
@@ -31,6 +32,8 @@
 #include "wasm-io.h"
 #include "wasm-printing.h"
 #include "wasm-validator.h"
+
+#define DEBUG_TYPE "emscripten"
 
 using namespace cashew;
 using namespace wasm;
@@ -48,7 +51,10 @@ int main(int argc, const char* argv[]) {
   bool debugInfo = false;
   bool isSideModule = false;
   bool legalizeJavaScriptFFI = true;
+  bool checkStackOverflow = false;
   uint64_t globalBase = INVALID_BASE;
+  bool standaloneWasm = false;
+
   ToolOptions options("wasm-emscripten-finalize",
                       "Performs Emscripten-specific transforms on .wasm files");
   options
@@ -127,6 +133,21 @@ int main(int argc, const char* argv[]) {
          [&dataSegmentFile](Options* o, const std::string& argument) {
            dataSegmentFile = argument;
          })
+    .add("--check-stack-overflow",
+         "",
+         "Check for stack overflows every time the stack is extended",
+         Options::Arguments::Zero,
+         [&checkStackOverflow](Options* o, const std::string&) {
+           checkStackOverflow = true;
+         })
+    .add("--standalone-wasm",
+         "",
+         "Emit a wasm file that does not depend on JS, as much as possible,"
+         " using wasi and other standard conventions etc. where possible",
+         Options::Arguments::Zero,
+         [&standaloneWasm](Options* o, const std::string&) {
+           standaloneWasm = true;
+         })
     .add_positional("INFILE",
                     Options::Arguments::One,
                     [&infile](Options* o, const std::string& argument) {
@@ -157,10 +178,9 @@ int main(int argc, const char* argv[]) {
 
   options.applyFeatures(wasm);
 
-  if (options.debug) {
-    std::cerr << "Module before:\n";
-    WasmPrinter::printModule(&wasm, std::cerr);
-  }
+  BYN_TRACE_WITH_TYPE("emscripten-dump", "Module before:\n");
+  BYN_DEBUG_WITH_TYPE("emscripten-dump",
+                      WasmPrinter::printModule(&wasm, std::cerr));
 
   uint32_t dataSize = 0;
 
@@ -178,6 +198,9 @@ int main(int argc, const char* argv[]) {
     }
     if (dataEnd->type != Type::i32) {
       Fatal() << "__data_end global has wrong type";
+    }
+    if (dataEnd->imported()) {
+      Fatal() << "__data_end must not be an imported global";
     }
     Const* dataEndConst = dataEnd->init->cast<Const>();
     dataSize = dataEndConst->value.geti32() - globalBase;
@@ -200,10 +223,16 @@ int main(int argc, const char* argv[]) {
   }
   wasm.updateMaps();
 
+  if (checkStackOverflow && !isSideModule) {
+    generator.enforceStackLimit();
+  }
+
   if (isSideModule) {
+    BYN_TRACE("finalizing as side module\n");
     generator.replaceStackPointerGlobal();
     generator.generatePostInstantiateFunction();
   } else {
+    BYN_TRACE("finalizing as regular module\n");
     generator.generateRuntimeFunctions();
     generator.internalizeStackPointerGlobal();
     generator.generateMemoryGrowthFunction();
@@ -216,16 +245,28 @@ int main(int argc, const char* argv[]) {
       wasm.addExport(ex);
       initializerFunctions.push_back(F->name);
     }
-    if (auto* e = wasm.getExportOrNull(WASM_CALL_CTORS)) {
-      initializerFunctions.push_back(e->value);
+    // Costructors get called from crt1 in wasm standalone mode.
+    // Unless there is no entry point.
+    if (!standaloneWasm || !wasm.getExportOrNull("_start")) {
+      if (auto* e = wasm.getExportOrNull(WASM_CALL_CTORS)) {
+        initializerFunctions.push_back(e->name);
+      }
     }
   }
 
-  generator.generateDynCallThunks();
+  if (standaloneWasm) {
+    // Export a standard wasi "_start" method.
+    generator.exportWasiStart();
+  } else {
+    // If not standalone wasm then JS is relevant and we need dynCalls.
+    generator.generateDynCallThunks();
+  }
 
   // Legalize the wasm.
   {
+    BYN_TRACE("legalizing types\n");
     PassRunner passRunner(&wasm);
+    passRunner.setOptions(options.passOptions);
     passRunner.setDebug(options.debug);
     passRunner.setDebugInfo(debugInfo);
     passRunner.add(ABI::getLegalizationPass(
@@ -234,6 +275,7 @@ int main(int argc, const char* argv[]) {
     passRunner.run();
   }
 
+  BYN_TRACE("generated metadata\n");
   // Substantial changes to the wasm are done, enough to create the metadata.
   std::string metadata =
     generator.generateEmscriptenMetadata(dataSize, initializerFunctions);
@@ -241,17 +283,16 @@ int main(int argc, const char* argv[]) {
   // Finally, separate out data segments if relevant (they may have been needed
   // for metadata).
   if (!dataSegmentFile.empty()) {
-    Output memInitFile(dataSegmentFile, Flags::Binary, Flags::Release);
+    Output memInitFile(dataSegmentFile, Flags::Binary);
     if (globalBase == INVALID_BASE) {
       Fatal() << "globalBase must be set";
     }
     generator.separateDataSegments(&memInitFile, globalBase);
   }
 
-  if (options.debug) {
-    std::cerr << "Module after:\n";
-    WasmPrinter::printModule(&wasm, std::cerr);
-  }
+  BYN_TRACE_WITH_TYPE("emscripten-dump", "Module after:\n");
+  BYN_DEBUG_WITH_TYPE("emscripten-dump",
+                      WasmPrinter::printModule(&wasm, std::cerr));
 
   // Strip target features section (its information is in the metadata)
   {
@@ -260,10 +301,8 @@ int main(int argc, const char* argv[]) {
     passRunner.run();
   }
 
-  auto outputBinaryFlag = emitBinary ? Flags::Binary : Flags::Text;
-  Output output(outfile, outputBinaryFlag, Flags::Release);
+  Output output(outfile, emitBinary ? Flags::Binary : Flags::Text);
   ModuleWriter writer;
-  writer.setDebug(options.debug);
   writer.setDebugInfo(debugInfo);
   // writer.setSymbolMap(symbolMap);
   writer.setBinary(emitBinary);

@@ -59,7 +59,7 @@ bool ExpressionAnalyzer::isResultUsed(ExpressionStack& stack, Function* func) {
     }
   }
   // The value might be used, so it depends on if the function returns
-  return func->result != none;
+  return func->sig.results != Type::none;
 }
 
 // Checks if a value is dropped.
@@ -132,9 +132,14 @@ template<typename T> void visitImmediates(Expression* curr, T& visitor) {
       }
       visitor.visitScopeName(curr->default_);
     }
-    void visitCall(Call* curr) { visitor.visitNonScopeName(curr->target); }
+    void visitCall(Call* curr) {
+      visitor.visitNonScopeName(curr->target);
+      visitor.visitInt(curr->isReturn);
+    }
     void visitCallIndirect(CallIndirect* curr) {
-      visitor.visitNonScopeName(curr->fullType);
+      visitor.visitInt(curr->sig.params);
+      visitor.visitInt(curr->sig.results);
+      visitor.visitInt(curr->isReturn);
     }
     void visitLocalGet(LocalGet* curr) { visitor.visitIndex(curr->index); }
     void visitLocalSet(LocalSet* curr) { visitor.visitIndex(curr->index); }
@@ -176,6 +181,7 @@ template<typename T> void visitImmediates(Expression* curr, T& visitor) {
     void visitAtomicNotify(AtomicNotify* curr) {
       visitor.visitAddress(curr->offset);
     }
+    void visitAtomicFence(AtomicFence* curr) { visitor.visitInt(curr->order); }
     void visitSIMDExtract(SIMDExtract* curr) {
       visitor.visitInt(curr->op);
       visitor.visitInt(curr->index);
@@ -189,8 +195,13 @@ template<typename T> void visitImmediates(Expression* curr, T& visitor) {
         visitor.visitInt(x);
       }
     }
-    void visitSIMDBitselect(SIMDBitselect* curr) {}
+    void visitSIMDTernary(SIMDTernary* curr) { visitor.visitInt(curr->op); }
     void visitSIMDShift(SIMDShift* curr) { visitor.visitInt(curr->op); }
+    void visitSIMDLoad(SIMDLoad* curr) {
+      visitor.visitInt(curr->op);
+      visitor.visitAddress(curr->offset);
+      visitor.visitAddress(curr->align);
+    }
     void visitMemoryInit(MemoryInit* curr) {
       visitor.visitIndex(curr->segment);
     }
@@ -206,6 +217,13 @@ template<typename T> void visitImmediates(Expression* curr, T& visitor) {
     void visitHost(Host* curr) {
       visitor.visitInt(curr->op);
       visitor.visitNonScopeName(curr->nameOperand);
+    }
+    void visitTry(Try* curr) {}
+    void visitThrow(Throw* curr) { visitor.visitNonScopeName(curr->event); }
+    void visitRethrow(Rethrow* curr) {}
+    void visitBrOnExn(BrOnExn* curr) {
+      visitor.visitScopeName(curr->name);
+      visitor.visitNonScopeName(curr->event);
     }
     void visitNop(Nop* curr) {}
     void visitUnreachable(Unreachable* curr) {}

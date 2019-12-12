@@ -91,18 +91,14 @@ private:
         size = getTypeSize(value.type);
         break;
       }
-      case v128: {
-        // v128 not implemented yet
-        return false;
-      }
-      case exnref: {
-        // exnref cannot have literals
+      case v128:     // v128 not implemented yet
+      case anyref:   // anyref cannot have literals
+      case exnref: { // exnref cannot have literals
         return false;
       }
       case none:
-      case unreachable: {
-        WASM_UNREACHABLE();
-      }
+      case unreachable:
+        WASM_UNREACHABLE("unexpected type");
     }
     // compute the benefit, of replacing the uses with
     // one use + a set and then a get for each use

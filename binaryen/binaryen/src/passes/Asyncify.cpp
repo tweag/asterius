@@ -199,6 +199,13 @@
 //      (aside from the asyncify.* imports, which are always assumed to).
 //      Each entry can end in a '*' in which case it is matched as a prefix.
 //
+//      The list of imports can be a response file (which is convenient if it
+//      is long, or you don't want to bother escaping it on the commandline
+//      etc.), e.g. --pass-arg=asyncify-imports@@file.txt will load the
+//      contents of file.txt (note the double "@@" - the first is the
+//      separator for --pass-arg, and the second is the usual convention for
+//      indicating a response file).
+//
 //   --pass-arg=asyncify-ignore-imports
 //
 //      Ignore all imports (except for bynsyncify.*), that is, assume none of
@@ -212,15 +219,48 @@
 //      If that is true for your codebase, then this can be extremely useful
 //      as otherwise it looks like any indirect call can go to a lot of places.
 //
+//   --pass-arg=asyncify-blacklist@name1,name2,name3
+//
+//      If the blacklist is provided, then the functions in it will not be
+//      instrumented even if it looks like they need to. This can be useful
+//      if you know things the whole-program analysis doesn't, like if you
+//      know certain indirect calls are safe and won't unwind. But if you
+//      get the list wrong things will break (and in a production build user
+//      input might reach code paths you missed during testing, so it's hard
+//      to know you got this right), so this is not recommended unless you
+//      really know what are doing, and need to optimize every bit of speed
+//      and size. '*' wildcard matching supported.
+//
+//      As with --asyncify-imports, you can use a response file here.
+//
+//   --pass-arg=asyncify-whitelist@name1,name2,name3
+//
+//      If the whitelist is provided, then only the functions in the list
+//      will be instrumented. Like the blacklist, getting this wrong will
+//      break your application. '*' wildcard matching supported.
+//
+//      As with --asyncify-imports, you can use a response file here.
+//
+//  --pass-arg=asyncify-asserts
+//
+//      This enables extra asserts in the output, like checking if we in
+//      an unwind/rewind in an invalid place (this can be helpful for manual
+//      tweaking of the whitelist/blacklist).
+//
+// TODO When wasm has GC, extending the live ranges of locals can keep things
+//      alive unnecessarily. We may want to set locals to null at the end
+//      of their original range.
+//
 
 #include "ir/effects.h"
+#include "ir/find_all.h"
 #include "ir/literal-utils.h"
 #include "ir/memory-utils.h"
 #include "ir/module-utils.h"
 #include "ir/utils.h"
 #include "pass.h"
+#include "support/file.h"
 #include "support/string.h"
-#include "support/unique_deferring_queue.h"
 #include "wasm-builder.h"
 #include "wasm.h"
 
@@ -294,6 +334,67 @@ private:
   std::map<Name, Type> rev;
 };
 
+class PatternMatcher {
+public:
+  std::string designation;
+  std::set<Name> names;
+  std::set<std::string> patterns;
+  std::set<std::string> patternsMatched;
+  std::map<std::string, std::string> unescaped;
+
+  PatternMatcher(std::string designation,
+                 Module& module,
+                 const String::Split& list)
+    : designation(designation) {
+    // The lists contain human-readable strings. Turn them into the
+    // internal escaped names for later comparisons
+    for (auto& name : list) {
+      auto escaped = WasmBinaryBuilder::escape(name);
+      unescaped[escaped.str] = name;
+      if (name.find('*') != std::string::npos) {
+        patterns.insert(escaped.str);
+      } else {
+        auto* func = module.getFunctionOrNull(escaped);
+        if (!func) {
+          std::cerr << "warning: Asyncify " << designation
+                    << "list contained a non-existing function name: " << name
+                    << " (" << escaped << ")\n";
+        } else if (func->imported()) {
+          Fatal() << "Asyncify " << designation
+                  << "list contained an imported function name (use the import "
+                     "list for imports): "
+                  << name << '\n';
+        }
+        names.insert(escaped.str);
+      }
+    }
+  }
+
+  bool match(Name funcName) {
+    if (names.count(funcName) > 0) {
+      return true;
+    } else {
+      for (auto& pattern : patterns) {
+        if (String::wildcardMatch(pattern, funcName.str)) {
+          patternsMatched.insert(pattern);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  void checkPatternsMatches() {
+    for (auto& pattern : patterns) {
+      if (patternsMatched.count(pattern) == 0) {
+        std::cerr << "warning: Asyncify " << designation
+                  << "list contained a non-matching pattern: "
+                  << unescaped[pattern] << " (" << pattern << ")\n";
+      }
+    }
+  }
+};
+
 // Analyze the entire module to see which calls may change the state, that
 // is, start an unwind or rewind), either in itself or in something called
 // by it.
@@ -303,7 +404,8 @@ class ModuleAnalyzer {
   Module& module;
   bool canIndirectChangeState;
 
-  struct Info {
+  struct Info
+    : public ModuleUtils::CallGraphPropertyAnalysis<Info>::FunctionInfo {
     // If this function can start an unwind/rewind.
     bool canChangeState = false;
     // If this function is part of the runtime that receives an unwinding
@@ -317,8 +419,7 @@ class ModuleAnalyzer {
     // the top-most part is still marked as changing the state; so things
     // that call it are instrumented. This is not done for the bottom.
     bool isTopMostRuntime = false;
-    std::set<Function*> callsTo;
-    std::set<Function*> calledBy;
+    bool inBlacklist = false;
   };
 
   typedef std::map<Function*, Info> Map;
@@ -327,14 +428,21 @@ class ModuleAnalyzer {
 public:
   ModuleAnalyzer(Module& module,
                  std::function<bool(Name, Name)> canImportChangeState,
-                 bool canIndirectChangeState)
+                 bool canIndirectChangeState,
+                 const String::Split& blacklistInput,
+                 const String::Split& whitelistInput,
+                 bool asserts)
     : module(module), canIndirectChangeState(canIndirectChangeState),
-      globals(module) {
+      globals(module), asserts(asserts) {
+
+    PatternMatcher blacklist("black", module, blacklistInput);
+    PatternMatcher whitelist("white", module, whitelistInput);
+
     // Scan to see which functions can directly change the state.
     // Also handle the asyncify imports, removing them (as we will implement
     // them later), and replace calls to them with calls to the later proper
     // name.
-    ModuleUtils::ParallelFunctionMap<Info> scanner(
+    ModuleUtils::CallGraphPropertyAnalysis<Info> scanner(
       module, [&](Function* func, Info& info) {
         if (func->imported()) {
           // The relevant asyncify imports can definitely change the state.
@@ -349,6 +457,9 @@ public:
         }
         struct Walker : PostWalker<Walker> {
           void visitCall(Call* curr) {
+            if (curr->isReturn) {
+              Fatal() << "tail calls not yet supported in asyncify";
+            }
             auto* target = module->getFunction(curr->target);
             if (target->imported() && target->module == ASYNCIFY) {
               // Redirect the imports to the functions we'll add later.
@@ -370,11 +481,12 @@ public:
                 Fatal() << "call to unidenfied asyncify import: "
                         << target->base;
               }
-              return;
             }
-            info->callsTo.insert(target);
           }
           void visitCallIndirect(CallIndirect* curr) {
+            if (curr->isReturn) {
+              Fatal() << "tail calls not yet supported in asyncify";
+            }
             if (canIndirectChangeState) {
               info->canChangeState = true;
             }
@@ -382,11 +494,13 @@ public:
           }
           Info* info;
           Module* module;
+          ModuleAnalyzer* analyzer;
           bool canIndirectChangeState;
         };
         Walker walker;
         walker.info = &info;
         walker.module = &module;
+        walker.analyzer = this;
         walker.canIndirectChangeState = canIndirectChangeState;
         walker.walk(func->body);
 
@@ -398,43 +512,58 @@ public:
         }
       });
 
-    map.swap(scanner.map);
-
-    // Remove the asyncify imports, if any.
-    for (auto& pair : map) {
-      auto* func = pair.first;
-      if (func->imported() && func->module == ASYNCIFY) {
-        module.removeFunction(func->name);
-      }
-    }
-
-    // Find what is called by what.
-    for (auto& pair : map) {
+    // Functions in the blacklist are assumed to not change the state.
+    for (auto& pair : scanner.map) {
       auto* func = pair.first;
       auto& info = pair.second;
-      for (auto* target : info.callsTo) {
-        map[target].calledBy.insert(func);
+      if (blacklist.match(func->name)) {
+        info.inBlacklist = true;
+        info.canChangeState = false;
       }
     }
 
-    // Close over, finding all functions that can reach something that can
-    // change the state.
-    // The work queue contains an item we just learned can change the state.
-    UniqueDeferredQueue<Function*> work;
-    for (auto& func : module.functions) {
-      if (map[func.get()].canChangeState) {
-        work.push(func.get());
+    // Remove the asyncify imports, if any, and any calls to them.
+    std::vector<Name> funcsToDelete;
+    for (auto& pair : scanner.map) {
+      auto* func = pair.first;
+      auto& callsTo = pair.second.callsTo;
+      if (func->imported() && func->module == ASYNCIFY) {
+        funcsToDelete.push_back(func->name);
+      }
+      std::vector<Function*> callersToDelete;
+      for (auto* target : callsTo) {
+        if (target->imported() && target->module == ASYNCIFY) {
+          callersToDelete.push_back(target);
+        }
+      }
+      for (auto* target : callersToDelete) {
+        callsTo.erase(target);
       }
     }
-    while (!work.empty()) {
-      auto* func = work.pop();
-      for (auto* caller : map[func].calledBy) {
-        if (!map[caller].canChangeState && !map[caller].isBottomMostRuntime) {
-          map[caller].canChangeState = true;
-          work.push(caller);
+    for (auto name : funcsToDelete) {
+      module.removeFunction(name);
+    }
+
+    scanner.propagateBack([](const Info& info) { return info.canChangeState; },
+                          [](const Info& info) {
+                            return !info.isBottomMostRuntime &&
+                                   !info.inBlacklist;
+                          },
+                          [](Info& info) { info.canChangeState = true; });
+
+    map.swap(scanner.map);
+
+    if (!whitelistInput.empty()) {
+      // Only the functions in the whitelist can change the state.
+      for (auto& func : module.functions) {
+        if (!func->imported()) {
+          map[func.get()].canChangeState = whitelist.match(func->name);
         }
       }
     }
+
+    blacklist.checkPatternsMatches();
+    whitelist.checkPatternsMatches();
   }
 
   bool needsInstrumentation(Function* func) {
@@ -475,6 +604,7 @@ public:
         // TODO optimize the other case, at least by type
       }
       Module* module;
+      ModuleAnalyzer* analyzer;
       Map* map;
       bool canIndirectChangeState;
       bool canChangeState = false;
@@ -482,6 +612,7 @@ public:
     };
     Walker walker;
     walker.module = &module;
+    walker.analyzer = this;
     walker.map = &map;
     walker.canIndirectChangeState = canIndirectChangeState;
     walker.walk(curr);
@@ -492,6 +623,7 @@ public:
   }
 
   GlobalHelper globals;
+  bool asserts;
 };
 
 // Checks if something performs a call: either a direct or indirect call,
@@ -537,6 +669,10 @@ public:
                       makeGlobalGet(ASYNCIFY_STATE, i32),
                       makeConst(Literal(int32_t(value))));
   }
+
+  Expression* makeNegatedStateCheck(State value) {
+    return makeUnary(EqZInt32, makeStateCheck(value));
+  }
 };
 
 // Instrument control flow, around calls and adding skips for rewinding.
@@ -553,13 +689,16 @@ struct AsyncifyFlow : public Pass {
   runOnFunction(PassRunner* runner, Module* module_, Function* func_) override {
     module = module_;
     func = func_;
+    builder = make_unique<AsyncifyBuilder>(*module);
     // If the function cannot change our state, we have nothing to do -
     // we will never unwind or rewind the stack here.
     if (!analyzer->needsInstrumentation(func)) {
+      if (analyzer->asserts) {
+        addAssertsInNonInstrumented(func);
+      }
       return;
     }
     // Rewrite the function body.
-    builder = make_unique<AsyncifyBuilder>(*module);
     // Each function we enter will pop one from the stack, which is the index
     // of the next call to make.
     auto* block = builder->makeBlock(
@@ -567,7 +706,7 @@ struct AsyncifyFlow : public Pass {
                          State::Rewinding), // TODO: such checks can be !normal
                        makeCallIndexPop()),
        process(func->body)});
-    if (func->result != none) {
+    if (func->sig.results != Type::none) {
       // Rewriting control flow may alter things; make sure the function ends in
       // something valid (which the optimizer can remove later).
       block->list.push_back(builder->makeUnreachable());
@@ -702,7 +841,7 @@ private:
     // the state, so there should be nothing that can reach here - add it
     // earlier as necessary.
     // std::cout << *curr << '\n';
-    WASM_UNREACHABLE();
+    WASM_UNREACHABLE("unexpected expression type");
   }
 
   // Possibly skip some code, if rewinding.
@@ -771,6 +910,65 @@ private:
     // Emit an intrinsic for this, as we store the index into a local, and
     // don't want it to be seen by asyncify itself.
     return builder->makeCall(ASYNCIFY_GET_CALL_INDEX, {}, none);
+  }
+
+  // Given a function that is not instrumented - because we proved it doesn't
+  // need it, or depending on the whitelist/blacklist - add assertions that
+  // verify that property at runtime.
+  // Note that it is ok to run code while sleeping (if you are careful not
+  // to break assumptions in the program!) - so what is actually
+  // checked here is if the state *changes* in an uninstrumented function.
+  // That is, if in an uninstrumented function, a sleep should not begin
+  // from any call.
+  void addAssertsInNonInstrumented(Function* func) {
+    auto oldState = builder->addVar(func, i32);
+    // Add a check at the function entry.
+    func->body = builder->makeSequence(
+      builder->makeLocalSet(oldState,
+                            builder->makeGlobalGet(ASYNCIFY_STATE, i32)),
+      func->body);
+    // Add a check around every call.
+    struct Walker : PostWalker<Walker> {
+      void visitCall(Call* curr) {
+        // Tail calls will need another type of check, as they wouldn't reach
+        // this assertion.
+        assert(!curr->isReturn);
+        handleCall(curr);
+      }
+      void visitCallIndirect(CallIndirect* curr) {
+        // Tail calls will need another type of check, as they wouldn't reach
+        // this assertion.
+        assert(!curr->isReturn);
+        handleCall(curr);
+      }
+      void handleCall(Expression* call) {
+        auto* check = builder->makeIf(
+          builder->makeBinary(NeInt32,
+                              builder->makeGlobalGet(ASYNCIFY_STATE, i32),
+                              builder->makeLocalGet(oldState, i32)),
+          builder->makeUnreachable());
+        Expression* rep;
+        if (call->type.isConcrete()) {
+          auto temp = builder->addVar(func, call->type);
+          rep = builder->makeBlock({
+            builder->makeLocalSet(temp, call),
+            check,
+            builder->makeLocalGet(temp, call->type),
+          });
+        } else {
+          rep = builder->makeSequence(call, check);
+        }
+        replaceCurrent(rep);
+      }
+      Function* func;
+      AsyncifyBuilder* builder;
+      Index oldState;
+    };
+    Walker walker;
+    walker.func = func;
+    walker.builder = builder.get();
+    walker.oldState = oldState;
+    walker.walk(func->body);
   }
 };
 
@@ -847,7 +1045,7 @@ struct AsyncifyLocals : public WalkerPass<PostWalker<AsyncifyLocals>> {
     walk(func->body);
     // After the normal function body, emit a barrier before the postamble.
     Expression* barrier;
-    if (func->result == none) {
+    if (func->sig.results == Type::none) {
       // The function may have ended without a return; ensure one.
       barrier = builder->makeReturn();
     } else {
@@ -865,12 +1063,12 @@ struct AsyncifyLocals : public WalkerPass<PostWalker<AsyncifyLocals>> {
                             builder->makeSequence(func->body, barrier))),
        makeCallIndexPush(unwindIndex),
        makeLocalSaving()});
-    if (func->result != none) {
+    if (func->sig.results != Type::none) {
       // If we unwind, we must still "return" a value, even if it will be
       // ignored on the outside.
       newBody->list.push_back(
-        LiteralUtils::makeZero(func->result, *getModule()));
-      newBody->finalize(func->result);
+        LiteralUtils::makeZero(func->sig.results, *getModule()));
+      newBody->finalize(func->sig.results);
     }
     func->body = newBody;
     // Making things like returns conditional may alter types.
@@ -964,6 +1162,10 @@ private:
 
 } // anonymous namespace
 
+static std::string getFullImportName(Name module, Name base) {
+  return std::string(module.str) + '.' + base.str;
+}
+
 struct Asyncify : public Pass {
   void run(PassRunner* runner, Module* module) override {
     bool optimize = runner->options.optimizeLevel > 0;
@@ -972,32 +1174,54 @@ struct Asyncify : public Pass {
     MemoryUtils::ensureExists(module->memory);
 
     // Find which things can change the state.
-    auto stateChangingImports =
-      runner->options.getArgumentOrDefault("asyncify-imports", "");
+    auto stateChangingImports = String::trim(read_possible_response_file(
+      runner->options.getArgumentOrDefault("asyncify-imports", "")));
     auto ignoreImports =
       runner->options.getArgumentOrDefault("asyncify-ignore-imports", "");
     bool allImportsCanChangeState =
       stateChangingImports == "" && ignoreImports == "";
     String::Split listedImports(stateChangingImports, ",");
-    auto ignoreIndirect =
-      runner->options.getArgumentOrDefault("asyncify-ignore-indirect", "");
+    auto ignoreIndirect = runner->options.getArgumentOrDefault(
+                            "asyncify-ignore-indirect", "") == "";
+    String::Split blacklist(
+      String::trim(read_possible_response_file(
+        runner->options.getArgumentOrDefault("asyncify-blacklist", ""))),
+      ",");
+    String::Split whitelist(
+      String::trim(read_possible_response_file(
+        runner->options.getArgumentOrDefault("asyncify-whitelist", ""))),
+      ",");
+    auto asserts =
+      runner->options.getArgumentOrDefault("asyncify-asserts", "") != "";
+
+    blacklist = handleBracketingOperators(blacklist);
+    whitelist = handleBracketingOperators(whitelist);
+
+    if (!blacklist.empty() && !whitelist.empty()) {
+      Fatal() << "It makes no sense to use both a blacklist and a whitelist "
+                 "with asyncify.";
+    }
+
+    auto canImportChangeState = [&](Name module, Name base) {
+      if (allImportsCanChangeState) {
+        return true;
+      }
+      auto full = getFullImportName(module, base);
+      for (auto& listedImport : listedImports) {
+        if (String::wildcardMatch(listedImport, full)) {
+          return true;
+        }
+      }
+      return false;
+    };
 
     // Scan the module.
     ModuleAnalyzer analyzer(*module,
-                            [&](Name module, Name base) {
-                              if (allImportsCanChangeState) {
-                                return true;
-                              }
-                              std::string full =
-                                std::string(module.str) + '.' + base.str;
-                              for (auto& listedImport : listedImports) {
-                                if (String::wildcardMatch(listedImport, full)) {
-                                  return true;
-                                }
-                              }
-                              return false;
-                            },
-                            ignoreIndirect == "");
+                            canImportChangeState,
+                            ignoreIndirect,
+                            blacklist,
+                            whitelist,
+                            asserts);
 
     // Add necessary globals before we emit code to use them.
     addGlobals(module);
@@ -1100,7 +1324,7 @@ private:
                        builder.makeUnreachable()));
       body->finalize();
       auto* func = builder.makeFunction(
-        name, std::move(params), none, std::vector<Type>{}, body);
+        name, Signature(Type(params), Type::none), {}, body);
       module->addFunction(func);
       module->addExport(builder.makeExport(name, name, ExternalKind::Function));
     };
@@ -1113,5 +1337,144 @@ private:
 };
 
 Pass* createAsyncifyPass() { return new Asyncify(); }
+
+// Helper passes that can be run after Asyncify.
+
+template<bool neverRewind, bool neverUnwind, bool importsAlwaysUnwind>
+struct ModAsyncify
+  : public WalkerPass<LinearExecutionWalker<
+      ModAsyncify<neverRewind, neverUnwind, importsAlwaysUnwind>>> {
+  bool isFunctionParallel() override { return true; }
+
+  ModAsyncify* create() override {
+    return new ModAsyncify<neverRewind, neverUnwind, importsAlwaysUnwind>();
+  }
+
+  void doWalkFunction(Function* func) {
+    // Find the asyncify state name.
+    auto* unwind = this->getModule()->getExport(ASYNCIFY_STOP_UNWIND);
+    auto* unwindFunc = this->getModule()->getFunction(unwind->value);
+    FindAll<GlobalSet> sets(unwindFunc->body);
+    assert(sets.list.size() == 1);
+    asyncifyStateName = sets.list[0]->name;
+    // Walk and optimize.
+    this->walk(func->body);
+  }
+
+  // Note that we don't just implement GetGlobal as we may know the value is
+  // *not* 0, 1, or 2, but not know the actual value. So what we can say depends
+  // on the comparison being done on it, and so we implement Binary and
+  // Select.
+
+  void visitBinary(Binary* curr) {
+    // Check if this is a comparison of the asyncify state to a specific
+    // constant, which we may know is impossible.
+    bool flip = false;
+    if (curr->op == NeInt32) {
+      flip = true;
+    } else if (curr->op != EqInt32) {
+      return;
+    }
+    auto* c = curr->right->dynCast<Const>();
+    if (!c) {
+      return;
+    }
+    auto* get = curr->left->dynCast<GlobalGet>();
+    if (!get || get->name != asyncifyStateName) {
+      return;
+    }
+    // This is a comparison of the state to a constant, check if we know the
+    // value.
+    int32_t value;
+    auto checkedValue = c->value.geti32();
+    if ((checkedValue == int(State::Unwinding) && neverUnwind) ||
+        (checkedValue == int(State::Rewinding) && neverRewind)) {
+      // We know the state is checked against an impossible value.
+      value = 0;
+    } else if (checkedValue == int(State::Unwinding) && this->unwinding) {
+      // We know we are in fact unwinding right now.
+      value = 1;
+      unsetUnwinding();
+    } else {
+      return;
+    }
+    if (flip) {
+      value = 1 - value;
+    }
+    Builder builder(*this->getModule());
+    this->replaceCurrent(builder.makeConst(Literal(int32_t(value))));
+  }
+
+  void visitSelect(Select* curr) {
+    auto* get = curr->condition->dynCast<GlobalGet>();
+    if (!get || get->name != asyncifyStateName) {
+      return;
+    }
+    // This is a comparison of the state to zero, which means we are checking
+    // "if running normally, run this code, but if rewinding, ignore it". If
+    // we know we'll never rewind, we can optimize this.
+    if (neverRewind) {
+      Builder builder(*this->getModule());
+      curr->condition = builder.makeConst(Literal(int32_t(0)));
+    }
+  }
+
+  void visitCall(Call* curr) {
+    unsetUnwinding();
+    if (!importsAlwaysUnwind) {
+      return;
+    }
+    auto* target = this->getModule()->getFunction(curr->target);
+    if (!target->imported()) {
+      return;
+    }
+    // This is an import that definitely unwinds. Await the next check of
+    // the state in this linear execution trace, which we can turn into a
+    // constant.
+    this->unwinding = true;
+  }
+
+  void visitCallIndirect(CallIndirect* curr) { unsetUnwinding(); }
+
+  static void doNoteNonLinear(
+    ModAsyncify<neverRewind, neverUnwind, importsAlwaysUnwind>* self,
+    Expression**) {
+    // When control flow branches, stop tracking an unwinding.
+    self->unsetUnwinding();
+  }
+
+  void visitGlobalSet(GlobalSet* set) {
+    // TODO: this could be more precise
+    unsetUnwinding();
+  }
+
+private:
+  Name asyncifyStateName;
+
+  // Whether we just did a call to an import that indicates we are unwinding.
+  bool unwinding = false;
+
+  void unsetUnwinding() { this->unwinding = false; }
+};
+
+//
+// Assume imports that may unwind will always unwind, and that rewinding never
+// happens.
+//
+
+Pass* createModAsyncifyAlwaysOnlyUnwindPass() {
+  return new ModAsyncify<true, false, true>();
+}
+
+//
+// Assume that we never unwind, but may still rewind.
+//
+struct ModAsyncifyNeverUnwind : public Pass {
+  void run(PassRunner* runner, Module* module) override {}
+};
+
+Pass* createModAsyncifyNeverUnwindPass() {
+  return new ModAsyncify<false, true, false>();
+}
 
 } // namespace wasm

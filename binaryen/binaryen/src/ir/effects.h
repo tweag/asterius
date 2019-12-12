@@ -223,6 +223,9 @@ struct EffectAnalyzer
 
   void visitCall(Call* curr) {
     calls = true;
+    if (curr->isReturn) {
+      branches = true;
+    }
     if (debugInfo) {
       // debugInfo call imports must be preserved very strongly, do not
       // move code around them
@@ -230,7 +233,12 @@ struct EffectAnalyzer
       branches = true;
     }
   }
-  void visitCallIndirect(CallIndirect* curr) { calls = true; }
+  void visitCallIndirect(CallIndirect* curr) {
+    calls = true;
+    if (curr->isReturn) {
+      branches = true;
+    }
+  }
   void visitLocalGet(LocalGet* curr) { localsRead.insert(curr->index); }
   void visitLocalSet(LocalSet* curr) { localsWritten.insert(curr->index); }
   void visitGlobalGet(GlobalGet* curr) { globalsRead.insert(curr->name); }
@@ -286,12 +294,25 @@ struct EffectAnalyzer
     if (!ignoreImplicitTraps) {
       implicitTrap = true;
     }
-  };
+  }
+  void visitAtomicFence(AtomicFence* curr) {
+    // AtomicFence should not be reordered with any memory operations, so we set
+    // these to true.
+    readsMemory = true;
+    writesMemory = true;
+    isAtomic = true;
+  }
   void visitSIMDExtract(SIMDExtract* curr) {}
   void visitSIMDReplace(SIMDReplace* curr) {}
   void visitSIMDShuffle(SIMDShuffle* curr) {}
-  void visitSIMDBitselect(SIMDBitselect* curr) {}
+  void visitSIMDTernary(SIMDTernary* curr) {}
   void visitSIMDShift(SIMDShift* curr) {}
+  void visitSIMDLoad(SIMDLoad* curr) {
+    readsMemory = true;
+    if (!ignoreImplicitTraps) {
+      implicitTrap = true;
+    }
+  }
   void visitMemoryInit(MemoryInit* curr) {
     writesMemory = true;
     if (!ignoreImplicitTraps) {
@@ -366,6 +387,11 @@ struct EffectAnalyzer
     // Atomics are also sequentially consistent with memory.grow.
     isAtomic = true;
   }
+  void visitTry(Try* curr) {}
+  // We safely model throws as branches
+  void visitThrow(Throw* curr) { branches = true; }
+  void visitRethrow(Rethrow* curr) { branches = true; }
+  void visitBrOnExn(BrOnExn* curr) { breakNames.insert(curr->name); }
   void visitNop(Nop* curr) {}
   void visitUnreachable(Unreachable* curr) { branches = true; }
   void visitPush(Push* curr) { calls = true; }
