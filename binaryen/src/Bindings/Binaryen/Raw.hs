@@ -1652,6 +1652,7 @@ foreign import ccall unsafe "BinaryenLocalTee"
     BinaryenModuleRef ->
     BinaryenIndex ->
     BinaryenExpressionRef ->
+    BinaryenType ->
     IO BinaryenExpressionRef
 
 foreign import ccall unsafe "BinaryenGlobalGet"

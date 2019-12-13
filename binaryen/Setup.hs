@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall -threaded -rtsopts #-}
 
 import Data.Foldable
@@ -7,7 +6,6 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Simple.Setup
 import Distribution.Types.LocalBuildInfo
-import Distribution.Verbosity
 import System.Directory
 import System.FilePath
 
@@ -19,16 +17,13 @@ main =
         postConf = \_ _ _ _ -> pure (),
         buildHook = \pkg_descr lbi hooks flags -> do
           buildHook simpleUserHooks pkg_descr lbi hooks flags
-          let binaryen_builddir = binaryenBuildDir lbi
-              run prog args stdin_s =
+          let verbosity = fromFlag (configVerbosity (configFlags lbi))
+              binaryen_builddir = binaryenBuildDir lbi
+              run prog args =
                 let Just conf_prog = lookupProgram prog (withPrograms lbi)
                  in runProgramInvocation
-                      (fromFlagOrDefault normal (configVerbosity (configFlags lbi)))
+                      verbosity
                       (programInvocation conf_prog args)
-                        { progInvokeInput =
-                            Just
-                              stdin_s
-                        }
           for_
             [ [ "-DCMAKE_BUILD_TYPE=Release",
                 "-DBUILD_STATIC_LIB=ON",
@@ -41,7 +36,7 @@ main =
               ],
               ["--build", binaryen_builddir]
             ]
-            $ \args -> run (simpleProgram "cmake") args "",
+            $ \args -> run (simpleProgram "cmake") args,
         copyHook = \pkg_descr lbi hooks flags -> do
           copyHook simpleUserHooks pkg_descr lbi hooks flags
           let binaryen_builddir = binaryenBuildDir lbi
