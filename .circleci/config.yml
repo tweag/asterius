@@ -458,6 +458,49 @@ jobs:
       - store_artifacts:
           path: /tmp/test-report.csv
 
+  asterius-build-wabt:
+    docker:
+      - image: debian:sid
+    environment:
+      - ASTERIUS_BUILD_OPTIONS: -j2
+      - DEBIAN_FRONTEND: noninteractive
+      - GHCRTS: -N2
+      - LANG: C.UTF-8
+      - MAKEFLAGS: -j2
+      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            apt update
+            apt full-upgrade -y
+            apt install -y \
+              cmake \
+              curl \
+              g++ \
+              gawk \
+              git \
+              gnupg \
+              libffi-dev \
+              libgmp-dev \
+              libncurses-dev \
+              libnuma-dev \
+              make \
+              openssh-client \
+              python \
+              python3 \
+              xz-utils \
+              zlib1g-dev
+            mkdir -p ~/.local/bin
+            curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+      - checkout
+      - run:
+          name: Build wabt
+          command: |
+            git submodule update --init --recursive
+            stack --no-terminal -j2 build --test --no-run-tests wabt
+            stack --no-terminal exec wasm-objdump -- --help
+
   asterius-build-docs:
     docker:
       - image: debian:sid
@@ -525,4 +568,5 @@ workflows:
       - asterius-test-ghc-testsuite-debug-yolo:
           requires:
             - asterius-boot
+      - asterius-build-wabt
       - asterius-build-docs
