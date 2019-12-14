@@ -11,11 +11,8 @@ import Asterius.Ld
   ( LinkTask (..),
     linkModules,
   )
-import Asterius.Main
-  ( Target (..),
-    Task (..),
-    ahcDistMain,
-  )
+import Asterius.Main (ahcDistMain)
+import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
   ( AsteriusEntitySymbol,
@@ -49,30 +46,18 @@ linkNonMain store_m extra_syms = (m, link_report)
 
 distNonMain ::
   FilePath -> [AsteriusEntitySymbol] -> (Module, LinkReport) -> IO ()
-distNonMain p extra_syms = ahcDistMain
-  putStrLn
-  Task
-    { target = Node,
-      inputHS = p,
-      outputDirectory = takeDirectory p,
-      outputBaseName = takeBaseName p,
-      inputEntryMJS = Nothing,
-      tailCalls = False,
-      Asterius.Main.gcSections = True,
-      fullSymTable = True,
-      bundle = False,
-      Asterius.Main.binaryen = False,
-      Asterius.Main.debug = False,
-      outputLinkReport = False,
-      Asterius.Main.outputIR = False,
-      run = False,
-      Asterius.Main.verboseErr = True,
-      yolo = False,
-      extraGHCFlags = ["-no-hs-main"],
-      Asterius.Main.exportFunctions = [],
-      extraRootSymbols = extra_syms,
-      gcThreshold = 64
-    }
+distNonMain p extra_syms =
+  ahcDistMain
+    putStrLn
+    defTask
+      { inputHS = p,
+        outputDirectory = takeDirectory p,
+        outputBaseName = takeBaseName p,
+        fullSymTable = True,
+        Asterius.Main.Task.verboseErr = True,
+        extraGHCFlags = ["-no-hs-main"],
+        extraRootSymbols = extra_syms
+      }
 
 newAsteriusInstanceNonMain ::
   JSSession ->

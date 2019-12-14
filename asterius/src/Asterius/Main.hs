@@ -21,6 +21,7 @@ import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
+import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
   ( AsteriusEntitySymbol (..),
@@ -52,25 +53,6 @@ import System.FilePath
 import System.IO hiding (IO)
 import System.Process
 import Prelude hiding (IO)
-
-data Target
-  = Node
-  | Browser
-  deriving (Eq, Show)
-
-data Task
-  = Task
-      { target :: Target,
-        inputHS :: FilePath,
-        inputEntryMJS :: Maybe FilePath,
-        outputDirectory :: FilePath,
-        outputBaseName :: String,
-        tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr, yolo :: Bool,
-        extraGHCFlags :: [String],
-        exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol],
-        gcThreshold :: Int
-      }
-  deriving (Show)
 
 parseTask :: [String] -> Task
 parseTask args = case err_msgs of
@@ -126,34 +108,7 @@ parseTask args = case err_msgs of
           str_opt "gc-threshold" $ \s t -> t {gcThreshold = read s}
         ]
         args
-    task =
-      foldl'
-        (flip ($))
-        Task
-          { target = Node,
-            inputHS = error "Asterius.Main.parseTask: missing inputHS",
-            outputDirectory =
-              error
-                "Asterius.Main.parseTask: missing outputDirectory",
-            outputBaseName = error "Asterius.Main.parseTask: missing outputBaseName",
-            inputEntryMJS = Nothing,
-            tailCalls = False,
-            gcSections = True,
-            fullSymTable = False,
-            bundle = False,
-            binaryen = False,
-            debug = False,
-            outputLinkReport = False,
-            outputIR = False,
-            run = False,
-            verboseErr = False,
-            yolo = False,
-            extraGHCFlags = [],
-            exportFunctions = [],
-            extraRootSymbols = [],
-            gcThreshold = 64
-          }
-        task_trans_list
+    task = foldl' (flip ($)) defTask task_trans_list
 
 getTask :: IO Task
 getTask = parseTask <$> getArgs
