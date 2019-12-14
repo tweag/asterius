@@ -89,11 +89,9 @@ parseTask args = case err_msgs of
               { fullSymTable = True,
                 binaryen = True,
                 debug = True,
-                outputLinkReport = True,
                 outputIR = True,
                 verboseErr = True
               },
-          bool_opt "output-link-report" $ \t -> t {outputLinkReport = True},
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {verboseErr = True},
@@ -309,7 +307,7 @@ ahcDistMain logger task (final_m, report) = do
       out_js = outputDirectory task </> outputBaseName task <.> "js"
       out_html = outputDirectory task </> outputBaseName task <.> "html"
       out_link = outputDirectory task </> outputBaseName task <.> "link.txt"
-  when (outputLinkReport task) $ do
+  when (outputIR task) $ do
     logger $ "[INFO] Writing linking report to " <> show out_link
     writeFile out_link $ show report
   when (outputIR task) $ do
