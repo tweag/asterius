@@ -94,7 +94,7 @@ parseTask args = case err_msgs of
               },
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
-          bool_opt "verbose-err" $ \t -> t {verboseErr = True},
+          bool_opt "verbose-err" $ \t -> t {binaryen = True, verboseErr = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
           str_opt "ghc-option" $
             \s t -> t {extraGHCFlags = extraGHCFlags t <> [s]},
