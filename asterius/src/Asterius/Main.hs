@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -114,7 +113,7 @@ getTask :: IO Task
 getTask = parseTask <$> getArgs
 
 genPackageJSON :: Task -> Builder
-genPackageJSON Task {..} =
+genPackageJSON task =
   mconcat
     [ "{\"name\": \"",
       base_name,
@@ -124,7 +123,7 @@ genPackageJSON Task {..} =
       "}\n"
     ]
   where
-    base_name = string7 outputBaseName
+    base_name = string7 (outputBaseName task)
 
 genSymbolDict :: M.Map AsteriusEntitySymbol Int64 -> Builder
 genSymbolDict sym_map =
@@ -160,7 +159,7 @@ genExportStablePtrs sym_map export_funcs FFIMarshalState {..} =
     <> "]"
 
 genReq :: Task -> LinkReport -> Builder
-genReq Task {..} LinkReport {..} =
+genReq task LinkReport {..} =
   mconcat
     [ "export default {jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
@@ -168,26 +167,29 @@ genReq Task {..} LinkReport {..} =
       generateFFIExportObject bundledFFIMarshalState,
       ", symbolTable: ",
       genSymbolDict symbol_table,
-      if debug
+      if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,
       ", exportStablePtrs: ",
-      genExportStablePtrs staticsSymbolMap exportFunctions bundledFFIMarshalState,
+      genExportStablePtrs
+        staticsSymbolMap
+        (exportFunctions task)
+        bundledFFIMarshalState,
       ", tableSlots: ",
       intDec tableSlots,
       ", staticMBlocks: ",
       intDec staticMBlocks,
       ", yolo: ",
-      if yolo then "true" else "false",
+      if yolo task then "true" else "false",
       ", gcThreshold: ",
-      intHex gcThreshold,
+      intHex (gcThreshold task),
       "}",
       ";\n"
     ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
     symbol_table
-      | fullSymTable =
+      | fullSymTable task =
         raw_symbol_table
       | otherwise =
         M.restrictKeys raw_symbol_table $
@@ -197,11 +199,11 @@ genReq Task {..} LinkReport {..} =
                   M.elems $
                     ffiExportDecls bundledFFIMarshalState
             ]
-            <> S.fromList extraRootSymbols
+            <> S.fromList (extraRootSymbols task)
             <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
-genDefEntry Task {..} =
+genDefEntry task =
   mconcat
     [ "import * as rts from \"./rts.mjs\";\n",
       "import module from \"./",
@@ -212,7 +214,7 @@ genDefEntry Task {..} =
       " from \"./",
       out_base,
       ".req.mjs\";\n",
-      case target of
+      case target task of
         Node -> "process.on(\"unhandledRejection\", err => { throw err; });\n"
         Browser -> mempty,
       mconcat
@@ -233,10 +235,10 @@ genDefEntry Task {..} =
         ]
     ]
   where
-    out_base = string7 outputBaseName
+    out_base = string7 (outputBaseName task)
 
 genHTML :: Task -> Builder
-genHTML Task {..} =
+genHTML task =
   mconcat
     [ "<!doctype html>\n",
       "<html lang=\"en\">\n",
@@ -247,74 +249,74 @@ genHTML Task {..} =
       "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n",
       "</head>\n",
       "<body>\n",
-      if bundle
+      if bundle task
         then "<script src=\"" <> out_js <> "\"></script>\n"
         else "<script type=\"module\" src=\"" <> out_entry <> "\"></script>\n",
       "</body>\n",
       "</html>\n"
     ]
   where
-    out_base = string7 outputBaseName
-    out_entry = string7 $ outputBaseName <.> "mjs"
-    out_js = string7 $ outputBaseName <.> "js"
+    out_base = string7 (outputBaseName task)
+    out_entry = string7 $ outputBaseName task <.> "mjs"
+    out_js = string7 $ outputBaseName task <.> "js"
 
 builderWriteFile :: FilePath -> Builder -> IO ()
 builderWriteFile p b = withBinaryFile p WriteMode $ \h -> hPutBuilder h b
 
 ahcLink :: Task -> IO (Asterius.Types.Module, LinkReport)
-ahcLink Task {..} = do
-  ld_output <- temp (takeBaseName inputHS)
-  putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
+ahcLink task = do
+  ld_output <- temp (takeBaseName (inputHS task))
+  putStrLn $ "[INFO] Compiling " <> inputHS task <> " to WebAssembly"
   callProcess ahc $
     [ "--make",
       "-O",
-      "-i" <> takeDirectory inputHS,
+      "-i" <> takeDirectory (inputHS task),
       "-fexternal-interpreter",
       "-pgml" <> ahcLd,
       "-clear-package-db",
       "-global-package-db"
     ]
-      <> ["-optl--debug" | debug]
+      <> ["-optl--debug" | debug task]
       <> [ "-optl--extra-root-symbol=" <> c8SBS (entityName root_sym)
-           | root_sym <- extraRootSymbols
+           | root_sym <- extraRootSymbols task
          ]
       <> [ "-optl--export-function=" <> c8SBS (entityName export_func)
-           | export_func <- exportFunctions
+           | export_func <- exportFunctions task
          ]
-      <> ["-optl--no-gc-sections" | not gcSections]
-      <> ["-optl--binaryen" | binaryen]
-      <> ["-optl--verbose-err" | verboseErr]
-      <> extraGHCFlags
+      <> ["-optl--no-gc-sections" | not (gcSections task)]
+      <> ["-optl--binaryen" | binaryen task]
+      <> ["-optl--verbose-err" | verboseErr task]
+      <> extraGHCFlags task
       <> [ "-optl--output-ir="
-             <> outputDirectory
-             </> (outputBaseName <.> "unlinked.bin")
-           | outputIR
+             <> outputDirectory task
+             </> (outputBaseName task <.> "unlinked.bin")
+           | outputIR task
          ]
-      <> ["-optl--prog-name=" <> takeBaseName inputHS]
-      <> ["-o", ld_output, inputHS]
+      <> ["-optl--prog-name=" <> takeBaseName (inputHS task)]
+      <> ["-o", ld_output, inputHS task]
   r <- decodeFile ld_output
   removeFile ld_output
   pure r
 
 ahcDistMain ::
   (String -> IO ()) -> Task -> (Asterius.Types.Module, LinkReport) -> IO ()
-ahcDistMain logger task@Task {..} (final_m, report) = do
-  let out_package_json = outputDirectory </> "package.json"
-      out_wasm = outputDirectory </> outputBaseName <.> "wasm"
-      out_wasm_lib = outputDirectory </> outputBaseName <.> "wasm.mjs"
-      out_req = outputDirectory </> outputBaseName <.> "req.mjs"
-      out_entry = outputDirectory </> outputBaseName <.> "mjs"
-      out_js = outputDirectory </> outputBaseName <.> "js"
-      out_html = outputDirectory </> outputBaseName <.> "html"
-      out_link = outputDirectory </> outputBaseName <.> "link.txt"
-  when outputLinkReport $ do
+ahcDistMain logger task (final_m, report) = do
+  let out_package_json = outputDirectory task </> "package.json"
+      out_wasm = outputDirectory task </> outputBaseName task <.> "wasm"
+      out_wasm_lib = outputDirectory task </> outputBaseName task <.> "wasm.mjs"
+      out_req = outputDirectory task </> outputBaseName task <.> "req.mjs"
+      out_entry = outputDirectory task </> outputBaseName task <.> "mjs"
+      out_js = outputDirectory task </> outputBaseName task <.> "js"
+      out_html = outputDirectory task </> outputBaseName task <.> "html"
+      out_link = outputDirectory task </> outputBaseName task <.> "link.txt"
+  when (outputLinkReport task) $ do
     logger $ "[INFO] Writing linking report to " <> show out_link
     writeFile out_link $ show report
-  when outputIR $ do
+  when (outputIR task) $ do
     let p = out_wasm -<.> "linked.txt"
     logger $ "[INFO] Printing linked IR to " <> show p
     writeFile p $ show final_m
-  if binaryen
+  if binaryen task
     then
       ( do
           logger "[INFO] Converting linked IR to binaryen IR"
@@ -331,7 +333,7 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
           m_bin <- Binaryen.serializeModule m_ref
           logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
           BS.writeFile out_wasm m_bin
-          when outputIR $ do
+          when (outputIR task) $ do
             let p = out_wasm -<.> "binaryen-show.txt"
             logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
             case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
@@ -358,13 +360,13 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
           let conv_result =
                 runExcept $
                   WasmToolkit.makeModule
-                    tailCalls
+                    (tailCalls task)
                     (staticsSymbolMap report <> functionSymbolMap report)
                     final_m
           r <- case conv_result of
             Left err -> fail $ "[ERROR] Conversion failed with " <> show err
             Right r -> pure r
-          when outputIR $ do
+          when (outputIR task) $ do
             let p = out_wasm -<.> "wasm-toolkit.txt"
             logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
             writeFile p $ show r
@@ -374,25 +376,27 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
       )
   logger $
     "[INFO] Writing JavaScript runtime modules to "
-      <> show outputDirectory
+      <> show
+        (outputDirectory task)
   rts_files <- listDirectory $ dataDir </> "rts"
   for_ rts_files $
-    \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
+    \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory task </> f)
   logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
-  builderWriteFile out_wasm_lib $ genWasm (target == Node) outputBaseName
+  builderWriteFile out_wasm_lib $
+    genWasm (target task == Node) (outputBaseName task)
   logger $ "[INFO] Writing JavaScript req module to " <> show out_req
   builderWriteFile out_req $ genReq task report
   logger $ "[INFO] Writing JavaScript entry module to " <> show out_entry
-  case inputEntryMJS of
+  case inputEntryMJS task of
     Just in_entry -> copyFile in_entry out_entry
     _ -> builderWriteFile out_entry $ genDefEntry task
-  when bundle $ do
+  when (bundle task) $ do
     package_json_exist <- doesFileExist out_package_json
     unless package_json_exist $ do
       logger $ "[INFO] Writing a stub package.json to " <> show out_package_json
       builderWriteFile out_package_json $ genPackageJSON task
     logger $ "[INFO] Writing JavaScript bundled script to " <> show out_js
-    withCurrentDirectory outputDirectory $
+    withCurrentDirectory (outputDirectory task) $
       callProcess
         "node"
         [ parcel,
@@ -406,28 +410,28 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
           "--no-autoinstall",
           "--no-content-hash",
           "--target",
-          case target of
+          case target task of
             Node -> "node"
             Browser -> "browser",
           takeFileName out_entry
         ]
-  when (target == Browser) $ do
+  when (target task == Browser) $ do
     logger $ "[INFO] Writing HTML to " <> show out_html
     builderWriteFile out_html $ genHTML task
-  when (target == Node && run)
+  when (target task == Node && run task)
     $ withCurrentDirectory (takeDirectory out_wasm)
-    $ if bundle
+    $ if bundle task
       then do
         logger $ "[INFO] Running " <> out_js
         callProcess "node" $
-          ["--experimental-wasm-bigint" | debug]
-            <> ["--experimental-wasm-return-call" | tailCalls]
+          ["--experimental-wasm-bigint" | debug task]
+            <> ["--experimental-wasm-return-call" | tailCalls task]
             <> [takeFileName out_js]
       else do
         logger $ "[INFO] Running " <> out_entry
         callProcess "node" $
-          ["--experimental-wasm-bigint" | debug]
-            <> ["--experimental-wasm-return-call" | tailCalls]
+          ["--experimental-wasm-bigint" | debug task]
+            <> ["--experimental-wasm-return-call" | tailCalls task]
             <> ["--experimental-modules", takeFileName out_entry]
 
 ahcLinkMain :: Task -> IO ()

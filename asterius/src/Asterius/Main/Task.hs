@@ -2,12 +2,32 @@
 
 module Asterius.Main.Task
   ( Target (..),
-    Task (..),
+    Task,
+    target,
+    inputHS,
+    inputEntryMJS,
+    outputDirectory,
+    outputBaseName,
+    tailCalls,
+    gcSections,
+    fullSymTable,
+    bundle,
+    binaryen,
+    debug,
+    outputLinkReport,
+    outputIR,
+    run,
+    verboseErr,
+    yolo,
+    extraGHCFlags,
+    exportFunctions,
+    extraRootSymbols,
+    gcThreshold,
     defTask,
   )
 where
 
-import Asterius.Types
+import Asterius.Types (AsteriusEntitySymbol)
 
 data Target
   = Node
