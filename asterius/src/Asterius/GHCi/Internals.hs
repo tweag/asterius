@@ -77,6 +77,7 @@ import System.Directory
 import System.FilePath
 import System.IO
 import System.IO.Unsafe
+import System.Posix.Internals
 import System.Process
 import Type.Reflection
 import qualified UniqDSet as GHC
@@ -125,6 +126,8 @@ newGHCiJSSession = do
             ],
           nodeStdErrInherit = True
         }
+  _ <- c_close node_read_fd
+  _ <- c_close node_write_fd
   lo_ref <- newIORef Nothing
   pure
     ( s,
