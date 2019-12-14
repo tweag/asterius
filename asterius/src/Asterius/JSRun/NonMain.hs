@@ -53,7 +53,6 @@ distNonMain p extra_syms =
       { inputHS = p,
         outputDirectory = takeDirectory p,
         outputBaseName = takeBaseName p,
-        fullSymTable = True,
         Asterius.Main.Task.verboseErr = True,
         extraGHCFlags = ["-no-hs-main"],
         extraRootSymbols = extra_syms

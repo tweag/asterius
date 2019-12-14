@@ -12,7 +12,6 @@ main = do
       "--run",
       "--extra-root-symbol=Main_printInt_closure",
       "--extra-root-symbol=Main_fact_closure",
-      "--extra-root-symbol=base_GHCziBase_id_closure",
-      "--full-sym-table"
+      "--extra-root-symbol=base_GHCziBase_id_closure"
     ]
       <> args

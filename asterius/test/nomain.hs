@@ -15,7 +15,6 @@ main = do
     [ "--input-hs",
       "test/nomain/NoMain.hs",
       "--output-ir",
-      "--full-sym-table",
       "--ghc-option=-no-hs-main",
       "--extra-root-symbol=NoMain_x_closure"
     ]

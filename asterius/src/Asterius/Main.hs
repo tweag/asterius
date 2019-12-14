@@ -81,17 +81,10 @@ parseTask args = case err_msgs of
           str_opt "output-prefix" $ \s t -> t {outputBaseName = s},
           bool_opt "tail-calls" $ \t -> t {tailCalls = True},
           bool_opt "no-gc-sections" $ \t -> t {gcSections = False},
-          bool_opt "full-sym-table" $ \t -> t {fullSymTable = True},
           bool_opt "bundle" $ \t -> t {bundle = True},
           bool_opt "binaryen" $ \t -> t {binaryen = True},
           bool_opt "debug" $ \t ->
-            t
-              { fullSymTable = True,
-                binaryen = True,
-                debug = True,
-                outputIR = True,
-                verboseErr = True
-              },
+            t {binaryen = True, debug = True, outputIR = True, verboseErr = True},
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {binaryen = True, verboseErr = True},
@@ -186,19 +179,16 @@ genReq task LinkReport {..} =
     ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
-    symbol_table
-      | fullSymTable task =
-        raw_symbol_table
-      | otherwise =
-        M.restrictKeys raw_symbol_table $
-          S.fromList
-            [ ffiExportClosure
-              | FFIExportDecl {..} <-
-                  M.elems $
-                    ffiExportDecls bundledFFIMarshalState
-            ]
-            <> S.fromList (extraRootSymbols task)
-            <> rtsUsedSymbols
+    symbol_table =
+      M.restrictKeys raw_symbol_table $
+        S.fromList
+          [ ffiExportClosure
+            | FFIExportDecl {..} <-
+                M.elems $
+                  ffiExportDecls bundledFFIMarshalState
+          ]
+          <> S.fromList (extraRootSymbols task)
+          <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
 genDefEntry task =
