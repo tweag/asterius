@@ -123,7 +123,7 @@ runTestCase l_opts tlref TestCase {..} = catch m h
             ( proc "ahc-link" $
                 [ "--input-hs",
                   takeFileName tmp_case_path,
-                  "--binaryen",
+                  "--backend=binaryen",
                   "--verbose-err"
                 ]
                   <> l_opts

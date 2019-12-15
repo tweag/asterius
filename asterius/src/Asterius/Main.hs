@@ -82,12 +82,15 @@ parseTask args = case err_msgs of
           bool_opt "tail-calls" $ \t -> t {tailCalls = True},
           bool_opt "no-gc-sections" $ \t -> t {gcSections = False},
           bool_opt "bundle" $ \t -> t {bundle = True},
-          bool_opt "binaryen" $ \t -> t {binaryen = True},
+          str_opt "backend" $ \s t -> case s of
+            "wasm-toolkit" -> t {backend = WasmToolkit}
+            "binaryen" -> t {backend = Binaryen}
+            _ -> error $ "Unsupported backend " <> show s,
           bool_opt "debug" $ \t ->
-            t {binaryen = True, debug = True, outputIR = True, verboseErr = True},
+            t {backend = Binaryen, debug = True, outputIR = True, verboseErr = True},
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
-          bool_opt "verbose-err" $ \t -> t {binaryen = True, verboseErr = True},
+          bool_opt "verbose-err" $ \t -> t {backend = Binaryen, verboseErr = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
           str_opt "ghc-option" $
             \s t -> t {extraGHCFlags = extraGHCFlags t <> [s]},
@@ -272,7 +275,7 @@ ahcLink task = do
            | export_func <- exportFunctions task
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
-      <> ["-optl--binaryen" | binaryen task]
+      <> ["-optl--binaryen" | backend task == Binaryen]
       <> ["-optl--verbose-err" | verboseErr task]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
@@ -304,64 +307,60 @@ ahcDistMain logger task (final_m, report) = do
     let p = out_wasm -<.> "linked.txt"
     logger $ "[INFO] Printing linked IR to " <> show p
     writeFile p $ show final_m
-  if binaryen task
-    then
-      ( do
-          logger "[INFO] Converting linked IR to binaryen IR"
-          Binaryen.c_BinaryenSetDebugInfo 1
-          Binaryen.c_BinaryenSetOptimizeLevel 0
-          Binaryen.c_BinaryenSetShrinkLevel 0
-          m_ref <-
-            Binaryen.marshalModule
-              (staticsSymbolMap report <> functionSymbolMap report)
-              final_m
-          logger "[INFO] Validating binaryen IR"
-          pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
-          when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
-          m_bin <- Binaryen.serializeModule m_ref
-          logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
-          BS.writeFile out_wasm m_bin
-          when (outputIR task) $ do
-            let p = out_wasm -<.> "binaryen-show.txt"
-            logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
-            case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
-              Right (rest, _, r)
-                | LBS.null rest -> writeFile p (show r)
-                | otherwise -> fail "[ERROR] Re-parsing produced residule"
-              _ -> fail "[ERROR] Re-parsing failed"
-            let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
-            logger $
-              "[info] writing re-parsed wasm-toolkit ir as s-expresions to "
-                <> show out_wasm_binaryen_sexpr
-            -- disable colors when writing out the binaryen module
-            -- to a file, so that we don't get ANSI escape sequences
-            -- for colors. Reset the state after
-            cenabled <- Binaryen.isColorsEnabled
-            Binaryen.setColorsEnabled False
-            m_sexpr <- Binaryen.serializeModuleSExpr m_ref
-            Binaryen.setColorsEnabled cenabled
-            BS.writeFile out_wasm_binaryen_sexpr m_sexpr
-      )
-    else
-      ( do
-          logger "[INFO] Converting linked IR to wasm-toolkit IR"
-          let conv_result =
-                runExcept $
-                  WasmToolkit.makeModule
-                    (tailCalls task)
-                    (staticsSymbolMap report <> functionSymbolMap report)
-                    final_m
-          r <- case conv_result of
-            Left err -> fail $ "[ERROR] Conversion failed with " <> show err
-            Right r -> pure r
-          when (outputIR task) $ do
-            let p = out_wasm -<.> "wasm-toolkit.txt"
-            logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
-            writeFile p $ show r
-          logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
-          withBinaryFile out_wasm WriteMode $
-            \h -> hPutBuilder h $ execPut $ putModule r
-      )
+  case backend task of
+    Binaryen -> do
+      logger "[INFO] Converting linked IR to binaryen IR"
+      Binaryen.c_BinaryenSetDebugInfo 1
+      Binaryen.c_BinaryenSetOptimizeLevel 0
+      Binaryen.c_BinaryenSetShrinkLevel 0
+      m_ref <-
+        Binaryen.marshalModule
+          (staticsSymbolMap report <> functionSymbolMap report)
+          final_m
+      logger "[INFO] Validating binaryen IR"
+      pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
+      when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
+      m_bin <- Binaryen.serializeModule m_ref
+      logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+      BS.writeFile out_wasm m_bin
+      when (outputIR task) $ do
+        let p = out_wasm -<.> "binaryen-show.txt"
+        logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
+        case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
+          Right (rest, _, r)
+            | LBS.null rest -> writeFile p (show r)
+            | otherwise -> fail "[ERROR] Re-parsing produced residule"
+          _ -> fail "[ERROR] Re-parsing failed"
+        let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
+        logger $
+          "[info] writing re-parsed wasm-toolkit ir as s-expresions to "
+            <> show out_wasm_binaryen_sexpr
+        -- disable colors when writing out the binaryen module
+        -- to a file, so that we don't get ANSI escape sequences
+        -- for colors. Reset the state after
+        cenabled <- Binaryen.isColorsEnabled
+        Binaryen.setColorsEnabled False
+        m_sexpr <- Binaryen.serializeModuleSExpr m_ref
+        Binaryen.setColorsEnabled cenabled
+        BS.writeFile out_wasm_binaryen_sexpr m_sexpr
+    WasmToolkit -> do
+      logger "[INFO] Converting linked IR to wasm-toolkit IR"
+      let conv_result =
+            runExcept $
+              WasmToolkit.makeModule
+                (tailCalls task)
+                (staticsSymbolMap report <> functionSymbolMap report)
+                final_m
+      r <- case conv_result of
+        Left err -> fail $ "[ERROR] Conversion failed with " <> show err
+        Right r -> pure r
+      when (outputIR task) $ do
+        let p = out_wasm -<.> "wasm-toolkit.txt"
+        logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
+        writeFile p $ show r
+      logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+      withBinaryFile out_wasm WriteMode $
+        \h -> hPutBuilder h $ execPut $ putModule r
   logger $
     "[INFO] Writing JavaScript runtime modules to "
       <> show
