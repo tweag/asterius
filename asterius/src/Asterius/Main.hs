@@ -310,7 +310,7 @@ ahcDistMain logger task (final_m, report) = do
   case backend task of
     Binaryen -> do
       logger "[INFO] Converting linked IR to binaryen IR"
-      Binaryen.c_BinaryenSetDebugInfo 1
+      Binaryen.c_BinaryenSetDebugInfo $ if verboseErr task then 1 else 0
       Binaryen.c_BinaryenSetOptimizeLevel 0
       Binaryen.c_BinaryenSetShrinkLevel 0
       m_ref <-
