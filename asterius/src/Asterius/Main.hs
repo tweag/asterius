@@ -35,6 +35,7 @@ import Data.Binary.Put
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
@@ -86,8 +87,24 @@ parseTask args = case err_msgs of
             "wasm-toolkit" -> t {backend = WasmToolkit}
             "binaryen" -> t {backend = Binaryen}
             _ -> error $ "Unsupported backend " <> show s,
-          bool_opt "debug" $ \t ->
-            t {backend = Binaryen, debug = True, outputIR = True, verboseErr = True},
+          str_opt "optimize-level" $ \s t ->
+            let i = read s
+             in if i >= 0 && i <= 4
+                  then t {optimizeLevel = i}
+                  else error "Optimize level must be [0..4]",
+          str_opt "shrink-level" $ \s t ->
+            let i = read s
+             in if i >= 0 && i <= 2
+                  then t {shrinkLevel = i}
+                  else error "Shrink level must be [0..2]",
+          bool_opt "debug" $
+            \t ->
+              t
+                { backend = Binaryen,
+                  debug = True,
+                  outputIR = True,
+                  verboseErr = True
+                },
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {backend = Binaryen, verboseErr = True},
@@ -311,12 +328,15 @@ ahcDistMain logger task (final_m, report) = do
     Binaryen -> do
       logger "[INFO] Converting linked IR to binaryen IR"
       Binaryen.c_BinaryenSetDebugInfo $ if verboseErr task then 1 else 0
-      Binaryen.c_BinaryenSetOptimizeLevel 0
-      Binaryen.c_BinaryenSetShrinkLevel 0
+      Binaryen.c_BinaryenSetOptimizeLevel $ fromIntegral $ optimizeLevel task
+      Binaryen.c_BinaryenSetShrinkLevel $ fromIntegral $ shrinkLevel task
       m_ref <-
         Binaryen.marshalModule
           (staticsSymbolMap report <> functionSymbolMap report)
           final_m
+      when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
+        logger "[INFO] Running binaryen optimization"
+        Binaryen.c_BinaryenModuleOptimize m_ref
       logger "[INFO] Validating binaryen IR"
       pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
       when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
@@ -343,6 +363,7 @@ ahcDistMain logger task (final_m, report) = do
         m_sexpr <- Binaryen.serializeModuleSExpr m_ref
         Binaryen.setColorsEnabled cenabled
         BS.writeFile out_wasm_binaryen_sexpr m_sexpr
+      Binaryen.c_BinaryenModuleDispose m_ref
     WasmToolkit -> do
       logger "[INFO] Converting linked IR to wasm-toolkit IR"
       let conv_result =
@@ -358,9 +379,24 @@ ahcDistMain logger task (final_m, report) = do
         let p = out_wasm -<.> "wasm-toolkit.txt"
         logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
         writeFile p $ show r
+      fin <-
+        if optimizeLevel task > 0 || shrinkLevel task > 0
+          then do
+            logger "[INFO] Re-parsing wasm-toolkit IR with binaryen"
+            m_ref <-
+              BS.unsafeUseAsCStringLen
+                (LBS.toStrict $ toLazyByteString $ execPut $ putModule r)
+                $ \(p, l) -> Binaryen.c_BinaryenModuleRead p (fromIntegral l)
+            logger "[INFO] Running binaryen optimization"
+            Binaryen.c_BinaryenModuleOptimize m_ref
+            b <- Binaryen.serializeModule m_ref
+            Binaryen.c_BinaryenModuleDispose m_ref
+            pure $ Left b
+          else pure $ Right $ execPut $ putModule r
       logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
-      withBinaryFile out_wasm WriteMode $
-        \h -> hPutBuilder h $ execPut $ putModule r
+      case fin of
+        Left b -> BS.writeFile out_wasm b
+        Right b -> withBinaryFile out_wasm WriteMode $ \h -> hPutBuilder h b
   logger $
     "[INFO] Writing JavaScript runtime modules to "
       <> show
