@@ -58,7 +58,7 @@ data Task
 defTask :: Task
 defTask = Task
   { target = Node,
-    backend = WasmToolkit,
+    backend = Binaryen,
     optimizeLevel = 4,
     shrinkLevel = 2,
     inputHS = error "Asterius.Main.parseTask: missing inputHS",
