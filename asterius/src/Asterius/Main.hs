@@ -292,7 +292,6 @@ ahcLink task = do
            | export_func <- exportFunctions task
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
-      <> ["-optl--binaryen" | backend task == Binaryen]
       <> ["-optl--verbose-err" | verboseErr task]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
