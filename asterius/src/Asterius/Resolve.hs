@@ -79,7 +79,6 @@ makeInfoTableSet AsteriusModule {..} sym_map =
 
 resolveAsteriusModule ::
   Bool ->
-  Bool ->
   FFIMarshalState ->
   AsteriusModule ->
   Int64 ->
@@ -90,7 +89,7 @@ resolveAsteriusModule ::
     Int,
     Int
   )
-resolveAsteriusModule debug _ bundled_ffi_state m_globals_resolved func_start_addr data_start_addr =
+resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr data_start_addr =
   (new_mod, ss_sym_map, func_sym_map, table_slots, initial_mblocks)
   where
     (func_sym_map, last_func_addr) =
@@ -142,12 +141,11 @@ linkStart ::
   Bool ->
   Bool ->
   Bool ->
-  Bool ->
   AsteriusModule ->
   S.Set AsteriusEntitySymbol ->
   [AsteriusEntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
-linkStart debug gc_sections binaryen verbose_err store root_syms export_funcs =
+linkStart debug gc_sections verbose_err store root_syms export_funcs =
   ( merged_m,
     result_m,
     mempty
@@ -184,7 +182,6 @@ linkStart debug gc_sections binaryen verbose_err store root_syms export_funcs =
     (!result_m, !ss_sym_map, !func_sym_map, !tbl_slots, !static_mbs) =
       resolveAsteriusModule
         debug
-        binaryen
         bundled_ffi_state
         merged_m
         (1 .|. functionTag `shiftL` 32)

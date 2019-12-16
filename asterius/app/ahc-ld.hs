@@ -20,7 +20,6 @@ parseLinkTask args = do
       linkModule = mempty,
       debug = "--debug" `elem` args,
       gcSections = "--no-gc-sections" `notElem` args,
-      binaryen = "--binaryen" `elem` args,
       verboseErr = "--verbose-err" `elem` args,
       outputIR =
         find ("--output-ir=" `isPrefixOf`) args

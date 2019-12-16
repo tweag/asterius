@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -21,6 +20,7 @@ import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
+import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
   ( AsteriusEntitySymbol (..),
@@ -35,6 +35,7 @@ import Data.Binary.Put
 import qualified Data.ByteString as BS
 import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
@@ -52,25 +53,6 @@ import System.FilePath
 import System.IO hiding (IO)
 import System.Process
 import Prelude hiding (IO)
-
-data Target
-  = Node
-  | Browser
-  deriving (Eq, Show)
-
-data Task
-  = Task
-      { target :: Target,
-        inputHS :: FilePath,
-        inputEntryMJS :: Maybe FilePath,
-        outputDirectory :: FilePath,
-        outputBaseName :: String,
-        tailCalls, gcSections, fullSymTable, bundle, binaryen, debug, outputLinkReport, outputIR, run, verboseErr, yolo :: Bool,
-        extraGHCFlags :: [String],
-        exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol],
-        gcThreshold :: Int
-      }
-  deriving (Show)
 
 parseTask :: [String] -> Task
 parseTask args = case err_msgs of
@@ -100,22 +82,32 @@ parseTask args = case err_msgs of
           str_opt "output-prefix" $ \s t -> t {outputBaseName = s},
           bool_opt "tail-calls" $ \t -> t {tailCalls = True},
           bool_opt "no-gc-sections" $ \t -> t {gcSections = False},
-          bool_opt "full-sym-table" $ \t -> t {fullSymTable = True},
           bool_opt "bundle" $ \t -> t {bundle = True},
-          bool_opt "binaryen" $ \t -> t {binaryen = True},
-          bool_opt "debug" $ \t ->
-            t
-              { fullSymTable = True,
-                binaryen = True,
-                debug = True,
-                outputLinkReport = True,
-                outputIR = True,
-                verboseErr = True
-              },
-          bool_opt "output-link-report" $ \t -> t {outputLinkReport = True},
+          str_opt "backend" $ \s t -> case s of
+            "wasm-toolkit" -> t {backend = WasmToolkit}
+            "binaryen" -> t {backend = Binaryen}
+            _ -> error $ "Unsupported backend " <> show s,
+          str_opt "optimize-level" $ \s t ->
+            let i = read s
+             in if i >= 0 && i <= 4
+                  then t {optimizeLevel = i}
+                  else error "Optimize level must be [0..4]",
+          str_opt "shrink-level" $ \s t ->
+            let i = read s
+             in if i >= 0 && i <= 2
+                  then t {shrinkLevel = i}
+                  else error "Shrink level must be [0..2]",
+          bool_opt "debug" $
+            \t ->
+              t
+                { backend = Binaryen,
+                  debug = True,
+                  outputIR = True,
+                  verboseErr = True
+                },
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
-          bool_opt "verbose-err" $ \t -> t {verboseErr = True},
+          bool_opt "verbose-err" $ \t -> t {backend = Binaryen, verboseErr = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
           str_opt "ghc-option" $
             \s t -> t {extraGHCFlags = extraGHCFlags t <> [s]},
@@ -126,40 +118,13 @@ parseTask args = case err_msgs of
           str_opt "gc-threshold" $ \s t -> t {gcThreshold = read s}
         ]
         args
-    task =
-      foldl'
-        (flip ($))
-        Task
-          { target = Node,
-            inputHS = error "Asterius.Main.parseTask: missing inputHS",
-            outputDirectory =
-              error
-                "Asterius.Main.parseTask: missing outputDirectory",
-            outputBaseName = error "Asterius.Main.parseTask: missing outputBaseName",
-            inputEntryMJS = Nothing,
-            tailCalls = False,
-            gcSections = True,
-            fullSymTable = False,
-            bundle = False,
-            binaryen = False,
-            debug = False,
-            outputLinkReport = False,
-            outputIR = False,
-            run = False,
-            verboseErr = False,
-            yolo = False,
-            extraGHCFlags = [],
-            exportFunctions = [],
-            extraRootSymbols = [],
-            gcThreshold = 64
-          }
-        task_trans_list
+    task = foldl' (flip ($)) defTask task_trans_list
 
 getTask :: IO Task
 getTask = parseTask <$> getArgs
 
 genPackageJSON :: Task -> Builder
-genPackageJSON Task {..} =
+genPackageJSON task =
   mconcat
     [ "{\"name\": \"",
       base_name,
@@ -169,7 +134,7 @@ genPackageJSON Task {..} =
       "}\n"
     ]
   where
-    base_name = string7 outputBaseName
+    base_name = string7 (outputBaseName task)
 
 genSymbolDict :: M.Map AsteriusEntitySymbol Int64 -> Builder
 genSymbolDict sym_map =
@@ -205,7 +170,7 @@ genExportStablePtrs sym_map export_funcs FFIMarshalState {..} =
     <> "]"
 
 genReq :: Task -> LinkReport -> Builder
-genReq Task {..} LinkReport {..} =
+genReq task LinkReport {..} =
   mconcat
     [ "export default {jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
@@ -213,40 +178,40 @@ genReq Task {..} LinkReport {..} =
       generateFFIExportObject bundledFFIMarshalState,
       ", symbolTable: ",
       genSymbolDict symbol_table,
-      if debug
+      if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,
       ", exportStablePtrs: ",
-      genExportStablePtrs staticsSymbolMap exportFunctions bundledFFIMarshalState,
+      genExportStablePtrs
+        staticsSymbolMap
+        (exportFunctions task)
+        bundledFFIMarshalState,
       ", tableSlots: ",
       intDec tableSlots,
       ", staticMBlocks: ",
       intDec staticMBlocks,
       ", yolo: ",
-      if yolo then "true" else "false",
+      if yolo task then "true" else "false",
       ", gcThreshold: ",
-      intHex gcThreshold,
+      intHex (gcThreshold task),
       "}",
       ";\n"
     ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
-    symbol_table
-      | fullSymTable =
-        raw_symbol_table
-      | otherwise =
-        M.restrictKeys raw_symbol_table $
-          S.fromList
-            [ ffiExportClosure
-              | FFIExportDecl {..} <-
-                  M.elems $
-                    ffiExportDecls bundledFFIMarshalState
-            ]
-            <> S.fromList extraRootSymbols
-            <> rtsUsedSymbols
+    symbol_table =
+      M.restrictKeys raw_symbol_table $
+        S.fromList
+          [ ffiExportClosure
+            | FFIExportDecl {..} <-
+                M.elems $
+                  ffiExportDecls bundledFFIMarshalState
+          ]
+          <> S.fromList (extraRootSymbols task)
+          <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
-genDefEntry Task {..} =
+genDefEntry task =
   mconcat
     [ "import * as rts from \"./rts.mjs\";\n",
       "import module from \"./",
@@ -257,7 +222,7 @@ genDefEntry Task {..} =
       " from \"./",
       out_base,
       ".req.mjs\";\n",
-      case target of
+      case target task of
         Node -> "process.on(\"unhandledRejection\", err => { throw err; });\n"
         Browser -> mempty,
       mconcat
@@ -278,10 +243,10 @@ genDefEntry Task {..} =
         ]
     ]
   where
-    out_base = string7 outputBaseName
+    out_base = string7 (outputBaseName task)
 
 genHTML :: Task -> Builder
-genHTML Task {..} =
+genHTML task =
   mconcat
     [ "<!doctype html>\n",
       "<html lang=\"en\">\n",
@@ -292,152 +257,168 @@ genHTML Task {..} =
       "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n",
       "</head>\n",
       "<body>\n",
-      if bundle
+      if bundle task
         then "<script src=\"" <> out_js <> "\"></script>\n"
         else "<script type=\"module\" src=\"" <> out_entry <> "\"></script>\n",
       "</body>\n",
       "</html>\n"
     ]
   where
-    out_base = string7 outputBaseName
-    out_entry = string7 $ outputBaseName <.> "mjs"
-    out_js = string7 $ outputBaseName <.> "js"
+    out_base = string7 (outputBaseName task)
+    out_entry = string7 $ outputBaseName task <.> "mjs"
+    out_js = string7 $ outputBaseName task <.> "js"
 
 builderWriteFile :: FilePath -> Builder -> IO ()
 builderWriteFile p b = withBinaryFile p WriteMode $ \h -> hPutBuilder h b
 
 ahcLink :: Task -> IO (Asterius.Types.Module, LinkReport)
-ahcLink Task {..} = do
-  ld_output <- temp (takeBaseName inputHS)
-  putStrLn $ "[INFO] Compiling " <> inputHS <> " to WebAssembly"
+ahcLink task = do
+  ld_output <- temp (takeBaseName (inputHS task))
+  putStrLn $ "[INFO] Compiling " <> inputHS task <> " to WebAssembly"
   callProcess ahc $
     [ "--make",
       "-O",
-      "-i" <> takeDirectory inputHS,
+      "-i" <> takeDirectory (inputHS task),
       "-fexternal-interpreter",
       "-pgml" <> ahcLd,
       "-clear-package-db",
       "-global-package-db"
     ]
-      <> ["-optl--debug" | debug]
+      <> ["-optl--debug" | debug task]
       <> [ "-optl--extra-root-symbol=" <> c8SBS (entityName root_sym)
-           | root_sym <- extraRootSymbols
+           | root_sym <- extraRootSymbols task
          ]
       <> [ "-optl--export-function=" <> c8SBS (entityName export_func)
-           | export_func <- exportFunctions
+           | export_func <- exportFunctions task
          ]
-      <> ["-optl--no-gc-sections" | not gcSections]
-      <> ["-optl--binaryen" | binaryen]
-      <> ["-optl--verbose-err" | verboseErr]
-      <> extraGHCFlags
+      <> ["-optl--no-gc-sections" | not (gcSections task)]
+      <> ["-optl--verbose-err" | verboseErr task]
+      <> extraGHCFlags task
       <> [ "-optl--output-ir="
-             <> outputDirectory
-             </> (outputBaseName <.> "unlinked.bin")
-           | outputIR
+             <> outputDirectory task
+             </> (outputBaseName task <.> "unlinked.bin")
+           | outputIR task
          ]
-      <> ["-optl--prog-name=" <> takeBaseName inputHS]
-      <> ["-o", ld_output, inputHS]
+      <> ["-optl--prog-name=" <> takeBaseName (inputHS task)]
+      <> ["-o", ld_output, inputHS task]
   r <- decodeFile ld_output
   removeFile ld_output
   pure r
 
 ahcDistMain ::
   (String -> IO ()) -> Task -> (Asterius.Types.Module, LinkReport) -> IO ()
-ahcDistMain logger task@Task {..} (final_m, report) = do
-  let out_package_json = outputDirectory </> "package.json"
-      out_wasm = outputDirectory </> outputBaseName <.> "wasm"
-      out_wasm_lib = outputDirectory </> outputBaseName <.> "wasm.mjs"
-      out_req = outputDirectory </> outputBaseName <.> "req.mjs"
-      out_entry = outputDirectory </> outputBaseName <.> "mjs"
-      out_js = outputDirectory </> outputBaseName <.> "js"
-      out_html = outputDirectory </> outputBaseName <.> "html"
-      out_link = outputDirectory </> outputBaseName <.> "link.txt"
-  when outputLinkReport $ do
+ahcDistMain logger task (final_m, report) = do
+  let out_package_json = outputDirectory task </> "package.json"
+      out_wasm = outputDirectory task </> outputBaseName task <.> "wasm"
+      out_wasm_lib = outputDirectory task </> outputBaseName task <.> "wasm.mjs"
+      out_req = outputDirectory task </> outputBaseName task <.> "req.mjs"
+      out_entry = outputDirectory task </> outputBaseName task <.> "mjs"
+      out_js = outputDirectory task </> outputBaseName task <.> "js"
+      out_html = outputDirectory task </> outputBaseName task <.> "html"
+      out_link = outputDirectory task </> outputBaseName task <.> "link.txt"
+  when (outputIR task) $ do
     logger $ "[INFO] Writing linking report to " <> show out_link
     writeFile out_link $ show report
-  when outputIR $ do
+  when (outputIR task) $ do
     let p = out_wasm -<.> "linked.txt"
     logger $ "[INFO] Printing linked IR to " <> show p
     writeFile p $ show final_m
-  if binaryen
-    then
-      ( do
-          logger "[INFO] Converting linked IR to binaryen IR"
-          Binaryen.c_BinaryenSetDebugInfo 1
-          Binaryen.c_BinaryenSetOptimizeLevel 0
-          Binaryen.c_BinaryenSetShrinkLevel 0
-          m_ref <-
-            Binaryen.marshalModule
-              (staticsSymbolMap report <> functionSymbolMap report)
-              final_m
-          logger "[INFO] Validating binaryen IR"
-          pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
-          when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
-          m_bin <- Binaryen.serializeModule m_ref
-          logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
-          BS.writeFile out_wasm m_bin
-          when outputIR $ do
-            let p = out_wasm -<.> "binaryen-show.txt"
-            logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
-            case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
-              Right (rest, _, r)
-                | LBS.null rest -> writeFile p (show r)
-                | otherwise -> fail "[ERROR] Re-parsing produced residule"
-              _ -> fail "[ERROR] Re-parsing failed"
-            let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
-            logger $
-              "[info] writing re-parsed wasm-toolkit ir as s-expresions to "
-                <> show out_wasm_binaryen_sexpr
-            -- disable colors when writing out the binaryen module
-            -- to a file, so that we don't get ANSI escape sequences
-            -- for colors. Reset the state after
-            cenabled <- Binaryen.isColorsEnabled
-            Binaryen.setColorsEnabled False
-            m_sexpr <- Binaryen.serializeModuleSExpr m_ref
-            Binaryen.setColorsEnabled cenabled
-            BS.writeFile out_wasm_binaryen_sexpr m_sexpr
-      )
-    else
-      ( do
-          logger "[INFO] Converting linked IR to wasm-toolkit IR"
-          let conv_result =
-                runExcept $
-                  WasmToolkit.makeModule
-                    tailCalls
-                    (staticsSymbolMap report <> functionSymbolMap report)
-                    final_m
-          r <- case conv_result of
-            Left err -> fail $ "[ERROR] Conversion failed with " <> show err
-            Right r -> pure r
-          when outputIR $ do
-            let p = out_wasm -<.> "wasm-toolkit.txt"
-            logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
-            writeFile p $ show r
-          logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
-          withBinaryFile out_wasm WriteMode $
-            \h -> hPutBuilder h $ execPut $ putModule r
-      )
+  case backend task of
+    Binaryen -> do
+      logger "[INFO] Converting linked IR to binaryen IR"
+      Binaryen.c_BinaryenSetDebugInfo $ if verboseErr task then 1 else 0
+      Binaryen.c_BinaryenSetOptimizeLevel $ fromIntegral $ optimizeLevel task
+      Binaryen.c_BinaryenSetShrinkLevel $ fromIntegral $ shrinkLevel task
+      m_ref <-
+        Binaryen.marshalModule
+          (staticsSymbolMap report <> functionSymbolMap report)
+          final_m
+      when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
+        logger "[INFO] Running binaryen optimization"
+        Binaryen.c_BinaryenModuleOptimize m_ref
+      logger "[INFO] Validating binaryen IR"
+      pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
+      when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
+      m_bin <- Binaryen.serializeModule m_ref
+      logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+      BS.writeFile out_wasm m_bin
+      when (outputIR task) $ do
+        let p = out_wasm -<.> "binaryen-show.txt"
+        logger $ "[info] writing re-parsed wasm-toolkit ir to " <> show p
+        case runGetOrFail Wasm.getModule (LBS.fromStrict m_bin) of
+          Right (rest, _, r)
+            | LBS.null rest -> writeFile p (show r)
+            | otherwise -> fail "[ERROR] Re-parsing produced residule"
+          _ -> fail "[ERROR] Re-parsing failed"
+        let out_wasm_binaryen_sexpr = out_wasm -<.> "binaryen-sexpr.txt"
+        logger $
+          "[info] writing re-parsed wasm-toolkit ir as s-expresions to "
+            <> show out_wasm_binaryen_sexpr
+        -- disable colors when writing out the binaryen module
+        -- to a file, so that we don't get ANSI escape sequences
+        -- for colors. Reset the state after
+        cenabled <- Binaryen.isColorsEnabled
+        Binaryen.setColorsEnabled False
+        m_sexpr <- Binaryen.serializeModuleSExpr m_ref
+        Binaryen.setColorsEnabled cenabled
+        BS.writeFile out_wasm_binaryen_sexpr m_sexpr
+      Binaryen.c_BinaryenModuleDispose m_ref
+    WasmToolkit -> do
+      logger "[INFO] Converting linked IR to wasm-toolkit IR"
+      let conv_result =
+            runExcept $
+              WasmToolkit.makeModule
+                (tailCalls task)
+                (staticsSymbolMap report <> functionSymbolMap report)
+                final_m
+      r <- case conv_result of
+        Left err -> fail $ "[ERROR] Conversion failed with " <> show err
+        Right r -> pure r
+      when (outputIR task) $ do
+        let p = out_wasm -<.> "wasm-toolkit.txt"
+        logger $ "[INFO] Writing wasm-toolkit IR to " <> show p
+        writeFile p $ show r
+      fin <-
+        if optimizeLevel task > 0 || shrinkLevel task > 0
+          then do
+            logger "[INFO] Re-parsing wasm-toolkit IR with binaryen"
+            m_ref <-
+              BS.unsafeUseAsCStringLen
+                (LBS.toStrict $ toLazyByteString $ execPut $ putModule r)
+                $ \(p, l) -> Binaryen.c_BinaryenModuleRead p (fromIntegral l)
+            logger "[INFO] Running binaryen optimization"
+            Binaryen.c_BinaryenModuleOptimize m_ref
+            b <- Binaryen.serializeModule m_ref
+            Binaryen.c_BinaryenModuleDispose m_ref
+            pure $ Left b
+          else pure $ Right $ execPut $ putModule r
+      logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
+      case fin of
+        Left b -> BS.writeFile out_wasm b
+        Right b -> withBinaryFile out_wasm WriteMode $ \h -> hPutBuilder h b
   logger $
     "[INFO] Writing JavaScript runtime modules to "
-      <> show outputDirectory
+      <> show
+        (outputDirectory task)
   rts_files <- listDirectory $ dataDir </> "rts"
   for_ rts_files $
-    \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory </> f)
+    \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory task </> f)
   logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
-  builderWriteFile out_wasm_lib $ genWasm (target == Node) outputBaseName
+  builderWriteFile out_wasm_lib $
+    genWasm (target task == Node) (outputBaseName task)
   logger $ "[INFO] Writing JavaScript req module to " <> show out_req
   builderWriteFile out_req $ genReq task report
   logger $ "[INFO] Writing JavaScript entry module to " <> show out_entry
-  case inputEntryMJS of
+  case inputEntryMJS task of
     Just in_entry -> copyFile in_entry out_entry
     _ -> builderWriteFile out_entry $ genDefEntry task
-  when bundle $ do
+  when (bundle task) $ do
     package_json_exist <- doesFileExist out_package_json
     unless package_json_exist $ do
       logger $ "[INFO] Writing a stub package.json to " <> show out_package_json
       builderWriteFile out_package_json $ genPackageJSON task
     logger $ "[INFO] Writing JavaScript bundled script to " <> show out_js
-    withCurrentDirectory outputDirectory $
+    withCurrentDirectory (outputDirectory task) $
       callProcess
         "node"
         [ parcel,
@@ -451,28 +432,28 @@ ahcDistMain logger task@Task {..} (final_m, report) = do
           "--no-autoinstall",
           "--no-content-hash",
           "--target",
-          case target of
+          case target task of
             Node -> "node"
             Browser -> "browser",
           takeFileName out_entry
         ]
-  when (target == Browser) $ do
+  when (target task == Browser) $ do
     logger $ "[INFO] Writing HTML to " <> show out_html
     builderWriteFile out_html $ genHTML task
-  when (target == Node && run)
+  when (target task == Node && run task)
     $ withCurrentDirectory (takeDirectory out_wasm)
-    $ if bundle
+    $ if bundle task
       then do
         logger $ "[INFO] Running " <> out_js
         callProcess "node" $
-          ["--experimental-wasm-bigint" | debug]
-            <> ["--experimental-wasm-return-call" | tailCalls]
+          ["--experimental-wasm-bigint" | debug task]
+            <> ["--experimental-wasm-return-call" | tailCalls task]
             <> [takeFileName out_js]
       else do
         logger $ "[INFO] Running " <> out_entry
         callProcess "node" $
-          ["--experimental-wasm-bigint" | debug]
-            <> ["--experimental-wasm-return-call" | tailCalls]
+          ["--experimental-wasm-bigint" | debug task]
+            <> ["--experimental-wasm-return-call" | tailCalls task]
             <> ["--experimental-modules", takeFileName out_entry]
 
 ahcLinkMain :: Task -> IO ()

@@ -33,7 +33,7 @@ data LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusModule,
-        debug, gcSections, binaryen, verboseErr :: Bool,
+        debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
       }
@@ -84,7 +84,6 @@ linkModules LinkTask {..} m =
   linkStart
     debug
     gcSections
-    binaryen
     verboseErr
     ( rtsAsteriusModule
         defaultBuiltinsOptions
