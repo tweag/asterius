@@ -217,18 +217,14 @@ genDefEntry task =
       "import module from \"./",
       out_base,
       ".wasm.mjs\";\n",
-      "import ",
-      out_base,
-      " from \"./",
+      "import req from \"./",
       out_base,
       ".req.mjs\";\n",
       case target task of
         Node -> "process.on(\"unhandledRejection\", err => { throw err; });\n"
         Browser -> mempty,
       mconcat
-        [ "module.then(m => rts.newAsteriusInstance(Object.assign(",
-          out_base,
-          ", {module: m}))).then(async i => {\n",
+        [ "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(async i => {\n",
           "try {\n",
           "i.exports.hs_init();\n",
           "await i.exports.main();\n",
