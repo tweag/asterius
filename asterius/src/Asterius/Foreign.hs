@@ -350,7 +350,7 @@ asteriusBoxResult result_ty
           mkCoreUbxTup
             (realWorldStatePrimTy : io_res_ty : extra_result_tys)
             (state : anss)
-    (ccall_res_ty, the_alt) <- mkAlt return_result res
+    (ccall_res_ty, the_alt) <- mk_alt return_result res
     state_id <- newSysLocalDs realWorldStatePrimTy
     let io_data_con = head (tyConDataCons io_tycon)
         toIOCon = dataConWrapId io_data_con
@@ -368,7 +368,7 @@ asteriusBoxResult result_ty
     return (realWorldStatePrimTy `mkFunTy` ccall_res_ty, wrap)
 asteriusBoxResult result_ty = do
   res <- asteriusResultWrapper result_ty
-  (ccall_res_ty, the_alt) <- mkAlt return_result res
+  (ccall_res_ty, the_alt) <- mk_alt return_result res
   let wrap the_call =
         mkWildCase
           (App the_call (Var realWorldPrimId))
@@ -384,25 +384,6 @@ asteriusResultWrapper :: Type -> DsM (Maybe Type, CoreExpr -> CoreExpr)
 asteriusResultWrapper result_ty
   | isAnyTy result_ty = return (Just result_ty, id)
   | otherwise = resultWrapper result_ty
-
-mkAlt ::
-  (Expr Var -> [Expr Var] -> Expr Var) ->
-  (Maybe Type, Expr Var -> Expr Var) ->
-  DsM (Type, (AltCon, [Id], Expr Var))
-mkAlt return_result (Nothing, wrap_result) = do
-  state_id <- newSysLocalDs realWorldStatePrimTy
-  let the_rhs = return_result (Var state_id) [wrap_result (panic "boxResult")]
-      ccall_res_ty = mkTupleTy Unboxed [realWorldStatePrimTy]
-      the_alt = (DataAlt (tupleDataCon Unboxed 1), [state_id], the_rhs)
-  return (ccall_res_ty, the_alt)
-mkAlt return_result (Just prim_res_ty, wrap_result) = do
-  result_id <- newSysLocalDs prim_res_ty
-  state_id <- newSysLocalDs realWorldStatePrimTy
-  let the_rhs = return_result (Var state_id) [wrap_result (Var result_id)]
-      ccall_res_ty = mkTupleTy Unboxed [realWorldStatePrimTy, prim_res_ty]
-      the_alt =
-        (DataAlt (tupleDataCon Unboxed 2), [state_id, result_id], the_rhs)
-  return (ccall_res_ty, the_alt)
 
 asteriusCheckCConv :: CCallConv -> TcM CCallConv
 asteriusCheckCConv CCallConv = return CCallConv

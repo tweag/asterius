@@ -15,21 +15,21 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.6.5:
-        url: https://8638-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        content-length: 148116044
-        sha256: 8613a9e7c1ce320d4eb84a181751a3e6bb3adbda2393ce753672e3f2f495cca0
+        url: https://8664-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        content-length: 147961428
+        sha256: 293f6d208168746e0a9d69a08e482d2115f06bd8bb870e1bd186c0a6b104c78f
     linux64-custom-asterius:
       8.6.5:
-        url: https://8636-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        content-length: 147169260
-        sha256: 3b60ac955c213da15bda916ae3ddaf64f8efba4632323516360cb21a339d8b0a
+        url: https://8665-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        content-length: 147160424
+        sha256: 0ba75ff51219b856b1960f30dc080952c05f61d48e47c468dddcae741c4dc270
     linux64-custom-asterius-musl:
       8.6.5:
-        url: https://8637-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-alpine-linux.tar.xz
-        content-length: 154852348
-        sha256: 9417a04e7f828d578eaf5a1c8268bcb2299c8bcd983e3e8c0c5c51b86be9abbd
+        url: https://8667-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-alpine-linux.tar.xz
+        content-length: 154901428
+        sha256: e5f8eb43e5c0a3469394a1cc62dd73f3d14d5faf8849f0f5fc5bbd88b876604c
     macosx-custom-asterius:
       8.6.5:
-        url: https://8634-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
-        content-length: 139478304
-        sha256: 03e2689393be18090dad11505d3fc416ffcf6ae65636623387ee529ad5646e76
+        url: https://8663-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
+        content-length: 139345980
+        sha256: d187ab6dcaae81e88fcbb398dcb68aee950fb73b386c951ceceef9b1885f87a7
