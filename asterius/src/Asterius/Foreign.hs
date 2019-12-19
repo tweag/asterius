@@ -11,13 +11,12 @@ where
 
 import Asterius.Foreign.Internals
 import Bag
-import CmmExpr
-import CmmUtils
 import Control.Monad
 import CoreUnfold
 import Data.List
 import Data.Maybe
 import DsCCall
+import DsForeign
 import DsMonad
 import ErrUtils
 import ForeignCall
@@ -31,7 +30,6 @@ import Pair
 import Panic
 import Platform
 import PrelNames
-import RepType
 import TcEnv
 import TcExpr
 import TcForeign
@@ -40,8 +38,6 @@ import TcRnMonad
 import TcType
 import TysPrim
 import Prelude hiding ((<>))
-
-type Binding = (Id, CoreExpr)
 
 asteriusDsForeigns ::
   [LForeignDecl GhcTc] -> DsM (ForeignStubs, OrdList Binding)
@@ -83,7 +79,7 @@ asteriusDsCImport id co (CLabel cid) cconv _ _ = do
   (_, foRhs) <- asteriusResultWrapper ty
   let rhs = foRhs (Lit (MachLabel cid stdcall_info fod))
       rhs' = Cast rhs co
-      stdcall_info = funTypeArgStdcallInfo dflags cconv ty
+      stdcall_info = fun_type_arg_stdcall_info dflags cconv ty
    in return [(id, rhs')]
 asteriusDsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
   asteriusDsPrimCall id co (CCall (CCallSpec target cconv safety))
@@ -92,20 +88,6 @@ asteriusDsCImport id co (CFunction target) cconv safety _ =
 asteriusDsCImport id co _ cconv safety mHeader =
   panicDoc "asteriusDsCImport" $
     vcat [ppr id, ppr co, ppr cconv, ppr safety, ppr mHeader]
-
-funTypeArgStdcallInfo :: DynFlags -> CCallConv -> Type -> Maybe Int
-funTypeArgStdcallInfo dflags StdCallConv ty
-  | Just (tc, [arg_ty]) <- splitTyConApp_maybe ty,
-    tyConUnique tc == funPtrTyConKey =
-    let (bndrs, _) = tcSplitPiTys arg_ty
-        fe_arg_tys = mapMaybe binderRelevantType_maybe bndrs
-     in Just $
-          sum
-            ( map
-                (widthInBytes . typeWidth . typeCmmType dflags . getPrimTyOf)
-                fe_arg_tys
-            )
-funTypeArgStdcallInfo _ _other_conv _ = Nothing
 
 asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
 asteriusDsFCall fn_id co fcall = do
@@ -161,16 +143,6 @@ asteriusDsPrimCall fn_id co fcall = do
       rhs = mkLams tvs (mkLams args call_app)
       rhs' = Cast rhs co
   return [(fn_id, rhs')]
-
-getPrimTyOf :: Type -> UnaryType
-getPrimTyOf ty
-  | isBoolTy rep_ty = intPrimTy
-  | otherwise =
-    case splitDataProductType_maybe rep_ty of
-      Just (_, _, _, [prim_ty]) -> prim_ty
-      _other -> pprPanic "DsForeign.getPrimTyOf" (ppr ty)
-  where
-    rep_ty = unwrapType ty
 
 asteriusTcForeignImports ::
   [LForeignDecl GhcRn] -> TcM ([Id], [LForeignDecl GhcTc], Bag GlobalRdrElt)
@@ -275,14 +247,6 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
 asteriusTcCheckFIType arg_tys res_ty imp_decl =
   panicDoc "asteriusTcCheckFIType" $
     vcat [ppr arg_tys, ppr res_ty, ppr imp_decl]
-
-checkMissingAmpersand :: DynFlags -> [Type] -> Type -> TcM ()
-checkMissingAmpersand dflags arg_tys res_ty
-  | null arg_tys && isFunPtrTy res_ty && wopt Opt_WarnDodgyForeignImports dflags =
-    addWarn
-      (Reason Opt_WarnDodgyForeignImports)
-      (text "possible missing & in foreign import of FunPtr")
-  | otherwise = return ()
 
 asteriusTcForeignExports ::
   [LForeignDecl GhcRn] ->
@@ -440,36 +404,6 @@ mkAlt return_result (Just prim_res_ty, wrap_result) = do
         (DataAlt (tupleDataCon Unboxed 2), [state_id, result_id], the_rhs)
   return (ccall_res_ty, the_alt)
 
-checkCOrAsmOrLlvm :: HscTarget -> Validity
-checkCOrAsmOrLlvm HscC = IsValid
-checkCOrAsmOrLlvm HscAsm = IsValid
-checkCOrAsmOrLlvm HscLlvm = IsValid
-checkCOrAsmOrLlvm _ =
-  NotValid
-    ( text
-        "requires unregisterised, llvm (-fllvm) or native code generation (-fasm)"
-    )
-
-checkCOrAsmOrLlvmOrInterp :: HscTarget -> Validity
-checkCOrAsmOrLlvmOrInterp HscC = IsValid
-checkCOrAsmOrLlvmOrInterp HscAsm = IsValid
-checkCOrAsmOrLlvmOrInterp HscLlvm = IsValid
-checkCOrAsmOrLlvmOrInterp HscInterpreted = IsValid
-checkCOrAsmOrLlvmOrInterp _ =
-  NotValid
-    (text "requires interpreted, unregisterised, llvm or native code generation")
-
-checkCg :: (HscTarget -> Validity) -> TcM ()
-checkCg check = do
-  dflags <- getDynFlags
-  let target = hscTarget dflags
-  case target of
-    HscNothing -> return ()
-    _ ->
-      case check target of
-        IsValid -> return ()
-        NotValid err -> addErrTc (text "Illegal foreign declaration:" <+> err)
-
 asteriusCheckCConv :: CCallConv -> TcM CCallConv
 asteriusCheckCConv CCallConv = return CCallConv
 asteriusCheckCConv CApiConv = return CApiConv
@@ -492,24 +426,3 @@ asteriusCheckCConv PrimCallConv = do
     (text "The `prim' calling convention can only be used with `foreign import'")
   return PrimCallConv
 asteriusCheckCConv JavaScriptCallConv = return JavaScriptCallConv
-
-check :: Validity -> (MsgDoc -> MsgDoc) -> TcM ()
-check IsValid _ = return ()
-check (NotValid doc) err_fn = addErrTc (err_fn doc)
-
-illegalForeignTyErr :: SDoc -> SDoc -> SDoc
-illegalForeignTyErr arg_or_res = hang msg 2
-  where
-    msg =
-      hsep
-        [text "Unacceptable", arg_or_res, text "type in foreign declaration:"]
-
-argument :: SDoc
-argument = text "argument"
-
-badCName :: CLabelString -> MsgDoc
-badCName target =
-  sep [quotes (ppr target) <+> text "is not a valid C identifier"]
-
-foreignDeclCtxt :: ForeignDecl GhcRn -> SDoc
-foreignDeclCtxt fo = hang (text "When checking declaration:") 2 (ppr fo)
