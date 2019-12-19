@@ -55,7 +55,7 @@ main =
           createDirectoryIfMissing True wabt_bindir
           wabt_bins <- listDirectory $ wabt_builddir </> "bin"
           for_ wabt_bins $
-            \b -> copyFile (wabt_builddir </> "bin" </> b) (wabt_bindir </> b)
+            \b -> renameFile (wabt_builddir </> "bin" </> b) (wabt_bindir </> b)
       }
 
 wabtBuildDir :: LocalBuildInfo -> FilePath
