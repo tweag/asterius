@@ -1,3 +1,3 @@
 # `binaryen`
 
-Complete raw Haskell bindings to [`binaryen`](https://github.com/tweag/binaryen/tree/4b99a48a6c9993992b28bd179bf39f5cb2225c6e).
+Complete raw Haskell bindings to [`binaryen`](https://github.com/tweag/binaryen/tree/ddc4536187e67e476e8162f30f3bcd7fee2203d1).

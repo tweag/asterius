@@ -50,12 +50,12 @@ main =
               binaryen_libdir = libdir binaryen_installdirs
               binaryen_bindir = bindir binaryen_installdirs
           for_ [binaryen_libdir, binaryen_bindir] $ createDirectoryIfMissing True
-          copyFile
+          renameFile
             (binaryen_builddir </> "lib" </> "libbinaryen.a")
             (binaryen_libdir </> "libbinaryen.a")
           binaryen_bins <- listDirectory $ binaryen_builddir </> "bin"
           for_ binaryen_bins $ \b ->
-            copyFile (binaryen_builddir </> "bin" </> b) (binaryen_bindir </> b)
+            renameFile (binaryen_builddir </> "bin" </> b) (binaryen_bindir </> b)
       }
 
 binaryenBuildDir :: LocalBuildInfo -> FilePath
