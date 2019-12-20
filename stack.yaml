@@ -1,4 +1,4 @@
-resolver: lts-14.16
+resolver: lts-14.17
 packages:
   - asterius
   - binaryen
@@ -15,17 +15,21 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.6.5:
-        url: https://8136-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        sha256: bb8bbb3dc0fce4fa5c0c141d2eda780df61d3ee1f0ad37ceb9ad4ec0ee701b2c
+        url: https://8664-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        content-length: 147961428
+        sha256: 293f6d208168746e0a9d69a08e482d2115f06bd8bb870e1bd186c0a6b104c78f
     linux64-custom-asterius:
       8.6.5:
-        url: https://8134-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        sha256: a91a7a481865a3a23af3b8eabd97d839427348cfbfbeb7f9f8e68af821c06614
+        url: https://8665-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        content-length: 147160424
+        sha256: 0ba75ff51219b856b1960f30dc080952c05f61d48e47c468dddcae741c4dc270
     linux64-custom-asterius-musl:
       8.6.5:
-        url: https://8135-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-alpine-linux.tar.xz
-        sha256: 2718f8a539188268a091d86676d400ec77b5b1fa925ea654187d50f0854082b2
+        url: https://8667-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-alpine-linux.tar.xz
+        content-length: 154901428
+        sha256: e5f8eb43e5c0a3469394a1cc62dd73f3d14d5faf8849f0f5fc5bbd88b876604c
     macosx-custom-asterius:
       8.6.5:
-        url: https://8137-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
-        sha256: f7c5784fd81374565bd23014c503eeca7199f8eb388c2f95186eae75d22aca0a
+        url: https://8663-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
+        content-length: 139345980
+        sha256: d187ab6dcaae81e88fcbb398dcb68aee950fb73b386c951ceceef9b1885f87a7
