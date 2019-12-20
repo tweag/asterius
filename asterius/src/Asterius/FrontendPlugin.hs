@@ -7,7 +7,8 @@ where
 
 import Asterius.BuildInfo
 import Asterius.CodeGen
-import Asterius.Foreign
+import Asterius.Foreign.DsForeign
+import Asterius.Foreign.TcForeign
 import Asterius.GHCi.Internals
 import Asterius.Internals
 import Asterius.JSFFI
