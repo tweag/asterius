@@ -1,5 +1,9 @@
 // kitchen sink, tests the full API
 
+function assert(x) {
+  if (!x) throw 'error!';
+}
+
 function cleanInfo(info) {
   var ret = {};
   for (var x in info) {
@@ -15,10 +19,6 @@ var module;
 // helpers
 
 var v128_bytes = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-
-function assert(x) {
-  if (!x) throw 'error!';
-}
 
 function makeInt32(x) {
   return module.i32.const(x);
@@ -355,6 +355,7 @@ function test_core() {
     module.i8x16.min_u(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i8x16.max_s(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i8x16.max_u(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
+    module.i8x16.avgr_u(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i16x8.add(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i16x8.add_saturate_s(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i16x8.add_saturate_u(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
@@ -366,6 +367,7 @@ function test_core() {
     module.i16x8.min_u(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i16x8.max_s(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i16x8.max_u(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
+    module.i16x8.avgr_u(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i32x4.add(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i32x4.sub(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
     module.i32x4.mul(module.v128.const(v128_bytes), module.v128.const(v128_bytes)),
@@ -973,7 +975,7 @@ function test_expression_info() {
   module.dispose();
 }
 
-function main() {
+function test() {
   // Tracing must be first so it starts with a fresh set of interned types
   test_tracing();
   test_types();
@@ -990,4 +992,4 @@ function main() {
   test_expression_info();
 }
 
-main();
+Binaryen.ready.then(test);

@@ -1181,6 +1181,10 @@ foreign import ccall unsafe "BinaryenMaxUVecI8x16"
   c_BinaryenMaxUVecI8x16 ::
     BinaryenOp
 
+foreign import ccall unsafe "BinaryenAvgrUVecI8x16"
+  c_BinaryenAvgrUVecI8x16 ::
+    BinaryenOp
+
 foreign import ccall unsafe "BinaryenNegVecI16x8"
   c_BinaryenNegVecI16x8 ::
     BinaryenOp
@@ -1247,6 +1251,10 @@ foreign import ccall unsafe "BinaryenMaxSVecI16x8"
 
 foreign import ccall unsafe "BinaryenMaxUVecI16x8"
   c_BinaryenMaxUVecI16x8 ::
+    BinaryenOp
+
+foreign import ccall unsafe "BinaryenAvgrUVecI16x8"
+  c_BinaryenAvgrUVecI16x8 ::
     BinaryenOp
 
 foreign import ccall unsafe "BinaryenNegVecI32x4"

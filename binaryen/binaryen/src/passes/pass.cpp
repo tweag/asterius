@@ -107,6 +107,11 @@ void PassRegistry::registerPasses() {
     "directize", "turns indirect calls into direct ones", createDirectizePass);
   registerPass(
     "dfo", "optimizes using the DataFlow SSA IR", createDataFlowOptsPass);
+  registerPass("dwarfdump",
+               "dump DWARF debug info sections from the read binary",
+               createDWARFDumpPass);
+  registerPass(
+    "dwarfupdate", "update DWARF debug info sections", createDWARFUpdatePass);
   registerPass("duplicate-import-elimination",
                "removes duplicate imports",
                createDuplicateImportEliminationPass);
@@ -468,11 +473,11 @@ static void dumpWast(Name name, Module* wasm) {
   // TODO: use _getpid() on windows, elsewhere?
   fullName += std::to_string(getpid()) + '-';
 #endif
-  fullName += numstr + "-" + name.str + ".wasm";
+  fullName += numstr + "-" + name.str;
   Colors::setEnabled(false);
   ModuleWriter writer;
-  writer.setBinary(false); // TODO: add an option for binary
-  writer.write(*wasm, fullName);
+  writer.writeText(*wasm, fullName + ".wast");
+  writer.writeBinary(*wasm, fullName + ".wasm");
 }
 
 void PassRunner::run() {

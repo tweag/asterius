@@ -365,6 +365,7 @@ enum BinaryOp {
   MinUVecI8x16,
   MaxSVecI8x16,
   MaxUVecI8x16,
+  AvgrUVecI8x16,
   AddVecI16x8,
   AddSatSVecI16x8,
   AddSatUVecI16x8,
@@ -376,6 +377,7 @@ enum BinaryOp {
   MinUVecI16x8,
   MaxSVecI16x8,
   MaxUVecI16x8,
+  AvgrUVecI16x8,
   AddVecI32x4,
   SubVecI32x4,
   MulVecI32x4,
@@ -1152,6 +1154,7 @@ public:
   std::map<Index, Name> localNames;
   std::map<Name, Index> localIndices;
 
+  // Source maps debugging info: map expression nodes to their file, line, col.
   struct DebugLocation {
     uint32_t fileIndex, lineNumber, columnNumber;
     bool operator==(const DebugLocation& other) const {
@@ -1172,6 +1175,10 @@ public:
   std::unordered_map<Expression*, DebugLocation> debugLocations;
   std::set<DebugLocation> prologLocation;
   std::set<DebugLocation> epilogLocation;
+
+  // General debugging info: map every instruction to its original position in
+  // the binary, relative to the beginning of the code section.
+  std::unordered_map<Expression*, uint32_t> binaryLocations;
 
   size_t getNumParams();
   size_t getNumVars();
@@ -1241,6 +1248,13 @@ public:
 
   Table() { name = Name::fromInt(0); }
   bool hasMax() { return max != kUnlimitedSize; }
+  void clear() {
+    exists = false;
+    name = "";
+    initial = 0;
+    max = kMaxSize;
+    segments.clear();
+  }
 };
 
 class Memory : public Importable {
@@ -1284,6 +1298,14 @@ public:
 
   Memory() { name = Name::fromInt(0); }
   bool hasMax() { return max != kUnlimitedSize; }
+  void clear() {
+    exists = false;
+    name = "";
+    initial = 0;
+    max = kMaxSize;
+    segments.clear();
+    shared = false;
+  }
 };
 
 class Global : public Importable {
@@ -1327,6 +1349,8 @@ public:
   Name start;
 
   std::vector<UserSection> userSections;
+
+  // Source maps debug info.
   std::vector<std::string> debugInfoFileNames;
 
   // `features` are the features allowed to be used in this module and should be
