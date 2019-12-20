@@ -18,7 +18,6 @@ import qualified GHC.LanguageExtensions as LangExt
 import GhcPlugins
 import HsSyn
 import Outputable
-import Panic
 import Platform
 import PrelNames
 import TcEnv
@@ -66,6 +65,21 @@ asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) safety mh l@(CLabel _
       (illegalForeignTyErr Outputable.empty)
     cconv' <- asteriusCheckCConv cconv
     return (CImport (L lc cconv') safety mh l src)
+asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) safety mh CWrapper src) =
+  do
+    checkCg checkCOrAsmOrLlvmOrInterp
+    cconv' <- asteriusCheckCConv cconv
+    case arg_tys of
+      [arg1_ty] -> do
+        checkForeignArgs asteriusIsFFIExternalTy arg1_tys
+        checkForeignRes nonIOok checkSafe asteriusIsFFIExportResultTy res1_ty
+        checkForeignRes mustBeIO checkSafe (isFFIDynTy arg1_ty) res_ty
+        where
+          (arg1_tys, res1_ty) = tcSplitFunTys arg1_ty
+      _ ->
+        addErrTc
+          (illegalForeignTyErr Outputable.empty (text "One argument expected"))
+    return (CImport (L lc cconv') safety mh CWrapper src)
 asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) mh (CFunction target) src)
   | isDynamicTarget target =
     do
@@ -123,9 +137,6 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
             addErrTc (text "`value' imports cannot have function types")
         _ -> return ()
       return $ CImport (L lc cconv') (L ls safety) mh (CFunction target) src
-asteriusTcCheckFIType arg_tys res_ty imp_decl =
-  panicDoc "asteriusTcCheckFIType" $
-    vcat [ppr arg_tys, ppr res_ty, ppr imp_decl]
 
 asteriusTcForeignExports ::
   [LForeignDecl GhcRn] ->

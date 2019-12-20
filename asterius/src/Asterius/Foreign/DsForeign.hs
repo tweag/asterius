@@ -20,7 +20,6 @@ import HsSyn
 import MkId
 import OrdList
 import Pair
-import Panic
 import PrelNames
 import TcEnv
 import TcRnMonad
@@ -74,9 +73,10 @@ asteriusDsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
   asteriusDsPrimCall id co (CCall (CCallSpec target cconv safety))
 asteriusDsCImport id co (CFunction target) cconv safety _ =
   asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
-asteriusDsCImport id co _ cconv safety mHeader =
-  panicDoc "asteriusDsCImport" $
-    vcat [ppr id, ppr co, ppr cconv, ppr safety, ppr mHeader]
+asteriusDsCImport id _ CWrapper _ _ _ = do
+  dflags <- getDynFlags
+  pure
+    [(id, mkRuntimeErrorApp rUNTIME_ERROR_ID (idType id) (showPpr dflags id))]
 
 asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
 asteriusDsFCall fn_id co fcall = do
