@@ -53,7 +53,6 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   OneTuple \
   Only \
   ParsecTools \
-  PyF \
   QuasiText \
   QuickCheck \
   RSA \
@@ -1780,7 +1779,6 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   throttle-io-stream \
   throwable-exceptions \
   thyme \
-  tidal \
   tile \
   time-compat \
   time-lens \
