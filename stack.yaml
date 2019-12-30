@@ -1,11 +1,13 @@
 resolver: lts-14.19
 extra-deps:
   - https://github.com/tweag/binaryen/archive/6791ac17d020cab228f4d01e7acb05fcbc84cbf8.tar.gz
+  - url: https://github.com/tweag/inline-js/archive/bd000373e0f02d213a881119298e1aea5962e149.tar.gz
+    subdirs:
+      - inline-js-core
   - https://github.com/tweag/wabt/archive/cedd1578d98806cc2fb5922a2e70e8fb0f016d63.tar.gz
 packages:
   - asterius
   - ghc-toolkit
-  - inline-js/inline-js-core
   - npm-utils
   - wasm-toolkit
 
