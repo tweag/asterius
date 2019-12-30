@@ -27,13 +27,15 @@ RUN \
     libnuma-dev \
     make \
     python3 \
+    sudo \
     xz-utils \
     zlib1g-dev && \
   curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
   echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
   apt update && \
   apt install -y nodejs && \
-  useradd --create-home --shell /bin/bash asterius
+  useradd --create-home --shell /bin/bash asterius && \
+  echo "asterius ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 USER asterius
 
@@ -68,10 +70,8 @@ RUN \
   ln -s $(stack path --compiler-bin) ~/.asterius-compiler-bin && \
   ahc-boot
 
-USER root
-
 RUN \
-  apt purge -y \
+  sudo apt purge -y \
     automake \
     cmake \
     curl \
@@ -82,13 +82,13 @@ RUN \
     mawk \
     python3 \
     xz-utils && \
-  apt autoremove --purge -y && \
-  apt clean && \
-  mv \
+  sudo apt autoremove --purge -y && \
+  sudo apt clean && \
+  sudo mv \
     /home/asterius/.asterius-local-install-root/bin \
     /home/asterius/.asterius-local-install-root/share \
     /tmp && \
-  rm -rf \
+  sudo rm -rf \
     /home/asterius/.asterius \
     /home/asterius/.asterius-compiler-bin/../share \
     /home/asterius/.cabal \
@@ -98,30 +98,28 @@ RUN \
     /home/asterius/.stack/programs/*/*.tar.xz \
     /var/lib/apt/lists/* \
     /var/tmp/* && \
-  mkdir -p $(realpath -m /home/asterius/.asterius-local-install-root) && \
-  mv \
+  sudo mkdir -p $(realpath -m /home/asterius/.asterius-local-install-root) && \
+  sudo mv \
     /tmp/bin \
     /tmp/share \
     /home/asterius/.asterius-local-install-root && \
-  mv \
+  sudo mv \
     /home/asterius/.asterius-snapshot-install-root/bin \
     /home/asterius/.asterius-snapshot-install-root/share \
     /home/asterius/.stack/programs \
     /tmp && \
-  rm -rf /home/asterius/.stack && \
-  mkdir -p $(realpath -m /home/asterius/.asterius-snapshot-install-root) && \
-  mv \
+  sudo rm -rf /home/asterius/.stack && \
+  sudo mkdir -p $(realpath -m /home/asterius/.asterius-snapshot-install-root) && \
+  sudo mv \
     /tmp/bin \
     /tmp/share \
     /home/asterius/.asterius-snapshot-install-root && \
-  mv \
+  sudo mv \
     /tmp/programs \
     /home/asterius/.stack && \
-  chown -c -h -R asterius:asterius /home/asterius && \
-  rm -rf \
+  sudo chown -c -h -R asterius:asterius /home/asterius && \
+  sudo rm -rf \
     /tmp/*
-
-USER asterius
 
 RUN \
   ahc --version && \
