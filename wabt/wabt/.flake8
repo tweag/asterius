@@ -1,5 +1,0 @@
-[flake8]
-ignore =
-  E501, # line too long
-  W504  # line break after binary operator
-exclude = ./third_party ./out
