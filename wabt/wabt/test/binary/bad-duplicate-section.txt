@@ -1,9 +1,0 @@
-;;; TOOL: run-gen-wasm-bad
-magic
-version
-section(TYPE) { count[0] }
-section(TYPE) { count[0] }
-(;; STDERR ;;;
-000000d: error: multiple Type sections
-000000d: error: multiple Type sections
-;;; STDERR ;;)

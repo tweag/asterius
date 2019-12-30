@@ -1,9 +1,0 @@
-;;; TOOL: wat2wasm
-;;; ERROR: 1
-(start $2)
-(start 42)
-(;; STDERR ;;;
-out/test/regress/regress-16.txt:4:2: error: multiple start sections
-(start 42)
- ^^^^^
-;;; STDERR ;;)
