@@ -1,8 +1,0 @@
-GetFunction is equal: true
-getFunctionInfo={"module":"","base":"","params":0,"results":2,"vars":[]}
-getExpressionInfo(body)={"id":14,"value":3}
-(i32.const 3)
-
-(module
-)
-

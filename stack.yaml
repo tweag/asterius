@@ -1,7 +1,8 @@
 resolver: lts-14.19
+extra-deps:
+  - https://github.com/tweag/binaryen/archive/6791ac17d020cab228f4d01e7acb05fcbc84cbf8.tar.gz
 packages:
   - asterius
-  - binaryen
   - ghc-toolkit
   - inline-js/inline-js-core
   - npm-utils
