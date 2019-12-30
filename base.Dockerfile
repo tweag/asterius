@@ -46,11 +46,8 @@ RUN \
   mkdir -p ~/.asterius/inline-js
 
 COPY --chown=asterius:asterius asterius /home/asterius/.asterius/asterius
-COPY --chown=asterius:asterius binaryen /home/asterius/.asterius/binaryen
 COPY --chown=asterius:asterius ghc-toolkit /home/asterius/.asterius/ghc-toolkit
-COPY --chown=asterius:asterius inline-js/inline-js-core /home/asterius/.asterius/inline-js/inline-js-core
 COPY --chown=asterius:asterius npm-utils /home/asterius/.asterius/npm-utils
-COPY --chown=asterius:asterius wabt /home/asterius/.asterius/wabt
 COPY --chown=asterius:asterius wasm-toolkit /home/asterius/.asterius/wasm-toolkit
 COPY --chown=asterius:asterius stack.yaml /home/asterius/.asterius/stack.yaml
 
