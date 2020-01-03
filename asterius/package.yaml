@@ -36,7 +36,7 @@ extra-source-files:
   - test/nodeio/**/*.hs
 
 data-files:
-  - rts/*.mjs
+  - rts/**/*.mjs
   - boot-init.sh
   - boot.sh
 

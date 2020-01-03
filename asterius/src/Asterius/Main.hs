@@ -43,6 +43,7 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
+import Data.Char
 import Data.String
 import Foreign
 import Language.WebAssembly.WireFormat
@@ -174,7 +175,16 @@ genExportStablePtrs sym_map export_funcs FFIMarshalState {..} =
 genReq :: Task -> LinkReport -> Builder
 genReq task LinkReport {..} =
   mconcat
-    [ "export default {jsffiFactory: ",
+    [ 
+      -- import target-specific module
+      "import targetSpecificModule from './",
+      case target task of 
+        Node -> "node"
+        Browser -> "browser",
+      "/default.mjs';\n\n",
+      -- export request object
+      "export default {",
+      "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
       ", exports: ",
       generateFFIExportObject bundledFFIMarshalState,
@@ -196,8 +206,8 @@ genReq task LinkReport {..} =
       if yolo task then "true" else "false",
       ", gcThreshold: ",
       intHex (gcThreshold task),
-      "}",
-      ";\n"
+      ", targetSpecificModule: targetSpecificModule",
+      "};\n"
     ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
@@ -406,9 +416,13 @@ ahcDistMain logger task (final_m, report) = do
     "[INFO] Writing JavaScript runtime modules to "
       <> show
         (outputDirectory task)
-  rts_files <- listDirectory $ dataDir </> "rts"
+  rts_files' <- listDirectory $ dataDir </> "rts"
+  let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
     \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory task </> f)
+  let specificFolder = map toLower $ show $ target task
+  createDirectoryIfMissing False (outputDirectory task </> specificFolder)
+  copyFile (dataDir </> "rts" </> specificFolder </> "default.mjs") (outputDirectory task </> specificFolder </> "default.mjs")
   logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
   builderWriteFile out_wasm_lib $
     genWasm (target task == Node) (outputBaseName task)
@@ -438,9 +452,7 @@ ahcDistMain logger task (final_m, report) = do
           "--no-autoinstall",
           "--no-content-hash",
           "--target",
-          case target task of
-            Node -> "node"
-            Browser -> "browser",
+          map toLower $ show $ target task,
           takeFileName out_entry
         ]
   when (target task == Browser) $ do

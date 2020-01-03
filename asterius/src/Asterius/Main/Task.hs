@@ -33,7 +33,7 @@ import Asterius.Types (AsteriusEntitySymbol)
 data Target
   = Node
   | Browser
-  deriving (Eq)
+  deriving (Eq, Show)
 
 data Backend
   = WasmToolkit
