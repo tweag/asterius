@@ -14,6 +14,7 @@ module Asterius.Backends.Binaryen
     c_BinaryenSetDebugInfo,
     c_BinaryenSetOptimizeLevel,
     c_BinaryenSetShrinkLevel,
+    c_BinaryenModuleRunPasses,
     c_BinaryenModuleOptimize,
     c_BinaryenModuleValidate,
     c_BinaryenModuleRead,
