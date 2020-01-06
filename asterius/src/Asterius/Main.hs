@@ -16,6 +16,7 @@ import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.BuildInfo
 import Asterius.Internals
 import Asterius.Internals.ByteString
+import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
 import Asterius.JSFFI
 import Asterius.JSGen.Wasm
@@ -29,6 +30,7 @@ import Asterius.Types
     Module,
   )
 import Control.Monad
+import Control.Monad.Cont
 import Control.Monad.Except
 import Data.Binary.Get
 import Data.Binary.Put
@@ -332,6 +334,10 @@ ahcDistMain logger task (final_m, report) = do
       when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
         logger "[INFO] Running binaryen optimization"
         Binaryen.c_BinaryenModuleOptimize m_ref
+      flip runContT pure $ do
+        lim_segs <- marshalSBS "limit-segments"
+        (lim_segs_p, _) <- marshalV [lim_segs]
+        lift $ Binaryen.c_BinaryenModuleRunPasses m_ref lim_segs_p 1
       logger "[INFO] Validating binaryen IR"
       pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
       when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
@@ -384,6 +390,10 @@ ahcDistMain logger task (final_m, report) = do
                 $ \(p, l) -> Binaryen.c_BinaryenModuleRead p (fromIntegral l)
             logger "[INFO] Running binaryen optimization"
             Binaryen.c_BinaryenModuleOptimize m_ref
+            flip runContT pure $ do
+              lim_segs <- marshalSBS "limit-segments"
+              (lim_segs_p, _) <- marshalV [lim_segs]
+              lift $ Binaryen.c_BinaryenModuleRunPasses m_ref lim_segs_p 1
             b <- Binaryen.serializeModule m_ref
             Binaryen.c_BinaryenModuleDispose m_ref
             pure $ Left b

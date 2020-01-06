@@ -49,7 +49,9 @@ distNonMain p extra_syms =
   ahcDistMain
     putStrLn
     defTask
-      { inputHS = p,
+      { optimizeLevel = 0,
+        shrinkLevel = 0,
+        inputHS = p,
         outputDirectory = takeDirectory p,
         outputBaseName = takeBaseName p,
         Asterius.Main.Task.verboseErr = True,
