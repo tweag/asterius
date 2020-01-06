@@ -448,6 +448,19 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
         v <> DList.singleton Wasm.SetLocal
           { setLocalIndex = lookupLocalContext _local_ctx index
           }
+    TeeLocal {..} -> do
+      v <-
+        makeInstructions
+          tail_calls
+          sym_map
+          _module_symtable
+          _de_bruijn_ctx
+          _local_ctx
+          value
+      pure $
+        v <> DList.singleton Wasm.TeeLocal
+          { teeLocalIndex = lookupLocalContext _local_ctx index
+          }
     Load {..} -> do
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
