@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "browserslist": [
+    "last 1 Chrome versions"
+  ],
+  "scripts": {
+    "test": "ava --timeout=10s"
+  },
+  "devDependencies": {
+    "@dollarshaveclub/cloudworker": "^0.1.2",
+    "ava": "^1.0.0"
+  }
+}

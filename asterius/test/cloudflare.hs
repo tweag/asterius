@@ -5,6 +5,7 @@ import System.Process
 main :: IO ()
 main = do
   args <- getArgs
+  withCurrentDirectory "test/cloudflare" $ callCommand "npm install"
   callProcess "ahc-link" $
     [ "--bundle",
       "--browser",
@@ -17,3 +18,4 @@ main = do
       "--extra-root-symbol=Worker_x_closure"
     ]
       <> args
+  withCurrentDirectory "test/cloudflare" $ callProcess "npm" [ "run", "test" ]
