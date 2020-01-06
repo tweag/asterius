@@ -54,15 +54,7 @@ export class StablePtrManager {
   }
 
   preserveJSVals(sps) {
-    // The logic to free JSVals not spotted on the Haskell heap during GC has
-    // been commented out for now, due to a use-after-free issue related to
-    // Integers (see #320).
-
-    // Disabling GC for JSVal is the easiest mitigation for the issue. When a
-    // new generation Integer library replaces the current integer-simple
-    // library, we'll recover the logic here.
-
-    // for (const sp of Array.from(this.spt.keys()))
-    //   if (sp & 1 && !sps.has(sp)) this.freeJSVal(sp);
+    for (const sp of Array.from(this.spt.keys()))
+      if (sp & 1 && !sps.has(sp)) this.freeJSVal(sp);
   }
 }

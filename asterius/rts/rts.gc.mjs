@@ -484,15 +484,6 @@ export class GC {
       throw new WebAssembly.RuntimeError(
         `Invalid info table 0x${info.toString(16)}`
       );
-    switch (info) {
-      case this.symbolTable
-        .integerzmwiredzmin_GHCziIntegerziType_Integer_con_info: {
-        const raw_stable_ptr = Number(this.memory.i64Load(c + 8)),
-          stable_ptr_tag = raw_stable_ptr & 1;
-        if (stable_ptr_tag) this.liveJSVals.add(raw_stable_ptr);
-        break;
-      }
-    }
     switch (type) {
       case ClosureTypes.CONSTR:
       case ClosureTypes.CONSTR_1_0:
