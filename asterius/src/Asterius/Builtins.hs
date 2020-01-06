@@ -20,6 +20,7 @@ where
 
 import Asterius.Builtins.CMath
 import Asterius.Builtins.Hashable
+import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
 import Asterius.EDSL
 import Asterius.Internals
@@ -196,6 +197,7 @@ rtsAsteriusModule opts =
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
     <> cmathCBits
     <> hashableCBits
+    <> stgPrimFloatCBits
     <> timeCBits
 
 -- Generate the module consisting of functions which need to be wrapped
