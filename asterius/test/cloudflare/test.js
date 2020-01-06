@@ -19,11 +19,14 @@ test.beforeEach(t => {
     })
 });
 
-test('get: successful response', async t => {
-  const req = new Cloudworker.Request('https://example.com/');
-  const res = await t.context.cw.dispatch(req);
-  t.is(res.status, 200);
-  t.is(await res.text(), 'Hello from Haskell');
+test('get: successful responses', async t => {
+  const getReq = () => new Cloudworker.Request('https://example.com/')
+  const res1 = await t.context.cw.dispatch(getReq());
+  t.is(res1.status, 200);
+  t.is(await res1.text(), 'Hello from Haskell')
+  const res2 = await t.context.cw.dispatch(getReq());
+  t.is(res2.status, 200);
+  t.is(await res2.text(), 'Hello from Haskell');
 });
 
 test("post: missing name", async t => {
