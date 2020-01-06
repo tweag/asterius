@@ -33,11 +33,11 @@ module GHC.Integer (
     divModInteger, quotRemInteger, quotInteger, remInteger,
     encodeFloatInteger, decodeFloatInteger, floatFromInteger,
     encodeDoubleInteger, decodeDoubleInteger, doubleFromInteger,
-    gcdInteger, lcmInteger,
+    -- gcdInteger, lcmInteger, -- XXX
     andInteger, orInteger, xorInteger, complementInteger,
     shiftLInteger, shiftRInteger, testBitInteger,
-    popCountInteger, bitInteger,
     hashInteger,
  ) where
 
 import GHC.Integer.Type
+

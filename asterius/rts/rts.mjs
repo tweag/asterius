@@ -70,9 +70,7 @@ export async function newAsteriusInstance(req) {
       __asterius_memory,
       __asterius_stableptr_manager
     ),
-    __asterius_integer_manager = new IntegerManager(
-      __asterius_stableptr_manager
-    ),
+    __asterius_integer_manager = new IntegerManager(),
     __asterius_fs = new MemoryFileSystem(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_text_cbits = new TextCBits(__asterius_memory),
@@ -168,8 +166,6 @@ export async function newAsteriusInstance(req) {
       );
       __asterius_exports.rts_checkSchedStatus(tid);
     },
-    Integer: __asterius_integer_manager,
-    FloatCBits: __asterius_float_cbits,
     stdio: {
       stdout: () => __asterius_fs.readSync(1),
       stderr: () => __asterius_fs.readSync(2)
