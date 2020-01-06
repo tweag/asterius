@@ -11,6 +11,9 @@ main = do
       "--input-hs",
       "test/cloudflare/cloudflare.hs",
       "--input-mjs",
-      "test/cloudflare/cloudflare.mjs"
+      "test/cloudflare/cloudflare.mjs",
+      "--export-function=handleFetch",
+      "--ghc-option=-no-hs-main",
+      "--extra-root-symbol=Worker_x_closure"
     ]
       <> args
