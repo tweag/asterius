@@ -18,6 +18,7 @@ module Asterius.Builtins
   )
 where
 
+import Asterius.Builtins.CMath
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.Time
 import Asterius.EDSL
@@ -193,6 +194,7 @@ rtsAsteriusModule opts =
     -- the module wrapped by using `generateWrapperModule`.
     <> generateRtsExternalInterfaceModule opts
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
+    <> cmathCBits
     <> hashableCBits
     <> timeCBits
 
