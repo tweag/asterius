@@ -795,7 +795,8 @@ floatCBits =
       ("isDoubleInfinite", [F64], [I64]),
       ("__decodeFloat_Int", [I64, I64, F32], []),
       ("rintDouble", [F64], [F64]),
-      ("rintFloat", [F32], [F32])
+      ("rintFloat", [F32], [F32]),
+      ("__decodeDouble_2Int", [I64, I64, I64, I64, F64], [])
     ]
 
 md5CBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
