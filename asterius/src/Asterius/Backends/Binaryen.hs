@@ -287,6 +287,9 @@ marshalExpression sym_map m e = flip runContT pure $ case e of
   SetLocal {..} -> lift $ do
     v <- marshalExpression sym_map m value
     c_BinaryenLocalSet m index v
+  TeeLocal {..} -> lift $ do
+    v <- marshalExpression sym_map m value
+    c_BinaryenLocalTee m index v $ marshalValueType valueType
   Load {..} -> lift $ do
     p <- marshalExpression sym_map m ptr
     c_BinaryenLoad

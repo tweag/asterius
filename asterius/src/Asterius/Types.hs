@@ -386,6 +386,11 @@ data Expression
       { index :: BinaryenIndex,
         value :: Expression
       }
+  | TeeLocal
+      { index :: BinaryenIndex,
+        value :: Expression,
+        valueType :: ValueType
+      }
   | Load
       { signed :: Bool,
         bytes, offset :: BinaryenIndex,
