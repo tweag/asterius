@@ -14,8 +14,7 @@ main = do
       "--input-mjs",
       "test/cloudflare/cloudflare.mjs",
       "--export-function=handleFetch",
-      "--ghc-option=-no-hs-main",
-      "--extra-root-symbol=Worker_x_closure"
+      "--ghc-option=-no-hs-main"
     ]
       <> args
   withCurrentDirectory "test/cloudflare" $ callProcess "npm" [ "run", "test" ]
