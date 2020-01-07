@@ -21,7 +21,6 @@ import { TimeCBits } from "./rts.time.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
 import { Messages } from "./rts.messages.mjs";
-import { ThreadPaused } from "./rts.threadpaused.mjs";
 import { MD5 } from "./rts.md5.mjs";
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
@@ -91,11 +90,6 @@ export async function newAsteriusInstance(req) {
     __asterius_exception_helper = new ExceptionHelper(
       __asterius_memory,
       __asterius_heapalloc,
-      req.infoTables,
-      req.symbolTable
-    ),
-    __asterius_threadpaused = new ThreadPaused(
-      __asterius_memory,
       req.infoTables,
       req.symbolTable
     ),
@@ -234,7 +228,6 @@ export async function newAsteriusInstance(req) {
       ReentrancyGuard: modulify(__asterius_reentrancy_guard),
       GC: modulify(__asterius_gc),
       ExceptionHelper: modulify(__asterius_exception_helper),
-      ThreadPaused: modulify(__asterius_threadpaused),
       HeapAlloc: modulify(__asterius_heapalloc),
       HeapBuilder: modulify(__asterius_heap_builder),
       Integer: modulify(__asterius_integer_manager),

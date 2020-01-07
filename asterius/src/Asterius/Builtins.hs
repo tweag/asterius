@@ -531,15 +531,6 @@ rtsFunctionImports debug =
              functionType = FunctionType {paramTypes = [F64], returnTypes = []}
            },
          FunctionImport
-           { internalName = "__asterius_threadPaused",
-             externalModuleName = "ThreadPaused",
-             externalBaseName = "threadPaused",
-             functionType = FunctionType
-               { paramTypes = [F64, F64],
-                 returnTypes = []
-               }
-           },
-         FunctionImport
            { internalName = "__asterius_enqueueTSO",
              externalModuleName = "Scheduler",
              externalBaseName = "enqueueTSO",
@@ -1448,8 +1439,8 @@ fromJSArrayFunction _ = runEDSL "__asterius_fromJSArray" $ do
   emit addr
 
 threadPausedFunction _ = runEDSL "threadPaused" $ do
-  args <- params [I64, I64]
-  callImport "__asterius_threadPaused" $ map convertUInt64ToFloat64 args
+  _ <- params [I64, I64]
+  pure ()
 
 dirtyMutVarFunction _ = runEDSL "dirty_MUT_VAR" $ do
   [_, p] <- params [I64, I64]
@@ -1522,7 +1513,6 @@ getProgArgvFunction _ = runEDSL "getProgArgv" $ do
 suspendThreadFunction _ = runEDSL "suspendThread" $ do
   setReturnTypes [I64]
   [reg, _] <- params [I64, I64]
-  call "threadPaused" [mainCapability, getLVal $ global CurrentTSO]
   emit reg
 
 scheduleThreadFunction _ = runEDSL "scheduleThread" $ do
