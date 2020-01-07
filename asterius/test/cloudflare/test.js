@@ -37,11 +37,14 @@ test("post: missing name", async t => {
   t.is(res.status, 400);
 });
 
-test('post: successful response', async t => {
-  const req = new Cloudworker.Request(
+test('post: successful responses', async t => {
+  const postReq = (name) => new Cloudworker.Request(
     'https://example.com/',
-    {method: "POST", body: '{"name": "cloudflare"}'})
-  const res = await t.context.cw.dispatch(req);
-  t.is(res.status, 200);
-  t.is(await res.text(), 'Hello cloudflare');
+    {method: "POST", body: JSON.stringify({name: name})});
+  const res1 = await t.context.cw.dispatch(postReq('cloudflare'));
+  t.is(res1.status, 200);
+  t.is(await res1.text(), 'Hello cloudflare');
+  const res2 = await t.context.cw.dispatch(postReq('asterius'));
+  t.is(res2.status, 200);
+  t.is(await res2.text(), 'Hello asterius');
 });
