@@ -10,6 +10,8 @@ package.json
 jsffi_stub.h
 
 !/cloudflare/cloudflare.mjs
+!/cloudflare/package.json
+!/cloudflare/test.js
 !/jsffi/index.html
 !/jsffi/jsffi.mjs
 !/rtsapi/rtsapi.mjs
