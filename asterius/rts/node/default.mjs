@@ -1,8 +1,8 @@
+/**
+ * @file Implements Node.js-specific functionality.
+ */
 import { performance } from "perf_hooks";
 
-/**
- * This module contains Node.js-specific functionality.
- */
 export default {
   /**
    * The Performance Web API.

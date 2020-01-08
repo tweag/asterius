@@ -1,5 +1,5 @@
 /**
- * This module contains browser-specific functionality.
+ * @file Implements browser-specific functionality.
  */
 export default {
   /**
