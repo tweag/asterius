@@ -13,18 +13,22 @@ export default {
    */
   Time: {
     /**
-     * Returns the current millisecond timestamp,
+     * Returns the current high-resolution timestamp,
      * where 0 represents the start of the node.js process.
+     * The output is a [seconds, nanoseconds] Array.
      */
-    now: () => {
-      return performance.now();
+    getCPUTime: () => {
+      const ms = performance.now(),
+            s = Math.floor(ms / 1000.0),
+            ns = Math.floor(ms - s * 1000) * 1000000;
+      return [s, ns];
     },
     /**
      * Returns the current high-resolution timestamp,
      * where 0 represents UNIX Epoch. The output is a
      * [seconds, nanoseconds] Array.
      */
-    time: () => {
+    getUnixEpochTime: () => {
       return process.hrtime();
     },
     /**

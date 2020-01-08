@@ -5,27 +5,30 @@ export default {
   /**
    * The Performance Web API.
    */
-  Performance: window.performance,
+  Performance: performance,
   /**
    * A custom Time interface, used in {@link TimeCBits}.
    */
   Time: {
     /**
-     * Returns the current millisecond timestamp,
-     * where 0 represents the time origin of the document.
+     * Returns the current timestamp, where 0 represents
+     * the time origin of the document.
+     * The output is a [seconds, nanoseconds] Array.
      */
-    now: () => {
-      return performance.now();
+    getCPUTime: () => {
+      const ms = performance.now(),
+            s = Math.floor(ms / 1000.0),
+            ns = Math.floor(ms - s * 1000) * 1000000;
+      return [s, ns];
     },
     /**
-     * Returns the current millisecond timestamp,
-     * where 0 represents UNIX Epoch. The output is a
-     * [seconds, nanoseconds] Array.
+     * Returns the current timestamp, where 0 represents UNIX Epoch.
+     * The output is a [seconds, nanoseconds] Array.
      */
-    time: () => {
+    getUnixEpochTime: () => {
       const ms = Date.now(),
             s = Math.floor(ms / 1000.0),
-            ns = Math.floow(ms - s * 1000) * 1000000;
+            ns = Math.floor(ms - s * 1000) * 1000000;
       return [s, ns];
     },
     /**
