@@ -457,7 +457,7 @@ ahcDistMain logger task (final_m, report) = do
           "--target",
           case target task of
             Node -> "node"
-            Browser -> "browser"
+            Browser -> "browser",
           takeFileName out_entry
         ]
   when (target task == Browser) $ do
