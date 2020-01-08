@@ -420,7 +420,10 @@ ahcDistMain logger task (final_m, report) = do
   let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
     \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory task </> f)
-  let specificFolder = map toLower $ show $ target task
+  let specificFolder = 
+        case target task of
+          Node -> "node"
+          Browser -> "browser"
   createDirectoryIfMissing False (outputDirectory task </> specificFolder)
   copyFile (dataDir </> "rts" </> specificFolder </> "default.mjs") (outputDirectory task </> specificFolder </> "default.mjs")
   logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
@@ -452,7 +455,9 @@ ahcDistMain logger task (final_m, report) = do
           "--no-autoinstall",
           "--no-content-hash",
           "--target",
-          map toLower $ show $ target task,
+          case target task of
+            Node -> "node"
+            Browser -> "browser"
           takeFileName out_entry
         ]
   when (target task == Browser) $ do
