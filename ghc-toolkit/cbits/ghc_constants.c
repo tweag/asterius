@@ -523,3 +523,7 @@ HsInt sizeof_StgStableName() { return sizeof(StgStableName); }
 HsInt offset_StgStableName_header() { return offsetof(StgStableName, header); }
 
 HsInt offset_StgStableName_sn() { return offsetof(StgStableName, sn); }
+
+HsInt clock_monotonic() { return CLOCK_MONOTONIC; }
+
+HsInt clock_realtime() { return CLOCK_REALTIME; }
