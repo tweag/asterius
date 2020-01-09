@@ -9,7 +9,7 @@ export default {
     /**
      * Returns the current timestamp, where 0 represents
      * the time origin of the document.
-     * The output is a [seconds, nanoseconds] Array.
+     * @returns A [seconds, nanoseconds] Array.
      */
     getCPUTime: () => {
       const ms = performance.now(),
@@ -19,7 +19,7 @@ export default {
     },
     /**
      * Returns the current timestamp, where 0 represents UNIX Epoch.
-     * The output is a [seconds, nanoseconds] Array.
+     * @returns A [seconds, nanoseconds] Array.
      */
     getUnixEpochTime: () => {
       const ms = Date.now(),
