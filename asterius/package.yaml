@@ -328,4 +328,3 @@ tests:
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius
-      - time
