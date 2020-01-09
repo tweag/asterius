@@ -46,7 +46,7 @@ export class TimeCBits {
   clock_gettime(clk_id, addr) {
     if (addr) {
       // fallback by default on the realtime timer
-      const time = clk_id == clock_monotonic ? this.getCPUTime() : this.getUnixEpochTime();
+      const time = clk_id == rtsConstants.clock_monotonic ? this.getCPUTime() : this.getUnixEpochTime();
       this.memory.i64Store(addr + rtsConstants.offset_timespec_tv_sec, time[0]);
       this.memory.i64Store(addr + rtsConstants.offset_timespec_tv_nsec, time[1]);
     }
