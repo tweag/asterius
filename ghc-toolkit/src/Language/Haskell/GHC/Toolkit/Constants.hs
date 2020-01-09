@@ -583,3 +583,7 @@ foreign import ccall unsafe "offset_StgStableName_header"
 
 foreign import ccall unsafe "offset_StgStableName_sn"
   offset_StgStableName_sn :: Int
+
+foreign import ccall unsafe "clock_monotonic" clock_monotonic :: Int
+
+foreign import ccall unsafe "clock_realtime" clock_realtime :: Int

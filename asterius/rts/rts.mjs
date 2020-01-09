@@ -73,7 +73,7 @@ export async function newAsteriusInstance(req) {
     __asterius_fs = new MemoryFileSystem(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_text_cbits = new TextCBits(__asterius_memory),
-    __asterius_time_cbits = new TimeCBits(__asterius_memory),
+    __asterius_time_cbits = new TimeCBits(__asterius_memory, req.targetSpecificModule),
     __asterius_gc = new GC(
       __asterius_memory,
       __asterius_heapalloc,

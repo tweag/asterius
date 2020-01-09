@@ -34,9 +34,10 @@ extra-source-files:
   - test/sizeof_md5context/**/*.hs
   - test/largenum/**/*.hs
   - test/nodeio/**/*.hs
+  - test/time/**/*.hs
 
 data-files:
-  - rts/*.mjs
+  - rts/**/*.mjs
   - boot-init.sh
   - boot.sh
 
@@ -317,6 +318,13 @@ tests:
   rts:
     source-dirs: test
     main: rts.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - asterius
+
+  time:
+    source-dirs: test
+    main: time.hs
     ghc-options: -threaded -rtsopts
     dependencies:
       - asterius

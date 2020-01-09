@@ -137,6 +137,8 @@ rtsConstants =
                  ("offset_StgWeak_link", offset_StgWeak_link),
                  ("sizeof_StgStableName", sizeof_StgStableName),
                  ("offset_StgStableName_header", offset_StgStableName_header),
-                 ("offset_StgStableName_sn", offset_StgStableName_sn)
+                 ("offset_StgStableName_sn", offset_StgStableName_sn),
+                 ("clock_monotonic", clock_monotonic),
+                 ("clock_realtime", clock_realtime)
                ]
          ]

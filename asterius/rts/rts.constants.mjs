@@ -94,3 +94,5 @@ export const offset_StgWeak_link = 0x28;
 export const sizeof_StgStableName = 0x10;
 export const offset_StgStableName_header = 0x0;
 export const offset_StgStableName_sn = 0x8;
+export const clock_monotonic = 0x1;
+export const clock_realtime = 0x0;
