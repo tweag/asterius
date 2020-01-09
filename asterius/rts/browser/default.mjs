@@ -3,10 +3,6 @@
  */
 export default {
   /**
-   * The Performance Web API.
-   */
-  Performance: performance,
-  /**
    * A custom Time interface, used in {@link TimeCBits}.
    */
   Time: {
