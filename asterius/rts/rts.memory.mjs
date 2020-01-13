@@ -4,17 +4,58 @@ function mask(n) {
   return (BigInt(1) << BigInt(n)) - BigInt(1);
 }
 
+/**
+ * Class acting as the low-level interface to Wasm memory.
+ * It mainly provides methods to load/store data in memory
+ * (e.g. {@link Memory#i64Load}, {@link Memory#i64Store}),
+ * static methods to handle pointer tagging (e.g. {@link Memory#getTag},
+ * {@link Memory#getDynTag}), and a MBlock allocator
+ * ({@link Memory#getMBlocks} and {@link Memory#freeMBlocks}).
+ */
 export class Memory {
   constructor() {
+    /**
+     * The underlying Wasm Memory instance.
+     * @name Memory#memory
+     */
     this.memory = undefined;
+    /**
+     * The number of MBlock slots reserved for
+     * the static part of memory (vs the dynamic part
+     * where heap objects are allocated at runtime).
+     * The static MBlocks contain the initial compiled
+     * Wasm code plus auxiliary static data structures
+     * like info tables.
+     * @name Memory#staticMBlocks
+     */
     this.staticMBlocks = undefined;
+    /**
+     * Low-level interfaces for reading/writing the contents
+     * of {@link Memory#memory}.
+     * @name Memory#i8view
+     * @name Memory#dataView
+     */
     this.i8View = undefined;
     this.dataView = undefined;
+    /**
+     * The current capacity of {@link Memory#memory} in MBlocks.
+     * @name Memory#capacity
+     */
     this.capacity = undefined;
+    /**
+     * A BigInt storing a bit for each MBlock slot
+     * in {@link Memory#memory}. The bit is either 0 or 1
+     * according to whether that MBlock slot is used or not.
+     * @name Memory#liveBitset
+     * @type BigInt
+     */
     this.liveBitset = undefined;
     Object.seal(this);
   }
 
+  /**
+   * Initializes the {@link Memory} object.
+   */
   init(memory, static_mblocks) {
     this.memory = memory;
     this.staticMBlocks = static_mblocks;
@@ -23,6 +64,9 @@ export class Memory {
     this.liveBitset = mask(this.capacity);
   }
 
+  /**
+   * (Re)Initializes the low-level interfaces for {@link Memory#memory}.
+   */
   initView() {
     this.i8View = new Uint8Array(this.memory.buffer);
     this.dataView = new DataView(this.memory.buffer);
@@ -63,6 +107,14 @@ export class Memory {
     return this.memory.buffer;
   }
 
+  /**
+   * Increases the size of {@link Memory#memory} the given
+   * number of pages.
+   * Recall: the size (in bytes) of a Wasm Memory page is stored
+   * in the {@link rtsConstants.pageSize} constant (=64KiB).
+   * @param n The number of Wasm pages to add
+   * @returns The previous number of pages
+   */
   grow(n) {
     const prev_pages = this.memory.grow(n);
     this.initView();
@@ -171,6 +223,13 @@ export class Memory {
     return BigInt(this.dataView.getUint16(Memory.unTag(p), true));
   }
 
+  /**
+   * Checks whether the object at address {@param p} is
+   * heap-allocated, i.e. whether it resides in the dynamic
+   * part of the memory. Used during garbage collection
+   * (in {@link GC#evacuateClosure}) to avoid evacuating
+   * objects in the static MBlocks.
+   */
   heapAlloced(p) {
     return (
       Memory.unTag(p) >=
@@ -178,7 +237,16 @@ export class Memory {
     );
   }
 
+  /**
+   * Obtains {@param n} MBlocks from {@link Memory#memory}.
+   * @returns The memory address at the beginning of the
+   *   requested free memory area.
+   */
   getMBlocks(n) {
+    // First of all, check if there are free spots in the existing
+    // memory by inspecting this.liveBitset for enough adjacent 1's.
+    // In this way, we reuse previously freed MBlock slots and
+    // reduce fragmentation.
     const m = mask(n);
     for (let i = BigInt(0); i <= BigInt(this.capacity - n); ++i) {
       const mi = m << i;
@@ -187,14 +255,21 @@ export class Memory {
         return Memory.tagData(Number(i) * rtsConstants.mblock_size);
       }
     }
+    // No luck, we need to grow the Wasm memory
+    // (we actually -- at least -- double it)
     const d = Math.max(n, this.capacity),
-      prev_capacity = this.capacity;
+          prev_capacity = this.capacity;
     this.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
     this.capacity += d;
+    // We reserve the space for the requested MBlocks right at
+    // the beginning of the newly grown memory
     this.liveBitset |= m << BigInt(prev_capacity);
     return Memory.tagData(prev_capacity * rtsConstants.mblock_size);
   }
 
+  /**
+   * Frees {@param n} MBlocks starting at address {@param p}.
+   */
   freeMBlocks(p, n) {
     const mblock_no =
       BigInt(Memory.unTag(p)) >> BigInt(rtsConstants.mblock_size_log2);
