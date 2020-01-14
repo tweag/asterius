@@ -9,6 +9,9 @@ function bdescr(c) {
   return nc - (nc & (rtsConstants.mblock_size - 1)) + rtsConstants.offset_first_bdescr;
 }
 
+/**
+ * Class implementing copying garbage collection.
+ */
 export class GC {
   constructor(
     memory,
@@ -21,7 +24,7 @@ export class GC {
     symbol_table,
     reentrancy_guard,
     yolo,
-    gc_threshold
+    gcThreshold
   ) {
     this.memory = memory;
     this.heapAlloc = heapalloc;
@@ -32,22 +35,84 @@ export class GC {
     for (const p of export_stableptrs) this.stablePtrManager.newStablePtr(p);
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
+    /**
+     * 'Yolo' mode disables garbage collection altogether
+     * (see {@link GC#performGC})
+     * @name GC#yolo
+     */
     this.yolo = yolo;
-    this.gcThreshold = gc_threshold;
+    /**
+     * Garbage collection will not be performed when the
+     * current number of "live" MBlocks is less than
+     * {@link GC#gcThreshold} (see {@link GC#performGC}).
+     * @name GC#gcThreshold
+     * @default 64
+     */
+    this.gcThreshold = gcThreshold;
+    /**
+     * Map used during evacuation, in order to store
+     * the forwarding pointers from original objects to their copies
+     * (see {@link GC#evacuateClosure}). Note: the pointers are 
+     * stored without their dynamic pointer tag (i.e. they have 
+     * been {@link Memory#unDynTag})-ed beforehand).
+     * @name GC#closureIndirects
+     */
     this.closureIndirects = new Map();
+    /**
+     * Set containing the MBlocks in the to-space,
+     * i.e. the MBlocks where reachable objects are copied
+     * during garbage collection.
+     * Notes:
+     * 1) Pinned MBlocks are not copied during GC: they are
+     *    simply set as live, and added to the liveMBlocks set.
+     * 2) Static objects are not copied either, but their
+     *    blocks are not even added to the liveMBlocks set.
+     * @name GC#liveMBlocks
+     */
     this.liveMBlocks = new Set();
+    /**
+     * Set containing the MBlocks in the from-space,
+     * i.e. the MBlocks that have containing objects
+     * that have been copied into to-space. These MBlocks
+     * will be freed at the end of garbage collection.
+     * @name GC#deadMBlocks
+     */
     this.deadMBlocks = new Set();
+    /**
+     * A work list where evacuated objects are pushed
+     * by {@link GC#evacuateClosure} in order to be later
+     * scavenged by {@link GC#scavengeWorkList}.
+     * @name GC#workList
+     */
     this.workList = [];
+    /**
+     * At each garbage collection, the live JSVals encountered are
+     * recorded in {@link GC#liveJSVals}, and then handled separately 
+     * by {@link StablePtrManager}.
+     * @name GC#liveJSVals
+     */
     this.liveJSVals = new Set();
     Object.freeze(this);
   }
 
-  isPinned(c) {
-    const bd = bdescr(c),
+  /**
+   * Checks whether the provided memory address resides
+   * in a pinned MBlock. Used by {@link GC#evacuateClosure}
+   * to avoid evacuating pinned objects.
+   * @param addr The memory address to check
+   */
+  isPinned(addr) {
+    const bd = bdescr(addr),
       flags = this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags);
     return Boolean(flags & rtsConstants.BF_PINNED);
   }
 
+  /**
+   * Heap alloactes a physical copy of the given closure.
+   * Used during evacuation by {@link GC#evacuateClosure}.
+   * @param c The source address of the closure
+   * @param bytes The size in bytes of the closure 
+   */
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
@@ -56,8 +121,18 @@ export class GC {
     return dest_c;
   }
 
+  /**
+   * Evacuates a closure. This consists of: 
+   * (1) Copying the closure into to-space through {@link GC#copyClosure}
+   * (2) Map the old unDynTag-ed address of the closure
+   *     to its new unDynTag-ed address in {@link GC#closureIndirects}.
+   * If that closure had already been evacuated, simply
+   * return the forwarding pointer already present in {@link GC#closureIndirects}.
+   * @param c The memory address of the closure to evacuate.
+   */
   evacuateClosure(c) {
     if (!Memory.getTag(c)) {
+      // c is the address of a JSVal
       if (!(Number(c) & 1))
         throw new WebAssembly.RuntimeError(`Illegal JSVal 0x${c.toString(16)}`);
       this.liveJSVals.add(Number(c));
@@ -65,13 +140,18 @@ export class GC {
     }
     const tag = Memory.getDynTag(c),
       untagged_c = Memory.unDynTag(c);
+    // Check whether the closure has already been evacuated
     let dest_c = this.closureIndirects.get(untagged_c);
     if (dest_c == undefined) {
+      // The closure has not been already evacuated
       if (this.memory.heapAlloced(untagged_c)) {
+        // The closure belongs to the dynamic part of the memory
         if (this.isPinned(untagged_c)) {
+          // We do not copy pinned objects
           dest_c = untagged_c;
           this.liveMBlocks.add(bdescr(dest_c));
         } else {
+          // Get the type of the closure from info tables
           const info = Number(this.memory.i64Load(untagged_c));
           if (this.infoTables && !this.infoTables.has(info))
             throw new WebAssembly.RuntimeError(
@@ -80,6 +160,8 @@ export class GC {
           const type = this.memory.i32Load(
             info + rtsConstants.offset_StgInfoTable_type
           );
+          // switch over the various ClosureTypes to
+          // find out the size of the closure and copy it
           switch (type) {
             case ClosureTypes.CONSTR_0_1:
             case ClosureTypes.FUN_0_1:
@@ -244,9 +326,16 @@ export class GC {
           }
         }
       } else {
+        // If the closure belongs to the static part of the memory,
+        // we do not actually copy it into to-space, but we still set
+        // it to evacuated and we enqueue it for scavenging.
         dest_c = untagged_c;
       }
+      // Add a forwarding pointer from the original closure
+      // to its copy, so that future calls to evacuateClosure
+      // do not copy it again.
       this.closureIndirects.set(untagged_c, dest_c);
+      // Enqueue the new pointer for scavenging
       this.workList.push(dest_c);
     }
     return Memory.setDynTag(dest_c, tag);
@@ -473,10 +562,19 @@ export class GC {
     }
   }
 
+  /**
+   * Iterates over {@link GC#workList} and scavenges the enqueued objects.
+   */
   scavengeWorkList() {
     while (this.workList.length) this.scavengeClosure(this.workList.pop());
   }
 
+  /**
+   * Scavenges a single object in to-space by evacuating
+   * each pointer in the object, and replacing the pointer
+   * with the address obtained after evacuation.
+   * @param c The address of the closure to scavenge
+   */
   scavengeClosure(c) {
     const info = Number(this.memory.i64Load(c)),
       type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
@@ -657,16 +755,28 @@ export class GC {
     }
   }
 
+  /**
+   * Allocates a new nursery and stores its address in the appropriate
+   * field of the StgRegTable of the main capability.
+   */
   updateNursery() {
+    // Note: the 'rHpAlloc' field of the 'StgRegTable' C struct contains 
+    // the number of bytes allocated in the heap, or better the number of
+    // bytes attempted to being allocated before the heap check fails.
+    // Here, we read this field in the hp_alloc variable and
+    // use it to determine the size of the newly allocated nursery.
     const base_reg =
         this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
       hp_alloc = Number(
         this.memory.i64Load(base_reg + rtsConstants.offset_StgRegTable_rHpAlloc)
       );
+    // reset the number of allocated bytes in the nursery
     this.memory.i64Store(
       base_reg + rtsConstants.offset_StgRegTable_rHpAlloc,
       0
     );
+    // The address of the new nursery's block descriptor is stored
+    // in the 'rCurrentNursery' field of the StgRegTable of the main capability.
     this.memory.i64Store(
       base_reg + rtsConstants.offset_StgRegTable_rCurrentNursery,
       this.heapAlloc.hpAlloc(hp_alloc)
@@ -674,21 +784,27 @@ export class GC {
   }
 
   /**
-   * Perform GC, using scheduler TSOs as roots
+   * Performs garbage collection, using scheduler Thread State Objects (TSOs) as roots.
    */
   performGC() {
     if (this.yolo || this.heapAlloc.liveSize() < this.gcThreshold) {
+      // Garbage collection is skipped. This happens in yolo mode,
+      // or when the total number of "live" MBlocks is below the given threshold
+      // (by "live", we mean allocated and not yet freed - see HeapAlloc.liveSize).
+      // This avoids a lot of GC invocations
+      // (see {@link https://github.com/tweag/asterius/pull/379}).
       this.updateNursery();
       return;
     }
     this.reentrancyGuard.enter(1);
     this.heapAlloc.initUnpinned();
 
-    // evacuate TSOs
-    for (const [tid, tso_info] of this.scheduler.tsos) {
+    // Evacuate TSOs
+    for (const [_, tso_info] of this.scheduler.tsos) {
       tso_info.addr = this.evacuateClosure(tso_info.addr);
     }
 
+    // Evacuate stable pointers
     for (const [sp, c] of this.stablePtrManager.spt.entries())
       if (!(sp & 1)) this.stablePtrManager.spt.set(sp, this.evacuateClosure(c));
 
@@ -710,7 +826,7 @@ export class GC {
     this.scavengeWorkList();
 
     // update the ret pointer in the complete TSOs
-    for (const [tid, tso_info] of this.scheduler.tsos) {
+    for (const [_, tso_info] of this.scheduler.tsos) {
       if (tso_info.ret) {
         const tso = tso_info.addr;
         const stackobj = Number(
@@ -725,10 +841,11 @@ export class GC {
 
     // mark unused MBlocks
     this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
-
+    // allocate a new nursery
     this.updateNursery();
-
+    // garbage collect unused JSVals
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
+    // cleanup
     this.closureIndirects.clear();
     this.liveMBlocks.clear();
     this.deadMBlocks.clear();
