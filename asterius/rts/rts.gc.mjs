@@ -50,14 +50,13 @@ export class GC {
      */
     this.gcThreshold = gcThreshold;
     /**
-     * Map used during evacuation, in order to store
-     * the forwarding pointers from original objects to their copies
-     * (see {@link GC#evacuateClosure}). Note: the pointers are 
-     * stored without their dynamic pointer tag (i.e. they have 
-     * been {@link Memory#unDynTag})-ed beforehand).
-     * @name GC#closureIndirects
+     * List of tuples [address, info pointer] used
+     * at the end of garbage collection to restore
+     * the overwritten info pointers of objects that
+     * are not actually moved.
+     * @name GC#nonMovedObjects
      */
-    this.closureIndirects = new Map();
+    this.nonMovedObjects = [];
     /**
      * Set containing the MBlocks in the to-space,
      * i.e. the MBlocks where reachable objects are copied
@@ -138,206 +137,215 @@ export class GC {
       this.liveJSVals.add(Number(c));
       return c;
     }
-    const tag = Memory.getDynTag(c),
-      untagged_c = Memory.unDynTag(c);
-    // Check whether the closure has already been evacuated
-    let dest_c = this.closureIndirects.get(untagged_c);
-    if (dest_c == undefined) {
-      // The closure has not been already evacuated
-      if (this.memory.heapAlloced(untagged_c)) {
-        // The closure belongs to the dynamic part of the memory
-        if (this.isPinned(untagged_c)) {
-          // We do not copy pinned objects
-          dest_c = untagged_c;
-          this.liveMBlocks.add(bdescr(dest_c));
-        } else {
-          // Get the type of the closure from info tables
-          const info = Number(this.memory.i64Load(untagged_c));
-          if (this.infoTables && !this.infoTables.has(info))
-            throw new WebAssembly.RuntimeError(
-              `Invalid info table 0x${info.toString(16)}`
-            );
-          const type = this.memory.i32Load(
-            info + rtsConstants.offset_StgInfoTable_type
-          );
-          // switch over the various ClosureTypes to
-          // find out the size of the closure and copy it
-          switch (type) {
-            case ClosureTypes.CONSTR_0_1:
-            case ClosureTypes.FUN_0_1:
-            case ClosureTypes.FUN_1_0:
-            case ClosureTypes.CONSTR_1_0: {
-              dest_c = this.copyClosure(untagged_c, 16);
-              break;
-            }
-            case ClosureTypes.THUNK_1_0:
-            case ClosureTypes.THUNK_0_1: {
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgThunk + 8
-              );
-              break;
-            }
-            case ClosureTypes.THUNK_1_1:
-            case ClosureTypes.THUNK_2_0:
-            case ClosureTypes.THUNK_0_2: {
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgThunk + 16
-              );
-              break;
-            }
-            case ClosureTypes.FUN_1_1:
-            case ClosureTypes.FUN_2_0:
-            case ClosureTypes.FUN_0_2:
-            case ClosureTypes.CONSTR_1_1:
-            case ClosureTypes.CONSTR_2_0:
-            case ClosureTypes.CONSTR_0_2: {
-              dest_c = this.copyClosure(untagged_c, 24);
-              break;
-            }
-            case ClosureTypes.THUNK: {
-              const ptrs = this.memory.i32Load(
-                  info + rtsConstants.offset_StgInfoTable_layout
-                ),
-                non_ptrs = this.memory.i32Load(
-                  info + rtsConstants.offset_StgInfoTable_layout + 4
-                );
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgThunk + ((ptrs + non_ptrs) << 3)
-              );
-              break;
-            }
-            case ClosureTypes.FUN:
-            case ClosureTypes.CONSTR:
-            case ClosureTypes.CONSTR_NOCAF:
-            case ClosureTypes.MVAR_CLEAN:
-            case ClosureTypes.MVAR_DIRTY:
-            case ClosureTypes.MUT_VAR_CLEAN:
-            case ClosureTypes.MUT_VAR_DIRTY:
-            case ClosureTypes.WEAK:
-            case ClosureTypes.PRIM:
-            case ClosureTypes.MUT_PRIM:
-            case ClosureTypes.BLACKHOLE: {
-              const ptrs = this.memory.i32Load(
-                  info + rtsConstants.offset_StgInfoTable_layout
-                ),
-                non_ptrs = this.memory.i32Load(
-                  info + rtsConstants.offset_StgInfoTable_layout + 4
-                );
-              dest_c = this.copyClosure(untagged_c, (1 + ptrs + non_ptrs) << 3);
-              break;
-            }
-            case ClosureTypes.THUNK_SELECTOR: {
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgSelector
-              );
-              break;
-            }
-            case ClosureTypes.IND: {
-              dest_c = this.evacuateClosure(
-                this.memory.i64Load(
-                  untagged_c + rtsConstants.offset_StgInd_indirectee
-                )
-              );
-              this.closureIndirects.set(untagged_c, dest_c);
-              return dest_c;
-            }
-            case ClosureTypes.PAP: {
-              const n_args = this.memory.i32Load(
-                untagged_c + rtsConstants.offset_StgPAP_n_args
-              );
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgPAP + (n_args << 3)
-              );
-              break;
-            }
-            case ClosureTypes.AP: {
-              const n_args = this.memory.i32Load(
-                untagged_c + rtsConstants.offset_StgAP_n_args
-              );
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgAP + (n_args << 3)
-              );
-              break;
-            }
-            case ClosureTypes.AP_STACK: {
-              const size = Number(
-                this.memory.i64Load(
-                  untagged_c + rtsConstants.offset_StgAP_STACK_size
-                )
-              );
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgAP_STACK + (size << 3)
-              );
-              break;
-            }
-            case ClosureTypes.ARR_WORDS: {
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgArrBytes +
-                  Number(
-                    this.memory.i64Load(
-                      untagged_c + rtsConstants.offset_StgArrBytes_bytes
-                    )
-                  )
-              );
-              break;
-            }
-            case ClosureTypes.MUT_ARR_PTRS_CLEAN:
-            case ClosureTypes.MUT_ARR_PTRS_DIRTY:
-            case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY:
-            case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN: {
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgMutArrPtrs +
-                  (Number(
-                    this.memory.i64Load(
-                      untagged_c + rtsConstants.offset_StgMutArrPtrs_ptrs
-                    )
-                  ) <<
-                    3)
-              );
-              break;
-            }
-            case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN:
-            case ClosureTypes.SMALL_MUT_ARR_PTRS_DIRTY:
-            case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY:
-            case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
-              dest_c = this.copyClosure(
-                untagged_c,
-                rtsConstants.sizeof_StgSmallMutArrPtrs +
-                  (Number(
-                    this.memory.i64Load(
-                      untagged_c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs
-                    )
-                  ) <<
-                    3)
-              );
-              break;
-            }
-            default:
-              throw new WebAssembly.RuntimeError();
-          }
+    const
+      tag = Memory.getDynTag(c),
+      untagged_c = Memory.unDynTag(c),
+      info = Number(this.memory.i64Load(untagged_c));
+    let dest_c = undefined;
+    if (info % 2) {
+      // The info header has already been overwritten with
+      // a forwarding address: just return it!
+      return Memory.setDynTag(info, tag);
+    } else if (this.isPinned(untagged_c)) {
+      // The object belongs to a pinned MBlock:
+      // it won't be copied, but it will still be
+      // scavenged (see below).
+      dest_c = untagged_c;
+      this.nonMovedObjects.push([untagged_c, info]);
+      this.liveMBlocks.add(bdescr(untagged_c));
+    } else if (!this.memory.heapAlloced(untagged_c)) {
+      // Object in the static part of the memory:
+      // it won't be copied, but it will still be
+      // scavenged (see below).
+      dest_c = untagged_c;
+      this.nonMovedObjects.push([untagged_c, info]);
+      // Warning: do not set the MBlock as live, 
+      // because the static part of memory is not
+      // tracked by HeapAlloc.mgroups and it would
+      // break the checks in HeapAlloc.handleLiveness.
+    } else {
+      if (this.infoTables && !this.infoTables.has(info))
+        throw new WebAssembly.RuntimeError(
+          `Invalid info table 0x${info.toString(16)}`
+        );
+      const type = this.memory.i32Load(
+        info + rtsConstants.offset_StgInfoTable_type
+      );
+      switch (type) {
+        case ClosureTypes.CONSTR_0_1:
+        case ClosureTypes.FUN_0_1:
+        case ClosureTypes.FUN_1_0:
+        case ClosureTypes.CONSTR_1_0: {
+          dest_c = this.copyClosure(untagged_c, 16);
+          break;
         }
-      } else {
-        // If the closure belongs to the static part of the memory,
-        // we do not actually copy it into to-space, but we still set
-        // it to evacuated and we enqueue it for scavenging.
-        dest_c = untagged_c;
+        case ClosureTypes.THUNK_1_0:
+        case ClosureTypes.THUNK_0_1: {
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgThunk + 8
+          );
+          break;
+        }
+        case ClosureTypes.THUNK_1_1:
+        case ClosureTypes.THUNK_2_0:
+        case ClosureTypes.THUNK_0_2: {
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgThunk + 16
+          );
+          break;
+        }
+        case ClosureTypes.FUN_1_1:
+        case ClosureTypes.FUN_2_0:
+        case ClosureTypes.FUN_0_2:
+        case ClosureTypes.CONSTR_1_1:
+        case ClosureTypes.CONSTR_2_0:
+        case ClosureTypes.CONSTR_0_2: {
+          dest_c = this.copyClosure(untagged_c, 24);
+          break;
+        }
+        case ClosureTypes.THUNK: {
+          const ptrs = this.memory.i32Load(
+              info + rtsConstants.offset_StgInfoTable_layout
+            ),
+            non_ptrs = this.memory.i32Load(
+              info + rtsConstants.offset_StgInfoTable_layout + 4
+            );
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgThunk + ((ptrs + non_ptrs) << 3)
+          );
+          break;
+        }
+        case ClosureTypes.FUN:
+        case ClosureTypes.CONSTR:
+        case ClosureTypes.CONSTR_NOCAF:
+        case ClosureTypes.MVAR_CLEAN:
+        case ClosureTypes.MVAR_DIRTY:
+        case ClosureTypes.MUT_VAR_CLEAN:
+        case ClosureTypes.MUT_VAR_DIRTY:
+        case ClosureTypes.WEAK:
+        case ClosureTypes.PRIM:
+        case ClosureTypes.MUT_PRIM:
+        case ClosureTypes.BLACKHOLE: {
+          const ptrs = this.memory.i32Load(
+              info + rtsConstants.offset_StgInfoTable_layout
+            ),
+            non_ptrs = this.memory.i32Load(
+              info + rtsConstants.offset_StgInfoTable_layout + 4
+            );
+          dest_c = this.copyClosure(untagged_c, (1 + ptrs + non_ptrs) << 3);
+          break;
+        }
+        case ClosureTypes.THUNK_SELECTOR: {
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgSelector
+          );
+          break;
+        }
+        case ClosureTypes.IND: {
+          dest_c = this.evacuateClosure(
+            this.memory.i64Load(
+              untagged_c + rtsConstants.offset_StgInd_indirectee
+            )
+          )
+          // cannot simply break here, because dest_c must not
+          // be pushed to this.workList since it has already
+          // been evacuated above
+          mylog(logaddr(untagged_c), logaddr(dest_c));
+          this.memory.i64Store(untagged_c, dest_c + 1);
+          return dest_c;
+        }
+        case ClosureTypes.PAP: {
+          const n_args = this.memory.i32Load(
+            untagged_c + rtsConstants.offset_StgPAP_n_args
+          );
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgPAP + (n_args << 3)
+          );
+          break;
+        }
+        case ClosureTypes.AP: {
+          const n_args = this.memory.i32Load(
+            untagged_c + rtsConstants.offset_StgAP_n_args
+          );
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgAP + (n_args << 3)
+          );
+          break;
+        }
+        case ClosureTypes.AP_STACK: {
+          const size = Number(
+            this.memory.i64Load(
+              untagged_c + rtsConstants.offset_StgAP_STACK_size
+            )
+          );
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgAP_STACK + (size << 3)
+          );
+          break;
+        }
+        case ClosureTypes.ARR_WORDS: {
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgArrBytes +
+              Number(
+                this.memory.i64Load(
+                  untagged_c + rtsConstants.offset_StgArrBytes_bytes
+                )
+              )
+          );
+          break;
+        }
+        case ClosureTypes.MUT_ARR_PTRS_CLEAN:
+        case ClosureTypes.MUT_ARR_PTRS_DIRTY:
+        case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY:
+        case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN: {
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgMutArrPtrs +
+              (Number(
+                this.memory.i64Load(
+                  untagged_c + rtsConstants.offset_StgMutArrPtrs_ptrs
+                )
+              ) <<
+                3)
+          );
+          break;
+        }
+        case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN:
+        case ClosureTypes.SMALL_MUT_ARR_PTRS_DIRTY:
+        case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY:
+        case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
+          dest_c = this.copyClosure(
+            untagged_c,
+            rtsConstants.sizeof_StgSmallMutArrPtrs +
+              (Number(
+                this.memory.i64Load(
+                  untagged_c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs
+                )
+              ) <<
+                3)
+          );
+          break;
+        }
+        default:
+          throw new WebAssembly.RuntimeError();
       }
-      // Add a forwarding pointer from the original closure
-      // to its copy, so that future calls to evacuateClosure
-      // do not copy it again.
-      this.closureIndirects.set(untagged_c, dest_c);
-      // Enqueue the new pointer for scavenging
-      this.workList.push(dest_c);
-    }
+      }
+    // Overwrite the object header with a forwarding
+    // pointer (i.e. store the address with the
+    // least significant bit set to 1)
+    this.memory.i64Store(untagged_c, dest_c + 1);
+    // Enqueue the destination object in the workList,
+    // so that it will be scavenged later
+    this.workList.push([dest_c, info]);
+    // Finally, return the new address
     return Memory.setDynTag(dest_c, tag);
   }
 
@@ -366,9 +374,9 @@ export class GC {
     }
   }
 
-  scavengePAP(c, offset_fun, payload, n_args) {
-    this.scavengeClosureAt(c + offset_fun);
-    const fun = this.memory.i64Load(c + offset_fun),
+  scavengePAP(c, payload, n_args) {
+    this.scavengeClosureAt(c);
+    const fun = this.memory.i64Load(c),
       fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun)));
     if (this.infoTables && !this.infoTables.has(fun_info))
       throw new WebAssembly.RuntimeError(
@@ -478,22 +486,23 @@ export class GC {
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/Printer.c#L609
         // https://github.com/ghc/ghc/blob/2ff77b9894eecf51fa619ed2266ca196e296cd1e/rts/sm/Scav.c#L1944
         case ClosureTypes.RET_FUN: {
-          const retfun = c;
           const size = Number(
-            this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_size)
+            this.memory.i64Load(c + rtsConstants.offset_StgRetFun_size)
           );
 
-          // NOTE: the order is important. The scavenging will move all the
-          // data inside, so that when we grab "fun", we grab the right fun
-          // that has been moved.
-          this.scavengeClosureAt(retfun + rtsConstants.offset_StgRetFun_fun);
           let fun = Number(
-            this.memory.i64Load(retfun + rtsConstants.offset_StgRetFun_fun)
+            this.memory.i64Load(c + rtsConstants.offset_StgRetFun_fun)
           );
-          const fun_info_p = fun + 0;
           const fun_info = Number(
-            this.memory.i64Load(Memory.unDynTag(fun_info_p))
+            this.memory.i64Load(Memory.unDynTag(fun))
           );
+          if (fun_info % 2) {
+            // Sanity check: ensure that fun_info is not a 
+            // forwarding pointer. _Hopefully_ the invariant here
+            // is that fun has not been moved before
+            throw WebAssembly.RuntimeError("Unexpected early evacuation of fun");
+          }
+          this.scavengeClosureAt(c + rtsConstants.offset_StgRetFun_fun);
 
           const fun_type = this.memory.i32Load(
             fun_info +
@@ -502,7 +511,7 @@ export class GC {
           );
 
           const ret_fun_payload =
-            retfun + rtsConstants.offset_StgRetFun_payload;
+            c + rtsConstants.offset_StgRetFun_payload;
 
           switch (fun_type) {
             case FunTypes.ARG_GEN: {
@@ -566,7 +575,10 @@ export class GC {
    * Iterates over {@link GC#workList} and scavenges the enqueued objects.
    */
   scavengeWorkList() {
-    while (this.workList.length) this.scavengeClosure(this.workList.pop());
+    while (this.workList.length) {
+      const [addr, info] = this.workList.pop();
+      this.scavengeClosure(addr, info);
+    };
   }
 
   /**
@@ -574,10 +586,10 @@ export class GC {
    * each pointer in the object, and replacing the pointer
    * with the address obtained after evacuation.
    * @param c The address of the closure to scavenge
+   * @param info The info pointer of the closure
    */
-  scavengeClosure(c) {
-    const info = Number(this.memory.i64Load(c)),
-      type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+  scavengeClosure(c, info) {
+    const type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
     if (this.infoTables && !this.infoTables.has(info))
       throw new WebAssembly.RuntimeError(
         `Invalid info table 0x${info.toString(16)}`
@@ -663,8 +675,7 @@ export class GC {
       }
       case ClosureTypes.AP: {
         this.scavengePAP(
-          c,
-          rtsConstants.offset_StgAP_fun,
+          c + rtsConstants.offset_StgAP_fun,
           c + rtsConstants.offset_StgAP_payload,
           this.memory.i32Load(c + rtsConstants.offset_StgAP_n_args)
         );
@@ -672,8 +683,7 @@ export class GC {
       }
       case ClosureTypes.PAP: {
         this.scavengePAP(
-          c,
-          rtsConstants.offset_StgPAP_fun,
+          c + rtsConstants.offset_StgPAP_fun,
           c + rtsConstants.offset_StgPAP_payload,
           this.memory.i32Load(c + rtsConstants.offset_StgPAP_n_args)
         );
@@ -825,6 +835,12 @@ export class GC {
     // do the rest of the scavenging work
     this.scavengeWorkList();
 
+    // restore correct info fields for non-moved objects
+    while (this.nonMovedObjects.length) {
+      const [addr, info] = this.nonMovedObjects.pop();
+      this.memory.i64Store(addr, info);
+    }
+
     // update the ret pointer in the complete TSOs
     for (const [_, tso_info] of this.scheduler.tsos) {
       if (tso_info.ret) {
@@ -846,7 +862,6 @@ export class GC {
     // garbage collect unused JSVals
     this.stablePtrManager.preserveJSVals(this.liveJSVals);
     // cleanup
-    this.closureIndirects.clear();
     this.liveMBlocks.clear();
     this.deadMBlocks.clear();
     this.liveJSVals.clear();
