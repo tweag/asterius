@@ -39,6 +39,9 @@ export class Memory {
     this.dataView = undefined;
     /**
      * The current capacity of {@link Memory#memory} in MBlocks.
+     * By "capacity" we mean the real size of Wasm linear memory,
+     * whereas by "size" we indicate the range within the capacity
+     * that we really use at the moment.
      * @name Memory#capacity
      */
     this.capacity = undefined;
@@ -255,8 +258,9 @@ export class Memory {
         return Memory.tagData(Number(i) * rtsConstants.mblock_size);
       }
     }
-    // No luck, we need to grow the Wasm memory
-    // (we actually -- at least -- double it)
+    // No luck, we need to grow the Wasm linear memory
+    // (we actually - at least - double it, in order to reduce
+    // amortized overhead of allocating individual MBlocks)
     const d = Math.max(n, this.capacity),
           prev_capacity = this.capacity;
     this.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));

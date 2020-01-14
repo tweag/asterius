@@ -1,13 +1,14 @@
 import * as rtsConstants from "./rts.constants.mjs";
 
 /**
- * Class implementing the allocation of heap objects.
- * This mainly consists of a block allocator, which allocates
- * memory in small units of 4KiB called "blocks".
- * Each block has a block descriptor containing metadata
- * about the contents of the block. Blocks are allocated inside
- * MBlocks ("megablocks"), whose size is fixed to 1MiB and are allocated by
- * {@link Memory}. Moreover, MBlocks can be chained to form MegaGroups.
+ * Class implementing the allocation of nurseries,
+ * and also individual heap objects.
+ * In the asterius RTS - contrary to GHC - we don't
+ * really distinguish between "blocks" and "MBlocks"
+ * ("megablocks", "em-blocks"); here all blocks are
+ * really MBlocks. MBlocks have a fixed size of 1MiB
+ * and are allocated by {@link Memory}. Moreover,
+ * MBlocks can be chained to form MegaGroups.
  * For more information on (mega)block allocation, see
  * {@link https://gitlab.haskell.org/ghc/ghc/wikis/commentary/rts/storage/block-alloc}.
  */
@@ -20,10 +21,12 @@ export class HeapAlloc {
     this.memory = memory;
     /**
      * An array with two entries:
-     * 1. The unpinned pool, i.e. the address of a MBlock 
-     *    used for allocating unpinned objects,
-     * 2. The pinned pool, i.e. the address of a MBlock
-     *    used for pinned objects.
+     * 1. The unpinned pool, i.e. the address of the
+     *    block descriptor for the MBlock where
+     *    unpinned objects are allocated,
+     * 2. The pinned pool, i.e. the address of the
+     *    block descriptor for the MBlock where
+     *    pinned objects are allocated.
      * @name HeapAlloc#currentPools
      */
     this.currentPools = [undefined, undefined];
@@ -206,8 +209,9 @@ export class HeapAlloc {
   }
 
   /**
-   * Estimates the size of living objects by
-   * counting the number of MBlocks currently allocated.
+   * Estimates the size of living objects by counting the number
+   * of MBlocks that were allocated by {@link GC#getMBlocks} 
+   * some time ago, but have not been yet been freed by {@link GC#freeMBlocks}.
    * @returns The number of allocated MBlocks
    */
   liveSize() {

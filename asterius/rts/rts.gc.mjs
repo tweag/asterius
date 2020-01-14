@@ -43,26 +43,38 @@ export class GC {
     this.yolo = yolo;
     /**
      * Garbage collection will not be performed when the
-     * current number of MBlocks is less than {@link GC#gcThreshold}
-     * (see {link GC#performGC}).
+     * current number of "live" MBlocks is less than
+     * {@link GC#gcThreshold} (see {@link GC#performGC}).
      * @name GC#gcThreshold
      * @default 64
      */
     this.gcThreshold = gcThreshold;
     /**
-     * Map used during evacation, in order to store
+     * Map used during evacuation, in order to store
      * the forwarding pointers from original objects to their copies
-     * (see {@link GC#evacuateClosure}).
+     * (see {@link GC#evacuateClosure}). Note: the pointers are 
+     * stored without their dynamic pointer tag (i.e. they have 
+     * been {@link Memory#unDynTag})-ed beforehand).
      * @name GC#closureIndirects
      */
     this.closureIndirects = new Map();
     /**
-     * Set containing the objects in the to-space
+     * Set containing the MBlocks in the to-space,
+     * i.e. the MBlocks where reachable objects are copied
+     * during garbage collection.
+     * Notes:
+     * 1) Pinned MBlocks are not copied during GC: they are
+     *    simply set as live, and added to the liveMBlocks set.
+     * 2) Static objects are not copied either, but their
+     *    blocks are not even added to the liveMBlocks set.
      * @name GC#liveMBlocks
      */
     this.liveMBlocks = new Set();
     /**
-     * Set containing the object in the from-space
+     * Set containing the MBlocks in the from-space,
+     * i.e. the MBlocks that have containing objects
+     * that have been copied into to-space. These MBlocks
+     * will be freed at the end of garbage collection.
      * @name GC#deadMBlocks
      */
     this.deadMBlocks = new Set();
@@ -96,7 +108,7 @@ export class GC {
   }
 
   /**
-   * Heap alloactes a phisical copy of the given closure.
+   * Heap alloactes a physical copy of the given closure.
    * Used during evacuation by {@link GC#evacuateClosure}.
    * @param c The source address of the closure
    * @param bytes The size in bytes of the closure 
@@ -112,8 +124,8 @@ export class GC {
   /**
    * Evacuates a closure. This consists of: 
    * (1) Copying the closure into to-space through {@link GC#copyClosure}
-   * (2) Map the old address of the closure to its new address
-   *     in {@link GC#closureIndirects}.
+   * (2) Map the old unDynTag-ed address of the closure
+   *     to its new unDynTag-ed address in {@link GC#closureIndirects}.
    * If that closure had already been evacuated, simply
    * return the forwarding pointer already present in {@link GC#closureIndirects}.
    * @param c The memory address of the closure to evacuate.
@@ -316,7 +328,7 @@ export class GC {
       } else {
         // If the closure belongs to the static part of the memory,
         // we do not actually copy it into to-space, but we still set
-        // it to evacuated in order to avoid future checks.
+        // it to evacuated and we enqueue it for scavenging.
         dest_c = untagged_c;
       }
       // Add a forwarding pointer from the original closure
@@ -749,9 +761,10 @@ export class GC {
    */
   updateNursery() {
     // Note: the 'rHpAlloc' field of the 'StgRegTable' C struct contains 
-    // the number of bytes being allocated in the heap. Here, this field is
-    // read in the hp_alloc variable and used as the size of the newly 
-    // allocated nursery
+    // the number of bytes allocated in the heap, or better the number of
+    // bytes attempted to being allocated before the heap check fails.
+    // Here, we read this field in the hp_alloc variable and
+    // use it to determine the size of the newly allocated nursery.
     const base_reg =
         this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
       hp_alloc = Number(
@@ -762,8 +775,8 @@ export class GC {
       base_reg + rtsConstants.offset_StgRegTable_rHpAlloc,
       0
     );
-    // The address of the new nursery is stored in the 'rCurrentNursery'
-    // field of the the C StgRegTable struct of the main capability
+    // The address of the new nursery's block descriptor is stored
+    // in the 'rCurrentNursery' field of the StgRegTable of the main capability.
     this.memory.i64Store(
       base_reg + rtsConstants.offset_StgRegTable_rCurrentNursery,
       this.heapAlloc.hpAlloc(hp_alloc)
@@ -776,7 +789,8 @@ export class GC {
   performGC() {
     if (this.yolo || this.heapAlloc.liveSize() < this.gcThreshold) {
       // Garbage collection is skipped. This happens in yolo mode,
-      // or when the total number of allocated MBlocks is below a gc threshold.
+      // or when the total number of "live" MBlocks is below the given threshold
+      // (by "live", we mean allocated and not yet freed - see HeapAlloc.liveSize).
       // This avoids a lot of GC invocations
       // (see {@link https://github.com/tweag/asterius/pull/379}).
       this.updateNursery();
