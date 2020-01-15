@@ -171,6 +171,7 @@ export class GC {
         throw new WebAssembly.RuntimeError(
           `Invalid info table 0x${info.toString(16)}`
         );
+      // Get the type of the closure from info tables
       const type = this.memory.i32Load(
         info + rtsConstants.offset_StgInfoTable_type
       );
