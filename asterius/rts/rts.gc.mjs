@@ -254,7 +254,6 @@ export class GC {
           // cannot simply break here, because dest_c must not
           // be pushed to this.workList since it has already
           // been evacuated above
-          mylog(logaddr(untagged_c), logaddr(dest_c));
           this.memory.i64Store(untagged_c, dest_c + 1);
           return dest_c;
         }
