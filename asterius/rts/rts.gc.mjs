@@ -6,7 +6,11 @@ import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
 function bdescr(c) {
   const nc = Number(c);
-  return nc - (nc & (rtsConstants.mblock_size - 1)) + rtsConstants.offset_first_bdescr;
+  return (
+    nc -
+    (nc & (rtsConstants.mblock_size - 1)) +
+    rtsConstants.offset_first_bdescr
+  );
 }
 
 /**
@@ -86,7 +90,7 @@ export class GC {
     this.workList = [];
     /**
      * At each garbage collection, the live JSVals encountered are
-     * recorded in {@link GC#liveJSVals}, and then handled separately 
+     * recorded in {@link GC#liveJSVals}, and then handled separately
      * by {@link StablePtrManager}.
      * @name GC#liveJSVals
      */
@@ -110,7 +114,7 @@ export class GC {
    * Heap alloactes a physical copy of the given closure.
    * Used during evacuation by {@link GC#evacuateClosure}.
    * @param c The source address of the closure
-   * @param bytes The size in bytes of the closure 
+   * @param bytes The size in bytes of the closure
    */
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
@@ -121,7 +125,7 @@ export class GC {
   }
 
   /**
-   * Evacuates a closure. This consists of: 
+   * Evacuates a closure. This consists of:
    * (1) Copying the closure into to-space through {@link GC#copyClosure}
    * (2) Map the old unDynTag-ed address of the closure
    *     to its new unDynTag-ed address in {@link GC#closureIndirects}.
@@ -137,8 +141,7 @@ export class GC {
       this.liveJSVals.add(Number(c));
       return c;
     }
-    const
-      tag = Memory.getDynTag(c),
+    const tag = Memory.getDynTag(c),
       untagged_c = Memory.unDynTag(c),
       info = Number(this.memory.i64Load(untagged_c));
     let dest_c = undefined;
@@ -159,7 +162,7 @@ export class GC {
       // scavenged (see below).
       dest_c = untagged_c;
       this.nonMovedObjects.push([untagged_c, info]);
-      // Warning: do not set the MBlock as live, 
+      // Warning: do not set the MBlock as live,
       // because the static part of memory is not
       // tracked by HeapAlloc.mgroups and it would
       // break the checks in HeapAlloc.handleLiveness.
@@ -250,7 +253,7 @@ export class GC {
             this.memory.i64Load(
               untagged_c + rtsConstants.offset_StgInd_indirectee
             )
-          )
+          );
           // cannot simply break here, because dest_c must not
           // be pushed to this.workList since it has already
           // been evacuated above
@@ -336,7 +339,7 @@ export class GC {
         default:
           throw new WebAssembly.RuntimeError();
       }
-      }
+    }
     // Overwrite the object header with a forwarding
     // pointer (i.e. store the address with the
     // least significant bit set to 1)
@@ -492,14 +495,14 @@ export class GC {
           let fun = Number(
             this.memory.i64Load(c + rtsConstants.offset_StgRetFun_fun)
           );
-          const fun_info = Number(
-            this.memory.i64Load(Memory.unDynTag(fun))
-          );
+          const fun_info = Number(this.memory.i64Load(Memory.unDynTag(fun)));
           if (fun_info % 2) {
-            // Sanity check: ensure that fun_info is not a 
+            // Sanity check: ensure that fun_info is not a
             // forwarding pointer. _Hopefully_ the invariant here
             // is that fun has not been moved before
-            throw WebAssembly.RuntimeError("Unexpected early evacuation of fun");
+            throw WebAssembly.RuntimeError(
+              "Unexpected early evacuation of fun"
+            );
           }
           this.scavengeClosureAt(c + rtsConstants.offset_StgRetFun_fun);
 
@@ -509,8 +512,7 @@ export class GC {
               rtsConstants.offset_StgFunInfoExtraFwd_fun_type
           );
 
-          const ret_fun_payload =
-            c + rtsConstants.offset_StgRetFun_payload;
+          const ret_fun_payload = c + rtsConstants.offset_StgRetFun_payload;
 
           switch (fun_type) {
             case FunTypes.ARG_GEN: {
@@ -577,7 +579,7 @@ export class GC {
     while (this.workList.length) {
       const [addr, info] = this.workList.pop();
       this.scavengeClosure(addr, info);
-    };
+    }
   }
 
   /**
@@ -588,7 +590,9 @@ export class GC {
    * @param info The info pointer of the closure
    */
   scavengeClosure(c, info) {
-    const type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+    const type = this.memory.i32Load(
+      info + rtsConstants.offset_StgInfoTable_type
+    );
     if (this.infoTables && !this.infoTables.has(info))
       throw new WebAssembly.RuntimeError(
         `Invalid info table 0x${info.toString(16)}`
@@ -769,7 +773,7 @@ export class GC {
    * field of the StgRegTable of the main capability.
    */
   updateNursery() {
-    // Note: the 'rHpAlloc' field of the 'StgRegTable' C struct contains 
+    // Note: the 'rHpAlloc' field of the 'StgRegTable' C struct contains
     // the number of bytes allocated in the heap, or better the number of
     // bytes attempted to being allocated before the heap check fails.
     // Here, we read this field in the hp_alloc variable and
