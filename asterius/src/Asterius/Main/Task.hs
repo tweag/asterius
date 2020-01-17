@@ -24,6 +24,7 @@ module Asterius.Main.Task
     exportFunctions,
     extraRootSymbols,
     gcThreshold,
+    gcStatistics,
     defTask,
   )
 where
@@ -52,6 +53,7 @@ data Task
         tailCalls, gcSections, bundle, debug, outputIR, run, verboseErr, yolo :: Bool,
         extraGHCFlags :: [String],
         exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol],
+        gcStatistics :: Bool,
         gcThreshold :: Int
       }
 
@@ -76,5 +78,6 @@ defTask = Task
     extraGHCFlags = [],
     exportFunctions = [],
     extraRootSymbols = [],
+    gcStatistics = False,
     gcThreshold = 64
   }
