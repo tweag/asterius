@@ -116,6 +116,7 @@ export class GC {
    * @param bytes The size in bytes of the closure 
    */
   copyClosure(c, bytes) {
+    this.statistics.copiedBytes(bytes);
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
     this.liveMBlocks.add(bdescr(dest_c));
@@ -843,8 +844,6 @@ export class GC {
       }
     }
 
-    // TODO:
-    this.statistics.copiedMBlocks(this.liveMBlocks.size);
     // mark unused MBlocks
     this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
     // allocate a new nursery

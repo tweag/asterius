@@ -251,7 +251,7 @@ genDefEntry task =
           "}\n",
           "if (i.stdio.stdout().toString().length) console.log(i.stdio.stdout());\n",
           "if (i.stdio.stderr().toString().length) console.log(i.stdio.stderr());\n",
-          if gcStatistics task then "i.exports.context.statistics.displayGCStatistics();\n" else "",
+          if gcStatistics task then "i.exports.context.statistics.show();\n" else "",
           "});\n"
         ]
     ]

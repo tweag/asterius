@@ -3,14 +3,14 @@ export class Statistics {
     this.time = time;
     this.gcStatistics = gcStatistics;
     this.counters = {
-      init_wall_s: 0,
-      gc_wall_s: 0,
+      init_time: 0,
+      gc_time: 0,
       num_canceled_GCs: 0,
       num_GCs: 0,
-      copiedMBlocks: [],
-      allocatedMBlocks: 0,
+      copied_bytes: 0,
+      allocated_mblocks: 0,
       last_gc_started: 0,
-      wasm_memory_capacity: 0,
+      wasm_memory_size: 0,
     };
     Object.freeze(this);
   }
@@ -36,8 +36,8 @@ export class Statistics {
     return s + (ns / 1000000000);
   }
 
-  memoryCapacity(bytes) {
-    this.counters.wasm_memory_capacity = bytes;
+  memoryInUse(bytes) {
+    this.counters.wasm_memory_size = bytes;
   }
 
   /**
@@ -46,7 +46,7 @@ export class Statistics {
    */
   endInit() {
     if (!this.gcStatistics) return;
-    this.counters.init_wall_s = this.now();
+    this.counters.init_time = this.now();
   }
 
   /**
@@ -63,7 +63,7 @@ export class Statistics {
    */
   cancelGC() {
     if (!this.gcStatistics) return;
-    this.counters.gc_wall_s += this.now() - this.counters.last_gc_started;
+    this.counters.gc_time += this.now() - this.counters.last_gc_started;
     this.counters.num_canceled_GCs += 1;
   }
 
@@ -72,17 +72,16 @@ export class Statistics {
    */
   endGC() {
     if (!this.gcStatistics) return;
-    this.counters.gc_wall_s += this.now() - this.counters.last_gc_started;
+    this.counters.gc_time += this.now() - this.counters.last_gc_started;
     this.counters.num_GCs += 1;
   }
 
   /**
    * 
    */
-  copiedMBlocks(n) {
+  copiedBytes(n) {
     if (!this.gcStatistics) return;
-    n = Statistics.force(n);
-    this.counters.copiedMBlocks.push(n);
+    this.counters.copied_bytes += Statistics.force(n);
   }
 
   /**
@@ -90,37 +89,35 @@ export class Statistics {
    * Called from {@link Memory.getMBlocks}
    * @param n The number of newly allocated megablocks
    */
-  getMBlocks(n) {
+  allocateMBlocks(n) {
     if (!this.gcStatistics) return;
-    this.counters.allocatedMBlocks += Statistics.force(n);
+    this.counters.allocated_mblocks += Statistics.force(n);
   }
 
   /**
-   * Display various GC statistics.
+   * Show the various statistics gathered, if any.
    */
-  displayGCStatistics() {
+  show() {
     if (!this.gcStatistics) return;
-    var counters = this.counters;
-    var total_wall_s = this.now();
-    var gc_wall_s = counters.gc_wall_s;
-    var mutator_wall_s = total_wall_s - gc_wall_s - counters.init_wall_s;
-    var totalCopiedMBlocksNo = 0;
-    for(const n of counters.copiedMBlocks) {
-      totalCopiedMBlocksNo += n;
-    }
-    var copiedMBlocksAverageNo = "n/a";
-    if (counters.copiedMBlocks.length != 0) 
-      copiedMBlocksAverageNo = totalCopiedMBlocksNo / counters.copiedMBlocks.length;
-    console.log("Garbage Collector Statistics", {
-      init_wall_seconds: counters.init_wall_s,
-      mutator_wall_seconds: mutator_wall_s,
-      GC_wall_seconds: gc_wall_s,
-      num_GCs: counters.num_GCs,
-      num_canceled_GCs: counters.num_canceled_GCs,
-      copied_mblocks: totalCopiedMBlocksNo,
-      average_copied_mblocks: copiedMBlocksAverageNo,
-      allocated_mblocks: counters.allocatedMBlocks,
-      wasm_memory_capacity: counters.wasm_memory_capacity
-    });
+    const
+      counters = this.counters,
+      total_time = this.now(),
+      gc_time = counters.gc_time,
+      mut_time = total_time - gc_time - counters.init_time;
+    const fmt = new Intl.NumberFormat("en-US", {useGrouping: true});
+
+    console.log("Garbage Collector Statistics:");
+    console.log("  INIT  time", counters.init_time.toFixed(2) + "s");
+    console.log("  MUT   time", mut_time.toFixed(2) + "s");
+    console.log("  GC    time", gc_time.toFixed(2) + "s");
+    console.log("  Total time", total_time.toFixed(2) + "s");
+    console.log("  % GC  time", (gc_time / total_time * 100).toFixed(1) + "%");
+
+    console.log("  " + counters.num_GCs, "garbage collections");
+    console.log("  " + counters.num_canceled_GCs, "canceled garbage collections");
+
+    console.log("  " + fmt.format(counters.copied_bytes), "bytes copied during GC");
+    console.log("  " + counters.allocated_mblocks, "total MBlocks allocated");
+    console.log("  " + Math.floor(counters.wasm_memory_size / 1024 / 1024) + "MB total Wasm memory in use");
   }
 }
