@@ -197,7 +197,7 @@ jobs:
             ahc-cabal new-update
             ahc-cabal new-install -j1 --symlink-bindir . \
               hello \
-              contravariant-extras
+              cql
             ahc-dist --input-exe hello --run
 
   asterius-test-ghc-testsuite:
