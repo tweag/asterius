@@ -199,6 +199,10 @@ jobs:
               hello
             ahc-dist --input-exe hello --run
 
+            cd ghc-toolkit/boot-libs
+            ahc-cabal v1-install -j2 --package-db=clear --package-db=global \
+              contravariant-extras
+
   asterius-test-ghc-testsuite:
     docker:
       - image: debian:sid
