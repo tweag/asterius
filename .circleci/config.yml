@@ -194,11 +194,14 @@ jobs:
       - run:
           name: Test ahc-cabal
           command: |
-            stack exec ahc-cabal -- new-update
-            stack exec ahc-cabal -- new-install -j1 --symlink-bindir . \
-              hello \
-              cql
-            stack exec ahc-dist -- --input-exe hello --run
+            ahc-cabal new-update
+            ahc-cabal new-install -j1 --symlink-bindir . \
+              hello
+            ahc-dist --input-exe hello --run
+
+            cd ghc-toolkit/boot-libs
+            ahc-cabal v1-install -j2 --package-db=clear --package-db=global \
+              contravariant-extras
 
   asterius-test-ghc-testsuite:
     docker:
