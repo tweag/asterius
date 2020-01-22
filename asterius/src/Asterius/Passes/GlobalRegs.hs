@@ -1,5 +1,5 @@
+{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Passes.GlobalRegs
   ( unresolvedGetGlobal,
@@ -7,6 +7,7 @@ module Asterius.Passes.GlobalRegs
   )
 where
 
+import Asterius.EDSL.UnaryOp
 import Asterius.Types
 import Language.Haskell.GHC.Toolkit.Constants
 
@@ -55,7 +56,7 @@ globalRegInfo gr = case gr of
 
 mainCap, mainCap32, baseReg :: Expression
 mainCap = Symbol {unresolvedSymbol = "MainCapability", symbolOffset = 0}
-mainCap32 = Unary {unaryOp = WrapInt64, operand0 = mainCap}
+mainCap32 = wrapInt64 mainCap
 baseReg = mainCap {symbolOffset = offset_Capability_r}
 
 unresolvedGetGlobal :: UnresolvedGlobalReg -> Expression

@@ -859,23 +859,23 @@ marshalCmmPrimCall (GHC.MO_Memcmp _) [_cres] [_ptr1, _ptr2, _n] = do
         }
     ]
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =
-  marshalCmmUnPrimCall I64 r I64 x popCntInt64
+  marshalCmmUnPrimCall I64 r I64 x popcntInt64
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W32) [r] [x] = do
-  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popCntInt32)
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popcntInt32)
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W16) [r] [x] = do
   marshalCmmUnPrimCall
     I64
     r
     I32
     x
-    (extendSInt32 . popCntInt32 . andInt32 (constI32 0xFFFF))
+    (extendSInt32 . popcntInt32 . andInt32 (constI32 0xFFFF))
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W8) [r] [x] = do
   marshalCmmUnPrimCall
     I64
     r
     I32
     x
-    (extendSInt32 . popCntInt32 . andInt32 (constI32 0xFF))
+    (extendSInt32 . popcntInt32 . andInt32 (constI32 0xFF))
 marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall I64 r I64 x clzInt64
 marshalCmmPrimCall (GHC.MO_Clz GHC.W32) [r] [x] =
