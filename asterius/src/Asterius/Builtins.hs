@@ -1392,7 +1392,7 @@ memcmpFunction _ = runEDSL "memcmp" $ do
       "__asterius_memcmp"
       (map convertUInt64ToFloat64 [ptr1, ptr2, n])
       I32
-  emit $ Unary ExtendSInt32 cres
+  emit $ extendSInt32 cres
 
 fromJSArrayBufferFunction _ = runEDSL "__asterius_fromJSArrayBuffer" $ do
   setReturnTypes [I64]

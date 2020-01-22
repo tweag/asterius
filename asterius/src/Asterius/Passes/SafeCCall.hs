@@ -7,7 +7,7 @@ module Asterius.Passes.SafeCCall
   )
 where
 
-import Asterius.EDSL (currentTID, currentTSO, getLVal)
+import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Types
 import Control.Monad.State.Strict
@@ -42,13 +42,14 @@ data BSState
       }
 
 splitFunction :: AsteriusEntitySymbol -> Function -> Function
-splitFunction sym Function {..} = Function
-  { functionType = functionType,
-    varTypes = varTypes,
-    body = case body of
-      CFG g -> CFG $ splitAllBlocks sym varTypes g
-      _ -> body
-  }
+splitFunction sym Function {..} =
+  Function
+    { functionType = functionType,
+      varTypes = varTypes,
+      body = case body of
+        CFG g -> CFG $ splitAllBlocks sym varTypes g
+        _ -> body
+    }
 
 splitAllBlocks ::
   AsteriusEntitySymbol -> [ValueType] -> RelooperRun -> RelooperRun
@@ -74,22 +75,24 @@ splitAllBlocks sym vts r@RelooperRun {..}
     (save_instrs, load_instrs) = genSaveLoad sym vts
 
 initBSState :: SBS.ShortByteString -> BSState
-initBSState entry_k = BSState
-  { bsId = 1,
-    bsMap = M.empty,
-    bsHookMap = IM.singleton 0 entry_k,
-    bsPreBlockInstrs = []
-  }
+initBSState entry_k =
+  BSState
+    { bsId = 1,
+      bsMap = M.empty,
+      bsHookMap = IM.singleton 0 entry_k,
+      bsPreBlockInstrs = []
+    }
 
 entryHookBlock ::
   BSState -> [Expression] -> (SBS.ShortByteString, RelooperBlock)
 entryHookBlock BSState {..} load_instrs =
   ( "ci",
     RelooperBlock
-      { addBlock = AddBlockWithSwitch
-          { code = concatExpressions load_instrs,
-            condition = GetLocal {index = 2, valueType = I32}
-          },
+      { addBlock =
+          AddBlockWithSwitch
+            { code = concatExpressions load_instrs,
+              condition = GetLocal {index = 2, valueType = I32}
+            },
         addBranches =
           [ AddBranchForSwitch {to = k, indexes = [fromIntegral i]}
             | (i, k) <- IM.toList bsHookMap
@@ -126,16 +129,17 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
             next_id = succ this_id
             this_k = "c" <> showSBS this_id
             this_preblock_instrs = bsPreBlockInstrs s
-            this_block = RelooperBlock
-              { addBlock =
-                  addBlock
-                    { code =
-                        concatExpressions $
-                          this_preblock_instrs
-                            <> rest_instrs
-                    },
-                addBranches = addBranches
-              }
+            this_block =
+              RelooperBlock
+                { addBlock =
+                    addBlock
+                      { code =
+                          concatExpressions $
+                            this_preblock_instrs
+                              <> rest_instrs
+                      },
+                  addBranches = addBranches
+                }
   where
     insert_block :: SBS.ShortByteString -> RelooperBlock -> State BSState ()
     insert_block new_k new_block =
@@ -172,10 +176,7 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
               [ Store
                   { bytes = 8,
                     offset = fromIntegral offset_StgTSO_ffi_func,
-                    ptr = Unary
-                      { unaryOp = WrapInt64,
-                        operand0 = getLVal currentTSO
-                      },
+                    ptr = wrapInt64 $ getLVal currentTSO,
                     value = ConstI64 0,
                     valueType = I64
                   }
@@ -183,10 +184,7 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
                 ++ [ Store
                        { bytes = 8,
                          offset = fromIntegral offset_StgTSO_ffi_return,
-                         ptr = Unary
-                           { unaryOp = WrapInt64,
-                             operand0 = getLVal currentTSO
-                           },
+                         ptr = wrapInt64 $ getLVal currentTSO,
                          value = ConstI64 0,
                          valueType = I64
                        }
@@ -194,10 +192,7 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
                 ++ [ Store
                        { bytes = 8,
                          offset = i * 8 + fromIntegral offset_StgTSO_saved_regs,
-                         ptr = Unary
-                           { unaryOp = WrapInt64,
-                             operand0 = getLVal currentTSO
-                           },
+                         ptr = wrapInt64 $ getLVal currentTSO,
                          value = ConstI64 0,
                          valueType = I64
                        }
@@ -217,19 +212,17 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
                       callReturnTypes = []
                     },
                   [ orig_instr
-                      { value = Load
-                          { signed = False,
-                            bytes = case vts !! fromIntegral index of
-                              I32 -> 4
-                              F32 -> 4
-                              _ -> 8,
-                            offset = fromIntegral offset_StgTSO_ffi_return,
-                            valueType = vts !! fromIntegral index,
-                            ptr = Unary
-                              { unaryOp = WrapInt64,
-                                operand0 = getLVal currentTSO
-                              }
-                          }
+                      { value =
+                          Load
+                            { signed = False,
+                              bytes = case vts !! fromIntegral index of
+                                I32 -> 4
+                                F32 -> 4
+                                _ -> 8,
+                              offset = fromIntegral offset_StgTSO_ffi_return,
+                              valueType = vts !! fromIntegral index,
+                              ptr = wrapInt64 $ getLVal currentTSO
+                            }
                       }
                   ]
                     ++ reset_instrs
@@ -237,19 +230,21 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
               _ ->
                 error
                   "Asterius.Passes.SafeCCall.splitSingleBlock: invalid ccall instruction"
-            this_block = RelooperBlock
-              { addBlock = AddBlock
-                  { code =
-                      concatExpressions $
-                        this_preblock_instrs
-                          <> block_instrs
-                          <> ( ccall_instr
-                                 : save_target_instr
-                                 : save_instrs
-                             )
-                  },
-                addBranches = []
-              }
+            this_block =
+              RelooperBlock
+                { addBlock =
+                    AddBlock
+                      { code =
+                          concatExpressions $
+                            this_preblock_instrs
+                              <> block_instrs
+                              <> ( ccall_instr
+                                     : save_target_instr
+                                     : save_instrs
+                                 )
+                      },
+                  addBranches = []
+                }
 
 splitBlockBody :: Expression -> BlockChunks
 splitBlockBody instrs = foldr' w (BlockChunks [] []) es
@@ -310,10 +305,7 @@ genSaveLoad sym vts
       [ Store
           { bytes = bs vt,
             offset = pos i + fromIntegral offset_StgTSO_saved_regs,
-            ptr = Unary
-              { unaryOp = WrapInt64,
-                operand0 = getLVal currentTSO
-              },
+            ptr = wrapInt64 $ getLVal currentTSO,
             value = GetLocal {index = i, valueType = vt},
             valueType = vt
           }
@@ -322,10 +314,7 @@ genSaveLoad sym vts
         <> [ Store
                { bytes = 8,
                  offset = fromIntegral $ offset_StgTSO_ffi_func,
-                 ptr = Unary
-                   { unaryOp = WrapInt64,
-                     operand0 = getLVal currentTSO
-                   },
+                 ptr = wrapInt64 $ getLVal currentTSO,
                  value = Symbol {unresolvedSymbol = sym, symbolOffset = 0},
                  valueType = I64
                },
@@ -335,13 +324,12 @@ genSaveLoad sym vts
                    fromIntegral $
                      offset_Capability_r
                        + offset_StgRegTable_rRet,
-                 ptr = Unary
-                   { unaryOp = WrapInt64,
-                     operand0 = Symbol
+                 ptr =
+                   wrapInt64
+                     Symbol
                        { unresolvedSymbol = "MainCapability",
                          symbolOffset = 0
-                       }
-                   },
+                       },
                  value = ConstI64 $ fromIntegral ret_ThreadBlocked,
                  valueType = I64
                },
@@ -350,10 +338,7 @@ genSaveLoad sym vts
                  offset =
                    fromIntegral $
                      offset_StgTSO_why_blocked,
-                 ptr = Unary
-                   { unaryOp = WrapInt64,
-                     operand0 = getLVal currentTSO
-                   },
+                 ptr = wrapInt64 $ getLVal currentTSO,
                  value = ConstI32 $ fromIntegral blocked_BlockedOnCCall,
                  valueType = I32
                },
@@ -362,16 +347,14 @@ genSaveLoad sym vts
     load_instrs =
       [ SetLocal
           { index = i,
-            value = Load
-              { signed = False,
-                bytes = bs vt,
-                offset = pos i + fromIntegral offset_StgTSO_saved_regs,
-                valueType = vt,
-                ptr = Unary
-                  { unaryOp = WrapInt64,
-                    operand0 = getLVal currentTSO
-                  }
-              }
+            value =
+              Load
+                { signed = False,
+                  bytes = bs vt,
+                  offset = pos i + fromIntegral offset_StgTSO_saved_regs,
+                  valueType = vt,
+                  ptr = wrapInt64 $ getLVal currentTSO
+                }
           }
         | (i, vt) <- p_ctx_regs
       ]

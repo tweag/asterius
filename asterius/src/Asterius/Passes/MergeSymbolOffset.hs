@@ -6,6 +6,7 @@ module Asterius.Passes.MergeSymbolOffset
   )
 where
 
+import Asterius.EDSL
 import Asterius.Internals.SYB
 import Asterius.Types
 import Data.Word
@@ -33,19 +34,13 @@ mergeSymbolOffset t =
             bytes = bytes,
             offset = noNeg t $ symbolOffset + fromIntegral offset,
             valueType = valueType,
-            ptr = Unary
-              { unaryOp = WrapInt64,
-                operand0 = sym {symbolOffset = 0}
-              }
+            ptr = wrapInt64 $ sym {symbolOffset = 0}
           }
       Store {ptr = Unary {unaryOp = WrapInt64, operand0 = sym@Symbol {..}}, ..} ->
         Store
           { bytes = bytes,
             offset = noNeg t $ symbolOffset + fromIntegral offset,
-            ptr = Unary
-              { unaryOp = WrapInt64,
-                operand0 = sym {symbolOffset = 0}
-              },
+            ptr = wrapInt64 $ sym {symbolOffset = 0},
             value = value,
             valueType = valueType
           }
