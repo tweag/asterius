@@ -24,7 +24,7 @@ hashableFNVHash = runEDSL "hashable_fnv_hash" $ do
       ( getLVal hash
           `xorInt64` extendUInt32 (loadI8 (str `addInt64` getLVal i) 0)
       )
-        `mulInt64` constI64 16777619
+        `mulInt64` constI64 1099511628211
     putLVal i $ getLVal i `addInt64` constI64 1
   emit $ getLVal hash
 hashableFNVHashOffset = runEDSL "hashable_fnv_hash_offset" $ do
