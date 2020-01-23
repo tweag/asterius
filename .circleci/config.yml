@@ -261,7 +261,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=180s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=600s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -326,7 +326,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=180s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=600s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -391,7 +391,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=180s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=600s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
@@ -456,7 +456,7 @@ jobs:
 
 
               # run test cases that can fail.
-              stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=180s" || true
+              stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=600s" || true
               cp asterius/test-report.csv /tmp
 
       - store_artifacts:
