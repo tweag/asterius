@@ -21,7 +21,6 @@ import { TimeCBits } from "./rts.time.mjs";
 import { GC } from "./rts.gc.mjs";
 import { ExceptionHelper } from "./rts.exception.mjs";
 import { Messages } from "./rts.messages.mjs";
-import { MD5 } from "./rts.md5.mjs";
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
@@ -103,8 +102,7 @@ export async function newAsteriusInstance(req) {
       __asterius_scheduler,
       req.exports,
       __asterius_stableptr_manager
-    ),
-    __asterius_md5 = new MD5(__asterius_memory);
+    );
   __asterius_scheduler.exports = __asterius_exports;
 
   const __asterius_node_modules = await getNodeModules();
@@ -237,7 +235,6 @@ export async function newAsteriusInstance(req) {
       StablePtr: modulify(__asterius_stableptr_manager),
       StableName: modulify(__asterius_stablename_manager),
       Unicode: modulify(__asterius_unicode),
-      MD5: modulify(__asterius_md5),
       Tracing: modulify(__asterius_tracer),
       Scheduler: modulify(__asterius_scheduler)
     }
