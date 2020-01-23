@@ -102,7 +102,7 @@ export async function newAsteriusInstance(req) {
       __asterius_scheduler,
       req.exports,
       __asterius_stableptr_manager
-    ),
+    );
   __asterius_scheduler.exports = __asterius_exports;
 
   const __asterius_node_modules = await getNodeModules();
