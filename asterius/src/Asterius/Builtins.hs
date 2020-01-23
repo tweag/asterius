@@ -20,6 +20,7 @@ where
 
 import Asterius.Builtins.CMath
 import Asterius.Builtins.Hashable
+import Asterius.Builtins.MD5
 import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
 import Asterius.EDSL
@@ -142,7 +143,6 @@ rtsAsteriusModule opts =
             ( byteStringCBits
                 <> floatCBits
                 <> unicodeCBits
-                <> md5CBits
                 <> textCBits
             )
     }
@@ -197,6 +197,7 @@ rtsAsteriusModule opts =
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
     <> cmathCBits
     <> hashableCBits
+    <> md5CBits
     <> stgPrimFloatCBits
     <> timeCBits
 
@@ -670,7 +671,7 @@ rtsFunctionImports debug =
        )
     <> map
       (fst . snd)
-      ( byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits <> textCBits
+      ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
       )
     <> timeImports
 
@@ -788,19 +789,6 @@ floatCBits =
       ("rintDouble", [F64], [F64]),
       ("rintFloat", [F32], [F32]),
       ("__decodeDouble_2Int", [I64, I64, I64, I64, F64], [])
-    ]
-
-md5CBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
-md5CBits =
-  map
-    ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
-          generateRTSWrapper "MD5" func_sym param_vts ret_vts
-        )
-    )
-    [ ("__hsbase_MD5Init", [I64], []),
-      ("__hsbase_MD5Update", [I64, I64, I64], []),
-      ("__hsbase_MD5Final", [I64, I64], [])
     ]
 
 generateRTSWrapper ::
