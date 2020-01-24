@@ -120,6 +120,117 @@ export class GC {
     return dest_c;
   }
 
+/**
+ * Performs _stingy_ evaluation, i.e. a very frugual form
+ * of evaluation that is carried during garbage collection.
+ * It implements the following two optimizations:
+ * - Indirections short-cutting;
+ * - Selector optimization: remove thunks of applications of field
+ *   selectors.
+ * Only the argument `c` is required: the other arguments will be
+ * computed when `undefined`.
+ * @param c - The address of the closure
+ * @param {number=} untagged_c - The unDynTag-ed address
+ * @param {number=} info - The info pointer of `c`
+ * @param {number=} type - The closure type of `c`
+ * @returns A tuple array `[header, type]` where `header` is the header
+ *   of the closure `c` after evaluation, and `type` is the resulting
+ *   closure type.
+ */
+  stingyEval(c, untagged_c, info, type) {
+    const stack = [arguments];
+    // This function proceeds by traversing IND and THUNK_SELECTOR
+    // closures, until it finds a result. It proceeds in two phases:
+    // - Search phase: indirectee/selectee pointers are followed,
+    //     and the closures encountered are pushed on a stack
+    // - Back propagation phase: the closures on the stack are popped
+    //     and replaced with IND closures where possible.
+    // Note: the two phases can be interleaved. 
+    let result, peek;
+    while (stack.length) {
+      if (!result) {
+        // Search phase
+        [c, untagged_c, info, type] = peek = stack[stack.length-1];
+        if (!untagged_c) {
+          // If no information about c is present, compute it
+          const untagged_c = peek[1] = Memory.unDynTag(c),
+            info = peek[2] = Number(this.memory.i64Load(untagged_c));
+          if (info % 2) {
+            // The closures has already been overwritten with a 
+            // forwarding pointer: switch phase.
+            result = stack.pop(); // = peek
+            continue;
+          }
+          type = peek[3] = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+        }
+        switch (type) {
+          case ClosureTypes.IND: {
+            // Whitehole
+            this.memory.i64Store(untagged_c, this.symbolTable.stg_WHITEHOLE_info);
+            // Follow the indirectee
+            stack.push([this.memory.i64Load(untagged_c + rtsConstants.offset_StgInd_indirectee),,,]);
+            continue;
+          }
+          case ClosureTypes.THUNK_SELECTOR: {
+            // Whitehole
+            this.memory.i64Store(untagged_c, this.symbolTable.stg_WHITEHOLE_info);
+            // Follow the selectee
+            stack.push([this.memory.i64Load(untagged_c + rtsConstants.offset_StgSelector_selectee),,,]);
+            continue;
+          }
+          default: {
+            // Switch phase
+            result = stack.pop();
+            continue;
+          }
+        }
+      } else {
+        // Back propagation phase
+        [c, untagged_c, info, type] = peek = stack.pop();
+        let [res_c, _, res_info, res_type] = result;
+        switch (type) {
+          case ClosureTypes.IND: {
+            if (res_info % 2) {
+              this.memory.i64Store(untagged_c, res_info);
+              info = res_info; type = res_type;
+            } else {
+              this.memory.i64Store(untagged_c, this.symbolTable.stg_IND_info); // Undo whiteholing
+              this.memory.i64Store(untagged_c + rtsConstants.offset_StgInd_indirectee, res_c);
+            }
+            continue;
+          }
+          case ClosureTypes.THUNK_SELECTOR: {
+            if (res_type == ClosureTypes.CONSTR) {
+              const offset = this.memory.i32Load(
+                res_info + rtsConstants.offset_StgInfoTable_layout
+              );
+              peek[2] = this.symbolTable.stg_IND_info;
+              stack.push(peek); 
+              // Start evaluating the selected field
+              stack.push([res_c + offset,,,]);
+              result = undefined;
+              continue;
+            } else {
+              this.memory.i64Store(untagged_c, info); // Undo whiteholing
+              if (res_info % 2 == 0)
+                // Only if not a forwarding pointer: if the result has already
+                // been evacuated, leave everything as it is, and the
+                // evacuation function will take care of it later
+                this.memory.i64Store(untagged_c + rtsConstants.offset_StgSelector_selectee, res_c); 
+              // Continue backtracking
+              result = peek;
+              continue;
+            }
+          }
+          // No other options for the switch: only IND or THUNK_SELECTOR
+          // closures are pushed to the stack
+          default: throw WebAssembly.RuntimeError(`Unexpected closure type: ${type}`);
+        }
+      }
+    }
+    return [info, type];
+  }
+
   /**
    * Evacuates a closure. This consists of: 
    * (1) Copying the closure into to-space through {@link GC#copyClosure}
@@ -138,8 +249,8 @@ export class GC {
       return c;
     }
     const tag = Memory.getDynTag(c),
-      untagged_c = Memory.unDynTag(c),
-      info = Number(this.memory.i64Load(untagged_c));
+      untagged_c = Memory.unDynTag(c);
+    let info = Number(this.memory.i64Load(untagged_c));
 
     if (info % 2) {
       // The info header has already been overwritten with
@@ -178,9 +289,17 @@ export class GC {
       );
     let dest_c = undefined;
     // Get the type of the closure from info tables
-    const type = this.memory.i32Load(
+    let type = this.memory.i32Load(
       info + rtsConstants.offset_StgInfoTable_type
     );
+    if (type == ClosureTypes.THUNK_SELECTOR || type == ClosureTypes.IND) {
+      // Optimize selectors and indirections
+      [info, type] = this.stingyEval(c, untagged_c, info, type);
+      // The info header has already been overwritten with
+      // a forwarding address: just follow it
+      if (info % 2)
+        return Memory.setDynTag(info, tag);
+    }
     switch (type) {
       case ClosureTypes.CONSTR_0_1:
       case ClosureTypes.FUN_0_1:
