@@ -7,7 +7,6 @@ jobs:
     environment:
       - ASTERIUS_BUILD_OPTIONS: -j2
       - DEBIAN_FRONTEND: noninteractive
-      - GHCRTS: -N2
       - LANG: C.UTF-8
       - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -71,7 +70,6 @@ jobs:
       - image: debian:sid
     environment:
       - DEBIAN_FRONTEND: noninteractive
-      - GHCRTS: -N2
       - LANG: C.UTF-8
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
@@ -468,7 +466,6 @@ jobs:
     environment:
       - ASTERIUS_BUILD_OPTIONS: -j2
       - DEBIAN_FRONTEND: noninteractive
-      - GHCRTS: -N2
       - LANG: C.UTF-8
       - MAKEFLAGS: -j2
       - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
