@@ -18,21 +18,21 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.6.5:
-        url: https://9579-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        content-length: 148042848
-        sha256: 8e5ec985c50aaedb2d9d96ac5e199ad17dbc88b7edfe672b11a1d3b11e9bf53b
+        url: https://9646-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        content-length: 135306468
+        sha256: 282491d03421cdbe53032e52d1bc59635f8ab4301bea430773c8b6c910985556
     linux64-custom-asterius:
       8.6.5:
-        url: https://9577-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        content-length: 147178228
-        sha256: e3334277f80e754b57e788ac91b41a38951b546c0d6d90f0666b762886ac41de
+        url: https://9645-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
+        content-length: 134295216
+        sha256: f48aecacc62e25dc82ffd4656561ec728f1cc3815d08145d508572d67694e51b
     linux64-custom-asterius-musl:
       8.6.5:
-        url: https://9580-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-alpine-linux.tar.xz
-        content-length: 154811692
-        sha256: 298975589f53d46ad0771d2931b48bb56cbf3557f88f5514d887376c0940dac3
+        url: https://9643-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-alpine-linux.tar.xz
+        content-length: 141882280
+        sha256: 8a08b4f44297676521934ba7511a7b7e20d667db6e26dd0a2c396d75245b18fa
     macosx-custom-asterius:
       8.6.5:
-        url: https://9578-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
-        content-length: 139344952
-        sha256: e9e71687a27bb742a95fa7faf18e7a9185fe237668a6489cd1698b2ccdd94441
+        url: https://9648-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
+        content-length: 126578532
+        sha256: 3448ef2eaa0a4b385d29ea92ebf50302318dfdf13676987d3edf1a9096176f47
