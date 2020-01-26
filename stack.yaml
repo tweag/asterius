@@ -1,4 +1,4 @@
-resolver: lts-14.21
+resolver: nightly-2020-01-25
 extra-deps:
   - https://github.com/tweag/binaryen/archive/ddf4c811e809e49aa852d59746f5e33a5a2ceb24.tar.gz
   - url: https://github.com/tweag/inline-js/archive/bd000373e0f02d213a881119298e1aea5962e149.tar.gz
@@ -17,22 +17,22 @@ ghc-variant: asterius
 setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
-      8.6.5:
-        url: https://9646-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        content-length: 135306468
-        sha256: 282491d03421cdbe53032e52d1bc59635f8ab4301bea430773c8b6c910985556
+      8.8.2:
+        url: https://9634-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-unknown-linux.tar.xz
+        content-length: 120875724
+        sha256: ccd027fb51a70a03c2da329dac0cfca22a886359c3491640f49beb7dad54e48a
     linux64-custom-asterius:
-      8.6.5:
-        url: https://9645-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-unknown-linux.tar.xz
-        content-length: 134295216
-        sha256: f48aecacc62e25dc82ffd4656561ec728f1cc3815d08145d508572d67694e51b
+      8.8.2:
+        url: https://9635-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-unknown-linux.tar.xz
+        content-length: 118550552
+        sha256: 295f203893b62e8ac07d3fbd91d8cec20ca010e98ccc4a59d351035458bb742e
     linux64-custom-asterius-musl:
-      8.6.5:
-        url: https://9643-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-alpine-linux.tar.xz
-        content-length: 141882280
-        sha256: 8a08b4f44297676521934ba7511a7b7e20d667db6e26dd0a2c396d75245b18fa
+      8.8.2:
+        url: https://9632-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-alpine-linux.tar.xz
+        content-length: 134025832
+        sha256: 6cfbd3aa142c16f2401a8f621c869bc5bffc90d281975d5bc0637ee7c3403509
     macosx-custom-asterius:
-      8.6.5:
-        url: https://9648-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.6.5-x86_64-apple-darwin.tar.xz
-        content-length: 126578532
-        sha256: 3448ef2eaa0a4b385d29ea92ebf50302318dfdf13676987d3edf1a9096176f47
+      8.8.2:
+        url: https://9630-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-apple-darwin.tar.xz
+        content-length: 124903432
+        sha256: 7772becb4b87e1e6a98b823821d28e8fa56c9113e9cf118ffdb2dc705cb7940f
