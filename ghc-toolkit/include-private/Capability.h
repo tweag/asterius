@@ -109,7 +109,7 @@ struct Capability_ {
     int interrupt;
 
     // Total words allocated by this cap since rts start
-    // See [Note allocation accounting] in Storage.c
+    // See Note [allocation accounting] in Storage.c
     W_ total_allocated;
 
 #if defined(THREADED_RTS)
@@ -264,7 +264,10 @@ typedef enum {
 //
 typedef struct {
     SyncType type;              // The kind of synchronisation
-    bool *idle;
+    bool *idle;                 // Array of size n_capabilities. idle[i] is true
+                                // if capability i will be idle during this GC
+                                // cycle. Only available when doing GC (when
+                                // type is SYNC_GC_*).
     Task *task;                 // The Task performing the sync
 } PendingSync;
 
