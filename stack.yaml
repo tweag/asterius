@@ -18,21 +18,21 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.8.2:
-        url: https://9634-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-unknown-linux.tar.xz
-        content-length: 120875724
-        sha256: ccd027fb51a70a03c2da329dac0cfca22a886359c3491640f49beb7dad54e48a
+        url: https://9647-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-unknown-linux.tar.xz
+        content-length: 138292836
+        sha256: 4086d16c38ecf00e6e86bd02e8b6e1ff8466b98ec58c749b4d95c6ee59aac8c8
     linux64-custom-asterius:
       8.8.2:
-        url: https://9635-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-unknown-linux.tar.xz
-        content-length: 118550552
-        sha256: 295f203893b62e8ac07d3fbd91d8cec20ca010e98ccc4a59d351035458bb742e
+        url: https://9641-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-unknown-linux.tar.xz
+        content-length: 136117152
+        sha256: e271813f61ab502ebcb5208a89421df3bd67ce6c45b65ab06e017c6383c629db
     linux64-custom-asterius-musl:
       8.8.2:
-        url: https://9632-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-alpine-linux.tar.xz
-        content-length: 134025832
-        sha256: 6cfbd3aa142c16f2401a8f621c869bc5bffc90d281975d5bc0637ee7c3403509
+        url: https://9644-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-alpine-linux.tar.xz
+        content-length: 152176192
+        sha256: d77e5f609a74eed611a68a9204e1c4c3eb075754e11a106f9f3eaafe47745da5
     macosx-custom-asterius:
       8.8.2:
-        url: https://9630-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-apple-darwin.tar.xz
-        content-length: 124903432
-        sha256: 7772becb4b87e1e6a98b823821d28e8fa56c9113e9cf118ffdb2dc705cb7940f
+        url: https://9642-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.2-x86_64-apple-darwin.tar.xz
+        content-length: 145151480
+        sha256: d294083bbe29d21da52b53666bfcf182136f3536fdf23fab23fd6a5f174d02c9
