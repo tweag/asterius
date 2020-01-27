@@ -1,6 +1,6 @@
 resolver: lts-14.21
 extra-deps:
-  - https://github.com/tweag/binaryen/archive/6791ac17d020cab228f4d01e7acb05fcbc84cbf8.tar.gz
+  - https://github.com/tweag/binaryen/archive/ddf4c811e809e49aa852d59746f5e33a5a2ceb24.tar.gz
   - url: https://github.com/tweag/inline-js/archive/bd000373e0f02d213a881119298e1aea5962e149.tar.gz
     subdirs:
       - inline-js-core
