@@ -49,6 +49,9 @@ custom-setup:
 
 ghc-options: -Wall
 
+_exe-ghc-options: &exe-ghc-options
+  - -threaded -rtsopts "-with-rtsopts=-A64m -n2m -I0 -qg"
+
 dependencies:
   - base
   - binary
@@ -100,49 +103,49 @@ executables:
   ahc:
     source-dirs: app
     main: ahc.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   ahc-pkg:
     source-dirs: app
     main: ahc-pkg.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   ahc-boot:
     source-dirs: app
     main: ahc-boot.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   ahc-link:
     source-dirs: app
     main: ahc-link.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   ahc-ld:
     source-dirs: app
     main: ahc-ld.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   ahc-dist:
     source-dirs: app
     main: ahc-dist.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   ahc-cabal:
     source-dirs: app
     main: ahc-cabal.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
@@ -153,7 +156,7 @@ executables:
   genconstants:
     source-dirs: app
     main: genconstants.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
@@ -161,98 +164,98 @@ tests:
   fib:
     source-dirs: test
     main: fib.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   jsffi:
     source-dirs: test
     main: jsffi.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   array:
     source-dirs: test
     main: array.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   stableptr:
     source-dirs: test
     main: stableptr.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   rtsapi:
     source-dirs: test
     main: rtsapi.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   todomvc:
     source-dirs: test
     main: todomvc.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   teletype:
     source-dirs: test
     main: teletype.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   bytearray:
     source-dirs: test
     main: bytearray.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   bytearraymini:
     source-dirs: test
     main: bytearraymini.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   bigint:
     source-dirs: test
     main: bigint.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   cloudflare:
     source-dirs: test
     main: cloudflare.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   nomain:
     source-dirs: test
     main: nomain.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   exception:
     source-dirs: test
     main: exception.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   ghc-testsuite:
     source-dirs: test
     main: ghc-testsuite.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
       - tasty
@@ -263,68 +266,68 @@ tests:
   ghc-testsuite-with-ghc:
     source-dirs: test
     main: ghc-testsuite-with-ghc.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies: []
 
   sizeof_md5context:
     source-dirs: test
     main: sizeof_md5context.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   regression60:
     source-dirs: test
     main: regression60.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   largenum:
     source-dirs: test
     main: largenum.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   th:
     source-dirs: test
     main: th.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   nodeio:
     source-dirs: test
     main: nodeio.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   text:
     source-dirs: test
     main: text.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   parsec:
     source-dirs: test
     main: parsec.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   rts:
     source-dirs: test
     main: rts.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
 
   time:
     source-dirs: test
     main: time.hs
-    ghc-options: -threaded -rtsopts
+    ghc-options: *exe-ghc-options
     dependencies:
       - asterius
