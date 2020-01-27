@@ -105,6 +105,9 @@ someNatVal n
 -- @since 4.7.0.0
 someSymbolVal :: String -> SomeSymbol
 someSymbolVal n   = withSSymbol SomeSymbol (SSymbol n) Proxy
+{-# NOINLINE someSymbolVal #-}
+-- For details see Note [NOINLINE someNatVal] in "GHC.TypeNats"
+-- The issue described there applies to `someSymbolVal` as well.
 
 -- | @since 4.7.0.0
 instance Eq SomeSymbol where
@@ -153,7 +156,7 @@ data {-kind-} ErrorMessage = Text Symbol
 infixl 5 :$$:
 infixl 6 :<>:
 
--- | The type-level equivalent of 'error'.
+-- | The type-level equivalent of 'Prelude.error'.
 --
 -- The polymorphic kind of this type allows it to be used in several settings.
 -- For instance, it can be used as a constraint, e.g. to provide a better error

@@ -90,7 +90,7 @@ Other Prelude modules are much easier with fewer complex dependencies.
 -- -Wno-orphans is needed for things like:
 -- Orphan rule: "x# -# x#" ALWAYS forall x# :: Int# -# x# x# = 0
 {-# OPTIONS_GHC -Wno-orphans #-}
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
 -----------------------------------------------------------------------------
 -- |
@@ -213,16 +213,16 @@ infixr 6 <>
 
 -- | The class of semigroups (types with an associative binary operation).
 --
--- Instances should satisfy the associativity law:
+-- Instances should satisfy the following:
 --
---  * @x '<>' (y '<>' z) = (x '<>' y) '<>' z@
+-- [Associativity] @x '<>' (y '<>' z) = (x '<>' y) '<>' z@
 --
 -- @since 4.9.0.0
 class Semigroup a where
         -- | An associative operation.
         (<>) :: a -> a -> a
 
-        -- | Reduce a non-empty list with @\<\>@
+        -- | Reduce a non-empty list with '<>'
         --
         -- The default definition should be sufficient, but this can be
         -- overridden for efficiency.
@@ -240,22 +240,19 @@ class Semigroup a where
         --
         -- By making this a member of the class, idempotent semigroups
         -- and monoids can upgrade this to execute in /O(1)/ by
-        -- picking @stimes = 'stimesIdempotent'@ or @stimes =
+        -- picking @stimes = 'Data.Semigroup.stimesIdempotent'@ or @stimes =
         -- 'stimesIdempotentMonoid'@ respectively.
         stimes :: Integral b => b -> a -> a
         stimes = stimesDefault
 
 
 -- | The class of monoids (types with an associative binary operation that
--- has an identity).  Instances should satisfy the following laws:
+-- has an identity).  Instances should satisfy the following:
 --
---  * @x '<>' 'mempty' = x@
---
---  * @'mempty' '<>' x = x@
---
---  * @x '<>' (y '<>' z) = (x '<>' y) '<>' z@ ('Semigroup' law)
---
---  * @'mconcat' = 'foldr' '(<>)' 'mempty'@
+-- [Right identity] @x '<>' 'mempty' = x@
+-- [Left identity]  @'mempty' '<>' x = x@
+-- [Associativity]  @x '<>' (y '<>' z) = (x '<>' y) '<>' z@ ('Semigroup' law)
+-- [Concatenation]  @'mconcat' = 'foldr' ('<>') 'mempty'@
 --
 -- The method names refer to the monoid of lists under concatenation,
 -- but there are many other instances.
@@ -263,7 +260,7 @@ class Semigroup a where
 -- Some types can be viewed as a monoid in more than one way,
 -- e.g. both addition and multiplication on numbers.
 -- In such cases we often define @newtype@s and make those instances
--- of 'Monoid', e.g. 'Sum' and 'Product'.
+-- of 'Monoid', e.g. 'Data.Semigroup.Sum' and 'Data.Semigroup.Product'.
 --
 -- __NOTE__: 'Semigroup' is a superclass of 'Monoid' since /base-4.11.0.0/.
 class Semigroup a => Monoid a where
@@ -273,7 +270,7 @@ class Semigroup a => Monoid a where
         -- | An associative operation
         --
         -- __NOTE__: This method is redundant and has the default
-        -- implementation @'mappend' = '(<>)'@ since /base-4.11.0.0/.
+        -- implementation @'mappend' = ('<>')@ since /base-4.11.0.0/.
         mappend :: a -> a -> a
         mappend = (<>)
         {-# INLINE mappend #-}
@@ -444,14 +441,15 @@ instance Semigroup a => Semigroup (IO a) where
 instance Monoid a => Monoid (IO a) where
     mempty = pure mempty
 
-{- | The 'Functor' class is used for types that can be mapped over.
-Instances of 'Functor' should satisfy the following laws:
+{- | A type @f@ is a Functor if it provides a function @fmap@ which, given any types @a@ and @b@
+lets you apply any function from @(a -> b)@ to turn an @f a@ into an @f b@, preserving the
+structure of @f@. Furthermore @f@ needs to adhere to the following:
 
-> fmap id  ==  id
-> fmap (f . g)  ==  fmap f . fmap g
+[Identity]    @'fmap' 'id' == 'id'@
+[Composition] @'fmap' (f . g) == 'fmap' f . 'fmap' g@
 
-The instances of 'Functor' for lists, 'Data.Maybe.Maybe' and 'System.IO.IO'
-satisfy these laws.
+Note, that the second law follows from the free theorem of the type 'fmap' and
+the first law, so you need only check that the former condition holds.
 -}
 
 class  Functor f  where
@@ -475,23 +473,23 @@ class  Functor f  where
 --
 --      @('<*>') = 'liftA2' 'id'@
 --
---      @'liftA2' f x y = f '<$>' x '<*>' y@
+--      @'liftA2' f x y = f 'Prelude.<$>' x '<*>' y@
 --
 -- Further, any definition must satisfy the following:
 --
--- [/identity/]
+-- [Identity]
 --
 --      @'pure' 'id' '<*>' v = v@
 --
--- [/composition/]
+-- [Composition]
 --
 --      @'pure' (.) '<*>' u '<*>' v '<*>' w = u '<*>' (v '<*>' w)@
 --
--- [/homomorphism/]
+-- [Homomorphism]
 --
 --      @'pure' f '<*>' 'pure' x = 'pure' (f x)@
 --
--- [/interchange/]
+-- [Interchange]
 --
 --      @u '<*>' 'pure' y = 'pure' ('$' y) '<*>' u@
 --
@@ -629,11 +627,11 @@ think of a monad as an /abstract datatype/ of actions.
 Haskell's @do@ expressions provide a convenient syntax for writing
 monadic expressions.
 
-Instances of 'Monad' should satisfy the following laws:
+Instances of 'Monad' should satisfy the following:
 
-* @'return' a '>>=' k  =  k a@
-* @m '>>=' 'return'  =  m@
-* @m '>>=' (\\x -> k x '>>=' h)  =  (m '>>=' k) '>>=' h@
+[Left identity]  @'return' a '>>=' k  =  k a@
+[Right identity] @m '>>=' 'return'  =  m@
+[Associativity]  @m '>>=' (\\x -> k x '>>=' h)  =  (m '>>=' k) '>>=' h@
 
 Furthermore, the 'Monad' and 'Applicative' operations should relate as follows:
 
@@ -665,17 +663,6 @@ class Applicative m => Monad m where
     -- | Inject a value into the monadic type.
     return      :: a -> m a
     return      = pure
-
-    -- | Fail with a message.  This operation is not part of the
-    -- mathematical definition of a monad, but is invoked on pattern-match
-    -- failure in a @do@ expression.
-    --
-    -- As part of the MonadFail proposal (MFP), this function is moved
-    -- to its own class 'MonadFail' (see "Control.Monad.Fail" for more
-    -- details). The definition here will be removed in a future
-    -- release.
-    fail        :: String -> m a
-    fail s      = errorWithoutStackTrace s
 
 {- Note [Recursive bindings for Applicative/Monad]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -857,8 +844,6 @@ instance  Monad Maybe  where
 
     (>>) = (*>)
 
-    fail _              = Nothing
-
 -- -----------------------------------------------------------------------------
 -- The Alternative class definition
 
@@ -869,7 +854,7 @@ infixl 3 <|>
 -- If defined, 'some' and 'many' should be the least solutions
 -- of the equations:
 --
--- * @'some' v = (:) '<$>' v '<*>' 'many' v@
+-- * @'some' v = (:) 'Prelude.<$>' v '<*>' 'many' v@
 --
 -- * @'many' v = 'some' v '<|>' 'pure' []@
 class Applicative f => Alternative f where
@@ -986,8 +971,6 @@ instance Monad []  where
     xs >>= f             = [y | x <- xs, y <- f x]
     {-# INLINE (>>) #-}
     (>>) = (*>)
-    {-# INLINE fail #-}
-    fail _              = []
 
 -- | @since 2.01
 instance Alternative [] where
@@ -1097,11 +1080,14 @@ augment g xs = g (:) xs
 --              map
 ----------------------------------------------
 
--- | 'map' @f xs@ is the list obtained by applying @f@ to each element
+-- | /O(n)/. 'map' @f xs@ is the list obtained by applying @f@ to each element
 -- of @xs@, i.e.,
 --
 -- > map f [x1, x2, ..., xn] == [f x1, f x2, ..., f xn]
 -- > map f [x1, x2, ...] == [f x1, f x2, ...]
+--
+-- >>> map (+1) [1, 2, 3]
+--- [2,3,4]
 
 map :: (a -> b) -> [a] -> [b]
 {-# NOINLINE [0] map #-}
@@ -1256,8 +1242,8 @@ id x                    =  x
 -- The compiler may rewrite it to @('assertError' line)@.
 
 -- | If the first argument evaluates to 'True', then the result is the
--- second argument.  Otherwise an 'AssertionFailed' exception is raised,
--- containing a 'String' with the source file and line number of the
+-- second argument.  Otherwise an 'Control.Exception.AssertionFailed' exception
+-- is raised, containing a 'String' with the source file and line number of the
 -- call to 'assert'.
 --
 -- Assertions can normally be turned on or off with a compiler flag
@@ -1314,9 +1300,8 @@ flip f x y              =  f y x
 -- It is also useful in higher-order situations, such as @'map' ('$' 0) xs@,
 -- or @'Data.List.zipWith' ('$') fs xs@.
 --
--- Note that @($)@ is levity-polymorphic in its result type, so that
---     foo $ True    where  foo :: Bool -> Int#
--- is well-typed
+-- Note that @('$')@ is levity-polymorphic in its result type, so that
+-- @foo '$' True@ where @foo :: Bool -> Int#@ is well-typed.
 {-# INLINE ($) #-}
 ($) :: forall r a (b :: TYPE r). (a -> b) -> a -> b
 f $ x =  f x
@@ -1365,7 +1350,6 @@ instance  Monad IO  where
     {-# INLINE (>>=)  #-}
     (>>)      = (*>)
     (>>=)     = bindIO
-    fail s    = failIO s
 
 -- | @since 4.9.0.0
 instance Alternative IO where
@@ -1388,7 +1372,7 @@ unIO :: IO a -> (State# RealWorld -> (# State# RealWorld, a #))
 unIO (IO a) = a
 
 {- |
-Returns the 'tag' of a constructor application; this function is used
+Returns the tag of a constructor application; this function is used
 by the deriving code for Eq, Ord and Enum.
 -}
 {-# INLINE getTag #-}

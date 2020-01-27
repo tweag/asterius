@@ -44,7 +44,7 @@ infix  4 `elem`, `notElem`
 -- List-manipulation functions
 --------------------------------------------------------------
 
--- | Extract the first element of a list, which must be non-empty.
+-- | /O(1)/. Extract the first element of a list, which must be non-empty.
 head                    :: [a] -> a
 head (x:_)              =  x
 head []                 =  badHead
@@ -62,7 +62,7 @@ badHead = errorEmptyList "head"
                 head (augment g xs) = g (\x _ -> x) (head xs)
  #-}
 
--- | Decompose a list into its head and tail. If the list is empty,
+-- | /O(1)/. Decompose a list into its head and tail. If the list is empty,
 -- returns 'Nothing'. If the list is non-empty, returns @'Just' (x, xs)@,
 -- where @x@ is the head of the list and @xs@ its tail.
 --
@@ -71,12 +71,14 @@ uncons                  :: [a] -> Maybe (a, [a])
 uncons []               = Nothing
 uncons (x:xs)           = Just (x, xs)
 
--- | Extract the elements after the head of a list, which must be non-empty.
+-- | /O(1)/. Extract the elements after the head of a list, which must be
+-- non-empty.
 tail                    :: [a] -> [a]
 tail (_:xs)             =  xs
 tail []                 =  errorEmptyList "tail"
 
--- | Extract the last element of a list, which must be finite and non-empty.
+-- | /O(n)/. Extract the last element of a list, which must be finite and
+-- non-empty.
 last                    :: [a] -> a
 #if defined(USE_REPORT_PRELUDE)
 last [x]                =  x
@@ -94,7 +96,7 @@ lastError :: a
 lastError = errorEmptyList "last"
 #endif
 
--- | Return all the elements of a list except the last one.
+-- | /O(n)/. Return all the elements of a list except the last one.
 -- The list must be non-empty.
 init                    :: [a] -> [a]
 #if defined(USE_REPORT_PRELUDE)
@@ -109,7 +111,7 @@ init (x:xs)             =  init' x xs
         init' y (z:zs) = y : init' z zs
 #endif
 
--- | Test whether a list is empty.
+-- | /O(1)/. Test whether a list is empty.
 null                    :: [a] -> Bool
 null []                 =  True
 null (_:_)              =  False
@@ -140,10 +142,13 @@ lengthFB _ r = \ !a -> r (a + 1)
 idLength :: Int -> Int
 idLength = id
 
--- | 'filter', applied to a predicate and a list, returns the list of
+-- | /O(n)/. 'filter', applied to a predicate and a list, returns the list of
 -- those elements that satisfy the predicate; i.e.,
 --
 -- > filter p xs = [ x | x <- xs, p x]
+--
+-- >>> filter odd [1, 2, 3]
+-- [1,3]
 
 {-# NOINLINE [1] filter #-}
 filter :: (a -> Bool) -> [a] -> [a]
@@ -257,7 +262,7 @@ product                 :: (Num a) => [a] -> a
 {-# INLINE product #-}
 product                 =  foldl (*) 1
 
--- | 'scanl' is similar to 'foldl', but returns a list of successive
+-- | /O(n)/. 'scanl' is similar to 'foldl', but returns a list of successive
 -- reduced values from the left:
 --
 -- > scanl f z [x1, x2, ...] == [z, z `f` x1, (z `f` x1) `f` x2, ...]
@@ -295,7 +300,8 @@ constScanl :: a -> b -> a
 constScanl = const
 
 
--- | 'scanl1' is a variant of 'scanl' that has no starting value argument:
+-- | /O(n)/. 'scanl1' is a variant of 'scanl' that has no starting value
+-- argument:
 --
 -- > scanl1 f [x1, x2, ...] == [x1, x1 `f` x2, ...]
 
@@ -303,7 +309,7 @@ scanl1                  :: (a -> a -> a) -> [a] -> [a]
 scanl1 f (x:xs)         =  scanl f x xs
 scanl1 _ []             =  []
 
--- | A strictly accumulating version of 'scanl'
+-- | /O(n)/. A strictly accumulating version of 'scanl'
 {-# NOINLINE [1] scanl' #-}
 scanl'           :: (b -> a -> b) -> b -> [a] -> [b]
 -- This peculiar form is needed to prevent scanl' from being rewritten
@@ -375,7 +381,7 @@ foldr1 f = go
         go []             =  errorEmptyList "foldr1"
 {-# INLINE [0] foldr1 #-}
 
--- | 'scanr' is the right-to-left dual of 'scanl'.
+-- | /O(n)/. 'scanr' is the right-to-left dual of 'scanl'.
 -- Note that
 --
 -- > head (scanr f z xs) == foldr f z xs.
@@ -385,24 +391,8 @@ scanr _ q0 []           =  [q0]
 scanr f q0 (x:xs)       =  f x q : qs
                            where qs@(q:_) = scanr f q0 xs
 
-{-# INLINE [0] strictUncurryScanr #-}
-strictUncurryScanr :: (a -> b -> c) -> (a, b) -> c
-strictUncurryScanr f pair = case pair of
-                              (x, y) -> f x y
-
-{-# INLINE [0] scanrFB #-} -- See Note [Inline FB functions]
-scanrFB :: (a -> b -> b) -> (b -> c -> c) -> a -> (b, c) -> (b, c)
-scanrFB f c = \x (r, est) -> (f x r, r `c` est)
-
-{-# RULES
-"scanr" [~1] forall f q0 ls . scanr f q0 ls =
-  build (\c n -> strictUncurryScanr c (foldr (scanrFB f c) (q0,n) ls))
-"scanrList" [1] forall f q0 ls .
-               strictUncurryScanr (:) (foldr (scanrFB f (:)) (q0,[]) ls) =
-                 scanr f q0 ls
- #-}
-
--- | 'scanr1' is a variant of 'scanr' that has no starting value argument.
+-- | /O(n)/. 'scanr1' is a variant of 'scanr' that has no starting
+-- value argument.
 scanr1                  :: (a -> a -> a) -> [a] -> [a]
 scanr1 _ []             =  []
 scanr1 _ [x]            =  [x]
@@ -443,7 +433,7 @@ minimum xs              =  foldl1 min xs
 -- > iterate f x == [x, f x, f (f x), ...]
 --
 -- Note that 'iterate' is lazy, potentially leading to thunk build-up if
--- the consumer doesn't force each iterate. See 'iterate\'' for a strict
+-- the consumer doesn't force each iterate. See 'iterate'' for a strict
 -- variant of this function.
 {-# NOINLINE [1] iterate #-}
 iterate :: (a -> a) -> a -> [a]
@@ -460,7 +450,7 @@ iterateFB c f x0 = go x0
  #-}
 
 
--- | 'iterate\'' is the strict version of 'iterate'.
+-- | 'iterate'' is the strict version of 'iterate'.
 --
 -- It ensures that the result of each application of force to weak head normal
 -- form before proceeding.
@@ -845,11 +835,14 @@ notElem x (y:ys)=  x /= y && notElem x ys
  #-}
 #endif
 
--- | 'lookup' @key assocs@ looks up a key in an association list.
+-- | /O(n)/. 'lookup' @key assocs@ looks up a key in an association list.
+--
+-- >>> lookup 2 [(1, "first"), (2, "second"), (3, "third")]
+-- Just "second"
 lookup                  :: (Eq a) => a -> [(a,b)] -> Maybe b
 lookup _key []          =  Nothing
 lookup  key ((x,y):xys)
-    | key == x          =  Just y
+    | key == x           =  Just y
     | otherwise         =  lookup key xys
 
 -- | Map a function over a list and concatenate the results.
@@ -926,6 +919,28 @@ foldr2_left  k _z  x  r (y:ys) = k x y (r ys)
 "foldr2/left"   forall k z ys (g::forall b.(a->b->b)->b->b) .
                   foldr2 k z (build g) ys = g (foldr2_left  k z) (\_ -> z) ys
  #-}
+
+foldr3 :: (a -> b -> c -> d -> d) -> d -> [a] -> [b] -> [c] -> d
+foldr3 k z = go
+  where
+    go  []    _      _      = z
+    go  _     []     _      = z
+    go  _     _      []     = z
+    go (a:as) (b:bs) (c:cs) = k a b c (go as bs cs)
+{-# INLINE [0] foldr3 #-}
+
+
+foldr3_left :: (a -> b -> c -> d -> e) -> e -> a ->
+               ([b] -> [c] -> d) -> [b] -> [c] -> e
+foldr3_left k _z a r (b:bs) (c:cs) = k a b c (r bs cs)
+foldr3_left _  z _ _  _      _     = z
+
+-- foldr3 k n xs ys zs = foldr (foldr3_left k n) (\_ _ -> n) xs ys zs
+{-# RULES
+"foldr3/left"   forall k z (g::forall b.(a->b->b)->b->b).
+                  foldr3 k z (build g) = g (foldr3_left k z) (\_ _ -> z)
+ #-}
+
 -- There used to be a foldr2/right rule, allowing foldr2 to fuse with a build
 -- form on the right. However, this causes trouble if the right list ends in
 -- a bottom that is only avoided by the left list ending at that spot. That is,
@@ -945,7 +960,8 @@ foldr2_left  k _z  x  r (y:ys) = k x y (r ys)
 -- Zips for larger tuples are in the List module.
 
 ----------------------------------------------
--- | 'zip' takes two lists and returns a list of corresponding pairs.
+-- | /O(min(m,n))/. 'zip' takes two lists and returns a list of corresponding
+-- pairs.
 --
 -- > zip [1, 2] ['a', 'b'] = [(1, 'a'), (2, 'b')]
 --
@@ -959,6 +975,9 @@ foldr2_left  k _z  x  r (y:ys) = k x y (r ys)
 --
 -- > zip [] _|_ = []
 -- > zip _|_ [] = _|_
+--
+-- 'zip' is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
 {-# NOINLINE [1] zip #-}
 zip :: [a] -> [b] -> [(a,b)]
 zip []     _bs    = []
@@ -977,25 +996,42 @@ zipFB c = \x y r -> (x,y) `c` r
 ----------------------------------------------
 -- | 'zip3' takes three lists and returns a list of triples, analogous to
 -- 'zip'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# NOINLINE [1] zip3 #-}
 zip3 :: [a] -> [b] -> [c] -> [(a,b,c)]
 -- Specification
 -- zip3 =  zipWith3 (,,)
 zip3 (a:as) (b:bs) (c:cs) = (a,b,c) : zip3 as bs cs
 zip3 _      _      _      = []
 
+{-# INLINE [0] zip3FB #-} -- See Note [Inline FB functions]
+zip3FB :: ((a,b,c) -> xs -> xs') -> a -> b -> c -> xs -> xs'
+zip3FB cons = \a b c r -> (a,b,c) `cons` r
+
+{-# RULES
+"zip3"       [~1] forall as bs cs. zip3 as bs cs = build (\c n -> foldr3 (zip3FB c) n as bs cs)
+"zip3List"   [1]          foldr3 (zip3FB (:)) [] = zip3
+ #-}
 
 -- The zipWith family generalises the zip family by zipping with the
 -- function given as the first argument, instead of a tupling function.
 
 ----------------------------------------------
--- | 'zipWith' generalises 'zip' by zipping with the function given
--- as the first argument, instead of a tupling function.
--- For example, @'zipWith' (+)@ is applied to two lists to produce the
--- list of corresponding sums.
+-- | /O(min(m,n))/. 'zipWith' generalises 'zip' by zipping with the function
+-- given as the first argument, instead of a tupling function. For example,
+-- @'zipWith' (+)@ is applied to two lists to produce the list of corresponding
+-- sums:
+--
+-- >>> zipWith (+) [1, 2, 3] [4, 5, 6]
+-- [5,7,9]
 --
 -- 'zipWith' is right-lazy:
 --
 -- > zipWith f [] _|_ = []
+--
+-- 'zipWith' is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
 {-# NOINLINE [1] zipWith #-}
 zipWith :: (a->b->c) -> [a]->[b]->[c]
 zipWith f = go
@@ -1018,11 +1054,23 @@ zipWithFB c f = \x y r -> (x `f` y) `c` r
 -- | The 'zipWith3' function takes a function which combines three
 -- elements, as well as three lists and returns a list of their point-wise
 -- combination, analogous to 'zipWith'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# NOINLINE [1] zipWith3 #-}
 zipWith3                :: (a->b->c->d) -> [a]->[b]->[c]->[d]
 zipWith3 z = go
   where
     go (a:as) (b:bs) (c:cs) = z a b c : go as bs cs
     go _ _ _                = []
+
+{-# INLINE [0] zipWith3FB #-} -- See Note [Inline FB functions]
+zipWith3FB :: (d -> xs -> xs') -> (a -> b -> c -> d) -> a -> b -> c -> xs -> xs'
+zipWith3FB cons func = \a b c r -> (func a b c) `cons` r
+
+{-# RULES
+"zipWith3"      [~1] forall f as bs cs.   zipWith3 f as bs cs = build (\c n -> foldr3 (zipWith3FB c f) n as bs cs)
+"zipWith3List"  [1]  forall f.   foldr3 (zipWith3FB (:) f) [] = zipWith3 f
+ #-}
 
 -- | 'unzip' transforms a list of pairs into a list of first components
 -- and a list of second components.
