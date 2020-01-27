@@ -4,7 +4,7 @@ extra-deps:
   - url: https://github.com/tweag/inline-js/archive/bd000373e0f02d213a881119298e1aea5962e149.tar.gz
     subdirs:
       - inline-js-core
-  - https://github.com/tweag/wabt/archive/cedd1578d98806cc2fb5922a2e70e8fb0f016d63.tar.gz
+  - https://github.com/tweag/wabt/archive/8da96d3bb3e4729412410a71180a077cab116ee9.tar.gz
 packages:
   - asterius
   - ghc-toolkit
