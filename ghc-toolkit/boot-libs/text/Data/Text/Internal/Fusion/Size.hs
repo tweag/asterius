@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP, PatternGuards #-}
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-missing-methods #-}
 -- |
 -- Module      : Data.Text.Internal.Fusion.Internal

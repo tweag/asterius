@@ -81,17 +81,17 @@ formatRealFloat fmt decs x
           "0"     -> "0.0e0"
           [d]     -> singleton d <> ".0e" <> show_e'
           (d:ds') -> singleton d <> singleton '.' <> fromString ds' <> singleton 'e' <> show_e'
-          []      -> error "formatRealFloat/doFmt/Exponent: []"
+          []      -> error "formatRealFloat/doFmt/Exponent/Nothing: []"
        Just dec ->
         let dec' = max dec 1 in
         case is of
          [0] -> "0." <> fromText (T.replicate dec' "0") <> "e0"
          _ ->
-          let
-           (ei,is') = roundTo (dec'+1) is
-           (d:ds') = map i2d (if ei > 0 then init is' else is')
-          in
-          singleton d <> singleton '.' <> fromString ds' <> singleton 'e' <> decimal (e-1+ei)
+          let (ei,is') = roundTo (dec'+1) is
+              is'' = map i2d (if ei > 0 then init is' else is')
+          in case is'' of
+               [] -> error "formatRealFloat/doFmt/Exponent/Just: []"
+               (d:ds') -> singleton d <> singleton '.' <> fromString ds' <> singleton 'e' <> decimal (e-1+ei)
      Fixed ->
       let
        mk0 ls = case ls of { "" -> "0" ; _ -> fromString ls}
@@ -115,11 +115,11 @@ formatRealFloat fmt decs x
          in
          mk0 ls <> (if null rs then "" else singleton '.' <> fromString rs)
         else
-         let
-          (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
-          d:ds' = map i2d (if ei > 0 then is' else 0:is')
-         in
-         singleton d <> (if null ds' then "" else singleton '.' <> fromString ds')
+         let (ei,is') = roundTo dec' (replicate (-e) 0 ++ is)
+             is'' = map i2d (if ei > 0 then is' else 0:is')
+         in case is'' of
+              [] -> error "formatRealFloat/doFmt/Fixed: []"
+              (d:ds') -> singleton d <> (if null ds' then "" else singleton '.' <> fromString ds')
 
 
 -- Based on "Printing Floating-Point Numbers Quickly and Accurately"

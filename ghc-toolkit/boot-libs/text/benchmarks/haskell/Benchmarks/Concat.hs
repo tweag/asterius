@@ -6,8 +6,8 @@ import Control.Monad.Trans.Writer
 import Criterion (Benchmark, bgroup, bench, whnf)
 import Data.Text as T
 
-benchmark :: IO Benchmark
-benchmark = return $ bgroup "Concat"
+benchmark :: Benchmark
+benchmark = bgroup "Concat"
   [ bench "append" $ whnf (append4 "Text 1" "Text 2" "Text 3") "Text 4"
   , bench "concat" $ whnf (concat4 "Text 1" "Text 2" "Text 3") "Text 4"
   , bench "write"  $ whnf (write4  "Text 1" "Text 2" "Text 3") "Text 4"

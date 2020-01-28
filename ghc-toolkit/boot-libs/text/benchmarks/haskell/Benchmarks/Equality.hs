@@ -6,7 +6,8 @@
 -- * Comparison of strings (Eq instance)
 --
 module Benchmarks.Equality
-    ( benchmark
+    ( initEnv
+    , benchmark
     ) where
 
 import Criterion (Benchmark, bgroup, bench, whnf)
@@ -17,8 +18,10 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
 
-benchmark :: FilePath -> IO Benchmark
-benchmark fp = do
+type Env = (T.Text, TL.Text, B.ByteString, BL.ByteString, BL.ByteString, String)
+
+initEnv :: FilePath -> IO Env
+initEnv fp = do
   b <- B.readFile fp
   bl1 <- BL.readFile fp
   -- A lazy bytestring is a list of chunks. When we do not explicitly create two
@@ -27,9 +30,11 @@ benchmark fp = do
   -- we read the lazy bytestring twice here.
   bl2 <- BL.readFile fp
   l <- readFile fp
-  let t  = T.decodeUtf8 b
-      tl = TL.decodeUtf8 bl1
-  return $ bgroup "Equality"
+  return (T.decodeUtf8 b, TL.decodeUtf8 bl1, b, bl1, bl2, l)
+
+benchmark :: Env -> Benchmark
+benchmark ~(t, tl, b, bl1, bl2, l) =
+  bgroup "Equality"
     [ bench "Text" $ whnf (== T.init t `T.snoc` '\xfffd') t
     , bench "LazyText" $ whnf (== TL.init tl `TL.snoc` '\xfffd') tl
     , bench "ByteString" $ whnf (== B.init b `B.snoc` '\xfffd') b

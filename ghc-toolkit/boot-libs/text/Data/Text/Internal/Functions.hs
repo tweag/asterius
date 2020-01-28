@@ -1,5 +1,3 @@
-{-# LANGUAGE CPP, DeriveDataTypeable #-}
-
 -- |
 -- Module      : Data.Text.Internal.Functions
 -- Copyright   : 2010 Bryan O'Sullivan

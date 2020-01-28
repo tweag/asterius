@@ -6,24 +6,31 @@
 -- * Most streaming functions
 --
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Benchmarks.Stream
-    ( benchmark
+    ( initEnv
+    , benchmark
     ) where
 
 import Control.DeepSeq (NFData (..))
 import Criterion (Benchmark, bgroup, bench, nf)
+import qualified Data.Text as T
+import qualified Data.ByteString as B
+import qualified Data.Text.Lazy as TL
+import qualified Data.ByteString.Lazy as BL
 import Data.Text.Internal.Fusion.Types (Step (..), Stream (..))
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.Encoding.Error as E
 import qualified Data.Text.Internal.Encoding.Fusion as T
 import qualified Data.Text.Internal.Encoding.Fusion.Common as F
-import qualified Data.Text.Internal.Fusion as F
+import qualified Data.Text.Internal.Fusion as T
 import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.Text.Internal.Lazy.Encoding.Fusion as TL
-import qualified Data.Text.Internal.Lazy.Fusion as FL
+import qualified Data.Text.Internal.Lazy.Fusion as TL
 import qualified Data.Text.Lazy.IO as TL
+import GHC.Generics (Generic)
 
 instance NFData a => NFData (Stream a) where
     -- Currently, this implementation does not force evaluation of the size hint
@@ -34,8 +41,24 @@ instance NFData a => NFData (Stream a) where
             Skip s'    -> go s'
             Yield x s' -> rnf x `seq` go s'
 
-benchmark :: FilePath -> IO Benchmark
-benchmark fp = do
+data Env = Env
+    { t :: !T.Text
+    , utf8 :: !B.ByteString
+    , utf16le :: !B.ByteString
+    , utf16be :: !B.ByteString
+    , utf32le :: !B.ByteString
+    , utf32be :: !B.ByteString
+    , tl :: !TL.Text
+    , utf8L :: !BL.ByteString
+    , utf16leL :: !BL.ByteString
+    , utf16beL :: !BL.ByteString
+    , utf32leL :: !BL.ByteString
+    , utf32beL :: !BL.ByteString
+    , s :: T.Stream Char
+    } deriving (Generic, NFData)
+
+initEnv :: FilePath -> IO Env
+initEnv fp = do 
     -- Different formats
     t  <- T.readFile fp
     let !utf8    = T.encodeUtf8 t
@@ -53,25 +76,16 @@ benchmark fp = do
         !utf32beL = TL.encodeUtf32BE tl
 
     -- For the functions which operate on streams
-    let !s = F.stream t
+    let !s = T.stream t
+    return Env{..}
 
-    return $ bgroup "Stream"
-
+benchmark :: Env -> Benchmark
+benchmark ~Env{..} =
+    bgroup "Stream"
         -- Fusion
         [ bgroup "stream" $
-            [ bench "Text"     $ nf F.stream t
-            , bench "LazyText" $ nf FL.stream tl
-            ]
-          -- must perform exactly the same as stream above due to
-          -- stream/unstream (i.e. stream after unstream) fusion
-        , bgroup "stream-fusion" $
-            [ bench "Text"     $ nf (F.stream . F.unstream . F.stream) t
-            , bench "LazyText" $ nf (FL.stream . FL.unstream . FL.stream) tl
-            ]
-          -- measure the overhead of unstream after stream
-        , bgroup "stream-unstream" $
-            [ bench "Text"     $ nf (F.unstream . F.stream) t
-            , bench "LazyText" $ nf (FL.unstream . FL.stream) tl
+            [ bench "Text"     $ nf T.stream t
+            , bench "LazyText" $ nf TL.stream tl
             ]
 
         -- Encoding.Fusion

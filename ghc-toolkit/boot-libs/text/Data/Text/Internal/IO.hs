@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, RecordWildCards #-}
+{-# LANGUAGE BangPatterns, RecordWildCards #-}
 -- |
 -- Module      : Data.Text.Internal.IO
 -- Copyright   : (c) 2009, 2010 Bryan O'Sullivan,

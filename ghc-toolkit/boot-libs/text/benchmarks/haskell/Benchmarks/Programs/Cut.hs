@@ -29,8 +29,8 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.Text.Lazy.IO as TL
 
-benchmark :: FilePath -> Handle -> Int -> Int -> IO Benchmark
-benchmark p sink from to = return $ bgroup "Cut"
+benchmark :: FilePath -> Handle -> Int -> Int -> Benchmark
+benchmark p sink from to = bgroup "Cut"
     [ bench' "String" string
     , bench' "ByteString" byteString
     , bench' "LazyByteString" lazyByteString

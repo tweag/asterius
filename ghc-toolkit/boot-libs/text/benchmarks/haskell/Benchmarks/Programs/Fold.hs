@@ -28,8 +28,8 @@ import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TL
 
-benchmark :: FilePath -> Handle -> IO Benchmark
-benchmark i o = return $
+benchmark :: FilePath -> Handle -> Benchmark
+benchmark i o =
     bench "Fold" $ whnfIO $ T.readFile i >>= TL.hPutStr o . fold 80
 
 -- | We represent a paragraph by a word list

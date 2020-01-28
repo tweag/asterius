@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, ForeignFunctionInterface, GeneralizedNewtypeDeriving, MagicHash,
+{-# LANGUAGE BangPatterns, CPP, GeneralizedNewtypeDeriving, MagicHash,
     UnliftedFFITypes #-}
 #if __GLASGOW_HASKELL__ >= 702
 {-# LANGUAGE Trustworthy #-}
@@ -59,7 +59,7 @@ module Data.Text.Encoding
     , encodeUtf8BuilderEscaped
     ) where
 
-#if __GLASGOW_HASKELL__ >= 702
+#if MIN_VERSION_base(4,4,0)
 import Control.Monad.ST.Unsafe (unsafeIOToST, unsafeSTToIO)
 #else
 import Control.Monad.ST (unsafeIOToST, unsafeSTToIO)
@@ -78,7 +78,7 @@ import Data.Text.Internal.Unsafe.Shift (shiftR)
 import Data.Text.Show ()
 import Data.Text.Unsafe (unsafeDupablePerformIO)
 import Data.Word (Word8, Word32)
-#if __GLASGOW_HASKELL__ >= 703
+#if MIN_VERSION_base(4,5,0)
 import Foreign.C.Types (CSize(CSize))
 #else
 import Foreign.C.Types (CSize)

@@ -5,9 +5,11 @@
 -- * Most pure functions defined the string types
 --
 {-# LANGUAGE BangPatterns, CPP, GADTs, MagicHash #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric, RecordWildCards #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Benchmarks.Pure
-    ( benchmark
+    ( initEnv
+    , benchmark
     ) where
 
 import Control.DeepSeq (NFData (..))
@@ -16,6 +18,8 @@ import Criterion (Benchmark, bgroup, bench, nf)
 import Data.Char (toLower, toUpper)
 import Data.Monoid (mappend, mempty)
 import GHC.Base (Char (..), Int (..), chr#, ord#, (+#))
+import GHC.Generics (Generic)
+import GHC.Int (Int64)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.ByteString.Lazy.Char8 as BL
 import qualified Data.ByteString.UTF8 as UTF8
@@ -26,8 +30,32 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Builder as TB
 import qualified Data.Text.Lazy.Encoding as TL
 
-benchmark :: String -> FilePath -> IO Benchmark
-benchmark kind fp = do
+data Env = Env
+    { bsa :: !BS.ByteString
+    , ta :: !T.Text
+    , tb :: !T.Text
+    , tla :: !TL.Text
+    , tlb :: !TL.Text
+    , bsb :: !BS.ByteString
+    , bla :: !BL.ByteString
+    , blb :: !BL.ByteString
+    , sa :: !String
+    , sb :: !String
+    , bsa_len :: !Int
+    , ta_len :: !Int
+    , bla_len :: !Int64
+    , tla_len :: !Int64
+    , sa_len :: !Int
+    , bsl :: [BS.ByteString]
+    , bll :: [BL.ByteString]
+    , tl :: [T.Text]
+    , tll :: [TL.Text]
+    , sl :: [String]
+    } deriving (Generic, NFData)
+
+
+initEnv :: FilePath -> IO Env
+initEnv fp = do
     -- Evaluate stuff before actually running the benchmark, we don't want to
     -- count it here.
 
@@ -63,7 +91,11 @@ benchmark kind fp = do
     tll     <- evaluate $ TL.lines tla
     sl      <- evaluate $ L.lines sa
 
-    return $ bgroup "Pure"
+    return Env{..}
+
+benchmark :: String -> Env -> Benchmark
+benchmark kind ~Env{..} =
+    bgroup "Pure"
         [ bgroup "append"
             [ benchT   $ nf (T.append tb) ta
             , benchTL  $ nf (TL.append tlb) tla

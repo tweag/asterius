@@ -34,7 +34,7 @@ module Data.Text.Foreign
 #if defined(ASSERTS)
 import Control.Exception (assert)
 #endif
-#if __GLASGOW_HASKELL__ >= 702
+#if MIN_VERSION_base(4,4,0)
 import Control.Monad.ST.Unsafe (unsafeIOToST)
 #else
 import Control.Monad.ST (unsafeIOToST)

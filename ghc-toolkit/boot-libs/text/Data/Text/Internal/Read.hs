@@ -43,7 +43,14 @@ instance Monad (IParser t) where
                            Left err     -> Left err
                            Right (a,t') -> runP (k a) t'
     {-# INLINE (>>=) #-}
-    fail msg = P $ \_ -> Left msg
+
+-- If we ever need a `MonadFail` instance the definition below can be used
+--
+-- > instance MonadFail (IParser t) where
+-- >   fail msg = P $ \_ -> Left msg
+--
+-- But given the code compiles fine with a post-MFP GHC 8.6+ we don't need
+-- one just yet.
 
 data T = T !Integer !Int
 

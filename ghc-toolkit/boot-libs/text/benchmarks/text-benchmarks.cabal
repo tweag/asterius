@@ -1,3 +1,4 @@
+cabal-version:       1.12
 name:                text-benchmarks
 version:             0.0.0.0
 synopsis:            Benchmarks for the text package
@@ -12,7 +13,6 @@ author:              Jasper Van der Jeugt <jaspervdj@gmail.com>,
 maintainer:          jaspervdj@gmail.com
 category:            Text
 build-type:          Simple
-cabal-version:       >=1.8
 
 flag bytestring-builder
   description: Depend on the bytestring-builder package for backwards compatibility.
@@ -42,6 +42,7 @@ executable text-benchmarks
                   ghc-prim,
                   integer-gmp,
                   stringsearch,
+                  template-haskell,
                   transformers,
                   utf8-string,
                   vector
@@ -129,6 +130,10 @@ executable text-benchmarks
     Data.Text.Unsafe
     Data.Text.Show
 
+  default-language: Haskell2010
+  default-extensions: NondecreasingIndentation
+
+
 executable text-multilang
   hs-source-dirs: haskell
   main-is:        Multilang.hs
@@ -138,3 +143,6 @@ executable text-multilang
                   bytestring,
                   text,
                   time
+
+  default-language: Haskell2010
+  default-extensions: NondecreasingIndentation
