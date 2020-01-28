@@ -976,6 +976,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   lambdabot-core \
   lambdabot-irc-plugins \
   language-c \
+  language-c-quote \
   language-docker \
   language-ecmascript \
   language-haskell-extract \
@@ -1472,6 +1473,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   req-conduit \
   require \
   rerebase \
+  resolv \
   resource-pool \
   resourcet \
   result \
