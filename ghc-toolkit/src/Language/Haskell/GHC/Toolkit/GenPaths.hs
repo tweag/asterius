@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
@@ -15,6 +16,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Types.BuildInfo
 import Distribution.Types.Library
+import Distribution.Types.LocalBuildInfo
 import Distribution.Types.PackageDescription
 import System.Directory
 import System.FilePath
@@ -30,7 +32,7 @@ genPaths GenPathsOptions {..} h =
     { confHook = \t f -> do
         lbi@LocalBuildInfo {localPkgDescr = pkg_descr@PackageDescription {library = Just lib@Library {libBuildInfo = lib_bi}}} <-
           confHook h t f
-        let [clbi] = componentNameMap lbi M.! CLibName
+        let [clbi] = componentNameCLBIs lbi mainLibName
             mod_path = autogenComponentModulesDir lbi clbi
             mod_name = fromString targetModuleName
             ghc_libdir = compilerProperties (compiler lbi) M.! "LibDir"
@@ -89,3 +91,10 @@ genPaths GenPathsOptions {..} h =
                   }
             }
     }
+
+mainLibName :: ComponentName
+#if MIN_VERSION_Cabal(3,0,0)
+mainLibName = CLibName defaultLibName
+#else
+mainLibName = defaultLibName
+#endif

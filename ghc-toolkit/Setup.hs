@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# OPTIONS_GHC -Wall #-}
 
@@ -10,6 +11,7 @@ import Distribution.Simple.LocalBuildInfo
 import Distribution.Simple.Program
 import Distribution.Types.BuildInfo
 import Distribution.Types.Library
+import Distribution.Types.LocalBuildInfo
 import Distribution.Types.PackageDescription
 import System.Directory
 import System.FilePath
@@ -23,7 +25,7 @@ main =
           lbi@LocalBuildInfo {localPkgDescr = pkg_descr@PackageDescription {library = Just lib@Library {libBuildInfo = bi}}, compiler = Compiler {compilerProperties = m}, withPrograms = prog_db} <-
             confHook simpleUserHooks t f
           let [clbi@LibComponentLocalBuildInfo {componentUnitId = uid}] =
-                componentNameMap lbi M.! CLibName
+                componentNameCLBIs lbi mainLibName
               amp = autogenComponentModulesDir lbi clbi
               self_installdirs =
                 absoluteComponentInstallDirs pkg_descr lbi uid NoCopyDest
@@ -72,3 +74,10 @@ main =
                     }
               }
       }
+
+mainLibName :: ComponentName
+#if MIN_VERSION_Cabal(3,0,0)
+mainLibName = CLibName defaultLibName
+#else
+mainLibName = defaultLibName
+#endif
