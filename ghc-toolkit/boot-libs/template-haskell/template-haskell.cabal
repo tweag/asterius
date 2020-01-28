@@ -1,5 +1,5 @@
 name:           template-haskell
-version:        2.14.0.0
+version:        2.15.0.0
 -- NOTE: Don't forget to update ./changelog.md
 license:        BSD3
 license-file:   LICENSE
@@ -20,7 +20,7 @@ extra-source-files: changelog.md
 
 source-repository head
     type:     git
-    location: http://git.haskell.org/ghc.git
+    location: https://gitlab.haskell.org/ghc/ghc.git
     subdir:   libraries/template-haskell
 
 Library
@@ -51,8 +51,8 @@ Library
         Language.Haskell.TH.Lib.Map
 
     build-depends:
-        base        >= 4.9 && < 4.13,
-        ghc-boot-th == 8.6.*,
+        base        >= 4.11 && < 4.14,
+        ghc-boot-th == 8.8.*,
         pretty      == 1.1.*
 
     ghc-options: -Wall
@@ -60,3 +60,8 @@ Library
     -- We need to set the unit ID to template-haskell (without a
     -- version number) as it's magic.
     ghc-options: -this-unit-id template-haskell
+
+    -- This should match the default-extensions used in 'ghc.cabal'. This way,
+    -- GHCi can be used to load it along with the compiler.
+    Default-Extensions:
+        NoImplicitPrelude
