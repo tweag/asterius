@@ -1,6 +1,6 @@
-cabal-version:  2.1
+cabal-version:  3.0
 name:           ghc-heap
-version:        8.6.5
+version:        8.8.2
 license:        BSD-3-Clause
 license-file:   LICENSE
 maintainer:     libraries@haskell.org
@@ -16,7 +16,7 @@ tested-with:    GHC==7.11
 
 source-repository head
   type:     git
-  location: http://git.haskell.org/ghc.git
+  location: https://gitlab.haskell.org/ghc/ghc.git
   subdir:   libraries/ghc-heap
 
 library
@@ -28,6 +28,9 @@ library
 
   ghc-options:      -Wall
   cmm-sources:      cbits/HeapPrim.cmm
+
+  default-extensions: NoImplicitPrelude
+
   exposed-modules:  GHC.Exts.Heap
                     GHC.Exts.Heap.Closures
                     GHC.Exts.Heap.ClosureTypes
