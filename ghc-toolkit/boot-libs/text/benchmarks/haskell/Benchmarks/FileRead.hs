@@ -19,8 +19,8 @@ import qualified Data.Text.Lazy as LT
 import qualified Data.Text.Lazy.Encoding as LT
 import qualified Data.Text.Lazy.IO as LT
 
-benchmark :: FilePath -> IO Benchmark
-benchmark p = return $ bgroup "FileRead"
+benchmark :: FilePath -> Benchmark
+benchmark p = bgroup "FileRead"
     [ bench "String" $ whnfIO $ length <$> readFile p
     , bench "ByteString" $ whnfIO $ SB.length <$> SB.readFile p
     , bench "LazyByteString" $ whnfIO $ LB.length <$> LB.readFile p

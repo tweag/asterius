@@ -1,4 +1,5 @@
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
 -- | Maybe type
 module GHC.Maybe
@@ -6,7 +7,7 @@ module GHC.Maybe
    )
 where
 
-import GHC.Integer () -- for build order
+import GHC.Integer () -- See Note [Depend on GHC.Integer] in GHC.Base
 import GHC.Classes
 
 default ()
@@ -19,7 +20,7 @@ default ()
 -- @'Maybe' a@ either contains a value of type @a@ (represented as @'Just' a@),
 -- or it is empty (represented as 'Nothing').  Using 'Maybe' is a good way to
 -- deal with errors or exceptional cases without resorting to drastic
--- measures such as 'error'.
+-- measures such as 'Prelude.error'.
 --
 -- The 'Maybe' type is also a monad.  It is a simple kind of error
 -- monad, where all errors are represented by 'Nothing'.  A richer

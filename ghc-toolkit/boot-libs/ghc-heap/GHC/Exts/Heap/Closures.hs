@@ -4,6 +4,8 @@
 {-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnliftedFFITypes #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveTraversable #-}
 
 module GHC.Exts.Heap.Closures (
     -- * Closures
@@ -18,6 +20,7 @@ module GHC.Exts.Heap.Closures (
     , asBox
     ) where
 
+import Prelude -- See note [Why do we import Prelude here?]
 import GHC.Exts.Heap.Constants
 #if defined(PROFILING)
 import GHC.Exts.Heap.InfoTableProf
@@ -35,6 +38,7 @@ import Data.Bits
 import Data.Int
 import Data.Word
 import GHC.Exts
+import GHC.Generics
 import Numeric
 
 ------------------------------------------------------------------------
@@ -90,7 +94,7 @@ areBoxesEqual (Box a) (Box b) = case reallyUnsafePtrEqualityUpToTag# a b of
 type Closure = GenClosure Box
 
 -- | This is the representation of a Haskell value on the heap. It reflects
--- <http://hackage.haskell.org/trac/ghc/browser/includes/rts/storage/Closures.h>
+-- <http://ghc.haskell.org/trac/ghc/browser/includes/rts/storage/Closures.h>
 --
 -- The data type is parametrized by the type to store references in. Usually
 -- this is a 'Box' with the type synonym 'Closure'.
@@ -222,7 +226,7 @@ data GenClosure b
     -- | A @MutVar#@
   | MutVarClosure
         { info       :: !StgInfoTable
-        , var        :: !b              -- ^ Pointer to closure
+        , var        :: !b              -- ^ Pointer to contents
         }
 
     -- | An STM blocking queue.
@@ -285,7 +289,7 @@ data GenClosure b
   | UnsupportedClosure
         { info       :: !StgInfoTable
         }
-  deriving (Show)
+  deriving (Show, Generic, Functor, Foldable, Traversable)
 
 
 data PrimType
@@ -296,7 +300,7 @@ data PrimType
   | PAddr
   | PFloat
   | PDouble
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 -- | For generic code, this function returns all referenced closures.
 allClosures :: GenClosure b -> [b]

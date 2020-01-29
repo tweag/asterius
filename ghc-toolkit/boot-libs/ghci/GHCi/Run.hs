@@ -12,6 +12,7 @@ module GHCi.Run
   ( run, redirectInterrupts
   ) where
 
+import Prelude -- See note [Why do we import Prelude here?]
 import GHCi.CreateBCO
 import GHCi.InfoTable
 import GHCi.FFI
@@ -31,8 +32,9 @@ import Data.Binary.Get
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Unsafe as B
 import GHC.Exts
+import GHC.Exts.Heap
 import GHC.Stack
-import Foreign
+import Foreign hiding (void)
 import Foreign.C
 import GHC.Conc.Sync
 import GHC.IO hiding ( bracket )
@@ -86,6 +88,10 @@ run m = case m of
   MkConInfoTable tc ptrs nptrs tag ptrtag desc ->
     toRemotePtr <$> mkConInfoTable tc ptrs nptrs tag ptrtag desc
   StartTH -> startTH
+  GetClosure ref -> do
+    clos <- getClosureData =<< localRef ref
+    mapM (\(Box x) -> mkRemoteRef (HValue x)) clos
+  Seq ref -> tryEval (void $ evaluate =<< localRef ref)
   _other -> error "GHCi.Run.run"
 
 evalStmt :: EvalOpts -> EvalExpr HValueRef -> IO (EvalStatus [HValueRef])

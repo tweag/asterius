@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables, StandaloneDeriving, DeriveGeneric,
-    TupleSections, RecordWildCards, InstanceSigs #-}
+    TupleSections, RecordWildCards, InstanceSigs, CPP #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 
 -- |
@@ -91,6 +91,7 @@ Other Notes on TH / Remote GHCi
     compiler/typecheck/TcSplice.hs
 -}
 
+import Prelude -- See note [Why do we import Prelude here?]
 import GHCi.Message
 import GHCi.RemoteTypes
 import GHC.Serialized
@@ -143,7 +144,9 @@ instance Monad GHCiQ where
     do (m', s')  <- runGHCiQ m s
        (a,  s'') <- runGHCiQ (f m') s'
        return (a, s'')
+#if !MIN_VERSION_base(4,13,0)
   fail = Fail.fail
+#endif
 
 instance Fail.MonadFail GHCiQ where
   fail err  = GHCiQ $ \s -> throwIO (GHCiQException s err)

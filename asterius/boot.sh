@@ -8,7 +8,6 @@ $ASTERIUS_GHC integer-simple/Setup.hs -no-keep-hi-files -no-keep-o-files -thread
 $ASTERIUS_GHC base/Setup.hs -no-keep-hi-files -no-keep-o-files -threaded -rtsopts -with-rtsopts="-I0 -qg -qb" -o $ASTERIUS_TMP_DIR/Setup-autoconf
 
 cd ghc-prim
-autoreconf -i
 $ASTERIUS_TMP_DIR/Setup-ghc-prim configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG $ASTERIUS_CONFIGURE_OPTIONS
 $ASTERIUS_TMP_DIR/Setup-ghc-prim build --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim $ASTERIUS_BUILD_OPTIONS
 $ASTERIUS_TMP_DIR/Setup-ghc-prim install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim $ASTERIUS_INSTALL_OPTIONS
@@ -33,12 +32,25 @@ $ASTERIUS_TMP_DIR/Setup-simple build --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap 
 $ASTERIUS_TMP_DIR/Setup-simple install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap $ASTERIUS_INSTALL_OPTIONS
 cd ..
 
+cd ghc-boot-th
+$ASTERIUS_TMP_DIR/Setup-simple configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_TMP_DIR/Setup-simple build --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th $ASTERIUS_BUILD_OPTIONS
+$ASTERIUS_TMP_DIR/Setup-simple install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th $ASTERIUS_INSTALL_OPTIONS
+cd ..
+
 ahc-cabal v1-update || true
 ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global $ASTERIUS_CONFIGURE_OPTIONS \
-  ghc-boot \
+  binary \
+  directory \
   mtl \
   pretty \
   unix
+
+cd ghc-boot
+$ASTERIUS_TMP_DIR/Setup-simple configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_TMP_DIR/Setup-simple build --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot $ASTERIUS_BUILD_OPTIONS
+$ASTERIUS_TMP_DIR/Setup-simple install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot $ASTERIUS_INSTALL_OPTIONS
+cd ..
 
 cd template-haskell
 $ASTERIUS_TMP_DIR/Setup-simple configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/template-haskell --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG $ASTERIUS_CONFIGURE_OPTIONS
@@ -60,8 +72,7 @@ cd ..
 
 ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global $ASTERIUS_CONFIGURE_OPTIONS \
   aeson \
-  parsec \
-  xhtml
+  parsec
 
 cd asterius-prelude
 $ASTERIUS_TMP_DIR/Setup-simple configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG $ASTERIUS_CONFIGURE_OPTIONS

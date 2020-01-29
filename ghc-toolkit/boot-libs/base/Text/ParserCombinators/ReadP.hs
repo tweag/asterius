@@ -17,7 +17,7 @@
 -- This is a library of parser combinators, originally written by Koen Claessen.
 -- It parses all alternatives in parallel, so it never keeps hold of
 -- the beginning of the input string, a common source of space leaks with
--- other parsers.  The '(+++)' choice combinator is genuinely commutative;
+-- other parsers.  The @('+++')@ choice combinator is genuinely commutative;
 -- it makes no difference which branch is \"shorter\".
 
 -----------------------------------------------------------------------------
@@ -120,8 +120,6 @@ instance Monad P where
   (Result x p) >>= k = k x <|> (p >>= k)
   (Final r)    >>= k = final [ys' | (x,s) <- r, ys' <- run (k x) s]
 
-  fail _ = Fail
-
 -- | @since 4.9.0.0
 instance MonadFail P where
   fail _ = Fail
@@ -173,7 +171,6 @@ instance Applicative ReadP where
 
 -- | @since 2.01
 instance Monad ReadP where
-  fail _    = R (\_ -> Fail)
   R m >>= f = R (\k -> m (\a -> let R m' = f a in m' k))
 
 -- | @since 4.9.0.0

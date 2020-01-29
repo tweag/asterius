@@ -33,8 +33,8 @@ import qualified Data.Text.Lazy.Builder as TLB
 import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.Text.Lazy.IO as TL
 
-benchmark :: FilePath -> Handle -> IO Benchmark
-benchmark i o = return $ bgroup "Sort"
+benchmark :: FilePath -> Handle -> Benchmark
+benchmark i o = bgroup "Sort"
     [ bench "String" $ whnfIO $ readFile i >>= hPutStr o . string
     , bench "ByteString" $ whnfIO $ B.readFile i >>= B.hPutStr o . byteString
     , bench "LazyByteString" $ whnfIO $

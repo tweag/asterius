@@ -18,8 +18,8 @@ import Data.Text.Lazy.IO (hPutStr)
 import System.IO (Handle)
 import qualified Data.Text as T
 
-benchmark :: Handle -> IO Benchmark
-benchmark sink = return $ bench "BigTable" $ whnfIO $ do
+benchmark :: Handle -> Benchmark
+benchmark sink = bench "BigTable" $ whnfIO $ do
     hPutStr sink "Content-Type: text/html\n\n<table>"
     hPutStr sink . toLazyText . makeTable =<< rows
     hPutStr sink "</table>"

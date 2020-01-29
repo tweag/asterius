@@ -15,7 +15,8 @@
 -- The latter are used for testing stream fusion.
 --
 module Benchmarks.DecodeUtf8
-    ( benchmark
+    ( initEnv
+    , benchmark
     ) where
 
 import Foreign.C.Types
@@ -34,10 +35,16 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
 
-benchmark :: String -> FilePath -> IO Benchmark
-benchmark kind fp = do
+type Env = (B.ByteString, BL.ByteString)
+
+initEnv :: FilePath -> IO Env
+initEnv fp = do
     bs  <- B.readFile fp
     lbs <- BL.readFile fp
+    return (bs, lbs)
+
+benchmark :: String -> Env -> Benchmark
+benchmark kind ~(bs, lbs) =
     let bench name = C.bench (name ++ "+" ++ kind)
         decodeStream (Chunk b0 bs0) = case T.streamDecodeUtf8 b0 of
                                         T.Some t0 _ f0 -> t0 : go f0 bs0
@@ -45,7 +52,7 @@ benchmark kind fp = do
                                        T.Some t1 _ f1 -> t1 : go f1 bs1
                 go _ _ = []
         decodeStream _ = []
-    return $ bgroup "DecodeUtf8"
+    in bgroup "DecodeUtf8"
         [ bench "Strict" $ nf T.decodeUtf8 bs
         , bench "Stream" $ nf decodeStream lbs
         , bench "IConv" $ whnfIO $ iconv bs

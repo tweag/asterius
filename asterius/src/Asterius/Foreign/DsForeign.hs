@@ -65,7 +65,7 @@ asteriusDsCImport id co (CLabel cid) cconv _ _ = do
             | tyConUnique tycon == funPtrTyConKey -> IsFunction
           _ -> IsData
   (_, foRhs) <- asteriusResultWrapper ty
-  let rhs = foRhs (Lit (MachLabel cid stdcall_info fod))
+  let rhs = foRhs (Lit (LitLabel cid stdcall_info fod))
       rhs' = Cast rhs co
       stdcall_info = fun_type_arg_stdcall_info dflags cconv ty
    in return [(id, rhs')]
@@ -81,7 +81,7 @@ asteriusDsCImport id _ CWrapper _ _ _ = do
 asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
 asteriusDsFCall fn_id co fcall = do
   let ty = pFst $ coercionKind co
-      (tv_bndrs, rho) = tcSplitForAllTyVarBndrs ty
+      (tv_bndrs, rho) = tcSplitForAllVarBndrs ty
       (arg_tys, io_res_ty) = tcSplitFunTys rho
   args <- newSysLocalsDs arg_tys
   (val_args, arg_wrappers) <- mapAndUnzipM asteriusUnboxArg (map Var args)

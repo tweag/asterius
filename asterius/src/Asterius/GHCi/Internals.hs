@@ -409,7 +409,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
       b = GHC.mkVanillaGlobal n (GHC.exprType ds_expr)
       prepd_binds = [GHC.NonRec b prepd_expr]
       (stg_binds, _) = GHC.coreToStg dflags this_mod prepd_binds
-  stg_binds2 <- GHC.stg2stg dflags stg_binds
+  stg_binds2 <- GHC.stg2stg dflags this_mod stg_binds
   cmms <-
     GHC.doCodeGen
       hsc_env

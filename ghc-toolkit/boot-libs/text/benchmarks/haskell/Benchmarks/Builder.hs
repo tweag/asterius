@@ -23,8 +23,8 @@ import qualified Data.Text.Lazy.Builder as LTB
 import qualified Data.Text.Lazy.Builder.Int as Int
 import Data.Int (Int64)
 
-benchmark :: IO Benchmark
-benchmark = return $ bgroup "Builder"
+benchmark :: Benchmark
+benchmark = bgroup "Builder"
     [ bgroup "Comparison"
       [ bench "LazyText" $ nf
           (LT.length . LTB.toLazyText . mconcat . map LTB.fromText) texts

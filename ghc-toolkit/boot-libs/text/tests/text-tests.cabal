@@ -29,7 +29,6 @@ executable text-tests
   main-is: Tests.hs
 
   other-modules:
-    Tests.IO
     Tests.Properties
     Tests.Properties.Mul
     Tests.QuickCheckUtils
@@ -147,7 +146,8 @@ library
     binary,
     deepseq,
     ghc-prim,
-    integer-gmp
+    integer-gmp,
+    template-haskell
 
   if flag(bytestring-builder)
     build-depends: bytestring         >= 0.9    && < 0.10.4,

@@ -5,7 +5,7 @@ module Main
     ( main
     ) where
 
-import Criterion.Main (Benchmark, defaultMain, bgroup)
+import Criterion.Main (defaultMain, bgroup, env)
 import System.FilePath ((</>))
 import System.IO (IOMode (WriteMode), openFile, hSetEncoding, utf8)
 
@@ -32,50 +32,42 @@ import qualified Benchmarks.Programs.StripTags as Programs.StripTags
 import qualified Benchmarks.Programs.Throughput as Programs.Throughput
 
 main :: IO ()
-main = benchmarks >>= defaultMain
-
-benchmarks :: IO [Benchmark]
-benchmarks = do
+main = do
     sink <- openFile "/dev/null" WriteMode
     hSetEncoding sink utf8
-
-    -- Traditional benchmarks
-    bs <- sequence
+    defaultMain
         [ Builder.benchmark
         , Concat.benchmark
-        , DecodeUtf8.benchmark "html" (tf "libya-chinese.html")
-        , DecodeUtf8.benchmark "xml" (tf "yiwiki.xml")
-        , DecodeUtf8.benchmark "ascii" (tf "ascii.txt")
-        , DecodeUtf8.benchmark "russian" (tf "russian.txt")
-        , DecodeUtf8.benchmark "japanese" (tf "japanese.txt")
+        , env (DecodeUtf8.initEnv (tf "libya-chinese.html")) (DecodeUtf8.benchmark "html")
+        , env (DecodeUtf8.initEnv (tf "yiwiki.xml")) (DecodeUtf8.benchmark "xml")
+        , env (DecodeUtf8.initEnv (tf "ascii.txt")) (DecodeUtf8.benchmark "ascii")
+        , env (DecodeUtf8.initEnv (tf "russian.txt")) (DecodeUtf8.benchmark  "russian")
+        , env (DecodeUtf8.initEnv (tf "japanese.txt")) (DecodeUtf8.benchmark "japanese")
         , EncodeUtf8.benchmark "επανάληψη 竺法蘭共譯"
-        , Equality.benchmark (tf "japanese.txt")
+        , env (Equality.initEnv (tf "japanese.txt")) Equality.benchmark
         , FileRead.benchmark (tf "russian.txt")
         , FoldLines.benchmark (tf "russian.txt")
-        , Mul.benchmark
-        , Pure.benchmark "tiny" (tf "tiny.txt")
-        , Pure.benchmark "ascii" (tf "ascii-small.txt")
-        -- , Pure.benchmark "france" (tf "france.html")
-        , Pure.benchmark "russian" (tf "russian-small.txt")
-        , Pure.benchmark "japanese" (tf "japanese.txt")
-        , ReadNumbers.benchmark (tf "numbers.txt")
-        , Replace.benchmark (tf "russian.txt") "принимая" "своем"
-        , Search.benchmark (tf "russian.txt") "принимая"
-        , Stream.benchmark (tf "russian.txt")
-        , WordFrequencies.benchmark (tf "russian.txt")
+        , env Mul.initEnv Mul.benchmark
+        , env (Pure.initEnv (tf "tiny.txt")) (Pure.benchmark "tiny")
+        , env (Pure.initEnv (tf "ascii-small.txt")) (Pure.benchmark "ascii-small")
+        , env (Pure.initEnv (tf "ascii.txt")) (Pure.benchmark "ascii")
+        , env (Pure.initEnv (tf "english.txt")) (Pure.benchmark "english")
+        , env (Pure.initEnv (tf "russian-small.txt")) (Pure.benchmark "russian")
+        , env (Pure.initEnv (tf "japanese.txt")) (Pure.benchmark "japanese")
+        , env (ReadNumbers.initEnv (tf "numbers.txt")) ReadNumbers.benchmark
+        , env (Replace.initEnv (tf "russian.txt")) (Replace.benchmark "принимая" "своем")
+        , env (Search.initEnv (tf "russian.txt")) (Search.benchmark "принимая")
+        , env (Stream.initEnv (tf "russian.txt")) Stream.benchmark
+        , env (WordFrequencies.initEnv (tf "russian.txt")) WordFrequencies.benchmark
+        , bgroup "Programs"
+            [ Programs.BigTable.benchmark sink
+            , Programs.Cut.benchmark (tf "russian.txt") sink 20 40
+            , Programs.Fold.benchmark (tf "russian.txt") sink
+            , Programs.Sort.benchmark (tf "russian.txt") sink
+            , Programs.StripTags.benchmark (tf "yiwiki.xml") sink
+            , Programs.Throughput.benchmark (tf "russian.txt") sink
+            ]
         ]
-
-    -- Program-like benchmarks
-    ps <- bgroup "Programs" `fmap` sequence
-        [ Programs.BigTable.benchmark sink
-        , Programs.Cut.benchmark (tf "russian.txt") sink 20 40
-        , Programs.Fold.benchmark (tf "russian.txt") sink
-        , Programs.Sort.benchmark (tf "russian.txt") sink
-        , Programs.StripTags.benchmark (tf "yiwiki.xml") sink
-        , Programs.Throughput.benchmark (tf "russian.txt") sink
-        ]
-
-    return $ bs ++ [ps]
-  where
+    where
     -- Location of a test file
     tf = ("../tests/text-test-data" </>)

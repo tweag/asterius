@@ -1,0 +1,25 @@
+cabal-version: 2.2
+name: th-tests
+version: 0
+description:
+  Tests that use 'Text' functions during compile time.
+  .
+  These are in a separate package because of https://github.com/haskell/cabal/issues/5623
+license: BSD-2-Clause
+license-file: LICENSE
+
+test-suite th-tests
+  default-language: Haskell2010
+  type: exitcode-stdio-1.0
+  hs-source-dirs:
+    tests/
+  main-is: th-tests.hs
+  other-modules:
+    Lift
+  build-depends:
+    HUnit >= 1.2,
+    base,
+    template-haskell,
+    text,
+    test-framework >= 0.4,
+    test-framework-hunit >= 0.2

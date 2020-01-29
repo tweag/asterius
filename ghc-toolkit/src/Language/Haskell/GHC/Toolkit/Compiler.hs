@@ -15,7 +15,7 @@ import StgSyn
 
 data HaskellIR
   = HaskellIR
-      { stg :: [StgTopBinding],
+      { stg :: [CgStgTopBinding],
         cmmRaw :: [[RawCmmDecl]]
       }
 

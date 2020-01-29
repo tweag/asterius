@@ -22,6 +22,7 @@ import GHCi.Message
 import GHCi.RemoteTypes
 import GHCi.TH
 import Language.Haskell.TH.Syntax
+import Prelude
 import System.IO
 import System.IO.Unsafe
 

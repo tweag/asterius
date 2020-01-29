@@ -1,6 +1,6 @@
-cabal-version:  >= 1.8
+cabal-version:  >= 1.10
 name:           text
-version:        1.2.3.1
+version:        1.2.4.0
 
 homepage:       https://github.com/haskell/text
 bug-reports:    https://github.com/haskell/text/issues
@@ -29,12 +29,25 @@ description:
     .
     > import qualified Data.Text as T
     .
+    == ICU Support
+    .
     To use an extended and very rich family of functions for working
     with Unicode text (including normalization, regular expressions,
     non-standard encodings, text breaking, and locales), see
     the [text-icu package](https://hackage.haskell.org/package/text-icu)
     based on the well-respected and liberally
     licensed [ICU library](http://site.icu-project.org/).
+    .
+    == Internal Representation: UTF-16 vs. UTF-8
+    .
+    Currently the @text@ library uses UTF-16 as its internal representation
+    which is [neither a fixed-width nor always the most dense representation](http://utf8everywhere.org/)
+    for Unicode text. We're currently investigating the feasibility
+    of [changing Text's internal representation to UTF-8](https://github.com/text-utf8)
+    and if you need such a 'Text' type right now you might be interested in using the spin-off
+    packages <https://hackage.haskell.org/package/text-utf8 text-utf8> and
+    <https://hackage.haskell.org/package/text-short text-short>.
+
 
 license:        BSD2
 license-file:   LICENSE
@@ -43,7 +56,7 @@ maintainer:     Bryan O'Sullivan <bos@serpentine.com>, Herbert Valerio Riedel <h
 copyright:      2009-2011 Bryan O'Sullivan, 2008-2009 Tom Harper
 category:       Data, Text
 build-type:     Simple
-tested-with:    GHC==8.6.1, GHC==8.4.3,
+tested-with:    GHC==8.6.5, GHC==8.4.4,
                 GHC==8.2.2, GHC==8.0.2, GHC==7.10.3, GHC==7.8.4,
                 GHC==7.6.3, GHC==7.4.2, GHC==7.2.2, GHC==7.0.4
 extra-source-files:
@@ -143,15 +156,16 @@ library
     Data.Text.Show
 
   build-depends:
-    array      >= 0.3,
-    base       >= 4.2 && < 5,
-    binary,
-    deepseq    >= 1.1.0.0,
-    ghc-prim   >= 0.2
+    array            >= 0.3 && < 0.6,
+    base             >= 4.3 && < 5,
+    binary           >= 0.5 && < 0.9,
+    deepseq          >= 1.1 && < 1.5,
+    ghc-prim         >= 0.2 && < 0.6,
+    template-haskell >= 2.5 && < 2.16
 
   if flag(bytestring-builder)
     build-depends: bytestring         >= 0.9    && < 0.10.4,
-                   bytestring-builder >= 0.10.4
+                   bytestring-builder >= 0.10.4.0.2 && < 0.11
   else
     build-depends: bytestring         >= 0.10.4 && < 0.11
 
@@ -167,6 +181,36 @@ library
   else
     cpp-options: -DINTEGER_GMP
     build-depends: integer-gmp >= 0.2 && < 1.1
+
+  -- compiler specification
+  default-language: Haskell2010
+  default-extensions:
+    NondecreasingIndentation
+  other-extensions:
+    BangPatterns
+    CPP
+    DeriveDataTypeable
+    ExistentialQuantification
+    ForeignFunctionInterface
+    GeneralizedNewtypeDeriving
+    MagicHash
+    OverloadedStrings
+    Rank2Types
+    RankNTypes
+    RecordWildCards
+    ScopedTypeVariables
+    TypeFamilies
+    UnboxedTuples
+    UnliftedFFITypes
+
+  if impl(ghc >= 7.2)
+    other-extensions: Trustworthy
+  if impl(ghc >= 7.4)
+    other-extensions: Safe
+  if impl(ghc >= 8.0)
+    other-extensions: TemplateHaskellQuotes
+  else
+    other-extensions: TemplateHaskell
 
 test-suite tests
   type:           exitcode-stdio-1.0
@@ -255,6 +299,7 @@ test-suite tests
     ghc-prim,
     quickcheck-unicode >= 1.0.1.0,
     random,
+    template-haskell,
     test-framework >= 0.4,
     test-framework-hunit >= 0.2,
     test-framework-quickcheck2 >= 0.2
@@ -271,6 +316,9 @@ test-suite tests
   else
     cpp-options: -DINTEGER_GMP
     build-depends: integer-gmp >= 0.2
+
+  default-language: Haskell2010
+  default-extensions: NondecreasingIndentation
 
 source-repository head
   type:     git

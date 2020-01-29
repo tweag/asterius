@@ -5,7 +5,8 @@
 -- * Searching all occurences of a pattern using library routines
 --
 module Benchmarks.Search
-    ( benchmark
+    ( initEnv
+    , benchmark
     ) where
 
 import Criterion (Benchmark, bench, bgroup, whnf)
@@ -19,13 +20,19 @@ import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TL
 
-benchmark :: FilePath -> T.Text -> IO Benchmark
-benchmark fp needleT = do
+type Env = (B.ByteString, BL.ByteString, T.Text, TL.Text)
+
+initEnv :: FilePath -> IO Env
+initEnv fp = do
     b  <- B.readFile fp
     bl <- BL.readFile fp
     t  <- T.readFile fp
     tl <- TL.readFile fp
-    return $ bgroup "FileIndices"
+    return (b, bl, t, tl)
+
+benchmark :: T.Text -> Env -> Benchmark
+benchmark needleT ~(b, bl, t, tl) =
+    bgroup "FileIndices"
         [ bench "ByteString"     $ whnf (byteString needleB)     b
         , bench "LazyByteString" $ whnf (lazyByteString needleB) bl
         , bench "Text"           $ whnf (text needleT)           t

@@ -1,4 +1,7 @@
-module Benchmarks.Mul (benchmark) where
+module Benchmarks.Mul
+    ( initEnv
+    , benchmark
+    ) where
 
 import Control.Exception (evaluate)
 import Criterion.Main
@@ -12,16 +15,21 @@ oldMul m n
     | m <= maxBound `quot` n = m * n
     | otherwise              = error "overflow"
 
-benchmark :: IO Benchmark
-benchmark = do
-  _ <- evaluate testVector32
-  _ <- evaluate testVector64
-  return $ bgroup "Mul" [
-      bench "oldMul" $ whnf (U.map (uncurry oldMul)) testVector64
-    , bench "mul64" $ whnf (U.map (uncurry mul64)) testVector64
-    , bench "*64" $ whnf (U.map (uncurry (*))) testVector64
-    , bench "mul32" $ whnf (U.map (uncurry mul32)) testVector32
-    , bench "*32" $ whnf (U.map (uncurry (*))) testVector32
+type Env = (U.Vector (Int32,Int32), U.Vector (Int64,Int64))
+
+initEnv :: IO Env
+initEnv = do
+    x <- evaluate testVector32
+    y <- evaluate testVector64
+    return (x, y)
+
+benchmark :: Env -> Benchmark
+benchmark ~(tv32, tv64) = bgroup "Mul"
+    [ bench "oldMul" $ whnf (U.map (uncurry oldMul)) tv64
+    , bench "mul64" $ whnf (U.map (uncurry mul64)) tv64
+    , bench "*64" $ whnf (U.map (uncurry (*))) tv64
+    , bench "mul32" $ whnf (U.map (uncurry mul32)) tv32
+    , bench "*32" $ whnf (U.map (uncurry (*))) tv32
     ]
 
 testVector64 :: U.Vector (Int64,Int64)

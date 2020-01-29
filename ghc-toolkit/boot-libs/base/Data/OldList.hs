@@ -221,7 +221,7 @@ import GHC.Real
 import GHC.List
 import GHC.Base
 
-infix 5 \\ -- comment to fool cpp: https://www.haskell.org/ghc/docs/latest/html/users_guide/options-phases.html#cpp-string-gaps
+infix 5 \\ -- comment to fool cpp: https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/phases.html#cpp-and-string-gaps
 
 -- -----------------------------------------------------------------------------
 -- List functions
@@ -241,9 +241,9 @@ infix 5 \\ -- comment to fool cpp: https://www.haskell.org/ghc/docs/latest/html/
 dropWhileEnd :: (a -> Bool) -> [a] -> [a]
 dropWhileEnd p = foldr (\x xs -> if p x && null xs then [] else x : xs) []
 
--- | The 'stripPrefix' function drops the given prefix from a list.
--- It returns 'Nothing' if the list did not start with the prefix
--- given, or 'Just' the list after the prefix, if it does.
+-- | /O(min(m,n))/. The 'stripPrefix' function drops the given prefix from a
+-- list. It returns 'Nothing' if the list did not start with the prefix given,
+-- or 'Just' the list after the prefix, if it does.
 --
 -- >>> stripPrefix "foo" "foobar"
 -- Just "bar"
@@ -310,14 +310,16 @@ findIndices      :: (a -> Bool) -> [a] -> [Int]
 findIndices p xs = [ i | (x,i) <- zip xs [0..], p x]
 #else
 -- Efficient definition, adapted from Data.Sequence
-{-# INLINE findIndices #-}
+-- (Note that making this INLINABLE instead of INLINE allows
+-- 'findIndex' to fuse, fixing #15426.)
+{-# INLINABLE findIndices #-}
 findIndices p ls = build $ \c n ->
   let go x r k | p x       = I# k `c` r (k +# 1#)
                | otherwise = r (k +# 1#)
   in foldr go (\_ -> n) ls 0#
 #endif  /* USE_REPORT_PRELUDE */
 
--- | The 'isPrefixOf' function takes two lists and returns 'True'
+-- | /O(min(m,n))/. The 'isPrefixOf' function takes two lists and returns 'True'
 -- iff the first list is a prefix of the second.
 --
 -- >>> "Hello" `isPrefixOf` "Hello World!"
@@ -429,8 +431,8 @@ elem_by eq y (x:xs)     =  x `eq` y || elem_by eq y xs
 #endif
 
 
--- | 'delete' @x@ removes the first occurrence of @x@ from its list argument.
--- For example,
+-- | /O(n)/. 'delete' @x@ removes the first occurrence of @x@ from its list
+-- argument. For example,
 --
 -- >>> delete 'a' "banana"
 -- "bnana"
@@ -440,7 +442,7 @@ elem_by eq y (x:xs)     =  x `eq` y || elem_by eq y xs
 delete                  :: (Eq a) => a -> [a] -> [a]
 delete                  =  deleteBy (==)
 
--- | The 'deleteBy' function behaves like 'delete', but takes a
+-- | /O(n)/. The 'deleteBy' function behaves like 'delete', but takes a
 -- user-supplied equality predicate.
 --
 -- >>> deleteBy (<=) 4 [1..10]
@@ -507,7 +509,7 @@ intersectBy _  [] _     =  []
 intersectBy _  _  []    =  []
 intersectBy eq xs ys    =  [x | x <- xs, any (eq x) ys]
 
--- | The 'intersperse' function takes an element and a list and
+-- | /O(n)/. The 'intersperse' function takes an element and a list and
 -- \`intersperses\' that element between the elements of the list.
 -- For example,
 --
@@ -616,19 +618,18 @@ mapAccumR f s (x:xs)    =  (s'', y:ys)
                            where (s'',y ) = f s' x
                                  (s', ys) = mapAccumR f s xs
 
--- | The 'insert' function takes an element and a list and inserts the
--- element into the list at the first position where it is less
--- than or equal to the next element.  In particular, if the list
--- is sorted before the call, the result will also be sorted.
--- It is a special case of 'insertBy', which allows the programmer to
--- supply their own comparison function.
+-- | /O(n)/. The 'insert' function takes an element and a list and inserts the
+-- element into the list at the first position where it is less than or equal to
+-- the next element. In particular, if the list is sorted before the call, the
+-- result will also be sorted. It is a special case of 'insertBy', which allows
+-- the programmer to supply their own comparison function.
 --
 -- >>> insert 4 [1,2,3,5,6,7]
 -- [1,2,3,4,5,6,7]
 insert :: Ord a => a -> [a] -> [a]
 insert e ls = insertBy (compare) e ls
 
--- | The non-overloaded version of 'insert'.
+-- | /O(n)/. The non-overloaded version of 'insert'.
 insertBy :: (a -> a -> Ordering) -> a -> [a] -> [a]
 insertBy _   x [] = [x]
 insertBy cmp x ys@(y:ys')
@@ -668,9 +669,14 @@ minimumBy cmp xs        =  foldl1 minBy xs
                                        GT -> y
                                        _  -> x
 
--- | The 'genericLength' function is an overloaded version of 'length'.  In
--- particular, instead of returning an 'Int', it returns any type which is
--- an instance of 'Num'.  It is, however, less efficient than 'length'.
+-- | /O(n)/. The 'genericLength' function is an overloaded version of 'length'.
+-- In particular, instead of returning an 'Int', it returns any type which is an
+-- instance of 'Num'. It is, however, less efficient than 'length'.
+--
+-- >>> genericLength [1, 2, 3] :: Int
+-- 3
+-- >>> genericLength [1, 2, 3] :: Float
+-- 3.0
 genericLength           :: (Num i) => [a] -> i
 {-# NOINLINE [1] genericLength #-}
 genericLength []        =  0
@@ -726,22 +732,34 @@ genericReplicate n x    =  genericTake n (repeat x)
 
 -- | The 'zip4' function takes four lists and returns a list of
 -- quadruples, analogous to 'zip'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# INLINE zip4 #-}
 zip4                    :: [a] -> [b] -> [c] -> [d] -> [(a,b,c,d)]
 zip4                    =  zipWith4 (,,,)
 
 -- | The 'zip5' function takes five lists and returns a list of
 -- five-tuples, analogous to 'zip'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# INLINE zip5 #-}
 zip5                    :: [a] -> [b] -> [c] -> [d] -> [e] -> [(a,b,c,d,e)]
 zip5                    =  zipWith5 (,,,,)
 
 -- | The 'zip6' function takes six lists and returns a list of six-tuples,
 -- analogous to 'zip'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# INLINE zip6 #-}
 zip6                    :: [a] -> [b] -> [c] -> [d] -> [e] -> [f] ->
                               [(a,b,c,d,e,f)]
 zip6                    =  zipWith6 (,,,,,)
 
 -- | The 'zip7' function takes seven lists and returns a list of
 -- seven-tuples, analogous to 'zip'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# INLINE zip7 #-}
 zip7                    :: [a] -> [b] -> [c] -> [d] -> [e] -> [f] ->
                               [g] -> [(a,b,c,d,e,f,g)]
 zip7                    =  zipWith7 (,,,,,,)
@@ -749,6 +767,9 @@ zip7                    =  zipWith7 (,,,,,,)
 -- | The 'zipWith4' function takes a function which combines four
 -- elements, as well as four lists and returns a list of their point-wise
 -- combination, analogous to 'zipWith'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# NOINLINE [1] zipWith4 #-}
 zipWith4                :: (a->b->c->d->e) -> [a]->[b]->[c]->[d]->[e]
 zipWith4 z (a:as) (b:bs) (c:cs) (d:ds)
                         =  z a b c d : zipWith4 z as bs cs ds
@@ -757,6 +778,9 @@ zipWith4 _ _ _ _ _      =  []
 -- | The 'zipWith5' function takes a function which combines five
 -- elements, as well as five lists and returns a list of their point-wise
 -- combination, analogous to 'zipWith'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# NOINLINE [1] zipWith5 #-}
 zipWith5                :: (a->b->c->d->e->f) ->
                            [a]->[b]->[c]->[d]->[e]->[f]
 zipWith5 z (a:as) (b:bs) (c:cs) (d:ds) (e:es)
@@ -766,6 +790,9 @@ zipWith5 _ _ _ _ _ _    = []
 -- | The 'zipWith6' function takes a function which combines six
 -- elements, as well as six lists and returns a list of their point-wise
 -- combination, analogous to 'zipWith'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# NOINLINE [1] zipWith6 #-}
 zipWith6                :: (a->b->c->d->e->f->g) ->
                            [a]->[b]->[c]->[d]->[e]->[f]->[g]
 zipWith6 z (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs)
@@ -775,11 +802,132 @@ zipWith6 _ _ _ _ _ _ _  = []
 -- | The 'zipWith7' function takes a function which combines seven
 -- elements, as well as seven lists and returns a list of their point-wise
 -- combination, analogous to 'zipWith'.
+-- It is capable of list fusion, but it is restricted to its
+-- first list argument and its resulting list.
+{-# NOINLINE [1] zipWith7 #-}
 zipWith7                :: (a->b->c->d->e->f->g->h) ->
                            [a]->[b]->[c]->[d]->[e]->[f]->[g]->[h]
 zipWith7 z (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs)
                    =  z a b c d e f g : zipWith7 z as bs cs ds es fs gs
 zipWith7 _ _ _ _ _ _ _ _ = []
+
+{-
+Functions and rules for fusion of zipWith4, zipWith5, zipWith6 and zipWith7.
+The principle is the same as for zip and zipWith in GHC.List:
+Turn zipWithX into a version in which the first argument and the result
+can be fused. Turn it back into the original function if no fusion happens.
+-}
+
+{-# INLINE [0] zipWith4FB #-} -- See Note [Inline FB functions]
+zipWith4FB :: (e->xs->xs') -> (a->b->c->d->e) ->
+              a->b->c->d->xs->xs'
+zipWith4FB cons func = \a b c d r -> (func a b c d) `cons` r
+
+{-# INLINE [0] zipWith5FB #-} -- See Note [Inline FB functions]
+zipWith5FB :: (f->xs->xs') -> (a->b->c->d->e->f) ->
+              a->b->c->d->e->xs->xs'
+zipWith5FB cons func = \a b c d e r -> (func a b c d e) `cons` r
+
+{-# INLINE [0] zipWith6FB #-} -- See Note [Inline FB functions]
+zipWith6FB :: (g->xs->xs') -> (a->b->c->d->e->f->g) ->
+              a->b->c->d->e->f->xs->xs'
+zipWith6FB cons func = \a b c d e f r -> (func a b c d e f) `cons` r
+
+{-# INLINE [0] zipWith7FB #-} -- See Note [Inline FB functions]
+zipWith7FB :: (h->xs->xs') -> (a->b->c->d->e->f->g->h) ->
+              a->b->c->d->e->f->g->xs->xs'
+zipWith7FB cons func = \a b c d e f g r -> (func a b c d e f g) `cons` r
+
+{-# INLINE [0] foldr4 #-}
+foldr4 :: (a->b->c->d->e->e) ->
+          e->[a]->[b]->[c]->[d]->e
+foldr4 k z = go
+  where
+    go (a:as) (b:bs) (c:cs) (d:ds) = k a b c d (go as bs cs ds)
+    go _      _      _      _      = z
+
+{-# INLINE [0] foldr5 #-}
+foldr5 :: (a->b->c->d->e->f->f) ->
+          f->[a]->[b]->[c]->[d]->[e]->f
+foldr5 k z = go
+  where
+    go (a:as) (b:bs) (c:cs) (d:ds) (e:es) = k a b c d e (go as bs cs ds es)
+    go _      _      _      _      _      = z
+
+{-# INLINE [0] foldr6 #-}
+foldr6 :: (a->b->c->d->e->f->g->g) ->
+          g->[a]->[b]->[c]->[d]->[e]->[f]->g
+foldr6 k z = go
+  where
+    go (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) = k a b c d e f (
+        go as bs cs ds es fs)
+    go _      _      _      _      _      _      = z
+
+{-# INLINE [0] foldr7 #-}
+foldr7 :: (a->b->c->d->e->f->g->h->h) ->
+          h->[a]->[b]->[c]->[d]->[e]->[f]->[g]->h
+foldr7 k z = go
+  where
+    go (a:as) (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs) = k a b c d e f g (
+        go as bs cs ds es fs gs)
+    go _      _      _      _      _      _      _      = z
+
+foldr4_left :: (a->b->c->d->e->f)->
+               f->a->([b]->[c]->[d]->e)->
+               [b]->[c]->[d]->f
+foldr4_left k _z a r (b:bs) (c:cs) (d:ds) = k a b c d (r bs cs ds)
+foldr4_left _  z _ _ _      _      _      = z
+
+foldr5_left :: (a->b->c->d->e->f->g)->
+               g->a->([b]->[c]->[d]->[e]->f)->
+               [b]->[c]->[d]->[e]->g
+foldr5_left k _z a r (b:bs) (c:cs) (d:ds) (e:es) = k a b c d e (r bs cs ds es)
+foldr5_left _  z _ _ _      _      _      _      = z
+
+foldr6_left :: (a->b->c->d->e->f->g->h)->
+               h->a->([b]->[c]->[d]->[e]->[f]->g)->
+               [b]->[c]->[d]->[e]->[f]->h
+foldr6_left k _z a r (b:bs) (c:cs) (d:ds) (e:es) (f:fs) =
+    k a b c d e f (r bs cs ds es fs)
+foldr6_left _  z _ _ _      _      _      _      _      = z
+
+foldr7_left :: (a->b->c->d->e->f->g->h->i)->
+               i->a->([b]->[c]->[d]->[e]->[f]->[g]->h)->
+               [b]->[c]->[d]->[e]->[f]->[g]->i
+foldr7_left k _z a r (b:bs) (c:cs) (d:ds) (e:es) (f:fs) (g:gs) =
+    k a b c d e f g (r bs cs ds es fs gs)
+foldr7_left _  z _ _ _      _      _      _      _      _      = z
+
+{-# RULES
+
+"foldr4/left"   forall k z (g::forall b.(a->b->b)->b->b).
+                  foldr4 k z (build g) = g (foldr4_left k z) (\_ _ _ -> z)
+"foldr5/left"   forall k z (g::forall b.(a->b->b)->b->b).
+                  foldr5 k z (build g) = g (foldr5_left k z) (\_ _ _ _ -> z)
+"foldr6/left"   forall k z (g::forall b.(a->b->b)->b->b).
+                  foldr6 k z (build g) = g (foldr6_left k z) (\_ _ _ _ _ -> z)
+"foldr7/left"   forall k z (g::forall b.(a->b->b)->b->b).
+                  foldr7 k z (build g) = g (foldr7_left k z) (\_ _ _ _ _ _ -> z)
+
+"zipWith4" [~1] forall f as bs cs ds.
+                  zipWith4 f as bs cs ds = build (\c n ->
+                        foldr4 (zipWith4FB c f) n as bs cs ds)
+"zipWith5" [~1] forall f as bs cs ds es.
+                  zipWith5 f as bs cs ds es = build (\c n ->
+                        foldr5 (zipWith5FB c f) n as bs cs ds es)
+"zipWith6" [~1] forall f as bs cs ds es fs.
+                  zipWith6 f as bs cs ds es fs = build (\c n ->
+                        foldr6 (zipWith6FB c f) n as bs cs ds es fs)
+"zipWith7" [~1] forall f as bs cs ds es fs gs.
+                  zipWith7 f as bs cs ds es fs gs = build (\c n ->
+                        foldr7 (zipWith7FB c f) n as bs cs ds es fs gs)
+
+"zipWith4List"  [1]  forall f.   foldr4 (zipWith4FB (:) f) [] = zipWith4 f
+"zipWith5List"  [1]  forall f.   foldr5 (zipWith5FB (:) f) [] = zipWith5 f
+"zipWith6List"  [1]  forall f.   foldr6 (zipWith6FB (:) f) [] = zipWith6 f
+"zipWith7List"  [1]  forall f.   foldr7 (zipWith7FB (:) f) [] = zipWith7 f
+
+ #-}
 
 -- | The 'unzip4' function takes a list of quadruples and returns four
 -- lists, analogous to 'unzip'.
@@ -853,7 +1001,7 @@ inits                   = map toListSB . scanl' snocSB emptySB
 -- if it fuses with a consumer, and it would generally lead to serious
 -- loss of sharing if allowed to fuse with a producer.
 
--- | The 'tails' function returns all final segments of the argument,
+-- | /O(n)/. The 'tails' function returns all final segments of the argument,
 -- longest first.  For example,
 --
 -- >>> tails "abc"

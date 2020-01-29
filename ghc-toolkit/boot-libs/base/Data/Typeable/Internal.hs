@@ -569,7 +569,9 @@ eqTypeRep a b
 -- in the usual case that it is scrutinized immediately. We
 -- split eqTypeRep into a worker and wrapper because otherwise
 -- it's much larger than anything we'd want to inline.
-{-# INLINABLE eqTypeRep #-}
+--
+-- However, due to #16893 it is currently unsafe to do so, hence the NOINLINE.
+{-# NOINLINE eqTypeRep #-}
 
 sameTypeRep :: forall k1 k2 (a :: k1) (b :: k2).
                TypeRep a -> TypeRep b -> Bool
@@ -664,8 +666,12 @@ runtimeRepTypeRep r =
       SumRep rs   -> kindedTypeRep @_ @'SumRep
                      `kApp` buildList (map runtimeRepTypeRep rs)
       IntRep      -> rep @'IntRep
-      WordRep     -> rep @'WordRep
+      Int8Rep     -> rep @'Int8Rep
+      Int16Rep    -> rep @'Int16Rep
       Int64Rep    -> rep @'Int64Rep
+      WordRep     -> rep @'WordRep
+      Word8Rep    -> rep @'Word8Rep
+      Word16Rep   -> rep @'Word16Rep
       Word64Rep   -> rep @'Word64Rep
       AddrRep     -> rep @'AddrRep
       FloatRep    -> rep @'FloatRep
@@ -773,7 +779,11 @@ showTypeable _ TrType = showChar '*'
 showTypeable _ rep
   | isListTyCon tc, [ty] <- tys =
     showChar '[' . shows ty . showChar ']'
-  | isTupleTyCon tc =
+
+    -- Take care only to render saturated tuple tycon applications
+    -- with tuple notation (#14341).
+  | isTupleTyCon tc,
+    Just _ <- TrType `eqTypeRep` typeRepKind rep =
     showChar '(' . showArgs (showChar ',') tys . showChar ')'
   where (tc, tys) = splitApps rep
 showTypeable _ (TrTyCon {trTyCon = tycon, trKindVars = []})
