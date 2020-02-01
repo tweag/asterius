@@ -675,6 +675,7 @@ rtsFunctionImports debug =
       (fst . snd)
       ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
       )
+    <> posixImports
     <> timeImports
 
 rtsFunctionExports :: Bool -> [FunctionExport]

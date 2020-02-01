@@ -1,7 +1,18 @@
 /**
  * @file Implements Node.js-specific functionality.
  */
+import fs from "fs";
 import { performance } from "perf_hooks";
+
+class Posix {
+  constructor(memory) {
+    this.memory = memory;
+    Object.freeze(this);
+  }
+  open(f, h, m) {
+    return fs.openSync(this.memory.strLoad(f), h, m);
+  }
+}
 
 export default {
   /**
@@ -31,6 +42,7 @@ export default {
      * The resolution of the timestamp in nanoseconds
      * (high-resolution, ~~1ns).
      */
-    resolution: 1,
-  }
+    resolution: 1
+  },
+  posix: Posix
 };
