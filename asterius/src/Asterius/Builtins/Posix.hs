@@ -4,12 +4,20 @@
 module Asterius.Builtins.Posix
   ( posixImports,
     posixCBits,
+    offset_stat_mtime,
+    offset_stat_size,
+    offset_stat_mode,
+    offset_stat_dev,
+    offset_stat_ino,
   )
 where
 
 import Asterius.EDSL
 import Asterius.Types
+import Data.Foldable
 import qualified Data.Map.Strict as M
+import Foreign
+import System.IO.Unsafe
 import System.Posix.Internals
 
 posixImports :: [FunctionImport]
@@ -23,11 +31,21 @@ posixImports =
             { paramTypes = [F64, F64, F64],
               returnTypes = [F64]
             }
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_fstat",
+        externalModuleName = "posix",
+        externalBaseName = "fstat",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
       }
   ]
 
 posixCBits :: AsteriusModule
-posixCBits = posixOpen <> posixConstants
+posixCBits = posixOpen <> posixFstat <> posixFstatGetters <> posixConstants
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -39,6 +57,43 @@ posixOpen = runEDSL "__hscore_open" $ do
       (map convertSInt64ToFloat64 args)
       F64
     >>= emit
+
+posixFstat :: AsteriusModule
+posixFstat = runEDSL "__hscore_fstat" $ do
+  setReturnTypes [I64]
+  args <- params [I64, I64]
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_fstat"
+      (map convertSInt64ToFloat64 args)
+      F64
+    >>= emit
+
+posixFstatGetters :: AsteriusModule
+posixFstatGetters =
+  mempty
+    { functionMap =
+        M.fromList
+          [ ( k,
+              Function
+                { functionType =
+                    FunctionType
+                      { paramTypes = [I64],
+                        returnTypes = [I64]
+                      },
+                  varTypes = [],
+                  body = loadI64 GetLocal {index = 0, valueType = I64} v
+                }
+            )
+            | (k, v) <-
+                [ ("__hscore_st_mtime", offset_stat_mtime),
+                  ("__hscore_st_size", offset_stat_size),
+                  ("__hscore_st_mode", offset_stat_mode),
+                  ("__hscore_st_dev", offset_stat_dev),
+                  ("__hscore_st_ino", offset_stat_ino)
+                ]
+          ]
+    }
 
 posixConstants :: AsteriusModule
 posixConstants =
@@ -71,3 +126,20 @@ posixConstants =
                 ]
           ]
     }
+
+offset_stat_mtime,
+  offset_stat_size,
+  offset_stat_mode,
+  offset_stat_dev,
+  offset_stat_ino ::
+    Int
+(offset_stat_mtime, offset_stat_size, offset_stat_mode, offset_stat_dev, offset_stat_ino) =
+  unsafePerformIO $ allocaBytes sizeof_stat $ \p -> do
+    forM_ [0 .. sizeof_stat - 1] $
+      \i -> pokeByteOff p i (fromIntegral i :: Word8)
+    _mtime <- (.&. 0xFF) . fromEnum <$> st_mtime p
+    _size <- (.&. 0xFF) . fromEnum <$> st_size p
+    _mode <- (.&. 0xFF) . fromEnum <$> st_mode p
+    _dev <- (.&. 0xFF) . fromEnum <$> st_dev p
+    _ino <- (.&. 0xFF) . fromEnum <$> st_ino p
+    pure (_mtime, _size, _mode, _dev, _ino)

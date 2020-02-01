@@ -218,7 +218,7 @@ export async function newAsteriusInstance(req) {
           ).writeSync(fd, __asterius_memory.i8View.subarray(p, p + count));
         }
       },
-      posix: modulify(new (req.targetSpecificModule.posix)(__asterius_memory)),
+      posix: modulify(new (req.targetSpecificModule.posix)(__asterius_memory, rtsConstants)),
       bytestring: modulify(__asterius_bytestring_cbits),
       text: modulify(__asterius_text_cbits),
       time: modulify(__asterius_time_cbits),

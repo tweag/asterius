@@ -5,12 +5,25 @@ import fs from "fs";
 import { performance } from "perf_hooks";
 
 class Posix {
-  constructor(memory) {
+  constructor(memory, rtsConstants) {
     this.memory = memory;
+    this.rtsConstants = rtsConstants;
     Object.freeze(this);
   }
   open(f, h, m) {
     return fs.openSync(this.memory.strLoad(f), h, m);
+  }
+  fstat(f, b) {
+    const r = fs.fstatSync(f);
+    this.memory.i64Store(
+      b + this.rtsConstants.offset_stat_mtime,
+      Math.trunc(r.mtimeMs)
+    );
+    this.memory.i64Store(b + this.rtsConstants.offset_stat_size, r.size);
+    this.memory.i64Store(b + this.rtsConstants.offset_stat_mode, r.mode);
+    this.memory.i64Store(b + this.rtsConstants.offset_stat_dev, r.dev);
+    this.memory.i64Store(b + this.rtsConstants.offset_stat_ino, r.ino);
+    return 0;
   }
 }
 
