@@ -13,10 +13,18 @@ module Asterius.Builtins.Posix
 where
 
 import Asterius.EDSL
+import Asterius.Internals.Session
 import Asterius.Types
+import Control.Exception
+import Control.Monad.IO.Class
+import qualified Data.ByteString.Short as SBS
 import Data.Foldable
 import qualified Data.Map.Strict as M
+import qualified DynFlags as GHC
+import qualified FastString as GHC
 import Foreign
+import qualified Module as GHC
+import qualified Packages as GHC
 import System.IO.Unsafe
 import System.Posix.Internals
 
@@ -206,3 +214,14 @@ posixUnlockFile = runEDSL "unlockFile" $ do
   setReturnTypes [I64]
   _ <- params [I64]
   emit $ constI64 0
+
+{-# NOINLINE unixUnitId #-}
+unixUnitId :: SBS.ShortByteString
+unixUnitId = unsafePerformIO $ fakeSession $ do
+  dflags <- GHC.getDynFlags
+  let Just comp_id = GHC.lookupPackageName dflags (GHC.PackageName "unix")
+      GHC.InstalledUnitId inst_unit_id =
+        GHC.componentIdToInstalledUnitId comp_id
+  liftIO $ evaluate $ SBS.toShort $ GHC.fastZStringToByteString $
+    GHC.zEncodeFS
+      inst_unit_id
