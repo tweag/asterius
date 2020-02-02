@@ -45,7 +45,12 @@ posixImports =
   ]
 
 posixCBits :: AsteriusModule
-posixCBits = posixOpen <> posixFstat <> posixFstatGetters <> posixConstants
+posixCBits =
+  posixOpen
+    <> posixFstat
+    <> posixFstatGetters
+    <> posixModeGetters
+    <> posixConstants
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -95,6 +100,37 @@ posixFstatGetters =
           ]
     }
 
+posixModeGetters :: AsteriusModule
+posixModeGetters =
+  mempty
+    { functionMap =
+        M.fromList
+          [ ( k,
+              Function
+                { functionType =
+                    FunctionType
+                      { paramTypes = [I64],
+                        returnTypes = [I64]
+                      },
+                  varTypes = [],
+                  body =
+                    extendUInt32 $
+                      ( GetLocal {index = 0, valueType = I64}
+                          `andInt64` constI64 0o0170000
+                      )
+                        `eqInt64` constI64 v
+                }
+            )
+            | (k, v) <-
+                [ ("ghczuwrapperZC3ZCbaseZCSystemziPosixziInternalsZCSzuISSOCK", 0o140000),
+                  ("ghczuwrapperZC4ZCbaseZCSystemziPosixziInternalsZCSzuISFIFO", 0o010000),
+                  ("ghczuwrapperZC5ZCbaseZCSystemziPosixziInternalsZCSzuISDIR", 0o040000),
+                  ("ghczuwrapperZC7ZCbaseZCSystemziPosixziInternalsZCSzuISCHR", 0o020000),
+                  ("ghczuwrapperZC8ZCbaseZCSystemziPosixziInternalsZCSzuISREG", 0o100000)
+                ]
+          ]
+    }
+
 posixConstants :: AsteriusModule
 posixConstants =
   mempty
@@ -108,7 +144,7 @@ posixConstants =
                         returnTypes = [I64]
                       },
                   varTypes = [],
-                  body = ConstI64 v
+                  body = constI64 v
                 }
             )
             | (k, v) <-
