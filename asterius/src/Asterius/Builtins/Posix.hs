@@ -76,6 +76,8 @@ posixCBits =
     <> posixLockFile
     <> posixUnlockFile
     <> posixOpendir
+    <> posixGetErrno
+    <> posixSetErrno
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -250,3 +252,13 @@ posixOpendir =
           [convertSInt64ToFloat64 p]
           F64
         >>= emit
+
+posixGetErrno :: AsteriusModule
+posixGetErrno = runEDSL "__hscore_get_errno" $ do
+  setReturnTypes [I64]
+  emit $ constI64 0
+
+posixSetErrno :: AsteriusModule
+posixSetErrno = runEDSL "__hscore_set_errno" $ do
+  _ <- param I64
+  pure ()
