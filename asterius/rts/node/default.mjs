@@ -8,7 +8,9 @@ class Posix {
   constructor(memory, rtsConstants) {
     this.memory = memory;
     this.rtsConstants = rtsConstants;
-    Object.freeze(this);
+    this.dirs = new Map();
+    this.lastDir = 0;
+    Object.seal(this);
   }
   open(f, h, m) {
     return fs.openSync(this.memory.strLoad(f), h, m);
@@ -28,6 +30,11 @@ class Posix {
     this.memory.i64Store(b + this.rtsConstants.offset_stat_dev, r.dev);
     this.memory.i64Store(b + this.rtsConstants.offset_stat_ino, r.ino);
     return 0;
+  }
+  opendir(p) {
+    const dir = fs.opendirSync(this.memory.strLoad(p));
+    this.dirs.set(++this.lastDir, dir);
+    return this.lastDir;
   }
 }
 

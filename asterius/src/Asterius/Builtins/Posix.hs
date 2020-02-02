@@ -18,6 +18,7 @@ import Asterius.Types
 import Control.Exception
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Short as SBS
+import Data.Coerce
 import Data.Foldable
 import qualified Data.Map.Strict as M
 import qualified DynFlags as GHC
@@ -55,6 +56,12 @@ posixImports =
             { paramTypes = [F64, F64],
               returnTypes = [F64]
             }
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_opendir",
+        externalModuleName = "posix",
+        externalBaseName = "opendir",
+        functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   ]
 
@@ -68,6 +75,7 @@ posixCBits =
     <> posixConstants
     <> posixLockFile
     <> posixUnlockFile
+    <> posixOpendir
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -225,3 +233,20 @@ unixUnitId = unsafePerformIO $ fakeSession $ do
   liftIO $ evaluate $ SBS.toShort $ GHC.fastZStringToByteString $
     GHC.zEncodeFS
       inst_unit_id
+
+posixOpendir :: AsteriusModule
+posixOpendir =
+  runEDSL
+    ( "ghczuwrapperZC0ZC"
+        <> coerce unixUnitId
+        <> "ZCSystemziPosixziDirectoryZCopendir"
+    )
+    $ do
+      setReturnTypes [I64]
+      p <- param I64
+      truncSFloat64ToInt64
+        <$> callImport'
+          "__asterius_posix_opendir"
+          [convertSInt64ToFloat64 p]
+          F64
+        >>= emit
