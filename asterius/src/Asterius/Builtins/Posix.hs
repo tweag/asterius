@@ -51,6 +51,8 @@ posixCBits =
     <> posixFstatGetters
     <> posixModeGetters
     <> posixConstants
+    <> posixLockFile
+    <> posixUnlockFile
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -179,3 +181,13 @@ offset_stat_mtime,
     _dev <- (.&. 0xFF) . fromEnum <$> st_dev p
     _ino <- (.&. 0xFF) . fromEnum <$> st_ino p
     pure (_mtime, _size, _mode, _dev, _ino)
+
+posixLockFile, posixUnlockFile :: AsteriusModule
+posixLockFile = runEDSL "lockFile" $ do
+  setReturnTypes [I64]
+  _ <- params [I64, I64, I64, I64]
+  emit $ constI64 0
+posixUnlockFile = runEDSL "unlockFile" $ do
+  setReturnTypes [I64]
+  _ <- params [I64]
+  emit $ constI64 0
