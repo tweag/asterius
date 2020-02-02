@@ -13,6 +13,10 @@ class Posix {
   open(f, h, m) {
     return fs.openSync(this.memory.strLoad(f), h, m);
   }
+  close(f) {
+    fs.closeSync(f);
+    return 0;
+  }
   fstat(f, b) {
     const r = fs.fstatSync(f);
     this.memory.i64Store(
