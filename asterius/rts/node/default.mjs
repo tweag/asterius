@@ -19,6 +19,18 @@ class Posix {
     fs.closeSync(f);
     return 0;
   }
+  stat(f, b) {
+    const r = fs.statSync(this.memory.strLoad(f));
+    this.memory.i64Store(
+      b + this.rtsConstants.offset_stat_mtime,
+      Math.trunc(r.mtimeMs)
+    );
+    this.memory.i64Store(b + this.rtsConstants.offset_stat_size, r.size);
+    this.memory.i64Store(b + this.rtsConstants.offset_stat_mode, r.mode);
+    this.memory.i64Store(b + this.rtsConstants.offset_stat_dev, r.dev);
+    this.memory.i64Store(b + this.rtsConstants.offset_stat_ino, r.ino);
+    return 0;
+  }
   fstat(f, b) {
     const r = fs.fstatSync(f);
     this.memory.i64Store(
@@ -35,6 +47,27 @@ class Posix {
     const dir = fs.opendirSync(this.memory.strLoad(p));
     this.dirs.set(++this.lastDir, dir);
     return this.lastDir;
+  }
+  readdir(dirPtr, pDirEnt) {
+    const dirent = this.dirs.get(dirPtr).readSync();
+    if (dirent) {
+      const l = pDirEnt & 0xffffffff;
+      const { read } = new TextEncoder().encodeInto(
+        dirent.name,
+        this.memory.i8View.subarray(l, l + 4096)
+      );
+      if (read !== dirent.name.length)
+        throw new WebAssembly.RuntimeError(
+          `${dirent.name} exceeded path limit`
+        );
+      return pDirEnt;
+    } else {
+      return 0;
+    }
+  }
+  closedir(dirPtr) {
+    this.dirs.delete(dirPtr);
+    return 0;
   }
 }
 
