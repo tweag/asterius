@@ -1,6 +1,19 @@
 /**
  * @file Implements browser-specific functionality.
  */
+
+class Posix {
+  open() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: open");
+  }
+  close() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: close");
+  }
+  fstat() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: fstat");
+  }
+}
+
 export default {
   /**
    * A custom Time interface, used in {@link TimeCBits}.
@@ -36,5 +49,6 @@ export default {
      * We fallback to a resolution of 1ms.
      */
     resolution: 1000000
-  }
+  },
+  posix: Posix
 };
