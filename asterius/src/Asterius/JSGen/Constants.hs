@@ -5,11 +5,12 @@ module Asterius.JSGen.Constants
   )
 where
 
+import Asterius.Builtins.Posix
 import Asterius.Internals.ByteString
 import Asterius.Internals.MagicNumber
+import Data.Bits
 import Data.ByteString.Builder
 import Language.Haskell.GHC.Toolkit.Constants
-import Data.Bits
 
 rtsConstants :: Builder
 rtsConstants =
@@ -138,6 +139,11 @@ rtsConstants =
                  ("sizeof_StgStableName", sizeof_StgStableName),
                  ("offset_StgStableName_header", offset_StgStableName_header),
                  ("offset_StgStableName_sn", offset_StgStableName_sn),
+                 ("offset_stat_mtime", offset_stat_mtime),
+                 ("offset_stat_size", offset_stat_size),
+                 ("offset_stat_mode", offset_stat_mode),
+                 ("offset_stat_dev", offset_stat_dev),
+                 ("offset_stat_ino", offset_stat_ino),
                  ("clock_monotonic", clock_monotonic),
                  ("clock_realtime", clock_realtime)
                ]
