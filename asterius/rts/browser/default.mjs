@@ -9,8 +9,17 @@ class Posix {
   close() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: close");
   }
+  stat() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: stat");
+  }
   fstat() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: fstat");
+  }
+  readdir() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: readdir");
+  }
+  closedir() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: closedir");
   }
 }
 

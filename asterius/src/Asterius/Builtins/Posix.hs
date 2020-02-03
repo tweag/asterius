@@ -13,10 +13,19 @@ module Asterius.Builtins.Posix
 where
 
 import Asterius.EDSL
+import Asterius.Internals.Session
 import Asterius.Types
+import Control.Exception
+import Control.Monad.IO.Class
+import qualified Data.ByteString.Short as SBS
+import Data.Coerce
 import Data.Foldable
 import qualified Data.Map.Strict as M
+import qualified DynFlags as GHC
+import qualified FastString as GHC
 import Foreign
+import qualified Module as GHC
+import qualified Packages as GHC
 import System.IO.Unsafe
 import System.Posix.Internals
 
@@ -39,6 +48,16 @@ posixImports =
         functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       },
     FunctionImport
+      { internalName = "__asterius_posix_stat",
+        externalModuleName = "posix",
+        externalBaseName = "stat",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
+      },
+    FunctionImport
       { internalName = "__asterius_posix_fstat",
         externalModuleName = "posix",
         externalBaseName = "fstat",
@@ -47,6 +66,28 @@ posixImports =
             { paramTypes = [F64, F64],
               returnTypes = [F64]
             }
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_opendir",
+        externalModuleName = "posix",
+        externalBaseName = "opendir",
+        functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_readdir",
+        externalModuleName = "posix",
+        externalBaseName = "readdir",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_closedir",
+        externalModuleName = "posix",
+        externalBaseName = "closedir",
+        functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       }
   ]
 
@@ -54,12 +95,21 @@ posixCBits :: AsteriusModule
 posixCBits =
   posixOpen
     <> posixClose
+    <> posixStat
     <> posixFstat
     <> posixFstatGetters
     <> posixModeGetters
     <> posixConstants
     <> posixLockFile
     <> posixUnlockFile
+    <> posixOpendir
+    <> posixGetErrno
+    <> posixSetErrno
+    <> posixDirentBuf
+    <> posixReaddir
+    <> posixFreeDirent
+    <> posixDName
+    <> posixClosedir
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -78,6 +128,17 @@ posixClose = runEDSL "close" $ do
   fd <- param I64
   truncSFloat64ToInt64
     <$> callImport' "__asterius_posix_close" [convertSInt64ToFloat64 fd] F64
+    >>= emit
+
+posixStat :: AsteriusModule
+posixStat = runEDSL "__hscore_stat" $ do
+  setReturnTypes [I64]
+  args <- params [I64, I64]
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_stat"
+      (map convertSInt64ToFloat64 args)
+      F64
     >>= emit
 
 posixFstat :: AsteriusModule
@@ -206,3 +267,87 @@ posixUnlockFile = runEDSL "unlockFile" $ do
   setReturnTypes [I64]
   _ <- params [I64]
   emit $ constI64 0
+
+{-# NOINLINE unixUnitId #-}
+unixUnitId :: SBS.ShortByteString
+unixUnitId = unsafePerformIO $ fakeSession $ do
+  dflags <- GHC.getDynFlags
+  let Just comp_id = GHC.lookupPackageName dflags (GHC.PackageName "unix")
+      GHC.InstalledUnitId inst_unit_id =
+        GHC.componentIdToInstalledUnitId comp_id
+  liftIO $ evaluate $ SBS.toShort $ GHC.fastZStringToByteString $
+    GHC.zEncodeFS
+      inst_unit_id
+
+posixOpendir :: AsteriusModule
+posixOpendir =
+  runEDSL
+    ( "ghczuwrapperZC0ZC"
+        <> coerce unixUnitId
+        <> "ZCSystemziPosixziDirectoryZCopendir"
+    )
+    $ do
+      setReturnTypes [I64]
+      p <- param I64
+      truncSFloat64ToInt64
+        <$> callImport'
+          "__asterius_posix_opendir"
+          [convertSInt64ToFloat64 p]
+          F64
+        >>= emit
+
+posixGetErrno :: AsteriusModule
+posixGetErrno = runEDSL "__hscore_get_errno" $ do
+  setReturnTypes [I64]
+  emit $ constI64 0
+
+posixSetErrno :: AsteriusModule
+posixSetErrno = runEDSL "__hscore_set_errno" $ do
+  _ <- param I64
+  pure ()
+
+posixDirentBuf :: AsteriusModule
+posixDirentBuf =
+  mempty
+    { staticsMap =
+        M.singleton
+          "__asterius_posix_dirent_buf"
+          AsteriusStatics
+            { staticsType = Bytes,
+              asteriusStatics = [Uninitialized 4096]
+            }
+    }
+
+posixReaddir :: AsteriusModule
+posixReaddir = runEDSL "__hscore_readdir" $ do
+  setReturnTypes [I64]
+  [dirPtr, pDirEnt] <- params [I64, I64]
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_readdir"
+      ( map
+          convertSInt64ToFloat64
+          [dirPtr, symbol "__asterius_posix_dirent_buf"]
+      )
+      F64
+    >>= storeI64 pDirEnt 0
+  emit $ constI64 0
+
+posixFreeDirent :: AsteriusModule
+posixFreeDirent = runEDSL "__hscore_free_dirent" $ do
+  _ <- param I64
+  pure ()
+
+posixDName :: AsteriusModule
+posixDName = runEDSL "__hscore_d_name" $ do
+  setReturnTypes [I64]
+  _ <- param I64
+  emit $ symbol "__asterius_posix_dirent_buf"
+
+posixClosedir :: AsteriusModule
+posixClosedir = runEDSL "closedir" $ do
+  setReturnTypes [I64]
+  p <- param I64
+  truncSFloat64ToInt64
+    <$> callImport' "__asterius_posix_closedir" [convertSInt64ToFloat64 p] F64
+    >>= emit
