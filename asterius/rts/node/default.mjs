@@ -52,14 +52,15 @@ class Posix {
     const dirent = this.dirs.get(dirPtr).readSync();
     if (dirent) {
       const l = pDirEnt & 0xffffffff;
-      const { read } = new TextEncoder().encodeInto(
+      const { read, written } = new TextEncoder().encodeInto(
         dirent.name,
-        this.memory.i8View.subarray(l, l + 4096)
+        this.memory.i8View.subarray(l, l + 4095)
       );
       if (read !== dirent.name.length)
         throw new WebAssembly.RuntimeError(
           `${dirent.name} exceeded path limit`
         );
+      this.memory.i8View[l + written] = 0;
       return pDirEnt;
     } else {
       return 0;
