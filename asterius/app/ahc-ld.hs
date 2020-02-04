@@ -58,4 +58,5 @@ main = do
       rsp <- readFile rsp_path
       let rsp_args = map read $ lines rsp
       task <- parseLinkTask rsp_args
-      linkExe task
+      ignore <- isJust <$> getEnv "ASTERIUS_AHC_LD_IGNORE"
+      if ignore then writeFile "" (linkOutput task) else linkExe task
