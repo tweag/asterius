@@ -8,6 +8,7 @@ import Data.String
 import Data.Traversable
 import System.Directory
 import System.Environment.Blank
+import System.Process
 
 parseLinkTask :: [String] -> IO LinkTask
 parseLinkTask args = do
@@ -59,4 +60,4 @@ main = do
       let rsp_args = map read $ lines rsp
       task <- parseLinkTask rsp_args
       ignore <- isJust <$> getEnv "ASTERIUS_AHC_LD_IGNORE"
-      if ignore then writeFile "" (linkOutput task) else linkExe task
+      if ignore then callProcess "touch" [linkOutput task] else linkExe task
