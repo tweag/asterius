@@ -131,6 +131,15 @@ class Posix {
       return 0;
     }
   }
+  access(f, m) {
+    try {
+      fs.accessSync(this.memory.strLoad(f), m);
+      return 0;
+    } catch (err) {
+      this.set_errno(-err.errno);
+      return -1;
+    }
+  }
 }
 
 export default {

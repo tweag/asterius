@@ -30,6 +30,9 @@ class Posix {
   getenv() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: getenv");
   }
+  access() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: access");
+  }
 }
 
 export default {
