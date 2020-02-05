@@ -10,7 +10,14 @@ class Posix {
     this.rtsConstants = rtsConstants;
     this.dirs = new Map();
     this.lastDir = 0;
+    this.errno = 0;
     Object.seal(this);
+  }
+  get_errno() {
+    return this.errno;
+  }
+  set_errno(e) {
+    this.errno = e;
   }
   open(f, h, m) {
     return fs.openSync(this.memory.strLoad(f), h, m);

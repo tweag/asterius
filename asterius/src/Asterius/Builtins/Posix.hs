@@ -32,6 +32,18 @@ import System.Posix.Internals
 posixImports :: [FunctionImport]
 posixImports =
   [ FunctionImport
+      { internalName = "__asterius_posix_get_errno",
+        externalModuleName = "posix",
+        externalBaseName = "get_errno",
+        functionType = FunctionType {paramTypes = [], returnTypes = [F64]}
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_set_errno",
+        externalModuleName = "posix",
+        externalBaseName = "set_errno",
+        functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+      },
+    FunctionImport
       { internalName = "__asterius_posix_open",
         externalModuleName = "posix",
         externalBaseName = "open",
@@ -311,12 +323,14 @@ posixOpendir =
 posixGetErrno :: AsteriusModule
 posixGetErrno = runEDSL "__hscore_get_errno" $ do
   setReturnTypes [I64]
-  emit $ constI64 0
+  truncSFloat64ToInt64
+    <$> callImport' "__asterius_posix_get_errno" [] F64
+    >>= emit
 
 posixSetErrno :: AsteriusModule
 posixSetErrno = runEDSL "__hscore_set_errno" $ do
-  _ <- param I64
-  pure ()
+  e <- param I64
+  callImport "__asterius_posix_opendir" [convertSInt64ToFloat64 e]
 
 posixDirentBuf :: AsteriusModule
 posixDirentBuf =

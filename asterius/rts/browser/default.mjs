@@ -3,6 +3,12 @@
  */
 
 class Posix {
+  get_errno() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: get_errno");
+  }
+  set_errno() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: set_errno");
+  }
   open() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: open");
   }
