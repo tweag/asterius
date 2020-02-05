@@ -32,6 +32,18 @@ import System.Posix.Internals
 posixImports :: [FunctionImport]
 posixImports =
   [ FunctionImport
+      { internalName = "__asterius_posix_get_errno",
+        externalModuleName = "posix",
+        externalBaseName = "get_errno",
+        functionType = FunctionType {paramTypes = [], returnTypes = [F64]}
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_set_errno",
+        externalModuleName = "posix",
+        externalBaseName = "set_errno",
+        functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+      },
+    FunctionImport
       { internalName = "__asterius_posix_open",
         externalModuleName = "posix",
         externalBaseName = "open",
@@ -88,6 +100,36 @@ posixImports =
         externalModuleName = "posix",
         externalBaseName = "closedir",
         functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_getenv",
+        externalModuleName = "posix",
+        externalBaseName = "getenv",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_access",
+        externalModuleName = "posix",
+        externalBaseName = "access",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_getcwd",
+        externalModuleName = "posix",
+        externalBaseName = "getcwd",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
       }
   ]
 
@@ -110,6 +152,10 @@ posixCBits =
     <> posixFreeDirent
     <> posixDName
     <> posixClosedir
+    <> posixGetenvBuf
+    <> posixGetenv
+    <> posixAccess
+    <> posixGetcwd
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -299,12 +345,14 @@ posixOpendir =
 posixGetErrno :: AsteriusModule
 posixGetErrno = runEDSL "__hscore_get_errno" $ do
   setReturnTypes [I64]
-  emit $ constI64 0
+  truncSFloat64ToInt64
+    <$> callImport' "__asterius_posix_get_errno" [] F64
+    >>= emit
 
 posixSetErrno :: AsteriusModule
 posixSetErrno = runEDSL "__hscore_set_errno" $ do
-  _ <- param I64
-  pure ()
+  e <- param I64
+  callImport "__asterius_posix_set_errno" [convertSInt64ToFloat64 e]
 
 posixDirentBuf :: AsteriusModule
 posixDirentBuf =
@@ -350,4 +398,49 @@ posixClosedir = runEDSL "closedir" $ do
   p <- param I64
   truncSFloat64ToInt64
     <$> callImport' "__asterius_posix_closedir" [convertSInt64ToFloat64 p] F64
+    >>= emit
+
+posixGetenvBuf :: AsteriusModule
+posixGetenvBuf =
+  mempty
+    { staticsMap =
+        M.singleton
+          "__asterius_posix_getenv_buf"
+          AsteriusStatics
+            { staticsType = Bytes,
+              asteriusStatics = [Uninitialized 32768]
+            }
+    }
+
+posixGetenv :: AsteriusModule
+posixGetenv = runEDSL "getenv" $ do
+  setReturnTypes [I64]
+  p <- param I64
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_getenv"
+      (map convertSInt64ToFloat64 [p, symbol "__asterius_posix_getenv_buf"])
+      F64
+    >>= emit
+
+posixAccess :: AsteriusModule
+posixAccess = runEDSL "access" $ do
+  setReturnTypes [I64]
+  args <- params [I64, I64]
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_access"
+      (map convertSInt64ToFloat64 args)
+      F64
+    >>= emit
+
+posixGetcwd :: AsteriusModule
+posixGetcwd = runEDSL "getcwd" $ do
+  setReturnTypes [I64]
+  args <- params [I64, I64]
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_getcwd"
+      (map convertSInt64ToFloat64 args)
+      F64
     >>= emit

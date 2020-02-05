@@ -3,6 +3,12 @@
  */
 
 class Posix {
+  get_errno() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: get_errno");
+  }
+  set_errno() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: set_errno");
+  }
   open() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: open");
   }
@@ -20,6 +26,15 @@ class Posix {
   }
   closedir() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: closedir");
+  }
+  getenv() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: getenv");
+  }
+  access() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: access");
+  }
+  getcwd() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: getcwd");
   }
 }
 
