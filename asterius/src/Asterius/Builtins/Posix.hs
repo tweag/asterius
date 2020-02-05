@@ -352,7 +352,7 @@ posixGetErrno = runEDSL "__hscore_get_errno" $ do
 posixSetErrno :: AsteriusModule
 posixSetErrno = runEDSL "__hscore_set_errno" $ do
   e <- param I64
-  callImport "__asterius_posix_opendir" [convertSInt64ToFloat64 e]
+  callImport "__asterius_posix_set_errno" [convertSInt64ToFloat64 e]
 
 posixDirentBuf :: AsteriusModule
 posixDirentBuf =
