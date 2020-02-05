@@ -70,6 +70,24 @@ class Posix {
     this.dirs.delete(dirPtr);
     return 0;
   }
+  getenv(keyPtr, resPtr) {
+    const res = process.env[this.memory.strLoad(keyPtr)];
+    if (res) {
+      const l = resPtr & 0xffffffff;
+      const { read, written } = new TextEncoder().encodeInto(
+        res,
+        this.memory.i8View.subarray(l, l + 32767)
+      );
+      if (read !== res.length)
+        throw new WebAssembly.RuntimeError(
+          `${res} exceeded environment variable limit`
+        );
+      this.memory.i8View[l + written] = 0;
+      return resPtr;
+    } else {
+      return 0;
+    }
+  }
 }
 
 export default {

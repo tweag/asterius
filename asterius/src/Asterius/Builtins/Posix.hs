@@ -88,6 +88,16 @@ posixImports =
         externalModuleName = "posix",
         externalBaseName = "closedir",
         functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_getenv",
+        externalModuleName = "posix",
+        externalBaseName = "getenv",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
       }
   ]
 
@@ -110,6 +120,8 @@ posixCBits =
     <> posixFreeDirent
     <> posixDName
     <> posixClosedir
+    <> posixGetenvBuf
+    <> posixGetenv
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -350,4 +362,27 @@ posixClosedir = runEDSL "closedir" $ do
   p <- param I64
   truncSFloat64ToInt64
     <$> callImport' "__asterius_posix_closedir" [convertSInt64ToFloat64 p] F64
+    >>= emit
+
+posixGetenvBuf :: AsteriusModule
+posixGetenvBuf =
+  mempty
+    { staticsMap =
+        M.singleton
+          "__asterius_posix_getenv_buf"
+          AsteriusStatics
+            { staticsType = Bytes,
+              asteriusStatics = [Uninitialized 32768]
+            }
+    }
+
+posixGetenv :: AsteriusModule
+posixGetenv = runEDSL "getenv" $ do
+  setReturnTypes [I64]
+  p <- param I64
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_getenv"
+      (map convertSInt64ToFloat64 [p, symbol "__asterius_posix_getenv_buf"])
+      F64
     >>= emit

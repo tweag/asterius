@@ -21,6 +21,9 @@ class Posix {
   closedir() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: closedir");
   }
+  getenv() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: getenv");
+  }
 }
 
 export default {
