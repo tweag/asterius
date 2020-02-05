@@ -20,62 +20,98 @@ class Posix {
     this.errno = e;
   }
   open(f, h, m) {
-    return fs.openSync(this.memory.strLoad(f), h, m);
+    try {
+      return fs.openSync(this.memory.strLoad(f), h, m);
+    } catch (err) {
+      this.set_errno(-err.errno);
+      return -1;
+    }
   }
   close(f) {
-    fs.closeSync(f);
-    return 0;
+    try {
+      fs.closeSync(f);
+      return 0;
+    } catch (err) {
+      this.set_errno(-err.errno);
+      return -1;
+    }
   }
   stat(f, b) {
-    const r = fs.statSync(this.memory.strLoad(f));
-    this.memory.i64Store(
-      b + this.rtsConstants.offset_stat_mtime,
-      Math.trunc(r.mtimeMs)
-    );
-    this.memory.i64Store(b + this.rtsConstants.offset_stat_size, r.size);
-    this.memory.i64Store(b + this.rtsConstants.offset_stat_mode, r.mode);
-    this.memory.i64Store(b + this.rtsConstants.offset_stat_dev, r.dev);
-    this.memory.i64Store(b + this.rtsConstants.offset_stat_ino, r.ino);
-    return 0;
+    try {
+      const r = fs.statSync(this.memory.strLoad(f));
+      this.memory.i64Store(
+        b + this.rtsConstants.offset_stat_mtime,
+        Math.trunc(r.mtimeMs)
+      );
+      this.memory.i64Store(b + this.rtsConstants.offset_stat_size, r.size);
+      this.memory.i64Store(b + this.rtsConstants.offset_stat_mode, r.mode);
+      this.memory.i64Store(b + this.rtsConstants.offset_stat_dev, r.dev);
+      this.memory.i64Store(b + this.rtsConstants.offset_stat_ino, r.ino);
+      return 0;
+    } catch (err) {
+      this.set_errno(-err.errno);
+      return -1;
+    }
   }
   fstat(f, b) {
-    const r = fs.fstatSync(f);
-    this.memory.i64Store(
-      b + this.rtsConstants.offset_stat_mtime,
-      Math.trunc(r.mtimeMs)
-    );
-    this.memory.i64Store(b + this.rtsConstants.offset_stat_size, r.size);
-    this.memory.i64Store(b + this.rtsConstants.offset_stat_mode, r.mode);
-    this.memory.i64Store(b + this.rtsConstants.offset_stat_dev, r.dev);
-    this.memory.i64Store(b + this.rtsConstants.offset_stat_ino, r.ino);
-    return 0;
+    try {
+      const r = fs.fstatSync(f);
+      this.memory.i64Store(
+        b + this.rtsConstants.offset_stat_mtime,
+        Math.trunc(r.mtimeMs)
+      );
+      this.memory.i64Store(b + this.rtsConstants.offset_stat_size, r.size);
+      this.memory.i64Store(b + this.rtsConstants.offset_stat_mode, r.mode);
+      this.memory.i64Store(b + this.rtsConstants.offset_stat_dev, r.dev);
+      this.memory.i64Store(b + this.rtsConstants.offset_stat_ino, r.ino);
+      return 0;
+    } catch (err) {
+      this.set_errno(-err.errno);
+      return -1;
+    }
   }
   opendir(p) {
-    const dir = fs.opendirSync(this.memory.strLoad(p));
-    this.dirs.set(++this.lastDir, dir);
-    return this.lastDir;
-  }
-  readdir(dirPtr, pDirEnt) {
-    const dirent = this.dirs.get(dirPtr).readSync();
-    if (dirent) {
-      const l = pDirEnt & 0xffffffff;
-      const { read, written } = new TextEncoder().encodeInto(
-        dirent.name,
-        this.memory.i8View.subarray(l, l + 4095)
-      );
-      if (read !== dirent.name.length)
-        throw new WebAssembly.RuntimeError(
-          `${dirent.name} exceeded path limit`
-        );
-      this.memory.i8View[l + written] = 0;
-      return pDirEnt;
-    } else {
+    try {
+      const dir = fs.opendirSync(this.memory.strLoad(p));
+      this.dirs.set(++this.lastDir, dir);
+      return this.lastDir;
+    } catch (err) {
+      this.set_errno(-err.errno);
       return 0;
     }
   }
+  readdir(dirPtr, pDirEnt) {
+    try {
+      const dirent = this.dirs.get(dirPtr).readSync();
+      if (dirent) {
+        const l = pDirEnt & 0xffffffff;
+        const { read, written } = new TextEncoder().encodeInto(
+          dirent.name,
+          this.memory.i8View.subarray(l, l + 4095)
+        );
+        if (read !== dirent.name.length)
+          throw new WebAssembly.RuntimeError(
+            `${dirent.name} exceeded path limit`
+          );
+        this.memory.i8View[l + written] = 0;
+        return pDirEnt;
+      } else {
+        return 0;
+      }
+    } catch (err) {
+      this.set_errno(-err.errno);
+      return -1;
+    }
+  }
   closedir(dirPtr) {
-    this.dirs.delete(dirPtr);
-    return 0;
+    try {
+      this.dirs.get(dirPtr).closeSync();
+      this.dirs.delete(dirPtr);
+      return 0;
+    } catch (err) {
+      this.set_errno(-err.errno);
+      return -1;
+    }
   }
   getenv(keyPtr, resPtr) {
     const res = process.env[this.memory.strLoad(keyPtr)];
