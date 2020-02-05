@@ -140,6 +140,21 @@ class Posix {
       return -1;
     }
   }
+  getcwd(buf, size) {
+    const cwd = process.cwd();
+    const l = buf & 0xffffffff;
+    const { read, written } = new TextEncoder().encodeInto(
+      cwd,
+      this.memory.i8View.subarray(l, l - 1 + size)
+    );
+    this.memory.i8View[l + written] = 0;
+    if (read === cwd.length) {
+      return buf;
+    } else {
+      this.set_errno(34);
+      return 0;
+    }
+  }
 }
 
 export default {

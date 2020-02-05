@@ -120,6 +120,16 @@ posixImports =
             { paramTypes = [F64, F64],
               returnTypes = [F64]
             }
+      },
+    FunctionImport
+      { internalName = "__asterius_posix_getcwd",
+        externalModuleName = "posix",
+        externalBaseName = "getcwd",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
       }
   ]
 
@@ -145,6 +155,7 @@ posixCBits =
     <> posixGetenvBuf
     <> posixGetenv
     <> posixAccess
+    <> posixGetcwd
 
 posixOpen :: AsteriusModule
 posixOpen = runEDSL "__hscore_open" $ do
@@ -419,6 +430,17 @@ posixAccess = runEDSL "access" $ do
   truncSFloat64ToInt64
     <$> callImport'
       "__asterius_posix_access"
+      (map convertSInt64ToFloat64 args)
+      F64
+    >>= emit
+
+posixGetcwd :: AsteriusModule
+posixGetcwd = runEDSL "getcwd" $ do
+  setReturnTypes [I64]
+  args <- params [I64, I64]
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_getcwd"
       (map convertSInt64ToFloat64 args)
       F64
     >>= emit

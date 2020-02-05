@@ -33,6 +33,9 @@ class Posix {
   access() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: access");
   }
+  getcwd() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: getcwd");
+  }
 }
 
 export default {
