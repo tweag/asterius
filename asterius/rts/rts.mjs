@@ -156,6 +156,7 @@ export async function newAsteriusInstance(req) {
         }
       },
       posix: modulify(new (req.targetSpecificModule.posix)(__asterius_memory, rtsConstants)),
+      process: modulify(new (req.targetSpecificModule.process)(__asterius_memory)),
       bytestring: modulify(__asterius_bytestring_cbits),
       text: modulify(__asterius_text_cbits),
       time: modulify(__asterius_time_cbits),

@@ -1,6 +1,7 @@
 /**
  * @file Implements Node.js-specific functionality.
  */
+import child_process from "child_process";
 import fs from "fs";
 import { performance } from "perf_hooks";
 
@@ -241,6 +242,59 @@ class Posix {
   }
 }
 
+class Process {
+  constructor(memory) {
+    this.memory = memory;
+    Object.freeze(this);
+  }
+  runInteractiveProcess(
+    args,
+    workingDirectory,
+    environment,
+    fdStdIn, // -1
+    fdStdOut, // -1
+    fdStdErr, // -1
+    pfdStdInput, // 9007160604360240
+    pfdStdOutput, // 9007160604360264
+    pfdStdError, // 9007160604360288
+    childGroup,
+    childUser,
+    reset_int_quit_handlers,
+    flags,
+    failed_doing, // 9007160604360312
+    err_buf
+  ) {
+    try {
+      const cmd_args = [];
+      for (let p = args; this.memory.i64Load(p); p += 8) {
+        cmd_args.push(this.memory.strLoad(this.memory.i64Load(p)));
+      }
+      const opts = {};
+      if (workingDirectory) {
+        opts.cwd = this.memory.strLoad(workingDirectory);
+      }
+      if (environment) {
+        opts.env = {};
+        for (let p = environment; this.memory.i64Load(p); p += 8) {
+          const pair = this.memory.strLoad(this.memory.i64Load(p)),
+            i = pair.indexOf("=");
+          opts.env[pair.substring(0, i)] = pair.substring(i + 1);
+        }
+      }
+      if (childGroup) {
+        opts.gid = childGroup;
+      }
+      if (childUser) {
+        opts.uid = childUser;
+      }
+      child_process.spawn(cmd_args[0], cmd_args.slice(1), {});
+      throw "todo";
+    } catch (err) {
+      throw err;
+    }
+  }
+}
+
 export default {
   /**
    * A custom Time interface, used in {@link TimeCBits}.
@@ -272,5 +326,6 @@ export default {
     resolution: 1
   },
   fs: MemoryFileSystem,
-  posix: Posix
+  posix: Posix,
+  process: Process
 };
