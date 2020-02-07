@@ -1065,9 +1065,9 @@ createThreadFunction BuiltinsOptions {..} = runEDSL "createThread" $ do
       "allocatePinned"
       [mainCapability, constI64 $ roundup_bytes_to_words sizeof_StgTSO]
       I64
-  stack_p <- call' "allocatePinned" [mainCapability, constI64 65536] I64
+  stack_p <- call' "allocatePinned" [mainCapability, constI64 4096] I64
   storeI64 stack_p 0 $ symbol "stg_STACK_info"
-  stack_size_w <- i64Local $ constI64 $ (65536 - offset_StgStack_stack) `div` 8
+  stack_size_w <- i64Local $ constI64 $ (4096 - offset_StgStack_stack) `div` 8
   storeI32 stack_p offset_StgStack_stack_size $ wrapInt64 stack_size_w
   storeI64 stack_p offset_StgStack_sp $
     (stack_p `addInt64` constI64 offset_StgStack_stack)
