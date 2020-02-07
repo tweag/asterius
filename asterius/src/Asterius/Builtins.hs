@@ -22,6 +22,7 @@ import Asterius.Builtins.CMath
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
+import Asterius.Builtins.SM
 import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
 import Asterius.EDSL
@@ -46,7 +47,6 @@ wasmPageSize = 65536
 data BuiltinsOptions
   = BuiltinsOptions
       { progName :: String,
-        threadStateSize :: Int,
         debug, hasMain :: Bool,
         jsvalConInfo :: Maybe AsteriusEntitySymbol
       }
@@ -56,7 +56,6 @@ defaultBuiltinsOptions = BuiltinsOptions
   { progName =
       error
         "Asterius.Builtins.defaultBuiltinsOptions: unknown progName",
-    threadStateSize = 65536,
     debug = False,
     hasMain = True,
     jsvalConInfo =
@@ -196,6 +195,8 @@ rtsAsteriusModule opts =
     -- the module wrapped by using `generateWrapperModule`.
     <> generateRtsExternalInterfaceModule opts
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
+    <> smCBits
+    <> generateWrapperModule smCBits
     <> cmathCBits
     <> hashableCBits
     <> md5CBits
@@ -709,7 +710,8 @@ rtsFunctionExports debug =
           "getStablePtr",
           "deRefStablePtr",
           "hs_free_stable_ptr",
-          "makeStableName"
+          "makeStableName",
+          "growStack"
         ]
   ]
     <> [ FunctionExport {internalName = "__asterius_" <> f, externalName = f}
@@ -1058,15 +1060,14 @@ getThreadIdFunction BuiltinsOptions {} = runEDSL "rts_getThreadId" $ do
 
 createThreadFunction BuiltinsOptions {..} = runEDSL "createThread" $ do
   setReturnTypes [I64]
-  let alloc_words = constI64 $ roundup_bytes_to_words threadStateSize
-  tso_p <- call' "allocatePinned" [mainCapability, alloc_words] I64
-  stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
+  tso_p <-
+    call'
+      "allocatePinned"
+      [mainCapability, constI64 $ roundup_bytes_to_words sizeof_StgTSO]
+      I64
+  stack_p <- call' "allocatePinned" [mainCapability, constI64 4096] I64
   storeI64 stack_p 0 $ symbol "stg_STACK_info"
-  stack_size_w <-
-    i64Local $
-      alloc_words
-        `subInt64` constI64
-          ((offset_StgTSO_StgStack + offset_StgStack_stack) `div` 8)
+  stack_size_w <- i64Local $ constI64 $ (4096 - offset_StgStack_stack) `div` 8
   storeI32 stack_p offset_StgStack_stack_size $ wrapInt64 stack_size_w
   storeI64 stack_p offset_StgStack_sp $
     (stack_p `addInt64` constI64 offset_StgStack_stack)
@@ -1578,9 +1579,6 @@ getF64GlobalRegFunction ::
 getF64GlobalRegFunction _ n gr = runEDSL n $ do
   setReturnTypes [F64]
   emit $ convertSInt64ToFloat64 $ getLVal $ global gr
-
-offset_StgTSO_StgStack :: Int
-offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
 
 -- @cheng: there is a trade-off here: Either I emit the low-level
 -- store and load, or I expose a _lot more_ from the EDSL
