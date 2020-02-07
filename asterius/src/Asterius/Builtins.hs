@@ -22,6 +22,7 @@ import Asterius.Builtins.CMath
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
+import Asterius.Builtins.SM
 import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
 import Asterius.EDSL
@@ -194,6 +195,8 @@ rtsAsteriusModule opts =
     -- the module wrapped by using `generateWrapperModule`.
     <> generateRtsExternalInterfaceModule opts
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
+    <> smCBits
+    <> generateWrapperModule smCBits
     <> cmathCBits
     <> hashableCBits
     <> md5CBits
@@ -707,7 +710,8 @@ rtsFunctionExports debug =
           "getStablePtr",
           "deRefStablePtr",
           "hs_free_stable_ptr",
-          "makeStableName"
+          "makeStableName",
+          "growStack"
         ]
   ]
     <> [ FunctionExport {internalName = "__asterius_" <> f, externalName = f}

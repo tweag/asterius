@@ -122,7 +122,16 @@ export class Scheduler {
       }
       case 2: {
         // StackOverflow
-        throw new WebAssembly.RuntimeError("StackOverflow");
+        const prev_stack = Number(
+            this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+          ),
+          next_stack = this.exports.growStack(prev_stack);
+        this.memory.i64Store(
+          tso + rtsConstants.offset_StgTSO_stackobj,
+          next_stack
+        );
+        this.runQueue.push(tid);
+        this.submitCmdWakeUp();
         break;
       }
       case 3: {
