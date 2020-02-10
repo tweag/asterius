@@ -1236,12 +1236,41 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
           (GHC.ForeignTarget p f)
           rs
           xs
-marshalCmmUnsafeCall p f rs xs =
-  throwError $ UnsupportedCmmInstr $ showSBS $
-    GHC.CmmUnsafeForeignCall
-      (GHC.ForeignTarget p f)
-      rs
-      xs
+marshalCmmUnsafeCall p f rs xs = do
+  fp <- marshalAndCastCmmExpr p I32
+  (xes, xts) <- unzip <$> for xs marshalCmmExpr
+  case rs of
+    [] ->
+      pure
+        [ CallIndirect
+            { indirectTarget = fp,
+              operands = xes,
+              functionType = FunctionType {paramTypes = xts, returnTypes = []}
+            }
+        ]
+    [r] -> do
+      (lr, vt) <- marshalCmmLocalReg r
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedLocalReg = lr,
+              value =
+                CallIndirect
+                  { indirectTarget = fp,
+                    operands = xes,
+                    functionType =
+                      FunctionType
+                        { paramTypes = xts,
+                          returnTypes = [vt]
+                        }
+                  }
+            }
+        ]
+    _ ->
+      throwError $ UnsupportedCmmInstr $ showSBS $
+        GHC.CmmUnsafeForeignCall
+          (GHC.ForeignTarget p f)
+          rs
+          xs
 
 marshalCmmInstr :: GHC.CmmNode GHC.O GHC.O -> CodeGen [Expression]
 marshalCmmInstr instr = case instr of
