@@ -207,7 +207,7 @@ export class GC {
               peek[2] = this.symbolTable.stg_IND_info;
               stack.push(peek); 
               // Start evaluating the selected field
-              stack.push([res_c + offset,,,]);
+              stack.push([res_c + BigInt(offset),,,]);
               result = undefined;
               continue;
             } else {
