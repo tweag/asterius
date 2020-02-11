@@ -681,6 +681,16 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
         GtFloat64 -> pure Wasm.F64Gt
         GeFloat64 -> pure Wasm.F64Ge
       pure $ x <> y <> op
+    Drop {..} -> do
+      x <-
+        makeInstructions
+          tail_calls
+          sym_map
+          _module_symtable
+          _de_bruijn_ctx
+          _local_ctx
+          dropValue
+      pure $ x <> DList.singleton Wasm.Drop
     ReturnCall {..}
       | tail_calls -> case Map.lookup (coerce returnCallTarget64) functionSymbols of
         Just i -> pure $

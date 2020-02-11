@@ -414,6 +414,9 @@ data Expression
       { binaryOp :: BinaryOp,
         operand0, operand1 :: Expression
       }
+  | Drop
+      { dropValue :: Expression
+      }
   | ReturnCall
       { returnCallTarget64 :: AsteriusEntitySymbol
       }
