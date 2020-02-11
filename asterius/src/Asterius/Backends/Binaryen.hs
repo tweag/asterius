@@ -316,6 +316,9 @@ marshalExpression sym_map m e = flip runContT pure $ case e of
     x <- marshalExpression sym_map m operand0
     y <- marshalExpression sym_map m operand1
     c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
+  Drop {..} -> lift $ do
+    x <- marshalExpression sym_map m dropValue
+    c_BinaryenDrop m x
   ReturnCall {..} -> case M.lookup returnCallTarget64 sym_map of
     Just t -> do
       s <- lift $ marshalExpression
