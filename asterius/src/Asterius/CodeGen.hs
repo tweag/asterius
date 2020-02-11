@@ -17,6 +17,7 @@ module Asterius.CodeGen
 where
 
 import Asterius.Builtins
+import Asterius.CodeGen.Droppable
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Passes.All
@@ -1217,7 +1218,20 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
     (xe, _) <- marshalCmmExpr x
     pure xe
   case rs of
-    [] -> pure [Call {target = sym, operands = xes, callReturnTypes = []}]
+    [] ->
+      pure
+        [ case ccallResultDroppable sym of
+            [] -> Call {target = sym, operands = xes, callReturnTypes = []}
+            rts ->
+              Drop
+                { dropValue =
+                    Call
+                      { target = sym,
+                        operands = xes,
+                        callReturnTypes = rts
+                      }
+                }
+        ]
     [r] -> do
       (lr, vt) <- marshalCmmLocalReg r
       pure
