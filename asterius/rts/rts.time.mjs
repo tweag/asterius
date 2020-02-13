@@ -26,7 +26,7 @@ export class TimeCBits {
    */
   clock_getres(clk_id, addr) {
     if (addr) {
-      const sec = 0, nsec = this.resolution;
+      let sec = 0, nsec = this.resolution;
       if (nsec > 1000000000) { // more than 1s
         sec = Math.floor(this.resolution / 1000000000);
         nsec = 0;

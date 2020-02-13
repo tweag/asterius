@@ -37,6 +37,8 @@ export class FloatCBits {
     this.DBL_HIDDEN = 0x100000;
     this.DBL_POWER2 = 0x200000;
 
+    this.LTOP_BIT = 0x80000000;
+
     // buffer of 8 bytes to hold floats/doubles
     this.buffer = new ArrayBuffer(8);
     this.view = new DataView(this.buffer);
@@ -417,8 +419,8 @@ export class FloatCBits {
       if (
         frac < half ||
         (frac == half /* tie */ &&
-          (half == LTOP_BIT
-            ? u.ieee.mantissa0 & 1 /* yuck */
+          (half == this.LTOP_BIT
+            ? mant0 & 1 /* yuck */
             : mant & (2 * half)) == 0)
       ) {
         /* truncate */
