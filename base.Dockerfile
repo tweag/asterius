@@ -2,6 +2,8 @@ FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+ARG ASTERIUS_AHC_LD_IGNORE=1
+
 ENV \
   ASTERIUS_LIB_DIR=/home/asterius/.asterius-local-install-root/share/x86_64-linux-ghc-8.8.2/asterius-0.0.1/.boot/asterius_lib \
   LANG=C.UTF-8 \
@@ -43,7 +45,7 @@ WORKDIR /home/asterius
 
 RUN \
   mkdir -p ~/.local/bin && \
-  curl -L https://get.haskellstack.org/stable/linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack' && \
+  curl -L https://github.com/commercialhaskell/stack/releases/download/v2.1.3/stack-2.1.3-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack' && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
   mkdir -p ~/.asterius/inline-js
 
