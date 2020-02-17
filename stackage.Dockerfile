@@ -2,6 +2,8 @@ FROM terrorjack/asterius:base
 
 ARG jobs=1
 
+ARG ASTERIUS_AHC_LD_IGNORE=1
+
 COPY --chown=asterius:asterius lts.sh /tmp/lts.sh
 COPY --chown=asterius:asterius ghc-toolkit/boot-libs/cabal.config /tmp/cabal.config
 
