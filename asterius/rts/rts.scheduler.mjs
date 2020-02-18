@@ -7,7 +7,6 @@ import * as rtsConstants from "./rts.constants.mjs";
  * TSO stands for Thread State Object.
  *
  * @property tsos     Contains info (tid, addr, status...) about all the TSOs.
- * @property runQueue Queue of runnable TSOs.
  *
  */
 export class Scheduler {
@@ -16,7 +15,6 @@ export class Scheduler {
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
-    this.runQueue = []; // Runnable TSO IDs
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
     this.gc = undefined;
@@ -113,8 +111,7 @@ export class Scheduler {
 
         // put the thread back into the run-queue
         // TODO: we should put it in front if it hasn't exceeded its time splice
-        this.runQueue.push(tid);
-        this.submitCmdWakeUp();
+        this.submitCmdWakeUp(tid);
         break;
       }
       case 2: {
@@ -127,15 +124,13 @@ export class Scheduler {
           tso + rtsConstants.offset_StgTSO_stackobj,
           next_stack
         );
-        this.runQueue.push(tid);
-        this.submitCmdWakeUp();
+        this.submitCmdWakeUp(tid);
         break;
       }
       case 3: {
         // ThreadYielding
         // put the thread back into the run-queue
-        this.runQueue.push(tid);
-        this.submitCmdWakeUp();
+        this.submitCmdWakeUp(tid);
         break;
       }
       case 4: {
@@ -160,14 +155,12 @@ export class Scheduler {
                   tso + rtsConstants.offset_StgTSO_ffi_func
                 );
 
-                this.runQueue.push(tid);
-                this.submitCmdWakeUp();
+                this.submitCmdWakeUp(tid);
               },
               e => {
                 tso_info.ffiRetErr = e;
                 //console.log(`Thread ${tid}: blocking FFI Promise rejected with ${e.stack}`);
-                this.runQueue.push(tid);
-                this.submitCmdWakeUp();
+                this.submitCmdWakeUp(tid);
               }
             );
             break;
@@ -183,8 +176,7 @@ export class Scheduler {
             // Wait for the timer blocking promise and then requeue the TSO
             tso_info.blockingPromise.then(
               () => {
-                this.runQueue.push(tid);
-                this.submitCmdWakeUp();
+                this.submitCmdWakeUp(tid);
               },
               e => {
                 throw new WebAssembly.RuntimeError(
@@ -215,9 +207,6 @@ export class Scheduler {
             break;
           }
         }
-
-        // May execute another thread while this one is blocked
-        this.submitCmdWakeUp();
         break;
       }
       case 5: {
@@ -229,8 +218,7 @@ export class Scheduler {
         switch (what_next) {
           case 1: {
             // ThreadRunGHC
-            this.runQueue.push(tid);
-            this.submitCmdWakeUp();
+            this.submitCmdWakeUp(tid);
             break;
           }
           case 2: {
@@ -238,7 +226,6 @@ export class Scheduler {
             throw new WebAssembly.RuntimeError(
               "Scheduler: unsupported ThreadInterpret"
             );
-            this.submitCmdWakeUp();
             break;
           }
           case 3: {
@@ -248,7 +235,6 @@ export class Scheduler {
             if (tso_info.promise_resolve) {
               tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             }
-            this.submitCmdWakeUp();
             break;
           }
           case 4: {
@@ -265,7 +251,6 @@ export class Scheduler {
             if (tso_info.promise_resolve) {
               tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             }
-            this.submitCmdWakeUp();
             break;
           }
         }
@@ -305,10 +290,7 @@ export class Scheduler {
         }
 
         case Cmd.WakeUp: {
-          if (this.runQueue.length > 0) {
-            // TODO: Array.shift is O(n). We should use a more efficient queue
-            // structure
-            const tid = this.runQueue.shift();
+            const tid = cmd.tid;
             const tso_info = this.tsos.get(tid);
             const tso = tso_info.addr;
 
@@ -399,7 +381,6 @@ export class Scheduler {
             // execute the TSO.
             this.exports.scheduleTSO(tso, entryFunc);
             this.returnedFromTSO(tid);
-          }
           break;
         }
 
@@ -424,11 +405,8 @@ export class Scheduler {
       tso_info.addr = Number(tso);
     }
 
-    // Add the thread into the run-queue
-    this.runQueue.push(tid);
-
     // Ensure that we wake up the scheduler at least once to execute this thread
-    this.submitCmdWakeUp();
+    this.submitCmdWakeUp(tid);
   }
 
   /**
@@ -457,8 +435,8 @@ export class Scheduler {
    *
    *
    */
-  submitCmdWakeUp() {
-    setImmediate(cmd => this.scheduler_tick(cmd), { type: Cmd.WakeUp });
+  submitCmdWakeUp(tid) {
+    setImmediate(cmd => this.scheduler_tick(cmd), { type: Cmd.WakeUp, tid: tid });
   }
 }
 
