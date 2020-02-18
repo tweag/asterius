@@ -20,7 +20,6 @@ export class Scheduler {
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
     this.gc = undefined;
-    this.running = false;
     Object.seal(this);
   }
 
