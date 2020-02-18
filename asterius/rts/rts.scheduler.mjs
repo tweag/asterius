@@ -149,8 +149,7 @@ export class Scheduler {
         );
 
         switch (why_blocked) {
-          case Blocked.OnCCall:
-          case Blocked.OnCCall_Interruptible: {
+          case Blocked.OnCCall: {
             //console.log(`Thread ${tid}: blocked on FFI`);
             // Wait for the FFI blocking promise and then requeue the TSO
             tso_info.blockingPromise.then(
