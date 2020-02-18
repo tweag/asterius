@@ -1,5 +1,4 @@
-import { Channel } from "./rts.channel.mjs";
-import { Memory } from "./rts.memory.mjs";
+import { setImmediate } from "./rts.setimmediate.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 /**
@@ -13,7 +12,7 @@ import * as rtsConstants from "./rts.constants.mjs";
  */
 export class Scheduler {
   constructor(memory, symbol_table, stablePtrManager) {
-    (this.channel = new Channel()), (this.memory = memory);
+    this.memory = memory;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
@@ -287,40 +286,14 @@ export class Scheduler {
   }
 
   /**
-   * Start the scheduler
+   * Scheduler tick
    */
-  run(exports) {
-    exports.context.reentrancyGuard.enter(0);
-    return this.scheduler_loop(exports).then(
-      () => {
-        exports.context.reentrancyGuard.exit(0);
-      },
-      e => {
-        // signal all the TSOs that they won't complete
-        for (const [tid, tso_info] of this.tsos) {
-          if (tso_info.promise_reject) {
-            tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
-          }
-        }
-        exports.context.reentrancyGuard.exit(0);
-        throw new WebAssembly.RuntimeError(e.stack);
-      }
-    );
-  }
-
-  /**
-   * Scheduler loop
-   */
-  async scheduler_loop(e) {
-    while (true) {
-      // read a command from the channel
-      const cmd = await this.channel.take();
-
+  scheduler_tick(cmd) {
       switch (cmd.type) {
         case Cmd.CreateThread: {
           // call any "createThread" variant. This calls newTSO to get a fresh
           // ThreadId.
-          const tso = e[cmd.createThread](cmd.closure);
+          const tso = this.exports[cmd.createThread](cmd.closure);
           const tid = this.getTSOid(tso);
           const tso_info = this.tsos.get(tid);
           //console.log(`Thread ${tid}: created`);
@@ -429,7 +402,7 @@ export class Scheduler {
             tso_info.ffiRetErr = undefined;
 
             // execute the TSO.
-            e.scheduleTSO(tso, entryFunc);
+            this.exports.scheduleTSO(tso, entryFunc);
             this.returnedFromTSO(tid);
           }
           break;
@@ -442,7 +415,6 @@ export class Scheduler {
           break;
         }
       }
-    }
   }
 
   /**
@@ -473,7 +445,7 @@ export class Scheduler {
    */
   submitCmdCreateThread(createThread, closure) {
     return new Promise((resolve, reject) =>
-      this.channel.put({
+      setImmediate(cmd => this.scheduler_tick(cmd), {
         type: Cmd.CreateThread,
         createThread: createThread,
         closure: closure,
@@ -491,7 +463,7 @@ export class Scheduler {
    *
    */
   submitCmdWakeUp() {
-    this.channel.put({ type: Cmd.WakeUp });
+    setImmediate(cmd => this.scheduler_tick(cmd), { type: Cmd.WakeUp });
   }
 }
 

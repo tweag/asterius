@@ -17,7 +17,7 @@ export class Exports {
       stablePtrManager: stableptr_manager
     });
     Object.assign(this, exports);
-    scheduler.run(this);
+    this.context.reentrancyGuard.enter(0);
   }
 
   rts_eval(p) {
