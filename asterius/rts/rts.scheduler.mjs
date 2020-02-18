@@ -17,7 +17,6 @@ export class Scheduler {
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
     this.runQueue = []; // Runnable TSO IDs
-    this.completeTSOs = new Set(); // Finished TSO IDs
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
     this.gc = undefined;
@@ -240,7 +239,6 @@ export class Scheduler {
             throw new WebAssembly.RuntimeError(
               "Scheduler: unsupported ThreadInterpret"
             );
-            this.completeTSOs.add(tid);
             this.submitCmdWakeUp();
             break;
           }
@@ -251,7 +249,6 @@ export class Scheduler {
             if (tso_info.promise_resolve) {
               tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             }
-            this.completeTSOs.add(tid);
             this.submitCmdWakeUp();
             break;
           }
@@ -269,7 +266,6 @@ export class Scheduler {
             if (tso_info.promise_resolve) {
               tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             }
-            this.completeTSOs.add(tid);
             this.submitCmdWakeUp();
             break;
           }
