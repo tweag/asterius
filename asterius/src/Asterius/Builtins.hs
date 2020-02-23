@@ -25,6 +25,7 @@ import Asterius.Builtins.Posix
 import Asterius.Builtins.SM
 import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
+import Asterius.Builtins.TSO
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
@@ -203,6 +204,7 @@ rtsAsteriusModule opts =
     <> posixCBits
     <> stgPrimFloatCBits
     <> timeCBits
+    <> tsoCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
@@ -678,6 +680,7 @@ rtsFunctionImports debug =
       )
     <> posixImports
     <> timeImports
+    <> tsoImports
 
 rtsFunctionExports :: Bool -> [FunctionExport]
 rtsFunctionExports debug =

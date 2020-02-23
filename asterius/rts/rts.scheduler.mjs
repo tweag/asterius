@@ -43,7 +43,6 @@ export class Scheduler {
         ffiRetType: 0, // FFI returned value type
         ffiRetErr: undefined, // FFI returned error
         promise_resolve: undefined, // Settle the promise used by user
-        promise_reject: undefined, // code to wait on this thread
         blockingPromise: undefined // Promise used to block on JS FFI code
       })
     );
@@ -232,9 +231,7 @@ export class Scheduler {
             // ThreadKilled
             tso_info.ret = 0;
             tso_info.rstat = 2; // Killed (SchedulerStatus)
-            if (tso_info.promise_resolve) {
-              tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
-            }
+            tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             break;
           }
           case 4: {
@@ -248,9 +245,7 @@ export class Scheduler {
             );
             tso_info.ret = Number(this.memory.i64Load(sp + 8));
             tso_info.rstat = 1; // Success (SchedulerStatus)
-            if (tso_info.promise_resolve) {
-              tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
-            }
+            tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             break;
           }
         }
@@ -268,29 +263,7 @@ export class Scheduler {
   /**
    * Scheduler tick
    */
-  scheduler_tick(cmd) {
-      switch (cmd.type) {
-        case Cmd.CreateThread: {
-          // call any "createThread" variant. This calls newTSO to get a fresh
-          // ThreadId.
-          const tso = this.exports[cmd.createThread](cmd.closure);
-          const tid = this.getTSOid(tso);
-          const tso_info = this.tsos.get(tid);
-          //console.log(`Thread ${tid}: created`);
-
-          // Link the Promise returned synchronously on command submission with
-          // the TSO promise.
-          tso_info.promise_resolve = cmd.resolve;
-          tso_info.promise_reject = cmd.reject;
-
-          // Add the thread into the run-queue
-          this.enqueueTSO(tso);
-
-          break;
-        }
-
-        case Cmd.WakeUp: {
-            const tid = cmd.tid;
+  scheduler_tick(tid) {
             const tso_info = this.tsos.get(tid);
             const tso = tso_info.addr;
 
@@ -381,16 +354,6 @@ export class Scheduler {
             // execute the TSO.
             this.exports.scheduleTSO(tso, entryFunc);
             this.returnedFromTSO(tid);
-          break;
-        }
-
-        default: {
-          throw new WebAssembly.RuntimeError(
-            `Unrecognized scheduler command type: ${cmd.type}`
-          );
-          break;
-        }
-      }
   }
 
   /**
@@ -409,6 +372,12 @@ export class Scheduler {
     this.submitCmdWakeUp(tid);
   }
 
+  tso_init(tso) {
+    const tid = this.getTSOid(tso), tso_info = this.tsos.get(tid);
+    return new Promise((resolve) => {tso_info.promise_resolve = resolve;
+    });
+  }
+
   /**
    * Submit a thread creation command.
    *
@@ -417,15 +386,9 @@ export class Scheduler {
    * @param closure      The closure to evaluate in the thread.
    */
   submitCmdCreateThread(createThread, closure) {
-    return new Promise((resolve, reject) =>
-      setImmediate(cmd => this.scheduler_tick(cmd), {
-        type: Cmd.CreateThread,
-        createThread: createThread,
-        closure: closure,
-        resolve: resolve,
-        reject: reject
-      })
-    );
+    const tso = this.exports[createThread](closure), p = this.tso_init(tso), tid = this.getTSOid(tso);
+    this.submitCmdWakeUp(tid);
+    return p;
   }
 
   /**
@@ -436,7 +399,7 @@ export class Scheduler {
    *
    */
   submitCmdWakeUp(tid) {
-    setImmediate(cmd => this.scheduler_tick(cmd), { type: Cmd.WakeUp, tid: tid });
+    setImmediate(cmd => this.scheduler_tick(cmd), tid);
   }
 }
 
@@ -447,14 +410,6 @@ export class Scheduler {
  * information. It is only used to wake up the scheduler so that it can check
  * if there are some threads to run in its run-queue (unblocked threads, etc.)
  */
-
-/**
- * Scheduler command types enum
- */
-const Cmd = {
-  CreateThread: 1, // Create a new thread
-  WakeUp: 2 // Wake up the scheduler (see Note [WakeUp command])
-};
 
 /**
  * Blocked enum type (see rts/Constants.h)
