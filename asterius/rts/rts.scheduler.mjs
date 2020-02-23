@@ -465,6 +465,12 @@ export class Scheduler {
     this.submitCmdWakeUp();
   }
 
+  tso_init() {
+    const tid = this.getTSOid(tso), tso_info = this.tsos.get(tid);
+    return new Promise((resolve) => {tso_info.promise_resolve = resolve;
+    });
+  }
+
   /**
    * Submit a thread creation command.
    *
