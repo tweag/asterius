@@ -460,9 +460,9 @@ export class Scheduler {
     this.submitCmdWakeUp();
   }
 
-  tso_init() {
+  tso_init(tso) {
     const tid = this.getTSOid(tso), tso_info = this.tsos.get(tid);
-    return new Promise((resolve) => {tso_info.promise_resolve = resolve;
+    return new Promise((resolve, reject) => {tso_info.promise_resolve = resolve; tso_info.promise_reject = reject;
     });
   }
 
