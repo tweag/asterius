@@ -219,7 +219,6 @@ export class Scheduler {
         }
 
         // May execute another thread while this one is blocked
-        this.submitCmdWakeUp();
         break;
       }
       case 5: {
@@ -240,15 +239,12 @@ export class Scheduler {
             throw new WebAssembly.RuntimeError(
               "Scheduler: unsupported ThreadInterpret"
             );
-            this.submitCmdWakeUp();
-            break;
           }
           case 3: {
             // ThreadKilled
             tso_info.ret = 0;
             tso_info.rstat = 2; // Killed (SchedulerStatus)
             tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
-            this.submitCmdWakeUp();
             break;
           }
           case 4: {
@@ -263,7 +259,6 @@ export class Scheduler {
             tso_info.ret = Number(this.memory.i64Load(sp + 8));
             tso_info.rstat = 1; // Success (SchedulerStatus)
             tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
-            this.submitCmdWakeUp();
             break;
           }
         }
