@@ -267,18 +267,13 @@ export class Scheduler {
   /**
    * Start the scheduler
    */
-  run(exports) {
-    exports.context.reentrancyGuard.enter(0);
-    return this.scheduler_loop(exports).then(
-      () => {
-        exports.context.reentrancyGuard.exit(0);
-      },
+  run() {
+    this.scheduler_loop().catch(
       e => {
         // signal all the TSOs that they won't complete
         for (const [tid, tso_info] of this.tsos) {
           tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
         }
-        exports.context.reentrancyGuard.exit(0);
         throw new WebAssembly.RuntimeError(e.stack);
       }
     );
@@ -287,12 +282,15 @@ export class Scheduler {
   /**
    * Scheduler loop
    */
-  async scheduler_loop(e) {
+  async scheduler_loop() {
     while (true) {
-      // read a command from the channel
       const tid = await this.channel.take();
-            // TODO: Array.shift is O(n). We should use a more efficient queue
-            // structure
+      this.scheduler_tick(tid);
+    }
+  }
+
+  scheduler_tick(tid) {
+            this.exports.context.reentrancyGuard.enter(0);
             const tso_info = this.tsos.get(tid);
             const tso = tso_info.addr;
 
@@ -381,9 +379,9 @@ export class Scheduler {
             tso_info.ffiRetErr = undefined;
 
             // execute the TSO.
-            e.scheduleTSO(tso, entryFunc);
+            this.exports.scheduleTSO(tso, entryFunc);
             this.returnedFromTSO(tid);
-    }
+            this.exports.context.reentrancyGuard.exit(0);
   }
 
   /**

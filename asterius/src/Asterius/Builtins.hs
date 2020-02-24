@@ -543,18 +543,6 @@ rtsFunctionImports debug =
              functionType = FunctionType {paramTypes = [F64], returnTypes = []}
            },
          FunctionImport
-           { internalName = "__asterius_enter",
-             externalModuleName = "ReentrancyGuard",
-             externalBaseName = "enter",
-             functionType = FunctionType {paramTypes = [I32], returnTypes = []}
-           },
-         FunctionImport
-           { internalName = "__asterius_exit",
-             externalModuleName = "ReentrancyGuard",
-             externalBaseName = "exit",
-             functionType = FunctionType {paramTypes = [I32], returnTypes = []}
-           },
-         FunctionImport
            { internalName = "__asterius_mul2",
              externalModuleName = "Integer",
              externalBaseName = "mul2",
@@ -981,10 +969,6 @@ hsInitFunction _ = runEDSL "hs_init" $ do
   bd_nursery <-
     truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
   putLVal currentNursery bd_nursery
-
-enter, exit :: Int -> EDSL ()
-enter i = callImport "__asterius_enter" [constI32 i]
-exit i = callImport "__asterius_exit" [constI32 i]
 
 rtsApplyFunction _ = runEDSL "rts_apply" $ do
   setReturnTypes [I64]
