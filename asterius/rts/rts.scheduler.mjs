@@ -247,9 +247,7 @@ export class Scheduler {
             // ThreadKilled
             tso_info.ret = 0;
             tso_info.rstat = 2; // Killed (SchedulerStatus)
-            if (tso_info.promise_resolve) {
-              tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
-            }
+            tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             this.submitCmdWakeUp();
             break;
           }
@@ -264,9 +262,7 @@ export class Scheduler {
             );
             tso_info.ret = Number(this.memory.i64Load(sp + 8));
             tso_info.rstat = 1; // Success (SchedulerStatus)
-            if (tso_info.promise_resolve) {
-              tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
-            }
+            tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             this.submitCmdWakeUp();
             break;
           }
@@ -294,9 +290,7 @@ export class Scheduler {
       e => {
         // signal all the TSOs that they won't complete
         for (const [tid, tso_info] of this.tsos) {
-          if (tso_info.promise_reject) {
-            tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
-          }
+          tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
         }
         exports.context.reentrancyGuard.exit(0);
         throw new WebAssembly.RuntimeError(e.stack);
@@ -310,29 +304,7 @@ export class Scheduler {
   async scheduler_loop(e) {
     while (true) {
       // read a command from the channel
-      const cmd = await this.channel.take();
-
-      switch (cmd.type) {
-        case Cmd.CreateThread: {
-          // call any "createThread" variant. This calls newTSO to get a fresh
-          // ThreadId.
-          const tso = e[cmd.createThread](cmd.closure);
-          const tid = this.getTSOid(tso);
-          const tso_info = this.tsos.get(tid);
-          //console.log(`Thread ${tid}: created`);
-
-          // Link the Promise returned synchronously on command submission with
-          // the TSO promise.
-          tso_info.promise_resolve = cmd.resolve;
-          tso_info.promise_reject = cmd.reject;
-
-          // Add the thread into the run-queue
-          this.enqueueTSO(tso);
-
-          break;
-        }
-
-        case Cmd.WakeUp: {
+      await this.channel.take();
           if (this.runQueue.length > 0) {
             // TODO: Array.shift is O(n). We should use a more efficient queue
             // structure
@@ -428,16 +400,6 @@ export class Scheduler {
             e.scheduleTSO(tso, entryFunc);
             this.returnedFromTSO(tid);
           }
-          break;
-        }
-
-        default: {
-          throw new WebAssembly.RuntimeError(
-            `Unrecognized scheduler command type: ${cmd.type}`
-          );
-          break;
-        }
-      }
     }
   }
 
@@ -474,15 +436,9 @@ export class Scheduler {
    * @param closure      The closure to evaluate in the thread.
    */
   submitCmdCreateThread(createThread, closure) {
-    return new Promise((resolve, reject) =>
-      this.channel.put({
-        type: Cmd.CreateThread,
-        createThread: createThread,
-        closure: closure,
-        resolve: resolve,
-        reject: reject
-      })
-    );
+    const tso = this.exports[createThread](closure);
+    this.enqueueTSO(tso);
+    return this.tso_init(tso);
   }
 
   /**
@@ -493,25 +449,9 @@ export class Scheduler {
    *
    */
   submitCmdWakeUp() {
-    this.channel.put({ type: Cmd.WakeUp });
+    this.channel.put();
   }
 }
-
-/* Note [WakeUp command]
- * ~~~~~~~~~~~~~~~~~~~~~
- *
- * Submit a WakeUp command. A WakeUp command doesn't provide any additional
- * information. It is only used to wake up the scheduler so that it can check
- * if there are some threads to run in its run-queue (unblocked threads, etc.)
- */
-
-/**
- * Scheduler command types enum
- */
-const Cmd = {
-  CreateThread: 1, // Create a new thread
-  WakeUp: 2 // Wake up the scheduler (see Note [WakeUp command])
-};
 
 /**
  * Blocked enum type (see rts/Constants.h)
