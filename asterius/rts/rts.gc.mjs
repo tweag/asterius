@@ -129,161 +129,101 @@ export class GC {
    *   selectors.
    * Only the argument `c` is required: the other arguments will be
    * computed in case they are `undefined`.
-   * @param c - The address of the closure
+   * @param {number} c - The address of the closure
    * @param {number=} untagged_c - The unDynTag-ed address
    * @param {number=} info - The info pointer of `c`
    * @param {number=} type - The closure type of `c`
-   * @returns A tuple array `[header, type]` where `header` is the header
-   *   of the closure `c` after evaluation, and `type` is the resulting
-   *   closure type.
+   * @returns A tuple array `[res_c, res_type]` containing
+   *   the resulting address and type of the closure after
+   *   the optimisation.
    */
   stingyEval(c, untagged_c, info, type) {
-    const stack = [];
-    stack.push([Number(c), untagged_c, info, type]);
-    // This function proceeds by traversing IND and THUNK_SELECTOR
-    // closures, until it finds a result. It proceeds in two phases:
-    // - Search phase: indirectee/selectee pointers are followed,
-    //     and the closures encountered are pushed on a stack
-    // - Back propagation phase: the closures on the stack are popped,
-    //     selectors of constructors reduced and replaced with
-    //     IND closures where possible.
-    // Note: the two phases can be interleaved.
-    let result;
-    while (stack.length) {
-      if (!result) {
-        // Search phase
-        const current = stack[stack.length - 1];
-        let [cur_c, cur_untagged, cur_info, cur_type] = current;
-        if (!cur_untagged) {
-          // If no information about c is present, compute it
-          cur_untagged = current[1] = Memory.unDynTag(cur_c);
-          cur_info = current[2] = Number(this.memory.i64Load(cur_untagged));
-          if (cur_info % 2 == 0) {
-            // Obtain the closure type only if the header
-            // is an info pointer and not a forwarding pointer
-            cur_type = current[3] = this.memory.i32Load(
-              cur_info + rtsConstants.offset_StgInfoTable_type
-            );
-          }
-        }
-        switch (cur_type) {
-          case ClosureTypes.IND: {
-            // Whitehole
-            this.memory.i64Store(
-              cur_untagged,
-              this.symbolTable.stg_WHITEHOLE_info
-            );
-            // Follow the indirectee
-            stack.push([
-              Number(
-                this.memory.i64Load(
-                  cur_untagged + rtsConstants.offset_StgInd_indirectee
-                )
-              ),,,
-            ]);
-            continue;
-          }
-          case ClosureTypes.THUNK_SELECTOR: {
-            // Whitehole
-            this.memory.i64Store(
-              cur_untagged,
-              this.symbolTable.stg_WHITEHOLE_info
-            );
-            // Follow the selectee
-            stack.push([
-              Number(
-                this.memory.i64Load(
-                  cur_untagged + rtsConstants.offset_StgSelector_selectee
-                )
-              ),,,
-            ]);
-            continue;
-          }
-          default: {
-            // Switch phase
-            result = stack.pop();
-            continue;
-          }
-        }
-      } else {
-        // Back propagation phase
-        // Recall! In each of the cases above, the whiteholing
-        // must be undone at some point!
-        const current = stack.pop();
-        const [_, cur_untagged, cur_info, cur_type] = current;
-        const [res_c, __, ___, res_type] = result;
-        switch (cur_type) {
-          case ClosureTypes.IND: {
-            this.memory.i64Store(cur_untagged, this.symbolTable.stg_IND_info); // Undo whiteholing
-            this.memory.i64Store(
-              cur_untagged + rtsConstants.offset_StgInd_indirectee,
-              res_c
-            );
-            if (stack.length == 0) {
-              return ClosureTypes.IND;
-            }
-            continue;
-          }
-          case ClosureTypes.THUNK_SELECTOR: {
-            // try to perform selection
-            switch (res_type) {
-              case ClosureTypes.CONSTR:
-              case ClosureTypes.CONSTR_2_0:
-              case ClosureTypes.CONSTR_NOCAF: {
-                const offset = this.memory.i32Load(
-                  cur_info + rtsConstants.offset_StgInfoTable_layout
-                );
-                // Set the current closure as IND, but do not
-                // un-whitehole for now: it will be taken care 
-                // of later, when propagating the result
-                // (see case IND above)
-                current[3] = ClosureTypes.IND;
-                stack.push(current);
-                // Warning: in this point (and in the same point below)
-                // we may be losing the dynamic tagging
-                stack.push([
-                  this.memory.i64Load(
-                    Memory.unDynTag(res_c + ((1 + offset) << 3))
-                  ),,,
-                ]);
-                result = undefined;
-                continue;
-              }
-              case ClosureTypes.CONSTR_1_0:
-              case ClosureTypes.CONSTR_1_1: {
-                current[3] = ClosureTypes.IND; // no un-whitehole for now
-                stack.push(current);
-                stack.push([
-                  this.memory.i64Load(Memory.unDynTag(res_c + 8)),,,
-                ]);
-                result = undefined;
-                continue;
-              }
-              default: {
-                this.memory.i64Store(cur_untagged, cur_info); // Undo whiteholing
-                this.memory.i64Store(
-                  cur_untagged + rtsConstants.offset_StgSelector_selectee,
-                  res_c
-                );
-                // Continue backtracking
-                result = current;
-                continue;
-              }
-            }
-          }
-          // No other options for the switch: only IND or THUNK_SELECTOR
-          // closures are pushed to the stack
-          default:
-            throw WebAssembly.RuntimeError(
-              `Unexpected closure type: ${cur_type}`
-            );
-        }
+    if (!untagged_c) {
+      // If no information about c is present, compute it
+      untagged_c = Memory.unDynTag(c);
+      info = Number(this.memory.i64Load(untagged_c));
+      if (info % 2 == 0) {
+        // Obtain the closure type only if the header
+        // is an info pointer and not a forwarding pointer
+        type = this.memory.i32Load(
+          info + rtsConstants.offset_StgInfoTable_type
+        );
       }
     }
-    // Return the new closure type of `c`:
-    // it may have become an IND, if the
-    // optimisation succedeed
-    return result[3];
+    switch (type) {
+      case ClosureTypes.IND: {
+        // Whitehole
+        this.memory.i64Store(
+          untagged_c,
+          this.symbolTable.stg_WHITEHOLE_info
+        );
+        // Follow the indirectee
+        const [res_c, _] = this.stingyEval(
+          Number(
+            this.memory.i64Load(
+              untagged_c + rtsConstants.offset_StgInd_indirectee
+            )
+          ));
+        this.memory.i64Store(untagged_c, this.symbolTable.stg_IND_info); // Undo whiteholing
+        this.memory.i64Store(untagged_c + rtsConstants.offset_StgInd_indirectee, res_c);
+        return [res_c, ClosureTypes.IND];
+      }
+      case ClosureTypes.THUNK_SELECTOR: {
+        // Whitehole
+        this.memory.i64Store(
+          untagged_c,
+          this.symbolTable.stg_WHITEHOLE_info
+        );
+        // Follow the selectee
+        const [res_c, res_type] = this.stingyEval(
+          Number(
+            this.memory.i64Load(
+              untagged_c + rtsConstants.offset_StgSelector_selectee
+            ))
+        );
+        // try to perform selection
+        switch (res_type) {
+          case ClosureTypes.CONSTR:
+          case ClosureTypes.CONSTR_2_0:
+          case ClosureTypes.CONSTR_NOCAF: {
+            const offset = this.memory.i32Load(
+              info + rtsConstants.offset_StgInfoTable_layout
+            );
+            // Warning: at this point (and in the similar point below)
+            // we may be losing the dynamic tagging, fixme
+            const selectee = this.memory.i64Load(
+              Memory.unDynTag(res_c) + ((1 + offset) << 3)
+            );
+            this.memory.i64Store(untagged_c + rtsConstants.offset_StgInd_indirectee, selectee);
+            // Set the current closure as IND, but do not
+            // un-whitehole for now: it will be taken care 
+            // of later, when propagating the result
+            // (see case IND above)
+            return this.stingyEval(c, untagged_c, info, ClosureTypes.IND);
+          }
+          case ClosureTypes.CONSTR_1_0:
+          case ClosureTypes.CONSTR_1_1: {
+            const selectee = this.memory.i64Load(Memory.unDynTag(res_c) + 8);
+            this.memory.i64Store(
+              untagged_c + rtsConstants.offset_StgInd_indirectee,
+              selectee
+            );
+            return this.stingyEval(c, untagged_c, info, ClosureTypes.IND);
+          }
+          default: {
+            this.memory.i64Store(untagged_c, info); // Undo whiteholing
+            this.memory.i64Store(
+              untagged_c + rtsConstants.offset_StgSelector_selectee,
+              res_c
+            );
+            return [c, type];
+          }
+        }
+      }
+      default: {
+        return [c, type];
+      }
+    }
   }
 
   /**
@@ -349,7 +289,7 @@ export class GC {
     );
     if (type == ClosureTypes.THUNK_SELECTOR || type == ClosureTypes.IND) {
       // Optimize selectors and indirections
-      type = this.stingyEval(c, untagged_c, info, type);
+      type = this.stingyEval(Number(c), untagged_c, info, type)[1];
     }
     switch (type) {
       case ClosureTypes.CONSTR_0_1:
