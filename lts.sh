@@ -687,6 +687,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   function-builder \
   functor-classes-compat \
   fused-effects \
+  fusion-plugin-types \
   fuzzcheck \
   fuzzy \
   fuzzy-dates \
@@ -1424,7 +1425,6 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   read-editor \
   read-env-var \
   readable \
-  reanimate-svg \
   rebase \
   record-hasfield \
   records-sop \
