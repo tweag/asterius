@@ -33,6 +33,8 @@ export class Scheduler {
    */
   newTSO() {
     const tid = ++this.lastTid;
+    let promise_resolve, promise_reject;
+    const ret_promise = new Promise((resolve, reject) => { promise_resolve = resolve; promise_reject = reject; });
     this.tsos.set(
       tid,
       Object.seal({
@@ -43,8 +45,9 @@ export class Scheduler {
         ffiRet: undefined, // FFI returned value
         ffiRetType: 0, // FFI returned value type
         ffiRetErr: undefined, // FFI returned error
-        promise_resolve: undefined, // Settle the promise used by user
-        promise_reject: undefined, // code to wait on this thread
+        returnPromise: ret_promise,
+        promise_resolve: promise_resolve, // Settle the promise used by user
+        promise_reject: promise_reject, // code to wait on this thread
         blockingPromise: undefined // Promise used to block on JS FFI code
       })
     );
@@ -112,7 +115,7 @@ export class Scheduler {
 
         // put the thread back into the run-queue
         // TODO: we should put it in front if it hasn't exceeded its time splice
-        this.submitCmdWakeUp(tid);
+        this.channel.put(tid);
         break;
       }
       case 2: {
@@ -125,13 +128,13 @@ export class Scheduler {
           tso + rtsConstants.offset_StgTSO_stackobj,
           next_stack
         );
-        this.submitCmdWakeUp(tid);
+        this.channel.put(tid);
         break;
       }
       case 3: {
         // ThreadYielding
         // put the thread back into the run-queue
-        this.submitCmdWakeUp(tid);
+        this.channel.put(tid);
         break;
       }
       case 4: {
@@ -157,12 +160,12 @@ export class Scheduler {
                   tso + rtsConstants.offset_StgTSO_ffi_func
                 );
 
-                this.submitCmdWakeUp(tid);
+                this.channel.put(tid);
               },
               e => {
                 tso_info.ffiRetErr = e;
                 //console.log(`Thread ${tid}: blocking FFI Promise rejected with ${e.stack}`);
-                this.submitCmdWakeUp(tid);
+                this.channel.put(tid);
               }
             );
             break;
@@ -178,7 +181,7 @@ export class Scheduler {
             // Wait for the timer blocking promise and then requeue the TSO
             tso_info.blockingPromise.then(
               () => {
-                this.submitCmdWakeUp(tid);
+                this.channel.put(tid);
               },
               e => {
                 throw new WebAssembly.RuntimeError(
@@ -222,7 +225,7 @@ export class Scheduler {
         switch (what_next) {
           case 1: {
             // ThreadRunGHC
-            this.submitCmdWakeUp(tid);
+            this.channel.put(tid);
             break;
           }
           case 2: {
@@ -397,13 +400,7 @@ export class Scheduler {
     }
 
     // Ensure that we wake up the scheduler at least once to execute this thread
-    this.submitCmdWakeUp(tid);
-  }
-
-  tso_init(tso) {
-    const tid = this.getTSOid(tso), tso_info = this.tsos.get(tid);
-    return new Promise((resolve, reject) => {tso_info.promise_resolve = resolve; tso_info.promise_reject = reject;
-    });
+    this.channel.put(tid);
   }
 
   /**
@@ -414,20 +411,9 @@ export class Scheduler {
    * @param closure      The closure to evaluate in the thread.
    */
   submitCmdCreateThread(createThread, closure) {
-    const tso = this.exports[createThread](closure);
+    const tso = this.exports[createThread](closure), tid = this.getTSOid(tso), tso_info = this.tsos.get(tid);
     this.enqueueTSO(tso);
-    return this.tso_init(tso);
-  }
-
-  /**
-   * Submit a WakeUp command. A WakeUp command doesn't provide any additional
-   * information. It is only used to wake-up the scheduler so that it can check
-   * if there are some threads to run in its run-queue (unblocked threads, etc.)
-   *
-   *
-   */
-  submitCmdWakeUp(tid) {
-    this.channel.put(tid);
+    return tso_info.returnPromise;
   }
 }
 
