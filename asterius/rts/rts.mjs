@@ -246,7 +246,6 @@ export async function newAsteriusInstance(req) {
     __asterius_heapalloc.init();
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
-    __asterius_scheduler.run();
     return Object.assign(__asterius_jsffi_instance, {
       exports: Object.freeze(
         Object.assign(__asterius_exports, __asterius_wasm_instance.exports)

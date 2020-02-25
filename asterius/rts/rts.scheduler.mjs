@@ -1,5 +1,4 @@
-import { Channel } from "./rts.channel.mjs";
-import { Memory } from "./rts.memory.mjs";
+import { setImmediate } from "./rts.setimmediate.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 /**
@@ -12,7 +11,7 @@ import * as rtsConstants from "./rts.constants.mjs";
  */
 export class Scheduler {
   constructor(memory, symbol_table, stablePtrManager) {
-    (this.channel = new Channel()), (this.memory = memory);
+    this.memory = memory;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
@@ -115,7 +114,7 @@ export class Scheduler {
 
         // put the thread back into the run-queue
         // TODO: we should put it in front if it hasn't exceeded its time splice
-        this.channel.put(tid);
+        setImmediate(tid => this.scheduler_tick(tid), tid);
         break;
       }
       case 2: {
@@ -128,13 +127,13 @@ export class Scheduler {
           tso + rtsConstants.offset_StgTSO_stackobj,
           next_stack
         );
-        this.channel.put(tid);
+        setImmediate(tid => this.scheduler_tick(tid), tid);
         break;
       }
       case 3: {
         // ThreadYielding
         // put the thread back into the run-queue
-        this.channel.put(tid);
+        setImmediate(tid => this.scheduler_tick(tid), tid);
         break;
       }
       case 4: {
@@ -160,12 +159,12 @@ export class Scheduler {
                   tso + rtsConstants.offset_StgTSO_ffi_func
                 );
 
-                this.channel.put(tid);
+                setImmediate(tid => this.scheduler_tick(tid), tid);
               },
               e => {
                 tso_info.ffiRetErr = e;
                 //console.log(`Thread ${tid}: blocking FFI Promise rejected with ${e.stack}`);
-                this.channel.put(tid);
+                setImmediate(tid => this.scheduler_tick(tid), tid);
               }
             );
             break;
@@ -181,7 +180,7 @@ export class Scheduler {
             // Wait for the timer blocking promise and then requeue the TSO
             tso_info.blockingPromise.then(
               () => {
-                this.channel.put(tid);
+                setImmediate(tid => this.scheduler_tick(tid), tid);
               },
               e => {
                 throw new WebAssembly.RuntimeError(
@@ -225,7 +224,7 @@ export class Scheduler {
         switch (what_next) {
           case 1: {
             // ThreadRunGHC
-            this.channel.put(tid);
+            setImmediate(tid => this.scheduler_tick(tid), tid);
             break;
           }
           case 2: {
@@ -264,31 +263,6 @@ export class Scheduler {
         );
         break;
       }
-    }
-  }
-
-  /**
-   * Start the scheduler
-   */
-  run() {
-    this.scheduler_loop().catch(
-      e => {
-        // signal all the TSOs that they won't complete
-        for (const [tid, tso_info] of this.tsos) {
-          tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
-        }
-        throw new WebAssembly.RuntimeError(e.stack);
-      }
-    );
-  }
-
-  /**
-   * Scheduler loop
-   */
-  async scheduler_loop() {
-    while (true) {
-      const tid = await this.channel.take();
-      this.scheduler_tick(tid);
     }
   }
 
@@ -400,7 +374,7 @@ export class Scheduler {
     }
 
     // Ensure that we wake up the scheduler at least once to execute this thread
-    this.channel.put(tid);
+    setImmediate(tid => this.scheduler_tick(tid), tid);
   }
 
   /**
