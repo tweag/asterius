@@ -224,7 +224,6 @@ export async function newAsteriusInstance(req) {
       time: modulify(__asterius_time_cbits),
       // cannot name this float since float is a keyword.
       floatCBits: modulify(__asterius_float_cbits),
-      ReentrancyGuard: modulify(__asterius_reentrancy_guard),
       GC: modulify(__asterius_gc),
       ExceptionHelper: modulify(__asterius_exception_helper),
       HeapAlloc: modulify(__asterius_heapalloc),

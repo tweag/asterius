@@ -954,12 +954,13 @@ again: MAYBE_GC(again);
 
     gcptr threadid;
 
-    ("ptr" threadid) = ccall createIOThread(
-#if !defined(ASTERIUS)
-        MyCapability() "ptr",
-        RtsFlags_GcFlags_initialStkSize(RtsFlags),
+#if defined(ASTERIUS)
+    ("ptr" threadid) = ccall createIOThread( closure "ptr" );
+#else
+    ("ptr" threadid) = ccall createIOThread( MyCapability() "ptr",
+                                  RtsFlags_GcFlags_initialStkSize(RtsFlags),
+                                  closure "ptr");
 #endif
-        closure "ptr");
 
     /* start blocked if the current thread is blocked */
     StgTSO_flags(threadid) = %lobits16(
