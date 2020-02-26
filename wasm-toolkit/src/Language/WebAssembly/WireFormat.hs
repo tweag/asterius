@@ -7,7 +7,11 @@
 -- Portability :  non-portable (GHC extensions)
 --
 -- Complete definition of the WebAssembly AST, including support for custom
--- sections, and binary serialization/deserialization.
+-- sections, and binary serialization/deserialization. Most of the comments are
+-- taken from the official specification of WebAssembly:
+--
+--   https://webassembly.github.io/spec/ or
+--   https://github.com/WebAssembly/spec/
 --
 -----------------------------------------------------------------------------
 
@@ -56,6 +60,7 @@ module Language.WebAssembly.WireFormat
     RelocationEntry (..),
     Section (..),
     Module (..),
+    -- * Explicit serialization/deserialization functions
     getVU32,
     putVU32,
     getVS32,
@@ -1805,15 +1810,19 @@ getVS64 = getVSN 64
 
 getF32 :: Get Float
 getF32 = getFloathost
+{-# INLINE getF32 #-}
 
 putF32 :: Float -> Put
 putF32 = putFloathost
+{-# INLINE putF32 #-}
 
 getF64 :: Get Double
 getF64 = getDoublehost
+{-# INLINE getF64 #-}
 
 putF64 :: Double -> Put
 putF64 = putDoublehost
+{-# INLINE putF64 #-}
 
 getVec :: Get a -> Get [a]
 getVec g = do
@@ -1827,15 +1836,19 @@ putVec p v = do
 
 getMany :: Get a -> Get [a]
 getMany = many
+{-# INLINE getMany #-}
 
 putMany :: (a -> Put) -> [a] -> Put
 putMany = traverse_
+{-# INLINE putMany #-}
 
 putMaybe :: (a -> Put) -> Maybe a -> Put
 putMaybe = traverse_
+{-# INLINE putMaybe #-}
 
 putSBS :: SBS.ShortByteString -> Put
 putSBS = putShortByteString
+{-# INLINE putSBS #-}
 
 getVecSBS :: Get SBS.ShortByteString
 getVecSBS = do
