@@ -1,10 +1,24 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Language.WebAssembly.WireFormat
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved.
+--
+-- Portability :  non-portable (GHC extensions)
+--
+-- Complete definition of the WebAssembly AST, including support for custom
+-- sections, and binary serialization/deserialization.
+--
+-----------------------------------------------------------------------------
+
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
 module Language.WebAssembly.WireFormat
-  ( Name (..),
+  ( -- * Basic types and related functions
+    Name (..),
     ValueType (..),
     FunctionType (..),
     Limits (..),
@@ -75,23 +89,29 @@ import Data.Word
 import GHC.Generics (Generic)
 import Prelude hiding (fail)
 
+-- | Wasm 'Name's.
 newtype Name
   = Name SBS.ShortByteString
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Name'.
 getName :: Get Name
 getName = coerce getVecSBS
 
+-- | Serialize a 'Name'.
 putName :: Name -> Put
 putName = coerce putVecSBS
 
+-- | 'ValueType's classify the individual values that WebAssembly
+-- code can compute with and the values that a variable accepts.
 data ValueType
-  = I32
-  | I64
-  | F32
-  | F64
+  = I32  -- ^ 32-bit integer
+  | I64  -- ^ 64-bit integer
+  | F32  -- ^ 32-bit floating-point / single precision (IEEE 754-2019)
+  | F64  -- ^ 64-bit floating-point / double precision (IEEE 754-2019)
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'ValueType'.
 getValueType :: Get ValueType
 getValueType = do
   b <- getWord8
@@ -102,6 +122,7 @@ getValueType = do
     0x7C -> pure F64
     _ -> fail "Language.WebAssembly.WireFormat.getValueType"
 
+-- | Serialize a 'ValueType'.
 putValueType :: ValueType -> Put
 putValueType vt = putWord8 $ case vt of
   I32 -> 0x7F
@@ -109,7 +130,14 @@ putValueType vt = putWord8 $ case vt of
   F32 -> 0x7D
   F64 -> 0x7C
 
-getResultType :: Get [ValueType]
+-- | Result types classify the result of executing instructions or blocks,
+-- which is a sequence of values written with brackets. __NOTE__: In the
+-- current version of WebAssembly, at most one value is allowed as a result.
+-- However, this may be generalized to sequences of values in future versions.
+type ResultType = [ValueType]
+
+-- | Deserialize a 'ResultType'.
+getResultType :: Get ResultType
 getResultType =
   ( do
       b <- getWord8
@@ -122,12 +150,17 @@ getResultType =
             pure [vt]
         )
 
-putResultType :: [ValueType] -> Put
+-- | Serialize a 'ResultType'.
+putResultType :: ResultType -> Put
 putResultType resultValueTypes = case resultValueTypes of
   [] -> putWord8 0x40
   [t] -> putValueType t
   _ -> error "Language.WebAssembly.WireFormat.putResultType"
 
+-- | 'FunctionType's classify the signature of functions, mapping a vector of
+-- parameters to a vector of results. __NOTE__: In the current version of
+-- WebAssembly the result type of a valid function type can be /at most/ 1.
+-- This restriction may be removed in a future version.
 data FunctionType
   = FunctionType
       { parameterTypes, resultTypes :: [ValueType]
@@ -147,6 +180,8 @@ putFunctionType FunctionType {..} = do
   putVec putValueType parameterTypes
   putVec putValueType resultTypes
 
+-- | 'Limits' classify the size range of resizeable storage associated with
+--   memory types and table types.
 data Limits
   = Limits
       { minLimit :: Word32,
@@ -154,6 +189,7 @@ data Limits
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize 'Limits'.
 getLimits :: Get Limits
 getLimits = do
   b <- getWord8
@@ -162,6 +198,7 @@ getLimits = do
     0x00 -> Limits <$> getVU32 <*> pure Nothing
     _ -> fail "Language.WebAssembly.WireFormat.getLimits"
 
+-- | Serialize 'Limits'.
 putLimits :: Limits -> Put
 putLimits Limits {..} = case maxLimit of
   Just _max_limit -> do
@@ -172,22 +209,32 @@ putLimits Limits {..} = case maxLimit of
     putWord8 0x00
     putVU32 minLimit
 
+-- | 'MemoryType's classify linear memories and their size range. TODO: The
+-- limits constrain the minimum and optionally the maximum size of a memory.
+-- The limits are given in units of page size.
 newtype MemoryType
   = MemoryType
       { memoryLimits :: Limits
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'MemoryType'.
 getMemoryType :: Get MemoryType
 getMemoryType = coerce getLimits
 
+-- | Serialize a 'MemoryType'.
 putMemoryType :: MemoryType -> Put
 putMemoryType = coerce putLimits
 
+-- | The 'ElementType' captures the infinite union of all function types
+-- (somewhat like Top). This means that e.g. tables containing elements of type
+-- 'ElementType' essentially contain references to functions of heterogeneous
+-- types.
 data ElementType
   = AnyFunc
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize the 'ElementType'.
 getElementType :: Get ElementType
 getElementType = do
   b <- getWord8
@@ -195,30 +242,38 @@ getElementType = do
     0x70 -> pure AnyFunc
     _ -> fail "Language.WebAssembly.WireFormat.getElementType"
 
+-- | Serialize the 'ElementType'.
 putElementType :: ElementType -> Put
 putElementType et = putWord8 $ case et of
   AnyFunc -> 0x70
 
+-- | 'TableType's classify tables over elements of element types within a size
+-- range (GEORGE???). Like memories, tables are constrained by limits for their
+-- minimum and optionally maximum size. Also, give
 data TableType
   = TableType
-      { elementType :: ElementType,
-        tableLimits :: Limits
+      { elementType :: ElementType,  -- ^ Type of elements (see 'ElementType').
+        tableLimits :: Limits        -- ^ The limits are given in numbers of entries (GEORGE???).
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'TableType'.
 getTableType :: Get TableType
 getTableType = TableType <$> getElementType <*> getLimits
 
+-- | Serialize a 'TableType'.
 putTableType :: TableType -> Put
 putTableType TableType {..} = do
   putElementType elementType
   putLimits tableLimits
 
+-- | 'Mutability' of variables.
 data Mutability
-  = Const
-  | Var
+  = Const  -- ^ Immutable.
+  | Var    -- ^ Mutable.
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize 'Mutability'.
 getMutability :: Get Mutability
 getMutability = do
   b <- getWord8
@@ -227,11 +282,14 @@ getMutability = do
     0x01 -> pure Var
     _ -> fail "Language.WebAssembly.WireFormat.getMutability"
 
+-- | Serialize 'Mutability'.
 putMutability :: Mutability -> Put
 putMutability m = putWord8 $ case m of
   Const -> 0x00
   Var -> 0x01
 
+-- | 'GlobalType's classify global variables which hold a value and can either
+-- be mutable or immutable.
 data GlobalType
   = GlobalType
       { globalValueType :: ValueType,
@@ -239,30 +297,39 @@ data GlobalType
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'GlobalType'.
 getGlobalType :: Get GlobalType
 getGlobalType = GlobalType <$> getValueType <*> getMutability
 
+-- | Serialize a 'GlobalType'.
 putGlobalType :: GlobalType -> Put
 putGlobalType GlobalType {..} = do
   putValueType globalValueType
   putMutability globalMutability
 
+-- | An /immediate memory argument/ 'MemoryArgument' contains an address offset
+-- and the expected alignment.
 data MemoryArgument
   = MemoryArgument
-      { memoryArgumentAlignment, memoryArgumentOffset :: Word32
+      { memoryArgumentAlignment :: Word32,  -- ^ Alignment (expressed as the exponend of a power of 2).
+        memoryArgumentOffset :: Word32      -- ^ Address offset.
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'MemoryArgument'.
 getMemoryArgument :: Get MemoryArgument
 getMemoryArgument = MemoryArgument <$> getVU32 <*> getVU32
 
+-- | Serialize a 'MemoryArgument'.
 putMemoryArgument :: MemoryArgument -> Put
 putMemoryArgument MemoryArgument {..} = do
   putVU32 memoryArgumentAlignment
   putVU32 memoryArgumentOffset
 
 data Instruction
-  = Unreachable
+  = -- | Produce an unconditional trap (abort execution).
+    Unreachable
+    -- | Do nothing.
   | Nop
   | Block
       { blockResultType :: [ValueType],
@@ -300,20 +367,30 @@ data Instruction
   | ReturnCallIndirect
       { returnCallIndirectFunctionTypeIndex :: FunctionTypeIndex
       }
+    -- | Throw away an operand.
+    -- Can operate on any 'ValueType'.
   | Drop
+    -- | Select one of the first two operands based on whether the third
+    -- operand is zero or not, respectively (GEORGE???).
+    -- Can operate on any 'ValueType'.
   | Select
+    -- | Get the value of a local variable.
   | GetLocal
       { getLocalIndex :: LocalIndex
       }
+    -- | Set the value of a local variable.
   | SetLocal
       { setLocalIndex :: LocalIndex
       }
+    -- | Set the value of a local variable and return it (GEORGE: IT???).
   | TeeLocal
       { teeLocalIndex :: LocalIndex
       }
+    -- | Get the value of a global variable.
   | GetGlobal
       { getGlobalIndex :: GlobalIndex
       }
+    -- | Set the value of a global variable.
   | SetGlobal
       { setGlobalIndex :: GlobalIndex
       }
@@ -386,7 +463,12 @@ data Instruction
   | I64Store32
       { i64Store32MemoryArgument :: MemoryArgument
       }
+    -- | Return the current size of a memory.
+    -- Operates on units of page size.
   | MemorySize
+    -- | Grow memory by a given delta and return the previous size, or -1 if
+    -- enough memory cannot be allocated.
+    -- Operates on units of page size.
   | MemoryGrow
   | I32Const
       { i32ConstValue :: Int32
@@ -525,6 +607,7 @@ data Instruction
   | F64Copysign
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'Instruction'.
 getInstruction :: Get Instruction
 getInstruction = do
   b <- getWord8
@@ -712,6 +795,7 @@ getInstruction = do
     0xBF -> pure F64ReinterpretFromI64
     _ -> fail "Language.WebAssembly.WireFormat.getInstruction"
 
+-- | Serialize an 'Instruction'.
 putInstruction :: Instruction -> Put
 putInstruction instr = case instr of
   I32Eqz -> putWord8 0x45
@@ -989,15 +1073,18 @@ putInstruction instr = case instr of
     putWord8 0x44
     putF64 f64ConstValue
 
+-- | An 'Expression' is a sequence of 'Instruction's.
 newtype Expression
   = Expression
       { instructions :: [Instruction]
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'Expression'.
 getExpression :: Get Expression
 getExpression = coerce (getMany getInstruction) <* expectWord8 0x0B
 
+-- | Serialize an 'Expression'.
 putExpression :: Expression -> Put
 putExpression expr = do
   putMany putInstruction $ coerce expr
