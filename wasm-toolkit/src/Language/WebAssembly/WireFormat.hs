@@ -94,7 +94,7 @@ import Data.Word
 import GHC.Generics (Generic)
 import Prelude hiding (fail)
 
--- | Wasm 'Name's.
+-- | WebAssembly names.
 newtype Name
   = Name SBS.ShortByteString
   deriving (Eq, Generic, Ord, Show)
@@ -172,6 +172,7 @@ data FunctionType
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'FunctionType'.
 getFunctionType :: Get FunctionType
 getFunctionType = do
   b <- getWord8
@@ -179,6 +180,7 @@ getFunctionType = do
     0x60 -> FunctionType <$> getVec getValueType <*> getVec getValueType
     _ -> fail "Language.WebAssembly.WireFormat.getFunctionType"
 
+-- | Serialize a 'FunctionType'.
 putFunctionType :: FunctionType -> Put
 putFunctionType FunctionType {..} = do
   putWord8 0x60
@@ -1493,6 +1495,7 @@ data LinkingSubSection
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'LinkingSubSection'.
 getLinkingSubSection :: Get LinkingSubSection
 getLinkingSubSection = do
   b <- getWord8
@@ -1503,6 +1506,7 @@ getLinkingSubSection = do
     8 -> LinkingWasmSymbolTable <$> getVecSBS
     _ -> fail "Language.WebAssembly.WireFormat.getLinkingSubSection"
 
+-- | Serialize a 'LinkingSubSection'.
 putLinkingSubSection :: LinkingSubSection -> Put
 putLinkingSubSection sec = case sec of
   LinkingWasmSegmentInfo {..} -> do
@@ -1587,6 +1591,7 @@ data Section
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Section'.
 getSection :: Get Section
 getSection = do
   b <- getWord8
@@ -1658,6 +1663,7 @@ getSection = do
     11 -> getCheckedRegion (DataSection <$> getVec getDataSegment)
     _ -> fail "Language.WebAssembly.WireFormat.getSection"
 
+-- | Serialize a 'Section'.
 putSection :: Section -> Put
 putSection sec = case sec of
   LinkingSection {..} -> do
@@ -1731,16 +1737,19 @@ newtype Module
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Module'.
 getModule :: Get Module
 getModule = do
   for_ [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00] expectWord8
   Module <$> getMany getSection
 
+-- | Serialize a 'Module'.
 putModule :: Module -> Put
 putModule Module {..} = do
   putSBS $ SBS.pack [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00]
   putMany putSection sections
 
+-- | Deserialize a given 'Word8' or fail.
 expectWord8 :: Word8 -> Get ()
 expectWord8 x = do
   b <- getWord8
@@ -1808,18 +1817,22 @@ putVS32 = putVS64 . fromIntegral
 getVS64 :: Get Int64
 getVS64 = getVSN 64
 
+-- | Deserialize a 'Float' in native in IEEE-754 format and host endian.
 getF32 :: Get Float
 getF32 = getFloathost
 {-# INLINE getF32 #-}
 
+-- | Serialize a 'Float' in native in IEEE-754 format and host endian.
 putF32 :: Float -> Put
 putF32 = putFloathost
 {-# INLINE putF32 #-}
 
+-- | Deserialize a 'Double' in IEEE-754 format and host endian.
 getF64 :: Get Double
 getF64 = getDoublehost
 {-# INLINE getF64 #-}
 
+-- | Serialize a 'Double' in IEEE-754 format and host endian.
 putF64 :: Double -> Put
 putF64 = putDoublehost
 {-# INLINE putF64 #-}
@@ -1834,18 +1847,23 @@ putVec p v = do
   putVU32 (fromIntegral (length v))
   for_ v p
 
+-- | Deserialize zero or more elements.
 getMany :: Get a -> Get [a]
 getMany = many
 {-# INLINE getMany #-}
 
+-- | Serialize zero or more elements.
 putMany :: (a -> Put) -> [a] -> Put
 putMany = traverse_
 {-# INLINE putMany #-}
 
+-- | Serialize a value of type @'Maybe' a@,
+-- given a serialization function for @a@.
 putMaybe :: (a -> Put) -> Maybe a -> Put
 putMaybe = traverse_
 {-# INLINE putMaybe #-}
 
+-- | Serialize a 'ShortByteString'.
 putSBS :: SBS.ShortByteString -> Put
 putSBS = putShortByteString
 {-# INLINE putSBS #-}
