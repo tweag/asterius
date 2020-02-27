@@ -85,9 +85,7 @@ frontendPlugin = makeFrontendPlugin $ do
                   let p = (obj_path -<.>)
                   writeFile (p "dump-wasm-ast") $ show m
                   writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                  asmPrint dflags (p "dump-cmm-raw") cmmRaw
-                  writeFile (p "dump-stg-ast") $ show stg
-                  asmPrint dflags (p "dump-stg") stg,
+                  asmPrint dflags (p "dump-cmm-raw") cmmRaw,
         withCmmIR = \ir@CmmIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
           setDynFlagsRef dflags

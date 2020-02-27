@@ -11,12 +11,10 @@ where
 import Cmm
 import GHC
 import PipelineMonad
-import StgSyn
 
-data HaskellIR
+newtype HaskellIR
   = HaskellIR
-      { stg :: [CgStgTopBinding],
-        cmmRaw :: [[RawCmmDecl]]
+      { cmmRaw :: [[RawCmmDecl]]
       }
 
 newtype CmmIR
