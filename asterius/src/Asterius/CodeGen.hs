@@ -1499,6 +1499,6 @@ marshalHaskellIR this_mod HaskellIR {..} = marshalRawCmm this_mod cmmRaw
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
 
-marshalRawCmm :: GHC.Module -> [[GHC.RawCmmDecl]] -> CodeGen AsteriusModule
+marshalRawCmm :: GHC.Module -> [GHC.RawCmmDecl] -> CodeGen AsteriusModule
 marshalRawCmm _ cmm_decls =
-  mconcat <$> traverse marshalCmmDecl (mconcat cmm_decls)
+  mconcat <$> traverse marshalCmmDecl cmm_decls

@@ -80,14 +80,14 @@ hooksFromCompiler Compiler {..} h = do
                               )
                       ir <-
                         liftIO $
-                          HaskellIR
+                          HaskellIR . mconcat
                             <$> (fetch cmm_raw_map_ref >>= Stream.collect)
                       withHaskellIR mod_summary ir obj_output_fn
                   )
               pure r
           GHC.RealPhase GHC.Cmm -> do
             void $ GHC.runPhase phase input_fn dflags
-            ir <- liftIO $ CmmIR <$> (takeMVar cmm_raw_ref >>= Stream.collect)
+            ir <- liftIO $ CmmIR . mconcat <$> (takeMVar cmm_raw_ref >>= Stream.collect)
             obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
             withCmmIR ir obj_output_fn
             pure (GHC.RealPhase GHC.StopLn, obj_output_fn)

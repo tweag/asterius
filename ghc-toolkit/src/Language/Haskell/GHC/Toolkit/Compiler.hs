@@ -14,12 +14,12 @@ import PipelineMonad
 
 newtype HaskellIR
   = HaskellIR
-      { cmmRaw :: [[RawCmmDecl]]
+      { cmmRaw :: [RawCmmDecl]
       }
 
 newtype CmmIR
   = CmmIR
-      { cmmRaw :: [[RawCmmDecl]]
+      { cmmRaw :: [RawCmmDecl]
       }
 
 data Compiler

@@ -421,7 +421,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
   raw_cmms <- GHC.cmmToRawCmm dflags (Just this_mod) cmms >>= Stream.collect
   m <-
     either throwIO pure $
-      runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
+      runCodeGen (marshalRawCmm this_mod (mconcat raw_cmms)) dflags this_mod
   this_id <- modifyMVar globalGHCiState $ \s -> do
     let this_id = succ $ ghciLastCompiledCoreExpr s
     pure
