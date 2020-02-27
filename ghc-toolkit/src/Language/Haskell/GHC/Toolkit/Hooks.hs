@@ -21,31 +21,15 @@ import qualified HscTypes as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import qualified Module as GHC
 import qualified PipelineMonad as GHC
-import qualified StgCmm as GHC
-import qualified Stream
 
 hooksFromCompiler :: Compiler -> GHC.Hooks -> IO GHC.Hooks
 hooksFromCompiler Compiler {..} h = do
   mods_set_ref <- newMVar Set.empty
-  stg_map_ref <- newMVar Map.empty
   cmm_raw_map_ref <- newMVar Map.empty
   cmm_raw_ref <- newEmptyMVar
   pure
     h
-      { GHC.stgCmmHook = Just $
-          \dflags this_mod data_tycons cost_centre_info stg_binds hpc_info -> do
-            Stream.liftIO
-              $ modifyMVar_ stg_map_ref
-              $ pure
-                . Map.insert this_mod stg_binds
-            GHC.codeGen
-              dflags
-              this_mod
-              data_tycons
-              cost_centre_info
-              stg_binds
-              hpc_info,
-        GHC.cmmToRawCmmHook = Just $ \dflags maybe_ms_mod cmms -> do
+      { GHC.cmmToRawCmmHook = Just $ \dflags maybe_ms_mod cmms -> do
           rawcmms <- GHC.cmmToRawCmm dflags maybe_ms_mod cmms
           case maybe_ms_mod of
             Just ms_mod -> do
@@ -78,7 +62,6 @@ hooksFromCompiler Compiler {..} h = do
                 then liftIO $ do
                   let clean :: MVar (Map.Map GHC.Module a) -> IO ()
                       clean ref = modifyMVar_ ref $ pure . Map.delete ms_mod
-                  clean stg_map_ref
                   clean cmm_raw_map_ref
                 else
                   ( do
@@ -88,23 +71,16 @@ hooksFromCompiler Compiler {..} h = do
                               ref
                               ( \m ->
                                   let (Just v, m') =
-                                        Map.updateLookupWithKey
-                                          (\_ _ -> Nothing)
-                                          ms_mod
-                                          m
+                                        Map.updateLookupWithKey (\_ _ -> Nothing) ms_mod m
                                    in pure (m', v)
                               )
-                      ir <-
-                        liftIO $
-                          HaskellIR
-                            <$> fetch stg_map_ref
-                            <*> (fetch cmm_raw_map_ref >>= Stream.collect)
+                      ir <- liftIO $ HaskellIR <$> fetch cmm_raw_map_ref
                       withHaskellIR mod_summary ir obj_output_fn
                   )
               pure r
           GHC.RealPhase GHC.Cmm -> do
             void $ GHC.runPhase phase input_fn dflags
-            ir <- liftIO $ CmmIR <$> (takeMVar cmm_raw_ref >>= Stream.collect)
+            ir <- liftIO $ CmmIR <$> takeMVar cmm_raw_ref
             obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
             withCmmIR ir obj_output_fn
             pure (GHC.RealPhase GHC.StopLn, obj_output_fn)

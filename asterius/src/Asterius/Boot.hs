@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -35,6 +36,7 @@ import Language.Haskell.GHC.Toolkit.Run
     runCmm,
   )
 import qualified Module as GHC
+import qualified Stream
 import System.Directory
 import System.Environment
 import System.Exit
@@ -123,7 +125,7 @@ bootRTSCmm BootArgs {..} =
                       takeBaseName
                         obj_path
                   )
-             in case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
+             in runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
                   Left err -> throwIO err
                   Right m -> do
                     encodeFile obj_path m
@@ -131,8 +133,9 @@ bootRTSCmm BootArgs {..} =
                     when is_debug $ do
                       let p = (obj_path -<.>)
                       writeFile (p "dump-wasm-ast") $ show m
-                      writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                      asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                      cmm_raw <- Stream.collect cmmRaw
+                      writeFile (p "dump-cmm-raw-ast") $ show cmm_raw
+                      asmPrint dflags (p "dump-cmm-raw") cmm_raw
         )
       liftIO $ do
         obj_paths <- readIORef obj_paths_ref

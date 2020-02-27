@@ -24,7 +24,6 @@ import Asterius.JSRun.Main
 import Asterius.JSRun.NonMain
 import Asterius.Ld
 import Asterius.Resolve
-import qualified Asterius.Types
 import Asterius.Types
 import Asterius.TypesConv
 import qualified BasicTypes as GHC
@@ -72,7 +71,6 @@ import qualified Panic as GHC
 import qualified SimplCore as GHC
 import qualified SimplStg as GHC
 import qualified SrcLoc as GHC
-import qualified Stream
 import System.Directory
 import System.FilePath
 import System.IO
@@ -418,10 +416,10 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
       GHC.emptyCollectedCCs
       stg_binds2
       (GHC.emptyHpcInfo False)
-  raw_cmms <- GHC.cmmToRawCmm dflags (Just this_mod) cmms >>= Stream.collect
+  raw_cmms <- GHC.cmmToRawCmm dflags (Just this_mod) cmms
   m <-
-    either throwIO pure $
-      runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
+    runCodeGen (marshalRawCmm this_mod raw_cmms) dflags this_mod
+      >>= either throwIO pure
   this_id <- modifyMVar globalGHCiState $ \s -> do
     let this_id = succ $ ghciLastCompiledCoreExpr s
     pure

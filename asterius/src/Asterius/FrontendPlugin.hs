@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.FrontendPlugin
@@ -23,6 +24,7 @@ import qualified Hooks as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
 import Language.Haskell.GHC.Toolkit.Orphans.Show
+import qualified Stream
 import System.Environment.Blank
 import System.FilePath
 
@@ -76,7 +78,7 @@ frontendPlugin = makeFrontendPlugin $ do
           let mod_sym = marshalToModuleSymbol ms_mod
           liftIO $ do
             ffi_mod <- getFFIModule mod_sym
-            case runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod of
+            runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod >>= \case
               Left err -> throwIO err
               Right m' -> do
                 let m = ffi_mod <> m'
@@ -84,22 +86,25 @@ frontendPlugin = makeFrontendPlugin $ do
                 when is_debug $ do
                   let p = (obj_path -<.>)
                   writeFile (p "dump-wasm-ast") $ show m
-                  writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                  asmPrint dflags (p "dump-cmm-raw") cmmRaw
-                  writeFile (p "dump-stg-ast") $ show stg
-                  asmPrint dflags (p "dump-stg") stg,
+                  cmm_raw <- Stream.collect cmmRaw
+                  writeFile (p "dump-cmm-raw-ast") $ show cmm_raw
+                  asmPrint dflags (p "dump-cmm-raw") cmm_raw,
         withCmmIR = \ir@CmmIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
           setDynFlagsRef dflags
           let ms_mod =
-                GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName obj_path
-          liftIO $ case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
-            Left err -> throwIO err
-            Right m -> do
-              encodeFile obj_path m
-              when is_debug $ do
-                let p = (obj_path -<.>)
-                writeFile (p "dump-wasm-ast") $ show m
-                writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $
+                  takeBaseName
+                    obj_path
+          liftIO $
+            runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
+              Left err -> throwIO err
+              Right m -> do
+                encodeFile obj_path m
+                when is_debug $ do
+                  let p = (obj_path -<.>)
+                  writeFile (p "dump-wasm-ast") $ show m
+                  cmm_raw <- Stream.collect cmmRaw
+                  writeFile (p "dump-cmm-raw-ast") $ show cmm_raw
+                  asmPrint dflags (p "dump-cmm-raw") cmm_raw
       }
