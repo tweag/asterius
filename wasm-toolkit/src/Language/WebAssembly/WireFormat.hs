@@ -2,9 +2,7 @@
 -- |
 -- Module      :  Language.WebAssembly.WireFormat
 -- Copyright   :  (c) 2018 EURL Tweag
--- License     :  All rights reserved.
---
--- Portability :  non-portable (GHC extensions)
+-- License     :  All rights reserved (see LICENCE file in the distribution).
 --
 -- Complete definition of the WebAssembly AST, including support for custom
 -- sections, and binary serialization/deserialization. Most of the comments are
@@ -21,7 +19,7 @@
 {-# LANGUAGE StrictData #-}
 
 module Language.WebAssembly.WireFormat
-  ( -- * Basic types and related functions
+  ( -- * Types
     Name (..),
     ValueType (..),
     FunctionType (..),
@@ -60,19 +58,26 @@ module Language.WebAssembly.WireFormat
     RelocationEntry (..),
     Section (..),
     Module (..),
-    -- * Explicit serialization/deserialization functions
+    -- * Serialization/Deserialization
+    -- ** 32-bit, unsigned
     getVU32,
     putVU32,
+    -- ** 32-bit, signed
     getVS32,
     putVS32,
+    -- ** 64-bit, signed
     getVS64,
     putVS64,
+    -- ** Float, single precision
     getF32,
     putF32,
+    -- ** Float, double precision
     getF64,
     putF64,
+    -- ** Modules
     getModule,
     putModule,
+    -- ** TODO
     getLinkingSymbolInfo,
     putLinkingSymbolInfo,
   )
@@ -378,7 +383,7 @@ data Instruction
     -- Can operate on any 'ValueType'.
   | Drop
     -- | Select one of the first two operands based on whether the third
-    -- operand is zero or not, respectively (GEORGE???).
+    -- operand is zero or not.
     -- Can operate on any 'ValueType'.
   | Select
     -- | Get the value of a local variable.
@@ -1760,6 +1765,8 @@ expectWord8 x = do
       <> ", but got "
       <> show b
 
+-- | Deserialize a variable-length unsigned integer of a given length (given in
+-- bits). @'getVUN' n@ fails if @n@ is non-positive.
 getVUN :: Int -> Get Word64
 getVUN n
   | n <= 0 = fail "Language.WebAssembly.WireFormat.getVUN"
@@ -1772,6 +1779,8 @@ getVUN n
         r <- getVUN (n - 7)
         pure $ x .|. (r `shiftL` 7)
 
+-- | Deserialize a variable-length signed integer of a given length (given in
+-- bits). @'getVSN' n@ fails if @n@ is non-positive.
 getVSN :: Int -> Get Int64
 getVSN n
   | n <= 0 = fail "Language.WebAssembly.WireFormat.getVSN"
@@ -1784,6 +1793,8 @@ getVSN n
         r <- getVSN (n - 7)
         pure $ x .|. r `shiftL` 7
 
+-- | Serialize an unsigned 64-bit integer using the variable-length LEB128
+-- encoding.
 putVU64 :: Word64 -> Put
 putVU64 i = do
   let b = fromIntegral $ i .&. 0x7F
@@ -1793,6 +1804,8 @@ putVU64 i = do
       putWord8 $ b .|. 0x80
       putVU64 $ i `shiftR` 7
 
+-- | Serialize a signed 64-bit integer using the variable-length LEB128
+-- encoding.
 putVS64 :: Int64 -> Put
 putVS64 i = do
   let b = fromIntegral $ i .&. 0x7F
@@ -1802,46 +1815,56 @@ putVS64 i = do
       putWord8 $ b .|. 0x80
       putVS64 $ i `shiftR` 7
 
+-- | Deserialize an unsigned 32-bit integer using the variable-length LEB128
+-- encoding.
 getVU32 :: Get Word32
 getVU32 = fromIntegral <$> getVUN 32
 
+-- | Serialize an unsigned 32-bit integer using the variable-length LEB128
+-- encoding.
 putVU32 :: Word32 -> Put
 putVU32 = putVU64 . fromIntegral
 
+-- | Deserialize a signed 32-bit integer using the variable-length LEB128
+-- encoding.
 getVS32 :: Get Int32
 getVS32 = fromIntegral <$> getVSN 64
 
+-- | Serialize a signed 32-bit integer using the variable-length LEB128
+-- encoding.
 putVS32 :: Int32 -> Put
 putVS32 = putVS64 . fromIntegral
 
+-- | Deserialize a signed 64-bit integer using the variable-length LEB128
+-- encoding.
 getVS64 :: Get Int64
 getVS64 = getVSN 64
 
 -- | Deserialize a 'Float' in native in IEEE-754 format and host endian.
 getF32 :: Get Float
 getF32 = getFloathost
-{-# INLINE getF32 #-}
 
 -- | Serialize a 'Float' in native in IEEE-754 format and host endian.
 putF32 :: Float -> Put
 putF32 = putFloathost
-{-# INLINE putF32 #-}
 
 -- | Deserialize a 'Double' in IEEE-754 format and host endian.
 getF64 :: Get Double
 getF64 = getDoublehost
-{-# INLINE getF64 #-}
 
 -- | Serialize a 'Double' in IEEE-754 format and host endian.
 putF64 :: Double -> Put
 putF64 = putDoublehost
-{-# INLINE putF64 #-}
 
+-- | Deserialize a vector (unsigned 32-bit encoding of length followed by the
+-- serialization of all elements).
 getVec :: Get a -> Get [a]
 getVec g = do
   n <- getVU32
   replicateM (fromIntegral n) g
 
+-- | Serialize a vector (unsigned 32-bit encoding of length followed by the
+-- serialization of all elements).
 putVec :: (a -> Put) -> [a] -> Put
 putVec p v = do
   putVU32 (fromIntegral (length v))
@@ -1850,34 +1873,35 @@ putVec p v = do
 -- | Deserialize zero or more elements.
 getMany :: Get a -> Get [a]
 getMany = many
-{-# INLINE getMany #-}
 
 -- | Serialize zero or more elements.
 putMany :: (a -> Put) -> [a] -> Put
 putMany = traverse_
-{-# INLINE putMany #-}
 
 -- | Serialize a value of type @'Maybe' a@,
 -- given a serialization function for @a@.
 putMaybe :: (a -> Put) -> Maybe a -> Put
 putMaybe = traverse_
-{-# INLINE putMaybe #-}
 
 -- | Serialize a 'ShortByteString'.
 putSBS :: SBS.ShortByteString -> Put
 putSBS = putShortByteString
-{-# INLINE putSBS #-}
 
+-- | Deserialize a 'ShortByteString' using the byte-vector format (unsigned
+-- 32-bit encoding of length followed by the serialization of all elements).
 getVecSBS :: Get SBS.ShortByteString
 getVecSBS = do
   l <- getVU32
   SBS.toShort <$> getByteString (fromIntegral l)
 
+-- | Serialize a 'ShortByteString' using the byte-vector format (unsigned
+-- 32-bit encoding of length followed by the serialization of all elements).
 putVecSBS :: SBS.ShortByteString -> Put
 putVecSBS s = do
   putVU32 $ fromIntegral $ SBS.length s
   putSBS s
 
+-- | Prefix serialization with length (unsigned 32-bit encoding).
 putWithLength :: Put -> Put
 putWithLength p = do
   let buf = runPut p
