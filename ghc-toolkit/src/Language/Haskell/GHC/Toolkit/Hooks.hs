@@ -21,7 +21,6 @@ import qualified HscTypes as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import qualified Module as GHC
 import qualified PipelineMonad as GHC
-import qualified Stream
 
 hooksFromCompiler :: Compiler -> GHC.Hooks -> IO GHC.Hooks
 hooksFromCompiler Compiler {..} h = do
@@ -72,22 +71,16 @@ hooksFromCompiler Compiler {..} h = do
                               ref
                               ( \m ->
                                   let (Just v, m') =
-                                        Map.updateLookupWithKey
-                                          (\_ _ -> Nothing)
-                                          ms_mod
-                                          m
+                                        Map.updateLookupWithKey (\_ _ -> Nothing) ms_mod m
                                    in pure (m', v)
                               )
-                      ir <-
-                        liftIO $
-                          HaskellIR . mconcat
-                            <$> (fetch cmm_raw_map_ref >>= Stream.collect)
+                      ir <- liftIO $ HaskellIR <$> fetch cmm_raw_map_ref
                       withHaskellIR mod_summary ir obj_output_fn
                   )
               pure r
           GHC.RealPhase GHC.Cmm -> do
             void $ GHC.runPhase phase input_fn dflags
-            ir <- liftIO $ CmmIR . mconcat <$> (takeMVar cmm_raw_ref >>= Stream.collect)
+            ir <- liftIO $ CmmIR <$> takeMVar cmm_raw_ref
             obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
             withCmmIR ir obj_output_fn
             pure (GHC.RealPhase GHC.StopLn, obj_output_fn)

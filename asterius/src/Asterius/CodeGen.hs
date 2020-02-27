@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 module Asterius.CodeGen
@@ -30,6 +31,7 @@ import Asterius.TypesConv
 import qualified CLabel as GHC
 import qualified Cmm as GHC
 import qualified CmmSwitch as GHC
+import Control.Exception
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
@@ -48,29 +50,29 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show
   (
   )
+import Stream (Stream)
+import qualified Stream
 import qualified Unique as GHC
 import Prelude hiding (IO)
+import qualified Prelude
 
 type CodeGenContext = (GHC.DynFlags, String)
 
 newtype CodeGen a
-  = CodeGen (ReaderT CodeGenContext (Except AsteriusCodeGenError) a)
-  deriving
-    ( Functor,
-      Applicative,
-      Monad,
-      MonadReader CodeGenContext,
-      MonadError AsteriusCodeGenError
-    )
+  = CodeGen (ReaderT CodeGenContext Prelude.IO a)
+  deriving (Functor, Applicative, Monad, MonadReader CodeGenContext, MonadIO)
 
 unCodeGen :: CodeGen a -> CodeGen (Either AsteriusCodeGenError a)
-unCodeGen (CodeGen m) = asks $ runExcept . runReaderT m
+unCodeGen (CodeGen m) = CodeGen (mapReaderT try m)
 
 {-# INLINEABLE runCodeGen #-}
 runCodeGen ::
-  CodeGen a -> GHC.DynFlags -> GHC.Module -> Either AsteriusCodeGenError a
-runCodeGen (CodeGen m) dflags def_mod =
-  runExcept $ runReaderT m (dflags, asmPpr dflags def_mod <> "_")
+  CodeGen a ->
+  GHC.DynFlags ->
+  GHC.Module ->
+  IO (Either AsteriusCodeGenError a)
+runCodeGen (unCodeGen -> CodeGen m) dflags def_mod =
+  runReaderT m (dflags, asmPpr dflags def_mod <> "_")
 
 marshalCLabel :: GHC.CLabel -> CodeGen AsteriusEntitySymbol
 marshalCLabel clbl = do
@@ -104,7 +106,7 @@ marshalCmmType t
   | GHC.f64 `GHC.cmmEqType_ignoring_ptrhood` t =
     pure F64
   | otherwise =
-    throwError $ UnsupportedCmmType $ showSBS t
+    liftIO $ throwIO $ UnsupportedCmmType $ showSBS t
 
 dispatchCmmWidth :: GHC.Width -> a -> a -> CodeGen a
 dispatchCmmWidth w r32 = dispatchAllCmmWidth w r32 r32 r32
@@ -115,7 +117,7 @@ dispatchAllCmmWidth w r8 r16 r32 r64 = case w of
   GHC.W16 -> pure r16
   GHC.W32 -> pure r32
   GHC.W64 -> pure r64
-  _ -> throwError $ UnsupportedCmmWidth $ showSBS w
+  _ -> liftIO $ throwIO $ UnsupportedCmmWidth $ showSBS w
 
 marshalCmmStatic :: GHC.CmmStatic -> CodeGen AsteriusStatic
 marshalCmmStatic st = case st of
@@ -150,7 +152,7 @@ marshalCmmStatic st = case st of
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
       pure $ SymbolStatic sym o
-    _ -> throwError $ UnsupportedCmmLit $ showSBS lit
+    _ -> liftIO $ throwIO $ UnsupportedCmmLit $ showSBS lit
   GHC.CmmUninitialised s -> pure $ Uninitialized s
   GHC.CmmString s -> pure $ Serialized $ SBS.pack $ s <> [0]
 
@@ -183,7 +185,7 @@ marshalTypedCmmLocalReg ::
   GHC.LocalReg -> ValueType -> CodeGen UnresolvedLocalReg
 marshalTypedCmmLocalReg r vt = do
   (lr, vt') <- marshalCmmLocalReg r
-  if vt == vt' then pure lr else throwError $ UnsupportedCmmExpr $ showSBS r
+  if vt == vt' then pure lr else liftIO $ throwIO $ UnsupportedCmmExpr $ showSBS r
 
 marshalCmmGlobalReg :: GHC.GlobalReg -> CodeGen UnresolvedGlobalReg
 marshalCmmGlobalReg r = case r of
@@ -203,7 +205,7 @@ marshalCmmGlobalReg r = case r of
   GHC.GCEnter1 -> pure GCEnter1
   GHC.GCFun -> pure GCFun
   GHC.BaseReg -> pure BaseReg
-  _ -> throwError $ UnsupportedCmmGlobalReg $ showSBS r
+  _ -> liftIO $ throwIO $ UnsupportedCmmGlobalReg $ showSBS r
 
 marshalCmmLit :: GHC.CmmLit -> CodeGen (Expression, ValueType)
 marshalCmmLit lit = case lit of
@@ -223,7 +225,7 @@ marshalCmmLit lit = case lit of
   GHC.CmmLabelOff clbl o -> do
     sym <- marshalCLabel clbl
     pure (Symbol {unresolvedSymbol = sym, symbolOffset = o}, I64)
-  _ -> throwError $ UnsupportedCmmLit $ showSBS lit
+  _ -> liftIO $ throwIO $ UnsupportedCmmLit $ showSBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
 marshalCmmLoad p t = do
@@ -311,7 +313,7 @@ marshalCmmRegOff r o = do
             },
           vt
         )
-    _ -> throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmRegOff r o
+    _ -> liftIO $ throwIO $ UnsupportedCmmExpr $ showSBS $ GHC.CmmRegOff r o
 
 marshalCmmBinMachOp ::
   BinaryOp ->
@@ -561,7 +563,7 @@ marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] =
 marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
   marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 Sext x
 marshalCmmMachOp op xs =
-  throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmMachOp op xs
+  liftIO $ throwIO $ UnsupportedCmmExpr $ showSBS $ GHC.CmmMachOp op xs
 
 marshalCmmExpr :: GHC.CmmExpr -> CodeGen (Expression, ValueType)
 marshalCmmExpr cmm_expr = case cmm_expr of
@@ -570,7 +572,7 @@ marshalCmmExpr cmm_expr = case cmm_expr of
   GHC.CmmReg r -> marshalCmmReg r
   GHC.CmmMachOp op xs -> marshalCmmMachOp op xs
   GHC.CmmRegOff r o -> marshalCmmRegOff r o
-  _ -> throwError $ UnsupportedCmmExpr $ showSBS cmm_expr
+  _ -> liftIO $ throwIO $ UnsupportedCmmExpr $ showSBS cmm_expr
 
 marshalAndCastCmmExpr :: GHC.CmmExpr -> ValueType -> CodeGen Expression
 marshalAndCastCmmExpr cmm_expr dest_vt = do
@@ -584,7 +586,7 @@ marshalAndCastCmmExpr cmm_expr dest_vt = do
     _
       | src_vt == dest_vt -> pure src_expr
       | otherwise ->
-        throwError $
+        liftIO $ throwIO $
           UnsupportedImplicitCasting src_expr src_vt dest_vt
 
 marshalCmmUnPrimCall ::
@@ -1200,7 +1202,7 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
         }
   pure [quotout, remout]
 marshalCmmPrimCall op rs xs =
-  throwError $ UnsupportedCmmInstr $ showSBS $
+  liftIO $ throwIO $ UnsupportedCmmInstr $ showSBS $
     GHC.CmmUnsafeForeignCall
       (GHC.PrimTarget op)
       rs
@@ -1245,7 +1247,7 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
             }
         ]
     _ ->
-      throwError $ UnsupportedCmmInstr $ showSBS $
+      liftIO $ throwIO $ UnsupportedCmmInstr $ showSBS $
         GHC.CmmUnsafeForeignCall
           (GHC.ForeignTarget p f)
           rs
@@ -1280,7 +1282,7 @@ marshalCmmUnsafeCall p f rs xs = do
             }
         ]
     _ ->
-      throwError $ UnsupportedCmmInstr $ showSBS $
+      liftIO $ throwIO $ UnsupportedCmmInstr $ showSBS $
         GHC.CmmUnsafeForeignCall
           (GHC.ForeignTarget p f)
           rs
@@ -1350,7 +1352,7 @@ marshalCmmInstr instr = case instr of
                 }
           )
     pure [store_instr]
-  _ -> throwError $ UnsupportedCmmInstr $ showSBS instr
+  _ -> liftIO $ throwIO $ UnsupportedCmmInstr $ showSBS instr
 
 marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [Expression]
 marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
@@ -1408,7 +1410,7 @@ marshalCmmBlockBranch instr = case instr of
         Nothing,
         []
       )
-  _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
+  _ -> liftIO $ throwIO $ UnsupportedCmmBranch $ showSBS instr
 
 marshalCmmBlock ::
   [GHC.CmmNode GHC.O GHC.O] ->
@@ -1499,6 +1501,20 @@ marshalHaskellIR this_mod HaskellIR {..} = marshalRawCmm this_mod cmmRaw
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
 
-marshalRawCmm :: GHC.Module -> [GHC.RawCmmDecl] -> CodeGen AsteriusModule
-marshalRawCmm _ cmm_decls =
-  mconcat <$> traverse marshalCmmDecl cmm_decls
+marshalRawCmm ::
+  GHC.Module ->
+  Stream Prelude.IO GHC.RawCmmGroup () ->
+  CodeGen AsteriusModule
+marshalRawCmm _ = w mempty
+  where
+    w m cmms = do
+      r <- liftIO $ Stream.runStream cmms
+      case r of
+        Right (cmm_decls, cmms') -> do
+          m' <-
+            foldlM
+              (\x cmm_decl -> (<> x) <$> marshalCmmDecl cmm_decl)
+              m
+              cmm_decls
+          w m' cmms'
+        _ -> pure m

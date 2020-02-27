@@ -11,15 +11,16 @@ where
 import Cmm
 import GHC
 import PipelineMonad
+import Stream (Stream)
 
 newtype HaskellIR
   = HaskellIR
-      { cmmRaw :: [RawCmmDecl]
+      { cmmRaw :: Stream IO Cmm.RawCmmGroup ()
       }
 
 newtype CmmIR
   = CmmIR
-      { cmmRaw :: [RawCmmDecl]
+      { cmmRaw :: Stream IO Cmm.RawCmmGroup ()
       }
 
 data Compiler
