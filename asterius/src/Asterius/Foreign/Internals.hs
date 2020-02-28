@@ -12,9 +12,9 @@ module Asterius.Foreign.Internals
   )
 where
 
+import Asterius.Internals.Name
 import Asterius.Types
 import Asterius.TypesConv
-import qualified CLabel as GHC
 import Control.Applicative
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Short as SBS
@@ -421,11 +421,7 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
         new_k = AsteriusEntitySymbol
           { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
           }
-        export_closure =
-          fromString $ asmPpr dflags $
-            GHC.mkClosureLabel
-              (GHC.getName export_id)
-              GHC.NoCafRefs
+        export_closure = idClosureSymbol dflags export_id
         new_decl = FFIExportDecl
           { ffiFunctionType = ffi_ftype,
             ffiExportClosure = export_closure
