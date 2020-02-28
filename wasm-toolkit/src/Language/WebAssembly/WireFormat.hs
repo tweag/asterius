@@ -5,10 +5,9 @@
 -- License     :  All rights reserved (see LICENCE file in the distribution).
 --
 -- Complete definition of the WebAssembly AST, including support for custom
--- sections, and binary serialization/deserialization. Most of the comments are
--- taken from the official specification of WebAssembly:
+-- sections, and binary serialization/deserialization. The complete
+-- specification of WebAssembly can be found here:
 --
---   https://webassembly.github.io/spec/ or
 --   https://github.com/WebAssembly/spec/
 --
 -----------------------------------------------------------------------------
@@ -19,9 +18,10 @@
 {-# LANGUAGE StrictData #-}
 
 module Language.WebAssembly.WireFormat
-  ( -- * Types
+  ( -- * Abstract Syntax Tree
+    -- ** Names
     Name (..),
-    -- ** Basic Types
+    -- ** Types
     ValueType (..),
     ResultType,
     FunctionType (..),
@@ -35,10 +35,7 @@ module Language.WebAssembly.WireFormat
     MemoryArgument (..),
     Instruction (..),
     Expression (..),
-    -- ** Modules
-    Module (..),
-    -- *** Indices
-    Custom (..),
+    -- ** Indices
     FunctionTypeIndex (..),
     FunctionIndex (..),
     TableIndex (..),
@@ -46,8 +43,10 @@ module Language.WebAssembly.WireFormat
     GlobalIndex (..),
     LocalIndex (..),
     LabelIndex (..),
-    -- *** Sections
+    -- ** Modules
+    Module (..),
     Section (..),
+    Custom (..),
     Function (..),
     Locals (..),
     Table (..),
@@ -170,10 +169,10 @@ putResultType resultValueTypes = case resultValueTypes of
   [t] -> putValueType t
   _ -> error "Language.WebAssembly.WireFormat.putResultType"
 
--- | 'FunctionType's classify the signature of functions, mapping a vector of
--- parameters to a vector of results. __NOTE__: In the current version of
--- WebAssembly the result type of a valid function type can be /at most/ 1.
--- This restriction may be removed in a future version.
+-- | 'FunctionType's classify functions, and map a vector of parameter types to
+-- a vector of result types. __NOTE__: In the current version of WebAssembly
+-- the result type of a valid function type can be /at most/ 1. This
+-- restriction may be removed in a future version.
 data FunctionType
   = FunctionType
       { parameterTypes, resultTypes :: [ValueType]
@@ -196,7 +195,8 @@ putFunctionType FunctionType {..} = do
   putVec putValueType resultTypes
 
 -- | 'Limits' classify the size range of resizeable storage associated with
---   memory types and table types.
+-- memory types and table types: 'minLimit' captures the initial size of the
+-- object, while 'maxLimit' captures the maximum size the object can have.
 data Limits
   = Limits
       { minLimit :: Word32,
@@ -1233,7 +1233,7 @@ putLabelIndex :: LabelIndex -> Put
 putLabelIndex = coerce putVU32
 
 -- | An 'ImportDescription' specifies what is imported. Importable definitions
--- include functions, tables, memories, and globals.
+-- include functions, tables, memories, and global bindings.
 data ImportDescription
   = ImportFunction FunctionTypeIndex
   | ImportTable TableType
@@ -1346,7 +1346,7 @@ putGlobal Global {..} = do
   putExpression globalInitialValue
 
 -- | An 'ExportDescription' specifies what is being exported. Exportable
--- definitions include functions, tables, memories, and globals.
+-- definitions include functions, tables, memories, and global bindings.
 data ExportDescription
   = ExportFunction FunctionIndex
   | ExportTable TableIndex
@@ -1400,7 +1400,7 @@ putExport Export {..} = do
   putName exportName
   putExportDescription exportDescription
 
--- | Element segments. The initial contents of a table is uninitialized.
+-- | Element segments. The initial contents of a table are uninitialized.
 -- 'Element' captures the elem component of a module, defines a vector of
 -- element segments that initialize a subrange of a table, at a given offset,
 -- from a static vector of elements. The offset is given by a constant
@@ -1486,14 +1486,14 @@ putDataSegment DataSegment {..} = do
   putExpression memoryOffset
   putVecSBS memoryInitialBytes
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 data LinkingSymbolFlags
   = LinkingSymbolFlags
       { linkingWasmSymBindingWeak, linkingWasmSymBindingLocal, linkingWasmSymVisibilityHidden, linkingWasmSymUndefined :: Bool
       }
   deriving (Eq, Generic, Ord, Show)
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 getLinkingSymbolFlags :: Get LinkingSymbolFlags
 getLinkingSymbolFlags = do
   f <- getVU32
@@ -1504,7 +1504,7 @@ getLinkingSymbolFlags = do
       linkingWasmSymUndefined = testBit f 4
     }
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 putLinkingSymbolFlags :: LinkingSymbolFlags -> Put
 putLinkingSymbolFlags LinkingSymbolFlags {..} =
   putVU32
@@ -1513,7 +1513,7 @@ putLinkingSymbolFlags LinkingSymbolFlags {..} =
     $ (if linkingWasmSymBindingLocal then flip setBit 1 else id)
     $ (if linkingWasmSymBindingWeak then flip setBit 0 else id) 0
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 data LinkingSymbolInfo
   = LinkingFunctionSymbolInfo
       { linkingFunctionSymbolFlags :: LinkingSymbolFlags,
@@ -1536,7 +1536,7 @@ data LinkingSymbolInfo
       }
   deriving (Eq, Generic, Ord, Show)
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 getLinkingSymbolInfo :: Get LinkingSymbolInfo
 getLinkingSymbolInfo = do
   _sym_kind <- getWord8
@@ -1567,7 +1567,7 @@ getLinkingSymbolInfo = do
     3 -> LinkingSectionSymbolInfo _sym_flags <$> getVU32
     _ -> fail "Language.WebAssembly.WireFormat.getLinkingSymbolInfo"
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 putLinkingSymbolInfo :: LinkingSymbolInfo -> Put
 putLinkingSymbolInfo sym_info = case sym_info of
   LinkingFunctionSymbolInfo {..} -> do
@@ -1592,7 +1592,7 @@ putLinkingSymbolInfo sym_info = case sym_info of
     putLinkingSymbolFlags linkingSectionSymbolFlags
     putVU32 linkingSectionSymbolIndex
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 data LinkingSubSection
   = LinkingWasmSegmentInfo
       { linkingWasmSegmentInfoPayload :: SBS.ShortByteString
@@ -1608,7 +1608,7 @@ data LinkingSubSection
       }
   deriving (Eq, Generic, Ord, Show)
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 getLinkingSubSection :: Get LinkingSubSection
 getLinkingSubSection = do
   b <- getWord8
@@ -1619,7 +1619,7 @@ getLinkingSubSection = do
     8 -> LinkingWasmSymbolTable <$> getVecSBS
     _ -> fail "Language.WebAssembly.WireFormat.getLinkingSubSection"
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 putLinkingSubSection :: LinkingSubSection -> Put
 putLinkingSubSection sec = case sec of
   LinkingWasmSegmentInfo {..} -> do
@@ -1635,7 +1635,7 @@ putLinkingSubSection sec = case sec of
     putWord8 8
     putVecSBS linkingWasmSymbolTable
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 data RelocationType
   = RWebAssemblyFunctionIndexLEB
   | RWebAssemblyTableIndexSLEB
@@ -1649,7 +1649,7 @@ data RelocationType
   | RWebAssemblySectionOffsetI32
   deriving (Eq, Generic, Ord, Show)
 
--- | Currently unused. ToDo: Remove.
+-- | Currently unused.
 data RelocationEntry
   = RelocationEntry
       { relocationType :: RelocationType,
@@ -1660,12 +1660,12 @@ data RelocationEntry
 
 -- | All sorts of 'Section's that can be found in a module.
 data Section
-  = -- | Custom section (currently unused). ToDo: Remove.
+  = -- | Custom section (currently unused).
     LinkingSection
       { linkingSectionVersion :: Word32,
         linkingSubSections :: [LinkingSubSection]
       }
-    -- | Custom section (currently unused). ToDo: Remove.
+    -- | Custom section (currently unused).
   | RelocationSection
       { relocationSectionName :: Name,
         relocationSectionIndex :: Word32,
