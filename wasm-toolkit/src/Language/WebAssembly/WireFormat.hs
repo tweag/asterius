@@ -22,6 +22,7 @@ module Language.WebAssembly.WireFormat
   ( -- * Types
     Name (..),
     ValueType (..),
+    ResultType,
     FunctionType (..),
     Limits (..),
     MemoryType (..),
@@ -49,11 +50,6 @@ module Language.WebAssembly.WireFormat
     Locals (..),
     Function (..),
     DataSegment (..),
-    LinkingSymbolFlags (..),
-    LinkingSymbolInfo (..),
-    LinkingSubSection (..),
-    RelocationType (..),
-    RelocationEntry (..),
     Section (..),
     Module (..),
 
@@ -64,7 +60,7 @@ module Language.WebAssembly.WireFormat
     ImportDescription (..),
     Import (..),
 
-    -- * Serialization/Deserialization
+    -- * Binary (de)serialization
     -- ** 32-bit, unsigned
     getVU32,
     putVU32,
@@ -83,7 +79,12 @@ module Language.WebAssembly.WireFormat
     -- ** Modules
     getModule,
     putModule,
-    -- ** TODO
+    -- * Custom Sections
+    LinkingSymbolFlags (..),
+    LinkingSymbolInfo (..),
+    LinkingSubSection (..),
+    RelocationType (..),
+    RelocationEntry (..),
     getLinkingSymbolInfo,
     putLinkingSymbolInfo,
   )
@@ -227,9 +228,9 @@ putLimits Limits {..} = case maxLimit of
     putWord8 0x00
     putVU32 minLimit
 
--- | 'MemoryType's classify linear memories and their size range. TODO: The
--- limits constrain the minimum and optionally the maximum size of a memory.
--- The limits are given in units of page size.
+-- | 'MemoryType's classify linear memories and their size range. The limits
+-- constrain the minimum (starting), and optionally the maximum size of a
+-- memory. The limits are given in units of page size.
 newtype MemoryType
   = MemoryType
       { memoryLimits :: Limits
@@ -265,13 +266,13 @@ putElementType :: ElementType -> Put
 putElementType et = putWord8 $ case et of
   AnyFunc -> 0x70
 
--- | 'TableType's classify tables over elements of element types within a size
--- range (GEORGE???). Like memories, tables are constrained by limits for their
--- minimum and optionally maximum size. Also, give
+-- | 'TableType's classify 'Table's over elements of element types within a
+-- size range. Like memories, tables are constrained by limits for their
+-- minimum and optionally maximum size.
 data TableType
   = TableType
       { elementType :: ElementType,  -- ^ Type of elements (see 'ElementType').
-        tableLimits :: Limits        -- ^ The limits are given in numbers of entries (GEORGE???).
+        tableLimits :: Limits        -- ^ The limits are given in numbers of entries.
       }
   deriving (Eq, Generic, Ord, Show)
 
@@ -344,18 +345,18 @@ putMemoryArgument MemoryArgument {..} = do
   putVU32 memoryArgumentAlignment
   putVU32 memoryArgumentOffset
 
--- | TODO.
+-- | An 'Instruction' is the building block for WebAssembly programs.
 data Instruction
   = -- | Produce an unconditional trap (abort execution).
     Unreachable
     -- | Do nothing.
   | Nop
-    -- | TODO.
+    -- | A block of instructions.
   | Block
       { blockResultType :: [ValueType],
         blockInstructions :: [Instruction]
       }
-    -- | TODO.
+    -- | A block of instruction to iterate over.
   | Loop
       { loopResultType :: [ValueType],
         loopInstructions :: [Instruction]
@@ -374,9 +375,9 @@ data Instruction
   | BranchIf
       { branchIfLabel :: LabelIndex
       }
-    -- | TODO: br_table performs an indirect branch through an operand indexing
-    -- into the label vector that is an immediate to the instruction, or to a
-    -- default target if the operand is out of bounds
+    -- | Indirect branching, through an operand indexing into the a vector
+    -- ('branchTableLabels'), or to a default target
+    -- ('branchTableFallbackLabel') if the operand is out of bounds.
   | BranchTable
       { branchTableLabels :: [LabelIndex],
         branchTableFallbackLabel :: LabelIndex
@@ -1135,7 +1136,7 @@ data Custom
       }
   deriving (Eq, Generic, Ord, Show)
 
--- | TODO
+-- | Deserialize a 'Name', and compute its length in serialized form.
 getCustomName :: Get (Name, Word32)
 getCustomName = do
   o0 <- bytesRead
@@ -1291,7 +1292,10 @@ putImport Import {..} = do
   putName importName
   putImportDescription importDescription
 
--- | TODO.
+-- | A 'Table' is a vector of opaque values of a particular 'TableType'. The
+-- min size in the limits of the table type specifies the initial size of that
+-- table, while its max, if present, restricts the size to which it can grow
+-- later.
 newtype Table
   = Table
       { tableType :: TableType
@@ -1306,7 +1310,9 @@ getTable = coerce getTableType
 putTable :: Table -> Put
 putTable = coerce putTableType
 
--- | TODO.
+-- | A 'Memory' is a vector of raw uninterpreted bytes. The min size in the
+-- limits of the memory type specifies the initial size of that memory, while
+-- its max, if present, restricts the size to which it can grow later.
 newtype Memory
   = Memory
       { memoryType :: MemoryType
@@ -1321,7 +1327,10 @@ getMemory = coerce getMemoryType
 putMemory :: Memory -> Put
 putMemory = coerce putMemoryType
 
--- | TODO.
+-- | A 'Global' captures a single global variable. Each 'Global' stores a
+-- single value of the given global type.  Moreover, each 'Global' is
+-- initialized with an initial value, given by a constant initializer
+-- expression.
 data Global
   = Global
       { globalType :: GlobalType,
@@ -1480,14 +1489,14 @@ putDataSegment DataSegment {..} = do
   putExpression memoryOffset
   putVecSBS memoryInitialBytes
 
--- | TODO.
+-- | Currently unused. ToDo: Remove.
 data LinkingSymbolFlags
   = LinkingSymbolFlags
       { linkingWasmSymBindingWeak, linkingWasmSymBindingLocal, linkingWasmSymVisibilityHidden, linkingWasmSymUndefined :: Bool
       }
   deriving (Eq, Generic, Ord, Show)
 
--- | TODO.
+-- | Currently unused. ToDo: Remove.
 getLinkingSymbolFlags :: Get LinkingSymbolFlags
 getLinkingSymbolFlags = do
   f <- getVU32
@@ -1498,7 +1507,7 @@ getLinkingSymbolFlags = do
       linkingWasmSymUndefined = testBit f 4
     }
 
--- | TODO.
+-- | Currently unused. ToDo: Remove.
 putLinkingSymbolFlags :: LinkingSymbolFlags -> Put
 putLinkingSymbolFlags LinkingSymbolFlags {..} =
   putVU32
@@ -1507,7 +1516,7 @@ putLinkingSymbolFlags LinkingSymbolFlags {..} =
     $ (if linkingWasmSymBindingLocal then flip setBit 1 else id)
     $ (if linkingWasmSymBindingWeak then flip setBit 0 else id) 0
 
--- | TODO.
+-- | Currently unused. ToDo: Remove.
 data LinkingSymbolInfo
   = LinkingFunctionSymbolInfo
       { linkingFunctionSymbolFlags :: LinkingSymbolFlags,
@@ -1530,7 +1539,7 @@ data LinkingSymbolInfo
       }
   deriving (Eq, Generic, Ord, Show)
 
--- | Deserialize a 'LinkingSymbolInfo' value.
+-- | Currently unused. ToDo: Remove.
 getLinkingSymbolInfo :: Get LinkingSymbolInfo
 getLinkingSymbolInfo = do
   _sym_kind <- getWord8
@@ -1561,7 +1570,7 @@ getLinkingSymbolInfo = do
     3 -> LinkingSectionSymbolInfo _sym_flags <$> getVU32
     _ -> fail "Language.WebAssembly.WireFormat.getLinkingSymbolInfo"
 
--- | Serialize a 'LinkingSymbolInfo' value.
+-- | Currently unused. ToDo: Remove.
 putLinkingSymbolInfo :: LinkingSymbolInfo -> Put
 putLinkingSymbolInfo sym_info = case sym_info of
   LinkingFunctionSymbolInfo {..} -> do
@@ -1586,7 +1595,7 @@ putLinkingSymbolInfo sym_info = case sym_info of
     putLinkingSymbolFlags linkingSectionSymbolFlags
     putVU32 linkingSectionSymbolIndex
 
--- | TODO.
+-- | Currently unused. ToDo: Remove.
 data LinkingSubSection
   = LinkingWasmSegmentInfo
       { linkingWasmSegmentInfoPayload :: SBS.ShortByteString
@@ -1602,7 +1611,7 @@ data LinkingSubSection
       }
   deriving (Eq, Generic, Ord, Show)
 
--- | Deserialize a 'LinkingSubSection'.
+-- | Currently unused. ToDo: Remove.
 getLinkingSubSection :: Get LinkingSubSection
 getLinkingSubSection = do
   b <- getWord8
@@ -1613,7 +1622,7 @@ getLinkingSubSection = do
     8 -> LinkingWasmSymbolTable <$> getVecSBS
     _ -> fail "Language.WebAssembly.WireFormat.getLinkingSubSection"
 
--- | Serialize a 'LinkingSubSection'.
+-- | Currently unused. ToDo: Remove.
 putLinkingSubSection :: LinkingSubSection -> Put
 putLinkingSubSection sec = case sec of
   LinkingWasmSegmentInfo {..} -> do
@@ -1629,7 +1638,7 @@ putLinkingSubSection sec = case sec of
     putWord8 8
     putVecSBS linkingWasmSymbolTable
 
--- | GEORGE: No idea what this is, cannot find sources atm.
+-- | Currently unused. ToDo: Remove.
 data RelocationType
   = RWebAssemblyFunctionIndexLEB
   | RWebAssemblyTableIndexSLEB
@@ -1643,7 +1652,7 @@ data RelocationType
   | RWebAssemblySectionOffsetI32
   deriving (Eq, Generic, Ord, Show)
 
--- | GEORGE: No idea what this is, cannot find sources atm.
+-- | Currently unused. ToDo: Remove.
 data RelocationEntry
   = RelocationEntry
       { relocationType :: RelocationType,
@@ -1654,10 +1663,12 @@ data RelocationEntry
 
 -- | All sorts of 'Section's that can be found in a module.
 data Section
-  = LinkingSection
+  = -- | Custom section (currently unused). ToDo: Remove.
+    LinkingSection
       { linkingSectionVersion :: Word32,
         linkingSubSections :: [LinkingSubSection]
       }
+    -- | Custom section (currently unused). ToDo: Remove.
   | RelocationSection
       { relocationSectionName :: Name,
         relocationSectionIndex :: Word32,
@@ -1889,7 +1900,7 @@ expectWord8 x = do
       <> show b
 
 -- | Deserialize a variable-length unsigned integer of a given length (given in
--- bits). @'getVUN' n@ fails if @n@ is non-positive.
+-- bits). @getVUN n@ fails if @n@ is non-positive.
 getVUN :: Int -> Get Word64
 getVUN n
   | n <= 0 = fail "Language.WebAssembly.WireFormat.getVUN"
@@ -1903,7 +1914,7 @@ getVUN n
         pure $ x .|. (r `shiftL` 7)
 
 -- | Deserialize a variable-length signed integer of a given length (given in
--- bits). @'getVSN' n@ fails if @n@ is non-positive.
+-- bits). @getVSN n@ fails if @n@ is non-positive.
 getVSN :: Int -> Get Int64
 getVSN n
   | n <= 0 = fail "Language.WebAssembly.WireFormat.getVSN"
@@ -2031,6 +2042,9 @@ putWithLength p = do
   putVU32 $ fromIntegral $ LBS.length buf
   putLazyByteString buf
 
+-- | Deserialize a length-prefixed (unsigned 32-bit encoding) entity. Used for
+-- deserializing sections (see "Section 5.5.2 Sections" in the WebAssembly
+-- Specification, Release 1.0).
 getCheckedRegion :: Get a -> Get a
 getCheckedRegion g = do
   l <- fromIntegral <$> getVU32
