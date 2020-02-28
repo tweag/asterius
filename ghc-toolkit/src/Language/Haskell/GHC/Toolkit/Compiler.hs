@@ -10,12 +10,14 @@ where
 
 import Cmm
 import GHC
+import HscTypes
 import PipelineMonad
 import Stream (Stream)
 
-newtype HaskellIR
+data HaskellIR
   = HaskellIR
-      { cmmRaw :: Stream IO Cmm.RawCmmGroup ()
+      { sptEntries :: [SptEntry],
+        cmmRaw :: Stream IO Cmm.RawCmmGroup ()
       }
 
 newtype CmmIR

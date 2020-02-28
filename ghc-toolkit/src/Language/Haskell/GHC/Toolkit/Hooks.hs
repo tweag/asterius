@@ -40,7 +40,7 @@ hooksFromCompiler Compiler {..} h = do
         GHC.runPhaseHook = Just $ \phase input_fn dflags -> case phase of
           GHC.HscOut src_flavour _ (GHC.HscRecomp cgguts mod_summary@GHC.ModSummary {..}) ->
             do
-              r@(_, obj_output_fn) <- do
+              (spt_entries, obj_output_fn) <- do
                 output_fn <-
                   GHC.phaseOutputFilename
                     $ GHC.hscPostBackendPhase dflags src_flavour
@@ -54,7 +54,7 @@ hooksFromCompiler Compiler {..} h = do
                     output_fn
                 GHC.setForeignOs []
                 obj_output_fn <- GHC.phaseOutputFilename GHC.StopLn
-                pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
+                pure (GHC.cg_spt_entries cgguts, obj_output_fn)
               let fetch :: IORef (GHC.ModuleEnv v) -> IO v
                   fetch ref =
                     atomicModifyIORef'
@@ -63,9 +63,9 @@ hooksFromCompiler Compiler {..} h = do
                           let Just v = GHC.lookupModuleEnv env ms_mod
                            in (GHC.delModuleEnv env ms_mod, v)
                       )
-              ir <- liftIO $ HaskellIR <$> fetch cmm_raw_map_ref
+              ir <- liftIO $ HaskellIR spt_entries <$> fetch cmm_raw_map_ref
               withHaskellIR mod_summary ir obj_output_fn
-              pure r
+              pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
           GHC.RealPhase GHC.Cmm -> do
             void $ GHC.runPhase phase input_fn dflags
             ir <-
