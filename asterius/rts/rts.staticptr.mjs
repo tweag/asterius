@@ -32,7 +32,7 @@ export class StaticPtrManager {
       );
     }
     for (const [k] of this.sptEntries) {
-      this.memory.i64Store(p, k && w0_mask);
+      this.memory.i64Store(p, k & w0_mask);
       this.memory.i64Store(p + 8, k >> BigInt(64));
       p += 16;
     }

@@ -18,7 +18,7 @@ sptImports =
         externalBaseName = "hs_spt_lookup",
         functionType =
           FunctionType
-            { paramTypes = [I32, I32, I32, I32],
+            { paramTypes = [F64, F64, F64, F64],
               returnTypes = [F64]
             }
       },
@@ -50,11 +50,14 @@ sptLookup = runEDSL "hs_spt_lookup" $ do
   truncUFloat64ToInt64
     <$> callImport'
       "__asterius_hs_spt_lookup"
-      [ wrapInt64 w0,
-        wrapInt64 $ w0 `shrUInt64` constI64 32,
-        wrapInt64 w1,
-        wrapInt64 $ w1 `shrUInt64` constI64 32
-      ]
+      ( map
+          convertUInt64ToFloat64
+          [ w0 `andInt64` constI64 0xFFFFFFFF,
+            w0 `shrUInt64` constI64 32,
+            w1 `andInt64` constI64 0xFFFFFFFF,
+            w1 `shrUInt64` constI64 32
+          ]
+      )
       F64
     >>= emit
 
