@@ -55,13 +55,10 @@ module Language.WebAssembly.WireFormat
     Global (..),
     Element (..),
     DataSegment (..),
-    -- *** Exports
     Export (..),
     ExportDescription (..),
-    -- *** Imports
     Import (..),
     ImportDescription (..),
-
     -- * Binary (de)serialization
     -- ** Integer types
     getVU32,
@@ -416,7 +413,7 @@ data Instruction
   | SetLocal
       { setLocalIndex :: LocalIndex
       }
-    -- | Set the value of a local variable and return it (GEORGE: IT???).
+    -- | Set the value of a local variable and return the value.
   | TeeLocal
       { teeLocalIndex :: LocalIndex
       }
