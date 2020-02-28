@@ -122,11 +122,14 @@ staticPtrInfo (StaticPtr _ _ n _) = n
 -- | A list of all known keys.
 staticPtrKeys :: IO [StaticKey]
 staticPtrKeys = do
-    keyCount <- hs_spt_key_count
-    allocaArray (fromIntegral keyCount) $ \p -> do
-      count <- hs_spt_keys p keyCount
-      peekArray (fromIntegral count) p >>=
-        mapM (\pa -> peekArray 2 pa >>= \[w1, w2] -> return $ Fingerprint w1 w2)
+  keyCount <- hs_spt_key_count
+  allocaArray (fromIntegral keyCount * 2) $ \p -> do
+    count <- hs_spt_keys p keyCount
+    w [] <$> peekArray (fromIntegral count * 2) p
+  where
+    w acc [] = acc
+    w _ [_] = error "staticPtrKeys: unreachable"
+    w acc (w0 : w1 : ws) = w (Fingerprint w0 w1 : acc) ws
 {-# NOINLINE staticPtrKeys #-}
 
 foreign import ccall unsafe hs_spt_key_count :: IO CInt
