@@ -21,20 +21,24 @@
 module Language.WebAssembly.WireFormat
   ( -- * Types
     Name (..),
+    -- ** Basic Types
     ValueType (..),
     ResultType,
     FunctionType (..),
     Limits (..),
     MemoryType (..),
-    ElementType (..),
     TableType (..),
-    Mutability (..),
+    ElementType (..),
     GlobalType (..),
+    Mutability (..),
+    -- ** Instructions
     MemoryArgument (..),
     Instruction (..),
     Expression (..),
+    -- ** Modules
+    Module (..),
+    -- *** Indices
     Custom (..),
-    -- ** Indices
     FunctionTypeIndex (..),
     FunctionIndex (..),
     TableIndex (..),
@@ -42,38 +46,33 @@ module Language.WebAssembly.WireFormat
     GlobalIndex (..),
     LocalIndex (..),
     LabelIndex (..),
-
+    -- *** Sections
+    Section (..),
+    Function (..),
+    Locals (..),
     Table (..),
     Memory (..),
     Global (..),
     Element (..),
-    Locals (..),
-    Function (..),
     DataSegment (..),
-    Section (..),
-    Module (..),
-
-    -- ** Exports
-    ExportDescription (..),
+    -- *** Exports
     Export (..),
-    -- ** Imports
-    ImportDescription (..),
+    ExportDescription (..),
+    -- *** Imports
     Import (..),
+    ImportDescription (..),
 
     -- * Binary (de)serialization
-    -- ** 32-bit, unsigned
+    -- ** Integer types
     getVU32,
     putVU32,
-    -- ** 32-bit, signed
     getVS32,
     putVS32,
-    -- ** 64-bit, signed
     getVS64,
     putVS64,
-    -- ** Float, single precision
+    -- ** Floating-point types
     getF32,
     putF32,
-    -- ** Float, double precision
     getF64,
     putF64,
     -- ** Modules
@@ -327,7 +326,8 @@ putGlobalType GlobalType {..} = do
   putMutability globalMutability
 
 -- | An /immediate memory argument/ 'MemoryArgument' contains an address offset
--- and the expected alignment.
+-- and the expected alignment. 'MemoryArgument's are used by load/store
+-- 'Instruction's.
 data MemoryArgument
   = MemoryArgument
       { memoryArgumentAlignment :: Word32,  -- ^ Alignment (expressed as the exponend of a power of 2).
