@@ -1,5 +1,6 @@
 module Asterius.Internals.Name
   ( fakeClosureSymbol,
+    idClosureSymbol,
   )
 where
 
@@ -9,6 +10,7 @@ import qualified CLabel as GHC
 import Data.String
 import qualified DynFlags as GHC
 import qualified FastString as GHC
+import qualified Id as GHC
 import qualified IdInfo as GHC
 import qualified Module as GHC
 import qualified Name as GHC
@@ -44,3 +46,10 @@ fakeClosureSymbol dflags pkg_name mod_name occ_name = sym
         (GHC.mkVarOcc occ_name)
     clbl = GHC.mkClosureLabel name GHC.MayHaveCafRefs
     sym = fromString $ asmPpr dflags clbl
+
+idClosureSymbol :: GHC.DynFlags -> GHC.Id -> AsteriusEntitySymbol
+idClosureSymbol dflags n =
+  fromString $ asmPpr dflags $
+    GHC.mkClosureLabel
+      (GHC.idName n)
+      (GHC.idCafInfo n)
