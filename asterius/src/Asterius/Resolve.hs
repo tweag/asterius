@@ -41,6 +41,7 @@ data LinkReport
       { staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64,
         infoTableSet :: [Int64],
         tableSlots, staticMBlocks :: Int,
+        sptEntries :: LM.Map AsteriusEntitySymbol (Word64, Word64),
         bundledFFIMarshalState :: FFIMarshalState
       }
   deriving (Generic, Show)
@@ -48,26 +49,30 @@ data LinkReport
 instance Binary LinkReport
 
 instance Semigroup LinkReport where
-  r0 <> r1 = LinkReport
-    { staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1,
-      functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1,
-      infoTableSet = infoTableSet r0 <> infoTableSet r1,
-      tableSlots = 0,
-      staticMBlocks = 0,
-      bundledFFIMarshalState =
-        bundledFFIMarshalState r0
-          <> bundledFFIMarshalState r1
-    }
+  r0 <> r1 =
+    LinkReport
+      { staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1,
+        functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1,
+        infoTableSet = infoTableSet r0 <> infoTableSet r1,
+        tableSlots = 0,
+        staticMBlocks = 0,
+        sptEntries = sptEntries r0 <> sptEntries r1,
+        bundledFFIMarshalState =
+          bundledFFIMarshalState r0
+            <> bundledFFIMarshalState r1
+      }
 
 instance Monoid LinkReport where
-  mempty = LinkReport
-    { staticsSymbolMap = mempty,
-      functionSymbolMap = mempty,
-      infoTableSet = mempty,
-      tableSlots = 0,
-      staticMBlocks = 0,
-      bundledFFIMarshalState = mempty
-    }
+  mempty =
+    LinkReport
+      { staticsSymbolMap = mempty,
+        functionSymbolMap = mempty,
+        infoTableSet = mempty,
+        tableSlots = 0,
+        staticMBlocks = 0,
+        sptEntries = mempty,
+        bundledFFIMarshalState = mempty
+      }
 
 makeInfoTableSet ::
   AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> [Int64]
@@ -154,6 +159,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
         infoTableSet = makeInfoTableSet merged_m ss_sym_map,
         Asterius.Resolve.tableSlots = tbl_slots,
         staticMBlocks = static_mbs,
+        sptEntries = sptMap merged_m,
         bundledFFIMarshalState = bundled_ffi_state
       }
   )
