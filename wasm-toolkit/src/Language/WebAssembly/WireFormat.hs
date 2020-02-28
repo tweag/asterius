@@ -393,11 +393,11 @@ data Instruction
   | CallIndirect
       { callIndirectFuctionTypeIndex :: FunctionTypeIndex
       }
-    -- | TODO.
+    -- | Tail-call version of 'Call'.
   | ReturnCall
       { returnCallFunctionIndex :: FunctionIndex
       }
-    -- | TODO.
+    -- | Tail-call version of 'CallIndirect'.
   | ReturnCallIndirect
       { returnCallIndirectFunctionTypeIndex :: FunctionTypeIndex
       }
