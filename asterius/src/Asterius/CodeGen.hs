@@ -21,6 +21,7 @@ import Asterius.Builtins
 import Asterius.CodeGen.Droppable
 import Asterius.EDSL
 import Asterius.Internals
+import Asterius.Internals.Name
 import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
@@ -42,6 +43,7 @@ import Data.String
 import Data.Traversable
 import Foreign
 import GHC.Exts
+import GHC.Fingerprint
 import qualified GhcPlugins as GHC
 import qualified Hoopl.Block as GHC
 import qualified Hoopl.Graph as GHC
@@ -1496,7 +1498,16 @@ marshalCmmDecl decl = case decl of
     pure $ processBarf sym f
 
 marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
-marshalHaskellIR this_mod HaskellIR {..} = marshalRawCmm this_mod cmmRaw
+marshalHaskellIR this_mod HaskellIR {..} = do
+  (dflags, _) <- ask
+  let spt_map =
+        M.fromList
+          [ (sym, (w0, w1))
+            | GHC.SptEntry (idClosureSymbol dflags -> sym) (Fingerprint w0 w1) <-
+                sptEntries
+          ]
+  r <- marshalRawCmm this_mod cmmRaw
+  pure r {sptMap = spt_map}
 
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw

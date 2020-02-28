@@ -108,7 +108,7 @@ data AsteriusModule
       { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics,
         staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError,
         functionMap :: LM.Map AsteriusEntitySymbol Function,
-        sptMap :: LM.Map AsteriusEntitySymbol (Word, Word),
+        sptMap :: LM.Map AsteriusEntitySymbol (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
   deriving (Eq, Show, Generic, Data)
