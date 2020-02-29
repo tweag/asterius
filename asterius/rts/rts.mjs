@@ -11,6 +11,7 @@ import { MemoryTrap } from "./rts.memorytrap.mjs";
 import { HeapAlloc } from "./rts.heapalloc.mjs";
 import { StablePtrManager } from "./rts.stableptr.mjs";
 import { StableNameManager } from "./rts.stablename.mjs";
+import { StaticPtrManager } from "./rts.staticptr.mjs";
 import { Scheduler } from "./rts.scheduler.mjs";
 import { HeapBuilder } from "./rts.heapbuilder.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
@@ -57,6 +58,7 @@ export async function newAsteriusInstance(req) {
       __asterius_heapalloc,
       req.symbolTable
     ),
+    __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
       req.symbolTable,
@@ -234,6 +236,7 @@ export async function newAsteriusInstance(req) {
       Messages: modulify(__asterius_messages),
       StablePtr: modulify(__asterius_stableptr_manager),
       StableName: modulify(__asterius_stablename_manager),
+      StaticPtr: modulify(__asterius_staticptr_manager),
       Unicode: modulify(__asterius_unicode),
       Tracing: modulify(__asterius_tracer),
       Scheduler: modulify(__asterius_scheduler)

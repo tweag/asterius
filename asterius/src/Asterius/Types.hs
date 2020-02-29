@@ -108,30 +108,37 @@ data AsteriusModule
       { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics,
         staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError,
         functionMap :: LM.Map AsteriusEntitySymbol Function,
+        sptMap :: LM.Map AsteriusEntitySymbol (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
   deriving (Eq, Show, Generic, Data)
 
 instance Binary AsteriusModule where
-
   put AsteriusModule {..} =
     lazyMapPut staticsMap
       *> lazyMapPut staticsErrorMap
       *> lazyMapPut functionMap
+      *> lazyMapPut sptMap
       *> put ffiMarshalState
-
-  get = AsteriusModule <$> lazyMapGet <*> lazyMapGet <*> lazyMapGet <*> get
+  get =
+    AsteriusModule
+      <$> lazyMapGet
+      <*> lazyMapGet
+      <*> lazyMapGet
+      <*> lazyMapGet
+      <*> get
 
 instance Semigroup AsteriusModule where
-  AsteriusModule sm0 se0 fm0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 mod_ffi_state1 =
+  AsteriusModule sm0 se0 fm0 spt0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 spt1 mod_ffi_state1 =
     AsteriusModule
       (sm0 <> sm1)
       (se0 <> se1)
       (fm0 <> fm1)
+      (spt0 <> spt1)
       (mod_ffi_state0 <> mod_ffi_state1)
 
 instance Monoid AsteriusModule where
-  mempty = AsteriusModule mempty mempty mempty mempty
+  mempty = AsteriusModule mempty mempty mempty mempty mempty
 
 data AsteriusModuleSymbol
   = AsteriusModuleSymbol

@@ -26,9 +26,12 @@ gcSections ::
   AsteriusModule
 gcSections verbose_err store_mod root_syms export_funcs =
   final_m
-    { ffiMarshalState = ffi_this
+    { sptMap = spt_map,
+      ffiMarshalState = ffi_this
     }
   where
+    spt_map =
+      LM.restrictKeys (sptMap store_mod) (LM.keysSet (staticsMap final_m))
     ffi_all = ffiMarshalState store_mod
     ffi_this =
       ffi_all

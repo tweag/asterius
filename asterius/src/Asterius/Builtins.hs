@@ -23,6 +23,7 @@ import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
 import Asterius.Builtins.SM
+import Asterius.Builtins.SPT
 import Asterius.Builtins.StgPrimFloat
 import Asterius.Builtins.Time
 import Asterius.EDSL
@@ -201,6 +202,7 @@ rtsAsteriusModule opts =
     <> hashableCBits
     <> md5CBits
     <> posixCBits
+    <> sptCBits
     <> stgPrimFloatCBits
     <> timeCBits
 
@@ -665,6 +667,7 @@ rtsFunctionImports debug =
       ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
       )
     <> posixImports
+    <> sptImports
     <> timeImports
 
 rtsFunctionExports :: Bool -> [FunctionExport]

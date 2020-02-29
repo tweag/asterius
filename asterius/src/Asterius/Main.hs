@@ -19,6 +19,7 @@ import Asterius.Internals.ByteString
 import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
 import Asterius.JSFFI
+import Asterius.JSGen.SPT
 import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Main.Task
@@ -43,7 +44,6 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
-import Data.Char
 import Data.String
 import Foreign
 import Language.WebAssembly.WireFormat
@@ -175,10 +175,10 @@ genExportStablePtrs sym_map export_funcs FFIMarshalState {..} =
 genReq :: Task -> LinkReport -> Builder
 genReq task LinkReport {..} =
   mconcat
-    [ 
+    [
       -- import target-specific module
       "import targetSpecificModule from './",
-      case target task of 
+      case target task of
         Node -> "node"
         Browser -> "browser",
       "/default.mjs';\n\n",
@@ -198,6 +198,8 @@ genReq task LinkReport {..} =
         staticsSymbolMap
         (exportFunctions task)
         bundledFFIMarshalState,
+      ", sptEntries: ",
+      genSPT staticsSymbolMap sptEntries,
       ", tableSlots: ",
       intDec tableSlots,
       ", staticMBlocks: ",
@@ -420,7 +422,7 @@ ahcDistMain logger task (final_m, report) = do
   let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
     \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory task </> f)
-  let specificFolder = 
+  let specificFolder =
         case target task of
           Node -> "node"
           Browser -> "browser"
