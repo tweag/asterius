@@ -293,26 +293,34 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
     ret_closure = "this.context.scheduler.getTSOret(" <> tid <> ")"
     tid = "await this." <> eval_func <> "(" <> eval_closure <> ")"
     eval_func
-      | ffiInIO && null ffiResultTypes = "rts_evalLazyIO"
-      | ffiInIO = "rts_evalIO"
-      | otherwise = "rts_eval"
+      | null ffiResultTypes = "rts_evalLazyIO"
+      | otherwise = "rts_evalIO"
+    run_func
+      | ffiInIO = "base_AsteriusziTopHandler_runIO_closure"
+      | otherwise = "base_AsteriusziTopHandler_runNonIO_closure"
     eval_closure =
-      foldl'
-        ( \acc (i, t) ->
-            "this.rts_apply("
-              <> acc
-              <> ",this.rts_mk"
-              <> getHsTyCon t
-              <> "("
-              <> ( let _i = "_" <> intDec i
-                    in case t of
-                         FFI_JSVAL ->
-                           "this.context.stablePtrManager.newJSVal(" <> _i <> ")"
-                         _ -> _i
-                 )
-              <> "))"
-        )
-        ("this.context.symbolTable." <> shortByteString (coerce ffiExportClosure))
-        (zip [1 ..] ffiParamTypes)
+      "this.rts_apply(this.context.symbolTable."
+        <> run_func
+        <> ","
+        <> foldl'
+          ( \acc (i, t) ->
+              "this.rts_apply("
+                <> acc
+                <> ",this.rts_mk"
+                <> getHsTyCon t
+                <> "("
+                <> ( let _i = "_" <> intDec i
+                      in case t of
+                           FFI_JSVAL ->
+                             "this.context.stablePtrManager.newJSVal(" <> _i <> ")"
+                           _ -> _i
+                   )
+                <> "))"
+          )
+          ( "this.context.symbolTable."
+              <> shortByteString (coerce ffiExportClosure)
+          )
+          (zip [1 ..] ffiParamTypes)
+        <> ")"
     getHsTyCon FFI_VAL {..} = shortByteString hsTyCon
     getHsTyCon FFI_JSVAL = "JSVal"

@@ -13,19 +13,7 @@ import Language.Haskell.GHC.Toolkit.Constants
 mainBuiltins :: AsteriusModule
 mainBuiltins =
   mempty
-    { staticsMap =
-        M.singleton
-          "main_closure"
-          AsteriusStatics
-            { staticsType = Closure,
-              asteriusStatics =
-                [ SymbolStatic "stg_ap_2_upd_info" 0,
-                  Uninitialized $ offset_StgThunk_payload - 8,
-                  SymbolStatic "base_AsteriusziTopHandler_runMainIO_closure" 0,
-                  SymbolStatic "Main_main_closure" 0
-                ]
-            },
-      ffiMarshalState =
+    { ffiMarshalState =
         mempty
           { ffiExportDecls =
               M.singleton
@@ -37,7 +25,7 @@ mainBuiltins =
                           ffiResultTypes = [],
                           ffiInIO = True
                         },
-                    ffiExportClosure = "main_closure"
+                    ffiExportClosure = "Main_main_closure"
                   }
           }
     }
