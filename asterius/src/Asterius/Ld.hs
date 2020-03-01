@@ -53,7 +53,6 @@ rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
   Set.fromList
     [ "barf",
-      "base_AsteriusziTopHandler_runMainIO_closure",
       "base_AsteriusziTypes_makeJSException_closure",
       "base_GHCziPtr_Ptr_con_info",
       "ghczmprim_GHCziTypes_Czh_con_info",
@@ -65,7 +64,6 @@ rtsUsedSymbols =
       "ghczmprim_GHCziTypes_ZC_con_info",
       "ghczmprim_GHCziTypes_ZMZN_closure",
       "MainCapability",
-      "Main_main_closure",
       "stg_ARR_WORDS_info",
       "stg_BLACKHOLE_info",
       "stg_WHITEHOLE_info",

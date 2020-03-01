@@ -1,5 +1,3 @@
-import * as rtsConstants from "./rts.constants.mjs";
-
 export class Exports {
   constructor(
     memory,
@@ -32,14 +30,5 @@ export class Exports {
 
   rts_evalLazyIO(p) {
     return this.context.scheduler.submitCmdCreateThread("createIOThread", p);
-  }
-
-  main() {
-    return this.rts_evalLazyIO(
-      this.rts_apply(
-        this.context.symbolTable.base_AsteriusziTopHandler_runMainIO_closure,
-        this.context.symbolTable.Main_main_closure
-      )
-    );
   }
 }
