@@ -1,18 +1,23 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Asterius.TopHandler
-  ( runMainIO
-  ) where
+  ( runIO,
+    runNonIO,
+  )
+where
 
 import Control.Exception
 import Foreign.C
 import GHC.TopHandler (flushStdHandles)
-import Prelude
 import System.Exit
 import System.IO
+import Prelude
 
-runMainIO :: IO a -> IO a
-runMainIO = (`finally` flushStdHandles) . (`catch` topHandler)
+runIO :: IO a -> IO a
+runIO = (`finally` flushStdHandles) . (`catch` topHandler)
+
+runNonIO :: a -> IO a
+runNonIO = runIO . evaluate
 
 topHandler :: SomeException -> IO a
 topHandler = throwExitCode realHandler
@@ -24,9 +29,8 @@ realHandler err = do
   throwIO err
 
 throwExitCode :: (SomeException -> IO a) -> SomeException -> IO a
-throwExitCode h err =
-  case fromException err of
-    Just (_ :: ExitCode) -> throwIO err
-    _ -> h err
+throwExitCode h err = case fromException err of
+  Just (_ :: ExitCode) -> throwIO err
+  _ -> h err
 
 foreign import ccall "&" prog_name :: CString

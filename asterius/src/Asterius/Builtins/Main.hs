@@ -21,7 +21,7 @@ mainBuiltins =
               asteriusStatics =
                 [ SymbolStatic "stg_ap_2_upd_info" 0,
                   Uninitialized $ offset_StgThunk_payload - 8,
-                  SymbolStatic "base_AsteriusziTopHandler_runMainIO_closure" 0,
+                  SymbolStatic "base_AsteriusziTopHandler_runIO_closure" 0,
                   SymbolStatic "Main_main_closure" 0
                 ]
             },
