@@ -27,6 +27,7 @@ import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
 import { getNodeModules } from "./rts.node.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
+import { Statistics } from "./rts.statistics.mjs";
 
 export async function newAsteriusInstance(req) {
   let __asterius_persistent_state = req.persistentState
@@ -35,6 +36,10 @@ export async function newAsteriusInstance(req) {
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_logger = new EventLogManager(req.symbolTable),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
+    __asterius_statistics = new Statistics(
+      req.targetSpecificModule.Time,
+      req.gcStatistics
+    ),
     __asterius_wasm_instance = null,
     __asterius_wasm_table = new WebAssembly.Table({
       element: "anyfunc",
@@ -43,7 +48,7 @@ export async function newAsteriusInstance(req) {
     __asterius_wasm_memory = new WebAssembly.Memory({
       initial: req.staticMBlocks * (rtsConstants.mblock_size / 65536)
     }),
-    __asterius_memory = new Memory(),
+    __asterius_memory = new Memory(__asterius_statistics),
     __asterius_memory_trap = new MemoryTrap(
       __asterius_logger,
       req.symbolTable,
@@ -81,6 +86,7 @@ export async function newAsteriusInstance(req) {
       __asterius_stableptr_manager,
       __asterius_stablename_manager,
       __asterius_scheduler,
+      __asterius_statistics,
       req.infoTables,
       req.exportStablePtrs,
       req.symbolTable,
@@ -102,6 +108,7 @@ export async function newAsteriusInstance(req) {
       __asterius_reentrancy_guard,
       req.symbolTable,
       __asterius_scheduler,
+      __asterius_statistics,
       req.exports,
       __asterius_stableptr_manager
     );
@@ -239,6 +246,7 @@ export async function newAsteriusInstance(req) {
       StaticPtr: modulify(__asterius_staticptr_manager),
       Unicode: modulify(__asterius_unicode),
       Tracing: modulify(__asterius_tracer),
+      Statistics: modulify(__asterius_statistics),
       Scheduler: modulify(__asterius_scheduler)
     }
   );

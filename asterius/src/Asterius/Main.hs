@@ -118,6 +118,7 @@ parseTask args = case err_msgs of
             \s t -> t {exportFunctions = fromString s : exportFunctions t},
           str_opt "extra-root-symbol" $
             \s t -> t {extraRootSymbols = fromString s : extraRootSymbols t},
+          bool_opt "gc-stats" $ \t -> t {gcStatistics = True},
           str_opt "gc-threshold" $ \s t -> t {gcThreshold = read s}
         ]
         args
@@ -209,6 +210,8 @@ genReq task LinkReport {..} =
       ", gcThreshold: ",
       intHex (gcThreshold task),
       ", targetSpecificModule: targetSpecificModule",
+      ", gcStatistics: ",
+      if gcStatistics task then "true" else "false",
       "};\n"
     ]
   where
@@ -235,6 +238,7 @@ genDefEntry task =
         [ "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(async i => {\n",
           "try {\n",
           "i.exports.hs_init();\n",
+          if gcStatistics task then "i.exports.context.statistics.endInit();\n" else "",
           "await i.exports.main();\n",
           "} catch (err) {\n",
           "console.log(i.stdio.stdout());\n",
@@ -243,6 +247,7 @@ genDefEntry task =
           "}\n",
           "if (i.stdio.stdout().toString().length) console.log(i.stdio.stdout());\n",
           "if (i.stdio.stderr().toString().length) console.log(i.stdio.stderr());\n",
+          if gcStatistics task then "i.exports.context.statistics.show();\n" else "",
           "});\n"
         ]
     ]

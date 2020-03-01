@@ -13,7 +13,8 @@ function mask(n) {
  * ({@link Memory#getMBlocks} and {@link Memory#freeMBlocks}).
  */
 export class Memory {
-  constructor() {
+  constructor(statistics) {
+    this.statistics = statistics;
     /**
      * The underlying Wasm Memory instance.
      * @name Memory#memory
@@ -73,6 +74,7 @@ export class Memory {
   initView() {
     this.i8View = new Uint8Array(this.memory.buffer);
     this.dataView = new DataView(this.memory.buffer);
+    this.statistics.memoryInUse(this.buffer.byteLength);
   }
 
   static unTag(p) {
@@ -224,6 +226,7 @@ export class Memory {
    *   requested free memory area.
    */
   getMBlocks(n) {
+    this.statistics.allocateMBlocks(n);
     // First of all, check if there are free spots in the existing
     // memory by inspecting this.liveBitset for enough adjacent 1's.
     // In this way, we reuse previously freed MBlock slots and

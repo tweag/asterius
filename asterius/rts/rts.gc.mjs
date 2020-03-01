@@ -19,6 +19,7 @@ export class GC {
     stableptr_manager,
     stablename_manager,
     scheduler,
+    statistics,
     info_tables,
     export_stableptrs,
     symbol_table,
@@ -31,6 +32,7 @@ export class GC {
     this.stablePtrManager = stableptr_manager;
     this.stableNameManager = stablename_manager;
     this.scheduler = scheduler;
+    this.statistics = statistics;
     this.infoTables = info_tables;
     for (const p of export_stableptrs) this.stablePtrManager.newStablePtr(p);
     this.symbolTable = symbol_table;
@@ -113,6 +115,7 @@ export class GC {
    * @param bytes The size in bytes of the closure 
    */
   copyClosure(c, bytes) {
+    this.statistics.copiedBytes(bytes);
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
     this.liveMBlocks.add(bdescr(dest_c));
@@ -906,6 +909,7 @@ export class GC {
    * Performs garbage collection, using scheduler Thread State Objects (TSOs) as roots.
    */
   performGC() {
+    this.statistics.startGC();
     if (this.yolo || this.heapAlloc.liveSize() < this.gcThreshold) {
       // Garbage collection is skipped. This happens in yolo mode,
       // or when the total number of "live" MBlocks is below the given threshold
@@ -913,6 +917,7 @@ export class GC {
       // This avoids a lot of GC invocations
       // (see {@link https://github.com/tweag/asterius/pull/379}).
       this.updateNursery();
+      this.statistics.cancelGC();
       return;
     }
     this.reentrancyGuard.enter(1);
@@ -970,5 +975,6 @@ export class GC {
     this.deadMBlocks.clear();
     this.liveJSVals.clear();
     this.reentrancyGuard.exit(1);
+    this.statistics.endGC();
   }
 }
