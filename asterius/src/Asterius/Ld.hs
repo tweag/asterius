@@ -53,8 +53,6 @@ rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
   Set.fromList
     [ "barf",
-      "base_AsteriusziTopHandler_runIO_closure",
-      "base_AsteriusziTopHandler_runNonIO_closure",
       "base_AsteriusziTypes_makeJSException_closure",
       "base_GHCziPtr_Ptr_con_info",
       "ghczmprim_GHCziTypes_Czh_con_info",
@@ -80,6 +78,13 @@ rtsUsedSymbols =
       "stg_WEAK_info"
     ]
 
+rtsPrivateSymbols :: Set AsteriusEntitySymbol
+rtsPrivateSymbols =
+  Set.fromList
+    [ "base_AsteriusziTopHandler_runIO_closure",
+      "base_AsteriusziTopHandler_runNonIO_closure"
+    ]
+
 linkModules ::
   LinkTask -> AsteriusModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
@@ -98,6 +103,7 @@ linkModules LinkTask {..} m =
     ( Set.unions
         [ Set.fromList rootSymbols,
           rtsUsedSymbols,
+          rtsPrivateSymbols,
           Set.fromList
             [ AsteriusEntitySymbol {entityName = internalName}
               | FunctionExport {..} <- rtsFunctionExports debug

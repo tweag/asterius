@@ -303,8 +303,8 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
       | ffiInIO = "base_AsteriusziTopHandler_runIO_closure"
       | otherwise = "base_AsteriusziTopHandler_runNonIO_closure"
     eval_closure =
-      "this.rts_apply(this.context.symbolTable."
-        <> run_func
+      "this.rts_apply(0x"
+        <> int64HexFixed (sym_map ! run_func)
         <> ","
         <> foldl'
           ( \acc (i, t) ->
