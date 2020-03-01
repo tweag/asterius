@@ -16,12 +16,14 @@ module Asterius.JSFFI
 where
 
 import Asterius.Foreign.Internals
+import Asterius.Internals ((!))
 import Asterius.Types
 import Control.Applicative
 import Data.Bits
 import Data.ByteString.Builder
 import Data.Coerce
 import Data.IORef
+import Data.Int
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Monoid
@@ -259,22 +261,24 @@ generateFFIImportObjectFactory FFIMarshalState {..} =
       )
     <> "}})"
 
-generateFFIExportObject :: FFIMarshalState -> Builder
-generateFFIExportObject FFIMarshalState {..} =
+generateFFIExportObject ::
+  FFIMarshalState -> M.Map AsteriusEntitySymbol Int64 -> Builder
+generateFFIExportObject FFIMarshalState {..} sym_map =
   "{"
     <> mconcat
       ( intersperse
           ","
           [ shortByteString (coerce k)
               <> ":"
-              <> generateFFIExportLambda export_decl
+              <> generateFFIExportLambda export_decl sym_map
             | (k, export_decl) <- M.toList ffiExportDecls
           ]
       )
     <> "}"
 
-generateFFIExportLambda :: FFIExportDecl -> Builder
-generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} =
+generateFFIExportLambda ::
+  FFIExportDecl -> M.Map AsteriusEntitySymbol Int64 -> Builder
+generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
   "async function("
     <> mconcat
       ( intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
@@ -317,9 +321,7 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
                    )
                 <> "))"
           )
-          ( "this.context.symbolTable."
-              <> shortByteString (coerce ffiExportClosure)
-          )
+          ("0x" <> int64HexFixed (sym_map ! ffiExportClosure))
           (zip [1 ..] ffiParamTypes)
         <> ")"
     getHsTyCon FFI_VAL {..} = shortByteString hsTyCon
