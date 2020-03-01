@@ -187,7 +187,7 @@ genReq task LinkReport {..} =
       "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
       ", exports: ",
-      generateFFIExportObject bundledFFIMarshalState,
+      generateFFIExportObject bundledFFIMarshalState raw_symbol_table,
       ", symbolTable: ",
       genSymbolDict symbol_table,
       if debug task
@@ -215,13 +215,7 @@ genReq task LinkReport {..} =
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
     symbol_table =
       M.restrictKeys raw_symbol_table $
-        S.fromList
-          [ ffiExportClosure
-            | FFIExportDecl {..} <-
-                M.elems $
-                  ffiExportDecls bundledFFIMarshalState
-          ]
-          <> S.fromList (extraRootSymbols task)
+        S.fromList (extraRootSymbols task)
           <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
