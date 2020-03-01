@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
 import Asterius.Ld
@@ -13,25 +14,27 @@ import System.Process
 parseLinkTask :: [String] -> IO LinkTask
 parseLinkTask args = do
   link_libs <- fmap catMaybes $ for link_libnames $ findFile link_libdirs
-  pure LinkTask
-    { progName = prog_name,
-      linkOutput = link_output,
-      linkObjs = link_objs,
-      linkLibs = link_libs,
-      linkModule = mempty,
-      debug = "--debug" `elem` args,
-      gcSections = "--no-gc-sections" `notElem` args,
-      verboseErr = "--verbose-err" `elem` args,
-      outputIR =
-        find ("--output-ir=" `isPrefixOf`) args
-          >>= stripPrefix "--output-ir=",
-      rootSymbols =
-        map (AsteriusEntitySymbol . fromString) $
-          str_args "--extra-root-symbol=",
-      exportFunctions =
-        map (AsteriusEntitySymbol . fromString) $
-          str_args "--export-function="
-    }
+  pure
+    LinkTask
+      { progName = prog_name,
+        linkOutput = link_output,
+        linkObjs = link_objs,
+        linkLibs = link_libs,
+        linkModule = mempty,
+        debug = "--debug" `elem` args,
+        gcSections = "--no-gc-sections" `notElem` args,
+        verboseErr = "--verbose-err" `elem` args,
+        outputIR =
+          find ("--output-ir=" `isPrefixOf`) args
+            >>= stripPrefix "--output-ir=",
+        rootSymbols =
+          map (AsteriusEntitySymbol . fromString) $
+            str_args "--extra-root-symbol=",
+        exportFunctions =
+          ("main" :)
+            $ map (AsteriusEntitySymbol . fromString)
+            $ str_args "--export-function="
+      }
   where
     prog_name
       | Just (stripPrefix "--prog-name=" -> Just v) <-
