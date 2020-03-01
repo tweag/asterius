@@ -293,6 +293,7 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
     ret_closure = "this.context.scheduler.getTSOret(" <> tid <> ")"
     tid = "await this." <> eval_func <> "(" <> eval_closure <> ")"
     eval_func
+      | ffiInIO && null ffiResultTypes = "rts_evalLazyIO"
       | ffiInIO = "rts_evalIO"
       | otherwise = "rts_eval"
     eval_closure =
