@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.JSFFI
   ( getFFIModule,
@@ -16,7 +17,6 @@ module Asterius.JSFFI
 where
 
 import Asterius.Foreign.Internals
-import Asterius.Internals ((!))
 import Asterius.Types
 import Control.Applicative
 import Data.Bits
@@ -279,50 +279,66 @@ generateFFIExportObject FFIMarshalState {..} sym_map =
 generateFFIExportLambda ::
   FFIExportDecl -> M.Map AsteriusEntitySymbol Int64 -> Builder
 generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
-  "async function("
-    <> mconcat
-      ( intersperse "," ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
-      )
-    <> "){"
-    <> (if null ffiResultTypes then tid else "return " <> ret)
-    <> "}"
+  case (# M.lookup run_func sym_map, M.lookup ffiExportClosure sym_map #) of
+    (# Just run_func_addr, Just export_closure_addr #) ->
+      let res_func =
+            "async function("
+              <> mconcat
+                ( intersperse
+                    ","
+                    ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
+                )
+              <> "){"
+              <> (if null ffiResultTypes then tid else "return " <> ret)
+              <> "}"
+          ret = case ffiResultTypes of
+            [t] ->
+              let r = "this.rts_get" <> getHsTyCon t <> "(" <> ret_closure <> ")"
+               in case t of
+                    FFI_JSVAL ->
+                      "this.context.stablePtrManager.getJSVal(" <> r <> ")"
+                    _ -> r
+            _ -> error "Asterius.JSFFI.generateFFIExportLambda"
+          ret_closure = "this.context.scheduler.getTSOret(" <> tid <> ")"
+          tid = "await this." <> eval_func <> "(" <> eval_closure <> ")"
+          eval_closure =
+            "this.rts_apply(0x"
+              <> int64HexFixed run_func_addr
+              <> ","
+              <> foldl'
+                ( \acc (i, t) ->
+                    "this.rts_apply("
+                      <> acc
+                      <> ",this.rts_mk"
+                      <> getHsTyCon t
+                      <> "("
+                      <> ( let _i = "_" <> intDec i
+                            in case t of
+                                 FFI_JSVAL ->
+                                   "this.context.stablePtrManager.newJSVal("
+                                     <> _i
+                                     <> ")"
+                                 _ -> _i
+                         )
+                      <> "))"
+                )
+                ("0x" <> int64HexFixed export_closure_addr)
+                (zip [1 ..] ffiParamTypes)
+              <> ")"
+       in res_func
+    _ -> err_func
   where
-    ret = case ffiResultTypes of
-      [t] ->
-        let r = "this.rts_get" <> getHsTyCon t <> "(" <> ret_closure <> ")"
-         in case t of
-              FFI_JSVAL -> "this.context.stablePtrManager.getJSVal(" <> r <> ")"
-              _ -> r
-      _ -> error "Asterius.JSFFI.generateFFIExportLambda"
-    ret_closure = "this.context.scheduler.getTSOret(" <> tid <> ")"
-    tid = "await this." <> eval_func <> "(" <> eval_closure <> ")"
-    eval_func
-      | null ffiResultTypes = "rts_evalLazyIO"
-      | otherwise = "rts_evalIO"
+    err_func =
+      "() => Promise.reject(\""
+        <> shortByteString (coerce run_func)
+        <> " or "
+        <> shortByteString (coerce ffiExportClosure)
+        <> " not found\")"
     run_func
       | ffiInIO = "base_AsteriusziTopHandler_runIO_closure"
       | otherwise = "base_AsteriusziTopHandler_runNonIO_closure"
-    eval_closure =
-      "this.rts_apply(0x"
-        <> int64HexFixed (sym_map ! run_func)
-        <> ","
-        <> foldl'
-          ( \acc (i, t) ->
-              "this.rts_apply("
-                <> acc
-                <> ",this.rts_mk"
-                <> getHsTyCon t
-                <> "("
-                <> ( let _i = "_" <> intDec i
-                      in case t of
-                           FFI_JSVAL ->
-                             "this.context.stablePtrManager.newJSVal(" <> _i <> ")"
-                           _ -> _i
-                   )
-                <> "))"
-          )
-          ("0x" <> int64HexFixed (sym_map ! ffiExportClosure))
-          (zip [1 ..] ffiParamTypes)
-        <> ")"
+    eval_func
+      | null ffiResultTypes = "rts_evalLazyIO"
+      | otherwise = "rts_evalIO"
     getHsTyCon FFI_VAL {..} = shortByteString hsTyCon
     getHsTyCon FFI_JSVAL = "JSVal"
