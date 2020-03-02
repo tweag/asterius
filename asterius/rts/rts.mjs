@@ -71,7 +71,7 @@ export async function newAsteriusInstance(req) {
       __asterius_stableptr_manager
     ),
     __asterius_integer_manager = new IntegerManager(),
-    __asterius_fs = new MemoryFileSystem(),
+    __asterius_fs = new MemoryFileSystem(req.consoleHistory),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_text_cbits = new TextCBits(__asterius_memory),
     __asterius_time_cbits = new TimeCBits(__asterius_memory, req.targetSpecificModule),
@@ -168,6 +168,9 @@ export async function newAsteriusInstance(req) {
       __asterius_scheduler.returnFFIPromise(tid, promise)
   };
 
+
+  const __asterius_encoder = new TextEncoder();
+
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),
     {
@@ -193,13 +196,13 @@ export async function newAsteriusInstance(req) {
       },
       rts: {
         printI64: x =>
-          __asterius_fs.writeSync(1, __asterius_show_I64(x) + "\n"),
+          __asterius_fs.writeSync(1, __asterius_encoder.encode(__asterius_show_I64(x) + "\n")),
         assertEqI64: function(x, y) {
           if (x != y) {
             throw new WebAssembly.RuntimeError("unequal I64: " + x + ", " + y);
           }
         },
-        print: x => __asterius_fs.writeSync(1, x + "\n")
+        print: x => __asterius_fs.writeSync(1, __asterius_encoder.encode(x + "\n"))
       },
       fs: {
         read: (fd, buf, count) => {
