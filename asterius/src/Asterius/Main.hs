@@ -112,6 +112,7 @@ parseTask args = case err_msgs of
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {backend = Binaryen, verboseErr = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
+          bool_opt "console-history" $ \t -> t {consoleHistory = True},
           str_opt "ghc-option" $
             \s t -> t {extraGHCFlags = extraGHCFlags t <> [s]},
           str_opt "export-function" $
@@ -206,6 +207,8 @@ genReq task LinkReport {..} =
       intDec staticMBlocks,
       ", yolo: ",
       if yolo task then "true" else "false",
+      ", consoleHistory: ",
+      if consoleHistory task then "true" else "false",
       ", gcThreshold: ",
       intHex (gcThreshold task),
       ", targetSpecificModule: targetSpecificModule",
@@ -232,17 +235,9 @@ genDefEntry task =
         Node -> "process.on(\"unhandledRejection\", err => { throw err; });\n"
         Browser -> mempty,
       mconcat
-        [ "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(async i => {\n",
-          "try {\n",
+        [ "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(i => {\n",
           "i.exports.hs_init();\n",
-          "await i.exports.main();\n",
-          "} catch (err) {\n",
-          "console.log(i.stdio.stdout());\n",
-          "console.log(i.stdio.stderr());\n",
-          "throw err;\n",
-          "}\n",
-          "if (i.stdio.stdout().toString().length) console.log(i.stdio.stdout());\n",
-          "if (i.stdio.stderr().toString().length) console.log(i.stdio.stderr());\n",
+          "i.exports.main();\n",
           "});\n"
         ]
     ]
