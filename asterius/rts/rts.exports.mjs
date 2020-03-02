@@ -17,10 +17,6 @@ export class Exports {
     Object.assign(this, exports);
   }
 
-  rts_eval(p) {
-    return this.context.scheduler.submitCmdCreateThread("createGenThread", p);
-  }
-
   rts_evalIO(p) {
     return this.context.scheduler.submitCmdCreateThread(
       "createStrictIOThread",

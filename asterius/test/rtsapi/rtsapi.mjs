@@ -20,10 +20,13 @@ module
         )
       )
     );
-    const tid_p1 = await i.exports.rts_eval(
+    const tid_p1 = await i.exports.rts_evalIO(
       i.exports.rts_apply(
-        i.symbolTable.Main_fact_closure,
-        i.exports.rts_mkInt(5)
+        i.symbolTable.base_AsteriusziTopHandler_runNonIO_closure,
+        i.exports.rts_apply(
+          i.symbolTable.Main_fact_closure,
+          i.exports.rts_mkInt(5)
+        )
       )
     );
     console.log(i.exports.rts_getInt(i.exports.getTSOret(tid_p1)));
@@ -36,10 +39,13 @@ module
     console.log(i.exports.rts_getBool(i.exports.rts_mkBool(0)));
     console.log(i.exports.rts_getBool(i.exports.rts_mkBool(42)));
     const x0 = Math.random();
-    const tid_p3 = await i.exports.rts_eval(
+    const tid_p3 = await i.exports.rts_evalIO(
       i.exports.rts_apply(
-        i.symbolTable.base_GHCziBase_id_closure,
-        i.exports.rts_mkDouble(x0)
+        i.symbolTable.base_AsteriusziTopHandler_runNonIO_closure,
+        i.exports.rts_apply(
+          i.symbolTable.base_GHCziBase_id_closure,
+          i.exports.rts_mkDouble(x0)
+        )
       )
     );
     const x1 = i.exports.rts_getDouble(i.exports.getTSOret(tid_p3));

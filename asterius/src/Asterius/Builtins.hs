@@ -214,7 +214,6 @@ generateRtsExternalInterfaceModule :: BuiltinsOptions -> AsteriusModule
 generateRtsExternalInterfaceModule opts =
   mempty
     <> rtsApplyFunction opts
-    <> createGenThreadFunction opts
     <> createIOThreadFunction opts
     <> createStrictIOThreadFunction opts
     <> scheduleTSOFunction opts
@@ -694,7 +693,6 @@ rtsFunctionExports debug =
           "rts_getStablePtr",
           "rts_getJSVal",
           "rts_apply",
-          "createGenThread",
           "createStrictIOThread",
           "createIOThread",
           "scheduleTSO",
@@ -886,7 +884,6 @@ hsInitFunction,
   rtsCheckSchedStatusFunction,
   scheduleTSOFunction,
   createThreadFunction,
-  createGenThreadFunction,
   createIOThreadFunction,
   createStrictIOThreadFunction,
   getThreadIdFunction,
@@ -1097,10 +1094,6 @@ createThreadHelper mk_closures = do
   t <- call' "createThread" [] I64
   for_ (mk_closures closure) $ pushClosure t
   emit t
-
-createGenThreadFunction _ =
-  runEDSL "createGenThread" $ createThreadHelper $ \closure ->
-    [closure, symbol "stg_enter_info"]
 
 createIOThreadFunction _ =
   runEDSL "createIOThread" $ createThreadHelper $ \closure ->
