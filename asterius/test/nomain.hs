@@ -16,6 +16,7 @@ main = do
       "test/nomain/NoMain.hs",
       "--output-ir",
       "--ghc-option=-no-hs-main",
+      "--extra-root-symbol=base_AsteriusziTopHandler_runNonIO_closure",
       "--extra-root-symbol=NoMain_x_closure"
     ]
       <> args
@@ -25,12 +26,18 @@ main = do
       newAsteriusInstanceNonMain
         s
         "test/nomain/NoMain"
-        ["NoMain_x_closure"]
+        ["base_AsteriusziTopHandler_runNonIO_closure", "NoMain_x_closure"]
         m
     hsInit s i
-    let x_closure = deRefJSVal i <> ".symbolTable.NoMain_x_closure"
+    let x_closure =
+          deRefJSVal i
+            <> ".exports.rts_apply("
+            <> deRefJSVal i
+            <> ".symbolTable.base_AsteriusziTopHandler_runNonIO_closure,"
+            <> deRefJSVal i
+            <> ".symbolTable.NoMain_x_closure)"
         x_tid =
-          "await " <> deRefJSVal i <> ".exports.rts_eval(" <> x_closure <> ")"
+          "await " <> deRefJSVal i <> ".exports.rts_evalIO(" <> x_closure <> ")"
         x_ret = deRefJSVal i <> ".exports.getTSOret(" <> x_tid <> ")"
         x_sp = deRefJSVal i <> ".exports.rts_getStablePtr(" <> x_ret <> ")"
         x_val' = deRefJSVal i <> ".getJSVal(" <> x_sp <> ")"
