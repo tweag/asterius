@@ -564,3 +564,5 @@ HsInt offset_StgStableName_sn() { return offsetof(StgStableName, sn); }
 HsInt clock_monotonic() { return CLOCK_MONOTONIC; }
 
 HsInt clock_realtime() { return CLOCK_REALTIME; }
+
+HsInt _MUT_ARR_PTRS_CARD_BITS() { return MUT_ARR_PTRS_CARD_BITS; }

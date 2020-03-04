@@ -600,3 +600,5 @@ foreign import ccall unsafe "offset_StgStableName_sn"
 foreign import ccall unsafe "clock_monotonic" clock_monotonic :: Int
 
 foreign import ccall unsafe "clock_realtime" clock_realtime :: Int
+
+foreign import ccall unsafe "_MUT_ARR_PTRS_CARD_BITS" _MUT_ARR_PTRS_CARD_BITS :: Int

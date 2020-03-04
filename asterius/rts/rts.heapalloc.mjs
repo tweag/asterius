@@ -52,11 +52,11 @@ export class HeapAlloc {
     this.currentPools[1] = this.allocMegaGroup(1, true);
   }
   /**
-   * Sets the current generation number, so that new closures and 
+   * Sets the current generation number, so that new closures and
    * MBlocks are allocated in the right space and with correct flag.
    * @param {number} gen_no The generation number
    * @param {boolean} [forceNewAlloc=true] Force the allocation
-   *   of a new MBlock. 
+   *   of a new MBlock.
    */
   setGenerationNo(gen_no, forceNewAlloc=true) {
     let pool = this.generations[gen_no];
@@ -182,7 +182,7 @@ export class HeapAlloc {
 
   /**
    * Frees the garbage MBlocks by taking into account the
-   * information on live and dead MBlocks passed by the 
+   * information on live and dead MBlocks passed by the
    * garbage collector. Used by {@link GC#performGC}.
    * @param live_mblocks The set of current live MBlocks
    * @param live_mblocks The set of current dead MBlocks
@@ -210,19 +210,24 @@ export class HeapAlloc {
     }
 
     // Free unreachable MBlocks
+    const currentPinned = this.currentPools[1];
     for (const bd of Array.from(this.mgroups)) {
+      const gen_no = this.memory.i16Load(bd + rtsConstants.offset_bdescr_gen_no);
+      const pinned = Boolean(
+        this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags) & rtsConstants.BF_PINNED
+      );
+      // Promote full pinned MBlocks to gen 1
+      if (pinned && gen_no == 0 && bd != currentPinned) {
+        this.memory.i16Store(bd + rtsConstants.offset_bdescr_gen_no, 1);
+      }
+      // Free unreachable MBlocks
       if (!live_mblocks.has(bd)) {
-        const
-          gen_no = this.memory.i16Load(bd + rtsConstants.offset_bdescr_gen_no),
-          pinned = Boolean(
-            this.memory.i16Load(bd + rtsConstants.offset_bdescr_flags) & rtsConstants.BF_PINNED
-          );
-        // Note: not all unreachable MBlocks can be 
+        // Note: not all unreachable MBlocks can be
         // freed during a minor collection. This is because
         // pinned MBlocks or older MBlocks may look unreachable
         // since only the pointers to younger generations
         // are stored in the remembered set.
-        if(major || (!pinned && gen_no == 0)) {
+        if (major || (!pinned && gen_no == 0)) {
           this.mgroups.delete(bd);
           const p = bd - rtsConstants.offset_first_bdescr,
             n = this.memory.i16Load(bd + rtsConstants.offset_bdescr_node);
@@ -231,7 +236,7 @@ export class HeapAlloc {
       }
     }
     // Reallocate pinned pool if the current has been freed
-    if (!this.mgroups.has(this.currentPools[1])) {
+    if (!this.mgroups.has(currentPinned)) {
       this.currentPools[1] = this.allocMegaGroup(1, true);
     }
     // Reinitialize generations if necessary
@@ -243,7 +248,7 @@ export class HeapAlloc {
 
   /**
    * Estimates the size of living objects by counting the number
-   * of MBlocks that were allocated by {@link GC#getMBlocks} 
+   * of MBlocks that were allocated by {@link GC#getMBlocks}
    * some time ago, but have not been yet been freed by {@link GC#freeMBlocks}.
    * @returns The number of allocated MBlocks
    */

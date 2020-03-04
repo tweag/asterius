@@ -89,7 +89,44 @@ export class GC {
      * @name GC#liveJSVals
      */
     this.liveJSVals = new Set();
-    Object.freeze(this);
+    /**
+     * Whether to perform a major or minor collection.
+     * A minor collection collects only the younger generation (gen 0),
+     * while a major collects both gen 0 and gen 1.
+     * @name GC#major
+     */
+    this.major = false;
+    /**
+     * The list of mutable closures belonging to older generations.
+     * @name GC#mut_list
+     */
+    this.mut_list = [];
+    Object.seal(this);
+  }
+
+  /**
+   * Returns the generation number of the given closure.
+   * Note: meaningful only for the closures that are not static.
+   * @param c The address of the closure.
+   */
+  gen_no(c) {
+    return this.memory.i16Load(bdescr(c) + rtsConstants.offset_bdescr_gen_no);
+  }
+
+  /**
+   * Stores the given closure in the remembered set.
+   * @param c The mutated closure
+   * @param gen The generation to which the closure belongs
+   *   (if the generation provided is -1, it will be read
+   *    from the block descriptor)
+   */
+  recordMutableCap(c, gen=-1) {
+    if (this.memory.heapAlloced(c)) {
+      if (gen < 0) gen = this.gen_no(c);
+      if (gen > 0) this.mut_list.push(c);
+    } else {
+      this.mut_list.push(c);
+    }
   }
 
   /**
@@ -241,8 +278,10 @@ export class GC {
       this.liveJSVals.add(Number(c));
       return c;
     }
+
     const tag = Memory.getDynTag(c),
       untagged_c = Memory.unDynTag(c);
+
     let info = Number(this.memory.i64Load(untagged_c));
 
     if (info % 2) {
@@ -257,12 +296,23 @@ export class GC {
       // Object in the static part of the memory:
       // it won't be copied ...
       this.nonMovedObjects.add(untagged_c);
-      // ... but it will still be scavenged
-      this.workList.push(untagged_c);
-      // Warning: do not set the MBlock as live,
+      if (this.major) {
+        // ... but it will still be scavenged
+        this.workList.push(untagged_c);
+      }
+      // On a minor collection it is not necessary
+      // to scavenge the closure, because only the
+      // mutable closures can point to the younger
+      // generation, and these are scavenged separately.
+      //
+      // Also, do not set the MBlock as live,
       // because the static part of memory is not
       // tracked by HeapAlloc.mgroups and it would
       // break the checks in HeapAlloc.handleLiveness.
+      return c;
+    } else if (!this.major && this.gen_no(untagged_c) > 0) {
+      // This is a minor collection: older closures
+      // won't be evacuated at all.
       return c;
     } else if (this.isPinned(untagged_c)) {
       // The object belongs to a pinned MBlock:
@@ -274,7 +324,8 @@ export class GC {
       this.liveMBlocks.add(bdescr(untagged_c));
       return c;
     }
-    // The closure is heap-allocated and dynamic:
+    // The closure is heap-allocated, dynamic, and
+    // in the right generation:
     // proceed to evacuate it into to-space
     if (this.infoTables && !this.infoTables.has(info))
       throw new WebAssembly.RuntimeError(
@@ -463,6 +514,33 @@ export class GC {
 
   scavengePointersFirst(payload, ptrs) {
     for (let i = 0; i < ptrs; ++i) this.scavengeClosureAt(payload + (i << 3));
+  }
+
+
+  /**
+   * Scavenge the pointers of a MUT_ARR, but only
+   * the areas that are marked as dirty in the
+   * card table.
+   * @param p The address of the array payload
+   * @param ptrs The number of pointers in the array
+   */
+  scavengeMutArrPtrsMarked(p, ptrs) {
+    // `cards` is the pointer to the card table
+    const cards = p + (ptrs << 3);
+    const c = 1 << rtsConstants.MUT_ARR_PTRS_CARD_BITS;
+    // The length (in bytes) of the card table
+    const mutArrPtrsCards = ((ptrs + c - 1) >> rtsConstants.MUT_ARR_PTRS_CARD_BITS);
+    for (let m = 0; m < mutArrPtrsCards; m++) {
+      if (this.memory.i8Load(cards + m) != 0) {
+        this.memory.i8Store(cards + m, 0); // clean up
+        const q = Math.min(p + c, cards);
+        for (; p < q; p += 8) {
+          this.scavengeClosureAt(p);
+        }
+      } else {
+        p += c;
+      }
+    }
   }
 
   scavengeSmallBitmap(payload, bitmap, size) {
@@ -835,7 +913,21 @@ export class GC {
       case ClosureTypes.ARR_WORDS: {
         break;
       }
-      case ClosureTypes.MUT_ARR_PTRS_CLEAN:
+      case ClosureTypes.MUT_ARR_PTRS_CLEAN: {
+        const ptrs = Number(
+          this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs)
+        );
+        this.scavengePointersFirst(
+          c + rtsConstants.offset_StgMutArrPtrs_payload,
+          ptrs
+        );
+        if (!this.major) {
+          throw new WebAssembly.RuntimeError(`Found a clean array during a minor collection.`);
+        }
+        // add the array to the mut_list
+        this.mut_list.push(c);
+        break;
+      }
       case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN: {
         const ptrs = Number(
           this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs)
@@ -855,6 +947,8 @@ export class GC {
           c + rtsConstants.offset_StgMutArrPtrs_payload,
           ptrs
         );
+        // add the array to the mut_list
+        this.mut_list.push(c);
         break;
       }
       case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY: {
@@ -890,7 +984,21 @@ export class GC {
         this.scavengeStackChunk(sp, sp_lim);
         break;
       }
-      case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN:
+      case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN: {
+        const ptrs = Number(
+          this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
+        );
+        this.scavengePointersFirst(
+          c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
+          ptrs
+        );
+        if (!this.major) {
+          throw new WebAssembly.RuntimeError(`Found a clean array during a minor collection.`);
+        }
+        // add the array to the mut_list
+        this.mut_list.push(c);
+        break;
+      }
       case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
         const ptrs = Number(
           this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
@@ -910,6 +1018,8 @@ export class GC {
           c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
           ptrs
         );
+        // add the array to the mut_list
+        this.mut_list.push(c);
         break;
       }
       case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY: {
@@ -921,10 +1031,142 @@ export class GC {
           c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
           ptrs
         );
+        // do not add the frozen array to the mut_list
         break;
       }
       default:
         throw new WebAssembly.RuntimeError();
+    }
+  }
+
+  /**
+   * Scavenge the mutable list. Treat the mutable objects as roots,
+   * and also remove non-mutable ones from the list.
+   */
+  scavenge_mutable_list() {
+    const
+      mut_list = this.mut_list,
+      mut_list_old = mut_list.slice();
+    // Empty the mut_list
+    mut_list.length = 0;
+    // First of all, set known mutable objects as non-moved,
+    // so to avoid scavenging them twice
+    for (const c of mut_list_old) {
+      this.nonMovedObjects.add(c);
+    }
+    for (const c of mut_list_old) {
+      const info = Number(this.memory.i64Load(c)),
+        type = this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_type);
+      if (this.infoTables && !this.infoTables.has(info))
+        throw new WebAssembly.RuntimeError(
+          `Invalid info table 0x${info.toString(16)}`
+        );
+      switch (type) {
+        case ClosureTypes.MUT_VAR_DIRTY: {
+          this.memory.i64Store(c, this.symbolTable["stg_MUT_VAR_CLEAN_info"]);
+          this.scavengeClosureAt(c + rtsConstants.offset_StgMutVar_var);
+          break;
+        }
+        case ClosureTypes.IND_STATIC: {
+          this.scavengeClosureAt(c + rtsConstants.offset_StgIndStatic_indirectee);
+          break;
+        }
+        case ClosureTypes.MVAR_DIRTY: {
+          this.memory.i64Store(c, this.symbolTable["stg_MVAR_CLEAN_info"]);
+          this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_head);
+          this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_tail);
+          this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_value);
+          break;
+        }
+        case ClosureTypes.TSO: {
+          this.scavengeClosureAt(c + rtsConstants.offset_StgTSO_stackobj);
+          this.memory.i32Store(c + rtsConstants.offset_StgTSO_dirty, 0);
+          break;
+        }
+        case ClosureTypes.STACK: {
+          const stack_size = this.memory.i32Load(
+              c + rtsConstants.offset_StgStack_stack_size
+            ),
+            sp = Number(this.memory.i64Load(c + rtsConstants.offset_StgStack_sp)),
+            sp_lim = c + rtsConstants.offset_StgStack_stack + (stack_size << 3);
+          this.scavengeStackChunk(sp, sp_lim);
+          this.memory.i32Store(c + rtsConstants.offset_StgStack_dirty, 0);
+          break;
+        }
+        case ClosureTypes.MUT_ARR_PTRS_CLEAN:
+        case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN: {
+          // do not remove the array from the mut_list:
+          // mutable arrays stay always on the mut_list
+          mut_list.push(c);
+          break;
+        }
+        case ClosureTypes.MUT_ARR_PTRS_DIRTY: {
+          // The array is already on the mut_list, therefore
+          // it suffices to scavenge only the pointers marked
+          // in the card table
+          const ptrs = Number(
+            this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs)
+          );
+          this.scavengeMutArrPtrsMarked(
+            c + rtsConstants.offset_StgMutArrPtrs_payload,
+            ptrs
+          );
+          this.memory.i64Store(c, this.symbolTable["stg_MUT_ARR_PTRS_CLEAN_info"]);
+          // do not remove the array from the mut_list
+          mut_list.push(c);
+          break;
+        }
+        case ClosureTypes.MUT_ARR_PTRS_FROZEN_DIRTY: {
+          const ptrs = Number(
+            this.memory.i64Load(c + rtsConstants.offset_StgMutArrPtrs_ptrs)
+          );
+          this.scavengePointersFirst(
+            c + rtsConstants.offset_StgMutArrPtrs_payload,
+            ptrs
+          );
+          this.memory.i64Store(c, this.symbolTable["stg_MUT_ARR_PTRS_FROZEN_CLEAN_info"]);
+          // the frozen array can be removed from the mut_list
+          break;
+        }
+        case ClosureTypes.SMALL_MUT_ARR_PTRS_DIRTY: {
+          const ptrs = Number(
+            this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
+          );
+          this.scavengePointersFirst(
+            c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
+            ptrs
+          );
+          this.memory.i64Store(c, this.symbolTable["stg_SMALL_MUT_ARR_PTRS_CLEAN_info"]);
+          // do not remove the array from the mut_list
+          mut_list.push(c);
+          break;
+        }
+        case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY: {
+          const ptrs = Number(
+            this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
+          );
+          this.scavengePointersFirst(
+            c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
+            ptrs
+          );
+          this.memory.i64Store(c, this.symbolTable["stg_SMALL_MUT_ARR_PTRS_FROZEN_CLEAN_info"]);
+          // the frozen array can be removed from the mut_list
+          break;
+        }
+        case ClosureTypes.MUT_ARR_PTRS_FROZEN_CLEAN:
+        case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
+          throw new WebAssembly.RuntimeError(`Unexpected frozen clean closure on the mut_list (type ${type})`);
+        }
+        case ClosureTypes.BLACKHOLE: {
+          const ptrs = this.memory.i32Load(
+            info + rtsConstants.offset_StgInfoTable_layout
+          );
+          this.scavengePointersFirst(c + 8, ptrs);
+          break;
+        }
+        default:
+          throw new WebAssembly.RuntimeError(`Unexpected closure on the mut_list (type ${type})`);
+      }
     }
   }
 
@@ -972,9 +1214,17 @@ export class GC {
     this.reentrancyGuard.enter(1);
 
     // Set the current generation number to 1, so that
-    // closures are evacuated in the older generation.
-    // Also, only major collections for now.
-    this.heapAlloc.setGenerationNo(1);
+    // closures are evacuated in the older generation
+    this.heapAlloc.setGenerationNo(1, this.major);
+
+    // Scavenge mut_list first
+    if (this.major) {
+      // In case of a major collection, the mut_list can be
+      // ignored because the whole memory will be scanned anyway
+      this.mut_list.length = 0;
+    } else {
+      this.scavenge_mutable_list();
+    }
 
     // Evacuate TSOs
     for (const [_, tso_info] of this.scheduler.tsos) {
@@ -1017,7 +1267,7 @@ export class GC {
     }
 
     // mark unused MBlocks
-    this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
+    this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks, this.major);
     // set current generation back to 0
     this.heapAlloc.setGenerationNo(0);
     // allocate a new nursery
@@ -1030,5 +1280,8 @@ export class GC {
     this.deadMBlocks.clear();
     this.liveJSVals.clear();
     this.reentrancyGuard.exit(1);
+
+    // TODO: just an experiment: alternate major and minor collections
+    this.major = !this.major;
   }
 }
