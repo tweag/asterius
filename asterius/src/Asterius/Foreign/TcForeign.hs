@@ -116,8 +116,12 @@ asteriusTcCheckFIType arg_tys res_ty idecl@(CImport (L lc cconv) (L ls safety) m
         ( text
             "The safe/unsafe annotation should not be used with `foreign import prim'."
         )
-      checkForeignArgs (isFFIPrimArgumentTy dflags) arg_tys
-      checkForeignRes nonIOok checkSafe (isFFIPrimResultTy dflags) res_ty
+      checkForeignArgs (asteriusIsFFIArgumentTy dflags safety) arg_tys
+      checkForeignRes
+        nonIOok
+        checkSafe
+        (asteriusIsFFIImportResultTy dflags)
+        res_ty
       return idecl
   | otherwise =
     do

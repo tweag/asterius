@@ -70,7 +70,7 @@ asteriusDsCImport id co (CLabel cid) cconv _ _ = do
       stdcall_info = fun_type_arg_stdcall_info dflags cconv ty
    in return [(id, rhs')]
 asteriusDsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
-  asteriusDsPrimCall id co (CCall (CCallSpec target cconv safety))
+  asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
 asteriusDsCImport id co (CFunction target) cconv safety _ =
   asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
 asteriusDsCImport id _ CWrapper _ _ _ = do
@@ -119,19 +119,6 @@ asteriusDsFCall fn_id co fcall = do
         fn_id
           `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
   return [(work_id, work_rhs), (fn_id_w_inl, wrap_rhs')]
-
-asteriusDsPrimCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
-asteriusDsPrimCall fn_id co fcall = do
-  let ty = pFst $ coercionKind co
-      (tvs, fun_ty) = tcSplitForAllTys ty
-      (arg_tys, io_res_ty) = tcSplitFunTys fun_ty
-  args <- newSysLocalsDs arg_tys
-  ccall_uniq <- newUnique
-  dflags <- getDynFlags
-  let call_app = mkFCall dflags ccall_uniq fcall (map Var args) io_res_ty
-      rhs = mkLams tvs (mkLams args call_app)
-      rhs' = Cast rhs co
-  return [(fn_id, rhs')]
 
 isAnyTy :: Type -> Bool
 isAnyTy ty =
