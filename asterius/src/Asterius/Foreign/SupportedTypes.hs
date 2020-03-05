@@ -69,7 +69,13 @@ ffiBoxedValueTypeMap0,
     GHC.NameEnv FFIValueType
 ffiBoxedValueTypeMap0 =
   GHC.mkNameEnv
-    [ ( GHC.charTyConName,
+    [ ( GHC.getName GHC.anyTyCon,
+        FFIValueType
+          { ffiValueTypeRep = getFFIValueTypeRep GHC.anyTyCon,
+            hsTyCon = ""
+          }
+      ),
+      ( GHC.charTyConName,
         FFIValueType
           { ffiValueTypeRep = getFFIValueTypeRep GHC.charPrimTyCon,
             hsTyCon = "Char"
