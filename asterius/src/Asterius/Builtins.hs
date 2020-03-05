@@ -878,68 +878,6 @@ generateWrapperModule m =
   where
     wrap (n, f) = (n <> "_wrapper", generateWrapperFunction n f)
 
-hsInitFunction,
-  rtsApplyFunction,
-  rtsGetSchedStatusFunction,
-  rtsCheckSchedStatusFunction,
-  scheduleTSOFunction,
-  createThreadFunction,
-  createIOThreadFunction,
-  createStrictIOThreadFunction,
-  getThreadIdFunction,
-  allocatePinnedFunction,
-  newCAFFunction,
-  stgReturnFunction,
-  getStablePtrWrapperFunction,
-  deRefStablePtrWrapperFunction,
-  freeStablePtrWrapperFunction,
-  rtsMkBoolFunction,
-  rtsMkDoubleFunction,
-  rtsMkCharFunction,
-  rtsMkIntFunction,
-  rtsMkWordFunction,
-  rtsMkPtrFunction,
-  rtsMkStablePtrFunction,
-  rtsMkJSValFunction,
-  rtsGetBoolFunction,
-  rtsGetDoubleFunction,
-  loadI64Function,
-  printI64Function,
-  assertEqI64Function,
-  printF32Function,
-  printF64Function,
-  strlenFunction,
-  memchrFunction,
-  memcpyFunction,
-  memsetFunction,
-  memcmpFunction,
-  fromJSArrayBufferFunction,
-  toJSArrayBufferFunction,
-  fromJSStringFunction,
-  fromJSArrayFunction,
-  threadPausedFunction,
-  dirtyMutVarFunction,
-  dirtyMVarFunction,
-  dirtyStackFunction,
-  recordClosureMutatedFunction,
-  raiseExceptionHelperFunction,
-  barfFunction,
-  getProgArgvFunction,
-  suspendThreadFunction,
-  scheduleThreadFunction,
-  scheduleThreadOnFunction,
-  resumeThreadFunction,
-  performMajorGCFunction,
-  performGCFunction,
-  localeEncodingFunction,
-  isattyFunction,
-  fdReadyFunction,
-  rtsSupportsBoundThreadsFunction,
-  readFunction,
-  writeFunction,
-  tryWakeupThreadFunction ::
-    BuiltinsOptions -> AsteriusModule
-
 initCapability :: EDSL ()
 initCapability = do
   storeI32 mainCapability offset_Capability_no $ constI32 0
@@ -963,12 +901,14 @@ initCapability = do
   storeI64 mainCapability (offset_Capability_r + offset_StgRegTable_rCurrentTSO) $
     constI64 0
 
+hsInitFunction :: BuiltinsOptions -> AsteriusModule
 hsInitFunction _ = runEDSL "hs_init" $ do
   initCapability
   bd_nursery <-
     truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
   putLVal currentNursery bd_nursery
 
+rtsApplyFunction :: BuiltinsOptions -> AsteriusModule
 rtsApplyFunction _ = runEDSL "rts_apply" $ do
   setReturnTypes [I64]
   [f, arg] <- params [I64, I64]
@@ -982,11 +922,13 @@ rtsApplyFunction _ = runEDSL "rts_apply" $ do
   storeI64 ap (offset_StgThunk_payload + 8) arg
   emit ap
 
+rtsGetSchedStatusFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetSchedStatusFunction _ = runEDSL "rts_getSchedStatus" $ do
   setReturnTypes [I32]
   tid <- param I32
   callImport' "__asterius_getTSOrstat" [tid] I32 >>= emit
 
+rtsCheckSchedStatusFunction :: BuiltinsOptions -> AsteriusModule
 rtsCheckSchedStatusFunction _ = runEDSL "rts_checkSchedStatus" $ do
   tid <- param I32
   stat <- call' "rts_getSchedStatus" [tid] I32
@@ -1012,6 +954,7 @@ dirtySTACK _ stack =
 
 -- `_scheduleTSO(tso,func)` executes the given tso starting at the given
 -- function
+scheduleTSOFunction :: BuiltinsOptions -> AsteriusModule
 scheduleTSOFunction BuiltinsOptions {} = runEDSL "scheduleTSO" $ do
   [tso, func] <- params [I64, I64]
   -- store the current TSO
@@ -1039,11 +982,13 @@ scheduleTSOFunction BuiltinsOptions {} = runEDSL "scheduleTSO" $ do
   putLVal currentTSO (constI64 0)
 
 -- Return the thread ID of the given tso
+getThreadIdFunction :: BuiltinsOptions -> AsteriusModule
 getThreadIdFunction BuiltinsOptions {} = runEDSL "rts_getThreadId" $ do
   setReturnTypes [I64]
   tso <- param I64
   emit (extendUInt32 (loadI32 tso offset_StgTSO_id))
 
+createThreadFunction :: BuiltinsOptions -> AsteriusModule
 createThreadFunction BuiltinsOptions {..} = runEDSL "createThread" $ do
   setReturnTypes [I64]
   tso_p <-
@@ -1095,10 +1040,12 @@ createThreadHelper mk_closures = do
   for_ (mk_closures closure) $ pushClosure t
   emit t
 
+createIOThreadFunction :: BuiltinsOptions -> AsteriusModule
 createIOThreadFunction _ =
   runEDSL "createIOThread" $ createThreadHelper $ \closure ->
     [symbol "stg_ap_v_info", closure, symbol "stg_enter_info"]
 
+createStrictIOThreadFunction :: BuiltinsOptions -> AsteriusModule
 createStrictIOThreadFunction _ =
   runEDSL "createStrictIOThread" $ createThreadHelper $ \closure ->
     [ symbol "stg_forceIO_info",
@@ -1115,11 +1062,9 @@ genAllocateFunction ::
   AsteriusModule
 genAllocateFunction (BuiltinsOptions {}) n = runEDSL n $ do
   setReturnTypes [I64]
-  [_, n] <- params [I64, I64]
-  ( truncUFloat64ToInt64
-      <$> callImport' "__asterius_allocate" [convertUInt64ToFloat64 n] F64
-    )
-    >>= emit
+  [_, m] <- params [I64, I64]
+  callImport' "__asterius_allocate" [convertUInt64ToFloat64 m] F64
+    >>= emit . truncUFloat64ToInt64
 
 {-
 allocateFunction BuiltinsOptions {} =
@@ -1130,6 +1075,7 @@ allocateFunction BuiltinsOptions {} =
      callImport' "__asterius_allocate" [convertUInt64ToFloat64 n] F64) >>=
       emit
   -}
+allocatePinnedFunction :: BuiltinsOptions -> AsteriusModule
 allocatePinnedFunction _ = runEDSL "allocatePinned" $ do
   setReturnTypes [I64]
   [_, n] <- params [I64, I64]
@@ -1138,6 +1084,7 @@ allocatePinnedFunction _ = runEDSL "allocatePinned" $ do
     )
     >>= emit
 
+newCAFFunction :: BuiltinsOptions -> AsteriusModule
 newCAFFunction _ = runEDSL "newCAF" $ do
   setReturnTypes [I64]
   [reg, caf] <- params [I64, I64]
@@ -1174,10 +1121,12 @@ stgRun init_f = do
       break' loop_lbl Nothing
 
 -- Return from a STG function
+stgReturnFunction :: BuiltinsOptions -> AsteriusModule
 stgReturnFunction _ =
   runEDSL "StgReturn" $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0 -- store NULL in the __asterius_pc register. This will break stgRun
       -- trampolining loop.
 
+getStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 getStablePtrWrapperFunction _ = runEDSL "getStablePtr" $ do
   setReturnTypes [I64]
   obj64 <- param I64
@@ -1188,6 +1137,7 @@ getStablePtrWrapperFunction _ = runEDSL "getStablePtr" $ do
       F64
   emit $ truncUFloat64ToInt64 sp_f64
 
+deRefStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 deRefStablePtrWrapperFunction _ = runEDSL "deRefStablePtr" $ do
   setReturnTypes [I64]
   sp64 <- param I64
@@ -1198,10 +1148,12 @@ deRefStablePtrWrapperFunction _ = runEDSL "deRefStablePtr" $ do
       F64
   emit $ truncUFloat64ToInt64 obj_f64
 
+freeStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 freeStablePtrWrapperFunction _ = runEDSL "hs_free_stable_ptr" $ do
   sp64 <- param I64
   callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
 
+makeStableNameWrapperFunction :: BuiltinsOptions -> AsteriusModule
 makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
   setReturnTypes [I64]
   sp64 <- param I64
@@ -1227,6 +1179,7 @@ rtsMkHelper _ n con_sym = runEDSL n $ do
   storeI64 p 8 i
   emit p
 
+rtsMkBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkBoolFunction _ = runEDSL "rts_mkBool" $ do
   setReturnTypes [I64]
   [i] <- params [I64]
@@ -1236,6 +1189,7 @@ rtsMkBoolFunction _ = runEDSL "rts_mkBool" $ do
     (emit $ symbol "ghczmprim_GHCziTypes_False_closure")
     (emit $ symbol "ghczmprim_GHCziTypes_True_closure")
 
+rtsMkDoubleFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkDoubleFunction _ = runEDSL "rts_mkDouble" $ do
   setReturnTypes [I64]
   [i] <- params [F64]
@@ -1244,6 +1198,7 @@ rtsMkDoubleFunction _ = runEDSL "rts_mkDouble" $ do
   storeF64 p 8 i
   emit p
 
+rtsMkCharFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkCharFunction _ = runEDSL "rts_mkChar" $ do
   setReturnTypes [I64]
   [i] <- params [I64]
@@ -1252,24 +1207,30 @@ rtsMkCharFunction _ = runEDSL "rts_mkChar" $ do
   storeI64 p 8 i
   emit p
 
+rtsMkIntFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkIntFunction opts =
   rtsMkHelper opts "rts_mkInt" "ghczmprim_GHCziTypes_Izh_con_info"
 
+rtsMkWordFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkWordFunction opts =
   rtsMkHelper opts "rts_mkWord" "ghczmprim_GHCziTypes_Wzh_con_info"
 
+rtsMkPtrFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkPtrFunction opts =
   rtsMkHelper opts "rts_mkPtr" "base_GHCziPtr_Ptr_con_info"
 
+rtsMkStablePtrFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkStablePtrFunction opts =
   rtsMkHelper opts "rts_mkStablePtr" "base_GHCziStable_StablePtr_con_info"
 
+rtsMkJSValFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkJSValFunction opts =
   maybe mempty (rtsMkHelper opts "rts_mkJSVal") (jsvalConInfo opts)
 
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
+rtsGetBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do
   setReturnTypes [I64]
   p <- param I64
@@ -1278,6 +1239,7 @@ rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do
       (constI32 0)
       (loadI32 (loadI64 (unTagClosure p) 0) offset_StgInfoTable_srt)
 
+rtsGetDoubleFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetDoubleFunction _ = runEDSL "rts_getDouble" $ do
   setReturnTypes [F64]
   p <- param I64
@@ -1302,40 +1264,48 @@ rtsGetIntFunction _ =
     p <- param I64
     emit $ loadI64 (unTagClosure p) offset_StgClosure_payload
 -}
+loadI64Function :: BuiltinsOptions -> AsteriusModule
 loadI64Function _ = runEDSL "loadI64" $ do
   setReturnTypes [I64]
   p <- param I64
   emit $ loadI64 p 0
 
+printI64Function :: BuiltinsOptions -> AsteriusModule
 printI64Function _ = runEDSL "print_i64" $ do
   x <- param I64
   callImport "printI64" [convertSInt64ToFloat64 x]
 
+assertEqI64Function :: BuiltinsOptions -> AsteriusModule
 assertEqI64Function _ = runEDSL "assert_eq_i64" $ do
   x <- param I64
   y <- param I64
   callImport "assertEqI64" [convertSInt64ToFloat64 x, convertSInt64ToFloat64 y]
 
+printF32Function :: BuiltinsOptions -> AsteriusModule
 printF32Function _ = runEDSL "print_f32" $ do
   x <- param F32
   callImport "printF32" [x]
 
+printF64Function :: BuiltinsOptions -> AsteriusModule
 printF64Function _ = runEDSL "print_f64" $ do
   x <- param F64
   callImport "printF64" [x]
 
+strlenFunction :: BuiltinsOptions -> AsteriusModule
 strlenFunction _ = runEDSL "strlen" $ do
   setReturnTypes [I64]
   [str] <- params [I64]
   len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
   emit $ truncUFloat64ToInt64 len
 
+debugBelch2Function :: BuiltinsOptions -> AsteriusModule
 debugBelch2Function _ = runEDSL "debugBelch2" $ do
   [fmt, str] <- params [I64, I64]
   callImport
     "__asterius_debugBelch2"
     [convertUInt64ToFloat64 fmt, convertUInt64ToFloat64 str]
 
+memchrFunction :: BuiltinsOptions -> AsteriusModule
 memchrFunction _ = runEDSL "memchr" $ do
   setReturnTypes [I64]
   [ptr, val, num] <- params [I64, I64, I64]
@@ -1346,18 +1316,21 @@ memchrFunction _ = runEDSL "memchr" $ do
       F64
   emit $ truncUFloat64ToInt64 p
 
+memcpyFunction :: BuiltinsOptions -> AsteriusModule
 memcpyFunction _ = runEDSL "memcpy" $ do
   setReturnTypes [I64]
   [dst, src, n] <- params [I64, I64, I64]
   callImport "__asterius_memcpy" $ map convertUInt64ToFloat64 [dst, src, n]
   emit dst
 
+memsetFunction :: BuiltinsOptions -> AsteriusModule
 memsetFunction _ = runEDSL "memset" $ do
   setReturnTypes [I64]
   [dst, c, n] <- params [I64, I64, I64]
   callImport "__asterius_memset" $ map convertUInt64ToFloat64 [dst, c, n]
   emit dst
 
+memcmpFunction :: BuiltinsOptions -> AsteriusModule
 memcmpFunction _ = runEDSL "memcmp" $ do
   setReturnTypes [I64]
   [ptr1, ptr2, n] <- params [I64, I64, I64]
@@ -1368,6 +1341,7 @@ memcmpFunction _ = runEDSL "memcmp" $ do
       I32
   emit $ extendSInt32 cres
 
+fromJSArrayBufferFunction :: BuiltinsOptions -> AsteriusModule
 fromJSArrayBufferFunction _ = runEDSL "__asterius_fromJSArrayBuffer" $ do
   setReturnTypes [I64]
   [buf] <- params [I64]
@@ -1379,6 +1353,7 @@ fromJSArrayBufferFunction _ = runEDSL "__asterius_fromJSArrayBuffer" $ do
         F64
   emit addr
 
+toJSArrayBufferFunction :: BuiltinsOptions -> AsteriusModule
 toJSArrayBufferFunction _ = runEDSL "__asterius_toJSArrayBuffer" $ do
   setReturnTypes [I64]
   [addr, len] <- params [I64, I64]
@@ -1390,6 +1365,7 @@ toJSArrayBufferFunction _ = runEDSL "__asterius_toJSArrayBuffer" $ do
         F64
   emit r
 
+fromJSStringFunction :: BuiltinsOptions -> AsteriusModule
 fromJSStringFunction _ = runEDSL "__asterius_fromJSString" $ do
   setReturnTypes [I64]
   [s] <- params [I64]
@@ -1401,6 +1377,7 @@ fromJSStringFunction _ = runEDSL "__asterius_fromJSString" $ do
         F64
   emit addr
 
+fromJSArrayFunction :: BuiltinsOptions -> AsteriusModule
 fromJSArrayFunction _ = runEDSL "__asterius_fromJSArray" $ do
   setReturnTypes [I64]
   [arr] <- params [I64]
@@ -1412,10 +1389,12 @@ fromJSArrayFunction _ = runEDSL "__asterius_fromJSArray" $ do
         F64
   emit addr
 
+threadPausedFunction :: BuiltinsOptions -> AsteriusModule
 threadPausedFunction _ = runEDSL "threadPaused" $ do
   _ <- params [I64, I64]
   pure ()
 
+dirtyMutVarFunction :: BuiltinsOptions -> AsteriusModule
 dirtyMutVarFunction _ = runEDSL "dirty_MUT_VAR" $ do
   [_, p] <- params [I64, I64]
   if'
@@ -1424,22 +1403,27 @@ dirtyMutVarFunction _ = runEDSL "dirty_MUT_VAR" $ do
     (storeI64 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
     mempty
 
+dirtyMVarFunction :: BuiltinsOptions -> AsteriusModule
 dirtyMVarFunction _ = runEDSL "dirty_MVAR" $ do
   [_basereg, _mvar] <- params [I64, I64]
   mempty
 
+dirtyStackFunction :: BuiltinsOptions -> AsteriusModule
 dirtyStackFunction _ = runEDSL "dirty_STACK" $ do
   [cap, stack] <- params [I64, I64]
   dirtySTACK cap stack
 
+recordClosureMutatedFunction :: BuiltinsOptions -> AsteriusModule
 recordClosureMutatedFunction _ = runEDSL "recordClosureMutated" $ do
   [_cap, _closure] <- params [I64, I64]
   mempty
 
+tryWakeupThreadFunction :: BuiltinsOptions -> AsteriusModule
 tryWakeupThreadFunction _ = runEDSL "tryWakeupThread" $ do
   [_cap, tso] <- params [I64, I64]
   callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
 
+raiseExceptionHelperFunction :: BuiltinsOptions -> AsteriusModule
 raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
   setReturnTypes [I64]
   args <- params [I64, I64, I64]
@@ -1451,6 +1435,7 @@ raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
         F64
   emit frame_type
 
+barfFunction :: BuiltinsOptions -> AsteriusModule
 barfFunction _ = runEDSL "barf" $ do
   s <- param I64
   callImport "__asterius_barf" [convertUInt64ToFloat64 s]
@@ -1479,54 +1464,66 @@ unicodeCBits =
       ("u_iswprint", [I64], [I64])
     ]
 
+getProgArgvFunction :: BuiltinsOptions -> AsteriusModule
 getProgArgvFunction _ = runEDSL "getProgArgv" $ do
   [argc, argv] <- params [I64, I64]
   storeI64 argc 0 $ constI64 1
   storeI64 argv 0 $ symbol "prog_argv"
 
+suspendThreadFunction :: BuiltinsOptions -> AsteriusModule
 suspendThreadFunction _ = runEDSL "suspendThread" $ do
   setReturnTypes [I64]
   [reg, _] <- params [I64, I64]
   emit reg
 
+scheduleThreadFunction :: BuiltinsOptions -> AsteriusModule
 scheduleThreadFunction _ = runEDSL "scheduleThread" $ do
   setReturnTypes []
   [_cap, tso] <- params [I64, I64]
   callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
 
+scheduleThreadOnFunction :: BuiltinsOptions -> AsteriusModule
 scheduleThreadOnFunction _ = runEDSL "scheduleThreadOn" $ do
   setReturnTypes []
   [_cap, _cpu, tso] <- params [I64, I64, I64]
   callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
 
+resumeThreadFunction :: BuiltinsOptions -> AsteriusModule
 resumeThreadFunction _ = runEDSL "resumeThread" $ do
   setReturnTypes [I64]
   reg <- param I64
   emit reg
 
+performMajorGCFunction :: BuiltinsOptions -> AsteriusModule
 performMajorGCFunction _ =
   runEDSL "performMajorGC" $ callImport "__asterius_performGC" []
 
+performGCFunction :: BuiltinsOptions -> AsteriusModule
 performGCFunction _ = runEDSL "performGC" $ call "performMajorGC" []
 
+localeEncodingFunction :: BuiltinsOptions -> AsteriusModule
 localeEncodingFunction _ = runEDSL "localeEncoding" $ do
   setReturnTypes [I64]
   emit $ symbol "__asterius_localeEncoding"
 
+isattyFunction :: BuiltinsOptions -> AsteriusModule
 isattyFunction _ = runEDSL "isatty" $ do
   setReturnTypes [I64]
   _ <- param I64
   emit $ constI64 0
 
+fdReadyFunction :: BuiltinsOptions -> AsteriusModule
 fdReadyFunction _ = runEDSL "fdReady" $ do
   setReturnTypes [I64]
   _ <- params [I64, I64, I64, I64]
   emit $ constI64 1
 
+rtsSupportsBoundThreadsFunction :: BuiltinsOptions -> AsteriusModule
 rtsSupportsBoundThreadsFunction _ = runEDSL "rtsSupportsBoundThreads" $ do
   setReturnTypes [I64]
   emit $ constI64 0
 
+readFunction :: BuiltinsOptions -> AsteriusModule
 readFunction _ =
   runEDSL "ghczuwrapperZC22ZCbaseZCSystemziPosixziInternalsZCread" $ do
     setReturnTypes [I64]
@@ -1539,6 +1536,7 @@ readFunction _ =
           F64
     emit r
 
+writeFunction :: BuiltinsOptions -> AsteriusModule
 writeFunction _ =
   runEDSL "ghczuwrapperZC20ZCbaseZCSystemziPosixziInternalsZCwrite" $ do
     setReturnTypes [I64]
