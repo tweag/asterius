@@ -243,6 +243,8 @@ foreign import ccall unsafe "offset_StgMutArrPtrs_size"
 foreign import ccall unsafe "offset_StgMutArrPtrs_payload"
   offset_StgMutArrPtrs_payload :: Int
 
+foreign import ccall unsafe "offset_StgMutVar_var" offset_StgMutVar_var :: Int
+
 foreign import ccall unsafe "offset_StgMVar_head" offset_StgMVar_head :: Int
 
 foreign import ccall unsafe "offset_StgMVar_tail" offset_StgMVar_tail :: Int
