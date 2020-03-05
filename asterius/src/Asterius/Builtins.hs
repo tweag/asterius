@@ -1155,7 +1155,7 @@ freeStablePtrWrapperFunction _ = runEDSL "hs_free_stable_ptr" $ do
   sp64 <- param I64
   callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
 
--- GEORGE: No signature at all? Why no warning?
+makeStableNameWrapperFunction :: BuiltinsOptions -> AsteriusModule
 makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
   setReturnTypes [I64]
   sp64 <- param I64
@@ -1300,7 +1300,7 @@ strlenFunction _ = runEDSL "strlen" $ do
   len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
   emit $ truncUFloat64ToInt64 len
 
--- GEORGE: No signature at all? Why no warning?
+debugBelch2Function :: BuiltinsOptions -> AsteriusModule
 debugBelch2Function _ = runEDSL "debugBelch2" $ do
   [fmt, str] <- params [I64, I64]
   callImport
