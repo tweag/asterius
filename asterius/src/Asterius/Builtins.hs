@@ -1063,10 +1063,8 @@ genAllocateFunction ::
 genAllocateFunction (BuiltinsOptions {}) n = runEDSL n $ do
   setReturnTypes [I64]
   [_, m] <- params [I64, I64]
-  ( truncUFloat64ToInt64
-      <$> callImport' "__asterius_allocate" [convertUInt64ToFloat64 m] F64
-    )
-    >>= emit
+  callImport' "__asterius_allocate" [convertUInt64ToFloat64 m] F64
+    >>= emit . truncUFloat64ToInt64
 
 {-
 allocateFunction BuiltinsOptions {} =
