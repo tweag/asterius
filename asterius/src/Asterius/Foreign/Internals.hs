@@ -12,6 +12,7 @@ module Asterius.Foreign.Internals
   )
 where
 
+import Asterius.Foreign.SupportedTypes
 import Asterius.Internals.Name
 import Asterius.Types
 import Asterius.TypesConv
@@ -39,238 +40,14 @@ import Text.Parsec
   )
 import Text.Parsec.String (Parser)
 import qualified TyCoRep as GHC
-import qualified TysPrim as GHC
-
-ffiBoxedValueTypeMap0,
-  ffiBoxedValueTypeMap1,
-  ffiPrimValueTypeMap0,
-  ffiPrimValueTypeMap1,
-  ffiValueTypeMap0,
-  ffiValueTypeMap1 ::
-    GHC.NameEnv FFIValueType
-ffiBoxedValueTypeMap0 =
-  GHC.mkNameEnv
-    [ ( GHC.charTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Char",
-            signed = False
-          }
-      ),
-      ( GHC.boolTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Bool",
-            signed = False
-          }
-      ),
-      ( GHC.intTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Int",
-            signed = True
-          }
-      ),
-      ( GHC.int8TyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Int8",
-            signed = True
-          }
-      ),
-      ( GHC.int16TyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Int16",
-            signed = True
-          }
-      ),
-      ( GHC.int32TyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Int32",
-            signed = True
-          }
-      ),
-      ( GHC.int64TyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Int64",
-            signed = True
-          }
-      ),
-      ( GHC.wordTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Word",
-            signed = False
-          }
-      ),
-      ( GHC.word8TyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Word8",
-            signed = False
-          }
-      ),
-      ( GHC.word16TyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Word16",
-            signed = False
-          }
-      ),
-      ( GHC.word32TyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Word32",
-            signed = False
-          }
-      ),
-      ( GHC.word64TyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Word64",
-            signed = False
-          }
-      ),
-      ( GHC.floatTyConName,
-        FFI_VAL
-          { ffiWasmValueType = F32,
-            ffiJSValueType = F32,
-            hsTyCon = "Float",
-            signed = True
-          }
-      ),
-      ( GHC.doubleTyConName,
-        FFI_VAL
-          { ffiWasmValueType = F64,
-            ffiJSValueType = F64,
-            hsTyCon = "Double",
-            signed = True
-          }
-      )
-    ]
-ffiBoxedValueTypeMap1 =
-  GHC.mkNameEnv
-    [ ( GHC.ptrTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "Ptr",
-            signed = False
-          }
-      ),
-      ( GHC.funPtrTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "FunPtr",
-            signed = False
-          }
-      ),
-      ( GHC.stablePtrTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "StablePtr",
-            signed = False
-          }
-      )
-    ]
-ffiPrimValueTypeMap0 =
-  GHC.mkNameEnv
-    [ ( GHC.charPrimTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "",
-            signed = False
-          }
-      ),
-      ( GHC.intPrimTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "",
-            signed = True
-          }
-      ),
-      ( GHC.wordPrimTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "",
-            signed = False
-          }
-      ),
-      ( GHC.floatPrimTyConName,
-        FFI_VAL
-          { ffiWasmValueType = F32,
-            ffiJSValueType = F32,
-            hsTyCon = "",
-            signed = True
-          }
-      ),
-      ( GHC.doublePrimTyConName,
-        FFI_VAL
-          { ffiWasmValueType = F64,
-            ffiJSValueType = F64,
-            hsTyCon = "",
-            signed = True
-          }
-      )
-    ]
-ffiPrimValueTypeMap1 =
-  GHC.mkNameEnv
-    [ ( GHC.addrPrimTyConName,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "",
-            signed = False
-          }
-      ),
-      ( GHC.getName GHC.stablePtrPrimTyCon,
-        FFI_VAL
-          { ffiWasmValueType = I64,
-            ffiJSValueType = F64,
-            hsTyCon = "",
-            signed = False
-          }
-      )
-    ]
-ffiValueTypeMap0 = ffiBoxedValueTypeMap0 `GHC.plusNameEnv` ffiPrimValueTypeMap0
-ffiValueTypeMap1 = ffiBoxedValueTypeMap1 `GHC.plusNameEnv` ffiPrimValueTypeMap1
 
 parseFFIValueType :: Bool -> GHC.Type -> Maybe FFIValueType
 parseFFIValueType accept_prim norm_sig_ty
-  | isJSValTy norm_sig_ty = pure FFI_JSVAL
+  | isJSValTy norm_sig_ty = pure ffiJSVal
   | otherwise = case norm_sig_ty of
-    GHC.TyConApp norm_tc [] ->
-      GHC.lookupNameEnv ffi_valuetype_map0 (GHC.getName norm_tc)
-    GHC.TyConApp norm_tc [_] ->
-      GHC.lookupNameEnv ffi_valuetype_map1 (GHC.getName norm_tc)
+    GHC.TyConApp norm_tc [] -> getFFIValueType0 accept_prim norm_tc
+    GHC.TyConApp norm_tc [_] -> getFFIValueType1 accept_prim norm_tc
     _ -> Nothing
-  where
-    ffi_valuetype_map0
-      | accept_prim = ffiValueTypeMap0
-      | otherwise = ffiBoxedValueTypeMap0
-    ffi_valuetype_map1
-      | accept_prim = ffiValueTypeMap1
-      | otherwise = ffiBoxedValueTypeMap1
 
 parseFFIFunctionType :: Bool -> GHC.Type -> Maybe FFIFunctionType
 parseFFIFunctionType accept_prim norm_sig_ty = case res_ty of
@@ -280,26 +57,31 @@ parseFFIFunctionType accept_prim norm_sig_ty = case res_ty of
     pure ft {ffiParamTypes = vt : ffiParamTypes ft}
   GHC.TyConApp norm_tc norm_tys1 | GHC.getName norm_tc == GHC.ioTyConName ->
     case norm_tys1 of
-      [GHC.TyConApp u []] | u == GHC.unitTyCon -> pure FFIFunctionType
-        { ffiParamTypes = [],
-          ffiResultTypes = [],
-          ffiInIO = True
-        }
+      [GHC.TyConApp u []]
+        | u == GHC.unitTyCon ->
+          pure
+            FFIFunctionType
+              { ffiParamTypes = [],
+                ffiResultTypes = [],
+                ffiInIO = True
+              }
       [norm_t1] -> do
         r <- parseFFIValueType False norm_t1
-        pure FFIFunctionType
-          { ffiParamTypes = [],
-            ffiResultTypes = [r],
-            ffiInIO = True
-          }
+        pure
+          FFIFunctionType
+            { ffiParamTypes = [],
+              ffiResultTypes = [r],
+              ffiInIO = True
+            }
       _ -> Nothing
   _ -> do
     r <- parseFFIValueType accept_prim res_ty
-    pure FFIFunctionType
-      { ffiParamTypes = [],
-        ffiResultTypes = [r],
-        ffiInIO = False
-      }
+    pure
+      FFIFunctionType
+        { ffiParamTypes = [],
+          ffiResultTypes = [r],
+          ffiInIO = False
+        }
   where
     res_ty = GHC.dropForAlls norm_sig_ty
 
@@ -368,11 +150,12 @@ processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaS
             <> zEncodeModuleSymbol mod_sym
             <> "_"
             <> asmPpr dflags u
-        new_decl = FFIImportDecl
-          { ffiFunctionType = ffi_ftype,
-            ffiSafety = ffi_safety,
-            ffiSourceChunks = chunks
-          }
+        new_decl =
+          FFIImportDecl
+            { ffiFunctionType = ffi_ftype,
+              ffiSafety = ffi_safety,
+              ffiSourceChunks = chunks
+            }
         alter_hook_state (Just ffi_state) =
           Just
             ffi_state
@@ -418,14 +201,16 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
     let ffi_ftype = case parseFFIFunctionType False norm_sig_ty of
           Just r -> r
           _ -> GHC.panicDoc "processFFIExport" $ GHC.ppr norm_sig_ty
-        new_k = AsteriusEntitySymbol
-          { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
-          }
+        new_k =
+          AsteriusEntitySymbol
+            { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
+            }
         export_closure = idClosureSymbol dflags export_id
-        new_decl = FFIExportDecl
-          { ffiFunctionType = ffi_ftype,
-            ffiExportClosure = export_closure
-          }
+        new_decl =
+          FFIExportDecl
+            { ffiFunctionType = ffi_ftype,
+              ffiExportClosure = export_closure
+            }
         alter_hook_state (Just ffi_state) =
           Just
             ffi_state
