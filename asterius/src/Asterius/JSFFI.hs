@@ -17,6 +17,7 @@ module Asterius.JSFFI
 where
 
 import Asterius.Foreign.Internals
+import Asterius.Foreign.SupportedTypes
 import Asterius.Types
 import Control.Applicative
 import Data.Bits
@@ -30,20 +31,22 @@ import Data.Monoid
 import Prelude hiding (IO)
 import qualified Prelude
 
-recoverWasmImportValueType :: FFIValueType -> ValueType
-recoverWasmImportValueType vt = case vt of
-  FFI_VAL {..} -> ffiJSValueType
-  FFI_JSVAL -> F64
-
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
-recoverWasmWrapperValueType vt = case vt of
-  FFI_VAL {..} -> ffiWasmValueType
-  FFI_JSVAL -> I64
+recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
+  FFILiftedRep -> I64
+  FFIUnliftedRep -> I64
+  FFIJSValRep -> I64
+  FFIIntRep -> I64
+  FFIWordRep -> I64
+  FFIAddrRep -> I64
+  FFIFloatRep -> F32
+  FFIDoubleRep -> F64
 
 -- | Get a tag for an FFIValueType
 ffiValueTypeTag :: FFIValueType -> Integer
-ffiValueTypeTag FFI_JSVAL = 1
-ffiValueTypeTag FFI_VAL {..} = fromIntegral (2 + fromEnum ffiWasmValueType)
+ffiValueTypeTag FFIValueType {ffiValueTypeRep = FFIJSValRep} = 1
+ffiValueTypeTag ffi_vt =
+  fromIntegral (2 + fromEnum (recoverWasmWrapperValueType ffi_vt))
 
 -- | Get a tag for a list of FFIValueTypes
 ffiValueTypesTag :: [FFIValueType] -> Integer
@@ -54,29 +57,33 @@ ffiValueTypesTag (r : rs) =
 
 recoverWasmImportFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
-  | is_unsafe = FunctionType
-    { paramTypes = param_types,
-      returnTypes = ret_types
-    }
-  | otherwise = FunctionType
-    { paramTypes = I32 : param_types,
-      returnTypes = []
-    }
+  | is_unsafe =
+    FunctionType
+      { paramTypes = param_types,
+        returnTypes = ret_types
+      }
+  | otherwise =
+    FunctionType
+      { paramTypes = I32 : param_types,
+        returnTypes = []
+      }
   where
     is_unsafe = ffi_safety == FFIUnsafe
-    param_types = map recoverWasmImportValueType ffiParamTypes
-    ret_types = map recoverWasmImportValueType ffiResultTypes
+    param_types = map (const F64) ffiParamTypes
+    ret_types = map (const F64) ffiResultTypes
 
 recoverWasmWrapperFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
-  | is_unsafe = FunctionType
-    { paramTypes = param_types,
-      returnTypes = ret_types
-    }
-  | otherwise = FunctionType
-    { paramTypes = I32 : param_types,
-      returnTypes = []
-    }
+  | is_unsafe =
+    FunctionType
+      { paramTypes = param_types,
+        returnTypes = ret_types
+      }
+  | otherwise =
+    FunctionType
+      { paramTypes = I32 : param_types,
+        returnTypes = []
+      }
   where
     is_unsafe = ffi_safety == FFIUnsafe
     param_types = map recoverWasmWrapperValueType ffiParamTypes
@@ -97,17 +104,19 @@ generateImplicitCastExpression ::
   Bool -> [ValueType] -> [ValueType] -> Expression -> Expression
 generateImplicitCastExpression signed src_ts dest_ts src_expr =
   case (src_ts, dest_ts) of
-    ([I64], [F64]) -> Unary
-      { unaryOp =
-          if signed
-            then ConvertSInt64ToFloat64
-            else ConvertUInt64ToFloat64,
-        operand0 = src_expr
-      }
-    ([F64], [I64]) -> Unary
-      { unaryOp = if signed then TruncSFloat64ToInt64 else TruncUFloat64ToInt64,
-        operand0 = src_expr
-      }
+    ([I64], [F64]) ->
+      Unary
+        { unaryOp =
+            if signed
+              then ConvertSInt64ToFloat64
+              else ConvertUInt64ToFloat64,
+          operand0 = src_expr
+        }
+    ([F64], [I64]) ->
+      Unary
+        { unaryOp = if signed then TruncSFloat64ToInt64 else TruncUFloat64ToInt64,
+          operand0 = src_expr
+        }
     _
       | src_ts == dest_ts ->
         src_expr
@@ -120,52 +129,42 @@ generateImplicitCastExpression signed src_ts dest_ts src_expr =
 
 generateFFIImportWrapperFunction ::
   AsteriusEntitySymbol -> FFIImportDecl -> Function
-generateFFIImportWrapperFunction k FFIImportDecl {..} = Function
-  { functionType = wrapper_func_type,
-    varTypes = [],
-    body = generateImplicitCastExpression
-      ( case ffiResultTypes ffiFunctionType of
-          [FFI_VAL {..}] -> signed
-          _ -> False
-      )
-      (returnTypes import_func_type)
-      (returnTypes wrapper_func_type)
-      $ CallImport
-        { target' = coerce k,
-          operands =
-            [ generateImplicitCastExpression
-                ( case param_t of
-                    FFI_VAL {..} -> signed
-                    _ -> False
-                )
-                [wrapper_param_t]
-                [import_param_t]
-                GetLocal
-                  { index = i,
-                    valueType = wrapper_param_t
-                  }
-              | (i, param_t, wrapper_param_t, import_param_t) <-
-                  zip4
-                    [0 ..]
-                    ffi_param_types
-                    (paramTypes wrapper_func_type)
-                    (paramTypes import_func_type)
-            ],
-          callImportReturnTypes = returnTypes import_func_type
-        }
-  }
+generateFFIImportWrapperFunction k FFIImportDecl {..} =
+  Function
+    { functionType = wrapper_func_type,
+      varTypes = [],
+      body =
+        generateImplicitCastExpression
+          ( case ffiResultTypes ffiFunctionType of
+              [ffi_vt] -> ffiValueTypeSigned ffi_vt
+              _ -> False
+          )
+          (returnTypes import_func_type)
+          (returnTypes wrapper_func_type)
+          $ CallImport
+            { target' = coerce k,
+              operands =
+                [ generateImplicitCastExpression
+                    (ffiValueTypeSigned param_t)
+                    [wrapper_param_t]
+                    [import_param_t]
+                    GetLocal {index = i, valueType = wrapper_param_t}
+                  | (i, param_t, wrapper_param_t, import_param_t) <-
+                      zip4
+                        [0 ..]
+                        ffi_param_types
+                        (paramTypes wrapper_func_type)
+                        (paramTypes import_func_type)
+                ],
+              callImportReturnTypes = returnTypes import_func_type
+            }
+    }
   where
     is_unsafe = ffiSafety == FFIUnsafe
     ffi_param_types
-      | is_unsafe =
-        ffiParamTypes ffiFunctionType
+      | is_unsafe = ffiParamTypes ffiFunctionType
       | otherwise =
-        FFI_VAL
-          { ffiWasmValueType = I32,
-            ffiJSValueType = I32,
-            hsTyCon = "",
-            signed = False
-          }
+        FFIValueType {ffiValueTypeRep = FFIWordRep, hsTyCon = ""}
           : ffiParamTypes ffiFunctionType
     import_func_type = recoverWasmImportFunctionType ffiSafety ffiFunctionType
     wrapper_func_type = recoverWasmWrapperFunctionType ffiSafety ffiFunctionType
@@ -211,8 +210,8 @@ generateFFIImportLambda :: FFIImportDecl -> Builder
 generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
   | is_unsafe =
     lamb False
-      <> ( case ffiResultTypes of
-             [FFI_JSVAL] -> "__asterius_jsffi.newJSVal("
+      <> ( case map ffiValueTypeRep ffiResultTypes of
+             [FFIJSValRep] -> "__asterius_jsffi.newJSVal("
              _ -> "("
          )
       <> code
@@ -241,8 +240,8 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
       mconcat
         [ case chunk of
             Lit s -> stringUtf8 s
-            Field i -> case ffiParamTypes !! (i - 1) of
-              FFI_JSVAL -> "__asterius_jsffi.getJSVal(_" <> intDec i <> ")"
+            Field i -> case ffiValueTypeRep $ ffiParamTypes !! (i - 1) of
+              FFIJSValRep -> "__asterius_jsffi.getJSVal(_" <> intDec i <> ")"
               _ -> "_" <> intDec i
           | chunk <- ffiSourceChunks
         ]
@@ -294,8 +293,8 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
           ret = case ffiResultTypes of
             [t] ->
               let r = "this.rts_get" <> getHsTyCon t <> "(" <> ret_closure <> ")"
-               in case t of
-                    FFI_JSVAL ->
+               in case ffiValueTypeRep t of
+                    FFIJSValRep ->
                       "this.context.stablePtrManager.getJSVal(" <> r <> ")"
                     _ -> r
             _ -> error "Asterius.JSFFI.generateFFIExportLambda"
@@ -313,8 +312,8 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
                       <> getHsTyCon t
                       <> "("
                       <> ( let _i = "_" <> intDec i
-                            in case t of
-                                 FFI_JSVAL ->
+                            in case ffiValueTypeRep t of
+                                 FFIJSValRep ->
                                    "this.context.stablePtrManager.newJSVal("
                                      <> _i
                                      <> ")"
@@ -340,5 +339,5 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
     eval_func
       | null ffiResultTypes = "rts_evalLazyIO"
       | otherwise = "rts_evalIO"
-    getHsTyCon FFI_VAL {..} = shortByteString hsTyCon
-    getHsTyCon FFI_JSVAL = "JSVal"
+    getHsTyCon FFIValueType {ffiValueTypeRep = FFIJSValRep} = "JSVal"
+    getHsTyCon FFIValueType {..} = shortByteString hsTyCon

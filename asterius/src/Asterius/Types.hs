@@ -39,6 +39,7 @@ module Asterius.Types
     RelooperBlock (..),
     RelooperRun (..),
     Chunk (..),
+    FFIValueTypeRep (..),
     FFIValueType (..),
     FFIFunctionType (..),
     FFISafety (..),
@@ -603,13 +604,24 @@ data Chunk a
 
 instance Binary a => Binary (Chunk a)
 
+data FFIValueTypeRep
+  = FFILiftedRep
+  | FFIUnliftedRep
+  | FFIJSValRep
+  | FFIIntRep
+  | FFIWordRep
+  | FFIAddrRep
+  | FFIFloatRep
+  | FFIDoubleRep
+  deriving (Eq, Show, Generic, Data)
+
+instance Binary FFIValueTypeRep
+
 data FFIValueType
-  = FFI_VAL
-      { ffiWasmValueType, ffiJSValueType :: ValueType,
-        hsTyCon :: SBS.ShortByteString,
-        signed :: Bool
+  = FFIValueType
+      { ffiValueTypeRep :: FFIValueTypeRep,
+        hsTyCon :: SBS.ShortByteString
       }
-  | FFI_JSVAL
   deriving (Eq, Show, Generic, Data)
 
 instance Binary FFIValueType
