@@ -71,7 +71,7 @@ ffiBoxedValueTypeMap0 =
   GHC.mkNameEnv
     [ ( GHC.getName GHC.anyTyCon,
         FFIValueType
-          { ffiValueTypeRep = getFFIValueTypeRep GHC.anyTyCon,
+          { ffiValueTypeRep = FFILiftedRep,
             hsTyCon = ""
           }
       ),
