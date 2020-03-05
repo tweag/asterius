@@ -19,19 +19,13 @@ import qualified Data.Map.Strict as M
 import Language.Haskell.GHC.Toolkit.Constants
 
 data SafeCCall
-  = SafeCCall
-      AsteriusEntitySymbol
-      Expression
+  = SafeCCall AsteriusEntitySymbol Expression
 
 data BlockChunk
-  = BlockChunk
-      [Expression]
-      SafeCCall
+  = BlockChunk [Expression] SafeCCall
 
 data BlockChunks
-  = BlockChunks
-      [BlockChunk]
-      [Expression]
+  = BlockChunks [BlockChunk] [Expression]
 
 data BSState
   = BSState
@@ -168,11 +162,6 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
             save_target_instr =
               SetLocal {index = 2, value = ConstI32 $ fromIntegral next_id}
             reset_instrs =
-              -- Reset:
-              --  * saved local regs
-              --  * ffi_func
-              --  * ffi_return
-              --
               [ Store
                   { bytes = 8,
                     offset = fromIntegral offset_StgTSO_ffi_func,
@@ -196,19 +185,24 @@ splitSingleBlock vts save_instrs base_k base_block@RelooperBlock {..} =
                          value = ConstI64 0,
                          valueType = I64
                        }
-                     | i <- [0 .. fromIntegral maxLocalRegs -1] -- TODO: use a loop
-                   ]
+                     | i <- [0 .. fromIntegral maxLocalRegs - 1]
+                   ] -- TODO: use a loop
+                -- Reset:
+                --  * saved local regs
+                --  * ffi_func
+                --  * ffi_return
+                --
             (ccall_instr, next_preblock_instrs) = case orig_instr of
               Call {} ->
                 ( orig_instr
-                    { operands = currentTID : operands orig_instr,
+                    { operands = extendUInt32 currentTID : operands orig_instr,
                       callReturnTypes = []
                     },
                   reset_instrs
                 )
               SetLocal {value = c@Call {}, ..} ->
                 ( c
-                    { operands = currentTID : operands c,
+                    { operands = extendUInt32 currentTID : operands c,
                       callReturnTypes = []
                     },
                   [ orig_instr
@@ -294,6 +288,7 @@ genSaveLoad sym vts
   where
     -- Don't save local registers 0 and 1 (reserved by the relooper and the
     -- block splitter)
+
     I32 : I32 : ctx_regs@(I32 : _) = vts
     p_ctx_regs = zip [2 ..] ctx_regs
     pos i = (i - 2) * 8
@@ -335,9 +330,7 @@ genSaveLoad sym vts
                },
              Store
                { bytes = 2,
-                 offset =
-                   fromIntegral $
-                     offset_StgTSO_why_blocked,
+                 offset = fromIntegral $ offset_StgTSO_why_blocked,
                  ptr = wrapInt64 $ getLVal currentTSO,
                  value = ConstI32 $ fromIntegral blocked_BlockedOnCCall,
                  valueType = I32

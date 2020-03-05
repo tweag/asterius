@@ -64,7 +64,7 @@ recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
       }
   | otherwise =
     FunctionType
-      { paramTypes = I32 : param_types,
+      { paramTypes = F64 : param_types,
         returnTypes = []
       }
   where
@@ -81,7 +81,7 @@ recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
       }
   | otherwise =
     FunctionType
-      { paramTypes = I32 : param_types,
+      { paramTypes = I64 : param_types,
         returnTypes = []
       }
   where
@@ -117,6 +117,8 @@ generateImplicitCastExpression signed src_ts dest_ts src_expr =
         { unaryOp = if signed then TruncSFloat64ToInt64 else TruncUFloat64ToInt64,
           operand0 = src_expr
         }
+    ([F32], [F64]) -> Unary {unaryOp = PromoteFloat32, operand0 = src_expr}
+    ([F64], [F32]) -> Unary {unaryOp = DemoteFloat64, operand0 = src_expr}
     _
       | src_ts == dest_ts ->
         src_expr
