@@ -5,6 +5,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.JSFFI
   ( getFFIModule,
@@ -19,6 +20,9 @@ where
 import Asterius.Foreign.Internals
 import Asterius.Foreign.SupportedTypes
 import Asterius.Types
+import qualified CmmCallConv as GHC
+import qualified CmmNode as GHC
+import qualified CmmType as GHC
 import Control.Applicative
 import Data.Bits
 import Data.ByteString.Builder
@@ -28,6 +32,7 @@ import Data.Int
 import Data.List
 import qualified Data.Map.Strict as M
 import Data.Monoid
+import qualified GhcPlugins as GHC
 import Prelude hiding (IO)
 import qualified Prelude
 
@@ -64,7 +69,7 @@ recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
       }
   | otherwise =
     FunctionType
-      { paramTypes = F64 : param_types,
+      { paramTypes = param_types,
         returnTypes = []
       }
   where
@@ -81,7 +86,7 @@ recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
       }
   | otherwise =
     FunctionType
-      { paramTypes = I64 : param_types,
+      { paramTypes = param_types,
         returnTypes = []
       }
   where
@@ -89,8 +94,8 @@ recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
     param_types = map recoverWasmWrapperValueType ffiParamTypes
     ret_types = map recoverWasmWrapperValueType ffiResultTypes
 
-getFFIModule :: AsteriusModuleSymbol -> Prelude.IO AsteriusModule
-getFFIModule mod_sym = do
+getFFIModule :: GHC.DynFlags -> AsteriusModuleSymbol -> Prelude.IO AsteriusModule
+getFFIModule dflags mod_sym = do
   ffi_import_state <-
     atomicModifyIORef' globalFFIHookState $ \ffi_hook_state ->
       ( ffi_hook_state
@@ -98,7 +103,7 @@ getFFIModule mod_sym = do
           },
         M.findWithDefault mempty mod_sym (ffiHookState ffi_hook_state)
       )
-  pure $ generateFFIWrapperModule ffi_import_state
+  pure $ generateFFIWrapperModule dflags ffi_import_state
 
 generateImplicitCastExpression ::
   Bool -> [ValueType] -> [ValueType] -> Expression -> Expression
@@ -130,49 +135,89 @@ generateImplicitCastExpression signed src_ts dest_ts src_expr =
             <> show dest_ts
 
 generateFFIImportWrapperFunction ::
-  AsteriusEntitySymbol -> FFIImportDecl -> Function
-generateFFIImportWrapperFunction k FFIImportDecl {..} =
+  GHC.DynFlags -> AsteriusEntitySymbol -> FFIImportDecl -> Function
+generateFFIImportWrapperFunction dflags k imp_decl@FFIImportDecl {..}
+  | is_unsafe =
+    Function
+      { functionType = wrapper_func_type,
+        varTypes = [],
+        body =
+          generateImplicitCastExpression
+            ( case ffiResultTypes ffiFunctionType of
+                [ffi_vt] -> ffiValueTypeSigned ffi_vt
+                _ -> False
+            )
+            (returnTypes import_func_type)
+            (returnTypes wrapper_func_type)
+            $ CallImport
+              { target' = coerce k,
+                operands =
+                  [ generateImplicitCastExpression
+                      (ffiValueTypeSigned param_t)
+                      [wrapper_param_t]
+                      [import_param_t]
+                      GetLocal {index = i, valueType = wrapper_param_t}
+                    | (i, param_t, wrapper_param_t, import_param_t) <-
+                        zip4
+                          [0 ..]
+                          ffi_param_types
+                          (paramTypes wrapper_func_type)
+                          (paramTypes import_func_type)
+                  ],
+                callImportReturnTypes = returnTypes import_func_type
+              }
+      }
+  | otherwise = asyncImportWrapper dflags k imp_decl
+  where
+    is_unsafe = ffiSafety == FFIUnsafe
+    ffi_param_types = ffiParamTypes ffiFunctionType
+    import_func_type = recoverWasmImportFunctionType FFIUnsafe ffiFunctionType
+    wrapper_func_type = recoverWasmWrapperFunctionType FFIUnsafe ffiFunctionType
+
+marshalParamLocation :: GHC.ParamLocation -> UnresolvedGlobalReg
+marshalParamLocation = undefined
+
+recoverCmmType :: FFIValueType -> GHC.CmmType
+recoverCmmType = undefined
+
+asyncImportWrapper :: GHC.DynFlags -> AsteriusEntitySymbol -> FFIImportDecl -> Function
+asyncImportWrapper dflags k FFIImportDecl {..} =
   Function
     { functionType = wrapper_func_type,
       varTypes = [],
       body =
-        generateImplicitCastExpression
-          ( case ffiResultTypes ffiFunctionType of
-              [ffi_vt] -> ffiValueTypeSigned ffi_vt
-              _ -> False
-          )
-          (returnTypes import_func_type)
-          (returnTypes wrapper_func_type)
-          $ CallImport
-            { target' = coerce k,
-              operands =
-                [ generateImplicitCastExpression
-                    (ffiValueTypeSigned param_t)
-                    [wrapper_param_t]
-                    [import_param_t]
-                    GetLocal {index = i, valueType = wrapper_param_t}
-                  | (i, param_t, wrapper_param_t, import_param_t) <-
-                      zip4
-                        [0 ..]
-                        ffi_param_types
-                        (paramTypes wrapper_func_type)
-                        (paramTypes import_func_type)
-                ],
-              callImportReturnTypes = returnTypes import_func_type
-            }
+        Block
+          { name = "",
+            bodys =
+              [ CallImport
+                  { target' = coerce k,
+                    operands =
+                      [ generateImplicitCastExpression
+                          (ffiValueTypeSigned param_t)
+                          [wrapper_param_t]
+                          [import_param_t]
+                          GetLocal {index = i, valueType = wrapper_param_t}
+                        | (i, param_t, wrapper_param_t, import_param_t) <-
+                            zip4
+                              [0 ..]
+                              ffi_param_types
+                              (paramTypes wrapper_func_type)
+                              (paramTypes import_func_type)
+                      ],
+                    callImportReturnTypes = []
+                  }
+              ],
+            blockReturnTypes = []
+          }
     }
   where
-    is_unsafe = ffiSafety == FFIUnsafe
-    ffi_param_types
-      | is_unsafe = ffiParamTypes ffiFunctionType
-      | otherwise =
-        FFIValueType {ffiValueTypeRep = FFIWordRep, hsTyCon = ""}
-          : ffiParamTypes ffiFunctionType
-    import_func_type = recoverWasmImportFunctionType ffiSafety ffiFunctionType
-    wrapper_func_type = recoverWasmWrapperFunctionType ffiSafety ffiFunctionType
+    ffi_param_types = ffiParamTypes ffiFunctionType
+    import_func_type = recoverWasmImportFunctionType FFISafe ffiFunctionType
+    wrapper_func_type = recoverWasmWrapperFunctionType FFISafe ffiFunctionType
+    (_, map (marshalParamLocation . snd) . sortOn (fst . fst) -> param_regs) = GHC.assignArgumentsPos dflags 0 GHC.NativeNodeCall (recoverCmmType . snd) (zip [(0 :: Int) ..] ffi_param_types)
 
-generateFFIWrapperModule :: FFIMarshalState -> AsteriusModule
-generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =
+generateFFIWrapperModule :: GHC.DynFlags -> FFIMarshalState -> AsteriusModule
+generateFFIWrapperModule dflags mod_ffi_state@FFIMarshalState {..} =
   mempty
     { functionMap =
         M.fromList
@@ -183,7 +228,7 @@ generateFFIWrapperModule mod_ffi_state@FFIMarshalState {..} =
     }
   where
     import_wrapper_funcs =
-      [ (k, generateFFIImportWrapperFunction k ffi_decl)
+      [ (k, generateFFIImportWrapperFunction dflags k ffi_decl)
         | (k, ffi_decl) <- M.toList ffiImportDecls
       ]
 

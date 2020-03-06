@@ -156,6 +156,9 @@ processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaS
               ffiSafety = ffi_safety,
               ffiSourceChunks = chunks
             }
+        new_conv
+          | ffi_safety == FFIUnsafe = GHC.CCallConv
+          | otherwise = GHC.PrimCallConv
         alter_hook_state (Just ffi_state) =
           Just
             ffi_state
@@ -175,7 +178,7 @@ processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaS
       )
     pure $
       GHC.CImport
-        (GHC.noLoc GHC.CCallConv)
+        (GHC.noLoc new_conv)
         (GHC.noLoc GHC.PlayRisky)
         Nothing
         ( GHC.CFunction $
