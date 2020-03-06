@@ -815,36 +815,17 @@
 #define END_TSO_QUEUE             stg_END_TSO_QUEUE_closure
 #define STM_AWOKEN                stg_STM_AWOKEN_closure
 
-#define recordMutableCap(p, gen)
-#define recordMutable(p)
+#define recordMutableCap(p, gen) \
+    ccall recordMutableCap(p "ptr", gen)
 
-/*
-#define recordMutableCap(p, gen)                                        \
-  W_ __bd;                                                              \
-  W_ mut_list;                                                          \
-  mut_list = Capability_mut_lists(MyCapability()) + WDS(gen);           \
- __bd = W_[mut_list];                                                   \
-  if (bdescr_free(__bd) >= bdescr_start(__bd) + BLOCK_SIZE) {           \
-      W_ __new_bd;                                                      \
-      ("ptr" __new_bd) = foreign "C" allocBlock_lock();                 \
-      bdescr_link(__new_bd) = __bd;                                     \
-      __bd = __new_bd;                                                  \
-      W_[mut_list] = __bd;                                              \
-  }                                                                     \
-  W_ free;                                                              \
-  free = bdescr_free(__bd);                                             \
-  W_[free] = p;                                                         \
-  bdescr_free(__bd) = free + WDS(1);
-
-#define recordMutable(p)                                        \
-      P_ __p;                                                   \
-      W_ __bd;                                                  \
-      W_ __gen;                                                 \
-      __p = p;                                                  \
-      __bd = Bdescr(__p);                                       \
-      __gen = TO_W_(bdescr_gen_no(__bd));                       \
-      if (__gen > 0) { recordMutableCap(__p, __gen); }
-*/
+#define recordMutable(p)                                      \
+    P_ __p;                                                   \
+    W_ __bd;                                                  \
+    W_ __gen;                                                 \
+    __p = p;                                                  \
+    __bd = Bdescr(__p);                                       \
+    __gen = TO_W_(bdescr_gen_no(__bd));                       \
+    if (__gen > 0) { recordMutableCap(__p, __gen); }
 
 /* -----------------------------------------------------------------------------
    Arrays
