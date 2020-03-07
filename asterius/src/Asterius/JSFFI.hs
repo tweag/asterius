@@ -19,6 +19,7 @@ where
 
 import Asterius.Foreign.Internals
 import Asterius.Foreign.SupportedTypes
+import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified CmmCallConv as GHC
 import qualified CmmNode as GHC
@@ -196,10 +197,9 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                           (ffiValueTypeSigned param_t)
                           [wrapper_param_t]
                           [import_param_t]
-                          GetLocal {index = i, valueType = wrapper_param_t}
-                        | (i, param_t, wrapper_param_t, import_param_t) <-
-                            zip4
-                              [0 ..]
+                          (unresolvedGetGlobal param_reg)
+                        | (param_reg, param_t, wrapper_param_t, import_param_t) <-
+                            zip4 param_regs
                               ffi_param_types
                               (paramTypes wrapper_func_type)
                               (paramTypes import_func_type)
