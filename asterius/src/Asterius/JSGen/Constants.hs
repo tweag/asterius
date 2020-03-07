@@ -97,6 +97,8 @@ rtsConstants =
                  ("offset_StgPAP_fun", offset_StgPAP_fun),
                  ("offset_StgPAP_payload", offset_StgPAP_payload),
                  ("offset_StgRegTable_rR1", offset_StgRegTable_rR1),
+                 ("offset_StgRegTable_rF1", offset_StgRegTable_rF1),
+                 ("offset_StgRegTable_rD1", offset_StgRegTable_rD1),
                  ( "offset_StgRegTable_rCurrentNursery",
                    offset_StgRegTable_rCurrentNursery
                  ),
