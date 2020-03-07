@@ -17,13 +17,14 @@ module Asterius.JSFFI
   )
 where
 
+import Asterius.EDSL
 import Asterius.Foreign.Internals
 import Asterius.Foreign.SupportedTypes
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified CmmCallConv as GHC
+import qualified CmmExpr as GHC
 import qualified CmmNode as GHC
-import qualified CmmType as GHC
 import Control.Applicative
 import Data.Bits
 import Data.ByteString.Builder
@@ -34,6 +35,7 @@ import Data.List
 import qualified Data.Map.Strict as M
 import Data.Monoid
 import qualified GhcPlugins as GHC
+import Language.Haskell.GHC.Toolkit.Constants
 import Prelude hiding (IO)
 import qualified Prelude
 
@@ -68,11 +70,7 @@ recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
       { paramTypes = param_types,
         returnTypes = ret_types
       }
-  | otherwise =
-    FunctionType
-      { paramTypes = param_types,
-        returnTypes = []
-      }
+  | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
     param_types = map (const F64) ffiParamTypes
@@ -85,17 +83,14 @@ recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
       { paramTypes = param_types,
         returnTypes = ret_types
       }
-  | otherwise =
-    FunctionType
-      { paramTypes = param_types,
-        returnTypes = []
-      }
+  | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
     param_types = map recoverWasmWrapperValueType ffiParamTypes
     ret_types = map recoverWasmWrapperValueType ffiResultTypes
 
-getFFIModule :: GHC.DynFlags -> AsteriusModuleSymbol -> Prelude.IO AsteriusModule
+getFFIModule ::
+  GHC.DynFlags -> AsteriusModuleSymbol -> Prelude.IO AsteriusModule
 getFFIModule dflags mod_sym = do
   ffi_import_state <-
     atomicModifyIORef' globalFFIHookState $ \ffi_hook_state ->
@@ -176,12 +171,24 @@ generateFFIImportWrapperFunction dflags k imp_decl@FFIImportDecl {..}
     wrapper_func_type = recoverWasmWrapperFunctionType FFIUnsafe ffiFunctionType
 
 marshalParamLocation :: GHC.ParamLocation -> UnresolvedGlobalReg
-marshalParamLocation = undefined
+marshalParamLocation (GHC.RegisterParam (GHC.VanillaReg i _)) = VanillaReg i
+marshalParamLocation (GHC.RegisterParam (GHC.FloatReg i)) = FloatReg i
+marshalParamLocation (GHC.RegisterParam (GHC.DoubleReg i)) = DoubleReg i
+marshalParamLocation _ = error "Asterius.JSFFI.marshalParamLocation"
 
-recoverCmmType :: FFIValueType -> GHC.CmmType
-recoverCmmType = undefined
+recoverCmmType :: GHC.DynFlags -> FFIValueType -> GHC.CmmType
+recoverCmmType dflags FFIValueType {..} = case ffiValueTypeRep of
+  FFILiftedRep -> GHC.gcWord dflags
+  FFIUnliftedRep -> GHC.gcWord dflags
+  FFIJSValRep -> GHC.gcWord dflags
+  FFIIntRep -> GHC.bWord dflags
+  FFIWordRep -> GHC.bWord dflags
+  FFIAddrRep -> GHC.bWord dflags
+  FFIFloatRep -> GHC.f32
+  FFIDoubleRep -> GHC.f64
 
-asyncImportWrapper :: GHC.DynFlags -> AsteriusEntitySymbol -> FFIImportDecl -> Function
+asyncImportWrapper ::
+  GHC.DynFlags -> AsteriusEntitySymbol -> FFIImportDecl -> Function
 asyncImportWrapper dflags k FFIImportDecl {..} =
   Function
     { functionType = wrapper_func_type,
@@ -199,13 +206,22 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                           [import_param_t]
                           (unresolvedGetGlobal param_reg)
                         | (param_reg, param_t, wrapper_param_t, import_param_t) <-
-                            zip4 param_regs
+                            zip4
+                              param_regs
                               ffi_param_types
                               (paramTypes wrapper_func_type)
                               (paramTypes import_func_type)
                       ],
                     callImportReturnTypes = []
-                  }
+                  },
+                Store
+                  { bytes = 8,
+                    offset = fromIntegral $ offset_Capability_r + offset_StgRegTable_rRet,
+                    ptr = mainCapability,
+                    value = constI64 ret_ThreadBlocked,
+                    valueType = I64
+                  },
+                ReturnCall {returnCallTarget64 = "stg_returnToSchedNotPaused"}
               ],
             blockReturnTypes = []
           }
@@ -214,7 +230,13 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
     ffi_param_types = ffiParamTypes ffiFunctionType
     import_func_type = recoverWasmImportFunctionType FFISafe ffiFunctionType
     wrapper_func_type = recoverWasmWrapperFunctionType FFISafe ffiFunctionType
-    (_, map (marshalParamLocation . snd) . sortOn (fst . fst) -> param_regs) = GHC.assignArgumentsPos dflags 0 GHC.NativeNodeCall (recoverCmmType . snd) (zip [(0 :: Int) ..] ffi_param_types)
+    (_, map (marshalParamLocation . snd) . sortOn (fst . fst) -> param_regs) =
+      GHC.assignArgumentsPos
+        dflags
+        0
+        GHC.NativeNodeCall
+        snd
+        (zip [(0 :: Int) ..] (map (recoverCmmType dflags) ffi_param_types))
 
 generateFFIWrapperModule :: GHC.DynFlags -> FFIMarshalState -> AsteriusModule
 generateFFIWrapperModule dflags mod_ffi_state@FFIMarshalState {..} =
