@@ -185,7 +185,7 @@ processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaS
             GHC.StaticTarget
               GHC.NoSourceText
               (GHC.mkFastString $ new_k <> "_wrapper")
-              Nothing
+              (Just GHC.rtsUnitId)
               True
         )
         (GHC.noLoc GHC.NoSourceText)

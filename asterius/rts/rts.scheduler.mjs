@@ -203,11 +203,9 @@ export class Scheduler {
             throw new WebAssembly.RuntimeError(
               `Unhandled thread blocking reason: ${why_blocked}`
             );
-            break;
           }
         }
 
-        // May execute another thread while this one is blocked
         break;
       }
       case 5: {

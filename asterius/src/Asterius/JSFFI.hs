@@ -83,7 +83,7 @@ recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
       { paramTypes = param_types,
         returnTypes = ret_types
       }
-  | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
+  | otherwise = FunctionType {paramTypes = [], returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
     param_types = map recoverWasmWrapperValueType ffiParamTypes
@@ -202,26 +202,37 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                     operands =
                       [ generateImplicitCastExpression
                           (ffiValueTypeSigned param_t)
-                          [wrapper_param_t]
+                          [recoverWasmWrapperValueType param_t]
                           [import_param_t]
                           (unresolvedGetGlobal param_reg)
-                        | (param_reg, param_t, wrapper_param_t, import_param_t) <-
-                            zip4
+                        | (param_reg, param_t, import_param_t) <-
+                            zip3
                               param_regs
                               ffi_param_types
-                              (paramTypes wrapper_func_type)
                               (paramTypes import_func_type)
                       ],
                     callImportReturnTypes = []
                   },
                 Store
                   { bytes = 8,
-                    offset = fromIntegral $ offset_Capability_r + offset_StgRegTable_rRet,
-                    ptr = mainCapability,
+                    offset =
+                      fromIntegral $
+                        offset_Capability_r
+                          + offset_StgRegTable_rRet,
+                    ptr = wrapInt64 mainCapability,
                     value = constI64 ret_ThreadBlocked,
                     valueType = I64
                   },
-                ReturnCall {returnCallTarget64 = "stg_returnToSchedNotPaused"}
+                Store
+                  { bytes = 2,
+                    offset = fromIntegral offset_StgTSO_why_blocked,
+                    ptr = wrapInt64 $ unresolvedGetGlobal CurrentTSO,
+                    value = constI32 blocked_BlockedOnCCall,
+                    valueType = I32
+                  },
+                ReturnCall
+                  { returnCallTarget64 = "stg_returnToSchedNotPaused"
+                  }
               ],
             blockReturnTypes = []
           }
