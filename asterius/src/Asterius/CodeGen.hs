@@ -25,7 +25,6 @@ import Asterius.Internals.Name
 import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
-import Asterius.Passes.SafeCCall
 import Asterius.Resolve
 import Asterius.Types
 import Asterius.TypesConv
@@ -1442,8 +1441,8 @@ marshalCmmBlock inner_nodes exit_node = do
       [e] -> e
       _ -> Block {name = "", bodys = es, blockReturnTypes = []}
 
-marshalCmmProc :: AsteriusEntitySymbol -> GHC.CmmGraph -> CodeGen Function
-marshalCmmProc sym GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
+marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
+marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
   rbs <-
     for (GHC.bodyList body) $ \(lbl, GHC.BlockCC _ inner_nodes exit_node) -> do
@@ -1463,7 +1462,7 @@ marshalCmmProc sym GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
             }
         )
           : rbs
-  pure $ splitFunction sym $ adjustLocalRegs Function
+  pure $ adjustLocalRegs Function
     { functionType = FunctionType {paramTypes = [], returnTypes = []},
       varTypes = [],
       body = CFG RelooperRun
@@ -1484,7 +1483,7 @@ marshalCmmDecl decl = case decl of
       Right ass -> mempty {staticsMap = M.fromList [(sym, ass)]}
   GHC.CmmProc _ clbl _ g -> do
     sym <- marshalCLabel clbl
-    r <- unCodeGen $ marshalCmmProc sym g
+    r <- unCodeGen $ marshalCmmProc g
     let f = case r of
           Left err -> Function
             { functionType = FunctionType {paramTypes = [], returnTypes = []},

@@ -61,6 +61,7 @@ export async function newAsteriusInstance(req) {
     __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
+      __asterius_heapalloc,
       req.symbolTable,
       __asterius_stableptr_manager
     ),
@@ -164,8 +165,8 @@ export async function newAsteriusInstance(req) {
       stdout: () => __asterius_fs.readSync(1),
       stderr: () => __asterius_fs.readSync(2)
     },
-    returnFFIPromise: (tid, promise) =>
-      __asterius_scheduler.returnFFIPromise(tid, promise)
+    returnFFIPromise: (promise) =>
+      __asterius_scheduler.returnFFIPromise(promise)
   };
 
 

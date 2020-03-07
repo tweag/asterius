@@ -10,14 +10,16 @@ import * as rtsConstants from "./rts.constants.mjs";
  *
  */
 export class Scheduler {
-  constructor(memory, symbol_table, stablePtrManager) {
+  constructor(memory, heapalloc, symbol_table, stablePtrManager) {
     this.memory = memory;
+    this.heapAlloc = heapalloc;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
     this.gc = undefined;
+    this.blockingPromise = undefined;
     Object.seal(this);
   }
 
@@ -40,14 +42,12 @@ export class Scheduler {
         addr: -1, // TSO struct address in Wasm memory
         ret: 0, // returned object address in Wasm memory
         rstat: -1, // thread status
-        ffiAsyncFunc: undefined, // FFI asynchronous func
         ffiRet: undefined, // FFI returned value
-        ffiRetType: 0, // FFI returned value type
+        ffiRetType: undefined, // FFI returned value type
         ffiRetErr: undefined, // FFI returned error
         returnPromise: ret_promise,
         promise_resolve: promise_resolve, // Settle the promise used by user
-        promise_reject: promise_reject, // code to wait on this thread
-        blockingPromise: undefined // Promise used to block on JS FFI code
+        promise_reject: promise_reject
       })
     );
     return tid;
@@ -86,10 +86,8 @@ export class Scheduler {
    *
    * @param ffiPromise Promise executing the FFI import code asynchronously.
    */
-  returnFFIPromise(tid, ffiPromise) {
-    const tso_info = this.tsos.get(tid);
-    //console.log(`Thread ${tid}: return FFI Promise`);
-    tso_info.blockingPromise = ffiPromise;
+  returnFFIPromise(ffiPromise) {
+    this.blockingPromise = ffiPromise;
   }
 
   /**
@@ -148,17 +146,14 @@ export class Scheduler {
           case Blocked.OnCCall_Interruptible: {
             //console.log(`Thread ${tid}: blocked on FFI`);
             // Wait for the FFI blocking promise and then requeue the TSO
-            tso_info.blockingPromise.then(
+            const blocking_promise = this.blockingPromise;
+            this.blockingPromise = undefined;
+            blocking_promise.then(
               v => {
                 //console.log(`Thread ${tid}: unblocked`);
                 const [retTyp, retVal] = v;
                 tso_info.ffiRet = retVal;
                 tso_info.ffiRetType = retTyp;
-                // Store return block symbol
-                tso_info.ffiAsyncFunc = this.memory.i64Load(
-                  tso + rtsConstants.offset_StgTSO_ffi_func
-                );
-
                 setImmediate(tid => this.scheduler_tick(tid), tid);
               },
               e => {
@@ -174,11 +169,11 @@ export class Scheduler {
             const us_delay = Number(
               this.memory.i64Load(tso + rtsConstants.offset_StgTSO_block_info)
             );
-            tso_info.blockingPromise = new Promise((resolve, reject) => {
+            const blocking_promise = new Promise((resolve, reject) => {
               setTimeout(() => resolve(), us_delay / 1000);
             });
             // Wait for the timer blocking promise and then requeue the TSO
-            tso_info.blockingPromise.then(
+            blocking_promise.then(
               () => {
                 setImmediate(tid => this.scheduler_tick(tid), tid);
               },
@@ -208,11 +203,9 @@ export class Scheduler {
             throw new WebAssembly.RuntimeError(
               `Unhandled thread blocking reason: ${why_blocked}`
             );
-            break;
           }
         }
 
-        // May execute another thread while this one is blocked
         break;
       }
       case 5: {
@@ -273,71 +266,60 @@ export class Scheduler {
 
             //console.log(`Thread ${tid}: active`);
 
-            // By default we enter the Haskell code by "returning" to the
-            // closure on top of the stack.
-            var entryFunc = this.symbolTable.stg_returnToStackTop;
-
             // Returning from blocking FFI
             if (tso_info.ffiRetErr) {
               //console.log(`Thread ${tid}: FFI error`);
 
-              // Put an exception closure in R1 and use stg_raise# as the entry
-              // function.
-              this.memory.i64Store(
-                this.symbolTable.MainCapability +
-                  rtsConstants.offset_Capability_r +
-                  rtsConstants.offset_StgRegTable_rR1,
-                this.exports.rts_apply(
+              const stackobj = Number(
+                this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+              ), sp = Number(
+                this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
+              ) - 16,
+                exception_closure = this.exports.rts_apply(
                   this.symbolTable.base_AsteriusziTypes_makeJSException_closure,
                   this.exports.rts_mkJSVal(
                     this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
                   )
-                )
+                ),
+                raise_closure = this.heapAlloc.allocate(
+                  Math.ceil(rtsConstants.sizeof_StgThunk / 8) + 1
+                );
+              this.memory.i64Store(raise_closure, this.symbolTable.stg_raise_info);
+              this.memory.i64Store(
+                raise_closure + rtsConstants.offset_StgThunk_payload,
+                exception_closure
               );
-              entryFunc = this.symbolTable.stg_raisezh;
-            } else if (tso_info.ffiAsyncFunc) {
-              //console.log(`Thread ${tid}: returned from FFI ${tso_info.ffiAsyncFunc}`);
-
-              // the entry function was saved before the safe FFI call
-              entryFunc = Number(tso_info.ffiAsyncFunc);
-
-              // Restore FFI async value
-              const ffi_ret =
-                tso_info.addr + rtsConstants.offset_StgTSO_ffi_return;
-
+              this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
+              this.memory.i64Store(sp, this.symbolTable.stg_enter_info);
+              this.memory.i64Store(sp+8, raise_closure);
+            } else if (typeof tso_info.ffiRetType === "number") {
               switch (
                 tso_info.ffiRetType // tag is encoded with `ffiValueTypesTag`
               ) {
                 case 0: {
                   // no returned value
-                  this.memory.i64Store(ffi_ret, 0);
                   break;
                 }
                 case 1: {
                   // JSVal
                   const ptr = this.stablePtrManager.newJSVal(tso_info.ffiRet);
                   //console.log(`Restore after FFI with value: ${tso_info.ffiRet} with type ${typeof tso_info.ffiRet} constructor ${tso_info.ffiRet.constructor} as ${ptr}`);
-                  this.memory.i64Store(ffi_ret, ptr);
-                  break;
-                }
-                case 2: {
-                  // I32
-                  this.memory.i32Store(ffi_ret, tso_info.ffiRet);
+                  this.memory.i64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rR1, ptr);
                   break;
                 }
                 case 3: {
                   // I64
-                  this.memory.i64Store(ffi_ret, tso_info.ffiRet);
+                  this.memory.i64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rR1, tso_info.ffiRet);
                   break;
                 }
                 case 4: {
                   // F32
-                  this.memory.f32Store(ffi_ret, tso_info.ffiRet);
+                  this.memory.f32Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rF1, tso_info.ffiRet);
                   break;
                 }
                 case 5: {
                   // F64
-                  this.memory.f64Store(ffi_ret, tso_info.ffiRet);
+                  this.memory.f64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rD1, tso_info.ffiRet);
                   break;
                 }
                 default:
@@ -346,17 +328,15 @@ export class Scheduler {
                   throw new WebAssembly.RuntimeError(
                     `Unsupported FFI return value type tag ${tso_info.ffiRetType} (more than one value?): ${tso_info.ffiRet}`
                   );
-                  break;
               }
             }
 
-            tso_info.ffiAsyncFunc = undefined;
             tso_info.ffiRet = undefined;
-            tso_info.ffiRetType = 0;
+            tso_info.ffiRetType = undefined;
             tso_info.ffiRetErr = undefined;
 
             // execute the TSO.
-            this.exports.scheduleTSO(tso, entryFunc);
+            this.exports.scheduleTSO(tso, this.symbolTable.stg_returnToStackTop);
             this.returnedFromTSO(tid);
             this.exports.context.reentrancyGuard.exit(0);
   }

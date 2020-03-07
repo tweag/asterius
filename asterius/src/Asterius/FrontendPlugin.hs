@@ -77,7 +77,7 @@ frontendPlugin = makeFrontendPlugin $ do
           setDynFlagsRef dflags
           let mod_sym = marshalToModuleSymbol ms_mod
           liftIO $ do
-            ffi_mod <- getFFIModule mod_sym
+            ffi_mod <- getFFIModule dflags mod_sym
             runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod >>= \case
               Left err -> throwIO err
               Right m' -> do

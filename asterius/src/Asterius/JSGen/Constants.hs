@@ -97,6 +97,8 @@ rtsConstants =
                  ("offset_StgPAP_fun", offset_StgPAP_fun),
                  ("offset_StgPAP_payload", offset_StgPAP_payload),
                  ("offset_StgRegTable_rR1", offset_StgRegTable_rR1),
+                 ("offset_StgRegTable_rF1", offset_StgRegTable_rF1),
+                 ("offset_StgRegTable_rD1", offset_StgRegTable_rD1),
                  ( "offset_StgRegTable_rCurrentNursery",
                    offset_StgRegTable_rCurrentNursery
                  ),
@@ -124,9 +126,6 @@ rtsConstants =
                  ("offset_StgTSO_what_next", offset_StgTSO_what_next),
                  ("offset_StgTSO_why_blocked", offset_StgTSO_why_blocked),
                  ("offset_StgTSO_block_info", offset_StgTSO_block_info),
-                 ("offset_StgTSO_ffi_func", offset_StgTSO_ffi_func),
-                 ("offset_StgTSO_ffi_return", offset_StgTSO_ffi_return),
-                 ("offset_StgTSO_saved_regs", offset_StgTSO_saved_regs),
                  ("offset_StgStack_stack_size", offset_StgStack_stack_size),
                  ("offset_StgStack_sp", offset_StgStack_sp),
                  ("offset_StgStack_stack", offset_StgStack_stack),
