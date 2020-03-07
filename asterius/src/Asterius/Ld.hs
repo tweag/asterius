@@ -16,13 +16,9 @@ where
 import Asterius.Ar
 import Asterius.Builtins
 import Asterius.Internals
-import Asterius.Internals.Containers
 import Asterius.Resolve
 import Asterius.Types
 import Control.Exception
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
-import Data.Coerce
 import Data.Either
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -95,8 +91,7 @@ linkModules LinkTask {..} m =
     ( rtsAsteriusModule
         defaultBuiltinsOptions
           { Asterius.Builtins.progName = progName,
-            Asterius.Builtins.debug = debug,
-            Asterius.Builtins.jsvalConInfo = m_jsval_con_info
+            Asterius.Builtins.debug = debug
           }
         <> m
     )
@@ -111,18 +106,6 @@ linkModules LinkTask {..} m =
         ]
     )
     exportFunctions
-  where
-    f sym _
-      | "asteriuszmprelude"
-          `BS.isPrefixOf` buf
-          && "AsteriusziPrim_JSVal_con_info"
-          `BS.isSuffixOf` buf =
-        Just sym
-      | otherwise =
-        Nothing
-      where
-        buf = SBS.fromShort $ coerce sym
-    m_jsval_con_info = find f (staticsMap m)
 
 linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, LinkReport)
 linkExeInMemory ld_task = do
