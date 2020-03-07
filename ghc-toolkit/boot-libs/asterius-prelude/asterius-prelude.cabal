@@ -24,7 +24,6 @@ library
       Asterius.Aeson
       Asterius.ByteString
       Asterius.Prim
-      Asterius.Types
       Asterius.UTF8
   hs-source-dirs:
       src
