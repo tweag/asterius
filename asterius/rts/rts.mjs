@@ -61,7 +61,6 @@ export async function newAsteriusInstance(req) {
     __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
-      __asterius_heapalloc,
       req.symbolTable,
       __asterius_stableptr_manager
     ),
