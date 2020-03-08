@@ -10,9 +10,8 @@ import * as rtsConstants from "./rts.constants.mjs";
  *
  */
 export class Scheduler {
-  constructor(memory, heapalloc, symbol_table, stablePtrManager) {
+  constructor(memory, symbol_table, stablePtrManager) {
     this.memory = memory;
-    this.heapAlloc = heapalloc;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
@@ -280,18 +279,10 @@ export class Scheduler {
                   this.exports.rts_mkJSVal(
                     this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
                   )
-                ),
-                raise_closure = this.heapAlloc.allocate(
-                  Math.ceil(rtsConstants.sizeof_StgThunk / 8) + 1
                 );
-              this.memory.i64Store(raise_closure, this.symbolTable.stg_raise_info);
-              this.memory.i64Store(
-                raise_closure + rtsConstants.offset_StgThunk_payload,
-                exception_closure
-              );
               this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
-              this.memory.i64Store(sp, this.symbolTable.stg_enter_info);
-              this.memory.i64Store(sp+8, raise_closure);
+              this.memory.i64Store(sp, this.symbolTable.stg_raise_ret_info);
+              this.memory.i64Store(sp+8, exception_closure);
             } else if (typeof tso_info.ffiRetType === "number") {
               switch (
                 tso_info.ffiRetType // tag is encoded with `ffiValueTypesTag`
