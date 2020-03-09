@@ -32,6 +32,8 @@ HsInt offset_bdescr_free() { return offsetof(bdescr, free); }
 
 HsInt offset_bdescr_link() { return offsetof(bdescr, link); }
 
+HsInt offset_bdescr_gen_no() { return offsetof(bdescr, gen_no); }
+
 HsInt offset_bdescr_node() { return offsetof(bdescr, node); }
 
 HsInt offset_bdescr_flags() { return offsetof(bdescr, flags); }
