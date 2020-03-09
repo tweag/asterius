@@ -105,7 +105,7 @@ export class GC {
   }
 
   /**
-   * Heap alloactes a physical copy of the given closure.
+   * Heap allocates a physical copy of the given closure.
    * Used during evacuation by {@link GC#evacuateClosure}.
    * @param c The source address of the closure
    * @param bytes The size in bytes of the closure
@@ -250,7 +250,7 @@ export class GC {
       // a forwarding address: just follow it
       return Memory.setDynTag(info, tag);
     } else if (this.nonMovedObjects.has(untagged_c)) {
-      // The closure is eiter pinned or static, and has
+      // The closure is either pinned or static, and has
       // already been enqueued for scavenging: just return it
       return c;
     } else if (!this.memory.heapAlloced(untagged_c)) {
@@ -914,7 +914,11 @@ export class GC {
       return;
     }
     this.reentrancyGuard.enter(1);
-    this.heapAlloc.initUnpinned();
+
+    // Set the current generation number to 1, so that
+    // closures are evacuated in the older generation.
+    // Also, only major collections for now.
+    this.heapAlloc.setGenerationNo(1);
 
     // Evacuate TSOs
     for (const [_, tso_info] of this.scheduler.tsos) {
@@ -958,6 +962,8 @@ export class GC {
 
     // mark unused MBlocks
     this.heapAlloc.handleLiveness(this.liveMBlocks, this.deadMBlocks);
+    // set current generation back to 0
+    this.heapAlloc.setGenerationNo(0);
     // allocate a new nursery
     this.updateNursery();
     // garbage collect unused JSVals
