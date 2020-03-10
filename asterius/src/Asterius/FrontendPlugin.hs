@@ -61,6 +61,7 @@ frontendPlugin = makeFrontendPlugin $ do
                 GHC.sPgm_i = "false"
               }
         }
+        `GHC.gopt_set` GHC.Opt_EagerBlackHoling
         `GHC.gopt_set` GHC.Opt_ExternalInterpreter
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags
