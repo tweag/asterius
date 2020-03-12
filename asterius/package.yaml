@@ -41,12 +41,6 @@ data-files:
   - boot-init.sh
   - boot.sh
 
-custom-setup:
-  dependencies:
-    - base
-    - Cabal
-    - ghc-toolkit
-
 ghc-options: -Wall
 
 _exe-ghc-options: &exe-ghc-options
@@ -79,7 +73,7 @@ dependencies:
 
 library:
   source-dirs: src
-  other-modules: Paths_asterius
+  generated-exposed-modules: Paths_asterius
   other-extensions:
     - DeriveGeneric
     - DeriveDataTypeable

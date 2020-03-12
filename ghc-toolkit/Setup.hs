@@ -33,7 +33,6 @@ main =
               self_datadir = datadir self_installdirs
               rts_datadir = self_datadir </> "boot-libs" </> "rts"
               Just ghc_prog = lookupProgram ghcProgram prog_db
-              Just gcc_prog = lookupProgram gccProgram prog_db
           createDirectoryIfMissing True amp
           writeFile (amp </> "BuildInfo_ghc_toolkit.hs") $
             "module BuildInfo_ghc_toolkit where\nghcLibDir :: FilePath\nghcLibDir = "
@@ -42,8 +41,6 @@ main =
               ++ show self_datadir
               ++ "\nbinDir :: FilePath\nbinDir = "
               ++ show self_bindir
-              ++ "\ngccPath :: FilePath\ngccPath = "
-              ++ show (locationPath (programLocation gcc_prog))
           autoapply <-
             readProcess
               (replaceBaseName (locationPath (programLocation ghc_prog)) "runghc")
