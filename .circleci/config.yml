@@ -192,6 +192,7 @@ jobs:
       - run:
           name: Test ahc-cabal
           command: |
+            . .envrc
             ahc-cabal new-update
             ahc-cabal new-install -j1 --installdir . \
               hello
