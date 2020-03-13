@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -12,6 +12,8 @@ ENV \
   PATH=/home/asterius/.asterius-local-install-root/bin:/home/asterius/.asterius-snapshot-install-root/bin:/home/asterius/.asterius-compiler-bin:/home/asterius/.local/bin:${PATH}
 
 RUN \
+  echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/00snapshot && \
+  echo 'deb http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list && \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
