@@ -77,6 +77,7 @@ bootTmpDir BootArgs {..} = bootDir </> "dist"
 bootCreateProcess :: BootArgs -> IO CreateProcess
 bootCreateProcess args@BootArgs {..} = do
   e <- getEnvironment
+  Just ghc <- findExecutable "ghc"
   pure
     (proc "sh" ["-e", "boot.sh"])
       { cwd = Just dataDir,
@@ -87,7 +88,6 @@ bootCreateProcess args@BootArgs {..} = do
               : ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib")
               : ("ASTERIUS_TMP_DIR", bootTmpDir args)
               : ("ASTERIUS_GHC", ghc)
-              : ("ASTERIUS_GHCLIBDIR", ghcLibDir)
               : ("ASTERIUS_AHC", ahc)
               : ("ASTERIUS_AHCPKG", ahcPkg)
               : ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions)

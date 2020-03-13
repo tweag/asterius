@@ -3,7 +3,6 @@ module Language.Haskell.GHC.Toolkit.BuildInfo
     sandboxGhcLibDir,
     ghcLibDir,
     dataDir,
-    gccPath,
   )
 where
 

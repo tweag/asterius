@@ -1,8 +1,5 @@
 module Asterius.BuildInfo
-  ( ghc,
-    ghcPkg,
-    ghcLibDir,
-    ahc,
+  ( ahc,
     ahcPkg,
     ahcLd,
     ahcDist,
@@ -11,9 +8,18 @@ module Asterius.BuildInfo
   )
 where
 
-import BuildInfo_asterius
+import qualified Paths_asterius
 import System.Directory
 import System.FilePath
+import System.IO.Unsafe
+
+{-# NOINLINE binDir #-}
+binDir :: FilePath
+binDir = unsafePerformIO Paths_asterius.getBinDir
+
+{-# NOINLINE dataDir #-}
+dataDir :: FilePath
+dataDir = unsafePerformIO Paths_asterius.getDataDir
 
 ahc, ahcPkg, ahcLd, ahcDist, unlit :: FilePath
 ahc = binDir </> "ahc" <.> exeExtension
