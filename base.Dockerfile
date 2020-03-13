@@ -1,4 +1,4 @@
-FROM debian:sid
+FROM debian:bullseye
 
 ARG DEBIAN_FRONTEND=noninteractive
 

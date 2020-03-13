@@ -3,7 +3,7 @@ version: 2.1
 jobs:
   asterius-boot:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       - ASTERIUS_BUILD_OPTIONS: -j2
       - DEBIAN_FRONTEND: noninteractive
@@ -67,7 +67,7 @@ jobs:
 
   asterius-test:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       - DEBIAN_FRONTEND: noninteractive
       - LANG: C.UTF-8
@@ -149,7 +149,7 @@ jobs:
 
   asterius-test-cabal:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       - DEBIAN_FRONTEND: noninteractive
       - LANG: C.UTF-8
@@ -204,7 +204,7 @@ jobs:
 
   asterius-test-ghc-testsuite:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       - DEBIAN_FRONTEND: noninteractive
       - GHCRTS: -N2
@@ -268,7 +268,7 @@ jobs:
 
   asterius-test-ghc-testsuite-yolo:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --yolo
       - DEBIAN_FRONTEND: noninteractive
@@ -333,7 +333,7 @@ jobs:
 
   asterius-test-ghc-testsuite-debug:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --debug
       - DEBIAN_FRONTEND: noninteractive
@@ -398,7 +398,7 @@ jobs:
 
   asterius-test-ghc-testsuite-debug-yolo:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --debug --yolo
       - DEBIAN_FRONTEND: noninteractive
@@ -463,7 +463,7 @@ jobs:
 
   asterius-build-wabt:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       - ASTERIUS_BUILD_OPTIONS: -j2
       - DEBIAN_FRONTEND: noninteractive
@@ -505,7 +505,7 @@ jobs:
 
   asterius-build-docs:
     docker:
-      - image: debian:sid
+      - image: debian:bullseye
     environment:
       DEBIAN_FRONTEND: noninteractive
       LANG: C.UTF-8
