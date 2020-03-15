@@ -1,12 +1,8 @@
 {
   "name": "asterius",
-  "dockerFile": "Dockerfile",
-  "appPort": [3000],
-  "remoteUser": "asterius",
-  "settings": {
-    "terminal.integrated.shell.linux": "/bin/bash"
-  },
-  "postCreateCommand": ".devcontainer/build.sh",
+  "image": "terrorjack/asterius:dev",
+  "forwardPorts": [3000],
+  "postCreateCommand": [".devcontainer/build.sh"],
   "extensions": [
     "justusadam.language-haskell",
     "hoovercj.haskell-linter",
@@ -14,5 +10,27 @@
     "sjurmillidahl.ormolu-vscode",
     "esbenp.prettier-vscode",
     "stkb.rewrap"
-  ]
+  ],
+  "settings": {
+    "files.eol": "\n",
+    "files.encoding": "utf8",
+    "files.trimFinalNewlines": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "[haskell]": {
+      "editor.defaultFormatter": "sjurmillidahl.ormolu-vscode"
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[json]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[jsonc]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
+  }
 }

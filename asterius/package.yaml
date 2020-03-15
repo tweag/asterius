@@ -73,7 +73,7 @@ dependencies:
 
 library:
   source-dirs: src
-  generated-exposed-modules: Paths_asterius
+  generated-other-modules: Paths_asterius
   other-extensions:
     - DeriveGeneric
     - DeriveDataTypeable

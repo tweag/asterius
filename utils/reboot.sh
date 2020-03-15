@@ -5,5 +5,5 @@ export ASTERIUS_BUILD_OPTIONS=-j$CPUS
 export MAKEFLAGS=-j$CPUS
 
 . utils/clean.sh
-stack build -j$CPUS --test --no-run-tests asterius
+stack build -j$CPUS --test --no-run-tests
 stack exec ahc-boot

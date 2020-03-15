@@ -9,7 +9,7 @@ ENV \
   PATH=/home/asterius/.local/bin:${PATH}
 
 RUN \
-  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list && \
+  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main contrib non-free' > /etc/apt/sources.list && \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
@@ -51,4 +51,26 @@ RUN \
   cabal v1-update && \
   pip3 install \
     recommonmark \
-    sphinx
+    sphinx && \
+  mkdir /tmp/asterius
+
+COPY --chown=asterius:asterius asterius /tmp/asterius/asterius
+COPY --chown=asterius:asterius ghc-toolkit /tmp/asterius/ghc-toolkit
+COPY --chown=asterius:asterius npm-utils /tmp/asterius/npm-utils
+COPY --chown=asterius:asterius wasm-toolkit /tmp/asterius/wasm-toolkit
+COPY --chown=asterius:asterius stack.yaml /tmp/asterius/stack.yaml
+
+RUN \
+  cd /tmp/asterius && \
+  stack install \
+    brittany \
+    ghcid \
+    hlint \
+    ormolu \
+    wai-app-static && \
+  cd /home/asterius && \
+  sudo rm -rf \
+    /home/asterius/.stack/programs/*/*.tar.xz \
+    /tmp/* \
+    /var/lib/apt/lists/* \
+    /var/tmp/*

@@ -23,7 +23,7 @@ Stackage snapshot for convenience of testing simple programs without needing to
 set up a Cabal project.
 
 To use the image, mount the working directory containing the source code as a
-Docker shared volume and use the `ahc-link` program:
+Docker shared volume, then use the `ahc-link` program:
 
 ```
 username@hostname:~/project$ docker run --rm -it -v $(pwd):/project -w /project terrorjack/asterius
@@ -36,11 +36,19 @@ runtime parameters. Check the [documentation](https://asterius.netlify.com/) for
 further details.
 
 It's also possible to use `ahc-cabal` as a drop-in replacement of `cabal` to
-build your Cabal project. Use `ahc-dist` with `--input-exe` on the output
+build a Cabal project. Use `ahc-dist` with `--input-exe` on the output
 "executable" file to generate actual WebAssembly and JavaScript artifacts. See
 the `diagrams` blog
 [post](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html) for an
 example.
+
+Check the official
+[reference](https://docs.docker.com/engine/reference/commandline/run) of `docker
+run` to learn more about the command given in the example above. The example
+opens an interactive `bash` session for exploration, but it's also possible to
+use `docker run` to invoke the Asterius compiler on local Haskell source files.
+Note that [`podman`](https://podman.io) can be used instead of `docker` here; it
+can work with a root-less & daemon-less setting.
 
 ## Building and using `asterius` locally
 
@@ -50,15 +58,24 @@ regular `stack build asterius` for building it, and `stack exec ahc-boot` to
 boot the standard libraries, so later `stack exec ahc-link` may work.
 
 In addition to regular GHC dependencies, make sure these dependencies are
-present in your environment:
+present in the local environment:
 
 * `libnuma-dev` (Required by GHC)
 * `cmake`, `g++`, `git`, `python3` (Required by `binaryen`)
 * `automake`, `autoconf` (Required by `ahc-boot`)
 * `node` (`v12` or later)
 
-If you use `direnv`, after doing a `stack build asterius`, you can directly use
-`ahc-boot` or `ahc-link` without `stack exec` in the project directory.
+If `direnv` is enabled, after doing a `stack build asterius`, executables like
+`ahc-boot` or `ahc-link` can be called directly without `stack exec` in the
+project directory.
+
+## Hacking on `asterius`
+
+We recommend using [VSCode Remote
+Containers](https://code.visualstudio.com/docs/remote/containers) to reproduce
+the very same dev environment used by our core team members. The initial
+container build will take some while, since it will build the whole project and
+run the boot process. After that, the workflow shall be pretty smooth.
 
 ## Documentation and blog posts
 
@@ -75,7 +92,7 @@ We have [documentation](https://asterius.netlify.com/) and blog posts:
 
 Note that they may be slightly out-of-date as the project evolves. Whenever you
 find something in the docs of blog posts which doesn't reflect the status quo,
-don't hesitate to open a ticket :)
+it's a bug and don't hesitate to open a ticket :)
 
 ## What works now
 
