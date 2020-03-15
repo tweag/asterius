@@ -31,6 +31,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   HUnit-approx \
   HaXml \
   HandsomeSoup \
+  HasBigDecimal \
   HsYAML \
   HsYAML-aeson \
   IPv6Addr \
@@ -315,6 +316,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   bv \
   byte-order \
   byteable \
+  bytebuild \
   bytedump \
   byteorder \
   bytes \
@@ -585,6 +587,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   elf \
   elm-bridge \
   elm-core-sources \
+  elm2nix \
   emacs-module \
   email-validate \
   emojis \
@@ -687,6 +690,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   function-builder \
   functor-classes-compat \
   fused-effects \
+  fusion-plugin-types \
   fuzzcheck \
   fuzzy \
   fuzzy-dates \
@@ -972,6 +976,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   iterable \
   ix-shapable \
   jira-wiki-markup \
+  jose \
   jose-jwt \
   js-dgtable \
   js-flot \
@@ -1116,6 +1121,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   miso \
   missing-foreign \
   mixed-types-num \
+  mixpanel-client \
   mmap \
   mmark \
   mmorph \
@@ -1424,7 +1430,6 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   read-editor \
   read-env-var \
   readable \
-  reanimate-svg \
   rebase \
   record-hasfield \
   records-sop \
@@ -1454,6 +1459,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   req \
   req-conduit \
   rerebase \
+  resolv \
   resource-pool \
   resourcet \
   result \
@@ -1518,6 +1524,9 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   serialise \
   servant \
   servant-JuicyPixels \
+  servant-auth \
+  servant-auth-server \
+  servant-auth-swagger \
   servant-blaze \
   servant-cassava \
   servant-checked-exceptions \
@@ -1542,6 +1551,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   servant-swagger-ui-core \
   servant-websockets \
   servant-yaml \
+  serverless-haskell \
   serversession \
   serversession-frontend-wai \
   set-cover \
@@ -1665,6 +1675,7 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   system-fileio \
   system-filepath \
   system-info \
+  systemd \
   tabular \
   tagchup \
   tagged \
