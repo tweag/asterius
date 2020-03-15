@@ -159,7 +159,7 @@ bundleExpressions vts el = case el of
   _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
 -- | Build a module containing the function and some auxiliary data
--- | given its name and a builder.
+-- given its name and a builder.
 runEDSL ::
   -- | Function name
   AsteriusEntitySymbol ->
@@ -444,16 +444,15 @@ switchI64 cond make_clauses = block' [] $ \switch_lbl ->
    in switch_block
 
 -- | Allocate a static region of bytes in the global section. Returns a
--- | reference to the variable (symbol).
--- |
--- | Usage:
--- | runEDSL $ do
--- |   x <- allocStaticBytes "x"
--- |         (Serialized $ SBS.pack $ replicate 8 1)
--- |   loadi64 x 0
--- |
--- |   y <- allocStaticBytes "y" (Uninitialized 8)
--- |   storei64 x 0 (constI32 32)
+-- reference to the variable (symbol). Usage:
+--
+-- >  runEDSL $ do
+-- >    x <- allocStaticBytes "x"
+-- >          (Serialized $ SBS.pack $ replicate 8 1)
+-- >    loadi64 x 0
+-- >
+-- >    y <- allocStaticBytes "y" (Uninitialized 8)
+-- >    storei64 x 0 (constI32 32)
 allocStaticBytes ::
   -- | Name of the static region
   AsteriusEntitySymbol ->
