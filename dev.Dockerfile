@@ -53,6 +53,7 @@ RUN \
   pip3 install \
     recommonmark \
     sphinx && \
+  npm config set prefix ~/.local && \
   mkdir /tmp/asterius
 
 COPY --chown=asterius:asterius asterius /tmp/asterius/asterius
