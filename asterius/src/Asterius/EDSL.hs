@@ -1,3 +1,13 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Asterius.EDSL
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Embedded DSL for creating 'AsteriusModule's.
+--
+-----------------------------------------------------------------------------
+
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -100,7 +110,9 @@ data EDSLState
   = EDSLState
       { retTypes :: [ValueType],
         paramBuf :: DList ValueType,
-        paramNum, localNum, labelNum :: Int,
+        paramNum :: Int,
+        localNum :: Int,
+        labelNum :: Int,
         exprBuf :: DList Expression,
         -- | Static variables to be added into the module
         staticsBuf :: [(AsteriusEntitySymbol, AsteriusStatics)]
@@ -147,7 +159,7 @@ bundleExpressions vts el = case el of
   _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
 -- | Build a module containing the function and some auxiliary data
--- | given its name and a builder.
+-- given its name and a builder.
 runEDSL ::
   -- | Function name
   AsteriusEntitySymbol ->
@@ -171,20 +183,20 @@ runEDSL n (EDSL m) =
       }
     m1 = processBarf n f0
 
--- | Any value that can be read from and wrtten to is an LVal
+-- | Any value that can be read from and written to is an LVal.
 data LVal
   = LVal
-      { -- | Read from the LVal
+      { -- | Read from the LVal.
         getLVal :: Expression,
-        -- | Write into the LVal
+        -- | Write into the LVal.
         putLVal :: Expression -> EDSL ()
       }
 
--- | set the return type of the EDSL expression
+-- | Set the return type of the EDSL expression.
 setReturnTypes :: [ValueType] -> EDSL ()
 setReturnTypes vts = EDSL $ modify' $ \s -> s {retTypes = vts}
 
-mutParam, mutLocal :: ValueType -> EDSL LVal
+mutParam :: ValueType -> EDSL LVal
 mutParam vt = EDSL $ do
   i <- state $ \s@EDSLState {..} ->
     ( fromIntegral paramNum,
@@ -194,6 +206,8 @@ mutParam vt = EDSL $ do
     { getLVal = GetLocal {index = i, valueType = vt},
       putLVal = \v -> emit SetLocal {index = i, value = v}
     }
+
+mutLocal :: ValueType -> EDSL LVal
 mutLocal vt = EDSL $ do
   i <- state $ \s@EDSLState {..} -> (localNum, s {localNum = succ localNum})
   let lr = UniqueLocalReg i vt
@@ -204,9 +218,7 @@ mutLocal vt = EDSL $ do
     }
 
 param :: ValueType -> EDSL Expression
-param vt = do
-  p <- mutParam vt
-  pure $ getLVal p
+param vt = getLVal <$> mutParam vt
 
 params :: [ValueType] -> EDSL [Expression]
 params vt = for vt param
@@ -217,9 +229,11 @@ local vt v = do
   putLVal lr v
   pure $ getLVal lr
 
-i64Local, i32Local :: Expression -> EDSL Expression
-i64Local = local I64
+i32Local :: Expression -> EDSL Expression
 i32Local = local I32
+
+i64Local :: Expression -> EDSL Expression
+i64Local = local I64
 
 i64MutLocal :: EDSL LVal
 i64MutLocal = mutLocal I64
@@ -248,46 +262,58 @@ pointer vt b bp o = LVal
       }
   }
 
-pointerI64,
-  pointerI32,
-  pointerI16,
-  pointerI8,
-  pointerF64,
-  pointerF32 ::
-    Expression -> Int -> LVal
+pointerI64 :: Expression -> Int -> LVal
 pointerI64 = pointer I64 8
+
+pointerI32 :: Expression -> Int -> LVal
 pointerI32 = pointer I32 4
+
+pointerI16 :: Expression -> Int -> LVal
 pointerI16 = pointer I32 2
+
+pointerI8 :: Expression -> Int -> LVal
 pointerI8 = pointer I32 1
+
+pointerF64 :: Expression -> Int -> LVal
 pointerF64 = pointer F64 8
+
+pointerF32 :: Expression -> Int -> LVal
 pointerF32 = pointer F32 4
 
-loadI64,
-  loadI32,
-  loadI16,
-  loadI8,
-  loadF64,
-  loadF32 ::
-    Expression -> Int -> Expression
+loadI64 :: Expression -> Int -> Expression
 loadI64 bp o = getLVal $ pointerI64 bp o
+
+loadI32 :: Expression -> Int -> Expression
 loadI32 bp o = getLVal $ pointerI32 bp o
+
+loadI16 :: Expression -> Int -> Expression
 loadI16 bp o = getLVal $ pointerI16 bp o
+
+loadI8 :: Expression -> Int -> Expression
 loadI8 bp o = getLVal $ pointerI8 bp o
+
+loadF64 :: Expression -> Int -> Expression
 loadF64 bp o = getLVal $ pointerF64 bp o
+
+loadF32 :: Expression -> Int -> Expression
 loadF32 bp o = getLVal $ pointerF32 bp o
 
-storeI64,
-  storeI32,
-  storeI16,
-  storeI8,
-  storeF64,
-  storeF32 ::
-    Expression -> Int -> Expression -> EDSL ()
+storeI64 :: Expression -> Int -> Expression -> EDSL ()
 storeI64 bp o = putLVal $ pointerI64 bp o
+
+storeI32 :: Expression -> Int -> Expression -> EDSL ()
 storeI32 bp o = putLVal $ pointerI32 bp o
+
+storeI16 :: Expression -> Int -> Expression -> EDSL ()
 storeI16 bp o = putLVal $ pointerI16 bp o
+
+storeI8 :: Expression -> Int -> Expression -> EDSL ()
 storeI8 bp o = putLVal $ pointerI8 bp o
+
+storeF64 :: Expression -> Int -> Expression -> EDSL ()
 storeF64 bp o = putLVal $ pointerF64 bp o
+
+storeF32 :: Expression -> Int -> Expression -> EDSL ()
 storeF32 bp o = putLVal $ pointerF32 bp o
 
 call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
@@ -348,7 +374,7 @@ newScope m = do
   m
   EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = orig_buf})
 
-block', loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
+block' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
 block' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
@@ -367,6 +393,7 @@ blockWithLabel vts lbl m = do
       blockReturnTypes = vts
     }
 
+loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
 loop' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
@@ -417,16 +444,15 @@ switchI64 cond make_clauses = block' [] $ \switch_lbl ->
    in switch_block
 
 -- | Allocate a static region of bytes in the global section. Returns a
--- | reference to the variable (symbol).
--- |
--- | Usage:
--- | runEDSL $ do
--- |   x <- allocStaticBytes "x"
--- |         (Serialized $ SBS.pack $ replicate 8 1)
--- |   loadi64 x 0
--- |
--- |   y <- allocStaticBytes "y" (Uninitialized 8)
--- |   storei64 x 0 (constI32 32)
+-- reference to the variable (symbol). Usage:
+--
+-- >  runEDSL $ do
+-- >    x <- allocStaticBytes "x"
+-- >          (Serialized $ SBS.pack $ replicate 8 1)
+-- >    loadi64 x 0
+-- >
+-- >    y <- allocStaticBytes "y" (Uninitialized 8)
+-- >    storei64 x 0 (constI32 32)
 allocStaticBytes ::
   -- | Name of the static region
   AsteriusEntitySymbol ->
@@ -449,16 +475,28 @@ symbol = flip symbol' 0
 symbol' :: AsteriusEntitySymbol -> Int -> Expression
 symbol' sym o = Symbol {unresolvedSymbol = sym, symbolOffset = o}
 
-constI32, constI64, constF64 :: Int -> Expression
+constI32 :: Int -> Expression
 constI32 = ConstI32 . fromIntegral
+
+constI64 :: Int -> Expression
 constI64 = ConstI64 . fromIntegral
+
+constF64 :: Int -> Expression
 constF64 = ConstF64 . fromIntegral
 
-baseReg, r1, currentNursery, currentTSO, hpAlloc :: LVal
+baseReg :: LVal
 baseReg = global BaseReg
+
+r1 :: LVal
 r1 = global $ VanillaReg 1
+
+currentNursery :: LVal
 currentNursery = global CurrentNursery
+
+currentTSO :: LVal
 currentTSO = global CurrentTSO
+
+hpAlloc :: LVal
 hpAlloc = global HpAlloc
 
 mainCapability :: Expression
