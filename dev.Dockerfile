@@ -27,6 +27,7 @@ RUN \
     libncurses-dev \
     libnuma-dev \
     make \
+    openssh-client \
     python3-pip \
     sudo \
     xz-utils \

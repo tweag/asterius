@@ -3,112 +3,36 @@ version: 2.1
 jobs:
   asterius-boot:
     docker:
-      - image: debian:sid
+      - image: terrorjack/asterius:dev
     environment:
       - ASTERIUS_BUILD_OPTIONS: -j2
-      - DEBIAN_FRONTEND: noninteractive
-      - LANG: C.UTF-8
       - MAKEFLAGS: -j2
-      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y \
-              automake \
-              cmake \
-              curl \
-              g++ \
-              gawk \
-              git \
-              gnupg \
-              libffi-dev \
-              libgmp-dev \
-              libncurses-dev \
-              libnuma-dev \
-              make \
-              openssh-client \
-              python-minimal \
-              python3-minimal \
-              xz-utils \
-              zlib1g-dev
-            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
-            apt update
-            apt install -y nodejs
-            mkdir -p ~/.local/bin
-            curl -L https://github.com/commercialhaskell/stack/releases/download/v2.1.3/stack-2.1.3-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-            curl -L https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal'
       - checkout
-
       - run:
           name: Boot
           command: |
-            git submodule update --init --recursive
             stack --no-terminal -j2 install --test --no-run-tests asterius
-            stack --no-terminal exec ahc-boot
-
+            . .envrc
+            ahc-boot
       - persist_to_workspace:
-          root: /root
+          root: /home/asterius
           paths:
             - .local
             - .stack
             - project/.stack-work
             - project/asterius/.stack-work
-            - project/binaryen/.stack-work
             - project/ghc-toolkit/.stack-work
-            - project/inline-js/inline-js-core/.stack-work
             - project/npm-utils/.stack-work
-            - project/wabt/.stack-work
             - project/wasm-toolkit/.stack-work
-            - project/stack.yaml.lock
 
   asterius-test:
     docker:
-      - image: debian:sid
-    environment:
-      - DEBIAN_FRONTEND: noninteractive
-      - LANG: C.UTF-8
-      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - image: terrorjack/asterius:dev
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y \
-              automake \
-              cmake \
-              curl \
-              g++ \
-              gawk \
-              git \
-              gnupg \
-              libffi-dev \
-              libgmp-dev \
-              libncurses-dev \
-              libnuma-dev \
-              make \
-              openssh-client \
-              python-minimal \
-              python3-minimal \
-              xz-utils \
-              zlib1g-dev
-            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
-            apt update
-            apt install -y nodejs
       - checkout
-      - run:
-          name: Initialize submodules
-          command: |
-            git submodule update --init --recursive
       - attach_workspace:
-          at: /root
+          at: /home/asterius
       - run:
           name: Test asterius
           command: |
@@ -151,47 +75,11 @@ jobs:
 
   asterius-test-cabal:
     docker:
-      - image: debian:sid
-    environment:
-      - DEBIAN_FRONTEND: noninteractive
-      - LANG: C.UTF-8
-      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - image: terrorjack/asterius:dev
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y \
-              automake \
-              cmake \
-              curl \
-              g++ \
-              gawk \
-              git \
-              gnupg \
-              libffi-dev \
-              libgmp-dev \
-              libncurses-dev \
-              libnuma-dev \
-              make \
-              openssh-client \
-              python-minimal \
-              python3-minimal \
-              xz-utils \
-              zlib1g-dev
-            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
-            apt update
-            apt install -y nodejs
       - checkout
-      - run:
-          name: Initialize submodules
-          command: |
-            git submodule update --init --recursive
       - attach_workspace:
-          at: /root
+          at: /home/asterius
       - run:
           name: Test ahc-cabal
           command: |
@@ -207,52 +95,13 @@ jobs:
 
   asterius-test-ghc-testsuite:
     docker:
-      - image: debian:sid
+      - image: terrorjack/asterius:dev
     environment:
-      - DEBIAN_FRONTEND: noninteractive
       - GHCRTS: -N2
-      - LANG: C.UTF-8
-      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y python3-numpy python3-pandas python3-terminaltables
-            apt install -y \
-              automake \
-              cmake \
-              curl \
-              g++ \
-              gawk \
-              git \
-              gnupg \
-              libffi-dev \
-              libgmp-dev \
-              libncurses-dev \
-              libnuma-dev \
-              make \
-              openssh-client \
-              python-minimal \
-              python3-minimal \
-              xz-utils \
-              zlib1g-dev
-            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
-            apt update
-            apt install -y nodejs
-            node --version
-
       - checkout
-      - run:
-          name: Initialize submodules
-          command: |
-            git submodule update --init --recursive
       - attach_workspace:
-          at: /root
-
+          at: /home/asterius
       - run:
             name: Run GHC test suite on asterius
             # Allow a large timeout so we have enough time to write out the
@@ -266,59 +115,19 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=180s" || true
               cp asterius/test-report.csv /tmp
-
       - store_artifacts:
           path: /tmp/test-report.csv
 
   asterius-test-ghc-testsuite-yolo:
     docker:
-      - image: debian:sid
+      - image: terrorjack/asterius:dev
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --yolo
-      - DEBIAN_FRONTEND: noninteractive
       - GHCRTS: -N2
-      - LANG: C.UTF-8
-      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y python3-numpy python3-pandas python3-terminaltables
-            apt install -y \
-              automake \
-              cmake \
-              curl \
-              g++ \
-              gawk \
-              git \
-              gnupg \
-              libffi-dev \
-              libgmp-dev \
-              libncurses-dev \
-              libnuma-dev \
-              make \
-              openssh-client \
-              python-minimal \
-              python3-minimal \
-              xz-utils \
-              zlib1g-dev
-            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
-            apt update
-            apt install -y nodejs
-            node --version
-
       - checkout
-      - run:
-          name: Initialize submodules
-          command: |
-            git submodule update --init --recursive
       - attach_workspace:
-          at: /root
-
+          at: /home/asterius
       - run:
             name: Run GHC test suite on asterius
             # Allow a large timeout so we have enough time to write out the
@@ -332,59 +141,19 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=180s" || true
               cp asterius/test-report.csv /tmp
-
       - store_artifacts:
           path: /tmp/test-report.csv
 
   asterius-test-ghc-testsuite-debug:
     docker:
-      - image: debian:sid
+      - image: terrorjack/asterius:dev
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --debug
-      - DEBIAN_FRONTEND: noninteractive
       - GHCRTS: -N2
-      - LANG: C.UTF-8
-      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y python3-numpy python3-pandas python3-terminaltables
-            apt install -y \
-              automake \
-              cmake \
-              curl \
-              g++ \
-              gawk \
-              git \
-              gnupg \
-              libffi-dev \
-              libgmp-dev \
-              libncurses-dev \
-              libnuma-dev \
-              make \
-              openssh-client \
-              python-minimal \
-              python3-minimal \
-              xz-utils \
-              zlib1g-dev
-            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
-            apt update
-            apt install -y nodejs
-            node --version
-
       - checkout
-      - run:
-          name: Initialize submodules
-          command: |
-            git submodule update --init --recursive
       - attach_workspace:
-          at: /root
-
+          at: /home/asterius
       - run:
             name: Run GHC test suite on asterius
             # Allow a large timeout so we have enough time to write out the
@@ -398,59 +167,19 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=180s" || true
               cp asterius/test-report.csv /tmp
-
       - store_artifacts:
           path: /tmp/test-report.csv
 
   asterius-test-ghc-testsuite-debug-yolo:
     docker:
-      - image: debian:sid
+      - image: terrorjack/asterius:dev
     environment:
       - ASTERIUS_GHC_TESTSUITE_OPTIONS: --debug --yolo
-      - DEBIAN_FRONTEND: noninteractive
       - GHCRTS: -N2
-      - LANG: C.UTF-8
-      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     steps:
-      - run:
-          name: Install dependencies
-          command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y python3-numpy python3-pandas python3-terminaltables
-            apt install -y \
-              automake \
-              cmake \
-              curl \
-              g++ \
-              gawk \
-              git \
-              gnupg \
-              libffi-dev \
-              libgmp-dev \
-              libncurses-dev \
-              libnuma-dev \
-              make \
-              openssh-client \
-              python-minimal \
-              python3-minimal \
-              xz-utils \
-              zlib1g-dev
-            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
-            apt update
-            apt install -y nodejs
-            node --version
-
       - checkout
-      - run:
-          name: Initialize submodules
-          command: |
-            git submodule update --init --recursive
       - attach_workspace:
-          at: /root
-
+          at: /home/asterius
       - run:
             name: Run GHC test suite on asterius
             # Allow a large timeout so we have enough time to write out the
@@ -464,59 +193,12 @@ jobs:
               # run test cases that can fail.
               stack --no-terminal test asterius:ghc-testsuite --test-arguments="-j2 --timeout=180s" || true
               cp asterius/test-report.csv /tmp
-
       - store_artifacts:
           path: /tmp/test-report.csv
 
-  asterius-build-wabt:
-    docker:
-      - image: debian:sid
-    environment:
-      - ASTERIUS_BUILD_OPTIONS: -j2
-      - DEBIAN_FRONTEND: noninteractive
-      - LANG: C.UTF-8
-      - MAKEFLAGS: -j2
-      - PATH: /root/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-    steps:
-      - run:
-          name: Install dependencies
-          command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y \
-              cmake \
-              curl \
-              g++ \
-              gawk \
-              git \
-              gnupg \
-              libffi-dev \
-              libgmp-dev \
-              libncurses-dev \
-              libnuma-dev \
-              make \
-              openssh-client \
-              python \
-              python3 \
-              xz-utils \
-              zlib1g-dev
-            mkdir -p ~/.local/bin
-            curl -L https://github.com/commercialhaskell/stack/releases/download/v2.1.3/stack-2.1.3-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
-      - checkout
-      - run:
-          name: Build wabt
-          command: |
-            git submodule update --init --recursive
-            stack --no-terminal -j2 build --test --no-run-tests wabt
-            stack --no-terminal exec wasm-objdump -- --help
-
   asterius-build-docs:
     docker:
-      - image: debian:sid
-    environment:
-      DEBIAN_FRONTEND: noninteractive
-      LANG: C.UTF-8
+      - image: terrorjack/asterius:dev
     steps:
       - run:
           name: Ensure we are on `tweag/asterius`
@@ -528,21 +210,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200224T000000Z sid main' > /etc/apt/sources.list
-            apt update
-            apt full-upgrade -y
-            apt install -y \
-              curl \
-              git \
-              gnupg \
-              openssh-client \
-              python3-pip
-            pip3 install recommonmark sphinx
-            curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
-            echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list
-            apt update
-            apt install -y nodejs
-            npm install netlify-cli -g
+            npm install -g netlify-cli
       - checkout
       - run:
           name: Build & push docs
@@ -579,5 +247,4 @@ workflows:
       - asterius-test-ghc-testsuite-debug-yolo:
           requires:
             - asterius-boot
-      - asterius-build-wabt
       - asterius-build-docs
