@@ -74,9 +74,8 @@ project directory.
 We recommend using [VSCode Remote
 Containers](https://code.visualstudio.com/docs/remote/containers) to reproduce
 the very same dev environment used by our core team members. The initial
-container build will take quite a while, since it will build some dev tools
-(e.g. `ghcid`, `ormolu`) as well as the whole project, plus the booting process.
-After that the workflow shall be pretty smooth.
+container build will take some while, since it will build the whole project and
+run the boot process. After that, the workflow shall be pretty smooth.
 
 ## Documentation and blog posts
 
