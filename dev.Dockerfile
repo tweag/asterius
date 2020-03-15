@@ -51,4 +51,26 @@ RUN \
   cabal v1-update && \
   pip3 install \
     recommonmark \
-    sphinx
+    sphinx && \
+  mkdir /tmp/asterius
+
+COPY --chown=asterius:asterius asterius /tmp/asterius/asterius
+COPY --chown=asterius:asterius ghc-toolkit /tmp/asterius/ghc-toolkit
+COPY --chown=asterius:asterius npm-utils /tmp/asterius/npm-utils
+COPY --chown=asterius:asterius wasm-toolkit /tmp/asterius/wasm-toolkit
+COPY --chown=asterius:asterius stack.yaml /tmp/asterius/stack.yaml
+
+RUN \
+  cd /tmp/asterius && \
+  stack install \
+    brittany \
+    ghcid \
+    hlint \
+    ormolu \
+    wai-app-static && \
+  cd /home/asterius && \
+  sudo rm -rf \
+    /home/asterius/.stack/programs/*/*.tar.xz \
+    /tmp/* \
+    /var/lib/apt/lists/* \
+    /var/tmp/*
