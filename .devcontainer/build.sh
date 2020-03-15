@@ -7,6 +7,7 @@ export MAKEFLAGS=-j$CPUS
 stack build --test --no-run-tests \
   asterius \
   ghc-toolkit \
+  npm-utils \
   wabt \
   wasm-toolkit
 
