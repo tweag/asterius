@@ -1,3 +1,13 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Asterius.EDSL
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Embedded DSL for creating 'AsteriusModule's.
+--
+-----------------------------------------------------------------------------
+
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -100,7 +110,9 @@ data EDSLState
   = EDSLState
       { retTypes :: [ValueType],
         paramBuf :: DList ValueType,
-        paramNum, localNum, labelNum :: Int,
+        paramNum :: Int,
+        localNum :: Int,
+        labelNum :: Int,
         exprBuf :: DList Expression,
         -- | Static variables to be added into the module
         staticsBuf :: [(AsteriusEntitySymbol, AsteriusStatics)]
@@ -171,20 +183,20 @@ runEDSL n (EDSL m) =
       }
     m1 = processBarf n f0
 
--- | Any value that can be read from and wrtten to is an LVal
+-- | Any value that can be read from and written to is an LVal.
 data LVal
   = LVal
-      { -- | Read from the LVal
+      { -- | Read from the LVal.
         getLVal :: Expression,
-        -- | Write into the LVal
+        -- | Write into the LVal.
         putLVal :: Expression -> EDSL ()
       }
 
--- | set the return type of the EDSL expression
+-- | Set the return type of the EDSL expression.
 setReturnTypes :: [ValueType] -> EDSL ()
 setReturnTypes vts = EDSL $ modify' $ \s -> s {retTypes = vts}
 
-mutParam, mutLocal :: ValueType -> EDSL LVal
+mutParam :: ValueType -> EDSL LVal
 mutParam vt = EDSL $ do
   i <- state $ \s@EDSLState {..} ->
     ( fromIntegral paramNum,
@@ -194,6 +206,8 @@ mutParam vt = EDSL $ do
     { getLVal = GetLocal {index = i, valueType = vt},
       putLVal = \v -> emit SetLocal {index = i, value = v}
     }
+
+mutLocal :: ValueType -> EDSL LVal
 mutLocal vt = EDSL $ do
   i <- state $ \s@EDSLState {..} -> (localNum, s {localNum = succ localNum})
   let lr = UniqueLocalReg i vt
@@ -360,7 +374,7 @@ newScope m = do
   m
   EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = orig_buf})
 
-block', loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
+block' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
 block' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
@@ -379,6 +393,7 @@ blockWithLabel vts lbl m = do
       blockReturnTypes = vts
     }
 
+loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
 loop' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
