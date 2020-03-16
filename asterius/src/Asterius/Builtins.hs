@@ -1073,10 +1073,8 @@ allocatePinnedFunction :: BuiltinsOptions -> AsteriusModule
 allocatePinnedFunction _ = runEDSL "allocatePinned" $ do
   setReturnTypes [I64]
   [_, n] <- params [I64, I64]
-  ( truncUFloat64ToInt64
-      <$> callImport' "__asterius_allocatePinned" [convertUInt64ToFloat64 n] F64
-    )
-    >>= emit
+  callImport' "__asterius_allocatePinned" [convertUInt64ToFloat64 n] F64
+    >>= emit . truncUFloat64ToInt64
 
 newCAFFunction :: BuiltinsOptions -> AsteriusModule
 newCAFFunction _ = runEDSL "newCAF" $ do
