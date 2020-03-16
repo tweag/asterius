@@ -1,6 +1,6 @@
 cabal-version:  3.0
 name:           ghc-heap
-version:        8.8.2
+version:        8.8.3
 license:        BSD-3-Clause
 license-file:   LICENSE
 maintainer:     libraries@haskell.org
