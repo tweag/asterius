@@ -4,4 +4,11 @@ shopt -s globstar
 
 cd asterius
 
-ghcid --command="stack exec ghci -- -package ghc -Wall -j -fno-code +RTS -N -A64m -n2m -RTS $(echo src/**/*.hs) $(echo $(stack path --dist-dir)/build/autogen/**/*.hs)"
+stack exec ghci -- \
+  -package ghc \
+  -Wall \
+  -j \
+  -fno-code \
+  +RTS -N -A64m -n2m -RTS \
+  $(echo src/**/*.hs) \
+  $(echo $(stack path --dist-dir)/build/autogen/**/*.hs)

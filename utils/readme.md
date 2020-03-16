@@ -8,11 +8,12 @@ These scripts are meant to be called at the project root directory.
 
 * `utils/clean.sh`: Clean up the `ghc-toolkit` and `asterius` packages, removing
   the source & compiled objects of the boot libs.
-* `utils/ghcid.sh`: Call `ghcid` on `asterius`. Modify the script to add the
-  source of an executable/test target when needed. This doesn't require a
-  previous boot, but does require a `stack build` of `asterius`, even if it
-  fails midway, since it treats the auto-generated `Paths_asterius.hs` as an
-  input source file as well.
+* `utils/ghcid.sh`: The script used by `ghcid` for `asterius`; do not run it
+  directly, instead just run `ghcid` from the project root directory. Modify the
+  script to add the source of an executable/test target when needed. This
+  doesn't require a previous boot, but does require a `stack build` of
+  `asterius`, even if it fails midway, since it treats the auto-generated
+  `Paths_asterius.hs` as an input source file as well.
 * `utils/reboot.sh`: Do the cleanup, rebuild and reboot, using all CPU cores. If
   you touch the source of boot libs in `ghc-toolkit/` or modify the IR/codegen
   of `asterius`, the boot cache may be out-of-sync so you need to run this
