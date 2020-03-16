@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
+ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
   AC-Angle \
   ANum \
   Boolean \
@@ -920,7 +920,6 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   hybrid-vectors \
   hyperloglog \
   hyphenation \
-  hyraxAbif \
   iconv \
   identicon \
   ieee754 \
@@ -2005,4 +2004,4 @@ ahc-cabal v1-install -j$jobs --keep-going --prefix=$ASTERIUS_LIB_DIR --package-d
   zlib \
   zlib-bindings \
   zlib-lens \
-  zstd || true
+  zstd
