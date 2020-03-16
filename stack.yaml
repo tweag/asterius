@@ -1,10 +1,10 @@
 resolver: lts-15.3
 extra-deps:
-  - https://github.com/tweag/binaryen/archive/00cc255cd1015bb5ab3fb4bf145a57fe5230f3d1.tar.gz
+  - https://github.com/tweag/binaryen/archive/32e35da9a8d38f96b96154a8bca6f28f205281c1.tar.gz
   - url: https://github.com/tweag/inline-js/archive/bd000373e0f02d213a881119298e1aea5962e149.tar.gz
     subdirs:
       - inline-js-core
-  - https://github.com/tweag/wabt/archive/29c85806e3fce79d95a0fa5ca22757eb2d1c75c9.tar.gz
+  - https://github.com/tweag/wabt/archive/c9bb6654f5d558af6aa9ef104db3e09b12d1290f.tar.gz
 packages:
   - asterius
   - ghc-toolkit
