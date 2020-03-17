@@ -50,6 +50,7 @@ module Asterius.EDSL
     storeI8,
     storeF64,
     storeF32,
+    unTagClosure,
     call,
     call',
     callImport,
@@ -315,6 +316,9 @@ storeF64 bp o = putLVal $ pointerF64 bp o
 
 storeF32 :: Expression -> Int -> Expression -> EDSL ()
 storeF32 bp o = putLVal $ pointerF32 bp o
+
+unTagClosure :: Expression -> Expression
+unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
 call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}

@@ -1219,9 +1219,6 @@ rtsMkJSValFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkJSValFunction opts =
   rtsMkHelper opts "rts_mkJSVal" "base_AsteriusziPrim_JSVal_con_info"
 
-unTagClosure :: Expression -> Expression
-unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
-
 rtsGetBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do
   setReturnTypes [I64]
