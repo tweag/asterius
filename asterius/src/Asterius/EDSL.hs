@@ -412,9 +412,9 @@ if' vts cond t f = do
 break' :: Label -> Maybe Expression -> EDSL ()
 break' (Label lbl) cond = emit Break {name = lbl, breakCondition = cond}
 
-whileLoop :: [ValueType] -> Expression -> EDSL () -> EDSL ()
-whileLoop vts cond body =
-  loop' vts $ \lbl -> if' vts cond (body *> break' lbl Nothing) mempty
+whileLoop :: Expression -> EDSL () -> EDSL ()
+whileLoop cond body =
+  loop' [] $ \lbl -> if' [] cond (body *> break' lbl Nothing) mempty
 
 switchI64 :: Expression -> (EDSL () -> ([(Int, EDSL ())], EDSL ())) -> EDSL ()
 switchI64 cond make_clauses = block' [] $ \switch_lbl ->
