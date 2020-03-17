@@ -123,6 +123,23 @@ HsInt offset_Capability_free_trec_headers() {
 HsInt offset_Capability_transaction_tokens() {
   return offsetof(Capability, transaction_tokens);
 }
+
+HsInt sizeof_MessageBlackHole() {
+  return sizeof(MessageBlackHole);
+}
+
+HsInt offset_MessageBlackHole_link() {
+  return offsetof(MessageBlackHole, link);
+}
+
+HsInt offset_MessageBlackHole_tso() {
+  return offsetof(MessageBlackHole, tso);
+}
+
+HsInt offset_MessageBlackHole_bh() {
+  return offsetof(MessageBlackHole, bh);
+}
+
 HsInt sizeof_StgAP() { return sizeof(StgAP); }
 
 HsInt offset_StgAP_arity() { return offsetof(StgAP, arity); }
@@ -146,6 +163,26 @@ HsInt sizeof_StgArrBytes() { return sizeof(StgArrBytes); }
 HsInt offset_StgArrBytes_bytes() { return offsetof(StgArrBytes, bytes); }
 
 HsInt offset_StgArrBytes_payload() { return offsetof(StgArrBytes, payload); }
+
+HsInt sizeof_StgBlockingQueue() {
+  return sizeof(StgBlockingQueue);
+}
+
+HsInt offset_StgBlockingQueue_link() {
+  return offsetof(StgBlockingQueue, link);
+}
+
+HsInt offset_StgBlockingQueue_bh() {
+  return offsetof(StgBlockingQueue, bh);
+}
+
+HsInt offset_StgBlockingQueue_owner() {
+  return offsetof(StgBlockingQueue, owner);
+}
+
+HsInt offset_StgBlockingQueue_queue() {
+  return offsetof(StgBlockingQueue, queue);
+}
 
 HsInt sizeof_StgClosure() { return sizeof(StgClosure); }
 
