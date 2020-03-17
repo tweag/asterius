@@ -185,13 +185,13 @@ export class Scheduler {
             break;
           }
 
+          case Blocked.OnBlackHole:
           case Blocked.OnMVar:
           case Blocked.OnMVarRead: {
             //console.log(`Thread ${tid}: blocked on MVar`);
             break;
           }
           case Blocked.NotBlocked:
-          case Blocked.OnBlackHole:
           case Blocked.OnRead:
           case Blocked.OnWrite:
           case Blocked.OnSTM:
