@@ -50,6 +50,7 @@ module Asterius.EDSL
     storeI8,
     storeF64,
     storeF32,
+    unTagClosure,
     call,
     call',
     callImport,
@@ -316,6 +317,9 @@ storeF64 bp o = putLVal $ pointerF64 bp o
 storeF32 :: Expression -> Int -> Expression -> EDSL ()
 storeF32 bp o = putLVal $ pointerF32 bp o
 
+unTagClosure :: Expression -> Expression
+unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
+
 call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}
 
@@ -412,9 +416,9 @@ if' vts cond t f = do
 break' :: Label -> Maybe Expression -> EDSL ()
 break' (Label lbl) cond = emit Break {name = lbl, breakCondition = cond}
 
-whileLoop :: [ValueType] -> Expression -> EDSL () -> EDSL ()
-whileLoop vts cond body =
-  loop' vts $ \lbl -> if' vts cond (body *> break' lbl Nothing) mempty
+whileLoop :: Expression -> EDSL () -> EDSL ()
+whileLoop cond body =
+  loop' [] $ \lbl -> if' [] cond (body *> break' lbl Nothing) mempty
 
 switchI64 :: Expression -> (EDSL () -> ([(Int, EDSL ())], EDSL ())) -> EDSL ()
 switchI64 cond make_clauses = block' [] $ \switch_lbl ->

@@ -118,6 +118,14 @@ foreign import ccall unsafe "offset_Capability_free_trec_headers"
 foreign import ccall unsafe "offset_Capability_transaction_tokens"
   offset_Capability_transaction_tokens :: Int
 
+foreign import ccall unsafe "sizeof_MessageBlackHole" sizeof_MessageBlackHole :: Int
+
+foreign import ccall unsafe "offset_MessageBlackHole_link" offset_MessageBlackHole_link :: Int
+
+foreign import ccall unsafe "offset_MessageBlackHole_tso" offset_MessageBlackHole_tso :: Int
+
+foreign import ccall unsafe "offset_MessageBlackHole_bh" offset_MessageBlackHole_bh :: Int
+
 foreign import ccall unsafe "sizeof_StgAP" sizeof_StgAP :: Int
 
 foreign import ccall unsafe "offset_StgAP_arity" offset_StgAP_arity :: Int
@@ -146,6 +154,16 @@ foreign import ccall unsafe "offset_StgArrBytes_bytes"
 
 foreign import ccall unsafe "offset_StgArrBytes_payload"
   offset_StgArrBytes_payload :: Int
+
+foreign import ccall unsafe "sizeof_StgBlockingQueue" sizeof_StgBlockingQueue :: Int
+
+foreign import ccall unsafe "offset_StgBlockingQueue_link" offset_StgBlockingQueue_link :: Int
+
+foreign import ccall unsafe "offset_StgBlockingQueue_bh" offset_StgBlockingQueue_bh :: Int
+
+foreign import ccall unsafe "offset_StgBlockingQueue_owner" offset_StgBlockingQueue_owner :: Int
+
+foreign import ccall unsafe "offset_StgBlockingQueue_queue" offset_StgBlockingQueue_queue :: Int
 
 foreign import ccall unsafe "sizeof_StgClosure" sizeof_StgClosure :: Int
 

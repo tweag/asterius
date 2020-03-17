@@ -18,6 +18,7 @@ module Asterius.Builtins
   )
 where
 
+import Asterius.Builtins.Blackhole
 import Asterius.Builtins.CMath
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.Main
@@ -194,6 +195,7 @@ rtsAsteriusModule opts =
     -- the module wrapped by using `generateWrapperModule`.
     <> generateRtsExternalInterfaceModule opts
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
+    <> blackholeCBits
     <> smCBits
     <> generateWrapperModule smCBits
     <> cmathCBits
@@ -1218,9 +1220,6 @@ rtsMkStablePtrFunction opts =
 rtsMkJSValFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkJSValFunction opts =
   rtsMkHelper opts "rts_mkJSVal" "base_AsteriusziPrim_JSVal_con_info"
-
-unTagClosure :: Expression -> Expression
-unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
 rtsGetBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do

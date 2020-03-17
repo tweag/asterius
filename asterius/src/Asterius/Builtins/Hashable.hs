@@ -19,7 +19,7 @@ hashableFNVHash = runEDSL "hashable_fnv_hash" $ do
   putLVal hash salt
   i <- i64MutLocal
   putLVal i $ constI64 0
-  whileLoop [] (getLVal i `ltUInt64` len) $ do
+  whileLoop (getLVal i `ltUInt64` len) $ do
     putLVal hash $
       ( getLVal hash
           `xorInt64` extendUInt32 (loadI8 (str `addInt64` getLVal i) 0)
