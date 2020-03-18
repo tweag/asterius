@@ -16,6 +16,6 @@ jsonToJSVal = js_dec . utf8ToJSString . A.encode
 jsonFromJSVal :: A.FromJSON a => JSVal -> Either String a
 jsonFromJSVal = A.eitherDecode' . utf8FromJSString . js_enc
 
-foreign import javascript "JSON.stringify(${1})" js_enc :: JSVal -> JSString
+foreign import javascript "JSON.stringify($1)" js_enc :: JSVal -> JSString
 
-foreign import javascript "JSON.parse(${1})" js_dec :: JSString -> JSVal
+foreign import javascript "JSON.parse($1)" js_dec :: JSString -> JSVal

@@ -1,7 +1,7 @@
 import Data.Array.IArray
 import Data.Array.Unboxed
 
-foreign import javascript "console.log(${1})" js_print_int :: Int -> IO ()
+foreign import javascript "console.log($1)" js_print_int :: Int -> IO ()
 
 facts :: [Int]
 facts = scanl (*) 1 [1 ..]

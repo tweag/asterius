@@ -53,7 +53,7 @@ import Asterius.Types
 
 foreign import javascript "new Date()" current_time :: IO JSVal
 
-foreign import javascript interruptible "fetch(${1})" fetch :: JSVal -> IO JSVal
+foreign import javascript interruptible "fetch($1)" fetch :: JSVal -> IO JSVal
 ```
 
 The source text of `foreign import javascript` should be a single valid

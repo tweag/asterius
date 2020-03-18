@@ -88,10 +88,7 @@ parseFFIFunctionType accept_prim norm_sig_ty = case res_ty of
 parseField :: Parser a -> Parser (Chunk a)
 parseField f = do
   void $ char '$'
-  void $ char '{'
-  v <- f
-  void $ char '}'
-  pure $ Field v
+  Field <$> f
 
 parseChunk :: Parser (Chunk a) -> Parser (Chunk a)
 parseChunk f = try f <|> do

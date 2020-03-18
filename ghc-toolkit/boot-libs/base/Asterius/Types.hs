@@ -26,5 +26,5 @@ makeJSException :: JSVal -> SomeException
 makeJSException v =
   toException (JSException v (fromJSString (js_err_toString v)))
 
-foreign import javascript "${1}.stack ? ${1}.stack : ${1}.toString()"
+foreign import javascript "$1.stack ? $1.stack : $1.toString()"
   js_err_toString :: JSVal -> JSString
