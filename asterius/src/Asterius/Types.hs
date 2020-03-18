@@ -38,7 +38,6 @@ module Asterius.Types
     RelooperAddBranch (..),
     RelooperBlock (..),
     RelooperRun (..),
-    Chunk (..),
     FFIValueTypeRep (..),
     FFIValueType (..),
     FFIFunctionType (..),
@@ -597,13 +596,6 @@ data RelooperRun
 
 instance Binary RelooperRun
 
-data Chunk a
-  = Lit String
-  | Field a
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary a => Binary (Chunk a)
-
 data FFIValueTypeRep
   = FFILiftedRep
   | FFIUnliftedRep
@@ -647,7 +639,7 @@ data FFIImportDecl
   = FFIImportDecl
       { ffiFunctionType :: FFIFunctionType,
         ffiSafety :: FFISafety,
-        ffiSourceChunks :: [Chunk Int]
+        ffiSourceText :: SBS.ShortByteString
       }
   deriving (Eq, Show, Generic, Data)
 

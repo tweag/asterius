@@ -289,21 +289,13 @@ generateFFIFunctionImports FFIMarshalState {..} =
 generateFFIImportLambda :: FFIImportDecl -> Builder
 generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
   | is_unsafe =
-    lamb
-      <> ( case map ffiValueTypeRep ffiResultTypes of
-             [FFIJSValRep] -> "__asterius_jsffi.newJSVal("
-             _ -> "("
-         )
-      <> code
-      <> ")"
+    lamb <> unsafe_code
   | otherwise =
     lamb
       <> "__asterius_jsffi.returnFFIPromise("
-      <> "(async () => ("
-      <> code
-      <> "))().then(v => ["
-      <> integerDec (ffiValueTypesTag ffiResultTypes)
-      <> ",v]))"
+      <> "(async () => "
+      <> safe_code
+      <> ")())"
   where
     is_unsafe = ffiSafety == FFIUnsafe
     lamb =
@@ -311,18 +303,41 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
         <> mconcat
           ( intersperse
               ","
-              ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
+              ["$" <> intDec i | i <- [1 .. length ffiParamTypes]]
           )
         <> ")=>"
-    code =
+    getjsval_code =
       mconcat
-        [ case chunk of
-            Lit s -> stringUtf8 s
-            Field i -> case ffiValueTypeRep $ ffiParamTypes !! (i - 1) of
-              FFIJSValRep -> "__asterius_jsffi.getJSVal(_" <> intDec i <> ")"
-              _ -> "_" <> intDec i
-          | chunk <- ffiSourceChunks
+        [ case ffiValueTypeRep pt of
+            FFIJSValRep ->
+              "$"
+                <> intDec i
+                <> " = __asterius_jsffi.getJSVal($"
+                <> intDec i
+                <> ");"
+            _ -> mempty
+          | (i, pt) <- zip [1 ..] ffiParamTypes
         ]
+    unsafe_code =
+      "{"
+        <> getjsval_code
+        <> "return "
+        <> ( case map ffiValueTypeRep ffiResultTypes of
+               [FFIJSValRep] ->
+                 "__asterius_jsffi.newJSVal("
+                   <> shortByteString ffiSourceText
+                   <> ")"
+               _ -> "(" <> shortByteString ffiSourceText <> ")"
+           )
+        <> ";}"
+    safe_code =
+      "{"
+        <> getjsval_code
+        <> "return ["
+        <> integerDec (ffiValueTypesTag ffiResultTypes)
+        <> ", await ("
+        <> shortByteString ffiSourceText
+        <> ")];}"
 
 generateFFIImportObjectFactory :: FFIMarshalState -> Builder
 generateFFIImportObjectFactory FFIMarshalState {..} =

@@ -16,10 +16,8 @@ import Asterius.Foreign.SupportedTypes
 import Asterius.Internals.Name
 import Asterius.Types
 import Asterius.TypesConv
-import Control.Applicative
 import Control.Monad.IO.Class
 import qualified Data.ByteString.Short as SBS
-import Data.Functor
 import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.String
@@ -31,14 +29,6 @@ import qualified Panic as GHC
 import qualified PrelNames as GHC
 import System.IO.Unsafe
 import qualified TcRnMonad as GHC
-import Text.Parsec
-  ( anyChar,
-    char,
-    digit,
-    parse,
-    try,
-  )
-import Text.Parsec.String (Parser)
 import qualified TyCoRep as GHC
 
 parseFFIValueType :: Bool -> GHC.Type -> Maybe FFIValueType
@@ -85,32 +75,6 @@ parseFFIFunctionType accept_prim norm_sig_ty = case res_ty of
   where
     res_ty = GHC.dropForAlls norm_sig_ty
 
-parseField :: Parser a -> Parser (Chunk a)
-parseField f = do
-  void $ char '$'
-  Field <$> f
-
-parseChunk :: Parser (Chunk a) -> Parser (Chunk a)
-parseChunk f = try f <|> do
-  c <- anyChar
-  pure $ Lit [c]
-
-parseChunks :: Parser (Chunk a) -> Parser [Chunk a]
-parseChunks = many
-
-combineChunks :: [Chunk a] -> [Chunk a]
-combineChunks =
-  foldr
-    ( curry $ \case
-        (Lit l, Lit l' : cs) -> Lit (l <> l') : cs
-        (c, cs) -> c : cs
-    )
-    []
-
-parseFFIChunks :: Parser [Chunk Int]
-parseFFIChunks =
-  combineChunks <$> parseChunks (parseChunk (parseField (read <$> some digit)))
-
 newtype FFIHookState
   = FFIHookState
       { ffiHookState :: M.Map AsteriusModuleSymbol FFIMarshalState
@@ -141,7 +105,7 @@ processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaS
         ffi_safety_prefix
           | ffi_safety == FFIUnsafe = "__asterius_jsffi_"
           | otherwise = "__asterius_jsffi_async_"
-        Right chunks = parse parseFFIChunks src (read src)
+        ffi_src_text = read src
         new_k =
           ffi_safety_prefix
             <> zEncodeModuleSymbol mod_sym
@@ -151,7 +115,7 @@ processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaS
           FFIImportDecl
             { ffiFunctionType = ffi_ftype,
               ffiSafety = ffi_safety,
-              ffiSourceChunks = chunks
+              ffiSourceText = ffi_src_text
             }
         new_conv
           | ffi_safety == FFIUnsafe = GHC.CCallConv
