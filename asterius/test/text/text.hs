@@ -6,11 +6,11 @@ import qualified Data.Char as C
 import Data.Coerce
 import Data.Text as Text
 
-foreign import javascript "console.log(${1})" js_print_bool :: Bool -> IO ()
+foreign import javascript "console.log($1)" js_print_bool :: Bool -> IO ()
 
-foreign import javascript "console.log(${1})" js_print_int :: Int -> IO ()
+foreign import javascript "console.log($1)" js_print_int :: Int -> IO ()
 
-foreign import javascript "console.log(${1})" js_print :: JSVal -> IO ()
+foreign import javascript "console.log($1)" js_print :: JSVal -> IO ()
 
 sampleText :: Text
 {-# NOINLINE sampleText #-}

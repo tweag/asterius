@@ -163,61 +163,61 @@ foreign import ccall unsafe "__asterius_fromJSArray"
 foreign import javascript "__asterius_jsffi.newTmpJSVal('')"
   js_newString :: IO Int
 
-foreign import javascript "__asterius_jsffi.mutTmpJSVal(${1}, s => s + String.fromCodePoint(${2}))"
+foreign import javascript "__asterius_jsffi.mutTmpJSVal($1, s => s + String.fromCodePoint($2))"
   js_appendString :: Int -> Char -> IO ()
 
 foreign import javascript "__asterius_jsffi.newTmpJSVal([])"
   js_newArray :: IO Int
 
-foreign import javascript "__asterius_jsffi.mutTmpJSVal(${1}, arr => (arr.push(${2}), arr))"
+foreign import javascript "__asterius_jsffi.mutTmpJSVal($1, arr => (arr.push($2), arr))"
   js_appendArray :: Int -> JSVal -> IO ()
 
-foreign import javascript "__asterius_jsffi.freezeTmpJSVal(${1})"
+foreign import javascript "__asterius_jsffi.freezeTmpJSVal($1)"
   js_freezeTmpJSVal :: Int -> IO JSVal
 
-foreign import javascript "__asterius_jsffi.decodeUTF8(${1})"
+foreign import javascript "__asterius_jsffi.decodeUTF8($1)"
   jsStringDecodeUTF8 :: JSArrayBuffer -> JSString
 
-foreign import javascript "__asterius_jsffi.encodeUTF8(${1})"
+foreign import javascript "__asterius_jsffi.encodeUTF8($1)"
   jsStringEncodeUTF8 :: JSString -> JSArrayBuffer
 
-foreign import javascript "__asterius_jsffi.decodeLatin1(${1})"
+foreign import javascript "__asterius_jsffi.decodeLatin1($1)"
   jsStringDecodeLatin1 :: JSArrayBuffer -> JSString
 
-foreign import javascript "__asterius_jsffi.encodeLatin1(${1})"
+foreign import javascript "__asterius_jsffi.encodeLatin1($1)"
   jsStringEncodeLatin1 :: JSString -> JSArrayBuffer
 
-foreign import javascript "__asterius_jsffi.decodeUTF16LE(${1})"
+foreign import javascript "__asterius_jsffi.decodeUTF16LE($1)"
   jsStringDecodeUTF16LE :: JSArrayBuffer -> JSString
 
-foreign import javascript "__asterius_jsffi.encodeUTF16LE(${1})"
+foreign import javascript "__asterius_jsffi.encodeUTF16LE($1)"
   jsStringEncodeUTF16LE :: JSString -> JSArrayBuffer
 
-foreign import javascript "__asterius_jsffi.decodeUTF32LE(${1})"
+foreign import javascript "__asterius_jsffi.decodeUTF32LE($1)"
   jsStringDecodeUTF32LE :: JSArrayBuffer -> JSString
 
-foreign import javascript "__asterius_jsffi.encodeUTF32LE(${1})"
+foreign import javascript "__asterius_jsffi.encodeUTF32LE($1)"
   jsStringEncodeUTF32LE :: JSString -> JSArrayBuffer
 
-foreign import javascript "${1}[${2}]"
+foreign import javascript "$1[$2]"
   js_object_index :: JSObject -> JSString -> IO JSVal
 
-foreign import javascript "${1}[${2}]=${3}"
+foreign import javascript "$1[$2]=$3"
   js_object_set :: JSObject -> JSString -> JSVal -> IO ()
 
-foreign import javascript "${1}.apply({},${2})"
+foreign import javascript "$1.apply({},$2)"
   js_apply :: JSFunction -> JSArray -> IO JSVal
 
-foreign import javascript "__asterius_jsffi.makeHaskellCallback(${1})"
+foreign import javascript "__asterius_jsffi.makeHaskellCallback($1)"
   js_mk_hs_callback :: StablePtr# (IO ()) -> IO JSFunction
 
-foreign import javascript "__asterius_jsffi.makeHaskellCallback1(${1})"
+foreign import javascript "__asterius_jsffi.makeHaskellCallback1($1)"
   js_mk_hs_callback1 :: StablePtr# (JSVal -> IO ()) -> IO JSFunction
 
-foreign import javascript "__asterius_jsffi.makeHaskellCallback2(${1})"
+foreign import javascript "__asterius_jsffi.makeHaskellCallback2($1)"
   js_mk_hs_callback2 :: StablePtr# (JSVal -> JSVal -> IO ()) -> IO JSFunction
 
-foreign import javascript "JSON.parse(${1})" js_jsonParse :: JSString -> JSVal
+foreign import javascript "JSON.parse($1)" js_jsonParse :: JSString -> JSVal
 
-foreign import javascript "JSON.stringify(${1})"
+foreign import javascript "JSON.stringify($1)"
   js_jsonStringify :: JSVal -> JSString

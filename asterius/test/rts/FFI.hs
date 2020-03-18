@@ -6,7 +6,7 @@ import Control.Exception
 import Control.Monad
 import Data.Coerce
 
-foreign import javascript "console.log(${1})" js_print :: JSVal -> IO ()
+foreign import javascript "console.log($1)" js_print :: JSVal -> IO ()
 
 foreign import javascript safe "(() => {throw 'FAILED'})()" js_failed :: IO ()
 

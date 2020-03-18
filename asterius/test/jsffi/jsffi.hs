@@ -6,16 +6,16 @@ import Foreign.StablePtr
 
 foreign import javascript "new Date()" current_time :: IO JSVal
 
-foreign import javascript "console.log(${1})" js_print :: JSVal -> IO ()
+foreign import javascript "console.log($1)" js_print :: JSVal -> IO ()
 
-foreign import javascript "console.log(String.fromCodePoint(${1}))"
+foreign import javascript "console.log(String.fromCodePoint($1))"
   js_putchar :: Char -> IO ()
 
-foreign import javascript "${1} * ${2}" js_mult :: Int -> Int -> Int
+foreign import javascript "$1 * $2" js_mult :: Int -> Int -> Int
 
-foreign import javascript "console.log(${1})" print_int :: Int -> IO ()
+foreign import javascript "console.log($1)" print_int :: Int -> IO ()
 
-foreign import javascript "${1}"
+foreign import javascript "$1"
   js_stableptr_id :: StablePtr Int -> IO (StablePtr Int)
 
 foreign import javascript "false" js_false :: Bool
@@ -24,7 +24,7 @@ foreign import javascript "true" js_true :: Bool
 
 foreign import javascript "Math.random()" js_random :: IO Double
 
-foreign import javascript "console.log(${1})" js_print_double :: Double -> IO ()
+foreign import javascript "console.log($1)" js_print_double :: Double -> IO ()
 
 foreign export javascript "mult_hs_int" (*) :: Int -> Int -> Int
 

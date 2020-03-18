@@ -21,11 +21,11 @@ handleFetch ev = do
     _ ->
       js_new_response (toJSString "Hello from Haskell") 200
 
-foreign import javascript "${1} === undefined"
+foreign import javascript "$1 === undefined"
   js_is_undefined :: JSVal -> Bool
 
-foreign import javascript safe "${1}.json()"
+foreign import javascript safe "$1.json()"
   js_request_json :: JSVal -> JSObject
 
-foreign import javascript "new Response(${1}, {\"status\": ${2}})"
+foreign import javascript "new Response($1, {\"status\": $2})"
   js_new_response :: JSString -> Int -> IO JSObject

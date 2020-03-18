@@ -13,18 +13,18 @@ foreign import javascript safe "['asdf', 'zer0']" js_get_arr :: IO JSArray
 foreign import javascript safe "(new Uint8Array([2, 3, 5, 7])).buffer"
   js_get_buf :: IO JSArrayBuffer
 
-foreign import javascript safe "console.log(new Uint8Array(${1}))"
+foreign import javascript safe "console.log(new Uint8Array($1))"
   js_print_buf :: JSArrayBuffer -> IO ()
 
-foreign import javascript safe "console.log(${1})" js_print :: JSVal -> IO ()
+foreign import javascript safe "console.log($1)" js_print :: JSVal -> IO ()
 
-foreign import javascript safe "setTimeout(${1},${2},${3})"
+foreign import javascript safe "setTimeout($1,$2,$3)"
   js_setTimeout :: JSFunction -> Int -> JSVal -> IO ()
 
-foreign import javascript safe "console.log([${1},${2}])"
+foreign import javascript safe "console.log([$1,$2])"
   js_print2 :: JSVal -> JSVal -> IO ()
 
-foreign import javascript safe "setTimeout(${1},${2},${3},${4})"
+foreign import javascript safe "setTimeout($1,$2,$3,$4)"
   js_setTimeout2 :: JSFunction -> Int -> JSVal -> JSVal -> IO ()
 
 main :: IO ()
