@@ -6,9 +6,10 @@ import { Memory } from "./rts.memory.mjs";
   The methods of this class are related to exception handling in Haskell.
  */
 export class ExceptionHelper {
-  constructor(memory, heapalloc, info_tables, symbol_table) {
+  constructor(memory, heapalloc, exports, info_tables, symbol_table) {
     this.memory = memory;
     this.heapAlloc = heapalloc;
+    this.exports = exports;
     this.infoTables = info_tables;
     this.symbolTable = symbol_table;
     this.decoder = new TextDecoder("utf-8", { fatal: true });
@@ -59,9 +60,10 @@ export class ExceptionHelper {
           const p1 = Number(
             this.memory.i64Load(p + rtsConstants.offset_StgUpdateFrame_updatee)
           );
-          this.memory.i64Store(p1, this.symbolTable.stg_BLACKHOLE_info);
-          this.memory.i64Store(
-            p1 + rtsConstants.offset_StgInd_indirectee,
+          this.exports.updateThunk(
+            this.symbolTable.MainCapability,
+            tso,
+            p1,
             raise_closure
           );
           const size = Number(raw_layout & BigInt(0x3f));
@@ -96,7 +98,9 @@ export class ExceptionHelper {
         }
         default:
           throw new WebAssembly.RuntimeError(
-            "raiseExceptionHelper: unsupported stack frame"
+            `raiseExceptionHelper: unsupported stack frame ${type} at 0x${p.toString(
+              16
+            )}`
           );
       }
     }

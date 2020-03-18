@@ -88,12 +88,6 @@ export async function newAsteriusInstance(req) {
       req.yolo,
       req.gcThreshold
     ),
-    __asterius_exception_helper = new ExceptionHelper(
-      __asterius_memory,
-      __asterius_heapalloc,
-      req.infoTables,
-      req.symbolTable
-    ),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
     __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
@@ -104,6 +98,13 @@ export async function newAsteriusInstance(req) {
       __asterius_scheduler,
       req.exports,
       __asterius_stableptr_manager
+    ),
+    __asterius_exception_helper = new ExceptionHelper(
+      __asterius_memory,
+      __asterius_heapalloc,
+      __asterius_exports,
+      req.infoTables,
+      req.symbolTable
     );
   __asterius_scheduler.exports = __asterius_exports;
 
