@@ -54,9 +54,13 @@ globalRegInfo gr = case gr of
   where
     rf = offset_Capability_f - offset_Capability_r
 
-mainCap, mainCap32, baseReg :: Expression
+mainCap :: Expression
 mainCap = Symbol {unresolvedSymbol = "MainCapability", symbolOffset = 0}
+
+mainCap32 :: Expression
 mainCap32 = wrapInt64 mainCap
+
+baseReg :: Expression
 baseReg = mainCap {symbolOffset = offset_Capability_r}
 
 unresolvedGetGlobal :: UnresolvedGlobalReg -> Expression
