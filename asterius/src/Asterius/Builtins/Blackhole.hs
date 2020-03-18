@@ -70,34 +70,45 @@ updateThunk = runEDSL "updateThunk" $ do
     )
     (pure ())
     (barf "updateThunk: weird thunk")
-  bq <- i64Local $ unTagClosure $ loadI64 thunk offset_StgInd_indirectee
+  tso_or_bq <- i64Local $ unTagClosure $ loadI64 thunk offset_StgInd_indirectee
+  tso_or_bq_info <- i64Local $ loadI64 tso_or_bq 0
   if'
     []
-    ( checkSymbol
-        (loadI64 bq 0)
-        ["stg_BLOCKING_QUEUE_CLEAN_info", "stg_BLOCKING_QUEUE_DIRTY_info"]
+    (checkSymbol tso_or_bq_info ["stg_TSO_info"])
+    ( do
+        storeI64 thunk 0 $ symbol "stg_BLACKHOLE_info"
+        storeI64 thunk offset_StgInd_indirectee val
     )
-    (pure ())
-    (barf "updateThunk: weird thunk payload")
-  if'
-    []
-    (tso `eqInt64` loadI64 bq offset_StgBlockingQueue_owner)
-    (pure ())
-    (barf "updateThunk: not my thunk")
-  storeI64 thunk 0 $ symbol "stg_BLACKHOLE_info"
-  storeI64 thunk offset_StgInd_indirectee val
-  msg_p <- i64MutLocal
-  let msg = getLVal msg_p
-  putLVal msg_p $ loadI64 bq offset_StgBlockingQueue_queue
-  whileLoop (msg `neInt64` symbol "stg_END_TSO_QUEUE_closure") $ do
-    blocked_tso <- i64Local $ loadI64 msg offset_MessageBlackHole_tso
-    if'
-      []
-      (checkSymbol (loadI64 blocked_tso 0) ["stg_TSO_info"])
-      (pure ())
-      (barf "updateThunk: weird queued TSO")
-    call "tryWakeupThread" [cap, blocked_tso]
-    putLVal msg_p $ loadI64 msg offset_MessageBlackHole_link
+    ( do
+        let bq = tso_or_bq
+        if'
+          []
+          ( checkSymbol
+              tso_or_bq_info
+              ["stg_BLOCKING_QUEUE_CLEAN_info", "stg_BLOCKING_QUEUE_DIRTY_info"]
+          )
+          (pure ())
+          (barf "updateThunk: weird thunk payload")
+        if'
+          []
+          (tso `eqInt64` loadI64 bq offset_StgBlockingQueue_owner)
+          (pure ())
+          (barf "updateThunk: not my thunk")
+        storeI64 thunk 0 $ symbol "stg_BLACKHOLE_info"
+        storeI64 thunk offset_StgInd_indirectee val
+        msg_p <- i64MutLocal
+        let msg = getLVal msg_p
+        putLVal msg_p $ loadI64 bq offset_StgBlockingQueue_queue
+        whileLoop (msg `neInt64` symbol "stg_END_TSO_QUEUE_closure") $ do
+          blocked_tso <- i64Local $ loadI64 msg offset_MessageBlackHole_tso
+          if'
+            []
+            (checkSymbol (loadI64 blocked_tso 0) ["stg_TSO_info"])
+            (pure ())
+            (barf "updateThunk: weird queued TSO")
+          call "tryWakeupThread" [cap, blocked_tso]
+          putLVal msg_p $ loadI64 msg offset_MessageBlackHole_link
+    )
 
 checkSymbol :: Expression -> [AsteriusEntitySymbol] -> Expression
 checkSymbol e syms = foldl1' orInt32 $ map ((e `eqInt64`) . symbol) syms

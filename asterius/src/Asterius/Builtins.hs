@@ -196,6 +196,7 @@ rtsAsteriusModule opts =
     <> generateRtsExternalInterfaceModule opts
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
     <> blackholeCBits
+    <> generateWrapperModule blackholeCBits
     <> smCBits
     <> generateWrapperModule smCBits
     <> cmathCBits
@@ -698,7 +699,8 @@ rtsFunctionExports debug =
           "deRefStablePtr",
           "hs_free_stable_ptr",
           "makeStableName",
-          "growStack"
+          "growStack",
+          "updateThunk"
         ]
   ]
     <> [ FunctionExport {internalName = "__asterius_" <> f, externalName = f}
