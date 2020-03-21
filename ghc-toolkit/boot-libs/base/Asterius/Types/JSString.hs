@@ -10,6 +10,8 @@ import Asterius.Magic
 import Asterius.Types.JSVal
 import Data.String
 import GHC.Base
+import GHC.Enum
+import GHC.Show
 
 newtype JSString = JSString JSVal
   deriving (Eq, Ord)
@@ -20,13 +22,11 @@ instance Show JSString where
     it <- js_fromJSString_iterator s
     let w = do
           c <- js_fromJSString_iterator_next it
-          if c == '\0'
-            then
-              ( do
-                  freeJSVal it
-                  pure []
-              )
-            else pure (pred c : accursedUnutterablePerformIO w)
+          case c of
+            '\0' -> do
+              freeJSVal it
+              pure []
+            _ -> pure (pred c : accursedUnutterablePerformIO w)
      in w
 
 instance IsString JSString where
@@ -42,7 +42,7 @@ instance IsString JSString where
 
 foreign import javascript unsafe "$1[Symbol.iterator]()" js_fromJSString_iterator :: JSString -> IO JSVal
 
-foreign import javascript unsafe "() => { const r = $1.next(); return r.done ? 0 : (1 + r.value.codePointAt(0)); }" js_fromJSString_iterator_next :: JSVal -> IO Char
+foreign import javascript unsafe "(() => { const r = $1.next(); return r.done ? 0 : (1 + r.value.codePointAt(0)); })()" js_fromJSString_iterator_next :: JSVal -> IO Char
 
 foreign import javascript unsafe "['']" js_toJSString_context_new :: IO JSVal
 

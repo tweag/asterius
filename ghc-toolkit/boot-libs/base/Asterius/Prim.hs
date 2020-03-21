@@ -39,8 +39,10 @@ where
 import Asterius.Magic
 import Asterius.Types.JSString
 import Asterius.Types.JSVal
+import Data.String
 import GHC.Magic
 import GHC.Prim
+import GHC.Show
 import GHC.Tuple
 import GHC.Types
 
@@ -110,21 +112,11 @@ makeHaskellCallback2 f =
 
 {-# INLINE fromJSString #-}
 fromJSString :: JSString -> [Char]
-fromJSString s = unsafeCoerce# (c_fromJSString s)
+fromJSString = show
 
 {-# INLINE toJSString #-}
 toJSString :: [Char] -> JSString
-toJSString s =
-  runRW#
-    ( \s0 -> case unIO js_newString s0 of
-        (# s1, i #) ->
-          let w [] sx = (# sx, () #)
-              w (c : cs) sx = case unIO (js_appendString i c) sx of
-                (# sy, _ #) -> w cs sy
-           in case w s s1 of
-                (# s2, _ #) -> case unIO (js_freezeTmpJSVal i) s2 of
-                  (# _, r #) -> JSString r
-    )
+toJSString = fromString
 
 {-# INLINE fromJSArray #-}
 fromJSArray :: JSArray -> [JSVal]
@@ -150,17 +142,8 @@ foreign import ccall unsafe "__asterius_fromJSArrayBuffer"
 foreign import ccall unsafe "__asterius_toJSArrayBuffer"
   c_toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
 
-foreign import ccall unsafe "__asterius_fromJSString"
-  c_fromJSString :: JSString -> Any
-
 foreign import ccall unsafe "__asterius_fromJSArray"
   c_fromJSArray :: JSArray -> Any
-
-foreign import javascript "__asterius_jsffi.newTmpJSVal('')"
-  js_newString :: IO Int
-
-foreign import javascript "__asterius_jsffi.mutTmpJSVal($1, s => s + String.fromCodePoint($2))"
-  js_appendString :: Int -> Char -> IO ()
 
 foreign import javascript "__asterius_jsffi.newTmpJSVal([])"
   js_newArray :: IO Int

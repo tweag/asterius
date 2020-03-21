@@ -166,7 +166,6 @@ rtsAsteriusModule opts =
     <> memcmpFunction opts
     <> fromJSArrayBufferFunction opts
     <> toJSArrayBufferFunction opts
-    <> fromJSStringFunction opts
     <> fromJSArrayFunction opts
     <> threadPausedFunction opts
     <> dirtyMutVarFunction opts
@@ -492,15 +491,6 @@ rtsFunctionImports debug =
              externalBaseName = "toJSArrayBuffer",
              functionType = FunctionType
                { paramTypes = [F64, F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_fromJSString_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "fromJSString",
-             functionType = FunctionType
-               { paramTypes = [F64],
                  returnTypes = [F64]
                }
            },
@@ -1357,18 +1347,6 @@ toJSArrayBufferFunction _ = runEDSL "__asterius_toJSArrayBuffer" $ do
         (map convertUInt64ToFloat64 [addr, len])
         F64
   emit r
-
-fromJSStringFunction :: BuiltinsOptions -> AsteriusModule
-fromJSStringFunction _ = runEDSL "__asterius_fromJSString" $ do
-  setReturnTypes [I64]
-  [s] <- params [I64]
-  addr <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_fromJSString_imp"
-        [convertUInt64ToFloat64 s]
-        F64
-  emit addr
 
 fromJSArrayFunction :: BuiltinsOptions -> AsteriusModule
 fromJSArrayFunction _ = runEDSL "__asterius_fromJSArray" $ do

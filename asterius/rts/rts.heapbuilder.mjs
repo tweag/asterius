@@ -47,14 +47,6 @@ export class HeapBuilder {
     return p;
   }
 
-  newHaskellString(s, _last) {
-    return this.newHaskellList(
-      this.symbolTable.ghczmprim_GHCziTypes_Czh_con_info,
-      new Uint32Array(encodeUTF32(s)),
-      _last
-    );
-  }
-
   newHaskellJSValList(arr) {
     return this.newHaskellList(
       this.symbolTable.ghczmprim_GHCziTypes_Izh_con_info,
@@ -64,10 +56,6 @@ export class HeapBuilder {
 
   fromJSArrayBuffer(_i) {
     return this.newHaskellByteArray(this.jsvalManager.getJSVal(_i));
-  }
-
-  fromJSString(_i) {
-    return this.newHaskellString(this.jsvalManager.getJSVal(_i));
   }
 
   fromJSArray(_i) {
