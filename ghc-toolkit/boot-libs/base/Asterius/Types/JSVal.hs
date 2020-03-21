@@ -31,11 +31,11 @@ freeJSVal (JSVal sn) = js_freeJSVal sn
 
 {-# INLINE setJSVal #-}
 setJSVal :: JSVal -> JSVal -> IO ()
-setJSVal (JSVal sn) = js_setJSVal sn
+setJSVal (JSVal l) (JSVal r) = js_setJSVal l r
 
 foreign import javascript unsafe "__asterius_jsffi.freeJSVal($1)" js_freeJSVal :: JSVal# -> IO ()
 
-foreign import javascript unsafe "__asterius_jsffi.setJSVal($1, $2)" js_setJSVal :: JSVal# -> JSVal -> IO ()
+foreign import javascript unsafe "__asterius_jsffi.setJSVal($1, $2)" js_setJSVal :: JSVal# -> JSVal# -> IO ()
 
 foreign import javascript unsafe "$1 === $2" js_eqJSVal :: JSVal -> JSVal -> Bool
 
