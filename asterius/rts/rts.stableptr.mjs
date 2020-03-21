@@ -35,6 +35,11 @@ export class StablePtrManager {
     this.spt.set(sn0, this.getJSVal(sn1));
   }
 
+  moveJSVal(sn0, sn1) {
+    this.setJSVal(sn0, sn1);
+    this.freeJSVal(sn1);
+  }
+
   freeJSVal(sp) {
     this.freeStablePtr(sp);
   }

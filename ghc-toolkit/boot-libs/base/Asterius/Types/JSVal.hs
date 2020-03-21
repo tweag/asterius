@@ -6,6 +6,7 @@ module Asterius.Types.JSVal
   ( JSVal (..),
     freeJSVal,
     setJSVal,
+    moveJSVal,
   )
 where
 
@@ -33,9 +34,15 @@ freeJSVal (JSVal sn) = js_freeJSVal sn
 setJSVal :: JSVal -> JSVal -> IO ()
 setJSVal (JSVal l) (JSVal r) = js_setJSVal l r
 
+{-# INLINE moveJSVal #-}
+moveJSVal :: JSVal -> JSVal -> IO ()
+moveJSVal (JSVal l) (JSVal r) = js_moveJSVal l r
+
 foreign import javascript unsafe "__asterius_jsffi.freeJSVal($1)" js_freeJSVal :: JSVal# -> IO ()
 
 foreign import javascript unsafe "__asterius_jsffi.setJSVal($1, $2)" js_setJSVal :: JSVal# -> JSVal# -> IO ()
+
+foreign import javascript unsafe "__asterius_jsffi.moveJSVal($1, $2)" js_moveJSVal :: JSVal# -> JSVal# -> IO ()
 
 foreign import javascript unsafe "$1 === $2" js_eqJSVal :: JSVal -> JSVal -> Bool
 
