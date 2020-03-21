@@ -110,14 +110,6 @@ makeHaskellCallback2 f =
         (# s1, sp #) -> unIO (js_mk_hs_callback2 sp) s1
     )
 
-{-# INLINE fromJSString #-}
-fromJSString :: JSString -> [Char]
-fromJSString = show
-
-{-# INLINE toJSString #-}
-toJSString :: [Char] -> JSString
-toJSString = fromString
-
 {-# INLINE fromJSArray #-}
 fromJSArray :: JSArray -> [JSVal]
 fromJSArray arr = unsafeCoerce# (c_fromJSArray arr)

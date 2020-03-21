@@ -16,29 +16,37 @@ import GHC.Show
 newtype JSString = JSString JSVal
   deriving (Eq, Ord)
 
+{-# INLINEABLE fromJSString #-}
+fromJSString :: JSString -> String
+fromJSString s = accursedUnutterablePerformIO $ do
+  it <- js_fromJSString_iterator s
+  let w = do
+        c <- js_fromJSString_iterator_next it
+        case c of
+          '\0' -> do
+            freeJSVal it
+            pure []
+          _ -> pure (pred c : accursedUnutterablePerformIO w)
+   in w
+
 instance Show JSString where
-  {-# INLINEABLE show #-}
-  show s = accursedUnutterablePerformIO $ do
-    it <- js_fromJSString_iterator s
-    let w = do
-          c <- js_fromJSString_iterator_next it
-          case c of
-            '\0' -> do
-              freeJSVal it
-              pure []
-            _ -> pure (pred c : accursedUnutterablePerformIO w)
-     in w
+  {-# INLINE showsPrec #-}
+  showsPrec p = showsPrec p . fromJSString
+
+{-# INLINEABLE toJSString #-}
+toJSString :: String -> JSString
+toJSString s = accursedUnutterablePerformIO $ do
+  ctx <- js_toJSString_context_new
+  let w (c : cs) = js_toJSString_context_push ctx c *> w cs
+      w [] = pure ()
+   in w s
+  r <- js_toJSString_context_result ctx
+  freeJSVal ctx
+  pure r
 
 instance IsString JSString where
-  {-# INLINEABLE fromString #-}
-  fromString s = accursedUnutterablePerformIO $ do
-    ctx <- js_toJSString_context_new
-    let w (c : cs) = js_toJSString_context_push ctx c *> w cs
-        w [] = pure ()
-     in w s
-    r <- js_toJSString_context_result ctx
-    freeJSVal ctx
-    pure r
+  {-# INLINE fromString #-}
+  fromString = toJSString
 
 foreign import javascript unsafe "$1[Symbol.iterator]()" js_fromJSString_iterator :: JSString -> IO JSVal
 
