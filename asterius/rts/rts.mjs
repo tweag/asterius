@@ -125,6 +125,7 @@ export async function newAsteriusInstance(req) {
     encodeUTF32LE: encodeUTF32,
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
     getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
+    freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),
     newTmpJSVal: v => __asterius_stableptr_manager.newTmpJSVal(v),
     mutTmpJSVal: (i, f) => __asterius_stableptr_manager.mutTmpJSVal(i, f),
     freezeTmpJSVal: i => __asterius_stableptr_manager.freezeTmpJSVal(i),

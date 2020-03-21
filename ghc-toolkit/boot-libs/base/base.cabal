@@ -336,6 +336,8 @@ Library
         System.Environment.ExecutablePath
         System.CPUTime.Utils
 
+        Asterius.Types.JSVal
+
     c-sources:
         cbits/DarwinUtils.c
         cbits/PrelIOUtils.c

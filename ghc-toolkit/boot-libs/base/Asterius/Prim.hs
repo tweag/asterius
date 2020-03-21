@@ -37,13 +37,11 @@ module Asterius.Prim
 where
 
 import Asterius.Magic
+import Asterius.Types.JSVal
 import GHC.Magic
 import GHC.Prim
 import GHC.Tuple
 import GHC.Types
-
-data JSVal
-  = JSVal (StableName# ())
 
 newtype JSArrayBuffer
   = JSArrayBuffer JSVal
