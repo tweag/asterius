@@ -3,6 +3,8 @@
 
 module Asterius.Types.JSString
   ( JSString (..),
+    fromJSString,
+    toJSString,
   )
 where
 
@@ -11,6 +13,7 @@ import Asterius.Types.JSVal
 import Data.String
 import GHC.Base
 import GHC.Enum
+import GHC.Read
 import GHC.Show
 
 newtype JSString = JSString JSVal
@@ -33,6 +36,10 @@ instance Show JSString where
   {-# INLINE showsPrec #-}
   showsPrec p = showsPrec p . fromJSString
 
+instance Show JSVal where
+  {-# INLINE showsPrec #-}
+  showsPrec p = showsPrec p . js_showJSVal
+
 {-# INLINEABLE toJSString #-}
 toJSString :: String -> JSString
 toJSString s = accursedUnutterablePerformIO $ do
@@ -47,6 +54,12 @@ toJSString s = accursedUnutterablePerformIO $ do
 instance IsString JSString where
   {-# INLINE fromString #-}
   fromString = toJSString
+
+instance Read JSString where
+  {-# INLINE readPrec #-}
+  readPrec = toJSString <$> readPrec
+
+foreign import javascript unsafe "`${$1}`" js_showJSVal :: JSVal -> JSString
 
 foreign import javascript unsafe "$1[Symbol.iterator]()" js_fromJSString_iterator :: JSString -> IO JSVal
 
