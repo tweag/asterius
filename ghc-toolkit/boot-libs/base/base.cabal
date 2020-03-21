@@ -319,6 +319,7 @@ Library
         Type.Reflection.Unsafe
         Unsafe.Coerce
 
+        Asterius.Magic
         Asterius.Prim
         Asterius.TopHandler
         Asterius.Types
