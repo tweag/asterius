@@ -1211,7 +1211,7 @@ rtsMkStablePtrFunction opts =
 
 rtsMkJSValFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkJSValFunction opts =
-  rtsMkHelper opts "rts_mkJSVal" "base_AsteriusziPrim_JSVal_con_info"
+  rtsMkHelper opts "rts_mkJSVal" "base_AsteriusziTypesziJSVal_JSVal_con_info"
 
 rtsGetBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do
