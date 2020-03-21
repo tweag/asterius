@@ -10,6 +10,7 @@ where
 
 import Asterius.Magic
 import Asterius.Types.JSVal
+import Data.Functor
 import Data.String
 import GHC.Base
 import GHC.Enum
@@ -57,7 +58,7 @@ instance IsString JSString where
 
 instance Read JSString where
   {-# INLINE readPrec #-}
-  readPrec = toJSString <$> readPrec
+  readPrec = fmap toJSString readPrec
 
 foreign import javascript unsafe "`${$1}`" js_showJSVal :: JSVal -> JSString
 
