@@ -37,6 +37,7 @@ module Asterius.Prim
 where
 
 import Asterius.Magic
+import Asterius.Types.JSString
 import Asterius.Types.JSVal
 import GHC.Magic
 import GHC.Prim
@@ -45,9 +46,6 @@ import GHC.Types
 
 newtype JSArrayBuffer
   = JSArrayBuffer JSVal
-
-newtype JSString
-  = JSString JSVal
 
 newtype JSArray
   = JSArray JSVal
