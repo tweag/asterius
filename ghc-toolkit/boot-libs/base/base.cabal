@@ -336,6 +336,7 @@ Library
         System.Environment.ExecutablePath
         System.CPUTime.Utils
 
+        Asterius.Types.JSArray
         Asterius.Types.JSException
         Asterius.Types.JSString
         Asterius.Types.JSVal

@@ -32,11 +32,11 @@ module Asterius.Prim
     jsStringEncodeUTF16LE,
     jsStringDecodeUTF32LE,
     jsStringEncodeUTF32LE,
-    js_freezeTmpJSVal,
   )
 where
 
 import Asterius.Magic
+import Asterius.Types.JSArray
 import Asterius.Types.JSString
 import Asterius.Types.JSVal
 import Data.String
@@ -48,9 +48,6 @@ import GHC.Types
 
 newtype JSArrayBuffer
   = JSArrayBuffer JSVal
-
-newtype JSArray
-  = JSArray JSVal
 
 newtype JSObject
   = JSObject JSVal
@@ -110,41 +107,11 @@ makeHaskellCallback2 f =
         (# s1, sp #) -> unIO (js_mk_hs_callback2 sp) s1
     )
 
-{-# INLINE fromJSArray #-}
-fromJSArray :: JSArray -> [JSVal]
-fromJSArray arr = unsafeCoerce# (c_fromJSArray arr)
-
-{-# INLINE toJSArray #-}
-toJSArray :: [JSVal] -> JSArray
-toJSArray arr =
-  runRW#
-    ( \s0 -> case unIO js_newArray s0 of
-        (# s1, i #) ->
-          let w [] sx = (# sx, () #)
-              w (v : vs) sx = case unIO (js_appendArray i v) sx of
-                (# sy, _ #) -> w vs sy
-           in case w arr s1 of
-                (# s2, _ #) -> case unIO (js_freezeTmpJSVal i) s2 of
-                  (# _, r #) -> JSArray r
-    )
-
 foreign import ccall unsafe "__asterius_fromJSArrayBuffer"
   c_fromJSArrayBuffer :: JSArrayBuffer -> Any
 
 foreign import ccall unsafe "__asterius_toJSArrayBuffer"
   c_toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
-
-foreign import ccall unsafe "__asterius_fromJSArray"
-  c_fromJSArray :: JSArray -> Any
-
-foreign import javascript "__asterius_jsffi.newTmpJSVal([])"
-  js_newArray :: IO Int
-
-foreign import javascript "__asterius_jsffi.mutTmpJSVal($1, arr => (arr.push($2), arr))"
-  js_appendArray :: Int -> JSVal -> IO ()
-
-foreign import javascript "__asterius_jsffi.freezeTmpJSVal($1)"
-  js_freezeTmpJSVal :: Int -> IO JSVal
 
 foreign import javascript "__asterius_jsffi.decodeUTF8($1)"
   jsStringDecodeUTF8 :: JSArrayBuffer -> JSString
