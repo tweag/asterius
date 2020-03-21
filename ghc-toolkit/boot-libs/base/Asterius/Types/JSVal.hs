@@ -1,6 +1,6 @@
 {-# LANGUAGE MagicHash #-}
-{-# LANGUAGE UnliftedFFITypes #-}
 {-# LANGUAGE NoImplicitPrelude #-}
+{-# LANGUAGE UnliftedFFITypes #-}
 
 module Asterius.Types.JSVal
   ( JSVal (..),

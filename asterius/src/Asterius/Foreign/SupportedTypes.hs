@@ -224,6 +224,12 @@ ffiPrimValueTypeMap1 =
           { ffiValueTypeRep = getFFIValueTypeRep GHC.stablePtrPrimTyCon,
             hsTyCon = ""
           }
+      ),
+      ( GHC.getName GHC.stableNamePrimTyCon,
+        FFIValueType
+          { ffiValueTypeRep = getFFIValueTypeRep GHC.stableNamePrimTyCon,
+            hsTyCon = ""
+          }
       )
     ]
 ffiValueTypeMap0 = ffiBoxedValueTypeMap0 `GHC.plusNameEnv` ffiPrimValueTypeMap0
