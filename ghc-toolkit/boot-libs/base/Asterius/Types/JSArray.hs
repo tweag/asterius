@@ -10,6 +10,7 @@ where
 import Asterius.Magic
 import Asterius.Types.JSVal
 import GHC.Base
+import GHC.Enum
 
 newtype JSArray
   = JSArray JSVal
@@ -20,7 +21,7 @@ fromJSArray arr = w 0
   where
     len = js_arr_len arr
     w i
-      | i < len = js_arr_idx arr i : w (i + 1)
+      | i < len = js_arr_idx arr i : w (succ i)
       | otherwise = []
 
 {-# INLINEABLE toJSArray #-}
