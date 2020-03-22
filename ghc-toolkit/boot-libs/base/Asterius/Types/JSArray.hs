@@ -8,6 +8,7 @@ module Asterius.Types.JSArray
 where
 
 import Asterius.Magic
+import Asterius.Types.JSString ()
 import Asterius.Types.JSVal
 import GHC.Base
 import GHC.Enum

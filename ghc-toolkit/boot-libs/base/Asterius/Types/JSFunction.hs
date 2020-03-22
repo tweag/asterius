@@ -7,6 +7,7 @@ module Asterius.Types.JSFunction
 where
 
 import Asterius.Types.JSArray
+import Asterius.Types.JSString ()
 import Asterius.Types.JSVal
 import GHC.Base
 import GHC.Show
