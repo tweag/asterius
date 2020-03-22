@@ -38,8 +38,8 @@ instance Show JSString where
   showsPrec p = showsPrec p . fromJSString
 
 instance Show JSVal where
-  {-# INLINE showsPrec #-}
-  showsPrec p = showsPrec p . js_showJSVal
+  {-# INLINE show #-}
+  show = fromJSString . js_showJSVal
 
 {-# INLINEABLE toJSString #-}
 toJSString :: String -> JSString

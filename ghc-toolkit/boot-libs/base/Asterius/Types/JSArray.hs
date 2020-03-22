@@ -11,9 +11,11 @@ import Asterius.Magic
 import Asterius.Types.JSVal
 import GHC.Base
 import GHC.Enum
+import GHC.Show
 
 newtype JSArray
   = JSArray JSVal
+  deriving (Show)
 
 {-# INLINEABLE fromJSArray #-}
 fromJSArray :: JSArray -> [JSVal]
@@ -32,6 +34,18 @@ toJSArray l = accursedUnutterablePerformIO $ do
       w [] = pure ()
    in w l
   pure arr
+
+instance Eq JSArray where
+  {-# INLINE (==) #-}
+  arr0@(JSArray v0) == arr1@(JSArray v1)
+    | v0 == v1 = True
+    | otherwise = fromJSArray arr0 == fromJSArray arr1
+
+instance Ord JSArray where
+  {-# INLINE (<=) #-}
+  arr0@(JSArray v0) <= arr1@(JSArray v1)
+    | v0 == v1 = True
+    | otherwise = fromJSArray arr0 <= fromJSArray arr1
 
 foreign import javascript unsafe "$1.length" js_arr_len :: JSArray -> Int
 

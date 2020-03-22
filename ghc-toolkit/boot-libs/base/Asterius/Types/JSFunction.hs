@@ -9,9 +9,11 @@ where
 import Asterius.Types.JSArray
 import Asterius.Types.JSVal
 import GHC.Base
+import GHC.Show
 
 newtype JSFunction
   = JSFunction JSVal
+  deriving (Show)
 
 {-# INLINE callJSFunction #-}
 callJSFunction :: JSFunction -> [JSVal] -> IO JSVal

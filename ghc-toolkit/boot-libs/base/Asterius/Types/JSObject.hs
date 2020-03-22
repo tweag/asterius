@@ -10,9 +10,11 @@ where
 import Asterius.Types.JSString
 import Asterius.Types.JSVal
 import GHC.Base
+import GHC.Show
 
 newtype JSObject
   = JSObject JSVal
+  deriving (Show)
 
 {-# INLINE indexJSObject #-}
 indexJSObject :: JSObject -> String -> IO JSVal
