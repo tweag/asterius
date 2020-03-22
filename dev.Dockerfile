@@ -36,6 +36,9 @@ RUN \
   echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
   apt update && \
   apt install -y nodejs && \
+  apt autoremove --purge -y && \
+  apt clean && \
+  rm -rf /var/lib/apt/lists/* && \
   useradd --create-home --shell /bin/bash asterius && \
   echo "asterius ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
@@ -74,5 +77,4 @@ RUN \
   sudo rm -rf \
     /home/asterius/.stack/programs/*/*.tar.xz \
     /tmp/* \
-    /var/lib/apt/lists/* \
     /var/tmp/*
