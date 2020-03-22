@@ -1,7 +1,4 @@
 import { modulify } from "./rts.modulify.mjs";
-import { encodeUTF8, decodeUTF8 } from "./rts.utf8.mjs";
-import { encodeUTF16, decodeUTF16 } from "./rts.utf16.mjs";
-import { encodeUTF32, decodeUTF32 } from "./rts.utf32.mjs";
 import { encodeLatin1, decodeLatin1 } from "./rts.latin1.mjs";
 import { ReentrancyGuard } from "./rts.reentrancy.mjs";
 import { EventLogManager } from "./rts.eventlog.mjs";
@@ -115,14 +112,8 @@ export async function newAsteriusInstance(req) {
   }
 
   const __asterius_jsffi_instance = {
-    decodeUTF8: decodeUTF8,
-    encodeUTF8: encodeUTF8,
     decodeLatin1: decodeLatin1,
     encodeLatin1: encodeLatin1,
-    decodeUTF16LE: decodeUTF16,
-    encodeUTF16LE: encodeUTF16,
-    decodeUTF32LE: decodeUTF32,
-    encodeUTF32LE: encodeUTF32,
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
     getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
     setJSVal: (i0, i1) => __asterius_stableptr_manager.setJSVal(i0, i1),

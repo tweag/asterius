@@ -24,14 +24,8 @@ module Asterius.Prim
     makeHaskellCallback,
     makeHaskellCallback1,
     makeHaskellCallback2,
-    jsStringDecodeUTF8,
-    jsStringEncodeUTF8,
     jsStringDecodeLatin1,
     jsStringEncodeLatin1,
-    jsStringDecodeUTF16LE,
-    jsStringEncodeUTF16LE,
-    jsStringDecodeUTF32LE,
-    jsStringEncodeUTF32LE,
   )
 where
 
@@ -103,29 +97,11 @@ foreign import ccall unsafe "__asterius_fromJSArrayBuffer"
 foreign import ccall unsafe "__asterius_toJSArrayBuffer"
   c_toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
 
-foreign import javascript "__asterius_jsffi.decodeUTF8($1)"
-  jsStringDecodeUTF8 :: JSArrayBuffer -> JSString
-
-foreign import javascript "__asterius_jsffi.encodeUTF8($1)"
-  jsStringEncodeUTF8 :: JSString -> JSArrayBuffer
-
 foreign import javascript "__asterius_jsffi.decodeLatin1($1)"
   jsStringDecodeLatin1 :: JSArrayBuffer -> JSString
 
 foreign import javascript "__asterius_jsffi.encodeLatin1($1)"
   jsStringEncodeLatin1 :: JSString -> JSArrayBuffer
-
-foreign import javascript "__asterius_jsffi.decodeUTF16LE($1)"
-  jsStringDecodeUTF16LE :: JSArrayBuffer -> JSString
-
-foreign import javascript "__asterius_jsffi.encodeUTF16LE($1)"
-  jsStringEncodeUTF16LE :: JSString -> JSArrayBuffer
-
-foreign import javascript "__asterius_jsffi.decodeUTF32LE($1)"
-  jsStringDecodeUTF32LE :: JSArrayBuffer -> JSString
-
-foreign import javascript "__asterius_jsffi.encodeUTF32LE($1)"
-  jsStringEncodeUTF32LE :: JSString -> JSArrayBuffer
 
 foreign import javascript "$1.apply({},$2)"
   js_apply :: JSFunction -> JSArray -> IO JSVal
