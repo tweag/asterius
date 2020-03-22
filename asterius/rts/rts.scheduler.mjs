@@ -275,7 +275,7 @@ export class Scheduler {
                 this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
               ) - 16,
                 exception_closure = this.exports.rts_apply(
-                  this.symbolTable.base_AsteriusziTypes_makeJSException_closure,
+                  this.symbolTable.base_AsteriusziTypesziJSException_mkJSException_closure,
                   this.exports.rts_mkJSVal(
                     this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
                   )

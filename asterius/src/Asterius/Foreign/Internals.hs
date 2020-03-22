@@ -202,7 +202,7 @@ isJSValTy = GHC.isValid . checkRepTyCon isJSValTyCon
 isJSValTyCon :: GHC.TyCon -> GHC.Validity
 isJSValTyCon tc
   | (GHC.moduleName <$> GHC.nameModule_maybe n)
-      == Just asteriusPrimModuleName
+      == Just asteriusTypesJSValModuleName
       && GHC.nameOccName n
       == jsValTyConOccName =
     GHC.IsValid
@@ -211,9 +211,9 @@ isJSValTyCon tc
   where
     n = GHC.tyConName tc
 
-{-# NOINLINE asteriusPrimModuleName #-}
-asteriusPrimModuleName :: GHC.ModuleName
-asteriusPrimModuleName = GHC.mkModuleName "Asterius.Prim"
+{-# NOINLINE asteriusTypesJSValModuleName #-}
+asteriusTypesJSValModuleName :: GHC.ModuleName
+asteriusTypesJSValModuleName = GHC.mkModuleName "Asterius.Types.JSVal"
 
 {-# NOINLINE jsValTyConOccName #-}
 jsValTyConOccName :: GHC.OccName

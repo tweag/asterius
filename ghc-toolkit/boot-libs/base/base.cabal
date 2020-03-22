@@ -319,6 +319,7 @@ Library
         Type.Reflection.Unsafe
         Unsafe.Coerce
 
+        Asterius.Magic
         Asterius.Prim
         Asterius.TopHandler
         Asterius.Types
@@ -334,6 +335,13 @@ Library
         GHC.StaticPtr.Internal
         System.Environment.ExecutablePath
         System.CPUTime.Utils
+
+        Asterius.Types.JSArray
+        Asterius.Types.JSException
+        Asterius.Types.JSFunction
+        Asterius.Types.JSObject
+        Asterius.Types.JSString
+        Asterius.Types.JSVal
 
     c-sources:
         cbits/DarwinUtils.c

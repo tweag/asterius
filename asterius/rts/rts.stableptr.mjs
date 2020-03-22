@@ -31,22 +31,17 @@ export class StablePtrManager {
     return this.deRefStablePtr(sp);
   }
 
+  setJSVal(sn0, sn1) {
+    this.spt.set(sn0, this.getJSVal(sn1));
+  }
+
+  moveJSVal(sn0, sn1) {
+    this.setJSVal(sn0, sn1);
+    this.freeJSVal(sn1);
+  }
+
   freeJSVal(sp) {
     this.freeStablePtr(sp);
-  }
-
-  newTmpJSVal(v) {
-    return this.newJSVal(v);
-  }
-
-  mutTmpJSVal(sp, f) {
-    this.spt.set(sp, f(this.spt.get(sp)));
-  }
-
-  freezeTmpJSVal(sp) {
-    const v = this.spt.get(sp);
-    this.spt.delete(sp);
-    return v;
   }
 
   hasStablePtr(sp) {

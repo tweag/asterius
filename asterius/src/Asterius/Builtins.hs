@@ -166,8 +166,6 @@ rtsAsteriusModule opts =
     <> memcmpFunction opts
     <> fromJSArrayBufferFunction opts
     <> toJSArrayBufferFunction opts
-    <> fromJSStringFunction opts
-    <> fromJSArrayFunction opts
     <> threadPausedFunction opts
     <> dirtyMutVarFunction opts
     <> dirtyMVarFunction opts
@@ -492,24 +490,6 @@ rtsFunctionImports debug =
              externalBaseName = "toJSArrayBuffer",
              functionType = FunctionType
                { paramTypes = [F64, F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_fromJSString_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "fromJSString",
-             functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_fromJSArray_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "fromJSArray",
-             functionType = FunctionType
-               { paramTypes = [F64],
                  returnTypes = [F64]
                }
            },
@@ -1221,7 +1201,7 @@ rtsMkStablePtrFunction opts =
 
 rtsMkJSValFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkJSValFunction opts =
-  rtsMkHelper opts "rts_mkJSVal" "base_AsteriusziPrim_JSVal_con_info"
+  rtsMkHelper opts "rts_mkJSVal" "base_AsteriusziTypesziJSVal_JSVal_con_info"
 
 rtsGetBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do
@@ -1357,30 +1337,6 @@ toJSArrayBufferFunction _ = runEDSL "__asterius_toJSArrayBuffer" $ do
         (map convertUInt64ToFloat64 [addr, len])
         F64
   emit r
-
-fromJSStringFunction :: BuiltinsOptions -> AsteriusModule
-fromJSStringFunction _ = runEDSL "__asterius_fromJSString" $ do
-  setReturnTypes [I64]
-  [s] <- params [I64]
-  addr <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_fromJSString_imp"
-        [convertUInt64ToFloat64 s]
-        F64
-  emit addr
-
-fromJSArrayFunction :: BuiltinsOptions -> AsteriusModule
-fromJSArrayFunction _ = runEDSL "__asterius_fromJSArray" $ do
-  setReturnTypes [I64]
-  [arr] <- params [I64]
-  addr <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_fromJSArray_imp"
-        [convertUInt64ToFloat64 arr]
-        F64
-  emit addr
 
 threadPausedFunction :: BuiltinsOptions -> AsteriusModule
 threadPausedFunction _ = runEDSL "threadPaused" $ do
