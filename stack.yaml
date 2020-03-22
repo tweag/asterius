@@ -1,4 +1,4 @@
-resolver: lts-15.4
+resolver: lts-15.5
 extra-deps:
   - https://github.com/tweag/binaryen/archive/32e35da9a8d38f96b96154a8bca6f28f205281c1.tar.gz
   - url: https://github.com/tweag/inline-js/archive/bd000373e0f02d213a881119298e1aea5962e149.tar.gz
