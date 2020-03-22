@@ -338,6 +338,7 @@ Library
 
         Asterius.Types.JSArray
         Asterius.Types.JSException
+        Asterius.Types.JSObject
         Asterius.Types.JSString
         Asterius.Types.JSVal
 

@@ -37,6 +37,7 @@ where
 
 import Asterius.Magic
 import Asterius.Types.JSArray
+import Asterius.Types.JSObject
 import Asterius.Types.JSString
 import Asterius.Types.JSVal
 import Data.String
@@ -49,9 +50,6 @@ import GHC.Types
 newtype JSArrayBuffer
   = JSArrayBuffer JSVal
 
-newtype JSObject
-  = JSObject JSVal
-
 newtype JSFunction
   = JSFunction JSVal
 
@@ -62,14 +60,6 @@ fromJSArrayBuffer buf = unsafeCoerce# (c_fromJSArrayBuffer buf)
 {-# INLINE toJSArrayBuffer #-}
 toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
 toJSArrayBuffer = c_toJSArrayBuffer
-
-{-# INLINE indexJSObject #-}
-indexJSObject :: JSObject -> [Char] -> IO JSVal
-indexJSObject obj k = js_object_index obj (toJSString k)
-
-{-# INLINE setJSObject #-}
-setJSObject :: JSObject -> [Char] -> JSVal -> IO ()
-setJSObject obj k = js_object_set obj (toJSString k)
 
 {-# INLINE jsonParse #-}
 jsonParse :: [Char] -> JSVal
@@ -136,12 +126,6 @@ foreign import javascript "__asterius_jsffi.decodeUTF32LE($1)"
 
 foreign import javascript "__asterius_jsffi.encodeUTF32LE($1)"
   jsStringEncodeUTF32LE :: JSString -> JSArrayBuffer
-
-foreign import javascript "$1[$2]"
-  js_object_index :: JSObject -> JSString -> IO JSVal
-
-foreign import javascript "$1[$2]=$3"
-  js_object_set :: JSObject -> JSString -> JSVal -> IO ()
 
 foreign import javascript "$1.apply({},$2)"
   js_apply :: JSFunction -> JSArray -> IO JSVal
