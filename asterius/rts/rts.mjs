@@ -128,9 +128,6 @@ export async function newAsteriusInstance(req) {
     setJSVal: (i0, i1) => __asterius_stableptr_manager.setJSVal(i0, i1),
     moveJSVal: (i0, i1) => __asterius_stableptr_manager.moveJSVal(i0, i1),
     freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),
-    newTmpJSVal: v => __asterius_stableptr_manager.newTmpJSVal(v),
-    mutTmpJSVal: (i, f) => __asterius_stableptr_manager.mutTmpJSVal(i, f),
-    freezeTmpJSVal: i => __asterius_stableptr_manager.freezeTmpJSVal(i),
     makeHaskellCallback: sp => async () => {
       const tid = await __asterius_exports.rts_evalLazyIO(
         __asterius_stableptr_manager.deRefStablePtr(sp)

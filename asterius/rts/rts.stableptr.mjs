@@ -44,20 +44,6 @@ export class StablePtrManager {
     this.freeStablePtr(sp);
   }
 
-  newTmpJSVal(v) {
-    return this.newJSVal(v);
-  }
-
-  mutTmpJSVal(sp, f) {
-    this.spt.set(sp, f(this.spt.get(sp)));
-  }
-
-  freezeTmpJSVal(sp) {
-    const v = this.spt.get(sp);
-    this.spt.delete(sp);
-    return v;
-  }
-
   hasStablePtr(sp) {
     return this.spt.has(sp);
   }
