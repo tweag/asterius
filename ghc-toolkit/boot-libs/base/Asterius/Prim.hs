@@ -29,6 +29,7 @@ where
 
 import Asterius.Magic
 import Asterius.Types.JSArray
+import Asterius.Types.JSFunction
 import Asterius.Types.JSObject
 import Asterius.Types.JSString
 import Asterius.Types.JSVal
