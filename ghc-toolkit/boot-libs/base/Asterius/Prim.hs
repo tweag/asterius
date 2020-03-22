@@ -18,8 +18,6 @@ module Asterius.Prim
     toJSArray,
     indexJSObject,
     setJSObject,
-    jsonParse,
-    jsonStringify,
     callJSFunction,
     makeHaskellCallback,
     makeHaskellCallback1,
@@ -54,14 +52,6 @@ fromJSArrayBuffer buf = unsafeCoerce# (c_fromJSArrayBuffer buf)
 {-# INLINE toJSArrayBuffer #-}
 toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
 toJSArrayBuffer = c_toJSArrayBuffer
-
-{-# INLINE jsonParse #-}
-jsonParse :: [Char] -> JSVal
-jsonParse s = js_jsonParse (toJSString s)
-
-{-# INLINE jsonStringify #-}
-jsonStringify :: JSVal -> [Char]
-jsonStringify v = fromJSString (js_jsonStringify v)
 
 {-# INLINE callJSFunction #-}
 callJSFunction :: JSFunction -> [JSVal] -> IO JSVal
@@ -114,8 +104,3 @@ foreign import javascript "__asterius_jsffi.makeHaskellCallback1($1)"
 
 foreign import javascript "__asterius_jsffi.makeHaskellCallback2($1)"
   js_mk_hs_callback2 :: StablePtr# (JSVal -> JSVal -> IO ()) -> IO JSFunction
-
-foreign import javascript "JSON.parse($1)" js_jsonParse :: JSString -> JSVal
-
-foreign import javascript "JSON.stringify($1)"
-  js_jsonStringify :: JSVal -> JSString
