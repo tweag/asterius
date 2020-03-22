@@ -42,9 +42,6 @@ import GHC.Types
 newtype JSArrayBuffer
   = JSArrayBuffer JSVal
 
-newtype JSFunction
-  = JSFunction JSVal
-
 {-# INLINE fromJSArrayBuffer #-}
 fromJSArrayBuffer :: JSArrayBuffer -> ByteArray#
 fromJSArrayBuffer buf = unsafeCoerce# (c_fromJSArrayBuffer buf)
@@ -52,10 +49,6 @@ fromJSArrayBuffer buf = unsafeCoerce# (c_fromJSArrayBuffer buf)
 {-# INLINE toJSArrayBuffer #-}
 toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
 toJSArrayBuffer = c_toJSArrayBuffer
-
-{-# INLINE callJSFunction #-}
-callJSFunction :: JSFunction -> [JSVal] -> IO JSVal
-callJSFunction f args = js_apply f (toJSArray args)
 
 {-# INLINE makeHaskellCallback #-}
 makeHaskellCallback :: IO () -> IO JSFunction
@@ -92,9 +85,6 @@ foreign import javascript "__asterius_jsffi.decodeLatin1($1)"
 
 foreign import javascript "__asterius_jsffi.encodeLatin1($1)"
   jsStringEncodeLatin1 :: JSString -> JSArrayBuffer
-
-foreign import javascript "$1.apply({},$2)"
-  js_apply :: JSFunction -> JSArray -> IO JSVal
 
 foreign import javascript "__asterius_jsffi.makeHaskellCallback($1)"
   js_mk_hs_callback :: StablePtr# (IO ()) -> IO JSFunction

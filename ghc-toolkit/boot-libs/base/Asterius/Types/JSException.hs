@@ -24,5 +24,5 @@ mkJSException :: JSVal -> SomeException
 mkJSException v =
   toException (JSException v (fromJSString (js_show_err v)))
 
-foreign import javascript "$1.stack ? $1.stack : `${$1}`"
+foreign import javascript unsafe "$1.stack ? $1.stack : `${$1}`"
   js_show_err :: JSVal -> JSString
