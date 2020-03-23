@@ -6,10 +6,12 @@ module Asterius.Foreign.SupportedTypes
     ffiValueTypeSigned,
     getFFIValueType0,
     getFFIValueType1,
+    ffiBoxedValueTypeList,
   )
 where
 
 import Asterius.Types
+import qualified Data.ByteString.Short as SBS
 import qualified GhcPlugins as GHC
 import qualified PrelNames as GHC
 import qualified RepType as GHC
@@ -60,6 +62,15 @@ getFFIValueType1 accept_prim norm_tc =
       | accept_prim = ffiValueTypeMap1
       | otherwise = ffiBoxedValueTypeMap1
 
+ffiBoxedValueTypeList :: [FFIValueType]
+ffiBoxedValueTypeList =
+  [ vt
+    | vt@FFIValueType {..} <-
+        GHC.nameEnvElts ffiBoxedValueTypeMap0
+          <> GHC.nameEnvElts ffiBoxedValueTypeMap1,
+      not $ SBS.null hsTyCon
+  ]
+
 ffiBoxedValueTypeMap0,
   ffiBoxedValueTypeMap1,
   ffiPrimValueTypeMap0,
@@ -70,10 +81,7 @@ ffiBoxedValueTypeMap0,
 ffiBoxedValueTypeMap0 =
   GHC.mkNameEnv
     [ ( GHC.getName GHC.anyTyCon,
-        FFIValueType
-          { ffiValueTypeRep = FFILiftedRep,
-            hsTyCon = ""
-          }
+        FFIValueType {ffiValueTypeRep = FFILiftedRep, hsTyCon = ""}
       ),
       ( GHC.charTyConName,
         FFIValueType
