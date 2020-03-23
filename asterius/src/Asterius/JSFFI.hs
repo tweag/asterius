@@ -12,21 +12,19 @@ module Asterius.JSFFI
     generateFFIFunctionImports,
     generateFFIImportObjectFactory,
     generateFFIExportObject,
-    ffiValueTypeTag,
-    ffiValueTypesTag,
   )
 where
 
 import Asterius.EDSL
 import Asterius.Foreign.Internals
 import Asterius.Foreign.SupportedTypes
+import Asterius.Foreign.TypesTag
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified CmmCallConv as GHC
 import qualified CmmExpr as GHC
 import qualified CmmNode as GHC
 import Control.Applicative
-import Data.Bits
 import Data.ByteString.Builder
 import Data.Coerce
 import Data.IORef
@@ -49,19 +47,6 @@ recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
   FFIAddrRep -> I64
   FFIFloatRep -> F32
   FFIDoubleRep -> F64
-
--- | Get a tag for an FFIValueType
-ffiValueTypeTag :: FFIValueType -> Integer
-ffiValueTypeTag FFIValueType {ffiValueTypeRep = FFIJSValRep} = 1
-ffiValueTypeTag ffi_vt =
-  fromIntegral (2 + fromEnum (recoverWasmWrapperValueType ffi_vt))
-
--- | Get a tag for a list of FFIValueTypes
-ffiValueTypesTag :: [FFIValueType] -> Integer
-ffiValueTypesTag [] = 0
-ffiValueTypesTag [r] = ffiValueTypeTag r
-ffiValueTypesTag (r : rs) =
-  ffiValueTypeTag r .|. (ffiValueTypesTag rs `shiftL` 3)
 
 recoverWasmImportFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
@@ -334,7 +319,7 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
       "{"
         <> getjsval_code
         <> "return ["
-        <> integerDec (ffiValueTypesTag ffiResultTypes)
+        <> intDec (ffiValueTypesTag ffiResultTypes)
         <> ", await ("
         <> shortByteString ffiSourceText
         <> ")];}"
