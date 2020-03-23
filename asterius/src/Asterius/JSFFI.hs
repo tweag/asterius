@@ -26,6 +26,7 @@ import qualified CmmExpr as GHC
 import qualified CmmNode as GHC
 import Control.Applicative
 import Data.ByteString.Builder
+import qualified Data.ByteString.Short as SBS
 import Data.Coerce
 import Data.IORef
 import Data.Int
@@ -418,4 +419,10 @@ generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, .
       | null ffiResultTypes = "rts_evalLazyIO"
       | otherwise = "rts_evalIO"
     getHsTyCon FFIValueType {ffiValueTypeRep = FFIJSValRep} = "JSVal"
-    getHsTyCon FFIValueType {..} = shortByteString hsTyCon
+    getHsTyCon vt@FFIValueType {..}
+      | SBS.null hsTyCon =
+        error $
+          "generateFFIExportLambda: unsupported export value type "
+            <> show vt
+      | otherwise =
+        shortByteString hsTyCon
