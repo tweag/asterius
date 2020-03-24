@@ -19,6 +19,7 @@ module Asterius.Prim
     indexJSObject,
     setJSObject,
     callJSFunction,
+    freeHaskellCallback,
     makeHaskellCallback,
     makeHaskellCallback1,
     makeHaskellCallback2,

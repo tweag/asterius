@@ -232,7 +232,10 @@ export async function newAsteriusInstance(req) {
       StaticPtr: modulify(__asterius_staticptr_manager),
       Unicode: modulify(__asterius_unicode),
       Tracing: modulify(__asterius_tracer),
-      Exports: {newHaskellCallback: (sp, arg_tag, ret_tag, io) => __asterius_stableptr_manager.newJSVal(__asterius_exports.newHaskellCallback(sp, arg_tag, ret_tag, io))},
+      Exports: {
+        newHaskellCallback: (sp, arg_tag, ret_tag, io) => __asterius_stableptr_manager.newJSVal(__asterius_exports.newHaskellCallback(sp, arg_tag, ret_tag, io)),
+        freeHaskellCallback: sn => __asterius_exports.freeHaskellCallback(sn)
+      },
       Scheduler: modulify(__asterius_scheduler)
     }
   );
