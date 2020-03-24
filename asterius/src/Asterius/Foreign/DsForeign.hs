@@ -56,27 +56,11 @@ asteriusDsCImport ::
   Safety ->
   Maybe Header ->
   DsM [Binding]
-asteriusDsCImport id co (CLabel cid) cconv _ _ = do
-  dflags <- getDynFlags
-  let ty = pFst $ coercionKind co
-      fod =
-        case tyConAppTyCon_maybe (dropForAlls ty) of
-          Just tycon
-            | tyConUnique tycon == funPtrTyConKey -> IsFunction
-          _ -> IsData
-  (_, foRhs) <- asteriusResultWrapper ty
-  let rhs = foRhs (Lit (LitLabel cid stdcall_info fod))
-      rhs' = Cast rhs co
-      stdcall_info = fun_type_arg_stdcall_info dflags cconv ty
-   in return [(id, rhs')]
-asteriusDsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
-  asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
 asteriusDsCImport id co (CFunction target) cconv safety _ =
   asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
-asteriusDsCImport id _ CWrapper _ _ _ = do
-  dflags <- getDynFlags
-  pure
-    [(id, mkRuntimeErrorApp rUNTIME_ERROR_ID (idType id) (showPpr dflags id))]
+asteriusDsCImport id co spec cconv safety mHeader = do
+  (r, _, _) <- dsCImport id co spec cconv safety mHeader
+  pure r
 
 asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
 asteriusDsFCall fn_id co fcall = do
@@ -90,23 +74,20 @@ asteriusDsFCall fn_id co fcall = do
   ccall_uniq <- newUnique
   work_uniq <- newUnique
   dflags <- getDynFlags
-  fcall' <-
-    case fcall of
-      CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety) -> do
-        wrapperName <- mkWrapperName "ghc_wrapper" (unpackFS cName)
-        let fcall' =
-              CCall
-                ( CCallSpec
-                    (StaticTarget NoSourceText wrapperName mUnitId True)
-                    CApiConv
-                    safety
-                )
-        return fcall'
-      _ -> return fcall
+  fcall' <- case fcall of
+    CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety) -> do
+      wrapperName <- mkWrapperName "ghc_wrapper" (unpackFS cName)
+      let fcall' =
+            CCall
+              ( CCallSpec
+                  (StaticTarget NoSourceText wrapperName mUnitId True)
+                  CApiConv
+                  safety
+              )
+      return fcall'
+    _ -> return fcall
   let worker_ty =
-        mkForAllTys
-          tv_bndrs
-          (mkFunTys (map idType work_arg_ids) ccall_result_ty)
+        mkForAllTys tv_bndrs (mkFunTys (map idType work_arg_ids) ccall_result_ty)
       tvs = map binderVar tv_bndrs
       the_ccall_app = mkFCall dflags ccall_uniq fcall' val_args ccall_result_ty
       work_rhs = mkLams tvs (mkLams work_arg_ids the_ccall_app)
@@ -116,15 +97,13 @@ asteriusDsFCall fn_id co fcall = do
       wrap_rhs = mkLams (tvs ++ args) wrapper_body
       wrap_rhs' = Cast wrap_rhs co
       fn_id_w_inl =
-        fn_id
-          `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
+        fn_id `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
   return [(work_id, work_rhs), (fn_id_w_inl, wrap_rhs')]
 
 isAnyTy :: Type -> Bool
-isAnyTy ty =
-  case tcSplitTyConApp_maybe ty of
-    Just (tc, _) -> anyTyConKey == getUnique tc
-    Nothing -> False
+isAnyTy ty = case tcSplitTyConApp_maybe ty of
+  Just (tc, _) -> anyTyConKey == getUnique tc
+  Nothing -> False
 
 asteriusUnboxArg :: CoreExpr -> DsM (CoreExpr, CoreExpr -> CoreExpr)
 asteriusUnboxArg arg
@@ -137,13 +116,11 @@ asteriusBoxResult :: Type -> DsM (Type, CoreExpr -> CoreExpr)
 asteriusBoxResult result_ty
   | Just (io_tycon, io_res_ty) <- tcSplitIOType_maybe result_ty = do
     res <- asteriusResultWrapper io_res_ty
-    let extra_result_tys =
-          case res of
-            (Just ty, _)
-              | isUnboxedTupleType ty ->
-                let Just ls = tyConAppArgs_maybe ty
-                 in tail ls
-            _ -> []
+    let extra_result_tys = case res of
+          (Just ty, _)
+            | isUnboxedTupleType ty ->
+              let Just ls = tyConAppArgs_maybe ty in tail ls
+          _ -> []
         return_result state anss =
           mkCoreUbxTup
             (realWorldStatePrimTy : io_res_ty : extra_result_tys)

@@ -64,7 +64,19 @@ asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) (L ls safety) mh (CFu
         [arg1_ty] -> do
           checkForeignArgs asteriusIsFFIExternalTy arg1_tys
           checkForeignRes nonIOok checkSafe asteriusIsFFIExportResultTy res1_ty
-          checkForeignRes mustBeIO checkSafe (isFFIDynTy arg1_ty) res_ty
+          checkForeignRes
+            mustBeIO
+            checkSafe
+            ( \ty ->
+                if isJSValTy ty
+                  then IsValid
+                  else
+                    NotValid
+                      ( text
+                          "foreign import javascript \"wrapper\" expects a JSVal result"
+                      )
+            )
+            res_ty
           where
             (arg1_tys, res1_ty) = tcSplitFunTys arg1_ty
         _ ->

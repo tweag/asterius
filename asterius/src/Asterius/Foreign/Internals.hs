@@ -85,7 +85,7 @@ processFFIImport ::
   GHC.Type ->
   GHC.ForeignImport ->
   GHC.TcM GHC.ForeignImport
-processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ _ (GHC.unLoc -> GHC.SourceText src)) =
+processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ (GHC.CFunction _) (GHC.unLoc -> GHC.SourceText src)) =
   do
     dflags <- GHC.getDynFlags
     mod_sym <- marshalToModuleSymbol <$> GHC.getModule
