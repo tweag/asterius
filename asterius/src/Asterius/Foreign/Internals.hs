@@ -7,6 +7,7 @@ module Asterius.Foreign.Internals
     globalFFIHookState,
     processFFIImport,
     processFFIExport,
+    parseFFIFunctionType,
   )
 where
 
