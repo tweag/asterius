@@ -20,6 +20,7 @@ where
 
 import Asterius.Builtins.Blackhole
 import Asterius.Builtins.CMath
+import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
@@ -194,6 +195,7 @@ rtsAsteriusModule opts =
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
     <> blackholeCBits
     <> generateWrapperModule blackholeCBits
+    <> exportsCBits
     <> smCBits
     <> generateWrapperModule smCBits
     <> cmathCBits
@@ -642,6 +644,7 @@ rtsFunctionImports debug =
       (fst . snd)
       ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
       )
+    <> exportsImports
     <> posixImports
     <> sptImports
     <> timeImports

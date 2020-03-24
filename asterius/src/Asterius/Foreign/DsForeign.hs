@@ -121,7 +121,7 @@ asteriusDsFExportDynamic id co0 = do
           mkIntLitInt dflags (fromIntegral ffi_ret_tag),
           mkIntLitInt dflags (if ffiInIO then 1 else 0)
         ]
-      new_hs_callback = fsLit "newHaskellCallback_wrapper"
+      new_hs_callback = fsLit "newHaskellCallback"
   ccall_adj <-
     dsCCall
       new_hs_callback
