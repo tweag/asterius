@@ -14,7 +14,7 @@ main = do
       "--input-mjs",
       "test/cloudflare/cloudflare.mjs",
       "--export-function=handleFetch",
-      "--ghc-option=-no-hs-main"
+      "--no-main"
     ]
       <> args
   withCurrentDirectory "test/cloudflare" $ callProcess "npm" [ "run", "test" ]

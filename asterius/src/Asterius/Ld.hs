@@ -15,6 +15,7 @@ where
 
 import Asterius.Ar
 import Asterius.Builtins
+import Asterius.Builtins.Main
 import Asterius.Internals
 import Asterius.Resolve
 import Asterius.Types
@@ -30,7 +31,7 @@ data LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusModule,
-        debug, gcSections, verboseErr :: Bool,
+        hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
       }
@@ -90,11 +91,12 @@ linkModules LinkTask {..} m =
     debug
     gcSections
     verboseErr
-    ( rtsAsteriusModule
-        defaultBuiltinsOptions
-          { Asterius.Builtins.progName = progName,
-            Asterius.Builtins.debug = debug
-          }
+    ( (if hasMain then mainBuiltins else mempty)
+        <> rtsAsteriusModule
+          defaultBuiltinsOptions
+            { Asterius.Builtins.progName = progName,
+              Asterius.Builtins.debug = debug
+            }
         <> m
     )
     ( Set.unions

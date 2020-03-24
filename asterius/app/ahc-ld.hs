@@ -21,6 +21,7 @@ parseLinkTask args = do
         linkObjs = link_objs,
         linkLibs = link_libs,
         linkModule = mempty,
+        hasMain = "--no-main" `notElem` args,
         debug = "--debug" `elem` args,
         gcSections = "--no-gc-sections" `notElem` args,
         verboseErr = "--verbose-err" `elem` args,

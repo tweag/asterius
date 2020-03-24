@@ -21,7 +21,6 @@ where
 import Asterius.Builtins.Blackhole
 import Asterius.Builtins.CMath
 import Asterius.Builtins.Hashable
-import Asterius.Builtins.Main
 import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
 import Asterius.Builtins.SM
@@ -204,7 +203,6 @@ rtsAsteriusModule opts =
     <> sptCBits
     <> stgPrimFloatCBits
     <> timeCBits
-    <> mainBuiltins
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.

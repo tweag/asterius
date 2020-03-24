@@ -82,6 +82,7 @@ parseTask args = case err_msgs of
           str_opt "input-mjs" $ \s t -> t {inputEntryMJS = Just s},
           str_opt "output-directory" $ \s t -> t {outputDirectory = s},
           str_opt "output-prefix" $ \s t -> t {outputBaseName = s},
+          bool_opt "no-main" $ \t -> t {hasMain = False},
           bool_opt "tail-calls" $ \t -> t {tailCalls = True},
           bool_opt "no-gc-sections" $ \t -> t {gcSections = False},
           bool_opt "bundle" $ \t -> t {bundle = True},
@@ -260,6 +261,7 @@ ahcLink task = do
       "-clear-package-db",
       "-global-package-db"
     ]
+      <> concat [["-no-hs-main", "-optl--no-main"] | not $ hasMain task]
       <> ["-optl--debug" | debug task]
       <> [ "-optl--extra-root-symbol=" <> c8SBS (entityName root_sym)
            | root_sym <- extraRootSymbols task

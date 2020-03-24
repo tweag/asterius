@@ -34,6 +34,7 @@ linkNonMain store_m extra_syms = (m, link_report)
             linkObjs = [],
             linkLibs = [],
             linkModule = mempty,
+            Asterius.Ld.hasMain = False,
             Asterius.Ld.debug = False,
             Asterius.Ld.gcSections = True,
             Asterius.Ld.verboseErr = True,
@@ -54,8 +55,8 @@ distNonMain p extra_syms =
         inputHS = p,
         outputDirectory = takeDirectory p,
         outputBaseName = takeBaseName p,
+        Asterius.Main.Task.hasMain = False,
         Asterius.Main.Task.verboseErr = True,
-        extraGHCFlags = ["-no-hs-main"],
         extraRootSymbols = extra_syms
       }
 
