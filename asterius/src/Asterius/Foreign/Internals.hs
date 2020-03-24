@@ -1,5 +1,4 @@
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
@@ -8,7 +7,6 @@ module Asterius.Foreign.Internals
     globalFFIHookState,
     processFFIImport,
     processFFIExport,
-    isJSValTy,
   )
 where
 
@@ -21,7 +19,6 @@ import qualified Data.ByteString.Short as SBS
 import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.String
-import qualified ErrUtils as GHC
 import qualified ForeignCall as GHC
 import qualified GhcPlugins as GHC
 import qualified HsSyn as GHC
@@ -32,12 +29,10 @@ import qualified TcRnMonad as GHC
 import qualified TyCoRep as GHC
 
 parseFFIValueType :: Bool -> GHC.Type -> Maybe FFIValueType
-parseFFIValueType accept_prim norm_sig_ty
-  | isJSValTy norm_sig_ty = pure ffiJSVal
-  | otherwise = case norm_sig_ty of
-    GHC.TyConApp norm_tc [] -> getFFIValueType0 accept_prim norm_tc
-    GHC.TyConApp norm_tc [_] -> getFFIValueType1 accept_prim norm_tc
-    _ -> Nothing
+parseFFIValueType accept_prim norm_sig_ty = case norm_sig_ty of
+  GHC.TyConApp norm_tc [] -> getFFIValueType0 accept_prim norm_tc
+  GHC.TyConApp norm_tc [_] -> getFFIValueType1 accept_prim norm_tc
+  _ -> Nothing
 
 parseFFIFunctionType :: Bool -> GHC.Type -> Maybe FFIFunctionType
 parseFFIFunctionType accept_prim norm_sig_ty = case res_ty of
@@ -195,51 +190,3 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
         (GHC.noLoc $ GHC.CExportStatic src_txt lbl GHC.CCallConv)
         loc_src
 processFFIExport _ _ _ exp_decl = pure exp_decl
-
-isJSValTy :: GHC.Type -> Bool
-isJSValTy = GHC.isValid . checkRepTyCon isJSValTyCon
-
-isJSValTyCon :: GHC.TyCon -> GHC.Validity
-isJSValTyCon tc
-  | (GHC.moduleName <$> GHC.nameModule_maybe n)
-      == Just asteriusTypesJSValModuleName
-      && GHC.nameOccName n
-      == jsValTyConOccName =
-    GHC.IsValid
-  | otherwise =
-    GHC.NotValid $ GHC.text "isJSValTyCon: not JSVal TyCon"
-  where
-    n = GHC.tyConName tc
-
-{-# NOINLINE asteriusTypesJSValModuleName #-}
-asteriusTypesJSValModuleName :: GHC.ModuleName
-asteriusTypesJSValModuleName = GHC.mkModuleName "Asterius.Types.JSVal"
-
-{-# NOINLINE jsValTyConOccName #-}
-jsValTyConOccName :: GHC.OccName
-jsValTyConOccName = GHC.mkTcOcc "JSVal"
-
-checkRepTyCon :: (GHC.TyCon -> GHC.Validity) -> GHC.Type -> GHC.Validity
-checkRepTyCon check_tc ty = case GHC.splitTyConApp_maybe ty of
-  Just (tc, tys)
-    | GHC.isNewTyCon tc ->
-      GHC.NotValid
-        (GHC.hang msg 2 (mk_nt_reason tc tys GHC.$$ nt_fix))
-    | otherwise -> case check_tc tc of
-      GHC.IsValid -> GHC.IsValid
-      GHC.NotValid extra -> GHC.NotValid (msg GHC.$$ extra)
-  Nothing ->
-    GHC.NotValid (GHC.quotes (GHC.ppr ty) GHC.<+> GHC.text "is not a data type")
-  where
-    msg =
-      GHC.quotes (GHC.ppr ty)
-        GHC.<+> GHC.text "cannot be marshalled in a foreign call"
-    mk_nt_reason tc tys
-      | null tys =
-        GHC.text "because its data constructor is not in scope"
-      | otherwise =
-        GHC.text "because the data constructor for"
-          GHC.<+> GHC.quotes (GHC.ppr tc)
-          GHC.<+> GHC.text "is not in scope"
-    nt_fix =
-      GHC.text "Possible fix: import the data constructor to bring it into scope"

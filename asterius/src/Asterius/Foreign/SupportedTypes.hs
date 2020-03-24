@@ -2,23 +2,24 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.Foreign.SupportedTypes
-  ( ffiJSVal,
-    ffiValueTypeSigned,
+  ( ffiValueTypeSigned,
     getFFIValueType0,
     getFFIValueType1,
     ffiBoxedValueTypeList,
+    isJSValTy,
   )
 where
 
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
+import qualified ErrUtils as GHC
 import qualified GhcPlugins as GHC
 import qualified PrelNames as GHC
 import qualified RepType as GHC
 import qualified TysPrim as GHC
 
 ffiJSVal :: FFIValueType
-ffiJSVal = FFIValueType {ffiValueTypeRep = FFIJSValRep, hsTyCon = ""}
+ffiJSVal = FFIValueType {ffiValueTypeRep = FFIJSValRep, hsTyCon = "JSVal"}
 
 ffiValueTypeSigned :: FFIValueType -> Bool
 ffiValueTypeSigned FFIValueType {..} = case ffiValueTypeRep of
@@ -43,10 +44,9 @@ getFFIValueTypeRep tc = case GHC.tyConPrimRep tc of
   _ -> error "Asterius.Foreign.SupportedTypes.getFFIValueTypeRep"
 
 getFFIValueType0 :: Bool -> GHC.TyCon -> Maybe FFIValueType
-getFFIValueType0 accept_prim norm_tc =
-  GHC.lookupNameEnv
-    ffi_valuetype_map0
-    (GHC.getName norm_tc)
+getFFIValueType0 accept_prim norm_tc
+  | GHC.isValid (isJSValTyCon norm_tc) = pure ffiJSVal
+  | otherwise = GHC.lookupNameEnv ffi_valuetype_map0 (GHC.getName norm_tc)
   where
     ffi_valuetype_map0
       | accept_prim = ffiValueTypeMap0
@@ -64,12 +64,13 @@ getFFIValueType1 accept_prim norm_tc =
 
 ffiBoxedValueTypeList :: [FFIValueType]
 ffiBoxedValueTypeList =
-  [ vt
-    | vt@FFIValueType {..} <-
-        GHC.nameEnvElts ffiBoxedValueTypeMap0
-          <> GHC.nameEnvElts ffiBoxedValueTypeMap1,
-      not $ SBS.null hsTyCon
-  ]
+  ffiJSVal
+    : [ vt
+        | vt@FFIValueType {..} <-
+            GHC.nameEnvElts ffiBoxedValueTypeMap0
+              <> GHC.nameEnvElts ffiBoxedValueTypeMap1,
+          not $ SBS.null hsTyCon
+      ]
 
 ffiBoxedValueTypeMap0,
   ffiBoxedValueTypeMap1,
@@ -242,3 +243,51 @@ ffiPrimValueTypeMap1 =
     ]
 ffiValueTypeMap0 = ffiBoxedValueTypeMap0 `GHC.plusNameEnv` ffiPrimValueTypeMap0
 ffiValueTypeMap1 = ffiBoxedValueTypeMap1 `GHC.plusNameEnv` ffiPrimValueTypeMap1
+
+isJSValTy :: GHC.Type -> Bool
+isJSValTy = GHC.isValid . checkRepTyCon isJSValTyCon
+
+isJSValTyCon :: GHC.TyCon -> GHC.Validity
+isJSValTyCon tc
+  | (GHC.moduleName <$> GHC.nameModule_maybe n)
+      == Just asteriusTypesJSValModuleName
+      && GHC.nameOccName n
+      == jsValTyConOccName =
+    GHC.IsValid
+  | otherwise =
+    GHC.NotValid $ GHC.text "isJSValTyCon: not JSVal TyCon"
+  where
+    n = GHC.tyConName tc
+
+{-# NOINLINE asteriusTypesJSValModuleName #-}
+asteriusTypesJSValModuleName :: GHC.ModuleName
+asteriusTypesJSValModuleName = GHC.mkModuleName "Asterius.Types.JSVal"
+
+{-# NOINLINE jsValTyConOccName #-}
+jsValTyConOccName :: GHC.OccName
+jsValTyConOccName = GHC.mkTcOcc "JSVal"
+
+checkRepTyCon :: (GHC.TyCon -> GHC.Validity) -> GHC.Type -> GHC.Validity
+checkRepTyCon check_tc ty = case GHC.splitTyConApp_maybe ty of
+  Just (tc, tys)
+    | GHC.isNewTyCon tc ->
+      GHC.NotValid
+        (GHC.hang msg 2 (mk_nt_reason tc tys GHC.$$ nt_fix))
+    | otherwise -> case check_tc tc of
+      GHC.IsValid -> GHC.IsValid
+      GHC.NotValid extra -> GHC.NotValid (msg GHC.$$ extra)
+  Nothing ->
+    GHC.NotValid (GHC.quotes (GHC.ppr ty) GHC.<+> GHC.text "is not a data type")
+  where
+    msg =
+      GHC.quotes (GHC.ppr ty)
+        GHC.<+> GHC.text "cannot be marshalled in a foreign call"
+    mk_nt_reason tc tys
+      | null tys =
+        GHC.text "because its data constructor is not in scope"
+      | otherwise =
+        GHC.text "because the data constructor for"
+          GHC.<+> GHC.quotes (GHC.ppr tc)
+          GHC.<+> GHC.text "is not in scope"
+    nt_fix =
+      GHC.text "Possible fix: import the data constructor to bring it into scope"
