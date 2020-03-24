@@ -79,7 +79,6 @@ export async function newAsteriusInstance(req) {
       __asterius_stablename_manager,
       __asterius_scheduler,
       req.infoTables,
-      req.exportStablePtrs,
       req.symbolTable,
       __asterius_reentrancy_guard,
       req.yolo,
@@ -93,7 +92,6 @@ export async function newAsteriusInstance(req) {
       __asterius_reentrancy_guard,
       req.symbolTable,
       __asterius_scheduler,
-      req.exports,
       __asterius_stableptr_manager
     ),
     __asterius_exception_helper = new ExceptionHelper(
@@ -244,6 +242,16 @@ export async function newAsteriusInstance(req) {
     __asterius_heapalloc.init();
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
+
+    for (const [f, p, a, r, i] of req.exportsStatic) {
+      __asterius_exports[f] = __asterius_exports.newHaskellCallback(
+        __asterius_stableptr_manager.newStablePtr(p),
+        a,
+        r,
+        i
+      );
+    }
+
     return Object.assign(__asterius_jsffi_instance, {
       exports: Object.freeze(
         Object.assign(__asterius_exports, __asterius_wasm_instance.exports)

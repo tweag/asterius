@@ -3,30 +3,25 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StrictData #-}
-{-# LANGUAGE UnboxedTuples #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module Asterius.JSFFI
   ( getFFIModule,
     generateFFIFunctionImports,
     generateFFIImportObjectFactory,
-    generateFFIExportObject,
-    ffiValueTypeTag,
-    ffiValueTypesTag,
   )
 where
 
 import Asterius.EDSL
 import Asterius.Foreign.Internals
 import Asterius.Foreign.SupportedTypes
+import Asterius.Foreign.TypesTag
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified CmmCallConv as GHC
 import qualified CmmExpr as GHC
 import qualified CmmNode as GHC
 import Control.Applicative
-import Data.Bits
 import Data.ByteString.Builder
 import Data.Coerce
 import Data.IORef
@@ -49,19 +44,6 @@ recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
   FFIAddrRep -> I64
   FFIFloatRep -> F32
   FFIDoubleRep -> F64
-
--- | Get a tag for an FFIValueType
-ffiValueTypeTag :: FFIValueType -> Integer
-ffiValueTypeTag FFIValueType {ffiValueTypeRep = FFIJSValRep} = 1
-ffiValueTypeTag ffi_vt =
-  fromIntegral (2 + fromEnum (recoverWasmWrapperValueType ffi_vt))
-
--- | Get a tag for a list of FFIValueTypes
-ffiValueTypesTag :: [FFIValueType] -> Integer
-ffiValueTypesTag [] = 0
-ffiValueTypesTag [r] = ffiValueTypeTag r
-ffiValueTypesTag (r : rs) =
-  ffiValueTypeTag r .|. (ffiValueTypesTag rs `shiftL` 3)
 
 recoverWasmImportFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
@@ -334,7 +316,7 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
       "{"
         <> getjsval_code
         <> "return ["
-        <> integerDec (ffiValueTypesTag ffiResultTypes)
+        <> intDec (ffiValueTypesTag ffiResultTypes)
         <> ", await ("
         <> shortByteString ffiSourceText
         <> ")];}"
@@ -352,85 +334,3 @@ generateFFIImportObjectFactory FFIMarshalState {..} =
           ]
       )
     <> "}})"
-
-generateFFIExportObject ::
-  FFIMarshalState -> M.Map AsteriusEntitySymbol Int64 -> Builder
-generateFFIExportObject FFIMarshalState {..} sym_map =
-  "{"
-    <> mconcat
-      ( intersperse
-          ","
-          [ shortByteString (coerce k)
-              <> ":"
-              <> generateFFIExportLambda export_decl sym_map
-            | (k, export_decl) <- M.toList ffiExportDecls
-          ]
-      )
-    <> "}"
-
-generateFFIExportLambda ::
-  FFIExportDecl -> M.Map AsteriusEntitySymbol Int64 -> Builder
-generateFFIExportLambda FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
-  case (# M.lookup run_func sym_map, M.lookup ffiExportClosure sym_map #) of
-    (# Just run_func_addr, Just export_closure_addr #) ->
-      let res_func =
-            "async function("
-              <> mconcat
-                ( intersperse
-                    ","
-                    ["_" <> intDec i | i <- [1 .. length ffiParamTypes]]
-                )
-              <> "){"
-              <> (if null ffiResultTypes then tid else "return " <> ret)
-              <> "}"
-          ret = case ffiResultTypes of
-            [t] ->
-              let r = "this.rts_get" <> getHsTyCon t <> "(" <> ret_closure <> ")"
-               in case ffiValueTypeRep t of
-                    FFIJSValRep ->
-                      "this.context.stablePtrManager.getJSVal(" <> r <> ")"
-                    _ -> r
-            _ -> error "Asterius.JSFFI.generateFFIExportLambda"
-          ret_closure = "this.context.scheduler.getTSOret(" <> tid <> ")"
-          tid = "await this." <> eval_func <> "(" <> eval_closure <> ")"
-          eval_closure =
-            "this.rts_apply(0x"
-              <> int64HexFixed run_func_addr
-              <> ","
-              <> foldl'
-                ( \acc (i, t) ->
-                    "this.rts_apply("
-                      <> acc
-                      <> ",this.rts_mk"
-                      <> getHsTyCon t
-                      <> "("
-                      <> ( let _i = "_" <> intDec i
-                            in case ffiValueTypeRep t of
-                                 FFIJSValRep ->
-                                   "this.context.stablePtrManager.newJSVal("
-                                     <> _i
-                                     <> ")"
-                                 _ -> _i
-                         )
-                      <> "))"
-                )
-                ("0x" <> int64HexFixed export_closure_addr)
-                (zip [1 ..] ffiParamTypes)
-              <> ")"
-       in res_func
-    _ -> err_func
-  where
-    err_func =
-      "() => Promise.reject(\""
-        <> shortByteString (coerce run_func)
-        <> " or "
-        <> shortByteString (coerce ffiExportClosure)
-        <> " not found\")"
-    run_func
-      | ffiInIO = "base_AsteriusziTopHandler_runIO_closure"
-      | otherwise = "base_AsteriusziTopHandler_runNonIO_closure"
-    eval_func
-      | null ffiResultTypes = "rts_evalLazyIO"
-      | otherwise = "rts_evalIO"
-    getHsTyCon FFIValueType {ffiValueTypeRep = FFIJSValRep} = "JSVal"
-    getHsTyCon FFIValueType {..} = shortByteString hsTyCon

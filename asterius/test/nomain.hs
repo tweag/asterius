@@ -15,7 +15,7 @@ main = do
     [ "--input-hs",
       "test/nomain/NoMain.hs",
       "--output-ir",
-      "--ghc-option=-no-hs-main",
+      "--no-main",
       "--extra-root-symbol=base_AsteriusziTopHandler_runNonIO_closure",
       "--extra-root-symbol=NoMain_x_closure"
     ]

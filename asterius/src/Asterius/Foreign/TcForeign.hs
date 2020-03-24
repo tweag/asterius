@@ -7,6 +7,7 @@ module Asterius.Foreign.TcForeign
 where
 
 import Asterius.Foreign.Internals
+import Asterius.Foreign.SupportedTypes
 import Bag
 import Control.Monad
 import Data.List

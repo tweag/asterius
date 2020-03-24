@@ -298,17 +298,17 @@ export class Scheduler {
                   this.memory.i64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rR1, ptr);
                   break;
                 }
-                case 3: {
+                case 2: {
                   // I64
                   this.memory.i64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rR1, tso_info.ffiRet);
                   break;
                 }
-                case 4: {
+                case 3: {
                   // F32
                   this.memory.f32Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rF1, tso_info.ffiRet);
                   break;
                 }
-                case 5: {
+                case 4: {
                   // F64
                   this.memory.f64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rD1, tso_info.ffiRet);
                   break;

@@ -15,6 +15,7 @@ where
 
 import Asterius.Ar
 import Asterius.Builtins
+import Asterius.Builtins.Main
 import Asterius.Internals
 import Asterius.Resolve
 import Asterius.Types
@@ -30,7 +31,7 @@ data LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusModule,
-        debug, gcSections, verboseErr :: Bool,
+        hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
       }
@@ -49,6 +50,8 @@ rtsUsedSymbols :: Set AsteriusEntitySymbol
 rtsUsedSymbols =
   Set.fromList
     [ "barf",
+      "base_AsteriusziTopHandler_runIO_closure",
+      "base_AsteriusziTopHandler_runNonIO_closure",
       "base_AsteriusziTypesziJSException_mkJSException_closure",
       "base_GHCziPtr_Ptr_con_info",
       "ghczmprim_GHCziTypes_Czh_con_info",
@@ -88,11 +91,12 @@ linkModules LinkTask {..} m =
     debug
     gcSections
     verboseErr
-    ( rtsAsteriusModule
-        defaultBuiltinsOptions
-          { Asterius.Builtins.progName = progName,
-            Asterius.Builtins.debug = debug
-          }
+    ( (if hasMain then mainBuiltins else mempty)
+        <> rtsAsteriusModule
+          defaultBuiltinsOptions
+            { Asterius.Builtins.progName = progName,
+              Asterius.Builtins.debug = debug
+            }
         <> m
     )
     ( Set.unions
