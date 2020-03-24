@@ -20,7 +20,6 @@ export class GC {
     stablename_manager,
     scheduler,
     info_tables,
-    export_stableptrs,
     symbol_table,
     reentrancy_guard,
     yolo,
@@ -32,7 +31,6 @@ export class GC {
     this.stableNameManager = stablename_manager;
     this.scheduler = scheduler;
     this.infoTables = info_tables;
-    for (const p of export_stableptrs) this.stablePtrManager.newStablePtr(p);
     this.symbolTable = symbol_table;
     this.reentrancyGuard = reentrancy_guard;
     /**
@@ -52,7 +50,7 @@ export class GC {
     /**
      * Set of closures encountered during garbage
      * collection but not moved: they are either
-     * closures in the statis part of memory, or 
+     * closures in the statis part of memory, or
      * closures in pinned MBlocks.
      * @name GC#nonMovedObjects
      */
@@ -86,7 +84,7 @@ export class GC {
     this.workList = [];
     /**
      * At each garbage collection, the live JSVals encountered are
-     * recorded in {@link GC#liveJSVals}, and then handled separately 
+     * recorded in {@link GC#liveJSVals}, and then handled separately
      * by {@link StablePtrManager}.
      * @name GC#liveJSVals
      */
@@ -110,7 +108,7 @@ export class GC {
    * Heap alloactes a physical copy of the given closure.
    * Used during evacuation by {@link GC#evacuateClosure}.
    * @param c The source address of the closure
-   * @param bytes The size in bytes of the closure 
+   * @param bytes The size in bytes of the closure
    */
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
@@ -196,7 +194,7 @@ export class GC {
             );
             this.memory.i64Store(untagged_c + rtsConstants.offset_StgInd_indirectee, selectee);
             // Set the current closure as IND, but do not
-            // un-whitehole for now: it will be taken care 
+            // un-whitehole for now: it will be taken care
             // of later, when propagating the result
             // (see case IND above)
             return this.stingyEval(c, untagged_c, info, ClosureTypes.IND);

@@ -43,7 +43,6 @@ export class Exports {
     reentrancy_guard,
     symbol_table,
     scheduler,
-    exports,
     stableptr_manager
   ) {
     this.context = Object.freeze({
@@ -55,7 +54,6 @@ export class Exports {
       rtsMkFuncs: rtsConstants.hsTyCons.map(ty => decodeRtsMk(this, ty)),
       rtsGetFuncs: rtsConstants.hsTyCons.map(ty => decodeRtsGet(this, ty))
     });
-    Object.assign(this, exports);
   }
 
   rts_evalIO(p) {

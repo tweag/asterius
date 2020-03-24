@@ -14,6 +14,7 @@ where
 import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.BuildInfo
+import Asterius.Foreign.ExportStatic
 import Asterius.Internals
 import Asterius.Internals.ByteString
 import Asterius.Internals.Marshal
@@ -26,8 +27,6 @@ import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
   ( AsteriusEntitySymbol (..),
-    FFIExportDecl (..),
-    FFIMarshalState (..),
     Module,
   )
 import Control.Monad
@@ -156,23 +155,6 @@ genInfoTables :: [Int64] -> Builder
 genInfoTables sym_set =
   "new Set([" <> mconcat (intersperse "," (map intHex sym_set)) <> "])"
 
-genExportStablePtrs ::
-  M.Map AsteriusEntitySymbol Int64 ->
-  [AsteriusEntitySymbol] ->
-  FFIMarshalState ->
-  Builder
-genExportStablePtrs sym_map export_funcs FFIMarshalState {..} =
-  "["
-    <> mconcat
-      ( intersperse
-          ","
-          ( map
-              (intHex . (sym_map !) . ffiExportClosure . (ffiExportDecls !))
-              export_funcs
-          )
-      )
-    <> "]"
-
 genReq :: Task -> LinkReport -> Builder
 genReq task LinkReport {..} =
   mconcat
@@ -187,18 +169,13 @@ genReq task LinkReport {..} =
       "export default {",
       "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
-      ", exports: ",
-      generateFFIExportObject bundledFFIMarshalState raw_symbol_table,
+      ", exportsStatic: ",
+      genExportStaticObj bundledFFIMarshalState raw_symbol_table,
       ", symbolTable: ",
       genSymbolDict symbol_table,
       if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,
-      ", exportStablePtrs: ",
-      genExportStablePtrs
-        staticsSymbolMap
-        (exportFunctions task)
-        bundledFFIMarshalState,
       ", sptEntries: ",
       genSPT staticsSymbolMap sptEntries,
       ", tableSlots: ",
