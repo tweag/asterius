@@ -7,6 +7,7 @@ module Asterius.Foreign.Internals
     globalFFIHookState,
     processFFIImport,
     processFFIExport,
+    parseFFIFunctionType,
   )
 where
 
@@ -85,14 +86,16 @@ processFFIImport ::
   GHC.Type ->
   GHC.ForeignImport ->
   GHC.TcM GHC.ForeignImport
-processFFIImport hook_state_ref norm_sig_ty (GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ _ (GHC.unLoc -> GHC.SourceText src)) =
+processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ (GHC.CFunction _) (GHC.unLoc -> GHC.SourceText src)) =
   do
     dflags <- GHC.getDynFlags
     mod_sym <- marshalToModuleSymbol <$> GHC.getModule
     u <- GHC.getUniqueM
     let ffi_ftype = case parseFFIFunctionType True norm_sig_ty of
           Just r -> r
-          _ -> GHC.panicDoc "processFFIImport" $ GHC.ppr norm_sig_ty
+          _ ->
+            GHC.panicDoc "processFFIImport" $
+              GHC.vcat [GHC.ppr norm_sig_ty, GHC.ppr imp_decl]
         ffi_safety = case GHC.unLoc loc_safety of
           GHC.PlaySafe | GHC.isGoodSrcSpan $ GHC.getLoc loc_safety -> FFISafe
           GHC.PlayInterruptible -> FFIInterruptible

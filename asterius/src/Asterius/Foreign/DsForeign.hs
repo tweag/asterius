@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
@@ -7,6 +8,9 @@ module Asterius.Foreign.DsForeign
   )
 where
 
+import Asterius.Foreign.ExportStatic
+import Asterius.Foreign.Internals
+import Asterius.Types
 import Control.Monad
 import CoreUnfold
 import Data.List
@@ -56,27 +60,13 @@ asteriusDsCImport ::
   Safety ->
   Maybe Header ->
   DsM [Binding]
-asteriusDsCImport id co (CLabel cid) cconv _ _ = do
-  dflags <- getDynFlags
-  let ty = pFst $ coercionKind co
-      fod =
-        case tyConAppTyCon_maybe (dropForAlls ty) of
-          Just tycon
-            | tyConUnique tycon == funPtrTyConKey -> IsFunction
-          _ -> IsData
-  (_, foRhs) <- asteriusResultWrapper ty
-  let rhs = foRhs (Lit (LitLabel cid stdcall_info fod))
-      rhs' = Cast rhs co
-      stdcall_info = fun_type_arg_stdcall_info dflags cconv ty
-   in return [(id, rhs')]
-asteriusDsCImport id co (CFunction target) cconv@PrimCallConv safety _ =
-  asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
 asteriusDsCImport id co (CFunction target) cconv safety _ =
   asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
-asteriusDsCImport id _ CWrapper _ _ _ = do
-  dflags <- getDynFlags
-  pure
-    [(id, mkRuntimeErrorApp rUNTIME_ERROR_ID (idType id) (showPpr dflags id))]
+asteriusDsCImport id co CWrapper JavaScriptCallConv _ _ =
+  asteriusDsFExportDynamic id co
+asteriusDsCImport id co spec cconv safety mHeader = do
+  (r, _, _) <- dsCImport id co spec cconv safety mHeader
+  pure r
 
 asteriusDsFCall :: Id -> Coercion -> ForeignCall -> DsM [(Id, Expr TyVar)]
 asteriusDsFCall fn_id co fcall = do
@@ -90,23 +80,20 @@ asteriusDsFCall fn_id co fcall = do
   ccall_uniq <- newUnique
   work_uniq <- newUnique
   dflags <- getDynFlags
-  fcall' <-
-    case fcall of
-      CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety) -> do
-        wrapperName <- mkWrapperName "ghc_wrapper" (unpackFS cName)
-        let fcall' =
-              CCall
-                ( CCallSpec
-                    (StaticTarget NoSourceText wrapperName mUnitId True)
-                    CApiConv
-                    safety
-                )
-        return fcall'
-      _ -> return fcall
+  fcall' <- case fcall of
+    CCall (CCallSpec (StaticTarget _ cName mUnitId _) CApiConv safety) -> do
+      wrapperName <- mkWrapperName "ghc_wrapper" (unpackFS cName)
+      let fcall' =
+            CCall
+              ( CCallSpec
+                  (StaticTarget NoSourceText wrapperName mUnitId True)
+                  CApiConv
+                  safety
+              )
+      return fcall'
+    _ -> return fcall
   let worker_ty =
-        mkForAllTys
-          tv_bndrs
-          (mkFunTys (map idType work_arg_ids) ccall_result_ty)
+        mkForAllTys tv_bndrs (mkFunTys (map idType work_arg_ids) ccall_result_ty)
       tvs = map binderVar tv_bndrs
       the_ccall_app = mkFCall dflags ccall_uniq fcall' val_args ccall_result_ty
       work_rhs = mkLams tvs (mkLams work_arg_ids the_ccall_app)
@@ -116,15 +103,55 @@ asteriusDsFCall fn_id co fcall = do
       wrap_rhs = mkLams (tvs ++ args) wrapper_body
       wrap_rhs' = Cast wrap_rhs co
       fn_id_w_inl =
-        fn_id
-          `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
+        fn_id `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
   return [(work_id, work_rhs), (fn_id_w_inl, wrap_rhs')]
 
+asteriusDsFExportDynamic :: Id -> Coercion -> DsM [Binding]
+asteriusDsFExportDynamic id co0 = do
+  dflags <- getDynFlags
+  cback <- newSysLocalDs arg_ty
+  newStablePtrId <- dsLookupGlobalId newStablePtrName
+  stable_ptr_tycon <- dsLookupTyCon stablePtrTyConName
+  let stable_ptr_ty = mkTyConApp stable_ptr_tycon [arg_ty]
+  bindIOId <- dsLookupGlobalId bindIOName
+  stbl_value <- newSysLocalDs stable_ptr_ty
+  let adj_args =
+        [ Var stbl_value,
+          mkIntLitInt dflags (fromIntegral ffi_params_tag),
+          mkIntLitInt dflags (fromIntegral ffi_ret_tag),
+          mkIntLitInt dflags (if ffiInIO then 1 else 0)
+        ]
+      new_hs_callback = fsLit "newHaskellCallback"
+  ccall_adj <-
+    dsCCall
+      new_hs_callback
+      adj_args
+      PlayRisky
+      (mkTyConApp io_tc [res_ty])
+  let io_app =
+        mkLams tvs $ Lam cback $
+          mkApps
+            (Var bindIOId)
+            [ Type stable_ptr_ty,
+              Type res_ty,
+              mkApps (Var newStablePtrId) [Type arg_ty, Var cback],
+              Lam stbl_value ccall_adj
+            ]
+      fed = (id `setInlineActivation` NeverActive, Cast io_app co0)
+  return [fed]
+  where
+    ty = pFst (coercionKind co0)
+    (tvs, sans_foralls) = tcSplitForAllTys ty
+    ([arg_ty], fn_res_ty) = tcSplitFunTys sans_foralls
+    Just (io_tc, res_ty) = tcSplitIOType_maybe fn_res_ty
+    Just FFIFunctionType {..} = parseFFIFunctionType False arg_ty
+    ffi_params_tag = encodeTys ffiParamTypes
+    ffi_ret_tag = encodeTys ffiResultTypes
+
 isAnyTy :: Type -> Bool
-isAnyTy ty =
-  case tcSplitTyConApp_maybe ty of
-    Just (tc, _) -> anyTyConKey == getUnique tc
-    Nothing -> False
+isAnyTy ty = case tcSplitTyConApp_maybe ty of
+  Just (tc, _) -> anyTyConKey == getUnique tc
+  Nothing -> False
 
 asteriusUnboxArg :: CoreExpr -> DsM (CoreExpr, CoreExpr -> CoreExpr)
 asteriusUnboxArg arg
@@ -137,13 +164,11 @@ asteriusBoxResult :: Type -> DsM (Type, CoreExpr -> CoreExpr)
 asteriusBoxResult result_ty
   | Just (io_tycon, io_res_ty) <- tcSplitIOType_maybe result_ty = do
     res <- asteriusResultWrapper io_res_ty
-    let extra_result_tys =
-          case res of
-            (Just ty, _)
-              | isUnboxedTupleType ty ->
-                let Just ls = tyConAppArgs_maybe ty
-                 in tail ls
-            _ -> []
+    let extra_result_tys = case res of
+          (Just ty, _)
+            | isUnboxedTupleType ty ->
+              let Just ls = tyConAppArgs_maybe ty in tail ls
+          _ -> []
         return_result state anss =
           mkCoreUbxTup
             (realWorldStatePrimTy : io_res_ty : extra_result_tys)

@@ -3,6 +3,7 @@
 
 module Asterius.Foreign.ExportStatic
   ( genExportStaticObj,
+    encodeTys,
   )
 where
 

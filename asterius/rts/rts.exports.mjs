@@ -51,6 +51,7 @@ export class Exports {
       symbolTable: symbol_table,
       scheduler: scheduler,
       stablePtrManager: stableptr_manager,
+      callbackStablePtrs: new Map(),
       rtsMkFuncs: rtsConstants.hsTyCons.map(ty => decodeRtsMk(this, ty)),
       rtsGetFuncs: rtsConstants.hsTyCons.map(ty => decodeRtsGet(this, ty))
     });
@@ -81,7 +82,7 @@ export class Exports {
     if (ret_get_funcs.length > 1) {
       throw new WebAssembly.RuntimeError(`Multiple returns not supported`);
     }
-    return async (...args) => {
+    const cb = async (...args) => {
       if (args.length !== arg_mk_funcs.length) {
         throw new WebAssembly.RuntimeError(
           `Expected ${arg_mk_funcs.length} arguments, got ${args.length}`
@@ -97,5 +98,16 @@ export class Exports {
         return ret_get_funcs[0](this.context.scheduler.getTSOret(tid));
       }
     };
+    this.context.callbackStablePtrs.set(cb, sp);
+    return cb;
+  }
+
+  freeHaskellCallback(sn) {
+    const cb = this.context.stablePtrManager.getJSVal(sn);
+    this.context.stablePtrManager.freeStablePtr(
+      this.context.callbackStablePtrs.get(cb)
+    );
+    this.context.callbackStablePtrs.delete(cb);
+    this.context.stablePtrManager.freeJSVal(sn);
   }
 }
