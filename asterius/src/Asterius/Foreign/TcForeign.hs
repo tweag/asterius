@@ -57,20 +57,20 @@ asteriusTcFImport (L dloc fo@ForeignImport {fd_name = L nloc nm, fd_sig_ty = hs_
 asteriusTcFImport d = pprPanic "asteriusTcFImport" (ppr d)
 
 asteriusTcCheckFIType :: [Type] -> Type -> ForeignImport -> TcM ForeignImport
-asteriusTcCheckFIType arg_tys res_ty (CImport (L lc JavaScriptCallConv) safety mh CWrapper src) =
-  do
-    case arg_tys of
-      [arg1_ty] -> do
-        checkForeignArgs asteriusIsFFIExternalTy arg1_tys
-        checkForeignRes nonIOok checkSafe asteriusIsFFIExportResultTy res1_ty
-        checkForeignRes mustBeIO checkSafe (isFFIDynTy arg1_ty) res_ty
-        where
-          (arg1_tys, res1_ty) = tcSplitFunTys arg1_ty
-      _ ->
-        addErrTc
-          (illegalForeignTyErr Outputable.empty (text "One argument expected"))
-    return (CImport (L lc JavaScriptCallConv) safety mh CWrapper src)
 asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) (L ls safety) mh (CFunction target) src)
+  | unLoc src == SourceText "\"wrapper\"" =
+    do
+      case arg_tys of
+        [arg1_ty] -> do
+          checkForeignArgs asteriusIsFFIExternalTy arg1_tys
+          checkForeignRes nonIOok checkSafe asteriusIsFFIExportResultTy res1_ty
+          checkForeignRes mustBeIO checkSafe (isFFIDynTy arg1_ty) res_ty
+          where
+            (arg1_tys, res1_ty) = tcSplitFunTys arg1_ty
+        _ ->
+          addErrTc
+            (illegalForeignTyErr Outputable.empty (text "One argument expected"))
+      return (CImport (L lc JavaScriptCallConv) (L ls safety) mh CWrapper src)
   | not (isDynamicTarget target || cconv == PrimCallConv) =
     do
       dflags <- getDynFlags
