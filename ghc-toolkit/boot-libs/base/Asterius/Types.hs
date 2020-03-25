@@ -1,13 +1,33 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Asterius.Types
-  ( module Asterius.Prim,
+  ( JSVal,
+    freeJSVal,
+    JSArray (..),
+    fromJSArray,
+    toJSArray,
+    JSFunction (..),
+    freeHaskellCallback,
+    JSObject (..),
+    indexJSObject,
+    setJSObject,
+    JSString (..),
+    lengthOfJSString,
+    fromJSString,
+    toJSString,
+    JSUint8Array (..),
+    lengthOfJSUint8Array,
+    fromJSUint8Array,
+    toJSUint8Array,
+    unsafeToJSUint8Array,
     JSException (..),
   )
 where
 
-import Asterius.Prim
+import Asterius.Types.JSArray
 import Asterius.Types.JSException
-import GHC.Exception.Type
-import GHC.Show
-import GHC.Types
+import Asterius.Types.JSFunction
+import Asterius.Types.JSObject
+import Asterius.Types.JSString
+import Asterius.Types.JSUint8Array
+import Asterius.Types.JSVal

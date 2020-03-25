@@ -27,6 +27,12 @@ foreign import javascript safe "console.log([$1,$2])"
 foreign import javascript safe "setTimeout($1,$2,$3,$4)"
   js_setTimeout2 :: JSFunction -> Int -> JSVal -> JSVal -> IO ()
 
+foreign import javascript "wrapper"
+  makeHaskellCallback1 :: (JSVal -> IO ()) -> IO JSFunction
+
+foreign import javascript "wrapper"
+  makeHaskellCallback2 :: (JSVal -> JSVal -> IO ()) -> IO JSFunction
+
 main :: IO ()
 main = do
   print $ CBS.pack "The limits of my language mean the limits of my world."

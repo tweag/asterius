@@ -5,7 +5,6 @@
 module Asterius.Magic
   ( accursedUnutterablePerformIO,
     unIO,
-    unBool,
   )
 where
 
@@ -21,8 +20,3 @@ accursedUnutterablePerformIO (IO m) = case runRW# m of
 {-# INLINE unIO #-}
 unIO :: IO a -> State# RealWorld -> (# State# RealWorld, a #)
 unIO (IO m) = m
-
-{-# INLINE unBool #-}
-unBool :: Bool -> Int#
-unBool False = 0#
-unBool True = 1#

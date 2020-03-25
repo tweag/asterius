@@ -1,5 +1,4 @@
 import { modulify } from "./rts.modulify.mjs";
-import { encodeLatin1, decodeLatin1 } from "./rts.latin1.mjs";
 import { ReentrancyGuard } from "./rts.reentrancy.mjs";
 import { EventLogManager } from "./rts.eventlog.mjs";
 import { Tracer } from "./rts.tracing.mjs";
@@ -103,47 +102,10 @@ export async function newAsteriusInstance(req) {
   }
 
   const __asterius_jsffi_instance = {
-    exposeMemory: (p, len) => __asterius_memory.expose(p, len),
-    decodeLatin1: decodeLatin1,
-    encodeLatin1: encodeLatin1,
+    exposeMemory: (p, len, t = Uint8Array) => __asterius_memory.expose(p, len, t),
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
     getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
-    setJSVal: (i0, i1) => __asterius_stableptr_manager.setJSVal(i0, i1),
-    moveJSVal: (i0, i1) => __asterius_stableptr_manager.moveJSVal(i0, i1),
     freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),
-    makeHaskellCallback: sp => async () => {
-      const tid = await __asterius_exports.rts_evalLazyIO(
-        __asterius_stableptr_manager.deRefStablePtr(sp)
-      );
-      __asterius_exports.rts_checkSchedStatus(tid);
-    },
-    makeHaskellCallback1: sp => async ev => {
-      const tid = await __asterius_exports.rts_evalLazyIO(
-        __asterius_exports.rts_apply(
-          __asterius_stableptr_manager.deRefStablePtr(sp),
-          __asterius_exports.rts_mkJSVal(
-            __asterius_stableptr_manager.newJSVal(ev)
-          )
-        )
-      );
-      __asterius_exports.rts_checkSchedStatus(tid);
-    },
-    makeHaskellCallback2: sp => async (x, y) => {
-      const tid = await __asterius_exports.rts_evalLazyIO(
-        __asterius_exports.rts_apply(
-          __asterius_exports.rts_apply(
-            __asterius_stableptr_manager.deRefStablePtr(sp),
-            __asterius_exports.rts_mkJSVal(
-              __asterius_stableptr_manager.newJSVal(x)
-            )
-          ),
-          __asterius_exports.rts_mkJSVal(
-            __asterius_stableptr_manager.newJSVal(y)
-          )
-        )
-      );
-      __asterius_exports.rts_checkSchedStatus(tid);
-    },
     stdio: {
       stdout: () => __asterius_fs.readSync(1),
       stderr: () => __asterius_fs.readSync(2)

@@ -23,6 +23,7 @@ library
   exposed-modules:
       Asterius.Aeson
       Asterius.ByteString
+      Asterius.Text
       Asterius.UTF8
   hs-source-dirs:
       src
@@ -32,4 +33,5 @@ library
     , base
     , bytestring
     , ghc-prim
+    , text
   default-language: Haskell2010

@@ -5,7 +5,7 @@ module Asterius.UTF8
 where
 
 import Asterius.Magic
-import Asterius.Prim
+import Asterius.Types
 import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Unsafe as BS

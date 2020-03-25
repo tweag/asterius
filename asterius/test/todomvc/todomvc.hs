@@ -246,3 +246,6 @@ main = do
   init_model <- fromMaybe (TodoModel []) <$> loadModel "todomvc-asterius"
   model_ref <- newIORef init_model
   todoMVC model_ref
+
+foreign import javascript "wrapper"
+  makeHaskellCallback :: IO () -> IO JSFunction
