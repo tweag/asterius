@@ -320,7 +320,6 @@ Library
         Unsafe.Coerce
 
         Asterius.Magic
-        Asterius.Prim
         Asterius.TopHandler
         Asterius.Types
 
