@@ -45,20 +45,17 @@ getElementById :: String -> IO JSVal
 getElementById k = js_getElementById (toJSString k)
 
 localStorageSetItem :: String -> BS.ByteString -> IO ()
-localStorageSetItem k v =
-  js_localStorage_setItem
-    (toJSString k)
-    (jsStringDecodeLatin1 (byteStringToJSArrayBuffer v))
+localStorageSetItem k v = do
+  buf <- byteStringToJSUint8Array v
+  js_localStorage_setItem (toJSString k) (jsStringDecodeLatin1 buf)
 
 localStorageGetItem :: String -> IO (Maybe BS.ByteString)
 localStorageGetItem k = do
   f <- js_localStorage_hasItem js_k
   if f
-    then
-      Just
-        . byteStringFromJSArrayBuffer
-        . jsStringEncodeLatin1
-        <$> js_localStorage_getItem js_k
+    then do
+      buf <- jsStringEncodeLatin1 <$> js_localStorage_getItem js_k
+      Just <$> byteStringFromJSUint8Array buf
     else pure Nothing
   where
     js_k = toJSString k
