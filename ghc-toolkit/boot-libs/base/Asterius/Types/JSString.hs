@@ -3,6 +3,7 @@
 
 module Asterius.Types.JSString
   ( JSString (..),
+    lengthOfJSString,
     fromJSString,
     toJSString,
   )
@@ -59,6 +60,9 @@ instance IsString JSString where
 instance Read JSString where
   {-# INLINE readPrec #-}
   readPrec = fmap toJSString readPrec
+
+foreign import javascript unsafe "$1.length"
+  lengthOfJSString :: JSString -> IO Int
 
 foreign import javascript unsafe "`${$1}`" js_showJSVal :: JSVal -> JSString
 

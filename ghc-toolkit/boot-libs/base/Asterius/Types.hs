@@ -12,6 +12,7 @@ module Asterius.Types
     indexJSObject,
     setJSObject,
     JSString (..),
+    lengthOfJSString,
     fromJSString,
     toJSString,
     JSUint8Array (..),
