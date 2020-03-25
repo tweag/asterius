@@ -105,8 +105,6 @@ export async function newAsteriusInstance(req) {
     exposeMemory: (p, len) => __asterius_memory.expose(p, len),
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
     getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
-    setJSVal: (i0, i1) => __asterius_stableptr_manager.setJSVal(i0, i1),
-    moveJSVal: (i0, i1) => __asterius_stableptr_manager.moveJSVal(i0, i1),
     freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),
     stdio: {
       stdout: () => __asterius_fs.readSync(1),
