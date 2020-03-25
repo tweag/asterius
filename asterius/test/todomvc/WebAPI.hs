@@ -33,7 +33,7 @@ setAttribute e k v = js_setAttribute e (toJSString k) (toJSString v)
 
 addEventListener :: JSVal -> String -> (JSObject -> IO ()) -> IO ()
 addEventListener target event handler = do
-  callback <- makeHaskellCallback1 $ coerce handler
+  callback <- makeHaskellCallback1 handler
   js_addEventListener target (toJSString event) callback
 
 createTextNode :: String -> IO JSVal
@@ -128,3 +128,6 @@ foreign import javascript interruptible "new Promise((resolve, reject) => { \
 
 foreign import javascript interruptible "fetch($1).then(b => b.arrayBuffer()).then(b => new Uint8Array(b))"
   js_decode :: JSString -> IO JSUint8Array
+
+foreign import javascript "wrapper"
+  makeHaskellCallback1 :: (JSObject -> IO ()) -> IO JSFunction
