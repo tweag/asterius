@@ -24,7 +24,7 @@ textFromJSString s = accursedUnutterablePerformIO $ IO $ \s0 ->
       _ -> case newByteArray# (len# *# 2#) s0 of
         (# s1, mba #) -> case unsafeFreezeByteArray# mba s1 of
           (# s2, ba #) ->
-            case unIO (js_loadString (byteArrayContents# ba) s) of
+            case unIO (js_loadString (byteArrayContents# ba) s) s2 of
               (# s3, () #) -> (# s3, text (Array ba) 0 len #)
 
 {-# INLINEABLE textToJSString #-}
