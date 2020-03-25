@@ -102,7 +102,7 @@ export async function newAsteriusInstance(req) {
   }
 
   const __asterius_jsffi_instance = {
-    exposeMemory: (p, len) => __asterius_memory.expose(p, len),
+    exposeMemory: (p, len, t = Uint8Array) => __asterius_memory.expose(p, len, t),
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
     getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
     freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),

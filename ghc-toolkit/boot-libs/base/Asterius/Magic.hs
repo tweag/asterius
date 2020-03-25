@@ -4,6 +4,7 @@
 
 module Asterius.Magic
   ( accursedUnutterablePerformIO,
+    unIO,
   )
 where
 
@@ -15,3 +16,7 @@ import GHC.Types
 accursedUnutterablePerformIO :: IO a -> a
 accursedUnutterablePerformIO (IO m) = case runRW# m of
   (# _, a #) -> a
+
+{-# INLINE unIO #-}
+unIO :: IO a -> State# RealWorld -> (# State# RealWorld, a #)
+unIO (IO m) = m

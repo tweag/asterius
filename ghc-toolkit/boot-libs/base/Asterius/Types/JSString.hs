@@ -62,7 +62,7 @@ instance Read JSString where
   readPrec = fmap toJSString readPrec
 
 foreign import javascript unsafe "$1.length"
-  lengthOfJSString :: JSString -> IO Int
+  lengthOfJSString :: JSString -> Int
 
 foreign import javascript unsafe "`${$1}`" js_showJSVal :: JSVal -> JSString
 
