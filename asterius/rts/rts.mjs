@@ -1,5 +1,4 @@
 import { modulify } from "./rts.modulify.mjs";
-import { encodeLatin1, decodeLatin1 } from "./rts.latin1.mjs";
 import { ReentrancyGuard } from "./rts.reentrancy.mjs";
 import { EventLogManager } from "./rts.eventlog.mjs";
 import { Tracer } from "./rts.tracing.mjs";
@@ -104,8 +103,6 @@ export async function newAsteriusInstance(req) {
 
   const __asterius_jsffi_instance = {
     exposeMemory: (p, len) => __asterius_memory.expose(p, len),
-    decodeLatin1: decodeLatin1,
-    encodeLatin1: encodeLatin1,
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
     getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
     setJSVal: (i0, i1) => __asterius_stableptr_manager.setJSVal(i0, i1),

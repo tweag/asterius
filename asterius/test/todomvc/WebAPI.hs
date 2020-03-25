@@ -1,3 +1,5 @@
+{-# LANGUAGE InterruptibleFFI #-}
+
 module WebAPI
   ( consoleLog,
     createElement,
@@ -19,7 +21,9 @@ where
 import Asterius.ByteString
 import Asterius.Types
 import qualified Data.ByteString as BS
+import Data.ByteString.Unsafe
 import Data.Coerce
+import Foreign.Ptr
 
 createElement :: String -> IO JSVal
 createElement = js_createElement . toJSString
@@ -46,19 +50,28 @@ getElementById k = js_getElementById (toJSString k)
 
 localStorageSetItem :: String -> BS.ByteString -> IO ()
 localStorageSetItem k v = do
-  buf <- byteStringToJSUint8Array v
-  js_localStorage_setItem (toJSString k) (jsStringDecodeLatin1 buf)
+  let ks = toJSString k
+  vs <- unsafeUseAsCStringLen v $ uncurry js_encode
+  js_localStorage_setItem ks vs
+  freeJSVal (coerce ks)
+  freeJSVal (coerce vs)
 
 localStorageGetItem :: String -> IO (Maybe BS.ByteString)
 localStorageGetItem k = do
-  f <- js_localStorage_hasItem js_k
-  if f
-    then do
-      buf <- jsStringEncodeLatin1 <$> js_localStorage_getItem js_k
-      Just <$> byteStringFromJSUint8Array buf
-    else pure Nothing
-  where
-    js_k = toJSString k
+  let ks = toJSString k
+  f <- js_localStorage_hasItem ks
+  r <-
+    if f
+      then do
+        vs <- js_localStorage_getItem ks
+        buf <- js_decode vs
+        r <- Just <$> byteStringFromJSUint8Array buf
+        freeJSVal (coerce vs)
+        freeJSVal (coerce buf)
+        pure r
+      else pure Nothing
+  freeJSVal (coerce ks)
+  pure r
 
 foreign import javascript "console.log($1)" consoleLog :: JSVal -> IO ()
 
@@ -103,3 +116,15 @@ foreign import javascript "localStorage.getItem($1) !== null"
 
 foreign import javascript "localStorage.getItem($1)"
   js_localStorage_getItem :: JSString -> IO JSString
+
+foreign import javascript interruptible "new Promise((resolve, reject) => { \
+\  const buf = __asterius_jsffi.exposeMemory($1,$2);                        \
+\  const blob = new Blob(buf);                                              \
+\  const r = new FileReader();                                              \
+\  r.addEventListener('load', () => { resolve(r.result); });                \
+\  r.readAsDataURL(blob);                                                   \
+\  })"
+  js_encode :: Ptr a -> Int -> IO JSString
+
+foreign import javascript interruptible "fetch($1).then(b => b.arrayBuffer()).then(b => new Uint8Array(b))"
+  js_decode :: JSString -> IO JSUint8Array

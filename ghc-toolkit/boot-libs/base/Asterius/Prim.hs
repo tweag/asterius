@@ -10,6 +10,7 @@ module Asterius.Prim
     JSArray (..),
     JSObject (..),
     JSFunction (..),
+    freeJSVal,
     lengthOfJSUint8Array,
     fromJSUint8Array,
     toJSUint8Array,
@@ -25,8 +26,6 @@ module Asterius.Prim
     makeHaskellCallback,
     makeHaskellCallback1,
     makeHaskellCallback2,
-    jsStringDecodeLatin1,
-    jsStringEncodeLatin1,
   )
 where
 
@@ -67,12 +66,6 @@ makeHaskellCallback2 f =
     ( \s0 -> case makeStablePtr# f s0 of
         (# s1, sp #) -> unIO (js_mk_hs_callback2 sp) s1
     )
-
-foreign import javascript "__asterius_jsffi.decodeLatin1($1)"
-  jsStringDecodeLatin1 :: JSUint8Array -> JSString
-
-foreign import javascript "__asterius_jsffi.encodeLatin1($1)"
-  jsStringEncodeLatin1 :: JSString -> JSUint8Array
 
 foreign import javascript "__asterius_jsffi.makeHaskellCallback($1)"
   js_mk_hs_callback :: StablePtr# (IO ()) -> IO JSFunction
