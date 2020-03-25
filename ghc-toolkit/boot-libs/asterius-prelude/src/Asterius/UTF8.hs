@@ -6,23 +6,21 @@ where
 
 import Asterius.Types
 import qualified Data.ByteString.Internal as BS
-import qualified Data.ByteString.Lazy as LBS
+import qualified Data.ByteString.Lazy.Internal as LBS
 import qualified Data.ByteString.Unsafe as BS
 import Foreign
 
 {-# INLINEABLE utf8ToJSString #-}
 utf8ToJSString :: LBS.ByteString -> IO JSString
-utf8ToJSString s
-  | LBS.null s = pure js_str_empty
-  | otherwise = do
-    dec <- js_dec
-    LBS.foldlChunks
-      (\m c -> m *> BS.unsafeUseAsCStringLen c (uncurry (js_dec_chunk dec)))
-      (pure ())
-      s
-    r <- js_dec_result dec
-    freeJSVal dec
-    pure r
+utf8ToJSString LBS.Empty = pure js_str_empty
+utf8ToJSString s = do
+  dec <- js_dec
+  let w (LBS.Chunk c cs) = BS.unsafeUseAsCStringLen c (uncurry (js_dec_chunk dec)) *> w cs
+      w LBS.Empty = pure ()
+   in w s
+  r <- js_dec_result dec
+  freeJSVal dec
+  pure r
 
 {-# INLINEABLE utf8FromJSString #-}
 utf8FromJSString :: JSString -> IO BS.ByteString
