@@ -164,8 +164,6 @@ rtsAsteriusModule opts =
     <> memcpyFunction opts
     <> memsetFunction opts
     <> memcmpFunction opts
-    <> fromJSArrayBufferFunction opts
-    <> toJSArrayBufferFunction opts
     <> threadPausedFunction opts
     <> dirtyMutVarFunction opts
     <> dirtyMVarFunction opts
@@ -473,24 +471,6 @@ rtsFunctionImports debug =
              functionType = FunctionType
                { paramTypes = [F64, F64, F64],
                  returnTypes = [I32]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_fromJSArrayBuffer_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "fromJSArrayBuffer",
-             functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_toJSArrayBuffer_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "toJSArrayBuffer",
-             functionType = FunctionType
-               { paramTypes = [F64, F64],
-                 returnTypes = [F64]
                }
            },
          FunctionImport
@@ -1314,30 +1294,6 @@ memcmpFunction _ = runEDSL "memcmp" $ do
       (map convertUInt64ToFloat64 [ptr1, ptr2, n])
       I32
   emit $ extendSInt32 cres
-
-fromJSArrayBufferFunction :: BuiltinsOptions -> AsteriusModule
-fromJSArrayBufferFunction _ = runEDSL "__asterius_fromJSArrayBuffer" $ do
-  setReturnTypes [I64]
-  [buf] <- params [I64]
-  addr <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_fromJSArrayBuffer_imp"
-        [convertUInt64ToFloat64 buf]
-        F64
-  emit addr
-
-toJSArrayBufferFunction :: BuiltinsOptions -> AsteriusModule
-toJSArrayBufferFunction _ = runEDSL "__asterius_toJSArrayBuffer" $ do
-  setReturnTypes [I64]
-  [addr, len] <- params [I64, I64]
-  r <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_toJSArrayBuffer_imp"
-        (map convertUInt64ToFloat64 [addr, len])
-        F64
-  emit r
 
 threadPausedFunction :: BuiltinsOptions -> AsteriusModule
 threadPausedFunction _ = runEDSL "threadPaused" $ do

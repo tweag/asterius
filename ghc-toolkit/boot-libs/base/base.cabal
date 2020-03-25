@@ -341,6 +341,7 @@ Library
         Asterius.Types.JSFunction
         Asterius.Types.JSObject
         Asterius.Types.JSString
+        Asterius.Types.JSUint8Array
         Asterius.Types.JSVal
 
     c-sources:

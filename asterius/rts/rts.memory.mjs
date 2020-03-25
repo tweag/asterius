@@ -258,6 +258,11 @@ export class Memory {
     this.liveBitset &= ~(mask(n) << mblock_no);
   }
 
+  expose(p, len) {
+    p = Memory.unTag(p);
+    return this.i8View.subarray(p, p + len);
+  }
+
   strlen(_str) {
     return this.i8View.subarray(Memory.unTag(_str)).indexOf(0);
   }

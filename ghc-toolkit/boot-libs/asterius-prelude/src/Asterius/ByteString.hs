@@ -1,39 +1,30 @@
-{-# LANGUAGE MagicHash #-}
-
 module Asterius.ByteString
-  ( foreignPtrFromJSArrayBuffer
-  , byteStringFromJSArrayBuffer
-  , byteStringToJSArrayBuffer
-  ) where
+  ( byteStringFromJSUint8Array,
+    byteStringToJSUint8Array,
+    unsafeByteStringToJSUint8Array,
+  )
+where
 
-import Asterius.Magic
 import Asterius.Types
-import Data.ByteString.Internal (ByteString(..))
-import Data.ByteString.Unsafe
-import GHC.Base
-import GHC.ForeignPtr
-import GHC.IO
-import GHC.Ptr
+import Control.Exception
+import Data.ByteString.Internal
+  ( ByteString,
+    fromForeignPtr,
+  )
+import Data.ByteString.Unsafe (unsafeUseAsCStringLen)
 
-{-# INLINE foreignPtrFromJSArrayBuffer #-}
-foreignPtrFromJSArrayBuffer :: JSArrayBuffer -> ForeignPtr a
-foreignPtrFromJSArrayBuffer buf =
-  case fromJSArrayBuffer buf of
-    ba -> ForeignPtr (byteArrayContents# ba) (PlainPtr (unsafeCoerce# ba))
+{-# INLINEABLE byteStringFromJSUint8Array #-}
+byteStringFromJSUint8Array :: JSUint8Array -> IO ByteString
+byteStringFromJSUint8Array buf = do
+  fp <- fromJSUint8Array buf
+  len <- lengthOfJSUint8Array buf
+  evaluate $ fromForeignPtr fp 0 len
 
-{-# INLINE byteStringFromJSArrayBuffer #-}
-byteStringFromJSArrayBuffer :: JSArrayBuffer -> ByteString
-byteStringFromJSArrayBuffer buf =
-  case fromJSArrayBuffer buf of
-    ba ->
-      PS
-        (ForeignPtr (byteArrayContents# ba) (PlainPtr (unsafeCoerce# ba)))
-        0
-        (I# (sizeofByteArray# ba))
+{-# INLINEABLE byteStringToJSUint8Array #-}
+byteStringToJSUint8Array :: ByteString -> IO JSUint8Array
+byteStringToJSUint8Array bs = unsafeUseAsCStringLen bs $ uncurry toJSUint8Array
 
-{-# INLINE byteStringToJSArrayBuffer #-}
-byteStringToJSArrayBuffer :: ByteString -> JSArrayBuffer
-byteStringToJSArrayBuffer bs =
-  accursedUnutterablePerformIO $
-  unsafeUseAsCStringLen bs $ \(Ptr addr, len) ->
-    evaluate $ toJSArrayBuffer addr len
+{-# INLINEABLE unsafeByteStringToJSUint8Array #-}
+unsafeByteStringToJSUint8Array :: ByteString -> IO JSUint8Array
+unsafeByteStringToJSUint8Array bs =
+  unsafeUseAsCStringLen bs $ uncurry unsafeToJSUint8Array

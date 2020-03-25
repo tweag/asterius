@@ -10,11 +10,11 @@ foreign import javascript safe "(new Date()).toString() + String.fromCodePoint(0
 
 foreign import javascript safe "['asdf', 'zer0']" js_get_arr :: IO JSArray
 
-foreign import javascript safe "(new Uint8Array([2, 3, 5, 7])).buffer"
-  js_get_buf :: IO JSArrayBuffer
+foreign import javascript safe "new Uint8Array([2, 3, 5, 7])"
+  js_get_buf :: IO JSUint8Array
 
-foreign import javascript safe "console.log(new Uint8Array($1))"
-  js_print_buf :: JSArrayBuffer -> IO ()
+foreign import javascript safe "console.log($1)"
+  js_print_buf :: JSUint8Array -> IO ()
 
 foreign import javascript safe "console.log($1)" js_print :: JSVal -> IO ()
 
@@ -42,8 +42,8 @@ main = do
   js_arr <- js_get_arr
   js_print $ coerce $ toJSArray $ fromJSArray js_arr
   js_buf <- js_get_buf
-  let hs_buf = byteStringFromJSArrayBuffer js_buf
-  js_print_buf $ byteStringToJSArrayBuffer hs_buf
+  hs_buf <- byteStringFromJSUint8Array js_buf
+  byteStringToJSUint8Array hs_buf >>= js_print_buf
   print hs_buf
   cb1 <- makeHaskellCallback1 js_print
   js_setTimeout cb1 4096 (coerce js_str)

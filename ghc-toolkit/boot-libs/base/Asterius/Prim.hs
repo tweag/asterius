@@ -5,13 +5,15 @@
 
 module Asterius.Prim
   ( JSVal,
-    JSArrayBuffer (..),
+    JSUint8Array (..),
     JSString (..),
     JSArray (..),
     JSObject (..),
     JSFunction (..),
-    fromJSArrayBuffer,
-    toJSArrayBuffer,
+    lengthOfJSUint8Array,
+    fromJSUint8Array,
+    toJSUint8Array,
+    unsafeToJSUint8Array,
     fromJSString,
     toJSString,
     fromJSArray,
@@ -33,6 +35,7 @@ import Asterius.Types.JSArray
 import Asterius.Types.JSFunction
 import Asterius.Types.JSObject
 import Asterius.Types.JSString
+import Asterius.Types.JSUint8Array
 import Asterius.Types.JSVal
 import Data.String
 import GHC.Magic
@@ -40,17 +43,6 @@ import GHC.Prim
 import GHC.Show
 import GHC.Tuple
 import GHC.Types
-
-newtype JSArrayBuffer
-  = JSArrayBuffer JSVal
-
-{-# INLINE fromJSArrayBuffer #-}
-fromJSArrayBuffer :: JSArrayBuffer -> ByteArray#
-fromJSArrayBuffer buf = unsafeCoerce# (c_fromJSArrayBuffer buf)
-
-{-# INLINE toJSArrayBuffer #-}
-toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
-toJSArrayBuffer = c_toJSArrayBuffer
 
 {-# INLINE makeHaskellCallback #-}
 makeHaskellCallback :: IO () -> IO JSFunction
@@ -76,17 +68,11 @@ makeHaskellCallback2 f =
         (# s1, sp #) -> unIO (js_mk_hs_callback2 sp) s1
     )
 
-foreign import ccall unsafe "__asterius_fromJSArrayBuffer"
-  c_fromJSArrayBuffer :: JSArrayBuffer -> Any
-
-foreign import ccall unsafe "__asterius_toJSArrayBuffer"
-  c_toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
-
 foreign import javascript "__asterius_jsffi.decodeLatin1($1)"
-  jsStringDecodeLatin1 :: JSArrayBuffer -> JSString
+  jsStringDecodeLatin1 :: JSUint8Array -> JSString
 
 foreign import javascript "__asterius_jsffi.encodeLatin1($1)"
-  jsStringEncodeLatin1 :: JSString -> JSArrayBuffer
+  jsStringEncodeLatin1 :: JSString -> JSUint8Array
 
 foreign import javascript "__asterius_jsffi.makeHaskellCallback($1)"
   js_mk_hs_callback :: StablePtr# (IO ()) -> IO JSFunction

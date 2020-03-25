@@ -10,7 +10,6 @@ import { StablePtrManager } from "./rts.stableptr.mjs";
 import { StableNameManager } from "./rts.stablename.mjs";
 import { StaticPtrManager } from "./rts.staticptr.mjs";
 import { Scheduler } from "./rts.scheduler.mjs";
-import { HeapBuilder } from "./rts.heapbuilder.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
 import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
@@ -61,12 +60,6 @@ export async function newAsteriusInstance(req) {
       req.symbolTable,
       __asterius_stableptr_manager
     ),
-    __asterius_heap_builder = new HeapBuilder(
-      req.symbolTable,
-      __asterius_heapalloc,
-      __asterius_memory,
-      __asterius_stableptr_manager
-    ),
     __asterius_integer_manager = new IntegerManager(),
     __asterius_fs = new MemoryFileSystem(req.consoleHistory),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
@@ -110,6 +103,7 @@ export async function newAsteriusInstance(req) {
   }
 
   const __asterius_jsffi_instance = {
+    exposeMemory: (p, len) => __asterius_memory.expose(p, len),
     decodeLatin1: decodeLatin1,
     encodeLatin1: encodeLatin1,
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
@@ -222,7 +216,6 @@ export async function newAsteriusInstance(req) {
       GC: modulify(__asterius_gc),
       ExceptionHelper: modulify(__asterius_exception_helper),
       HeapAlloc: modulify(__asterius_heapalloc),
-      HeapBuilder: modulify(__asterius_heap_builder),
       Integer: modulify(__asterius_integer_manager),
       Memory: modulify(__asterius_memory),
       MemoryTrap: modulify(__asterius_memory_trap),
