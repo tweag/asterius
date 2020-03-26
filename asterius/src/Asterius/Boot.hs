@@ -48,7 +48,7 @@ import Prelude hiding (IO)
 data BootArgs
   = BootArgs
       { bootDir :: FilePath,
-        configureOptions, buildOptions, installOptions :: String,
+        configureOptions :: String,
         builtinsOptions :: BuiltinsOptions
       }
 
@@ -66,8 +66,6 @@ defaultBootArgs = BootArgs
       \ -O2\
       \ --ghc-option=-v1\
       \ --ghc-option=-dsuppress-ticks",
-    buildOptions = "",
-    installOptions = "",
     builtinsOptions = defaultBuiltinsOptions
   }
 
@@ -91,8 +89,6 @@ bootCreateProcess args@BootArgs {..} = do
               : ("ASTERIUS_AHC", ahc)
               : ("ASTERIUS_AHCPKG", ahcPkg)
               : ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions)
-              : ("ASTERIUS_BUILD_OPTIONS", buildOptions)
-              : ("ASTERIUS_INSTALL_OPTIONS", installOptions)
               : [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
         delegate_ctlc = True
       }
