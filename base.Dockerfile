@@ -92,7 +92,7 @@ RUN \
     /home/asterius/.asterius-local-install-root/bin \
     /home/asterius/.asterius-local-install-root/share \
     /tmp && \
-  sudo rm -rf \
+  sudo rm -rf -v \
     /home/asterius/.asterius \
     /home/asterius/.asterius-compiler-bin/../share \
     /home/asterius/.cabal \
@@ -100,6 +100,7 @@ RUN \
     /home/asterius/.local/bin/stack \
     /home/asterius/.npm \
     /home/asterius/.stack/programs/*/*.tar.xz \
+    $(find /home/asterius -name "*.p_hi" -o -name "*.p_o" -o -name "*_p.a") \
     /var/lib/apt/lists/* \
     /var/tmp/* && \
   sudo mkdir -p $(realpath -m /home/asterius/.asterius-local-install-root) && \
@@ -112,7 +113,7 @@ RUN \
     /home/asterius/.asterius-snapshot-install-root/share \
     /home/asterius/.stack/programs \
     /tmp && \
-  sudo rm -rf /home/asterius/.stack && \
+  sudo rm -rf -v /home/asterius/.stack && \
   sudo mkdir -p $(realpath -m /home/asterius/.asterius-snapshot-install-root) && \
   sudo mv \
     /tmp/bin \
@@ -122,7 +123,7 @@ RUN \
     /tmp/programs \
     /home/asterius/.stack && \
   sudo chown -c -h -R asterius:asterius /home/asterius && \
-  sudo rm -rf \
+  sudo rm -rf -v \
     /tmp/*
 
 RUN \

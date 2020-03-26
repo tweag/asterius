@@ -16,7 +16,7 @@ RUN \
 USER root
 
 RUN \
-  rm -rf \
+  rm -rf -v \
     $ASTERIUS_LIB_DIR/bin \
     /home/asterius/.cabal \
     /tmp/* \
