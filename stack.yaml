@@ -1,7 +1,7 @@
 resolver: lts-15.5
 extra-deps:
   - https://github.com/tweag/binaryen/archive/ddbadea1340ecc8e524d56d39c378bf0bc2e9315.tar.gz
-  - url: https://github.com/tweag/inline-js/archive/bd000373e0f02d213a881119298e1aea5962e149.tar.gz
+  - url: https://github.com/tweag/inline-js/archive/f192891283e21f8af9bb4dc07d3b36d59c658e2f.tar.gz
     subdirs:
       - inline-js-core
   - https://github.com/tweag/wabt/archive/3a230602d9b5d43d0d2c56f86facb27ecc49a104.tar.gz
