@@ -327,7 +327,15 @@ export class Scheduler {
             tso_info.ffiRetErr = undefined;
 
             // execute the TSO.
-            this.exports.scheduleTSO(tso, this.symbolTable.stg_returnToStackTop);
+            try {
+              this.exports.scheduleTSO(tso);
+            } catch (err) {
+              this.exports.stg_returnToSchedNotPaused();
+              tso_info.ffiRetErr = err;
+              setImmediate(() => this.scheduler_tick(tid));
+              this.exports.context.reentrancyGuard.exit(0);
+              return;
+            }
             this.returnedFromTSO(tid);
             this.exports.context.reentrancyGuard.exit(0);
   }

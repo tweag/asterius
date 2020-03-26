@@ -679,7 +679,11 @@ rtsFunctionExports debug =
                  else []
              )
                <> ["hs_init"]
-       ]
+       ] <> [ FunctionExport
+      { internalName = "stg_returnToSchedNotPaused",
+        externalName = "stg_returnToSchedNotPaused"
+      }
+  ]
 
 emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
@@ -915,7 +919,7 @@ dirtySTACK _ stack =
 -- function
 scheduleTSOFunction :: BuiltinsOptions -> AsteriusModule
 scheduleTSOFunction BuiltinsOptions {} = runEDSL "scheduleTSO" $ do
-  [tso, func] <- params [I64, I64]
+  tso <- param I64
   -- store the current TSO
   putLVal currentTSO tso
   -- indicate in the Capability that we are running the TSO
@@ -929,7 +933,7 @@ scheduleTSOFunction BuiltinsOptions {} = runEDSL "scheduleTSO" $ do
   dirtyTSO mainCapability tso
   dirtySTACK mainCapability (loadI64 tso offset_StgTSO_stackobj)
   -- execute the TSO (using stgRun trampolining machinery)
-  stgRun func
+  stgRun $ symbol "stg_returnToStackTop"
   -- indicate in the Capability that we are not running anything
   storeI64
     mainCapability

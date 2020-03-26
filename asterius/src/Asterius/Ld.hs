@@ -72,7 +72,6 @@ rtsUsedSymbols =
       "stg_NO_FINALIZER_closure",
       "stg_raise_info",
       "stg_raise_ret_info",
-      "stg_returnToStackTop",
       "stg_STABLE_NAME_info",
       "stg_WEAK_info"
     ]
