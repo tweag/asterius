@@ -88,6 +88,7 @@ RUN \
     xz-utils && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
+  find /home/asterius \( -name "*.p_hi" -o -name "*.p_o" -o -name "*_p.a" \) -type f -delete && \
   sudo mv \
     /home/asterius/.asterius-local-install-root/bin \
     /home/asterius/.asterius-local-install-root/share \
@@ -100,7 +101,6 @@ RUN \
     /home/asterius/.local/bin/stack \
     /home/asterius/.npm \
     /home/asterius/.stack/programs/*/*.tar.xz \
-    $(find /home/asterius -name "*.p_hi" -o -name "*.p_o" -o -name "*_p.a") \
     /var/lib/apt/lists/* \
     /var/tmp/* && \
   sudo mkdir -p $(realpath -m /home/asterius/.asterius-local-install-root) && \
