@@ -679,7 +679,11 @@ rtsFunctionExports debug =
                  else []
              )
                <> ["hs_init"]
-       ]
+       ] <> [ FunctionExport
+      { internalName = "stg_returnToSchedNotPaused",
+        externalName = "stg_returnToSchedNotPaused"
+      }
+  ]
 
 emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
