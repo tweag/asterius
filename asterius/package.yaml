@@ -107,6 +107,13 @@ executables:
     dependencies:
       - asterius
 
+  Setup-ghc-prim:
+    source-dirs: app
+    main: Setup-ghc-prim.hs
+    ghc-options: *exe-ghc-options
+    dependencies:
+      - asterius
+
   ahc-boot:
     source-dirs: app
     main: ahc-boot.hs

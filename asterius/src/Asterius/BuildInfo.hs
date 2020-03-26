@@ -13,6 +13,7 @@ module Asterius.BuildInfo
     ahcPkg,
     ahcLd,
     ahcDist,
+    setupGhcPrim,
     unlit,
     dataDir,
   )
@@ -42,6 +43,9 @@ ahcLd = binDir </> "ahc-ld" <.> exeExtension
 
 ahcDist :: FilePath
 ahcDist = binDir </> "ahc-dist" <.> exeExtension
+
+setupGhcPrim :: FilePath
+setupGhcPrim = binDir </> "Setup-ghc-prim" <.> exeExtension
 
 unlit :: FilePath
 unlit = binDir </> "unlit" <.> exeExtension
