@@ -38,7 +38,7 @@ RUN \
   apt install -y nodejs && \
   apt autoremove --purge -y && \
   apt clean && \
-  rm -rf /var/lib/apt/lists/* && \
+  rm -rf -v /var/lib/apt/lists/* && \
   useradd --create-home --shell /bin/bash asterius && \
   echo "asterius ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
@@ -74,7 +74,7 @@ RUN \
     ormolu \
     wai-app-static && \
   cd /home/asterius && \
-  sudo rm -rf \
+  sudo rm -rf -v \
     /home/asterius/.stack/programs/*/*.tar.xz \
     /tmp/* \
     /var/tmp/*
