@@ -1,4 +1,7 @@
+{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE UnliftedFFITypes #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module Asterius.TopHandler
   ( runIO,
@@ -6,12 +9,13 @@ module Asterius.TopHandler
   )
 where
 
-import Control.Exception
-import Foreign.C
+import Asterius.Types.JSString
+import Asterius.Types.JSVal
+import Control.Exception.Base
+import GHC.Base
+import GHC.Conc.Sync
+import GHC.Show
 import GHC.TopHandler (flushStdHandles)
-import System.Exit
-import System.IO
-import Prelude
 
 runIO :: IO a -> IO a
 runIO = (`finally` flushStdHandles) . (`catch` topHandler)
@@ -19,18 +23,19 @@ runIO = (`finally` flushStdHandles) . (`catch` topHandler)
 runNonIO :: a -> IO a
 runNonIO = runIO . evaluate
 
+{-# INLINE topHandler #-}
 topHandler :: SomeException -> IO a
-topHandler = throwExitCode realHandler
-
-realHandler :: SomeException -> IO a
-realHandler err = do
-  prog <- peekCString prog_name
-  hPutStrLn stderr $ prog <> ": " <> show err
+topHandler err = do
+  reportException err
   throwIO err
 
-throwExitCode :: (SomeException -> IO a) -> SomeException -> IO a
-throwExitCode h err = case fromException err of
-  Just (_ :: ExitCode) -> throwIO err
-  _ -> h err
+reportException :: SomeException -> IO ()
+reportException err = handle reportException $ do
+  ThreadId tid# <- myThreadId
+  JSString v@(JSVal v#) <- evaluate $ toJSString $ show err
+  c_tsoReportException tid# v#
+  freeJSVal v
 
-foreign import ccall "&" prog_name :: CString
+foreign import ccall unsafe "tsoReportException"
+  c_tsoReportException ::
+    ThreadId# -> JSVal# -> IO ()
