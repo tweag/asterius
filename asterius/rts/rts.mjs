@@ -120,20 +120,7 @@ export async function newAsteriusInstance(req) {
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),
     {
-      Math: {
-        sin: x => Math.sin(x),
-        cos: x => Math.cos(x),
-        tan: x => Math.tan(x),
-        sinh: x => Math.sinh(x),
-        cosh: x => Math.cosh(x),
-        tanh: x => Math.tanh(x),
-        asin: x => Math.asin(x),
-        acos: x => Math.acos(x),
-        atan: x => Math.atan(x),
-        log: x => Math.log(x),
-        exp: x => Math.exp(x),
-        pow: (x, y) => Math.pow(x, y)
-      },
+      Math: Math,
       WasmTable: {
         table: __asterius_wasm_table
       },
