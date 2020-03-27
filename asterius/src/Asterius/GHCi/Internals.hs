@@ -118,7 +118,7 @@ newGHCiJSSession = do
   s <-
     newJSSession
       defJSSessionOpts
-        { nodeExtraArgs = ["--wasm-interpret-all"],
+        { nodeExtraArgs = ["--experimental-wasm-return-call", "--wasm-interpret-all"],
           nodeExtraEnv =
             [ ("ASTERIUS_NODE_READ_FD", show node_read_fd),
               ("ASTERIUS_NODE_WRITE_FD", show node_write_fd)

@@ -29,6 +29,7 @@ import Asterius.Types
   ( AsteriusEntitySymbol (..),
     Module,
   )
+import qualified Bindings.Binaryen.Raw as Binaryen
 import Control.Monad
 import Control.Monad.Cont
 import Control.Monad.Except
@@ -309,8 +310,13 @@ ahcDistMain logger task (final_m, report) = do
       Binaryen.c_BinaryenSetShrinkLevel $ fromIntegral $ shrinkLevel task
       m_ref <-
         Binaryen.marshalModule
+          (tailCalls task)
           (staticsSymbolMap report <> functionSymbolMap report)
           final_m
+      Binaryen.c_BinaryenModuleSetFeatures m_ref $
+        if tailCalls task
+          then Binaryen.c_BinaryenFeatureMVP .|. Binaryen.c_BinaryenFeatureTailCall
+          else Binaryen.c_BinaryenFeatureMVP
       when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
         logger "[INFO] Running binaryen optimization"
         Binaryen.c_BinaryenModuleOptimize m_ref
