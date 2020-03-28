@@ -6,6 +6,7 @@
 module Asterius.TopHandler
   ( runIO,
     runNonIO,
+    reportException,
   )
 where
 
@@ -32,10 +33,10 @@ topHandler err = do
 reportException :: SomeException -> IO ()
 reportException err = handle reportException $ do
   ThreadId tid# <- myThreadId
-  JSString v@(JSVal v#) <- evaluate $ toJSString $ show err
-  c_tsoReportException tid# v#
+  JSString v <- evaluate $ toJSString $ show err
+  c_tsoReportException tid# v
   freeJSVal v
 
 foreign import ccall unsafe "tsoReportException"
   c_tsoReportException ::
-    ThreadId# -> JSVal# -> IO ()
+    ThreadId# -> JSVal -> IO ()

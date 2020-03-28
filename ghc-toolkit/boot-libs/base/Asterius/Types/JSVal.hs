@@ -3,8 +3,7 @@
 {-# LANGUAGE NoImplicitPrelude #-}
 
 module Asterius.Types.JSVal
-  ( JSVal#,
-    JSVal (..),
+  ( JSVal (..),
     freeJSVal,
   )
 where

@@ -10,13 +10,14 @@ import * as rtsConstants from "./rts.constants.mjs";
  *
  */
 export class Scheduler {
-  constructor(memory, symbol_table, stablePtrManager) {
+  constructor(memory, symbol_table, stablePtrManager, fs) {
     this.memory = memory;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
+    this.fs = fs;
     this.gc = undefined;
     this.blockingPromise = undefined;
     Object.seal(this);
@@ -40,6 +41,7 @@ export class Scheduler {
       Object.seal({
         addr: -1, // TSO struct address in Wasm memory
         ret: 0, // returned object address in Wasm memory
+        retError: undefined,
         rstat: -1, // thread status
         ffiRet: undefined, // FFI returned value
         ffiRetType: undefined, // FFI returned value type
@@ -338,6 +340,13 @@ export class Scheduler {
             }
             this.returnedFromTSO(tid);
             this.exports.context.reentrancyGuard.exit(0);
+  }
+
+  tsoReportException(tso, v) {
+    const err = this.stablePtrManager.getJSVal(v);
+    this.stablePtrManager.freeJSVal(v);
+    const tid = this.getTSOid(tso);
+    this.tsos.get(tid).retError = err;
   }
 
   /**

@@ -193,6 +193,7 @@ rtsAsteriusModule opts =
     <> exportsCBits
     <> smCBits
     <> generateWrapperModule smCBits
+    <> schedulerCBits
     <> cmathCBits
     <> hashableCBits
     <> md5CBits
@@ -621,6 +622,7 @@ rtsFunctionImports debug =
       (fst . snd)
       ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
       )
+    <> schedulerImports
     <> exportsImports
     <> posixImports
     <> sptImports

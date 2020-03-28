@@ -54,13 +54,14 @@ export async function newAsteriusInstance(req) {
       req.symbolTable
     ),
     __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
+    __asterius_fs = new MemoryFileSystem(req.consoleHistory),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
       req.symbolTable,
-      __asterius_stableptr_manager
+      __asterius_stableptr_manager,
+      __asterius_fs
     ),
     __asterius_integer_manager = new IntegerManager(),
-    __asterius_fs = new MemoryFileSystem(req.consoleHistory),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
     __asterius_text_cbits = new TextCBits(__asterius_memory),
     __asterius_time_cbits = new TimeCBits(__asterius_memory, req.targetSpecificModule),
