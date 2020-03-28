@@ -34,10 +34,7 @@ import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
-import Data.Functor
-import Data.List
 import qualified Data.Map.Strict as Map
-import Data.Maybe
 import Data.String
 import Data.Word
 import qualified GhcPlugins as GHC

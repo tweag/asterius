@@ -42,7 +42,6 @@ import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import qualified Data.Set as S
 import Data.String
 import Foreign

@@ -21,14 +21,11 @@ import Asterius.Types
 import qualified CmmCallConv as GHC
 import qualified CmmExpr as GHC
 import qualified CmmNode as GHC
-import Control.Applicative
 import Data.ByteString.Builder
 import Data.Coerce
 import Data.IORef
-import Data.Int
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Monoid
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 
