@@ -31,8 +31,6 @@ import qualified Data.Map.Strict as M
 import Data.Monoid
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
-import Prelude hiding (IO)
-import qualified Prelude
 
 recoverWasmWrapperValueType :: FFIValueType -> ValueType
 recoverWasmWrapperValueType FFIValueType {..} = case ffiValueTypeRep of
@@ -72,7 +70,7 @@ recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
     ret_types = map recoverWasmWrapperValueType ffiResultTypes
 
 getFFIModule ::
-  GHC.DynFlags -> AsteriusModuleSymbol -> Prelude.IO AsteriusModule
+  GHC.DynFlags -> AsteriusModuleSymbol -> IO AsteriusModule
 getFFIModule dflags mod_sym = do
   ffi_import_state <-
     atomicModifyIORef' globalFFIHookState $ \ffi_hook_state ->

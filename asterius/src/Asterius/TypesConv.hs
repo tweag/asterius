@@ -11,7 +11,6 @@ module Asterius.TypesConv
   )
 where
 
-import Asterius.Internals
 import Asterius.Types
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Short as SBS
@@ -24,7 +23,6 @@ import System.IO
   ( IOMode (WriteMode),
     withFile,
   )
-import Prelude hiding (IO)
 
 {-# INLINE marshalToModuleSymbol #-}
 marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol

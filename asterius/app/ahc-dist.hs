@@ -1,6 +1,5 @@
 import Asterius.Internals
 import Asterius.Main
-import Prelude hiding (IO)
 
 main :: IO ()
 main = do

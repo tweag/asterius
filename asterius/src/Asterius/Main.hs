@@ -53,9 +53,8 @@ import System.Console.GetOpt
 import System.Directory
 import System.Environment.Blank
 import System.FilePath
-import System.IO hiding (IO)
+import System.IO
 import System.Process
-import Prelude hiding (IO)
 
 parseTask :: [String] -> Task
 parseTask args = case err_msgs of

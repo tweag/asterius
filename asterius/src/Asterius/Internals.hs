@@ -4,8 +4,7 @@
 {-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.Internals
-  ( IO,
-    encodeStorable,
+  ( encodeStorable,
     reinterpretCast,
     encodeFile,
     decodeFile,
@@ -25,9 +24,6 @@ import Foreign
 import GHC.Exts
 import GHC.Stack
 import qualified GHC.Types
-import Prelude hiding (IO)
-
-type IO a = HasCallStack => GHC.Types.IO a
 
 unI# :: Int -> Int#
 unI# (I# x) = x

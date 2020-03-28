@@ -42,7 +42,6 @@ import Data.String
 import Data.Word
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
-import Prelude hiding (IO)
 
 wasmPageSize :: Int
 wasmPageSize = 65536
