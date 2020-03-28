@@ -54,13 +54,11 @@ import Language.Haskell.GHC.Toolkit.Orphans.Show
 import Stream (Stream)
 import qualified Stream
 import qualified Unique as GHC
-import Prelude hiding (IO)
-import qualified Prelude
 
 type CodeGenContext = (GHC.DynFlags, String)
 
 newtype CodeGen a
-  = CodeGen (ReaderT CodeGenContext Prelude.IO a)
+  = CodeGen (ReaderT CodeGenContext IO a)
   deriving (Functor, Applicative, Monad, MonadReader CodeGenContext, MonadIO)
 
 unCodeGen :: CodeGen a -> CodeGen (Either AsteriusCodeGenError a)
@@ -1513,7 +1511,7 @@ marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
 
 marshalRawCmm ::
   GHC.Module ->
-  Stream Prelude.IO GHC.RawCmmGroup () ->
+  Stream IO GHC.RawCmmGroup () ->
   CodeGen AsteriusModule
 marshalRawCmm _ = w mempty
   where

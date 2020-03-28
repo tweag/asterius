@@ -46,7 +46,6 @@ import Foreign hiding
 import Foreign.C
 import GHC.Exts
 import Language.Haskell.GHC.Toolkit.Constants
-import Prelude hiding (IO)
 
 newtype MarshalError
   = UnsupportedExpression Expression

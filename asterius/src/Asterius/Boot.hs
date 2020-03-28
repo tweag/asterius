@@ -41,9 +41,8 @@ import System.Directory
 import System.Environment
 import System.Exit
 import System.FilePath
-import System.IO hiding (IO)
+import System.IO
 import System.Process
-import Prelude hiding (IO)
 
 data BootArgs
   = BootArgs

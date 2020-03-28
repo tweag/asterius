@@ -24,7 +24,6 @@ import Data.Either
 import qualified Data.Set as Set
 import Data.Set (Set)
 import Data.Traversable
-import Prelude hiding (IO)
 
 data LinkTask
   = LinkTask

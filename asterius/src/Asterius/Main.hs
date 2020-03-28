@@ -42,7 +42,6 @@ import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
-import Data.Maybe
 import qualified Data.Set as S
 import Data.String
 import Foreign
@@ -53,9 +52,8 @@ import System.Console.GetOpt
 import System.Directory
 import System.Environment.Blank
 import System.FilePath
-import System.IO hiding (IO)
+import System.IO
 import System.Process
-import Prelude hiding (IO)
 
 parseTask :: [String] -> Task
 parseTask args = case err_msgs of

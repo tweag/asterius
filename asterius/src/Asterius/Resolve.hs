@@ -28,7 +28,6 @@ import Foreign
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
 import Unsafe.Coerce
-import Prelude hiding (IO)
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
 unresolvedGlobalRegType gr = case gr of
