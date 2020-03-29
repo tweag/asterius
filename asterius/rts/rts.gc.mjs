@@ -415,12 +415,15 @@ export class GC {
       case ClosureTypes.ARR_WORDS: {
         dest_c = this.copyClosure(
           untagged_c,
-          rtsConstants.sizeof_StgArrBytes +
-            Number(
-              this.memory.i64Load(
-                untagged_c + rtsConstants.offset_StgArrBytes_bytes
-              )
-            )
+          Math.ceil(
+            (rtsConstants.sizeof_StgArrBytes +
+              Number(
+                this.memory.i64Load(
+                  untagged_c + rtsConstants.offset_StgArrBytes_bytes
+                )
+              )) /
+              8
+          ) * 8
         );
         break;
       }
@@ -922,11 +925,14 @@ export class GC {
         return rtsConstants.offset_StgMVar_value + 8;
       }
       case ClosureTypes.ARR_WORDS: {
-        return rtsConstants.sizeof_StgArrBytes +
-        Number(
-          this.memory.i64Load(
-            c + rtsConstants.offset_StgArrBytes_bytes
-          )
+        return (
+          Math.ceil(
+            (rtsConstants.sizeof_StgArrBytes +
+              Number(
+                this.memory.i64Load(c + rtsConstants.offset_StgArrBytes_bytes)
+              )) /
+              8
+          ) * 8
         );
       }
       case ClosureTypes.MUT_ARR_PTRS_CLEAN:
