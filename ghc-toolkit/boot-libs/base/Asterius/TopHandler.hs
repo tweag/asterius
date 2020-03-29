@@ -6,7 +6,6 @@
 module Asterius.TopHandler
   ( runIO,
     runNonIO,
-    reportException,
   )
 where
 
@@ -18,7 +17,9 @@ import GHC.Show
 import GHC.TopHandler (flushStdHandles)
 
 runIO :: IO a -> IO a
-runIO = (`finally` flushStdHandles) . (`catch` topHandler)
+runIO m = flip finally flushStdHandles $ handle topHandler $ do
+  setUncaughtExceptionHandler reportException
+  m
 
 runNonIO :: a -> IO a
 runNonIO = runIO . evaluate
