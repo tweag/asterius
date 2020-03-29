@@ -24,6 +24,7 @@ import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
+import Asterius.Builtins.Scheduler
 import Asterius.Builtins.SM
 import Asterius.Builtins.SPT
 import Asterius.Builtins.StgPrimFloat
@@ -192,6 +193,7 @@ rtsAsteriusModule opts =
     <> exportsCBits
     <> smCBits
     <> generateWrapperModule smCBits
+    <> schedulerCBits
     <> cmathCBits
     <> hashableCBits
     <> md5CBits
@@ -620,6 +622,7 @@ rtsFunctionImports debug =
       (fst . snd)
       ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
       )
+    <> schedulerImports
     <> exportsImports
     <> posixImports
     <> sptImports

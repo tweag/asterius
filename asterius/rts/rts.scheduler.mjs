@@ -10,13 +10,14 @@ import * as rtsConstants from "./rts.constants.mjs";
  *
  */
 export class Scheduler {
-  constructor(memory, symbol_table, stablePtrManager) {
+  constructor(memory, symbol_table, stablePtrManager, fs) {
     this.memory = memory;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
+    this.fs = fs;
     this.gc = undefined;
     this.blockingPromise = undefined;
     Object.seal(this);
@@ -34,12 +35,16 @@ export class Scheduler {
   newTSO() {
     const tid = ++this.lastTid;
     let promise_resolve, promise_reject;
-    const ret_promise = new Promise((resolve, reject) => { promise_resolve = resolve; promise_reject = reject; });
+    const ret_promise = new Promise((resolve, reject) => {
+      promise_resolve = resolve;
+      promise_reject = reject;
+    });
     this.tsos.set(
       tid,
       Object.seal({
         addr: -1, // TSO struct address in Wasm memory
         ret: 0, // returned object address in Wasm memory
+        retError: undefined,
         rstat: -1, // thread status
         ffiRet: undefined, // FFI returned value
         ffiRetType: undefined, // FFI returned value type
@@ -111,7 +116,7 @@ export class Scheduler {
 
         // put the thread back into the run-queue
         // TODO: we should put it in front if it hasn't exceeded its time splice
-        setImmediate(tid => this.scheduler_tick(tid), tid);
+        setImmediate(() => this.tick(tid));
         break;
       }
       case 2: {
@@ -124,13 +129,13 @@ export class Scheduler {
           tso + rtsConstants.offset_StgTSO_stackobj,
           next_stack
         );
-        setImmediate(tid => this.scheduler_tick(tid), tid);
+        setImmediate(() => this.tick(tid));
         break;
       }
       case 3: {
         // ThreadYielding
         // put the thread back into the run-queue
-        setImmediate(tid => this.scheduler_tick(tid), tid);
+        setImmediate(() => this.tick(tid));
         break;
       }
       case 4: {
@@ -153,12 +158,12 @@ export class Scheduler {
                 const [retTyp, retVal] = v;
                 tso_info.ffiRet = retVal;
                 tso_info.ffiRetType = retTyp;
-                setImmediate(tid => this.scheduler_tick(tid), tid);
+                setImmediate(() => this.tick(tid));
               },
               e => {
                 tso_info.ffiRetErr = e;
                 //console.log(`Thread ${tid}: blocking FFI Promise rejected with ${e.stack}`);
-                setImmediate(tid => this.scheduler_tick(tid), tid);
+                setImmediate(() => this.tick(tid));
               }
             );
             break;
@@ -174,7 +179,7 @@ export class Scheduler {
             // Wait for the timer blocking promise and then requeue the TSO
             blocking_promise.then(
               () => {
-                setImmediate(tid => this.scheduler_tick(tid), tid);
+                setImmediate(() => this.tick(tid));
               },
               e => {
                 throw new WebAssembly.RuntimeError(
@@ -191,13 +196,7 @@ export class Scheduler {
             //console.log(`Thread ${tid}: blocked on MVar`);
             break;
           }
-          case Blocked.NotBlocked:
-          case Blocked.OnRead:
-          case Blocked.OnWrite:
-          case Blocked.OnSTM:
-          case Blocked.OnDoProc:
-          case Blocked.OnMsgThrowTo:
-          case Blocked.ThreadMigrating:
+
           default: {
             throw new WebAssembly.RuntimeError(
               `Unhandled thread blocking reason: ${why_blocked}`
@@ -216,25 +215,18 @@ export class Scheduler {
         switch (what_next) {
           case 1: {
             // ThreadRunGHC
-            setImmediate(tid => this.scheduler_tick(tid), tid);
+            setImmediate(() => this.tick(tid));
             break;
-          }
-          case 2: {
-            // ThreadInterpret
-            throw new WebAssembly.RuntimeError(
-              "Scheduler: unsupported ThreadInterpret"
-            );
           }
           case 3: {
             // ThreadKilled
             tso_info.ret = 0;
             tso_info.rstat = 2; // Killed (SchedulerStatus)
-            tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
+            tso_info.promise_reject(tso_info.retError);
             break;
           }
           case 4: {
             // ThreadComplete
-            const tso_info = this.tsos.get(tid);
             const stackobj = Number(
               this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
             );
@@ -253,91 +245,125 @@ export class Scheduler {
         throw new WebAssembly.RuntimeError(
           `returnFFIPromise: unsupported thread stopping reason ${reason}`
         );
-        break;
       }
     }
   }
 
-  scheduler_tick(tid) {
-            this.exports.context.reentrancyGuard.enter(0);
-            const tso_info = this.tsos.get(tid);
-            const tso = tso_info.addr;
+  tick(tid) {
+    this.exports.context.reentrancyGuard.enter(0);
+    try {
+      const tso_info = this.tsos.get(tid);
+      const tso = tso_info.addr;
 
-            //console.log(`Thread ${tid}: active`);
+      //console.log(`Thread ${tid}: active`);
 
-            // Returning from blocking FFI
-            if (tso_info.ffiRetErr) {
-              //console.log(`Thread ${tid}: FFI error`);
+      // Returning from blocking FFI
+      if (tso_info.ffiRetErr) {
+        //console.log(`Thread ${tid}: FFI error`);
 
-              const stackobj = Number(
-                this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
-              ), sp = Number(
-                this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
-              ) - 16,
-                exception_closure = this.exports.rts_apply(
-                  this.symbolTable.base_AsteriusziTypesziJSException_mkJSException_closure,
-                  this.exports.rts_mkJSVal(
-                    this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
-                  )
-                );
-              this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
-              this.memory.i64Store(sp, this.symbolTable.stg_raise_ret_info);
-              this.memory.i64Store(sp+8, exception_closure);
-            } else if (typeof tso_info.ffiRetType === "number") {
-              switch (
-                tso_info.ffiRetType // tag is encoded with `ffiValueTypesTag`
-              ) {
-                case 0: {
-                  // no returned value
-                  break;
-                }
-                case 1: {
-                  // JSVal
-                  const ptr = this.stablePtrManager.newJSVal(tso_info.ffiRet);
-                  //console.log(`Restore after FFI with value: ${tso_info.ffiRet} with type ${typeof tso_info.ffiRet} constructor ${tso_info.ffiRet.constructor} as ${ptr}`);
-                  this.memory.i64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rR1, ptr);
-                  break;
-                }
-                case 2: {
-                  // I64
-                  this.memory.i64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rR1, tso_info.ffiRet);
-                  break;
-                }
-                case 3: {
-                  // F32
-                  this.memory.f32Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rF1, tso_info.ffiRet);
-                  break;
-                }
-                case 4: {
-                  // F64
-                  this.memory.f64Store(this.symbolTable.MainCapability + rtsConstants.offset_Capability_r + rtsConstants.offset_StgRegTable_rD1, tso_info.ffiRet);
-                  break;
-                }
-                default:
-                  // FIXME: add support for multiple return values: the tag already
-                  // supports it and we get a list of values in tso_info.ffiRet
-                  throw new WebAssembly.RuntimeError(
-                    `Unsupported FFI return value type tag ${tso_info.ffiRetType} (more than one value?): ${tso_info.ffiRet}`
-                  );
-              }
-            }
+        const stackobj = Number(
+            this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+          ),
+          sp =
+            Number(
+              this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
+            ) - 16,
+          exception_closure = this.exports.rts_apply(
+            this.symbolTable
+              .base_AsteriusziTypesziJSException_mkJSException_closure,
+            this.exports.rts_mkJSVal(
+              this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
+            )
+          );
+        this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
+        this.memory.i64Store(sp, this.symbolTable.stg_raise_ret_info);
+        this.memory.i64Store(sp + 8, exception_closure);
+      } else if (typeof tso_info.ffiRetType === "number") {
+        switch (
+          tso_info.ffiRetType // tag is encoded with `ffiValueTypesTag`
+        ) {
+          case 0: {
+            // no returned value
+            break;
+          }
+          case 1: {
+            // JSVal
+            const ptr = this.stablePtrManager.newJSVal(tso_info.ffiRet);
+            //console.log(`Restore after FFI with value: ${tso_info.ffiRet} with type ${typeof tso_info.ffiRet} constructor ${tso_info.ffiRet.constructor} as ${ptr}`);
+            this.memory.i64Store(
+              this.symbolTable.MainCapability +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rR1,
+              ptr
+            );
+            break;
+          }
+          case 2: {
+            // I64
+            this.memory.i64Store(
+              this.symbolTable.MainCapability +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rR1,
+              tso_info.ffiRet
+            );
+            break;
+          }
+          case 3: {
+            // F32
+            this.memory.f32Store(
+              this.symbolTable.MainCapability +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rF1,
+              tso_info.ffiRet
+            );
+            break;
+          }
+          case 4: {
+            // F64
+            this.memory.f64Store(
+              this.symbolTable.MainCapability +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rD1,
+              tso_info.ffiRet
+            );
+            break;
+          }
+          default:
+            // FIXME: add support for multiple return values: the tag already
+            // supports it and we get a list of values in tso_info.ffiRet
+            throw new WebAssembly.RuntimeError(
+              `Unsupported FFI return value type tag ${tso_info.ffiRetType} (more than one value?): ${tso_info.ffiRet}`
+            );
+        }
+      }
 
-            tso_info.ffiRet = undefined;
-            tso_info.ffiRetType = undefined;
-            tso_info.ffiRetErr = undefined;
+      tso_info.ffiRet = undefined;
+      tso_info.ffiRetType = undefined;
+      tso_info.ffiRetErr = undefined;
 
-            // execute the TSO.
-            try {
-              this.exports.scheduleTSO(tso);
-            } catch (err) {
-              this.exports.stg_returnToSchedNotPaused();
-              tso_info.ffiRetErr = err;
-              setImmediate(() => this.scheduler_tick(tid));
-              this.exports.context.reentrancyGuard.exit(0);
-              return;
-            }
-            this.returnedFromTSO(tid);
-            this.exports.context.reentrancyGuard.exit(0);
+      // execute the TSO.
+      let sync_err = false;
+      try {
+        this.exports.scheduleTSO(tso);
+      } catch (err) {
+        sync_err = true;
+        this.exports.stg_returnToSchedNotPaused();
+        tso_info.ffiRetErr = err;
+        setImmediate(() => this.tick(tid));
+      }
+      if (!sync_err) {
+        this.returnedFromTSO(tid);
+      }
+    } finally {
+      this.exports.context.reentrancyGuard.exit(0);
+    }
+  }
+
+  tsoReportException(tso, v) {
+    const err = this.stablePtrManager.getJSVal(v);
+    this.stablePtrManager.freeJSVal(v);
+    const tid = this.getTSOid(tso);
+    this.tsos.get(tid).retError = err;
   }
 
   /**
@@ -353,7 +379,7 @@ export class Scheduler {
     }
 
     // Ensure that we wake up the scheduler at least once to execute this thread
-    setImmediate(tid => this.scheduler_tick(tid), tid);
+    setImmediate(() => this.tick(tid));
   }
 
   /**
@@ -364,7 +390,9 @@ export class Scheduler {
    * @param closure      The closure to evaluate in the thread.
    */
   submitCmdCreateThread(createThread, closure) {
-    const tso = this.exports[createThread](closure), tid = this.getTSOid(tso), tso_info = this.tsos.get(tid);
+    const tso = this.exports[createThread](closure),
+      tid = this.getTSOid(tso),
+      tso_info = this.tsos.get(tid);
     this.enqueueTSO(tso);
     return tso_info.returnPromise;
   }
