@@ -29,7 +29,7 @@ import Language.Haskell.GHC.Toolkit.BuildInfo
     sandboxGhcLibDir,
   )
 import Language.Haskell.GHC.Toolkit.Compiler
-import Language.Haskell.GHC.Toolkit.Orphans.Show
+import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Language.Haskell.GHC.Toolkit.Run
   ( defaultConfig,
     ghcFlags,
@@ -101,7 +101,6 @@ bootRTSCmm BootArgs {..} =
         GHC.setSessionDynFlags $
           GHC.setGeneralFlag' GHC.Opt_SuppressTicks dflags0
       dflags <- GHC.getSessionDynFlags
-      setDynFlagsRef dflags
       is_debug <- isJust <$> liftIO (lookupEnv "ASTERIUS_DEBUG")
       obj_paths_ref <- liftIO $ newIORef []
       cmm_files <-
