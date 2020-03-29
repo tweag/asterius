@@ -11,7 +11,6 @@ module Asterius.TopHandler
 where
 
 import Asterius.Types.JSString
-import Asterius.Types.JSVal
 import Control.Exception.Base
 import GHC.Base
 import GHC.Conc.Sync
@@ -33,10 +32,9 @@ topHandler err = do
 reportException :: SomeException -> IO ()
 reportException err = handle reportException $ do
   ThreadId tid# <- myThreadId
-  JSString v <- evaluate $ toJSString $ show err
-  c_tsoReportException tid# v
-  freeJSVal v
+  s <- evaluate $ toJSString $ show err
+  c_tsoReportException tid# s
 
 foreign import ccall unsafe "tsoReportException"
   c_tsoReportException ::
-    ThreadId# -> JSVal -> IO ()
+    ThreadId# -> JSString -> IO ()
