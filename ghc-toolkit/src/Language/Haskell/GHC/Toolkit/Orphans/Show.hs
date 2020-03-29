@@ -5,14 +5,13 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Language.Haskell.GHC.Toolkit.Orphans.Show
-  ( setDynFlagsRef,
+  (
   )
 where
 
 import CLabel
 import Cmm
 import CoAxiom
-import Control.Monad.IO.Class
 import CostCentre
 import CostCentreState
 import Data.IORef
@@ -28,22 +27,13 @@ import Text.Show.Functions ()
 import TyCoRep
 import UniqDSet
 
-{-# NOINLINE dynFlagsRef #-}
-dynFlagsRef :: IORef DynFlags
-dynFlagsRef = unsafePerformIO $ newIORef unsafeGlobalDynFlags
-
-setDynFlagsRef :: MonadIO m => DynFlags -> m ()
-setDynFlagsRef = liftIO . atomicWriteIORef dynFlagsRef
-
 fakeShow :: Outputable a => String -> a -> String
-fakeShow tag val = unsafePerformIO $ do
-  dflags <- readIORef dynFlagsRef
-  pure $
-    "("
-      ++ tag
-      ++ " "
-      ++ show (showSDoc dflags $ pprCode AsmStyle $ ppr val)
-      ++ ")"
+fakeShow tag val =
+  "("
+    ++ tag
+    ++ " "
+    ++ show (showSDoc unsafeGlobalDynFlags $ pprCode AsmStyle $ ppr val)
+    ++ ")"
 
 instance Outputable SDoc where
   ppr = id

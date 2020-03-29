@@ -23,7 +23,7 @@ import qualified GhcPlugins as GHC
 import qualified Hooks as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
-import Language.Haskell.GHC.Toolkit.Orphans.Show
+import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import qualified Stream
 import System.Environment.Blank
 import System.FilePath
@@ -75,7 +75,6 @@ frontendPlugin = makeFrontendPlugin $ do
     mempty
       { withHaskellIR = \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
-          setDynFlagsRef dflags
           let mod_sym = marshalToModuleSymbol ms_mod
           liftIO $ do
             ffi_mod <- getFFIModule dflags mod_sym
@@ -92,7 +91,6 @@ frontendPlugin = makeFrontendPlugin $ do
                   asmPrint dflags (p "dump-cmm-raw") cmm_raw,
         withCmmIR = \ir@CmmIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
-          setDynFlagsRef dflags
           let ms_mod =
                 GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $
                   takeBaseName
