@@ -259,8 +259,7 @@ asteriusWriteIServ hsc_env i a
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
             (js_s, p, _) = ghciJSSession s
         (_, final_m, link_report) <- linkExeInMemory LinkTask
-          { progName = "",
-            linkOutput = "",
+          { linkOutput = "",
             linkObjs = [],
             linkLibs = [],
             linkModule = m <> M.foldr' (<>) (ghciLibs s) (ghciObjs s),

@@ -274,7 +274,6 @@ ahcLink task = do
              </> (outputBaseName task <.> "unlinked.bin")
            | outputIR task
          ]
-      <> ["-optl--prog-name=" <> takeBaseName (inputHS task)]
       <> ["-o", ld_output, inputHS task]
   r <- decodeFile ld_output
   removeFile ld_output

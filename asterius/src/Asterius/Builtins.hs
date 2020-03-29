@@ -36,7 +36,6 @@ import Asterius.Types
 import qualified Data.ByteString.Short as SBS
 import Data.Foldable
 import qualified Data.Map.Strict as Map
-import Data.String
 import Data.Word
 import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
@@ -46,16 +45,12 @@ wasmPageSize = 65536
 
 data BuiltinsOptions
   = BuiltinsOptions
-      { progName :: String,
-        debug, hasMain :: Bool
+      { debug, hasMain :: Bool
       }
 
 defaultBuiltinsOptions :: BuiltinsOptions
 defaultBuiltinsOptions = BuiltinsOptions
-  { progName =
-      error
-        "Asterius.Builtins.defaultBuiltinsOptions: unknown progName",
-    debug = False,
+  { debug = False,
     hasMain = True
   }
 
@@ -97,21 +92,6 @@ rtsAsteriusModule opts =
               AsteriusStatics
                 { staticsType = ConstBytes,
                   asteriusStatics = [Serialized $ encodeStorable (1 :: Word32)]
-                }
-            ),
-            ( "prog_name",
-              AsteriusStatics
-                { staticsType = ConstBytes,
-                  asteriusStatics =
-                    [ Serialized $
-                        fromString (progName opts <> "\0")
-                    ]
-                }
-            ),
-            ( "prog_argv",
-              AsteriusStatics
-                { staticsType = ConstBytes,
-                  asteriusStatics = [SymbolStatic "prog_name" 0]
                 }
             ),
             ( "__asterius_localeEncoding",

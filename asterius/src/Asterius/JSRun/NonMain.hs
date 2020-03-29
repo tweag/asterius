@@ -29,8 +29,7 @@ linkNonMain store_m extra_syms = (m, link_report)
     (_, m, link_report) =
       linkModules
         LinkTask
-          { progName = "",
-            linkOutput = "",
+          { linkOutput = "",
             linkObjs = [],
             linkLibs = [],
             linkModule = mempty,

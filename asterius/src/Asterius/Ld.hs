@@ -27,7 +27,7 @@ import Data.Traversable
 
 data LinkTask
   = LinkTask
-      { progName, linkOutput :: FilePath,
+      { linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
@@ -92,8 +92,7 @@ linkModules LinkTask {..} m =
     ( (if hasMain then mainBuiltins else mempty)
         <> rtsAsteriusModule
           defaultBuiltinsOptions
-            { Asterius.Builtins.progName = progName,
-              Asterius.Builtins.debug = debug
+            { Asterius.Builtins.debug = debug
             }
         <> m
     )
