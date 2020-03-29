@@ -16,7 +16,8 @@ parseLinkTask args = do
   link_libs <- fmap catMaybes $ for link_libnames $ findFile link_libdirs
   pure
     LinkTask
-      { linkOutput = link_output,
+      { progName = prog_name,
+        linkOutput = link_output,
         linkObjs = link_objs,
         linkLibs = link_libs,
         linkModule = mempty,
@@ -36,6 +37,14 @@ parseLinkTask args = do
             $ str_args "--export-function="
       }
   where
+    prog_name
+      | Just (stripPrefix "--prog-name=" -> Just v) <-
+          find
+            ("--prog-name=" `isPrefixOf`)
+            args =
+        v
+      | otherwise =
+        ""
     link_output = args !! succ output_i
     Just output_i = elemIndex "-o" args
     link_objs = filter ((== "o.") . take 2 . reverse) args
