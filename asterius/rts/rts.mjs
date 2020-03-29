@@ -99,7 +99,7 @@ export async function newAsteriusInstance(req) {
   const __asterius_node_modules = await getNodeModules();
 
   function __asterius_show_I64(x) {
-    return "0x" + x.toString(16).padStart(8, "0");
+    return `0x${x.toString(16).padStart(8, "0")}`;
   }
 
   const __asterius_jsffi_instance = {
@@ -107,6 +107,7 @@ export async function newAsteriusInstance(req) {
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
     getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
     freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),
+    fs: __asterius_fs,
     stdio: {
       stdout: () => __asterius_fs.readSync(1),
       stderr: () => __asterius_fs.readSync(2)
@@ -115,8 +116,6 @@ export async function newAsteriusInstance(req) {
       __asterius_scheduler.returnFFIPromise(promise)
   };
 
-
-  const __asterius_encoder = new TextEncoder();
 
   const importObject = Object.assign(
     req.jsffiFactory(__asterius_jsffi_instance),
@@ -130,13 +129,13 @@ export async function newAsteriusInstance(req) {
       },
       rts: {
         printI64: x =>
-          __asterius_fs.writeSync(1, __asterius_encoder.encode(__asterius_show_I64(x) + "\n")),
+          __asterius_fs.writeSync(1, `${__asterius_show_I64(x)}\n`),
         assertEqI64: function(x, y) {
           if (x != y) {
-            throw new WebAssembly.RuntimeError("unequal I64: " + x + ", " + y);
+            throw new WebAssembly.RuntimeError(`unequal I64: ${x}, ${y}`);
           }
         },
-        print: x => __asterius_fs.writeSync(1, __asterius_encoder.encode(x + "\n"))
+        print: x => __asterius_fs.writeSync(1, `${x}\n`)
       },
       fs: {
         read: (fd, buf, count) => {

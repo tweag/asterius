@@ -158,8 +158,7 @@ genInfoTables sym_set =
 genReq :: Task -> LinkReport -> Builder
 genReq task LinkReport {..} =
   mconcat
-    [
-      -- import target-specific module
+    [ -- import target-specific module
       "import targetSpecificModule from './",
       case target task of
         Node -> "node"
@@ -208,13 +207,12 @@ genDefEntry task =
       "import req from \"./",
       out_base,
       ".req.mjs\";\n",
-      case target task of
-        Node -> "process.on(\"unhandledRejection\", err => { throw err; });\n"
-        Browser -> mempty,
       mconcat
         [ "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(i => {\n",
           "i.exports.hs_init();\n",
-          "i.exports.main();\n",
+          "i.exports.main().catch(err => i.fs.writeSync(2, `",
+          string7 $ takeBaseName $ inputHS task,
+          ": ${err}\n`));\n",
           "});\n"
         ]
     ]

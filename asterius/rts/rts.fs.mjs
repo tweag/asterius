@@ -15,7 +15,10 @@ class Device {
   }
 
   write(buf) {
-    const str = this.decoder.decode(buf, { stream: true });
+    const str =
+      typeof buf === "string"
+        ? buf
+        : this.decoder.decode(buf, { stream: true });
     if (this.consoleHistory) {
       this.history += str;
     }
