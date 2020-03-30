@@ -1,3 +1,14 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Asterius.Backends.WasmToolkit
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Elaboration of Asterius types into WebAssembly.
+-- TODO: BE more specific about which WebAssemnly I mean?
+--
+-----------------------------------------------------------------------------
+
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -20,6 +31,7 @@ import Asterius.Types
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad.Except
+import Control.Monad.Reader
 import Data.Bits
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
@@ -386,69 +398,81 @@ marshalBinaryOp op = case op of
   GtFloat64 -> Wasm.F64Gt
   GeFloat64 -> Wasm.F64Ge
 
+-- ----------------------------------------------------------------------------
+
+type SymbolMap = Map.Map AsteriusEntitySymbol Int64
+
+-- | Environment used during the elaboration of Asterius' types to WebAssembly.
+data MarshalEnv
+  = MarshalEnv
+      { -- | Whether tail calls are on or off.
+        envAreTailCallsOn :: Bool,                             -- tail_calls
+        -- | TODO: Explain. Symbol map.
+        envSymbolMap :: SymbolMap,                             -- sym_map
+        -- | TODO: Explain. Module symbol table.
+        envModuleSymbolTable :: ModuleSymbolTable,             -- _module_symtable@ModuleSymbolTable {..}
+        -- | TODO: Explain. De Bruijn context.
+        envDeBruijnContext :: DeBruijnContext,                 -- _de_bruijn_ctx
+        -- | TODO: Explain. Local context.
+        envLclContext :: LocalContext                          -- _local_ctx
+      }
+
+-- | TODO: Inline? TODO: Document.
+areTailCallsOn :: MonadReader MarshalEnv m => m Bool
+areTailCallsOn = reader envAreTailCallsOn
+
+-- | TODO: Inline? TODO: Document.
+askSymbolMap :: MonadReader MarshalEnv m => m SymbolMap
+askSymbolMap = reader envSymbolMap
+
+-- | TODO: Inline? TODO: Document.
+askModuleSymbolTable :: MonadReader MarshalEnv m => m ModuleSymbolTable
+askModuleSymbolTable = reader envModuleSymbolTable
+
+-- | TODO: Document.
+bindLocalLabel :: MonadReader MarshalEnv m => SBS.ShortByteString -> m a -> m a
+bindLocalLabel label = local $ \env ->
+  env {envDeBruijnContext = bindLabel label $ envDeBruijnContext env}
+
+-- | TODO: Document.
+extractLocalLabel ::
+  MonadReader MarshalEnv m =>
+  SBS.ShortByteString ->
+  m Wasm.LabelIndex
+extractLocalLabel label = asks ((`extractLabel` label) . envDeBruijnContext)
+
+-- | TODO: Document.
+lookupLocalContextM ::
+  MonadReader MarshalEnv m =>
+  BinaryenIndex ->
+  m Wasm.LocalIndex
+lookupLocalContextM i = do
+  ctx <- reader envLclContext
+  pure $ lookupLocalContext ctx i
+
+-- ----------------------------------------------------------------------------
+
 -- TODO: reduce infer usage
 makeInstructions ::
-  MonadError MarshalError m =>
-  Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
-  ModuleSymbolTable ->
-  DeBruijnContext ->
-  LocalContext ->
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Expression ->
   m (DList.DList Wasm.Instruction)
-makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_bruijn_ctx _local_ctx expr =
+makeInstructions expr =
   case expr of
     Block {..}
       | SBS.null name ->
-        fmap mconcat $ for bodys $
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
+        fmap mconcat $ for bodys makeInstructions
       | otherwise -> do
-        let _new_de_bruijn_ctx = bindLabel name _de_bruijn_ctx
-        bs <-
-          for bodys $
-            makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _new_de_bruijn_ctx
-              _local_ctx
+        bs <- bindLocalLabel name $ for bodys makeInstructions
         pure $ DList.singleton Wasm.Block
           { blockResultType = map makeValueType blockReturnTypes,
             blockInstructions = DList.toList $ mconcat bs
           }
     If {..} -> do
-      let _new_de_bruijn_ctx = bindLabel mempty _de_bruijn_ctx
-      c <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          condition
-      t <-
-        DList.toList
-          <$> makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _new_de_bruijn_ctx
-            _local_ctx
-            ifTrue
-      f <-
-        DList.toList
-          <$> makeInstructionsMaybe
-            tail_calls
-            sym_map
-            _module_symtable
-            _new_de_bruijn_ctx
-            _local_ctx
-            ifFalse
+      -- TODO: Are we sure about the scoping here? This (c) uses the unextended context.
+      c <- makeInstructions condition
+      t <- bindLocalLabel mempty $ DList.toList <$> makeInstructions ifTrue
+      f <- bindLocalLabel mempty $ DList.toList <$> makeInstructionsMaybe ifFalse
       pure $
         c <> DList.singleton Wasm.If
           { ifResultType = map makeValueType $ infer ifTrue,
@@ -458,141 +482,84 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
               _ -> Just f
           }
     Loop {..} -> do
-      let _new_de_bruijn_ctx = bindLabel name _de_bruijn_ctx
-      b <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _new_de_bruijn_ctx
-          _local_ctx
-          body
+      b <- bindLocalLabel name $ makeInstructions body
       pure $ DList.singleton Wasm.Loop
         { loopResultType = [],
           loopInstructions = DList.toList b
         }
     Break {..} -> do
-      let _lbl = extractLabel _de_bruijn_ctx name
+      _lbl <- extractLocalLabel name
       case breakCondition of
         Just cond -> do
-          c <-
-            makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-              cond
+          c <- makeInstructions cond
           pure $ c <> DList.singleton Wasm.BranchIf {branchIfLabel = _lbl}
         _ -> pure $ DList.singleton Wasm.Branch {branchLabel = _lbl}
     Switch {..} -> do
-      c <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          condition
+      c <- makeInstructions condition
+      _lbls <- mapM extractLocalLabel names
+      _lbl <- extractLocalLabel defaultName
       pure $
         c <> DList.singleton Wasm.BranchTable
-          { branchTableLabels = map (extractLabel _de_bruijn_ctx) names,
-            branchTableFallbackLabel = extractLabel _de_bruijn_ctx defaultName
+          { branchTableLabels = _lbls,
+            branchTableFallbackLabel = _lbl
           }
-    Call {..} -> case Map.lookup (coerce target) functionSymbols of
-      Just i -> do
-        xs <-
-          for
-            ( if target == "barf"
-                then
-                  [ case operands of
-                      [] -> ConstI64 0
-                      x : _ -> x
-                  ]
-                else operands
-            )
-            $ makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-        pure $ mconcat xs <> DList.singleton Wasm.Call {callFunctionIndex = i}
-      _
-        | Map.member ("__asterius_barf_" <> target) sym_map ->
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
-            $ barf target callReturnTypes
-        | otherwise ->
-          pure $ DList.singleton Wasm.Unreachable
+    Call {..} -> do
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      case Map.lookup (coerce target) functionSymbols of
+        Just i -> do
+          xs <-
+            for
+              ( if target == "barf"
+                  then
+                    [ case operands of
+                        [] -> ConstI64 0
+                        x : _ -> x
+                    ]
+                  else operands
+              )
+              makeInstructions
+          pure $ mconcat xs <> DList.singleton Wasm.Call {callFunctionIndex = i}
+        _ -> do
+          sym_map <- askSymbolMap
+          if Map.member ("__asterius_barf_" <> target) sym_map
+            then makeInstructions $ barf target callReturnTypes
+            else pure $ DList.singleton Wasm.Unreachable
     CallImport {..} -> do
-      xs <-
-        for operands $
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
+      xs <- for operands makeInstructions
+      ModuleSymbolTable {..} <- askModuleSymbolTable
       pure $
         mconcat xs <> DList.singleton Wasm.Call
           { callFunctionIndex = functionSymbols ! target'
           }
     CallIndirect {..} -> do
-      f <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          indirectTarget
-      xs <-
-        for operands $
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
+      f <- makeInstructions indirectTarget
+      xs <- for operands makeInstructions
+      ModuleSymbolTable {..} <- askModuleSymbolTable
       pure $
         mconcat xs <> f <> DList.singleton Wasm.CallIndirect
           { callIndirectFuctionTypeIndex = functionTypeSymbols ! functionType
           }
-    GetLocal {..} -> pure $ DList.singleton Wasm.GetLocal
-      { getLocalIndex = lookupLocalContext _local_ctx index
-      }
+    GetLocal {..} -> do
+      idx <- lookupLocalContextM index
+      pure $ DList.singleton Wasm.GetLocal
+        { getLocalIndex = idx
+        }
     SetLocal {..} -> do
-      v <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          value
+      v <- makeInstructions value
+      idx <- lookupLocalContextM index
       pure $
         v <> DList.singleton Wasm.SetLocal
-          { setLocalIndex = lookupLocalContext _local_ctx index
+          { setLocalIndex = idx
           }
     TeeLocal {..} -> do
-      v <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          value
+      v <- makeInstructions value
+      idx <- lookupLocalContextM index
       pure $
         v <> DList.singleton Wasm.TeeLocal
-          { teeLocalIndex = lookupLocalContext _local_ctx index
+          { teeLocalIndex = idx
           }
     Load {..} -> do
+      -- TODO: Take some if this outside this definition?
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
               memoryArgumentOffset = offset
@@ -613,16 +580,10 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
         (True, 4, I64) -> pure $ Wasm.I64Load32Signed _mem_arg
         (False, 4, I64) -> pure $ Wasm.I64Load32Unsigned _mem_arg
         _ -> throwError $ UnsupportedExpression expr
-      p <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          ptr
+      p <- makeInstructions ptr
       pure $ p <> op
     Store {..} -> do
+      -- TODO: Take some if this outside this definition?
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
               memoryArgumentOffset = offset
@@ -638,89 +599,77 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
         (2, I64) -> pure $ Wasm.I64Store16 _mem_arg
         (4, I64) -> pure $ Wasm.I64Store32 _mem_arg
         _ -> throwError $ UnsupportedExpression expr
-      p <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          ptr
-      v <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          value
+      p <- makeInstructions ptr
+      v <- makeInstructions value
       pure $ p <> v <> op
     ConstI32 v -> pure $ DList.singleton Wasm.I32Const {i32ConstValue = v}
     ConstI64 v -> pure $ DList.singleton Wasm.I64Const {i64ConstValue = v}
     ConstF32 v -> pure $ DList.singleton Wasm.F32Const {f32ConstValue = v}
     ConstF64 v -> pure $ DList.singleton Wasm.F64Const {f64ConstValue = v}
     Unary {..} -> do
-      x <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          operand0
+      x <- makeInstructions operand0
       let op = DList.singleton $ marshalUnaryOp unaryOp
       pure $ x <> op
     Binary {..} -> do
-      x <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          operand0
-      y <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          operand1
+      x <- makeInstructions operand0
+      y <- makeInstructions operand1
       let op = DList.singleton $ marshalBinaryOp binaryOp
       pure $ x <> y <> op
     Drop {..} -> do
-      x <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          dropValue
+      x <- makeInstructions dropValue
       pure $ x <> DList.singleton Wasm.Drop
-    ReturnCall {..}
-      | tail_calls -> case Map.lookup (coerce returnCallTarget64) functionSymbols of
-        Just i -> pure $
-          DList.singleton Wasm.ReturnCall {returnCallFunctionIndex = i}
-        _
-          | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
-            makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-              $ barf returnCallTarget64 []
-          | otherwise ->
-            pure $ DList.singleton Wasm.Unreachable
-      | otherwise -> case Map.lookup returnCallTarget64 sym_map of
-        Just t -> makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
+    ReturnCall {..} -> do
+      sym_map <- askSymbolMap
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      tail_calls <- areTailCallsOn
+      if tail_calls
+        -- Case 1: Tail calls are on
+        then case Map.lookup (coerce returnCallTarget64) functionSymbols of
+          Just i -> pure $
+            DList.singleton Wasm.ReturnCall {returnCallFunctionIndex = i}
+          _
+            | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
+              makeInstructions $ barf returnCallTarget64 []
+            | otherwise ->
+              pure $ DList.singleton Wasm.Unreachable
+        -- Case 2: Tail calls are off
+        else case Map.lookup returnCallTarget64 sym_map of
+          Just t -> makeInstructions
+            Store
+              { bytes = 8,
+                offset = 0,
+                ptr =
+                  ConstI32
+                    $ fromIntegral
+                    $ (sym_map ! "__asterius_pc")
+                      .&. 0xFFFFFFFF,
+                value = ConstI64 t,
+                valueType = I64
+              }
+          _
+            | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
+              makeInstructions $ barf returnCallTarget64 []
+            | otherwise ->
+              pure $ DList.singleton Wasm.Unreachable
+    ReturnCallIndirect {..} -> do
+      sym_map <- askSymbolMap
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      tail_calls <- areTailCallsOn
+      if tail_calls
+        -- Case 1: Tail calls are on
+        then do
+          x <- makeInstructions
+                 Unary
+                   { unaryOp = WrapInt64,
+                     operand0 = returnCallIndirectTarget64
+                   }
+          pure $
+            x <> DList.singleton Wasm.ReturnCallIndirect
+              { returnCallIndirectFunctionTypeIndex = functionTypeSymbols
+                  ! FunctionType {paramTypes = [], returnTypes = []}
+              }
+        -- Case 2: Tail calls are off
+        else makeInstructions
           Store
             { bytes = 8,
               offset = 0,
@@ -729,116 +678,39 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
                   $ fromIntegral
                   $ (sym_map ! "__asterius_pc")
                     .&. 0xFFFFFFFF,
-              value = ConstI64 t,
+              value = returnCallIndirectTarget64,
               valueType = I64
             }
-        _
-          | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
-            makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-              $ barf returnCallTarget64 []
-          | otherwise ->
-            pure $ DList.singleton Wasm.Unreachable
-    ReturnCallIndirect {..}
-      | tail_calls -> do
-        x <-
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
-            $ Unary
-              { unaryOp = WrapInt64,
-                operand0 = returnCallIndirectTarget64
-              }
-        pure $
-          x <> DList.singleton Wasm.ReturnCallIndirect
-            { returnCallIndirectFunctionTypeIndex = functionTypeSymbols
-                ! FunctionType {paramTypes = [], returnTypes = []}
-            }
-      | otherwise -> makeInstructions
-        tail_calls
-        sym_map
-        _module_symtable
-        _de_bruijn_ctx
-        _local_ctx
-        Store
-          { bytes = 8,
-            offset = 0,
-            ptr =
-              ConstI32
-                $ fromIntegral
-                $ (sym_map ! "__asterius_pc")
-                  .&. 0xFFFFFFFF,
-            value = returnCallIndirectTarget64,
-            valueType = I64
-          }
     Host {..} -> do
       let op = DList.singleton $ case hostOp of
             CurrentMemory -> Wasm.MemorySize
             GrowMemory -> Wasm.MemoryGrow
-      xs <-
-        for operands $
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
+      xs <- for operands makeInstructions
       pure $ mconcat xs <> op
     Nop -> pure $ DList.singleton Wasm.Nop
     Unreachable -> pure $ DList.singleton Wasm.Unreachable
-    CFG {..} ->
-      makeInstructions
-        tail_calls
-        sym_map
-        _module_symtable
-        _de_bruijn_ctx
-        _local_ctx
-        $ relooper graph
-    Symbol {..} -> case Map.lookup unresolvedSymbol sym_map of
-      Just x -> pure $ DList.singleton Wasm.I64Const
-        { i64ConstValue = x + fromIntegral symbolOffset
-        }
-      _
-        | Map.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
-            $ barf unresolvedSymbol [I64]
-        | otherwise ->
-          pure $
-            DList.singleton Wasm.I64Const {i64ConstValue = invalidAddress}
+    CFG {..} -> makeInstructions $ relooper graph
+    Symbol {..} -> do
+      sym_map <- askSymbolMap
+      case Map.lookup unresolvedSymbol sym_map of
+        Just x -> pure $ DList.singleton Wasm.I64Const
+          { i64ConstValue = x + fromIntegral symbolOffset
+          }
+        _
+          | Map.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
+            makeInstructions $ barf unresolvedSymbol [I64]
+          | otherwise -> pure $ DList.singleton Wasm.I64Const
+            { i64ConstValue = invalidAddress
+            }
     _ -> throwError $ UnsupportedExpression expr
 
 makeInstructionsMaybe ::
-  MonadError MarshalError m =>
-  Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
-  ModuleSymbolTable ->
-  DeBruijnContext ->
-  LocalContext ->
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Maybe Expression ->
   m (DList.DList Wasm.Instruction)
-makeInstructionsMaybe tail_calls sym_map _module_symtable _de_bruijn_ctx _local_ctx m_expr =
-  case m_expr of
-    Just expr ->
-      makeInstructions
-        tail_calls
-        sym_map
-        _module_symtable
-        _de_bruijn_ctx
-        _local_ctx
-        expr
-    _ -> pure mempty
+makeInstructionsMaybe m_expr = case m_expr of
+  Just expr -> makeInstructions expr
+  _ -> pure mempty
 
 makeCodeSection ::
   MonadError MarshalError m =>
@@ -857,14 +729,15 @@ makeCodeSection tail_calls sym_map _mod@Module {..} _module_symtable =
             (I64, c) -> (Wasm.I64, c)
             (F32, c) -> (Wasm.F32, c)
             (F64, c) -> (Wasm.F64, c)
-      _body <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          emptyDeBruijnContext
-          _local_ctx
-          body
+      _body <- do
+        let env = MarshalEnv
+              { envAreTailCallsOn = tail_calls,
+                envSymbolMap = sym_map,
+                envModuleSymbolTable = _module_symtable,
+                envDeBruijnContext = emptyDeBruijnContext,
+                envLclContext = _local_ctx
+              }
+        flip runReaderT env $ makeInstructions body
       pure Wasm.Function
         { functionLocals =
             [ Wasm.Locals {localsCount = c, localsType = vt}
