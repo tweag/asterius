@@ -205,16 +205,23 @@ makeElementSection Module {..} ModuleSymbolTable {..} = pure Wasm.ElementSection
         ]
   }
 
+-- | The local de Bruijn context captures the labels that are in scope, as
+-- introduced by control constructs).
 data DeBruijnContext
   = DeBruijnContext
-      { currentLevel :: Word32,
+      { -- | Current de Bruijn level.
+        currentLevel :: Word32,
+        -- | Set of all labels in scope that are named (that is, introduced by
+        -- block or loop instructions.
         capturedLevels :: Map.Map SBS.ShortByteString Word32
       }
 
+-- | Initial (empty) de Bruijn context.
 emptyDeBruijnContext :: DeBruijnContext
 emptyDeBruijnContext =
   DeBruijnContext {currentLevel = 0, capturedLevels = mempty}
 
+-- | Add a new label to the context.
 bindLabel :: SBS.ShortByteString -> DeBruijnContext -> DeBruijnContext
 bindLabel k DeBruijnContext {..} = DeBruijnContext
   { currentLevel = succ currentLevel,
@@ -224,6 +231,7 @@ bindLabel k DeBruijnContext {..} = DeBruijnContext
         else Map.insert k currentLevel capturedLevels
   }
 
+-- | Lookup a label (by name) in the de Bruijn context.
 extractLabel :: DeBruijnContext -> SBS.ShortByteString -> Wasm.LabelIndex
 extractLabel DeBruijnContext {..} k =
   coerce $ currentLevel - capturedLevels ! k - 1
@@ -405,50 +413,48 @@ type SymbolMap = Map.Map AsteriusEntitySymbol Int64
 -- | Environment used during the elaboration of Asterius' types to WebAssembly.
 data MarshalEnv
   = MarshalEnv
-      { -- | Whether tail calls are on or off.
-        envAreTailCallsOn :: Bool,                             -- tail_calls
+      { -- | Whether the tail call extension is on.
+        envAreTailCallsOn :: Bool,
         -- | TODO: Explain. Symbol map.
-        envSymbolMap :: SymbolMap,                             -- sym_map
+        envSymbolMap :: SymbolMap,
         -- | TODO: Explain. Module symbol table.
-        envModuleSymbolTable :: ModuleSymbolTable,             -- _module_symtable@ModuleSymbolTable {..}
-        -- | TODO: Explain. De Bruijn context.
-        envDeBruijnContext :: DeBruijnContext,                 -- _de_bruijn_ctx
+        envModuleSymbolTable :: ModuleSymbolTable,
+        -- | The De Bruijn indices The local TODO: Explain. De Bruijn context.
+        envDeBruijnContext :: DeBruijnContext,
         -- | TODO: Explain. Local context.
-        envLclContext :: LocalContext                          -- _local_ctx
+        envLclContext :: LocalContext
       }
 
--- | TODO: Inline? TODO: Document.
+-- | Check whether the tail call extension is on.
 areTailCallsOn :: MonadReader MarshalEnv m => m Bool
 areTailCallsOn = reader envAreTailCallsOn
 
--- | TODO: Inline? TODO: Document.
+-- | Retrieve the symbol map from the local environment.
 askSymbolMap :: MonadReader MarshalEnv m => m SymbolMap
 askSymbolMap = reader envSymbolMap
 
--- | TODO: Inline? TODO: Document.
+-- | Retrieve the module symbol table from the local environment.
 askModuleSymbolTable :: MonadReader MarshalEnv m => m ModuleSymbolTable
 askModuleSymbolTable = reader envModuleSymbolTable
 
--- | TODO: Document.
+-- | Add a label to the local environment. Used to by control constructs
+-- (block, if, etc.).
 bindLocalLabel :: MonadReader MarshalEnv m => SBS.ShortByteString -> m a -> m a
 bindLocalLabel label = local $ \env ->
   env {envDeBruijnContext = bindLabel label $ envDeBruijnContext env}
 
--- | TODO: Document.
-extractLocalLabel ::
+-- | Lookup a label in the local environment. This function is the monadic
+-- variant of function 'extractLabel'.
+lookupLabel ::
   MonadReader MarshalEnv m =>
   SBS.ShortByteString ->
   m Wasm.LabelIndex
-extractLocalLabel label = asks ((`extractLabel` label) . envDeBruijnContext)
+lookupLabel label = asks ((`extractLabel` label) . envDeBruijnContext)
 
--- | TODO: Document.
-lookupLocalContextM ::
-  MonadReader MarshalEnv m =>
-  BinaryenIndex ->
-  m Wasm.LocalIndex
-lookupLocalContextM i = do
-  ctx <- reader envLclContext
-  pure $ lookupLocalContext ctx i
+-- | Lookup an index in the local context. Used for local variable access. This
+-- function is the monadic variant of function 'lookupLocalContext'.
+lookupIndex :: MonadReader MarshalEnv m => BinaryenIndex -> m Wasm.LocalIndex
+lookupIndex i = flip lookupLocalContext i <$> reader envLclContext
 
 -- ----------------------------------------------------------------------------
 
@@ -469,10 +475,12 @@ makeInstructions expr =
             blockInstructions = DList.toList $ mconcat bs
           }
     If {..} -> do
-      -- TODO: Are we sure about the scoping here? This (c) uses the unextended context.
-      c <- makeInstructions condition
-      t <- bindLocalLabel mempty $ DList.toList <$> makeInstructions ifTrue
-      f <- bindLocalLabel mempty $ DList.toList <$> makeInstructionsMaybe ifFalse
+      c <- makeInstructions condition  -- NOTE: the label is only in scope for
+                                       -- the branches, not the condition.
+      t <- bindLocalLabel mempty $
+             DList.toList <$> makeInstructions ifTrue
+      f <- bindLocalLabel mempty $
+             DList.toList <$> makeInstructionsMaybe ifFalse
       pure $
         c <> DList.singleton Wasm.If
           { ifResultType = map makeValueType $ infer ifTrue,
@@ -488,7 +496,7 @@ makeInstructions expr =
           loopInstructions = DList.toList b
         }
     Break {..} -> do
-      _lbl <- extractLocalLabel name
+      _lbl <- lookupLabel name
       case breakCondition of
         Just cond -> do
           c <- makeInstructions cond
@@ -496,8 +504,8 @@ makeInstructions expr =
         _ -> pure $ DList.singleton Wasm.Branch {branchLabel = _lbl}
     Switch {..} -> do
       c <- makeInstructions condition
-      _lbls <- mapM extractLocalLabel names
-      _lbl <- extractLocalLabel defaultName
+      _lbls <- mapM lookupLabel names
+      _lbl <- lookupLabel defaultName
       pure $
         c <> DList.singleton Wasm.BranchTable
           { branchTableLabels = _lbls,
@@ -540,20 +548,20 @@ makeInstructions expr =
           { callIndirectFuctionTypeIndex = functionTypeSymbols ! functionType
           }
     GetLocal {..} -> do
-      idx <- lookupLocalContextM index
+      idx <- lookupIndex index
       pure $ DList.singleton Wasm.GetLocal
         { getLocalIndex = idx
         }
     SetLocal {..} -> do
       v <- makeInstructions value
-      idx <- lookupLocalContextM index
+      idx <- lookupIndex index
       pure $
         v <> DList.singleton Wasm.SetLocal
           { setLocalIndex = idx
           }
     TeeLocal {..} -> do
       v <- makeInstructions value
-      idx <- lookupLocalContextM index
+      idx <- lookupIndex index
       pure $
         v <> DList.singleton Wasm.TeeLocal
           { teeLocalIndex = idx
