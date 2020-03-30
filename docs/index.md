@@ -29,7 +29,6 @@ maintained by [Tweag I/O](https://tweag.io/).
 * [Using experimental WebAssembly features](wasm-experimental.md)
 * [Hacking guide](hacking.md)
 * [Reading list](readings.md)
-* [Status reports](reports.md)
 
 # Sponsors
 
