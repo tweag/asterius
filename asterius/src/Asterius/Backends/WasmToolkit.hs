@@ -4,8 +4,9 @@
 -- Copyright   :  (c) 2018 EURL Tweag
 -- License     :  All rights reserved (see LICENCE file in the distribution).
 --
--- Elaboration of Asterius types into WebAssembly.
--- TODO: BE more specific about which WebAssemnly I mean?
+-- Elaboration of Asterius types into WebAssembly (as defined in the
+-- [wasm-toolkit
+-- package](https://github.com/tweag/asterius/tree/master/wasm-toolkit)).
 --
 -----------------------------------------------------------------------------
 
@@ -205,14 +206,14 @@ makeElementSection Module {..} ModuleSymbolTable {..} = pure Wasm.ElementSection
         ]
   }
 
--- | The local de Bruijn context captures the labels that are in scope, as
--- introduced by control constructs).
+-- | The de Bruijn context captures the labels that are in scope, as introduced
+-- by control constructs (if, loop, etc.)
 data DeBruijnContext
   = DeBruijnContext
       { -- | Current de Bruijn level.
         currentLevel :: Word32,
-        -- | Set of all labels in scope that are named (that is, introduced by
-        -- block or loop instructions.
+        -- | Set of all named labels currently in scope (named labels are only
+        -- introduced by block or loop instructions).
         capturedLevels :: Map.Map SBS.ShortByteString Word32
       }
 
@@ -415,13 +416,13 @@ data MarshalEnv
   = MarshalEnv
       { -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
-        -- | TODO: Explain. Symbol map.
+        -- | The symbol map for the current module.
         envSymbolMap :: SymbolMap,
-        -- | TODO: Explain. Module symbol table.
+        -- | The symbol table for the current module.
         envModuleSymbolTable :: ModuleSymbolTable,
-        -- | The De Bruijn indices The local TODO: Explain. De Bruijn context.
+        -- | The de Bruijn context. Used for label access.
         envDeBruijnContext :: DeBruijnContext,
-        -- | TODO: Explain. Local context.
+        -- | The local context. Used for local variable access.
         envLclContext :: LocalContext
       }
 
@@ -567,7 +568,6 @@ makeInstructions expr =
           { teeLocalIndex = idx
           }
     Load {..} -> do
-      -- TODO: Take some if this outside this definition?
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
               memoryArgumentOffset = offset
@@ -591,7 +591,6 @@ makeInstructions expr =
       p <- makeInstructions ptr
       pure $ p <> op
     Store {..} -> do
-      -- TODO: Take some if this outside this definition?
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
               memoryArgumentOffset = offset
