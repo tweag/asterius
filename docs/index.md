@@ -3,8 +3,14 @@
 [![Gitter](https://img.shields.io/gitter/room/tweag/asterius)](https://gitter.im/tweag/asterius)
 [![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://asterius.netlify.com)
 
-Asterius is a Haskell to WebAssembly compiler based on GHC. The project is
-actively maintained by [Tweag I/O](https://tweag.io/).
+Asterius is a Haskell to WebAssembly compiler based on GHC. It compiles simple
+Haskell source files or Cabal executable targets to WebAssembly+JavaScript code
+which can be run in node.js or browsers. It features seamless JavaScript interop
+(lightweight Async FFI with `Promise` support) and small output code (~600KB
+`hello.wasm` for a [Hello
+World](https://hackage.haskell.org/package/hello-1.0.0.2)). A lot of common
+Haskell packages like `lens` are already supported. The project is actively
+maintained by [Tweag I/O](https://tweag.io/).
 
 # Contents
 
