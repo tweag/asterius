@@ -26,7 +26,6 @@ maintained by [Tweag I/O](https://tweag.io/).
 * [Project architecture](architecture.md)
 * [Writing WebAssembly code in Haskell](wasm-in-hs.md)
 * [WebAssembly as a Haskell compilation target](webassembly.md)
-* [About the custom GHC fork](custom-ghc.md)
 * [Using experimental WebAssembly features](wasm-experimental.md)
 * [Hacking guide](hacking.md)
 * [Reading list](readings.md)

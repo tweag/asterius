@@ -51,23 +51,8 @@ Note that [`podman`](https://podman.io) can be used instead of `docker` here.
 
 ## Building and using `asterius` locally
 
-`asterius` is a regular `stack` project which relies on a custom GHC fork.
-Pre-built GHC bindists are available for `linux64` and `macosx`. Simply use a
-regular `stack build asterius` for building it, and `stack exec ahc-boot` to
-boot the standard libraries, so later `stack exec ahc-link` may work.
-
-In addition to regular GHC dependencies, make sure these dependencies are
-present in the local environment:
-
-* `libnuma-dev` (Required by GHC)
-* `cmake`, `g++`, `git`, `python3` (Required by `binaryen`)
-* `automake`, `autoconf` (Required by `ahc-boot`)
-* `cabal` (Required by `ahc-boot` and `ahc-cabal`)
-* `node` (`v12` or later)
-
-If `direnv` is enabled, after doing a `stack build asterius`, executables like
-`ahc-boot` or `ahc-link` can be called directly without `stack exec` in the
-project directory.
+See the [Building guide](https://asterius.netlify.com/building.html) in the
+documentation for details.
 
 ## Hacking on `asterius`
 
