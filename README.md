@@ -47,8 +47,7 @@ Check the official
 run` to learn more about the command given in the example above. The example
 opens an interactive `bash` session for exploration, but it's also possible to
 use `docker run` to invoke the Asterius compiler on local Haskell source files.
-Note that [`podman`](https://podman.io) can be used instead of `docker` here; it
-can work with a root-less & daemon-less setting.
+Note that [`podman`](https://podman.io) can be used instead of `docker` here.
 
 ## Building and using `asterius` locally
 
@@ -63,6 +62,7 @@ present in the local environment:
 * `libnuma-dev` (Required by GHC)
 * `cmake`, `g++`, `git`, `python3` (Required by `binaryen`)
 * `automake`, `autoconf` (Required by `ahc-boot`)
+* `cabal` (Required by `ahc-boot` and `ahc-cabal`)
 * `node` (`v12` or later)
 
 If `direnv` is enabled, after doing a `stack build asterius`, executables like
