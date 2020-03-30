@@ -58,7 +58,10 @@ asteriusTcFImport d = pprPanic "asteriusTcFImport" (ppr d)
 
 asteriusTcCheckFIType :: [Type] -> Type -> ForeignImport -> TcM ForeignImport
 asteriusTcCheckFIType arg_tys res_ty (CImport (L lc cconv) (L ls safety) mh (CFunction target) src)
-  | cconv == JavaScriptCallConv && unLoc src == SourceText "\"wrapper\"" =
+  | cconv == JavaScriptCallConv && unLoc src
+      `elem` map
+        SourceText
+        ["\"wrapper\"", "\"wrapper oneshot\""] =
     do
       case arg_tys of
         [arg1_ty] -> do

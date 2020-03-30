@@ -175,7 +175,20 @@ export async function newAsteriusInstance(req) {
       Unicode: modulify(__asterius_unicode),
       Tracing: modulify(__asterius_tracer),
       Exports: {
-        newHaskellCallback: (sp, arg_tag, ret_tag, io) => __asterius_stableptr_manager.newJSVal(__asterius_exports.newHaskellCallback(sp, arg_tag, ret_tag, io)),
+        newHaskellCallback: (sp, arg_tag, ret_tag, io, oneshot) => {
+          let sn = [];
+          let cb = __asterius_exports.newHaskellCallback(
+            sp,
+            arg_tag,
+            ret_tag,
+            io,
+            oneshot
+              ? () => __asterius_exports.freeHaskellCallback(sn[0])
+              : () => {}
+          );
+          sn[0] = __asterius_stableptr_manager.newJSVal(cb);
+          return sn[0];
+        },
         freeHaskellCallback: sn => __asterius_exports.freeHaskellCallback(sn)
       },
       Scheduler: modulify(__asterius_scheduler)
@@ -190,11 +203,14 @@ export async function newAsteriusInstance(req) {
     __asterius_scheduler.setGC(__asterius_gc);
 
     for (const [f, p, a, r, i] of req.exportsStatic) {
-      __asterius_exports[f] = __asterius_exports.newHaskellCallback(
+      __asterius_exports[
+        f
+      ] = __asterius_exports.newHaskellCallback(
         __asterius_stableptr_manager.newStablePtr(p),
         a,
         r,
-        i
+        i,
+        () => {}
       );
     }
 

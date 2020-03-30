@@ -18,7 +18,7 @@ exportsImports =
         externalBaseName = "newHaskellCallback",
         functionType =
           FunctionType
-            { paramTypes = [F64, F64, F64, F64],
+            { paramTypes = [F64, F64, F64, F64, F64],
               returnTypes = [F64]
             }
       },
@@ -36,7 +36,7 @@ exportsCBits = newHaskellCallback <> freeHaskellCallback
 newHaskellCallback :: AsteriusModule
 newHaskellCallback = runEDSL "newHaskellCallback" $ do
   setReturnTypes [I64]
-  args <- params [I64, I64, I64, I64]
+  args <- params [I64, I64, I64, I64, I64]
   truncUFloat64ToInt64
     <$> callImport'
       "__asterius_newHaskellCallback"
