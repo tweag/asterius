@@ -47,9 +47,9 @@ import qualified Language.WebAssembly.WireFormat as Wasm
 
 data MarshalError
   = DuplicateFunctionImport
-  | DuplicateGlobalImport
-  | InvalidParameterType
-  | InvalidLocalType
+  | DuplicateGlobalImport             -- ^ Currently unused.
+  | InvalidParameterType              -- ^ Currently unused.
+  | InvalidLocalType                  -- ^ Currently unused.
   | UnsupportedExpression Expression
   deriving (Show)
 
