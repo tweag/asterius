@@ -198,10 +198,11 @@ export async function newAsteriusInstance(req) {
       );
     }
 
+    Object.assign(__asterius_exports, __asterius_wasm_instance.exports);
+    __asterius_exports.hs_init();
+
     return Object.assign(__asterius_jsffi_instance, {
-      exports: Object.freeze(
-        Object.assign(__asterius_exports, __asterius_wasm_instance.exports)
-      ),
+      exports: __asterius_exports,
       symbolTable: req.symbolTable,
       persistentState: __asterius_persistent_state
     });

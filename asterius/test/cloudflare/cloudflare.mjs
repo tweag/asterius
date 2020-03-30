@@ -7,7 +7,6 @@ const asteriusInstance = new Promise((resolve, reject) => {
   // It gets hardcoded to 'wasm' when using the Wrangler CLI (as of v1.6.0).
   rts.newAsteriusInstance(Object.assign(cloudflare, { module: wasm }))
     .then(i => {
-      i.exports.hs_init();
       resolve(i);
     })
     .catch(e => reject(e));

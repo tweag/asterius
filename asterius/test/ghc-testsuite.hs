@@ -143,7 +143,6 @@ runTestCase l_opts tlref TestCase {..} = catch m h
             }
           $ \s -> do
             i <- newAsteriusInstance s (tmp_case_path -<.> "req.mjs") mod_buf
-            hsInit s i
             hsMain (takeBaseName tmp_case_path) s i
             hs_stdout <- hsStdOut s i
             hs_stderr <- hsStdErr s i
