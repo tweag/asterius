@@ -9,7 +9,6 @@ process.on("unhandledRejection", err => {
 module
   .then(m => rts.newAsteriusInstance(Object.assign(jsffi, { module: m })))
   .then(async i => {
-    i.exports.hs_init();
     await i.exports.main();
     console.log(await i.exports.mult_hs_int(9, 9));
     console.log(await i.exports.mult_hs_double(9, 9));

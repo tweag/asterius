@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Asterius.JSRun.Main
 import Asterius.JSRun.NonMain
 import Data.Binary
 import qualified Data.ByteString.Lazy as LBS
@@ -33,7 +32,6 @@ main = do
           "test/nomain/NoMain"
           ["base_AsteriusziTopHandler_runNonIO_closure", "NoMain_x_closure"]
           m
-      hsInit s i
       let x_closure =
             deRefJSVal i
               <> ".exports.rts_apply("

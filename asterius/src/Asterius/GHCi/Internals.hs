@@ -20,7 +20,6 @@ import Asterius.CodeGen
 import Asterius.Internals ((!))
 import Asterius.Internals.Name
 import Asterius.Internals.Temp
-import Asterius.JSRun.Main
 import Asterius.JSRun.NonMain
 import Asterius.Ld
 import Asterius.Resolve
@@ -332,7 +331,6 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
           <> ",{module:"
           <> takeJSVal mod_val
           <> "}))"
-    hsInit s i
     let runner_closure =
           deRefJSVal i <> ".symbolTable."
             <> coerce

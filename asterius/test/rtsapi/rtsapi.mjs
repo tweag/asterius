@@ -9,7 +9,6 @@ process.on("unhandledRejection", err => {
 module
   .then(m => rts.newAsteriusInstance(Object.assign(rtsapi, { module: m })))
   .then(async i => {
-    i.exports.hs_init();
     await i.exports.main();
     await i.exports.rts_evalLazyIO(
       i.exports.rts_apply(

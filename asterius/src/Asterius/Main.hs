@@ -209,7 +209,6 @@ genDefEntry task =
       ".req.mjs\";\n",
       mconcat
         [ "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(i => {\n",
-          "i.exports.hs_init();\n",
           "i.exports.main().catch(err => {if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) i.fs.writeSync(2, `",
           string7 $ takeBaseName $ inputHS task,
           ": ${err}\n`)});\n",

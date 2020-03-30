@@ -2,7 +2,6 @@
 
 module Asterius.JSRun.Main
   ( newAsteriusInstance,
-    hsInit,
     hsMain,
     hsStdOut,
     hsStdErr,
@@ -30,9 +29,6 @@ newAsteriusInstance s req_path mod_buf = do
       <> ",{module:"
       <> takeJSVal mod_val
       <> "}))"
-
-hsInit :: JSSession -> JSVal -> IO ()
-hsInit s i = eval s $ deRefJSVal i <> ".exports.hs_init()"
 
 hsMain :: String -> JSSession -> JSVal -> IO ()
 hsMain prog_name s i =
