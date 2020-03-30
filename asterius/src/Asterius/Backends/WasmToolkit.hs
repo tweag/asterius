@@ -709,7 +709,11 @@ makeInstructions expr =
           | otherwise -> pure $ DList.singleton Wasm.I64Const
             { i64ConstValue = invalidAddress
             }
-    _ -> throwError $ UnsupportedExpression expr
+    -- Unsupported expressions:
+    UnresolvedGetLocal {} -> throwError $ UnsupportedExpression expr
+    UnresolvedSetLocal {} -> throwError $ UnsupportedExpression expr
+    Barf {} -> throwError $ UnsupportedExpression expr
+
 
 makeInstructionsMaybe ::
   (MonadError MarshalError m, MonadReader MarshalEnv m) =>
