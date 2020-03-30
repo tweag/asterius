@@ -68,7 +68,7 @@ export class Exports {
     return this.context.scheduler.submitCmdCreateThread("createIOThread", p);
   }
 
-  newHaskellCallback(sp, arg_tag, ret_tag, io) {
+  newHaskellCallback(sp, arg_tag, ret_tag, io, finalizer) {
     const arg_mk_funcs = decodeTys(this.context.rtsMkFuncs, arg_tag),
       ret_get_funcs = decodeTys(this.context.rtsGetFuncs, ret_tag),
       run_func = this.context.symbolTable[
@@ -83,19 +83,23 @@ export class Exports {
       throw new WebAssembly.RuntimeError(`Multiple returns not supported`);
     }
     const cb = async (...args) => {
-      if (args.length !== arg_mk_funcs.length) {
-        throw new WebAssembly.RuntimeError(
-          `Expected ${arg_mk_funcs.length} arguments, got ${args.length}`
-        );
-      }
-      let p = this.context.stablePtrManager.deRefStablePtr(sp);
-      for (let i = 0; i < args.length; ++i) {
-        p = this.rts_apply(p, arg_mk_funcs[i](args[i]));
-      }
-      p = this.rts_apply(run_func, p);
-      const tid = await eval_func(p);
-      if (ret_get_funcs.length) {
-        return ret_get_funcs[0](this.context.scheduler.getTSOret(tid));
+      try {
+        if (args.length !== arg_mk_funcs.length) {
+          throw new WebAssembly.RuntimeError(
+            `Expected ${arg_mk_funcs.length} arguments, got ${args.length}`
+          );
+        }
+        let p = this.context.stablePtrManager.deRefStablePtr(sp);
+        for (let i = 0; i < args.length; ++i) {
+          p = this.rts_apply(p, arg_mk_funcs[i](args[i]));
+        }
+        p = this.rts_apply(run_func, p);
+        const tid = await eval_func(p);
+        if (ret_get_funcs.length) {
+          return ret_get_funcs[0](this.context.scheduler.getTSOret(tid));
+        }
+      } finally {
+        finalizer();
       }
     };
     this.context.callbackStablePtrs.set(cb, sp);

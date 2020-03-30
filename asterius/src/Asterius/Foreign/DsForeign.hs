@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 module Asterius.Foreign.DsForeign
@@ -49,8 +50,8 @@ asteriusDsForeigns fos = do
     do_decl (XForeignDecl _) = panic "asteriusDsForeigns"
 
 asteriusDsFImport :: Id -> Coercion -> ForeignImport -> DsM [Binding]
-asteriusDsFImport id co (CImport cconv safety mHeader spec _) =
-  asteriusDsCImport id co spec (unLoc cconv) (unLoc safety) mHeader
+asteriusDsFImport id co (CImport cconv safety mHeader spec (unLoc -> src)) =
+  asteriusDsCImport id co spec (unLoc cconv) (unLoc safety) mHeader src
 
 asteriusDsCImport ::
   Id ->
@@ -59,12 +60,13 @@ asteriusDsCImport ::
   CCallConv ->
   Safety ->
   Maybe Header ->
+  SourceText ->
   DsM [Binding]
-asteriusDsCImport id co (CFunction target) cconv safety _ =
+asteriusDsCImport id co (CFunction target) cconv safety _ _ =
   asteriusDsFCall id co (CCall (CCallSpec target cconv safety))
-asteriusDsCImport id co CWrapper JavaScriptCallConv _ _ =
-  asteriusDsFExportDynamic id co
-asteriusDsCImport id co spec cconv safety mHeader = do
+asteriusDsCImport id co CWrapper JavaScriptCallConv _ _ src =
+  asteriusDsFExportDynamic id co src
+asteriusDsCImport id co spec cconv safety mHeader _ = do
   (r, _, _) <- dsCImport id co spec cconv safety mHeader
   pure r
 
@@ -106,8 +108,8 @@ asteriusDsFCall fn_id co fcall = do
         fn_id `setIdUnfolding` mkInlineUnfoldingWithArity (length args) wrap_rhs'
   return [(work_id, work_rhs), (fn_id_w_inl, wrap_rhs')]
 
-asteriusDsFExportDynamic :: Id -> Coercion -> DsM [Binding]
-asteriusDsFExportDynamic id co0 = do
+asteriusDsFExportDynamic :: Id -> Coercion -> SourceText -> DsM [Binding]
+asteriusDsFExportDynamic id co0 src = do
   dflags <- getDynFlags
   cback <- newSysLocalDs arg_ty
   newStablePtrId <- dsLookupGlobalId newStablePtrName
@@ -119,7 +121,8 @@ asteriusDsFExportDynamic id co0 = do
         [ Var stbl_value,
           mkIntLitInt dflags (fromIntegral ffi_params_tag),
           mkIntLitInt dflags (fromIntegral ffi_ret_tag),
-          mkIntLitInt dflags (if ffiInIO then 1 else 0)
+          mkIntLitInt dflags (if ffiInIO then 1 else 0),
+          mkIntLitInt dflags (if oneshot then 1 else 0)
         ]
       new_hs_callback = fsLit "newHaskellCallback"
   ccall_adj <-
@@ -140,6 +143,10 @@ asteriusDsFExportDynamic id co0 = do
       fed = (id `setInlineActivation` NeverActive, Cast io_app co0)
   return [fed]
   where
+    oneshot
+      | src == SourceText "\"wrapper\"" = False
+      | src == SourceText "\"wrapper oneshot\"" = True
+      | otherwise = error "asteriusDsFExportDynamic"
     ty = pFst (coercionKind co0)
     (tvs, sans_foralls) = tcSplitForAllTys ty
     ([arg_ty], fn_res_ty) = tcSplitFunTys sans_foralls
