@@ -308,17 +308,9 @@ ahcDistMain logger task (final_m, report) = do
           (tailCalls task)
           (staticsSymbolMap report <> functionSymbolMap report)
           final_m
-      Binaryen.c_BinaryenModuleSetFeatures m_ref $
-        if tailCalls task
-          then Binaryen.c_BinaryenFeatureMVP .|. Binaryen.c_BinaryenFeatureTailCall
-          else Binaryen.c_BinaryenFeatureMVP
       when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
         logger "[INFO] Running binaryen optimization"
         Binaryen.c_BinaryenModuleOptimize m_ref
-      flip runContT pure $ do
-        lim_segs <- marshalSBS "limit-segments"
-        (lim_segs_p, _) <- marshalV [lim_segs]
-        lift $ Binaryen.c_BinaryenModuleRunPasses m_ref lim_segs_p 1
       logger "[INFO] Validating binaryen IR"
       pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
       when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
@@ -340,10 +332,8 @@ ahcDistMain logger task (final_m, report) = do
         -- disable colors when writing out the binaryen module
         -- to a file, so that we don't get ANSI escape sequences
         -- for colors. Reset the state after
-        cenabled <- Binaryen.isColorsEnabled
         Binaryen.setColorsEnabled False
         m_sexpr <- Binaryen.serializeModuleSExpr m_ref
-        Binaryen.setColorsEnabled cenabled
         BS.writeFile out_wasm_binaryen_sexpr m_sexpr
       Binaryen.c_BinaryenModuleDispose m_ref
     WasmToolkit -> do

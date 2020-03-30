@@ -10,15 +10,6 @@ module Asterius.Backends.Binaryen
     serializeModule,
     serializeModuleSExpr,
     setColorsEnabled,
-    isColorsEnabled,
-    c_BinaryenSetDebugInfo,
-    c_BinaryenSetOptimizeLevel,
-    c_BinaryenSetShrinkLevel,
-    c_BinaryenModuleRunPasses,
-    c_BinaryenModuleOptimize,
-    c_BinaryenModuleValidate,
-    c_BinaryenModuleRead,
-    c_BinaryenModuleDispose,
   )
 where
 
@@ -36,6 +27,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
+import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as Set
 import Data.Traversable
@@ -267,7 +259,10 @@ marshalExpression tail_calls sym_map m e = flip runContT pure $ case e of
         rts <- lift $ marshalReturnTypes callReturnTypes
         lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
     | M.member ("__asterius_barf_" <> target) sym_map ->
-      lift $ marshalExpression tail_calls sym_map m $ barf target callReturnTypes
+      lift $ marshalExpression tail_calls sym_map m $
+        barf
+          target
+          callReturnTypes
     | otherwise ->
       lift $ c_BinaryenUnreachable m
   CallImport {..} -> do
@@ -345,10 +340,24 @@ marshalExpression tail_calls sym_map m e = flip runContT pure $ case e of
       (arr, _) <- marshalV [s, r]
       lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
     _ ->
-      lift $ marshalExpression tail_calls sym_map m $ barf returnCallTarget64 []
+      lift $ marshalExpression tail_calls sym_map m $
+        barf
+          returnCallTarget64
+          []
   ReturnCallIndirect {..} | tail_calls -> lift $ do
-    t <- marshalExpression tail_calls sym_map m Unary {unaryOp = WrapInt64, operand0 = returnCallIndirectTarget64}
-    c_BinaryenReturnCallIndirect m t nullPtr 0 c_BinaryenTypeNone c_BinaryenTypeNone
+    t <-
+      marshalExpression
+        tail_calls
+        sym_map
+        m
+        Unary {unaryOp = WrapInt64, operand0 = returnCallIndirectTarget64}
+    c_BinaryenReturnCallIndirect
+      m
+      t
+      nullPtr
+      0
+      c_BinaryenTypeNone
+      c_BinaryenTypeNone
   ReturnCallIndirect {..} -> do
     s <-
       lift $
@@ -404,11 +413,12 @@ marshalFunction ::
   (BinaryenType, BinaryenType) ->
   Function ->
   IO BinaryenFunctionRef
-marshalFunction tail_calls sym_map m k (pt, rt) Function {..} = flip runContT pure $ do
-  b <- lift $ marshalExpression tail_calls sym_map m body
-  (vtp, vtl) <- marshalV $ map marshalValueType varTypes
-  np <- marshalSBS k
-  lift $ c_BinaryenAddFunction m np pt rt vtp (fromIntegral vtl) b
+marshalFunction tail_calls sym_map m k (pt, rt) Function {..} =
+  flip runContT pure $ do
+    b <- lift $ marshalExpression tail_calls sym_map m body
+    (vtp, vtl) <- marshalV $ map marshalValueType varTypes
+    np <- marshalSBS k
+    lift $ c_BinaryenAddFunction m np pt rt vtp (fromIntegral vtl) b
 
 marshalFunctionImport ::
   BinaryenModuleRef ->
@@ -508,6 +518,10 @@ marshalModule ::
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
   m <- c_BinaryenModuleCreate
+  c_BinaryenModuleSetFeatures m
+    $ foldl1' (.|.)
+    $ [c_BinaryenFeatureTailCall | tail_calls]
+      <> [c_BinaryenFeatureMVP]
   ftps <- fmap M.fromList $ for (Set.toList fts) $ \ft -> do
     ftp <- marshalFunctionType ft
     pure (ft, ftp)
@@ -522,6 +536,10 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
   marshalMemorySegments tail_calls sym_map m memoryMBlocks memorySegments
   marshalMemoryImport m memoryImport
   void $ marshalMemoryExport m memoryExport
+  flip runContT pure $ do
+    lim_segs <- marshalSBS "limit-segments"
+    (lim_segs_p, _) <- marshalV [lim_segs]
+    lift $ c_BinaryenModuleRunPasses m lim_segs_p 1
   pure m
 
 relooperAddBlock ::
@@ -593,6 +611,3 @@ serializeModuleSExpr m =
 
 setColorsEnabled :: Bool -> IO ()
 setColorsEnabled b = c_BinaryenSetColorsEnabled . toEnum . fromEnum $ b
-
-isColorsEnabled :: IO Bool
-isColorsEnabled = toEnum . fromEnum <$> c_BinaryenAreColorsEnabled
