@@ -1723,6 +1723,12 @@ stg_putMVarzh ( P_ mvar, /* :: MVar a */
         jump stg_block_putmvar(mvar,val);
     }
 
+    // We are going to mutate the closure, make sure its current pointers
+    // are marked.
+    if (info == stg_MVAR_CLEAN_info) {
+        ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
+    }
+
     q = StgMVar_head(mvar);
 loop:
     if (q == stg_END_TSO_QUEUE_closure) {

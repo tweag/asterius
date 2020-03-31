@@ -32,6 +32,8 @@ HsInt offset_bdescr_free() { return offsetof(bdescr, free); }
 
 HsInt offset_bdescr_link() { return offsetof(bdescr, link); }
 
+HsInt offset_bdescr_gen_no() { return offsetof(bdescr, gen_no); }
+
 HsInt offset_bdescr_node() { return offsetof(bdescr, node); }
 
 HsInt offset_bdescr_flags() { return offsetof(bdescr, flags); }
@@ -254,6 +256,8 @@ HsInt offset_StgMutArrPtrs_size() { return offsetof(StgMutArrPtrs, size); }
 HsInt offset_StgMutArrPtrs_payload() {
   return offsetof(StgMutArrPtrs, payload);
 }
+
+HsInt offset_StgMutVar_var() { return offsetof(StgMutVar, var); }
 
 HsInt offset_StgMVar_head() { return offsetof(StgMVar, head); }
 
@@ -560,3 +564,5 @@ HsInt offset_StgStableName_sn() { return offsetof(StgStableName, sn); }
 HsInt clock_monotonic() { return CLOCK_MONOTONIC; }
 
 HsInt clock_realtime() { return CLOCK_REALTIME; }
+
+HsInt _MUT_ARR_PTRS_CARD_BITS() { return MUT_ARR_PTRS_CARD_BITS; }

@@ -35,6 +35,8 @@ foreign import ccall unsafe "offset_bdescr_free" offset_bdescr_free :: Int
 
 foreign import ccall unsafe "offset_bdescr_link" offset_bdescr_link :: Int
 
+foreign import ccall unsafe "offset_bdescr_gen_no" offset_bdescr_gen_no :: Int
+
 foreign import ccall unsafe "offset_bdescr_node" offset_bdescr_node :: Int
 
 foreign import ccall unsafe "offset_bdescr_flags" offset_bdescr_flags :: Int
@@ -240,6 +242,8 @@ foreign import ccall unsafe "offset_StgMutArrPtrs_size"
 
 foreign import ccall unsafe "offset_StgMutArrPtrs_payload"
   offset_StgMutArrPtrs_payload :: Int
+
+foreign import ccall unsafe "offset_StgMutVar_var" offset_StgMutVar_var :: Int
 
 foreign import ccall unsafe "offset_StgMVar_head" offset_StgMVar_head :: Int
 
@@ -596,3 +600,5 @@ foreign import ccall unsafe "offset_StgStableName_sn"
 foreign import ccall unsafe "clock_monotonic" clock_monotonic :: Int
 
 foreign import ccall unsafe "clock_realtime" clock_realtime :: Int
+
+foreign import ccall unsafe "_MUT_ARR_PTRS_CARD_BITS" _MUT_ARR_PTRS_CARD_BITS :: Int
