@@ -1209,16 +1209,17 @@ marshalCmmPrimCall (GHC.MO_AtomicRead GHC.W64) [dst] [addr] = do
   pure
     [ UnresolvedSetLocal
         { unresolvedLocalReg = dstr,
-          value = Load
-            { signed = False,
-              bytes  = 8,
-              offset = 0,
-              valueType = I64,
-              ptr = wrapInt64 addrr
-            }
+          value =
+            Load
+              { signed = False,
+                bytes = 8,
+                offset = 0,
+                valueType = I64,
+                ptr = wrapInt64 addrr
+              }
         }
     ]
-marshalCmmPrimCall (GHC.MO_AtomicWrite GHC.W64) [] [addr,val] = do
+marshalCmmPrimCall (GHC.MO_AtomicWrite GHC.W64) [] [addr, val] = do
   addrr <- fst <$> marshalCmmExpr addr
   valr <- fst <$> marshalCmmExpr val
   pure
@@ -1230,7 +1231,7 @@ marshalCmmPrimCall (GHC.MO_AtomicWrite GHC.W64) [] [addr,val] = do
           valueType = I64
         }
     ]
-marshalCmmPrimCall (GHC.MO_Cmpxchg GHC.W64) [dst] [addr,oldv,newv] = do
+marshalCmmPrimCall (GHC.MO_Cmpxchg GHC.W64) [dst] [addr, oldv, newv] = do
   -- Copied from GHC.Prim:
   --
   -- Given an array, an offset in Int units, the expected old value, and
@@ -1242,27 +1243,31 @@ marshalCmmPrimCall (GHC.MO_Cmpxchg GHC.W64) [dst] [addr,oldv,newv] = do
   addrr <- fst <$> marshalCmmExpr addr
   oldr <- fst <$> marshalCmmExpr oldv
   newr <- fst <$> marshalCmmExpr newv
-  let expr1 = UnresolvedSetLocal
-        { unresolvedLocalReg = dstr,
-          value = Load
-            { signed = False,  -- in Cmm everything is unsigned
-              bytes  = 8,
-              offset = 0,      -- StgCmmPrim.doAtomicRMW has done the work
-              valueType = I64,
-              ptr = wrapInt64 addrr
-            }
-        }
-  let expr2 = If
-        { condition = UnresolvedGetLocal dstr `eqInt64` oldr,
-          ifTrue = Store
-            { bytes = 8,
-              offset = 0,
-              ptr = wrapInt64 addrr,
-              value = newr,
-              valueType = I64
-            },
-          ifFalse = Nothing
-        }
+  let expr1 =
+        UnresolvedSetLocal
+          { unresolvedLocalReg = dstr,
+            value =
+              Load
+                { signed = False, -- in Cmm everything is unsigned
+                  bytes = 8,
+                  offset = 0, -- StgCmmPrim.doAtomicRMW has done the work
+                  valueType = I64,
+                  ptr = wrapInt64 addrr
+                }
+          }
+  let expr2 =
+        If
+          { condition = UnresolvedGetLocal dstr `eqInt64` oldr,
+            ifTrue =
+              Store
+                { bytes = 8,
+                  offset = 0,
+                  ptr = wrapInt64 addrr,
+                  value = newr,
+                  valueType = I64
+                },
+            ifFalse = Nothing
+          }
   pure [expr1, expr2]
 -- Uncovered cases
 marshalCmmPrimCall op rs xs =
@@ -1274,39 +1279,46 @@ marshalCmmPrimCall op rs xs =
 
 -- | Marshal an atomic MachOp.
 marshalCmmAtomicMachOpPrimCall ::
-  GHC.AtomicMachOp  {- ^ The atomic machop to marshal -} ->
-  GHC.LocalReg  {- ^ The destination register -} ->
-  GHC.CmmExpr  {- ^ The address -} ->
-  GHC.CmmExpr  {- ^ The second operand (I64) -} ->
+  -- | The atomic machop to marshal
+  GHC.AtomicMachOp ->
+  -- | The destination register
+  GHC.LocalReg ->
+  -- | The address
+  GHC.CmmExpr ->
+  -- | The second operand (I64)
+  GHC.CmmExpr ->
   CodeGen [Expression]
 marshalCmmAtomicMachOpPrimCall machop dst addr n = do
   dstr <- marshalTypedCmmLocalReg dst I64
   addrr <- fst <$> marshalCmmExpr addr
   nr <- fst <$> marshalCmmExpr n
   let fn = case machop of
-             GHC.AMO_Add -> addInt64
-             GHC.AMO_Sub -> subInt64
-             GHC.AMO_And -> andInt64
-             GHC.AMO_Nand -> nandInt64
-             GHC.AMO_Or -> orInt64
-             GHC.AMO_Xor -> xorInt64
-  let expr1 = UnresolvedSetLocal
-        { unresolvedLocalReg = dstr,
-          value = Load
-            { signed = False,  -- in Cmm everything is unsigned
-              bytes  = 8,
-              offset = 0,      -- StgCmmPrim.doAtomicRMW has done the work
-              valueType = I64,
-              ptr = wrapInt64 addrr
-            }
-        }
-  let expr2 = Store
-        { bytes = 8,
-          offset = 0,
-          ptr = wrapInt64 addrr,
-          value = fn (UnresolvedGetLocal dstr) nr,
-          valueType = I64
-        }
+        GHC.AMO_Add -> addInt64
+        GHC.AMO_Sub -> subInt64
+        GHC.AMO_And -> andInt64
+        GHC.AMO_Nand -> nandInt64
+        GHC.AMO_Or -> orInt64
+        GHC.AMO_Xor -> xorInt64
+  let expr1 =
+        UnresolvedSetLocal
+          { unresolvedLocalReg = dstr,
+            value =
+              Load
+                { signed = False, -- in Cmm everything is unsigned
+                  bytes = 8,
+                  offset = 0, -- StgCmmPrim.doAtomicRMW has done the work
+                  valueType = I64,
+                  ptr = wrapInt64 addrr
+                }
+          }
+  let expr2 =
+        Store
+          { bytes = 8,
+            offset = 0,
+            ptr = wrapInt64 addrr,
+            value = fn (UnresolvedGetLocal dstr) nr,
+            valueType = I64
+          }
   pure [expr1, expr2]
 
 marshalCmmUnsafeCall ::
