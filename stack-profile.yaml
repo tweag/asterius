@@ -1,3 +1,11 @@
+apply-ghc-options: everything
+rebuild-ghc-options: true
+ghc-options:
+  "$everything": -fno-prof-auto
+build:
+  library-profiling: true
+  executable-profiling: true
+
 resolver: lts-15.5
 extra-deps:
   - https://github.com/tweag/binaryen/archive/ca6488162da5db8feb0d82e6108d071886aced1b.tar.gz
