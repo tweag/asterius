@@ -1,9 +1,19 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
+-- |
+-- Module      :  Asterius.Backends.Binaryen
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Elaboration of Asterius types into the Binaryen AST (as defined in the
+-- [binaryen package](https://github.com/tweag/binaryen)).
 module Asterius.Backends.Binaryen
   ( MarshalError (..),
     marshalModule,
@@ -23,6 +33,7 @@ import Bindings.Binaryen.Raw
 import Control.Exception
 import Control.Monad
 import Control.Monad.Cont
+import Control.Monad.Reader
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString.Unsafe as BS
@@ -207,164 +218,219 @@ marshalFunctionType FunctionType {..} = flip runContT pure $ do
     rt <- c_BinaryenTypeCreate rts (fromIntegral rtl)
     pure (pt, rt)
 
-marshalExpression ::
-  Bool ->
-  M.Map AsteriusEntitySymbol Int64 ->
-  BinaryenModuleRef ->
-  Expression ->
-  IO BinaryenExpressionRef
-marshalExpression tail_calls sym_map m e = flip runContT pure $ case e of
+-- TODO: there is a similar definition in Asterius.Backends.WasmToolkit. Maybe
+-- we should just move shared stuff into Asterius.Types (or another shared file).
+type SymbolMap = M.Map AsteriusEntitySymbol Int64
+
+-- | Environment used during marshaling of Asterius' types to Binaryen.
+data MarshalEnv
+  = MarshalEnv
+      { -- | Whether the tail call extension is on.
+        envAreTailCallsOn :: Bool,
+        -- | The symbol map for the current module.
+        envSymbolMap :: SymbolMap,
+        -- | The current module reference.
+        envModuleRef :: BinaryenModuleRef
+      }
+
+type CodeGen a = ReaderT MarshalEnv IO a
+
+-- | Check whether the tail call extension is on.
+areTailCallsOn :: CodeGen Bool
+areTailCallsOn = reader envAreTailCallsOn
+
+-- | Retrieve the symbol map from the local environment.
+askSymbolMap :: CodeGen SymbolMap
+askSymbolMap = reader envSymbolMap
+
+-- | Retrieve the reference to the current module.
+askModuleRef :: CodeGen BinaryenModuleRef
+askModuleRef = reader envModuleRef
+
+marshalExpression :: Expression -> CodeGen BinaryenExpressionRef
+marshalExpression e = case e of
   Block {..} -> do
-    bs <- lift $ forM bodys $ marshalExpression tail_calls sym_map m
-    (bsp, bl) <- marshalV bs
-    np <- marshalSBS name
-    rts <- lift $ marshalReturnTypes blockReturnTypes
-    lift $ c_BinaryenBlock m np bsp (fromIntegral bl) rts
-  If {..} -> lift $ do
-    c <- marshalExpression tail_calls sym_map m condition
-    t <- marshalExpression tail_calls sym_map m ifTrue
-    f <- marshalMaybeExpression tail_calls sym_map m ifFalse
-    c_BinaryenIf m c t f
+    env <- ask
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      bs <- lift $ flip runReaderT env $ forM bodys marshalExpression
+      (bsp, bl) <- marshalV bs
+      np <- marshalSBS name
+      rts <- lift $ marshalReturnTypes blockReturnTypes
+      lift $ c_BinaryenBlock m np bsp (fromIntegral bl) rts
+  If {..} -> do
+    c <- marshalExpression condition
+    t <- marshalExpression ifTrue
+    f <- marshalMaybeExpression ifFalse
+    m <- askModuleRef
+    lift $ c_BinaryenIf m c t f
   Loop {..} -> do
-    b <- lift $ marshalExpression tail_calls sym_map m body
-    np <- marshalSBS name
-    lift $ c_BinaryenLoop m np b
+    b <- marshalExpression body
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      np <- marshalSBS name
+      lift $ c_BinaryenLoop m np b
   Break {..} -> do
-    c <- lift $ marshalMaybeExpression tail_calls sym_map m breakCondition
-    np <- marshalSBS name
-    lift $ c_BinaryenBreak m np c nullPtr
+    c <- marshalMaybeExpression breakCondition
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      np <- marshalSBS name
+      lift $ c_BinaryenBreak m np c nullPtr
   Switch {..} -> do
-    c <- lift $ marshalExpression tail_calls sym_map m condition
-    ns <- forM names marshalSBS
-    (nsp, nl) <- marshalV ns
-    dn <- marshalSBS defaultName
-    lift $ c_BinaryenSwitch m nsp (fromIntegral nl) dn c nullPtr
-  Call {..}
-    | M.member target sym_map ->
-      do
-        os <-
-          lift
-            $ forM
-              ( if target == "barf"
-                  then
-                    [ case operands of
-                        [] -> ConstI64 0
-                        x : _ -> x
-                    ]
-                  else operands
-              )
-            $ marshalExpression tail_calls sym_map m
-        (ops, osl) <- marshalV os
-        tp <- marshalSBS (entityName target)
-        rts <- lift $ marshalReturnTypes callReturnTypes
-        lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
-    | M.member ("__asterius_barf_" <> target) sym_map ->
-      lift $ marshalExpression tail_calls sym_map m $
-        barf
-          target
-          callReturnTypes
-    | otherwise ->
-      lift $ c_BinaryenUnreachable m
+    c <- marshalExpression condition
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      ns <- forM names marshalSBS
+      (nsp, nl) <- marshalV ns
+      dn <- marshalSBS defaultName
+      lift $ c_BinaryenSwitch m nsp (fromIntegral nl) dn c nullPtr
+  Call {..} -> do
+    sym_map <- askSymbolMap
+    if  | M.member target sym_map ->
+          do
+            os <-
+              mapM
+                marshalExpression
+                ( if target == "barf"
+                    then
+                      [ case operands of
+                          [] -> ConstI64 0
+                          x : _ -> x
+                      ]
+                    else operands
+                )
+            m <- askModuleRef
+            lift $ flip runContT pure $ do
+              (ops, osl) <- marshalV os
+              tp <- marshalSBS (entityName target)
+              rts <- lift $ marshalReturnTypes callReturnTypes
+              lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
+        | M.member ("__asterius_barf_" <> target) sym_map ->
+          marshalExpression $ barf target callReturnTypes
+        | otherwise -> do
+          m <- askModuleRef
+          lift $ c_BinaryenUnreachable m
   CallImport {..} -> do
-    os <- lift $ forM operands $ marshalExpression tail_calls sym_map m
-    (ops, osl) <- marshalV os
-    tp <- marshalSBS target'
-    rts <- lift $ marshalReturnTypes callImportReturnTypes
-    lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
+    os <- forM operands marshalExpression
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      (ops, osl) <- marshalV os
+      tp <- marshalSBS target'
+      rts <- lift $ marshalReturnTypes callImportReturnTypes
+      lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
   CallIndirect {..} -> do
-    t <- lift $ marshalExpression tail_calls sym_map m indirectTarget
-    os <- lift $ forM operands $ marshalExpression tail_calls sym_map m
-    (ops, osl) <- marshalV os
-    lift $ do
-      (pt, rt) <- marshalFunctionType functionType
-      c_BinaryenCallIndirect m t ops (fromIntegral osl) pt rt
-  GetLocal {..} ->
+    t <- marshalExpression indirectTarget
+    os <- forM operands marshalExpression
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      (ops, osl) <- marshalV os
+      lift $ do
+        (pt, rt) <- marshalFunctionType functionType
+        c_BinaryenCallIndirect m t ops (fromIntegral osl) pt rt
+  GetLocal {..} -> do
+    m <- askModuleRef
     lift $ c_BinaryenLocalGet m index $ marshalValueType valueType
-  SetLocal {..} -> lift $ do
-    v <- marshalExpression tail_calls sym_map m value
-    c_BinaryenLocalSet m index v
-  TeeLocal {..} -> lift $ do
-    v <- marshalExpression tail_calls sym_map m value
-    c_BinaryenLocalTee m index v $ marshalValueType valueType
-  Load {..} -> lift $ do
-    p <- marshalExpression tail_calls sym_map m ptr
-    c_BinaryenLoad
-      m
-      bytes
-      (marshalBool signed)
-      offset
-      1
-      (marshalValueType valueType)
-      p
-  Store {..} -> lift $ do
-    p <- marshalExpression tail_calls sym_map m ptr
-    v <- marshalExpression tail_calls sym_map m value
-    c_BinaryenStore m bytes offset 1 p v (marshalValueType valueType)
-  ConstI32 x -> lift $ c_BinaryenConstInt32 m x
-  ConstI64 x -> lift $ c_BinaryenConstInt64 m x
-  ConstF32 x -> lift $ c_BinaryenConstFloat32 m x
-  ConstF64 x -> lift $ c_BinaryenConstFloat64 m x
-  Unary {..} -> lift $ do
-    x <- marshalExpression tail_calls sym_map m operand0
-    c_BinaryenUnary m (marshalUnaryOp unaryOp) x
-  Binary {..} -> lift $ do
-    x <- marshalExpression tail_calls sym_map m operand0
-    y <- marshalExpression tail_calls sym_map m operand1
-    c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
-  Drop {..} -> lift $ do
-    x <- marshalExpression tail_calls sym_map m dropValue
-    c_BinaryenDrop m x
-  ReturnCall {..} | tail_calls -> do
-    dst <- marshalSBS (coerce returnCallTarget64)
-    lift $ c_BinaryenReturnCall m dst nullPtr 0 c_BinaryenTypeNone
-  ReturnCall {..} -> case M.lookup returnCallTarget64 sym_map of
-    Just t -> do
-      s <-
-        lift $
-          marshalExpression
-            tail_calls
-            sym_map
-            m
-            Store
-              { bytes = 8,
-                offset = 0,
-                ptr =
-                  ConstI32
-                    $ fromIntegral
-                    $ (sym_map ! "__asterius_pc")
-                      .&. 0xFFFFFFFF,
-                value = ConstI64 t,
-                valueType = I64
-              }
-      r <- lift $ c_BinaryenReturn m nullPtr
-      (arr, _) <- marshalV [s, r]
-      lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
-    _ ->
-      lift $ marshalExpression tail_calls sym_map m $
-        barf
-          returnCallTarget64
-          []
-  ReturnCallIndirect {..} | tail_calls -> lift $ do
-    t <-
-      marshalExpression
-        tail_calls
-        sym_map
+  SetLocal {..} -> do
+    v <- marshalExpression value
+    m <- askModuleRef
+    lift $ c_BinaryenLocalSet m index v
+  TeeLocal {..} -> do
+    v <- marshalExpression value
+    m <- askModuleRef
+    lift $ c_BinaryenLocalTee m index v $ marshalValueType valueType
+  Load {..} -> do
+    p <- marshalExpression ptr
+    m <- askModuleRef
+    lift $
+      c_BinaryenLoad
         m
-        Unary {unaryOp = WrapInt64, operand0 = returnCallIndirectTarget64}
-    c_BinaryenReturnCallIndirect
-      m
-      t
-      nullPtr
-      0
-      c_BinaryenTypeNone
-      c_BinaryenTypeNone
-  ReturnCallIndirect {..} -> do
-    s <-
-      lift $
+        bytes
+        (marshalBool signed)
+        offset
+        1
+        (marshalValueType valueType)
+        p
+  Store {..} -> do
+    p <- marshalExpression ptr
+    v <- marshalExpression value
+    m <- askModuleRef
+    lift $ c_BinaryenStore m bytes offset 1 p v (marshalValueType valueType)
+  ConstI32 x -> do
+    m <- askModuleRef
+    lift $ c_BinaryenConstInt32 m x
+  ConstI64 x -> do
+    m <- askModuleRef
+    lift $ c_BinaryenConstInt64 m x
+  ConstF32 x -> do
+    m <- askModuleRef
+    lift $ c_BinaryenConstFloat32 m x
+  ConstF64 x -> do
+    m <- askModuleRef
+    lift $ c_BinaryenConstFloat64 m x
+  Unary {..} -> do
+    x <- marshalExpression operand0
+    m <- askModuleRef
+    lift $ c_BinaryenUnary m (marshalUnaryOp unaryOp) x
+  Binary {..} -> do
+    x <- marshalExpression operand0
+    y <- marshalExpression operand1
+    m <- askModuleRef
+    lift $ c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
+  Drop {..} -> do
+    x <- marshalExpression dropValue
+    m <- askModuleRef
+    lift $ c_BinaryenDrop m x
+  ReturnCall {..} -> areTailCallsOn >>= \case
+    -- Case 1: Tail calls are on
+    True -> do
+      m <- askModuleRef
+      lift $ flip runContT pure $ do
+        dst <- marshalSBS (coerce returnCallTarget64)
+        lift $ c_BinaryenReturnCall m dst nullPtr 0 c_BinaryenTypeNone
+    -- Case 2: Tail calls are off
+    False -> do
+      sym_map <- askSymbolMap
+      case M.lookup returnCallTarget64 sym_map of
+        Just t -> do
+          s <-
+            marshalExpression
+              Store
+                { bytes = 8,
+                  offset = 0,
+                  ptr =
+                    ConstI32
+                      $ fromIntegral
+                      $ (sym_map ! "__asterius_pc")
+                        .&. 0xFFFFFFFF,
+                  value = ConstI64 t,
+                  valueType = I64
+                }
+          m <- askModuleRef
+          lift $ flip runContT pure $ do
+            r <- lift $ c_BinaryenReturn m nullPtr
+            (arr, _) <- marshalV [s, r]
+            lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
+        Nothing -> marshalExpression $ barf returnCallTarget64 []
+  ReturnCallIndirect {..} -> areTailCallsOn >>= \case
+    -- Case 1: Tail calls are on
+    True -> do
+      t <-
         marshalExpression
-          tail_calls
-          sym_map
+          Unary {unaryOp = WrapInt64, operand0 = returnCallIndirectTarget64}
+      m <- askModuleRef
+      lift $
+        c_BinaryenReturnCallIndirect
           m
+          t
+          nullPtr
+          0
+          c_BinaryenTypeNone
+          c_BinaryenTypeNone
+    -- Case 2: Tail calls are off
+    False -> do
+      sym_map <- askSymbolMap
+      s <-
+        marshalExpression
           Store
             { bytes = 8,
               offset = 0,
@@ -376,46 +442,54 @@ marshalExpression tail_calls sym_map m e = flip runContT pure $ case e of
               value = returnCallIndirectTarget64,
               valueType = I64
             }
-    r <- lift $ c_BinaryenReturn m nullPtr
-    (arr, _) <- marshalV [s, r]
-    lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
+      m <- askModuleRef
+      lift $ flip runContT pure $ do
+        r <- lift $ c_BinaryenReturn m nullPtr
+        (arr, _) <- marshalV [s, r]
+        lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
   Host {..} -> do
-    xs <- lift $ forM operands $ marshalExpression tail_calls sym_map m
-    (es, en) <- marshalV xs
-    lift $ c_BinaryenHost m (marshalHostOp hostOp) nullPtr es (fromIntegral en)
-  Nop -> lift $ c_BinaryenNop m
-  Unreachable -> lift $ c_BinaryenUnreachable m
-  CFG {..} -> lift $ relooperRun tail_calls sym_map m graph
-  Symbol {..} -> lift $ case M.lookup unresolvedSymbol sym_map of
-    Just x -> c_BinaryenConstInt64 m $ x + fromIntegral symbolOffset
-    _
-      | M.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
-        marshalExpression tail_calls sym_map m $ barf unresolvedSymbol [I64]
-      | otherwise ->
-        c_BinaryenConstInt64 m invalidAddress
-  _ -> lift $ throwIO $ UnsupportedExpression e
+    xs <- forM operands marshalExpression
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      (es, en) <- marshalV xs
+      lift $ c_BinaryenHost m (marshalHostOp hostOp) nullPtr es (fromIntegral en)
+  Nop -> do
+    m <- askModuleRef
+    lift $ c_BinaryenNop m
+  Unreachable -> do
+    m <- askModuleRef
+    lift $ c_BinaryenUnreachable m
+  CFG {..} -> relooperRun graph
+  Symbol {..} -> do
+    sym_map <- askSymbolMap
+    m <- askModuleRef
+    case M.lookup unresolvedSymbol sym_map of
+      Just x -> lift $ c_BinaryenConstInt64 m $ x + fromIntegral symbolOffset
+      _
+        | M.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
+          marshalExpression $ barf unresolvedSymbol [I64]
+        | otherwise ->
+          lift $ c_BinaryenConstInt64 m invalidAddress
+  -- Unsupported expressions
+  UnresolvedGetLocal {} -> lift $ throwIO $ UnsupportedExpression e
+  UnresolvedSetLocal {} -> lift $ throwIO $ UnsupportedExpression e
+  Barf {} -> lift $ throwIO $ UnsupportedExpression e
 
-marshalMaybeExpression ::
-  Bool ->
-  M.Map AsteriusEntitySymbol Int64 ->
-  BinaryenModuleRef ->
-  Maybe Expression ->
-  IO BinaryenExpressionRef
-marshalMaybeExpression tail_calls sym_map m x = case x of
-  Just e -> marshalExpression tail_calls sym_map m e
+marshalMaybeExpression :: Maybe Expression -> CodeGen BinaryenExpressionRef
+marshalMaybeExpression x = case x of
+  Just e -> marshalExpression e
   _ -> pure nullPtr
 
 marshalFunction ::
-  Bool ->
-  M.Map AsteriusEntitySymbol Int64 ->
-  BinaryenModuleRef ->
   SBS.ShortByteString ->
   (BinaryenType, BinaryenType) ->
   Function ->
-  IO BinaryenFunctionRef
-marshalFunction tail_calls sym_map m k (pt, rt) Function {..} =
-  flip runContT pure $ do
-    b <- lift $ marshalExpression tail_calls sym_map m body
+  CodeGen BinaryenFunctionRef
+marshalFunction k (pt, rt) Function {..} = do
+  env <- ask
+  m <- askModuleRef
+  lift $ flip runContT pure $ do
+    b <- lift $ flip runReaderT env $ marshalExpression body
     (vtp, vtl) <- marshalV $ map marshalValueType varTypes
     np <- marshalSBS k
     lift $ c_BinaryenAddFunction m np pt rt vtp (fromIntegral vtl) b
@@ -452,40 +526,36 @@ marshalFunctionTable m tbl_slots FunctionTable {..} = flip runContT pure $ do
       (fromIntegral fnl)
       o
 
-marshalMemorySegments ::
-  Bool ->
-  M.Map AsteriusEntitySymbol Int64 ->
-  BinaryenModuleRef ->
-  Int ->
-  [DataSegment] ->
-  IO ()
-marshalMemorySegments tail_calls sym_map m mbs segs =
+marshalMemorySegments :: Int -> [DataSegment] -> CodeGen ()
+marshalMemorySegments mbs segs = do
+  env <- ask
+  m <- askModuleRef
   let segs_len = length segs
-   in flip runContT pure $ do
-        (seg_bufs, _) <- marshalV =<< for segs (marshalSBS . content)
-        (seg_passives, _) <- marshalV $ replicate segs_len 0
-        (seg_offsets, _) <-
-          marshalV
-            =<< for
-              segs
-              ( \DataSegment {..} ->
-                  lift $ marshalExpression tail_calls sym_map m $ ConstI32 offset
-              )
-        (seg_sizes, _) <-
-          marshalV $
-            map (fromIntegral . SBS.length . content) segs
-        lift $
-          c_BinaryenSetMemory
-            m
-            (fromIntegral $ mbs * (mblock_size `quot` 65536))
-            (-1)
-            nullPtr
-            seg_bufs
-            seg_passives
-            seg_offsets
-            seg_sizes
-            (fromIntegral segs_len)
-            0
+  lift $ flip runContT pure $ do
+    (seg_bufs, _) <- marshalV =<< for segs (marshalSBS . content)
+    (seg_passives, _) <- marshalV $ replicate segs_len 0
+    (seg_offsets, _) <-
+      marshalV
+        =<< for
+          segs
+          ( \DataSegment {..} ->
+              lift $ flip runReaderT env $ marshalExpression $ ConstI32 offset
+          )
+    (seg_sizes, _) <-
+      marshalV $
+        map (fromIntegral . SBS.length . content) segs
+    lift $
+      c_BinaryenSetMemory
+        m
+        (fromIntegral $ mbs * (mblock_size `quot` 65536))
+        (-1)
+        nullPtr
+        seg_bufs
+        seg_passives
+        seg_offsets
+        seg_sizes
+        (fromIntegral segs_len)
+        0
 
 marshalTableImport :: BinaryenModuleRef -> TableImport -> IO ()
 marshalTableImport m TableImport {..} = flip runContT pure $ do
@@ -525,15 +595,21 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
   ftps <- fmap M.fromList $ for (Set.toList fts) $ \ft -> do
     ftp <- marshalFunctionType ft
     pure (ft, ftp)
+  let env =
+        MarshalEnv
+          { envAreTailCallsOn = tail_calls,
+            envSymbolMap = sym_map,
+            envModuleRef = m
+          }
   for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
-    marshalFunction tail_calls sym_map m k (ftps ! functionType) f
+    flip runReaderT env $ marshalFunction k (ftps ! functionType) f
   forM_ functionImports $ \fi@FunctionImport {..} ->
     marshalFunctionImport m (ftps ! functionType) fi
   forM_ functionExports $ marshalFunctionExport m
   marshalFunctionTable m tableSlots functionTable
   marshalTableImport m tableImport
   void $ marshalTableExport m tableExport
-  marshalMemorySegments tail_calls sym_map m memoryMBlocks memorySegments
+  flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments
   marshalMemoryImport m memoryImport
   void $ marshalMemoryExport m memoryExport
   flip runContT pure $ do
@@ -542,35 +618,26 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
     lift $ c_BinaryenModuleRunPasses m lim_segs_p 1
   pure m
 
-relooperAddBlock ::
-  Bool ->
-  M.Map AsteriusEntitySymbol Int64 ->
-  BinaryenModuleRef ->
-  RelooperRef ->
-  RelooperAddBlock ->
-  IO RelooperBlockRef
-relooperAddBlock tail_calls sym_map m r ab = case ab of
+relooperAddBlock :: RelooperRef -> RelooperAddBlock -> CodeGen RelooperBlockRef
+relooperAddBlock r ab = case ab of
   AddBlock {..} -> do
-    c <- marshalExpression tail_calls sym_map m code
-    c_RelooperAddBlock r c
+    c <- marshalExpression code
+    lift $ c_RelooperAddBlock r c
   AddBlockWithSwitch {..} -> do
-    _code <- marshalExpression tail_calls sym_map m code
-    _cond <- marshalExpression tail_calls sym_map m condition
-    c_RelooperAddBlockWithSwitch r _code _cond
+    _code <- marshalExpression code
+    _cond <- marshalExpression condition
+    lift $ c_RelooperAddBlockWithSwitch r _code _cond
 
 relooperAddBranch ::
-  Bool ->
-  M.Map AsteriusEntitySymbol Int64 ->
-  BinaryenModuleRef ->
   M.Map SBS.ShortByteString RelooperBlockRef ->
   SBS.ShortByteString ->
   RelooperAddBranch ->
-  IO ()
-relooperAddBranch tail_calls sym_map m bm k ab = case ab of
+  CodeGen ()
+relooperAddBranch bm k ab = case ab of
   AddBranch {..} -> do
-    _cond <- marshalMaybeExpression tail_calls sym_map m addBranchCondition
-    c_RelooperAddBranch (bm ! k) (bm ! to) _cond nullPtr
-  AddBranchForSwitch {..} -> flip runContT pure $ do
+    _cond <- marshalMaybeExpression addBranchCondition
+    lift $ c_RelooperAddBranch (bm ! k) (bm ! to) _cond nullPtr
+  AddBranchForSwitch {..} -> lift $ flip runContT pure $ do
     (idp, idn) <- marshalV indexes
     lift $
       c_RelooperAddBranchForSwitch
@@ -580,21 +647,17 @@ relooperAddBranch tail_calls sym_map m bm k ab = case ab of
         (fromIntegral idn)
         nullPtr
 
-relooperRun ::
-  Bool ->
-  M.Map AsteriusEntitySymbol Int64 ->
-  BinaryenModuleRef ->
-  RelooperRun ->
-  IO BinaryenExpressionRef
-relooperRun tail_calls sym_map m RelooperRun {..} = do
-  r <- c_RelooperCreate m
+relooperRun :: RelooperRun -> CodeGen BinaryenExpressionRef
+relooperRun RelooperRun {..} = do
+  m <- askModuleRef
+  r <- lift $ c_RelooperCreate m
   bpm <- fmap fromList $ for (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
     do
-      bp <- relooperAddBlock tail_calls sym_map m r addBlock
+      bp <- relooperAddBlock r addBlock
       pure (k, bp)
   for_ (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
-    forM_ addBranches $ relooperAddBranch tail_calls sym_map m bpm k
-  c_RelooperRenderAndDispose r (bpm ! entry) labelHelper
+    forM_ addBranches $ relooperAddBranch bpm k
+  lift $ c_RelooperRenderAndDispose r (bpm ! entry) labelHelper
 
 serializeModule :: BinaryenModuleRef -> IO BS.ByteString
 serializeModule m = alloca $ \(buf_p :: Ptr (Ptr ())) ->
