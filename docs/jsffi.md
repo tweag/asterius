@@ -137,9 +137,9 @@ In the source text of a `foreign import javascript` declaration, one can access
 everything in the global scope and the function arguments. Additionally, there
 is an `__asterius_jsffi` binding which represents the asterius instance object.
 `__asterius_jsffi` exposes certain interfaces for power users, e.g.
-`__asterius_exposeMemory()` which exposes a memory region as a JavaScript typed
-array. The interfaces are largely undocumented and not likely to be useful to
-regular users.
+`__asterius_jsffi.exposeMemory()` which exposes a memory region as a JavaScript
+typed array. The interfaces are largely undocumented and not likely to be useful
+to regular users.
 
 There is one usage of `__asterius_jsffi` which may be useful to regular users
 though. Say that we'd like the JSFFI import code to call some 3rd-party library
