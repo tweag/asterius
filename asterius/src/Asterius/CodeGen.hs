@@ -1201,7 +1201,7 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
         }
   pure [quotout, remout]
 -- Atomic operations
-marshalCmmPrimCall (GHC.MO_AtomicRMW GHC.W64 amop) [dst] [addr,n] =
+marshalCmmPrimCall (GHC.MO_AtomicRMW GHC.W64 amop) [dst] [addr, n] =
   marshalCmmAtomicMachOpPrimCall amop dst addr n
 marshalCmmPrimCall (GHC.MO_AtomicRead GHC.W64) [dst] [addr] = do
   dstr <- marshalTypedCmmLocalReg dst I64
