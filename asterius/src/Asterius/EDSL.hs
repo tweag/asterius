@@ -65,6 +65,8 @@ module Asterius.EDSL
     switchI64,
     module Asterius.EDSL.BinaryOp,
     module Asterius.EDSL.UnaryOp,
+    notInt64,
+    nandInt64,
     symbol,
     symbol',
     constI32,
@@ -316,6 +318,14 @@ storeF64 bp o = putLVal $ pointerF64 bp o
 
 storeF32 :: Expression -> Int -> Expression -> EDSL ()
 storeF32 bp o = putLVal $ pointerF32 bp o
+
+-- | Encode not using xor.
+notInt64 :: Expression -> Expression
+notInt64 e = e `xorInt64` constI64 0xFFFFFFFFFFFFFFFF
+
+-- | Encode a nand using a not and an and.
+nandInt64 :: Expression -> Expression -> Expression
+nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
