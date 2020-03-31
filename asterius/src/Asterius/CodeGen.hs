@@ -1200,7 +1200,6 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
               }
         }
   pure [quotout, remout]
-
 -- Atomic operations
 marshalCmmPrimCall (GHC.MO_AtomicRMW GHC.W64 amop) [dst] [addr,n] =
   marshalCmmAtomicMachOpPrimCall amop dst addr n
@@ -1275,10 +1274,10 @@ marshalCmmPrimCall op rs xs =
 
 -- | Marshal an atomic MachOp.
 marshalCmmAtomicMachOpPrimCall ::
-  GHC.AtomicMachOp ->  -- ^ The atomic machop to marshal
-  GHC.LocalReg ->  -- ^ The destination register
-  GHC.CmmExpr ->  -- ^ The address
-  GHC.CmmExpr ->  -- ^ The second operand (I64)
+  GHC.AtomicMachOp  {- ^ The atomic machop to marshal -} ->
+  GHC.LocalReg  {- ^ The destination register -} ->
+  GHC.CmmExpr  {- ^ The address -} ->
+  GHC.CmmExpr  {- ^ The second operand (I64) -} ->
   CodeGen [Expression]
 marshalCmmAtomicMachOpPrimCall machop dst addr n = do
   dstr <- marshalTypedCmmLocalReg dst I64
