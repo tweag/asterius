@@ -217,8 +217,6 @@ marshalFunctionType FunctionType {..} = flip runContT pure $ do
     rt <- c_BinaryenTypeCreate rts (fromIntegral rtl)
     pure (pt, rt)
 
--- ----------------------------------------------------------------------------
-
 -- TODO: there is a similar definition in Asterius.Backends.WasmToolkit. Maybe
 -- we should just move shared stuff into Asterius.Types (or another shared file).
 type SymbolMap = M.Map AsteriusEntitySymbol Int64
@@ -247,8 +245,6 @@ askSymbolMap = reader envSymbolMap
 -- | Retrieve the reference to the current module.
 askModuleRef :: CodeGen BinaryenModuleRef
 askModuleRef = reader envModuleRef
-
--- ----------------------------------------------------------------------------
 
 marshalExpression :: Expression -> CodeGen BinaryenExpressionRef
 marshalExpression e = case e of
