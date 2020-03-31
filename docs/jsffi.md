@@ -13,7 +13,7 @@ as function arguments and return values in either JSFFI imports or exports:
 
 * Regular Haskell value types like `Int`, `Ptr`, `StablePtr`, etc. When the
   `MagicHash` and `UnliftedFFITypes` extensions are enabled, some unboxed types
-  like `Int#` is also supported.
+  like `Int#` are also supported.
 * The `JSVal` type and its `newtype`s.
 * The `Any` type.
 
@@ -211,97 +211,3 @@ only once. For such one-shot exports, use `foreign import javascript "wrapper
 oneshot"`. The runtime will automatically free the resources once the exported
 JavaScript is invoked, and there'll be no need to manually call
 `freeHaskellCallback` for one-shot exports.
-
-## Implementation
-
-TODO: legacy content ahead!
-
-This subsection presents a high-level overview on the implementation of JSFFI,
-based on the information flow from syntactic sugar to generated
-WebAssembly/JavaScript code. It's not a required reading for *users* of the
-JSFFI feature.
-
-### Hooking typechecker/desugarer
-
-Vanilla GHC doesn't support typechecking/desugaring foreign declarations whose
-calling convention is `javascript`. However, it does provide `dsForeignsHook`,
-`tcForeignImportsHook` and `tcForeignExportsHook` for overriding
-typechecker/desugarer behavior. The mechanism was intended for use by ghcjs.
-We've implemented our JSFFI-related hooks in
-[`Asterius.Foreign`](https://github.com/tweag/asterius/blob/master/asterius/src/Asterius/Foreign.hs).
-
-### Rewriting from JSFFI to C FFI
-
-As documented in previous sections, one can write `foreign import javascript` or
-`foreign export javascript` clauses in a `.hs` module. The logic to process this
-syntax at compile-time resides in
-[`Asterius.Foreign.Internals`](https://github.com/tweag/asterius/blob/master/asterius/src/Asterius/Foreign/Internals.hs).
-
-The hooks we described in the previous subsection imports
-`Asterius.Foreign.Internals`, and call `processFFIImport` or `processFFIExport`
-when it's handling a foreign declaration. When the calling convention is
-`javascript`, they parse the type signature, store the info in a mutable
-variable, and then rewrite the original declaration's calling convention to
-normal `ccall`, so subsequent desugar and codegen can proceed as normal.
-
-After all foreign declarations in a module are processed, the relevant
-`FFIMarshalState` indexed by the module name can be fetched, and a "stub module"
-of type `AsteriusModule` can be fetched given the current
-`AsteriusModuleSymbol`. Both `AsteriusModule` and `FFIMarshalState` types has
-`Semigroup` & `Monoid` instances so they can be combined later at link-time.
-
-### The JSFFI types
-
-In
-[`Asterius.Types`](https://github.com/tweag/asterius/blob/master/asterius/src/Asterius/Types.hs),
-we define `FFIValueType` and `FFIFunctionType` to represent the JSFFI argument &
-return value types, and the import/export function types. They contain more
-information than normal `ValueType` and `FunctionType` which we use for emitting
-normal wasm code:
-
-* `FFIValueType` has two variants: `FFI_VAL` and `FFI_JSVAL`. `FFI_VAL`
-  represents a "value type" like `Int`, `Bool`, etc, while `FFI_JSVAL`
-  represents `JSVal` and its `newtype`s. `FFI_JSVAL` requires special handling
-  since it represents an opaque JavaScript value on the Haskell heap.
-* `FFIFunctionType` additionally contains a flag indicating whether the returned
-  value is wrapped in `IO` or not. This matters for exported functions; although
-  `IO` or not doesn't affect the way of calling the exported functions in
-  JavaScript, internally, different `rts_eval*` functions are needed for
-  triggering evaluation.
-
-The `parseFFIValueType` function is called to marshal a pair of Haskell types to
-an `FFIValueType`. When parsing JSFFI types from Haskell types, we mainly check
-the normalized Haskell type which strips away type synonyms and newtypes; but we
-also need to check the pre-normalization type, since `JSVal` is still a newtype
-of `StablePtr`, but it can't be recognized in the normalized type.
-
-### Across the JavaScript/WebAssembly boundary
-
-Within the WebAssembly MVP standard, only `i32`/`f32`/`f64` is permitted to be
-passed across the JavaScript/WebAssembly boundary as arguments & return values.
-`i64` doesn't work by default, but unfortunately, asterius works with 64-bit
-words, so `i64` is the most common runtime value type.
-
-To workaround the `i64` restriction in JSFFI imports and exports, we convert it
-to `f64` when passing it between JavaScript and WebAssembly. The conversion
-takes into account whether the Haskell type is signed or not (e.g. for `Word` we
-can use `ConvertUInt64ToFloat64`/`TruncUFloat64ToInt64` opcodes for conversion).
-For now, there's a risk of overflowing `Number.MAX_SAFE_INTEGER`.
-
-`JSVal` values get similar treatment; they are treated as 64-bit words on the
-Haskell heap, but in the JavaScript runtime, we maintain a `Map` from the
-indices to real JavaScript values. When calling a JSFFI import in Haskell or a
-JSFFI export in JavaScript, the conversion between indices and real JavaScript
-values is handled automatically.
-
-### Generating JavaScript/WebAssembly code related to imports & exports
-
-For JSFFI imports, we generate an "import object factory" JavaScript function in
-`generateFFIImportObjectFactory`. That function takes the `__asterius_jsffi`
-object as argument, and outputs a WebAssembly import object. The JSFFI related
-import functions reside in the `jsffi` "module". At runtime, the factory
-function is called with the asterius instance object, and the returned import
-object will be used to instantiate the `WebAssembly.Instance`.
-
-For JSFFI exports, each export is mapped to an async JavaScript function to be
-made available as a member function of the instance's `.exports` property.
