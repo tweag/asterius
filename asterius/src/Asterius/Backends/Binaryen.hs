@@ -1,14 +1,3 @@
------------------------------------------------------------------------------
--- |
--- Module      :  Asterius.Backends.Binaryen
--- Copyright   :  (c) 2018 EURL Tweag
--- License     :  All rights reserved (see LICENCE file in the distribution).
---
--- Elaboration of Asterius types into the Binaryen AST (as defined in the
--- [binaryen package](https://github.com/tweag/binaryen)).
---
------------------------------------------------------------------------------
-
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -17,6 +6,13 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
+-- |
+-- Module      :  Asterius.Backends.Binaryen
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Elaboration of Asterius types into the Binaryen AST (as defined in the
+-- [binaryen package](https://github.com/tweag/binaryen)).
 module Asterius.Backends.Binaryen
   ( MarshalError (..),
     marshalModule,
@@ -293,30 +289,30 @@ marshalExpression e = case e of
       lift $ c_BinaryenSwitch m nsp (fromIntegral nl) dn c nullPtr
   Call {..} -> do
     sym_map <- askSymbolMap
-    if | M.member target sym_map ->
-         do
-           os <-
-             mapM
-               marshalExpression
-               ( if target == "barf"
-                   then
-                     [ case operands of
-                         [] -> ConstI64 0
-                         x : _ -> x
-                     ]
-                   else operands
-               )
-           m <- askModuleRef
-           lift $ flip runContT pure $ do
-             (ops, osl) <- marshalV os
-             tp <- marshalSBS (entityName target)
-             rts <- lift $ marshalReturnTypes callReturnTypes
-             lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
-       | M.member ("__asterius_barf_" <> target) sym_map ->
-         marshalExpression $ barf target callReturnTypes
-       | otherwise -> do
-           m <- askModuleRef
-           lift $ c_BinaryenUnreachable m
+    if  | M.member target sym_map ->
+          do
+            os <-
+              mapM
+                marshalExpression
+                ( if target == "barf"
+                    then
+                      [ case operands of
+                          [] -> ConstI64 0
+                          x : _ -> x
+                      ]
+                    else operands
+                )
+            m <- askModuleRef
+            lift $ flip runContT pure $ do
+              (ops, osl) <- marshalV os
+              tp <- marshalSBS (entityName target)
+              rts <- lift $ marshalReturnTypes callReturnTypes
+              lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
+        | M.member ("__asterius_barf_" <> target) sym_map ->
+          marshalExpression $ barf target callReturnTypes
+        | otherwise -> do
+          m <- askModuleRef
+          lift $ c_BinaryenUnreachable m
   CallImport {..} -> do
     os <- forM operands marshalExpression
     m <- askModuleRef
@@ -348,14 +344,15 @@ marshalExpression e = case e of
   Load {..} -> do
     p <- marshalExpression ptr
     m <- askModuleRef
-    lift $ c_BinaryenLoad
-             m
-             bytes
-             (marshalBool signed)
-             offset
-             1
-             (marshalValueType valueType)
-             p
+    lift $
+      c_BinaryenLoad
+        m
+        bytes
+        (marshalBool signed)
+        offset
+        1
+        (marshalValueType valueType)
+        p
   Store {..} -> do
     p <- marshalExpression ptr
     v <- marshalExpression value
@@ -386,7 +383,6 @@ marshalExpression e = case e of
     x <- marshalExpression dropValue
     m <- askModuleRef
     lift $ c_BinaryenDrop m x
-
   ReturnCall {..} -> areTailCallsOn >>= \case
     -- Case 1: Tail calls are on
     True -> do
@@ -425,13 +421,14 @@ marshalExpression e = case e of
         marshalExpression
           Unary {unaryOp = WrapInt64, operand0 = returnCallIndirectTarget64}
       m <- askModuleRef
-      lift $ c_BinaryenReturnCallIndirect
-               m
-               t
-               nullPtr
-               0
-               c_BinaryenTypeNone
-               c_BinaryenTypeNone
+      lift $
+        c_BinaryenReturnCallIndirect
+          m
+          t
+          nullPtr
+          0
+          c_BinaryenTypeNone
+          c_BinaryenTypeNone
     -- Case 2: Tail calls are off
     False -> do
       sym_map <- askSymbolMap
@@ -601,11 +598,12 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
   ftps <- fmap M.fromList $ for (Set.toList fts) $ \ft -> do
     ftp <- marshalFunctionType ft
     pure (ft, ftp)
-  let env = MarshalEnv
-        { envAreTailCallsOn = tail_calls,
-          envSymbolMap = sym_map,
-          envModuleRef = m
-        }
+  let env =
+        MarshalEnv
+          { envAreTailCallsOn = tail_calls,
+            envSymbolMap = sym_map,
+            envModuleRef = m
+          }
   for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
     flip runReaderT env $ marshalFunction k (ftps ! functionType) f
   forM_ functionImports $ \fi@FunctionImport {..} ->
