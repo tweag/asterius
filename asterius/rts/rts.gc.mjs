@@ -4,6 +4,11 @@ import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 import { stg_arg_bitmaps } from "./rts.autoapply.mjs";
 
+/**
+ * Returns the address of the block descriptor
+ * of the given closure.
+ * @param c The closure address
+ */
 function bdescr(c) {
   const nc = Number(c);
   return nc - (nc & (rtsConstants.mblock_size - 1)) + rtsConstants.offset_first_bdescr;
@@ -56,6 +61,12 @@ export class GC {
      */
     this.nonMovedObjects = new Set();
     /**
+     * List containing the non-moved closures that
+     * have not been scavenged yet.
+     * @name GC#nonMovedObjectsToScavenge
+     */
+    this.nonMovedObjectsToScavenge = [];
+    /**
      * Set containing the MBlocks in the to-space,
      * i.e. the MBlocks where reachable objects are copied
      * during garbage collection.
@@ -68,20 +79,19 @@ export class GC {
      */
     this.liveMBlocks = new Set();
     /**
+     * List containing the MBlocks in the to-space
+     * that have yet to be scavenged.
+     * @name GC#blocksToScavenge
+     */
+    this.blocksToScavenge = [];
+    /**
      * Set containing the MBlocks in the from-space,
-     * i.e. the MBlocks that have containing objects
-     * that have been copied into to-space. These MBlocks
-     * will be freed at the end of garbage collection.
+     * i.e. the MBlocks containing objects that have been
+     * copied into to-space. These MBlocks will be freed
+     * at the end of garbage collection.
      * @name GC#deadMBlocks
      */
     this.deadMBlocks = new Set();
-    /**
-     * A work list where evacuated objects are pushed
-     * by {@link GC#evacuateClosure} in order to be later
-     * scavenged by {@link GC#scavengeWorkList}.
-     * @name GC#workList
-     */
-    this.workList = [];
     /**
      * At each garbage collection, the live JSVals encountered are
      * recorded in {@link GC#liveJSVals}, and then handled separately
@@ -113,7 +123,11 @@ export class GC {
   copyClosure(c, bytes) {
     const dest_c = this.heapAlloc.allocate(Math.ceil(bytes / 8));
     this.memory.memcpy(dest_c, c, bytes);
-    this.liveMBlocks.add(bdescr(dest_c));
+    const dest_block = bdescr(dest_c);
+    if (!this.liveMBlocks.has(dest_block)) {
+      this.blocksToScavenge.push(dest_block);
+      this.liveMBlocks.add(dest_block);
+    }
     this.deadMBlocks.add(bdescr(c));
     return dest_c;
   }
@@ -258,7 +272,7 @@ export class GC {
       // it won't be copied ...
       this.nonMovedObjects.add(untagged_c);
       // ... but it will still be scavenged
-      this.workList.push(untagged_c);
+      this.nonMovedObjectsToScavenge.push(untagged_c);
       // Warning: do not set the MBlock as live,
       // because the static part of memory is not
       // tracked by HeapAlloc.mgroups and it would
@@ -269,7 +283,7 @@ export class GC {
       // it won't be copied ...
       this.nonMovedObjects.add(untagged_c);
       // ... but it will still be scavenged
-      this.workList.push(untagged_c);
+      this.nonMovedObjectsToScavenge.push(untagged_c);
       // Set the pinned MBlock as live
       this.liveMBlocks.add(bdescr(untagged_c));
       return c;
@@ -363,9 +377,8 @@ export class GC {
             untagged_c + rtsConstants.offset_StgInd_indirectee
           )
         );
-        // cannot simply break here, because dest_c must not
-        // be pushed to this.workList since it has already
-        // been evacuated above
+        // cannot simply break here, because in the case of IND closures
+        // dest_c must not be tagged with the current tag
         this.memory.i64Store(untagged_c, Memory.setDynTag(dest_c, 1));
         return dest_c;
       }
@@ -402,12 +415,15 @@ export class GC {
       case ClosureTypes.ARR_WORDS: {
         dest_c = this.copyClosure(
           untagged_c,
-          rtsConstants.sizeof_StgArrBytes +
-            Number(
-              this.memory.i64Load(
-                untagged_c + rtsConstants.offset_StgArrBytes_bytes
-              )
-            )
+          Math.ceil(
+            (rtsConstants.sizeof_StgArrBytes +
+              Number(
+                this.memory.i64Load(
+                  untagged_c + rtsConstants.offset_StgArrBytes_bytes
+                )
+              )) /
+              8
+          ) * 8
         );
         break;
       }
@@ -450,9 +466,6 @@ export class GC {
     // pointer (i.e. store the address with the
     // least significant bit set to 1)
     this.memory.i64Store(untagged_c, dest_c + 1);
-    // Enqueue the destination object in the workList,
-    // so that it will be scavenged later
-    this.workList.push(dest_c);
     // Finally, return the new address
     return Memory.setDynTag(dest_c, tag);
   }
@@ -679,10 +692,78 @@ export class GC {
   }
 
   /**
-   * Iterates over {@link GC#workList} and scavenges the enqueued objects.
+   * Loops over all reachable objects and scavenges them.
    */
-  scavengeWorkList() {
-    while (this.workList.length) this.scavengeClosure(this.workList.pop());
+  scavengeLoop() {
+    const closures = this.nonMovedObjectsToScavenge,
+          blocks = this.blocksToScavenge;
+
+    let currentBlock = undefined, currentObject = undefined;
+
+    // Note: there are various nested loops, mainly because there are
+    // two kinds of objects, that must be scavenged in a different way:
+    // objects that have been copied in to-space, and non-moved objects.
+    // Objects copied in to-space are scavenged by traversing the
+    // to-space sequentially. Non-moved objects are stored
+    // in `this.nonMovedObjects` and must be handled separately.
+    // Moreover, scavenging an object of either kind may introduce
+    // new objects of either kind.
+    while (true) {
+      if (!currentBlock) {
+        // We try and pick a new MBlock to scavenge
+        currentBlock = blocks.pop();
+        if (currentBlock)
+          // If there exists a MBlock to scavenge,
+          // start with the object pointed
+          // by the `start` field in the block
+          // descriptor
+          currentObject = Number(
+            this.memory.i64Load(
+              currentBlock + rtsConstants.offset_bdescr_start
+            )
+          );
+      }
+      // Iterate over the objects in the `currentBlock`,
+      // but only if there's such a block
+      while (currentBlock) {
+        // `currentLimit` is the upper limit for `currentBlock`
+        // and consists of a pointer to the free space in the
+        // current block
+        const currentLimit = Number(
+          this.memory.i64Load(
+            currentBlock + rtsConstants.offset_bdescr_free
+          )
+        );
+        if (currentObject >= currentLimit)
+          // There are no more blocks to scavenge in the
+          // `currentBlock`. Break, but do not unset
+          // the current MBlock, as we are not done with
+          // it yet: scavenging the non-moved closures below
+          // may add new objects to `currentBlock`.
+          break;
+        // Scavenge the current object, and increase the
+        // `currentObject` address of the amount (sizeof) provided by
+        // the `scavengeClosure` function.
+        currentObject += this.scavengeClosure(currentObject);
+      }
+      if (blocks.length > 0) {
+        // There are more MBlocks to scavenge:
+        // since we have completely processed the
+        // current currentBlock, we can continue
+        // and pick the next one
+        currentBlock = currentObject = undefined;
+        continue;
+      } else if (closures.length == 0)
+        // There are no more block to scavenge,
+        // nor in the to-space nor among the non-moved
+        // objects. We are done.
+        return;
+      // Scavenge the remaining non-moved objects
+      while (closures.length > 0) {
+        this.scavengeClosure(closures.pop());
+      }
+      // Continue scavenging the possibly newly evacuated objects
+    }
   }
 
   /**
@@ -690,7 +771,7 @@ export class GC {
    * each pointer in the object, and replacing the pointer
    * with the address obtained after evacuation.
    * @param c The address of the closure to scavenge
-   * @param info The info pointer of the closure
+   * @returns The size (in bytes) of the closure c
    */
   scavengeClosure(c) {
     const info = Number(this.memory.i64Load(c)),
@@ -700,18 +781,23 @@ export class GC {
         `Invalid info table 0x${info.toString(16)}`
       );
     switch (type) {
-      case ClosureTypes.CONSTR:
-      case ClosureTypes.CONSTR_1_0:
-      case ClosureTypes.CONSTR_0_1:
-      case ClosureTypes.CONSTR_2_0:
-      case ClosureTypes.CONSTR_1_1:
-      case ClosureTypes.CONSTR_0_2:
-      case ClosureTypes.CONSTR_NOCAF: {
-        const ptrs = this.memory.i32Load(
-          info + rtsConstants.offset_StgInfoTable_layout
-        );
-        this.scavengePointersFirst(c + 8, ptrs);
-        break;
+      case ClosureTypes.CONSTR_1_0: {
+        this.scavengePointersFirst(c + 8, 1);
+        return 16;
+      }
+      case ClosureTypes.CONSTR_0_1: {
+        return 16;
+      }
+      case ClosureTypes.CONSTR_1_1: {
+        this.scavengePointersFirst(c + 8, 1);
+        return 24;
+      }
+      case ClosureTypes.CONSTR_2_0: {
+        this.scavengePointersFirst(c + 8, 2);
+        return 24;
+      }
+      case ClosureTypes.CONSTR_0_2: {
+        return 24;
       }
       case ClosureTypes.FUN:
       case ClosureTypes.FUN_1_0:
@@ -730,10 +816,15 @@ export class GC {
           );
         const ptrs = this.memory.i32Load(
           info + rtsConstants.offset_StgInfoTable_layout
+        ),
+        non_ptrs = this.memory.i32Load(
+          info + rtsConstants.offset_StgInfoTable_layout + 4
         );
         this.scavengePointersFirst(c + 8, ptrs);
-        break;
+        return (1 + ptrs + non_ptrs) << 3;
       }
+      case ClosureTypes.CONSTR:
+      case ClosureTypes.CONSTR_NOCAF:
       case ClosureTypes.BLACKHOLE:
       case ClosureTypes.MUT_VAR_CLEAN:
       case ClosureTypes.MUT_VAR_DIRTY:
@@ -741,10 +832,13 @@ export class GC {
       case ClosureTypes.MUT_PRIM:
       case ClosureTypes.COMPACT_NFDATA: {
         const ptrs = this.memory.i32Load(
-          info + rtsConstants.offset_StgInfoTable_layout
-        );
+            info + rtsConstants.offset_StgInfoTable_layout
+          ),
+          non_ptrs = this.memory.i32Load(
+            info + rtsConstants.offset_StgInfoTable_layout + 4
+          );
         this.scavengePointersFirst(c + 8, ptrs);
-        break;
+        return (1 + ptrs + non_ptrs) << 3;
       }
       case ClosureTypes.THUNK_STATIC:
       case ClosureTypes.THUNK:
@@ -761,12 +855,15 @@ export class GC {
           );
         const ptrs = this.memory.i32Load(
           info + rtsConstants.offset_StgInfoTable_layout
+        ),
+        non_ptrs = this.memory.i32Load(
+          info + rtsConstants.offset_StgInfoTable_layout + 4
         );
         this.scavengePointersFirst(
           c + rtsConstants.offset_StgThunk_payload,
           ptrs
         );
-        break;
+        return rtsConstants.sizeof_StgThunk + ((ptrs + non_ptrs) << 3);
       }
       case ClosureTypes.THUNK_SELECTOR: {
         if (this.memory.i32Load(info + rtsConstants.offset_StgInfoTable_srt))
@@ -776,51 +873,67 @@ export class GC {
             )
           );
         this.scavengeClosureAt(c + rtsConstants.offset_StgSelector_selectee);
-        break;
+        return rtsConstants.sizeof_StgSelector;
       }
       case ClosureTypes.AP: {
+        const n_args = this.memory.i32Load(
+          c + rtsConstants.offset_StgAP_n_args
+        );
         this.scavengePAP(
           c,
           rtsConstants.offset_StgAP_fun,
           c + rtsConstants.offset_StgAP_payload,
-          this.memory.i32Load(c + rtsConstants.offset_StgAP_n_args)
+          n_args
         );
-        break;
+        return rtsConstants.sizeof_StgAP + (n_args << 3);
       }
       case ClosureTypes.PAP: {
+        const n_args = this.memory.i32Load(
+          c + rtsConstants.offset_StgPAP_n_args
+        );
         this.scavengePAP(
           c,
           rtsConstants.offset_StgPAP_fun,
           c + rtsConstants.offset_StgPAP_payload,
-          this.memory.i32Load(c + rtsConstants.offset_StgPAP_n_args)
+          n_args
         );
-        break;
+        return rtsConstants.sizeof_StgPAP + (n_args << 3);
       }
       case ClosureTypes.AP_STACK: {
+        const size = Number(
+          this.memory.i64Load(
+            c + rtsConstants.offset_StgAP_STACK_size
+          )
+        );
         this.scavengeClosureAt(c + rtsConstants.offset_StgAP_STACK_fun);
         this.scavengeStackChunk(
           c + rtsConstants.offset_StgAP_STACK_payload,
           c +
-            rtsConstants.offset_StgAP_STACK_payload +
-            Number(
-              this.memory.i64Load(c + rtsConstants.offset_StgAP_STACK_size)
-            )
+            rtsConstants.offset_StgAP_STACK_payload + size
         );
-        break;
+        return rtsConstants.sizeof_StgAP_STACK + (size << 3);
       }
       case ClosureTypes.IND_STATIC: {
         this.scavengeClosureAt(c + rtsConstants.offset_StgIndStatic_indirectee);
-        break;
+        return; // size not important, this object won't be moved
       }
       case ClosureTypes.MVAR_CLEAN:
       case ClosureTypes.MVAR_DIRTY: {
         this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_head);
         this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_tail);
         this.scavengeClosureAt(c + rtsConstants.offset_StgMVar_value);
-        break;
+        return rtsConstants.offset_StgMVar_value + 8;
       }
       case ClosureTypes.ARR_WORDS: {
-        break;
+        return (
+          Math.ceil(
+            (rtsConstants.sizeof_StgArrBytes +
+              Number(
+                this.memory.i64Load(c + rtsConstants.offset_StgArrBytes_bytes)
+              )) /
+              8
+          ) * 8
+        );
       }
       case ClosureTypes.MUT_ARR_PTRS_CLEAN:
       case ClosureTypes.MUT_ARR_PTRS_DIRTY:
@@ -833,39 +946,40 @@ export class GC {
           c + rtsConstants.offset_StgMutArrPtrs_payload,
           ptrs
         );
-        break;
+        return rtsConstants.sizeof_StgMutArrPtrs + (ptrs << 3);
       }
       case ClosureTypes.WEAK: {
         this.scavengeClosureAt(c + rtsConstants.offset_StgWeak_cfinalizers);
         this.scavengeClosureAt(c + rtsConstants.offset_StgWeak_key);
         this.scavengeClosureAt(c + rtsConstants.offset_StgWeak_value);
         this.scavengeClosureAt(c + rtsConstants.offset_StgWeak_finalizer);
-        break;
+        return rtsConstants.offset_StgWeak_link + 8;
       }
       case ClosureTypes.TSO: {
         this.scavengeClosureAt(c + rtsConstants.offset_StgTSO_stackobj);
-        break;
+        return; // size not important, this object won't be moved
       }
       case ClosureTypes.STACK: {
-        const stack_size = this.memory.i32Load(
-            c + rtsConstants.offset_StgStack_stack_size
-          ),
+        const
+          stack_size =
+            this.memory.i32Load(c + rtsConstants.offset_StgStack_stack_size) << 3,
           sp = Number(this.memory.i64Load(c + rtsConstants.offset_StgStack_sp)),
-          sp_lim = c + rtsConstants.offset_StgStack_stack + (stack_size << 3);
+          sp_lim = c + rtsConstants.offset_StgStack_stack + stack_size;
         this.scavengeStackChunk(sp, sp_lim);
-        break;
+        return rtsConstants.offset_StgStack_stack + stack_size;
       }
       case ClosureTypes.SMALL_MUT_ARR_PTRS_CLEAN:
       case ClosureTypes.SMALL_MUT_ARR_PTRS_DIRTY:
       case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_DIRTY:
       case ClosureTypes.SMALL_MUT_ARR_PTRS_FROZEN_CLEAN: {
+        const ptrs = Number(
+          this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
+        );
         this.scavengePointersFirst(
           c + rtsConstants.offset_StgSmallMutArrPtrs_payload,
-          Number(
-            this.memory.i64Load(c + rtsConstants.offset_StgSmallMutArrPtrs_ptrs)
-          )
+          ptrs
         );
-        break;
+        return rtsConstants.offset_StgSmallMutArrPtrs_payload + (ptrs << 3);
       }
       default:
         throw new WebAssembly.RuntimeError();
@@ -940,7 +1054,7 @@ export class GC {
     this.stableNameManager.ptr2stable = ptr2stableMoved;
 
     // do the rest of the scavenging work
-    this.scavengeWorkList();
+    this.scavengeLoop();
 
     // update the ret pointer in the complete TSOs
     for (const [_, tso_info] of this.scheduler.tsos) {
