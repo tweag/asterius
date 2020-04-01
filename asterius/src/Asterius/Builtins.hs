@@ -1188,11 +1188,11 @@ rtsMkIntFunction _ = runEDSL "rts_mkInt" $ do
   if'
     [I64]
     ((i `leSInt64` constI64 16) `andInt64` (i `geSInt64` constI64 0xFFFFFFFFFFFFFFF0))
-          -- If the integer in question is in the range [-16..16] we use the
-          -- trick that GHC uses, and instead of generating a heap-allocated Int
-          -- closure, we simply return the address of the statically allocated
-          -- Int. See stg_INTLIKE_closure in
-          -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
+    -- If the integer in question is in the range [-16..16] we use the
+    -- trick that GHC uses, and instead of generating a heap-allocated Int
+    -- closure, we simply return the address of the statically allocated
+    -- Int. See stg_INTLIKE_closure in
+    -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
     ( let offset = (i `addInt64` constI64 16) `mulInt64` constI64 16
        in emit $ symbol "stg_INTLIKE_closure" `addInt64` offset
     )
