@@ -1171,16 +1171,16 @@ rtsMkCharFunction _ = runEDSL "rts_mkChar" $ do
     -- Char. See stg_CHARLIKE_closure in
     -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
     -- Case 1: Use static closure
-    (let offset = i `mulInt64` constI64 16
-     in  emit $ symbol "stg_CHARLIKE_closure" `addInt64` offset
+    ( let offset = i `mulInt64` constI64 16
+       in emit $ symbol "stg_CHARLIKE_closure" `addInt64` offset
     )
     -- Otherwise, we fall back to the more inefficient
     -- approach and generate a dynamic closure.
     $ do
-        p <- call' "allocate" [mainCapability, constI64 2] I64
-        storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
-        storeI64 p 8 i
-        emit p
+      p <- call' "allocate" [mainCapability, constI64 2] I64
+      storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
+      storeI64 p 8 i
+      emit p
 
 rtsMkIntFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkIntFunction _ = runEDSL "rts_mkInt" $ do
@@ -1189,21 +1189,21 @@ rtsMkIntFunction _ = runEDSL "rts_mkInt" $ do
   if'
     [I64]
     ((i `leSInt64` constI64 16) `andInt64` (i `geSInt64` constI64 0xFFFFFFFFFFFFFFF0)) -- -16
-    -- If the integer in question is in the range [-16..16] we use the
-    -- trick that GHC uses, and instead of generating a heap-allocated Int
-    -- closure, we simply return the address of the statically allocated
-    -- Int. See stg_INTLIKE_closure in
-    -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
-    (let offset = (i `addInt64` constI64 16) `mulInt64` constI64 16
-     in  emit $ symbol "stg_INTLIKE_closure" `addInt64` offset
+          -- If the integer in question is in the range [-16..16] we use the
+          -- trick that GHC uses, and instead of generating a heap-allocated Int
+          -- closure, we simply return the address of the statically allocated
+          -- Int. See stg_INTLIKE_closure in
+          -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
+    ( let offset = (i `addInt64` constI64 16) `mulInt64` constI64 16
+       in emit $ symbol "stg_INTLIKE_closure" `addInt64` offset
     )
     -- Otherwise, we fall back to the more inefficient
     -- approach and generate a dynamic closure.
     $ do
-        p <- call' "allocate" [mainCapability, constI64 2] I64
-        storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Izh_con_info"
-        storeI64 p 8 i
-        emit p
+      p <- call' "allocate" [mainCapability, constI64 2] I64
+      storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Izh_con_info"
+      storeI64 p 8 i
+      emit p
 
 rtsMkWordFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkWordFunction opts =
