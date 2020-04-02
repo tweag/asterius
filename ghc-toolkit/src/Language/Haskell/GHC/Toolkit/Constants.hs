@@ -35,6 +35,8 @@ foreign import ccall unsafe "offset_bdescr_free" offset_bdescr_free :: Int
 
 foreign import ccall unsafe "offset_bdescr_link" offset_bdescr_link :: Int
 
+foreign import ccall unsafe "offset_bdescr_gen_no" offset_bdescr_gen_no :: Int
+
 foreign import ccall unsafe "offset_bdescr_node" offset_bdescr_node :: Int
 
 foreign import ccall unsafe "offset_bdescr_flags" offset_bdescr_flags :: Int

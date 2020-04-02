@@ -13,6 +13,7 @@ export const sizeof_first_mblock = 0xfc000;
 export const offset_bdescr_start = 0x0;
 export const offset_bdescr_free = 0x8;
 export const offset_bdescr_link = 0x10;
+export const offset_bdescr_gen_no = 0x28;
 export const offset_bdescr_node = 0x2c;
 export const offset_bdescr_flags = 0x2e;
 export const offset_bdescr_blocks = 0x30;
