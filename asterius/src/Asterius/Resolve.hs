@@ -189,5 +189,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
         debug
         bundled_ffi_state
         merged_m
+        -- reserve 0 for the null function pointer
         (1 .|. functionTag `shiftL` 32)
-        (dataTag `shiftL` 32)
+        -- leave 1KB empty for the --low-memory-unused optimization to work
+        (0x00000400 .|. dataTag `shiftL` 32)
