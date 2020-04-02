@@ -303,7 +303,7 @@ ahcDistMain logger task (final_m, report) = do
       Binaryen.c_BinaryenSetDebugInfo $ if verboseErr task then 1 else 0
       Binaryen.c_BinaryenSetOptimizeLevel $ fromIntegral $ optimizeLevel task
       Binaryen.c_BinaryenSetShrinkLevel $ fromIntegral $ shrinkLevel task
-      Binaryen.c_BinaryenSetLowMemoryUnused $ 1
+      Binaryen.c_BinaryenSetLowMemoryUnused 1
       m_ref <-
         Binaryen.marshalModule
           (tailCalls task)
