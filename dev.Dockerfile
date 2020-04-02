@@ -67,11 +67,18 @@ COPY --chown=asterius:asterius stack.yaml /tmp/asterius/stack.yaml
 
 RUN \
   cd /tmp/asterius && \
-  stack install \
+  stack --no-terminal install \
+    alex \
+    binaryen \
     brittany \
+    c2hs \
+    cpphs \
     ghcid \
+    happy \
     hlint \
+    inline-js-core \
     ormolu \
+    wabt \
     wai-app-static && \
   cd /home/asterius && \
   sudo rm -rf -v \
