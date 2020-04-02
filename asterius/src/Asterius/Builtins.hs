@@ -1162,14 +1162,47 @@ rtsMkCharFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkCharFunction _ = runEDSL "rts_mkChar" $ do
   setReturnTypes [I64]
   [i] <- params [I64]
-  p <- call' "allocate" [mainCapability, constI64 2] I64
-  storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
-  storeI64 p 8 i
-  emit p
+  if'
+    [I64]
+    (i `ltUInt64` constI64 256)
+    -- If the character in question is in the range [0..255] we use the
+    -- trick that GHC uses, and instead of generating a heap-allocated Char
+    -- closure, we simply return the address of the statically allocated
+    -- Char. See stg_CHARLIKE_closure in
+    -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
+    ( let offset = i `mulInt64` constI64 16
+       in emit $ symbol "stg_CHARLIKE_closure" `addInt64` offset
+    )
+    -- Otherwise, we fall back to the more inefficient
+    -- approach and generate a dynamic closure.
+    $ do
+      p <- call' "allocate" [mainCapability, constI64 2] I64
+      storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
+      storeI64 p 8 i
+      emit p
 
 rtsMkIntFunction :: BuiltinsOptions -> AsteriusModule
-rtsMkIntFunction opts =
-  rtsMkHelper opts "rts_mkInt" "ghczmprim_GHCziTypes_Izh_con_info"
+rtsMkIntFunction _ = runEDSL "rts_mkInt" $ do
+  setReturnTypes [I64]
+  [i] <- params [I64]
+  if'
+    [I64]
+    ((i `leSInt64` constI64 16) `andInt32` (i `geSInt64` constI64 (-16)))
+    -- If the integer in question is in the range [-16..16] we use the
+    -- trick that GHC uses, and instead of generating a heap-allocated Int
+    -- closure, we simply return the address of the statically allocated
+    -- Int. See stg_INTLIKE_closure in
+    -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
+    ( let offset = (i `addInt64` constI64 16) `mulInt64` constI64 16
+       in emit $ symbol "stg_INTLIKE_closure" `addInt64` offset
+    )
+    -- Otherwise, we fall back to the more inefficient
+    -- approach and generate a dynamic closure.
+    $ do
+      p <- call' "allocate" [mainCapability, constI64 2] I64
+      storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Izh_con_info"
+      storeI64 p 8 i
+      emit p
 
 rtsMkWordFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkWordFunction opts =
