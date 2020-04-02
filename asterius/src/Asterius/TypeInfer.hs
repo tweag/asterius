@@ -31,6 +31,7 @@ infer expr = case expr of
   Unary {unaryOp = ConvertSInt64ToFloat64} -> [F64]
   Unary {unaryOp = TruncUFloat64ToInt64} -> [I64]
   Unary {unaryOp = TruncSFloat64ToInt64} -> [I64]
+  Binary {binaryOp = AddInt64} -> [I64]
   Host {} -> [I32]
   Nop -> []
   Unreachable -> []
