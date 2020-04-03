@@ -154,6 +154,10 @@ jobs:
           command: |
             cd docs
             sphinx-build . _build
+            pushd _build
+            curl -L https://raw.githubusercontent.com/tweag/asterius/examples/ormolu.tar.xz | tar xJ
+            curl -L https://raw.githubusercontent.com/tweag/asterius/examples/pandoc.tar.xz | tar xJ
+            popd
             if [ $CIRCLE_BRANCH = "master" ]
             then
               netlify deploy --dir=_build --message="$CIRCLE_SHA1" --prod
