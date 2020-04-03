@@ -21,6 +21,9 @@ class Posix {
   fstat() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: fstat");
   }
+  opendir() {
+    throw WebAssembly.RuntimeError("Unsupported rts interface: opendir");
+  }
   readdir() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: readdir");
   }
