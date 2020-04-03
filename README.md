@@ -14,6 +14,14 @@ World](https://hackage.haskell.org/package/hello-1.0.0.2)). A lot of common
 Haskell packages like `lens` are already supported. The project is actively
 maintained by [Tweag I/O](https://tweag.io/).
 
+## Precompiled examples
+
+Here are the precompiled web version of some popular Haskell apps; feel free to
+give it a try in your browser!
+
+* [`ormolu`](https://asterius.netlify.com/ormolu/WebOrmolu.html)
+* [`pandoc`](https://asterius.netlify.com/pandoc/pandoc.html)
+
 ## Quickstart using the pre-built Docker image
 
 We host a pre-built Docker image on [Docker
@@ -74,6 +82,11 @@ We have [documentation](https://asterius.netlify.com/) and blog posts:
   TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
 * [Haskell art in your browser with
   Asterius](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html)
+
+Also checkout the [HIW 2018 lightening
+talk](https://icfp18.sigplan.org/details/hiw-2018-papers/6/Lightning-talk-Asterius-Bringing-Haskell-to-WebAssembly),
+and the slides of an introductory talk in 2020
+[here](https://docs.google.com/presentation/d/1AZJIf2ykheqONOM23oC6F3LJ9m5W9gbl69pDVdZszHg/edit?usp=sharing).
 
 Note that they may be slightly out-of-date as the project evolves. Whenever you
 find something in the docs of blog posts which doesn't reflect the status quo,
