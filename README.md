@@ -47,27 +47,12 @@ Check the official
 run` to learn more about the command given in the example above. The example
 opens an interactive `bash` session for exploration, but it's also possible to
 use `docker run` to invoke the Asterius compiler on local Haskell source files.
-Note that [`podman`](https://podman.io) can be used instead of `docker` here; it
-can work with a root-less & daemon-less setting.
+Note that [`podman`](https://podman.io) can be used instead of `docker` here.
 
 ## Building and using `asterius` locally
 
-`asterius` is a regular `stack` project which relies on a custom GHC fork.
-Pre-built GHC bindists are available for `linux64` and `macosx`. Simply use a
-regular `stack build asterius` for building it, and `stack exec ahc-boot` to
-boot the standard libraries, so later `stack exec ahc-link` may work.
-
-In addition to regular GHC dependencies, make sure these dependencies are
-present in the local environment:
-
-* `libnuma-dev` (Required by GHC)
-* `cmake`, `g++`, `git`, `python3` (Required by `binaryen`)
-* `automake`, `autoconf` (Required by `ahc-boot`)
-* `node` (`v12` or later)
-
-If `direnv` is enabled, after doing a `stack build asterius`, executables like
-`ahc-boot` or `ahc-link` can be called directly without `stack exec` in the
-project directory.
+See the [Building guide](https://asterius.netlify.com/building.html) in the
+documentation for details.
 
 ## Hacking on `asterius`
 
