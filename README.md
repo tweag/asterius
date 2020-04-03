@@ -16,7 +16,7 @@ maintained by [Tweag I/O](https://tweag.io/).
 
 ## Precompiled examples
 
-Here are the precompiled web version of some popular Haskell apps; feel free to
+Here are the precompiled web versions of some popular Haskell apps; feel free to
 give it a try in your browser!
 
 * [`ormolu`](https://asterius.netlify.com/ormolu/WebOrmolu.html)
@@ -38,7 +38,7 @@ username@hostname:~/project$ docker run --rm -it -v $(pwd):/project -w /project 
 asterius@hostname:/project$ ahc-link --input-hs main.hs
 ```
 
-There are a lot of link-time options available to `ahc-link`, e.g. targetting
+There are a lot of link-time options available to `ahc-link`, e.g. targeting
 the browser platform instead of `node`, adding extra GHC options or setting
 runtime parameters. Check the [documentation](https://asterius.netlify.com/) for
 further details.
@@ -83,7 +83,7 @@ We have [documentation](https://asterius.netlify.com/) and blog posts:
 * [Haskell art in your browser with
   Asterius](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html)
 
-Also checkout the [HIW 2018 lightening
+Also checkout the [HIW 2018 lightning
 talk](https://icfp18.sigplan.org/details/hiw-2018-papers/6/Lightning-talk-Asterius-Bringing-Haskell-to-WebAssembly),
 and the slides of an introductory talk in 2020
 [here](https://docs.google.com/presentation/d/1AZJIf2ykheqONOM23oC6F3LJ9m5W9gbl69pDVdZszHg/edit?usp=sharing).
