@@ -102,7 +102,7 @@ linkModules LinkTask {..} m =
           rtsUsedSymbols,
           rtsPrivateSymbols,
           Set.fromList
-            [ EntitySymbol {entityName = internalName}
+            [ mkEntitySymbol internalName
               | FunctionExport {..} <- rtsFunctionExports debug
             ]
         ]

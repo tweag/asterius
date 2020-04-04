@@ -12,7 +12,6 @@ import Asterius.Internals ((!))
 import Asterius.Types
 import Data.Bits
 import Data.ByteString.Builder
-import Data.Coerce
 import Data.Foldable
 import Data.Int
 import Data.List
@@ -38,7 +37,7 @@ genExportStaticFunc ::
   Builder
 genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
   "[\""
-    <> shortByteString (coerce k)
+    <> byteString (entityName k)
     <> "\",0x"
     <> int64HexFixed (sym_map ! ffiExportClosure)
     <> ",0x"

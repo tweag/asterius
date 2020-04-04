@@ -16,7 +16,6 @@ import Asterius.Internals.Name
 import Asterius.Types
 import Asterius.TypesConv
 import Control.Monad.IO.Class
-import qualified Data.ByteString.Short as SBS
 import Data.IORef
 import qualified Data.Map.Strict as M
 import Data.String
@@ -164,9 +163,7 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
           Just r -> r
           _ -> GHC.panicDoc "processFFIExport" $ GHC.ppr norm_sig_ty
         new_k =
-          EntitySymbol
-            { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
-            }
+          mkEntitySymbol $ GHC.fastStringToByteString lbl
         export_closure = idClosureSymbol dflags export_id
         new_decl =
           FFIExportDecl

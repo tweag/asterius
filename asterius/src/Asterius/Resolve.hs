@@ -21,7 +21,6 @@ import Asterius.Passes.GCSections
 import Asterius.Types
 import Data.Binary
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
 import Foreign
@@ -178,7 +177,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
                 ( \sym _ ->
                     not
                       ( "__asterius_barf_"
-                          `BS.isPrefixOf` SBS.fromShort (entityName sym)
+                          `BS.isPrefixOf` entityName sym
                       )
                 )
                 $ staticsMap merged_m1

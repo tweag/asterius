@@ -89,9 +89,8 @@ import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
-import Control.Monad.Fail
 import Control.Monad.State.Strict
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
 import Data.Monoid
 import Data.Traversable
@@ -342,7 +341,7 @@ call' f xs vt = do
 -- | Call a function with no return value
 callImport ::
   -- | Function name
-  SBS.ShortByteString ->
+  BS.ByteString ->
   -- | Parameter list
   [Expression] ->
   EDSL ()
@@ -352,7 +351,7 @@ callImport f xs =
 -- | Call a function with a return value
 callImport' ::
   -- | Function name
-  SBS.ShortByteString ->
+  BS.ByteString ->
   -- | Arguments
   [Expression] ->
   -- | Return type of function
@@ -374,7 +373,7 @@ callIndirect f = emit CallIndirect
 
 newtype Label
   = Label
-      { unLabel :: SBS.ShortByteString
+      { unLabel :: BS.ByteString
       }
 
 newLabel :: EDSL Label
@@ -462,7 +461,7 @@ switchI64 cond make_clauses = block' [] $ \switch_lbl ->
 --
 -- >  runEDSL $ do
 -- >    x <- allocStaticBytes "x"
--- >          (Serialized $ SBS.pack $ replicate 8 1)
+-- >          (Serialized $ BS.pack $ replicate 8 1)
 -- >    loadi64 x 0
 -- >
 -- >    y <- allocStaticBytes "y" (Uninitialized 8)

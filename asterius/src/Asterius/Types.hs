@@ -2,9 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Types
@@ -15,7 +13,9 @@ module Asterius.Types
     AsteriusStatics (..),
     AsteriusModule (..),
     AsteriusModuleSymbol (..),
-    EntitySymbol (..),
+    EntitySymbol,
+    entityName,
+    mkEntitySymbol,
     UnresolvedLocalReg (..),
     UnresolvedGlobalReg (..),
     ValueType (..),
@@ -49,26 +49,26 @@ module Asterius.Types
 where
 
 import Asterius.Internals.Binary
+import Asterius.Types.EntitySymbol
 import Control.Exception
 import Data.Binary
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import Data.Data
 import qualified Data.Map.Lazy as LM
-import Data.String
 import Foreign
 import GHC.Generics
 
 type BinaryenIndex = Word32
 
 data AsteriusCodeGenError
-  = UnsupportedCmmLit SBS.ShortByteString
-  | UnsupportedCmmInstr SBS.ShortByteString
-  | UnsupportedCmmBranch SBS.ShortByteString
-  | UnsupportedCmmType SBS.ShortByteString
-  | UnsupportedCmmWidth SBS.ShortByteString
-  | UnsupportedCmmGlobalReg SBS.ShortByteString
-  | UnsupportedCmmExpr SBS.ShortByteString
-  | UnsupportedCmmSectionType SBS.ShortByteString
+  = UnsupportedCmmLit BS.ByteString
+  | UnsupportedCmmInstr BS.ByteString
+  | UnsupportedCmmBranch BS.ByteString
+  | UnsupportedCmmType BS.ByteString
+  | UnsupportedCmmWidth BS.ByteString
+  | UnsupportedCmmGlobalReg BS.ByteString
+  | UnsupportedCmmExpr BS.ByteString
+  | UnsupportedCmmSectionType BS.ByteString
   | UnsupportedImplicitCasting Expression ValueType ValueType
   | AssignToImmutableGlobalReg UnresolvedGlobalReg
   deriving (Eq, Show, Generic, Data)
@@ -80,7 +80,7 @@ instance Exception AsteriusCodeGenError
 data AsteriusStatic
   = SymbolStatic EntitySymbol Int
   | Uninitialized Int
-  | Serialized SBS.ShortByteString
+  | Serialized BS.ByteString
   deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary AsteriusStatic
@@ -142,22 +142,12 @@ instance Monoid AsteriusModule where
 
 data AsteriusModuleSymbol
   = AsteriusModuleSymbol
-      { unitId :: SBS.ShortByteString,
-        moduleName :: [SBS.ShortByteString]
+      { unitId :: BS.ByteString,
+        moduleName :: [BS.ByteString]
       }
   deriving (Eq, Ord, Show, Generic, Data)
 
 instance Binary AsteriusModuleSymbol
-
-newtype EntitySymbol
-  = EntitySymbol
-      { entityName :: SBS.ShortByteString
-      }
-  deriving (Eq, Ord, IsString, Binary, Semigroup)
-
-deriving newtype instance Show EntitySymbol
-
-deriving instance Data EntitySymbol
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int ValueType
@@ -349,7 +339,7 @@ instance Binary HostOp
 
 data Expression
   = Block
-      { name :: SBS.ShortByteString,
+      { name :: BS.ByteString,
         bodys :: [Expression],
         blockReturnTypes :: [ValueType]
       }
@@ -358,16 +348,16 @@ data Expression
         ifFalse :: Maybe Expression
       }
   | Loop
-      { name :: SBS.ShortByteString,
+      { name :: BS.ByteString,
         body :: Expression
       }
   | Break
-      { name :: SBS.ShortByteString,
+      { name :: BS.ByteString,
         breakCondition :: Maybe Expression
       }
   | Switch
-      { names :: [SBS.ShortByteString],
-        defaultName :: SBS.ShortByteString,
+      { names :: [BS.ByteString],
+        defaultName :: BS.ByteString,
         condition :: Expression
       }
   | Call
@@ -376,7 +366,7 @@ data Expression
         callReturnTypes :: [ValueType]
       }
   | CallImport
-      { target' :: SBS.ShortByteString,
+      { target' :: BS.ByteString,
         operands :: [Expression],
         callImportReturnTypes :: [ValueType]
       }
@@ -451,7 +441,7 @@ data Expression
         value :: Expression
       }
   | Barf
-      { barfMessage :: SBS.ShortByteString,
+      { barfMessage :: BS.ByteString,
         barfReturnTypes :: [ValueType]
       }
   deriving (Eq, Show, Generic, Data)
@@ -470,7 +460,7 @@ instance Binary Function
 
 data FunctionImport
   = FunctionImport
-      { internalName, externalModuleName, externalBaseName :: SBS.ShortByteString,
+      { internalName, externalModuleName, externalBaseName :: BS.ByteString,
         functionType :: FunctionType
       }
   deriving (Eq, Show, Data, Generic)
@@ -479,7 +469,7 @@ instance Binary FunctionImport
 
 data TableImport
   = TableImport
-      { externalModuleName, externalBaseName :: SBS.ShortByteString
+      { externalModuleName, externalBaseName :: BS.ByteString
       }
   deriving (Eq, Show, Data, Generic)
 
@@ -487,7 +477,7 @@ instance Binary TableImport
 
 data MemoryImport
   = MemoryImport
-      { externalModuleName, externalBaseName :: SBS.ShortByteString
+      { externalModuleName, externalBaseName :: BS.ByteString
       }
   deriving (Eq, Show, Data, Generic)
 
@@ -495,7 +485,7 @@ instance Binary MemoryImport
 
 data FunctionExport
   = FunctionExport
-      { internalName, externalName :: SBS.ShortByteString
+      { internalName, externalName :: BS.ByteString
       }
   deriving (Eq, Show, Data, Generic)
 
@@ -503,7 +493,7 @@ instance Binary FunctionExport
 
 newtype TableExport
   = TableExport
-      { externalName :: SBS.ShortByteString
+      { externalName :: BS.ByteString
       }
   deriving (Eq, Show, Data, Generic)
 
@@ -511,7 +501,7 @@ instance Binary TableExport
 
 newtype MemoryExport
   = MemoryExport
-      { externalName :: SBS.ShortByteString
+      { externalName :: BS.ByteString
       }
   deriving (Eq, Show, Data, Generic)
 
@@ -519,7 +509,7 @@ instance Binary MemoryExport
 
 data FunctionTable
   = FunctionTable
-      { tableFunctionNames :: [SBS.ShortByteString],
+      { tableFunctionNames :: [BS.ByteString],
         tableOffset :: BinaryenIndex
       }
   deriving (Eq, Show, Data, Generic)
@@ -528,7 +518,7 @@ instance Binary FunctionTable
 
 data DataSegment
   = DataSegment
-      { content :: SBS.ShortByteString,
+      { content :: BS.ByteString,
         offset :: Int32
       }
   deriving (Eq, Show, Data, Generic)
@@ -537,7 +527,7 @@ instance Binary DataSegment
 
 data Module
   = Module
-      { functionMap' :: LM.Map SBS.ShortByteString Function,
+      { functionMap' :: LM.Map BS.ByteString Function,
         functionImports :: [FunctionImport],
         functionExports :: [FunctionExport],
         functionTable :: FunctionTable,
@@ -566,11 +556,11 @@ instance Binary RelooperAddBlock
 
 data RelooperAddBranch
   = AddBranch
-      { to :: SBS.ShortByteString,
+      { to :: BS.ByteString,
         addBranchCondition :: Maybe Expression
       }
   | AddBranchForSwitch
-      { to :: SBS.ShortByteString,
+      { to :: BS.ByteString,
         indexes :: [BinaryenIndex]
       }
   deriving (Eq, Show, Generic, Data)
@@ -588,8 +578,8 @@ instance Binary RelooperBlock
 
 data RelooperRun
   = RelooperRun
-      { entry :: SBS.ShortByteString,
-        blockMap :: LM.Map SBS.ShortByteString RelooperBlock,
+      { entry :: BS.ByteString,
+        blockMap :: LM.Map BS.ByteString RelooperBlock,
         labelHelper :: BinaryenIndex
       }
   deriving (Eq, Show, Generic, Data)
@@ -612,7 +602,7 @@ instance Binary FFIValueTypeRep
 data FFIValueType
   = FFIValueType
       { ffiValueTypeRep :: FFIValueTypeRep,
-        hsTyCon :: SBS.ShortByteString
+        hsTyCon :: BS.ByteString
       }
   deriving (Eq, Show, Generic, Data)
 
@@ -639,7 +629,7 @@ data FFIImportDecl
   = FFIImportDecl
       { ffiFunctionType :: FFIFunctionType,
         ffiSafety :: FFISafety,
-        ffiSourceText :: SBS.ShortByteString
+        ffiSourceText :: BS.ByteString
       }
   deriving (Eq, Show, Generic, Data)
 

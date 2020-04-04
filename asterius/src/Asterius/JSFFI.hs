@@ -22,7 +22,6 @@ import qualified CmmCallConv as GHC
 import qualified CmmExpr as GHC
 import qualified CmmNode as GHC
 import Data.ByteString.Builder
-import Data.Coerce
 import Data.IORef
 import Data.List
 import qualified Data.Map.Strict as M
@@ -123,7 +122,7 @@ generateFFIImportWrapperFunction dflags k imp_decl@FFIImportDecl {..}
             (returnTypes import_func_type)
             (returnTypes wrapper_func_type)
             $ CallImport
-              { target' = coerce k,
+              { target' = entityName k,
                 operands =
                   [ generateImplicitCastExpression
                       (ffiValueTypeSigned param_t)
@@ -175,7 +174,7 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
           { name = "",
             bodys =
               [ CallImport
-                  { target' = coerce k,
+                  { target' = entityName k,
                     operands =
                       [ generateImplicitCastExpression
                           (ffiValueTypeSigned param_t)
@@ -245,9 +244,9 @@ generateFFIWrapperModule dflags mod_ffi_state@FFIMarshalState {..} =
 generateFFIFunctionImports :: FFIMarshalState -> [FunctionImport]
 generateFFIFunctionImports FFIMarshalState {..} =
   [ FunctionImport
-      { internalName = coerce k,
+      { internalName = entityName k,
         externalModuleName = "jsffi",
-        externalBaseName = coerce k,
+        externalBaseName = entityName k,
         functionType = recoverWasmImportFunctionType ffiSafety ffiFunctionType
       }
     | (k, FFIImportDecl {..}) <- M.toList ffiImportDecls
@@ -302,9 +301,9 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
         <> ( case map ffiValueTypeRep ffiResultTypes of
                [FFIJSValRep] ->
                  "__asterius_jsffi.newJSVal("
-                   <> shortByteString ffiSourceText
+                   <> byteString ffiSourceText
                    <> ")"
-               _ -> "(" <> shortByteString ffiSourceText <> ")"
+               _ -> "(" <> byteString ffiSourceText <> ")"
            )
         <> ";}"
     safe_code =
@@ -313,7 +312,7 @@ generateFFIImportLambda FFIImportDecl {ffiFunctionType = FFIFunctionType {..}, .
         <> "return ["
         <> intDec (ffiValueTypesTag ffiResultTypes)
         <> ", await ("
-        <> shortByteString ffiSourceText
+        <> byteString ffiSourceText
         <> ")];}"
 
 generateFFIImportObjectFactory :: FFIMarshalState -> Builder
@@ -322,7 +321,7 @@ generateFFIImportObjectFactory FFIMarshalState {..} =
     <> mconcat
       ( intersperse
           ","
-          [ shortByteString (coerce k)
+          [ byteString (entityName k)
               <> ":"
               <> generateFFIImportLambda ffi_decl
             | (k, ffi_decl) <- M.toList ffiImportDecls

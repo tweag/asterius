@@ -35,7 +35,6 @@ import Control.Monad
 import Control.Monad.Cont
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
@@ -255,7 +254,7 @@ marshalExpression e = case e of
     lift $ flip runContT pure $ do
       bs <- lift $ flip runReaderT env $ forM bodys marshalExpression
       (bsp, bl) <- marshalV bs
-      np <- marshalSBS name
+      np <- marshalBS name
       rts <- lift $ marshalReturnTypes blockReturnTypes
       lift $ c_BinaryenBlock m np bsp (fromIntegral bl) rts
   If {..} -> do
@@ -268,21 +267,21 @@ marshalExpression e = case e of
     b <- marshalExpression body
     m <- askModuleRef
     lift $ flip runContT pure $ do
-      np <- marshalSBS name
+      np <- marshalBS name
       lift $ c_BinaryenLoop m np b
   Break {..} -> do
     c <- marshalMaybeExpression breakCondition
     m <- askModuleRef
     lift $ flip runContT pure $ do
-      np <- marshalSBS name
+      np <- marshalBS name
       lift $ c_BinaryenBreak m np c nullPtr
   Switch {..} -> do
     c <- marshalExpression condition
     m <- askModuleRef
     lift $ flip runContT pure $ do
-      ns <- forM names marshalSBS
+      ns <- forM names marshalBS
       (nsp, nl) <- marshalV ns
-      dn <- marshalSBS defaultName
+      dn <- marshalBS defaultName
       lift $ c_BinaryenSwitch m nsp (fromIntegral nl) dn c nullPtr
   Call {..} -> do
     sym_map <- askSymbolMap
@@ -302,7 +301,7 @@ marshalExpression e = case e of
             m <- askModuleRef
             lift $ flip runContT pure $ do
               (ops, osl) <- marshalV os
-              tp <- marshalSBS (entityName target)
+              tp <- marshalBS (entityName target)
               rts <- lift $ marshalReturnTypes callReturnTypes
               lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
         | M.member ("__asterius_barf_" <> target) sym_map ->
@@ -315,7 +314,7 @@ marshalExpression e = case e of
     m <- askModuleRef
     lift $ flip runContT pure $ do
       (ops, osl) <- marshalV os
-      tp <- marshalSBS target'
+      tp <- marshalBS target'
       rts <- lift $ marshalReturnTypes callImportReturnTypes
       lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
   CallIndirect {..} -> do
@@ -385,7 +384,7 @@ marshalExpression e = case e of
     True -> do
       m <- askModuleRef
       lift $ flip runContT pure $ do
-        dst <- marshalSBS (coerce returnCallTarget64)
+        dst <- marshalBS (entityName returnCallTarget64)
         lift $ c_BinaryenReturnCall m dst nullPtr 0 c_BinaryenTypeNone
     -- Case 2: Tail calls are off
     False -> do
@@ -481,7 +480,7 @@ marshalMaybeExpression x = case x of
   _ -> pure nullPtr
 
 marshalFunction ::
-  SBS.ShortByteString ->
+  BS.ByteString ->
   (BinaryenType, BinaryenType) ->
   Function ->
   CodeGen BinaryenFunctionRef
@@ -491,7 +490,7 @@ marshalFunction k (pt, rt) Function {..} = do
   lift $ flip runContT pure $ do
     b <- lift $ flip runReaderT env $ marshalExpression body
     (vtp, vtl) <- marshalV $ map marshalValueType varTypes
-    np <- marshalSBS k
+    np <- marshalBS k
     lift $ c_BinaryenAddFunction m np pt rt vtp (fromIntegral vtl) b
 
 marshalFunctionImport ::
@@ -500,21 +499,21 @@ marshalFunctionImport ::
   FunctionImport ->
   IO ()
 marshalFunctionImport m (pt, rt) FunctionImport {..} = flip runContT pure $ do
-  inp <- marshalSBS internalName
-  emp <- marshalSBS externalModuleName
-  ebp <- marshalSBS externalBaseName
+  inp <- marshalBS internalName
+  emp <- marshalBS externalModuleName
+  ebp <- marshalBS externalBaseName
   lift $ c_BinaryenAddFunctionImport m inp emp ebp pt rt
 
 marshalFunctionExport ::
   BinaryenModuleRef -> FunctionExport -> IO BinaryenExportRef
 marshalFunctionExport m FunctionExport {..} = flip runContT pure $ do
-  inp <- marshalSBS internalName
-  enp <- marshalSBS externalName
+  inp <- marshalBS internalName
+  enp <- marshalBS externalName
   lift $ c_BinaryenAddFunctionExport m inp enp
 
 marshalFunctionTable :: BinaryenModuleRef -> Int -> FunctionTable -> IO ()
 marshalFunctionTable m tbl_slots FunctionTable {..} = flip runContT pure $ do
-  func_name_ptrs <- for tableFunctionNames marshalSBS
+  func_name_ptrs <- for tableFunctionNames marshalBS
   (fnp, fnl) <- marshalV func_name_ptrs
   lift $ do
     o <- c_BinaryenConstInt32 m (fromIntegral tableOffset)
@@ -532,7 +531,7 @@ marshalMemorySegments mbs segs = do
   m <- askModuleRef
   let segs_len = length segs
   lift $ flip runContT pure $ do
-    (seg_bufs, _) <- marshalV =<< for segs (marshalSBS . content)
+    (seg_bufs, _) <- marshalV =<< for segs (marshalBS . content)
     (seg_passives, _) <- marshalV $ replicate segs_len 0
     (seg_offsets, _) <-
       marshalV
@@ -543,7 +542,7 @@ marshalMemorySegments mbs segs = do
           )
     (seg_sizes, _) <-
       marshalV $
-        map (fromIntegral . SBS.length . content) segs
+        map (fromIntegral . BS.length . content) segs
     lift $
       c_BinaryenSetMemory
         m
@@ -559,28 +558,28 @@ marshalMemorySegments mbs segs = do
 
 marshalTableImport :: BinaryenModuleRef -> TableImport -> IO ()
 marshalTableImport m TableImport {..} = flip runContT pure $ do
-  inp <- marshalSBS "0"
-  emp <- marshalSBS externalModuleName
-  ebp <- marshalSBS externalBaseName
+  inp <- marshalBS "0"
+  emp <- marshalBS externalModuleName
+  ebp <- marshalBS externalBaseName
   lift $ c_BinaryenAddTableImport m inp emp ebp
 
 marshalMemoryImport :: BinaryenModuleRef -> MemoryImport -> IO ()
 marshalMemoryImport m MemoryImport {..} = flip runContT pure $ do
-  inp <- marshalSBS "0"
-  emp <- marshalSBS externalModuleName
-  ebp <- marshalSBS externalBaseName
+  inp <- marshalBS "0"
+  emp <- marshalBS externalModuleName
+  ebp <- marshalBS externalBaseName
   lift $ c_BinaryenAddMemoryImport m inp emp ebp 0
 
 marshalTableExport :: BinaryenModuleRef -> TableExport -> IO BinaryenExportRef
 marshalTableExport m TableExport {..} = flip runContT pure $ do
-  inp <- marshalSBS "0"
-  enp <- marshalSBS externalName
+  inp <- marshalBS "0"
+  enp <- marshalBS externalName
   lift $ c_BinaryenAddTableExport m inp enp
 
 marshalMemoryExport :: BinaryenModuleRef -> MemoryExport -> IO BinaryenExportRef
 marshalMemoryExport m MemoryExport {..} = flip runContT pure $ do
-  inp <- marshalSBS "0"
-  enp <- marshalSBS externalName
+  inp <- marshalBS "0"
+  enp <- marshalBS externalName
   lift $ c_BinaryenAddMemoryExport m inp enp
 
 marshalModule ::
@@ -613,7 +612,7 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
   marshalMemoryImport m memoryImport
   void $ marshalMemoryExport m memoryExport
   flip runContT pure $ do
-    lim_segs <- marshalSBS "limit-segments"
+    lim_segs <- marshalBS "limit-segments"
     (lim_segs_p, _) <- marshalV [lim_segs]
     lift $ c_BinaryenModuleRunPasses m lim_segs_p 1
   pure m
@@ -629,8 +628,8 @@ relooperAddBlock r ab = case ab of
     lift $ c_RelooperAddBlockWithSwitch r _code _cond
 
 relooperAddBranch ::
-  M.Map SBS.ShortByteString RelooperBlockRef ->
-  SBS.ShortByteString ->
+  M.Map BS.ByteString RelooperBlockRef ->
+  BS.ByteString ->
   RelooperAddBranch ->
   CodeGen ()
 relooperAddBranch bm k ab = case ab of

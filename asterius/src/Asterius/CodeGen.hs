@@ -35,13 +35,11 @@ import Control.Exception
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
 import Data.Foldable
 import qualified Data.Map.Strict as M
 import Data.String
 import Data.Traversable
 import Foreign
-import GHC.Exts
 import GHC.Fingerprint
 import qualified GhcPlugins as GHC
 import qualified Hoopl.Block as GHC
@@ -76,15 +74,12 @@ runCodeGen (unCodeGen -> CodeGen m) dflags def_mod =
 marshalCLabel :: GHC.CLabel -> CodeGen EntitySymbol
 marshalCLabel clbl = do
   (dflags, def_mod_prefix) <- ask
-  pure EntitySymbol
-    { entityName =
-        fromString $
+  pure $ mkEntitySymbol $ fromString $
           if GHC.externallyVisibleCLabel clbl
             then asmPpr dflags clbl
             else def_mod_prefix <> asmPpr dflags clbl
-    }
 
-marshalLabel :: GHC.Label -> CodeGen SBS.ShortByteString
+marshalLabel :: GHC.Label -> CodeGen BS.ByteString
 marshalLabel lbl = do
   (dflags, _) <- ask
   pure $ fromString $ asmPpr dflags lbl
@@ -153,13 +148,13 @@ marshalCmmStatic st = case st of
       pure $ SymbolStatic sym o
     _ -> liftIO $ throwIO $ UnsupportedCmmLit $ showSBS lit
   GHC.CmmUninitialised s -> pure $ Uninitialized s
-  GHC.CmmString s -> pure $ Serialized $ SBS.pack $ s <> [0]
+  GHC.CmmString s -> pure $ Serialized $ BS.pack $ s <> [0]
 
 marshalCmmSectionType ::
   EntitySymbol -> GHC.Section -> AsteriusStaticsType
 marshalCmmSectionType sym sec@(GHC.Section _ clbl)
   | GHC.isGcPtrLabel clbl = Closure
-  | "_info" `BS.isSuffixOf` SBS.fromShort (entityName sym) = InfoTable
+  | "_info" `BS.isSuffixOf` entityName sym = InfoTable
   | GHC.isSecConstant sec = ConstBytes
   | otherwise = Bytes
 
@@ -638,7 +633,7 @@ marshalCmmQuotRemPrimCall tmp0 tmp1 qop rop vt qr rr x y = do
     ]
 
 marshalCmmUnMathPrimCall ::
-  SBS.ShortByteString ->
+  BS.ByteString ->
   ValueType ->
   GHC.LocalReg ->
   GHC.CmmExpr ->
@@ -658,7 +653,7 @@ marshalCmmUnMathPrimCall op vt r x = do
     ]
 
 marshalCmmBinMathPrimCall ::
-  SBS.ShortByteString ->
+  BS.ByteString ->
   ValueType ->
   GHC.LocalReg ->
   GHC.CmmExpr ->

@@ -26,8 +26,9 @@ import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
-  ( EntitySymbol (..),
+  ( EntitySymbol,
     Module,
+    entityName,
   )
 import qualified Bindings.Binaryen.Raw as Binaryen
 import Control.Monad
@@ -145,7 +146,7 @@ genSymbolDict sym_map =
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> shortByteString (entityName sym) <> "\":" <> intHex sym_idx
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_idx
             | (sym, sym_idx) <- M.toList sym_map
           ]
       )
@@ -363,7 +364,7 @@ ahcDistMain logger task (final_m, report) = do
             logger "[INFO] Running binaryen optimization"
             Binaryen.c_BinaryenModuleOptimize m_ref
             flip runContT pure $ do
-              lim_segs <- marshalSBS "limit-segments"
+              lim_segs <- marshalBS "limit-segments"
               (lim_segs_p, _) <- marshalV [lim_segs]
               lift $ Binaryen.c_BinaryenModuleRunPasses m_ref lim_segs_p 1
             b <- Binaryen.serializeModule m_ref

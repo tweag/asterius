@@ -10,7 +10,7 @@ where
 import Asterius.Types
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Char8 as CBS
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import Data.Data
   ( Data,
     gmapM,
@@ -51,7 +51,7 @@ processBarf sym f =
                 }
           put (succ i, M.insert i_sym ss sm_acc)
           pure Block
-            { name = SBS.empty,
+            { name = BS.empty,
               bodys =
                 [ Call
                     { target = "barf",
@@ -73,4 +73,4 @@ processBarf sym f =
         go = gmapM w t
     sym_str = unpack (entityName sym)
     p = "__asterius_barf_" <> sym_str <> "_"
-    unpack = CBS.unpack . SBS.fromShort
+    unpack = CBS.unpack

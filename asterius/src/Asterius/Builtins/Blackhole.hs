@@ -7,7 +7,7 @@ where
 
 import Asterius.EDSL
 import Asterius.Types
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import Data.List
 import Language.Haskell.GHC.Toolkit.Constants
 
@@ -113,5 +113,5 @@ updateThunk = runEDSL "updateThunk" $ do
 checkSymbol :: Expression -> [EntitySymbol] -> Expression
 checkSymbol e syms = foldl1' orInt32 $ map ((e `eqInt64`) . symbol) syms
 
-barf :: SBS.ShortByteString -> EDSL ()
+barf :: BS.ByteString -> EDSL ()
 barf msg = emit Barf {barfMessage = msg, barfReturnTypes = []}

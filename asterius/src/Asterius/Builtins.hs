@@ -33,7 +33,7 @@ import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import Data.Foldable
 import qualified Data.Map.Strict as Map
 import Data.String
@@ -61,7 +61,7 @@ defaultBuiltinsOptions = BuiltinsOptions
 
 rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
 rtsAsteriusModuleSymbol = AsteriusModuleSymbol
-  { unitId = SBS.toShort $ GHC.fs_bs $ GHC.unitIdFS GHC.rtsUnitId,
+  { unitId = GHC.fs_bs $ GHC.unitIdFS GHC.rtsUnitId,
     moduleName = ["Asterius"]
   }
 
@@ -74,7 +74,7 @@ rtsAsteriusModule opts =
               AsteriusStatics
                 { staticsType = Bytes,
                   asteriusStatics =
-                    [ Serialized $ SBS.pack $
+                    [ Serialized $ BS.pack $
                         replicate
                           (8 * roundup_bytes_to_words sizeof_Capability)
                           0
@@ -129,7 +129,7 @@ rtsAsteriusModule opts =
             ( "__asterius_i64_slot",
               AsteriusStatics
                 { staticsType = Bytes,
-                  asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
+                  asteriusStatics = [Serialized $ BS.pack $ replicate 8 0]
                 }
             )
           ],
@@ -684,14 +684,14 @@ rtsFunctionExports debug =
       }
   ]
 
-emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
+emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
 
 byteStringCBits :: [(EntitySymbol, (FunctionImport, Function))]
 byteStringCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( EntitySymbol func_sym,
+        ( mkEntitySymbol func_sym,
           generateRTSWrapper "bytestring" func_sym param_vts ret_vts
         )
     )
@@ -715,7 +715,7 @@ textCBits :: [(EntitySymbol, (FunctionImport, Function))]
 textCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( EntitySymbol func_sym,
+        ( mkEntitySymbol func_sym,
           generateRTSWrapper "text" func_sym param_vts ret_vts
         )
     )
@@ -729,7 +729,7 @@ floatCBits :: [(EntitySymbol, (FunctionImport, Function))]
 floatCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( EntitySymbol func_sym,
+        ( mkEntitySymbol func_sym,
           generateRTSWrapper "floatCBits" func_sym param_vts ret_vts
         )
     )
@@ -750,8 +750,8 @@ floatCBits =
     ]
 
 generateRTSWrapper ::
-  SBS.ShortByteString ->
-  SBS.ShortByteString ->
+  BS.ByteString ->
+  BS.ByteString ->
   [ValueType] ->
   [ValueType] ->
   (FunctionImport, Function)
@@ -1390,7 +1390,7 @@ unicodeCBits :: [(EntitySymbol, (FunctionImport, Function))]
 unicodeCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( EntitySymbol func_sym,
+        ( mkEntitySymbol func_sym,
           generateRTSWrapper "Unicode" func_sym param_vts ret_vts
         )
     )

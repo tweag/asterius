@@ -334,7 +334,7 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
     let runner_closure =
           deRefJSVal i <> ".symbolTable."
             <> coerce
-              (shortByteString (coerce runner_sym))
+              (byteString (entityName runner_sym))
         hv_closure = "0x" <> JSCode (word64Hex q)
         applied_closure =
           deRefJSVal i
@@ -362,7 +362,7 @@ asteriusRunModFinalizers hsc_env s i = do
   let run_mod_fin_closure =
         deRefJSVal i <> ".symbolTable."
           <> coerce
-            (shortByteString (coerce run_mod_fin_sym))
+            (byteString (entityName run_mod_fin_sym))
       tid =
         deRefJSVal i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
   (_ :: IO ()) <- eval' s tid

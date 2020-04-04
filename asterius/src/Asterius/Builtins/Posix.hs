@@ -17,8 +17,7 @@ import Asterius.Internals.Session
 import Asterius.Types
 import Control.Exception
 import Control.Monad.IO.Class
-import qualified Data.ByteString.Short as SBS
-import Data.Coerce
+import qualified Data.ByteString as BS
 import Data.Foldable
 import qualified Data.Map.Strict as M
 import qualified DynFlags as GHC
@@ -315,21 +314,21 @@ posixUnlockFile = runEDSL "unlockFile" $ do
   emit $ constI64 0
 
 {-# NOINLINE unixUnitId #-}
-unixUnitId :: SBS.ShortByteString
+unixUnitId :: BS.ByteString
 unixUnitId = unsafePerformIO $ fakeSession $ do
   dflags <- GHC.getDynFlags
   let Just comp_id = GHC.lookupPackageName dflags (GHC.PackageName "unix")
       GHC.InstalledUnitId inst_unit_id =
         GHC.componentIdToInstalledUnitId comp_id
-  liftIO $ evaluate $ SBS.toShort $ GHC.fastZStringToByteString $
+  liftIO $ evaluate $ GHC.fastZStringToByteString $
     GHC.zEncodeFS
       inst_unit_id
 
 posixOpendir :: AsteriusModule
 posixOpendir =
   runEDSL
-    ( "ghczuwrapperZC0ZC"
-        <> coerce unixUnitId
+    ( mkEntitySymbol $ "ghczuwrapperZC0ZC"
+        <> unixUnitId
         <> "ZCSystemziPosixziDirectoryZCopendir"
     )
     $ do
