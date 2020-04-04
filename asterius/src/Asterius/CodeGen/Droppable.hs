@@ -7,6 +7,6 @@ where
 
 import Asterius.Types
 
-ccallResultDroppable :: AsteriusEntitySymbol -> [ValueType]
+ccallResultDroppable :: EntitySymbol -> [ValueType]
 ccallResultDroppable sym | sym == "memset" || sym == "memcpy" = [I64]
 ccallResultDroppable _ = []

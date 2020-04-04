@@ -38,7 +38,7 @@ unTag = (.&. 0xFFFFFFFF)
 
 {-# INLINEABLE makeDataSymbolTable #-}
 makeDataSymbolTable ::
-  AsteriusModule -> Int64 -> (Map AsteriusEntitySymbol Int64, Int64)
+  AsteriusModule -> Int64 -> (Map EntitySymbol Int64, Int64)
 makeDataSymbolTable AsteriusModule {..} l =
   swap $
     Map.mapAccum
@@ -50,7 +50,7 @@ makeDataSymbolTable AsteriusModule {..} l =
 {-# INLINEABLE makeMemory #-}
 makeMemory ::
   AsteriusModule ->
-  Map AsteriusEntitySymbol Int64 ->
+  Map EntitySymbol Int64 ->
   Int64 ->
   (BinaryenIndex, [DataSegment])
 makeMemory AsteriusModule {..} sym_map last_addr =

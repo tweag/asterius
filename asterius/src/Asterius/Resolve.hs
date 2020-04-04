@@ -37,10 +37,10 @@ unresolvedGlobalRegType gr = case gr of
 
 data LinkReport
   = LinkReport
-      { staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64,
+      { staticsSymbolMap, functionSymbolMap :: LM.Map EntitySymbol Int64,
         infoTableSet :: [Int64],
         tableSlots, staticMBlocks :: Int,
-        sptEntries :: LM.Map AsteriusEntitySymbol (Word64, Word64),
+        sptEntries :: LM.Map EntitySymbol (Word64, Word64),
         bundledFFIMarshalState :: FFIMarshalState
       }
   deriving (Generic, Show)
@@ -74,7 +74,7 @@ instance Monoid LinkReport where
       }
 
 makeInfoTableSet ::
-  AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> [Int64]
+  AsteriusModule -> LM.Map EntitySymbol Int64 -> [Int64]
 makeInfoTableSet AsteriusModule {..} sym_map =
   LM.elems $ LM.restrictKeys sym_map $ LM.keysSet $
     LM.filter
@@ -88,8 +88,8 @@ resolveAsteriusModule ::
   Int64 ->
   Int64 ->
   ( Module,
-    LM.Map AsteriusEntitySymbol Int64,
-    LM.Map AsteriusEntitySymbol Int64,
+    LM.Map EntitySymbol Int64,
+    LM.Map EntitySymbol Int64,
     Int,
     Int
   )
@@ -146,8 +146,8 @@ linkStart ::
   Bool ->
   Bool ->
   AsteriusModule ->
-  S.Set AsteriusEntitySymbol ->
-  [AsteriusEntitySymbol] ->
+  S.Set EntitySymbol ->
+  [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
 linkStart debug gc_sections verbose_err store root_syms export_funcs =
   ( merged_m,

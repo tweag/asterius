@@ -15,7 +15,7 @@ module Asterius.Types
     AsteriusStatics (..),
     AsteriusModule (..),
     AsteriusModuleSymbol (..),
-    AsteriusEntitySymbol (..),
+    EntitySymbol (..),
     UnresolvedLocalReg (..),
     UnresolvedGlobalReg (..),
     ValueType (..),
@@ -78,7 +78,7 @@ instance Binary AsteriusCodeGenError
 instance Exception AsteriusCodeGenError
 
 data AsteriusStatic
-  = SymbolStatic AsteriusEntitySymbol Int
+  = SymbolStatic EntitySymbol Int
   | Uninitialized Int
   | Serialized SBS.ShortByteString
   deriving (Eq, Ord, Show, Generic, Data)
@@ -105,10 +105,10 @@ instance Binary AsteriusStatics
 
 data AsteriusModule
   = AsteriusModule
-      { staticsMap :: LM.Map AsteriusEntitySymbol AsteriusStatics,
-        staticsErrorMap :: LM.Map AsteriusEntitySymbol AsteriusCodeGenError,
-        functionMap :: LM.Map AsteriusEntitySymbol Function,
-        sptMap :: LM.Map AsteriusEntitySymbol (Word64, Word64),
+      { staticsMap :: LM.Map EntitySymbol AsteriusStatics,
+        staticsErrorMap :: LM.Map EntitySymbol AsteriusCodeGenError,
+        functionMap :: LM.Map EntitySymbol Function,
+        sptMap :: LM.Map EntitySymbol (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
   deriving (Eq, Show, Generic, Data)
@@ -149,15 +149,15 @@ data AsteriusModuleSymbol
 
 instance Binary AsteriusModuleSymbol
 
-newtype AsteriusEntitySymbol
-  = AsteriusEntitySymbol
+newtype EntitySymbol
+  = EntitySymbol
       { entityName :: SBS.ShortByteString
       }
   deriving (Eq, Ord, IsString, Binary, Semigroup)
 
-deriving newtype instance Show AsteriusEntitySymbol
+deriving newtype instance Show EntitySymbol
 
-deriving instance Data AsteriusEntitySymbol
+deriving instance Data EntitySymbol
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int ValueType
@@ -371,7 +371,7 @@ data Expression
         condition :: Expression
       }
   | Call
-      { target :: AsteriusEntitySymbol,
+      { target :: EntitySymbol,
         operands :: [Expression],
         callReturnTypes :: [ValueType]
       }
@@ -425,7 +425,7 @@ data Expression
       { dropValue :: Expression
       }
   | ReturnCall
-      { returnCallTarget64 :: AsteriusEntitySymbol
+      { returnCallTarget64 :: EntitySymbol
       }
   | ReturnCallIndirect
       { returnCallIndirectTarget64 :: Expression
@@ -440,7 +440,7 @@ data Expression
       { graph :: RelooperRun
       }
   | Symbol
-      { unresolvedSymbol :: AsteriusEntitySymbol,
+      { unresolvedSymbol :: EntitySymbol,
         symbolOffset :: Int
       }
   | UnresolvedGetLocal
@@ -648,7 +648,7 @@ instance Binary FFIImportDecl
 data FFIExportDecl
   = FFIExportDecl
       { ffiFunctionType :: FFIFunctionType,
-        ffiExportClosure :: AsteriusEntitySymbol
+        ffiExportClosure :: EntitySymbol
       }
   deriving (Eq, Show, Generic, Data)
 
@@ -656,8 +656,8 @@ instance Binary FFIExportDecl
 
 data FFIMarshalState
   = FFIMarshalState
-      { ffiImportDecls :: LM.Map AsteriusEntitySymbol FFIImportDecl,
-        ffiExportDecls :: LM.Map AsteriusEntitySymbol FFIExportDecl
+      { ffiImportDecls :: LM.Map EntitySymbol FFIImportDecl,
+        ffiExportDecls :: LM.Map EntitySymbol FFIExportDecl
       }
   deriving (Eq, Show, Data)
 

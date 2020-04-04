@@ -108,7 +108,7 @@ generateImplicitCastExpression signed src_ts dest_ts src_expr =
             <> show dest_ts
 
 generateFFIImportWrapperFunction ::
-  GHC.DynFlags -> AsteriusEntitySymbol -> FFIImportDecl -> Function
+  GHC.DynFlags -> EntitySymbol -> FFIImportDecl -> Function
 generateFFIImportWrapperFunction dflags k imp_decl@FFIImportDecl {..}
   | is_unsafe =
     Function
@@ -165,7 +165,7 @@ recoverCmmType dflags FFIValueType {..} = case ffiValueTypeRep of
   FFIDoubleRep -> GHC.f64
 
 asyncImportWrapper ::
-  GHC.DynFlags -> AsteriusEntitySymbol -> FFIImportDecl -> Function
+  GHC.DynFlags -> EntitySymbol -> FFIImportDecl -> Function
 asyncImportWrapper dflags k FFIImportDecl {..} =
   Function
     { functionType = wrapper_func_type,

@@ -118,7 +118,7 @@ data EDSLState
         labelNum :: Int,
         exprBuf :: DList Expression,
         -- | Static variables to be added into the module
-        staticsBuf :: [(AsteriusEntitySymbol, AsteriusStatics)]
+        staticsBuf :: [(EntitySymbol, AsteriusStatics)]
       }
 
 initialEDSLState :: EDSLState
@@ -165,7 +165,7 @@ bundleExpressions vts el = case el of
 -- given its name and a builder.
 runEDSL ::
   -- | Function name
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- | Builder
   EDSL () ->
   -- | Final module
@@ -330,10 +330,10 @@ nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
-call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
+call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}
 
-call' :: AsteriusEntitySymbol -> [Expression] -> ValueType -> EDSL Expression
+call' :: EntitySymbol -> [Expression] -> ValueType -> EDSL Expression
 call' f xs vt = do
   lr <- mutLocal vt
   putLVal lr Call {target = f, operands = xs, callReturnTypes = [vt]}
@@ -469,7 +469,7 @@ switchI64 cond make_clauses = block' [] $ \switch_lbl ->
 -- >    storei64 x 0 (constI32 32)
 allocStaticBytes ::
   -- | Name of the static region
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- | Initializer
   AsteriusStatic ->
   -- | Expression to access the static, referenced by name.
@@ -483,10 +483,10 @@ allocStaticBytes n v = EDSL $ state $ \st ->
           }
    in (symbol n, st')
 
-symbol :: AsteriusEntitySymbol -> Expression
+symbol :: EntitySymbol -> Expression
 symbol = flip symbol' 0
 
-symbol' :: AsteriusEntitySymbol -> Int -> Expression
+symbol' :: EntitySymbol -> Int -> Expression
 symbol' sym o = Symbol {unresolvedSymbol = sym, symbolOffset = o}
 
 constI32 :: Int -> Expression

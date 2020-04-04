@@ -88,7 +88,7 @@ data GHCiState
       { ghciUniqSupply :: GHC.UniqSupply,
         ghciLibs :: AsteriusModule,
         ghciObjs :: M.Map FilePath AsteriusModule,
-        ghciCompiledCoreExprs :: IM.IntMap (AsteriusEntitySymbol, AsteriusModule),
+        ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusModule),
         ghciLastCompiledCoreExpr :: Int,
         ghciJSSession :: ~(JSSession, Pipe, JSVal)
       }
@@ -477,7 +477,7 @@ linkGhci hsc_env =
     Just ghci_comp_id =
       GHC.lookupPackageName (GHC.hsc_dflags hsc_env) (GHC.PackageName "ghci")
 
-ghciClosureSymbol :: GHC.HscEnv -> String -> String -> AsteriusEntitySymbol
+ghciClosureSymbol :: GHC.HscEnv -> String -> String -> EntitySymbol
 ghciClosureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env) "ghci"
 
 intToRemoteRef :: Int -> GHC.RemoteRef a

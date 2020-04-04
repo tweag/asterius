@@ -26,7 +26,7 @@ import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
-  ( AsteriusEntitySymbol (..),
+  ( EntitySymbol (..),
     Module,
   )
 import qualified Bindings.Binaryen.Raw as Binaryen
@@ -139,7 +139,7 @@ genPackageJSON task =
   where
     base_name = string7 (outputBaseName task)
 
-genSymbolDict :: M.Map AsteriusEntitySymbol Int64 -> Builder
+genSymbolDict :: M.Map EntitySymbol Int64 -> Builder
 genSymbolDict sym_map =
   "Object.freeze({"
     <> mconcat

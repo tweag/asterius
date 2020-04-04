@@ -21,7 +21,7 @@ import Data.Word
 import qualified Encoding as GHC
 import Type.Reflection
 
-processBarf :: AsteriusEntitySymbol -> Function -> AsteriusModule
+processBarf :: EntitySymbol -> Function -> AsteriusModule
 processBarf sym f =
   mempty
     { staticsMap = sm,
@@ -32,7 +32,7 @@ processBarf sym f =
     w ::
       Data a =>
       a ->
-      State (Word64, M.Map AsteriusEntitySymbol AsteriusStatics) a
+      State (Word64, M.Map EntitySymbol AsteriusStatics) a
     w t = case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
       Just HRefl -> case t of
         Barf {..} -> do

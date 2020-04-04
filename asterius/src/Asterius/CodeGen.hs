@@ -73,10 +73,10 @@ runCodeGen ::
 runCodeGen (unCodeGen -> CodeGen m) dflags def_mod =
   runReaderT m (dflags, asmPpr dflags def_mod <> "_")
 
-marshalCLabel :: GHC.CLabel -> CodeGen AsteriusEntitySymbol
+marshalCLabel :: GHC.CLabel -> CodeGen EntitySymbol
 marshalCLabel clbl = do
   (dflags, def_mod_prefix) <- ask
-  pure AsteriusEntitySymbol
+  pure EntitySymbol
     { entityName =
         fromString $
           if GHC.externallyVisibleCLabel clbl
@@ -156,7 +156,7 @@ marshalCmmStatic st = case st of
   GHC.CmmString s -> pure $ Serialized $ SBS.pack $ s <> [0]
 
 marshalCmmSectionType ::
-  AsteriusEntitySymbol -> GHC.Section -> AsteriusStaticsType
+  EntitySymbol -> GHC.Section -> AsteriusStaticsType
 marshalCmmSectionType sym sec@(GHC.Section _ clbl)
   | GHC.isGcPtrLabel clbl = Closure
   | "_info" `BS.isSuffixOf` SBS.fromShort (entityName sym) = InfoTable
@@ -164,7 +164,7 @@ marshalCmmSectionType sym sec@(GHC.Section _ clbl)
   | otherwise = Bytes
 
 marshalCmmData ::
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   GHC.Section ->
   GHC.CmmStatics ->
   CodeGen AsteriusStatics

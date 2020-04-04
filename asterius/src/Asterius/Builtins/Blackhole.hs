@@ -110,7 +110,7 @@ updateThunk = runEDSL "updateThunk" $ do
           putLVal msg_p $ loadI64 msg offset_MessageBlackHole_link
     )
 
-checkSymbol :: Expression -> [AsteriusEntitySymbol] -> Expression
+checkSymbol :: Expression -> [EntitySymbol] -> Expression
 checkSymbol e syms = foldl1' orInt32 $ map ((e `eqInt64`) . symbol) syms
 
 barf :: SBS.ShortByteString -> EDSL ()

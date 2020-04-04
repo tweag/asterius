@@ -409,7 +409,7 @@ marshalBinaryOp op = case op of
 
 -- ----------------------------------------------------------------------------
 
-type SymbolMap = Map.Map AsteriusEntitySymbol Int64
+type SymbolMap = Map.Map EntitySymbol Int64
 
 -- | Environment used during the elaboration of Asterius' types to WebAssembly.
 data MarshalEnv
@@ -726,7 +726,7 @@ makeInstructionsMaybe m_expr = case m_expr of
 makeCodeSection ::
   MonadError MarshalError m =>
   Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
+  Map.Map EntitySymbol Int64 ->
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
@@ -770,7 +770,7 @@ makeDataSection Module {..} _module_symtable = do
 makeModule ::
   MonadError MarshalError m =>
   Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
+  Map.Map EntitySymbol Int64 ->
   Module ->
   m Wasm.Module
 makeModule tail_calls sym_map m = do

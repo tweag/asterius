@@ -19,7 +19,7 @@ import Data.List
 import qualified Data.Map.Strict as M
 
 genExportStaticObj ::
-  FFIMarshalState -> M.Map AsteriusEntitySymbol Int64 -> Builder
+  FFIMarshalState -> M.Map EntitySymbol Int64 -> Builder
 genExportStaticObj FFIMarshalState {..} sym_map =
   "["
     <> mconcat
@@ -32,9 +32,9 @@ genExportStaticObj FFIMarshalState {..} sym_map =
     <> "]"
 
 genExportStaticFunc ::
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   FFIExportDecl ->
-  M.Map AsteriusEntitySymbol Int64 ->
+  M.Map EntitySymbol Int64 ->
   Builder
 genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
   "[\""

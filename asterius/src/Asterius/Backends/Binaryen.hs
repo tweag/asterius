@@ -220,7 +220,7 @@ marshalFunctionType FunctionType {..} = flip runContT pure $ do
 
 -- TODO: there is a similar definition in Asterius.Backends.WasmToolkit. Maybe
 -- we should just move shared stuff into Asterius.Types (or another shared file).
-type SymbolMap = M.Map AsteriusEntitySymbol Int64
+type SymbolMap = M.Map EntitySymbol Int64
 
 -- | Environment used during marshaling of Asterius' types to Binaryen.
 data MarshalEnv
@@ -584,7 +584,7 @@ marshalMemoryExport m MemoryExport {..} = flip runContT pure $ do
   lift $ c_BinaryenAddMemoryExport m inp enp
 
 marshalModule ::
-  Bool -> M.Map AsteriusEntitySymbol Int64 -> Module -> IO BinaryenModuleRef
+  Bool -> M.Map EntitySymbol Int64 -> Module -> IO BinaryenModuleRef
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
   m <- c_BinaryenModuleCreate

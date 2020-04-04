@@ -164,7 +164,7 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
           Just r -> r
           _ -> GHC.panicDoc "processFFIExport" $ GHC.ppr norm_sig_ty
         new_k =
-          AsteriusEntitySymbol
+          EntitySymbol
             { entityName = SBS.toShort $ GHC.fastStringToByteString lbl
             }
         export_closure = idClosureSymbol dflags export_id

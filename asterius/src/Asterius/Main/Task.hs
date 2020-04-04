@@ -30,7 +30,7 @@ module Asterius.Main.Task
   )
 where
 
-import Asterius.Types (AsteriusEntitySymbol)
+import Asterius.Types (EntitySymbol)
 
 data Target
   = Node
@@ -53,7 +53,7 @@ data Task
         outputBaseName :: String,
         hasMain, tailCalls, gcSections, bundle, debug, outputIR, run, verboseErr, yolo, consoleHistory :: Bool,
         extraGHCFlags :: [String],
-        exportFunctions, extraRootSymbols :: [AsteriusEntitySymbol],
+        exportFunctions, extraRootSymbols :: [EntitySymbol],
         gcThreshold :: Int
       }
 

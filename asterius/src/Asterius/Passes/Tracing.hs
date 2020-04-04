@@ -30,8 +30,8 @@ import Type.Reflection
 {-# INLINEABLE addTracingModule #-}
 addTracingModule ::
   Monad m =>
-  M.Map AsteriusEntitySymbol Int64 ->
-  AsteriusEntitySymbol ->
+  M.Map EntitySymbol Int64 ->
+  EntitySymbol ->
   Function ->
   m Function
 addTracingModule func_sym_map func_sym func@Function {functionType = func_type}

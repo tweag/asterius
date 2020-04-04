@@ -21,8 +21,8 @@ import Type.Reflection
 gcSections ::
   Bool ->
   AsteriusModule ->
-  S.Set AsteriusEntitySymbol ->
-  [AsteriusEntitySymbol] ->
+  S.Set EntitySymbol ->
+  [EntitySymbol] ->
   AsteriusModule
 gcSections verbose_err store_mod root_syms export_funcs =
   final_m
@@ -57,14 +57,14 @@ gcSections verbose_err store_mod root_syms export_funcs =
             ( \i_staging_sym (i_child_syms_acc, o_m_acc) ->
                 case LM.lookup i_staging_sym (staticsMap store_mod) of
                   Just ss ->
-                    ( collectAsteriusEntitySymbols ss <> i_child_syms_acc,
+                    ( collectEntitySymbols ss <> i_child_syms_acc,
                       o_m_acc
                         { staticsMap = LM.insert i_staging_sym ss (staticsMap o_m_acc)
                         }
                     )
                   _ -> case LM.lookup i_staging_sym (functionMap store_mod) of
                     Just func ->
-                      ( collectAsteriusEntitySymbols func <> i_child_syms_acc,
+                      ( collectEntitySymbols func <> i_child_syms_acc,
                         o_m_acc
                           { functionMap =
                               LM.insert
@@ -104,9 +104,9 @@ gcSections verbose_err store_mod root_syms export_funcs =
             i_staging_syms
         o_staging_syms = i_child_syms `S.difference` o_acc_syms
 
-collectAsteriusEntitySymbols :: Data a => a -> S.Set AsteriusEntitySymbol
-collectAsteriusEntitySymbols t
-  | Just HRefl <- eqTypeRep (typeOf t) (typeRep @AsteriusEntitySymbol) =
+collectEntitySymbols :: Data a => a -> S.Set EntitySymbol
+collectEntitySymbols t
+  | Just HRefl <- eqTypeRep (typeOf t) (typeRep @EntitySymbol) =
     S.singleton t
   | otherwise =
-    gmapQl (<>) S.empty collectAsteriusEntitySymbols t
+    gmapQl (<>) S.empty collectEntitySymbols t

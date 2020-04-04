@@ -687,11 +687,11 @@ rtsFunctionExports debug =
 emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
 
-byteStringCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+byteStringCBits :: [(EntitySymbol, (FunctionImport, Function))]
 byteStringCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
+        ( EntitySymbol func_sym,
           generateRTSWrapper "bytestring" func_sym param_vts ret_vts
         )
     )
@@ -711,11 +711,11 @@ byteStringCBits =
       ("_hs_bytestring_long_long_uint_hex", [I64, I64], [I64])
     ]
 
-textCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+textCBits :: [(EntitySymbol, (FunctionImport, Function))]
 textCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
+        ( EntitySymbol func_sym,
           generateRTSWrapper "text" func_sym param_vts ret_vts
         )
     )
@@ -725,11 +725,11 @@ textCBits =
       ("_hs_text_encode_utf8", [I64, I64, I64, I64], [])
     ]
 
-floatCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+floatCBits :: [(EntitySymbol, (FunctionImport, Function))]
 floatCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
+        ( EntitySymbol func_sym,
           generateRTSWrapper "floatCBits" func_sym param_vts ret_vts
         )
     )
@@ -794,7 +794,7 @@ generateRTSWrapper mod_sym func_sym param_vts ret_vts =
       [I64] -> ([F64], truncUFloat64ToInt64)
       _ -> (ret_vts, id)
 
-generateWrapperFunction :: AsteriusEntitySymbol -> Function -> Function
+generateWrapperFunction :: EntitySymbol -> Function -> Function
 generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
   Function
     { functionType = FunctionType
@@ -1019,7 +1019,7 @@ createStrictIOThreadFunction _ =
 genAllocateFunction ::
   BuiltinsOptions ->
   -- Name of the allocation function
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- Module representing the function
   AsteriusModule
 genAllocateFunction (BuiltinsOptions {}) n = runEDSL n $ do
@@ -1127,9 +1127,9 @@ makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
 rtsMkHelper ::
   BuiltinsOptions ->
   -- Name of the function to be built
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- Mangled name of the primop constructor
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   AsteriusModule
 rtsMkHelper _ n con_sym = runEDSL n $ do
   setReturnTypes [I64]
@@ -1240,7 +1240,7 @@ rtsGetDoubleFunction _ = runEDSL "rts_getDouble" $ do
 -- named differently
 generateRtsGetIntFunction ::
   BuiltinsOptions ->
-  AsteriusEntitySymbol -> -- Name of the function
+  EntitySymbol -> -- Name of the function
   AsteriusModule
 generateRtsGetIntFunction _ n = runEDSL n $ do
   setReturnTypes [I64]
@@ -1386,11 +1386,11 @@ barfFunction _ = runEDSL "barf" $ do
 -- unsigned.   This is OK for ASCII code, since the ints we have will not be
 -- larger than 2^15.  However, for larger numbers, it would "overflow", and
 -- would treat large unsigned  numbers as negative signed numbers.
-unicodeCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+unicodeCBits :: [(EntitySymbol, (FunctionImport, Function))]
 unicodeCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
+        ( EntitySymbol func_sym,
           generateRTSWrapper "Unicode" func_sym param_vts ret_vts
         )
     )
@@ -1494,7 +1494,7 @@ writeFunction _ =
 getF64GlobalRegFunction ::
   BuiltinsOptions ->
   -- Name of the function to be created
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- Global register to be returned
   UnresolvedGlobalReg ->
   AsteriusModule -- Module containing the function

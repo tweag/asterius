@@ -4,7 +4,7 @@ module Asterius.Internals.Name
   )
 where
 
-import Asterius.Types (AsteriusEntitySymbol)
+import Asterius.Types (EntitySymbol)
 import Asterius.TypesConv
 import qualified CLabel as GHC
 import Data.String
@@ -35,7 +35,7 @@ fakeName dflags pkg_name mod_name occ_name = name
     name = GHC.mkExternalName dummy_uniq m occ_name GHC.noSrcSpan
 
 fakeClosureSymbol ::
-  GHC.DynFlags -> String -> String -> String -> AsteriusEntitySymbol
+  GHC.DynFlags -> String -> String -> String -> EntitySymbol
 fakeClosureSymbol dflags pkg_name mod_name occ_name = sym
   where
     name =
@@ -47,7 +47,7 @@ fakeClosureSymbol dflags pkg_name mod_name occ_name = sym
     clbl = GHC.mkClosureLabel name GHC.MayHaveCafRefs
     sym = fromString $ asmPpr dflags clbl
 
-idClosureSymbol :: GHC.DynFlags -> GHC.Id -> AsteriusEntitySymbol
+idClosureSymbol :: GHC.DynFlags -> GHC.Id -> EntitySymbol
 idClosureSymbol dflags n =
   fromString $ asmPpr dflags $
     GHC.mkClosureLabel

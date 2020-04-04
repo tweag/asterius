@@ -29,11 +29,11 @@ parseLinkTask args = do
           find ("--output-ir=" `isPrefixOf`) args
             >>= stripPrefix "--output-ir=",
         rootSymbols =
-          map (AsteriusEntitySymbol . fromString) $
+          map (EntitySymbol . fromString) $
             str_args "--extra-root-symbol=",
         exportFunctions =
           ("main" :)
-            $ map (AsteriusEntitySymbol . fromString)
+            $ map (EntitySymbol . fromString)
             $ str_args "--export-function="
       }
   where
