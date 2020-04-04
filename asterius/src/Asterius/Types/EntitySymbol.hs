@@ -5,7 +5,7 @@
 module Asterius.Types.EntitySymbol
   ( EntitySymbol,
     entityName,
-    mkEntitySymbol
+    mkEntitySymbol,
   )
 where
 
@@ -13,6 +13,7 @@ import Data.Binary
 import qualified Data.ByteString as BS
 import Data.Data
 import Data.String
+import qualified GhcPlugins as GHC
 
 newtype EntitySymbol = EntitySymbol BS.ByteString
   deriving newtype (Eq, Ord, Show, IsString, Semigroup, Monoid)
@@ -24,7 +25,11 @@ entityName (EntitySymbol k) = k
 
 {-# INLINE mkEntitySymbol #-}
 mkEntitySymbol :: BS.ByteString -> EntitySymbol
-mkEntitySymbol = EntitySymbol
+mkEntitySymbol bs
+  | BS.null bs =
+    EntitySymbol BS.empty
+  | otherwise =
+    EntitySymbol $ GHC.fastStringToByteString $ GHC.mkFastStringByteString bs
 
 instance Binary EntitySymbol where
   {-# INLINE put #-}
