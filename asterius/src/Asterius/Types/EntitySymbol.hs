@@ -15,21 +15,17 @@ import Data.Data
 import Data.String
 import qualified GhcPlugins as GHC
 
-newtype EntitySymbol = EntitySymbol BS.ByteString
+newtype EntitySymbol = EntitySymbol GHC.FastString
   deriving newtype (Eq, Ord, Show, IsString, Semigroup, Monoid)
   deriving stock (Data)
 
 {-# INLINE entityName #-}
 entityName :: EntitySymbol -> BS.ByteString
-entityName (EntitySymbol k) = k
+entityName (EntitySymbol k) = GHC.fastStringToByteString k
 
 {-# INLINE mkEntitySymbol #-}
 mkEntitySymbol :: BS.ByteString -> EntitySymbol
-mkEntitySymbol bs
-  | BS.null bs =
-    EntitySymbol BS.empty
-  | otherwise =
-    EntitySymbol $ GHC.fastStringToByteString $ GHC.mkFastStringByteString bs
+mkEntitySymbol = EntitySymbol . GHC.mkFastStringByteString
 
 instance Binary EntitySymbol where
   {-# INLINE put #-}

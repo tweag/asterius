@@ -26,7 +26,6 @@ import qualified Data.Set as S
 import Foreign
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
-import Unsafe.Coerce
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
 unresolvedGlobalRegType gr = case gr of
@@ -104,7 +103,7 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
     all_sym_map = func_sym_map <> ss_sym_map
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-    new_function_map = unsafeCoerce $ functionMap m_globals_resolved
+    new_function_map = LM.mapKeys entityName $ functionMap m_globals_resolved
     (initial_pages, segs) =
       makeMemory m_globals_resolved all_sym_map last_data_addr
     initial_mblocks =
