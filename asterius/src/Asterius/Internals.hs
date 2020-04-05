@@ -9,8 +9,8 @@ module Asterius.Internals
     encodeFile,
     decodeFile,
     tryDecodeFile,
-    showSBS,
-    c8SBS,
+    showBS,
+    c8BS,
     (!),
   )
 where
@@ -66,13 +66,13 @@ tryDecodeFile p = do
     Right (Left err) -> Left $ toException $ userError $ show err
     Right (Right v) -> Right v
 
-{-# INLINE showSBS #-}
-showSBS :: Show a => a -> BS.ByteString
-showSBS = fromString . show
+{-# INLINE showBS #-}
+showBS :: Show a => a -> BS.ByteString
+showBS = fromString . show
 
-{-# INLINE c8SBS #-}
-c8SBS :: BS.ByteString -> String
-c8SBS = CBS.unpack
+{-# INLINE c8BS #-}
+c8BS :: BS.ByteString -> String
+c8BS = CBS.unpack
 
 {-# INLINE (!) #-}
 (!) :: (HasCallStack, Ord k, Show k) => LM.Map k v -> k -> v

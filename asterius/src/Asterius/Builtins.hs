@@ -247,7 +247,7 @@ generateRtsAsteriusDebugModule opts =
 rtsFunctionImports :: Bool -> [FunctionImport]
 rtsFunctionImports debug =
   [ FunctionImport
-      { internalName = "__asterius_" <> op <> "_" <> showSBS ft,
+      { internalName = "__asterius_" <> op <> "_" <> showBS ft,
         externalModuleName = "Math",
         externalBaseName = op,
         functionType = FunctionType {paramTypes = [ft], returnTypes = [ft]}
@@ -268,7 +268,7 @@ rtsFunctionImports debug =
         ]
   ]
     <> [ FunctionImport
-           { internalName = "__asterius_" <> op <> "_" <> showSBS ft,
+           { internalName = "__asterius_" <> op <> "_" <> showBS ft,
              externalModuleName = "Math",
              externalBaseName = op,
              functionType = FunctionType

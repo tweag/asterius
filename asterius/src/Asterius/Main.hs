@@ -260,10 +260,10 @@ ahcLink task = do
     ]
       <> concat [["-no-hs-main", "-optl--no-main"] | not $ hasMain task]
       <> ["-optl--debug" | debug task]
-      <> [ "-optl--extra-root-symbol=" <> c8SBS (entityName root_sym)
+      <> [ "-optl--extra-root-symbol=" <> c8BS (entityName root_sym)
            | root_sym <- extraRootSymbols task
          ]
-      <> [ "-optl--export-function=" <> c8SBS (entityName export_func)
+      <> [ "-optl--export-function=" <> c8BS (entityName export_func)
            | export_func <- exportFunctions task
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]

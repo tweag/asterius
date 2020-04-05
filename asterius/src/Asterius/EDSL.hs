@@ -378,7 +378,7 @@ newtype Label
 
 newLabel :: EDSL Label
 newLabel = EDSL $ state $ \s@EDSLState {..} ->
-  (Label $ showSBS labelNum, s {labelNum = succ labelNum})
+  (Label $ showBS labelNum, s {labelNum = succ labelNum})
 
 newScope :: EDSL () -> EDSL (DList Expression)
 newScope m = do
