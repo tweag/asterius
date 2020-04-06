@@ -175,7 +175,7 @@ primitiveMemsetWord8 = runEDSL "hsprimitive_memcmp" $ do
   [p, off, n, x] <- params [I64,I64,I64,I64]
   let arg1 = p `addInt64` off
   callImport -- TODO: Convert result to I64 / drop it
-    "__asterius_primitive_memset"
+    "__asterius_primitive_memcmp"
     [arg1, x, n] -- TODO: Convert arguments to F64
     -- GEORGE: Strictly speaking, it returns a pointer, but we wish to drop it. Is this approach valid?
 
