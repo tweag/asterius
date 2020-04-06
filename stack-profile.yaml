@@ -6,13 +6,13 @@ build:
   library-profiling: true
   executable-profiling: true
 
-resolver: lts-15.6
+resolver: lts-15.7
 extra-deps:
-  - https://github.com/tweag/binaryen/archive/ca6488162da5db8feb0d82e6108d071886aced1b.tar.gz
+  - https://github.com/tweag/binaryen/archive/32a70339b3f4ecf91e827e8059c5d179ffb76da4.tar.gz
   - url: https://github.com/tweag/inline-js/archive/f192891283e21f8af9bb4dc07d3b36d59c658e2f.tar.gz
     subdirs:
       - inline-js-core
-  - https://github.com/tweag/wabt/archive/3a230602d9b5d43d0d2c56f86facb27ecc49a104.tar.gz
+  - https://github.com/tweag/wabt/archive/96705e56fe0018c59270f8685f682fb3605d66f4.tar.gz
 packages:
   - asterius
   - ghc-toolkit
@@ -26,21 +26,21 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.8.3:
-        url: https://12051-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.3-x86_64-unknown-linux.tar.xz
-        content-length: 145940384
-        sha256: 7e6390d37f29298371c27ee7b93bb2d99e26969704e89816beb5bfdcaa7487e5
+        url: https://12987-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.3-x86_64-unknown-linux.tar.xz
+        content-length: 146205112
+        sha256: 61e32e7582fa939696772bd58819a3098277a13563529cfb64dbae55321ab20b
     linux64-custom-asterius:
       8.8.3:
-        url: https://12048-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.3-x86_64-unknown-linux.tar.xz
-        content-length: 143740620
-        sha256: 9b90d261de2ebc8818e7c9f2aed09d26f9314cc2d204ffc66119dff79d052dca
+        url: https://12989-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.3-x86_64-unknown-linux.tar.xz
+        content-length: 143769940
+        sha256: bddf75cd8ed6e5238d6b92943da4be04a0b60aca23430f0caac29de5597f4764
     linux64-custom-asterius-musl:
       8.8.3:
-        url: https://12049-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.3-x86_64-alpine-linux.tar.xz
-        content-length: 159878212
-        sha256: 87cea8dd3994dbf17ab6afba1c3eb92235de063086fbdd5e2fc919a779694a51
+        url: https://12986-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.3-x86_64-alpine-linux.tar.xz
+        content-length: 160224956
+        sha256: d29bd702b88800427fb259ab41f6011e21ce40bd6d9acfa9040c4876df55b0ee
     macosx-custom-asterius:
       8.8.3:
-        url: https://12050-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.3-x86_64-apple-darwin.tar.xz
-        content-length: 161392812
-        sha256: 6dc86444671aece31df58339c34d3417d4018bea84a104fb26b78cd1f9b73a0b
+        url: https://12988-111412813-gh.circle-artifacts.com/0/tmp/ghc-bindist/ghc-8.8.3-x86_64-apple-darwin.tar.xz
+        content-length: 161359548
+        sha256: 96c68786207924d6aaffb25b32ea71536224ede8545410416071af4a6f5b5f8c
