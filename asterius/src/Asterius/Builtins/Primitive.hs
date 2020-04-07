@@ -16,12 +16,6 @@ import Asterius.EDSL
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
 
--- GEORGE: I do not like that the cbits are disassociated from their imports
--- (this is the case in all Asterius.Builtins.* files). It is very easy to
--- forget one. Maybe we can find a better way to do this in the future.
-
--- -------------------------------------------------------------------------
-
 -- GEORGE: Maybe use this function in all Asterius.Builtin.* modules to save us
 -- from duplication and copy-paste errors?
 
