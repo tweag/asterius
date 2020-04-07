@@ -11,6 +11,8 @@ module Asterius.Resolve
   )
 where
 
+import Asterius.Binary.Generic
+import Asterius.Binary.Orphans ()
 import Asterius.Builtins
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
@@ -19,6 +21,7 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Types
+import qualified Binary as GHC
 import Data.Binary
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
@@ -44,6 +47,10 @@ data LinkReport
   deriving (Generic, Show)
 
 instance Binary LinkReport
+
+instance GHC.Binary LinkReport where
+  put_ = gPut_
+  get = gGet
 
 instance Semigroup LinkReport where
   r0 <> r1 =
