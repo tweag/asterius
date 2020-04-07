@@ -116,7 +116,7 @@ primitiveMemcmp = runEDSL "hsprimitive_memcmp" $ do
 
 -- | @void hsprimitive_memset_Word8 (HsWord8 *p, ptrdiff_t off, size_t n, HsWord x)@
 primitiveMemsetWord8 :: AsteriusModule
-primitiveMemsetWord8 = runEDSL "hsprimitive_memset" $ do
+primitiveMemsetWord8 = runEDSL "hsprimitive_memset_Word8" $ do
   setReturnTypes []
   [p, off, n, x] <- params [I64,I64,I64,I64]
   let arg1 = p `addInt64` off
