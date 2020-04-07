@@ -307,7 +307,7 @@ export class Memory {
       4 : Uint32Array,
       8 : BigUint64Array
     };
-    const buf = this.expose(_dst, n, ty[size]); // TODO: fix this one
+    const buf = this.expose(_dst, n, ty[size]);
     buf.fill(c);
   }
 
