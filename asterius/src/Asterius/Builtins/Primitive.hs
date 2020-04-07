@@ -23,6 +23,8 @@ import qualified Data.ByteString.Short as SBS
 -- GEORGE: Maybe use this function in all Asterius.Builtin.* modules to save us
 -- from duplication and copy-paste errors?
 
+-- | Create a function import with internal name of the form
+-- @__asterius_<EXTERNAL-MODULE-NAME>_<EXTERNAL-BASE-NAME>@.
 mkImport ::
   -- | External module name
   SBS.ShortByteString ->
