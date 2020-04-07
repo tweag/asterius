@@ -57,6 +57,8 @@ primitiveImports =
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
     mkImport "Memory" "memset" $
       FunctionType {paramTypes = [F64, F64, F64, F64], returnTypes = []},
+    mkImport "Memory" "memsetFloat" $
+      FunctionType {paramTypes = [F64, F64, F64, F64], returnTypes = []},
     mkImport "Memory" "memcmp" $
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
   ]
@@ -113,16 +115,31 @@ primitiveMemcmp = runEDSL "hsprimitive_memcmp" $ do
     >>= emit
 
 -- | @void hsprimitive_memset_XXX (XXX *p, ptrdiff_t off, size_t n, XXX x)@
-mkPrimitiveMemset ::
+mkPrimitiveMemsetUInt ::
   -- | Size (in bytes) of the type
   Int ->
   -- | String representation of the type
   AsteriusEntitySymbol ->
   AsteriusModule
-mkPrimitiveMemset size typerep = runEDSL hsname $ do
+mkPrimitiveMemsetUInt size typerep = runEDSL hsname $ do
   setReturnTypes []
   [p, off, n, x] <- params [I64, I64, I64, I64]
   callImport "__asterius_Memory_memset" $
+    map convertSInt64ToFloat64 [p `addInt64` off, x, n, constI64 size]
+  where
+    hsname = "hsprimitive_memset_" <> typerep
+
+-- | @void hsprimitive_memset_XXX (XXX *p, ptrdiff_t off, size_t n, XXX x)@
+mkPrimitiveMemsetFloat ::
+  -- | Size (in bytes) of the type
+  Int ->
+  -- | String representation of the type
+  AsteriusEntitySymbol ->
+  AsteriusModule
+mkPrimitiveMemsetFloat size typerep = runEDSL hsname $ do
+  setReturnTypes []
+  [p, off, n, x] <- params [I64, I64, I64, I64]
+  callImport "__asterius_Memory_memsetFloat" $
     map convertSInt64ToFloat64 [p `addInt64` off, x, n, constI64 size]
   where
     hsname = "hsprimitive_memset_" <> typerep
@@ -131,36 +148,36 @@ mkPrimitiveMemset size typerep = runEDSL hsname $ do
 
 -- | @void hsprimitive_memset_Word8 (HsWord8 *p, ptrdiff_t off, size_t n, HsWord x)@
 primitiveMemsetWord8 :: AsteriusModule
-primitiveMemsetWord8 = mkPrimitiveMemset 1 "Word8"
+primitiveMemsetWord8 = mkPrimitiveMemsetUInt 1 "Word8"
 
 -- void hsprimitive_memset_Word16 (HsWord16 *, ptrdiff_t, size_t, HsWord);
 primitiveMemsetWord16 :: AsteriusModule
-primitiveMemsetWord16 = mkPrimitiveMemset 2 "Word16"
+primitiveMemsetWord16 = mkPrimitiveMemsetUInt 2 "Word16"
 
 -- void hsprimitive_memset_Word32 (HsWord32 *, ptrdiff_t, size_t, HsWord);
 primitiveMemsetWord32 :: AsteriusModule
-primitiveMemsetWord32 = mkPrimitiveMemset 4 "Word32"
+primitiveMemsetWord32 = mkPrimitiveMemsetUInt 4 "Word32"
 
 -- void hsprimitive_memset_Word64 (HsWord64 *, ptrdiff_t, size_t, HsWord64);
 primitiveMemsetWord64 :: AsteriusModule
-primitiveMemsetWord64 = mkPrimitiveMemset 8 "Word64"
+primitiveMemsetWord64 = mkPrimitiveMemsetUInt 8 "Word64"
 
 -- void hsprimitive_memset_Word (HsWord *, ptrdiff_t, size_t, HsWord);
 primitiveMemsetWord :: AsteriusModule
-primitiveMemsetWord = mkPrimitiveMemset 8 "Word"
+primitiveMemsetWord = mkPrimitiveMemsetUInt 8 "Word"
 
 -- void hsprimitive_memset_Ptr (HsPtr *, ptrdiff_t, size_t, HsPtr);
 primitiveMemsetPtr :: AsteriusModule
-primitiveMemsetPtr = mkPrimitiveMemset 8 "Ptr"
+primitiveMemsetPtr = mkPrimitiveMemsetUInt 8 "Ptr"
 
 -- void hsprimitive_memset_Float (HsFloat *, ptrdiff_t, size_t, HsFloat);
 primitiveMemsetFloat :: AsteriusModule
-primitiveMemsetFloat = mkPrimitiveMemset 4 "Float"
+primitiveMemsetFloat = mkPrimitiveMemsetFloat 4 "Float"
 
 -- void hsprimitive_memset_Double (HsDouble *, ptrdiff_t, size_t, HsDouble);
 primitiveMemsetDouble :: AsteriusModule
-primitiveMemsetDouble = mkPrimitiveMemset 8 "Double"
+primitiveMemsetDouble = mkPrimitiveMemsetFloat 8 "Double"
 
 -- void hsprimitive_memset_Char (HsChar *, ptrdiff_t, size_t, HsChar);
 primitiveMemsetChar :: AsteriusModule
-primitiveMemsetChar = mkPrimitiveMemset 4 "Char"
+primitiveMemsetChar = mkPrimitiveMemsetUInt 4 "Char"

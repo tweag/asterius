@@ -311,6 +311,17 @@ export class Memory {
     buf.fill(c);
   }
 
+  memsetFloat(_dst, c, n, size = 1) {
+    // Size can only be 4 (32bit) or 8 (64bit).
+    // Other sizes should get a runtime error.
+    const ty = {
+      1: Float32Array,
+      2: Float64Array
+    };
+    const buf = this.expose(_dst, n, ty[size]);
+    buf.fill(c);
+  }
+
   memcmp(_ptr1, _ptr2, n) {
     for (let i = 0; i < n; ++i) {
       const sgn = Math.sign(
