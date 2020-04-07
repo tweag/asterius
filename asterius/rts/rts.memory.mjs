@@ -299,8 +299,16 @@ export class Memory {
     return this.memcpy(_dst, _src, n);
   }
 
-  memset(_dst, c, n) {
-    this.i8View.fill(c, Memory.unTag(_dst), Memory.unTag(_dst) + n);
+  memset(_dst, c, n, size = 1) {
+    // We only allow 1, 2, 4, 8. Any other size should get a runtime error.
+    const ty = {
+      1 : Uint8Array,
+      2 : Uint16Array,
+      4 : Uint32Array,
+      8 : BigUint64Array
+    };
+    const buf = this.expose(_dst, n, ty[size]); // TODO: fix this one
+    buf.fill(c);
   }
 
   memcmp(_ptr1, _ptr2, n) {

@@ -58,7 +58,7 @@ primitiveImports =
     mkImport "primitive" "memmove" $ -- void * memmove ( void * destination, const void * source, size_t num );
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
     mkImport "primitive" "memset" $ -- void * memset ( void * ptr, int value, size_t num );
-      FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
+      FunctionType {paramTypes = [F64, F64, F64, F64], returnTypes = []},
     mkImport "primitive" "memcmp" $ -- int memcmp ( const void * ptr1, const void * ptr2, size_t num );
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
   ]
@@ -120,44 +120,21 @@ primitiveMemsetWord8 = runEDSL "hsprimitive_memset" $ do
   setReturnTypes []
   [p, off, n, x] <- params [I64,I64,I64,I64]
   let arg1 = p `addInt64` off
+      size = constI64 1
   callImport "__asterius_primitive_memset"
-    $ map convertSInt64ToFloat64 [arg1, x, n]
+    $ map convertSInt64ToFloat64 [arg1, x, n, size]
 
 -- -------------------------------------------------------------------------
 
--- # #define MEMSET(TYPE, ATYPE)                                                  \
--- # void hsprimitive_memset_ ## TYPE (Hs ## TYPE *p, ptrdiff_t off, size_t n, ATYPE x) \
--- # {                                                                            \
--- #   p += off;                                                                  \
--- #   if (x == 0)                                                                \
--- #     memset(p, 0, n * sizeof(Hs ## TYPE));                                    \
--- #   else if (sizeof(Hs ## TYPE) == sizeof(int)*2) {                            \
--- #     int *q = (int *)p;                                                       \
--- #     const int *r = (const int *)(void *)&x;                                  \
--- #     while (n>0) {                                                            \
--- #       q[0] = r[0];                                                           \
--- #       q[1] = r[1];                                                           \
--- #       q += 2;                                                                \
--- #       --n;                                                                   \
--- #     }                                                                        \
--- #   }                                                                          \
--- #   else {                                                                     \
--- #     while (n>0) {                                                            \
--- #       *p++ = x;                                                              \
--- #       --n;                                                                   \
--- #     }                                                                        \
--- #   }                                                                          \
--- # }
--- #
--- # /* MEMSET(HsWord8, HsWord) */
--- # MEMSET(Word16, HsWord)
--- # MEMSET(Word32, HsWord)
--- # MEMSET(Word64, HsWord64)
--- # MEMSET(Word, HsWord)
--- # MEMSET(Ptr, HsPtr)
--- # MEMSET(Float, HsFloat)
--- # MEMSET(Double, HsDouble)
--- # MEMSET(Char, HsChar)
+-- # size = 1 MEMSET(HsWord8, HsWord)
+-- # size = 2 MEMSET(Word16, HsWord)
+-- # size = 4 MEMSET(Word32, HsWord)
+-- # size = 8 MEMSET(Word64, HsWord64)
+-- # size = 8 MEMSET(Word, HsWord)
+-- # size = 4 MEMSET(Float, HsFloat)
+-- # size = 8 MEMSET(Double, HsDouble)
+-- # size = 8 MEMSET(Ptr, HsPtr)
+-- # size = 4 MEMSET(Char, HsChar)
 
 -- TODO: Do some sharing once you have created a couple of the memset functions.
 
