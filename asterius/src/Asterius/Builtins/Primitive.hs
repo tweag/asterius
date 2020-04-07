@@ -114,17 +114,6 @@ primitiveMemcmp = runEDSL "hsprimitive_memcmp" $ do
       F64
     >>= emit
 
--- | @void hsprimitive_memset_Word8 (HsWord8 *p, ptrdiff_t off, size_t n, HsWord x)@
-primitiveMemsetWord8 :: AsteriusModule
-primitiveMemsetWord8 = runEDSL "hsprimitive_memset_Word8" $ do
-  setReturnTypes []
-  [p, off, n, x] <- params [I64,I64,I64,I64]
-  let arg1 = p `addInt64` off
-      size = constI64 1
-  callImport "__asterius_primitive_memset"
-    $ map convertSInt64ToFloat64 [arg1, x, n, size]
-  -- TODO: Eventually remove this; it can be generated using mkPrimitiveMemset.
-
 -- | @void hsprimitive_memset_XXX (XXX *p, ptrdiff_t off, size_t n, XXX x)@
 mkPrimitiveMemset ::
   -- | Size (in bytes) of the type
@@ -141,6 +130,10 @@ mkPrimitiveMemset size typerep = runEDSL hsname $ do
     hsname = "hsprimitive_memset_" <> typerep
 
 -- -------------------------------------------------------------------------
+
+-- | @void hsprimitive_memset_Word8 (HsWord8 *p, ptrdiff_t off, size_t n, HsWord x)@
+primitiveMemsetWord8 :: AsteriusModule
+primitiveMemsetWord8 = mkPrimitiveMemset 1 "Word8"
 
 -- void hsprimitive_memset_Word16 (HsWord16 *, ptrdiff_t, size_t, HsWord);
 primitiveMemsetWord16 :: AsteriusModule
