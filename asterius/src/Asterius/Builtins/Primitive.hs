@@ -51,13 +51,13 @@ mkImport ext_mod_name ext_base_name fn_type =
 -- functions do not use them.
 primitiveImports :: [FunctionImport]
 primitiveImports =
-  [ mkImport "primitive" "memcpy" $ -- void * memcpy ( void * destination, const void * source, size_t num );
+  [ mkImport "Memory" "memcpy" $
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
-    mkImport "primitive" "memmove" $ -- void * memmove ( void * destination, const void * source, size_t num );
+    mkImport "Memory" "memmove" $
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
-    mkImport "primitive" "memset" $ -- void * memset ( void * ptr, int value, size_t num );
+    mkImport "Memory" "memset" $
       FunctionType {paramTypes = [F64, F64, F64, F64], returnTypes = []},
-    mkImport "primitive" "memcmp" $ -- int memcmp ( const void * ptr1, const void * ptr2, size_t num );
+    mkImport "Memory" "memcmp" $
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
   ]
 
@@ -87,7 +87,7 @@ primitiveMemcpy = runEDSL "hsprimitive_memcpy" $ do
   [dst, doff, src, soff, len] <- params [I64, I64, I64, I64, I64]
   let arg1 = dst `addInt64` doff
       arg2 = src `addInt64` soff
-  callImport "__asterius_primitive_memcpy" $
+  callImport "__asterius_Memory_memcpy" $
     map convertSInt64ToFloat64 [arg1, arg2, len]
 
 -- | @void hsprimitive_memmove(void *dst, ptrdiff_t doff, void *src, ptrdiff_t soff, size_t len)@
@@ -97,7 +97,7 @@ primitiveMemmove = runEDSL "hsprimitive_memmove" $ do
   [dst, doff, src, soff, len] <- params [I64, I64, I64, I64, I64]
   let arg1 = dst `addInt64` doff
       arg2 = src `addInt64` soff
-  callImport "__asterius_primitive_memmove" $
+  callImport "__asterius_Memory_memmove" $
     map convertSInt64ToFloat64 [arg1, arg2, len]
 
 -- | @int hsprimitive_memcmp(HsWord8 *s1, HsWord8 *s2, size_t n)@
@@ -107,7 +107,7 @@ primitiveMemcmp = runEDSL "hsprimitive_memcmp" $ do
   args <- params [I64, I64, I64]
   truncSFloat64ToInt64
     <$> callImport'
-      "__asterius_primitive_memcmp"
+      "__asterius_Memory_memcmp"
       (map convertSInt64ToFloat64 args)
       F64
     >>= emit
@@ -122,7 +122,7 @@ mkPrimitiveMemset ::
 mkPrimitiveMemset size typerep = runEDSL hsname $ do
   setReturnTypes []
   [p, off, n, x] <- params [I64, I64, I64, I64]
-  callImport "__asterius_primitive_memset" $
+  callImport "__asterius_Memory_memset" $
     map convertSInt64ToFloat64 [p `addInt64` off, x, n, constI64 size]
   where
     hsname = "hsprimitive_memset_" <> typerep
