@@ -123,61 +123,54 @@ primitiveMemsetWord8 = runEDSL "hsprimitive_memset_Word8" $ do
       size = constI64 1
   callImport "__asterius_primitive_memset"
     $ map convertSInt64ToFloat64 [arg1, x, n, size]
+  -- TODO: Eventually remove this; it can be generated using mkPrimitiveMemset.
+
+-- | @void hsprimitive_memset_XXX (XXX *p, ptrdiff_t off, size_t n, XXX x)@
+mkPrimitiveMemset ::
+  -- | Size (in bytes) of the type
+  Int ->
+  -- | String representation of the type
+  AsteriusEntitySymbol ->
+  AsteriusModule
+mkPrimitiveMemset size typerep = runEDSL hsname $ do
+  setReturnTypes []
+  [p, off, n, x] <- params [I64,I64,I64,I64]
+  callImport "__asterius_primitive_memset"
+    $ map convertSInt64ToFloat64 [p `addInt64` off, x, n, constI64 size]
+  where
+    hsname = "hsprimitive_memset_" <> typerep
 
 -- -------------------------------------------------------------------------
 
--- # size = 1 MEMSET(HsWord8, HsWord)
--- # size = 2 MEMSET(Word16, HsWord)
--- # size = 4 MEMSET(Word32, HsWord)
--- # size = 8 MEMSET(Word64, HsWord64)
--- # size = 8 MEMSET(Word, HsWord)
--- # size = 4 MEMSET(Float, HsFloat)
--- # size = 8 MEMSET(Double, HsDouble)
--- # size = 8 MEMSET(Ptr, HsPtr)
--- # size = 4 MEMSET(Char, HsChar)
-
--- TODO: Do some sharing once you have created a couple of the memset functions.
-
-
 -- void hsprimitive_memset_Word16 (HsWord16 *, ptrdiff_t, size_t, HsWord);
 primitiveMemsetWord16 :: AsteriusModule
-primitiveMemsetWord16 = runEDSL "hsprimitive_memset_Word16" $ do
-  error "TODO"
+primitiveMemsetWord16 = mkPrimitiveMemset 2 "Word16"
 
 -- void hsprimitive_memset_Word32 (HsWord32 *, ptrdiff_t, size_t, HsWord);
 primitiveMemsetWord32 :: AsteriusModule
-primitiveMemsetWord32 = runEDSL "hsprimitive_memset_Word32" $ do
-  error "TODO"
+primitiveMemsetWord32 = mkPrimitiveMemset 4 "Word32"
 
 -- void hsprimitive_memset_Word64 (HsWord64 *, ptrdiff_t, size_t, HsWord64);
 primitiveMemsetWord64 :: AsteriusModule
-primitiveMemsetWord64 = runEDSL "hsprimitive_memset_Word64" $ do
-  error "TODO"
+primitiveMemsetWord64 = mkPrimitiveMemset 8 "Word64"
 
 -- void hsprimitive_memset_Word (HsWord *, ptrdiff_t, size_t, HsWord);
 primitiveMemsetWord :: AsteriusModule
-primitiveMemsetWord = runEDSL "hsprimitive_memset_Word" $ do
-  error "TODO"
+primitiveMemsetWord = mkPrimitiveMemset 8 "Word"
 
 -- void hsprimitive_memset_Ptr (HsPtr *, ptrdiff_t, size_t, HsPtr);
 primitiveMemsetPtr :: AsteriusModule
-primitiveMemsetPtr = runEDSL "hsprimitive_memset_Ptr" $ do
-  error "TODO"
+primitiveMemsetPtr = mkPrimitiveMemset 8 "Ptr"
 
 -- void hsprimitive_memset_Float (HsFloat *, ptrdiff_t, size_t, HsFloat);
 primitiveMemsetFloat :: AsteriusModule
-primitiveMemsetFloat = runEDSL "hsprimitive_memset_Float" $ do
-  error "TODO"
+primitiveMemsetFloat = mkPrimitiveMemset 4 "Float"
 
 -- void hsprimitive_memset_Double (HsDouble *, ptrdiff_t, size_t, HsDouble);
 primitiveMemsetDouble :: AsteriusModule
-primitiveMemsetDouble = runEDSL "hsprimitive_memset_Double" $ do
-  error "TODO"
+primitiveMemsetDouble = mkPrimitiveMemset 8 "Double"
 
 -- void hsprimitive_memset_Char (HsChar *, ptrdiff_t, size_t, HsChar);
 primitiveMemsetChar :: AsteriusModule
-primitiveMemsetChar = runEDSL "hsprimitive_memset_Char" $ do
-  error "TODO"
-
-
+primitiveMemsetChar = mkPrimitiveMemset 4 "Char"
 
