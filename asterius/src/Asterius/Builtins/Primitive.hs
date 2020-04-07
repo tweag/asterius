@@ -2,7 +2,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 -- | Webassembly implementations for primitive operations (@memcpy@, @memmove@,
--- @memcmp@, and @memset@ variants).
+-- @memcmp@, and @memset@ variants). Each binding corresponds to a definition
+-- in the cbits of the @primitive@ package:
+--
+-- https://github.com/haskell/primitive/blob/c07823669e542399b7af11ffbf924d7106e3f145/cbits/primitive-memops.h#L1-L23
 module Asterius.Builtins.Primitive
   ( primitiveImports,
     primitiveCBits,
@@ -12,7 +15,6 @@ where
 import Asterius.EDSL
 import Asterius.Types
 import qualified Data.ByteString.Short as SBS
-
 
 -- GEORGE: I do not like that the cbits are disassociated from their imports
 -- (this is the case in all Asterius.Builtins.* files). It is very easy to
@@ -88,29 +90,29 @@ primitiveCBits =
 primitiveMemcpy :: AsteriusModule
 primitiveMemcpy = runEDSL "hsprimitive_memcpy" $ do
   setReturnTypes []
-  [dst,doff,src,soff,len] <- params [I64,I64,I64,I64,I64]
+  [dst, doff, src, soff, len] <- params [I64, I64, I64, I64, I64]
   let arg1 = dst `addInt64` doff
       arg2 = src `addInt64` soff
-  callImport "__asterius_primitive_memcpy"
-    $ map convertSInt64ToFloat64 [arg1, arg2, len]
+  callImport "__asterius_primitive_memcpy" $
+    map convertSInt64ToFloat64 [arg1, arg2, len]
 
 -- | @void hsprimitive_memmove(void *dst, ptrdiff_t doff, void *src, ptrdiff_t soff, size_t len)@
 primitiveMemmove :: AsteriusModule
 primitiveMemmove = runEDSL "hsprimitive_memmove" $ do
   setReturnTypes []
-  [dst,doff,src,soff,len] <- params [I64,I64,I64,I64,I64]
+  [dst, doff, src, soff, len] <- params [I64, I64, I64, I64, I64]
   let arg1 = dst `addInt64` doff
       arg2 = src `addInt64` soff
-  callImport "__asterius_primitive_memmove"
-    $ map convertSInt64ToFloat64 [arg1, arg2, len]
+  callImport "__asterius_primitive_memmove" $
+    map convertSInt64ToFloat64 [arg1, arg2, len]
 
 -- | @int hsprimitive_memcmp(HsWord8 *s1, HsWord8 *s2, size_t n)@
 primitiveMemcmp :: AsteriusModule
 primitiveMemcmp = runEDSL "hsprimitive_memcmp" $ do
   setReturnTypes [I64]
-  args <- params [I64,I64,I64]
-  truncSFloat64ToInt64 <$>
-    callImport'
+  args <- params [I64, I64, I64]
+  truncSFloat64ToInt64
+    <$> callImport'
       "__asterius_primitive_memcmp"
       (map convertSInt64ToFloat64 args)
       F64
@@ -125,9 +127,9 @@ mkPrimitiveMemset ::
   AsteriusModule
 mkPrimitiveMemset size typerep = runEDSL hsname $ do
   setReturnTypes []
-  [p, off, n, x] <- params [I64,I64,I64,I64]
-  callImport "__asterius_primitive_memset"
-    $ map convertSInt64ToFloat64 [p `addInt64` off, x, n, constI64 size]
+  [p, off, n, x] <- params [I64, I64, I64, I64]
+  callImport "__asterius_primitive_memset" $
+    map convertSInt64ToFloat64 [p `addInt64` off, x, n, constI64 size]
   where
     hsname = "hsprimitive_memset_" <> typerep
 
@@ -168,4 +170,3 @@ primitiveMemsetDouble = mkPrimitiveMemset 8 "Double"
 -- void hsprimitive_memset_Char (HsChar *, ptrdiff_t, size_t, HsChar);
 primitiveMemsetChar :: AsteriusModule
 primitiveMemsetChar = mkPrimitiveMemset 4 "Char"
-
