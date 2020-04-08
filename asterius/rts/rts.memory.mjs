@@ -311,14 +311,13 @@ export class Memory {
     buf.fill(c);
   }
 
-  memsetFloat(_dst, c, n, size) {
-    // Size can only be 4 (32bit) or 8 (64bit).
-    // Other sizes should get a runtime error.
-    const ty = {
-      4: Float32Array,
-      8: Float64Array
-    };
-    const buf = this.expose(_dst, n, ty[size]);
+  memsetFloat32(_dst, c, n) {
+    const buf = this.expose(_dst, n, Float32Array);
+    buf.fill(c);
+  }
+
+  memsetFloat64(_dst, c, n) {
+    const buf = this.expose(_dst, n, Float64Array);
     buf.fill(c);
   }
 

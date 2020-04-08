@@ -57,8 +57,10 @@ primitiveImports =
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
     mkImport "Memory" "memset" $
       FunctionType {paramTypes = [F64, F64, F64, F64], returnTypes = []},
-    mkImport "Memory" "memsetFloat" $
-      FunctionType {paramTypes = [F64, F64, F64, F64], returnTypes = []},
+    mkImport "Memory" "memsetFloat32" $
+      FunctionType {paramTypes = [F64, F32, F64], returnTypes = []},
+    mkImport "Memory" "memsetFloat64" $
+      FunctionType {paramTypes = [F64, F64, F64], returnTypes = []},
     mkImport "Memory" "memcmp" $
       FunctionType {paramTypes = [F64, F64, F64], returnTypes = [F64]}
   ]
@@ -122,29 +124,9 @@ mkPrimitiveMemsetUInt ::
 mkPrimitiveMemsetUInt size typerep = runEDSL hsname $ do
   [p, off, n, x] <- params [I64, I64, I64, I64]
   callImport "__asterius_Memory_memset" $
-    [ convertUInt64ToFloat64 $ p `addInt64` off,
-      convertSInt64ToFloat64 x,
-      convertUInt64ToFloat64 n,
-      convertUInt64ToFloat64 $ constI64 size
-    ]
-  where
-    hsname = "hsprimitive_memset_" <> typerep
-
--- | @void hsprimitive_memset_XXX (XXX *p, ptrdiff_t off, size_t n, XXX x)@
-mkPrimitiveMemsetFloat ::
-  -- | Size (in bytes) of the type
-  Int ->
-  -- | String representation of the type
-  AsteriusEntitySymbol ->
-  AsteriusModule
-mkPrimitiveMemsetFloat size typerep = runEDSL hsname $ do
-  [p, off, n, x] <- params [I64, I64, I64, I64]
-  callImport "__asterius_Memory_memsetFloat" $
-    [ convertUInt64ToFloat64 $ p `addInt64` off,
-      convertSInt64ToFloat64 x,
-      convertUInt64ToFloat64 n,
-      convertUInt64ToFloat64 $ constI64 size
-    ]
+    map
+      convertUInt64ToFloat64
+      [p `addInt64` off, x, n, constI64 size]
   where
     hsname = "hsprimitive_memset_" <> typerep
 
@@ -176,11 +158,23 @@ primitiveMemsetPtr = mkPrimitiveMemsetUInt 8 "Ptr"
 
 -- void hsprimitive_memset_Float (HsFloat *, ptrdiff_t, size_t, HsFloat);
 primitiveMemsetFloat :: AsteriusModule
-primitiveMemsetFloat = mkPrimitiveMemsetFloat 4 "Float"
+primitiveMemsetFloat = runEDSL "hsprimitive_memset_Float" $ do
+  [p, off, n, x] <- params [I64, I64, I64, F32]
+  callImport "__asterius_Memory_memsetFloat32" $
+    [ convertUInt64ToFloat64 $ p `addInt64` off,
+      x,
+      convertUInt64ToFloat64 n
+    ]
 
 -- void hsprimitive_memset_Double (HsDouble *, ptrdiff_t, size_t, HsDouble);
 primitiveMemsetDouble :: AsteriusModule
-primitiveMemsetDouble = mkPrimitiveMemsetFloat 8 "Double"
+primitiveMemsetDouble = runEDSL "hsprimitive_memset_Double" $ do
+  [p, off, n, x] <- params [I64, I64, I64, F64]
+  callImport "__asterius_Memory_memsetFloat64" $
+    [ convertUInt64ToFloat64 $ p `addInt64` off,
+      x,
+      convertUInt64ToFloat64 n
+    ]
 
 -- void hsprimitive_memset_Char (HsChar *, ptrdiff_t, size_t, HsChar);
 primitiveMemsetChar :: AsteriusModule
