@@ -11,10 +11,10 @@ module Asterius.Boot
   )
 where
 
+import Asterius.Binary.File
 import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
-import Asterius.Internals
 import Asterius.Internals.Directory
 import Asterius.TypesConv
 import Control.Exception
@@ -130,7 +130,7 @@ bootRTSCmm BootArgs {..} =
              in runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
                   Left err -> throwIO err
                   Right m -> do
-                    encodeFile obj_path m
+                    putFile obj_path m
                     modifyIORef' obj_paths_ref (obj_path :)
                     when is_debug $ do
                       let p = (obj_path -<.>)
