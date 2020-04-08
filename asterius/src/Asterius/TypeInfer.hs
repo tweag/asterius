@@ -28,7 +28,7 @@ infer expr = case expr of
   ConstF32 {} -> [F32]
   ConstF64 {} -> [F64]
   Unary {unaryOp = op} -> [snd $ inferUnaryOp op]
-  Binary {binaryOp = AddInt64} -> [I64]
+  Binary {binaryOp = op} -> [snd $ inferBinaryOp op]
   Host {} -> [I32]
   Nop -> []
   Unreachable -> []
@@ -103,3 +103,101 @@ inferUnaryOp = \case
   ConvertUInt64ToFloat64 -> (I64, F64)
   ReinterpretInt64 -> (I64, F64)
   PromoteFloat32 -> (F32, F64)
+
+-- | Infer the type of a binary operator as
+-- @((input_type_1, input_type_2), output_type)@.
+inferBinaryOp :: BinaryOp -> ((ValueType, ValueType), ValueType)
+inferBinaryOp = \case
+  -- binop Int32
+  AddInt32 -> i32BinopType
+  SubInt32 -> i32BinopType
+  MulInt32 -> i32BinopType
+  DivSInt32 -> i32BinopType
+  DivUInt32 -> i32BinopType
+  RemSInt32 -> i32BinopType
+  RemUInt32 -> i32BinopType
+  AndInt32 -> i32BinopType
+  OrInt32 -> i32BinopType
+  XorInt32 -> i32BinopType
+  ShlInt32 -> i32BinopType
+  ShrSInt32 -> i32BinopType
+  ShrUInt32 -> i32BinopType
+  RotLInt32 -> i32BinopType
+  RotRInt32 -> i32BinopType
+  -- binop Int64
+  AddInt64 -> i64BinopType
+  SubInt64 -> i64BinopType
+  MulInt64 -> i64BinopType
+  DivSInt64 -> i64BinopType
+  DivUInt64 -> i64BinopType
+  RemSInt64 -> i64BinopType
+  RemUInt64 -> i64BinopType
+  AndInt64 -> i64BinopType
+  OrInt64 -> i64BinopType
+  XorInt64 -> i64BinopType
+  ShlInt64 -> i64BinopType
+  ShrSInt64 -> i64BinopType
+  ShrUInt64 -> i64BinopType
+  RotLInt64 -> i64BinopType
+  RotRInt64 -> i64BinopType
+  -- relop Int32
+  EqInt32 -> i32RelopType
+  NeInt32 -> i32RelopType
+  LtSInt32 -> i32RelopType
+  LtUInt32 -> i32RelopType
+  GtSInt32 -> i32RelopType
+  GtUInt32 -> i32RelopType
+  LeSInt32 -> i32RelopType
+  LeUInt32 -> i32RelopType
+  GeSInt32 -> i32RelopType
+  GeUInt32 -> i32RelopType
+  -- relop Int64
+  EqInt64 -> i64RelopType
+  NeInt64 -> i64RelopType
+  LtSInt64 -> i64RelopType
+  LtUInt64 -> i64RelopType
+  GtSInt64 -> i64RelopType
+  GtUInt64 -> i64RelopType
+  LeSInt64 -> i64RelopType
+  LeUInt64 -> i64RelopType
+  GeSInt64 -> i64RelopType
+  GeUInt64 -> i64RelopType
+  -- binop Float32
+  AddFloat32 -> f32BinopType
+  SubFloat32 -> f32BinopType
+  MulFloat32 -> f32BinopType
+  DivFloat32 -> f32BinopType
+  MinFloat32 -> f32BinopType
+  MaxFloat32 -> f32BinopType
+  CopySignFloat32 -> f32BinopType
+  -- binop Float64
+  AddFloat64 -> f64BinopType
+  SubFloat64 -> f64BinopType
+  MulFloat64 -> f64BinopType
+  DivFloat64 -> f64BinopType
+  MinFloat64 -> f64BinopType
+  MaxFloat64 -> f64BinopType
+  CopySignFloat64 -> f64BinopType
+  -- relop Float32
+  EqFloat32 -> f32RelopType
+  NeFloat32 -> f32RelopType
+  LtFloat32 -> f32RelopType
+  GtFloat32 -> f32RelopType
+  LeFloat32 -> f32RelopType
+  GeFloat32 -> f32RelopType
+  -- relop Float64
+  EqFloat64 -> f64RelopType
+  NeFloat64 -> f64RelopType
+  LtFloat64 -> f64RelopType
+  GtFloat64 -> f64RelopType
+  LeFloat64 -> f64RelopType
+  GeFloat64 -> f64RelopType
+  where
+    i32BinopType = ((I32, I32), I32)
+    i64BinopType = ((I64, I64), I64)
+    i32RelopType = ((I32, I32), I32)
+    i64RelopType = ((I64, I64), I32) -- NOTE: also I32 result
+    f32BinopType = ((F32, F32), F32)
+    f64BinopType = ((F64, F64), F64)
+    f32RelopType = ((F32, F32), I32) -- NOTE: also I32 result
+    f64RelopType = ((F64, F64), I32) -- NOTE: also I32 result
