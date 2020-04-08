@@ -41,7 +41,12 @@ infer expr = case expr of
     QuotRemI64X -> [I64]
     QuotRemI64Y -> [I64]
   UnresolvedSetLocal {} -> []
-  _ -> error $ "Asterius.TypeInfer.infer: " <> show expr
+  -- Unhandled cases
+  TeeLocal {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
+  Drop {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
+  ReturnCall {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
+  ReturnCallIndirect {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
+  Barf {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
 
 -- | Infer the type of a unary operator as @(input_type, output_type)@.
 inferUnaryOp :: UnaryOp -> (ValueType, ValueType)
