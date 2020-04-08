@@ -22,7 +22,6 @@ import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Types
 import qualified Binary as GHC
-import Data.Binary
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
@@ -45,8 +44,6 @@ data LinkReport
         bundledFFIMarshalState :: FFIMarshalState
       }
   deriving (Generic, Show)
-
-instance Binary LinkReport
 
 instance GHC.Binary LinkReport where
   put_ = gPut_

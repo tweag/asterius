@@ -10,7 +10,6 @@ module Asterius.Types.EntitySymbol
 where
 
 import qualified Binary as GHC
-import Data.Binary
 import qualified Data.ByteString as BS
 import Data.Data
 import Data.String
@@ -27,9 +26,3 @@ entityName (EntitySymbol k) = GHC.fastStringToByteString k
 {-# INLINE mkEntitySymbol #-}
 mkEntitySymbol :: BS.ByteString -> EntitySymbol
 mkEntitySymbol = EntitySymbol . GHC.mkFastStringByteString
-
-instance Binary EntitySymbol where
-  {-# INLINE put #-}
-  put = put . entityName
-  {-# INLINE get #-}
-  get = mkEntitySymbol <$> get
