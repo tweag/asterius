@@ -34,12 +34,7 @@ infer expr = case expr of
   Unreachable -> []
   CFG {} -> []
   Symbol {} -> [I64]
-  UnresolvedGetLocal {..} -> case unresolvedLocalReg of
-    UniqueLocalReg _ vt -> [vt]
-    QuotRemI32X -> [I32]
-    QuotRemI32Y -> [I32]
-    QuotRemI64X -> [I64]
-    QuotRemI64Y -> [I64]
+  UnresolvedGetLocal {..} -> [typeOfUnresolvedLocalReg unresolvedLocalReg]
   UnresolvedSetLocal {} -> []
   -- Unhandled cases
   TeeLocal {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
@@ -47,6 +42,15 @@ infer expr = case expr of
   ReturnCall {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
   ReturnCallIndirect {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
   Barf {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
+
+-- | Compute/extract the type of an 'UnresolvedLocalReg'.
+typeOfUnresolvedLocalReg :: UnresolvedLocalReg -> ValueType
+typeOfUnresolvedLocalReg = \case
+  UniqueLocalReg _ vt -> vt
+  QuotRemI32X -> I32
+  QuotRemI32Y -> I32
+  QuotRemI64X -> I64
+  QuotRemI64Y -> I64
 
 -- | Infer the type of a unary operator as @(input_type, output_type)@.
 inferUnaryOp :: UnaryOp -> (ValueType, ValueType)
