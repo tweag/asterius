@@ -9,6 +9,12 @@ where
 
 import Asterius.Types
 
+-- | Infer the type of an 'Expression'. Note that this function does not
+-- perform validation (it does not check the well-formedness of
+-- subexpressions). Instead, it merely reconstructs the type of the expression
+-- by shallowly pattern matching on it's shape (e.g. for unary operators), or
+-- just by looking up cached types stored the AST (e.g. 'blockReturnTypes' in
+-- 'Block's).
 infer :: Expression -> [ValueType]
 infer expr = case expr of
   Block {..} -> blockReturnTypes
@@ -36,11 +42,13 @@ infer expr = case expr of
   Symbol {} -> [I64]
   UnresolvedGetLocal {..} -> [typeOfUnresolvedLocalReg unresolvedLocalReg]
   UnresolvedSetLocal {} -> []
-  -- Unhandled cases
-  TeeLocal {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
-  Drop {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
-  ReturnCall {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
-  ReturnCallIndirect {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
+  TeeLocal {..} -> [valueType]
+  Drop {} -> []
+  -- ReturnCall and ReturnCallIndirect are generated when we exit a cmm
+  -- function and jump to the next, and all cmm functions have type: [] -> [].
+  -- Hence the result being the empty list for the following two cases.
+  ReturnCall {} -> []
+  ReturnCallIndirect {} -> []
   Barf {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
 
 -- | Compute/extract the type of an 'UnresolvedLocalReg'.
