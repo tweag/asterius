@@ -6,17 +6,12 @@
 module Asterius.Internals
   ( encodeStorable,
     reinterpretCast,
-    encodeFile,
-    decodeFile,
-    tryDecodeFile,
     showBS,
     c8BS,
     (!),
   )
 where
 
-import Control.Exception
-import qualified Data.Binary as Binary
 import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.Map.Lazy as LM
@@ -48,23 +43,6 @@ reinterpretCast a =
               (# s3, _ #) -> unIO (peek (Ptr addr)) s3
     ) of
     (# _, r #) -> r
-
-{-# INLINE encodeFile #-}
-encodeFile :: Binary.Binary a => FilePath -> a -> IO ()
-encodeFile = Binary.encodeFile
-
-{-# INLINE decodeFile #-}
-decodeFile :: Binary.Binary a => FilePath -> IO a
-decodeFile = Binary.decodeFile
-
-{-# INLINE tryDecodeFile #-}
-tryDecodeFile :: Binary.Binary a => FilePath -> IO (Either SomeException a)
-tryDecodeFile p = do
-  r <- try $ Binary.decodeFileOrFail p
-  pure $ case r of
-    Left err -> Left err
-    Right (Left err) -> Left $ toException $ userError $ show err
-    Right (Right v) -> Right v
 
 {-# INLINE showBS #-}
 showBS :: Show a => a -> BS.ByteString

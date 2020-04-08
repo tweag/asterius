@@ -15,6 +15,7 @@ module Asterius.GHCi.Internals
 where
 
 import Asterius.Ar
+import Asterius.Binary.File
 import Asterius.BuildInfo
 import Asterius.CodeGen
 import Asterius.Internals ((!))
@@ -179,7 +180,7 @@ asteriusIservCall hsc_env _ msg = do
       lib <- loadAr p
       evaluate s {ghciLibs = lib <> ghciLibs s}
     GHC.LoadObj p -> modifyMVar_ globalGHCiState $ \s -> do
-      obj <- decodeFile p
+      obj <- getFile p
       evaluate s {ghciObjs = M.insert p obj $ ghciObjs s}
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
     GHC.RemoveLibrarySearchPath _ -> pure True
