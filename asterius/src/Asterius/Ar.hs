@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -8,19 +8,17 @@ module Asterius.Ar
 where
 
 import qualified Ar as GHC
-import Asterius.Internals.Binary
+import Asterius.Binary.ByteString
 import Asterius.Types
-import Control.Exception
-import Data.List
+import Data.Foldable
 
 loadAr :: FilePath -> IO AsteriusModule
 loadAr p = do
   GHC.Archive entries <- GHC.loadAr p
-  evaluate $
-    foldl'
-      ( \acc GHC.ArchiveEntry {..} -> case decodeMaybe filedata of
-          Just m -> m <> acc
-          _ -> acc
-      )
-      mempty
-      entries
+  foldlM
+    ( \acc GHC.ArchiveEntry {..} -> tryGetBS filedata >>= \case
+        Left _ -> pure acc
+        Right m -> pure $ m <> acc
+    )
+    mempty
+    entries

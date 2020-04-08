@@ -50,11 +50,9 @@ where
 
 import Asterius.Binary.Generic
 import Asterius.Binary.Orphans ()
-import Asterius.Internals.Binary
 import Asterius.Types.EntitySymbol
 import qualified Binary as GHC
 import Control.Exception
-import Data.Binary
 import qualified Data.ByteString as BS
 import Data.Data
 import qualified Data.Map.Lazy as LM
@@ -76,8 +74,6 @@ data AsteriusCodeGenError
   | AssignToImmutableGlobalReg UnresolvedGlobalReg
   deriving (Eq, Show, Generic, Data)
 
-instance Binary AsteriusCodeGenError
-
 instance GHC.Binary AsteriusCodeGenError where
   put_ = gPut_
   get = gGet
@@ -90,8 +86,6 @@ data AsteriusStatic
   | Serialized BS.ByteString
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Binary AsteriusStatic
-
 instance GHC.Binary AsteriusStatic where
   put_ = gPut_
   get = gGet
@@ -103,8 +97,6 @@ data AsteriusStaticsType
   | Closure
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Binary AsteriusStaticsType
-
 instance GHC.Binary AsteriusStaticsType where
   put_ = gPut_
   get = gGet
@@ -115,8 +107,6 @@ data AsteriusStatics
         asteriusStatics :: [AsteriusStatic]
       }
   deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary AsteriusStatics
 
 instance GHC.Binary AsteriusStatics where
   put_ = gPut_
@@ -131,21 +121,6 @@ data AsteriusModule
         ffiMarshalState :: FFIMarshalState
       }
   deriving (Eq, Show, Generic, Data)
-
-instance Binary AsteriusModule where
-  put AsteriusModule {..} =
-    lazyMapPut staticsMap
-      *> lazyMapPut staticsErrorMap
-      *> lazyMapPut functionMap
-      *> lazyMapPut sptMap
-      *> put ffiMarshalState
-  get =
-    AsteriusModule
-      <$> lazyMapGet
-      <*> lazyMapGet
-      <*> lazyMapGet
-      <*> lazyMapGet
-      <*> get
 
 instance GHC.Binary AsteriusModule where
   put_ = gPut_
@@ -170,8 +145,6 @@ data AsteriusModuleSymbol
       }
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Binary AsteriusModuleSymbol
-
 instance GHC.Binary AsteriusModuleSymbol where
   put_ = gPut_
   get = gGet
@@ -183,8 +156,6 @@ data UnresolvedLocalReg
   | QuotRemI64X
   | QuotRemI64Y
   deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary UnresolvedLocalReg
 
 instance GHC.Binary UnresolvedLocalReg where
   put_ = gPut_
@@ -209,8 +180,6 @@ data UnresolvedGlobalReg
   | BaseReg
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Binary UnresolvedGlobalReg
-
 instance GHC.Binary UnresolvedGlobalReg where
   put_ = gPut_
   get = gGet
@@ -222,8 +191,6 @@ data ValueType
   | F64
   deriving (Enum, Eq, Ord, Show, Generic, Data)
 
-instance Binary ValueType
-
 instance GHC.Binary ValueType where
   put_ = gPut_
   get = gGet
@@ -233,8 +200,6 @@ data FunctionType
       { paramTypes, returnTypes :: [ValueType]
       }
   deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary FunctionType
 
 instance GHC.Binary FunctionType where
   put_ = gPut_
@@ -289,8 +254,6 @@ data UnaryOp
   | ReinterpretInt32
   | ReinterpretInt64
   deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary UnaryOp
 
 instance GHC.Binary UnaryOp where
   put_ = gPut_
@@ -375,8 +338,6 @@ data BinaryOp
   | GeFloat64
   deriving (Eq, Ord, Show, Generic, Data)
 
-instance Binary BinaryOp
-
 instance GHC.Binary BinaryOp where
   put_ = gPut_
   get = gGet
@@ -385,8 +346,6 @@ data HostOp
   = CurrentMemory
   | GrowMemory
   deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary HostOp
 
 instance GHC.Binary HostOp where
   put_ = gPut_
@@ -501,8 +460,6 @@ data Expression
       }
   deriving (Eq, Show, Generic, Data)
 
-instance Binary Expression
-
 instance GHC.Binary Expression where
   put_ = gPut_
   get = gGet
@@ -515,8 +472,6 @@ data Function
       }
   deriving (Eq, Show, Generic, Data)
 
-instance Binary Function
-
 instance GHC.Binary Function where
   put_ = gPut_
   get = gGet
@@ -528,8 +483,6 @@ data FunctionImport
       }
   deriving (Eq, Show, Data, Generic)
 
-instance Binary FunctionImport
-
 instance GHC.Binary FunctionImport where
   put_ = gPut_
   get = gGet
@@ -539,8 +492,6 @@ data TableImport
       { externalModuleName, externalBaseName :: BS.ByteString
       }
   deriving (Eq, Show, Data, Generic)
-
-instance Binary TableImport
 
 instance GHC.Binary TableImport where
   put_ = gPut_
@@ -552,8 +503,6 @@ data MemoryImport
       }
   deriving (Eq, Show, Data, Generic)
 
-instance Binary MemoryImport
-
 instance GHC.Binary MemoryImport where
   put_ = gPut_
   get = gGet
@@ -563,8 +512,6 @@ data FunctionExport
       { internalName, externalName :: BS.ByteString
       }
   deriving (Eq, Show, Data, Generic)
-
-instance Binary FunctionExport
 
 instance GHC.Binary FunctionExport where
   put_ = gPut_
@@ -576,8 +523,6 @@ newtype TableExport
       }
   deriving (Eq, Show, Data, Generic)
 
-instance Binary TableExport
-
 instance GHC.Binary TableExport where
   put_ = gPut_
   get = gGet
@@ -587,8 +532,6 @@ newtype MemoryExport
       { externalName :: BS.ByteString
       }
   deriving (Eq, Show, Data, Generic)
-
-instance Binary MemoryExport
 
 instance GHC.Binary MemoryExport where
   put_ = gPut_
@@ -601,8 +544,6 @@ data FunctionTable
       }
   deriving (Eq, Show, Data, Generic)
 
-instance Binary FunctionTable
-
 instance GHC.Binary FunctionTable where
   put_ = gPut_
   get = gGet
@@ -613,8 +554,6 @@ data DataSegment
         offset :: Int32
       }
   deriving (Eq, Show, Data, Generic)
-
-instance Binary DataSegment
 
 instance GHC.Binary DataSegment where
   put_ = gPut_
@@ -636,8 +575,6 @@ data Module
       }
   deriving (Eq, Show, Data, Generic)
 
-instance Binary Module
-
 instance GHC.Binary Module where
   put_ = gPut_
   get = gGet
@@ -650,8 +587,6 @@ data RelooperAddBlock
       { code, condition :: Expression
       }
   deriving (Eq, Show, Generic, Data)
-
-instance Binary RelooperAddBlock
 
 instance GHC.Binary RelooperAddBlock where
   put_ = gPut_
@@ -668,8 +603,6 @@ data RelooperAddBranch
       }
   deriving (Eq, Show, Generic, Data)
 
-instance Binary RelooperAddBranch
-
 instance GHC.Binary RelooperAddBranch where
   put_ = gPut_
   get = gGet
@@ -680,8 +613,6 @@ data RelooperBlock
         addBranches :: [RelooperAddBranch]
       }
   deriving (Eq, Show, Generic, Data)
-
-instance Binary RelooperBlock
 
 instance GHC.Binary RelooperBlock where
   put_ = gPut_
@@ -694,8 +625,6 @@ data RelooperRun
         labelHelper :: BinaryenIndex
       }
   deriving (Eq, Show, Generic, Data)
-
-instance Binary RelooperRun
 
 instance GHC.Binary RelooperRun where
   put_ = gPut_
@@ -712,8 +641,6 @@ data FFIValueTypeRep
   | FFIDoubleRep
   deriving (Eq, Show, Generic, Data)
 
-instance Binary FFIValueTypeRep
-
 instance GHC.Binary FFIValueTypeRep where
   put_ = gPut_
   get = gGet
@@ -724,8 +651,6 @@ data FFIValueType
         hsTyCon :: BS.ByteString
       }
   deriving (Eq, Show, Generic, Data)
-
-instance Binary FFIValueType
 
 instance GHC.Binary FFIValueType where
   put_ = gPut_
@@ -738,8 +663,6 @@ data FFIFunctionType
       }
   deriving (Eq, Show, Generic, Data)
 
-instance Binary FFIFunctionType
-
 instance GHC.Binary FFIFunctionType where
   put_ = gPut_
   get = gGet
@@ -749,8 +672,6 @@ data FFISafety
   | FFISafe
   | FFIInterruptible
   deriving (Eq, Show, Generic, Data)
-
-instance Binary FFISafety
 
 instance GHC.Binary FFISafety where
   put_ = gPut_
@@ -764,8 +685,6 @@ data FFIImportDecl
       }
   deriving (Eq, Show, Generic, Data)
 
-instance Binary FFIImportDecl
-
 instance GHC.Binary FFIImportDecl where
   put_ = gPut_
   get = gGet
@@ -776,8 +695,6 @@ data FFIExportDecl
         ffiExportClosure :: EntitySymbol
       }
   deriving (Eq, Show, Generic, Data)
-
-instance Binary FFIExportDecl
 
 instance GHC.Binary FFIExportDecl where
   put_ = gPut_
@@ -799,12 +716,6 @@ instance Semigroup FFIMarshalState where
 
 instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
-
-instance Binary FFIMarshalState where
-  put FFIMarshalState {..} =
-    lazyMapPut ffiImportDecls *> lazyMapPut ffiExportDecls
-
-  get = FFIMarshalState <$> lazyMapGet <*> lazyMapGet
 
 instance GHC.Binary FFIMarshalState where
   put_ = gPut_

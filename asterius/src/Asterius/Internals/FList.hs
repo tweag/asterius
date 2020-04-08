@@ -9,7 +9,6 @@ module Asterius.Internals.FList
   )
 where
 
-import Data.Binary
 import GHC.Exts
 import Prelude hiding (concat)
 
@@ -90,12 +89,6 @@ instance IsList (FList a) where
 instance Show a => Show (FList a) where
   {-# INLINE showsPrec #-}
   showsPrec i = showsPrec i . toList
-
-instance Binary a => Binary (FList a) where
-
-  get = fromList <$> get
-
-  put = put . toList
 
 {-# INLINE cons #-}
 cons :: a -> FList a -> FList a
