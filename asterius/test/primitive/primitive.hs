@@ -2,12 +2,23 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# OPTIONS_GHC -Wall -ddump-to-file -ddump-stg -ddump-cmm-raw -ddump-asm #-}
 
+-- NEW STUFF
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnliftedFFITypes #-}
+----
+
 import Control.DeepSeq
 import Control.Monad.State.Strict
 import qualified Data.IntMap.Strict as IM
 import Debug.Trace (trace)
 import GHC.Generics
 import System.Mem
+
+-- NEW STUFF
+import Foreign.C.Types
+import GHC.Exts
+import Data.Primitive.MachDeps (Word64_#, Int64_#)
+----
 
 primitive :: Int -> Int
 primitive n = go 0 1 0
@@ -46,6 +57,71 @@ genBinTree n = Branch t t where t = genBinTree (n - 1)
 sizeofBinTree :: BinTree -> Int
 sizeofBinTree Tip = 1
 sizeofBinTree (Branch x y) = 1 + sizeofBinTree x + sizeofBinTree y
+
+-------------------------------------------------------------------------------
+foreign import ccall unsafe "hsprimitive_memset_Word8"
+  setWord8Array# :: MutableByteArray# s -> CPtrdiff -> CSize -> Word# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word16"
+  setWord16Array# :: MutableByteArray# s -> CPtrdiff -> CSize -> Word# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word32"
+  setWord32Array# :: MutableByteArray# s -> CPtrdiff -> CSize -> Word# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word64"
+  setWord64Array# :: MutableByteArray# s -> CPtrdiff -> CSize -> Word64_# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word"
+  setWordArray# :: MutableByteArray# s -> CPtrdiff -> CSize -> Word# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word8"
+  setInt8Array# :: MutableByteArray# s -> CPtrdiff -> CSize -> Int# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word16"
+  setInt16Array# :: MutableByteArray# s -> CPtrdiff -> CSize -> Int# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word32"
+  setInt32Array# :: MutableByteArray# s -> CPtrdiff -> CSize -> Int# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word64"
+  setInt64Array# :: MutableByteArray# s -> CPtrdiff -> CSize -> Int64_# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word"
+  setIntArray# :: MutableByteArray# s -> CPtrdiff -> CSize -> Int# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Ptr"
+  setAddrArray# :: MutableByteArray# s -> CPtrdiff -> CSize -> Addr# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Ptr"
+  setStablePtrArray# :: MutableByteArray# s -> CPtrdiff -> CSize -> StablePtr# a -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Float"
+  setFloatArray# :: MutableByteArray# s -> CPtrdiff -> CSize -> Float# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Double"
+  setDoubleArray# :: MutableByteArray# s -> CPtrdiff -> CSize -> Double# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Char"
+  setWideCharArray# :: MutableByteArray# s -> CPtrdiff -> CSize -> Char# -> IO ()
+
+foreign import ccall unsafe "hsprimitive_memset_Word8"
+  setWord8OffAddr# :: Addr# -> CPtrdiff -> CSize -> Word# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word16"
+  setWord16OffAddr# :: Addr# -> CPtrdiff -> CSize -> Word# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word32"
+  setWord32OffAddr# :: Addr# -> CPtrdiff -> CSize -> Word# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word64"
+  setWord64OffAddr# :: Addr# -> CPtrdiff -> CSize -> Word64_# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word"
+  setWordOffAddr# :: Addr# -> CPtrdiff -> CSize -> Word# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word8"
+  setInt8OffAddr# :: Addr# -> CPtrdiff -> CSize -> Int# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word16"
+  setInt16OffAddr# :: Addr# -> CPtrdiff -> CSize -> Int# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word32"
+  setInt32OffAddr# :: Addr# -> CPtrdiff -> CSize -> Int# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word64"
+  setInt64OffAddr# :: Addr# -> CPtrdiff -> CSize -> Int64_# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Word"
+  setIntOffAddr# :: Addr# -> CPtrdiff -> CSize -> Int# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Ptr"
+  setAddrOffAddr# :: Addr# -> CPtrdiff -> CSize -> Addr# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Ptr"
+  setStablePtrOffAddr# :: Addr# -> CPtrdiff -> CSize -> StablePtr# a -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Float"
+  setFloatOffAddr# :: Addr# -> CPtrdiff -> CSize -> Float# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Double"
+  setDoubleOffAddr# :: Addr# -> CPtrdiff -> CSize -> Double# -> IO ()
+foreign import ccall unsafe "hsprimitive_memset_Char"
+  setWideCharOffAddr# :: Addr# -> CPtrdiff -> CSize -> Char# -> IO ()
+
+-------------------------------------------------------------------------------
 
 foreign import ccall safe "print_i64" print_i64 :: Int -> IO ()
 
