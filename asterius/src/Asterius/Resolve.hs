@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Asterius.Resolve
   ( unresolvedGlobalRegType,
@@ -11,8 +12,8 @@ module Asterius.Resolve
   )
 where
 
-import Asterius.Binary.Generic
 import Asterius.Binary.Orphans ()
+import Asterius.Binary.TH
 import Asterius.Builtins
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
@@ -21,7 +22,6 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Types
-import qualified Binary as GHC
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
@@ -45,9 +45,7 @@ data LinkReport
       }
   deriving (Generic, Show)
 
-instance GHC.Binary LinkReport where
-  put_ = gPut_
-  get = gGet
+$(genBinary ''LinkReport)
 
 instance Semigroup LinkReport where
   r0 <> r1 =
