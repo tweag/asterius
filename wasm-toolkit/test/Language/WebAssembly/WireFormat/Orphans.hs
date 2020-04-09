@@ -504,63 +504,6 @@ instance Arbitrary DataSegment where
 
   shrink = genericShrink
 
-genLinkingSymbolFlags :: Gen LinkingSymbolFlags
-genLinkingSymbolFlags =
-  LinkingSymbolFlags <$> chooseAny <*> chooseAny <*> chooseAny <*> chooseAny
-
-instance Arbitrary LinkingSymbolFlags where
-
-  arbitrary = genLinkingSymbolFlags
-
-  shrink = genericShrink
-
-genLinkingSymbolInfo :: Gen LinkingSymbolInfo
-genLinkingSymbolInfo = do
-  _sym_flags@LinkingSymbolFlags {..} <- genLinkingSymbolFlags
-  oneof
-    [ if linkingWasmSymUndefined
-        then LinkingFunctionSymbolInfo _sym_flags <$> chooseAny <*> pure Nothing
-        else LinkingFunctionSymbolInfo _sym_flags <$> chooseAny <*> fmap Just genName,
-      if linkingWasmSymUndefined
-        then
-          LinkingDataSymbolInfo _sym_flags
-            <$> genName
-            <*> pure Nothing
-            <*> pure Nothing
-            <*> pure Nothing
-        else
-          LinkingDataSymbolInfo _sym_flags
-            <$> genName
-            <*> fmap Just chooseAny
-            <*> fmap Just chooseAny
-            <*> fmap Just chooseAny,
-      if linkingWasmSymUndefined
-        then LinkingGlobalSymbolInfo _sym_flags <$> chooseAny <*> pure Nothing
-        else LinkingGlobalSymbolInfo _sym_flags <$> chooseAny <*> fmap Just genName,
-      LinkingSectionSymbolInfo _sym_flags <$> chooseAny
-    ]
-
-instance Arbitrary LinkingSymbolInfo where
-
-  arbitrary = genLinkingSymbolInfo
-
-  shrink = genericShrink
-
-genLinkingSubSection :: Gen LinkingSubSection
-genLinkingSubSection =
-  oneof
-    [ LinkingWasmSegmentInfo <$> genSBS,
-      LinkingWasmInitFuncs <$> genSBS,
-      LinkingWasmComdatInfo <$> genSBS,
-      LinkingWasmSymbolTable <$> genSBS
-    ]
-
-instance Arbitrary LinkingSubSection where
-
-  arbitrary = genLinkingSubSection
-
-  shrink = genericShrink
-
 genRelocationType :: Gen RelocationType
 genRelocationType =
   Test.QuickCheck.Gen.elements
@@ -608,8 +551,7 @@ instance Arbitrary RelocationEntry where
 genSection :: Gen Section
 genSection =
   oneof
-    [ LinkingSection <$> chooseAny <*> listOf genLinkingSubSection,
-      RelocationSection <$> genName <*> chooseAny <*> listOf genRelocationEntry,
+    [ RelocationSection <$> genName <*> chooseAny <*> listOf genRelocationEntry,
       CustomSection <$> genCustom,
       TypeSection <$> listOf genFunctionType,
       ImportSection <$> listOf genImport,
