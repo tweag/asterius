@@ -49,7 +49,7 @@ infer expr = case expr of
   -- Hence the result being the empty list for the following two cases.
   ReturnCall {} -> []
   ReturnCallIndirect {} -> []
-  Barf {} -> error $ "Asterius.TypeInfer.infer: " <> show expr
+  Barf {..} -> barfReturnTypes
 
 -- | Compute/extract the type of an 'UnresolvedLocalReg'.
 typeOfUnresolvedLocalReg :: UnresolvedLocalReg -> ValueType
