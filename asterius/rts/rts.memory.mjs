@@ -308,7 +308,14 @@ export class Memory {
       8 : BigUint64Array
     };
     const buf = this.expose(_dst, n, ty[size]);
-    buf.fill(c);
+
+    if (size === 8) {
+      // TODO: Though this avoids the type error, it makes us lose
+      // the top two bytes (the conversion is lossy).
+      buf.fill(BigInt(c));
+    } else {
+      buf.fill(c);
+    }
   }
 
   memsetFloat32(_dst, c, n) {
