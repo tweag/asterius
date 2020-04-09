@@ -41,7 +41,7 @@ data-files:
   - boot-init.sh
   - boot.sh
 
-ghc-options: -Wall
+ghc-options: -Wall -optl-static
 
 _exe-ghc-options: &exe-ghc-options
   - -threaded -rtsopts "-with-rtsopts=-A64m -n2m -I0 -qg"
