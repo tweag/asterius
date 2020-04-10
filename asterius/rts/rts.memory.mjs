@@ -310,8 +310,10 @@ export class Memory {
     const buf = this.expose(_dst, n, ty[size]);
 
     if (size === 8) {
-      // TODO: Though this avoids the type error, it makes us lose
-      // the top two bytes (the conversion is lossy).
+      // TODO: The conversion BigInt(c) is lossy. Numbers are represented as
+      // IEEE754 double precision floating point numbers, for which the maximum
+      // (representable) safe integer in JavaScript is (Number.MAX_SAFE_INTEGER
+      // = 2^53 - 1).
       buf.fill(BigInt(c));
     } else {
       buf.fill(c);
