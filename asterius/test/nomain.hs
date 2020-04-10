@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.JSRun.NonMain
 import qualified Data.ByteString.Lazy as LBS
 import Language.JavaScript.Inline.Core
@@ -19,7 +20,8 @@ main = do
       "--extra-root-symbol=NoMain_x_closure"
     ]
       <> args
-  m <- getFile "test/nomain/NoMain.unlinked.bin"
+  ncu <- newNameCacheUpdater
+  m <- getFile ncu "test/nomain/NoMain.unlinked.bin"
   withJSSession
     defJSSessionOpts
       { nodeExtraArgs = ["--experimental-wasm-return-call"],

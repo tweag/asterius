@@ -3,12 +3,13 @@ module Asterius.Binary.ByteString
   )
 where
 
-import Asterius.Binary.UserData
+import qualified BinIface as GHC
 import qualified Binary as GHC
 import Control.Exception
 import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Unsafe as BS
 import Foreign.Ptr
+import qualified IfaceEnv as GHC
 
 binHandleFromBS :: BS.ByteString -> IO GHC.BinHandle
 binHandleFromBS bs = BS.unsafeUseAsCStringLen bs $ \(src_p, l) -> do
@@ -17,10 +18,14 @@ binHandleFromBS bs = BS.unsafeUseAsCStringLen bs $ \(src_p, l) -> do
     BS.memcpy (castPtr dest_p) (castPtr src_p) l
   pure bh
 
-getBS :: GHC.Binary a => BS.ByteString -> IO a
-getBS bs = do
+getBS :: GHC.Binary a => GHC.NameCacheUpdater -> BS.ByteString -> IO a
+getBS ncu bs = do
   bh <- binHandleFromBS bs
-  getWithUserData bh
+  GHC.getWithUserData ncu bh
 
-tryGetBS :: GHC.Binary a => BS.ByteString -> IO (Either SomeException a)
-tryGetBS = try . getBS
+tryGetBS ::
+  GHC.Binary a =>
+  GHC.NameCacheUpdater ->
+  BS.ByteString ->
+  IO (Either SomeException a)
+tryGetBS ncu = try . getBS ncu

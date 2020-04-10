@@ -15,6 +15,7 @@ where
 
 import Asterius.Ar
 import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.Builtins
 import Asterius.Builtins.Main
 import Asterius.Resolve
@@ -38,8 +39,9 @@ data LinkTask
 
 loadTheWorld :: LinkTask -> IO AsteriusModule
 loadTheWorld LinkTask {..} = do
-  lib <- mconcat <$> for linkLibs loadAr
-  objrs <- for linkObjs tryGetFile
+  ncu <- newNameCacheUpdater
+  lib <- mconcat <$> for linkLibs (loadAr ncu)
+  objrs <- for linkObjs (tryGetFile ncu)
   let objs = rights objrs
   evaluate $ linkModule <> mconcat objs <> lib
 

@@ -7,20 +7,25 @@ module Asterius.Binary.File
   )
 where
 
-import Asterius.Binary.UserData
+import qualified BinIface as GHC
 import qualified Binary as GHC
 import Control.Exception
+import qualified IfaceEnv as GHC
 
 putFile :: GHC.Binary a => FilePath -> a -> IO ()
 putFile p a = do
   bh <- GHC.openBinMem 1048576
-  putWithUserData (const (pure ())) bh a
+  GHC.putWithUserData (const (pure ())) bh a
   GHC.writeBinMem bh p
 
-getFile :: GHC.Binary a => FilePath -> IO a
-getFile p = do
+getFile :: GHC.Binary a => GHC.NameCacheUpdater -> FilePath -> IO a
+getFile ncu p = do
   bh <- GHC.readBinMem p
-  getWithUserData bh
+  GHC.getWithUserData ncu bh
 
-tryGetFile :: GHC.Binary a => FilePath -> IO (Either SomeException a)
-tryGetFile = try . getFile
+tryGetFile ::
+  GHC.Binary a =>
+  GHC.NameCacheUpdater ->
+  FilePath ->
+  IO (Either SomeException a)
+tryGetFile ncu = try . getFile ncu

@@ -11,12 +11,13 @@ import qualified Ar as GHC
 import Asterius.Binary.ByteString
 import Asterius.Types
 import Data.Foldable
+import qualified IfaceEnv as GHC
 
-loadAr :: FilePath -> IO AsteriusModule
-loadAr p = do
+loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusModule
+loadAr ncu p = do
   GHC.Archive entries <- GHC.loadAr p
   foldlM
-    ( \acc GHC.ArchiveEntry {..} -> tryGetBS filedata >>= \case
+    ( \acc GHC.ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
         Left _ -> pure acc
         Right m -> pure $ m <> acc
     )
