@@ -1,9 +1,11 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Asterius.Types
   ( BinaryenIndex,
@@ -48,15 +50,15 @@ module Asterius.Types
   )
 where
 
-import Asterius.Internals.Binary
+import Asterius.Binary.Orphans ()
+import Asterius.Binary.TH
 import Asterius.Types.EntitySymbol
+import qualified Binary as GHC
 import Control.Exception
-import Data.Binary
 import qualified Data.ByteString as BS
 import Data.Data
 import qualified Data.Map.Lazy as LM
 import Foreign
-import GHC.Generics
 
 type BinaryenIndex = Word32
 
@@ -71,9 +73,7 @@ data AsteriusCodeGenError
   | UnsupportedCmmSectionType BS.ByteString
   | UnsupportedImplicitCasting Expression ValueType ValueType
   | AssignToImmutableGlobalReg UnresolvedGlobalReg
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary AsteriusCodeGenError
+  deriving (Show, Data)
 
 instance Exception AsteriusCodeGenError
 
@@ -81,27 +81,21 @@ data AsteriusStatic
   = SymbolStatic EntitySymbol Int
   | Uninitialized Int
   | Serialized BS.ByteString
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary AsteriusStatic
+  deriving (Show, Data)
 
 data AsteriusStaticsType
   = ConstBytes
   | Bytes
   | InfoTable
   | Closure
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary AsteriusStaticsType
+  deriving (Eq, Show, Data)
 
 data AsteriusStatics
   = AsteriusStatics
       { staticsType :: AsteriusStaticsType,
         asteriusStatics :: [AsteriusStatic]
       }
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary AsteriusStatics
+  deriving (Show, Data)
 
 data AsteriusModule
   = AsteriusModule
@@ -111,22 +105,7 @@ data AsteriusModule
         sptMap :: LM.Map EntitySymbol (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary AsteriusModule where
-  put AsteriusModule {..} =
-    lazyMapPut staticsMap
-      *> lazyMapPut staticsErrorMap
-      *> lazyMapPut functionMap
-      *> lazyMapPut sptMap
-      *> put ffiMarshalState
-  get =
-    AsteriusModule
-      <$> lazyMapGet
-      <*> lazyMapGet
-      <*> lazyMapGet
-      <*> lazyMapGet
-      <*> get
+  deriving (Show, Data)
 
 instance Semigroup AsteriusModule where
   AsteriusModule sm0 se0 fm0 spt0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 spt1 mod_ffi_state1 =
@@ -145,9 +124,7 @@ data AsteriusModuleSymbol
       { unitId :: BS.ByteString,
         moduleName :: [BS.ByteString]
       }
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary AsteriusModuleSymbol
+  deriving (Eq, Ord, Show, Data)
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int ValueType
@@ -155,9 +132,7 @@ data UnresolvedLocalReg
   | QuotRemI32Y
   | QuotRemI64X
   | QuotRemI64Y
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary UnresolvedLocalReg
+  deriving (Eq, Ord, Show, Data)
 
 data UnresolvedGlobalReg
   = VanillaReg Int
@@ -176,26 +151,20 @@ data UnresolvedGlobalReg
   | GCEnter1
   | GCFun
   | BaseReg
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary UnresolvedGlobalReg
+  deriving (Show, Data)
 
 data ValueType
   = I32
   | I64
   | F32
   | F64
-  deriving (Enum, Eq, Ord, Show, Generic, Data)
-
-instance Binary ValueType
+  deriving (Eq, Ord, Enum, Show, Data)
 
 data FunctionType
   = FunctionType
       { paramTypes, returnTypes :: [ValueType]
       }
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary FunctionType
+  deriving (Eq, Ord, Show, Data)
 
 data UnaryOp
   = ClzInt32
@@ -245,9 +214,7 @@ data UnaryOp
   | DemoteFloat64
   | ReinterpretInt32
   | ReinterpretInt64
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary UnaryOp
+  deriving (Show, Data)
 
 data BinaryOp
   = AddInt32
@@ -326,16 +293,12 @@ data BinaryOp
   | LeFloat64
   | GtFloat64
   | GeFloat64
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary BinaryOp
+  deriving (Show, Data)
 
 data HostOp
   = CurrentMemory
   | GrowMemory
-  deriving (Eq, Ord, Show, Generic, Data)
-
-instance Binary HostOp
+  deriving (Show, Data)
 
 data Expression
   = Block
@@ -444,9 +407,7 @@ data Expression
       { barfMessage :: BS.ByteString,
         barfReturnTypes :: [ValueType]
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary Expression
+  deriving (Show, Data)
 
 data Function
   = Function
@@ -454,76 +415,60 @@ data Function
         varTypes :: [ValueType],
         body :: Expression
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary Function
+  deriving (Show, Data)
 
 data FunctionImport
   = FunctionImport
       { internalName, externalModuleName, externalBaseName :: BS.ByteString,
         functionType :: FunctionType
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary FunctionImport
+  deriving (Show, Data)
 
 data TableImport
   = TableImport
       { externalModuleName, externalBaseName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary TableImport
+  deriving (Show, Data)
 
 data MemoryImport
   = MemoryImport
       { externalModuleName, externalBaseName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary MemoryImport
+  deriving (Show, Data)
 
 data FunctionExport
   = FunctionExport
       { internalName, externalName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary FunctionExport
+  deriving (Show, Data)
 
 newtype TableExport
   = TableExport
       { externalName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary TableExport
+  deriving (Show, Data)
+  deriving newtype (GHC.Binary)
 
 newtype MemoryExport
   = MemoryExport
       { externalName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary MemoryExport
+  deriving (Show, Data)
+  deriving newtype (GHC.Binary)
 
 data FunctionTable
   = FunctionTable
       { tableFunctionNames :: [BS.ByteString],
         tableOffset :: BinaryenIndex
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary FunctionTable
+  deriving (Show, Data)
 
 data DataSegment
   = DataSegment
       { content :: BS.ByteString,
         offset :: Int32
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary DataSegment
+  deriving (Show, Data)
 
 data Module
   = Module
@@ -539,9 +484,7 @@ data Module
         memoryExport :: MemoryExport,
         memoryMBlocks :: Int
       }
-  deriving (Eq, Show, Data, Generic)
-
-instance Binary Module
+  deriving (Show, Data)
 
 data RelooperAddBlock
   = AddBlock
@@ -550,9 +493,7 @@ data RelooperAddBlock
   | AddBlockWithSwitch
       { code, condition :: Expression
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary RelooperAddBlock
+  deriving (Show, Data)
 
 data RelooperAddBranch
   = AddBranch
@@ -563,18 +504,14 @@ data RelooperAddBranch
       { to :: BS.ByteString,
         indexes :: [BinaryenIndex]
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary RelooperAddBranch
+  deriving (Show, Data)
 
 data RelooperBlock
   = RelooperBlock
       { addBlock :: RelooperAddBlock,
         addBranches :: [RelooperAddBranch]
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary RelooperBlock
+  deriving (Show, Data)
 
 data RelooperRun
   = RelooperRun
@@ -582,9 +519,7 @@ data RelooperRun
         blockMap :: LM.Map BS.ByteString RelooperBlock,
         labelHelper :: BinaryenIndex
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary RelooperRun
+  deriving (Show, Data)
 
 data FFIValueTypeRep
   = FFILiftedRep
@@ -595,35 +530,27 @@ data FFIValueTypeRep
   | FFIAddrRep
   | FFIFloatRep
   | FFIDoubleRep
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary FFIValueTypeRep
+  deriving (Show, Data)
 
 data FFIValueType
   = FFIValueType
       { ffiValueTypeRep :: FFIValueTypeRep,
         hsTyCon :: BS.ByteString
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary FFIValueType
+  deriving (Show, Data)
 
 data FFIFunctionType
   = FFIFunctionType
       { ffiParamTypes, ffiResultTypes :: [FFIValueType],
         ffiInIO :: Bool
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary FFIFunctionType
+  deriving (Show, Data)
 
 data FFISafety
   = FFIUnsafe
   | FFISafe
   | FFIInterruptible
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary FFISafety
+  deriving (Eq, Show, Data)
 
 data FFIImportDecl
   = FFIImportDecl
@@ -631,38 +558,94 @@ data FFIImportDecl
         ffiSafety :: FFISafety,
         ffiSourceText :: BS.ByteString
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary FFIImportDecl
+  deriving (Show, Data)
 
 data FFIExportDecl
   = FFIExportDecl
       { ffiFunctionType :: FFIFunctionType,
         ffiExportClosure :: EntitySymbol
       }
-  deriving (Eq, Show, Generic, Data)
-
-instance Binary FFIExportDecl
+  deriving (Show, Data)
 
 data FFIMarshalState
   = FFIMarshalState
       { ffiImportDecls :: LM.Map EntitySymbol FFIImportDecl,
         ffiExportDecls :: LM.Map EntitySymbol FFIExportDecl
       }
-  deriving (Eq, Show, Data)
+  deriving (Show, Data)
 
 instance Semigroup FFIMarshalState where
-  s0 <> s1 = FFIMarshalState
-    { ffiImportDecls = ffiImportDecls s0 <> ffiImportDecls s1,
-      ffiExportDecls = ffiExportDecls s0 <> ffiExportDecls s1
-    }
+  s0 <> s1 =
+    FFIMarshalState
+      { ffiImportDecls = ffiImportDecls s0 <> ffiImportDecls s1,
+        ffiExportDecls = ffiExportDecls s0 <> ffiExportDecls s1
+      }
 
 instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
 
-instance Binary FFIMarshalState where
+$(genBinary ''AsteriusCodeGenError)
 
-  put FFIMarshalState {..} =
-    lazyMapPut ffiImportDecls *> lazyMapPut ffiExportDecls
+$(genBinary ''AsteriusStatic)
 
-  get = FFIMarshalState <$> lazyMapGet <*> lazyMapGet
+$(genBinary ''AsteriusStaticsType)
+
+$(genBinary ''AsteriusStatics)
+
+$(genBinary ''AsteriusModule)
+
+$(genBinary ''AsteriusModuleSymbol)
+
+$(genBinary ''UnresolvedLocalReg)
+
+$(genBinary ''UnresolvedGlobalReg)
+
+$(genBinary ''ValueType)
+
+$(genBinary ''FunctionType)
+
+$(genBinary ''UnaryOp)
+
+$(genBinary ''BinaryOp)
+
+$(genBinary ''HostOp)
+
+$(genBinary ''Expression)
+
+$(genBinary ''Function)
+
+$(genBinary ''FunctionImport)
+
+$(genBinary ''TableImport)
+
+$(genBinary ''MemoryImport)
+
+$(genBinary ''FunctionExport)
+
+$(genBinary ''FunctionTable)
+
+$(genBinary ''DataSegment)
+
+$(genBinary ''Module)
+
+$(genBinary ''RelooperAddBlock)
+
+$(genBinary ''RelooperAddBranch)
+
+$(genBinary ''RelooperBlock)
+
+$(genBinary ''RelooperRun)
+
+$(genBinary ''FFIValueTypeRep)
+
+$(genBinary ''FFIValueType)
+
+$(genBinary ''FFIFunctionType)
+
+$(genBinary ''FFISafety)
+
+$(genBinary ''FFIImportDecl)
+
+$(genBinary ''FFIExportDecl)
+
+$(genBinary ''FFIMarshalState)

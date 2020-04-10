@@ -15,6 +15,8 @@ module Asterius.GHCi.Internals
 where
 
 import Asterius.Ar
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.BuildInfo
 import Asterius.CodeGen
 import Asterius.Internals ((!))
@@ -82,10 +84,12 @@ import qualified UniqFM as GHC
 import qualified UniqSupply as GHC
 import Unsafe.Coerce
 import qualified VarEnv as GHC
+import qualified IfaceEnv as GHC
 
 data GHCiState
   = GHCiState
       { ghciUniqSupply :: GHC.UniqSupply,
+        ghciNameCacheUpdater :: GHC.NameCacheUpdater,
         ghciLibs :: AsteriusModule,
         ghciObjs :: M.Map FilePath AsteriusModule,
         ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusModule),
@@ -97,8 +101,10 @@ data GHCiState
 globalGHCiState :: MVar GHCiState
 globalGHCiState = unsafePerformIO $ do
   us <- GHC.mkSplitUniqSupply 'A'
+  ncu <- newNameCacheUpdater
   newMVar GHCiState
     { ghciUniqSupply = us,
+      ghciNameCacheUpdater = ncu,
       ghciLibs = mempty,
       ghciObjs = M.empty,
       ghciCompiledCoreExprs = IM.empty,
@@ -176,10 +182,10 @@ asteriusIservCall hsc_env _ msg = do
     GHC.InitLinker -> pure ()
     GHC.LoadDLL _ -> pure Nothing
     GHC.LoadArchive p -> modifyMVar_ globalGHCiState $ \s -> do
-      lib <- loadAr p
+      lib <- loadAr (ghciNameCacheUpdater s) p
       evaluate s {ghciLibs = lib <> ghciLibs s}
     GHC.LoadObj p -> modifyMVar_ globalGHCiState $ \s -> do
-      obj <- decodeFile p
+      obj <- getFile (ghciNameCacheUpdater s) p
       evaluate s {ghciObjs = M.insert p obj $ ghciObjs s}
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
     GHC.RemoveLibrarySearchPath _ -> pure True

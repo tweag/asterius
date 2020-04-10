@@ -13,6 +13,8 @@ where
 
 import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.WasmToolkit as WasmToolkit
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.BuildInfo
 import Asterius.Foreign.ExportStatic
 import Asterius.Internals
@@ -276,7 +278,8 @@ ahcLink task = do
          ]
       <> ["-optl--prog-name=" <> takeBaseName (inputHS task)]
       <> ["-o", ld_output, inputHS task]
-  r <- decodeFile ld_output
+  ncu <- newNameCacheUpdater
+  r <- getFile ncu ld_output
   removeFile ld_output
   pure r
 

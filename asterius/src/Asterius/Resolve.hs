@@ -1,5 +1,4 @@
 {-# LANGUAGE BangPatterns #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -11,6 +10,7 @@ module Asterius.Resolve
   )
 where
 
+import Asterius.Binary.Orphans ()
 import Asterius.Builtins
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
@@ -19,12 +19,11 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Types
-import Data.Binary
+import Asterius.Types.LinkReport
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
 import Foreign
-import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
@@ -32,44 +31,6 @@ unresolvedGlobalRegType gr = case gr of
   FloatReg _ -> F32
   DoubleReg _ -> F64
   _ -> I64
-
-data LinkReport
-  = LinkReport
-      { staticsSymbolMap, functionSymbolMap :: LM.Map EntitySymbol Int64,
-        infoTableSet :: [Int64],
-        tableSlots, staticMBlocks :: Int,
-        sptEntries :: LM.Map EntitySymbol (Word64, Word64),
-        bundledFFIMarshalState :: FFIMarshalState
-      }
-  deriving (Generic, Show)
-
-instance Binary LinkReport
-
-instance Semigroup LinkReport where
-  r0 <> r1 =
-    LinkReport
-      { staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1,
-        functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1,
-        infoTableSet = infoTableSet r0 <> infoTableSet r1,
-        tableSlots = 0,
-        staticMBlocks = 0,
-        sptEntries = sptEntries r0 <> sptEntries r1,
-        bundledFFIMarshalState =
-          bundledFFIMarshalState r0
-            <> bundledFFIMarshalState r1
-      }
-
-instance Monoid LinkReport where
-  mempty =
-    LinkReport
-      { staticsSymbolMap = mempty,
-        functionSymbolMap = mempty,
-        infoTableSet = mempty,
-        tableSlots = 0,
-        staticMBlocks = 0,
-        sptEntries = mempty,
-        bundledFFIMarshalState = mempty
-      }
 
 makeInfoTableSet ::
   AsteriusModule -> LM.Map EntitySymbol Int64 -> [Int64]
@@ -154,7 +115,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
       { staticsSymbolMap = ss_sym_map,
         functionSymbolMap = func_sym_map,
         infoTableSet = makeInfoTableSet merged_m ss_sym_map,
-        Asterius.Resolve.tableSlots = tbl_slots,
+        Asterius.Types.LinkReport.tableSlots = tbl_slots,
         staticMBlocks = static_mbs,
         sptEntries = sptMap merged_m,
         bundledFFIMarshalState = bundled_ffi_state

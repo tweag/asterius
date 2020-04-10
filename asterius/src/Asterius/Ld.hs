@@ -14,9 +14,10 @@ module Asterius.Ld
 where
 
 import Asterius.Ar
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.Builtins
 import Asterius.Builtins.Main
-import Asterius.Internals
 import Asterius.Resolve
 import Asterius.Types
 import Control.Exception
@@ -38,8 +39,9 @@ data LinkTask
 
 loadTheWorld :: LinkTask -> IO AsteriusModule
 loadTheWorld LinkTask {..} = do
-  lib <- mconcat <$> for linkLibs loadAr
-  objrs <- for linkObjs tryDecodeFile
+  ncu <- newNameCacheUpdater
+  lib <- mconcat <$> for linkLibs (loadAr ncu)
+  objrs <- for linkObjs (tryGetFile ncu)
   let objs = rights objrs
   evaluate $ linkModule <> mconcat objs <> lib
 
@@ -117,7 +119,7 @@ linkExeInMemory ld_task = do
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
   (pre_m, m, link_report) <- linkExeInMemory ld_task
-  encodeFile linkOutput (m, link_report)
+  putFile linkOutput (m, link_report)
   case outputIR of
-    Just p -> encodeFile p pre_m
+    Just p -> putFile p pre_m
     _ -> pure ()

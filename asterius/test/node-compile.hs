@@ -225,5 +225,5 @@ testNodeCompileBoth s m =
 
 main :: IO ()
 main = do
-  m_fib <- decodeFile $ "test" </> "fib" </> "fib.bin"
+  m_fib <- getFile $ "test" </> "fib" </> "fib.bin"
   quickCheck $ testNodeCompileBoth shrinkModule m_fib
