@@ -13,8 +13,6 @@ where
 
 import Asterius.Types
 import qualified Data.ByteString.Char8 as CBS
-import qualified Data.ByteString.Short as SBS
-import Data.List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified GhcPlugins as GHC
@@ -27,9 +25,9 @@ import System.IO
 {-# INLINE marshalToModuleSymbol #-}
 marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol
 marshalToModuleSymbol (GHC.Module u m) = AsteriusModuleSymbol
-  { unitId = SBS.toShort $ GHC.fs_bs $ GHC.unitIdFS u,
+  { unitId = GHC.fs_bs $ GHC.unitIdFS u,
     moduleName =
-      map SBS.toShort $ CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
+      CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
   }
 
 {-# INLINE zEncodeModuleSymbol #-}
@@ -38,9 +36,9 @@ zEncodeModuleSymbol AsteriusModuleSymbol {..} =
   GHC.zString
     $ GHC.zEncodeFS
     $ GHC.mkFastStringByteString
-    $ SBS.fromShort unitId
+    $ unitId
       <> "_"
-      <> CBS.intercalate "." [SBS.fromShort mod_chunk | mod_chunk <- moduleName]
+      <> CBS.intercalate "." moduleName
 
 {-# INLINE generateWasmFunctionTypeSet #-}
 generateWasmFunctionTypeSet :: Module -> Set.Set FunctionType

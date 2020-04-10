@@ -9,16 +9,16 @@ module Asterius.Internals
     encodeFile,
     decodeFile,
     tryDecodeFile,
-    showSBS,
-    c8SBS,
+    showBS,
+    c8BS,
     (!),
   )
 where
 
 import Control.Exception
 import qualified Data.Binary as Binary
+import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Char8 as CBS
-import qualified Data.ByteString.Short.Internal as SBS
 import qualified Data.Map.Lazy as LM
 import Foreign
 import GHC.Exts
@@ -32,21 +32,10 @@ unIO :: GHC.Types.IO a -> (State# RealWorld -> (# State# RealWorld, a #))
 unIO (GHC.Types.IO m) = m
 
 {-# INLINE encodeStorable #-}
-encodeStorable :: Storable a => a -> SBS.ShortByteString
-encodeStorable a =
-  case runRW#
-    ( \s0 ->
-        case newAlignedPinnedByteArray#
-          (unI# (sizeOf a))
-          (unI# (alignment a))
-          s0 of
-          (# s1, mba #) -> case unsafeFreezeByteArray# mba s1 of
-            (# s2, ba #) ->
-              let addr = byteArrayContents# ba
-               in case unIO (poke (Ptr addr) a) s2 of
-                    (# s3, _ #) -> (# s3, SBS.SBS ba #)
-    ) of
-    (# _, r #) -> r
+encodeStorable :: Storable a => a -> BS.ByteString
+encodeStorable a = BS.unsafeCreate len $ \p -> poke (castPtr p) a
+  where
+    len = sizeOf a
 
 {-# INLINE reinterpretCast #-}
 reinterpretCast :: (Storable a, Storable b) => a -> b
@@ -77,13 +66,13 @@ tryDecodeFile p = do
     Right (Left err) -> Left $ toException $ userError $ show err
     Right (Right v) -> Right v
 
-{-# INLINE showSBS #-}
-showSBS :: Show a => a -> SBS.ShortByteString
-showSBS = fromString . show
+{-# INLINE showBS #-}
+showBS :: Show a => a -> BS.ByteString
+showBS = fromString . show
 
-{-# INLINE c8SBS #-}
-c8SBS :: SBS.ShortByteString -> String
-c8SBS = CBS.unpack . SBS.fromShort
+{-# INLINE c8BS #-}
+c8BS :: BS.ByteString -> String
+c8BS = CBS.unpack
 
 {-# INLINE (!) #-}
 (!) :: (HasCallStack, Ord k, Show k) => LM.Map k v -> k -> v

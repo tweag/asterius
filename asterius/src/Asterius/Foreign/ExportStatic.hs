@@ -12,14 +12,13 @@ import Asterius.Internals ((!))
 import Asterius.Types
 import Data.Bits
 import Data.ByteString.Builder
-import Data.Coerce
 import Data.Foldable
 import Data.Int
 import Data.List
 import qualified Data.Map.Strict as M
 
 genExportStaticObj ::
-  FFIMarshalState -> M.Map AsteriusEntitySymbol Int64 -> Builder
+  FFIMarshalState -> M.Map EntitySymbol Int64 -> Builder
 genExportStaticObj FFIMarshalState {..} sym_map =
   "["
     <> mconcat
@@ -32,13 +31,13 @@ genExportStaticObj FFIMarshalState {..} sym_map =
     <> "]"
 
 genExportStaticFunc ::
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   FFIExportDecl ->
-  M.Map AsteriusEntitySymbol Int64 ->
+  M.Map EntitySymbol Int64 ->
   Builder
 genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
   "[\""
-    <> shortByteString (coerce k)
+    <> byteString (entityName k)
     <> "\",0x"
     <> int64HexFixed (sym_map ! ffiExportClosure)
     <> ",0x"

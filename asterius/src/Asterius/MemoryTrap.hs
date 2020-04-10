@@ -21,7 +21,7 @@ addMemoryTrap m =
   let new_function_map = M.mapWithKey addMemoryTrapDeep (functionMap m)
    in m {functionMap = new_function_map}
 
-addMemoryTrapDeep :: Data a => AsteriusEntitySymbol -> a -> a
+addMemoryTrapDeep :: Data a => EntitySymbol -> a -> a
 addMemoryTrapDeep sym = w
   where
     w :: Data a => a -> a

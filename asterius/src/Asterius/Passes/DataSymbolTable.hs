@@ -12,7 +12,7 @@ import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
 import Data.Bits
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import Data.Foldable
 import Data.Map.Strict (Map)
 import qualified Data.Map.Strict as Map
@@ -29,7 +29,7 @@ sizeofStatics =
       ( Sum . \case
           SymbolStatic {} -> 8
           Uninitialized x -> x
-          Serialized buf -> SBS.length buf
+          Serialized buf -> BS.length buf
       )
     . asteriusStatics
 
@@ -38,7 +38,7 @@ unTag = (.&. 0xFFFFFFFF)
 
 {-# INLINEABLE makeDataSymbolTable #-}
 makeDataSymbolTable ::
-  AsteriusModule -> Int64 -> (Map AsteriusEntitySymbol Int64, Int64)
+  AsteriusModule -> Int64 -> (Map EntitySymbol Int64, Int64)
 makeDataSymbolTable AsteriusModule {..} l =
   swap $
     Map.mapAccum
@@ -50,7 +50,7 @@ makeDataSymbolTable AsteriusModule {..} l =
 {-# INLINEABLE makeMemory #-}
 makeMemory ::
   AsteriusModule ->
-  Map AsteriusEntitySymbol Int64 ->
+  Map EntitySymbol Int64 ->
   Int64 ->
   (BinaryenIndex, [DataSegment])
 makeMemory AsteriusModule {..} sym_map last_addr =
@@ -74,7 +74,7 @@ makeMemory AsteriusModule {..} sym_map last_addr =
                           static_addr
                         )
                         where
-                          static_addr = static_tail_addr - fromIntegral (SBS.length buf)
+                          static_addr = static_tail_addr - fromIntegral (BS.length buf)
                    in case static of
                         SymbolStatic sym o ->
                           flush_static_segs

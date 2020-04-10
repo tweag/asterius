@@ -157,7 +157,7 @@ rtsConstants =
            mconcat
              ( intersperse
                  ","
-                 [ "\"" <> shortByteString hsTyCon <> "\""
+                 [ "\"" <> byteString hsTyCon <> "\""
                    | FFIValueType {..} <- ffiBoxedValueTypeList
                  ]
              ),

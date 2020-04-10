@@ -14,8 +14,8 @@ import qualified Data.Map.Strict as M
 import Data.Word
 
 genSPT ::
-  M.Map AsteriusEntitySymbol Int64 ->
-  M.Map AsteriusEntitySymbol (Word64, Word64) ->
+  M.Map EntitySymbol Int64 ->
+  M.Map EntitySymbol (Word64, Word64) ->
   Builder
 genSPT sym_map spt_entries =
   "new Map(["

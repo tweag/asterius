@@ -21,13 +21,11 @@ import Asterius.Passes.GCSections
 import Asterius.Types
 import Data.Binary
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
 import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
 import Foreign
 import GHC.Generics
 import Language.Haskell.GHC.Toolkit.Constants
-import Unsafe.Coerce
 
 unresolvedGlobalRegType :: UnresolvedGlobalReg -> ValueType
 unresolvedGlobalRegType gr = case gr of
@@ -37,10 +35,10 @@ unresolvedGlobalRegType gr = case gr of
 
 data LinkReport
   = LinkReport
-      { staticsSymbolMap, functionSymbolMap :: LM.Map AsteriusEntitySymbol Int64,
+      { staticsSymbolMap, functionSymbolMap :: LM.Map EntitySymbol Int64,
         infoTableSet :: [Int64],
         tableSlots, staticMBlocks :: Int,
-        sptEntries :: LM.Map AsteriusEntitySymbol (Word64, Word64),
+        sptEntries :: LM.Map EntitySymbol (Word64, Word64),
         bundledFFIMarshalState :: FFIMarshalState
       }
   deriving (Generic, Show)
@@ -74,7 +72,7 @@ instance Monoid LinkReport where
       }
 
 makeInfoTableSet ::
-  AsteriusModule -> LM.Map AsteriusEntitySymbol Int64 -> [Int64]
+  AsteriusModule -> LM.Map EntitySymbol Int64 -> [Int64]
 makeInfoTableSet AsteriusModule {..} sym_map =
   LM.elems $ LM.restrictKeys sym_map $ LM.keysSet $
     LM.filter
@@ -88,8 +86,8 @@ resolveAsteriusModule ::
   Int64 ->
   Int64 ->
   ( Module,
-    LM.Map AsteriusEntitySymbol Int64,
-    LM.Map AsteriusEntitySymbol Int64,
+    LM.Map EntitySymbol Int64,
+    LM.Map EntitySymbol Int64,
     Int,
     Int
   )
@@ -105,7 +103,7 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
     all_sym_map = func_sym_map <> ss_sym_map
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
-    new_function_map = unsafeCoerce $ functionMap m_globals_resolved
+    new_function_map = LM.mapKeys entityName $ functionMap m_globals_resolved
     (initial_pages, segs) =
       makeMemory m_globals_resolved all_sym_map last_data_addr
     initial_mblocks =
@@ -146,8 +144,8 @@ linkStart ::
   Bool ->
   Bool ->
   AsteriusModule ->
-  S.Set AsteriusEntitySymbol ->
-  [AsteriusEntitySymbol] ->
+  S.Set EntitySymbol ->
+  [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
 linkStart debug gc_sections verbose_err store root_syms export_funcs =
   ( merged_m,
@@ -178,7 +176,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
                 ( \sym _ ->
                     not
                       ( "__asterius_barf_"
-                          `BS.isPrefixOf` SBS.fromShort (entityName sym)
+                          `BS.isPrefixOf` entityName sym
                       )
                 )
                 $ staticsMap merged_m1

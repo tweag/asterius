@@ -34,6 +34,7 @@ import Control.Exception
 import Control.Monad.Except
 import Control.Monad.Reader
 import Data.Bits
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
 import Data.Int
@@ -58,7 +59,7 @@ instance Exception MarshalError
 data ModuleSymbolTable
   = ModuleSymbolTable
       { functionTypeSymbols :: Map.Map FunctionType Wasm.FunctionTypeIndex,
-        functionSymbols :: Map.Map SBS.ShortByteString Wasm.FunctionIndex
+        functionSymbols :: Map.Map BS.ByteString Wasm.FunctionIndex
       }
 
 makeModuleSymbolTable ::
@@ -110,8 +111,8 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
   { imports =
       ( case memoryImport of
           MemoryImport {..} -> Wasm.Import
-            { moduleName = coerce externalModuleName,
-              importName = coerce externalBaseName,
+            { moduleName = coerce $ SBS.toShort externalModuleName,
+              importName = coerce $ SBS.toShort externalBaseName,
               importDescription = Wasm.ImportMemory $ Wasm.MemoryType $ Wasm.Limits
                 { minLimit =
                     fromIntegral $
@@ -123,8 +124,8 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
       )
         : ( case tableImport of
               TableImport {..} -> Wasm.Import
-                { moduleName = coerce externalModuleName,
-                  importName = coerce externalBaseName,
+                { moduleName = coerce $ SBS.toShort externalModuleName,
+                  importName = coerce $ SBS.toShort externalBaseName,
                   importDescription = Wasm.ImportTable $ Wasm.TableType Wasm.AnyFunc $ Wasm.Limits
                     { minLimit = fromIntegral tableSlots,
                       maxLimit = Nothing
@@ -132,8 +133,8 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
                 }
           )
         : [ Wasm.Import
-              { moduleName = coerce externalModuleName,
-                importName = coerce externalBaseName,
+              { moduleName = coerce $ SBS.toShort externalModuleName,
+                importName = coerce $ SBS.toShort externalBaseName,
                 importDescription =
                   Wasm.ImportFunction $
                     functionTypeSymbols
@@ -157,7 +158,7 @@ makeExportSection ::
 makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
   { exports =
       [ Wasm.Export
-          { exportName = coerce externalName,
+          { exportName = coerce $ SBS.toShort externalName,
             exportDescription =
               Wasm.ExportFunction $
                 functionSymbols
@@ -168,7 +169,7 @@ makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
         <> ( case memoryExport of
                MemoryExport {..} ->
                  [ Wasm.Export
-                     { exportName = coerce externalName,
+                     { exportName = coerce $ SBS.toShort externalName,
                        exportDescription =
                          Wasm.ExportMemory $
                            Wasm.MemoryIndex 0
@@ -178,7 +179,7 @@ makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
         <> ( case tableExport of
                TableExport {..} ->
                  [ Wasm.Export
-                     { exportName = coerce externalName,
+                     { exportName = coerce $ SBS.toShort externalName,
                        exportDescription =
                          Wasm.ExportTable $
                            Wasm.TableIndex 0
@@ -214,7 +215,7 @@ data DeBruijnContext
         currentLevel :: Word32,
         -- | Set of all named labels currently in scope (named labels are only
         -- introduced by block or loop instructions).
-        capturedLevels :: Map.Map SBS.ShortByteString Word32
+        capturedLevels :: Map.Map BS.ByteString Word32
       }
 
 -- | Initial (empty) de Bruijn context.
@@ -223,17 +224,17 @@ emptyDeBruijnContext =
   DeBruijnContext {currentLevel = 0, capturedLevels = mempty}
 
 -- | Add a new label to the context.
-bindLabel :: SBS.ShortByteString -> DeBruijnContext -> DeBruijnContext
+bindLabel :: BS.ByteString -> DeBruijnContext -> DeBruijnContext
 bindLabel k DeBruijnContext {..} = DeBruijnContext
   { currentLevel = succ currentLevel,
     capturedLevels =
-      if SBS.null k
+      if BS.null k
         then capturedLevels
         else Map.insert k currentLevel capturedLevels
   }
 
 -- | Lookup a label (by name) in the de Bruijn context.
-extractLabel :: DeBruijnContext -> SBS.ShortByteString -> Wasm.LabelIndex
+extractLabel :: DeBruijnContext -> BS.ByteString -> Wasm.LabelIndex
 extractLabel DeBruijnContext {..} k =
   coerce $ currentLevel - capturedLevels ! k - 1
 
@@ -409,7 +410,7 @@ marshalBinaryOp op = case op of
 
 -- ----------------------------------------------------------------------------
 
-type SymbolMap = Map.Map AsteriusEntitySymbol Int64
+type SymbolMap = Map.Map EntitySymbol Int64
 
 -- | Environment used during the elaboration of Asterius' types to WebAssembly.
 data MarshalEnv
@@ -440,7 +441,7 @@ askModuleSymbolTable = reader envModuleSymbolTable
 
 -- | Add a label to the local environment. Used to by control constructs
 -- (block, if, etc.).
-bindLocalLabel :: MonadReader MarshalEnv m => SBS.ShortByteString -> m a -> m a
+bindLocalLabel :: MonadReader MarshalEnv m => BS.ByteString -> m a -> m a
 bindLocalLabel label = local $ \env ->
   env {envDeBruijnContext = bindLabel label $ envDeBruijnContext env}
 
@@ -448,7 +449,7 @@ bindLocalLabel label = local $ \env ->
 -- variant of function 'extractLabel'.
 lookupLabel ::
   MonadReader MarshalEnv m =>
-  SBS.ShortByteString ->
+  BS.ByteString ->
   m Wasm.LabelIndex
 lookupLabel label = asks ((`extractLabel` label) . envDeBruijnContext)
 
@@ -467,7 +468,7 @@ makeInstructions ::
 makeInstructions expr =
   case expr of
     Block {..}
-      | SBS.null name ->
+      | BS.null name ->
         fmap mconcat $ for bodys makeInstructions
       | otherwise -> do
         bs <- bindLocalLabel name $ for bodys makeInstructions
@@ -514,7 +515,7 @@ makeInstructions expr =
           }
     Call {..} -> do
       ModuleSymbolTable {..} <- askModuleSymbolTable
-      case Map.lookup (coerce target) functionSymbols of
+      case Map.lookup (entityName target) functionSymbols of
         Just i -> do
           xs <-
             for
@@ -631,7 +632,7 @@ makeInstructions expr =
       tail_calls <- areTailCallsOn
       if tail_calls
         -- Case 1: Tail calls are on
-        then case Map.lookup (coerce returnCallTarget64) functionSymbols of
+        then case Map.lookup (entityName returnCallTarget64) functionSymbols of
           Just i -> pure $
             DList.singleton Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
@@ -726,7 +727,7 @@ makeInstructionsMaybe m_expr = case m_expr of
 makeCodeSection ::
   MonadError MarshalError m =>
   Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
+  Map.Map EntitySymbol Int64 ->
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
@@ -763,14 +764,14 @@ makeDataSection Module {..} _module_symtable = do
   segs <- for memorySegments $ \DataSegment {..} -> pure Wasm.DataSegment
     { memoryIndex = Wasm.MemoryIndex 0,
       memoryOffset = Wasm.Expression {instructions = [Wasm.I32Const offset]},
-      memoryInitialBytes = content
+      memoryInitialBytes = SBS.toShort content
     }
   pure Wasm.DataSection {dataSegments = segs}
 
 makeModule ::
   MonadError MarshalError m =>
   Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
+  Map.Map EntitySymbol Int64 ->
   Module ->
   m Wasm.Module
 makeModule tail_calls sym_map m = do

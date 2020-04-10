@@ -32,7 +32,7 @@ data LinkTask
         linkModule :: AsteriusModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
-        rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
+        rootSymbols, exportFunctions :: [EntitySymbol]
       }
   deriving (Show)
 
@@ -45,7 +45,7 @@ loadTheWorld LinkTask {..} = do
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm
-rtsUsedSymbols :: Set AsteriusEntitySymbol
+rtsUsedSymbols :: Set EntitySymbol
 rtsUsedSymbols =
   Set.fromList
     [ "barf",
@@ -75,7 +75,7 @@ rtsUsedSymbols =
       "stg_WEAK_info"
     ]
 
-rtsPrivateSymbols :: Set AsteriusEntitySymbol
+rtsPrivateSymbols :: Set EntitySymbol
 rtsPrivateSymbols =
   Set.fromList
     [ "base_AsteriusziTopHandler_runIO_closure",
@@ -102,7 +102,7 @@ linkModules LinkTask {..} m =
           rtsUsedSymbols,
           rtsPrivateSymbols,
           Set.fromList
-            [ AsteriusEntitySymbol {entityName = internalName}
+            [ mkEntitySymbol internalName
               | FunctionExport {..} <- rtsFunctionExports debug
             ]
         ]

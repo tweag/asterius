@@ -88,7 +88,7 @@ data GHCiState
       { ghciUniqSupply :: GHC.UniqSupply,
         ghciLibs :: AsteriusModule,
         ghciObjs :: M.Map FilePath AsteriusModule,
-        ghciCompiledCoreExprs :: IM.IntMap (AsteriusEntitySymbol, AsteriusModule),
+        ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusModule),
         ghciLastCompiledCoreExpr :: Int,
         ghciJSSession :: ~(JSSession, Pipe, JSVal)
       }
@@ -334,7 +334,7 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
     let runner_closure =
           deRefJSVal i <> ".symbolTable."
             <> coerce
-              (shortByteString (coerce runner_sym))
+              (byteString (entityName runner_sym))
         hv_closure = "0x" <> JSCode (word64Hex q)
         applied_closure =
           deRefJSVal i
@@ -362,7 +362,7 @@ asteriusRunModFinalizers hsc_env s i = do
   let run_mod_fin_closure =
         deRefJSVal i <> ".symbolTable."
           <> coerce
-            (shortByteString (coerce run_mod_fin_sym))
+            (byteString (entityName run_mod_fin_sym))
       tid =
         deRefJSVal i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
   (_ :: IO ()) <- eval' s tid
@@ -477,7 +477,7 @@ linkGhci hsc_env =
     Just ghci_comp_id =
       GHC.lookupPackageName (GHC.hsc_dflags hsc_env) (GHC.PackageName "ghci")
 
-ghciClosureSymbol :: GHC.HscEnv -> String -> String -> AsteriusEntitySymbol
+ghciClosureSymbol :: GHC.HscEnv -> String -> String -> EntitySymbol
 ghciClosureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env) "ghci"
 
 intToRemoteRef :: Int -> GHC.RemoteRef a
