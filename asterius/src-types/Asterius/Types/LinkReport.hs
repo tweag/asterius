@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -12,7 +11,6 @@ import Asterius.Types
 import Data.Int
 import qualified Data.Map.Lazy as M
 import Data.Word
-import GHC.Generics
 
 data LinkReport
   = LinkReport
@@ -22,7 +20,7 @@ data LinkReport
         sptEntries :: M.Map EntitySymbol (Word64, Word64),
         bundledFFIMarshalState :: FFIMarshalState
       }
-  deriving (Generic, Show)
+  deriving (Show)
 
 $(genBinary ''LinkReport)
 

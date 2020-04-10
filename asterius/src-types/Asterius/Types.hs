@@ -1,5 +1,4 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
@@ -60,7 +59,6 @@ import qualified Data.ByteString as BS
 import Data.Data
 import qualified Data.Map.Lazy as LM
 import Foreign
-import GHC.Generics
 
 type BinaryenIndex = Word32
 
@@ -75,7 +73,7 @@ data AsteriusCodeGenError
   | UnsupportedCmmSectionType BS.ByteString
   | UnsupportedImplicitCasting Expression ValueType ValueType
   | AssignToImmutableGlobalReg UnresolvedGlobalReg
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 instance Exception AsteriusCodeGenError
 
@@ -83,21 +81,21 @@ data AsteriusStatic
   = SymbolStatic EntitySymbol Int
   | Uninitialized Int
   | Serialized BS.ByteString
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Show, Data)
 
 data AsteriusStaticsType
   = ConstBytes
   | Bytes
   | InfoTable
   | Closure
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Eq, Show, Data)
 
 data AsteriusStatics
   = AsteriusStatics
       { staticsType :: AsteriusStaticsType,
         asteriusStatics :: [AsteriusStatic]
       }
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Show, Data)
 
 data AsteriusModule
   = AsteriusModule
@@ -107,7 +105,7 @@ data AsteriusModule
         sptMap :: LM.Map EntitySymbol (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 instance Semigroup AsteriusModule where
   AsteriusModule sm0 se0 fm0 spt0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 spt1 mod_ffi_state1 =
@@ -126,7 +124,7 @@ data AsteriusModuleSymbol
       { unitId :: BS.ByteString,
         moduleName :: [BS.ByteString]
       }
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Eq, Ord, Show, Data)
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int ValueType
@@ -134,7 +132,7 @@ data UnresolvedLocalReg
   | QuotRemI32Y
   | QuotRemI64X
   | QuotRemI64Y
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Eq, Ord, Show, Data)
 
 data UnresolvedGlobalReg
   = VanillaReg Int
@@ -153,20 +151,20 @@ data UnresolvedGlobalReg
   | GCEnter1
   | GCFun
   | BaseReg
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Show, Data)
 
 data ValueType
   = I32
   | I64
   | F32
   | F64
-  deriving (Enum, Eq, Ord, Show, Generic, Data)
+  deriving (Eq, Ord, Enum, Show, Data)
 
 data FunctionType
   = FunctionType
       { paramTypes, returnTypes :: [ValueType]
       }
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Eq, Ord, Show, Data)
 
 data UnaryOp
   = ClzInt32
@@ -216,7 +214,7 @@ data UnaryOp
   | DemoteFloat64
   | ReinterpretInt32
   | ReinterpretInt64
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Show, Data)
 
 data BinaryOp
   = AddInt32
@@ -295,12 +293,12 @@ data BinaryOp
   | LeFloat64
   | GtFloat64
   | GeFloat64
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Show, Data)
 
 data HostOp
   = CurrentMemory
   | GrowMemory
-  deriving (Eq, Ord, Show, Generic, Data)
+  deriving (Show, Data)
 
 data Expression
   = Block
@@ -409,7 +407,7 @@ data Expression
       { barfMessage :: BS.ByteString,
         barfReturnTypes :: [ValueType]
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data Function
   = Function
@@ -417,45 +415,45 @@ data Function
         varTypes :: [ValueType],
         body :: Expression
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data FunctionImport
   = FunctionImport
       { internalName, externalModuleName, externalBaseName :: BS.ByteString,
         functionType :: FunctionType
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
 
 data TableImport
   = TableImport
       { externalModuleName, externalBaseName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
 
 data MemoryImport
   = MemoryImport
       { externalModuleName, externalBaseName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
 
 data FunctionExport
   = FunctionExport
       { internalName, externalName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
 
 newtype TableExport
   = TableExport
       { externalName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
   deriving newtype (GHC.Binary)
 
 newtype MemoryExport
   = MemoryExport
       { externalName :: BS.ByteString
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
   deriving newtype (GHC.Binary)
 
 data FunctionTable
@@ -463,14 +461,14 @@ data FunctionTable
       { tableFunctionNames :: [BS.ByteString],
         tableOffset :: BinaryenIndex
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
 
 data DataSegment
   = DataSegment
       { content :: BS.ByteString,
         offset :: Int32
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
 
 data Module
   = Module
@@ -486,7 +484,7 @@ data Module
         memoryExport :: MemoryExport,
         memoryMBlocks :: Int
       }
-  deriving (Eq, Show, Data, Generic)
+  deriving (Show, Data)
 
 data RelooperAddBlock
   = AddBlock
@@ -495,7 +493,7 @@ data RelooperAddBlock
   | AddBlockWithSwitch
       { code, condition :: Expression
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data RelooperAddBranch
   = AddBranch
@@ -506,14 +504,14 @@ data RelooperAddBranch
       { to :: BS.ByteString,
         indexes :: [BinaryenIndex]
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data RelooperBlock
   = RelooperBlock
       { addBlock :: RelooperAddBlock,
         addBranches :: [RelooperAddBranch]
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data RelooperRun
   = RelooperRun
@@ -521,7 +519,7 @@ data RelooperRun
         blockMap :: LM.Map BS.ByteString RelooperBlock,
         labelHelper :: BinaryenIndex
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data FFIValueTypeRep
   = FFILiftedRep
@@ -532,27 +530,27 @@ data FFIValueTypeRep
   | FFIAddrRep
   | FFIFloatRep
   | FFIDoubleRep
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data FFIValueType
   = FFIValueType
       { ffiValueTypeRep :: FFIValueTypeRep,
         hsTyCon :: BS.ByteString
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data FFIFunctionType
   = FFIFunctionType
       { ffiParamTypes, ffiResultTypes :: [FFIValueType],
         ffiInIO :: Bool
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data FFISafety
   = FFIUnsafe
   | FFISafe
   | FFIInterruptible
-  deriving (Eq, Show, Generic, Data)
+  deriving (Eq, Show, Data)
 
 data FFIImportDecl
   = FFIImportDecl
@@ -560,21 +558,21 @@ data FFIImportDecl
         ffiSafety :: FFISafety,
         ffiSourceText :: BS.ByteString
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data FFIExportDecl
   = FFIExportDecl
       { ffiFunctionType :: FFIFunctionType,
         ffiExportClosure :: EntitySymbol
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 data FFIMarshalState
   = FFIMarshalState
       { ffiImportDecls :: LM.Map EntitySymbol FFIImportDecl,
         ffiExportDecls :: LM.Map EntitySymbol FFIExportDecl
       }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Show, Data)
 
 instance Semigroup FFIMarshalState where
   s0 <> s1 =
