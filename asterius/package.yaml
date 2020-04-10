@@ -41,7 +41,7 @@ data-files:
   - boot-init.sh
   - boot.sh
 
-ghc-options: -Wall -optl-static
+ghc-options: -Wall
 
 _exe-ghc-options: &exe-ghc-options
   - -threaded -rtsopts "-with-rtsopts=-A64m -n2m -I0 -qg"
@@ -49,7 +49,6 @@ _exe-ghc-options: &exe-ghc-options
 dependencies:
   - base
   - binary
-  - binaryen
   - bytestring
   - Cabal
   - containers
@@ -70,27 +69,16 @@ dependencies:
   - transformers
   - wasm-toolkit
 
+internal-libraries:
+  asterius-types:
+    source-dirs: src-types
+
 library:
   source-dirs: src
   generated-other-modules: Paths_asterius
-  other-extensions:
-    - DeriveGeneric
-    - DeriveDataTypeable
-    - FlexibleContexts
-    - GADTs
-    - GeneralizedNewtypeDeriving
-    - LambdaCase
-    - MagicHash
-    - NamedFieldPuns
-    - OverloadedLists
-    - OverloadedStrings
-    - RecordWildCards
-    - ScopedTypeVariables
-    - StandaloneDeriving
-    - StrictData
-    - TemplateHaskell
-    - TypeFamilies
-    - UnboxedTuples
+  dependencies:
+    - asterius-types
+    - binaryen
 
 executables:
   ahc:
