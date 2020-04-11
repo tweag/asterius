@@ -5,28 +5,30 @@
 [![Gitter](https://img.shields.io/gitter/room/tweag/asterius)](https://gitter.im/tweag/asterius)
 [![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://asterius.netlify.com)
 
-Asterius is a Haskell to WebAssembly compiler based on GHC. It compiles simple
+Asterius is a Haskell to WebAssembly compiler based on GHC. It compiles
 Haskell source files or Cabal executable targets to WebAssembly+JavaScript code
-which can be run in node.js or browsers. It features seamless JavaScript interop
+which can be run in [Node.js][nodejs] or browsers.
+It features seamless JavaScript interop
 (lightweight Async FFI with `Promise` support) and small output code (~600KB
 `hello.wasm` for a [Hello
 World](https://hackage.haskell.org/package/hello-1.0.0.2)). A lot of common
 Haskell packages like `lens` are already supported. The project is actively
 maintained by [Tweag I/O](https://tweag.io/).
 
-## Precompiled examples
+[nodejs]: https://node.js
 
-Here are the precompiled web version of some popular Haskell apps; feel free to
-give it a try in your browser!
+## Demos
+
+Demos of popular Haskell apps, running in your browser:
 
 * [`ormolu`](https://asterius.netlify.com/ormolu/WebOrmolu.html)
 * [`pandoc`](https://asterius.netlify.com/pandoc/pandoc.html)
 
-## Quickstart using the pre-built Docker image
+## Quickstart using the prebuilt Docker image
 
-We host a pre-built Docker image on [Docker
+We host a prebuilt Docker image on [Docker
 Hub](https://hub.docker.com/r/terrorjack/asterius). The image also ships ~2k
-pre-built [packages](https://github.com/tweag/asterius/issues/354) from a recent
+prebuilt [packages](https://github.com/tweag/asterius/issues/354) from a recent
 Stackage snapshot for convenience of testing simple programs without needing to
 set up a Cabal project.
 
@@ -62,15 +64,15 @@ Note that [`podman`](https://podman.io) can be used instead of `docker` here.
 See the [Building guide](https://asterius.netlify.com/building.html) in the
 documentation for details.
 
-## Hacking on `asterius`
+## Hacking on Asterius
 
 We recommend using [VSCode Remote
 Containers](https://code.visualstudio.com/docs/remote/containers) to reproduce
 the very same dev environment used by our core team members. The initial
 container build will take some while, since it will build the whole project and
-run the boot process. After that, the workflow shall be pretty smooth.
+run the boot process. After that, the workflow should be pretty smooth.
 
-## Documentation and blog posts
+## Documentation
 
 We have [documentation](https://asterius.netlify.com/) and blog posts:
 
