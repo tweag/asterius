@@ -15,7 +15,7 @@ World](https://hackage.haskell.org/package/hello-1.0.0.2)). A lot of common
 Haskell packages like `lens` are already supported. The project is actively
 maintained by [Tweag I/O](https://tweag.io/).
 
-[nodejs]: https://node.js
+[nodejs]: https://nodejs.org
 
 ## Demos
 
