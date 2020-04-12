@@ -74,14 +74,6 @@ module Language.WebAssembly.WireFormat
     -- ** Modules
     getModule,
     putModule,
-    -- * Custom Sections
-    LinkingSymbolFlags (..),
-    LinkingSymbolInfo (..),
-    LinkingSubSection (..),
-    RelocationType (..),
-    RelocationEntry (..),
-    getLinkingSymbolInfo,
-    putLinkingSymbolInfo,
   )
 where
 
@@ -91,7 +83,6 @@ import Control.Monad.Fail
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Bits
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
@@ -1486,193 +1477,10 @@ putDataSegment DataSegment {..} = do
   putExpression memoryOffset
   putVecSBS memoryInitialBytes
 
--- | Currently unused.
-data LinkingSymbolFlags
-  = LinkingSymbolFlags
-      { linkingWasmSymBindingWeak, linkingWasmSymBindingLocal, linkingWasmSymVisibilityHidden, linkingWasmSymUndefined :: Bool
-      }
-  deriving (Eq, Generic, Ord, Show)
-
--- | Currently unused.
-getLinkingSymbolFlags :: Get LinkingSymbolFlags
-getLinkingSymbolFlags = do
-  f <- getVU32
-  pure LinkingSymbolFlags
-    { linkingWasmSymBindingWeak = testBit f 0,
-      linkingWasmSymBindingLocal = testBit f 1,
-      linkingWasmSymVisibilityHidden = testBit f 2,
-      linkingWasmSymUndefined = testBit f 4
-    }
-
--- | Currently unused.
-putLinkingSymbolFlags :: LinkingSymbolFlags -> Put
-putLinkingSymbolFlags LinkingSymbolFlags {..} =
-  putVU32
-    $ (if linkingWasmSymUndefined then flip setBit 4 else id)
-    $ (if linkingWasmSymVisibilityHidden then flip setBit 2 else id)
-    $ (if linkingWasmSymBindingLocal then flip setBit 1 else id)
-    $ (if linkingWasmSymBindingWeak then flip setBit 0 else id) 0
-
--- | Currently unused.
-data LinkingSymbolInfo
-  = LinkingFunctionSymbolInfo
-      { linkingFunctionSymbolFlags :: LinkingSymbolFlags,
-        linkingFunctionSymbolIndex :: Word32,
-        linkingFunctionSymbolName :: Maybe Name
-      }
-  | LinkingDataSymbolInfo
-      { linkingDataSymbolFlags :: LinkingSymbolFlags,
-        linkingDataSymbolName :: Name,
-        linkingDataSymbolIndex, linkingDataSymbolOffset, linkingDataSymbolSize :: Maybe Word32
-      }
-  | LinkingGlobalSymbolInfo
-      { linkingGlobalSymbolFlags :: LinkingSymbolFlags,
-        linkingGlobalSymbolIndex :: Word32,
-        linkingGlobalSymbolName :: Maybe Name
-      }
-  | LinkingSectionSymbolInfo
-      { linkingSectionSymbolFlags :: LinkingSymbolFlags,
-        linkingSectionSymbolIndex :: Word32
-      }
-  deriving (Eq, Generic, Ord, Show)
-
--- | Currently unused.
-getLinkingSymbolInfo :: Get LinkingSymbolInfo
-getLinkingSymbolInfo = do
-  _sym_kind <- getWord8
-  _sym_flags@LinkingSymbolFlags {..} <- getLinkingSymbolFlags
-  case _sym_kind of
-    0 ->
-      if linkingWasmSymUndefined
-        then LinkingFunctionSymbolInfo _sym_flags <$> getVU32 <*> pure Nothing
-        else LinkingFunctionSymbolInfo _sym_flags <$> getVU32 <*> fmap Just getName
-    1 ->
-      if linkingWasmSymUndefined
-        then
-          LinkingDataSymbolInfo _sym_flags
-            <$> getName
-            <*> pure Nothing
-            <*> pure Nothing
-            <*> pure Nothing
-        else
-          LinkingDataSymbolInfo _sym_flags
-            <$> getName
-            <*> fmap Just getVU32
-            <*> fmap Just getVU32
-            <*> fmap Just getVU32
-    2 ->
-      if linkingWasmSymUndefined
-        then LinkingGlobalSymbolInfo _sym_flags <$> getVU32 <*> pure Nothing
-        else LinkingGlobalSymbolInfo _sym_flags <$> getVU32 <*> fmap Just getName
-    3 -> LinkingSectionSymbolInfo _sym_flags <$> getVU32
-    _ -> fail "Language.WebAssembly.WireFormat.getLinkingSymbolInfo"
-
--- | Currently unused.
-putLinkingSymbolInfo :: LinkingSymbolInfo -> Put
-putLinkingSymbolInfo sym_info = case sym_info of
-  LinkingFunctionSymbolInfo {..} -> do
-    putWord8 0
-    putLinkingSymbolFlags linkingFunctionSymbolFlags
-    putVU32 linkingFunctionSymbolIndex
-    putMaybe putName linkingFunctionSymbolName
-  LinkingDataSymbolInfo {..} -> do
-    putWord8 1
-    putLinkingSymbolFlags linkingDataSymbolFlags
-    putName linkingDataSymbolName
-    putMaybe putVU32 linkingDataSymbolIndex
-    putMaybe putVU32 linkingDataSymbolOffset
-    putMaybe putVU32 linkingDataSymbolSize
-  LinkingGlobalSymbolInfo {..} -> do
-    putWord8 2
-    putLinkingSymbolFlags linkingGlobalSymbolFlags
-    putVU32 linkingGlobalSymbolIndex
-    putMaybe putName linkingGlobalSymbolName
-  LinkingSectionSymbolInfo {..} -> do
-    putWord8 3
-    putLinkingSymbolFlags linkingSectionSymbolFlags
-    putVU32 linkingSectionSymbolIndex
-
--- | Currently unused.
-data LinkingSubSection
-  = LinkingWasmSegmentInfo
-      { linkingWasmSegmentInfoPayload :: SBS.ShortByteString
-      }
-  | LinkingWasmInitFuncs
-      { linkingWasmInitFuncsPayload :: SBS.ShortByteString
-      }
-  | LinkingWasmComdatInfo
-      { linkingWasmComdatInfoPayload :: SBS.ShortByteString
-      }
-  | LinkingWasmSymbolTable
-      { linkingWasmSymbolTable :: SBS.ShortByteString
-      }
-  deriving (Eq, Generic, Ord, Show)
-
--- | Currently unused.
-getLinkingSubSection :: Get LinkingSubSection
-getLinkingSubSection = do
-  b <- getWord8
-  case b of
-    5 -> LinkingWasmSegmentInfo <$> getVecSBS
-    6 -> LinkingWasmInitFuncs <$> getVecSBS
-    7 -> LinkingWasmComdatInfo <$> getVecSBS
-    8 -> LinkingWasmSymbolTable <$> getVecSBS
-    _ -> fail "Language.WebAssembly.WireFormat.getLinkingSubSection"
-
--- | Currently unused.
-putLinkingSubSection :: LinkingSubSection -> Put
-putLinkingSubSection sec = case sec of
-  LinkingWasmSegmentInfo {..} -> do
-    putWord8 5
-    putVecSBS linkingWasmSegmentInfoPayload
-  LinkingWasmInitFuncs {..} -> do
-    putWord8 6
-    putVecSBS linkingWasmInitFuncsPayload
-  LinkingWasmComdatInfo {..} -> do
-    putWord8 7
-    putVecSBS linkingWasmComdatInfoPayload
-  LinkingWasmSymbolTable {..} -> do
-    putWord8 8
-    putVecSBS linkingWasmSymbolTable
-
--- | Currently unused.
-data RelocationType
-  = RWebAssemblyFunctionIndexLEB
-  | RWebAssemblyTableIndexSLEB
-  | RWebAssemblyTableIndexI32
-  | RWebAssemblyMemoryAddrLEB
-  | RWebAssemblyMemoryAddrSLEB
-  | RWebAssemblyMemoryAddrI32
-  | RWebAssemblyTypeIndexLEB
-  | RWebAssemblyGlobalIndexLEB
-  | RWebAssemblyFunctionOffsetI32
-  | RWebAssemblySectionOffsetI32
-  deriving (Eq, Generic, Ord, Show)
-
--- | Currently unused.
-data RelocationEntry
-  = RelocationEntry
-      { relocationType :: RelocationType,
-        relocationOffset, relocationIndex :: Word32,
-        relocationAddEnd :: Maybe Word32
-      }
-  deriving (Eq, Generic, Ord, Show)
-
 -- | All sorts of 'Section's that can be found in a module.
 data Section
-  = -- | Custom section (currently unused).
-    LinkingSection
-      { linkingSectionVersion :: Word32,
-        linkingSubSections :: [LinkingSubSection]
-      }
-    -- | Custom section (currently unused).
-  | RelocationSection
-      { relocationSectionName :: Name,
-        relocationSectionIndex :: Word32,
-        relocationEntries :: [RelocationEntry]
-      }
     -- | A custom section (see 'Custom').
-  | CustomSection
+  = CustomSection
       { custom :: Custom
       }
     -- | All the function types used in a module.
@@ -1736,54 +1544,9 @@ getSection = do
       (_sec_name, _name_len) <- getCustomName
       let _payload_len = _sec_len - _name_len
       isolate (fromIntegral _payload_len) $
-        if _sec_name == Name "linking"
-          then LinkingSection <$> getVU32 <*> getMany getLinkingSubSection
-          else
-            if "reloc." `BS.isPrefixOf` SBS.fromShort (coerce _sec_name)
-              then
-                RelocationSection
-                  ( Name $ SBS.toShort $ BS.drop 6 $ SBS.fromShort $ coerce _sec_name
-                  )
-                  <$> getVU32
-                  <*> getVec
-                    ( do
-                        _reloc_type_tag <- getWord8
-                        _reloc_type <- case _reloc_type_tag of
-                          0 -> pure RWebAssemblyFunctionIndexLEB
-                          1 -> pure RWebAssemblyTableIndexSLEB
-                          2 -> pure RWebAssemblyTableIndexI32
-                          3 -> pure RWebAssemblyMemoryAddrLEB
-                          4 -> pure RWebAssemblyMemoryAddrSLEB
-                          5 -> pure RWebAssemblyMemoryAddrI32
-                          6 -> pure RWebAssemblyTypeIndexLEB
-                          7 -> pure RWebAssemblyGlobalIndexLEB
-                          8 -> pure RWebAssemblyFunctionOffsetI32
-                          9 -> pure RWebAssemblySectionOffsetI32
-                          _ ->
-                            fail "Language.WebAssembly.WireFormat.getRelocationType"
-                        _reloc_offset <- getVU32
-                        _reloc_index <- getVU32
-                        _reloc_addend <-
-                          if _reloc_type
-                            `elem` [ RWebAssemblyMemoryAddrLEB,
-                                     RWebAssemblyMemoryAddrSLEB,
-                                     RWebAssemblyMemoryAddrI32,
-                                     RWebAssemblyFunctionOffsetI32,
-                                     RWebAssemblySectionOffsetI32
-                                   ]
-                            then Just <$> getVU32
-                            else pure Nothing
-                        pure $
-                          RelocationEntry
-                            _reloc_type
-                            _reloc_offset
-                            _reloc_index
-                            _reloc_addend
-                    )
-              else
-                CustomSection . Custom _sec_name . SBS.toShort
-                  <$> getByteString
-                    (fromIntegral _payload_len)
+        CustomSection . Custom _sec_name . SBS.toShort
+          <$> getByteString
+            (fromIntegral _payload_len)
     1 -> getCheckedRegion (TypeSection <$> getVec getFunctionType)
     2 -> getCheckedRegion (ImportSection <$> getVec getImport)
     3 -> getCheckedRegion (FunctionSection <$> getVec getFunctionTypeIndex)
@@ -1801,32 +1564,6 @@ getSection = do
 -- | Serialize a 'Section'.
 putSection :: Section -> Put
 putSection sec = case sec of
-  LinkingSection {..} -> do
-    putWord8 0
-    putWithLength $ do
-      putName $ Name "linking"
-      putVU32 linkingSectionVersion
-      putMany putLinkingSubSection linkingSubSections
-  RelocationSection {..} -> do
-    putWord8 0
-    putWithLength $ do
-      putName $ Name $ "reloc." <> coerce relocationSectionName
-      putVU32 relocationSectionIndex
-      flip putVec relocationEntries $ \RelocationEntry {..} -> do
-        putWord8 $ case relocationType of
-          RWebAssemblyFunctionIndexLEB -> 0
-          RWebAssemblyTableIndexSLEB -> 1
-          RWebAssemblyTableIndexI32 -> 2
-          RWebAssemblyMemoryAddrLEB -> 3
-          RWebAssemblyMemoryAddrSLEB -> 4
-          RWebAssemblyMemoryAddrI32 -> 5
-          RWebAssemblyTypeIndexLEB -> 6
-          RWebAssemblyGlobalIndexLEB -> 7
-          RWebAssemblyFunctionOffsetI32 -> 8
-          RWebAssemblySectionOffsetI32 -> 9
-        putVU32 relocationOffset
-        putVU32 relocationIndex
-        putMaybe putVU32 relocationAddEnd
   CustomSection {custom = Custom {..}} -> do
     putWord8 0
     putWithLength $ do
@@ -2008,11 +1745,6 @@ getMany = many
 -- | Serialize zero or more elements.
 putMany :: (a -> Put) -> [a] -> Put
 putMany = traverse_
-
--- | Serialize a value of type @'Maybe' a@,
--- given a serialization function for @a@.
-putMaybe :: (a -> Put) -> Maybe a -> Put
-putMaybe = traverse_
 
 -- | Serialize a 'SBS.ShortByteString'.
 putSBS :: SBS.ShortByteString -> Put
