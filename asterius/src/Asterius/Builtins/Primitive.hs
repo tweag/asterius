@@ -14,7 +14,7 @@ where
 
 import Asterius.EDSL
 import Asterius.Types
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 
 -- GEORGE: Maybe use this function in all Asterius.Builtin.* modules to save us
 -- from duplication and copy-paste errors?
@@ -23,9 +23,9 @@ import qualified Data.ByteString.Short as SBS
 -- @__asterius_<EXTERNAL-MODULE-NAME>_<EXTERNAL-BASE-NAME>@.
 mkImport ::
   -- | External module name
-  SBS.ShortByteString ->
+  BS.ByteString ->
   -- | External base name
-  SBS.ShortByteString ->
+  BS.ByteString ->
   -- | Function type.
   FunctionType ->
   FunctionImport
@@ -119,7 +119,7 @@ mkPrimitiveMemsetUInt ::
   -- | Size (in bytes) of the type
   Int ->
   -- | String representation of the type
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   AsteriusModule
 mkPrimitiveMemsetUInt size typerep = runEDSL hsname $ do
   [p, off, n, x] <- params [I64, I64, I64, I64]
