@@ -8,7 +8,6 @@ where
 
 import Asterius.Types
 import qualified Data.Map.Strict as M
-import Language.Haskell.GHC.Toolkit.Constants
 
 mainBuiltins :: AsteriusModule
 mainBuiltins =

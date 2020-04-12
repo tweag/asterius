@@ -14,9 +14,10 @@ module Asterius.Ld
 where
 
 import Asterius.Ar
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.Builtins
 import Asterius.Builtins.Main
-import Asterius.Internals
 import Asterius.Resolve
 import Asterius.Types
 import Control.Exception
@@ -32,20 +33,21 @@ data LinkTask
         linkModule :: AsteriusModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
-        rootSymbols, exportFunctions :: [AsteriusEntitySymbol]
+        rootSymbols, exportFunctions :: [EntitySymbol]
       }
   deriving (Show)
 
 loadTheWorld :: LinkTask -> IO AsteriusModule
 loadTheWorld LinkTask {..} = do
-  lib <- mconcat <$> for linkLibs loadAr
-  objrs <- for linkObjs tryDecodeFile
+  ncu <- newNameCacheUpdater
+  lib <- mconcat <$> for linkLibs (loadAr ncu)
+  objrs <- for linkObjs (tryGetFile ncu)
   let objs = rights objrs
   evaluate $ linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm
-rtsUsedSymbols :: Set AsteriusEntitySymbol
+rtsUsedSymbols :: Set EntitySymbol
 rtsUsedSymbols =
   Set.fromList
     [ "barf",
@@ -75,7 +77,7 @@ rtsUsedSymbols =
       "stg_WEAK_info"
     ]
 
-rtsPrivateSymbols :: Set AsteriusEntitySymbol
+rtsPrivateSymbols :: Set EntitySymbol
 rtsPrivateSymbols =
   Set.fromList
     [ "base_AsteriusziTopHandler_runIO_closure",
@@ -102,7 +104,7 @@ linkModules LinkTask {..} m =
           rtsUsedSymbols,
           rtsPrivateSymbols,
           Set.fromList
-            [ AsteriusEntitySymbol {entityName = internalName}
+            [ mkEntitySymbol internalName
               | FunctionExport {..} <- rtsFunctionExports debug
             ]
         ]
@@ -117,7 +119,7 @@ linkExeInMemory ld_task = do
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
   (pre_m, m, link_report) <- linkExeInMemory ld_task
-  encodeFile linkOutput (m, link_report)
+  putFile linkOutput (m, link_report)
   case outputIR of
-    Just p -> encodeFile p pre_m
+    Just p -> putFile p pre_m
     _ -> pure ()

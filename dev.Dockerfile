@@ -6,10 +6,10 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/home/asterius/.local/bin:${PATH}
+  PATH=/home/asterius/.local/bin:/home/asterius/.nvm/bin:${PATH}
 
 RUN \
-  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200331T083805Z sid main contrib non-free' > /etc/apt/sources.list && \
+  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200406T084528Z sid main contrib non-free' > /etc/apt/sources.list && \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
@@ -21,7 +21,6 @@ RUN \
     gawk \
     gcc \
     git \
-    gnupg \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
@@ -32,10 +31,6 @@ RUN \
     sudo \
     xz-utils \
     zlib1g-dev && \
-  curl -sSL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add - && \
-  echo "deb https://deb.nodesource.com/node_13.x sid main" > /etc/apt/sources.list.d/nodesource.list && \
-  apt update && \
-  apt install -y nodejs && \
   apt autoremove --purge -y && \
   apt clean && \
   rm -rf -v /var/lib/apt/lists/* && \
@@ -47,14 +42,15 @@ USER asterius
 WORKDIR /home/asterius
 
 RUN \
+  (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 13.12.0 && ln -s \$NVM_BIN ~/.nvm/bin" && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   mkdir -p ~/.local/bin && \
-  curl -L https://github.com/commercialhaskell/stack/releases/download/v2.1.3/stack-2.1.3-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack' && \
-  curl -L https://downloads.haskell.org/~cabal/cabal-install-3.0.0.0/cabal-install-3.0.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
+  curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.0.1/stack-2.3.0.1-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack' && \
+  curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
   pip3 install \
     recommonmark \
     sphinx && \
-  npm config set prefix ~/.local && \
   mkdir /tmp/asterius
 
 COPY --chown=asterius:asterius asterius /tmp/asterius/asterius

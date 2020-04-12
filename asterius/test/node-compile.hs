@@ -11,7 +11,7 @@ import Control.Monad.Except
 import Data.Binary (encode)
 import Data.Binary.Put
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as Map
 import Foreign
 import GHC.Exts
@@ -98,7 +98,7 @@ shrinkModule' m@Module {..} = _shrink_funcs {-_shrink_memory <> _shrink_exports 
     _shrink_memory, _shrink_exports, _shrink_funcs :: FList.FList Module
     _shrink_memory = case memory of
       Memory {..}
-        | not (SBS.null memoryExportName) || not (null dataSegments) ->
+        | not (BS.null memoryExportName) || not (null dataSegments) ->
           pure
             m
               { memory = memory {memoryExportName = mempty, dataSegments = mempty}
@@ -225,5 +225,5 @@ testNodeCompileBoth s m =
 
 main :: IO ()
 main = do
-  m_fib <- decodeFile $ "test" </> "fib" </> "fib.bin"
+  m_fib <- getFile $ "test" </> "fib" </> "fib.bin"
   quickCheck $ testNodeCompileBoth shrinkModule m_fib

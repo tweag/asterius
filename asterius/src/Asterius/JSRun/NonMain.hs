@@ -15,7 +15,7 @@ import Asterius.Main (ahcDistMain)
 import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
-  ( AsteriusEntitySymbol,
+  ( EntitySymbol,
     AsteriusModule,
     Module,
   )
@@ -23,7 +23,7 @@ import Data.String
 import Language.JavaScript.Inline.Core
 import System.FilePath
 
-linkNonMain :: AsteriusModule -> [AsteriusEntitySymbol] -> (Module, LinkReport)
+linkNonMain :: AsteriusModule -> [EntitySymbol] -> (Module, LinkReport)
 linkNonMain store_m extra_syms = (m, link_report)
   where
     (_, m, link_report) =
@@ -45,7 +45,7 @@ linkNonMain store_m extra_syms = (m, link_report)
         store_m
 
 distNonMain ::
-  FilePath -> [AsteriusEntitySymbol] -> (Module, LinkReport) -> IO ()
+  FilePath -> [EntitySymbol] -> (Module, LinkReport) -> IO ()
 distNonMain p extra_syms =
   ahcDistMain
     putStrLn
@@ -64,7 +64,7 @@ distNonMain p extra_syms =
 newAsteriusInstanceNonMain ::
   JSSession ->
   FilePath ->
-  [AsteriusEntitySymbol] ->
+  [EntitySymbol] ->
   AsteriusModule ->
   IO JSVal
 newAsteriusInstanceNonMain s p extra_syms m = do

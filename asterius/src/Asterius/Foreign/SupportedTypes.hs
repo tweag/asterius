@@ -11,7 +11,7 @@ module Asterius.Foreign.SupportedTypes
 where
 
 import Asterius.Types
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import qualified ErrUtils as GHC
 import qualified GhcPlugins as GHC
 import qualified PrelNames as GHC
@@ -69,7 +69,7 @@ ffiBoxedValueTypeList =
         | vt@FFIValueType {..} <-
             GHC.nameEnvElts ffiBoxedValueTypeMap0
               <> GHC.nameEnvElts ffiBoxedValueTypeMap1,
-          not $ SBS.null hsTyCon
+          not $ BS.null hsTyCon
       ]
 
 ffiBoxedValueTypeMap0,

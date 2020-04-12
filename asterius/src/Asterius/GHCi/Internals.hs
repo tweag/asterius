@@ -15,6 +15,8 @@ module Asterius.GHCi.Internals
 where
 
 import Asterius.Ar
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.BuildInfo
 import Asterius.CodeGen
 import Asterius.Internals ((!))
@@ -82,13 +84,15 @@ import qualified UniqFM as GHC
 import qualified UniqSupply as GHC
 import Unsafe.Coerce
 import qualified VarEnv as GHC
+import qualified IfaceEnv as GHC
 
 data GHCiState
   = GHCiState
       { ghciUniqSupply :: GHC.UniqSupply,
+        ghciNameCacheUpdater :: GHC.NameCacheUpdater,
         ghciLibs :: AsteriusModule,
         ghciObjs :: M.Map FilePath AsteriusModule,
-        ghciCompiledCoreExprs :: IM.IntMap (AsteriusEntitySymbol, AsteriusModule),
+        ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusModule),
         ghciLastCompiledCoreExpr :: Int,
         ghciJSSession :: ~(JSSession, Pipe, JSVal)
       }
@@ -97,8 +101,10 @@ data GHCiState
 globalGHCiState :: MVar GHCiState
 globalGHCiState = unsafePerformIO $ do
   us <- GHC.mkSplitUniqSupply 'A'
+  ncu <- newNameCacheUpdater
   newMVar GHCiState
     { ghciUniqSupply = us,
+      ghciNameCacheUpdater = ncu,
       ghciLibs = mempty,
       ghciObjs = M.empty,
       ghciCompiledCoreExprs = IM.empty,
@@ -176,10 +182,10 @@ asteriusIservCall hsc_env _ msg = do
     GHC.InitLinker -> pure ()
     GHC.LoadDLL _ -> pure Nothing
     GHC.LoadArchive p -> modifyMVar_ globalGHCiState $ \s -> do
-      lib <- loadAr p
+      lib <- loadAr (ghciNameCacheUpdater s) p
       evaluate s {ghciLibs = lib <> ghciLibs s}
     GHC.LoadObj p -> modifyMVar_ globalGHCiState $ \s -> do
-      obj <- decodeFile p
+      obj <- getFile (ghciNameCacheUpdater s) p
       evaluate s {ghciObjs = M.insert p obj $ ghciObjs s}
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
     GHC.RemoveLibrarySearchPath _ -> pure True
@@ -334,7 +340,7 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
     let runner_closure =
           deRefJSVal i <> ".symbolTable."
             <> coerce
-              (shortByteString (coerce runner_sym))
+              (byteString (entityName runner_sym))
         hv_closure = "0x" <> JSCode (word64Hex q)
         applied_closure =
           deRefJSVal i
@@ -362,7 +368,7 @@ asteriusRunModFinalizers hsc_env s i = do
   let run_mod_fin_closure =
         deRefJSVal i <> ".symbolTable."
           <> coerce
-            (shortByteString (coerce run_mod_fin_sym))
+            (byteString (entityName run_mod_fin_sym))
       tid =
         deRefJSVal i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
   (_ :: IO ()) <- eval' s tid
@@ -477,7 +483,7 @@ linkGhci hsc_env =
     Just ghci_comp_id =
       GHC.lookupPackageName (GHC.hsc_dflags hsc_env) (GHC.PackageName "ghci")
 
-ghciClosureSymbol :: GHC.HscEnv -> String -> String -> AsteriusEntitySymbol
+ghciClosureSymbol :: GHC.HscEnv -> String -> String -> EntitySymbol
 ghciClosureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env) "ghci"
 
 intToRemoteRef :: Int -> GHC.RemoteRef a

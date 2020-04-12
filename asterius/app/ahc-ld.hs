@@ -2,7 +2,6 @@
 {-# LANGUAGE ViewPatterns #-}
 
 import Asterius.Ld
-import Asterius.Types
 import Data.List
 import Data.Maybe
 import Data.String
@@ -29,11 +28,11 @@ parseLinkTask args = do
           find ("--output-ir=" `isPrefixOf`) args
             >>= stripPrefix "--output-ir=",
         rootSymbols =
-          map (AsteriusEntitySymbol . fromString) $
+          map fromString $
             str_args "--extra-root-symbol=",
         exportFunctions =
           ("main" :)
-            $ map (AsteriusEntitySymbol . fromString)
+            $ map fromString
             $ str_args "--export-function="
       }
   where

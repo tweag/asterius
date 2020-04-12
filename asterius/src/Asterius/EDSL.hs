@@ -89,9 +89,8 @@ import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
-import Control.Monad.Fail
 import Control.Monad.State.Strict
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
 import Data.Monoid
 import Data.Traversable
@@ -118,7 +117,7 @@ data EDSLState
         labelNum :: Int,
         exprBuf :: DList Expression,
         -- | Static variables to be added into the module
-        staticsBuf :: [(AsteriusEntitySymbol, AsteriusStatics)]
+        staticsBuf :: [(EntitySymbol, AsteriusStatics)]
       }
 
 initialEDSLState :: EDSLState
@@ -165,7 +164,7 @@ bundleExpressions vts el = case el of
 -- given its name and a builder.
 runEDSL ::
   -- | Function name
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- | Builder
   EDSL () ->
   -- | Final module
@@ -330,10 +329,10 @@ nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
-call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
+call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}
 
-call' :: AsteriusEntitySymbol -> [Expression] -> ValueType -> EDSL Expression
+call' :: EntitySymbol -> [Expression] -> ValueType -> EDSL Expression
 call' f xs vt = do
   lr <- mutLocal vt
   putLVal lr Call {target = f, operands = xs, callReturnTypes = [vt]}
@@ -342,7 +341,7 @@ call' f xs vt = do
 -- | Call a function with no return value
 callImport ::
   -- | Function name
-  SBS.ShortByteString ->
+  BS.ByteString ->
   -- | Parameter list
   [Expression] ->
   EDSL ()
@@ -352,7 +351,7 @@ callImport f xs =
 -- | Call a function with a return value
 callImport' ::
   -- | Function name
-  SBS.ShortByteString ->
+  BS.ByteString ->
   -- | Arguments
   [Expression] ->
   -- | Return type of function
@@ -374,12 +373,12 @@ callIndirect f = emit CallIndirect
 
 newtype Label
   = Label
-      { unLabel :: SBS.ShortByteString
+      { unLabel :: BS.ByteString
       }
 
 newLabel :: EDSL Label
 newLabel = EDSL $ state $ \s@EDSLState {..} ->
-  (Label $ showSBS labelNum, s {labelNum = succ labelNum})
+  (Label $ showBS labelNum, s {labelNum = succ labelNum})
 
 newScope :: EDSL () -> EDSL (DList Expression)
 newScope m = do
@@ -462,14 +461,14 @@ switchI64 cond make_clauses = block' [] $ \switch_lbl ->
 --
 -- >  runEDSL $ do
 -- >    x <- allocStaticBytes "x"
--- >          (Serialized $ SBS.pack $ replicate 8 1)
+-- >          (Serialized $ BS.pack $ replicate 8 1)
 -- >    loadi64 x 0
 -- >
 -- >    y <- allocStaticBytes "y" (Uninitialized 8)
 -- >    storei64 x 0 (constI32 32)
 allocStaticBytes ::
   -- | Name of the static region
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- | Initializer
   AsteriusStatic ->
   -- | Expression to access the static, referenced by name.
@@ -483,10 +482,10 @@ allocStaticBytes n v = EDSL $ state $ \st ->
           }
    in (symbol n, st')
 
-symbol :: AsteriusEntitySymbol -> Expression
+symbol :: EntitySymbol -> Expression
 symbol = flip symbol' 0
 
-symbol' :: AsteriusEntitySymbol -> Int -> Expression
+symbol' :: EntitySymbol -> Int -> Expression
 symbol' sym o = Symbol {unresolvedSymbol = sym, symbolOffset = o}
 
 constI32 :: Int -> Expression

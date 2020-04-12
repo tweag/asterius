@@ -13,6 +13,8 @@ where
 
 import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.WasmToolkit as WasmToolkit
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.BuildInfo
 import Asterius.Foreign.ExportStatic
 import Asterius.Internals
@@ -26,8 +28,9 @@ import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
-  ( AsteriusEntitySymbol (..),
+  ( EntitySymbol,
     Module,
+    entityName,
   )
 import qualified Bindings.Binaryen.Raw as Binaryen
 import Control.Monad
@@ -139,13 +142,13 @@ genPackageJSON task =
   where
     base_name = string7 (outputBaseName task)
 
-genSymbolDict :: M.Map AsteriusEntitySymbol Int64 -> Builder
+genSymbolDict :: M.Map EntitySymbol Int64 -> Builder
 genSymbolDict sym_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> shortByteString (entityName sym) <> "\":" <> intHex sym_idx
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_idx
             | (sym, sym_idx) <- M.toList sym_map
           ]
       )
@@ -259,10 +262,10 @@ ahcLink task = do
     ]
       <> concat [["-no-hs-main", "-optl--no-main"] | not $ hasMain task]
       <> ["-optl--debug" | debug task]
-      <> [ "-optl--extra-root-symbol=" <> c8SBS (entityName root_sym)
+      <> [ "-optl--extra-root-symbol=" <> c8BS (entityName root_sym)
            | root_sym <- extraRootSymbols task
          ]
-      <> [ "-optl--export-function=" <> c8SBS (entityName export_func)
+      <> [ "-optl--export-function=" <> c8BS (entityName export_func)
            | export_func <- exportFunctions task
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
@@ -275,7 +278,8 @@ ahcLink task = do
          ]
       <> ["-optl--prog-name=" <> takeBaseName (inputHS task)]
       <> ["-o", ld_output, inputHS task]
-  r <- decodeFile ld_output
+  ncu <- newNameCacheUpdater
+  r <- getFile ncu ld_output
   removeFile ld_output
   pure r
 
@@ -363,7 +367,7 @@ ahcDistMain logger task (final_m, report) = do
             logger "[INFO] Running binaryen optimization"
             Binaryen.c_BinaryenModuleOptimize m_ref
             flip runContT pure $ do
-              lim_segs <- marshalSBS "limit-segments"
+              lim_segs <- marshalBS "limit-segments"
               (lim_segs_p, _) <- marshalV [lim_segs]
               lift $ Binaryen.c_BinaryenModuleRunPasses m_ref lim_segs_p 1
             b <- Binaryen.serializeModule m_ref
