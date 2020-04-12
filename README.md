@@ -124,9 +124,12 @@ it's a bug and don't hesitate to open a ticket :)
 * Besides WebAssembly MVP and `BigInt`, no special requirements on the
   underlying JavaScript engine at the moment.
 
-## Sponsors
+## Contributors
 
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 [<img src="https://www.tweag.io/img/tweag-med.png" height="65">](https://tweag.io)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+[<img src="https://i.imgur.com/tAag5MD.jpg" height="65">](https://iohk.io)
 
 Asterius is maintained by [Tweag I/O](https://tweag.io/).
 
