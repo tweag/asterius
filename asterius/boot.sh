@@ -40,7 +40,9 @@ ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_D
 cd ..
 
 ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global $ASTERIUS_CONFIGURE_OPTIONS \
+  ghci/
+
+ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global $ASTERIUS_CONFIGURE_OPTIONS \
   asterius-prelude/ \
-  ghci/ \
   parsec \
   text/
