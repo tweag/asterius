@@ -13,7 +13,7 @@
 -- License     :  All rights reserved (see LICENCE file in the distribution).
 --
 -- Elaboration of Asterius types into the Binaryen AST (as defined in the
--- [binaryen package](https://github.com/tweag/binaryen)).
+-- [binaryen package](https://github.com/tweag/haskell-binaryen)).
 module Asterius.Backends.Binaryen
   ( MarshalError (..),
     marshalModule,
