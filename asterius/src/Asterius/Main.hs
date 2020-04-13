@@ -11,6 +11,7 @@ module Asterius.Main
   )
 where
 
+import qualified Asterius.Backends.Binaryen
 import qualified Asterius.Backends.Binaryen as Binaryen
 import qualified Asterius.Backends.WasmToolkit as WasmToolkit
 import Asterius.Binary.File
@@ -32,7 +33,8 @@ import Asterius.Types
     Module,
     entityName,
   )
-import qualified Bindings.Binaryen.Raw as Binaryen
+import qualified Binaryen
+import qualified Binaryen.Module as Binaryen
 import Control.Monad
 import Control.Monad.Cont
 import Control.Monad.Except
@@ -304,10 +306,10 @@ ahcDistMain logger task (final_m, report) = do
   case backend task of
     Binaryen -> do
       logger "[INFO] Converting linked IR to binaryen IR"
-      Binaryen.c_BinaryenSetDebugInfo $ if verboseErr task then 1 else 0
-      Binaryen.c_BinaryenSetOptimizeLevel $ fromIntegral $ optimizeLevel task
-      Binaryen.c_BinaryenSetShrinkLevel $ fromIntegral $ shrinkLevel task
-      Binaryen.c_BinaryenSetLowMemoryUnused 1
+      Binaryen.setDebugInfo $ if verboseErr task then 1 else 0
+      Binaryen.setOptimizeLevel $ fromIntegral $ optimizeLevel task
+      Binaryen.setShrinkLevel $ fromIntegral $ shrinkLevel task
+      Binaryen.setLowMemoryUnused 1
       m_ref <-
         Binaryen.marshalModule
           (tailCalls task)
@@ -315,9 +317,9 @@ ahcDistMain logger task (final_m, report) = do
           final_m
       when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
         logger "[INFO] Running binaryen optimization"
-        Binaryen.c_BinaryenModuleOptimize m_ref
+        Binaryen.optimize m_ref
       logger "[INFO] Validating binaryen IR"
-      pass_validation <- Binaryen.c_BinaryenModuleValidate m_ref
+      pass_validation <- Binaryen.validate m_ref
       when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
       m_bin <- Binaryen.serializeModule m_ref
       logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
@@ -337,10 +339,10 @@ ahcDistMain logger task (final_m, report) = do
         -- disable colors when writing out the binaryen module
         -- to a file, so that we don't get ANSI escape sequences
         -- for colors. Reset the state after
-        Binaryen.setColorsEnabled False
+        Asterius.Backends.Binaryen.setColorsEnabled False
         m_sexpr <- Binaryen.serializeModuleSExpr m_ref
         BS.writeFile out_wasm_binaryen_sexpr m_sexpr
-      Binaryen.c_BinaryenModuleDispose m_ref
+      Binaryen.dispose m_ref
     WasmToolkit -> do
       logger "[INFO] Converting linked IR to wasm-toolkit IR"
       let conv_result =
@@ -363,15 +365,15 @@ ahcDistMain logger task (final_m, report) = do
             m_ref <-
               BS.unsafeUseAsCStringLen
                 (LBS.toStrict $ toLazyByteString $ execPut $ putModule r)
-                $ \(p, l) -> Binaryen.c_BinaryenModuleRead p (fromIntegral l)
+                $ \(p, l) -> Binaryen.read p (fromIntegral l)
             logger "[INFO] Running binaryen optimization"
-            Binaryen.c_BinaryenModuleOptimize m_ref
+            Binaryen.optimize m_ref
             flip runContT pure $ do
               lim_segs <- marshalBS "limit-segments"
               (lim_segs_p, _) <- marshalV [lim_segs]
-              lift $ Binaryen.c_BinaryenModuleRunPasses m_ref lim_segs_p 1
+              lift $ Binaryen.runPasses m_ref lim_segs_p 1
             b <- Binaryen.serializeModule m_ref
-            Binaryen.c_BinaryenModuleDispose m_ref
+            Binaryen.dispose m_ref
             pure $ Left b
           else pure $ Right $ execPut $ putModule r
       logger $ "[INFO] Writing WebAssembly binary to " <> show out_wasm
