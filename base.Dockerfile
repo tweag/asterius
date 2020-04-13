@@ -17,6 +17,7 @@ RUN \
   apt full-upgrade -y && \
   apt install -y \
     automake \
+    binaryen \
     cmake \
     curl \
     g++ \
@@ -59,7 +60,6 @@ RUN \
   cd ~/.asterius && \
   stack --no-terminal build \
     asterius \
-    binaryen \
     wabt \
     alex \
     happy \

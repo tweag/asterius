@@ -14,6 +14,7 @@ RUN \
   apt full-upgrade -y && \
   apt install -y \
     automake \
+    binaryen \
     cmake \
     curl \
     direnv \
@@ -63,7 +64,6 @@ RUN \
   cd /tmp/asterius && \
   stack --no-terminal install \
     alex \
-    binaryen \
     brittany \
     c2hs \
     cpphs \
