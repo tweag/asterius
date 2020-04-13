@@ -29,7 +29,8 @@ import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Types
 import Asterius.TypesConv
-import Bindings.Binaryen.Raw
+import Bindings.Binaryen.Raw hiding (RelooperBlock)
+import qualified Bindings.Binaryen.Raw as Binaryen
 import Control.Exception
 import Control.Monad
 import Control.Monad.Cont
@@ -229,7 +230,7 @@ data MarshalEnv
         -- | The symbol map for the current module.
         envSymbolMap :: SymbolMap,
         -- | The current module reference.
-        envModuleRef :: BinaryenModuleRef
+        envModuleRef :: BinaryenModule
       }
 
 type CodeGen a = ReaderT MarshalEnv IO a
@@ -243,10 +244,10 @@ askSymbolMap :: CodeGen SymbolMap
 askSymbolMap = reader envSymbolMap
 
 -- | Retrieve the reference to the current module.
-askModuleRef :: CodeGen BinaryenModuleRef
+askModuleRef :: CodeGen BinaryenModule
 askModuleRef = reader envModuleRef
 
-marshalExpression :: Expression -> CodeGen BinaryenExpressionRef
+marshalExpression :: Expression -> CodeGen BinaryenExpression
 marshalExpression e = case e of
   Block {..} -> do
     env <- ask
@@ -274,7 +275,7 @@ marshalExpression e = case e of
     m <- askModuleRef
     lift $ flip runContT pure $ do
       np <- marshalBS name
-      lift $ c_BinaryenBreak m np c nullPtr
+      lift $ c_BinaryenBreak m np c (coerce nullPtr)
   Switch {..} -> do
     c <- marshalExpression condition
     m <- askModuleRef
@@ -282,7 +283,7 @@ marshalExpression e = case e of
       ns <- forM names marshalBS
       (nsp, nl) <- marshalV ns
       dn <- marshalBS defaultName
-      lift $ c_BinaryenSwitch m nsp (fromIntegral nl) dn c nullPtr
+      lift $ c_BinaryenSwitch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     sym_map <- askSymbolMap
     if  | M.member target sym_map ->
@@ -328,15 +329,15 @@ marshalExpression e = case e of
         c_BinaryenCallIndirect m t ops (fromIntegral osl) pt rt
   GetLocal {..} -> do
     m <- askModuleRef
-    lift $ c_BinaryenLocalGet m index $ marshalValueType valueType
+    lift $ c_BinaryenLocalGet m (coerce index) $ marshalValueType valueType
   SetLocal {..} -> do
     v <- marshalExpression value
     m <- askModuleRef
-    lift $ c_BinaryenLocalSet m index v
+    lift $ c_BinaryenLocalSet m (coerce index) v
   TeeLocal {..} -> do
     v <- marshalExpression value
     m <- askModuleRef
-    lift $ c_BinaryenLocalTee m index v $ marshalValueType valueType
+    lift $ c_BinaryenLocalTee m (coerce index) v $ marshalValueType valueType
   Load {..} -> do
     p <- marshalExpression ptr
     m <- askModuleRef
@@ -406,9 +407,9 @@ marshalExpression e = case e of
                 }
           m <- askModuleRef
           lift $ flip runContT pure $ do
-            r <- lift $ c_BinaryenReturn m nullPtr
+            r <- lift $ c_BinaryenReturn m (coerce nullPtr)
             (arr, _) <- marshalV [s, r]
-            lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
+            lift $ c_BinaryenBlock m (coerce nullPtr) arr 2 c_BinaryenTypeNone
         Nothing -> marshalExpression $ barf returnCallTarget64 []
   ReturnCallIndirect {..} -> areTailCallsOn >>= \case
     -- Case 1: Tail calls are on
@@ -443,7 +444,7 @@ marshalExpression e = case e of
             }
       m <- askModuleRef
       lift $ flip runContT pure $ do
-        r <- lift $ c_BinaryenReturn m nullPtr
+        r <- lift $ c_BinaryenReturn m (coerce nullPtr)
         (arr, _) <- marshalV [s, r]
         lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
   Host {..} -> do
@@ -474,16 +475,16 @@ marshalExpression e = case e of
   UnresolvedSetLocal {} -> lift $ throwIO $ UnsupportedExpression e
   Barf {} -> lift $ throwIO $ UnsupportedExpression e
 
-marshalMaybeExpression :: Maybe Expression -> CodeGen BinaryenExpressionRef
+marshalMaybeExpression :: Maybe Expression -> CodeGen BinaryenExpression
 marshalMaybeExpression x = case x of
   Just e -> marshalExpression e
-  _ -> pure nullPtr
+  _ -> pure (coerce nullPtr)
 
 marshalFunction ::
   BS.ByteString ->
   (BinaryenType, BinaryenType) ->
   Function ->
-  CodeGen BinaryenFunctionRef
+  CodeGen BinaryenFunction
 marshalFunction k (pt, rt) Function {..} = do
   env <- ask
   m <- askModuleRef
@@ -494,7 +495,7 @@ marshalFunction k (pt, rt) Function {..} = do
     lift $ c_BinaryenAddFunction m np pt rt vtp (fromIntegral vtl) b
 
 marshalFunctionImport ::
-  BinaryenModuleRef ->
+  BinaryenModule ->
   (BinaryenType, BinaryenType) ->
   FunctionImport ->
   IO ()
@@ -505,13 +506,13 @@ marshalFunctionImport m (pt, rt) FunctionImport {..} = flip runContT pure $ do
   lift $ c_BinaryenAddFunctionImport m inp emp ebp pt rt
 
 marshalFunctionExport ::
-  BinaryenModuleRef -> FunctionExport -> IO BinaryenExportRef
+  BinaryenModule -> FunctionExport -> IO BinaryenExport
 marshalFunctionExport m FunctionExport {..} = flip runContT pure $ do
   inp <- marshalBS internalName
   enp <- marshalBS externalName
   lift $ c_BinaryenAddFunctionExport m inp enp
 
-marshalFunctionTable :: BinaryenModuleRef -> Int -> FunctionTable -> IO ()
+marshalFunctionTable :: BinaryenModule -> Int -> FunctionTable -> IO ()
 marshalFunctionTable m tbl_slots FunctionTable {..} = flip runContT pure $ do
   func_name_ptrs <- for tableFunctionNames marshalBS
   (fnp, fnl) <- marshalV func_name_ptrs
@@ -556,34 +557,34 @@ marshalMemorySegments mbs segs = do
         (fromIntegral segs_len)
         0
 
-marshalTableImport :: BinaryenModuleRef -> TableImport -> IO ()
+marshalTableImport :: BinaryenModule -> TableImport -> IO ()
 marshalTableImport m TableImport {..} = flip runContT pure $ do
   inp <- marshalBS "0"
   emp <- marshalBS externalModuleName
   ebp <- marshalBS externalBaseName
   lift $ c_BinaryenAddTableImport m inp emp ebp
 
-marshalMemoryImport :: BinaryenModuleRef -> MemoryImport -> IO ()
+marshalMemoryImport :: BinaryenModule -> MemoryImport -> IO ()
 marshalMemoryImport m MemoryImport {..} = flip runContT pure $ do
   inp <- marshalBS "0"
   emp <- marshalBS externalModuleName
   ebp <- marshalBS externalBaseName
   lift $ c_BinaryenAddMemoryImport m inp emp ebp 0
 
-marshalTableExport :: BinaryenModuleRef -> TableExport -> IO BinaryenExportRef
+marshalTableExport :: BinaryenModule -> TableExport -> IO BinaryenExport
 marshalTableExport m TableExport {..} = flip runContT pure $ do
   inp <- marshalBS "0"
   enp <- marshalBS externalName
   lift $ c_BinaryenAddTableExport m inp enp
 
-marshalMemoryExport :: BinaryenModuleRef -> MemoryExport -> IO BinaryenExportRef
+marshalMemoryExport :: BinaryenModule -> MemoryExport -> IO BinaryenExport
 marshalMemoryExport m MemoryExport {..} = flip runContT pure $ do
   inp <- marshalBS "0"
   enp <- marshalBS externalName
   lift $ c_BinaryenAddMemoryExport m inp enp
 
 marshalModule ::
-  Bool -> M.Map EntitySymbol Int64 -> Module -> IO BinaryenModuleRef
+  Bool -> M.Map EntitySymbol Int64 -> Module -> IO BinaryenModule
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
   m <- c_BinaryenModuleCreate
@@ -617,7 +618,7 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
     lift $ c_BinaryenModuleRunPasses m lim_segs_p 1
   pure m
 
-relooperAddBlock :: RelooperRef -> RelooperAddBlock -> CodeGen RelooperBlockRef
+relooperAddBlock :: Relooper -> RelooperAddBlock -> CodeGen Binaryen.RelooperBlock
 relooperAddBlock r ab = case ab of
   AddBlock {..} -> do
     c <- marshalExpression code
@@ -628,25 +629,25 @@ relooperAddBlock r ab = case ab of
     lift $ c_RelooperAddBlockWithSwitch r _code _cond
 
 relooperAddBranch ::
-  M.Map BS.ByteString RelooperBlockRef ->
+  M.Map BS.ByteString Binaryen.RelooperBlock ->
   BS.ByteString ->
   RelooperAddBranch ->
   CodeGen ()
 relooperAddBranch bm k ab = case ab of
   AddBranch {..} -> do
     _cond <- marshalMaybeExpression addBranchCondition
-    lift $ c_RelooperAddBranch (bm ! k) (bm ! to) _cond nullPtr
+    lift $ c_RelooperAddBranch (bm ! k) (bm ! to) _cond (coerce nullPtr)
   AddBranchForSwitch {..} -> lift $ flip runContT pure $ do
     (idp, idn) <- marshalV indexes
     lift $
       c_RelooperAddBranchForSwitch
         (bm ! k)
         (bm ! to)
-        idp
+        (coerce idp)
         (fromIntegral idn)
-        nullPtr
+        (coerce nullPtr)
 
-relooperRun :: RelooperRun -> CodeGen BinaryenExpressionRef
+relooperRun :: RelooperRun -> CodeGen BinaryenExpression
 relooperRun RelooperRun {..} = do
   m <- askModuleRef
   r <- lift $ c_RelooperCreate m
@@ -656,9 +657,9 @@ relooperRun RelooperRun {..} = do
       pure (k, bp)
   for_ (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
     forM_ addBranches $ relooperAddBranch bpm k
-  lift $ c_RelooperRenderAndDispose r (bpm ! entry) labelHelper
+  lift $ c_RelooperRenderAndDispose r (bpm ! entry) (coerce labelHelper)
 
-serializeModule :: BinaryenModuleRef -> IO BS.ByteString
+serializeModule :: BinaryenModule -> IO BS.ByteString
 serializeModule m = alloca $ \(buf_p :: Ptr (Ptr ())) ->
   alloca $ \(len_p :: Ptr CSize) -> alloca $ \(src_map_p :: Ptr (Ptr CChar)) ->
     do
@@ -667,7 +668,7 @@ serializeModule m = alloca $ \(buf_p :: Ptr (Ptr ())) ->
       len <- peek len_p
       BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
 
-serializeModuleSExpr :: BinaryenModuleRef -> IO BS.ByteString
+serializeModuleSExpr :: BinaryenModule -> IO BS.ByteString
 serializeModuleSExpr m =
   c_BinaryenModuleAllocateAndWriteText m >>= BS.unsafePackCString
 
