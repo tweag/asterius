@@ -312,7 +312,6 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   btrfs \
   buffer-builder \
   bugsnag-hs \
-  butcher \
   bv \
   byte-order \
   byteable \
