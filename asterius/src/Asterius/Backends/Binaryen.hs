@@ -30,11 +30,9 @@ import Asterius.Internals.Marshal
 import Asterius.Types
 import Asterius.TypesConv
 import qualified Binaryen
-import qualified Binaryen.Export as Binaryen
 import qualified Binaryen.Expression
 import qualified Binaryen.Expression as Binaryen
 import qualified Binaryen.Features as Binaryen
-import qualified Binaryen.Function as Binaryen
 import qualified Binaryen.Index as Binaryen
 import qualified Binaryen.Module
 import qualified Binaryen.Module as Binaryen
