@@ -24,12 +24,12 @@ where
 
 import Asterius.Internals
 import Asterius.Internals.Barf
-import qualified Asterius.Internals.DList as DList
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
 import Asterius.TypeInfer
 import Asterius.Types
 import Asterius.TypesConv
+import Bag
 import Control.Exception
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -464,27 +464,27 @@ lookupIndex i = flip lookupLocalContext i <$> reader envLclContext
 makeInstructions ::
   (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Expression ->
-  m (DList.DList Wasm.Instruction)
+  m (Bag Wasm.Instruction)
 makeInstructions expr =
   case expr of
     Block {..}
       | BS.null name ->
-        fmap mconcat $ for bodys makeInstructions
+        fmap unionManyBags $ for bodys makeInstructions
       | otherwise -> do
         bs <- bindLocalLabel name $ for bodys makeInstructions
-        pure $ DList.singleton Wasm.Block
+        pure $ unitBag Wasm.Block
           { blockResultType = map makeValueType blockReturnTypes,
-            blockInstructions = DList.toList $ mconcat bs
+            blockInstructions = bagToList $ unionManyBags bs
           }
     If {..} -> do
       c <- makeInstructions condition  -- NOTE: the label is only in scope for
                                        -- the branches, not the condition.
       t <- bindLocalLabel mempty $
-             DList.toList <$> makeInstructions ifTrue
+             bagToList <$> makeInstructions ifTrue
       f <- bindLocalLabel mempty $
-             DList.toList <$> makeInstructionsMaybe ifFalse
+             bagToList <$> makeInstructionsMaybe ifFalse
       pure $
-        c <> DList.singleton Wasm.If
+        c `snocBag` Wasm.If
           { ifResultType = map makeValueType $ infer ifTrue,
             thenInstructions = t,
             elseInstructions = case f of
@@ -493,23 +493,23 @@ makeInstructions expr =
           }
     Loop {..} -> do
       b <- bindLocalLabel name $ makeInstructions body
-      pure $ DList.singleton Wasm.Loop
+      pure $ unitBag Wasm.Loop
         { loopResultType = [],
-          loopInstructions = DList.toList b
+          loopInstructions = bagToList b
         }
     Break {..} -> do
       _lbl <- lookupLabel name
       case breakCondition of
         Just cond -> do
           c <- makeInstructions cond
-          pure $ c <> DList.singleton Wasm.BranchIf {branchIfLabel = _lbl}
-        _ -> pure $ DList.singleton Wasm.Branch {branchLabel = _lbl}
+          pure $ c `snocBag` Wasm.BranchIf {branchIfLabel = _lbl}
+        _ -> pure $ unitBag Wasm.Branch {branchLabel = _lbl}
     Switch {..} -> do
       c <- makeInstructions condition
       _lbls <- mapM lookupLabel names
       _lbl <- lookupLabel defaultName
       pure $
-        c <> DList.singleton Wasm.BranchTable
+        c `snocBag` Wasm.BranchTable
           { branchTableLabels = _lbls,
             branchTableFallbackLabel = _lbl
           }
@@ -528,17 +528,17 @@ makeInstructions expr =
                   else operands
               )
               makeInstructions
-          pure $ mconcat xs <> DList.singleton Wasm.Call {callFunctionIndex = i}
+          pure $ unionManyBags xs `snocBag` Wasm.Call {callFunctionIndex = i}
         _ -> do
           sym_map <- askSymbolMap
           if Map.member ("__asterius_barf_" <> target) sym_map
             then makeInstructions $ barf target callReturnTypes
-            else pure $ DList.singleton Wasm.Unreachable
+            else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
       xs <- for operands makeInstructions
       ModuleSymbolTable {..} <- askModuleSymbolTable
       pure $
-        mconcat xs <> DList.singleton Wasm.Call
+        unionManyBags xs `snocBag` Wasm.Call
           { callFunctionIndex = functionSymbols ! target'
           }
     CallIndirect {..} -> do
@@ -546,26 +546,26 @@ makeInstructions expr =
       xs <- for operands makeInstructions
       ModuleSymbolTable {..} <- askModuleSymbolTable
       pure $
-        mconcat xs <> f <> DList.singleton Wasm.CallIndirect
+        unionManyBags xs `unionBags` f `snocBag` Wasm.CallIndirect
           { callIndirectFuctionTypeIndex = functionTypeSymbols ! functionType
           }
     GetLocal {..} -> do
       idx <- lookupIndex index
-      pure $ DList.singleton Wasm.GetLocal
+      pure $ unitBag Wasm.GetLocal
         { getLocalIndex = idx
         }
     SetLocal {..} -> do
       v <- makeInstructions value
       idx <- lookupIndex index
       pure $
-        v <> DList.singleton Wasm.SetLocal
+        v `snocBag` Wasm.SetLocal
           { setLocalIndex = idx
           }
     TeeLocal {..} -> do
       v <- makeInstructions value
       idx <- lookupIndex index
       pure $
-        v <> DList.singleton Wasm.TeeLocal
+        v `snocBag` Wasm.TeeLocal
           { teeLocalIndex = idx
           }
     Load {..} -> do
@@ -573,7 +573,7 @@ makeInstructions expr =
             { memoryArgumentAlignment = 0,
               memoryArgumentOffset = offset
             }
-      op <- DList.singleton <$> case (signed, bytes, valueType) of
+      op <- case (signed, bytes, valueType) of
         (_, 4, I32) -> pure $ Wasm.I32Load _mem_arg
         (_, 8, I64) -> pure $ Wasm.I64Load _mem_arg
         (_, 4, F32) -> pure $ Wasm.F32Load _mem_arg
@@ -590,13 +590,13 @@ makeInstructions expr =
         (False, 4, I64) -> pure $ Wasm.I64Load32Unsigned _mem_arg
         _ -> throwError $ UnsupportedExpression expr
       p <- makeInstructions ptr
-      pure $ p <> op
+      pure $ p `snocBag` op
     Store {..} -> do
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
               memoryArgumentOffset = offset
             }
-      op <- DList.singleton <$> case (bytes, valueType) of
+      op <- case (bytes, valueType) of
         (4, I32) -> pure $ Wasm.I32Store _mem_arg
         (8, I64) -> pure $ Wasm.I64Store _mem_arg
         (4, F32) -> pure $ Wasm.F32Store _mem_arg
@@ -609,23 +609,23 @@ makeInstructions expr =
         _ -> throwError $ UnsupportedExpression expr
       p <- makeInstructions ptr
       v <- makeInstructions value
-      pure $ p <> v <> op
-    ConstI32 v -> pure $ DList.singleton Wasm.I32Const {i32ConstValue = v}
-    ConstI64 v -> pure $ DList.singleton Wasm.I64Const {i64ConstValue = v}
-    ConstF32 v -> pure $ DList.singleton Wasm.F32Const {f32ConstValue = v}
-    ConstF64 v -> pure $ DList.singleton Wasm.F64Const {f64ConstValue = v}
+      pure $ p `unionBags` v `snocBag` op
+    ConstI32 v -> pure $ unitBag Wasm.I32Const {i32ConstValue = v}
+    ConstI64 v -> pure $ unitBag Wasm.I64Const {i64ConstValue = v}
+    ConstF32 v -> pure $ unitBag Wasm.F32Const {f32ConstValue = v}
+    ConstF64 v -> pure $ unitBag Wasm.F64Const {f64ConstValue = v}
     Unary {..} -> do
       x <- makeInstructions operand0
-      let op = DList.singleton $ marshalUnaryOp unaryOp
-      pure $ x <> op
+      let op = marshalUnaryOp unaryOp
+      pure $ x `snocBag` op
     Binary {..} -> do
       x <- makeInstructions operand0
       y <- makeInstructions operand1
-      let op = DList.singleton $ marshalBinaryOp binaryOp
-      pure $ x <> y <> op
+      let op = marshalBinaryOp binaryOp
+      pure $ x `unionBags` y `snocBag` op
     Drop {..} -> do
       x <- makeInstructions dropValue
-      pure $ x <> DList.singleton Wasm.Drop
+      pure $ x `snocBag` Wasm.Drop
     ReturnCall {..} -> do
       sym_map <- askSymbolMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
@@ -634,12 +634,12 @@ makeInstructions expr =
         -- Case 1: Tail calls are on
         then case Map.lookup (entityName returnCallTarget64) functionSymbols of
           Just i -> pure $
-            DList.singleton Wasm.ReturnCall {returnCallFunctionIndex = i}
+            unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
             | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
-              pure $ DList.singleton Wasm.Unreachable
+              pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
         else case Map.lookup returnCallTarget64 sym_map of
           Just t -> makeInstructions
@@ -658,7 +658,7 @@ makeInstructions expr =
             | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
-              pure $ DList.singleton Wasm.Unreachable
+              pure $ unitBag Wasm.Unreachable
     ReturnCallIndirect {..} -> do
       sym_map <- askSymbolMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
@@ -672,7 +672,7 @@ makeInstructions expr =
                      operand0 = returnCallIndirectTarget64
                    }
           pure $
-            x <> DList.singleton Wasm.ReturnCallIndirect
+            x `snocBag` Wasm.ReturnCallIndirect
               { returnCallIndirectFunctionTypeIndex = functionTypeSymbols
                   ! FunctionType {paramTypes = [], returnTypes = []}
               }
@@ -690,24 +690,24 @@ makeInstructions expr =
               valueType = I64
             }
     Host {..} -> do
-      let op = DList.singleton $ case hostOp of
+      let op = unitBag $ case hostOp of
             CurrentMemory -> Wasm.MemorySize
             GrowMemory -> Wasm.MemoryGrow
       xs <- for operands makeInstructions
-      pure $ mconcat xs <> op
-    Nop -> pure $ DList.singleton Wasm.Nop
-    Unreachable -> pure $ DList.singleton Wasm.Unreachable
+      pure $ unionManyBags xs `unionBags` op
+    Nop -> pure $ unitBag Wasm.Nop
+    Unreachable -> pure $ unitBag Wasm.Unreachable
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
       sym_map <- askSymbolMap
       case Map.lookup unresolvedSymbol sym_map of
-        Just x -> pure $ DList.singleton Wasm.I64Const
+        Just x -> pure $ unitBag Wasm.I64Const
           { i64ConstValue = x + fromIntegral symbolOffset
           }
         _
           | Map.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
             makeInstructions $ barf unresolvedSymbol [I64]
-          | otherwise -> pure $ DList.singleton Wasm.I64Const
+          | otherwise -> pure $ unitBag Wasm.I64Const
             { i64ConstValue = invalidAddress
             }
     -- Unsupported expressions:
@@ -719,10 +719,10 @@ makeInstructions expr =
 makeInstructionsMaybe ::
   (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Maybe Expression ->
-  m (DList.DList Wasm.Instruction)
+  m (Bag Wasm.Instruction)
 makeInstructionsMaybe m_expr = case m_expr of
   Just expr -> makeInstructions expr
-  _ -> pure mempty
+  _ -> pure emptyBag
 
 makeCodeSection ::
   MonadError MarshalError m =>
@@ -755,7 +755,7 @@ makeCodeSection tail_calls sym_map _mod@Module {..} _module_symtable =
             [ Wasm.Locals {localsCount = c, localsType = vt}
               | (vt, c) <- _locals
             ],
-          functionBody = coerce $ DList.toList _body
+          functionBody = coerce $ bagToList _body
         }
 
 makeDataSection ::
