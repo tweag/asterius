@@ -1,7 +1,7 @@
 resolver: lts-15.8
 extra-deps:
   - https://github.com/tweag/haskell-binaryen/archive/00d2bfc92c52dd7410b9fded560f033c078a2d33.tar.gz
-  - url: https://github.com/tweag/inline-js/archive/f192891283e21f8af9bb4dc07d3b36d59c658e2f.tar.gz
+  - url: https://github.com/tweag/inline-js/archive/114848a9f750b5e9c2f8ca056cc29d84bbab0bae.tar.gz
     subdirs:
       - inline-js-core
   - https://github.com/tweag/wabt/archive/96705e56fe0018c59270f8685f682fb3605d66f4.tar.gz
