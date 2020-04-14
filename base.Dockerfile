@@ -18,9 +18,7 @@ RUN \
   apt install -y \
     automake \
     binaryen \
-    cmake \
     curl \
-    g++ \
     gawk \
     gcc \
     git \
@@ -29,7 +27,6 @@ RUN \
     libncurses-dev \
     libnuma-dev \
     make \
-    python3 \
     sudo \
     xz-utils \
     zlib1g-dev && \
@@ -72,13 +69,10 @@ RUN \
 RUN \
   sudo apt purge -y \
     automake \
-    cmake \
     curl \
-    g++ \
     git \
     make \
     mawk \
-    python3 \
     xz-utils && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \

@@ -15,10 +15,8 @@ RUN \
   apt install -y \
     automake \
     binaryen \
-    cmake \
     curl \
     direnv \
-    g++ \
     gawk \
     gcc \
     git \
