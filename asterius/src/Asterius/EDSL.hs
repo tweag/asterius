@@ -89,33 +89,22 @@ import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
+import Bag
 import Control.Monad.State.Strict
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
-import Data.Monoid
 import Data.Traversable
 import Language.Haskell.GHC.Toolkit.Constants
-
--- | Difference lists
-type DList a = Endo [a]
-
--- | Append an element to the end of the list. Opposite of cons
-dListSnoc :: DList a -> a -> DList a
-dListSnoc dl a = dl <> Endo (a :)
-
--- | Materialize a difference list into a haskell list
-fromDList :: DList a -> [a]
-fromDList = ($ []) . appEndo
 
 -- | State maintained by the EDSL builder.
 data EDSLState
   = EDSLState
       { retTypes :: [ValueType],
-        paramBuf :: DList ValueType,
+        paramBuf :: Bag ValueType,
         paramNum :: Int,
         localNum :: Int,
         labelNum :: Int,
-        exprBuf :: DList Expression,
+        exprBuf :: Bag Expression,
         -- | Static variables to be added into the module
         staticsBuf :: [(EntitySymbol, AsteriusStatics)]
       }
@@ -123,11 +112,11 @@ data EDSLState
 initialEDSLState :: EDSLState
 initialEDSLState = EDSLState
   { retTypes = [],
-    paramBuf = mempty,
+    paramBuf = emptyBag,
     paramNum = 0,
     localNum = 0,
     labelNum = 0,
-    exprBuf = mempty,
+    exprBuf = emptyBag,
     staticsBuf = mempty
   }
 
@@ -146,7 +135,7 @@ instance Monoid a => Monoid (EDSL a) where
 
 emit :: Expression -> EDSL ()
 emit e =
-  EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `dListSnoc` e}
+  EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `snocBag` e}
 
 --  | Create a block from the list of expressions returning the given values.
 bundleExpressions ::
@@ -177,11 +166,11 @@ runEDSL n (EDSL m) =
     EDSLState {..} = execState m initialEDSLState
     f0 = adjustLocalRegs $ Function
       { functionType = FunctionType
-          { paramTypes = fromDList paramBuf,
+          { paramTypes = bagToList paramBuf,
             returnTypes = retTypes
           },
         varTypes = [],
-        body = bundleExpressions retTypes $ fromDList exprBuf
+        body = bundleExpressions retTypes $ bagToList exprBuf
       }
     m1 = processBarf n f0
 
@@ -202,7 +191,7 @@ mutParam :: ValueType -> EDSL LVal
 mutParam vt = EDSL $ do
   i <- state $ \s@EDSLState {..} ->
     ( fromIntegral paramNum,
-      s {paramBuf = paramBuf `dListSnoc` vt, paramNum = succ paramNum}
+      s {paramBuf = paramBuf `snocBag` vt, paramNum = succ paramNum}
     )
   pure LVal
     { getLVal = GetLocal {index = i, valueType = vt},
@@ -380,10 +369,10 @@ newLabel :: EDSL Label
 newLabel = EDSL $ state $ \s@EDSLState {..} ->
   (Label $ showBS labelNum, s {labelNum = succ labelNum})
 
-newScope :: EDSL () -> EDSL (DList Expression)
+newScope :: EDSL () -> EDSL (Bag Expression)
 newScope m = do
   orig_buf <- EDSL $ state $ \s@EDSLState {..} ->
-    (exprBuf, s {exprBuf = mempty})
+    (exprBuf, s {exprBuf = emptyBag})
   m
   EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = orig_buf})
 
@@ -393,7 +382,7 @@ block' vts cont = do
   es <- newScope $ cont lbl
   emit Block
     { name = unLabel lbl,
-      bodys = fromDList es,
+      bodys = bagToList es,
       blockReturnTypes = vts
     }
 
@@ -402,7 +391,7 @@ blockWithLabel vts lbl m = do
   es <- newScope m
   emit Block
     { name = unLabel lbl,
-      bodys = fromDList es,
+      bodys = bagToList es,
       blockReturnTypes = vts
     }
 
@@ -410,7 +399,7 @@ loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
 loop' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
-  emit Loop {name = unLabel lbl, body = bundleExpressions vts $ fromDList es}
+  emit Loop {name = unLabel lbl, body = bundleExpressions vts $ bagToList es}
 
 if' :: [ValueType] -> Expression -> EDSL () -> EDSL () -> EDSL ()
 if' vts cond t f = do
@@ -418,8 +407,8 @@ if' vts cond t f = do
   f_es <- newScope f
   emit If
     { condition = cond,
-      ifTrue = bundleExpressions vts $ fromDList t_es,
-      ifFalse = Just $ bundleExpressions vts $ fromDList f_es
+      ifTrue = bundleExpressions vts $ bagToList t_es,
+      ifFalse = Just $ bundleExpressions vts $ bagToList f_es
     }
 
 break' :: Label -> Maybe Expression -> EDSL ()
