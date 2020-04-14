@@ -15,20 +15,18 @@ RUN \
   apt install -y \
     automake \
     binaryen \
+    build-essential \
     curl \
     direnv \
     gawk \
-    gcc \
     git \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
     libnuma-dev \
-    make \
     openssh-client \
     python3-pip \
     sudo \
-    xz-utils \
     zlib1g-dev && \
   apt autoremove --purge -y && \
   apt clean && \

@@ -26,6 +26,7 @@ RUN \
     libgmp-dev \
     libncurses-dev \
     libnuma-dev \
+    libstdc++-9-dev \
     make \
     sudo \
     xz-utils \
