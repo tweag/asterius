@@ -1,16 +1,6 @@
-#!/bin/bash -e
+#!/bin/sh -e
 
-shopt -s globstar
-
-cd asterius
-
-stack exec ghci -- \
-  -package ghc \
-  -Wall \
-  -Wno-overflowed-literals \
-  -j \
-  -fno-code \
-  +RTS -N -A64m -n2m -RTS \
-  $(echo src-types/**/*.hs) \
-  $(echo src/**/*.hs) \
-  $(echo $(stack path --dist-dir)/build/autogen/**/*.hs)
+stack ghci \
+  asterius:lib \
+  asterius:ahc-ld \
+  --ghci-options="-Wall -Wno-overflowed-literals -fno-code -j +RTS -N -A64m -n2m -RTS"
