@@ -88,6 +88,8 @@ jobs:
 
             stack --no-terminal test asterius:th
 
+            stack --no-terminal test asterius:primitive
+
   asterius-test-cabal:
     docker:
       - image: terrorjack/asterius:dev

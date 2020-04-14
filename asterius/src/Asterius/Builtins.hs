@@ -24,6 +24,7 @@ import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
 import Asterius.Builtins.Posix
+import Asterius.Builtins.Primitive
 import Asterius.Builtins.Scheduler
 import Asterius.Builtins.SM
 import Asterius.Builtins.SPT
@@ -201,6 +202,7 @@ rtsAsteriusModule opts =
     <> sptCBits
     <> stgPrimFloatCBits
     <> timeCBits
+    <> primitiveCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
@@ -627,6 +629,7 @@ rtsFunctionImports debug =
     <> posixImports
     <> sptImports
     <> timeImports
+    <> primitiveImports
 
 rtsFunctionExports :: Bool -> [FunctionExport]
 rtsFunctionExports debug =
