@@ -60,7 +60,6 @@ RUN \
   cd ~/.asterius && \
   stack --no-terminal build \
     asterius \
-    wabt \
     alex \
     happy \
     c2hs \
@@ -126,5 +125,4 @@ RUN \
   alex --version && \
   cabal --version && \
   node --version && \
-  wasm-objdump --version && \
   wasm-opt --version

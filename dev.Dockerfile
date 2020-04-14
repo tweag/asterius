@@ -72,7 +72,6 @@ RUN \
     hlint \
     inline-js-core \
     ormolu \
-    wabt \
     wai-app-static && \
   cd /home/asterius && \
   sudo rm -rf -v \
