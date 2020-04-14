@@ -49,6 +49,7 @@ _exe-ghc-options: &exe-ghc-options
 dependencies:
   - base
   - binary
+  - binaryen
   - bytestring
   - Cabal
   - containers
@@ -69,16 +70,9 @@ dependencies:
   - transformers
   - wasm-toolkit
 
-internal-libraries:
-  asterius-types:
-    source-dirs: src-types
-
 library:
   source-dirs: src
   generated-other-modules: Paths_asterius
-  dependencies:
-    - asterius-types
-    - binaryen
 
 executables:
   ahc:

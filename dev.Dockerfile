@@ -14,10 +14,9 @@ RUN \
   apt full-upgrade -y && \
   apt install -y \
     automake \
-    cmake \
+    binaryen \
     curl \
     direnv \
-    g++ \
     gawk \
     gcc \
     git \
@@ -63,7 +62,6 @@ RUN \
   cd /tmp/asterius && \
   stack --no-terminal install \
     alex \
-    binaryen \
     brittany \
     c2hs \
     cpphs \
@@ -72,7 +70,6 @@ RUN \
     hlint \
     inline-js-core \
     ormolu \
-    wabt \
     wai-app-static && \
   cd /home/asterius && \
   sudo rm -rf -v \

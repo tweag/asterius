@@ -17,9 +17,8 @@ RUN \
   apt full-upgrade -y && \
   apt install -y \
     automake \
-    cmake \
+    binaryen \
     curl \
-    g++ \
     gawk \
     gcc \
     git \
@@ -28,7 +27,6 @@ RUN \
     libncurses-dev \
     libnuma-dev \
     make \
-    python3 \
     sudo \
     xz-utils \
     zlib1g-dev && \
@@ -59,8 +57,6 @@ RUN \
   cd ~/.asterius && \
   stack --no-terminal build \
     asterius \
-    binaryen \
-    wabt \
     alex \
     happy \
     c2hs \
@@ -73,13 +69,10 @@ RUN \
 RUN \
   sudo apt purge -y \
     automake \
-    cmake \
     curl \
-    g++ \
     git \
     make \
     mawk \
-    python3 \
     xz-utils && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
@@ -126,5 +119,4 @@ RUN \
   alex --version && \
   cabal --version && \
   node --version && \
-  wasm-objdump --version && \
   wasm-opt --version
