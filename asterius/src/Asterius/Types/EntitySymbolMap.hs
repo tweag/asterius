@@ -7,9 +7,23 @@
 
 -- See http://hackage.haskell.org/package/ghc-8.6.5/docs/Unique.html#t:Uniquable
 --
--- instance Uniquable FastString where
---  getUnique fs = mkUniqueGrimily (uniqueOfFS fs)
 
+-- GEORGE: The order of things can be very different iiuc:
+--
+-- Conversion from Map k v (e.g. elems, toList, ...) always seem to create
+-- results in ascending key order. Even `elems` that only returns the elements
+-- of the map, it always gives them in ascending order of their keys (even if
+-- the keys are not part of the result).
+--
+-- The same seems to be the case with IntMap (which is used internally by
+-- UniqFM). BUT, EntitySymbol is a synony of FastString and the Uniquable
+-- instance for FastString does not necessarily agree with lexicographic order:
+--
+--   instance Uniquable FastString where
+--     getUnique fs = mkUniqueGrimily (uniqueOfFS fs)
+--
+-- This means that our implementations here do not agree with the corresponding
+-- ones in Data.Map. This could lead to problems.
 
 module Asterius.Types.EntitySymbolMap
   ( EntitySymbolMap
@@ -45,6 +59,8 @@ import qualified Data.Map as Map
 import Data.List (mapAccumL, sort)
 import GHC.Exts (IsList(..))
 import Asterius.Binary.Orphans ()
+
+-- ----------------------------------------------------------------------------
 
 -- TODOs
 -- * Take @TerrorJack's advice and use a strict tuple in the map.
@@ -85,6 +101,13 @@ instance Binary elt => Binary (EntitySymbolMap elt) where
 --           ((,) <$> GHC.get bh <*> GHC.lazyGet bh)
 
 -- GEORGE: EntitySymbol is ofc an instance of Uniquable
+
+instance IsList (EntitySymbolMap elt) where
+  type Item (EntitySymbolMap elt) = (EntitySymbol, elt)
+  fromList = fromListESM
+  toList = toListESM
+
+-- ----------------------------------------------------------------------------
 
 {-# INLINE unitESM #-}
 unitESM :: EntitySymbol -> elt -> EntitySymbolMap elt
@@ -173,11 +196,6 @@ mapAccumESM f a m
 -- | TODO: Reduce usage. GEORGE: What about a strict variant?
 foldrWithKeyESM :: (EntitySymbol -> a -> b -> b) -> b -> EntitySymbolMap a -> b
 foldrWithKeyESM fn z = foldr (\(k,a) b -> fn k a b) z . toListESM
-
-instance IsList (EntitySymbolMap elt) where
-  type Item (EntitySymbolMap elt) = (EntitySymbol, elt)
-  fromList = fromListESM
-  toList = toListESM
 
 -- | TODO: Reduce usage.
 {-# INLINE filterESM #-}
