@@ -1,5 +1,29 @@
 # Hacking guide
 
+## Using VSCode remote containers
+
+We recommend using [VSCode Remote
+Containers](https://code.visualstudio.com/docs/remote/containers) to reproduce
+the very same dev environment used by our core team members. The steps to set up
+the dev environment are:
+
+* Do a local clone of the asterius repo
+* Install VSCode and its remote
+  [extension](https://aka.ms/vscode-remote/download/extension)
+* Install Docker, and make sure the `docker` command works with the current user
+* `docker pull terrorjack/asterius:dev`
+* Open the asterius repo with remote containers
+
+Opening the repo with remote containers for the first time will take some time,
+since it runs the build script to build `asterius` and perform booting. Later
+re-opening will be near instant, since it reuses the previous container.
+
+## Using `direnv`
+
+If `direnv` is enabled, the `PATH` of the current shell session will be extended
+to include the locations of asterius executables. This means it's possible to
+run `ahc-link ..` instead of `stack exec ahc-link -- ..`.
+
 ## Hacking with `ghcid`
 
 A known-to-work workflow of hacking asterius is using `ghcid`. We also include
@@ -10,15 +34,11 @@ Some notes regarding the usage of `ghcid`:
 
 * Multiple lib targets can be loaded at once, but only one main target
   (exe/test) can be loaded. When hacking a specific exe/test, modify the local
-  `.ghcid` file first, and don't commit the change. And before commiting, it
-  would be nice to run `stack build --test --no-run-tests` to make sure all
-  executables are up-to-date and not broken by lib changes.
+  `utils/ghcid.sh` script first. Before commiting changes in the Haskell
+  codebase, it would be nice to run `stack build --test --no-run-tests` to make
+  sure all executables are not broken by lib changes.
 
-* If some weird linker-related error related to `ghc-toolkit` or `binaryen` pops
-  up when loading `ghcid`, try adding `ghc-toolkit:lib` or `binaryen:lib` to one
-  of the `ghcid` targets in `.ghcid`.
-
-## Boot cache maintainence
+## To boot or not to boot
 
 As described in the building guide, `stack build` only builds the asterius
 compiler itself; additionally we need to run `stack exec ahc-boot` to run the
@@ -36,8 +56,9 @@ Specifically:
 * `Asterius.Builtins` modifications don't impact the boot cache. The builtin
   module is generated on the fly with every linker invocation.
 
-When rebooting, run `utils/clean.sh` in the project root directory to purge the
-cache, then rerun `stack build` and `stack exec ahc-boot`.
+When rebooting, run `utils/reboot.sh` in the project root directory, so that we
+can ensure the booting is used with the up-to-date version of `asterius` and the
+boot lib sources.
 
 The `ahc-boot` process is configurable via these environment variables:
 
@@ -45,8 +66,29 @@ The `ahc-boot` process is configurable via these environment variables:
 * `ASTERIUS_BUILD_OPTIONS`
 * `ASTERIUS_INSTALL_OPTIONS`
 
-A common usage is setting `ASTERIUS_BUILD_OPTIONS=-j8` to enable parallelism in
-booting, reducing your coffee break time.
+## Doing profiled builds
+
+We have preliminary support for doing profiled builds to investigate performance
+issues. Use `stack-profile.yaml` to overwrite `stack.yaml`, and then perform the
+rebooting process. This will be quite slow due to the nature of profiled builds;
+all libraries will be rebuilt with the profiled flavor.
+
+Once the profiled build is complete, it's possible to use RTS flags to obtain
+profile data when compiling Haskell sources. Use `GHCRTS=..` instead of `+RTS
+..`, since we're often interested in the profile data of all asterius
+executables, and the `GHCRTS` environment variable can propagate to all
+processes.
+
+See the relevant
+[section](https://downloads.haskell.org/~ghc/8.8.3/docs/html/users_guide/profiling.html)
+in the GHC user guide for more information on profiling Haskell apps. There are
+also some third party applications useful for analyzing the profiling data, e.g.
+[`eventlog2html`](https://github.com/mpickering/eventlog2html),
+[`ghc-prof-flamegraph`](https://github.com/fpco/ghc-prof-flamegraph).
+
+Fow now, a major problem with the profiled build is: it seems to emit
+dysfunctional code which doesn't work. Consequently, this affects the TH runner,
+so any dependencies relying on TH isn't supported by the profiled build.
 
 ## Adding a test case
 
@@ -55,22 +97,6 @@ To add a test case, it is best to replicate what has been done for an existing t
 - For example, `git grep bytearraymini` should show all the places where the test case
 `bytearraymini` has been used. Replicating the same files for a new test case
 should "just work".
-
-## Using `wabt` 
-
-We also include `wabt` in the source tree and pack it as a Cabal package. So
-`stack build wabt` will build the `wabt` binaries. To install the binaries to a
-specific location (e.g. `~/.local/bin`), set the `WABT_BINDIR` environment
-variables before building; `stack install` doesn't properly copy the binaries
-yet.
-
-The `wabt` setup script uses `make`, so it's possible to use `MAKEFLAGS`
-environment variable to pass additional arguments to `make`, e.g. setting
-`MAKEFLAGS=-j8` to speed it up.
-
-The `wabt` package exposes `Paths_wabt`, so by using `Paths_wabt.getBinDir` you
-can access the `wabt` binary location in Haskell. This can be useful when
-implementing Haskell wrappers.
 
 ## Debugging `circleCI`
 

@@ -68,9 +68,9 @@ documentation for details.
 
 We recommend using [VSCode Remote
 Containers](https://code.visualstudio.com/docs/remote/containers) to reproduce
-the very same dev environment used by our core team members. The initial
-container build will take some while, since it will build the whole project and
-run the boot process. After that, the workflow should be pretty smooth.
+the very same dev environment used by our core team members. See the [Hacking
+guide](https://asterius.netlify.com/hacking.html) in the documentation for
+details.
 
 ## Documentation
 
