@@ -36,10 +36,9 @@ import qualified Data.Set as Set
 import qualified Data.Map as Map
 import Data.List (mapAccumL, sort)
 import GHC.Exts (IsList(..))
+import Asterius.Binary.Orphans ()
 
 -- TODOs
---------
--- * Fill in missing type class implementations
 -- * Take @TerrorJack's advice and use a strict tuple in the map.
 -- * Ensure that all operations behave as expected.
 -- * Run ormolu on everything
@@ -59,18 +58,19 @@ instance Monoid (EntitySymbolMap elt) where
   mempty = emptyESM
 
 instance Binary elt => Binary (EntitySymbolMap elt) where
-  get = error "GEORGE: TODO"
-  put = error "GEORGE: TODO"
-  put_ = error "GEORGE: TODO"
+  put_ bh m = put_ bh (toMapESM m)
+  get bh = fromMapESM <$> get bh
 
--- instance Generic (EntitySymbolMap elt) where
---   -- TODO
---   from = error "GEORGE: TODO"
---   to = error "GEORGE: TODO"
---
--- instance Binary elt => Binary (EntitySymbolMap elt) where
---   put = error "GEORGE: TODO"
---   get = error "GEORGE: TODO"
+-- instance (GHC.Binary k, GHC.Binary v) => GHC.Binary (M.Map k v) where
+--   put_ bh m =
+--     GHC.put_ bh (M.size m)
+--       *> for_ (M.toAscList m) (\(k, v) -> GHC.put_ bh k *> GHC.lazyPut bh v)
+--   get bh =
+--     fmap M.fromDistinctAscList $
+--       GHC.get bh
+--         >>= flip
+--           replicateM
+--           ((,) <$> GHC.get bh <*> GHC.lazyGet bh)
 
 -- GEORGE: EntitySymbol is ofc an instance of Uniquable
 
@@ -183,4 +183,9 @@ mapKeysESM fn = viaList (map (\(k,e) -> (fn k, e)))
 {-# INLINE toMapESM #-}
 toMapESM :: EntitySymbolMap elt -> Map.Map EntitySymbol elt
 toMapESM = Map.fromList . toListESM
+
+-- | TODO: Reduce usage.
+{-# INLINE fromMapESM #-}
+fromMapESM :: Map.Map EntitySymbol elt -> EntitySymbolMap elt
+fromMapESM = fromListESM . Map.toList
 
