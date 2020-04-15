@@ -60,21 +60,12 @@ export class ExceptionHelper {
           const p1 = Number(
             this.memory.i64Load(p + rtsConstants.offset_StgUpdateFrame_updatee)
           );
-          try {
-            this.exports.updateThunk(
-              this.symbolTable.MainCapability,
-              tso,
-              p1,
-              raise_closure
-            );
-          } catch (err) {
-            console.error(`updateThunk failed with ${err}`);
-            this.memory.i64Store(p1, this.symbolTable.stg_BLACKHOLE_info);
-            this.memory.i64Store(
-              p1 + rtsConstants.offset_StgInd_indirectee,
-              raise_closure
-            );
-          }
+          this.exports.updateThunk(
+            this.symbolTable.MainCapability,
+            tso,
+            p1,
+            raise_closure
+          );
           const size = Number(raw_layout & BigInt(0x3f));
           p += (1 + size) << 3;
           break;
