@@ -3,6 +3,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 
+
+
+-- See http://hackage.haskell.org/package/ghc-8.6.5/docs/Unique.html#t:Uniquable
+--
+-- instance Uniquable FastString where
+--  getUnique fs = mkUniqueGrimily (uniqueOfFS fs)
+
+
 module Asterius.Types.EntitySymbolMap
   ( EntitySymbolMap
   , emptyESM
@@ -49,7 +57,8 @@ newtype EntitySymbolMap elt = EntitySymbolMap (UniqFM (EntitySymbol, elt))
   deriving stock (Data)
 
 instance (Show elt) => Show (EntitySymbolMap elt) where
-  show = error "GEORGE: TODO"
+  showsPrec d m = showParen (d > 10) $
+    showString "fromList " . shows (toListESM m)
 
 instance Semigroup (EntitySymbolMap elt) where
   EntitySymbolMap m1 <> EntitySymbolMap m2 = EntitySymbolMap $ m1 <> m2
@@ -60,6 +69,9 @@ instance Monoid (EntitySymbolMap elt) where
 instance Binary elt => Binary (EntitySymbolMap elt) where
   put_ bh m = put_ bh (toMapESM m)
   get bh = fromMapESM <$> get bh
+
+-- Current HEAD (4187adb8d09933ac119269d5c3b020d96c8551fc)
+-- does everything in ascending order. Is that of importance?
 
 -- instance (GHC.Binary k, GHC.Binary v) => GHC.Binary (M.Map k v) where
 --   put_ bh m =
