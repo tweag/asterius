@@ -23,11 +23,11 @@ module Asterius.Backends.Binaryen
   )
 where
 
-import Asterius.Internals
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Types
+import Asterius.Types.EntitySymbolMap
 import Asterius.TypesConv
 import qualified Binaryen
 import qualified Binaryen.Expression
@@ -228,17 +228,13 @@ marshalFunctionType FunctionType {..} = flip runContT pure $ do
     rt <- Binaryen.Type.create rts (fromIntegral rtl)
     pure (pt, rt)
 
--- TODO: there is a similar definition in Asterius.Backends.WasmToolkit. Maybe
--- we should just move shared stuff into Asterius.Types (or another shared file).
-type SymbolMap = M.Map EntitySymbol Int64
-
 -- | Environment used during marshaling of Asterius' types to Binaryen.
 data MarshalEnv
   = MarshalEnv
       { -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
         -- | The symbol map for the current module.
-        envSymbolMap :: SymbolMap,
+        envSymbolMap :: EntitySymbolMap Int64,
         -- | The current module reference.
         envModuleRef :: Binaryen.Module
       }
@@ -250,7 +246,7 @@ areTailCallsOn :: CodeGen Bool
 areTailCallsOn = reader envAreTailCallsOn
 
 -- | Retrieve the symbol map from the local environment.
-askSymbolMap :: CodeGen SymbolMap
+askSymbolMap :: CodeGen (EntitySymbolMap Int64)
 askSymbolMap = reader envSymbolMap
 
 -- | Retrieve the reference to the current module.
@@ -296,7 +292,7 @@ marshalExpression e = case e of
       lift $ Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     sym_map <- askSymbolMap
-    if  | M.member target sym_map ->
+    if  | target `elemESM` sym_map ->
           do
             os <-
               mapM
@@ -315,7 +311,7 @@ marshalExpression e = case e of
               tp <- marshalBS (entityName target)
               rts <- lift $ marshalReturnTypes callReturnTypes
               lift $ Binaryen.call m tp ops (fromIntegral osl) rts
-        | M.member ("__asterius_barf_" <> target) sym_map ->
+        | ("__asterius_barf_" <> target) `elemESM` sym_map ->
           marshalExpression $ barf target callReturnTypes
         | otherwise -> do
           m <- askModuleRef
@@ -400,7 +396,7 @@ marshalExpression e = case e of
     -- Case 2: Tail calls are off
     False -> do
       sym_map <- askSymbolMap
-      case M.lookup returnCallTarget64 sym_map of
+      case lookupESM returnCallTarget64 sym_map of
         Just t -> do
           s <-
             marshalExpression
@@ -473,10 +469,10 @@ marshalExpression e = case e of
   Symbol {..} -> do
     sym_map <- askSymbolMap
     m <- askModuleRef
-    case M.lookup unresolvedSymbol sym_map of
+    case lookupESM unresolvedSymbol sym_map of
       Just x -> lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
       _
-        | M.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
+        | ("__asterius_barf_" <> unresolvedSymbol) `elemESM` sym_map ->
           marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
@@ -594,7 +590,7 @@ marshalMemoryExport m MemoryExport {..} = flip runContT pure $ do
   lift $ Binaryen.addMemoryExport m inp enp
 
 marshalModule ::
-  Bool -> M.Map EntitySymbol Int64 -> Module -> IO Binaryen.Module
+  Bool -> EntitySymbolMap Int64 -> Module -> IO Binaryen.Module
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
   m <- Binaryen.Module.create
@@ -612,9 +608,9 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
             envModuleRef = m
           }
   for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
-    flip runReaderT env $ marshalFunction k (ftps ! functionType) f
+    flip runReaderT env $ marshalFunction k (ftps M.! functionType) f
   forM_ functionImports $ \fi@FunctionImport {..} ->
-    marshalFunctionImport m (ftps ! functionType) fi
+    marshalFunctionImport m (ftps M.! functionType) fi
   forM_ functionExports $ marshalFunctionExport m
   marshalFunctionTable m tableSlots functionTable
   marshalTableImport m tableImport
@@ -646,13 +642,13 @@ relooperAddBranch ::
 relooperAddBranch bm k ab = case ab of
   AddBranch {..} -> do
     _cond <- marshalMaybeExpression addBranchCondition
-    lift $ Binaryen.addBranch (bm ! k) (bm ! to) _cond (coerce nullPtr)
+    lift $ Binaryen.addBranch (bm M.! k) (bm M.! to) _cond (coerce nullPtr)
   AddBranchForSwitch {..} -> lift $ flip runContT pure $ do
     (idp, idn) <- marshalV indexes
     lift $
       Binaryen.addBranchForSwitch
-        (bm ! k)
-        (bm ! to)
+        (bm M.! k)
+        (bm M.! to)
         (coerce idp)
         (fromIntegral idn)
         (coerce nullPtr)
@@ -667,7 +663,7 @@ relooperRun RelooperRun {..} = do
       pure (k, bp)
   for_ (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
     forM_ addBranches $ relooperAddBranch bpm k
-  lift $ Binaryen.renderAndDispose r (bpm ! entry) (coerce labelHelper)
+  lift $ Binaryen.renderAndDispose r (bpm M.! entry) (coerce labelHelper)
 
 serializeModule :: Binaryen.Module -> IO BS.ByteString
 serializeModule m = alloca $ \(buf_p :: Ptr (Ptr ())) ->

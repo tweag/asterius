@@ -9,11 +9,11 @@ module Asterius.Passes.GCSections
 where
 
 import Asterius.Types
+import Asterius.Types.EntitySymbolMap
 import Data.Data
   ( Data,
     gmapQl,
   )
-import qualified Data.Map.Lazy as LM
 import qualified Data.Set as S
 import Data.String
 import Type.Reflection
@@ -31,19 +31,19 @@ gcSections verbose_err store_mod root_syms export_funcs =
     }
   where
     spt_map =
-      LM.restrictKeys (sptMap store_mod) (LM.keysSet (staticsMap final_m))
+      sptMap store_mod `restrictKeysESM` keysSetESM (staticsMap final_m)
     ffi_all = ffiMarshalState store_mod
     ffi_this =
       ffi_all
-        { ffiImportDecls = flip LM.filterWithKey (ffiImportDecls ffi_all) $ \k _ ->
-            (k <> "_wrapper") `LM.member` functionMap final_m,
+        { ffiImportDecls = flip filterWithKeyESM (ffiImportDecls ffi_all) $ \k _ ->
+            (k <> "_wrapper") `elemESM` functionMap final_m,
           ffiExportDecls = ffi_exports
         }
     ffi_exports =
       ffiExportDecls (ffiMarshalState store_mod)
-        `LM.restrictKeys` S.fromList export_funcs
+        `restrictKeysESM` S.fromList export_funcs
     root_syms' =
-      S.fromList [ffiExportClosure | FFIExportDecl {..} <- LM.elems ffi_exports]
+      S.fromList [ffiExportClosure | FFIExportDecl {..} <- elemsESM ffi_exports]
         <> root_syms
     (_, _, final_m) = go (root_syms', S.empty, mempty)
     go i@(i_staging_syms, _, _)
@@ -55,19 +55,19 @@ gcSections verbose_err store_mod root_syms export_funcs =
         (i_child_syms, o_m) =
           S.foldr'
             ( \i_staging_sym (i_child_syms_acc, o_m_acc) ->
-                case LM.lookup i_staging_sym (staticsMap store_mod) of
+                case lookupESM i_staging_sym (staticsMap store_mod) of
                   Just ss ->
                     ( collectEntitySymbols ss <> i_child_syms_acc,
                       o_m_acc
-                        { staticsMap = LM.insert i_staging_sym ss (staticsMap o_m_acc)
+                        { staticsMap = insertESM i_staging_sym ss (staticsMap o_m_acc)
                         }
                     )
-                  _ -> case LM.lookup i_staging_sym (functionMap store_mod) of
+                  _ -> case lookupESM i_staging_sym (functionMap store_mod) of
                     Just func ->
                       ( collectEntitySymbols func <> i_child_syms_acc,
                         o_m_acc
                           { functionMap =
-                              LM.insert
+                              insertESM
                                 i_staging_sym
                                 func
                                 (functionMap o_m_acc)
@@ -78,14 +78,14 @@ gcSections verbose_err store_mod root_syms export_funcs =
                         ( i_child_syms_acc,
                           o_m_acc
                             { staticsMap =
-                                LM.insert
+                                insertESM
                                   ("__asterius_barf_" <> i_staging_sym)
                                   AsteriusStatics
                                     { staticsType = ConstBytes,
                                       asteriusStatics =
                                         [ Serialized $
                                             entityName i_staging_sym
-                                              <> ( case LM.lookup
+                                              <> ( case lookupESM
                                                      i_staging_sym
                                                      (staticsErrorMap store_mod) of
                                                      Just err -> fromString (": " <> show err)

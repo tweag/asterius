@@ -5,17 +5,15 @@ module Asterius.JSGen.SPT
   )
 where
 
-import Asterius.Internals ((!))
-import Asterius.Types
+import Asterius.Types.EntitySymbolMap
 import Data.ByteString.Builder
 import Data.Int
 import Data.List
-import qualified Data.Map.Strict as M
 import Data.Word
 
 genSPT ::
-  M.Map EntitySymbol Int64 ->
-  M.Map EntitySymbol (Word64, Word64) ->
+  EntitySymbolMap Int64 ->
+  EntitySymbolMap (Word64, Word64) ->
   Builder
 genSPT sym_map spt_entries =
   "new Map(["
@@ -28,7 +26,7 @@ genSPT sym_map spt_entries =
               <> "n,0x"
               <> int64HexFixed (sym_map ! sym)
               <> "]"
-            | (sym, (w0, w1)) <- M.toList spt_entries
+            | (sym, (w0, w1)) <- toListESM spt_entries
           ]
       )
     <> "])"

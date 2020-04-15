@@ -22,12 +22,12 @@ module Asterius.Backends.WasmToolkit
   )
 where
 
-import Asterius.Internals
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
 import Asterius.TypeInfer
 import Asterius.Types
+import Asterius.Types.EntitySymbolMap
 import Asterius.TypesConv
 import Bag
 import Control.Exception
@@ -138,7 +138,7 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
                 importDescription =
                   Wasm.ImportFunction $
                     functionTypeSymbols
-                      ! functionType
+                      Map.! functionType
               }
             | FunctionImport {..} <- functionImports
           ]
@@ -148,7 +148,7 @@ makeFunctionSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
 makeFunctionSection Module {..} ModuleSymbolTable {..} = pure Wasm.FunctionSection
   { functionTypeIndices =
-      [ functionTypeSymbols ! functionType
+      [ functionTypeSymbols Map.! functionType
         | Function {..} <- Map.elems functionMap'
       ]
   }
@@ -162,7 +162,7 @@ makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
             exportDescription =
               Wasm.ExportFunction $
                 functionSymbols
-                  ! internalName
+                  Map.! internalName
           }
         | FunctionExport {..} <- functionExports
       ]
@@ -200,7 +200,7 @@ makeElementSection Module {..} ModuleSymbolTable {..} = pure Wasm.ElementSection
                     [Wasm.I32Const {i32ConstValue = fromIntegral tableOffset}]
                 },
               tableInitialValues =
-                [ functionSymbols ! _func_sym
+                [ functionSymbols Map.! _func_sym
                   | _func_sym <- tableFunctionNames
                 ]
             }
@@ -236,7 +236,7 @@ bindLabel k DeBruijnContext {..} = DeBruijnContext
 -- | Lookup a label (by name) in the de Bruijn context.
 extractLabel :: DeBruijnContext -> BS.ByteString -> Wasm.LabelIndex
 extractLabel DeBruijnContext {..} k =
-  coerce $ currentLevel - capturedLevels ! k - 1
+  coerce $ currentLevel - capturedLevels Map.! k - 1
 
 data LocalContext
   = LocalContext
@@ -410,15 +410,13 @@ marshalBinaryOp op = case op of
 
 -- ----------------------------------------------------------------------------
 
-type SymbolMap = Map.Map EntitySymbol Int64
-
 -- | Environment used during the elaboration of Asterius' types to WebAssembly.
 data MarshalEnv
   = MarshalEnv
       { -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
         -- | The symbol map for the current module.
-        envSymbolMap :: SymbolMap,
+        envSymbolMap :: EntitySymbolMap Int64,
         -- | The symbol table for the current module.
         envModuleSymbolTable :: ModuleSymbolTable,
         -- | The de Bruijn context. Used for label access.
@@ -432,7 +430,7 @@ areTailCallsOn :: MonadReader MarshalEnv m => m Bool
 areTailCallsOn = reader envAreTailCallsOn
 
 -- | Retrieve the symbol map from the local environment.
-askSymbolMap :: MonadReader MarshalEnv m => m SymbolMap
+askSymbolMap :: MonadReader MarshalEnv m => m (EntitySymbolMap Int64)
 askSymbolMap = reader envSymbolMap
 
 -- | Retrieve the module symbol table from the local environment.
@@ -531,7 +529,7 @@ makeInstructions expr =
           pure $ unionManyBags xs `snocBag` Wasm.Call {callFunctionIndex = i}
         _ -> do
           sym_map <- askSymbolMap
-          if Map.member ("__asterius_barf_" <> target) sym_map
+          if elemESM ("__asterius_barf_" <> target) sym_map
             then makeInstructions $ barf target callReturnTypes
             else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
@@ -539,7 +537,7 @@ makeInstructions expr =
       ModuleSymbolTable {..} <- askModuleSymbolTable
       pure $
         unionManyBags xs `snocBag` Wasm.Call
-          { callFunctionIndex = functionSymbols ! target'
+          { callFunctionIndex = functionSymbols Map.! target'
           }
     CallIndirect {..} -> do
       f <- makeInstructions indirectTarget
@@ -547,7 +545,7 @@ makeInstructions expr =
       ModuleSymbolTable {..} <- askModuleSymbolTable
       pure $
         unionManyBags xs `unionBags` f `snocBag` Wasm.CallIndirect
-          { callIndirectFuctionTypeIndex = functionTypeSymbols ! functionType
+          { callIndirectFuctionTypeIndex = functionTypeSymbols Map.! functionType
           }
     GetLocal {..} -> do
       idx <- lookupIndex index
@@ -636,12 +634,12 @@ makeInstructions expr =
           Just i -> pure $
             unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
-            | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `elemESM` sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
-        else case Map.lookup returnCallTarget64 sym_map of
+        else case lookupESM returnCallTarget64 sym_map of
           Just t -> makeInstructions
             Store
               { bytes = 8,
@@ -655,7 +653,7 @@ makeInstructions expr =
                 valueType = I64
               }
           _
-            | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `elemESM` sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
@@ -674,7 +672,7 @@ makeInstructions expr =
           pure $
             x `snocBag` Wasm.ReturnCallIndirect
               { returnCallIndirectFunctionTypeIndex = functionTypeSymbols
-                  ! FunctionType {paramTypes = [], returnTypes = []}
+                  Map.! FunctionType {paramTypes = [], returnTypes = []}
               }
         -- Case 2: Tail calls are off
         else makeInstructions
@@ -700,12 +698,12 @@ makeInstructions expr =
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
       sym_map <- askSymbolMap
-      case Map.lookup unresolvedSymbol sym_map of
+      case lookupESM unresolvedSymbol sym_map of
         Just x -> pure $ unitBag Wasm.I64Const
           { i64ConstValue = x + fromIntegral symbolOffset
           }
         _
-          | Map.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
+          | ("__asterius_barf_" <> unresolvedSymbol) `elemESM` sym_map ->
             makeInstructions $ barf unresolvedSymbol [I64]
           | otherwise -> pure $ unitBag Wasm.I64Const
             { i64ConstValue = invalidAddress
@@ -727,7 +725,7 @@ makeInstructionsMaybe m_expr = case m_expr of
 makeCodeSection ::
   MonadError MarshalError m =>
   Bool ->
-  Map.Map EntitySymbol Int64 ->
+  EntitySymbolMap Int64 ->
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
@@ -771,7 +769,7 @@ makeDataSection Module {..} _module_symtable = do
 makeModule ::
   MonadError MarshalError m =>
   Bool ->
-  Map.Map EntitySymbol Int64 ->
+  EntitySymbolMap Int64 ->
   Module ->
   m Wasm.Module
 makeModule tail_calls sym_map m = do

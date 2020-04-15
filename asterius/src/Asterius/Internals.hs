@@ -8,13 +8,12 @@ module Asterius.Internals
     reinterpretCast,
     showBS,
     c8BS,
-    (!),
+--     (!),
   )
 where
 
 import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Char8 as CBS
-import qualified Data.Map.Lazy as LM
 import Foreign
 import GHC.Exts
 import GHC.Stack
@@ -52,8 +51,8 @@ showBS = fromString . show
 c8BS :: BS.ByteString -> String
 c8BS = CBS.unpack
 
-{-# INLINE (!) #-}
-(!) :: (HasCallStack, Ord k, Show k) => LM.Map k v -> k -> v
-(!) m k = case LM.lookup k m of
-  Just v -> v
-  _ -> error $ show k <> " not found"
+-- {-# INLINE (!) #-}
+-- (!) :: (HasCallStack, Ord k, Show k) => LM.Map k v -> k -> v
+-- (!) m k = case LM.lookup k m of
+--   Just v -> v
+--   _ -> error $ show k <> " not found"

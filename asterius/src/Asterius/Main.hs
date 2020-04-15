@@ -29,10 +29,10 @@ import Asterius.Ld (rtsUsedSymbols)
 import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
-  ( EntitySymbol,
-    Module,
+  ( Module,
     entityName,
   )
+import Asterius.Types.EntitySymbolMap
 import qualified Binaryen
 import qualified Binaryen.Module as Binaryen
 import Control.Monad
@@ -46,7 +46,6 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
-import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.String
 import Foreign
@@ -144,14 +143,14 @@ genPackageJSON task =
   where
     base_name = string7 (outputBaseName task)
 
-genSymbolDict :: M.Map EntitySymbol Int64 -> Builder
+genSymbolDict :: EntitySymbolMap Int64 -> Builder
 genSymbolDict sym_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
           [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_idx
-            | (sym, sym_idx) <- M.toList sym_map
+            | (sym, sym_idx) <- toListESM sym_map
           ]
       )
     <> "})"
@@ -198,7 +197,7 @@ genReq task LinkReport {..} =
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
     symbol_table =
-      M.restrictKeys raw_symbol_table $
+      restrictKeysESM raw_symbol_table $
         S.fromList (extraRootSymbols task)
           <> rtsUsedSymbols
 

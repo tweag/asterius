@@ -34,9 +34,9 @@ import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
+import Asterius.Types.EntitySymbolMap
 import qualified Data.ByteString as BS
 import Data.Foldable
-import qualified Data.Map.Strict as Map
 import Data.String
 import Data.Word
 import qualified GhcPlugins as GHC
@@ -70,7 +70,7 @@ rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
     { staticsMap =
-        Map.fromList
+        fromListESM
           [ ( "MainCapability",
               AsteriusStatics
                 { staticsType = Bytes,
@@ -135,7 +135,7 @@ rtsAsteriusModule opts =
             )
           ],
       functionMap =
-        Map.fromList $
+        fromListESM $
           map
             (\(func_sym, (_, func)) -> (func_sym, func))
             ( byteStringCBits
@@ -838,7 +838,7 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
 generateWrapperModule :: AsteriusModule -> AsteriusModule
 generateWrapperModule m =
   m
-    { functionMap = Map.fromList $ map wrap $ Map.toList $ functionMap m
+    { functionMap = fromListESM $ map wrap $ toListESM $ functionMap m
     }
   where
     wrap (n, f) = (n <> "_wrapper", generateWrapperFunction n f)

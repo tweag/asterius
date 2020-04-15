@@ -14,9 +14,10 @@ import qualified Data.ByteString as BS
 import Data.Data
 import Data.String
 import qualified GhcPlugins as GHC
+import qualified Unique as GHC
 
 newtype EntitySymbol = EntitySymbol GHC.FastString
-  deriving newtype (Eq, Ord, Show, IsString, Semigroup, Monoid, GHC.Binary)
+  deriving newtype (Eq, Ord, Show, IsString, Semigroup, Monoid, GHC.Binary, GHC.Uniquable)
   deriving stock (Data)
 
 {-# INLINE entityName #-}

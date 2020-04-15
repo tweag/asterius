@@ -11,11 +11,12 @@ where
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
+import Asterius.Types.EntitySymbolMap
 import Data.Bits
 import qualified Data.ByteString as BS
 import Data.Foldable
-import Data.Map.Strict (Map)
-import qualified Data.Map.Strict as Map
+-- import Data.Map.Strict (Map)
+-- import qualified Data.Map.Strict as Map
 import Data.Monoid
 import Data.Tuple
 import GHC.Int
@@ -38,10 +39,10 @@ unTag = (.&. 0xFFFFFFFF)
 
 {-# INLINEABLE makeDataSymbolTable #-}
 makeDataSymbolTable ::
-  AsteriusModule -> Int64 -> (Map EntitySymbol Int64, Int64)
+  AsteriusModule -> Int64 -> (EntitySymbolMap Int64, Int64)
 makeDataSymbolTable AsteriusModule {..} l =
   swap $
-    Map.mapAccum
+    mapAccumESM
       ( \a ss -> (a + fromIntegral (fromIntegral (sizeofStatics ss) `roundup` 16), a)
       )
       l
@@ -50,14 +51,14 @@ makeDataSymbolTable AsteriusModule {..} l =
 {-# INLINEABLE makeMemory #-}
 makeMemory ::
   AsteriusModule ->
-  Map EntitySymbol Int64 ->
+  EntitySymbolMap Int64 ->
   Int64 ->
   (BinaryenIndex, [DataSegment])
 makeMemory AsteriusModule {..} sym_map last_addr =
   ( fromIntegral $
       (fromIntegral (unTag last_addr) `roundup` mblock_size)
         `quot` 65536,
-    Map.foldrWithKey'
+    foldrWithKeyESM
       ( \statics_sym ss@AsteriusStatics {..} statics_segs ->
           fst $
             foldr'
@@ -79,7 +80,7 @@ makeMemory AsteriusModule {..} sym_map last_addr =
                         SymbolStatic sym o ->
                           flush_static_segs
                             $ encodeStorable
-                            $ case Map.lookup sym sym_map of
+                            $ case lookupESM sym sym_map of
                               Just addr -> addr + fromIntegral o
                               _ -> invalidAddress
                         Uninitialized l ->
