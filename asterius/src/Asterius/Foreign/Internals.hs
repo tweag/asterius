@@ -14,7 +14,7 @@ where
 import Asterius.Foreign.SupportedTypes
 import Asterius.Internals.Name
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Asterius.TypesConv
 import Control.Monad.IO.Class
 import Data.IORef

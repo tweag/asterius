@@ -53,7 +53,7 @@ where
 import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
 import Asterius.Types.EntitySymbol
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import qualified Binary as GHC
 import Control.Exception
 import qualified Data.ByteString as BS
@@ -100,10 +100,10 @@ data AsteriusStatics
 
 data AsteriusModule
   = AsteriusModule
-      { staticsMap :: EntitySymbolMap AsteriusStatics,
-        staticsErrorMap :: EntitySymbolMap AsteriusCodeGenError,
-        functionMap :: EntitySymbolMap Function,
-        sptMap :: EntitySymbolMap (Word64, Word64),
+      { staticsMap :: SymbolMap AsteriusStatics,
+        staticsErrorMap :: SymbolMap AsteriusCodeGenError,
+        functionMap :: SymbolMap Function,
+        sptMap :: SymbolMap (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
   deriving (Show, Data)
@@ -570,8 +570,8 @@ data FFIExportDecl
 
 data FFIMarshalState
   = FFIMarshalState
-      { ffiImportDecls :: EntitySymbolMap FFIImportDecl,
-        ffiExportDecls :: EntitySymbolMap FFIExportDecl
+      { ffiImportDecls :: SymbolMap FFIImportDecl,
+        ffiExportDecls :: SymbolMap FFIExportDecl
       }
   deriving (Show, Data)
 

@@ -34,7 +34,7 @@ import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import qualified Data.ByteString as BS
 import Data.Foldable
 import Data.String

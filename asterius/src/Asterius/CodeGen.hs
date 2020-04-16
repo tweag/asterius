@@ -27,7 +27,7 @@ import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Asterius.TypesConv
 import qualified CLabel as GHC
 import qualified Cmm as GHC

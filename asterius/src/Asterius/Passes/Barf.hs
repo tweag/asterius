@@ -8,7 +8,7 @@ module Asterius.Passes.Barf
 where
 
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString as BS
@@ -32,7 +32,7 @@ processBarf sym f =
     w ::
       Data a =>
       a ->
-      State (Word64, EntitySymbolMap AsteriusStatics) a
+      State (Word64, SymbolMap AsteriusStatics) a
     w t = case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
       Just HRefl -> case t of
         Barf {..} -> do

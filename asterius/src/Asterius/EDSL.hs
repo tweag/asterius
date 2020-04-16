@@ -89,7 +89,7 @@ import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Bag
 import Control.Monad.State.Strict
 import qualified Data.ByteString as BS

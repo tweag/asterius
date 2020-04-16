@@ -9,7 +9,7 @@ module Asterius.Passes.GCSections
 where
 
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Data.Data
   ( Data,
     gmapQl,

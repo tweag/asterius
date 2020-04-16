@@ -27,7 +27,7 @@ import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Asterius.TypesConv
 import qualified Binaryen
 import qualified Binaryen.Expression
@@ -234,7 +234,7 @@ data MarshalEnv
       { -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
         -- | The symbol map for the current module.
-        envSymbolMap :: EntitySymbolMap Int64,
+        envSymbolMap :: SymbolMap Int64,
         -- | The current module reference.
         envModuleRef :: Binaryen.Module
       }
@@ -246,7 +246,7 @@ areTailCallsOn :: CodeGen Bool
 areTailCallsOn = reader envAreTailCallsOn
 
 -- | Retrieve the symbol map from the local environment.
-askSymbolMap :: CodeGen (EntitySymbolMap Int64)
+askSymbolMap :: CodeGen (SymbolMap Int64)
 askSymbolMap = reader envSymbolMap
 
 -- | Retrieve the reference to the current module.
@@ -590,7 +590,7 @@ marshalMemoryExport m MemoryExport {..} = flip runContT pure $ do
   lift $ Binaryen.addMemoryExport m inp enp
 
 marshalModule ::
-  Bool -> EntitySymbolMap Int64 -> Module -> IO Binaryen.Module
+  Bool -> SymbolMap Int64 -> Module -> IO Binaryen.Module
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
   m <- Binaryen.Module.create

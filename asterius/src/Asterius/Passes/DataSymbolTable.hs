@@ -11,7 +11,7 @@ where
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Data.Bits
 import qualified Data.ByteString as BS
 import Data.Foldable
@@ -39,7 +39,7 @@ unTag = (.&. 0xFFFFFFFF)
 
 {-# INLINEABLE makeDataSymbolTable #-}
 makeDataSymbolTable ::
-  AsteriusModule -> Int64 -> (EntitySymbolMap Int64, Int64)
+  AsteriusModule -> Int64 -> (SymbolMap Int64, Int64)
 makeDataSymbolTable AsteriusModule {..} l =
   swap $
     mapAccumESM
@@ -51,7 +51,7 @@ makeDataSymbolTable AsteriusModule {..} l =
 {-# INLINEABLE makeMemory #-}
 makeMemory ::
   AsteriusModule ->
-  EntitySymbolMap Int64 ->
+  SymbolMap Int64 ->
   Int64 ->
   (BinaryenIndex, [DataSegment])
 makeMemory AsteriusModule {..} sym_map last_addr =

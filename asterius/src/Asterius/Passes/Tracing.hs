@@ -14,7 +14,7 @@ import Asterius.EDSL
   )
 import Asterius.TypeInfer
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import qualified Data.ByteString as BS
 import Data.Char
 import Data.Data
@@ -29,7 +29,7 @@ import Type.Reflection
 {-# INLINEABLE addTracingModule #-}
 addTracingModule ::
   Monad m =>
-  EntitySymbolMap Int64 ->
+  SymbolMap Int64 ->
   EntitySymbol ->
   Function ->
   m Function

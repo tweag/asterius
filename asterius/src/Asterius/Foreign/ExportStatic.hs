@@ -9,14 +9,14 @@ where
 
 import Asterius.Foreign.SupportedTypes
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Data.Bits
 import Data.ByteString.Builder
 import Data.Foldable
 import Data.Int
 import Data.List
 
-genExportStaticObj :: FFIMarshalState -> EntitySymbolMap Int64 -> Builder
+genExportStaticObj :: FFIMarshalState -> SymbolMap Int64 -> Builder
 genExportStaticObj FFIMarshalState {..} sym_map =
   "["
     <> mconcat
@@ -31,7 +31,7 @@ genExportStaticObj FFIMarshalState {..} sym_map =
 genExportStaticFunc ::
   EntitySymbol ->
   FFIExportDecl ->
-  EntitySymbolMap Int64 ->
+  SymbolMap Int64 ->
   Builder
 genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
   "[\""

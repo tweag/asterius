@@ -8,16 +8,16 @@ where
 
 import Asterius.Binary.TH
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Data.Int
 import Data.Word
 
 data LinkReport
   = LinkReport
-      { staticsSymbolMap, functionSymbolMap :: EntitySymbolMap Int64,
+      { staticsSymbolMap, functionSymbolMap :: SymbolMap Int64,
         infoTableSet :: [Int64],
         tableSlots, staticMBlocks :: Int,
-        sptEntries :: EntitySymbolMap (Word64, Word64),
+        sptEntries :: SymbolMap (Word64, Word64),
         bundledFFIMarshalState :: FFIMarshalState
       }
   deriving (Show)

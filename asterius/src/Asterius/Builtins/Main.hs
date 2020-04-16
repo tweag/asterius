@@ -7,7 +7,7 @@ module Asterius.Builtins.Main
 where
 
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 -- import qualified Data.Map.Strict as M
 
 mainBuiltins :: AsteriusModule

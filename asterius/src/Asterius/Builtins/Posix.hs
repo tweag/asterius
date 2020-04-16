@@ -15,7 +15,7 @@ where
 import Asterius.EDSL
 import Asterius.Internals.Session
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Control.Exception
 import Control.Monad.IO.Class
 import qualified Data.ByteString as BS

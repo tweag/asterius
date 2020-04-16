@@ -32,7 +32,7 @@ import Asterius.Types
   ( Module,
     entityName,
   )
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import qualified Binaryen
 import qualified Binaryen.Module as Binaryen
 import Control.Monad
@@ -143,7 +143,7 @@ genPackageJSON task =
   where
     base_name = string7 (outputBaseName task)
 
-genSymbolDict :: EntitySymbolMap Int64 -> Builder
+genSymbolDict :: SymbolMap Int64 -> Builder
 genSymbolDict sym_map =
   "Object.freeze({"
     <> mconcat

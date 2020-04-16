@@ -5,15 +5,15 @@ module Asterius.JSGen.SPT
   )
 where
 
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Data.ByteString.Builder
 import Data.Int
 import Data.List
 import Data.Word
 
 genSPT ::
-  EntitySymbolMap Int64 ->
-  EntitySymbolMap (Word64, Word64) ->
+  SymbolMap Int64 ->
+  SymbolMap (Word64, Word64) ->
   Builder
 genSPT sym_map spt_entries =
   "new Map(["

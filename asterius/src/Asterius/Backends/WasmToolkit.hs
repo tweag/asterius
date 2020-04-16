@@ -27,7 +27,7 @@ import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
 import Asterius.TypeInfer
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Asterius.TypesConv
 import Bag
 import Control.Exception
@@ -416,7 +416,7 @@ data MarshalEnv
       { -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
         -- | The symbol map for the current module.
-        envSymbolMap :: EntitySymbolMap Int64,
+        envSymbolMap :: SymbolMap Int64,
         -- | The symbol table for the current module.
         envModuleSymbolTable :: ModuleSymbolTable,
         -- | The de Bruijn context. Used for label access.
@@ -430,7 +430,7 @@ areTailCallsOn :: MonadReader MarshalEnv m => m Bool
 areTailCallsOn = reader envAreTailCallsOn
 
 -- | Retrieve the symbol map from the local environment.
-askSymbolMap :: MonadReader MarshalEnv m => m (EntitySymbolMap Int64)
+askSymbolMap :: MonadReader MarshalEnv m => m (SymbolMap Int64)
 askSymbolMap = reader envSymbolMap
 
 -- | Retrieve the module symbol table from the local environment.
@@ -725,7 +725,7 @@ makeInstructionsMaybe m_expr = case m_expr of
 makeCodeSection ::
   MonadError MarshalError m =>
   Bool ->
-  EntitySymbolMap Int64 ->
+  SymbolMap Int64 ->
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
@@ -769,7 +769,7 @@ makeDataSection Module {..} _module_symtable = do
 makeModule ::
   MonadError MarshalError m =>
   Bool ->
-  EntitySymbolMap Int64 ->
+  SymbolMap Int64 ->
   Module ->
   m Wasm.Module
 makeModule tail_calls sym_map m = do

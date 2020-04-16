@@ -19,7 +19,7 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import Asterius.Types.LinkReport
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
@@ -33,7 +33,7 @@ unresolvedGlobalRegType gr = case gr of
   DoubleReg _ -> F64
   _ -> I64
 
-makeInfoTableSet :: AsteriusModule -> EntitySymbolMap Int64 -> [Int64]
+makeInfoTableSet :: AsteriusModule -> SymbolMap Int64 -> [Int64]
 makeInfoTableSet AsteriusModule {..} sym_map =
   elemsESM $ restrictKeysESM sym_map $ keysSetESM $
     filterESM
@@ -47,8 +47,8 @@ resolveAsteriusModule ::
   Int64 ->
   Int64 ->
   ( Module,
-    EntitySymbolMap Int64,
-    EntitySymbolMap Int64,
+    SymbolMap Int64,
+    SymbolMap Int64,
     Int,
     Int
   )

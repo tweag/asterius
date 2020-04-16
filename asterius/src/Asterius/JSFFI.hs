@@ -18,7 +18,7 @@ import Asterius.Foreign.SupportedTypes
 import Asterius.Foreign.TypesTag
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
-import Asterius.Types.EntitySymbolMap
+import Asterius.Types.SymbolMap
 import qualified CmmCallConv as GHC
 import qualified CmmExpr as GHC
 import qualified CmmNode as GHC
