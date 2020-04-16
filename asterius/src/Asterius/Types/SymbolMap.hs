@@ -168,7 +168,7 @@ mapWithKey fn = viaList (map (\(k,e) -> (k, fn k e))) -- TODO: how to avoid usin
 
 -- | /O(min(n,W))/. Insert a new key/value pair in the map. If the key is
 -- already present in the map, the associated value is replaced with the
--- supplied value, i.e. insert is equivalent to insertWith const.
+-- supplied value.
 insert :: EntitySymbol -> a -> SymbolMap a -> SymbolMap a
 insert k e (SymbolMap m) =
   SymbolMap $ IM.insert (getKey $ getUnique k) (k,e) m
