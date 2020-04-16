@@ -27,7 +27,7 @@ import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
 import Asterius.TypeInfer
 import Asterius.Types
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
 import Bag
 import Control.Exception
@@ -416,7 +416,7 @@ data MarshalEnv
       { -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
         -- | The symbol map for the current module.
-        envSymbolMap :: SymbolMap Int64,
+        envSymbolMap :: SM.SymbolMap Int64,
         -- | The symbol table for the current module.
         envModuleSymbolTable :: ModuleSymbolTable,
         -- | The de Bruijn context. Used for label access.
@@ -430,7 +430,7 @@ areTailCallsOn :: MonadReader MarshalEnv m => m Bool
 areTailCallsOn = reader envAreTailCallsOn
 
 -- | Retrieve the symbol map from the local environment.
-askSymbolMap :: MonadReader MarshalEnv m => m (SymbolMap Int64)
+askSymbolMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Int64)
 askSymbolMap = reader envSymbolMap
 
 -- | Retrieve the module symbol table from the local environment.
@@ -529,7 +529,7 @@ makeInstructions expr =
           pure $ unionManyBags xs `snocBag` Wasm.Call {callFunctionIndex = i}
         _ -> do
           sym_map <- askSymbolMap
-          if elemESM ("__asterius_barf_" <> target) sym_map
+          if SM.member ("__asterius_barf_" <> target) sym_map
             then makeInstructions $ barf target callReturnTypes
             else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
@@ -634,12 +634,12 @@ makeInstructions expr =
           Just i -> pure $
             unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `elemESM` sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
-        else case lookupESM returnCallTarget64 sym_map of
+        else case SM.lookup returnCallTarget64 sym_map of
           Just t -> makeInstructions
             Store
               { bytes = 8,
@@ -647,13 +647,13 @@ makeInstructions expr =
                 ptr =
                   ConstI32
                     $ fromIntegral
-                    $ (sym_map ! "__asterius_pc")
+                    $ (sym_map SM.! "__asterius_pc")
                       .&. 0xFFFFFFFF,
                 value = ConstI64 t,
                 valueType = I64
               }
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `elemESM` sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
@@ -682,7 +682,7 @@ makeInstructions expr =
               ptr =
                 ConstI32
                   $ fromIntegral
-                  $ (sym_map ! "__asterius_pc")
+                  $ (sym_map SM.! "__asterius_pc")
                     .&. 0xFFFFFFFF,
               value = returnCallIndirectTarget64,
               valueType = I64
@@ -698,12 +698,12 @@ makeInstructions expr =
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
       sym_map <- askSymbolMap
-      case lookupESM unresolvedSymbol sym_map of
+      case SM.lookup unresolvedSymbol sym_map of
         Just x -> pure $ unitBag Wasm.I64Const
           { i64ConstValue = x + fromIntegral symbolOffset
           }
         _
-          | ("__asterius_barf_" <> unresolvedSymbol) `elemESM` sym_map ->
+          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` sym_map ->
             makeInstructions $ barf unresolvedSymbol [I64]
           | otherwise -> pure $ unitBag Wasm.I64Const
             { i64ConstValue = invalidAddress
@@ -725,7 +725,7 @@ makeInstructionsMaybe m_expr = case m_expr of
 makeCodeSection ::
   MonadError MarshalError m =>
   Bool ->
-  SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
@@ -769,7 +769,7 @@ makeDataSection Module {..} _module_symtable = do
 makeModule ::
   MonadError MarshalError m =>
   Bool ->
-  SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
   Module ->
   m Wasm.Module
 makeModule tail_calls sym_map m = do

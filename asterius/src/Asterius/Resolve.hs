@@ -19,7 +19,7 @@ import Asterius.Passes.DataSymbolTable
 import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Types
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import Asterius.Types.LinkReport
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
@@ -33,10 +33,10 @@ unresolvedGlobalRegType gr = case gr of
   DoubleReg _ -> F64
   _ -> I64
 
-makeInfoTableSet :: AsteriusModule -> SymbolMap Int64 -> [Int64]
+makeInfoTableSet :: AsteriusModule -> SM.SymbolMap Int64 -> [Int64]
 makeInfoTableSet AsteriusModule {..} sym_map =
-  elemsESM $ restrictKeysESM sym_map $ keysSetESM $
-    filterESM
+  SM.elems $ SM.restrictKeys sym_map $ SM.keysSet $
+    SM.filter
       ((== InfoTable) . staticsType)
       staticsMap
 
@@ -47,8 +47,8 @@ resolveAsteriusModule ::
   Int64 ->
   Int64 ->
   ( Module,
-    SymbolMap Int64,
-    SymbolMap Int64,
+    SM.SymbolMap Int64,
+    SM.SymbolMap Int64,
     Int,
     Int
   )
@@ -65,7 +65,7 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
     new_function_map =
-      LM.mapKeys entityName $ toMapESM $ functionMap m_globals_resolved
+      LM.mapKeys entityName $ SM.toMap $ functionMap m_globals_resolved
     (initial_pages, segs) =
       makeMemory m_globals_resolved all_sym_map last_data_addr
     initial_mblocks =
@@ -134,7 +134,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
       | otherwise =
         merged_m1
           { staticsMap =
-              filterWithKeyESM
+              SM.filterWithKey
                 ( \sym _ ->
                     not
                       ( "__asterius_barf_"

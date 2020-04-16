@@ -18,7 +18,7 @@ import Asterius.Foreign.SupportedTypes
 import Asterius.Foreign.TypesTag
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import qualified CmmCallConv as GHC
 import qualified CmmExpr as GHC
 import qualified CmmNode as GHC
@@ -230,7 +230,7 @@ generateFFIWrapperModule :: GHC.DynFlags -> FFIMarshalState -> AsteriusModule
 generateFFIWrapperModule dflags mod_ffi_state@FFIMarshalState {..} =
   mempty
     { functionMap =
-        fromListESM
+        SM.fromList
           [ (k <> "_wrapper", wrapper_func)
             | (k, wrapper_func) <- import_wrapper_funcs
           ],
@@ -239,7 +239,7 @@ generateFFIWrapperModule dflags mod_ffi_state@FFIMarshalState {..} =
   where
     import_wrapper_funcs =
       [ (k, generateFFIImportWrapperFunction dflags k ffi_decl)
-        | (k, ffi_decl) <- toListESM ffiImportDecls
+        | (k, ffi_decl) <- SM.toList ffiImportDecls
       ]
 
 generateFFIFunctionImports :: FFIMarshalState -> [FunctionImport]
@@ -250,7 +250,7 @@ generateFFIFunctionImports FFIMarshalState {..} =
         externalBaseName = entityName k,
         functionType = recoverWasmImportFunctionType ffiSafety ffiFunctionType
       }
-    | (k, FFIImportDecl {..}) <- toListESM ffiImportDecls
+    | (k, FFIImportDecl {..}) <- SM.toList ffiImportDecls
   ]
 
 -- | Generate FFI import lambda
@@ -325,7 +325,7 @@ generateFFIImportObjectFactory FFIMarshalState {..} =
           [ byteString (entityName k)
               <> ":"
               <> generateFFIImportLambda ffi_decl
-            | (k, ffi_decl) <- toListESM ffiImportDecls
+            | (k, ffi_decl) <- SM.toList ffiImportDecls
           ]
       )
     <> "}})"

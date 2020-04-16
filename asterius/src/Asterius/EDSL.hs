@@ -89,7 +89,7 @@ import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import Bag
 import Control.Monad.State.Strict
 import qualified Data.ByteString as BS
@@ -160,7 +160,7 @@ runEDSL ::
   AsteriusModule
 runEDSL n (EDSL m) =
   m1
-    { staticsMap = fromListESM staticsBuf <> staticsMap m1
+    { staticsMap = SM.fromList staticsBuf <> staticsMap m1
     }
   where
     EDSLState {..} = execState m initialEDSLState

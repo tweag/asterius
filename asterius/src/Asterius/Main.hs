@@ -32,7 +32,7 @@ import Asterius.Types
   ( Module,
     entityName,
   )
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import qualified Binaryen
 import qualified Binaryen.Module as Binaryen
 import Control.Monad
@@ -143,14 +143,14 @@ genPackageJSON task =
   where
     base_name = string7 (outputBaseName task)
 
-genSymbolDict :: SymbolMap Int64 -> Builder
+genSymbolDict :: SM.SymbolMap Int64 -> Builder
 genSymbolDict sym_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
           [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_idx
-            | (sym, sym_idx) <- toListESM sym_map
+            | (sym, sym_idx) <- SM.toList sym_map
           ]
       )
     <> "})"
@@ -197,7 +197,7 @@ genReq task LinkReport {..} =
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
     symbol_table =
-      restrictKeysESM raw_symbol_table $
+      SM.restrictKeys raw_symbol_table $
         S.fromList (extraRootSymbols task)
           <> rtsUsedSymbols
 

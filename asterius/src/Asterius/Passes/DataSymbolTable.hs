@@ -11,7 +11,7 @@ where
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import Data.Bits
 import qualified Data.ByteString as BS
 import Data.Foldable
@@ -39,10 +39,10 @@ unTag = (.&. 0xFFFFFFFF)
 
 {-# INLINEABLE makeDataSymbolTable #-}
 makeDataSymbolTable ::
-  AsteriusModule -> Int64 -> (SymbolMap Int64, Int64)
+  AsteriusModule -> Int64 -> (SM.SymbolMap Int64, Int64)
 makeDataSymbolTable AsteriusModule {..} l =
   swap $
-    mapAccumESM
+    SM.mapAccum
       ( \a ss -> (a + fromIntegral (fromIntegral (sizeofStatics ss) `roundup` 16), a)
       )
       l
@@ -51,14 +51,14 @@ makeDataSymbolTable AsteriusModule {..} l =
 {-# INLINEABLE makeMemory #-}
 makeMemory ::
   AsteriusModule ->
-  SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
   Int64 ->
   (BinaryenIndex, [DataSegment])
 makeMemory AsteriusModule {..} sym_map last_addr =
   ( fromIntegral $
       (fromIntegral (unTag last_addr) `roundup` mblock_size)
         `quot` 65536,
-    foldrWithKeyESM
+    SM.foldrWithKey
       ( \statics_sym ss@AsteriusStatics {..} statics_segs ->
           fst $
             foldr'
@@ -80,7 +80,7 @@ makeMemory AsteriusModule {..} sym_map last_addr =
                         SymbolStatic sym o ->
                           flush_static_segs
                             $ encodeStorable
-                            $ case lookupESM sym sym_map of
+                            $ case SM.lookup sym sym_map of
                               Just addr -> addr + fromIntegral o
                               _ -> invalidAddress
                         Uninitialized l ->
@@ -88,7 +88,7 @@ makeMemory AsteriusModule {..} sym_map last_addr =
                         Serialized buf -> flush_static_segs buf
               )
               ( statics_segs,
-                fromIntegral $ unTag $ sym_map ! statics_sym + sizeofStatics ss
+                fromIntegral $ unTag $ sym_map SM.! statics_sym + sizeofStatics ss
               )
               asteriusStatics
       )

@@ -8,7 +8,7 @@ module Asterius.Passes.Barf
 where
 
 import Asterius.Types
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString as BS
@@ -25,14 +25,14 @@ processBarf :: EntitySymbol -> Function -> AsteriusModule
 processBarf sym f =
   mempty
     { staticsMap = sm,
-      functionMap = unitESM sym f'
+      functionMap = SM.singleton sym f'
     }
   where
-    (f', (_, sm)) = runState (w f) (0, emptyESM)
+    (f', (_, sm)) = runState (w f) (0, SM.empty)
     w ::
       Data a =>
       a ->
-      State (Word64, SymbolMap AsteriusStatics) a
+      State (Word64, SM.SymbolMap AsteriusStatics) a
     w t = case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
       Just HRefl -> case t of
         Barf {..} -> do
@@ -49,7 +49,7 @@ processBarf sym f =
                           <> "\0"
                     ]
                 }
-          put (succ i, insertESM i_sym ss sm_acc)
+          put (succ i, SM.insert i_sym ss sm_acc)
           pure Block
             { name = BS.empty,
               bodys =

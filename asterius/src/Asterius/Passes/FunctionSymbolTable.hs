@@ -7,20 +7,20 @@ module Asterius.Passes.FunctionSymbolTable
 where
 
 import Asterius.Types
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import Data.Bits
 import Data.Int
 import Data.Tuple
 
 {-# INLINEABLE makeFunctionSymbolTable #-}
 makeFunctionSymbolTable ::
-  AsteriusModule -> Int64 -> (SymbolMap Int64, Int64)
+  AsteriusModule -> Int64 -> (SM.SymbolMap Int64, Int64)
 makeFunctionSymbolTable AsteriusModule {..} func_start_addr =
-  swap $ mapAccumESM (\a _ -> (succ a, a)) func_start_addr functionMap
+  swap $ SM.mapAccum (\a _ -> (succ a, a)) func_start_addr functionMap
 
 {-# INLINEABLE makeFunctionTable #-}
-makeFunctionTable :: SymbolMap Int64 -> Int64 -> FunctionTable
+makeFunctionTable :: SM.SymbolMap Int64 -> Int64 -> FunctionTable
 makeFunctionTable func_sym_map func_start_addr = FunctionTable
-  { tableFunctionNames = map entityName $ keysESM func_sym_map,
+  { tableFunctionNames = map entityName $ SM.keys func_sym_map,
     tableOffset = fromIntegral $ func_start_addr .&. 0xFFFFFFFF
   }

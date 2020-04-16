@@ -27,25 +27,25 @@
 
 module Asterius.Types.SymbolMap
   ( SymbolMap
-  , emptyESM
-  , unitESM
-  , elemESM
-  , elemsESM
-  , lookupESM
-  , fromListESM
-  , toListESM
+  , empty
+  , singleton
+  , member
+  , elems
+  , lookup
+  , fromList
+  , toList
   , (!)
-  , filterWithKeyESM
-  , filterESM
-  , mapWithKeyESM
-  , insertESM
-  , restrictKeysESM
-  , keysSetESM
-  , keysESM
-  , mapAccumESM
-  , foldrWithKeyESM
-  , mapKeysESM
-  , toMapESM
+  , filterWithKey
+  , filter
+  , mapWithKey
+  , insert
+  , restrictKeys
+  , keysSet
+  , keys
+  , mapAccum
+  , foldrWithKey
+  , mapKeys
+  , toMap
   )
 where
 
@@ -59,6 +59,7 @@ import qualified Data.Map as Map
 import Data.List (mapAccumL, sort)
 import GHC.Exts (IsList(..))
 import Asterius.Binary.Orphans ()
+import Prelude hiding (lookup, filter)
 
 -- ----------------------------------------------------------------------------
 
@@ -74,17 +75,17 @@ newtype SymbolMap elt = SymbolMap (UniqFM (EntitySymbol, elt))
 
 instance (Show elt) => Show (SymbolMap elt) where
   showsPrec d m = showParen (d > 10) $
-    showString "fromList " . shows (toListESM m)
+    showString "fromList " . shows (toList m)
 
 instance Semigroup (SymbolMap elt) where
   SymbolMap m1 <> SymbolMap m2 = SymbolMap $ m1 <> m2
 
 instance Monoid (SymbolMap elt) where
-  mempty = emptyESM
+  mempty = empty
 
 instance Binary elt => Binary (SymbolMap elt) where
-  put_ bh m = put_ bh (toMapESM m)
-  get bh = fromMapESM <$> get bh
+  put_ bh m = put_ bh (toMap m)
+  get bh = fromMap <$> get bh
 
 -- Current HEAD (4187adb8d09933ac119269d5c3b020d96c8551fc)
 -- does everything in ascending order. Is that of importance?
@@ -104,46 +105,46 @@ instance Binary elt => Binary (SymbolMap elt) where
 
 instance IsList (SymbolMap elt) where
   type Item (SymbolMap elt) = (EntitySymbol, elt)
-  fromList = fromListESM
-  toList = toListESM
+  fromList = fromListSM
+  toList = toListSM
 
 -- ----------------------------------------------------------------------------
 
-{-# INLINE unitESM #-}
-unitESM :: EntitySymbol -> elt -> SymbolMap elt
-unitESM k e = SymbolMap $ unitUFM k (k,e)
+{-# INLINE singleton #-}
+singleton :: EntitySymbol -> elt -> SymbolMap elt
+singleton k e = SymbolMap $ unitUFM k (k,e)
 
-{-# INLINE emptyESM #-}
-emptyESM :: SymbolMap elt
-emptyESM = SymbolMap emptyUFM
+{-# INLINE empty #-}
+empty :: SymbolMap elt
+empty = SymbolMap emptyUFM
 
-{-# INLINE elemESM #-}
-elemESM :: EntitySymbol -> SymbolMap elt -> Bool
-elemESM k (SymbolMap m) = elemUFM k m
+{-# INLINE member #-}
+member :: EntitySymbol -> SymbolMap elt -> Bool
+member k (SymbolMap m) = elemUFM k m
 
 -- | TODO: Improve implementation.
-elemsESM :: SymbolMap elt -> [elt]
-elemsESM (SymbolMap m) = map snd $ eltsUFM m
+elems :: SymbolMap elt -> [elt]
+elems (SymbolMap m) = map snd $ eltsUFM m
 
-{-# INLINE lookupESM #-}
-lookupESM :: EntitySymbol -> SymbolMap elt -> Maybe elt
-lookupESM k (SymbolMap m) = snd <$> lookupUFM m k
+{-# INLINE lookup #-}
+lookup :: EntitySymbol -> SymbolMap elt -> Maybe elt
+lookup k (SymbolMap m) = snd <$> lookupUFM m k
 
 -- | TODO: reduce usage.
-{-# INLINE fromListESM #-}
-fromListESM :: [(EntitySymbol, elt)] -> SymbolMap elt
-fromListESM = SymbolMap
+{-# INLINE fromListSM #-}
+fromListSM :: [(EntitySymbol, elt)] -> SymbolMap elt
+fromListSM = SymbolMap
             . listToUFM
             . map (\(k,e) -> (k,(k,e)))
 
 -- | TODO: reduce usage.
-{-# INLINE toListESM #-}
-toListESM :: SymbolMap elt -> [(EntitySymbol, elt)]
-toListESM (SymbolMap m) = eltsUFM m
+{-# INLINE toListSM #-}
+toListSM :: SymbolMap elt -> [(EntitySymbol, elt)]
+toListSM (SymbolMap m) = eltsUFM m
 
 infixl 9 !
 (!) :: HasCallStack => SymbolMap elt -> EntitySymbol -> elt
-(!) m k = case lookupESM k m of
+(!) m k = case lookup k m of
   Just e -> e
   Nothing -> error "SymbolMap.!: given key is not an element in the map"
 
@@ -151,71 +152,62 @@ infixl 9 !
 viaList ::
   ([(EntitySymbol, elt1)] -> [(EntitySymbol, elt2)]) ->
   (SymbolMap elt1 -> SymbolMap elt2)
-viaList f = fromListESM . f . toListESM
+viaList f = fromList . f . toList
 
-filterWithKeyESM ::
-  (EntitySymbol -> elt -> Bool) ->
-  SymbolMap elt ->
-  SymbolMap elt
-filterWithKeyESM f (SymbolMap m) =
-  SymbolMap $ filterUFM (uncurry f) m
+filterWithKey :: (EntitySymbol -> a -> Bool) -> SymbolMap a -> SymbolMap a
+filterWithKey f (SymbolMap m) = SymbolMap $ filterUFM (uncurry f) m
 
 -- | TODO: reduce usage.
-restrictKeysESM ::
-  SymbolMap elt -> Set.Set EntitySymbol -> SymbolMap elt
-restrictKeysESM m s = filterWithKeyESM (\k _ -> k `Set.member` s) m
+restrictKeys :: SymbolMap elt -> Set.Set EntitySymbol -> SymbolMap elt
+restrictKeys m s = filterWithKey (\k _ -> k `Set.member` s) m
 
-mapWithKeyESM ::
-  (EntitySymbol -> a -> b) ->
-  SymbolMap a ->
-  SymbolMap b
-mapWithKeyESM fn = viaList (map (\(k,e) -> (k, fn k e)))
+mapWithKey :: (EntitySymbol -> a -> b) -> SymbolMap a -> SymbolMap b
+mapWithKey fn = viaList (map (\(k,e) -> (k, fn k e)))
 
-insertESM :: EntitySymbol -> elt -> SymbolMap elt -> SymbolMap elt
-insertESM k e (SymbolMap m) = SymbolMap $ addToUFM m k (k,e)
+insert :: EntitySymbol -> elt -> SymbolMap elt -> SymbolMap elt
+insert k e (SymbolMap m) = SymbolMap $ addToUFM m k (k,e)
 
 -- | TODO: Notice that this one uses the 'Ord' instance for 'EntitySymbol'
 -- (because it calls 'Set.fromList'). TODO: Reduce usage.
-keysSetESM :: SymbolMap elt -> Set.Set EntitySymbol
-keysSetESM (SymbolMap m) = Set.fromList $ map fst $ eltsUFM m
+keysSet :: SymbolMap elt -> Set.Set EntitySymbol
+keysSet (SymbolMap m) = Set.fromList $ map fst $ eltsUFM m
 
 -- | TODO: Notice that this one uses the 'Ord' instance for 'EntitySymbol'
 -- (because it calls 'sort', to ensure that the resulting keys are in ascending
 -- order, to match the semantics of the corresponding function for maps). TODO:
 -- Reduce usage.
-keysESM :: SymbolMap elt -> [EntitySymbol]
-keysESM (SymbolMap m) = sort $ map fst $ eltsUFM m
+keys :: SymbolMap elt -> [EntitySymbol]
+keys (SymbolMap m) = sort $ map fst $ eltsUFM m
 
 -- | TODO: Reduce usage.
-mapAccumESM :: (a -> b -> (a, c)) -> a -> SymbolMap b -> (a, SymbolMap c)
-mapAccumESM f a m
-  | (keys, elts) <- unzip $ toListESM m
+mapAccum :: (a -> b -> (a, c)) -> a -> SymbolMap b -> (a, SymbolMap c)
+mapAccum f a m
+  | (ks, elts) <- unzip $ toList m
   , (acc, list)  <- mapAccumL f a elts
-  = (acc, fromListESM $ keys `zip` list)
+  = (acc, fromList $ ks `zip` list)
 
 -- | TODO: Reduce usage. GEORGE: What about a strict variant?
-foldrWithKeyESM :: (EntitySymbol -> a -> b -> b) -> b -> SymbolMap a -> b
-foldrWithKeyESM fn z = foldr (\(k,a) b -> fn k a b) z . toListESM
+foldrWithKey :: (EntitySymbol -> a -> b -> b) -> b -> SymbolMap a -> b
+foldrWithKey fn z = foldr (\(k,a) b -> fn k a b) z . toList
 
 -- | TODO: Reduce usage.
-{-# INLINE filterESM #-}
-filterESM :: (elt -> Bool) -> SymbolMap elt -> SymbolMap elt
-filterESM p (SymbolMap m) = SymbolMap $ filterUFM (p . snd) m
+{-# INLINE filter #-}
+filter :: (elt -> Bool) -> SymbolMap elt -> SymbolMap elt
+filter p (SymbolMap m) = SymbolMap $ filterUFM (p . snd) m
 
 -- | TODO: This looks like a very dangerous function to me. I'd prefer if we
 -- didn't have to use it in the first place (whether it is custom or if it
 -- comes from @Data.Map@).
-mapKeysESM ::
-  (EntitySymbol -> EntitySymbol) -> SymbolMap elt -> SymbolMap elt
-mapKeysESM fn = viaList (map (\(k,e) -> (fn k, e)))
+mapKeys :: (EntitySymbol -> EntitySymbol) -> SymbolMap elt -> SymbolMap elt
+mapKeys fn = viaList (map (\(k,e) -> (fn k, e)))
 
 -- | TODO: Reduce usage.
-{-# INLINE toMapESM #-}
-toMapESM :: SymbolMap elt -> Map.Map EntitySymbol elt
-toMapESM = Map.fromList . toListESM
+{-# INLINE toMap #-}
+toMap :: SymbolMap elt -> Map.Map EntitySymbol elt
+toMap = Map.fromList . toList
 
 -- | TODO: Reduce usage.
-{-# INLINE fromMapESM #-}
-fromMapESM :: Map.Map EntitySymbol elt -> SymbolMap elt
-fromMapESM = fromListESM . Map.toList
+{-# INLINE fromMap #-}
+fromMap :: Map.Map EntitySymbol elt -> SymbolMap elt
+fromMap = fromList . Map.toList
 

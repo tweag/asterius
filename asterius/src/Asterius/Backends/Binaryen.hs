@@ -27,7 +27,7 @@ import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Types
-import Asterius.Types.SymbolMap
+import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
 import qualified Binaryen
 import qualified Binaryen.Expression
@@ -234,7 +234,7 @@ data MarshalEnv
       { -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
         -- | The symbol map for the current module.
-        envSymbolMap :: SymbolMap Int64,
+        envSymbolMap :: SM.SymbolMap Int64,
         -- | The current module reference.
         envModuleRef :: Binaryen.Module
       }
@@ -246,7 +246,7 @@ areTailCallsOn :: CodeGen Bool
 areTailCallsOn = reader envAreTailCallsOn
 
 -- | Retrieve the symbol map from the local environment.
-askSymbolMap :: CodeGen (SymbolMap Int64)
+askSymbolMap :: CodeGen (SM.SymbolMap Int64)
 askSymbolMap = reader envSymbolMap
 
 -- | Retrieve the reference to the current module.
@@ -292,7 +292,7 @@ marshalExpression e = case e of
       lift $ Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     sym_map <- askSymbolMap
-    if  | target `elemESM` sym_map ->
+    if  | target `SM.member` sym_map ->
           do
             os <-
               mapM
@@ -311,7 +311,7 @@ marshalExpression e = case e of
               tp <- marshalBS (entityName target)
               rts <- lift $ marshalReturnTypes callReturnTypes
               lift $ Binaryen.call m tp ops (fromIntegral osl) rts
-        | ("__asterius_barf_" <> target) `elemESM` sym_map ->
+        | ("__asterius_barf_" <> target) `SM.member` sym_map ->
           marshalExpression $ barf target callReturnTypes
         | otherwise -> do
           m <- askModuleRef
@@ -396,7 +396,7 @@ marshalExpression e = case e of
     -- Case 2: Tail calls are off
     False -> do
       sym_map <- askSymbolMap
-      case lookupESM returnCallTarget64 sym_map of
+      case SM.lookup returnCallTarget64 sym_map of
         Just t -> do
           s <-
             marshalExpression
@@ -406,7 +406,7 @@ marshalExpression e = case e of
                   ptr =
                     ConstI32
                       $ fromIntegral
-                      $ (sym_map ! "__asterius_pc")
+                      $ (sym_map SM.! "__asterius_pc")
                         .&. 0xFFFFFFFF,
                   value = ConstI64 t,
                   valueType = I64
@@ -443,7 +443,7 @@ marshalExpression e = case e of
               ptr =
                 ConstI32
                   $ fromIntegral
-                  $ (sym_map ! "__asterius_pc")
+                  $ (sym_map SM.! "__asterius_pc")
                     .&. 0xFFFFFFFF,
               value = returnCallIndirectTarget64,
               valueType = I64
@@ -469,10 +469,10 @@ marshalExpression e = case e of
   Symbol {..} -> do
     sym_map <- askSymbolMap
     m <- askModuleRef
-    case lookupESM unresolvedSymbol sym_map of
+    case SM.lookup unresolvedSymbol sym_map of
       Just x -> lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
       _
-        | ("__asterius_barf_" <> unresolvedSymbol) `elemESM` sym_map ->
+        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` sym_map ->
           marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
@@ -590,7 +590,7 @@ marshalMemoryExport m MemoryExport {..} = flip runContT pure $ do
   lift $ Binaryen.addMemoryExport m inp enp
 
 marshalModule ::
-  Bool -> SymbolMap Int64 -> Module -> IO Binaryen.Module
+  Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
   m <- Binaryen.Module.create
