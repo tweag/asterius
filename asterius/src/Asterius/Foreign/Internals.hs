@@ -89,7 +89,8 @@ processFFIImport ::
 processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ (GHC.CFunction _) (GHC.unLoc -> GHC.SourceText src)) =
   do
     dflags <- GHC.getDynFlags
-    mod_sym <- marshalToModuleSymbol <$> GHC.getModule
+    the_mod <- GHC.getModule
+    let mod_sym = marshalToModuleSymbol the_mod
     u <- GHC.getUniqueM
     let ffi_ftype = case parseFFIFunctionType True norm_sig_ty of
           Just r -> r
@@ -106,7 +107,7 @@ processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> 
         ffi_src_text = read src
         new_k =
           ffi_safety_prefix
-            <> zEncodeModuleSymbol mod_sym
+            <> zEncodeModule the_mod
             <> "_"
             <> asmPpr dflags u
         new_decl =

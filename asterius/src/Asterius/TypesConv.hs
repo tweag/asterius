@@ -4,7 +4,7 @@
 
 module Asterius.TypesConv
   ( marshalToModuleSymbol,
-    zEncodeModuleSymbol,
+    zEncodeModule,
     generateWasmFunctionTypeSet,
     asmPpr,
     asmPrint,
@@ -30,15 +30,20 @@ marshalToModuleSymbol (GHC.Module u m) = AsteriusModuleSymbol
       CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
   }
 
-{-# INLINE zEncodeModuleSymbol #-}
-zEncodeModuleSymbol :: AsteriusModuleSymbol -> String
-zEncodeModuleSymbol AsteriusModuleSymbol {..} =
+{-# INLINE zEncodeModule #-}
+zEncodeModule :: GHC.Module -> String
+zEncodeModule (GHC.Module u m) =
   GHC.zString
     $ GHC.zEncodeFS
     $ GHC.mkFastStringByteString
     $ unitId
       <> "_"
       <> CBS.intercalate "." moduleName
+  where
+    unitId = GHC.fs_bs $ GHC.unitIdFS u
+    moduleName =
+      CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
+
 
 {-# INLINE generateWasmFunctionTypeSet #-}
 generateWasmFunctionTypeSet :: Module -> Set.Set FunctionType
