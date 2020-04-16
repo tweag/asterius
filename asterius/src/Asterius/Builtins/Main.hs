@@ -7,7 +7,7 @@ module Asterius.Builtins.Main
 where
 
 import Asterius.Types
-import qualified Data.Map.Strict as M
+import qualified Asterius.Types.SymbolMap as SM
 
 mainBuiltins :: AsteriusModule
 mainBuiltins =
@@ -15,7 +15,7 @@ mainBuiltins =
     { ffiMarshalState =
         mempty
           { ffiExportDecls =
-              M.singleton
+              SM.singleton
                 "main"
                 FFIExportDecl
                   { ffiFunctionType =

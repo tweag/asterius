@@ -14,6 +14,7 @@ where
 import Asterius.Foreign.SupportedTypes
 import Asterius.Internals.Name
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
 import Control.Monad.IO.Class
 import Data.IORef
@@ -121,11 +122,11 @@ processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> 
           Just
             ffi_state
               { ffiImportDecls =
-                  M.insert (fromString new_k) new_decl $
+                  SM.insert (fromString new_k) new_decl $
                     ffiImportDecls ffi_state
               }
         alter_hook_state _ =
-          Just mempty {ffiImportDecls = M.singleton (fromString new_k) new_decl}
+          Just mempty {ffiImportDecls = SM.singleton (fromString new_k) new_decl}
     liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
       ( hook_state
           { ffiHookState =
@@ -173,10 +174,10 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
         alter_hook_state (Just ffi_state) =
           Just
             ffi_state
-              { ffiExportDecls = M.insert new_k new_decl $ ffiExportDecls ffi_state
+              { ffiExportDecls = SM.insert new_k new_decl $ ffiExportDecls ffi_state
               }
         alter_hook_state _ =
-          Just mempty {ffiExportDecls = M.singleton new_k new_decl}
+          Just mempty {ffiExportDecls = SM.singleton new_k new_decl}
     liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
       ( hook_state
           { ffiHookState =

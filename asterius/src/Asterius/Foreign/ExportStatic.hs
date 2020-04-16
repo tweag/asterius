@@ -8,24 +8,22 @@ module Asterius.Foreign.ExportStatic
 where
 
 import Asterius.Foreign.SupportedTypes
-import Asterius.Internals ((!))
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Data.Bits
 import Data.ByteString.Builder
 import Data.Foldable
 import Data.Int
 import Data.List
-import qualified Data.Map.Strict as M
 
-genExportStaticObj ::
-  FFIMarshalState -> M.Map EntitySymbol Int64 -> Builder
+genExportStaticObj :: FFIMarshalState -> SM.SymbolMap Int64 -> Builder
 genExportStaticObj FFIMarshalState {..} sym_map =
   "["
     <> mconcat
       ( intersperse
           ","
           [ genExportStaticFunc k export_decl sym_map
-            | (k, export_decl) <- M.toList ffiExportDecls
+            | (k, export_decl) <- SM.toList ffiExportDecls
           ]
       )
     <> "]"
@@ -33,13 +31,13 @@ genExportStaticObj FFIMarshalState {..} sym_map =
 genExportStaticFunc ::
   EntitySymbol ->
   FFIExportDecl ->
-  M.Map EntitySymbol Int64 ->
+  SM.SymbolMap Int64 ->
   Builder
 genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
   "[\""
     <> byteString (entityName k)
     <> "\",0x"
-    <> int64HexFixed (sym_map ! ffiExportClosure)
+    <> int64HexFixed (sym_map SM.! ffiExportClosure)
     <> ",0x"
     <> int64HexFixed (encodeTys ffiParamTypes)
     <> ",0x"

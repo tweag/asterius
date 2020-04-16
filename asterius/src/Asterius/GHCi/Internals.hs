@@ -19,13 +19,13 @@ import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.BuildInfo
 import Asterius.CodeGen
-import Asterius.Internals ((!))
 import Asterius.Internals.Name
 import Asterius.Internals.Temp
 import Asterius.JSRun.NonMain
 import Asterius.Ld
 import Asterius.Resolve
 import Asterius.Types
+import Asterius.Types.SymbolMap
 import Asterius.TypesConv
 import qualified BasicTypes as GHC
 import qualified CLabel as GHC

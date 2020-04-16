@@ -27,6 +27,7 @@ import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
 import qualified CLabel as GHC
 import qualified Cmm as GHC
@@ -1586,8 +1587,8 @@ marshalCmmDecl decl = case decl of
     sym <- marshalCLabel clbl
     r <- unCodeGen $ marshalCmmData sym sec d
     pure $ case r of
-      Left err -> mempty {staticsErrorMap = M.fromList [(sym, err)]}
-      Right ass -> mempty {staticsMap = M.fromList [(sym, ass)]}
+      Left err -> mempty {staticsErrorMap = SM.fromList [(sym, err)]}
+      Right ass -> mempty {staticsMap = SM.fromList [(sym, ass)]}
   GHC.CmmProc _ clbl _ g -> do
     sym <- marshalCLabel clbl
     r <- unCodeGen $ marshalCmmProc g
@@ -1607,7 +1608,7 @@ marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
 marshalHaskellIR this_mod HaskellIR {..} = do
   (dflags, _) <- ask
   let spt_map =
-        M.fromList
+        SM.fromList
           [ (sym, (w0, w1))
             | GHC.SptEntry (idClosureSymbol dflags -> sym) (Fingerprint w0 w1) <-
                 sptEntries

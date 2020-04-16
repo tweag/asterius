@@ -15,11 +15,11 @@ where
 import Asterius.EDSL
 import Asterius.Internals.Session
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Control.Exception
 import Control.Monad.IO.Class
 import qualified Data.ByteString as BS
 import Data.Foldable
-import qualified Data.Map.Strict as M
 import qualified DynFlags as GHC
 import qualified FastString as GHC
 import Foreign
@@ -201,7 +201,7 @@ posixFstatGetters :: AsteriusModule
 posixFstatGetters =
   mempty
     { functionMap =
-        M.fromList
+        SM.fromList
           [ ( k,
               Function
                 { functionType =
@@ -227,7 +227,7 @@ posixModeGetters :: AsteriusModule
 posixModeGetters =
   mempty
     { functionMap =
-        M.fromList
+        SM.fromList
           [ ( k,
               Function
                 { functionType =
@@ -258,7 +258,7 @@ posixConstants :: AsteriusModule
 posixConstants =
   mempty
     { functionMap =
-        M.fromList
+        SM.fromList
           [ ( k,
               Function
                 { functionType =
@@ -357,7 +357,7 @@ posixDirentBuf :: AsteriusModule
 posixDirentBuf =
   mempty
     { staticsMap =
-        M.singleton
+        SM.singleton
           "__asterius_posix_dirent_buf"
           AsteriusStatics
             { staticsType = Bytes,
@@ -403,7 +403,7 @@ posixGetenvBuf :: AsteriusModule
 posixGetenvBuf =
   mempty
     { staticsMap =
-        M.singleton
+        SM.singleton
           "__asterius_posix_getenv_buf"
           AsteriusStatics
             { staticsType = Bytes,

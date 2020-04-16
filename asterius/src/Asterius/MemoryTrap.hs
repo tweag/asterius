@@ -9,16 +9,16 @@ module Asterius.MemoryTrap
 where
 
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Data.Data
   ( Data,
     gmapT,
   )
-import qualified Data.Map.Strict as M
 import Type.Reflection
 
 addMemoryTrap :: AsteriusModule -> AsteriusModule
 addMemoryTrap m =
-  let new_function_map = M.mapWithKey addMemoryTrapDeep (functionMap m)
+  let new_function_map = SM.mapWithKey addMemoryTrapDeep (functionMap m)
    in m {functionMap = new_function_map}
 
 addMemoryTrapDeep :: Data a => EntitySymbol -> a -> a
