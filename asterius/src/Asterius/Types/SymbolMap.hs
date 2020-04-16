@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -38,7 +39,7 @@ module Asterius.Types.SymbolMap
     restrictKeys,
 
     -- * Folds and Maps
-    foldrWithKey,
+    foldrWithKey',
     mapWithKey,
     mapAccum,
     mapKeys,
@@ -64,7 +65,7 @@ import Binary
 import Control.Monad
 import Data.Data
 import qualified Data.IntMap as IM
-import Data.List (mapAccumL)
+import qualified Data.IntSet as IS
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import GHC.Exts (IsList (..))
@@ -156,12 +157,14 @@ filterWithKey :: (EntitySymbol -> a -> Bool) -> SymbolMap a -> SymbolMap a
 filterWithKey p (SymbolMap m) = SymbolMap $ IM.filter (uncurry p) m
 
 -- | The restriction of a map to the keys in a set.
-restrictKeys :: SymbolMap a -> Set.Set EntitySymbol -> SymbolMap a -- TODO: calculate perf (not /O(n+m)/)
-restrictKeys m s = filterWithKey (\k _ -> k `Set.member` s) m -- TODO: improve implementation?
+restrictKeys :: SymbolMap a -> Set.Set EntitySymbol -> SymbolMap a
+restrictKeys (SymbolMap m) s =
+  SymbolMap $ IM.restrictKeys m (IS.fromList $ map (getKey . getUnique) $ Set.toList s)
 
 -- | /O(n)/. Map a function over all values in the map.
 mapWithKey :: (EntitySymbol -> a -> b) -> SymbolMap a -> SymbolMap b
-mapWithKey fn = viaList (map (\(k, e) -> (k, fn k e))) -- TODO: how to avoid using viaList?
+mapWithKey fn (SymbolMap m) =
+  SymbolMap $ IM.mapWithKey (\_ (k, e) -> (k, fn k e)) m
 
 -- | /O(min(n,W))/. Insert a new key/value pair in the map. If the key is
 -- already present in the map, the associated value is replaced with the
@@ -184,15 +187,15 @@ keys (SymbolMap m) = map fst $ IM.elems m
 -- | /O(n)/. Thread an accumulating argument through the map, in ascending
 -- order of keys of uniques on the 'EntitySymbol' keys.
 mapAccum :: (a -> b -> (a, c)) -> a -> SymbolMap b -> (a, SymbolMap c)
-mapAccum f a m
-  | (ks, elts) <- unzip $ toListSM m,
-    (acc, list) <- mapAccumL f a elts = -- TODO: reduce usage?
-    (acc, fromListSM $ ks `zip` list) -- TODO: Use the underlying mapAccum directly somehow?
+mapAccum f z (SymbolMap m) =
+  SymbolMap <$> IM.mapAccum (\a (k, e) -> fmap (k,) $ f a e) z m
 
 -- | /O(n)/. Fold the keys and values in the map using the given
--- right-associative binary operator.
-foldrWithKey :: (EntitySymbol -> a -> b -> b) -> b -> SymbolMap a -> b -- TODO: what about a strict variant?
-foldrWithKey fn z = foldr (\(k, a) b -> fn k a b) z . toListSM -- TODO: how to avoid using toList?
+-- right-associative binary operator. This is a strict variant: each
+-- application of the operator is evaluated before using the result in the next
+-- application. This function is strict in the starting value.
+foldrWithKey' :: (EntitySymbol -> a -> b -> b) -> b -> SymbolMap a -> b
+foldrWithKey' f z (SymbolMap m) = IM.foldrWithKey (\_ (k, e) b -> f k e b) z m
 
 -- | /O(n)/. Filter all values that satisfy a predicate.
 {-# INLINE filter #-}
@@ -203,8 +206,12 @@ filter p (SymbolMap m) = SymbolMap $ IM.filter (p . snd) m
 -- result may be smaller if two old 'EntitySymbol's are mapped to the same new
 -- 'EntitySymbol'. In this case the value at the greates of the original keys
 -- is retained.
-mapKeys :: (EntitySymbol -> EntitySymbol) -> SymbolMap a -> SymbolMap a -- TODO: do we really need this function?
-mapKeys fn = viaList (map (\(k, e) -> (fn k, e))) -- TODO: how to avoid using viaList?
+mapKeys :: (EntitySymbol -> EntitySymbol) -> SymbolMap a -> SymbolMap a
+mapKeys fn = fromListSM . (map (\(k, e) -> (fn k, e))) . toListSM
+
+-- GEORGE: Given that EntitySymbol appears both in a co- and a contra- variant
+-- position in the function, there is no direct way to utilize IM.mapKeys for
+-- implementing mapKeys (getUnique is irreversible). TODO: reduce usage.
 
 -- ----------------------------------------------------------------------------
 
@@ -230,11 +237,3 @@ toMap = Map.fromList . toListSM
 {-# INLINE fromMap #-}
 fromMap :: Map.Map EntitySymbol a -> SymbolMap a
 fromMap = fromListSM . Map.toList
-
--- ----------------------------------------------------------------------------
-
--- | TODO: reduce usage.
-viaList ::
-  ([(EntitySymbol, a)] -> [(EntitySymbol, b)]) ->
-  (SymbolMap a -> SymbolMap b)
-viaList f = fromListSM . f . toListSM

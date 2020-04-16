@@ -58,7 +58,7 @@ makeMemory AsteriusModule {..} sym_map last_addr =
   ( fromIntegral $
       (fromIntegral (unTag last_addr) `roundup` mblock_size)
         `quot` 65536,
-    SM.foldrWithKey
+    SM.foldrWithKey'
       ( \statics_sym ss@AsteriusStatics {..} statics_segs ->
           fst $
             foldr'
