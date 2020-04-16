@@ -26,6 +26,9 @@ module Asterius.Types.SymbolMap
     lookup,
     (!),
 
+    -- * Size
+    size,
+
     -- * Insertion
     insert,
 
@@ -131,6 +134,11 @@ empty = SymbolMap IM.empty
 {-# INLINE singleton #-}
 singleton :: EntitySymbol -> a -> SymbolMap a
 singleton k e = SymbolMap $ IM.singleton (getKey $ getUnique k) (k, e)
+
+-- | /O(n)/. Number of elements in the map.
+{-# INLINE size #-}
+size :: SymbolMap a -> Int
+size (SymbolMap m) = IM.size m
 
 -- | /O(min(n,W))/. Is the 'EntitySymbol' a member of the map?
 {-# INLINE member #-}
