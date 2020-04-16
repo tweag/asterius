@@ -1,4 +1,3 @@
-import { setImmediate } from "./rts.setimmediate.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 /**
