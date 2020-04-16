@@ -13,67 +13,69 @@
 -- an 'IM.IntMap' of , where the key of the unique of the 'EntitySymbol' is used
 -- for the indexing. In order to be able to access the 'EntitySymbol'
 -- corresponding to each entry, we also store it alongside each element.
---
 module Asterius.Types.SymbolMap
   ( -- * SymbolMap type
-    SymbolMap
+    SymbolMap,
 
     -- * Construction
-  , empty
-  , singleton
+    empty,
+    singleton,
 
     -- * Query
-  , member
-  , lookup
-  , (!)
+    member,
+    lookup,
+    (!),
 
     -- * Insertion
-  , insert
+    insert,
 
     -- * Filtering
-  , filterWithKey
-  , filter
-  , restrictKeys
+    filterWithKey,
+    filter,
+    restrictKeys,
 
     -- * Folds and Maps
-  , foldrWithKey
-  , mapWithKey
-  , mapAccum
-  , mapKeys
+    foldrWithKey,
+    mapWithKey,
+    mapAccum,
+    mapKeys,
 
     -- * Conversion
-  , elems
-  , keys
-  , keysSet
+    elems,
+    keys,
+    keysSet,
 
     -- ** Lists
-  , toList
-  , fromList
+    toList,
+    fromList,
 
     -- ** Maps
-  , toMap
-  , fromMap
+    toMap,
+    fromMap,
   )
 where
 
-import qualified Data.IntMap as IM
-import Data.Data
-import Binary
-import Asterius.Types.EntitySymbol
-import GHC.Stack
-import qualified Data.Set as Set
-import qualified Data.Map as Map
-import Data.List (mapAccumL)
-import GHC.Exts (IsList(..))
 import Asterius.Binary.Orphans ()
-import Prelude hiding (lookup, filter)
+import Asterius.Types.EntitySymbol
+import Binary
+import Data.Data
+import qualified Data.IntMap as IM
+import Data.List (mapAccumL)
+import qualified Data.Map as Map
+import qualified Data.Set as Set
+import GHC.Exts (IsList (..))
+import GHC.Stack
 import Unique
+import Prelude hiding (filter, lookup)
 
 -- ----------------------------------------------------------------------------
 
 -- TODOs
+
 -- * Take @TerrorJack's advice and use a strict tuple in the map.
+
 -- * Ensure that all operations behave as expected.
+
 -- * Run ormolu on everything
 
 -- | A map from 'EntitySymbol's to values @a@.
@@ -82,8 +84,9 @@ newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
   deriving stock (Data)
 
 instance (Show a) => Show (SymbolMap a) where
-  showsPrec d m = showParen (d > 10) $
-    showString "fromList " . shows (toList m)
+  showsPrec d m =
+    showParen (d > 10) $
+      showString "fromList " . shows (toList m)
 
 instance Semigroup (SymbolMap a) where
   SymbolMap m1 <> SymbolMap m2 = SymbolMap $ m1 <> m2
@@ -94,7 +97,7 @@ instance Monoid (SymbolMap a) where
 
 instance Binary a => Binary (SymbolMap a) where
   put_ bh m = put_ bh (toMap m) -- TODO: FIXME
-  get bh = fromMap <$> get bh   -- TODO: FIXME
+  get bh = fromMap <$> get bh -- TODO: FIXME
 
 -- Current HEAD (4187adb8d09933ac119269d5c3b020d96c8551fc)
 -- does everything in ascending order. Is that of importance?
@@ -127,7 +130,7 @@ empty = SymbolMap IM.empty
 -- | /O(1)/. A map containing a single association.
 {-# INLINE singleton #-}
 singleton :: EntitySymbol -> a -> SymbolMap a
-singleton k e = SymbolMap $ IM.singleton (getKey $ getUnique k) (k,e)
+singleton k e = SymbolMap $ IM.singleton (getKey $ getUnique k) (k, e)
 
 -- | /O(min(n,W))/. Is the 'EntitySymbol' a member of the map?
 {-# INLINE member #-}
@@ -160,18 +163,18 @@ filterWithKey p (SymbolMap m) = SymbolMap $ IM.filter (uncurry p) m
 
 -- | The restriction of a map to the keys in a set.
 restrictKeys :: SymbolMap a -> Set.Set EntitySymbol -> SymbolMap a -- TODO: calculate perf (not /O(n+m)/)
-restrictKeys m s = filterWithKey (\k _ -> k `Set.member` s) m  -- TODO: improve implementation?
+restrictKeys m s = filterWithKey (\k _ -> k `Set.member` s) m -- TODO: improve implementation?
 
 -- | /O(n)/. Map a function over all values in the map.
 mapWithKey :: (EntitySymbol -> a -> b) -> SymbolMap a -> SymbolMap b
-mapWithKey fn = viaList (map (\(k,e) -> (k, fn k e))) -- TODO: how to avoid using viaList?
+mapWithKey fn = viaList (map (\(k, e) -> (k, fn k e))) -- TODO: how to avoid using viaList?
 
 -- | /O(min(n,W))/. Insert a new key/value pair in the map. If the key is
 -- already present in the map, the associated value is replaced with the
 -- supplied value.
 insert :: EntitySymbol -> a -> SymbolMap a -> SymbolMap a
 insert k e (SymbolMap m) =
-  SymbolMap $ IM.insert (getKey $ getUnique k) (k,e) m
+  SymbolMap $ IM.insert (getKey $ getUnique k) (k, e) m
 
 -- | /O(n)/. The set of all keys of the map. NOTE: This function utilizes the
 -- 'Ord' instance for 'EntitySymbol' (because it calls 'Set.fromList'
@@ -188,14 +191,14 @@ keys (SymbolMap m) = map fst $ IM.elems m
 -- order of keys of uniques on the 'EntitySymbol' keys.
 mapAccum :: (a -> b -> (a, c)) -> a -> SymbolMap b -> (a, SymbolMap c)
 mapAccum f a m
-  | (ks, elts) <- unzip $ toList m
-  , (acc, list)  <- mapAccumL f a elts -- TODO: reduce usage?
-  = (acc, fromList $ ks `zip` list)  -- TODO: Use the underlying mapAccum directly somehow?
+  | (ks, elts) <- unzip $ toList m,
+    (acc, list) <- mapAccumL f a elts = -- TODO: reduce usage?
+    (acc, fromList $ ks `zip` list) -- TODO: Use the underlying mapAccum directly somehow?
 
 -- | /O(n)/. Fold the keys and values in the map using the given
 -- right-associative binary operator.
 foldrWithKey :: (EntitySymbol -> a -> b -> b) -> b -> SymbolMap a -> b -- TODO: what about a strict variant?
-foldrWithKey fn z = foldr (\(k,a) b -> fn k a b) z . toList -- TODO: how to avoid using toList?
+foldrWithKey fn z = foldr (\(k, a) b -> fn k a b) z . toList -- TODO: how to avoid using toList?
 
 -- | /O(n)/. Filter all values that satisfy a predicate.
 {-# INLINE filter #-}
@@ -207,16 +210,17 @@ filter p (SymbolMap m) = SymbolMap $ IM.filter (p . snd) m
 -- 'EntitySymbol'. In this case the value at the greates of the original keys
 -- is retained.
 mapKeys :: (EntitySymbol -> EntitySymbol) -> SymbolMap a -> SymbolMap a -- TODO: do we really need this function?
-mapKeys fn = viaList (map (\(k,e) -> (fn k, e)))  -- TODO: how to avoid using viaList?
+mapKeys fn = viaList (map (\(k, e) -> (fn k, e))) -- TODO: how to avoid using viaList?
 
 -- ----------------------------------------------------------------------------
 
 -- | /O(n*log n)/. Build a symbol map from a list of key/value pairs.
 {-# INLINE fromListSM #-}
 fromListSM :: [(EntitySymbol, a)] -> SymbolMap a
-fromListSM = SymbolMap
-           . IM.fromList
-           . map (\(k,e) -> (getKey $ getUnique k,(k,e)))
+fromListSM =
+  SymbolMap
+    . IM.fromList
+    . map (\(k, e) -> (getKey $ getUnique k, (k, e)))
 
 -- | /O(n)/. Convert a symbol map to a list of key/value pairs.
 {-# INLINE toListSM #-}
@@ -240,4 +244,3 @@ viaList ::
   ([(EntitySymbol, a)] -> [(EntitySymbol, b)]) ->
   (SymbolMap a -> SymbolMap b)
 viaList f = fromList . f . toList
-
