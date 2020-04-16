@@ -72,16 +72,6 @@ import GHC.Stack
 import Unique
 import Prelude hiding (filter, lookup)
 
--- ----------------------------------------------------------------------------
-
--- TODOs
-
--- * Take @TerrorJack's advice and use a strict tuple in the map.
-
--- * Ensure that all operations behave as expected.
-
--- * Run ormolu on everything
-
 -- | A map from 'EntitySymbol's to values @a@.
 newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
   deriving newtype (Eq)
