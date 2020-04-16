@@ -61,6 +61,7 @@ where
 import Asterius.Binary.Orphans ()
 import Asterius.Types.EntitySymbol
 import Binary
+import Control.Monad
 import Data.Data
 import qualified Data.IntMap as IM
 import Data.List (mapAccumL)
@@ -86,7 +87,7 @@ newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
   deriving newtype (Eq)
   deriving stock (Data)
 
-instance (Show a) => Show (SymbolMap a) where
+instance Show a => Show (SymbolMap a) where
   showsPrec d m =
     showParen (d > 10) $
       showString "fromList " . shows (toListSM m)
@@ -99,24 +100,19 @@ instance Monoid (SymbolMap a) where
   mappend = (<>)
 
 instance Binary a => Binary (SymbolMap a) where
-  put_ bh m = put_ bh (toMap m) -- TODO: FIXME
-  get bh = fromMap <$> get bh -- TODO: FIXME
+  -- We are lazy on both at the moment, hence
+  -- the usage of lazyPut for both (instead of put_).
 
--- Current HEAD (4187adb8d09933ac119269d5c3b020d96c8551fc)
--- does everything in ascending order. Is that of importance?
+  put_ bh m =
+    put_ bh (size m)
+      *> forM_ (toListSM m) (\(k, v) -> lazyPut bh k *> lazyPut bh v)
 
--- instance (GHC.Binary k, GHC.Binary v) => GHC.Binary (M.Map k v) where
---   put_ bh m =
---     GHC.put_ bh (M.size m)
---       *> for_ (M.toAscList m) (\(k, v) -> GHC.put_ bh k *> GHC.lazyPut bh v)
---   get bh =
---     fmap M.fromDistinctAscList $
---       GHC.get bh
---         >>= flip
---           replicateM
---           ((,) <$> GHC.get bh <*> GHC.lazyGet bh)
+  -- We are lazy on both at the moment, hence
+  -- the usage of lazyGet for both (instead of get).
 
--- GEORGE: EntitySymbol is ofc an instance of Uniquable
+  get bh = fromListSM <$> do
+    n <- get bh
+    replicateM n $ (,) <$> lazyGet bh <*> lazyGet bh
 
 instance IsList (SymbolMap a) where
   type Item (SymbolMap a) = (EntitySymbol, a)
