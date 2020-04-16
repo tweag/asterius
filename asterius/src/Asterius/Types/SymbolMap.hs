@@ -64,9 +64,9 @@ import Asterius.Types.EntitySymbol
 import Binary
 import Control.Monad
 import Data.Data
-import qualified Data.IntMap as IM
+import qualified Data.IntMap.Lazy as IM
 import qualified Data.IntSet as IS
-import qualified Data.Map as Map
+import qualified Data.Map.Lazy as Map
 import qualified Data.Set as Set
 import GHC.Exts (IsList (..))
 import GHC.Stack
@@ -75,20 +75,13 @@ import Prelude hiding (filter, lookup)
 
 -- | A map from 'EntitySymbol's to values @a@.
 newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
-  deriving newtype (Eq)
+  deriving newtype (Eq, Semigroup, Monoid)
   deriving stock (Data)
 
 instance Show a => Show (SymbolMap a) where
   showsPrec d m =
     showParen (d > 10) $
       showString "fromList " . shows (toListSM m)
-
-instance Semigroup (SymbolMap a) where
-  SymbolMap m1 <> SymbolMap m2 = SymbolMap $ m1 <> m2
-
-instance Monoid (SymbolMap a) where
-  mempty = empty
-  mappend = (<>)
 
 instance Binary a => Binary (SymbolMap a) where
   -- We are lazy on both at the moment, hence
@@ -110,6 +103,10 @@ instance IsList (SymbolMap a) where
   fromList = fromListSM
   toList = toListSM
 
+{-# INLINE getKeyES #-}
+getKeyES :: EntitySymbol -> IM.Key
+getKeyES = getKey . getUnique
+
 -- ----------------------------------------------------------------------------
 
 -- | /O(1)/. The empty map.
@@ -120,7 +117,7 @@ empty = SymbolMap IM.empty
 -- | /O(1)/. A map containing a single association.
 {-# INLINE singleton #-}
 singleton :: EntitySymbol -> a -> SymbolMap a
-singleton k e = SymbolMap $ IM.singleton (getKey $ getUnique k) (k, e)
+singleton k e = SymbolMap $ IM.singleton (getKeyES k) (k, e)
 
 -- | /O(n)/. Number of elements in the map.
 {-# INLINE size #-}
@@ -130,7 +127,7 @@ size (SymbolMap m) = IM.size m
 -- | /O(min(n,W))/. Is the 'EntitySymbol' a member of the map?
 {-# INLINE member #-}
 member :: EntitySymbol -> SymbolMap a -> Bool
-member k (SymbolMap m) = getKey (getUnique k) `IM.member` m
+member k (SymbolMap m) = getKeyES k `IM.member` m
 
 -- | /O(n)/. Return all elements of the map in the ascending order of the key
 -- of the unique of their 'EntitySymbol'-key.
@@ -139,14 +136,18 @@ elems (SymbolMap m) = map snd $ IM.elems m
 
 -- | /O(min(n,W))/. Lookup the value at an 'EntitySymbol' in the map.
 lookup :: EntitySymbol -> SymbolMap a -> Maybe a
-lookup k (SymbolMap m) = snd <$> IM.lookup (getKey $ getUnique k) m
+lookup k (SymbolMap m) = snd <$> IM.lookup (getKeyES k) m
 
 -- | /O(min(n,W))/. Find the value at an 'EntitySymbol'. Calls 'error' when the
 -- element can not be found.
 (!) :: HasCallStack => SymbolMap a -> EntitySymbol -> a
 (!) m k = case lookup k m of
   Just e -> e
-  Nothing -> error "SymbolMap.!: given key is not an element in the map"
+  Nothing ->
+    error $
+      "SymbolMap.!: given key ("
+        ++ show k
+        ++ ") is not an element in the map"
 
 infixl 9 !
 
@@ -159,7 +160,7 @@ filterWithKey p (SymbolMap m) = SymbolMap $ IM.filter (uncurry p) m
 -- | The restriction of a map to the keys in a set.
 restrictKeys :: SymbolMap a -> Set.Set EntitySymbol -> SymbolMap a
 restrictKeys (SymbolMap m) s =
-  SymbolMap $ IM.restrictKeys m (IS.fromList $ map (getKey . getUnique) $ Set.toList s)
+  SymbolMap $ IM.restrictKeys m (IS.fromList $ map getKeyES $ Set.toList s)
 
 -- | /O(n)/. Map a function over all values in the map.
 mapWithKey :: (EntitySymbol -> a -> b) -> SymbolMap a -> SymbolMap b
@@ -170,8 +171,7 @@ mapWithKey fn (SymbolMap m) =
 -- already present in the map, the associated value is replaced with the
 -- supplied value.
 insert :: EntitySymbol -> a -> SymbolMap a -> SymbolMap a
-insert k e (SymbolMap m) =
-  SymbolMap $ IM.insert (getKey $ getUnique k) (k, e) m
+insert k e (SymbolMap m) = SymbolMap $ IM.insert (getKeyES k) (k, e) m
 
 -- | /O(n)/. The set of all keys of the map. NOTE: This function utilizes the
 -- 'Ord' instance for 'EntitySymbol' (because it calls 'Set.fromList'
@@ -195,7 +195,7 @@ mapAccum f z (SymbolMap m) =
 -- application of the operator is evaluated before using the result in the next
 -- application. This function is strict in the starting value.
 foldrWithKey' :: (EntitySymbol -> a -> b -> b) -> b -> SymbolMap a -> b
-foldrWithKey' f z (SymbolMap m) = IM.foldrWithKey (\_ (k, e) b -> f k e b) z m
+foldrWithKey' f z (SymbolMap m) = IM.foldrWithKey' (\_ (k, e) b -> f k e b) z m
 
 -- | /O(n)/. Filter all values that satisfy a predicate.
 {-# INLINE filter #-}
@@ -221,7 +221,7 @@ fromListSM :: [(EntitySymbol, a)] -> SymbolMap a
 fromListSM =
   SymbolMap
     . IM.fromList
-    . map (\(k, e) -> (getKey $ getUnique k, (k, e)))
+    . map (\(k, e) -> (getKeyES k, (k, e)))
 
 -- | /O(n)/. Convert a symbol map to a list of key/value pairs.
 {-# INLINE toListSM #-}
