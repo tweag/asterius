@@ -89,7 +89,7 @@ newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
 instance (Show a) => Show (SymbolMap a) where
   showsPrec d m =
     showParen (d > 10) $
-      showString "fromList " . shows (toList m)
+      showString "fromList " . shows (toListSM m)
 
 instance Semigroup (SymbolMap a) where
   SymbolMap m1 <> SymbolMap m2 = SymbolMap $ m1 <> m2
@@ -199,14 +199,14 @@ keys (SymbolMap m) = map fst $ IM.elems m
 -- order of keys of uniques on the 'EntitySymbol' keys.
 mapAccum :: (a -> b -> (a, c)) -> a -> SymbolMap b -> (a, SymbolMap c)
 mapAccum f a m
-  | (ks, elts) <- unzip $ toList m,
+  | (ks, elts) <- unzip $ toListSM m,
     (acc, list) <- mapAccumL f a elts = -- TODO: reduce usage?
-    (acc, fromList $ ks `zip` list) -- TODO: Use the underlying mapAccum directly somehow?
+    (acc, fromListSM $ ks `zip` list) -- TODO: Use the underlying mapAccum directly somehow?
 
 -- | /O(n)/. Fold the keys and values in the map using the given
 -- right-associative binary operator.
 foldrWithKey :: (EntitySymbol -> a -> b -> b) -> b -> SymbolMap a -> b -- TODO: what about a strict variant?
-foldrWithKey fn z = foldr (\(k, a) b -> fn k a b) z . toList -- TODO: how to avoid using toList?
+foldrWithKey fn z = foldr (\(k, a) b -> fn k a b) z . toListSM -- TODO: how to avoid using toList?
 
 -- | /O(n)/. Filter all values that satisfy a predicate.
 {-# INLINE filter #-}
@@ -238,12 +238,12 @@ toListSM (SymbolMap m) = IM.elems m
 -- | /O(n*log n)/. Convert a symbol map to a 'Map.Map'.
 {-# INLINE toMap #-}
 toMap :: SymbolMap a -> Map.Map EntitySymbol a
-toMap = Map.fromList . toList
+toMap = Map.fromList . toListSM
 
 -- | /O(n*log n)/. Build a symbol map from a 'Map.Map'.
 {-# INLINE fromMap #-}
 fromMap :: Map.Map EntitySymbol a -> SymbolMap a
-fromMap = fromList . Map.toList
+fromMap = fromListSM . Map.toList
 
 -- ----------------------------------------------------------------------------
 
@@ -251,4 +251,4 @@ fromMap = fromList . Map.toList
 viaList ::
   ([(EntitySymbol, a)] -> [(EntitySymbol, b)]) ->
   (SymbolMap a -> SymbolMap b)
-viaList f = fromList . f . toList
+viaList f = fromListSM . f . toListSM
