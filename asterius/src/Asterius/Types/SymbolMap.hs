@@ -49,17 +49,18 @@ module Asterius.Types.SymbolMap
   )
 where
 
-import UniqFM
+import qualified Data.IntMap as IM
 import Data.Data
 import Binary
 import Asterius.Types.EntitySymbol
 import GHC.Stack
 import qualified Data.Set as Set
 import qualified Data.Map as Map
-import Data.List (mapAccumL, sort)
+import Data.List (mapAccumL)
 import GHC.Exts (IsList(..))
 import Asterius.Binary.Orphans ()
 import Prelude hiding (lookup, filter)
+import Unique
 
 -- ----------------------------------------------------------------------------
 
@@ -69,7 +70,7 @@ import Prelude hiding (lookup, filter)
 -- * Run ormolu on everything
 
 -- | Map from 'EntitySymbol's to other things.
-newtype SymbolMap elt = SymbolMap (UniqFM (EntitySymbol, elt))
+newtype SymbolMap elt = SymbolMap (IM.IntMap (EntitySymbol, elt))
   deriving newtype (Eq)
   deriving stock (Data)
 
@@ -82,7 +83,9 @@ instance Semigroup (SymbolMap elt) where
 
 instance Monoid (SymbolMap elt) where
   mempty = empty
+  mappend = (<>)
 
+-- TODO: Fix this implementation
 instance Binary elt => Binary (SymbolMap elt) where
   put_ bh m = put_ bh (toMap m)
   get bh = fromMap <$> get bh
@@ -112,23 +115,23 @@ instance IsList (SymbolMap elt) where
 
 {-# INLINE singleton #-}
 singleton :: EntitySymbol -> elt -> SymbolMap elt
-singleton k e = SymbolMap $ unitUFM k (k,e)
+singleton k e = SymbolMap $ IM.singleton (getKey $ getUnique k) (k,e)
 
 {-# INLINE empty #-}
 empty :: SymbolMap elt
-empty = SymbolMap emptyUFM
+empty = SymbolMap IM.empty
 
 {-# INLINE member #-}
 member :: EntitySymbol -> SymbolMap elt -> Bool
-member k (SymbolMap m) = elemUFM k m
+member k (SymbolMap m) = getKey (getUnique k) `IM.member` m
 
 -- | TODO: Improve implementation.
 elems :: SymbolMap elt -> [elt]
-elems (SymbolMap m) = map snd $ eltsUFM m
+elems (SymbolMap m) = map snd $ IM.elems m
 
 {-# INLINE lookup #-}
 lookup :: EntitySymbol -> SymbolMap elt -> Maybe elt
-lookup k (SymbolMap m) = snd <$> lookupUFM m k
+lookup k (SymbolMap m) = snd <$> IM.lookup (getKey $ getUnique k) m
 
 infixl 9 !
 (!) :: HasCallStack => SymbolMap elt -> EntitySymbol -> elt
@@ -137,7 +140,7 @@ infixl 9 !
   Nothing -> error "SymbolMap.!: given key is not an element in the map"
 
 filterWithKey :: (EntitySymbol -> a -> Bool) -> SymbolMap a -> SymbolMap a
-filterWithKey f (SymbolMap m) = SymbolMap $ filterUFM (uncurry f) m
+filterWithKey f (SymbolMap m) = SymbolMap $ IM.filter (uncurry f) m
 
 -- | TODO: reduce usage.
 restrictKeys :: SymbolMap elt -> Set.Set EntitySymbol -> SymbolMap elt
@@ -146,20 +149,22 @@ restrictKeys m s = filterWithKey (\k _ -> k `Set.member` s) m
 mapWithKey :: (EntitySymbol -> a -> b) -> SymbolMap a -> SymbolMap b
 mapWithKey fn = viaList (map (\(k,e) -> (k, fn k e)))
 
+{-# INLINE insert #-}
 insert :: EntitySymbol -> elt -> SymbolMap elt -> SymbolMap elt
-insert k e (SymbolMap m) = SymbolMap $ addToUFM m k (k,e)
+insert k e (SymbolMap m) =
+  SymbolMap $ IM.insert (getKey $ getUnique k) (k,e) m
 
 -- | TODO: Notice that this one uses the 'Ord' instance for 'EntitySymbol'
 -- (because it calls 'Set.fromList'). TODO: Reduce usage.
 keysSet :: SymbolMap elt -> Set.Set EntitySymbol
-keysSet (SymbolMap m) = Set.fromList $ map fst $ eltsUFM m
+keysSet (SymbolMap m) = Set.fromList $ map fst $ IM.elems m
 
 -- | TODO: Notice that this one uses the 'Ord' instance for 'EntitySymbol'
 -- (because it calls 'sort', to ensure that the resulting keys are in ascending
 -- order, to match the semantics of the corresponding function for maps). TODO:
 -- Reduce usage.
 keys :: SymbolMap elt -> [EntitySymbol]
-keys (SymbolMap m) = sort $ map fst $ eltsUFM m
+keys (SymbolMap m) = map fst $ IM.elems m -- NOTE: not necessarily in ascending order
 
 -- | TODO: Reduce usage.
 mapAccum :: (a -> b -> (a, c)) -> a -> SymbolMap b -> (a, SymbolMap c)
@@ -175,7 +180,7 @@ foldrWithKey fn z = foldr (\(k,a) b -> fn k a b) z . toList
 -- | TODO: Reduce usage.
 {-# INLINE filter #-}
 filter :: (elt -> Bool) -> SymbolMap elt -> SymbolMap elt
-filter p (SymbolMap m) = SymbolMap $ filterUFM (p . snd) m
+filter p (SymbolMap m) = SymbolMap $ IM.filter (p . snd) m
 
 -- | TODO: This looks like a very dangerous function to me. I'd prefer if we
 -- didn't have to use it in the first place (whether it is custom or if it
@@ -189,13 +194,13 @@ mapKeys fn = viaList (map (\(k,e) -> (fn k, e)))
 {-# INLINE fromListSM #-}
 fromListSM :: [(EntitySymbol, elt)] -> SymbolMap elt
 fromListSM = SymbolMap
-            . listToUFM
-            . map (\(k,e) -> (k,(k,e)))
+            . IM.fromList
+            . map (\(k,e) -> (getKey $ getUnique k,(k,e)))
 
 -- | TODO: reduce usage.
 {-# INLINE toListSM #-}
 toListSM :: SymbolMap elt -> [(EntitySymbol, elt)]
-toListSM (SymbolMap m) = eltsUFM m
+toListSM (SymbolMap m) = IM.elems m
 
 -- | TODO: Reduce usage.
 {-# INLINE toMap #-}
