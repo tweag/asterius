@@ -130,29 +130,11 @@ elems (SymbolMap m) = map snd $ eltsUFM m
 lookup :: EntitySymbol -> SymbolMap elt -> Maybe elt
 lookup k (SymbolMap m) = snd <$> lookupUFM m k
 
--- | TODO: reduce usage.
-{-# INLINE fromListSM #-}
-fromListSM :: [(EntitySymbol, elt)] -> SymbolMap elt
-fromListSM = SymbolMap
-            . listToUFM
-            . map (\(k,e) -> (k,(k,e)))
-
--- | TODO: reduce usage.
-{-# INLINE toListSM #-}
-toListSM :: SymbolMap elt -> [(EntitySymbol, elt)]
-toListSM (SymbolMap m) = eltsUFM m
-
 infixl 9 !
 (!) :: HasCallStack => SymbolMap elt -> EntitySymbol -> elt
 (!) m k = case lookup k m of
   Just e -> e
   Nothing -> error "SymbolMap.!: given key is not an element in the map"
-
--- | TODO: reduce usage.
-viaList ::
-  ([(EntitySymbol, elt1)] -> [(EntitySymbol, elt2)]) ->
-  (SymbolMap elt1 -> SymbolMap elt2)
-viaList f = fromList . f . toList
 
 filterWithKey :: (EntitySymbol -> a -> Bool) -> SymbolMap a -> SymbolMap a
 filterWithKey f (SymbolMap m) = SymbolMap $ filterUFM (uncurry f) m
@@ -201,6 +183,20 @@ filter p (SymbolMap m) = SymbolMap $ filterUFM (p . snd) m
 mapKeys :: (EntitySymbol -> EntitySymbol) -> SymbolMap elt -> SymbolMap elt
 mapKeys fn = viaList (map (\(k,e) -> (fn k, e)))
 
+-- ----------------------------------------------------------------------------
+
+-- | TODO: reduce usage.
+{-# INLINE fromListSM #-}
+fromListSM :: [(EntitySymbol, elt)] -> SymbolMap elt
+fromListSM = SymbolMap
+            . listToUFM
+            . map (\(k,e) -> (k,(k,e)))
+
+-- | TODO: reduce usage.
+{-# INLINE toListSM #-}
+toListSM :: SymbolMap elt -> [(EntitySymbol, elt)]
+toListSM (SymbolMap m) = eltsUFM m
+
 -- | TODO: Reduce usage.
 {-# INLINE toMap #-}
 toMap :: SymbolMap elt -> Map.Map EntitySymbol elt
@@ -210,4 +206,12 @@ toMap = Map.fromList . toList
 {-# INLINE fromMap #-}
 fromMap :: Map.Map EntitySymbol elt -> SymbolMap elt
 fromMap = fromList . Map.toList
+
+-- ----------------------------------------------------------------------------
+
+-- | TODO: reduce usage.
+viaList ::
+  ([(EntitySymbol, elt1)] -> [(EntitySymbol, elt2)]) ->
+  (SymbolMap elt1 -> SymbolMap elt2)
+viaList f = fromList . f . toList
 
