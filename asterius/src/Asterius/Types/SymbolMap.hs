@@ -84,19 +84,12 @@ instance Show a => Show (SymbolMap a) where
       showString "fromList " . shows (toListSM m)
 
 instance Binary a => Binary (SymbolMap a) where
-  -- We are lazy on both at the moment, hence
-  -- the usage of lazyPut for both (instead of put_).
-
   put_ bh m =
     put_ bh (size m)
-      *> forM_ (toListSM m) (\(k, v) -> lazyPut bh k *> lazyPut bh v)
-
-  -- We are lazy on both at the moment, hence
-  -- the usage of lazyGet for both (instead of get).
-
+      *> forM_ (toListSM m) (\(k, v) -> put_ bh k *> lazyPut bh v)
   get bh = fromListSM <$> do
     n <- get bh
-    replicateM n $ (,) <$> lazyGet bh <*> lazyGet bh
+    replicateM n $ (,) <$> get bh <*> lazyGet bh
 
 instance IsList (SymbolMap a) where
   type Item (SymbolMap a) = (EntitySymbol, a)
