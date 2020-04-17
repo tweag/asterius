@@ -14,7 +14,6 @@ module Asterius.Types
     AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
-    AsteriusModuleSymbol (..),
     EntitySymbol,
     entityName,
     mkEntitySymbol,
@@ -119,13 +118,6 @@ instance Semigroup AsteriusModule where
 
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty mempty
-
-data AsteriusModuleSymbol
-  = AsteriusModuleSymbol
-      { unitId :: BS.ByteString,
-        moduleName :: [BS.ByteString]
-      }
-  deriving (Eq, Ord, Show, Data)
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int ValueType
@@ -594,8 +586,6 @@ $(genBinary ''AsteriusStaticsType)
 $(genBinary ''AsteriusStatics)
 
 $(genBinary ''AsteriusModule)
-
-$(genBinary ''AsteriusModuleSymbol)
 
 $(genBinary ''UnresolvedLocalReg)
 

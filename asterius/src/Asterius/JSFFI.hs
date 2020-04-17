@@ -66,15 +66,14 @@ recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
     param_types = map recoverWasmWrapperValueType ffiParamTypes
     ret_types = map recoverWasmWrapperValueType ffiResultTypes
 
-getFFIModule ::
-  GHC.DynFlags -> AsteriusModuleSymbol -> IO AsteriusModule
-getFFIModule dflags mod_sym = do
+getFFIModule :: GHC.DynFlags -> GHC.Module -> IO AsteriusModule
+getFFIModule dflags ms_mod = do
   ffi_import_state <-
     atomicModifyIORef' globalFFIHookState $ \ffi_hook_state ->
       ( ffi_hook_state
-          { ffiHookState = M.delete mod_sym $ ffiHookState ffi_hook_state
+          { ffiHookState = M.delete ms_mod $ ffiHookState ffi_hook_state
           },
-        M.findWithDefault mempty mod_sym (ffiHookState ffi_hook_state)
+        M.findWithDefault mempty ms_mod (ffiHookState ffi_hook_state)
       )
   pure $ generateFFIWrapperModule dflags ffi_import_state
 

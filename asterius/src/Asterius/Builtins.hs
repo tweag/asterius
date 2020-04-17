@@ -5,7 +5,6 @@
 module Asterius.Builtins
   ( BuiltinsOptions (..),
     defaultBuiltinsOptions,
-    rtsAsteriusModuleSymbol,
     rtsAsteriusModule,
     rtsFunctionImports,
     rtsFunctionExports,
@@ -39,7 +38,6 @@ import qualified Data.ByteString as BS
 import Data.Foldable
 import Data.String
 import Data.Word
-import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
 
 wasmPageSize :: Int
@@ -58,12 +56,6 @@ defaultBuiltinsOptions = BuiltinsOptions
         "Asterius.Builtins.defaultBuiltinsOptions: unknown progName",
     debug = False,
     hasMain = True
-  }
-
-rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
-rtsAsteriusModuleSymbol = AsteriusModuleSymbol
-  { unitId = GHC.fs_bs $ GHC.unitIdFS GHC.rtsUnitId,
-    moduleName = ["Asterius"]
   }
 
 rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule

@@ -75,9 +75,8 @@ frontendPlugin = makeFrontendPlugin $ do
     mempty
       { withHaskellIR = \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
-          let mod_sym = marshalToModuleSymbol ms_mod
           liftIO $ do
-            ffi_mod <- getFFIModule dflags mod_sym
+            ffi_mod <- getFFIModule dflags ms_mod
             runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod >>= \case
               Left err -> throwIO err
               Right m' -> do

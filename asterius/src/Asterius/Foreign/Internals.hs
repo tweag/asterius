@@ -73,7 +73,7 @@ parseFFIFunctionType accept_prim norm_sig_ty = case res_ty of
 
 newtype FFIHookState
   = FFIHookState
-      { ffiHookState :: M.Map AsteriusModuleSymbol FFIMarshalState
+      { ffiHookState :: M.Map GHC.Module FFIMarshalState
       }
 
 {-# NOINLINE globalFFIHookState #-}
@@ -89,7 +89,7 @@ processFFIImport ::
 processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> GHC.JavaScriptCallConv) loc_safety _ (GHC.CFunction _) (GHC.unLoc -> GHC.SourceText src)) =
   do
     dflags <- GHC.getDynFlags
-    mod_sym <- marshalToModuleSymbol <$> GHC.getModule
+    ms_mod <- GHC.getModule
     u <- GHC.getUniqueM
     let ffi_ftype = case parseFFIFunctionType True norm_sig_ty of
           Just r -> r
@@ -106,7 +106,7 @@ processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> 
         ffi_src_text = read src
         new_k =
           ffi_safety_prefix
-            <> zEncodeModuleSymbol mod_sym
+            <> zEncodeModule ms_mod
             <> "_"
             <> asmPpr dflags u
         new_decl =
@@ -130,7 +130,7 @@ processFFIImport hook_state_ref norm_sig_ty imp_decl@(GHC.CImport (GHC.unLoc -> 
     liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
       ( hook_state
           { ffiHookState =
-              M.alter alter_hook_state mod_sym $
+              M.alter alter_hook_state ms_mod $
                 ffiHookState hook_state
           },
         ()
@@ -159,7 +159,7 @@ processFFIExport ::
 processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc -> GHC.CExportStatic src_txt lbl GHC.JavaScriptCallConv) loc_src) =
   do
     dflags <- GHC.getDynFlags
-    mod_sym <- marshalToModuleSymbol <$> GHC.getModule
+    ms_mod <- GHC.getModule
     let ffi_ftype = case parseFFIFunctionType False norm_sig_ty of
           Just r -> r
           _ -> GHC.panicDoc "processFFIExport" $ GHC.ppr norm_sig_ty
@@ -181,7 +181,7 @@ processFFIExport hook_state_ref norm_sig_ty export_id (GHC.CExport (GHC.unLoc ->
     liftIO $ atomicModifyIORef' hook_state_ref $ \hook_state ->
       ( hook_state
           { ffiHookState =
-              M.alter alter_hook_state mod_sym $
+              M.alter alter_hook_state ms_mod $
                 ffiHookState hook_state
           },
         ()
