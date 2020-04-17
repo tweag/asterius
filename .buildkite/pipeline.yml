@@ -1,0 +1,49 @@
+steps:
+
+  - key: "asterius-boot"
+    command: |
+      docker pull terrorjack/asterius:dev
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --network host \
+        --privileged \
+        --rm \
+        --volume $(pwd):/asterius \
+        --workdir /asterius \
+        terrorjack/asterius:dev \
+        .buildkite/boot.sh
+      buildkite-agent artifact upload asterius.tar.zst
+
+  - key: "asterius-test"
+    depends_on: "asterius-boot"
+    command: |
+      buildkite-agent artifact download asterius.tar.zst .
+      docker pull terrorjack/asterius:dev
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --network host \
+        --privileged \
+        --rm \
+        --volume $(pwd):/asterius \
+        --workdir /asterius \
+        terrorjack/asterius:dev \
+        .buildkite/test.sh
+
+  - key: "asterius-ghc-testsuite"
+    depends_on: "asterius-boot"
+    command: |
+      buildkite-agent artifact download asterius.tar.zst .
+      docker pull terrorjack/asterius:dev
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --network host \
+        --privileged \
+        --rm \
+        --volume $(pwd):/asterius \
+        --workdir /asterius \
+        terrorjack/asterius:dev \
+        .buildkite/ghc-testsuite.sh
+      buildkite-agent artifact upload test-report.csv
