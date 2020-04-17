@@ -8,8 +8,7 @@
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 module Asterius.CodeGen
-  ( marshalToModuleSymbol,
-    CodeGen,
+  ( CodeGen,
     runCodeGen,
     marshalHaskellIR,
     marshalCmmIR,

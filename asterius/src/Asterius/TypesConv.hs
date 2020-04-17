@@ -3,8 +3,7 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.TypesConv
-  ( marshalToModuleSymbol,
-    zEncodeModule,
+  ( zEncodeModule,
     generateWasmFunctionTypeSet,
     asmPpr,
     asmPrint,
@@ -22,14 +21,6 @@ import System.IO
     withFile,
   )
 
-{-# INLINE marshalToModuleSymbol #-}
-marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol
-marshalToModuleSymbol (GHC.Module u m) = AsteriusModuleSymbol
-  { unitId = GHC.fs_bs $ GHC.unitIdFS u,
-    moduleName =
-      CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
-  }
-
 {-# INLINE zEncodeModule #-}
 zEncodeModule :: GHC.Module -> String
 zEncodeModule (GHC.Module u m) =
@@ -43,7 +34,6 @@ zEncodeModule (GHC.Module u m) =
     unitId = GHC.fs_bs $ GHC.unitIdFS u
     moduleName =
       CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
-
 
 {-# INLINE generateWasmFunctionTypeSet #-}
 generateWasmFunctionTypeSet :: Module -> Set.Set FunctionType
