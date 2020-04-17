@@ -61,6 +61,7 @@ where
 
 import Asterius.Binary.Orphans ()
 import Asterius.Types.EntitySymbol
+import qualified Asterius.Types.SymbolSet as SS
 import Binary
 import Control.Monad
 import Data.Data
@@ -151,9 +152,8 @@ filterWithKey :: (EntitySymbol -> a -> Bool) -> SymbolMap a -> SymbolMap a
 filterWithKey p (SymbolMap m) = SymbolMap $ IM.filter (uncurry p) m
 
 -- | The restriction of a map to the keys in a set.
-restrictKeys :: SymbolMap a -> Set.Set EntitySymbol -> SymbolMap a
-restrictKeys (SymbolMap m) s =
-  SymbolMap $ IM.restrictKeys m (IS.fromList $ map getKeyES $ Set.toList s)
+restrictKeys :: SymbolMap a -> SS.SymbolSet -> SymbolMap a
+restrictKeys (SymbolMap m) s = SymbolMap $ IM.restrictKeys m (SS.toIntSet s)
 
 -- | /O(n)/. Map a function over all values in the map.
 mapWithKey :: (EntitySymbol -> a -> b) -> SymbolMap a -> SymbolMap b
@@ -169,8 +169,8 @@ insert k e (SymbolMap m) = SymbolMap $ IM.insert (getKeyES k) (k, e) m
 -- | /O(n)/. The set of all keys of the map. NOTE: This function utilizes the
 -- 'Ord' instance for 'EntitySymbol' (because it calls 'Set.fromList'
 -- internally).
-keysSet :: SymbolMap a -> Set.Set EntitySymbol
-keysSet (SymbolMap m) = Set.fromList $ map fst $ IM.elems m
+keysSet :: SymbolMap a -> SS.SymbolSet
+keysSet (SymbolMap m) = SS.fromIntSet $ IM.keysSet m
 
 -- | /O(n)/. Return all 'EntitySymbol' keys of the map, in ascending order of
 -- the key of their unique.

@@ -20,10 +20,9 @@ import Asterius.Builtins
 import Asterius.Builtins.Main
 import Asterius.Resolve
 import Asterius.Types
+import qualified Asterius.Types.SymbolSet as SS
 import Control.Exception
 import Data.Either
-import qualified Data.Set as Set
-import Data.Set (Set)
 import Data.Traversable
 
 data LinkTask
@@ -47,9 +46,9 @@ loadTheWorld LinkTask {..} = do
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm
-rtsUsedSymbols :: Set EntitySymbol
+rtsUsedSymbols :: SS.SymbolSet
 rtsUsedSymbols =
-  Set.fromList
+  SS.fromList
     [ "barf",
       "base_AsteriusziTopHandler_runIO_closure",
       "base_AsteriusziTopHandler_runNonIO_closure",
@@ -77,9 +76,9 @@ rtsUsedSymbols =
       "stg_WEAK_info"
     ]
 
-rtsPrivateSymbols :: Set EntitySymbol
+rtsPrivateSymbols :: SS.SymbolSet
 rtsPrivateSymbols =
-  Set.fromList
+  SS.fromList
     [ "base_AsteriusziTopHandler_runIO_closure",
       "base_AsteriusziTopHandler_runNonIO_closure"
     ]
@@ -99,11 +98,11 @@ linkModules LinkTask {..} m =
             }
         <> m
     )
-    ( Set.unions
-        [ Set.fromList rootSymbols,
+    ( SS.unions
+        [ SS.fromList rootSymbols,
           rtsUsedSymbols,
           rtsPrivateSymbols,
-          Set.fromList
+          SS.fromList
             [ mkEntitySymbol internalName
               | FunctionExport {..} <- rtsFunctionExports debug
             ]

@@ -33,6 +33,7 @@ import Asterius.Types
     entityName,
   )
 import qualified Asterius.Types.SymbolMap as SM
+import qualified Asterius.Types.SymbolSet as SS
 import qualified Binaryen
 import qualified Binaryen.Module as Binaryen
 import Control.Monad
@@ -46,7 +47,6 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
 import Data.List
-import qualified Data.Set as S
 import Data.String
 import Foreign
 import Language.WebAssembly.WireFormat
@@ -198,7 +198,7 @@ genReq task LinkReport {..} =
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
     symbol_table =
       SM.restrictKeys raw_symbol_table $
-        S.fromList (extraRootSymbols task)
+        SS.fromList (extraRootSymbols task)
           <> rtsUsedSymbols
 
 genDefEntry :: Task -> Builder
