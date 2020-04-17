@@ -10,8 +10,8 @@ module Asterius.TypesConv
   )
 where
 
+
 import Asterius.Types
-import qualified Data.ByteString.Char8 as CBS
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified GhcPlugins as GHC
@@ -26,14 +26,7 @@ zEncodeModule :: GHC.Module -> String
 zEncodeModule (GHC.Module u m) =
   GHC.zString
     $ GHC.zEncodeFS
-    $ GHC.mkFastStringByteString
-    $ unitId
-      <> "_"
-      <> CBS.intercalate "." moduleName
-  where
-    unitId = GHC.fs_bs $ GHC.unitIdFS u
-    moduleName =
-      CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
+    $ GHC.unitIdFS u <> "_" <> GHC.moduleNameFS m
 
 {-# INLINE generateWasmFunctionTypeSet #-}
 generateWasmFunctionTypeSet :: Module -> Set.Set FunctionType
