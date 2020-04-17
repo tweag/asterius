@@ -2,8 +2,6 @@ FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-ARG ASTERIUS_AHC_LD_IGNORE=1
-
 ENV \
   ASTERIUS_LIB_DIR=/home/asterius/.asterius-local-install-root/share/x86_64-linux-ghc-8.8.3/asterius-0.0.1/.boot/asterius_lib \
   LANG=C.UTF-8 \
@@ -40,7 +38,7 @@ WORKDIR /home/asterius
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 13.12.0 && ln -s \$NVM_BIN ~/.nvm/bin" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 13.13.0 && ln -s \$NVM_BIN ~/.nvm/bin" && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.0.1/stack-2.3.0.1-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack' && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
@@ -53,9 +51,8 @@ COPY --chown=asterius:asterius wasm-toolkit /home/asterius/.asterius/wasm-toolki
 COPY --chown=asterius:asterius stack.yaml /home/asterius/.asterius/stack.yaml
 
 RUN \
-  export CPUS=$(getconf _NPROCESSORS_ONLN 2>/dev/null) && \
-  export MAKEFLAGS=-j$CPUS && \
   cd ~/.asterius && \
+  stack --no-terminal update && \
   stack --no-terminal build \
     asterius \
     alex \
