@@ -15,6 +15,7 @@
 module Asterius.Types.SymbolSet
   ( -- * SymbolSet type
     SymbolSet,
+    IM.Key,
 
     -- * Construction
     empty,
@@ -102,13 +103,20 @@ difference (SymbolSet s1) (SymbolSet s2) = SymbolSet (s1 `IS.difference` s2)
 -- binary operator. This is a strict variant: each application of the operator
 -- is evaluated before using the result in the next application. This function
 -- is strict in the starting value.
+--
+-- TODO: 'EntitySymbol' appears in a negative position here, which is
+-- impossible to implement (because getKeyES is a one-way function).
+-- Hence, we implement instead
+--
+--   foldr' :: (IM.Key -> b -> b) -> b -> SymbolSet -> b
+--
+-- But this is unfortunate because the implementation starts leaking :/
+--
+{-# INLINE foldr' #-}
 foldr' :: (EntitySymbol -> b -> b) -> b -> SymbolSet -> b
 foldr' = error "TODO"
-
--- GEORGE: due to the variance of this function, it is not possible to
--- implement: getKeyES is irreversible.
---   foldr' :: (Key -> b -> b) -> b -> IntSet -> b
--- We have to change the call site as well.
+-- foldr' :: (IM.Key -> b -> b) -> b -> SymbolSet -> b
+-- foldr' fn z = IS.foldr' fn z . fromSymbolSet
 
 -- ----------------------------------------------------------------------------
 
