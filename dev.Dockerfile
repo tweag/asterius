@@ -27,7 +27,8 @@ RUN \
     openssh-client \
     python3-pip \
     sudo \
-    zlib1g-dev && \
+    zlib1g-dev \
+    zstd && \
   apt autoremove --purge -y && \
   apt clean && \
   rm -rf -v /var/lib/apt/lists/* && \
