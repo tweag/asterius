@@ -42,17 +42,10 @@ where
 
 import qualified Data.Foldable as Foldable
 import Prelude hiding (null)
-
-import Asterius.Binary.Orphans ()
 import Asterius.Types.EntitySymbol
-import Binary
-import Control.Monad
 import Data.Data
 import qualified Data.IntMap.Lazy as IM
 import qualified Data.IntSet as IS
-import qualified Data.Map.Lazy as Map
-import qualified Data.Set as Set
-import GHC.Stack
 import Unique
 
 -- | A set of 'EntitySymbol's.

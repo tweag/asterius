@@ -66,9 +66,7 @@ import Binary
 import Control.Monad
 import Data.Data
 import qualified Data.IntMap.Lazy as IM
-import qualified Data.IntSet as IS
 import qualified Data.Map.Lazy as Map
-import qualified Data.Set as Set
 import GHC.Exts (IsList (..))
 import GHC.Stack
 import Unique
