@@ -40,16 +40,16 @@ module Asterius.Types.SymbolSet
   )
 where
 
-import qualified Data.Foldable as Foldable
-import Prelude hiding (null)
 import Asterius.Types.EntitySymbol
 import Data.Data
+import qualified Data.Foldable as Foldable
 import qualified Data.IntMap.Lazy as IM
 import qualified Data.IntSet as IS
 import Unique
+import Prelude hiding (null)
 
 -- | A set of 'EntitySymbol's.
-newtype SymbolSet = SymbolSet { fromSymbolSet :: IS.IntSet }
+newtype SymbolSet = SymbolSet {fromSymbolSet :: IS.IntSet}
   deriving newtype (Eq, Semigroup, Monoid)
   deriving stock (Data)
 
@@ -57,8 +57,9 @@ instance Show SymbolSet where
   -- TODO: Problem. This is not the set of entity symbols, but the set of the
   -- keys of their uniques. Impossible to revert getUnique, so that makes me
   -- wonder whether we really need the Show instance.
-  showsPrec p (SymbolSet s) = showParen (p > 10) $
-    showString "fromList " . shows (IS.toList s)
+  showsPrec p (SymbolSet s) =
+    showParen (p > 10) $
+      showString "fromList " . shows (IS.toList s)
 
 -- TODO: There is a copy of this function in Asterius.Types.SymbolMap. See to
 -- it that we only have one copy of this in a shared location.
@@ -103,10 +104,11 @@ difference (SymbolSet s1) (SymbolSet s2) = SymbolSet (s1 `IS.difference` s2)
 -- is strict in the starting value.
 foldr' :: (EntitySymbol -> b -> b) -> b -> SymbolSet -> b
 foldr' = error "TODO"
-  -- GEORGE: due to the variance of this function, it is not possible to
-  -- implement: getKeyES is irreversible.
-  --   foldr' :: (Key -> b -> b) -> b -> IntSet -> b
-  -- We have to change the call site as well.
+
+-- GEORGE: due to the variance of this function, it is not possible to
+-- implement: getKeyES is irreversible.
+--   foldr' :: (Key -> b -> b) -> b -> IntSet -> b
+-- We have to change the call site as well.
 
 -- ----------------------------------------------------------------------------
 
@@ -124,4 +126,3 @@ fromIntSet = SymbolSet
 {-# INLINE fromList #-}
 fromList :: [EntitySymbol] -> SymbolSet
 fromList = SymbolSet . IS.fromList . map getKeyES
-
