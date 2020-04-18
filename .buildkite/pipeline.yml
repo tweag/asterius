@@ -1,0 +1,57 @@
+steps:
+
+    - label: "8.8-tinfo6"
+      command: |
+        docker pull debian:sid
+        docker run \
+          --env UID=$(id --user) \
+          --env GID=$(id --group) \
+          --env BRANCH=asterius-8.8 \
+          --env DEBIAN_FRONTEND=noninteractive \
+          --env MAKEFLAGS=-j8 \
+          --env XZ_OPT=-9eT8 \
+          --network host \
+          --privileged \
+          --rm \
+          --volume $(pwd):/asterius \
+          --workdir /asterius \
+          debian:sid \
+          .buildkite/build-tinfo6.sh
+        buildkite-agent artifact upload "ghc-bindist/*"
+
+    - label: "8.8-standard"
+      command: |
+        docker pull debian:stretch
+        docker run \
+          --env UID=$(id --user) \
+          --env GID=$(id --group) \
+          --env BRANCH=asterius-8.8 \
+          --env DEBIAN_FRONTEND=noninteractive \
+          --env MAKEFLAGS=-j8 \
+          --env XZ_OPT=-9eT8 \
+          --network host \
+          --privileged \
+          --rm \
+          --volume $(pwd):/asterius \
+          --workdir /asterius \
+          debian:stretch \
+          .buildkite/build-standard.sh
+        buildkite-agent artifact upload "ghc-bindist/*"
+
+    - label: "8.8-musl"
+      command: |
+        docker pull alpine:edge
+        docker run \
+          --env UID=$(id --user) \
+          --env GID=$(id --group) \
+          --env BRANCH=asterius-8.8 \
+          --env MAKEFLAGS=-j8 \
+          --env XZ_OPT=-9eT8 \
+          --network host \
+          --privileged \
+          --rm \
+          --volume $(pwd):/asterius \
+          --workdir /asterius \
+          alpine:edge \
+          .buildkite/build-musl.sh
+        buildkite-agent artifact upload "ghc-bindist/*"
