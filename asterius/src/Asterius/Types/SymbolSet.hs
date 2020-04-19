@@ -10,8 +10,8 @@
 -- License     :  All rights reserved (see LICENCE file in the distribution).
 --
 -- The 'SymbolSet' type represents a set of elements of type 'EntitySymbol'.
--- Internally it is represented as an 'IS.IntSet', containing they keys of the
--- uniques of the 'EntitySymbol's captured.
+-- Internally it is represented as an 'IM.IntMap', mapping the keys of the
+-- uniques of the 'EntitySymbol's to the 'EntitySymbol's themselves.
 module Asterius.Types.SymbolSet
   ( -- * SymbolSet type
     SymbolSet,
@@ -34,10 +34,10 @@ module Asterius.Types.SymbolSet
 
     -- * Conversion
     toIntSet,
-    fromIntSet,
 
     -- ** Lists
     fromList,
+    toList
   )
 where
 
@@ -46,21 +46,24 @@ import Data.Data
 import qualified Data.Foldable as Foldable
 import qualified Data.IntMap.Lazy as IM
 import qualified Data.IntSet as IS
+import GHC.Exts (IsList (..))
 import Unique
 import Prelude hiding (null)
 
 -- | A set of 'EntitySymbol's.
-newtype SymbolSet = SymbolSet {fromSymbolSet :: IS.IntSet}
+newtype SymbolSet = SymbolSet {fromSymbolSet :: IM.IntMap EntitySymbol}
   deriving newtype (Eq, Semigroup, Monoid)
   deriving stock (Data)
 
 instance Show SymbolSet where
-  -- TODO: Problem. This is not the set of entity symbols, but the set of the
-  -- keys of their uniques. Impossible to revert getUnique, so that makes me
-  -- wonder whether we really need the Show instance.
   showsPrec p (SymbolSet s) =
     showParen (p > 10) $
-      showString "fromList " . shows (IS.toList s)
+      showString "fromList " . shows (toList s)
+
+instance IsList SymbolSet where
+  type Item SymbolSet = EntitySymbol
+  fromList = fromListSS
+  toList = toListSS
 
 -- TODO: There is a copy of this function in Asterius.Types.SymbolMap. See to
 -- it that we only have one copy of this in a shared location.
@@ -73,17 +76,17 @@ getKeyES = getKey . getUnique
 -- | /O(1)/. The empty set.
 {-# INLINE empty #-}
 empty :: SymbolSet
-empty = SymbolSet IS.empty
+empty = SymbolSet IM.empty
 
 -- | /O(1)/. A set of one element.
 {-# INLINE singleton #-}
 singleton :: EntitySymbol -> SymbolSet
-singleton = SymbolSet . IS.singleton . getKeyES
+singleton e = SymbolSet $ IM.singleton (getKeyES e) e
 
 -- | /O(n+m)/. The union of two sets.
 {-# INLINE union #-}
 union :: SymbolSet -> SymbolSet -> SymbolSet
-union (SymbolSet s1) (SymbolSet s2) = SymbolSet (IS.union s1 s2)
+union (SymbolSet s1) (SymbolSet s2) = SymbolSet (IM.union s1 s2)
 
 -- | The union of a list of sets.
 unions :: Foldable.Foldable f => f SymbolSet -> SymbolSet
@@ -92,45 +95,37 @@ unions xs = Foldable.foldl' union empty xs
 -- | /O(1)/. Is the set empty?
 {-# INLINE null #-}
 null :: SymbolSet -> Bool
-null = IS.null . fromSymbolSet
+null = IM.null . fromSymbolSet
 
 -- | /O(n+m)/. Difference between two sets.
 {-# INLINE difference #-}
 difference :: SymbolSet -> SymbolSet -> SymbolSet
-difference (SymbolSet s1) (SymbolSet s2) = SymbolSet (s1 `IS.difference` s2)
+difference (SymbolSet s1) (SymbolSet s2) = SymbolSet (s1 `IM.difference` s2)
 
 -- | /O(n)/. Fold the elements in the set using the given right-associative
 -- binary operator. This is a strict variant: each application of the operator
 -- is evaluated before using the result in the next application. This function
 -- is strict in the starting value.
---
--- TODO: 'EntitySymbol' appears in a negative position here, which is
--- impossible to implement (because getKeyES is a one-way function).
--- Hence, we implement instead
---
---   foldr' :: (IM.Key -> b -> b) -> b -> SymbolSet -> b
---
--- But this is unfortunate because the implementation starts leaking :/
---
 {-# INLINE foldr' #-}
 foldr' :: (EntitySymbol -> b -> b) -> b -> SymbolSet -> b
-foldr' = error "TODO"
--- foldr' :: (IM.Key -> b -> b) -> b -> SymbolSet -> b
--- foldr' fn z = IS.foldr' fn z . fromSymbolSet
+foldr' fn z = IM.foldr' fn z . fromSymbolSet
 
 -- ----------------------------------------------------------------------------
 
--- /O(1)/. Convert a 'SymbolSet' to an 'IntSet'. TODO: Internal.
+-- | /O(1)/. Convert a 'SymbolSet' to an 'IntSet'. TODO: Internal.
 {-# INLINE toIntSet #-}
 toIntSet :: SymbolSet -> IS.IntSet
-toIntSet = fromSymbolSet
+toIntSet = IS.fromList . IM.keys . fromSymbolSet
 
--- /O(1)/. Convert an 'IntSet' to a 'SymbolSet'. TODO: Internal.
-{-# INLINE fromIntSet #-}
-fromIntSet :: IS.IntSet -> SymbolSet
-fromIntSet = SymbolSet
+-- | /O(n*min(n,W))/. Create a 'SymbolSet' from a list of 'EntitySymbol's.
+{-# INLINE fromListSS #-}
+fromListSS :: [EntitySymbol] -> SymbolSet
+fromListSS = SymbolSet . IM.fromList . map (\e -> (getKeyES e, e))
 
--- /O(n*min(n,W))/. Create a 'SymbolSet' from a list of 'EntitySymbol's.
-{-# INLINE fromList #-}
-fromList :: [EntitySymbol] -> SymbolSet
-fromList = SymbolSet . IS.fromList . map getKeyES
+-- | /O(n)/. Convert a 'SymbolSet' to a list of 'EntitySymbol's. Note that the
+-- result of 'toListSS' is ordered using the 'Ord' instance of by the key of
+-- the unique of the elements, not the 'Ord' instance of the 'EntitySymbol's
+-- themselves.
+{-# INLINE toListSS #-}
+toListSS :: SymbolSet -> [EntitySymbol]
+toListSS = IM.elems . fromSymbolSet

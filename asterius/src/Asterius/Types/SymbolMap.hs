@@ -59,7 +59,6 @@ module Asterius.Types.SymbolMap
   )
 where
 
-import Asterius.Binary.Orphans ()
 import Asterius.Types.EntitySymbol
 import qualified Asterius.Types.SymbolSet as SS
 import Binary
@@ -164,11 +163,10 @@ mapWithKey fn (SymbolMap m) =
 insert :: EntitySymbol -> a -> SymbolMap a -> SymbolMap a
 insert k e (SymbolMap m) = SymbolMap $ IM.insert (getKeyES k) (k, e) m
 
--- | /O(n)/. The set of all keys of the map. NOTE: This function utilizes the
--- 'Ord' instance for 'EntitySymbol' (because it calls 'Set.fromList'
--- internally).
+-- | /O(n*log n)/. The set of all keys of the map.
+{-# INLINE keysSet #-}
 keysSet :: SymbolMap a -> SS.SymbolSet
-keysSet (SymbolMap m) = SS.fromIntSet $ IM.keysSet m
+keysSet = SS.fromList . keys
 
 -- | /O(n)/. Return all 'EntitySymbol' keys of the map, in ascending order of
 -- the key of their unique.
