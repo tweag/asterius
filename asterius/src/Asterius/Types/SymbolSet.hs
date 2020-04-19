@@ -1,7 +1,10 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
 -- |
@@ -41,15 +44,16 @@ module Asterius.Types.SymbolSet
 where
 
 import Asterius.Types.EntitySymbol
+import Data.Coerce
 import Data.Data
 import qualified Data.Foldable as Foldable
-import qualified Data.IntMap.Lazy as IM
+import qualified Data.IntMap.Strict as IM
 import qualified Data.IntSet as IS
 import GHC.Exts (IsList (..))
 import Prelude hiding (null)
 
 -- | A set of 'EntitySymbol's.
-newtype SymbolSet = SymbolSet {fromSymbolSet :: IM.IntMap EntitySymbol}
+newtype SymbolSet = SymbolSet (IM.IntMap EntitySymbol)
   deriving newtype (Eq, Semigroup, Monoid)
   deriving stock (Data)
 
@@ -68,7 +72,7 @@ instance IsList SymbolSet where
 -- | /O(1)/. The empty set.
 {-# INLINE empty #-}
 empty :: SymbolSet
-empty = SymbolSet IM.empty
+empty = coerce (IM.empty @EntitySymbol)
 
 -- | /O(1)/. A set of one element.
 {-# INLINE singleton #-}
@@ -78,36 +82,37 @@ singleton e = SymbolSet $ IM.singleton (getKeyES e) e
 -- | /O(n+m)/. The union of two sets.
 {-# INLINE union #-}
 union :: SymbolSet -> SymbolSet -> SymbolSet
-union (SymbolSet s1) (SymbolSet s2) = SymbolSet (IM.union s1 s2)
+union = coerce (IM.union @EntitySymbol)
 
 -- | The union of a list of sets.
+{-# INLINE unions #-}
 unions :: Foldable.Foldable f => f SymbolSet -> SymbolSet
-unions xs = Foldable.foldl' union empty xs
+unions = Foldable.foldl' union empty
 
 -- | /O(1)/. Is the set empty?
 {-# INLINE null #-}
 null :: SymbolSet -> Bool
-null = IM.null . fromSymbolSet
+null = coerce (IM.null @EntitySymbol)
 
 -- | /O(n+m)/. Difference between two sets.
 {-# INLINE difference #-}
 difference :: SymbolSet -> SymbolSet -> SymbolSet
-difference (SymbolSet s1) (SymbolSet s2) = SymbolSet (s1 `IM.difference` s2)
+difference = coerce (IM.difference @EntitySymbol @EntitySymbol)
 
 -- | /O(n)/. Fold the elements in the set using the given right-associative
 -- binary operator. This is a strict variant: each application of the operator
 -- is evaluated before using the result in the next application. This function
 -- is strict in the starting value.
 {-# INLINE foldr' #-}
-foldr' :: (EntitySymbol -> b -> b) -> b -> SymbolSet -> b
-foldr' fn z = IM.foldr' fn z . fromSymbolSet
+foldr' :: forall b. (EntitySymbol -> b -> b) -> b -> SymbolSet -> b
+foldr' = coerce (IM.foldr' @EntitySymbol @b)
 
 -- ----------------------------------------------------------------------------
 
 -- | /O(n*min(n,W))/. Convert a 'SymbolSet' to an 'IS.IntSet' (internal use).
 {-# INLINE toIntSet #-}
 toIntSet :: SymbolSet -> IS.IntSet
-toIntSet = IS.fromList . IM.keys . fromSymbolSet
+toIntSet = coerce (IM.keysSet @EntitySymbol)
 
 -- | /O(n*min(n,W))/. Create a 'SymbolSet' from a list of 'EntitySymbol's.
 {-# INLINE fromListSS #-}
@@ -120,4 +125,4 @@ fromListSS = SymbolSet . IM.fromList . map (\e -> (getKeyES e, e))
 -- themselves.
 {-# INLINE toListSS #-}
 toListSS :: SymbolSet -> [EntitySymbol]
-toListSS = IM.elems . fromSymbolSet
+toListSS = coerce (IM.elems @EntitySymbol)
