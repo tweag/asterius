@@ -104,7 +104,7 @@ foldr' fn z = IM.foldr' fn z . fromSymbolSet
 
 -- ----------------------------------------------------------------------------
 
--- | /O(n*min(n,W))/. Convert a 'SymbolSet' to an 'IntSet'. TODO: Internal.
+-- | /O(n*min(n,W))/. Convert a 'SymbolSet' to an 'IS.IntSet' (internal use).
 {-# INLINE toIntSet #-}
 toIntSet :: SymbolSet -> IS.IntSet
 toIntSet = IS.fromList . IM.keys . fromSymbolSet
