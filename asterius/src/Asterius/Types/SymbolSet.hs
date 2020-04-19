@@ -37,7 +37,7 @@ module Asterius.Types.SymbolSet
 
     -- ** Lists
     fromList,
-    toList
+    toList,
   )
 where
 
