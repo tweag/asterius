@@ -15,7 +15,6 @@
 module Asterius.Types.SymbolSet
   ( -- * SymbolSet type
     SymbolSet,
-    IM.Key,
 
     -- * Construction
     empty,
@@ -47,7 +46,6 @@ import qualified Data.Foldable as Foldable
 import qualified Data.IntMap.Lazy as IM
 import qualified Data.IntSet as IS
 import GHC.Exts (IsList (..))
-import Unique
 import Prelude hiding (null)
 
 -- | A set of 'EntitySymbol's.
@@ -64,12 +62,6 @@ instance IsList SymbolSet where
   type Item SymbolSet = EntitySymbol
   fromList = fromListSS
   toList = toListSS
-
--- TODO: There is a copy of this function in Asterius.Types.SymbolMap. See to
--- it that we only have one copy of this in a shared location.
-{-# INLINE getKeyES #-}
-getKeyES :: EntitySymbol -> IM.Key
-getKeyES = getKey . getUnique
 
 -- ----------------------------------------------------------------------------
 
@@ -112,7 +104,7 @@ foldr' fn z = IM.foldr' fn z . fromSymbolSet
 
 -- ----------------------------------------------------------------------------
 
--- | /O(1)/. Convert a 'SymbolSet' to an 'IntSet'. TODO: Internal.
+-- | /O(n*min(n,W))/. Convert a 'SymbolSet' to an 'IntSet'. TODO: Internal.
 {-# INLINE toIntSet #-}
 toIntSet :: SymbolSet -> IS.IntSet
 toIntSet = IS.fromList . IM.keys . fromSymbolSet

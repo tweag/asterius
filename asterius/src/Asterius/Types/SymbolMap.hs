@@ -68,7 +68,6 @@ import qualified Data.IntMap.Lazy as IM
 import qualified Data.Map.Lazy as Map
 import GHC.Exts (IsList (..))
 import GHC.Stack
-import Unique
 import Prelude hiding (filter, lookup)
 
 -- | A map from 'EntitySymbol's to values @a@.
@@ -93,10 +92,6 @@ instance IsList (SymbolMap a) where
   type Item (SymbolMap a) = (EntitySymbol, a)
   fromList = fromListSM
   toList = toListSM
-
-{-# INLINE getKeyES #-}
-getKeyES :: EntitySymbol -> IM.Key
-getKeyES = getKey . getUnique
 
 -- ----------------------------------------------------------------------------
 
