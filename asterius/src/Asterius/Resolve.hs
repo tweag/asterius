@@ -90,7 +90,6 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
           { externalModuleName = "WasmTable",
             externalBaseName = "table"
           },
-        tableExport = TableExport {externalName = "table"},
         tableSlots = table_slots,
         memorySegments = segs,
         memoryImport = MemoryImport

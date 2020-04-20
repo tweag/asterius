@@ -577,12 +577,6 @@ marshalMemoryImport m MemoryImport {..} = flip runContT pure $ do
   ebp <- marshalBS externalBaseName
   lift $ Binaryen.addMemoryImport m inp emp ebp 0
 
-marshalTableExport :: Binaryen.Module -> TableExport -> IO Binaryen.Export
-marshalTableExport m TableExport {..} = flip runContT pure $ do
-  inp <- marshalBS "0"
-  enp <- marshalBS externalName
-  lift $ Binaryen.addTableExport m inp enp
-
 marshalModule ::
   Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
@@ -608,7 +602,6 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
   forM_ functionExports $ marshalFunctionExport m
   marshalFunctionTable m tableSlots functionTable
   marshalTableImport m tableImport
-  void $ marshalTableExport m tableExport
   flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments
   marshalMemoryImport m memoryImport
   flip runContT pure $ do
