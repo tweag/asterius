@@ -74,8 +74,8 @@ fromJSArray :: JSArray -> [JSVal]
 toJSArray :: [JSVal] -> JSArray
 fromJSString :: JSString -> String
 toJSString :: String -> JSString
-byteStringFromJSUint8Array :: JSUint8Array -> IO ByteString
-byteStringToJSUint8Array :: ByteString -> IO JSUint8Array
+byteStringFromJSUint8Array :: JSUint8Array -> ByteString
+byteStringToJSUint8Array :: ByteString -> JSUint8Array
 textFromJSString :: JSString -> Text
 textToJSString :: Text -> JSString
 jsonToJSVal :: ToJSON a => a -> JSVal

@@ -10,6 +10,6 @@ import System.IO.Unsafe
 x :: JSUint8Array
 x = unsafePerformIO $ do
   love
-  byteStringToJSUint8Array "Lorem ipsum"
+  pure $ byteStringToJSUint8Array "Lorem ipsum"
 
 foreign import javascript "console.error('From node, with love')" love :: IO ()

@@ -48,8 +48,8 @@ main = do
   js_arr <- js_get_arr
   js_print $ coerce $ toJSArray $ fromJSArray js_arr
   js_buf <- js_get_buf
-  hs_buf <- byteStringFromJSUint8Array js_buf
-  byteStringToJSUint8Array hs_buf >>= js_print_buf
+  let hs_buf = byteStringFromJSUint8Array js_buf
+  js_print_buf $ byteStringToJSUint8Array hs_buf
   print hs_buf
   cb1 <- makeHaskellCallback1 js_print
   js_setTimeout cb1 4096 (coerce js_str)

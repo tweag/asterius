@@ -65,7 +65,7 @@ localStorageGetItem k = do
       then do
         vs <- js_localStorage_getItem ks
         buf <- js_decode vs
-        r <- Just <$> byteStringFromJSUint8Array buf
+        let r = Just $ byteStringFromJSUint8Array buf
         freeJSVal (coerce vs)
         freeJSVal (coerce buf)
         pure r
