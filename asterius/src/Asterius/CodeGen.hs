@@ -1548,6 +1548,17 @@ marshalCmmBlock inner_nodes exit_node = do
       [e] -> e
       _ -> Block {name = "", bodys = es, blockReturnTypes = []}
 
+unreachableRelooperBlock :: RelooperBlock
+unreachableRelooperBlock = RelooperBlock
+  { addBlock = AddBlock
+      { code = Barf
+          { barfMessage = "unreachable block",
+            barfReturnTypes = []
+          }
+      },
+    addBranches = []
+  }
+
 marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
@@ -1557,18 +1568,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
       b <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
       pure (k, b)
   let blocks_unresolved =
-        ( "__asterius_unreachable",
-          RelooperBlock
-            { addBlock = AddBlock
-                { code = Barf
-                    { barfMessage = "unreachable block",
-                      barfReturnTypes = []
-                    }
-                },
-              addBranches = []
-            }
-        )
-          : rbs
+        ("__asterius_unreachable", unreachableRelooperBlock) : rbs
   pure $ adjustLocalRegs Function
     { functionType = FunctionType {paramTypes = [], returnTypes = []},
       varTypes = [],
