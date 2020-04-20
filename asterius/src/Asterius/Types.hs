@@ -376,10 +376,6 @@ data Expression
   | ReturnCallIndirect
       { returnCallIndirectTarget64 :: Expression
       }
-  | Host
-      { hostOp :: HostOp,
-        operands :: [Expression]
-      }
   | Nop
   | Unreachable
   | CFG
