@@ -68,16 +68,24 @@ The `ahc-boot` process is configurable via these environment variables:
 
 ## Doing profiled builds
 
-We have preliminary support for doing profiled builds to investigate performance
-issues. Use `stack-profile.yaml` to overwrite `stack.yaml`, and then perform the
-rebooting process. This will be quite slow due to the nature of profiled builds;
-all libraries will be rebuilt with the profiled flavor.
+### Doing profiled builds within a local git tree
+
+Use `stack-profile.yaml` to overwrite `stack.yaml`, and then run
+`utils/reboot.sh` to kick off the rebooting process. This will be quite slow due
+to the nature of profiled builds; all libraries will be rebuilt with the
+profiled flavor. Better to perform a profiled build in a standalone git tree.
 
 Once the profiled build is complete, it's possible to use RTS flags to obtain
-profile data when compiling Haskell sources. Use `GHCRTS=..` instead of `+RTS
-..`, since we're often interested in the profile data of all asterius
-executables, and the `GHCRTS` environment variable can propagate to all
-processes.
+profile data when compiling Haskell sources. At runtime there are two ways to
+pass RTS flags to a Haskell executable:
+
+* The `GHCRTS` environment variable
+* The `+RTS ... -RTS` command line arguments
+
+Always use `GHCRTS` when running programs like `ahc-link`, since those programs
+can spawn other processes (e.g. `ahc-ld`), and we're often interested in the
+profile data of all asterius executables. The `GHCRTS` environment variable can
+propagate to all processes.
 
 See the relevant
 [section](https://downloads.haskell.org/~ghc/8.8.3/docs/html/users_guide/profiling.html)
@@ -89,6 +97,35 @@ also some third party applications useful for analyzing the profiling data, e.g.
 Fow now, a major problem with the profiled build is: it seems to emit
 dysfunctional code which doesn't work. Consequently, this affects the TH runner,
 so any dependencies relying on TH isn't supported by the profiled build.
+
+### Doing profiled builds with Docker
+
+We have a special `profile.Dockerfile` which can be used to build a profiled
+flavor of `asterius`. This is the recommended way of doing profiled builds.
+
+### Measuring time/allocation differences
+
+When working on a performance-related PR, we often want to measure the
+time/allocation differences it introduced. The workflow is roughly:
+
+* Perform *two* profiled builds with Docker; one builds from the `master`
+  branch, one from the PR's branch.
+* Run `ahc-link` in the built images on the example program below, setting the
+  necessary `GHCRTS` to generate the profile reports. The code should be put in
+  two standalone directories, otherwise the `.hi`/`.o` files may conflict or be
+  accidently reused.
+
+The profiled Docker images contain pre-compiled `Cabal`. And the example program
+we use to stress-test the linker is:
+
+```haskell
+import Distribution.Simple
+main = defaultMain
+```
+
+We choose this program since it's classic, and although being short, it pulls in
+a lot of data segments and functions, so it exposes the linker's performance
+bottleneck pretty well.
 
 ## Adding a test case
 
