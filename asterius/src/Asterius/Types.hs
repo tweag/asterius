@@ -47,6 +47,7 @@ module Asterius.Types
   )
 where
 
+import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
 import Asterius.Types.EntitySymbol
 import Asterius.Types.SymbolMap
