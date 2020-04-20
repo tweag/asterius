@@ -23,7 +23,6 @@ module Asterius.Types
     FunctionType (..),
     UnaryOp (..),
     BinaryOp (..),
-    HostOp (..),
     Expression (..),
     Function (..),
     FunctionImport (..),
@@ -286,11 +285,6 @@ data BinaryOp
   | LeFloat64
   | GtFloat64
   | GeFloat64
-  deriving (Show, Data)
-
-data HostOp
-  = CurrentMemory
-  | GrowMemory
   deriving (Show, Data)
 
 data Expression
@@ -594,8 +588,6 @@ $(genBinary ''FunctionType)
 $(genBinary ''UnaryOp)
 
 $(genBinary ''BinaryOp)
-
-$(genBinary ''HostOp)
 
 $(genBinary ''Expression)
 
