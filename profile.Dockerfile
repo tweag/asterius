@@ -6,6 +6,10 @@ ARG jobs=1
 
 ARG ASTERIUS_AHC_LD_IGNORE=1
 
+ARG UID=1000
+
+ARG GID=1000
+
 ENV \
   ASTERIUS_LIB_DIR=/home/asterius/.asterius-local-install-root/share/x86_64-linux-ghc-8.8.3/asterius-0.0.1/.boot/asterius_lib \
   LANG=C.UTF-8 \
@@ -33,7 +37,13 @@ RUN \
     sudo \
     xz-utils \
     zlib1g-dev && \
-  useradd --create-home --shell /bin/bash asterius && \
+  groupadd --gid $GID asterius && \
+  useradd \
+    --create-home \
+    --shell /bin/bash \
+    --uid $UID \
+    --gid $GID \
+    asterius && \
   echo "asterius ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 USER asterius

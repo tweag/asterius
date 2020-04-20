@@ -4,7 +4,7 @@ set -euo pipefail
 
 cd .buildkite
 
-GHCRTS="-P -hy -l-au" ahc-link --input-hs Setup.hs
+GHCRTS="-pa -hy -l-au" ahc-link --input-hs Setup.hs
 
 mkdir reports
 mv \
@@ -12,4 +12,3 @@ mv \
   *.hp \
   *.prof \
   reports/
-sudo chown -c -h -R $UID:$GID .

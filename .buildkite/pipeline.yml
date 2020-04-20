@@ -56,6 +56,8 @@ steps:
     command: |
       docker pull debian:sid
       docker build \
+        --build-arg UID=$(id --user) \
+        --build-arg GID=$(id --group) \
         --compress \
         --file profile.Dockerfile \
         --network host \
