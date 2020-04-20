@@ -35,7 +35,6 @@ infer expr = case expr of
   ConstF64 {} -> [F64]
   Unary {unaryOp = op} -> [snd $ inferUnaryOp op]
   Binary {binaryOp = op} -> [snd $ inferBinaryOp op]
-  Host {} -> [I32]
   Nop -> []
   Unreachable -> []
   CFG {} -> []

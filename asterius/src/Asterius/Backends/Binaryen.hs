@@ -214,11 +214,6 @@ marshalBinaryOp op = case op of
   GtFloat64 -> Binaryen.gtFloat64
   GeFloat64 -> Binaryen.geFloat64
 
-marshalHostOp :: HostOp -> Binaryen.Op
-marshalHostOp op = case op of
-  CurrentMemory -> Binaryen.memorySize
-  GrowMemory -> Binaryen.memoryGrow
-
 marshalFunctionType :: FunctionType -> IO (Binaryen.Type, Binaryen.Type)
 marshalFunctionType FunctionType {..} = flip runContT pure $ do
   (pts, ptl) <- marshalV $ map marshalValueType paramTypes
@@ -453,12 +448,6 @@ marshalExpression e = case e of
         r <- lift $ Binaryen.return m (coerce nullPtr)
         (arr, _) <- marshalV [s, r]
         lift $ Binaryen.block m nullPtr arr 2 Binaryen.none
-  Host {..} -> do
-    xs <- forM operands marshalExpression
-    m <- askModuleRef
-    lift $ flip runContT pure $ do
-      (es, en) <- marshalV xs
-      lift $ Binaryen.host m (marshalHostOp hostOp) nullPtr es (fromIntegral en)
   Nop -> do
     m <- askModuleRef
     lift $ Binaryen.nop m

@@ -667,12 +667,6 @@ makeInstructions expr =
               value = returnCallIndirectTarget64,
               valueType = I64
             }
-    Host {..} -> do
-      let op = unitBag $ case hostOp of
-            CurrentMemory -> Wasm.MemorySize
-            GrowMemory -> Wasm.MemoryGrow
-      xs <- for operands makeInstructions
-      pure $ unionManyBags xs `unionBags` op
     Nop -> pure $ unitBag Wasm.Nop
     Unreachable -> pure $ unitBag Wasm.Unreachable
     CFG {..} -> makeInstructions $ relooper graph
