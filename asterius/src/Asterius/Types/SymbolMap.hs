@@ -59,18 +59,15 @@ module Asterius.Types.SymbolMap
   )
 where
 
-import Asterius.Binary.Orphans ()
 import Asterius.Types.EntitySymbol
+import qualified Asterius.Types.SymbolSet as SS
 import Binary
 import Control.Monad
 import Data.Data
 import qualified Data.IntMap.Lazy as IM
-import qualified Data.IntSet as IS
 import qualified Data.Map.Lazy as Map
-import qualified Data.Set as Set
 import GHC.Exts (IsList (..))
 import GHC.Stack
-import Unique
 import Prelude hiding (filter, lookup)
 
 -- | A map from 'EntitySymbol's to values @a@.
@@ -95,10 +92,6 @@ instance IsList (SymbolMap a) where
   type Item (SymbolMap a) = (EntitySymbol, a)
   fromList = fromListSM
   toList = toListSM
-
-{-# INLINE getKeyES #-}
-getKeyES :: EntitySymbol -> IM.Key
-getKeyES = getKey . getUnique
 
 -- ----------------------------------------------------------------------------
 
@@ -151,9 +144,8 @@ filterWithKey :: (EntitySymbol -> a -> Bool) -> SymbolMap a -> SymbolMap a
 filterWithKey p (SymbolMap m) = SymbolMap $ IM.filter (uncurry p) m
 
 -- | The restriction of a map to the keys in a set.
-restrictKeys :: SymbolMap a -> Set.Set EntitySymbol -> SymbolMap a
-restrictKeys (SymbolMap m) s =
-  SymbolMap $ IM.restrictKeys m (IS.fromList $ map getKeyES $ Set.toList s)
+restrictKeys :: SymbolMap a -> SS.SymbolSet -> SymbolMap a
+restrictKeys (SymbolMap m) s = SymbolMap $ IM.restrictKeys m (SS.toIntSet s)
 
 -- | /O(n)/. Map a function over all values in the map.
 mapWithKey :: (EntitySymbol -> a -> b) -> SymbolMap a -> SymbolMap b
@@ -166,11 +158,10 @@ mapWithKey fn (SymbolMap m) =
 insert :: EntitySymbol -> a -> SymbolMap a -> SymbolMap a
 insert k e (SymbolMap m) = SymbolMap $ IM.insert (getKeyES k) (k, e) m
 
--- | /O(n)/. The set of all keys of the map. NOTE: This function utilizes the
--- 'Ord' instance for 'EntitySymbol' (because it calls 'Set.fromList'
--- internally).
-keysSet :: SymbolMap a -> Set.Set EntitySymbol
-keysSet (SymbolMap m) = Set.fromList $ map fst $ IM.elems m
+-- | /O(n*log n)/. The set of all keys of the map.
+{-# INLINE keysSet #-}
+keysSet :: SymbolMap a -> SS.SymbolSet
+keysSet = SS.fromList . keys
 
 -- | /O(n)/. Return all 'EntitySymbol' keys of the map, in ascending order of
 -- the key of their unique.

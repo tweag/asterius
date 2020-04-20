@@ -20,10 +20,10 @@ import Asterius.Passes.FunctionSymbolTable
 import Asterius.Passes.GCSections
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
+import qualified Asterius.Types.SymbolSet as SS
 import Asterius.Types.LinkReport
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
-import qualified Data.Set as S
 import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
 
@@ -106,7 +106,7 @@ linkStart ::
   Bool ->
   Bool ->
   AsteriusModule ->
-  S.Set EntitySymbol ->
+  SS.SymbolSet ->
   [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
 linkStart debug gc_sections verbose_err store root_syms export_funcs =

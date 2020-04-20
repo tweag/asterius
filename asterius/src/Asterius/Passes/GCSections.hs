@@ -10,18 +10,18 @@ where
 
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
+import qualified Asterius.Types.SymbolSet as SS
 import Data.Data
   ( Data,
     gmapQl,
   )
-import qualified Data.Set as S
 import Data.String
 import Type.Reflection
 
 gcSections ::
   Bool ->
   AsteriusModule ->
-  S.Set EntitySymbol ->
+  SS.SymbolSet ->
   [EntitySymbol] ->
   AsteriusModule
 gcSections verbose_err store_mod root_syms export_funcs =
@@ -41,19 +41,19 @@ gcSections verbose_err store_mod root_syms export_funcs =
         }
     ffi_exports =
       ffiExportDecls (ffiMarshalState store_mod)
-        `SM.restrictKeys` S.fromList export_funcs
+        `SM.restrictKeys` SS.fromList export_funcs
     root_syms' =
-      S.fromList [ffiExportClosure | FFIExportDecl {..} <- SM.elems ffi_exports]
+      SS.fromList [ffiExportClosure | FFIExportDecl {..} <- SM.elems ffi_exports]
         <> root_syms
-    (_, _, final_m) = go (root_syms', S.empty, mempty)
+    (_, _, final_m) = go (root_syms', SS.empty, mempty)
     go i@(i_staging_syms, _, _)
-      | S.null i_staging_syms = i
+      | SS.null i_staging_syms = i
       | otherwise = go $ iter i
     iter (i_staging_syms, i_acc_syms, i_m) = (o_staging_syms, o_acc_syms, o_m)
       where
         o_acc_syms = i_staging_syms <> i_acc_syms
         (i_child_syms, o_m) =
-          S.foldr'
+          SS.foldr'
             ( \i_staging_sym (i_child_syms_acc, o_m_acc) ->
                 case SM.lookup i_staging_sym (staticsMap store_mod) of
                   Just ss ->
@@ -100,13 +100,13 @@ gcSections verbose_err store_mod root_syms export_funcs =
                       | otherwise ->
                         (i_child_syms_acc, o_m_acc)
             )
-            (S.empty, i_m)
+            (SS.empty, i_m)
             i_staging_syms
-        o_staging_syms = i_child_syms `S.difference` o_acc_syms
+        o_staging_syms = i_child_syms `SS.difference` o_acc_syms
 
-collectEntitySymbols :: Data a => a -> S.Set EntitySymbol
+collectEntitySymbols :: Data a => a -> SS.SymbolSet
 collectEntitySymbols t
   | Just HRefl <- eqTypeRep (typeOf t) (typeRep @EntitySymbol) =
-    S.singleton t
+    SS.singleton t
   | otherwise =
-    gmapQl (<>) S.empty collectEntitySymbols t
+    gmapQl (<>) SS.empty collectEntitySymbols t
