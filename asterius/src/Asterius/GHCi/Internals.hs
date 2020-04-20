@@ -255,17 +255,27 @@ asteriusWriteIServ hsc_env i a
                 }
       modifyMVar_ globalGHCiState $ \s -> do
         let run_q_exp_sym =
-              ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQExp"
+              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunQExp"
             run_q_pat_sym =
-              ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQPat"
+              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunQPat"
             run_q_type_sym =
-              ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQType"
+              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunQType"
             run_q_dec_sym =
-              ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunQDec"
+              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunQDec"
             run_q_annwrapper_sym =
-              ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunAnnWrapper"
+              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunAnnWrapper"
             run_mod_fin_sym =
-              ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
+              closureSymbol
+                hsc_env
+                "ghci"
+                "Asterius.GHCi"
+                "asteriusRunModFinalizers"
+            buf_conv_sym =
+              closureSymbol
+                hsc_env
+                "asterius-prelude"
+                "Asterius.ByteString"
+                "byteStringFromJSUint8Array"
             this_id = remoteRefToInt q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
             (js_s, p, _) = ghciJSSession s
@@ -289,6 +299,7 @@ asteriusWriteIServ hsc_env i a
                     run_q_dec_sym,
                     run_q_annwrapper_sym,
                     run_mod_fin_sym,
+                    buf_conv_sym,
                     sym
                   ],
                 exportFunctions = []
@@ -330,7 +341,7 @@ asteriusRunTH ::
 asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
   withTempDir "asdf" $ \tmp_dir -> do
     let p = tmp_dir </> "asdf"
-    distNonMain p [runner_sym, run_mod_fin_sym] ahc_dist_input
+    distNonMain p [runner_sym, run_mod_fin_sym, buf_conv_sym] ahc_dist_input
     rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
     mod_buf <- LBS.readFile $ p -<.> "wasm"
     req_mod_val <- importMJS s $ p -<.> "req.mjs"
@@ -362,14 +373,20 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
     (_ :: IO ()) <- eval' s tid
     pure i
   where
-    runner_sym = ghciClosureSymbol hsc_env "Asterius.GHCi" $ case ty of
+    runner_sym = closureSymbol hsc_env "ghci" "Asterius.GHCi" $ case ty of
       GHC.THExp -> "asteriusRunQExp"
       GHC.THPat -> "asteriusRunQPat"
       GHC.THType -> "asteriusRunQType"
       GHC.THDec -> "asteriusRunQDec"
       GHC.THAnnWrapper -> "asteriusRunAnnWrapper"
     run_mod_fin_sym =
-      ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
+      closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunModFinalizers"
+    buf_conv_sym =
+      closureSymbol
+        hsc_env
+        "asterius-prelude"
+        "Asterius.ByteString"
+        "byteStringFromJSUint8Array"
 
 asteriusRunModFinalizers :: GHC.HscEnv -> JSSession -> JSVal -> IO ()
 asteriusRunModFinalizers hsc_env s i = do
@@ -383,7 +400,7 @@ asteriusRunModFinalizers hsc_env s i = do
   pure ()
   where
     run_mod_fin_sym =
-      ghciClosureSymbol hsc_env "Asterius.GHCi" "asteriusRunModFinalizers"
+      closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunModFinalizers"
 
 -- | Compiles the 'GHC.CoreExpr' of a 'Q' splice to Cmm, then unlinked Wasm, and
 -- returns the associated id as a 'GHC.ForeignHValue'. This is invoked by GHC
@@ -492,8 +509,8 @@ linkPkg hsc_env pkg_name =
     Just comp_id =
       GHC.lookupPackageName (GHC.hsc_dflags hsc_env) (GHC.PackageName pkg_name)
 
-ghciClosureSymbol :: GHC.HscEnv -> String -> String -> EntitySymbol
-ghciClosureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env) "ghci"
+closureSymbol :: GHC.HscEnv -> String -> String -> String -> EntitySymbol
+closureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env)
 
 intToRemoteRef :: Int -> GHC.RemoteRef a
 intToRemoteRef = unsafeCoerce . GHC.toRemotePtr . intPtrToPtr . coerce
