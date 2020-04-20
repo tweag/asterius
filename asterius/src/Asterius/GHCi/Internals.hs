@@ -338,7 +338,7 @@ asteriusRunTH ::
   JSSession ->
   (Asterius.Types.Module, LinkReport) ->
   IO JSVal
-asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
+asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
   withTempDir "asdf" $ \tmp_dir -> do
     let p = tmp_dir </> "asdf"
     distNonMain p [runner_sym, run_mod_fin_sym, buf_conv_sym] ahc_dist_input
@@ -356,15 +356,42 @@ asteriusRunTH hsc_env _ _ q ty _ s ahc_dist_input =
           <> ",{module:"
           <> takeJSVal mod_val
           <> "}))"
+    arr_buf <- alloc s (encode loc)
     let runner_closure =
           deRefJSVal i <> ".symbolTable."
             <> coerce
               (byteString (entityName runner_sym))
+        buf_conv_closure =
+          deRefJSVal i <> ".symbolTable."
+            <> coerce
+              (byteString (entityName buf_conv_sym))
+        uint8_arr = "new Uint8Array(" <> deRefJSVal arr_buf <> ")"
+        uint8_arr_sn =
+          deRefJSVal i
+            <> ".exports.context.stablePtrManager.newJSVal("
+            <> uint8_arr
+            <> ")"
+        uint8_arr_closure =
+          deRefJSVal i <> ".exports.rts_mkJSVal(" <> uint8_arr_sn <> ")"
+        bs_closure =
+          deRefJSVal i
+            <> ".exports.rts_apply("
+            <> buf_conv_closure
+            <> ","
+            <> uint8_arr_closure
+            <> ")"
+        runner_closure' =
+          deRefJSVal i
+            <> ".exports.rts_apply("
+            <> runner_closure
+            <> ","
+            <> bs_closure
+            <> ")"
         hv_closure = "0x" <> JSCode (word64Hex q)
         applied_closure =
           deRefJSVal i
             <> ".exports.rts_apply("
-            <> runner_closure
+            <> runner_closure'
             <> ","
             <> hv_closure
             <> ")"
