@@ -58,6 +58,7 @@ steps:
       docker build \
         --build-arg UID=$(id --user) \
         --build-arg GID=$(id --group) \
+        --build-arg jobs=8 \
         --compress \
         --file profile.Dockerfile \
         --network host \
