@@ -30,8 +30,6 @@ module Asterius.Types
     TableImport (..),
     MemoryImport (..),
     FunctionExport (..),
-    TableExport (..),
-    MemoryExport (..),
     FunctionTable (..),
     DataSegment (..),
     Module (..),
@@ -49,11 +47,9 @@ module Asterius.Types
   )
 where
 
-import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
 import Asterius.Types.EntitySymbol
 import Asterius.Types.SymbolMap
-import qualified Binary as GHC
 import Control.Exception
 import qualified Data.ByteString as BS
 import Data.Data
@@ -435,20 +431,6 @@ data FunctionExport
       }
   deriving (Show, Data)
 
-newtype TableExport
-  = TableExport
-      { externalName :: BS.ByteString
-      }
-  deriving (Show, Data)
-  deriving newtype (GHC.Binary)
-
-newtype MemoryExport
-  = MemoryExport
-      { externalName :: BS.ByteString
-      }
-  deriving (Show, Data)
-  deriving newtype (GHC.Binary)
-
 data FunctionTable
   = FunctionTable
       { tableFunctionNames :: [BS.ByteString],
@@ -470,11 +452,9 @@ data Module
         functionExports :: [FunctionExport],
         functionTable :: FunctionTable,
         tableImport :: TableImport,
-        tableExport :: TableExport,
         tableSlots :: Int,
         memorySegments :: [DataSegment],
         memoryImport :: MemoryImport,
-        memoryExport :: MemoryExport,
         memoryMBlocks :: Int
       }
   deriving (Show, Data)
