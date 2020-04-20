@@ -31,7 +31,6 @@ module Asterius.Types
     MemoryImport (..),
     FunctionExport (..),
     TableExport (..),
-    MemoryExport (..),
     FunctionTable (..),
     DataSegment (..),
     Module (..),
@@ -442,13 +441,6 @@ newtype TableExport
   deriving (Show, Data)
   deriving newtype (GHC.Binary)
 
-newtype MemoryExport
-  = MemoryExport
-      { externalName :: BS.ByteString
-      }
-  deriving (Show, Data)
-  deriving newtype (GHC.Binary)
-
 data FunctionTable
   = FunctionTable
       { tableFunctionNames :: [BS.ByteString],
@@ -474,7 +466,6 @@ data Module
         tableSlots :: Int,
         memorySegments :: [DataSegment],
         memoryImport :: MemoryImport,
-        memoryExport :: MemoryExport,
         memoryMBlocks :: Int
       }
   deriving (Show, Data)

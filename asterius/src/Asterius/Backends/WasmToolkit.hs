@@ -166,16 +166,6 @@ makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
           }
         | FunctionExport {..} <- functionExports
       ]
-        <> ( case memoryExport of
-               MemoryExport {..} ->
-                 [ Wasm.Export
-                     { exportName = coerce $ SBS.toShort externalName,
-                       exportDescription =
-                         Wasm.ExportMemory $
-                           Wasm.MemoryIndex 0
-                     }
-                 ]
-           )
         <> ( case tableExport of
                TableExport {..} ->
                  [ Wasm.Export

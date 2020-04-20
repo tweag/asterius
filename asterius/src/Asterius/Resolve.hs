@@ -97,7 +97,6 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
           { externalModuleName = "WasmMemory",
             externalBaseName = "memory"
           },
-        memoryExport = MemoryExport {externalName = "memory"},
         memoryMBlocks = initial_mblocks
       }
 
