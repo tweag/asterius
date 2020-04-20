@@ -52,6 +52,7 @@ import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
 import Data.String
 import qualified ErrUtils as GHC
+import qualified FastString as GHC
 import Foreign.Ptr
 import GHC.IO.Handle.FD
 import qualified GHCi.Message as GHC
@@ -61,6 +62,7 @@ import qualified HscMain as GHC
 import qualified HscTypes as GHC
 import qualified Id as GHC
 import qualified IdInfo as GHC
+import qualified IfaceEnv as GHC
 import Language.Haskell.TH
 import Language.JavaScript.Inline.Core
 import qualified Linker as GHC
@@ -84,7 +86,6 @@ import qualified UniqFM as GHC
 import qualified UniqSupply as GHC
 import Unsafe.Coerce
 import qualified VarEnv as GHC
-import qualified IfaceEnv as GHC
 
 data GHCiState
   = GHCiState
@@ -102,15 +103,16 @@ globalGHCiState :: MVar GHCiState
 globalGHCiState = unsafePerformIO $ do
   us <- GHC.mkSplitUniqSupply 'A'
   ncu <- newNameCacheUpdater
-  newMVar GHCiState
-    { ghciUniqSupply = us,
-      ghciNameCacheUpdater = ncu,
-      ghciLibs = mempty,
-      ghciObjs = M.empty,
-      ghciCompiledCoreExprs = IM.empty,
-      ghciLastCompiledCoreExpr = 0,
-      ghciJSSession = error "ghciJSSession not initialized"
-    }
+  newMVar
+    GHCiState
+      { ghciUniqSupply = us,
+        ghciNameCacheUpdater = ncu,
+        ghciLibs = mempty,
+        ghciObjs = M.empty,
+        ghciCompiledCoreExprs = IM.empty,
+        ghciLastCompiledCoreExpr = 0,
+        ghciJSSession = error "ghciJSSession not initialized"
+      }
 
 newGHCiJSSession :: IO (JSSession, Pipe)
 newGHCiJSSession = do
@@ -123,7 +125,10 @@ newGHCiJSSession = do
   s <-
     newJSSession
       defJSSessionOpts
-        { nodeExtraArgs = ["--experimental-wasm-return-call", "--wasm-interpret-all"],
+        { nodeExtraArgs =
+            [ "--experimental-wasm-return-call",
+              "--wasm-interpret-all"
+            ],
           nodeExtraEnv =
             [ ("ASTERIUS_NODE_READ_FD", show node_read_fd),
               ("ASTERIUS_NODE_WRITE_FD", show node_write_fd)
@@ -156,12 +161,13 @@ asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
 asteriusStartIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
   cache_ref <- newIORef GHC.emptyUFM
-  pure GHC.IServ
-    { GHC.iservPipe = error "asteriusStartIServ.iservPipe",
-      GHC.iservProcess = error "asteriusStartIServ.iservProcess",
-      GHC.iservLookupSymbolCache = cache_ref,
-      GHC.iservPendingFrees = []
-    }
+  pure
+    GHC.IServ
+      { GHC.iservPipe = error "asteriusStartIServ.iservPipe",
+        GHC.iservProcess = error "asteriusStartIServ.iservProcess",
+        GHC.iservLookupSymbolCache = cache_ref,
+        GHC.iservPendingFrees = []
+      }
 
 -- | Finalizes the global 'JSSession' if present.
 asteriusStopIServ :: GHC.HscEnv -> IO ()
@@ -263,28 +269,30 @@ asteriusWriteIServ hsc_env i a
             this_id = remoteRefToInt q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
             (js_s, p, _) = ghciJSSession s
-        (_, final_m, link_report) <- linkExeInMemory LinkTask
-          { progName = "",
-            linkOutput = "",
-            linkObjs = [],
-            linkLibs = [],
-            linkModule = m <> M.foldr' (<>) (ghciLibs s) (ghciObjs s),
-            hasMain = False,
-            debug = False,
-            gcSections = True,
-            verboseErr = True,
-            outputIR = Nothing,
-            rootSymbols =
-              [ run_q_exp_sym,
-                run_q_pat_sym,
-                run_q_type_sym,
-                run_q_dec_sym,
-                run_q_annwrapper_sym,
-                run_mod_fin_sym,
-                sym
-              ],
-            exportFunctions = []
-          }
+        (_, final_m, link_report) <-
+          linkExeInMemory
+            LinkTask
+              { progName = "",
+                linkOutput = "",
+                linkObjs = [],
+                linkLibs = [],
+                linkModule = m <> M.foldr' (<>) (ghciLibs s) (ghciObjs s),
+                hasMain = False,
+                debug = False,
+                gcSections = True,
+                verboseErr = True,
+                outputIR = Nothing,
+                rootSymbols =
+                  [ run_q_exp_sym,
+                    run_q_pat_sym,
+                    run_q_type_sym,
+                    run_q_dec_sym,
+                    run_q_annwrapper_sym,
+                    run_mod_fin_sym,
+                    sym
+                  ],
+                exportFunctions = []
+              }
         v <-
           asteriusRunTH
             hsc_env
@@ -397,7 +405,8 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
   prepd_expr <- GHC.corePrepExpr dflags hsc_env tidy_expr
   GHC.lintInteractiveExpr "asteriusHscCompileCoreExpr" hsc_env prepd_expr
   linkRts hsc_env
-  linkGhci hsc_env
+  linkPkg hsc_env "ghci"
+  linkPkg hsc_env "asterius-prelude"
   asteriusLinkExpr hsc_env srcspan prepd_expr
   u <- modifyMVar globalGHCiState $ \s ->
     let (u, s') = GHC.takeUniqFromSupply $ ghciUniqSupply s
@@ -474,14 +483,14 @@ linkRts hsc_env = do
   Just rts_path <- findFile (GHC.libraryDirs pkg_cfg) "libHSrts.a"
   asteriusIservCall hsc_env (error "linkRts") $ GHC.LoadArchive rts_path
 
-linkGhci :: GHC.HscEnv -> IO ()
-linkGhci hsc_env =
+linkPkg :: GHC.HscEnv -> GHC.FastString -> IO ()
+linkPkg hsc_env pkg_name =
   GHC.linkPackages
     hsc_env
-    [GHC.componentIdToInstalledUnitId ghci_comp_id]
+    [GHC.componentIdToInstalledUnitId comp_id]
   where
-    Just ghci_comp_id =
-      GHC.lookupPackageName (GHC.hsc_dflags hsc_env) (GHC.PackageName "ghci")
+    Just comp_id =
+      GHC.lookupPackageName (GHC.hsc_dflags hsc_env) (GHC.PackageName pkg_name)
 
 ghciClosureSymbol :: GHC.HscEnv -> String -> String -> EntitySymbol
 ghciClosureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env) "ghci"
