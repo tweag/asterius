@@ -14,6 +14,7 @@ import Control.DeepSeq
 import Control.Exception
 import Data.Binary
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as LBS
 import Data.IORef
 import GHC.Desugar
 import GHC.IO.Device
@@ -22,23 +23,21 @@ import GHCi.Message
 import GHCi.RemoteTypes
 import GHCi.TH
 import Language.Haskell.TH.Syntax
-import Prelude
 import System.IO
 import System.IO.Unsafe
+import Prelude
 
-asteriusRunQ :: THResultType -> a -> IO ()
-asteriusRunQ ty hv = do
-  r <-
-    try $ do
-      rstate <- startTH
-      rhv <- toHValueRef <$> mkRemoteRef hv
-      runTH globalPipe rstate rhv ty Nothing
-  resp <-
-    case r of
-      Left e
-        | Just (GHCiQException _ err) <- fromException e -> pure $ QFail err
-        | otherwise -> QException <$> showException e
-      Right (a :: BS.ByteString) -> pure $ QDone a
+asteriusRunQ :: BS.ByteString -> THResultType -> a -> IO ()
+asteriusRunQ loc_bs ty hv = do
+  r <- try $ do
+    rstate <- startTH
+    rhv <- toHValueRef <$> mkRemoteRef hv
+    runTH globalPipe rstate rhv ty (decode (LBS.fromStrict loc_bs))
+  resp <- case r of
+    Left e
+      | Just (GHCiQException _ err) <- fromException e -> pure $ QFail err
+      | otherwise -> QException <$> showException e
+    Right (a :: BS.ByteString) -> pure $ QDone a
   writePipe globalPipe $ do
     putTHMessage RunTHDone
     put resp
@@ -50,20 +49,20 @@ showException e0 = do
     Left e -> showException e
     Right str -> pure str
 
-asteriusRunQExp :: Q Exp -> IO ()
-asteriusRunQExp = asteriusRunQ THExp
+asteriusRunQExp :: BS.ByteString -> Q Exp -> IO ()
+asteriusRunQExp loc_bs = asteriusRunQ loc_bs THExp
 
-asteriusRunQPat :: Q Pat -> IO ()
-asteriusRunQPat = asteriusRunQ THPat
+asteriusRunQPat :: BS.ByteString -> Q Pat -> IO ()
+asteriusRunQPat loc_bs = asteriusRunQ loc_bs THPat
 
-asteriusRunQType :: Q Type -> IO ()
-asteriusRunQType = asteriusRunQ THType
+asteriusRunQType :: BS.ByteString -> Q Type -> IO ()
+asteriusRunQType loc_bs = asteriusRunQ loc_bs THType
 
-asteriusRunQDec :: Q [Dec] -> IO ()
-asteriusRunQDec = asteriusRunQ THDec
+asteriusRunQDec :: BS.ByteString -> Q [Dec] -> IO ()
+asteriusRunQDec loc_bs = asteriusRunQ loc_bs THDec
 
-asteriusRunAnnWrapper :: AnnotationWrapper -> IO ()
-asteriusRunAnnWrapper = asteriusRunQ THAnnWrapper
+asteriusRunAnnWrapper :: BS.ByteString -> AnnotationWrapper -> IO ()
+asteriusRunAnnWrapper loc_bs = asteriusRunQ loc_bs THAnnWrapper
 
 asteriusRunModFinalizers :: IO ()
 asteriusRunModFinalizers = writePipe globalPipe $ do
@@ -74,14 +73,16 @@ asteriusRunModFinalizers = writePipe globalPipe $ do
 globalPipe :: Pipe
 globalPipe = unsafePerformIO $ do
   read_handle <-
-    fdToHandle' (fromIntegral read_fd)
+    fdToHandle'
+      (fromIntegral read_fd)
       (Just Stream)
       False
       ""
       ReadMode
       True
   write_handle <-
-    fdToHandle' (fromIntegral write_fd)
+    fdToHandle'
+      (fromIntegral write_fd)
       (Just Stream)
       False
       ""
@@ -90,11 +91,12 @@ globalPipe = unsafePerformIO $ do
   hSetBuffering read_handle NoBuffering
   hSetBuffering write_handle NoBuffering
   lo_ref <- newIORef Nothing
-  pure Pipe
-    { pipeRead = read_handle,
-      pipeWrite = write_handle,
-      pipeLeftovers = lo_ref
-    }
+  pure
+    Pipe
+      { pipeRead = read_handle,
+        pipeWrite = write_handle,
+        pipeLeftovers = lo_ref
+      }
 
 foreign import javascript "Number(process.env.ASTERIUS_NODE_READ_FD)" read_fd :: Int
 
