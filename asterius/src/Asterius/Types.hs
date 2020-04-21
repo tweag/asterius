@@ -478,14 +478,9 @@ data RelooperBlock
       }
   deriving (Show, Data)
 
--- | Runtime failure (@Unreachable@) used when the @CmmSwitch@ is
--- non-exhaustive.
--- Historical note: we used to emit a @barf@, but this is wasteful in terms of
--- the size of the generated binary (see issue #592). In fact, GHC always emits
--- @CmmSwitch@es without a default clause only if it knows that the match is
--- exhaustive (so 'unreachableRelooperBlock' is really unreachable).
+-- | A 'RelooperBlock' containing a single 'Unreachable' instruction.
 unreachableRelooperBlock :: RelooperBlock
-unreachableRelooperBlock = RelooperBlock
+unreachableRelooperBlock = RelooperBlock  -- See Note [unreachableRelooperBlock]
   { addBlock = AddBlock
       { code = Unreachable
       },

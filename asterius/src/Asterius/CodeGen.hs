@@ -1660,3 +1660,15 @@ marshalRawCmm _ = w mempty
               cmm_decls
           w m' cmms'
         _ -> pure m
+
+{-
+Note [unreachableRelooperBlock]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In general, we represent runtime failures using @Barf@s, and that's what
+functions @relooper@ and @marshalCmmProc@ used to do as well, when @CmmSwitch@
+was deemed to be non-exhaustive (lacking a default clause). But, we could do
+better: GHC emits @CmmSwitch@es without a default clause only if it knows that
+the match is indeed exhaustive and (so 'unreachableRelooperBlock' is really
+unreachable). So, now both @marshalCmmProc@ and @relooper@ use @Unreachable@
+directly, saving us some generated binary size.
+-}
