@@ -1670,5 +1670,5 @@ was deemed to be non-exhaustive (lacking a default clause). But, we could do
 better: GHC emits @CmmSwitch@es without a default clause only if it knows that
 the match is indeed exhaustive and (so 'unreachableRelooperBlock' is really
 unreachable). So, now both @marshalCmmProc@ and @relooper@ use @Unreachable@
-directly, saving us some generated binary size.
+directly, saving us some generated binary size (see issue #592).
 -}

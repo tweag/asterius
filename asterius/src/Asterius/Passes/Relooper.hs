@@ -16,10 +16,7 @@ import qualified Data.Map.Strict as M
 relooper :: RelooperRun -> Expression
 relooper cfg@RelooperRun {blockMap = oldMap} =
   relooper' $ cfg
-    { blockMap =
-      if M.member "__asterius_unreachable" oldMap
-        then oldMap
-        else M.insert "__asterius_unreachable" unreachableRelooperBlock oldMap
+    { blockMap = M.insert "__asterius_unreachable" unreachableRelooperBlock oldMap
     }
 
 relooper' :: RelooperRun -> Expression
