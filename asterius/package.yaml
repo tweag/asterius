@@ -45,7 +45,7 @@ data-files:
 ghc-options: -Wall
 
 _exe-ghc-options: &exe-ghc-options
-  - -threaded -rtsopts "-with-rtsopts=-H256m -I0 -qg"
+  - -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
 
 dependencies:
   - base
