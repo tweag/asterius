@@ -1471,30 +1471,25 @@ marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
 -- ----------------------------------------------------------------------------
 
--- | TODO: Document.
+-- | Flag determining whether we need to add an @__asterius_unreachable@ block.
 newtype NeedsUnreachableBlock = NeedsUnreachableBlock Bool
   deriving (Eq, Show)
   deriving (Semigroup, Monoid) via (Data.Monoid.Any)
-
--- | TODO: Document.
-{-# INLINE needsUnreachableBlock #-}
-needsUnreachableBlock :: NeedsUnreachableBlock
-needsUnreachableBlock = coerce True
-
--- | TODO: Document.
-{-# INLINE doesNotNeedUnreachableBlock #-}
-doesNotNeedUnreachableBlock :: NeedsUnreachableBlock
-doesNotNeedUnreachableBlock = coerce False
 
 -- ----------------------------------------------------------------------------
 
 marshalCmmBlockBranch ::
   GHC.CmmNode GHC.O GHC.C ->
-  CodeGen ([Expression], Maybe (Expression, NeedsUnreachableBlock), [RelooperAddBranch])
+  CodeGen ([Expression], Maybe Expression, [RelooperAddBranch], NeedsUnreachableBlock)
 marshalCmmBlockBranch instr = case instr of
   GHC.CmmBranch lbl -> do
     k <- marshalLabel lbl
-    pure ([], Nothing, [AddBranch {to = k, addBranchCondition = Nothing}])
+    pure
+      ( [],
+        Nothing,
+        [AddBranch {to = k, addBranchCondition = Nothing}],
+        coerce False
+      )
   GHC.CmmCondBranch {..} -> do
     c <- marshalAndCastCmmExpr cml_pred I32
     kf <- marshalLabel cml_false
@@ -1503,37 +1498,39 @@ marshalCmmBlockBranch instr = case instr of
       ( [],
         Nothing,
         [AddBranch {to = kt, addBranchCondition = Just c} | kt /= kf]
-          <> [AddBranch {to = kf, addBranchCondition = Nothing}]
+          <> [AddBranch {to = kf, addBranchCondition = Nothing}],
+        coerce False
       )
   GHC.CmmSwitch cml_arg st -> do
     a <- marshalAndCastCmmExpr cml_arg I64
     brs <- for (GHC.switchTargetsCases st) $ \(idx, lbl) -> do
       dest <- marshalLabel lbl
       pure (dest, [fromIntegral $ idx - fst (GHC.switchTargetsRange st)])
-    (with_def, dest_def) <- case GHC.switchTargetsDefault st of
+    (needs_unreachable, dest_def) <- case GHC.switchTargetsDefault st of
       Just lbl -> do
         klbl <- marshalLabel lbl
-        return (doesNotNeedUnreachableBlock, klbl)
-      Nothing -> pure (needsUnreachableBlock, "__asterius_unreachable")
+        return (coerce False, klbl)
+      Nothing -> pure (coerce True, "__asterius_unreachable")
     pure
       ( [],
-        Just ( Unary
-                 { unaryOp = WrapInt64,
-                   operand0 = case GHC.switchTargetsRange st of
-                     (0, _) -> a
-                     (l, _) -> Binary
-                       { binaryOp = SubInt64,
-                         operand0 = a,
-                         operand1 = ConstI64 $ fromIntegral l
-                       }
-                 },
-               with_def
-             ),
+        Just
+          Unary
+            { unaryOp = WrapInt64,
+              operand0 = case GHC.switchTargetsRange st of
+                (0, _) -> a
+                (l, _) -> Binary
+                  { binaryOp = SubInt64,
+                    operand0 = a,
+                    operand1 = ConstI64 $ fromIntegral l
+                  }
+            },
         [ AddBranchForSwitch {to = dest, indexes = tags}
           | (dest, tags) <- M.toList $ M.fromListWith (<>) brs,
             dest /= dest_def
         ]
-           <> [AddBranch {to = dest_def, addBranchCondition = Nothing}]
+           <> [AddBranch {to = dest_def, addBranchCondition = Nothing}],
+
+        needs_unreachable
       )
   GHC.CmmCall {..} -> do
     t <- marshalAndCastCmmExpr cml_target I64
@@ -1543,7 +1540,8 @@ marshalCmmBlockBranch instr = case instr of
             _ -> ReturnCallIndirect {returnCallIndirectTarget64 = t}
         ],
         Nothing,
-        []
+        [],
+        coerce False
       )
   _ -> liftIO $ throwIO $ UnsupportedCmmBranch $ showBS instr
 
@@ -1553,10 +1551,10 @@ marshalCmmBlock ::
   CodeGen (RelooperBlock, NeedsUnreachableBlock)
 marshalCmmBlock inner_nodes exit_node = do
   inner_exprs <- marshalCmmBlockBody inner_nodes
-  (br_helper_exprs, maybe_switch_cond_expr, br_branches) <-
+  (br_helper_exprs, maybe_switch_cond_expr, br_branches, needs_unreachable) <-
     marshalCmmBlockBranch exit_node
   pure $ case maybe_switch_cond_expr of
-    Just (switch_cond_expr, with_def) ->
+    Just switch_cond_expr ->
       ( RelooperBlock
           { addBlock = AddBlockWithSwitch
               { code = concatExpressions $ inner_exprs <> br_helper_exprs,
@@ -1564,7 +1562,7 @@ marshalCmmBlock inner_nodes exit_node = do
               },
             addBranches = br_branches
           },
-        with_def
+        needs_unreachable
       )
     _ ->
       ( RelooperBlock
@@ -1573,7 +1571,7 @@ marshalCmmBlock inner_nodes exit_node = do
               },
             addBranches = br_branches
           },
-        doesNotNeedUnreachableBlock
+        needs_unreachable
       )
   where
     concatExpressions es = case es of
@@ -1595,18 +1593,18 @@ unreachableRelooperBlock = RelooperBlock
 marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
-  (with_def, rbs) <- do
+  (needs_unreachable, rbs) <- do
     let fn ::
           NeedsUnreachableBlock ->
           (GHC.Label, GHC.Block GHC.CmmNode GHC.C GHC.C) ->
           CodeGen (NeedsUnreachableBlock, (BS.ByteString, RelooperBlock))
-        fn with_def_acc (lbl, GHC.BlockCC _ inner_nodes exit_node) = do
+        fn needs_unreachable_acc (lbl, GHC.BlockCC _ inner_nodes exit_node) = do
           k <- marshalLabel lbl
-          (b, with_def) <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
-          pure (with_def_acc <> with_def, (k, b))
+          (b, needs_unreachable) <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
+          pure (needs_unreachable_acc <> needs_unreachable, (k, b))
     mapAccumLM fn mempty (GHC.bodyList body)
   let blocks_unresolved
-        | with_def == needsUnreachableBlock =
+        | needs_unreachable == coerce True =
           ("__asterius_unreachable", unreachableRelooperBlock) : rbs
         | otherwise =
           rbs
