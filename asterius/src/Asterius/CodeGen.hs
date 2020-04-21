@@ -1469,13 +1469,9 @@ marshalCmmInstr instr = case instr of
 marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [Expression]
 marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
--- ----------------------------------------------------------------------------
-
 -- | Flag determining whether we need to add an @__asterius_unreachable@ block.
 newtype NeedsUnreachableBlock = NeedsUnreachableBlock Bool
   deriving (Semigroup, Monoid) via (Data.Monoid.Any)
-
--- ----------------------------------------------------------------------------
 
 marshalCmmBlockBranch ::
   GHC.CmmNode GHC.O GHC.C ->
@@ -1553,19 +1549,21 @@ marshalCmmBlock inner_nodes exit_node = do
   pure $ case maybe_switch_cond_expr of
     Just switch_cond_expr ->
       ( RelooperBlock
-          { addBlock = AddBlockWithSwitch
-              { code = concatExpressions $ inner_exprs <> br_helper_exprs,
-                condition = switch_cond_expr
-              },
+          { addBlock =
+              AddBlockWithSwitch
+                { code = concatExpressions $ inner_exprs <> br_helper_exprs,
+                  condition = switch_cond_expr
+                },
             addBranches = br_branches
           },
         needs_unreachable
       )
     _ ->
       ( RelooperBlock
-          { addBlock = AddBlock
-              { code = concatExpressions $ inner_exprs <> br_helper_exprs
-              },
+          { addBlock =
+              AddBlock
+                { code = concatExpressions $ inner_exprs <> br_helper_exprs
+                },
             addBranches = br_branches
           },
         needs_unreachable

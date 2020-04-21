@@ -15,9 +15,10 @@ import qualified Data.Map.Strict as M
 {-# INLINE relooper #-}
 relooper :: RelooperRun -> Expression
 relooper cfg@RelooperRun {blockMap = oldMap} =
-  relooper' $ cfg
-    { blockMap = M.insert "__asterius_unreachable" unreachableRelooperBlock oldMap
-    }
+  relooper' $
+    cfg
+      { blockMap = M.insert "__asterius_unreachable" unreachableRelooperBlock oldMap
+      }
 
 relooper' :: RelooperRun -> Expression
 relooper' RelooperRun {..} = result_expr

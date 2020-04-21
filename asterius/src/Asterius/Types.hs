@@ -480,12 +480,14 @@ data RelooperBlock
 
 -- | A 'RelooperBlock' containing a single 'Unreachable' instruction.
 unreachableRelooperBlock :: RelooperBlock
-unreachableRelooperBlock = RelooperBlock  -- See Note [unreachableRelooperBlock]
-  { addBlock = AddBlock
-      { code = Unreachable
-      },
-    addBranches = []
-  }
+unreachableRelooperBlock =
+  RelooperBlock -- See Note [unreachableRelooperBlock]
+    { addBlock =
+        AddBlock
+          { code = Unreachable
+          },
+      addBranches = []
+    }
 
 data RelooperRun
   = RelooperRun
