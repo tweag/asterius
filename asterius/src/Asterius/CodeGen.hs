@@ -1,3 +1,4 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -35,8 +36,10 @@ import Control.Exception
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
+import Data.Coerce
 import Data.Foldable
 import qualified Data.Map.Strict as M
+import qualified Data.Monoid
 import Data.String
 import Data.Traversable
 import Foreign
@@ -1468,27 +1471,26 @@ marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
 -- ----------------------------------------------------------------------------
 
--- | Datatype to capture whether there is at least on CmmSwitch without a
--- DEFAULT target within a Cmm function. TODO: Place appropriately.
-data ContainsDefault = WithDefault | WithoutDefault
+-- | TODO: Document.
+newtype NeedsUnreachableBlock = NeedsUnreachableBlock Bool
   deriving (Eq, Show)
+  deriving (Semigroup, Monoid) via (Data.Monoid.Any)
 
-instance Monoid ContainsDefault where
-  -- | Always start with the assumption that there are DEFAULTs and everything
-  -- is exhaustive (innocent until proven guilty).
-  mempty = WithDefault
+-- | TODO: Document.
+{-# INLINE needsUnreachableBlock #-}
+needsUnreachableBlock :: NeedsUnreachableBlock
+needsUnreachableBlock = coerce True
 
-instance Semigroup ContainsDefault where
-  -- | Always start with the assumption that there are DEFAULTs and everything
-  -- is exhaustive (innocent until proven guilty).
-  WithoutDefault <> _ = WithoutDefault
-  WithDefault <> y = y
+-- | TODO: Document.
+{-# INLINE doesNotNeedUnreachableBlock #-}
+doesNotNeedUnreachableBlock :: NeedsUnreachableBlock
+doesNotNeedUnreachableBlock = coerce False
 
 -- ----------------------------------------------------------------------------
 
 marshalCmmBlockBranch ::
   GHC.CmmNode GHC.O GHC.C ->
-  CodeGen ([Expression], Maybe (Expression, ContainsDefault), [RelooperAddBranch])
+  CodeGen ([Expression], Maybe (Expression, NeedsUnreachableBlock), [RelooperAddBranch])
 marshalCmmBlockBranch instr = case instr of
   GHC.CmmBranch lbl -> do
     k <- marshalLabel lbl
@@ -1511,8 +1513,8 @@ marshalCmmBlockBranch instr = case instr of
     (with_def, dest_def) <- case GHC.switchTargetsDefault st of
       Just lbl -> do
         klbl <- marshalLabel lbl
-        return (WithDefault, klbl)
-      Nothing -> pure (WithoutDefault, "__asterius_unreachable")
+        return (doesNotNeedUnreachableBlock, klbl)
+      Nothing -> pure (needsUnreachableBlock, "__asterius_unreachable")
     pure
       ( [],
         Just ( Unary
@@ -1548,7 +1550,7 @@ marshalCmmBlockBranch instr = case instr of
 marshalCmmBlock ::
   [GHC.CmmNode GHC.O GHC.O] ->
   GHC.CmmNode GHC.O GHC.C ->
-  CodeGen (RelooperBlock, ContainsDefault)
+  CodeGen (RelooperBlock, NeedsUnreachableBlock)
 marshalCmmBlock inner_nodes exit_node = do
   inner_exprs <- marshalCmmBlockBody inner_nodes
   (br_helper_exprs, maybe_switch_cond_expr, br_branches) <-
@@ -1571,7 +1573,7 @@ marshalCmmBlock inner_nodes exit_node = do
               },
             addBranches = br_branches
           },
-        WithDefault
+        doesNotNeedUnreachableBlock
       )
   where
     concatExpressions es = case es of
@@ -1595,17 +1597,19 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
   (with_def, rbs) <- do
     let fn ::
-          ContainsDefault ->
+          NeedsUnreachableBlock ->
           (GHC.Label, GHC.Block GHC.CmmNode GHC.C GHC.C) ->
-          CodeGen (ContainsDefault, (BS.ByteString, RelooperBlock))
+          CodeGen (NeedsUnreachableBlock, (BS.ByteString, RelooperBlock))
         fn with_def_acc (lbl, GHC.BlockCC _ inner_nodes exit_node) = do
           k <- marshalLabel lbl
           (b, with_def) <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
           pure (with_def_acc <> with_def, (k, b))
     mapAccumLM fn mempty (GHC.bodyList body)
-  let blocks_unresolved = case with_def of
-        WithDefault -> rbs
-        WithoutDefault -> ("__asterius_unreachable", unreachableRelooperBlock) : rbs
+  let blocks_unresolved
+        | with_def == needsUnreachableBlock =
+          ("__asterius_unreachable", unreachableRelooperBlock) : rbs
+        | otherwise =
+          rbs
   pure $ adjustLocalRegs Function
     { functionType = FunctionType {paramTypes = [], returnTypes = []},
       varTypes = [],
