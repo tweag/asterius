@@ -1593,7 +1593,7 @@ unreachableRelooperBlock = RelooperBlock
 marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
-  (_with_def, rbs) <- do
+  (with_def, rbs) <- do
     let fn ::
           ContainsDefault ->
           (GHC.Label, GHC.Block GHC.CmmNode GHC.C GHC.C) ->
@@ -1603,8 +1603,9 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
           (b, with_def) <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
           pure (with_def_acc <> with_def, (k, b))
     mapAccumLM fn mempty (GHC.bodyList body)
-  let blocks_unresolved =
-        ("__asterius_unreachable", unreachableRelooperBlock) : rbs
+  let blocks_unresolved = case with_def of
+        WithDefault -> rbs
+        WithoutDefault -> ("__asterius_unreachable", unreachableRelooperBlock) : rbs
   pure $ adjustLocalRegs Function
     { functionType = FunctionType {paramTypes = [], returnTypes = []},
       varTypes = [],
