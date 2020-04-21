@@ -1513,23 +1513,21 @@ marshalCmmBlockBranch instr = case instr of
       Nothing -> pure (coerce True, "__asterius_unreachable")
     pure
       ( [],
-        Just
-          Unary
-            { unaryOp = WrapInt64,
-              operand0 = case GHC.switchTargetsRange st of
-                (0, _) -> a
-                (l, _) -> Binary
-                  { binaryOp = SubInt64,
-                    operand0 = a,
-                    operand1 = ConstI64 $ fromIntegral l
-                  }
-            },
+        Just Unary
+          { unaryOp = WrapInt64,
+            operand0 = case GHC.switchTargetsRange st of
+              (0, _) -> a
+              (l, _) -> Binary
+                { binaryOp = SubInt64,
+                  operand0 = a,
+                  operand1 = ConstI64 $ fromIntegral l
+                }
+          },
         [ AddBranchForSwitch {to = dest, indexes = tags}
           | (dest, tags) <- M.toList $ M.fromListWith (<>) brs,
             dest /= dest_def
         ]
-           <> [AddBranch {to = dest_def, addBranchCondition = Nothing}],
-
+          <> [AddBranch {to = dest_def, addBranchCondition = Nothing}],
         needs_unreachable
       )
   GHC.CmmCall {..} -> do
