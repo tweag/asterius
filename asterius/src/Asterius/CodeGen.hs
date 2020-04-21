@@ -1576,21 +1576,6 @@ marshalCmmBlock inner_nodes exit_node = do
       [e] -> e
       _ -> Block {name = "", bodys = es, blockReturnTypes = []}
 
-
--- | Runtime failure (@Unreachable@) used when the @CmmSwitch@ is
--- non-exhaustive.
--- Historical note: we used to emit a @barf@, but this is wasteful in terms of
--- the size of the generated binary (see issue #592). In fact, GHC always emits
--- @CmmSwitch@es without a default clause only if it knows that the match is
--- exhaustive (so 'unreachableRelooperBlock' is really unreachable).
-unreachableRelooperBlock :: RelooperBlock
-unreachableRelooperBlock = RelooperBlock
-  { addBlock = AddBlock
-      { code = Unreachable
-      },
-    addBranches = []
-  }
-
 marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry

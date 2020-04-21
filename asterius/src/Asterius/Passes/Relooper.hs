@@ -12,8 +12,18 @@ import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
 
+{-# INLINE relooper #-}
 relooper :: RelooperRun -> Expression
-relooper RelooperRun {..} = result_expr
+relooper cfg@RelooperRun {blockMap = oldMap} =
+  relooper' $ cfg
+    { blockMap =
+      if M.member "__asterius_unreachable" oldMap
+        then oldMap
+        else M.insert "__asterius_unreachable" unreachableRelooperBlock oldMap
+    }
+
+relooper' :: RelooperRun -> Expression
+relooper' RelooperRun {..} = result_expr
   where
     lbls = M.keys blockMap
     lbl_map = M.fromList $ zip lbls [0 ..]
