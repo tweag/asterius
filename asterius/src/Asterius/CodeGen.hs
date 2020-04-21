@@ -1473,7 +1473,6 @@ marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
 -- | Flag determining whether we need to add an @__asterius_unreachable@ block.
 newtype NeedsUnreachableBlock = NeedsUnreachableBlock Bool
-  deriving (Eq, Show)
   deriving (Semigroup, Monoid) via (Data.Monoid.Any)
 
 -- ----------------------------------------------------------------------------
@@ -1488,7 +1487,7 @@ marshalCmmBlockBranch instr = case instr of
       ( [],
         Nothing,
         [AddBranch {to = k, addBranchCondition = Nothing}],
-        coerce False
+        NeedsUnreachableBlock False
       )
   GHC.CmmCondBranch {..} -> do
     c <- marshalAndCastCmmExpr cml_pred I32
@@ -1499,7 +1498,7 @@ marshalCmmBlockBranch instr = case instr of
         Nothing,
         [AddBranch {to = kt, addBranchCondition = Just c} | kt /= kf]
           <> [AddBranch {to = kf, addBranchCondition = Nothing}],
-        coerce False
+        NeedsUnreachableBlock False
       )
   GHC.CmmSwitch cml_arg st -> do
     a <- marshalAndCastCmmExpr cml_arg I64
@@ -1509,8 +1508,8 @@ marshalCmmBlockBranch instr = case instr of
     (needs_unreachable, dest_def) <- case GHC.switchTargetsDefault st of
       Just lbl -> do
         klbl <- marshalLabel lbl
-        return (coerce False, klbl)
-      Nothing -> pure (coerce True, "__asterius_unreachable")
+        return (NeedsUnreachableBlock False, klbl)
+      Nothing -> pure (NeedsUnreachableBlock True, "__asterius_unreachable")
     pure
       ( [],
         Just Unary
@@ -1539,7 +1538,7 @@ marshalCmmBlockBranch instr = case instr of
         ],
         Nothing,
         [],
-        coerce False
+        NeedsUnreachableBlock False
       )
   _ -> liftIO $ throwIO $ UnsupportedCmmBranch $ showBS instr
 
@@ -1602,7 +1601,7 @@ marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
           pure (needs_unreachable_acc <> needs_unreachable, (k, b))
     mapAccumLM fn mempty (GHC.bodyList body)
   let blocks_unresolved
-        | needs_unreachable == coerce True =
+        | coerce needs_unreachable =
           ("__asterius_unreachable", unreachableRelooperBlock) : rbs
         | otherwise =
           rbs
