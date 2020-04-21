@@ -49,6 +49,7 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show
   (
   )
+import MonadUtils (mapAccumLM)
 import Stream (Stream)
 import qualified Stream
 import qualified Unique as GHC
@@ -1465,9 +1466,29 @@ marshalCmmInstr instr = case instr of
 marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [Expression]
 marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
+-- ----------------------------------------------------------------------------
+
+-- | Datatype to capture whether there is at least on CmmSwitch without a
+-- DEFAULT target within a Cmm function. TODO: Place appropriately.
+data ContainsDefault = WithDefault | WithoutDefault
+  deriving (Eq, Show)
+
+instance Monoid ContainsDefault where
+  -- | Always start with the assumption that there are DEFAULTs and everything
+  -- is exhaustive (innocent until proven guilty).
+  mempty = WithDefault
+
+instance Semigroup ContainsDefault where
+  -- | Always start with the assumption that there are DEFAULTs and everything
+  -- is exhaustive (innocent until proven guilty).
+  WithoutDefault <> _ = WithoutDefault
+  WithDefault <> y = y
+
+-- ----------------------------------------------------------------------------
+
 marshalCmmBlockBranch ::
   GHC.CmmNode GHC.O GHC.C ->
-  CodeGen ([Expression], Maybe Expression, [RelooperAddBranch])
+  CodeGen ([Expression], Maybe (Expression, ContainsDefault), [RelooperAddBranch])
 marshalCmmBlockBranch instr = case instr of
   GHC.CmmBranch lbl -> do
     k <- marshalLabel lbl
@@ -1487,26 +1508,30 @@ marshalCmmBlockBranch instr = case instr of
     brs <- for (GHC.switchTargetsCases st) $ \(idx, lbl) -> do
       dest <- marshalLabel lbl
       pure (dest, [fromIntegral $ idx - fst (GHC.switchTargetsRange st)])
-    dest_def <- case GHC.switchTargetsDefault st of
-      Just lbl -> marshalLabel lbl
-      _ -> pure "__asterius_unreachable"
+    (with_def, dest_def) <- case GHC.switchTargetsDefault st of
+      Just lbl -> do
+        klbl <- marshalLabel lbl
+        return (WithDefault, klbl)
+      Nothing -> pure (WithoutDefault, "__asterius_unreachable")
     pure
       ( [],
-        Just Unary
-          { unaryOp = WrapInt64,
-            operand0 = case GHC.switchTargetsRange st of
-              (0, _) -> a
-              (l, _) -> Binary
-                { binaryOp = SubInt64,
-                  operand0 = a,
-                  operand1 = ConstI64 $ fromIntegral l
-                }
-          },
+        Just ( Unary
+                 { unaryOp = WrapInt64,
+                   operand0 = case GHC.switchTargetsRange st of
+                     (0, _) -> a
+                     (l, _) -> Binary
+                       { binaryOp = SubInt64,
+                         operand0 = a,
+                         operand1 = ConstI64 $ fromIntegral l
+                       }
+                 },
+               with_def
+             ),
         [ AddBranchForSwitch {to = dest, indexes = tags}
           | (dest, tags) <- M.toList $ M.fromListWith (<>) brs,
             dest /= dest_def
         ]
-          <> [AddBranch {to = dest_def, addBranchCondition = Nothing}]
+           <> [AddBranch {to = dest_def, addBranchCondition = Nothing}]
       )
   GHC.CmmCall {..} -> do
     t <- marshalAndCastCmmExpr cml_target I64
@@ -1523,25 +1548,31 @@ marshalCmmBlockBranch instr = case instr of
 marshalCmmBlock ::
   [GHC.CmmNode GHC.O GHC.O] ->
   GHC.CmmNode GHC.O GHC.C ->
-  CodeGen RelooperBlock
+  CodeGen (RelooperBlock, ContainsDefault)
 marshalCmmBlock inner_nodes exit_node = do
   inner_exprs <- marshalCmmBlockBody inner_nodes
   (br_helper_exprs, maybe_switch_cond_expr, br_branches) <-
     marshalCmmBlockBranch exit_node
   pure $ case maybe_switch_cond_expr of
-    Just switch_cond_expr -> RelooperBlock
-      { addBlock = AddBlockWithSwitch
-          { code = concatExpressions $ inner_exprs <> br_helper_exprs,
-            condition = switch_cond_expr
+    Just (switch_cond_expr, with_def) ->
+      ( RelooperBlock
+          { addBlock = AddBlockWithSwitch
+              { code = concatExpressions $ inner_exprs <> br_helper_exprs,
+                condition = switch_cond_expr
+              },
+            addBranches = br_branches
           },
-        addBranches = br_branches
-      }
-    _ -> RelooperBlock
-      { addBlock = AddBlock
-          { code = concatExpressions $ inner_exprs <> br_helper_exprs
+        with_def
+      )
+    _ ->
+      ( RelooperBlock
+          { addBlock = AddBlock
+              { code = concatExpressions $ inner_exprs <> br_helper_exprs
+              },
+            addBranches = br_branches
           },
-        addBranches = br_branches
-      }
+        WithDefault
+      )
   where
     concatExpressions es = case es of
       [] -> Nop
@@ -1562,11 +1593,16 @@ unreachableRelooperBlock = RelooperBlock
 marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
 marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
-  rbs <-
-    for (GHC.bodyList body) $ \(lbl, GHC.BlockCC _ inner_nodes exit_node) -> do
-      k <- marshalLabel lbl
-      b <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
-      pure (k, b)
+  (_with_def, rbs) <- do
+    let fn ::
+          ContainsDefault ->
+          (GHC.Label, GHC.Block GHC.CmmNode GHC.C GHC.C) ->
+          CodeGen (ContainsDefault, (BS.ByteString, RelooperBlock))
+        fn with_def_acc (lbl, GHC.BlockCC _ inner_nodes exit_node) = do
+          k <- marshalLabel lbl
+          (b, with_def) <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
+          pure (with_def_acc <> with_def, (k, b))
+    mapAccumLM fn mempty (GHC.bodyList body)
   let blocks_unresolved =
         ("__asterius_unreachable", unreachableRelooperBlock) : rbs
   pure $ adjustLocalRegs Function
