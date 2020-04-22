@@ -91,9 +91,9 @@ data GHCiState
   = GHCiState
       { ghciUniqSupply :: GHC.UniqSupply,
         ghciNameCacheUpdater :: GHC.NameCacheUpdater,
-        ghciLibs :: AsteriusModule,
-        ghciObjs :: M.Map FilePath AsteriusModule,
-        ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusModule),
+        ghciLibs :: AsteriusCachedModule,
+        ghciObjs :: M.Map FilePath AsteriusCachedModule,
+        ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusCachedModule),
         ghciLastCompiledCoreExpr :: Int,
         ghciJSSession :: ~(JSSession, Pipe, JSVal)
       }
@@ -485,7 +485,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
     pure
       ( s
           { ghciCompiledCoreExprs =
-              IM.insert this_id (sym, m) $
+              IM.insert this_id (sym, mempty {asteriusModule = m}) $
                 ghciCompiledCoreExprs s,
             ghciLastCompiledCoreExpr = this_id
           },
