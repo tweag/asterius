@@ -51,6 +51,7 @@ import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
 import Asterius.Types.EntitySymbol
 import Asterius.Types.SymbolMap
+import Asterius.Types.SymbolSet
 import Control.Exception
 import qualified Data.ByteString as BS
 import Data.Data
@@ -93,6 +94,32 @@ data AsteriusStatics
         asteriusStatics :: [AsteriusStatic]
       }
   deriving (Show, Data)
+
+-- ----------------------------------------------------------------------------
+
+data AsteriusCachedModule
+  = AsteriusCachedModule
+      { staticsMap :: SymbolMap (AsteriusStatics, SymbolSet),
+        staticsErrorMap :: SymbolMap AsteriusCodeGenError,
+        functionMap :: SymbolMap (Function, SymbolSet),
+        sptMap :: SymbolMap (Word64, Word64),
+        ffiMarshalState :: FFIMarshalState
+      }
+  deriving (Show, Data)
+
+instance Semigroup AsteriusCachedModule where
+  AsteriusCachedModule sm0 se0 fm0 spt0 mod_ffi_state0 <> AsteriusCachedModule sm1 se1 fm1 spt1 mod_ffi_state1 =
+    AsteriusCachedModule
+      (sm0 <> sm1)
+      (se0 <> se1)
+      (fm0 <> fm1)
+      (spt0 <> spt1)
+      (mod_ffi_state0 <> mod_ffi_state1)
+
+instance Monoid AsteriusCachedModule where
+  mempty = AsteriusCachedModule mempty mempty mempty mempty mempty
+
+-- ----------------------------------------------------------------------------
 
 data AsteriusModule
   = AsteriusModule
@@ -567,6 +594,8 @@ $(genBinary ''AsteriusStatic)
 $(genBinary ''AsteriusStaticsType)
 
 $(genBinary ''AsteriusStatics)
+
+$(genBinary ''AsteriusCachedModule)
 
 $(genBinary ''AsteriusModule)
 
