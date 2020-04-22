@@ -19,15 +19,33 @@ import qualified HscTypes as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import qualified Module as GHC
 import qualified PipelineMonad as GHC
+import qualified StgCmm as GHC
+import System.IO.Unsafe
 
 hooksFromCompiler :: Compiler -> GHC.Hooks -> IO GHC.Hooks
 hooksFromCompiler Compiler {..} h = do
+  stg_map_ref <- newIORef GHC.emptyModuleEnv
   cmm_raw_map_ref <- newIORef GHC.emptyModuleEnv
   let cmm_raw_ref_err = error "Language.Haskell.GHC.Toolkit.Hooks: unreachable"
   cmm_raw_ref <- newIORef cmm_raw_ref_err
   pure
     h
-      { GHC.cmmToRawCmmHook = Just $ \dflags maybe_ms_mod cmms -> do
+      { GHC.stgCmmHook = Just $
+          \dflags this_mod data_tycons cost_centre_info stg_binds_w_fvs hpc_info ->
+            unsafePerformIO $ do
+              let store :: IORef (GHC.ModuleEnv v) -> v -> IO ()
+                  store ref v = atomicModifyIORef' ref $
+                    \env -> (GHC.extendModuleEnv env this_mod v, ())
+              store stg_map_ref stg_binds_w_fvs
+              pure $
+                GHC.codeGen
+                  dflags
+                  this_mod
+                  data_tycons
+                  cost_centre_info
+                  stg_binds_w_fvs
+                  hpc_info,
+        GHC.cmmToRawCmmHook = Just $ \dflags maybe_ms_mod cmms -> do
           rawcmms <- GHC.cmmToRawCmm dflags maybe_ms_mod cmms
           case maybe_ms_mod of
             Just ms_mod -> do
@@ -63,7 +81,11 @@ hooksFromCompiler Compiler {..} h = do
                           let Just v = GHC.lookupModuleEnv env ms_mod
                            in (GHC.delModuleEnv env ms_mod, v)
                       )
-              ir <- liftIO $ HaskellIR spt_entries <$> fetch cmm_raw_map_ref
+              ir <-
+                liftIO $
+                  HaskellIR spt_entries
+                    <$> fetch stg_map_ref
+                    <*> fetch cmm_raw_map_ref
               withHaskellIR mod_summary ir obj_output_fn
               pure (GHC.RealPhase GHC.StopLn, obj_output_fn)
           GHC.RealPhase GHC.Cmm -> do

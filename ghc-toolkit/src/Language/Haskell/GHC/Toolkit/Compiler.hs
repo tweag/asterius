@@ -12,11 +12,13 @@ import Cmm
 import GHC
 import HscTypes
 import PipelineMonad
+import StgSyn
 import Stream (Stream)
 
 data HaskellIR
   = HaskellIR
       { sptEntries :: [SptEntry],
+        stg :: [CgStgTopBinding],
         cmmRaw :: Stream IO Cmm.RawCmmGroup ()
       }
 
