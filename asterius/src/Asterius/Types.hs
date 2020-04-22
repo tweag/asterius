@@ -35,6 +35,7 @@ module Asterius.Types
     RelooperAddBlock (..),
     RelooperAddBranch (..),
     RelooperBlock (..),
+    unreachableRelooperBlock,
     RelooperRun (..),
     FFIValueTypeRep (..),
     FFIValueType (..),
@@ -476,6 +477,17 @@ data RelooperBlock
         addBranches :: [RelooperAddBranch]
       }
   deriving (Show, Data)
+
+-- | A 'RelooperBlock' containing a single 'Unreachable' instruction.
+unreachableRelooperBlock :: RelooperBlock
+unreachableRelooperBlock =
+  RelooperBlock -- See Note [unreachableRelooperBlock]
+    { addBlock =
+        AddBlock
+          { code = Unreachable
+          },
+      addBranches = []
+    }
 
 data RelooperRun
   = RelooperRun
