@@ -14,6 +14,7 @@ module Asterius.Types
     AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
+    AsteriusCachedModule(..),
     EntitySymbol,
     entityName,
     mkEntitySymbol,
@@ -95,32 +96,6 @@ data AsteriusStatics
       }
   deriving (Show, Data)
 
--- ----------------------------------------------------------------------------
-
-data AsteriusCachedModule
-  = AsteriusCachedModule
-      { staticsMap :: SymbolMap (AsteriusStatics, SymbolSet),
-        staticsErrorMap :: SymbolMap AsteriusCodeGenError,
-        functionMap :: SymbolMap (Function, SymbolSet),
-        sptMap :: SymbolMap (Word64, Word64),
-        ffiMarshalState :: FFIMarshalState
-      }
-  deriving (Show, Data)
-
-instance Semigroup AsteriusCachedModule where
-  AsteriusCachedModule sm0 se0 fm0 spt0 mod_ffi_state0 <> AsteriusCachedModule sm1 se1 fm1 spt1 mod_ffi_state1 =
-    AsteriusCachedModule
-      (sm0 <> sm1)
-      (se0 <> se1)
-      (fm0 <> fm1)
-      (spt0 <> spt1)
-      (mod_ffi_state0 <> mod_ffi_state1)
-
-instance Monoid AsteriusCachedModule where
-  mempty = AsteriusCachedModule mempty mempty mempty mempty mempty
-
--- ----------------------------------------------------------------------------
-
 data AsteriusModule
   = AsteriusModule
       { staticsMap :: SymbolMap AsteriusStatics,
@@ -142,6 +117,20 @@ instance Semigroup AsteriusModule where
 
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty mempty
+
+data AsteriusCachedModule
+  = AsteriusCachedModule
+      { asteriusModule :: AsteriusModule,
+        dependencyMap :: SymbolMap SymbolSet
+      }
+  deriving (Show, Data)
+
+instance Semigroup AsteriusCachedModule where
+  AsteriusCachedModule m0 dm0 <> AsteriusCachedModule m1 dm1 =
+    AsteriusCachedModule (m0 <> m1) (dm0 <> dm1)
+
+instance Monoid AsteriusCachedModule where
+  mempty = AsteriusCachedModule mempty mempty
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int ValueType
@@ -595,9 +584,9 @@ $(genBinary ''AsteriusStaticsType)
 
 $(genBinary ''AsteriusStatics)
 
-$(genBinary ''AsteriusCachedModule)
-
 $(genBinary ''AsteriusModule)
+
+$(genBinary ''AsteriusCachedModule)
 
 $(genBinary ''UnresolvedLocalReg)
 
