@@ -64,7 +64,7 @@ export class Memory {
     this.staticMBlocks = static_mblocks;
     this.initView();
     this.capacity = this.buffer.byteLength / rtsConstants.mblock_size;
-    this.liveBitset = mask(this.capacity);
+    this.liveBitset = mask(static_mblocks);
   }
 
   /**
