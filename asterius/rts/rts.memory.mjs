@@ -63,8 +63,8 @@ export class Memory {
     this.memory = memory;
     this.staticMBlocks = static_mblocks;
     this.initView();
-    this.capacity = this.buffer.byteLength / rtsConstants.mblock_size;
-    this.liveBitset = mask(this.capacity);
+    this.capacity = this.memory.buffer.byteLength / rtsConstants.mblock_size;
+    this.liveBitset = mask(this.staticMBlocks);
   }
 
   /**
@@ -106,10 +106,6 @@ export class Memory {
     return np - (np & 7) + t;
   }
 
-  get buffer() {
-    return this.memory.buffer;
-  }
-
   /**
    * Increases the size of {@link Memory#memory} the given
    * number of pages.
@@ -119,9 +115,9 @@ export class Memory {
    * @returns The previous number of pages
    */
   grow(n) {
-    const prev_pages = this.memory.grow(n);
+    this.memory.grow(n);
+    this.capacity = this.memory.buffer.byteLength / rtsConstants.mblock_size;
     this.initView();
-    return prev_pages;
   }
 
   i8Load(p) {
@@ -224,10 +220,9 @@ export class Memory {
    *   requested free memory area.
    */
   getMBlocks(n) {
-    // First of all, check if there are free spots in the existing
-    // memory by inspecting this.liveBitset for enough adjacent 1's.
-    // In this way, we reuse previously freed MBlock slots and
-    // reduce fragmentation.
+    // First of all, check if there are free spots in the existing memory by
+    // inspecting this.liveBitset for enough adjacent 0's. In this way, we reuse
+    // previously freed MBlock slots and reduce fragmentation.
     const m = mask(n);
     for (let i = BigInt(0); i <= BigInt(this.capacity - n); ++i) {
       const mi = m << i;
@@ -239,14 +234,10 @@ export class Memory {
     // No luck, we need to grow the Wasm linear memory
     // (we actually - at least - double it, in order to reduce
     // amortized overhead of allocating individual MBlocks)
-    const d = Math.max(n, this.capacity),
-          prev_capacity = this.capacity;
+    const d = Math.max(n, this.capacity);
     this.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
-    this.capacity += d;
-    // We reserve the space for the requested MBlocks right at
-    // the beginning of the newly grown memory
-    this.liveBitset |= m << BigInt(prev_capacity);
-    return Memory.tagData(prev_capacity * rtsConstants.mblock_size);
+
+    return this.getMBlocks(n);
   }
 
   /**
