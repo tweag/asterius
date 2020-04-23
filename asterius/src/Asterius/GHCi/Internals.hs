@@ -127,7 +127,8 @@ newGHCiJSSession = do
       defJSSessionOpts
         { nodeExtraArgs =
             [ "--experimental-wasm-return-call",
-              "--wasm-interpret-all"
+              "--wasm-interpret-all",
+              "--wasm-max-mem-pages=65536"
             ],
           nodeExtraEnv =
             [ ("ASTERIUS_NODE_READ_FD", show node_read_fd),

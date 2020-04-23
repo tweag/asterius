@@ -234,7 +234,8 @@ export class Memory {
     // No luck, we need to grow the Wasm linear memory
     // (we actually - at least - double it, in order to reduce
     // amortized overhead of allocating individual MBlocks)
-    const d = Math.max(n, this.capacity);
+    let d = Math.max(n, this.capacity);
+    if (this.capacity + d >= 1024) d = n;
     this.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
 
     return this.getMBlocks(n);
