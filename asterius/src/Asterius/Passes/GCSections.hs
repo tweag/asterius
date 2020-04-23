@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
@@ -56,15 +57,13 @@ gcSections verbose_err (asteriusModule -> store_mod) root_syms export_funcs =
         (i_child_syms, o_m) =
           SS.foldr'
             ( \i_staging_sym (i_child_syms_acc, o_m_acc) ->
-                case SM.lookup i_staging_sym (staticsMap store_mod) of
-                  Just ss ->
-                    ( collectEntitySymbols ss <> i_child_syms_acc,
-                      o_m_acc
-                        { staticsMap = SM.insert i_staging_sym ss (staticsMap o_m_acc)
-                        }
-                    )
-                  _ -> case SM.lookup i_staging_sym (functionMap store_mod) of
-                    Just func ->
+                if  | Just ss <- SM.lookup i_staging_sym (staticsMap store_mod) ->
+                      ( collectEntitySymbols ss <> i_child_syms_acc,
+                        o_m_acc
+                          { staticsMap = SM.insert i_staging_sym ss (staticsMap o_m_acc)
+                          }
+                      )
+                    | Just func <- SM.lookup i_staging_sym (functionMap store_mod) ->
                       ( collectEntitySymbols func <> i_child_syms_acc,
                         o_m_acc
                           { functionMap =
@@ -74,32 +73,31 @@ gcSections verbose_err (asteriusModule -> store_mod) root_syms export_funcs =
                                 (functionMap o_m_acc)
                           }
                       )
-                    _
-                      | verbose_err ->
-                        ( i_child_syms_acc,
-                          o_m_acc
-                            { staticsMap =
-                                SM.insert
-                                  ("__asterius_barf_" <> i_staging_sym)
-                                  AsteriusStatics
-                                    { staticsType = ConstBytes,
-                                      asteriusStatics =
-                                        [ Serialized $
-                                            entityName i_staging_sym
-                                              <> ( case SM.lookup
-                                                     i_staging_sym
-                                                     (staticsErrorMap store_mod) of
-                                                     Just err -> fromString (": " <> show err)
-                                                     _ -> mempty
-                                                 )
-                                              <> "\0"
-                                        ]
-                                    }
-                                  (staticsMap o_m_acc)
-                            }
-                        )
-                      | otherwise ->
-                        (i_child_syms_acc, o_m_acc)
+                    | verbose_err ->
+                      ( i_child_syms_acc,
+                        o_m_acc
+                          { staticsMap =
+                              SM.insert
+                                ("__asterius_barf_" <> i_staging_sym)
+                                AsteriusStatics
+                                  { staticsType = ConstBytes,
+                                    asteriusStatics =
+                                      [ Serialized $
+                                          entityName i_staging_sym
+                                            <> ( case SM.lookup
+                                                   i_staging_sym
+                                                   (staticsErrorMap store_mod) of
+                                                   Just err -> fromString (": " <> show err)
+                                                   _ -> mempty
+                                               )
+                                            <> "\0"
+                                      ]
+                                  }
+                                (staticsMap o_m_acc)
+                          }
+                      )
+                    | otherwise ->
+                      (i_child_syms_acc, o_m_acc)
             )
             (SS.empty, i_m)
             i_staging_syms
