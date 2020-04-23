@@ -3,7 +3,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Passes.GCSections
   ( gcSections,
@@ -13,12 +12,7 @@ where
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Asterius.Types.SymbolSet as SS
-import Data.Data
-  ( Data,
-    gmapQl,
-  )
 import Data.String
-import Type.Reflection
 
 gcSections ::
   Bool ->
@@ -26,12 +20,14 @@ gcSections ::
   SS.SymbolSet ->
   [EntitySymbol] ->
   AsteriusModule
-gcSections verbose_err (asteriusModule -> store_mod) root_syms export_funcs =
+gcSections verbose_err c_store_mod root_syms export_funcs =
   final_m
     { sptMap = spt_map,
       ffiMarshalState = ffi_this
     }
   where
+    store_mod = asteriusModule c_store_mod
+    deps = dependencyMap c_store_mod
     spt_map =
       sptMap store_mod `SM.restrictKeys` SM.keysSet (staticsMap final_m)
     ffi_all = ffiMarshalState store_mod
@@ -57,14 +53,16 @@ gcSections verbose_err (asteriusModule -> store_mod) root_syms export_funcs =
         (i_child_syms, o_m) =
           SS.foldr'
             ( \i_staging_sym (i_child_syms_acc, o_m_acc) ->
-                if  | Just ss <- SM.lookup i_staging_sym (staticsMap store_mod) ->
-                      ( collectEntitySymbols ss <> i_child_syms_acc,
+                if  | Just ss <- SM.lookup i_staging_sym (staticsMap store_mod),
+                      es <- deps SM.! i_staging_sym -> -- should always succeed
+                      ( es <> i_child_syms_acc,
                         o_m_acc
                           { staticsMap = SM.insert i_staging_sym ss (staticsMap o_m_acc)
                           }
                       )
-                    | Just func <- SM.lookup i_staging_sym (functionMap store_mod) ->
-                      ( collectEntitySymbols func <> i_child_syms_acc,
+                    | Just func <- SM.lookup i_staging_sym (functionMap store_mod),
+                      es <- deps SM.! i_staging_sym -> -- should always succeed
+                      ( es <> i_child_syms_acc,
                         o_m_acc
                           { functionMap =
                               SM.insert
@@ -102,10 +100,3 @@ gcSections verbose_err (asteriusModule -> store_mod) root_syms export_funcs =
             (SS.empty, i_m)
             i_staging_syms
         o_staging_syms = i_child_syms `SS.difference` o_acc_syms
-
-collectEntitySymbols :: Data a => a -> SS.SymbolSet
-collectEntitySymbols t
-  | Just HRefl <- eqTypeRep (typeOf t) (typeRep @EntitySymbol) =
-    SS.singleton t
-  | otherwise =
-    gmapQl (<>) SS.empty collectEntitySymbols t
