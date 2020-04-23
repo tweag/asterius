@@ -9,25 +9,22 @@ where
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 
-mainBuiltins :: AsteriusCachedModule
+mainBuiltins :: AsteriusModule
 mainBuiltins =
   mempty
-    { asteriusModule =
+    { ffiMarshalState =
         mempty
-          { ffiMarshalState =
-              mempty
-                { ffiExportDecls =
-                    SM.singleton
-                      "main"
-                      FFIExportDecl
-                        { ffiFunctionType =
-                            FFIFunctionType
-                              { ffiParamTypes = [],
-                                ffiResultTypes = [],
-                                ffiInIO = True
-                              },
-                          ffiExportClosure = "Main_main_closure"
-                        }
-                }
+          { ffiExportDecls =
+              SM.singleton
+                "main"
+                FFIExportDecl
+                  { ffiFunctionType =
+                      FFIFunctionType
+                        { ffiParamTypes = [],
+                          ffiResultTypes = [],
+                          ffiInIO = True
+                        },
+                    ffiExportClosure = "Main_main_closure"
+                  }
           }
     }

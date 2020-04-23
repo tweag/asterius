@@ -2,7 +2,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Passes.GCSections
   ( gcSections,
@@ -21,11 +20,11 @@ import Type.Reflection
 
 gcSections ::
   Bool ->
-  AsteriusCachedModule ->
+  AsteriusModule ->
   SS.SymbolSet ->
   [EntitySymbol] ->
   AsteriusModule
-gcSections verbose_err (asteriusModule -> store_mod) root_syms export_funcs =
+gcSections verbose_err store_mod root_syms export_funcs =
   final_m
     { sptMap = spt_map,
       ffiMarshalState = ffi_this
