@@ -82,12 +82,7 @@ frontendPlugin = makeFrontendPlugin $ do
               Left err -> throwIO err
               Right m' -> do
                 let m = ffi_mod <> m'
-                putFile
-                  obj_path
-                  AsteriusCachedModule
-                    { asteriusModule = m,
-                      dependencyMap = mempty
-                    }
+                putFile obj_path (fromAsteriusModule m)
                 when is_debug $ do
                   let p = (obj_path -<.>)
                   writeFile (p "dump-wasm-ast") $ show m
@@ -104,12 +99,7 @@ frontendPlugin = makeFrontendPlugin $ do
             runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
               Left err -> throwIO err
               Right m -> do
-                putFile
-                  obj_path
-                  AsteriusCachedModule
-                    { asteriusModule = m,
-                      dependencyMap = mempty
-                    }
+                putFile obj_path (fromAsteriusModule m)
                 when is_debug $ do
                   let p = (obj_path -<.>)
                   writeFile (p "dump-wasm-ast") $ show m
