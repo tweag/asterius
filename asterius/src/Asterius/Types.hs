@@ -17,7 +17,7 @@ module Asterius.Types
     AsteriusStatics (..),
     AsteriusModule (..),
     AsteriusCachedModule(..),
-    fromAsteriusModule,
+    toCachedModule,
     EntitySymbol,
     entityName,
     mkEntitySymbol,
@@ -144,8 +144,8 @@ instance Monoid AsteriusCachedModule where
 -- inefficient (see isssue #568). Instead, we now do the same work at
 -- compile-time, thus creating object files containing 'AsteriusCachedModule's
 -- instead of 'AsteriusModule's.
-fromAsteriusModule :: AsteriusModule -> AsteriusCachedModule
-fromAsteriusModule m =
+toCachedModule :: AsteriusModule -> AsteriusCachedModule
+toCachedModule m =
   AsteriusCachedModule
     { asteriusModule = m,
       dependencyMap = staticsMap m `add` (functionMap m `add` SM.empty)

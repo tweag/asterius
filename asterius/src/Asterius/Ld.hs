@@ -120,5 +120,5 @@ linkExe ld_task@LinkTask {..} = do
   (pre_m, m, link_report) <- linkExeInMemory ld_task
   putFile linkOutput (m, link_report)
   case outputIR of
-    Just p -> putFile p (fromAsteriusModule pre_m)
+    Just p -> putFile p (toCachedModule pre_m)
     _ -> pure ()
