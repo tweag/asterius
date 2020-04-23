@@ -3,6 +3,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Boot
   ( BootArgs (..),
@@ -16,6 +17,7 @@ import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
 import Asterius.Internals.Directory
+import Asterius.Types
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
@@ -130,7 +132,12 @@ bootRTSCmm BootArgs {..} =
              in runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
                   Left err -> throwIO err
                   Right m -> do
-                    putFile obj_path m
+                    putFile
+                      obj_path
+                      AsteriusCachedModule
+                        { asteriusModule = m,
+                          dependencyMap = mempty
+                        }
                     modifyIORef' obj_paths_ref (obj_path :)
                     when is_debug $ do
                       let p = (obj_path -<.>)

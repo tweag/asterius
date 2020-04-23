@@ -193,7 +193,7 @@ asteriusIservCall hsc_env _ msg = do
       evaluate s {ghciLibs = lib <> ghciLibs s}
     GHC.LoadObj p -> modifyMVar_ globalGHCiState $ \s -> do
       obj <- getFile (ghciNameCacheUpdater s) p
-      evaluate s {ghciObjs = M.insert p obj $ ghciObjs s}
+      evaluate s {ghciObjs = M.insert p (asteriusModule obj) $ ghciObjs s}
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
     GHC.RemoveLibrarySearchPath _ -> pure True
     GHC.ResolveObjs -> pure True

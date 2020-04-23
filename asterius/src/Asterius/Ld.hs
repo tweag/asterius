@@ -41,7 +41,7 @@ loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
   lib <- mconcat <$> for linkLibs (loadAr ncu)
   objrs <- for linkObjs (tryGetFile ncu)
-  let objs = rights objrs
+  let objs = map asteriusModule $ rights objrs
   evaluate $ linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
@@ -120,5 +120,11 @@ linkExe ld_task@LinkTask {..} = do
   (pre_m, m, link_report) <- linkExeInMemory ld_task
   putFile linkOutput (m, link_report)
   case outputIR of
-    Just p -> putFile p pre_m
+    Just p ->
+      putFile
+        p
+        AsteriusCachedModule
+          { asteriusModule = pre_m,
+            dependencyMap = mempty
+          }
     _ -> pure ()

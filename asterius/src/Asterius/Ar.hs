@@ -19,7 +19,7 @@ loadAr ncu p = do
   foldlM
     ( \acc GHC.ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
         Left _ -> pure acc
-        Right m -> pure $ m <> acc
+        Right m -> pure $ asteriusModule m <> acc
     )
     mempty
     entries
