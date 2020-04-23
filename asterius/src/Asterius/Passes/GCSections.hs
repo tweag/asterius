@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Passes.GCSections
   ( gcSections,
@@ -20,7 +21,9 @@ gcSections ::
   SS.SymbolSet ->
   [EntitySymbol] ->
   AsteriusModule
-gcSections verbose_err c_store_mod root_syms export_funcs =
+  -- GEORGE: Just see if we rebuild the cache now it works (it should). The
+  -- failure possibly means that data went out of sync :/
+gcSections verbose_err (asteriusModule -> (toCachedModule -> c_store_mod)) root_syms export_funcs =
   final_m
     { sptMap = spt_map,
       ffiMarshalState = ffi_this
