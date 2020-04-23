@@ -36,7 +36,7 @@ export async function newAsteriusInstance(req) {
       initial: req.tableSlots
     }),
     __asterius_wasm_memory = new WebAssembly.Memory({
-      initial: Math.max(req.staticMBlocks + 2, req.gcThreshold) * (rtsConstants.mblock_size / 65536)
+      initial: req.staticMBlocks * (rtsConstants.mblock_size / 65536)
     }),
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(

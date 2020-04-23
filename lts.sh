@@ -990,6 +990,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   json-rpc-generic \
   jsonpath \
   junit-xml \
+  justified-containers \
   jwt \
   kan-extensions \
   kanji \
@@ -1477,6 +1478,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   rio-orphans \
   rio-prettyprint \
   roc-id \
+  roles \
   rope-utf16-splay \
   rosezipper \
   rot13 \
