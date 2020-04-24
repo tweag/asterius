@@ -126,14 +126,14 @@ instance Monoid AsteriusModule where
 
 data AsteriusCachedModule
   = AsteriusCachedModule
-      { asteriusModule :: AsteriusModule,
-        dependencyMap :: SymbolMap SymbolSet
+      { dependencyMap :: SymbolMap SymbolSet,
+        asteriusModule :: AsteriusModule
       }
   deriving (Show, Data)
 
 instance Semigroup AsteriusCachedModule where
-  AsteriusCachedModule m0 dm0 <> AsteriusCachedModule m1 dm1 =
-    AsteriusCachedModule (m0 <> m1) (dm0 <> dm1)
+  AsteriusCachedModule dm0 m0 <> AsteriusCachedModule dm1 m1 =
+    AsteriusCachedModule (dm0 <> dm1) (m0 <> m1)
 
 instance Monoid AsteriusCachedModule where
   mempty = AsteriusCachedModule mempty mempty
