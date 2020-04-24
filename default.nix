@@ -1,13 +1,10 @@
-{ pkgs ? import nixpkgs ((import haskellNix) // (if system == null then {} else { inherit system; }))
+{ pkgs ? import nixpkgs ((haskellNix.nixpkgsArgs) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
-, nixpkgs ? builtins.fetchTarball {
+, haskellNix ? builtins.fetchTarball {
     url = "https://github.com/NixOS/nixpkgs/archive/f6dac8083874408fe287525007d3da9decd9bf44.tar.gz";
     sha256 = "13hxl8gcyqrpranh12fa14sg2lxx2glbgzkx10z4i2x3gh59yl1n";
   }
-, haskellNix ? builtins.fetchTarball {
-    url = "https://github.com/input-output-hk/haskell.nix/archive/fcba9447b31a0802fab15f46fa18d6b9675ab528.tar.gz";
-    sha256 = "0s7gdcjxv8y7bmbi7wd5cp8jlvdcn2bgf8kaqyy25x0bqcdafaz3";
-  }
+, nixpkgs ? haskellNix.sources.nixpkgs-default
 , shellOnly ? false
 , system    ? null
 }:
@@ -30,7 +27,7 @@ let
   
   project = pkgs.haskell-nix.cabalProject' {
     name = "asterius";
-    src = pkgs.haskell-nix.haskellLib.cleanGit { src = ./.; };
+    src = pkgs.haskell-nix.haskellLib.cleanGit { src = ./.; name = "asterius"; };
     pkg-def-extras = [ pkgs.ghc-boot-packages.ghc865 ];
     modules = [
       { reinstallableLibGhc = true; }
@@ -273,7 +270,6 @@ let
         binaryen
         ghc-toolkit
         wabt
-        ghc-toolkit
         inline-js
         inline-js-core
         wabt
