@@ -26,6 +26,9 @@ module Asterius.Types.SymbolSet
     -- * Query
     null,
 
+    -- * Size
+    size,
+
     -- * Combine
     union,
     unions,
@@ -44,6 +47,8 @@ module Asterius.Types.SymbolSet
 where
 
 import Asterius.Types.EntitySymbol
+import Binary
+import Control.Monad
 import Data.Coerce
 import Data.Data
 import qualified Data.Foldable as Foldable
@@ -61,6 +66,13 @@ instance Show SymbolSet where
   showsPrec p (SymbolSet s) =
     showParen (p > 10) $
       showString "fromList " . shows (toList s)
+
+instance Binary SymbolSet where
+  put_ bh s =
+    put_ bh (size s) *> forM_ (toListSS s) (put_ bh)
+  get bh = fromListSS <$> do
+    n <- get bh
+    replicateM n $ get bh
 
 instance IsList SymbolSet where
   type Item SymbolSet = EntitySymbol
@@ -93,6 +105,11 @@ unions = Foldable.foldl' union empty
 {-# INLINE null #-}
 null :: SymbolSet -> Bool
 null = coerce (IM.null @EntitySymbol)
+
+-- | /O(n)/. Number of 'EntitySymbol's in the set.
+{-# INLINE size #-}
+size :: SymbolSet -> Int
+size = coerce (IM.size @EntitySymbol)
 
 -- | /O(n+m)/. Difference between two sets.
 {-# INLINE difference #-}

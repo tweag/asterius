@@ -29,14 +29,14 @@ data LinkTask
   = LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
-        linkModule :: AsteriusModule,
+        linkModule :: AsteriusCachedModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
   deriving (Show)
 
-loadTheWorld :: LinkTask -> IO AsteriusModule
+loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
   lib <- mconcat <$> for linkLibs (loadAr ncu)
@@ -84,18 +84,20 @@ rtsPrivateSymbols =
     ]
 
 linkModules ::
-  LinkTask -> AsteriusModule -> (AsteriusModule, Module, LinkReport)
+  LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
     debug
     gcSections
     verboseErr
-    ( (if hasMain then mainBuiltins else mempty)
-        <> rtsAsteriusModule
-          defaultBuiltinsOptions
-            { Asterius.Builtins.progName = progName,
-              Asterius.Builtins.debug = debug
-            }
+    ( toCachedModule
+        ( (if hasMain then mainBuiltins else mempty)
+            <> rtsAsteriusModule
+              defaultBuiltinsOptions
+                { Asterius.Builtins.progName = progName,
+                  Asterius.Builtins.debug = debug
+                }
+        )
         <> m
     )
     ( SS.unions
@@ -120,5 +122,5 @@ linkExe ld_task@LinkTask {..} = do
   (pre_m, m, link_report) <- linkExeInMemory ld_task
   putFile linkOutput (m, link_report)
   case outputIR of
-    Just p -> putFile p pre_m
+    Just p -> putFile p $ toCachedModule pre_m
     _ -> pure ()

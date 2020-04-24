@@ -1,10 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeApplications #-}
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Asterius.Types
@@ -14,6 +16,8 @@ module Asterius.Types
     AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
+    AsteriusCachedModule(..),
+    toCachedModule,
     EntitySymbol,
     entityName,
     mkEntitySymbol,
@@ -50,12 +54,16 @@ where
 import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
 import Asterius.Types.EntitySymbol
-import Asterius.Types.SymbolMap
+import Asterius.Types.SymbolMap (SymbolMap)
+import qualified Asterius.Types.SymbolMap as SM
+import Asterius.Types.SymbolSet (SymbolSet)
+import qualified Asterius.Types.SymbolSet as SS
 import Control.Exception
 import qualified Data.ByteString as BS
 import Data.Data
 import qualified Data.Map.Lazy as LM
 import Foreign
+import qualified Type.Reflection as TR
 
 type BinaryenIndex = Word32
 
@@ -115,6 +123,47 @@ instance Semigroup AsteriusModule where
 
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty mempty
+
+-- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
+-- its 'EntitySymbol' dependencies, as they are appear in the modules data
+-- segments and function definitions (see function 'toCachedModule').
+data AsteriusCachedModule
+  = AsteriusCachedModule
+      { dependencyMap :: SymbolMap SymbolSet,
+        fromCachedModule :: AsteriusModule
+      }
+  deriving (Show, Data)
+
+instance Semigroup AsteriusCachedModule where
+  AsteriusCachedModule dm0 m0 <> AsteriusCachedModule dm1 m1 =
+    AsteriusCachedModule (dm0 <> dm1) (m0 <> m1)
+
+instance Monoid AsteriusCachedModule where
+  mempty = AsteriusCachedModule mempty mempty
+
+-- | Convert an 'AsteriusModule' to an 'AsteriusCachedModule' by laboriously
+-- computing the dependency graph for each 'EntitySymbol'. Historical note: we
+-- used to compute the dependency graph during link time but that were quite
+-- inefficient (see isssue #568). Instead, we now do the same work at
+-- compile-time, thus creating object files containing 'AsteriusCachedModule's
+-- instead of 'AsteriusModule's.
+toCachedModule :: AsteriusModule -> AsteriusCachedModule
+toCachedModule m =
+  AsteriusCachedModule
+    { fromCachedModule = m,
+      dependencyMap = staticsMap m `add` (functionMap m `add` SM.empty)
+    }
+  where
+    add :: Data a => SymbolMap a -> SymbolMap SymbolSet -> SymbolMap SymbolSet
+    add = flip $ SM.foldrWithKey' (\k e -> SM.insert k (collectEntitySymbols e))
+
+    -- Collect all entity symbols from an entity.
+    collectEntitySymbols :: Data a => a -> SymbolSet
+    collectEntitySymbols t
+      | Just TR.HRefl <- TR.eqTypeRep (TR.typeOf t) (TR.typeRep @EntitySymbol) =
+        SS.singleton t
+      | otherwise =
+        gmapQl (<>) SS.empty collectEntitySymbols t
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int ValueType
@@ -569,6 +618,8 @@ $(genBinary ''AsteriusStaticsType)
 $(genBinary ''AsteriusStatics)
 
 $(genBinary ''AsteriusModule)
+
+$(genBinary ''AsteriusCachedModule)
 
 $(genBinary ''UnresolvedLocalReg)
 
