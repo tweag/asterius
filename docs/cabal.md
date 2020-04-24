@@ -2,7 +2,7 @@
 
 Asterius now has preliminary Cabal support. By substituting toolchain
 executables like `ghc`/`ghc-pkg` and supplying some other configure options,
-Cabal can build static libraries and "executables" using asterius. The
+Cabal can build static libraries and "executables" using Asterius. The
 "executables" can be quickly converted to node/web artifacts using `ahc-dist`.
 
 We also provide `ahc-cabal` which is a wrapper for `cabal`. `ahc-cabal` works

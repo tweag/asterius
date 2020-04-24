@@ -40,7 +40,7 @@ to use this EDSL. Typical usages:
   Inside the passed in continuation, we can use `break'` to perform branching.
   The `Label` type is also opaque and cannot be inspected, the only thing we know
   is that it's scope-checked just like any ordinary Haskell value, so it's
-  impossible to accidently branch to an "inner" label.
+  impossible to accidentally branch to an "inner" label.
 
 The EDSL only checks for scope safety, so we don't mess up different locals or
 jump to non-existent labels. Type-safety is not guaranteed (binaryen validator

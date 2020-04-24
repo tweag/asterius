@@ -21,12 +21,12 @@ re-opening will be near instant, since it reuses the previous container.
 ## Using `direnv`
 
 If `direnv` is enabled, the `PATH` of the current shell session will be extended
-to include the locations of asterius executables. This means it's possible to
+to include the locations of Asterius executables. This means it's possible to
 run `ahc-link ..` instead of `stack exec ahc-link -- ..`.
 
 ## Hacking with `ghcid`
 
-A known-to-work workflow of hacking asterius is using `ghcid`. We also include
+A known-to-work workflow of hacking Asterius is using `ghcid`. We also include
 an example `.ghcid` file, so running `ghcid` at the project root directory shall
 work out of the box.
 
@@ -34,13 +34,13 @@ Some notes regarding the usage of `ghcid`:
 
 * Multiple lib targets can be loaded at once, but only one main target
   (exe/test) can be loaded. When hacking a specific exe/test, modify the local
-  `utils/ghcid.sh` script first. Before commiting changes in the Haskell
+  `utils/ghcid.sh` script first. Before committing changes in the Haskell
   codebase, it would be nice to run `stack build --test --no-run-tests` to make
   sure all executables are not broken by lib changes.
 
 ## To boot or not to boot
 
-As described in the building guide, `stack build` only builds the asterius
+As described in the building guide, `stack build` only builds the Asterius
 compiler itself; additionally we need to run `stack exec ahc-boot` to run the
 compiler on the boot libs. This process is typically only needed once, but there
 are cases when it needs to be re-run:
@@ -50,7 +50,7 @@ are cases when it needs to be re-run:
 * The `Asterius.CodeGen` module is modified and you're sure different code will
   be generated when compiling the same Haskell/Cmm files.
 
-Most other modifications in the asterius lib/exes won't need a reboot.
+Most other modifications in the Asterius lib/exes won't need a reboot.
 Specifically:
 
 * `Asterius.Builtins` modifications don't impact the boot cache. The builtin
@@ -84,7 +84,7 @@ pass RTS flags to a Haskell executable:
 
 Always use `GHCRTS` when running programs like `ahc-link`, since those programs
 can spawn other processes (e.g. `ahc-ld`), and we're often interested in the
-profile data of all asterius executables. The `GHCRTS` environment variable can
+profile data of all Asterius executables. The `GHCRTS` environment variable can
 propagate to all processes.
 
 See the relevant
@@ -113,7 +113,7 @@ time/allocation differences it introduced. The workflow is roughly:
 * Run `ahc-link` in the built images on the example program below, setting the
   necessary `GHCRTS` to generate the profile reports. The code should be put in
   two standalone directories, otherwise the `.hi`/`.o` files may conflict or be
-  accidently reused.
+  accidentally reused.
 
 The profiled Docker images contain pre-compiled `Cabal`. And the example program
 we use to stress-test the linker is:

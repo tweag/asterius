@@ -135,7 +135,7 @@ the error, possibly including a JavaScript stack trace.
 
 In the source text of a `foreign import javascript` declaration, one can access
 everything in the global scope and the function arguments. Additionally, there
-is an `__asterius_jsffi` binding which represents the asterius instance object.
+is an `__asterius_jsffi` binding which represents the Asterius instance object.
 `__asterius_jsffi` exposes certain interfaces for power users, e.g.
 `__asterius_jsffi.exposeMemory()` which exposes a memory region as a JavaScript
 typed array. The interfaces are largely undocumented and not likely to be useful
@@ -144,7 +144,7 @@ to regular users.
 There is one usage of `__asterius_jsffi` which may be useful to regular users
 though. Say that we'd like the JSFFI import code to call some 3rd-party library
 code, but we don't want to pollute the global scope; we can assign the library
-functions as additional fields of the asterius instance object after it's
+functions as additional fields of the Asterius instance object after it's
 returned by `newAsteriusInstance()`, then access them using `__asterius_jsffi`
 in the JSFFI import code.
 
@@ -165,7 +165,7 @@ For the exported functions we need to call in JavaScript, at link-time, each
 exported function needs an additional `--export-function` flag to be passed to
 `ahc-link`/`ahc-dist`, e.g. `--export-function=mult_hs`.
 
-In JavaScript, after `newAsteriusInstance()` returns the asterius instance
+In JavaScript, after `newAsteriusInstance()` returns the Asterius instance
 object, one can access the exported functions in the `exports` field:
 
 ```javascript

@@ -68,7 +68,7 @@ containing app-specific data required to initialize an instance. After adding
 the `module` field to the request object, the result can be used as the input to
 `newAsteriusInstance` exported by `rts.mjs`.
 
-`newAsteriusInstance` will eventually resolve to an asterius instance object.
+`newAsteriusInstance` will eventually resolve to an Asterius instance object.
 Using the instance object, one can call the exported Haskell functions.
 
 ### `--output-directory ARG`
@@ -103,7 +103,7 @@ Haskell functions and call them from JavaScript; do not forget to use
 
 ### `--browser`
 
-Indicates the output code is targetting the browser environment. By default, the
+Indicates the output code is targeting the browser environment. By default, the
 target is Node.js.
 
 Since the runtime contains platform-specific modules, the compiled
@@ -196,7 +196,7 @@ transitive dependencies will survive dead code elimination.
 
 ### `--output-ir`
 
-Output wasm IRs of compiled Haskell modules and the resulting module. The IRs
+Output Wasm IRs of compiled Haskell modules and the resulting module. The IRs
 aren't intended to be consumed by external tools like `binaryen`/`wabt`.
 
 ### `--console-history`

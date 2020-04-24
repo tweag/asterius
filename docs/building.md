@@ -28,7 +28,7 @@ We build several different variants of GHC bindists on CircleCI. See the
 [`circleci-ghc-bindist`](https://github.com/tweag/asterius/tree/circleci-ghc-bindist)
 branch of the `asterius` repo for the CI scripts to build GHC bindists. For now,
 the scripts are still using the `make`-based build system for better
-compatability with `stack setup`. The build results are available as CircleCI
+compatibility with `stack setup`. The build results are available as CircleCI
 artifacts, and we include them in the
 [`stack.yaml`](https://github.com/tweag/asterius/blob/master/stack.yaml) file of
 `asterius`.
