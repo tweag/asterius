@@ -156,7 +156,10 @@ in the JSFFI import code.
 foreign export javascript "mult_hs" (*) :: Int -> Int -> Int
 ```
 
-The `foreign export javascript` syntax can be used for exporting a static top-level Haskell function to JavaScript. The source text is the export function name, which must be globally unique. The supported export function types are the same with JSFFI imports.
+The `foreign export javascript` syntax can be used for exporting a static
+top-level Haskell function to JavaScript. The source text is the export
+function name, which must be globally unique. The supported export function
+types are the same with JSFFI imports.
 
 For the exported functions we need to call in JavaScript, at link-time, each
 exported function needs an additional `--export-function` flag to be passed to

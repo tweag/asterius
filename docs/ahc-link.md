@@ -44,7 +44,9 @@ will be generated, e.g. `xxx.hs`'s entry script will be `xxx.mjs`. The entry
 module can either be run by `node`, or included in a `<script>` tag, depending
 on the target supplied at link time.
 
-It's possible to override the default behavior by specifying your own entry module. The easiest way to write a custom entry module is to modify the default one:
+It's possible to override the default behavior by specifying your own entry
+module. The easiest way to write a custom entry module is to modify the default
+one:
 
 ```javascript
 import * as rts from "./rts.mjs";
