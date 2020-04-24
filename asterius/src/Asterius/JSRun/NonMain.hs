@@ -16,14 +16,14 @@ import Asterius.Main.Task
 import Asterius.Resolve
 import Asterius.Types
   ( EntitySymbol,
-    AsteriusCachedModule,
+    AsteriusModule,
     Module,
   )
 import Data.String
 import Language.JavaScript.Inline.Core
 import System.FilePath
 
-linkNonMain :: AsteriusCachedModule -> [EntitySymbol] -> (Module, LinkReport)
+linkNonMain :: AsteriusModule -> [EntitySymbol] -> (Module, LinkReport)
 linkNonMain store_m extra_syms = (m, link_report)
   where
     (_, m, link_report) =
@@ -66,7 +66,7 @@ newAsteriusInstanceNonMain ::
   JSSession ->
   FilePath ->
   [EntitySymbol] ->
-  AsteriusCachedModule ->
+  AsteriusModule ->
   IO JSVal
 newAsteriusInstanceNonMain s p extra_syms m = do
   distNonMain p extra_syms $ linkNonMain m extra_syms

@@ -13,13 +13,13 @@ import Asterius.Types
 import Data.Foldable
 import qualified IfaceEnv as GHC
 
-loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
+loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusModule
 loadAr ncu p = do
   GHC.Archive entries <- GHC.loadAr p
   foldlM
     ( \acc GHC.ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
         Left _ -> pure acc
-        Right m -> pure $ m <> acc
+        Right m -> pure $ asteriusModule m <> acc
     )
     mempty
     entries

@@ -91,9 +91,9 @@ data GHCiState
   = GHCiState
       { ghciUniqSupply :: GHC.UniqSupply,
         ghciNameCacheUpdater :: GHC.NameCacheUpdater,
-        ghciLibs :: AsteriusCachedModule,
-        ghciObjs :: M.Map FilePath AsteriusCachedModule,
-        ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusCachedModule),
+        ghciLibs :: AsteriusModule,
+        ghciObjs :: M.Map FilePath AsteriusModule,
+        ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusModule),
         ghciLastCompiledCoreExpr :: Int,
         ghciJSSession :: ~(JSSession, Pipe, JSVal)
       }
@@ -193,7 +193,7 @@ asteriusIservCall hsc_env _ msg = do
       evaluate s {ghciLibs = lib <> ghciLibs s}
     GHC.LoadObj p -> modifyMVar_ globalGHCiState $ \s -> do
       obj <- getFile (ghciNameCacheUpdater s) p
-      evaluate s {ghciObjs = M.insert p obj $ ghciObjs s}
+      evaluate s {ghciObjs = M.insert p (asteriusModule obj) $ ghciObjs s}
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
     GHC.RemoveLibrarySearchPath _ -> pure True
     GHC.ResolveObjs -> pure True
@@ -485,7 +485,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
     pure
       ( s
           { ghciCompiledCoreExprs =
-              IM.insert this_id (sym, (toCachedModule m)) $ -- GEORGE: Not good
+              IM.insert this_id (sym, m) $
                 ghciCompiledCoreExprs s,
             ghciLastCompiledCoreExpr = this_id
           },

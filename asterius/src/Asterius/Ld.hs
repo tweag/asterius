@@ -29,19 +29,19 @@ data LinkTask
   = LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
-        linkModule :: AsteriusCachedModule,
+        linkModule :: AsteriusModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
   deriving (Show)
 
-loadTheWorld :: LinkTask -> IO AsteriusCachedModule
+loadTheWorld :: LinkTask -> IO AsteriusModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
   lib <- mconcat <$> for linkLibs (loadAr ncu)
   objrs <- for linkObjs (tryGetFile ncu)
-  let objs = rights objrs
+  let objs = map asteriusModule $ rights objrs
   evaluate $ linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
@@ -84,20 +84,18 @@ rtsPrivateSymbols =
     ]
 
 linkModules ::
-  LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
+  LinkTask -> AsteriusModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
     debug
     gcSections
     verboseErr
-    ( toCachedModule -- GEORGE: Not good; this should not have to happen at link time :/
-        ( (if hasMain then mainBuiltins else mempty)
-            <> rtsAsteriusModule
-              defaultBuiltinsOptions
-                { Asterius.Builtins.progName = progName,
-                  Asterius.Builtins.debug = debug
-                }
-        )
+    ( (if hasMain then mainBuiltins else mempty)
+        <> rtsAsteriusModule
+          defaultBuiltinsOptions
+            { Asterius.Builtins.progName = progName,
+              Asterius.Builtins.debug = debug
+            }
         <> m
     )
     ( SS.unions
