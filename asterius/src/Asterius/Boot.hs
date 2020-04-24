@@ -131,7 +131,7 @@ bootRTSCmm BootArgs {..} =
              in runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
                   Left err -> throwIO err
                   Right m -> do
-                    putFile obj_path (toCachedModule m)
+                    putFile obj_path $ toCachedModule m
                     modifyIORef' obj_paths_ref (obj_path :)
                     when is_debug $ do
                       let p = (obj_path -<.>)
