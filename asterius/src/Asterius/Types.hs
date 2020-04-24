@@ -124,6 +124,9 @@ instance Semigroup AsteriusModule where
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty mempty
 
+-- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
+-- its 'EntitySymbol' dependencies, as they are appear in the modules data
+-- segments and function definitions (see function 'toCachedModule').
 data AsteriusCachedModule
   = AsteriusCachedModule
       { dependencyMap :: SymbolMap SymbolSet,
