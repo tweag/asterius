@@ -36,13 +36,13 @@ data LinkTask
       }
   deriving (Show)
 
-loadTheWorld :: LinkTask -> IO AsteriusModule
+loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
   lib <- mconcat <$> for linkLibs (loadAr ncu)
   objrs <- for linkObjs (tryGetFile ncu)
-  let objs = map asteriusModule $ rights objrs
-  evaluate $ linkModule <> mconcat objs <> lib
+  let objs = rights objrs
+  evaluate $ toCachedModule linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm
@@ -84,18 +84,20 @@ rtsPrivateSymbols =
     ]
 
 linkModules ::
-  LinkTask -> AsteriusModule -> (AsteriusModule, Module, LinkReport)
+  LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
 linkModules LinkTask {..} m =
   linkStart
     debug
     gcSections
     verboseErr
-    ( (if hasMain then mainBuiltins else mempty)
-        <> rtsAsteriusModule
-          defaultBuiltinsOptions
-            { Asterius.Builtins.progName = progName,
-              Asterius.Builtins.debug = debug
-            }
+    ( toCachedModule
+        ( (if hasMain then mainBuiltins else mempty)
+            <> rtsAsteriusModule
+              defaultBuiltinsOptions
+                { Asterius.Builtins.progName = progName,
+                  Asterius.Builtins.debug = debug
+                }
+        )
         <> m
     )
     ( SS.unions
