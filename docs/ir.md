@@ -1,6 +1,6 @@
 ## IR types and transformation passes
 
-This section explains various IR types in asterius, and hopefully presents a
+This section explains various IR types in Asterius, and hopefully presents a
 clear picture of how information flows from Haskell to WebAssembly. (There's a
 similar section in `jsffi.md` which explains implementation details of JSFFI)
 
@@ -46,12 +46,12 @@ expression IR, with some additions:
   expression. At link time, the symbols are re-written to absolute addresses.
 
 * Unresolved locals/globals. At link time, unresolved locals are laid out to
-  wasm locals, and unresolved globals (which are really just Cmm global regs)
+  Wasm locals, and unresolved globals (which are really just Cmm global regs)
   become fields in the global Capability's `StgRegTable`.
 
 * `EmitErrorMessage`, as a placeholder of emitting a string error message then
   trapping. At link time, such error messages are collected into an "error
-  message pool", and the wasm code is just "calling some error message
+  message pool", and the Wasm code is just "calling some error message
   reporting function with an array index".
 
 * `Null`. We're civilized, educated functional programmers and should really be
@@ -92,7 +92,7 @@ libraries and user input code), then performs live-code discovery: starting
 from a "root symbol set" (something like `Main_main_closure`), iteratively
 fetch the entity from the store, traverse the AST and collect new symbols. When
 we reach a fixpoint, that fixpoint is the outcome of dependency analysis,
-representing a self-contained wasm module.
+representing a self-contained Wasm module.
 
 We then do some rewriting work on the self contained module: making symbol
 tables, rewriting symbols to absolute addresses, using our own relooper to
@@ -103,16 +103,16 @@ The output of linker is `Module`. It differs from `AsteriusModule`, and
 although it shares quite some datatypes with `AsteriusModule` (for example,
 `Expression`), it guarantees that some variants will not appear (for example,
 `Unresolved*`). A `Module` is ready to be fed to a backend which emits real
-wasm binary code.
+Wasm binary code.
 
 There are some useful linker byproducts. For example, there's `LinkReport`
-which contains mappings from symbols to addresses which will be lost in wasm
+which contains mappings from symbols to addresses which will be lost in Wasm
 binary code, but is still useful for debugging.
 
 ### Generating binary code via binaryen
 
 Once we have a `Module` (which is essentially just Haskell modeling of binaryen
-C API), we can invoke binaryen to validate it and generate wasm binary code.
+C API), we can invoke binaryen to validate it and generate Wasm binary code.
 The low-level bindings are maintained in the `binaryen` package, and
 `Asterius.Marshal` contains the logic to call the imported functions to do
 actual work.
@@ -120,7 +120,7 @@ actual work.
 ### Generating binary code via wasm-toolkit
 
 We can also convert `Module` to IR types of `wasm-toolkit`, which is our native
-Haskell wasm engine. It's now the default backend of `ahc-link`, but the
+Haskell Wasm engine. It's now the default backend of `ahc-link`, but the
 binaryen backend can still be chosen by `ahc-link --binaryen`.
 
 ### Generating JavaScript stub script
@@ -128,12 +128,12 @@ binaryen backend can still be chosen by `ahc-link --binaryen`.
 To make it actually run in Node.js/Chrome, we need two pieces of JavaScript
 code:
 
-* Common runtime which can be reused across different asterius compiled
+* Common runtime which can be reused across different Asterius compiled
   modules. It's in `asterius/rts/rts.js`.
 
 * Stub code which contains specific information like error messages, etc.
 
-The linker generates stub script along with wasm binary code, and concats the
+The linker generates stub script along with Wasm binary code, and concats the
 runtime and the stub script to a self-contained JavaScript file which can be
 run or embedded. It's possible to specify JavaScript "target" to either Node.js
 or Chrome via `ahc-link` flags.

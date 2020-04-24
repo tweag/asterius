@@ -103,7 +103,7 @@ several places which operate in units of pages rather than raw bytes:
 * `Memory` component of a `Module`
 
 When performing final linking, we layout static data segments to the linear
-memory. We ensure the memory size is always divisable by `MBLOCK_SIZE`, so it's
+memory. We ensure the memory size is always divisible by `MBLOCK_SIZE`, so it's
 easy to allocate new mega blocks and calculate required page count.
 
 The first 8 bytes of linear memory (from 0x0 to 0x7) are uninitialized. 0x0 is

@@ -27,7 +27,7 @@ be included into the binary. In order to include `fact`, either use it in some
 way in `main`, or supply `--extra-root-symbol=Main_fact_closure` flag to
 `ahc-link` when compiling.
 
-The next step is locating the pointer of `fact`. The "asterius instance" type
+The next step is locating the pointer of `fact`. The "Asterius instance" type
 we mentioned before contains two "symbol map" fields: `staticsSymbolMap` maps
 static data symbols to linear memory absolute addresses, and
 `functionSymbolMap` maps function symbols to WebAssembly function table

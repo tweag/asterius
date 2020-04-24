@@ -23,7 +23,7 @@ behavior!)
 ## Virtual address spaces
 
 Remember that we're compiling to `wasm32` which has a 32-bit address space, but
-the host GHC is actually 64-bits, so all pointers in asterius are 64-bits, and
+the host GHC is actually 64-bits, so all pointers in Asterius are 64-bits, and
 upon `load`/`store`/`call_indirect`, we truncate the 64-bit pointer, using only
 the lower 32-bits for indexing.
 
@@ -52,7 +52,7 @@ lookup in the data/function symbol table, and if there's a hit, we output the
 symbol along the value. This spares us the pain to keep a lot of symbol/address
 mappings in our working memory when examining the debug logs. Some false
 positives (e.g. some random intermediate `i64` value in a Haskell computation
-accidently collides with a *logical* address) may exist in theory, but the
+accidentally collides with a *logical* address) may exist in theory, but the
 probability should be very low.
 
 Note that for consistency between vanilla/debug mode, the virtual address
@@ -81,8 +81,8 @@ beginning.
       pre-linking IRs (which isn't processed by the relooper yet, and preserves
       the control-flow graph structure)
     - Assigning a value to an i64 local. To make sense of local ids, dump IRs.
-      Also note that the local ids here doesn't match the actual local ids in
-      wasm binary code (there is a re-mapping upon serialization), but it
+      Also note that the local ids here don't match the actual local ids in
+      Wasm binary code (there is a re-mapping upon serialization), but it
       shouldn't be a problem since we are debugging the higher level IR here.
 
 ## Dumping IRs
