@@ -29,7 +29,7 @@ data LinkTask
   = LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
-        linkModule :: AsteriusModule,
+        linkModule :: AsteriusCachedModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
@@ -42,7 +42,7 @@ loadTheWorld LinkTask {..} = do
   lib <- mconcat <$> for linkLibs (loadAr ncu)
   objrs <- for linkObjs (tryGetFile ncu)
   let objs = rights objrs
-  evaluate $ toCachedModule linkModule <> mconcat objs <> lib
+  evaluate $ linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm
