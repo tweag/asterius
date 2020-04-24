@@ -130,7 +130,7 @@ instance Monoid AsteriusModule where
 data AsteriusCachedModule
   = AsteriusCachedModule
       { dependencyMap :: SymbolMap SymbolSet,
-        asteriusModule :: AsteriusModule
+        fromCachedModule :: AsteriusModule
       }
   deriving (Show, Data)
 
@@ -150,7 +150,7 @@ instance Monoid AsteriusCachedModule where
 toCachedModule :: AsteriusModule -> AsteriusCachedModule
 toCachedModule m =
   AsteriusCachedModule
-    { asteriusModule = m,
+    { fromCachedModule = m,
       dependencyMap = staticsMap m `add` (functionMap m `add` SM.empty)
     }
   where

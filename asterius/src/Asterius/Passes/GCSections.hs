@@ -26,7 +26,7 @@ gcSections verbose_err c_store_mod root_syms export_funcs =
       ffiMarshalState = ffi_this
     }
   where
-    store_mod = asteriusModule c_store_mod
+    store_mod = fromCachedModule c_store_mod
     deps = dependencyMap c_store_mod
     spt_map =
       sptMap store_mod `SM.restrictKeys` SM.keysSet (staticsMap final_m)

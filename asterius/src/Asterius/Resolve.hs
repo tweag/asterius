@@ -123,7 +123,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
   where
     merged_m0
       | gc_sections = gcSections verbose_err store root_syms export_funcs
-      | otherwise = asteriusModule store
+      | otherwise = fromCachedModule store
     merged_m1
       | debug = addMemoryTrap merged_m0
       | otherwise = merged_m0
