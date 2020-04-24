@@ -1,9 +1,9 @@
 { pkgs ? import nixpkgs ((haskellNix.nixpkgsArgs) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
-, haskellNix ? builtins.fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/f6dac8083874408fe287525007d3da9decd9bf44.tar.gz";
-    sha256 = "13hxl8gcyqrpranh12fa14sg2lxx2glbgzkx10z4i2x3gh59yl1n";
-  }
+, haskellNix ? import (builtins.fetchTarball {
+    url = "https://github.com/input-output-hk/haskell.nix/archive/a39b5a741acca2fb4bfbb40251d984b2971287ee.tar.gz";
+    sha256 = "1p4932iryai8ifz70d30bvswn5g50hxwblizlibjx9s280l1h6k1";
+  }) {}
 , nixpkgs ? haskellNix.sources.nixpkgs-default
 , shellOnly ? false
 , system    ? null
