@@ -41,7 +41,7 @@ WORKDIR /home/asterius
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 13.13.0 && ln -s \$NVM_BIN ~/.nvm/bin" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.0.0 && ln -s \$NVM_BIN ~/.nvm/bin" && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.0.1/stack-2.3.0.1-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack' && \
