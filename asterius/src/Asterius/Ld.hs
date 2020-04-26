@@ -40,8 +40,7 @@ loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
   lib <- mconcat <$> for linkLibs (loadAr ncu)
-  objrs <- for linkObjs (tryGetFile ncu)
-  let objs = rights objrs
+  objs <- rights <$> for linkObjs (tryGetFile ncu) -- Note [Linking object files]
   evaluate $ linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
@@ -124,3 +123,11 @@ linkExe ld_task@LinkTask {..} = do
   case outputIR of
     Just p -> putFile p $ toCachedModule pre_m
     _ -> pure ()
+{-
+Note [Linking object files]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Object files in Haskell packages can also originate from gcc being called on
+cbits in packages, which would give deserialization failures. Hence, when we
+deserialize objects to be linked in 'loadTheWorld', we choose to be overpermissive
+and silently ignore deserialization failures. This has worked well so far.
+-}
