@@ -69,6 +69,7 @@ RUN \
     happy \
     hlint \
     ormolu \
+    pretty-show \
     wai-app-static && \
   cd /home/asterius && \
   sudo rm -rf -v \
