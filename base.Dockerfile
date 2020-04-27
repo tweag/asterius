@@ -17,6 +17,7 @@ RUN \
     automake \
     binaryen \
     curl \
+    g++ \
     gawk \
     gcc \
     git \
@@ -26,6 +27,7 @@ RUN \
     libnuma-dev \
     libstdc++-9-dev \
     make \
+    python3-minimal \
     sudo \
     xz-utils \
     zlib1g-dev && \
@@ -68,10 +70,12 @@ RUN \
   sudo apt purge -y \
     automake \
     curl \
+    g++ \
     git \
     make \
     mawk \
-    xz-utils && \
+    xz-utils \
+    python3-minimal && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
   find /home/asterius \( -name "*.p_hi" -o -name "*.p_o" -o -name "*_p.a" \) -type f -delete && \
