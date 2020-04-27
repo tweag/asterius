@@ -25,6 +25,7 @@ RUN \
     automake \
     binaryen \
     curl \
+    g++ \
     gawk \
     gcc \
     git \
@@ -34,6 +35,7 @@ RUN \
     libnuma-dev \
     libstdc++-9-dev \
     make \
+    python3-minimal \
     sudo \
     xz-utils \
     zlib1g-dev && \
