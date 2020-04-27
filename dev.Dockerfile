@@ -27,6 +27,7 @@ RUN \
     openssh-client \
     python3-pip \
     sudo \
+    wabt \
     zlib1g-dev \
     zstd && \
   apt autoremove --purge -y && \
