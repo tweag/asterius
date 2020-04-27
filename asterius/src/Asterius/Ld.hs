@@ -45,8 +45,8 @@ data LinkTask
 loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
-  lib <- mconcat <$> for linkLibs (loadAr ncu)
-  objs <- rights <$> for linkObjs (tryGetFile ncu)
+  lib <- mconcat <$> for linkLibs (loadAr ncu)      -- TODO: Parallelize
+  objs <- rights <$> for linkObjs (tryGetFile ncu)  -- TODO: Parallelize
   evaluate $ linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.

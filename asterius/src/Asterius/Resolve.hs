@@ -123,6 +123,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
       }
   )
   where
+    -- TODO: Parallelize evaluation (add it first)
     merged_m0
       | gc_sections = gcSections verbose_err store root_syms export_funcs
       | otherwise = fromCachedModule store

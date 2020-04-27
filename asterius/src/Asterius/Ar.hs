@@ -16,7 +16,7 @@ import qualified IfaceEnv as GHC
 loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
 loadAr ncu p = do
   GHC.Archive entries <- GHC.loadAr p
-  foldlM
+  foldlM  -- TODO: Parallelize
     ( \acc GHC.ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
         Left _ -> pure acc
         Right m -> pure $ m <> acc

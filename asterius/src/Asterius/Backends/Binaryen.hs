@@ -570,7 +570,7 @@ marshalMemoryImport m MemoryImport {..} = flip runContT pure $ do
   ebp <- marshalBS externalBaseName
   lift $ Binaryen.addMemoryImport m inp emp ebp 0
 
-marshalModule ::
+marshalModule ::  -- TODO: Parallelize (see how to do it best)
   Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
