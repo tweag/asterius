@@ -26,6 +26,7 @@ RUN \
     libnuma-dev \
     openssh-client \
     python3-pip \
+    ripgrep \
     sudo \
     wabt \
     zlib1g-dev \
