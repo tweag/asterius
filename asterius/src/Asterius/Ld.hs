@@ -36,12 +36,17 @@ data LinkTask
       }
   deriving (Show)
 
+-- | Load all the library and object dependencies for a 'LinkTask' into a
+-- single module. NOTE: object files in Haskell package directories can also
+-- originate from gcc being called on cbits in packages. This in the past gave
+-- deserialization failures. Hence, when we deserialize objects to be linked in
+-- 'loadTheWorld', we choose to be overpermissive and silently ignore
+-- deserialization failures. This has worked well so far.
 loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
   lib <- mconcat <$> for linkLibs (loadAr ncu)
-  objrs <- for linkObjs (tryGetFile ncu)
-  let objs = rights objrs
+  objs <- rights <$> for linkObjs (tryGetFile ncu)
   evaluate $ linkModule <> mconcat objs <> lib
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
