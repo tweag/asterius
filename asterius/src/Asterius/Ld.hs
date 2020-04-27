@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -18,11 +19,11 @@ import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.Builtins
 import Asterius.Builtins.Main
+import Asterius.Internals.Parallel
 import Asterius.Resolve
 import Asterius.Types
 import qualified Asterius.Types.SymbolSet as SS
 import Control.Exception
-import Data.Either
 import Data.Traversable
 
 data LinkTask
@@ -45,9 +46,13 @@ data LinkTask
 loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
-  lib <- mconcat <$> for linkLibs (loadAr ncu)      -- TODO: Parallelize
-  objs <- rights <$> for linkObjs (tryGetFile ncu)  -- TODO: Parallelize
+  lib <- parallelFor 1 linkLibs (loadAr ncu) -- TODO: Parameterize
+  objs <- parallelFor 1 linkObjs (loadObj ncu) -- TODO: Parameterize
   evaluate $ linkModule <> mconcat objs <> lib
+  where
+    loadObj ncu path = tryGetFile ncu path >>= \case
+      Left {} -> pure mempty
+      Right m -> pure m
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm

@@ -9,17 +9,14 @@ where
 
 import qualified Ar as GHC
 import Asterius.Binary.ByteString
+import Asterius.Internals.Parallel
 import Asterius.Types
-import Data.Foldable
 import qualified IfaceEnv as GHC
 
 loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
 loadAr ncu p = do
   GHC.Archive entries <- GHC.loadAr p
-  foldlM  -- TODO: Parallelize
-    ( \acc GHC.ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
-        Left _ -> pure acc
-        Right m -> pure $ m <> acc
-    )
-    mempty
-    entries
+  parallelFor 1 entries $ \GHC.ArchiveEntry {..} -> -- TODO: Parameterize
+    tryGetBS ncu filedata >>= \case
+      Left {} -> pure mempty
+      Right m -> pure m
