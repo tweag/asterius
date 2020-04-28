@@ -69,7 +69,7 @@ instance Show SymbolSet where
       showString "fromList " . shows (toList s)
 
 instance NFData SymbolSet where
-  rnf = rwhnf -- TODO: IntMap is an instance of NFData, but not of Generic.
+  rnf = rwhnf
 
 instance Binary SymbolSet where
   put_ bh s =

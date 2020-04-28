@@ -23,9 +23,7 @@ newtype EntitySymbol = EntitySymbol GHC.FastString
   deriving stock (Data)
 
 instance NFData EntitySymbol where
-  rnf = rwhnf -- TODO: Not entirely sure about this. In any case, we cannot
-              -- GNDerive the instance because FastString is neither an
-              -- instance of Generic nor an instance of NFData.
+  rnf = rwhnf -- TODO: Not entirely sure about this.
 
 -- | Convert an 'EntitySymbol' to a 'BS.ByteString'.
 {-# INLINE entityName #-}
