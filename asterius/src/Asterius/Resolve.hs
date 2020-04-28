@@ -110,25 +110,24 @@ linkStart ::
   [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
 linkStart debug gc_sections verbose_err store root_syms export_funcs =
-  rnf merged_m
-    `seq` ( merged_m,
-            result_m,
-            mempty
-              { staticsSymbolMap = ss_sym_map,
-                functionSymbolMap = func_sym_map,
-                infoTableSet = makeInfoTableSet merged_m ss_sym_map,
-                Asterius.Types.LinkReport.tableSlots = tbl_slots,
-                staticMBlocks = static_mbs,
-                sptEntries = sptMap merged_m,
-                bundledFFIMarshalState = bundled_ffi_state
-              }
-          )
+  ( merged_m,
+    result_m,
+    mempty
+      { staticsSymbolMap = ss_sym_map,
+        functionSymbolMap = func_sym_map,
+        infoTableSet = makeInfoTableSet merged_m ss_sym_map,
+        Asterius.Types.LinkReport.tableSlots = tbl_slots,
+        staticMBlocks = static_mbs,
+        sptEntries = sptMap merged_m,
+        bundledFFIMarshalState = bundled_ffi_state
+      }
+  )
   where
     merged_m0
       | gc_sections = gcSections verbose_err store root_syms export_funcs
       | otherwise = fromCachedModule store
     merged_m1
-      | debug = addMemoryTrap merged_m0
+      | merged_m0 `deepseq` debug = addMemoryTrap merged_m0
       | otherwise = merged_m0
     !merged_m
       | verbose_err = merged_m1
