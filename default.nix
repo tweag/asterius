@@ -45,10 +45,6 @@ let
             "boot-libs/**/**"
             "ghc-libdir/**/**"
             ];
-          wabt.package.cleanHpack = true;
-          wabt.components.library.extraSrcFiles = [
-            "wabt/**/**"
-            ];
           binaryen.package.cleanHpack = true;
           binaryen.components.library.extraSrcFiles = [
             "binaryen/**/**"
@@ -271,15 +267,11 @@ let
         asterius
         binaryen
         ghc-toolkit
-        wabt
-        inline-js
         inline-js-core
-        wabt
         wasm-toolkit ];
     }).overrideAttrs (oldAttrs: {
       buildInputs = oldAttrs.buildInputs ++ [
         project.hsPkgs.hpack.components.exes.hpack
-        pkgs.wabt
         pkgs.cmake
         nodejs
         nodePkgs.parcel-bundler
@@ -296,7 +288,6 @@ let
         export sandbox_ghc_lib_dir=$(${ghc-compiler}/bin/ghc --print-libdir)
         export inline_js_datadir=$(pwd)/inline-js/inline-js
         export inline_js_core_datadir=$(pwd)/inline-js/inline-js-core
-        export wabt_datadir=$(pwd)/wabt
         export wasm_toolkit_datadir=$(pwd)/wasm-toolkit
         export boot_libs_path=${ghc883.boot-libs}
         mkdir -p asterius-cabal-bin

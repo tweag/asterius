@@ -4,12 +4,20 @@ packages:
   asterius
   binaryen
   ghc-toolkit
-  inline-js/inline-js
-  inline-js/inline-js-core
-  wabt
   wasm-toolkit
 
 package asterius
   flags: +binaryen +nix
 
 write-ghc-environment-files: never
+
+source-repository-package
+  type: git
+  location: https://github.com/tweag/haskell-binaryen
+  tag: 6e782a0a42df344afa6c8d5e391160bd172348d8
+
+source-repository-package
+  type: git
+  location: https://github.com/tweag/inline-js
+  tag: 114848a9f750b5e9c2f8ca056cc29d84bbab0bae
+  subdir: inline-js-core
