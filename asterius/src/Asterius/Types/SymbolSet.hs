@@ -69,7 +69,7 @@ instance Show SymbolSet where
       showString "fromList " . shows (toList s)
 
 instance NFData SymbolSet where
-  rnf = rwhnf
+  rnf (SymbolSet s) = rnf s
 
 instance Binary SymbolSet where
   put_ bh s =

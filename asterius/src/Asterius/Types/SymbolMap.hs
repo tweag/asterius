@@ -77,7 +77,7 @@ newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
   deriving stock (Data)
 
 instance NFData a => NFData (SymbolMap a) where
-  rnf = rwhnf
+  rnf (SymbolMap m) = rnf m
 
 instance Show a => Show (SymbolMap a) where
   showsPrec d m =
