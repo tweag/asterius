@@ -126,9 +126,10 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
     merged_m0
       | gc_sections = gcSections verbose_err store root_syms export_funcs
       | otherwise = fromCachedModule store
+    !merged_m0_evaluated = force merged_m0
     merged_m1
-      | merged_m0 `deepseq` debug = addMemoryTrap merged_m0
-      | otherwise = merged_m0
+      | debug = addMemoryTrap merged_m0_evaluated
+      | otherwise = merged_m0_evaluated
     !merged_m
       | verbose_err = merged_m1
       | otherwise =
