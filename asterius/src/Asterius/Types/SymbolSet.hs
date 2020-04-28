@@ -60,16 +60,13 @@ import Prelude hiding (null)
 
 -- | A set of 'EntitySymbol's.
 newtype SymbolSet = SymbolSet (IM.IntMap EntitySymbol)
-  deriving newtype (Eq, Semigroup, Monoid)
+  deriving newtype (Eq, Semigroup, Monoid, NFData)
   deriving stock (Data)
 
 instance Show SymbolSet where
   showsPrec p (SymbolSet s) =
     showParen (p > 10) $
       showString "fromList " . shows (toList s)
-
-instance NFData SymbolSet where
-  rnf (SymbolSet s) = rnf s
 
 instance Binary SymbolSet where
   put_ bh s =

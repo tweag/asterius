@@ -73,11 +73,8 @@ import Prelude hiding (filter, lookup)
 
 -- | A map from 'EntitySymbol's to values @a@.
 newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
-  deriving newtype (Eq, Semigroup, Monoid)
+  deriving newtype (Eq, Semigroup, Monoid, NFData)
   deriving stock (Data)
-
-instance NFData a => NFData (SymbolMap a) where
-  rnf (SymbolMap m) = rnf m
 
 instance Show a => Show (SymbolMap a) where
   showsPrec d m =
