@@ -23,7 +23,7 @@ newtype EntitySymbol = EntitySymbol GHC.FastString
   deriving stock (Data)
 
 instance NFData EntitySymbol where
-  rnf = rwhnf -- TODO: Not entirely sure about this.
+  rnf = rwhnf
 
 -- | Convert an 'EntitySymbol' to a 'BS.ByteString'.
 {-# INLINE entityName #-}
