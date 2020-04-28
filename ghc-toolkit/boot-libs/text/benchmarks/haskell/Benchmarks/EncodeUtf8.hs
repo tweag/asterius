@@ -18,9 +18,9 @@ import qualified Data.Text.Encoding as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
 
-benchmark :: String -> IO Benchmark
-benchmark string = do
-    return $ bgroup "EncodeUtf8"
+benchmark :: String -> Benchmark
+benchmark string =
+    bgroup "EncodeUtf8"
         [ bench "Text"     $ whnf (B.length . T.encodeUtf8)   text
         , bench "LazyText" $ whnf (BL.length . TL.encodeUtf8) lazyText
         ]

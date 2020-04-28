@@ -42,8 +42,7 @@ unpack :: Text -> String
 unpack = S.unstreamList . stream
 {-# INLINE [1] unpack #-}
 
--- | /O(n)/ Convert a literal string into a 'Text'.  Subject to
--- fusion.
+-- | /O(n)/ Convert a literal string into a 'Text'.
 --
 -- This is exposed solely for people writing GHC rewrite rules.
 --

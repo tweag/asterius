@@ -17,7 +17,8 @@
 -- * Lexing/parsing of different numerical types
 --
 module Benchmarks.ReadNumbers
-    ( benchmark
+    ( initEnv
+    , benchmark
     ) where
 
 import Criterion (Benchmark, bgroup, bench, whnf)
@@ -33,8 +34,10 @@ import qualified Data.Text.Lazy.IO as TL
 import qualified Data.Text.Lazy.Read as TL
 import qualified Data.Text.Read as T
 
-benchmark :: FilePath -> IO Benchmark
-benchmark fp = do
+type Env = ([String], [T.Text], [TL.Text], [B.ByteString], [BL.ByteString])
+
+initEnv :: FilePath -> IO Env
+initEnv fp = do
     -- Read all files into lines: string, text, lazy text, bytestring, lazy
     -- bytestring
     s <- lines `fmap` readFile fp
@@ -42,7 +45,11 @@ benchmark fp = do
     tl <- TL.lines `fmap` TL.readFile fp
     b <- B.lines `fmap` B.readFile fp
     bl <- BL.lines `fmap` BL.readFile fp
-    return $ bgroup "ReadNumbers"
+    return (s, t, tl, b, bl)
+
+benchmark :: Env -> Benchmark
+benchmark ~(s, t, tl, b, bl) =
+    bgroup "ReadNumbers"
         [ bench "DecimalString"     $ whnf (int . string readDec) s
         , bench "HexadecimalString" $ whnf (int . string readHex) s
         , bench "DoubleString"      $ whnf (double . string readFloat) s

@@ -1,2788 +1,359 @@
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/Asterius/Prim.hs new/libraries/base/Asterius/Prim.hs
---- old/libraries/base/Asterius/Prim.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/base/Asterius/Prim.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,12 @@
-+{-# LANGUAGE CPP #-}
-+{-# LANGUAGE NoImplicitPrelude #-}
-+
-+module Asterius.Prim where
-+
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: ANNOUNCE
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: GIT_COMMIT_ID
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: HACKING.md
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: INSTALL.md
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: LICENSE
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: MAKEHELP.md
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: Makefile
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: README.md
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: VERSION
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: aclocal.m4
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: aclocal.m4.orig
+Only in ghc-toolkit/boot-libs: array
+Only in ghc-toolkit/boot-libs: asterius-prelude
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: autom4te.cache
+Only in ghc-toolkit/boot-libs: base
+Only in ghc-toolkit/boot-libs: binary
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: bindisttest
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: boot
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: boot.orig
+Only in ghc-toolkit/boot-libs: bytestring
+Only in ghc-toolkit/boot-libs: cabal.config
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: compiler
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: config.guess
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: config.log
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: config.status
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: config.sub
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: configure
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: configure.ac
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: configure.ac.orig
+Only in ghc-toolkit/boot-libs: containers
+Only in ghc-toolkit/boot-libs: deepseq
+Only in ghc-toolkit/boot-libs: directory
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: distrib
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: docs
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: driver
+Only in ghc-toolkit/boot-libs: filepath
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: ghc
+Only in ghc-toolkit/boot-libs: ghc-boot
+Only in ghc-toolkit/boot-libs: ghc-boot-th
+Only in ghc-toolkit/boot-libs: ghc-heap
+Only in ghc-toolkit/boot-libs: ghc-prim
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: ghc.mk
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: ghc.mk.orig
+Only in ghc-toolkit/boot-libs: ghci
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: includes
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: install-sh
+Only in ghc-toolkit/boot-libs: integer-simple
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: libffi
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: libffi-tarballs
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: libraries
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: llvm-passes
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: llvm-targets
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: mk
+Only in ghc-toolkit/boot-libs: mtl
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: packages
+Only in ghc-toolkit/boot-libs: parsec
+Only in ghc-toolkit/boot-libs: pretty
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: .dir-locals.el
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Adjustor.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: AdjustorAsm.S
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Apply.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Arena.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Arena.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: AwaitEvent.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Capability.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Capability.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: CheckUnload.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: CheckUnload.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ClosureFlags.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Disassembler.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Disassembler.h
+diff -u -r /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/Exception.cmm ghc-toolkit/boot-libs/rts/Exception.cmm
+--- /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/Exception.cmm	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/rts/Exception.cmm	2020-04-24 08:46:34.000000000 -0300
+@@ -67,6 +67,7 @@
+     StgTSO_flags(CurrentTSO) = %lobits32(
+       TO_W_(StgTSO_flags(CurrentTSO)) & ~(TSO_BLOCKEX|TSO_INTERRUPTIBLE));
+ 
++#if !defined(ASTERIUS)
+     /* Eagerly raise a masked exception, if there is one */
+     if (StgTSO_blocked_exceptions(CurrentTSO) != END_TSO_QUEUE) {
+ 
+@@ -101,6 +102,7 @@
+             Sp_adj(2);
+         }
+     }
++#endif
+ 
+     Sp_adj(1);
+     R1 = ret;
+@@ -222,6 +224,7 @@
+         StgTSO_flags(CurrentTSO) = %lobits32(
+             TO_W_(StgTSO_flags(CurrentTSO)) & ~(TSO_BLOCKEX|TSO_INTERRUPTIBLE));
+ 
 +#if defined(ASTERIUS)
-+
-+import GHC.Base
-+
-+foreign import javascript "__asterius_jsffi.stdio.putChar(${1},${2})" js_putChar :: Int -> Char -> IO ()
-+
+         /* Eagerly raise a masked exception, if there is one */
+         if (StgTSO_blocked_exceptions(CurrentTSO) != END_TSO_QUEUE) {
+             /*
+@@ -258,6 +261,7 @@
+                 Sp_adj(3);
+             }
+         }
 +#endif
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/Asterius/TopHandler.hs new/libraries/base/Asterius/TopHandler.hs
---- old/libraries/base/Asterius/TopHandler.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/base/Asterius/TopHandler.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,32 @@
-+{-# LANGUAGE ScopedTypeVariables #-}
-+
-+module Asterius.TopHandler
-+  ( runMainIO
-+  ) where
-+
-+import Control.Exception
-+import Foreign.C
-+import GHC.TopHandler (flushStdHandles)
-+import Prelude
-+import System.Exit
-+import System.IO
-+
-+runMainIO :: IO a -> IO a
-+runMainIO = (`finally` flushStdHandles) . (`catch` topHandler)
-+
-+topHandler :: SomeException -> IO a
-+topHandler = throwExitCode realHandler
-+
-+realHandler :: SomeException -> IO a
-+realHandler err = do
-+  prog <- peekCString prog_name
-+  hPutStrLn stderr $ prog <> ": " <> show err
-+  throwIO err
-+
-+throwExitCode :: (SomeException -> IO a) -> SomeException -> IO a
-+throwExitCode h err =
-+  case fromException err of
-+    Just (_ :: ExitCode) -> throwIO err
-+    _ -> h err
-+
-+foreign import ccall "&" prog_name :: CString
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/Asterius/Types.hs new/libraries/base/Asterius/Types.hs
---- old/libraries/base/Asterius/Types.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/base/Asterius/Types.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,248 @@
-+{-# LANGUAGE MagicHash #-}
-+{-# LANGUAGE NoImplicitPrelude #-}
-+{-# LANGUAGE StrictData #-}
-+{-# LANGUAGE UnboxedTuples #-}
-+{-# LANGUAGE UnliftedFFITypes #-}
-+
-+module Asterius.Types
-+  ( JSVal(..)
-+  , JSArrayBuffer(..)
-+  , JSString(..)
-+  , JSArray(..)
-+  , JSObject(..)
-+  , JSFunction(..)
-+  , JSException(..)
-+  , fromJSArrayBuffer
-+  , toJSArrayBuffer
-+  , fromJSString
-+  , toJSString
-+  , fromJSArray
-+  , toJSArray
-+  , indexJSObject
-+  , setJSObject
-+  , jsonParse
-+  , jsonStringify
-+  , callJSFunction
-+  , makeHaskellCallback
-+  , makeHaskellCallback1
-+  , makeHaskellCallback2
-+  , makeJSException
-+  , jsStringDecodeUTF8
-+  , jsStringEncodeUTF8
-+  , jsStringDecodeLatin1
-+  , jsStringEncodeLatin1
-+  , jsStringDecodeUTF16LE
-+  , jsStringEncodeUTF16LE
-+  , jsStringDecodeUTF32LE
-+  , jsStringEncodeUTF32LE
-+  , js_freezeTmpJSVal
-+  ) where
-+
-+import Asterius.Magic
-+import GHC.Exception.Type
-+import GHC.Magic
-+import GHC.Prim
-+import GHC.Show
-+import GHC.Stable
-+import GHC.Tuple
-+import GHC.Types
-+
-+newtype JSVal =
-+  JSVal (StablePtr ())
-+
-+newtype JSArrayBuffer =
-+  JSArrayBuffer JSVal
-+
-+newtype JSString =
-+  JSString JSVal
-+
-+newtype JSArray =
-+  JSArray JSVal
-+
-+newtype JSObject =
-+  JSObject JSVal
-+
-+newtype JSFunction =
-+  JSFunction JSVal
-+
-+data JSException =
-+  JSException JSVal
-+              [Char]
-+
-+instance Show JSException where
-+  show (JSException _ msg) = msg
-+
-+instance Exception JSException
-+
-+{-# INLINE fromJSArrayBuffer #-}
-+fromJSArrayBuffer :: JSArrayBuffer -> ByteArray#
-+fromJSArrayBuffer buf = accursedUnutterableAddrToAny (c_fromJSArrayBuffer buf)
-+
-+{-# INLINE toJSArrayBuffer #-}
-+toJSArrayBuffer :: Addr# -> Int -> JSArrayBuffer
-+toJSArrayBuffer = c_toJSArrayBuffer
-+
-+{-# INLINE indexJSObject #-}
-+indexJSObject :: JSObject -> [Char] -> IO JSVal
-+indexJSObject obj k = js_object_index obj (toJSString k)
-+
-+{-# INLINE setJSObject #-}
-+setJSObject :: JSObject -> [Char] -> JSVal -> IO ()
-+setJSObject obj k = js_object_set obj (toJSString k)
-+
-+{-# INLINE jsonParse #-}
-+jsonParse :: [Char] -> JSVal
-+jsonParse s = js_jsonParse (toJSString s)
-+
-+{-# INLINE jsonStringify #-}
-+jsonStringify :: JSVal -> [Char]
-+jsonStringify v = fromJSString (js_jsonStringify v)
-+
-+{-# INLINE callJSFunction #-}
-+callJSFunction :: JSFunction -> [JSVal] -> IO JSVal
-+callJSFunction f args = js_apply f (toJSArray args)
-+
-+{-# INLINE makeHaskellCallback #-}
-+makeHaskellCallback :: IO () -> IO JSFunction
-+makeHaskellCallback f =
-+  IO
-+    (\s0 ->
-+       case makeStablePtr# f s0 of
-+         (# s1, sp #) -> unIO (js_mk_hs_callback sp) s1)
-+
-+{-# INLINE makeHaskellCallback1 #-}
-+makeHaskellCallback1 :: (JSVal -> IO ()) -> IO JSFunction
-+makeHaskellCallback1 f =
-+  IO
-+    (\s0 ->
-+       case makeStablePtr# f s0 of
-+         (# s1, sp #) -> unIO (js_mk_hs_callback1 sp) s1)
-+
-+{-# INLINE makeHaskellCallback2 #-}
-+makeHaskellCallback2 :: (JSVal -> JSVal -> IO ()) -> IO JSFunction
-+makeHaskellCallback2 f =
-+  IO
-+    (\s0 ->
-+       case makeStablePtr# f s0 of
-+         (# s1, sp #) -> unIO (js_mk_hs_callback2 sp) s1)
-+
-+{-# INLINE makeJSException #-}
-+makeJSException :: JSVal -> SomeException
-+makeJSException v = toException (JSException v (fromJSString (js_err_toString v)))
-+
-+{-# INLINE fromJSString #-}
-+fromJSString :: JSString -> [Char]
-+fromJSString s = accursedUnutterableAddrToAny (c_fromJSString s)
-+
-+{-# INLINE toJSString #-}
-+toJSString :: [Char] -> JSString
-+toJSString s =
-+  runRW#
-+    (\s0 ->
-+       case unIO js_newString s0 of
-+         (# s1, i #) ->
-+           let w [] sx = (# sx, () #)
-+               w (c:cs) sx =
-+                 case unIO (js_appendString i c) sx of
-+                   (# sy, _ #) -> w cs sy
-+            in case w s s1 of
-+                 (# s2, _ #) ->
-+                   case unIO (js_freezeTmpJSVal i) s2 of
-+                     (# _, r #) -> JSString r)
-+
-+{-# INLINE fromJSArray #-}
-+fromJSArray :: JSArray -> [JSVal]
-+fromJSArray arr = accursedUnutterableAddrToAny (c_fromJSArray arr)
-+
-+{-# INLINE toJSArray #-}
-+toJSArray :: [JSVal] -> JSArray
-+toJSArray arr =
-+  runRW#
-+    (\s0 ->
-+       case unIO js_newArray s0 of
-+         (# s1, i #) ->
-+           let w [] sx = (# sx, () #)
-+               w (v:vs) sx =
-+                 case unIO (js_appendArray i v) sx of
-+                   (# sy, _ #) -> w vs sy
-+            in case w arr s1 of
-+                 (# s2, _ #) ->
-+                   case unIO (js_freezeTmpJSVal i) s2 of
-+                     (# _, r #) -> JSArray r)
-+
-+foreign import ccall unsafe "__asterius_fromJSArrayBuffer" c_fromJSArrayBuffer
-+  :: JSArrayBuffer -> Addr#
-+
-+foreign import ccall unsafe "__asterius_toJSArrayBuffer" c_toJSArrayBuffer
-+  :: Addr# -> Int -> JSArrayBuffer
-+
-+foreign import ccall unsafe "__asterius_fromJSString" c_fromJSString
-+  :: JSString -> Addr#
-+
-+foreign import ccall unsafe "__asterius_fromJSArray" c_fromJSArray
-+  :: JSArray -> Addr#
-+
-+foreign import javascript "__asterius_jsffi.newTmpJSVal('')" js_newString
-+  :: IO Int
-+
-+foreign import javascript "__asterius_jsffi.mutTmpJSVal(${1}, s => s + String.fromCodePoint(${2}))" js_appendString
-+  :: Int -> Char -> IO ()
-+
-+foreign import javascript "__asterius_jsffi.newTmpJSVal([])" js_newArray
-+  :: IO Int
-+
-+foreign import javascript "__asterius_jsffi.mutTmpJSVal(${1}, arr => (arr.push(${2}), arr))" js_appendArray
-+  :: Int -> JSVal -> IO ()
-+
-+foreign import javascript "__asterius_jsffi.freezeTmpJSVal(${1})" js_freezeTmpJSVal
-+  :: Int -> IO JSVal
-+
-+foreign import javascript "__asterius_jsffi.decodeUTF8(${1})" jsStringDecodeUTF8
-+  :: JSArrayBuffer -> JSString
-+
-+foreign import javascript "__asterius_jsffi.encodeUTF8(${1})" jsStringEncodeUTF8
-+  :: JSString -> JSArrayBuffer
-+
-+foreign import javascript "__asterius_jsffi.decodeLatin1(${1})" jsStringDecodeLatin1
-+  :: JSArrayBuffer -> JSString
-+
-+foreign import javascript "__asterius_jsffi.encodeLatin1(${1})" jsStringEncodeLatin1
-+  :: JSString -> JSArrayBuffer
-+
-+foreign import javascript "__asterius_jsffi.decodeUTF16LE(${1})" jsStringDecodeUTF16LE
-+  :: JSArrayBuffer -> JSString
-+
-+foreign import javascript "__asterius_jsffi.encodeUTF16LE(${1})" jsStringEncodeUTF16LE
-+  :: JSString -> JSArrayBuffer
-+
-+foreign import javascript "__asterius_jsffi.decodeUTF32LE(${1})" jsStringDecodeUTF32LE
-+  :: JSArrayBuffer -> JSString
-+
-+foreign import javascript "__asterius_jsffi.encodeUTF32LE(${1})" jsStringEncodeUTF32LE
-+  :: JSString -> JSArrayBuffer
-+
-+foreign import javascript "${1}[${2}]" js_object_index
-+  :: JSObject -> JSString -> IO JSVal
-+
-+foreign import javascript "${1}[${2}]=${3}" js_object_set
-+  :: JSObject -> JSString -> JSVal -> IO ()
-+
-+foreign import javascript "${1}.apply({},${2})" js_apply
-+  :: JSFunction -> JSArray -> IO JSVal
-+
-+foreign import javascript "__asterius_jsffi.makeHaskellCallback(${1})" js_mk_hs_callback
-+  :: StablePtr# (IO ()) -> IO JSFunction
-+
-+foreign import javascript "__asterius_jsffi.makeHaskellCallback1(${1})" js_mk_hs_callback1
-+  :: StablePtr# (JSVal -> IO ()) -> IO JSFunction
-+
-+foreign import javascript "__asterius_jsffi.makeHaskellCallback2(${1})" js_mk_hs_callback2
-+  :: StablePtr# (JSVal -> JSVal -> IO ()) -> IO JSFunction
-+
-+foreign import javascript "JSON.parse(${1})" js_jsonParse :: JSString -> JSVal
-+
-+foreign import javascript "JSON.stringify(${1})" js_jsonStringify
-+  :: JSVal -> JSString
-+
-+foreign import javascript "${1}.stack ? ${1}.stack : ${1}.toString()" js_err_toString
-+  :: JSVal -> JSString
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/base.cabal new/libraries/base/base.cabal
---- old/libraries/base/base.cabal	2019-08-12 03:05:14.183690711 +0000
-+++ new/libraries/base/base.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -319,6 +319,10 @@
-         Type.Reflection.Unsafe
-         Unsafe.Coerce
  
-+        Asterius.Prim
-+        Asterius.TopHandler
-+        Asterius.Types
-+
-     other-modules:
-         Control.Monad.ST.Imp
-         Control.Monad.ST.Lazy.Imp
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/cbits/fs.c new/libraries/base/cbits/fs.c
---- old/libraries/base/cbits/fs.c	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/base/cbits/fs.c	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,291 @@
-+/* -----------------------------------------------------------------------------
-+ *
-+ * (c) Tamar Christina 2018
-+ *
-+ * Windows I/O routines for file opening.
-+ *
-+ * NOTE: Only modify this file in utils/fs/ and rerun configure. Do not edit
-+ *       this file in any other directory as it will be overwritten.
-+ *
-+ * ---------------------------------------------------------------------------*/
-+#include "fs.h"
-+#include <stdio.h>
-+
-+#if defined(_WIN32)
-+
-+#include <stdbool.h>
-+#include <stdlib.h>
-+#include <stdint.h>
-+
-+#include <windows.h>
-+#include <io.h>
-+#include <fcntl.h>
-+#include <wchar.h>
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <share.h>
-+
-+/* This function converts Windows paths between namespaces. More specifically
-+   It converts an explorer style path into a NT or Win32 namespace.
-+   This has several caveats but they are caviats that are native to Windows and
-+   not POSIX. See
-+   https://msdn.microsoft.com/en-us/library/windows/desktop/aa365247.aspx.
-+   Anything else such as raw device paths we leave untouched.  The main benefit
-+   of doing any of this is that we can break the MAX_PATH restriction and also
-+   access raw handles that we couldn't before.  */
-+static wchar_t* __hs_create_device_name (const wchar_t* filename) {
-+  const wchar_t* win32_dev_namespace  = L"\\\\.\\";
-+  const wchar_t* win32_file_namespace = L"\\\\?\\";
-+  const wchar_t* nt_device_namespace  = L"\\Device\\";
-+  const wchar_t* unc_prefix           = L"UNC\\";
-+  const wchar_t* network_share        = L"\\\\";
-+
-+  wchar_t* result = _wcsdup (filename);
-+  wchar_t ns[10] = {0};
-+
-+  /* If the file is already in a native namespace don't change it.  */
-+  if (   wcsncmp (win32_dev_namespace , filename, 4) == 0
-+      || wcsncmp (win32_file_namespace, filename, 4) == 0
-+      || wcsncmp (nt_device_namespace , filename, 8) == 0)
-+    return result;
-+
-+  /* Since we're using the lower level APIs we must normalize slashes now.  The
-+     Win32 API layer will no longer convert '/' into '\\' for us.  */
-+  for (size_t i = 0; i < wcslen (result); i++)
-+    {
-+      if (result[i] == L'/')
-+        result[i] = L'\\';
-+    }
-+
-+  /* Now resolve any . and .. in the path or subsequent API calls may fail since
-+     Win32 will no longer resolve them.  */
-+  DWORD nResult = GetFullPathNameW (result, 0, NULL, NULL) + 1;
-+  wchar_t *temp = _wcsdup (result);
-+  result = malloc (nResult * sizeof (wchar_t));
-+  if (GetFullPathNameW (temp, nResult, result, NULL) == 0)
-+    {
-+      goto cleanup;
-+    }
-+
-+  free (temp);
-+
-+  if (wcsncmp (network_share, result, 2) == 0)
-+    {
-+      if (swprintf (ns, 10, L"%ls%ls", win32_file_namespace, unc_prefix) <= 0)
-+        {
-+          goto cleanup;
-+        }
-+    }
-+  else if (swprintf (ns, 10, L"%ls", win32_file_namespace) <= 0)
-+    {
-+      goto cleanup;
-+    }
-+
-+  /* Create new string.  */
-+  int bLen = wcslen (result) + wcslen (ns) + 1;
-+  temp = _wcsdup (result);
-+  result = malloc (bLen * sizeof (wchar_t));
-+  if (swprintf (result, bLen, L"%ls%ls", ns, temp) <= 0)
-+    {
-+      goto cleanup;
-+    }
-+
-+  free (temp);
-+
-+  return result;
-+
-+cleanup:
-+  free (temp);
-+  free (result);
-+  return NULL;
-+}
-+
-+#define HAS_FLAG(a,b) ((a & b) == b)
-+
-+int FS(swopen) (const wchar_t* filename, int oflag, int shflag, int pmode)
-+{
-+  /* Construct access mode.  */
-+  DWORD dwDesiredAccess = 0;
-+  if (HAS_FLAG (oflag, _O_RDONLY))
-+    dwDesiredAccess |= GENERIC_READ | FILE_READ_DATA | FILE_READ_ATTRIBUTES;
-+  if (HAS_FLAG (oflag, _O_RDWR))
-+    dwDesiredAccess |= GENERIC_WRITE | GENERIC_READ | FILE_READ_DATA |
-+                       FILE_WRITE_DATA | FILE_READ_ATTRIBUTES |
-+                       FILE_WRITE_ATTRIBUTES;
-+  if (HAS_FLAG (oflag,  _O_WRONLY))
-+    dwDesiredAccess|= GENERIC_WRITE | FILE_WRITE_DATA | FILE_WRITE_ATTRIBUTES;
-+
-+  /* Construct shared mode.  */
-+  DWORD dwShareMode = FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE;
-+  if (HAS_FLAG (shflag, _SH_DENYRW))
-+    dwShareMode &= ~(FILE_SHARE_READ | FILE_SHARE_WRITE);
-+  if (HAS_FLAG (shflag, _SH_DENYWR))
-+    dwShareMode &= ~FILE_SHARE_WRITE;
-+  if (HAS_FLAG (shflag, _SH_DENYRD))
-+    dwShareMode &= ~FILE_SHARE_READ;
-+  if (HAS_FLAG (pmode, _S_IWRITE))
-+    dwShareMode |= FILE_SHARE_READ | FILE_SHARE_WRITE;
-+  if (HAS_FLAG (pmode, _S_IREAD))
-+    dwShareMode |= FILE_SHARE_READ;
-+
-+  /* Override access mode with pmode if creating file.  */
-+  if (HAS_FLAG (oflag, _O_CREAT))
-+    {
-+      if (HAS_FLAG (pmode, _S_IWRITE))
-+        dwDesiredAccess |= FILE_GENERIC_WRITE;
-+      if (HAS_FLAG (pmode, _S_IREAD))
-+        dwDesiredAccess |= FILE_GENERIC_READ;
-+    }
-+
-+  /* Create file disposition.  */
-+  DWORD dwCreationDisposition = OPEN_EXISTING;
-+  if (HAS_FLAG (oflag, _O_CREAT))
-+    dwCreationDisposition = OPEN_ALWAYS;
-+  if (HAS_FLAG (oflag, (_O_CREAT | _O_EXCL)))
-+    dwCreationDisposition = CREATE_NEW;
-+  if (HAS_FLAG (oflag, _O_TRUNC) && !HAS_FLAG (oflag, _O_CREAT))
-+    dwCreationDisposition = TRUNCATE_EXISTING;
-+
-+  /* Set file access attributes.  */
-+  DWORD dwFlagsAndAttributes = FILE_ATTRIBUTE_NORMAL;
-+  if (HAS_FLAG (oflag, _O_RDONLY))
-+    dwFlagsAndAttributes |= 0; /* No special attribute.  */
-+  if (HAS_FLAG (oflag, (_O_CREAT | _O_TEMPORARY)))
-+    dwFlagsAndAttributes |= FILE_FLAG_DELETE_ON_CLOSE;
-+  if (HAS_FLAG (oflag, (_O_CREAT | _O_SHORT_LIVED)))
-+    dwFlagsAndAttributes |= FILE_ATTRIBUTE_TEMPORARY;
-+  if (HAS_FLAG (oflag, _O_RANDOM))
-+    dwFlagsAndAttributes |= FILE_FLAG_RANDOM_ACCESS;
-+  if (HAS_FLAG (oflag, _O_SEQUENTIAL))
-+    dwFlagsAndAttributes |= FILE_FLAG_SEQUENTIAL_SCAN;
-+  /* Flag is only valid on it's own.  */
-+  if (dwFlagsAndAttributes != FILE_ATTRIBUTE_NORMAL)
-+    dwFlagsAndAttributes &= ~FILE_ATTRIBUTE_NORMAL;
-+
-+  /* Set security attributes.  */
-+  SECURITY_ATTRIBUTES securityAttributes;
-+  ZeroMemory (&securityAttributes, sizeof(SECURITY_ATTRIBUTES));
-+  securityAttributes.bInheritHandle       = !(oflag & _O_NOINHERIT);
-+  securityAttributes.lpSecurityDescriptor = NULL;
-+  securityAttributes.nLength              = sizeof(SECURITY_ATTRIBUTES);
-+
-+  wchar_t* _filename = __hs_create_device_name (filename);
-+  if (!_filename)
-+    return -1;
-+
-+  HANDLE hResult
-+    = CreateFileW (_filename, dwDesiredAccess, dwShareMode, &securityAttributes,
-+                   dwCreationDisposition, dwFlagsAndAttributes, NULL);
-+  free (_filename);
-+  if (INVALID_HANDLE_VALUE == hResult)
-+    return -1;
-+
-+  /* Now we have a Windows handle, we have to convert it to an FD and apply
-+     the remaining flags.  */
-+  const int flag_mask = _O_APPEND | _O_RDONLY | _O_TEXT | _O_WTEXT;
-+  int fd = _open_osfhandle ((intptr_t)hResult, oflag & flag_mask);
-+  if (-1 == fd)
-+    return -1;
-+
-+  /* Finally we can change the mode to the requested one.  */
-+  const int mode_mask = _O_TEXT | _O_BINARY | _O_U16TEXT | _O_U8TEXT | _O_WTEXT;
-+  if ((oflag & mode_mask) && (-1 == _setmode (fd, oflag & mode_mask)))
-+    return -1;
-+
-+  return fd;
-+}
-+
-+FILE *FS(fwopen) (const wchar_t* filename, const wchar_t* mode)
-+{
-+  int shflag = 0;
-+  int pmode  = 0;
-+  int oflag  = 0;
-+
-+  int len = wcslen (mode);
-+  int i;
-+  #define IS_EXT(X) ((i < (len - 1)) && mode[i] == X)
-+
-+  for (i = 0; i < len; i++)
-+    {
-+      switch (mode[i])
-+        {
-+          case L'a':
-+            if (IS_EXT (L'+'))
-+              oflag |= _O_RDWR | _O_CREAT | _O_APPEND;
-+            else
-+              oflag |= _O_WRONLY | _O_CREAT | _O_APPEND;
-+            break;
-+          case L'r':
-+            if (IS_EXT (L'+'))
-+              oflag |= _O_RDWR;
-+            else
-+              oflag |= _O_RDONLY;
-+            break;
-+          case L'w':
-+            if (IS_EXT (L'+'))
-+              oflag |= _O_RDWR | _O_CREAT | _O_TRUNC;
-+            else
-+              oflag |= _O_WRONLY | _O_CREAT | _O_TRUNC;
-+            break;
-+          case L'b':
-+            oflag |= _O_BINARY;
-+            break;
-+          case L't':
-+            oflag |= _O_TEXT;
-+            break;
-+          case L'c':
-+          case L'n':
-+            oflag |= 0;
-+            break;
-+          case L'S':
-+            oflag |= _O_SEQUENTIAL;
-+            break;
-+          case L'R':
-+            oflag |= _O_RANDOM;
-+            break;
-+          case L'T':
-+            oflag |= _O_SHORT_LIVED;
-+            break;
-+          case L'D':
-+            oflag |= _O_TEMPORARY;
-+            break;
-+          default:
-+            if (wcsncmp (mode, L"ccs=UNICODE", 11) == 0)
-+              oflag |= _O_WTEXT;
-+            else if (wcsncmp (mode, L"ccs=UTF-8", 9) == 0)
-+              oflag |= _O_U8TEXT;
-+            else if (wcsncmp (mode, L"ccs=UTF-16LE", 12) == 0)
-+              oflag |= _O_U16TEXT;
-+            else continue;
-+        }
-+    }
-+  #undef IS_EXT
-+
-+  int fd = FS(swopen) (filename, oflag, shflag, pmode);
-+  FILE* file = _wfdopen (fd, mode);
-+  return file;
-+}
-+
-+FILE *FS(fopen) (const char* filename, const char* mode)
-+{
-+  size_t len = mbstowcs (NULL, filename, 0);
-+  wchar_t *w_filename = malloc (sizeof (wchar_t) * (len + 1));
-+  mbstowcs (w_filename, filename, len);
-+  w_filename[len] = L'\0';
-+
-+  len = mbstowcs (NULL, mode, 0);
-+  wchar_t *w_mode = malloc (sizeof (wchar_t) * (len + 1));
-+  mbstowcs (w_mode, mode, len);
-+  w_mode[len] = L'\0';
-+
-+  FILE *result = FS(fwopen) (w_filename, w_mode);
-+  free (w_filename);
-+  free (w_mode);
-+  return result;
-+}
-+#else
-+FILE *FS(fopen) (const char* filename, const char* mode)
-+{
-+  return fopen (filename, mode);
-+}
-+#endif
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/configure.ac new/libraries/base/configure.ac
---- old/libraries/base/configure.ac	2019-08-12 03:05:14.186261867 +0000
-+++ new/libraries/base/configure.ac	1970-01-01 00:00:01.000000000 +0000
-@@ -234,7 +234,7 @@
- fi
- 
- # Hack - md5.h needs HsFFI.h.  Is there a better way to do this?
--CFLAGS="-I../.. -I../../../../includes $CFLAGS"
-+CFLAGS="-I$ASTERIUS_SANDBOX_GHC_LIBDIR/include -I$ASTERIUS_BOOT_LIBS_DIR/base $CFLAGS"
- dnl Calling AC_CHECK_TYPE(T) makes AC_CHECK_SIZEOF(T) abort on failure
- dnl instead of considering sizeof(T) as 0.
- AC_CHECK_TYPE([struct MD5Context], [], [AC_MSG_ERROR([internal error])], [#include "include/md5.h"])
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/base/include/fs.h new/libraries/base/include/fs.h
---- old/libraries/base/include/fs.h	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/base/include/fs.h	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,36 @@
-+/* -----------------------------------------------------------------------------
-+ *
-+ * (c) Tamar Christina 2018
-+ *
-+ * Windows I/O routines for file opening.
-+ *
-+ * NOTE: Only modify this file in utils/fs/ and rerun configure. Do not edit
-+ *       this file in any other directory as it will be overwritten.
-+ *
-+ * ---------------------------------------------------------------------------*/
-+
-+#pragma once
-+
-+#include <stdio.h>
-+
-+#if !defined(FS_NAMESPACE)
-+#define FS_NAMESPACE hs
-+#endif
-+
-+/* Play some dirty tricks to get CPP to expand correctly.  */
-+#define FS_FULL(ns, name) __##ns##_##name
-+#define prefix FS_NAMESPACE
-+#define FS_L(p, n) FS_FULL(p, n)
-+#define FS(name) FS_L(prefix, name)
-+
-+#if defined(_WIN32)
-+#include <wchar.h>
-+
-+int FS(swopen) (const wchar_t* filename, int oflag,
-+                int shflag, int pmode);
-+FILE *FS(fwopen) (const wchar_t* filename, const wchar_t* mode);
-+FILE *FS(fopen) (const char* filename, const char* mode);
-+#else
-+
-+FILE *FS(fopen) (const char* filename, const char* mode);
-+#endif
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/bytestring/Asterius/ByteString.hs new/libraries/bytestring/Asterius/ByteString.hs
---- old/libraries/bytestring/Asterius/ByteString.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/bytestring/Asterius/ByteString.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,39 @@
-+{-# LANGUAGE MagicHash #-}
-+
-+module Asterius.ByteString
-+  ( foreignPtrFromJSArrayBuffer
-+  , byteStringFromJSArrayBuffer
-+  , byteStringToJSArrayBuffer
-+  ) where
-+
-+import Asterius.Magic
-+import Asterius.Types
-+import Data.ByteString.Internal (ByteString(..))
-+import Data.ByteString.Unsafe
-+import GHC.Base
-+import GHC.ForeignPtr
-+import GHC.IO
-+import GHC.Ptr
-+
-+{-# INLINE foreignPtrFromJSArrayBuffer #-}
-+foreignPtrFromJSArrayBuffer :: JSArrayBuffer -> ForeignPtr a
-+foreignPtrFromJSArrayBuffer buf =
-+  case fromJSArrayBuffer buf of
-+    ba -> ForeignPtr (byteArrayContents# ba) (PlainPtr (unsafeCoerce# ba))
-+
-+{-# INLINE byteStringFromJSArrayBuffer #-}
-+byteStringFromJSArrayBuffer :: JSArrayBuffer -> ByteString
-+byteStringFromJSArrayBuffer buf =
-+  case fromJSArrayBuffer buf of
-+    ba ->
-+      PS
-+        (ForeignPtr (byteArrayContents# ba) (PlainPtr (unsafeCoerce# ba)))
-+        0
-+        (I# (sizeofByteArray# ba))
-+
-+{-# INLINE byteStringToJSArrayBuffer #-}
-+byteStringToJSArrayBuffer :: ByteString -> JSArrayBuffer
-+byteStringToJSArrayBuffer bs =
-+  accursedUnutterablePerformIO $
-+  unsafeUseAsCStringLen bs $ \(Ptr addr, len) ->
-+    evaluate $ toJSArrayBuffer addr len
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/bytestring/bytestring.cabal new/libraries/bytestring/bytestring.cabal
---- old/libraries/bytestring/bytestring.cabal	2019-08-12 03:05:14.421807581 +0000
-+++ new/libraries/bytestring/bytestring.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -93,6 +93,8 @@
-                      Data.ByteString.Lazy.Builder
-                      Data.ByteString.Lazy.Builder.Extras
-                      Data.ByteString.Lazy.Builder.ASCII
-+
-+                     Asterius.ByteString
-   other-modules:
-                      Data.ByteString.Builder.ASCII
-                      Data.ByteString.Builder.Prim.Binary
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghc-prim/.gitignore new/libraries/ghc-prim/.gitignore
---- old/libraries/ghc-prim/.gitignore	2019-08-12 03:05:13.722365881 +0000
-+++ new/libraries/ghc-prim/.gitignore	1970-01-01 00:00:01.000000000 +0000
-@@ -1,3 +1,5 @@
- /dist/
- /dist-install/
-+/ghc.mk
- /ghc-prim.buildinfo
-+/GNUmakefile
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghc-prim/Asterius/Magic.hs new/libraries/ghc-prim/Asterius/Magic.hs
---- old/libraries/ghc-prim/Asterius/Magic.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/ghc-prim/Asterius/Magic.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,63 @@
-+{-# LANGUAGE MagicHash #-}
-+{-# LANGUAGE NoImplicitPrelude #-}
-+{-# LANGUAGE PolyKinds #-}
-+{-# LANGUAGE UnboxedTuples #-}
-+
-+module Asterius.Magic
-+  ( accursedUnutterableAddrToAny
-+  , accursedUnutterableAnyToAddr
-+  , accursedUnutterablePerformIO
-+  , unIO
-+  , unI#
-+  , unW#
-+  , unF#
-+  , unD#
-+  , unBool
-+  ) where
-+
-+import GHC.Magic
-+import GHC.Prim
-+import GHC.Types
-+
-+{-# INLINE accursedUnutterableAddrToAny #-}
-+accursedUnutterableAddrToAny :: Addr# -> (a :: TYPE r)
-+accursedUnutterableAddrToAny = unsafeCoerce#
-+
-+{-# INLINE accursedUnutterableAnyToAddr #-}
-+accursedUnutterableAnyToAddr :: a -> Addr#
-+accursedUnutterableAnyToAddr a =
-+  runRW#
-+    (\s0 ->
-+       case anyToAddr# a s0 of
-+         (# _, addr #) -> addr)
-+
-+{-# INLINE accursedUnutterablePerformIO #-}
-+accursedUnutterablePerformIO :: IO a -> a
-+accursedUnutterablePerformIO (IO m) =
-+  case runRW# m of
-+    (# _, a #) -> a
-+
-+{-# INLINE unIO #-}
-+unIO :: IO a -> State# RealWorld -> (# State# RealWorld, a #)
-+unIO (IO m) = m
-+
-+{-# INLINE unI# #-}
-+unI# :: Int -> Int#
-+unI# (I# i) = i
-+
-+{-# INLINE unW# #-}
-+unW# :: Word -> Word#
-+unW# (W# w) = w
-+
-+{-# INLINE unF# #-}
-+unF# :: Float -> Float#
-+unF# (F# f) = f
-+
-+{-# INLINE unD# #-}
-+unD# :: Double -> Double#
-+unD# (D# d) = d
-+
-+{-# INLINE unBool #-}
-+unBool :: Bool -> Int#
-+unBool False = 0#
-+unBool True = 1#
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghc-prim/Setup.hs new/libraries/ghc-prim/Setup.hs
---- old/libraries/ghc-prim/Setup.hs	2019-08-12 03:05:13.720929741 +0000
-+++ new/libraries/ghc-prim/Setup.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -21,10 +21,8 @@
- main = do let hooks = autoconfUserHooks {
-                   regHook = addPrimModule
-                           $ regHook simpleUserHooks,
--                  buildHook = build_primitive_sources
--                            $ buildHook simpleUserHooks,
-+                  buildHook = buildHook simpleUserHooks,
-                   haddockHook = addPrimModuleForHaddock
--                              $ build_primitive_sources
-                               $ haddockHook simpleUserHooks }
-           defaultMainWithHooks hooks
- 
-@@ -55,34 +53,3 @@
-         in pd { library = Just lib' }
-     Nothing ->
-         error "Expected a library, but none found"
--
--build_primitive_sources :: Hook a -> Hook a
--build_primitive_sources f pd lbi uhs x
-- = do when (compilerFlavor (compiler lbi) == GHC) $ do
--          let genprimopcode = joinPath ["..", "..", "utils",
--                                        "genprimopcode", "genprimopcode"]
--              primops = joinPath ["..", "..", "compiler", "prelude",
--                                  "primops.txt"]
--              primhs = joinPath ["GHC", "Prim.hs"]
--              primopwrappers = joinPath ["GHC", "PrimopWrappers.hs"]
--              primhs_tmp = addExtension primhs "tmp"
--              primopwrappers_tmp = addExtension primopwrappers "tmp"
--          maybeExit $ system (genprimopcode ++ " --make-haskell-source < "
--                           ++ primops ++ " > " ++ primhs_tmp)
--          maybeUpdateFile primhs_tmp primhs
--          maybeExit $ system (genprimopcode ++ " --make-haskell-wrappers < "
--                           ++ primops ++ " > " ++ primopwrappers_tmp)
--          maybeUpdateFile primopwrappers_tmp primopwrappers
--      f pd lbi uhs x
--
---- Replace a file only if the new version is different from the old.
---- This prevents make from doing unnecessary work after we run 'setup makefile'
--maybeUpdateFile :: FilePath -> FilePath -> IO ()
--maybeUpdateFile source target = do
--  r <- rawSystem "cmp" ["-s" {-quiet-}, source, target]
--  case r of
--    ExitSuccess   -> removeFile source
--    ExitFailure _ -> do exists <- doesFileExist target
--                        when exists $ removeFile target
--                        renameFile source target
--
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghc-prim/ghc-prim.cabal new/libraries/ghc-prim/ghc-prim.cabal
---- old/libraries/ghc-prim/ghc-prim.cabal	2019-08-12 03:05:13.722514139 +0000
-+++ new/libraries/ghc-prim/ghc-prim.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -12,16 +12,6 @@
- description:
-     This package contains the primitive types and operations supplied by GHC.
- 
--Flag boot
--    Description: Is this stage 1?
--    Default: False
--    Manual: True
--
--Flag install
--    Description: Is this stage 2?
--    Default: True
--    Manual: True
--
- extra-source-files: changelog.md
- 
- source-repository head
-@@ -59,6 +49,8 @@
-         GHC.Tuple
-         GHC.Types
- 
-+        Asterius.Magic
-+
-     virtual-modules:
-         GHC.Prim
- 
-@@ -91,27 +83,3 @@
-     -- We need to set the unit ID to ghc-prim (without a version number)
-     -- as it's magic.
-     ghc-options: -this-unit-id ghc-prim
--
--    if flag(boot)
--      include-dirs: dist-boot
--    else
--      if flag(install)
--        include-dirs: dist-install
--
--    install-includes:
--        ghc_boot_platform.h
--        primop-data-decl.hs-incl
--        primop-tag.hs-incl
--        primop-list.hs-incl
--        primop-has-side-effects.hs-incl
--        primop-out-of-line.hs-incl
--        primop-commutable.hs-incl
--        primop-code-size.hs-incl
--        primop-can-fail.hs-incl
--        primop-strictness.hs-incl
--        primop-fixity.hs-incl
--        primop-primop-info.hs-incl
--        primop-vector-uniques.hs-incl
--        primop-vector-tys.hs-incl
--        primop-vector-tys-exports.hs-incl
--        primop-vector-tycons.hs-incl
-\ No newline at end of file
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghci/Asterius/GHCi.hs new/libraries/ghci/Asterius/GHCi.hs
---- old/libraries/ghci/Asterius/GHCi.hs	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/ghci/Asterius/GHCi.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,48 @@
-+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-+
-+module Asterius.GHCi
-+  ( asteriusRunQExp
-+  , asteriusRunQPat
-+  , asteriusRunQType
-+  , asteriusRunQDec
-+  ) where
-+
-+import Asterius.ByteString
-+import Asterius.Types
-+import Control.Monad.Fail
-+import Control.Monad.IO.Class
-+import Control.Monad.Reader
-+import Data.Binary
-+import qualified Data.ByteString.Lazy as LBS
-+import Data.IORef
-+import GHCi.Message
-+import GHCi.TH.Binary ()
-+import qualified Language.Haskell.TH.Syntax as TH
-+import Prelude
-+
-+newtype AsteriusQ a = AsteriusQ
-+  { unAsteriusQ :: ReaderT (IORef QState) IO a
-+  } deriving (Functor, Applicative, Monad, MonadFail, MonadIO)
-+
-+instance TH.Quasi AsteriusQ
-+
-+emptyQState :: QState
-+emptyQState = QState mempty Nothing (error "Asterius.GHCi: no pipe")
-+
-+asteriusRunQ :: Binary a => TH.Q a -> IO JSArrayBuffer
-+asteriusRunQ m = do
-+  qs_ref <- newIORef emptyQState
-+  r <- runReaderT (unAsteriusQ (TH.runQ m)) qs_ref
-+  pure (byteStringToJSArrayBuffer (LBS.toStrict (encode r)))
-+
-+asteriusRunQExp :: TH.Q TH.Exp -> IO JSArrayBuffer
-+asteriusRunQExp = asteriusRunQ
-+
-+asteriusRunQPat :: TH.Q TH.Pat -> IO JSArrayBuffer
-+asteriusRunQPat = asteriusRunQ
-+
-+asteriusRunQType :: TH.Q TH.Type -> IO JSArrayBuffer
-+asteriusRunQType = asteriusRunQ
-+
-+asteriusRunQDec :: TH.Q [TH.Dec] -> IO JSArrayBuffer
-+asteriusRunQDec = asteriusRunQ
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/ghci/ghci.cabal new/libraries/ghci/ghci.cabal
---- old/libraries/ghci/ghci.cabal	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/ghci/ghci.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,89 @@
-+-- WARNING: ghci.cabal is automatically generated from ghci.cabal.in by
-+-- ../../configure.  Make sure you are editing ghci.cabal.in, not ghci.cabal.
-+
-+name:           ghci
-+version:        8.6.5
-+license:        BSD3
-+license-file:   LICENSE
-+category:       GHC
-+maintainer:     ghc-devs@haskell.org
-+bug-reports:    https://ghc.haskell.org/trac/ghc/newticket
-+synopsis:       The library supporting GHC's interactive interpreter
-+description:
-+            This library offers interfaces which mediate interactions between the
-+            @ghci@ interactive shell and @iserv@, GHC's out-of-process interpreter
-+            backend.
-+cabal-version:  >=1.10
-+build-type:     Simple
-+extra-source-files: changelog.md
-+
-+Flag ghci
-+    Description: Build GHCi support.
-+    Default: False
-+    Manual: True
-+
-+source-repository head
-+    type:     git
-+    location: http://git.haskell.org/ghc.git
-+    subdir:   libraries/ghci
-+
-+library
-+    default-language: Haskell2010
-+    other-extensions:
-+        BangPatterns
-+        CPP
-+        DeriveGeneric
-+        ExistentialQuantification
-+        FlexibleInstances
-+        GADTs
-+        GeneralizedNewtypeDeriving
-+        InstanceSigs
-+        MagicHash
-+        MultiParamTypeClasses
-+        RecordWildCards
-+        ScopedTypeVariables
-+        StandaloneDeriving
-+        TupleSections
-+        UnboxedTuples
-+
-+    if flag(ghci)
-+        CPP-Options: -DGHCI
-+        exposed-modules:
-+            Asterius.GHCi
-+            GHCi.Run
-+            GHCi.CreateBCO
-+            GHCi.ObjLink
-+            GHCi.Signals
-+            GHCi.TH
-+
-+    exposed-modules:
-+        GHCi.BreakArray
-+        GHCi.BinaryArray
-+        GHCi.Message
-+        GHCi.ResolvedBCO
-+        GHCi.RemoteTypes
-+        GHCi.FFI
-+        GHCi.InfoTable
-+        GHCi.StaticPtrTable
-+        GHCi.TH.Binary
-+        SizedSeq
-+
-+    Build-Depends:
-+        array            == 0.5.*,
-+        base             >= 4.8 && < 4.13,
-+        binary           == 0.8.*,
-+        bytestring       == 0.10.*,
-+        containers       >= 0.5 && < 0.7,
-+        deepseq          == 1.4.*,
-+        filepath         == 1.4.*,
-+        ghc-boot         == 8.6.5,
-+        ghc-boot-th      == 8.6.5,
-+        ghc-heap         == 8.6.5,
-+        mtl              == 2.2.*,
-+        template-haskell == 2.14.*,
-+        transformers     == 0.5.*
-+
-+    if !os(windows)
-+        Build-Depends: unix >= 2.7 && < 2.9
-+        
-+    ghc-options: -this-unit-id ghci
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-simple/GHC/Integer/Logarithms/Internals.hs new/libraries/integer-simple/GHC/Integer/Logarithms/Internals.hs
---- old/libraries/integer-simple/GHC/Integer/Logarithms/Internals.hs	2019-08-12 03:05:13.745452409 +0000
-+++ new/libraries/integer-simple/GHC/Integer/Logarithms/Internals.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -1,4 +1,5 @@
- {-# LANGUAGE CPP, MagicHash, UnboxedTuples, NoImplicitPrelude #-}
-+{-# LANGUAGE UnliftedFFITypes #-}
- {-# OPTIONS_HADDOCK hide #-}
- 
- #include "MachDeps.h"
-@@ -17,8 +18,9 @@
-     , roundingMode#
-     ) where
- 
--import GHC.Prim
-+import Asterius.Magic
- import GHC.Integer.Type
-+import GHC.Prim
- import GHC.Types
- 
- default ()
-@@ -92,31 +94,11 @@
- -- otherwise return -1# arbitrarily
- -- Going up in word-sized steps should not be too bad.
- integerLog2# :: Integer -> Int#
--integerLog2# (Positive digits) = step 0# digits
--  where
--    step acc (Some dig None) = acc +# wordLog2# dig
--    step acc (Some _ digs)   =
--        step (acc +# WORD_SIZE_IN_BITS#) digs
--    step acc None = acc     -- should be impossible, throw error?
--integerLog2# _ = negateInt# 1#
-+integerLog2# (Integer i) = js_integerLog2 i
- 
- -- Again, integer should be strictly positive
- integerLog2IsPowerOf2# :: Integer -> (# Int#, Int# #)
--integerLog2IsPowerOf2# (Positive digits) = couldBe 0# digits
--  where
--    couldBe acc (Some dig None) =
--        (# acc +# wordLog2# dig, word2Int# (and# dig (minusWord# dig 1##)) #)
--    couldBe acc (Some dig digs) =
--        if isTrue# (eqWord# dig 0##)
--           then couldBe (acc +# WORD_SIZE_IN_BITS#) digs
--           else noPower (acc +# WORD_SIZE_IN_BITS#) digs
--    couldBe acc None = (# acc, 1# #) -- should be impossible, error?
--    noPower acc (Some dig None) =
--        (# acc +# wordLog2# dig, 1# #)
--    noPower acc (Some _ digs)   =
--        noPower (acc +# WORD_SIZE_IN_BITS#) digs
--    noPower acc None = (# acc, 1# #) -- should be impossible, error?
--integerLog2IsPowerOf2# _ = (# negateInt# 1#, 1# #)
-+integerLog2IsPowerOf2# (Integer i) = (# js_integerLog2 i, js_integerIsPowerOf2 i #)
- 
- -- Assumption: Integer and Int# are strictly positive, Int# is less
- -- than logBase 2 of Integer, otherwise havoc ensues.
-@@ -164,3 +146,7 @@
-                               (# _, ba #) -> ba
-     in case mkArr realWorld# of
-         b -> BA b
-+
-+foreign import javascript "__asterius_jsffi.Integer.integerLog2(${1})" js_integerLog2 :: Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: Int# -> Int#
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-simple/GHC/Integer/Type.hs new/libraries/integer-simple/GHC/Integer/Type.hs
---- old/libraries/integer-simple/GHC/Integer/Type.hs	2019-08-12 03:05:13.745220832 +0000
-+++ new/libraries/integer-simple/GHC/Integer/Type.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -1,5 +1,4 @@
--
--{-# LANGUAGE CPP, MagicHash, NoImplicitPrelude, BangPatterns, UnboxedTuples,
-+{-# LANGUAGE MagicHash, NoImplicitPrelude, UnboxedTuples,
-              UnliftedFFITypes #-}
- 
- -- Commentary of Integer library is located on the wiki:
-@@ -22,354 +21,117 @@
- --
- -----------------------------------------------------------------------------
- 
--#include "MachDeps.h"
--
- module GHC.Integer.Type where
- 
--import GHC.Prim
-+import Asterius.Magic
- import GHC.Classes
-+import GHC.Magic
-+import GHC.Prim
- import GHC.Types
--import GHC.Tuple ()
--#if WORD_SIZE_IN_BITS < 64
--import GHC.IntWord64
--#endif
--
--data Integer = Positive !Positive | Negative !Positive | Naught
--
---------------------------------------------------------------------
---- The hard work is done on positive numbers
--
---- Least significant bit is first
--
---- Positive's have the property that they contain at least one Bit,
---- and their last Bit is One.
--type Positive = Digits
--type Positives = List Positive
--
--data Digits = Some !Digit !Digits
--            | None
--type Digit = Word#
--
---- XXX Could move [] above us
--data List a = Nil | Cons a (List a)
--
--mkInteger :: Bool   -- non-negative?
--          -> [Int]  -- absolute value in 31 bit chunks, least significant first
--                    -- ideally these would be Words rather than Ints, but
--                    -- we don't have Word available at the moment.
--          -> Integer
--mkInteger nonNegative is = let abs = f is
--                           in if nonNegative then abs else negateInteger abs
--    where f [] = Naught
--          f (I# i : is') = smallInteger i `orInteger` shiftLInteger (f is') 31#
- 
--errorInteger :: Integer
--errorInteger = Positive errorPositive
-+data Integer = Integer Int#
- 
--errorPositive :: Positive
--errorPositive = Some 47## None -- Random number
-+mkInteger :: Bool -> [Int] -> Integer
-+mkInteger nonNegative is =
-+  runRW#
-+    (\s0 ->
-+       case unIO (js_newInteger nonNegative) s0 of
-+         (# s1, i0 #) ->
-+           let w [] sx = (# sx, () #)
-+               w (x:xs) sx =
-+                 case unIO (js_prependInteger i0 x) sx of
-+                   (# sy, _ #) -> w xs sy
-+            in case w is s1 of
-+                 (# s2, _ #) ->
-+                   case unIO (js_freezeInteger i0) s2 of
-+                     (# _, I# r #) -> Integer r)
- 
--{-# NOINLINE smallInteger #-}
-+
-+-- NOTE: small integer and integers larger than Number.MAX_SAFE_INTEGER
-+-- 64 bit = 64 / 16 = 4
- smallInteger :: Int# -> Integer
--smallInteger i = if isTrue# (i >=# 0#) then wordToInteger (int2Word# i)
--                 else -- XXX is this right for -minBound?
--                      negateInteger (wordToInteger (int2Word# (negateInt# i)))
-+smallInteger i =
-+    let w = int2Word# i
-+        low32mask# = 4294967295##
-+        low = and# w low32mask#
-+        high = and# (uncheckedShiftRL# w 32#) low32mask#
-+    in Integer (js_smallInteger high low)
- 
--{-# NOINLINE wordToInteger #-}
- wordToInteger :: Word# -> Integer
--wordToInteger w = if isTrue# (w `eqWord#` 0##)
--                  then Naught
--                  else Positive (Some w None)
-+wordToInteger w =
-+    let low32mask# = 4294967295##
-+        low = and# w low32mask#
-+        high = and# (uncheckedShiftRL# w 32#) low32mask#
-+    in Integer (js_wordToInteger high low)
- 
--{-# NOINLINE integerToWord #-}
- integerToWord :: Integer -> Word#
--integerToWord (Positive (Some w _)) = w
--integerToWord (Negative (Some w _)) = 0## `minusWord#` w
---- Must be Naught by the invariant:
--integerToWord _ = 0##
-+integerToWord (Integer i) = or# (uncheckedShiftL# (js_integerToWord i 1#) 32#)  (js_integerToWord i 0#)
- 
--{-# NOINLINE integerToInt #-}
- integerToInt :: Integer -> Int#
- integerToInt i = word2Int# (integerToWord i)
- 
--#if WORD_SIZE_IN_BITS == 64
---- Nothing
--#elif WORD_SIZE_IN_BITS == 32
--{-# NOINLINE integerToWord64 #-}
--integerToWord64 :: Integer -> Word64#
--integerToWord64 i = int64ToWord64# (integerToInt64 i)
--
--{-# NOINLINE word64ToInteger #-}
--word64ToInteger:: Word64# -> Integer
--word64ToInteger w = if isTrue# (w `eqWord64#` wordToWord64# 0##)
--                    then Naught
--                    else Positive (word64ToPositive w)
--
--{-# NOINLINE integerToInt64 #-}
--integerToInt64 :: Integer -> Int64#
--integerToInt64 Naught = intToInt64# 0#
--integerToInt64 (Positive p) = word64ToInt64# (positiveToWord64 p)
--integerToInt64 (Negative p)
--    = negateInt64# (word64ToInt64# (positiveToWord64 p))
--
--{-# NOINLINE int64ToInteger #-}
--int64ToInteger :: Int64# -> Integer
--int64ToInteger i
-- = if isTrue# (i `eqInt64#` intToInt64# 0#)
--   then Naught
--   else if isTrue# (i `gtInt64#` intToInt64# 0#)
--   then Positive (word64ToPositive (int64ToWord64# i))
--   else Negative (word64ToPositive (int64ToWord64# (negateInt64# i)))
--#else
--#error WORD_SIZE_IN_BITS not supported
--#endif
--
--oneInteger :: Integer
--oneInteger = Positive onePositive
--
--negativeOneInteger :: Integer
--negativeOneInteger = Negative onePositive
--
--twoToTheThirtytwoInteger :: Integer
--twoToTheThirtytwoInteger = Positive twoToTheThirtytwoPositive
--
--{-# NOINLINE encodeDoubleInteger #-}
--encodeDoubleInteger :: Integer -> Int# -> Double#
--encodeDoubleInteger (Positive ds0) e0 = f 0.0## ds0 e0
--    where f !acc None        (!_) = acc
--          f !acc (Some d ds) !e   = f (acc +## encodeDouble# d e)
--                                      ds
--                                      -- XXX We assume that this adding to e
--                                      -- isn't going to overflow
--                                      (e +# WORD_SIZE_IN_BITS#)
--encodeDoubleInteger (Negative ds) e
--    = negateDouble# (encodeDoubleInteger (Positive ds) e)
--encodeDoubleInteger Naught _ = 0.0##
--
--foreign import ccall unsafe "__word_encodeDouble"
--        encodeDouble# :: Word# -> Int# -> Double#
-+plusInteger :: Integer -> Integer -> Integer
-+plusInteger (Integer i0) (Integer i1) = Integer (js_plusInteger i0 i1)
- 
--{-# NOINLINE encodeFloatInteger #-}
--encodeFloatInteger :: Integer -> Int# -> Float#
--encodeFloatInteger (Positive ds0) e0 = f 0.0# ds0 e0
--    where f !acc None        (!_) = acc
--          f !acc (Some d ds) !e   = f (acc `plusFloat#` encodeFloat# d e)
--                                      ds
--                                      -- XXX We assume that this adding to e
--                                      -- isn't going to overflow
--                                      (e +# WORD_SIZE_IN_BITS#)
--encodeFloatInteger (Negative ds) e
--    = negateFloat# (encodeFloatInteger (Positive ds) e)
--encodeFloatInteger Naught _ = 0.0#
-+minusInteger :: Integer -> Integer -> Integer
-+minusInteger (Integer i0) (Integer i1) = Integer (js_minusInteger i0 i1)
- 
--foreign import ccall unsafe "__word_encodeFloat"
--    encodeFloat# :: Word# -> Int# -> Float#
-+timesInteger :: Integer -> Integer -> Integer
-+timesInteger (Integer i0) (Integer i1) = Integer (js_timesInteger i0 i1)
- 
--{-# NOINLINE decodeFloatInteger #-}
--decodeFloatInteger :: Float# -> (# Integer, Int# #)
--decodeFloatInteger f = case decodeFloat_Int# f of
--                       (# mant, exp #) -> (# smallInteger mant, exp #)
-+negateInteger :: Integer -> Integer
-+negateInteger (Integer i) = Integer (js_negateInteger i)
- 
---- XXX This could be optimised better, by either (word-size dependent)
---- using single 64bit value for the mantissa, or doing the multiplication
---- by just building the Digits directly
--{-# NOINLINE decodeDoubleInteger #-}
--decodeDoubleInteger :: Double# -> (# Integer, Int# #)
--decodeDoubleInteger d
-- = case decodeDouble_2Int# d of
--   (# mantSign, mantHigh, mantLow, exp #) ->
--       (# (smallInteger mantSign) `timesInteger`
--          (  (wordToInteger mantHigh `timesInteger` twoToTheThirtytwoInteger)
--             `plusInteger` wordToInteger mantLow),
--          exp #)
-+eqInteger :: Integer -> Integer -> Bool
-+eqInteger (Integer i0) (Integer i1) = js_eqInteger i0 i1
- 
--{-# NOINLINE doubleFromInteger #-}
--doubleFromInteger :: Integer -> Double#
--doubleFromInteger Naught = 0.0##
--doubleFromInteger (Positive p) = doubleFromPositive p
--doubleFromInteger (Negative p) = negateDouble# (doubleFromPositive p)
-+neqInteger :: Integer -> Integer -> Bool
-+neqInteger (Integer i0) (Integer i1) = js_neqInteger i0 i1
- 
--{-# NOINLINE floatFromInteger #-}
--floatFromInteger :: Integer -> Float#
--floatFromInteger Naught = 0.0#
--floatFromInteger (Positive p) = floatFromPositive p
--floatFromInteger (Negative p) = negateFloat# (floatFromPositive p)
-+absInteger :: Integer -> Integer
-+absInteger (Integer i) = Integer (js_absInteger i)
- 
--{-# NOINLINE andInteger #-}
--andInteger :: Integer -> Integer -> Integer
--Naught     `andInteger` (!_)       = Naught
--(!_)       `andInteger` Naught     = Naught
--Positive x `andInteger` Positive y = digitsToInteger (x `andDigits` y)
--{-
--To calculate x & -y we need to calculate
--    x & twosComplement y
--The (imaginary) sign bits are 0 and 1, so &ing them give 0, i.e. positive.
--Note that
--    twosComplement y
--has infinitely many 1s, but x has a finite number of digits, so andDigits
--will return a finite result.
---}
--Positive x `andInteger` Negative y = let y' = twosComplementPositive y
--                                         z = y' `andDigitsOnes` x
--                                     in digitsToInteger z
--Negative x `andInteger` Positive y = Positive y `andInteger` Negative x
--{-
--To calculate -x & -y, naively we need to calculate
--    twosComplement (twosComplement x & twosComplement y)
--but
--    twosComplement x & twosComplement y
--has infinitely many 1s, so this won't work. Thus we use de Morgan's law
--to get
--    -x & -y = !(!(-x) | !(-y))
--            = !(!(twosComplement x) | !(twosComplement y))
--            = !(!(!x + 1) | (!y + 1))
--            = !((x - 1) | (y - 1))
--but the result is negative, so we need to take the two's complement of
--this in order to get the magnitude of the result.
--    twosComplement !((x - 1) | (y - 1))
--            = !(!((x - 1) | (y - 1))) + 1
--            = ((x - 1) | (y - 1)) + 1
---}
---- We don't know that x and y are /strictly/ greater than 1, but
---- minusPositive gives us the required answer anyway.
--Negative x `andInteger` Negative y = let x' = x `minusPositive` onePositive
--                                         y' = y `minusPositive` onePositive
--                                         z = x' `orDigits` y'
--                                         -- XXX Cheating the precondition:
--                                         z' = succPositive z
--                                     in digitsToNegativeInteger z'
-+signumInteger :: Integer -> Integer
-+signumInteger (Integer i) = Integer (js_signumInteger i)
- 
--{-# NOINLINE orInteger #-}
--orInteger :: Integer -> Integer -> Integer
--Naught     `orInteger` (!i)       = i
--(!i)       `orInteger` Naught     = i
--Positive x `orInteger` Positive y = Positive (x `orDigits` y)
--{-
--x | -y = - (twosComplement (x | twosComplement y))
--       = - (twosComplement !(!x & !(twosComplement y)))
--       = - (twosComplement !(!x & !(!y + 1)))
--       = - (twosComplement !(!x & (y - 1)))
--       = - ((!x & (y - 1)) + 1)
---}
--Positive x `orInteger` Negative y = let x' = flipBits x
--                                        y' = y `minusPositive` onePositive
--                                        z = x' `andDigitsOnes` y'
--                                        z' = succPositive z
--                                    in digitsToNegativeInteger z'
--Negative x `orInteger` Positive y = Positive y `orInteger` Negative x
--{-
---x | -y = - (twosComplement (twosComplement x | twosComplement y))
--        = - (twosComplement !(!(twosComplement x) & !(twosComplement y)))
--        = - (twosComplement !(!(!x + 1) & !(!y + 1)))
--        = - (twosComplement !((x - 1) & (y - 1)))
--        = - (((x - 1) & (y - 1)) + 1)
---}
--Negative x `orInteger` Negative y = let x' = x `minusPositive` onePositive
--                                        y' = y `minusPositive` onePositive
--                                        z = x' `andDigits` y'
--                                        z' = succPositive z
--                                    in digitsToNegativeInteger z'
-+leInteger :: Integer -> Integer -> Bool
-+leInteger (Integer i0) (Integer i1) = js_leInteger i0 i1
- 
--{-# NOINLINE xorInteger #-}
--xorInteger :: Integer -> Integer -> Integer
--Naught     `xorInteger` (!i)       = i
--(!i)       `xorInteger` Naught     = i
--Positive x `xorInteger` Positive y = digitsToInteger (x `xorDigits` y)
--{-
--x ^ -y = - (twosComplement (x ^ twosComplement y))
--       = - (twosComplement !(x ^ !(twosComplement y)))
--       = - (twosComplement !(x ^ !(!y + 1)))
--       = - (twosComplement !(x ^ (y - 1)))
--       = - ((x ^ (y - 1)) + 1)
---}
--Positive x `xorInteger` Negative y = let y' = y `minusPositive` onePositive
--                                         z = x `xorDigits` y'
--                                         z' = succPositive z
--                                     in digitsToNegativeInteger z'
--Negative x `xorInteger` Positive y = Positive y `xorInteger` Negative x
--{-
---x ^ -y = twosComplement x ^ twosComplement y
--        = (!x + 1) ^ (!y + 1)
--        = (!x + 1) ^ (!y + 1)
--        = !(!x + 1) ^ !(!y + 1)
--        = (x - 1) ^ (y - 1)
---}
--Negative x `xorInteger` Negative y = let x' = x `minusPositive` onePositive
--                                         y' = y `minusPositive` onePositive
--                                         z = x' `xorDigits` y'
--                                     in digitsToInteger z
-+gtInteger :: Integer -> Integer -> Bool
-+gtInteger (Integer i0) (Integer i1) = js_gtInteger i0 i1
- 
--{-# NOINLINE complementInteger #-}
--complementInteger :: Integer -> Integer
--complementInteger x = negativeOneInteger `minusInteger` x
-+ltInteger :: Integer -> Integer -> Bool
-+ltInteger (Integer i0) (Integer i1) = js_ltInteger i0 i1
- 
--{-# NOINLINE shiftLInteger #-}
--shiftLInteger :: Integer -> Int# -> Integer
--shiftLInteger (Positive p) i = Positive (shiftLPositive p i)
--shiftLInteger (Negative n) i = Negative (shiftLPositive n i)
--shiftLInteger Naught       _ = Naught
-+geInteger :: Integer -> Integer -> Bool
-+geInteger (Integer i0) (Integer i1) = js_geInteger i0 i1
- 
--{-# NOINLINE shiftRInteger #-}
--shiftRInteger :: Integer -> Int# -> Integer
--shiftRInteger (Positive p)   i = shiftRPositive p i
--shiftRInteger j@(Negative _) i
--    = complementInteger (shiftRInteger (complementInteger j) i)
--shiftRInteger Naught         _ = Naught
--
---- XXX this could be a lot more efficient, but this is a quick
---- reimplementation of the default Data.Bits instance, so that we can
---- implement the Integer interface
--testBitInteger :: Integer -> Int# -> Bool
--testBitInteger x i = (x `andInteger` (oneInteger `shiftLInteger` i))
--        `neqInteger` Naught
--
--twosComplementPositive :: Positive -> DigitsOnes
--twosComplementPositive p = flipBits (p `minusPositive` onePositive)
-+compareInteger :: Integer -> Integer -> Ordering
-+compareInteger (Integer i0) (Integer i1) =
-+  if js_eqInteger i0 i1
-+    then EQ
-+    else if js_leInteger i0 i1
-+           then LT
-+           else GT
- 
--flipBits :: Digits -> DigitsOnes
--flipBits ds = DigitsOnes (flipBitsDigits ds)
-+eqInteger# :: Integer -> Integer -> Int#
-+eqInteger# (Integer i0) (Integer i1) = unBool (js_eqInteger i0 i1)
- 
--flipBitsDigits :: Digits -> Digits
--flipBitsDigits None = None
--flipBitsDigits (Some w ws) = Some (not# w) (flipBitsDigits ws)
-+neqInteger# :: Integer -> Integer -> Int#
-+neqInteger# (Integer i0) (Integer i1) = unBool (js_neqInteger i0 i1)
- 
--{-# NOINLINE negateInteger #-}
--negateInteger :: Integer -> Integer
--negateInteger (Positive p) = Negative p
--negateInteger (Negative p) = Positive p
--negateInteger Naught       = Naught
-+leInteger# :: Integer -> Integer -> Int#
-+leInteger# (Integer i0) (Integer i1) = unBool (js_leInteger i0 i1)
- 
---- Note [Avoid patError]
--{-# NOINLINE plusInteger #-}
--plusInteger :: Integer -> Integer -> Integer
--Positive p1    `plusInteger` Positive p2 = Positive (p1 `plusPositive` p2)
--Negative p1    `plusInteger` Negative p2 = Negative (p1 `plusPositive` p2)
--Positive p1    `plusInteger` Negative p2
--    = case p1 `comparePositive` p2 of
--      GT -> Positive (p1 `minusPositive` p2)
--      EQ -> Naught
--      LT -> Negative (p2 `minusPositive` p1)
--Negative p1    `plusInteger` Positive p2
--    = Positive p2 `plusInteger` Negative p1
--Naught         `plusInteger` Naught         = Naught
--Naught         `plusInteger` i@(Positive _) = i
--Naught         `plusInteger` i@(Negative _) = i
--i@(Positive _) `plusInteger` Naught         = i
--i@(Negative _) `plusInteger` Naught         = i
-+gtInteger# :: Integer -> Integer -> Int#
-+gtInteger# (Integer i0) (Integer i1) = unBool (js_gtInteger i0 i1)
- 
--{-# NOINLINE minusInteger #-}
--minusInteger :: Integer -> Integer -> Integer
--i1 `minusInteger` i2 = i1 `plusInteger` negateInteger i2
-+ltInteger# :: Integer -> Integer -> Int#
-+ltInteger# (Integer i0) (Integer i1) = unBool (js_ltInteger i0 i1)
- 
--{-# NOINLINE timesInteger #-}
--timesInteger :: Integer -> Integer -> Integer
--Positive p1 `timesInteger` Positive p2 = Positive (p1 `timesPositive` p2)
--Negative p1 `timesInteger` Negative p2 = Positive (p1 `timesPositive` p2)
--Positive p1 `timesInteger` Negative p2 = Negative (p1 `timesPositive` p2)
--Negative p1 `timesInteger` Positive p2 = Negative (p1 `timesPositive` p2)
--(!_)        `timesInteger` (!_)        = Naught
-+geInteger# :: Integer -> Integer -> Int#
-+geInteger# (Integer i0) (Integer i1) = unBool (js_geInteger i0 i1)
- 
--{-# NOINLINE divModInteger #-}
- divModInteger :: Integer -> Integer -> (# Integer, Integer #)
- n `divModInteger` d =
-     case n `quotRemInteger` d of
-@@ -379,513 +141,177 @@
-             then (# q `minusInteger` oneInteger, r `plusInteger` d #)
-             else (# q, r #)
- 
--{-# NOINLINE divInteger #-}
- divInteger :: Integer -> Integer -> Integer
- n `divInteger` d = quotient
-     where (# quotient, _ #) = n `divModInteger` d
- 
--{-# NOINLINE modInteger #-}
- modInteger :: Integer -> Integer -> Integer
- n `modInteger` d = modulus
-     where (# _, modulus #) = n `divModInteger` d
- 
--{-# NOINLINE quotRemInteger #-}
- quotRemInteger :: Integer -> Integer -> (# Integer, Integer #)
--Naught      `quotRemInteger` (!_)        = (# Naught, Naught #)
--(!_)        `quotRemInteger` Naught
--    = (# errorInteger, errorInteger #) -- XXX Can't happen
---- XXX _            `quotRemInteger` Naught     = error "Division by zero"
--Positive p1 `quotRemInteger` Positive p2 = p1 `quotRemPositive` p2
--Negative p1 `quotRemInteger` Positive p2 = case p1 `quotRemPositive` p2 of
--                                           (# q, r #) ->
--                                               (# negateInteger q,
--                                                  negateInteger r #)
--Positive p1 `quotRemInteger` Negative p2 = case p1 `quotRemPositive` p2 of
--                                           (# q, r #) ->
--                                               (# negateInteger q, r #)
--Negative p1 `quotRemInteger` Negative p2 = case p1 `quotRemPositive` p2 of
--                                           (# q, r #) ->
--                                               (# q, negateInteger r #)
-+quotRemInteger (Integer i0) (Integer i1) =
-+  (# Integer (js_quotInteger i0 i1), Integer (js_remInteger i0 i1) #)
- 
--{-# NOINLINE quotInteger #-}
- quotInteger :: Integer -> Integer -> Integer
--x `quotInteger` y = case x `quotRemInteger` y of
--                    (# q, _ #) -> q
-+quotInteger (Integer i0) (Integer i1) = Integer (js_quotInteger i0 i1)
- 
--{-# NOINLINE remInteger #-}
- remInteger :: Integer -> Integer -> Integer
--x `remInteger` y = case x `quotRemInteger` y of
--                   (# _, r #) -> r
-+remInteger (Integer i0) (Integer i1) = Integer (js_remInteger i0 i1)
- 
--{-# NOINLINE compareInteger #-}
--compareInteger :: Integer -> Integer -> Ordering
--Positive x `compareInteger` Positive y = x `comparePositive` y
--Positive _ `compareInteger` (!_)       = GT
--Naught     `compareInteger` Naught     = EQ
--Naught     `compareInteger` Negative _ = GT
--Negative x `compareInteger` Negative y = y `comparePositive` x
--(!_)       `compareInteger` (!_)       = LT
-+encodeFloatInteger :: Integer -> Int# -> Float#
-+encodeFloatInteger (Integer m) n = js_encodeFloatInteger m n
- 
--{-# NOINLINE eqInteger# #-}
--eqInteger# :: Integer -> Integer -> Int#
--x `eqInteger#` y = case x `compareInteger` y of
--                        EQ -> 1#
--                        _  -> 0#
-+decodeFloatInteger :: Float# -> (# Integer, Int# #)
-+decodeFloatInteger f =
-+  (# Integer (js_decodeFloatInteger_m f), js_decodeFloatInteger_n f #)
- 
--{-# NOINLINE neqInteger# #-}
--neqInteger# :: Integer -> Integer -> Int#
--x `neqInteger#` y = case x `compareInteger` y of
--                         EQ -> 0#
--                         _  -> 1#
--
--{-# INLINE eqInteger  #-}
--{-# INLINE neqInteger #-}
--eqInteger, neqInteger :: Integer -> Integer -> Bool
--eqInteger  a b = isTrue# (a `eqInteger#`  b)
--neqInteger a b = isTrue# (a `neqInteger#` b)
--
--instance  Eq Integer  where
--    (==) = eqInteger
--    (/=) = neqInteger
-+floatFromInteger :: Integer -> Float#
-+floatFromInteger (Integer i) = js_floatFromInteger i
- 
--{-# NOINLINE ltInteger# #-}
--ltInteger# :: Integer -> Integer -> Int#
--x `ltInteger#` y = case x `compareInteger` y of
--                        LT -> 1#
--                        _  -> 0#
-+encodeDoubleInteger :: Integer -> Int# -> Double#
-+encodeDoubleInteger (Integer m) n = js_encodeDoubleInteger m n
- 
--{-# NOINLINE gtInteger# #-}
--gtInteger# :: Integer -> Integer -> Int#
--x `gtInteger#` y = case x `compareInteger` y of
--                        GT -> 1#
--                        _  -> 0#
-+decodeDoubleInteger :: Double# -> (# Integer, Int# #)
-+decodeDoubleInteger d = (# Integer (js_decodeDoubleInteger_m d), js_decodeDoubleInteger_e d #)
- 
--{-# NOINLINE leInteger# #-}
--leInteger# :: Integer -> Integer -> Int#
--x `leInteger#` y = case x `compareInteger` y of
--                        GT -> 0#
--                        _  -> 1#
- 
--{-# NOINLINE geInteger# #-}
--geInteger# :: Integer -> Integer -> Int#
--x `geInteger#` y = case x `compareInteger` y of
--                        LT -> 0#
--                        _  -> 1#
--
--{-# INLINE leInteger #-}
--{-# INLINE ltInteger #-}
--{-# INLINE geInteger #-}
--{-# INLINE gtInteger #-}
--leInteger, gtInteger, ltInteger, geInteger :: Integer -> Integer -> Bool
--leInteger a b = isTrue# (a `leInteger#` b)
--gtInteger a b = isTrue# (a `gtInteger#` b)
--ltInteger a b = isTrue# (a `ltInteger#` b)
--geInteger a b = isTrue# (a `geInteger#` b)
-+doubleFromInteger :: Integer -> Double#
-+doubleFromInteger (Integer i) = js_doubleFromInteger i
- 
--instance Ord Integer where
--    (<=) = leInteger
--    (>)  = gtInteger
--    (<)  = ltInteger
--    (>=) = geInteger
--    compare = compareInteger
-+gcdInteger :: Integer -> Integer -> Integer
-+gcdInteger (Integer i0) (Integer i1) = Integer (js_gcdInteger i0 i1)
- 
--{-# NOINLINE absInteger #-}
--absInteger :: Integer -> Integer
--absInteger (Negative x) = Positive x
--absInteger x = x
-+lcmInteger :: Integer -> Integer -> Integer
-+lcmInteger (Integer i0) (Integer i1) = Integer (js_lcmInteger i0 i1)
- 
--{-# NOINLINE signumInteger #-}
--signumInteger :: Integer -> Integer
--signumInteger (Negative _) = negativeOneInteger
--signumInteger Naught       = Naught
--signumInteger (Positive _) = oneInteger
-+andInteger :: Integer -> Integer -> Integer
-+andInteger (Integer i0) (Integer i1) = Integer (js_andInteger i0 i1)
-+
-+orInteger :: Integer -> Integer -> Integer
-+orInteger (Integer i0) (Integer i1) = Integer (js_orInteger i0 i1)
-+
-+xorInteger :: Integer -> Integer -> Integer
-+xorInteger (Integer i0) (Integer i1) = Integer (js_xorInteger i0 i1)
-+
-+complementInteger :: Integer -> Integer
-+complementInteger (Integer i) = Integer (js_complementInteger i)
-+
-+shiftLInteger :: Integer -> Int# -> Integer
-+shiftLInteger (Integer i0) i1 = Integer (js_shiftLInteger i0 i1)
-+
-+shiftRInteger :: Integer -> Int# -> Integer
-+shiftRInteger (Integer i0) i1 = Integer (js_shiftRInteger i0 i1)
-+
-+testBitInteger :: Integer -> Int# -> Bool
-+testBitInteger (Integer i0) i1 = js_testBitInteger i0 i1
-+
-+popCountInteger :: Integer -> Int#
-+popCountInteger (Integer i) = js_popCountInteger i
-+
-+bitInteger :: Int# -> Integer
-+bitInteger i = Integer (js_bitInteger i)
- 
--{-# NOINLINE hashInteger #-}
- hashInteger :: Integer -> Int#
--hashInteger = integerToInt
-+hashInteger (Integer i) = js_hashInteger i
-+
-+oneInteger :: Integer
-+oneInteger = smallInteger 1#
-+
-+powInteger :: Integer -> Integer -> Integer
-+powInteger (Integer i0) (Integer i1) = Integer (js_powInteger i0 i1)
-+
-+instance Eq Integer where
-+  (==) = eqInteger
-+  (/=) = neqInteger
-+
-+instance Ord Integer where
-+  (<=) = leInteger
-+  (>) = gtInteger
-+  (<) = ltInteger
-+  (>=) = geInteger
-+  compare = compareInteger
-+
-+foreign import javascript "__asterius_jsffi.Integer.newInteger(${1})" js_newInteger :: Bool -> IO Int
-+
-+foreign import javascript "__asterius_jsffi.Integer.prependInteger(${1},${2})" js_prependInteger :: Int -> Int -> IO ()
-+
-+foreign import javascript "__asterius_jsffi.Integer.freezeInteger(${1})" js_freezeInteger :: Int -> IO Int
-+
-+foreign import javascript "__asterius_jsffi.Integer.smallInteger(${1}, ${2})" js_smallInteger :: Word# -> Word# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.wordToInteger(${1}, ${2})" js_wordToInteger :: Word# -> Word# -> Int#
-+
-+-- | Given integer and which 32-bit _piece_ of the word we want, return that piece.
-+foreign import javascript "__asterius_jsffi.Integer.integerToWord(${1}, ${2})" js_integerToWord :: Int# -> Int# -> Word#
-+
-+
-+foreign import javascript "__asterius_jsffi.Integer.plusInteger(${1},${2})" js_plusInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.minusInteger(${1},${2})" js_minusInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.timesInteger(${1},${2})" js_timesInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.negateInteger(${1})" js_negateInteger :: Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.eqInteger(${1},${2})" js_eqInteger :: Int# -> Int# -> Bool
-+
-+foreign import javascript "__asterius_jsffi.Integer.neqInteger(${1},${2})" js_neqInteger :: Int# -> Int# -> Bool
-+
-+foreign import javascript "__asterius_jsffi.Integer.absInteger(${1})" js_absInteger :: Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.signumInteger(${1})" js_signumInteger :: Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.leInteger(${1},${2})" js_leInteger :: Int# -> Int# -> Bool
-+
-+foreign import javascript "__asterius_jsffi.Integer.gtInteger(${1},${2})" js_gtInteger :: Int# -> Int# -> Bool
-+
-+foreign import javascript "__asterius_jsffi.Integer.ltInteger(${1},${2})" js_ltInteger :: Int# -> Int# -> Bool
-+
-+foreign import javascript "__asterius_jsffi.Integer.geInteger(${1},${2})" js_geInteger :: Int# -> Int# -> Bool
-+
-+foreign import javascript "__asterius_jsffi.Integer.quotInteger(${1},${2})" js_quotInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.remInteger(${1},${2})" js_remInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeFloatInteger :: Int# -> Int# -> Float#
-+
-+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.FloatCBits.decodeDoubleInteger(${1})[0])" js_decodeFloatInteger_m :: Float# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.decodeDoubleInteger(${1})[1]" js_decodeFloatInteger_n :: Float# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_floatFromInteger :: Int# -> Float#
-+
-+foreign import javascript "__asterius_jsffi.Integer.encodeDoubleInteger(${1},${2})" js_encodeDoubleInteger :: Int# -> Int# -> Double#
-+
-+foreign import javascript "__asterius_jsffi.Integer.encode(__asterius_jsffi.FloatCBits.decodeDoubleInteger(${1})[0])" js_decodeDoubleInteger_m :: Double# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.FloatCBits.decodeDoubleInteger(${1})[1]" js_decodeDoubleInteger_e :: Double# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.doubleFromInteger(${1})" js_doubleFromInteger :: Int# -> Double#
-+
-+foreign import javascript "__asterius_jsffi.Integer.gcdInteger(${1},${2})" js_gcdInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.lcmInteger(${1},${2})" js_lcmInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.andInteger(${1},${2})" js_andInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.orInteger(${1},${2})" js_orInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.xorInteger(${1},${2})" js_xorInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.complementInteger(${1})" js_complementInteger :: Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.shiftLInteger(${1},${2})" js_shiftLInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.shiftRInteger(${1},${2})" js_shiftRInteger :: Int# -> Int# -> Int#
-+
-+foreign import javascript "__asterius_jsffi.Integer.testBitInteger(${1},${2})" js_testBitInteger :: Int# -> Int# -> Bool
- 
---------------------------------------------------------------------
---- The hard work is done on positive numbers
-+foreign import javascript "__asterius_jsffi.Integer.popCountInteger(${1})" js_popCountInteger :: Int# -> Int#
- 
--onePositive :: Positive
--onePositive = Some 1## None
-+foreign import javascript "__asterius_jsffi.Integer.bitInteger(${1})" js_bitInteger :: Int# -> Int#
- 
--halfBoundUp, fullBound :: () -> Digit
--lowHalfMask :: () -> Digit
--highHalfShift :: () -> Int#
--twoToTheThirtytwoPositive :: Positive
--#if WORD_SIZE_IN_BITS == 64
--halfBoundUp   () = 0x8000000000000000##
--fullBound     () = 0xFFFFFFFFFFFFFFFF##
--lowHalfMask   () = 0xFFFFFFFF##
--highHalfShift () = 32#
--twoToTheThirtytwoPositive = Some 0x100000000## None
--#elif WORD_SIZE_IN_BITS == 32
--halfBoundUp   () = 0x80000000##
--fullBound     () = 0xFFFFFFFF##
--lowHalfMask   () = 0xFFFF##
--highHalfShift () = 16#
--twoToTheThirtytwoPositive = Some 0## (Some 1## None)
--#else
--#error Unhandled WORD_SIZE_IN_BITS
--#endif
--
--digitsMaybeZeroToInteger :: Digits -> Integer
--digitsMaybeZeroToInteger None = Naught
--digitsMaybeZeroToInteger ds = Positive ds
--
--digitsToInteger :: Digits -> Integer
--digitsToInteger ds = case removeZeroTails ds of
--                     None -> Naught
--                     ds' -> Positive ds'
--
--digitsToNegativeInteger :: Digits -> Integer
--digitsToNegativeInteger ds = case removeZeroTails ds of
--                             None -> Naught
--                             ds' -> Negative ds'
--
--removeZeroTails :: Digits -> Digits
--removeZeroTails (Some w ds) = if isTrue# (w `eqWord#` 0##)
--                              then case removeZeroTails ds of
--                                   None -> None
--                                   ds' -> Some w ds'
--                              else Some w (removeZeroTails ds)
--removeZeroTails None = None
--
--#if WORD_SIZE_IN_BITS < 64
--word64ToPositive :: Word64# -> Positive
--word64ToPositive w
-- = if isTrue# (w `eqWord64#` wordToWord64# 0##)
--   then None
--   else Some (word64ToWord# w) (word64ToPositive (w `uncheckedShiftRL64#` 32#))
--
--positiveToWord64 :: Positive -> Word64#
--positiveToWord64 None = wordToWord64# 0## -- XXX Can't happen
--positiveToWord64 (Some w None) = wordToWord64# w
--positiveToWord64 (Some low (Some high _))
--    = wordToWord64# low `or64#` (wordToWord64# high `uncheckedShiftL64#` 32#)
--#endif
--
---- Note [Avoid patError]
--comparePositive :: Positive -> Positive -> Ordering
--Some x xs `comparePositive` Some y ys = case xs `comparePositive` ys of
--                                        EQ ->      if isTrue# (x `ltWord#` y) then LT
--                                              else if isTrue# (x `gtWord#` y) then GT
--                                              else                                 EQ
--                                        res -> res
--None      `comparePositive` None      = EQ
--(Some {}) `comparePositive` None      = GT
--None      `comparePositive` (Some {}) = LT
--
--plusPositive :: Positive -> Positive -> Positive
--plusPositive x0 y0 = addWithCarry 0## x0 y0
-- where -- digit `elem` [0, 1]
--       -- Note [Avoid patError]
--       addWithCarry :: Digit -> Positive -> Positive -> Positive
--       addWithCarry c None            None            = addOnCarry c None
--       addWithCarry c xs@(Some {})    None            = addOnCarry c xs
--       addWithCarry c None            ys@(Some {})    = addOnCarry c ys
--       addWithCarry c xs@(Some x xs') ys@(Some y ys')
--        = if isTrue# (x `ltWord#` y) then addWithCarry c ys xs
--          -- Now x >= y
--          else if isTrue# (y `geWord#` halfBoundUp ())
--               -- So they are both at least halfBoundUp, so we subtract
--               -- halfBoundUp from each and thus carry 1
--               then case x `minusWord#` halfBoundUp () of
--                    x' ->
--                     case y `minusWord#` halfBoundUp () of
--                     y' ->
--                      case x' `plusWord#` y' `plusWord#` c of
--                      this ->
--                       Some this withCarry
--          else if isTrue# (x `geWord#` halfBoundUp ())
--               then case x `minusWord#` halfBoundUp () of
--                    x' ->
--                     case x' `plusWord#` y `plusWord#` c of
--                     z ->
--                      -- We've taken off halfBoundUp, so now we need to
--                      -- add it back on
--                      if isTrue# (z `ltWord#` halfBoundUp ())
--                       then Some (z `plusWord#`  halfBoundUp ()) withoutCarry
--                       else Some (z `minusWord#` halfBoundUp ()) withCarry
--          else Some (x `plusWord#` y `plusWord#` c) withoutCarry
--           where withCarry    = addWithCarry 1## xs' ys'
--                 withoutCarry = addWithCarry 0## xs' ys'
--
--       -- digit `elem` [0, 1]
--       addOnCarry :: Digit -> Positive -> Positive
--       addOnCarry (!c) (!ws) = if isTrue# (c `eqWord#` 0##)
--                               then ws
--                               else succPositive ws
--
---- digit `elem` [0, 1]
--succPositive :: Positive -> Positive
--succPositive None = Some 1## None
--succPositive (Some w ws) = if isTrue# (w `eqWord#` fullBound ())
--                           then Some 0## (succPositive ws)
--                           else Some (w `plusWord#` 1##) ws
--
---- Requires x > y
---- In recursive calls, x >= y and x == y => result is None
---- Note [Avoid patError]
--minusPositive :: Positive -> Positive -> Positive
--Some x xs `minusPositive` Some y ys
-- = if isTrue# (x `eqWord#` y)
--   then case xs `minusPositive` ys of
--        None -> None
--        s -> Some 0## s
--   else if isTrue# (x `gtWord#` y) then
--        Some (x `minusWord#` y) (xs `minusPositive` ys)
--   else case (fullBound () `minusWord#` y) `plusWord#` 1## of
--        z -> -- z = 2^n - y, calculated without overflow
--         case z `plusWord#` x of
--         z' -> -- z = 2^n + (x - y), calculated without overflow
--          Some z' ((xs `minusPositive` ys) `minusPositive` onePositive)
--xs@(Some {}) `minusPositive` None      = xs
--None         `minusPositive` None      = None
--None         `minusPositive` (Some {}) = errorPositive -- XXX Can't happen
---- XXX None `minusPositive` _ = error "minusPositive: Requirement x > y not met"
--
---- Note [Avoid patError]
--timesPositive :: Positive -> Positive -> Positive
---- XXX None's can't happen here:
--None            `timesPositive` None        = errorPositive
--None            `timesPositive` (Some {})   = errorPositive
--(Some {})       `timesPositive` None        = errorPositive
---- x and y are the last digits in Positive numbers, so are not 0:
--xs@(Some x xs') `timesPositive` ys@(Some y ys')
-- = case xs' of
--   None ->
--       case ys' of
--           None ->
--               x `timesDigit` y
--           Some {} ->
--               ys `timesPositive` xs
--   Some {} ->
--       case ys' of
--       None ->
--           -- y is the last digit in a Positive number, so is not 0.
--           let zs = Some 0## (xs' `timesPositive` ys)
--           in -- We could actually skip this test, and everything would
--              -- turn out OK. We already play tricks like that in timesPositive.
--              if isTrue# (x `eqWord#` 0##)
--              then zs
--              else (x `timesDigit` y) `plusPositive` zs
--       Some {} ->
--           (Some x None `timesPositive` ys) `plusPositive`
--           Some 0## (xs' `timesPositive` ys)
--
--{-
---- Requires arguments /= 0
--Suppose we have 2n bits in a Word. Then
--    x = 2^n xh + xl
--    y = 2^n yh + yl
--    x * y = (2^n xh + xl) * (2^n yh + yl)
--          = 2^(2n) (xh yh)
--          + 2^n    (xh yl)
--          + 2^n    (xl yh)
--          +        (xl yl)
--                   ~~~~~~~ - all fit in 2n bits
---}
--timesDigit :: Digit -> Digit -> Positive
--timesDigit (!x) (!y)
-- = case splitHalves x of
--   (# xh, xl #) ->
--    case splitHalves y of
--    (# yh, yl #) ->
--     case xh `timesWord#` yh of
--     xhyh ->
--      case splitHalves (xh `timesWord#` yl) of
--      (# xhylh, xhyll #) ->
--       case xhyll `uncheckedShiftL#` highHalfShift () of
--       xhyll' ->
--        case splitHalves (xl `timesWord#` yh) of
--        (# xlyhh, xlyhl #) ->
--         case xlyhl `uncheckedShiftL#` highHalfShift () of
--         xlyhl' ->
--          case xl `timesWord#` yl of
--          xlyl ->
--           -- Add up all the high word results. As the result fits in
--           -- 4n bits this can't overflow.
--           case xhyh `plusWord#` xhylh `plusWord#` xlyhh of
--           high ->
--           -- low: xhyll<<n + xlyhl<<n + xlyl
--            -- From this point we might make (Some 0 None), but we know
--            -- that the final result will be positive and the addition
--            -- will work out OK, so everything will work out in the end.
--            -- One thing we do need to be careful of is avoiding returning
--            -- Some 0 (Some 0 None) + Some n None, as this will result in
--            -- Some n (Some 0 None) instead of Some n None.
--            let low = Some xhyll' None `plusPositive`
--                      Some xlyhl' None `plusPositive`
--                      Some xlyl   None
--            in if isTrue# (high `eqWord#` 0##)
--               then low
--               else Some 0## (Some high None) `plusPositive` low
--
--splitHalves :: Digit -> (# {- High -} Digit, {- Low -} Digit #)
--splitHalves (!x) = (# x `uncheckedShiftRL#` highHalfShift (),
--                      x `and#` lowHalfMask () #)
--
---- Assumes 0 <= i
--shiftLPositive :: Positive -> Int# -> Positive
--shiftLPositive p i
--    = if isTrue# (i >=# WORD_SIZE_IN_BITS#)
--      then shiftLPositive (Some 0## p) (i -# WORD_SIZE_IN_BITS#)
--      else smallShiftLPositive p i
--
---- Assumes 0 <= i < WORD_SIZE_IN_BITS#
--smallShiftLPositive :: Positive -> Int# -> Positive
--smallShiftLPositive (!p) 0# = p
--smallShiftLPositive (!p) (!i) =
--    case WORD_SIZE_IN_BITS# -# i of
--    j -> let f carry None = if isTrue# (carry `eqWord#` 0##)
--                            then None
--                            else Some carry None
--             f carry (Some w ws) = case w `uncheckedShiftRL#` j of
--                                   carry' ->
--                                    case w `uncheckedShiftL#` i of
--                                    me ->
--                                     Some (me `or#` carry) (f carry' ws)
--         in f 0## p
--
---- Assumes 0 <= i
--shiftRPositive :: Positive -> Int# -> Integer
--shiftRPositive None _ = Naught
--shiftRPositive p@(Some _ q) i
--    = if isTrue# (i >=# WORD_SIZE_IN_BITS#)
--      then shiftRPositive q (i -# WORD_SIZE_IN_BITS#)
--      else smallShiftRPositive p i
--
---- Assumes 0 <= i < WORD_SIZE_IN_BITS#
--smallShiftRPositive :: Positive -> Int# -> Integer
--smallShiftRPositive (!p) (!i) =
--    if isTrue# (i ==# 0#)
--    then Positive p
--    else case smallShiftLPositive p (WORD_SIZE_IN_BITS# -# i) of
--         Some _ p'@(Some _ _) -> Positive p'
--         _                    -> Naught
--
---- Long division
--quotRemPositive :: Positive -> Positive -> (# Integer, Integer #)
--(!xs) `quotRemPositive` (!ys)
--    = case f xs of
--      (# d, m #) -> (# digitsMaybeZeroToInteger d,
--                       digitsMaybeZeroToInteger m #)
--    where
--          subtractors :: Positives
--          subtractors = mkSubtractors (WORD_SIZE_IN_BITS# -# 1#)
--
--          mkSubtractors (!n) = if isTrue# (n ==# 0#)
--                               then Cons ys Nil
--                               else Cons (ys `smallShiftLPositive` n)
--                                         (mkSubtractors (n -# 1#))
--
--          -- The main function. Go the end of xs, then walk
--          -- back trying to divide the number we accumulate by ys.
--          f :: Positive -> (# Digits, Digits #)
--          f None = (# None, None #)
--          f (Some z zs)
--              = case f zs of
--                (# ds, m #) ->
--                    let -- We need to avoid making (Some Zero None) here
--                        m' = some z m
--                    in case g 0## subtractors m' of
--                       (# d, m'' #) ->
--                        (# some d ds, m'' #)
--
--          g :: Digit -> Positives -> Digits -> (# Digit, Digits #)
--          g (!d) Nil             (!m) = (# d, m #)
--          g (!d) (Cons sub subs) (!m)
--              = case d `uncheckedShiftL#` 1# of
--                d' ->
--                 case m `comparePositive` sub of
--                 LT -> g d' subs m
--                 _  -> g (d' `plusWord#` 1##)
--                         subs
--                         (m `minusPositive` sub)
--
--some :: Digit -> Digits -> Digits
--some (!w) None  = if isTrue# (w `eqWord#` 0##) then None else Some w None
--some (!w) (!ws) = Some w ws
--
---- Note [Avoid patError]
--andDigits :: Digits -> Digits -> Digits
--andDigits None          None          = None
--andDigits (Some {})     None          = None
--andDigits None          (Some {})     = None
--andDigits (Some w1 ws1) (Some w2 ws2) = Some (w1 `and#` w2) (andDigits ws1 ws2)
--
---- DigitsOnes is just like Digits, only None is really 0xFFFFFFF...,
---- i.e. ones off to infinity. This makes sense when we want to "and"
---- a DigitOnes with a Digits, as the latter will bound the size of the
---- result.
--newtype DigitsOnes = DigitsOnes Digits
--
---- Note [Avoid patError]
--andDigitsOnes :: DigitsOnes -> Digits -> Digits
--andDigitsOnes (DigitsOnes None)          None          = None
--andDigitsOnes (DigitsOnes None)          ws2@(Some {}) = ws2
--andDigitsOnes (DigitsOnes (Some {}))     None          = None
--andDigitsOnes (DigitsOnes (Some w1 ws1)) (Some w2 ws2)
--    = Some (w1 `and#` w2) (andDigitsOnes (DigitsOnes ws1) ws2)
--
---- Note [Avoid patError]
--orDigits :: Digits -> Digits -> Digits
--orDigits None          None          = None
--orDigits None          ds@(Some {})  = ds
--orDigits ds@(Some {})  None          = ds
--orDigits (Some w1 ds1) (Some w2 ds2) = Some (w1 `or#` w2) (orDigits ds1 ds2)
--
---- Note [Avoid patError]
--xorDigits :: Digits -> Digits -> Digits
--xorDigits None          None          = None
--xorDigits None          ds@(Some {})  = ds
--xorDigits ds@(Some {})  None          = ds
--xorDigits (Some w1 ds1) (Some w2 ds2) = Some (w1 `xor#` w2) (xorDigits ds1 ds2)
--
---- XXX We'd really like word2Double# for this
--doubleFromPositive :: Positive -> Double#
--doubleFromPositive None = 0.0##
--doubleFromPositive (Some w ds)
--    = case splitHalves w of
--      (# h, l #) ->
--       (doubleFromPositive ds *## (2.0## **## WORD_SIZE_IN_BITS_FLOAT##))
--       +## (int2Double# (word2Int# h) *##
--              (2.0## **## int2Double# (highHalfShift ())))
--       +## int2Double# (word2Int# l)
--
---- XXX We'd really like word2Float# for this
--floatFromPositive :: Positive -> Float#
--floatFromPositive None = 0.0#
--floatFromPositive (Some w ds)
--    = case splitHalves w of
--      (# h, l #) ->
--       (floatFromPositive ds `timesFloat#` (2.0# `powerFloat#` WORD_SIZE_IN_BITS_FLOAT#))
--       `plusFloat#` (int2Float# (word2Int# h) `timesFloat#`
--             (2.0# `powerFloat#` int2Float# (highHalfShift ())))
--       `plusFloat#` int2Float# (word2Int# l)
--
--{-
--Note [Avoid patError]
--
--If we use the natural set of definitions for functions, e.g.:
--
--    orDigits None          ds            = ds
--    orDigits ds            None          = ds
--    orDigits (Some w1 ds1) (Some w2 ds2) = Some ... ...
--
--then GHC may not be smart enough (especially when compiling with -O0)
--to see that all the cases are handled, and will thus insert calls to
--base:Control.Exception.Base.patError. But we are below base in the
--package hierarchy, so this causes build failure!
--
--We therefore help GHC out, by being more explicit about what all the
--cases are:
--
--    orDigits None          None          = None
--    orDigits None          ds@(Some {})  = ds
--    orDigits ds@(Some {})  None          = ds
--    orDigits (Some w1 ds1) (Some w2 ds2) = Some ... ...
---}
-+foreign import javascript "__asterius_jsffi.Integer.hashInteger(${1})" js_hashInteger :: Int# -> Int#
- 
-+foreign import javascript "__asterius_jsffi.Integer.powInteger(${1},${2})" js_powInteger :: Int# -> Int# -> Int#
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-simple/GHC/Integer.hs new/libraries/integer-simple/GHC/Integer.hs
---- old/libraries/integer-simple/GHC/Integer.hs	2019-08-12 03:05:13.745600324 +0000
-+++ new/libraries/integer-simple/GHC/Integer.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -33,11 +33,11 @@
-     divModInteger, quotRemInteger, quotInteger, remInteger,
-     encodeFloatInteger, decodeFloatInteger, floatFromInteger,
-     encodeDoubleInteger, decodeDoubleInteger, doubleFromInteger,
--    -- gcdInteger, lcmInteger, -- XXX
-+    gcdInteger, lcmInteger,
-     andInteger, orInteger, xorInteger, complementInteger,
-     shiftLInteger, shiftRInteger, testBitInteger,
-+    popCountInteger, bitInteger,
-     hashInteger,
-  ) where
- 
- import GHC.Integer.Type
--
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/integer-simple/integer-simple.cabal new/libraries/integer-simple/integer-simple.cabal
---- old/libraries/integer-simple/integer-simple.cabal	2019-08-12 03:05:13.744472419 +0000
-+++ new/libraries/integer-simple/integer-simple.cabal	1970-01-01 00:00:01.000000000 +0000
-@@ -26,6 +26,7 @@
-     other-modules: GHC.Integer.Type
-     default-extensions: CPP, MagicHash, BangPatterns, UnboxedTuples,
-                 UnliftedFFITypes, NoImplicitPrelude
--    -- We need to set the unit ID to integer-simple
-+    -- We need to set the unit ID to integer-wired-in
-     -- (without a version number) as it's magic.
--    ghc-options: -this-unit-id integer-simple -Wall
-+    -- See Note [The integer library] in PrelNames
-+    ghc-options: -this-unit-id integer-wired-in -Wall
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/rts/PrimOps.cmm new/libraries/rts/PrimOps.cmm
---- old/libraries/rts/PrimOps.cmm	2019-08-12 03:05:14.646112020 +0000
-+++ new/libraries/rts/PrimOps.cmm	1970-01-01 00:00:01.000000000 +0000
-@@ -30,6 +30,7 @@
- import pthread_mutex_unlock;
- #endif
- import CLOSURE base_ControlziExceptionziBase_nestedAtomically_closure;
-+import CLOSURE base_GHCziIOziException_blockedIndefinitelyOnMVar_closure;
- import CLOSURE base_GHCziIOziException_heapOverflow_closure;
- import EnterCriticalSection;
- import LeaveCriticalSection;
-@@ -874,9 +875,7 @@
+     }
+     TICK_UNKNOWN_CALL();
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Excn.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: FileLock.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: FileLock.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: GetEnv.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: GetTime.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Globals.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Globals.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Hash.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Hash.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Heap.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Hpc.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: HsFFI.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Inlines.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Interpreter.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Interpreter.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LdvProfile.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LdvProfile.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Libdw.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Libdw.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LibdwPool.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LibdwPool.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Linker.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LinkerInternals.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Makefile
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Messages.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Messages.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: OldARMAtomic.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: PathUtils.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: PathUtils.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Pool.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Pool.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: PosixSource.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Prelude.h
+diff -u -r /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/PrimOps.cmm ghc-toolkit/boot-libs/rts/PrimOps.cmm
+--- /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/PrimOps.cmm	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/rts/PrimOps.cmm	2020-04-28 10:39:16.000000000 -0300
+@@ -926,9 +926,13 @@
  
      gcptr threadid;
  
--    ("ptr" threadid) = ccall createIOThread( MyCapability() "ptr",
--                                  RtsFlags_GcFlags_initialStkSize(RtsFlags),
--                                  closure "ptr");
++#if defined(ASTERIUS)
 +    ("ptr" threadid) = ccall createIOThread( closure "ptr" );
++#else
+     ("ptr" threadid) = ccall createIOThread( MyCapability() "ptr",
+-                                  TO_W_(RtsFlags_GcFlags_initialStkSize(RtsFlags)),
++                                  RtsFlags_GcFlags_initialStkSize(RtsFlags),
+                                   closure "ptr");
++#endif
  
      /* start blocked if the current thread is blocked */
      StgTSO_flags(threadid) = %lobits16(
-@@ -899,8 +898,6 @@
+@@ -950,10 +954,13 @@
+ 
      gcptr threadid;
  
-     ("ptr" threadid) = ccall createIOThread(
+-    ("ptr" threadid) = ccall createIOThread(
 -        MyCapability() "ptr",
--        RtsFlags_GcFlags_initialStkSize(RtsFlags),
-         closure "ptr");
+-        TO_W_(RtsFlags_GcFlags_initialStkSize(RtsFlags)),
+-        closure "ptr");
++#if defined(ASTERIUS)
++    ("ptr" threadid) = ccall createIOThread( closure "ptr" );
++#else
++    ("ptr" threadid) = ccall createIOThread( MyCapability() "ptr",
++                                  RtsFlags_GcFlags_initialStkSize(RtsFlags),
++                                  closure "ptr");
++#endif
  
      /* start blocked if the current thread is blocked */
-@@ -1440,92 +1437,17 @@
- {
-     W_ val, info, tso, q;
- 
--    LOCK_CLOSURE(mvar, info);
--
-     /* If the MVar is empty, put ourselves on its blocking queue,
-      * and wait until we're woken up.
-      */
-     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
--        if (info == stg_MVAR_CLEAN_info) {
--            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
--        }
--
--        // We want to put the heap check down here in the slow path,
--        // but be careful to unlock the closure before returning to
--        // the RTS if the check fails.
--        ALLOC_PRIM_WITH_CUSTOM_FAILURE
--            (SIZEOF_StgMVarTSOQueue,
--             unlockClosure(mvar, stg_MVAR_DIRTY_info);
--             GC_PRIM_P(stg_takeMVarzh, mvar));
--
--        q = Hp - SIZEOF_StgMVarTSOQueue + WDS(1);
--
--        SET_HDR(q, stg_MVAR_TSO_QUEUE_info, CCS_SYSTEM);
--        StgMVarTSOQueue_link(q) = END_TSO_QUEUE;
--        StgMVarTSOQueue_tso(q)  = CurrentTSO;
--
--        if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
--            StgMVar_head(mvar) = q;
--        } else {
--            StgMVarTSOQueue_link(StgMVar_tail(mvar)) = q;
--            ccall recordClosureMutated(MyCapability() "ptr",
--                                             StgMVar_tail(mvar));
--        }
--        StgTSO__link(CurrentTSO)       = q;
--        StgTSO_block_info(CurrentTSO)  = mvar;
--        StgTSO_why_blocked(CurrentTSO) = BlockedOnMVar::I16;
--        StgMVar_tail(mvar)             = q;
--
--        jump stg_block_takemvar(mvar);
-+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
-     }
- 
-     /* we got the value... */
-     val = StgMVar_value(mvar);
-+    StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
- 
--    q = StgMVar_head(mvar);
--loop:
--    if (q == stg_END_TSO_QUEUE_closure) {
--        /* No further putMVars, MVar is now empty */
--        StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
--        // If the MVar is not already dirty, then we don't need to make
--        // it dirty, as it is empty with nothing blocking on it.
--        unlockClosure(mvar, info);
--        return (val);
--    }
--    if (StgHeader_info(q) == stg_IND_info ||
--        StgHeader_info(q) == stg_MSG_NULL_info) {
--        q = StgInd_indirectee(q);
--        goto loop;
--    }
--
--    // There are putMVar(s) waiting... wake up the first thread on the queue
--
--    if (info == stg_MVAR_CLEAN_info) {
--        ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
--    }
--
--    tso = StgMVarTSOQueue_tso(q);
--    StgMVar_head(mvar) = StgMVarTSOQueue_link(q);
--    if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
--        StgMVar_tail(mvar) = stg_END_TSO_QUEUE_closure;
--    }
--
--    ASSERT(StgTSO_why_blocked(tso) == BlockedOnMVar::I16);
--    ASSERT(StgTSO_block_info(tso) == mvar);
--
--    // actually perform the putMVar for the thread that we just woke up
--    W_ stack;
--    stack = StgTSO_stackobj(tso);
--    PerformPut(stack, StgMVar_value(mvar));
--
--    // indicate that the MVar operation has now completed.
--    StgTSO__link(tso) = stg_END_TSO_QUEUE_closure;
--
--    // no need to mark the TSO dirty, we have only written END_TSO_QUEUE.
--
--    ccall tryWakeupThread(MyCapability() "ptr", tso);
--
--    unlockClosure(mvar, stg_MVAR_DIRTY_info);
-     return (val);
- }
- 
-@@ -1533,13 +1455,8 @@
- {
-     W_ val, info, tso, q;
- 
--    LOCK_CLOSURE(mvar, info);
--
-     /* If the MVar is empty, return 0. */
-     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
--#if defined(THREADED_RTS)
--        unlockClosure(mvar, info);
--#endif
-         /* HACK: we need a pointer to pass back,
-          * so we abuse NO_FINALIZER_closure
-          */
-@@ -1548,50 +1465,8 @@
- 
-     /* we got the value... */
-     val = StgMVar_value(mvar);
-+    StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
- 
--    q = StgMVar_head(mvar);
--loop:
--    if (q == stg_END_TSO_QUEUE_closure) {
--        /* No further putMVars, MVar is now empty */
--        StgMVar_value(mvar) = stg_END_TSO_QUEUE_closure;
--        unlockClosure(mvar, info);
--        return (1, val);
--    }
--
--    if (StgHeader_info(q) == stg_IND_info ||
--        StgHeader_info(q) == stg_MSG_NULL_info) {
--        q = StgInd_indirectee(q);
--        goto loop;
--    }
--
--    // There are putMVar(s) waiting... wake up the first thread on the queue
--
--    if (info == stg_MVAR_CLEAN_info) {
--        ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
--    }
--
--    tso = StgMVarTSOQueue_tso(q);
--    StgMVar_head(mvar) = StgMVarTSOQueue_link(q);
--    if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
--        StgMVar_tail(mvar) = stg_END_TSO_QUEUE_closure;
--    }
--
--    ASSERT(StgTSO_why_blocked(tso) == BlockedOnMVar::I16);
--    ASSERT(StgTSO_block_info(tso) == mvar);
--
--    // actually perform the putMVar for the thread that we just woke up
--    W_ stack;
--    stack = StgTSO_stackobj(tso);
--    PerformPut(stack, StgMVar_value(mvar));
--
--    // indicate that the MVar operation has now completed.
--    StgTSO__link(tso) = stg_END_TSO_QUEUE_closure;
--
--    // no need to mark the TSO dirty, we have only written END_TSO_QUEUE.
--
--    ccall tryWakeupThread(MyCapability() "ptr", tso);
--
--    unlockClosure(mvar, stg_MVAR_DIRTY_info);
-     return (1,val);
- }
- 
-@@ -1600,98 +1475,11 @@
- {
-     W_ info, tso, q;
- 
--    LOCK_CLOSURE(mvar, info);
--
-     if (StgMVar_value(mvar) != stg_END_TSO_QUEUE_closure) {
--
--        if (info == stg_MVAR_CLEAN_info) {
--            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
--        }
--
--        // We want to put the heap check down here in the slow path,
--        // but be careful to unlock the closure before returning to
--        // the RTS if the check fails.
--        ALLOC_PRIM_WITH_CUSTOM_FAILURE
--            (SIZEOF_StgMVarTSOQueue,
--             unlockClosure(mvar, stg_MVAR_DIRTY_info);
--             GC_PRIM_PP(stg_putMVarzh, mvar, val));
--
--        q = Hp - SIZEOF_StgMVarTSOQueue + WDS(1);
--
--        SET_HDR(q, stg_MVAR_TSO_QUEUE_info, CCS_SYSTEM);
--        StgMVarTSOQueue_link(q) = END_TSO_QUEUE;
--        StgMVarTSOQueue_tso(q)  = CurrentTSO;
--
--        if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
--            StgMVar_head(mvar) = q;
--        } else {
--            StgMVarTSOQueue_link(StgMVar_tail(mvar)) = q;
--            ccall recordClosureMutated(MyCapability() "ptr",
--                                             StgMVar_tail(mvar));
--        }
--        StgTSO__link(CurrentTSO)       = q;
--        StgTSO_block_info(CurrentTSO)  = mvar;
--        StgTSO_why_blocked(CurrentTSO) = BlockedOnMVar::I16;
--        StgMVar_tail(mvar)             = q;
--
--        jump stg_block_putmvar(mvar,val);
--    }
--
--    q = StgMVar_head(mvar);
--loop:
--    if (q == stg_END_TSO_QUEUE_closure) {
--        /* No further takes, the MVar is now full. */
--        if (info == stg_MVAR_CLEAN_info) {
--            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
--        }
--        StgMVar_value(mvar) = val;
--        unlockClosure(mvar, stg_MVAR_DIRTY_info);
--        return ();
--    }
--    if (StgHeader_info(q) == stg_IND_info ||
--        StgHeader_info(q) == stg_MSG_NULL_info) {
--        q = StgInd_indirectee(q);
--        goto loop;
-+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
-     }
- 
--    // There are readMVar/takeMVar(s) waiting: wake up the first one
--
--    tso = StgMVarTSOQueue_tso(q);
--    StgMVar_head(mvar) = StgMVarTSOQueue_link(q);
--    if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
--        StgMVar_tail(mvar) = stg_END_TSO_QUEUE_closure;
--    }
--
--    ASSERT(StgTSO_block_info(tso) == mvar);
--    // save why_blocked here, because waking up the thread destroys
--    // this information
--    W_ why_blocked;
--    why_blocked = TO_W_(StgTSO_why_blocked(tso));
--
--    // actually perform the takeMVar
--    W_ stack;
--    stack = StgTSO_stackobj(tso);
--    PerformTake(stack, val);
--
--    // indicate that the MVar operation has now completed.
--    StgTSO__link(tso) = stg_END_TSO_QUEUE_closure;
--
--    if (TO_W_(StgStack_dirty(stack)) == 0) {
--        ccall dirty_STACK(MyCapability() "ptr", stack "ptr");
--    }
--
--    ccall tryWakeupThread(MyCapability() "ptr", tso);
--
--    // If it was a readMVar, then we can still do work,
--    // so loop back. (XXX: This could take a while)
--    if (why_blocked == BlockedOnMVarRead) {
--        q = StgMVarTSOQueue_link(q);
--        goto loop;
--    }
--
--    ASSERT(why_blocked == BlockedOnMVar);
--
--    unlockClosure(mvar, info);
-+    StgMVar_value(mvar) = val;
-     return ();
- }
- 
-@@ -1708,71 +1496,11 @@
- {
-     W_ info, tso, q;
- 
--    LOCK_CLOSURE(mvar, info);
--
-     if (StgMVar_value(mvar) != stg_END_TSO_QUEUE_closure) {
--#if defined(THREADED_RTS)
--        unlockClosure(mvar, info);
--#endif
-         return (0);
-     }
- 
--    q = StgMVar_head(mvar);
--loop:
--    if (q == stg_END_TSO_QUEUE_closure) {
--        /* No further takes, the MVar is now full. */
--        if (info == stg_MVAR_CLEAN_info) {
--            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
--        }
--
--        StgMVar_value(mvar) = val;
--        unlockClosure(mvar, stg_MVAR_DIRTY_info);
--        return (1);
--    }
--    if (StgHeader_info(q) == stg_IND_info ||
--        StgHeader_info(q) == stg_MSG_NULL_info) {
--        q = StgInd_indirectee(q);
--        goto loop;
--    }
--
--    // There are takeMVar(s) waiting: wake up the first one
--
--    tso = StgMVarTSOQueue_tso(q);
--    StgMVar_head(mvar) = StgMVarTSOQueue_link(q);
--    if (StgMVar_head(mvar) == stg_END_TSO_QUEUE_closure) {
--        StgMVar_tail(mvar) = stg_END_TSO_QUEUE_closure;
--    }
--
--    ASSERT(StgTSO_block_info(tso) == mvar);
--    // save why_blocked here, because waking up the thread destroys
--    // this information
--    W_ why_blocked;
--    why_blocked = TO_W_(StgTSO_why_blocked(tso));
--
--    // actually perform the takeMVar
--    W_ stack;
--    stack = StgTSO_stackobj(tso);
--    PerformTake(stack, val);
--
--    // indicate that the MVar operation has now completed.
--    StgTSO__link(tso) = stg_END_TSO_QUEUE_closure;
--
--    if (TO_W_(StgStack_dirty(stack)) == 0) {
--        ccall dirty_STACK(MyCapability() "ptr", stack "ptr");
--    }
--
--    ccall tryWakeupThread(MyCapability() "ptr", tso);
--
--    // If it was a readMVar, then we can still do work,
--    // so loop back. (XXX: This could take a while)
--    if (why_blocked == BlockedOnMVarRead) {
--        q = StgMVarTSOQueue_link(q);
--        goto loop;
--    }
--
--    ASSERT(why_blocked == BlockedOnMVar);
--
--    unlockClosure(mvar, info);
-+    StgMVar_value(mvar) = val;
-     return (1);
- }
- 
-@@ -1781,45 +1509,15 @@
- {
-     W_ val, info, tso, q;
- 
--    LOCK_CLOSURE(mvar, info);
--
-     /* If the MVar is empty, put ourselves on the blocked readers
-      * list and wait until we're woken up.
-      */
-     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
--
--        if (info == stg_MVAR_CLEAN_info) {
--            ccall dirty_MVAR(BaseReg "ptr", mvar "ptr");
--        }
--
--        ALLOC_PRIM_WITH_CUSTOM_FAILURE
--            (SIZEOF_StgMVarTSOQueue,
--             unlockClosure(mvar, stg_MVAR_DIRTY_info);
--             GC_PRIM_P(stg_readMVarzh, mvar));
--
--        q = Hp - SIZEOF_StgMVarTSOQueue + WDS(1);
--
--        // readMVars are pushed to the front of the queue, so
--        // they get handled immediately
--        SET_HDR(q, stg_MVAR_TSO_QUEUE_info, CCS_SYSTEM);
--        StgMVarTSOQueue_link(q) = StgMVar_head(mvar);
--        StgMVarTSOQueue_tso(q)  = CurrentTSO;
--
--        StgTSO__link(CurrentTSO)       = q;
--        StgTSO_block_info(CurrentTSO)  = mvar;
--        StgTSO_why_blocked(CurrentTSO) = BlockedOnMVarRead::I16;
--        StgMVar_head(mvar) = q;
--
--        if (StgMVar_tail(mvar) == stg_END_TSO_QUEUE_closure) {
--            StgMVar_tail(mvar) = q;
--        }
--
--        jump stg_block_readmvar(mvar);
-+        jump stg_raisezh(base_GHCziIOziException_blockedIndefinitelyOnMVar_closure);
-     }
- 
-     val = StgMVar_value(mvar);
- 
--    unlockClosure(mvar, info);
-     return (val);
- }
- 
-@@ -1827,16 +1525,12 @@
- {
-     W_ val, info, tso, q;
- 
--    LOCK_CLOSURE(mvar, info);
--
-     if (StgMVar_value(mvar) == stg_END_TSO_QUEUE_closure) {
--        unlockClosure(mvar, info);
-         return (0, stg_NO_FINALIZER_closure);
-     }
- 
-     val = StgMVar_value(mvar);
- 
--    unlockClosure(mvar, info);
-     return (1, val);
- }
- 
-@@ -1849,30 +1543,7 @@
+     StgTSO_flags(threadid) = %lobits16(
+@@ -1938,7 +1945,9 @@
      W_ index, sn_obj;
  
      MAYBE_GC_P(stg_makeStableNamezh, obj);
 -
--    (index) = ccall lookupStableName(obj "ptr");
--
--    /* Is there already a StableName for this heap object?
--     *  stable_name_table is a pointer to an array of snEntry structs.
--     */
--    if ( snEntry_sn_obj(W_[stable_name_table] + index*SIZEOF_snEntry) == NULL ) {
--        // At this point we have a snEntry, but it doesn't look as used to the
--        // GC yet because we don't have a StableName object for the sn_obj field
--        // (remember that sn_obj == NULL means the entry is free). So if we call
--        // GC here we end up skipping the snEntry in gcStableNameTable(). This
--        // caused #15906. Solution: use allocate(), which does not call GC.
--        //
--        // (Alternatively we could use a special value for the sn_obj field to
--        // indicate that the entry is being allocated and not free, but that's
--        // too complicated and doesn't buy us much. See D5342?id=18700.)
--        ("ptr" sn_obj) = ccall allocate(MyCapability() "ptr",
--                                        BYTES_TO_WDS(SIZEOF_StgStableName));
--        SET_HDR(sn_obj, stg_STABLE_NAME_info, CCCS);
--        StgStableName_sn(sn_obj) = index;
--        snEntry_sn_obj(W_[stable_name_table] + index*SIZEOF_snEntry) = sn_obj;
--    } else {
--        sn_obj = snEntry_sn_obj(W_[stable_name_table] + index*SIZEOF_snEntry);
--    }
++#if defined(ASTERIUS)
 +    (sn_obj) = ccall makeStableName (obj "ptr");
++#else
+     (index) = ccall lookupStableName(obj "ptr");
+ 
+     /* Is there already a StableName for this heap object?
+@@ -1966,6 +1975,7 @@
+     } else {
+         sn_obj = snEntry_sn_obj(W_[stable_name_table] + index*SIZEOF_snEntry);
+     }
++#endif
  
      return (sn_obj);
  }
-@@ -1888,7 +1559,8 @@
+@@ -1981,7 +1991,11 @@
  stg_deRefStablePtrzh ( P_ sp )
  {
      W_ r;
--    r = spEntry_addr(W_[stable_ptr_table] + sp*SIZEOF_spEntry);
-+
++#if defined(ASTERIUS)
 +    ("ptr" r) = ccall deRefStablePtr(sp "ptr");
++#else
+     r = spEntry_addr(W_[stable_ptr_table] + sp*SIZEOF_spEntry);
++#endif
      return (r);
  }
  
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/rts/rts.conf new/libraries/rts/rts.conf
---- old/libraries/rts/rts.conf	1970-01-01 00:00:00.000000000 +0000
-+++ new/libraries/rts/rts.conf	1970-01-01 00:00:01.000000000 +0000
-@@ -0,0 +1,10 @@
-+name: rts
-+version: 1.0
-+id: rts
-+key: rts
-+license: BSD-3-Clause
-+maintainer: glasgow-haskell-users@haskell.org
-+exposed: True
-+library-dirs: $topdir/rts
-+hs-libraries: HSrts
-+include-dirs: $topdir/include
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/template-haskell/Language/Haskell/TH/PprLib.hs new/libraries/template-haskell/Language/Haskell/TH/PprLib.hs
---- old/libraries/template-haskell/Language/Haskell/TH/PprLib.hs	2019-08-12 03:05:14.396282906 +0000
-+++ new/libraries/template-haskell/Language/Haskell/TH/PprLib.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -36,14 +36,14 @@
+@@ -2177,7 +2191,9 @@
  
+ #else
  
- import Language.Haskell.TH.Syntax
--    (Uniq, Name(..), showName', NameFlavour(..), NameIs(..))
-+    (Name(..), showName', NameFlavour(..), NameIs(..))
- import qualified Text.PrettyPrint as HPJ
- import Control.Monad (liftM, liftM2, ap)
- import Language.Haskell.TH.Lib.Map ( Map )
- import qualified Language.Haskell.TH.Lib.Map as Map ( lookup, insert, empty )
- import Prelude hiding ((<>))
+-
++#if defined(ASTERIUS)
++    StgTSO_block_info(CurrentTSO) = us_delay;
++#else
+     (target) = ccall getDelayTarget(us_delay);
  
--infixl 6 <>
-+infixl 6 <> 
- infixl 6 <+>
- infixl 5 $$, $+$
- 
-@@ -117,7 +117,7 @@
- -- ---------------------------------------------------------------------------
- -- The "implementation"
- 
--type State = (Map Name Name, Uniq)
-+type State = (Map Name Name, Int)
- data PprM a = PprM { runPprM :: State -> (a, State) }
- 
- pprName :: Name -> Doc
-diff -ruN -x '*.rej' -x '*.orig' old/libraries/template-haskell/Language/Haskell/TH/Syntax.hs new/libraries/template-haskell/Language/Haskell/TH/Syntax.hs
---- old/libraries/template-haskell/Language/Haskell/TH/Syntax.hs	2019-08-12 03:05:14.396436438 +0000
-+++ new/libraries/template-haskell/Language/Haskell/TH/Syntax.hs	1970-01-01 00:00:01.000000000 +0000
-@@ -145,7 +145,7 @@
-                 ; fail "Template Haskell failure" }
- 
- -- Global variable to generate unique symbols
--counter :: IORef Uniq
-+counter :: IORef Int
- {-# NOINLINE counter #-}
- counter = unsafePerformIO (newIORef 0)
- 
-@@ -1017,8 +1017,8 @@
- data NameFlavour
-   = NameS           -- ^ An unqualified name; dynamically bound
-   | NameQ ModName   -- ^ A qualified name; dynamically bound
--  | NameU !Uniq     -- ^ A unique local name
--  | NameL !Uniq     -- ^ Local name bound outside of the TH AST
-+  | NameU !Int      -- ^ A unique local name
-+  | NameL !Int      -- ^ Local name bound outside of the TH AST
-   | NameG NameSpace PkgName ModName -- ^ Global name bound outside of the TH AST:
-                 -- An original name (occurrences only, not binders)
-                 -- Need the namespace too to be sure which
-@@ -1031,7 +1031,7 @@
-                                 -- in the same name space for now.
-                deriving( Eq, Ord, Show, Data, Generic )
- 
--type Uniq = Integer
-+type Uniq = Int
- 
- -- | The name without its module prefix.
- --
+     StgTSO_block_info(CurrentTSO) = target;
+@@ -2198,6 +2214,8 @@
+     } else {
+         ccall setTSOLink(MyCapability() "ptr", prev "ptr", CurrentTSO);
+     }
++#endif
++
+     jump stg_block_noregs();
+ #endif
+ #endif /* !THREADED_RTS */
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Printer.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Printer.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfHeap.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfHeap.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfilerReport.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfilerReport.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfilerReportJson.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfilerReportJson.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Profiling.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Profiling.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Proftimer.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Proftimer.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RaiseAsync.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RetainerProfile.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RetainerProfile.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RetainerSet.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RetainerSet.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsAPI.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsDllMain.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsDllMain.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsFlags.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsFlags.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsMain.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsMessages.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsProbes.d
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSignals.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsStartup.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbolInfo.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbolInfo.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbols.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbols.c.orig
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbols.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsUtils.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsUtils.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: STM.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: STM.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Schedule.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Schedule.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Sparks.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Sparks.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StableName.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StableName.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StablePtr.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StablePtr.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StaticPtrTable.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StaticPtrTable.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Stats.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Stats.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgCRun.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgCRunAsm.S
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgPrimFloat.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgPrimFloat.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgRun.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Task.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Task.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ThreadLabels.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ThreadLabels.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ThreadPaused.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ThreadPaused.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Threads.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Threads.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Ticker.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Ticky.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Ticky.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Timer.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Timer.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: TopHandler.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: TopHandler.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Trace.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Trace.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: WSDeque.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: WSDeque.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Weak.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Weak.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: build
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: eventlog
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: fs.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: fs.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: fs_rts.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ghc.mk
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: hooks
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: linker
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: package.conf.in
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: posix
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: rts.cabal
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: rts.cabal.in
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: rts.cabal.in.orig
+Only in ghc-toolkit/boot-libs/rts: rts.conf
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: BlockAlloc.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: BlockAlloc.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: CNF.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: CNF.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Compact.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Compact.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Evac.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Evac.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Evac_thr.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GC.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GC.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCAux.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCTDecl.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCThread.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCUtils.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCUtils.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: HeapAlloc.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: MBlock.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: MarkStack.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: MarkWeak.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: MarkWeak.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: OSMem.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Sanity.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Sanity.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Scav.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Scav.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Scav_thr.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Storage.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Storage.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Sweep.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Sweep.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: win32
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: xxhash.c
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: xxhash.h
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: rules
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: settings
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: settings.in
+Only in ghc-toolkit/boot-libs: template-haskell
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: testsuite
+Only in ghc-toolkit/boot-libs: text
+Only in ghc-toolkit/boot-libs: time
+Only in ghc-toolkit/boot-libs: transformers
+Only in ghc-toolkit/boot-libs: unix
+Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: utils
+Only in ghc-toolkit/boot-libs: xhtml

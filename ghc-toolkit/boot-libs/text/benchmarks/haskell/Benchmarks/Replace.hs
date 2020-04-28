@@ -7,6 +7,7 @@
 --
 module Benchmarks.Replace
     ( benchmark
+    , initEnv
     ) where
 
 import Criterion (Benchmark, bgroup, bench, nf)
@@ -20,13 +21,19 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.Text.Lazy.IO as TL
 
-benchmark :: FilePath -> String -> String -> IO Benchmark
-benchmark fp pat sub = do
+type Env = (T.Text, B.ByteString, TL.Text, BL.ByteString)
+
+initEnv :: FilePath -> IO Env
+initEnv fp = do
     tl <- TL.readFile fp
     bl <- BL.readFile fp
     let !t = TL.toStrict tl
         !b = T.encodeUtf8 t
-    return $ bgroup "Replace" [
+    return (t, b, tl, bl)
+
+benchmark :: String -> String -> Env -> Benchmark
+benchmark pat sub ~(t, b, tl, bl) =
+    bgroup "Replace" [
           bench "Text"           $ nf (T.length . T.replace tpat tsub) t
         , bench "ByteString"     $ nf (BL.length . B.replace bpat bsub) b
         , bench "LazyText"       $ nf (TL.length . TL.replace tlpat tlsub) tl

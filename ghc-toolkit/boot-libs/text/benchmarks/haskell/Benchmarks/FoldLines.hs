@@ -16,8 +16,8 @@ import qualified Data.ByteString as B
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-benchmark :: FilePath -> IO Benchmark
-benchmark fp = return $ bgroup "ReadLines"
+benchmark :: FilePath -> Benchmark
+benchmark fp = bgroup "ReadLines"
     [ bench "Text"       $ withHandle $ foldLinesT (\n _ -> n + 1) (0 :: Int)
     , bench "ByteString" $ withHandle $ foldLinesB (\n _ -> n + 1) (0 :: Int)
     ]

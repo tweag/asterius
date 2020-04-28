@@ -1,8 +1,8 @@
 { pkgs ? import nixpkgs ((haskellNix.nixpkgsArgs) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , haskellNix ? import (builtins.fetchTarball {
-    url = "https://github.com/input-output-hk/haskell.nix/archive/a39b5a741acca2fb4bfbb40251d984b2971287ee.tar.gz";
-    sha256 = "1p4932iryai8ifz70d30bvswn5g50hxwblizlibjx9s280l1h6k1";
+    url = "https://github.com/input-output-hk/haskell.nix/archive/701c83fb43179d303c06a3f60003ae68597ccebc.tar.gz";
+    sha256 = "0afpvi2av0y6fk97kd9mx8bprvfyiizxp22qrgar2ph9mfvaixdm";
   }) {}
 , nixpkgs ? haskellNix.sources.nixpkgs-default
 , shellOnly ? false
@@ -30,13 +30,14 @@ let
   project = pkgs.haskell-nix.cabalProject' {
     name = "asterius";
     src = cleanedSrc;
+    ghc = pkgs.haskell-nix.compiler.ghc883;
     pkg-def-extras = [ pkgs.ghc-boot-packages.ghc883 ];
     modules = [
       { reinstallableLibGhc = true; }
       ({ config, ...}: {
         packages = {
           ghc.patches = [ ./nix/patches/ghc.patch ];
-          Cabal.patches = [ cabalPatch ];
+          # Cabal.patches = [ cabalPatch ];
           haddock-api.components.library.doHaddock = false;
           wasm-toolkit.package.cleanHpack = true;
           ghc-toolkit.package.cleanHpack = true;

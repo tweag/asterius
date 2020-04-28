@@ -1,4 +1,4 @@
-{-# LANGUAGE BangPatterns, CPP, ForeignFunctionInterface, MagicHash, Rank2Types,
+{-# LANGUAGE BangPatterns, CPP, MagicHash, Rank2Types,
     RecordWildCards, UnboxedTuples, UnliftedFFITypes #-}
 {-# OPTIONS_GHC -fno-warn-unused-matches #-}
 -- |
@@ -58,7 +58,7 @@ if (_k_) < 0 || (_k_) >= (_len_) then error ("Data.Text.Array." ++ (_func_) ++ "
 #if defined(ASSERTS)
 import Control.Exception (assert)
 #endif
-#if __GLASGOW_HASKELL__ >= 702
+#if MIN_VERSION_base(4,4,0)
 import Control.Monad.ST.Unsafe (unsafeIOToST)
 #else
 import Control.Monad.ST (unsafeIOToST)
@@ -66,7 +66,7 @@ import Control.Monad.ST (unsafeIOToST)
 import Data.Bits ((.&.), xor)
 import Data.Text.Internal.Unsafe (inlinePerformIO)
 import Data.Text.Internal.Unsafe.Shift (shiftL, shiftR)
-#if __GLASGOW_HASKELL__ >= 703
+#if MIN_VERSION_base(4,5,0)
 import Foreign.C.Types (CInt(CInt), CSize(CSize))
 #else
 import Foreign.C.Types (CInt, CSize)

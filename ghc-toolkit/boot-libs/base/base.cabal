@@ -1,6 +1,6 @@
-cabal-version:  2.1
+cabal-version:  3.0
 name:           base
-version:        4.12.0.0
+version:        4.13.0.0
 -- NOTE: Don't forget to update ./changelog.md
 
 license:        BSD-3-Clause
@@ -41,7 +41,7 @@ extra-source-files:
 
 source-repository head
     type:     git
-    location: http://git.haskell.org/ghc.git
+    location: https://gitlab.haskell.org/ghc/ghc.git
     subdir:   libraries/base
 
 Flag integer-simple
@@ -106,7 +106,6 @@ Library
 
     if flag(integer-gmp)
         build-depends: integer-gmp ^>= 1.0.1
-        cpp-options: -DOPTIMISE_INTEGER_GCD_LCM
 
     exposed-modules:
         Control.Applicative
@@ -231,6 +230,7 @@ Library
         GHC.Foreign
         GHC.ForeignPtr
         GHC.GHCi
+        GHC.GHCi.Helpers
         GHC.Generics
         GHC.IO
         GHC.IO.Buffer
@@ -319,7 +319,9 @@ Library
         Type.Reflection.Unsafe
         Unsafe.Coerce
 
+        Asterius.Magic
         Asterius.TopHandler
+        Asterius.Types
 
     other-modules:
         Control.Monad.ST.Imp
@@ -332,6 +334,14 @@ Library
         GHC.StaticPtr.Internal
         System.Environment.ExecutablePath
         System.CPUTime.Utils
+
+        Asterius.Types.JSArray
+        Asterius.Types.JSException
+        Asterius.Types.JSFunction
+        Asterius.Types.JSObject
+        Asterius.Types.JSString
+        Asterius.Types.JSUint8Array
+        Asterius.Types.JSVal
 
     c-sources:
         cbits/DarwinUtils.c

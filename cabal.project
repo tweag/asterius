@@ -1,8 +1,7 @@
-index-state: 2019-06-22T00:00:00Z
+index-state: 2020-04-25T00:00:00Z
 
 packages:
   asterius
-  binaryen
   ghc-toolkit
   wasm-toolkit
 

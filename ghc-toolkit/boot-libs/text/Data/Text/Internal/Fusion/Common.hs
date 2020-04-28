@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternGuards, BangPatterns, MagicHash, Rank2Types #-}
+{-# LANGUAGE BangPatterns, MagicHash, Rank2Types #-}
 -- |
 -- Module      : Data.Text.Internal.Fusion.Common
 -- Copyright   : (c) Bryan O'Sullivan 2009, 2012

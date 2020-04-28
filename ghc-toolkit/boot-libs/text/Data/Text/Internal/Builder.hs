@@ -59,7 +59,7 @@ module Data.Text.Internal.Builder
 
 import Control.Monad.ST (ST, runST)
 import Data.Monoid (Monoid(..))
-#if MIN_VERSION_base(4,9,0)
+#if !MIN_VERSION_base(4,11,0) && MIN_VERSION_base(4,9,0)
 import Data.Semigroup (Semigroup(..))
 #endif
 import Data.Text.Internal (Text(..))

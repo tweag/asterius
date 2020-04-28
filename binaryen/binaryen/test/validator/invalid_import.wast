@@ -1,1 +1,0 @@
-(module (import $bad "test" "bad" (param i64)))
