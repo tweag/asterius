@@ -1,6 +1,8 @@
 #!/bin/sh -e
 
 ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
+  Cabal
+ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
   AC-Angle \
   ANum \
   Boolean \
@@ -23,6 +25,8 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   ForestStructures \
   GenericPretty \
   Glob \
+  HDBC \
+  HDBC-session \
   HSlippyMap \
   HStringTemplate \
   HTF \
@@ -990,6 +994,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   json-rpc-generic \
   jsonpath \
   junit-xml \
+  justified-containers \
   jwt \
   kan-extensions \
   kanji \
@@ -1296,6 +1301,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   perfect-vector-shuffle \
   persist \
   persistable-record \
+  persistable-types-HDBC-pg \
   persistent \
   persistent-pagination \
   persistent-qq \
@@ -1454,6 +1460,8 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   reinterpret-cast \
   relapse \
   relational-query \
+  relational-query-HDBC \
+  relational-record \
   relational-schemas \
   relude \
   renderable \
@@ -1477,6 +1485,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   rio-orphans \
   rio-prettyprint \
   roc-id \
+  roles \
   rope-utf16-splay \
   rosezipper \
   rot13 \
