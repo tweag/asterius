@@ -38,6 +38,7 @@ linkNonMain store_m extra_syms = (m, link_report)
             Asterius.Ld.debug = False,
             Asterius.Ld.gcSections = True,
             Asterius.Ld.verboseErr = True,
+            Asterius.Ld.poolSize = 1,
             Asterius.Ld.outputIR = Nothing,
             rootSymbols = extra_syms,
             Asterius.Ld.exportFunctions = []
@@ -60,6 +61,7 @@ distNonMain p extra_syms =
         yolo = True,
         Asterius.Main.Task.hasMain = False,
         Asterius.Main.Task.verboseErr = True,
+        Asterius.Main.Task.poolSize = 1,
         extraRootSymbols = extra_syms
       }
 

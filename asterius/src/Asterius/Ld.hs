@@ -31,6 +31,7 @@ data LinkTask
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
+        poolSize :: Int,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
