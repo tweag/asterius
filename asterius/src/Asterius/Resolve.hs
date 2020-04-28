@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Resolve
   ( unresolvedGlobalRegType,
@@ -22,6 +23,7 @@ import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Asterius.Types.SymbolSet as SS
 import Asterius.Types.LinkReport
+import Control.DeepSeq
 import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
 import Foreign
@@ -124,9 +126,10 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
     merged_m0
       | gc_sections = gcSections verbose_err store root_syms export_funcs
       | otherwise = fromCachedModule store
+    !merged_m0_evaluated = force merged_m0
     merged_m1
-      | debug = addMemoryTrap merged_m0
-      | otherwise = merged_m0
+      | debug = addMemoryTrap merged_m0_evaluated
+      | otherwise = merged_m0_evaluated
     !merged_m
       | verbose_err = merged_m1
       | otherwise =

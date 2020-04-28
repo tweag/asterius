@@ -48,6 +48,7 @@ where
 
 import Asterius.Types.EntitySymbol
 import Binary
+import Control.DeepSeq
 import Control.Monad
 import Data.Coerce
 import Data.Data
@@ -59,7 +60,7 @@ import Prelude hiding (null)
 
 -- | A set of 'EntitySymbol's.
 newtype SymbolSet = SymbolSet (IM.IntMap EntitySymbol)
-  deriving newtype (Eq, Semigroup, Monoid)
+  deriving newtype (Eq, Semigroup, Monoid, NFData)
   deriving stock (Data)
 
 instance Show SymbolSet where

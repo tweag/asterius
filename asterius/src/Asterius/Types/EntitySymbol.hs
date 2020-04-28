@@ -11,6 +11,7 @@ module Asterius.Types.EntitySymbol
 where
 
 import qualified Binary as GHC
+import Control.DeepSeq
 import qualified Data.ByteString as BS
 import Data.Data
 import Data.String
@@ -20,6 +21,9 @@ import qualified Unique as GHC
 newtype EntitySymbol = EntitySymbol GHC.FastString
   deriving newtype (Eq, Ord, Show, IsString, Semigroup, Monoid, GHC.Binary, GHC.Uniquable)
   deriving stock (Data)
+
+instance NFData EntitySymbol where
+  rnf = rwhnf
 
 -- | Convert an 'EntitySymbol' to a 'BS.ByteString'.
 {-# INLINE entityName #-}

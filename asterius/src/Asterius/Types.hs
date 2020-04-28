@@ -53,11 +53,13 @@ where
 
 import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
+import Asterius.NFData.TH
 import Asterius.Types.EntitySymbol
 import Asterius.Types.SymbolMap (SymbolMap)
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.Types.SymbolSet (SymbolSet)
 import qualified Asterius.Types.SymbolSet as SS
+import Control.DeepSeq
 import Control.Exception
 import qualified Data.ByteString as BS
 import Data.Data
@@ -608,6 +610,74 @@ instance Semigroup FFIMarshalState where
 
 instance Monoid FFIMarshalState where
   mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
+
+-- NFData instances
+
+$(genNFData ''AsteriusCodeGenError)
+
+$(genNFData ''AsteriusStatic)
+
+$(genNFData ''AsteriusStaticsType)
+
+$(genNFData ''AsteriusStatics)
+
+$(genNFData ''AsteriusModule)
+
+$(genNFData ''AsteriusCachedModule)
+
+$(genNFData ''UnresolvedLocalReg)
+
+$(genNFData ''UnresolvedGlobalReg)
+
+$(genNFData ''ValueType)
+
+$(genNFData ''FunctionType)
+
+$(genNFData ''UnaryOp)
+
+$(genNFData ''BinaryOp)
+
+$(genNFData ''Expression)
+
+$(genNFData ''Function)
+
+$(genNFData ''FunctionImport)
+
+$(genNFData ''TableImport)
+
+$(genNFData ''MemoryImport)
+
+$(genNFData ''FunctionExport)
+
+$(genNFData ''FunctionTable)
+
+$(genNFData ''DataSegment)
+
+$(genNFData ''Module)
+
+$(genNFData ''RelooperAddBlock)
+
+$(genNFData ''RelooperAddBranch)
+
+$(genNFData ''RelooperBlock)
+
+$(genNFData ''RelooperRun)
+
+$(genNFData ''FFIValueTypeRep)
+
+$(genNFData ''FFIValueType)
+
+$(genNFData ''FFIFunctionType)
+
+$(genNFData ''FFISafety)
+
+$(genNFData ''FFIImportDecl)
+
+$(genNFData ''FFIExportDecl)
+
+$(genNFData ''FFIMarshalState)
+
+-- Binary instances
 
 $(genBinary ''AsteriusCodeGenError)
 

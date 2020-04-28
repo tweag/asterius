@@ -62,6 +62,7 @@ where
 import Asterius.Types.EntitySymbol
 import qualified Asterius.Types.SymbolSet as SS
 import Binary
+import Control.DeepSeq
 import Control.Monad
 import Data.Data
 import qualified Data.IntMap.Lazy as IM
@@ -72,7 +73,7 @@ import Prelude hiding (filter, lookup)
 
 -- | A map from 'EntitySymbol's to values @a@.
 newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
-  deriving newtype (Eq, Semigroup, Monoid)
+  deriving newtype (Eq, Semigroup, Monoid, NFData)
   deriving stock (Data)
 
 instance Show a => Show (SymbolMap a) where
