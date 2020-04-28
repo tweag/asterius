@@ -62,6 +62,7 @@ where
 import Asterius.Types.EntitySymbol
 import qualified Asterius.Types.SymbolSet as SS
 import Binary
+import Control.DeepSeq
 import Control.Monad
 import Data.Data
 import qualified Data.IntMap.Lazy as IM
@@ -74,6 +75,9 @@ import Prelude hiding (filter, lookup)
 newtype SymbolMap a = SymbolMap (IM.IntMap (EntitySymbol, a))
   deriving newtype (Eq, Semigroup, Monoid)
   deriving stock (Data)
+
+instance NFData a => NFData (SymbolMap a) where
+  rnf = rwhnf -- TODO: IntMap is an instance of NFData, but not of Generic.
 
 instance Show a => Show (SymbolMap a) where
   showsPrec d m =

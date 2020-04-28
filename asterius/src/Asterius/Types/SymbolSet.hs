@@ -48,6 +48,7 @@ where
 
 import Asterius.Types.EntitySymbol
 import Binary
+import Control.DeepSeq
 import Control.Monad
 import Data.Coerce
 import Data.Data
@@ -66,6 +67,9 @@ instance Show SymbolSet where
   showsPrec p (SymbolSet s) =
     showParen (p > 10) $
       showString "fromList " . shows (toList s)
+
+instance NFData SymbolSet where
+  rnf = rwhnf -- TODO: IntMap is an instance of NFData, but not of Generic.
 
 instance Binary SymbolSet where
   put_ bh s =
