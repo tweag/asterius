@@ -19,16 +19,18 @@ let
   nodejs = pkgs.nodejs-12_x;
   nodePkgs = import ./nix/node { inherit pkgs nodejs; };
 
-  compilerName = "ghc865";
+  compilerName = "ghc883";
   # project = stack;
   # mkProjectPkgSet = args: haskell.mkStackPkgSet (args // { stack-pkgs = stack.pkgs; });
   # project = plan;
   # mkProjectPkgSet = args: haskell.mkCabalProjectPkgSet (args // { plan-pkgs = plan.pkgs; });
-  
+
+  cleanedSrc = pkgs.haskell-nix.haskellLib.cleanGit { src = ./.; name = "asterius"; };
+
   project = pkgs.haskell-nix.cabalProject' {
     name = "asterius";
-    src = pkgs.haskell-nix.haskellLib.cleanGit { src = ./.; name = "asterius"; };
-    pkg-def-extras = [ pkgs.ghc-boot-packages.ghc865 ];
+    src = cleanedSrc;
+    pkg-def-extras = [ pkgs.ghc-boot-packages.ghc883 ];
     modules = [
       { reinstallableLibGhc = true; }
       ({ config, ...}: {
@@ -124,8 +126,8 @@ let
                  nodePkgs.todomvc-common ];
              }) (pkgs.haskell-nix.cabalProject' {
                name = "asterius-tests";
-               src = pkgs.haskell-nix.haskellLib.cleanGit { src = ./.; };
-               pkg-def-extras = [ pkgs.ghc-boot-packages.ghc865 ];
+               src = cleanedSrc;
+               pkg-def-extras = [ pkgs.ghc-boot-packages.ghc883 ];
                modules = [];
              }).hsPkgs.asterius.components.tests;
         };
@@ -137,7 +139,7 @@ let
   ghc-head = let
     # Only gitlab has the right submoudle refs (the ones in github mirror do not work)
     # and only fetchgit seems to get the submoudles from gitlab
-    ghc-src = pkgs.srcOnly pkgs.haskell-nix.compiler.ghc865;
+    ghc-src = pkgs.srcOnly pkgs.haskell-nix.compiler.ghc883;
     ghc-prim = pkgs.fetchzip {
       url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
@@ -173,14 +175,14 @@ let
       done
     '';
   in { inherit ghc-src boot-libs patch; };
-  ghc865 = let
-    ghc-src = pkgs.haskell-nix.compiler.ghc865.passthru.configured-src;
+  ghc883 = let
+    ghc-src = pkgs.haskell-nix.compiler.ghc883.passthru.configured-src;
     ghc-prim = pkgs.fetchzip {
       url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
     };
-    patch = pkgs.copyPathToStore ./nix/patches/ghc/ghc865-libs.patch;
-    ghc-patched-src = pkgs.runCommand "asterius-ghc865-ghc-patched-src" {
+    patch = pkgs.copyPathToStore ./nix/patches/ghc/ghc883-libs.patch;
+    ghc-patched-src = pkgs.runCommand "asterius-ghc883-ghc-patched-src" {
       buildInputs = [];
       preferLocalBuild = true;
     } ''
@@ -190,7 +192,7 @@ let
       cd $out
       cp -r rts libraries
     '';
-    boot-libs = pkgs.runCommand "asterius-ghc865-boot-libs" {
+    boot-libs = pkgs.runCommand "asterius-ghc883-boot-libs" {
       buildInputs = [ pkgs.haskell-nix.compiler.${compilerName} ];
       preferLocalBuild = true;
     } ''
@@ -229,7 +231,7 @@ let
           --prefix PATH : ${nodePkgs.parcel-bundler}/bin \
           --set asterius_bindir $out/bin \
           --set asterius_bootdir $out/boot \
-          --set boot_libs_path ${ghc865.boot-libs} \
+          --set boot_libs_path ${ghc883.boot-libs} \
           --set sandbox_ghc_lib_dir $out/ghc-libdir
       '') (pkgs.lib.attrNames project.hsPkgs.asterius.components.exes)}
       $out/bin/ahc-boot
@@ -296,14 +298,14 @@ let
         export inline_js_core_datadir=$(pwd)/inline-js/inline-js-core
         export wabt_datadir=$(pwd)/wabt
         export wasm_toolkit_datadir=$(pwd)/wasm-toolkit
-        export boot_libs_path=${ghc865.boot-libs}
+        export boot_libs_path=${ghc883.boot-libs}
         mkdir -p asterius-cabal-bin
         cd asterius-cabal-bin
         export asterius_bindir=$(pwd)
         export PATH=$(pwd):$PATH
         ''
         + pkgs.lib.concatMapStrings (exe: ''
-          ln -sf ../dist-newstyle/build/${cabalSystem}/ghc-8.6.5/asterius-0.0.1/build/${exe}/${exe} ${exe}
+          ln -sf ../dist-newstyle/build/${cabalSystem}/ghc-8.8.3/asterius-0.0.1/build/${exe}/${exe} ${exe}
         '') ["ahc" "ahc-boot" "ahc-cabal" "ahc-dist" "ahc-ld" "ahc-link" "ahc-pkg"]
         + ''
         cd ..
@@ -311,6 +313,6 @@ let
     });
   };
 in project // {
-  inherit ghc-head ghc865 pkgs nodejs nodePkgs asterius-boot wasm-asterius-ghc shells cached;
-  ghc-boot-libs = ghc865.boot-libs;
+  inherit ghc-head ghc883 pkgs nodejs nodePkgs asterius-boot wasm-asterius-ghc shells cached;
+  ghc-boot-libs = ghc883.boot-libs;
 }
