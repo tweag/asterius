@@ -24,7 +24,6 @@ import Asterius.Resolve
 import Asterius.Types
 import qualified Asterius.Types.SymbolSet as SS
 import Control.Exception
-import Data.Traversable
 
 data LinkTask
   = LinkTask
