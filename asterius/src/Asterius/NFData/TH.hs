@@ -30,7 +30,7 @@ genNFData ty = do
                       ]
                       ( NormalB $
                           if null vars
-                            then VarE '()
+                            then ConE '()
                             else
                               foldl1'
                                 (\acc x -> AppE (AppE (VarE 'seq) acc) x)
