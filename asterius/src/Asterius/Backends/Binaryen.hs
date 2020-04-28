@@ -26,7 +26,6 @@ where
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
-import Asterius.Internals.Parallel
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
@@ -589,11 +588,11 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
             envSymbolMap = sym_map,
             envModuleRef = m
           }
-  parallelFor_ 1 (M.toList functionMap') $ \(k, f@Function {..}) -> -- TODO: Parameterize (and ensure allowed)
+  for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
     flip runReaderT env $ marshalFunction k (ftps M.! functionType) f
-  parallelFor_ 1 functionImports $ \fi@FunctionImport {..} -> -- TODO: Parameterize (and ensure allowed)
+  forM_ functionImports $ \fi@FunctionImport {..} ->
     marshalFunctionImport m (ftps M.! functionType) fi
-  parallelFor_ 1 functionExports $ marshalFunctionExport m -- TODO: Parameterize (and ensure allowed)
+  forM_ functionExports $ marshalFunctionExport m
   marshalFunctionTable m tableSlots functionTable
   marshalTableImport m tableImport
   flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments
