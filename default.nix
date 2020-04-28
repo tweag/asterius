@@ -200,7 +200,7 @@ let
       cp -r ${ghc-patched-src} $out
       chmod +w -R $out
       cd $out/libraries
-      patch -p2 < ${patch} || true
+      patch -p2 < ${patch}
       # TODO find a better way to get these
       cp ${ghc-prim}/GHC/Prim.hs ghc-prim/GHC/Prim.hs
       cp ${ghc-prim}/GHC/PrimopWrappers.hs ghc-prim/GHC/PrimopWrappers.hs
