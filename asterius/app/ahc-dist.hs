@@ -1,9 +1,10 @@
-import Asterius.Internals
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.Main
-import Prelude hiding (IO)
 
 main :: IO ()
 main = do
+  ncu <- newNameCacheUpdater
   task <- getTask
-  ld_result <- decodeFile $ inputHS task
+  ld_result <- getFile ncu $ inputHS task
   ahcDistMain putStrLn task ld_result

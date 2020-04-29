@@ -71,7 +71,7 @@ dependencies:
 
 library:
   source-dirs: src
-  other-modules: Paths_asterius
+  generated-other-modules: Paths_asterius
   verbatim: |
     build-tool-depends:
         alex:alex -any

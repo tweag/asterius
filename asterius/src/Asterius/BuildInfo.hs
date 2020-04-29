@@ -1,38 +1,67 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Asterius.BuildInfo
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Paths for data and binary files.
+--
+-----------------------------------------------------------------------------
+
 module Asterius.BuildInfo
-  ( ghc,
-    ghcPkg,
-    ghcLibDir,
-    getAhc,
-    getAhcPkg,
-    getAhcLd,
-    getAhcDist,
-    getDataDir,
-    getBootDir,
-    getSandboxGhcLibDir,
-    getBootLibsPath,
+  ( ahc,
+    ahcPkg,
+    ahcLd,
+    ahcDist,
+    setupGhcPrim,
+    unlit,
+    dataDir,
+    rootBootDir,
   )
 where
 
-import Control.Exception (catch, IOException)
-import System.Environment (getEnv)
-import BuildInfo_asterius
-import Paths_asterius
+import qualified Paths_asterius
 import System.Directory
 import System.FilePath
+import System.IO.Unsafe
 import Language.Haskell.GHC.Toolkit.BuildInfo (bootLibsPath, sandboxGhcLibDir)
 
-getBin :: FilePath -> IO FilePath
-getBin a = (\binDir -> binDir </> a <.> exeExtension) <$> getBinDir
+{-# NOINLINE binDir #-}
+binDir :: FilePath
+binDir = unsafePerformIO Paths_asterius.getBinDir
 
-getAhc, getAhcPkg, getAhcLd, getAhcDist, getBootDir, getSandboxGhcLibDir, getBootLibsPath :: IO FilePath
-getAhc = getBin "ahc"
-getAhcPkg = getBin "ahc-pkg"
-getAhcLd = getBin "ahc-ld"
-getAhcDist = getBin "ahc-dist"
-getBootDir = catch (getEnv "asterius_bootdir")
-  (\(_ :: IOException) -> getDataDir)
-getSandboxGhcLibDir = catch (getEnv "sandbox_ghc_lib_dir")
-  (\(_ :: IOException) -> pure sandboxGhcLibDir)
-getBootLibsPath = catch ((</> "libraries") <$> getEnv "boot_libs_path")
-  (\(_ :: IOException) -> pure bootLibsPath)
+{-# NOINLINE dataDir #-}
+dataDir :: FilePath
+dataDir = unsafePerformIO Paths_asterius.getDataDir
+
+ahc :: FilePath
+ahc = binDir </> "ahc" <.> exeExtension
+
+ahcPkg :: FilePath
+ahcPkg = binDir </> "ahc-pkg" <.> exeExtension
+
+ahcLd :: FilePath
+ahcLd = binDir </> "ahc-ld" <.> exeExtension
+
+ahcDist :: FilePath
+ahcDist = binDir </> "ahc-dist" <.> exeExtension
+
+-- Allow nix to override the dir used for ".boot"
+-- this is called rootBootDir as bootDir is used in the code
+-- to refer to the ".boot" dir itself
+rootBootDir = unsafePerformIO (catch (getEnv "asterius_bootdir")
+  (\(_ :: IOException) -> Paths_asterius.getDataDir))
+
+-- Allow nix to override the sandboxGhcLibDir (from ghc toolkit)
+asteriusSandboxGhcLibDir = unsafePerformIO (catch (getEnv "sandbox_ghc_lib_dir")
+  (\(_ :: IOException) -> pure sandboxGhcLibDir))
+
+-- Allow nix to override the bootLibsPath (from ghc toolkit)
+asteriusBootLibsPath = unsafePerformIO (catch ((</> "libraries") <$> getEnv "boot_libs_path")
+  (\(_ :: IOException) -> pure bootLibsPath))
+
+setupGhcPrim :: FilePath
+setupGhcPrim = binDir </> "Setup-ghc-prim" <.> exeExtension
+
+unlit :: FilePath
+unlit = binDir </> "unlit" <.> exeExtension

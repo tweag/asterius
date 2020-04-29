@@ -7,7 +7,7 @@ module Main
   )
 where
 
-foreign import javascript "console.log(${1})" js_print_int :: Int -> IO ()
+foreign import javascript "console.log($1)" js_print_int :: Int -> IO ()
 
 printInt :: Int -> IO ()
 printInt = js_print_int

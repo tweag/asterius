@@ -8,31 +8,31 @@ module Asterius.Passes.Barf
 where
 
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Control.Monad.State.Strict
 import qualified Data.ByteString.Char8 as CBS
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import Data.Data
   ( Data,
     gmapM,
   )
-import qualified Data.Map.Strict as M
 import Data.String
 import Data.Word
 import qualified Encoding as GHC
 import Type.Reflection
 
-processBarf :: AsteriusEntitySymbol -> Function -> AsteriusModule
+processBarf :: EntitySymbol -> Function -> AsteriusModule
 processBarf sym f =
   mempty
     { staticsMap = sm,
-      functionMap = M.singleton sym f'
+      functionMap = SM.singleton sym f'
     }
   where
-    (f', (_, sm)) = runState (w f) (0, M.empty)
+    (f', (_, sm)) = runState (w f) (0, SM.empty)
     w ::
       Data a =>
       a ->
-      State (Word64, M.Map AsteriusEntitySymbol AsteriusStatics) a
+      State (Word64, SM.SymbolMap AsteriusStatics) a
     w t = case eqTypeRep (typeOf t) (typeRep :: TypeRep Expression) of
       Just HRefl -> case t of
         Barf {..} -> do
@@ -49,9 +49,9 @@ processBarf sym f =
                           <> "\0"
                     ]
                 }
-          put (succ i, M.insert i_sym ss sm_acc)
+          put (succ i, SM.insert i_sym ss sm_acc)
           pure Block
-            { name = SBS.empty,
+            { name = BS.empty,
               bodys =
                 [ Call
                     { target = "barf",
@@ -73,4 +73,4 @@ processBarf sym f =
         go = gmapM w t
     sym_str = unpack (entityName sym)
     p = "__asterius_barf_" <> sym_str <> "_"
-    unpack = CBS.unpack . SBS.fromShort
+    unpack = CBS.unpack

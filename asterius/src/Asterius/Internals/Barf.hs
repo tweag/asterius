@@ -7,7 +7,7 @@ where
 
 import Asterius.Types
 
-barf :: AsteriusEntitySymbol -> [ValueType] -> Expression
+barf :: EntitySymbol -> [ValueType] -> Expression
 barf sym [] = Call
   { target = "barf",
     operands =

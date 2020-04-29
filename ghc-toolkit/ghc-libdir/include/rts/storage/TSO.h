@@ -183,21 +183,6 @@ typedef struct StgTSO_ {
     StgWord32 saved_winerror;
 #endif
 
-#if defined(ASTERIUS)
-    // Asterius fields must be at the end of the structure because the GHC
-    // compiler we get Cmm from isn't compiled with this header file but with
-    // the original one. Hence it assumes some offsets in the structure (see the
-    // generated constants by the deriveConstants program).
-    //
-    // Luckily the size of TSO structure isn't a constant used by the
-    // generated code. The allocation of the structure is done in Cmm (see createThread)
-    // hence it uses this header.
-    StgWord64               saved_regs[128]; /* saved local regs */
-    StgWord64               ffi_return;      /* async ffi returned value */
-    StgWord64               ffi_func;        /* async ffi return addr */
-#endif
-
-
 } *StgTSOPtr; // StgTSO defined in rts/Types.h
 
 typedef struct StgStack_ {

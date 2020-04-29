@@ -1,3 +1,5 @@
+import { Memory } from "./rts.memory.mjs";
+
 // Implements primitives from primFloat.c
 export class FloatCBits {
   constructor(memory) {
@@ -34,6 +36,8 @@ export class FloatCBits {
 
     this.DBL_HIDDEN = 0x100000;
     this.DBL_POWER2 = 0x200000;
+
+    this.LTOP_BIT = 0x80000000;
 
     // buffer of 8 bytes to hold floats/doubles
     this.buffer = new ArrayBuffer(8);
@@ -242,6 +246,14 @@ export class FloatCBits {
     return [man_sign, man_high, man_low, exp];
   }
 
+  __decodeDouble_2Int(p_man_sign, p_man_high, p_man_low, p_exp, dbl) {
+    const [man_sign, man_high, man_low, exp] = this.__decodeDouble_2IntJS(dbl);
+    this.memory.dataView.setBigInt64(Memory.unTag(p_man_sign), BigInt(man_sign), true);
+    this.memory.i64Store(p_man_high, man_high);
+    this.memory.i64Store(p_man_low, man_low);
+    this.memory.i64Store(p_exp, exp);
+  }
+
   // From GHC/Integer/Type.hs
   decodeDoubleInteger(d) {
     const out = this.__decodeDouble_2IntJS(d);
@@ -407,8 +419,8 @@ export class FloatCBits {
       if (
         frac < half ||
         (frac == half /* tie */ &&
-          (half == LTOP_BIT
-            ? u.ieee.mantissa0 & 1 /* yuck */
+          (half == this.LTOP_BIT
+            ? mant0 & 1 /* yuck */
             : mant & (2 * half)) == 0)
       ) {
         /* truncate */

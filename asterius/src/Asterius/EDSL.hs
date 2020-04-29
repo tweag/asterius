@@ -1,3 +1,13 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Asterius.EDSL
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Embedded DSL for creating 'AsteriusModule's.
+--
+-----------------------------------------------------------------------------
+
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -40,6 +50,7 @@ module Asterius.EDSL
     storeI8,
     storeF64,
     storeF32,
+    unTagClosure,
     call,
     call',
     callImport,
@@ -52,48 +63,10 @@ module Asterius.EDSL
     break',
     whileLoop,
     switchI64,
+    module Asterius.EDSL.BinaryOp,
+    module Asterius.EDSL.UnaryOp,
     notInt64,
-    notInt32,
-    eqZInt64,
-    eqZInt32,
-    extendUInt32,
-    extendSInt32,
-    wrapInt64,
-    convertUInt64ToFloat64,
-    truncUFloat64ToInt64,
-    convertSInt64ToFloat64,
-    truncSFloat64ToInt64,
-    roundupBytesToWords,
-    popCntInt32,
-    clzInt32,
-    ctzInt32,
-    popCntInt64,
-    clzInt64,
-    ctzInt64,
-    addInt64,
-    subInt64,
-    mulInt64,
-    divUInt64,
-    gtUInt64,
-    geUInt64,
-    shlInt64,
-    shrUInt64,
-    geUInt32,
-    addInt32,
-    subInt32,
-    mulInt32,
-    shlInt32,
-    eqInt64,
-    eqInt32,
-    ltUInt64,
-    leUInt64,
-    ltUInt32,
-    neInt64,
-    neInt32,
-    andInt64,
-    orInt64,
-    andInt32,
-    orInt32,
+    nandInt64,
     symbol,
     symbol',
     constI32,
@@ -109,49 +82,41 @@ module Asterius.EDSL
   )
 where
 
+import Asterius.EDSL.BinaryOp
+import Asterius.EDSL.UnaryOp
 import Asterius.Internals
 import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
-import Control.Monad.Fail
+import qualified Asterius.Types.SymbolMap as SM
+import Bag
 import Control.Monad.State.Strict
-import qualified Data.ByteString.Short as SBS
-import qualified Data.Map.Lazy as LM
-import Data.Monoid
+import qualified Data.ByteString as BS
 import Data.Traversable
 import Language.Haskell.GHC.Toolkit.Constants
-
--- | Difference lists
-type DList a = Endo [a]
-
--- | Append an element to the end of the list. Opposite of cons
-dListSnoc :: DList a -> a -> DList a
-dListSnoc dl a = dl <> Endo (a :)
-
--- | Materialize a difference list into a haskell list
-fromDList :: DList a -> [a]
-fromDList = ($ []) . appEndo
 
 -- | State maintained by the EDSL builder.
 data EDSLState
   = EDSLState
       { retTypes :: [ValueType],
-        paramBuf :: DList ValueType,
-        paramNum, localNum, labelNum :: Int,
-        exprBuf :: DList Expression,
+        paramBuf :: Bag ValueType,
+        paramNum :: Int,
+        localNum :: Int,
+        labelNum :: Int,
+        exprBuf :: Bag Expression,
         -- | Static variables to be added into the module
-        staticsBuf :: [(AsteriusEntitySymbol, AsteriusStatics)]
+        staticsBuf :: [(EntitySymbol, AsteriusStatics)]
       }
 
 initialEDSLState :: EDSLState
 initialEDSLState = EDSLState
   { retTypes = [],
-    paramBuf = mempty,
+    paramBuf = emptyBag,
     paramNum = 0,
     localNum = 0,
     labelNum = 0,
-    exprBuf = mempty,
+    exprBuf = emptyBag,
     staticsBuf = mempty
   }
 
@@ -170,7 +135,7 @@ instance Monoid a => Monoid (EDSL a) where
 
 emit :: Expression -> EDSL ()
 emit e =
-  EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `dListSnoc` e}
+  EDSL $ modify' $ \s@EDSLState {..} -> s {exprBuf = exprBuf `snocBag` e}
 
 --  | Create a block from the list of expressions returning the given values.
 bundleExpressions ::
@@ -185,53 +150,55 @@ bundleExpressions vts el = case el of
   _ -> Block {name = mempty, bodys = el, blockReturnTypes = vts}
 
 -- | Build a module containing the function and some auxiliary data
--- | given its name and a builder.
+-- given its name and a builder.
 runEDSL ::
   -- | Function name
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- | Builder
   EDSL () ->
   -- | Final module
   AsteriusModule
 runEDSL n (EDSL m) =
   m1
-    { staticsMap = LM.fromList staticsBuf <> staticsMap m1
+    { staticsMap = SM.fromList staticsBuf <> staticsMap m1
     }
   where
     EDSLState {..} = execState m initialEDSLState
     f0 = adjustLocalRegs $ Function
       { functionType = FunctionType
-          { paramTypes = fromDList paramBuf,
+          { paramTypes = bagToList paramBuf,
             returnTypes = retTypes
           },
         varTypes = [],
-        body = bundleExpressions retTypes $ fromDList exprBuf
+        body = bundleExpressions retTypes $ bagToList exprBuf
       }
     m1 = processBarf n f0
 
--- | Any value that can be read from and wrtten to is an LVal
+-- | Any value that can be read from and written to is an LVal.
 data LVal
   = LVal
-      { -- | Read from the LVal
+      { -- | Read from the LVal.
         getLVal :: Expression,
-        -- | Write into the LVal
+        -- | Write into the LVal.
         putLVal :: Expression -> EDSL ()
       }
 
--- | set the return type of the EDSL expression
+-- | Set the return type of the EDSL expression.
 setReturnTypes :: [ValueType] -> EDSL ()
 setReturnTypes vts = EDSL $ modify' $ \s -> s {retTypes = vts}
 
-mutParam, mutLocal :: ValueType -> EDSL LVal
+mutParam :: ValueType -> EDSL LVal
 mutParam vt = EDSL $ do
   i <- state $ \s@EDSLState {..} ->
     ( fromIntegral paramNum,
-      s {paramBuf = paramBuf `dListSnoc` vt, paramNum = succ paramNum}
+      s {paramBuf = paramBuf `snocBag` vt, paramNum = succ paramNum}
     )
   pure LVal
     { getLVal = GetLocal {index = i, valueType = vt},
       putLVal = \v -> emit SetLocal {index = i, value = v}
     }
+
+mutLocal :: ValueType -> EDSL LVal
 mutLocal vt = EDSL $ do
   i <- state $ \s@EDSLState {..} -> (localNum, s {localNum = succ localNum})
   let lr = UniqueLocalReg i vt
@@ -242,9 +209,7 @@ mutLocal vt = EDSL $ do
     }
 
 param :: ValueType -> EDSL Expression
-param vt = do
-  p <- mutParam vt
-  pure $ getLVal p
+param vt = getLVal <$> mutParam vt
 
 params :: [ValueType] -> EDSL [Expression]
 params vt = for vt param
@@ -255,9 +220,11 @@ local vt v = do
   putLVal lr v
   pure $ getLVal lr
 
-i64Local, i32Local :: Expression -> EDSL Expression
-i64Local = local I64
+i32Local :: Expression -> EDSL Expression
 i32Local = local I32
+
+i64Local :: Expression -> EDSL Expression
+i64Local = local I64
 
 i64MutLocal :: EDSL LVal
 i64MutLocal = mutLocal I64
@@ -286,52 +253,75 @@ pointer vt b bp o = LVal
       }
   }
 
-pointerI64,
-  pointerI32,
-  pointerI16,
-  pointerI8,
-  pointerF64,
-  pointerF32 ::
-    Expression -> Int -> LVal
+pointerI64 :: Expression -> Int -> LVal
 pointerI64 = pointer I64 8
+
+pointerI32 :: Expression -> Int -> LVal
 pointerI32 = pointer I32 4
+
+pointerI16 :: Expression -> Int -> LVal
 pointerI16 = pointer I32 2
+
+pointerI8 :: Expression -> Int -> LVal
 pointerI8 = pointer I32 1
+
+pointerF64 :: Expression -> Int -> LVal
 pointerF64 = pointer F64 8
+
+pointerF32 :: Expression -> Int -> LVal
 pointerF32 = pointer F32 4
 
-loadI64,
-  loadI32,
-  loadI16,
-  loadI8,
-  loadF64,
-  loadF32 ::
-    Expression -> Int -> Expression
+loadI64 :: Expression -> Int -> Expression
 loadI64 bp o = getLVal $ pointerI64 bp o
+
+loadI32 :: Expression -> Int -> Expression
 loadI32 bp o = getLVal $ pointerI32 bp o
+
+loadI16 :: Expression -> Int -> Expression
 loadI16 bp o = getLVal $ pointerI16 bp o
+
+loadI8 :: Expression -> Int -> Expression
 loadI8 bp o = getLVal $ pointerI8 bp o
+
+loadF64 :: Expression -> Int -> Expression
 loadF64 bp o = getLVal $ pointerF64 bp o
+
+loadF32 :: Expression -> Int -> Expression
 loadF32 bp o = getLVal $ pointerF32 bp o
 
-storeI64,
-  storeI32,
-  storeI16,
-  storeI8,
-  storeF64,
-  storeF32 ::
-    Expression -> Int -> Expression -> EDSL ()
+storeI64 :: Expression -> Int -> Expression -> EDSL ()
 storeI64 bp o = putLVal $ pointerI64 bp o
+
+storeI32 :: Expression -> Int -> Expression -> EDSL ()
 storeI32 bp o = putLVal $ pointerI32 bp o
+
+storeI16 :: Expression -> Int -> Expression -> EDSL ()
 storeI16 bp o = putLVal $ pointerI16 bp o
+
+storeI8 :: Expression -> Int -> Expression -> EDSL ()
 storeI8 bp o = putLVal $ pointerI8 bp o
+
+storeF64 :: Expression -> Int -> Expression -> EDSL ()
 storeF64 bp o = putLVal $ pointerF64 bp o
+
+storeF32 :: Expression -> Int -> Expression -> EDSL ()
 storeF32 bp o = putLVal $ pointerF32 bp o
 
-call :: AsteriusEntitySymbol -> [Expression] -> EDSL ()
+-- | Encode not using xor.
+notInt64 :: Expression -> Expression
+notInt64 e = e `xorInt64` constI64 0xFFFFFFFFFFFFFFFF
+
+-- | Encode a nand using a not and an and.
+nandInt64 :: Expression -> Expression -> Expression
+nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
+
+unTagClosure :: Expression -> Expression
+unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
+
+call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}
 
-call' :: AsteriusEntitySymbol -> [Expression] -> ValueType -> EDSL Expression
+call' :: EntitySymbol -> [Expression] -> ValueType -> EDSL Expression
 call' f xs vt = do
   lr <- mutLocal vt
   putLVal lr Call {target = f, operands = xs, callReturnTypes = [vt]}
@@ -340,7 +330,7 @@ call' f xs vt = do
 -- | Call a function with no return value
 callImport ::
   -- | Function name
-  SBS.ShortByteString ->
+  BS.ByteString ->
   -- | Parameter list
   [Expression] ->
   EDSL ()
@@ -350,7 +340,7 @@ callImport f xs =
 -- | Call a function with a return value
 callImport' ::
   -- | Function name
-  SBS.ShortByteString ->
+  BS.ByteString ->
   -- | Arguments
   [Expression] ->
   -- | Return type of function
@@ -372,27 +362,27 @@ callIndirect f = emit CallIndirect
 
 newtype Label
   = Label
-      { unLabel :: SBS.ShortByteString
+      { unLabel :: BS.ByteString
       }
 
 newLabel :: EDSL Label
 newLabel = EDSL $ state $ \s@EDSLState {..} ->
-  (Label $ showSBS labelNum, s {labelNum = succ labelNum})
+  (Label $ showBS labelNum, s {labelNum = succ labelNum})
 
-newScope :: EDSL () -> EDSL (DList Expression)
+newScope :: EDSL () -> EDSL (Bag Expression)
 newScope m = do
   orig_buf <- EDSL $ state $ \s@EDSLState {..} ->
-    (exprBuf, s {exprBuf = mempty})
+    (exprBuf, s {exprBuf = emptyBag})
   m
   EDSL $ state $ \s@EDSLState {..} -> (exprBuf, s {exprBuf = orig_buf})
 
-block', loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
+block' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
 block' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
   emit Block
     { name = unLabel lbl,
-      bodys = fromDList es,
+      bodys = bagToList es,
       blockReturnTypes = vts
     }
 
@@ -401,14 +391,15 @@ blockWithLabel vts lbl m = do
   es <- newScope m
   emit Block
     { name = unLabel lbl,
-      bodys = fromDList es,
+      bodys = bagToList es,
       blockReturnTypes = vts
     }
 
+loop' :: [ValueType] -> (Label -> EDSL ()) -> EDSL ()
 loop' vts cont = do
   lbl <- newLabel
   es <- newScope $ cont lbl
-  emit Loop {name = unLabel lbl, body = bundleExpressions vts $ fromDList es}
+  emit Loop {name = unLabel lbl, body = bundleExpressions vts $ bagToList es}
 
 if' :: [ValueType] -> Expression -> EDSL () -> EDSL () -> EDSL ()
 if' vts cond t f = do
@@ -416,16 +407,16 @@ if' vts cond t f = do
   f_es <- newScope f
   emit If
     { condition = cond,
-      ifTrue = bundleExpressions vts $ fromDList t_es,
-      ifFalse = Just $ bundleExpressions vts $ fromDList f_es
+      ifTrue = bundleExpressions vts $ bagToList t_es,
+      ifFalse = Just $ bundleExpressions vts $ bagToList f_es
     }
 
 break' :: Label -> Maybe Expression -> EDSL ()
 break' (Label lbl) cond = emit Break {name = lbl, breakCondition = cond}
 
-whileLoop :: [ValueType] -> Expression -> EDSL () -> EDSL ()
-whileLoop vts cond body =
-  loop' vts $ \lbl -> if' vts cond (body *> break' lbl Nothing) mempty
+whileLoop :: Expression -> EDSL () -> EDSL ()
+whileLoop cond body =
+  loop' [] $ \lbl -> if' [] cond (body *> break' lbl Nothing) mempty
 
 switchI64 :: Expression -> (EDSL () -> ([(Int, EDSL ())], EDSL ())) -> EDSL ()
 switchI64 cond make_clauses = block' [] $ \switch_lbl ->
@@ -455,19 +446,18 @@ switchI64 cond make_clauses = block' [] $ \switch_lbl ->
    in switch_block
 
 -- | Allocate a static region of bytes in the global section. Returns a
--- | reference to the variable (symbol).
--- |
--- | Usage:
--- | runEDSL $ do
--- |   x <- allocStaticBytes "x"
--- |         (Serialized $ SBS.pack $ replicate 8 1)
--- |   loadi64 x 0
--- |
--- |   y <- allocStaticBytes "y" (Uninitialized 8)
--- |   storei64 x 0 (constI32 32)
+-- reference to the variable (symbol). Usage:
+--
+-- >  runEDSL $ do
+-- >    x <- allocStaticBytes "x"
+-- >          (Serialized $ BS.pack $ replicate 8 1)
+-- >    loadi64 x 0
+-- >
+-- >    y <- allocStaticBytes "y" (Uninitialized 8)
+-- >    storei64 x 0 (constI32 32)
 allocStaticBytes ::
   -- | Name of the static region
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- | Initializer
   AsteriusStatic ->
   -- | Expression to access the static, referenced by name.
@@ -481,110 +471,34 @@ allocStaticBytes n v = EDSL $ state $ \st ->
           }
    in (symbol n, st')
 
-notInt64,
-  notInt32,
-  eqZInt64,
-  eqZInt32,
-  extendUInt32,
-  extendSInt32,
-  wrapInt64,
-  convertUInt64ToFloat64,
-  truncUFloat64ToInt64,
-  convertSInt64ToFloat64,
-  truncSFloat64ToInt64,
-  roundupBytesToWords,
-  popCntInt32,
-  clzInt32,
-  ctzInt32,
-  popCntInt64,
-  clzInt64,
-  ctzInt64 ::
-    Expression -> Expression
-notInt64 = eqZInt64
-notInt32 = eqZInt32
-eqZInt64 = Unary EqZInt64
-eqZInt32 = Unary EqZInt32
-extendUInt32 = Unary ExtendUInt32
-extendSInt32 = Unary ExtendSInt32
-wrapInt64 = Unary WrapInt64
-convertUInt64ToFloat64 = Unary ConvertUInt64ToFloat64
-truncUFloat64ToInt64 = Unary TruncUFloat64ToInt64
-convertSInt64ToFloat64 = Unary ConvertSInt64ToFloat64
-truncSFloat64ToInt64 = Unary TruncSFloat64ToInt64
-roundupBytesToWords n = (n `addInt64` constI64 7) `divUInt64` constI64 8
-popCntInt32 = Unary PopcntInt32
-clzInt32 = Unary ClzInt32
-ctzInt32 = Unary CtzInt32
-popCntInt64 = Unary PopcntInt64
-clzInt64 = Unary ClzInt64
-ctzInt64 = Unary CtzInt64
-
-addInt64,
-  subInt64,
-  mulInt64,
-  divUInt64,
-  gtUInt64,
-  geUInt64,
-  shlInt64,
-  shrUInt64,
-  geUInt32,
-  addInt32,
-  subInt32,
-  mulInt32,
-  eqInt64,
-  eqInt32,
-  ltUInt64,
-  leUInt64,
-  ltUInt32,
-  neInt64,
-  neInt32,
-  andInt64,
-  orInt64,
-  andInt32,
-  orInt32,
-  shlInt32 ::
-    Expression -> Expression -> Expression
-addInt64 = Binary AddInt64
-subInt64 = Binary SubInt64
-mulInt64 = Binary MulInt64
-divUInt64 = Binary DivUInt64
-gtUInt64 = Binary GtUInt64
-geUInt64 = Binary GeUInt64
-shlInt64 = Binary ShlInt64
-shrUInt64 = Binary ShrUInt64
-geUInt32 = Binary GeUInt32
-addInt32 = Binary AddInt32
-subInt32 = Binary SubInt32
-mulInt32 = Binary MulInt32
-shlInt32 = Binary ShlInt32
-eqInt64 = Binary EqInt64
-eqInt32 = Binary EqInt32
-ltUInt64 = Binary LtUInt64
-leUInt64 = Binary LeUInt64
-ltUInt32 = Binary LtUInt32
-neInt64 = Binary NeInt64
-neInt32 = Binary NeInt32
-andInt64 = Binary AndInt64
-orInt64 = Binary OrInt64
-andInt32 = Binary AndInt32
-orInt32 = Binary OrInt32
-
-symbol :: AsteriusEntitySymbol -> Expression
+symbol :: EntitySymbol -> Expression
 symbol = flip symbol' 0
 
-symbol' :: AsteriusEntitySymbol -> Int -> Expression
+symbol' :: EntitySymbol -> Int -> Expression
 symbol' sym o = Symbol {unresolvedSymbol = sym, symbolOffset = o}
 
-constI32, constI64, constF64 :: Int -> Expression
+constI32 :: Int -> Expression
 constI32 = ConstI32 . fromIntegral
+
+constI64 :: Int -> Expression
 constI64 = ConstI64 . fromIntegral
+
+constF64 :: Int -> Expression
 constF64 = ConstF64 . fromIntegral
 
-baseReg, r1, currentNursery, currentTSO, hpAlloc :: LVal
+baseReg :: LVal
 baseReg = global BaseReg
+
+r1 :: LVal
 r1 = global $ VanillaReg 1
+
+currentNursery :: LVal
 currentNursery = global CurrentNursery
+
+currentTSO :: LVal
 currentTSO = global CurrentTSO
+
+hpAlloc :: LVal
 hpAlloc = global HpAlloc
 
 mainCapability :: Expression

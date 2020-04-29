@@ -2,30 +2,22 @@
 
 This directory contains util scripts for hacking on asterius.
 
-## Cleaning & rebuilding
+## Shell scripts
 
-These scripts must be called at the project root directory.
+These scripts are meant to be called at the project root directory.
 
 * `utils/clean.sh`: Clean up the `ghc-toolkit` and `asterius` packages, removing
   the source & compiled objects of the boot libs.
-* `utils/coffee-break.sh`: Do the cleanup, rebuild and reboot, using all CPU
-  cores.
-* `utils/noon-break.sh`: Similar to coffee break, but disables parallelism when
-  booting for deterministic ABI, and enables `ASTERIUS_DEBUG` for IR dumps and
-  Core/STG/Cmm linting. Natually, this one takes a lot of more time.
-
-In general, when the boot libs source or the wasm codegen logic is changed, the
-existing boot cache becomes out of date and thus must be rebuilt. Pick
-`coffee-break.sh` or `noon-break.sh` and get some rest then :)
-
-## Fetching V8 team's Node.js integration build
-
-`utils/v8-node.py` fetches the V8 team's Node.js integration build described
-[here](https://v8.dev/docs/node-integration). The script extracts to
-`$(pwd)/bin/node`, which is a Node.js v13 pre-release build with the latest V8
-revision. This is useful for testing bleeding edge V8 wasm features.
-
-Note that the V8 team's build doesn't bundle `npm`.
+* `utils/ghcid.sh`: The script used by `ghcid` for `asterius`; do not run it
+  directly, instead just run `ghcid` from the project root directory. Modify the
+  script to add the source of an executable/test target when needed. This
+  doesn't require a previous boot, but does require a `stack build` of
+  `asterius`, even if it fails midway.
+* `utils/reboot.sh`: Do the cleanup, rebuild and reboot, using all CPU cores. If
+  you touch the source of boot libs in `ghc-toolkit/` or modify the IR/codegen
+  of `asterius`, the boot cache may be out-of-sync so you need to run this
+  script. Set the `ASTERIUS_DEBUG=1` environment variable to enable the IR
+  dumps.
 
 ## Formatting IR dumps with `pretty-show`
 

@@ -1,27 +1,44 @@
-class TextFile {
-  constructor() {
+class Device {
+  constructor(f, console_history) {
+    this.flush = f;
+    this.consoleHistory = console_history;
+    this.history = "";
     this.buffer = "";
-    this.decoder = new TextDecoder("utf-8");
+    this.decoder = new TextDecoder("utf-8", { fatal: true });
     Object.seal(this);
   }
 
   read() {
-    return this.buffer;
+    const r = this.history;
+    this.history = "";
+    return r;
   }
 
   write(buf) {
-    if (typeof buf === "string") {
-      this.buffer += buf;
-    } else {
-      this.buffer += this.decoder.decode(buf, { stream: true });
-      return buf.length;
+    const str =
+      typeof buf === "string"
+        ? buf
+        : this.decoder.decode(buf, { stream: true });
+    if (this.consoleHistory) {
+      this.history += str;
     }
+    this.buffer += str;
+    const segs = this.buffer.split("\n");
+    this.buffer = segs.pop();
+    for (const seg of segs) {
+      this.flush(seg);
+    }
+    return buf.length;
   }
 }
 
 export class MemoryFileSystem {
-  constructor() {
-    this.files = [undefined, new TextFile(), new TextFile()];
+  constructor(console_history) {
+    this.files = [
+      undefined,
+      new Device(console.log, console_history),
+      new Device(console.error, console_history)
+    ];
     Object.freeze(this);
   }
 

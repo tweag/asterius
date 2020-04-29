@@ -1,13 +1,19 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Asterius.JSGen.Constants
   ( rtsConstants,
   )
 where
 
+import Asterius.Builtins.Posix
+import Asterius.Foreign.SupportedTypes
 import Asterius.Internals.ByteString
 import Asterius.Internals.MagicNumber
+import Asterius.Types
+import Data.Bits
 import Data.ByteString.Builder
+import Data.List
 import Language.Haskell.GHC.Toolkit.Constants
 
 rtsConstants :: Builder
@@ -19,10 +25,16 @@ rtsConstants =
       intHex functionTag,
       ";\nexport const mblock_size = ",
       intHex mblock_size,
+      ";\nexport const mblock_size_log2 = ",
+      intHex (countTrailingZeros mblock_size),
       ";\nexport const block_size = ",
       intHex block_size,
       ";\nexport const blocks_per_mblock = ",
       intHex blocks_per_mblock,
+      ";\nexport const offset_timespec_tv_sec = ",
+      intHex offset_timespec_tv_sec,
+      ";\nexport const offset_timespec_tv_nsec = ",
+      intHex offset_timespec_tv_nsec,
       ";\nexport const sizeof_bdescr = ",
       intHex sizeof_bdescr,
       ";\nexport const offset_first_bdescr = ",
@@ -37,6 +49,8 @@ rtsConstants =
       intHex offset_bdescr_free,
       ";\nexport const offset_bdescr_link = ",
       intHex offset_bdescr_link,
+      ";\nexport const offset_bdescr_gen_no = ",
+      intHex offset_bdescr_gen_no,
       ";\nexport const offset_bdescr_node = ",
       intHex offset_bdescr_node,
       ";\nexport const offset_bdescr_flags = ",
@@ -89,6 +103,8 @@ rtsConstants =
                  ("offset_StgPAP_fun", offset_StgPAP_fun),
                  ("offset_StgPAP_payload", offset_StgPAP_payload),
                  ("offset_StgRegTable_rR1", offset_StgRegTable_rR1),
+                 ("offset_StgRegTable_rF1", offset_StgRegTable_rF1),
+                 ("offset_StgRegTable_rD1", offset_StgRegTable_rD1),
                  ( "offset_StgRegTable_rCurrentNursery",
                    offset_StgRegTable_rCurrentNursery
                  ),
@@ -116,9 +132,6 @@ rtsConstants =
                  ("offset_StgTSO_what_next", offset_StgTSO_what_next),
                  ("offset_StgTSO_why_blocked", offset_StgTSO_why_blocked),
                  ("offset_StgTSO_block_info", offset_StgTSO_block_info),
-                 ("offset_StgTSO_ffi_func", offset_StgTSO_ffi_func),
-                 ("offset_StgTSO_ffi_return", offset_StgTSO_ffi_return),
-                 ("offset_StgTSO_saved_regs", offset_StgTSO_saved_regs),
                  ("offset_StgStack_stack_size", offset_StgStack_stack_size),
                  ("offset_StgStack_sp", offset_StgStack_sp),
                  ("offset_StgStack_stack", offset_StgStack_stack),
@@ -130,6 +143,23 @@ rtsConstants =
                  ("offset_StgWeak_link", offset_StgWeak_link),
                  ("sizeof_StgStableName", sizeof_StgStableName),
                  ("offset_StgStableName_header", offset_StgStableName_header),
-                 ("offset_StgStableName_sn", offset_StgStableName_sn)
+                 ("offset_StgStableName_sn", offset_StgStableName_sn),
+                 ("offset_stat_mtime", offset_stat_mtime),
+                 ("offset_stat_size", offset_stat_size),
+                 ("offset_stat_mode", offset_stat_mode),
+                 ("offset_stat_dev", offset_stat_dev),
+                 ("offset_stat_ino", offset_stat_ino),
+                 ("clock_monotonic", clock_monotonic),
+                 ("clock_realtime", clock_realtime)
                ]
+         ]
+      <> [ "export const hsTyCons = [",
+           mconcat
+             ( intersperse
+                 ","
+                 [ "\"" <> byteString hsTyCon <> "\""
+                   | FFIValueType {..} <- ffiBoxedValueTypeList
+                 ]
+             ),
+           "];\n"
          ]

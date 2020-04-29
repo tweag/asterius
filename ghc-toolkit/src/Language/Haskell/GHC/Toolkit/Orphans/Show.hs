@@ -5,14 +5,13 @@
 {-# OPTIONS_GHC -Wno-orphans #-}
 
 module Language.Haskell.GHC.Toolkit.Orphans.Show
-  ( setDynFlagsRef,
+  (
   )
 where
 
 import CLabel
 import Cmm
 import CoAxiom
-import Control.Monad.IO.Class
 import CostCentre
 import CostCentreState
 import Data.IORef
@@ -28,22 +27,13 @@ import Text.Show.Functions ()
 import TyCoRep
 import UniqDSet
 
-{-# NOINLINE dynFlagsRef #-}
-dynFlagsRef :: IORef DynFlags
-dynFlagsRef = unsafePerformIO $ newIORef unsafeGlobalDynFlags
-
-setDynFlagsRef :: MonadIO m => DynFlags -> m ()
-setDynFlagsRef = liftIO . atomicWriteIORef dynFlagsRef
-
 fakeShow :: Outputable a => String -> a -> String
-fakeShow tag val = unsafePerformIO $ do
-  dflags <- readIORef dynFlagsRef
-  pure $
-    "("
-      ++ tag
-      ++ " "
-      ++ show (showSDoc dflags $ pprCode AsmStyle $ ppr val)
-      ++ ")"
+fakeShow tag val =
+  "("
+    ++ tag
+    ++ " "
+    ++ show (showSDoc unsafeGlobalDynFlags $ pprCode AsmStyle $ ppr val)
+    ++ ")"
 
 instance Outputable SDoc where
   ppr = id
@@ -100,10 +90,11 @@ instance Show a => Show (IORef a) where
 
 deriving instance Show CoercionHole
 
+deriving instance Show MCoercionN
+
 deriving instance Show Coercion
 
-deriving instance
-  (Show tyvar, Show argf) => Show (TyVarBndr tyvar argf)
+deriving instance (Show var, Show argf) => Show (VarBndr var argf)
 
 deriving instance Show Type
 
@@ -132,29 +123,47 @@ deriving instance Show AltType
 
 deriving instance Show AltCon
 
-deriving instance Show occ => Show (GenStgArg occ)
+instance Show NoExtSilent where
+  show _ = "NoExtSilent"
+
+deriving instance Show StgArg
 
 deriving instance
-  (Show bndr, Show occ) => Show (GenStgExpr bndr occ)
+  ( Show (BinderP pass),
+    Show (XLet pass),
+    Show (XLetNoEscape pass),
+    Show (XRhsClosure pass)
+  ) =>
+  Show (GenStgExpr pass)
 
 instance Show CostCentreStack where
   show = fakeShow "CostCentreStack"
 
 deriving instance Show UpdateFlag
 
-instance Show StgBinderInfo where
-  show binder_info
-    | satCallsOnly binder_info = "SatCallsOnly"
-    | otherwise = "NoStgBinderInfo"
+deriving instance
+  ( Show (BinderP pass),
+    Show (XLet pass),
+    Show (XLetNoEscape pass),
+    Show (XRhsClosure pass)
+  ) =>
+  Show (GenStgRhs pass)
 
 deriving instance
-  (Show bndr, Show occ) => Show (GenStgRhs bndr occ)
+  ( Show (BinderP pass),
+    Show (XLet pass),
+    Show (XLetNoEscape pass),
+    Show (XRhsClosure pass)
+  ) =>
+  Show (GenStgBinding pass)
 
 deriving instance
-  (Show bndr, Show occ) => Show (GenStgBinding bndr occ)
-
-deriving instance
-  (Show bndr, Show occ) => Show (GenStgTopBinding bndr occ)
+  ( Show (BinderP pass),
+    Show (XLet pass),
+    Show (XLetNoEscape pass),
+    Show (XRhsClosure pass)
+  ) =>
+  Show (GenStgTopBinding pass)
 
 instance Show Name where
   show = fakeShow "Name"

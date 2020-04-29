@@ -6,7 +6,7 @@ import Text.Parsec.Combinator
 import Text.Parsec.Prim
 import Text.Parsec.Token
 
-foreign import javascript "console.log(${1})" js_print :: JSVal -> IO ()
+foreign import javascript "console.log($1)" js_print :: JSVal -> IO ()
 
 main :: IO ()
 main = do

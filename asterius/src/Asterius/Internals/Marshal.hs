@@ -1,38 +1,28 @@
-{-# LANGUAGE MagicHash #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE UnboxedTuples #-}
 
 module Asterius.Internals.Marshal
-  ( marshalSBS,
+  ( marshalBS,
     marshalV,
   )
 where
 
 import Control.Monad.Cont
-import Data.ByteString.Short (ShortByteString)
-import qualified Data.ByteString.Short.Internal as SBS
-import Data.Word
+import qualified Data.ByteString as BS
 import Foreign.C.Types
 import Foreign.ForeignPtr
 import Foreign.Marshal.Array
 import Foreign.Ptr
 import Foreign.Storable
-import GHC.Exts
 import GHC.ForeignPtr
-import GHC.Types
 
-marshalSBS :: ShortByteString -> (forall r. ContT r IO (Ptr CChar))
-marshalSBS buf@(SBS.SBS ba)
-  | SBS.null buf = pure nullPtr
-  | otherwise = case SBS.length buf of
-    len@(I# l) -> ContT $ \c -> do
-      fp <- mallocPlainForeignPtrBytes (len + 1)
-      withForeignPtr fp $ \ptr@(Ptr p) -> do
-        IO $ \s0 -> (# copyByteArrayToAddr# ba 0# p l s0, () #)
-        pokeByteOff ptr len (0 :: Word8)
-        c ptr
+{-# INLINEABLE marshalBS #-}
+marshalBS :: BS.ByteString -> (forall r. ContT r IO (Ptr CChar))
+marshalBS bs
+  | BS.null bs = pure nullPtr
+  | otherwise = ContT $ BS.useAsCString bs
 
+{-# INLINEABLE marshalV #-}
 marshalV ::
   forall a. Storable a => [a] -> (forall r. ContT r IO (Ptr a, Int))
 marshalV v

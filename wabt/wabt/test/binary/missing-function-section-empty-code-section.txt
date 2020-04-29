@@ -1,7 +1,0 @@
-;;; TOOL: run-gen-wasm
-magic
-version
-section(CODE) { count[0] }
-(;; STDOUT ;;;
-(module)
-;;; STDOUT ;;)

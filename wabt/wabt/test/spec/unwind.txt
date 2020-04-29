@@ -1,5 +1,0 @@
-;;; TOOL: run-interp-spec
-;;; STDIN_FILE: third_party/testsuite/unwind.wast
-(;; STDOUT ;;;
-49/49 tests passed.
-;;; STDOUT ;;)

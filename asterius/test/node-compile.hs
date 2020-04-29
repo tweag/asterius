@@ -11,7 +11,7 @@ import Control.Monad.Except
 import Data.Binary (encode)
 import Data.Binary.Put
 import qualified Data.ByteString.Lazy as LBS
-import qualified Data.ByteString.Short as SBS
+import qualified Data.ByteString as BS
 import qualified Data.Map.Strict as Map
 import Foreign
 import GHC.Exts
@@ -19,12 +19,10 @@ import qualified Language.WebAssembly.WireFormat as Wasm
 import System.Directory
 import System.Exit
 import System.FilePath
-import System.IO hiding (IO)
+import System.IO
 import System.Process
 import Test.QuickCheck
 import Test.QuickCheck.Monadic
-import Prelude hiding (IO)
-import qualified Prelude
 
 type Shrink a = a -> FList.FList a
 
@@ -100,7 +98,7 @@ shrinkModule' m@Module {..} = _shrink_funcs {-_shrink_memory <> _shrink_exports 
     _shrink_memory, _shrink_exports, _shrink_funcs :: FList.FList Module
     _shrink_memory = case memory of
       Memory {..}
-        | not (SBS.null memoryExportName) || not (null dataSegments) ->
+        | not (BS.null memoryExportName) || not (null dataSegments) ->
           pure
             m
               { memory = memory {memoryExportName = mempty, dataSegments = mempty}
@@ -160,7 +158,7 @@ shrinkModule' m@Module {..} = _shrink_funcs {-_shrink_memory <> _shrink_exports 
 shrinkModule :: Module -> [Module]
 shrinkModule = toList . shrinkModule'
 
-type Backend = (String, Module -> Prelude.IO LBS.ByteString)
+type Backend = (String, Module -> IO LBS.ByteString)
 
 binaryenBackend, wasmToolkitBackend :: Backend
 binaryenBackend =
@@ -227,5 +225,5 @@ testNodeCompileBoth s m =
 
 main :: IO ()
 main = do
-  m_fib <- decodeFile $ "test" </> "fib" </> "fib.bin"
+  m_fib <- getFile $ "test" </> "fib" </> "fib.bin"
   quickCheck $ testNodeCompileBoth shrinkModule m_fib

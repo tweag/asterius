@@ -3,6 +3,10 @@
 #include <Schedule.h>
 #include <Capability.h>
 
+HsInt offset_timespec_tv_sec() { return offsetof(struct timespec, tv_sec); }
+
+HsInt offset_timespec_tv_nsec() { return offsetof(struct timespec, tv_nsec); }
+
 HsInt roundup(HsInt x, HsInt n) { return (x + (n - 1)) & (~(n - 1)); }
 
 HsInt roundup_bytes_to_words(HsInt n) { return ROUNDUP_BYTES_TO_WDS(n); }
@@ -28,6 +32,8 @@ HsInt offset_bdescr_start() { return offsetof(bdescr, start); }
 HsInt offset_bdescr_free() { return offsetof(bdescr, free); }
 
 HsInt offset_bdescr_link() { return offsetof(bdescr, link); }
+
+HsInt offset_bdescr_gen_no() { return offsetof(bdescr, gen_no); }
 
 HsInt offset_bdescr_node() { return offsetof(bdescr, node); }
 
@@ -120,6 +126,23 @@ HsInt offset_Capability_free_trec_headers() {
 HsInt offset_Capability_transaction_tokens() {
   return offsetof(Capability, transaction_tokens);
 }
+
+HsInt sizeof_MessageBlackHole() {
+  return sizeof(MessageBlackHole);
+}
+
+HsInt offset_MessageBlackHole_link() {
+  return offsetof(MessageBlackHole, link);
+}
+
+HsInt offset_MessageBlackHole_tso() {
+  return offsetof(MessageBlackHole, tso);
+}
+
+HsInt offset_MessageBlackHole_bh() {
+  return offsetof(MessageBlackHole, bh);
+}
+
 HsInt sizeof_StgAP() { return sizeof(StgAP); }
 
 HsInt offset_StgAP_arity() { return offsetof(StgAP, arity); }
@@ -143,6 +166,26 @@ HsInt sizeof_StgArrBytes() { return sizeof(StgArrBytes); }
 HsInt offset_StgArrBytes_bytes() { return offsetof(StgArrBytes, bytes); }
 
 HsInt offset_StgArrBytes_payload() { return offsetof(StgArrBytes, payload); }
+
+HsInt sizeof_StgBlockingQueue() {
+  return sizeof(StgBlockingQueue);
+}
+
+HsInt offset_StgBlockingQueue_link() {
+  return offsetof(StgBlockingQueue, link);
+}
+
+HsInt offset_StgBlockingQueue_bh() {
+  return offsetof(StgBlockingQueue, bh);
+}
+
+HsInt offset_StgBlockingQueue_owner() {
+  return offsetof(StgBlockingQueue, owner);
+}
+
+HsInt offset_StgBlockingQueue_queue() {
+  return offsetof(StgBlockingQueue, queue);
+}
 
 HsInt sizeof_StgClosure() { return sizeof(StgClosure); }
 
@@ -395,10 +438,6 @@ HsInt offset_StgTSO_tot_stack_size() {
   return offsetof(StgTSO, tot_stack_size);
 }
 
-HsInt offset_StgTSO_ffi_func()   { return offsetof(StgTSO, ffi_func); }
-HsInt offset_StgTSO_ffi_return() { return offsetof(StgTSO, ffi_return); }
-HsInt offset_StgTSO_saved_regs() { return offsetof(StgTSO, saved_regs); }
-
 HsInt offset_StgUpdateFrame_updatee() {
   return offsetof(StgUpdateFrame, updatee);
 }
@@ -520,3 +559,7 @@ HsInt sizeof_StgStableName() { return sizeof(StgStableName); }
 HsInt offset_StgStableName_header() { return offsetof(StgStableName, header); }
 
 HsInt offset_StgStableName_sn() { return offsetof(StgStableName, sn); }
+
+HsInt clock_monotonic() { return CLOCK_MONOTONIC; }
+
+HsInt clock_realtime() { return CLOCK_REALTIME; }

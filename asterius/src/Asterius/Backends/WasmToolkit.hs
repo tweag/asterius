@@ -1,3 +1,15 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Asterius.Backends.WasmToolkit
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Elaboration of Asterius types into WebAssembly (as defined in the
+-- [wasm-toolkit
+-- package](https://github.com/tweag/asterius/tree/master/wasm-toolkit)).
+--
+-----------------------------------------------------------------------------
+
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -10,17 +22,19 @@ module Asterius.Backends.WasmToolkit
   )
 where
 
-import Asterius.Internals
 import Asterius.Internals.Barf
-import qualified Asterius.Internals.DList as DList
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
 import Asterius.TypeInfer
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
+import Bag
 import Control.Exception
 import Control.Monad.Except
+import Control.Monad.Reader
 import Data.Bits
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
 import Data.Int
@@ -34,9 +48,9 @@ import qualified Language.WebAssembly.WireFormat as Wasm
 
 data MarshalError
   = DuplicateFunctionImport
-  | DuplicateGlobalImport
-  | InvalidParameterType
-  | InvalidLocalType
+  | DuplicateGlobalImport             -- ^ Currently unused.
+  | InvalidParameterType              -- ^ Currently unused.
+  | InvalidLocalType                  -- ^ Currently unused.
   | UnsupportedExpression Expression
   deriving (Show)
 
@@ -45,7 +59,7 @@ instance Exception MarshalError
 data ModuleSymbolTable
   = ModuleSymbolTable
       { functionTypeSymbols :: Map.Map FunctionType Wasm.FunctionTypeIndex,
-        functionSymbols :: Map.Map SBS.ShortByteString Wasm.FunctionIndex
+        functionSymbols :: Map.Map BS.ByteString Wasm.FunctionIndex
       }
 
 makeModuleSymbolTable ::
@@ -97,8 +111,8 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
   { imports =
       ( case memoryImport of
           MemoryImport {..} -> Wasm.Import
-            { moduleName = coerce externalModuleName,
-              importName = coerce externalBaseName,
+            { moduleName = coerce $ SBS.toShort externalModuleName,
+              importName = coerce $ SBS.toShort externalBaseName,
               importDescription = Wasm.ImportMemory $ Wasm.MemoryType $ Wasm.Limits
                 { minLimit =
                     fromIntegral $
@@ -110,8 +124,8 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
       )
         : ( case tableImport of
               TableImport {..} -> Wasm.Import
-                { moduleName = coerce externalModuleName,
-                  importName = coerce externalBaseName,
+                { moduleName = coerce $ SBS.toShort externalModuleName,
+                  importName = coerce $ SBS.toShort externalBaseName,
                   importDescription = Wasm.ImportTable $ Wasm.TableType Wasm.AnyFunc $ Wasm.Limits
                     { minLimit = fromIntegral tableSlots,
                       maxLimit = Nothing
@@ -119,12 +133,12 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
                 }
           )
         : [ Wasm.Import
-              { moduleName = coerce externalModuleName,
-                importName = coerce externalBaseName,
+              { moduleName = coerce $ SBS.toShort externalModuleName,
+                importName = coerce $ SBS.toShort externalBaseName,
                 importDescription =
                   Wasm.ImportFunction $
                     functionTypeSymbols
-                      ! functionType
+                      Map.! functionType
               }
             | FunctionImport {..} <- functionImports
           ]
@@ -134,7 +148,7 @@ makeFunctionSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
 makeFunctionSection Module {..} ModuleSymbolTable {..} = pure Wasm.FunctionSection
   { functionTypeIndices =
-      [ functionTypeSymbols ! functionType
+      [ functionTypeSymbols Map.! functionType
         | Function {..} <- Map.elems functionMap'
       ]
   }
@@ -144,34 +158,14 @@ makeExportSection ::
 makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
   { exports =
       [ Wasm.Export
-          { exportName = coerce externalName,
+          { exportName = coerce $ SBS.toShort externalName,
             exportDescription =
               Wasm.ExportFunction $
                 functionSymbols
-                  ! internalName
+                  Map.! internalName
           }
         | FunctionExport {..} <- functionExports
       ]
-        <> ( case memoryExport of
-               MemoryExport {..} ->
-                 [ Wasm.Export
-                     { exportName = coerce externalName,
-                       exportDescription =
-                         Wasm.ExportMemory $
-                           Wasm.MemoryIndex 0
-                     }
-                 ]
-           )
-        <> ( case tableExport of
-               TableExport {..} ->
-                 [ Wasm.Export
-                     { exportName = coerce externalName,
-                       exportDescription =
-                         Wasm.ExportTable $
-                           Wasm.TableIndex 0
-                     }
-                 ]
-           )
   }
 
 makeElementSection ::
@@ -186,35 +180,43 @@ makeElementSection Module {..} ModuleSymbolTable {..} = pure Wasm.ElementSection
                     [Wasm.I32Const {i32ConstValue = fromIntegral tableOffset}]
                 },
               tableInitialValues =
-                [ functionSymbols ! _func_sym
+                [ functionSymbols Map.! _func_sym
                   | _func_sym <- tableFunctionNames
                 ]
             }
         ]
   }
 
+-- | The de Bruijn context captures the labels that are in scope, as introduced
+-- by control constructs (if, loop, etc.)
 data DeBruijnContext
   = DeBruijnContext
-      { currentLevel :: Word32,
-        capturedLevels :: Map.Map SBS.ShortByteString Word32
+      { -- | Current de Bruijn level.
+        currentLevel :: Word32,
+        -- | Set of all named labels currently in scope (named labels are only
+        -- introduced by block or loop instructions).
+        capturedLevels :: Map.Map BS.ByteString Word32
       }
 
+-- | Initial (empty) de Bruijn context.
 emptyDeBruijnContext :: DeBruijnContext
 emptyDeBruijnContext =
   DeBruijnContext {currentLevel = 0, capturedLevels = mempty}
 
-bindLabel :: SBS.ShortByteString -> DeBruijnContext -> DeBruijnContext
+-- | Add a new label to the context.
+bindLabel :: BS.ByteString -> DeBruijnContext -> DeBruijnContext
 bindLabel k DeBruijnContext {..} = DeBruijnContext
   { currentLevel = succ currentLevel,
     capturedLevels =
-      if SBS.null k
+      if BS.null k
         then capturedLevels
         else Map.insert k currentLevel capturedLevels
   }
 
-extractLabel :: DeBruijnContext -> SBS.ShortByteString -> Wasm.LabelIndex
+-- | Lookup a label (by name) in the de Bruijn context.
+extractLabel :: DeBruijnContext -> BS.ByteString -> Wasm.LabelIndex
 extractLabel DeBruijnContext {..} k =
-  coerce $ currentLevel - capturedLevels ! k - 1
+  coerce $ currentLevel - capturedLevels Map.! k - 1
 
 data LocalContext
   = LocalContext
@@ -255,71 +257,212 @@ lookupLocalContext LocalContext {..} i = coerce $ case Map.lookup i localMap of
   Just j -> j
   _ -> i
 
+-- | Convert a unary operator to a Wasm instruction.
+marshalUnaryOp :: UnaryOp -> Wasm.Instruction
+marshalUnaryOp op = case op of
+  ClzInt32 -> Wasm.I32Clz
+  CtzInt32 -> Wasm.I32Ctz
+  PopcntInt32 -> Wasm.I32Popcnt
+  NegFloat32 -> Wasm.F32Neg
+  AbsFloat32 -> Wasm.F32Abs
+  CeilFloat32 -> Wasm.F32Ceil
+  FloorFloat32 -> Wasm.F32Floor
+  TruncFloat32 -> Wasm.F32Trunc
+  NearestFloat32 -> Wasm.F32Nearest
+  SqrtFloat32 -> Wasm.F32Sqrt
+  EqZInt32 -> Wasm.I32Eqz
+  ClzInt64 -> Wasm.I64Clz
+  CtzInt64 -> Wasm.I64Ctz
+  PopcntInt64 -> Wasm.I64Popcnt
+  NegFloat64 -> Wasm.F64Neg
+  AbsFloat64 -> Wasm.F64Abs
+  CeilFloat64 -> Wasm.F64Ceil
+  FloorFloat64 -> Wasm.F64Floor
+  TruncFloat64 -> Wasm.F64Trunc
+  NearestFloat64 -> Wasm.F64Nearest
+  SqrtFloat64 -> Wasm.F64Sqrt
+  EqZInt64 -> Wasm.I64Eqz
+  ExtendSInt32 -> Wasm.I64ExtendSFromI32
+  ExtendUInt32 -> Wasm.I64ExtendUFromI32
+  WrapInt64 -> Wasm.I32WrapFromI64
+  TruncSFloat32ToInt32 -> Wasm.I32TruncSFromF32
+  TruncSFloat32ToInt64 -> Wasm.I64TruncSFromF32
+  TruncUFloat32ToInt32 -> Wasm.I32TruncUFromF32
+  TruncUFloat32ToInt64 -> Wasm.I64TruncUFromF32
+  TruncSFloat64ToInt32 -> Wasm.I32TruncSFromF64
+  TruncSFloat64ToInt64 -> Wasm.I64TruncSFromF64
+  TruncUFloat64ToInt32 -> Wasm.I32TruncUFromF64
+  TruncUFloat64ToInt64 -> Wasm.I64TruncUFromF64
+  ReinterpretFloat32 -> Wasm.I32ReinterpretFromF32
+  ReinterpretFloat64 -> Wasm.I64ReinterpretFromF64
+  ConvertSInt32ToFloat32 -> Wasm.F32ConvertSFromI32
+  ConvertSInt32ToFloat64 -> Wasm.F64ConvertSFromI32
+  ConvertUInt32ToFloat32 -> Wasm.F32ConvertUFromI32
+  ConvertUInt32ToFloat64 -> Wasm.F64ConvertUFromI32
+  ConvertSInt64ToFloat32 -> Wasm.F32ConvertSFromI64
+  ConvertSInt64ToFloat64 -> Wasm.F64ConvertSFromI64
+  ConvertUInt64ToFloat32 -> Wasm.F32ConvertUFromI64
+  ConvertUInt64ToFloat64 -> Wasm.F64ConvertUFromI64
+  PromoteFloat32 -> Wasm.F64PromoteFromF32
+  DemoteFloat64 -> Wasm.F32DemoteFromF64
+  ReinterpretInt32 -> Wasm.F32ReinterpretFromI32
+  ReinterpretInt64 -> Wasm.F64ReinterpretFromI64
+
+-- | Convert a binary operator to a Wasm instruction.
+marshalBinaryOp :: BinaryOp -> Wasm.Instruction
+marshalBinaryOp op = case op of
+  AddInt32 -> Wasm.I32Add
+  SubInt32 -> Wasm.I32Sub
+  MulInt32 -> Wasm.I32Mul
+  DivSInt32 -> Wasm.I32DivS
+  DivUInt32 -> Wasm.I32DivU
+  RemSInt32 -> Wasm.I32RemS
+  RemUInt32 -> Wasm.I32RemU
+  AndInt32 -> Wasm.I32And
+  OrInt32 -> Wasm.I32Or
+  XorInt32 -> Wasm.I32Xor
+  ShlInt32 -> Wasm.I32Shl
+  ShrUInt32 -> Wasm.I32ShrU
+  ShrSInt32 -> Wasm.I32ShrS
+  RotLInt32 -> Wasm.I32RotL
+  RotRInt32 -> Wasm.I32RotR
+  EqInt32 -> Wasm.I32Eq
+  NeInt32 -> Wasm.I32Ne
+  LtSInt32 -> Wasm.I32LtS
+  LtUInt32 -> Wasm.I32LtU
+  LeSInt32 -> Wasm.I32LeS
+  LeUInt32 -> Wasm.I32LeU
+  GtSInt32 -> Wasm.I32GtS
+  GtUInt32 -> Wasm.I32GtU
+  GeSInt32 -> Wasm.I32GeS
+  GeUInt32 -> Wasm.I32GeU
+  AddInt64 -> Wasm.I64Add
+  SubInt64 -> Wasm.I64Sub
+  MulInt64 -> Wasm.I64Mul
+  DivSInt64 -> Wasm.I64DivS
+  DivUInt64 -> Wasm.I64DivU
+  RemSInt64 -> Wasm.I64RemS
+  RemUInt64 -> Wasm.I64RemU
+  AndInt64 -> Wasm.I64And
+  OrInt64 -> Wasm.I64Or
+  XorInt64 -> Wasm.I64Xor
+  ShlInt64 -> Wasm.I64Shl
+  ShrUInt64 -> Wasm.I64ShrU
+  ShrSInt64 -> Wasm.I64ShrS
+  RotLInt64 -> Wasm.I64RotL
+  RotRInt64 -> Wasm.I64RotR
+  EqInt64 -> Wasm.I64Eq
+  NeInt64 -> Wasm.I64Ne
+  LtSInt64 -> Wasm.I64LtS
+  LtUInt64 -> Wasm.I64LtU
+  LeSInt64 -> Wasm.I64LeS
+  LeUInt64 -> Wasm.I64LeU
+  GtSInt64 -> Wasm.I64GtS
+  GtUInt64 -> Wasm.I64GtU
+  GeSInt64 -> Wasm.I64GeS
+  GeUInt64 -> Wasm.I64GeU
+  AddFloat32 -> Wasm.F32Add
+  SubFloat32 -> Wasm.F32Sub
+  MulFloat32 -> Wasm.F32Mul
+  DivFloat32 -> Wasm.F32Div
+  CopySignFloat32 -> Wasm.F32Copysign
+  MinFloat32 -> Wasm.F32Min
+  MaxFloat32 -> Wasm.F32Max
+  EqFloat32 -> Wasm.F32Eq
+  NeFloat32 -> Wasm.F32Ne
+  LtFloat32 -> Wasm.F32Lt
+  LeFloat32 -> Wasm.F32Le
+  GtFloat32 -> Wasm.F32Gt
+  GeFloat32 -> Wasm.F32Ge
+  AddFloat64 -> Wasm.F64Add
+  SubFloat64 -> Wasm.F64Sub
+  MulFloat64 -> Wasm.F64Mul
+  DivFloat64 -> Wasm.F64Div
+  CopySignFloat64 -> Wasm.F64Copysign
+  MinFloat64 -> Wasm.F64Min
+  MaxFloat64 -> Wasm.F64Max
+  EqFloat64 -> Wasm.F64Eq
+  NeFloat64 -> Wasm.F64Ne
+  LtFloat64 -> Wasm.F64Lt
+  LeFloat64 -> Wasm.F64Le
+  GtFloat64 -> Wasm.F64Gt
+  GeFloat64 -> Wasm.F64Ge
+
+-- ----------------------------------------------------------------------------
+
+-- | Environment used during the elaboration of Asterius' types to WebAssembly.
+data MarshalEnv
+  = MarshalEnv
+      { -- | Whether the tail call extension is on.
+        envAreTailCallsOn :: Bool,
+        -- | The symbol map for the current module.
+        envSymbolMap :: SM.SymbolMap Int64,
+        -- | The symbol table for the current module.
+        envModuleSymbolTable :: ModuleSymbolTable,
+        -- | The de Bruijn context. Used for label access.
+        envDeBruijnContext :: DeBruijnContext,
+        -- | The local context. Used for local variable access.
+        envLclContext :: LocalContext
+      }
+
+-- | Check whether the tail call extension is on.
+areTailCallsOn :: MonadReader MarshalEnv m => m Bool
+areTailCallsOn = reader envAreTailCallsOn
+
+-- | Retrieve the symbol map from the local environment.
+askSymbolMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Int64)
+askSymbolMap = reader envSymbolMap
+
+-- | Retrieve the module symbol table from the local environment.
+askModuleSymbolTable :: MonadReader MarshalEnv m => m ModuleSymbolTable
+askModuleSymbolTable = reader envModuleSymbolTable
+
+-- | Add a label to the local environment. Used to by control constructs
+-- (block, if, etc.).
+bindLocalLabel :: MonadReader MarshalEnv m => BS.ByteString -> m a -> m a
+bindLocalLabel label = local $ \env ->
+  env {envDeBruijnContext = bindLabel label $ envDeBruijnContext env}
+
+-- | Lookup a label in the local environment. This function is the monadic
+-- variant of function 'extractLabel'.
+lookupLabel ::
+  MonadReader MarshalEnv m =>
+  BS.ByteString ->
+  m Wasm.LabelIndex
+lookupLabel label = asks ((`extractLabel` label) . envDeBruijnContext)
+
+-- | Lookup an index in the local context. Used for local variable access. This
+-- function is the monadic variant of function 'lookupLocalContext'.
+lookupIndex :: MonadReader MarshalEnv m => BinaryenIndex -> m Wasm.LocalIndex
+lookupIndex i = flip lookupLocalContext i <$> reader envLclContext
+
+-- ----------------------------------------------------------------------------
+
 -- TODO: reduce infer usage
 makeInstructions ::
-  MonadError MarshalError m =>
-  Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
-  ModuleSymbolTable ->
-  DeBruijnContext ->
-  LocalContext ->
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Expression ->
-  m (DList.DList Wasm.Instruction)
-makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_bruijn_ctx _local_ctx expr =
+  m (Bag Wasm.Instruction)
+makeInstructions expr =
   case expr of
     Block {..}
-      | SBS.null name ->
-        fmap mconcat $ for bodys $
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
+      | BS.null name ->
+        fmap unionManyBags $ for bodys makeInstructions
       | otherwise -> do
-        let _new_de_bruijn_ctx = bindLabel name _de_bruijn_ctx
-        bs <-
-          for bodys $
-            makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _new_de_bruijn_ctx
-              _local_ctx
-        pure $ DList.singleton Wasm.Block
+        bs <- bindLocalLabel name $ for bodys makeInstructions
+        pure $ unitBag Wasm.Block
           { blockResultType = map makeValueType blockReturnTypes,
-            blockInstructions = DList.toList $ mconcat bs
+            blockInstructions = bagToList $ unionManyBags bs
           }
     If {..} -> do
-      let _new_de_bruijn_ctx = bindLabel mempty _de_bruijn_ctx
-      c <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          condition
-      t <-
-        DList.toList
-          <$> makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _new_de_bruijn_ctx
-            _local_ctx
-            ifTrue
-      f <-
-        DList.toList
-          <$> makeInstructionsMaybe
-            tail_calls
-            sym_map
-            _module_symtable
-            _new_de_bruijn_ctx
-            _local_ctx
-            ifFalse
+      c <- makeInstructions condition  -- NOTE: the label is only in scope for
+                                       -- the branches, not the condition.
+      t <- bindLocalLabel mempty $
+             bagToList <$> makeInstructions ifTrue
+      f <- bindLocalLabel mempty $
+             bagToList <$> makeInstructionsMaybe ifFalse
       pure $
-        c <> DList.singleton Wasm.If
+        c `snocBag` Wasm.If
           { ifResultType = map makeValueType $ infer ifTrue,
             thenInstructions = t,
             elseInstructions = case f of
@@ -327,133 +470,88 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
               _ -> Just f
           }
     Loop {..} -> do
-      let _new_de_bruijn_ctx = bindLabel name _de_bruijn_ctx
-      b <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _new_de_bruijn_ctx
-          _local_ctx
-          body
-      pure $ DList.singleton Wasm.Loop
+      b <- bindLocalLabel name $ makeInstructions body
+      pure $ unitBag Wasm.Loop
         { loopResultType = [],
-          loopInstructions = DList.toList b
+          loopInstructions = bagToList b
         }
     Break {..} -> do
-      let _lbl = extractLabel _de_bruijn_ctx name
+      _lbl <- lookupLabel name
       case breakCondition of
         Just cond -> do
-          c <-
-            makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-              cond
-          pure $ c <> DList.singleton Wasm.BranchIf {branchIfLabel = _lbl}
-        _ -> pure $ DList.singleton Wasm.Branch {branchLabel = _lbl}
+          c <- makeInstructions cond
+          pure $ c `snocBag` Wasm.BranchIf {branchIfLabel = _lbl}
+        _ -> pure $ unitBag Wasm.Branch {branchLabel = _lbl}
     Switch {..} -> do
-      c <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          condition
+      c <- makeInstructions condition
+      _lbls <- mapM lookupLabel names
+      _lbl <- lookupLabel defaultName
       pure $
-        c <> DList.singleton Wasm.BranchTable
-          { branchTableLabels = map (extractLabel _de_bruijn_ctx) names,
-            branchTableFallbackLabel = extractLabel _de_bruijn_ctx defaultName
+        c `snocBag` Wasm.BranchTable
+          { branchTableLabels = _lbls,
+            branchTableFallbackLabel = _lbl
           }
-    Call {..} -> case Map.lookup (coerce target) functionSymbols of
-      Just i -> do
-        xs <-
-          for
-            ( if target == "barf"
-                then
-                  [ case operands of
-                      [] -> ConstI64 0
-                      x : _ -> x
-                  ]
-                else operands
-            )
-            $ makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-        pure $ mconcat xs <> DList.singleton Wasm.Call {callFunctionIndex = i}
-      _
-        | Map.member ("__asterius_barf_" <> target) sym_map ->
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
-            $ barf target callReturnTypes
-        | otherwise ->
-          pure $ DList.singleton Wasm.Unreachable
+    Call {..} -> do
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      case Map.lookup (entityName target) functionSymbols of
+        Just i -> do
+          xs <-
+            for
+              ( if target == "barf"
+                  then
+                    [ case operands of
+                        [] -> ConstI64 0
+                        x : _ -> x
+                    ]
+                  else operands
+              )
+              makeInstructions
+          pure $ unionManyBags xs `snocBag` Wasm.Call {callFunctionIndex = i}
+        _ -> do
+          sym_map <- askSymbolMap
+          if SM.member ("__asterius_barf_" <> target) sym_map
+            then makeInstructions $ barf target callReturnTypes
+            else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
-      xs <-
-        for operands $
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
+      xs <- for operands makeInstructions
+      ModuleSymbolTable {..} <- askModuleSymbolTable
       pure $
-        mconcat xs <> DList.singleton Wasm.Call
-          { callFunctionIndex = functionSymbols ! target'
+        unionManyBags xs `snocBag` Wasm.Call
+          { callFunctionIndex = functionSymbols Map.! target'
           }
     CallIndirect {..} -> do
-      f <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          indirectTarget
-      xs <-
-        for operands $
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
+      f <- makeInstructions indirectTarget
+      xs <- for operands makeInstructions
+      ModuleSymbolTable {..} <- askModuleSymbolTable
       pure $
-        mconcat xs <> f <> DList.singleton Wasm.CallIndirect
-          { callIndirectFuctionTypeIndex = functionTypeSymbols ! functionType
+        unionManyBags xs `unionBags` f `snocBag` Wasm.CallIndirect
+          { callIndirectFuctionTypeIndex = functionTypeSymbols Map.! functionType
           }
-    GetLocal {..} -> pure $ DList.singleton Wasm.GetLocal
-      { getLocalIndex = lookupLocalContext _local_ctx index
-      }
+    GetLocal {..} -> do
+      idx <- lookupIndex index
+      pure $ unitBag Wasm.GetLocal
+        { getLocalIndex = idx
+        }
     SetLocal {..} -> do
-      v <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          value
+      v <- makeInstructions value
+      idx <- lookupIndex index
       pure $
-        v <> DList.singleton Wasm.SetLocal
-          { setLocalIndex = lookupLocalContext _local_ctx index
+        v `snocBag` Wasm.SetLocal
+          { setLocalIndex = idx
+          }
+    TeeLocal {..} -> do
+      v <- makeInstructions value
+      idx <- lookupIndex index
+      pure $
+        v `snocBag` Wasm.TeeLocal
+          { teeLocalIndex = idx
           }
     Load {..} -> do
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
               memoryArgumentOffset = offset
             }
-      op <- DList.singleton <$> case (signed, bytes, valueType) of
+      op <- case (signed, bytes, valueType) of
         (_, 4, I32) -> pure $ Wasm.I32Load _mem_arg
         (_, 8, I64) -> pure $ Wasm.I64Load _mem_arg
         (_, 4, F32) -> pure $ Wasm.F32Load _mem_arg
@@ -469,21 +567,14 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
         (True, 4, I64) -> pure $ Wasm.I64Load32Signed _mem_arg
         (False, 4, I64) -> pure $ Wasm.I64Load32Unsigned _mem_arg
         _ -> throwError $ UnsupportedExpression expr
-      p <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          ptr
-      pure $ p <> op
+      p <- makeInstructions ptr
+      pure $ p `snocBag` op
     Store {..} -> do
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
               memoryArgumentOffset = offset
             }
-      op <- DList.singleton <$> case (bytes, valueType) of
+      op <- case (bytes, valueType) of
         (4, I32) -> pure $ Wasm.I32Store _mem_arg
         (8, I64) -> pure $ Wasm.I64Store _mem_arg
         (4, F32) -> pure $ Wasm.F32Store _mem_arg
@@ -494,325 +585,121 @@ makeInstructions tail_calls sym_map _module_symtable@ModuleSymbolTable {..} _de_
         (2, I64) -> pure $ Wasm.I64Store16 _mem_arg
         (4, I64) -> pure $ Wasm.I64Store32 _mem_arg
         _ -> throwError $ UnsupportedExpression expr
-      p <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          ptr
-      v <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          value
-      pure $ p <> v <> op
-    ConstI32 v -> pure $ DList.singleton Wasm.I32Const {i32ConstValue = v}
-    ConstI64 v -> pure $ DList.singleton Wasm.I64Const {i64ConstValue = v}
-    ConstF32 v -> pure $ DList.singleton Wasm.F32Const {f32ConstValue = v}
-    ConstF64 v -> pure $ DList.singleton Wasm.F64Const {f64ConstValue = v}
+      p <- makeInstructions ptr
+      v <- makeInstructions value
+      pure $ p `unionBags` v `snocBag` op
+    ConstI32 v -> pure $ unitBag Wasm.I32Const {i32ConstValue = v}
+    ConstI64 v -> pure $ unitBag Wasm.I64Const {i64ConstValue = v}
+    ConstF32 v -> pure $ unitBag Wasm.F32Const {f32ConstValue = v}
+    ConstF64 v -> pure $ unitBag Wasm.F64Const {f64ConstValue = v}
     Unary {..} -> do
-      x <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          operand0
-      op <- DList.singleton <$> case unaryOp of
-        ClzInt32 -> pure Wasm.I32Clz
-        CtzInt32 -> pure Wasm.I32Ctz
-        PopcntInt32 -> pure Wasm.I32Popcnt
-        NegFloat32 -> pure Wasm.F32Neg
-        AbsFloat32 -> pure Wasm.F32Abs
-        CeilFloat32 -> pure Wasm.F32Ceil
-        FloorFloat32 -> pure Wasm.F32Floor
-        TruncFloat32 -> pure Wasm.F32Trunc
-        NearestFloat32 -> pure Wasm.F32Nearest
-        SqrtFloat32 -> pure Wasm.F32Sqrt
-        EqZInt32 -> pure Wasm.I32Eqz
-        ClzInt64 -> pure Wasm.I64Clz
-        CtzInt64 -> pure Wasm.I64Ctz
-        PopcntInt64 -> pure Wasm.I64Popcnt
-        NegFloat64 -> pure Wasm.F64Neg
-        AbsFloat64 -> pure Wasm.F64Abs
-        CeilFloat64 -> pure Wasm.F64Ceil
-        FloorFloat64 -> pure Wasm.F64Floor
-        TruncFloat64 -> pure Wasm.F64Trunc
-        NearestFloat64 -> pure Wasm.F64Nearest
-        SqrtFloat64 -> pure Wasm.F64Sqrt
-        EqZInt64 -> pure Wasm.I64Eqz
-        ExtendSInt32 -> pure Wasm.I64ExtendSFromI32
-        ExtendUInt32 -> pure Wasm.I64ExtendUFromI32
-        WrapInt64 -> pure Wasm.I32WrapFromI64
-        TruncSFloat32ToInt32 -> pure Wasm.I32TruncSFromF32
-        TruncSFloat32ToInt64 -> pure Wasm.I64TruncSFromF32
-        TruncUFloat32ToInt32 -> pure Wasm.I32TruncUFromF32
-        TruncUFloat32ToInt64 -> pure Wasm.I64TruncUFromF32
-        TruncSFloat64ToInt32 -> pure Wasm.I32TruncSFromF64
-        TruncSFloat64ToInt64 -> pure Wasm.I64TruncSFromF64
-        TruncUFloat64ToInt32 -> pure Wasm.I32TruncUFromF64
-        TruncUFloat64ToInt64 -> pure Wasm.I64TruncUFromF64
-        ReinterpretFloat32 -> pure Wasm.I32ReinterpretFromF32
-        ReinterpretFloat64 -> pure Wasm.I64ReinterpretFromF64
-        ConvertSInt32ToFloat32 -> pure Wasm.F32ConvertSFromI32
-        ConvertSInt32ToFloat64 -> pure Wasm.F64ConvertSFromI32
-        ConvertUInt32ToFloat32 -> pure Wasm.F32ConvertUFromI32
-        ConvertUInt32ToFloat64 -> pure Wasm.F64ConvertUFromI32
-        ConvertSInt64ToFloat32 -> pure Wasm.F32ConvertSFromI64
-        ConvertSInt64ToFloat64 -> pure Wasm.F64ConvertSFromI64
-        ConvertUInt64ToFloat32 -> pure Wasm.F32ConvertUFromI64
-        ConvertUInt64ToFloat64 -> pure Wasm.F64ConvertUFromI64
-        PromoteFloat32 -> pure Wasm.F64PromoteFromF32
-        DemoteFloat64 -> pure Wasm.F32DemoteFromF64
-        ReinterpretInt32 -> pure Wasm.F32ReinterpretFromI32
-        ReinterpretInt64 -> pure Wasm.F64ReinterpretFromI64
-      pure $ x <> op
+      x <- makeInstructions operand0
+      let op = marshalUnaryOp unaryOp
+      pure $ x `snocBag` op
     Binary {..} -> do
-      x <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          operand0
-      y <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
-          operand1
-      op <- DList.singleton <$> case binaryOp of
-        AddInt32 -> pure Wasm.I32Add
-        SubInt32 -> pure Wasm.I32Sub
-        MulInt32 -> pure Wasm.I32Mul
-        DivSInt32 -> pure Wasm.I32DivS
-        DivUInt32 -> pure Wasm.I32DivU
-        RemSInt32 -> pure Wasm.I32RemS
-        RemUInt32 -> pure Wasm.I32RemU
-        AndInt32 -> pure Wasm.I32And
-        OrInt32 -> pure Wasm.I32Or
-        XorInt32 -> pure Wasm.I32Xor
-        ShlInt32 -> pure Wasm.I32Shl
-        ShrUInt32 -> pure Wasm.I32ShrU
-        ShrSInt32 -> pure Wasm.I32ShrS
-        RotLInt32 -> pure Wasm.I32RotL
-        RotRInt32 -> pure Wasm.I32RotR
-        EqInt32 -> pure Wasm.I32Eq
-        NeInt32 -> pure Wasm.I32Ne
-        LtSInt32 -> pure Wasm.I32LtS
-        LtUInt32 -> pure Wasm.I32LtU
-        LeSInt32 -> pure Wasm.I32LeS
-        LeUInt32 -> pure Wasm.I32LeU
-        GtSInt32 -> pure Wasm.I32GtS
-        GtUInt32 -> pure Wasm.I32GtU
-        GeSInt32 -> pure Wasm.I32GeS
-        GeUInt32 -> pure Wasm.I32GeU
-        AddInt64 -> pure Wasm.I64Add
-        SubInt64 -> pure Wasm.I64Sub
-        MulInt64 -> pure Wasm.I64Mul
-        DivSInt64 -> pure Wasm.I64DivS
-        DivUInt64 -> pure Wasm.I64DivU
-        RemSInt64 -> pure Wasm.I64RemS
-        RemUInt64 -> pure Wasm.I64RemU
-        AndInt64 -> pure Wasm.I64And
-        OrInt64 -> pure Wasm.I64Or
-        XorInt64 -> pure Wasm.I64Xor
-        ShlInt64 -> pure Wasm.I64Shl
-        ShrUInt64 -> pure Wasm.I64ShrU
-        ShrSInt64 -> pure Wasm.I64ShrS
-        RotLInt64 -> pure Wasm.I64RotL
-        RotRInt64 -> pure Wasm.I64RotR
-        EqInt64 -> pure Wasm.I64Eq
-        NeInt64 -> pure Wasm.I64Ne
-        LtSInt64 -> pure Wasm.I64LtS
-        LtUInt64 -> pure Wasm.I64LtU
-        LeSInt64 -> pure Wasm.I64LeS
-        LeUInt64 -> pure Wasm.I64LeU
-        GtSInt64 -> pure Wasm.I64GtS
-        GtUInt64 -> pure Wasm.I64GtU
-        GeSInt64 -> pure Wasm.I64GeS
-        GeUInt64 -> pure Wasm.I64GeU
-        AddFloat32 -> pure Wasm.F32Add
-        SubFloat32 -> pure Wasm.F32Sub
-        MulFloat32 -> pure Wasm.F32Mul
-        DivFloat32 -> pure Wasm.F32Div
-        CopySignFloat32 -> pure Wasm.F32Copysign
-        MinFloat32 -> pure Wasm.F32Min
-        MaxFloat32 -> pure Wasm.F32Max
-        EqFloat32 -> pure Wasm.F32Eq
-        NeFloat32 -> pure Wasm.F32Ne
-        LtFloat32 -> pure Wasm.F32Lt
-        LeFloat32 -> pure Wasm.F32Le
-        GtFloat32 -> pure Wasm.F32Gt
-        GeFloat32 -> pure Wasm.F32Ge
-        AddFloat64 -> pure Wasm.F64Add
-        SubFloat64 -> pure Wasm.F64Sub
-        MulFloat64 -> pure Wasm.F64Mul
-        DivFloat64 -> pure Wasm.F64Div
-        CopySignFloat64 -> pure Wasm.F64Copysign
-        MinFloat64 -> pure Wasm.F64Min
-        MaxFloat64 -> pure Wasm.F64Max
-        EqFloat64 -> pure Wasm.F64Eq
-        NeFloat64 -> pure Wasm.F64Ne
-        LtFloat64 -> pure Wasm.F64Lt
-        LeFloat64 -> pure Wasm.F64Le
-        GtFloat64 -> pure Wasm.F64Gt
-        GeFloat64 -> pure Wasm.F64Ge
-      pure $ x <> y <> op
-    ReturnCall {..}
-      | tail_calls -> case Map.lookup (coerce returnCallTarget64) functionSymbols of
-        Just i -> pure $
-          DList.singleton Wasm.ReturnCall {returnCallFunctionIndex = i}
-        _
-          | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
-            makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-              $ barf returnCallTarget64 []
-          | otherwise ->
-            pure $ DList.singleton Wasm.Unreachable
-      | otherwise -> case Map.lookup returnCallTarget64 sym_map of
-        Just t -> makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          _de_bruijn_ctx
-          _local_ctx
+      x <- makeInstructions operand0
+      y <- makeInstructions operand1
+      let op = marshalBinaryOp binaryOp
+      pure $ x `unionBags` y `snocBag` op
+    Drop {..} -> do
+      x <- makeInstructions dropValue
+      pure $ x `snocBag` Wasm.Drop
+    ReturnCall {..} -> do
+      sym_map <- askSymbolMap
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      tail_calls <- areTailCallsOn
+      if tail_calls
+        -- Case 1: Tail calls are on
+        then case Map.lookup (entityName returnCallTarget64) functionSymbols of
+          Just i -> pure $
+            unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
+          _
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` sym_map ->
+              makeInstructions $ barf returnCallTarget64 []
+            | otherwise ->
+              pure $ unitBag Wasm.Unreachable
+        -- Case 2: Tail calls are off
+        else case SM.lookup returnCallTarget64 sym_map of
+          Just t -> makeInstructions
+            Store
+              { bytes = 8,
+                offset = 0,
+                ptr =
+                  ConstI32
+                    $ fromIntegral
+                    $ (sym_map SM.! "__asterius_pc")
+                      .&. 0xFFFFFFFF,
+                value = ConstI64 t,
+                valueType = I64
+              }
+          _
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` sym_map ->
+              makeInstructions $ barf returnCallTarget64 []
+            | otherwise ->
+              pure $ unitBag Wasm.Unreachable
+    ReturnCallIndirect {..} -> do
+      sym_map <- askSymbolMap
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      tail_calls <- areTailCallsOn
+      if tail_calls
+        -- Case 1: Tail calls are on
+        then do
+          x <- makeInstructions
+                 Unary
+                   { unaryOp = WrapInt64,
+                     operand0 = returnCallIndirectTarget64
+                   }
+          pure $
+            x `snocBag` Wasm.ReturnCallIndirect
+              { returnCallIndirectFunctionTypeIndex = functionTypeSymbols
+                  Map.! FunctionType {paramTypes = [], returnTypes = []}
+              }
+        -- Case 2: Tail calls are off
+        else makeInstructions
           Store
             { bytes = 8,
               offset = 0,
               ptr =
                 ConstI32
                   $ fromIntegral
-                  $ (sym_map ! "__asterius_pc")
+                  $ (sym_map SM.! "__asterius_pc")
                     .&. 0xFFFFFFFF,
-              value = ConstI64 t,
+              value = returnCallIndirectTarget64,
               valueType = I64
             }
-        _
-          | Map.member ("__asterius_barf_" <> returnCallTarget64) sym_map ->
-            makeInstructions
-              tail_calls
-              sym_map
-              _module_symtable
-              _de_bruijn_ctx
-              _local_ctx
-              $ barf returnCallTarget64 []
-          | otherwise ->
-            pure $ DList.singleton Wasm.Unreachable
-    ReturnCallIndirect {..}
-      | tail_calls -> do
-        x <-
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
-            $ Unary
-              { unaryOp = WrapInt64,
-                operand0 = returnCallIndirectTarget64
-              }
-        pure $
-          x <> DList.singleton Wasm.ReturnCallIndirect
-            { returnCallIndirectFunctionTypeIndex = functionTypeSymbols
-                ! FunctionType {paramTypes = [], returnTypes = []}
-            }
-      | otherwise -> makeInstructions
-        tail_calls
-        sym_map
-        _module_symtable
-        _de_bruijn_ctx
-        _local_ctx
-        Store
-          { bytes = 8,
-            offset = 0,
-            ptr =
-              ConstI32
-                $ fromIntegral
-                $ (sym_map ! "__asterius_pc")
-                  .&. 0xFFFFFFFF,
-            value = returnCallIndirectTarget64,
-            valueType = I64
+    Nop -> pure $ unitBag Wasm.Nop
+    Unreachable -> pure $ unitBag Wasm.Unreachable
+    CFG {..} -> makeInstructions $ relooper graph
+    Symbol {..} -> do
+      sym_map <- askSymbolMap
+      case SM.lookup unresolvedSymbol sym_map of
+        Just x -> pure $ unitBag Wasm.I64Const
+          { i64ConstValue = x + fromIntegral symbolOffset
           }
-    Host {..} -> do
-      let op = DList.singleton $ case hostOp of
-            CurrentMemory -> Wasm.MemorySize
-            GrowMemory -> Wasm.MemoryGrow
-      xs <-
-        for operands $
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
-      pure $ mconcat xs <> op
-    Nop -> pure $ DList.singleton Wasm.Nop
-    Unreachable -> pure $ DList.singleton Wasm.Unreachable
-    CFG {..} ->
-      makeInstructions
-        tail_calls
-        sym_map
-        _module_symtable
-        _de_bruijn_ctx
-        _local_ctx
-        $ relooper graph
-    Symbol {..} -> case Map.lookup unresolvedSymbol sym_map of
-      Just x -> pure $ DList.singleton Wasm.I64Const
-        { i64ConstValue = x + fromIntegral symbolOffset
-        }
-      _
-        | Map.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
-          makeInstructions
-            tail_calls
-            sym_map
-            _module_symtable
-            _de_bruijn_ctx
-            _local_ctx
-            $ barf unresolvedSymbol [I64]
-        | otherwise ->
-          pure $
-            DList.singleton Wasm.I64Const {i64ConstValue = invalidAddress}
-    _ -> throwError $ UnsupportedExpression expr
+        _
+          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` sym_map ->
+            makeInstructions $ barf unresolvedSymbol [I64]
+          | otherwise -> pure $ unitBag Wasm.I64Const
+            { i64ConstValue = invalidAddress
+            }
+    -- Unsupported expressions:
+    UnresolvedGetLocal {} -> throwError $ UnsupportedExpression expr
+    UnresolvedSetLocal {} -> throwError $ UnsupportedExpression expr
+    Barf {} -> throwError $ UnsupportedExpression expr
+
 
 makeInstructionsMaybe ::
-  MonadError MarshalError m =>
-  Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
-  ModuleSymbolTable ->
-  DeBruijnContext ->
-  LocalContext ->
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Maybe Expression ->
-  m (DList.DList Wasm.Instruction)
-makeInstructionsMaybe tail_calls sym_map _module_symtable _de_bruijn_ctx _local_ctx m_expr =
-  case m_expr of
-    Just expr ->
-      makeInstructions
-        tail_calls
-        sym_map
-        _module_symtable
-        _de_bruijn_ctx
-        _local_ctx
-        expr
-    _ -> pure mempty
+  m (Bag Wasm.Instruction)
+makeInstructionsMaybe m_expr = case m_expr of
+  Just expr -> makeInstructions expr
+  _ -> pure emptyBag
 
 makeCodeSection ::
   MonadError MarshalError m =>
   Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
+  SM.SymbolMap Int64 ->
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
@@ -826,20 +713,21 @@ makeCodeSection tail_calls sym_map _mod@Module {..} _module_symtable =
             (I64, c) -> (Wasm.I64, c)
             (F32, c) -> (Wasm.F32, c)
             (F64, c) -> (Wasm.F64, c)
-      _body <-
-        makeInstructions
-          tail_calls
-          sym_map
-          _module_symtable
-          emptyDeBruijnContext
-          _local_ctx
-          body
+      _body <- do
+        let env = MarshalEnv
+              { envAreTailCallsOn = tail_calls,
+                envSymbolMap = sym_map,
+                envModuleSymbolTable = _module_symtable,
+                envDeBruijnContext = emptyDeBruijnContext,
+                envLclContext = _local_ctx
+              }
+        flip runReaderT env $ makeInstructions body
       pure Wasm.Function
         { functionLocals =
             [ Wasm.Locals {localsCount = c, localsType = vt}
               | (vt, c) <- _locals
             ],
-          functionBody = coerce $ DList.toList _body
+          functionBody = coerce $ bagToList _body
         }
 
 makeDataSection ::
@@ -848,14 +736,14 @@ makeDataSection Module {..} _module_symtable = do
   segs <- for memorySegments $ \DataSegment {..} -> pure Wasm.DataSegment
     { memoryIndex = Wasm.MemoryIndex 0,
       memoryOffset = Wasm.Expression {instructions = [Wasm.I32Const offset]},
-      memoryInitialBytes = content
+      memoryInitialBytes = SBS.toShort content
     }
   pure Wasm.DataSection {dataSegments = segs}
 
 makeModule ::
   MonadError MarshalError m =>
   Bool ->
-  Map.Map AsteriusEntitySymbol Int64 ->
+  SM.SymbolMap Int64 ->
   Module ->
   m Wasm.Module
 makeModule tail_calls sym_map m = do

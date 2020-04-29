@@ -22,3 +22,5 @@ package-lock.json
 *.linked.txt
 *.unlinked.bin
 *.wasm-toolkit.txt
+
+/test

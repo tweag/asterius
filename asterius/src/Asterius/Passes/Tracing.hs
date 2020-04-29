@@ -12,11 +12,10 @@ import Asterius.EDSL
   ( convertSInt64ToFloat64,
     convertUInt64ToFloat64,
   )
-import Asterius.Internals
 import Asterius.TypeInfer
 import Asterius.Types
+import Asterius.Types.SymbolMap
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
 import Data.Char
 import Data.Data
   ( Data,
@@ -30,12 +29,12 @@ import Type.Reflection
 {-# INLINEABLE addTracingModule #-}
 addTracingModule ::
   Monad m =>
-  M.Map AsteriusEntitySymbol Int64 ->
-  AsteriusEntitySymbol ->
+  SymbolMap Int64 ->
+  EntitySymbol ->
   Function ->
   m Function
 addTracingModule func_sym_map func_sym func@Function {functionType = func_type}
-  | "__asterius" `BS.isPrefixOf` SBS.fromShort (entityName func_sym) =
+  | "__asterius" `BS.isPrefixOf` entityName func_sym =
     pure func
   | otherwise =
     f func
@@ -121,7 +120,7 @@ addTracingModule func_sym_map func_sym func@Function {functionType = func_type}
                       )
             pure CFG {graph = g {blockMap = new_block_map}}
             where
-              lbl_to_idx = ConstI32 . read . map (chr . fromIntegral) . SBS.unpack
+              lbl_to_idx = ConstI32 . read . map (chr . fromIntegral) . BS.unpack
           SetLocal {..}
             | ((index_int < param_num) && (params !! index_int == I64))
                 || ( (index_int >= param_num)

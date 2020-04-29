@@ -1,5 +1,0 @@
-;;; TOOL: run-interp-spec
-;;; STDIN_FILE: third_party/testsuite/traps.wast
-(;; STDOUT ;;;
-32/32 tests passed.
-;;; STDOUT ;;)

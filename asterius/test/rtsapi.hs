@@ -10,9 +10,9 @@ main = do
       "--input-mjs",
       "test/rtsapi/rtsapi.mjs",
       "--run",
+      "--extra-root-symbol=base_AsteriusziTopHandler_runNonIO_closure",
       "--extra-root-symbol=Main_printInt_closure",
       "--extra-root-symbol=Main_fact_closure",
-      "--extra-root-symbol=base_GHCziBase_id_closure",
-      "--full-sym-table"
+      "--extra-root-symbol=base_GHCziBase_id_closure"
     ]
       <> args

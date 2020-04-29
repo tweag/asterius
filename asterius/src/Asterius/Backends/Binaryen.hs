@@ -1,614 +1,657 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StrictData #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
+-- |
+-- Module      :  Asterius.Backends.Binaryen
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Elaboration of Asterius types into the Binaryen AST (as defined in the
+-- [binaryen package](https://github.com/tweag/binaryen)).
 module Asterius.Backends.Binaryen
-  ( MarshalError(..)
-  , marshalModule
-  , serializeModule
-  , serializeModuleSExpr
-  , setColorsEnabled
-  , isColorsEnabled
-  , c_BinaryenSetDebugInfo
-  , c_BinaryenSetOptimizeLevel
-  , c_BinaryenSetShrinkLevel
-  , c_BinaryenModuleValidate
-  ) where
+  ( MarshalError (..),
+    marshalModule,
+    serializeModule,
+    serializeModuleSExpr,
+    setColorsEnabled,
+  )
+where
 
-import Asterius.Internals
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
-#if defined(BINARYEN)
-import Bindings.Binaryen.Raw
-#endif
+import qualified Binaryen
+import qualified Binaryen.Expression
+import qualified Binaryen.Expression as Binaryen
+import qualified Binaryen.Features as Binaryen
+import qualified Binaryen.Index as Binaryen
+import qualified Binaryen.Module
+import qualified Binaryen.Module as Binaryen
+import qualified Binaryen.Op as Binaryen
+import qualified Binaryen.Relooper
+import qualified Binaryen.Relooper as Binaryen
+import qualified Binaryen.Type
+import qualified Binaryen.Type as Binaryen
 import Control.Exception
 import Control.Monad
 import Control.Monad.Cont
+import Control.Monad.Reader
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
 import qualified Data.ByteString.Unsafe as BS
 import Data.Foldable
+import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Set as Set
 import Data.Traversable
-import Foreign hiding (void, withPool)
+import Foreign hiding
+  ( void,
+    withPool,
+  )
 import Foreign.C
 import GHC.Exts
 import Language.Haskell.GHC.Toolkit.Constants
-import Prelude hiding (IO)
 
-newtype MarshalError =
-  UnsupportedExpression Expression
+newtype MarshalError
+  = UnsupportedExpression Expression
   deriving (Show)
 
 instance Exception MarshalError
-#if defined(BINARYEN)
+
 marshalBool :: Bool -> Int8
-marshalBool flag =
-  if flag
-    then 1
-    else 0
+marshalBool flag = if flag then 1 else 0
 
-marshalValueType :: ValueType -> BinaryenType
-marshalValueType t =
-  case t of
-    I32 -> c_BinaryenTypeInt32
-    I64 -> c_BinaryenTypeInt64
-    F32 -> c_BinaryenTypeFloat32
-    F64 -> c_BinaryenTypeFloat64
+marshalValueType :: ValueType -> Binaryen.Type
+marshalValueType t = case t of
+  I32 -> Binaryen.int32
+  I64 -> Binaryen.int64
+  F32 -> Binaryen.float32
+  F64 -> Binaryen.float64
 
-marshalReturnTypes :: [ValueType] -> IO BinaryenType
-marshalReturnTypes vts =
-  case vts of
-    [] -> pure c_BinaryenTypeNone
-    [vt] -> pure $ marshalValueType vt
-    _ ->
-      fail $
-      "binaryen doesn't support multi-value yet: failed to marshal " <> show vts
+marshalReturnTypes :: [ValueType] -> IO Binaryen.Type
+marshalReturnTypes vts = case vts of
+  [] -> pure Binaryen.none
+  [vt] -> pure $ marshalValueType vt
+  _ ->
+    fail $
+      "binaryen doesn't support multi-value yet: failed to marshal "
+        <> show vts
 
-marshalUnaryOp :: UnaryOp -> BinaryenOp
-marshalUnaryOp op =
-  case op of
-    ClzInt32 -> c_BinaryenClzInt32
-    CtzInt32 -> c_BinaryenCtzInt32
-    PopcntInt32 -> c_BinaryenPopcntInt32
-    NegFloat32 -> c_BinaryenNegFloat32
-    AbsFloat32 -> c_BinaryenAbsFloat32
-    CeilFloat32 -> c_BinaryenCeilFloat32
-    FloorFloat32 -> c_BinaryenFloorFloat32
-    TruncFloat32 -> c_BinaryenTruncFloat32
-    NearestFloat32 -> c_BinaryenNearestFloat32
-    SqrtFloat32 -> c_BinaryenSqrtFloat32
-    EqZInt32 -> c_BinaryenEqZInt32
-    ClzInt64 -> c_BinaryenClzInt64
-    CtzInt64 -> c_BinaryenCtzInt64
-    PopcntInt64 -> c_BinaryenPopcntInt64
-    NegFloat64 -> c_BinaryenNegFloat64
-    AbsFloat64 -> c_BinaryenAbsFloat64
-    CeilFloat64 -> c_BinaryenCeilFloat64
-    FloorFloat64 -> c_BinaryenFloorFloat64
-    TruncFloat64 -> c_BinaryenTruncFloat64
-    NearestFloat64 -> c_BinaryenNearestFloat64
-    SqrtFloat64 -> c_BinaryenSqrtFloat64
-    EqZInt64 -> c_BinaryenEqZInt64
-    ExtendSInt32 -> c_BinaryenExtendSInt32
-    ExtendUInt32 -> c_BinaryenExtendUInt32
-    WrapInt64 -> c_BinaryenWrapInt64
-    TruncSFloat32ToInt32 -> c_BinaryenTruncSFloat32ToInt32
-    TruncSFloat32ToInt64 -> c_BinaryenTruncSFloat32ToInt64
-    TruncUFloat32ToInt32 -> c_BinaryenTruncUFloat32ToInt32
-    TruncUFloat32ToInt64 -> c_BinaryenTruncUFloat32ToInt64
-    TruncSFloat64ToInt32 -> c_BinaryenTruncSFloat64ToInt32
-    TruncSFloat64ToInt64 -> c_BinaryenTruncSFloat64ToInt64
-    TruncUFloat64ToInt32 -> c_BinaryenTruncUFloat64ToInt32
-    TruncUFloat64ToInt64 -> c_BinaryenTruncUFloat64ToInt64
-    ReinterpretFloat32 -> c_BinaryenReinterpretFloat32
-    ReinterpretFloat64 -> c_BinaryenReinterpretFloat64
-    ConvertSInt32ToFloat32 -> c_BinaryenConvertSInt32ToFloat32
-    ConvertSInt32ToFloat64 -> c_BinaryenConvertSInt32ToFloat64
-    ConvertUInt32ToFloat32 -> c_BinaryenConvertUInt32ToFloat32
-    ConvertUInt32ToFloat64 -> c_BinaryenConvertUInt32ToFloat64
-    ConvertSInt64ToFloat32 -> c_BinaryenConvertSInt64ToFloat32
-    ConvertSInt64ToFloat64 -> c_BinaryenConvertSInt64ToFloat64
-    ConvertUInt64ToFloat32 -> c_BinaryenConvertUInt64ToFloat32
-    ConvertUInt64ToFloat64 -> c_BinaryenConvertUInt64ToFloat64
-    PromoteFloat32 -> c_BinaryenPromoteFloat32
-    DemoteFloat64 -> c_BinaryenDemoteFloat64
-    ReinterpretInt32 -> c_BinaryenReinterpretInt32
-    ReinterpretInt64 -> c_BinaryenReinterpretInt64
+marshalUnaryOp :: UnaryOp -> Binaryen.Op
+marshalUnaryOp op = case op of
+  ClzInt32 -> Binaryen.clzInt32
+  CtzInt32 -> Binaryen.ctzInt32
+  PopcntInt32 -> Binaryen.popcntInt32
+  NegFloat32 -> Binaryen.negFloat32
+  AbsFloat32 -> Binaryen.absFloat32
+  CeilFloat32 -> Binaryen.ceilFloat32
+  FloorFloat32 -> Binaryen.floorFloat32
+  TruncFloat32 -> Binaryen.truncFloat32
+  NearestFloat32 -> Binaryen.nearestFloat32
+  SqrtFloat32 -> Binaryen.sqrtFloat32
+  EqZInt32 -> Binaryen.eqZInt32
+  ClzInt64 -> Binaryen.clzInt64
+  CtzInt64 -> Binaryen.ctzInt64
+  PopcntInt64 -> Binaryen.popcntInt64
+  NegFloat64 -> Binaryen.negFloat64
+  AbsFloat64 -> Binaryen.absFloat64
+  CeilFloat64 -> Binaryen.ceilFloat64
+  FloorFloat64 -> Binaryen.floorFloat64
+  TruncFloat64 -> Binaryen.truncFloat64
+  NearestFloat64 -> Binaryen.nearestFloat64
+  SqrtFloat64 -> Binaryen.sqrtFloat64
+  EqZInt64 -> Binaryen.eqZInt64
+  ExtendSInt32 -> Binaryen.extendSInt32
+  ExtendUInt32 -> Binaryen.extendUInt32
+  WrapInt64 -> Binaryen.wrapInt64
+  TruncSFloat32ToInt32 -> Binaryen.truncSFloat32ToInt32
+  TruncSFloat32ToInt64 -> Binaryen.truncSFloat32ToInt64
+  TruncUFloat32ToInt32 -> Binaryen.truncUFloat32ToInt32
+  TruncUFloat32ToInt64 -> Binaryen.truncUFloat32ToInt64
+  TruncSFloat64ToInt32 -> Binaryen.truncSFloat64ToInt32
+  TruncSFloat64ToInt64 -> Binaryen.truncSFloat64ToInt64
+  TruncUFloat64ToInt32 -> Binaryen.truncUFloat64ToInt32
+  TruncUFloat64ToInt64 -> Binaryen.truncUFloat64ToInt64
+  ReinterpretFloat32 -> Binaryen.reinterpretFloat32
+  ReinterpretFloat64 -> Binaryen.reinterpretFloat64
+  ConvertSInt32ToFloat32 -> Binaryen.convertSInt32ToFloat32
+  ConvertSInt32ToFloat64 -> Binaryen.convertSInt32ToFloat64
+  ConvertUInt32ToFloat32 -> Binaryen.convertUInt32ToFloat32
+  ConvertUInt32ToFloat64 -> Binaryen.convertUInt32ToFloat64
+  ConvertSInt64ToFloat32 -> Binaryen.convertSInt64ToFloat32
+  ConvertSInt64ToFloat64 -> Binaryen.convertSInt64ToFloat64
+  ConvertUInt64ToFloat32 -> Binaryen.convertUInt64ToFloat32
+  ConvertUInt64ToFloat64 -> Binaryen.convertUInt64ToFloat64
+  PromoteFloat32 -> Binaryen.promoteFloat32
+  DemoteFloat64 -> Binaryen.demoteFloat64
+  ReinterpretInt32 -> Binaryen.reinterpretInt32
+  ReinterpretInt64 -> Binaryen.reinterpretInt64
 
-marshalBinaryOp :: BinaryOp -> BinaryenOp
-marshalBinaryOp op =
-  case op of
-    AddInt32 -> c_BinaryenAddInt32
-    SubInt32 -> c_BinaryenSubInt32
-    MulInt32 -> c_BinaryenMulInt32
-    DivSInt32 -> c_BinaryenDivSInt32
-    DivUInt32 -> c_BinaryenDivUInt32
-    RemSInt32 -> c_BinaryenRemSInt32
-    RemUInt32 -> c_BinaryenRemUInt32
-    AndInt32 -> c_BinaryenAndInt32
-    OrInt32 -> c_BinaryenOrInt32
-    XorInt32 -> c_BinaryenXorInt32
-    ShlInt32 -> c_BinaryenShlInt32
-    ShrUInt32 -> c_BinaryenShrUInt32
-    ShrSInt32 -> c_BinaryenShrSInt32
-    RotLInt32 -> c_BinaryenRotLInt32
-    RotRInt32 -> c_BinaryenRotRInt32
-    EqInt32 -> c_BinaryenEqInt32
-    NeInt32 -> c_BinaryenNeInt32
-    LtSInt32 -> c_BinaryenLtSInt32
-    LtUInt32 -> c_BinaryenLtUInt32
-    LeSInt32 -> c_BinaryenLeSInt32
-    LeUInt32 -> c_BinaryenLeUInt32
-    GtSInt32 -> c_BinaryenGtSInt32
-    GtUInt32 -> c_BinaryenGtUInt32
-    GeSInt32 -> c_BinaryenGeSInt32
-    GeUInt32 -> c_BinaryenGeUInt32
-    AddInt64 -> c_BinaryenAddInt64
-    SubInt64 -> c_BinaryenSubInt64
-    MulInt64 -> c_BinaryenMulInt64
-    DivSInt64 -> c_BinaryenDivSInt64
-    DivUInt64 -> c_BinaryenDivUInt64
-    RemSInt64 -> c_BinaryenRemSInt64
-    RemUInt64 -> c_BinaryenRemUInt64
-    AndInt64 -> c_BinaryenAndInt64
-    OrInt64 -> c_BinaryenOrInt64
-    XorInt64 -> c_BinaryenXorInt64
-    ShlInt64 -> c_BinaryenShlInt64
-    ShrUInt64 -> c_BinaryenShrUInt64
-    ShrSInt64 -> c_BinaryenShrSInt64
-    RotLInt64 -> c_BinaryenRotLInt64
-    RotRInt64 -> c_BinaryenRotRInt64
-    EqInt64 -> c_BinaryenEqInt64
-    NeInt64 -> c_BinaryenNeInt64
-    LtSInt64 -> c_BinaryenLtSInt64
-    LtUInt64 -> c_BinaryenLtUInt64
-    LeSInt64 -> c_BinaryenLeSInt64
-    LeUInt64 -> c_BinaryenLeUInt64
-    GtSInt64 -> c_BinaryenGtSInt64
-    GtUInt64 -> c_BinaryenGtUInt64
-    GeSInt64 -> c_BinaryenGeSInt64
-    GeUInt64 -> c_BinaryenGeUInt64
-    AddFloat32 -> c_BinaryenAddFloat32
-    SubFloat32 -> c_BinaryenSubFloat32
-    MulFloat32 -> c_BinaryenMulFloat32
-    DivFloat32 -> c_BinaryenDivFloat32
-    CopySignFloat32 -> c_BinaryenCopySignFloat32
-    MinFloat32 -> c_BinaryenMinFloat32
-    MaxFloat32 -> c_BinaryenMaxFloat32
-    EqFloat32 -> c_BinaryenEqFloat32
-    NeFloat32 -> c_BinaryenNeFloat32
-    LtFloat32 -> c_BinaryenLtFloat32
-    LeFloat32 -> c_BinaryenLeFloat32
-    GtFloat32 -> c_BinaryenGtFloat32
-    GeFloat32 -> c_BinaryenGeFloat32
-    AddFloat64 -> c_BinaryenAddFloat64
-    SubFloat64 -> c_BinaryenSubFloat64
-    MulFloat64 -> c_BinaryenMulFloat64
-    DivFloat64 -> c_BinaryenDivFloat64
-    CopySignFloat64 -> c_BinaryenCopySignFloat64
-    MinFloat64 -> c_BinaryenMinFloat64
-    MaxFloat64 -> c_BinaryenMaxFloat64
-    EqFloat64 -> c_BinaryenEqFloat64
-    NeFloat64 -> c_BinaryenNeFloat64
-    LtFloat64 -> c_BinaryenLtFloat64
-    LeFloat64 -> c_BinaryenLeFloat64
-    GtFloat64 -> c_BinaryenGtFloat64
-    GeFloat64 -> c_BinaryenGeFloat64
+marshalBinaryOp :: BinaryOp -> Binaryen.Op
+marshalBinaryOp op = case op of
+  AddInt32 -> Binaryen.addInt32
+  SubInt32 -> Binaryen.subInt32
+  MulInt32 -> Binaryen.mulInt32
+  DivSInt32 -> Binaryen.divSInt32
+  DivUInt32 -> Binaryen.divUInt32
+  RemSInt32 -> Binaryen.remSInt32
+  RemUInt32 -> Binaryen.remUInt32
+  AndInt32 -> Binaryen.andInt32
+  OrInt32 -> Binaryen.orInt32
+  XorInt32 -> Binaryen.xorInt32
+  ShlInt32 -> Binaryen.shlInt32
+  ShrUInt32 -> Binaryen.shrUInt32
+  ShrSInt32 -> Binaryen.shrSInt32
+  RotLInt32 -> Binaryen.rotLInt32
+  RotRInt32 -> Binaryen.rotRInt32
+  EqInt32 -> Binaryen.eqInt32
+  NeInt32 -> Binaryen.neInt32
+  LtSInt32 -> Binaryen.ltSInt32
+  LtUInt32 -> Binaryen.ltUInt32
+  LeSInt32 -> Binaryen.leSInt32
+  LeUInt32 -> Binaryen.leUInt32
+  GtSInt32 -> Binaryen.gtSInt32
+  GtUInt32 -> Binaryen.gtUInt32
+  GeSInt32 -> Binaryen.geSInt32
+  GeUInt32 -> Binaryen.geUInt32
+  AddInt64 -> Binaryen.addInt64
+  SubInt64 -> Binaryen.subInt64
+  MulInt64 -> Binaryen.mulInt64
+  DivSInt64 -> Binaryen.divSInt64
+  DivUInt64 -> Binaryen.divUInt64
+  RemSInt64 -> Binaryen.remSInt64
+  RemUInt64 -> Binaryen.remUInt64
+  AndInt64 -> Binaryen.andInt64
+  OrInt64 -> Binaryen.orInt64
+  XorInt64 -> Binaryen.xorInt64
+  ShlInt64 -> Binaryen.shlInt64
+  ShrUInt64 -> Binaryen.shrUInt64
+  ShrSInt64 -> Binaryen.shrSInt64
+  RotLInt64 -> Binaryen.rotLInt64
+  RotRInt64 -> Binaryen.rotRInt64
+  EqInt64 -> Binaryen.eqInt64
+  NeInt64 -> Binaryen.neInt64
+  LtSInt64 -> Binaryen.ltSInt64
+  LtUInt64 -> Binaryen.ltUInt64
+  LeSInt64 -> Binaryen.leSInt64
+  LeUInt64 -> Binaryen.leUInt64
+  GtSInt64 -> Binaryen.gtSInt64
+  GtUInt64 -> Binaryen.gtUInt64
+  GeSInt64 -> Binaryen.geSInt64
+  GeUInt64 -> Binaryen.geUInt64
+  AddFloat32 -> Binaryen.addFloat32
+  SubFloat32 -> Binaryen.subFloat32
+  MulFloat32 -> Binaryen.mulFloat32
+  DivFloat32 -> Binaryen.divFloat32
+  CopySignFloat32 -> Binaryen.copySignFloat32
+  MinFloat32 -> Binaryen.minFloat32
+  MaxFloat32 -> Binaryen.maxFloat32
+  EqFloat32 -> Binaryen.eqFloat32
+  NeFloat32 -> Binaryen.neFloat32
+  LtFloat32 -> Binaryen.ltFloat32
+  LeFloat32 -> Binaryen.leFloat32
+  GtFloat32 -> Binaryen.gtFloat32
+  GeFloat32 -> Binaryen.geFloat32
+  AddFloat64 -> Binaryen.addFloat64
+  SubFloat64 -> Binaryen.subFloat64
+  MulFloat64 -> Binaryen.mulFloat64
+  DivFloat64 -> Binaryen.divFloat64
+  CopySignFloat64 -> Binaryen.copySignFloat64
+  MinFloat64 -> Binaryen.minFloat64
+  MaxFloat64 -> Binaryen.maxFloat64
+  EqFloat64 -> Binaryen.eqFloat64
+  NeFloat64 -> Binaryen.neFloat64
+  LtFloat64 -> Binaryen.ltFloat64
+  LeFloat64 -> Binaryen.leFloat64
+  GtFloat64 -> Binaryen.gtFloat64
+  GeFloat64 -> Binaryen.geFloat64
 
-marshalHostOp :: HostOp -> BinaryenOp
-marshalHostOp op =
-  case op of
-    CurrentMemory -> c_BinaryenMemorySize
-    GrowMemory -> c_BinaryenMemoryGrow
+marshalFunctionType :: FunctionType -> IO (Binaryen.Type, Binaryen.Type)
+marshalFunctionType FunctionType {..} = flip runContT pure $ do
+  (pts, ptl) <- marshalV $ map marshalValueType paramTypes
+  (rts, rtl) <- marshalV $ map marshalValueType returnTypes
+  lift $ do
+    pt <- Binaryen.Type.create pts (fromIntegral ptl)
+    rt <- Binaryen.Type.create rts (fromIntegral rtl)
+    pure (pt, rt)
 
-marshalFunctionType ::
-     BinaryenModuleRef
-  -> SBS.ShortByteString
-  -> FunctionType
-  -> IO BinaryenFunctionTypeRef
-marshalFunctionType m k FunctionType {..} =
-  flip runContT pure $ do
-    (pts, ptl) <- marshalV $ map marshalValueType paramTypes
-    rts <- lift $ marshalReturnTypes returnTypes
-    np <- marshalSBS k
-    lift $ c_BinaryenAddFunctionType m np rts pts (fromIntegral ptl)
+-- | Environment used during marshaling of Asterius' types to Binaryen.
+data MarshalEnv
+  = MarshalEnv
+      { -- | Whether the tail call extension is on.
+        envAreTailCallsOn :: Bool,
+        -- | The symbol map for the current module.
+        envSymbolMap :: SM.SymbolMap Int64,
+        -- | The current module reference.
+        envModuleRef :: Binaryen.Module
+      }
 
-marshalExpression ::
-     M.Map AsteriusEntitySymbol Int64
-  -> BinaryenModuleRef
-  -> Expression
-  -> IO BinaryenExpressionRef
-marshalExpression sym_map m e =
-  flip runContT pure $
-  case e of
-    Block {..} -> do
-      bs <- lift $ forM bodys $ marshalExpression sym_map m
+type CodeGen a = ReaderT MarshalEnv IO a
+
+-- | Check whether the tail call extension is on.
+areTailCallsOn :: CodeGen Bool
+areTailCallsOn = reader envAreTailCallsOn
+
+-- | Retrieve the symbol map from the local environment.
+askSymbolMap :: CodeGen (SM.SymbolMap Int64)
+askSymbolMap = reader envSymbolMap
+
+-- | Retrieve the reference to the current module.
+askModuleRef :: CodeGen Binaryen.Module
+askModuleRef = reader envModuleRef
+
+marshalExpression :: Expression -> CodeGen Binaryen.Expression
+marshalExpression e = case e of
+  Block {..} -> do
+    env <- ask
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      bs <- lift $ flip runReaderT env $ forM bodys marshalExpression
       (bsp, bl) <- marshalV bs
-      np <- marshalSBS name
+      np <- marshalBS name
       rts <- lift $ marshalReturnTypes blockReturnTypes
-      lift $ c_BinaryenBlock m np bsp (fromIntegral bl) rts
-    If {..} ->
-      lift $ do
-        c <- marshalExpression sym_map m condition
-        t <- marshalExpression sym_map m ifTrue
-        f <- marshalMaybeExpression sym_map m ifFalse
-        c_BinaryenIf m c t f
-    Loop {..} -> do
-      b <- lift $ marshalExpression sym_map m body
-      np <- marshalSBS name
-      lift $ c_BinaryenLoop m np b
-    Break {..} -> do
-      c <- lift $ marshalMaybeExpression sym_map m breakCondition
-      np <- marshalSBS name
-      lift $ c_BinaryenBreak m np c nullPtr
-    Switch {..} -> do
-      c <- lift $ marshalExpression sym_map m condition
-      ns <- forM names marshalSBS
+      lift $ Binaryen.block m np bsp (fromIntegral bl) rts
+  If {..} -> do
+    c <- marshalExpression condition
+    t <- marshalExpression ifTrue
+    f <- marshalMaybeExpression ifFalse
+    m <- askModuleRef
+    lift $ Binaryen.if_ m c t f
+  Loop {..} -> do
+    b <- marshalExpression body
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      np <- marshalBS name
+      lift $ Binaryen.loop m np b
+  Break {..} -> do
+    c <- marshalMaybeExpression breakCondition
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      np <- marshalBS name
+      lift $ Binaryen.break m np c (coerce nullPtr)
+  Switch {..} -> do
+    c <- marshalExpression condition
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
+      ns <- forM names marshalBS
       (nsp, nl) <- marshalV ns
-      dn <- marshalSBS defaultName
-      lift $ c_BinaryenSwitch m nsp (fromIntegral nl) dn c nullPtr
-    Call {..}
-      | M.member target sym_map -> do
-        os <-
-          lift $
-          forM
-            (if target == "barf"
-               then [ case operands of
-                        [] -> ConstI64 0
-                        x:_ -> x
-                    ]
-               else operands) $
-          marshalExpression sym_map m
-        (ops, osl) <- marshalV os
-        tp <- marshalSBS (entityName target)
-        rts <- lift $ marshalReturnTypes callReturnTypes
-        lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
-      | M.member ("__asterius_barf_" <> target) sym_map ->
-        lift $ marshalExpression sym_map m $ barf target callReturnTypes
-      | otherwise -> lift $ c_BinaryenUnreachable m
-    CallImport {..} -> do
-      os <- lift $ forM operands $ marshalExpression sym_map m
+      dn <- marshalBS defaultName
+      lift $ Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
+  Call {..} -> do
+    sym_map <- askSymbolMap
+    if  | target `SM.member` sym_map ->
+          do
+            os <-
+              mapM
+                marshalExpression
+                ( if target == "barf"
+                    then
+                      [ case operands of
+                          [] -> ConstI64 0
+                          x : _ -> x
+                      ]
+                    else operands
+                )
+            m <- askModuleRef
+            lift $ flip runContT pure $ do
+              (ops, osl) <- marshalV os
+              tp <- marshalBS (entityName target)
+              rts <- lift $ marshalReturnTypes callReturnTypes
+              lift $ Binaryen.call m tp ops (fromIntegral osl) rts
+        | ("__asterius_barf_" <> target) `SM.member` sym_map ->
+          marshalExpression $ barf target callReturnTypes
+        | otherwise -> do
+          m <- askModuleRef
+          lift $ Binaryen.Expression.unreachable m
+  CallImport {..} -> do
+    os <- forM operands marshalExpression
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
       (ops, osl) <- marshalV os
-      tp <- marshalSBS target'
+      tp <- marshalBS target'
       rts <- lift $ marshalReturnTypes callImportReturnTypes
-      lift $ c_BinaryenCall m tp ops (fromIntegral osl) rts
-    CallIndirect {..} -> do
-      t <- lift $ marshalExpression sym_map m indirectTarget
-      os <- lift $ forM operands $ marshalExpression sym_map m
+      lift $ Binaryen.call m tp ops (fromIntegral osl) rts
+  CallIndirect {..} -> do
+    t <- marshalExpression indirectTarget
+    os <- forM operands marshalExpression
+    m <- askModuleRef
+    lift $ flip runContT pure $ do
       (ops, osl) <- marshalV os
-      tp <- marshalSBS $ showSBS functionType
-      lift $ c_BinaryenCallIndirect m t ops (fromIntegral osl) tp
-    GetLocal {..} ->
-      lift $ c_BinaryenLocalGet m index $ marshalValueType valueType
-    SetLocal {..} ->
       lift $ do
-        v <- marshalExpression sym_map m value
-        c_BinaryenLocalSet m index v
-    Load {..} ->
-      lift $ do
-        p <- marshalExpression sym_map m ptr
-        c_BinaryenLoad
-          m
-          bytes
-          (marshalBool signed)
-          offset
-          1
-          (marshalValueType valueType)
-          p
-    Store {..} ->
-      lift $ do
-        p <- marshalExpression sym_map m ptr
-        v <- marshalExpression sym_map m value
-        c_BinaryenStore m bytes offset 1 p v (marshalValueType valueType)
-    ConstI32 x -> lift $ c_BinaryenConstInt32 m x
-    ConstI64 x -> lift $ c_BinaryenConstInt64 m x
-    ConstF32 x -> lift $ c_BinaryenConstFloat32 m x
-    ConstF64 x -> lift $ c_BinaryenConstFloat64 m x
-    Unary {..} ->
-      lift $ do
-        x <- marshalExpression sym_map m operand0
-        c_BinaryenUnary m (marshalUnaryOp unaryOp) x
-    Binary {..} ->
-      lift $ do
-        x <- marshalExpression sym_map m operand0
-        y <- marshalExpression sym_map m operand1
-        c_BinaryenBinary m (marshalBinaryOp binaryOp) x y
-    ReturnCall {..} ->
-      case M.lookup returnCallTarget64 sym_map of
+        (pt, rt) <- marshalFunctionType functionType
+        Binaryen.callIndirect m t ops (fromIntegral osl) pt rt
+  GetLocal {..} -> do
+    m <- askModuleRef
+    lift $ Binaryen.localGet m (coerce index) $ marshalValueType valueType
+  SetLocal {..} -> do
+    v <- marshalExpression value
+    m <- askModuleRef
+    lift $ Binaryen.localSet m (coerce index) v
+  TeeLocal {..} -> do
+    v <- marshalExpression value
+    m <- askModuleRef
+    lift $ Binaryen.localTee m (coerce index) v $ marshalValueType valueType
+  Load {..} -> do
+    p <- marshalExpression ptr
+    m <- askModuleRef
+    lift $
+      Binaryen.load
+        m
+        bytes
+        (marshalBool signed)
+        offset
+        1
+        (marshalValueType valueType)
+        p
+  Store {..} -> do
+    p <- marshalExpression ptr
+    v <- marshalExpression value
+    m <- askModuleRef
+    lift $ Binaryen.store m bytes offset 1 p v (marshalValueType valueType)
+  ConstI32 x -> do
+    m <- askModuleRef
+    lift $ Binaryen.constInt32 m x
+  ConstI64 x -> do
+    m <- askModuleRef
+    lift $ Binaryen.constInt64 m x
+  ConstF32 x -> do
+    m <- askModuleRef
+    lift $ Binaryen.constFloat32 m x
+  ConstF64 x -> do
+    m <- askModuleRef
+    lift $ Binaryen.constFloat64 m x
+  Unary {..} -> do
+    x <- marshalExpression operand0
+    m <- askModuleRef
+    lift $ Binaryen.unary m (marshalUnaryOp unaryOp) x
+  Binary {..} -> do
+    x <- marshalExpression operand0
+    y <- marshalExpression operand1
+    m <- askModuleRef
+    lift $ Binaryen.binary m (marshalBinaryOp binaryOp) x y
+  Drop {..} -> do
+    x <- marshalExpression dropValue
+    m <- askModuleRef
+    lift $ Binaryen.drop m x
+  ReturnCall {..} -> areTailCallsOn >>= \case
+    -- Case 1: Tail calls are on
+    True -> do
+      m <- askModuleRef
+      lift $ flip runContT pure $ do
+        dst <- marshalBS (entityName returnCallTarget64)
+        lift $ Binaryen.returnCall m dst nullPtr 0 Binaryen.none
+    -- Case 2: Tail calls are off
+    False -> do
+      sym_map <- askSymbolMap
+      case SM.lookup returnCallTarget64 sym_map of
         Just t -> do
           s <-
-            lift $
             marshalExpression
-              sym_map
-              m
               Store
-                { bytes = 8
-                , offset = 0
-                , ptr =
-                    ConstI32 $
-                    fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-                , value = ConstI64 t
-                , valueType = I64
+                { bytes = 8,
+                  offset = 0,
+                  ptr =
+                    ConstI32
+                      $ fromIntegral
+                      $ (sym_map SM.! "__asterius_pc")
+                        .&. 0xFFFFFFFF,
+                  value = ConstI64 t,
+                  valueType = I64
                 }
-          r <- lift $ c_BinaryenReturn m nullPtr
-          (arr, _) <- marshalV [s, r]
-          lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
-        _
-          | M.member returnCallTarget64 sym_map ->
-            lift $ marshalExpression sym_map m $ barf returnCallTarget64 []
-          | otherwise -> lift $ c_BinaryenUnreachable m
-    ReturnCallIndirect {..} -> do
-      s <-
-        lift $
+          m <- askModuleRef
+          lift $ flip runContT pure $ do
+            r <- lift $ Binaryen.return m (coerce nullPtr)
+            (arr, _) <- marshalV [s, r]
+            lift $ Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
+        Nothing -> marshalExpression $ barf returnCallTarget64 []
+  ReturnCallIndirect {..} -> areTailCallsOn >>= \case
+    -- Case 1: Tail calls are on
+    True -> do
+      t <-
         marshalExpression
-          sym_map
+          Unary {unaryOp = WrapInt64, operand0 = returnCallIndirectTarget64}
+      m <- askModuleRef
+      lift $
+        Binaryen.returnCallIndirect
           m
+          t
+          nullPtr
+          0
+          Binaryen.none
+          Binaryen.none
+    -- Case 2: Tail calls are off
+    False -> do
+      sym_map <- askSymbolMap
+      s <-
+        marshalExpression
           Store
-            { bytes = 8
-            , offset = 0
-            , ptr =
-                ConstI32 $
-                fromIntegral $ (sym_map ! "__asterius_pc") .&. 0xFFFFFFFF
-            , value = returnCallIndirectTarget64
-            , valueType = I64
+            { bytes = 8,
+              offset = 0,
+              ptr =
+                ConstI32
+                  $ fromIntegral
+                  $ (sym_map SM.! "__asterius_pc")
+                    .&. 0xFFFFFFFF,
+              value = returnCallIndirectTarget64,
+              valueType = I64
             }
-      r <- lift $ c_BinaryenReturn m nullPtr
-      (arr, _) <- marshalV [s, r]
-      lift $ c_BinaryenBlock m nullPtr arr 2 c_BinaryenTypeNone
-    Host {..} -> do
-      xs <- lift $ forM operands $ marshalExpression sym_map m
-      (es, en) <- marshalV xs
-      lift $
-        c_BinaryenHost m (marshalHostOp hostOp) nullPtr es (fromIntegral en)
-    Nop -> lift $ c_BinaryenNop m
-    Unreachable -> lift $ c_BinaryenUnreachable m
-    CFG {..} -> lift $ relooperRun sym_map m graph
-    Symbol {..} ->
-      lift $
-      case M.lookup unresolvedSymbol sym_map of
-        Just x -> c_BinaryenConstInt64 m $ x + fromIntegral symbolOffset
-        _
-          | M.member ("__asterius_barf_" <> unresolvedSymbol) sym_map ->
-            marshalExpression sym_map m $ barf unresolvedSymbol [I64]
-          | otherwise -> c_BinaryenConstInt64 m invalidAddress
-    _ -> lift $ throwIO $ UnsupportedExpression e
+      m <- askModuleRef
+      lift $ flip runContT pure $ do
+        r <- lift $ Binaryen.return m (coerce nullPtr)
+        (arr, _) <- marshalV [s, r]
+        lift $ Binaryen.block m nullPtr arr 2 Binaryen.none
+  Nop -> do
+    m <- askModuleRef
+    lift $ Binaryen.nop m
+  Unreachable -> do
+    m <- askModuleRef
+    lift $ Binaryen.Expression.unreachable m
+  CFG {..} -> relooperRun graph
+  Symbol {..} -> do
+    sym_map <- askSymbolMap
+    m <- askModuleRef
+    case SM.lookup unresolvedSymbol sym_map of
+      Just x -> lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
+      _
+        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` sym_map ->
+          marshalExpression $ barf unresolvedSymbol [I64]
+        | otherwise ->
+          lift $ Binaryen.constInt64 m invalidAddress
+  -- Unsupported expressions
+  UnresolvedGetLocal {} -> lift $ throwIO $ UnsupportedExpression e
+  UnresolvedSetLocal {} -> lift $ throwIO $ UnsupportedExpression e
+  Barf {} -> lift $ throwIO $ UnsupportedExpression e
 
-marshalMaybeExpression ::
-     M.Map AsteriusEntitySymbol Int64
-  -> BinaryenModuleRef
-  -> Maybe Expression
-  -> IO BinaryenExpressionRef
-marshalMaybeExpression sym_map m x =
-  case x of
-    Just e -> marshalExpression sym_map m e
-    _ -> pure nullPtr
+marshalMaybeExpression :: Maybe Expression -> CodeGen Binaryen.Expression
+marshalMaybeExpression x = case x of
+  Just e -> marshalExpression e
+  _ -> pure (coerce nullPtr)
 
 marshalFunction ::
-     M.Map AsteriusEntitySymbol Int64
-  -> BinaryenModuleRef
-  -> SBS.ShortByteString
-  -> BinaryenFunctionTypeRef
-  -> Function
-  -> IO BinaryenFunctionRef
-marshalFunction sym_map m k ft Function {..} =
-  flip runContT pure $ do
-    b <- lift $ marshalExpression sym_map m body
+  BS.ByteString ->
+  (Binaryen.Type, Binaryen.Type) ->
+  Function ->
+  CodeGen Binaryen.Function
+marshalFunction k (pt, rt) Function {..} = do
+  env <- ask
+  m <- askModuleRef
+  lift $ flip runContT pure $ do
+    b <- lift $ flip runReaderT env $ marshalExpression body
     (vtp, vtl) <- marshalV $ map marshalValueType varTypes
-    np <- marshalSBS k
-    lift $ c_BinaryenAddFunction m np ft vtp (fromIntegral vtl) b
+    np <- marshalBS k
+    lift $ Binaryen.addFunction m np pt rt vtp (fromIntegral vtl) b
 
 marshalFunctionImport ::
-     BinaryenModuleRef -> BinaryenFunctionTypeRef -> FunctionImport -> IO ()
-marshalFunctionImport m ft FunctionImport {..} =
-  flip runContT pure $ do
-    inp <- marshalSBS internalName
-    emp <- marshalSBS externalModuleName
-    ebp <- marshalSBS externalBaseName
-    lift $ c_BinaryenAddFunctionImport m inp emp ebp ft
+  Binaryen.Module ->
+  (Binaryen.Type, Binaryen.Type) ->
+  FunctionImport ->
+  IO ()
+marshalFunctionImport m (pt, rt) FunctionImport {..} = flip runContT pure $ do
+  inp <- marshalBS internalName
+  emp <- marshalBS externalModuleName
+  ebp <- marshalBS externalBaseName
+  lift $ Binaryen.addFunctionImport m inp emp ebp pt rt
 
 marshalFunctionExport ::
-     BinaryenModuleRef -> FunctionExport -> IO BinaryenExportRef
-marshalFunctionExport m FunctionExport {..} =
-  flip runContT pure $ do
-    inp <- marshalSBS internalName
-    enp <- marshalSBS externalName
-    lift $ c_BinaryenAddFunctionExport m inp enp
+  Binaryen.Module -> FunctionExport -> IO Binaryen.Export
+marshalFunctionExport m FunctionExport {..} = flip runContT pure $ do
+  inp <- marshalBS internalName
+  enp <- marshalBS externalName
+  lift $ Binaryen.addFunctionExport m inp enp
 
-marshalFunctionTable :: BinaryenModuleRef -> Int -> FunctionTable -> IO ()
-marshalFunctionTable m tbl_slots FunctionTable {..} =
-  flip runContT pure $ do
-    func_name_ptrs <- for tableFunctionNames marshalSBS
-    (fnp, fnl) <- marshalV func_name_ptrs
-    lift $
-      c_BinaryenSetFunctionTableWithOffset
-        m
-        (fromIntegral tbl_slots)
-        (-1)
-        tableOffset
-        fnp
-        (fromIntegral fnl)
+marshalFunctionTable :: Binaryen.Module -> Int -> FunctionTable -> IO ()
+marshalFunctionTable m tbl_slots FunctionTable {..} = flip runContT pure $ do
+  func_name_ptrs <- for tableFunctionNames marshalBS
+  (fnp, fnl) <- marshalV func_name_ptrs
+  lift $ do
+    o <- Binaryen.constInt32 m (fromIntegral tableOffset)
+    Binaryen.setFunctionTable
+      m
+      (fromIntegral tbl_slots)
+      (-1)
+      fnp
+      (fromIntegral fnl)
+      o
 
-marshalMemorySegments ::
-     M.Map AsteriusEntitySymbol Int64
-  -> BinaryenModuleRef
-  -> Int
-  -> [DataSegment]
-  -> IO ()
-marshalMemorySegments sym_map m mbs segs =
+marshalMemorySegments :: Int -> [DataSegment] -> CodeGen ()
+marshalMemorySegments mbs segs = do
+  env <- ask
+  m <- askModuleRef
   let segs_len = length segs
-   in flip runContT pure $ do
-        (seg_bufs, _) <- marshalV =<< for segs (marshalSBS . content)
-        (seg_passives, _) <- marshalV $ replicate segs_len 0
-        (seg_offsets, _) <-
-          marshalV =<<
-          for
-            segs
-            (\DataSegment {..} ->
-               lift $ marshalExpression sym_map m $ ConstI32 offset)
-        (seg_sizes, _) <-
-          marshalV $ map (fromIntegral . SBS.length . content) segs
-        lift $
-          c_BinaryenSetMemory
-            m
-            (fromIntegral $ mbs * (mblock_size `quot` 65536))
-            (-1)
-            nullPtr
-            seg_bufs
-            seg_passives
-            seg_offsets
-            seg_sizes
-            (fromIntegral segs_len)
-            0
+  lift $ flip runContT pure $ do
+    (seg_bufs, _) <- marshalV =<< for segs (marshalBS . content)
+    (seg_passives, _) <- marshalV $ replicate segs_len 0
+    (seg_offsets, _) <-
+      marshalV
+        =<< for
+          segs
+          ( \DataSegment {..} ->
+              lift $ flip runReaderT env $ marshalExpression $ ConstI32 offset
+          )
+    (seg_sizes, _) <-
+      marshalV $
+        map (fromIntegral . BS.length . content) segs
+    lift $
+      Binaryen.setMemory
+        m
+        (fromIntegral $ mbs * (mblock_size `quot` 65536))
+        (-1)
+        nullPtr
+        seg_bufs
+        seg_passives
+        seg_offsets
+        seg_sizes
+        (fromIntegral segs_len)
+        0
 
-marshalTableImport :: BinaryenModuleRef -> TableImport -> IO ()
-marshalTableImport m TableImport {..} =
-  flip runContT pure $ do
-    inp <- marshalSBS "0"
-    emp <- marshalSBS externalModuleName
-    ebp <- marshalSBS externalBaseName
-    lift $ c_BinaryenAddTableImport m inp emp ebp
+marshalTableImport :: Binaryen.Module -> TableImport -> IO ()
+marshalTableImport m TableImport {..} = flip runContT pure $ do
+  inp <- marshalBS "0"
+  emp <- marshalBS externalModuleName
+  ebp <- marshalBS externalBaseName
+  lift $ Binaryen.addTableImport m inp emp ebp
 
-marshalMemoryImport :: BinaryenModuleRef -> MemoryImport -> IO ()
-marshalMemoryImport m MemoryImport {..} =
-  flip runContT pure $ do
-    inp <- marshalSBS "0"
-    emp <- marshalSBS externalModuleName
-    ebp <- marshalSBS externalBaseName
-    lift $ c_BinaryenAddMemoryImport m inp emp ebp 0
-
-marshalTableExport :: BinaryenModuleRef -> TableExport -> IO BinaryenExportRef
-marshalTableExport m TableExport {..} =
-  flip runContT pure $ do
-    inp <- marshalSBS "0"
-    enp <- marshalSBS externalName
-    lift $ c_BinaryenAddTableExport m inp enp
-
-marshalMemoryExport :: BinaryenModuleRef -> MemoryExport -> IO BinaryenExportRef
-marshalMemoryExport m MemoryExport {..} =
-  flip runContT pure $ do
-    inp <- marshalSBS "0"
-    enp <- marshalSBS externalName
-    lift $ c_BinaryenAddMemoryExport m inp enp
+marshalMemoryImport :: Binaryen.Module -> MemoryImport -> IO ()
+marshalMemoryImport m MemoryImport {..} = flip runContT pure $ do
+  inp <- marshalBS "0"
+  emp <- marshalBS externalModuleName
+  ebp <- marshalBS externalBaseName
+  lift $ Binaryen.addMemoryImport m inp emp ebp 0
 
 marshalModule ::
-     M.Map AsteriusEntitySymbol Int64 -> Module -> IO BinaryenModuleRef
-marshalModule sym_map hs_mod@Module {..} = do
+  Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
+marshalModule tail_calls sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
-  m <- c_BinaryenModuleCreate
-  ftps <-
-    fmap M.fromList $
-    for (Set.toList fts) $ \ft -> do
-      ftp <- marshalFunctionType m (showSBS ft) ft
-      pure (ft, ftp)
+  m <- Binaryen.Module.create
+  Binaryen.setFeatures m
+    $ foldl1' (.|.)
+    $ [Binaryen.tailCall | tail_calls]
+      <> [Binaryen.mvp]
+  ftps <- fmap M.fromList $ for (Set.toList fts) $ \ft -> do
+    ftp <- marshalFunctionType ft
+    pure (ft, ftp)
+  let env =
+        MarshalEnv
+          { envAreTailCallsOn = tail_calls,
+            envSymbolMap = sym_map,
+            envModuleRef = m
+          }
   for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
-    marshalFunction sym_map m k (ftps ! functionType) f
+    flip runReaderT env $ marshalFunction k (ftps M.! functionType) f
   forM_ functionImports $ \fi@FunctionImport {..} ->
-    marshalFunctionImport m (ftps ! functionType) fi
+    marshalFunctionImport m (ftps M.! functionType) fi
   forM_ functionExports $ marshalFunctionExport m
   marshalFunctionTable m tableSlots functionTable
   marshalTableImport m tableImport
-  void $ marshalTableExport m tableExport
-  marshalMemorySegments sym_map m memoryMBlocks memorySegments
+  flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments
   marshalMemoryImport m memoryImport
-  void $ marshalMemoryExport m memoryExport
+  flip runContT pure $ do
+    lim_segs <- marshalBS "limit-segments"
+    (lim_segs_p, _) <- marshalV [lim_segs]
+    lift $ Binaryen.Module.runPasses m lim_segs_p 1
   pure m
 
-relooperAddBlock ::
-     M.Map AsteriusEntitySymbol Int64
-  -> BinaryenModuleRef
-  -> RelooperRef
-  -> RelooperAddBlock
-  -> IO RelooperBlockRef
-relooperAddBlock sym_map m r ab =
-  case ab of
-    AddBlock {..} -> do
-      c <- marshalExpression sym_map m code
-      c_RelooperAddBlock r c
-    AddBlockWithSwitch {..} -> do
-      _code <- marshalExpression sym_map m code
-      _cond <- marshalExpression sym_map m condition
-      c_RelooperAddBlockWithSwitch r _code _cond
+relooperAddBlock :: Binaryen.Relooper -> RelooperAddBlock -> CodeGen Binaryen.RelooperBlock
+relooperAddBlock r ab = case ab of
+  AddBlock {..} -> do
+    c <- marshalExpression code
+    lift $ Binaryen.addBlock r c
+  AddBlockWithSwitch {..} -> do
+    _code <- marshalExpression code
+    _cond <- marshalExpression condition
+    lift $ Binaryen.addBlockWithSwitch r _code _cond
 
 relooperAddBranch ::
-     M.Map AsteriusEntitySymbol Int64
-  -> BinaryenModuleRef
-  -> M.Map SBS.ShortByteString RelooperBlockRef
-  -> SBS.ShortByteString
-  -> RelooperAddBranch
-  -> IO ()
-relooperAddBranch sym_map m bm k ab =
-  case ab of
-    AddBranch {..} -> do
-      _cond <- marshalMaybeExpression sym_map m addBranchCondition
-      c_RelooperAddBranch (bm ! k) (bm ! to) _cond nullPtr
-    AddBranchForSwitch {..} ->
-      flip runContT pure $ do
-        (idp, idn) <- marshalV indexes
-        lift $
-          c_RelooperAddBranchForSwitch
-            (bm ! k)
-            (bm ! to)
-            idp
-            (fromIntegral idn)
-            nullPtr
+  M.Map BS.ByteString Binaryen.RelooperBlock ->
+  BS.ByteString ->
+  RelooperAddBranch ->
+  CodeGen ()
+relooperAddBranch bm k ab = case ab of
+  AddBranch {..} -> do
+    _cond <- marshalMaybeExpression addBranchCondition
+    lift $ Binaryen.addBranch (bm M.! k) (bm M.! to) _cond (coerce nullPtr)
+  AddBranchForSwitch {..} -> lift $ flip runContT pure $ do
+    (idp, idn) <- marshalV indexes
+    lift $
+      Binaryen.addBranchForSwitch
+        (bm M.! k)
+        (bm M.! to)
+        (coerce idp)
+        (fromIntegral idn)
+        (coerce nullPtr)
 
-relooperRun ::
-     M.Map AsteriusEntitySymbol Int64
-  -> BinaryenModuleRef
-  -> RelooperRun
-  -> IO BinaryenExpressionRef
-relooperRun sym_map m RelooperRun {..} = do
-  r <- c_RelooperCreate m
-  bpm <-
-    fmap fromList $
-    for (M.toList blockMap) $ \(k, RelooperBlock {..}) -> do
-      bp <- relooperAddBlock sym_map m r addBlock
+relooperRun :: RelooperRun -> CodeGen Binaryen.Expression
+relooperRun RelooperRun {..} = do
+  m <- askModuleRef
+  r <- lift $ Binaryen.Relooper.create m
+  bpm <- fmap fromList $ for (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
+    do
+      bp <- relooperAddBlock r addBlock
       pure (k, bp)
   for_ (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
-    forM_ addBranches $ relooperAddBranch sym_map m bpm k
-  c_RelooperRenderAndDispose r (bpm ! entry) labelHelper
+    forM_ addBranches $ relooperAddBranch bpm k
+  lift $ Binaryen.renderAndDispose r (bpm M.! entry) (coerce labelHelper)
 
-serializeModule :: BinaryenModuleRef -> IO BS.ByteString
-serializeModule m =
-  alloca $ \(buf_p :: Ptr (Ptr ())) ->
-    alloca $ \(len_p :: Ptr CSize) ->
-      alloca $ \(src_map_p :: Ptr (Ptr CChar)) -> do
-        c_BinaryenModuleAllocateAndWriteMut m nullPtr buf_p len_p src_map_p
-        buf <- peek buf_p
-        len <- peek len_p
-        BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
+serializeModule :: Binaryen.Module -> IO BS.ByteString
+serializeModule m = alloca $ \(buf_p :: Ptr (Ptr ())) ->
+  alloca $ \(len_p :: Ptr CSize) -> alloca $ \(src_map_p :: Ptr (Ptr CChar)) ->
+    do
+      Binaryen.allocateAndWriteMut m nullPtr buf_p len_p src_map_p
+      buf <- peek buf_p
+      len <- peek len_p
+      BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
 
-serializeModuleSExpr :: BinaryenModuleRef -> IO BS.ByteString
+serializeModuleSExpr :: Binaryen.Module -> IO BS.ByteString
 serializeModuleSExpr m =
-  c_BinaryenModuleAllocateAndWriteText m >>= BS.unsafePackCString
+  Binaryen.allocateAndWriteText m >>= BS.unsafePackCString
 
 setColorsEnabled :: Bool -> IO ()
-setColorsEnabled b = c_BinaryenSetColorsEnabled . toEnum . fromEnum $ b
-
-isColorsEnabled :: IO Bool
-isColorsEnabled = toEnum . fromEnum <$> c_BinaryenAreColorsEnabled
-#else
-err =
-  error
-    "The `asterius` package was configured without the `binaryen` Cabal flag."
-
-marshalModule = err
-
-serializeModule = err
-
-c_BinaryenSetDebugInfo = err
-
-c_BinaryenSetOptimizeLevel = err
-
-c_BinaryenSetShrinkLevel = err
-
-c_BinaryenModuleValidate = err
-#endif
+setColorsEnabled b = Binaryen.setColorsEnabled . toEnum . fromEnum $ b

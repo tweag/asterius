@@ -1,5 +1,0 @@
-;;; TOOL: run-spec-wasm2c
-;;; STDIN_FILE: third_party/testsuite/conversions.wast
-(;; STDOUT ;;;
-409/409 tests passed.
-;;; STDOUT ;;)

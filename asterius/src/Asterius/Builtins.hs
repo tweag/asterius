@@ -5,7 +5,6 @@
 module Asterius.Builtins
   ( BuiltinsOptions (..),
     defaultBuiltinsOptions,
-    rtsAsteriusModuleSymbol,
     rtsAsteriusModule,
     rtsFunctionImports,
     rtsFunctionExports,
@@ -18,21 +17,28 @@ module Asterius.Builtins
   )
 where
 
+import Asterius.Builtins.Blackhole
+import Asterius.Builtins.CMath
+import Asterius.Builtins.Exports
+import Asterius.Builtins.Hashable
+import Asterius.Builtins.MD5
+import Asterius.Builtins.Posix
+import Asterius.Builtins.Primitive
+import Asterius.Builtins.Scheduler
+import Asterius.Builtins.SM
+import Asterius.Builtins.SPT
+import Asterius.Builtins.StgPrimFloat
+import Asterius.Builtins.Time
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
-import qualified Data.ByteString.Short as SBS
+import qualified Asterius.Types.SymbolMap as SM
+import qualified Data.ByteString as BS
 import Data.Foldable
-import Data.Functor
-import Data.List
-import qualified Data.Map.Strict as Map
-import Data.Maybe
 import Data.String
 import Data.Word
-import qualified GhcPlugins as GHC
 import Language.Haskell.GHC.Toolkit.Constants
-import Prelude hiding (IO)
 
 wasmPageSize :: Int
 wasmPageSize = 65536
@@ -40,9 +46,7 @@ wasmPageSize = 65536
 data BuiltinsOptions
   = BuiltinsOptions
       { progName :: String,
-        threadStateSize :: Int,
-        debug, hasMain :: Bool,
-        jsvalConInfo :: Maybe AsteriusEntitySymbol
+        debug, hasMain :: Bool
       }
 
 defaultBuiltinsOptions :: BuiltinsOptions
@@ -50,29 +54,20 @@ defaultBuiltinsOptions = BuiltinsOptions
   { progName =
       error
         "Asterius.Builtins.defaultBuiltinsOptions: unknown progName",
-    threadStateSize = 65536,
     debug = False,
-    hasMain = True,
-    jsvalConInfo =
-      error "Asterius.Builtins.defaultBuiltinsOptions: unknown jsvalConInfo"
-  }
-
-rtsAsteriusModuleSymbol :: AsteriusModuleSymbol
-rtsAsteriusModuleSymbol = AsteriusModuleSymbol
-  { unitId = SBS.toShort $ GHC.fs_bs $ GHC.unitIdFS GHC.rtsUnitId,
-    moduleName = ["Asterius"]
+    hasMain = True
   }
 
 rtsAsteriusModule :: BuiltinsOptions -> AsteriusModule
 rtsAsteriusModule opts =
   mempty
     { staticsMap =
-        Map.fromList
+        SM.fromList
           [ ( "MainCapability",
               AsteriusStatics
                 { staticsType = Bytes,
                   asteriusStatics =
-                    [ Serialized $ SBS.pack $
+                    [ Serialized $ BS.pack $
                         replicate
                           (8 * roundup_bytes_to_words sizeof_Capability)
                           0
@@ -127,18 +122,17 @@ rtsAsteriusModule opts =
             ( "__asterius_i64_slot",
               AsteriusStatics
                 { staticsType = Bytes,
-                  asteriusStatics = [Serialized $ SBS.pack $ replicate 8 0]
+                  asteriusStatics = [Serialized $ BS.pack $ replicate 8 0]
                 }
             )
           ],
       functionMap =
-        Map.fromList $
+        SM.fromList $
           map
             (\(func_sym, (_, func)) -> (func_sym, func))
             ( byteStringCBits
                 <> floatCBits
                 <> unicodeCBits
-                <> md5CBits
                 <> textCBits
             )
     }
@@ -160,10 +154,6 @@ rtsAsteriusModule opts =
     <> memcpyFunction opts
     <> memsetFunction opts
     <> memcmpFunction opts
-    <> fromJSArrayBufferFunction opts
-    <> toJSArrayBufferFunction opts
-    <> fromJSStringFunction opts
-    <> fromJSArrayFunction opts
     <> threadPausedFunction opts
     <> dirtyMutVarFunction opts
     <> dirtyMVarFunction opts
@@ -191,6 +181,20 @@ rtsAsteriusModule opts =
     -- the module wrapped by using `generateWrapperModule`.
     <> generateRtsExternalInterfaceModule opts
     <> generateWrapperModule (generateRtsExternalInterfaceModule opts)
+    <> blackholeCBits
+    <> generateWrapperModule blackholeCBits
+    <> exportsCBits
+    <> smCBits
+    <> generateWrapperModule smCBits
+    <> schedulerCBits
+    <> cmathCBits
+    <> hashableCBits
+    <> md5CBits
+    <> posixCBits
+    <> sptCBits
+    <> stgPrimFloatCBits
+    <> timeCBits
+    <> primitiveCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
@@ -198,7 +202,6 @@ generateRtsExternalInterfaceModule :: BuiltinsOptions -> AsteriusModule
 generateRtsExternalInterfaceModule opts =
   mempty
     <> rtsApplyFunction opts
-    <> createGenThreadFunction opts
     <> createIOThreadFunction opts
     <> createStrictIOThreadFunction opts
     <> scheduleTSOFunction opts
@@ -223,10 +226,7 @@ generateRtsExternalInterfaceModule opts =
     <> generateRtsGetIntFunction opts "rts_getWord"
     <> generateRtsGetIntFunction opts "rts_getPtr"
     <> generateRtsGetIntFunction opts "rts_getStablePtr"
-    <> maybe
-      mempty
-      (\_ -> generateRtsGetIntFunction opts "rts_getJSVal")
-      (jsvalConInfo opts)
+    <> generateRtsGetIntFunction opts "rts_getJSVal"
     <> loadI64Function opts
 
 -- Generate the module consisting of debug functions
@@ -241,7 +241,7 @@ generateRtsAsteriusDebugModule opts =
 rtsFunctionImports :: Bool -> [FunctionImport]
 rtsFunctionImports debug =
   [ FunctionImport
-      { internalName = "__asterius_" <> op <> "_" <> showSBS ft,
+      { internalName = "__asterius_" <> op <> "_" <> showBS ft,
         externalModuleName = "Math",
         externalBaseName = op,
         functionType = FunctionType {paramTypes = [ft], returnTypes = [ft]}
@@ -262,7 +262,7 @@ rtsFunctionImports debug =
         ]
   ]
     <> [ FunctionImport
-           { internalName = "__asterius_" <> op <> "_" <> showSBS ft,
+           { internalName = "__asterius_" <> op <> "_" <> showBS ft,
              externalModuleName = "Math",
              externalBaseName = op,
              functionType = FunctionType
@@ -466,42 +466,6 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_fromJSArrayBuffer_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "fromJSArrayBuffer",
-             functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_toJSArrayBuffer_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "toJSArrayBuffer",
-             functionType = FunctionType
-               { paramTypes = [F64, F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_fromJSString_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "fromJSString",
-             functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
-           { internalName = "__asterius_fromJSArray_imp",
-             externalModuleName = "HeapBuilder",
-             externalBaseName = "fromJSArray",
-             functionType = FunctionType
-               { paramTypes = [F64],
-                 returnTypes = [F64]
-               }
-           },
-         FunctionImport
            { internalName = "__asterius_performGC",
              externalModuleName = "GC",
              externalBaseName = "performGC",
@@ -523,31 +487,10 @@ rtsFunctionImports debug =
              functionType = FunctionType {paramTypes = [F64], returnTypes = []}
            },
          FunctionImport
-           { internalName = "__asterius_threadPaused",
-             externalModuleName = "ThreadPaused",
-             externalBaseName = "threadPaused",
-             functionType = FunctionType
-               { paramTypes = [F64, F64],
-                 returnTypes = []
-               }
-           },
-         FunctionImport
            { internalName = "__asterius_enqueueTSO",
              externalModuleName = "Scheduler",
              externalBaseName = "enqueueTSO",
              functionType = FunctionType {paramTypes = [F64], returnTypes = []}
-           },
-         FunctionImport
-           { internalName = "__asterius_enter",
-             externalModuleName = "ReentrancyGuard",
-             externalBaseName = "enter",
-             functionType = FunctionType {paramTypes = [I32], returnTypes = []}
-           },
-         FunctionImport
-           { internalName = "__asterius_exit",
-             externalModuleName = "ReentrancyGuard",
-             externalBaseName = "exit",
-             functionType = FunctionType {paramTypes = [I32], returnTypes = []}
            },
          FunctionImport
            { internalName = "__asterius_mul2",
@@ -671,8 +614,14 @@ rtsFunctionImports debug =
        )
     <> map
       (fst . snd)
-      ( byteStringCBits <> floatCBits <> unicodeCBits <> md5CBits <> textCBits
+      ( byteStringCBits <> floatCBits <> unicodeCBits <> textCBits
       )
+    <> schedulerImports
+    <> exportsImports
+    <> posixImports
+    <> sptImports
+    <> timeImports
+    <> primitiveImports
 
 rtsFunctionExports :: Bool -> [FunctionExport]
 rtsFunctionExports debug =
@@ -696,7 +645,6 @@ rtsFunctionExports debug =
           "rts_getStablePtr",
           "rts_getJSVal",
           "rts_apply",
-          "createGenThread",
           "createStrictIOThread",
           "createIOThread",
           "scheduleTSO",
@@ -705,7 +653,9 @@ rtsFunctionExports debug =
           "getStablePtr",
           "deRefStablePtr",
           "hs_free_stable_ptr",
-          "makeStableName"
+          "makeStableName",
+          "growStack",
+          "updateThunk"
         ]
   ]
     <> [ FunctionExport {internalName = "__asterius_" <> f, externalName = f}
@@ -723,16 +673,20 @@ rtsFunctionExports debug =
                  else []
              )
                <> ["hs_init"]
-       ]
+       ] <> [ FunctionExport
+      { internalName = "stg_returnToSchedNotPaused",
+        externalName = "stg_returnToSchedNotPaused"
+      }
+  ]
 
-emitErrorMessage :: [ValueType] -> SBS.ShortByteString -> Expression
+emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}
 
-byteStringCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+byteStringCBits :: [(EntitySymbol, (FunctionImport, Function))]
 byteStringCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
+        ( mkEntitySymbol func_sym,
           generateRTSWrapper "bytestring" func_sym param_vts ret_vts
         )
     )
@@ -752,23 +706,25 @@ byteStringCBits =
       ("_hs_bytestring_long_long_uint_hex", [I64, I64], [I64])
     ]
 
-textCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+textCBits :: [(EntitySymbol, (FunctionImport, Function))]
 textCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
+        ( mkEntitySymbol func_sym,
           generateRTSWrapper "text" func_sym param_vts ret_vts
         )
     )
     [ ("_hs_text_memcpy", [I64, I64, I64, I64, I64], []),
-      ("_hs_text_memcmp", [I64, I64, I64, I64, I64], [I64])
+      ("_hs_text_memcmp", [I64, I64, I64, I64, I64], [I64]),
+      ("_hs_text_decode_utf8", [I64, I64, I64, I64], [I64]),
+      ("_hs_text_encode_utf8", [I64, I64, I64, I64], [])
     ]
 
-floatCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+floatCBits :: [(EntitySymbol, (FunctionImport, Function))]
 floatCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
+        ( mkEntitySymbol func_sym,
           generateRTSWrapper "floatCBits" func_sym param_vts ret_vts
         )
     )
@@ -784,25 +740,13 @@ floatCBits =
       ("isDoubleInfinite", [F64], [I64]),
       ("__decodeFloat_Int", [I64, I64, F32], []),
       ("rintDouble", [F64], [F64]),
-      ("rintFloat", [F32], [F32])
-    ]
-
-md5CBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
-md5CBits =
-  map
-    ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
-          generateRTSWrapper "MD5" func_sym param_vts ret_vts
-        )
-    )
-    [ ("__hsbase_MD5Init", [I64], []),
-      ("__hsbase_MD5Update", [I64, I64, I64], []),
-      ("__hsbase_MD5Final", [I64, I64], [])
+      ("rintFloat", [F32], [F32]),
+      ("__decodeDouble_2Int", [I64, I64, I64, I64, F64], [])
     ]
 
 generateRTSWrapper ::
-  SBS.ShortByteString ->
-  SBS.ShortByteString ->
+  BS.ByteString ->
+  BS.ByteString ->
   [ValueType] ->
   [ValueType] ->
   (FunctionImport, Function)
@@ -845,7 +789,7 @@ generateRTSWrapper mod_sym func_sym param_vts ret_vts =
       [I64] -> ([F64], truncUFloat64ToInt64)
       _ -> (ret_vts, id)
 
-generateWrapperFunction :: AsteriusEntitySymbol -> Function -> Function
+generateWrapperFunction :: EntitySymbol -> Function -> Function
 generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
   Function
     { functionType = FunctionType
@@ -886,73 +830,10 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
 generateWrapperModule :: AsteriusModule -> AsteriusModule
 generateWrapperModule m =
   m
-    { functionMap = Map.fromList $ map wrap $ Map.toList $ functionMap m
+    { functionMap = SM.fromList $ map wrap $ SM.toList $ functionMap m
     }
   where
     wrap (n, f) = (n <> "_wrapper", generateWrapperFunction n f)
-
-hsInitFunction,
-  rtsApplyFunction,
-  rtsGetSchedStatusFunction,
-  rtsCheckSchedStatusFunction,
-  scheduleTSOFunction,
-  createThreadFunction,
-  createGenThreadFunction,
-  createIOThreadFunction,
-  createStrictIOThreadFunction,
-  getThreadIdFunction,
-  allocatePinnedFunction,
-  newCAFFunction,
-  stgReturnFunction,
-  getStablePtrWrapperFunction,
-  deRefStablePtrWrapperFunction,
-  freeStablePtrWrapperFunction,
-  rtsMkBoolFunction,
-  rtsMkDoubleFunction,
-  rtsMkCharFunction,
-  rtsMkIntFunction,
-  rtsMkWordFunction,
-  rtsMkPtrFunction,
-  rtsMkStablePtrFunction,
-  rtsMkJSValFunction,
-  rtsGetBoolFunction,
-  rtsGetDoubleFunction,
-  loadI64Function,
-  printI64Function,
-  assertEqI64Function,
-  printF32Function,
-  printF64Function,
-  strlenFunction,
-  memchrFunction,
-  memcpyFunction,
-  memsetFunction,
-  memcmpFunction,
-  fromJSArrayBufferFunction,
-  toJSArrayBufferFunction,
-  fromJSStringFunction,
-  fromJSArrayFunction,
-  threadPausedFunction,
-  dirtyMutVarFunction,
-  dirtyMVarFunction,
-  dirtyStackFunction,
-  recordClosureMutatedFunction,
-  raiseExceptionHelperFunction,
-  barfFunction,
-  getProgArgvFunction,
-  suspendThreadFunction,
-  scheduleThreadFunction,
-  scheduleThreadOnFunction,
-  resumeThreadFunction,
-  performMajorGCFunction,
-  performGCFunction,
-  localeEncodingFunction,
-  isattyFunction,
-  fdReadyFunction,
-  rtsSupportsBoundThreadsFunction,
-  readFunction,
-  writeFunction,
-  tryWakeupThreadFunction ::
-    BuiltinsOptions -> AsteriusModule
 
 initCapability :: EDSL ()
 initCapability = do
@@ -977,16 +858,14 @@ initCapability = do
   storeI64 mainCapability (offset_Capability_r + offset_StgRegTable_rCurrentTSO) $
     constI64 0
 
+hsInitFunction :: BuiltinsOptions -> AsteriusModule
 hsInitFunction _ = runEDSL "hs_init" $ do
   initCapability
   bd_nursery <-
     truncUFloat64ToInt64 <$> callImport' "__asterius_hpAlloc" [constF64 8] F64
   putLVal currentNursery bd_nursery
 
-enter, exit :: Int -> EDSL ()
-enter i = callImport "__asterius_enter" [constI32 i]
-exit i = callImport "__asterius_exit" [constI32 i]
-
+rtsApplyFunction :: BuiltinsOptions -> AsteriusModule
 rtsApplyFunction _ = runEDSL "rts_apply" $ do
   setReturnTypes [I64]
   [f, arg] <- params [I64, I64]
@@ -1000,11 +879,13 @@ rtsApplyFunction _ = runEDSL "rts_apply" $ do
   storeI64 ap (offset_StgThunk_payload + 8) arg
   emit ap
 
+rtsGetSchedStatusFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetSchedStatusFunction _ = runEDSL "rts_getSchedStatus" $ do
   setReturnTypes [I32]
   tid <- param I32
   callImport' "__asterius_getTSOrstat" [tid] I32 >>= emit
 
+rtsCheckSchedStatusFunction :: BuiltinsOptions -> AsteriusModule
 rtsCheckSchedStatusFunction _ = runEDSL "rts_checkSchedStatus" $ do
   tid <- param I32
   stat <- call' "rts_getSchedStatus" [tid] I32
@@ -1030,8 +911,9 @@ dirtySTACK _ stack =
 
 -- `_scheduleTSO(tso,func)` executes the given tso starting at the given
 -- function
+scheduleTSOFunction :: BuiltinsOptions -> AsteriusModule
 scheduleTSOFunction BuiltinsOptions {} = runEDSL "scheduleTSO" $ do
-  [tso, func] <- params [I64, I64]
+  tso <- param I64
   -- store the current TSO
   putLVal currentTSO tso
   -- indicate in the Capability that we are running the TSO
@@ -1045,7 +927,7 @@ scheduleTSOFunction BuiltinsOptions {} = runEDSL "scheduleTSO" $ do
   dirtyTSO mainCapability tso
   dirtySTACK mainCapability (loadI64 tso offset_StgTSO_stackobj)
   -- execute the TSO (using stgRun trampolining machinery)
-  stgRun func
+  stgRun $ symbol "stg_returnToStackTop"
   -- indicate in the Capability that we are not running anything
   storeI64
     mainCapability
@@ -1057,22 +939,23 @@ scheduleTSOFunction BuiltinsOptions {} = runEDSL "scheduleTSO" $ do
   putLVal currentTSO (constI64 0)
 
 -- Return the thread ID of the given tso
+getThreadIdFunction :: BuiltinsOptions -> AsteriusModule
 getThreadIdFunction BuiltinsOptions {} = runEDSL "rts_getThreadId" $ do
   setReturnTypes [I64]
   tso <- param I64
   emit (extendUInt32 (loadI32 tso offset_StgTSO_id))
 
+createThreadFunction :: BuiltinsOptions -> AsteriusModule
 createThreadFunction BuiltinsOptions {..} = runEDSL "createThread" $ do
   setReturnTypes [I64]
-  let alloc_words = constI64 $ roundup_bytes_to_words threadStateSize
-  tso_p <- call' "allocatePinned" [mainCapability, alloc_words] I64
-  stack_p <- i64Local $ tso_p `addInt64` constI64 offset_StgTSO_StgStack
+  tso_p <-
+    call'
+      "allocatePinned"
+      [mainCapability, constI64 $ roundup_bytes_to_words sizeof_StgTSO]
+      I64
+  stack_p <- call' "allocatePinned" [mainCapability, constI64 4096] I64
   storeI64 stack_p 0 $ symbol "stg_STACK_info"
-  stack_size_w <-
-    i64Local $
-      alloc_words
-        `subInt64` constI64
-          ((offset_StgTSO_StgStack + offset_StgStack_stack) `div` 8)
+  stack_size_w <- i64Local $ constI64 $ (4096 - offset_StgStack_stack) `div` 8
   storeI32 stack_p offset_StgStack_stack_size $ wrapInt64 stack_size_w
   storeI64 stack_p offset_StgStack_sp $
     (stack_p `addInt64` constI64 offset_StgStack_stack)
@@ -1114,14 +997,12 @@ createThreadHelper mk_closures = do
   for_ (mk_closures closure) $ pushClosure t
   emit t
 
-createGenThreadFunction _ =
-  runEDSL "createGenThread" $ createThreadHelper $ \closure ->
-    [closure, symbol "stg_enter_info"]
-
+createIOThreadFunction :: BuiltinsOptions -> AsteriusModule
 createIOThreadFunction _ =
   runEDSL "createIOThread" $ createThreadHelper $ \closure ->
     [symbol "stg_ap_v_info", closure, symbol "stg_enter_info"]
 
+createStrictIOThreadFunction :: BuiltinsOptions -> AsteriusModule
 createStrictIOThreadFunction _ =
   runEDSL "createStrictIOThread" $ createThreadHelper $ \closure ->
     [ symbol "stg_forceIO_info",
@@ -1133,16 +1014,14 @@ createStrictIOThreadFunction _ =
 genAllocateFunction ::
   BuiltinsOptions ->
   -- Name of the allocation function
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- Module representing the function
   AsteriusModule
 genAllocateFunction (BuiltinsOptions {}) n = runEDSL n $ do
   setReturnTypes [I64]
-  [_, n] <- params [I64, I64]
-  ( truncUFloat64ToInt64
-      <$> callImport' "__asterius_allocate" [convertUInt64ToFloat64 n] F64
-    )
-    >>= emit
+  [_, m] <- params [I64, I64]
+  callImport' "__asterius_allocate" [convertUInt64ToFloat64 m] F64
+    >>= emit . truncUFloat64ToInt64
 
 {-
 allocateFunction BuiltinsOptions {} =
@@ -1153,14 +1032,14 @@ allocateFunction BuiltinsOptions {} =
      callImport' "__asterius_allocate" [convertUInt64ToFloat64 n] F64) >>=
       emit
   -}
+allocatePinnedFunction :: BuiltinsOptions -> AsteriusModule
 allocatePinnedFunction _ = runEDSL "allocatePinned" $ do
   setReturnTypes [I64]
   [_, n] <- params [I64, I64]
-  ( truncUFloat64ToInt64
-      <$> callImport' "__asterius_allocatePinned" [convertUInt64ToFloat64 n] F64
-    )
-    >>= emit
+  callImport' "__asterius_allocatePinned" [convertUInt64ToFloat64 n] F64
+    >>= emit . truncUFloat64ToInt64
 
+newCAFFunction :: BuiltinsOptions -> AsteriusModule
 newCAFFunction _ = runEDSL "newCAF" $ do
   setReturnTypes [I64]
   [reg, caf] <- params [I64, I64]
@@ -1197,10 +1076,12 @@ stgRun init_f = do
       break' loop_lbl Nothing
 
 -- Return from a STG function
+stgReturnFunction :: BuiltinsOptions -> AsteriusModule
 stgReturnFunction _ =
   runEDSL "StgReturn" $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0 -- store NULL in the __asterius_pc register. This will break stgRun
       -- trampolining loop.
 
+getStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 getStablePtrWrapperFunction _ = runEDSL "getStablePtr" $ do
   setReturnTypes [I64]
   obj64 <- param I64
@@ -1211,6 +1092,7 @@ getStablePtrWrapperFunction _ = runEDSL "getStablePtr" $ do
       F64
   emit $ truncUFloat64ToInt64 sp_f64
 
+deRefStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 deRefStablePtrWrapperFunction _ = runEDSL "deRefStablePtr" $ do
   setReturnTypes [I64]
   sp64 <- param I64
@@ -1221,10 +1103,12 @@ deRefStablePtrWrapperFunction _ = runEDSL "deRefStablePtr" $ do
       F64
   emit $ truncUFloat64ToInt64 obj_f64
 
+freeStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule
 freeStablePtrWrapperFunction _ = runEDSL "hs_free_stable_ptr" $ do
   sp64 <- param I64
   callImport "__asterius_freeStablePtr" [convertUInt64ToFloat64 sp64]
 
+makeStableNameWrapperFunction :: BuiltinsOptions -> AsteriusModule
 makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
   setReturnTypes [I64]
   sp64 <- param I64
@@ -1238,9 +1122,9 @@ makeStableNameWrapperFunction _ = runEDSL "makeStableName" $ do
 rtsMkHelper ::
   BuiltinsOptions ->
   -- Name of the function to be built
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- Mangled name of the primop constructor
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   AsteriusModule
 rtsMkHelper _ n con_sym = runEDSL n $ do
   setReturnTypes [I64]
@@ -1250,6 +1134,7 @@ rtsMkHelper _ n con_sym = runEDSL n $ do
   storeI64 p 8 i
   emit p
 
+rtsMkBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkBoolFunction _ = runEDSL "rts_mkBool" $ do
   setReturnTypes [I64]
   [i] <- params [I64]
@@ -1259,6 +1144,7 @@ rtsMkBoolFunction _ = runEDSL "rts_mkBool" $ do
     (emit $ symbol "ghczmprim_GHCziTypes_False_closure")
     (emit $ symbol "ghczmprim_GHCziTypes_True_closure")
 
+rtsMkDoubleFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkDoubleFunction _ = runEDSL "rts_mkDouble" $ do
   setReturnTypes [I64]
   [i] <- params [F64]
@@ -1267,32 +1153,69 @@ rtsMkDoubleFunction _ = runEDSL "rts_mkDouble" $ do
   storeF64 p 8 i
   emit p
 
+rtsMkCharFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkCharFunction _ = runEDSL "rts_mkChar" $ do
   setReturnTypes [I64]
   [i] <- params [I64]
-  p <- call' "allocate" [mainCapability, constI64 2] I64
-  storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
-  storeI64 p 8 i
-  emit p
+  if'
+    [I64]
+    (i `ltUInt64` constI64 256)
+    -- If the character in question is in the range [0..255] we use the
+    -- trick that GHC uses, and instead of generating a heap-allocated Char
+    -- closure, we simply return the address of the statically allocated
+    -- Char. See stg_CHARLIKE_closure in
+    -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
+    ( let offset = i `mulInt64` constI64 16
+       in emit $ symbol "stg_CHARLIKE_closure" `addInt64` offset
+    )
+    -- Otherwise, we fall back to the more inefficient
+    -- approach and generate a dynamic closure.
+    $ do
+      p <- call' "allocate" [mainCapability, constI64 2] I64
+      storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Czh_con_info"
+      storeI64 p 8 i
+      emit p
 
-rtsMkIntFunction opts =
-  rtsMkHelper opts "rts_mkInt" "ghczmprim_GHCziTypes_Izh_con_info"
+rtsMkIntFunction :: BuiltinsOptions -> AsteriusModule
+rtsMkIntFunction _ = runEDSL "rts_mkInt" $ do
+  setReturnTypes [I64]
+  [i] <- params [I64]
+  if'
+    [I64]
+    ((i `leSInt64` constI64 16) `andInt32` (i `geSInt64` constI64 (-16)))
+    -- If the integer in question is in the range [-16..16] we use the
+    -- trick that GHC uses, and instead of generating a heap-allocated Int
+    -- closure, we simply return the address of the statically allocated
+    -- Int. See stg_INTLIKE_closure in
+    -- ghc-toolkit/boot-libs/rts/StgMiscClosures.cmm
+    ( let offset = (i `addInt64` constI64 16) `mulInt64` constI64 16
+       in emit $ symbol "stg_INTLIKE_closure" `addInt64` offset
+    )
+    -- Otherwise, we fall back to the more inefficient
+    -- approach and generate a dynamic closure.
+    $ do
+      p <- call' "allocate" [mainCapability, constI64 2] I64
+      storeI64 p 0 $ symbol "ghczmprim_GHCziTypes_Izh_con_info"
+      storeI64 p 8 i
+      emit p
 
+rtsMkWordFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkWordFunction opts =
   rtsMkHelper opts "rts_mkWord" "ghczmprim_GHCziTypes_Wzh_con_info"
 
+rtsMkPtrFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkPtrFunction opts =
   rtsMkHelper opts "rts_mkPtr" "base_GHCziPtr_Ptr_con_info"
 
+rtsMkStablePtrFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkStablePtrFunction opts =
   rtsMkHelper opts "rts_mkStablePtr" "base_GHCziStable_StablePtr_con_info"
 
+rtsMkJSValFunction :: BuiltinsOptions -> AsteriusModule
 rtsMkJSValFunction opts =
-  maybe mempty (rtsMkHelper opts "rts_mkJSVal") (jsvalConInfo opts)
+  rtsMkHelper opts "rts_mkJSVal" "base_AsteriusziTypesziJSVal_JSVal_con_info"
 
-unTagClosure :: Expression -> Expression
-unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
-
+rtsGetBoolFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do
   setReturnTypes [I64]
   p <- param I64
@@ -1301,6 +1224,7 @@ rtsGetBoolFunction _ = runEDSL "rts_getBool" $ do
       (constI32 0)
       (loadI32 (loadI64 (unTagClosure p) 0) offset_StgInfoTable_srt)
 
+rtsGetDoubleFunction :: BuiltinsOptions -> AsteriusModule
 rtsGetDoubleFunction _ = runEDSL "rts_getDouble" $ do
   setReturnTypes [F64]
   p <- param I64
@@ -1311,7 +1235,7 @@ rtsGetDoubleFunction _ = runEDSL "rts_getDouble" $ do
 -- named differently
 generateRtsGetIntFunction ::
   BuiltinsOptions ->
-  AsteriusEntitySymbol -> -- Name of the function
+  EntitySymbol -> -- Name of the function
   AsteriusModule
 generateRtsGetIntFunction _ n = runEDSL n $ do
   setReturnTypes [I64]
@@ -1325,40 +1249,48 @@ rtsGetIntFunction _ =
     p <- param I64
     emit $ loadI64 (unTagClosure p) offset_StgClosure_payload
 -}
+loadI64Function :: BuiltinsOptions -> AsteriusModule
 loadI64Function _ = runEDSL "loadI64" $ do
   setReturnTypes [I64]
   p <- param I64
   emit $ loadI64 p 0
 
+printI64Function :: BuiltinsOptions -> AsteriusModule
 printI64Function _ = runEDSL "print_i64" $ do
   x <- param I64
   callImport "printI64" [convertSInt64ToFloat64 x]
 
+assertEqI64Function :: BuiltinsOptions -> AsteriusModule
 assertEqI64Function _ = runEDSL "assert_eq_i64" $ do
   x <- param I64
   y <- param I64
   callImport "assertEqI64" [convertSInt64ToFloat64 x, convertSInt64ToFloat64 y]
 
+printF32Function :: BuiltinsOptions -> AsteriusModule
 printF32Function _ = runEDSL "print_f32" $ do
   x <- param F32
   callImport "printF32" [x]
 
+printF64Function :: BuiltinsOptions -> AsteriusModule
 printF64Function _ = runEDSL "print_f64" $ do
   x <- param F64
   callImport "printF64" [x]
 
+strlenFunction :: BuiltinsOptions -> AsteriusModule
 strlenFunction _ = runEDSL "strlen" $ do
   setReturnTypes [I64]
   [str] <- params [I64]
   len <- callImport' "__asterius_strlen" [convertUInt64ToFloat64 str] F64
   emit $ truncUFloat64ToInt64 len
 
+debugBelch2Function :: BuiltinsOptions -> AsteriusModule
 debugBelch2Function _ = runEDSL "debugBelch2" $ do
   [fmt, str] <- params [I64, I64]
   callImport
     "__asterius_debugBelch2"
     [convertUInt64ToFloat64 fmt, convertUInt64ToFloat64 str]
 
+memchrFunction :: BuiltinsOptions -> AsteriusModule
 memchrFunction _ = runEDSL "memchr" $ do
   setReturnTypes [I64]
   [ptr, val, num] <- params [I64, I64, I64]
@@ -1369,18 +1301,21 @@ memchrFunction _ = runEDSL "memchr" $ do
       F64
   emit $ truncUFloat64ToInt64 p
 
+memcpyFunction :: BuiltinsOptions -> AsteriusModule
 memcpyFunction _ = runEDSL "memcpy" $ do
   setReturnTypes [I64]
   [dst, src, n] <- params [I64, I64, I64]
   callImport "__asterius_memcpy" $ map convertUInt64ToFloat64 [dst, src, n]
   emit dst
 
+memsetFunction :: BuiltinsOptions -> AsteriusModule
 memsetFunction _ = runEDSL "memset" $ do
   setReturnTypes [I64]
   [dst, c, n] <- params [I64, I64, I64]
   callImport "__asterius_memset" $ map convertUInt64ToFloat64 [dst, c, n]
   emit dst
 
+memcmpFunction :: BuiltinsOptions -> AsteriusModule
 memcmpFunction _ = runEDSL "memcmp" $ do
   setReturnTypes [I64]
   [ptr1, ptr2, n] <- params [I64, I64, I64]
@@ -1389,56 +1324,14 @@ memcmpFunction _ = runEDSL "memcmp" $ do
       "__asterius_memcmp"
       (map convertUInt64ToFloat64 [ptr1, ptr2, n])
       I32
-  emit $ Unary ExtendSInt32 cres
+  emit $ extendSInt32 cres
 
-fromJSArrayBufferFunction _ = runEDSL "__asterius_fromJSArrayBuffer" $ do
-  setReturnTypes [I64]
-  [buf] <- params [I64]
-  addr <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_fromJSArrayBuffer_imp"
-        [convertUInt64ToFloat64 buf]
-        F64
-  emit addr
-
-toJSArrayBufferFunction _ = runEDSL "__asterius_toJSArrayBuffer" $ do
-  setReturnTypes [I64]
-  [addr, len] <- params [I64, I64]
-  r <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_toJSArrayBuffer_imp"
-        (map convertUInt64ToFloat64 [addr, len])
-        F64
-  emit r
-
-fromJSStringFunction _ = runEDSL "__asterius_fromJSString" $ do
-  setReturnTypes [I64]
-  [s] <- params [I64]
-  addr <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_fromJSString_imp"
-        [convertUInt64ToFloat64 s]
-        F64
-  emit addr
-
-fromJSArrayFunction _ = runEDSL "__asterius_fromJSArray" $ do
-  setReturnTypes [I64]
-  [arr] <- params [I64]
-  addr <-
-    truncUFloat64ToInt64
-      <$> callImport'
-        "__asterius_fromJSArray_imp"
-        [convertUInt64ToFloat64 arr]
-        F64
-  emit addr
-
+threadPausedFunction :: BuiltinsOptions -> AsteriusModule
 threadPausedFunction _ = runEDSL "threadPaused" $ do
-  args <- params [I64, I64]
-  callImport "__asterius_threadPaused" $ map convertUInt64ToFloat64 args
+  _ <- params [I64, I64]
+  pure ()
 
+dirtyMutVarFunction :: BuiltinsOptions -> AsteriusModule
 dirtyMutVarFunction _ = runEDSL "dirty_MUT_VAR" $ do
   [_, p] <- params [I64, I64]
   if'
@@ -1447,22 +1340,27 @@ dirtyMutVarFunction _ = runEDSL "dirty_MUT_VAR" $ do
     (storeI64 p 0 $ symbol "stg_MUT_VAR_DIRTY_info")
     mempty
 
+dirtyMVarFunction :: BuiltinsOptions -> AsteriusModule
 dirtyMVarFunction _ = runEDSL "dirty_MVAR" $ do
   [_basereg, _mvar] <- params [I64, I64]
   mempty
 
+dirtyStackFunction :: BuiltinsOptions -> AsteriusModule
 dirtyStackFunction _ = runEDSL "dirty_STACK" $ do
   [cap, stack] <- params [I64, I64]
   dirtySTACK cap stack
 
+recordClosureMutatedFunction :: BuiltinsOptions -> AsteriusModule
 recordClosureMutatedFunction _ = runEDSL "recordClosureMutated" $ do
   [_cap, _closure] <- params [I64, I64]
   mempty
 
+tryWakeupThreadFunction :: BuiltinsOptions -> AsteriusModule
 tryWakeupThreadFunction _ = runEDSL "tryWakeupThread" $ do
   [_cap, tso] <- params [I64, I64]
   callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
 
+raiseExceptionHelperFunction :: BuiltinsOptions -> AsteriusModule
 raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
   setReturnTypes [I64]
   args <- params [I64, I64, I64]
@@ -1474,6 +1372,7 @@ raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
         F64
   emit frame_type
 
+barfFunction :: BuiltinsOptions -> AsteriusModule
 barfFunction _ = runEDSL "barf" $ do
   s <- param I64
   callImport "__asterius_barf" [convertUInt64ToFloat64 s]
@@ -1482,11 +1381,11 @@ barfFunction _ = runEDSL "barf" $ do
 -- unsigned.   This is OK for ASCII code, since the ints we have will not be
 -- larger than 2^15.  However, for larger numbers, it would "overflow", and
 -- would treat large unsigned  numbers as negative signed numbers.
-unicodeCBits :: [(AsteriusEntitySymbol, (FunctionImport, Function))]
+unicodeCBits :: [(EntitySymbol, (FunctionImport, Function))]
 unicodeCBits =
   map
     ( \(func_sym, param_vts, ret_vts) ->
-        ( AsteriusEntitySymbol func_sym,
+        ( mkEntitySymbol func_sym,
           generateRTSWrapper "Unicode" func_sym param_vts ret_vts
         )
     )
@@ -1502,55 +1401,66 @@ unicodeCBits =
       ("u_iswprint", [I64], [I64])
     ]
 
+getProgArgvFunction :: BuiltinsOptions -> AsteriusModule
 getProgArgvFunction _ = runEDSL "getProgArgv" $ do
   [argc, argv] <- params [I64, I64]
   storeI64 argc 0 $ constI64 1
   storeI64 argv 0 $ symbol "prog_argv"
 
+suspendThreadFunction :: BuiltinsOptions -> AsteriusModule
 suspendThreadFunction _ = runEDSL "suspendThread" $ do
   setReturnTypes [I64]
   [reg, _] <- params [I64, I64]
-  call "threadPaused" [mainCapability, getLVal $ global CurrentTSO]
   emit reg
 
+scheduleThreadFunction :: BuiltinsOptions -> AsteriusModule
 scheduleThreadFunction _ = runEDSL "scheduleThread" $ do
   setReturnTypes []
   [_cap, tso] <- params [I64, I64]
   callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
 
+scheduleThreadOnFunction :: BuiltinsOptions -> AsteriusModule
 scheduleThreadOnFunction _ = runEDSL "scheduleThreadOn" $ do
   setReturnTypes []
   [_cap, _cpu, tso] <- params [I64, I64, I64]
   callImport "__asterius_enqueueTSO" [convertUInt64ToFloat64 tso]
 
+resumeThreadFunction :: BuiltinsOptions -> AsteriusModule
 resumeThreadFunction _ = runEDSL "resumeThread" $ do
   setReturnTypes [I64]
   reg <- param I64
   emit reg
 
+performMajorGCFunction :: BuiltinsOptions -> AsteriusModule
 performMajorGCFunction _ =
   runEDSL "performMajorGC" $ callImport "__asterius_performGC" []
 
+performGCFunction :: BuiltinsOptions -> AsteriusModule
 performGCFunction _ = runEDSL "performGC" $ call "performMajorGC" []
 
+localeEncodingFunction :: BuiltinsOptions -> AsteriusModule
 localeEncodingFunction _ = runEDSL "localeEncoding" $ do
   setReturnTypes [I64]
   emit $ symbol "__asterius_localeEncoding"
 
+isattyFunction :: BuiltinsOptions -> AsteriusModule
 isattyFunction _ = runEDSL "isatty" $ do
   setReturnTypes [I64]
   _ <- param I64
   emit $ constI64 0
 
+fdReadyFunction :: BuiltinsOptions -> AsteriusModule
 fdReadyFunction _ = runEDSL "fdReady" $ do
   setReturnTypes [I64]
   _ <- params [I64, I64, I64, I64]
   emit $ constI64 1
 
+rtsSupportsBoundThreadsFunction :: BuiltinsOptions -> AsteriusModule
 rtsSupportsBoundThreadsFunction _ = runEDSL "rtsSupportsBoundThreads" $ do
   setReturnTypes [I64]
   emit $ constI64 0
 
+readFunction :: BuiltinsOptions -> AsteriusModule
 readFunction _ =
   runEDSL "ghczuwrapperZC22ZCbaseZCSystemziPosixziInternalsZCread" $ do
     setReturnTypes [I64]
@@ -1563,6 +1473,7 @@ readFunction _ =
           F64
     emit r
 
+writeFunction :: BuiltinsOptions -> AsteriusModule
 writeFunction _ =
   runEDSL "ghczuwrapperZC20ZCbaseZCSystemziPosixziInternalsZCwrite" $ do
     setReturnTypes [I64]
@@ -1578,16 +1489,13 @@ writeFunction _ =
 getF64GlobalRegFunction ::
   BuiltinsOptions ->
   -- Name of the function to be created
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   -- Global register to be returned
   UnresolvedGlobalReg ->
   AsteriusModule -- Module containing the function
 getF64GlobalRegFunction _ n gr = runEDSL n $ do
   setReturnTypes [F64]
   emit $ convertSInt64ToFloat64 $ getLVal $ global gr
-
-offset_StgTSO_StgStack :: Int
-offset_StgTSO_StgStack = 8 * roundup_bytes_to_words sizeof_StgTSO
 
 -- @cheng: there is a trade-off here: Either I emit the low-level
 -- store and load, or I expose a _lot more_ from the EDSL

@@ -1,1 +1,1 @@
---command="stack ghci asterius:lib asterius:ahc-ld binaryen:lib --ghci-options=\"-fno-code -j -Wall\""
+--command="utils/ghcid.sh"

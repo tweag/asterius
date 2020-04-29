@@ -86,27 +86,27 @@ callJSFunction f args = js_function_apply f js_object_empty (toJSArray args)
 
 foreign import javascript "\"\"" js_string_empty :: JSVal
 
-foreign import javascript "${1}.concat(${2})"
+foreign import javascript "$1.concat($2)"
   js_concat :: JSVal -> JSVal -> JSVal
 
-foreign import javascript "${1}.length" js_length :: JSVal -> Int
+foreign import javascript "$1.length" js_length :: JSVal -> Int
 
-foreign import javascript "String.fromCodePoint(${1})"
+foreign import javascript "String.fromCodePoint($1)"
   js_string_fromchar :: Char -> JSVal
 
-foreign import javascript "${1}.codePointAt(${2})"
+foreign import javascript "$1.codePointAt($2)"
   js_string_tochar :: JSVal -> Int -> Char
 
 foreign import javascript "[]" js_array_empty :: JSVal
 
-foreign import javascript "${1}[${2}]" js_index_by_int :: JSVal -> Int -> JSVal
+foreign import javascript "$1[$2]" js_index_by_int :: JSVal -> Int -> JSVal
 
 foreign import javascript "{}" js_object_empty :: JSVal
 
-foreign import javascript "${1}[${2}]"
+foreign import javascript "$1[$2]"
   js_index_by_jsref :: JSVal -> JSVal -> JSVal
 
 foreign import javascript "JSON" js_json :: JSVal
 
-foreign import javascript "${1}.apply(${2}, ${3})"
+foreign import javascript "$1.apply($2, $3)"
   js_function_apply :: JSVal -> JSVal -> JSVal -> JSVal

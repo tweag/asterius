@@ -3,19 +3,15 @@
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.TypesConv
-  ( marshalToModuleSymbol,
-    zEncodeModuleSymbol,
+  ( zEncodeModule,
     generateWasmFunctionTypeSet,
     asmPpr,
     asmPrint,
   )
 where
 
-import Asterius.Internals
+
 import Asterius.Types
-import qualified Data.ByteString.Char8 as CBS
-import qualified Data.ByteString.Short as SBS
-import Data.List
 import qualified Data.Map.Strict as Map
 import qualified Data.Set as Set
 import qualified GhcPlugins as GHC
@@ -24,25 +20,13 @@ import System.IO
   ( IOMode (WriteMode),
     withFile,
   )
-import Prelude hiding (IO)
 
-{-# INLINE marshalToModuleSymbol #-}
-marshalToModuleSymbol :: GHC.Module -> AsteriusModuleSymbol
-marshalToModuleSymbol (GHC.Module u m) = AsteriusModuleSymbol
-  { unitId = SBS.toShort $ GHC.fs_bs $ GHC.unitIdFS u,
-    moduleName =
-      map SBS.toShort $ CBS.splitWith (== '.') $ GHC.fs_bs $ GHC.moduleNameFS m
-  }
-
-{-# INLINE zEncodeModuleSymbol #-}
-zEncodeModuleSymbol :: AsteriusModuleSymbol -> String
-zEncodeModuleSymbol AsteriusModuleSymbol {..} =
+{-# INLINE zEncodeModule #-}
+zEncodeModule :: GHC.Module -> String
+zEncodeModule (GHC.Module u m) =
   GHC.zString
     $ GHC.zEncodeFS
-    $ GHC.mkFastStringByteString
-    $ SBS.fromShort unitId
-      <> "_"
-      <> CBS.intercalate "." [SBS.fromShort mod_chunk | mod_chunk <- moduleName]
+    $ GHC.unitIdFS u <> "_" <> GHC.moduleNameFS m
 
 {-# INLINE generateWasmFunctionTypeSet #-}
 generateWasmFunctionTypeSet :: Module -> Set.Set FunctionType

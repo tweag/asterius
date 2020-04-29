@@ -1,14 +1,15 @@
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE UnboxedTuples #-}
+{-# LANGUAGE ViewPatterns #-}
 {-# OPTIONS_GHC -Wno-overflowed-literals #-}
 
 module Asterius.CodeGen
-  ( marshalToModuleSymbol,
-    CodeGen,
+  ( CodeGen,
     runCodeGen,
     marshalHaskellIR,
     marshalCmmIR,
@@ -17,28 +18,32 @@ module Asterius.CodeGen
 where
 
 import Asterius.Builtins
+import Asterius.CodeGen.Droppable
 import Asterius.EDSL
 import Asterius.Internals
+import Asterius.Internals.Name
 import Asterius.Passes.All
 import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
-import Asterius.Passes.SafeCCall
 import Asterius.Resolve
 import Asterius.Types
+import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
 import qualified CLabel as GHC
 import qualified Cmm as GHC
 import qualified CmmSwitch as GHC
+import Control.Exception
 import Control.Monad.Except
 import Control.Monad.Reader
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Short as SBS
+import Data.Coerce
 import Data.Foldable
 import qualified Data.Map.Strict as M
+import qualified Data.Monoid
 import Data.String
 import Data.Traversable
 import Foreign
-import GHC.Exts
+import GHC.Fingerprint
 import qualified GhcPlugins as GHC
 import qualified Hoopl.Block as GHC
 import qualified Hoopl.Graph as GHC
@@ -47,42 +52,38 @@ import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Orphans.Show
   (
   )
+import MonadUtils (mapAccumLM)
+import Stream (Stream)
+import qualified Stream
 import qualified Unique as GHC
-import Prelude hiding (IO)
 
 type CodeGenContext = (GHC.DynFlags, String)
 
 newtype CodeGen a
-  = CodeGen (ReaderT CodeGenContext (Except AsteriusCodeGenError) a)
-  deriving
-    ( Functor,
-      Applicative,
-      Monad,
-      MonadReader CodeGenContext,
-      MonadError AsteriusCodeGenError
-    )
+  = CodeGen (ReaderT CodeGenContext IO a)
+  deriving (Functor, Applicative, Monad, MonadReader CodeGenContext, MonadIO)
 
 unCodeGen :: CodeGen a -> CodeGen (Either AsteriusCodeGenError a)
-unCodeGen (CodeGen m) = asks $ runExcept . runReaderT m
+unCodeGen (CodeGen m) = CodeGen (mapReaderT try m)
 
 {-# INLINEABLE runCodeGen #-}
 runCodeGen ::
-  CodeGen a -> GHC.DynFlags -> GHC.Module -> Either AsteriusCodeGenError a
-runCodeGen (CodeGen m) dflags def_mod =
-  runExcept $ runReaderT m (dflags, asmPpr dflags def_mod <> "_")
+  CodeGen a ->
+  GHC.DynFlags ->
+  GHC.Module ->
+  IO (Either AsteriusCodeGenError a)
+runCodeGen (unCodeGen -> CodeGen m) dflags def_mod =
+  runReaderT m (dflags, asmPpr dflags def_mod <> "_")
 
-marshalCLabel :: GHC.CLabel -> CodeGen AsteriusEntitySymbol
+marshalCLabel :: GHC.CLabel -> CodeGen EntitySymbol
 marshalCLabel clbl = do
   (dflags, def_mod_prefix) <- ask
-  pure AsteriusEntitySymbol
-    { entityName =
-        fromString $
-          if GHC.externallyVisibleCLabel clbl
-            then asmPpr dflags clbl
-            else def_mod_prefix <> asmPpr dflags clbl
-    }
+  pure $ fromString $
+    if GHC.externallyVisibleCLabel clbl
+      then asmPpr dflags clbl
+      else def_mod_prefix <> asmPpr dflags clbl
 
-marshalLabel :: GHC.Label -> CodeGen SBS.ShortByteString
+marshalLabel :: GHC.Label -> CodeGen BS.ByteString
 marshalLabel lbl = do
   (dflags, _) <- ask
   pure $ fromString $ asmPpr dflags lbl
@@ -103,7 +104,7 @@ marshalCmmType t
   | GHC.f64 `GHC.cmmEqType_ignoring_ptrhood` t =
     pure F64
   | otherwise =
-    throwError $ UnsupportedCmmType $ showSBS t
+    liftIO $ throwIO $ UnsupportedCmmType $ showBS t
 
 dispatchCmmWidth :: GHC.Width -> a -> a -> CodeGen a
 dispatchCmmWidth w r32 = dispatchAllCmmWidth w r32 r32 r32
@@ -114,7 +115,7 @@ dispatchAllCmmWidth w r8 r16 r32 r64 = case w of
   GHC.W16 -> pure r16
   GHC.W32 -> pure r32
   GHC.W64 -> pure r64
-  _ -> throwError $ UnsupportedCmmWidth $ showSBS w
+  _ -> liftIO $ throwIO $ UnsupportedCmmWidth $ showBS w
 
 marshalCmmStatic :: GHC.CmmStatic -> CodeGen AsteriusStatic
 marshalCmmStatic st = case st of
@@ -149,20 +150,20 @@ marshalCmmStatic st = case st of
     GHC.CmmLabelOff clbl o -> do
       sym <- marshalCLabel clbl
       pure $ SymbolStatic sym o
-    _ -> throwError $ UnsupportedCmmLit $ showSBS lit
+    _ -> liftIO $ throwIO $ UnsupportedCmmLit $ showBS lit
   GHC.CmmUninitialised s -> pure $ Uninitialized s
-  GHC.CmmString s -> pure $ Serialized $ SBS.pack $ s <> [0]
+  GHC.CmmString s -> pure $ Serialized $ BS.pack $ s <> [0]
 
 marshalCmmSectionType ::
-  AsteriusEntitySymbol -> GHC.Section -> AsteriusStaticsType
+  EntitySymbol -> GHC.Section -> AsteriusStaticsType
 marshalCmmSectionType sym sec@(GHC.Section _ clbl)
   | GHC.isGcPtrLabel clbl = Closure
-  | "_info" `BS.isSuffixOf` SBS.fromShort (entityName sym) = InfoTable
+  | "_info" `BS.isSuffixOf` entityName sym = InfoTable
   | GHC.isSecConstant sec = ConstBytes
   | otherwise = Bytes
 
 marshalCmmData ::
-  AsteriusEntitySymbol ->
+  EntitySymbol ->
   GHC.Section ->
   GHC.CmmStatics ->
   CodeGen AsteriusStatics
@@ -182,7 +183,7 @@ marshalTypedCmmLocalReg ::
   GHC.LocalReg -> ValueType -> CodeGen UnresolvedLocalReg
 marshalTypedCmmLocalReg r vt = do
   (lr, vt') <- marshalCmmLocalReg r
-  if vt == vt' then pure lr else throwError $ UnsupportedCmmExpr $ showSBS r
+  if vt == vt' then pure lr else liftIO $ throwIO $ UnsupportedCmmExpr $ showBS r
 
 marshalCmmGlobalReg :: GHC.GlobalReg -> CodeGen UnresolvedGlobalReg
 marshalCmmGlobalReg r = case r of
@@ -202,7 +203,7 @@ marshalCmmGlobalReg r = case r of
   GHC.GCEnter1 -> pure GCEnter1
   GHC.GCFun -> pure GCFun
   GHC.BaseReg -> pure BaseReg
-  _ -> throwError $ UnsupportedCmmGlobalReg $ showSBS r
+  _ -> liftIO $ throwIO $ UnsupportedCmmGlobalReg $ showBS r
 
 marshalCmmLit :: GHC.CmmLit -> CodeGen (Expression, ValueType)
 marshalCmmLit lit = case lit of
@@ -222,7 +223,7 @@ marshalCmmLit lit = case lit of
   GHC.CmmLabelOff clbl o -> do
     sym <- marshalCLabel clbl
     pure (Symbol {unresolvedSymbol = sym, symbolOffset = o}, I64)
-  _ -> throwError $ UnsupportedCmmLit $ showSBS lit
+  _ -> liftIO $ throwIO $ UnsupportedCmmLit $ showBS lit
 
 marshalCmmLoad :: GHC.CmmExpr -> GHC.CmmType -> CodeGen (Expression, ValueType)
 marshalCmmLoad p t = do
@@ -310,7 +311,7 @@ marshalCmmRegOff r o = do
             },
           vt
         )
-    _ -> throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmRegOff r o
+    _ -> liftIO $ throwIO $ UnsupportedCmmExpr $ showBS $ GHC.CmmRegOff r o
 
 marshalCmmBinMachOp ::
   BinaryOp ->
@@ -560,7 +561,7 @@ marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] =
 marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
   marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 Sext x
 marshalCmmMachOp op xs =
-  throwError $ UnsupportedCmmExpr $ showSBS $ GHC.CmmMachOp op xs
+  liftIO $ throwIO $ UnsupportedCmmExpr $ showBS $ GHC.CmmMachOp op xs
 
 marshalCmmExpr :: GHC.CmmExpr -> CodeGen (Expression, ValueType)
 marshalCmmExpr cmm_expr = case cmm_expr of
@@ -569,7 +570,7 @@ marshalCmmExpr cmm_expr = case cmm_expr of
   GHC.CmmReg r -> marshalCmmReg r
   GHC.CmmMachOp op xs -> marshalCmmMachOp op xs
   GHC.CmmRegOff r o -> marshalCmmRegOff r o
-  _ -> throwError $ UnsupportedCmmExpr $ showSBS cmm_expr
+  _ -> liftIO $ throwIO $ UnsupportedCmmExpr $ showBS cmm_expr
 
 marshalAndCastCmmExpr :: GHC.CmmExpr -> ValueType -> CodeGen Expression
 marshalAndCastCmmExpr cmm_expr dest_vt = do
@@ -583,7 +584,7 @@ marshalAndCastCmmExpr cmm_expr dest_vt = do
     _
       | src_vt == dest_vt -> pure src_expr
       | otherwise ->
-        throwError $
+        liftIO $ throwIO $
           UnsupportedImplicitCasting src_expr src_vt dest_vt
 
 marshalCmmUnPrimCall ::
@@ -636,7 +637,7 @@ marshalCmmQuotRemPrimCall tmp0 tmp1 qop rop vt qr rr x y = do
     ]
 
 marshalCmmUnMathPrimCall ::
-  SBS.ShortByteString ->
+  BS.ByteString ->
   ValueType ->
   GHC.LocalReg ->
   GHC.CmmExpr ->
@@ -648,7 +649,7 @@ marshalCmmUnMathPrimCall op vt r x = do
     [ UnresolvedSetLocal
         { unresolvedLocalReg = lr,
           value = CallImport
-            { target' = "__asterius_" <> op <> "_" <> showSBS vt,
+            { target' = "__asterius_" <> op <> "_" <> showBS vt,
               operands = [xe],
               callImportReturnTypes = [vt]
             }
@@ -656,7 +657,7 @@ marshalCmmUnMathPrimCall op vt r x = do
     ]
 
 marshalCmmBinMathPrimCall ::
-  SBS.ShortByteString ->
+  BS.ByteString ->
   ValueType ->
   GHC.LocalReg ->
   GHC.CmmExpr ->
@@ -670,7 +671,7 @@ marshalCmmBinMathPrimCall op vt r x y = do
     [ UnresolvedSetLocal
         { unresolvedLocalReg = lr,
           value = CallImport
-            { target' = "__asterius_" <> op <> "_" <> showSBS vt,
+            { target' = "__asterius_" <> op <> "_" <> showBS vt,
               operands = [xe, ye],
               callImportReturnTypes = [vt]
             }
@@ -859,23 +860,23 @@ marshalCmmPrimCall (GHC.MO_Memcmp _) [_cres] [_ptr1, _ptr2, _n] = do
         }
     ]
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =
-  marshalCmmUnPrimCall I64 r I64 x popCntInt64
+  marshalCmmUnPrimCall I64 r I64 x popcntInt64
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W32) [r] [x] = do
-  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popCntInt32)
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popcntInt32)
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W16) [r] [x] = do
   marshalCmmUnPrimCall
     I64
     r
     I32
     x
-    (extendSInt32 . popCntInt32 . andInt32 (constI32 0xFFFF))
+    (extendSInt32 . popcntInt32 . andInt32 (constI32 0xFFFF))
 marshalCmmPrimCall (GHC.MO_PopCnt GHC.W8) [r] [x] = do
   marshalCmmUnPrimCall
     I64
     r
     I32
     x
-    (extendSInt32 . popCntInt32 . andInt32 (constI32 0xFF))
+    (extendSInt32 . popcntInt32 . andInt32 (constI32 0xFF))
 marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
   marshalCmmUnPrimCall I64 r I64 x clzInt64
 marshalCmmPrimCall (GHC.MO_Clz GHC.W32) [r] [x] =
@@ -1198,12 +1199,126 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
               }
         }
   pure [quotout, remout]
+-- Atomic operations
+marshalCmmPrimCall (GHC.MO_AtomicRMW GHC.W64 amop) [dst] [addr, n] =
+  marshalCmmAtomicMachOpPrimCall amop dst addr n
+marshalCmmPrimCall (GHC.MO_AtomicRead GHC.W64) [dst] [addr] = do
+  dstr <- marshalTypedCmmLocalReg dst I64
+  addrr <- fst <$> marshalCmmExpr addr
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = dstr,
+          value =
+            Load
+              { signed = False,
+                bytes = 8,
+                offset = 0,
+                valueType = I64,
+                ptr = wrapInt64 addrr
+              }
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_AtomicWrite GHC.W64) [] [addr, val] = do
+  addrr <- fst <$> marshalCmmExpr addr
+  valr <- fst <$> marshalCmmExpr val
+  pure
+    [ Store
+        { bytes = 8,
+          offset = 0,
+          ptr = wrapInt64 addrr,
+          value = valr,
+          valueType = I64
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_Cmpxchg GHC.W64) [dst] [addr, oldv, newv] = do
+  -- Copied from GHC.Prim:
+  --
+  -- Given an array, an offset in Int units, the expected old value, and
+  -- the new value, perform an atomic compare and swap i.e. write the new
+  -- value if the current value matches the provided old value. Returns
+  -- the value of the element before the operation. Implies a full memory
+  -- barrier.
+  dstr <- marshalTypedCmmLocalReg dst I64
+  addrr <- fst <$> marshalCmmExpr addr
+  oldr <- fst <$> marshalCmmExpr oldv
+  newr <- fst <$> marshalCmmExpr newv
+  let expr1 =
+        UnresolvedSetLocal
+          { unresolvedLocalReg = dstr,
+            value =
+              Load
+                { signed = False, -- in Cmm everything is unsigned
+                  bytes = 8,
+                  offset = 0, -- StgCmmPrim.doAtomicRMW has done the work
+                  valueType = I64,
+                  ptr = wrapInt64 addrr
+                }
+          }
+  let expr2 =
+        If
+          { condition = UnresolvedGetLocal dstr `eqInt64` oldr,
+            ifTrue =
+              Store
+                { bytes = 8,
+                  offset = 0,
+                  ptr = wrapInt64 addrr,
+                  value = newr,
+                  valueType = I64
+                },
+            ifFalse = Nothing
+          }
+  pure [expr1, expr2]
+-- Uncovered cases
 marshalCmmPrimCall op rs xs =
-  throwError $ UnsupportedCmmInstr $ showSBS $
+  liftIO $ throwIO $ UnsupportedCmmInstr $ showBS $
     GHC.CmmUnsafeForeignCall
       (GHC.PrimTarget op)
       rs
       xs
+
+-- | Marshal an atomic MachOp.
+marshalCmmAtomicMachOpPrimCall ::
+  -- | The atomic machop to marshal
+  GHC.AtomicMachOp ->
+  -- | The destination register
+  GHC.LocalReg ->
+  -- | The address
+  GHC.CmmExpr ->
+  -- | The second operand (I64)
+  GHC.CmmExpr ->
+  CodeGen [Expression]
+marshalCmmAtomicMachOpPrimCall machop dst addr n = do
+  dstr <- marshalTypedCmmLocalReg dst I64
+  addrr <- fst <$> marshalCmmExpr addr
+  nr <- fst <$> marshalCmmExpr n
+  let fn = case machop of
+        GHC.AMO_Add -> addInt64
+        GHC.AMO_Sub -> subInt64
+        GHC.AMO_And -> andInt64
+        GHC.AMO_Nand -> nandInt64
+        GHC.AMO_Or -> orInt64
+        GHC.AMO_Xor -> xorInt64
+  let expr1 =
+        UnresolvedSetLocal
+          { unresolvedLocalReg = dstr,
+            value =
+              Load
+                { signed = False, -- in Cmm everything is unsigned
+                  bytes = 8,
+                  offset = 0, -- StgCmmPrim.doAtomicRMW has done the work
+                  valueType = I64,
+                  ptr = wrapInt64 addrr
+                }
+          }
+  let expr2 =
+        Store
+          { bytes = 8,
+            offset = 0,
+            ptr = wrapInt64 addrr,
+            value = fn (UnresolvedGetLocal dstr) nr,
+            valueType = I64
+          }
+  pure [expr1, expr2]
 
 marshalCmmUnsafeCall ::
   GHC.CmmExpr ->
@@ -1217,7 +1332,20 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
     (xe, _) <- marshalCmmExpr x
     pure xe
   case rs of
-    [] -> pure [Call {target = sym, operands = xes, callReturnTypes = []}]
+    [] ->
+      pure
+        [ case ccallResultDroppable sym of
+            [] -> Call {target = sym, operands = xes, callReturnTypes = []}
+            rts ->
+              Drop
+                { dropValue =
+                    Call
+                      { target = sym,
+                        operands = xes,
+                        callReturnTypes = rts
+                      }
+                }
+        ]
     [r] -> do
       (lr, vt) <- marshalCmmLocalReg r
       pure
@@ -1231,17 +1359,46 @@ marshalCmmUnsafeCall p@(GHC.CmmLit (GHC.CmmLabel clbl)) f rs xs = do
             }
         ]
     _ ->
-      throwError $ UnsupportedCmmInstr $ showSBS $
+      liftIO $ throwIO $ UnsupportedCmmInstr $ showBS $
         GHC.CmmUnsafeForeignCall
           (GHC.ForeignTarget p f)
           rs
           xs
-marshalCmmUnsafeCall p f rs xs =
-  throwError $ UnsupportedCmmInstr $ showSBS $
-    GHC.CmmUnsafeForeignCall
-      (GHC.ForeignTarget p f)
-      rs
-      xs
+marshalCmmUnsafeCall p f rs xs = do
+  fp <- marshalAndCastCmmExpr p I32
+  (xes, xts) <- unzip <$> for xs marshalCmmExpr
+  case rs of
+    [] ->
+      pure
+        [ CallIndirect
+            { indirectTarget = fp,
+              operands = xes,
+              functionType = FunctionType {paramTypes = xts, returnTypes = []}
+            }
+        ]
+    [r] -> do
+      (lr, vt) <- marshalCmmLocalReg r
+      pure
+        [ UnresolvedSetLocal
+            { unresolvedLocalReg = lr,
+              value =
+                CallIndirect
+                  { indirectTarget = fp,
+                    operands = xes,
+                    functionType =
+                      FunctionType
+                        { paramTypes = xts,
+                          returnTypes = [vt]
+                        }
+                  }
+            }
+        ]
+    _ ->
+      liftIO $ throwIO $ UnsupportedCmmInstr $ showBS $
+        GHC.CmmUnsafeForeignCall
+          (GHC.ForeignTarget p f)
+          rs
+          xs
 
 marshalCmmInstr :: GHC.CmmNode GHC.O GHC.O -> CodeGen [Expression]
 marshalCmmInstr instr = case instr of
@@ -1307,18 +1464,27 @@ marshalCmmInstr instr = case instr of
                 }
           )
     pure [store_instr]
-  _ -> throwError $ UnsupportedCmmInstr $ showSBS instr
+  _ -> liftIO $ throwIO $ UnsupportedCmmInstr $ showBS instr
 
 marshalCmmBlockBody :: [GHC.CmmNode GHC.O GHC.O] -> CodeGen [Expression]
 marshalCmmBlockBody instrs = concat <$> for instrs marshalCmmInstr
 
+-- | Flag determining whether we need to add an @__asterius_unreachable@ block.
+newtype NeedsUnreachableBlock = NeedsUnreachableBlock Bool
+  deriving (Semigroup, Monoid) via (Data.Monoid.Any)
+
 marshalCmmBlockBranch ::
   GHC.CmmNode GHC.O GHC.C ->
-  CodeGen ([Expression], Maybe Expression, [RelooperAddBranch])
+  CodeGen ([Expression], Maybe Expression, [RelooperAddBranch], NeedsUnreachableBlock)
 marshalCmmBlockBranch instr = case instr of
   GHC.CmmBranch lbl -> do
     k <- marshalLabel lbl
-    pure ([], Nothing, [AddBranch {to = k, addBranchCondition = Nothing}])
+    pure
+      ( [],
+        Nothing,
+        [AddBranch {to = k, addBranchCondition = Nothing}],
+        NeedsUnreachableBlock False
+      )
   GHC.CmmCondBranch {..} -> do
     c <- marshalAndCastCmmExpr cml_pred I32
     kf <- marshalLabel cml_false
@@ -1327,16 +1493,19 @@ marshalCmmBlockBranch instr = case instr of
       ( [],
         Nothing,
         [AddBranch {to = kt, addBranchCondition = Just c} | kt /= kf]
-          <> [AddBranch {to = kf, addBranchCondition = Nothing}]
+          <> [AddBranch {to = kf, addBranchCondition = Nothing}],
+        NeedsUnreachableBlock False
       )
   GHC.CmmSwitch cml_arg st -> do
     a <- marshalAndCastCmmExpr cml_arg I64
     brs <- for (GHC.switchTargetsCases st) $ \(idx, lbl) -> do
       dest <- marshalLabel lbl
       pure (dest, [fromIntegral $ idx - fst (GHC.switchTargetsRange st)])
-    dest_def <- case GHC.switchTargetsDefault st of
-      Just lbl -> marshalLabel lbl
-      _ -> pure "__asterius_unreachable"
+    (needs_unreachable, dest_def) <- case GHC.switchTargetsDefault st of
+      Just lbl -> do
+        klbl <- marshalLabel lbl
+        return (NeedsUnreachableBlock False, klbl)
+      Nothing -> pure (NeedsUnreachableBlock True, "__asterius_unreachable")
     pure
       ( [],
         Just Unary
@@ -1353,7 +1522,8 @@ marshalCmmBlockBranch instr = case instr of
           | (dest, tags) <- M.toList $ M.fromListWith (<>) brs,
             dest /= dest_def
         ]
-          <> [AddBranch {to = dest_def, addBranchCondition = Nothing}]
+          <> [AddBranch {to = dest_def, addBranchCondition = Nothing}],
+        needs_unreachable
       )
   GHC.CmmCall {..} -> do
     t <- marshalAndCastCmmExpr cml_target I64
@@ -1363,60 +1533,66 @@ marshalCmmBlockBranch instr = case instr of
             _ -> ReturnCallIndirect {returnCallIndirectTarget64 = t}
         ],
         Nothing,
-        []
+        [],
+        NeedsUnreachableBlock False
       )
-  _ -> throwError $ UnsupportedCmmBranch $ showSBS instr
+  _ -> liftIO $ throwIO $ UnsupportedCmmBranch $ showBS instr
 
 marshalCmmBlock ::
   [GHC.CmmNode GHC.O GHC.O] ->
   GHC.CmmNode GHC.O GHC.C ->
-  CodeGen RelooperBlock
+  CodeGen (RelooperBlock, NeedsUnreachableBlock)
 marshalCmmBlock inner_nodes exit_node = do
   inner_exprs <- marshalCmmBlockBody inner_nodes
-  (br_helper_exprs, maybe_switch_cond_expr, br_branches) <-
+  (br_helper_exprs, maybe_switch_cond_expr, br_branches, needs_unreachable) <-
     marshalCmmBlockBranch exit_node
   pure $ case maybe_switch_cond_expr of
-    Just switch_cond_expr -> RelooperBlock
-      { addBlock = AddBlockWithSwitch
-          { code = concatExpressions $ inner_exprs <> br_helper_exprs,
-            condition = switch_cond_expr
+    Just switch_cond_expr ->
+      ( RelooperBlock
+          { addBlock =
+              AddBlockWithSwitch
+                { code = concatExpressions $ inner_exprs <> br_helper_exprs,
+                  condition = switch_cond_expr
+                },
+            addBranches = br_branches
           },
-        addBranches = br_branches
-      }
-    _ -> RelooperBlock
-      { addBlock = AddBlock
-          { code = concatExpressions $ inner_exprs <> br_helper_exprs
+        needs_unreachable
+      )
+    _ ->
+      ( RelooperBlock
+          { addBlock =
+              AddBlock
+                { code = concatExpressions $ inner_exprs <> br_helper_exprs
+                },
+            addBranches = br_branches
           },
-        addBranches = br_branches
-      }
+        needs_unreachable
+      )
   where
     concatExpressions es = case es of
       [] -> Nop
       [e] -> e
       _ -> Block {name = "", bodys = es, blockReturnTypes = []}
 
-marshalCmmProc :: AsteriusEntitySymbol -> GHC.CmmGraph -> CodeGen Function
-marshalCmmProc sym GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
+marshalCmmProc :: GHC.CmmGraph -> CodeGen Function
+marshalCmmProc GHC.CmmGraph {g_graph = GHC.GMany _ body _, ..} = do
   entry_k <- marshalLabel g_entry
-  rbs <-
-    for (GHC.bodyList body) $ \(lbl, GHC.BlockCC _ inner_nodes exit_node) -> do
-      k <- marshalLabel lbl
-      b <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
-      pure (k, b)
-  let blocks_unresolved =
-        ( "__asterius_unreachable",
-          RelooperBlock
-            { addBlock = AddBlock
-                { code = Barf
-                    { barfMessage = "unreachable block",
-                      barfReturnTypes = []
-                    }
-                },
-              addBranches = []
-            }
-        )
-          : rbs
-  pure $ splitFunction sym $ adjustLocalRegs Function
+  (needs_unreachable, rbs) <- do
+    let fn ::
+          NeedsUnreachableBlock ->
+          (GHC.Label, GHC.Block GHC.CmmNode GHC.C GHC.C) ->
+          CodeGen (NeedsUnreachableBlock, (BS.ByteString, RelooperBlock))
+        fn needs_unreachable_acc (lbl, GHC.BlockCC _ inner_nodes exit_node) = do
+          k <- marshalLabel lbl
+          (b, needs_unreachable) <- marshalCmmBlock (GHC.blockToList inner_nodes) exit_node
+          pure (needs_unreachable_acc <> needs_unreachable, (k, b))
+    mapAccumLM fn mempty (GHC.bodyList body)
+  let blocks_unresolved
+        | coerce needs_unreachable =
+          ("__asterius_unreachable", unreachableRelooperBlock) : rbs
+        | otherwise =
+          rbs
+  pure $ adjustLocalRegs Function
     { functionType = FunctionType {paramTypes = [], returnTypes = []},
       varTypes = [],
       body = CFG RelooperRun
@@ -1433,11 +1609,11 @@ marshalCmmDecl decl = case decl of
     sym <- marshalCLabel clbl
     r <- unCodeGen $ marshalCmmData sym sec d
     pure $ case r of
-      Left err -> mempty {staticsErrorMap = M.fromList [(sym, err)]}
-      Right ass -> mempty {staticsMap = M.fromList [(sym, ass)]}
+      Left err -> mempty {staticsErrorMap = SM.fromList [(sym, err)]}
+      Right ass -> mempty {staticsMap = SM.fromList [(sym, ass)]}
   GHC.CmmProc _ clbl _ g -> do
     sym <- marshalCLabel clbl
-    r <- unCodeGen $ marshalCmmProc sym g
+    r <- unCodeGen $ marshalCmmProc g
     let f = case r of
           Left err -> Function
             { functionType = FunctionType {paramTypes = [], returnTypes = []},
@@ -1451,11 +1627,46 @@ marshalCmmDecl decl = case decl of
     pure $ processBarf sym f
 
 marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
-marshalHaskellIR this_mod HaskellIR {..} = marshalRawCmm this_mod cmmRaw
+marshalHaskellIR this_mod HaskellIR {..} = do
+  (dflags, _) <- ask
+  let spt_map =
+        SM.fromList
+          [ (sym, (w0, w1))
+            | GHC.SptEntry (idClosureSymbol dflags -> sym) (Fingerprint w0 w1) <-
+                sptEntries
+          ]
+  r <- marshalRawCmm this_mod cmmRaw
+  pure r {sptMap = spt_map}
 
 marshalCmmIR :: GHC.Module -> CmmIR -> CodeGen AsteriusModule
 marshalCmmIR this_mod CmmIR {..} = marshalRawCmm this_mod cmmRaw
 
-marshalRawCmm :: GHC.Module -> [[GHC.RawCmmDecl]] -> CodeGen AsteriusModule
-marshalRawCmm _ cmm_decls =
-  mconcat <$> traverse marshalCmmDecl (mconcat cmm_decls)
+marshalRawCmm ::
+  GHC.Module ->
+  Stream IO GHC.RawCmmGroup () ->
+  CodeGen AsteriusModule
+marshalRawCmm _ = w mempty
+  where
+    w m cmms = do
+      r <- liftIO $ Stream.runStream cmms
+      case r of
+        Right (cmm_decls, cmms') -> do
+          m' <-
+            foldlM
+              (\x cmm_decl -> (<> x) <$> marshalCmmDecl cmm_decl)
+              m
+              cmm_decls
+          w m' cmms'
+        _ -> pure m
+
+{-
+Note [unreachableRelooperBlock]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In general, we represent runtime failures using @Barf@s, and that's what
+functions @relooper@ and @marshalCmmProc@ used to do as well, when @CmmSwitch@
+was deemed to be non-exhaustive (lacking a default clause). But, we could do
+better: GHC emits @CmmSwitch@es without a default clause only if it knows that
+the match is indeed exhaustive and (so 'unreachableRelooperBlock' is really
+unreachable). So, now both @marshalCmmProc@ and @relooper@ use @Unreachable@
+directly, saving us some generated binary size (see issue #592).
+-}

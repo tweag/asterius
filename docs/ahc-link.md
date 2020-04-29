@@ -1,37 +1,75 @@
-# Using `ahc-dist`/`ahc-link`
+# Using `ahc-link`/`ahc-dist`
 
-`ahc-link` is the frontend program of Asterius. It taks a Haskell `Main` module and optionally an ES6 "entry" module as input, then emits a `.wasm` WebAssembly binary module and companion JavaScript, which can be run in Node.js or browser environments.
+`ahc-link` is the frontend program of Asterius. It takes a Haskell `Main` module
+and optionally an ES6 "entry" module as input, then emits a `.wasm` WebAssembly
+binary module and companion JavaScript files, which can then be run in
+environments like Node.js or browsers.
 
-`ahc-dist` works similarly, except it takes the "executable" file generated from `ahc` (either directly by calling `ahc`, or indirectly by using `cabal`) as input. Most command-line arguments are the same as `ahc-link`, except `ahc-link` takes `--input-hs`, while `ahc-dist` takes `--input-exe`.
+`ahc-dist` works similarly, except it takes the pseudo-executable file generated
+from `ahc-cabal` as input. All command-line arguments are the same as
+`ahc-link`, except `ahc-link` takes `--input-hs`, while `ahc-dist` takes
+`--input-exe`.
 
-The options are described in full details here.
+## Quick examples
 
-## Basic input/output options
+Compiling a Haskell file, running the result with `node` immediately: `ahc-link
+--input-hs hello.hs --run`
+
+Compiling for browsers, bundling JavaScript modules to a single script:
+`ahc-link --input-hs hello.hs --browser --bundle`
+
+Compiling a Cabal executable target: `ahc-cabal new-install --installdir . hello
+&& ahc-dist --input-exe hello --run`
+
+## Reference
 
 ### `--input-hs ARG`
 
-The Haskell `Main` module's file path. This option doesn't have a default and is mandatory; all others are optional. This works only for `ahc-link`.
+The Haskell `Main` module's file path. This option is mandatory; all others are
+optional. Works only for `ahc-link`.
+
+The `Main` module may reference other local modules, as well as packages in the
+`asterius` global package database.
 
 ### `--input-exe ARG`
 
-The "executable" file path. This works only for `ahc-dist`, and is also mandatory.
+The pseudo-executable file path. A pseudo-executable is produced by using
+`ahc-cabal` to compile a Cabal executable target. This works only for
+`ahc-dist`, and is also mandatory.
 
 ### `--input-mjs ARG`
 
-The ES6 "entry" module's file path. If not specified, the default entry module initializes an Asterius instance and calls `Main.main`, and upon normal completion, prints the standard output via `console.log`.
+The ES6 "entry" module's file path. If not specified, a default entry module
+will be generated, e.g. `xxx.hs`'s entry script will be `xxx.mjs`. The entry
+module can either be run by `node`, or included in a `<script>` tag, depending
+on the target supplied at link time.
 
-It's possible to override the default behavior by specifying your own entry module. First, you need two imports (the relevant files are auto-generated and don't exist yet):
+It's possible to override the default behavior by specifying your own entry
+module. The easiest way to write a custom entry module is to modify the default
+one:
 
+```javascript
+import * as rts from "./rts.mjs";
+import module from "./xxx.wasm.mjs";
+import req from "./xxx.req.mjs";
+
+module
+  .then(m => rts.newAsteriusInstance(Object.assign(req, { module: m })))
+  .then(i => {
+    i.exports.hs_init();
+    i.exports.main();
+  });
 ```
-import { module } from "./xx.wasm.mjs";
-import { newInstance } from "./xx.lib.mjs";
-```
 
-Assuming `xx.hs` is the input Haskell `Main` module.
+`xxx.wasm.mjs` and `xxx.req.mjs` are generated at link-time. `xxx.wasm.mjs`
+exports a default value, which is a `Promise` resolving to a
+`WebAssembly.Module` value. `xxx.req.mjs` exports the "request object"
+containing app-specific data required to initialize an instance. After adding
+the `module` field to the request object, the result can be used as the input to
+`newAsteriusInstance` exported by `rts.mjs`.
 
-Now, `module` is a `Promise` which resolves to a `WebAssembly.Module`. It's stateless and supports structured cloning, so it's possible to reuse it by send it to `Worker`s, store it in IndexedDB, etc. To avoid unnecessary compilation when reusing it, you need the dynamic `import()` for `xx.wasm.mjs` instead.
-
-`newInstance` is an async function which takes the `WebAssembly.Module` and resolves to an Asterius instance. An Asterius instance is a super-set of a `WebAssembly.Instance` and contains stateful fields to support running Haskell code. You can take a look at the manually written entry modules in `asterius/test` to get some idea on the capabilities of such an instance.
+`newAsteriusInstance` will eventually resolve to an Asterius instance object.
+Using the instance object, one can call the exported Haskell functions.
 
 ### `--output-directory ARG`
 
@@ -39,70 +77,134 @@ Specifies the output directory. Defaults to the same directory of `--input-hs`.
 
 ### `--output-prefix` ARG
 
-Specifies the prefix of the output files. Defaults to the base filename of `--input-hs`, so for `xx.hs`, we generate `xx.wasm`, `xx.lib.mjs`, etc.
+Specifies the prefix of the output files. Defaults to the base filename of
+`--input-hs`, so for `xxx.hs`, we generate `xxx.wasm`, `xxx.req.mjs`, etc.
 
-## Common options for controlling outputs
+### `--verbose-err`
+
+This flag will enable more verbose runtime error messages. By default, the data
+segments related to runtime messages and the function name section are stripped
+in the output WebAssembly module for smaller binary size.
+
+When reporting a runtime error in the `asterius` issue tracker, it is
+recommended to compile and run the example with `--verbose-err` so there's more
+info available.
+
+### `--no-main`
+
+This is useful for compiling and linking a non-`Main` module. This will pass
+`-no-hs-main` to GHC when linking, and the usual `i.exports.main()` main
+function won't be available.
+
+Note that the default entry script won't work for such modules, since there
+isn't an exported `main` functions, but it's still possible to export other
+Haskell functions and call them from JavaScript; do not forget to use
+`--export-function=..` to specify those functions.
+
+### `--browser`
+
+Indicates the output code is targeting the browser environment. By default, the
+target is Node.js.
+
+Since the runtime contains platform-specific modules, the compiled
+WebAssembly/JavaScript code only works on a single specific platform. The
+pseudo-executable generated by `ahc` or `ahc-cabal` is platform-independent
+though; it's possible to compile Haskell to a pseudo-executable, and later use
+`ahc-dist` to generate code for different platforms.
+
+### `--bundle`
+
+Instead of generating a bunch of ES6 modules in the target directory, generate a
+self-contained `xxx.js` script, and running `xxx.js` has the same effect as
+running the entry module. Only works for the browser target for now.
+
+`--bundle` is backed by [`parcel`](https://parceljs.org/) under the hood and
+performs minification on the bundled JavaScript file. It's likely beneficial
+since it reduces the total size of scripts and doesn't require multiple requests
+for fetching them.
 
 ### `--tail-calls`
 
-Enable the WebAssembly tail call opcodes in output binary. This requires Node.js/Chromium to be built with a fairly recent revision of V8, and called with the `--experimental-wasm-return-call` flag. Doesn't work with the binaryen backend yet.
+Enable the WebAssembly tail call opcodes. This requires Node.js/Chromium to be
+called with the `--experimental-wasm-return-call` flag.
 
 See the "Using experimental WebAssembly features" section for more details.
+
+### `--optimize-level=N`
+
+Set the optimize level of `binaryen`. Valid values are `0` to `4`. The default
+value is `4`.
+
+Check the relevant source code in `binaryen` for the passes enabled for
+different optimize/shrink levels
+[here](https://github.com/WebAssembly/binaryen/blob/master/src/passes/pass.cpp).
+
+### `--shrink-level=N`
+
+Set the shrink level of `binaryen`. Valid values are `0` to `2`. The default
+value is `2`.
 
 ### `--ghc-option ARG`
 
 Specify additional ghc options. The `{-# OPTIONS_GHC #-}` pragma also works.
 
-### `--browser`
-
-Indicates the output code is to be run in a browser environment. By default, the output code is intended to be run by Node.js instead.
-
-### `--bundle`
-
-Instead of copying the runtime `.mjs` modules to the target directory, generate a self-contained `xx.js` script, and running `xx.js` has the same effect as running the entry module. Only works for browser targets.
-
-`--bundle` is supported by [`Parcel`](https://parceljs.org/) under the hood and performs minification on the bundled JavaScript file. It's likely beneficial since it reduces total size of scripts and doesn't require multiple requests for fetching them.
-
-## More advanced options for hackers
-
 ### `--run`
 
 Runs the output code using `node`. Ignored for browser targets.
 
-### `--binaryen`
+### `--backend`
 
-Use the binaryen backend for generating `.wasm` files. Also note that with the binaryen backend, we use the binaryen relooper instead of our own relooper, which at the moment may give better runtime performance.
+Specify a backend for generating `.wasm` files; `--backend=binaryen` or
+`--backend=wasm-toolkit` is supported. The default backend is `binaryen`. At the
+moment, the `binaryen` backend is likely to emit better code, due to factors
+like a more decent relooper.
 
-If you observe any different runtime behavior of output code when this option is on, it's a bug!
+Other than performance, if any different runtime behavior of output code is
+observed with different backends, it should be a bug.
 
 ### `--debug`
 
-Switch on the debug mode. Emits a ton of event logs suitable for piping to `grep` (or just leave it on the screen in case you'd like some hypnosis)
+Switch on the debug mode. The memory trap will be enabled, which replaces all
+load/store instructions in WebAssembly with load/store functions in JavaScript,
+performing aggressive validity checks on the addresses.
 
-### `--full-sym-table`
+### `--yolo`
 
-Contain the full symbol table into `xx.lib.mjs`. Automatically implied by `--debug`.
+Switch on the yolo mode. Garbage collection will never occur, instead the
+storage manager will simply allocate more memory upon heap overflows. This is
+mainly used for debugging potential gc-related runtime errors.
+
+### `--gc-threshold=N`
+
+Set the gc threshold value to `N` MBs. The default value is `64`. The storage
+manager won't perform actual garbage collection if the size of active heap
+region is below the threshold.
 
 ### `--no-gc-sections`
 
 Do not run dead code elimination.
 
-## Options affecting the linker
-
 ### `--export-function ARG`
 
-Use this when you `foreign export javascript` anything. Otherwise the dead code elimination performed by the linker will surely exclude that code from the output WebAssembly module if it's not transitively used by `Main.main`!
+For each `foreign export javascript` function `f` that will be called, a
+`--export-function=f` link-time flag is mandatory.
 
 ### `--extra-root-symbol ARG`
 
-Use this to specify a symbol to be added to the "root symbol set". Works similar to `--export-function`, but the argument is not a Haskell function name, but a symbol name directly.
-
-## Additional outputs for the curious
-
-### `--output-link-report`
-
-Output a "link report" text file containing internal linker stats.
+Specify a symbol to be added to the "root symbol set". Root symbols and their
+transitive dependencies will survive dead code elimination.
 
 ### `--output-ir`
 
-Output wasm IRs of compiled Haskell modules and the resulting module. The IRs aren't intended to be consumed by external tools like binaryen/wabt.
+Output Wasm IRs of compiled Haskell modules and the resulting module. The IRs
+aren't intended to be consumed by external tools like `binaryen`/`wabt`.
+
+### `--console-history`
+
+The `stdout`/`stderr` of the runtime will preserve the already written content.
+The UTF-8 decoded history content can be fetched via
+`i.stdio.stdout()`/`i.stdio.stderr()`. These functions will also clear the
+history when called.
+
+This flag can be useful when writing headless Node.js or browser tests and the
+`stdout`/`stderr` contents need to be compared against a file.

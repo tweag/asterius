@@ -1,66 +1,135 @@
 # Asterius: A Haskell to WebAssembly compiler
 
-[![CircleCI](https://circleci.com/gh/tweag/asterius/tree/master.svg?style=shield)](https://circleci.com/gh/tweag/asterius/tree/master)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://app.netlify.com/sites/asterius/deploys)
 [![Docker Pulls](https://img.shields.io/docker/pulls/terrorjack/asterius.svg)](https://hub.docker.com/r/terrorjack/asterius)
-[![Gitter chat](https://badges.gitter.im/tweag/asterius.png)](https://gitter.im/tweag/asterius)
+[![Build status](https://badge.buildkite.com/d96cf8b736eb305c8d2758833551a2241ba2b9a0e95b1a4a03.svg?branch=master)](https://buildkite.com/tweag-1/asterius/builds?branch=master)
+[![Gitter](https://img.shields.io/gitter/room/tweag/asterius)](https://gitter.im/tweag/asterius)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://asterius.netlify.com)
 
-A Haskell to WebAssembly compiler. Project status: **alpha**, in active development, some simple examples already work.
+Asterius is a Haskell to WebAssembly compiler based on GHC. It compiles
+Haskell source files or Cabal executable targets to WebAssembly+JavaScript code
+which can be run in [Node.js][nodejs] or browsers.
+It features seamless JavaScript interop
+(lightweight Async FFI with `Promise` support) and small output code (~600KB
+`hello.wasm` for a [Hello
+World](https://hackage.haskell.org/package/hello-1.0.0.2)). A lot of common
+Haskell packages like `lens` are already supported. The project is actively
+maintained by [Tweag I/O](https://tweag.io/).
 
-See the [documentation](https://asterius.netlify.com/) for further instructions. Or check our blog posts:
+[nodejs]: https://nodejs.org
 
-* [Fibonacci compiles end-to-end: Haskell to WebAssembly via GHC](https://www.tweag.io/posts/2018-05-29-hello-asterius.html)
-* [Haskell WebAssembly calling JavaScript and back again](https://www.tweag.io/posts/2018-09-12-asterius-ffi.html)
-* [Asterius GHC WebAssembly backend reaches TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
+## Demos
 
-Also, we've added [Weekly Status Reports](https://asterius.netlify.com/reports.html) in case you're interested where the bleeding edge has reached.
+Demos of popular Haskell apps, running in your browser:
 
-## Quick start
+* [`ormolu`](https://asterius.netlify.com/ormolu/WebOrmolu.html)
+* [`pandoc`](https://asterius.netlify.com/pandoc/pandoc.html)
 
-We provide pre-built Docker images. Put the input `.hs` program in a directory and map the directory to a Docker volume:
+## Quickstart using the prebuilt Docker image
+
+We host a prebuilt Docker image on [Docker
+Hub](https://hub.docker.com/r/terrorjack/asterius). The image also ships ~2k
+prebuilt [packages](https://github.com/tweag/asterius/issues/354) from a recent
+Stackage snapshot for convenience of testing simple programs without needing to
+set up a Cabal project.
+
+To use the image, mount the working directory containing the source code as a
+Docker shared volume, then use the `ahc-link` program:
 
 ```
-terrorjack@ubuntu:~$ docker run -it -v ~/mirror:/mirror terrorjack/asterius
-root@76bcb511663d:~# cd /mirror
-root@76bcb511663d:/mirror# ahc-link --input-hs xxx.hs
-...
+username@hostname:~/project$ docker run --rm -it -v $(pwd):/project -w /project terrorjack/asterius
+asterius@hostname:/project$ ahc-link --input-hs main.hs
 ```
 
-See the [help text](https://asterius.netlify.com/ahc-link.html) of `ahc-link` for further instructions.
+There are a lot of link-time options available to `ahc-link`, e.g. targeting
+the browser platform instead of `node`, adding extra GHC options or setting
+runtime parameters. Check the [documentation](https://asterius.netlify.com/) for
+further details.
 
-What works currently:
+It's also possible to use `ahc-cabal` as a drop-in replacement of `cabal` to
+build a Cabal project. Use `ahc-dist` with `--input-exe` on the output
+"executable" file to generate actual WebAssembly and JavaScript artifacts. See
+the `diagrams` blog
+[post](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html) for an
+example.
 
-* All GHC language features except Template Haskell.
-* Non-IO parts in `ghc-prim`/`integer-simple`/`base`/`array`/`deepseq`/`containers`/`transformers`/`mtl`/`pretty`/`bytestring`/`binary`/`xhtml`. IO is achieved via rts primitives like `print_i64` or JavaScript FFI.
-* Fast arbitrary-precision `Integer` operations backed by `BigInt`s.
-* Preliminary copying GC, managing both Haskell heap objects and JavaScript references.
+Check the official
+[reference](https://docs.docker.com/engine/reference/commandline/run) of `docker
+run` to learn more about the command given in the example above. The example
+opens an interactive `bash` session for exploration, but it's also possible to
+use `docker run` to invoke the Asterius compiler on local Haskell source files.
+Note that [`podman`](https://podman.io) can be used instead of `docker` here.
+
+## Building and using `asterius` locally
+
+See the [Building guide](https://asterius.netlify.com/building.html) in the
+documentation for details.
+
+## Hacking on Asterius
+
+We recommend using [VSCode Remote
+Containers](https://code.visualstudio.com/docs/remote/containers) to reproduce
+the very same dev environment used by our core team members. See the [Hacking
+guide](https://asterius.netlify.com/hacking.html) in the documentation for
+details.
+
+## Documentation
+
+We have [documentation](https://asterius.netlify.com/) and blog posts:
+
+* [Fibonacci compiles end-to-end: Haskell to WebAssembly via
+  GHC](https://www.tweag.io/posts/2018-05-29-hello-asterius.html)
+* [Haskell WebAssembly calling JavaScript and back
+  again](https://www.tweag.io/posts/2018-09-12-asterius-ffi.html)
+* [Asterius GHC WebAssembly backend reaches
+  TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
+* [Haskell art in your browser with
+  Asterius](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html)
+
+Also checkout the [HIW 2018 lightning
+talk](https://icfp18.sigplan.org/details/hiw-2018-papers/6/Lightning-talk-Asterius-Bringing-Haskell-to-WebAssembly),
+and the slides of an introductory talk in 2020
+[here](https://docs.google.com/presentation/d/1AZJIf2ykheqONOM23oC6F3LJ9m5W9gbl69pDVdZszHg/edit?usp=sharing).
+
+Note that they may be slightly out-of-date as the project evolves. Whenever you
+find something in the docs of blog posts which doesn't reflect the status quo,
+it's a bug and don't hesitate to open a ticket :)
+
+## What works now
+
+* Almost all GHC language features (TH support is partial, cross-splice state
+  persistence doesn't work yet).
+* The pure parts in standard libraries and other packages. IO is achieved via
+  rts primitives or user-defined JavaScript imports.
+* Importing JavaScript expressions via the `foreign import javascript` syntax.
+  First-class garbage collected `JSVal` type in Haskell land.
+* Preliminary copying GC, managing both Haskell heap objects and JavaScript
+  references.
 * Preliminary Cabal support.
-* Importing JavaScript expressions via the `foreign import javascript` syntax. First-class `JSVal` type in Haskell land.
-* Fast conversion between Haskell/JavaScript types (strings, arrays and ArrayBuffers at the moment)
-* Calling Haskell functions from JavaScript via the `foreign export javascript` syntax. Haskell closures can be passed between Haskell/JavaScript boundary via `StablePtr`.
-* Invoking RTS API on the JavaScript side to manipulate Haskell closures and trigger evaluation.
-* A linker which performs aggressive dead-code elimination, producing as small WebAssembly binary as possible.
-* A debugger which checks invalid memory access and outputs memory loads/stores and control flow transfers.
-* Complete [`binaryen`](https://github.com/WebAssembly/binaryen)/[`wabt`](https://github.com/WebAssembly/wabt) raw bindings, plus a monadic EDSL to construct WebAssembly code directly in Haskell.
-* A Haskell library to handle WebAssembly code, which already powers binary code generation.
-* Unit tests implementing stochastic fuzzer/shrinker for WebAssembly, in order to produce minimal repro in case something goes wrong in generated code.
-* Besides WebAssembly MVP and `BigInt`, no special requirements on the underlying JavaScript engine at the moment. Optionally, we emit binaries using the experimental tail call opcodes; see the `ahc-link` documentation page for details.
+* Marshaling between Haskell/JavaScript types based on `aeson`.
+* Calling Haskell functions from JavaScript via the `foreign export javascript`
+  syntax. Haskell closures can be passed between the Haskell/JavaScript boundary
+  via `StablePtr`.
+* Invoking RTS API on the JavaScript side to manipulate Haskell closures and
+  trigger evaluation.
+* A linker which performs aggressive dead-code elimination, producing as small
+  WebAssembly binary as possible.
+* A debugger which checks invalid memory access and outputs memory loads/stores
+  and control flow transfers.
+* Complete
+  [`binaryen`](https://github.com/WebAssembly/binaryen)/[`wabt`](https://github.com/WebAssembly/wabt)
+  raw bindings, plus a monadic EDSL to construct WebAssembly code directly in
+  Haskell.
+* A Haskell library to handle WebAssembly code, which already powers binary code
+  generation.
+* Besides WebAssembly MVP and `BigInt`, no special requirements on the
+  underlying JavaScript engine at the moment.
 
-Better check the [`fib`](asterius/test/fib/fib.hs), [`jsffi`](asterius/test/jsffi/jsffi.hs), [`array`](asterius/test/array/array.hs), [`rtsapi`](asterius/test/rtsapi.hs) and [`teletype`](asterius/test/teletype/teletype.hs) test suites first to get some idea on current capabilities of `asterius`.
+## Contributors
 
-## Building from source
-
-install the following:
-
-- `nodejs` 12.x. Binaries can be downloaded from [`noderesource/distributions`](https://github.com/nodesource/distributions) for common `*nix` platforms.
-
-and then follow the commands in the `Dockerfile`.
-
-For hacking instructions, [there is a `docs/hacking.md` which has advice and common commands](docs/hacking.md)
-
-## Sponsors
-
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 [<img src="https://www.tweag.io/img/tweag-med.png" height="65">](https://tweag.io)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+[<img src="https://i.imgur.com/tAag5MD.jpg" height="65">](https://iohk.io)
 
 Asterius is maintained by [Tweag I/O](https://tweag.io/).
 

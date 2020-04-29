@@ -1,5 +1,13 @@
 module Language.Haskell.GHC.Toolkit.Constants where
 
+foreign import ccall unsafe "offset_timespec_tv_sec"
+  offset_timespec_tv_sec ::
+    Int
+
+foreign import ccall unsafe "offset_timespec_tv_nsec"
+  offset_timespec_tv_nsec ::
+    Int
+
 foreign import ccall unsafe "roundup" roundup :: Int -> Int -> Int
 
 foreign import ccall unsafe "roundup_bytes_to_words"
@@ -26,6 +34,8 @@ foreign import ccall unsafe "offset_bdescr_start" offset_bdescr_start :: Int
 foreign import ccall unsafe "offset_bdescr_free" offset_bdescr_free :: Int
 
 foreign import ccall unsafe "offset_bdescr_link" offset_bdescr_link :: Int
+
+foreign import ccall unsafe "offset_bdescr_gen_no" offset_bdescr_gen_no :: Int
 
 foreign import ccall unsafe "offset_bdescr_node" offset_bdescr_node :: Int
 
@@ -110,6 +120,14 @@ foreign import ccall unsafe "offset_Capability_free_trec_headers"
 foreign import ccall unsafe "offset_Capability_transaction_tokens"
   offset_Capability_transaction_tokens :: Int
 
+foreign import ccall unsafe "sizeof_MessageBlackHole" sizeof_MessageBlackHole :: Int
+
+foreign import ccall unsafe "offset_MessageBlackHole_link" offset_MessageBlackHole_link :: Int
+
+foreign import ccall unsafe "offset_MessageBlackHole_tso" offset_MessageBlackHole_tso :: Int
+
+foreign import ccall unsafe "offset_MessageBlackHole_bh" offset_MessageBlackHole_bh :: Int
+
 foreign import ccall unsafe "sizeof_StgAP" sizeof_StgAP :: Int
 
 foreign import ccall unsafe "offset_StgAP_arity" offset_StgAP_arity :: Int
@@ -138,6 +156,16 @@ foreign import ccall unsafe "offset_StgArrBytes_bytes"
 
 foreign import ccall unsafe "offset_StgArrBytes_payload"
   offset_StgArrBytes_payload :: Int
+
+foreign import ccall unsafe "sizeof_StgBlockingQueue" sizeof_StgBlockingQueue :: Int
+
+foreign import ccall unsafe "offset_StgBlockingQueue_link" offset_StgBlockingQueue_link :: Int
+
+foreign import ccall unsafe "offset_StgBlockingQueue_bh" offset_StgBlockingQueue_bh :: Int
+
+foreign import ccall unsafe "offset_StgBlockingQueue_owner" offset_StgBlockingQueue_owner :: Int
+
+foreign import ccall unsafe "offset_StgBlockingQueue_queue" offset_StgBlockingQueue_queue :: Int
 
 foreign import ccall unsafe "sizeof_StgClosure" sizeof_StgClosure :: Int
 
@@ -430,15 +458,6 @@ foreign import ccall unsafe "offset_StgTSO_alloc_limit"
 foreign import ccall unsafe "offset_StgTSO_tot_stack_size"
   offset_StgTSO_tot_stack_size :: Int
 
-foreign import ccall unsafe "offset_StgTSO_saved_regs"
-  offset_StgTSO_saved_regs :: Int
-
-foreign import ccall unsafe "offset_StgTSO_ffi_func"
-  offset_StgTSO_ffi_func :: Int
-
-foreign import ccall unsafe "offset_StgTSO_ffi_return"
-  offset_StgTSO_ffi_return :: Int
-
 foreign import ccall unsafe "offset_StgUpdateFrame_updatee"
   offset_StgUpdateFrame_updatee :: Int
 
@@ -575,3 +594,7 @@ foreign import ccall unsafe "offset_StgStableName_header"
 
 foreign import ccall unsafe "offset_StgStableName_sn"
   offset_StgStableName_sn :: Int
+
+foreign import ccall unsafe "clock_monotonic" clock_monotonic :: Int
+
+foreign import ccall unsafe "clock_realtime" clock_realtime :: Int

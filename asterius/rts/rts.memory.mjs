@@ -1,61 +1,123 @@
 import * as rtsConstants from "./rts.constants.mjs";
 
+function mask(n) {
+  return (BigInt(1) << BigInt(n)) - BigInt(1);
+}
+
+/**
+ * Class acting as the low-level interface to Wasm memory.
+ * It mainly provides methods to load/store data in memory
+ * (e.g. {@link Memory#i64Load}, {@link Memory#i64Store}),
+ * static methods to handle pointer tagging (e.g. {@link Memory#getTag},
+ * {@link Memory#getDynTag}), and a MBlock allocator
+ * ({@link Memory#getMBlocks} and {@link Memory#freeMBlocks}).
+ */
 export class Memory {
   constructor() {
+    /**
+     * The underlying Wasm Memory instance.
+     * @name Memory#memory
+     */
     this.memory = undefined;
+    /**
+     * The number of MBlock slots reserved for
+     * the static part of memory (vs the dynamic part
+     * where heap objects are allocated at runtime).
+     * The static MBlocks contain the initial compiled
+     * Wasm code plus auxiliary static data structures
+     * like info tables.
+     * @name Memory#staticMBlocks
+     */
     this.staticMBlocks = undefined;
+    /**
+     * Low-level interfaces for reading/writing the contents
+     * of {@link Memory#memory}.
+     * @name Memory#i8view
+     * @name Memory#dataView
+     */
     this.i8View = undefined;
     this.dataView = undefined;
+    /**
+     * The current capacity of {@link Memory#memory} in MBlocks.
+     * By "capacity" we mean the real size of Wasm linear memory,
+     * whereas by "size" we indicate the range within the capacity
+     * that we really use at the moment.
+     * @name Memory#capacity
+     */
+    this.capacity = undefined;
+    /**
+     * A BigInt storing a bit for each MBlock slot
+     * in {@link Memory#memory}. The bit is either 0 or 1
+     * according to whether that MBlock slot is used or not.
+     * @name Memory#liveBitset
+     * @type BigInt
+     */
+    this.liveBitset = undefined;
     Object.seal(this);
   }
 
+  /**
+   * Initializes the {@link Memory} object.
+   */
   init(memory, static_mblocks) {
     this.memory = memory;
     this.staticMBlocks = static_mblocks;
     this.initView();
+    this.capacity = this.memory.buffer.byteLength / rtsConstants.mblock_size;
+    this.liveBitset = mask(this.staticMBlocks);
   }
 
+  /**
+   * (Re)Initializes the low-level interfaces for {@link Memory#memory}.
+   */
   initView() {
     this.i8View = new Uint8Array(this.memory.buffer);
     this.dataView = new DataView(this.memory.buffer);
   }
 
   static unTag(p) {
-    return Number(BigInt(p) & BigInt(0xffffffff));
+    return Number(p) & 0xffffffff;
   }
 
   static getTag(p) {
-    return Number(BigInt(p) >> BigInt(32));
+    //return Number(BigInt(p) >> BigInt(32));
+    return Math.floor(Number(p) / (2**32));
   }
 
   static tagData(p) {
-    return Number((BigInt(rtsConstants.dataTag) << BigInt(32)) | BigInt(p));
+    return rtsConstants.dataTag * (2**32) + Number(p);
   }
 
   static tagFunction(p) {
-    return Number((BigInt(rtsConstants.functionTag) << BigInt(32)) | BigInt(p));
+    return rtsConstants.functionTag * (2**32) + Number(p);
   }
 
   static unDynTag(p) {
-    return Number((BigInt(p) >> BigInt(3)) << BigInt(3));
+    const np = Number(p);
+    return np - (np & 7);
   }
 
   static getDynTag(p) {
-    return Number(BigInt(p) & BigInt(7));
+    return Number(p) & 7;
   }
 
   static setDynTag(p, t) {
-    return Number(BigInt(p) | BigInt(t));
+    const np = Number(p);
+    return np - (np & 7) + t;
   }
 
-  get buffer() {
-    return this.memory.buffer;
-  }
-
+  /**
+   * Increases the size of {@link Memory#memory} the given
+   * number of pages.
+   * Recall: the size (in bytes) of a Wasm Memory page is stored
+   * in the {@link rtsConstants.pageSize} constant (=64KiB).
+   * @param n The number of Wasm pages to add
+   * @returns The previous number of pages
+   */
   grow(n) {
-    const prev_pages = this.memory.grow(n);
+    this.memory.grow(n);
+    this.capacity = this.memory.buffer.byteLength / rtsConstants.mblock_size;
     this.initView();
-    return prev_pages;
   }
 
   i8Load(p) {
@@ -88,28 +150,6 @@ export class Memory {
 
   i64Store(p, v) {
     this.dataView.setBigUint64(Memory.unTag(p), BigInt(v), true);
-  }
-
-  i128Load(p) {
-    // little endian: number with hex digits <0A0B> at address p
-    // get stored as mem[p] = 0B, mem[p+1] = 0A
-    let low = this.dataView.getBigUint64(Memory.unTag(p), true);
-    let high = this.dataView.getBigUint64(Memory.unTag(p) + 8, true);
-    return low | (high << BigInt(64));
-  }
-
-  i128Store(p, v) {
-    // create all 1s of 64 bits.
-    const lowmask = (BigInt(1) << BigInt(64)) - BigInt(1);
-
-    // little endian: number with digits <x y> at address p
-    // get stored as mem[p] = y, mem[p+1] = x
-    const low = v & lowmask;
-    const high = v >> BigInt(64);
-
-    // byte addressed, so +8 = 64-bit
-    this.dataView.setBigUint64(Memory.unTag(p), low, true);
-    this.dataView.setBigUint64(Memory.unTag(p) + 8, high, true);
   }
 
   f32Load(p) {
@@ -160,11 +200,58 @@ export class Memory {
     return BigInt(this.dataView.getUint16(Memory.unTag(p), true));
   }
 
+  /**
+   * Checks whether the object at address {@param p} is
+   * heap-allocated, i.e. whether it resides in the dynamic
+   * part of the memory. Used during garbage collection
+   * (in {@link GC#evacuateClosure}) to avoid evacuating
+   * objects in the static MBlocks.
+   */
   heapAlloced(p) {
     return (
       Memory.unTag(p) >=
-      this.staticMBlocks << Math.log2(rtsConstants.mblock_size)
+      this.staticMBlocks << rtsConstants.mblock_size_log2
     );
+  }
+
+  /**
+   * Obtains {@param n} MBlocks from {@link Memory#memory}.
+   * @returns The memory address at the beginning of the
+   *   requested free memory area.
+   */
+  getMBlocks(n) {
+    // First of all, check if there are free spots in the existing memory by
+    // inspecting this.liveBitset for enough adjacent 0's. In this way, we reuse
+    // previously freed MBlock slots and reduce fragmentation.
+    const m = mask(n);
+    for (let i = BigInt(0); i <= BigInt(this.capacity - n); ++i) {
+      const mi = m << i;
+      if (!(this.liveBitset & mi)) {
+        this.liveBitset |= mi;
+        return Memory.tagData(Number(i) * rtsConstants.mblock_size);
+      }
+    }
+    // No luck, we need to grow the Wasm linear memory
+    // (we actually - at least - double it, in order to reduce
+    // amortized overhead of allocating individual MBlocks)
+    let d = Math.max(n, this.capacity);
+    if (this.capacity + d >= 1024) d = n;
+    this.grow(d * (rtsConstants.mblock_size / rtsConstants.pageSize));
+
+    return this.getMBlocks(n);
+  }
+
+  /**
+   * Frees {@param n} MBlocks starting at address {@param p}.
+   */
+  freeMBlocks(p, n) {
+    const mblock_no =
+      BigInt(Memory.unTag(p)) >> BigInt(rtsConstants.mblock_size_log2);
+    this.liveBitset &= ~(mask(n) << mblock_no);
+  }
+
+  expose(p, len, t) {
+    return new t(this.memory.buffer, Memory.unTag(p), len);
   }
 
   strlen(_str) {
@@ -204,8 +291,35 @@ export class Memory {
     return this.memcpy(_dst, _src, n);
   }
 
-  memset(_dst, c, n) {
-    this.i8View.fill(c, Memory.unTag(_dst), Memory.unTag(_dst) + n);
+  memset(_dst, c, n, size = 1) {
+    // We only allow 1, 2, 4, 8. Any other size should get a runtime error.
+    const ty = {
+      1 : Uint8Array,
+      2 : Uint16Array,
+      4 : Uint32Array,
+      8 : BigUint64Array
+    };
+    const buf = this.expose(_dst, n, ty[size]);
+
+    if (size === 8) {
+      // TODO: The conversion BigInt(c) is lossy. Numbers are represented as
+      // IEEE754 double precision floating point numbers, for which the maximum
+      // (representable) safe integer in JavaScript is (Number.MAX_SAFE_INTEGER
+      // = 2^53 - 1).
+      buf.fill(BigInt(c));
+    } else {
+      buf.fill(c);
+    }
+  }
+
+  memsetFloat32(_dst, c, n) {
+    const buf = this.expose(_dst, n, Float32Array);
+    buf.fill(c);
+  }
+
+  memsetFloat64(_dst, c, n) {
+    const buf = this.expose(_dst, n, Float64Array);
+    buf.fill(c);
   }
 
   memcmp(_ptr1, _ptr2, n) {

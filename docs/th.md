@@ -38,7 +38,7 @@ settles and GHC reads the execution result. The response message may also be a
 query to GHC, then GHC sends back the query result and repeat the loop. In our
 case, we don't send the `RunTH` message itself to node; `RunTH` indicates
 execution has begun, so we perform linking, and use `inline-js-core` to load the
-linked JavaScript and WebAssembly code, then create and initialize the asterius
+linked JavaScript and WebAssembly code, then create and initialize the Asterius
 instance object. The splice's closure address is known at link time, so we can
 apply the TH runner's function closure to the splice closure, and kick off
 evaluation from there. The TH runner function creates a fresh `IORef QState`, a

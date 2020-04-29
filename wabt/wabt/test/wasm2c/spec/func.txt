@@ -1,5 +1,0 @@
-;;; TOOL: run-spec-wasm2c
-;;; STDIN_FILE: third_party/testsuite/func.wast
-(;; STDOUT ;;;
-73/73 tests passed.
-;;; STDOUT ;;)

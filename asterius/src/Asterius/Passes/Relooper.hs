@@ -7,18 +7,25 @@ module Asterius.Passes.Relooper
   )
 where
 
-import Asterius.Internals
 import Asterius.Types
 import Data.Foldable
 import Data.List
 import qualified Data.Map.Strict as M
 
+{-# INLINE relooper #-}
 relooper :: RelooperRun -> Expression
-relooper RelooperRun {..} = result_expr
+relooper cfg@RelooperRun {blockMap = oldMap} =
+  relooper' $
+    cfg
+      { blockMap = M.insert "__asterius_unreachable" unreachableRelooperBlock oldMap
+      }
+
+relooper' :: RelooperRun -> Expression
+relooper' RelooperRun {..} = result_expr
   where
     lbls = M.keys blockMap
     lbl_map = M.fromList $ zip lbls [0 ..]
-    lbl_to_idx = (lbl_map !)
+    lbl_to_idx = (lbl_map M.!)
     set_block_lbl lbl = SetLocal {index = 0, value = ConstI32 $ lbl_to_idx lbl}
     initial_expr = Switch
       { names = lbls,

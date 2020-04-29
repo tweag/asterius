@@ -10,25 +10,23 @@ import Language.Haskell.GHC.Toolkit.FakeGHC
 import System.Console.GetOpt
 import System.Environment.Blank
 import System.Exit
-import System.FilePath
 import System.Directory
+import System.FilePath
 import System.IO
 import System.Process
 
 main :: IO ()
-main = do
-  bootDir <- A.getBootDir
-  ahcLd <- A.getAhcLd
-  args <- getArgs
+main =
   if
     | "--install-executable" `elem` args ->
         installExecutable $ parseInstallExeArgs args
     | "--run-executable" `elem` args -> runExecutable $ filter (/= "--run-executable") args
-    | otherwise ->
+    | otherwise -> do
+        Just ghc <- findExecutable "ghc"
         fakeGHCMain $
           FakeGHCOptions
-            A.ghc
-            (bootDir </> ".boot" </> "asterius_lib")
+            ghc
+            (rootBootDir </> ".boot" </> "asterius_lib")
             A.frontendPlugin
             ["-pgml" <> ahcLd]
 

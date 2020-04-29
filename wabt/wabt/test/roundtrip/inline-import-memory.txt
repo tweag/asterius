@@ -1,9 +1,0 @@
-;;; TOOL: run-roundtrip
-;;; ARGS: --stdout --inline-import
-(module
-  (import "mod" "m1" (memory 2 3))
-)
-(;; STDOUT ;;;
-(module
-  (memory (;0;) (import "mod" "m1") 2 3))
-;;; STDOUT ;;)

@@ -10,18 +10,19 @@ where
 
 import Cmm
 import GHC
+import HscTypes
 import PipelineMonad
-import StgSyn
+import Stream (Stream)
 
 data HaskellIR
   = HaskellIR
-      { stg :: [StgTopBinding],
-        cmmRaw :: [[RawCmmDecl]]
+      { sptEntries :: [SptEntry],
+        cmmRaw :: Stream IO Cmm.RawCmmGroup ()
       }
 
 newtype CmmIR
   = CmmIR
-      { cmmRaw :: [[RawCmmDecl]]
+      { cmmRaw :: Stream IO Cmm.RawCmmGroup ()
       }
 
 data Compiler

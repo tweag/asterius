@@ -1,6 +1,6 @@
 # Using experimental WebAssembly features
 
-By default, asterius only emits code that uses WebAssembly MVP features. There
+By default, Asterius only emits code that uses WebAssembly MVP features. There
 are [flags](ahc-link.md) to make use of WebAssembly experimental features:
 
 * `--tail-calls`: Emits tail call opcodes for Cmm function calls; overrides the
@@ -16,7 +16,7 @@ The V8 team maintains a Node.js 13.x build which integrates V8 trunk, described
 build to evaluate experimental WebAssembly features; we provide a
 [script](https://github.com/tweag/asterius/blob/master/utils/v8-node.py) which
 unzips the latest test-passing build to the current directory, so it's possible
-to use the `node` binary for testing bleeding-edge wasm features in V8.
+to use the `node` binary for testing bleeding-edge Wasm features in V8.
 
 We are keeping an eye on the development of experimental WebAssembly features.
 Here is a list of V8 tracking issues of the features we are interested in. Some

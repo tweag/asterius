@@ -1,22 +1,41 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Language.WebAssembly.WireFormat
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Complete definition of the WebAssembly AST, including support for custom
+-- sections, and binary serialization/deserialization. The complete
+-- specification of WebAssembly can be found here:
+--
+--   https://github.com/WebAssembly/spec/
+--
+-----------------------------------------------------------------------------
+
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
 
 module Language.WebAssembly.WireFormat
-  ( Name (..),
+  ( -- * Abstract Syntax Tree
+    -- ** Names
+    Name (..),
+    -- ** Types
     ValueType (..),
+    ResultType,
     FunctionType (..),
     Limits (..),
     MemoryType (..),
-    ElementType (..),
     TableType (..),
-    Mutability (..),
+    ElementType (..),
     GlobalType (..),
+    Mutability (..),
+    -- ** Instructions
     MemoryArgument (..),
     Instruction (..),
     Expression (..),
-    Custom (..),
+    -- ** Indices
     FunctionTypeIndex (..),
     FunctionIndex (..),
     TableIndex (..),
@@ -24,38 +43,37 @@ module Language.WebAssembly.WireFormat
     GlobalIndex (..),
     LocalIndex (..),
     LabelIndex (..),
-    ImportDescription (..),
-    Import (..),
+    -- ** Modules
+    Module (..),
+    Section (..),
+    Custom (..),
+    Function (..),
+    Locals (..),
     Table (..),
     Memory (..),
     Global (..),
-    ExportDescription (..),
-    Export (..),
     Element (..),
-    Locals (..),
-    Function (..),
     DataSegment (..),
-    LinkingSymbolFlags (..),
-    LinkingSymbolInfo (..),
-    LinkingSubSection (..),
-    RelocationType (..),
-    RelocationEntry (..),
-    Section (..),
-    Module (..),
+    Export (..),
+    ExportDescription (..),
+    Import (..),
+    ImportDescription (..),
+    -- * Binary (de)serialization
+    -- ** Integer types
     getVU32,
     putVU32,
     getVS32,
     putVS32,
     getVS64,
     putVS64,
+    -- ** Floating-point types
     getF32,
     putF32,
     getF64,
     putF64,
+    -- ** Modules
     getModule,
     putModule,
-    getLinkingSymbolInfo,
-    putLinkingSymbolInfo,
   )
 where
 
@@ -65,7 +83,6 @@ import Control.Monad.Fail
 import Data.Binary.Get
 import Data.Binary.Put
 import Data.Bits
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
@@ -75,23 +92,29 @@ import Data.Word
 import GHC.Generics (Generic)
 import Prelude hiding (fail)
 
+-- | WebAssembly names.
 newtype Name
   = Name SBS.ShortByteString
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Name'.
 getName :: Get Name
 getName = coerce getVecSBS
 
+-- | Serialize a 'Name'.
 putName :: Name -> Put
 putName = coerce putVecSBS
 
+-- | 'ValueType's classify the individual values that WebAssembly
+-- code can compute with and the values that a variable accepts.
 data ValueType
-  = I32
-  | I64
-  | F32
-  | F64
+  = I32  -- ^ 32-bit integer
+  | I64  -- ^ 64-bit integer
+  | F32  -- ^ 32-bit floating-point / single precision (IEEE 754-2019)
+  | F64  -- ^ 64-bit floating-point / double precision (IEEE 754-2019)
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'ValueType'.
 getValueType :: Get ValueType
 getValueType = do
   b <- getWord8
@@ -102,6 +125,7 @@ getValueType = do
     0x7C -> pure F64
     _ -> fail "Language.WebAssembly.WireFormat.getValueType"
 
+-- | Serialize a 'ValueType'.
 putValueType :: ValueType -> Put
 putValueType vt = putWord8 $ case vt of
   I32 -> 0x7F
@@ -109,7 +133,14 @@ putValueType vt = putWord8 $ case vt of
   F32 -> 0x7D
   F64 -> 0x7C
 
-getResultType :: Get [ValueType]
+-- | Result types classify the result of executing instructions or blocks,
+-- which is a sequence of values written with brackets. __NOTE__: In the
+-- current version of WebAssembly, at most one value is allowed as a result.
+-- However, this may be generalized to sequences of values in future versions.
+type ResultType = [ValueType]
+
+-- | Deserialize a 'ResultType'.
+getResultType :: Get ResultType
 getResultType =
   ( do
       b <- getWord8
@@ -122,18 +153,24 @@ getResultType =
             pure [vt]
         )
 
-putResultType :: [ValueType] -> Put
+-- | Serialize a 'ResultType'.
+putResultType :: ResultType -> Put
 putResultType resultValueTypes = case resultValueTypes of
   [] -> putWord8 0x40
   [t] -> putValueType t
   _ -> error "Language.WebAssembly.WireFormat.putResultType"
 
+-- | 'FunctionType's classify functions, and map a vector of parameter types to
+-- a vector of result types. __NOTE__: In the current version of WebAssembly
+-- the result type of a valid function type can be /at most/ 1. This
+-- restriction may be removed in a future version.
 data FunctionType
   = FunctionType
       { parameterTypes, resultTypes :: [ValueType]
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'FunctionType'.
 getFunctionType :: Get FunctionType
 getFunctionType = do
   b <- getWord8
@@ -141,12 +178,16 @@ getFunctionType = do
     0x60 -> FunctionType <$> getVec getValueType <*> getVec getValueType
     _ -> fail "Language.WebAssembly.WireFormat.getFunctionType"
 
+-- | Serialize a 'FunctionType'.
 putFunctionType :: FunctionType -> Put
 putFunctionType FunctionType {..} = do
   putWord8 0x60
   putVec putValueType parameterTypes
   putVec putValueType resultTypes
 
+-- | 'Limits' classify the size range of resizeable storage associated with
+-- memory types and table types: 'minLimit' captures the initial size of the
+-- object, while 'maxLimit' captures the maximum size the object can have.
 data Limits
   = Limits
       { minLimit :: Word32,
@@ -154,6 +195,7 @@ data Limits
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize 'Limits'.
 getLimits :: Get Limits
 getLimits = do
   b <- getWord8
@@ -162,6 +204,7 @@ getLimits = do
     0x00 -> Limits <$> getVU32 <*> pure Nothing
     _ -> fail "Language.WebAssembly.WireFormat.getLimits"
 
+-- | Serialize 'Limits'.
 putLimits :: Limits -> Put
 putLimits Limits {..} = case maxLimit of
   Just _max_limit -> do
@@ -172,22 +215,32 @@ putLimits Limits {..} = case maxLimit of
     putWord8 0x00
     putVU32 minLimit
 
+-- | 'MemoryType's classify linear memories and their size range. The limits
+-- constrain the minimum (starting), and optionally the maximum size of a
+-- memory. The limits are given in units of page size.
 newtype MemoryType
   = MemoryType
       { memoryLimits :: Limits
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'MemoryType'.
 getMemoryType :: Get MemoryType
 getMemoryType = coerce getLimits
 
+-- | Serialize a 'MemoryType'.
 putMemoryType :: MemoryType -> Put
 putMemoryType = coerce putLimits
 
+-- | The 'ElementType' captures the infinite union of all function types
+-- (somewhat like Top). This means that e.g. tables containing elements of type
+-- 'ElementType' essentially contain references to functions of heterogeneous
+-- types.
 data ElementType
   = AnyFunc
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize the 'ElementType'.
 getElementType :: Get ElementType
 getElementType = do
   b <- getWord8
@@ -195,30 +248,38 @@ getElementType = do
     0x70 -> pure AnyFunc
     _ -> fail "Language.WebAssembly.WireFormat.getElementType"
 
+-- | Serialize the 'ElementType'.
 putElementType :: ElementType -> Put
 putElementType et = putWord8 $ case et of
   AnyFunc -> 0x70
 
+-- | 'TableType's classify 'Table's over elements of element types within a
+-- size range. Like memories, tables are constrained by limits for their
+-- minimum and optionally maximum size.
 data TableType
   = TableType
-      { elementType :: ElementType,
-        tableLimits :: Limits
+      { elementType :: ElementType,  -- ^ Type of elements (see 'ElementType').
+        tableLimits :: Limits        -- ^ The limits are given in numbers of entries.
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'TableType'.
 getTableType :: Get TableType
 getTableType = TableType <$> getElementType <*> getLimits
 
+-- | Serialize a 'TableType'.
 putTableType :: TableType -> Put
 putTableType TableType {..} = do
   putElementType elementType
   putLimits tableLimits
 
+-- | 'Mutability' of variables.
 data Mutability
-  = Const
-  | Var
+  = Const  -- ^ Immutable.
+  | Var    -- ^ Mutable.
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize 'Mutability'.
 getMutability :: Get Mutability
 getMutability = do
   b <- getWord8
@@ -227,11 +288,14 @@ getMutability = do
     0x01 -> pure Var
     _ -> fail "Language.WebAssembly.WireFormat.getMutability"
 
+-- | Serialize 'Mutability'.
 putMutability :: Mutability -> Put
 putMutability m = putWord8 $ case m of
   Const -> 0x00
   Var -> 0x01
 
+-- | 'GlobalType's classify global variables which hold a value and can either
+-- be mutable or immutable.
 data GlobalType
   = GlobalType
       { globalValueType :: ValueType,
@@ -239,81 +303,116 @@ data GlobalType
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'GlobalType'.
 getGlobalType :: Get GlobalType
 getGlobalType = GlobalType <$> getValueType <*> getMutability
 
+-- | Serialize a 'GlobalType'.
 putGlobalType :: GlobalType -> Put
 putGlobalType GlobalType {..} = do
   putValueType globalValueType
   putMutability globalMutability
 
+-- | An /immediate memory argument/ 'MemoryArgument' contains an address offset
+-- and the expected alignment. 'MemoryArgument's are used by load/store
+-- 'Instruction's.
 data MemoryArgument
   = MemoryArgument
-      { memoryArgumentAlignment, memoryArgumentOffset :: Word32
+      { memoryArgumentAlignment :: Word32,  -- ^ Alignment (expressed as the exponend of a power of 2).
+        memoryArgumentOffset :: Word32      -- ^ Address offset.
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'MemoryArgument'.
 getMemoryArgument :: Get MemoryArgument
 getMemoryArgument = MemoryArgument <$> getVU32 <*> getVU32
 
+-- | Serialize a 'MemoryArgument'.
 putMemoryArgument :: MemoryArgument -> Put
 putMemoryArgument MemoryArgument {..} = do
   putVU32 memoryArgumentAlignment
   putVU32 memoryArgumentOffset
 
+-- | An 'Instruction' is the building block for WebAssembly programs.
 data Instruction
-  = Unreachable
+  = -- | Produce an unconditional trap (abort execution).
+    Unreachable
+    -- | Do nothing.
   | Nop
+    -- | A block of instructions.
   | Block
       { blockResultType :: [ValueType],
         blockInstructions :: [Instruction]
       }
+    -- | A block of instruction to iterate over.
   | Loop
       { loopResultType :: [ValueType],
         loopInstructions :: [Instruction]
       }
+    -- | If-then-(possibly)else statement.
   | If
       { ifResultType :: [ValueType],
         thenInstructions :: [Instruction],
         elseInstructions :: Maybe [Instruction]
       }
+    -- | Unconditional branching.
   | Branch
       { branchLabel :: LabelIndex
       }
+    -- | Conditional branching.
   | BranchIf
       { branchIfLabel :: LabelIndex
       }
+    -- | Indirect branching, through an operand indexing into the a vector
+    -- ('branchTableLabels'), or to a default target
+    -- ('branchTableFallbackLabel') if the operand is out of bounds.
   | BranchTable
       { branchTableLabels :: [LabelIndex],
         branchTableFallbackLabel :: LabelIndex
       }
+    -- | Unconditionally branch to the outermost block (essentially the body of
+    -- the current function).
   | Return
+    -- | Invoke a function.
   | Call
       { callFunctionIndex :: FunctionIndex
       }
+    -- | Invoke a function indirectly, through its index.
   | CallIndirect
       { callIndirectFuctionTypeIndex :: FunctionTypeIndex
       }
+    -- | Tail-call version of 'Call'.
   | ReturnCall
       { returnCallFunctionIndex :: FunctionIndex
       }
+    -- | Tail-call version of 'CallIndirect'.
   | ReturnCallIndirect
       { returnCallIndirectFunctionTypeIndex :: FunctionTypeIndex
       }
+    -- | Throw away an operand.
+    -- Can operate on any 'ValueType'.
   | Drop
+    -- | Select one of the first two operands based on whether the third
+    -- operand is zero or not.
+    -- Can operate on any 'ValueType'.
   | Select
+    -- | Get the value of a local variable.
   | GetLocal
       { getLocalIndex :: LocalIndex
       }
+    -- | Set the value of a local variable.
   | SetLocal
       { setLocalIndex :: LocalIndex
       }
+    -- | Set the value of a local variable and return the value.
   | TeeLocal
       { teeLocalIndex :: LocalIndex
       }
+    -- | Get the value of a global variable.
   | GetGlobal
       { getGlobalIndex :: GlobalIndex
       }
+    -- | Set the value of a global variable.
   | SetGlobal
       { setGlobalIndex :: GlobalIndex
       }
@@ -386,7 +485,12 @@ data Instruction
   | I64Store32
       { i64Store32MemoryArgument :: MemoryArgument
       }
+    -- | Return the current size of a memory.
+    -- Operates on units of page size.
   | MemorySize
+    -- | Grow memory by a given delta and return the previous size, or -1 if
+    -- enough memory cannot be allocated.
+    -- Operates on units of page size.
   | MemoryGrow
   | I32Const
       { i32ConstValue :: Int32
@@ -525,6 +629,7 @@ data Instruction
   | F64Copysign
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'Instruction'.
 getInstruction :: Get Instruction
 getInstruction = do
   b <- getWord8
@@ -712,6 +817,7 @@ getInstruction = do
     0xBF -> pure F64ReinterpretFromI64
     _ -> fail "Language.WebAssembly.WireFormat.getInstruction"
 
+-- | Serialize an 'Instruction'.
 putInstruction :: Instruction -> Put
 putInstruction instr = case instr of
   I32Eqz -> putWord8 0x45
@@ -989,20 +1095,28 @@ putInstruction instr = case instr of
     putWord8 0x44
     putF64 f64ConstValue
 
+-- | An 'Expression' is a sequence of 'Instruction's.
 newtype Expression
   = Expression
       { instructions :: [Instruction]
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'Expression'.
 getExpression :: Get Expression
 getExpression = coerce (getMany getInstruction) <* expectWord8 0x0B
 
+-- | Serialize an 'Expression'.
 putExpression :: Expression -> Put
 putExpression expr = do
   putMany putInstruction $ coerce expr
   putWord8 0x0B
 
+-- | 'Custom' captures the contents of a /custom section/. Custom sections are
+-- intended to be used for debugging information or third-party extensions, and
+-- are ignored by the WebAssembly semantics. Their contents consist of a name
+-- further identifying the custom section, followed by an uninterpreted
+-- sequence of bytes for custom use.
 data Custom
   = Custom
       { customName :: Name,
@@ -1010,6 +1124,7 @@ data Custom
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Name', and compute its length in serialized form.
 getCustomName :: Get (Name, Word32)
 getCustomName = do
   o0 <- bytesRead
@@ -1017,76 +1132,99 @@ getCustomName = do
   o1 <- bytesRead
   pure (n, fromIntegral $ o1 - o0)
 
+-- | (Function) type indices.
 newtype FunctionTypeIndex
   = FunctionTypeIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'FunctionTypeIndex'.
 getFunctionTypeIndex :: Get FunctionTypeIndex
 getFunctionTypeIndex = coerce getVU32
 
+-- | Serialize a 'FunctionTypeIndex'.
 putFunctionTypeIndex :: FunctionTypeIndex -> Put
 putFunctionTypeIndex = coerce putVU32
 
+-- | Function indices.
 newtype FunctionIndex
   = FunctionIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'FunctionIndex'.
 getFunctionIndex :: Get FunctionIndex
 getFunctionIndex = coerce getVU32
 
+-- | Serialize a 'FunctionIndex'.
 putFunctionIndex :: FunctionIndex -> Put
 putFunctionIndex = coerce putVU32
 
+-- | Table indices.
 newtype TableIndex
   = TableIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'TableIndex'.
 getTableIndex :: Get TableIndex
 getTableIndex = coerce getVU32
 
+-- | Serialize a 'TableIndex'.
 putTableIndex :: TableIndex -> Put
 putTableIndex = coerce putVU32
 
+-- | Memory indices.
 newtype MemoryIndex
   = MemoryIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'MemoryIndex'.
 getMemoryIndex :: Get MemoryIndex
 getMemoryIndex = coerce getVU32
 
+-- | Serialize a 'MemoryIndex'.
 putMemoryIndex :: MemoryIndex -> Put
 putMemoryIndex = coerce putVU32
 
+-- | Global indices.
 newtype GlobalIndex
   = GlobalIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'GlobalIndex'.
 getGlobalIndex' :: Get GlobalIndex
 getGlobalIndex' = coerce getVU32
 
+-- | Serialize a 'GlobalIndex'.
 putGlobalIndex :: GlobalIndex -> Put
 putGlobalIndex = coerce putVU32
 
+-- | Local indices.
 newtype LocalIndex
   = LocalIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'LocalIndex'.
 getLocalIndex' :: Get LocalIndex
 getLocalIndex' = coerce getVU32
 
+-- | Serialize a 'LocalIndex'.
 putLocalIndex :: LocalIndex -> Put
 putLocalIndex = coerce putVU32
 
+-- | Label indices.
 newtype LabelIndex
   = LabelIndex Word32
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'LabelIndex'.
 getLabelIndex :: Get LabelIndex
 getLabelIndex = coerce getVU32
 
+-- | Serialize a 'LabelIndex'.
 putLabelIndex :: LabelIndex -> Put
 putLabelIndex = coerce putVU32
 
+-- | An 'ImportDescription' specifies what is imported. Importable definitions
+-- include functions, tables, memories, and global bindings.
 data ImportDescription
   = ImportFunction FunctionTypeIndex
   | ImportTable TableType
@@ -1094,6 +1232,7 @@ data ImportDescription
   | ImportGlobal GlobalType
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'ImportDescription'.
 getImportDescription :: Get ImportDescription
 getImportDescription = do
   b <- getWord8
@@ -1104,6 +1243,7 @@ getImportDescription = do
     0x03 -> ImportGlobal <$> getGlobalType
     _ -> fail "Language.WebAssembly.WireFormat.getImportDescription"
 
+-- | Serialize an 'ImportDescription'.
 putImportDescription :: ImportDescription -> Put
 putImportDescription desc = case desc of
   ImportFunction x -> do
@@ -1119,6 +1259,9 @@ putImportDescription desc = case desc of
     putWord8 0x03
     putGlobalType gt
 
+-- | The imports component of a module defines a set of imports that are
+-- required for instantiation. It is labeled by a two-level namespace,
+-- consisting of a module-name and a name for an entity within that module.
 data Import
   = Import
       { moduleName, importName :: Name,
@@ -1126,39 +1269,56 @@ data Import
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'Import'.
 getImport :: Get Import
 getImport = Import <$> getName <*> getName <*> getImportDescription
 
+-- | Serialize an 'Import'.
 putImport :: Import -> Put
 putImport Import {..} = do
   putName moduleName
   putName importName
   putImportDescription importDescription
 
+-- | A 'Table' is a vector of opaque values of a particular 'TableType'. The
+-- min size in the limits of the table type specifies the initial size of that
+-- table, while its max, if present, restricts the size to which it can grow
+-- later.
 newtype Table
   = Table
       { tableType :: TableType
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Table'.
 getTable :: Get Table
 getTable = coerce getTableType
 
+-- | Serialize a 'Table'.
 putTable :: Table -> Put
 putTable = coerce putTableType
 
+-- | A 'Memory' is a vector of raw uninterpreted bytes. The min size in the
+-- limits of the memory type specifies the initial size of that memory, while
+-- its max, if present, restricts the size to which it can grow later.
 newtype Memory
   = Memory
       { memoryType :: MemoryType
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Memory'.
 getMemory :: Get Memory
 getMemory = coerce getMemoryType
 
+-- | Serialize a 'Memory'.
 putMemory :: Memory -> Put
 putMemory = coerce putMemoryType
 
+-- | A 'Global' captures a single global variable. Each 'Global' stores a
+-- single value of the given global type.  Moreover, each 'Global' is
+-- initialized with an initial value, given by a constant initializer
+-- expression.
 data Global
   = Global
       { globalType :: GlobalType,
@@ -1166,14 +1326,18 @@ data Global
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Global'.
 getGlobal :: Get Global
 getGlobal = Global <$> getGlobalType <*> getExpression
 
+-- | Serialize a 'Global'.
 putGlobal :: Global -> Put
 putGlobal Global {..} = do
   putGlobalType globalType
   putExpression globalInitialValue
 
+-- | An 'ExportDescription' specifies what is being exported. Exportable
+-- definitions include functions, tables, memories, and global bindings.
 data ExportDescription
   = ExportFunction FunctionIndex
   | ExportTable TableIndex
@@ -1181,6 +1345,7 @@ data ExportDescription
   | ExportGlobal GlobalIndex
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'ExportDescription'.
 getExportDescription :: Get ExportDescription
 getExportDescription = do
   b <- getWord8
@@ -1191,6 +1356,7 @@ getExportDescription = do
     0x03 -> ExportGlobal <$> getGlobalIndex'
     _ -> fail "Language.WebAssembly.WireFormat.getExportDescription"
 
+-- | Serialize an 'ExportDescription'.
 putExportDescription :: ExportDescription -> Put
 putExportDescription d = case d of
   ExportFunction x -> do
@@ -1206,6 +1372,8 @@ putExportDescription d = case d of
     putWord8 0x03
     putGlobalIndex x
 
+-- | The exports component of a module defines a set of exports that become
+-- accessible to the host environment once the module has been instantiated.
 data Export
   = Export
       { exportName :: Name,
@@ -1213,14 +1381,21 @@ data Export
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'Export'.
 getExport :: Get Export
 getExport = Export <$> getName <*> getExportDescription
 
+-- | Serialize an 'Export'.
 putExport :: Export -> Put
 putExport Export {..} = do
   putName exportName
   putExportDescription exportDescription
 
+-- | Element segments. The initial contents of a table are uninitialized.
+-- 'Element' captures the elem component of a module, defines a vector of
+-- element segments that initialize a subrange of a table, at a given offset,
+-- from a static vector of elements. The offset is given by a constant
+-- expression.
 data Element
   = Element
       { tableIndex :: TableIndex,
@@ -1229,16 +1404,20 @@ data Element
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize an 'Element'.
 getElement :: Get Element
 getElement =
   Element <$> getTableIndex <*> getExpression <*> getVec getFunctionIndex
 
+-- | Serialize an 'Element'.
 putElement :: Element -> Put
 putElement Element {..} = do
   putTableIndex tableIndex
   putExpression tableOffset
   putVec putFunctionIndex tableInitialValues
 
+-- | 'Locals' captures (mutable) function parameters and their types. They are
+-- meant to be referenced by functions' bodies through 0-based local indices.
 data Locals
   = Locals
       { localsCount :: Word32,
@@ -1246,29 +1425,39 @@ data Locals
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Locals' value.
 getLocals :: Get Locals
 getLocals = Locals <$> getVU32 <*> getValueType
 
+-- | Serialize a 'Locals' value.
 putLocals :: Locals -> Put
 putLocals Locals {..} = do
   putVU32 localsCount
   putValueType localsType
 
+-- | 'Function's.
 data Function
   = Function
-      { functionLocals :: [Locals],
-        functionBody :: Expression
+      { functionLocals :: [Locals],  -- ^ (Mutable) function parameters.
+        functionBody :: Expression   -- ^ Function body.
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Function'.
 getFunction :: Get Function
 getFunction = Function <$> getVec getLocals <*> getExpression
 
+-- | Serialize a 'Function'.
 putFunction :: Function -> Put
 putFunction Function {..} = do
   putVec putLocals functionLocals
   putExpression functionBody
 
+-- | A data segment. The initial contents of a memory are zero-valued bytes.
+-- 'DataSegment' captures the data component of a module, which defines a
+-- vector of data segments that initialize a range of memory, at a given
+-- offset, with a static vector of bytes. The offset is given by a constant
+-- expression.
 data DataSegment
   = DataSegment
       { memoryIndex :: MemoryIndex,
@@ -1277,224 +1466,75 @@ data DataSegment
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'DataSegment'.
 getDataSegment :: Get DataSegment
 getDataSegment = DataSegment <$> getMemoryIndex <*> getExpression <*> getVecSBS
 
+-- | Serialize a 'DataSegment'.
 putDataSegment :: DataSegment -> Put
 putDataSegment DataSegment {..} = do
   putMemoryIndex memoryIndex
   putExpression memoryOffset
   putVecSBS memoryInitialBytes
 
-data LinkingSymbolFlags
-  = LinkingSymbolFlags
-      { linkingWasmSymBindingWeak, linkingWasmSymBindingLocal, linkingWasmSymVisibilityHidden, linkingWasmSymUndefined :: Bool
-      }
-  deriving (Eq, Generic, Ord, Show)
-
-getLinkingSymbolFlags :: Get LinkingSymbolFlags
-getLinkingSymbolFlags = do
-  f <- getVU32
-  pure LinkingSymbolFlags
-    { linkingWasmSymBindingWeak = testBit f 0,
-      linkingWasmSymBindingLocal = testBit f 1,
-      linkingWasmSymVisibilityHidden = testBit f 2,
-      linkingWasmSymUndefined = testBit f 4
-    }
-
-putLinkingSymbolFlags :: LinkingSymbolFlags -> Put
-putLinkingSymbolFlags LinkingSymbolFlags {..} =
-  putVU32
-    $ (if linkingWasmSymUndefined then flip setBit 4 else id)
-    $ (if linkingWasmSymVisibilityHidden then flip setBit 2 else id)
-    $ (if linkingWasmSymBindingLocal then flip setBit 1 else id)
-    $ (if linkingWasmSymBindingWeak then flip setBit 0 else id) 0
-
-data LinkingSymbolInfo
-  = LinkingFunctionSymbolInfo
-      { linkingFunctionSymbolFlags :: LinkingSymbolFlags,
-        linkingFunctionSymbolIndex :: Word32,
-        linkingFunctionSymbolName :: Maybe Name
-      }
-  | LinkingDataSymbolInfo
-      { linkingDataSymbolFlags :: LinkingSymbolFlags,
-        linkingDataSymbolName :: Name,
-        linkingDataSymbolIndex, linkingDataSymbolOffset, linkingDataSymbolSize :: Maybe Word32
-      }
-  | LinkingGlobalSymbolInfo
-      { linkingGlobalSymbolFlags :: LinkingSymbolFlags,
-        linkingGlobalSymbolIndex :: Word32,
-        linkingGlobalSymbolName :: Maybe Name
-      }
-  | LinkingSectionSymbolInfo
-      { linkingSectionSymbolFlags :: LinkingSymbolFlags,
-        linkingSectionSymbolIndex :: Word32
-      }
-  deriving (Eq, Generic, Ord, Show)
-
-getLinkingSymbolInfo :: Get LinkingSymbolInfo
-getLinkingSymbolInfo = do
-  _sym_kind <- getWord8
-  _sym_flags@LinkingSymbolFlags {..} <- getLinkingSymbolFlags
-  case _sym_kind of
-    0 ->
-      if linkingWasmSymUndefined
-        then LinkingFunctionSymbolInfo _sym_flags <$> getVU32 <*> pure Nothing
-        else LinkingFunctionSymbolInfo _sym_flags <$> getVU32 <*> fmap Just getName
-    1 ->
-      if linkingWasmSymUndefined
-        then
-          LinkingDataSymbolInfo _sym_flags
-            <$> getName
-            <*> pure Nothing
-            <*> pure Nothing
-            <*> pure Nothing
-        else
-          LinkingDataSymbolInfo _sym_flags
-            <$> getName
-            <*> fmap Just getVU32
-            <*> fmap Just getVU32
-            <*> fmap Just getVU32
-    2 ->
-      if linkingWasmSymUndefined
-        then LinkingGlobalSymbolInfo _sym_flags <$> getVU32 <*> pure Nothing
-        else LinkingGlobalSymbolInfo _sym_flags <$> getVU32 <*> fmap Just getName
-    3 -> LinkingSectionSymbolInfo _sym_flags <$> getVU32
-    _ -> fail "Language.WebAssembly.WireFormat.getLinkingSymbolInfo"
-
-putLinkingSymbolInfo :: LinkingSymbolInfo -> Put
-putLinkingSymbolInfo sym_info = case sym_info of
-  LinkingFunctionSymbolInfo {..} -> do
-    putWord8 0
-    putLinkingSymbolFlags linkingFunctionSymbolFlags
-    putVU32 linkingFunctionSymbolIndex
-    putMaybe putName linkingFunctionSymbolName
-  LinkingDataSymbolInfo {..} -> do
-    putWord8 1
-    putLinkingSymbolFlags linkingDataSymbolFlags
-    putName linkingDataSymbolName
-    putMaybe putVU32 linkingDataSymbolIndex
-    putMaybe putVU32 linkingDataSymbolOffset
-    putMaybe putVU32 linkingDataSymbolSize
-  LinkingGlobalSymbolInfo {..} -> do
-    putWord8 2
-    putLinkingSymbolFlags linkingGlobalSymbolFlags
-    putVU32 linkingGlobalSymbolIndex
-    putMaybe putName linkingGlobalSymbolName
-  LinkingSectionSymbolInfo {..} -> do
-    putWord8 3
-    putLinkingSymbolFlags linkingSectionSymbolFlags
-    putVU32 linkingSectionSymbolIndex
-
-data LinkingSubSection
-  = LinkingWasmSegmentInfo
-      { linkingWasmSegmentInfoPayload :: SBS.ShortByteString
-      }
-  | LinkingWasmInitFuncs
-      { linkingWasmInitFuncsPayload :: SBS.ShortByteString
-      }
-  | LinkingWasmComdatInfo
-      { linkingWasmComdatInfoPayload :: SBS.ShortByteString
-      }
-  | LinkingWasmSymbolTable
-      { linkingWasmSymbolTable :: SBS.ShortByteString
-      }
-  deriving (Eq, Generic, Ord, Show)
-
-getLinkingSubSection :: Get LinkingSubSection
-getLinkingSubSection = do
-  b <- getWord8
-  case b of
-    5 -> LinkingWasmSegmentInfo <$> getVecSBS
-    6 -> LinkingWasmInitFuncs <$> getVecSBS
-    7 -> LinkingWasmComdatInfo <$> getVecSBS
-    8 -> LinkingWasmSymbolTable <$> getVecSBS
-    _ -> fail "Language.WebAssembly.WireFormat.getLinkingSubSection"
-
-putLinkingSubSection :: LinkingSubSection -> Put
-putLinkingSubSection sec = case sec of
-  LinkingWasmSegmentInfo {..} -> do
-    putWord8 5
-    putVecSBS linkingWasmSegmentInfoPayload
-  LinkingWasmInitFuncs {..} -> do
-    putWord8 6
-    putVecSBS linkingWasmInitFuncsPayload
-  LinkingWasmComdatInfo {..} -> do
-    putWord8 7
-    putVecSBS linkingWasmComdatInfoPayload
-  LinkingWasmSymbolTable {..} -> do
-    putWord8 8
-    putVecSBS linkingWasmSymbolTable
-
-data RelocationType
-  = RWebAssemblyFunctionIndexLEB
-  | RWebAssemblyTableIndexSLEB
-  | RWebAssemblyTableIndexI32
-  | RWebAssemblyMemoryAddrLEB
-  | RWebAssemblyMemoryAddrSLEB
-  | RWebAssemblyMemoryAddrI32
-  | RWebAssemblyTypeIndexLEB
-  | RWebAssemblyGlobalIndexLEB
-  | RWebAssemblyFunctionOffsetI32
-  | RWebAssemblySectionOffsetI32
-  deriving (Eq, Generic, Ord, Show)
-
-data RelocationEntry
-  = RelocationEntry
-      { relocationType :: RelocationType,
-        relocationOffset, relocationIndex :: Word32,
-        relocationAddEnd :: Maybe Word32
-      }
-  deriving (Eq, Generic, Ord, Show)
-
+-- | All sorts of 'Section's that can be found in a module.
 data Section
-  = LinkingSection
-      { linkingSectionVersion :: Word32,
-        linkingSubSections :: [LinkingSubSection]
-      }
-  | RelocationSection
-      { relocationSectionName :: Name,
-        relocationSectionIndex :: Word32,
-        relocationEntries :: [RelocationEntry]
-      }
-  | CustomSection
+    -- | A custom section (see 'Custom').
+  = CustomSection
       { custom :: Custom
       }
+    -- | All the function types used in a module.
+    -- They are referenced by type indices.
   | TypeSection
       { types :: [FunctionType]
       }
+    -- | All the 'Import's of a module.
   | ImportSection
       { imports :: [Import]
       }
+    -- | A vector of type indices, capturing the type fields of the functions
+    -- of a module. The actual function definitions are captured separately in
+    -- the code section (see 'CodeSection' below).
   | FunctionSection
       { functionTypeIndices :: [FunctionTypeIndex]
       }
+    -- | All the 'Table's of a module.
   | TableSection
       { tables :: [Table]
       }
+    -- | All the memories of a module.
   | MemorySection
       { memories :: [Memory]
       }
+    -- | All the global variables of a module.
   | GlobalSection
       { globals :: [Global]
       }
+    -- | All the 'Export's of a module.
   | ExportSection
       { exports :: [Export]
       }
+    -- | The function index of the start function (i.e., the function that is
+    -- automatically invoked when the module is instantiated, after tables and
+    -- memories have been initialized).
   | StartSection
       { startFunctionIndex :: FunctionIndex
       }
+    -- | All the 'Element's of a module.
   | ElementSection
       { elements :: [Element]
       }
+    -- | All the 'Function's of a module.
   | CodeSection
       { functions' :: [Function]
       }
+    -- | All the data segments of a module.
   | DataSection
       { dataSegments :: [DataSegment]
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Section'.
 getSection :: Get Section
 getSection = do
   b <- getWord8
@@ -1504,54 +1544,9 @@ getSection = do
       (_sec_name, _name_len) <- getCustomName
       let _payload_len = _sec_len - _name_len
       isolate (fromIntegral _payload_len) $
-        if _sec_name == Name "linking"
-          then LinkingSection <$> getVU32 <*> getMany getLinkingSubSection
-          else
-            if "reloc." `BS.isPrefixOf` SBS.fromShort (coerce _sec_name)
-              then
-                RelocationSection
-                  ( Name $ SBS.toShort $ BS.drop 6 $ SBS.fromShort $ coerce _sec_name
-                  )
-                  <$> getVU32
-                  <*> getVec
-                    ( do
-                        _reloc_type_tag <- getWord8
-                        _reloc_type <- case _reloc_type_tag of
-                          0 -> pure RWebAssemblyFunctionIndexLEB
-                          1 -> pure RWebAssemblyTableIndexSLEB
-                          2 -> pure RWebAssemblyTableIndexI32
-                          3 -> pure RWebAssemblyMemoryAddrLEB
-                          4 -> pure RWebAssemblyMemoryAddrSLEB
-                          5 -> pure RWebAssemblyMemoryAddrI32
-                          6 -> pure RWebAssemblyTypeIndexLEB
-                          7 -> pure RWebAssemblyGlobalIndexLEB
-                          8 -> pure RWebAssemblyFunctionOffsetI32
-                          9 -> pure RWebAssemblySectionOffsetI32
-                          _ ->
-                            fail "Language.WebAssembly.WireFormat.getRelocationType"
-                        _reloc_offset <- getVU32
-                        _reloc_index <- getVU32
-                        _reloc_addend <-
-                          if _reloc_type
-                            `elem` [ RWebAssemblyMemoryAddrLEB,
-                                     RWebAssemblyMemoryAddrSLEB,
-                                     RWebAssemblyMemoryAddrI32,
-                                     RWebAssemblyFunctionOffsetI32,
-                                     RWebAssemblySectionOffsetI32
-                                   ]
-                            then Just <$> getVU32
-                            else pure Nothing
-                        pure $
-                          RelocationEntry
-                            _reloc_type
-                            _reloc_offset
-                            _reloc_index
-                            _reloc_addend
-                    )
-              else
-                CustomSection . Custom _sec_name . SBS.toShort
-                  <$> getByteString
-                    (fromIntegral _payload_len)
+        CustomSection . Custom _sec_name . SBS.toShort
+          <$> getByteString
+            (fromIntegral _payload_len)
     1 -> getCheckedRegion (TypeSection <$> getVec getFunctionType)
     2 -> getCheckedRegion (ImportSection <$> getVec getImport)
     3 -> getCheckedRegion (FunctionSection <$> getVec getFunctionTypeIndex)
@@ -1566,34 +1561,9 @@ getSection = do
     11 -> getCheckedRegion (DataSection <$> getVec getDataSegment)
     _ -> fail "Language.WebAssembly.WireFormat.getSection"
 
+-- | Serialize a 'Section'.
 putSection :: Section -> Put
 putSection sec = case sec of
-  LinkingSection {..} -> do
-    putWord8 0
-    putWithLength $ do
-      putName $ Name "linking"
-      putVU32 linkingSectionVersion
-      putMany putLinkingSubSection linkingSubSections
-  RelocationSection {..} -> do
-    putWord8 0
-    putWithLength $ do
-      putName $ Name $ "reloc." <> coerce relocationSectionName
-      putVU32 relocationSectionIndex
-      flip putVec relocationEntries $ \RelocationEntry {..} -> do
-        putWord8 $ case relocationType of
-          RWebAssemblyFunctionIndexLEB -> 0
-          RWebAssemblyTableIndexSLEB -> 1
-          RWebAssemblyTableIndexI32 -> 2
-          RWebAssemblyMemoryAddrLEB -> 3
-          RWebAssemblyMemoryAddrSLEB -> 4
-          RWebAssemblyMemoryAddrI32 -> 5
-          RWebAssemblyTypeIndexLEB -> 6
-          RWebAssemblyGlobalIndexLEB -> 7
-          RWebAssemblyFunctionOffsetI32 -> 8
-          RWebAssemblySectionOffsetI32 -> 9
-        putVU32 relocationOffset
-        putVU32 relocationIndex
-        putMaybe putVU32 relocationAddEnd
   CustomSection {custom = Custom {..}} -> do
     putWord8 0
     putWithLength $ do
@@ -1633,22 +1603,26 @@ putSection sec = case sec of
     putWord8 11
     putWithLength $ putVec putDataSegment dataSegments
 
+-- | A 'Module' is a list of 'Section's.
 newtype Module
   = Module
       { sections :: [Section]
       }
   deriving (Eq, Generic, Ord, Show)
 
+-- | Deserialize a 'Module'.
 getModule :: Get Module
 getModule = do
   for_ [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00] expectWord8
   Module <$> getMany getSection
 
+-- | Serialize a 'Module'.
 putModule :: Module -> Put
 putModule Module {..} = do
   putSBS $ SBS.pack [0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00]
   putMany putSection sections
 
+-- | Deserialize a given 'Word8' or fail.
 expectWord8 :: Word8 -> Get ()
 expectWord8 x = do
   b <- getWord8
@@ -1659,6 +1633,8 @@ expectWord8 x = do
       <> ", but got "
       <> show b
 
+-- | Deserialize a variable-length unsigned integer of a given length (given in
+-- bits). @getVUN n@ fails if @n@ is non-positive.
 getVUN :: Int -> Get Word64
 getVUN n
   | n <= 0 = fail "Language.WebAssembly.WireFormat.getVUN"
@@ -1671,6 +1647,8 @@ getVUN n
         r <- getVUN (n - 7)
         pure $ x .|. (r `shiftL` 7)
 
+-- | Deserialize a variable-length signed integer of a given length (given in
+-- bits). @getVSN n@ fails if @n@ is non-positive.
 getVSN :: Int -> Get Int64
 getVSN n
   | n <= 0 = fail "Language.WebAssembly.WireFormat.getVSN"
@@ -1683,6 +1661,8 @@ getVSN n
         r <- getVSN (n - 7)
         pure $ x .|. r `shiftL` 7
 
+-- | Serialize an unsigned 64-bit integer using the variable-length LEB128
+-- encoding.
 putVU64 :: Word64 -> Put
 putVU64 i = do
   let b = fromIntegral $ i .&. 0x7F
@@ -1692,6 +1672,8 @@ putVU64 i = do
       putWord8 $ b .|. 0x80
       putVU64 $ i `shiftR` 7
 
+-- | Serialize a signed 64-bit integer using the variable-length LEB128
+-- encoding.
 putVS64 :: Int64 -> Put
 putVS64 i = do
   let b = fromIntegral $ i .&. 0x7F
@@ -1701,71 +1683,97 @@ putVS64 i = do
       putWord8 $ b .|. 0x80
       putVS64 $ i `shiftR` 7
 
+-- | Deserialize an unsigned 32-bit integer using the variable-length LEB128
+-- encoding.
 getVU32 :: Get Word32
 getVU32 = fromIntegral <$> getVUN 32
 
+-- | Serialize an unsigned 32-bit integer using the variable-length LEB128
+-- encoding.
 putVU32 :: Word32 -> Put
 putVU32 = putVU64 . fromIntegral
 
+-- | Deserialize a signed 32-bit integer using the variable-length LEB128
+-- encoding.
 getVS32 :: Get Int32
 getVS32 = fromIntegral <$> getVSN 64
 
+-- | Serialize a signed 32-bit integer using the variable-length LEB128
+-- encoding.
 putVS32 :: Int32 -> Put
 putVS32 = putVS64 . fromIntegral
 
+-- | Deserialize a signed 64-bit integer using the variable-length LEB128
+-- encoding.
 getVS64 :: Get Int64
 getVS64 = getVSN 64
 
+-- | Deserialize a 'Float' in native in IEEE-754 format and host endian.
 getF32 :: Get Float
 getF32 = getFloathost
 
+-- | Serialize a 'Float' in native in IEEE-754 format and host endian.
 putF32 :: Float -> Put
 putF32 = putFloathost
 
+-- | Deserialize a 'Double' in IEEE-754 format and host endian.
 getF64 :: Get Double
 getF64 = getDoublehost
 
+-- | Serialize a 'Double' in IEEE-754 format and host endian.
 putF64 :: Double -> Put
 putF64 = putDoublehost
 
+-- | Deserialize a vector (unsigned 32-bit encoding of length followed by the
+-- serialization of all elements).
 getVec :: Get a -> Get [a]
 getVec g = do
   n <- getVU32
   replicateM (fromIntegral n) g
 
+-- | Serialize a vector (unsigned 32-bit encoding of length followed by the
+-- serialization of all elements).
 putVec :: (a -> Put) -> [a] -> Put
 putVec p v = do
   putVU32 (fromIntegral (length v))
   for_ v p
 
+-- | Deserialize zero or more elements.
 getMany :: Get a -> Get [a]
 getMany = many
 
+-- | Serialize zero or more elements.
 putMany :: (a -> Put) -> [a] -> Put
 putMany = traverse_
 
-putMaybe :: (a -> Put) -> Maybe a -> Put
-putMaybe = traverse_
-
+-- | Serialize a 'SBS.ShortByteString'.
 putSBS :: SBS.ShortByteString -> Put
 putSBS = putShortByteString
 
+-- | Deserialize a 'SBS.ShortByteString' using the byte-vector format (unsigned
+-- 32-bit encoding of length followed by the serialization of all elements).
 getVecSBS :: Get SBS.ShortByteString
 getVecSBS = do
   l <- getVU32
   SBS.toShort <$> getByteString (fromIntegral l)
 
+-- | Serialize a 'SBS.ShortByteString' using the byte-vector format (unsigned
+-- 32-bit encoding of length followed by the serialization of all elements).
 putVecSBS :: SBS.ShortByteString -> Put
 putVecSBS s = do
   putVU32 $ fromIntegral $ SBS.length s
   putSBS s
 
+-- | Prefix serialization with length (unsigned 32-bit encoding).
 putWithLength :: Put -> Put
 putWithLength p = do
   let buf = runPut p
   putVU32 $ fromIntegral $ LBS.length buf
   putLazyByteString buf
 
+-- | Deserialize a length-prefixed (unsigned 32-bit encoding) entity. Used for
+-- deserializing sections (see "Section 5.5.2 Sections" in the WebAssembly
+-- Specification, Release 1.0).
 getCheckedRegion :: Get a -> Get a
 getCheckedRegion g = do
   l <- fromIntegral <$> getVU32

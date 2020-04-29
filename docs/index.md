@@ -1,12 +1,18 @@
-[![](https://circleci.com/gh/tweag/asterius/tree/master.svg?style=shield)](https://circleci.com/gh/tweag/asterius/tree/master)
-[![](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://app.netlify.com/sites/asterius/deploys)
-[![](https://img.shields.io/docker/pulls/terrorjack/asterius.svg)](https://hub.docker.com/r/terrorjack/asterius)
-[![](https://badges.gitter.im/tweag/asterius.png)](https://gitter.im/tweag/asterius)
+[![Docker Pulls](https://img.shields.io/docker/pulls/terrorjack/asterius.svg)](https://hub.docker.com/r/terrorjack/asterius)
+[![Build status](https://badge.buildkite.com/d96cf8b736eb305c8d2758833551a2241ba2b9a0e95b1a4a03.svg?branch=master)](https://buildkite.com/tweag-1/asterius/builds?branch=master)
+[![Gitter](https://img.shields.io/gitter/room/tweag/asterius)](https://gitter.im/tweag/asterius)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://asterius.netlify.com)
 
-`asterius` is a Haskell to WebAssembly compiler. The project is in alpha stage
-and in active development.
+Asterius is a Haskell to WebAssembly compiler based on GHC. It compiles simple
+Haskell source files or Cabal executable targets to WebAssembly+JavaScript code
+which can be run in node.js or browsers. It features seamless JavaScript interop
+(lightweight Async FFI with `Promise` support) and small output code (~600KB
+`hello.wasm` for a [Hello
+World](https://hackage.haskell.org/package/hello-1.0.0.2)). A lot of common
+Haskell packages like `lens` are already supported. The project is actively
+maintained by [Tweag I/O](https://tweag.io/).
 
-## Contents
+# Contents
 
 * [Overview](overview.md)
 * [Building guide](building.md)
@@ -20,13 +26,13 @@ and in active development.
 * [Project architecture](architecture.md)
 * [Writing WebAssembly code in Haskell](wasm-in-hs.md)
 * [WebAssembly as a Haskell compilation target](webassembly.md)
-* [About the custom GHC fork](custom-ghc.md)
 * [Using experimental WebAssembly features](wasm-experimental.md)
 * [Hacking guide](hacking.md)
 * [Reading list](readings.md)
-* [Status reports](reports.md)
 
-## Sponsors
+# Sponsors
+
+[<img src="https://www.tweag.io/img/tweag-med.png" height="65">](https://tweag.io)
 
 Asterius is maintained by [Tweag I/O](https://tweag.io/).
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE RecordWildCards #-}
 
 module Asterius.FrontendPlugin
@@ -5,11 +6,14 @@ module Asterius.FrontendPlugin
   )
 where
 
+import Asterius.Binary.File
+import Asterius.BuildInfo
 import Asterius.CodeGen
-import Asterius.Foreign
+import Asterius.Foreign.DsForeign
+import Asterius.Foreign.TcForeign
 import Asterius.GHCi.Internals
-import Asterius.Internals
 import Asterius.JSFFI
+import Asterius.Types
 import Asterius.TypesConv
 import Control.Exception
 import Control.Monad
@@ -20,7 +24,8 @@ import qualified GhcPlugins as GHC
 import qualified Hooks as GHC
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.FrontendPlugin
-import Language.Haskell.GHC.Toolkit.Orphans.Show
+import Language.Haskell.GHC.Toolkit.Orphans.Show ()
+import qualified Stream
 import System.Environment.Blank
 import System.FilePath
 
@@ -49,7 +54,15 @@ frontendPlugin = makeFrontendPlugin $ do
     dflags <- GHC.getSessionDynFlags
     void
       $ GHC.setSessionDynFlags
-      $ dflags {GHC.settings = (GHC.settings dflags) {GHC.sPgm_i = "false"}}
+      $ dflags
+        { GHC.settings =
+            (GHC.settings dflags)
+              { GHC.sPgm_L = unlit,
+                GHC.sPgm_l = (ahcLd, []),
+                GHC.sPgm_i = "false"
+              }
+        }
+        `GHC.gopt_set` GHC.Opt_EagerBlackHoling
         `GHC.gopt_set` GHC.Opt_ExternalInterpreter
   when is_debug $ do
     dflags <- GHC.getSessionDynFlags
@@ -63,34 +76,34 @@ frontendPlugin = makeFrontendPlugin $ do
     mempty
       { withHaskellIR = \GHC.ModSummary {..} ir@HaskellIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
-          setDynFlagsRef dflags
-          let mod_sym = marshalToModuleSymbol ms_mod
           liftIO $ do
-            ffi_mod <- getFFIModule mod_sym
-            case runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod of
+            ffi_mod <- getFFIModule dflags ms_mod
+            runCodeGen (marshalHaskellIR ms_mod ir) dflags ms_mod >>= \case
               Left err -> throwIO err
               Right m' -> do
                 let m = ffi_mod <> m'
-                encodeFile obj_path m
+                putFile obj_path $ toCachedModule m
                 when is_debug $ do
                   let p = (obj_path -<.>)
                   writeFile (p "dump-wasm-ast") $ show m
-                  writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                  asmPrint dflags (p "dump-cmm-raw") cmmRaw
-                  writeFile (p "dump-stg-ast") $ show stg
-                  asmPrint dflags (p "dump-stg") stg,
+                  cmm_raw <- Stream.collect cmmRaw
+                  writeFile (p "dump-cmm-raw-ast") $ show cmm_raw
+                  asmPrint dflags (p "dump-cmm-raw") cmm_raw,
         withCmmIR = \ir@CmmIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
-          setDynFlagsRef dflags
           let ms_mod =
-                GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $ takeBaseName obj_path
-          liftIO $ case runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod of
-            Left err -> throwIO err
-            Right m -> do
-              encodeFile obj_path m
-              when is_debug $ do
-                let p = (obj_path -<.>)
-                writeFile (p "dump-wasm-ast") $ show m
-                writeFile (p "dump-cmm-raw-ast") $ show cmmRaw
-                asmPrint dflags (p "dump-cmm-raw") cmmRaw
+                GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $
+                  takeBaseName
+                    obj_path
+          liftIO $
+            runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
+              Left err -> throwIO err
+              Right m -> do
+                putFile obj_path $ toCachedModule m
+                when is_debug $ do
+                  let p = (obj_path -<.>)
+                  writeFile (p "dump-wasm-ast") $ show m
+                  cmm_raw <- Stream.collect cmmRaw
+                  writeFile (p "dump-cmm-raw-ast") $ show cmm_raw
+                  asmPrint dflags (p "dump-cmm-raw") cmm_raw
       }

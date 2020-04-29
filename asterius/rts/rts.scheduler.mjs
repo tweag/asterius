@@ -1,5 +1,3 @@
-import { Channel } from "./rts.channel.mjs";
-import { Memory } from "./rts.memory.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 /**
@@ -8,21 +6,19 @@ import * as rtsConstants from "./rts.constants.mjs";
  * TSO stands for Thread State Object.
  *
  * @property tsos     Contains info (tid, addr, status...) about all the TSOs.
- * @property runQueue Queue of runnable TSOs.
  *
  */
 export class Scheduler {
-  constructor(memory, symbol_table, stablePtrManager) {
-    (this.channel = new Channel()), (this.memory = memory);
+  constructor(memory, symbol_table, stablePtrManager, fs) {
+    this.memory = memory;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
-    this.runQueue = []; // Runnable TSO IDs
-    this.completeTSOs = new Set(); // Finished TSO IDs
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
+    this.fs = fs;
     this.gc = undefined;
-    this.running = false;
+    this.blockingPromise = undefined;
     Object.seal(this);
   }
 
@@ -37,19 +33,24 @@ export class Scheduler {
    */
   newTSO() {
     const tid = ++this.lastTid;
+    let promise_resolve, promise_reject;
+    const ret_promise = new Promise((resolve, reject) => {
+      promise_resolve = resolve;
+      promise_reject = reject;
+    });
     this.tsos.set(
       tid,
       Object.seal({
         addr: -1, // TSO struct address in Wasm memory
         ret: 0, // returned object address in Wasm memory
+        retError: undefined,
         rstat: -1, // thread status
-        ffiAsyncFunc: undefined, // FFI asynchronous func
         ffiRet: undefined, // FFI returned value
-        ffiRetType: 0, // FFI returned value type
+        ffiRetType: undefined, // FFI returned value type
         ffiRetErr: undefined, // FFI returned error
-        promise_resolve: undefined, // Settle the promise used by user
-        promise_reject: undefined, // code to wait on this thread
-        blockingPromise: undefined // Promise used to block on JS FFI code
+        returnPromise: ret_promise,
+        promise_resolve: promise_resolve, // Settle the promise used by user
+        promise_reject: promise_reject
       })
     );
     return tid;
@@ -88,10 +89,8 @@ export class Scheduler {
    *
    * @param ffiPromise Promise executing the FFI import code asynchronously.
    */
-  returnFFIPromise(tid, ffiPromise) {
-    const tso_info = this.tsos.get(tid);
-    //console.log(`Thread ${tid}: return FFI Promise`);
-    tso_info.blockingPromise = ffiPromise;
+  returnFFIPromise(ffiPromise) {
+    this.blockingPromise = ffiPromise;
   }
 
   /**
@@ -116,20 +115,26 @@ export class Scheduler {
 
         // put the thread back into the run-queue
         // TODO: we should put it in front if it hasn't exceeded its time splice
-        this.runQueue.push(tid);
-        this.submitCmdWakeUp();
+        setImmediate(() => this.tick(tid));
         break;
       }
       case 2: {
         // StackOverflow
-        throw new WebAssembly.RuntimeError("StackOverflow");
+        const prev_stack = Number(
+            this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+          ),
+          next_stack = this.exports.growStack(prev_stack);
+        this.memory.i64Store(
+          tso + rtsConstants.offset_StgTSO_stackobj,
+          next_stack
+        );
+        setImmediate(() => this.tick(tid));
         break;
       }
       case 3: {
         // ThreadYielding
         // put the thread back into the run-queue
-        this.runQueue.push(tid);
-        this.submitCmdWakeUp();
+        setImmediate(() => this.tick(tid));
         break;
       }
       case 4: {
@@ -144,25 +149,20 @@ export class Scheduler {
           case Blocked.OnCCall_Interruptible: {
             //console.log(`Thread ${tid}: blocked on FFI`);
             // Wait for the FFI blocking promise and then requeue the TSO
-            tso_info.blockingPromise.then(
+            const blocking_promise = this.blockingPromise;
+            this.blockingPromise = undefined;
+            blocking_promise.then(
               v => {
                 //console.log(`Thread ${tid}: unblocked`);
                 const [retTyp, retVal] = v;
                 tso_info.ffiRet = retVal;
                 tso_info.ffiRetType = retTyp;
-                // Store return block symbol
-                tso_info.ffiAsyncFunc = this.memory.i64Load(
-                  tso + rtsConstants.offset_StgTSO_ffi_func
-                );
-
-                this.runQueue.push(tid);
-                this.submitCmdWakeUp();
+                setImmediate(() => this.tick(tid));
               },
               e => {
                 tso_info.ffiRetErr = e;
                 //console.log(`Thread ${tid}: blocking FFI Promise rejected with ${e.stack}`);
-                this.runQueue.push(tid);
-                this.submitCmdWakeUp();
+                setImmediate(() => this.tick(tid));
               }
             );
             break;
@@ -172,14 +172,13 @@ export class Scheduler {
             const us_delay = Number(
               this.memory.i64Load(tso + rtsConstants.offset_StgTSO_block_info)
             );
-            tso_info.blockingPromise = new Promise((resolve, reject) => {
+            const blocking_promise = new Promise((resolve, reject) => {
               setTimeout(() => resolve(), us_delay / 1000);
             });
             // Wait for the timer blocking promise and then requeue the TSO
-            tso_info.blockingPromise.then(
+            blocking_promise.then(
               () => {
-                this.runQueue.push(tid);
-                this.submitCmdWakeUp();
+                setImmediate(() => this.tick(tid));
               },
               e => {
                 throw new WebAssembly.RuntimeError(
@@ -190,29 +189,20 @@ export class Scheduler {
             break;
           }
 
+          case Blocked.OnBlackHole:
           case Blocked.OnMVar:
           case Blocked.OnMVarRead: {
             //console.log(`Thread ${tid}: blocked on MVar`);
             break;
           }
-          case Blocked.NotBlocked:
-          case Blocked.OnBlackHole:
-          case Blocked.OnRead:
-          case Blocked.OnWrite:
-          case Blocked.OnSTM:
-          case Blocked.OnDoProc:
-          case Blocked.OnMsgThrowTo:
-          case Blocked.ThreadMigrating:
+
           default: {
             throw new WebAssembly.RuntimeError(
               `Unhandled thread blocking reason: ${why_blocked}`
             );
-            break;
           }
         }
 
-        // May execute another thread while this one is blocked
-        this.submitCmdWakeUp();
         break;
       }
       case 5: {
@@ -224,33 +214,18 @@ export class Scheduler {
         switch (what_next) {
           case 1: {
             // ThreadRunGHC
-            this.runQueue.push(tid);
-            this.submitCmdWakeUp();
-            break;
-          }
-          case 2: {
-            // ThreadInterpret
-            throw new WebAssembly.RuntimeError(
-              "Scheduler: unsupported ThreadInterpret"
-            );
-            this.completeTSOs.add(tid);
-            this.submitCmdWakeUp();
+            setImmediate(() => this.tick(tid));
             break;
           }
           case 3: {
             // ThreadKilled
             tso_info.ret = 0;
             tso_info.rstat = 2; // Killed (SchedulerStatus)
-            if (tso_info.promise_resolve) {
-              tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
-            }
-            this.completeTSOs.add(tid);
-            this.submitCmdWakeUp();
+            tso_info.promise_reject(tso_info.retError);
             break;
           }
           case 4: {
             // ThreadComplete
-            const tso_info = this.tsos.get(tid);
             const stackobj = Number(
               this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
             );
@@ -259,11 +234,7 @@ export class Scheduler {
             );
             tso_info.ret = Number(this.memory.i64Load(sp + 8));
             tso_info.rstat = 1; // Success (SchedulerStatus)
-            if (tso_info.promise_resolve) {
-              tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
-            }
-            this.completeTSOs.add(tid);
-            this.submitCmdWakeUp();
+            tso_info.promise_resolve(tid); // rts_eval* functions assume a TID is returned
             break;
           }
         }
@@ -273,168 +244,125 @@ export class Scheduler {
         throw new WebAssembly.RuntimeError(
           `returnFFIPromise: unsupported thread stopping reason ${reason}`
         );
-        break;
       }
     }
   }
 
-  /**
-   * Start the scheduler
-   */
-  run(exports) {
-    exports.context.reentrancyGuard.enter(0);
-    return this.scheduler_loop(exports).then(
-      () => {
-        exports.context.reentrancyGuard.exit(0);
-      },
-      e => {
-        // signal all the TSOs that they won't complete
-        for (const [tid, tso_info] of this.tsos) {
-          if (tso_info.promise_reject) {
-            tso_info.promise_reject(`Scheduler died with: ${e.stack}`);
-          }
-        }
-        exports.context.reentrancyGuard.exit(0);
-        throw new WebAssembly.RuntimeError(e.stack);
-      }
-    );
-  }
+  tick(tid) {
+    this.exports.context.reentrancyGuard.enter(0);
+    try {
+      const tso_info = this.tsos.get(tid);
+      const tso = tso_info.addr;
 
-  /**
-   * Scheduler loop
-   */
-  async scheduler_loop(e) {
-    while (true) {
-      // read a command from the channel
-      const cmd = await this.channel.take();
+      //console.log(`Thread ${tid}: active`);
 
-      switch (cmd.type) {
-        case Cmd.CreateThread: {
-          // call any "createThread" variant. This calls newTSO to get a fresh
-          // ThreadId.
-          const tso = e[cmd.createThread](cmd.closure);
-          const tid = this.getTSOid(tso);
-          const tso_info = this.tsos.get(tid);
-          //console.log(`Thread ${tid}: created`);
+      // Returning from blocking FFI
+      if (tso_info.ffiRetErr) {
+        //console.log(`Thread ${tid}: FFI error`);
 
-          // Link the Promise returned synchronously on command submission with
-          // the TSO promise.
-          tso_info.promise_resolve = cmd.resolve;
-          tso_info.promise_reject = cmd.reject;
-
-          // Add the thread into the run-queue
-          this.enqueueTSO(tso);
-
-          break;
-        }
-
-        case Cmd.WakeUp: {
-          if (this.runQueue.length > 0) {
-            // TODO: Array.shift is O(n). We should use a more efficient queue
-            // structure
-            const tid = this.runQueue.shift();
-            const tso_info = this.tsos.get(tid);
-            const tso = tso_info.addr;
-
-            //console.log(`Thread ${tid}: active`);
-
-            // By default we enter the Haskell code by "returning" to the
-            // closure on top of the stack.
-            var entryFunc = this.symbolTable.stg_returnToStackTop;
-
-            // Returning from blocking FFI
-            if (tso_info.ffiRetErr) {
-              //console.log(`Thread ${tid}: FFI error`);
-
-              // Put an exception closure in R1 and use stg_raise# as the entry
-              // function.
-              this.memory.i64Store(
-                this.symbolTable.MainCapability +
-                  rtsConstants.offset_Capability_r +
-                  rtsConstants.offset_StgRegTable_rR1,
-                this.exports.rts_apply(
-                  this.symbolTable.base_AsteriusziTypes_makeJSException_closure,
-                  this.exports.rts_mkJSVal(
-                    this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
-                  )
-                )
-              );
-              entryFunc = this.symbolTable.stg_raisezh;
-            } else if (tso_info.ffiAsyncFunc) {
-              //console.log(`Thread ${tid}: returned from FFI ${tso_info.ffiAsyncFunc}`);
-
-              // the entry function was saved before the safe FFI call
-              entryFunc = Number(tso_info.ffiAsyncFunc);
-
-              // Restore FFI async value
-              const ffi_ret =
-                tso_info.addr + rtsConstants.offset_StgTSO_ffi_return;
-
-              switch (
-                tso_info.ffiRetType // tag is encoded with `ffiValueTypesTag`
-              ) {
-                case 0: {
-                  // no returned value
-                  this.memory.i64Store(ffi_ret, 0);
-                  break;
-                }
-                case 1: {
-                  // JSVal
-                  const ptr = this.stablePtrManager.newJSVal(tso_info.ffiRet);
-                  //console.log(`Restore after FFI with value: ${tso_info.ffiRet} with type ${typeof tso_info.ffiRet} constructor ${tso_info.ffiRet.constructor} as ${ptr}`);
-                  this.memory.i64Store(ffi_ret, ptr);
-                  break;
-                }
-                case 2: {
-                  // I32
-                  this.memory.i32Store(ffi_ret, tso_info.ffiRet);
-                  break;
-                }
-                case 3: {
-                  // I64
-                  this.memory.i64Store(ffi_ret, tso_info.ffiRet);
-                  break;
-                }
-                case 4: {
-                  // F32
-                  this.memory.f32Store(ffi_ret, tso_info.ffiRet);
-                  break;
-                }
-                case 5: {
-                  // F64
-                  this.memory.f64Store(ffi_ret, tso_info.ffiRet);
-                  break;
-                }
-                default:
-                  // FIXME: add support for multiple return values: the tag already
-                  // supports it and we get a list of values in tso_info.ffiRet
-                  throw new WebAssembly.RuntimeError(
-                    `Unsupported FFI return value type tag ${tso_info.ffiRetType} (more than one value?): ${tso_info.ffiRet}`
-                  );
-                  break;
-              }
-            }
-
-            tso_info.ffiAsyncFunc = undefined;
-            tso_info.ffiRet = undefined;
-            tso_info.ffiRetType = 0;
-            tso_info.ffiRetErr = undefined;
-
-            // execute the TSO.
-            e.scheduleTSO(tso, entryFunc);
-            this.returnedFromTSO(tid);
-          }
-          break;
-        }
-
-        default: {
-          throw new WebAssembly.RuntimeError(
-            `Unrecognized scheduler command type: ${cmd.type}`
+        const stackobj = Number(
+            this.memory.i64Load(tso + rtsConstants.offset_StgTSO_stackobj)
+          ),
+          sp =
+            Number(
+              this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
+            ) - 16,
+          exception_closure = this.exports.rts_apply(
+            this.symbolTable
+              .base_AsteriusziTypesziJSException_mkJSException_closure,
+            this.exports.rts_mkJSVal(
+              this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
+            )
           );
-          break;
+        this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
+        this.memory.i64Store(sp, this.symbolTable.stg_raise_ret_info);
+        this.memory.i64Store(sp + 8, exception_closure);
+      } else if (typeof tso_info.ffiRetType === "number") {
+        switch (
+          tso_info.ffiRetType // tag is encoded with `ffiValueTypesTag`
+        ) {
+          case 0: {
+            // no returned value
+            break;
+          }
+          case 1: {
+            // JSVal
+            const ptr = this.stablePtrManager.newJSVal(tso_info.ffiRet);
+            //console.log(`Restore after FFI with value: ${tso_info.ffiRet} with type ${typeof tso_info.ffiRet} constructor ${tso_info.ffiRet.constructor} as ${ptr}`);
+            this.memory.i64Store(
+              this.symbolTable.MainCapability +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rR1,
+              ptr
+            );
+            break;
+          }
+          case 2: {
+            // I64
+            this.memory.i64Store(
+              this.symbolTable.MainCapability +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rR1,
+              tso_info.ffiRet
+            );
+            break;
+          }
+          case 3: {
+            // F32
+            this.memory.f32Store(
+              this.symbolTable.MainCapability +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rF1,
+              tso_info.ffiRet
+            );
+            break;
+          }
+          case 4: {
+            // F64
+            this.memory.f64Store(
+              this.symbolTable.MainCapability +
+                rtsConstants.offset_Capability_r +
+                rtsConstants.offset_StgRegTable_rD1,
+              tso_info.ffiRet
+            );
+            break;
+          }
+          default:
+            // FIXME: add support for multiple return values: the tag already
+            // supports it and we get a list of values in tso_info.ffiRet
+            throw new WebAssembly.RuntimeError(
+              `Unsupported FFI return value type tag ${tso_info.ffiRetType} (more than one value?): ${tso_info.ffiRet}`
+            );
         }
       }
+
+      tso_info.ffiRet = undefined;
+      tso_info.ffiRetType = undefined;
+      tso_info.ffiRetErr = undefined;
+
+      // execute the TSO.
+      let sync_err = false;
+      try {
+        this.exports.scheduleTSO(tso);
+      } catch (err) {
+        sync_err = true;
+        this.exports.stg_returnToSchedNotPaused();
+        tso_info.ffiRetErr = err;
+        setImmediate(() => this.tick(tid));
+      }
+      if (!sync_err) {
+        this.returnedFromTSO(tid);
+      }
+    } finally {
+      this.exports.context.reentrancyGuard.exit(0);
     }
+  }
+
+  tsoReportException(tso, v) {
+    const err = this.stablePtrManager.getJSVal(v);
+    this.stablePtrManager.freeJSVal(v);
+    const tid = this.getTSOid(tso);
+    this.tsos.get(tid).retError = err;
   }
 
   /**
@@ -449,11 +377,8 @@ export class Scheduler {
       tso_info.addr = Number(tso);
     }
 
-    // Add the thread into the run-queue
-    this.runQueue.push(tid);
-
     // Ensure that we wake up the scheduler at least once to execute this thread
-    this.submitCmdWakeUp();
+    setImmediate(() => this.tick(tid));
   }
 
   /**
@@ -464,44 +389,13 @@ export class Scheduler {
    * @param closure      The closure to evaluate in the thread.
    */
   submitCmdCreateThread(createThread, closure) {
-    return new Promise((resolve, reject) =>
-      this.channel.put({
-        type: Cmd.CreateThread,
-        createThread: createThread,
-        closure: closure,
-        resolve: resolve,
-        reject: reject
-      })
-    );
-  }
-
-  /**
-   * Submit a WakeUp command. A WakeUp command doesn't provide any additional
-   * information. It is only used to wake-up the scheduler so that it can check
-   * if there are some threads to run in its run-queue (unblocked threads, etc.)
-   *
-   *
-   */
-  submitCmdWakeUp() {
-    this.channel.put({ type: Cmd.WakeUp });
+    const tso = this.exports[createThread](closure),
+      tid = this.getTSOid(tso),
+      tso_info = this.tsos.get(tid);
+    this.enqueueTSO(tso);
+    return tso_info.returnPromise;
   }
 }
-
-/* Note [WakeUp command]
- * ~~~~~~~~~~~~~~~~~~~~~
- *
- * Submit a WakeUp command. A WakeUp command doesn't provide any additional
- * information. It is only used to wake up the scheduler so that it can check
- * if there are some threads to run in its run-queue (unblocked threads, etc.)
- */
-
-/**
- * Scheduler command types enum
- */
-const Cmd = {
-  CreateThread: 1, // Create a new thread
-  WakeUp: 2 // Wake up the scheduler (see Note [WakeUp command])
-};
 
 /**
  * Blocked enum type (see rts/Constants.h)

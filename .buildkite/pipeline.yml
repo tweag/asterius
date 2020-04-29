@@ -1,0 +1,77 @@
+steps:
+
+  - key: "asterius-boot"
+    label: "asterius-boot"
+    command: |
+      docker pull terrorjack/asterius:dev
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --network host \
+        --privileged \
+        --rm \
+        --volume $(pwd):/asterius \
+        --workdir /asterius \
+        terrorjack/asterius:dev \
+        .buildkite/boot.sh
+      buildkite-agent artifact upload asterius.tar.zst
+
+  - key: "asterius-test"
+    label: "asterius-test"
+    depends_on: "asterius-boot"
+    command: |
+      buildkite-agent artifact download asterius.tar.zst .
+      docker pull terrorjack/asterius:dev
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --network host \
+        --privileged \
+        --rm \
+        --volume $(pwd):/asterius \
+        --workdir /asterius \
+        terrorjack/asterius:dev \
+        .buildkite/test.sh
+
+  - key: "asterius-ghc-testsuite"
+    label: "asterius-ghc-testsuite"
+    depends_on: "asterius-boot"
+    command: |
+      buildkite-agent artifact download asterius.tar.zst .
+      docker pull terrorjack/asterius:dev
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --network host \
+        --privileged \
+        --rm \
+        --volume $(pwd):/asterius \
+        --workdir /asterius \
+        terrorjack/asterius:dev \
+        .buildkite/ghc-testsuite.sh
+      buildkite-agent artifact upload test-report.csv
+
+  - key: "asterius-profile"
+    label: "asterius-profile"
+    command: |
+      docker pull debian:sid
+      docker build \
+        --build-arg UID=$(id --user) \
+        --build-arg GID=$(id --group) \
+        --build-arg jobs=8 \
+        --compress \
+        --file profile.Dockerfile \
+        --network host \
+        --no-cache \
+        --tag asterius:profile \
+        .
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --rm \
+        --volume $(pwd):/asterius \
+        --workdir /asterius \
+        asterius:profile \
+        .buildkite/profile.sh
+      docker rmi asterius:profile
+      buildkite-agent artifact upload ".buildkite/reports/*"

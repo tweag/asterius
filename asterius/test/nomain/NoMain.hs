@@ -7,9 +7,9 @@ import Asterius.Types
 import System.IO.Unsafe
 
 {-# NOINLINE x #-}
-x :: JSArrayBuffer
+x :: JSUint8Array
 x = unsafePerformIO $ do
   love
-  pure $ byteStringToJSArrayBuffer "Lorem ipsum"
+  pure $ byteStringToJSUint8Array "Lorem ipsum"
 
 foreign import javascript "console.error('From node, with love')" love :: IO ()

@@ -12,7 +12,7 @@ import GHC
 import GhcPlugins hiding ((<>))
 import Language.Haskell.GHC.Toolkit.Compiler
 import Language.Haskell.GHC.Toolkit.Hooks
-import Language.Haskell.GHC.Toolkit.Orphans.Show
+import Language.Haskell.GHC.Toolkit.Orphans.Show ()
 import Panic
 
 makeFrontendPlugin :: Ghc Compiler -> FrontendPlugin
@@ -32,7 +32,6 @@ makeFrontendPlugin init_c =
                     tablesNextToCode = False,
                     hooks = h
                   }
-            getSessionDynFlags >>= setDynFlagsRef
             env <- getSession
             liftIO $ oneShot env StopLn targets
           else do
@@ -53,7 +52,6 @@ makeFrontendPlugin init_c =
                     ldInputs = map (FileOption "") o_files ++ ldInputs dflags'
                   }
             traverse (uncurry GHC.guessTarget) hs_targets >>= setTargets
-            getSessionDynFlags >>= setDynFlagsRef
             ok_flag <- load LoadAllTargets
             when (failed ok_flag) $ liftIO $ throwGhcExceptionIO $
               Panic
