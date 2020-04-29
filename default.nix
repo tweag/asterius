@@ -37,7 +37,7 @@ let
       ({ config, ...}: {
         packages = {
           ghc.patches = [ ./nix/patches/ghc.patch ];
-          Cabal.patches = [ cabalPatch ];
+          # Cabal.patches = [ cabalPatch ];
           haddock-api.components.library.doHaddock = false;
           wasm-toolkit.package.cleanHpack = true;
           ghc-toolkit.package.cleanHpack = true;

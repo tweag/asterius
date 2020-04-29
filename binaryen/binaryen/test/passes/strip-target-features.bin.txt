@@ -1,3 +1,0 @@
-(module
- ;; custom section "linking", size 1
-)

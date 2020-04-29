@@ -4,7 +4,7 @@
            , MagicHash
            , UnboxedTuples
   #-}
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK not-home #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
 -----------------------------------------------------------------------------
@@ -153,8 +153,8 @@ mallocForeignPtr :: Storable a => IO (ForeignPtr a)
 -- implementation in GHC.  It uses pinned memory in the garbage
 -- collected heap, so the 'ForeignPtr' does not require a finalizer to
 -- free the memory.  Use of 'mallocForeignPtr' and associated
--- functions is strongly recommended in preference to 'newForeignPtr'
--- with a finalizer.
+-- functions is strongly recommended in preference to
+-- 'Foreign.ForeignPtr.newForeignPtr' with a finalizer.
 --
 mallocForeignPtr = doMalloc undefined
   where doMalloc :: Storable b => b -> IO (ForeignPtr b)
@@ -289,9 +289,10 @@ addForeignPtrConcFinalizer :: ForeignPtr a -> IO () -> IO ()
 --
 -- NB. Be very careful with these finalizers.  One common trap is that
 -- if a finalizer references another finalized value, it does not
--- prevent that value from being finalized.  In particular, 'Handle's
--- are finalized objects, so a finalizer should not refer to a 'Handle'
--- (including @stdout@, @stdin@ or @stderr@).
+-- prevent that value from being finalized.  In particular, 'System.IO.Handle's
+-- are finalized objects, so a finalizer should not refer to a
+-- 'System.IO.Handle' (including 'System.IO.stdout', 'System.IO.stdin', or
+-- 'System.IO.stderr').
 --
 addForeignPtrConcFinalizer (ForeignPtr _ c) finalizer =
   addForeignPtrConcFinalizer_ c finalizer
@@ -321,7 +322,7 @@ addForeignPtrConcFinalizer_ _ _ =
 
 insertHaskellFinalizer :: IORef Finalizers -> IO () -> IO Bool
 insertHaskellFinalizer r f = do
-  !wasEmpty <- atomicModifyIORef r $ \finalizers -> case finalizers of
+  !wasEmpty <- atomicModifyIORefP r $ \finalizers -> case finalizers of
       NoFinalizers -> (HaskellFinalizers [f], True)
       HaskellFinalizers fs -> (HaskellFinalizers (f:fs), False)
       _ -> noMixingError
@@ -352,8 +353,8 @@ ensureCFinalizerWeak ref@(IORef (STRef r#)) value = do
       NoFinalizers -> IO $ \s ->
           case mkWeakNoFinalizer# r# (unsafeCoerce# value) s of { (# s1, w #) ->
              -- See Note [MallocPtr finalizers] (#10904)
-          case atomicModifyMutVar# r# (update w) s1 of
-              { (# s2, (weak, needKill ) #) ->
+          case atomicModifyMutVar2# r# (update w) s1 of
+              { (# s2, _, (_, (weak, needKill )) #) ->
           if needKill
             then case finalizeWeak# w s2 of { (# s3, _, _ #) ->
               (# s3, weak #) }
@@ -370,7 +371,8 @@ noMixingError = errorWithoutStackTrace $
 
 foreignPtrFinalizer :: IORef Finalizers -> IO ()
 foreignPtrFinalizer r = do
-  fs <- atomicModifyIORef r $ \fs -> (NoFinalizers, fs) -- atomic, see #7170
+  fs <- atomicSwapIORef r NoFinalizers
+             -- atomic, see #7170
   case fs of
     NoFinalizers -> return ()
     CFinalizers w -> IO $ \s -> case finalizeWeak# w s of

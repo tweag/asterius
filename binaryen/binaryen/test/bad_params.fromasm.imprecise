@@ -1,6 +1,0 @@
-(module
- (export "ex" (func $ex))
- (func $ex (; 0 ;) (; has Stack IR ;)
-  (nop)
- )
-)

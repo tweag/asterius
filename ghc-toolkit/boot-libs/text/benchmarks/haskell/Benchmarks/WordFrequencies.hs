@@ -9,7 +9,8 @@
 -- * Comparing: Eq/Ord instances
 --
 module Benchmarks.WordFrequencies
-    ( benchmark
+    ( initEnv
+    , benchmark
     ) where
 
 import Criterion (Benchmark, bench, bgroup, whnf)
@@ -21,12 +22,18 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 
-benchmark :: FilePath -> IO Benchmark
-benchmark fp = do
+type Env = (String, B.ByteString, T.Text)
+
+initEnv :: FilePath -> IO Env
+initEnv fp = do
     s <- readFile fp
     b <- B.readFile fp
     t <- T.readFile fp
-    return $ bgroup "WordFrequencies"
+    return (s, b, t)
+
+benchmark :: Env -> Benchmark
+benchmark ~(s, b, t) =
+    bgroup "WordFrequencies"
         [ bench "String"     $ whnf (frequencies . words . map toLower)     s
         , bench "ByteString" $ whnf (frequencies . B.words . B.map toLower) b
         , bench "Text"       $ whnf (frequencies . T.words . T.toLower)     t

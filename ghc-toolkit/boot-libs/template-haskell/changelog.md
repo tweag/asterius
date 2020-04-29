@@ -1,6 +1,28 @@
 # Changelog for [`template-haskell` package](http://hackage.haskell.org/package/template-haskell)
 
-## 2.14.0.0 *August 2018*
+## 2.15.0.0 *May 2019
+
+  * In `Language.Haskell.TH.Syntax`, `DataInstD`, `NewTypeInstD`, `TySynEqn`,
+    and `RuleP` now all have a `Maybe [TyVarBndr]` argument, which contains a
+    list of quantified type variables if an explicit `forall` is present, and
+    `Nothing` otherwise. `DataInstD`, `NewTypeInstD`, `TySynEqn` also now use
+    a single `Type` argument to represent the left-hand-side to avoid
+    malformed type family equations and allow visible kind application.
+
+    Correspondingly, in `Language.Haskell.TH.Lib.Internal`, `pragRuleD`,
+    `dataInstD`, `newtypeInstD`, and `tySynEqn` now all have a
+    `Maybe [TyVarBndrQ]` argument. Non-API-breaking versions of these
+    functions can be found in `Language.Haskell.TH.Lib`. The type signature
+    of `tySynEqn` has also changed from `[TypeQ] -> TypeQ -> TySynEqnQ` to
+    `(Maybe [TyVarBndrQ]) -> TypeQ -> TypeQ -> TySynEqnQ`, for the same reason
+    as in `Language.Haskell.TH.Syntax` above. Consequently, `tySynInstD` also
+    changes from `Name -> TySynEqnQ -> DecQ` to `TySynEqnQ -> DecQ`.
+
+  * Add `Lift` instances for `NonEmpty` and `Void`
+
+  * `addForeignFilePath` now support assembler sources (#16180).
+
+## 2.14.0.0 *September 2018
 
   * Introduce an `addForeignFilePath` function, as well as a corresponding
     `qAddForeignFile` class method to `Quasi`. Unlike `addForeignFile`, which
@@ -17,6 +39,11 @@
     a given suffix.
 
   * Add a `ViaStrategy` constructor to `DerivStrategy`.
+
+  * Add support for `-XImplicitParams` via `ImplicitParamT`,
+    `ImplicitParamVarE`, and `ImplicitParamBindD`.
+
+  * Add support for `-XRecursiveDo` via `MDoE` and `RecS`.
 
 ## 2.13.0.0 *March 2018*
 

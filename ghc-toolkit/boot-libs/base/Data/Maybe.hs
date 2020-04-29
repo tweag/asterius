@@ -32,6 +32,7 @@ module Data.Maybe
    ) where
 
 import GHC.Base
+import GHC.Stack.Types ( HasCallStack )
 
 -- $setup
 -- Allow the use of some Prelude functions in doctests.
@@ -55,7 +56,7 @@ import GHC.Base
 -- >>> maybe False odd Nothing
 -- False
 --
--- Read an integer from a string using 'readMaybe'. If we succeed,
+-- Read an integer from a string using 'Text.Read.readMaybe'. If we succeed,
 -- return twice the integer; that is, apply @(*2)@ to it. If instead
 -- we fail to parse an integer, return @0@ by default:
 --
@@ -65,7 +66,7 @@ import GHC.Base
 -- >>> maybe 0 (*2) (readMaybe "")
 -- 0
 --
--- Apply 'show' to a @Maybe Int@. If we have @Just n@, we want to show
+-- Apply 'Prelude.show' to a @Maybe Int@. If we have @Just n@, we want to show
 -- the underlying 'Int' @n@. But if we have 'Nothing', we return the
 -- empty string instead of (for example) \"Nothing\":
 --
@@ -143,8 +144,8 @@ isNothing _       = False
 -- >>> 2 * (fromJust Nothing)
 -- *** Exception: Maybe.fromJust: Nothing
 --
-fromJust          :: Maybe a -> a
-fromJust Nothing  = errorWithoutStackTrace "Maybe.fromJust: Nothing" -- yuck
+fromJust          :: HasCallStack => Maybe a -> a
+fromJust Nothing  = error "Maybe.fromJust: Nothing" -- yuck
 fromJust (Just x) = x
 
 -- | The 'fromMaybe' function takes a default value and and 'Maybe'
@@ -161,7 +162,7 @@ fromJust (Just x) = x
 -- >>> fromMaybe "" Nothing
 -- ""
 --
--- Read an integer from a string using 'readMaybe'. If we fail to
+-- Read an integer from a string using 'Text.Read.readMaybe'. If we fail to
 -- parse an integer, we want to return @0@ by default:
 --
 -- >>> import Text.Read ( readMaybe )
@@ -174,7 +175,7 @@ fromMaybe     :: a -> Maybe a -> a
 fromMaybe d x = case x of {Nothing -> d;Just v  -> v}
 
 -- | The 'maybeToList' function returns an empty list when given
--- 'Nothing' or a singleton list when not given 'Nothing'.
+-- 'Nothing' or a singleton list when given 'Just'.
 --
 -- ==== __Examples__
 --

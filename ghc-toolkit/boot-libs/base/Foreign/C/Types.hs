@@ -27,19 +27,19 @@ module Foreign.C.Types
         ( -- * Representations of C types
           -- $ctypes
 
-          -- ** Platform differences
+          -- ** #platform# Platform differences
           -- | This module contains platform specific information about types.
-          --   __/As such the types presented on this page reflect the platform
-          --   on which the documentation was generated and may not coincide with
-          --   the types on your platform./__
+          -- __/As such, the types presented on this page reflect the/__
+          -- __/platform on which the documentation was generated and may/__
+          -- __/not coincide with the types on your platform./__
 
           -- ** Integral types
           -- | These types are represented as @newtype@s of
           -- types in "Data.Int" and "Data.Word", and are instances of
           -- 'Prelude.Eq', 'Prelude.Ord', 'Prelude.Num', 'Prelude.Read',
-          -- 'Prelude.Show', 'Prelude.Enum', 'Typeable', 'Storable',
-          -- 'Prelude.Bounded', 'Prelude.Real', 'Prelude.Integral' and
-          -- 'Bits'.
+          -- 'Prelude.Show', 'Prelude.Enum', 'Data.Typeable.Typeable',
+          -- 'Storable', 'Prelude.Bounded', 'Prelude.Real', 'Prelude.Integral'
+          -- and 'Bits'.
           CChar(..),    CSChar(..),   CUChar(..)
         , CShort(..),   CUShort(..),  CInt(..),      CUInt(..)
         , CLong(..),    CULong(..)
@@ -51,7 +51,8 @@ module Foreign.C.Types
           -- | These types are represented as @newtype@s of basic
           -- foreign types, and are instances of
           -- 'Prelude.Eq', 'Prelude.Ord', 'Prelude.Num', 'Prelude.Read',
-          -- 'Prelude.Show', 'Prelude.Enum', 'Typeable' and 'Storable'.
+          -- 'Prelude.Show', 'Prelude.Enum', 'Data.Typeable.Typeable' and
+          -- 'Storable'.
         , CClock(..),   CTime(..),    CUSeconds(..), CSUSeconds(..)
 
         -- extracted from CTime, because we don't want this comment in
@@ -66,7 +67,7 @@ module Foreign.C.Types
           -- | These types are represented as @newtype@s of
           -- 'Prelude.Float' and 'Prelude.Double', and are instances of
           -- 'Prelude.Eq', 'Prelude.Ord', 'Prelude.Num', 'Prelude.Read',
-          -- 'Prelude.Show', 'Prelude.Enum', 'Typeable', 'Storable',
+          -- 'Prelude.Show', 'Prelude.Enum', 'Data.Typeable.Typeable', 'Storable',
           -- 'Prelude.Real', 'Prelude.Fractional', 'Prelude.Floating',
           -- 'Prelude.RealFrac' and 'Prelude.RealFloat'. That does mean
           -- that `CFloat`'s (respectively `CDouble`'s) instances of
@@ -104,33 +105,45 @@ import GHC.Num
 #include "CTypes.h"
 
 -- | Haskell type representing the C @char@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CChar,HTYPE_CHAR)
 -- | Haskell type representing the C @signed char@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CSChar,HTYPE_SIGNED_CHAR)
 -- | Haskell type representing the C @unsigned char@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CUChar,HTYPE_UNSIGNED_CHAR)
 
 -- | Haskell type representing the C @short@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CShort,HTYPE_SHORT)
 -- | Haskell type representing the C @unsigned short@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CUShort,HTYPE_UNSIGNED_SHORT)
 
 -- | Haskell type representing the C @int@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CInt,HTYPE_INT)
 -- | Haskell type representing the C @unsigned int@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CUInt,HTYPE_UNSIGNED_INT)
 
 -- | Haskell type representing the C @long@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CLong,HTYPE_LONG)
 -- | Haskell type representing the C @unsigned long@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CULong,HTYPE_UNSIGNED_LONG)
 
 -- | Haskell type representing the C @long long@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CLLong,HTYPE_LONG_LONG)
 -- | Haskell type representing the C @unsigned long long@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CULLong,HTYPE_UNSIGNED_LONG_LONG)
 
 -- | Haskell type representing the C @bool@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 --
 -- @since 4.10.0.0
 INTEGRAL_TYPE_WITH_CTYPE(CBool,bool,HTYPE_BOOL)
@@ -163,8 +176,10 @@ INTEGRAL_TYPE_WITH_CTYPE(CBool,bool,HTYPE_BOOL)
  #-}
 
 -- | Haskell type representing the C @float@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 FLOATING_TYPE(CFloat,HTYPE_FLOAT)
 -- | Haskell type representing the C @double@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 FLOATING_TYPE(CDouble,HTYPE_DOUBLE)
 -- XXX GHC doesn't support CLDouble yet
 
@@ -181,12 +196,16 @@ FLOATING_TYPE(CDouble,HTYPE_DOUBLE)
 -- "realToFrac/CLDouble->a"  realToFrac = \(CLDouble x) -> realToFrac x
 
 -- | Haskell type representing the C @ptrdiff_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CPtrdiff,HTYPE_PTRDIFF_T)
 -- | Haskell type representing the C @size_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CSize,HTYPE_SIZE_T)
 -- | Haskell type representing the C @wchar_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CWchar,HTYPE_WCHAR_T)
 -- | Haskell type representing the C @sig_atomic_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 INTEGRAL_TYPE(CSigAtomic,HTYPE_SIG_ATOMIC_T)
 
 {-# RULES
@@ -202,25 +221,32 @@ INTEGRAL_TYPE(CSigAtomic,HTYPE_SIG_ATOMIC_T)
  #-}
 
 -- | Haskell type representing the C @clock_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 ARITHMETIC_TYPE(CClock,HTYPE_CLOCK_T)
 -- | Haskell type representing the C @time_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 ARITHMETIC_TYPE(CTime,HTYPE_TIME_T)
 -- | Haskell type representing the C @useconds_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 --
 -- @since 4.4.0.0
 
 ARITHMETIC_TYPE(CUSeconds,HTYPE_USECONDS_T)
 -- | Haskell type representing the C @suseconds_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 --
 -- @since 4.4.0.0
 ARITHMETIC_TYPE(CSUSeconds,HTYPE_SUSECONDS_T)
 
 -- FIXME: Implement and provide instances for Eq and Storable
 -- | Haskell type representing the C @FILE@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 data CFile = CFile
 -- | Haskell type representing the C @fpos_t@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 data CFpos = CFpos
 -- | Haskell type representing the C @jmp_buf@ type.
+-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
 data CJmpBuf = CJmpBuf
 
 INTEGRAL_TYPE(CIntPtr,HTYPE_INTPTR_T)

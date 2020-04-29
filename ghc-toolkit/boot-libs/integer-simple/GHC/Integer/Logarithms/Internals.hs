@@ -1,6 +1,5 @@
 {-# LANGUAGE CPP, MagicHash, UnboxedTuples, NoImplicitPrelude #-}
-{-# LANGUAGE UnliftedFFITypes #-}
-{-# OPTIONS_HADDOCK hide #-}
+{-# OPTIONS_HADDOCK not-home #-}
 
 #include "MachDeps.h"
 
@@ -18,9 +17,8 @@ module GHC.Integer.Logarithms.Internals
     , roundingMode#
     ) where
 
-import Asterius.Magic
-import GHC.Integer.Type
 import GHC.Prim
+import GHC.Integer.Type
 import GHC.Types
 
 default ()
@@ -94,11 +92,31 @@ wordLog2# w =
 -- otherwise return -1# arbitrarily
 -- Going up in word-sized steps should not be too bad.
 integerLog2# :: Integer -> Int#
-integerLog2# (Integer i) = js_integerLog2 i
+integerLog2# (Positive digits) = step 0# digits
+  where
+    step acc (Some dig None) = acc +# wordLog2# dig
+    step acc (Some _ digs)   =
+        step (acc +# WORD_SIZE_IN_BITS#) digs
+    step acc None = acc     -- should be impossible, throw error?
+integerLog2# _ = negateInt# 1#
 
 -- Again, integer should be strictly positive
 integerLog2IsPowerOf2# :: Integer -> (# Int#, Int# #)
-integerLog2IsPowerOf2# (Integer i) = (# js_integerLog2 i, js_integerIsPowerOf2 i #)
+integerLog2IsPowerOf2# (Positive digits) = couldBe 0# digits
+  where
+    couldBe acc (Some dig None) =
+        (# acc +# wordLog2# dig, word2Int# (and# dig (minusWord# dig 1##)) #)
+    couldBe acc (Some dig digs) =
+        if isTrue# (eqWord# dig 0##)
+           then couldBe (acc +# WORD_SIZE_IN_BITS#) digs
+           else noPower (acc +# WORD_SIZE_IN_BITS#) digs
+    couldBe acc None = (# acc, 1# #) -- should be impossible, error?
+    noPower acc (Some dig None) =
+        (# acc +# wordLog2# dig, 1# #)
+    noPower acc (Some _ digs)   =
+        noPower (acc +# WORD_SIZE_IN_BITS#) digs
+    noPower acc None = (# acc, 1# #) -- should be impossible, error?
+integerLog2IsPowerOf2# _ = (# negateInt# 1#, 1# #)
 
 -- Assumption: Integer and Int# are strictly positive, Int# is less
 -- than logBase 2 of Integer, otherwise havoc ensues.
@@ -146,7 +164,3 @@ leadingZeros =
                               (# _, ba #) -> ba
     in case mkArr realWorld# of
         b -> BA b
-
-foreign import javascript "__asterius_jsffi.Integer.integerLog2(${1})" js_integerLog2 :: Int# -> Int#
-
-foreign import javascript "__asterius_jsffi.Integer.integerIsPowerOf2(${1})" js_integerIsPowerOf2 :: Int# -> Int#

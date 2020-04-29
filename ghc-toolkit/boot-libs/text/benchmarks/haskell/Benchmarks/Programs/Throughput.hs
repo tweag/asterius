@@ -27,8 +27,8 @@ import qualified Data.Text.IO as T
 import qualified Data.Text.Lazy.Encoding as TL
 import qualified Data.Text.Lazy.IO as TL
 
-benchmark :: FilePath -> Handle -> IO Benchmark
-benchmark fp sink = return $ bgroup "Throughput"
+benchmark :: FilePath -> Handle -> Benchmark
+benchmark fp sink = bgroup "Throughput"
     [ bench "String" $ whnfIO $ readFile fp >>= hPutStr sink
     , bench "ByteString" $ whnfIO $ B.readFile fp >>= B.hPutStr sink
     , bench "LazyByteString" $ whnfIO $ BL.readFile fp >>= BL.hPutStr sink

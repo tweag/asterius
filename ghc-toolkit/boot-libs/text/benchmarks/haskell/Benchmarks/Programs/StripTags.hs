@@ -24,8 +24,8 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import qualified Data.Text.IO as T
 
-benchmark :: FilePath -> Handle -> IO Benchmark
-benchmark i o = return $ bgroup "StripTags"
+benchmark :: FilePath -> Handle -> Benchmark
+benchmark i o = bgroup "StripTags"
     [ bench "String" $ whnfIO $ readFile i >>= hPutStr o . string
     , bench "ByteString" $ whnfIO $ B.readFile i >>= B.hPutStr o . byteString
     , bench "Text" $ whnfIO $ T.readFile i >>= T.hPutStr o . text
