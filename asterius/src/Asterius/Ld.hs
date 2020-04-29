@@ -24,6 +24,7 @@ import Asterius.Resolve
 import Asterius.Types
 import qualified Asterius.Types.SymbolSet as SS
 import Control.Exception
+import Data.Traversable
 
 data LinkTask
   = LinkTask
@@ -46,7 +47,9 @@ data LinkTask
 loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
-  lib <- parallelFor 1 linkLibs (loadAr ncu) -- TODO: Parameterize
+  lib <- do
+    entries <- concat <$> for linkLibs loadArchiveEntries
+    parallelFor 1 entries (loadArchiveEntry ncu) -- TODO: Parameterize
   objs <- parallelFor 1 linkObjs (loadObj ncu) -- TODO: Parameterize
   evaluate $ linkModule <> mconcat objs <> lib
   where

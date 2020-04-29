@@ -17,7 +17,7 @@ import qualified IfaceEnv as GHC
 -- | Load an archive file from disk, deserialize all objects it contains and
 -- concatenate them into a single 'AsteriusCachedModule'.
 loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
-loadAr ncu p = do
+loadAr ncu p = do -- It is still being used by Asterius.GHCi.Internals.asteriusIservCall
   entries <- loadArchiveEntries p
   mconcat <$> mapM (loadArchiveEntry ncu) entries
 
