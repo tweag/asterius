@@ -51,7 +51,7 @@ loadTheWorld LinkTask {..} = do
     entries <- concat <$> for linkLibs loadArchiveEntries
     parallelFor 1 entries (loadArchiveEntry ncu) -- TODO: Parameterize
   objs <- parallelFor 1 linkObjs (loadObj ncu) -- TODO: Parameterize
-  evaluate $ linkModule <> mconcat objs <> lib
+  evaluate $ linkModule <> objs <> lib
   where
     loadObj ncu path = tryGetFile ncu path >>= \case
       Left {} -> pure mempty
