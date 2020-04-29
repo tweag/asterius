@@ -59,7 +59,6 @@ import Asterius.Types.SymbolMap (SymbolMap)
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.Types.SymbolSet (SymbolSet)
 import qualified Asterius.Types.SymbolSet as SS
-import Control.DeepSeq
 import Control.Exception
 import qualified Data.ByteString as BS
 import Data.Data

@@ -66,6 +66,7 @@ main = do
       let rsp_args = map read $ lines rsp
       linkTask' <- parseLinkTask rsp_args
       ignore <- isJust <$> getEnv "ASTERIUS_AHC_LD_IGNORE"
+      let task = Main.parseTask []
       if ignore
         then callProcess "touch" [linkOutput task]
         else do
@@ -76,7 +77,6 @@ main = do
               linkTask = linkTask' { linkOutput = wexe </> "link.out" }
           createDirectoryIfMissing False wexe
           linkExe linkTask
-          let task = Main.parseTask []
           ld_result <- decodeFile $ linkOutput linkTask
           Main.ahcDistMain putStrLn task
             { Main.target = Main.Node

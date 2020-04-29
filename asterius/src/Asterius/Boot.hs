@@ -32,6 +32,7 @@ import Language.Haskell.GHC.Toolkit.Run
     ghcFlags,
     runCmm,
   )
+import qualified Paths_asterius
 import qualified Module as GHC
 import qualified Stream
 import System.Directory
@@ -48,8 +49,8 @@ data BootArgs
         builtinsOptions :: BuiltinsOptions
       }
 
-defaultBootArgs :: BootArgs
-defaultBootArgs = BootArgs
+getDefaultBootArgs :: BootArgs
+getDefaultBootArgs = BootArgs
   { bootDir = rootBootDir </> ".boot",
     configureOptions =
       "--disable-shared\
@@ -130,7 +131,6 @@ bootRTSCmm bootArgs@BootArgs {..} =
                   Right m -> do
                     let out_path = bootDir </> makeRelative asteriusBootLibsPath obj_path
                     createDirectoryIfMissing True $ takeDirectory out_path
-                    encodeFile out_path m
                     putFile obj_path $ toCachedModule m
                     modifyIORef' obj_paths_ref (out_path :)
                     when is_debug $ do
@@ -159,7 +159,7 @@ runBootCreateProcess = flip withCreateProcess $ \_ _ _ ph -> do
 boot :: BootArgs -> IO ()
 boot args = do
   cp_boot <- bootCreateProcess args
-  dataDir <- getDataDir
+  dataDir <- Paths_asterius.getDataDir
   runBootCreateProcess
     cp_boot
       { cmdspec = RawCommand "sh" ["-e", dataDir </> "boot-init.sh"]

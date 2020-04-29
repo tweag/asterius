@@ -36,7 +36,13 @@ let
       { reinstallableLibGhc = true; }
       ({ config, ...}: {
         packages = {
+          # Created with the following command in git@github.com:TerrorJack/ghc.git
+          # cd compiler && git diff origin/ghc-8.8 origin/asterius-8.8 --relative > ghc.patch
           ghc.patches = [ ./nix/patches/ghc.patch ];
+          # Created with the following command (diff doesn't seem to have a --relative flag)
+          # diff -u -r $(nix-build -A ghc883.ghc-patched-src)/libraries/ghci ghc-toolkit/boot-libs/ghci | sed "s+$(nix-build -A ghc883.ghc-patched-src)/libraries/ghci/+a/+" | sed 's+ghc-toolkit/boot-libs/ghci/+b/+' > nix/patches/ghc/ghc883-ghci.patch
+          ghci.patches = [ ./nix/patches/ghc/ghc883-ghci.patch ];
+          # This cabal patch doesn't work any more since we're using cabal 3 now
           # Cabal.patches = [ cabalPatch ];
           haddock-api.components.library.doHaddock = false;
           wasm-toolkit.package.cleanHpack = true;
@@ -178,6 +184,8 @@ let
       url = "https://hackage.haskell.org/package/ghc-prim-0.5.3/ghc-prim-0.5.3.tar.gz";
       sha256 = "1inn9dr481bwddai9i2bbk50i8clzkn4452wgq4g97pcgdy1k8mn";
     };
+    # Created with:
+    # diff -u -r $(nix-build -A ghc883.ghc-patched-src)/libraries ghc-toolkit/boot-libs > nix/patches/ghc/ghc883-libs.patch
     patch = pkgs.copyPathToStore ./nix/patches/ghc/ghc883-libs.patch;
     ghc-patched-src = pkgs.runCommand "asterius-ghc883-ghc-patched-src" {
       buildInputs = [];
@@ -197,6 +205,7 @@ let
       cp -r ${ghc-patched-src} $out
       chmod +w -R $out
       cd $out/libraries
+      ls -l
       patch -p2 < ${patch}
       # TODO find a better way to get these
       cp ${ghc-prim}/GHC/Prim.hs ghc-prim/GHC/Prim.hs

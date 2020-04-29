@@ -6,11 +6,14 @@
 module Asterius.Internals
   ( encodeStorable,
     reinterpretCast,
+    encodeFile,
+    decodeFile,
     showBS,
     c8BS,
   )
 where
 
+import qualified Data.Binary as Binary
 import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Char8 as CBS
 import Foreign
@@ -40,6 +43,14 @@ reinterpretCast a =
               (# s3, _ #) -> unIO (peek (Ptr addr)) s3
     ) of
     (# _, r #) -> r
+
+{-# INLINE encodeFile #-}
+encodeFile :: Binary.Binary a => FilePath -> a -> IO ()
+encodeFile = Binary.encodeFile
+
+{-# INLINE decodeFile #-}
+decodeFile :: Binary.Binary a => FilePath -> IO a
+decodeFile = Binary.decodeFile
 
 {-# INLINE showBS #-}
 showBS :: Show a => a -> BS.ByteString

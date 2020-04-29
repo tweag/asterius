@@ -1,76 +1,556 @@
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: ANNOUNCE
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: GIT_COMMIT_ID
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: HACKING.md
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: INSTALL.md
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: LICENSE
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: MAKEHELP.md
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: Makefile
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: README.md
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: VERSION
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: aclocal.m4
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: aclocal.m4.orig
-Only in ghc-toolkit/boot-libs: array
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: Cabal
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: Makefile
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: Win32
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: array
 Only in ghc-toolkit/boot-libs: asterius-prelude
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: autom4te.cache
-Only in ghc-toolkit/boot-libs: base
-Only in ghc-toolkit/boot-libs: binary
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: bindisttest
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: boot
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: boot.orig
-Only in ghc-toolkit/boot-libs: bytestring
+Only in ghc-toolkit/boot-libs/base: Asterius
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/Foreign/C/Types.hs ghc-toolkit/boot-libs/base/Foreign/C/Types.hs
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/Foreign/C/Types.hs	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/base/Foreign/C/Types.hs	2020-04-29 10:10:49.000000000 -0300
+@@ -27,11 +27,11 @@
+         ( -- * Representations of C types
+           -- $ctypes
+ 
+-          -- ** Platform differences
++          -- ** #platform# Platform differences
+           -- | This module contains platform specific information about types.
+-          --   __/As such the types presented on this page reflect the platform
+-          --   on which the documentation was generated and may not coincide with
+-          --   the types on your platform./__
++          -- __/As such, the types presented on this page reflect the/__
++          -- __/platform on which the documentation was generated and may/__
++          -- __/not coincide with the types on your platform./__
+ 
+           -- ** Integral types
+           -- | These types are represented as @newtype@s of
+@@ -105,33 +105,45 @@
+ #include "CTypes.h"
+ 
+ -- | Haskell type representing the C @char@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CChar,HTYPE_CHAR)
+ -- | Haskell type representing the C @signed char@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CSChar,HTYPE_SIGNED_CHAR)
+ -- | Haskell type representing the C @unsigned char@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CUChar,HTYPE_UNSIGNED_CHAR)
+ 
+ -- | Haskell type representing the C @short@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CShort,HTYPE_SHORT)
+ -- | Haskell type representing the C @unsigned short@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CUShort,HTYPE_UNSIGNED_SHORT)
+ 
+ -- | Haskell type representing the C @int@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CInt,HTYPE_INT)
+ -- | Haskell type representing the C @unsigned int@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CUInt,HTYPE_UNSIGNED_INT)
+ 
+ -- | Haskell type representing the C @long@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CLong,HTYPE_LONG)
+ -- | Haskell type representing the C @unsigned long@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CULong,HTYPE_UNSIGNED_LONG)
+ 
+ -- | Haskell type representing the C @long long@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CLLong,HTYPE_LONG_LONG)
+ -- | Haskell type representing the C @unsigned long long@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CULLong,HTYPE_UNSIGNED_LONG_LONG)
+ 
+ -- | Haskell type representing the C @bool@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ --
+ -- @since 4.10.0.0
+ INTEGRAL_TYPE_WITH_CTYPE(CBool,bool,HTYPE_BOOL)
+@@ -164,8 +176,10 @@
+  #-}
+ 
+ -- | Haskell type representing the C @float@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ FLOATING_TYPE(CFloat,HTYPE_FLOAT)
+ -- | Haskell type representing the C @double@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ FLOATING_TYPE(CDouble,HTYPE_DOUBLE)
+ -- XXX GHC doesn't support CLDouble yet
+ 
+@@ -182,12 +196,16 @@
+ -- "realToFrac/CLDouble->a"  realToFrac = \(CLDouble x) -> realToFrac x
+ 
+ -- | Haskell type representing the C @ptrdiff_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CPtrdiff,HTYPE_PTRDIFF_T)
+ -- | Haskell type representing the C @size_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CSize,HTYPE_SIZE_T)
+ -- | Haskell type representing the C @wchar_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CWchar,HTYPE_WCHAR_T)
+ -- | Haskell type representing the C @sig_atomic_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ INTEGRAL_TYPE(CSigAtomic,HTYPE_SIG_ATOMIC_T)
+ 
+ {-# RULES
+@@ -203,25 +221,32 @@
+  #-}
+ 
+ -- | Haskell type representing the C @clock_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ ARITHMETIC_TYPE(CClock,HTYPE_CLOCK_T)
+ -- | Haskell type representing the C @time_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ ARITHMETIC_TYPE(CTime,HTYPE_TIME_T)
+ -- | Haskell type representing the C @useconds_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ --
+ -- @since 4.4.0.0
+ 
+ ARITHMETIC_TYPE(CUSeconds,HTYPE_USECONDS_T)
+ -- | Haskell type representing the C @suseconds_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ --
+ -- @since 4.4.0.0
+ ARITHMETIC_TYPE(CSUSeconds,HTYPE_SUSECONDS_T)
+ 
+ -- FIXME: Implement and provide instances for Eq and Storable
+ -- | Haskell type representing the C @FILE@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ data CFile = CFile
+ -- | Haskell type representing the C @fpos_t@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ data CFpos = CFpos
+ -- | Haskell type representing the C @jmp_buf@ type.
++-- /(The concrete types of "Foreign.C.Types#platform" are platform-specific.)/
+ data CJmpBuf = CJmpBuf
+ 
+ INTEGRAL_TYPE(CIntPtr,HTYPE_INTPTR_T)
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/GHC/StaticPtr.hs ghc-toolkit/boot-libs/base/GHC/StaticPtr.hs
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/GHC/StaticPtr.hs	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/base/GHC/StaticPtr.hs	2020-04-29 10:10:49.000000000 -0300
+@@ -122,11 +122,14 @@
+ -- | A list of all known keys.
+ staticPtrKeys :: IO [StaticKey]
+ staticPtrKeys = do
+-    keyCount <- hs_spt_key_count
+-    allocaArray (fromIntegral keyCount) $ \p -> do
+-      count <- hs_spt_keys p keyCount
+-      peekArray (fromIntegral count) p >>=
+-        mapM (\pa -> peekArray 2 pa >>= \[w1, w2] -> return $ Fingerprint w1 w2)
++  keyCount <- hs_spt_key_count
++  allocaArray (fromIntegral keyCount * 2) $ \p -> do
++    count <- hs_spt_keys p keyCount
++    w [] <$> peekArray (fromIntegral count * 2) p
++  where
++    w acc [] = acc
++    w _ [_] = error "staticPtrKeys: unreachable"
++    w acc (w0 : w1 : ws) = w (Fingerprint w0 w1 : acc) ws
+ {-# NOINLINE staticPtrKeys #-}
+ 
+ foreign import ccall unsafe hs_spt_key_count :: IO CInt
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base: GNUmakefile
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/base.cabal ghc-toolkit/boot-libs/base/base.cabal
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/base.cabal	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/base/base.cabal	2020-04-29 10:10:49.000000000 -0300
+@@ -319,6 +319,10 @@
+         Type.Reflection.Unsafe
+         Unsafe.Coerce
+ 
++        Asterius.Magic
++        Asterius.TopHandler
++        Asterius.Types
++
+     other-modules:
+         Control.Monad.ST.Imp
+         Control.Monad.ST.Lazy.Imp
+@@ -331,6 +335,14 @@
+         System.Environment.ExecutablePath
+         System.CPUTime.Utils
+ 
++        Asterius.Types.JSArray
++        Asterius.Types.JSException
++        Asterius.Types.JSFunction
++        Asterius.Types.JSObject
++        Asterius.Types.JSString
++        Asterius.Types.JSUint8Array
++        Asterius.Types.JSVal
++
+     c-sources:
+         cbits/DarwinUtils.c
+         cbits/PrelIOUtils.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base: configure
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/configure.ac ghc-toolkit/boot-libs/base/configure.ac
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/configure.ac	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/base/configure.ac	2020-04-23 12:17:13.000000000 -0300
+@@ -234,7 +234,7 @@
+ fi
+ 
+ # Hack - md5.h needs HsFFI.h.  Is there a better way to do this?
+-CFLAGS="-I../.. -I../../../../includes $CFLAGS"
++CFLAGS="-I$ASTERIUS_SANDBOX_GHC_LIBDIR/include -I$ASTERIUS_BOOT_LIBS_DIR/base $CFLAGS"
+ dnl Calling AC_CHECK_TYPE(T) makes AC_CHECK_SIZEOF(T) abort on failure
+ dnl instead of considering sizeof(T) as 0.
+ AC_CHECK_TYPE([struct MD5Context], [], [AC_MSG_ERROR([internal error])], [#include "include/md5.h"])
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base: ghc.mk
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/base/include: HsBaseConfig.h.in
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: binary
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: bytestring
 Only in ghc-toolkit/boot-libs: cabal.config
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: compiler
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: config.guess
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: config.log
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: config.status
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: config.sub
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: configure
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: configure.ac
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: configure.ac.orig
-Only in ghc-toolkit/boot-libs: containers
-Only in ghc-toolkit/boot-libs: deepseq
-Only in ghc-toolkit/boot-libs: directory
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: distrib
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: docs
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: driver
-Only in ghc-toolkit/boot-libs: filepath
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: ghc
-Only in ghc-toolkit/boot-libs: ghc-boot
-Only in ghc-toolkit/boot-libs: ghc-boot-th
-Only in ghc-toolkit/boot-libs: ghc-heap
-Only in ghc-toolkit/boot-libs: ghc-prim
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: ghc.mk
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: ghc.mk.orig
-Only in ghc-toolkit/boot-libs: ghci
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: includes
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: install-sh
-Only in ghc-toolkit/boot-libs: integer-simple
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: libffi
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: libffi-tarballs
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: libraries
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: llvm-passes
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: llvm-targets
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: mk
-Only in ghc-toolkit/boot-libs: mtl
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: packages
-Only in ghc-toolkit/boot-libs: parsec
-Only in ghc-toolkit/boot-libs: pretty
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: .dir-locals.el
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Adjustor.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: AdjustorAsm.S
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Apply.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Arena.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Arena.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: AwaitEvent.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Capability.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Capability.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: CheckUnload.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: CheckUnload.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ClosureFlags.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Disassembler.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Disassembler.h
-diff -u -r /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/Exception.cmm ghc-toolkit/boot-libs/rts/Exception.cmm
---- /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/Exception.cmm	1969-12-31 21:00:01.000000000 -0300
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: containers
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: deepseq
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: defineTOP.mk
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: directory
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: doc
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: filepath
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: gen_contents_index
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-boot: GNUmakefile
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-boot: ghc.mk
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-boot-th: GNUmakefile
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-boot-th: ghc.mk
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: ghc-compact
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-heap: GNUmakefile
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-heap: ghc.mk
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-prim/.gitignore ghc-toolkit/boot-libs/ghc-prim/.gitignore
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-prim/.gitignore	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/ghc-prim/.gitignore	2020-04-23 12:17:08.000000000 -0300
+@@ -1,3 +1,5 @@
+ /dist/
+ /dist-install/
++/ghc.mk
+ /ghc-prim.buildinfo
++/GNUmakefile
+Only in ghc-toolkit/boot-libs/ghc-prim/GHC: PrimopWrappers.hs
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-prim: GNUmakefile
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-prim/ghc-prim.cabal ghc-toolkit/boot-libs/ghc-prim/ghc-prim.cabal
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-prim/ghc-prim.cabal	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/ghc-prim/ghc-prim.cabal	2020-04-29 10:10:49.000000000 -0300
+@@ -12,16 +12,6 @@
+ description:
+     This package contains the primitive types and operations supplied by GHC.
+ 
+-Flag boot
+-    Description: Is this stage 1?
+-    Default: False
+-    Manual: True
+-
+-Flag install
+-    Description: Is this stage 2?
+-    Default: True
+-    Manual: True
+-
+ extra-source-files: changelog.md
+ 
+ source-repository head
+@@ -91,27 +81,3 @@
+     -- We need to set the unit ID to ghc-prim (without a version number)
+     -- as it's magic.
+     ghc-options: -this-unit-id ghc-prim
+-
+-    if flag(boot)
+-      include-dirs: dist-boot
+-    else
+-      if flag(install)
+-        include-dirs: dist-install
+-
+-    install-includes:
+-        ghc_boot_platform.h
+-        primop-data-decl.hs-incl
+-        primop-tag.hs-incl
+-        primop-list.hs-incl
+-        primop-has-side-effects.hs-incl
+-        primop-out-of-line.hs-incl
+-        primop-commutable.hs-incl
+-        primop-code-size.hs-incl
+-        primop-can-fail.hs-incl
+-        primop-strictness.hs-incl
+-        primop-fixity.hs-incl
+-        primop-primop-info.hs-incl
+-        primop-vector-uniques.hs-incl
+-        primop-vector-tys.hs-incl
+-        primop-vector-tys-exports.hs-incl
+-        primop-vector-tycons.hs-incl
+\ No newline at end of file
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-prim: ghc.mk
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-prim: ghc.mk.orig
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghc-prim: primops.txt.pp
+Only in ghc-toolkit/boot-libs/ghci: Asterius
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci/GHCi/InfoTable.hsc ghc-toolkit/boot-libs/ghci/GHCi/InfoTable.hsc
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci/GHCi/InfoTable.hsc	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/ghci/GHCi/InfoTable.hsc	2020-04-29 10:10:49.000000000 -0300
+@@ -24,19 +24,13 @@
+ import GHC.Exts.Heap
+ #endif
+ 
+-ghciTablesNextToCode :: Bool
+-#ifdef TABLES_NEXT_TO_CODE
+-ghciTablesNextToCode = True
+-#else
+-ghciTablesNextToCode = False
+-#endif
+-
+ #ifdef GHCI /* To end */
+ -- NOTE: Must return a pointer acceptable for use in the header of a closure.
+ -- If tables_next_to_code is enabled, then it must point the the 'code' field.
+ -- Otherwise, it should point to the start of the StgInfoTable.
+ mkConInfoTable
+-   :: Int     -- ptr words
++   :: Bool    -- TABLES_NEXT_TO_CODE
++   -> Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -45,20 +39,20 @@
+       -- resulting info table is allocated with allocateExec(), and
+       -- should be freed with freeExec().
+ 
+-mkConInfoTable ptr_words nonptr_words tag ptrtag con_desc =
+-  castFunPtrToPtr <$> newExecConItbl itbl con_desc
++mkConInfoTable tables_next_to_code ptr_words nonptr_words tag ptrtag con_desc =
++  castFunPtrToPtr <$> newExecConItbl tables_next_to_code itbl con_desc
+   where
+      entry_addr = interpConstrEntry !! ptrtag
+      code' = mkJumpToAddr entry_addr
+      itbl  = StgInfoTable {
+-                 entry = if ghciTablesNextToCode
++                 entry = if tables_next_to_code
+                          then Nothing
+                          else Just entry_addr,
+                  ptrs  = fromIntegral ptr_words,
+                  nptrs = fromIntegral nonptr_words,
+                  tipe  = CONSTR,
+                  srtlen = fromIntegral tag,
+-                 code  = if ghciTablesNextToCode
++                 code  = if tables_next_to_code
+                          then Just code'
+                          else Nothing
+               }
+@@ -319,38 +313,38 @@
+ 
+ 
+ pokeConItbl
+-  :: Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
++  :: Bool -> Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
+   -> IO ()
+-pokeConItbl wr_ptr _ex_ptr itbl = do
+-#if defined(TABLES_NEXT_TO_CODE)
+-  -- Write the offset to the con_desc from the end of the standard InfoTable
+-  -- at the first byte.
+-  let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
+-  (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
+-#else
+-  -- Write the con_desc address after the end of the info table.
+-  -- Use itblSize because CPP will not pick up PROFILING when calculating
+-  -- the offset.
+-  pokeByteOff wr_ptr itblSize (conDesc itbl)
+-#endif
++pokeConItbl tables_next_to_code wr_ptr _ex_ptr itbl = do
++  if tables_next_to_code
++  then do
++      -- Write the offset to the con_desc from the end of the standard InfoTable
++      -- at the first byte.
++      let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
++      (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
++  else do
++      -- Write the con_desc address after the end of the info table.
++      -- Use itblSize because CPP will not pick up PROFILING when calculating
++      -- the offset.
++      pokeByteOff wr_ptr itblSize (conDesc itbl)
+   pokeItbl (wr_ptr `plusPtr` (#offset StgConInfoTable, i)) (infoTable itbl)
+ 
+-sizeOfEntryCode :: Int
+-sizeOfEntryCode
+-  | not ghciTablesNextToCode = 0
++sizeOfEntryCode :: Bool -> Int
++sizeOfEntryCode tables_next_to_code
++  | not tables_next_to_code = 0
+   | otherwise =
+      case mkJumpToAddr undefined of
+        Left  xs -> sizeOf (head xs) * length xs
+        Right xs -> sizeOf (head xs) * length xs
+ 
+ -- Note: Must return proper pointer for use in a closure
+-newExecConItbl :: StgInfoTable -> [Word8] -> IO (FunPtr ())
+-newExecConItbl obj con_desc
++newExecConItbl :: Bool -> StgInfoTable -> [Word8] -> IO (FunPtr ())
++newExecConItbl tables_next_to_code obj con_desc
+    = alloca $ \pcode -> do
+         let lcon_desc = length con_desc + 1{- null terminator -}
+             -- SCARY
+             -- This size represents the number of bytes in an StgConInfoTable.
+-            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode)
++            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode tables_next_to_code)
+                -- Note: we need to allocate the conDesc string next to the info
+                -- table, because on a 64-bit platform we reference this string
+                -- with a 32-bit offset relative to the info table, so if we
+@@ -359,14 +353,12 @@
+         ex_ptr <- peek pcode
+         let cinfo = StgConInfoTable { conDesc = ex_ptr `plusPtr` fromIntegral sz
+                                     , infoTable = obj }
+-        pokeConItbl wr_ptr ex_ptr cinfo
++        pokeConItbl tables_next_to_code wr_ptr ex_ptr cinfo
+         pokeArray0 0 (castPtr wr_ptr `plusPtr` fromIntegral sz) con_desc
+         _flushExec sz ex_ptr -- Cache flush (if needed)
+-#if defined(TABLES_NEXT_TO_CODE)
+-        return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
+-#else
+-        return (castPtrToFunPtr ex_ptr)
+-#endif
++        if tables_next_to_code
++          then return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
++          else return (castPtrToFunPtr ex_ptr)
+ 
+ foreign import ccall unsafe "allocateExec"
+   _allocateExec :: CUInt -> Ptr (Ptr a) -> IO (Ptr a)
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci/GHCi/Message.hs ghc-toolkit/boot-libs/ghci/GHCi/Message.hs
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci/GHCi/Message.hs	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/ghci/GHCi/Message.hs	2020-04-29 10:10:49.000000000 -0300
+@@ -41,7 +41,7 @@
+ import qualified Data.ByteString as B
+ import qualified Data.ByteString.Lazy as LB
+ import Data.Dynamic
+-import Data.Typeable (TypeRep)
++import Data.Typeable (Typeable, TypeRep)
+ import Data.IORef
+ import Data.Map (Map)
+ import Foreign
+@@ -103,7 +103,8 @@
+ 
+   -- | Create an info table for a constructor
+   MkConInfoTable
+-   :: Int     -- ptr words
++   :: Bool    -- TABLES_NEXT_TO_CODE
++   -> Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -267,7 +268,7 @@
+ 
+ deriving instance Show (THMessage a)
+ 
+-data THMsg = forall a . (Binary a, Show a) => THMsg (THMessage a)
++data THMsg = forall a . (Binary a, Show a, Typeable a) => THMsg (THMessage a)
+ 
+ getTHMessage :: Get THMsg
+ getTHMessage = do
+@@ -321,6 +322,9 @@
+   AddForeignFilePath lang a   -> putWord8 20 >> put lang >> put a
+   AddCorePlugin a             -> putWord8 21 >> put a
+ 
++instance Binary THMsg where
++  get = getTHMessage
++  put (THMsg m) = putTHMessage m
+ 
+ data EvalOpts = EvalOpts
+   { useSandboxThread :: Bool
+@@ -443,7 +447,7 @@
+ instance Binary PrimType
+ instance Binary a => Binary (GenClosure a)
+ 
+-data Msg = forall a . (Binary a, Show a) => Msg (Message a)
++data Msg = forall a . (Binary a, Show a, Typeable a) => Msg (Message a)
+ 
+ getMessage :: Get Msg
+ getMessage = do
+@@ -467,7 +471,7 @@
+       15 -> Msg <$> MallocStrings <$> get
+       16 -> Msg <$> (PrepFFI <$> get <*> get <*> get)
+       17 -> Msg <$> FreeFFI <$> get
+-      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get)
++      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get <*> get)
+       19 -> Msg <$> (EvalStmt <$> get <*> get)
+       20 -> Msg <$> (ResumeStmt <$> get <*> get)
+       21 -> Msg <$> (AbandonStmt <$> get)
+@@ -507,7 +511,7 @@
+   MallocStrings bss           -> putWord8 15 >> put bss
+   PrepFFI conv args res       -> putWord8 16 >> put conv >> put args >> put res
+   FreeFFI p                   -> putWord8 17 >> put p
+-  MkConInfoTable p n t pt d   -> putWord8 18 >> put p >> put n >> put t >> put pt >> put d
++  MkConInfoTable tc p n t pt d -> putWord8 18 >> put tc >> put p >> put n >> put t >> put pt >> put d
+   EvalStmt opts val           -> putWord8 19 >> put opts >> put val
+   ResumeStmt opts val         -> putWord8 20 >> put opts >> put val
+   AbandonStmt val             -> putWord8 21 >> put val
+@@ -527,6 +531,10 @@
+   GetClosure a                -> putWord8 35 >> put a
+   Seq a                       -> putWord8 36 >> put a
+ 
++instance Binary Msg where
++  get = getMessage
++  put (Msg m) = putMessage m
++
+ -- -----------------------------------------------------------------------------
+ -- Reading/writing messages
+ 
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci/GHCi/Run.hs ghc-toolkit/boot-libs/ghci/GHCi/Run.hs
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci/GHCi/Run.hs	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/ghci/GHCi/Run.hs	2020-04-29 10:10:49.000000000 -0300
+@@ -85,8 +85,8 @@
+   MallocStrings bss -> mapM mkString0 bss
+   PrepFFI conv args res -> toRemotePtr <$> prepForeignCall conv args res
+   FreeFFI p -> freeForeignCallInfo (fromRemotePtr p)
+-  MkConInfoTable ptrs nptrs tag ptrtag desc ->
+-    toRemotePtr <$> mkConInfoTable ptrs nptrs tag ptrtag desc
++  MkConInfoTable tc ptrs nptrs tag ptrtag desc ->
++    toRemotePtr <$> mkConInfoTable tc ptrs nptrs tag ptrtag desc
+   StartTH -> startTH
+   GetClosure ref -> do
+     clos <- getClosureData =<< localRef ref
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci: GNUmakefile
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci: ghc.mk
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci/ghci.cabal ghc-toolkit/boot-libs/ghci/ghci.cabal
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci/ghci.cabal	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/ghci/ghci.cabal	2020-04-29 10:10:49.000000000 -0300
+@@ -50,13 +50,14 @@
+     if flag(ghci)
+         CPP-Options: -DGHCI
+         exposed-modules:
++            Asterius.GHCi
+             GHCi.Run
+             GHCi.CreateBCO
+             GHCi.ObjLink
+             GHCi.Signals
+             GHCi.TH
+ 
+-    include-dirs: /nix/store/c8dbd6mkpjcn24qv88868wa4m65ax8l2-libffi-3.3-dev/include
++    include-dirs: 
+ 
+     exposed-modules:
+         GHCi.BreakArray
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: haskeline
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: hpc
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: hscolour.css
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: integer-gmp
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/integer-simple: GNUmakefile
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/integer-simple: ghc.mk
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: libiserv
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: libraries-footer.txt
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: libraries-header.txt
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: mtl
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: parsec
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: pretty
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: process
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: prologue.txt
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: prologue.txt.in
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: .dir-locals.el
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Adjustor.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: AdjustorAsm.S
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Apply.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Arena.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Arena.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: AwaitEvent.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Capability.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Capability.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: CheckUnload.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: CheckUnload.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ClosureFlags.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Disassembler.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Disassembler.h
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/Exception.cmm ghc-toolkit/boot-libs/rts/Exception.cmm
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/Exception.cmm	1969-12-31 21:00:01.000000000 -0300
 +++ ghc-toolkit/boot-libs/rts/Exception.cmm	2020-04-24 08:46:34.000000000 -0300
 @@ -67,6 +67,7 @@
      StgTSO_flags(CurrentTSO) = %lobits32(
@@ -104,42 +584,42 @@ diff -u -r /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patch
  
      }
      TICK_UNKNOWN_CALL();
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Excn.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: FileLock.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: FileLock.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: GetEnv.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: GetTime.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Globals.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Globals.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Hash.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Hash.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Heap.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Hpc.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: HsFFI.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Inlines.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Interpreter.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Interpreter.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LdvProfile.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LdvProfile.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Libdw.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Libdw.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LibdwPool.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LibdwPool.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Linker.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: LinkerInternals.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Makefile
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Messages.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Messages.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: OldARMAtomic.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: PathUtils.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: PathUtils.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Pool.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Pool.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: PosixSource.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Prelude.h
-diff -u -r /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/PrimOps.cmm ghc-toolkit/boot-libs/rts/PrimOps.cmm
---- /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/PrimOps.cmm	1969-12-31 21:00:01.000000000 -0300
-+++ ghc-toolkit/boot-libs/rts/PrimOps.cmm	2020-04-28 10:39:16.000000000 -0300
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Excn.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: FileLock.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: FileLock.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: GetEnv.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: GetTime.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Globals.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Globals.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Hash.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Hash.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Heap.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Hpc.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: HsFFI.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Inlines.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Interpreter.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Interpreter.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: LdvProfile.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: LdvProfile.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Libdw.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Libdw.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: LibdwPool.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: LibdwPool.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Linker.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: LinkerInternals.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Makefile
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Messages.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Messages.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: OldARMAtomic.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: PathUtils.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: PathUtils.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Pool.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Pool.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: PosixSource.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Prelude.h
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/PrimOps.cmm ghc-toolkit/boot-libs/rts/PrimOps.cmm
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/PrimOps.cmm	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/rts/PrimOps.cmm	2020-04-29 10:10:49.000000000 -0300
 @@ -926,9 +926,13 @@
  
      gcptr threadid;
@@ -224,136 +704,254 @@ diff -u -r /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patch
      jump stg_block_noregs();
  #endif
  #endif /* !THREADED_RTS */
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Printer.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Printer.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfHeap.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfHeap.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfilerReport.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfilerReport.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfilerReportJson.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ProfilerReportJson.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Profiling.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Profiling.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Proftimer.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Proftimer.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RaiseAsync.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RetainerProfile.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RetainerProfile.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RetainerSet.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RetainerSet.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsAPI.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsDllMain.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsDllMain.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsFlags.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsFlags.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsMain.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsMessages.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsProbes.d
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSignals.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsStartup.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbolInfo.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbolInfo.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbols.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbols.c.orig
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsSymbols.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsUtils.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: RtsUtils.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: STM.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: STM.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Schedule.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Schedule.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Sparks.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Sparks.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StableName.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StableName.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StablePtr.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StablePtr.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StaticPtrTable.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StaticPtrTable.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Stats.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Stats.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgCRun.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgCRunAsm.S
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgPrimFloat.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgPrimFloat.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: StgRun.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Task.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Task.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ThreadLabels.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ThreadLabels.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ThreadPaused.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ThreadPaused.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Threads.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Threads.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Ticker.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Ticky.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Ticky.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Timer.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Timer.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: TopHandler.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: TopHandler.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Trace.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Trace.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: WSDeque.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: WSDeque.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Weak.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: Weak.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: build
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: eventlog
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: fs.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: fs.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: fs_rts.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: ghc.mk
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: hooks
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: linker
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: package.conf.in
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: posix
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: rts.cabal
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: rts.cabal.in
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: rts.cabal.in.orig
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Printer.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Printer.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ProfHeap.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ProfHeap.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ProfilerReport.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ProfilerReport.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ProfilerReportJson.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ProfilerReportJson.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Profiling.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Profiling.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Proftimer.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Proftimer.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RaiseAsync.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RetainerProfile.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RetainerProfile.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RetainerSet.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RetainerSet.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsAPI.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsDllMain.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsDllMain.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsFlags.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsFlags.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsMain.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsMessages.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsProbes.d
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsSignals.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsStartup.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsSymbolInfo.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsSymbolInfo.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsSymbols.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsSymbols.c.orig
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsSymbols.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsUtils.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: RtsUtils.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: STM.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: STM.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Schedule.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Schedule.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Sparks.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Sparks.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StableName.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StableName.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StablePtr.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StablePtr.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StaticPtrTable.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StaticPtrTable.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Stats.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Stats.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StgCRun.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StgCRunAsm.S
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StgPrimFloat.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StgPrimFloat.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: StgRun.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Task.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Task.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ThreadLabels.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ThreadLabels.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ThreadPaused.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ThreadPaused.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Threads.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Threads.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Ticker.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Ticky.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Ticky.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Timer.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Timer.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: TopHandler.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: TopHandler.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Trace.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Trace.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: WSDeque.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: WSDeque.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Weak.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: Weak.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: build
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: eventlog
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: fs.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: fs.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: fs_rts.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: ghc.mk
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: hooks
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: linker
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: package.conf.in
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: posix
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: rts.cabal
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: rts.cabal.in
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: rts.cabal.in.orig
 Only in ghc-toolkit/boot-libs/rts: rts.conf
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: BlockAlloc.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: BlockAlloc.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: CNF.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: CNF.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Compact.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Compact.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Evac.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Evac.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Evac_thr.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GC.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GC.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCAux.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCTDecl.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCThread.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCUtils.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: GCUtils.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: HeapAlloc.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: MBlock.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: MarkStack.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: MarkWeak.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: MarkWeak.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: OSMem.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Sanity.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Sanity.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Scav.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Scav.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Scav_thr.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Storage.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Storage.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Sweep.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts/sm: Sweep.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: win32
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: xxhash.c
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src/rts: xxhash.h
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: rules
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: settings
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: settings.in
-Only in ghc-toolkit/boot-libs: template-haskell
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: testsuite
-Only in ghc-toolkit/boot-libs: text
-Only in ghc-toolkit/boot-libs: time
-Only in ghc-toolkit/boot-libs: transformers
-Only in ghc-toolkit/boot-libs: unix
-Only in /nix/store/k6z0z9jw3w4z8v1jxrcwhnqklyjqqnh2-asterius-ghc883-ghc-patched-src: utils
-Only in ghc-toolkit/boot-libs: xhtml
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: BlockAlloc.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: BlockAlloc.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: CNF.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: CNF.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Compact.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Compact.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Evac.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Evac.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Evac_thr.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: GC.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: GC.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: GCAux.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: GCTDecl.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: GCThread.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: GCUtils.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: GCUtils.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: HeapAlloc.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: MBlock.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: MarkStack.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: MarkWeak.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: MarkWeak.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: OSMem.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Sanity.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Sanity.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Scav.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Scav.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Scav_thr.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Storage.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Storage.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Sweep.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts/sm: Sweep.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: win32
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: xxhash.c
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/rts: xxhash.h
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: stm
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/template-haskell: GNUmakefile
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/template-haskell/Language/Haskell/TH/PprLib.hs ghc-toolkit/boot-libs/template-haskell/Language/Haskell/TH/PprLib.hs
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/template-haskell/Language/Haskell/TH/PprLib.hs	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/template-haskell/Language/Haskell/TH/PprLib.hs	2020-04-23 12:17:08.000000000 -0300
+@@ -36,14 +36,14 @@
+ 
+ 
+ import Language.Haskell.TH.Syntax
+-    (Uniq, Name(..), showName', NameFlavour(..), NameIs(..))
++    (Name(..), showName', NameFlavour(..), NameIs(..))
+ import qualified Text.PrettyPrint as HPJ
+ import Control.Monad (liftM, liftM2, ap)
+ import Language.Haskell.TH.Lib.Map ( Map )
+ import qualified Language.Haskell.TH.Lib.Map as Map ( lookup, insert, empty )
+ import Prelude hiding ((<>))
+ 
+-infixl 6 <>
++infixl 6 <> 
+ infixl 6 <+>
+ infixl 5 $$, $+$
+ 
+@@ -117,7 +117,7 @@
+ -- ---------------------------------------------------------------------------
+ -- The "implementation"
+ 
+-type State = (Map Name Name, Uniq)
++type State = (Map Name Name, Int)
+ data PprM a = PprM { runPprM :: State -> (a, State) }
+ 
+ pprName :: Name -> Doc
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/template-haskell/Language/Haskell/TH/Syntax.hs ghc-toolkit/boot-libs/template-haskell/Language/Haskell/TH/Syntax.hs
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/template-haskell/Language/Haskell/TH/Syntax.hs	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/template-haskell/Language/Haskell/TH/Syntax.hs	2020-04-29 10:10:49.000000000 -0300
+@@ -148,7 +148,7 @@
+                 ; fail "Template Haskell failure" }
+ 
+ -- Global variable to generate unique symbols
+-counter :: IORef Uniq
++counter :: IORef Int
+ {-# NOINLINE counter #-}
+ counter = unsafePerformIO (newIORef 0)
+ 
+@@ -1050,8 +1050,8 @@
+ data NameFlavour
+   = NameS           -- ^ An unqualified name; dynamically bound
+   | NameQ ModName   -- ^ A qualified name; dynamically bound
+-  | NameU !Uniq     -- ^ A unique local name
+-  | NameL !Uniq     -- ^ Local name bound outside of the TH AST
++  | NameU !Int      -- ^ A unique local name
++  | NameL !Int      -- ^ Local name bound outside of the TH AST
+   | NameG NameSpace PkgName ModName -- ^ Global name bound outside of the TH AST:
+                 -- An original name (occurrences only, not binders)
+                 -- Need the namespace too to be sure which
+@@ -1064,7 +1064,7 @@
+                                 -- in the same name space for now.
+                deriving( Eq, Ord, Show, Data, Generic )
+ 
+-type Uniq = Integer
++type Uniq = Int
+ 
+ -- | The name without its module prefix.
+ --
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/template-haskell/Language/Haskell/TH: Syntax.hs.orig
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/template-haskell: ghc.mk
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: terminfo
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/Data/Text/Lazy/Encoding.hs ghc-toolkit/boot-libs/text/Data/Text/Lazy/Encoding.hs
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/Data/Text/Lazy/Encoding.hs	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/text/Data/Text/Lazy/Encoding.hs	2020-04-29 10:10:49.000000000 -0300
+@@ -93,6 +93,9 @@
+ 
+ -- | Decode a 'ByteString' containing UTF-8 encoded text.
+ decodeUtf8With :: OnDecodeError -> B.ByteString -> Text
++#if defined(ASTERIUS)
++decodeUtf8With onErr lbs = Chunk (TE.decodeUtf8With onErr (B.toStrict lbs)) Empty
++#else
+ decodeUtf8With onErr (B.Chunk b0 bs0) =
+     case TE.streamDecodeUtf8With onErr b0 of
+       TE.Some t l f -> chunk t (go f l bs0)
+@@ -107,6 +110,7 @@
+                       Just c  -> Chunk (T.singleton c) Empty
+     desc = "Data.Text.Lazy.Encoding.decodeUtf8With: Invalid UTF-8 stream"
+ decodeUtf8With _ _ = empty
++#endif
+ 
+ -- | Decode a 'ByteString' containing UTF-8 encoded text that is known
+ -- to be valid.
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text: GNUmakefile
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/benchmarks/python/multilang.py ghc-toolkit/boot-libs/text/benchmarks/python/multilang.py
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/benchmarks/python/multilang.py	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/text/benchmarks/python/multilang.py	2020-04-24 08:46:34.000000000 -0300
+@@ -1,4 +1,4 @@
+-#!/nix/store/4qpwgghfh3yjs7wcmb7x32cxsi7vwb06-python3-3.7.6/bin/python
++#!/usr/bin/env python
+ 
+ import math
+ import sys
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/benchmarks/python/utils.py ghc-toolkit/boot-libs/text/benchmarks/python/utils.py
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/benchmarks/python/utils.py	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/text/benchmarks/python/utils.py	2020-04-24 08:46:34.000000000 -0300
+@@ -1,4 +1,4 @@
+-#!/nix/store/4qpwgghfh3yjs7wcmb7x32cxsi7vwb06-python3-3.7.6/bin/python
++#!/usr/bin/env python
+ 
+ import sys, time
+ 
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text: ghc.mk
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/tests/literal-rule-test.sh ghc-toolkit/boot-libs/text/tests/literal-rule-test.sh
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/tests/literal-rule-test.sh	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/text/tests/literal-rule-test.sh	2020-04-24 08:46:34.000000000 -0300
+@@ -1,4 +1,4 @@
+-#!/nix/store/3wgjw9v5winw82i96a1bhfzrif2362y9-bash-4.4-p23/bin/bash -e
++#!/bin/bash -e
+ 
+ failed=0
+ 
+diff -u -r /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/tests/scripts/cover-stdio.sh ghc-toolkit/boot-libs/text/tests/scripts/cover-stdio.sh
+--- /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/text/tests/scripts/cover-stdio.sh	1969-12-31 21:00:01.000000000 -0300
++++ ghc-toolkit/boot-libs/text/tests/scripts/cover-stdio.sh	2020-04-24 08:46:34.000000000 -0300
+@@ -1,4 +1,4 @@
+-#!/nix/store/3wgjw9v5winw82i96a1bhfzrif2362y9-bash-4.4-p23/bin/bash
++#!/bin/bash
+ 
+ if [[ $# < 1 ]]; then
+     echo "Usage: $0 <exe>"
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: time
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: transformers
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: unix
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries: xhtml

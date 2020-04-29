@@ -1,0 +1,242 @@
+Only in ghc-toolkit/boot-libs/ghci: Asterius
+diff -u -r a/GHCi/InfoTable.hsc b/GHCi/InfoTable.hsc
+--- a/GHCi/InfoTable.hsc	1969-12-31 21:00:01.000000000 -0300
++++ b/GHCi/InfoTable.hsc	2020-04-29 10:10:49.000000000 -0300
+@@ -24,19 +24,13 @@
+ import GHC.Exts.Heap
+ #endif
+ 
+-ghciTablesNextToCode :: Bool
+-#ifdef TABLES_NEXT_TO_CODE
+-ghciTablesNextToCode = True
+-#else
+-ghciTablesNextToCode = False
+-#endif
+-
+ #ifdef GHCI /* To end */
+ -- NOTE: Must return a pointer acceptable for use in the header of a closure.
+ -- If tables_next_to_code is enabled, then it must point the the 'code' field.
+ -- Otherwise, it should point to the start of the StgInfoTable.
+ mkConInfoTable
+-   :: Int     -- ptr words
++   :: Bool    -- TABLES_NEXT_TO_CODE
++   -> Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -45,20 +39,20 @@
+       -- resulting info table is allocated with allocateExec(), and
+       -- should be freed with freeExec().
+ 
+-mkConInfoTable ptr_words nonptr_words tag ptrtag con_desc =
+-  castFunPtrToPtr <$> newExecConItbl itbl con_desc
++mkConInfoTable tables_next_to_code ptr_words nonptr_words tag ptrtag con_desc =
++  castFunPtrToPtr <$> newExecConItbl tables_next_to_code itbl con_desc
+   where
+      entry_addr = interpConstrEntry !! ptrtag
+      code' = mkJumpToAddr entry_addr
+      itbl  = StgInfoTable {
+-                 entry = if ghciTablesNextToCode
++                 entry = if tables_next_to_code
+                          then Nothing
+                          else Just entry_addr,
+                  ptrs  = fromIntegral ptr_words,
+                  nptrs = fromIntegral nonptr_words,
+                  tipe  = CONSTR,
+                  srtlen = fromIntegral tag,
+-                 code  = if ghciTablesNextToCode
++                 code  = if tables_next_to_code
+                          then Just code'
+                          else Nothing
+               }
+@@ -319,38 +313,38 @@
+ 
+ 
+ pokeConItbl
+-  :: Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
++  :: Bool -> Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
+   -> IO ()
+-pokeConItbl wr_ptr _ex_ptr itbl = do
+-#if defined(TABLES_NEXT_TO_CODE)
+-  -- Write the offset to the con_desc from the end of the standard InfoTable
+-  -- at the first byte.
+-  let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
+-  (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
+-#else
+-  -- Write the con_desc address after the end of the info table.
+-  -- Use itblSize because CPP will not pick up PROFILING when calculating
+-  -- the offset.
+-  pokeByteOff wr_ptr itblSize (conDesc itbl)
+-#endif
++pokeConItbl tables_next_to_code wr_ptr _ex_ptr itbl = do
++  if tables_next_to_code
++  then do
++      -- Write the offset to the con_desc from the end of the standard InfoTable
++      -- at the first byte.
++      let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
++      (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
++  else do
++      -- Write the con_desc address after the end of the info table.
++      -- Use itblSize because CPP will not pick up PROFILING when calculating
++      -- the offset.
++      pokeByteOff wr_ptr itblSize (conDesc itbl)
+   pokeItbl (wr_ptr `plusPtr` (#offset StgConInfoTable, i)) (infoTable itbl)
+ 
+-sizeOfEntryCode :: Int
+-sizeOfEntryCode
+-  | not ghciTablesNextToCode = 0
++sizeOfEntryCode :: Bool -> Int
++sizeOfEntryCode tables_next_to_code
++  | not tables_next_to_code = 0
+   | otherwise =
+      case mkJumpToAddr undefined of
+        Left  xs -> sizeOf (head xs) * length xs
+        Right xs -> sizeOf (head xs) * length xs
+ 
+ -- Note: Must return proper pointer for use in a closure
+-newExecConItbl :: StgInfoTable -> [Word8] -> IO (FunPtr ())
+-newExecConItbl obj con_desc
++newExecConItbl :: Bool -> StgInfoTable -> [Word8] -> IO (FunPtr ())
++newExecConItbl tables_next_to_code obj con_desc
+    = alloca $ \pcode -> do
+         let lcon_desc = length con_desc + 1{- null terminator -}
+             -- SCARY
+             -- This size represents the number of bytes in an StgConInfoTable.
+-            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode)
++            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode tables_next_to_code)
+                -- Note: we need to allocate the conDesc string next to the info
+                -- table, because on a 64-bit platform we reference this string
+                -- with a 32-bit offset relative to the info table, so if we
+@@ -359,14 +353,12 @@
+         ex_ptr <- peek pcode
+         let cinfo = StgConInfoTable { conDesc = ex_ptr `plusPtr` fromIntegral sz
+                                     , infoTable = obj }
+-        pokeConItbl wr_ptr ex_ptr cinfo
++        pokeConItbl tables_next_to_code wr_ptr ex_ptr cinfo
+         pokeArray0 0 (castPtr wr_ptr `plusPtr` fromIntegral sz) con_desc
+         _flushExec sz ex_ptr -- Cache flush (if needed)
+-#if defined(TABLES_NEXT_TO_CODE)
+-        return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
+-#else
+-        return (castPtrToFunPtr ex_ptr)
+-#endif
++        if tables_next_to_code
++          then return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
++          else return (castPtrToFunPtr ex_ptr)
+ 
+ foreign import ccall unsafe "allocateExec"
+   _allocateExec :: CUInt -> Ptr (Ptr a) -> IO (Ptr a)
+diff -u -r a/GHCi/Message.hs b/GHCi/Message.hs
+--- a/GHCi/Message.hs	1969-12-31 21:00:01.000000000 -0300
++++ b/GHCi/Message.hs	2020-04-29 10:10:49.000000000 -0300
+@@ -41,7 +41,7 @@
+ import qualified Data.ByteString as B
+ import qualified Data.ByteString.Lazy as LB
+ import Data.Dynamic
+-import Data.Typeable (TypeRep)
++import Data.Typeable (Typeable, TypeRep)
+ import Data.IORef
+ import Data.Map (Map)
+ import Foreign
+@@ -103,7 +103,8 @@
+ 
+   -- | Create an info table for a constructor
+   MkConInfoTable
+-   :: Int     -- ptr words
++   :: Bool    -- TABLES_NEXT_TO_CODE
++   -> Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -267,7 +268,7 @@
+ 
+ deriving instance Show (THMessage a)
+ 
+-data THMsg = forall a . (Binary a, Show a) => THMsg (THMessage a)
++data THMsg = forall a . (Binary a, Show a, Typeable a) => THMsg (THMessage a)
+ 
+ getTHMessage :: Get THMsg
+ getTHMessage = do
+@@ -321,6 +322,9 @@
+   AddForeignFilePath lang a   -> putWord8 20 >> put lang >> put a
+   AddCorePlugin a             -> putWord8 21 >> put a
+ 
++instance Binary THMsg where
++  get = getTHMessage
++  put (THMsg m) = putTHMessage m
+ 
+ data EvalOpts = EvalOpts
+   { useSandboxThread :: Bool
+@@ -443,7 +447,7 @@
+ instance Binary PrimType
+ instance Binary a => Binary (GenClosure a)
+ 
+-data Msg = forall a . (Binary a, Show a) => Msg (Message a)
++data Msg = forall a . (Binary a, Show a, Typeable a) => Msg (Message a)
+ 
+ getMessage :: Get Msg
+ getMessage = do
+@@ -467,7 +471,7 @@
+       15 -> Msg <$> MallocStrings <$> get
+       16 -> Msg <$> (PrepFFI <$> get <*> get <*> get)
+       17 -> Msg <$> FreeFFI <$> get
+-      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get)
++      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get <*> get)
+       19 -> Msg <$> (EvalStmt <$> get <*> get)
+       20 -> Msg <$> (ResumeStmt <$> get <*> get)
+       21 -> Msg <$> (AbandonStmt <$> get)
+@@ -507,7 +511,7 @@
+   MallocStrings bss           -> putWord8 15 >> put bss
+   PrepFFI conv args res       -> putWord8 16 >> put conv >> put args >> put res
+   FreeFFI p                   -> putWord8 17 >> put p
+-  MkConInfoTable p n t pt d   -> putWord8 18 >> put p >> put n >> put t >> put pt >> put d
++  MkConInfoTable tc p n t pt d -> putWord8 18 >> put tc >> put p >> put n >> put t >> put pt >> put d
+   EvalStmt opts val           -> putWord8 19 >> put opts >> put val
+   ResumeStmt opts val         -> putWord8 20 >> put opts >> put val
+   AbandonStmt val             -> putWord8 21 >> put val
+@@ -527,6 +531,10 @@
+   GetClosure a                -> putWord8 35 >> put a
+   Seq a                       -> putWord8 36 >> put a
+ 
++instance Binary Msg where
++  get = getMessage
++  put (Msg m) = putMessage m
++
+ -- -----------------------------------------------------------------------------
+ -- Reading/writing messages
+ 
+diff -u -r a/GHCi/Run.hs b/GHCi/Run.hs
+--- a/GHCi/Run.hs	1969-12-31 21:00:01.000000000 -0300
++++ b/GHCi/Run.hs	2020-04-29 10:10:49.000000000 -0300
+@@ -85,8 +85,8 @@
+   MallocStrings bss -> mapM mkString0 bss
+   PrepFFI conv args res -> toRemotePtr <$> prepForeignCall conv args res
+   FreeFFI p -> freeForeignCallInfo (fromRemotePtr p)
+-  MkConInfoTable ptrs nptrs tag ptrtag desc ->
+-    toRemotePtr <$> mkConInfoTable ptrs nptrs tag ptrtag desc
++  MkConInfoTable tc ptrs nptrs tag ptrtag desc ->
++    toRemotePtr <$> mkConInfoTable tc ptrs nptrs tag ptrtag desc
+   StartTH -> startTH
+   GetClosure ref -> do
+     clos <- getClosureData =<< localRef ref
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci: GNUmakefile
+Only in /nix/store/j0vg0hb7h6yxj3rb3f2jq03caiyqn797-asterius-ghc883-ghc-patched-src/libraries/ghci: ghc.mk
+diff -u -r a/ghci.cabal b/ghci.cabal
+--- a/ghci.cabal	1969-12-31 21:00:01.000000000 -0300
++++ b/ghci.cabal	2020-04-29 10:10:49.000000000 -0300
+@@ -50,13 +50,14 @@
+     if flag(ghci)
+         CPP-Options: -DGHCI
+         exposed-modules:
++            Asterius.GHCi
+             GHCi.Run
+             GHCi.CreateBCO
+             GHCi.ObjLink
+             GHCi.Signals
+             GHCi.TH
+ 
+-    include-dirs: /nix/store/c8dbd6mkpjcn24qv88868wa4m65ax8l2-libffi-3.3-dev/include
++    include-dirs: 
+ 
+     exposed-modules:
+         GHCi.BreakArray
