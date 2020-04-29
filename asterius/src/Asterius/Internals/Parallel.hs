@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE BangPatterns #-}
 
 module Asterius.Internals.Parallel
   ( parallelFor
@@ -20,10 +21,10 @@ parallelFor n xs fn
   | n >= 2 = do
     input <- newIORef xs
     mvars <- replicateM n newEmptyMVar
-    let getNextElem = atomicModifyIORef input $ \case
+    let getNextElem = atomicModifyIORef' input $ \case
           [] -> ([], Nothing)
           (y:ys) -> (ys, Just y)
-        loop mvar acc = getNextElem >>= \case
+        loop mvar !acc = getNextElem >>= \case
            Nothing -> putMVar mvar acc
            Just y -> do
              res <- fn y
