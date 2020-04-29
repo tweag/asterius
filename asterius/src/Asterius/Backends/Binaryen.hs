@@ -26,6 +26,7 @@ where
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
+import Asterius.Internals.Parallel
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
@@ -570,7 +571,7 @@ marshalMemoryImport m MemoryImport {..} = flip runContT pure $ do
   ebp <- marshalBS externalBaseName
   lift $ Binaryen.addMemoryImport m inp emp ebp 0
 
-marshalModule ::  -- TODO: Parallelize (see how to do it best)
+marshalModule ::
   Bool -> Int -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
 marshalModule tail_calls pool_size sym_map hs_mod@Module {..} = do
   let fts = generateWasmFunctionTypeSet hs_mod
@@ -588,14 +589,14 @@ marshalModule tail_calls pool_size sym_map hs_mod@Module {..} = do
             envSymbolMap = sym_map,
             envModuleRef = m
           }
-  for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
+  parallelFor_ pool_size (M.toList functionMap') $ \(k, f@Function {..}) ->
     flip runReaderT env $ marshalFunction k (ftps M.! functionType) f
   forM_ functionImports $ \fi@FunctionImport {..} ->
     marshalFunctionImport m (ftps M.! functionType) fi
   forM_ functionExports $ marshalFunctionExport m
   marshalFunctionTable m tableSlots functionTable
   marshalTableImport m tableImport
-  flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments
+  flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments -- TODO: Parallelize (see how to do it best)
   marshalMemoryImport m memoryImport
   flip runContT pure $ do
     lim_segs <- marshalBS "limit-segments"
