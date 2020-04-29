@@ -114,6 +114,7 @@ bootRTSCmm BootArgs {..} =
           { ghcFlags =
               [ "-this-unit-id",
                 "rts",
+                "-feager-blackholing",
                 "-dcmm-lint",
                 "-O2",
                 "-DASTERIUS",
