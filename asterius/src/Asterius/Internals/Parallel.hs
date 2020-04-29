@@ -1,6 +1,6 @@
 module Asterius.Internals.Parallel
-  ( parallelFor,
-    parallelFor_,
+  ( parallelFor
+    -- parallelFor_,
   )
 where
 
@@ -8,16 +8,16 @@ import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Monad
 
--- | Given the worker thread pool capacity @c@, @parallelFor c xs f@ maps @f@
--- on @xs@ in parallel on the global thread pool (the results are ignored). If
--- @c = 1@ then it is equivalent to @mconcat <$> mapM fn xs@, thus avoiding
--- threading overhead.
-{-# INLINE parallelFor_ #-}
-parallelFor_ :: Int -> [a] -> (a -> IO r) -> IO ()
-parallelFor_ n xs fn
-  | n >= 2 = error "TODO"
-  -- If there are not enough resources, fall back to the sequential version.
-  | otherwise = mapM_ fn xs
+-- -- | Given the worker thread pool capacity @c@, @parallelFor c xs f@ maps @f@
+-- -- on @xs@ in parallel on the global thread pool (the results are ignored). If
+-- -- @c = 1@ then it is equivalent to @mconcat <$> mapM fn xs@, thus avoiding
+-- -- threading overhead.
+-- {-# INLINE parallelFor_ #-}
+-- parallelFor_ :: Int -> [a] -> (a -> IO r) -> IO ()
+-- parallelFor_ n xs fn
+--   | n >= 2 = error "TODO"
+--   -- If there are not enough resources, fall back to the sequential version.
+--   | otherwise = mapM_ fn xs
 
 -- | Given the worker thread pool capacity @c@, @parallelFor c xs f@ maps @f@
 -- on @xs@ in parallel on the global thread pool, and concatenates the results.
