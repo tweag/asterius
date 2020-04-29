@@ -20,10 +20,10 @@ parseLinkTask args = do
         linkObjs = link_objs,
         linkLibs = link_libs,
         linkModule = mempty,
-        poolSize =
+        threadPoolSize =
           maybe 1 read $
-            find ("--pool-size=" `isPrefixOf`) args
-              >>= stripPrefix "--pool-size=",
+            find ("--thread-pool-size=" `isPrefixOf`) args
+              >>= stripPrefix "--thread-pool-size=",
         hasMain = "--no-main" `notElem` args,
         debug = "--debug" `elem` args,
         gcSections = "--no-gc-sections" `notElem` args,

@@ -104,10 +104,10 @@ parseTask args = case err_msgs of
              in if i >= 0 && i <= 2
                   then t {shrinkLevel = i}
                   else error "Shrink level must be [0..2]",
-          str_opt "pool-size" $ \s t ->
+          str_opt "thread-pool-size" $ \s t ->
             let i = read s
              in if i >= 1
-                  then t {poolSize = i}
+                  then t {threadPoolSize = i}
                   else error "Thread pool size must be positive",
           bool_opt "debug" $
             \t ->
