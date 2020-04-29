@@ -49,8 +49,8 @@ loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
   lib <- do
     entries <- concat <$> for linkLibs loadArchiveEntries
-    parallelFor 1 entries (loadArchiveEntry ncu) -- TODO: Parameterize
-  objs <- parallelFor 1 linkObjs (loadObj ncu) -- TODO: Parameterize
+    parallelFoldMap threadPoolSize entries (loadArchiveEntry ncu)
+  objs <- parallelFoldMap threadPoolSize linkObjs (loadObj ncu)
   evaluate $ linkModule <> objs <> lib
   where
     loadObj ncu path = tryGetFile ncu path >>= \case

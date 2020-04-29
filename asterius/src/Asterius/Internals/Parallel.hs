@@ -2,7 +2,7 @@
 {-# LANGUAGE BangPatterns #-}
 
 module Asterius.Internals.Parallel
-  ( parallelFor
+  ( parallelFoldMap
   )
 where
 
@@ -11,13 +11,13 @@ import Control.Concurrent.MVar
 import Control.Monad
 import Data.IORef
 
--- | Given the worker thread pool capacity @c@, @parallelFor c xs f@ maps @f@
+-- | Given the worker thread pool capacity @c@, @parallelFoldMap c xs f@ maps @f@
 -- on @xs@ in parallel on the global thread pool, and concatenates the results.
 -- If @c = 1@ then it is equivalent to @mconcat <$> mapM fn xs@, thus avoiding
 -- threading overhead. NOTE: this function does not only assume associativity
 -- for @<>@ (as promised by the @Monoid@ instance), but also symmetry.
-parallelFor :: Monoid r => Int -> [a] -> (a -> IO r) -> IO r
-parallelFor n xs fn
+parallelFoldMap :: Monoid r => Int -> [a] -> (a -> IO r) -> IO r
+parallelFoldMap n xs fn
   | n >= 2 = do
     input <- newIORef xs
     mvars <- replicateM n newEmptyMVar
