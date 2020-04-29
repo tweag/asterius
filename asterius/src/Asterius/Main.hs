@@ -318,6 +318,7 @@ ahcDistMain logger task (final_m, report) = do
       m_ref <-
         Binaryen.marshalModule
           (tailCalls task)
+          (threadPoolSize task)
           (staticsSymbolMap report <> functionSymbolMap report)
           final_m
       when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
