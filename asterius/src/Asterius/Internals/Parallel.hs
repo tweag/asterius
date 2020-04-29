@@ -1,9 +1,9 @@
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Asterius.Internals.Parallel
   ( parallelFor_,
-    parallelFoldMap
+    parallelFoldMap,
   )
 where
 
@@ -23,11 +23,11 @@ parallelFor_ n xs fn
     mvars <- replicateM n newEmptyMVar
     let getNextElem = atomicModifyIORef' input $ \case
           [] -> ([], Nothing)
-          (y:ys) -> (ys, Just y)
+          (y : ys) -> (ys, Just y)
         loop mvar = getNextElem >>= \case
-           Nothing -> putMVar mvar ()
-           Just y -> fn y >> loop mvar
-    forM_ ([0..] `zip` mvars) $ \(i, mvar) ->
+          Nothing -> putMVar mvar ()
+          Just y -> fn y >> loop mvar
+    forM_ ([0 ..] `zip` mvars) $ \(i, mvar) ->
       forkOn i (loop mvar)
     forM_ mvars takeMVar
   -- If there are not enough resources, fall back to the sequential version.
@@ -45,13 +45,13 @@ parallelFoldMap n xs fn
     mvars <- replicateM n newEmptyMVar
     let getNextElem = atomicModifyIORef' input $ \case
           [] -> ([], Nothing)
-          (y:ys) -> (ys, Just y)
+          (y : ys) -> (ys, Just y)
         loop mvar !acc = getNextElem >>= \case
-           Nothing -> putMVar mvar acc
-           Just y -> do
-             res <- fn y
-             loop mvar (acc <> res)
-    forM_ ([0..] `zip` mvars) $ \(i, mvar) ->
+          Nothing -> putMVar mvar acc
+          Just y -> do
+            res <- fn y
+            loop mvar (acc <> res)
+    forM_ ([0 ..] `zip` mvars) $ \(i, mvar) ->
       forkOn i (loop mvar mempty)
     mconcat <$> forM mvars takeMVar
   -- If there are not enough resources, fall back to the sequential version.
