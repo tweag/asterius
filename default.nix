@@ -1,8 +1,8 @@
 { pkgs ? import nixpkgs ((haskellNix.nixpkgsArgs) // (if system == null then {} else { inherit system; }))
 # Use a pinned nixpkgs rather than the one on NIX_PATH
 , haskellNix ? import (builtins.fetchTarball {
-    url = "https://github.com/input-output-hk/haskell.nix/archive/701c83fb43179d303c06a3f60003ae68597ccebc.tar.gz";
-    sha256 = "0afpvi2av0y6fk97kd9mx8bprvfyiizxp22qrgar2ph9mfvaixdm";
+    url = "https://github.com/input-output-hk/haskell.nix/archive/0feda80c820bde17f296aa14b02a1758a63e7683.tar.gz";
+    sha256 = "03bjnji8dkh1c51dyy51m48s76wd1d4blmnr3nsjq1cjrzryzfjw";
   }) {}
 , nixpkgs ? haskellNix.sources.nixpkgs-default
 , shellOnly ? false
@@ -31,7 +31,15 @@ let
     name = "asterius";
     src = cleanedSrc;
     ghc = pkgs.haskell-nix.compiler.ghc883;
-    pkg-def-extras = [ pkgs.ghc-boot-packages.ghc883 ];
+    pkg-def-extras = [
+      pkgs.ghc-boot-packages.ghc883
+      (hackage: {
+        packages = {
+          "alex" = (((hackage.alex)."3.2.5").revisions).default;
+           "happy" = (((hackage.happy)."1.19.12").revisions).default;
+        };
+      })
+    ];
     modules = [
       { reinstallableLibGhc = true; }
       ({ config, ...}: {
@@ -52,10 +60,10 @@ let
             "boot-libs/**/**"
             "ghc-libdir/**/**"
             ];
-          binaryen.package.cleanHpack = true;
-          binaryen.components.library.extraSrcFiles = [
-            "binaryen/**/**"
-            ];
+#          binaryen.package.cleanHpack = true;
+#          binaryen.components.library.extraSrcFiles = [
+#            "binaryen/**/**"
+#            ];
           asterius.package.cleanHpack = true;
           asterius.package.dataFiles = [
             "rts/*.mjs"
@@ -205,7 +213,8 @@ let
       cp -r ${ghc-patched-src} $out
       chmod +w -R $out
       cd $out/libraries
-      ls -l
+#      cp -r ${./ghc-toolkit/boot-libs}/* $out/libraries
+#      chmod +w -R $out
       patch -p2 < ${patch}
       # TODO find a better way to get these
       cp ${ghc-prim}/GHC/Prim.hs ghc-prim/GHC/Prim.hs
@@ -213,6 +222,7 @@ let
       # TODO figure out a better way remove the unwanted stuff from ghc-prim.cabal
       sed -i '96,$ d' ghc-prim/ghc-prim.cabal
       cd $out/libraries/rts
+      cp -r ${./ghc-toolkit/boot-libs}/rts/rts.conf $out/libraries/rts/rts.conf
       runghc --ghc-arg=-I$(ghc --print-libdir)/include $out/utils/genapply/Main.hs > AutoApply.cmm
   '';
   in { inherit ghc-src ghc-prim ghc-patched-src boot-libs; };
@@ -262,7 +272,7 @@ let
 
   # Use this to set the version of asterius to be booted in the shell.
   # By pinning this we avoid re running ahc-boot for every change.
-  cached = import ./. {}; # Pin an old commit once stuff works again
+  cached = null; # Pin an old commit once stuff works again
   #pkgs.fetchgit {
   #  url = "https://github.com/input-output-hk/asterius";
   #  rev = "572b17398602a435650d7409cc7f00d1dd278eda";
@@ -272,24 +282,22 @@ let
   ghc-compiler = pkgs.haskell-nix.compiler.${compilerName};
   shells = {
     ghc = (project.hsPkgs.shellFor {
-      # Shell will provide the dependencies of asterius, but not asterius itself.
-      packages = ps: with ps; [
-        asterius
-        binaryen
-        ghc-toolkit
-        inline-js-core
-        wasm-toolkit ];
-    }).overrideAttrs (oldAttrs: {
-      buildInputs = oldAttrs.buildInputs ++ [
+      tools = {
+        cabal = "3.2.0.0";
+        hpack = "0.33.0";
+      };
+      buildInputs = [
         project.hsPkgs.hpack.components.exes.hpack
         pkgs.cmake
         nodejs
         nodePkgs.parcel-bundler
         nodePkgs.todomvc-app-css
         nodePkgs.todomvc-common ];
+    }).overrideAttrs (oldAttrs: {
       shellHook = (oldAttrs.shellHook or "") + ''
-        unset CABAL_CONFIG
-        export asterius_bootdir=${cached.asterius-boot}/boot
+        ${ pkgs.lib.optionalString (cached != null) ''
+          export asterius_bootdir=${cached.asterius-boot}/boot
+        ''}
         find . -name package.yaml -exec hpack "{}" \;
         export asterius_datadir=$(pwd)/asterius
         export binaryen_datadir=$(pwd)/binaryen
@@ -306,7 +314,7 @@ let
         export PATH=$(pwd):$PATH
         ''
         + pkgs.lib.concatMapStrings (exe: ''
-          ln -sf ../dist-newstyle/build/${cabalSystem}/ghc-8.8.3/asterius-0.0.1/build/${exe}/${exe} ${exe}
+          ln -sf ../dist-newstyle/build/${cabalSystem}/ghc-8.8.3/asterius-0.0.1/x/${exe}/build/${exe}/${exe} ${exe}
         '') ["ahc" "ahc-boot" "ahc-cabal" "ahc-dist" "ahc-ld" "ahc-link" "ahc-pkg"]
         + ''
         cd ..
