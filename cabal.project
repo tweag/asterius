@@ -14,9 +14,18 @@ source-repository-package
   type: git
   location: https://github.com/tweag/haskell-binaryen
   tag: 6e782a0a42df344afa6c8d5e391160bd172348d8
+  --sha256: 0i780v5n7dhgsgbj5nz2y3j4cxsjgzg3b0hzfqagk09qgkzh1zpn
 
 source-repository-package
   type: git
   location: https://github.com/tweag/inline-js
   tag: 114848a9f750b5e9c2f8ca056cc29d84bbab0bae
   subdir: inline-js-core
+  --sha256: 0wzfg4pq5gqwd6y8rzfsmgbwbjmqprd79q4lq9b6hrhcr2si13r9
+
+source-repository-package
+  type: git
+  location: https://github.com/sol/hpack
+  tag: 0.33.0
+  --sha256: 07h2369mrl28a4yzp46sadk915a87a9lz8wxnvxdi8lb4q9winig
+
