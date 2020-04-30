@@ -213,14 +213,24 @@ let
       cp -r ${ghc-patched-src} $out
       chmod +w -R $out
       cd $out/libraries
-#      cp -r ${./ghc-toolkit/boot-libs}/* $out/libraries
-#      chmod +w -R $out
       patch -p2 < ${patch}
-      # TODO find a better way to get these
-      cp ${ghc-prim}/GHC/Prim.hs ghc-prim/GHC/Prim.hs
-      cp ${ghc-prim}/GHC/PrimopWrappers.hs ghc-prim/GHC/PrimopWrappers.hs
+      # This all compiles now although I'm not 100% that it is correct yet
+      mkdir $out/libraries/asterius-prelude
+      cp -r ${./ghc-toolkit/boot-libs}/asterius-prelude/* $out/libraries/asterius-prelude
+      cp -r ${./ghc-toolkit/boot-libs}/base/* $out/libraries/base
+      cp -r ${./ghc-toolkit/boot-libs}/ghc-boot/* $out/libraries/ghc-boot
+      cp -r ${./ghc-toolkit/boot-libs}/ghc-boot-th/* $out/libraries/ghc-boot-th
+      cp -r ${./ghc-toolkit/boot-libs}/ghc-heap/* $out/libraries/ghc-heap
+      cp -r ${./ghc-toolkit/boot-libs}/ghc-prim/* $out/libraries/ghc-prim
+      cp -r ${./ghc-toolkit/boot-libs}/ghci/* $out/libraries/ghci
+      cp -r ${./ghc-toolkit/boot-libs}/integer-simple/* $out/libraries/integer-simple
+      cp -r ${./ghc-toolkit/boot-libs}/rts/* $out/libraries/rts
+      cp -r ${./ghc-toolkit/boot-libs}/template-haskell/* $out/libraries/template-haskell
+      cp -r ${./ghc-toolkit/boot-libs}/text/* $out/libraries/text
       # TODO figure out a better way remove the unwanted stuff from ghc-prim.cabal
       sed -i '96,$ d' ghc-prim/ghc-prim.cabal
+      ls -l $out/libraries/rts
+      chmod +w $out/libraries/rts/rts.conf
       cd $out/libraries/rts
       cp -r ${./ghc-toolkit/boot-libs}/rts/rts.conf $out/libraries/rts/rts.conf
       runghc --ghc-arg=-I$(ghc --print-libdir)/include $out/utils/genapply/Main.hs > AutoApply.cmm
@@ -229,10 +239,21 @@ let
 
   asterius-boot = pkgs.runCommand "asterius-boot" {
       preferLocalBuild = true;
-      nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell-nix.compiler.${compilerName} pkgs.autoconf pkgs.automake ];
+      # nativeBuildInputs = [ pkgs.makeWrapper pkgs.haskell-nix.compiler.${compilerName} pkgs.autoconf pkgs.automake ];
+      nativeBuildInputs = [
+        pkgs.makeWrapper
+        pkgs.haskell-nix.compiler.${compilerName}
+        pkgs.autoconf
+        pkgs.automake
+        (pkgs.haskell-nix.tool "cabal" {
+          version = "3.2.0.0";
+          ghc = pkgs.haskell-nix.compiler.${compilerName};
+        })
+      ];
     } ''
       mkdir -p $out/bin
       mkdir -p $out/boot
+      mkdir -p $out/obj
       mkdir -p $out/ghc-libdir
       cp -r $(ghc --print-libdir)/include $out/ghc-libdir
       cp $(ghc --print-libdir)/llvm-passes $out/ghc-libdir
@@ -248,8 +269,11 @@ let
           --set asterius_bindir $out/bin \
           --set asterius_bootdir $out/boot \
           --set boot_libs_path ${ghc883.boot-libs} \
+          --set boot_obj_path $out/obj \
           --set sandbox_ghc_lib_dir $out/ghc-libdir
       '') (pkgs.lib.attrNames project.hsPkgs.asterius.components.exes)}
+      export PATH=$PATH:$out/bin
+      export HOME=$TMP
       $out/bin/ahc-boot
     '';
   wasm-asterius-ghc = (pkgs.runCommand "wasm-asterius-ghc" {
@@ -292,7 +316,8 @@ let
         nodejs
         nodePkgs.parcel-bundler
         nodePkgs.todomvc-app-css
-        nodePkgs.todomvc-common ];
+        nodePkgs.todomvc-common
+        ];
     }).overrideAttrs (oldAttrs: {
       shellHook = (oldAttrs.shellHook or "") + ''
         ${ pkgs.lib.optionalString (cached != null) ''

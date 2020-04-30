@@ -24,7 +24,8 @@ module Asterius.BuildInfo
     getBootDir,
     rootBootDir,
     asteriusSandboxGhcLibDir,
-    asteriusBootLibsPath
+    asteriusBootLibsPath,
+    asteriusObjectDir
   )
 where
 
@@ -85,8 +86,10 @@ asteriusSandboxGhcLibDir = unsafePerformIO (catch (getEnv "sandbox_ghc_lib_dir")
 
 -- Allow nix to override the bootLibsPath (from ghc toolkit)
 asteriusBootLibsPath :: FilePath
-asteriusBootLibsPath = unsafePerformIO (catch ((</> "libraries") <$> getEnv "boot_libs_path")
-  (\(_ :: IOException) -> pure bootLibsPath))
+asteriusBootLibsPath = unsafePerformIO ((</> "libraries") <$> getEnv "boot_libs_path")
+
+asteriusObjectDir :: FilePath
+asteriusObjectDir = unsafePerformIO (getEnv "boot_obj_path")
 
 setupGhcPrim :: FilePath
 setupGhcPrim = binDir </> "Setup-ghc-prim" <.> exeExtension

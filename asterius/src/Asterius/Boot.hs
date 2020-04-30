@@ -115,22 +115,25 @@ bootRTSCmm bootArgs@BootArgs {..} =
                 "-O2",
                 "-DASTERIUS",
                 "-optc=-DASTERIUS",
-                "-I" <> obj_topdir </> "include"
+                "-I" <> obj_topdir </> "include",
+                "-odir " <> asteriusObjectDir
               ]
           }
         cmm_files
-        ( \obj_path ir@CmmIR {..} ->
+        ( \obj_path ir@CmmIR {..} -> do
+            putStrLn obj_path
+            let out_path = asteriusObjectDir </> makeRelative asteriusBootLibsPath obj_path
             let ms_mod =
                   ( GHC.Module GHC.rtsUnitId $ GHC.mkModuleName $
                       takeBaseName
-                        obj_path
+                        out_path
                   )
-             in runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
+            runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
                   Left err -> throwIO err
                   Right m -> do
-                    let out_path = bootDir </> makeRelative asteriusBootLibsPath obj_path
+                    putStrLn out_path
                     createDirectoryIfMissing True $ takeDirectory out_path
-                    putFile obj_path $ toCachedModule m
+                    putFile out_path $ toCachedModule m
                     modifyIORef' obj_paths_ref (out_path :)
                     when is_debug $ do
                       let p = (out_path -<.>)
