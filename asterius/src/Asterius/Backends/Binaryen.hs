@@ -526,6 +526,10 @@ marshalFunctionTable m tbl_slots FunctionTable {..} = flip runContT pure $ do
       (fromIntegral fnl)
       o
 
+-- | Marshal the memory segments of a 'Module'. NOTE: It would be nice to
+-- parallelize this process (see issue #621), but given that we want marshaling
+-- to happen in @ContT@ for efficiency reasons, this might backfire. Leaving
+-- linear for now.
 marshalMemorySegments :: Int -> [DataSegment] -> CodeGen ()
 marshalMemorySegments mbs segs = do
   env <- ask
@@ -590,7 +594,7 @@ marshalModule tail_calls pool_size sym_map hs_mod@Module {..} = do
   forM_ functionExports $ marshalFunctionExport m
   marshalFunctionTable m tableSlots functionTable
   marshalTableImport m tableImport
-  flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments -- TODO: Parallelize (see how to do it best)
+  flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments
   marshalMemoryImport m memoryImport
   flip runContT pure $ do
     lim_segs <- marshalBS "limit-segments"
