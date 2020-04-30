@@ -277,6 +277,7 @@ ahcLink task = do
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
       <> ["-optl--verbose-err" | verboseErr task]
+      <> ["-optl--thread-pool-size=" <> show (threadPoolSize task)]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
              <> outputDirectory task
