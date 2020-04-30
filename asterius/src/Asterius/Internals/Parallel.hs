@@ -2,14 +2,23 @@
 {-# LANGUAGE LambdaCase #-}
 
 module Asterius.Internals.Parallel
-  ( parallelFoldMap,
+  ( parallelRnf,
+    parallelFoldMap,
   )
 where
 
 import Control.Concurrent
 import Control.Concurrent.MVar
+import Control.DeepSeq
+import Control.Exception
 import Control.Monad
 import Data.IORef
+import System.IO.Unsafe
+
+-- | Given the worker thread pool capacity @c@, @parallelRnf c xs@ deeply
+-- evaluates a list of objects in parallel on the global thread pool.
+parallelRnf :: NFData a => Int -> [a] -> ()
+parallelRnf n xs = unsafePerformIO $ parallelFoldMap n xs (void . evaluate . force)
 
 -- | Given the worker thread pool capacity @c@, @parallelFoldMap c xs f@ maps @f@
 -- on @xs@ in parallel on the global thread pool, and concatenates the results.
