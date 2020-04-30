@@ -531,19 +531,13 @@ marshalMemorySegments mbs segs = do
   env <- ask
   m <- askModuleRef
   let segs_len = length segs
+      marshalOffset = \DataSegment {..} ->
+        lift $ flip runReaderT env $ marshalExpression $ ConstI32 offset
   lift $ flip runContT pure $ do
     (seg_bufs, _) <- marshalV =<< for segs (marshalBS . content)
     (seg_passives, _) <- marshalV $ replicate segs_len 0
-    (seg_offsets, _) <-
-      marshalV
-        =<< for
-          segs
-          ( \DataSegment {..} ->
-              lift $ flip runReaderT env $ marshalExpression $ ConstI32 offset
-          )
-    (seg_sizes, _) <-
-      marshalV $
-        map (fromIntegral . BS.length . content) segs
+    (seg_offsets, _) <- marshalV =<< for segs marshalOffset
+    (seg_sizes, _) <- marshalV $ map (fromIntegral . BS.length . content) segs
     lift $
       Binaryen.setMemory
         m
