@@ -138,7 +138,7 @@ parForceAsteriusModule n m@(AsteriusModule sm se fm spt mod_ffi_state) =
     `seq` parallelRnf n (SM.toList fm)
     `seq` parallelRnf n (SM.toList spt)
     `seq` rnf mod_ffi_state -- TODO: is it worth it parallelizing deeper?
-    `deepseq` m
+    `seq` m
 
 -- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
 -- its 'EntitySymbol' dependencies, as they are appear in the modules data
