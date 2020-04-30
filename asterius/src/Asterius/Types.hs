@@ -16,7 +16,7 @@ module Asterius.Types
     AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
-    parRnfAsteriusModule,
+    parForceAsteriusModule,
     AsteriusCachedModule (..),
     toCachedModule,
     EntitySymbol,
@@ -128,16 +128,17 @@ instance Semigroup AsteriusModule where
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty mempty
 
--- | Given the worker thread pool capacity @c@, @parRnfAsteriusModule c m@
+-- | Given the worker thread pool capacity @c@, @parForceAsteriusModule c m@
 -- deeply evaluates an 'AsteriusModule' m in parallel on the global thread
 -- pool.
-parRnfAsteriusModule :: Int -> AsteriusModule -> ()
-parRnfAsteriusModule n (AsteriusModule sm se fm spt mod_ffi_state) =
+parForceAsteriusModule :: Int -> AsteriusModule -> AsteriusModule
+parForceAsteriusModule n m@(AsteriusModule sm se fm spt mod_ffi_state) =
   parallelRnf n (SM.toList sm)
     `seq` parallelRnf n (SM.toList se)
     `seq` parallelRnf n (SM.toList fm)
     `seq` parallelRnf n (SM.toList spt)
     `seq` rnf mod_ffi_state -- TODO: is it worth it parallelizing deeper?
+    `deepseq` m
 
 -- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
 -- its 'EntitySymbol' dependencies, as they are appear in the modules data

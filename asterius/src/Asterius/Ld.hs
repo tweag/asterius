@@ -103,6 +103,7 @@ linkModules LinkTask {..} m =
     debug
     gcSections
     verboseErr
+    threadPoolSize
     ( toCachedModule
         ( (if hasMain then mainBuiltins else mempty)
             <> rtsAsteriusModule
