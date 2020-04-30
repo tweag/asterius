@@ -16,6 +16,7 @@ module Asterius.Types
     AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
+    parRnfAsteriusModule,
     AsteriusCachedModule(..),
     toCachedModule,
     EntitySymbol,
@@ -53,6 +54,7 @@ where
 
 import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
+import Asterius.Internals.Parallel
 import Asterius.NFData.TH
 import Asterius.Types.EntitySymbol
 import Asterius.Types.SymbolMap (SymbolMap)
@@ -125,6 +127,17 @@ instance Semigroup AsteriusModule where
 
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty mempty
+
+-- | Given the worker thread pool capacity @c@, @parRnfAsteriusModule c m@
+-- deeply evaluates an 'AsteriusModule' m in parallel on the global thread
+-- pool.
+parRnfAsteriusModule :: Int -> AsteriusModule -> ()
+parRnfAsteriusModule n (AsteriusModule sm se fm spt mod_ffi_state) =
+  parallelRnf n (SM.toList sm)
+    `seq` parallelRnf n (SM.toList se)
+    `seq` parallelRnf n (SM.toList fm)
+    `seq` parallelRnf n (SM.toList spt)
+    `seq` rnf mod_ffi_state -- TODO: is it worth it parallelizing deeper?
 
 -- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
 -- its 'EntitySymbol' dependencies, as they are appear in the modules data
