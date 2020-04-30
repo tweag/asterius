@@ -17,7 +17,7 @@ module Asterius.Types
     AsteriusStatics (..),
     AsteriusModule (..),
     parRnfAsteriusModule,
-    AsteriusCachedModule(..),
+    AsteriusCachedModule (..),
     toCachedModule,
     EntitySymbol,
     entityName,
@@ -171,7 +171,6 @@ toCachedModule m =
   where
     add :: Data a => SymbolMap a -> SymbolMap SymbolSet -> SymbolMap SymbolSet
     add = flip $ SM.foldrWithKey' (\k e -> SM.insert k (collectEntitySymbols e))
-
     -- Collect all entity symbols from an entity.
     collectEntitySymbols :: Data a => a -> SymbolSet
     collectEntitySymbols t
