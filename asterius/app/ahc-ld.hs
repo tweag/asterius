@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
-import Asterius.Internals (decodeFile)
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
 import Asterius.Ld
 import qualified Asterius.Main as Main
 import Data.List
@@ -68,7 +69,7 @@ main = do
       ignore <- isJust <$> getEnv "ASTERIUS_AHC_LD_IGNORE"
       let task = Main.parseTask []
       if ignore
-        then callProcess "touch" [linkOutput task]
+        then callProcess "touch" [linkOutput linkTask']
         else do
           -- TODO make wexe output optional with linker option
           -- if ? then linkExe linkTask' else do
@@ -77,7 +78,8 @@ main = do
               linkTask = linkTask' { linkOutput = wexe </> "link.out" }
           createDirectoryIfMissing False wexe
           linkExe linkTask
-          ld_result <- decodeFile $ linkOutput linkTask
+          ncu <- newNameCacheUpdater
+          ld_result <- getFile ncu $ linkOutput linkTask
           Main.ahcDistMain putStrLn task
             { Main.target = Main.Node
             , Main.inputHS = linkOutput linkTask

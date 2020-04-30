@@ -72,11 +72,6 @@ dependencies:
 library:
   source-dirs: src
   generated-other-modules: Paths_asterius
-  verbatim: |
-    build-tool-depends:
-        alex:alex -any
-      , happy:happy >=1.17.1
-      , hpack:hpack -any
 
 executables:
   ahc:

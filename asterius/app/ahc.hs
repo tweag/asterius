@@ -16,7 +16,8 @@ import System.IO
 import System.Process
 
 main :: IO ()
-main =
+main = do
+  args <- getArgs
   if
     | "--install-executable" `elem` args ->
         installExecutable $ parseInstallExeArgs args
@@ -26,9 +27,9 @@ main =
         fakeGHCMain $
           FakeGHCOptions
             ghc
-            (rootBootDir </> ".boot" </> "asterius_lib")
+            (A.rootBootDir </> ".boot" </> "asterius_lib")
             A.frontendPlugin
-            ["-pgml" <> ahcLd]
+            ["-pgml" <> A.ahcLd]
 
 data InstallExeArgs = InstallExeArgs
   { output       :: Maybe FilePath

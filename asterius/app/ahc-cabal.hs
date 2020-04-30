@@ -12,9 +12,6 @@ import System.Process (callProcess)
 main :: IO ()
 main = do
   args0 <- getArgs
-  ahc <- getAhc
-  ahcPkg <- getAhcPkg
-  ahcLd <- getAhcLd
   env <- getEnvironment
   traverse_ unsetEnv
     $ filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k)
