@@ -2,8 +2,7 @@
 {-# LANGUAGE LambdaCase #-}
 
 module Asterius.Internals.Parallel
-  ( parallelFor_,
-    parallelFoldMap,
+  ( parallelFoldMap,
   )
 where
 
@@ -11,27 +10,6 @@ import Control.Concurrent
 import Control.Concurrent.MVar
 import Control.Monad
 import Data.IORef
-
--- | Given the worker thread pool capacity @c@, @parallelFor_ c xs f@ maps @f@
--- on @xs@ in parallel on the global thread pool. The results are ignored. If
--- @c = 1@ then it is equivalent to @mapM_ fn xs@ (but not necessarily in that
--- order), thus avoiding threading overhead.
-parallelFor_ :: Int -> [a] -> (a -> IO r) -> IO ()
-parallelFor_ n xs fn
-  | n >= 2 = do
-    input <- newIORef xs
-    mvars <- replicateM n newEmptyMVar
-    let getNextElem = atomicModifyIORef' input $ \case
-          [] -> ([], Nothing)
-          (y : ys) -> (ys, Just y)
-        loop mvar = getNextElem >>= \case
-          Nothing -> putMVar mvar ()
-          Just y -> fn y >> loop mvar
-    forM_ ([0 ..] `zip` mvars) $ \(i, mvar) ->
-      forkOn i (loop mvar)
-    forM_ mvars takeMVar
-  -- If there are not enough resources, fall back to the sequential version.
-  | otherwise = mapM_ fn xs
 
 -- | Given the worker thread pool capacity @c@, @parallelFoldMap c xs f@ maps @f@
 -- on @xs@ in parallel on the global thread pool, and concatenates the results.

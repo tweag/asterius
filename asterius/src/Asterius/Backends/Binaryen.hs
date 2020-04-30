@@ -587,8 +587,8 @@ marshalModule tail_calls pool_size sym_map hs_mod@Module {..} = do
             envSymbolMap = sym_map,
             envModuleRef = m
           }
-  parallelFor_ pool_size (M.toList functionMap') $ \(k, f@Function {..}) ->
-    flip runReaderT env $ marshalFunction k (ftps M.! functionType) f
+  parallelFoldMap pool_size (M.toList functionMap') $ \(k, f@Function {..}) ->
+    flip runReaderT env $ void $ marshalFunction k (ftps M.! functionType) f
   forM_ functionImports $ \fi@FunctionImport {..} ->
     marshalFunctionImport m (ftps M.! functionType) fi
   forM_ functionExports $ marshalFunctionExport m
