@@ -1,4 +1,8 @@
 import Asterius.Main
+import Control.Concurrent
 
 main :: IO ()
-main = getTask >>= ahcLinkMain
+main = do
+  task <- getTask
+  setNumCapabilities (threadPoolSize task)
+  ahcLinkMain task
