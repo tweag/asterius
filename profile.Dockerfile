@@ -54,7 +54,7 @@ WORKDIR /home/asterius
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.0.0 && ln -s \$NVM_BIN ~/.nvm/bin" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.1.0 && ln -s \$NVM_BIN ~/.nvm/bin" && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.0.1/stack-2.3.0.1-linux-x86_64.tar.gz | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack' && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
