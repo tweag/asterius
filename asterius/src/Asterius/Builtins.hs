@@ -786,7 +786,7 @@ generateRTSWrapper mod_sym func_sym param_vts ret_vts =
         [0 ..]
         param_vts
     ret = case ret_vts of
-      [I64] -> ([F64], truncUFloat64ToInt64)
+      [I64] -> ([F64], truncSFloat64ToInt64)
       _ -> (ret_vts, id)
 
 generateWrapperFunction :: EntitySymbol -> Function -> Function
