@@ -1,0 +1,2689 @@
+cabal-version: 2.0
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: a2fec1f3c30058cb5c93b7e0dc8e4bc7be4d5e8a29e8987d2e3ff58e2cfac36b
+
+name:           asterius
+version:        0.0.1
+category:       Compiler
+stability:      alpha
+homepage:       https://github.com/tweag/asterius#readme
+bug-reports:    https://github.com/tweag/asterius/issues
+maintainer:     Shao Cheng <cheng.shao@tweag.io>
+copyright:      (c) 2018 Tweag I/O
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    CHANGELOG.md
+    LICENSE
+    README.md
+    test/array/array.hs
+    test/fib/fib.hs
+    test/jsffi/AsteriusPrim.hs
+    test/jsffi/jsffi.hs
+    test/jsffi/jsffi.mjs
+    test/rtsapi/rtsapi.hs
+    test/rtsapi/rtsapi.mjs
+    test/stableptr/stableptr.hs
+    test/todomvc/ElementBuilder.hs
+    test/todomvc/todomvc.hs
+    test/todomvc/TodoView.hs
+    test/todomvc/WebAPI.hs
+    test/todomvc/index.html
+    test/teletype/teletype.hs
+    test/bytearray/bytearray.hs
+    test/bytearraymini/bytearraymini.hs
+    test/bigint/bigint.hs
+    test/cloudflare/cloudflare.hs
+    test/cloudflare/cloudflare.mjs
+    test/nomain/NoMain.hs
+    test/ghc-testsuite/ado/ado-optimal.hs
+    test/ghc-testsuite/ado/ado001.hs
+    test/ghc-testsuite/ado/T11607.hs
+    test/ghc-testsuite/array/arr001.hs
+    test/ghc-testsuite/array/arr002.hs
+    test/ghc-testsuite/array/arr003.hs
+    test/ghc-testsuite/array/arr004.hs
+    test/ghc-testsuite/array/arr005.hs
+    test/ghc-testsuite/array/arr006.hs
+    test/ghc-testsuite/array/arr007.hs
+    test/ghc-testsuite/array/arr008.hs
+    test/ghc-testsuite/array/arr009.hs
+    test/ghc-testsuite/array/arr010.hs
+    test/ghc-testsuite/array/arr011.hs
+    test/ghc-testsuite/array/arr012.hs
+    test/ghc-testsuite/array/arr013.hs
+    test/ghc-testsuite/array/arr014.hs
+    test/ghc-testsuite/array/arr015.hs
+    test/ghc-testsuite/array/arr017.hs
+    test/ghc-testsuite/array/arr018.hs
+    test/ghc-testsuite/array/arr019.hs
+    test/ghc-testsuite/array/arr020.hs
+    test/ghc-testsuite/arrows/arrowrun001.hs
+    test/ghc-testsuite/arrows/arrowrun002.hs
+    test/ghc-testsuite/arrows/arrowrun003.hs
+    test/ghc-testsuite/arrows/arrowrun004.hs
+    test/ghc-testsuite/arrows/T3822.hs
+    test/ghc-testsuite/boxy/T2193.hs
+    test/ghc-testsuite/callarity/StrictLet.hs
+    test/ghc-testsuite/codeGen/castFloatWord.hs
+    test/ghc-testsuite/codeGen/cgrun001.hs
+    test/ghc-testsuite/codeGen/cgrun002.hs
+    test/ghc-testsuite/codeGen/cgrun003.hs
+    test/ghc-testsuite/codeGen/cgrun004.hs
+    test/ghc-testsuite/codeGen/cgrun005.hs
+    test/ghc-testsuite/codeGen/cgrun006.hs
+    test/ghc-testsuite/codeGen/cgrun007.hs
+    test/ghc-testsuite/codeGen/cgrun008.hs
+    test/ghc-testsuite/codeGen/cgrun009.hs
+    test/ghc-testsuite/codeGen/cgrun010.hs
+    test/ghc-testsuite/codeGen/cgrun011.hs
+    test/ghc-testsuite/codeGen/cgrun012.hs
+    test/ghc-testsuite/codeGen/cgrun013.hs
+    test/ghc-testsuite/codeGen/cgrun014.hs
+    test/ghc-testsuite/codeGen/cgrun015.hs
+    test/ghc-testsuite/codeGen/cgrun016.hs
+    test/ghc-testsuite/codeGen/cgrun017.hs
+    test/ghc-testsuite/codeGen/cgrun018.hs
+    test/ghc-testsuite/codeGen/cgrun019.hs
+    test/ghc-testsuite/codeGen/cgrun020.hs
+    test/ghc-testsuite/codeGen/cgrun021.hs
+    test/ghc-testsuite/codeGen/cgrun022.hs
+    test/ghc-testsuite/codeGen/cgrun024.hs
+    test/ghc-testsuite/codeGen/cgrun026.hs
+    test/ghc-testsuite/codeGen/cgrun027.hs
+    test/ghc-testsuite/codeGen/cgrun028.hs
+    test/ghc-testsuite/codeGen/cgrun031.hs
+    test/ghc-testsuite/codeGen/cgrun032.hs
+    test/ghc-testsuite/codeGen/cgrun033.hs
+    test/ghc-testsuite/codeGen/cgrun034.hs
+    test/ghc-testsuite/codeGen/cgrun035.hs
+    test/ghc-testsuite/codeGen/cgrun036.hs
+    test/ghc-testsuite/codeGen/cgrun037.hs
+    test/ghc-testsuite/codeGen/cgrun038.hs
+    test/ghc-testsuite/codeGen/cgrun039.hs
+    test/ghc-testsuite/codeGen/cgrun040.hs
+    test/ghc-testsuite/codeGen/cgrun043.hs
+    test/ghc-testsuite/codeGen/cgrun044.hs
+    test/ghc-testsuite/codeGen/cgrun045.hs
+    test/ghc-testsuite/codeGen/cgrun046.hs
+    test/ghc-testsuite/codeGen/cgrun047.hs
+    test/ghc-testsuite/codeGen/cgrun048.hs
+    test/ghc-testsuite/codeGen/cgrun049.hs
+    test/ghc-testsuite/codeGen/cgrun050.hs
+    test/ghc-testsuite/codeGen/cgrun051.hs
+    test/ghc-testsuite/codeGen/cgrun052.hs
+    test/ghc-testsuite/codeGen/cgrun053.hs
+    test/ghc-testsuite/codeGen/cgrun054.hs
+    test/ghc-testsuite/codeGen/cgrun055.hs
+    test/ghc-testsuite/codeGen/cgrun056.hs
+    test/ghc-testsuite/codeGen/cgrun057.hs
+    test/ghc-testsuite/codeGen/cgrun058.hs
+    test/ghc-testsuite/codeGen/cgrun059.hs
+    test/ghc-testsuite/codeGen/cgrun060.hs
+    test/ghc-testsuite/codeGen/cgrun061.hs
+    test/ghc-testsuite/codeGen/cgrun062.hs
+    test/ghc-testsuite/codeGen/cgrun063.hs
+    test/ghc-testsuite/codeGen/cgrun064.hs
+    test/ghc-testsuite/codeGen/cgrun065.hs
+    test/ghc-testsuite/codeGen/cgrun066.hs
+    test/ghc-testsuite/codeGen/cgrun069.hs
+    test/ghc-testsuite/codeGen/cgrun070.hs
+    test/ghc-testsuite/codeGen/cgrun071.hs
+    test/ghc-testsuite/codeGen/cgrun072.hs
+    test/ghc-testsuite/codeGen/cgrun074.hs
+    test/ghc-testsuite/codeGen/cgrun075.hs
+    test/ghc-testsuite/codeGen/cgrun076.hs
+    test/ghc-testsuite/codeGen/cgrun077.hs
+    test/ghc-testsuite/codeGen/CgStaticPointers.hs
+    test/ghc-testsuite/codeGen/CgStaticPointersNoFullLazyness.hs
+    test/ghc-testsuite/codeGen/CmmSwitchTest32.hs
+    test/ghc-testsuite/codeGen/CmmSwitchTest64.hs
+    test/ghc-testsuite/codeGen/CmmSwitchTestGen.hs
+    test/ghc-testsuite/codeGen/compareByteArrays.hs
+    test/ghc-testsuite/codeGen/CopySmallArray.hs
+    test/ghc-testsuite/codeGen/PopCnt.hs
+    test/ghc-testsuite/codeGen/setByteArray.hs
+    test/ghc-testsuite/codeGen/SizeOfSmallArray.hs
+    test/ghc-testsuite/codeGen/StaticArraySize.hs
+    test/ghc-testsuite/codeGen/StaticByteArraySize.hs
+    test/ghc-testsuite/codeGen/T10245.hs
+    test/ghc-testsuite/codeGen/T10246.hs
+    test/ghc-testsuite/codeGen/T10414.hs
+    test/ghc-testsuite/codeGen/T10521.hs
+    test/ghc-testsuite/codeGen/T10521b.hs
+    test/ghc-testsuite/codeGen/T10870.hs
+    test/ghc-testsuite/codeGen/T12059.hs
+    test/ghc-testsuite/codeGen/T12433.hs
+    test/ghc-testsuite/codeGen/T12757.hs
+    test/ghc-testsuite/codeGen/T12855.hs
+    test/ghc-testsuite/codeGen/T13425.hs
+    test/ghc-testsuite/codeGen/T14251.hs
+    test/ghc-testsuite/codeGen/T14346.hs
+    test/ghc-testsuite/codeGen/T14619.hs
+    test/ghc-testsuite/codeGen/T14754.hs
+    test/ghc-testsuite/codeGen/T15696_1.hs
+    test/ghc-testsuite/codeGen/T15696_2.hs
+    test/ghc-testsuite/codeGen/T15696_3.hs
+    test/ghc-testsuite/codeGen/T15892.hs
+    test/ghc-testsuite/codeGen/T1852.hs
+    test/ghc-testsuite/codeGen/T1861.hs
+    test/ghc-testsuite/codeGen/T2080.hs
+    test/ghc-testsuite/codeGen/T2838.hs
+    test/ghc-testsuite/codeGen/T3207.hs
+    test/ghc-testsuite/codeGen/T3561.hs
+    test/ghc-testsuite/codeGen/T3677.hs
+    test/ghc-testsuite/codeGen/T4441.hs
+    test/ghc-testsuite/codeGen/T5129.hs
+    test/ghc-testsuite/codeGen/T5149.hs
+    test/ghc-testsuite/codeGen/T5626.hs
+    test/ghc-testsuite/codeGen/T5747.hs
+    test/ghc-testsuite/codeGen/T5785.hs
+    test/ghc-testsuite/codeGen/T5900.hs
+    test/ghc-testsuite/codeGen/T6084.hs
+    test/ghc-testsuite/codeGen/T6146.hs
+    test/ghc-testsuite/codeGen/T7163.hs
+    test/ghc-testsuite/codeGen/T7319.hs
+    test/ghc-testsuite/codeGen/T7361.hs
+    test/ghc-testsuite/codeGen/T8256.hs
+    test/ghc-testsuite/codeGen/T9001.hs
+    test/ghc-testsuite/codeGen/T9013.hs
+    test/ghc-testsuite/codeGen/T9340.hs
+    test/ghc-testsuite/codeGen/T9533.hs
+    test/ghc-testsuite/codeGen/T9533b.hs
+    test/ghc-testsuite/codeGen/T9533c.hs
+    test/ghc-testsuite/codeGen/Word2Float32.hs
+    test/ghc-testsuite/codeGen/Word2Float64.hs
+    test/ghc-testsuite/cpranal/CPRRepeat.hs
+    test/ghc-testsuite/deriving/drvrun-foldable1.hs
+    test/ghc-testsuite/deriving/drvrun-functor1.hs
+    test/ghc-testsuite/deriving/drvrun001.hs
+    test/ghc-testsuite/deriving/drvrun002.hs
+    test/ghc-testsuite/deriving/drvrun003.hs
+    test/ghc-testsuite/deriving/drvrun004.hs
+    test/ghc-testsuite/deriving/drvrun005.hs
+    test/ghc-testsuite/deriving/drvrun006.hs
+    test/ghc-testsuite/deriving/drvrun007.hs
+    test/ghc-testsuite/deriving/drvrun008.hs
+    test/ghc-testsuite/deriving/drvrun009.hs
+    test/ghc-testsuite/deriving/drvrun010.hs
+    test/ghc-testsuite/deriving/drvrun011.hs
+    test/ghc-testsuite/deriving/drvrun012.hs
+    test/ghc-testsuite/deriving/drvrun013.hs
+    test/ghc-testsuite/deriving/drvrun014.hs
+    test/ghc-testsuite/deriving/drvrun015.hs
+    test/ghc-testsuite/deriving/drvrun016.hs
+    test/ghc-testsuite/deriving/drvrun017.hs
+    test/ghc-testsuite/deriving/drvrun018.hs
+    test/ghc-testsuite/deriving/drvrun019.hs
+    test/ghc-testsuite/deriving/drvrun020.hs
+    test/ghc-testsuite/deriving/drvrun021.hs
+    test/ghc-testsuite/deriving/T10104.hs
+    test/ghc-testsuite/deriving/T10447.hs
+    test/ghc-testsuite/deriving/T10598_bug.hs
+    test/ghc-testsuite/deriving/T10598_run.hs
+    test/ghc-testsuite/deriving/T11535.hs
+    test/ghc-testsuite/deriving/T14918.hs
+    test/ghc-testsuite/deriving/T2529.hs
+    test/ghc-testsuite/deriving/T4136.hs
+    test/ghc-testsuite/deriving/T4528a.hs
+    test/ghc-testsuite/deriving/T5041.hs
+    test/ghc-testsuite/deriving/T5628.hs
+    test/ghc-testsuite/deriving/T5712.hs
+    test/ghc-testsuite/deriving/T7401.hs
+    test/ghc-testsuite/deriving/T7931.hs
+    test/ghc-testsuite/deriving/T9576.hs
+    test/ghc-testsuite/deSugar/DsLambdaCase.hs
+    test/ghc-testsuite/deSugar/DsMultiWayIf.hs
+    test/ghc-testsuite/deSugar/dsrun001.hs
+    test/ghc-testsuite/deSugar/dsrun002.hs
+    test/ghc-testsuite/deSugar/dsrun003.hs
+    test/ghc-testsuite/deSugar/dsrun004.hs
+    test/ghc-testsuite/deSugar/dsrun005.hs
+    test/ghc-testsuite/deSugar/dsrun006.hs
+    test/ghc-testsuite/deSugar/dsrun007.hs
+    test/ghc-testsuite/deSugar/dsrun008.hs
+    test/ghc-testsuite/deSugar/dsrun009.hs
+    test/ghc-testsuite/deSugar/dsrun010.hs
+    test/ghc-testsuite/deSugar/dsrun011.hs
+    test/ghc-testsuite/deSugar/dsrun012.hs
+    test/ghc-testsuite/deSugar/dsrun013.hs
+    test/ghc-testsuite/deSugar/dsrun014.hs
+    test/ghc-testsuite/deSugar/dsrun015.hs
+    test/ghc-testsuite/deSugar/dsrun016.hs
+    test/ghc-testsuite/deSugar/dsrun017.hs
+    test/ghc-testsuite/deSugar/dsrun018.hs
+    test/ghc-testsuite/deSugar/dsrun019.hs
+    test/ghc-testsuite/deSugar/dsrun020.hs
+    test/ghc-testsuite/deSugar/dsrun021.hs
+    test/ghc-testsuite/deSugar/dsrun022.hs
+    test/ghc-testsuite/deSugar/dsrun023.hs
+    test/ghc-testsuite/deSugar/DsStaticPointers.hs
+    test/ghc-testsuite/deSugar/DsStrict.hs
+    test/ghc-testsuite/deSugar/DsStrictData.hs
+    test/ghc-testsuite/deSugar/DsStrictLet.hs
+    test/ghc-testsuite/deSugar/mc01.hs
+    test/ghc-testsuite/deSugar/mc02.hs
+    test/ghc-testsuite/deSugar/mc03.hs
+    test/ghc-testsuite/deSugar/mc04.hs
+    test/ghc-testsuite/deSugar/mc05.hs
+    test/ghc-testsuite/deSugar/mc06.hs
+    test/ghc-testsuite/deSugar/mc07.hs
+    test/ghc-testsuite/deSugar/mc08.hs
+    test/ghc-testsuite/deSugar/T10215.hs
+    test/ghc-testsuite/deSugar/T11193.hs
+    test/ghc-testsuite/deSugar/T11572.hs
+    test/ghc-testsuite/deSugar/T11601.hs
+    test/ghc-testsuite/deSugar/T11747.hs
+    test/ghc-testsuite/deSugar/T12595.hs
+    test/ghc-testsuite/deSugar/T13285.hs
+    test/ghc-testsuite/deSugar/T246.hs
+    test/ghc-testsuite/deSugar/T3126.hs
+    test/ghc-testsuite/deSugar/T3382.hs
+    test/ghc-testsuite/deSugar/T5742.hs
+    test/ghc-testsuite/deSugar/T8952.hs
+    test/ghc-testsuite/deSugar/T9238.hs
+    test/ghc-testsuite/deSugar/T9844.hs
+    test/ghc-testsuite/gadt/gadt2.hs
+    test/ghc-testsuite/gadt/gadt4.hs
+    test/ghc-testsuite/gadt/gadt5.hs
+    test/ghc-testsuite/gadt/records.hs
+    test/ghc-testsuite/gadt/Session.hs
+    test/ghc-testsuite/gadt/T9380.hs
+    test/ghc-testsuite/gadt/tc.hs
+    test/ghc-testsuite/gadt/type-rep.hs
+    test/ghc-testsuite/gadt/ubx-records.hs
+    test/ghc-testsuite/gadt/while.hs
+    test/ghc-testsuite/generics/GenNewtype.hs
+    test/ghc-testsuite/generics/GFullyStrict.hs
+    test/ghc-testsuite/generics/T10030.hs
+    test/ghc-testsuite/generics/T11358.hs
+    test/ghc-testsuite/indexed-types/GMapAssoc.hs
+    test/ghc-testsuite/indexed-types/GMapTop.hs
+    test/ghc-testsuite/indexed-types/T11465a.hs
+    test/ghc-testsuite/indexed-types/T2985.hs
+    test/ghc-testsuite/indexed-types/T4235.hs
+    test/ghc-testsuite/indexed-types/T5719.hs
+    test/ghc-testsuite/integer/gcdInteger.hs
+    test/ghc-testsuite/integer/integerBits.hs
+    test/ghc-testsuite/integer/integerConstantFolding.hs
+    test/ghc-testsuite/integer/integerConversions.hs
+    test/ghc-testsuite/integer/plusMinusInteger.hs
+    test/ghc-testsuite/mdo/mdorun001.hs
+    test/ghc-testsuite/mdo/mdorun002.hs
+    test/ghc-testsuite/mdo/mdorun003.hs
+    test/ghc-testsuite/mdo/mdorun004.hs
+    test/ghc-testsuite/mdo/mdorun005.hs
+    test/ghc-testsuite/numeric/add2.hs
+    test/ghc-testsuite/numeric/arith001.hs
+    test/ghc-testsuite/numeric/arith002.hs
+    test/ghc-testsuite/numeric/arith003.hs
+    test/ghc-testsuite/numeric/arith004.hs
+    test/ghc-testsuite/numeric/arith005.hs
+    test/ghc-testsuite/numeric/arith006.hs
+    test/ghc-testsuite/numeric/arith007.hs
+    test/ghc-testsuite/numeric/arith008.hs
+    test/ghc-testsuite/numeric/arith009.hs
+    test/ghc-testsuite/numeric/arith010.hs
+    test/ghc-testsuite/numeric/arith011.hs
+    test/ghc-testsuite/numeric/arith012.hs
+    test/ghc-testsuite/numeric/arith013.hs
+    test/ghc-testsuite/numeric/arith014.hs
+    test/ghc-testsuite/numeric/arith015.hs
+    test/ghc-testsuite/numeric/arith016.hs
+    test/ghc-testsuite/numeric/arith017.hs
+    test/ghc-testsuite/numeric/arith018.hs
+    test/ghc-testsuite/numeric/arith019.hs
+    test/ghc-testsuite/numeric/CarryOverflow.hs
+    test/ghc-testsuite/numeric/expfloat.hs
+    test/ghc-testsuite/numeric/FloatFnInverses.hs
+    test/ghc-testsuite/numeric/mul2.hs
+    test/ghc-testsuite/numeric/NumDecimals.hs
+    test/ghc-testsuite/numeric/numrun009.hs
+    test/ghc-testsuite/numeric/numrun010.hs
+    test/ghc-testsuite/numeric/numrun011.hs
+    test/ghc-testsuite/numeric/numrun012.hs
+    test/ghc-testsuite/numeric/numrun013.hs
+    test/ghc-testsuite/numeric/numrun014.hs
+    test/ghc-testsuite/numeric/numrun015.hs
+    test/ghc-testsuite/numeric/numrun016.hs
+    test/ghc-testsuite/numeric/quotRem2.hs
+    test/ghc-testsuite/numeric/T10011.hs
+    test/ghc-testsuite/numeric/T10962.hs
+    test/ghc-testsuite/numeric/T11702.hs
+    test/ghc-testsuite/numeric/T12136.hs
+    test/ghc-testsuite/numeric/T15271.hs
+    test/ghc-testsuite/numeric/T15301.hs
+    test/ghc-testsuite/numeric/T1603.hs
+    test/ghc-testsuite/numeric/T4381.hs
+    test/ghc-testsuite/numeric/T4383.hs
+    test/ghc-testsuite/numeric/T5863.hs
+    test/ghc-testsuite/numeric/T7014.hs
+    test/ghc-testsuite/numeric/T7233.hs
+    test/ghc-testsuite/numeric/T8726.hs
+    test/ghc-testsuite/numeric/T9407.hs
+    test/ghc-testsuite/numeric/T9810.hs
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun01.hs
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun02.hs
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun03.hs
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun04.hs
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun05.hs
+    test/ghc-testsuite/overloadedrecflds/hasfieldrun01.hs
+    test/ghc-testsuite/overloadedrecflds/hasfieldrun02.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedlabelsrun01.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedlabelsrun02.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedlabelsrun03.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedrecflds_generics.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun01.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun03.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun04.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun05.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun06.hs
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun07.hs
+    test/ghc-testsuite/overloadedrecflds/T12243.hs
+    test/ghc-testsuite/overloadedstrings/overloadedstringsrun01.hs
+    test/ghc-testsuite/parser/BinaryLiterals0.hs
+    test/ghc-testsuite/parser/BinaryLiterals1.hs
+    test/ghc-testsuite/parser/BinaryLiterals2.hs
+    test/ghc-testsuite/parser/HexFloatLiterals.hs
+    test/ghc-testsuite/parser/NegativeZero.hs
+    test/ghc-testsuite/parser/NumericUnderscores0.hs
+    test/ghc-testsuite/parser/NumericUnderscores1.hs
+    test/ghc-testsuite/parser/operator.hs
+    test/ghc-testsuite/parser/operator2.hs
+    test/ghc-testsuite/parser/ParserMultiWayIf.hs
+    test/ghc-testsuite/parser/readRun001.hs
+    test/ghc-testsuite/parser/readRun002.hs
+    test/ghc-testsuite/parser/readRun003.hs
+    test/ghc-testsuite/parser/readRun004.hs
+    test/ghc-testsuite/parser/T10807.hs
+    test/ghc-testsuite/parser/T1344.hs
+    test/ghc-testsuite/patsyn/bidir-explicit-scope.hs
+    test/ghc-testsuite/patsyn/bidir-explicit.hs
+    test/ghc-testsuite/patsyn/eval.hs
+    test/ghc-testsuite/patsyn/ex-prov-run.hs
+    test/ghc-testsuite/patsyn/match-unboxed.hs
+    test/ghc-testsuite/patsyn/match.hs
+    test/ghc-testsuite/patsyn/records-run.hs
+    test/ghc-testsuite/patsyn/T11224.hs
+    test/ghc-testsuite/patsyn/T14228.hs
+    test/ghc-testsuite/patsyn/T9783.hs
+    test/ghc-testsuite/patsyn/unboxed-wrapper.hs
+    test/ghc-testsuite/perf/Conversions.hs
+    test/ghc-testsuite/perf/DeriveNull.hs
+    test/ghc-testsuite/perf/DeriveNullTermination.hs
+    test/ghc-testsuite/perf/InlineArrayAlloc.hs
+    test/ghc-testsuite/perf/InlineByteArrayAlloc.hs
+    test/ghc-testsuite/perf/InlineCloneArrayAlloc.hs
+    test/ghc-testsuite/perf/lazy-bs-alloc.hs
+    test/ghc-testsuite/perf/MethSharing.hs
+    test/ghc-testsuite/perf/T10359.hs
+    test/ghc-testsuite/perf/T12791.hs
+    test/ghc-testsuite/perf/T12990.hs
+    test/ghc-testsuite/perf/T12996.hs
+    test/ghc-testsuite/perf/T13001.hs
+    test/ghc-testsuite/perf/T13218.hs
+    test/ghc-testsuite/perf/T13623.hs
+    test/ghc-testsuite/perf/T14936.hs
+    test/ghc-testsuite/perf/T149_A.hs
+    test/ghc-testsuite/perf/T149_B.hs
+    test/ghc-testsuite/perf/T15226.hs
+    test/ghc-testsuite/perf/T15226a.hs
+    test/ghc-testsuite/perf/T15263.hs
+    test/ghc-testsuite/perf/T15426.hs
+    test/ghc-testsuite/perf/T3245.hs
+    test/ghc-testsuite/perf/T3586.hs
+    test/ghc-testsuite/perf/T3736.hs
+    test/ghc-testsuite/perf/T4267.hs
+    test/ghc-testsuite/perf/T4321.hs
+    test/ghc-testsuite/perf/T4474a.hs
+    test/ghc-testsuite/perf/T4474b.hs
+    test/ghc-testsuite/perf/T4474c.hs
+    test/ghc-testsuite/perf/T4830.hs
+    test/ghc-testsuite/perf/T4978.hs
+    test/ghc-testsuite/perf/T5113.hs
+    test/ghc-testsuite/perf/T5205.hs
+    test/ghc-testsuite/perf/T5237.hs
+    test/ghc-testsuite/perf/T5536.hs
+    test/ghc-testsuite/perf/T5835.hs
+    test/ghc-testsuite/perf/T5949.hs
+    test/ghc-testsuite/perf/T7257.hs
+    test/ghc-testsuite/perf/T7436.hs
+    test/ghc-testsuite/perf/T7507.hs
+    test/ghc-testsuite/perf/T7619.hs
+    test/ghc-testsuite/perf/T7850.hs
+    test/ghc-testsuite/perf/T7954.hs
+    test/ghc-testsuite/perf/T8472.hs
+    test/ghc-testsuite/perf/T876.hs
+    test/ghc-testsuite/perf/T8763.hs
+    test/ghc-testsuite/perf/T9203.hs
+    test/ghc-testsuite/perf/T9339.hs
+    test/ghc-testsuite/polykinds/Freeman.hs
+    test/ghc-testsuite/polykinds/MonoidsFD.hs
+    test/ghc-testsuite/polykinds/MonoidsTF.hs
+    test/ghc-testsuite/polykinds/PolyKinds09.hs
+    test/ghc-testsuite/polykinds/PolyKinds10.hs
+    test/ghc-testsuite/primops/ArithInt16.hs
+    test/ghc-testsuite/primops/ArithInt8.hs
+    test/ghc-testsuite/primops/ArithWord16.hs
+    test/ghc-testsuite/primops/ArithWord8.hs
+    test/ghc-testsuite/primops/CmpInt16.hs
+    test/ghc-testsuite/primops/CmpInt8.hs
+    test/ghc-testsuite/primops/CmpWord16.hs
+    test/ghc-testsuite/primops/CmpWord8.hs
+    test/ghc-testsuite/primops/ShowPrim.hs
+    test/ghc-testsuite/primops/T10481.hs
+    test/ghc-testsuite/primops/T10678.hs
+    test/ghc-testsuite/primops/T11296.hs
+    test/ghc-testsuite/primops/T13825-compile.hs
+    test/ghc-testsuite/primops/T16164.hs
+    test/ghc-testsuite/primops/T4442.hs
+    test/ghc-testsuite/primops/T6135.hs
+    test/ghc-testsuite/primops/T7689.hs
+    test/ghc-testsuite/primops/T9430.hs
+    test/ghc-testsuite/rebindable/rebindable10.hs
+    test/ghc-testsuite/rebindable/rebindable2.hs
+    test/ghc-testsuite/rebindable/rebindable3.hs
+    test/ghc-testsuite/rebindable/rebindable4.hs
+    test/ghc-testsuite/rebindable/rebindable5.hs
+    test/ghc-testsuite/rebindable/rebindable7.hs
+    test/ghc-testsuite/rebindable/RebindableFailA.hs
+    test/ghc-testsuite/rebindable/RebindableFailB.hs
+    test/ghc-testsuite/rebindable/T5038.hs
+    test/ghc-testsuite/rts/alloccounter1.hs
+    test/ghc-testsuite/rts/bug1010.hs
+    test/ghc-testsuite/rts/derefnull.hs
+    test/ghc-testsuite/rts/divbyzero.hs
+    test/ghc-testsuite/rts/EventlogOutput.hs
+    test/ghc-testsuite/rts/ffishutdown.hs
+    test/ghc-testsuite/rts/GcStaticPointers.hs
+    test/ghc-testsuite/rts/ListStaticPointers.hs
+    test/ghc-testsuite/rts/numa001.hs
+    test/ghc-testsuite/rts/nursery-chunks1.hs
+    test/ghc-testsuite/rts/outofmem.hs
+    test/ghc-testsuite/rts/outofmem2.hs
+    test/ghc-testsuite/rts/overflow1.hs
+    test/ghc-testsuite/rts/overflow2.hs
+    test/ghc-testsuite/rts/overflow3.hs
+    test/ghc-testsuite/rts/return_mem_to_os.hs
+    test/ghc-testsuite/rts/rtsflags001.hs
+    test/ghc-testsuite/rts/rtsflags002.hs
+    test/ghc-testsuite/rts/stablename001.hs
+    test/ghc-testsuite/rts/stack001.hs
+    test/ghc-testsuite/rts/stack002.hs
+    test/ghc-testsuite/rts/stack003.hs
+    test/ghc-testsuite/rts/stack004.hs
+    test/ghc-testsuite/rts/T10017.hs
+    test/ghc-testsuite/rts/T10296a.hs
+    test/ghc-testsuite/rts/T10296b.hs
+    test/ghc-testsuite/rts/T10590.hs
+    test/ghc-testsuite/rts/T10728.hs
+    test/ghc-testsuite/rts/T10904.hs
+    test/ghc-testsuite/rts/T11108.hs
+    test/ghc-testsuite/rts/T11788.hs
+    test/ghc-testsuite/rts/T12497.hs
+    test/ghc-testsuite/rts/T12903.hs
+    test/ghc-testsuite/rts/T13287.hs
+    test/ghc-testsuite/rts/T13617.hs
+    test/ghc-testsuite/rts/T13832.hs
+    test/ghc-testsuite/rts/T13894.hs
+    test/ghc-testsuite/rts/T14497.hs
+    test/ghc-testsuite/rts/T14702.hs
+    test/ghc-testsuite/rts/T15261a.hs
+    test/ghc-testsuite/rts/T15261b.hs
+    test/ghc-testsuite/rts/T2047.hs
+    test/ghc-testsuite/rts/T2783.hs
+    test/ghc-testsuite/rts/T4059.hs
+    test/ghc-testsuite/rts/T4850.hs
+    test/ghc-testsuite/rts/T5250.hs
+    test/ghc-testsuite/rts/T5423.hs
+    test/ghc-testsuite/rts/T5435.hs
+    test/ghc-testsuite/rts/T5993.hs
+    test/ghc-testsuite/rts/T7037.hs
+    test/ghc-testsuite/rts/T7040.hs
+    test/ghc-testsuite/rts/T7040_ghci.hs
+    test/ghc-testsuite/rts/T7087.hs
+    test/ghc-testsuite/rts/T7160.hs
+    test/ghc-testsuite/rts/T7227.hs
+    test/ghc-testsuite/rts/T7636.hs
+    test/ghc-testsuite/rts/T7815.hs
+    test/ghc-testsuite/rts/T8035.hs
+    test/ghc-testsuite/rts/T8209.hs
+    test/ghc-testsuite/rts/T8242.hs
+    test/ghc-testsuite/rts/T8308.hs
+    test/ghc-testsuite/rts/T9045.hs
+    test/ghc-testsuite/rts/T9078.hs
+    test/ghc-testsuite/rts/T9405.hs
+    test/ghc-testsuite/rts/T9839_01.hs
+    test/ghc-testsuite/rts/T9839_02.hs
+    test/ghc-testsuite/rts/T9839_03.hs
+    test/ghc-testsuite/rts/T9839_04.hs
+    test/ghc-testsuite/rts/T9839_05.hs
+    test/ghc-testsuite/rts/T9839_06.hs
+    test/ghc-testsuite/rts/traceBinaryEvent.hs
+    test/ghc-testsuite/rts/traceEvent.hs
+    test/ghc-testsuite/safeHaskell/SafeLang04.hs
+    test/ghc-testsuite/safeHaskell/SafeLang05.hs
+    test/ghc-testsuite/simplCore/AmapCoerce.hs
+    test/ghc-testsuite/simplCore/runST.hs
+    test/ghc-testsuite/simplCore/SeqRule.hs
+    test/ghc-testsuite/simplCore/simplrun001.hs
+    test/ghc-testsuite/simplCore/simplrun002.hs
+    test/ghc-testsuite/simplCore/simplrun003.hs
+    test/ghc-testsuite/simplCore/simplrun004.hs
+    test/ghc-testsuite/simplCore/simplrun005.hs
+    test/ghc-testsuite/simplCore/simplrun007.hs
+    test/ghc-testsuite/simplCore/simplrun008.hs
+    test/ghc-testsuite/simplCore/simplrun009.hs
+    test/ghc-testsuite/simplCore/simplrun010.hs
+    test/ghc-testsuite/simplCore/simplrun011.hs
+    test/ghc-testsuite/simplCore/T10830.hs
+    test/ghc-testsuite/simplCore/T11172.hs
+    test/ghc-testsuite/simplCore/T11731.hs
+    test/ghc-testsuite/simplCore/T12689a.hs
+    test/ghc-testsuite/simplCore/T12689broken.hs
+    test/ghc-testsuite/simplCore/T13172.hs
+    test/ghc-testsuite/simplCore/T13227.hs
+    test/ghc-testsuite/simplCore/T13733.hs
+    test/ghc-testsuite/simplCore/T14178.hs
+    test/ghc-testsuite/simplCore/T14868.hs
+    test/ghc-testsuite/simplCore/T14894.hs
+    test/ghc-testsuite/simplCore/T15114.hs
+    test/ghc-testsuite/simplCore/T15436.hs
+    test/ghc-testsuite/simplCore/T15840.hs
+    test/ghc-testsuite/simplCore/T15840a.hs
+    test/ghc-testsuite/simplCore/T16208.hs
+    test/ghc-testsuite/simplCore/T2110.hs
+    test/ghc-testsuite/simplCore/T2486.hs
+    test/ghc-testsuite/simplCore/T2756.hs
+    test/ghc-testsuite/simplCore/T3403.hs
+    test/ghc-testsuite/simplCore/T3437.hs
+    test/ghc-testsuite/simplCore/T3591.hs
+    test/ghc-testsuite/simplCore/T3959.hs
+    test/ghc-testsuite/simplCore/T457.hs
+    test/ghc-testsuite/simplCore/T4814.hs
+    test/ghc-testsuite/simplCore/T5315.hs
+    test/ghc-testsuite/simplCore/T5453.hs
+    test/ghc-testsuite/simplCore/T5587.hs
+    test/ghc-testsuite/simplCore/T5625.hs
+    test/ghc-testsuite/simplCore/T5915.hs
+    test/ghc-testsuite/simplCore/T5920.hs
+    test/ghc-testsuite/simplCore/T5997.hs
+    test/ghc-testsuite/simplCore/T7101.hs
+    test/ghc-testsuite/simplCore/T7611.hs
+    test/ghc-testsuite/simplCore/T7924.hs
+    test/ghc-testsuite/simplCore/T9128.hs
+    test/ghc-testsuite/simplCore/T9390.hs
+    test/ghc-testsuite/simplStg/T13536.hs
+    test/ghc-testsuite/simplStg/T13536a.hs
+    test/ghc-testsuite/simplStg/T9291.hs
+    test/ghc-testsuite/strAnal/strun001.hs
+    test/ghc-testsuite/strAnal/strun002.hs
+    test/ghc-testsuite/strAnal/strun003.hs
+    test/ghc-testsuite/strAnal/strun004.hs
+    test/ghc-testsuite/strAnal/T10148.hs
+    test/ghc-testsuite/strAnal/T10218.hs
+    test/ghc-testsuite/strAnal/T11555a.hs
+    test/ghc-testsuite/strAnal/T12368.hs
+    test/ghc-testsuite/strAnal/T12368a.hs
+    test/ghc-testsuite/strAnal/T13380.hs
+    test/ghc-testsuite/strAnal/T14290.hs
+    test/ghc-testsuite/strAnal/T16197.hs
+    test/ghc-testsuite/strAnal/T2756b.hs
+    test/ghc-testsuite/strAnal/T7649.hs
+    test/ghc-testsuite/strAnal/T9254.hs
+    test/ghc-testsuite/typecheck/church.hs
+    test/ghc-testsuite/typecheck/Defer01.hs
+    test/ghc-testsuite/typecheck/EtaExpandLevPoly.hs
+    test/ghc-testsuite/typecheck/IPLocation.hs
+    test/ghc-testsuite/typecheck/IPRun.hs
+    test/ghc-testsuite/typecheck/mc17.hs
+    test/ghc-testsuite/typecheck/StrictPats.hs
+    test/ghc-testsuite/typecheck/T10284.hs
+    test/ghc-testsuite/typecheck/T10845.hs
+    test/ghc-testsuite/typecheck/T10846.hs
+    test/ghc-testsuite/typecheck/T11049.hs
+    test/ghc-testsuite/typecheck/T11120.hs
+    test/ghc-testsuite/typecheck/T11230.hs
+    test/ghc-testsuite/typecheck/T11715.hs
+    test/ghc-testsuite/typecheck/T12809.hs
+    test/ghc-testsuite/typecheck/T13435.hs
+    test/ghc-testsuite/typecheck/T13838.hs
+    test/ghc-testsuite/typecheck/T14218.hs
+    test/ghc-testsuite/typecheck/T14236.hs
+    test/ghc-testsuite/typecheck/T14341.hs
+    test/ghc-testsuite/typecheck/T14925.hs
+    test/ghc-testsuite/typecheck/T1624.hs
+    test/ghc-testsuite/typecheck/T2722.hs
+    test/ghc-testsuite/typecheck/T3500a.hs
+    test/ghc-testsuite/typecheck/T3500b.hs
+    test/ghc-testsuite/typecheck/T3731-short.hs
+    test/ghc-testsuite/typecheck/T3731.hs
+    test/ghc-testsuite/typecheck/T5573a.hs
+    test/ghc-testsuite/typecheck/T5573b.hs
+    test/ghc-testsuite/typecheck/T5751.hs
+    test/ghc-testsuite/typecheck/T5759.hs
+    test/ghc-testsuite/typecheck/T5913.hs
+    test/ghc-testsuite/typecheck/T6117.hs
+    test/ghc-testsuite/typecheck/T7023.hs
+    test/ghc-testsuite/typecheck/T7126.hs
+    test/ghc-testsuite/typecheck/T7748.hs
+    test/ghc-testsuite/typecheck/T7861.hs
+    test/ghc-testsuite/typecheck/T8492.hs
+    test/ghc-testsuite/typecheck/T8739.hs
+    test/ghc-testsuite/typecheck/T9858c.hs
+    test/ghc-testsuite/typecheck/T9858d.hs
+    test/ghc-testsuite/typecheck/TcCoercible.hs
+    test/ghc-testsuite/typecheck/TcNullaryTC.hs
+    test/ghc-testsuite/typecheck/tcrun001.hs
+    test/ghc-testsuite/typecheck/tcrun002.hs
+    test/ghc-testsuite/typecheck/tcrun003.hs
+    test/ghc-testsuite/typecheck/tcrun004.hs
+    test/ghc-testsuite/typecheck/tcrun005.hs
+    test/ghc-testsuite/typecheck/tcrun006.hs
+    test/ghc-testsuite/typecheck/tcrun008.hs
+    test/ghc-testsuite/typecheck/tcrun009.hs
+    test/ghc-testsuite/typecheck/tcrun010.hs
+    test/ghc-testsuite/typecheck/tcrun011.hs
+    test/ghc-testsuite/typecheck/tcrun012.hs
+    test/ghc-testsuite/typecheck/tcrun013.hs
+    test/ghc-testsuite/typecheck/tcrun014.hs
+    test/ghc-testsuite/typecheck/tcrun015.hs
+    test/ghc-testsuite/typecheck/tcrun016.hs
+    test/ghc-testsuite/typecheck/tcrun017.hs
+    test/ghc-testsuite/typecheck/tcrun018.hs
+    test/ghc-testsuite/typecheck/tcrun019.hs
+    test/ghc-testsuite/typecheck/tcrun020.hs
+    test/ghc-testsuite/typecheck/tcrun021.hs
+    test/ghc-testsuite/typecheck/tcrun022.hs
+    test/ghc-testsuite/typecheck/tcrun023.hs
+    test/ghc-testsuite/typecheck/tcrun024.hs
+    test/ghc-testsuite/typecheck/tcrun026.hs
+    test/ghc-testsuite/typecheck/tcrun027.hs
+    test/ghc-testsuite/typecheck/tcrun028.hs
+    test/ghc-testsuite/typecheck/tcrun029.hs
+    test/ghc-testsuite/typecheck/tcrun030.hs
+    test/ghc-testsuite/typecheck/tcrun031.hs
+    test/ghc-testsuite/typecheck/tcrun032.hs
+    test/ghc-testsuite/typecheck/tcrun033.hs
+    test/ghc-testsuite/typecheck/tcrun034.hs
+    test/ghc-testsuite/typecheck/tcrun035.hs
+    test/ghc-testsuite/typecheck/tcrun036.hs
+    test/ghc-testsuite/typecheck/tcrun037.hs
+    test/ghc-testsuite/typecheck/tcrun039.hs
+    test/ghc-testsuite/typecheck/tcrun040.hs
+    test/ghc-testsuite/typecheck/tcrun041.hs
+    test/ghc-testsuite/typecheck/tcrun043.hs
+    test/ghc-testsuite/typecheck/tcrun044.hs
+    test/ghc-testsuite/typecheck/tcrun046.hs
+    test/ghc-testsuite/typecheck/tcrun047.hs
+    test/ghc-testsuite/typecheck/tcrun048.hs
+    test/ghc-testsuite/typecheck/tcrun049.hs
+    test/ghc-testsuite/typecheck/tcrun050.hs
+    test/ghc-testsuite/typecheck/tcrun051.hs
+    test/ghc-testsuite/typecheck/TcTypeNatSimpleRun.hs
+    test/ghc-testsuite/typecheck/TcTypeSymbolSimpleRun.hs
+    test/ghc-testsuite/typecheck/testeq2.hs
+    test/ghc-testsuite/typecheck/TestTypeableBinary.hs
+    test/ghc-testsuite/typecheck/Typeable1.hs
+    test/ghc-testsuite/typecheck/TypeableEq.hs
+    test/ghc-testsuite/typecheck/TypeOf.hs
+    test/ghc-testsuite/typecheck/TypeRep.hs
+    test/ghc-testsuite/unboxedsums/empty_sum.hs
+    test/ghc-testsuite/unboxedsums/T12375.hs
+    test/ghc-testsuite/unboxedsums/thunk.hs
+    test/ghc-testsuite/unboxedsums/unarise.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums1.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums10.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums11.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums2.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums3.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums6.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums7.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums8.hs
+    test/ghc-testsuite/unboxedsums/unboxedsums9.hs
+    test/ghc-testsuite/ado/ado-optimal.stdout
+    test/ghc-testsuite/ado/ado001.stdout
+    test/ghc-testsuite/ado/T11607.stdout
+    test/ghc-testsuite/array/arr001.stdout
+    test/ghc-testsuite/array/arr002.stdout
+    test/ghc-testsuite/array/arr005.stdout
+    test/ghc-testsuite/array/arr006.stdout
+    test/ghc-testsuite/array/arr008.stdout
+    test/ghc-testsuite/array/arr009.stdout
+    test/ghc-testsuite/array/arr010.stdout
+    test/ghc-testsuite/array/arr011.stdout
+    test/ghc-testsuite/array/arr012.stdout
+    test/ghc-testsuite/array/arr013.stdout
+    test/ghc-testsuite/array/arr015.stdout
+    test/ghc-testsuite/array/arr017.stdout
+    test/ghc-testsuite/array/arr018.stdout
+    test/ghc-testsuite/array/arr019.stdout
+    test/ghc-testsuite/array/arr020.stdout
+    test/ghc-testsuite/arrows/arrowrun001.stdout
+    test/ghc-testsuite/arrows/arrowrun002.stdout
+    test/ghc-testsuite/arrows/arrowrun003.stdout
+    test/ghc-testsuite/arrows/arrowrun004.stdout
+    test/ghc-testsuite/arrows/T3822.stdout
+    test/ghc-testsuite/boxy/T2193.stdout
+    test/ghc-testsuite/codeGen/castFloatWord.stdout
+    test/ghc-testsuite/codeGen/cgrun001.stdout
+    test/ghc-testsuite/codeGen/cgrun002.stdout
+    test/ghc-testsuite/codeGen/cgrun003.stdout
+    test/ghc-testsuite/codeGen/cgrun004.stdout
+    test/ghc-testsuite/codeGen/cgrun005.stdout
+    test/ghc-testsuite/codeGen/cgrun006.stdout
+    test/ghc-testsuite/codeGen/cgrun007.stdout
+    test/ghc-testsuite/codeGen/cgrun008.stdout
+    test/ghc-testsuite/codeGen/cgrun009.stdout
+    test/ghc-testsuite/codeGen/cgrun010.stdout
+    test/ghc-testsuite/codeGen/cgrun011.stdout
+    test/ghc-testsuite/codeGen/cgrun012.stdout
+    test/ghc-testsuite/codeGen/cgrun013.stdout
+    test/ghc-testsuite/codeGen/cgrun014.stdout
+    test/ghc-testsuite/codeGen/cgrun015.stdout
+    test/ghc-testsuite/codeGen/cgrun017.stdout
+    test/ghc-testsuite/codeGen/cgrun018.stdout
+    test/ghc-testsuite/codeGen/cgrun019.stdout
+    test/ghc-testsuite/codeGen/cgrun020.stdout
+    test/ghc-testsuite/codeGen/cgrun021.stdout
+    test/ghc-testsuite/codeGen/cgrun022.stdout
+    test/ghc-testsuite/codeGen/cgrun023.stdout
+    test/ghc-testsuite/codeGen/cgrun024.stdout
+    test/ghc-testsuite/codeGen/cgrun026.stdout
+    test/ghc-testsuite/codeGen/cgrun027.stdout
+    test/ghc-testsuite/codeGen/cgrun028.stdout
+    test/ghc-testsuite/codeGen/cgrun031.stdout
+    test/ghc-testsuite/codeGen/cgrun032.stdout
+    test/ghc-testsuite/codeGen/cgrun033.stdout
+    test/ghc-testsuite/codeGen/cgrun034.stdout
+    test/ghc-testsuite/codeGen/cgrun035.stdout
+    test/ghc-testsuite/codeGen/cgrun036.stdout
+    test/ghc-testsuite/codeGen/cgrun037.stdout
+    test/ghc-testsuite/codeGen/cgrun039.stdout
+    test/ghc-testsuite/codeGen/cgrun040.stdout
+    test/ghc-testsuite/codeGen/cgrun044.stdout
+    test/ghc-testsuite/codeGen/cgrun046.stdout
+    test/ghc-testsuite/codeGen/cgrun047.stdout
+    test/ghc-testsuite/codeGen/cgrun048.stdout
+    test/ghc-testsuite/codeGen/cgrun049.stdout
+    test/ghc-testsuite/codeGen/cgrun050.stdout
+    test/ghc-testsuite/codeGen/cgrun052.stdout
+    test/ghc-testsuite/codeGen/cgrun054.stdout
+    test/ghc-testsuite/codeGen/cgrun055.stdout
+    test/ghc-testsuite/codeGen/cgrun056.stdout
+    test/ghc-testsuite/codeGen/cgrun058.stdout
+    test/ghc-testsuite/codeGen/cgrun059.stdout
+    test/ghc-testsuite/codeGen/cgrun060.stdout
+    test/ghc-testsuite/codeGen/cgrun061.stdout
+    test/ghc-testsuite/codeGen/cgrun062.stdout
+    test/ghc-testsuite/codeGen/cgrun063.stdout
+    test/ghc-testsuite/codeGen/cgrun064.stdout
+    test/ghc-testsuite/codeGen/cgrun065.stdout
+    test/ghc-testsuite/codeGen/cgrun066.stdout
+    test/ghc-testsuite/codeGen/cgrun069.stdout
+    test/ghc-testsuite/codeGen/cgrun070.stdout
+    test/ghc-testsuite/codeGen/cgrun071.stdout
+    test/ghc-testsuite/codeGen/cgrun072.stdout
+    test/ghc-testsuite/codeGen/cgrun074.stdout
+    test/ghc-testsuite/codeGen/cgrun075.stdout
+    test/ghc-testsuite/codeGen/cgrun076.stdout
+    test/ghc-testsuite/codeGen/cgrun077.stdout
+    test/ghc-testsuite/codeGen/CgStaticPointers.stdout
+    test/ghc-testsuite/codeGen/CgStaticPointersNoFullLazyness.stdout
+    test/ghc-testsuite/codeGen/compareByteArrays.stdout
+    test/ghc-testsuite/codeGen/CopySmallArray.stdout
+    test/ghc-testsuite/codeGen/PopCnt.stdout
+    test/ghc-testsuite/codeGen/setByteArray.stdout
+    test/ghc-testsuite/codeGen/SizeOfSmallArray.stdout
+    test/ghc-testsuite/codeGen/StaticArraySize.stdout
+    test/ghc-testsuite/codeGen/StaticByteArraySize.stdout
+    test/ghc-testsuite/codeGen/T10246.stdout
+    test/ghc-testsuite/codeGen/T10414.stdout
+    test/ghc-testsuite/codeGen/T10521.stdout
+    test/ghc-testsuite/codeGen/T10521b.stdout
+    test/ghc-testsuite/codeGen/T10870.stdout
+    test/ghc-testsuite/codeGen/T12059.stdout
+    test/ghc-testsuite/codeGen/T12433.stdout
+    test/ghc-testsuite/codeGen/T12757.stdout
+    test/ghc-testsuite/codeGen/T13425.stdout
+    test/ghc-testsuite/codeGen/T14251.stdout
+    test/ghc-testsuite/codeGen/T14619.stdout
+    test/ghc-testsuite/codeGen/T14754.stdout
+    test/ghc-testsuite/codeGen/T15696_1.stdout
+    test/ghc-testsuite/codeGen/T15696_2.stdout
+    test/ghc-testsuite/codeGen/T15696_3.stdout
+    test/ghc-testsuite/codeGen/T1852.stdout
+    test/ghc-testsuite/codeGen/T1861.stdout
+    test/ghc-testsuite/codeGen/T2080.stdout
+    test/ghc-testsuite/codeGen/T2838.stdout
+    test/ghc-testsuite/codeGen/T3207.stdout
+    test/ghc-testsuite/codeGen/T3561.stdout
+    test/ghc-testsuite/codeGen/T3677.stdout
+    test/ghc-testsuite/codeGen/T4441.stdout
+    test/ghc-testsuite/codeGen/T5149.stdout
+    test/ghc-testsuite/codeGen/T5747.stdout
+    test/ghc-testsuite/codeGen/T5785.stdout
+    test/ghc-testsuite/codeGen/T5900.stdout
+    test/ghc-testsuite/codeGen/T6084.stdout
+    test/ghc-testsuite/codeGen/T6146.stdout
+    test/ghc-testsuite/codeGen/T7163.stdout
+    test/ghc-testsuite/codeGen/T7361.stdout
+    test/ghc-testsuite/codeGen/T8256.stdout
+    test/ghc-testsuite/codeGen/T9001.stdout
+    test/ghc-testsuite/codeGen/T9013.stdout
+    test/ghc-testsuite/codeGen/T9340.stdout
+    test/ghc-testsuite/codeGen/T9533.stdout
+    test/ghc-testsuite/codeGen/T9533b.stdout
+    test/ghc-testsuite/codeGen/T9533c.stdout
+    test/ghc-testsuite/codeGen/Word2Float32.stdout
+    test/ghc-testsuite/codeGen/Word2Float64.stdout
+    test/ghc-testsuite/cpranal/CPRRepeat.stdout
+    test/ghc-testsuite/deriving/drvrun-foldable1.stdout
+    test/ghc-testsuite/deriving/drvrun-functor1.stdout
+    test/ghc-testsuite/deriving/drvrun001.stdout
+    test/ghc-testsuite/deriving/drvrun002.stdout
+    test/ghc-testsuite/deriving/drvrun003.stdout
+    test/ghc-testsuite/deriving/drvrun004.stdout
+    test/ghc-testsuite/deriving/drvrun005.stdout
+    test/ghc-testsuite/deriving/drvrun006.stdout
+    test/ghc-testsuite/deriving/drvrun007.stdout
+    test/ghc-testsuite/deriving/drvrun008.stdout
+    test/ghc-testsuite/deriving/drvrun009.stdout
+    test/ghc-testsuite/deriving/drvrun010.stdout
+    test/ghc-testsuite/deriving/drvrun011.stdout
+    test/ghc-testsuite/deriving/drvrun012.stdout
+    test/ghc-testsuite/deriving/drvrun013.stdout
+    test/ghc-testsuite/deriving/drvrun014.stdout
+    test/ghc-testsuite/deriving/drvrun015.stdout
+    test/ghc-testsuite/deriving/drvrun016.stdout
+    test/ghc-testsuite/deriving/drvrun017.stdout
+    test/ghc-testsuite/deriving/drvrun018.stdout
+    test/ghc-testsuite/deriving/drvrun019.stdout
+    test/ghc-testsuite/deriving/drvrun020.stdout
+    test/ghc-testsuite/deriving/drvrun021.stdout
+    test/ghc-testsuite/deriving/T10104.stdout
+    test/ghc-testsuite/deriving/T10447.stdout
+    test/ghc-testsuite/deriving/T10598_bug.stdout
+    test/ghc-testsuite/deriving/T10598_run.stdout
+    test/ghc-testsuite/deriving/T11535.stdout
+    test/ghc-testsuite/deriving/T14918.stdout
+    test/ghc-testsuite/deriving/T2529.stdout
+    test/ghc-testsuite/deriving/T4136.stdout
+    test/ghc-testsuite/deriving/T4528a.stdout
+    test/ghc-testsuite/deriving/T5041.stdout
+    test/ghc-testsuite/deriving/T5628.stdout
+    test/ghc-testsuite/deriving/T5712.stdout
+    test/ghc-testsuite/deriving/T7401.stdout
+    test/ghc-testsuite/deriving/T7931.stdout
+    test/ghc-testsuite/deriving/T9576.stdout
+    test/ghc-testsuite/deSugar/DsLambdaCase.stdout
+    test/ghc-testsuite/deSugar/DsMultiWayIf.stdout
+    test/ghc-testsuite/deSugar/dsrun001.stdout
+    test/ghc-testsuite/deSugar/dsrun002.stdout
+    test/ghc-testsuite/deSugar/dsrun003.stdout
+    test/ghc-testsuite/deSugar/dsrun004.stdout
+    test/ghc-testsuite/deSugar/dsrun006.stdout
+    test/ghc-testsuite/deSugar/dsrun009.stdout
+    test/ghc-testsuite/deSugar/dsrun010.stdout
+    test/ghc-testsuite/deSugar/dsrun011.stdout
+    test/ghc-testsuite/deSugar/dsrun012.stdout
+    test/ghc-testsuite/deSugar/dsrun013.stdout
+    test/ghc-testsuite/deSugar/dsrun014.stdout
+    test/ghc-testsuite/deSugar/dsrun015.stdout
+    test/ghc-testsuite/deSugar/dsrun016.stdout
+    test/ghc-testsuite/deSugar/dsrun017.stdout
+    test/ghc-testsuite/deSugar/dsrun018.stdout
+    test/ghc-testsuite/deSugar/dsrun019.stdout
+    test/ghc-testsuite/deSugar/dsrun020.stdout
+    test/ghc-testsuite/deSugar/dsrun021.stdout
+    test/ghc-testsuite/deSugar/dsrun022.stdout
+    test/ghc-testsuite/deSugar/dsrun023.stdout
+    test/ghc-testsuite/deSugar/DsStaticPointers.stdout
+    test/ghc-testsuite/deSugar/DsStrict.stdout
+    test/ghc-testsuite/deSugar/DsStrictData.stdout
+    test/ghc-testsuite/deSugar/mc01.stdout
+    test/ghc-testsuite/deSugar/mc02.stdout
+    test/ghc-testsuite/deSugar/mc03.stdout
+    test/ghc-testsuite/deSugar/mc04.stdout
+    test/ghc-testsuite/deSugar/mc05.stdout
+    test/ghc-testsuite/deSugar/mc06.stdout
+    test/ghc-testsuite/deSugar/mc07.stdout
+    test/ghc-testsuite/deSugar/mc08.stdout
+    test/ghc-testsuite/deSugar/T10215.stdout
+    test/ghc-testsuite/deSugar/T11747.stdout
+    test/ghc-testsuite/deSugar/T12595.stdout
+    test/ghc-testsuite/deSugar/T13285.stdout
+    test/ghc-testsuite/deSugar/T246.stdout
+    test/ghc-testsuite/deSugar/T3126.stdout
+    test/ghc-testsuite/deSugar/T3382.stdout
+    test/ghc-testsuite/deSugar/T5742.stdout
+    test/ghc-testsuite/deSugar/T8952.stdout
+    test/ghc-testsuite/deSugar/T9238.stdout
+    test/ghc-testsuite/deSugar/T9844.stdout
+    test/ghc-testsuite/gadt/gadt2.stdout
+    test/ghc-testsuite/gadt/gadt4.stdout
+    test/ghc-testsuite/gadt/gadt5.stdout
+    test/ghc-testsuite/gadt/records.stdout
+    test/ghc-testsuite/gadt/Session.stdout
+    test/ghc-testsuite/gadt/T9380.stdout
+    test/ghc-testsuite/gadt/tc.stdout
+    test/ghc-testsuite/gadt/type-rep.stdout
+    test/ghc-testsuite/gadt/ubx-records.stdout
+    test/ghc-testsuite/gadt/while.stdout
+    test/ghc-testsuite/generics/GenNewtype.stdout
+    test/ghc-testsuite/generics/GFullyStrict.stdout
+    test/ghc-testsuite/generics/T10030.stdout
+    test/ghc-testsuite/generics/T11358.stdout
+    test/ghc-testsuite/indexed-types/GMapAssoc.stdout
+    test/ghc-testsuite/indexed-types/GMapTop.stdout
+    test/ghc-testsuite/indexed-types/T11465a.stdout
+    test/ghc-testsuite/indexed-types/T2985.stdout
+    test/ghc-testsuite/indexed-types/T4235.stdout
+    test/ghc-testsuite/indexed-types/T5719.stdout
+    test/ghc-testsuite/integer/gcdInteger.stdout
+    test/ghc-testsuite/integer/integerBits.stdout
+    test/ghc-testsuite/integer/integerConstantFolding.stdout
+    test/ghc-testsuite/integer/integerConversions.stdout
+    test/ghc-testsuite/integer/plusMinusInteger.stdout
+    test/ghc-testsuite/mdo/mdorun001.stdout
+    test/ghc-testsuite/mdo/mdorun002.stdout
+    test/ghc-testsuite/mdo/mdorun003.stdout
+    test/ghc-testsuite/mdo/mdorun004.stdout
+    test/ghc-testsuite/mdo/mdorun005.stdout
+    test/ghc-testsuite/numeric/add2.stdout
+    test/ghc-testsuite/numeric/arith001.stdout
+    test/ghc-testsuite/numeric/arith002.stdout
+    test/ghc-testsuite/numeric/arith003.stdout
+    test/ghc-testsuite/numeric/arith004.stdout
+    test/ghc-testsuite/numeric/arith005.stdout
+    test/ghc-testsuite/numeric/arith006.stdout
+    test/ghc-testsuite/numeric/arith007.stdout
+    test/ghc-testsuite/numeric/arith008.stdout
+    test/ghc-testsuite/numeric/arith009.stdout
+    test/ghc-testsuite/numeric/arith010.stdout
+    test/ghc-testsuite/numeric/arith011.stdout
+    test/ghc-testsuite/numeric/arith012.stdout
+    test/ghc-testsuite/numeric/arith013.stdout
+    test/ghc-testsuite/numeric/arith014.stdout
+    test/ghc-testsuite/numeric/arith015.stdout
+    test/ghc-testsuite/numeric/arith016.stdout
+    test/ghc-testsuite/numeric/arith017.stdout
+    test/ghc-testsuite/numeric/arith018.stdout
+    test/ghc-testsuite/numeric/arith019.stdout
+    test/ghc-testsuite/numeric/CarryOverflow.stdout
+    test/ghc-testsuite/numeric/expfloat.stdout
+    test/ghc-testsuite/numeric/FloatFnInverses.stdout
+    test/ghc-testsuite/numeric/mul2.stdout
+    test/ghc-testsuite/numeric/NumDecimals.stdout
+    test/ghc-testsuite/numeric/numrun009.stdout
+    test/ghc-testsuite/numeric/numrun010.stdout
+    test/ghc-testsuite/numeric/numrun011.stdout
+    test/ghc-testsuite/numeric/numrun012.stdout
+    test/ghc-testsuite/numeric/numrun013.stdout
+    test/ghc-testsuite/numeric/numrun014.stdout
+    test/ghc-testsuite/numeric/numrun015.stdout
+    test/ghc-testsuite/numeric/numrun016.stdout
+    test/ghc-testsuite/numeric/quotRem2.stdout
+    test/ghc-testsuite/numeric/T10011.stdout
+    test/ghc-testsuite/numeric/T11702.stdout
+    test/ghc-testsuite/numeric/T12136.stdout
+    test/ghc-testsuite/numeric/T15271.stdout
+    test/ghc-testsuite/numeric/T15301.stdout
+    test/ghc-testsuite/numeric/T1603.stdout
+    test/ghc-testsuite/numeric/T4381.stdout
+    test/ghc-testsuite/numeric/T4383.stdout
+    test/ghc-testsuite/numeric/T5863.stdout
+    test/ghc-testsuite/numeric/T7014.stdout
+    test/ghc-testsuite/numeric/T7233.stdout
+    test/ghc-testsuite/numeric/T9407.stdout
+    test/ghc-testsuite/numeric/T9810.stdout
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun01.stdout
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun02.stdout
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun03.stdout
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun04.stdout
+    test/ghc-testsuite/overloadedlists/overloadedlistsrun05.stdout
+    test/ghc-testsuite/overloadedrecflds/hasfieldrun01.stdout
+    test/ghc-testsuite/overloadedrecflds/hasfieldrun02.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedlabelsrun01.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedlabelsrun02.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedlabelsrun03.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedrecflds_generics.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun01.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun03.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun04.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun05.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun06.stdout
+    test/ghc-testsuite/overloadedrecflds/overloadedrecfldsrun07.stdout
+    test/ghc-testsuite/overloadedrecflds/T12243.stdout
+    test/ghc-testsuite/overloadedstrings/overloadedstringsrun01.stdout
+    test/ghc-testsuite/parser/BinaryLiterals0.stdout
+    test/ghc-testsuite/parser/BinaryLiterals1.stdout
+    test/ghc-testsuite/parser/BinaryLiterals2.stdout
+    test/ghc-testsuite/parser/HexFloatLiterals.stdout
+    test/ghc-testsuite/parser/NegativeZero.stdout
+    test/ghc-testsuite/parser/NumericUnderscores0.stdout
+    test/ghc-testsuite/parser/NumericUnderscores1.stdout
+    test/ghc-testsuite/parser/operator.stdout
+    test/ghc-testsuite/parser/operator2.stdout
+    test/ghc-testsuite/parser/ParserMultiWayIf.stdout
+    test/ghc-testsuite/parser/readRun001.stdout
+    test/ghc-testsuite/parser/readRun002.stdout
+    test/ghc-testsuite/parser/readRun003.stdout
+    test/ghc-testsuite/parser/readRun004.stdout
+    test/ghc-testsuite/parser/T10807.stdout
+    test/ghc-testsuite/parser/T1344.stdout
+    test/ghc-testsuite/patsyn/bidir-explicit-scope.stdout
+    test/ghc-testsuite/patsyn/bidir-explicit.stdout
+    test/ghc-testsuite/patsyn/eval.stdout
+    test/ghc-testsuite/patsyn/ex-prov-run.stdout
+    test/ghc-testsuite/patsyn/ghci.stdout
+    test/ghc-testsuite/patsyn/match-unboxed.stdout
+    test/ghc-testsuite/patsyn/match.stdout
+    test/ghc-testsuite/patsyn/records-run.stdout
+    test/ghc-testsuite/patsyn/T11224.stdout
+    test/ghc-testsuite/patsyn/T11985.stdout
+    test/ghc-testsuite/patsyn/T14228.stdout
+    test/ghc-testsuite/patsyn/T9783.stdout
+    test/ghc-testsuite/patsyn/unboxed-wrapper.stdout
+    test/ghc-testsuite/perf/Conversions.stdout
+    test/ghc-testsuite/perf/DeriveNull.stdout
+    test/ghc-testsuite/perf/DeriveNullTermination.stdout
+    test/ghc-testsuite/perf/MethSharing.stdout
+    test/ghc-testsuite/perf/T10359.stdout
+    test/ghc-testsuite/perf/T12791.stdout
+    test/ghc-testsuite/perf/T12996.stdout
+    test/ghc-testsuite/perf/T13001.stdout
+    test/ghc-testsuite/perf/T13623.stdout
+    test/ghc-testsuite/perf/T14936.stdout
+    test/ghc-testsuite/perf/T15263.stdout
+    test/ghc-testsuite/perf/T3245.stdout
+    test/ghc-testsuite/perf/T3586.stdout
+    test/ghc-testsuite/perf/T3736.stdout
+    test/ghc-testsuite/perf/T4321.stdout
+    test/ghc-testsuite/perf/T4474a.stdout
+    test/ghc-testsuite/perf/T4474b.stdout
+    test/ghc-testsuite/perf/T4474c.stdout
+    test/ghc-testsuite/perf/T4830.stdout
+    test/ghc-testsuite/perf/T4978.stdout
+    test/ghc-testsuite/perf/T5113.stdout
+    test/ghc-testsuite/perf/T5205.stdout
+    test/ghc-testsuite/perf/T5237.stdout
+    test/ghc-testsuite/perf/T5835.stdout
+    test/ghc-testsuite/perf/T7257.stdout
+    test/ghc-testsuite/perf/T7436.stdout
+    test/ghc-testsuite/perf/T7507.stdout
+    test/ghc-testsuite/perf/T7850.stdout
+    test/ghc-testsuite/perf/T7954.stdout
+    test/ghc-testsuite/perf/T8472.stdout
+    test/ghc-testsuite/perf/T876.stdout
+    test/ghc-testsuite/perf/T9203.stdout
+    test/ghc-testsuite/perf/T9339.stdout
+    test/ghc-testsuite/polykinds/Freeman.stdout
+    test/ghc-testsuite/polykinds/MonoidsFD.stdout
+    test/ghc-testsuite/polykinds/MonoidsTF.stdout
+    test/ghc-testsuite/polykinds/PolyKinds09.stdout
+    test/ghc-testsuite/polykinds/PolyKinds10.stdout
+    test/ghc-testsuite/primops/ArithInt16.stdout
+    test/ghc-testsuite/primops/ArithInt8.stdout
+    test/ghc-testsuite/primops/ArithWord16.stdout
+    test/ghc-testsuite/primops/ArithWord8.stdout
+    test/ghc-testsuite/primops/CmpInt16.stdout
+    test/ghc-testsuite/primops/CmpInt8.stdout
+    test/ghc-testsuite/primops/CmpWord16.stdout
+    test/ghc-testsuite/primops/CmpWord8.stdout
+    test/ghc-testsuite/primops/ShowPrim.stdout
+    test/ghc-testsuite/primops/T13825-compile.stdout
+    test/ghc-testsuite/primops/T16164.stdout
+    test/ghc-testsuite/primops/T4442.stdout
+    test/ghc-testsuite/primops/T6135.stdout
+    test/ghc-testsuite/primops/T7689.stdout
+    test/ghc-testsuite/rebindable/rebindable10.stdout
+    test/ghc-testsuite/rebindable/rebindable2.stdout
+    test/ghc-testsuite/rebindable/rebindable3.stdout
+    test/ghc-testsuite/rebindable/rebindable4.stdout
+    test/ghc-testsuite/rebindable/rebindable5.stdout
+    test/ghc-testsuite/rebindable/rebindable7.stdout
+    test/ghc-testsuite/rebindable/RebindableFailB.stdout
+    test/ghc-testsuite/rebindable/T5038.stdout
+    test/ghc-testsuite/rts/alloccounter1.stdout
+    test/ghc-testsuite/rts/bug1010.stdout
+    test/ghc-testsuite/rts/GcStaticPointers.stdout
+    test/ghc-testsuite/rts/InternalCounters.stdout
+    test/ghc-testsuite/rts/keep-cafs-fail.stdout
+    test/ghc-testsuite/rts/keep-cafs.stdout
+    test/ghc-testsuite/rts/linker_unload.stdout
+    test/ghc-testsuite/rts/outofmem.stdout
+    test/ghc-testsuite/rts/outofmem2.stdout
+    test/ghc-testsuite/rts/return_mem_to_os.stdout
+    test/ghc-testsuite/rts/stablename001.stdout
+    test/ghc-testsuite/rts/stack003.stdout
+    test/ghc-testsuite/rts/T10017.stdout
+    test/ghc-testsuite/rts/T10728.stdout
+    test/ghc-testsuite/rts/T11108.stdout
+    test/ghc-testsuite/rts/T11788.stdout
+    test/ghc-testsuite/rts/T12497.stdout
+    test/ghc-testsuite/rts/T12903.stdout
+    test/ghc-testsuite/rts/T13287.stdout
+    test/ghc-testsuite/rts/T13617.stdout
+    test/ghc-testsuite/rts/T14497.stdout
+    test/ghc-testsuite/rts/T15261a.stdout
+    test/ghc-testsuite/rts/T15261b.stdout
+    test/ghc-testsuite/rts/T4059.stdout
+    test/ghc-testsuite/rts/T4850.stdout
+    test/ghc-testsuite/rts/T5423.stdout
+    test/ghc-testsuite/rts/T5435_dyn_asm.stdout
+    test/ghc-testsuite/rts/T5435_dyn_gcc.stdout
+    test/ghc-testsuite/rts/T5435_v_asm.stdout
+    test/ghc-testsuite/rts/T5435_v_asm_a.stdout
+    test/ghc-testsuite/rts/T5435_v_asm_b.stdout
+    test/ghc-testsuite/rts/T5435_v_gcc.stdout
+    test/ghc-testsuite/rts/T5993.stdout
+    test/ghc-testsuite/rts/T7037.stdout
+    test/ghc-testsuite/rts/T7040.stdout
+    test/ghc-testsuite/rts/T7040_ghci.stdout
+    test/ghc-testsuite/rts/T8035.stdout
+    test/ghc-testsuite/rts/T8308.stdout
+    test/ghc-testsuite/rts/T9405.stdout
+    test/ghc-testsuite/safeHaskell/SafeLang04.stdout
+    test/ghc-testsuite/safeHaskell/SafeLang05.stdout
+    test/ghc-testsuite/simplCore/AmapCoerce.stdout
+    test/ghc-testsuite/simplCore/runST.stdout
+    test/ghc-testsuite/simplCore/SeqRule.stdout
+    test/ghc-testsuite/simplCore/simplrun001.stdout
+    test/ghc-testsuite/simplCore/simplrun002.stdout
+    test/ghc-testsuite/simplCore/simplrun003.stdout
+    test/ghc-testsuite/simplCore/simplrun004.stdout
+    test/ghc-testsuite/simplCore/simplrun005.stdout
+    test/ghc-testsuite/simplCore/simplrun007.stdout
+    test/ghc-testsuite/simplCore/simplrun008.stdout
+    test/ghc-testsuite/simplCore/simplrun009.stdout
+    test/ghc-testsuite/simplCore/simplrun011.stdout
+    test/ghc-testsuite/simplCore/T11172.stdout
+    test/ghc-testsuite/simplCore/T12689a.stdout
+    test/ghc-testsuite/simplCore/T12689broken.stdout
+    test/ghc-testsuite/simplCore/T13172.stdout
+    test/ghc-testsuite/simplCore/T13733.stdout
+    test/ghc-testsuite/simplCore/T14178.stdout
+    test/ghc-testsuite/simplCore/T14868.stdout
+    test/ghc-testsuite/simplCore/T14894.stdout
+    test/ghc-testsuite/simplCore/T15114.stdout
+    test/ghc-testsuite/simplCore/T15436.stdout
+    test/ghc-testsuite/simplCore/T15840.stdout
+    test/ghc-testsuite/simplCore/T15840a.stdout
+    test/ghc-testsuite/simplCore/T16208.stdout
+    test/ghc-testsuite/simplCore/T2110.stdout
+    test/ghc-testsuite/simplCore/T3403.stdout
+    test/ghc-testsuite/simplCore/T3437.stdout
+    test/ghc-testsuite/simplCore/T3591.stdout
+    test/ghc-testsuite/simplCore/T3959.stdout
+    test/ghc-testsuite/simplCore/T4814.stdout
+    test/ghc-testsuite/simplCore/T5315.stdout
+    test/ghc-testsuite/simplCore/T5453.stdout
+    test/ghc-testsuite/simplCore/T5915.stdout
+    test/ghc-testsuite/simplCore/T5920.stdout
+    test/ghc-testsuite/simplCore/T5997.stdout
+    test/ghc-testsuite/simplCore/T7101.stdout
+    test/ghc-testsuite/simplCore/T7611.stdout
+    test/ghc-testsuite/simplCore/T9128.stdout
+    test/ghc-testsuite/simplCore/T9390.stdout
+    test/ghc-testsuite/simplStg/T13536.stdout
+    test/ghc-testsuite/simplStg/T13536a.stdout
+    test/ghc-testsuite/simplStg/T9291.stdout
+    test/ghc-testsuite/strAnal/strun001.stdout
+    test/ghc-testsuite/strAnal/strun003.stdout
+    test/ghc-testsuite/strAnal/strun004.stdout
+    test/ghc-testsuite/strAnal/T10218.stdout
+    test/ghc-testsuite/strAnal/T11555a.stdout
+    test/ghc-testsuite/strAnal/T16197.stdout
+    test/ghc-testsuite/strAnal/T7649.stdout
+    test/ghc-testsuite/strAnal/T9254.stdout
+    test/ghc-testsuite/typecheck/church.stdout
+    test/ghc-testsuite/typecheck/Defer01.stdout
+    test/ghc-testsuite/typecheck/EtaExpandLevPoly.stdout
+    test/ghc-testsuite/typecheck/IPLocation.stdout
+    test/ghc-testsuite/typecheck/IPRun.stdout
+    test/ghc-testsuite/typecheck/KindInvariant.stdout
+    test/ghc-testsuite/typecheck/mc17.stdout
+    test/ghc-testsuite/typecheck/StrictPats.stdout
+    test/ghc-testsuite/typecheck/T10284.stdout
+    test/ghc-testsuite/typecheck/T10845.stdout
+    test/ghc-testsuite/typecheck/T10846.stdout
+    test/ghc-testsuite/typecheck/T11049.stdout
+    test/ghc-testsuite/typecheck/T11120.stdout
+    test/ghc-testsuite/typecheck/T11230.stdout
+    test/ghc-testsuite/typecheck/T12809.stdout
+    test/ghc-testsuite/typecheck/T13435.stdout
+    test/ghc-testsuite/typecheck/T14218.stdout
+    test/ghc-testsuite/typecheck/T14236.stdout
+    test/ghc-testsuite/typecheck/T14341.stdout
+    test/ghc-testsuite/typecheck/T14925.stdout
+    test/ghc-testsuite/typecheck/T1624.stdout
+    test/ghc-testsuite/typecheck/T2722.stdout
+    test/ghc-testsuite/typecheck/T3500a.stdout
+    test/ghc-testsuite/typecheck/T3500b.stdout
+    test/ghc-testsuite/typecheck/T3731-short.stdout
+    test/ghc-testsuite/typecheck/T3731.stdout
+    test/ghc-testsuite/typecheck/T5573a.stdout
+    test/ghc-testsuite/typecheck/T5573b.stdout
+    test/ghc-testsuite/typecheck/T5751.stdout
+    test/ghc-testsuite/typecheck/T5759.stdout
+    test/ghc-testsuite/typecheck/T5913.stdout
+    test/ghc-testsuite/typecheck/T6117.stdout
+    test/ghc-testsuite/typecheck/T7023.stdout
+    test/ghc-testsuite/typecheck/T7126.stdout
+    test/ghc-testsuite/typecheck/T7748.stdout
+    test/ghc-testsuite/typecheck/T7861.stdout
+    test/ghc-testsuite/typecheck/T8492.stdout
+    test/ghc-testsuite/typecheck/T8739.stdout
+    test/ghc-testsuite/typecheck/T9858c.stdout
+    test/ghc-testsuite/typecheck/T9858d.stdout
+    test/ghc-testsuite/typecheck/TcCoercible.stdout
+    test/ghc-testsuite/typecheck/TcNullaryTC.stdout
+    test/ghc-testsuite/typecheck/tcrun001.stdout
+    test/ghc-testsuite/typecheck/tcrun002.stdout
+    test/ghc-testsuite/typecheck/tcrun003.stdout
+    test/ghc-testsuite/typecheck/tcrun004.stdout
+    test/ghc-testsuite/typecheck/tcrun005.stdout
+    test/ghc-testsuite/typecheck/tcrun006.stdout
+    test/ghc-testsuite/typecheck/tcrun008.stdout
+    test/ghc-testsuite/typecheck/tcrun009.stdout
+    test/ghc-testsuite/typecheck/tcrun010.stdout
+    test/ghc-testsuite/typecheck/tcrun011.stdout
+    test/ghc-testsuite/typecheck/tcrun012.stdout
+    test/ghc-testsuite/typecheck/tcrun013.stdout
+    test/ghc-testsuite/typecheck/tcrun014.stdout
+    test/ghc-testsuite/typecheck/tcrun015.stdout
+    test/ghc-testsuite/typecheck/tcrun016.stdout
+    test/ghc-testsuite/typecheck/tcrun017.stdout
+    test/ghc-testsuite/typecheck/tcrun018.stdout
+    test/ghc-testsuite/typecheck/tcrun019.stdout
+    test/ghc-testsuite/typecheck/tcrun020.stdout
+    test/ghc-testsuite/typecheck/tcrun021.stdout
+    test/ghc-testsuite/typecheck/tcrun022.stdout
+    test/ghc-testsuite/typecheck/tcrun023.stdout
+    test/ghc-testsuite/typecheck/tcrun024.stdout
+    test/ghc-testsuite/typecheck/tcrun026.stdout
+    test/ghc-testsuite/typecheck/tcrun027.stdout
+    test/ghc-testsuite/typecheck/tcrun028.stdout
+    test/ghc-testsuite/typecheck/tcrun029.stdout
+    test/ghc-testsuite/typecheck/tcrun030.stdout
+    test/ghc-testsuite/typecheck/tcrun031.stdout
+    test/ghc-testsuite/typecheck/tcrun032.stdout
+    test/ghc-testsuite/typecheck/tcrun033.stdout
+    test/ghc-testsuite/typecheck/tcrun034.stdout
+    test/ghc-testsuite/typecheck/tcrun036.stdout
+    test/ghc-testsuite/typecheck/tcrun037.stdout
+    test/ghc-testsuite/typecheck/tcrun039.stdout
+    test/ghc-testsuite/typecheck/tcrun040.stdout
+    test/ghc-testsuite/typecheck/tcrun041.stdout
+    test/ghc-testsuite/typecheck/tcrun043.stdout
+    test/ghc-testsuite/typecheck/tcrun044.stdout
+    test/ghc-testsuite/typecheck/tcrun046.stdout
+    test/ghc-testsuite/typecheck/tcrun047.stdout
+    test/ghc-testsuite/typecheck/tcrun048.stdout
+    test/ghc-testsuite/typecheck/tcrun049.stdout
+    test/ghc-testsuite/typecheck/tcrun050.stdout
+    test/ghc-testsuite/typecheck/tcrun051.stdout
+    test/ghc-testsuite/typecheck/TcTypeNatSimpleRun.stdout
+    test/ghc-testsuite/typecheck/TcTypeSymbolSimpleRun.stdout
+    test/ghc-testsuite/typecheck/testeq2.stdout
+    test/ghc-testsuite/typecheck/TestTypeableBinary.stdout
+    test/ghc-testsuite/typecheck/TypeableEq.stdout
+    test/ghc-testsuite/typecheck/TypeOf.stdout
+    test/ghc-testsuite/typecheck/TypeRep.stdout
+    test/ghc-testsuite/unboxedsums/empty_sum.stdout
+    test/ghc-testsuite/unboxedsums/T12375.stdout
+    test/ghc-testsuite/unboxedsums/T12711.stdout
+    test/ghc-testsuite/unboxedsums/thunk.stdout
+    test/ghc-testsuite/unboxedsums/unarise.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums1.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums10.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums11.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums2.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums3.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums6.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums7.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums8.stdout
+    test/ghc-testsuite/unboxedsums/unboxedsums9.stdout
+    test/exception/exception.hs
+    test/regression60/regression60.hs
+    test/sizeof_md5context/sizeof_md5context.hs
+    test/largenum/largenum.hs
+    test/nodeio/nodeio.hs
+    test/time/time.hs
+    test/primitive/primitive.hs
+data-files:
+    rts/browser/default.mjs
+    rts/node/default.mjs
+    rts/rts.autoapply.mjs
+    rts/rts.bytestring.mjs
+    rts/rts.closuretypes.mjs
+    rts/rts.constants.mjs
+    rts/rts.eventlog.mjs
+    rts/rts.exception.mjs
+    rts/rts.exports.mjs
+    rts/rts.float.mjs
+    rts/rts.fs.mjs
+    rts/rts.funtypes.mjs
+    rts/rts.gc.mjs
+    rts/rts.heapalloc.mjs
+    rts/rts.integer.mjs
+    rts/rts.memory.mjs
+    rts/rts.memorytrap.mjs
+    rts/rts.messages.mjs
+    rts/rts.mjs
+    rts/rts.modulify.mjs
+    rts/rts.node.mjs
+    rts/rts.reentrancy.mjs
+    rts/rts.scheduler.mjs
+    rts/rts.stablename.mjs
+    rts/rts.stableptr.mjs
+    rts/rts.staticptr.mjs
+    rts/rts.text.mjs
+    rts/rts.time.mjs
+    rts/rts.tracing.mjs
+    rts/rts.unicode.mjs
+    boot-init.sh
+    boot.sh
+
+source-repository head
+  type: git
+  location: https://github.com/tweag/asterius
+
+library
+  exposed-modules:
+      Asterius.Ar
+      Asterius.Backends.Binaryen
+      Asterius.Backends.WasmToolkit
+      Asterius.Binary.ByteString
+      Asterius.Binary.File
+      Asterius.Binary.NameCache
+      Asterius.Binary.Orphans
+      Asterius.Binary.TH
+      Asterius.Boot
+      Asterius.BuildInfo
+      Asterius.Builtins
+      Asterius.Builtins.Blackhole
+      Asterius.Builtins.CMath
+      Asterius.Builtins.Exports
+      Asterius.Builtins.Hashable
+      Asterius.Builtins.Main
+      Asterius.Builtins.MD5
+      Asterius.Builtins.Posix
+      Asterius.Builtins.Primitive
+      Asterius.Builtins.Scheduler
+      Asterius.Builtins.SM
+      Asterius.Builtins.SPT
+      Asterius.Builtins.StgPrimFloat
+      Asterius.Builtins.Time
+      Asterius.CodeGen
+      Asterius.CodeGen.Droppable
+      Asterius.EDSL
+      Asterius.EDSL.BinaryOp
+      Asterius.EDSL.UnaryOp
+      Asterius.Foreign.DsForeign
+      Asterius.Foreign.ExportStatic
+      Asterius.Foreign.Internals
+      Asterius.Foreign.SupportedTypes
+      Asterius.Foreign.TcForeign
+      Asterius.Foreign.TypesTag
+      Asterius.FrontendPlugin
+      Asterius.GHCi.Internals
+      Asterius.Internals
+      Asterius.Internals.Barf
+      Asterius.Internals.ByteString
+      Asterius.Internals.Containers
+      Asterius.Internals.Directory
+      Asterius.Internals.MagicNumber
+      Asterius.Internals.Marshal
+      Asterius.Internals.Name
+      Asterius.Internals.Session
+      Asterius.Internals.SYB
+      Asterius.Internals.Temp
+      Asterius.JSFFI
+      Asterius.JSGen.Constants
+      Asterius.JSGen.SPT
+      Asterius.JSGen.Wasm
+      Asterius.JSRun.Main
+      Asterius.JSRun.NonMain
+      Asterius.Ld
+      Asterius.Main
+      Asterius.Main.Task
+      Asterius.MemoryTrap
+      Asterius.Passes.All
+      Asterius.Passes.Barf
+      Asterius.Passes.Common
+      Asterius.Passes.DataSymbolTable
+      Asterius.Passes.FunctionSymbolTable
+      Asterius.Passes.GCSections
+      Asterius.Passes.GlobalRegs
+      Asterius.Passes.LocalRegs
+      Asterius.Passes.MergeSymbolOffset
+      Asterius.Passes.Relooper
+      Asterius.Passes.Tracing
+      Asterius.Resolve
+      Asterius.TypeInfer
+      Asterius.Types
+      Asterius.Types.EntitySymbol
+      Asterius.Types.LinkReport
+      Asterius.Types.SymbolMap
+      Asterius.Types.SymbolSet
+      Asterius.TypesConv
+  other-modules:
+      Paths_asterius
+  autogen-modules:
+      Paths_asterius
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-depends:
+      Cabal
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable Setup-ghc-prim
+  main-is: Setup-ghc-prim.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable ahc
+  main-is: ahc.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable ahc-boot
+  main-is: ahc-boot.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable ahc-cabal
+  main-is: ahc-cabal.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable ahc-dist
+  main-is: ahc-dist.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable ahc-ld
+  main-is: ahc-ld.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable ahc-link
+  main-is: ahc-link.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable ahc-pkg
+  main-is: ahc-pkg.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable genconstants
+  main-is: genconstants.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+executable unlit
+  main-is: unlit.c
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      app
+  ghc-options: -Wall
+  build-depends:
+      Cabal
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite array
+  type: exitcode-stdio-1.0
+  main-is: array.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite bigint
+  type: exitcode-stdio-1.0
+  main-is: bigint.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite bytearray
+  type: exitcode-stdio-1.0
+  main-is: bytearray.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite bytearraymini
+  type: exitcode-stdio-1.0
+  main-is: bytearraymini.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite cloudflare
+  type: exitcode-stdio-1.0
+  main-is: cloudflare.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite exception
+  type: exitcode-stdio-1.0
+  main-is: exception.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite fib
+  type: exitcode-stdio-1.0
+  main-is: fib.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite ghc-testsuite
+  type: exitcode-stdio-1.0
+  main-is: ghc-testsuite.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , cassava
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , optparse-applicative
+    , process
+    , tasty
+    , tasty-hunit
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite ghc-testsuite-with-ghc
+  type: exitcode-stdio-1.0
+  main-is: ghc-testsuite-with-ghc.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite jsffi
+  type: exitcode-stdio-1.0
+  main-is: jsffi.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite largenum
+  type: exitcode-stdio-1.0
+  main-is: largenum.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite nodeio
+  type: exitcode-stdio-1.0
+  main-is: nodeio.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite nomain
+  type: exitcode-stdio-1.0
+  main-is: nomain.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite parsec
+  type: exitcode-stdio-1.0
+  main-is: parsec.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite primitive
+  type: exitcode-stdio-1.0
+  main-is: primitive.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite regression60
+  type: exitcode-stdio-1.0
+  main-is: regression60.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite rts
+  type: exitcode-stdio-1.0
+  main-is: rts.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite rtsapi
+  type: exitcode-stdio-1.0
+  main-is: rtsapi.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite sizeof_md5context
+  type: exitcode-stdio-1.0
+  main-is: sizeof_md5context.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite stableptr
+  type: exitcode-stdio-1.0
+  main-is: stableptr.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite teletype
+  type: exitcode-stdio-1.0
+  main-is: teletype.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite text
+  type: exitcode-stdio-1.0
+  main-is: text.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite th
+  type: exitcode-stdio-1.0
+  main-is: th.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite time
+  type: exitcode-stdio-1.0
+  main-is: time.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010
+
+test-suite todomvc
+  type: exitcode-stdio-1.0
+  main-is: todomvc.hs
+  other-modules:
+      Paths_asterius
+  hs-source-dirs:
+      test
+  ghc-options: -Wall -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg"
+  build-depends:
+      Cabal
+    , asterius
+    , base
+    , binary
+    , binaryen
+    , bytestring
+    , containers
+    , deepseq
+    , directory
+    , filepath
+    , ghc
+    , ghc-boot
+    , ghc-prim
+    , ghc-toolkit
+    , ghci
+    , inline-js-core
+    , libiserv
+    , mtl
+    , npm-utils
+    , process
+    , template-haskell
+    , transformers
+    , wasm-toolkit
+  default-language: Haskell2010

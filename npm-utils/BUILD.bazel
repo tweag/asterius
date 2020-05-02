@@ -1,0 +1,11 @@
+load("@rules_haskell//haskell:defs.bzl", "haskell_library")
+
+haskell_library(
+    name = "npm-utils",
+    srcs = glob(["src/**"]),
+    deps = [
+        "@stackage//:base",
+        "@stackage//:filepath",
+    ],
+    visibility = ["//visibility:public"],
+)

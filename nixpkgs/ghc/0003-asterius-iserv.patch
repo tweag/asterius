@@ -1,0 +1,367 @@
+From 650b40e56bf72a9c91f8d5a44f12058ae97ea937 Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Sat, 25 Jan 2020 23:19:59 +0100
+Subject: [PATCH 3/4] asterius iserv
+
+---
+ compiler/ghci/GHCi.hs          | 65 +++++++++++++++++++++++-----------
+ compiler/main/Hooks.hs         | 19 ++++++++++
+ compiler/typecheck/TcSplice.hs | 35 +++++++++---------
+ libraries/ghci/GHCi/Message.hs | 13 +++++--
+ 4 files changed, 91 insertions(+), 41 deletions(-)
+
+diff --git a/compiler/ghci/GHCi.hs b/compiler/ghci/GHCi.hs
+index 5790539..d97fb34 100644
+--- a/compiler/ghci/GHCi.hs
++++ b/compiler/ghci/GHCi.hs
+@@ -1,4 +1,6 @@
+ {-# LANGUAGE RecordWildCards, ScopedTypeVariables, BangPatterns, CPP #-}
++{-# LANGUAGE GADTs #-}
++{-# LANGUAGE TypeApplications #-}
+ 
+ --
+ -- | Interacting with the interpreter, whether it is running on an
+@@ -40,6 +42,7 @@ module GHCi
+   -- * Lower-level API using messages
+   , iservCmd, Message(..), withIServ, stopIServ
+   , iservCall, readIServ, writeIServ
++  , iservCall', readIServ', writeIServ'
+   , purgeLookupSymbolCache
+   , freeHValueRefs
+   , mkFinalizedHValue
+@@ -93,6 +96,9 @@ import System.Posix as Posix
+ import System.Directory
+ import System.Process
+ import GHC.Conc (getNumProcessors, pseq, par)
++import qualified Language.Haskell.TH.Syntax as TH
++import GHC.LanguageExtensions.Type
++import Type.Reflection
+ 
+ {- Note [Remote GHCi]
+ 
+@@ -168,12 +174,12 @@ needExtInt = throwIO
+ -- external iserv process, and the response is deserialized (hence the
+ -- @Binary@ constraint).  With @-fno-external-interpreter@ we execute
+ -- the command directly here.
+-iservCmd :: Binary a => HscEnv -> Message a -> IO a
++iservCmd :: (Binary a, Typeable a) => HscEnv -> Message a -> IO a
+ iservCmd hsc_env@HscEnv{..} msg
+  | gopt Opt_ExternalInterpreter hsc_dflags =
+      withIServ hsc_env $ \iserv ->
+        uninterruptibleMask_ $ do -- Note [uninterruptibleMask_]
+-         iservCall iserv msg
++         iservCall hsc_env iserv msg
+  | otherwise = -- Just run it directly
+ #if defined(GHCI)
+    run msg
+@@ -195,17 +201,17 @@ iservCmd hsc_env@HscEnv{..} msg
+ withIServ
+   :: (MonadIO m, ExceptionMonad m)
+   => HscEnv -> (IServ -> m a) -> m a
+-withIServ HscEnv{..} action =
++withIServ hsc_env@HscEnv{..} action =
+   gmask $ \restore -> do
+     m <- liftIO $ takeMVar hsc_iserv
+       -- start the iserv process if we haven't done so yet
+-    iserv <- maybe (liftIO $ startIServ hsc_dflags) return m
++    iserv <- maybe (liftIO $ startIServ hsc_env) return m
+                `gonException` (liftIO $ putMVar hsc_iserv Nothing)
+       -- free any ForeignHValues that have been garbage collected.
+     let iserv' = iserv{ iservPendingFrees = [] }
+     a <- (do
+       liftIO $ when (not (null (iservPendingFrees iserv))) $
+-        iservCall iserv (FreeHValueRefs (iservPendingFrees iserv))
++        iservCall hsc_env iserv (FreeHValueRefs (iservPendingFrees iserv))
+         -- run the inner action
+       restore $ action iserv)
+           `gonException` (liftIO $ putMVar hsc_iserv (Just iserv'))
+@@ -383,7 +389,7 @@ lookupSymbol hsc_env@HscEnv{..} str
+          Just p -> return (Just p)
+          Nothing -> do
+            m <- uninterruptibleMask_ $
+-                    iservCall iserv (LookupSymbol (unpackFS str))
++                    iservCall hsc_env iserv (LookupSymbol (unpackFS str))
+            case m of
+              Nothing -> return Nothing
+              Just r -> do
+@@ -460,22 +466,30 @@ findSystemLibrary hsc_env str = iservCmd hsc_env (FindSystemLibrary str)
+ -- Raw calls and messages
+ 
+ -- | Send a 'Message' and receive the response from the iserv process
+-iservCall :: Binary a => IServ -> Message a -> IO a
+-iservCall iserv@IServ{..} msg =
++iservCall :: (Binary a, Typeable a) => HscEnv -> IServ -> Message a -> IO a
++iservCall hsc_env = lookupHook iservCallHook iservCall' (hsc_dflags hsc_env) hsc_env
++
++iservCall' :: (Binary a, Typeable a) => HscEnv -> IServ -> Message a -> IO a
++iservCall' _ iserv@IServ{..} msg =
+   remoteCall iservPipe msg
+     `catch` \(e :: SomeException) -> handleIServFailure iserv e
+ 
+ -- | Read a value from the iserv process
+-readIServ :: IServ -> Get a -> IO a
+-readIServ iserv@IServ{..} get =
+-  readPipe iservPipe get
+-    `catch` \(e :: SomeException) -> handleIServFailure iserv e
++readIServ :: forall a. (Binary a, Typeable a) => HscEnv -> IServ -> IO a
++readIServ hsc_env = lookupHook readIServHook readIServ' (hsc_dflags hsc_env) hsc_env
++
++readIServ' :: forall a. (Binary a, Typeable a) => HscEnv -> IServ -> IO a
++readIServ' _ iserv@IServ {..} =
++  readPipe iservPipe get `catch` \(e :: SomeException) ->
++    handleIServFailure iserv e
+ 
+ -- | Send a value to the iserv process
+-writeIServ :: IServ -> Put -> IO ()
+-writeIServ iserv@IServ{..} put =
+-  writePipe iservPipe put
+-    `catch` \(e :: SomeException) -> handleIServFailure iserv e
++writeIServ :: (Binary a, Typeable a) => HscEnv -> IServ -> a -> IO ()
++writeIServ hsc_env = lookupHook writeIServHook writeIServ' (hsc_dflags hsc_env) hsc_env
++
++writeIServ' :: (Binary a, Typeable a) => HscEnv -> IServ -> a -> IO ()
++writeIServ' _ iserv@IServ {..} a = writePipe iservPipe (put a)
++  `catch` \(e :: SomeException) -> handleIServFailure iserv e
+ 
+ handleIServFailure :: IServ -> SomeException -> IO a
+ handleIServFailure IServ{..} e = do
+@@ -491,9 +505,14 @@ handleIServFailure IServ{..} e = do
+ -- -----------------------------------------------------------------------------
+ -- Starting and stopping the iserv process
+ 
+-startIServ :: DynFlags -> IO IServ
+-startIServ dflags = do
+-  let flavour
++startIServ :: HscEnv -> IO IServ
++startIServ hsc_env =
++  maybe (startIServ' hsc_env) ($ hsc_env) (startIServHook (hooks (hsc_dflags hsc_env)))
++
++startIServ' :: HscEnv -> IO IServ
++startIServ' hsc_env = do
++  let dflags = hsc_dflags hsc_env
++      flavour
+         | WayProf `elem` ways dflags = "-prof"
+         | WayDyn `elem` ways dflags = "-dyn"
+         | otherwise = ""
+@@ -517,7 +536,11 @@ startIServ dflags = do
+     }
+ 
+ stopIServ :: HscEnv -> IO ()
+-stopIServ HscEnv{..} =
++stopIServ hsc_env@HscEnv {..} =
++  maybe (stopIServ' hsc_env) ($ hsc_env) (stopIServHook (hooks hsc_dflags))
++
++stopIServ' :: HscEnv -> IO ()
++stopIServ' hsc_env@HscEnv{..} =
+   gmask $ \_restore -> do
+     m <- takeMVar hsc_iserv
+     maybe (return ()) stop m
+@@ -527,7 +550,7 @@ stopIServ HscEnv{..} =
+     ex <- getProcessExitCode (iservProcess iserv)
+     if isJust ex
+        then return ()
+-       else iservCall iserv Shutdown
++       else iservCall hsc_env iserv Shutdown
+ 
+ runWithPipes :: (CreateProcess -> IO ProcessHandle)
+              -> FilePath -> [String] -> IO (ProcessHandle, Handle, Handle)
+diff --git a/compiler/main/Hooks.hs b/compiler/main/Hooks.hs
+index afecefd..9db7b8b 100644
+--- a/compiler/main/Hooks.hs
++++ b/compiler/main/Hooks.hs
+@@ -4,6 +4,7 @@
+ --     refer to *types*, rather than *code*
+ 
+ {-# LANGUAGE CPP #-}
++{-# LANGUAGE RankNTypes #-}
+ module Hooks ( Hooks
+              , emptyHooks
+              , lookupHook
+@@ -23,6 +24,11 @@ module Hooks ( Hooks
+              , createIservProcessHook
+              , stgCmmHook
+              , cmmToRawCmmHook
++             , startIServHook
++             , iservCallHook
++             , readIServHook
++             , writeIServHook
++             , stopIServHook
+              ) where
+ 
+ import GhcPrelude
+@@ -52,8 +58,11 @@ import CostCentre
+ import StgSyn
+ import Stream
+ import Cmm
++import GHCi.Message
+ 
++import Data.Binary
+ import Data.Maybe
++import Type.Reflection (Typeable)
+ 
+ {-
+ ************************************************************************
+@@ -83,6 +92,11 @@ emptyHooks = Hooks
+   , createIservProcessHook = Nothing
+   , stgCmmHook             = Nothing
+   , cmmToRawCmmHook        = Nothing
++  , startIServHook         = Nothing
++  , iservCallHook          = Nothing
++  , readIServHook          = Nothing
++  , writeIServHook         = Nothing
++  , stopIServHook          = Nothing
+   }
+ 
+ data Hooks = Hooks
+@@ -109,6 +123,11 @@ data Hooks = Hooks
+             -> [CgStgTopBinding] -> HpcInfo -> Stream IO CmmGroup ())
+   , cmmToRawCmmHook        :: Maybe (DynFlags -> Maybe Module -> Stream IO CmmGroup ()
+             -> IO (Stream IO RawCmmGroup ()))
++  , startIServHook         :: Maybe (HscEnv -> IO IServ)
++  , iservCallHook          :: forall a . (Binary a, Typeable a) => Maybe (HscEnv -> IServ -> Message a -> IO a)
++  , readIServHook          :: forall a . (Binary a, Typeable a) => Maybe (HscEnv -> IServ -> IO a)
++  , writeIServHook         :: forall a . (Binary a, Typeable a) => Maybe (HscEnv -> IServ -> a -> IO ())
++  , stopIServHook          :: Maybe (HscEnv -> IO ())
+   }
+ 
+ getHooked :: (Functor f, HasDynFlags f) => (Hooks -> Maybe a) -> a -> f a
+diff --git a/compiler/typecheck/TcSplice.hs b/compiler/typecheck/TcSplice.hs
+index 2c76e6c..e23841b 100644
+--- a/compiler/typecheck/TcSplice.hs
++++ b/compiler/typecheck/TcSplice.hs
+@@ -673,9 +673,9 @@ runRemoteModFinalizers (ThModFinalizers finRefs) = do
+         Just fhv -> do
+           liftIO $ withForeignRef fhv $ \st ->
+             withForeignRefs finRefs $ \qrefs ->
+-              writeIServ i (putMessage (RunModFinalizers st qrefs))
+-          () <- runRemoteTH i []
+-          readQResult i
++              writeIServ hsc_env i $ Msg $ RunModFinalizers st qrefs
++          () <- runRemoteTH hsc_env i []
++          readQResult hsc_env i
+   else do
+     qs <- liftIO (withForeignRefs finRefs $ mapM localRef)
+     runQuasi $ sequence_ qs
+@@ -1094,27 +1094,28 @@ runTH ty fhv = do
+         liftIO $
+           withForeignRef rstate $ \state_hv ->
+           withForeignRef fhv $ \q_hv ->
+-            writeIServ i (putMessage (RunTH state_hv q_hv ty (Just loc)))
+-        runRemoteTH i []
+-        bs <- readQResult i
++            writeIServ hsc_env i $ Msg $ RunTH state_hv q_hv ty (Just loc)
++        runRemoteTH hsc_env i []
++        bs <- readQResult hsc_env i
+         return $! runGet get (LB.fromStrict bs)
+ 
+ 
+ -- | communicate with a remotely-running TH computation until it finishes.
+ -- See Note [Remote Template Haskell] in libraries/ghci/GHCi/TH.hs.
+ runRemoteTH
+-  :: IServ
++  :: HscEnv
++  -> IServ
+   -> [Messages]   --  saved from nested calls to qRecover
+   -> TcM ()
+-runRemoteTH iserv recovers = do
+-  THMsg msg <- liftIO $ readIServ iserv getTHMessage
++runRemoteTH hsc_env iserv recovers = do
++  THMsg msg <- liftIO $ readIServ hsc_env iserv
+   case msg of
+     RunTHDone -> return ()
+     StartRecover -> do -- Note [TH recover with -fexternal-interpreter]
+       v <- getErrsVar
+       msgs <- readTcRef v
+       writeTcRef v emptyMessages
+-      runRemoteTH iserv (msgs : recovers)
++      runRemoteTH hsc_env iserv (msgs : recovers)
+     EndRecover caught_error -> do
+       let (prev_msgs@(prev_warns,prev_errs), rest) = case recovers of
+              [] -> panic "EndRecover"
+@@ -1125,16 +1126,16 @@ runRemoteTH iserv recovers = do
+       writeTcRef v $ if caught_error
+         then prev_msgs
+         else (prev_warns `unionBags` warn_msgs, prev_errs)
+-      runRemoteTH iserv rest
++      runRemoteTH hsc_env iserv rest
+     _other -> do
+       r <- handleTHMessage msg
+-      liftIO $ writeIServ iserv (put r)
+-      runRemoteTH iserv recovers
++      liftIO $ writeIServ hsc_env iserv r
++      runRemoteTH hsc_env iserv recovers
+ 
+ -- | Read a value of type QResult from the iserv
+-readQResult :: Binary a => IServ -> TcM a
+-readQResult i = do
+-  qr <- liftIO $ readIServ i get
++readQResult :: (Binary a, Typeable a) => HscEnv -> IServ -> TcM a
++readQResult hsc_env i = do
++  qr <- liftIO $ readIServ hsc_env i
+   case qr of
+     QDone a -> return a
+     QException str -> liftIO $ throwIO (ErrorCall str)
+@@ -1189,7 +1190,7 @@ getTHState i = do
+     Just rhv -> return rhv
+     Nothing -> do
+       hsc_env <- env_top <$> getEnv
+-      fhv <- liftIO $ mkFinalizedHValue hsc_env =<< iservCall i StartTH
++      fhv <- liftIO $ mkFinalizedHValue hsc_env =<< iservCall hsc_env i StartTH
+       writeTcRef (tcg_th_remote_state tcg) (Just fhv)
+       return fhv
+ 
+diff --git a/libraries/ghci/GHCi/Message.hs b/libraries/ghci/GHCi/Message.hs
+index d68ddf5..6d1b9ba 100644
+--- a/libraries/ghci/GHCi/Message.hs
++++ b/libraries/ghci/GHCi/Message.hs
+@@ -41,7 +41,7 @@ import Data.ByteString (ByteString)
+ import qualified Data.ByteString as B
+ import qualified Data.ByteString.Lazy as LB
+ import Data.Dynamic
+-import Data.Typeable (TypeRep)
++import Data.Typeable (Typeable, TypeRep)
+ import Data.IORef
+ import Data.Map (Map)
+ import Foreign
+@@ -268,7 +268,7 @@ data THMessage a where
+ 
+ deriving instance Show (THMessage a)
+ 
+-data THMsg = forall a . (Binary a, Show a) => THMsg (THMessage a)
++data THMsg = forall a . (Binary a, Show a, Typeable a) => THMsg (THMessage a)
+ 
+ getTHMessage :: Get THMsg
+ getTHMessage = do
+@@ -322,6 +322,9 @@ putTHMessage m = case m of
+   AddForeignFilePath lang a   -> putWord8 20 >> put lang >> put a
+   AddCorePlugin a             -> putWord8 21 >> put a
+ 
++instance Binary THMsg where
++  get = getTHMessage
++  put (THMsg m) = putTHMessage m
+ 
+ data EvalOpts = EvalOpts
+   { useSandboxThread :: Bool
+@@ -444,7 +447,7 @@ instance Binary ClosureType
+ instance Binary PrimType
+ instance Binary a => Binary (GenClosure a)
+ 
+-data Msg = forall a . (Binary a, Show a) => Msg (Message a)
++data Msg = forall a . (Binary a, Show a, Typeable a) => Msg (Message a)
+ 
+ getMessage :: Get Msg
+ getMessage = do
+@@ -528,6 +531,10 @@ putMessage m = case m of
+   GetClosure a                -> putWord8 35 >> put a
+   Seq a                       -> putWord8 36 >> put a
+ 
++instance Binary Msg where
++  get = getMessage
++  put (Msg m) = putMessage m
++
+ -- -----------------------------------------------------------------------------
+ -- Reading/writing messages
+ 
+-- 
+2.23.0
+

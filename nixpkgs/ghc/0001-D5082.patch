@@ -1,0 +1,314 @@
+From e836d46c15e53ba90bb13daae32266670ccf2d55 Mon Sep 17 00:00:00 2001
+From: Joachim Breitner <mail@joachim-breitner.de>
+Date: Mon, 20 Aug 2018 14:44:23 -0700
+Subject: [PATCH 1/4] D5082
+
+---
+ compiler/ghc.mk                   |  8 ----
+ compiler/ghci/ByteCodeItbls.hs    |  4 +-
+ compiler/main/DynFlags.hs         |  8 ++--
+ compiler/main/SysTools.hs         |  8 +---
+ compiler/utils/Util.hs            |  8 ----
+ libraries/ghci/GHCi/InfoTable.hsc | 66 ++++++++++++++-----------------
+ libraries/ghci/GHCi/Message.hs    |  7 ++--
+ libraries/ghci/GHCi/Run.hs        |  4 +-
+ 8 files changed, 42 insertions(+), 71 deletions(-)
+
+diff --git a/compiler/ghc.mk b/compiler/ghc.mk
+index 8a4cc43..f846f76 100644
+--- a/compiler/ghc.mk
++++ b/compiler/ghc.mk
+@@ -334,14 +334,6 @@ endif
+ ifeq "$(GhcWithInterpreter)" "YES"
+ compiler_stage2_CONFIGURE_OPTS += --flags=ghci
+ 
+-ifeq "$(GhcEnableTablesNextToCode) $(GhcUnregisterised)" "YES NO"
+-# Should GHCI be building info tables in the TABLES_NEXT_TO_CODE style
+-# or not?
+-# XXX This should logically be a CPP option, but there doesn't seem to
+-# be a flag for that
+-compiler_stage2_CONFIGURE_OPTS += --ghc-option=-DGHCI_TABLES_NEXT_TO_CODE
+-endif
+-
+ # Should the debugger commands be enabled?
+ ifeq "$(GhciWithDebugger)" "YES"
+ compiler_stage2_CONFIGURE_OPTS += --ghc-option=-DDEBUGGER
+diff --git a/compiler/ghci/ByteCodeItbls.hs b/compiler/ghci/ByteCodeItbls.hs
+index 7381c8f..c17f213 100644
+--- a/compiler/ghci/ByteCodeItbls.hs
++++ b/compiler/ghci/ByteCodeItbls.hs
+@@ -71,6 +71,8 @@ make_constr_itbls hsc_env cons =
+ 
+          descr = dataConIdentity dcon
+ 
+-     r <- iservCmd hsc_env (MkConInfoTable ptrs' nptrs_really
++         tables_next_to_code = tablesNextToCode dflags
++
++     r <- iservCmd hsc_env (MkConInfoTable tables_next_to_code ptrs' nptrs_really
+                               conNo (tagForCon dflags dcon) descr)
+      return (getName dcon, ItblPtr r)
+diff --git a/compiler/main/DynFlags.hs b/compiler/main/DynFlags.hs
+index a7ec70f..9c4ac13 100644
+--- a/compiler/main/DynFlags.hs
++++ b/compiler/main/DynFlags.hs
+@@ -58,7 +58,7 @@ module DynFlags (
+         fFlags, fLangFlags, xFlags,
+         wWarningFlags,
+         dynFlagDependencies,
+-        tablesNextToCode, mkTablesNextToCode,
++        mkTablesNextToCode,
+         makeDynFlagsConsistent,
+         shouldUseColor,
+         shouldUseHexWordLiterals,
+@@ -873,6 +873,7 @@ data DynFlags = DynFlags {
+   integerLibrary        :: IntegerLibrary,
+     -- ^ IntegerGMP or IntegerSimple. Set at configure time, but may be overriden
+     --   by GHC-API users. See Note [The integer library] in PrelNames
++  tablesNextToCode      :: Bool,
+   llvmTargets           :: LlvmTargets,
+   llvmPasses            :: LlvmPasses,
+   verbosity             :: Int,         -- ^ Verbosity level: see Note [Verbosity levels]
+@@ -1611,10 +1612,6 @@ defaultObjectTarget platform
+   | cGhcWithNativeCodeGen == "YES"      =  HscAsm
+   | otherwise                           =  HscLlvm
+ 
+-tablesNextToCode :: DynFlags -> Bool
+-tablesNextToCode dflags
+-    = mkTablesNextToCode (platformUnregisterised (targetPlatform dflags))
+-
+ -- Determines whether we will be compiling
+ -- info tables that reside just before the entry code, or with an
+ -- indirection to the entry code.  See TABLES_NEXT_TO_CODE in
+@@ -1874,6 +1871,7 @@ defaultDynFlags mySettings (myLlvmTargets, myLlvmPasses) =
+         ghcLink                 = LinkBinary,
+         hscTarget               = defaultHscTarget (sTargetPlatform mySettings),
+         integerLibrary          = cIntegerLibraryType,
++        tablesNextToCode        = mkTablesNextToCode (platformUnregisterised (sTargetPlatform mySettings)),
+         verbosity               = 0,
+         optLevel                = 0,
+         debugLevel              = 0,
+diff --git a/compiler/main/SysTools.hs b/compiler/main/SysTools.hs
+index 9bbce19..dd15008 100644
+--- a/compiler/main/SysTools.hs
++++ b/compiler/main/SysTools.hs
+@@ -199,15 +199,9 @@ initSysTools top_dir
+        let unreg_gcc_args = if targetUnregisterised
+                             then ["-DNO_REGS", "-DUSE_MINIINTERPRETER"]
+                             else []
+-           -- TABLES_NEXT_TO_CODE affects the info table layout.
+-           tntc_gcc_args
+-            | mkTablesNextToCode targetUnregisterised
+-               = ["-DTABLES_NEXT_TO_CODE"]
+-            | otherwise = []
+            cpp_args= map Option (words cpp_args_str)
+            gcc_args = map Option (words gcc_args_str
+-                               ++ unreg_gcc_args
+-                               ++ tntc_gcc_args)
++                               ++ unreg_gcc_args)
+        ldSupportsCompactUnwind <- getBooleanSetting "ld supports compact unwind"
+        ldSupportsBuildId       <- getBooleanSetting "ld supports build-id"
+        ldSupportsFilelist      <- getBooleanSetting "ld supports filelist"
+diff --git a/compiler/utils/Util.hs b/compiler/utils/Util.hs
+index 46ef0e6..c6a3bd1 100644
+--- a/compiler/utils/Util.hs
++++ b/compiler/utils/Util.hs
+@@ -11,7 +11,6 @@
+ module Util (
+         -- * Flags dependent on the compiler build
+         ghciSupported, debugIsOn, ncgDebugIsOn,
+-        ghciTablesNextToCode,
+         isWindowsHost, isDarwinHost,
+ 
+         -- * General list processing
+@@ -206,13 +205,6 @@ ncgDebugIsOn = True
+ ncgDebugIsOn = False
+ #endif
+ 
+-ghciTablesNextToCode :: Bool
+-#if defined(GHCI_TABLES_NEXT_TO_CODE)
+-ghciTablesNextToCode = True
+-#else
+-ghciTablesNextToCode = False
+-#endif
+-
+ isWindowsHost :: Bool
+ #if defined(mingw32_HOST_OS)
+ isWindowsHost = True
+diff --git a/libraries/ghci/GHCi/InfoTable.hsc b/libraries/ghci/GHCi/InfoTable.hsc
+index ec3c18a..07dd4d6 100644
+--- a/libraries/ghci/GHCi/InfoTable.hsc
++++ b/libraries/ghci/GHCi/InfoTable.hsc
+@@ -24,19 +24,13 @@ import GHC.Exts
+ import GHC.Exts.Heap
+ #endif
+ 
+-ghciTablesNextToCode :: Bool
+-#ifdef TABLES_NEXT_TO_CODE
+-ghciTablesNextToCode = True
+-#else
+-ghciTablesNextToCode = False
+-#endif
+-
+ #ifdef GHCI /* To end */
+ -- NOTE: Must return a pointer acceptable for use in the header of a closure.
+ -- If tables_next_to_code is enabled, then it must point the the 'code' field.
+ -- Otherwise, it should point to the start of the StgInfoTable.
+ mkConInfoTable
+-   :: Int     -- ptr words
++   :: Bool    -- TABLES_NEXT_TO_CODE
++   -> Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -45,20 +39,20 @@ mkConInfoTable
+       -- resulting info table is allocated with allocateExec(), and
+       -- should be freed with freeExec().
+ 
+-mkConInfoTable ptr_words nonptr_words tag ptrtag con_desc =
+-  castFunPtrToPtr <$> newExecConItbl itbl con_desc
++mkConInfoTable tables_next_to_code ptr_words nonptr_words tag ptrtag con_desc =
++  castFunPtrToPtr <$> newExecConItbl tables_next_to_code itbl con_desc
+   where
+      entry_addr = interpConstrEntry !! ptrtag
+      code' = mkJumpToAddr entry_addr
+      itbl  = StgInfoTable {
+-                 entry = if ghciTablesNextToCode
++                 entry = if tables_next_to_code
+                          then Nothing
+                          else Just entry_addr,
+                  ptrs  = fromIntegral ptr_words,
+                  nptrs = fromIntegral nonptr_words,
+                  tipe  = CONSTR,
+                  srtlen = fromIntegral tag,
+-                 code  = if ghciTablesNextToCode
++                 code  = if tables_next_to_code
+                          then Just code'
+                          else Nothing
+               }
+@@ -319,38 +313,38 @@ data StgConInfoTable = StgConInfoTable {
+ 
+ 
+ pokeConItbl
+-  :: Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
++  :: Bool -> Ptr StgConInfoTable -> Ptr StgConInfoTable -> StgConInfoTable
+   -> IO ()
+-pokeConItbl wr_ptr _ex_ptr itbl = do
+-#if defined(TABLES_NEXT_TO_CODE)
+-  -- Write the offset to the con_desc from the end of the standard InfoTable
+-  -- at the first byte.
+-  let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
+-  (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
+-#else
+-  -- Write the con_desc address after the end of the info table.
+-  -- Use itblSize because CPP will not pick up PROFILING when calculating
+-  -- the offset.
+-  pokeByteOff wr_ptr itblSize (conDesc itbl)
+-#endif
++pokeConItbl tables_next_to_code wr_ptr _ex_ptr itbl = do
++  if tables_next_to_code
++  then do
++      -- Write the offset to the con_desc from the end of the standard InfoTable
++      -- at the first byte.
++      let con_desc_offset = conDesc itbl `minusPtr` (_ex_ptr `plusPtr` conInfoTableSizeB)
++      (#poke StgConInfoTable, con_desc) wr_ptr con_desc_offset
++  else do
++      -- Write the con_desc address after the end of the info table.
++      -- Use itblSize because CPP will not pick up PROFILING when calculating
++      -- the offset.
++      pokeByteOff wr_ptr itblSize (conDesc itbl)
+   pokeItbl (wr_ptr `plusPtr` (#offset StgConInfoTable, i)) (infoTable itbl)
+ 
+-sizeOfEntryCode :: Int
+-sizeOfEntryCode
+-  | not ghciTablesNextToCode = 0
++sizeOfEntryCode :: Bool -> Int
++sizeOfEntryCode tables_next_to_code
++  | not tables_next_to_code = 0
+   | otherwise =
+      case mkJumpToAddr undefined of
+        Left  xs -> sizeOf (head xs) * length xs
+        Right xs -> sizeOf (head xs) * length xs
+ 
+ -- Note: Must return proper pointer for use in a closure
+-newExecConItbl :: StgInfoTable -> [Word8] -> IO (FunPtr ())
+-newExecConItbl obj con_desc
++newExecConItbl :: Bool -> StgInfoTable -> [Word8] -> IO (FunPtr ())
++newExecConItbl tables_next_to_code obj con_desc
+    = alloca $ \pcode -> do
+         let lcon_desc = length con_desc + 1{- null terminator -}
+             -- SCARY
+             -- This size represents the number of bytes in an StgConInfoTable.
+-            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode)
++            sz = fromIntegral (conInfoTableSizeB + sizeOfEntryCode tables_next_to_code)
+                -- Note: we need to allocate the conDesc string next to the info
+                -- table, because on a 64-bit platform we reference this string
+                -- with a 32-bit offset relative to the info table, so if we
+@@ -359,14 +353,12 @@ newExecConItbl obj con_desc
+         ex_ptr <- peek pcode
+         let cinfo = StgConInfoTable { conDesc = ex_ptr `plusPtr` fromIntegral sz
+                                     , infoTable = obj }
+-        pokeConItbl wr_ptr ex_ptr cinfo
++        pokeConItbl tables_next_to_code wr_ptr ex_ptr cinfo
+         pokeArray0 0 (castPtr wr_ptr `plusPtr` fromIntegral sz) con_desc
+         _flushExec sz ex_ptr -- Cache flush (if needed)
+-#if defined(TABLES_NEXT_TO_CODE)
+-        return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
+-#else
+-        return (castPtrToFunPtr ex_ptr)
+-#endif
++        if tables_next_to_code
++          then return (castPtrToFunPtr (ex_ptr `plusPtr` conInfoTableSizeB))
++          else return (castPtrToFunPtr ex_ptr)
+ 
+ foreign import ccall unsafe "allocateExec"
+   _allocateExec :: CUInt -> Ptr (Ptr a) -> IO (Ptr a)
+diff --git a/libraries/ghci/GHCi/Message.hs b/libraries/ghci/GHCi/Message.hs
+index bc0a19c..d68ddf5 100644
+--- a/libraries/ghci/GHCi/Message.hs
++++ b/libraries/ghci/GHCi/Message.hs
+@@ -103,7 +103,8 @@ data Message a where
+ 
+   -- | Create an info table for a constructor
+   MkConInfoTable
+-   :: Int     -- ptr words
++   :: Bool    -- TABLES_NEXT_TO_CODE
++   -> Int     -- ptr words
+    -> Int     -- non-ptr words
+    -> Int     -- constr tag
+    -> Int     -- pointer tag
+@@ -467,7 +468,7 @@ getMessage = do
+       15 -> Msg <$> MallocStrings <$> get
+       16 -> Msg <$> (PrepFFI <$> get <*> get <*> get)
+       17 -> Msg <$> FreeFFI <$> get
+-      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get)
++      18 -> Msg <$> (MkConInfoTable <$> get <*> get <*> get <*> get <*> get <*> get)
+       19 -> Msg <$> (EvalStmt <$> get <*> get)
+       20 -> Msg <$> (ResumeStmt <$> get <*> get)
+       21 -> Msg <$> (AbandonStmt <$> get)
+@@ -507,7 +508,7 @@ putMessage m = case m of
+   MallocStrings bss           -> putWord8 15 >> put bss
+   PrepFFI conv args res       -> putWord8 16 >> put conv >> put args >> put res
+   FreeFFI p                   -> putWord8 17 >> put p
+-  MkConInfoTable p n t pt d   -> putWord8 18 >> put p >> put n >> put t >> put pt >> put d
++  MkConInfoTable tc p n t pt d -> putWord8 18 >> put tc >> put p >> put n >> put t >> put pt >> put d
+   EvalStmt opts val           -> putWord8 19 >> put opts >> put val
+   ResumeStmt opts val         -> putWord8 20 >> put opts >> put val
+   AbandonStmt val             -> putWord8 21 >> put val
+diff --git a/libraries/ghci/GHCi/Run.hs b/libraries/ghci/GHCi/Run.hs
+index 72099b2..939d700 100644
+--- a/libraries/ghci/GHCi/Run.hs
++++ b/libraries/ghci/GHCi/Run.hs
+@@ -85,8 +85,8 @@ run m = case m of
+   MallocStrings bss -> mapM mkString0 bss
+   PrepFFI conv args res -> toRemotePtr <$> prepForeignCall conv args res
+   FreeFFI p -> freeForeignCallInfo (fromRemotePtr p)
+-  MkConInfoTable ptrs nptrs tag ptrtag desc ->
+-    toRemotePtr <$> mkConInfoTable ptrs nptrs tag ptrtag desc
++  MkConInfoTable tc ptrs nptrs tag ptrtag desc ->
++    toRemotePtr <$> mkConInfoTable tc ptrs nptrs tag ptrtag desc
+   StartTH -> startTH
+   GetClosure ref -> do
+     clos <- getClosureData =<< localRef ref
+-- 
+2.23.0
+

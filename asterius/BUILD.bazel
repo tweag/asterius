@@ -1,0 +1,118 @@
+load(
+    "@rules_haskell//haskell:defs.bzl",
+    "haskell_binary",
+    "haskell_library",
+)
+
+haskell_library(
+    name = "asterius",
+    srcs = glob(["src/**"]),
+    deps = [
+        "//ghc-toolkit",
+        "//npm-utils",
+        "//wasm-toolkit",
+        "@stackage//:Cabal",
+        "@stackage//:base",
+        "@stackage//:bazel-runfiles",
+        "@stackage//:binary",
+        "@stackage//:binaryen",
+        "@stackage//:bytestring",
+        "@stackage//:containers",
+        "@stackage//:deepseq",
+        "@stackage//:directory",
+        "@stackage//:filepath",
+        "@stackage//:ghc",
+        "@stackage//:ghc-boot",
+        "@stackage//:ghc-prim",
+        "@stackage//:ghci",
+        "@stackage//:inline-js-core",
+        "@stackage//:libiserv",
+        "@stackage//:mtl",
+        "@stackage//:process",
+        "@stackage//:stm",
+        "@stackage//:template-haskell",
+        "@stackage//:transformers",
+    ],
+)
+
+haskell_binary(
+    name = "ahc",
+    srcs = ["app/ahc.hs"],
+    deps = [
+        "//ghc-toolkit",
+        ":asterius",
+        "@stackage//:base",
+        "@stackage//:directory",
+        "@stackage//:filepath",
+    ],
+)
+
+haskell_binary(
+    name = "ahc-boot",
+    srcs = ["app/ahc-boot.hs"],
+    data = [
+        "//ghc-toolkit:boot-libs",
+        "//ghc-toolkit:ghc-libdir",
+        ":Setup-ghc-prim",
+        ":ahc",
+        ":ahc-cabal",
+        ":ahc-pkg",
+        "boot-init.sh",
+        "boot.sh",
+    ],
+    deps = [
+        ":asterius",
+        "@stackage//:base",
+    ],
+)
+
+haskell_binary(
+    name = "ahc-cabal",
+    srcs = ["app/ahc-cabal.hs"],
+    deps = [
+        ":asterius",
+        "@stackage//:Cabal",
+        "@stackage//:base",
+        "@stackage//:directory",
+        "@stackage//:filepath",
+        "@stackage//:process",
+    ],
+)
+
+haskell_binary(
+    name = "ahc-link",
+    srcs = ["app/ahc-link.hs"],
+    deps = [
+        ":asterius",
+        "@stackage//:base",
+    ],
+    data = [":ahc"],
+)
+
+haskell_binary(
+    name = "ahc-pkg",
+    srcs = ["app/ahc-pkg.hs"],
+    deps = [
+        ":asterius",
+        "@stackage//:base",
+        "@stackage//:directory",
+        "@stackage//:filepath",
+        "@stackage//:process",
+    ],
+)
+
+haskell_binary(
+    name = "Setup-ghc-prim",
+    srcs = ["app/Setup-ghc-prim.hs"],
+    deps = [
+        "@stackage//:Cabal",
+        "@stackage//:base",
+        "@stackage//:directory",
+        "@stackage//:filepath",
+        "@stackage//:process",
+    ]
+)
+
+load(":boot.bzl", "asterius_boot")
+
+asterius_boot(name = "yo")

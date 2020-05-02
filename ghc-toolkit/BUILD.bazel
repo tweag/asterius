@@ -1,0 +1,33 @@
+load("@rules_haskell//haskell:defs.bzl", "haskell_library")
+
+exports_files(["boot-libs", "ghc-libdir"])
+
+cc_library(
+    name = "ghc_constants",
+    srcs = ["cbits/ghc_constants.c"] + glob(
+        ["include-private/**", "ghc-libdir/include/**"],
+    ),
+    copts = [
+        "-DASTERIUS",
+        "-Ighc-toolkit/include-private",
+        "-Ighc-toolkit/ghc-libdir/include",
+        "-Wall",
+        "-Wextra",
+    ],
+)
+
+haskell_library(
+    name = "ghc-toolkit",
+    srcs = glob(["src/**"]),
+    deps = [
+        ":ghc_constants",
+        "@stackage//:Cabal",
+        "@stackage//:base",
+        "@stackage//:containers",
+        "@stackage//:directory",
+        "@stackage//:filepath",
+        "@stackage//:ghc",
+        "@stackage//:process",
+    ],
+    visibility = ["//visibility:public"],
+)

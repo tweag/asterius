@@ -1,0 +1,15 @@
+load("@rules_haskell//haskell:defs.bzl", "haskell_library")
+
+haskell_library(
+    name = "wasm-toolkit",
+    srcs = glob(["src/**"]),
+    visibility = ["//visibility:public"],
+    deps = [
+        "@stackage//:base",
+        "@stackage//:binary",
+        "@stackage//:bytestring",
+        "@stackage//:directory",
+        "@stackage//:filepath",
+        "@stackage//:process",
+    ],
+)

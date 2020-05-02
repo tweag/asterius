@@ -1,0 +1,151 @@
+From 2489bd63f37246e812098692c00ee701aaeb68eb Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Sun, 26 Jan 2020 01:13:55 +0100
+Subject: [PATCH 2/4] asterius
+
+---
+ boot                     |  2 +-
+ compiler/cmm/CmmInfo.hs  |  5 +++--
+ compiler/ghci/Linker.hs  |  1 +
+ compiler/main/Hooks.hs   | 14 ++++++++++++++
+ compiler/main/HscMain.hs |  8 ++++----
+ 5 files changed, 23 insertions(+), 7 deletions(-)
+
+diff --git a/boot b/boot
+index 8739612..d004035 100755
+--- a/boot
++++ b/boot
+@@ -197,7 +197,7 @@ def check_build_mk():
+                 http://ghc.haskell.org/trac/ghc/wiki/Building/Using#Buildconfiguration
+             """))
+ 
+-check_for_url_rewrites()
++# check_for_url_rewrites()
+ check_boot_packages()
+ if not args.hadrian:
+     boot_pkgs()
+diff --git a/compiler/cmm/CmmInfo.hs b/compiler/cmm/CmmInfo.hs
+index 43cba25..07798d3 100644
+--- a/compiler/cmm/CmmInfo.hs
++++ b/compiler/cmm/CmmInfo.hs
+@@ -53,6 +53,7 @@ import UniqSupply
+ import MonadUtils
+ import Util
+ import Outputable
++import Module
+ 
+ import Data.Bits
+ import Data.Word
+@@ -66,9 +67,9 @@ mkEmptyContInfoTable info_lbl
+                  , cit_srt  = Nothing
+                  , cit_clo  = Nothing }
+ 
+-cmmToRawCmm :: DynFlags -> Stream IO CmmGroup ()
++cmmToRawCmm :: DynFlags -> Maybe Module -> Stream IO CmmGroup ()
+             -> IO (Stream IO RawCmmGroup ())
+-cmmToRawCmm dflags cmms
++cmmToRawCmm dflags _ cmms
+   = do { uniqs <- mkSplitUniqSupply 'i'
+        ; let do_one uniqs cmm = do
+                 case initUs uniqs $ concatMapM (mkInfoTable dflags) cmm of
+diff --git a/compiler/ghci/Linker.hs b/compiler/ghci/Linker.hs
+index 41cc218..6ea3ae2 100644
+--- a/compiler/ghci/Linker.hs
++++ b/compiler/ghci/Linker.hs
+@@ -17,6 +17,7 @@ module Linker ( getHValue, showLinkerState,
+                 extendLoadedPkgs,
+                 linkPackages,initDynLinker,linkModule,
+                 linkCmdLineLibs
++                ,modifyPLS,linkDependencies
+         ) where
+ 
+ #include "HsVersions.h"
+diff --git a/compiler/main/Hooks.hs b/compiler/main/Hooks.hs
+index f9d420a..afecefd 100644
+--- a/compiler/main/Hooks.hs
++++ b/compiler/main/Hooks.hs
+@@ -21,6 +21,8 @@ module Hooks ( Hooks
+              , runRnSpliceHook
+              , getValueSafelyHook
+              , createIservProcessHook
++             , stgCmmHook
++             , cmmToRawCmmHook
+              ) where
+ 
+ import GhcPrelude
+@@ -44,6 +46,12 @@ import Type
+ import System.Process
+ import BasicTypes
+ import HsExtension
++import Module
++import TyCon
++import CostCentre
++import StgSyn
++import Stream
++import Cmm
+ 
+ import Data.Maybe
+ 
+@@ -73,6 +81,8 @@ emptyHooks = Hooks
+   , runRnSpliceHook        = Nothing
+   , getValueSafelyHook     = Nothing
+   , createIservProcessHook = Nothing
++  , stgCmmHook             = Nothing
++  , cmmToRawCmmHook        = Nothing
+   }
+ 
+ data Hooks = Hooks
+@@ -95,6 +105,10 @@ data Hooks = Hooks
+   , getValueSafelyHook     :: Maybe (HscEnv -> Name -> Type
+                                                           -> IO (Maybe HValue))
+   , createIservProcessHook :: Maybe (CreateProcess -> IO ProcessHandle)
++  , stgCmmHook             :: Maybe (DynFlags -> Module -> [TyCon] -> CollectedCCs
++            -> [CgStgTopBinding] -> HpcInfo -> Stream IO CmmGroup ())
++  , cmmToRawCmmHook        :: Maybe (DynFlags -> Maybe Module -> Stream IO CmmGroup ()
++            -> IO (Stream IO RawCmmGroup ()))
+   }
+ 
+ getHooked :: (Functor f, HasDynFlags f) => (Hooks -> Maybe a) -> a -> f a
+diff --git a/compiler/main/HscMain.hs b/compiler/main/HscMain.hs
+index 879e6c7..a8a02f8 100644
+--- a/compiler/main/HscMain.hs
++++ b/compiler/main/HscMain.hs
+@@ -80,6 +80,7 @@ module HscMain
+     , ioMsgMaybe
+     , showModuleIndex
+     , hscAddSptEntries
++    , doCodeGen
+     ) where
+ 
+ import GhcPrelude
+@@ -1378,7 +1379,7 @@ hscGenHardCode hsc_env cgguts mod_summary output_filename = do
+ 
+             ------------------  Code output -----------------------
+             rawcmms0 <- {-# SCC "cmmToRawCmm" #-}
+-                      cmmToRawCmm dflags cmms
++                      lookupHook cmmToRawCmmHook cmmToRawCmm dflags dflags (Just this_mod) cmms
+ 
+             let dump a = do dumpIfSet_dyn dflags Opt_D_dump_cmm_raw "Raw Cmm"
+                               (ppr a)
+@@ -1437,8 +1438,7 @@ hscCompileCmmFile hsc_env filename output_filename = runHsc hsc_env $ do
+             mod_name = mkModuleName $ "Cmm$" ++ FilePath.takeFileName filename
+             cmm_mod = mkModule (thisPackage dflags) mod_name
+         (_, cmmgroup) <- cmmPipeline hsc_env (emptySRT cmm_mod) cmm
+-        dumpIfSet_dyn dflags Opt_D_dump_cmm "Output Cmm" (ppr cmmgroup)
+-        rawCmms <- cmmToRawCmm dflags (Stream.yield cmmgroup)
++        rawCmms <- lookupHook cmmToRawCmmHook cmmToRawCmm dflags dflags Nothing (Stream.yield cmmgroup)
+         _ <- codeOutput dflags cmm_mod output_filename no_loc NoStubs [] []
+              rawCmms
+         return ()
+@@ -1465,7 +1465,7 @@ doCodeGen hsc_env this_mod data_tycons
+     let stg_binds_w_fvs = annTopBindingsFreeVars stg_binds
+     let cmm_stream :: Stream IO CmmGroup ()
+         cmm_stream = {-# SCC "StgCmm" #-}
+-            StgCmm.codeGen dflags this_mod data_tycons
++            lookupHook stgCmmHook StgCmm.codeGen dflags dflags this_mod data_tycons
+                            cost_centre_info stg_binds_w_fvs hpc_info
+ 
+         -- codegen consumes a stream of CmmGroup, and produces a new
+-- 
+2.23.0
+

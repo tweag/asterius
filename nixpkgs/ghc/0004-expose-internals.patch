@@ -1,0 +1,87 @@
+From 0fb99fdfaeeaeed8d261f59d1b2453ccacbce09a Mon Sep 17 00:00:00 2001
+From: Shao Cheng <cheng.shao@tweag.io>
+Date: Thu, 19 Dec 2019 13:02:10 +0100
+Subject: [PATCH 4/4] Expose internals of TcForeign/DsForeign/DsCCall
+
+---
+ compiler/deSugar/DsCCall.hs      |  8 +-------
+ compiler/deSugar/DsForeign.hs    |  2 +-
+ compiler/typecheck/TcForeign.hs  | 16 +---------------
+ compiler/typecheck/TcRnDriver.hs |  2 +-
+ 4 files changed, 4 insertions(+), 24 deletions(-)
+
+diff --git a/compiler/deSugar/DsCCall.hs b/compiler/deSugar/DsCCall.hs
+index 7cab8e8..c70e8f0 100644
+--- a/compiler/deSugar/DsCCall.hs
++++ b/compiler/deSugar/DsCCall.hs
+@@ -7,13 +7,7 @@ Desugaring foreign calls
+ -}
+ 
+ {-# LANGUAGE CPP #-}
+-module DsCCall
+-        ( dsCCall
+-        , mkFCall
+-        , unboxArg
+-        , boxResult
+-        , resultWrapper
+-        ) where
++module DsCCall where
+ 
+ #include "HsVersions.h"
+ 
+diff --git a/compiler/deSugar/DsForeign.hs b/compiler/deSugar/DsForeign.hs
+index d34c3a7..cebc8d7 100644
+--- a/compiler/deSugar/DsForeign.hs
++++ b/compiler/deSugar/DsForeign.hs
+@@ -11,7 +11,7 @@ Desugaring foreign declarations (see also DsCCall).
+ {-# LANGUAGE TypeFamilies #-}
+ {-# LANGUAGE ViewPatterns #-}
+ 
+-module DsForeign ( dsForeigns ) where
++module DsForeign where
+ 
+ #include "HsVersions.h"
+ import GhcPrelude
+diff --git a/compiler/typecheck/TcForeign.hs b/compiler/typecheck/TcForeign.hs
+index 8038de3..b6fd66c 100644
+--- a/compiler/typecheck/TcForeign.hs
++++ b/compiler/typecheck/TcForeign.hs
+@@ -15,21 +15,7 @@ module checks to see if a foreign declaration has got a legal type.
+ {-# LANGUAGE CPP #-}
+ {-# LANGUAGE TypeFamilies #-}
+ 
+-module TcForeign
+-        ( tcForeignImports
+-        , tcForeignExports
+-
+-        -- Low-level exports for hooks
+-        , isForeignImport, isForeignExport
+-        , tcFImport, tcFExport
+-        , tcForeignImports'
+-        , tcCheckFIType, checkCTarget, checkForeignArgs, checkForeignRes
+-        , normaliseFfiType
+-        , nonIOok, mustBeIO
+-        , checkSafe, noCheckSafe
+-        , tcForeignExports'
+-        , tcCheckFEType
+-        ) where
++module TcForeign where
+ 
+ #include "HsVersions.h"
+ 
+diff --git a/compiler/typecheck/TcRnDriver.hs b/compiler/typecheck/TcRnDriver.hs
+index 6e9c897..57237cc 100644
+--- a/compiler/typecheck/TcRnDriver.hs
++++ b/compiler/typecheck/TcRnDriver.hs
+@@ -90,7 +90,7 @@ import HeaderInfo       ( mkPrelImports )
+ import TcDefaults
+ import TcEnv
+ import TcRules
+-import TcForeign
++import TcForeign hiding (check)
+ import TcInstDcls
+ import TcIface
+ import TcMType
+-- 
+2.23.0
+

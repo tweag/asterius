@@ -1,0 +1,6 @@
+build --host_platform=@rules_haskell//haskell/platforms:linux_x86_64_nixpkgs
+build:ci --host_platform=@rules_haskell//haskell/platforms:linux_x86_64_nixpkgs
+
+build:remote-cache --remote_cache=grpcs://remotebuildexecution.googleapis.com
+build:remote-cache --remote_timeout=3600
+build:remote-cache --auth_enabled=true
