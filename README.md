@@ -3,7 +3,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/terrorjack/asterius.svg)](https://hub.docker.com/r/terrorjack/asterius)
 [![Build status](https://badge.buildkite.com/d96cf8b736eb305c8d2758833551a2241ba2b9a0e95b1a4a03.svg?branch=master)](https://buildkite.com/tweag-1/asterius/builds?branch=master)
 [![Gitter](https://img.shields.io/gitter/room/tweag/asterius)](https://gitter.im/tweag/asterius)
-[![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://asterius.netlify.com)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://asterius.netlify.app)
 
 Asterius is a Haskell to WebAssembly compiler based on GHC. It compiles
 Haskell source files or Cabal executable targets to WebAssembly+JavaScript code
@@ -21,8 +21,8 @@ maintained by [Tweag I/O](https://tweag.io/).
 
 Demos of popular Haskell apps, running in your browser:
 
-* [`ormolu`](https://asterius.netlify.com/ormolu/WebOrmolu.html)
-* [`pandoc`](https://asterius.netlify.com/pandoc/pandoc.html)
+* [`ormolu`](https://asterius.netlify.app/ormolu/WebOrmolu.html)
+* [`pandoc`](https://asterius.netlify.app/pandoc/pandoc.html)
 
 ## Quickstart using the prebuilt Docker image
 
@@ -42,7 +42,7 @@ asterius@hostname:/project$ ahc-link --input-hs main.hs
 
 There are a lot of link-time options available to `ahc-link`, e.g. targeting
 the browser platform instead of `node`, adding extra GHC options or setting
-runtime parameters. Check the [documentation](https://asterius.netlify.com/) for
+runtime parameters. Check the [documentation](https://asterius.netlify.app/) for
 further details.
 
 It's also possible to use `ahc-cabal` as a drop-in replacement of `cabal` to
@@ -61,7 +61,7 @@ Note that [`podman`](https://podman.io) can be used instead of `docker` here.
 
 ## Building and using `asterius` locally
 
-See the [Building guide](https://asterius.netlify.com/building.html) in the
+See the [Building guide](https://asterius.netlify.app/building.html) in the
 documentation for details.
 
 ## Hacking on Asterius
@@ -69,12 +69,12 @@ documentation for details.
 We recommend using [VSCode Remote
 Containers](https://code.visualstudio.com/docs/remote/containers) to reproduce
 the very same dev environment used by our core team members. See the [Hacking
-guide](https://asterius.netlify.com/hacking.html) in the documentation for
+guide](https://asterius.netlify.app/hacking.html) in the documentation for
 details.
 
 ## Documentation
 
-We have [documentation](https://asterius.netlify.com/) and blog posts:
+We have [documentation](https://asterius.netlify.app/) and blog posts:
 
 * [Fibonacci compiles end-to-end: Haskell to WebAssembly via
   GHC](https://www.tweag.io/posts/2018-05-29-hello-asterius.html)
