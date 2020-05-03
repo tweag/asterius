@@ -343,6 +343,8 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   call-stack \
   can-i-haz \
   carray \
+  casa-client \
+  casa-types \
   case-insensitive \
   cased \
   cases \
@@ -774,6 +776,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   groups \
   guarded-allocation \
   hackage-db \
+  hackage-security \
   haddock-library \
   half \
   hashable \
@@ -1073,6 +1076,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   lsp-test \
   lucid \
   lucid-extras \
+  lukko \
   machines \
   main-tester \
   mainland-pretty \
@@ -1270,6 +1274,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   pandoc-citeproc \
   pandoc-csv2table \
   pandoc-types \
+  pantry \
   papillon \
   parallel \
   parallel-io \
@@ -1449,6 +1454,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   reflection \
   regex \
   regex-applicative \
+  regex-applicative-text \
   regex-base \
   regex-compat \
   regex-compat-tdfa \
@@ -1665,6 +1671,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   string-combinators \
   string-conv \
   string-conversions \
+  string-interpolate \
   string-qq \
   string-transform \
   stringbuilder \
