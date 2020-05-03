@@ -55,6 +55,7 @@ distNonMain p extra_syms =
         inputHS = p,
         outputDirectory = takeDirectory p,
         outputBaseName = takeBaseName p,
+        validate = False,
         tailCalls = True,
         yolo = True,
         Asterius.Main.Task.hasMain = False,
