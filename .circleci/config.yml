@@ -34,8 +34,93 @@ jobs:
               netlify deploy --dir=_build --message="$CIRCLE_SHA1"
             fi
 
+  asterius-darwin:
+    macos:
+      xcode: "11.5.0"
+    steps:
+      - run:
+          name: Install dependencies
+          command: |
+            mkdir -p ~/.local/bin
+            export PATH=~/.local/bin:$PATH
+
+            brew install \
+              binaryen
+
+            curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.1/stack-2.3.1-osx-x86_64-bin -o ~/.local/bin/stack
+            chmod +x ~/.local/bin/stack
+            stack --no-terminal update
+      - checkout
+      - run:
+          name: Boot
+          command: |
+            export PATH=~/.local/bin:$PATH
+            stack --no-terminal -j4 build --test --no-run-tests
+            export ASTERIUS_CONFIGURE_OPTIONS=-v3
+            . .envrc
+            ahc-boot
+      - run:
+          name: Test asterius
+          command: |
+            export PATH=~/.local/bin:$PATH
+
+            stack --no-terminal test asterius:fib
+            stack --no-terminal test asterius:jsffi
+            stack --no-terminal test asterius:array
+            stack --no-terminal test asterius:stableptr
+            stack --no-terminal test asterius:rtsapi
+            stack --no-terminal test asterius:teletype
+            stack --no-terminal test asterius:bytearray
+            stack --no-terminal test asterius:bigint
+            stack --no-terminal test asterius:todomvc
+            stack --no-terminal test asterius:cloudflare
+            stack --no-terminal test asterius:exception
+            stack --no-terminal test asterius:regression60
+            stack --no-terminal test asterius:sizeof_md5context
+            stack --no-terminal test asterius:largenum
+
+            stack --no-terminal test asterius:fib --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:jsffi --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:array --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:stableptr --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:rtsapi --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:teletype --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:bytearray --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:bigint --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:todomvc --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:cloudflare --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:exception --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:regression60 --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:sizeof_md5context --test-arguments="--backend=wasm-toolkit"
+            stack --no-terminal test asterius:largenum --test-arguments="--backend=wasm-toolkit"
+
+            stack --no-terminal test asterius:bytearray --test-arguments="--yolo"
+            stack --no-terminal test asterius:bytearray --test-arguments="--gc-threshold=128"
+            stack --no-terminal test asterius:fib --test-arguments="--no-gc-sections"
+
+            stack --no-terminal test asterius:fib --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:jsffi --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:array --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:stableptr --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:rtsapi --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:teletype --test-arguments="--debug" > /dev/null
+            # stack --no-terminal test asterius:bytearray --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:bigint --test-arguments="--debug" > /dev/null
+            stack --no-terminal test asterius:exception --test-arguments="--debug" > /dev/null
+
+            stack --no-terminal test asterius:fib --test-arguments="--tail-calls"
+            stack --no-terminal test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
+
+            stack --no-terminal test asterius:nomain
+            stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
+
+            stack --no-terminal test asterius:th
+
+            stack --no-terminal test asterius:primitive
+
 workflows:
   version: 2
   build:
     jobs:
       - asterius-build-docs
+      - asterius-darwin
