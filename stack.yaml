@@ -1,6 +1,6 @@
-resolver: lts-15.10
+resolver: lts-15.11
 extra-deps:
-  - https://github.com/tweag/haskell-binaryen/archive/6e782a0a42df344afa6c8d5e391160bd172348d8.tar.gz
+  - binaryen-0.0.1.1
   - url: https://github.com/tweag/inline-js/archive/114848a9f750b5e9c2f8ca056cc29d84bbab0bae.tar.gz
     subdirs:
       - inline-js-core
@@ -17,21 +17,21 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.8.3:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius-tinfo6.200426.tar.xz
-        content-length: 150942924
-        sha256: 55f956aa35e0a121ad9936e7a800045854e24dae0b19f12a558d1da29020ef1e
+        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius-tinfo6.200503.tar.xz
+        content-length: 151253812
+        sha256: 536fb34958c6019d561d690a699875cd13daddff4f408d5198648dfb4f9ec61c
     linux64-custom-asterius:
       8.8.3:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius.200426.tar.xz
-        content-length: 148248316
-        sha256: d9c2e0bf333d24121cd193fc7f0b806002ad2e1e80d797a6455ee00ec9ecc75e
+        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius.200503.tar.xz
+        content-length: 148503044
+        sha256: 67224272c48ce11c974d4db1c3869f5890ed20a1648161ac22117fd77c59a885
     linux64-custom-asterius-musl:
       8.8.3:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius-musl.200426.tar.xz
-        content-length: 165435056
-        sha256: 619c89c6f78f5c378acad48900587770e1249bcbe06334f6d2efec4383536ec4
+        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius-musl.200503.tar.xz
+        content-length: 165771664
+        sha256: d213e3d5f2e131a300187f19db5299d886535bc7cc3d09bab736b73dc52f77e9
     macosx-custom-asterius:
       8.8.3:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-macosx-custom-asterius.200426.tar.xz
-        content-length: 159018316
-        sha256: 327369a6226da78f62c4a49f99b95060a66d0bbed4ddfc168992bf1fd09f607b
+        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-macosx-custom-asterius.200503.tar.xz
+        content-length: 158964232
+        sha256: 57a51d6773aa706044d93c5f794b3fce62f2739589e5ed02f865647077918565
