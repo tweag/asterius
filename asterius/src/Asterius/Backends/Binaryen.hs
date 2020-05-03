@@ -76,6 +76,13 @@ marshalValueType t = case t of
   F32 -> Binaryen.float32
   F64 -> Binaryen.float64
 
+marshalValueTypes :: [ValueType] -> IO Binaryen.Type
+marshalValueTypes [] = pure Binaryen.none
+marshalValueTypes [vt] = pure $ marshalValueType vt
+marshalValueTypes vts = flip runContT pure $ do
+  (vts', vtl) <- marshalV $ map marshalValueType vts
+  lift $ Binaryen.Type.create vts' (fromIntegral vtl)
+
 marshalReturnTypes :: [ValueType] -> IO Binaryen.Type
 marshalReturnTypes vts = case vts of
   [] -> pure Binaryen.none
@@ -215,13 +222,10 @@ marshalBinaryOp op = case op of
   GeFloat64 -> Binaryen.geFloat64
 
 marshalFunctionType :: FunctionType -> IO (Binaryen.Type, Binaryen.Type)
-marshalFunctionType FunctionType {..} = flip runContT pure $ do
-  (pts, ptl) <- marshalV $ map marshalValueType paramTypes
-  (rts, rtl) <- marshalV $ map marshalValueType returnTypes
-  lift $ do
-    pt <- Binaryen.Type.create pts (fromIntegral ptl)
-    rt <- Binaryen.Type.create rts (fromIntegral rtl)
-    pure (pt, rt)
+marshalFunctionType FunctionType {..} = do
+  pt <- marshalValueTypes paramTypes
+  rt <- marshalValueTypes returnTypes
+  pure (pt, rt)
 
 -- | Environment used during marshaling of Asterius' types to Binaryen.
 data MarshalEnv

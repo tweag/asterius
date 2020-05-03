@@ -38,19 +38,16 @@ artifacts, and we include them in the
 In addition to regular GHC dependencies, these dependencies are
 needed in the local environment:
 
-* `libnuma-dev` (Required by GHC)
-* `cmake`, `g++`, `git`, `python3` (Required by `binaryen`)
-* `automake`, `autoconf` (Required by `ahc-boot`)
+* `libnuma-dev` (required by GHC)
+* `binaryen` (at least `version_92`)
+* `automake`, `autoconf` (required by `ahc-boot`)
 * `cabal` (at least `v3.0.0.0`)
 * `node`, `npm` (at least `v12`)
+* `g++`, `python3` (may be required by `node-gyp`)
 
 ### Building `asterius`
 
 Check out the `asterius` repo, run `stack build asterius`.
-
-Set the `MAKEFLAGS` environment variable to pass additional flags to `make` when
-building `binaryen`, e.g. `MAKEFLAGS=-j8` for parallel building with 8 CPU
-cores.
 
 After the `asterius` package is built, run `stack exec ahc-boot` to perform
 booting. This will compile the standard libraries to WebAssembly and populate
