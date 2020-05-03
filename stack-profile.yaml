@@ -6,7 +6,7 @@ build:
   library-profiling: true
   executable-profiling: true
 
-resolver: lts-15.10
+resolver: lts-15.11
 extra-deps:
   - https://github.com/tweag/haskell-binaryen/archive/6e782a0a42df344afa6c8d5e391160bd172348d8.tar.gz
   - url: https://github.com/tweag/inline-js/archive/114848a9f750b5e9c2f8ca056cc29d84bbab0bae.tar.gz
