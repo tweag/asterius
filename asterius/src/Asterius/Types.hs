@@ -128,17 +128,20 @@ instance Semigroup AsteriusModule where
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty mempty
 
--- | Given the worker thread pool capacity @c@, @parForceAsteriusModule c m@
+-- | Given the worker thread pool capacity @n@, @parForceAsteriusModule n m@
 -- deeply evaluates an 'AsteriusModule' m in parallel on the global thread
--- pool.
+-- pool. To avoid needless threading overhead, if @n = 1@ them we fall back to
+-- the sequential implementation.
 parForceAsteriusModule :: Int -> AsteriusModule -> AsteriusModule
-parForceAsteriusModule n m@(AsteriusModule sm se fm spt mod_ffi_state) =
-  parallelRnf n (SM.toList sm)
-    `seq` parallelRnf n (SM.toList se)
-    `seq` parallelRnf n (SM.toList fm)
-    `seq` parallelRnf n (SM.toList spt)
-    `seq` rnf mod_ffi_state
-    `seq` m
+parForceAsteriusModule n m@(AsteriusModule sm se fm spt mod_ffi_state)
+  | n >= 2 =
+    parallelRnf n (SM.toList sm)
+      `seq` parallelRnf n (SM.toList se)
+      `seq` parallelRnf n (SM.toList fm)
+      `seq` parallelRnf n (SM.toList spt)
+      `seq` rnf mod_ffi_state
+      `seq` m
+  | otherwise = force m
 
 -- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
 -- its 'EntitySymbol' dependencies, as they are appear in the modules data
