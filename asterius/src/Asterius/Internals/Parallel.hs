@@ -1,5 +1,6 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ViewPatterns #-}
 
 -- |
 -- Module      :  Asterius.Internals.Parallel
@@ -40,7 +41,7 @@ parallelRnf n xs
 
 -- | Given the worker thread pool capacity @c@, @parallelFoldMap c xs f@ maps @f@
 -- on @xs@ in parallel on the global thread pool, and concatenates the results.
-parallelFoldMap :: Monoid r => Int -> [a] -> (a -> IO r) -> IO r
+parallelFoldMap :: (NFData r, Monoid r) => Int -> [a] -> (a -> IO r) -> IO r
 parallelFoldMap n xs fn
   | n >= 2 = do
     input <- newIORef xs
@@ -48,7 +49,7 @@ parallelFoldMap n xs fn
     let getNextElem = atomicModifyIORef' input $ \case
           [] -> ([], Nothing)
           (y : ys) -> (ys, Just y)
-        loop mvar !acc = getNextElem >>= \case
+        loop mvar (force -> !acc) = getNextElem >>= \case
           Nothing -> putMVar mvar acc
           Just y -> do
             res <- fn y
