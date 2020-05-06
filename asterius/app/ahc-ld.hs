@@ -69,6 +69,7 @@ main = do
       rsp <- readFile rsp_path
       let rsp_args = map read $ lines rsp
       task <- parseLinkTask rsp_args
-      when (threadPoolSize task > 1) $ setNumCapabilities (threadPoolSize task)
+      setNumCapabilities 8
+      -- when (threadPoolSize task > 1) $ setNumCapabilities (threadPoolSize task)
       ignore <- isJust <$> getEnv "ASTERIUS_AHC_LD_IGNORE"
       if ignore then callProcess "touch" [linkOutput task] else linkExe task
