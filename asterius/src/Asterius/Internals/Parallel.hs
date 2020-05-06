@@ -49,10 +49,10 @@ parallelFoldMap n xs fn
     let getNextElem = atomicModifyIORef' input $ \case
           [] -> ([], Nothing)
           (y : ys) -> (ys, Just y)
-        loop mvar (force -> !acc) = getNextElem >>= \case
+        loop mvar !acc = getNextElem >>= \case -- was (force -> !acc)
           Nothing -> putMVar mvar acc
           Just y -> do
-            res <- fn y
+            (force -> !res) <- fn y -- was: res <- fn y
             loop mvar (acc <> res)
     forM_ ([0 ..] `zip` mvars) $ \(i, mvar) ->
       forkOn i (loop mvar mempty)
