@@ -1,1 +1,1 @@
-../../common/NofibUtils.hs
+./common/NofibUtils.hs
