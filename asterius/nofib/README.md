@@ -6,6 +6,7 @@
 * Checked shootout.
 * Checked real.
 * Checked parallel.
+* Checked imaginary.
 
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
