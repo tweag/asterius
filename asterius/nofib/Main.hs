@@ -11,6 +11,7 @@ import Control.Monad
 import System.FilePath.Posix
 import qualified Data.List as List
 import Data.Text
+-- import System.IO
 
 -- | Get all the contents of a directory that are themselved directories.
 getSubDirectories :: FilePath -> IO [FilePath]
@@ -45,9 +46,19 @@ main = do
   forM_ all_test_dirs $ \test_dir -> do
     print test_dir
     putStr "  "
-    parseAsMakefile (test_dir </> "Makefile") >>= \case
-      Left err -> putStrLn $ "errored: " ++ err
-      Right mk -> putStrLn $ "succeeded: " ++ show (extractOpts mk)
+    maybe_options <- parseAsMakefile (test_dir </> "Makefile") >>= \case
+      Left err -> pure $ Left err -- putStrLn $ "errored: " ++ err
+      Right mk -> case extractOpts mk of -- putStrLn $ "succeeded: " ++ show (extractOpts mk)
+        Nothing -> pure $ Left "no options in here"
+        Just os -> pure $ Right os
+
+    case maybe_options of
+      Left {} -> putStrLn "failed"
+      Right (fast, norm, slow) -> do
+        writeFile (test_dir </> "FAST_OPTS") (unpack fast)
+        writeFile (test_dir </> "NORM_OPTS") (unpack norm)
+        writeFile (test_dir </> "SLOW_OPTS") (unpack slow)
+        putStrLn "succeeded"
   where
     isTopTestDir s = do
       bool <- doesDirectoryExist s
