@@ -1,6 +1,9 @@
 
 # GEORGE's NOTES
 
+* Checked spectral.
+* Checked smp.
+
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
   EXCLUDED_SRCS += Fast2haskell.hs Fast2haskell2.hs
@@ -15,6 +18,17 @@
 TODO: In GHC, spectral/secretary was actually disabled (because it required
 `random`). See if we wish to keep it or not.
 
+TODO: References to NoFibUtils might be broken right now, since folders were
+moved around and the symlinks will not work.
+
+TODO: smp seems to ignore some tests. Taken from its Makefile:
+
+  SUBDIRS = sieve callback001 callback002 threads001 threads003 threads006 threads007 chan
+  # Not a good benchmark, can go really slowly for random reasons:
+  #  threads002
+  OTHER_SUBDIRS = stm001 stm002 systolic tchan theads002 threads004 threads005
+
+TODO: Decide what should be done with /home/skull/tweag/asterius/asterius/nofib/smp/smpbench.sh
 
 
 # NoFib: Haskell Benchmark Suite
