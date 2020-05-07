@@ -34,6 +34,12 @@ TODO: parallel seems to ignore some tests. Taken from its Makefile:
   SUBDIRS = parfib partree sumeuler matmult ray gray prsa mandel queens coins blackscholes minimax nbody transclos
   OTHER_SUBDIRS = cfd dcbm linsolv nbody partak quicksort threadfib warshall
 
+TODO: Parse the makefiles
+  FAST_OPTS =   500000
+  NORM_OPTS =  5000000
+  SLOW_OPTS = 25000000
+
+
 # NoFib: Haskell Benchmark Suite
 
 This is the root directory of the "NoFib Haskell benchmark suite". It
