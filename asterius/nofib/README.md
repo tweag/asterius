@@ -4,6 +4,7 @@
 * Checked spectral.
 * Checked smp.
 * Checked shootout.
+* Checked real.
 
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
@@ -34,6 +35,11 @@ TODO: Decide what should be done with /home/skull/tweag/asterius/asterius/nofib/
 TODO: Taken from the makefile of shootout:
   To run the benchmarks under the official settings, pass `mode=slow` to make.
   You might also want to pass `EXTRA_HC_OPTS="-fllvm"`
+
+TODO: Note in real:
+  #cacheprof causes very nondeterministic allocation
+  OTHER_SUBDIRS = cacheprof
+
 
 # NoFib: Haskell Benchmark Suite
 
