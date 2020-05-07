@@ -11,20 +11,9 @@
 
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
-  EXCLUDED_SRCS += Fast2haskell.hs Fast2haskell2.hs
-
-  TODO: Actually some of the libraries inside spectral/hartel use these two
-  files. Make sure to put them in "common" and add symlinks, or paste copies of
-  them in each subdirectory.
-
-  past: hartel/Fast2haskell.hs    currently in: common/
-  past: hartel/Fast2haskell2.hs   currently in: common/
 
 TODO: In GHC, spectral/secretary was actually disabled (because it required
 `random`). See if we wish to keep it or not.
-
-TODO: References to NoFibUtils might be broken right now, since folders were
-moved around and the symlinks will not work.
 
 TODO: smp seems to ignore some tests. Taken from its Makefile:
   SUBDIRS = sieve callback001 callback002 threads001 threads003 threads006 threads007 chan
@@ -44,8 +33,6 @@ TODO: Note in real:
 TODO: parallel seems to ignore some tests. Taken from its Makefile:
   SUBDIRS = parfib partree sumeuler matmult ray gray prsa mandel queens coins blackscholes minimax nbody transclos
   OTHER_SUBDIRS = cfd dcbm linsolv nbody partak quicksort threadfib warshall
-
-
 
 # NoFib: Haskell Benchmark Suite
 
