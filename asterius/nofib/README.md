@@ -1,3 +1,22 @@
+
+# GEORGE's NOTES
+
+/home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
+  SRC_MKDEPENDHS_OPTS=-fglasgow-exts
+  EXCLUDED_SRCS += Fast2haskell.hs Fast2haskell2.hs
+
+  TODO: Actually some of the libraries inside spectral/hartel use these two
+  files. Make sure to put them in "common" and add symlinks, or paste copies of
+  them in each subdirectory.
+
+  past: hartel/Fast2haskell.hs    currently in: common/
+  past: hartel/Fast2haskell2.hs   currently in: common/
+
+TODO: In GHC, spectral/secretary was actually disabled (because it required
+`random`). See if we wish to keep it or not.
+
+
+
 # NoFib: Haskell Benchmark Suite
 
 This is the root directory of the "NoFib Haskell benchmark suite". It
