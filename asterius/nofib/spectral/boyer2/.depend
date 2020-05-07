@@ -1,0 +1,13 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+Lisplikefns.o : Lisplikefns.hs
+Checker.o : Checker.hs
+Checker.o : Lisplikefns.hi
+Rewritefns.o : Rewritefns.hs
+Rewritefns.o : Lisplikefns.hi
+Rulebasetext.o : Rulebasetext.hs
+Main.o : Main.hs
+Main.o : Checker.hi
+Main.o : Rulebasetext.hi
+Main.o : Rewritefns.hi
+Main.o : Lisplikefns.hi
+# DO NOT DELETE: End of Haskell dependencies

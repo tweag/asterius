@@ -1,0 +1,4 @@
+For performance measurement we disabled printing of the generated random numbers.
+
+While useful for debugging it doesn't measure anything useful and
+makes changing the problem sizes more tedious as we would also need to check stderr.

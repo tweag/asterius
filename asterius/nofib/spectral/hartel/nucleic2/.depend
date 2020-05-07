@@ -1,0 +1,17 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+Types.o : Types.hs
+RU.o : RU.hs
+RU.o : Types.hi
+RG.o : RG.hs
+RG.o : Types.hi
+RC.o : RC.hs
+RC.o : Types.hi
+RA.o : RA.hs
+RA.o : Types.hi
+Main.o : Main.hs
+Main.o : RU.hi
+Main.o : RG.hi
+Main.o : RC.hi
+Main.o : RA.hi
+Main.o : Types.hi
+# DO NOT DELETE: End of Haskell dependencies

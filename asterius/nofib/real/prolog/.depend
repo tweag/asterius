@@ -1,0 +1,21 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+Interact.o : Interact.hs
+NofibUtils.o : NofibUtils.hs
+Parse.o : Parse.hs
+PrologData.o : PrologData.hs
+PrologData.o : Parse.hi
+Subst.o : Subst.hs
+Subst.o : PrologData.hi
+Engine.o : Engine.hs
+Engine.o : Subst.hi
+Engine.o : PrologData.hi
+Version.o : Version.hs
+Main.o : Main.hs
+Main.o : NofibUtils.hi
+Main.o : Version.hi
+Main.o : Engine.hi
+Main.o : Subst.hi
+Main.o : Interact.hi
+Main.o : Parse.hi
+Main.o : PrologData.hi
+# DO NOT DELETE: End of Haskell dependencies

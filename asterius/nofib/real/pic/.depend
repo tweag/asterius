@@ -1,0 +1,34 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+NofibUtils.o : NofibUtils.hs
+PicType.o : PicType.hs
+Utils.o : Utils.hs
+Utils.o : PicType.hi
+Consts.o : Consts.hs
+Consts.o : Utils.hi
+Consts.o : PicType.hi
+PushParticle.o : PushParticle.hs
+PushParticle.o : Consts.hi
+PushParticle.o : PicType.hi
+Potential.o : Potential.hs
+Potential.o : Utils.hi
+Potential.o : Consts.hi
+Potential.o : PicType.hi
+ElecField.o : ElecField.hs
+ElecField.o : Consts.hi
+ElecField.o : PicType.hi
+ChargeDensity.o : ChargeDensity.hs
+ChargeDensity.o : Consts.hi
+ChargeDensity.o : PicType.hi
+Pic.o : Pic.hs
+Pic.o : PushParticle.hi
+Pic.o : ElecField.hi
+Pic.o : Potential.hi
+Pic.o : ChargeDensity.hi
+Pic.o : Utils.hi
+Pic.o : Consts.hi
+Pic.o : PicType.hi
+Main.o : Main.hs
+Main.o : NofibUtils.hi
+Main.o : PicType.hi
+Main.o : Pic.hi
+# DO NOT DELETE: End of Haskell dependencies

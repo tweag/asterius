@@ -1,0 +1,18 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+NofibUtils.o : NofibUtils.hs
+Utilities.o : Utilities.lhs
+LambdaLift.o : LambdaLift.lhs
+LambdaLift.o : Utilities.hi
+Test.o : Test.hs
+Test.o : Utilities.hi
+Test.o : LambdaLift.hi
+Print.o : Print.lhs
+Print.o : Utilities.hi
+Print.o : LambdaLift.hi
+Main.o : Main.lhs
+Main.o : NofibUtils.hi
+Main.o : Test.hi
+Main.o : Print.hi
+Main.o : Utilities.hi
+Main.o : LambdaLift.hi
+# DO NOT DELETE: End of Haskell dependencies

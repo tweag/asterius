@@ -1,0 +1,8 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+PortablePixmap.o : PortablePixmap.lhs
+Mandel.o : Mandel.lhs
+Mandel.o : PortablePixmap.hi
+Main.o : Main.hs
+Main.o : PortablePixmap.hi
+Main.o : Mandel.hi
+# DO NOT DELETE: End of Haskell dependencies

@@ -1,0 +1,11 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+IntLib.o : IntLib.lhs
+MyRandom.o : MyRandom.lhs
+Prime.o : Prime.lhs
+Prime.o : MyRandom.hi
+Prime.o : IntLib.hi
+Main.o : Main.lhs
+Main.o : Prime.hi
+Main.o : MyRandom.hi
+Main.o : IntLib.hi
+# DO NOT DELETE: End of Haskell dependencies

@@ -1,0 +1,7 @@
+module Rsa (encrypt, decrypt, makeKeys)
+where
+
+
+encrypt, decrypt :: Integer -> Integer -> String -> String
+encrypt n e = unlines . map (show . power e n . code) . collect (size n)
+decrypt n d = concat . map (decode . power d n . read) . lines

@@ -1,0 +1,5 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+StateMonad.o : StateMonad.hs
+Main.o : Main.hs
+Main.o : StateMonad.hi
+# DO NOT DELETE: End of Haskell dependencies

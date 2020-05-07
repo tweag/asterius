@@ -1,0 +1,1262 @@
+
+{----------------------------------------------------------------}
+{--- A terrible conglomerate of definitions from the various  ---}
+{--- .cor files.                                              ---}
+{----------------------------------------------------------------}
+
+list a ::= Nil | Cons a (list a);
+
+pair a b ::= Pair a b;
+
+tp3 a b c ::= Tp3 a b c;
+
+tp4 a b c d ::= Tp4 a b c d;
+
+la a ::= Na | Ca a (lb a) ;
+
+lb b ::= Nb | Cb b (la b) ;
+
+complex a b ::= Cpx a b;
+
+boxed a ::= Box a;
+
+numD b u ::= NumDict b b u;
+
+triple a b c ::= MkTriple a b c;
+
+
+tree a ::= Leaf | Branch (tree a) a (tree a) ;
+
+
+day ::= Monday     |
+        Tuesday    |
+        Wednesday  |
+        Thursday   |
+        Friday     |
+        Saturday   |
+        Sunday ;
+
+domain ::= Unit  |
+           Lift (domain);
+
+assoc a b ::= NilAssoc |
+              Assoc a b (assoc a b) ;
+
+;;
+
+{--------------------------------------------------------}
+{--- Preliminaries                                    ---}
+{--------------------------------------------------------}
+
+{--------------------------------------------------------}
+error
+= error;
+
+
+{--------------------------------------------------------}
+dot f g x
+= f (g x);
+
+
+{--------------------------------------------------------}
+flip f x y
+= f y x;
+
+
+{--------------------------------------------------------}
+max x y
+= case x > y of True -> x; False -> y end;
+
+
+{--------------------------------------------------------}
+min x y
+= case x < y of True -> x; False -> y end;
+
+
+{--------------------------------------------------------}
+{--- PreludeList                                      ---}
+{--------------------------------------------------------}
+
+{--------------------------------------------------------}
+head l
+= case l of
+    Cons x xs -> x;
+    Nil -> error
+  end;
+
+
+{--------------------------------------------------------}
+last l
+= case l of
+    Nil -> error;
+    Cons x xs -> case xs of
+                    Nil -> x;
+                    Cons y ys -> last xs
+                 end
+  end;
+
+
+{--------------------------------------------------------}
+tail l
+= case l of
+    Cons x xs -> xs;
+    Nil -> error
+  end;
+
+
+{--------------------------------------------------------}
+init l
+= case l of
+    Nil -> error;
+    Cons x xs -> case xs of
+                    Nil -> Nil;
+                    Cons y ys -> Cons x (init xs)
+                 end
+  end;
+
+
+{--------------------------------------------------------}
+null l
+= case l of
+    Nil -> True;
+    Cons x xs -> False
+  end;
+
+
+{--------------------------------------------------------}
+append l1 l2
+= foldr Cons l2 l1;
+
+
+{--------------------------------------------------------}
+diff
+= letrec
+    del = \xl y -> case xl of
+                     Nil -> Nil;
+                     Cons x xs -> case x == y of
+                                    True -> xs;
+                                    False -> Cons x (del xs y)
+                                  end
+                   end
+  in
+     foldl del;
+
+
+{--------------------------------------------------------}
+length
+= foldl (\n dontCare -> n+1) 0;
+
+
+{--------------------------------------------------------}
+nth l n
+= case l of
+    Nil -> error;
+    Cons x xs -> case n == 0 of
+                   True -> x;
+                   False -> nth xs (n-1)
+                 end
+  end;
+
+
+{--------------------------------------------------------}
+map f l
+= case l of
+    Nil -> Nil;
+    Cons x xs -> Cons (f x) (map f xs)
+  end;
+
+
+{--------------------------------------------------------}
+filter p
+= foldr (\x xs -> case p x of True -> Cons x xs; False -> xs end) Nil;
+
+
+
+{--------------------------------------------------------}
+foldl f z l
+= case l of
+    Nil -> z;
+    Cons x xs -> foldl f (f z x) xs
+  end;
+
+
+{--------------------------------------------------------}
+foldl1 f xl
+= case xl of
+    Nil -> error;
+    Cons x xs -> foldl f x xs
+  end;
+
+
+{--------------------------------------------------------}
+scanl f q xl
+= Cons q (case xl of
+            Nil -> Nil;
+            Cons x xs -> scanl f (f q x) xs end);
+
+
+{--------------------------------------------------------}
+scanl1 f xl
+= case xl of
+    Nil -> error;
+    Cons x xs -> scanl f x xs
+  end;
+
+
+{--------------------------------------------------------}
+foldr f z l
+= case l of
+    Nil -> z;
+    Cons x xs -> f x (foldr f z xs)
+  end;
+
+
+{--------------------------------------------------------}
+foldr1 f xl
+= case xl of
+    Nil -> error;
+    Cons x xs -> case xs of
+                   Nil -> x;
+                   Cons y ys -> f x (foldr1 f xs)
+                 end
+  end;
+
+
+{--------------------------------------------------------}
+scanr f q0 xl
+= case xl of
+    Nil -> Cons q0 Nil;
+    Cons x xs -> let
+                   qs = scanr f q0 xs
+                 in case qs of
+                      Nil -> error;
+                      Cons qsx qsxs -> Cons (f x qsx) qs
+                    end
+  end;
+
+
+{--------------------------------------------------------}
+scanr1 f xl
+= case xl of
+    Nil -> error;
+    Cons x xs -> let
+                   qs = scanr1 f xs
+                 in case qs of
+                      Nil -> error;
+                      Cons qsx qsxs -> Cons (f x qsx) qs
+                    end
+  end;
+
+
+{--------------------------------------------------------}
+iterate f x
+= Cons x (iterate f (f x));
+
+
+{--------------------------------------------------------}
+repeat x
+= letrec
+    xs = Cons x xs
+  in
+    xs;
+
+
+{--------------------------------------------------------}
+cycle xs
+= letrec
+    xss = append xs xss
+  in
+    xss;
+
+
+{--------------------------------------------------------}
+take n xl
+= case n == 0 of
+    True -> Nil;
+    False -> case xl of
+               Nil -> Nil;
+               Cons x xs -> Cons x (take (n-1) xs)
+             end
+  end;
+
+
+{--------------------------------------------------------}
+drop n xl
+= case n == 0 of
+    True -> xl;
+    False -> case xl of
+               Nil -> Nil;
+               Cons x xs -> drop (n-1) xs
+             end
+  end;
+
+
+{--------------------------------------------------------}
+splitAt n xl
+= case n == 0 of
+    True -> Pair Nil xl;
+    False -> case xl of
+               Nil -> Pair Nil Nil;
+               Cons x xs
+                 -> case splitAt (n-1) xs of
+                      Pair xsp xspp
+                        -> Pair (Cons x xsp) xspp
+                    end
+             end
+  end;
+
+
+{--------------------------------------------------------}
+takeWhile p xl
+= case xl of
+    Nil -> Nil;
+    Cons x xs -> case p x of
+                   True -> Cons x (takeWhile p xs);
+                   False -> Nil
+                 end
+  end;
+
+
+{--------------------------------------------------------}
+dropWhile p xl
+= case xl of
+    Nil -> Nil;
+    Cons x xsp -> case p x of
+                    True -> dropWhile p xsp;
+                    False -> xl
+                  end
+  end;
+
+
+{--------------------------------------------------------}
+span p xs
+= case xs of
+    Nil -> Pair Nil Nil;
+    Cons x xsp -> case p x of
+                    False -> Pair Nil xs;
+                    True ->
+                      case span p xsp of
+                        Pair ys zs -> Pair (Cons x ys) zs
+                      end
+                  end
+  end;
+
+
+{--------------------------------------------------------}
+break p
+= span (dot not p);
+
+
+{--------------------------------------------------------}
+{- lines, words, unlines and unwords -}
+
+
+{--------------------------------------------------------}
+nub xl
+= case xl of
+    Nil -> Nil;
+    Cons x xs -> Cons x (nub (filter (\a -> not (a == x)) xs))
+  end;
+
+
+{--------------------------------------------------------}
+reverse
+= foldl (flip Cons) Nil;
+
+
+{--------------------------------------------------------}
+and
+= foldr (\a b -> a & b) True;
+
+
+{--------------------------------------------------------}
+or
+= foldr (\a b -> a | b) True;
+
+
+{--------------------------------------------------------}
+any p
+= dot or (map p);
+
+
+{--------------------------------------------------------}
+all p
+= dot and (map p);
+
+
+{--------------------------------------------------------}
+elem
+= dot any (\a b -> a == b);
+
+
+{--------------------------------------------------------}
+notElem
+= dot all (\a b -> not (a == b));
+
+
+{--------------------------------------------------------}
+sum
+= foldl (\a b -> a + b) 0;
+
+
+{--------------------------------------------------------}
+product
+= foldl (\a b -> a * b) 1;
+
+
+{--------------------------------------------------------}
+sums
+= scanl (\a b -> a + b) 0;
+
+
+{--------------------------------------------------------}
+products
+= scanl (\a b -> a * b) 1;
+
+
+{--------------------------------------------------------}
+maximum
+= foldl1 max;
+
+
+{--------------------------------------------------------}
+minimum
+= foldl1 min;
+
+
+{--------------------------------------------------------}
+concat
+= foldr append Nil;
+
+
+{--------------------------------------------------------}
+transpose
+= foldr
+    (\xs xss -> zipWith Cons xs (append xss (repeat Nil)))
+    Nil;
+
+
+{--------------------------------------------------------}
+zip
+= zipWith (\a b -> Pair a b);
+
+
+{--------------------------------------------------------}
+{
+zip3
+= zipWith3 (\a b c -> Tp3 a b c);
+}
+
+{--------------------------------------------------------}
+{
+zip4
+= zipWith4 (\a b c d -> Tp4 a b c d);
+}
+
+{--------------------------------------------------------}
+zipWith z al bl
+= case al of
+    Cons a as -> case bl of
+                   Cons b bs -> Cons (z a b) (zipWith z as bs);
+                   Nil -> Nil
+                 end;
+    Nil -> Nil
+  end;
+
+
+{--------------------------------------------------------}
+{
+zipWith3 z al bl cl
+= case al of
+    Cons a as -> case bl of
+                   Cons b bs -> case cl of
+                                  Cons c cs -> Cons (z a b c)
+                                                    (zipWith3 z as bs cs);
+                                  Nil -> Nil
+                                end;
+                   Nil -> Nil
+                 end;
+    Nil -> Nil
+  end;
+}
+
+{--------------------------------------------------------}
+{
+zipWith4 z al bl cl dl
+= case al of
+    Cons a as
+      -> case bl of
+           Cons b bs
+             -> case cl of
+                  Cons c cs
+                    -> case dl of
+                         Cons d ds
+                           -> Cons (z a b c d) (zipWith4 z as bs cs ds);
+                              Nil -> Nil
+                       end;
+                  Nil -> Nil
+                end;
+           Nil -> Nil
+         end;
+    Nil -> Nil
+  end;
+}
+
+{--------------------------------------------------------}
+{--------------------------------------------------------}
+{--------------------------------------------------------}
+{--------------------------------------------------------}
+
+{----------------------------------------------------------------}
+{--- end                                      preludeList.cor ---}
+{----------------------------------------------------------------}
+
+{------ many_iterate ------}
+
+backMap fl v = case fl of
+                  Nil -> Nil;
+                  Cons f fs -> Cons (f v) (backMap fs v)
+               end;
+
+g = backMap (Cons not (Cons not Nil)) False;
+
+add1 x = 1 + x;
+
+hof f y = 1 + f y;
+
+id x = x;
+
+useHOF = hof id (hof (id id add1) 43);
+
+nasty x = letrec loop=loop in loop;
+
+map f l = case l of
+             Nil -> Nil;
+             Cons x xs -> Cons (f x) (map f xs)
+          end;
+
+foldr op id ll = case ll of
+                    Nil -> id;
+                    Cons x xs -> op x (foldr op id xs)
+                 end;
+
+append l1 l2 = case l1 of
+                  Nil -> l2;
+                  Cons x xs -> Cons x (append xs l2)
+               end;
+
+concat ll = case ll of
+               Nil -> Nil;
+               Cons xs xss -> append xs (concat xss)
+            end;
+
+concat2 = foldr append Nil;
+
+sum l = case l of
+           Nil -> 0;
+           Cons x xs -> x + sum xs
+        end;
+
+sum2 = let add = \x y -> x + y in foldr add 0;
+
+hd l = case l of
+          Nil -> nasty 0;
+          Cons x xs -> x
+       end;
+
+length l = case l of
+             Nil -> 0;
+             Cons x xs -> 1 + length xs
+           end;
+
+reverse l = case l of
+              Nil -> Nil;
+              Cons x xs -> append (reverse xs) (Cons x Nil)
+            end;
+
+reverse_into l = letrec
+                    rev = \acc lisp -> case lisp of
+                                          Nil -> acc;
+                                          Cons x xs -> rev (Cons x acc) xs
+                                       end
+                 in rev Nil l;
+
+f = length (reverse (Cons not (Cons not Nil)));
+
+g1 = backMap funcList False;
+
+funcList = Cons not (Cons not Nil);
+
+areInverses f1 f2 equalPred testVal
+   = let dot = \f g x -> f (g x) in
+     case
+        equalPred testVal
+                  ((dot f2 f1) testVal) of
+            True -> True;
+            False -> False
+     end;
+
+testInverses =
+   let sub = \a b -> b - a in
+   let add = \a b -> a + b in
+   let eq  = \a b -> a == b in
+   areInverses (add 1) (sub 1) eq 5;
+
+{------ higher_order ------}
+
+intsFrom a = Cons a (intsFrom (a+1));
+
+interesting x = letrec loop = loop in loop;
+
+if c t f = case c of
+             True -> t;
+             False -> f
+           end;
+
+id x = x;
+add2 x = 2 + x;
+
+fac n acc = if (n==0) acc (fac (n-1) (n*acc));
+
+fact n = fac n 1;
+
+hof g x y = let
+              kk = \x y -> x;
+              ii = \x -> x
+            in (g (hof (kk 0) x (y-1))) +
+               (if (y==0) x (hof ii 3 (y-1)));
+
+useHOF x y = let
+            neg = \n -> 0-n
+         in hof neg x y;
+
+ff c q v = case v of
+              Nil -> f2231 c c q;
+              Cons x xs -> f2231 c c q
+           end;
+
+f223 x y = (if (x ==
+    (letrec
+        rf = \a b -> b - (rg (let sq = \n -> n * (let nnn = \w -> 1 in n) in a) 4);
+        rg = \a b -> if (b==0) b (rf a a)
+     in 0)
+                ) y (f223 (x - 1) y));
+
+
+f2231 x y z = (if (y == 0) (f2231 0 1 x) x);
+
+f2232 x y z p
+   = if (p==0)
+     (x+z)
+     ( (f2232 y 0 0 (p-1)) + (f2232 z z 0 (p-1)) );
+
+hudak x y z p q = if (p>0)
+                     (if (p==1)
+                         (if (z==0)
+                             x
+                             y)
+                         (hudak z z 0 (p-1) x))
+                     (hudak 0 0 z 1 y);
+
+
+fa x = case x of
+         Na -> 0;
+         Ca y ys -> (fb ys) + y
+       end;
+
+fb x = case x of
+         Nb -> 0;
+         Cb y ys -> (fa ys) - y
+       end;
+
+
+
+z4 l1 l2
+   = case l1 of
+        Nil -> Nil;
+        Cons x xs -> case l2 of
+                        Nil -> Nil;
+                        Cons y ys -> Cons (x+y) (z4 xs ys)
+                     end
+     end;
+
+z6 l1 l2
+   = case l1 of
+        Nil -> Nil;
+        Cons x xs -> case l2 of
+                        Nil -> Nil;
+                        Cons y ys -> Cons (z4 x y) (z6 xs ys)
+                     end
+     end;
+
+z8 l1 l2
+   = case l1 of
+        Nil -> Nil;
+        Cons x xs -> case l2 of
+                        Nil -> Nil;
+                        Cons y ys -> Cons (z6 x y) (z8 xs ys)
+                     end
+     end;
+
+z10 l1 l2
+   = case l1 of
+        Nil -> Nil;
+        Cons x xs -> case l2 of
+                        Nil -> Nil;
+                        Cons y ys -> Cons (z8 x y) (z10 xs ys)
+                     end
+     end;
+
+id x = x;
+
+reverseInto a l
+ = case l of Nil -> a; Cons x xs -> reverseInto (Cons x a) xs end;
+
+reverse
+ = reverseInto Nil;
+
+swap p = case p of Pair a b -> Pair b a end;
+
+dupFirstOfPair p = case p of Pair a b -> Pair a a end;
+
+makePair x = Pair x x;
+
+makeBPair1 = letrec loop=loop in Pair loop loop;
+makeBPair2 = Pair (letrec loop1=loop1 in loop1)
+                  (letrec loop2=loop2 in loop2);
+
+append l1 l2
+ = case l1 of Nil -> l2; Cons x xs -> Cons x (append xs l2) end;
+
+if c t f = case c of True -> t; False -> f end;
+
+glb = if True;
+
+head l = letrec loop = loop in case l of Nil -> loop; Cons x xs -> x end;
+
+tail l = letrec loop = loop in case l of Nil -> loop; Cons x xs -> xs end;
+
+concat ll
+ = case ll of Nil -> Nil; Cons xs xss -> append xs (concat xss) end;
+
+zip2 l1 l2
+ = case l1 of Nil -> Nil;
+              Cons l1x l1xs -> case l2 of Nil -> Nil;
+                                          Cons l2x l2xs ->
+       Cons (Pair l1x l2x) (zip2 l1xs l2xs) end end;
+
+likeAppend l1 l2
+ = case l1 of Nil -> letrec loop = loop in loop;
+              Cons x xs -> Cons x l2
+   end;
+
+split l
+  = case l of
+       Nil -> Pair Nil Nil;
+       Cons a as -> case as of
+                       Nil -> Pair (Cons a Nil) Nil;
+                       Cons b bs ->
+                          case split bs of
+                             Pair xx yy ->
+                             Pair (Cons a xx) (Cons b yy)
+                          end
+                    end
+    end;
+
+merge pl
+  = case pl of Pair as bs ->
+       case as of Nil -> bs;
+                  Cons x xs -> Cons x (merge (Pair bs xs))
+       end
+    end;
+
+splitThenMerge l = merge (split l);
+
+take n l
+  = if (n<=0) (Pair n l)
+       (case l of Nil -> (Pair n Nil);
+                  Cons x xs -> take (n-1) xs end);
+
+reverseAndBottom l = letrec loop=loop in Pair (reverse l) loop;
+
+rabAbsCons = reverseAndBottom (Cons (Cons 1 Nil) (Cons (Cons 2 Nil) Nil));
+
+
+
+
+
+
+
+
+
+d4 xl yl
+  = case xl of
+       Cons x xs -> case yl of
+                      Cons y ys -> x * y + d4 xs ys;
+                      Nil -> 0
+                    end;
+       Nil -> 0
+    end;
+
+
+d6 xl yl
+  = case xl of
+       Cons x xs -> case yl of
+                      Cons y ys -> d4 x y + d6 xs ys;
+                      Nil -> 0
+                    end;
+       Nil -> 0
+    end;
+
+d8 xl yl
+  = case xl of
+       Cons x xs -> case yl of
+                      Cons y ys -> d6 x y + d8 xs ys;
+                      Nil -> 0
+                    end;
+       Nil -> 0
+    end;
+
+d10 xl yl
+  = case xl of
+       Cons x xs -> case yl of
+                      Cons y ys -> d8 x y + d10 xs ys;
+                      Nil -> 0
+                    end;
+       Nil -> 0
+    end;
+
+
+d12 xl yl
+  = case xl of
+       Cons x xs -> case yl of
+                      Cons y ys -> d10 x y + d12 xs ys;
+                      Nil -> 0
+                    end;
+       Nil -> 0
+    end;
+
+
+
+plusC c1 c2
+  = case c1 of Cpx r1 i1 -> case c2 of Cpx r2 i2 -> Cpx (r1+r2) (i1+i2)
+    end end;
+
+minC c1 c2
+  = case c1 of Cpx r1 i1 -> case c2 of Cpx r2 i2 -> Cpx (r1-r2) (i1-i2)
+    end end;
+
+mulC c1 c2
+  = case c1 of Cpx r1 i1 -> case c2 of Cpx r2 i2
+     -> Cpx (r1 * r2 - i1 * i2) (r1 * i2 + i1 * r2)
+    end end;
+
+if c t f = case c of True -> t; False -> f end;
+
+length l = case l of Nil -> 0; Cons x xs -> 1 + length xs end;
+
+append xl yl = case xl of Nil -> yl; Cons x xs -> Cons x (append xs yl) end;
+
+sin x = x + 1;
+cos x = x - 1;
+pi = 3;
+
+root j n = let z = (2 * j * pi) / n
+           in  Cpx (cos z) (sin z);
+
+error = error;
+
+split l
+  = case l of
+       Nil -> Pair Nil Nil;
+       Cons a as -> case as of
+                      Nil -> error;
+                      Cons b rest ->
+                        case split rest of Pair even odd
+                           -> Pair (Cons a even) (Cons b odd) end end end;
+
+
+merge even odd n
+= letrec merge2 = \ere oro i ->
+               case ere of Cons e re ->
+               case oro of Cons o ro ->
+             ( letrec urest_umrest = merge2 re ro (i+1);
+                   ri = root i n;
+                   prod = mulC ri o;
+                   ui = plusC e prod;
+                   umi = minC e prod;
+                   urest = case urest_umrest of Pair urest umrest -> urest end;
+                   umrest = case urest_umrest of Pair urest umrest -> umrest end
+               in  Pair (Cons ui urest) (Cons umi umrest)   );
+                           Nil -> Pair Nil Nil end;
+                           Nil -> Pair Nil Nil end
+   in case merge2 even odd 0 of
+         Pair low high -> append low high end;
+
+id x = x;
+
+boxid = Box id;
+
+use x = case boxid of Box f -> f x end;
+
+evenworse x = case boxid of Box f -> f (Pair x 1) end;
+
+
+
+
+
+
+
+
+
+addInt a b = a + b;
+mulInt a b = a * b;
+negInt a = 0 - a;
+
+addBool a b = a | b;
+mulBool a b = a & b;
+negBool a = not a;
+
+add nd = case nd of NumDict a m n -> a end;
+mul nd = case nd of NumDict a m n -> m end;
+neg nd = case nd of NumDict a m n -> n end;
+
+numDInt  = NumDict addInt mulInt negInt;
+numDBool = NumDict addBool mulBool negBool;
+
+squarePrime numDa x = mul numDa x x;
+
+squaresPrime ndt xyz =
+   case ndt of MkTriple nda ndb ndc ->
+   case xyz of MkTriple x y z ->
+     MkTriple (squarePrime nda x) (squarePrime ndb y) (squarePrime ndc z)
+   end end;
+
+
+{----------------------------------------------------------------}
+{--- Divide-and-conquer for trees only                        ---}
+{----------------------------------------------------------------}
+
+
+{----------------------------------------------------------------}
+divide_conq base_fn merge_fn problem
+= case problem of
+     Leaf
+        -> base_fn problem;
+     Branch l x r
+        -> merge_fn
+              x
+              (divide_conq base_fn merge_fn l)
+              (divide_conq base_fn merge_fn r)
+  end;
+
+
+{----------------------------------------------------------------}
+treeSum tree
+= let
+     t_base_fn
+       = \t -> 0;
+
+     t_merge_fn
+       = \original_x solved_l_subproblem solved_r_subproblem
+         -> original_x + solved_l_subproblem + solved_r_subproblem
+  in
+     divide_conq t_base_fn t_merge_fn tree;
+
+
+{----------------------------------------------------------------}
+mirror tree
+= let
+     m_base_fn
+       = \t -> t;
+
+     m_merge_fn
+       = \original_x solved_l_subproblem solved_r_subproblem
+         -> Branch solved_r_subproblem original_x solved_l_subproblem
+  in
+     divide_conq m_base_fn m_merge_fn tree;
+
+
+{----------------------------------------------------------------}
+{--- end                                           divide.cor ---}
+{----------------------------------------------------------------}
+
+
+
+
+z4 l1 l2
+   = case l1 of
+        Nil -> Nil;
+        Cons x xs -> case l2 of
+                        Nil -> Nil;
+                        Cons y ys -> Cons (x+y) (z4 xs ys)
+                     end
+     end;
+
+z6 l1 l2
+   = case l1 of
+        Nil -> Nil;
+        Cons x xs -> case l2 of
+                        Nil -> Nil;
+                        Cons y ys -> Cons (z4 x y) (z6 xs ys)
+                     end
+     end;
+
+z8 l1 l2
+   = case l1 of
+        Nil -> Nil;
+        Cons x xs -> case l2 of
+                        Nil -> Nil;
+                        Cons y ys -> Cons (z6 x y) (z8 xs ys)
+                     end
+     end;
+
+z10 l1 l2
+   = case l1 of
+        Nil -> Nil;
+        Cons x xs -> case l2 of
+                        Nil -> Nil;
+                        Cons y ys -> Cons (z8 x y) (z10 xs ys)
+                     end
+     end;
+
+f2 a b
+  = case a == 0 of
+       True -> b;
+       False -> f2 b a
+    end;
+
+f3 a b c
+  = case a == 0 of
+       True -> b;
+       False -> f3 c b a
+    end;
+
+f4 a b c d
+  = case a == 0 of
+       True -> b;
+       False -> f4 d c b a
+    end;
+
+f5 a b c d e
+  = case a == 0 of
+       True -> b;
+       False -> f5 e d c b a
+    end;
+
+f6 a b c d e f
+  = case a == 0 of
+       True -> b;
+       False -> f6 f e d c b a
+    end;
+
+f7 a b c d e f g
+  = case a == 0 of
+       True -> b;
+       False -> f7 g f e d c b a
+    end;
+
+p2 a b                       = a;
+
+p3 a b c                     = a + c;
+
+p4 a b c d                   = a + c;
+
+p5 a b c d e                 = a + c + e;
+
+p6 a b c d e f               = a + c + e;
+
+p7 a b c d e f g             = a + c + e + g;
+
+p8 a b c d e f g h           = a + c + e + g;
+
+p9 a b c d e f g h i         = a + c + e + g + i;
+
+p10 a b c d e f g h i j      = a + c + e + g + i;
+
+p11 a b c d e f g h i j k    = a + c + e + g + i + k;
+
+p12 a b c d e f g h i j k l  = a + c + e + g + i + k;
+
+s2 a b                       = a + b;
+
+s4 a b c d                   = a + b + c + d;
+
+s6 a b c d e f               = a + b + c + d + e + f;
+
+s8 a b c d e f g h           = a + b + c + d + e + f + g + h;
+
+s10 a b c d e f g h i j      = a + b + c + d + e + f + g + h + i + j;
+
+s12 a b c d e f g h i j k l  = a + b + c + d + e + f + g + h + i + j + k + l;
+
+
+l2 a b                       = 37;
+
+l4 a b c d                   = 37;
+
+l6 a b c d e f               = 37;
+
+l8 a b c d e f g h           = 37;
+
+l9 a b c d e f g h i         = 37;
+
+l10 a b c d e f g h i j      = 37;
+
+l12 a b c d e f g h i j k l  = 37;
+
+bottomAny = bottomAny;
+
+             bigs  d l2 = case l2 of
+                                Nil -> Nil;
+                                Cons l2x l2xs ->
+                                   case l2x>d of
+                                      True -> Cons l2x (bigs d l2xs);
+                                      False -> bigs d l2xs
+                                   end
+                             end;
+
+             smalls d l2 = case l2 of
+                                Nil -> Nil;
+                                Cons l2x l2xs ->
+                                   case l2x<=d of
+                                      True -> Cons l2x (smalls d l2xs);
+                                      False -> smalls d l2xs
+                                   end
+                             end;
+
+qsort l =
+
+          case l of
+              Nil -> Nil;
+              Cons h t -> append (qsort (smalls h t))
+                                 (Cons h (qsort (bigs h t)))
+          end;
+
+topInt = 42;
+
+domainHeight d
+   = case d of
+        Unit -> 1;
+        Lift d1 -> 1 + domainHeight d1
+     end;
+
+workingHours d
+   = case d of
+        Saturday -> 0;
+        Sunday -> 0;
+        Monday -> 2;
+        Tuesday -> 4;
+        Wednesday -> 5;
+        Thursday -> 3;
+        Friday -> 1
+     end;
+
+incHead l = case l of
+              Nil -> Nil;
+              Cons a as -> Cons (a+1) as
+            end;
+
+tricky a b = case a==0 of
+                True -> b;
+                False -> tricky (a-1) b
+             end;
+
+length x = case x of
+              Nil -> 0;
+              Cons a as -> 1 + length as
+           end;
+
+sum x = case x of
+           Nil -> 0;
+           Cons a as -> a + sum as
+        end;
+
+append x y = case x of
+                Nil -> y;
+                Cons a as -> Cons a (append as y)
+             end;
+
+rev x = case x of
+           Nil -> Nil;
+           Cons a as -> append (rev as) (Cons a Nil)
+        end;
+
+take n l = case l of
+              Nil -> Nil;
+              Cons x xs -> case (n==0) of
+                              True -> Nil;
+                              False ->  Cons x (take (n-1) xs)
+                           end
+           end;
+
+drop n l = case l of
+              Nil -> Nil;
+              Cons x xs -> case (n==0) of
+                              True -> Cons x xs;
+                              False -> drop (n-1) xs
+                           end
+           end;
+
+first p = case p of Pair a b -> a end;
+
+second p = case p of Pair a b -> b end;
+
+mirror t = case t of
+             Leaf -> Leaf;
+             Branch l x r -> Branch (mirror r) x (mirror l)
+           end;
+
+sumt t = case t of
+            Leaf -> 0;
+            Branch l x r -> sumt l + x + sumt r
+         end;
+
+aLookupDef al key default
+   = case al of
+        NilAssoc -> default;
+        Assoc a b abs -> case a==key of
+                            True -> b;
+                            False -> aLookupDef abs key default
+                         end
+     end;
+
+aDomain al
+   = case al of
+       NilAssoc -> Nil;
+       Assoc a b abs -> Cons a (aDomain abs)
+     end;
+
+aInverse al
+   = case al of
+       NilAssoc -> NilAssoc;
+       Assoc a b abs -> Assoc b a (aInverse abs)
+     end;
+
+flatten t = case t of
+               Leaf -> Nil;
+               Branch l x r -> append (flatten l) (Cons x (flatten r))
+            end;
+
+insert x t = case t of
+                Leaf -> Branch Leaf x Leaf;
+                Branch l x1 r ->
+                 case x==x1 of
+                    True -> Branch l x1 r;
+                    False -> case x<x1 of
+                                True -> Branch (insert x l) x1 r;
+                                False -> Branch l x1 (insert x r)
+                             end
+                 end
+            end;
+
+listToTree l =
+   letrec ltt = \tr li -> case li of
+                             Nil -> tr;
+                             Cons x xs -> ltt (insert x tr) xs
+                          end
+   in ltt Leaf l;
+
+nodups l = flatten (listToTree l);
+
+

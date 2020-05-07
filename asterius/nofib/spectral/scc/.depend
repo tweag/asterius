@@ -1,0 +1,5 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+Digraph.o : Digraph.hs
+Main.o : Main.hs
+Main.o : Digraph.hi
+# DO NOT DELETE: End of Haskell dependencies

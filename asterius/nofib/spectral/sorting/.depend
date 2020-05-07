@@ -1,0 +1,7 @@
+# DO NOT DELETE: Beginning of Haskell dependencies
+NofibUtils.o : NofibUtils.hs
+Sort.o : Sort.hs
+Main.o : Main.hs
+Main.o : NofibUtils.hi
+Main.o : Sort.hi
+# DO NOT DELETE: End of Haskell dependencies

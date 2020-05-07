@@ -1,0 +1,11 @@
+By default we avoid actually printing results.
+Given that we deal with floating point these vary
+between platforms quite a bit without actually being wrong.
+So we just evaluate the result without showing it.
+
+If you want to check the validity of results you can
+pass print as additional argument to get the old
+behaviour.
+
+The old Makefile along with (some of) the expected results
+can be found in the old subdirectory.

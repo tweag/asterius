@@ -1,0 +1,297 @@
+
+--==========================================================--
+--=== The parser.                                        ===--
+--===                                          Parser.hs ===--
+--==========================================================--
+
+module Parser where
+
+{- FIX THESE UP -}
+--utLookupDef env k def
+--   = head ( [ vv | (kk,vv) <- env, kk == k] ++ [def] )
+panic = error
+{- END FIXUPS -}
+
+--paLiteral :: Parser Literal
+paLiteral
+   = pgAlts
+     [
+        pgApply (LiteralInt.leStringToInt) (pgItem Lintlit),
+        pgApply (LiteralChar.head)         (pgItem Lcharlit),
+        pgApply LiteralString              (pgItem Lstringlit)
+     ]
+
+paExpr
+   = pgAlts
+     [
+        paCaseExpr,
+        paLetExpr,
+        paLamExpr,
+        paIfExpr,
+        paUnaryMinusExpr,
+        hsDoExpr []
+     ]
+
+paUnaryMinusExpr
+   = pgThen2
+        (\minus (_, aexpr, _) ->
+             ExprApp (ExprApp (ExprVar "-") (ExprLiteral (LiteralInt 0))) aexpr)
+        paMinus
+        paAExpr
+
+paCaseExpr
+   = pgThen4
+        (\casee expr off alts -> ExprCase expr alts)
+        (pgItem Lcase)
+        paExpr
+        (pgItem Lof)
+        (pgDeclList paAlt)
+
+paAlt
+   = pgAlts
+     [
+        pgThen4
+           (\pat arrow expr wheres
+                -> MkExprCaseAlt pat (pa_MakeWhereExpr expr wheres))
+           paPat
+           (pgItem Larrow)
+           paExpr
+           (pgOptional paWhereClause),
+        pgThen3
+           (\pat agrdrhss wheres
+                -> MkExprCaseAlt pat
+                      (pa_MakeWhereExpr (ExprGuards agrdrhss) wheres))
+           paPat
+           (pgOneOrMore paGalt)
+           (pgOptional paWhereClause)
+     ]
+
+paGalt
+   = pgThen4
+        (\bar guard arrow expr -> (guard, expr))
+        (pgItem Lbar)
+        paExpr
+        (pgItem Larrow)
+        paExpr
+
+paLamExpr
+   = pgThen4
+        (\lam patterns arrow rhs -> ExprLam patterns rhs)
+        (pgItem Lslash)
+        (pgZeroOrMore paAPat)
+        (pgItem Larrow)
+        paExpr
+
+paLetExpr
+   = pgThen4
+        (\lett decls inn rhs -> ExprLetrec decls rhs)
+        (pgItem Llet)
+        paValdefs
+        (pgItem Lin)
+        paExpr
+
+paValdefs
+   = pgApply pa_MergeValdefs (pgDeclList paValdef)
+
+pa_MergeValdefs
+   = id
+
+paLhs
+   = pgAlts
+     [
+        pgThen2 (\v ps -> LhsVar v ps) paVar (pgOneOrMore paPat),
+        pgApply LhsPat paPat
+     ]
+
+paValdef
+   = pgAlts
+     [
+        pgThen4
+           (\(line, lhs) eq rhs wheres
+                -> MkValBind line lhs (pa_MakeWhereExpr rhs wheres))
+           (pgGetLineNumber paLhs)
+           (pgItem Lequals)
+           paExpr
+           (pgOptional paWhereClause),
+        pgThen3
+           (\(line, lhs) grdrhss wheres
+                -> MkValBind line lhs
+                      (pa_MakeWhereExpr (ExprGuards grdrhss) wheres))
+           (pgGetLineNumber paLhs)
+           (pgOneOrMore paGrhs)
+           (pgOptional paWhereClause)
+     ]
+
+pa_MakeWhereExpr expr Nothing
+   = expr
+pa_MakeWhereExpr expr (Just whereClauses)
+   = ExprWhere expr whereClauses
+
+paWhereClause
+   = pgThen2 (\x y -> y) (pgItem Lwhere) paValdefs
+paGrhs
+   = pgThen4
+        (\bar guard equals expr -> (guard, expr))
+        (pgItem Lbar)
+        paExpr
+        (pgItem Lequals)
+        paExpr
+
+
+paAPat
+   = pgAlts
+     [
+        pgApply PatVar paVar,
+        pgApply (\id -> PatCon id []) paCon,
+        pgApply (const PatWild) (pgItem Lunder),
+        pgApply PatTuple
+                (pgThen3 (\l es r -> es)
+                         (pgItem Llparen)
+                         (pgTwoOrMoreWithSep paPat (pgItem Lcomma))
+                         (pgItem Lrparen)),
+        pgApply PatList
+                (pgThen3 (\l es r -> es)
+                         (pgItem Llbrack)
+                         (pgZeroOrMoreWithSep paPat (pgItem Lcomma))
+                         (pgItem Lrbrack)),
+        pgThen3 (\l p r -> p)
+                (pgItem Llparen)
+                paPat
+                (pgItem Lrparen)
+     ]
+
+paPat
+   = pgAlts
+     [
+        pgThen2 (\c ps -> PatCon c ps)
+                paCon
+                (pgOneOrMore paAPat),
+        pgThen3 (\ap c pa -> PatCon c [ap,pa])
+                paAPat
+                paConop
+                paPat,
+        paAPat
+     ]
+
+
+paIfExpr
+ = pgThen4
+      (\iff c thenn (t,f) -> ExprIf c t f)
+      (pgItem Lif)
+      paExpr
+      (pgItem Lthen)
+      (pgThen3
+         (\t elsee f -> (t,f))
+         paExpr
+         (pgItem Lelse)
+         paExpr
+      )
+
+paAExpr
+ = pgApply (\x -> (False, x, []))
+   (pgAlts
+    [
+       pgApply ExprVar paVar,
+       pgApply ExprCon paCon,
+       pgApply ExprLiteral paLiteral,
+       pgApply ExprList paListExpr,
+       pgApply ExprTuple paTupleExpr,
+       pgThen3 (\l e r -> e) (pgItem Llparen) paExpr (pgItem Lrparen)
+    ]
+   )
+
+paListExpr
+   = pgThen3 (\l es r -> es)
+             (pgItem Llbrack)
+             (pgZeroOrMoreWithSep paExpr (pgItem Lcomma))
+             (pgItem Lrbrack)
+
+paTupleExpr
+   = pgThen3 (\l es r -> es)
+             (pgItem Llparen)
+             (pgTwoOrMoreWithSep paExpr (pgItem Lcomma))
+             (pgItem Lrparen)
+
+paVar = pgItem Lvar
+paCon = pgItem Lcon
+paVarop = pgItem Lvarop
+paConop = pgItem Lconop
+paMinus = pgItem Lminus
+
+paOp
+ = pgAlts [
+            pgApply (\x -> (True, ExprVar x, x)) paVarop,
+            pgApply (\x -> (True, ExprCon x, x)) paConop,
+            pgApply (\x -> (True, ExprVar x, x)) paMinus
+          ]
+
+paDataDecl
+   = pgThen2
+        (\dataa useful -> useful)
+        (pgItem Ldata)
+        paDataDecl_main
+
+paDataDecl_main
+   = pgThen4
+        (\name params eq drhs -> MkDataDecl name (params, drhs))
+        paCon
+        (pgZeroOrMore paVar)
+        (pgItem Lequals)
+        (pgOneOrMoreWithSep paConstrs (pgItem Lbar))
+
+paConstrs
+   = pgThen2
+        (\con texprs -> (con, texprs))
+        paCon
+        (pgZeroOrMore paAType)
+
+paType
+   = pgAlts
+     [
+        pgThen3
+           (\atype arrow typee -> TypeArr atype typee)
+           paAType
+           (pgItem Larrow)
+           paType,
+        pgThen2
+           TypeCon
+           paCon
+           (pgOneOrMore paAType),
+        paAType
+     ]
+
+paAType
+   = pgAlts
+     [
+        pgApply TypeVar paVar,
+        pgApply (\tycon -> TypeCon tycon []) paCon,
+        pgThen3
+           (\l t r -> t)
+           (pgItem Llparen)
+           paType
+           (pgItem Lrparen),
+        pgThen3
+           (\l t r -> TypeList t)
+           (pgItem Llbrack)
+           paType
+           (pgItem Lrbrack),
+        pgThen3
+           (\l t r -> TypeTuple t)
+           (pgItem Llparen)
+           (pgTwoOrMoreWithSep paType (pgItem Lcomma))
+           (pgItem Lrparen)
+     ]
+
+paInfixDecl env toks
+  = let dump (ExprVar v) = v
+        dump (ExprCon c) = c
+    in
+    pa_UpdateFixityEnv
+       (pgThen3
+          (\assoc prio name -> MkFixDecl name (assoc, prio))
+          paInfixWord
+          (pgApply leStringToInt (pgItem Lintlit))
+          (pgApply (\(_, op, _) -> dump op) paOp)
+          env
+          toks
+       )
