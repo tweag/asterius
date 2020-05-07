@@ -3,6 +3,7 @@
 
 * Checked spectral.
 * Checked smp.
+* Checked shootout.
 
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
@@ -30,6 +31,9 @@ TODO: smp seems to ignore some tests. Taken from its Makefile:
 
 TODO: Decide what should be done with /home/skull/tweag/asterius/asterius/nofib/smp/smpbench.sh
 
+TODO: Taken from the makefile of shootout:
+  To run the benchmarks under the official settings, pass `mode=slow` to make.
+  You might also want to pass `EXTRA_HC_OPTS="-fllvm"`
 
 # NoFib: Haskell Benchmark Suite
 
