@@ -1,9 +1,0 @@
-# DO NOT DELETE: Beginning of Haskell dependencies
-NofibUtils.o : NofibUtils.hs
-Parsers.o : Parsers.hs
-Main.o : Main.lhs
-Main.o : NofibUtils.hi
-Main.o : Parsers.hi
-StringMatch.o : StringMatch.hs
-StringMatch.o : Parsers.hi
-# DO NOT DELETE: End of Haskell dependencies

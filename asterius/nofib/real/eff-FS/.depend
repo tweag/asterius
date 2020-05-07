@@ -1,5 +1,0 @@
-# DO NOT DELETE: Beginning of Haskell dependencies
-EffBench.o : EffBench.hs
-Main.o : Main.hs
-Main.o : EffBench.hi
-# DO NOT DELETE: End of Haskell dependencies

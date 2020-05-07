@@ -1,7 +1,0 @@
-# DO NOT DELETE: Beginning of Haskell dependencies
-CharSeq.o : CharSeq.hs
-Pretty.o : Pretty.hs
-Pretty.o : CharSeq.hi
-Main.o : Main.hs
-Main.o : Pretty.hi
-# DO NOT DELETE: End of Haskell dependencies

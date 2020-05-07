@@ -1,8 +1,0 @@
-# DO NOT DELETE: Beginning of Haskell dependencies
-Complex_Vectors.o : Complex_Vectors.lhs
-Fourier.o : Fourier.lhs
-Fourier.o : Complex_Vectors.hi
-Main.o : Main.lhs
-Main.o : Complex_Vectors.hi
-Main.o : Fourier.hi
-# DO NOT DELETE: End of Haskell dependencies

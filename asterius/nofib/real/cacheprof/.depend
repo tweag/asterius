@@ -1,7 +1,0 @@
-# DO NOT DELETE: Beginning of Haskell dependencies
-Arch_x86.o : Arch_x86.hs
-Generics.o : Generics.hs
-Main.o : Main.hs
-Main.o : Generics.hi
-Main.o : Arch_x86.hi
-# DO NOT DELETE: End of Haskell dependencies

@@ -1,5 +1,0 @@
-# DO NOT DELETE: Beginning of Haskell dependencies
-QSort.o : QSort.hs
-Main.o : Main.hs
-Main.o : QSort.hi
-# DO NOT DELETE: End of Haskell dependencies
