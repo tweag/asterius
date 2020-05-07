@@ -7,6 +7,7 @@
 * Checked real.
 * Checked parallel.
 * Checked imaginary.
+* Checked gc ==> Seems to be a lot of trouble (see its Makefile) / TODO.
 
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
