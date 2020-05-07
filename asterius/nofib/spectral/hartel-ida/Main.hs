@@ -3,7 +3,7 @@ where {
     import System.Environment (getArgs);
     import Control.Monad (replicateM_);
 --partain: import Fast2haskell;
-#include "../Fast2haskell.hs"
+#include "../../common/Fast2haskell.hs"
     strict_show_i::Int -> [Char];
     strict_show_i x=miraseq x (show x);
     strict_show_d::Double -> [Char];
