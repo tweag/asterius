@@ -5,6 +5,7 @@
 * Checked smp.
 * Checked shootout.
 * Checked real.
+* Checked parallel.
 
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
@@ -24,10 +25,8 @@ TODO: References to NoFibUtils might be broken right now, since folders were
 moved around and the symlinks will not work.
 
 TODO: smp seems to ignore some tests. Taken from its Makefile:
-
   SUBDIRS = sieve callback001 callback002 threads001 threads003 threads006 threads007 chan
-  # Not a good benchmark, can go really slowly for random reasons:
-  #  threads002
+  # Not a good benchmark, can go really slowly for random reasons: threads002
   OTHER_SUBDIRS = stm001 stm002 systolic tchan theads002 threads004 threads005
 
 TODO: Decide what should be done with /home/skull/tweag/asterius/asterius/nofib/smp/smpbench.sh
@@ -39,6 +38,11 @@ TODO: Taken from the makefile of shootout:
 TODO: Note in real:
   #cacheprof causes very nondeterministic allocation
   OTHER_SUBDIRS = cacheprof
+
+TODO: parallel seems to ignore some tests. Taken from its Makefile:
+  SUBDIRS = parfib partree sumeuler matmult ray gray prsa mandel queens coins blackscholes minimax nbody transclos
+  OTHER_SUBDIRS = cfd dcbm linsolv nbody partak quicksort threadfib warshall
+
 
 
 # NoFib: Haskell Benchmark Suite
