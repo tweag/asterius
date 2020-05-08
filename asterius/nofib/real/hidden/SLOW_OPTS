@@ -1,1 +1,1 @@
-runtime_files/four.plate
+-ghc-timing +RTS -V0 -RTS +RTS -K1m -RTS runtime_files/four.plate

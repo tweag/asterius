@@ -9,6 +9,30 @@
 * Checked imaginary.
 * Checked gc ==> Seems to be a lot of trouble (see its Makefile) / TODO.
 
+TODO: These guys are generated from booting, and they are massive (don't want
+to commit them to our tree TBH):
+
+  shootout/fasta/fasta.faststdout
+  shootout/fasta/fasta.slowstdout
+  shootout/fasta/fasta.stdout
+  shootout/k-nucleotide/k-nucleotide.faststdin
+  shootout/k-nucleotide/k-nucleotide.slowstdin
+  shootout/k-nucleotide/k-nucleotide.stdin
+  shootout/reverse-complement/reverse-complement.faststdin
+  shootout/reverse-complement/reverse-complement.faststdout
+  shootout/reverse-complement/reverse-complement.slowstdin
+  shootout/reverse-complement/reverse-complement.slowstdout
+  shootout/reverse-complement/reverse-complement.stdin
+  shootout/reverse-complement/reverse-complement.stdout
+  spectral/awards/awards.slowstdout
+  spectral/awards/awards.stdout
+  spectral/banner/banner.faststdin
+  spectral/banner/banner.faststdout
+  spectral/banner/banner.slowstdin
+  spectral/banner/banner.slowstdout
+  spectral/banner/banner.stdin
+  spectral/banner/banner.stdout
+
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
 
@@ -34,10 +58,12 @@ TODO: parallel seems to ignore some tests. Taken from its Makefile:
   SUBDIRS = parfib partree sumeuler matmult ray gray prsa mandel queens coins blackscholes minimax nbody transclos
   OTHER_SUBDIRS = cfd dcbm linsolv nbody partak quicksort threadfib warshall
 
-TODO: Parse the makefiles
-  FAST_OPTS =   500000
-  NORM_OPTS =  5000000
-  SLOW_OPTS = 25000000
+Problematic Makefiles
+~~~~~~~~~~~~~~~~~~~~~
+spectral/awards
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 # NoFib: Haskell Benchmark Suite

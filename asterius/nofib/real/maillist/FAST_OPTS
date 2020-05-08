@@ -1,1 +1,1 @@
-runtime_files/fast
+-ghc-timing +RTS -V0 -RTS runtime_files/fast

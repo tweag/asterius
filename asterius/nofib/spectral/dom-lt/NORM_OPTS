@@ -1,1 +1,1 @@
-ghc-examples.in 400
+-ghc-timing +RTS -V0 -RTS ghc-examples.in 400

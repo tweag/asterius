@@ -1,1 +1,1 @@
-50 13
+-ghc-timing +RTS -V0 -RTS +RTS -K128M -H200m -RTS 50 13

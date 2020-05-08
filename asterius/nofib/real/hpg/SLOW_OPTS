@@ -1,1 +1,1 @@
--nt 80 -dt 8 -nv 100 -dv 8 -de 8
+-ghc-timing +RTS -V0 -RTS -nt 80 -dt 8 -nv 100 -dv 8 -de 8

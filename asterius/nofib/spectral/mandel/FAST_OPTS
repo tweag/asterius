@@ -1,1 +1,1 @@
--2.0 -2.0 2.0 2.0  25  25 75
+-ghc-timing +RTS -V0 -RTS -stdout-binary -2.0 -2.0 2.0 2.0 25 25 75

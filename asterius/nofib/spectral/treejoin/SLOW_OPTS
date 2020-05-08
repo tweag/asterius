@@ -1,1 +1,1 @@
-runtime_files/27000.1 runtime_files/27000.2
+-ghc-timing +RTS -V0 -RTS runtime_files/27000.1 runtime_files/27000.2

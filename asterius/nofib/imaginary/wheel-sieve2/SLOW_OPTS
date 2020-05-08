@@ -1,1 +1,1 @@
-4000
+-ghc-timing +RTS -V0 -RTS +RTS -M300m -RTS 4000

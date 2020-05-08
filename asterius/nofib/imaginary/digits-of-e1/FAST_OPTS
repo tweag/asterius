@@ -1,1 +1,1 @@
-50
+-ghc-timing +RTS -V0 -RTS 50

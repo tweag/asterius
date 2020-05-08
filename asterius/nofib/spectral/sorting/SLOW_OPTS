@@ -1,1 +1,1 @@
-3000 Sort.hs
+-ghc-timing +RTS -V0 -RTS 3000 Sort.hs

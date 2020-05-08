@@ -1,0 +1,1 @@
+-ghc-timing +RTS -V0 -RTS +RTS -M140m -RTS

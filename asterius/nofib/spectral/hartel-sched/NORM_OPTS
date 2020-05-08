@@ -1,1 +1,1 @@
-100 11
+-ghc-timing +RTS -V0 -RTS 100 11

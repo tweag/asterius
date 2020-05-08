@@ -1,1 +1,1 @@
-runtime_files/heathcote3.prob
+-ghc-timing +RTS -V0 -RTS runtime_files/heathcote3.prob

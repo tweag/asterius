@@ -1,1 +1,1 @@
-30000000
+-ghc-timing +RTS -V0 -RTS 30000000

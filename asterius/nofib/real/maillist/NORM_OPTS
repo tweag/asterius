@@ -1,1 +1,1 @@
-runtime_files/norm
+-ghc-timing +RTS -V0 -RTS runtime_files/norm

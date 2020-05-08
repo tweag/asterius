@@ -1,1 +1,1 @@
-8 runtime_files/input-data
+-ghc-timing +RTS -V0 -RTS 8 runtime_files/input-data
