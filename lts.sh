@@ -1712,7 +1712,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   zlib-bindings \
   zlib-lens \
   zstd
-ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
+ahc-cabal v1-install -j$jobs_th --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
   Chart \
   Chart-diagrams \
   DAV \
