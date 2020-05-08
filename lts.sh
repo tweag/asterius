@@ -1339,6 +1339,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   placeholders \
   planb-token-introspection \
   plotlyhs \
+  plzwrk \
   pointed \
   pointedlist \
   pointless-fun \
