@@ -15,7 +15,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/home/asterius/.asterius-local-install-root/bin:/home/asterius/.asterius-snapshot-install-root/bin:/home/asterius/.asterius-compiler-bin:/home/asterius/.local/bin:/home/asterius/.nvm/bin:${PATH}
+  PATH=/home/asterius/.asterius-local-install-root/bin:/home/asterius/.asterius-snapshot-install-root/bin:/home/asterius/.asterius-compiler-bin:/home/asterius/.local/bin:/home/asterius/.nvm/versions/node/v14.2.0/bin:${PATH}
 
 RUN \
   echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200503T025701Z sid main contrib non-free' > /etc/apt/sources.list && \
@@ -54,7 +54,7 @@ WORKDIR /home/asterius
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.2.0 && ln -s \$NVM_BIN ~/.nvm/bin" && \
+  sh -c ". ~/.nvm/nvm.sh && nvm install 14.2.0" && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.1/stack-2.3.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
@@ -83,6 +83,4 @@ RUN \
   ahc-boot && \
   mkdir ~/.cabal/bin && \
   ln -s ghc-toolkit/boot-libs/cabal.config cabal.config && \
-  mv ~/.nvm/bin/node ~/.nvm/bin/node.bak && \
-  (./lts.sh || true) && \
-  mv ~/.nvm/bin/node.bak ~/.nvm/bin/node
+  ./lts.sh
