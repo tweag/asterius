@@ -1,4 +1,6 @@
-#!/bin/sh -e
+#!/bin/bash
+
+set -euo pipefail
 
 export ROOT=$(stack path --local-install-root)
 
