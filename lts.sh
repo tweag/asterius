@@ -1892,7 +1892,6 @@ ahc-cabal v1-install -j$jobs_th --prefix=$ASTERIUS_LIB_DIR --package-db=clear --
   numeric-extras \
   once \
   opensource \
-  ormolu \
   pandoc \
   pandoc-citeproc \
   pandoc-csv2table \
