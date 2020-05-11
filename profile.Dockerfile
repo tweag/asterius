@@ -54,7 +54,7 @@ WORKDIR /home/asterius
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
-  sh -c ". ~/.nvm/nvm.sh && nvm install 14.2.0" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.2.0" && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.1/stack-2.3.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
