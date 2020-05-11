@@ -15,21 +15,17 @@ RUN \
   apt full-upgrade -y && \
   apt install -y \
     automake \
+    build-essential \
     binaryen \
     curl \
-    g++ \
     gawk \
-    gcc \
     git \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
     libnuma-dev \
-    libstdc++-9-dev \
-    make \
     python3-minimal \
     sudo \
-    xz-utils \
     zlib1g-dev && \
   useradd --create-home --shell /bin/bash asterius && \
   echo "asterius ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
@@ -69,14 +65,7 @@ RUN \
 
 RUN \
   sudo apt purge -y \
-    automake \
-    curl \
-    g++ \
-    git \
-    make \
-    mawk \
-    xz-utils \
-    python3-minimal && \
+    mawk && \
   sudo apt autoremove --purge -y && \
   sudo apt clean && \
   find /home/asterius \( -name "*.p_hi" -o -name "*.p_o" -o -name "*_p.a" \) -type f -delete && \
