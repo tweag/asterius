@@ -42,7 +42,6 @@ result. Assuming we're passing `--asterius-instance-callback=i=>{ ... }` to
 `ahc-link`, in the callback body, we can use RTS API like this:
 
 ```JavaScript
-i.exports.hs_init();
 const argument = i.exports.rts_mkInt(5);
 const thunk = i.exports.rts_apply(i.staticsSymbolMap.Main_fact_closure, argument);
 const tid = i.exports.rts_eval(thunk);
@@ -50,8 +49,6 @@ console.log(i.exports.rts_getInt(i.exports.getTSOret(tid)));
 ```
 
 A line-by-line explanation follows:
-
-* As usual, the first step is calling `hs_init` to initialize the runtime.
 
 * Assuming we'd like to calculate `fact 5`, we need to build an `Int` object
   which value is `5`. We can't directly pass the JavaScript `5`, instead we
