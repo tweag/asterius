@@ -56,7 +56,6 @@ import req from "./xxx.req.mjs";
 module
   .then(m => rts.newAsteriusInstance(Object.assign(req, { module: m })))
   .then(i => {
-    i.exports.hs_init();
     i.exports.main();
   });
 ```

@@ -169,7 +169,6 @@ In JavaScript, after `newAsteriusInstance()` returns the Asterius instance
 object, one can access the exported functions in the `exports` field:
 
 ```javascript
-i.exports.hs_init();
 const r = await i.exports.mult_hs(6, 7);
 ```
 
