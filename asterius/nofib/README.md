@@ -9,29 +9,9 @@
 * Checked imaginary.
 * Checked gc ==> Seems to be a lot of trouble (see its Makefile) / TODO.
 
-TODO: These guys are generated from booting, and they are massive (don't want
-to commit them to our tree TBH):
+* REMOVED TEST: shootout/reverse-complement
+  (too big inputs and outputs, used c program to generate them)
 
-  shootout/fasta/fasta.faststdout
-  shootout/fasta/fasta.slowstdout
-  shootout/fasta/fasta.stdout
-  shootout/k-nucleotide/k-nucleotide.faststdin
-  shootout/k-nucleotide/k-nucleotide.slowstdin
-  shootout/k-nucleotide/k-nucleotide.stdin
-  shootout/reverse-complement/reverse-complement.faststdin
-  shootout/reverse-complement/reverse-complement.faststdout
-  shootout/reverse-complement/reverse-complement.slowstdin
-  shootout/reverse-complement/reverse-complement.slowstdout
-  shootout/reverse-complement/reverse-complement.stdin
-  shootout/reverse-complement/reverse-complement.stdout
-  spectral/awards/awards.slowstdout
-  spectral/awards/awards.stdout
-  spectral/banner/banner.faststdin
-  spectral/banner/banner.faststdout
-  spectral/banner/banner.slowstdin
-  spectral/banner/banner.slowstdout
-  spectral/banner/banner.stdin
-  spectral/banner/banner.stdout
 
 /home/skull/tweag/asterius/asterius/nofib/spectral/hartel/Makefile included:
   SRC_MKDEPENDHS_OPTS=-fglasgow-exts
