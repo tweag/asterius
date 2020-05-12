@@ -30,8 +30,8 @@ for category in *; do
           fi
 
           # Do the actual building
-          echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-          ${COMPILER} ${copts} -c $testfile -o ${noext}.o
+          # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
+          ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
           # TODO: IT DOES NOT COMPILER THEM IN ORDER :/
         done
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
