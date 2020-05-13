@@ -13,6 +13,10 @@ class Posix {
     this.errno = 0;
     Object.seal(this);
   }
+  getProgArgv(argc, argv) {
+    this.memory.i64Store(argc, 0);
+    this.memory.i64Store(argv, 0);
+  }
   get_errno() {
     return this.errno;
   }

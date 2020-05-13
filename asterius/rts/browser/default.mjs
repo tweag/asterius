@@ -3,6 +3,14 @@
  */
 
 class Posix {
+  constructor(memory, rtsConstants) {
+    this.memory = memory;
+    Object.seal(this);
+  }
+  getProgArgv(argc, argv) {
+    this.memory.i64Store(argc, 0);
+    this.memory.i64Store(argv, 0);
+  }
   get_errno() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: get_errno");
   }
