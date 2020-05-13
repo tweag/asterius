@@ -1,12 +1,12 @@
 #!/bin/bash
 
-MODE=$1 # FAST / NORM / SLOW
-COMPILER=$2 # "$(which ghc)" / "$(which ahc)"
+MODE="NORM"              # Default mode is NORM (can also be FAST or SLOW)
+COMPILER="$(which ghc)"  # Default is ~/.stack/programs/x86_64-linux/ghc-custom-asterius-8.8.3/bin/ghc
 
-# TODO: Have defaults and conditionally set from arguments
-
-MODE="NORM"  # Default mode is NORM (can also be FAST or SLOW)
-COMPILER="$(which ghc)"
+if [ $# -eq 2 ]; then
+    MODE=$1
+    COMPILER=$2
+fi
 
 echo "-------------------------------------------------------------------------------"
 echo "                                PARAMETERS                                     "
@@ -35,9 +35,9 @@ for category in *; do
           # Retrieve the compile options for the current mode
           copts_file=${noext}.${MODE}_COMPILE_OPTS
           if [ -f "${copts_file}" ]; then
-              copts=$(<${copts_file})
+            copts=$(<${copts_file})
           else
-              copts="" # no compiler options, use the empty string
+            copts="" # no compiler options, use the empty string
           fi
 
           # Do the actual building
