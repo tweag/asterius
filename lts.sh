@@ -25,6 +25,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   HDBC-session \
   HSlippyMap \
   HStringTemplate \
+  HSvm \
   HTTP \
   HUnit \
   HUnit-approx \
@@ -300,6 +301,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   byteslice \
   bytesmith \
   bytestring-builder \
+  bytestring-conversion \
   bytestring-lexing \
   bytestring-strict-builder \
   bytestring-to-vector \
@@ -333,6 +335,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   cfenv \
   chan \
   charset \
+  charsetdetect-ae \
   chaselev-deque \
   checkers \
   checksum \
@@ -419,6 +422,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   cpu \
   cpuinfo \
   crackNum \
+  crc32c \
   criterion-measurement \
   cron \
   crypt-sha512 \
@@ -509,6 +513,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   dotenv \
   dotgen \
   dotnet-timespan \
+  double-conversion \
   drinkery \
   dsp \
   dual \
@@ -573,6 +578,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   extrapolate \
   fail \
   failable \
+  farmhash \
   fast-logger \
   fast-math \
   fb \
@@ -764,6 +770,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   http-conduit \
   http-date \
   http-directory \
+  http-link-header \
   http-media \
   http-reverse-proxy \
   http-types \
@@ -1491,6 +1498,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   text-short \
   text-zipper \
   textlocal \
+  tinylog \
   tf-random \
   tfp \
   th-abstraction \
@@ -1555,6 +1563,8 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   type-level-integers \
   type-level-kv-list \
   type-map \
+  type-of-html \
+  type-of-html-static \
   type-operators \
   type-spec \
   typed-process \
@@ -1705,6 +1715,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   yi-rope \
   yjsvg \
   yjtools \
+  yoga \
   zero \
   zip-archive \
   zip-stream \
@@ -1781,6 +1792,7 @@ ahc-cabal v1-install -j$jobs_th --prefix=$ASTERIUS_LIB_DIR --package-db=clear --
   equational-reasoning \
   ersatz \
   eventful-test-helpers \
+  fakedata \
   fgl \
   focuslist \
   foldl \
@@ -1857,6 +1869,7 @@ ahc-cabal v1-install -j$jobs_th --prefix=$ASTERIUS_LIB_DIR --package-db=clear --
   incremental-parser \
   influxdb \
   inline-c \
+  inline-c-cpp \
   interpolate \
   interpolator \
   invertible \
@@ -1882,7 +1895,9 @@ ahc-cabal v1-install -j$jobs_th --prefix=$ASTERIUS_LIB_DIR --package-db=clear --
   mighty-metropolis \
   mixed-types-num \
   mmark \
+  mmark-ext \
   monad-par \
+  morpheus-graphql \
   mustache \
   mwc-probability \
   mwc-random \
@@ -1926,6 +1941,7 @@ ahc-cabal v1-install -j$jobs_th --prefix=$ASTERIUS_LIB_DIR --package-db=clear --
   rasterific-svg \
   rattle \
   rdf \
+  reanimate-svg \
   rebase \
   records-sop \
   relational-query \
