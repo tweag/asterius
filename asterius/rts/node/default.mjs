@@ -13,18 +13,29 @@ class Posix {
     this.errno = 0;
     Object.seal(this);
   }
-  getProgArgv(argc, argv) {
+  getProgArgv(argc, argv_buf) {
     const e = new TextEncoder(),
       arg_bufs = process.argv.slice(2).map((s) => e.encode(s)),
+      argv_header_size = (1 + arg_bufs.length) * 8,
       argv_total_size =
-        (1 + arg_bufs.length) * 8 +
+        argv_header_size +
         arg_bufs.reduce((acc, buf) => acc + buf.byteLength + 1, 0);
     if (argv_total_size > 1024) {
       throw new WebAssembly.RuntimeError(
         `getProgArgv: exceeding buffer size for ${process.argv}`
       );
     }
-    this.memory.i64Store(argc, 1+arg_bufs.length);
+    this.memory.i64Store(argc, 1 + arg_bufs.length);
+    let p0 = argv_buf + 8,
+      p1 = argv_buf + argv_header_size;
+    arg_bufs.forEach(arg_buf => {
+      this.memory.i64Store(p0, p1);
+      p0 += 8;
+      this.memory.expose(p1, arg_buf.byteLength, Uint8Array).set(arg_buf);
+      p1 += arg_buf.byteLength;
+      this.memory.i8Store(p1, 0);
+      p1 += 1;
+    });
   }
   get_errno() {
     return this.errno;

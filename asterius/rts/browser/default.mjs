@@ -7,9 +7,8 @@ class Posix {
     this.memory = memory;
     Object.seal(this);
   }
-  getProgArgv(argc, argv) {
-    this.memory.i64Store(argc, 0);
-    this.memory.i64Store(argv, 0);
+  getProgArgv(argc, argv_buf) {
+    this.memory.i64Store(argc, 1);
   }
   get_errno() {
     throw WebAssembly.RuntimeError("Unsupported rts interface: get_errno");
