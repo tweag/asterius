@@ -1,1 +1,1 @@
--ghc-timing +RTS -V0 -RTS -nt 8 -dt 4 -nv 10 -dv 6 -de 6
++RTS -V0 -RTS -nt 8 -dt 4 -nv 10 -dv 6 -de 6

@@ -1,1 +1,1 @@
--ghc-timing +RTS -V0 -RTS [a-j][a-j][a-j][0-9]
++RTS -V0 -RTS [a-j][a-j][a-j][0-9]

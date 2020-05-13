@@ -1,1 +1,1 @@
--ghc-timing +RTS -V0 -RTS 4
++RTS -V0 -RTS 4

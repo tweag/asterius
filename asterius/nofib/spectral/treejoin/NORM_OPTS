@@ -1,1 +1,1 @@
--ghc-timing +RTS -V0 -RTS runtime_files/8000.1 runtime_files/8000.2
++RTS -V0 -RTS runtime_files/8000.1 runtime_files/8000.2

@@ -1,1 +1,1 @@
--ghc-timing +RTS -V0 -RTS runtime_files/inverter 345 400p 4u 1
++RTS -V0 -RTS runtime_files/inverter 345 400p 4u 1
