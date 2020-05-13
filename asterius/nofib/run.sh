@@ -44,7 +44,7 @@ for category in *; do
           # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
           echo "EXECUTING: ${COMPILER} ${copts} $testfile"
           ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
-          # TODO: IT DOES NOT COMPILER THEM IN ORDER :/
+          # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
         done
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # RUNNING ALL TEST FILES
@@ -57,19 +57,18 @@ for category in *; do
           ropts="" # no runtime options options, use the empty string
         fi
 
-        # Retrieve possible stdin contents for the current mode
+        # Create input and output file names
         input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
-        if [ -f "${input_file_name}" ]; then
-          infile="<${input_file_name}"
-        else
-          infile="" # no stdin supplied, use the empty string
-        fi
-
         output_file_name=${testfolder}.stdout # e.g. primetest.stdout
 
         # Do the actual running
-        echo "EXECUTING: ./Main ${ropts} ${infile} >${output_file_name}"
-        ./Main ${ropts} ${infile} >${output_file_name}
+        if [ -f "${input_file_name}" ]; then
+          echo "EXECUTING: ${PWD}/Main ${ropts} <${input_file_name} >${output_file_name}"
+          $(${PWD}/Main ${ropts} <${input_file_name} >${output_file_name})
+        else
+          echo "EXECUTING: ${PWD}/Main ${ropts} >${output_file_name}"
+          $(${PWD}/Main ${ropts} >${output_file_name})
+        fi
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         echo "Leaving $PWD ..." && cd ..             # Leave the test folder
       fi
