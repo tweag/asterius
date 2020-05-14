@@ -61,3 +61,5 @@ stack --no-terminal test asterius:nomain --test-arguments="--tail-calls"
 stack --no-terminal test asterius:th
 
 stack --no-terminal test asterius:primitive
+
+stack --no-terminal test asterius:argv
