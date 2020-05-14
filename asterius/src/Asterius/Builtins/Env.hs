@@ -28,6 +28,11 @@ envImports =
 envCBits :: AsteriusModule
 envCBits = envArgvBuf <> envGetProgArgv
 
+-- | Data segment used to store runtime arguments. In normal native programs,
+-- the arguments passed to a program @argv@ exist in special memory pages and are
+-- managed by the OS kernel. Since we cannot do this here, we instead reserve a
+-- data segment of 1KB of memory to be used for this purpose (see @getProgArgv@ in
+-- @rts/node/default.mjs@).
 envArgvBuf :: AsteriusModule
 envArgvBuf =
   mempty

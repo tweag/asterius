@@ -19,7 +19,11 @@ class Posix {
       argv_header_size = (1 + arg_bufs.length) * 8,
       argv_total_size =
         argv_header_size +
-        arg_bufs.reduce((acc, buf) => acc + buf.byteLength + 1, 0);
+        // All strings are \0-terminated, hence the +1
+        arg_bufs.reduce((acc, buf) => acc + buf.byteLength + 1, 0); 
+    // The total size (in bytes) of the runtime arguments cannot exceed the 1KB
+    // size of the data segment we have reserved. If you wish to change this
+    // number, you should also update envArgvBuf in Asterius.Builtins.Env.
     if (argv_total_size > 1024) {
       throw new WebAssembly.RuntimeError(
         `getProgArgv: exceeding buffer size for ${process.argv}`
