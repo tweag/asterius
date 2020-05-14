@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 Date: Thu, 22 Jun 95 15:39:44 BST
 From: kh@dcs.gla.ac.uk

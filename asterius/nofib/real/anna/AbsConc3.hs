@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 -- ==========================================================--
 -- === Concretisation of function points.                 ===--

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module PSlib where
 
 -- This module implements provision of

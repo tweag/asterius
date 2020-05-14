@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Goals where
 
 import Unparse

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Main (main) where
 
 import Control.Exception.Base

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-# LANGUAGE RankNTypes, BangPatterns, ScopedTypeVariables,
   MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
 

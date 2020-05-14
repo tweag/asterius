@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- LML original: Sandra Foubister, 1990
 -- Haskell translation: Colin Runciman, May 1991
 

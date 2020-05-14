@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Tree where
 
 data Tree a = Branch a [Tree a] deriving Show{-was:Text-}

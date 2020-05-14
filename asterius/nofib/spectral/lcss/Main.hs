@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 From: Andrew J Bromage <ajb@spamcop.net>
 Date: Fri, 22 Nov 2002 13:49:13 +1100

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 -- ==========================================================--
 -- === Find frontiers using Hunt's algorithm.             ===--

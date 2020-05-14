@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-# LANGUAGE RankNTypes, BangPatterns, FlexibleContexts, Strict #-}
 
 {- |

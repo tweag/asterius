@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --                            -*- Mode: Haskell -*-
 -- StringMatch.hs --- translate regular expression into a string match function
 -- Author          : Peter Thiemann

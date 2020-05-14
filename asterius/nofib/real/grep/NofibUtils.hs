@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-# LANGUAGE CPP #-}
 
 module NofibUtils where

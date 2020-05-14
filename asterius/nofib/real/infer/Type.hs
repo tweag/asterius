@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Type
        (TVarId, TConId,
         MonoType (TVar, TCon), arrow,

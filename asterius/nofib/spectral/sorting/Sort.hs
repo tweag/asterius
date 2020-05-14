@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Sort where
 import Data.List (partition)
 -- trying various sorts

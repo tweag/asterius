@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 -- ==========================================================--
 -- === Monster -- Enumerates the points in a lattice.     ===--

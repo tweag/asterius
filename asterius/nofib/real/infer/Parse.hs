@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Parse
       (Parse, Parses,                       --  data types
        thenP, returnP, eachP, consP,                  --  sequencing and success

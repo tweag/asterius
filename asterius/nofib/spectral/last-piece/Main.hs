@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --	The Last Piece Puzzle
 --
 -- Simon Peyton Jones, May 2002

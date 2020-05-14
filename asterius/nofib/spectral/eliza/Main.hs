@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- Eliza: an implementation of the classic pseudo-psychoanalyst ---------------
 --
 -- Hugs version by Mark P. Jones, January 12 1992

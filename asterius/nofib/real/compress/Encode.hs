@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
  - Encode Mk 2, using a prefix table for the codes
  -

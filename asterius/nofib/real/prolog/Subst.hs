@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --
 -- Substitutions and Unification of Prolog Terms
 -- Mark P. Jones November 1990

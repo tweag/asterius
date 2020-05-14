@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-# LANGUAGE BangPatterns #-}
 --
 -- The Computer Language Benchmarks Game

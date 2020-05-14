@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 #include "unboxery.h"
 
 #ifdef USE_GLASGOW_HACKS

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Vectors(Vector,vec,x,y,z,inpr,mulv,len,norm) where
 import Numbers
 {- ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

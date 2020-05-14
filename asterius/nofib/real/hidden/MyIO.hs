@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module MyIO(getFilename,process) where
 import Numbers
 import Vectors

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 -- ==========================================================--
 -- === Miscellaneous operations in the Abstract value     ===--

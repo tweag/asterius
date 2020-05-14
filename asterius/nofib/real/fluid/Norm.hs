@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 	This module defines a Normal cless and a function normal
 	used for forcing evaluation.  The idea is originally

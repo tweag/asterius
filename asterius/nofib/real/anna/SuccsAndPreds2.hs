@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 -- ==========================================================--
 -- === Successors and predecessors of a point in a        ===--

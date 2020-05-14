@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Spark(sparkGraph,Spark(..))  where
 
 import StdLib

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module MaybeM
       (Maybe, returnM, eachM, thenM,
        failM, orM, guardM, filterM, theM, existsM, useM)

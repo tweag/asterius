@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --
 -- Interactive utility functions
 -- Mark P. Jones November 1990

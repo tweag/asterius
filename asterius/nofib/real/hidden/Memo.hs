@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Memo(Triangle,mkmemo,lazyAbove) where
 import Numbers
 import Vectors

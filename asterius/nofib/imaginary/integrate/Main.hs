@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Main (integrate1D, main) where
 
 import System.Environment

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- !!! count the number of solutions to the "n queens" problem.
 -- (grabbed from LML dist)
 

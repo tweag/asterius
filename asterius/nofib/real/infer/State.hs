@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module State (State, returnS, eachS, thenS, putS, getS, useS) where
 
 data  State s x       =   Abs (s -> (x, s))

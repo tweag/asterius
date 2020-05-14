@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Comparing (above,cmp) where
 import Numbers
 import Vectors

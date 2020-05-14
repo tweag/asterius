@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- !!! strongly-connected components of a graph
 -- (courtesy mainly of John Launchbury)
 

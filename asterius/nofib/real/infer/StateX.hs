@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module StateX (StateX, returnSX, eachSX, thenSX, toSX, putSX, getSX, useSX) where
 
 data  StateX s a      =   MkSX (s -> a)

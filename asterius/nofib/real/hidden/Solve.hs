@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Solve(solve,alt) where
 import Numbers
 import Vectors

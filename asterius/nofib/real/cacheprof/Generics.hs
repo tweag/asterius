@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 {------------------------------------------------------------------------}
 {--- Generic stuff for all architectures.                 Generics.hs ---}

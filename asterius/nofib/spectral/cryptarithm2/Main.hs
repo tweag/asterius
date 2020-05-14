@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {- Andy Gill, Oct 99
 
 Here is a generic cryptarithm solver, written in Haskell. It does

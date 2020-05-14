@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module RealM (RealT, evalReal, int2Real, addReal, subReal, mulReal,
               divReal, sqrtReal) where
 

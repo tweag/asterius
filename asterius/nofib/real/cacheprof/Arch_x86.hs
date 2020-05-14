@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 {------------------------------------------------------------------------}
 {--- Beginnings of X86 specific stuff                Arch_X86.hs      ---}

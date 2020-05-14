@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- MANDELBROT SET GENERATOR
 -- DAVID HANLEY 11/03/1992
 -- BUILDS A MAND-TREE, which contains, at its leaves, a colour.

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
  module Parse(Parse(..),whiteSpace,seperatedBy) where
  import Data.Char -- 1.3
  import StdLib

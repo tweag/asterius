@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Term
   (VarId, Term (Var, Abs, App, Let), readsId)
 where

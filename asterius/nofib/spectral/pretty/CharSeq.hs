@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module CharSeq (
       CSeq,
       cNil, cAppend, cIndent, cNL, cStr, cCh, -- cAbove, cBeside, cConcat,

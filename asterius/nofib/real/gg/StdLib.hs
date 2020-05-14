@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
  module StdLib where
  pair :: a -> b -> (a,b)
  pair a b = (a,b)

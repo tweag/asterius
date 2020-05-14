@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Pool(poolGraph)  where
 
 import StdLib

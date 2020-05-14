@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-  The Computer Language Benchmarks Game
 
     http://benchmarkgame.alioth.debian.org/

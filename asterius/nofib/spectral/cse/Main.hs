@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- This is a program to illustrate a simple form of common subexpression
 -- elimination ... essentially turning trees into DAGs.  Uses two state
 -- monads (more precisely, same monad but different state types).

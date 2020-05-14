@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Parse(parse_circuit, parse_exact, parse_approx, parse_integer) where
 
 import Data.Char

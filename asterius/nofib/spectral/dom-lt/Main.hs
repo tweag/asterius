@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-# OPTIONS_GHC -fno-full-laziness #-}
 
 module Main where

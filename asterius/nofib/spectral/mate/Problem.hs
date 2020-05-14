@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Problem(readProblem) where
 
 import Data.Char(isUpper,toLower)

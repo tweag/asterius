@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --
 -- Representation of Prolog Terms, Clauses and Databases
 -- Mark P. Jones November 1990

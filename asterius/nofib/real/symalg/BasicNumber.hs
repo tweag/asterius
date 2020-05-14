@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module BasicNumber (BasicNumber (..), makeReal, makeRational, RealT{-partain-}) where
 
 import RealM

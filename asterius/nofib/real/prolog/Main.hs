@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --
 -- Prolog interpreter top level module
 -- Mark P. Jones November 1990

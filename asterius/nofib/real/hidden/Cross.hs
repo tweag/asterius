@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Cross(cross,overlap) where
 import Numbers
 import Vectors

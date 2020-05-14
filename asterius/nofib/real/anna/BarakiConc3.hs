@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 	
 -- ==========================================================--
 -- === Implementation of Gebreselassie Baraki's           ===--

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- There was a lot of discussion about various ways of computing
 -- Bernouilli numbers (whatever they are) on haskell-cafe in March 2003
 -- Here's one of the programs.

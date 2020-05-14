@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Activity (activityGraph,Activity(..))  where
 
 import GRIP

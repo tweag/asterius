@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Op (opName, opName1, opPrec, opPrec1, toOp, toOp1, opAssoc) where
 
 opPrec1 :: String -> Int

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
  - Id Example Program
  - Ensnaffled by SLPJ from MIT via

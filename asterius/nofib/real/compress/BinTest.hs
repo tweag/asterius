@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module BinTest (main) where
 
 main = putStr (show (result 1000))

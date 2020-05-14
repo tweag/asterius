@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -------------------------------------------------------------------
 -- Binary Multiplier  --- Circuit Specification and Simulation
 -- John O'Donnell, University of Glasgow. jtod@dcs.glasgow.ac.uk

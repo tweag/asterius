@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 	This is a substitute for module PreludeArray oriented
 	to sparse arrays.  Arrays are constructed using binary

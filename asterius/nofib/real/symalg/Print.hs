@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Print (printAst, printBasicExp, printEnv) where
 
 import BasicNumber

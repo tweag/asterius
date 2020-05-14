@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- The Game of Life
 -- (from John Launchbury)
 

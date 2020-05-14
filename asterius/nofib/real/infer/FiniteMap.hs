@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module FiniteMap
       (FM, emptyFM, unitFM, extendFM, makeFM, unmakeFM, thenFM, plusFM,
        lookupFM, lookupElseFM, mapFM, domFM, ranFM, disjointFM) where

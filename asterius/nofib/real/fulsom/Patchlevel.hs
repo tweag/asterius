@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
  -  Fulsom (The Solid Modeller, written in Haskell)
  -

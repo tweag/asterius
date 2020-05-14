@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Vtslib( Option(..) , Sum(..) , forall , exists , assoc ,
 		haskey , uncurry , curry , for , map' , module Core_datatype )
 	      where

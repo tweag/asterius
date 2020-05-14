@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --
 -- General parsing library, based on Richard Bird's parselib.orw for Orwell
 -- (with a number of extensions)

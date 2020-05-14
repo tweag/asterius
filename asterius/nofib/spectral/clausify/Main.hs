@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 From: dw@minster.york.ac.uk
 To: partain

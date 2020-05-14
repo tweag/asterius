@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 import Control.Monad (forM_)
 import System.Environment

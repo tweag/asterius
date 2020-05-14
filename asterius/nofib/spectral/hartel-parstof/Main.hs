@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Main (main) -- parstof
 where {
     import Control.Monad (replicateM_);

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Eval (eval,getPrec) where
 
 import BasicNumber

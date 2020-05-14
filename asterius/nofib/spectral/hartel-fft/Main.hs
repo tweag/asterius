@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Main (main) -- fft
 where {
     import System.Environment (getArgs);

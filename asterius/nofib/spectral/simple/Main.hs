@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --simple.hs--
 -- The Simple code:
 --  translated to haskell by an id to ph translator, hand annotated for toplevel

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 	Functions for data input.  Some data have been put
 	into arrays.

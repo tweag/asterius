@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- !!! Brute force soln to a puzzle. Sent to us by Stephen Eldridge
 module Main(main) where
 

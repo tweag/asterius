@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --
 -- The Pure Prolog inference engine (using explicit prooftrees)
 -- Mark P. Jones November 1990

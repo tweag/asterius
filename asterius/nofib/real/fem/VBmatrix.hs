@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- Glasgow Haskell 0.403 : BLAS ( Basic Linear Algebra System )
 -- **********************************************************************
 -- *                                                                    *

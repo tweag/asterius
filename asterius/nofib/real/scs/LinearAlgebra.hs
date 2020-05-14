@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module LinearAlgebra where
 
 import Data.Array

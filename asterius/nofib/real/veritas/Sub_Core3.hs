@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 {-
  * Mon Nov  5 09:54:24 GMT 1990

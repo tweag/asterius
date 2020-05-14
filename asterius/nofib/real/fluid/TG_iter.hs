@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 	Taylor-Galerkin/Pressure-correction algorithm.
 	Solving four increamental matrix equations iteratively:

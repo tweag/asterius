@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 	The first part of Choleski decomposition.
 	Contains a matrix reodering function.

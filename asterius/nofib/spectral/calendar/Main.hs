@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- This is a modification of the calendar program described in section 4.5
 -- of Bird and Wadler's ``Introduction to functional programming'', with
 -- two ways of printing the calendar ... as in B+W, or like UNIX `cal':

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-# LANGUAGE FlexibleContexts #-}
 -- Inferred type for 'inner' has a constraint (MArray (STUArray s) Double m)
 -- An alternative fix (better, but less faithful to backward perf comparison)

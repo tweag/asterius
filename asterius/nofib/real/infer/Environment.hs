@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Environment
        (Env, emptyEnv, extendLocal, extendGlobal,
         makeEnv, unmakeEnv, lookupEnv, domEnv, freeTVarEnv)

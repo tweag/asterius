@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- Taken from "The worlds shortest correct exact real arithmetic program?"
 -- David Lester, Information and Computation 216, pp39-46, 2012, Elsevier
 

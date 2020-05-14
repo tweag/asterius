@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Lexer (Lexeme(..), lexer) where
 
 import Data.Char -- 1.3

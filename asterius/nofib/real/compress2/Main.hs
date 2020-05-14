@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- The current version of compress acts as a filter: the data to be
 -- compressed is taken from standard input, and the result is placed on
 -- the standard output.

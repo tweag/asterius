@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
  * Module for converting vts90 objects into strings and vica-versa
  -}

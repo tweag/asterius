@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Numbers(Number) where
 data Number = Tolerant Float
 -- if you are not using the Chalmers Haskell B compiler then remove the @

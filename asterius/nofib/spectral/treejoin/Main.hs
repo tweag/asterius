@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
     Tree e is the type of binary trees with keys of type Key,
     containing records (entities) of type e.  The tree is

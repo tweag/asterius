@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Postscript(Output, draw)where
 import Numbers
 import Vectors

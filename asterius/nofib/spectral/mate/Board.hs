@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Board(
   Kind(King,Queen,Rook,Bishop,Knight,Pawn),
   Colour(Black,White), Piece, Square, Board,

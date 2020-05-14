@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --
 -- Stack based Prolog inference engine
 -- Mark P. Jones November 1990

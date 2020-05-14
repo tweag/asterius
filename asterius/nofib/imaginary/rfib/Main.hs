@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- !!! the ultra-notorious "nfib 30" does w/ Floats
 --
 module Main (main) where

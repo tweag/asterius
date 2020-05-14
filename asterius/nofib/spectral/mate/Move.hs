@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Move (
   Move(Move), MoveInFull(MoveInFull),
   showMoveInFull, showMoves, moveDetailsFor, kingincheck) where

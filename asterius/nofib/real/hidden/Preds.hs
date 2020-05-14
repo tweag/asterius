@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Preds(into,onto) where
 import Numbers
 import Vectors

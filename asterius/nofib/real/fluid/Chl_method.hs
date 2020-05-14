@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 	The third part of the Choleski decomposition.
 	Contains forward, backward substitution and their

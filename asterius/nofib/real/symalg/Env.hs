@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Env (Env, initEnv, lookupEnv, enterEnv) where
 
 import Ast

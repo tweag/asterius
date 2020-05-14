@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- Glasow Haskell 0.403 : FINITE ELEMENT PROGRAM V2
 -- **********************************************************************
 -- *                                                                    *

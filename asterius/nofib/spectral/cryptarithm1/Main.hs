@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {- From Sergey Mechveliani, Oct 99
 
 This pretends to be the "fair" improved Cryptarithm solver  test for

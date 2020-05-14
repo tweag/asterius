@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module StateMonad where
 
 -- General purpose state monad -----------------------------------------------

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Matrices (Matrix,mat,rows,mulm) where
 import Numbers
 import Vectors

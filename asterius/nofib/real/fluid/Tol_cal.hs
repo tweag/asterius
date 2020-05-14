@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 	Solution error computation for both Jacobi and main
 	iterations

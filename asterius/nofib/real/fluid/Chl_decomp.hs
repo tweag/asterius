@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
 The second module of Choleski decomposition.
 Contains Choleski factorization function.

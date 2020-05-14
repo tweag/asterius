@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --------------------------------------------------
 -- $Log: Parsers.hs,v $
 -- Revision 1.1  1996/01/08 20:02:55  partain

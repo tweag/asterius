@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-
    This module implements a sort function using a variation on
    quicksort.  It is stable, uses no concatenation and compares

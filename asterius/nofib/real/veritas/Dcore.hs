@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Dcore ( int_to_str , list_to_str , str_to_int , str_to_list
 		, encode )
 	      where

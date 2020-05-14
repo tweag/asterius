@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Infer (inferTerm) where
 
 import Data.List(nub)

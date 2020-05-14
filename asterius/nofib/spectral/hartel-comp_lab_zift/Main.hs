@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Main (main) -- comp_lab_zift
 where {
     import System.Environment (getArgs);

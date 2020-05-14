@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Geometric (Geom(..)) where
 import Numbers
 import Vectors

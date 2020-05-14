@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 #include "unboxery.h"
 
 module RC(rC,rCs) where

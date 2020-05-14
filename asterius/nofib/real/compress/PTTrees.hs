@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module PTTrees (insert, PrefixTree(..), PrefixElem(..)) where
 
 data PrefixTree a b = PTNil |

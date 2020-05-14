@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Substitution   (Sub, applySub, lookupSub, emptySub, extendSub,
                        makeSub, thenSub, domSub, unifySub)
                       where

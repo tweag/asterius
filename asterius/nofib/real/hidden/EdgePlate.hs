@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module EdgePlate(Edge,edgeT,edgeH, s,h,t, Plate(Plt),n,
 		 Input,Object,makeObject) where
 import Numbers

@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {-# OPTIONS_GHC -fno-warn-missing-methods #-}
 {- 	Taken from Doug McIlroy's paper
 	"Power series, power serious"

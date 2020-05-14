@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module BasicNumberApprox (equ, lt, gt, lte, gte, ne, rabs, rsignum,
                           rtoRational, basicNumber2str) where
 

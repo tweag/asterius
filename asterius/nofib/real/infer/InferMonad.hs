@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module InferMonad     (Infer, returnI, eachI, thenI, guardI, useI, getSubI,
                        substituteI, unifyI, freshI, freshesI)
                       where

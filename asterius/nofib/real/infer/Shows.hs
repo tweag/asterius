@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module  Shows
       (Shows, showsEmpty, showsConcat, showsString, showsChar, showsStar,
        showsStarSep, showsSurround, showsListOf, showsParen, showsParenIf)

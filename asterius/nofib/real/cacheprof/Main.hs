@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 {------------------------------------------------------------------------}
 {--- An assembly code annotator for gcc >= 2.7.X on x86-linux-2.X     ---}

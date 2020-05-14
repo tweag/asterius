@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 {- Andrew Tolmach and Thomas Nordin's contraint solver
 
 	See Proceedings of WAAAPL '99

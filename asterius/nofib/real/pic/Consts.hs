@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 --	
 --	Patricia Fasel
 --	Los Alamos National Laboratory

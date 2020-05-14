@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module MyList (minus) where
 
 minus                 :: (Eq x) => [x] -> [x] -> [x]

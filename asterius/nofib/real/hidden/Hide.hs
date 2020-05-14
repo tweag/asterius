@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Hide(hiddenline) where
 import Numbers
 import Vectors

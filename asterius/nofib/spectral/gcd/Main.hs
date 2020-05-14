@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 -- Test Integer performanc, from Sergey Mechveliani
 
 {-

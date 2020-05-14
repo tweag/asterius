@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Rsa (encrypt, decrypt, makeKeys)
 where
 
