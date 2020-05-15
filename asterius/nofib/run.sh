@@ -76,7 +76,7 @@ if [ "${COMP}" == "ghc" ]; then
 
           # Create input and output file names
           input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
-          output_file_name=${testfolder}.stdout # e.g. primetest.stdout
+          output_file_name=${testfolder}.ghc.stdout # e.g. primetest.stdout
 
           extra_opts_1=""
           extra_opts_2=""
@@ -161,7 +161,7 @@ if [ "${COMP}" == "ahc" ]; then
 
           # Create input and output file names
           input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
-          output_file_name=${testfolder}.stdout # e.g. primetest.stdout
+          output_file_name=${testfolder}.ahc.stdout # e.g. primetest.stdout
 
           # Do the actual running
           if [ -f "${input_file_name}" ]; then
