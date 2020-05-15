@@ -36,10 +36,30 @@ for category in *; do
         # For each test within this category
         cd ${testfolder} && echo "Entering $PWD ..." # Enter the test folder
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-        # BUILDING ALL TEST FILES
+        # BUILDING ALL TEST FILES (.hs)
         for testfile in *.hs; do
           [ -f "$testfile" ] || break # If the file does not exist, move on..
           noext=${testfile%.hs} # Filename without extension
+
+          # Retrieve the compile options for the current mode
+          copts_file=${noext}.${MODE}_COMPILE_OPTS
+          if [ -f "${copts_file}" ]; then
+            copts=$(<${copts_file})
+          else
+            copts="" # no compiler options, use the empty string
+          fi
+
+          # Do the actual building
+          # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
+          echo "EXECUTING: ${COMPILER} ${copts} $testfile"
+          ${COMPILER} ${copts} --make $testfile # -c $testfile -o ${noext}.o
+          # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
+        done
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # BUILDING ALL TEST FILES (.lhs)
+        for testfile in *.lhs; do
+          [ -f "$testfile" ] || break # If the file does not exist, move on..
+          noext=${testfile%.lhs} # Filename without extension
 
           # Retrieve the compile options for the current mode
           copts_file=${noext}.${MODE}_COMPILE_OPTS
