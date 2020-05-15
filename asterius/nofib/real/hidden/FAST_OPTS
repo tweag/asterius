@@ -1,1 +1,1 @@
- +RTS -K1m -RTS runtime_files/houses.plate
+runtime_files/houses.plate

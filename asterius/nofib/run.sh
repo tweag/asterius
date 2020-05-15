@@ -70,15 +70,22 @@ for category in *; do
         input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
         output_file_name=${testfolder}.stdout # e.g. primetest.stdout
 
-        extra_ghc_only_opts_1="+RTS -V0 -RTS" # TO BE PASSED TO ALL GHC-COMPILED PROGRAMS
+        extra_opts_1=""
+        extra_opts_2=""
+        if [ "${COMP}" == "ghc" ]; then
+          extra_opts_1="+RTS -V0 -RTS"
+          if [ -f "RTS_EXTRA_OPTS" ]; then
+            extra_opts_2=$(<RTS_EXTRA_OPTS)
+          fi
+        fi
 
         # Do the actual running
         if [ -f "${input_file_name}" ]; then
-          echo "EXECUTING: ${PWD}/Main ${extra_ghc_only_opts_1} ${ropts} <${input_file_name} >${output_file_name}"
-          $(${PWD}/Main ${extra_ghc_only_opts_1} ${ropts} <${input_file_name} >${output_file_name})
+          echo "EXECUTING: ${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} >${output_file_name}"
+          $(${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} >${output_file_name})
         else
-          echo "EXECUTING: ${PWD}/Main ${extra_ghc_only_opts_1} ${ropts} >${output_file_name}"
-          $(${PWD}/Main ${extra_ghc_only_opts_1} ${ropts} >${output_file_name})
+          echo "EXECUTING: ${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} >${output_file_name}"
+          $(${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} >${output_file_name})
         fi
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         echo "Leaving $PWD ..." && cd ..             # Leave the test folder

@@ -1,1 +1,1 @@
- +RTS -K1m -RTS runtime_files/four.plate
+runtime_files/four.plate

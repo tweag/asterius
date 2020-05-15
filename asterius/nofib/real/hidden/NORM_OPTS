@@ -1,1 +1,1 @@
- +RTS -K1m -RTS runtime_files/rad.plate
+runtime_files/rad.plate
