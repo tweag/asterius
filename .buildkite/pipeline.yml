@@ -1,0 +1,32 @@
+env:
+  ASTERIUS_BRANCH: master
+
+steps:
+
+  - key: "asterius-dev-image"
+    label: "asterius-dev-image"
+    command: |
+      rm -rf /tmp/asterius*
+      mkdir -p /tmp/asterius
+      mv .buildkite/* /tmp/asterius
+      git fetch origin $ASTERIUS_BRANCH
+      git checkout -f origin/$ASTERIUS_BRANCH
+      mv /tmp/asterius/* .buildkite
+
+      docker system prune --all --force
+      docker build \
+        --compress \
+        --file dev.Dockerfile \
+        --label "gitrev=$(git rev-parse HEAD)" \
+        --network host \
+        --no-cache \
+        --pull \
+        --squash \
+        --tag terrorjack/asterius:dev \
+        .
+      nix-shell \
+        .buildkite/shell.nix \
+        --command "docker save terrorjack/asterius:dev | zstd -T8 -8 -o asterius-dev-image.tar.zst"
+      buildkite-agent artifact upload asterius-dev-image.tar.zst
+      rm asterius-dev-image.tar.zst
+      docker system prune --all --force
