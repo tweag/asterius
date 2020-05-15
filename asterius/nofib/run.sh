@@ -51,7 +51,7 @@ for category in *; do
 
           # Do the actual building
           # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-          echo "EXECUTING: ${COMPILER} ${copts} $testfile"
+          echo "EXECUTING: ${COMPILER} ${copts} --make $testfile"
           ${COMPILER} ${copts} --make $testfile # -c $testfile -o ${noext}.o
           # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
         done
@@ -71,7 +71,7 @@ for category in *; do
 
           # Do the actual building
           # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-          echo "EXECUTING: ${COMPILER} ${copts} $testfile"
+          echo "EXECUTING: ${COMPILER} ${copts} --make $testfile"
           ${COMPILER} ${copts} --make $testfile # -c $testfile -o ${noext}.o
           # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
         done
