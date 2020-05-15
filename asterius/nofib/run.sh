@@ -43,7 +43,7 @@ for category in *; do
           # Do the actual building
           # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
           echo "EXECUTING: ${COMPILER} ${copts} $testfile"
-          ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
+          ${COMPILER} ${copts} --make $testfile # -c $testfile -o ${noext}.o
           # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
         done
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
