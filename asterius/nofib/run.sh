@@ -44,7 +44,7 @@ if [ "${COMP}" == "ghc" ]; then
             noext=${testfile%.hs} # Filename without extension
 
             # Retrieve the compile options for the current mode
-            copts_file=${noext}.${MODE}_COMPILE_OPTS
+            copts_file=${noext}.COMPILE_OPTS
             if [ -f "${copts_file}" ]; then
               copts=$(<${copts_file})
             else
@@ -64,7 +64,7 @@ if [ "${COMP}" == "ghc" ]; then
             noext=${testfile%.lhs} # Filename without extension
 
             # Retrieve the compile options for the current mode
-            copts_file=${noext}.${MODE}_COMPILE_OPTS
+            copts_file=${noext}.COMPILE_OPTS
             if [ -f "${copts_file}" ]; then
               copts=$(<${copts_file})
             else
@@ -108,7 +108,7 @@ if [ "${COMP}" == "ahc" ]; then
             noext=${testfile%.hs} # Filename without extension
 
             # Retrieve the compile options for the current mode
-            copts_file=${noext}.${MODE}_COMPILE_OPTS
+            copts_file=${noext}.COMPILE_OPTS
             if [ -f "${copts_file}" ]; then
               copts=$(<${copts_file})
             else
@@ -128,7 +128,7 @@ if [ "${COMP}" == "ahc" ]; then
             noext=${testfile%.lhs} # Filename without extension
 
             # Retrieve the compile options for the current mode
-            copts_file=${noext}.${MODE}_COMPILE_OPTS
+            copts_file=${noext}.COMPILE_OPTS
             if [ -f "${copts_file}" ]; then
               copts=$(<${copts_file})
             else

@@ -1,1 +1,0 @@
--O2 -Rghc-timing -H32m -rtsopts -fexcess-precision
