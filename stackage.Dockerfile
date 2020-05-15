@@ -2,6 +2,8 @@ FROM terrorjack/asterius:base
 
 ARG jobs=1
 
+ARG jobs_th=1
+
 ARG ASTERIUS_AHC_LD_IGNORE=1
 
 COPY --chown=asterius:asterius lts.sh /tmp/lts.sh

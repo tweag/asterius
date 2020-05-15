@@ -1,4 +1,6 @@
-#!/bin/sh -e
+#!/bin/bash
+
+set -euo pipefail
 
 stack ghci \
   asterius:lib \

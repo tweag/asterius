@@ -1,8 +1,8 @@
-#!/bin/sh -e
+#!/bin/bash
 
-export CPUS=$(getconf _NPROCESSORS_ONLN 2>/dev/null)
-export MAKEFLAGS=-j$CPUS
+set -euo pipefail
 
-. utils/clean.sh
-stack build -j$CPUS --test --no-run-tests
-stack exec ahc-boot
+utils/clean.sh
+stack build --test --no-run-tests
+. .envrc
+ahc-boot
