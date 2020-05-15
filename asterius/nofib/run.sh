@@ -11,7 +11,7 @@ if [ $# -eq 2 ]; then
   else
     if [ $2 == "ahc" ]; then
       COMP="ahc"
-      COMPILER=$(which ahc) # TODO: CHANGE TO ahc-link!
+      COMPILER=$(which ahc-link)
     else
       echo "Ignoring second argument. Must be either ahc or ghc"
     fi
@@ -53,8 +53,8 @@ if [ "${COMP}" == "ghc" ]; then
 
             # Do the actual building
             # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-            echo "EXECUTING: ${COMPILER} ${copts} --make $testfile"
-            ${COMPILER} ${copts} --make $testfile # -c $testfile -o ${noext}.o
+            echo "EXECUTING: ${COMPILER} ${copts} $testfile"
+            ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
             # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
           done
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -72,8 +72,8 @@ if [ "${COMP}" == "ghc" ]; then
             fi
 
             # Do the actual building
-            echo "EXECUTING: ${COMPILER} ${copts} --make $testfile"
-            ${COMPILER} ${copts} --make $testfile # -c $testfile -o ${noext}.o
+            echo "EXECUTING: ${COMPILER} ${copts} $testfile"
+            ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
             # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
           done
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -115,10 +115,17 @@ if [ "${COMP}" == "ahc" ]; then
               copts="" # no compiler options, use the empty string
             fi
 
+            ahc_copts=""
+            for word in $copts; do
+              ahc_copts="${ahc_copts} --ghc-option=${word}"
+            done # CONCATENATE THEM
+
+            echo "PREPARED OPTIONS: ${ahc_copts}"
+
             # Do the actual building
             # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-            echo "EXECUTING: ${COMPILER} ${copts} --make $testfile"
-            ${COMPILER} ${copts} --make $testfile # -c $testfile -o ${noext}.o
+            echo "EXECUTING: ${COMPILER} ${ahc_copts} --input-hs $testfile"
+            ${COMPILER} ${ahc_copts} --input-hs $testfile # -c $testfile -o ${noext}.o
             # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
           done
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -135,9 +142,16 @@ if [ "${COMP}" == "ahc" ]; then
               copts="" # no compiler options, use the empty string
             fi
 
+            ahc_copts=""
+            for word in $copts; do
+              ahc_copts="${ahc_copts} --ghc-option=${word}"
+            done # CONCATENATE THEM
+
+            echo "PREPARED OPTIONS: ${ahc_copts}"
+
             # Do the actual building
-            echo "EXECUTING: ${COMPILER} ${copts} --make $testfile"
-            ${COMPILER} ${copts} --make $testfile # -c $testfile -o ${noext}.o
+            echo "EXECUTING: ${COMPILER} ${ahc_copts} --input-hs $testfile"
+            ${COMPILER} ${ahc_copts} --input-hs $testfile # -c $testfile -o ${noext}.o
             # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
           done
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
