@@ -1,1 +1,1 @@
--O2 -Rghc-timing -H32m -hisuf hi -package array -rtsopts
+-O2 -Rghc-timing -H32m -hisuf hi -rtsopts
