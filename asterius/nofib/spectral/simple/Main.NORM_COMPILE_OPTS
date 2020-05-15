@@ -1,1 +1,1 @@
--O2 -Rghc-timing -H32m -hisuf hi -H110m -rtsopts
+-O2 -Rghc-timing -H32m -H110m -rtsopts

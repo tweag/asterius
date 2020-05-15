@@ -1,1 +1,1 @@
--O2 -Rghc-timing -H32m -hisuf hi -package transformers -rtsopts
+-O2 -Rghc-timing -H32m -package transformers -rtsopts
