@@ -1,1 +1,1 @@
-+RTS -V0 -RTS -nt 40 -dt 5 -nv 60 -dv 6 -de 6
+ -nt 40 -dt 5 -nv 60 -dv 6 -de 6

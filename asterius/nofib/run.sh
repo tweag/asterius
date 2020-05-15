@@ -1,11 +1,20 @@
 #!/bin/bash
 
 MODE="NORM"              # Default mode is NORM (can also be FAST or SLOW)
+COMP="ghc"
 COMPILER="$(which ghc)"  # Default is ~/.stack/programs/x86_64-linux/ghc-custom-asterius-8.8.3/bin/ghc
 
 if [ $# -eq 2 ]; then
     MODE=$1
-    COMPILER=$2
+  if [ $2 == "ghc" ]; then
+    COMPILER=$(which ghc)
+  else
+    if [ $2 == "ahc" ]; then
+      COMPILER=$(which ahc) # TODO: CHANGE TO ahc-link!
+    else
+      echo "Ignoring second argument. Must be either ahc or ghc"
+    fi
+  fi
 fi
 
 echo "-------------------------------------------------------------------------------"
@@ -61,13 +70,15 @@ for category in *; do
         input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
         output_file_name=${testfolder}.stdout # e.g. primetest.stdout
 
+        extra_ghc_only_opts_1="+RTS -V0 -RTS" # TO BE PASSED TO ALL GHC-COMPILED PROGRAMS
+
         # Do the actual running
         if [ -f "${input_file_name}" ]; then
-          echo "EXECUTING: ${PWD}/Main ${ropts} <${input_file_name} >${output_file_name}"
-          $(${PWD}/Main ${ropts} <${input_file_name} >${output_file_name})
+          echo "EXECUTING: ${PWD}/Main ${extra_ghc_only_opts_1} ${ropts} <${input_file_name} >${output_file_name}"
+          $(${PWD}/Main ${extra_ghc_only_opts_1} ${ropts} <${input_file_name} >${output_file_name})
         else
-          echo "EXECUTING: ${PWD}/Main ${ropts} >${output_file_name}"
-          $(${PWD}/Main ${ropts} >${output_file_name})
+          echo "EXECUTING: ${PWD}/Main ${extra_ghc_only_opts_1} ${ropts} >${output_file_name}"
+          $(${PWD}/Main ${extra_ghc_only_opts_1} ${ropts} >${output_file_name})
         fi
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         echo "Leaving $PWD ..." && cd ..             # Leave the test folder

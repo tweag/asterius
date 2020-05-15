@@ -1,1 +1,1 @@
-+RTS -V0 -RTS +RTS -H30m -RTS 8 200
+ +RTS -H30m -RTS 8 200

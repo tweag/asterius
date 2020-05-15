@@ -1,1 +1,1 @@
-+RTS -V0 -RTS ghc-examples.in 50
+ ghc-examples.in 50
