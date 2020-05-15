@@ -127,6 +127,8 @@ newGHCiJSSession = do
       defJSSessionOpts
         { nodeExtraArgs =
             [ "--experimental-wasm-return-call",
+              "--no-wasm-bounds-checks",
+              "--no-wasm-stack-checks",
               "--wasm-lazy-compilation",
               "--wasm-lazy-validation",
               "--wasm-max-mem-pages=65536"
