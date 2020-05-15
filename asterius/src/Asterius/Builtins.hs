@@ -19,6 +19,7 @@ where
 
 import Asterius.Builtins.Blackhole
 import Asterius.Builtins.CMath
+import Asterius.Builtins.Env
 import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
@@ -101,12 +102,6 @@ rtsAsteriusModule opts =
                     ]
                 }
             ),
-            ( "prog_argv",
-              AsteriusStatics
-                { staticsType = ConstBytes,
-                  asteriusStatics = [SymbolStatic "prog_name" 0]
-                }
-            ),
             ( "__asterius_localeEncoding",
               AsteriusStatics
                 { staticsType = ConstBytes,
@@ -162,7 +157,6 @@ rtsAsteriusModule opts =
     <> tryWakeupThreadFunction opts
     <> raiseExceptionHelperFunction opts
     <> barfFunction opts
-    <> getProgArgvFunction opts
     <> suspendThreadFunction opts
     <> scheduleThreadFunction opts
     <> scheduleThreadOnFunction opts
@@ -190,6 +184,7 @@ rtsAsteriusModule opts =
     <> cmathCBits
     <> hashableCBits
     <> md5CBits
+    <> envCBits
     <> posixCBits
     <> sptCBits
     <> stgPrimFloatCBits
@@ -618,6 +613,7 @@ rtsFunctionImports debug =
       )
     <> schedulerImports
     <> exportsImports
+    <> envImports
     <> posixImports
     <> sptImports
     <> timeImports
@@ -1400,12 +1396,6 @@ unicodeCBits =
       ("u_iswcntrl", [I64], [I64]),
       ("u_iswprint", [I64], [I64])
     ]
-
-getProgArgvFunction :: BuiltinsOptions -> AsteriusModule
-getProgArgvFunction _ = runEDSL "getProgArgv" $ do
-  [argc, argv] <- params [I64, I64]
-  storeI64 argc 0 $ constI64 1
-  storeI64 argv 0 $ symbol "prog_argv"
 
 suspendThreadFunction :: BuiltinsOptions -> AsteriusModule
 suspendThreadFunction _ = runEDSL "suspendThread" $ do

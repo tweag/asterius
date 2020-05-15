@@ -36,6 +36,7 @@ extra-source-files:
   - test/nodeio/**/*.hs
   - test/time/**/*.hs
   - test/primitive/**/*.hs
+  - test/argv/**/*.hs
 
 data-files:
   - rts/**/*.mjs
@@ -318,6 +319,13 @@ tests:
   primitive:
     source-dirs: test
     main: primitive.hs
+    ghc-options: *exe-ghc-options
+    dependencies:
+      - asterius
+
+  argv:
+    source-dirs: test
+    main: argv.hs
     ghc-options: *exe-ghc-options
     dependencies:
       - asterius
