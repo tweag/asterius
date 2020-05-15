@@ -1,6 +1,10 @@
 
 # GEORGE's NOTES
 
+```
+./run.sh FAST ghc 2>&1 | tee log
+```
+
 * Checked spectral.
 * Checked smp.
 * Checked shootout.
