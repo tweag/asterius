@@ -38,44 +38,28 @@ if [ "${COMP}" == "ghc" ]; then
           # For each test within this category
           cd ${testfolder} && echo "Entering $PWD ..." # Enter the test folder
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # BUILDING ALL TEST FILES (.hs)
-          for testfile in *.hs; do
-            [ -f "$testfile" ] || break # If the file does not exist, move on..
+          # BUILDING ALL TEST FILES
+          if [ -f "Main.hs" ]; then
+            testfile="Main.hs"
             noext=${testfile%.hs} # Filename without extension
-
-            # Retrieve the compile options for the current mode
-            copts_file=${noext}.COMPILE_OPTS
-            if [ -f "${copts_file}" ]; then
-              copts=$(<${copts_file})
-            else
-              copts="" # no compiler options, use the empty string
+          else if [ -f "Main.lhs" ]; then
+              testfile="Main.lhs"
+              noext=${testfile%.lhs} # Filename without extension
             fi
+          fi
 
-            # Do the actual building
-            # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-            echo "EXECUTING: ${COMPILER} ${copts} $testfile"
-            ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
-            # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
-          done
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # BUILDING ALL TEST FILES (.lhs)
-          for testfile in *.lhs; do
-            [ -f "$testfile" ] || break # If the file does not exist, move on..
-            noext=${testfile%.lhs} # Filename without extension
+          # Retrieve the compile options for the current mode
+          copts_file=${noext}.COMPILE_OPTS
+          if [ -f "${copts_file}" ]; then
+            copts=$(<${copts_file})
+          else
+            copts="" # no compiler options, use the empty string
+          fi
 
-            # Retrieve the compile options for the current mode
-            copts_file=${noext}.COMPILE_OPTS
-            if [ -f "${copts_file}" ]; then
-              copts=$(<${copts_file})
-            else
-              copts="" # no compiler options, use the empty string
-            fi
-
-            # Do the actual building
-            echo "EXECUTING: ${COMPILER} ${copts} $testfile"
-            ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
-            # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
-          done
+          # Do the actual building
+          # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
+          echo "EXECUTING: ${COMPILER} ${copts} $testfile"
+          ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
           echo "Leaving $PWD ..." && cd ..             # Leave the test folder
         fi
@@ -103,57 +87,32 @@ if [ "${COMP}" == "ahc" ]; then
           cd ${testfolder} && echo "Entering $PWD ..." # Enter the test folder
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
           # BUILDING ALL TEST FILES (.hs)
-          for testfile in *.hs; do
-            [ -f "$testfile" ] || break # If the file does not exist, move on..
+          if [ -f "Main.hs" ]; then
+            testfile="Main.hs"
             noext=${testfile%.hs} # Filename without extension
-
-            # Retrieve the compile options for the current mode
-            copts_file=${noext}.COMPILE_OPTS
-            if [ -f "${copts_file}" ]; then
-              copts=$(<${copts_file})
-            else
-              copts="" # no compiler options, use the empty string
+          else if [ -f "Main.lhs" ]; then
+              testfile="Main.lhs"
+              noext=${testfile%.lhs} # Filename without extension
             fi
+          fi
 
-            ahc_copts=""
-            for word in $copts; do
-              ahc_copts="${ahc_copts} --ghc-option=${word}"
-            done # CONCATENATE THEM
+          # Retrieve the compile options for the current mode
+          copts_file=${noext}.COMPILE_OPTS
+          if [ -f "${copts_file}" ]; then
+            copts=$(<${copts_file})
+          else
+            copts="" # no compiler options, use the empty string
+          fi
 
-            echo "PREPARED OPTIONS: ${ahc_copts}"
+          ahc_copts=""
+          for word in $copts; do
+            ahc_copts="${ahc_copts} --ghc-option=${word}"
+          done # CONCATENATE THEM
 
-            # Do the actual building
-            # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-            echo "EXECUTING: ${COMPILER} ${ahc_copts} --input-hs $testfile"
-            ${COMPILER} ${ahc_copts} --input-hs $testfile # -c $testfile -o ${noext}.o
-            # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
-          done
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # BUILDING ALL TEST FILES (.lhs)
-          for testfile in *.lhs; do
-            [ -f "$testfile" ] || break # If the file does not exist, move on..
-            noext=${testfile%.lhs} # Filename without extension
-
-            # Retrieve the compile options for the current mode
-            copts_file=${noext}.COMPILE_OPTS
-            if [ -f "${copts_file}" ]; then
-              copts=$(<${copts_file})
-            else
-              copts="" # no compiler options, use the empty string
-            fi
-
-            ahc_copts=""
-            for word in $copts; do
-              ahc_copts="${ahc_copts} --ghc-option=${word}"
-            done # CONCATENATE THEM
-
-            echo "PREPARED OPTIONS: ${ahc_copts}"
-
-            # Do the actual building
-            echo "EXECUTING: ${COMPILER} ${ahc_copts} --input-hs $testfile"
-            ${COMPILER} ${ahc_copts} --input-hs $testfile # -c $testfile -o ${noext}.o
-            # TODO: IT DOES NOT COMPILE THEM IN ORDER :/
-          done
+          # Do the actual building
+          # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
+          echo "EXECUTING: ${COMPILER} ${ahc_copts} --input-hs $testfile"
+          ${COMPILER} ${ahc_copts} --input-hs $testfile # -c $testfile -o ${noext}.o
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
           echo "Leaving $PWD ..." && cd ..             # Leave the test folder
         fi
