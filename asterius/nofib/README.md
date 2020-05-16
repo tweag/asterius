@@ -2,10 +2,10 @@
 # GEORGE's NOTES
 
 ```
+make distclean
+time ./run.sh FAST ghc 2>&1 | tee log-ghc
 make clean
-./run.sh FAST ghc 2>&1 | tee log-ghc
-make clean
-./run.sh FAST ahc 2>&1 | tee log-ahc
+time ./run.sh FAST ahc 2>&1 | tee log-ahc
 ./stdoutdiff.sh 2>&1 | tee log-comp
 ```
 
