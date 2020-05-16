@@ -2,7 +2,8 @@
 clean:
 	$(RM) -fr ./*/*/*.hi
 	$(RM) -fr ./*/*/*.o
-	$(RM) -fr ./*/*/*.stdout
+	# $(RM) -fr ./*/*/*.ghc.stdout
+	# $(RM) -fr ./*/*/*.ahc.stdout
 	$(RM) -fr ./*/*/Main
 	$(RM) real/fulsom/Bah           # Remove these separately
 	$(RM) real/compress/Lzw         # Remove these separately
@@ -43,4 +44,12 @@ clean:
 	$(RM) */*/rts.time.mjs
 	$(RM) */*/rts.tracing.mjs
 	$(RM) */*/rts.unicode.mjs
+
+clean-ghc: clean
+	$(RM) -fr ./*/*/*.ghc.stdout
+
+clean-ahc: clean
+	$(RM) -fr ./*/*/*.ahc.stdout
+
+distclean: clean-ghc clean-ahc
 
