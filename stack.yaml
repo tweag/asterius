@@ -17,21 +17,21 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.8.3:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius-tinfo6.200513.tar.xz
-        content-length: 151380256
-        sha256: c7e77e53f71bff9eef84212e07fff569ce69ce280db0423047e044134768d8d8
+        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius-tinfo6.200517.tar.xz
+        content-length: 151370468
+        sha256: 5119077a912427cad99554ab9b531305ce539b5e1b541c909bb09a68fd7ef8ae
     linux64-custom-asterius:
       8.8.3:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius.200513.tar.xz
-        content-length: 148504768
-        sha256: 8c19275812abafcc9cff75da48c8958aef6ae5aa4e24568618f17ca51f4d2094
+        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius.200517.tar.xz
+        content-length: 148343252
+        sha256: f078fa1f29b0a4deb23bba12915b22f86927bf1062e43bc4b31559885f24676e
     linux64-custom-asterius-musl:
       8.8.3:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius-musl.200513.tar.xz
-        content-length: 165675408
-        sha256: 0ca37a9ab3b09c890825d3e1dc28c4f7744af8c49fc0fbbb8b5d2eb87dfef018
+        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-linux64-custom-asterius-musl.200517.tar.xz
+        content-length: 165664120
+        sha256: 86aa81bea2245efba05de23c73dd70ded06c84d61481c9e0a680d423cd3400be
     macosx-custom-asterius:
       8.8.3:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-macosx-custom-asterius.200513.tar.xz
-        content-length: 159079000
-        sha256: 1ef26e9d83555a1457dc9260b4473fedde0eac4ada7306530bfb3bf071ba4337
+        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.3-macosx-custom-asterius.200517.tar.xz
+        content-length: 159032416
+        sha256: 4fdde14b04392541abe5ad441ef98a4c924c6b0195f6f35f0ec79e04798f4f58
