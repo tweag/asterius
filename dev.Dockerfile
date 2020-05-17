@@ -49,6 +49,8 @@ RUN \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.1/stack-2.3.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
+  npm install -g \
+    0x@4.9.1 && \
   pip3 install \
     recommonmark \
     sphinx && \
@@ -76,6 +78,7 @@ RUN \
     wai-app-static && \
   cd /home/asterius && \
   sudo rm -rf -v \
+    /home/asterius/.npm \
     /home/asterius/.stack/pantry \
     /home/asterius/.stack/programs/*/*.tar.xz \
     /tmp/* \
