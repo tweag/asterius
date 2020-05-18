@@ -4,6 +4,8 @@ clean:
 	$(RM) -fr ./*/*/*.o
 	# $(RM) -fr ./*/*/*.ghc.stdout
 	# $(RM) -fr ./*/*/*.ahc.stdout
+	# $(RM) -fr ./*/*/*.ghc.stderr
+	# $(RM) -fr ./*/*/*.ahc.stderr
 	$(RM) -fr ./*/*/Main
 	$(RM) real/fulsom/Bah           # Remove these separately
 	$(RM) real/compress/Lzw         # Remove these separately
@@ -47,9 +49,11 @@ clean:
 
 clean-ghc: clean
 	$(RM) -fr ./*/*/*.ghc.stdout
+	$(RM) -fr ./*/*/*.ghc.stderr
 
 clean-ahc: clean
 	$(RM) -fr ./*/*/*.ahc.stdout
+	$(RM) -fr ./*/*/*.ahc.stderr
 
 distclean: clean-ghc clean-ahc
 

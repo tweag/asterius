@@ -36,15 +36,6 @@ real/eff-VS:
   file:///home/skull/tweag/asterius-alt/asterius/nofib/real/eff-VS/rts.memory.mjs:118
       this.memory.grow(n);
 
-real/maillist:
-  Main: JSException "RuntimeError: unreachable
-      at wasm-function[714]:0x2251f
-      at wasm-function[3235]:0xa8707
-      at wasm-function[3236]:0xa8734
-      at Scheduler.tick (file:///home/skull/tweag/asterius-alt/asterius/nofib/real/maillist/rts.scheduler.mjs:346:22)
-      at Immediate.<anonymous> (file:///home/skull/tweag/asterius-alt/asterius/nofib/real/maillist/rts.scheduler.mjs:381:29)
-      at processImmediate (internal/timers.js:456:21)"
-
 real/pic
   FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
    1: 0xa295e0 node::Abort() [/usr/bin/node]
@@ -90,15 +81,6 @@ real/scs
 real/symalg
   NO VISIBLE ERROR.
 
-shootout/binary-trees
-  Main: JSException "RuntimeError: unreachable
-      at wasm-function[108]:0x6e91
-      at wasm-function[4070]:0xd77de
-      at wasm-function[4071]:0xd780b
-      at Scheduler.tick (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/binary-trees/rts.scheduler.mjs:346:22)
-      at Immediate.<anonymous> (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/binary-trees/rts.scheduler.mjs:381:29)
-      at processImmediate (internal/timers.js:456:21)"
-
 shootout/fannkuch-redux
   FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory
    1: 0xa295e0 node::Abort() [/usr/bin/node]
@@ -117,6 +99,30 @@ shootout/fannkuch-redux
 shootout/k-nucleotide
   NO VISIBLE ERROR.
 
+spectral/cichelli
+  NO VISIBLE ERROR.
+
+spectral/primetest
+  NO VISIBLE ERROR.
+
+real/maillist:
+  Main: JSException "RuntimeError: unreachable
+      at wasm-function[714]:0x2251f
+      at wasm-function[3235]:0xa8707
+      at wasm-function[3236]:0xa8734
+      at Scheduler.tick (file:///home/skull/tweag/asterius-alt/asterius/nofib/real/maillist/rts.scheduler.mjs:346:22)
+      at Immediate.<anonymous> (file:///home/skull/tweag/asterius-alt/asterius/nofib/real/maillist/rts.scheduler.mjs:381:29)
+      at processImmediate (internal/timers.js:456:21)"
+
+shootout/binary-trees
+  Main: JSException "RuntimeError: unreachable
+      at wasm-function[108]:0x6e91
+      at wasm-function[4070]:0xd77de
+      at wasm-function[4071]:0xd780b
+      at Scheduler.tick (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/binary-trees/rts.scheduler.mjs:346:22)
+      at Immediate.<anonymous> (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/binary-trees/rts.scheduler.mjs:381:29)
+      at processImmediate (internal/timers.js:456:21)"
+
 shootout/n-body
   Main: JSException "RuntimeError: unreachable
       at wasm-function[41]:0x3fe7
@@ -126,11 +132,6 @@ shootout/n-body
       at Immediate.<anonymous> (file:///home/skull/tweag/asterius-alt/asterius/nofib/shootout/n-body/rts.scheduler.mjs:381:29)
       at processImmediate (internal/timers.js:456:21)"
 
-spectral/cichelli
-  NO VISIBLE ERROR.
-
-spectral/primetest
-  NO VISIBLE ERROR.
 
 ------------------------------------------------------------------------------+
 

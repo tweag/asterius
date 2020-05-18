@@ -76,7 +76,8 @@ if [ "${COMP}" == "ghc" ]; then
 
           # Create input and output file names
           input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
-          output_file_name=${testfolder}.ghc.stdout # e.g. primetest.stdout
+          stdout_file_name=${testfolder}.ghc.stdout # e.g. primetest.stdout
+          stderr_file_name=${testfolder}.ghc.stderr # e.g. primetest.stderr
 
           extra_opts_1=""
           extra_opts_2=""
@@ -89,11 +90,11 @@ if [ "${COMP}" == "ghc" ]; then
 
           # Do the actual running
           if [ -f "${input_file_name}" ]; then
-            echo "EXECUTING: ${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} >${output_file_name}"
-            $(${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} >${output_file_name})
+            echo "EXECUTING: ${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} 1>${stdout_file_name} 2>${stderr_file_name}"
+            $(${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} 1>${stdout_file_name} 2>${stderr_file_name})
           else
-            echo "EXECUTING: ${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} >${output_file_name}"
-            $(${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} >${output_file_name})
+            echo "EXECUTING: ${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} 1>${stdout_file_name} 2>${stderr_file_name}"
+            $(${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} 1>${stdout_file_name} 2>${stderr_file_name})
           fi
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
           echo "Leaving $PWD ..." && cd ..             # Leave the test folder
@@ -161,15 +162,16 @@ if [ "${COMP}" == "ahc" ]; then
 
           # Create input and output file names
           input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
-          output_file_name=${testfolder}.ahc.stdout # e.g. primetest.stdout
+          stdout_file_name=${testfolder}.ahc.stdout # e.g. primetest.stdout
+          stderr_file_name=${testfolder}.ahc.stderr # e.g. primetest.stderr
 
           # Do the actual running
           if [ -f "${input_file_name}" ]; then
-            echo "EXECUTING: ${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} >${output_file_name}"
-            $(${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} >${output_file_name})
+            echo "EXECUTING: ${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} 1>${stdout_file_name} 2>${stderr_file_name}"
+            $(${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} 1>${stdout_file_name} 2>${stderr_file_name})
           else
-            echo "EXECUTING: ${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} >${output_file_name}"
-            $(${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} >${output_file_name})
+            echo "EXECUTING: ${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} 1>${stdout_file_name} 2>${stderr_file_name}"
+            $(${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} 1>${stdout_file_name} 2>${stderr_file_name})
           fi
           # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
           echo "Leaving $PWD ..." && cd ..             # Leave the test folder
