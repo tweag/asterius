@@ -33,7 +33,7 @@ malloc = runEDSL "malloc" $ do
     call'
       "allocatePinned"
       [ mainCapability,
-        roundup_bytes_to_words_expr $
+        roundupBytesToWords $
           constI64 (sizeof_StgArrBytes + 8)
             `addInt64` n
       ]
@@ -49,6 +49,6 @@ free = runEDSL "free" $ do
   p <- param I64
   call "freeStablePtr" [loadI64 (p `subInt64` constI64 8) 0]
 
-roundup_bytes_to_words_expr :: Expression -> Expression
-roundup_bytes_to_words_expr n =
+roundupBytesToWords :: Expression -> Expression
+roundupBytesToWords n =
   (n `addInt64` constI64 7) `divUInt64` constI64 8
