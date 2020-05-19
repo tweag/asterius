@@ -40,6 +40,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   ListLike \
   ListTree \
   MemoTrie \
+  MissingH \
   MonadPrompt \
   MonadRandom \
   MusicBrainz \
@@ -586,6 +587,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   fedora-dists \
   feed \
   file-embed \
+  file-path-th \
   filecache \
   filelock \
   filemanip \
@@ -913,6 +915,7 @@ ahc-cabal v1-install -j$jobs --prefix=$ASTERIUS_LIB_DIR --package-db=clear --pac
   lockfree-queue \
   log-base \
   logfloat \
+  logging \
   logging-effect \
   logging-facade \
   logging-facade-syslog \
@@ -1735,6 +1738,7 @@ ahc-cabal v1-install -j$jobs_th --prefix=$ASTERIUS_LIB_DIR --package-db=clear --
   QuasiText \
   Rasterific \
   SVGFonts \
+  ShellCheck \
   Spintax \
   Taxonomy \
   accuerr \
