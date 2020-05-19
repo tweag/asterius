@@ -1,3 +1,4 @@
+> {-# OPTIONS_GHC -Wno-missing-methods #-}
 > module Rationals
 
 >		(Rationals(..),rndNR)
@@ -21,7 +22,7 @@
 >	(p :%% q) <= (r :%% s) = p*s <= q*r
 
 > instance Num Rationals where
-	
+
 	(+): rational addition is performed by converting
 	the arguments to a form where they share a common
 	denominator.

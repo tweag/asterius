@@ -22,6 +22,7 @@ Notes:
   The import of AbsDensematrix is to keep hbc happy.
 
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Matlib (scale, precond, uncondition) where
 
 import Data.List (genericLength)

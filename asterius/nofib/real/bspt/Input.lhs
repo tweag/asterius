@@ -1,4 +1,5 @@
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Input where
 import Interpret
 import Euclid

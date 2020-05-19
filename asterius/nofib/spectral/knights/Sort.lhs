@@ -10,6 +10,7 @@ i.e ``{\tt import Sort(lazySort) renaming sort}'' imports {\tt lazySort},
 which can be referenced in the current scope as {\tt sort}.
 
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Sort(insertSort,mergeSort,quickSort,lazySort)  where
 
 \end{code}
@@ -144,7 +145,7 @@ rands s1 s2
    = if z < 1 then z + 2147483562 : rands s1'' s2''
      else
 	 z : rands s1'' s2''
-     where	
+     where
 	k    = s1 `div` 53668
 	s1'  = 40014 * (s1 - k * 53668) - k * 12211
 	s1'' = if s1' < 0 then s1' + 2147483563 else s1'

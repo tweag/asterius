@@ -4,6 +4,7 @@
 \section{Knights Tour Heuristic.}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%M O D U L E%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module KnightHeuristic(
 	ChessSet,
 	startTour,
@@ -127,7 +128,7 @@ descendents board
 		          where
 		             singles = singleDescend board
 
-singleDescend::ChessSet -> [ChessSet]		
+singleDescend::ChessSet -> [ChessSet]
 singleDescend board =[x | (y,x) <- descAndNo board, y==1]
 
 descAndNo::ChessSet -> [(Int,ChessSet)]

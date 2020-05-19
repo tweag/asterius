@@ -7,6 +7,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{onlystandalone}
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Mandel where
 import Data.Complex -- 1.3
 import PortablePixmap

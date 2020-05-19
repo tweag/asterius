@@ -29,6 +29,7 @@ Notes:
       (r,c,b) = (r-1,c-1,..) to make indices zero origin.
 
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Input
 (gmat,rhside,soln_vect,wells,split,blm',mkbigvec,
               mksparse,a_easy,a_hard,x1) where

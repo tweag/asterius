@@ -5,6 +5,7 @@
 \section{The Main Program.}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%M O D U L E%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Main(main) where
 \end{code}
 %%%%%%%%%%%%%%%%%% I M P O R T S  /  T Y P E   D E F S %%%%%%%%%%%%%%

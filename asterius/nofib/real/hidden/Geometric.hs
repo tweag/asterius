@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-tabs #-}
+{-# OPTIONS_GHC -Wno-missing-methods #-}
 module Geometric (Geom(..)) where
 import Numbers
 import Vectors

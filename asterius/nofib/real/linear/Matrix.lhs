@@ -8,6 +8,7 @@
  =======================================================================
 
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 module Matrix
          (Matrix, Vector, Block , Vec ,
@@ -145,7 +146,7 @@ mupdate m (i,j) val
      where
         f xs = (take j xs) ++ [(i, (j+1), val)] ++ (drop (j+1) xs)
 
-	
+
 vupdate v i vc = (take i v) ++ [vc] ++ (drop (i+1) v)
 
 

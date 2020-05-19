@@ -32,7 +32,7 @@
                                   assumes the arg is column major.
 
 \begin{code}
-
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Densematrix(Matrix,Vector,
         mmult, madd, msub, vouter, vdot, norm ,mneg ,mxpose,mident, msize,
         mkmat, mkrmat, mkcmat, mkvec, mkrvec, mkcvec,

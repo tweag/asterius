@@ -16,6 +16,7 @@
 
 
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 
 module Cg(cgiters,Cg_state (..),showcg_state)
         where

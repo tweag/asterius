@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-tabs #-}
+{-# OPTIONS_GHC -Wno-missing-methods #-}
 {-
 From augustss@cs.chalmers.se Sat Jan 11 11:56:04 1992
 From: augustss@cs.chalmers.se (Lennart Augustsson)

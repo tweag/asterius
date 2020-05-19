@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-tabs #-}
+{-# OPTIONS_GHC -Wno-missing-methods #-}
 
 -- ==========================================================--
 -- === Base declarations                      BaseDefs.hs ===--

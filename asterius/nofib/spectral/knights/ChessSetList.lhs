@@ -9,6 +9,7 @@ data parallel search (for instance wedge first??). This module
 abstracts data type specific operations used in the Heuristic part of the tour.
 
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module ChessSetList(Tile,
 		    ChessSet,
 		    createBoard,
@@ -61,7 +62,7 @@ instance Eq ChessSet where
     _ == _ = True
 
 instance Ord ChessSet where
-    _ <= _ = True			
+    _ <= _ = True
 
 instance Show ChessSet where
    showsPrec p board@(Board sze n f ts)

@@ -95,6 +95,7 @@ AUTHOR
 Sun Release 4.1  Last change: 15 September 1990                 2
 \end{verbatim}
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module PortablePixmap where
 
 data PixMap = Pixmap Integer Integer Int [(Int,Int,Int)]

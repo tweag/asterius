@@ -1,3 +1,5 @@
+> {-# OPTIONS_GHC -Wno-missing-methods #-}
+
 > module Type_defs where
 
 > import Core_datatype

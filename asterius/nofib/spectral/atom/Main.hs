@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wno-tabs #-}
+{-# OPTIONS_GHC -Wno-missing-methods #-}
 {-	A kernel fragment from a program written by
 		Ron Legere  -- http://www.its.caltech.edu/~legere
 		Caltech Quantum Optics

@@ -5,6 +5,7 @@
 \section{A Queue Abstract data type}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{code}
+{-# OPTIONS_GHC -Wno-tabs #-}
 module Queue(
 		Queue, createQueue, addFront, addBack,
 		addAllFront, addAllBack, inquireFront,
