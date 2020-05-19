@@ -20,7 +20,7 @@ class Posix {
       argv_total_size =
         argv_header_size +
         // All strings are \0-terminated, hence the +1
-        arg_bufs.reduce((acc, buf) => acc + buf.byteLength + 1, 0); 
+        arg_bufs.reduce((acc, buf) => acc + buf.byteLength + 1, 0);
     // The total size (in bytes) of the runtime arguments cannot exceed the 1KB
     // size of the data segment we have reserved. If you wish to change this
     // number, you should also update envArgvBuf in Asterius.Builtins.Env.
@@ -58,6 +58,15 @@ class Posix {
   close(f) {
     try {
       fs.closeSync(f);
+      return 0;
+    } catch (err) {
+      this.set_errno(-err.errno);
+      return -1;
+    }
+  }
+  ftruncate(fd, len) {
+    try {
+      fs.ftruncateSync(fd, len);
       return 0;
     } catch (err) {
       this.set_errno(-err.errno);

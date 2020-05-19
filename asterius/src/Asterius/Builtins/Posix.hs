@@ -59,6 +59,16 @@ posixImports =
         functionType = FunctionType {paramTypes = [F64], returnTypes = [F64]}
       },
     FunctionImport
+      { internalName = "__asterius_posix_ftruncate",
+        externalModuleName = "posix",
+        externalBaseName = "ftruncate",
+        functionType =
+          FunctionType
+            { paramTypes = [F64, F64],
+              returnTypes = [F64]
+            }
+      },
+    FunctionImport
       { internalName = "__asterius_posix_stat",
         externalModuleName = "posix",
         externalBaseName = "stat",
@@ -136,6 +146,7 @@ posixCBits :: AsteriusModule
 posixCBits =
   posixOpen
     <> posixClose
+    <> posixFtruncate
     <> posixStat
     <> posixFstat
     <> posixFstatGetters
@@ -173,6 +184,17 @@ posixClose = runEDSL "close" $ do
   fd <- param I64
   truncSFloat64ToInt64
     <$> callImport' "__asterius_posix_close" [convertSInt64ToFloat64 fd] F64
+    >>= emit
+
+posixFtruncate :: AsteriusModule
+posixFtruncate = runEDSL "__hscore_ftruncate" $ do
+  setReturnTypes [I64]
+  args <- params [I64, I64]
+  truncSFloat64ToInt64
+    <$> callImport'
+      "__asterius_posix_ftruncate"
+      (map convertSInt64ToFloat64 args)
+      F64
     >>= emit
 
 posixStat :: AsteriusModule
