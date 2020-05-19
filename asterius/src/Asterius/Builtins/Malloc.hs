@@ -1,5 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+-- |
+-- Module      :  Asterius.Builtins.Malloc
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Wasm implementations of @malloc@ and @free@. This implementation of
+-- @malloc@/@free@ allocates one pinned @ByteArray#@ for each @malloc@ call,
+-- sets up a @StablePtr#@ for the @ByteArray#@ closure, and stores the
+-- @StablePtr#@ in the payload's first word. Hence, the available space as the
+-- result of @malloc@ starts from the second word of the payload. Conversely,
+-- @free@ fetches the @StablePtr#@, subtracts the size of a word (to account
+-- for the additional first word), and and frees it, so that the garbage
+-- collector can later recycle the space taken by the @ByteArray#@.
 module Asterius.Builtins.Malloc
   ( mallocCBits,
   )
