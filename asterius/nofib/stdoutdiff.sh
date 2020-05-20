@@ -29,15 +29,17 @@ for f in ./*/*/*.ghc.stdout; do
     fi
   fi
 
+  testfolder=${testname%/*}
+
   # Print results
   if [[ "$stdout_ok" == "missing" || "$stderr_ok" == "missing" ]]; then
-    echo "${testname} ( MISSING )"
+    echo "${testfolder} ( MISSING )"
   elif [[ "$stdout_ok" == "true" && "$stderr_ok" == "true" ]]; then
-    echo "${testname} ( OK )"
+    echo "${testfolder} ( OK )"
   elif [[ "$stderr_ok" == "false" ]]; then
-    echo "${testname} ( STDERR MISMATCH )"
+    echo "${testfolder} ( STDERR MISMATCH )"
   elif [[ "$stdout_ok" == "false" ]]; then
-    echo "${testname} ( STDOUT MISMATCH )"
+    echo "${testfolder} ( STDOUT MISMATCH )"
   fi
 
 done
