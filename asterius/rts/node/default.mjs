@@ -9,7 +9,6 @@ class Device {
     this.flush = f;
     this.consoleHistory = console_history;
     this.history = "";
-    this.buffer = "";
     this.decoder = new TextDecoder("utf-8", { fatal: true });
     Object.seal(this);
   }
@@ -28,12 +27,7 @@ class Device {
     if (this.consoleHistory) {
       this.history += str;
     }
-    this.buffer += str;
-    const segs = this.buffer.split("\n");
-    this.buffer = segs.pop();
-    for (const seg of segs) {
-      this.flush(seg);
-    }
+    this.flush(str);
     return buf.length;
   }
 }
@@ -42,8 +36,8 @@ class MemoryFileSystem {
   constructor(console_history) {
     this.files = [
       undefined,
-      new Device(console.log, console_history),
-      new Device(console.error, console_history)
+      new Device(s => fs.writeSync(process.stdout.fd, s), console_history),
+      new Device(s => fs.writeSync(process.stderr.fd, s), console_history)
     ];
     Object.freeze(this);
   }
