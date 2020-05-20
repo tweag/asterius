@@ -10,7 +10,6 @@ import { StableNameManager } from "./rts.stablename.mjs";
 import { StaticPtrManager } from "./rts.staticptr.mjs";
 import { Scheduler } from "./rts.scheduler.mjs";
 import { IntegerManager } from "./rts.integer.mjs";
-import { MemoryFileSystem } from "./rts.fs.mjs";
 import { ByteStringCBits } from "./rts.bytestring.mjs";
 import { TextCBits } from "./rts.text.mjs";
 import { TimeCBits } from "./rts.time.mjs";
@@ -54,7 +53,7 @@ export async function newAsteriusInstance(req) {
       req.symbolTable
     ),
     __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
-    __asterius_fs = new MemoryFileSystem(req.consoleHistory),
+    __asterius_fs = new (req.targetSpecificModule.fs)(req.consoleHistory),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
       req.symbolTable,

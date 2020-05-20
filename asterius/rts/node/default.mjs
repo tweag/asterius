@@ -4,6 +4,53 @@
 import fs from "fs";
 import { performance } from "perf_hooks";
 
+class Device {
+  constructor(f, console_history) {
+    this.flush = f;
+    this.consoleHistory = console_history;
+    this.history = "";
+    this.decoder = new TextDecoder("utf-8", { fatal: true });
+    Object.seal(this);
+  }
+
+  read() {
+    const r = this.history;
+    this.history = "";
+    return r;
+  }
+
+  write(buf) {
+    const str =
+      typeof buf === "string"
+        ? buf
+        : this.decoder.decode(buf, { stream: true });
+    if (this.consoleHistory) {
+      this.history += str;
+    }
+    this.flush(str);
+    return buf.length;
+  }
+}
+
+class MemoryFileSystem {
+  constructor(console_history) {
+    this.files = [
+      undefined,
+      new Device(s => fs.writeSync(process.stdout.fd, s), console_history),
+      new Device(s => fs.writeSync(process.stderr.fd, s), console_history)
+    ];
+    Object.freeze(this);
+  }
+
+  readSync(fd) {
+    return this.files[fd].read();
+  }
+
+  writeSync(fd, buf) {
+    return this.files[fd].write(buf);
+  }
+}
+
 class Posix {
   constructor(memory, rtsConstants) {
     this.memory = memory;
@@ -224,5 +271,6 @@ export default {
      */
     resolution: 1
   },
+  fs: MemoryFileSystem,
   posix: Posix
 };
