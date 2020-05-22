@@ -66,6 +66,8 @@ main = do
         "-a",
         "profiling: False",
         "-a",
+        "program-locations\n ar-location: " <> ahcAr,
+        "-a",
         "relocatable: False",
         "-a",
         "shared: False",
