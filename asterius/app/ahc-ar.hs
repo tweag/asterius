@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ViewPatterns #-}
 
 import System.Environment.Blank
 import System.Process (callProcess)
@@ -11,6 +12,7 @@ import System.Directory (doesFileExist)
 import System.IO.Error (catchIOError)
 import System.Exit (die)
 import Data.List (isSuffixOf, find)
+import System.FilePath (splitFileName)
 
 -- TODOs:
 -- * Add proper checks (doesFileExist, etc.)
@@ -50,7 +52,7 @@ gnuAr = getArgs >>= callProcess "ar"
 ahcAr :: IO ()
 ahcAr = do
   args <- getArgsRecursively
-  let is_truncation_allowed = elem "-T" args
+  let is_truncation_allowed = True -- elem "-T" args
   let object_files = filter (".o" `isSuffixOf`) args
   case find (".a" `isSuffixOf`) args of
     Just ar -> createArchive is_truncation_allowed ar object_files
@@ -119,10 +121,10 @@ createArchive is_truncation_allowed arFile objFiles =
 
     -- NOTE: length should be exactly 16 bytes
     mkFileID :: FilePath -> BS.ByteString
-    mkFileID filename
+    mkFileID (splitFileName -> (_, filename))
       | length filename <= 16 = BSC.pack $ take 16 $ filename ++ repeat ' '
       | is_truncation_allowed = BSC.pack $ take 16 $ filename
-      | otherwise = error $ "ahc-ar: " ++ filename ++ "is too long" -- TODO: Suggestion to set -T?
+      | otherwise = error $ "ahc-ar: " ++ filename ++ " is too long" -- TODO: Suggestion to set -T?
 
     -- TODO: this doesn't look great, but I don't know how to do it differently atm.
     hCopyContents :: Integer -> Handle -> Handle -> IO ()
