@@ -126,10 +126,10 @@ createArchive is_truncation_allowed arFile objFiles =
 
     -- TODO: this doesn't look great, but I don't know how to do it differently atm.
     hCopyContents :: Integer -> Handle -> Handle -> IO ()
-    hCopyContents fileSize from to = do
-      contents <- BS.hGetContents from
-      BS.hPut to contents
+    hCopyContents fileSize source target = do
+      contents <- BS.hGetContents source
+      BS.hPut target contents
       when (odd fileSize) $
-        BS.hPut to "\x0a"
-      hFlush to
+        BS.hPut target "\x0a"
+      hFlush target
 
