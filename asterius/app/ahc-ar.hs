@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE LambdaCase #-}
 
 import System.Environment.Blank
 import System.Process (callProcess)
@@ -6,7 +7,10 @@ import qualified Data.ByteString as BS
 import System.IO (IOMode(..), withFile, Handle, hFileSize, hFlush)
 import Control.Monad (forM_, when)
 import qualified Data.ByteString.Char8 as BSC
--- import System.Directory (doesFileExist)
+import System.Directory (doesFileExist)
+import System.IO.Error (catchIOError)
+import System.Exit (die)
+import Data.List (isSuffixOf, find)
 
 -- TODOs:
 -- * Add proper checks (doesFileExist, etc.)
@@ -21,14 +25,39 @@ import qualified Data.ByteString.Char8 as BSC
 --   https://pubs.opengroup.org/onlinepubs/007908799/xcu/ar.html
 --   https://www.freebsd.org/cgi/man.cgi?query=ar&sektion=5&manpath=4.3BSD+NET%2F2
 
-main :: IO ()
-main = do
-  args <- getArgs
-  callProcess "ar" args -- For now just call GNU ar
-
--- | Get all arguments, looking through file arguments.
+-- NOTE TAKEN FROM Distribution.Simple.Program.Ar:
 --
--- TODO: Adjust this function to be faithful to the behavior described in @man ar@:
+--   The args to use with "ar" are actually rather subtle and system-dependent.
+--   In particular we have the following issues:
+--
+--    -- On OS X, "ar q" does not make an archive index. Archives with no
+--       index cannot be used.
+--
+--    -- GNU "ar r" will not let us add duplicate objects, only "ar q" lets us
+--       do that. We have duplicates because of modules like "A.M" and "B.M"
+--       both make an object file "M.o" and ar does not consider the directory.
+--
+--   Our solution is to use "ar r" in the simple case when one call is enough.
+--   When we need to call ar multiple times we use "ar q" and for the last
+--   call on OSX we use "ar qs" so that it'll make the index.
+
+main :: IO ()
+main = ahcAr -- gnuAr
+
+gnuAr :: IO ()
+gnuAr = getArgs >>= callProcess "ar"
+
+ahcAr :: IO ()
+ahcAr = do
+  args <- getArgsRecursively
+  let is_truncation_allowed = elem "-T" args
+  let object_files = filter (".o" `isSuffixOf`) args
+  case find (".a" `isSuffixOf`) args of
+    Just ar -> createArchive is_truncation_allowed ar object_files
+    Nothing -> die "ahc-ar: no .a file passed. Exiting..."
+
+-- | Get all arguments, recursively. This function should look through
+-- arguments prefixed with \@, as described in @man ar@:
 --
 -- Read command-line options from file. The options read are inserted in place of
 -- the original @file option. If file does not exist, or cannot be read, then the
@@ -41,14 +70,22 @@ main = do
 -- contain additional @file options; any such options will be processed
 -- recursively.
 getArgsRecursively :: IO [String]
-getArgsRecursively = getArgs >>= expandAtOptions
+getArgsRecursively = getArgs >>= concatMapM expandAtOption
   where
-    expandAtOptions :: [String] -> IO [String]
-    expandAtOptions opts = concat <$> mapM expandAtOption opts
-
     expandAtOption :: String -> IO [String]
-    expandAtOption ('@':path) = readFile path >>= expandAtOptions . words
-    expandAtOption opt = return [opt]
+    expandAtOption opt = case opt of
+      ('@':path) -> doesFileExist path >>= \case
+        True ->
+          catchIOError
+            (readFile path >>= concatMapM expandAtOption . words)
+            (\_ -> return [opt])
+        False -> return [opt]
+      _ -> return [opt]
+
+-- TODO: doesn't this thing exist already somewhere?
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+concatMapM f = fmap concat . mapM f
+{-# INLINE concatMapM #-}
 
 -----------------------------------------------------------------------------
 
