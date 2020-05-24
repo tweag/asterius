@@ -2,6 +2,36 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
+-- |
+-- Module      :  Main
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- This module contains the implementation of @ahc-ar@, a system-agnostic,
+-- partial implementation of GNU @ar@ for creating archive files from a set of
+-- object files. The shape of the contents of the generated archive files is as
+-- explained [here](https://en.wikipedia.org/wiki/Ar_(Unix)#File_header). For
+-- all fields, except the object file identifier and the file size, we use
+-- default values, as follows:
+--
+-- > ---------+-----------------------------+----------------+
+-- >    SIZE  |         DESCRIPTION         |    CONTENTS    |
+-- > ---------+-----------------------------+----------------+
+-- > 16 bytes | File identifier             | FILENAME       |
+-- > 12 bytes | File modification timestamp | "0           " |
+-- >  6 bytes | Owner ID                    | "0     "       |
+-- >  6 bytes | Group ID                    | "0     "       |
+-- >  8 bytes | File mode                   | "0644    "     |
+-- > 10 bytes | File size                   | FILESIZE       |
+-- >  2 bytes | "Magic" ending characters   | "\x60\x0a"     |
+-- > ---------+-----------------------------+----------------+
+-- > 60 bytes | TOTAL                       |
+-- > ---------+-----------------------------+
+module Main
+  ( main,
+  )
+where
+
 import Control.Monad (forM_, when)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
@@ -9,7 +39,6 @@ import Data.List (find, isSuffixOf)
 import System.Directory (doesFileExist)
 import System.Environment.Blank
 import System.Exit (die)
-import System.FilePath (splitFileName)
 import System.IO (Handle, IOMode (..), hFileSize, hFlush, withFile)
 import System.IO.Error (catchIOError)
 import System.Process (callProcess)
@@ -18,8 +47,6 @@ import System.Process (callProcess)
 --   Add proper checks (doesFileExist, etc.)
 --   Add proper flag parsing
 --   Maybe work on a temporary file first and copy the results afterwards?
---   Cleanup and ormolize
---   Still unclear: should we use withBinaryFile etc. instead?
 --   getArgsRecursively: adapt to be able to parse quoted arguments as specified by @man ar@?
 
 -- Some resources:
@@ -45,17 +72,16 @@ import System.Process (callProcess)
 --   call on OSX we use "ar qs" so that it'll make the index.
 
 main :: IO ()
-main = ahcAr -- gnuAr
+main = ahcAr
 
-gnuAr :: IO ()
-gnuAr = getArgs >>= callProcess "ar"
+-- gnuAr :: IO ()
+-- gnuAr = getArgs >>= callProcess "ar"
 
 ahcAr :: IO ()
 ahcAr = do
   args <- getArgsRecursively
-  let object_files = filter (".o" `isSuffixOf`) args
   case find (".a" `isSuffixOf`) args of
-    Just ar -> createArchive ar object_files
+    Just ar -> createArchive ar $ filter (".o" `isSuffixOf`) args
     Nothing -> die "ahc-ar: no .a file passed. Exiting..."
 
 -- | Get all arguments, recursively. This function should look through
@@ -95,34 +121,22 @@ concatMapM f = fmap concat . mapM f
 createArchive :: FilePath -> [FilePath] -> IO ()
 createArchive arFile objFiles =
   withFile arFile WriteMode $ \ah -> do
-    BS.hPut ah "!<arch>\x0a" -- ASCII Magic String (8 bytes)
+    BS.hPut ah "!<arch>\x0a"
     forM_ objFiles $ hPutObjFile ah
   where
     hPutObjFile :: Handle -> FilePath -> IO ()
     hPutObjFile ah filename = do
       withFile filename ReadMode $ \oh -> do
-        let fileID = BSC.pack $ take 16 $ filename ++ repeat ' '
         fileSize <- hFileSize oh
-        let bsFileSize = BSC.pack $ take 10 $ show fileSize ++ repeat ' '
-        hPutFileHeader ah fileID bsFileSize
-        hCopyContents fileSize oh ah
-
-    -- TODO: assert that filename and filesize have the proper size.
-    hPutFileHeader :: Handle -> BS.ByteString -> BS.ByteString -> IO ()
-    hPutFileHeader h filename filesize = do
-      BS.hPut h filename -- File identifier (16 bytes)
-      BS.hPut h "0           " -- File modification timestamp (12 bytes)
-      BS.hPut h "0     " -- Owner ID (6 bytes)
-      BS.hPut h "0     " -- Group ID (6 bytes)
-      BS.hPut h "0644    " -- File mode (8 bytes)
-      BS.hPut h filesize -- File size (10 bytes)
-      BS.hPut h "\x60\x0a" -- "Magic" ending characters (2 bytes)
-
-    -- TODO: this doesn't look great, but I don't know how to do it differently atm.
-    hCopyContents :: Integer -> Handle -> Handle -> IO ()
-    hCopyContents fileSize source target = do
-      contents <- BS.hGetContents source
-      BS.hPut target contents
-      when (odd fileSize) $
-        BS.hPut target "\x0a"
-      hFlush target
+        -- Set the file metadata
+        BS.hPut ah $ BSC.pack $ take 16 $ filename ++ repeat ' '
+        BS.hPut ah "0           "
+        BS.hPut ah "0     "
+        BS.hPut ah "0     "
+        BS.hPut ah "0644    "
+        BS.hPut ah $ BSC.pack $ take 10 $ show fileSize ++ repeat ' '
+        BS.hPut ah "\x60\x0a"
+        -- Copy the contents
+        BS.hGetContents oh >>= BS.hPut ah
+        when (odd fileSize) $ BS.hPut ah "\x0a"
+        hFlush ah
