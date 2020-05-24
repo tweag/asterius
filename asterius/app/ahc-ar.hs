@@ -20,6 +20,8 @@ import System.FilePath (splitFileName)
 -- * Maybe work on a temporary file first and copy the results afterwards?
 -- * Cleanup and ormolize
 -- * Still unclear: should we use withBinaryFile etc. instead?
+-- * getArgsRecursively: adapt to be able to parse quoted arguments as
+-- specified by @man ar@?
 
 -- Some resources:
 --   https://github.com/haskell/cabal/blob/master/Cabal/Distribution/Simple/Program/Ar.hs
@@ -52,10 +54,9 @@ gnuAr = getArgs >>= callProcess "ar"
 ahcAr :: IO ()
 ahcAr = do
   args <- getArgsRecursively
-  let is_truncation_allowed = True -- elem "-T" args
   let object_files = filter (".o" `isSuffixOf`) args
   case find (".a" `isSuffixOf`) args of
-    Just ar -> createArchive is_truncation_allowed ar object_files
+    Just ar -> createArchive ar object_files
     Nothing -> die "ahc-ar: no .a file passed. Exiting..."
 
 -- | Get all arguments, recursively. This function should look through
@@ -92,8 +93,8 @@ concatMapM f = fmap concat . mapM f
 -----------------------------------------------------------------------------
 
 -- | Create a library archive from a bunch of object files.
-createArchive :: Bool -> FilePath -> [FilePath] -> IO ()
-createArchive is_truncation_allowed arFile objFiles =
+createArchive :: FilePath -> [FilePath] -> IO ()
+createArchive arFile objFiles =
   withFile arFile WriteMode $ \ah -> do
     BS.hPut ah "!<arch>\x0a" -- ASCII Magic String (8 bytes)
     forM_ objFiles $ hPutObjFile ah
@@ -101,7 +102,7 @@ createArchive is_truncation_allowed arFile objFiles =
     hPutObjFile :: Handle -> FilePath -> IO ()
     hPutObjFile ah filename = do
       withFile filename ReadMode $ \oh -> do
-        let fileID = mkFileID filename
+        let fileID = BSC.pack $ take 16 $ filename ++ repeat ' '
         fileSize <- hFileSize oh
         let bsFileSize = BSC.pack $ take 10 $ show fileSize ++ repeat ' '
         hPutFileHeader ah fileID bsFileSize
@@ -118,13 +119,6 @@ createArchive is_truncation_allowed arFile objFiles =
       BS.hPut h "0644    "      -- File mode (8 bytes)
       BS.hPut h filesize        -- File size (10 bytes)
       BS.hPut h "\x60\x0a"      -- "Magic" ending characters (2 bytes)
-
-    -- NOTE: length should be exactly 16 bytes
-    mkFileID :: FilePath -> BS.ByteString
-    mkFileID (splitFileName -> (_, filename))
-      | length filename <= 16 = BSC.pack $ take 16 $ filename ++ repeat ' '
-      | is_truncation_allowed = BSC.pack $ take 16 $ filename
-      | otherwise = error $ "ahc-ar: " ++ filename ++ " is too long" -- TODO: Suggestion to set -T?
 
     -- TODO: this doesn't look great, but I don't know how to do it differently atm.
     hCopyContents :: Integer -> Handle -> Handle -> IO ()
