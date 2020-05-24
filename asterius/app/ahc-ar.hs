@@ -1,27 +1,26 @@
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns #-}
 
-import System.Environment.Blank
-import System.Process (callProcess)
-import qualified Data.ByteString as BS
-import System.IO (IOMode(..), withFile, Handle, hFileSize, hFlush)
 import Control.Monad (forM_, when)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
+import Data.List (find, isSuffixOf)
 import System.Directory (doesFileExist)
-import System.IO.Error (catchIOError)
+import System.Environment.Blank
 import System.Exit (die)
-import Data.List (isSuffixOf, find)
 import System.FilePath (splitFileName)
+import System.IO (Handle, IOMode (..), hFileSize, hFlush, withFile)
+import System.IO.Error (catchIOError)
+import System.Process (callProcess)
 
 -- TODOs:
--- * Add proper checks (doesFileExist, etc.)
--- * Add proper flag parsing
--- * Maybe work on a temporary file first and copy the results afterwards?
--- * Cleanup and ormolize
--- * Still unclear: should we use withBinaryFile etc. instead?
--- * getArgsRecursively: adapt to be able to parse quoted arguments as
--- specified by @man ar@?
+--   Add proper checks (doesFileExist, etc.)
+--   Add proper flag parsing
+--   Maybe work on a temporary file first and copy the results afterwards?
+--   Cleanup and ormolize
+--   Still unclear: should we use withBinaryFile etc. instead?
+--   getArgsRecursively: adapt to be able to parse quoted arguments as specified by @man ar@?
 
 -- Some resources:
 --   https://github.com/haskell/cabal/blob/master/Cabal/Distribution/Simple/Program/Ar.hs
@@ -77,7 +76,7 @@ getArgsRecursively = getArgs >>= concatMapM expandAtOption
   where
     expandAtOption :: String -> IO [String]
     expandAtOption opt = case opt of
-      ('@':path) -> doesFileExist path >>= \case
+      ('@' : path) -> doesFileExist path >>= \case
         True ->
           catchIOError
             (readFile path >>= concatMapM expandAtOption . words)
@@ -107,18 +106,17 @@ createArchive arFile objFiles =
         let bsFileSize = BSC.pack $ take 10 $ show fileSize ++ repeat ' '
         hPutFileHeader ah fileID bsFileSize
         hCopyContents fileSize oh ah
-        hFlush ah -- Better safe than sorry
 
     -- TODO: assert that filename and filesize have the proper size.
     hPutFileHeader :: Handle -> BS.ByteString -> BS.ByteString -> IO ()
     hPutFileHeader h filename filesize = do
-      BS.hPut h filename        -- File identified (16 bytes)
-      BS.hPut h "0           "  -- File modification timestamp (12 bytes)
-      BS.hPut h "0     "        -- Owner ID (6 bytes)
-      BS.hPut h "0     "        -- Group ID (6 bytes)
-      BS.hPut h "0644    "      -- File mode (8 bytes)
-      BS.hPut h filesize        -- File size (10 bytes)
-      BS.hPut h "\x60\x0a"      -- "Magic" ending characters (2 bytes)
+      BS.hPut h filename -- File identifier (16 bytes)
+      BS.hPut h "0           " -- File modification timestamp (12 bytes)
+      BS.hPut h "0     " -- Owner ID (6 bytes)
+      BS.hPut h "0     " -- Group ID (6 bytes)
+      BS.hPut h "0644    " -- File mode (8 bytes)
+      BS.hPut h filesize -- File size (10 bytes)
+      BS.hPut h "\x60\x0a" -- "Magic" ending characters (2 bytes)
 
     -- TODO: this doesn't look great, but I don't know how to do it differently atm.
     hCopyContents :: Integer -> Handle -> Handle -> IO ()
@@ -128,4 +126,3 @@ createArchive arFile objFiles =
       when (odd fileSize) $
         BS.hPut target "\x0a"
       hFlush target
-
