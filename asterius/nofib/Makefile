@@ -28,3 +28,19 @@ clean-ahc: clean
 
 distclean: clean-ghc clean-ahc
 
+remove-local-failures:
+	$(RM) -fr ./shootout/pidigits
+	$(RM) -fr ./real/eff-VS
+	$(RM) -fr ./real/pic
+	$(RM) -fr ./real/scs
+	$(RM) -fr ./shootout/fannkuch-redux
+	$(RM) -fr ./shootout/k-nucleotide
+
+revive-local-failures:
+	git checkout -- ./shootout/pidigits
+	git checkout -- ./real/eff-VS
+	git checkout -- ./real/pic
+	git checkout -- ./real/scs
+	git checkout -- ./shootout/fannkuch-redux
+	git checkout -- ./shootout/k-nucleotide
+

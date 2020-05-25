@@ -1,23 +1,116 @@
 #!/bin/bash
 
 MODE="NORM"              # Default mode is NORM (can also be FAST or SLOW)
+mode="norm"              # Default mode is norm (can also be fast or slow)
+
 COMP="ghc"
 COMPILER="$(which ghc)"  # Default is ~/.stack/programs/x86_64-linux/ghc-custom-asterius-8.8.3/bin/ghc
 NODEJS="$(which node)"
 
+TESTFILE="UNKNOWN" # Filename (can only be Main.hs or Main.lhs)
+COMPILE_OPTS=""    # Compile-time options
+RUNTIME_OPTS=""    # Runtime options
+STDINFILE=""
+
+function usageMessage {
+  # Recommended: ./run.sh FAST ghc 2>&1 | tee log
+  echo "Usage: ./run.sh <mode> <compiler>"
+  echo "where <mode> is either FAST, or NORM, or SLOW"
+  echo "and <compiler> is either ghc or ahc"
+}
+
 if [ $# -eq 2 ]; then
-    MODE=$1
+  MODE=$1
+  mode=$(echo ${MODE} | tr '[:upper:]' '[:lower:]')
   if [ $2 == "ghc" ]; then
+    COMP="ghc"
     COMPILER=$(which ghc)
+  elif [ $2 == "ahc" ]; then
+    COMP="ahc"
+    COMPILER=$(which ahc-link)
   else
-    if [ $2 == "ahc" ]; then
-      COMP="ahc"
-      COMPILER=$(which ahc-link)
-    else
-      echo "Ignoring second argument. Must be either ahc or ghc"
+    usageMessage
+    exit 1
+  fi
+else
+  usageMessage
+  exit 1
+fi
+
+# Testfile name
+function setTestFile {
+  if [ -f "Main.hs" ]; then
+    TESTFILE="Main.hs"
+  elif [ -f "Main.lhs" ]; then
+    TESTFILE="Main.lhs"
+  else
+    exit 2
+  fi
+}
+
+# Compile/link-time options
+function setCompileOptions {
+  local copts=""
+  if [ -f "Main.COMPILE_OPTS" ]; then
+    copts=$(<Main.COMPILE_OPTS)
+  fi
+
+  if [ ${COMP} == "ghc" ]; then
+    COMPILE_OPTS=${copts}
+  elif [ ${COMP} == "ahc" ]; then
+    COMPILE_OPTS=""
+    for word in $copts; do
+      COMPILE_OPTS="${COMPILE_OPTS} --ghc-option=${word}"
+    done # CONCATENATE THEM
+    COMPILE_OPTS="${COMPILE_OPTS} --input-hs" # last
+  else
+    exit 3
+  fi
+}
+
+# Runtime options
+function setRuntimeOptions {
+  RUNTIME_OPTS=""
+
+  if [ ${COMP} == "ghc" ]; then
+    RUNTIME_OPTS="${RUNTIME_OPTS} +RTS -V0 -RTS"
+    if [ -f "RTS_EXTRA_OPTS" ]; then
+      local extra_opts=$(<RTS_EXTRA_OPTS)
+      RUNTIME_OPTS="${RUNTIME_OPTS} ${extra_opts}"
     fi
   fi
-fi
+
+  if [ -f "${MODE}_OPTS" ]; then
+    local ropts=$(<${MODE}_OPTS)
+    RUNTIME_OPTS="${RUNTIME_OPTS} ${ropts}"
+  fi
+}
+
+function compileTestfile {
+  echo "EXECUTING: ${COMPILER} ${COMPILE_OPTS} $TESTFILE"
+  ${COMPILER} ${COMPILE_OPTS} $TESTFILE
+}
+
+function runTest {
+  local executable=""
+  if [ ${COMP} == "ghc" ]; then
+    executable="${PWD}/Main"
+  elif [ ${COMP} == "ahc" ]; then
+    executable="${NODEJS} ${PWD}/Main.mjs"
+  else
+    exit 3
+  fi
+
+  local input_file_name=$1.${mode}stdin
+  if [ -f "${input_file_name}" ]; then
+    echo "EXECUTING: ${executable} <${input_file_name} 1>${testname}.${COMP}.stdout 2>${testname}.${COMP}.stderr"
+    ${executable} <${input_file_name} 1>${testname}.${COMP}.stdout 2>${testname}.${COMP}.stderr
+  else
+    echo "EXECUTING: ${executable} 1>${testname}.${COMP}.stdout 2>${testname}.${COMP}.stderr"
+    ${executable} 1>${testname}.${COMP}.stdout 2>${testname}.${COMP}.stderr
+  fi
+}
+
 
 echo "-------------------------------------------------------------------------------"
 echo "                                PARAMETERS                                     "
@@ -26,159 +119,26 @@ echo "Compiler : ${COMPILER}"
 echo "Mode     : ${MODE}"
 echo "Node     : ${NODEJS}"
 
-
-if [ "${COMP}" == "ghc" ]; then
-  echo "-------------------------------------------------------------------------------"
-  echo "                                    GHC                                        "
-  echo "-------------------------------------------------------------------------------"
-  for category in *; do
-    if [ -d "${category}" -a "${category}" != "common" ]; then
-      # For each category of tests:
-      cd ${category} && echo "Entering $PWD ..." # Enter the category folder
-      for testfolder in *; do
-        if [ -d "${testfolder}" ]; then
-          # For each test within this category
-          cd ${testfolder} && echo "Entering $PWD ..." # Enter the test folder
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # BUILDING ALL TEST FILES
-          if [ -f "Main.hs" ]; then
-            testfile="Main.hs"
-            noext=${testfile%.hs} # Filename without extension
-          else if [ -f "Main.lhs" ]; then
-              testfile="Main.lhs"
-              noext=${testfile%.lhs} # Filename without extension
-            fi
-          fi
-
-          # Retrieve the compile options for the current mode
-          copts_file=${noext}.COMPILE_OPTS
-          if [ -f "${copts_file}" ]; then
-            copts=$(<${copts_file})
-          else
-            copts="" # no compiler options, use the empty string
-          fi
-
-          # Do the actual building
-          # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-          echo "EXECUTING: ${COMPILER} ${copts} $testfile"
-          ${COMPILER} ${copts} $testfile # -c $testfile -o ${noext}.o
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # RUNNING ALL TEST FILES
-
-          # Retrieve the runtime options for the current mode
-          ropts_file=${MODE}_OPTS
-          if [ -f "${ropts_file}" ]; then
-            ropts=$(<${ropts_file})
-          else
-            ropts="" # no runtime options options, use the empty string
-          fi
-
-          # Create input and output file names
-          input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
-          stdout_file_name=${testfolder}.ghc.stdout # e.g. primetest.stdout
-          stderr_file_name=${testfolder}.ghc.stderr # e.g. primetest.stderr
-
-          extra_opts_1=""
-          extra_opts_2=""
-          if [ "${COMP}" == "ghc" ]; then
-            extra_opts_1="+RTS -V0 -RTS"
-            if [ -f "RTS_EXTRA_OPTS" ]; then
-              extra_opts_2=$(<RTS_EXTRA_OPTS)
-            fi
-          fi
-
-          # Do the actual running
-          if [ -f "${input_file_name}" ]; then
-            echo "EXECUTING: ${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} 1>${stdout_file_name} 2>${stderr_file_name}"
-            $(${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} 1>${stdout_file_name} 2>${stderr_file_name})
-          else
-            echo "EXECUTING: ${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} 1>${stdout_file_name} 2>${stderr_file_name}"
-            $(${PWD}/Main ${extra_opts_1} ${extra_opts_2} ${ropts} 1>${stdout_file_name} 2>${stderr_file_name})
-          fi
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          echo "Leaving $PWD ..." && cd ..             # Leave the test folder
-        fi
-      done
-      echo "Leaving $PWD ..." && cd ..           # Leave the category folder
-    fi
-  done
-fi
-
-# TODO:
-# * Call ahc-link, not ahc
-# * Pass parameters using "--ghc-option="
-
-if [ "${COMP}" == "ahc" ]; then
-  echo "-------------------------------------------------------------------------------"
-  echo "                                   AHC                                         "
-  echo "-------------------------------------------------------------------------------"
-  for category in *; do
-    if [ -d "${category}" -a "${category}" != "common" ]; then
-      # For each category of tests:
-      cd ${category} && echo "Entering $PWD ..." # Enter the category folder
-      for testfolder in *; do
-        if [ -d "${testfolder}" ]; then
-          # For each test within this category
-          cd ${testfolder} && echo "Entering $PWD ..." # Enter the test folder
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # BUILDING ALL TEST FILES (.hs)
-          if [ -f "Main.hs" ]; then
-            testfile="Main.hs"
-            noext=${testfile%.hs} # Filename without extension
-          else if [ -f "Main.lhs" ]; then
-              testfile="Main.lhs"
-              noext=${testfile%.lhs} # Filename without extension
-            fi
-          fi
-
-          # Retrieve the compile options for the current mode
-          copts_file=${noext}.COMPILE_OPTS
-          if [ -f "${copts_file}" ]; then
-            copts=$(<${copts_file})
-          else
-            copts="" # no compiler options, use the empty string
-          fi
-
-          ahc_copts=""
-          for word in $copts; do
-            ahc_copts="${ahc_copts} --ghc-option=${word}"
-          done # CONCATENATE THEM
-
-          # Do the actual building
-          # echo "${COMPILER} ${copts} -c $testfile -o ${noext}.o"
-          echo "EXECUTING: ${COMPILER} ${ahc_copts} --input-hs $testfile"
-          ${COMPILER} ${ahc_copts} --input-hs $testfile # -c $testfile -o ${noext}.o
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          # RUNNING ALL TEST FILES
-
-          # Retrieve the runtime options for the current mode
-          ropts_file=${MODE}_OPTS
-          if [ -f "${ropts_file}" ]; then
-            ropts=$(<${ropts_file})
-          else
-            ropts="" # no runtime options options, use the empty string
-          fi
-
-          # Create input and output file names
-          input_file_name=${testfolder}.$(echo ${MODE} | tr '[:upper:]' '[:lower:]')stdin # e.g. primetest.faststdin
-          stdout_file_name=${testfolder}.ahc.stdout # e.g. primetest.stdout
-          stderr_file_name=${testfolder}.ahc.stderr # e.g. primetest.stderr
-
-          # Do the actual running
-          if [ -f "${input_file_name}" ]; then
-            echo "EXECUTING: ${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} 1>${stdout_file_name} 2>${stderr_file_name}"
-            $(${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} <${input_file_name} 1>${stdout_file_name} 2>${stderr_file_name})
-          else
-            echo "EXECUTING: ${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} 1>${stdout_file_name} 2>${stderr_file_name}"
-            $(${NODEJS} ${PWD}/Main.mjs ${extra_opts_1} ${extra_opts_2} ${ropts} 1>${stdout_file_name} 2>${stderr_file_name})
-          fi
-          # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-          echo "Leaving $PWD ..." && cd ..             # Leave the test folder
-        fi
-      done
-      echo "Leaving $PWD ..." && cd ..           # Leave the category folder
-    fi
-  done
-fi
+echo "-------------------------------------------------------------------------------"
+echo "                                    GHC                                        "
+echo "-------------------------------------------------------------------------------"
+for category in *; do
+  if [ -d "${category}" -a "${category}" != "common" ]; then
+    # For each category of tests:
+    cd ${category} && echo "Entering $PWD ..." # Enter the category folder
+    for testname in *; do
+      if [ -d "${testname}" ]; then
+        # For each test within this category
+        cd ${testname} && echo "Entering $PWD ..." # Enter the test folder
+        setTestFile         # set the TESTFILE variable to either Main.hs or Main.lhs
+        setCompileOptions   # set the COMPILE_OPTIONS variable
+        compileTestfile     # compile the file
+        setRuntimeOptions   # set the RUNTIME_OPTS variable
+        runTest ${testname} # run the test
+        echo "Leaving $PWD ..." && cd ..             # Leave the test folder
+      fi
+    done
+    echo "Leaving $PWD ..." && cd ..           # Leave the category folder
+  fi
+done
 
