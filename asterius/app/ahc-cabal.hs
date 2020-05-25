@@ -1,9 +1,8 @@
 import Asterius.BuildInfo
+import Asterius.Internals.Temp
 import Control.Monad
 import Data.Foldable
 import Data.List
-import Distribution.Simple.Utils
-import Distribution.Verbosity
 import System.Directory
 import System.Environment.Blank
 import System.FilePath
@@ -39,8 +38,7 @@ main = do
               "cabal"
               ["--config-file", cabal_config_path, "user-config", "init"]
           pure (args0, cabal_config_path)
-  tmp <- getTemporaryDirectory
-  withTempDirectory silent tmp "ahc-cabal" $ \tmpdir -> do
+  withTempDir "ahc-cabal" $ \tmpdir -> do
     let new_cabal_config_path = tmpdir </> "config"
     copyFile old_cabal_config_path new_cabal_config_path
     callProcess
