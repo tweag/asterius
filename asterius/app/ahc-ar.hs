@@ -32,16 +32,19 @@ module Main
   )
 where
 
-import Control.Monad (forM_, when)
+import qualified Ar as GHC
+import Asterius.Binary.ByteString
+import Asterius.Binary.File
+import Asterius.Binary.NameCache
+import Asterius.Types
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as BSC
+import Data.Either
 import Data.List (find, isSuffixOf)
+import Data.Traversable
 import System.Directory (doesFileExist)
 import System.Environment.Blank
 import System.Exit (die)
-import System.IO (Handle, IOMode (..), hFileSize, hFlush, withFile)
 import System.IO.Error (catchIOError)
-import System.Process (callProcess)
 
 -- TODOs:
 --   Add proper checks (doesFileExist, etc.)
@@ -55,30 +58,8 @@ import System.Process (callProcess)
 --   https://pubs.opengroup.org/onlinepubs/007908799/xcu/ar.html
 --   https://www.freebsd.org/cgi/man.cgi?query=ar&sektion=5&manpath=4.3BSD+NET%2F2
 
--- NOTE TAKEN FROM Distribution.Simple.Program.Ar:
---
---   The args to use with "ar" are actually rather subtle and system-dependent.
---   In particular we have the following issues:
---
---    -- On OS X, "ar q" does not make an archive index. Archives with no
---       index cannot be used.
---
---    -- GNU "ar r" will not let us add duplicate objects, only "ar q" lets us
---       do that. We have duplicates because of modules like "A.M" and "B.M"
---       both make an object file "M.o" and ar does not consider the directory.
---
---   Our solution is to use "ar r" in the simple case when one call is enough.
---   When we need to call ar multiple times we use "ar q" and for the last
---   call on OSX we use "ar qs" so that it'll make the index.
-
 main :: IO ()
-main = ahcAr
-
--- gnuAr :: IO ()
--- gnuAr = getArgs >>= callProcess "ar"
-
-ahcAr :: IO ()
-ahcAr = do
+main = do
   args <- getArgsRecursively
   case find (".a" `isSuffixOf`) args of
     Just ar -> createArchive ar $ filter (".o" `isSuffixOf`) args
@@ -115,28 +96,22 @@ concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
 concatMapM f = fmap concat . mapM f
 {-# INLINE concatMapM #-}
 
------------------------------------------------------------------------------
-
 -- | Create a library archive from a bunch of object files.
 createArchive :: FilePath -> [FilePath] -> IO ()
-createArchive arFile objFiles =
-  withFile arFile WriteMode $ \ah -> do
-    BS.hPut ah "!<arch>\x0a"
-    forM_ objFiles $ hPutObjFile ah
-  where
-    hPutObjFile :: Handle -> FilePath -> IO ()
-    hPutObjFile ah filename = do
-      withFile filename ReadMode $ \oh -> do
-        fileSize <- hFileSize oh
-        -- Set the file metadata
-        BS.hPut ah $ BSC.pack $ take 16 $ filename ++ repeat ' '
-        BS.hPut ah "0           "
-        BS.hPut ah "0     "
-        BS.hPut ah "0     "
-        BS.hPut ah "0644    "
-        BS.hPut ah $ BSC.pack $ take 10 $ show fileSize ++ repeat ' '
-        BS.hPut ah "\x60\x0a"
-        -- Copy the contents
-        BS.hGetContents oh >>= BS.hPut ah
-        when (odd fileSize) $ BS.hPut ah "\x0a"
-        hFlush ah
+createArchive arFile objFiles = do
+  ncu <- newNameCacheUpdater
+  objs <- rights <$> for objFiles (tryGetFile ncu)
+  contents <- putBS (mconcat objs :: AsteriusCachedModule)
+  let archive =
+        GHC.Archive
+          [ GHC.ArchiveEntry
+              { GHC.filename = "whatever", -- Whatever, it is the combination of all the others
+                GHC.filetime = 0,
+                GHC.fileown = 0,
+                GHC.filegrp = 0,
+                GHC.filemode = 0o644,
+                GHC.filesize = BS.length contents,
+                GHC.filedata = contents
+              }
+          ]
+  GHC.writeGNUAr arFile archive
