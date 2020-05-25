@@ -1,11 +1,13 @@
 module Asterius.Binary.ByteString
   ( tryGetBS,
+    putBS,
   )
 where
 
 import qualified BinIface as GHC
 import qualified Binary as GHC
 import Control.Exception
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Unsafe as BS
 import Foreign.Ptr
@@ -29,3 +31,9 @@ tryGetBS ::
   BS.ByteString ->
   IO (Either SomeException a)
 tryGetBS ncu = try . getBS ncu
+
+putBS :: GHC.Binary a => a -> IO BS.ByteString
+putBS a = do
+  bh <- GHC.openBinMem 1048576
+  GHC.putWithUserData (const (pure ())) bh a
+  GHC.withBinBuffer bh $ evaluate . BS.copy
