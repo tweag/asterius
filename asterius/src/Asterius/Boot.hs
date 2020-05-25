@@ -148,7 +148,7 @@ bootRTSCmm BootArgs {..} =
         hPutStr rsp_h $ unlines obj_paths
         hClose rsp_h
         callProcess
-          "ar"
+          "ahc-ar"
           ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
         removeFile rsp_path
   where
