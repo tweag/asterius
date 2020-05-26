@@ -45,18 +45,20 @@ jobs:
             export PATH=~/.local/bin:$PATH
 
             brew install \
-              binaryen
+              binaryen \
+              gnu-tar
 
             curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.1/stack-2.3.1-osx-x86_64-bin -o ~/.local/bin/stack
             chmod +x ~/.local/bin/stack
             stack --no-terminal update
+
+            curl -L https://downloads.haskell.org/cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-apple-darwin17.7.0.tar.xz | gtar xJ -C ~/.local/bin 'cabal'
       - checkout
       - run:
           name: Boot
           command: |
             export PATH=~/.local/bin:$PATH
             stack --no-terminal -j4 build --test --no-run-tests
-            export ASTERIUS_CONFIGURE_OPTIONS=-v3
             . .envrc
             ahc-boot
       - run:
