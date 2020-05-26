@@ -57,17 +57,19 @@ data BootArgs
 defaultBootArgs :: BootArgs
 defaultBootArgs = BootArgs
   { bootDir = dataDir </> ".boot",
-    configureOptions =
-      "--disable-shared\
-      \ --disable-profiling\
-      \ --disable-debug-info\
-      \ --disable-library-for-ghci\
-      \ --disable-split-objs\
-      \ --disable-split-sections\
-      \ --disable-library-stripping\
-      \ -O2\
-      \ --ghc-option=-v1\
-      \ --ghc-option=-dsuppress-ticks",
+    configureOptions = unwords
+      ["--disable-shared",
+       "--disable-profiling",
+       "--disable-debug-info",
+       "--disable-library-for-ghci",
+       "--disable-split-objs",
+       "--disable-split-sections",
+       "--disable-library-stripping",
+       "--with-ar=" <> ahcAr,
+       "-O2",
+       "--ghc-option=-v1",
+       "--ghc-option=-dsuppress-ticks"
+      ],
     builtinsOptions = defaultBuiltinsOptions
   }
 
