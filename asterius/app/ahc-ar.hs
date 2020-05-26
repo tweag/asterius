@@ -46,33 +46,19 @@ import System.IO.Error
 
 main :: IO ()
 main = do
-  args <- getArgsRecursively
+  args <- getAhcArArgs
   case find (".a" `isSuffixOf`) args of
     Just ar -> createArchive ar $ filter (".o" `isSuffixOf`) args
     Nothing -> die "ahc-ar: no .a file passed. Exiting..."
 
--- | Get all arguments, recursively. This function should look through
--- arguments prefixed with \@, exactly as described in @man ar@ (GNU):
---
--- Read command-line options from file. The options read are inserted in place of
--- the original @file option. If file does not exist, or cannot be read, then the
--- option will be treated literally, and not removed.
---
--- Options in file are separated by whitespace. A whitespace character may be
--- included in an option by surrounding the entire option in either single or
--- double quotes. Any character (including a backslash) may be included by
--- prefixing the character to be included with a backslash. The file may itself
--- contain additional @file options; any such options will be processed
--- recursively.
-getArgsRecursively :: IO [String]
-getArgsRecursively = getArgs >>= fmap concat . mapM expandAtOption
+-- | Get all arguments. Command-line arguments are also read from a file
+-- (prefixed by \@) non-recursively. Options in a file are line-separated and
+-- cannot contain \@-arguments themselves.
+getAhcArArgs :: IO [String]
+getAhcArArgs = getArgs >>= fmap concat . mapM expand
   where
-    expandAtOption :: String -> IO [String]
-    expandAtOption opt = case opt of
-      ('@' : path) ->
-        catchIOError
-          (readFile path >>= fmap concat . mapM expandAtOption . words)
-          (\_ -> return [opt])
+    expand opt = case opt of
+      ('@' : path) -> catchIOError (lines <$> readFile path) (const $ pure [opt])
       _ -> return [opt]
 
 -- | Create a library archive from a bunch of object files. Instead of
