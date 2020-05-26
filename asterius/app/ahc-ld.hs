@@ -2,6 +2,8 @@
 {-# LANGUAGE ViewPatterns #-}
 
 import Asterius.Ld
+import Control.Concurrent
+import Control.Monad
 import Data.List
 import Data.Maybe
 import Data.String
@@ -20,6 +22,10 @@ parseLinkTask args = do
         linkObjs = link_objs,
         linkLibs = link_libs,
         linkModule = mempty,
+        threadPoolSize =
+          maybe 1 read $
+            find ("--thread-pool-size=" `isPrefixOf`) args
+              >>= stripPrefix "--thread-pool-size=",
         hasMain = "--no-main" `notElem` args,
         debug = "--debug" `elem` args,
         gcSections = "--no-gc-sections" `notElem` args,
@@ -63,5 +69,6 @@ main = do
       rsp <- readFile rsp_path
       let rsp_args = map read $ lines rsp
       task <- parseLinkTask rsp_args
+      when (threadPoolSize task > 1) $ setNumCapabilities (threadPoolSize task)
       ignore <- isJust <$> getEnv "ASTERIUS_AHC_LD_IGNORE"
       if ignore then callProcess "touch" [linkOutput task] else linkExe task

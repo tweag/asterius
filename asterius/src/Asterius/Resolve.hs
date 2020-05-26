@@ -105,11 +105,12 @@ linkStart ::
   Bool ->
   Bool ->
   Bool ->
+  Int ->
   AsteriusCachedModule ->
   SS.SymbolSet ->
   [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
-linkStart debug gc_sections verbose_err store root_syms export_funcs =
+linkStart debug gc_sections verbose_err pool_size store root_syms export_funcs =
   ( merged_m,
     result_m,
     mempty
@@ -126,7 +127,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
     merged_m0
       | gc_sections = gcSections verbose_err store root_syms export_funcs
       | otherwise = fromCachedModule store
-    !merged_m0_evaluated = force merged_m0
+    !merged_m0_evaluated = parForceAsteriusModule pool_size merged_m0
     merged_m1
       | debug = addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated

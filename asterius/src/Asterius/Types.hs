@@ -16,7 +16,8 @@ module Asterius.Types
     AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
-    AsteriusCachedModule(..),
+    parForceAsteriusModule,
+    AsteriusCachedModule (..),
     toCachedModule,
     EntitySymbol,
     entityName,
@@ -53,6 +54,7 @@ where
 
 import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
+import Asterius.Internals.Parallel
 import Asterius.NFData.TH
 import Asterius.Types.EntitySymbol
 import Asterius.Types.SymbolMap (SymbolMap)
@@ -126,6 +128,21 @@ instance Semigroup AsteriusModule where
 instance Monoid AsteriusModule where
   mempty = AsteriusModule mempty mempty mempty mempty mempty
 
+-- | Given the worker thread pool capacity @n@, @parForceAsteriusModule n m@
+-- deeply evaluates an 'AsteriusModule' m in parallel on the global thread
+-- pool. To avoid needless threading overhead, if @n = 1@ them we fall back to
+-- the sequential implementation.
+parForceAsteriusModule :: Int -> AsteriusModule -> AsteriusModule
+parForceAsteriusModule n m@(AsteriusModule sm se fm spt mod_ffi_state)
+  | n >= 2 =
+    parallelRnf n (SM.toList sm)
+      `seq` parallelRnf n (SM.toList se)
+      `seq` parallelRnf n (SM.toList fm)
+      `seq` parallelRnf n (SM.toList spt)
+      `seq` rnf mod_ffi_state
+      `seq` m
+  | otherwise = force m
+
 -- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
 -- its 'EntitySymbol' dependencies, as they are appear in the modules data
 -- segments and function definitions (see function 'toCachedModule').
@@ -158,7 +175,6 @@ toCachedModule m =
   where
     add :: Data a => SymbolMap a -> SymbolMap SymbolSet -> SymbolMap SymbolSet
     add = flip $ SM.foldrWithKey' (\k e -> SM.insert k (collectEntitySymbols e))
-
     -- Collect all entity symbols from an entity.
     collectEntitySymbols :: Data a => a -> SymbolSet
     collectEntitySymbols t

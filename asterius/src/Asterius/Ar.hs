@@ -4,22 +4,36 @@
 
 module Asterius.Ar
   ( loadAr,
+    loadArchiveEntries,
+    loadArchiveEntry
   )
 where
 
 import qualified Ar as GHC
 import Asterius.Binary.ByteString
 import Asterius.Types
-import Data.Foldable
 import qualified IfaceEnv as GHC
 
+-- | Load an archive file from disk, deserialize all objects it contains and
+-- concatenate them into a single 'AsteriusCachedModule'.
 loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
-loadAr ncu p = do
+loadAr ncu p = do -- TODO: This sequential version is currently being used by
+                  -- Asterius.GHCi.Internals.asteriusIservCall
+  entries <- loadArchiveEntries p
+  mconcat <$> mapM (loadArchiveEntry ncu) entries
+
+-- | Load all the archive entries from an archive file @.a@, as a list of plain
+-- 'ByteString's (content only).
+{-# INLINE loadArchiveEntries #-}
+loadArchiveEntries :: FilePath -> IO [GHC.ArchiveEntry]
+loadArchiveEntries p = do
   GHC.Archive entries <- GHC.loadAr p
-  foldlM
-    ( \acc GHC.ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
-        Left _ -> pure acc
-        Right m -> pure $ m <> acc
-    )
-    mempty
-    entries
+  return entries
+
+-- | Deserialize an 'GHC.ArchiveEntry'. In case deserialization fails, return
+-- an empty 'AsteriusModule'.
+loadArchiveEntry :: GHC.NameCacheUpdater -> GHC.ArchiveEntry -> IO AsteriusCachedModule
+loadArchiveEntry ncu = \GHC.ArchiveEntry {..} ->
+  tryGetBS ncu filedata >>= \case
+    Left {} -> pure mempty
+    Right m -> pure m

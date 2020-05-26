@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -18,11 +19,11 @@ import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.Builtins
 import Asterius.Builtins.Main
+import Asterius.Internals.Parallel
 import Asterius.Resolve
 import Asterius.Types
 import qualified Asterius.Types.SymbolSet as SS
 import Control.Exception
-import Data.Either
 import Data.Traversable
 
 data LinkTask
@@ -31,6 +32,7 @@ data LinkTask
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
+        threadPoolSize :: Int,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
@@ -45,9 +47,15 @@ data LinkTask
 loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
-  lib <- mconcat <$> for linkLibs (loadAr ncu)
-  objs <- rights <$> for linkObjs (tryGetFile ncu)
-  evaluate $ linkModule <> mconcat objs <> lib
+  lib <- do
+    entries <- concat <$> for linkLibs loadArchiveEntries
+    parallelFoldMap threadPoolSize entries (loadArchiveEntry ncu)
+  objs <- parallelFoldMap threadPoolSize linkObjs (loadObj ncu)
+  evaluate $ linkModule <> objs <> lib
+  where
+    loadObj ncu path = tryGetFile ncu path >>= \case
+      Left {} -> pure mempty
+      Right m -> pure m
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm
@@ -95,6 +103,7 @@ linkModules LinkTask {..} m =
     debug
     gcSections
     verboseErr
+    threadPoolSize
     ( toCachedModule
         ( (if hasMain then mainBuiltins else mempty)
             <> rtsAsteriusModule
