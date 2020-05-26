@@ -63,6 +63,7 @@ defaultBootArgs = BootArgs
        "--disable-split-objs",
        "--disable-split-sections",
        "--disable-library-stripping",
+       "--with-ar=" <> ahcAr,
        "-O2",
        "--ghc-option=-v1",
        "--ghc-option=-dsuppress-ticks"
