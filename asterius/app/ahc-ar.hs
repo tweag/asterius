@@ -11,17 +11,16 @@
 -- partial implementation of GNU @ar@ for creating archive files from a set of
 -- object files. The shape of the contents of the generated archive files is as
 -- explained [here](https://en.wikipedia.org/wiki/Ar_(Unix)#File_header). For
--- all fields, except the object file identifier and the file size, we use
--- default values, as follows:
+-- all fields (except the file size), we use default values, as follows:
 --
 -- > ---------+-----------------------------+----------------+
 -- >    SIZE  |         DESCRIPTION         |    CONTENTS    |
 -- > ---------+-----------------------------+----------------+
--- > 16 bytes | File identifier             | FILENAME       |
--- > 12 bytes | File modification timestamp | "0           " |
--- >  6 bytes | Owner ID                    | "0     "       |
--- >  6 bytes | Group ID                    | "0     "       |
--- >  8 bytes | File mode                   | "0644    "     |
+-- > 16 bytes | File identifier             | "whatever"     |
+-- > 12 bytes | File modification timestamp | 0              |
+-- >  6 bytes | Owner ID                    | 0              |
+-- >  6 bytes | Group ID                    | 0              |
+-- >  8 bytes | File mode                   | 0644           |
 -- > 10 bytes | File size                   | FILESIZE       |
 -- >  2 bytes | "Magic" ending characters   | "\x60\x0a"     |
 -- > ---------+-----------------------------+----------------+
@@ -41,22 +40,9 @@ import qualified Data.ByteString as BS
 import Data.Either
 import Data.List (find, isSuffixOf)
 import Data.Traversable
-import System.Directory (doesFileExist)
 import System.Environment.Blank
 import System.Exit (die)
 import System.IO.Error (catchIOError)
-
--- TODOs:
---   Add proper checks (doesFileExist, etc.)
---   Add proper flag parsing
---   Maybe work on a temporary file first and copy the results afterwards?
---   getArgsRecursively: adapt to be able to parse quoted arguments as specified by @man ar@?
-
--- Some resources:
---   https://github.com/haskell/cabal/blob/master/Cabal/Distribution/Simple/Program/Ar.hs
---   https://en.wikipedia.org/wiki/Ar_(Unix)
---   https://pubs.opengroup.org/onlinepubs/007908799/xcu/ar.html
---   https://www.freebsd.org/cgi/man.cgi?query=ar&sektion=5&manpath=4.3BSD+NET%2F2
 
 main :: IO ()
 main = do
@@ -66,7 +52,7 @@ main = do
     Nothing -> die "ahc-ar: no .a file passed. Exiting..."
 
 -- | Get all arguments, recursively. This function should look through
--- arguments prefixed with \@, as described in @man ar@:
+-- arguments prefixed with \@, exactly as described in @man ar@ (GNU):
 --
 -- Read command-line options from file. The options read are inserted in place of
 -- the original @file option. If file does not exist, or cannot be read, then the
@@ -79,39 +65,36 @@ main = do
 -- contain additional @file options; any such options will be processed
 -- recursively.
 getArgsRecursively :: IO [String]
-getArgsRecursively = getArgs >>= concatMapM expandAtOption
+getArgsRecursively = getArgs >>= fmap concat . mapM expandAtOption
   where
     expandAtOption :: String -> IO [String]
     expandAtOption opt = case opt of
-      ('@' : path) -> doesFileExist path >>= \case
-        True ->
-          catchIOError
-            (readFile path >>= concatMapM expandAtOption . words)
-            (\_ -> return [opt])
-        False -> return [opt]
+      ('@' : path) ->
+        catchIOError
+          (readFile path >>= fmap concat . mapM expandAtOption . words)
+          (\_ -> return [opt])
       _ -> return [opt]
 
--- TODO: doesn't this thing exist already somewhere?
-concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
-concatMapM f = fmap concat . mapM f
-{-# INLINE concatMapM #-}
-
--- | Create a library archive from a bunch of object files.
+-- | Create a library archive from a bunch of object files. Instead of
+-- following the traditional approach of making the archive contain the input
+-- objects, we merge all object files into one before creating the archive.
+-- Effectively, this means that (a) the archive files we create always contain
+-- a single object file, and (b) it is not possible to retrieve the individual
+-- original object files from the archive, only their combination.
 createArchive :: FilePath -> [FilePath] -> IO ()
 createArchive arFile objFiles = do
   ncu <- newNameCacheUpdater
   objs <- rights <$> for objFiles (tryGetFile ncu)
   contents <- putBS (mconcat objs :: AsteriusCachedModule)
-  let archive =
-        GHC.Archive
-          [ GHC.ArchiveEntry
-              { GHC.filename = "whatever", -- Whatever, it is the combination of all the others
-                GHC.filetime = 0,
-                GHC.fileown = 0,
-                GHC.filegrp = 0,
-                GHC.filemode = 0o644,
-                GHC.filesize = BS.length contents,
-                GHC.filedata = contents
-              }
-          ]
-  GHC.writeGNUAr arFile archive
+  GHC.writeGNUAr arFile $
+    GHC.Archive
+      [ GHC.ArchiveEntry
+          { GHC.filename = "whatever",
+            GHC.filetime = 0,
+            GHC.fileown = 0,
+            GHC.filegrp = 0,
+            GHC.filemode = 0o644,
+            GHC.filesize = BS.length contents,
+            GHC.filedata = contents
+          }
+      ]
