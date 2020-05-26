@@ -65,7 +65,6 @@ defaultBootArgs = BootArgs
        "--disable-split-objs",
        "--disable-split-sections",
        "--disable-library-stripping",
-       "--with-ar=" <> ahcAr,
        "-O2",
        "--ghc-option=-v1",
        "--ghc-option=-dsuppress-ticks"
@@ -90,6 +89,7 @@ bootCreateProcess args@BootArgs {..} = do
               : ("ASTERIUS_TMP_DIR", bootTmpDir args)
               : ("ASTERIUS_AHC", ahc)
               : ("ASTERIUS_AHCPKG", ahcPkg)
+              : ("ASTERIUS_AR", ahcAr)
               : ("ASTERIUS_SETUP_GHC_PRIM", setupGhcPrim)
               : ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions)
               : [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
