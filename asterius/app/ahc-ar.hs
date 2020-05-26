@@ -38,11 +38,11 @@ import Asterius.Binary.NameCache
 import Asterius.Types
 import qualified Data.ByteString as BS
 import Data.Either
-import Data.List (find, isSuffixOf)
+import Data.List
 import Data.Traversable
 import System.Environment.Blank
-import System.Exit (die)
-import System.IO.Error (catchIOError)
+import System.Exit
+import System.IO.Error
 
 main :: IO ()
 main = do
