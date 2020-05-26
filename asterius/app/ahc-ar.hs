@@ -1,7 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
-
 -- |
 -- Module      :  Main
 -- Copyright   :  (c) 2018 EURL Tweag
@@ -32,16 +28,13 @@ module Main
 where
 
 import qualified Ar as GHC
-import Asterius.Binary.ByteString
-import Asterius.Binary.File
-import Asterius.Binary.NameCache
-import Asterius.Types
 import qualified Data.ByteString as BS
-import Data.Either
 import Data.List
 import Data.Traversable
+import GHC.IO.Unsafe
 import System.Environment.Blank
 import System.Exit
+import System.FilePath
 import System.IO.Error
 
 main :: IO ()
@@ -69,18 +62,17 @@ getAhcArArgs = getArgs >>= fmap concat . mapM expand
 -- original object files from the archive, only their combination.
 createArchive :: FilePath -> [FilePath] -> IO ()
 createArchive arFile objFiles = do
-  ncu <- newNameCacheUpdater
-  objs <- rights <$> for objFiles (tryGetFile ncu)
-  contents <- putBS (mconcat objs :: AsteriusCachedModule)
+  blobs <- for objFiles (unsafeDupableInterleaveIO . BS.readFile)
   GHC.writeGNUAr arFile $
     GHC.Archive
       [ GHC.ArchiveEntry
-          { GHC.filename = "whatever",
+          { GHC.filename = takeFileName obj_path,
             GHC.filetime = 0,
             GHC.fileown = 0,
             GHC.filegrp = 0,
             GHC.filemode = 0o644,
-            GHC.filesize = BS.length contents,
-            GHC.filedata = contents
+            GHC.filesize = BS.length blob,
+            GHC.filedata = blob
           }
+        | (obj_path, blob) <- zip objFiles blobs
       ]
