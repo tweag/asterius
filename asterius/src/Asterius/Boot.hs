@@ -23,6 +23,7 @@ import Control.Exception
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.IORef
+import qualified Data.Map.Strict as M
 import Data.Maybe
 import Data.Traversable
 import qualified DynFlags as GHC
@@ -79,10 +80,10 @@ bootCreateProcess :: BootArgs -> IO CreateProcess
 bootCreateProcess args@BootArgs {..} = do
   e <- getEnvironment
   pure
-    (proc "sh" ["-e", "boot.sh"])
+    (proc "bash" ["-e", "boot.sh"])
       { cwd = Just dataDir,
         env =
-          Just $
+          Just $ M.toList $ M.fromList $ reverse $
             ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath)
               : ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir)
               : ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib")
@@ -165,7 +166,7 @@ boot args = do
   cp_boot <- bootCreateProcess args
   runBootCreateProcess
     cp_boot
-      { cmdspec = RawCommand "sh" ["-e", "boot-init.sh"]
+      { cmdspec = RawCommand "bash" ["-e", "boot-init.sh"]
       }
   bootRTSCmm args
   runBootCreateProcess cp_boot

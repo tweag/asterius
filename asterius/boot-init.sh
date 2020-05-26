@@ -1,4 +1,6 @@
-#!/bin/sh -e
+#!/bin/bash
+
+set -euo pipefail
 
 rm -rf $ASTERIUS_TMP_DIR $ASTERIUS_LIB_DIR
 mkdir -p $ASTERIUS_TMP_DIR
