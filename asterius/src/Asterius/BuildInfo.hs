@@ -10,6 +10,7 @@
 
 module Asterius.BuildInfo
   ( ahc,
+    ahcAr,
     ahcPkg,
     ahcLd,
     ahcDist,
@@ -34,6 +35,9 @@ dataDir = unsafePerformIO Paths_asterius.getDataDir
 
 ahc :: FilePath
 ahc = binDir </> "ahc" <.> exeExtension
+
+ahcAr :: FilePath
+ahcAr = binDir </> "ahc-ar" <.> exeExtension
 
 ahcPkg :: FilePath
 ahcPkg = binDir </> "ahc-pkg" <.> exeExtension

@@ -55,17 +55,18 @@ data BootArgs
 defaultBootArgs :: BootArgs
 defaultBootArgs = BootArgs
   { bootDir = dataDir </> ".boot",
-    configureOptions =
-      "--disable-shared\
-      \ --disable-profiling\
-      \ --disable-debug-info\
-      \ --disable-library-for-ghci\
-      \ --disable-split-objs\
-      \ --disable-split-sections\
-      \ --disable-library-stripping\
-      \ -O2\
-      \ --ghc-option=-v1\
-      \ --ghc-option=-dsuppress-ticks",
+    configureOptions = unwords
+      ["--disable-shared",
+       "--disable-profiling",
+       "--disable-debug-info",
+       "--disable-library-for-ghci",
+       "--disable-split-objs",
+       "--disable-split-sections",
+       "--disable-library-stripping",
+       "-O2",
+       "--ghc-option=-v1",
+       "--ghc-option=-dsuppress-ticks"
+      ],
     builtinsOptions = defaultBuiltinsOptions
   }
 
@@ -86,6 +87,7 @@ bootCreateProcess args@BootArgs {..} = do
               : ("ASTERIUS_TMP_DIR", bootTmpDir args)
               : ("ASTERIUS_AHC", ahc)
               : ("ASTERIUS_AHCPKG", ahcPkg)
+              : ("ASTERIUS_AR", ahcAr)
               : ("ASTERIUS_SETUP_GHC_PRIM", setupGhcPrim)
               : ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions)
               : [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
@@ -148,8 +150,8 @@ bootRTSCmm BootArgs {..} =
         hPutStr rsp_h $ unlines obj_paths
         hClose rsp_h
         callProcess
-          "ar"
-          ["-r", "-c", obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
+          "ahc-ar"
+          [obj_topdir </> "rts" </> "libHSrts.a", '@' : rsp_path]
         removeFile rsp_path
   where
     rts_path = bootLibsPath </> "rts"
