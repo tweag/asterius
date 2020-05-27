@@ -1,6 +1,6 @@
 import qualified Asterius.BuildInfo as A
 import qualified Asterius.FrontendPlugin as A
-import Language.Haskell.GHC.Toolkit.FakeGHC
+import Language.Haskell.GHC.Toolkit.FakeGHC hiding (ghc)
 import System.Directory
 import System.FilePath
 
