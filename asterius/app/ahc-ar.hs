@@ -5,23 +5,7 @@
 --
 -- This module contains the implementation of @ahc-ar@, a system-agnostic,
 -- partial implementation of GNU @ar@ for creating archive files from a set of
--- object files. The shape of the contents of the generated archive files is as
--- explained [here](https://en.wikipedia.org/wiki/Ar_(Unix)#File_header). For
--- all fields (except the file size), we use default values, as follows:
---
--- > ---------+-----------------------------+----------------+
--- >    SIZE  |         DESCRIPTION         |    CONTENTS    |
--- > ---------+-----------------------------+----------------+
--- > 16 bytes | File identifier             | "whatever"     |
--- > 12 bytes | File modification timestamp | 0              |
--- >  6 bytes | Owner ID                    | 0              |
--- >  6 bytes | Group ID                    | 0              |
--- >  8 bytes | File mode                   | 0644           |
--- > 10 bytes | File size                   | FILESIZE       |
--- >  2 bytes | "Magic" ending characters   | "\x60\x0a"     |
--- > ---------+-----------------------------+----------------+
--- > 60 bytes | TOTAL                       |
--- > ---------+-----------------------------+
+-- object files, using @Ar@ from the GHC API.
 module Main
   ( main,
   )
@@ -44,9 +28,9 @@ main = do
     Just ar -> createArchive ar $ filter (".o" `isSuffixOf`) args
     Nothing -> die "ahc-ar: no .a file passed. Exiting..."
 
--- | Get all arguments. Command-line arguments are also read from a file
--- (prefixed by \@) non-recursively. Options in a file are line-separated and
--- cannot contain \@-arguments themselves.
+-- | Get all command-line arguments. Arguments of the form @\@file@ are
+-- replaced by the newline-separated options contained in @file@. If reading
+-- @file@ fails for any reason, the original @\@file@ argument remains intact.
 getAhcArArgs :: IO [String]
 getAhcArArgs = getArgs >>= fmap concat . mapM expand
   where
@@ -54,12 +38,11 @@ getAhcArArgs = getArgs >>= fmap concat . mapM expand
       ('@' : path) -> catchIOError (lines <$> readFile path) (const $ pure [opt])
       _ -> return [opt]
 
--- | Create a library archive from a bunch of object files. Instead of
--- following the traditional approach of making the archive contain the input
--- objects, we merge all object files into one before creating the archive.
--- Effectively, this means that (a) the archive files we create always contain
--- a single object file, and (b) it is not possible to retrieve the individual
--- original object files from the archive, only their combination.
+-- | Create a library archive from a bunch of object files, using @Ar@ from the
+-- GHC API. Though the name of each object file is preserved, we set the
+-- timestamp, owner ID, group ID, and file mode to default values (0, 0, 0, and
+-- 0644, respectively). When we deserialize (see @Asterius.Ar.loadAr@), the
+-- metadata is ignored anyway.
 createArchive :: FilePath -> [FilePath] -> IO ()
 createArchive arFile objFiles = do
   blobs <- for objFiles (unsafeDupableInterleaveIO . BS.readFile)
