@@ -40,7 +40,7 @@ jobs:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            .
+            **/.stack-work
 
   ghc-testsuite:
     name: ghc-testsuite
@@ -73,7 +73,7 @@ jobs:
           key: cache-${{ github.sha }}
           path: |
             ~/.stack
-            .
+            **/.stack-work
 
       - name: ghc-testsuite
         run: |
