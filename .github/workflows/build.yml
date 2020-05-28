@@ -23,6 +23,13 @@ jobs:
         with:
           node-version: 14.3.0
 
+      - name: setup-deps
+        run: |
+          sudo apt install -y \
+            libnuma-dev
+          curl http://http.us.debian.org/debian/pool/main/b/binaryen/binaryen_93-1_amd64.deb -o /tmp/binaryen.deb
+          sudo dpkg -i /tmp/binaryen.deb
+
       - name: checkout
         uses: actions/checkout@v2
 
