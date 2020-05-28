@@ -23,12 +23,12 @@ jobs:
         with:
           node-version: 14.3.0
 
+      - name: checkout
+        uses: actions/checkout@v2
+
       - name: setup-deps
         run: |
           .github/workflows/setup-deps.sh
-
-      - name: checkout
-        uses: actions/checkout@v2
 
       - name: boot
         run: |
@@ -63,12 +63,12 @@ jobs:
         with:
           node-version: 14.3.0
 
+      - name: checkout
+        uses: actions/checkout@v2
+
       - name: setup-deps
         run: |
           .github/workflows/setup-deps.sh
-
-      - name: checkout
-        uses: actions/checkout@v2
 
       - name: download-cache
         uses: actions/cache@v2
