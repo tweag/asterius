@@ -9,8 +9,6 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-18.04
-    container:
-      image: terrorjack/asterius:dev-200517
     steps:
 
       - name: checkout
@@ -18,4 +16,11 @@ jobs:
 
       - name: boot
         run: |
-          .github/workflows/boot.sh
+          podman run \
+            --network host \
+            --pull \
+            --rm \
+            --volume $(pwd):/workspaces/asterius \
+            --workdir /workspaces/asterius \
+            terrorjack/asterius:dev-200517 \
+            .github/workflows/boot.sh
