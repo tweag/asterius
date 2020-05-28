@@ -14,6 +14,13 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.1
+          enable-stack: true
+
+      - name: setup-cabal
+        uses: actions/setup-haskell@v1
+        with:
           stack-version: 2.3.1
           enable-stack: true
           stack-no-global: true
