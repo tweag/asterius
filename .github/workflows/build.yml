@@ -19,7 +19,6 @@ jobs:
           podman run \
             --network host \
             --pull \
-            --rm \
             --volume $(pwd):/workspaces/asterius \
             --workdir /workspaces/asterius \
             terrorjack/asterius:dev-200517 \
