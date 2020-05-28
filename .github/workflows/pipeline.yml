@@ -113,7 +113,7 @@ jobs:
         run: |
           mv stack-profile.yaml stack.yaml
 
-          ./github/workflows/boot.sh
+          .github/workflows/boot.sh
 
           . utils/pkgdb.sh
           cd ghc-toolkit/boot-libs
