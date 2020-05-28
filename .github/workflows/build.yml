@@ -49,12 +49,16 @@ jobs:
           . .envrc
           ahc-boot
 
+      - name: pre-upload-cache
+        run: |
+          cp /usr/lib/x86_64-linux-gnu/libbinaryen.so .
+          sudo chown $(id -u):$(id -g) libbinaryen.so
+
       - name: upload-cache
         uses: actions/cache@v2
         with:
           key: cache-${{ github.sha }}
           path: |
-            /usr/lib/x86_64-linux-gnu/libbinaryen.so
             ~/.stack
             .
 
@@ -89,9 +93,13 @@ jobs:
         with:
           key: cache-${{ github.sha }}
           path: |
-            /usr/lib/x86_64-linux-gnu/libbinaryen.so
             ~/.stack
             .
+
+      - name: post-download-cache
+        run: |
+          sudo mv libbinaryen.so /usr/lib/x86_64-linux-gnu
+          sudo chown 0:0 /usr/lib/x86_64-linux-gnu/libbinaryen.so
 
       - name: ghc-testsuite
         run: |
