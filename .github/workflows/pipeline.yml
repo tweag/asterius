@@ -1,4 +1,4 @@
-name: build
+name: pipeline
 
 on:
   - push
@@ -32,10 +32,7 @@ jobs:
 
       - name: boot
         run: |
-          stack update
-          stack -j2 build --test --no-run-tests asterius
-          . .envrc
-          ahc-boot
+          .github/workflows/boot.sh
 
       - name: upload-cache
         uses: actions/cache@v2
@@ -87,3 +84,60 @@ jobs:
         with:
           name: test-report.csv
           path: asterius/test-report.csv
+
+  profile:
+    name: profile
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: setup-haskell
+        uses: actions/setup-haskell@v1
+        with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.1
+          enable-stack: true
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.3.0
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
+
+      - name: boot
+        run: |
+          mv stack-profile.yaml stack.yaml
+
+          ./github/workflows/boot.sh
+
+          . utils/pkgdb.sh
+          cd ghc-toolkit/boot-libs
+          ahc-install --ghc-option=-j2 \
+            Cabal
+
+      - name: profile
+        run: |
+          . .envrc
+
+          mkdir /tmp/asterius-profile
+          pushd /tmp/asterius-profile
+          printf "import Distribution.Simple\nmain = defaultMain\n" > Setup.hs
+          GHCRTS="-P -hy -l-au" ahc-link --input-hs Setup.hs
+          mkdir reports
+          mv \
+            *.eventlog \
+            *.hp \
+            *.prof \
+            reports
+          popd
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: profile-reports
+          path: /tmp/asterius-profile/reports
