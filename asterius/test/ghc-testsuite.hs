@@ -67,10 +67,10 @@ getTestCases = do
       -- use it. If it does not, we use the default test (which should
       -- be the same for both architectures).
       do
-        ws64exists <- doesFileExist (c -<.> "stdout-ws-64")
-        let stdoutp = c -<.> ("stdout" <> if ws64exists then "-ws-64" else "")
-        ws64exists <- doesFileExist (c -<.> "stderr-ws-64")
-        let stderrp = c -<.> ("stderr" <> if ws64exists then "-ws-64" else "")
+        ws64existsOut <- doesFileExist (c -<.> "stdout-ws-64")
+        let stdoutp = c -<.> ("stdout" <> if ws64existsOut then "-ws-64" else "")
+        ws64existsErr <- doesFileExist (c -<.> "stderr-ws-64")
+        let stderrp = c -<.> ("stderr" <> if ws64existsErr then "-ws-64" else "")
         TestCase c
           <$> readFileNullable (c -<.> "stdin")
           <*> readFileNullable stdoutp
