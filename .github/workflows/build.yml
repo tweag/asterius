@@ -18,13 +18,6 @@ jobs:
           stack-version: 2.3.1
           enable-stack: true
 
-      - name: setup-cabal
-        uses: actions/setup-haskell@v1
-        with:
-          stack-version: 2.3.1
-          enable-stack: true
-          stack-no-global: true
-
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
