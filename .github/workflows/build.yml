@@ -31,7 +31,11 @@ jobs:
           pushd /tmp/binaryen-version_93
           mkdir build
           cd build
-          cmake -DCMAKE_BUILD_TYPE=Release -G "Unix Makefiles" ..
+          cmake \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -G "Unix Makefiles" \
+            ..
           sudo make -j2 install
           popd
 
