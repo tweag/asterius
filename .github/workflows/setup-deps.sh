@@ -5,7 +5,7 @@ set -eu
 sudo apt install -y \
   libnuma-dev
 curl -L https://github.com/WebAssembly/binaryen/archive/version_93.tar.gz | tar xz -C /tmp
-pushd /tmp/binaryen-version_93
+cd /tmp/binaryen-version_93
 mkdir build
 cd build
 cmake \
@@ -14,4 +14,3 @@ cmake \
   -G "Unix Makefiles" \
   ..
 sudo make -j2 install
-popd
