@@ -25,19 +25,7 @@ jobs:
 
       - name: setup-deps
         run: |
-          sudo apt install -y \
-            libnuma-dev
-          curl -L https://github.com/WebAssembly/binaryen/archive/version_93.tar.gz | tar xz -C /tmp
-          pushd /tmp/binaryen-version_93
-          mkdir build
-          cd build
-          cmake \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_INSTALL_PREFIX=/usr \
-            -G "Unix Makefiles" \
-            ..
-          sudo make -j2 install
-          popd
+          .github/workflows/setup-deps.sh
 
       - name: checkout
         uses: actions/checkout@v2
@@ -48,11 +36,6 @@ jobs:
           stack -j2 build --test --no-run-tests asterius
           . .envrc
           ahc-boot
-
-      - name: pre-upload-cache
-        run: |
-          cp /usr/lib/x86_64-linux-gnu/libbinaryen.so .
-          sudo chown $(id -u):$(id -g) libbinaryen.so
 
       - name: upload-cache
         uses: actions/cache@v2
@@ -82,8 +65,7 @@ jobs:
 
       - name: setup-deps
         run: |
-          sudo apt install -y \
-            libnuma-dev
+          .github/workflows/setup-deps.sh
 
       - name: checkout
         uses: actions/checkout@v2
@@ -95,11 +77,6 @@ jobs:
           path: |
             ~/.stack
             .
-
-      - name: post-download-cache
-        run: |
-          sudo mv libbinaryen.so /usr/lib/x86_64-linux-gnu
-          sudo chown 0:0 /usr/lib/x86_64-linux-gnu/libbinaryen.so
 
       - name: ghc-testsuite
         run: |
