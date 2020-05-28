@@ -27,7 +27,7 @@ jobs:
         run: |
           sudo apt install -y \
             libnuma-dev
-          curl https://github.com/WebAssembly/binaryen/archive/version_93.tar.gz | tar xz -C /tmp
+          curl -L https://github.com/WebAssembly/binaryen/archive/version_93.tar.gz | tar xz -C /tmp
           pushd /tmp/binaryen-version_93
           mkdir build
           cd build
