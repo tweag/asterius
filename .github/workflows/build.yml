@@ -16,9 +16,9 @@ jobs:
 
       - name: boot
         run: |
-          podman run \
+          podman container run \
             --network host \
-            --pull \
+            --pull always \
             --volume $(pwd):/workspaces/asterius \
             --workdir /workspaces/asterius \
             terrorjack/asterius:dev-200517 \
