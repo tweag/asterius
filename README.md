@@ -1,7 +1,7 @@
 # Asterius: A Haskell to WebAssembly compiler
 
 [![Docker Pulls](https://img.shields.io/docker/pulls/terrorjack/asterius.svg)](https://hub.docker.com/r/terrorjack/asterius)
-[![Build status](https://badge.buildkite.com/d96cf8b736eb305c8d2758833551a2241ba2b9a0e95b1a4a03.svg?branch=master)](https://buildkite.com/tweag-1/asterius/builds?branch=master)
+![](https://github.com/tweag/asterius/workflows/pipeline/badge.svg?branch=master)
 [![Gitter](https://img.shields.io/gitter/room/tweag/asterius)](https://gitter.im/tweag/asterius)
 [![Netlify Status](https://api.netlify.com/api/v1/badges/e7cfe6ef-b0e6-4a17-bd74-8bce6063f147/deploy-status)](https://asterius.netlify.app)
 

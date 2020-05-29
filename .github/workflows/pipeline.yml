@@ -227,6 +227,53 @@ jobs:
           name: profile-reports
           path: /tmp/asterius-profile/reports
 
+  stackage:
+    name: stackage
+    needs: boot
+    runs-on: ubuntu-18.04
+    env:
+      ASTERIUS_AHC_LD_IGNORE: 1
+    steps:
+
+      - name: setup-haskell
+        uses: actions/setup-haskell@v1
+        with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.1
+          enable-stack: true
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.3.0
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
+
+      - name: download-cache
+        uses: actions/cache@v2
+        with:
+          key: cache-${{ github.sha }}
+          path: |
+            ~/.stack
+            **/.stack-work
+
+      - name: stackage
+        run: |
+          . ./.envrc
+          . utils/pkgdb.sh
+          cd ghc-toolkit/boot-libs
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j2 \
+            Cabal
+          ahc-cabal v1-install -j2 --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
+            diagrams \
+            distributed-closure \
+            pandoc
+
   docs:
     name: docs
     runs-on: ubuntu-18.04
