@@ -315,8 +315,8 @@ jobs:
           then
             if [ $(git rev-parse --abbrev-ref HEAD) = "master" ]
             then
-              netlify deploy --dir=_build --message="$CIRCLE_SHA1" --prod
+              netlify deploy --dir=_build --message="$GITHUB_REF-$GITHUB_SHA" --prod
             else
-              netlify deploy --dir=_build --message="$CIRCLE_SHA1"
+              netlify deploy --dir=_build --message="$GITHUB_REF-$GITHUB_SHA"
             fi
           fi
