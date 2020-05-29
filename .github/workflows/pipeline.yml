@@ -230,6 +230,8 @@ jobs:
   docs:
     name: docs
     runs-on: ubuntu-18.04
+    env:
+      - NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
     steps:
 
       - name: setup-python
