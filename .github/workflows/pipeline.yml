@@ -271,7 +271,10 @@ jobs:
             Cabal
           ahc-cabal v1-install -j2 --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
             diagrams \
-            distributed-closure
+            distributed-closure \
+            ghc-lib \
+            miso \
+            singletons
 
   docs:
     name: docs
