@@ -272,6 +272,7 @@ jobs:
             Cabal
           ahc-cabal v1-install -j2 --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
             JuicyPixels \
+            dhall \
             diagrams \
             distributed-closure \
             ghc-lib \
@@ -279,7 +280,7 @@ jobs:
           cd /tmp
           curl -L https://github.com/meeshkan/plzwrk/archive/master.tar.gz | tar xz
           cd plzwrk-master
-          ahc-cabal v2-install --constraint "plzwrk +plzwrk-enable-asterius"
+          ahc-cabal v2-build --constraint "plzwrk +plzwrk-enable-asterius"
 
   docs:
     name: docs
