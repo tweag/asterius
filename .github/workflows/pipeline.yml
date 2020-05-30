@@ -227,50 +227,6 @@ jobs:
           name: profile-reports
           path: /tmp/asterius-profile/reports
 
-  downstream:
-    name: downstream
-    needs: boot
-    runs-on: ubuntu-18.04
-    continue-on-error: true
-    env:
-      ASTERIUS_AHC_LD_IGNORE: 1
-    steps:
-
-      - name: setup-haskell
-        uses: actions/setup-haskell@v1
-        with:
-          cabal-version: 3.2.0.0
-          stack-version: 2.3.1
-          enable-stack: true
-
-      - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
-        with:
-          node-version: 14.3.0
-
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
-      - name: download-cache
-        uses: actions/cache@v2
-        with:
-          key: cache-${{ github.sha }}
-          path: |
-            ~/.stack
-            **/.stack-work
-
-      - name: downstream
-        run: |
-          . ./.envrc
-          cd /tmp
-          curl -L https://github.com/meeshkan/plzwrk/archive/master.tar.gz | tar xz
-          cd plzwrk-master
-          ahc-cabal v2-build -j2 --constraint "plzwrk +plzwrk-enable-asterius"
-
   docs:
     name: docs
     runs-on: ubuntu-18.04
