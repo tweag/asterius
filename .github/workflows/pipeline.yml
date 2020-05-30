@@ -227,8 +227,8 @@ jobs:
           name: profile-reports
           path: /tmp/asterius-profile/reports
 
-  stackage:
-    name: stackage
+  downstream:
+    name: downstream
     needs: boot
     runs-on: ubuntu-18.04
     continue-on-error: true
@@ -263,24 +263,13 @@ jobs:
             ~/.stack
             **/.stack-work
 
-      - name: stackage
+      - name: downstream
         run: |
           . ./.envrc
-          . utils/pkgdb.sh
-          cd ghc-toolkit/boot-libs
-          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j2 \
-            Cabal
-          ahc-cabal v1-install -j2 --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global \
-            JuicyPixels \
-            dhall \
-            diagrams \
-            distributed-closure \
-            ghc-lib \
-            miso
           cd /tmp
           curl -L https://github.com/meeshkan/plzwrk/archive/master.tar.gz | tar xz
           cd plzwrk-master
-          ahc-cabal v2-build --constraint "plzwrk +plzwrk-enable-asterius"
+          ahc-cabal v2-build -j2 --constraint "plzwrk +plzwrk-enable-asterius"
 
   docs:
     name: docs
