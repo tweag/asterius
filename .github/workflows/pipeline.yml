@@ -273,8 +273,7 @@ jobs:
             diagrams \
             distributed-closure \
             ghc-lib \
-            miso \
-            singletons
+            miso
 
   docs:
     name: docs
