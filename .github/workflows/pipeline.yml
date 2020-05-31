@@ -1,0 +1,275 @@
+name: pipeline
+
+on:
+  - push
+  - pull_request
+
+jobs:
+
+  boot:
+    name: boot
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: setup-haskell
+        uses: actions/setup-haskell@v1
+        with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.1
+          enable-stack: true
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.3.0
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
+
+      - name: boot
+        run: |
+          .github/workflows/boot.sh
+
+      - name: upload-cache
+        uses: actions/cache@v2
+        with:
+          key: cache-${{ github.sha }}
+          path: |
+            ~/.stack
+            **/.stack-work
+
+  test:
+    name: test-${{ matrix.backend }}
+    needs: boot
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        backend:
+          - binaryen
+          - wasm-toolkit
+    env:
+      ASTERIUS_BACKEND: ${{ matrix.backend }}
+    steps:
+
+      - name: setup-haskell
+        uses: actions/setup-haskell@v1
+        with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.1
+          enable-stack: true
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.3.0
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
+
+      - name: download-cache
+        uses: actions/cache@v2
+        with:
+          key: cache-${{ github.sha }}
+          path: |
+            ~/.stack
+            **/.stack-work
+
+      - name: test
+        run: |
+          stack test asterius:fib --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:jsffi --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:array --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:stableptr --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:rtsapi --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:teletype --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:bytearray --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:bigint --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:todomvc --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:cloudflare --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:exception --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:regression60 --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:sizeof_md5context --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:largenum --test-arguments="--backend=$ASTERIUS_BACKEND"
+
+          stack test asterius:bytearray --test-arguments="--yolo"
+          stack test asterius:bytearray --test-arguments="--gc-threshold=128"
+          stack test asterius:fib --test-arguments="--no-gc-sections"
+
+          stack test asterius:fib --test-arguments="--debug" > /dev/null
+          stack test asterius:jsffi --test-arguments="--debug" > /dev/null
+          stack test asterius:array --test-arguments="--debug" > /dev/null
+          stack test asterius:stableptr --test-arguments="--debug" > /dev/null
+          stack test asterius:rtsapi --test-arguments="--debug" > /dev/null
+          stack test asterius:teletype --test-arguments="--debug" > /dev/null
+          # stack test asterius:bytearray --test-arguments="--debug" > /dev/null
+          stack test asterius:bigint --test-arguments="--debug" > /dev/null
+          stack test asterius:exception --test-arguments="--debug" > /dev/null
+
+          stack test asterius:fib --test-arguments="--tail-calls"
+          stack test asterius:fib --test-arguments="--tail-calls --no-gc-sections"
+
+          stack test asterius:nomain
+          stack test asterius:nomain --test-arguments="--tail-calls"
+
+          stack test asterius:th
+
+          stack test asterius:primitive
+
+          stack test asterius:argv
+
+  ghc-testsuite:
+    name: ghc-testsuite
+    needs: boot
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: setup-haskell
+        uses: actions/setup-haskell@v1
+        with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.1
+          enable-stack: true
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.3.0
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
+
+      - name: download-cache
+        uses: actions/cache@v2
+        with:
+          key: cache-${{ github.sha }}
+          path: |
+            ~/.stack
+            **/.stack-work
+
+      - name: ghc-testsuite
+        run: |
+          GHCRTS=-N2 stack test asterius:ghc-testsuite --test-arguments="-j2 --timeout=300s" || true
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-report.csv
+          path: asterius/test-report.csv
+
+  profile:
+    name: profile
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: setup-haskell
+        uses: actions/setup-haskell@v1
+        with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.1
+          enable-stack: true
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.3.0
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
+
+      - name: boot
+        run: |
+          mv stack-profile.yaml stack.yaml
+
+          .github/workflows/boot.sh
+
+          . ./.envrc
+          . utils/pkgdb.sh
+          cd ghc-toolkit/boot-libs
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j2 \
+            Cabal
+
+      - name: profile
+        run: |
+          . ./.envrc
+
+          mkdir /tmp/asterius-profile
+          pushd /tmp/asterius-profile
+          printf "import Distribution.Simple\nmain = defaultMain\n" > Setup.hs
+          GHCRTS="-P -hy -l-au" ahc-link --input-hs Setup.hs
+          mkdir reports
+          mv \
+            *.eventlog \
+            *.hp \
+            *.prof \
+            reports
+          popd
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: profile-reports
+          path: /tmp/asterius-profile/reports
+
+  docs:
+    name: docs
+    runs-on: ubuntu-18.04
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+    steps:
+
+      - name: setup-python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8.3
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.3.0
+
+      - name: setup-deps
+        run: |
+          pip install \
+            recommonmark \
+            sphinx
+          npm install -g \
+            netlify-cli
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: docs
+        run: |
+          cd docs
+          sphinx-build . _build
+          pushd _build
+          curl -L https://raw.githubusercontent.com/tweag/asterius/examples/ormolu.tar.xz | tar xJ
+          curl -L https://raw.githubusercontent.com/tweag/asterius/examples/pandoc.tar.xz | tar xJ
+          popd
+          if [ $GITHUB_REPOSITORY = "tweag/asterius" ]
+          then
+            if [ $(git rev-parse --abbrev-ref HEAD) = "master" ]
+            then
+              netlify deploy --dir=_build --message="$GITHUB_REF-$GITHUB_SHA" --prod
+            else
+              netlify deploy --dir=_build --message="$GITHUB_REF-$GITHUB_SHA"
+            fi
+          fi
