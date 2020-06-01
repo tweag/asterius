@@ -98,11 +98,6 @@ Fow now, a major problem with the profiled build is: it seems to emit
 dysfunctional code which doesn't work. Consequently, this affects the TH runner,
 so any dependencies relying on TH isn't supported by the profiled build.
 
-### Doing profiled builds with Docker
-
-We have a special `profile.Dockerfile` which can be used to build a profiled
-flavor of `asterius`. This is the recommended way of doing profiled builds.
-
 ### Measuring time/allocation differences
 
 When working on a performance-related PR, we often want to measure the
