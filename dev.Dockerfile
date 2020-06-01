@@ -32,7 +32,12 @@ RUN \
     zstd && \
   apt autoremove --purge -y && \
   apt clean && \
-  rm -rf -v /var/lib/apt/lists/*
+  rm -rf -v /var/lib/apt/lists/* && \
+  cp \
+    /etc/skel/.bash_logout \
+    /etc/skel/.bashrc \
+    /etc/skel/.profile \
+    /root
 
 WORKDIR /root
 
