@@ -24,20 +24,20 @@ Demos of popular Haskell apps, running in your browser:
 * [`ormolu`](https://asterius.netlify.app/ormolu/WebOrmolu.html)
 * [`pandoc`](https://asterius.netlify.app/pandoc/pandoc.html)
 
-## Quickstart using the prebuilt Docker image
+## Quickstart using the prebuilt container image
 
-We host a prebuilt Docker image on [Docker
+We host a prebuilt container image on [Docker
 Hub](https://hub.docker.com/r/terrorjack/asterius). The image also ships ~2k
 prebuilt [packages](https://github.com/tweag/asterius/issues/354) from a recent
 Stackage snapshot for convenience of testing simple programs without needing to
 set up a Cabal project.
 
 To use the image, mount the working directory containing the source code as a
-Docker shared volume, then use the `ahc-link` program:
+shared volume, then use the `ahc-link` program:
 
-```
-username@hostname:~/project$ docker run --rm -it -v $(pwd):/project -w /project terrorjack/asterius
-asterius@hostname:/project$ ahc-link --input-hs main.hs
+```console
+terrorjack@hostname:/project$ podman run -it --rm -v $(pwd):/workspace -w /workspace terrorjack/asterius
+root@hostname:/workspace#
 ```
 
 There are a lot of link-time options available to `ahc-link`, e.g. targeting
@@ -52,12 +52,9 @@ the `diagrams` blog
 [post](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html) for an
 example.
 
-Check the official
-[reference](https://docs.docker.com/engine/reference/commandline/run) of `docker
-run` to learn more about the command given in the example above. The example
-opens an interactive `bash` session for exploration, but it's also possible to
-use `docker run` to invoke the Asterius compiler on local Haskell source files.
-Note that [`podman`](https://podman.io) can be used instead of `docker` here.
+Check the documentation [section](https://asterius.netlify.app/images.html)
+about the prebuilt image for more information, e.g. versioning policy, how to
+use with `podman`/`docker`, etc.
 
 ## Building and using `asterius` locally
 
