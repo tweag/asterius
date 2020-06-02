@@ -8,15 +8,24 @@ the very same dev environment used by our core team members. The steps to set up
 the dev environment are:
 
 * Do a local clone of the asterius repo
-* Install VSCode and its remote
+* Install VSCode (at least `1.45`) and its remote
   [extension](https://aka.ms/vscode-remote/download/extension)
-* Install Docker, and make sure the `docker` command works with the current user
+* Install `podman`, and make sure the `podman` command works with the current user
+* Set up a `docker` symlink which points to `podman`, according to VSCode
+  [announcement](https://github.com/microsoft/vscode-docs/blob/master/remote-release-notes/v1_45.md#podman-support)
+  of `podman` support
 * `docker pull terrorjack/asterius:dev`
 * Open the asterius repo with remote containers
 
 Opening the repo with remote containers for the first time will take some time,
 since it runs the build script to build `asterius` and perform booting. Later
 re-opening will be near instant, since it reuses the previous container.
+
+The dev image shall work with `docker` too if the `userns-remap` related
+settings are correctly set up. Check the documentation [section](images.md) for
+relevant explanation; when using `docker` with default settings, there is a file
+permission issue when mounting your local filesystem into the prebuilt container
+images.
 
 ## Using `direnv`
 
