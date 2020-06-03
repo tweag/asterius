@@ -15,6 +15,7 @@ maintained by [Tweag I/O](https://tweag.io/).
 # Contents
 
 * [Overview](overview.md)
+* [Using prebuilt container images](images.md)
 * [Building guide](building.md)
 * [Cabal support](cabal.md)
 * [Using ahc-dist/ahc-link](ahc-link.md)

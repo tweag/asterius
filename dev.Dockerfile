@@ -6,7 +6,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/home/asterius/.local/bin:/home/asterius/.nvm/versions/node/v14.2.0/bin:${PATH}
+  PATH=/root/.local/bin:/root/.nvm/versions/node/v14.2.0/bin:${PATH}
 
 RUN \
   echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200517T024903Z sid main contrib non-free' > /etc/apt/sources.list && \
@@ -27,19 +27,19 @@ RUN \
     openssh-client \
     python3-pip \
     ripgrep \
-    sudo \
     wabt \
     zlib1g-dev \
     zstd && \
   apt autoremove --purge -y && \
   apt clean && \
   rm -rf -v /var/lib/apt/lists/* && \
-  useradd --create-home --shell /bin/bash asterius && \
-  echo "asterius ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+  cp \
+    /etc/skel/.bash_logout \
+    /etc/skel/.bashrc \
+    /etc/skel/.profile \
+    /root
 
-USER asterius
-
-WORKDIR /home/asterius
+WORKDIR /root
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
@@ -56,11 +56,11 @@ RUN \
     sphinx && \
   mkdir /tmp/asterius
 
-COPY --chown=asterius:asterius asterius /tmp/asterius/asterius
-COPY --chown=asterius:asterius ghc-toolkit /tmp/asterius/ghc-toolkit
-COPY --chown=asterius:asterius npm-utils /tmp/asterius/npm-utils
-COPY --chown=asterius:asterius wasm-toolkit /tmp/asterius/wasm-toolkit
-COPY --chown=asterius:asterius stack.yaml /tmp/asterius/stack.yaml
+COPY asterius /tmp/asterius/asterius
+COPY ghc-toolkit /tmp/asterius/ghc-toolkit
+COPY npm-utils /tmp/asterius/npm-utils
+COPY wasm-toolkit /tmp/asterius/wasm-toolkit
+COPY stack.yaml /tmp/asterius/stack.yaml
 
 RUN \
   cd /tmp/asterius && \
@@ -76,10 +76,10 @@ RUN \
     ormolu \
     pretty-show \
     wai-app-static && \
-  cd /home/asterius && \
-  sudo rm -rf -v \
-    /home/asterius/.npm \
-    /home/asterius/.stack/pantry \
-    /home/asterius/.stack/programs/*/*.tar.xz \
+  cd /root && \
+  rm -rf -v \
+    /root/.npm \
+    /root/.stack/pantry \
+    /root/.stack/programs/*/*.tar.xz \
     /tmp/* \
     /var/tmp/*
