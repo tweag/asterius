@@ -5,7 +5,7 @@
 -- Copyright   :  (c) 2018 EURL Tweag
 -- License     :  All rights reserved (see LICENCE file in the distribution).
 --
--- Wasm implementations of @malloc@ and @free@. This implementation of
+-- Wasm implementations of @malloc@, @calloc@, and @free@. This implementation of
 -- @malloc@/@free@ allocates one pinned @ByteArray#@ for each @malloc@ call,
 -- sets up a @StablePtr#@ for the @ByteArray#@ closure, and stores the
 -- @StablePtr#@ in the payload's first word. Hence, the available space as the
@@ -23,7 +23,7 @@ import Asterius.Types
 import Language.Haskell.GHC.Toolkit.Constants
 
 mallocCBits :: AsteriusModule
-mallocCBits = malloc <> free
+mallocCBits = malloc <> calloc <> free
 
 malloc :: AsteriusModule
 malloc = runEDSL "malloc" $ do
@@ -43,6 +43,13 @@ malloc = runEDSL "malloc" $ do
   sp <- call' "getStablePtr" [c] I64
   storeI64 c offset_StgArrBytes_payload sp
   emit $ c `addInt64` constI64 (offset_StgArrBytes_payload + 8)
+
+calloc :: AsteriusModule
+calloc = runEDSL "calloc" $ do
+  setReturnTypes [I64]
+  [n, size] <- params [I64, I64]
+  c <- call' "malloc" [n `mulInt64` size] I64
+  call' "memset" [c, constI64 0, n `mulInt64` size] I64 >>= emit
 
 free :: AsteriusModule
 free = runEDSL "free" $ do
