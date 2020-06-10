@@ -40,44 +40,52 @@ loadAr ncu p = do
 getPaddedInt :: BS.ByteString -> Int
 getPaddedInt = read . CBS.unpack . CBS.takeWhile (/= '\x20')
 
-getBSDArchEntries :: Get [GHC.ArchiveEntry]
-getBSDArchEntries = do
+getMany :: Get a -> Get [a]
+getMany fn = do
   is_empty <- isEmpty
   if is_empty
     then return []
     else do
-      name <- getByteString 16
-      when ('/' `CBS.elem` name && CBS.take 3 name /= "#1/") $
-        fail "Looks like GNU Archive"
-      time <- getPaddedInt <$> getByteString 12
-      own <- getPaddedInt <$> getByteString 6
-      grp <- getPaddedInt <$> getByteString 6
-      mode <- getPaddedInt <$> getByteString 8
-      st_size <- getPaddedInt <$> getByteString 10
-      end <- getByteString 2
-      when (end /= "\x60\x0a") $
-        fail
-          ( "[BSD Archive] Invalid archive header end marker for name: "
-              ++ CBS.unpack name
-          )
-      off1 <- liftM fromIntegral bytesRead :: Get Int
-      -- BSD stores extended filenames, by writing #1/<length> into the
-      -- name field, the first @length@ bytes then represent the file name
-      -- thus the payload size is filesize + file name length.
-      name <-
-        if CBS.unpack (CBS.take 3 name) == "#1/"
-          then
-            liftM
-              (CBS.unpack . CBS.takeWhile (/= '\0'))
-              (getByteString $ read $ CBS.unpack $ CBS.drop 3 name)
-          else return $ CBS.unpack $ CBS.takeWhile (/= ' ') name
-      off2 <- liftM fromIntegral bytesRead :: Get Int
-      file <- getByteString (st_size - (off2 - off1))
-      -- data sections are two byte aligned (see Trac #15396)
-      when (odd st_size) $
-        void (getByteString 1)
-      rest <- getBSDArchEntries
-      return $ (GHC.ArchiveEntry name time own grp mode (st_size - (off2 - off1)) file) : rest
+      x <- fn
+      xs <- getMany fn
+      pure (x : xs)
+
+getBSDArchEntry :: Get GHC.ArchiveEntry
+getBSDArchEntry = do
+  name <- getByteString 16
+  when ('/' `CBS.elem` name && CBS.take 3 name /= "#1/") $
+    fail "Looks like GNU Archive"
+  time <- getPaddedInt <$> getByteString 12
+  own <- getPaddedInt <$> getByteString 6
+  grp <- getPaddedInt <$> getByteString 6
+  mode <- getPaddedInt <$> getByteString 8
+  st_size <- getPaddedInt <$> getByteString 10
+  end <- getByteString 2
+  when (end /= "\x60\x0a") $
+    fail
+      ( "[BSD Archive] Invalid archive header end marker for name: "
+          ++ CBS.unpack name
+      )
+  off1 <- liftM fromIntegral bytesRead :: Get Int
+  -- BSD stores extended filenames, by writing #1/<length> into the
+  -- name field, the first @length@ bytes then represent the file name
+  -- thus the payload size is filesize + file name length.
+  name <-
+    if CBS.unpack (CBS.take 3 name) == "#1/"
+      then
+        liftM
+          (CBS.unpack . CBS.takeWhile (/= '\0'))
+          (getByteString $ read $ CBS.unpack $ CBS.drop 3 name)
+      else return $ CBS.unpack $ CBS.takeWhile (/= ' ') name
+  off2 <- liftM fromIntegral bytesRead :: Get Int
+  file <- getByteString (st_size - (off2 - off1))
+  -- data sections are two byte aligned (see Trac #15396)
+  when (odd st_size) $
+    void (getByteString 1)
+  pure $ GHC.ArchiveEntry name time own grp mode (st_size - (off2 - off1)) file
+
+getBSDArchEntries :: Get [GHC.ArchiveEntry]
+getBSDArchEntries = getMany getBSDArchEntry
 
 -- | GNU Archives feature a special '//' entry that contains the
 -- extended names. Those are referred to as /<num>, where num is the
@@ -98,7 +106,7 @@ getGNUArchEntries extInfo = do
       end <- getByteString 2
       when (end /= "\x60\x0a") $
         fail
-          ( "[BSD Archive] Invalid archive header end marker for name: "
+          ( "[GNU Archive] Invalid archive header end marker for name: "
               ++ CBS.unpack name
           )
       file <- getByteString st_size
@@ -125,9 +133,8 @@ getGNUArchEntries extInfo = do
 getArchMagic :: Get ()
 getArchMagic = do
   magic <- liftM CBS.unpack $ getByteString 8
-  if magic /= "!<arch>\n"
-    then fail $ "Invalid magic number " ++ show magic
-    else return ()
+  when (magic /= "!<arch>\n") $
+    fail $ "Invalid magic number " ++ show magic
 
 getArch :: Get GHC.Archive
 getArch = GHC.Archive <$> do
