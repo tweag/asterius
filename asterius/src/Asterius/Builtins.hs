@@ -24,6 +24,7 @@ import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
 import Asterius.Builtins.MD5
 import Asterius.Builtins.Malloc
+import Asterius.Builtins.Math
 import Asterius.Builtins.Posix
 import Asterius.Builtins.Primitive
 import Asterius.Builtins.Scheduler
@@ -194,6 +195,7 @@ rtsAsteriusModule opts =
     <> stgPrimFloatCBits
     <> timeCBits
     <> primitiveCBits
+    <> mathCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
