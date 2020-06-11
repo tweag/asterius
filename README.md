@@ -124,7 +124,7 @@ it's a bug and don't hesitate to open a ticket :)
 ## Contributors
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-[<img src="https://www.tweag.io/img/tweag-med.png" height="65">](https://tweag.io)
+[<img src="https://tweag.io/logo.png" height="65">](https://tweag.io)
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 [<img src="https://i.imgur.com/tAag5MD.jpg" height="65">](https://iohk.io)
 
