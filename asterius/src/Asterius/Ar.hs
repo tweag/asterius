@@ -39,48 +39,62 @@ loadAr ncu p = do
 getPaddedInt :: BS.ByteString -> Int
 getPaddedInt = read . CBS.unpack . CBS.takeWhile (/= '\x20')
 
+getAllArEntryFields :: Get (CBS.ByteString, Int, Int, Int, Int, Int, CBS.ByteString)
+getAllArEntryFields = do
+  name <- getByteString 16
+  time <- getPaddedInt <$> getByteString 12
+  own <- getPaddedInt <$> getByteString 6
+  grp <- getPaddedInt <$> getByteString 6
+  mode <- getPaddedInt <$> getByteString 8
+  st_size <- getPaddedInt <$> getByteString 10
+  end <- getByteString 2
+  when (end /= "\x60\x0a") $
+    fail
+      ( "[GNU Archive] Invalid archive header end marker for name: "
+          ++ CBS.unpack name
+      )
+  file <- getByteString st_size
+  -- data sections are two byte aligned (see Trac #15396)
+  when (odd st_size) $
+    void (getByteString 1)
+  return (name, time, own, grp, mode, st_size, file)
+
+getExtendedFileNamesTable :: Get BS.ByteString
+getExtendedFileNamesTable = do
+  (name, _time, _own, _grp, _mode, _st_size, file) <- getAllArEntryFields
+  if CBS.takeWhile (/= ' ') name == "//"
+    then pure file
+    else fail "[GNU Archive] First entry must be the filename table."
+
+getMany :: Get a -> Get [a]
+getMany fn = do
+  is_empty <- isEmpty
+  if is_empty
+    then return []
+    else (:) <$> fn <*> getMany fn
+
 -- | GNU Archives feature a special '//' entry that contains the
 -- extended names. Those are referred to as /<num>, where num is the
 -- offset into the '//' entry.
 -- In addition, filenames are terminated with '/' in the archive.
-getGNUArchEntries :: Maybe BS.ByteString -> Get [GHC.ArchiveEntry]
-getGNUArchEntries extInfo = do
-  is_empty <- isEmpty
-  if is_empty
-    then return []
-    else do
-      name <- getByteString 16
-      time <- getPaddedInt <$> getByteString 12
-      own <- getPaddedInt <$> getByteString 6
-      grp <- getPaddedInt <$> getByteString 6
-      mode <- getPaddedInt <$> getByteString 8
-      st_size <- getPaddedInt <$> getByteString 10
-      end <- getByteString 2
-      when (end /= "\x60\x0a") $
-        fail
-          ( "[GNU Archive] Invalid archive header end marker for name: "
-              ++ CBS.unpack name
-          )
-      file <- getByteString st_size
-      -- data sections are two byte aligned (see Trac #15396)
-      when (odd st_size) $
-        void (getByteString 1)
-      real_name <-
-        return . CBS.unpack $
-          if CBS.unpack (CBS.take 1 name) == "/"
-            then case CBS.takeWhile (/= ' ') name of
-              "/" -> "/" -- symbol table
-              "//" -> "//" -- extended file names table
-              stripped_name -> getExtName extInfo (read . CBS.unpack $ CBS.drop 1 stripped_name)
-            else CBS.takeWhile (/= '/') name
-      case real_name of
-        "/" -> getGNUArchEntries extInfo
-        "//" -> getGNUArchEntries (Just file)
-        _ -> (GHC.ArchiveEntry real_name time own grp mode st_size file :) <$> getGNUArchEntries extInfo
+-- @putGNUArch@ always places the filename table first.
+getGNUArchEntries :: Get [GHC.ArchiveEntry]
+getGNUArchEntries = do
+  filenamesTable <- getExtendedFileNamesTable
+  getMany (getEntry filenamesTable)
+
   where
-    getExtName :: Maybe BS.ByteString -> Int -> BS.ByteString
-    getExtName Nothing _ = error "Invalid extended filename reference."
-    getExtName (Just info) offset = CBS.takeWhile (/= '/') $ CBS.drop offset info
+    getExtName :: BS.ByteString -> Int -> BS.ByteString
+    getExtName info offset = CBS.takeWhile (/= '/') $ CBS.drop offset info
+
+    getEntry filenamesTable = do
+      (name, time, own, grp, mode, st_size, file) <- getAllArEntryFields
+      let real_name =
+            CBS.unpack $
+              if CBS.unpack (CBS.take 1 name) == "/"
+                then getExtName filenamesTable (read . CBS.unpack $ CBS.drop 1 $ CBS.takeWhile (/= ' ') name)
+                else CBS.takeWhile (/= '/') name
+      pure $ GHC.ArchiveEntry real_name time own grp mode st_size file
 
 getArchMagic :: Get ()
 getArchMagic = do
@@ -92,7 +106,7 @@ getArchMagic = do
 getArch :: Get GHC.Archive
 getArch = GHC.Archive <$> do
   getArchMagic
-  getGNUArchEntries Nothing
+  getGNUArchEntries
 
 parseAr :: BS.ByteString -> GHC.Archive
 parseAr = runGet getArch . LBS.fromChunks . pure
