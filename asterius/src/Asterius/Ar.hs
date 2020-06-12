@@ -81,20 +81,29 @@ getMany fn = do
 getGNUArchEntries :: Get [GHC.ArchiveEntry]
 getGNUArchEntries = do
   filenamesTable <- getExtendedFileNamesTable
-  getMany (getEntry filenamesTable)
+  getMany (getGNUArchEntry filenamesTable)
 
+-- | Get a GNU-style archive entry (NOT the filename table entry).
+getGNUArchEntry :: CBS.ByteString -> Get GHC.ArchiveEntry
+getGNUArchEntry filenamesTable = do
+  (name, time, own, grp, mode, st_size, file) <- getAllArEntryFields
+  let real_name = getRealFileName filenamesTable name
+  pure $ GHC.ArchiveEntry real_name time own grp mode st_size file
+
+getRealFileName :: CBS.ByteString -> CBS.ByteString -> String
+getRealFileName filenamesTable name =
+  CBS.unpack $
+    if CBS.unpack (CBS.take 1 name) == "/"
+      then
+        getExtName filenamesTable
+          $ read
+          $ CBS.unpack
+          $ CBS.drop 1
+          $ CBS.takeWhile (/= ' ') name
+      else CBS.takeWhile (/= '/') name
   where
     getExtName :: BS.ByteString -> Int -> BS.ByteString
     getExtName info offset = CBS.takeWhile (/= '/') $ CBS.drop offset info
-
-    getEntry filenamesTable = do
-      (name, time, own, grp, mode, st_size, file) <- getAllArEntryFields
-      let real_name =
-            CBS.unpack $
-              if CBS.unpack (CBS.take 1 name) == "/"
-                then getExtName filenamesTable (read . CBS.unpack $ CBS.drop 1 $ CBS.takeWhile (/= ' ') name)
-                else CBS.takeWhile (/= '/') name
-      pure $ GHC.ArchiveEntry real_name time own grp mode st_size file
 
 getArchMagic :: Get ()
 getArchMagic = do
