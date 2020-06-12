@@ -70,7 +70,7 @@ getBSDArchEntry = do
   -- BSD stores extended filenames, by writing #1/<length> into the
   -- name field, the first @length@ bytes then represent the file name
   -- thus the payload size is filesize + file name length.
-  name <-
+  real_name <-
     if CBS.unpack (CBS.take 3 name) == "#1/"
       then
         liftM
@@ -82,7 +82,7 @@ getBSDArchEntry = do
   -- data sections are two byte aligned (see Trac #15396)
   when (odd st_size) $
     void (getByteString 1)
-  pure $ GHC.ArchiveEntry name time own grp mode (st_size - (off2 - off1)) file
+  pure $ GHC.ArchiveEntry real_name time own grp mode (st_size - (off2 - off1)) file
 
 getBSDArchEntries :: Get [GHC.ArchiveEntry]
 getBSDArchEntries = getMany getBSDArchEntry
@@ -91,7 +91,7 @@ getBSDArchEntries = getMany getBSDArchEntry
 -- extended names. Those are referred to as /<num>, where num is the
 -- offset into the '//' entry.
 -- In addition, filenames are terminated with '/' in the archive.
-getGNUArchEntries :: Maybe GHC.ArchiveEntry -> Get [GHC.ArchiveEntry]
+getGNUArchEntries :: Maybe BS.ByteString -> Get [GHC.ArchiveEntry]
 getGNUArchEntries extInfo = do
   is_empty <- isEmpty
   if is_empty
@@ -113,7 +113,7 @@ getGNUArchEntries extInfo = do
       -- data sections are two byte aligned (see Trac #15396)
       when (odd st_size) $
         void (getByteString 1)
-      name <-
+      real_name <-
         return . CBS.unpack $
           if CBS.unpack (CBS.take 1 name) == "/"
             then case CBS.takeWhile (/= ' ') name of
@@ -121,20 +121,21 @@ getGNUArchEntries extInfo = do
               name@"//" -> name -- extended file names table
               name -> getExtName extInfo (read . CBS.unpack $ CBS.drop 1 name)
             else CBS.takeWhile (/= '/') name
-      case name of
+      case real_name of
         "/" -> getGNUArchEntries extInfo
-        "//" -> getGNUArchEntries (Just (GHC.ArchiveEntry name time own grp mode st_size file))
-        _ -> (GHC.ArchiveEntry name time own grp mode st_size file :) <$> getGNUArchEntries extInfo
+        "//" -> getGNUArchEntries (Just file)
+        _ -> (GHC.ArchiveEntry real_name time own grp mode st_size file :) <$> getGNUArchEntries extInfo
   where
-    getExtName :: Maybe GHC.ArchiveEntry -> Int -> BS.ByteString
+    getExtName :: Maybe BS.ByteString -> Int -> BS.ByteString
     getExtName Nothing _ = error "Invalid extended filename reference."
-    getExtName (Just info) offset = CBS.takeWhile (/= '/') . CBS.drop offset $ GHC.filedata info
+    getExtName (Just info) offset = CBS.takeWhile (/= '/') $ CBS.drop offset info
 
 getArchMagic :: Get ()
 getArchMagic = do
   magic <- liftM CBS.unpack $ getByteString 8
-  when (magic /= "!<arch>\n") $
-    fail $ "Invalid magic number " ++ show magic
+  when (magic /= "!<arch>\n")
+    $ fail
+    $ "Invalid magic number " ++ show magic
 
 getArch :: Get GHC.Archive
 getArch = GHC.Archive <$> do
