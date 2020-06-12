@@ -12,6 +12,11 @@ module Main
 where
 
 import qualified Ar as GHC
+import Asterius.Ar (arIndexFileName)
+import Asterius.Binary.ByteString
+import Asterius.Binary.NameCache
+import Asterius.Types.SymbolMap (SymbolMap)
+import Asterius.Types.SymbolSet (SymbolSet)
 import qualified Data.ByteString as BS
 import Data.List
 import Data.Traversable
@@ -52,6 +57,26 @@ undoEscapeResponseFileArg arg = case arg of
   '\\' : [] -> error "undoEscapeResponseFileArg: dangling backslash"
   c : cs -> c : undoEscapeResponseFileArg cs
 
+createIndex :: [BS.ByteString] -> IO (SymbolMap SymbolSet)
+createIndex blobs = do
+  ncu <- newNameCacheUpdater
+  mconcat <$> for blobs (getBS ncu) -- Get the dependencyMap only.
+
+createIndexEntry :: [BS.ByteString] -> IO GHC.ArchiveEntry
+createIndexEntry blobs = do
+  index <- createIndex blobs
+  blob <- putBS index
+  pure
+    GHC.ArchiveEntry
+      { GHC.filename = arIndexFileName,
+        GHC.filetime = 0,
+        GHC.fileown = 0,
+        GHC.filegrp = 0,
+        GHC.filemode = 0o644,
+        GHC.filesize = BS.length blob,
+        GHC.filedata = blob
+      }
+
 -- | Create a library archive from a bunch of object files, using @Ar@ from the
 -- GHC API. Though the name of each object file is preserved, we set the
 -- timestamp, owner ID, group ID, and file mode to default values (0, 0, 0, and
@@ -60,16 +85,18 @@ undoEscapeResponseFileArg arg = case arg of
 createArchive :: FilePath -> [FilePath] -> IO ()
 createArchive arFile objFiles = do
   blobs <- for objFiles (unsafeDupableInterleaveIO . BS.readFile)
-  GHC.writeGNUAr arFile $
-    GHC.Archive
-      [ GHC.ArchiveEntry
-          { GHC.filename = takeFileName obj_path,
-            GHC.filetime = 0,
-            GHC.fileown = 0,
-            GHC.filegrp = 0,
-            GHC.filemode = 0o644,
-            GHC.filesize = BS.length blob,
-            GHC.filedata = blob
-          }
-        | (obj_path, blob) <- zip objFiles blobs
-      ]
+  index <- createIndexEntry blobs
+  GHC.writeGNUAr arFile
+    $ GHC.Archive
+    $ index
+      : [ GHC.ArchiveEntry
+            { GHC.filename = takeFileName obj_path,
+              GHC.filetime = 0,
+              GHC.fileown = 0,
+              GHC.filegrp = 0,
+              GHC.filemode = 0o644,
+              GHC.filesize = BS.length blob,
+              GHC.filedata = blob
+            }
+          | (obj_path, blob) <- zip objFiles blobs
+        ]

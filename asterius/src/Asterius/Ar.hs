@@ -5,6 +5,7 @@
 
 module Asterius.Ar
   ( loadAr,
+    arIndexFileName,
   )
 where
 
@@ -18,6 +19,9 @@ import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Foldable
 import qualified IfaceEnv as GHC
+
+arIndexFileName :: FilePath
+arIndexFileName = ".asterius.index.bin"
 
 -- | Load the contents of an archive (@.a@) file as an 'AsteriusCachedModule'.
 -- 'loadAr' ignores (@.o@) files in the archive that cannot be parsed. Also,
@@ -66,6 +70,13 @@ getExtendedFileNamesTable = do
     then pure file
     else fail "[GNU Archive] First entry must be the filename table."
 
+getArchiveIndex :: CBS.ByteString -> Get BS.ByteString -- (SymbolMap SymbolSet)
+getArchiveIndex filenamesTable = do
+  entry <- getGNUArchEntry filenamesTable
+  if GHC.filename entry == arIndexFileName
+    then pure $ GHC.filedata entry
+    else fail "[GNU Archive] Second entry must be the index."
+
 getMany :: Get a -> Get [a]
 getMany fn = do
   is_empty <- isEmpty
@@ -81,6 +92,7 @@ getMany fn = do
 getGNUArchEntries :: Get [GHC.ArchiveEntry]
 getGNUArchEntries = do
   filenamesTable <- getExtendedFileNamesTable
+  _ <- getArchiveIndex filenamesTable
   getMany (getGNUArchEntry filenamesTable)
 
 -- | Get a GNU-style archive entry (NOT the filename table entry).
