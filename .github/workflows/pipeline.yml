@@ -263,7 +263,7 @@ jobs:
       - name: testpkgs
         run: |
           . ./.envrc
-          ghc utils/testpkgs.hs
+          ghc -threaded utils/testpkgs.hs
           GHCRTS=-N2 utils/testpkgs 2 pkgs.txt
 
       - name: upload-artifact

@@ -1,5 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
-{-# OPTIONS_GHC -Wall -O2 -threaded -rtsopts "-with-rtsopts=-H512m -I0 -qg" #-}
+{-# OPTIONS_GHC -Wall -O2 -rtsopts "-with-rtsopts=-H512m -I0 -qg" #-}
 
 import Control.Concurrent
 import Control.Exception
