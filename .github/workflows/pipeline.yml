@@ -266,7 +266,7 @@ jobs:
           ahc-cabal v1-update
           ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
           ghc -O2 -threaded -rtsopts utils/test-pkgs.hs
-          utils/test-pkgs 4 pkgs.txt +RTS -N4 -H512m -I0 -qg -RTS
+          utils/test-pkgs 3 pkgs.txt +RTS -N3 -H512m -I0 -qg -RTS
 
       - name: upload-artifact
         uses: actions/upload-artifact@v2
@@ -315,9 +315,9 @@ jobs:
           sudo mv $(which false) $(which node)
 
           ahc-cabal v1-update
-          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j4 \
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j3 \
             Cabal
-          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j4 --keep-going \
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j3 --keep-going \
             $(cat pkgs.txt) || true
           ahc-pkg list --global --simple-output > pkgs.txt
 
