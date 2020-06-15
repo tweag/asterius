@@ -317,7 +317,7 @@ jobs:
           ahc-cabal v1-update
           ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j4 \
             Cabal
-          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j4 \
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j4 --keep-going \
             $(cat pkgs.txt) || true
           ahc-pkg list --global --simple-output > pkgs.txt
 
