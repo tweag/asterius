@@ -227,8 +227,8 @@ jobs:
           name: profile-reports
           path: /tmp/asterius-profile/reports
 
-  testpkgs:
-    name: testpkgs
+  test-pkgs:
+    name: test-pkgs
     needs: boot
     runs-on: ubuntu-18.04
     steps:
@@ -260,13 +260,13 @@ jobs:
             ~/.stack
             **/.stack-work
 
-      - name: testpkgs
+      - name: test-pkgs
         run: |
           . ./.envrc
           ahc-cabal v1-update
           ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
-          ghc -threaded utils/testpkgs.hs
-          GHCRTS=-N2 utils/testpkgs 2 pkgs.txt
+          ghc -threaded utils/test-pkgs.hs
+          GHCRTS=-N2 utils/test-pkgs 1 pkgs.txt
 
       - name: upload-artifact
         uses: actions/upload-artifact@v2

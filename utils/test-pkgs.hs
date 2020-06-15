@@ -46,6 +46,7 @@ testPkg pkg = do
         "--dry-run",
         "--package-db=clear",
         "--package-db=global",
+        "-v3",
         pkg
       ]
       ""
