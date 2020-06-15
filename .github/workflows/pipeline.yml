@@ -266,7 +266,7 @@ jobs:
           ahc-cabal v1-update
           ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
           ghc -threaded utils/test-pkgs.hs
-          utils/test-pkgs 2 pkgs.txt +RTS -N2 -RTS
+          utils/test-pkgs 4 pkgs.txt +RTS -N4 -RTS
 
       - name: upload-artifact
         uses: actions/upload-artifact@v2
