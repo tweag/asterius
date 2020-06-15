@@ -263,6 +263,8 @@ jobs:
       - name: testpkgs
         run: |
           . ./.envrc
+          ahc-cabal v1-update
+          ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
           ghc -threaded utils/testpkgs.hs
           GHCRTS=-N2 utils/testpkgs 2 pkgs.txt
 
