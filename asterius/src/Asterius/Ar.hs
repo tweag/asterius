@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -86,12 +87,26 @@ getArchiveIndex filenamesTable = do
     then pure $ GHC.filedata entry
     else fail "[GNU Archive] Second entry must be the index."
 
-getMany :: Get a -> Get [a]
-getMany fn = do
-  is_empty <- isEmpty
-  if is_empty
-    then return []
-    else (:) <$> fn <*> getMany fn
+-- getMany :: Get a -> Get [a]
+-- getMany fn = do
+--   is_empty <- isEmpty
+--   if is_empty
+--     then return []
+--     else (:) <$> fn <*> getMany fn
+
+foldlGNUArchEntries :: (b -> GHC.ArchiveEntry -> b) -> b -> Get b
+foldlGNUArchEntries f z = do
+  filenamesTable <- getExtendedFileNamesTable
+  _ <- getArchiveIndex filenamesTable
+  go filenamesTable z
+  where
+    go table !acc = do
+      is_empty <- isEmpty
+      if is_empty
+        then return acc
+        else do
+          entry <- getGNUArchEntry table
+          go table (f acc entry)
 
 -- | GNU Archives feature a special '//' entry that contains the
 -- extended names. Those are referred to as /<num>, where num is the
@@ -100,9 +115,10 @@ getMany fn = do
 -- @putGNUArch@ always places the filename table first.
 getGNUArchEntries :: Get [GHC.ArchiveEntry]
 getGNUArchEntries = do
-  filenamesTable <- getExtendedFileNamesTable
-  _ <- getArchiveIndex filenamesTable
-  getMany (getGNUArchEntry filenamesTable)
+  -- filenamesTable <- getExtendedFileNamesTable
+  -- _ <- getArchiveIndex filenamesTable
+  -- getMany (getGNUArchEntry filenamesTable)
+  foldlGNUArchEntries (flip (:)) [] -- reverse order
 
 -- | Get a GNU-style archive entry (NOT the filename table entry).
 getGNUArchEntry :: CBS.ByteString -> Get GHC.ArchiveEntry
