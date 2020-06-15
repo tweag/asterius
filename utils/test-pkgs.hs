@@ -44,16 +44,20 @@ testPkg pkg = do
       "ahc-cabal"
       [ "v1-install",
         "--dry-run",
+        "--minimize-conflict-set",
         "--package-db=clear",
         "--package-db=global",
         pkg
       ]
       ""
-  withMVar stdoutLock $ \_ -> putStr _stdout
-  withMVar stderrLock $ \_ -> hPutStr stderr _stderr
-  pure $ case c of
-    ExitSuccess -> [pkg]
-    _ -> []
+  case c of
+    ExitSuccess -> do
+      withMVar stdoutLock $ \_ -> putStrLn $ "[INFO] OK: " <> pkg
+      pure [pkg]
+    _ -> do
+      withMVar stdoutLock $ \_ -> putStr _stdout
+      withMVar stderrLock $ \_ -> hPutStr stderr _stderr
+      pure []
 
 main :: IO ()
 main = do
