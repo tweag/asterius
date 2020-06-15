@@ -1,4 +1,4 @@
-FROM debian:sid
+FROM debian:sid-20200514
 
 ARG DEBIAN_FRONTEND=noninteractive
 
