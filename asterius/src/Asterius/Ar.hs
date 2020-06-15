@@ -3,6 +3,15 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+-- |
+-- Module      :  Asterius.Ar
+-- Copyright   :  (c) 2018 EURL Tweag
+-- License     :  All rights reserved (see LICENCE file in the distribution).
+--
+-- Loading of @ar@ files from disk. We use a GNU-style format for archives; the
+-- first entry is always the extended filename table. In the second entry we
+-- include the dependency map created by combining all the dependency maps from
+-- the object files that follow.
 module Asterius.Ar
   ( loadAr,
     arIndexFileName,
@@ -30,7 +39,7 @@ arIndexFileName = ".asterius.index.bin"
 -- update @ahc-ar@ to generate non-default values for them.
 loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
 loadAr ncu p = do
-  GHC.Archive entries <- gnuLoadAr p -- GHC.loadAr p
+  GHC.Archive entries <- asteriusLoadAr p
   foldlM
     ( \acc GHC.ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
         Left _ -> pure acc
@@ -132,5 +141,5 @@ getArch = GHC.Archive <$> do
 parseAr :: BS.ByteString -> GHC.Archive
 parseAr = runGet getArch . LBS.fromChunks . pure
 
-gnuLoadAr :: FilePath -> IO GHC.Archive
-gnuLoadAr fp = parseAr <$> BS.readFile fp
+asteriusLoadAr :: FilePath -> IO GHC.Archive
+asteriusLoadAr fp = parseAr <$> BS.readFile fp
