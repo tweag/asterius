@@ -1,6 +1,6 @@
 #!/usr/bin/env stack
 {-
-  stack --resolver lts-16.0 script
+  stack --resolver lts-16.1 script
     --package Cabal
     --package containers
     --package pantry
@@ -131,5 +131,4 @@ main = do
         raw_loc_s
   s_asterius <- asteriusSnapshot raw_loc
   writeFile "cabal.config" $ makeCabalConfig s_asterius
-  s_stackage <- stackageSnapshot raw_loc
-  writeFile "pkgs.txt" $ makePkgList s_stackage
+  writeFile "pkgs.txt" $ makePkgList s_asterius

@@ -6,7 +6,7 @@ build:
   library-profiling: true
   executable-profiling: true
 
-resolver: lts-16.0
+resolver: lts-16.1
 extra-deps:
   - binaryen-0.0.1.1
   - url: https://github.com/tweag/inline-js/archive/009f9d08238f95ad6a0722877484224fb972bd05.tar.gz
