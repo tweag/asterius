@@ -240,11 +240,6 @@ jobs:
           stack-version: 2.3.1
           enable-stack: true
 
-      - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
-        with:
-          node-version: 14.4.0
-
       - name: checkout
         uses: actions/checkout@v2
 
