@@ -1,83 +1,30 @@
 import Asterius.BuildInfo
 import Asterius.Internals.Temp
-import Control.Monad
 import Data.Foldable
 import Data.List
-import System.Directory
+import qualified Paths_asterius
 import System.Environment.Blank
 import System.FilePath
 import System.Process (callProcess)
 
 main :: IO ()
 main = do
-  args0 <- getArgs
+  args <- getArgs
   env <- getEnvironment
   traverse_ unsetEnv
     $ filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k)
     $ map fst env
   unsetEnv "CABAL_CONFIG"
-  (args1, old_cabal_config_path) <-
-    case findIndex ("--config-file" `isPrefixOf`) args0 of
-      Just i
-        | arg == "--config-file" ->
-          pure
-            (take i args0 <> drop (i + 2) args0, args0 !! (i + 1))
-        | otherwise -> pure (take i args0 <> drop (i + 1) args0, drop 14 arg)
-        where
-          arg = args0 !! i
-      _ -> case lookup "CABAL_CONFIG" env of
-        Just v -> pure (args0, v)
-        _ -> do
-          home <- getHomeDirectory
-          let cabal_prefix_path = home </> ".cabal"
-              cabal_config_path = cabal_prefix_path </> "config"
-          createDirectoryIfMissing True cabal_prefix_path
-          cabal_config_exist <- doesFileExist cabal_config_path
-          unless cabal_config_exist $
-            callProcess
-              "cabal"
-              ["--config-file", cabal_config_path, "user-config", "init"]
-          pure (args0, cabal_config_path)
   withTempDir "ahc-cabal" $ \tmpdir -> do
     let new_cabal_config_path = tmpdir </> "config"
-    copyFile old_cabal_config_path new_cabal_config_path
-    callProcess
-      "cabal"
-      [ "--config-file",
-        new_cabal_config_path,
-        "user-config",
-        "update",
-        "-a",
-        "benchmarks: False",
-        "-a",
-        "coverage: False",
-        "-a",
-        "debug-info: False",
-        "-a",
-        "executable-dynamic: False",
-        "-a",
-        "executable-stripping: False",
-        "-a",
-        "library-for-ghci: False",
-        "-a",
-        "library-stripping: False",
-        "-a",
-        "profiling: False",
-        "-a",
-        "program-locations\n ar-location: " <> ahcAr,
-        "-a",
-        "relocatable: False",
-        "-a",
-        "shared: False",
-        "-a",
-        "split-objs: False",
-        "-a",
-        "split-sections: False",
-        "-a",
-        "tests: False",
-        "-a",
-        "with-compiler: " <> ahc,
-        "-a",
-        "with-hc-pkg: " <> ahcPkg
-      ]
-    callProcess "cabal" (["--config-file", new_cabal_config_path] <> args1)
+    conf <- readFile =<< Paths_asterius.getDataFileName ("cabal" </> "config")
+    writeFile new_cabal_config_path $
+      "program-locations\n  ar-location: "
+        <> ahcAr
+        <> "\n  ghc-location: "
+        <> ahc
+        <> "\n  ghc-pkg-location: "
+        <> ahcPkg
+        <> "\n"
+        <> conf
+    callProcess "cabal" (["--config-file", new_cabal_config_path] <> args)

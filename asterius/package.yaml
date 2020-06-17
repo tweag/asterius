@@ -39,6 +39,7 @@ extra-source-files:
   - test/argv/**/*.hs
 
 data-files:
+  - cabal/**
   - rts/**/*.mjs
   - boot-init.sh
   - boot.sh
