@@ -26,7 +26,9 @@ executable-stripping: False
 library-stripping: False
 tests: False
 coverage: False
-library-coverage: False
 benchmarks: False
 relocatable: False
+write-ghc-environment-files: never
 documentation: False
+minimize-conflict-set: True
+allow-boot-library-installs: True
