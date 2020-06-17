@@ -76,7 +76,7 @@ RUN \
   rm -rf -v \
     /root/.asterius \
     /root/.asterius-compiler-bin/../share \
-    /root/.cabal \
+    /root/.ahc-cabal \
     /root/.config \
     /root/.local/bin/stack \
     /root/.npm \

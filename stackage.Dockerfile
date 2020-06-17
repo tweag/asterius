@@ -18,6 +18,6 @@ RUN \
 RUN \
   rm -rf \
     $ASTERIUS_LIB_DIR/bin \
-    /root/.cabal \
+    /root/.ahc-cabal \
     /tmp/* \
     /var/tmp/*
