@@ -6,8 +6,9 @@ ARG jobs_th=1
 
 ARG ASTERIUS_AHC_LD_IGNORE=1
 
-COPY lts.sh /tmp/lts.sh
 COPY ghc-toolkit/boot-libs/cabal.config /tmp/cabal.config
+COPY lts.sh /tmp/lts.sh
+COPY pkgs.txt /tmp/pkgs.txt
 
 RUN \
   cd /tmp && \
@@ -15,7 +16,7 @@ RUN \
   ./lts.sh
 
 RUN \
-  rm -rf -v \
+  rm -rf \
     $ASTERIUS_LIB_DIR/bin \
     /root/.cabal \
     /tmp/* \

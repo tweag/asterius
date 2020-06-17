@@ -4,6 +4,8 @@ set -eu
 
 sudo apt install -y \
   alex \
+  c2hs \
+  cpphs \
   happy \
   libnuma-dev
 curl -L https://github.com/WebAssembly/binaryen/archive/version_93.tar.gz | tar xz -C /tmp
