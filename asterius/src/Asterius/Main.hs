@@ -51,7 +51,6 @@ import Data.String
 import Foreign
 import Language.WebAssembly.WireFormat
 import qualified Language.WebAssembly.WireFormat as Wasm
-import NPM.Parcel
 import System.Console.GetOpt
 import System.Directory
 import System.Environment.Blank
@@ -412,9 +411,8 @@ ahcDistMain logger task (final_m, report) = do
     logger $ "[INFO] Writing JavaScript bundled script to " <> show out_js
     withCurrentDirectory (outputDirectory task) $
       callProcess
-        "node"
-        [ parcel,
-          "build",
+        "parcel"
+        [ "build",
           "--out-dir",
           ".",
           "--out-file",
