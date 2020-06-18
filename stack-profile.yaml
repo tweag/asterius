@@ -15,7 +15,6 @@ extra-deps:
 packages:
   - asterius
   - ghc-toolkit
-  - npm-utils
   - wasm-toolkit
 
 

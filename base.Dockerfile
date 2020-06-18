@@ -37,6 +37,7 @@ WORKDIR /root
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
   bash -c ". ~/.nvm/nvm.sh && nvm install 14.4.0" && \
+  npm install -g parcel-bundler@1.12.4 && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.1/stack-2.3.1-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
@@ -45,7 +46,6 @@ RUN \
 
 COPY asterius /root/.asterius/asterius
 COPY ghc-toolkit /root/.asterius/ghc-toolkit
-COPY npm-utils /root/.asterius/npm-utils
 COPY wasm-toolkit /root/.asterius/wasm-toolkit
 COPY stack.yaml /root/.asterius/stack.yaml
 

@@ -9,7 +9,6 @@ stack update
 stack build --test --no-run-tests \
   asterius \
   ghc-toolkit \
-  npm-utils \
   wasm-toolkit
 
 . .envrc

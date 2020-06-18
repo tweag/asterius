@@ -50,7 +50,8 @@ RUN \
   chmod +x ~/.local/bin/stack && \
   curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
   npm install -g \
-    0x@4.9.1 && \
+    0x@4.9.1 \
+    parcel-bundler@1.12.4 && \
   pip3 install \
     recommonmark \
     sphinx && \
@@ -58,7 +59,6 @@ RUN \
 
 COPY asterius /tmp/asterius/asterius
 COPY ghc-toolkit /tmp/asterius/ghc-toolkit
-COPY npm-utils /tmp/asterius/npm-utils
 COPY wasm-toolkit /tmp/asterius/wasm-toolkit
 COPY stack.yaml /tmp/asterius/stack.yaml
 
