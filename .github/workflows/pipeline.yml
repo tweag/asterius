@@ -296,6 +296,38 @@ jobs:
           name: gen-pkgs
           path: gen-pkgs
 
+  image:
+    name: image-${{ matrix.image }}
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - base
+          - dev
+    env:
+      ASTERIUS_IMAGE: ${{ matrix.image }}
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          podman build \
+            --file $ASTERIUS_IMAGE.Dockerfile \
+            --label "gitrev=$(git rev-parse HEAD)" \
+            --squash \
+            --tag terrorjack/asterius:$ASTERIUS_IMAGE \
+            .
+          podman save terrorjack/asterius:$ASTERIUS_IMAGE -o image-$ASTERIUS_IMAGE.tar
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: image-${{ matrix.image }}
+          path: image-${{ matrix.image }}.tar
+
   docs:
     name: docs
     runs-on: ubuntu-18.04
