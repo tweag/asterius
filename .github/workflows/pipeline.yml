@@ -314,13 +314,13 @@ jobs:
 
       - name: build
         run: |
-          docker build \
+          podman build \
             --file $ASTERIUS_IMAGE.Dockerfile \
             --label "gitrev=$(git rev-parse HEAD)" \
             --squash \
             --tag terrorjack/asterius:$ASTERIUS_IMAGE \
             .
-          docker save terrorjack/asterius:$ASTERIUS_IMAGE -o image-$ASTERIUS_IMAGE.tar
+          podman save terrorjack/asterius:$ASTERIUS_IMAGE -o image-$ASTERIUS_IMAGE.tar
 
       - name: upload-artifact
         uses: actions/upload-artifact@v2
