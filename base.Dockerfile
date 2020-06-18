@@ -46,7 +46,6 @@ RUN \
 
 COPY asterius /root/.asterius/asterius
 COPY ghc-toolkit /root/.asterius/ghc-toolkit
-COPY npm-utils /root/.asterius/npm-utils
 COPY wasm-toolkit /root/.asterius/wasm-toolkit
 COPY stack.yaml /root/.asterius/stack.yaml
 

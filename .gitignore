@@ -4,7 +4,6 @@ wabt/wabt/bin
 asterius.cabal
 ghc-toolkit.cabal
 binaryen.cabal
-npm-utils.cabal
 wabt.cabal
 wasm-toolkit.cabal
 dist/
