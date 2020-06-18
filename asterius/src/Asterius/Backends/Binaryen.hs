@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
@@ -23,6 +22,7 @@ module Asterius.Backends.Binaryen
   )
 where
 
+import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
@@ -76,14 +76,16 @@ marshalValueType t = case t of
   F32 -> Binaryen.float32
   F64 -> Binaryen.float64
 
-marshalValueTypes :: [ValueType] -> IO Binaryen.Type
+marshalValueTypes :: [ValueType] -> CodeGen Binaryen.Type
 marshalValueTypes [] = pure Binaryen.none
 marshalValueTypes [vt] = pure $ marshalValueType vt
-marshalValueTypes vts = flip runContT pure $ do
-  (vts', vtl) <- marshalV $ map marshalValueType vts
-  lift $ Binaryen.Type.create vts' (fromIntegral vtl)
+marshalValueTypes vts = do
+  a <- askArena
+  lift $ do
+    (vts', vtl) <- marshalV a $ map marshalValueType vts
+    Binaryen.Type.create vts' (fromIntegral vtl)
 
-marshalReturnTypes :: [ValueType] -> IO Binaryen.Type
+marshalReturnTypes :: [ValueType] -> CodeGen Binaryen.Type
 marshalReturnTypes vts = case vts of
   [] -> pure Binaryen.none
   [vt] -> pure $ marshalValueType vt
@@ -221,24 +223,29 @@ marshalBinaryOp op = case op of
   GtFloat64 -> Binaryen.gtFloat64
   GeFloat64 -> Binaryen.geFloat64
 
-marshalFunctionType :: FunctionType -> IO (Binaryen.Type, Binaryen.Type)
+marshalFunctionType :: FunctionType -> CodeGen (Binaryen.Type, Binaryen.Type)
 marshalFunctionType FunctionType {..} = do
   pt <- marshalValueTypes paramTypes
   rt <- marshalValueTypes returnTypes
   pure (pt, rt)
 
 -- | Environment used during marshaling of Asterius' types to Binaryen.
-data MarshalEnv
-  = MarshalEnv
-      { -- | Whether the tail call extension is on.
-        envAreTailCallsOn :: Bool,
-        -- | The symbol map for the current module.
-        envSymbolMap :: SM.SymbolMap Int64,
-        -- | The current module reference.
-        envModuleRef :: Binaryen.Module
-      }
+data MarshalEnv = MarshalEnv
+  { -- | The 'A.Arena' for allocating temporary buffers.
+    envArena :: A.Arena,
+    -- | Whether the tail call extension is on.
+    envAreTailCallsOn :: Bool,
+    -- | The symbol map for the current module.
+    envSymbolMap :: SM.SymbolMap Int64,
+    -- | The current module reference.
+    envModuleRef :: Binaryen.Module
+  }
 
 type CodeGen a = ReaderT MarshalEnv IO a
+
+-- | Retrieve the 'A.Arena'.
+askArena :: CodeGen A.Arena
+askArena = reader envArena
 
 -- | Check whether the tail call extension is on.
 areTailCallsOn :: CodeGen Bool
@@ -255,14 +262,14 @@ askModuleRef = reader envModuleRef
 marshalExpression :: Expression -> CodeGen Binaryen.Expression
 marshalExpression e = case e of
   Block {..} -> do
-    env <- ask
+    bs <- forM bodys marshalExpression
+    rts <- marshalReturnTypes blockReturnTypes
     m <- askModuleRef
-    lift $ flip runContT pure $ do
-      bs <- lift $ flip runReaderT env $ forM bodys marshalExpression
-      (bsp, bl) <- marshalV bs
-      np <- marshalBS name
-      rts <- lift $ marshalReturnTypes blockReturnTypes
-      lift $ Binaryen.block m np bsp (fromIntegral bl) rts
+    a <- askArena
+    lift $ do
+      (bsp, bl) <- marshalV a bs
+      np <- marshalBS a name
+      Binaryen.block m np bsp (fromIntegral bl) rts
   If {..} -> do
     c <- marshalExpression condition
     t <- marshalExpression ifTrue
@@ -272,66 +279,72 @@ marshalExpression e = case e of
   Loop {..} -> do
     b <- marshalExpression body
     m <- askModuleRef
-    lift $ flip runContT pure $ do
-      np <- marshalBS name
-      lift $ Binaryen.loop m np b
+    a <- askArena
+    lift $ do
+      np <- marshalBS a name
+      Binaryen.loop m np b
   Break {..} -> do
     c <- marshalMaybeExpression breakCondition
     m <- askModuleRef
-    lift $ flip runContT pure $ do
-      np <- marshalBS name
-      lift $ Binaryen.break m np c (coerce nullPtr)
+    a <- askArena
+    lift $ do
+      np <- marshalBS a name
+      Binaryen.break m np c (coerce nullPtr)
   Switch {..} -> do
     c <- marshalExpression condition
     m <- askModuleRef
-    lift $ flip runContT pure $ do
-      ns <- forM names marshalBS
-      (nsp, nl) <- marshalV ns
-      dn <- marshalBS defaultName
-      lift $ Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
+    a <- askArena
+    lift $ do
+      ns <- forM names $ marshalBS a
+      (nsp, nl) <- marshalV a ns
+      dn <- marshalBS a defaultName
+      Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     sym_map <- askSymbolMap
-    if  | target `SM.member` sym_map ->
-          do
-            os <-
-              mapM
-                marshalExpression
-                ( if target == "barf"
-                    then
-                      [ case operands of
-                          [] -> ConstI64 0
-                          x : _ -> x
-                      ]
-                    else operands
-                )
-            m <- askModuleRef
-            lift $ flip runContT pure $ do
-              (ops, osl) <- marshalV os
-              tp <- marshalBS (entityName target)
-              rts <- lift $ marshalReturnTypes callReturnTypes
-              lift $ Binaryen.call m tp ops (fromIntegral osl) rts
+    if
+        | target `SM.member` sym_map -> do
+          os <-
+            mapM
+              marshalExpression
+              ( if target == "barf"
+                  then
+                    [ case operands of
+                        [] -> ConstI64 0
+                        x : _ -> x
+                    ]
+                  else operands
+              )
+          rts <- marshalReturnTypes callReturnTypes
+          m <- askModuleRef
+          a <- askArena
+          lift $ do
+            (ops, osl) <- marshalV a os
+            tp <- marshalBS a (entityName target)
+            Binaryen.call m tp ops (fromIntegral osl) rts
         | ("__asterius_barf_" <> target) `SM.member` sym_map ->
-          marshalExpression $ barf target callReturnTypes
+          marshalExpression $
+            barf target callReturnTypes
         | otherwise -> do
           m <- askModuleRef
           lift $ Binaryen.Expression.unreachable m
   CallImport {..} -> do
     os <- forM operands marshalExpression
+    rts <- marshalReturnTypes callImportReturnTypes
     m <- askModuleRef
-    lift $ flip runContT pure $ do
-      (ops, osl) <- marshalV os
-      tp <- marshalBS target'
-      rts <- lift $ marshalReturnTypes callImportReturnTypes
-      lift $ Binaryen.call m tp ops (fromIntegral osl) rts
+    a <- askArena
+    lift $ do
+      (ops, osl) <- marshalV a os
+      tp <- marshalBS a target'
+      Binaryen.call m tp ops (fromIntegral osl) rts
   CallIndirect {..} -> do
     t <- marshalExpression indirectTarget
     os <- forM operands marshalExpression
+    (pt, rt) <- marshalFunctionType functionType
     m <- askModuleRef
-    lift $ flip runContT pure $ do
-      (ops, osl) <- marshalV os
-      lift $ do
-        (pt, rt) <- marshalFunctionType functionType
-        Binaryen.callIndirect m t ops (fromIntegral osl) pt rt
+    a <- askArena
+    lift $ do
+      (ops, osl) <- marshalV a os
+      Binaryen.callIndirect m t ops (fromIntegral osl) pt rt
   GetLocal {..} -> do
     m <- askModuleRef
     lift $ Binaryen.localGet m (coerce index) $ marshalValueType valueType
@@ -389,9 +402,10 @@ marshalExpression e = case e of
     -- Case 1: Tail calls are on
     True -> do
       m <- askModuleRef
-      lift $ flip runContT pure $ do
-        dst <- marshalBS (entityName returnCallTarget64)
-        lift $ Binaryen.returnCall m dst nullPtr 0 Binaryen.none
+      a <- askArena
+      lift $ do
+        dst <- marshalBS a (entityName returnCallTarget64)
+        Binaryen.returnCall m dst nullPtr 0 Binaryen.none
     -- Case 2: Tail calls are off
     False -> do
       sym_map <- askSymbolMap
@@ -411,17 +425,21 @@ marshalExpression e = case e of
                   valueType = I64
                 }
           m <- askModuleRef
-          lift $ flip runContT pure $ do
-            r <- lift $ Binaryen.return m (coerce nullPtr)
-            (arr, _) <- marshalV [s, r]
-            lift $ Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
+          a <- askArena
+          lift $ do
+            r <- Binaryen.return m (coerce nullPtr)
+            (arr, _) <- marshalV a [s, r]
+            Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
         Nothing -> marshalExpression $ barf returnCallTarget64 []
   ReturnCallIndirect {..} -> areTailCallsOn >>= \case
     -- Case 1: Tail calls are on
     True -> do
       t <-
         marshalExpression
-          Unary {unaryOp = WrapInt64, operand0 = returnCallIndirectTarget64}
+          Unary
+            { unaryOp = WrapInt64,
+              operand0 = returnCallIndirectTarget64
+            }
       m <- askModuleRef
       lift $
         Binaryen.returnCallIndirect
@@ -448,10 +466,11 @@ marshalExpression e = case e of
               valueType = I64
             }
       m <- askModuleRef
-      lift $ flip runContT pure $ do
-        r <- lift $ Binaryen.return m (coerce nullPtr)
-        (arr, _) <- marshalV [s, r]
-        lift $ Binaryen.block m nullPtr arr 2 Binaryen.none
+      a <- askArena
+      lift $ do
+        r <- Binaryen.return m (coerce nullPtr)
+        (arr, _) <- marshalV a [s, r]
+        Binaryen.block m nullPtr arr 2 Binaryen.none
   Nop -> do
     m <- askModuleRef
     lift $ Binaryen.nop m
@@ -485,37 +504,42 @@ marshalFunction ::
   Function ->
   CodeGen Binaryen.Function
 marshalFunction k (pt, rt) Function {..} = do
-  env <- ask
+  b <- marshalExpression body
   m <- askModuleRef
-  lift $ flip runContT pure $ do
-    b <- lift $ flip runReaderT env $ marshalExpression body
-    (vtp, vtl) <- marshalV $ map marshalValueType varTypes
-    np <- marshalBS k
-    lift $ Binaryen.addFunction m np pt rt vtp (fromIntegral vtl) b
+  a <- askArena
+  lift $ do
+    (vtp, vtl) <- marshalV a $ map marshalValueType varTypes
+    np <- marshalBS a k
+    Binaryen.addFunction m np pt rt vtp (fromIntegral vtl) b
 
 marshalFunctionImport ::
   Binaryen.Module ->
   (Binaryen.Type, Binaryen.Type) ->
   FunctionImport ->
-  IO ()
-marshalFunctionImport m (pt, rt) FunctionImport {..} = flip runContT pure $ do
-  inp <- marshalBS internalName
-  emp <- marshalBS externalModuleName
-  ebp <- marshalBS externalBaseName
-  lift $ Binaryen.addFunctionImport m inp emp ebp pt rt
+  CodeGen ()
+marshalFunctionImport m (pt, rt) FunctionImport {..} = do
+  a <- askArena
+  lift $ do
+    inp <- marshalBS a internalName
+    emp <- marshalBS a externalModuleName
+    ebp <- marshalBS a externalBaseName
+    Binaryen.addFunctionImport m inp emp ebp pt rt
 
 marshalFunctionExport ::
-  Binaryen.Module -> FunctionExport -> IO Binaryen.Export
-marshalFunctionExport m FunctionExport {..} = flip runContT pure $ do
-  inp <- marshalBS internalName
-  enp <- marshalBS externalName
-  lift $ Binaryen.addFunctionExport m inp enp
-
-marshalFunctionTable :: Binaryen.Module -> Int -> FunctionTable -> IO ()
-marshalFunctionTable m tbl_slots FunctionTable {..} = flip runContT pure $ do
-  func_name_ptrs <- for tableFunctionNames marshalBS
-  (fnp, fnl) <- marshalV func_name_ptrs
+  Binaryen.Module -> FunctionExport -> CodeGen Binaryen.Export
+marshalFunctionExport m FunctionExport {..} = do
+  a <- askArena
   lift $ do
+    inp <- marshalBS a internalName
+    enp <- marshalBS a externalName
+    Binaryen.addFunctionExport m inp enp
+
+marshalFunctionTable :: Binaryen.Module -> Int -> FunctionTable -> CodeGen ()
+marshalFunctionTable m tbl_slots FunctionTable {..} = do
+  a <- askArena
+  lift $ do
+    func_name_ptrs <- for tableFunctionNames $ marshalBS a
+    (fnp, fnl) <- marshalV a func_name_ptrs
     o <- Binaryen.constInt32 m (fromIntegral tableOffset)
     Binaryen.setFunctionTable
       m
@@ -529,81 +553,85 @@ marshalMemorySegments :: Int -> [DataSegment] -> CodeGen ()
 marshalMemorySegments mbs segs = do
   env <- ask
   m <- askModuleRef
+  a <- askArena
   let segs_len = length segs
-  lift $ flip runContT pure $ do
-    (seg_bufs, _) <- marshalV =<< for segs (marshalBS . content)
-    (seg_passives, _) <- marshalV $ replicate segs_len 0
+  lift $ do
+    (seg_bufs, _) <- marshalV a =<< for segs (marshalBS a . content)
+    (seg_passives, _) <- marshalV a $ replicate segs_len 0
     (seg_offsets, _) <-
-      marshalV
+      marshalV a
         =<< for
           segs
           ( \DataSegment {..} ->
-              lift $ flip runReaderT env $ marshalExpression $ ConstI32 offset
+              flip runReaderT env $ marshalExpression $ ConstI32 offset
           )
-    (seg_sizes, _) <-
-      marshalV $
-        map (fromIntegral . BS.length . content) segs
-    lift $
-      Binaryen.setMemory
-        m
-        (fromIntegral $ mbs * (mblock_size `quot` 65536))
-        (-1)
-        nullPtr
-        seg_bufs
-        seg_passives
-        seg_offsets
-        seg_sizes
-        (fromIntegral segs_len)
-        0
+    (seg_sizes, _) <- marshalV a $ map (fromIntegral . BS.length . content) segs
+    Binaryen.setMemory
+      m
+      (fromIntegral $ mbs * (mblock_size `quot` 65536))
+      (-1)
+      nullPtr
+      seg_bufs
+      seg_passives
+      seg_offsets
+      seg_sizes
+      (fromIntegral segs_len)
+      0
 
-marshalTableImport :: Binaryen.Module -> TableImport -> IO ()
-marshalTableImport m TableImport {..} = flip runContT pure $ do
-  inp <- marshalBS "0"
-  emp <- marshalBS externalModuleName
-  ebp <- marshalBS externalBaseName
-  lift $ Binaryen.addTableImport m inp emp ebp
+marshalTableImport :: Binaryen.Module -> TableImport -> CodeGen ()
+marshalTableImport m TableImport {..} = do
+  a <- askArena
+  lift $ do
+    inp <- marshalBS a "0"
+    emp <- marshalBS a externalModuleName
+    ebp <- marshalBS a externalBaseName
+    Binaryen.addTableImport m inp emp ebp
 
-marshalMemoryImport :: Binaryen.Module -> MemoryImport -> IO ()
-marshalMemoryImport m MemoryImport {..} = flip runContT pure $ do
-  inp <- marshalBS "0"
-  emp <- marshalBS externalModuleName
-  ebp <- marshalBS externalBaseName
-  lift $ Binaryen.addMemoryImport m inp emp ebp 0
+marshalMemoryImport :: Binaryen.Module -> MemoryImport -> CodeGen ()
+marshalMemoryImport m MemoryImport {..} = do
+  a <- askArena
+  lift $ do
+    inp <- marshalBS a "0"
+    emp <- marshalBS a externalModuleName
+    ebp <- marshalBS a externalBaseName
+    Binaryen.addMemoryImport m inp emp ebp 0
 
-marshalModule ::
-  Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
+marshalModule :: Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
-  let fts = generateWasmFunctionTypeSet hs_mod
   m <- Binaryen.Module.create
   Binaryen.setFeatures m
     $ foldl1' (.|.)
     $ [Binaryen.tailCall | tail_calls]
       <> [Binaryen.mvp]
-  ftps <- fmap M.fromList $ for (Set.toList fts) $ \ft -> do
-    ftp <- marshalFunctionType ft
-    pure (ft, ftp)
-  let env =
-        MarshalEnv
-          { envAreTailCallsOn = tail_calls,
-            envSymbolMap = sym_map,
-            envModuleRef = m
-          }
-  for_ (M.toList functionMap') $ \(k, f@Function {..}) ->
-    flip runReaderT env $ marshalFunction k (ftps M.! functionType) f
-  forM_ functionImports $ \fi@FunctionImport {..} ->
-    marshalFunctionImport m (ftps M.! functionType) fi
-  forM_ functionExports $ marshalFunctionExport m
-  marshalFunctionTable m tableSlots functionTable
-  marshalTableImport m tableImport
-  flip runReaderT env $ marshalMemorySegments memoryMBlocks memorySegments
-  marshalMemoryImport m memoryImport
-  flip runContT pure $ do
-    lim_segs <- marshalBS "limit-segments"
-    (lim_segs_p, _) <- marshalV [lim_segs]
-    lift $ Binaryen.Module.runPasses m lim_segs_p 1
+  A.with $ \a -> do
+    let env =
+          MarshalEnv
+            { envArena = a,
+              envAreTailCallsOn = tail_calls,
+              envSymbolMap = sym_map,
+              envModuleRef = m
+            }
+        fts = generateWasmFunctionTypeSet hs_mod
+    flip runReaderT env $ do
+      ftps <- fmap M.fromList $ for (Set.toList fts) $ \ft -> do
+        ftp <- marshalFunctionType ft
+        pure (ft, ftp)
+      for_ (M.toList functionMap') $
+        \(k, f@Function {..}) -> marshalFunction k (ftps M.! functionType) f
+      forM_ functionImports $ \fi@FunctionImport {..} ->
+        marshalFunctionImport m (ftps M.! functionType) fi
+      forM_ functionExports $ marshalFunctionExport m
+      marshalFunctionTable m tableSlots functionTable
+      marshalTableImport m tableImport
+      marshalMemorySegments memoryMBlocks memorySegments
+      marshalMemoryImport m memoryImport
+    lim_segs <- marshalBS a "limit-segments"
+    (lim_segs_p, _) <- marshalV a [lim_segs]
+    Binaryen.Module.runPasses m lim_segs_p 1
   pure m
 
-relooperAddBlock :: Binaryen.Relooper -> RelooperAddBlock -> CodeGen Binaryen.RelooperBlock
+relooperAddBlock ::
+  Binaryen.Relooper -> RelooperAddBlock -> CodeGen Binaryen.RelooperBlock
 relooperAddBlock r ab = case ab of
   AddBlock {..} -> do
     c <- marshalExpression code
@@ -622,9 +650,10 @@ relooperAddBranch bm k ab = case ab of
   AddBranch {..} -> do
     _cond <- marshalMaybeExpression addBranchCondition
     lift $ Binaryen.addBranch (bm M.! k) (bm M.! to) _cond (coerce nullPtr)
-  AddBranchForSwitch {..} -> lift $ flip runContT pure $ do
-    (idp, idn) <- marshalV indexes
-    lift $
+  AddBranchForSwitch {..} -> do
+    a <- askArena
+    lift $ do
+      (idp, idn) <- marshalV a indexes
       Binaryen.addBranchForSwitch
         (bm M.! k)
         (bm M.! to)
@@ -640,8 +669,8 @@ relooperRun RelooperRun {..} = do
     do
       bp <- relooperAddBlock r addBlock
       pure (k, bp)
-  for_ (M.toList blockMap) $ \(k, RelooperBlock {..}) ->
-    forM_ addBranches $ relooperAddBranch bpm k
+  for_ (M.toList blockMap) $
+    \(k, RelooperBlock {..}) -> forM_ addBranches $ relooperAddBranch bpm k
   lift $ Binaryen.renderAndDispose r (bpm M.! entry) (coerce labelHelper)
 
 serializeModule :: Binaryen.Module -> IO BS.ByteString

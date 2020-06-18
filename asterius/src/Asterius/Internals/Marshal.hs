@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Asterius.Internals.Marshal
@@ -7,32 +6,27 @@ module Asterius.Internals.Marshal
   )
 where
 
-import Control.Monad.Cont
+import qualified Asterius.Internals.Arena as A
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Internal as BS
+import qualified Data.ByteString.Unsafe as BS
+import Foreign
 import Foreign.C.Types
-import Foreign.ForeignPtr
-import Foreign.Marshal.Array
-import Foreign.Ptr
-import Foreign.Storable
-import GHC.ForeignPtr
 
-{-# INLINEABLE marshalBS #-}
-marshalBS :: BS.ByteString -> (forall r. ContT r IO (Ptr CChar))
-marshalBS bs
+marshalBS :: A.Arena -> BS.ByteString -> IO (Ptr CChar)
+marshalBS a bs
   | BS.null bs = pure nullPtr
-  | otherwise = ContT $ BS.useAsCString bs
+  | otherwise = BS.unsafeUseAsCStringLen bs $ \(p_src, l) -> do
+    p_dst <- A.alloc a (l + 1)
+    BS.memcpy (castPtr p_dst) (castPtr p_src) l
+    pokeByteOff p_dst l (0 :: Word8)
+    pure p_dst
 
-{-# INLINEABLE marshalV #-}
-marshalV ::
-  forall a. Storable a => [a] -> (forall r. ContT r IO (Ptr a, Int))
-marshalV v
+marshalV :: forall a. Storable a => A.Arena -> [a] -> IO (Ptr a, Int)
+marshalV a v
   | null v = pure (nullPtr, 0)
-  | otherwise = ContT $ \c -> do
+  | otherwise = do
     let len = length v
-    fp <-
-      mallocPlainForeignPtrAlignedBytes
-        (sizeOf (undefined :: a) * len)
-        (alignment (undefined :: a))
-    withForeignPtr fp $ \p -> do
-      pokeArray p v
-      c (p, len)
+    p <- A.alloc a (sizeOf (undefined :: a) * len)
+    pokeArray p v
+    pure (p, len)

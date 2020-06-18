@@ -19,6 +19,7 @@ import Asterius.Binary.NameCache
 import Asterius.BuildInfo
 import Asterius.Foreign.ExportStatic
 import Asterius.Internals
+import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.ByteString
 import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
@@ -37,7 +38,6 @@ import qualified Asterius.Types.SymbolSet as SS
 import qualified Binaryen
 import qualified Binaryen.Module as Binaryen
 import Control.Monad
-import Control.Monad.Cont
 import Control.Monad.Except
 import Data.Binary.Get
 import Data.Binary.Put
@@ -369,10 +369,10 @@ ahcDistMain logger task (final_m, report) = do
                 $ \(p, l) -> Binaryen.read p (fromIntegral l)
             logger "[INFO] Running binaryen optimization"
             Binaryen.optimize m_ref
-            flip runContT pure $ do
-              lim_segs <- marshalBS "limit-segments"
-              (lim_segs_p, _) <- marshalV [lim_segs]
-              lift $ Binaryen.runPasses m_ref lim_segs_p 1
+            A.with $ \a -> do
+              lim_segs <- marshalBS a "limit-segments"
+              (lim_segs_p, _) <- marshalV a [lim_segs]
+              Binaryen.runPasses m_ref lim_segs_p 1
             b <- Binaryen.serializeModule m_ref
             Binaryen.dispose m_ref
             pure $ Left b
