@@ -63,5 +63,7 @@ library:
 executables:
   genapply:
     source-dirs: genapply
-    main: genapply.hs
+    main: Main.hs
     ghc-options: -threaded -rtsopts
+    dependencies:
+      - pretty
