@@ -59,3 +59,11 @@ library:
     - StandaloneDeriving
     - StrictData
     - UndecidableInstances
+
+executables:
+  genapply:
+    source-dirs: genapply
+    main: Main.hs
+    ghc-options: -threaded -rtsopts
+    dependencies:
+      - pretty
