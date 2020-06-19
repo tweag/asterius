@@ -106,7 +106,6 @@ data AsteriusStatics
 data AsteriusModule
   = AsteriusModule
       { staticsMap :: SymbolMap AsteriusStatics,
-        staticsErrorMap :: SymbolMap AsteriusCodeGenError,
         functionMap :: SymbolMap Function,
         sptMap :: SymbolMap (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
@@ -114,16 +113,15 @@ data AsteriusModule
   deriving (Show, Data)
 
 instance Semigroup AsteriusModule where
-  AsteriusModule sm0 se0 fm0 spt0 mod_ffi_state0 <> AsteriusModule sm1 se1 fm1 spt1 mod_ffi_state1 =
+  AsteriusModule sm0 fm0 spt0 mod_ffi_state0 <> AsteriusModule sm1 fm1 spt1 mod_ffi_state1 =
     AsteriusModule
       (sm0 <> sm1)
-      (se0 <> se1)
       (fm0 <> fm1)
       (spt0 <> spt1)
       (mod_ffi_state0 <> mod_ffi_state1)
 
 instance Monoid AsteriusModule where
-  mempty = AsteriusModule mempty mempty mempty mempty mempty
+  mempty = AsteriusModule mempty mempty mempty mempty
 
 -- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
 -- its 'EntitySymbol' dependencies, as they are appear in the modules data
