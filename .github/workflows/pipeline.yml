@@ -325,13 +325,13 @@ jobs:
             --squash \
             --tag terrorjack/asterius:$ASTERIUS_IMAGE \
             .
-          podman save terrorjack/asterius:$ASTERIUS_IMAGE -o image-$ASTERIUS_IMAGE.tar
+          podman save terrorjack/asterius:$ASTERIUS_IMAGE | zstd -T2 -12 -o image-$ASTERIUS_IMAGE.tar.zst
 
       - name: upload-artifact
         uses: actions/upload-artifact@v2
         with:
           name: image-${{ matrix.image }}
-          path: image-${{ matrix.image }}.tar
+          path: image-${{ matrix.image }}.tar.zst
 
   docs:
     name: docs
