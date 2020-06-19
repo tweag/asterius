@@ -87,10 +87,10 @@ getArchMagic = do
     $ fail
     $ "Invalid magic number " ++ show magic
 
--- | put an Archive Entry. This assumes that the entries
--- have been preprocessed to account for the extenden file name
--- table section "//" e.g. for GNU Archives. Or that the names
--- have been move into the payload for BSD Archives.
+-- | Put an archive entry. Note that this assumes that the entry has been
+-- preprocessed to account for the extended file name table section. That is,
+-- the name is assumed to fit in 16 characters; if it's longer, it gets
+-- truncated.
 putArchEntry :: ArchiveEntry -> PutM ()
 putArchEntry (ArchiveEntry name time own grp mode st_size file) = do
   putPaddedString ' ' 16 name
@@ -125,7 +125,7 @@ putGNUArch (Archive as) = do
     processEntries =
       uncurry (:) . mapAccumL processEntry (ArchiveEntry "//" 0 0 0 0 0 mempty)
 
--- | Create a library archive from a bunch of object files.  Though the name of
+-- | Create a library archive from a bunch of object files. Though the name of
 -- each object file is preserved, we set the timestamp, owner ID, group ID, and
 -- file mode to default values (0, 0, 0, and 0644, respectively). When we
 -- deserialize (see 'loadArchive'), the metadata is ignored anyway.
@@ -151,11 +151,10 @@ writeGNUAr fp = LBS.writeFile fp . runPut . putGNUArch
 
 -------------------------------------------------------------------------------
 
--- | Load the contents of an archive (@.a@) file as an 'AsteriusCachedModule'.
--- 'loadArchive' ignores (@.o@) files in the archive that cannot be parsed. Also,
--- the metadata of the contained files are ignored (@ahc-ar@ always sets them
--- to default values anyway). If the metadata are really needed, make sure to
--- update @ahc-ar@ to generate non-default values for them.
+-- | Load the contents of an archive (@.a@) file. 'loadArchive' ignores (@.o@)
+-- files in the archive that cannot be parsed. Also, the metadata of the
+-- contained files are ignored ('createArchive' always sets them to default
+-- values anyway).
 loadArchive :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
 loadArchive ncu p = do
   Archive entries <- parseAr <$> BS.readFile p
