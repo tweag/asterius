@@ -1,4 +1,5 @@
 {-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -20,7 +21,6 @@ module Asterius.Ar
   )
 where
 
-import qualified Ar as GHC
 import Asterius.Binary.ByteString
 import Asterius.Binary.NameCache
 import Asterius.Types
@@ -28,6 +28,7 @@ import Asterius.Types.SymbolMap (SymbolMap)
 import Asterius.Types.SymbolSet (SymbolSet)
 import Control.Monad
 import Data.Binary.Get
+import Data.Binary.Put
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Lazy as LBS
@@ -37,24 +38,96 @@ import GHC.IO.Unsafe
 import qualified IfaceEnv as GHC
 import System.FilePath
 
+-------------------------------------------------------------------------------
+
+data ArchiveEntry
+  = ArchiveEntry
+      { -- | File name.
+        filename :: String,
+        -- | File modification time.
+        filetime :: Int,
+        -- | File owner.
+        fileown :: Int,
+        -- | File group.
+        filegrp :: Int,
+        -- | File mode.
+        filemode :: Int,
+        -- | File size.
+        filesize :: Int,
+        -- | File bytes.
+        filedata :: BS.ByteString
+      }
+  deriving (Eq, Show)
+
+newtype Archive = Archive [ArchiveEntry]
+  deriving (Eq, Show, Semigroup, Monoid)
+
+-------------------------------------------------------------------------------
+
+arIndexFileName :: FilePath
+arIndexFileName = ".asterius.index.bin"
+
+-------------------------------------------------------------------------------
+
+-- | put an Archive Entry. This assumes that the entries
+-- have been preprocessed to account for the extenden file name
+-- table section "//" e.g. for GNU Archives. Or that the names
+-- have been move into the payload for BSD Archives.
+putArchEntry :: ArchiveEntry -> PutM ()
+putArchEntry (ArchiveEntry name time own grp mode st_size file) = do
+  putPaddedString ' ' 16 name
+  putPaddedInt 12 time
+  putPaddedInt 6 own
+  putPaddedInt 6 grp
+  putPaddedInt 8 mode
+  putPaddedInt 10 (st_size + pad)
+  putByteString "\x60\x0a"
+  putByteString file
+  when (pad == 1) $
+    putWord8 0x0a
+  where
+    pad = st_size `mod` 2
+
+putArchMagic :: Put
+putArchMagic = putByteString $ CBS.pack "!<arch>\n"
+
+putGNUArch :: Archive -> PutM ()
+putGNUArch (Archive as) = do
+  putArchMagic
+  mapM_ putArchEntry (processEntries as)
+  where
+    processEntry :: ArchiveEntry -> ArchiveEntry -> (ArchiveEntry, ArchiveEntry)
+    processEntry extInfo archive@(ArchiveEntry name _ _ _ _ _ _)
+      | length name > 15 =
+        ( extInfo
+            { filesize = filesize extInfo + length name + 2,
+              filedata = filedata extInfo <> CBS.pack name <> "/\n"
+            },
+          archive {filename = "/" <> show (filesize extInfo)}
+        )
+      | otherwise = (extInfo, archive {filename = name <> "/"})
+    processEntries :: [ArchiveEntry] -> [ArchiveEntry]
+    processEntries =
+      uncurry (:) . mapAccumL processEntry (ArchiveEntry "//" 0 0 0 0 0 mempty)
+
 createIndex :: [BS.ByteString] -> IO (SymbolMap SymbolSet)
 createIndex blobs = do
   ncu <- newNameCacheUpdater
   mconcat <$> for blobs (getBS ncu) -- Get the dependencyMap only.
 
-createIndexEntry :: [BS.ByteString] -> IO GHC.ArchiveEntry
+createIndexEntry :: [BS.ByteString] -> IO ArchiveEntry
 createIndexEntry blobs = do
   index <- createIndex blobs
   blob <- putBS index
   pure
-    GHC.ArchiveEntry
-      { GHC.filename = arIndexFileName,
-        GHC.filetime = 0,
-        GHC.fileown = 0,
-        GHC.filegrp = 0,
-        GHC.filemode = 0o644,
-        GHC.filesize = BS.length blob,
-        GHC.filedata = blob
+    ArchiveEntry
+      { filename = arIndexFileName,
+        filetime = 0,
+        fileown = 0,
+        filegrp = 0,
+        filemode = 0o644,
+        filesize = BS.length blob,
+        filedata = blob
       }
 
 -- | Create a library archive from a bunch of object files, using @Ar@ from the
@@ -66,23 +139,31 @@ createArchive :: FilePath -> [FilePath] -> IO ()
 createArchive arFile objFiles = do
   blobs <- for objFiles (unsafeDupableInterleaveIO . BS.readFile)
   index <- createIndexEntry blobs
-  GHC.writeGNUAr arFile
-    $ GHC.Archive
+  writeGNUAr arFile
+    $ Archive
     $ index
-      : [ GHC.ArchiveEntry
-            { GHC.filename = takeFileName obj_path,
-              GHC.filetime = 0,
-              GHC.fileown = 0,
-              GHC.filegrp = 0,
-              GHC.filemode = 0o644,
-              GHC.filesize = BS.length blob,
-              GHC.filedata = blob
+      : [ ArchiveEntry
+            { filename = takeFileName obj_path,
+              filetime = 0,
+              fileown = 0,
+              filegrp = 0,
+              filemode = 0o644,
+              filesize = BS.length blob,
+              filedata = blob
             }
           | (obj_path, blob) <- zip objFiles blobs
         ]
 
-arIndexFileName :: FilePath
-arIndexFileName = ".asterius.index.bin"
+putPaddedInt :: Int -> Int -> Put
+putPaddedInt padding i = putPaddedString '\x20' padding (show i)
+
+putPaddedString :: Char -> Int -> String -> Put
+putPaddedString pad padding s = putByteString . CBS.pack . take padding $ s `mappend` (repeat pad)
+
+writeGNUAr :: FilePath -> Archive -> IO ()
+writeGNUAr fp = LBS.writeFile fp . runPut . putGNUArch
+
+-------------------------------------------------------------------------------
 
 -- | Load the contents of an archive (@.a@) file as an 'AsteriusCachedModule'.
 -- 'loadAr' ignores (@.o@) files in the archive that cannot be parsed. Also,
@@ -91,9 +172,9 @@ arIndexFileName = ".asterius.index.bin"
 -- update @ahc-ar@ to generate non-default values for them.
 loadAr :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
 loadAr ncu p = do
-  GHC.Archive entries <- asteriusLoadAr p
+  Archive entries <- parseAr <$> BS.readFile p
   foldlM
-    ( \acc GHC.ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
+    ( \acc ArchiveEntry {..} -> tryGetBS ncu filedata >>= \case
         Left _ -> pure acc
         Right m -> pure $ m <> acc
     )
@@ -134,49 +215,34 @@ getExtendedFileNamesTable = do
 getArchiveIndex :: CBS.ByteString -> Get BS.ByteString -- (SymbolMap SymbolSet)
 getArchiveIndex filenamesTable = do
   entry <- getGNUArchEntry filenamesTable
-  if GHC.filename entry == arIndexFileName
-    then pure $ GHC.filedata entry
+  if filename entry == arIndexFileName
+    then pure $ filedata entry
     else fail "[GNU Archive] Second entry must be the index."
 
--- getMany :: Get a -> Get [a]
--- getMany fn = do
---   is_empty <- isEmpty
---   if is_empty
---     then return []
---     else (:) <$> fn <*> getMany fn
-
-foldlGNUArchEntries :: (b -> GHC.ArchiveEntry -> b) -> b -> Get b
-foldlGNUArchEntries f z = do
-  filenamesTable <- getExtendedFileNamesTable
-  _ <- getArchiveIndex filenamesTable
-  go filenamesTable z
-  where
-    go table !acc = do
-      is_empty <- isEmpty
-      if is_empty
-        then return acc
-        else do
-          entry <- getGNUArchEntry table
-          go table (f acc entry)
+getMany :: Get a -> Get [a]
+getMany fn = do
+  is_empty <- isEmpty
+  if is_empty
+    then return []
+    else (:) <$> fn <*> getMany fn
 
 -- | GNU Archives feature a special '//' entry that contains the
 -- extended names. Those are referred to as /<num>, where num is the
 -- offset into the '//' entry.
 -- In addition, filenames are terminated with '/' in the archive.
 -- @putGNUArch@ always places the filename table first.
-getGNUArchEntries :: Get [GHC.ArchiveEntry]
+getGNUArchEntries :: Get [ArchiveEntry]
 getGNUArchEntries = do
-  -- filenamesTable <- getExtendedFileNamesTable
-  -- _ <- getArchiveIndex filenamesTable
-  -- getMany (getGNUArchEntry filenamesTable)
-  foldlGNUArchEntries (flip (:)) [] -- reverse order
+  filenamesTable <- getExtendedFileNamesTable
+  _ <- getArchiveIndex filenamesTable
+  getMany (getGNUArchEntry filenamesTable)
 
 -- | Get a GNU-style archive entry (NOT the filename table entry).
-getGNUArchEntry :: CBS.ByteString -> Get GHC.ArchiveEntry
+getGNUArchEntry :: CBS.ByteString -> Get ArchiveEntry
 getGNUArchEntry filenamesTable = do
   (name, time, own, grp, mode, st_size, file) <- getAllArEntryFields
   let real_name = getRealFileName filenamesTable name
-  pure $ GHC.ArchiveEntry real_name time own grp mode st_size file
+  pure $ ArchiveEntry real_name time own grp mode st_size file
 
 getRealFileName :: CBS.ByteString -> CBS.ByteString -> String
 getRealFileName filenamesTable name =
@@ -200,13 +266,10 @@ getArchMagic = do
     $ fail
     $ "Invalid magic number " ++ show magic
 
-getArch :: Get GHC.Archive
-getArch = GHC.Archive <$> do
+getArch :: Get Archive
+getArch = Archive <$> do
   getArchMagic
   getGNUArchEntries
 
-parseAr :: BS.ByteString -> GHC.Archive
+parseAr :: BS.ByteString -> Archive
 parseAr = runGet getArch . LBS.fromChunks . pure
-
-asteriusLoadAr :: FilePath -> IO GHC.Archive
-asteriusLoadAr fp = parseAr <$> BS.readFile fp
