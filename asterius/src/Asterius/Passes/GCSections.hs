@@ -10,7 +10,6 @@ module Asterius.Passes.GCSections
 where
 
 import Asterius.Types
-import qualified Asterius.Types.DependencyMap as DM
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Asterius.Types.SymbolSet as SS
 import Data.String
@@ -55,14 +54,14 @@ gcSections verbose_err c_store_mod root_syms export_funcs =
           SS.foldr'
             ( \i_staging_sym (i_child_syms_acc, o_m_acc) ->
                 if  | Just ss <- SM.lookup i_staging_sym (staticsMap store_mod),
-                      es <- deps DM.! i_staging_sym -> -- should always succeed
+                      es <- deps SM.! i_staging_sym -> -- should always succeed
                       ( es <> i_child_syms_acc,
                         o_m_acc
                           { staticsMap = SM.insert i_staging_sym ss (staticsMap o_m_acc)
                           }
                       )
                     | Just func <- SM.lookup i_staging_sym (functionMap store_mod),
-                      es <- deps DM.! i_staging_sym -> -- should always succeed
+                      es <- deps SM.! i_staging_sym -> -- should always succeed
                       ( es <> i_child_syms_acc,
                         o_m_acc
                           { functionMap =

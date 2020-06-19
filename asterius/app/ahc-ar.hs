@@ -15,7 +15,8 @@ import qualified Ar as GHC
 import Asterius.Ar (arIndexFileName)
 import Asterius.Binary.ByteString
 import Asterius.Binary.NameCache
-import Asterius.Types.DependencyMap (DependencyMap)
+import Asterius.Types.SymbolMap (SymbolMap)
+import Asterius.Types.SymbolSet (SymbolSet)
 import qualified Data.ByteString as BS
 import Data.List
 import Data.Traversable
@@ -56,7 +57,7 @@ undoEscapeResponseFileArg arg = case arg of
   '\\' : [] -> error "undoEscapeResponseFileArg: dangling backslash"
   c : cs -> c : undoEscapeResponseFileArg cs
 
-createIndex :: [BS.ByteString] -> IO DependencyMap
+createIndex :: [BS.ByteString] -> IO (SymbolMap SymbolSet)
 createIndex blobs = do
   ncu <- newNameCacheUpdater
   mconcat <$> for blobs (getBS ncu) -- Get the dependencyMap only.
