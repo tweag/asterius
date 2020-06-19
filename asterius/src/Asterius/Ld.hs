@@ -45,7 +45,7 @@ data LinkTask
 loadTheWorld :: LinkTask -> IO AsteriusCachedModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
-  lib <- mconcat <$> for linkLibs (loadAr ncu)
+  lib <- mconcat <$> for linkLibs (loadArchive ncu)
   objs <- rights <$> for linkObjs (tryGetFile ncu)
   evaluate $ linkModule <> mconcat objs <> lib
 
