@@ -1,7 +1,6 @@
 AC-Angle
 ALUT
 ANum
-Allure
 Boolean
 BoundedChan
 Cabal
@@ -53,8 +52,6 @@ IntervalMap
 JuicyPixels
 JuicyPixels-blurhash
 JuicyPixels-extra
-JuicyPixels-scale-dct
-LambdaHack
 LibZip
 List
 ListLike
@@ -91,7 +88,6 @@ Taxonomy
 TypeCompose
 ViennaRNAParser
 Win32
-Win32-notify
 X11
 X11-xft
 Xauth
@@ -123,7 +119,6 @@ aeson-schemas
 aeson-utils
 aeson-yak
 aeson-yaml
-al
 alarmclock
 alerts
 alex
@@ -132,8 +127,6 @@ algebraic-graphs
 almost-fix
 alsa-core
 alsa-mixer
-alsa-pcm
-alsa-seq
 alternative-vector
 amazonka
 amazonka-apigateway
@@ -246,7 +239,6 @@ appendmap
 apportionment
 approximate
 arbor-lru-cache
-arithmoi
 array
 array-memoize
 arrow-extras
@@ -267,8 +259,6 @@ assoc
 astro
 async
 async-extra
-async-refresh
-async-refresh-tokens
 async-timer
 atom-basic
 atomic-primops
@@ -341,7 +331,6 @@ bindings-DSL
 bindings-GLFW
 bindings-libzip
 bindings-uname
-bins
 bitarray
 bits
 bits-extra
@@ -349,9 +338,6 @@ bitset-word8
 bitvec
 blake2
 blanks
-blas-carray
-blas-comfort-array
-blas-ffi
 blaze-bootstrap
 blaze-builder
 blaze-html
@@ -373,7 +359,6 @@ boundingboxes
 bower-json
 boxes
 brick
-brittany
 broadcast-chan
 bsb-http-chunked
 bson
@@ -383,7 +368,6 @@ buffer-pipe
 bugsnag-hs
 butcher
 bv
-bv-little
 byte-count-reader
 byte-order
 byteable
@@ -457,9 +441,6 @@ cipher-camellia
 cipher-des
 cipher-rc4
 circle-packing
-clash-ghc
-clash-lib
-clash-prelude
 classy-prelude
 classy-prelude-conduit
 classy-prelude-yesod
@@ -585,7 +566,6 @@ cursor-brick
 cursor-fuzzy-time
 cursor-gen
 cutter
-cyclotomic
 czipwith
 d10
 data-accessor
@@ -649,7 +629,6 @@ dhall-json
 dhall-lsp-server
 dhall-yaml
 di-core
-di-monad
 diagrams
 diagrams-contrib
 diagrams-core
@@ -681,8 +660,6 @@ do-notation
 dockerfile
 doclayout
 doctemplates
-doctest
-doctest-discover
 doctest-driver-gen
 doldol
 dotenv
@@ -709,7 +686,6 @@ ed25519
 edit-distance
 edit-distance-vector
 editor-open
-egison
 egison-pattern-src
 egison-pattern-src-th-mode
 either
@@ -724,7 +700,6 @@ elf
 eliminators
 elm-bridge
 elm-core-sources
-elm-export
 elm2nix
 emacs-module
 email-validate
@@ -778,7 +753,6 @@ fail
 failable
 fakedata
 farmhash
-fast-digits
 fast-logger
 fast-math
 fb
@@ -786,7 +760,6 @@ feature-flags
 fedora-dists
 fedora-haskell-tools
 feed
-fft
 fgl
 file-embed
 file-embed-lzma
@@ -813,12 +786,10 @@ flac
 flac-picture
 flags-applicative
 flat
-flat-mcmc
 floatshow
 flow
 flush-queue
 fmlist
-fmt
 fn
 focus
 focuslist
@@ -833,12 +804,10 @@ foreign-store
 forkable-monad
 forma
 format-numbers
-formatting
 foundation
 free
 free-categories
 free-vl
-freenect
 freer-simple
 freetype2
 friendly-time
@@ -852,7 +821,6 @@ funcmp
 function-builder
 functor-classes-compat
 fused-effects
-fusion-plugin
 fusion-plugin-types
 fuzzcheck
 fuzzy
@@ -899,52 +867,25 @@ genvalidity-uuid
 genvalidity-vector
 geojson
 getopt-generics
-ghc
 ghc-boot
 ghc-boot-th
 ghc-byteorder
-ghc-check
 ghc-compact
 ghc-core
 ghc-events
-ghc-exactprint
-ghc-heap
 ghc-lib
 ghc-lib-parser
 ghc-lib-parser-ex
-ghc-parser
 ghc-paths
 ghc-prim
 ghc-prof
-ghc-source-gen
 ghc-syntax-highlighter
-ghc-tcplugins-extra
-ghc-typelits-extra
-ghc-typelits-knownnat
-ghc-typelits-natnormalise
-ghc-typelits-presburger
 ghci
 ghci-hexcalc
 ghcid
 ghcjs-codemirror
 ghost-buster
-gi-atk
-gi-cairo
-gi-cairo-connector
 gi-cairo-render
-gi-dbusmenu
-gi-dbusmenugtk3
-gi-gdk
-gi-gdkpixbuf
-gi-gdkx11
-gi-gio
-gi-glib
-gi-gobject
-gi-graphene
-gi-gtk
-gi-gtk-hs
-gi-pango
-gi-xlib
 ginger
 gingersnap
 giphy-api
@@ -974,8 +915,6 @@ greskell-websocket
 groom
 group-by-date
 groups
-gtk-sni-tray
-gtk-strut
 guarded-allocation
 hOpenPGP
 hackage-db
@@ -986,7 +925,6 @@ hadoop-streaming
 hakyll
 half
 hamtsolo
-hapistrano
 happstack-server
 happy
 hasbolt
@@ -996,11 +934,9 @@ hashids
 hashmap
 hashtables
 haskeline
-haskell-gi
 haskell-gi-base
 haskell-gi-overloading
 haskell-igraph
-haskell-import-graph
 haskell-lexer
 haskell-lsp
 haskell-lsp-types
@@ -1010,8 +946,6 @@ haskell-src-exts
 haskell-src-exts-util
 haskell-src-meta
 haskey-btree
-haskoin-core
-haskoin-node
 hasql
 hasql-optparse-applicative
 hasql-pool
@@ -1040,12 +974,10 @@ hformat
 hfsevents
 hi-file-parser
 hidapi
-hie-bios
 higher-leveldb
 highlighting-kate
 hinfo
 hinotify
-hint
 hjsmin
 hkd-default
 hkgr
@@ -1189,7 +1121,6 @@ identicon
 ieee754
 if
 iff
-ihaskell
 ihs
 ilist
 imagesize-conduit
@@ -1211,12 +1142,9 @@ inline-c
 inline-c-cpp
 inliterate
 insert-ordered-containers
-inspection-testing
 instance-control
 int-cast
-integer-gmp
 integer-logarithms
-integer-roots
 integration
 intern
 interpolate
@@ -1239,7 +1167,6 @@ io-streams-haproxy
 ip6addr
 iproute
 ipynb
-ipython-kernel
 irc
 irc-client
 irc-conduit
@@ -1298,10 +1225,6 @@ language-java
 language-javascript
 language-nix
 language-protobuf
-language-puppet
-lapack-carray
-lapack-comfort-array
-lapack-ffi
 lapack-ffi-tools
 largeword
 latex
@@ -1329,7 +1252,6 @@ leveldb-haskell
 libffi
 libgit
 libgraph
-libiserv
 libmpd
 libyaml
 life-sync
@@ -1362,7 +1284,6 @@ logging-facade
 logging-facade-syslog
 logict
 loop
-loopbreaker
 lrucache
 lrucaching
 lsp-test
@@ -1390,7 +1311,6 @@ matplotlib
 matrices
 matrix
 matrix-market-attoparsec
-matrix-static
 maximal-cliques
 mbox
 mbox-utility
@@ -1443,10 +1363,8 @@ mmark-ext
 mmorph
 mnist-idx
 mockery
-mod
 model
 modern-uri
-modular
 monad-bayes
 monad-control
 monad-control-aligned
@@ -1561,7 +1479,6 @@ numtype-dk
 nuxeo
 o-clock
 oauthenticated
-odbc
 oeis2
 ofx
 old-locale
@@ -1577,8 +1494,6 @@ openpgp-asciiarmor
 opensource
 openssl-streams
 opentelemetry
-opentelemetry-extra
-opentelemetry-lightstep
 opentelemetry-wai
 operational
 operational-class
@@ -1686,7 +1601,6 @@ pointed
 pointedlist
 pointless-fun
 poll
-poly
 poly-arity
 polynomials-bernstein
 polyparse
@@ -1743,10 +1657,7 @@ prospect
 proto-lens
 proto-lens-arbitrary
 proto-lens-optparse
-proto-lens-protobuf-types
-proto-lens-protoc
 proto-lens-runtime
-proto-lens-setup
 proto3-wire
 protobuf
 protobuf-simple
@@ -1766,10 +1677,8 @@ qchas
 qm-interpolated-string
 qrcode-core
 qrcode-juicypixels
-quadratic-irrational
 quickcheck-arbitrary-adt
 quickcheck-assertions
-quickcheck-classes
 quickcheck-classes-base
 quickcheck-instances
 quickcheck-io
@@ -1810,7 +1719,6 @@ readable
 reanimate
 reanimate-svg
 rebase
-record-dot-preprocessor
 record-hasfield
 records-sop
 recursion-schemes
@@ -1871,7 +1779,6 @@ rope-utf16-splay
 rosezipper
 rot13
 rpmbuild-order
-rts
 runmemo
 safe
 safe-decimal
@@ -1884,7 +1791,6 @@ safecopy
 safeio
 salak
 salak-yaml
-saltine
 salve
 sample-frame
 sample-frame-np
@@ -1899,13 +1805,7 @@ scheduler
 scientific
 scotty
 scrypt
-sdl2
-sdl2-gfx
-sdl2-image
-sdl2-mixer
-sdl2-ttf
 search-algorithms
-secp256k1-haskell
 securemem
 selda
 selda-json
@@ -1917,7 +1817,6 @@ semigroupoid-extras
 semigroupoids
 semigroups
 semiring-simple
-semirings
 semver
 sendfile
 seqalign
@@ -1997,11 +1896,9 @@ since
 singleton-bool
 singleton-nats
 singletons
-singletons-presburger
 siphash
 sitemap-gen
 size-based
-sized
 skein
 skews
 skip-var
@@ -2028,9 +1925,7 @@ sort
 sorted-list
 sourcemap
 sox
-soxlib
 sparse-linear-algebra
-sparse-tensor
 spatial-math
 special-values
 speculate
@@ -2117,7 +2012,6 @@ system-filepath
 system-info
 systemd
 tabular
-taffybar
 tagchup
 tagged
 tagged-binary
@@ -2183,8 +2077,6 @@ text-postgresql
 text-printer
 text-region
 text-short
-text-show
-text-show-instances
 text-zipper
 textlocal
 tf-random
@@ -2278,7 +2170,6 @@ type-level-integers
 type-level-kv-list
 type-level-numbers
 type-map
-type-natural
 type-of-html
 type-of-html-static
 type-operators
@@ -2407,7 +2298,6 @@ webex-teams-pipes
 webrtc-vad
 websockets
 websockets-snap
-weigh
 wide-word
 wikicfp-scraper
 wild-bind
@@ -2442,11 +2332,8 @@ x509-validation
 xdg-basedir
 xdg-desktop-entry
 xdg-userdirs
-xeno
 xhtml
 xls
-xlsx
-xlsx-tabular
 xml
 xml-basic
 xml-conduit
@@ -2494,8 +2381,6 @@ yoga
 youtube
 zasni-gerna
 zero
-zeromq4-haskell
-zeromq4-patterns
 zim-parser
 zip
 zip-archive
