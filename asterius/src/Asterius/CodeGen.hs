@@ -1609,7 +1609,7 @@ marshalCmmDecl decl = case decl of
     sym <- marshalCLabel clbl
     r <- unCodeGen $ marshalCmmData sym sec d
     pure $ case r of
-      Left err -> mempty {staticsErrorMap = SM.fromList [(sym, err)]}
+      Left err -> error $ "marshalCmmDecl: " <> show err
       Right ass -> mempty {staticsMap = SM.fromList [(sym, ass)]}
   GHC.CmmProc _ clbl _ g -> do
     sym <- marshalCLabel clbl

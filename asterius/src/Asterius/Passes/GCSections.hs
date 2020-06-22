@@ -12,7 +12,6 @@ where
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Asterius.Types.SymbolSet as SS
-import Data.String
 
 gcSections ::
   Bool ->
@@ -81,14 +80,7 @@ gcSections verbose_err c_store_mod root_syms export_funcs =
                                   { staticsType = ConstBytes,
                                     asteriusStatics =
                                       [ Serialized $
-                                          entityName i_staging_sym
-                                            <> ( case SM.lookup
-                                                   i_staging_sym
-                                                   (staticsErrorMap store_mod) of
-                                                   Just err -> fromString (": " <> show err)
-                                                   _ -> mempty
-                                               )
-                                            <> "\0"
+                                          entityName i_staging_sym <> "\0"
                                       ]
                                   }
                                 (staticsMap o_m_acc)
