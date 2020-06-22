@@ -11,14 +11,10 @@ module Main
   )
 where
 
-import qualified Ar as GHC
-import qualified Data.ByteString as BS
+import Asterius.Ar (createArchive)
 import Data.List
-import Data.Traversable
-import GHC.IO.Unsafe
 import System.Environment.Blank
 import System.Exit
-import System.FilePath
 import System.IO.Error
 
 main :: IO ()
@@ -51,25 +47,3 @@ undoEscapeResponseFileArg arg = case arg of
   '\\' : c : cs -> c : undoEscapeResponseFileArg cs
   '\\' : [] -> error "undoEscapeResponseFileArg: dangling backslash"
   c : cs -> c : undoEscapeResponseFileArg cs
-
--- | Create a library archive from a bunch of object files, using @Ar@ from the
--- GHC API. Though the name of each object file is preserved, we set the
--- timestamp, owner ID, group ID, and file mode to default values (0, 0, 0, and
--- 0644, respectively). When we deserialize (see @Asterius.Ar.loadAr@), the
--- metadata is ignored anyway.
-createArchive :: FilePath -> [FilePath] -> IO ()
-createArchive arFile objFiles = do
-  blobs <- for objFiles (unsafeDupableInterleaveIO . BS.readFile)
-  GHC.writeGNUAr arFile $
-    GHC.Archive
-      [ GHC.ArchiveEntry
-          { GHC.filename = takeFileName obj_path,
-            GHC.filetime = 0,
-            GHC.fileown = 0,
-            GHC.filegrp = 0,
-            GHC.filemode = 0o644,
-            GHC.filesize = BS.length blob,
-            GHC.filedata = blob
-          }
-        | (obj_path, blob) <- zip objFiles blobs
-      ]

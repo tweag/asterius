@@ -1,5 +1,6 @@
 module Asterius.Binary.ByteString
   ( tryGetBS,
+    getBS,
     putBS,
   )
 where
