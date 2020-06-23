@@ -586,7 +586,6 @@ dhall-json
 dhall-lsp-server
 dhall-yaml
 di-core
-di-monad
 diagrams
 diagrams-contrib
 diagrams-core
@@ -762,6 +761,8 @@ from-sum
 frontmatter
 fsnotify
 fsnotify-conduit
+ftp-client
+ftp-client-conduit
 funcmp
 function-builder
 functor-classes-compat
