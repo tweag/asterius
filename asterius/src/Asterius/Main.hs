@@ -304,7 +304,7 @@ ahcDistMain logger task (final_m, report) = do
     writeFile p $ show final_m
   case backend task of
     Binaryen -> do
-      logger "[INFO] Converting linked IR to binaryen IR"
+      logger "[INFO] Converting linked IR (!) to binaryen IR"
       Binaryen.setDebugInfo $ if verboseErr task then 1 else 0
       Binaryen.setOptimizeLevel $ fromIntegral $ optimizeLevel task
       Binaryen.setShrinkLevel $ fromIntegral $ shrinkLevel task

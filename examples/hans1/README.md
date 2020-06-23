@@ -18,10 +18,16 @@ In container shell (from `/workspace`)
 ```
 stack build
 cd example/test1
+.github/workflows/setup-deps.sh
+.github/workflows/boot.sh
 ahc-link  --input-hs Hello.hs --browser --bundle
 ```
 
 TODO do not use root in container
 
+TODO do you have to run setup-deps/boot?
+
 TODO need to setup paths etc in container?
+
+TODO add Nix env for server (or use alternative)
 
