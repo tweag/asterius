@@ -40,7 +40,7 @@ import qualified CoreToStg as GHC
 import qualified CoreUtils as GHC
 import qualified CostCentre as GHC
 import Data.Binary
-import Data.ByteString.Builder
+import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Coerce
 import Data.Data
@@ -95,7 +95,7 @@ data GHCiState
         ghciObjs :: M.Map FilePath AsteriusCachedModule,
         ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusCachedModule),
         ghciLastCompiledCoreExpr :: Int,
-        ghciJSSession :: ~(JSSession, Pipe, JSVal)
+        ghciSession :: ~(Session, Pipe, JSVal)
       }
 
 {-# NOINLINE globalGHCiState #-}
@@ -111,11 +111,11 @@ globalGHCiState = unsafePerformIO $ do
         ghciObjs = M.empty,
         ghciCompiledCoreExprs = IM.empty,
         ghciLastCompiledCoreExpr = 0,
-        ghciJSSession = error "ghciJSSession not initialized"
+        ghciSession = error "ghciSession not initialized"
       }
 
-newGHCiJSSession :: IO (JSSession, Pipe)
-newGHCiJSSession = do
+newGHCiSession :: IO (Session, Pipe)
+newGHCiSession = do
   (node_read_fd, host_write_fd) <- createPipeFd
   (host_read_fd, node_write_fd) <- createPipeFd
   host_read_handle <- fdToHandle host_read_fd
@@ -123,8 +123,8 @@ newGHCiJSSession = do
   hSetBuffering host_read_handle NoBuffering
   hSetBuffering host_write_handle NoBuffering
   s <-
-    newJSSession
-      defJSSessionOpts
+    newSession
+      defaultConfig
         { nodeExtraArgs =
             [ "--experimental-wasm-return-call",
               "--no-wasm-bounds-checks",
@@ -136,8 +136,7 @@ newGHCiJSSession = do
           nodeExtraEnv =
             [ ("ASTERIUS_NODE_READ_FD", show node_read_fd),
               ("ASTERIUS_NODE_WRITE_FD", show node_write_fd)
-            ],
-          nodeStdErrInherit = True
+            ]
         }
   _ <- c_close node_read_fd
   _ <- c_close node_write_fd
@@ -151,15 +150,15 @@ newGHCiJSSession = do
         }
     )
 
--- | Attempts to close the passed in 'JSSession', but won't throw in case of
+-- | Attempts to close the passed in 'Session', but won't throw in case of
 -- exceptions. The parameter may come from an irrefutable pattern matching on an
 -- uninitialized tuple.
-tryCloseGHCiJSSession :: JSSession -> IO ()
-tryCloseGHCiJSSession s = do
-  (_ :: Either SomeException ()) <- try $ closeJSSession s
+tryCloseGHCiSession :: Session -> IO ()
+tryCloseGHCiSession s = do
+  (_ :: Either SomeException ()) <- try $ closeSession s
   pure ()
 
--- | Returns a dummy 'GHC.IServ' to GHC. We don't start a 'JSSession' yet; it is
+-- | Returns a dummy 'GHC.IServ' to GHC. We don't start a 'Session' yet; it is
 -- only started upon 'GHC.RunTH' messages.
 asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
 asteriusStartIServ hsc_env = do
@@ -173,14 +172,14 @@ asteriusStartIServ hsc_env = do
         GHC.iservPendingFrees = []
       }
 
--- | Finalizes the global 'JSSession' if present.
+-- | Finalizes the global 'Session' if present.
 asteriusStopIServ :: GHC.HscEnv -> IO ()
 asteriusStopIServ hsc_env = do
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStopIServ"
   modifyMVar_ globalGHCiState $ \s -> do
-    let ~(js_s, _, _) = ghciJSSession s
-    tryCloseGHCiJSSession js_s
-    pure s {ghciJSSession = error "ghciJSSession already finalized"}
+    let ~(js_s, _, _) = ghciSession s
+    tryCloseGHCiSession js_s
+    pure s {ghciSession = error "ghciSession already finalized"}
 
 -- | Handles all 'GHC.Message's where the responses are synchronously returned.
 -- The messages handled here are mainly related to linking.
@@ -209,7 +208,7 @@ asteriusIservCall hsc_env _ msg = do
 asteriusReadIServ ::
   forall a. (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> IO a
 asteriusReadIServ _ _ = withMVar globalGHCiState $
-  \s -> let (_, p, _) = ghciJSSession s in readPipe p get
+  \s -> let (_, p, _) = ghciSession s in readPipe p get
 
 -- | When GHC expects to write something to the 'Pipe', it calls this function.
 -- We need to overload the 'Pipe' write logic and add special handlers for
@@ -219,7 +218,7 @@ asteriusReadIServ _ _ = withMVar globalGHCiState $
 -- implemented in the host @ahc@ process.
 --
 -- When GHC runs a TH splice, it issues a 'GHC.RunTH' message. Upon such a
--- message, we initialize a fresh 'JSSession' and assign it to our global linker
+-- message, we initialize a fresh 'Session' and assign it to our global linker
 -- state (closing the previous one if possible), then combine the loaded
 -- archives, objects and the Wasm code compiled from the 'GHC.CoreExpr' of the
 -- splice, perform final linking, and load the emitted Wasm/JS code via
@@ -228,16 +227,16 @@ asteriusReadIServ _ _ = withMVar globalGHCiState $
 -- The logic of loading/running linked Wasm/JS code is implemented in the
 -- 'asteriusRunTH' function. 'asteriusRunTH' returns a 'JSVal' which is the
 -- @inline-js-core@ reference of the already initialized asterius instance. We
--- keep it along the 'JSSession' as a part of our global linker state, since it
+-- keep it along the 'Session' as a part of our global linker state, since it
 -- may be used later when the TH module finalizer is invoked.
 --
 -- When all splices in a module are run, GHC issues a 'GHC.RunModFinalizers'
 -- message, which is then handled by the 'asteriusRunModFinalizers' function. We
 -- don't really run TH module finalizers for now; the @node@ side will simply
 -- send a 'QDone' message back to make GHC happy. And since each 'GHC.RunTH'
--- message of a TH splice is handled by overwriting the global 'JSSession' (and
+-- message of a TH splice is handled by overwriting the global 'Session' (and
 -- the 'JSVal' of the initialized asterius instance), the dummy TH module
--- finalizer is run by the 'JSSession' of the last TH splice of that module.
+-- finalizer is run by the 'Session' of the last TH splice of that module.
 asteriusWriteIServ ::
   (Binary a, Typeable a) => GHC.HscEnv -> GHC.IServ -> a -> IO ()
 asteriusWriteIServ hsc_env i a
@@ -245,13 +244,13 @@ asteriusWriteIServ hsc_env i a
     GHC.Msg msg@(GHC.RunTH st q ty loc) -> do
       GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show msg
       modifyMVar_ globalGHCiState $ \s ->
-        bracketOnError newGHCiJSSession (\(js_s, _) -> closeJSSession js_s) $
+        bracketOnError newGHCiSession (\(js_s, _) -> closeSession js_s) $
           \(new_js_s, new_p) -> do
-            let ~(prev_js_s, _, _) = ghciJSSession s
-            tryCloseGHCiJSSession prev_js_s
+            let ~(prev_js_s, _, _) = ghciSession s
+            tryCloseGHCiSession prev_js_s
             pure
               s
-                { ghciJSSession =
+                { ghciSession =
                     ( new_js_s,
                       new_p,
                       error "asterius instance not initialized"
@@ -282,7 +281,7 @@ asteriusWriteIServ hsc_env i a
                 "byteStringFromJSUint8Array"
             this_id = remoteRefToInt q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
-            (js_s, p, _) = ghciJSSession s
+            (js_s, p, _) = ghciSession s
         (_, final_m, link_report) <-
           linkExeInMemory
             LinkTask
@@ -321,16 +320,16 @@ asteriusWriteIServ hsc_env i a
         pure
           s
             { ghciCompiledCoreExprs = IM.delete this_id $ ghciCompiledCoreExprs s,
-              ghciJSSession = (js_s, p, v)
+              ghciSession = (js_s, p, v)
             }
     GHC.Msg m@GHC.RunModFinalizers {} -> do
       GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
       withMVar globalGHCiState $ \s -> do
-        let (js_s, _, v) = ghciJSSession s
+        let (js_s, _, v) = ghciSession s
         asteriusRunModFinalizers hsc_env js_s v
     GHC.Msg m -> fail $ "asteriusWriteIServ: unsupported message " <> show m
   | otherwise = withMVar globalGHCiState $
-    \s -> let (_, p, _) = ghciJSSession s in writePipe p $ put a
+    \s -> let (_, p, _) = ghciSession s in writePipe p $ put a
 
 asteriusRunTH ::
   GHC.HscEnv ->
@@ -339,7 +338,7 @@ asteriusRunTH ::
   Word64 ->
   GHC.THResultType ->
   Maybe Loc ->
-  JSSession ->
+  Session ->
   (Asterius.Types.Module, LinkReport) ->
   IO JSVal
 asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
@@ -349,59 +348,59 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
     rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
     mod_buf <- LBS.readFile $ p -<.> "wasm"
     req_mod_val <- importMJS s $ p -<.> "req.mjs"
-    req_val <- eval s $ takeJSVal req_mod_val <> ".default"
-    buf_val <- alloc s mod_buf
-    mod_val <- eval s $ "WebAssembly.compile(" <> takeJSVal buf_val <> ")"
+    req_val <- evalJSVal s Expression $ jsval req_mod_val <> ".default"
+    buf_val <- evalJSVal s Expression $ buffer mod_buf
+    mod_val <- evalJSVal s Expression $ "WebAssembly.compile(" <> jsval buf_val <> ")"
     i <-
-      eval s $
-        takeJSVal rts_val
+      evalJSVal s Expression $
+        jsval rts_val
           <> ".newAsteriusInstance(Object.assign("
-          <> takeJSVal req_val
+          <> jsval req_val
           <> ",{module:"
-          <> takeJSVal mod_val
+          <> jsval mod_val
           <> "}))"
-    arr_buf <- alloc s (encode loc)
+    arr_buf <- evalJSVal s Expression $ buffer (encode loc)
     let runner_closure =
-          deRefJSVal i <> ".symbolTable."
-            <> coerce
-              (byteString (entityName runner_sym))
+          jsval i <> ".symbolTable."
+            <> fromString
+              (CBS.unpack (entityName runner_sym))
         buf_conv_closure =
-          deRefJSVal i <> ".symbolTable."
-            <> coerce
-              (byteString (entityName buf_conv_sym))
-        uint8_arr = "new Uint8Array(" <> deRefJSVal arr_buf <> ")"
+          jsval i <> ".symbolTable."
+            <> fromString
+              (CBS.unpack (entityName buf_conv_sym))
+        uint8_arr = "new Uint8Array(" <> jsval arr_buf <> ")"
         uint8_arr_sn =
-          deRefJSVal i
+          jsval i
             <> ".exports.context.stablePtrManager.newJSVal("
             <> uint8_arr
             <> ")"
         uint8_arr_closure =
-          deRefJSVal i <> ".exports.rts_mkJSVal(" <> uint8_arr_sn <> ")"
+          jsval i <> ".exports.rts_mkJSVal(" <> uint8_arr_sn <> ")"
         bs_closure =
-          deRefJSVal i
+          jsval i
             <> ".exports.rts_apply("
             <> buf_conv_closure
             <> ","
             <> uint8_arr_closure
             <> ")"
         runner_closure' =
-          deRefJSVal i
+          jsval i
             <> ".exports.rts_apply("
             <> runner_closure
             <> ","
             <> bs_closure
             <> ")"
-        hv_closure = "0x" <> JSCode (word64Hex q)
+        hv_closure = fromString $ show q
         applied_closure =
-          deRefJSVal i
+          jsval i
             <> ".exports.rts_apply("
             <> runner_closure'
             <> ","
             <> hv_closure
             <> ")"
         tid =
-          deRefJSVal i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
-    (_ :: IO ()) <- eval' s tid
+          jsval i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
+    evalNone s Expression tid
     pure i
   where
     runner_sym = closureSymbol hsc_env "ghci" "Asterius.GHCi" $ case ty of
@@ -419,15 +418,15 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
         "Asterius.ByteString"
         "byteStringFromJSUint8Array"
 
-asteriusRunModFinalizers :: GHC.HscEnv -> JSSession -> JSVal -> IO ()
+asteriusRunModFinalizers :: GHC.HscEnv -> Session -> JSVal -> IO ()
 asteriusRunModFinalizers hsc_env s i = do
   let run_mod_fin_closure =
-        deRefJSVal i <> ".symbolTable."
-          <> coerce
-            (byteString (entityName run_mod_fin_sym))
+        jsval i <> ".symbolTable."
+          <> fromString
+            (CBS.unpack (entityName run_mod_fin_sym))
       tid =
-        deRefJSVal i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
-  (_ :: IO ()) <- eval' s tid
+        jsval i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
+  evalNone s Expression tid
   pure ()
   where
     run_mod_fin_sym =

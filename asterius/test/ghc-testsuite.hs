@@ -135,12 +135,12 @@ runTestCase l_opts tlref TestCase {..} = catch m h
               }
             ""
         mod_buf <- LBS.readFile $ tmp_case_path -<.> "wasm"
-        withJSSession
-          defJSSessionOpts
+        bracket
+          (newSession defaultConfig
             { nodeExtraArgs =
                 ["--experimental-wasm-bigint" | "--debug" `elem` l_opts]
                   <> [ "--experimental-wasm-return-call" ]
-            }
+            }) closeSession
           $ \s -> do
             i <- newAsteriusInstance s (tmp_case_path -<.> "req.mjs") mod_buf
             hsMain (takeBaseName tmp_case_path) s i
