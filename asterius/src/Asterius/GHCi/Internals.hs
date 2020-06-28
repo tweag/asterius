@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -87,16 +88,15 @@ import qualified UniqSupply as GHC
 import Unsafe.Coerce
 import qualified VarEnv as GHC
 
-data GHCiState
-  = GHCiState
-      { ghciUniqSupply :: GHC.UniqSupply,
-        ghciNameCacheUpdater :: GHC.NameCacheUpdater,
-        ghciLibs :: AsteriusCachedModule,
-        ghciObjs :: M.Map FilePath AsteriusCachedModule,
-        ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusCachedModule),
-        ghciLastCompiledCoreExpr :: Int,
-        ghciSession :: ~(Session, Pipe, JSVal)
-      }
+data GHCiState = GHCiState
+  { ghciUniqSupply :: GHC.UniqSupply,
+    ghciNameCacheUpdater :: GHC.NameCacheUpdater,
+    ghciLibs :: AsteriusCachedModule,
+    ghciObjs :: M.Map FilePath AsteriusCachedModule,
+    ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusCachedModule),
+    ghciLastCompiledCoreExpr :: Int,
+    ghciSession :: ~(Session, Pipe, JSVal)
+  }
 
 {-# NOINLINE globalGHCiState #-}
 globalGHCiState :: MVar GHCiState
@@ -351,7 +351,7 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
     req_val <- evalJSVal s Expression $ jsval req_mod_val <> ".default"
     buf_val <- evalJSVal s Expression $ buffer mod_buf
     mod_val <- evalJSVal s Expression $ "WebAssembly.compile(" <> jsval buf_val <> ")"
-    i <-
+    !i <-
       evalJSVal s Expression $
         jsval rts_val
           <> ".newAsteriusInstance(Object.assign("
@@ -359,7 +359,7 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
           <> ",{module:"
           <> jsval mod_val
           <> "}))"
-    arr_buf <- evalJSVal s Expression $ buffer (encode loc)
+    !arr_buf <- evalJSVal s Expression $ buffer (encode loc)
     let runner_closure =
           jsval i <> ".symbolTable."
             <> fromString
