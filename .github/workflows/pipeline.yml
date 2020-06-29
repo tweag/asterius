@@ -291,7 +291,7 @@ jobs:
 
       - name: gen-pkgs
         run: |
-          utils/gen-pkgs.hs lts-16.2
+          utils/gen-pkgs.hs lts-16.3
           mkdir gen-pkgs
           mv cabal.config pkgs.txt gen-pkgs
 
