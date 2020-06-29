@@ -24,9 +24,13 @@ main = do
   ncu <- newNameCacheUpdater
   m <- getFile ncu "test/nomain/NoMain.unlinked.bin"
   bracket
-    (newSession defaultConfig
-      { nodeExtraArgs = ["--experimental-wasm-return-call"]
-      }) closeSession
+    ( newSession
+        defaultConfig
+          { nodeExtraArgs = ["--experimental-wasm-return-call"],
+            nodeExitOnEvalError = True
+          }
+    )
+    closeSession
     $ \s -> do
       i <-
         newAsteriusInstanceNonMain

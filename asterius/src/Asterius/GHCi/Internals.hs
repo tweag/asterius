@@ -1,4 +1,3 @@
-{-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -352,7 +351,7 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
     req_val <- evalJSVal s Expression $ jsval req_mod_val <> ".default"
     buf_val <- evalJSVal s Expression $ buffer mod_buf
     mod_val <- evalJSVal s Expression $ "WebAssembly.compile(" <> jsval buf_val <> ")"
-    !i <-
+    i <-
       evalJSVal s Expression $
         jsval rts_val
           <> ".newAsteriusInstance(Object.assign("
@@ -360,7 +359,7 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
           <> ",{module:"
           <> jsval mod_val
           <> "}))"
-    !arr_buf <- evalJSVal s Expression $ buffer (encode loc)
+    arr_buf <- evalJSVal s Expression $ buffer (encode loc)
     let runner_closure =
           jsval i <> ".symbolTable."
             <> fromString
@@ -402,7 +401,7 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
         tid =
           jsval i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
     evalNone s Expression tid
-    pure i
+    evaluate i
   where
     runner_sym = closureSymbol hsc_env "ghci" "Asterius.GHCi" $ case ty of
       GHC.THExp -> "asteriusRunQExp"
