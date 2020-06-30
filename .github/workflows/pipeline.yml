@@ -274,6 +274,50 @@ jobs:
           name: pkgs.txt
           path: pkgs.txt
 
+  test-cabal:
+    name: test-cabal
+    needs: boot
+    runs-on: ubuntu-18.04
+    steps:
+
+      - name: setup-haskell
+        uses: actions/setup-haskell@v1
+        with:
+          cabal-version: 3.2.0.0
+          stack-version: 2.3.1
+          enable-stack: true
+
+      - name: setup-node-14
+        uses: actions/setup-node@v2.0.0
+        with:
+          node-version: 14.4.0
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: setup-deps
+        run: |
+          .github/workflows/setup-deps.sh
+
+      - name: download-cache
+        uses: actions/cache@v2
+        with:
+          key: cache-${{ github.sha }}
+          path: |
+            ~/.stack
+            **/.stack-work
+
+      - name: test-cabal
+        run: |
+          . ./.envrc
+          . utils/pkgdb.sh
+          ahc-cabal v1-update
+          ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j2 \
+            Cabal
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j2 \
+            singletons
+
   gen-pkgs:
     name: gen-pkgs
     runs-on: ubuntu-18.04
