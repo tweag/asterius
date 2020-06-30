@@ -32,6 +32,7 @@ import qualified CLabel as GHC
 import qualified CmmInfo as GHC
 import Control.Concurrent
 import Control.Exception
+import Control.Monad
 import qualified CoreLint as GHC
 import qualified CorePrep as GHC
 import qualified CoreSyn as GHC
@@ -50,6 +51,7 @@ import Data.Data
 import Data.IORef
 import qualified Data.IntMap.Strict as IM
 import qualified Data.Map.Strict as M
+import Data.Maybe
 import Data.String
 import qualified ErrUtils as GHC
 import qualified FastString as GHC
@@ -75,6 +77,8 @@ import qualified SimplCore as GHC
 import qualified SimplStg as GHC
 import qualified SrcLoc as GHC
 import System.Directory
+import System.Environment.Blank
+import System.Exit
 import System.FilePath
 import System.IO
 import System.IO.Unsafe
@@ -162,6 +166,8 @@ tryCloseGHCiSession s = do
 -- only started upon 'GHC.RunTH' messages.
 asteriusStartIServ :: GHC.HscEnv -> IO GHC.IServ
 asteriusStartIServ hsc_env = do
+  ignore <- isJust <$> getEnv "ASTERIUS_TH_IGNORE"
+  when ignore exitFailure
   GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text "asteriusStartIServ"
   cache_ref <- newIORef GHC.emptyUFM
   pure
