@@ -8,7 +8,7 @@ jobs:
 
   boot:
     name: boot
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
 
       - name: setup-haskell
@@ -45,7 +45,7 @@ jobs:
   test:
     name: test-${{ matrix.backend }}
     needs: boot
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -129,7 +129,7 @@ jobs:
   ghc-testsuite:
     name: ghc-testsuite
     needs: boot
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
 
       - name: setup-haskell
@@ -171,7 +171,7 @@ jobs:
 
   profile:
     name: profile
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
 
       - name: setup-haskell
@@ -230,7 +230,7 @@ jobs:
   test-pkgs:
     name: test-pkgs
     needs: boot
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
 
       - name: setup-haskell
@@ -277,7 +277,7 @@ jobs:
   test-cabal:
     name: test-cabal
     needs: boot
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
 
       - name: setup-haskell
@@ -322,7 +322,7 @@ jobs:
 
   gen-pkgs:
     name: gen-pkgs
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     steps:
 
       - name: setup-haskell
@@ -349,7 +349,7 @@ jobs:
 
   image:
     name: image-${{ matrix.image }}
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
       matrix:
@@ -381,7 +381,7 @@ jobs:
 
   docs:
     name: docs
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     env:
       NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
       NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
