@@ -1,7 +1,7 @@
 resolver: lts-16.3
 extra-deps:
   - binaryen-0.0.1.1
-  - url: https://github.com/tweag/inline-js/archive/1b52db436c812edfeb5c17192325b612b6403586.tar.gz
+  - url: https://github.com/tweag/inline-js/archive/b9ae06a368893b49075c5c7c9e2324ff510e495b.tar.gz
     subdirs:
       - inline-js-core
 packages:

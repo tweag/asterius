@@ -55,5 +55,5 @@ main = do
           x_sp = jsval i <> ".exports.rts_getStablePtr(" <> x_ret <> ")"
           x_val' = jsval i <> ".getJSVal(" <> x_sp <> ")"
           x_val = "(async () => " <> x_val' <> ")()"
-      x <- evalBuffer s Expression x_val
+      x <- evalBuffer s x_val
       LBS.putStr x

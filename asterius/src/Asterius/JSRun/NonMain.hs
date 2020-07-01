@@ -76,13 +76,13 @@ newAsteriusInstanceNonMain s p extra_syms m = do
       wasm_path = p -<.> "wasm"
   rts_val <- importMJS s rts_path
   req_mod_val <- importMJS s req_path
-  req_val <- evalJSVal s Expression $ jsval req_mod_val <> ".default"
+  req_val <- evalJSVal s $ jsval req_mod_val <> ".default"
   mod_val <-
-    evalJSVal s Expression $
+    evalJSVal s $
       "import('fs').then(fs => fs.promises.readFile("
         <> fromString (show wasm_path)
         <> ")).then(buf => WebAssembly.compile(buf))"
-  evalJSVal s Expression $
+  evalJSVal s $
     jsval rts_val
       <> ".newAsteriusInstance(Object.assign("
       <> jsval req_val
