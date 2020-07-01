@@ -317,7 +317,7 @@ jobs:
             Cabal
           ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j2 \
             diagrams \
-            miso \
+            servant \
             singletons
 
   gen-pkgs:
