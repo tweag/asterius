@@ -9,39 +9,37 @@ module Asterius.JSRun.Main
 where
 
 import Asterius.BuildInfo
-import Data.ByteString.Builder
 import qualified Data.ByteString.Lazy as LBS
-import Data.Coerce
 import Language.JavaScript.Inline.Core
 import System.FilePath
 
-newAsteriusInstance :: JSSession -> FilePath -> LBS.ByteString -> IO JSVal
+newAsteriusInstance :: Session -> FilePath -> LBS.ByteString -> IO JSVal
 newAsteriusInstance s req_path mod_buf = do
   rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
   req_mod_val <- importMJS s req_path
-  req_val <- eval s $ takeJSVal req_mod_val <> ".default"
-  buf_val <- alloc s mod_buf
-  mod_val <- eval s $ "WebAssembly.compile(" <> takeJSVal buf_val <> ")"
-  eval s $
-    takeJSVal rts_val
+  req_val <- evalJSVal s $ jsval req_mod_val <> ".default"
+  buf_val <- evalJSVal s $ buffer mod_buf
+  mod_val <- evalJSVal s $ "WebAssembly.compile(" <> jsval buf_val <> ")"
+  evalJSVal s $
+    jsval rts_val
       <> ".newAsteriusInstance(Object.assign("
-      <> takeJSVal req_val
+      <> jsval req_val
       <> ",{module:"
-      <> takeJSVal mod_val
+      <> jsval mod_val
       <> "}))"
 
-hsMain :: String -> JSSession -> JSVal -> IO ()
+hsMain :: String -> Session -> JSVal -> IO ()
 hsMain prog_name s i =
-  eval s $
-    deRefJSVal i
+  evalNone s $
+    jsval i
       <> ".exports.main().catch(err => { if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) { "
-      <> deRefJSVal i
+      <> jsval i
       <> ".fs.writeSync(2, `"
-      <> coerce (string7 prog_name)
+      <> code prog_name
       <> ": ${err}\n`);}})"
 
-hsStdOut :: JSSession -> JSVal -> IO LBS.ByteString
-hsStdOut s i = eval s $ deRefJSVal i <> ".stdio.stdout()"
+hsStdOut :: Session -> JSVal -> IO LBS.ByteString
+hsStdOut s i = evalBuffer s $ jsval i <> ".stdio.stdout()"
 
-hsStdErr :: JSSession -> JSVal -> IO LBS.ByteString
-hsStdErr s i = eval s $ deRefJSVal i <> ".stdio.stderr()"
+hsStdErr :: Session -> JSVal -> IO LBS.ByteString
+hsStdErr s i = evalBuffer s $ jsval i <> ".stdio.stderr()"

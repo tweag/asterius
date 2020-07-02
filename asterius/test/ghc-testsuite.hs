@@ -27,11 +27,10 @@ import System.Process
 import Test.Tasty
 import Test.Tasty.HUnit
 
-data TestCase
-  = TestCase
-      { casePath :: FilePath,
-        caseStdIn, caseStdOut, caseStdErr :: LBS.ByteString
-      }
+data TestCase = TestCase
+  { casePath :: FilePath,
+    caseStdIn, caseStdOut, caseStdErr :: LBS.ByteString
+  }
   deriving (Show)
 
 -- Convert a Char to a Word8
@@ -84,14 +83,13 @@ data TestOutcome
 instance ToField TestOutcome where
   toField = toField . show
 
-data TestRecord
-  = TestRecord
-      { trOutcome :: TestOutcome,
-        -- | Path of the test case
-        trPath :: FilePath,
-        -- | If the test failed, then the error message associated to the failure.
-        trErrorMessage :: String
-      }
+data TestRecord = TestRecord
+  { trOutcome :: TestOutcome,
+    -- | Path of the test case
+    trPath :: FilePath,
+    -- | If the test failed, then the error message associated to the failure.
+    trErrorMessage :: String
+  }
   deriving (Generic)
 
 instance ToRecord TestRecord
@@ -135,12 +133,16 @@ runTestCase l_opts tlref TestCase {..} = catch m h
               }
             ""
         mod_buf <- LBS.readFile $ tmp_case_path -<.> "wasm"
-        withJSSession
-          defJSSessionOpts
-            { nodeExtraArgs =
-                ["--experimental-wasm-bigint" | "--debug" `elem` l_opts]
-                  <> [ "--experimental-wasm-return-call" ]
-            }
+        bracket
+          ( newSession
+              defaultConfig
+                { nodeExtraArgs =
+                    ["--experimental-wasm-bigint" | "--debug" `elem` l_opts]
+                      <> ["--experimental-wasm-return-call"],
+                  nodeExitOnEvalError = True
+                }
+          )
+          closeSession
           $ \s -> do
             i <- newAsteriusInstance s (tmp_case_path -<.> "req.mjs") mod_buf
             hsMain (takeBaseName tmp_case_path) s i

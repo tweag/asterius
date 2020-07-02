@@ -586,6 +586,7 @@ dhall-json
 dhall-lsp-server
 dhall-yaml
 di-core
+di-monad
 diagrams
 diagrams-contrib
 diagrams-core
