@@ -24,7 +24,7 @@ cd ..
 
 cd ghc-heap
 ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
-ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap
+ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap -v --ghc-options=-v
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap
 cd ..
 
