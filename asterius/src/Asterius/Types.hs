@@ -3,6 +3,8 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TemplateHaskell #-}
@@ -59,9 +61,12 @@ import Asterius.Types.SymbolMap (SymbolMap)
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.Types.SymbolSet (SymbolSet)
 import qualified Asterius.Types.SymbolSet as SS
+import qualified Binary as GHC
 import Control.Exception
+import Control.Monad
 import qualified Data.ByteString as BS
 import Data.Data
+import Data.Foldable
 import qualified Data.Map.Lazy as LM
 import Foreign
 import qualified Type.Reflection as TR
@@ -139,6 +144,30 @@ instance Semigroup AsteriusCachedModule where
 
 instance Monoid AsteriusCachedModule where
   mempty = AsteriusCachedModule mempty mempty
+
+instance GHC.Binary AsteriusCachedModule where
+  get bh = do
+    getObjectMagic bh
+    dependencyMap <- GHC.get bh
+    fromCachedModule <- GHC.get bh
+    pure AsteriusCachedModule {..}
+
+  put_ bh AsteriusCachedModule {..} = do
+    putObjectMagic bh
+    GHC.put_ bh dependencyMap
+    GHC.put_ bh fromCachedModule
+
+objectMagic :: BS.ByteString
+objectMagic = "!<asterius>\n"
+
+putObjectMagic :: GHC.BinHandle -> IO ()
+putObjectMagic bh = for_ (BS.unpack objectMagic) (GHC.putByte bh)
+
+getObjectMagic :: GHC.BinHandle -> IO ()
+getObjectMagic bh = do
+  magic <- replicateM (BS.length objectMagic) (GHC.getByte bh)
+  when (BS.pack magic /= objectMagic) $
+    fail "Not an Asterius object file."
 
 -- | Convert an 'AsteriusModule' to an 'AsteriusCachedModule' by laboriously
 -- computing the dependency graph for each 'EntitySymbol'. Historical note: we
@@ -685,8 +714,6 @@ $(genBinary ''AsteriusStaticsType)
 $(genBinary ''AsteriusStatics)
 
 $(genBinary ''AsteriusModule)
-
-$(genBinary ''AsteriusCachedModule)
 
 $(genBinary ''UnresolvedLocalReg)
 
