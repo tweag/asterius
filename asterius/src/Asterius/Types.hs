@@ -3,7 +3,6 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
@@ -68,7 +67,6 @@ import Control.Exception
 import Control.Monad
 import qualified Data.ByteString as BS
 import Data.Data
-import Data.Foldable
 import qualified Data.Map.Lazy as LM
 import Foreign
 import qualified Type.Reflection as TR
@@ -141,16 +139,16 @@ instance GHC.Binary AsteriusCachedModule where
     GHC.put_ bh dependencyMap
     GHC.put_ bh fromCachedModule
 
-objectMagic :: BS.ByteString
-objectMagic = "!<asterius>\n"
+objectMagic :: Word64
+objectMagic = 0x785be317b545c1f5 -- random
 
 putObjectMagic :: GHC.BinHandle -> IO ()
-putObjectMagic bh = for_ (BS.unpack objectMagic) (GHC.putByte bh)
+putObjectMagic bh = GHC.put_ bh objectMagic
 
 getObjectMagic :: GHC.BinHandle -> IO ()
 getObjectMagic bh = do
-  magic <- replicateM (BS.length objectMagic) (GHC.getByte bh)
-  when (BS.pack magic /= objectMagic) $
+  magic <- GHC.get bh
+  when (magic /= objectMagic) $
     fail "Not an Asterius object file."
 
 -- | Convert an 'AsteriusModule' to an 'AsteriusCachedModule' by laboriously
