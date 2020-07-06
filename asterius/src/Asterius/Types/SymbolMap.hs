@@ -200,6 +200,16 @@ mapKeys fn = fromListSM . (map (\(k, e) -> (fn k, e))) . toListSM
 
 -- ----------------------------------------------------------------------------
 
+instance Functor SymbolMap where
+  fmap f (SymbolMap m) = SymbolMap $ IM.map (\(k, e) -> (k, f e)) m
+
+instance Foldable SymbolMap where
+  foldr f z (SymbolMap m) = IM.foldr (\(_, e) b -> f e b) z m
+
+instance Traversable SymbolMap where
+  traverse f (SymbolMap m) =
+    SymbolMap <$> traverse (\(k, x) -> fmap (\e -> (k, e)) (f x)) m
+
 -- | /O(n*log n)/. Build a symbol map from a list of key/value pairs.
 {-# INLINE fromListSM #-}
 fromListSM :: [(EntitySymbol, a)] -> SymbolMap a
