@@ -140,7 +140,7 @@ instance GHC.Binary AsteriusCachedModule where
     GHC.put_ bh fromCachedModule
 
 objectMagic :: Word64
-objectMagic = 0x785be317b545c1f5 -- random
+objectMagic = 0x6173746572697573 -- "asterius"
 
 putObjectMagic :: GHC.BinHandle -> IO ()
 putObjectMagic bh = GHC.put_ bh objectMagic
