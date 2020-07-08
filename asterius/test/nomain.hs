@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.JSRun.NonMain
+import Asterius.Types
 import Control.Exception
 import qualified Data.ByteString.Lazy as LBS
 import Language.JavaScript.Inline.Core
@@ -22,7 +22,7 @@ main = do
     ]
       <> args
   ncu <- newNameCacheUpdater
-  m <- getFile ncu "test/nomain/NoMain.unlinked.bin"
+  m <- loadObjectRep ncu "test/nomain/NoMain.unlinked.bin"
   bracket
     ( newSession
         defaultConfig

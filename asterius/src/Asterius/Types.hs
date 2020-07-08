@@ -3,6 +3,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -18,8 +19,14 @@ module Asterius.Types
     AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
-    AsteriusCachedModule (..),
-    toCachedModule,
+    AsteriusOnDiskModule (..),
+    onDiskToInMemory,
+    inMemoryToOnDisk,
+    onDiskToObjRep,
+    AsteriusRepModule (..),
+    toAsteriusRepModule,
+    loadObjectRep,
+    loadObjectFile,
     EntitySymbol,
     entityName,
     mkEntitySymbol,
@@ -58,6 +65,7 @@ module Asterius.Types
   )
 where
 
+import Asterius.Binary.File
 import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
 import Asterius.Monoid.TH
@@ -75,7 +83,9 @@ import qualified Data.ByteString as BS
 import Data.Data
 import Data.Foldable
 import qualified Data.Map.Lazy as LM
+import qualified Data.Set as Set
 import Foreign
+import qualified IfaceEnv as GHC
 import qualified Type.Reflection as TR
 
 type BinaryenIndex = Word32
@@ -115,6 +125,8 @@ data AsteriusStatics
       }
   deriving (Show, Data)
 
+----------------------------------------------------------------------------
+
 data AsteriusModule
   = AsteriusModule
       { staticsMap :: SymbolMap AsteriusStatics,
@@ -125,27 +137,96 @@ data AsteriusModule
       }
   deriving (Show, Data)
 
--- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
--- its 'EntitySymbol' dependencies, as they are appear in the modules data
--- segments and function definitions (see function 'toCachedModule').
-data AsteriusCachedModule
-  = AsteriusCachedModule
-      { dependencyMap :: SymbolMap SymbolSet,
-        fromCachedModule :: AsteriusModule
+----------------------------------------------------------------------------
+
+mkModuleExports :: AsteriusModule -> SymbolSet
+mkModuleExports m =
+  SS.fromList
+    [ ffiExportClosure
+      | FFIExportDecl {..} <-
+          SM.elems
+            $ ffiExportDecls
+            $ ffiMarshalState m
+    ]
+
+mkModuleDependencyMap :: AsteriusModule -> SymbolMap SymbolSet
+mkModuleDependencyMap m =
+  mkDependencyMap (staticsMap m)
+    <> mkDependencyMap (functionMap m)
+    <> mkDependencyMap (globalsMap m)
+  where
+    mkDependencyMap :: Data a => SymbolMap a -> SymbolMap SymbolSet
+    mkDependencyMap = flip SM.foldrWithKey' SM.empty $ \k e ->
+      SM.insert k (collectEntitySymbols e)
+    -- Collect all entity symbols from an entity.
+    collectEntitySymbols :: Data a => a -> SymbolSet
+    collectEntitySymbols t
+      | Just TR.HRefl <- TR.eqTypeRep (TR.typeOf t) (TR.typeRep @EntitySymbol) =
+        SS.singleton t
+      | otherwise =
+        gmapQl (<>) SS.empty collectEntitySymbols t
+
+----------------------------------------------------------------------------
+
+-- | Load the representation of an object file from disk.
+loadObjectRep :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusRepModule
+loadObjectRep ncu path = tryGetFile ncu path >>= \case
+  Left {} -> pure mempty -- Note [Malformed object files] in Asterius.Ld
+  Right m -> pure $ onDiskToObjRep path m
+
+-- | Load a module in its entirety from disk.
+loadObjectFile :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusModule
+loadObjectFile ncu path = tryGetFile ncu path >>= \case
+  Left {} -> pure mempty -- Note [Malformed object files] in Asterius.Ld
+  Right m -> pure $ onDiskToInMemory m
+
+----------------------------------------------------------------------------
+
+-- | Asterius modules, as represented on disk.
+data AsteriusOnDiskModule
+  = AsteriusOnDiskModule
+      { onDiskDependencyMap :: ~(SymbolMap SymbolSet),
+        onDiskModuleExports :: ~SymbolSet,
+        onDiskStaticsMap :: ~(SymbolMap AsteriusStatics),
+        onDiskFunctionMap :: ~(SymbolMap Function),
+        onDiskGlobalsMap :: ~(SymbolMap Global),
+        onDiskSptMap :: ~(SymbolMap (Word64, Word64)),
+        onDiskFFIMarshalState :: ~FFIMarshalState
       }
   deriving (Show, Data)
 
-instance GHC.Binary AsteriusCachedModule where
+-- data AsteriusModule
+--   = AsteriusModule
+--       { staticsMap :: SymbolMap AsteriusStatics,
+--         functionMap :: SymbolMap Function,
+--         globalsMap :: SymbolMap Global,
+--         sptMap :: SymbolMap (Word64, Word64),
+--         ffiMarshalState :: FFIMarshalState
+--       }
+--   deriving (Show, Data)
+
+
+instance GHC.Binary AsteriusOnDiskModule where
   get bh = do
     getObjectMagic bh
-    dependencyMap <- GHC.get bh
-    fromCachedModule <- GHC.get bh
-    pure AsteriusCachedModule {..}
+    onDiskDependencyMap <- GHC.lazyGet bh
+    onDiskModuleExports <- GHC.lazyGet bh
+    onDiskStaticsMap <- GHC.lazyGet bh
+    onDiskFunctionMap <- GHC.lazyGet bh
+    onDiskGlobalsMap <- GHC.lazyGet bh
+    onDiskSptMap <- GHC.lazyGet bh
+    onDiskFFIMarshalState <- GHC.lazyGet bh
+    return AsteriusOnDiskModule {..}
 
-  put_ bh AsteriusCachedModule {..} = do
+  put_ bh AsteriusOnDiskModule {..} = do
     putObjectMagic bh
-    GHC.put_ bh dependencyMap
-    GHC.put_ bh fromCachedModule
+    GHC.lazyPut bh onDiskDependencyMap
+    GHC.lazyPut bh onDiskModuleExports
+    GHC.lazyPut bh onDiskStaticsMap
+    GHC.lazyPut bh onDiskFunctionMap
+    GHC.lazyPut bh onDiskGlobalsMap
+    GHC.lazyPut bh onDiskSptMap
+    GHC.lazyPut bh onDiskFFIMarshalState
 
 objectMagic :: BS.ByteString
 objectMagic = "!<asterius>\n"
@@ -159,28 +240,73 @@ getObjectMagic bh = do
   when (BS.pack magic /= objectMagic) $
     fail "Not an Asterius object file."
 
--- | Convert an 'AsteriusModule' to an 'AsteriusCachedModule' by laboriously
--- computing the dependency graph for each 'EntitySymbol'. Historical note: we
--- used to compute the dependency graph during link time but that were quite
--- inefficient (see isssue #568). Instead, we now do the same work at
--- compile-time, thus creating object files containing 'AsteriusCachedModule's
--- instead of 'AsteriusModule's.
-toCachedModule :: AsteriusModule -> AsteriusCachedModule
-toCachedModule m =
-  AsteriusCachedModule
-    { fromCachedModule = m,
-      dependencyMap = staticsMap m `add` (functionMap m `add` (globalsMap m `add` SM.empty))
+onDiskToInMemory :: AsteriusOnDiskModule -> AsteriusModule
+onDiskToInMemory AsteriusOnDiskModule {..} =
+  AsteriusModule
+    { staticsMap = onDiskStaticsMap,
+      functionMap = onDiskFunctionMap,
+      globalsMap = onDiskGlobalsMap,
+      sptMap = onDiskSptMap,
+      ffiMarshalState = onDiskFFIMarshalState
     }
-  where
-    add :: Data a => SymbolMap a -> SymbolMap SymbolSet -> SymbolMap SymbolSet
-    add = flip $ SM.foldrWithKey' (\k e -> SM.insert k (collectEntitySymbols e))
-    -- Collect all entity symbols from an entity.
-    collectEntitySymbols :: Data a => a -> SymbolSet
-    collectEntitySymbols t
-      | Just TR.HRefl <- TR.eqTypeRep (TR.typeOf t) (TR.typeRep @EntitySymbol) =
-        SS.singleton t
-      | otherwise =
-        gmapQl (<>) SS.empty collectEntitySymbols t
+
+inMemoryToOnDisk :: AsteriusModule -> AsteriusOnDiskModule
+inMemoryToOnDisk m@AsteriusModule {..} =
+  AsteriusOnDiskModule
+    { onDiskDependencyMap = mkModuleDependencyMap m,
+      onDiskModuleExports = mkModuleExports m,
+      onDiskStaticsMap = staticsMap,
+      onDiskFunctionMap = functionMap,
+      onDiskGlobalsMap = globalsMap,
+      onDiskSptMap = sptMap,
+      onDiskFFIMarshalState = ffiMarshalState
+    }
+
+onDiskToObjRep :: FilePath -> AsteriusOnDiskModule -> AsteriusRepModule
+onDiskToObjRep obj_path m =
+  AsteriusRepModule
+    { dependencyMap = onDiskDependencyMap m,
+      moduleExports = onDiskModuleExports m,
+      objectSources = Set.singleton obj_path,
+      archiveSources = mempty,
+      inMemoryModule = mempty
+    }
+
+----------------------------------------------------------------------------
+
+-- | An 'AsteriusRepModule' is the representation of an 'AsteriusModule' before
+-- @gcSections@ has processed it. This representation is supposed to capture
+-- __all__ data, whether it comes from object files, archive files, or
+-- in-memory entities created using our EDSL.
+data AsteriusRepModule
+  = AsteriusRepModule
+      { -- | (Cached, on disk) 'EntitySymbol' dependencies.
+        dependencyMap :: SymbolMap SymbolSet,
+        -- | (Cached, on disk) Exported symbols.
+        moduleExports :: SymbolSet,
+        -- | (not on disk) Object file dependencies.
+        objectSources :: Set.Set FilePath,
+        -- | (not on disk) Archive file dependencies.
+        archiveSources :: Set.Set FilePath,
+        -- | (not on disk) In-memory parts of the module that are not yet stored anywhere on disk yet.
+        inMemoryModule :: AsteriusModule
+      }
+  deriving (Show, Data)
+
+-- | Convert an 'AsteriusModule' to an 'AsteriusRepModule' by laboriously
+-- computing the dependency graph for each 'EntitySymbol' and all the
+-- 'EntitySymbol's the module exports.
+toAsteriusRepModule :: AsteriusModule -> AsteriusRepModule
+toAsteriusRepModule m =
+  AsteriusRepModule
+    { dependencyMap = mkModuleDependencyMap m,
+      moduleExports = mkModuleExports m,
+      objectSources = mempty,
+      archiveSources = mempty,
+      inMemoryModule = m
+    }
+
+----------------------------------------------------------------------------
 
 data UnresolvedLocalReg
   = UniqueLocalReg Int ValueType
@@ -678,7 +804,7 @@ $(genNFData ''AsteriusStatics)
 
 $(genNFData ''AsteriusModule)
 
-$(genNFData ''AsteriusCachedModule)
+$(genNFData ''AsteriusRepModule)
 
 $(genNFData ''UnresolvedLocalReg)
 
@@ -752,8 +878,6 @@ $(genBinary ''AsteriusStaticsType)
 
 $(genBinary ''AsteriusStatics)
 
-$(genBinary ''AsteriusModule)
-
 $(genBinary ''UnresolvedLocalReg)
 
 $(genBinary ''UnresolvedGlobalReg)
@@ -820,14 +944,14 @@ $(genBinary ''FFIMarshalState)
 
 $(genSemigroup ''AsteriusModule)
 
-$(genSemigroup ''AsteriusCachedModule)
+$(genSemigroup ''AsteriusRepModule)
 
 $(genSemigroup ''FFIMarshalState)
 
--- Semigroup instances
+-- Monoid instances
 
 $(genMonoid ''AsteriusModule)
 
-$(genMonoid ''AsteriusCachedModule)
+$(genMonoid ''AsteriusRepModule)
 
 $(genMonoid ''FFIMarshalState)

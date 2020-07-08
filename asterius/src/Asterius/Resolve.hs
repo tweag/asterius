@@ -108,11 +108,23 @@ linkStart ::
   Bool ->
   Bool ->
   Bool ->
-  AsteriusCachedModule ->
+  AsteriusRepModule ->
   SS.SymbolSet ->
   [EntitySymbol] ->
+  IO (AsteriusModule, Module, LinkReport)
+linkStart debug gc_sections verbose_err module_rep root_syms export_funcs = do
+  (force -> !merged_m0) <-
+    if gc_sections
+      then gcSections verbose_err module_rep root_syms export_funcs
+      else fromAsteriusRepModule module_rep
+  return $ linkStart' debug verbose_err merged_m0
+
+linkStart' ::
+  Bool ->
+  Bool ->
+  AsteriusModule ->
   (AsteriusModule, Module, LinkReport)
-linkStart debug gc_sections verbose_err store root_syms export_funcs =
+linkStart' debug verbose_err merged_m0 =
   ( merged_m,
     result_m,
     LinkReport
@@ -126,13 +138,9 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
       }
   )
   where
-    merged_m0
-      | gc_sections = gcSections verbose_err store root_syms export_funcs
-      | otherwise = fromCachedModule store
-    !merged_m0_evaluated = force merged_m0
     merged_m1
-      | debug = addMemoryTrap merged_m0_evaluated
-      | otherwise = merged_m0_evaluated
+      | debug = addMemoryTrap merged_m0
+      | otherwise = merged_m0
     !merged_m
       | verbose_err = merged_m1
       | otherwise =
