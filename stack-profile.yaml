@@ -8,7 +8,7 @@ build:
 
 resolver: lts-16.4
 extra-deps:
-  - binaryen-0.0.1.1
+  - https://github.com/tweag/haskell-binaryen/archive/f25d5af56ac188b0bada9e7c7bfd0910da427993.tar.gz
   - url: https://github.com/tweag/inline-js/archive/9ef93df2026c11d0bbee0b96287eb41042bf437d.tar.gz
     subdirs:
       - inline-js-core
