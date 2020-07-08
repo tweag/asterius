@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Asterius.Types.EntitySymbol
   ( EntitySymbol,
     entityName,
     mkEntitySymbol,
+    stripWrapperSuffix,
     getKeyES,
   )
 where
@@ -34,6 +36,12 @@ entityName (EntitySymbol k) = GHC.fastStringToByteString k
 {-# INLINE mkEntitySymbol #-}
 mkEntitySymbol :: BS.ByteString -> EntitySymbol
 mkEntitySymbol = EntitySymbol . GHC.mkFastStringByteString
+
+-- | Strip the suffix @_wrapper@ from an 'EntitySymbol'.
+{-# INLINE stripWrapperSuffix #-}
+stripWrapperSuffix :: EntitySymbol -> Maybe EntitySymbol
+stripWrapperSuffix sym =
+  mkEntitySymbol <$> BS.stripSuffix "_wrapper" (entityName sym)
 
 -- | Compute the key ('Int') of the 'GHC.Unique' of an 'EntitySymbol'.
 {-# INLINE getKeyES #-}
