@@ -18,7 +18,7 @@ module Asterius.Types
     AsteriusStaticsType (..),
     AsteriusStatics (..),
     AsteriusModule (..),
-    AsteriusCachedModule(..),
+    AsteriusCachedModule (..),
     toCachedModule,
     EntitySymbol,
     entityName,
@@ -55,7 +55,9 @@ where
 
 import Asterius.Binary.Orphans ()
 import Asterius.Binary.TH
+import Asterius.Monoid.TH
 import Asterius.NFData.TH
+import Asterius.Semigroup.TH
 import Asterius.Types.EntitySymbol
 import Asterius.Types.SymbolMap (SymbolMap)
 import qualified Asterius.Types.SymbolMap as SM
@@ -117,17 +119,6 @@ data AsteriusModule
       }
   deriving (Show, Data)
 
-instance Semigroup AsteriusModule where
-  AsteriusModule sm0 fm0 spt0 mod_ffi_state0 <> AsteriusModule sm1 fm1 spt1 mod_ffi_state1 =
-    AsteriusModule
-      (sm0 <> sm1)
-      (fm0 <> fm1)
-      (spt0 <> spt1)
-      (mod_ffi_state0 <> mod_ffi_state1)
-
-instance Monoid AsteriusModule where
-  mempty = AsteriusModule mempty mempty mempty mempty
-
 -- | An 'AsteriusCachedModule' in an 'AsteriusModule' along with  with all of
 -- its 'EntitySymbol' dependencies, as they are appear in the modules data
 -- segments and function definitions (see function 'toCachedModule').
@@ -137,13 +128,6 @@ data AsteriusCachedModule
         fromCachedModule :: AsteriusModule
       }
   deriving (Show, Data)
-
-instance Semigroup AsteriusCachedModule where
-  AsteriusCachedModule dm0 m0 <> AsteriusCachedModule dm1 m1 =
-    AsteriusCachedModule (dm0 <> dm1) (m0 <> m1)
-
-instance Monoid AsteriusCachedModule where
-  mempty = AsteriusCachedModule mempty mempty
 
 instance GHC.Binary AsteriusCachedModule where
   get bh = do
@@ -184,7 +168,6 @@ toCachedModule m =
   where
     add :: Data a => SymbolMap a -> SymbolMap SymbolSet -> SymbolMap SymbolSet
     add = flip $ SM.foldrWithKey' (\k e -> SM.insert k (collectEntitySymbols e))
-
     -- Collect all entity symbols from an entity.
     collectEntitySymbols :: Data a => a -> SymbolSet
     collectEntitySymbols t
@@ -627,16 +610,6 @@ data FFIMarshalState
       }
   deriving (Show, Data)
 
-instance Semigroup FFIMarshalState where
-  s0 <> s1 =
-    FFIMarshalState
-      { ffiImportDecls = ffiImportDecls s0 <> ffiImportDecls s1,
-        ffiExportDecls = ffiExportDecls s0 <> ffiExportDecls s1
-      }
-
-instance Monoid FFIMarshalState where
-  mempty = FFIMarshalState {ffiImportDecls = mempty, ffiExportDecls = mempty}
-
 -- NFData instances
 
 $(genNFData ''AsteriusCodeGenError)
@@ -766,3 +739,19 @@ $(genBinary ''FFIImportDecl)
 $(genBinary ''FFIExportDecl)
 
 $(genBinary ''FFIMarshalState)
+
+-- Semigroup instances
+
+$(genSemigroup ''AsteriusModule)
+
+$(genSemigroup ''AsteriusCachedModule)
+
+$(genSemigroup ''FFIMarshalState)
+
+-- Semigroup instances
+
+$(genMonoid ''AsteriusModule)
+
+$(genMonoid ''AsteriusCachedModule)
+
+$(genMonoid ''FFIMarshalState)
