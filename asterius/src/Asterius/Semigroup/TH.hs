@@ -9,6 +9,14 @@ where
 import Data.List (foldl')
 import Language.Haskell.TH
 
+-- | Generate a 'Semigroup' instance of the form
+--
+-- > instance Semigroup TyCon where
+-- >   DataCon a1 ... an <> DataCon b1 .... bn =
+-- >     DataCon (a1 <> b1) ... (an <> bn)
+--
+-- Note that this approach works only for monomorphic datatypes with a single
+-- data constructor, whose fields are themselves all instances of 'Semigroup'.
 genSemigroup :: Name -> Q [Dec]
 genSemigroup ty = do
   TyConI dec <- reify ty

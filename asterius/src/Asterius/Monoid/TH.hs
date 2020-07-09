@@ -9,6 +9,13 @@ where
 import Data.List (foldl')
 import Language.Haskell.TH
 
+-- | Generate a 'Monoid' instance of the form
+--
+-- > instance Monoid TyCon where
+-- >   mempty = DataCon mempty ... mempty
+--
+-- Note that this approach works only for monomorphic datatypes with a single
+-- data constructor, whose fields are themselves all instances of 'Monoid'.
 genMonoid :: Name -> Q [Dec]
 genMonoid ty = do
   TyConI dec <- reify ty
