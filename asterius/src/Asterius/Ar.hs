@@ -29,17 +29,15 @@ where
 import Asterius.Binary.ByteString
 import Asterius.Types
 import Control.Monad
+import Data.Binary.Get
 import Data.Binary.Put
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Lazy as LBS
-import Data.Char
 import Data.Foldable
 import Data.Traversable
 import GHC.IO.Unsafe
 import qualified IfaceEnv as GHC
-import System.Exit (die)
-import System.IO
 
 -------------------------------------------------------------------------------
 
@@ -101,7 +99,7 @@ writeArchiveToFile fp = LBS.writeFile fp . runPut . putArchive
 -- values anyway).
 loadArchive :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
 loadArchive ncu p = do
-  entries <- walkArchiveFile p
+  Archive entries <- walkArchiveFile p
   foldlM
     ( \acc entry -> tryGetBS ncu entry >>= \case
         Left _ -> pure acc
@@ -110,39 +108,37 @@ loadArchive ncu p = do
     mempty
     entries
 
--------------------------------------------------------------------------------
+-- | Archives have numeric values padded with '\x20' to the right.
+getPaddedInt :: BS.ByteString -> Int
+getPaddedInt = read . CBS.unpack . CBS.takeWhile (/= '\x20')
 
-walkArchiveFile :: FilePath -> IO [CBS.ByteString]
-walkArchiveFile path = withBinaryFile path ReadMode $ \h ->
-  hFileSize h >>= walkArchive h
-  where
-    walkError msg = die $ "Asterius.Ar.walkArchiveFile: " ++ msg
-    archLF = "!<arch>\x0a" -- global magic, 8 bytes
-    walkArchive :: Handle -> Integer -> IO [CBS.ByteString]
-    walkArchive h archiveSize = do
-      global <- BS.hGet h (BS.length archLF)
-      unless (global == archLF) $ walkError "Bad global header"
-      go $ toInteger $ BS.length archLF
-      where
-        go :: Integer -> IO [CBS.ByteString]
-        go offset = case compare offset archiveSize of
-          EQ -> pure []
-          GT -> walkError $ "Archive truncated at offset " ++ show offset
-          LT -> do
-            -- Get the size of the file (ignore the rest of the header).
-            hSeek h AbsoluteSeek (offset + 48)
-            objSize <- do
-              size <- BS.hGet h 10
-              case reads (CBS.unpack size) of
-                [(n, s)] | all isSpace s -> pure n
-                _ -> walkError $ "Bad file size in header at offset " ++ show offset
-            -- Get the contents of the object file.
-            hSeek h AbsoluteSeek (offset + 60) -- skip the whole header
-            object <- BS.hGet h (fromIntegral objSize)
-            -- Get the rest of the contents.
-            let nextHeader =
-                  offset + 60 + if odd objSize then objSize + 1 else objSize
-            hSeek h AbsoluteSeek nextHeader
-            objects <- go nextHeader
-            -- Combine em.
-            pure (object : objects)
+getArchMagic :: Get ()
+getArchMagic = do
+  magic <- liftM CBS.unpack $ getByteString 8
+  when (magic /= "!<arch>\n")
+    $ fail
+    $ "Invalid magic number " ++ show magic
+
+getEntry :: Get CBS.ByteString
+getEntry = do
+  skip 48
+  size <- getPaddedInt <$> getByteString 10
+  skip 2
+  file <- getByteString size
+  -- data sections are two byte aligned
+  when (odd size) $ skip 1
+  pure file
+
+getMany :: Get a -> Get [a]
+getMany fn = do
+  is_empty <- isEmpty
+  if is_empty
+    then return []
+    else (:) <$> fn <*> getMany fn
+
+getArchive :: Get Archive
+getArchive = getArchMagic *> (Archive <$> getMany getEntry)
+
+walkArchiveFile :: FilePath -> IO Archive
+walkArchiveFile path =
+  runGet getArchive . LBS.fromChunks . pure <$> BS.readFile path
