@@ -112,7 +112,7 @@ linkStart ::
 linkStart debug gc_sections verbose_err store root_syms export_funcs =
   ( merged_m,
     result_m,
-    mempty
+    LinkReport
       { staticsSymbolMap = ss_sym_map,
         functionSymbolMap = func_sym_map,
         infoTableSet = makeInfoTableSet merged_m ss_sym_map,
