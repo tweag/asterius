@@ -23,29 +23,3 @@ data LinkReport
   deriving (Show)
 
 $(genBinary ''LinkReport)
-
-instance Semigroup LinkReport where
-  r0 <> r1 =
-    LinkReport
-      { staticsSymbolMap = staticsSymbolMap r0 <> staticsSymbolMap r1,
-        functionSymbolMap = functionSymbolMap r0 <> functionSymbolMap r1,
-        infoTableSet = infoTableSet r0 <> infoTableSet r1,
-        tableSlots = 0,
-        staticMBlocks = 0,
-        sptEntries = sptEntries r0 <> sptEntries r1,
-        bundledFFIMarshalState =
-          bundledFFIMarshalState r0
-            <> bundledFFIMarshalState r1
-      }
-
-instance Monoid LinkReport where
-  mempty =
-    LinkReport
-      { staticsSymbolMap = mempty,
-        functionSymbolMap = mempty,
-        infoTableSet = mempty,
-        tableSlots = 0,
-        staticMBlocks = 0,
-        sptEntries = mempty,
-        bundledFFIMarshalState = mempty
-      }
