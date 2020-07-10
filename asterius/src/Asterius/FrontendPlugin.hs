@@ -12,6 +12,7 @@ import Asterius.CodeGen
 import Asterius.Foreign.DsForeign
 import Asterius.Foreign.TcForeign
 import Asterius.GHCi.Internals
+import Asterius.Internals.PrettyShow
 import Asterius.JSFFI
 import Asterius.Types
 import Asterius.TypesConv
@@ -85,9 +86,9 @@ frontendPlugin = makeFrontendPlugin $ do
                 putFile obj_path $ toCachedModule m
                 when is_debug $ do
                   let p = (obj_path -<.>)
-                  writeFile (p "dump-wasm-ast") $ show m
+                  writeFile (p "dump-wasm-ast") =<< prettyShow m
                   cmm_raw <- Stream.collect cmmRaw
-                  writeFile (p "dump-cmm-raw-ast") $ show cmm_raw
+                  writeFile (p "dump-cmm-raw-ast") =<< prettyShow cmm_raw
                   asmPrint dflags (p "dump-cmm-raw") cmm_raw,
         withCmmIR = \ir@CmmIR {..} obj_path -> do
           dflags <- GHC.getDynFlags
@@ -102,8 +103,8 @@ frontendPlugin = makeFrontendPlugin $ do
                 putFile obj_path $ toCachedModule m
                 when is_debug $ do
                   let p = (obj_path -<.>)
-                  writeFile (p "dump-wasm-ast") $ show m
+                  writeFile (p "dump-wasm-ast") =<< prettyShow m
                   cmm_raw <- Stream.collect cmmRaw
-                  writeFile (p "dump-cmm-raw-ast") $ show cmm_raw
+                  writeFile (p "dump-cmm-raw-ast") =<< prettyShow cmm_raw
                   asmPrint dflags (p "dump-cmm-raw") cmm_raw
       }

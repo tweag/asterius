@@ -21,9 +21,3 @@ These scripts are meant to be called at the project root directory.
   of `asterius`, the boot cache may be out-of-sync so you need to run this
   script. Set the `ASTERIUS_DEBUG=1` environment variable to enable the IR
   dumps.
-
-## Formatting IR dumps with `pretty-show`
-
-`utils/format.hs` is a script to format IR dumps with `pretty-show`. It's used
-in very early days of this project and most likely bit rotten; open an issue to
-fix this script when the IR dumps need to be eyeballed again.
