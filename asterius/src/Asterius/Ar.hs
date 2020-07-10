@@ -9,9 +9,7 @@
 -- Copyright   :  (c) 2018 EURL Tweag
 -- License     :  All rights reserved (see LICENCE file in the distribution).
 --
--- Creation and loading of @ar@ files. We use a GNU-style format for archives;
--- the first entry is always the extended filename table, named @"//"@, and the
--- following entries are the object files.
+-- Creation and loading of @ar@ files.
 --
 -- Historical Note: This implementation is adapted from GHC's Ar.hs. Initially,
 -- ahc-cabal used GNU ar internally, but that was non portable (see issues #649
@@ -56,10 +54,10 @@ putPaddedString pad padding s =
 putArchMagic :: Put
 putArchMagic = putByteString $ CBS.pack "!<arch>\n"
 
--- | Put an archive entry. Note that this assumes that the entry has been
--- preprocessed to account for the extended file name table section. That is,
--- the name is assumed to fit in 16 characters; if it's longer, it gets
--- truncated.
+-- | Put the contents of an object file as an archive entry. Note that this
+-- sets all entry metadata, including the filename, to defaults. The only
+-- exception to this rule is the filesize which is set to the size of the given
+-- contents.
 putArchEntry :: BS.ByteString -> PutM ()
 putArchEntry file_contents = do
   -- total: 60 bytes
@@ -79,10 +77,9 @@ putArchEntry file_contents = do
 putArchive :: Archive -> PutM ()
 putArchive (Archive as) = putArchMagic >> mapM_ putArchEntry as
 
--- | Create a library archive from a bunch of object files. Though the name of
--- each object file is preserved, we set the timestamp, owner ID, group ID, and
--- file mode to default values (0, 0, 0, and 0644, respectively). When we
--- deserialize (see 'loadArchiveRep'), the metadata is ignored anyway.
+-- | Create a library archive from a bunch of object files. All metadata
+-- (including the filename) are set to defaults; when we deserialize (see
+-- 'loadArchive'), the metadata is ignored anyway.
 createArchive :: FilePath -> [FilePath] -> IO ()
 createArchive arFile objFiles = do
   blobs <- for objFiles (unsafeDupableInterleaveIO . BS.readFile)
