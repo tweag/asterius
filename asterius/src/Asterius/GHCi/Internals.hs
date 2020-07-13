@@ -354,43 +354,41 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
     rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
     mod_buf <- LBS.readFile $ p -<.> "wasm"
     req_mod_val <- importMJS s $ p -<.> "req.mjs"
-    req_val <- evalJSVal s $ jsval req_mod_val <> ".default"
-    buf_val <- evalJSVal s $ buffer mod_buf
-    mod_val <- evalJSVal s $ "WebAssembly.compile(" <> jsval buf_val <> ")"
+    req_val <- eval @JSVal s $ toJS req_mod_val <> ".default"
+    mod_val <- eval @JSVal s $ "WebAssembly.compile(" <> toJS mod_buf <> ")"
     i <-
-      evalJSVal s $
-        jsval rts_val
+      eval s $
+        toJS rts_val
           <> ".newAsteriusInstance(Object.assign("
-          <> jsval req_val
+          <> toJS req_val
           <> ",{module:"
-          <> jsval mod_val
+          <> toJS mod_val
           <> "}))"
-    arr_buf <- evalJSVal s $ buffer (encode loc)
     let runner_closure =
-          jsval i <> ".symbolTable."
+          toJS i <> ".symbolTable."
             <> fromString
               (CBS.unpack (entityName runner_sym))
         buf_conv_closure =
-          jsval i <> ".symbolTable."
+          toJS i <> ".symbolTable."
             <> fromString
               (CBS.unpack (entityName buf_conv_sym))
-        uint8_arr = "new Uint8Array(" <> jsval arr_buf <> ")"
+        uint8_arr = "new Uint8Array(" <> toJS (encode loc) <> ")"
         uint8_arr_sn =
-          jsval i
+          toJS i
             <> ".exports.context.stablePtrManager.newJSVal("
             <> uint8_arr
             <> ")"
         uint8_arr_closure =
-          jsval i <> ".exports.rts_mkJSVal(" <> uint8_arr_sn <> ")"
+          toJS i <> ".exports.rts_mkJSVal(" <> uint8_arr_sn <> ")"
         bs_closure =
-          jsval i
+          toJS i
             <> ".exports.rts_apply("
             <> buf_conv_closure
             <> ","
             <> uint8_arr_closure
             <> ")"
         runner_closure' =
-          jsval i
+          toJS i
             <> ".exports.rts_apply("
             <> runner_closure
             <> ","
@@ -398,15 +396,15 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
             <> ")"
         hv_closure = fromString $ show q
         applied_closure =
-          jsval i
+          toJS i
             <> ".exports.rts_apply("
             <> runner_closure'
             <> ","
             <> hv_closure
             <> ")"
         tid =
-          jsval i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
-    evalNone s tid
+          toJS i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
+    eval @() s tid
     evaluate i
   where
     runner_sym = closureSymbol hsc_env "ghci" "Asterius.GHCi" $ case ty of
@@ -427,12 +425,12 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
 asteriusRunModFinalizers :: GHC.HscEnv -> Session -> JSVal -> IO ()
 asteriusRunModFinalizers hsc_env s i = do
   let run_mod_fin_closure =
-        jsval i <> ".symbolTable."
+        toJS i <> ".symbolTable."
           <> fromString
             (CBS.unpack (entityName run_mod_fin_sym))
       tid =
-        jsval i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
-  evalNone s tid
+        toJS i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
+  eval @() s tid
   pure ()
   where
     run_mod_fin_sym =

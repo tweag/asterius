@@ -39,21 +39,20 @@ main = do
           ["base_AsteriusziTopHandler_runNonIO_closure", "NoMain_x_closure"]
           m
       let x_closure =
-            jsval i
+            toJS i
               <> ".exports.rts_apply("
-              <> jsval i
+              <> toJS i
               <> ".symbolTable.base_AsteriusziTopHandler_runNonIO_closure,"
-              <> jsval i
+              <> toJS i
               <> ".symbolTable.NoMain_x_closure)"
           x_tid =
             "await "
-              <> jsval i
+              <> toJS i
               <> ".exports.rts_evalIO("
               <> x_closure
               <> ")"
-          x_ret = jsval i <> ".exports.getTSOret(" <> x_tid <> ")"
-          x_sp = jsval i <> ".exports.rts_getStablePtr(" <> x_ret <> ")"
-          x_val' = jsval i <> ".getJSVal(" <> x_sp <> ")"
-          x_val = "(async () => " <> x_val' <> ")()"
-      x <- evalBuffer s x_val
+          x_ret = toJS i <> ".exports.getTSOret(" <> x_tid <> ")"
+          x_sp = toJS i <> ".exports.rts_getStablePtr(" <> x_ret <> ")"
+          x_val = toJS i <> ".getJSVal(" <> x_sp <> ")"
+      x <- eval s x_val
       LBS.putStr x
