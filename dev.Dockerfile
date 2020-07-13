@@ -9,7 +9,7 @@ ENV \
   PATH=/root/.local/bin:/root/.nvm/versions/node/v14.5.0/bin:${PATH}
 
 RUN \
-  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200713T085630Z sid main contrib non-free' > /etc/apt/sources.list && \
+  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200713T150707Z sid main contrib non-free' > /etc/apt/sources.list && \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
