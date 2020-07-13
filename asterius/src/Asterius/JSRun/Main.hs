@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
 module Asterius.JSRun.Main
   ( newAsteriusInstance,
@@ -10,6 +11,7 @@ where
 
 import Asterius.BuildInfo
 import qualified Data.ByteString.Lazy as LBS
+import Data.String
 import Language.JavaScript.Inline.Core
 import System.FilePath
 
@@ -17,29 +19,28 @@ newAsteriusInstance :: Session -> FilePath -> LBS.ByteString -> IO JSVal
 newAsteriusInstance s req_path mod_buf = do
   rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
   req_mod_val <- importMJS s req_path
-  req_val <- evalJSVal s $ jsval req_mod_val <> ".default"
-  buf_val <- evalJSVal s $ buffer mod_buf
-  mod_val <- evalJSVal s $ "WebAssembly.compile(" <> jsval buf_val <> ")"
-  evalJSVal s $
-    jsval rts_val
+  req_val <- eval @JSVal s $ toJS req_mod_val <> ".default"
+  mod_val <- eval @JSVal s $ "WebAssembly.compile(" <> toJS mod_buf <> ")"
+  eval s $
+    toJS rts_val
       <> ".newAsteriusInstance(Object.assign("
-      <> jsval req_val
+      <> toJS req_val
       <> ",{module:"
-      <> jsval mod_val
+      <> toJS mod_val
       <> "}))"
 
 hsMain :: String -> Session -> JSVal -> IO ()
 hsMain prog_name s i =
-  evalNone s $
-    jsval i
+  eval s $
+    toJS i
       <> ".exports.main().catch(err => { if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) { "
-      <> jsval i
+      <> toJS i
       <> ".fs.writeSync(2, `"
-      <> code prog_name
+      <> fromString prog_name
       <> ": ${err}\n`);}})"
 
 hsStdOut :: Session -> JSVal -> IO LBS.ByteString
-hsStdOut s i = evalBuffer s $ jsval i <> ".stdio.stdout()"
+hsStdOut s i = eval s $ toJS i <> ".stdio.stdout()"
 
 hsStdErr :: Session -> JSVal -> IO LBS.ByteString
-hsStdErr s i = evalBuffer s $ jsval i <> ".stdio.stderr()"
+hsStdErr s i = eval s $ toJS i <> ".stdio.stderr()"
