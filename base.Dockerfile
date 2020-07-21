@@ -3,7 +3,7 @@ FROM debian:sid-20200607
 ARG DEBIAN_FRONTEND=noninteractive
 
 ENV \
-  ASTERIUS_LIB_DIR=/root/.asterius-local-install-root/share/x86_64-linux-ghc-8.8.3/asterius-0.0.1/.boot/asterius_lib \
+  ASTERIUS_LIB_DIR=/root/.asterius-local-install-root/share/x86_64-linux-ghc-8.8.4/asterius-0.0.1/.boot/asterius_lib \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
