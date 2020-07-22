@@ -97,7 +97,7 @@ profile data of all Asterius executables. The `GHCRTS` environment variable can
 propagate to all processes.
 
 See the relevant
-[section](https://downloads.haskell.org/~ghc/8.8.3/docs/html/users_guide/profiling.html)
+[section](https://downloads.haskell.org/~ghc/8.8.4/docs/html/users_guide/profiling.html)
 in the GHC user guide for more information on profiling Haskell apps. There are
 also some third party applications useful for analyzing the profiling data, e.g.
 [`eventlog2html`](https://github.com/mpickering/eventlog2html),

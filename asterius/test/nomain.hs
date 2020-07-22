@@ -26,8 +26,7 @@ main = do
   bracket
     ( newSession
         defaultConfig
-          { nodeExtraArgs = ["--experimental-wasm-return-call"],
-            nodeExitOnEvalError = True
+          { nodeExtraArgs = ["--experimental-wasm-return-call"]
           }
     )
     closeSession
@@ -53,6 +52,7 @@ main = do
               <> ")"
           x_ret = toJS i <> ".exports.getTSOret(" <> x_tid <> ")"
           x_sp = toJS i <> ".exports.rts_getStablePtr(" <> x_ret <> ")"
-          x_val = toJS i <> ".getJSVal(" <> x_sp <> ")"
+          x_val' = toJS i <> ".getJSVal(" <> x_sp <> ")"
+          x_val = "(async () => " <> x_val' <> ")()"
       x <- eval s x_val
       LBS.putStr x

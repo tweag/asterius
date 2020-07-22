@@ -138,8 +138,7 @@ runTestCase l_opts tlref TestCase {..} = catch m h
               defaultConfig
                 { nodeExtraArgs =
                     ["--experimental-wasm-bigint" | "--debug" `elem` l_opts]
-                      <> ["--experimental-wasm-return-call"],
-                  nodeExitOnEvalError = True
+                      <> ["--experimental-wasm-return-call"]
                 }
           )
           closeSession

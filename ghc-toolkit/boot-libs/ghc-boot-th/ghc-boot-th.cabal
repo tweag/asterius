@@ -3,7 +3,7 @@
 -- ghc-boot-th.cabal.in, not ghc-boot-th.cabal.
 
 name:           ghc-boot-th
-version:        8.8.3
+version:        8.8.4
 license:        BSD3
 license-file:   LICENSE
 category:       GHC

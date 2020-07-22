@@ -139,8 +139,7 @@ newGHCiSession = do
           nodeExtraEnv =
             [ ("ASTERIUS_NODE_READ_FD", show node_read_fd),
               ("ASTERIUS_NODE_WRITE_FD", show node_write_fd)
-            ],
-          nodeExitOnEvalError = True
+            ]
         }
   _ <- c_close node_read_fd
   _ <- c_close node_write_fd
