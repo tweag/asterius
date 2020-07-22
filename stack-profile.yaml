@@ -10,7 +10,7 @@ resolver: lts-16.6
 compiler: ghc-8.8.4
 extra-deps:
   - binaryen-0.0.2.0
-  - url: https://github.com/tweag/inline-js/archive/9a8812cf3d1527210a2c6d7485ef9b3e16657aff.tar.gz
+  - url: https://github.com/tweag/inline-js/archive/88da45a0d372bb2fed46e5d42f644641f16fe689.tar.gz
     subdirs:
       - inline-js-core
 packages:
