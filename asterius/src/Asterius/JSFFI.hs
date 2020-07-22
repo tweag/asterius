@@ -50,8 +50,8 @@ recoverWasmImportFunctionType ffi_safety FFIFunctionType {..}
   | otherwise = FunctionType {paramTypes = param_types, returnTypes = []}
   where
     is_unsafe = ffi_safety == FFIUnsafe
-    param_types = map (const F64) ffiParamTypes
-    ret_types = map (const F64) ffiResultTypes
+    param_types = map recoverWasmWrapperValueType ffiParamTypes
+    ret_types = map recoverWasmWrapperValueType ffiResultTypes
 
 recoverWasmWrapperFunctionType :: FFISafety -> FFIFunctionType -> FunctionType
 recoverWasmWrapperFunctionType ffi_safety FFIFunctionType {..}
