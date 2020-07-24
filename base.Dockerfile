@@ -23,7 +23,6 @@ RUN \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
-    libnuma-dev \
     python3-minimal \
     zlib1g-dev && \
   cp \

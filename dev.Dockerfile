@@ -23,7 +23,6 @@ RUN \
     libffi-dev \
     libgmp-dev \
     libncurses-dev \
-    libnuma-dev \
     openssh-client \
     python3-pip \
     ripgrep \

@@ -8,8 +8,7 @@ sudo apt install -y \
   alex \
   c2hs \
   cpphs \
-  happy \
-  libnuma-dev
+  happy
 
 curl -L https://github.com/WebAssembly/binaryen/archive/version_95.tar.gz | tar xz -C /tmp
 cd /tmp/binaryen-version_95
