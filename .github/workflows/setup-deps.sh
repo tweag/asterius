@@ -11,8 +11,8 @@ sudo apt install -y \
   happy \
   libnuma-dev
 
-curl -L https://github.com/WebAssembly/binaryen/archive/version_94.tar.gz | tar xz -C /tmp
-cd /tmp/binaryen-version_94
+curl -L https://github.com/WebAssembly/binaryen/archive/version_95.tar.gz | tar xz -C /tmp
+cd /tmp/binaryen-version_95
 mkdir build
 cd build
 cmake \
