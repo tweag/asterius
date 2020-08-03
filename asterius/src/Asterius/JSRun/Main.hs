@@ -10,6 +10,7 @@ module Asterius.JSRun.Main
 where
 
 import Asterius.BuildInfo
+import Control.Exception
 import qualified Data.ByteString.Lazy as LBS
 import Data.String
 import Language.JavaScript.Inline.Core
@@ -31,13 +32,16 @@ newAsteriusInstance s req_path mod_buf = do
 
 hsMain :: String -> Session -> JSVal -> IO ()
 hsMain prog_name s i =
-  eval s $
-    toJS i
-      <> ".exports.main().catch(err => { if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) { "
-      <> toJS i
-      <> ".fs.writeSync(2, `"
-      <> fromString prog_name
-      <> ": ${err}\n`);}})"
+  evaluate
+    =<< eval
+      s
+      ( toJS i
+          <> ".exports.main().catch(err => { if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) { "
+          <> toJS i
+          <> ".fs.writeSync(2, `"
+          <> fromString prog_name
+          <> ": ${err}\n`);}})"
+      )
 
 hsStdOut :: Session -> JSVal -> IO LBS.ByteString
 hsStdOut s i = eval s $ toJS i <> ".stdio.stdout()"
