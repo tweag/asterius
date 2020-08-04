@@ -161,7 +161,9 @@ jobs:
 
       - name: ghc-testsuite
         run: |
-          GHCRTS=-N2 stack test asterius:ghc-testsuite --test-arguments="-j2 --timeout=300s" || true
+          export GHCRTS=-N2
+          export ASTERIUS_GHC_TESTSUITE_TIMEOUT=300
+          stack test asterius:ghc-testsuite --test-arguments="-j2" || true
 
       - name: upload-artifact
         uses: actions/upload-artifact@v2

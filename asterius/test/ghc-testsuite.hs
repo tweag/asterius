@@ -5,6 +5,7 @@
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 import Asterius.Internals.Temp
+import Asterius.Internals.Timeout
 import Asterius.JSRun.Main
 import Control.Exception
 import qualified Data.ByteString.Lazy as LBS
@@ -56,24 +57,25 @@ getTestCases :: IO [TestCase]
 getTestCases = do
   let root = "test" </> "ghc-testsuite"
   subdirs <- sort <$> listDirectory root
-  fmap concat $ for subdirs $ \subdir -> do
-    let subroot = root </> subdir
-    files <- sort <$> listDirectory subroot
-    let cases = map (subroot </>) $ filter ((== ".hs") . takeExtension) files
-    for cases $ \c ->
-      -- GHC has some tests that differ for 32 and 64 bit architectures. So,
-      -- we first check if the 64 bit test exists. If it does, we always
-      -- use it. If it does not, we use the default test (which should
-      -- be the same for both architectures).
-      do
-        ws64existsOut <- doesFileExist (c -<.> "stdout-ws-64")
-        let stdoutp = c -<.> ("stdout" <> if ws64existsOut then "-ws-64" else "")
-        ws64existsErr <- doesFileExist (c -<.> "stderr-ws-64")
-        let stderrp = c -<.> ("stderr" <> if ws64existsErr then "-ws-64" else "")
-        TestCase c
-          <$> readFileNullable (c -<.> "stdin")
-          <*> readFileNullable stdoutp
-          <*> readFileNullable stderrp
+  fmap concat $
+    for subdirs $ \subdir -> do
+      let subroot = root </> subdir
+      files <- sort <$> listDirectory subroot
+      let cases = map (subroot </>) $ filter ((== ".hs") . takeExtension) files
+      for cases $ \c ->
+        -- GHC has some tests that differ for 32 and 64 bit architectures. So,
+        -- we first check if the 64 bit test exists. If it does, we always
+        -- use it. If it does not, we use the default test (which should
+        -- be the same for both architectures).
+        do
+          ws64existsOut <- doesFileExist (c -<.> "stdout-ws-64")
+          let stdoutp = c -<.> ("stdout" <> if ws64existsOut then "-ws-64" else "")
+          ws64existsErr <- doesFileExist (c -<.> "stderr-ws-64")
+          let stderrp = c -<.> ("stderr" <> if ws64existsErr then "-ws-64" else "")
+          TestCase c
+            <$> readFileNullable (c -<.> "stdin")
+            <*> readFileNullable stdoutp
+            <*> readFileNullable stderrp
 
 data TestOutcome
   = TestSuccess
@@ -98,8 +100,10 @@ instance DefaultOrdered TestRecord
 
 instance ToNamedRecord TestRecord
 
-runTestCase :: [String] -> IORef [TestRecord] -> TestCase -> IO ()
-runTestCase l_opts tlref TestCase {..} = catch m h
+runTestCase :: Maybe Int -> [String] -> IORef [TestRecord] -> TestCase -> IO ()
+runTestCase mt l_opts tlref TestCase {..} = case mt of
+  Just t -> timeout t $ catch m h
+  _ -> catch m h
   where
     h (e :: SomeException) = do
       atomicModifyIORef' tlref $ \trs ->
@@ -107,8 +111,8 @@ runTestCase l_opts tlref TestCase {..} = catch m h
             { trOutcome = TestFailure,
               trPath = casePath,
               trErrorMessage = show e
-            }
-            : trs,
+            } :
+          trs,
           ()
         )
       throwIO e
@@ -137,7 +141,9 @@ runTestCase l_opts tlref TestCase {..} = catch m h
           ( newSession
               defaultConfig
                 { nodeExtraArgs =
-                    ["--experimental-wasm-bigint" | "--debug" `elem` l_opts]
+                    [ "--experimental-wasm-bigint"
+                      | "--debug" `elem` l_opts
+                    ]
                       <> ["--experimental-wasm-return-call"]
                 }
           )
@@ -154,14 +160,15 @@ runTestCase l_opts tlref TestCase {..} = catch m h
             { trOutcome = TestSuccess,
               trPath = casePath,
               trErrorMessage = ""
-            }
-            : trs,
+            } :
+          trs,
           ()
         )
 
-makeTestTree :: [String] -> IORef [TestRecord] -> TestCase -> TestTree
-makeTestTree l_opts tlref c@TestCase {..} =
-  testCase casePath $ runTestCase l_opts tlref c
+makeTestTree ::
+  Maybe Int -> [String] -> IORef [TestRecord] -> TestCase -> TestTree
+makeTestTree t l_opts tlref c@TestCase {..} =
+  testCase casePath $ runTestCase t l_opts tlref c
 
 -- save the test log to disk as a CSV file
 saveTestLogToCSV :: IORef [TestRecord] -> FilePath -> IO ()
@@ -176,9 +183,10 @@ saveTestLogToCSV tlref out_basepath = do
 main :: IO ()
 main = do
   m_opts <- getEnv "ASTERIUS_GHC_TESTSUITE_OPTIONS"
+  m_timeout <- fmap read <$> getEnv "ASTERIUS_GHC_TESTSUITE_TIMEOUT"
   let l_opts = maybeToList m_opts >>= words
   tlref <- newIORef mempty
-  trees <- map (makeTestTree l_opts tlref) <$> getTestCases
+  trees <- map (makeTestTree m_timeout l_opts tlref) <$> getTestCases
   cwd <- getCurrentDirectory
   let out_basepath = cwd </> "test-report"
   -- Tasty throws an exception if stuff fails, so re-throw the exception
