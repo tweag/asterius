@@ -21,7 +21,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.6.0
+          node-version: 14.7.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -66,7 +66,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.6.0
+          node-version: 14.7.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -142,7 +142,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.6.0
+          node-version: 14.7.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -186,7 +186,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.6.0
+          node-version: 14.7.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -245,7 +245,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.6.0
+          node-version: 14.7.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -292,7 +292,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.6.0
+          node-version: 14.7.0
 
       - name: checkout
         uses: actions/checkout@v2
@@ -399,7 +399,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.6.0
+          node-version: 14.7.0
 
       - name: setup-deps
         run: |

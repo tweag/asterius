@@ -7,7 +7,7 @@ ENV \
   LANG=C.UTF-8 \
   LC_ALL=C.UTF-8 \
   LC_CTYPE=C.UTF-8 \
-  PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.6.0/bin:${PATH}
+  PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.7.0/bin:${PATH}
 
 RUN \
   echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200724T030632Z sid main contrib non-free' > /etc/apt/sources.list && \
@@ -35,7 +35,7 @@ WORKDIR /root
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.6.0" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.7.0" && \
   npm config set unsafe-perm true && \
   npm install -g parcel-bundler@1.12.4 && \
   mkdir -p ~/.local/bin && \
