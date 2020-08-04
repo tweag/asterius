@@ -4,7 +4,7 @@
  ("C compiler link flags", ""),
  ("C compiler supports -no-pie", "YES"),
  ("Haskell CPP command","gcc"),
- ("Haskell CPP flags","-E -undef -traditional"),
+ ("Haskell CPP flags","-E -undef -traditional -DASTERIUS"),
  ("ld command", "ld"),
  ("ld flags", ""),
  ("ld supports compact unwind", "YES"),
@@ -33,4 +33,3 @@
  ("LLVM opt command", "opt"),
  ("LLVM clang command", "clang")
  ]
-
