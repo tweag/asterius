@@ -8,16 +8,8 @@ sudo apt install -y \
   alex \
   c2hs \
   cpphs \
-  happy \
-  libnuma-dev
+  happy
 
-curl -L https://github.com/WebAssembly/binaryen/archive/version_94.tar.gz | tar xz -C /tmp
-cd /tmp/binaryen-version_94
-mkdir build
-cd build
-cmake \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=/usr \
-  -G "Unix Makefiles" \
-  ..
-sudo make -j2 install
+curl https://snapshot.debian.org/archive/debian/20200805T084302Z/pool/main/b/binaryen/binaryen_95-1_amd64.deb -o /tmp/binaryen.deb
+sudo dpkg -i /tmp/binaryen.deb
+rm /tmp/binaryen.deb

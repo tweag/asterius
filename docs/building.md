@@ -38,7 +38,6 @@ artifacts, and we include them in the
 In addition to regular GHC dependencies, these dependencies are
 needed in the local environment:
 
-* `libnuma-dev` (required by GHC)
 * `binaryen` (at least `version_94`)
 * `automake`, `autoconf` (required by `ahc-boot`)
 * `cabal` (at least `v3.0.0.0`)
