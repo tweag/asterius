@@ -356,6 +356,17 @@ marshalExpression e = case e of
     v <- marshalExpression value
     m <- askModuleRef
     lift $ Binaryen.localTee m (coerce index) v $ marshalValueType valueType
+  GetGlobal {..} -> do
+    error "TODO"
+  -- GetGlobal {..} -> do
+  --   m <- askModuleRef
+  --   lift $ Binaryen.globalGet m (coerce index) $ marshalValueType valueType
+  SetGlobal {..} -> do
+    error "TODO"
+  -- SetGlobal {..} -> do
+  --   v <- marshalExpression value
+  --   m <- askModuleRef
+  --   lift $ Binaryen.globalSet m (coerce index) v
   Load {..} -> do
     p <- marshalExpression ptr
     m <- askModuleRef

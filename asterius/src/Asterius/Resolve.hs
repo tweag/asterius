@@ -93,6 +93,7 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
             externalBaseName = "table"
           },
         tableSlots = table_slots,
+        globals = mempty, -- TODO
         memorySegments = segs,
         memoryImport = MemoryImport
           { externalModuleName = "WasmMemory",

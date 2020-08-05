@@ -546,6 +546,22 @@ makeInstructions expr =
         v `snocBag` Wasm.TeeLocal
           { teeLocalIndex = idx
           }
+    GetGlobal {..} -> do
+      error "TODO"
+    -- GetGlobal {..} -> do
+    --   idx <- lookupIndex index
+    --   pure $ unitBag Wasm.GetGlobal
+    --     { getGlobalIndex = idx  -- • Couldn't match expected type ‘Wasm.GlobalIndex’ with actual type ‘Wasm.LocalIndex’
+    --     }
+    SetGlobal {..} -> do
+      error "TODO"
+    -- SetGlobal {..} -> do
+    --   v <- makeInstructions value
+    --   idx <- lookupIndex index
+    --   pure $
+    --     v `snocBag` Wasm.SetGlobal
+    --       { setGlobalIndex = idx  -- • Couldn't match expected type ‘Wasm.GlobalIndex’ with actual type ‘Wasm.LocalIndex’
+    --       }
     Load {..} -> do
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,

@@ -345,6 +345,32 @@ data BinaryOp
   | GeFloat64
   deriving (Show, Data)
 
+-- | 'Mutability' of variables.
+data Mutability
+  = Const  -- ^ Immutable.
+  | Var    -- ^ Mutable.
+  deriving (Eq, Ord, Show, Data)
+
+-- | 'GlobalType's classify global variables which hold a value and can either
+-- be mutable or immutable.
+data GlobalType
+  = GlobalType
+      { globalValueType :: ValueType,
+        globalMutability :: Mutability
+      }
+  deriving (Eq, Ord, Show, Data)
+
+-- | A 'Global' captures a single global variable. Each 'Global' stores a
+-- single value of the given global type.  Moreover, each 'Global' is
+-- initialized with an initial value, given by a constant initializer
+-- expression.
+data Global
+  = Global
+      { globalType :: GlobalType,
+        globalInitialValue :: Expression
+      }
+  deriving (Show, Data)
+
 data Expression
   = Block
       { name :: BS.ByteString,
@@ -395,6 +421,14 @@ data Expression
       { index :: BinaryenIndex,
         value :: Expression,
         valueType :: ValueType
+      }
+  | GetGlobal
+      { index :: BinaryenIndex,
+        valueType :: ValueType
+      }
+  | SetGlobal
+      { index :: BinaryenIndex,
+        value :: Expression
       }
   | Load
       { signed :: Bool,
@@ -505,6 +539,7 @@ data Module
         functionTable :: FunctionTable,
         tableImport :: TableImport,
         tableSlots :: Int,
+        globals :: [Global],
         memorySegments :: [DataSegment],
         memoryImport :: MemoryImport,
         memoryMBlocks :: Int
@@ -636,6 +671,12 @@ $(genNFData ''UnaryOp)
 
 $(genNFData ''BinaryOp)
 
+$(genNFData ''Mutability)
+
+$(genNFData ''GlobalType)
+
+$(genNFData ''Global)
+
 $(genNFData ''Expression)
 
 $(genNFData ''Function)
@@ -699,6 +740,12 @@ $(genBinary ''FunctionType)
 $(genBinary ''UnaryOp)
 
 $(genBinary ''BinaryOp)
+
+$(genBinary ''Mutability)
+
+$(genBinary ''GlobalType)
+
+$(genBinary ''Global)
 
 $(genBinary ''Expression)
 

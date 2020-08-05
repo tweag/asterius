@@ -27,6 +27,9 @@ infer expr = case expr of
   CallIndirect {} -> [I64]
   GetLocal {..} -> [valueType]
   SetLocal {} -> []
+  TeeLocal {..} -> [valueType]
+  GetGlobal {..} -> [valueType]
+  SetGlobal {} -> []
   Load {..} -> [valueType]
   Store {} -> []
   ConstI32 {} -> [I32]
@@ -41,7 +44,6 @@ infer expr = case expr of
   Symbol {} -> [I64]
   UnresolvedGetLocal {..} -> [typeOfUnresolvedLocalReg unresolvedLocalReg]
   UnresolvedSetLocal {} -> []
-  TeeLocal {..} -> [valueType]
   Drop {} -> []
   -- ReturnCall and ReturnCallIndirect are generated when we exit a cmm
   -- function and jump to the next, and all cmm functions have type: [] -> [].
