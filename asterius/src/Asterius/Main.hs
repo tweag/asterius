@@ -314,10 +314,10 @@ ahcDistMain logger task (final_m, report) = do
           (tailCalls task)
           (staticsSymbolMap report <> functionSymbolMap report)
           final_m
-      when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
+      when False $ do -- For now. (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
         logger "[INFO] Running binaryen optimization"
         Binaryen.optimize m_ref
-      when (validate task) $ do
+      when False $ do -- For now. (validate task) $ do
         logger "[INFO] Validating binaryen IR"
         pass_validation <- Binaryen.validate m_ref
         when (pass_validation /= 1) $ fail "[ERROR] binaryen validation failed"
