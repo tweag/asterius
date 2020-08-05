@@ -5,7 +5,6 @@
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 import Asterius.Internals.Temp
-import Asterius.Internals.Timeout
 import Asterius.JSRun.Main
 import Control.Exception
 import qualified Data.ByteString.Lazy as LBS
@@ -100,10 +99,8 @@ instance DefaultOrdered TestRecord
 
 instance ToNamedRecord TestRecord
 
-runTestCase :: Maybe Int -> [String] -> IORef [TestRecord] -> TestCase -> IO ()
-runTestCase mt l_opts tlref TestCase {..} = case mt of
-  Just t -> timeout t $ catch m h
-  _ -> catch m h
+runTestCase :: [String] -> IORef [TestRecord] -> TestCase -> IO ()
+runTestCase l_opts tlref TestCase {..} = catch m h
   where
     h (e :: SomeException) = do
       atomicModifyIORef' tlref $ \trs ->
@@ -147,7 +144,7 @@ runTestCase mt l_opts tlref TestCase {..} = case mt of
                       <> ["--experimental-wasm-return-call"]
                 }
           )
-          closeSession
+          killSession
           $ \s -> do
             i <- newAsteriusInstance s (tmp_case_path -<.> "req.mjs") mod_buf
             hsMain (takeBaseName tmp_case_path) s i
@@ -165,10 +162,9 @@ runTestCase mt l_opts tlref TestCase {..} = case mt of
           ()
         )
 
-makeTestTree ::
-  Maybe Int -> [String] -> IORef [TestRecord] -> TestCase -> TestTree
-makeTestTree t l_opts tlref c@TestCase {..} =
-  testCase casePath $ runTestCase t l_opts tlref c
+makeTestTree :: [String] -> IORef [TestRecord] -> TestCase -> TestTree
+makeTestTree l_opts tlref c@TestCase {..} =
+  testCase casePath $ runTestCase l_opts tlref c
 
 -- save the test log to disk as a CSV file
 saveTestLogToCSV :: IORef [TestRecord] -> FilePath -> IO ()
@@ -183,10 +179,9 @@ saveTestLogToCSV tlref out_basepath = do
 main :: IO ()
 main = do
   m_opts <- getEnv "ASTERIUS_GHC_TESTSUITE_OPTIONS"
-  m_timeout <- fmap read <$> getEnv "ASTERIUS_GHC_TESTSUITE_TIMEOUT"
   let l_opts = maybeToList m_opts >>= words
   tlref <- newIORef mempty
-  trees <- map (makeTestTree m_timeout l_opts tlref) <$> getTestCases
+  trees <- map (makeTestTree l_opts tlref) <$> getTestCases
   cwd <- getCurrentDirectory
   let out_basepath = cwd </> "test-report"
   -- Tasty throws an exception if stuff fails, so re-throw the exception

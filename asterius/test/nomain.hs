@@ -29,7 +29,7 @@ main = do
           { nodeExtraArgs = ["--experimental-wasm-return-call"]
           }
     )
-    closeSession
+    killSession
     $ \s -> do
       i <-
         newAsteriusInstanceNonMain

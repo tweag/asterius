@@ -158,7 +158,7 @@ newGHCiSession = do
 -- uninitialized tuple.
 tryCloseGHCiSession :: Session -> IO ()
 tryCloseGHCiSession s = do
-  (_ :: Either SomeException ()) <- try $ closeSession s
+  (_ :: Either SomeException ()) <- try $ killSession s
   pure ()
 
 -- | Returns a dummy 'GHC.IServ' to GHC. We don't start a 'Session' yet; it is
@@ -249,7 +249,7 @@ asteriusWriteIServ hsc_env i a
     GHC.Msg msg@(GHC.RunTH st q ty loc) -> do
       GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show msg
       modifyMVar_ globalGHCiState $ \s ->
-        bracketOnError newGHCiSession (\(js_s, _) -> closeSession js_s) $
+        bracketOnError newGHCiSession (\(js_s, _) -> killSession js_s) $
           \(new_js_s, new_p) -> do
             let ~(prev_js_s, _, _) = ghciSession s
             tryCloseGHCiSession prev_js_s

@@ -1,4 +1,4 @@
-FROM debian:sid-20200720
+FROM debian:sid-20200803
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -9,7 +9,7 @@ ENV \
   PATH=/root/.local/bin:/root/.nvm/versions/node/v14.7.0/bin:${PATH}
 
 RUN \
-  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200804T084936Z sid main contrib non-free' > /etc/apt/sources.list && \
+  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200805T084302Z sid main contrib non-free' > /etc/apt/sources.list && \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
