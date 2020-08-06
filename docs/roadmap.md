@@ -3,7 +3,7 @@
 ## Overview
 
 The Asterius project has come a long way and some examples with complex
-dependencies already work. It's still less mature than GHCJS yet; see the next
+dependencies already work. It's still less mature than GHCJS though; see the next
 section for details.
 
 In general, it's hard to give ETA for "production readiness", since improvements
@@ -11,10 +11,11 @@ are continuous, and we haven't collected enough use cases from seed users yet.
 For more insight into what comes next for this project, we list our quarterly
 roadmap here.
 
-Besides the goals in each quarter, we also do regular maintainence like
+Besides the goals in each quarter, we also do regular maintenance like
 dependency upgrades and bugfixes. We also work on related projects (mainly
-`haskell-binaryen` and `inline-js`) to ensure they are kept in sync and also
-useful to regular Haskell developers.
+[`haskell-binaryen`](https://github.com/tweag/haskell-binaryen) and
+[`inline-js`](https://github.com/tweag/inline-js)) to ensure they are kept in
+sync and also useful to regular Haskell developers.
 
 ## What may stop one from using Asterius right now
 
@@ -23,8 +24,8 @@ useful to regular Haskell developers.
 - Runtime bugs. The generated code comes with a complex hand-written runtime
   which is still buggy at times. The situation is expected to improve once we're
   able to work with an IR more high-level than Cmm and shave off the current
-  hand-written garbage collector; see the 2020 Q3 section for explanation.
-- GHCJS projects aren't supported out of the box. Major incompatabilities
+  hand-written garbage collector; see the 2020 Q3 section for more details.
+- GHCJS projects aren't supported out of the box. Major incompatibilities
   include:
   - Word sizes differ. Asterius is still 64-bit based at the moment.
   - JSFFI syntax and semantics differ. Asterius uses `Promise`-based async JSFFI
@@ -69,13 +70,13 @@ Work in 2020 Q3 is focused on:
   via `StablePtr`.
 - Invoking RTS API on the JavaScript side to manipulate Haskell closures and
   trigger evaluation.
-- A linker which performs aggressive dead-code elimination, producing as small
-  WebAssembly binary as possible.
+- A linker which performs aggressive dead-code elimination, based on symbol
+  reachability.
 - A debugger which checks invalid memory access and outputs memory loads/stores
   and control flow transfers.
 - Complete [`binaryen`](https://github.com/WebAssembly/binaryen) raw bindings,
   plus a monadic EDSL to construct WebAssembly code directly in Haskell.
 - A Haskell library to handle WebAssembly code, which already powers binary code
   generation.
-- Besides WebAssembly MVP and `BigInt`, no special requirements on the
-  underlying JavaScript engine at the moment.
+- Besides WebAssembly MVP and `BigInt`, there are no special requirements on
+  the underlying JavaScript engine at the moment.
