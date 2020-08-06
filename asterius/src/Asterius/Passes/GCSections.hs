@@ -66,6 +66,7 @@ gcModule mod_syms export_funcs m =
   AsteriusModule
     { staticsMap = statics,
       functionMap = functions,
+      globalsMap = mempty, -- TODO
       sptMap = spt_map,
       ffiMarshalState =
         FFIMarshalState
