@@ -21,8 +21,8 @@ maintained by [Tweag I/O](https://tweag.io/).
 
 Demos of popular Haskell apps, running in your browser:
 
-* [`ormolu`](https://asterius.netlify.app/ormolu/WebOrmolu.html)
-* [`pandoc`](https://asterius.netlify.app/pandoc/pandoc.html)
+- [`ormolu`](https://asterius.netlify.app/ormolu/WebOrmolu.html)
+- [`pandoc`](https://asterius.netlify.app/pandoc/pandoc.html)
 
 ## Quickstart using the prebuilt container image
 
@@ -73,13 +73,13 @@ details.
 
 We have [documentation](https://asterius.netlify.app/) and blog posts:
 
-* [Fibonacci compiles end-to-end: Haskell to WebAssembly via
+- [Fibonacci compiles end-to-end: Haskell to WebAssembly via
   GHC](https://www.tweag.io/posts/2018-05-29-hello-asterius.html)
-* [Haskell WebAssembly calling JavaScript and back
+- [Haskell WebAssembly calling JavaScript and back
   again](https://www.tweag.io/posts/2018-09-12-asterius-ffi.html)
-* [Asterius GHC WebAssembly backend reaches
+- [Asterius GHC WebAssembly backend reaches
   TodoMVC](https://www.tweag.io/posts/2018-12-20-asterius-todomvc.html)
-* [Haskell art in your browser with
+- [Haskell art in your browser with
   Asterius](https://www.tweag.io/posts/2019-12-19-asterius-diagrams.html)
 
 Also checkout the [HIW 2018 lightning
@@ -91,35 +91,10 @@ Note that they may be slightly out-of-date as the project evolves. Whenever you
 find something in the docs of blog posts which doesn't reflect the status quo,
 it's a bug and don't hesitate to open a ticket :)
 
-## What works now
+## Project status & roadmap
 
-* Almost all GHC language features (TH support is partial, cross-splice state
-  persistence doesn't work yet).
-* The pure parts in standard libraries and other packages. IO is achieved via
-  rts primitives or user-defined JavaScript imports.
-* Importing JavaScript expressions via the `foreign import javascript` syntax.
-  First-class garbage collected `JSVal` type in Haskell land.
-* Preliminary copying GC, managing both Haskell heap objects and JavaScript
-  references.
-* Preliminary Cabal support.
-* Marshaling between Haskell/JavaScript types based on `aeson`.
-* Calling Haskell functions from JavaScript via the `foreign export javascript`
-  syntax. Haskell closures can be passed between the Haskell/JavaScript boundary
-  via `StablePtr`.
-* Invoking RTS API on the JavaScript side to manipulate Haskell closures and
-  trigger evaluation.
-* A linker which performs aggressive dead-code elimination, producing as small
-  WebAssembly binary as possible.
-* A debugger which checks invalid memory access and outputs memory loads/stores
-  and control flow transfers.
-* Complete
-  [`binaryen`](https://github.com/WebAssembly/binaryen)/[`wabt`](https://github.com/WebAssembly/wabt)
-  raw bindings, plus a monadic EDSL to construct WebAssembly code directly in
-  Haskell.
-* A Haskell library to handle WebAssembly code, which already powers binary code
-  generation.
-* Besides WebAssembly MVP and `BigInt`, no special requirements on the
-  underlying JavaScript engine at the moment.
+See the [roadmap](https://asterius.netlify.app/roadmap.html) section in the
+documentation for details.
 
 ## Contributors
 
