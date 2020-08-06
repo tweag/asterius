@@ -360,17 +360,6 @@ data GlobalType
       }
   deriving (Eq, Ord, Show, Data)
 
--- | A 'Global' captures a single global variable. Each 'Global' stores a
--- single value of the given global type.  Moreover, each 'Global' is
--- initialized with an initial value, given by a constant initializer
--- expression.
-data Global
-  = Global
-      { globalType :: GlobalType,
-        globalInitialValue :: Expression
-      }
-  deriving (Show, Data)
-
 data Expression
   = Block
       { name :: BS.ByteString,
@@ -484,6 +473,17 @@ data Expression
       }
   deriving (Show, Data)
 
+-- | A 'Global' captures a single global variable. Each 'Global' stores a
+-- single value of the given global type.  Moreover, each 'Global' is
+-- initialized with an initial value, given by a constant initializer
+-- expression.
+data Global
+  = Global
+      { globalType :: GlobalType,
+        init :: Expression
+      }
+  deriving (Show, Data)
+
 data Function
   = Function
       { functionType :: FunctionType,
@@ -531,6 +531,19 @@ data DataSegment
       }
   deriving (Show, Data)
 
+data GlobalExport
+  = GlobalExport
+      { internalName, externalName :: BS.ByteString
+      }
+  deriving (Show, Data)
+
+data GlobalImport
+  = GlobalImport
+      { internalName, externalModuleName, externalBaseName :: BS.ByteString,
+        globalType :: GlobalType
+      }
+  deriving (Show, Data)
+
 data Module
   = Module
       { functionMap' :: LM.Map BS.ByteString Function,
@@ -539,7 +552,9 @@ data Module
         functionTable :: FunctionTable,
         tableImport :: TableImport,
         tableSlots :: Int,
-        globals :: [Global],
+        globalImports :: [GlobalImport],
+        globalExports :: [GlobalExport],
+        globalMap :: [Global],
         memorySegments :: [DataSegment],
         memoryImport :: MemoryImport,
         memoryMBlocks :: Int
@@ -693,6 +708,10 @@ $(genNFData ''FunctionTable)
 
 $(genNFData ''DataSegment)
 
+$(genNFData ''GlobalImport)
+
+$(genNFData ''GlobalExport)
+
 $(genNFData ''Module)
 
 $(genNFData ''RelooperAddBlock)
@@ -762,6 +781,10 @@ $(genBinary ''FunctionExport)
 $(genBinary ''FunctionTable)
 
 $(genBinary ''DataSegment)
+
+$(genBinary ''GlobalImport)
+
+$(genBinary ''GlobalExport)
 
 $(genBinary ''Module)
 
