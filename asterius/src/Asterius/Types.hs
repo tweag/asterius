@@ -26,6 +26,8 @@ module Asterius.Types
     UnresolvedLocalReg (..),
     UnresolvedGlobalReg (..),
     ValueType (..),
+    Mutability (..),
+    GlobalType (..),
     FunctionType (..),
     UnaryOp (..),
     BinaryOp (..),
@@ -37,6 +39,8 @@ module Asterius.Types
     FunctionExport (..),
     FunctionTable (..),
     DataSegment (..),
+    GlobalExport (..),
+    GlobalImport (..),
     Module (..),
     RelooperAddBlock (..),
     RelooperAddBranch (..),
@@ -164,7 +168,7 @@ toCachedModule :: AsteriusModule -> AsteriusCachedModule
 toCachedModule m =
   AsteriusCachedModule
     { fromCachedModule = m,
-      dependencyMap = staticsMap m `add` (functionMap m `add` SM.empty)
+      dependencyMap = staticsMap m `add` (functionMap m `add` (globalsMap m `add` SM.empty))
     }
   where
     add :: Data a => SymbolMap a -> SymbolMap SymbolSet -> SymbolMap SymbolSet
@@ -540,7 +544,7 @@ data GlobalExport
 
 data GlobalImport
   = GlobalImport
-      { internalName, externalModuleName, externalBaseName :: BS.ByteString,
+      { externalModuleName, externalBaseName :: BS.ByteString,
         globalType :: GlobalType
       }
   deriving (Show, Data)

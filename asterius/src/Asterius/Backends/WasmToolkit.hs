@@ -93,6 +93,18 @@ makeValueType vt = case vt of
   F32 -> Wasm.F32
   F64 -> Wasm.F64
 
+makeMutability :: Mutability -> Wasm.Mutability
+makeMutability m = case m of
+  Const -> Wasm.Const
+  Var -> Wasm.Var
+
+makeGlobalType :: GlobalType -> Wasm.GlobalType
+makeGlobalType GlobalType {..} =
+  Wasm.GlobalType
+    { Wasm.globalValueType = makeValueType globalValueType,
+      Wasm.globalMutability = makeMutability globalMutability
+    }
+
 makeTypeSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
 makeTypeSection Module {} ModuleSymbolTable {..} = do
@@ -142,6 +154,14 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
               }
             | FunctionImport {..} <- functionImports
           ]
+        ++ [ Wasm.Import
+               { moduleName = coerce $ SBS.toShort externalModuleName,
+                 importName = coerce $ SBS.toShort externalBaseName,
+                 importDescription =
+                   Wasm.ImportGlobal $ makeGlobalType globalType
+               }
+             | GlobalImport {..} <- globalImports
+           ]
   }
 
 makeFunctionSection ::

@@ -11,7 +11,7 @@ where
 
 import Asterius.Foreign.ExportStatic
 import Asterius.Foreign.Internals
-import Asterius.Types
+import Asterius.Types hiding (Mutability(..))
 import Control.Monad
 import CoreUnfold
 import Data.List
