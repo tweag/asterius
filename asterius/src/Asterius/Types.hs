@@ -417,11 +417,11 @@ data Expression
         valueType :: ValueType
       }
   | GetGlobal
-      { index :: BinaryenIndex,
+      { globalSymbol :: EntitySymbol,
         valueType :: ValueType
       }
   | SetGlobal
-      { index :: BinaryenIndex,
+      { globalSymbol :: EntitySymbol,
         value :: Expression
       }
   | Load
