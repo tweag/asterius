@@ -32,9 +32,11 @@ sync and also useful to regular Haskell developers.
     and GHCJS uses callbacks.
   - Cabal handles GHCJS and Asterius differently.
 - Lack of Nix support.
-- Lack of GHCi support. TH support is not 100% complete; certain TH API which
-  requires preserving state across splices (e.g. `getQ`/`putQ`) don't work yet.
+- Lack of GHCi support.
+- TH support is not 100% complete; certain TH API which require preserving state
+  across splices (e.g. `getQ`/`putQ`) don't work yet.
 - Lack of profiling support for generated code.
+- Excessive memory usage when linking large programs.
 
 ## Quarterly roadmap
 
@@ -63,7 +65,8 @@ Work in 2020 Q3 is focused on:
   First-class garbage collected `JSVal` type in Haskell land.
 - Preliminary copying GC, managing both Haskell heap objects and JavaScript
   references.
-- Preliminary Cabal support.
+- Cabal support. Use `ahc-cabal` to compile libraries and executables. Support
+  for custom `Setup.hs` is limited.
 - Marshaling between Haskell/JavaScript types based on `aeson`.
 - Calling Haskell functions from JavaScript via the `foreign export javascript`
   syntax. Haskell closures can be passed between the Haskell/JavaScript boundary
@@ -76,7 +79,8 @@ Work in 2020 Q3 is focused on:
   and control flow transfers.
 - Complete [`binaryen`](https://github.com/WebAssembly/binaryen) raw bindings,
   plus a monadic EDSL to construct WebAssembly code directly in Haskell.
-- A Haskell library to handle WebAssembly code, which already powers binary code
+- [`wasm-toolkit`](https://github.com/tweag/asterius/tree/master/wasm-toolkit):
+  a Haskell library to handle WebAssembly code, which already powers binary code
   generation.
 - Besides WebAssembly MVP and `BigInt`, there are no special requirements on
   the underlying JavaScript engine at the moment.
