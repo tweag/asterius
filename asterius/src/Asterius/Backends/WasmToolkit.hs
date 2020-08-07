@@ -118,6 +118,19 @@ makeGlobalType GlobalType {..} =
       Wasm.globalMutability = makeMutability globalMutability
     }
 
+makeGlobal ::
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
+  Global ->
+  m Wasm.Global
+makeGlobal Global {..} = do
+  let ty = makeGlobalType globalType
+  e <- Wasm.Expression . bagToList <$> makeInstructions globalInit
+  pure
+    Wasm.Global
+      { globalType = ty,
+        globalInitialValue = e
+      }
+
 makeTypeSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
 makeTypeSection Module {} ModuleSymbolTable {..} = do
@@ -186,6 +199,15 @@ makeFunctionSection Module {..} ModuleSymbolTable {..} = pure Wasm.FunctionSecti
       ]
   }
 
+-- TODO
+-- makeGlobalSection ::
+--   (MonadError MarshalError m, MonadReader MarshalEnv m) =>
+--   Module ->
+--   ModuleSymbolTable ->
+--   m Wasm.Section
+-- makeGlobalSection Module {..} _ {- ModuleSymbolTable {..} -} =
+--   Wasm.GlobalSection <$> mapM makeGlobal (SM.elems globalMap)
+
 makeExportSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
 makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
@@ -199,6 +221,15 @@ makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
           }
         | FunctionExport {..} <- functionExports
       ]
+        ++ [ Wasm.Export
+               { exportName = coerce $ SBS.toShort externalName,
+                 exportDescription =
+                   Wasm.ExportGlobal $
+                     globalSymbols
+                       Map.! internalName
+               }
+             | GlobalExport {..} <- globalExports
+           ]
   }
 
 makeElementSection ::
@@ -798,6 +829,7 @@ makeModule tail_calls sym_map m = do
   _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
+  -- _gbl_sec <- makeGlobalSection m _module_symtable -- TODO
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection m _module_symtable
   _code_sec <- makeCodeSection tail_calls sym_map m _module_symtable
@@ -807,6 +839,7 @@ makeModule tail_calls sym_map m = do
       [ _type_sec,
         _import_sec,
         _func_sec,
+        -- _gbl_sec, -- TODO
         _export_sec,
         _elem_sec,
         _code_sec,
