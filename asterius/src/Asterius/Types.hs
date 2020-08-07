@@ -352,8 +352,8 @@ data BinaryOp
 
 -- | 'Mutability' of variables.
 data Mutability
-  = Const  -- ^ Immutable.
-  | Var    -- ^ Mutable.
+  = Mutable
+  | Immutable
   deriving (Eq, Ord, Show, Data)
 
 -- | 'GlobalType's classify global variables which hold a value and can either
@@ -485,7 +485,7 @@ data Expression
 data Global
   = Global
       { globalType :: GlobalType,
-        init :: Expression
+        globalInit :: Expression
       }
   deriving (Show, Data)
 
@@ -559,7 +559,7 @@ data Module
         tableSlots :: Int,
         globalImports :: [GlobalImport],
         globalExports :: [GlobalExport],
-        globalMap :: [Global],
+        globalMap :: SymbolMap Global,
         memorySegments :: [DataSegment],
         memoryImport :: MemoryImport,
         memoryMBlocks :: Int

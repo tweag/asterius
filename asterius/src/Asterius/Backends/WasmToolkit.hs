@@ -95,8 +95,8 @@ makeValueType vt = case vt of
 
 makeMutability :: Mutability -> Wasm.Mutability
 makeMutability m = case m of
-  Const -> Wasm.Const
-  Var -> Wasm.Var
+  Immutable -> Wasm.Const
+  Mutable -> Wasm.Var
 
 makeGlobalType :: GlobalType -> Wasm.GlobalType
 makeGlobalType GlobalType {..} =
