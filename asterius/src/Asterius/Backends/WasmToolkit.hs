@@ -829,7 +829,7 @@ makeModule tail_calls sym_map m = do
   _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
-  -- _gbl_sec <- makeGlobalSection m _module_symtable -- TODO
+  -- _gbl_sec <- makeGlobalSection m _module_symtable -- TODO (no (MonadReader MarshalEnv m) available here)
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection m _module_symtable
   _code_sec <- makeCodeSection tail_calls sym_map m _module_symtable
