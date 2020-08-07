@@ -41,6 +41,7 @@ module Asterius.Types
     DataSegment (..),
     GlobalExport (..),
     GlobalImport (..),
+    Global (..),
     Module (..),
     RelooperAddBlock (..),
     RelooperAddBranch (..),
