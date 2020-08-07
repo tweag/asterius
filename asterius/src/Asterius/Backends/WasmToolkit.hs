@@ -12,6 +12,7 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -48,7 +49,7 @@ import qualified Language.WebAssembly.WireFormat as Wasm
 
 data MarshalError
   = DuplicateFunctionImport
-  | DuplicateGlobalImport             -- ^ Currently unused.
+  | DuplicateGlobalImport
   | InvalidParameterType              -- ^ Currently unused.
   | InvalidLocalType                  -- ^ Currently unused.
   | UnsupportedExpression Expression
@@ -59,7 +60,8 @@ instance Exception MarshalError
 data ModuleSymbolTable
   = ModuleSymbolTable
       { functionTypeSymbols :: Map.Map FunctionType Wasm.FunctionTypeIndex,
-        functionSymbols :: Map.Map BS.ByteString Wasm.FunctionIndex
+        functionSymbols :: Map.Map BS.ByteString Wasm.FunctionIndex,
+        globalSymbols :: Map.Map BS.ByteString Wasm.GlobalIndex -- TODO: BS vs. ES
       }
 
 makeModuleSymbolTable ::
@@ -71,20 +73,31 @@ makeModuleSymbolTable m@Module {..} = do
       _func_syms = Map.keys functionMap'
       _func_conflict_syms = _func_import_syms `intersect` _func_syms
       _func_types = generateWasmFunctionTypeSet m
-  if _has_dup _func_import_syms
-    then throwError DuplicateFunctionImport
-    else pure ModuleSymbolTable
-      { functionTypeSymbols =
-          Map.fromDistinctAscList $
-            zip
-              (Set.toList _func_types)
-              (coerce [0 :: Word32 ..]),
-        functionSymbols =
-          Map.fromList $
-            zip
-              (_func_import_syms <> _func_syms)
-              (coerce [0 :: Word32 ..])
-      }
+      _gbl_import_syms =
+        [internalName | GlobalImport {..} <- globalImports]
+      _gbl_syms = map entityName $ SM.keys globalMap
+  if | _has_dup _func_import_syms ->
+       throwError DuplicateFunctionImport
+     | _has_dup _gbl_import_syms ->
+       throwError DuplicateGlobalImport -- TODO: do we need to be so strict?
+     | otherwise ->
+         pure ModuleSymbolTable
+           { functionTypeSymbols =
+               Map.fromDistinctAscList $
+                 zip
+                   (Set.toList _func_types)
+                   (coerce [0 :: Word32 ..]),
+             functionSymbols =
+               Map.fromList $
+                 zip
+                   (_func_import_syms <> _func_syms)
+                   (coerce [0 :: Word32 ..]),
+             globalSymbols =
+               Map.fromList $
+                 zip
+                   (_gbl_import_syms <> _gbl_syms)
+                   (coerce [0 :: Word32 ..])
+           }
 
 makeValueType :: ValueType -> Wasm.ValueType
 makeValueType vt = case vt of

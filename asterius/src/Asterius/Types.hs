@@ -544,7 +544,7 @@ data GlobalExport
 
 data GlobalImport
   = GlobalImport
-      { externalModuleName, externalBaseName :: BS.ByteString,
+      { internalName, externalModuleName, externalBaseName :: BS.ByteString,
         globalType :: GlobalType
       }
   deriving (Show, Data)
