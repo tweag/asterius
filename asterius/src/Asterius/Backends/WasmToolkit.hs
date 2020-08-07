@@ -580,21 +580,19 @@ makeInstructions expr =
           { teeLocalIndex = idx
           }
     GetGlobal {..} -> do
-      error "TODO"
-    -- GetGlobal {..} -> do
-    --   idx <- lookupIndex index
-    --   pure $ unitBag Wasm.GetGlobal
-    --     { getGlobalIndex = idx  -- • Couldn't match expected type ‘Wasm.GlobalIndex’ with actual type ‘Wasm.LocalIndex’
-    --     }
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      pure $ unitBag Wasm.GetGlobal
+        { getGlobalIndex =
+            globalSymbols Map.! entityName globalSymbol
+        }
     SetGlobal {..} -> do
-      error "TODO"
-    -- SetGlobal {..} -> do
-    --   v <- makeInstructions value
-    --   idx <- lookupIndex index
-    --   pure $
-    --     v `snocBag` Wasm.SetGlobal
-    --       { setGlobalIndex = idx  -- • Couldn't match expected type ‘Wasm.GlobalIndex’ with actual type ‘Wasm.LocalIndex’
-    --       }
+      v <- makeInstructions value
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      pure $
+        v `snocBag` Wasm.SetGlobal
+          { setGlobalIndex =
+              globalSymbols Map.! entityName globalSymbol
+          }
     Load {..} -> do
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
