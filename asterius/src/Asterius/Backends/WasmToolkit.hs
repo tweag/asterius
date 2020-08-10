@@ -61,7 +61,7 @@ data ModuleSymbolTable
   = ModuleSymbolTable
       { functionTypeSymbols :: Map.Map FunctionType Wasm.FunctionTypeIndex,
         functionSymbols :: Map.Map BS.ByteString Wasm.FunctionIndex,
-        globalSymbols :: Map.Map BS.ByteString Wasm.GlobalIndex -- TODO: BS vs. ES
+        globalSymbols :: Map.Map BS.ByteString Wasm.GlobalIndex
       }
 
 makeModuleSymbolTable ::
@@ -79,7 +79,7 @@ makeModuleSymbolTable m@Module {..} = do
   if | _has_dup _func_import_syms ->
        throwError DuplicateFunctionImport
      | _has_dup _gbl_import_syms ->
-       throwError DuplicateGlobalImport -- TODO: do we need to be so strict?
+       throwError DuplicateGlobalImport
      | otherwise ->
          pure ModuleSymbolTable
            { functionTypeSymbols =
