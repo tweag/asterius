@@ -76,28 +76,29 @@ makeModuleSymbolTable m@Module {..} = do
       _gbl_import_syms =
         [internalName | GlobalImport {..} <- globalImports]
       _gbl_syms = map entityName $ SM.keys globalMap
-  if | _has_dup _func_import_syms ->
-       throwError DuplicateFunctionImport
-     | _has_dup _gbl_import_syms ->
-       throwError DuplicateGlobalImport
-     | otherwise ->
-         pure ModuleSymbolTable
-           { functionTypeSymbols =
-               Map.fromDistinctAscList $
-                 zip
-                   (Set.toList _func_types)
-                   (coerce [0 :: Word32 ..]),
-             functionSymbols =
-               Map.fromList $
-                 zip
-                   (_func_import_syms <> _func_syms)
-                   (coerce [0 :: Word32 ..]),
-             globalSymbols =
-               Map.fromList $
-                 zip
-                   (_gbl_import_syms <> _gbl_syms)
-                   (coerce [0 :: Word32 ..])
-           }
+  if  | _has_dup _func_import_syms ->
+        throwError DuplicateFunctionImport
+      | _has_dup _gbl_import_syms ->
+        throwError DuplicateGlobalImport
+      | otherwise ->
+        pure
+          ModuleSymbolTable
+            { functionTypeSymbols =
+                Map.fromDistinctAscList $
+                  zip
+                    (Set.toList _func_types)
+                    (coerce [0 :: Word32 ..]),
+              functionSymbols =
+                Map.fromList $
+                  zip
+                    (_func_import_syms <> _func_syms)
+                    (coerce [0 :: Word32 ..]),
+              globalSymbols =
+                Map.fromList $
+                  zip
+                    (_gbl_import_syms <> _gbl_syms)
+                    (coerce [0 :: Word32 ..])
+            }
 
 makeValueType :: ValueType -> Wasm.ValueType
 makeValueType vt = case vt of
