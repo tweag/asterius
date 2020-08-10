@@ -199,14 +199,24 @@ makeFunctionSection Module {..} ModuleSymbolTable {..} = pure Wasm.FunctionSecti
       ]
   }
 
--- TODO
--- makeGlobalSection ::
---   (MonadError MarshalError m, MonadReader MarshalEnv m) =>
---   Module ->
---   ModuleSymbolTable ->
---   m Wasm.Section
--- makeGlobalSection Module {..} _ {- ModuleSymbolTable {..} -} =
---   Wasm.GlobalSection <$> mapM makeGlobal (SM.elems globalMap)
+makeGlobalSection ::
+  MonadError MarshalError f =>
+  Bool ->
+  SM.SymbolMap Int64 ->
+  Module ->
+  ModuleSymbolTable ->
+  f Wasm.Section
+makeGlobalSection tail_calls sym_map Module {..} _module_symtable = do
+  let env = MarshalEnv
+        { envAreTailCallsOn = tail_calls,
+          envSymbolMap = sym_map,
+          envModuleSymbolTable = _module_symtable,
+          envDeBruijnContext = emptyDeBruijnContext,
+          envLclContext = emptyLocalContext
+        }
+  fmap Wasm.GlobalSection $
+    flip runReaderT env $
+      mapM makeGlobal (SM.elems globalMap)
 
 makeExportSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
@@ -829,7 +839,7 @@ makeModule tail_calls sym_map m = do
   _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
-  -- _gbl_sec <- makeGlobalSection m _module_symtable -- TODO (no (MonadReader MarshalEnv m) available here)
+  _gbl_sec <- makeGlobalSection tail_calls sym_map m _module_symtable
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection m _module_symtable
   _code_sec <- makeCodeSection tail_calls sym_map m _module_symtable
@@ -839,7 +849,7 @@ makeModule tail_calls sym_map m = do
       [ _type_sec,
         _import_sec,
         _func_sec,
-        -- _gbl_sec, -- TODO
+        _gbl_sec,
         _export_sec,
         _elem_sec,
         _code_sec,
