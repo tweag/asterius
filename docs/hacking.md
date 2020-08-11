@@ -138,3 +138,12 @@ To add a test case, it is best to replicate what has been done for an existing t
 - For example, `git grep bytearraymini` should show all the places where the test case
 `bytearraymini` has been used. Replicating the same files for a new test case
 should "just work".
+
+## Code formatting
+
+In Asterius we use [`ormolu`](https://github.com/tweag/ormolu) for formatting
+Haskell and [`prettier`](https://prettier.io/) for formatting JavaScript.
+Though not all parts of the codebase are currently formatted this way, it is
+recommended that when you submit a PR you run the respective formatters on the
+changed parts of the code, so that gradually the whole codebase is formatted
+uniformly.
