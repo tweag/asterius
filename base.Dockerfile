@@ -1,4 +1,4 @@
-FROM debian:sid-20200803
+FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -9,13 +9,10 @@ ENV \
   LC_CTYPE=C.UTF-8 \
   PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.7.0/bin:${PATH}
 
-COPY utils/retry /tmp/retry
-
 RUN \
-  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200811T024041Z sid main contrib non-free' > /etc/apt/sources.list && \
-  /tmp/retry 8 apt update && \
-  /tmp/retry 8 apt full-upgrade -y && \
-  /tmp/retry 8 apt install -y \
+  apt update && \
+  apt full-upgrade -y && \
+  apt install -y \
     automake \
     build-essential \
     binaryen \
