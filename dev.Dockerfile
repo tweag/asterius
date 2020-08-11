@@ -8,13 +8,13 @@ ENV \
   LC_CTYPE=C.UTF-8 \
   PATH=/root/.local/bin:/root/.nvm/versions/node/v14.7.0/bin:${PATH}
 
+COPY utils/retry /tmp/retry
+
 RUN \
-  echo 'Acquire::Queue-Mode "access";' > /etc/apt/apt.conf.d/75download && \
-  echo 'Acquire::Retries "16";' > /etc/apt/apt.conf.d/80retries && \
   echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200811T084716Z sid main contrib non-free' > /etc/apt/sources.list && \
-  apt update && \
-  apt full-upgrade -y && \
-  apt install -y \
+  /tmp/retry 8 apt update && \
+  /tmp/retry 8 apt full-upgrade -y && \
+  /tmp/retry 8 apt install -y \
     automake \
     binaryen \
     build-essential \
