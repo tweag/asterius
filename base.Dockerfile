@@ -1,4 +1,4 @@
-FROM debian:sid-20200803
+FROM debian:sid
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -10,7 +10,6 @@ ENV \
   PATH=/root/.asterius-local-install-root/bin:/root/.asterius-snapshot-install-root/bin:/root/.asterius-compiler-bin:/root/.local/bin:/root/.nvm/versions/node/v14.7.0/bin:${PATH}
 
 RUN \
-  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200811T084716Z sid main contrib non-free' > /etc/apt/sources.list && \
   apt update && \
   apt full-upgrade -y && \
   apt install -y \
