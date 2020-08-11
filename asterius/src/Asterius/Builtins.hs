@@ -8,6 +8,8 @@ module Asterius.Builtins
     rtsAsteriusModule,
     rtsFunctionImports,
     rtsFunctionExports,
+    rtsGlobalImports,
+    rtsGlobalExports,
     emitErrorMessage,
     wasmPageSize,
     generateWrapperFunction,
@@ -680,6 +682,12 @@ rtsFunctionExports debug =
         externalName = "stg_returnToSchedNotPaused"
       }
   ]
+
+rtsGlobalImports :: [GlobalImport]
+rtsGlobalImports = mempty
+
+rtsGlobalExports :: [GlobalExport]
+rtsGlobalExports = mempty
 
 emitErrorMessage :: [ValueType] -> BS.ByteString -> Expression
 emitErrorMessage vts ev = Barf {barfMessage = ev, barfReturnTypes = vts}

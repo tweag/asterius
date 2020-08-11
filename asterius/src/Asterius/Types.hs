@@ -26,6 +26,8 @@ module Asterius.Types
     UnresolvedLocalReg (..),
     UnresolvedGlobalReg (..),
     ValueType (..),
+    Mutability (..),
+    GlobalType (..),
     FunctionType (..),
     UnaryOp (..),
     BinaryOp (..),
@@ -37,6 +39,9 @@ module Asterius.Types
     FunctionExport (..),
     FunctionTable (..),
     DataSegment (..),
+    GlobalExport (..),
+    GlobalImport (..),
+    Global (..),
     Module (..),
     RelooperAddBlock (..),
     RelooperAddBranch (..),
@@ -114,6 +119,7 @@ data AsteriusModule
   = AsteriusModule
       { staticsMap :: SymbolMap AsteriusStatics,
         functionMap :: SymbolMap Function,
+        globalsMap :: SymbolMap Global,
         sptMap :: SymbolMap (Word64, Word64),
         ffiMarshalState :: FFIMarshalState
       }
@@ -163,7 +169,7 @@ toCachedModule :: AsteriusModule -> AsteriusCachedModule
 toCachedModule m =
   AsteriusCachedModule
     { fromCachedModule = m,
-      dependencyMap = staticsMap m `add` (functionMap m `add` SM.empty)
+      dependencyMap = staticsMap m `add` (functionMap m `add` (globalsMap m `add` SM.empty))
     }
   where
     add :: Data a => SymbolMap a -> SymbolMap SymbolSet -> SymbolMap SymbolSet
@@ -345,6 +351,21 @@ data BinaryOp
   | GeFloat64
   deriving (Show, Data)
 
+-- | 'Mutability' of variables.
+data Mutability
+  = Mutable
+  | Immutable
+  deriving (Eq, Ord, Show, Data)
+
+-- | 'GlobalType's classify global variables which hold a value and can either
+-- be mutable or immutable.
+data GlobalType
+  = GlobalType
+      { globalValueType :: ValueType,
+        globalMutability :: Mutability
+      }
+  deriving (Eq, Ord, Show, Data)
+
 data Expression
   = Block
       { name :: BS.ByteString,
@@ -395,6 +416,14 @@ data Expression
       { index :: BinaryenIndex,
         value :: Expression,
         valueType :: ValueType
+      }
+  | GetGlobal
+      { globalSymbol :: EntitySymbol,
+        valueType :: ValueType
+      }
+  | SetGlobal
+      { globalSymbol :: EntitySymbol,
+        value :: Expression
       }
   | Load
       { signed :: Bool,
@@ -450,6 +479,17 @@ data Expression
       }
   deriving (Show, Data)
 
+-- | A 'Global' captures a single global variable. Each 'Global' stores a
+-- single value of the given global type.  Moreover, each 'Global' is
+-- initialized with an initial value, given by a constant initializer
+-- expression.
+data Global
+  = Global
+      { globalType :: GlobalType,
+        globalInit :: Expression
+      }
+  deriving (Show, Data)
+
 data Function
   = Function
       { functionType :: FunctionType,
@@ -497,6 +537,19 @@ data DataSegment
       }
   deriving (Show, Data)
 
+data GlobalExport
+  = GlobalExport
+      { internalName, externalName :: BS.ByteString
+      }
+  deriving (Show, Data)
+
+data GlobalImport
+  = GlobalImport
+      { internalName, externalModuleName, externalBaseName :: BS.ByteString,
+        globalType :: GlobalType
+      }
+  deriving (Show, Data)
+
 data Module
   = Module
       { functionMap' :: LM.Map BS.ByteString Function,
@@ -505,6 +558,9 @@ data Module
         functionTable :: FunctionTable,
         tableImport :: TableImport,
         tableSlots :: Int,
+        globalImports :: [GlobalImport],
+        globalExports :: [GlobalExport],
+        globalMap :: SymbolMap Global,
         memorySegments :: [DataSegment],
         memoryImport :: MemoryImport,
         memoryMBlocks :: Int
@@ -636,6 +692,12 @@ $(genNFData ''UnaryOp)
 
 $(genNFData ''BinaryOp)
 
+$(genNFData ''Mutability)
+
+$(genNFData ''GlobalType)
+
+$(genNFData ''Global)
+
 $(genNFData ''Expression)
 
 $(genNFData ''Function)
@@ -651,6 +713,10 @@ $(genNFData ''FunctionExport)
 $(genNFData ''FunctionTable)
 
 $(genNFData ''DataSegment)
+
+$(genNFData ''GlobalImport)
+
+$(genNFData ''GlobalExport)
 
 $(genNFData ''Module)
 
@@ -700,6 +766,12 @@ $(genBinary ''UnaryOp)
 
 $(genBinary ''BinaryOp)
 
+$(genBinary ''Mutability)
+
+$(genBinary ''GlobalType)
+
+$(genBinary ''Global)
+
 $(genBinary ''Expression)
 
 $(genBinary ''Function)
@@ -715,6 +787,10 @@ $(genBinary ''FunctionExport)
 $(genBinary ''FunctionTable)
 
 $(genBinary ''DataSegment)
+
+$(genBinary ''GlobalImport)
+
+$(genBinary ''GlobalExport)
 
 $(genBinary ''Module)
 

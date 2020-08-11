@@ -12,6 +12,7 @@
 
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StrictData #-}
@@ -48,7 +49,7 @@ import qualified Language.WebAssembly.WireFormat as Wasm
 
 data MarshalError
   = DuplicateFunctionImport
-  | DuplicateGlobalImport             -- ^ Currently unused.
+  | DuplicateGlobalImport
   | InvalidParameterType              -- ^ Currently unused.
   | InvalidLocalType                  -- ^ Currently unused.
   | UnsupportedExpression Expression
@@ -59,7 +60,8 @@ instance Exception MarshalError
 data ModuleSymbolTable
   = ModuleSymbolTable
       { functionTypeSymbols :: Map.Map FunctionType Wasm.FunctionTypeIndex,
-        functionSymbols :: Map.Map BS.ByteString Wasm.FunctionIndex
+        functionSymbols :: Map.Map BS.ByteString Wasm.FunctionIndex,
+        globalSymbols :: Map.Map BS.ByteString Wasm.GlobalIndex
       }
 
 makeModuleSymbolTable ::
@@ -71,20 +73,32 @@ makeModuleSymbolTable m@Module {..} = do
       _func_syms = Map.keys functionMap'
       _func_conflict_syms = _func_import_syms `intersect` _func_syms
       _func_types = generateWasmFunctionTypeSet m
-  if _has_dup _func_import_syms
-    then throwError DuplicateFunctionImport
-    else pure ModuleSymbolTable
-      { functionTypeSymbols =
-          Map.fromDistinctAscList $
-            zip
-              (Set.toList _func_types)
-              (coerce [0 :: Word32 ..]),
-        functionSymbols =
-          Map.fromList $
-            zip
-              (_func_import_syms <> _func_syms)
-              (coerce [0 :: Word32 ..])
-      }
+      _gbl_import_syms =
+        [internalName | GlobalImport {..} <- globalImports]
+      _gbl_syms = map entityName $ SM.keys globalMap
+  if  | _has_dup _func_import_syms ->
+        throwError DuplicateFunctionImport
+      | _has_dup _gbl_import_syms ->
+        throwError DuplicateGlobalImport
+      | otherwise ->
+        pure
+          ModuleSymbolTable
+            { functionTypeSymbols =
+                Map.fromDistinctAscList $
+                  zip
+                    (Set.toList _func_types)
+                    (coerce [0 :: Word32 ..]),
+              functionSymbols =
+                Map.fromList $
+                  zip
+                    (_func_import_syms <> _func_syms)
+                    (coerce [0 :: Word32 ..]),
+              globalSymbols =
+                Map.fromList $
+                  zip
+                    (_gbl_import_syms <> _gbl_syms)
+                    (coerce [0 :: Word32 ..])
+            }
 
 makeValueType :: ValueType -> Wasm.ValueType
 makeValueType vt = case vt of
@@ -92,6 +106,31 @@ makeValueType vt = case vt of
   I64 -> Wasm.I64
   F32 -> Wasm.F32
   F64 -> Wasm.F64
+
+makeMutability :: Mutability -> Wasm.Mutability
+makeMutability m = case m of
+  Immutable -> Wasm.Const
+  Mutable -> Wasm.Var
+
+makeGlobalType :: GlobalType -> Wasm.GlobalType
+makeGlobalType GlobalType {..} =
+  Wasm.GlobalType
+    { Wasm.globalValueType = makeValueType globalValueType,
+      Wasm.globalMutability = makeMutability globalMutability
+    }
+
+makeGlobal ::
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
+  Global ->
+  m Wasm.Global
+makeGlobal Global {..} = do
+  let ty = makeGlobalType globalType
+  e <- Wasm.Expression . bagToList <$> makeInstructions globalInit
+  pure
+    Wasm.Global
+      { globalType = ty,
+        globalInitialValue = e
+      }
 
 makeTypeSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
@@ -142,6 +181,14 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
               }
             | FunctionImport {..} <- functionImports
           ]
+        ++ [ Wasm.Import
+               { moduleName = coerce $ SBS.toShort externalModuleName,
+                 importName = coerce $ SBS.toShort externalBaseName,
+                 importDescription =
+                   Wasm.ImportGlobal $ makeGlobalType globalType
+               }
+             | GlobalImport {..} <- globalImports
+           ]
   }
 
 makeFunctionSection ::
@@ -152,6 +199,25 @@ makeFunctionSection Module {..} ModuleSymbolTable {..} = pure Wasm.FunctionSecti
         | Function {..} <- Map.elems functionMap'
       ]
   }
+
+makeGlobalSection ::
+  MonadError MarshalError f =>
+  Bool ->
+  SM.SymbolMap Int64 ->
+  Module ->
+  ModuleSymbolTable ->
+  f Wasm.Section
+makeGlobalSection tail_calls sym_map Module {..} _module_symtable = do
+  let env = MarshalEnv
+        { envAreTailCallsOn = tail_calls,
+          envSymbolMap = sym_map,
+          envModuleSymbolTable = _module_symtable,
+          envDeBruijnContext = emptyDeBruijnContext,
+          envLclContext = emptyLocalContext
+        }
+  fmap Wasm.GlobalSection $
+    flip runReaderT env $
+      mapM makeGlobal (SM.elems globalMap)
 
 makeExportSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
@@ -166,6 +232,15 @@ makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
           }
         | FunctionExport {..} <- functionExports
       ]
+        ++ [ Wasm.Export
+               { exportName = coerce $ SBS.toShort externalName,
+                 exportDescription =
+                   Wasm.ExportGlobal $
+                     globalSymbols
+                       Map.! internalName
+               }
+             | GlobalExport {..} <- globalExports
+           ]
   }
 
 makeElementSection ::
@@ -546,6 +621,20 @@ makeInstructions expr =
         v `snocBag` Wasm.TeeLocal
           { teeLocalIndex = idx
           }
+    GetGlobal {..} -> do
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      pure $ unitBag Wasm.GetGlobal
+        { getGlobalIndex =
+            globalSymbols Map.! entityName globalSymbol
+        }
+    SetGlobal {..} -> do
+      v <- makeInstructions value
+      ModuleSymbolTable {..} <- askModuleSymbolTable
+      pure $
+        v `snocBag` Wasm.SetGlobal
+          { setGlobalIndex =
+              globalSymbols Map.! entityName globalSymbol
+          }
     Load {..} -> do
       let _mem_arg = Wasm.MemoryArgument
             { memoryArgumentAlignment = 0,
@@ -751,6 +840,7 @@ makeModule tail_calls sym_map m = do
   _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
+  _gbl_sec <- makeGlobalSection tail_calls sym_map m _module_symtable
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection m _module_symtable
   _code_sec <- makeCodeSection tail_calls sym_map m _module_symtable
@@ -760,6 +850,7 @@ makeModule tail_calls sym_map m = do
       [ _type_sec,
         _import_sec,
         _func_sec,
+        _gbl_sec,
         _export_sec,
         _elem_sec,
         _code_sec,

@@ -94,6 +94,15 @@ marshalReturnTypes vts = case vts of
       "binaryen doesn't support multi-value yet: failed to marshal "
         <> show vts
 
+marshalMutability :: Mutability -> Int8
+marshalMutability = \case
+  Immutable -> 0
+  Mutable -> 1
+
+marshalGlobalType :: GlobalType -> (Binaryen.Type, Int8)
+marshalGlobalType GlobalType {..} =
+  (marshalValueType globalValueType, marshalMutability globalMutability)
+
 marshalUnaryOp :: UnaryOp -> Binaryen.Op
 marshalUnaryOp op = case op of
   ClzInt32 -> Binaryen.clzInt32
@@ -356,6 +365,19 @@ marshalExpression e = case e of
     v <- marshalExpression value
     m <- askModuleRef
     lift $ Binaryen.localTee m (coerce index) v $ marshalValueType valueType
+  GetGlobal {..} -> do
+    m <- askModuleRef
+    a <- askArena
+    lift $ do
+      gbl <- marshalBS a (entityName globalSymbol)
+      Binaryen.globalGet m gbl $ marshalValueType valueType
+  SetGlobal {..} -> do
+    v <- marshalExpression value
+    m <- askModuleRef
+    a <- askArena
+    lift $ do
+      gbl <- marshalBS a (entityName globalSymbol)
+      Binaryen.globalSet m gbl v
   Load {..} -> do
     p <- marshalExpression ptr
     m <- askModuleRef
@@ -596,6 +618,36 @@ marshalMemoryImport m MemoryImport {..} = do
     ebp <- marshalBS a externalBaseName
     Binaryen.addMemoryImport m inp emp ebp 0
 
+marshalGlobalImport :: Binaryen.Module -> GlobalImport -> CodeGen ()
+marshalGlobalImport m GlobalImport {..} = do
+  a <- askArena
+  lift $ do
+    inp <- marshalBS a internalName
+    emp <- marshalBS a externalModuleName
+    ebp <- marshalBS a externalBaseName
+    let (ty, mut) = marshalGlobalType globalType
+    Binaryen.addGlobalImport m inp emp ebp ty (fromIntegral mut)
+
+marshalGlobalExport ::
+  Binaryen.Module -> GlobalExport -> CodeGen Binaryen.Export
+marshalGlobalExport m GlobalExport {..} = do
+  a <- askArena
+  lift $ do
+    inp <- marshalBS a internalName
+    enp <- marshalBS a externalName
+    Binaryen.addGlobalExport m inp enp
+
+marshalGlobal ::
+  BS.ByteString -> Global -> CodeGen Binaryen.Global
+marshalGlobal k Global {..} = do
+  let (ty, mut) = marshalGlobalType globalType
+  e <- marshalExpression globalInit
+  m <- askModuleRef
+  a <- askArena
+  lift $ do
+    ptr <- marshalBS a k
+    Binaryen.addGlobal m ptr ty mut e
+
 marshalModule :: Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
 marshalModule tail_calls sym_map hs_mod@Module {..} = do
   m <- Binaryen.Module.create
@@ -621,6 +673,10 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
       forM_ functionImports $ \fi@FunctionImport {..} ->
         marshalFunctionImport m (ftps M.! functionType) fi
       forM_ functionExports $ marshalFunctionExport m
+      forM_ (SM.toList globalMap) $
+        \(k, global) -> marshalGlobal (entityName k) global
+      forM_ globalImports $ marshalGlobalImport m
+      forM_ globalExports $ marshalGlobalExport m
       marshalFunctionTable m tableSlots functionTable
       marshalTableImport m tableImport
       marshalMemorySegments memoryMBlocks memorySegments
