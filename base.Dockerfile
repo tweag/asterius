@@ -12,7 +12,7 @@ ENV \
 COPY utils/retry /tmp/retry
 
 RUN \
-  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200811T084716Z sid main contrib non-free' > /etc/apt/sources.list && \
+  echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200811T024041Z sid main contrib non-free' > /etc/apt/sources.list && \
   /tmp/retry 8 apt update && \
   /tmp/retry 8 apt full-upgrade -y && \
   /tmp/retry 8 apt install -y \
