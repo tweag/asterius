@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -60,7 +60,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -136,7 +136,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -179,7 +179,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -238,7 +238,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -285,7 +285,7 @@ jobs:
         uses: actions/setup-haskell@v1
         with:
           cabal-version: 3.2.0.0
-          stack-version: 2.3.1
+          stack-version: 2.3.3
           enable-stack: true
 
       - name: setup-node-14
@@ -329,7 +329,7 @@ jobs:
       - name: setup-haskell
         uses: actions/setup-haskell@v1
         with:
-          stack-version: 2.3.1
+          stack-version: 2.3.3
           enable-stack: true
           stack-no-global: true
 
@@ -338,7 +338,7 @@ jobs:
 
       - name: gen-pkgs
         run: |
-          utils/gen-pkgs.hs lts-16.8
+          utils/gen-pkgs.hs lts-16.9
           mkdir gen-pkgs
           mv cabal.config pkgs.txt gen-pkgs
 
