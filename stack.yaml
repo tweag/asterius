@@ -1,4 +1,4 @@
-resolver: lts-16.8
+resolver: lts-16.9
 compiler: ghc-8.8.4
 extra-deps:
   - binaryen-0.0.2.0
