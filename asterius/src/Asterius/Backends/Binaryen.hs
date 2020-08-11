@@ -435,16 +435,9 @@ marshalExpression e = case e of
         Just t -> do
           s <-
             marshalExpression
-              Store
-                { bytes = 8,
-                  offset = 0,
-                  ptr =
-                    ConstI32
-                      $ fromIntegral
-                      $ (sym_map SM.! "__asterius_pc")
-                        .&. 0xFFFFFFFF,
-                  value = ConstI64 t,
-                  valueType = I64
+              SetGlobal
+                { globalSymbol = "__asterius_pc",
+                  value = ConstI64 t
                 }
           m <- askModuleRef
           a <- askArena
@@ -473,19 +466,11 @@ marshalExpression e = case e of
           Binaryen.none
     -- Case 2: Tail calls are off
     False -> do
-      sym_map <- askSymbolMap
       s <-
         marshalExpression
-          Store
-            { bytes = 8,
-              offset = 0,
-              ptr =
-                ConstI32
-                  $ fromIntegral
-                  $ (sym_map SM.! "__asterius_pc")
-                    .&. 0xFFFFFFFF,
-              value = returnCallIndirectTarget64,
-              valueType = I64
+          SetGlobal
+            { globalSymbol = "__asterius_pc",
+              value = returnCallIndirectTarget64
             }
       m <- askModuleRef
       a <- askArena

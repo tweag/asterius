@@ -34,7 +34,6 @@ import Bag
 import Control.Exception
 import Control.Monad.Except
 import Control.Monad.Reader
-import Data.Bits
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
@@ -710,16 +709,9 @@ makeInstructions expr =
         -- Case 2: Tail calls are off
         else case SM.lookup returnCallTarget64 sym_map of
           Just t -> makeInstructions
-            Store
-              { bytes = 8,
-                offset = 0,
-                ptr =
-                  ConstI32
-                    $ fromIntegral
-                    $ (sym_map SM.! "__asterius_pc")
-                      .&. 0xFFFFFFFF,
-                value = ConstI64 t,
-                valueType = I64
+            SetGlobal
+              { globalSymbol = "__asterius_pc",
+                value = ConstI64 t
               }
           _
             | ("__asterius_barf_" <> returnCallTarget64) `SM.member` sym_map ->
@@ -727,7 +719,6 @@ makeInstructions expr =
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
     ReturnCallIndirect {..} -> do
-      sym_map <- askSymbolMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
       tail_calls <- areTailCallsOn
       if tail_calls
@@ -745,16 +736,9 @@ makeInstructions expr =
               }
         -- Case 2: Tail calls are off
         else makeInstructions
-          Store
-            { bytes = 8,
-              offset = 0,
-              ptr =
-                ConstI32
-                  $ fromIntegral
-                  $ (sym_map SM.! "__asterius_pc")
-                    .&. 0xFFFFFFFF,
-              value = returnCallIndirectTarget64,
-              valueType = I64
+          SetGlobal
+            { globalSymbol = "__asterius_pc",
+              value = returnCallIndirectTarget64
             }
     Nop -> pure $ unitBag Wasm.Nop
     Unreachable -> pure $ unitBag Wasm.Unreachable
