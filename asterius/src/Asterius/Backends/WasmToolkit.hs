@@ -204,13 +204,15 @@ makeGlobalSection ::
   MonadError MarshalError f =>
   Bool ->
   SM.SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
   Module ->
   ModuleSymbolTable ->
   f Wasm.Section
-makeGlobalSection tail_calls sym_map Module {..} _module_symtable = do
+makeGlobalSection tail_calls ss_sym_map func_sym_map Module {..} _module_symtable = do
   let env = MarshalEnv
         { envAreTailCallsOn = tail_calls,
-          envSymbolMap = sym_map,
+          envStaticsSymbolMap = ss_sym_map,
+          envFunctionsSymbolMap = func_sym_map,
           envModuleSymbolTable = _module_symtable,
           envDeBruijnContext = emptyDeBruijnContext,
           envLclContext = emptyLocalContext
@@ -470,8 +472,10 @@ data MarshalEnv
   = MarshalEnv
       { -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
-        -- | The symbol map for the current module.
-        envSymbolMap :: SM.SymbolMap Int64,
+        -- | The symbol map for the current module (statics).
+        envStaticsSymbolMap :: SM.SymbolMap Int64,
+        -- | The symbol map for the current module (functions).
+        envFunctionsSymbolMap :: SM.SymbolMap Int64,
         -- | The symbol table for the current module.
         envModuleSymbolTable :: ModuleSymbolTable,
         -- | The de Bruijn context. Used for label access.
@@ -484,9 +488,13 @@ data MarshalEnv
 areTailCallsOn :: MonadReader MarshalEnv m => m Bool
 areTailCallsOn = reader envAreTailCallsOn
 
--- | Retrieve the symbol map from the local environment.
-askSymbolMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Int64)
-askSymbolMap = reader envSymbolMap
+-- | Retrieve the symbol map from the local environment (statics).
+askStaticsSymbolMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Int64)
+askStaticsSymbolMap = reader envStaticsSymbolMap
+
+-- | Retrieve the symbol map from the local environment (functions).
+askFunctionsSymbolMap :: MonadReader MarshalEnv m => m (SM.SymbolMap Int64)
+askFunctionsSymbolMap = reader envFunctionsSymbolMap
 
 -- | Retrieve the module symbol table from the local environment.
 askModuleSymbolTable :: MonadReader MarshalEnv m => m ModuleSymbolTable
@@ -583,8 +591,8 @@ makeInstructions expr =
               makeInstructions
           pure $ unionManyBags xs `snocBag` Wasm.Call {callFunctionIndex = i}
         _ -> do
-          sym_map <- askSymbolMap
-          if SM.member ("__asterius_barf_" <> target) sym_map
+          func_sym_map <- askFunctionsSymbolMap
+          if SM.member ("__asterius_barf_" <> target) func_sym_map
             then makeInstructions $ barf target callReturnTypes
             else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
@@ -694,7 +702,8 @@ makeInstructions expr =
       x <- makeInstructions dropValue
       pure $ x `snocBag` Wasm.Drop
     ReturnCall {..} -> do
-      sym_map <- askSymbolMap
+      ss_sym_map <- askStaticsSymbolMap
+      func_sym_map <- askFunctionsSymbolMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
       tail_calls <- areTailCallsOn
       if tail_calls
@@ -703,12 +712,12 @@ makeInstructions expr =
           Just i -> pure $
             unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` func_sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
-        else case SM.lookup returnCallTarget64 sym_map of
+        else case SM.lookup returnCallTarget64 func_sym_map of
           Just t -> makeInstructions
             Store
               { bytes = 8,
@@ -716,18 +725,18 @@ makeInstructions expr =
                 ptr =
                   ConstI32
                     $ fromIntegral
-                    $ (sym_map SM.! "__asterius_pc")
+                    $ (ss_sym_map SM.! "__asterius_pc")
                       .&. 0xFFFFFFFF,
                 value = ConstI64 t,
                 valueType = I64
               }
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` func_sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
     ReturnCallIndirect {..} -> do
-      sym_map <- askSymbolMap
+      ss_sym_map <- askStaticsSymbolMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
       tail_calls <- areTailCallsOn
       if tail_calls
@@ -751,7 +760,7 @@ makeInstructions expr =
               ptr =
                 ConstI32
                   $ fromIntegral
-                  $ (sym_map SM.! "__asterius_pc")
+                  $ (ss_sym_map SM.! "__asterius_pc")
                     .&. 0xFFFFFFFF,
               value = returnCallIndirectTarget64,
               valueType = I64
@@ -760,17 +769,23 @@ makeInstructions expr =
     Unreachable -> pure $ unitBag Wasm.Unreachable
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
-      sym_map <- askSymbolMap
-      case SM.lookup unresolvedSymbol sym_map of
-        Just x -> pure $ unitBag Wasm.I64Const
-          { i64ConstValue = x + fromIntegral symbolOffset
-          }
-        _
-          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` sym_map ->
+      ss_sym_map <- askStaticsSymbolMap
+      func_sym_map <- askFunctionsSymbolMap
+
+      if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
+            pure $ unitBag Wasm.I64Const
+              { i64ConstValue = x + fromIntegral symbolOffset
+              }
+          | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
+            pure $ unitBag Wasm.I64Const
+              { i64ConstValue = x + fromIntegral symbolOffset
+              }
+          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` func_sym_map ->
             makeInstructions $ barf unresolvedSymbol [I64]
-          | otherwise -> pure $ unitBag Wasm.I64Const
-            { i64ConstValue = invalidAddress
-            }
+          | otherwise ->
+            pure $ unitBag Wasm.I64Const
+              { i64ConstValue = invalidAddress
+              }
     -- Unsupported expressions:
     UnresolvedGetLocal {} -> throwError $ UnsupportedExpression expr
     UnresolvedSetLocal {} -> throwError $ UnsupportedExpression expr
@@ -789,10 +804,11 @@ makeCodeSection ::
   MonadError MarshalError m =>
   Bool ->
   SM.SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
-makeCodeSection tail_calls sym_map _mod@Module {..} _module_symtable =
+makeCodeSection tail_calls ss_sym_map func_sym_map _mod@Module {..} _module_symtable =
   fmap Wasm.CodeSection
     $ for (Map.elems functionMap')
     $ \_func@Function {..} -> do
@@ -805,7 +821,8 @@ makeCodeSection tail_calls sym_map _mod@Module {..} _module_symtable =
       _body <- do
         let env = MarshalEnv
               { envAreTailCallsOn = tail_calls,
-                envSymbolMap = sym_map,
+                envStaticsSymbolMap = ss_sym_map,
+                envFunctionsSymbolMap = func_sym_map,
                 envModuleSymbolTable = _module_symtable,
                 envDeBruijnContext = emptyDeBruijnContext,
                 envLclContext = _local_ctx
@@ -833,17 +850,18 @@ makeModule ::
   MonadError MarshalError m =>
   Bool ->
   SM.SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
   Module ->
   m Wasm.Module
-makeModule tail_calls sym_map m = do
+makeModule tail_calls ss_sym_map func_sym_map m = do
   _module_symtable <- makeModuleSymbolTable m
   _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
-  _gbl_sec <- makeGlobalSection tail_calls sym_map m _module_symtable
+  _gbl_sec <- makeGlobalSection tail_calls ss_sym_map func_sym_map m _module_symtable
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection m _module_symtable
-  _code_sec <- makeCodeSection tail_calls sym_map m _module_symtable
+  _code_sec <- makeCodeSection tail_calls ss_sym_map func_sym_map m _module_symtable
   _data_sec <- makeDataSection m _module_symtable
   pure $
     Wasm.Module

@@ -346,7 +346,8 @@ ahcDistMain logger task (final_m, report) = do
             runExcept $
               WasmToolkit.makeModule
                 (tailCalls task)
-                (staticsSymbolMap report <> functionSymbolMap report)
+                (staticsSymbolMap report)
+                (functionSymbolMap report)
                 final_m
       r <- case conv_result of
         Left err -> fail $ "[ERROR] Conversion failed with " <> show err
