@@ -315,9 +315,9 @@ marshalExpression e = case e of
       dn <- marshalBS a defaultName
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
-    funcs_sym_map <- askFunctionsSymbolMap
+    func_sym_map <- askFunctionsSymbolMap
     if
-        | target `SM.member` funcs_sym_map -> do
+        | target `SM.member` func_sym_map -> do
           os <-
             mapM
               marshalExpression
@@ -336,7 +336,7 @@ marshalExpression e = case e of
             (ops, osl) <- marshalV a os
             tp <- marshalBS a (entityName target)
             Binaryen.call m tp ops (fromIntegral osl) rts
-        | ("__asterius_barf_" <> target) `SM.member` funcs_sym_map ->
+        | ("__asterius_barf_" <> target) `SM.member` func_sym_map ->
           marshalExpression $
             barf target callReturnTypes
         | otherwise -> do
@@ -436,9 +436,9 @@ marshalExpression e = case e of
         Binaryen.returnCall m dst nullPtr 0 Binaryen.none
     -- Case 2: Tail calls are off
     False -> do
-      statics_sym_map <- askStaticsSymbolMap
-      funcs_sym_map <- askFunctionsSymbolMap
-      case SM.lookup returnCallTarget64 funcs_sym_map of
+      ss_sym_map <- askStaticsSymbolMap
+      func_sym_map <- askFunctionsSymbolMap
+      case SM.lookup returnCallTarget64 func_sym_map of
         Just t -> do
           s <-
             marshalExpression
@@ -448,7 +448,7 @@ marshalExpression e = case e of
                   ptr =
                     ConstI32
                       $ fromIntegral
-                      $ (statics_sym_map SM.! "__asterius_pc")
+                      $ (ss_sym_map SM.! "__asterius_pc")
                         .&. 0xFFFFFFFF,
                   value = ConstI64 t,
                   valueType = I64
@@ -480,7 +480,7 @@ marshalExpression e = case e of
           Binaryen.none
     -- Case 2: Tail calls are off
     False -> do
-      statics_sym_map <- askStaticsSymbolMap
+      ss_sym_map <- askStaticsSymbolMap
       s <-
         marshalExpression
           Store
@@ -489,7 +489,7 @@ marshalExpression e = case e of
               ptr =
                 ConstI32
                   $ fromIntegral
-                  $ (statics_sym_map SM.! "__asterius_pc")
+                  $ (ss_sym_map SM.! "__asterius_pc")
                     .&. 0xFFFFFFFF,
               value = returnCallIndirectTarget64,
               valueType = I64
@@ -508,14 +508,14 @@ marshalExpression e = case e of
     lift $ Binaryen.Expression.unreachable m
   CFG {..} -> relooperRun graph
   Symbol {..} -> do
-    statics_sym_map <- askStaticsSymbolMap
-    funcs_sym_map <- askFunctionsSymbolMap
+    ss_sym_map <- askStaticsSymbolMap
+    func_sym_map <- askFunctionsSymbolMap
     m <- askModuleRef
-    if  | Just x <- SM.lookup unresolvedSymbol statics_sym_map ->
+    if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
           lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
-        | Just x <- SM.lookup unresolvedSymbol funcs_sym_map ->
+        | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
           lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
-        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` funcs_sym_map ->
+        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` func_sym_map ->
           marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
@@ -663,7 +663,7 @@ marshalModule ::
   SM.SymbolMap Int64 ->
   Module ->
   IO Binaryen.Module
-marshalModule tail_calls statics_sym_map funcs_sym_map hs_mod@Module {..} = do
+marshalModule tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
   m <- Binaryen.Module.create
   Binaryen.setFeatures m
     $ foldl1' (.|.)
@@ -674,8 +674,8 @@ marshalModule tail_calls statics_sym_map funcs_sym_map hs_mod@Module {..} = do
           MarshalEnv
             { envArena = a,
               envAreTailCallsOn = tail_calls,
-              envStaticsSymbolMap = statics_sym_map,
-              envFunctionsSymbolMap = funcs_sym_map,
+              envStaticsSymbolMap = ss_sym_map,
+              envFunctionsSymbolMap = func_sym_map,
               envModuleRef = m
             }
         fts = generateWasmFunctionTypeSet hs_mod
