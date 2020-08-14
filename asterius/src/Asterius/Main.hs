@@ -308,7 +308,8 @@ ahcDistMain logger task (final_m, report) = do
       m_ref <-
         Binaryen.marshalModule
           (tailCalls task)
-          (staticsSymbolMap report <> functionSymbolMap report)
+          (staticsSymbolMap report)
+          (functionSymbolMap report)
           final_m
       when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
         logger "[INFO] Running binaryen optimization"
