@@ -83,7 +83,7 @@ frontendPlugin = makeFrontendPlugin $ do
               Left err -> throwIO err
               Right m' -> do
                 let m = ffi_mod <> m'
-                putFile obj_path $ toCachedModule m
+                putFile obj_path $ inMemoryToOnDisk m
                 when is_debug $ do
                   let p = (obj_path -<.>)
                   writeFile (p "dump-wasm-ast") =<< prettyShow m
@@ -100,7 +100,7 @@ frontendPlugin = makeFrontendPlugin $ do
             runCodeGen (marshalCmmIR ms_mod ir) dflags ms_mod >>= \case
               Left err -> throwIO err
               Right m -> do
-                putFile obj_path $ toCachedModule m
+                putFile obj_path $ inMemoryToOnDisk m
                 when is_debug $ do
                   let p = (obj_path -<.>)
                   writeFile (p "dump-wasm-ast") =<< prettyShow m

@@ -799,6 +799,9 @@ generateRTSWrapper mod_sym func_sym param_vts ret_vts =
       [I64] -> ([F64], truncSFloat64ToInt64)
       _ -> (ret_vts, id)
 
+-- | Create a wrapper function for a JSFFI function import. The wrapper
+-- function takes care of the I64/F64 conversion for both the arguments and the
+-- results, and internally calls the function import.
 generateWrapperFunction :: EntitySymbol -> Function -> Function
 generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
   Function
@@ -835,8 +838,10 @@ generateWrapperFunction func_sym Function {functionType = FunctionType {..}} =
       [I64] -> ([F64], convertSInt64ToFloat64)
       _ -> (returnTypes, id)
 
--- Renames each function in the module to <name>_wrapper, and
--- edits their implementation using 'generateWrapperFunction'
+-- | Rename each function in the module to <name>_wrapper, and edit its
+-- implementation using 'generateWrapperFunction'. Essentially, for each JSFFI
+-- import we have two things: a Wasm function import, and a function wrapper
+-- that takes care of the I64/F64 conversion.
 generateWrapperModule :: AsteriusModule -> AsteriusModule
 generateWrapperModule m =
   m

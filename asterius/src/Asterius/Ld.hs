@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -22,32 +23,37 @@ import Asterius.Resolve
 import Asterius.Types
 import qualified Asterius.Types.SymbolSet as SS
 import Control.Exception
-import Data.Either
 import Data.Traversable
 
 data LinkTask
   = LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
-        linkModule :: AsteriusCachedModule,
+        linkModule :: AsteriusRepModule,
         hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }
   deriving (Show)
 
+{-
+Note [Malformed object files]
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Object files in Haskell package directories can also originate from gcc being
+called on cbits in packages. This in the past gave deserialization failures.
+Hence, when we deserialize objects to be linked in 'loadTheWorld', we choose to
+be overpermissive and silently ignore deserialization failures. This has worked
+well so far.
+-}
+
 -- | Load all the library and object dependencies for a 'LinkTask' into a
--- single module. NOTE: object files in Haskell package directories can also
--- originate from gcc being called on cbits in packages. This in the past gave
--- deserialization failures. Hence, when we deserialize objects to be linked in
--- 'loadTheWorld', we choose to be overpermissive and silently ignore
--- deserialization failures. This has worked well so far.
-loadTheWorld :: LinkTask -> IO AsteriusCachedModule
+-- single module.
+loadTheWorld :: LinkTask -> IO AsteriusRepModule
 loadTheWorld LinkTask {..} = do
   ncu <- newNameCacheUpdater
-  lib <- mconcat <$> for linkLibs (loadArchive ncu)
-  objs <- rights <$> for linkObjs (tryGetFile ncu)
-  evaluate $ linkModule <> mconcat objs <> lib
+  libs <- for linkLibs (loadArchiveRep ncu)
+  objs <- for linkObjs (loadObjectRep ncu)
+  evaluate $ linkModule <> mconcat objs <> mconcat libs
 
 -- | The *_info are generated from Cmm using the INFO_TABLE macro.
 -- For example, see StgMiscClosures.cmm / Exception.cmm
@@ -89,13 +95,13 @@ rtsPrivateSymbols =
     ]
 
 linkModules ::
-  LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
-linkModules LinkTask {..} m =
+  LinkTask -> AsteriusRepModule -> IO (AsteriusModule, Module, LinkReport)
+linkModules LinkTask {..} module_rep =
   linkStart
     debug
     gcSections
     verboseErr
-    ( toCachedModule
+    ( toAsteriusRepModule
         ( (if hasMain then mainBuiltins else mempty)
             <> rtsAsteriusModule
               defaultBuiltinsOptions
@@ -103,7 +109,7 @@ linkModules LinkTask {..} m =
                   Asterius.Builtins.debug = debug
                 }
         )
-        <> m
+        <> module_rep
     )
     ( SS.unions
         [ SS.fromList rootSymbols,
@@ -119,13 +125,13 @@ linkModules LinkTask {..} m =
 
 linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, LinkReport)
 linkExeInMemory ld_task = do
-  final_store <- loadTheWorld ld_task
-  evaluate $ linkModules ld_task final_store
+  module_rep <- loadTheWorld ld_task
+  linkModules ld_task module_rep
 
 linkExe :: LinkTask -> IO ()
 linkExe ld_task@LinkTask {..} = do
   (pre_m, m, link_report) <- linkExeInMemory ld_task
   putFile linkOutput (m, link_report)
   case outputIR of
-    Just p -> putFile p $ toCachedModule pre_m
+    Just p -> putFile p $ inMemoryToOnDisk pre_m
     _ -> pure ()

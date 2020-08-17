@@ -94,9 +94,9 @@ import qualified VarEnv as GHC
 data GHCiState = GHCiState
   { ghciUniqSupply :: GHC.UniqSupply,
     ghciNameCacheUpdater :: GHC.NameCacheUpdater,
-    ghciLibs :: AsteriusCachedModule,
-    ghciObjs :: M.Map FilePath AsteriusCachedModule,
-    ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusCachedModule),
+    ghciLibs :: AsteriusRepModule,
+    ghciObjs :: M.Map FilePath AsteriusRepModule,
+    ghciCompiledCoreExprs :: IM.IntMap (EntitySymbol, AsteriusRepModule),
     ghciLastCompiledCoreExpr :: Int,
     ghciSession :: ~(Session, Pipe, JSVal)
   }
@@ -196,10 +196,10 @@ asteriusIservCall hsc_env _ msg = do
     GHC.InitLinker -> pure ()
     GHC.LoadDLL _ -> pure Nothing
     GHC.LoadArchive p -> modifyMVar_ globalGHCiState $ \s -> do
-      lib <- loadArchive (ghciNameCacheUpdater s) p
+      lib <- loadArchiveRep (ghciNameCacheUpdater s) p
       evaluate s {ghciLibs = lib <> ghciLibs s}
     GHC.LoadObj p -> modifyMVar_ globalGHCiState $ \s -> do
-      obj <- getFile (ghciNameCacheUpdater s) p
+      obj <- onDiskToObjRep p <$> getFile (ghciNameCacheUpdater s) p
       evaluate s {ghciObjs = M.insert p obj $ ghciObjs s}
     GHC.AddLibrarySearchPath _ -> pure $ GHC.RemotePtr 0
     GHC.RemoveLibrarySearchPath _ -> pure True
@@ -490,7 +490,7 @@ asteriusHscCompileCoreExpr hsc_env srcspan ds_expr = do
     pure
       ( s
           { ghciCompiledCoreExprs =
-              IM.insert this_id (sym, toCachedModule m) $
+              IM.insert this_id (sym, toAsteriusRepModule m) $
                 ghciCompiledCoreExprs s,
             ghciLastCompiledCoreExpr = this_id
           },

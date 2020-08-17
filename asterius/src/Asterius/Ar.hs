@@ -19,7 +19,9 @@
 -- roll out our own implementation of @loadArchive@/@createArchive@ (based on
 -- that of GHC).
 module Asterius.Ar
-  ( loadArchive,
+  ( loadArchiveRep,
+    loadArchiveFile,
+    loadCompleteArchiveFile,
     createArchive,
   )
 where
@@ -32,7 +34,7 @@ import Data.Binary.Put
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString.Lazy as LBS
-import Data.Foldable
+import qualified Data.Set as Set
 import Data.Traversable
 import GHC.IO.Unsafe
 import qualified IfaceEnv as GHC
@@ -94,16 +96,38 @@ writeArchiveToFile fp = LBS.writeFile fp . runPut . putArchive
 -- files in the archive that cannot be parsed. Also, the metadata of the
 -- contained files are ignored ('createArchive' always sets them to default
 -- values anyway).
-loadArchive :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusCachedModule
-loadArchive ncu p = do
-  Archive entries <- walkArchiveFile p
-  foldlM
-    ( \acc entry -> tryGetBS ncu entry >>= \case
-        Left _ -> pure acc
-        Right m -> pure $ m <> acc
-    )
-    mempty
-    entries
+loadArchiveRep :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusRepModule
+loadArchiveRep ncu path = do
+  Archive entries <- walkArchiveFile path
+  ms <- for entries $ \entry -> tryGetBS ncu entry >>= \case
+    Left {} -> pure mempty -- Note [Malformed object files] in Asterius.Ld
+    Right m -> pure
+                 AsteriusRepModule
+                   { dependencyMap = onDiskDependencyMap m,
+                     moduleExports = onDiskModuleExports m,
+                     objectSources = mempty, -- Set it once and for all afterwards
+                     archiveSources = mempty,
+                     inMemoryModule = mempty
+                   }
+  let combined = mconcat ms
+  pure combined {archiveSources = Set.singleton path}
+
+loadArchiveFile :: GHC.NameCacheUpdater -> FilePath -> (AsteriusModule -> AsteriusModule) -> IO AsteriusModule
+loadArchiveFile ncu path fn = do
+  Archive entries <- walkArchiveFile path
+  ms <- for entries $ \entry -> tryGetBS ncu entry >>= \case
+    Left {} -> pure mempty -- Note [Malformed object files] in Asterius.Ld
+    Right m -> pure $ fn $ onDiskToInMemory m
+  pure $ mconcat ms
+
+-- could also be loadArchiveFile ncu path id, but let's see if this is more efficient.
+loadCompleteArchiveFile :: GHC.NameCacheUpdater -> FilePath -> IO AsteriusModule
+loadCompleteArchiveFile ncu path = do
+  Archive entries <- walkArchiveFile path
+  ms <- for entries $ \entry -> tryGetBS ncu entry >>= \case
+    Left {} -> pure mempty -- Note [Malformed object files] in Asterius.Ld
+    Right m -> pure $ onDiskToInMemory m
+  pure $ mconcat ms
 
 -- | Archives have numeric values padded with '\x20' to the right.
 getPaddedInt :: BS.ByteString -> Int
