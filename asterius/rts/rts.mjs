@@ -57,8 +57,7 @@ export async function newAsteriusInstance(req) {
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
       req.symbolTable,
-      __asterius_stableptr_manager,
-      __asterius_fs
+      __asterius_stableptr_manager
     ),
     __asterius_integer_manager = new IntegerManager(),
     __asterius_bytestring_cbits = new ByteStringCBits(null),
