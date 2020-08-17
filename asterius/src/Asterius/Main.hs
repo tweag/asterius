@@ -209,7 +209,7 @@ genDefEntry task =
       ".req.mjs\";\n",
       mconcat
         [ "module.then(m => rts.newAsteriusInstance(Object.assign(req, {module: m}))).then(i => {\n",
-          "i.exports.main().catch(err => {if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) i.fs.writeSync(2, `",
+          "i.exports.main().catch(err => {if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) i.fs.writeNonMemory(2, `",
           string7 $ takeBaseName $ inputHS task,
           ": ${err}\n`)});\n",
           "});\n"
@@ -427,21 +427,21 @@ ahcDistMain logger task (final_m, report) = do
   when (target task == Browser) $ do
     logger $ "[INFO] Writing HTML to " <> show out_html
     builderWriteFile out_html $ genHTML task
-  when (target task == Node && run task)
-    $ withCurrentDirectory (takeDirectory out_wasm)
-    $ if bundle task
-      then do
-        logger $ "[INFO] Running " <> out_js
-        callProcess "node" $
-          ["--experimental-wasm-bigint" | debug task]
-            <> ["--experimental-wasm-return-call" | tailCalls task]
-            <> [takeFileName out_js]
-      else do
-        logger $ "[INFO] Running " <> out_entry
-        callProcess "node" $
-          ["--experimental-wasm-bigint" | debug task]
-            <> ["--experimental-wasm-return-call" | tailCalls task]
-            <> ["--experimental-modules", takeFileName out_entry]
+  when (target task == Node && run task) $
+    withCurrentDirectory (takeDirectory out_wasm) $
+      if bundle task
+        then do
+          logger $ "[INFO] Running " <> out_js
+          callProcess "node" $
+            ["--experimental-wasm-bigint" | debug task]
+              <> ["--experimental-wasm-return-call" | tailCalls task]
+              <> [takeFileName out_js]
+        else do
+          logger $ "[INFO] Running " <> out_entry
+          callProcess "node" $
+            ["--experimental-wasm-bigint" | debug task]
+              <> ["--experimental-wasm-return-call" | tailCalls task]
+              <> ["--experimental-modules", takeFileName out_entry]
 
 ahcLinkMain :: Task -> IO ()
 ahcLinkMain task = do

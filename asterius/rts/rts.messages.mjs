@@ -8,6 +8,6 @@ export class Messages {
 
   debugBelch2(fmt, arg) {
     const s = `${this.memory.strLoad(arg)}\n`;
-    this.fs.writeSync(2, this.encoder.encode(s));
+    this.fs.writeNonMemory(2, this.encoder.encode(s));
   }
 }

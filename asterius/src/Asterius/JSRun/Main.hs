@@ -38,7 +38,7 @@ hsMain prog_name s i =
       ( toJS i
           <> ".exports.main().catch(err => { if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) { "
           <> toJS i
-          <> ".fs.writeSync(2, `"
+          <> ".fs.writeNonMemory(2, `"
           <> fromString prog_name
           <> ": ${err}\n`);}})"
       )
