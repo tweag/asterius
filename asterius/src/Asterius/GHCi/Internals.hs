@@ -17,7 +17,6 @@ where
 import Asterius.Ar
 import Asterius.Binary.File
 import Asterius.Binary.NameCache
-import Asterius.BuildInfo
 import Asterius.CodeGen
 import Asterius.Internals.Name
 import Asterius.Internals.Temp
@@ -350,7 +349,7 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
   withTempDir "asdf" $ \tmp_dir -> do
     let p = tmp_dir </> "asdf"
     distNonMain p [runner_sym, run_mod_fin_sym, buf_conv_sym] ahc_dist_input
-    rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
+    rts_val <- importMJS s $ p `replaceFileName` "rts.mjs"
     mod_buf <- LBS.readFile $ p -<.> "wasm"
     req_mod_val <- importMJS s $ p -<.> "req.mjs"
     req_val <- eval @JSVal s $ toJS req_mod_val <> ".default"

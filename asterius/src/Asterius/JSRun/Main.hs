@@ -9,7 +9,6 @@ module Asterius.JSRun.Main
   )
 where
 
-import Asterius.BuildInfo
 import Control.Exception
 import qualified Data.ByteString.Lazy as LBS
 import Data.String
@@ -18,7 +17,7 @@ import System.FilePath
 
 newAsteriusInstance :: Session -> FilePath -> LBS.ByteString -> IO JSVal
 newAsteriusInstance s req_path mod_buf = do
-  rts_val <- importMJS s $ dataDir </> "rts" </> "rts.mjs"
+  rts_val <- importMJS s $ req_path `replaceFileName` "rts.mjs"
   req_mod_val <- importMJS s req_path
   req_val <- eval @JSVal s $ toJS req_mod_val <> ".default"
   mod_val <- eval @JSVal s $ "WebAssembly.compile(" <> toJS mod_buf <> ")"
@@ -38,7 +37,7 @@ hsMain prog_name s i =
       ( toJS i
           <> ".exports.main().catch(err => { if (!(err.startsWith('ExitSuccess') || err.startsWith('ExitFailure '))) { "
           <> toJS i
-          <> ".fs.writeSync(2, `"
+          <> ".fs.writeNonMemory(2, `"
           <> fromString prog_name
           <> ": ${err}\n`);}})"
       )

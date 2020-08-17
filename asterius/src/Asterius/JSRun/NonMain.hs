@@ -7,7 +7,6 @@ module Asterius.JSRun.NonMain
   )
 where
 
-import Asterius.BuildInfo
 import Asterius.Ld
   ( LinkTask (..),
     linkModules,
@@ -72,7 +71,7 @@ newAsteriusInstanceNonMain ::
   IO JSVal
 newAsteriusInstanceNonMain s p extra_syms m = do
   distNonMain p extra_syms $ linkNonMain m extra_syms
-  let rts_path = dataDir </> "rts" </> "rts.mjs"
+  let rts_path = p `replaceFileName` "rts.mjs"
       req_path = p -<.> "req.mjs"
       wasm_path = p -<.> "wasm"
   rts_val <- importMJS s rts_path

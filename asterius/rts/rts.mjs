@@ -19,14 +19,16 @@ import { Messages } from "./rts.messages.mjs";
 import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
-import { getNodeModules } from "./rts.node.mjs";
+import { FS } from "./rts.fs.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
+  const __asterius_components = {};
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
+    __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(req.symbolTable),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
     __asterius_wasm_instance = null,
@@ -53,7 +55,6 @@ export async function newAsteriusInstance(req) {
       req.symbolTable
     ),
     __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
-    __asterius_fs = new (req.targetSpecificModule.fs)(req.consoleHistory),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
       req.symbolTable,
@@ -94,7 +95,7 @@ export async function newAsteriusInstance(req) {
     );
   __asterius_scheduler.exports = __asterius_exports;
 
-  const __asterius_node_modules = await getNodeModules();
+  __asterius_components.memory = __asterius_memory;
 
   function __asterius_show_I64(x) {
     return `0x${x.toString(16).padStart(8, "0")}`;
@@ -107,8 +108,8 @@ export async function newAsteriusInstance(req) {
     freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),
     fs: __asterius_fs,
     stdio: {
-      stdout: () => __asterius_fs.readSync(1),
-      stderr: () => __asterius_fs.readSync(2)
+      stdout: () => __asterius_fs.history(1),
+      stderr: () => __asterius_fs.history(2)
     },
     returnFFIPromise: (promise) =>
       __asterius_scheduler.returnFFIPromise(promise)
@@ -126,33 +127,17 @@ export async function newAsteriusInstance(req) {
         memory: __asterius_wasm_memory
       },
       rts: {
-        printI64: x =>
-          __asterius_fs.writeSync(1, `${__asterius_show_I64(x)}\n`),
+        printI64: x => __asterius_fs.writeNonMemory(1, `${__asterius_show_I64(x)}\n`),
         assertEqI64: function(x, y) {
           if (x != y) {
             throw new WebAssembly.RuntimeError(`unequal I64: ${x}, ${y}`);
           }
         },
-        print: x => __asterius_fs.writeSync(1, `${x}\n`)
+        print: x => __asterius_fs.writeNonMemory(1, `${x}\n`)
       },
       fs: {
-        read: (fd, buf, count) => {
-          const p = Memory.unTag(buf);
-          return __asterius_node_modules.fs.readSync(
-            fd,
-            __asterius_memory.i8View,
-            p,
-            count,
-            null
-          );
-        },
-        write: (fd, buf, count) => {
-          const p = Memory.unTag(buf);
-          return (fd <= 2
-            ? __asterius_fs
-            : __asterius_node_modules.fs
-          ).writeSync(fd, __asterius_memory.i8View.subarray(p, p + count));
-        }
+        read: (fd, buf, count) => __asterius_fs.read(fd, buf, count),
+        write: (fd, buf, count) => __asterius_fs.write(fd, buf, count)
       },
       posix: modulify(new (req.targetSpecificModule.posix)(__asterius_memory, rtsConstants)),
       bytestring: modulify(__asterius_bytestring_cbits),
