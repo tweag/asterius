@@ -163,11 +163,7 @@ genReq :: Task -> LinkReport -> Builder
 genReq task LinkReport {..} =
   mconcat
     [ -- import target-specific module
-      "import targetSpecificModule from './",
-      case target task of
-        Node -> "node"
-        Browser -> "browser",
-      "/default.mjs';\n\n",
+      "import targetSpecificModule from './default.mjs';\n",
       -- export request object
       "export default {",
       "jsffiFactory: ",
@@ -388,12 +384,13 @@ ahcDistMain logger task (final_m, report) = do
   let rts_files = filter (\x -> x /= "browser" && x /= "node") rts_files'
   for_ rts_files $
     \f -> copyFile (dataDir </> "rts" </> f) (outputDirectory task </> f)
-  let specificFolder =
-        case target task of
+  let specific_dir =
+        dataDir </> "rts" </> case target task of
           Node -> "node"
           Browser -> "browser"
-  createDirectoryIfMissing False (outputDirectory task </> specificFolder)
-  copyFile (dataDir </> "rts" </> specificFolder </> "default.mjs") (outputDirectory task </> specificFolder </> "default.mjs")
+  specific_contents <- listDirectory specific_dir
+  for_ specific_contents $
+    \f -> copyFile (specific_dir </> f) (outputDirectory task </> f)
   logger $ "[INFO] Writing JavaScript loader module to " <> show out_wasm_lib
   builderWriteFile out_wasm_lib $
     genWasm (target task == Node) (outputBaseName task)
