@@ -9,14 +9,13 @@ import * as rtsConstants from "./rts.constants.mjs";
  *
  */
 export class Scheduler {
-  constructor(memory, symbol_table, stablePtrManager, fs) {
+  constructor(memory, symbol_table, stablePtrManager) {
     this.memory = memory;
     this.symbolTable = symbol_table;
     this.lastTid = 0;
     this.tsos = new Map(); // all the TSOs
     this.exports = undefined;
     this.stablePtrManager = stablePtrManager;
-    this.fs = fs;
     this.gc = undefined;
     this.blockingPromise = undefined;
     Object.seal(this);
