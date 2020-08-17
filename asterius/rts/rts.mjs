@@ -28,7 +28,7 @@ export async function newAsteriusInstance(req) {
       ? req.persistentState
       : {},
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
-    __asterius_fs_new = new FS(__asterius_components),
+    __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(req.symbolTable),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
     __asterius_wasm_instance = null,
@@ -77,7 +77,7 @@ export async function newAsteriusInstance(req) {
       req.gcThreshold
     ),
     __asterius_float_cbits = new FloatCBits(__asterius_memory),
-    __asterius_messages = new Messages(__asterius_memory, __asterius_fs_new),
+    __asterius_messages = new Messages(__asterius_memory, __asterius_fs),
     __asterius_unicode = new Unicode(),
     __asterius_exports = new Exports(
       __asterius_memory,
@@ -106,10 +106,10 @@ export async function newAsteriusInstance(req) {
     newJSVal: v => __asterius_stableptr_manager.newJSVal(v),
     getJSVal: i => __asterius_stableptr_manager.getJSVal(i),
     freeJSVal: i => __asterius_stableptr_manager.freeJSVal(i),
-    fs: __asterius_fs_new,
+    fs: __asterius_fs,
     stdio: {
-      stdout: () => __asterius_fs_new.history(1),
-      stderr: () => __asterius_fs_new.history(2)
+      stdout: () => __asterius_fs.history(1),
+      stderr: () => __asterius_fs.history(2)
     },
     returnFFIPromise: (promise) =>
       __asterius_scheduler.returnFFIPromise(promise)
@@ -127,17 +127,17 @@ export async function newAsteriusInstance(req) {
         memory: __asterius_wasm_memory
       },
       rts: {
-        printI64: x => __asterius_fs_new.writeNonMemory(1, `${__asterius_show_I64(x)}\n`),
+        printI64: x => __asterius_fs.writeNonMemory(1, `${__asterius_show_I64(x)}\n`),
         assertEqI64: function(x, y) {
           if (x != y) {
             throw new WebAssembly.RuntimeError(`unequal I64: ${x}, ${y}`);
           }
         },
-        print: x => __asterius_fs_new.writeNonMemory(1, `${x}\n`)
+        print: x => __asterius_fs.writeNonMemory(1, `${x}\n`)
       },
       fs: {
-        read: (fd, buf, count) => __asterius_fs_new.read(fd, buf, count),
-        write: (fd, buf, count) => __asterius_fs_new.write(fd, buf, count)
+        read: (fd, buf, count) => __asterius_fs.read(fd, buf, count),
+        write: (fd, buf, count) => __asterius_fs.write(fd, buf, count)
       },
       posix: modulify(new (req.targetSpecificModule.posix)(__asterius_memory, rtsConstants)),
       bytestring: modulify(__asterius_bytestring_cbits),
