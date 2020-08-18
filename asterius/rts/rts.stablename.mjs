@@ -21,7 +21,7 @@ export class StableNameManager {
     let stableptr = this.heapalloc.allocatePinned(
       rtsConstants.sizeof_StgStableName
     );
-    this.memory.i64Store(stableptr, this.SymbolTable.stg_STABLE_NAME_info);
+    this.memory.i64Store(stableptr, this.SymbolTable.addressOf("stg_STABLE_NAME_info"));
     this.memory.i64Store(stableptr + rtsConstants.offset_StgStableName_sn, tag);
 
     this.ptr2stable.set(ptr, stableptr);

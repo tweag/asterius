@@ -1,8 +1,10 @@
 export class Tracer {
-  constructor(logger, syms) {
+  constructor(logger, symbol_table) {
     this.logger = logger;
     this.symbolLookupTable = {};
-    for (const [k, v] of Object.entries(syms)) this.symbolLookupTable[v] = k;
+    for (const [k, v] of symbol_table.allEntries()) {
+      this.symbolLookupTable[v] = k;
+    }
     Object.freeze(this);
   }
 

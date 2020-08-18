@@ -143,8 +143,8 @@ genPackageJSON task =
   where
     base_name = string7 (outputBaseName task)
 
-genSymbolDict :: SM.SymbolMap Int64 -> Builder
-genSymbolDict sym_map =
+genSymbolOffsetDict :: SM.SymbolMap Int64 -> Builder
+genSymbolOffsetDict sym_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
@@ -169,9 +169,9 @@ genReq task LinkReport {..} =
       "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
       ", exportsStatic: ",
-      genExportStaticObj bundledFFIMarshalState raw_symbol_table,
-      ", symbolTable: ",
-      genSymbolDict symbol_table,
+      genExportStaticObj bundledFFIMarshalState raw_symbol_table, -- TODO: potential issue.
+      ", symbolOffsetTable: ",
+      genSymbolOffsetDict symbol_table,
       if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,

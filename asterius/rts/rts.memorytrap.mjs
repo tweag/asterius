@@ -6,10 +6,12 @@ function showI64(x) {
 }
 
 export class MemoryTrap {
-  constructor(logger, syms, memory) {
+  constructor(logger, symbol_table, memory) {
     this.logger = logger;
     this.symbolLookupTable = new Map();
-    for (const [k, v] of Object.entries(syms)) this.symbolLookupTable.set(v, k);
+    for (const [k, v] of symbol_table.allEntries()) {
+      this.symbolLookupTable.set(v, k);
+    }
     this.memory = memory;
     Object.freeze(this);
   }

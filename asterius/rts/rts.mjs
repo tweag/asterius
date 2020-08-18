@@ -20,6 +20,7 @@ import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
 import { FS } from "./rts.fs.mjs";
+import { SymbolTable } from "./rts.symmap.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
@@ -27,10 +28,11 @@ export async function newAsteriusInstance(req) {
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
+    __asterius_symbol_table = new SymbolTable(req.symbolOffsetTable, 0), // TODO: It should not be zero, but it is, for now.
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
-    __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
+    __asterius_tracer = new Tracer(__asterius_logger, __asterius_symbol_table),
     __asterius_wasm_instance = null,
     __asterius_wasm_table = new WebAssembly.Table({
       element: "anyfunc",
@@ -44,7 +46,7 @@ export async function newAsteriusInstance(req) {
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(
       __asterius_logger,
-      req.symbolTable,
+      __asterius_symbol_table,
       __asterius_memory
     ),
     __asterius_heapalloc = new HeapAlloc(
@@ -54,12 +56,12 @@ export async function newAsteriusInstance(req) {
     __asterius_stablename_manager = new StableNameManager(
       __asterius_memory,
       __asterius_heapalloc,
-      req.symbolTable
+      __asterius_symbol_table
     ),
     __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
-      req.symbolTable,
+      __asterius_symbol_table,
       __asterius_stableptr_manager
     ),
     __asterius_integer_manager = new IntegerManager(),
@@ -73,7 +75,7 @@ export async function newAsteriusInstance(req) {
       __asterius_stablename_manager,
       __asterius_scheduler,
       req.infoTables,
-      req.symbolTable,
+      __asterius_symbol_table,
       __asterius_reentrancy_guard,
       req.yolo,
       req.gcThreshold
@@ -84,7 +86,7 @@ export async function newAsteriusInstance(req) {
     __asterius_exports = new Exports(
       __asterius_memory,
       __asterius_reentrancy_guard,
-      req.symbolTable,
+      __asterius_symbol_table,
       __asterius_scheduler,
       __asterius_stableptr_manager
     ),
@@ -93,7 +95,7 @@ export async function newAsteriusInstance(req) {
       __asterius_heapalloc,
       __asterius_exports,
       req.infoTables,
-      req.symbolTable
+      __asterius_symbol_table
     );
   __asterius_scheduler.exports = __asterius_exports;
 
@@ -209,7 +211,7 @@ export async function newAsteriusInstance(req) {
 
     return Object.assign(__asterius_jsffi_instance, {
       exports: __asterius_exports,
-      symbolTable: req.symbolTable,
+      symbolTable: __asterius_symbol_table,
       persistentState: __asterius_persistent_state
     });
   });
