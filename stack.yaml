@@ -1,7 +1,7 @@
 resolver: lts-16.10
 compiler: ghc-8.8.4
 extra-deps:
-  - https://github.com/tweag/haskell-binaryen/archive/9cdc689e3b15b65763433ea645f439ceeb04feb9.tar.gz
+  - binaryen-0.0.3.0
   - url: https://github.com/tweag/inline-js/archive/bd488387d4f3d89e1d21daa3685cad9b2154cde8.tar.gz
     subdirs:
       - inline-js-core
