@@ -193,11 +193,11 @@ export async function newAsteriusInstance(req) {
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
 
-    for (const [f, p, a, r, i] of req.exportsStatic) {
+    for (const [f, off, a, r, i] of req.exportsStatic) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
-        __asterius_stableptr_manager.newStablePtr(p),
+        __asterius_stableptr_manager.newStablePtr(off + __asterius_symbol_table.getBaseAddress()),
         a,
         r,
         i,

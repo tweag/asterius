@@ -13,6 +13,10 @@ export class SymbolTable {
     return this.symbolTable.get(sym);
   }
 
+  getBaseAddress() {
+    return this.baseAddress;
+  }
+
   // TODO: not sure we want this.
   allEntries() {
     return this.symbolTable;
