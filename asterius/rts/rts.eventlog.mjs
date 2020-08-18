@@ -8,8 +8,7 @@ class Event {
 }
 
 export class EventLogManager {
-  constructor(syms) {
-    this.symbolTable = syms;
+  constructor() {
     this.events = [];
     this.enabled = true;
     this.onEvent = () => {};
