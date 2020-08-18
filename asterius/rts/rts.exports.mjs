@@ -71,11 +71,11 @@ export class Exports {
   newHaskellCallback(sp, arg_tag, ret_tag, io, finalizer) {
     const arg_mk_funcs = decodeTys(this.context.rtsMkFuncs, arg_tag),
       ret_get_funcs = decodeTys(this.context.rtsGetFuncs, ret_tag),
-      run_func = this.context.symbolTable[
+      run_func = this.context.symbolTable.addressOf(
         io
           ? "base_AsteriusziTopHandler_runIO_closure"
           : "base_AsteriusziTopHandler_runNonIO_closure"
-      ],
+      ),
       eval_func = ret_get_funcs.length
         ? p => this.rts_evalIO(p)
         : p => this.rts_evalLazyIO(p);
