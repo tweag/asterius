@@ -244,8 +244,10 @@ data MarshalEnv = MarshalEnv
     envArena :: A.Arena,
     -- | Whether the tail call extension is on.
     envAreTailCallsOn :: Bool,
-    -- | The symbol map for the current module.
-    envSymbolMap :: SM.SymbolMap Int64,
+    -- | The symbol map for the current module (statics).
+    envStaticsSymbolMap :: SM.SymbolMap Int64,
+    -- | The symbol map for the current module (functions).
+    envFunctionsSymbolMap :: SM.SymbolMap Int64,
     -- | The current module reference.
     envModuleRef :: Binaryen.Module
   }
@@ -260,9 +262,13 @@ askArena = reader envArena
 areTailCallsOn :: CodeGen Bool
 areTailCallsOn = reader envAreTailCallsOn
 
--- | Retrieve the symbol map from the local environment.
-askSymbolMap :: CodeGen (SM.SymbolMap Int64)
-askSymbolMap = reader envSymbolMap
+-- | Retrieve the symbol map from the local environment (statics).
+askStaticsSymbolMap :: CodeGen (SM.SymbolMap Int64)
+askStaticsSymbolMap = reader envStaticsSymbolMap
+
+-- | Retrieve the symbol map from the local environment (functions).
+askFunctionsSymbolMap :: CodeGen (SM.SymbolMap Int64)
+askFunctionsSymbolMap = reader envFunctionsSymbolMap
 
 -- | Retrieve the reference to the current module.
 askModuleRef :: CodeGen Binaryen.Module
@@ -309,9 +315,9 @@ marshalExpression e = case e of
       dn <- marshalBS a defaultName
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
-    sym_map <- askSymbolMap
+    func_sym_map <- askFunctionsSymbolMap
     if
-        | target `SM.member` sym_map -> do
+        | target `SM.member` func_sym_map -> do
           os <-
             mapM
               marshalExpression
@@ -330,7 +336,7 @@ marshalExpression e = case e of
             (ops, osl) <- marshalV a os
             tp <- marshalBS a (entityName target)
             Binaryen.call m tp ops (fromIntegral osl) rts
-        | ("__asterius_barf_" <> target) `SM.member` sym_map ->
+        | ("__asterius_barf_" <> target) `SM.member` func_sym_map ->
           marshalExpression $
             barf target callReturnTypes
         | otherwise -> do
@@ -430,8 +436,9 @@ marshalExpression e = case e of
         Binaryen.returnCall m dst nullPtr 0 Binaryen.none
     -- Case 2: Tail calls are off
     False -> do
-      sym_map <- askSymbolMap
-      case SM.lookup returnCallTarget64 sym_map of
+      ss_sym_map <- askStaticsSymbolMap
+      func_sym_map <- askFunctionsSymbolMap
+      case SM.lookup returnCallTarget64 func_sym_map of
         Just t -> do
           s <-
             marshalExpression
@@ -441,7 +448,7 @@ marshalExpression e = case e of
                   ptr =
                     ConstI32
                       $ fromIntegral
-                      $ (sym_map SM.! "__asterius_pc")
+                      $ (ss_sym_map SM.! "__asterius_pc")
                         .&. 0xFFFFFFFF,
                   value = ConstI64 t,
                   valueType = I64
@@ -473,7 +480,7 @@ marshalExpression e = case e of
           Binaryen.none
     -- Case 2: Tail calls are off
     False -> do
-      sym_map <- askSymbolMap
+      ss_sym_map <- askStaticsSymbolMap
       s <-
         marshalExpression
           Store
@@ -482,7 +489,7 @@ marshalExpression e = case e of
               ptr =
                 ConstI32
                   $ fromIntegral
-                  $ (sym_map SM.! "__asterius_pc")
+                  $ (ss_sym_map SM.! "__asterius_pc")
                     .&. 0xFFFFFFFF,
               value = returnCallIndirectTarget64,
               valueType = I64
@@ -501,12 +508,14 @@ marshalExpression e = case e of
     lift $ Binaryen.Expression.unreachable m
   CFG {..} -> relooperRun graph
   Symbol {..} -> do
-    sym_map <- askSymbolMap
+    ss_sym_map <- askStaticsSymbolMap
+    func_sym_map <- askFunctionsSymbolMap
     m <- askModuleRef
-    case SM.lookup unresolvedSymbol sym_map of
-      Just x -> lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
-      _
-        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` sym_map ->
+    if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
+          lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
+        | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
+          lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
+        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` func_sym_map ->
           marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
@@ -648,8 +657,13 @@ marshalGlobal k Global {..} = do
     ptr <- marshalBS a k
     Binaryen.addGlobal m ptr ty mut e
 
-marshalModule :: Bool -> SM.SymbolMap Int64 -> Module -> IO Binaryen.Module
-marshalModule tail_calls sym_map hs_mod@Module {..} = do
+marshalModule ::
+  Bool ->
+  SM.SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
+  Module ->
+  IO Binaryen.Module
+marshalModule tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
   m <- Binaryen.Module.create
   Binaryen.setFeatures m
     $ foldl1' (.|.)
@@ -660,7 +674,8 @@ marshalModule tail_calls sym_map hs_mod@Module {..} = do
           MarshalEnv
             { envArena = a,
               envAreTailCallsOn = tail_calls,
-              envSymbolMap = sym_map,
+              envStaticsSymbolMap = ss_sym_map,
+              envFunctionsSymbolMap = func_sym_map,
               envModuleRef = m
             }
         fts = generateWasmFunctionTypeSet hs_mod
