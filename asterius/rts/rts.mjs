@@ -29,7 +29,7 @@ export async function newAsteriusInstance(req) {
       : {},
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
-    __asterius_logger = new EventLogManager(req.symbolTable),
+    __asterius_logger = new EventLogManager(),
     __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
     __asterius_wasm_instance = null,
     __asterius_wasm_table = new WebAssembly.Table({
