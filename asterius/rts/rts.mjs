@@ -36,6 +36,8 @@ export async function newAsteriusInstance(req) {
       element: "anyfunc",
       initial: req.tableSlots
     }),
+    __asterius_memory_base = new WebAssembly.Global({value:'i32', mutable:false}, 0),
+    __asterius_table_base = new WebAssembly.Global({value:'i32', mutable:false}, 0),
     __asterius_wasm_memory = new WebAssembly.Memory({
       initial: Math.max(req.staticMBlocks + 2, req.gcThreshold) * (rtsConstants.mblock_size / 65536)
     }),
@@ -126,6 +128,10 @@ export async function newAsteriusInstance(req) {
       WasmMemory: {
         memory: __asterius_wasm_memory
       },
+      env: {
+        __memory_base: __asterius_memory_base,
+        __table_base: __asterius_table_base
+      },
       rts: {
         printI64: x => __asterius_fs.writeNonMemory(1, `${__asterius_show_I64(x)}\n`),
         assertEqI64: function(x, y) {
@@ -199,6 +205,7 @@ export async function newAsteriusInstance(req) {
 
     Object.assign(__asterius_exports, __asterius_wasm_instance.exports);
     __asterius_exports.hs_init();
+    __asterius_exports.__wasm_apply_relocs();
 
     return Object.assign(__asterius_jsffi_instance, {
       exports: __asterius_exports,
