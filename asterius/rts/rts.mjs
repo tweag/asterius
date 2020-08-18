@@ -20,7 +20,7 @@ import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
 import { FS } from "./rts.fs.mjs";
-import { SymbolTable } from "./rts.symmap.mjs";
+import { SymbolTable } from "./rts.symtable.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
