@@ -4,6 +4,7 @@ set -eu
 
 mv WebOrmolu.html WebOrmolu.html.old
 
+ahc-pkg hide ghc-boot-th
 ahc-pkg expose ghc-lib-parser
 
 ahc-link \
