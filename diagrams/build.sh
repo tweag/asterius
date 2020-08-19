@@ -12,7 +12,7 @@ rm -f *.hi *.o *.mjs
 
 chown $UID:$GID *
 
-tar -cf ../hilbert.tar \
+tar -cf ../diagrams.tar \
   *.html \
   *.js \
   *.wasm
