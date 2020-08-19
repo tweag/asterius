@@ -416,7 +416,13 @@ jobs:
           cd docs
           sphinx-build . _build
 
-          pushd _build
+          mkdir _build/demo
+          pushd _build/demo
+
+          mkdir diagrams
+          pushd diagrams
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/diagrams.tar | tar x
+          popd
 
           mkdir pandoc
           pushd pandoc
