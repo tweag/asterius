@@ -1,0 +1,16 @@
+steps:
+
+  - key: "pandoc"
+    label: "pandoc"
+    command: |
+      docker pull terrorjack/asterius:latest
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --rm \
+        --volume $(pwd)/pandoc:/workspace \
+        --workdir /workspace \
+        terrorjack/asterius:latest \
+        /workspace/build.sh
+    artifact_paths:
+      - "pandoc/*"
