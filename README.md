@@ -23,6 +23,7 @@ Demos of popular Haskell apps, running in your browser:
 
 - [`ormolu`](https://asterius.netlify.app/ormolu/WebOrmolu.html)
 - [`pandoc`](https://asterius.netlify.app/pandoc/pandoc.html)
+- [`todomvc`](https://asterius.netlify.app/todomvc/index.html)
 
 ## Quickstart using the prebuilt container image
 
