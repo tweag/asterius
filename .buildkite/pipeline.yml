@@ -11,7 +11,7 @@ steps:
         --volume $(pwd):/workspace \
         --workdir /workspace/pandoc \
         terrorjack/asterius:latest \
-        /workspace/build.sh
+        /workspace/pandoc/build.sh
     artifact_paths:
       - "pandoc.tar"
 
@@ -26,6 +26,6 @@ steps:
         --volume $(pwd):/workspace \
         --workdir /workspace/ormolu \
         terrorjack/asterius:latest \
-        /workspace/build.sh
+        /workspace/ormolu/build.sh
     artifact_paths:
       - "ormolu.tar"
