@@ -1,5 +1,20 @@
 steps:
 
+  - key: "diagrams"
+    label: "diagrams"
+    command: |
+      docker pull terrorjack/asterius:latest
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --rm \
+        --volume $(pwd):/workspace \
+        --workdir /workspace/diagrams \
+        terrorjack/asterius:latest \
+        /workspace/diagrams/build.sh
+    artifact_paths:
+      - "diagrams.tar"
+
   - key: "pandoc"
     label: "pandoc"
     command: |
