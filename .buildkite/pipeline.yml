@@ -8,8 +8,8 @@ steps:
         --env UID=$(id --user) \
         --env GID=$(id --group) \
         --rm \
-        --volume $(pwd)/pandoc:/workspace \
-        --workdir /workspace \
+        --volume $(pwd):/workspace \
+        --workdir /workspace/pandoc \
         terrorjack/asterius:latest \
         /workspace/build.sh
     artifact_paths:
@@ -23,8 +23,8 @@ steps:
         --env UID=$(id --user) \
         --env GID=$(id --group) \
         --rm \
-        --volume $(pwd)/ormolu:/workspace \
-        --workdir /workspace \
+        --volume $(pwd):/workspace \
+        --workdir /workspace/ormolu \
         terrorjack/asterius:latest \
         /workspace/build.sh
     artifact_paths:
