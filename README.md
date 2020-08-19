@@ -21,7 +21,7 @@ maintained by [Tweag I/O](https://tweag.io/).
 
 Demos of popular Haskell apps, running in your browser:
 
-- [`diagrams`](https://asterius.netlify.app/demo/diagrams/diagrams.html)
+- [`diagrams`](https://asterius.netlify.app/demo/diagrams/hilbert.html)
 - [`ormolu`](https://asterius.netlify.app/demo/ormolu/WebOrmolu.html)
 - [`pandoc`](https://asterius.netlify.app/demo/pandoc/pandoc.html)
 - [`todomvc`](https://asterius.netlify.app/demo/todomvc/index.html)
