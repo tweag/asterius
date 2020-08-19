@@ -4,6 +4,8 @@ set -eu
 
 mv WebOrmolu.html WebOrmolu.html.old
 
+ahc-pkg expose ghc-lib-parser
+
 ahc-link \
   --input-hs WebOrmolu.hs \
   --input-mjs WebOrmolu.mjs \
