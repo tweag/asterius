@@ -1,6 +1,9 @@
 export class SymbolTable {
-  constructor(offset_table, base_address) {
-    this.offsetTable = offset_table;
+  constructor(func_offset_table, statics_offset_table, base_address) {
+    this.offsetTable = {
+       ...func_offset_table,
+       ...statics_offset_table
+    };
     this.baseAddress = base_address;
     this.symbolTable = new Map();
     for (const [k, v] of Object.entries(this.offsetTable)) {

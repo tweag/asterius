@@ -28,7 +28,7 @@ export async function newAsteriusInstance(req) {
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
-    __asterius_symbol_table = new SymbolTable(req.symbolOffsetTable, 0), // TODO: It should not be zero, but it is, for now.
+    __asterius_symbol_table = new SymbolTable(req.functionsOffsetTable, req.staticsOffsetTable, 0), // TODO: It should not be zero, but it is, for now.
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),

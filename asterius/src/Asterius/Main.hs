@@ -170,8 +170,10 @@ genReq task LinkReport {..} =
       generateFFIImportObjectFactory bundledFFIMarshalState,
       ", exportsStatic: ",
       genExportStaticObj bundledFFIMarshalState raw_symbol_table, -- TODO: potential issue.
-      ", symbolOffsetTable: ",
-      genSymbolOffsetDict symbol_table,
+      ", functionsOffsetTable: ",
+      genSymbolOffsetDict func_symbol_table,
+      ", staticsOffsetTable: ",
+      genSymbolOffsetDict ss_symbol_table,
       if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,
@@ -192,10 +194,12 @@ genReq task LinkReport {..} =
     ]
   where
     raw_symbol_table = staticsSymbolMap <> functionSymbolMap
-    symbol_table =
-      SM.restrictKeys raw_symbol_table $
-        SS.fromList (extraRootSymbols task)
-          <> rtsUsedSymbols
+    essential_keys =
+      SS.fromList (extraRootSymbols task)
+        <> rtsUsedSymbols
+    func_symbol_table = SM.restrictKeys functionSymbolMap essential_keys
+    ss_symbol_table = SM.restrictKeys staticsSymbolMap essential_keys
+
 
 genDefEntry :: Task -> Builder
 genDefEntry task =
