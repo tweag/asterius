@@ -393,7 +393,7 @@ jobs:
       - name: setup-python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8.3
+          python-version: 3.8.5
 
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
@@ -415,10 +415,32 @@ jobs:
         run: |
           cd docs
           sphinx-build . _build
-          pushd _build
-          curl -L https://raw.githubusercontent.com/tweag/asterius/examples/ormolu.tar.xz | tar xJ
-          curl -L https://raw.githubusercontent.com/tweag/asterius/examples/pandoc.tar.xz | tar xJ
+
+          mkdir _build/demo
+          pushd _build/demo
+
+          mkdir diagrams
+          pushd diagrams
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/diagrams.tar | tar x
           popd
+
+          mkdir pandoc
+          pushd pandoc
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/pandoc.tar | tar x
+          popd
+
+          mkdir ormolu
+          pushd ormolu
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/ormolu.tar | tar x
+          popd
+
+          mkdir todomvc
+          pushd todomvc
+          curl -L https://asterius.s3-us-west-2.amazonaws.com/todomvc.tar | tar x
+          popd
+
+          popd
+
           if [ $GITHUB_REPOSITORY = "tweag/asterius" ]
           then
             if [ $(git rev-parse --abbrev-ref HEAD) = "master" ]
