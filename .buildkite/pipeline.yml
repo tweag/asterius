@@ -13,4 +13,19 @@ steps:
         terrorjack/asterius:latest \
         /workspace/build.sh
     artifact_paths:
-      - "pandoc/*"
+      - "pandoc.tar"
+
+  - key: "ormolu"
+    label: "ormolu"
+    command: |
+      docker pull terrorjack/asterius:latest
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --rm \
+        --volume $(pwd)/ormolu:/workspace \
+        --workdir /workspace \
+        terrorjack/asterius:latest \
+        /workspace/build.sh
+    artifact_paths:
+      - "ormolu.tar"

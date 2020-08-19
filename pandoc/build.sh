@@ -13,4 +13,11 @@ ahc-link \
 
 mv pandoc.html.old pandoc.html
 
-rm -f *.mjs
+rm -f *.hi *.o *.mjs
+
+chown $UID:$GID *
+
+tar -cf ../pandoc.tar \
+  *.html \
+  *.js \
+  *.wasm
