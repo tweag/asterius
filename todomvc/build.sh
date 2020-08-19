@@ -15,6 +15,7 @@ rm -f *.hi *.o *.mjs
 chown $UID:$GID *
 
 tar -cf ../todomvc.tar \
+  node_modules \
   *.html \
   *.js \
   *.wasm
