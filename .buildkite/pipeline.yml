@@ -29,3 +29,18 @@ steps:
         /workspace/ormolu/build.sh
     artifact_paths:
       - "ormolu.tar"
+
+  - key: "todomvc"
+    label: "todomvc"
+    command: |
+      docker pull terrorjack/asterius:latest
+      docker run \
+        --env UID=$(id --user) \
+        --env GID=$(id --group) \
+        --rm \
+        --volume $(pwd):/workspace \
+        --workdir /workspace/todomvc \
+        terrorjack/asterius:latest \
+        /workspace/todomvc/build.sh
+    artifact_paths:
+      - "todomvc.tar"
