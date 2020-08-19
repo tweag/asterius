@@ -28,7 +28,7 @@ export async function newAsteriusInstance(req) {
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
-    __asterius_symbol_table = new SymbolTable(req.functionsOffsetTable, req.staticsOffsetTable, 0), // TODO: It should not be zero, but it is, for now.
+    __asterius_symbol_table = new SymbolTable(req.functionsOffsetTable, req.staticsOffsetTable, 0, 0), // TODO: It should not be zero, but it is, for now.
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
@@ -193,11 +193,23 @@ export async function newAsteriusInstance(req) {
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
 
-    for (const [f, off, a, r, i] of req.exportsStatic) {
+    for (const [f, off, a, r, i] of req.functionsExportsStatic) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
-        __asterius_stableptr_manager.newStablePtr(off + __asterius_symbol_table.getBaseAddress()),
+        __asterius_stableptr_manager.newStablePtr(__asterius_symbol_table.getTableBase() + off),
+        a,
+        r,
+        i,
+        () => {}
+      );
+    }
+
+    for (const [f, off, a, r, i] of req.staticsExportsStatic) {
+      __asterius_exports[
+        f
+      ] = __asterius_exports.newHaskellCallback(
+        __asterius_stableptr_manager.newStablePtr(__asterius_symbol_table.getMemoryBase() + off),
         a,
         r,
         i,

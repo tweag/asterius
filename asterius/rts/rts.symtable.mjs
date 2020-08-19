@@ -1,13 +1,17 @@
 export class SymbolTable {
-  constructor(func_offset_table, statics_offset_table, base_address) {
+  constructor(func_offset_table, statics_offset_table, table_base, memory_base) {
     this.offsetTable = {
        ...func_offset_table,
        ...statics_offset_table
     };
-    this.baseAddress = base_address;
+    this.tableBase = table_base;
+    this.memoryBase = memory_base;
     this.symbolTable = new Map();
-    for (const [k, v] of Object.entries(this.offsetTable)) {
-      this.symbolTable.set(k, v + this.baseAddress);
+    for (const [k, v] of Object.entries(func_offset_table)) {
+      this.symbolTable.set(k, this.tableBase + v);
+    }
+    for (const [k, v] of Object.entries(statics_offset_table)) {
+      this.symbolTable.set(k, this.memoryBase + v);
     }
     Object.freeze(this);
   }
@@ -16,8 +20,12 @@ export class SymbolTable {
     return this.symbolTable.get(sym);
   }
 
-  getBaseAddress() {
-    return this.baseAddress;
+  getTableBase() {
+    return this.tableBase;
+  }
+
+  getMemoryBase() {
+    return this.memoryBase;
   }
 
   // TODO: not sure we want this.

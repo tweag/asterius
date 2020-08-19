@@ -168,8 +168,11 @@ genReq task LinkReport {..} =
       "export default {",
       "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
-      ", exportsStatic: ",
-      genExportStaticObj bundledFFIMarshalState raw_symbol_table, -- TODO: potential issue.
+
+      ", functionsExportsStatic: ",
+      genExportStaticObj bundledFFIMarshalState functionSymbolMap,
+      ", staticsExportsStatic: ",
+      genExportStaticObj bundledFFIMarshalState staticsSymbolMap,
       ", functionsOffsetTable: ",
       genSymbolOffsetDict func_symbol_table,
       ", staticsOffsetTable: ",
@@ -193,13 +196,11 @@ genReq task LinkReport {..} =
       "};\n"
     ]
   where
-    raw_symbol_table = staticsSymbolMap <> functionSymbolMap
-    essential_keys =
+    all_roots =
       SS.fromList (extraRootSymbols task)
         <> rtsUsedSymbols
-    func_symbol_table = SM.restrictKeys functionSymbolMap essential_keys
-    ss_symbol_table = SM.restrictKeys staticsSymbolMap essential_keys
-
+    func_symbol_table = SM.restrictKeys functionSymbolMap all_roots
+    ss_symbol_table = SM.restrictKeys staticsSymbolMap all_roots
 
 genDefEntry :: Task -> Builder
 genDefEntry task =

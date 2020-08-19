@@ -33,17 +33,20 @@ genExportStaticFunc ::
   FFIExportDecl ->
   SM.SymbolMap Int64 ->
   Builder
-genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map =
-  "[\""
-    <> byteString (entityName k)
-    <> "\",0x"
-    <> int64HexFixed (sym_map SM.! ffiExportClosure)
-    <> ",0x"
-    <> int64HexFixed (encodeTys ffiParamTypes)
-    <> ",0x"
-    <> int64HexFixed (encodeTys ffiResultTypes)
-    <> ","
-    <> if ffiInIO then "true]" else "false]"
+genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map
+  | Just address <- SM.lookup ffiExportClosure sym_map =
+    "[\""
+      <> byteString (entityName k)
+      <> "\",0x"
+      <> int64HexFixed address
+      <> ",0x"
+      <> int64HexFixed (encodeTys ffiParamTypes)
+      <> ",0x"
+      <> int64HexFixed (encodeTys ffiResultTypes)
+      <> ","
+      <> if ffiInIO then "true]" else "false]"
+  | otherwise =
+    ""
 
 encodeTys :: [FFIValueType] -> Int64
 encodeTys = foldr' (\vt acc -> (acc `shiftL` 5) .|. encodeTy vt) 0
