@@ -41,9 +41,9 @@ main = do
             toJS i
               <> ".exports.rts_apply("
               <> toJS i
-              <> ".symbolTable.base_AsteriusziTopHandler_runNonIO_closure," -- TODO: potential issue.
+              <> ".symbolTable.addressOf(\"base_AsteriusziTopHandler_runNonIO_closure\")," -- TODO: potential issue.
               <> toJS i
-              <> ".symbolTable.NoMain_x_closure)" -- TODO: potential issue.
+              <> ".symbolTable.addressOf(\"NoMain_x_closure\"))" -- TODO: potential issue.
           x_tid =
             "await "
               <> toJS i
