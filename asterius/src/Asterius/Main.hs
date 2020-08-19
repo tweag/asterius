@@ -168,7 +168,6 @@ genReq task LinkReport {..} =
       "export default {",
       "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
-
       ", functionsExportsStatic: ",
       genExportStaticObj bundledFFIMarshalState functionSymbolMap,
       ", staticsExportsStatic: ",

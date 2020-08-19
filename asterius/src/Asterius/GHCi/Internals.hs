@@ -363,12 +363,12 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
           <> toJS mod_val
           <> "}))"
     let runner_closure =
-          toJS i <> ".symbolTable.addressOf(" -- TODO: potential issue.
+          toJS i <> ".symbolTable.addressOf("
             <> fromString
               (CBS.unpack (entityName runner_sym))
             <> ")"
         buf_conv_closure =
-          toJS i <> ".symbolTable.addressOf(" -- TODO: potential issue.
+          toJS i <> ".symbolTable.addressOf("
             <> fromString
               (CBS.unpack (entityName buf_conv_sym))
             <> ")"
@@ -425,7 +425,7 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
 asteriusRunModFinalizers :: GHC.HscEnv -> Session -> JSVal -> IO ()
 asteriusRunModFinalizers hsc_env s i = do
   let run_mod_fin_closure =
-        toJS i <> ".symbolTable.addressOf(" -- TODO: potential issue.
+        toJS i <> ".symbolTable.addressOf("
           <> fromString
             (CBS.unpack (entityName run_mod_fin_sym))
           <> ")"

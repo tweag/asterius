@@ -28,7 +28,6 @@ export class SymbolTable {
     return this.memoryBase;
   }
 
-  // TODO: not sure we want this.
   allEntries() {
     return this.symbolTable;
   }
