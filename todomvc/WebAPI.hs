@@ -20,6 +20,7 @@ where
 
 import Asterius.ByteString
 import Asterius.Types
+import Control.Exception
 import qualified Data.ByteString as BS
 import Data.ByteString.Unsafe
 import Data.Coerce
@@ -50,7 +51,7 @@ getElementById k = js_getElementById (toJSString k)
 
 localStorageSetItem :: String -> BS.ByteString -> IO ()
 localStorageSetItem k v = do
-  let ks = toJSString k
+  ks <- evaluate $ toJSString k
   vs <- unsafeUseAsCStringLen v $ uncurry js_encode
   js_localStorage_setItem ks vs
   freeJSVal (coerce ks)
@@ -58,14 +59,14 @@ localStorageSetItem k v = do
 
 localStorageGetItem :: String -> IO (Maybe BS.ByteString)
 localStorageGetItem k = do
-  let ks = toJSString k
+  ks <- evaluate $ toJSString k
   f <- js_localStorage_hasItem ks
   r <-
     if f
       then do
         vs <- js_localStorage_getItem ks
         buf <- js_decode vs
-        let r = Just $ byteStringFromJSUint8Array buf
+        r <- fmap Just $ evaluate $ byteStringFromJSUint8Array buf
         freeJSVal (coerce vs)
         freeJSVal (coerce buf)
         pure r
