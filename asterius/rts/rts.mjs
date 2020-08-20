@@ -219,7 +219,6 @@ export async function newAsteriusInstance(req) {
 
     Object.assign(__asterius_exports, __asterius_wasm_instance.exports);
     __asterius_exports.hs_init();
-    __asterius_exports.__wasm_apply_relocs();
 
     return Object.assign(__asterius_jsffi_instance, {
       exports: __asterius_exports,
