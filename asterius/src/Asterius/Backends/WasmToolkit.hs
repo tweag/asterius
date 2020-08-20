@@ -784,9 +784,8 @@ makeInstructions expr =
                     }
              in makeInstructions $
                   addInt64
-                    (extendUInt32 base) -- TODO: or extendSInt32? Not sure which has the correct semantics.
+                    (extendUInt32 base)
                     (constI64 $ fromIntegral x + symbolOffset)
-                    -- TODO: fromIntegral performs potentially lossy downcast from In64 to Int here
           | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` func_sym_map ->
             makeInstructions $ barf unresolvedSymbol [I64]
           | otherwise ->
