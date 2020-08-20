@@ -84,13 +84,13 @@ export class Exports {
     }
     const cb = async (...args) => {
       try {
-        if (args.length !== arg_mk_funcs.length) {
+        if (args.length < arg_mk_funcs.length) {
           throw new WebAssembly.RuntimeError(
             `Expected ${arg_mk_funcs.length} arguments, got ${args.length}`
           );
         }
         let p = this.context.stablePtrManager.deRefStablePtr(sp);
-        for (let i = 0; i < args.length; ++i) {
+        for (let i = 0; i < arg_mk_funcs.length; ++i) {
           p = this.rts_apply(p, arg_mk_funcs[i](args[i]));
         }
         p = this.rts_apply(run_func, p);
