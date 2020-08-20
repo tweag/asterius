@@ -15,6 +15,7 @@ import Data.ByteString.Builder
 import Data.Foldable
 import Data.Int
 import Data.List
+import Data.Maybe
 
 genExportStaticObj :: FFIMarshalState -> SM.SymbolMap Int64 -> Builder
 genExportStaticObj FFIMarshalState {..} sym_map =
@@ -22,9 +23,10 @@ genExportStaticObj FFIMarshalState {..} sym_map =
     <> mconcat
       ( intersperse
           ","
-          [ genExportStaticFunc k export_decl sym_map
-            | (k, export_decl) <- SM.toList ffiExportDecls
-          ]
+          $ catMaybes
+            [ genExportStaticFunc k export_decl sym_map
+              | (k, export_decl) <- SM.toList ffiExportDecls
+            ]
       )
     <> "]"
 
@@ -32,9 +34,10 @@ genExportStaticFunc ::
   EntitySymbol ->
   FFIExportDecl ->
   SM.SymbolMap Int64 ->
-  Builder
-genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map
-  | Just address <- SM.lookup ffiExportClosure sym_map =
+  Maybe Builder
+genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..} sym_map = do
+  address <- SM.lookup ffiExportClosure sym_map
+  pure $
     "[\""
       <> byteString (entityName k)
       <> "\",0x"
@@ -45,8 +48,6 @@ genExportStaticFunc k FFIExportDecl {ffiFunctionType = FFIFunctionType {..}, ..}
       <> int64HexFixed (encodeTys ffiResultTypes)
       <> ","
       <> if ffiInIO then "true]" else "false]"
-  | otherwise =
-    ""
 
 encodeTys :: [FFIValueType] -> Int64
 encodeTys = foldr' (\vt acc -> (acc `shiftL` 5) .|. encodeTy vt) 0
