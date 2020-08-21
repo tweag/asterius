@@ -15,6 +15,7 @@
 import Data.List
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import qualified Distribution.Simple.Utils as C
 import qualified Distribution.Types.GenericPackageDescription as C
 import qualified Distribution.Types.PackageName as C
 import qualified Distribution.Types.Version as C
@@ -88,20 +89,41 @@ asteriusSnapshot :: P.RawSnapshotLocation -> IO Snapshot
 asteriusSnapshot raw_loc = do
   s_global <- globalSnapshot
   s_stackage <- stackageSnapshot raw_loc
-  pure
-    $ M.adjust
-      ( \pkg_info -> pkg_info {flagsOn = "integer-simple" : flagsOn pkg_info}
-      )
-      "blaze-textual"
-    $ M.adjust
-      (\pkg_info -> pkg_info {flagsOff = "integer-gmp" : flagsOff pkg_info})
-      "cryptonite"
-    $ M.adjust
-      ( \pkg_info ->
-          pkg_info {flagsOn = "embed_data_files" : flagsOn pkg_info}
-      )
-      "pandoc"
-    $ M.unionWith const s_global s_stackage
+  pure $
+    M.adjust
+      (\pkg_info -> pkg_info {flagsOff = C.ordNub $ "embed_linear" : flagsOff pkg_info})
+      "Rasterific"
+      $ M.adjust
+        ( \pkg_info -> pkg_info {flagsOn = C.ordNub $ "integer-simple" : flagsOn pkg_info}
+        )
+        "blaze-textual"
+        $ M.adjust
+          ( \pkg_info -> pkg_info {flagsOn = C.ordNub $ "embed-data-files" : flagsOn pkg_info}
+          )
+          "criterion"
+          $ M.adjust
+            (\pkg_info -> pkg_info {flagsOff = C.ordNub $ "integer-gmp" : flagsOff pkg_info})
+            "cryptonite"
+            $ M.adjust
+              ( \pkg_info -> pkg_info {flagsOn = C.ordNub $ "Embed" : flagsOn pkg_info}
+              )
+              "hyphenation"
+              $ M.adjust
+                ( \pkg_info ->
+                    pkg_info {flagsOn = C.ordNub $ "embed_data_files" : flagsOn pkg_info}
+                )
+                "pandoc"
+                $ M.adjust
+                  ( \pkg_info ->
+                      pkg_info {flagsOn = C.ordNub $ "embed_data_files" : flagsOn pkg_info}
+                  )
+                  "pandoc-citeproc"
+                  $ M.adjust
+                    ( \pkg_info ->
+                        pkg_info {flagsOn = C.ordNub $ "embed-files" : flagsOn pkg_info}
+                    )
+                    "shake"
+                    $ M.unionWith const s_global s_stackage
 
 makeCabalConfig :: Snapshot -> String
 makeCabalConfig s =
@@ -126,9 +148,10 @@ main :: IO ()
 main = do
   [raw_loc_s] <- getArgs
   raw_loc <-
-    P.resolvePaths Nothing $ P.parseRawSnapshotLocation $
-      T.pack
-        raw_loc_s
+    P.resolvePaths Nothing $
+      P.parseRawSnapshotLocation $
+        T.pack
+          raw_loc_s
   s_asterius <- asteriusSnapshot raw_loc
   writeFile "cabal.config" $ makeCabalConfig s_asterius
   writeFile "pkgs.txt" $ makePkgList s_asterius
