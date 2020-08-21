@@ -1,3 +1,5 @@
+import * as rtsConstants from "./rts.constants.mjs";
+
 export class SymbolTable {
   constructor(func_offset_table, statics_offset_table, table_base, memory_base) {
     this.offsetTable = {
@@ -8,7 +10,10 @@ export class SymbolTable {
     this.memoryBase = memory_base;
     this.symbolTable = new Map();
     for (const [k, v] of Object.entries(func_offset_table)) {
-      this.symbolTable.set(k, this.tableBase + v);
+      this.symbolTable.set(
+        k,
+        this.tableBase + rtsConstants.functionTag * (2 ** 32) + v
+      );
     }
     for (const [k, v] of Object.entries(statics_offset_table)) {
       this.symbolTable.set(k, this.memoryBase + v);

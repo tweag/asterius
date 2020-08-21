@@ -523,7 +523,11 @@ marshalExpression e = case e of
            in marshalExpression $
                 addInt64
                   (extendUInt32 base)
-                  (constI64 $ fromIntegral x + symbolOffset)
+                  ( constI64 $
+                      fromIntegral x
+                        + symbolOffset
+                        + fromIntegral (functionTag `shiftL` 32)
+                  )
         | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` func_sym_map ->
           marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
