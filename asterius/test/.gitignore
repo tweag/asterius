@@ -15,6 +15,7 @@ jsffi_stub.h
 !/cloudflare-new/Worker.mjs
 !/cloudflare-new/package.json
 !/cloudflare-new/package-lock.json
+!/cloudflare-new/webpack.config.js
 !/jsffi/index.html
 !/jsffi/jsffi.mjs
 !/rtsapi/rtsapi.mjs

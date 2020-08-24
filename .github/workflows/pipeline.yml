@@ -95,6 +95,7 @@ jobs:
           stack test asterius:bigint --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:todomvc --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:cloudflare --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:cloudflare-new --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:exception --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:regression60 --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:sizeof_md5context --test-arguments="--backend=$ASTERIUS_BACKEND"
