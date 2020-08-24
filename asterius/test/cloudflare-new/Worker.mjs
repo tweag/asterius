@@ -1,12 +1,12 @@
 import * as rts from "./rts.mjs";
-import cloudflare from "./Worker.req.mjs";
+import req from "./Worker.req.mjs";
 
 const asteriusInstance = new Promise((resolve, reject) => {
   // Cloudflare Workers makes Wasm bindings available as global variables.
   // The binding name is configurable by the user when using the API.
   // It gets hardcoded to 'wasm' when using the Wrangler CLI (as of v1.6.0).
   rts
-    .newAsteriusInstance(Object.assign(cloudflare, { module: wasm }))
+    .newAsteriusInstance(Object.assign(req, { module: wasm }))
     .then((i) => {
       resolve(i);
     })
