@@ -50,7 +50,8 @@ RUN \
   npm config set unsafe-perm true && \
   npm install -g \
     0x@4.9.1 \
-    parcel-bundler@1.12.4 && \
+    webpack@next \
+    webpack-cli && \
   pip3 install \
     recommonmark \
     sphinx && \
