@@ -26,6 +26,9 @@ extra-source-files:
   - test/bigint/**/*.hs
   - test/cloudflare/**/*.hs
   - test/cloudflare/cloudflare.mjs
+  - test/cloudflare-new/*.hs
+  - test/cloudflare-new/Worker.mjs
+  - test/cloudflare-new/*.json
   - test/nomain/**/*.hs
   - test/ghc-testsuite/**/*.hs
   - test/ghc-testsuite/**/*.stdout
@@ -225,6 +228,13 @@ tests:
   cloudflare:
     source-dirs: test
     main: cloudflare.hs
+    ghc-options: *exe-ghc-options
+    dependencies:
+      - asterius
+
+  cloudflare-new:
+    source-dirs: test
+    main: cloudflare-new.hs
     ghc-options: *exe-ghc-options
     dependencies:
       - asterius
