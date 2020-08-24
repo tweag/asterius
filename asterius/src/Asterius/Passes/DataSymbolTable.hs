@@ -8,15 +8,13 @@ module Asterius.Passes.DataSymbolTable
   )
 where
 
+import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
-import Data.Bits
 import qualified Data.ByteString as BS
 import Data.Foldable
--- import Data.Map.Strict (Map)
--- import qualified Data.Map.Strict as Map
 import Data.Monoid
 import Data.Tuple
 import GHC.Int
@@ -33,9 +31,6 @@ sizeofStatics =
           Serialized buf -> BS.length buf
       )
     . asteriusStatics
-
-unTag :: Int64 -> Int64
-unTag = (.&. 0xFFFFFFFF)
 
 {-# INLINEABLE makeDataSymbolTable #-}
 makeDataSymbolTable ::
@@ -57,7 +52,7 @@ makeMemory ::
 makeMemory AsteriusModule {..} sym_map last_addr =
   ( fromIntegral $
       (fromIntegral (unTag last_addr) `roundup` mblock_size)
-        `quot` 65536,
+        `quot` wasmPageSize,
     SM.foldrWithKey'
       ( \statics_sym ss@AsteriusStatics {..} statics_segs ->
           fst $

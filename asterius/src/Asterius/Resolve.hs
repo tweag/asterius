@@ -59,7 +59,7 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
   where
     (func_sym_map, last_func_addr) =
       makeFunctionSymbolTable m_globals_resolved func_start_addr
-    table_slots = fromIntegral $ last_func_addr .&. 0xFFFFFFFF
+    table_slots = fromIntegral $ unTag last_func_addr
     func_table = makeFunctionTable func_sym_map func_start_addr
     (ss_sym_map, last_data_addr) =
       makeDataSymbolTable m_globals_resolved data_start_addr

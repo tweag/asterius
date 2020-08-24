@@ -22,6 +22,7 @@ module Asterius.Backends.Binaryen
   )
 where
 
+import Asterius.Builtins
 import Asterius.EDSL (addInt64, constI64, extendUInt32)
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
@@ -449,8 +450,7 @@ marshalExpression e = case e of
                   ptr =
                     ConstI32
                       $ fromIntegral
-                      $ (ss_sym_map SM.! "__asterius_pc")
-                        .&. 0xFFFFFFFF,
+                      $ unTag (ss_sym_map SM.! "__asterius_pc"),
                   value = ConstI64 t,
                   valueType = I64
                 }
@@ -490,8 +490,7 @@ marshalExpression e = case e of
               ptr =
                 ConstI32
                   $ fromIntegral
-                  $ (ss_sym_map SM.! "__asterius_pc")
-                    .&. 0xFFFFFFFF,
+                  $ unTag (ss_sym_map SM.! "__asterius_pc"),
               value = returnCallIndirectTarget64,
               valueType = I64
             }
@@ -608,7 +607,7 @@ marshalMemorySegments mbs segs = do
     (seg_sizes, _) <- marshalV a $ map (fromIntegral . BS.length . content) segs
     Binaryen.setMemory
       m
-      (fromIntegral $ mbs * (mblock_size `quot` 65536))
+      (fromIntegral $ mbs * (mblock_size `quot` wasmPageSize))
       (-1)
       nullPtr
       seg_bufs
