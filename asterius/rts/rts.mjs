@@ -28,7 +28,7 @@ export async function newAsteriusInstance(req) {
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
-    __asterius_symbol_table = new SymbolTable(req.functionsOffsetTable, req.staticsOffsetTable, 1, 0),
+    __asterius_symbol_table = new SymbolTable(req.functionsOffsetTable, req.staticsOffsetTable, 0, 0),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
@@ -38,8 +38,7 @@ export async function newAsteriusInstance(req) {
       element: "anyfunc",
       initial: req.tableSlots
     }),
-    // Reserve 0 for the null function pointer.
-    __asterius_memory_base = new WebAssembly.Global({value:'i32', mutable:false}, 1),
+    __asterius_memory_base = new WebAssembly.Global({value:'i32', mutable:false}, 0),
     __asterius_table_base = new WebAssembly.Global({value:'i32', mutable:false}, 0),
     __asterius_wasm_memory = new WebAssembly.Memory({
       initial: Math.max(req.staticMBlocks + 2, req.gcThreshold) * (rtsConstants.mblock_size / 65536)
