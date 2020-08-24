@@ -9,8 +9,7 @@ main = do
   withCurrentDirectory "test/cloudflare-new" $ do
     callCommand "npm install"
     callProcess "ahc-link" $
-      [ "--bundle",
-        "--browser",
+      [ "--browser",
         "--input-hs",
         "Worker.hs",
         "--input-mjs",
