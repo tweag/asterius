@@ -10,6 +10,8 @@ main = do
     callCommand "npm install"
     callProcess "ahc-link" $
       [ "--browser",
+        "--yolo",
+        "--gc-threshold=4",
         "--input-hs",
         "Worker.hs",
         "--input-mjs",
