@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE ViewPatterns #-}
 
 module Asterius.Passes.DataSymbolTable
   ( makeDataSymbolTable,
@@ -63,7 +62,7 @@ makeMemory ::
   SM.SymbolMap Int64 ->
   Int64 ->
   (BinaryenIndex, [DataSegment])
-makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segments)
+makeMemory AsteriusModule {..} sym_map last_addr = (initial_page_addr, segments)
   where
     initial_page_addr =
       fromIntegral $
@@ -73,4 +72,4 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
       catMaybes $ snd $ mapAccumL makeSegment initial_offset (asteriusStatics ss)
       where
         initial_offset = fromIntegral $ unTag $ sym_map SM.! statics_sym
-    segments = concat $ SM.elems $ SM.mapWithKey computeStaticAddrs statics
+    segments = concat $ SM.elems $ SM.mapWithKey computeStaticAddrs staticsMap
