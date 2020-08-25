@@ -15,6 +15,7 @@ import Asterius.Binary.File
 import Asterius.BuildInfo
 import Asterius.Builtins
 import Asterius.CodeGen
+import Asterius.Internals
 import Asterius.Internals.Directory
 import Asterius.Internals.PrettyShow
 import Asterius.Types
@@ -83,16 +84,17 @@ bootCreateProcess args@BootArgs {..} = do
       { cwd = Just dataDir,
         env =
           Just $
-            ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath)
-              : ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir)
-              : ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib")
-              : ("ASTERIUS_TMP_DIR", bootTmpDir args)
-              : ("ASTERIUS_AHC", ahc)
-              : ("ASTERIUS_AHCPKG", ahcPkg)
-              : ("ASTERIUS_AR", ahcAr)
-              : ("ASTERIUS_SETUP_GHC_PRIM", setupGhcPrim)
-              : ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions)
-              : [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
+            kvDedup $
+              ("ASTERIUS_BOOT_LIBS_DIR", bootLibsPath) :
+              ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir) :
+              ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib") :
+              ("ASTERIUS_TMP_DIR", bootTmpDir args) :
+              ("ASTERIUS_AHC", ahc) :
+              ("ASTERIUS_AHCPKG", ahcPkg) :
+              ("ASTERIUS_AR", ahcAr) :
+              ("ASTERIUS_SETUP_GHC_PRIM", setupGhcPrim) :
+              ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
+                [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
         delegate_ctlc = True
       }
 
