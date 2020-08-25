@@ -27,7 +27,7 @@ library-stripping: False
 tests: False
 coverage: False
 benchmarks: False
-relocatable: False
+relocatable: True
 write-ghc-environment-files: never
 documentation: False
 minimize-conflict-set: True

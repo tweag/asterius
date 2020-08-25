@@ -8,11 +8,13 @@ module Asterius.Internals
     reinterpretCast,
     showBS,
     c8BS,
+    kvDedup,
   )
 where
 
 import qualified Data.ByteString.Internal as BS
 import qualified Data.ByteString.Char8 as CBS
+import qualified Data.Map.Strict as M
 import Foreign
 import GHC.Exts
 import qualified GHC.Types
@@ -48,3 +50,8 @@ showBS = fromString . show
 {-# INLINE c8BS #-}
 c8BS :: BS.ByteString -> String
 c8BS = CBS.unpack
+
+-- | Deduplicate an association list in a left-biased manner; if the same key
+-- appears more than once, the left-most key/value pair is preserved.
+kvDedup :: Ord k => [(k, a)] -> [(k, a)]
+kvDedup = M.toList . M.fromListWith (\_ a -> a)
