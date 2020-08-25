@@ -16,7 +16,7 @@ main = do
     readFile
       =<< Paths_asterius.getDataFileName ("cabal" </> "config")
   writeFile ahc_cabal_config_path $
-    "install-dirs global\n  prefix: "
+    "install-dirs user\n  prefix: "
       <> (dataDir </> ".boot" </> "asterius_lib")
       <> "\nprogram-locations\n  ar-location: "
       <> ahcAr
