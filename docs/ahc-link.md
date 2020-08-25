@@ -117,7 +117,7 @@ Instead of generating a bunch of ES6 modules in the target directory, generate a
 self-contained `xxx.js` script, and running `xxx.js` has the same effect as
 running the entry module. Only works for the browser target for now.
 
-`--bundle` is backed by [`parcel`](https://parceljs.org/) under the hood and
+`--bundle` is backed by [`webpack`](https://webpack.js.org) under the hood and
 performs minification on the bundled JavaScript file. It's likely beneficial
 since it reduces the total size of scripts and doesn't require multiple requests
 for fetching them.

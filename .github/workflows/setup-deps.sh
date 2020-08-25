@@ -2,7 +2,9 @@
 
 set -eu
 
-npm install -g parcel-bundler@1.12.4
+npm install -g \
+  webpack@next \
+  webpack-cli
 
 sudo apt install -y \
   alex \

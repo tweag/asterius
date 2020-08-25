@@ -1,3 +1,4 @@
+import "./rts.setimmediate.mjs";
 import { modulify } from "./rts.modulify.mjs";
 import { ReentrancyGuard } from "./rts.reentrancy.mjs";
 import { EventLogManager } from "./rts.eventlog.mjs";
