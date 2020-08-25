@@ -23,6 +23,7 @@ module Asterius.Backends.WasmToolkit
   )
 where
 
+import Asterius.Builtins
 import Asterius.EDSL (addInt64, constI64, extendUInt32)
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
@@ -35,7 +36,6 @@ import Bag
 import Control.Exception
 import Control.Monad.Except
 import Control.Monad.Reader
-import Data.Bits
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Short as SBS
 import Data.Coerce
@@ -157,7 +157,7 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
                 { minLimit =
                     fromIntegral $
                       memoryMBlocks
-                        * (mblock_size `quot` 65536),
+                        * (mblock_size `quot` wasmPageSize),
                   maxLimit = Nothing
                 }
             }
@@ -726,8 +726,7 @@ makeInstructions expr =
                 ptr =
                   ConstI32
                     $ fromIntegral
-                    $ (ss_sym_map SM.! "__asterius_pc")
-                      .&. 0xFFFFFFFF,
+                    $ unTag (ss_sym_map SM.! "__asterius_pc"),
                 value = ConstI64 t,
                 valueType = I64
               }
@@ -761,8 +760,7 @@ makeInstructions expr =
               ptr =
                 ConstI32
                   $ fromIntegral
-                  $ (ss_sym_map SM.! "__asterius_pc")
-                    .&. 0xFFFFFFFF,
+                  $ unTag (ss_sym_map SM.! "__asterius_pc"),
               value = returnCallIndirectTarget64,
               valueType = I64
             }

@@ -6,9 +6,9 @@ module Asterius.Passes.FunctionSymbolTable
   )
 where
 
+import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
-import Data.Bits
 import Data.Int
 import Data.Tuple
 
@@ -22,5 +22,5 @@ makeFunctionSymbolTable AsteriusModule {..} func_start_addr =
 makeFunctionTable :: SM.SymbolMap Int64 -> Int64 -> FunctionTable
 makeFunctionTable func_sym_map func_start_addr = FunctionTable
   { tableFunctionNames = map entityName $ SM.keys func_sym_map,
-    tableOffset = fromIntegral $ func_start_addr .&. 0xFFFFFFFF
+    tableOffset = fromIntegral $ unTag func_start_addr
   }
