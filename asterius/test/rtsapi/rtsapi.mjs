@@ -12,37 +12,37 @@ module
     await i.exports.main();
     await i.exports.rts_evalLazyIO(
       i.exports.rts_apply(
-        i.symbolTable.Main_printInt_closure,
+        i.symbolTable.addressOf("Main_printInt_closure"),
         i.exports.rts_apply(
-          i.symbolTable.Main_fact_closure,
+          i.symbolTable.addressOf("Main_fact_closure"),
           i.exports.rts_mkInt(5)
         )
       )
     );
     const tid_p1 = await i.exports.rts_evalIO(
       i.exports.rts_apply(
-        i.symbolTable.base_AsteriusziTopHandler_runNonIO_closure,
+        i.symbolTable.addressOf("base_AsteriusziTopHandler_runNonIO_closure"),
         i.exports.rts_apply(
-          i.symbolTable.Main_fact_closure,
+          i.symbolTable.addressOf("Main_fact_closure"),
           i.exports.rts_mkInt(5)
         )
       )
     );
     console.log(i.exports.rts_getInt(i.exports.getTSOret(tid_p1)));
     console.log(
-      i.exports.rts_getBool(i.symbolTable.ghczmprim_GHCziTypes_False_closure)
+      i.exports.rts_getBool(i.symbolTable.addressOf("ghczmprim_GHCziTypes_False_closure"))
     );
     console.log(
-      i.exports.rts_getBool(i.symbolTable.ghczmprim_GHCziTypes_True_closure)
+      i.exports.rts_getBool(i.symbolTable.addressOf("ghczmprim_GHCziTypes_True_closure"))
     );
     console.log(i.exports.rts_getBool(i.exports.rts_mkBool(0)));
     console.log(i.exports.rts_getBool(i.exports.rts_mkBool(42)));
     const x0 = Math.random();
     const tid_p3 = await i.exports.rts_evalIO(
       i.exports.rts_apply(
-        i.symbolTable.base_AsteriusziTopHandler_runNonIO_closure,
+        i.symbolTable.addressOf("base_AsteriusziTopHandler_runNonIO_closure"),
         i.exports.rts_apply(
-          i.symbolTable.base_GHCziBase_id_closure,
+          i.symbolTable.addressOf("base_GHCziBase_id_closure"),
           i.exports.rts_mkDouble(x0)
         )
       )

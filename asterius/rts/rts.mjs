@@ -21,6 +21,7 @@ import { FloatCBits } from "./rts.float.mjs";
 import { Unicode } from "./rts.unicode.mjs";
 import { Exports } from "./rts.exports.mjs";
 import { FS } from "./rts.fs.mjs";
+import { SymbolTable } from "./rts.symtable.mjs";
 import * as rtsConstants from "./rts.constants.mjs";
 
 export async function newAsteriusInstance(req) {
@@ -28,22 +29,25 @@ export async function newAsteriusInstance(req) {
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
+    __asterius_symbol_table = new SymbolTable(req.functionsOffsetTable, req.staticsOffsetTable, 0, 0),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
-    __asterius_tracer = new Tracer(__asterius_logger, req.symbolTable),
+    __asterius_tracer = new Tracer(__asterius_logger, __asterius_symbol_table),
     __asterius_wasm_instance = null,
     __asterius_wasm_table = new WebAssembly.Table({
       element: "anyfunc",
       initial: req.tableSlots
     }),
+    __asterius_memory_base = new WebAssembly.Global({value:'i32', mutable:false}, 0),
+    __asterius_table_base = new WebAssembly.Global({value:'i32', mutable:false}, 0),
     __asterius_wasm_memory = new WebAssembly.Memory({
       initial: Math.max(req.staticMBlocks + 2, req.gcThreshold) * (rtsConstants.mblock_size / 65536)
     }),
     __asterius_memory = new Memory(),
     __asterius_memory_trap = new MemoryTrap(
       __asterius_logger,
-      req.symbolTable,
+      __asterius_symbol_table,
       __asterius_memory
     ),
     __asterius_heapalloc = new HeapAlloc(
@@ -53,12 +57,12 @@ export async function newAsteriusInstance(req) {
     __asterius_stablename_manager = new StableNameManager(
       __asterius_memory,
       __asterius_heapalloc,
-      req.symbolTable
+      __asterius_symbol_table
     ),
     __asterius_staticptr_manager = new StaticPtrManager(__asterius_memory, __asterius_stableptr_manager, req.sptEntries),
     __asterius_scheduler = new Scheduler(
       __asterius_memory,
-      req.symbolTable,
+      __asterius_symbol_table,
       __asterius_stableptr_manager
     ),
     __asterius_integer_manager = new IntegerManager(),
@@ -72,7 +76,7 @@ export async function newAsteriusInstance(req) {
       __asterius_stablename_manager,
       __asterius_scheduler,
       req.infoTables,
-      req.symbolTable,
+      __asterius_symbol_table,
       __asterius_reentrancy_guard,
       req.yolo,
       req.gcThreshold
@@ -83,7 +87,7 @@ export async function newAsteriusInstance(req) {
     __asterius_exports = new Exports(
       __asterius_memory,
       __asterius_reentrancy_guard,
-      req.symbolTable,
+      __asterius_symbol_table,
       __asterius_scheduler,
       __asterius_stableptr_manager
     ),
@@ -92,7 +96,7 @@ export async function newAsteriusInstance(req) {
       __asterius_heapalloc,
       __asterius_exports,
       req.infoTables,
-      req.symbolTable
+      __asterius_symbol_table
     );
   __asterius_scheduler.exports = __asterius_exports;
 
@@ -126,6 +130,10 @@ export async function newAsteriusInstance(req) {
       },
       WasmMemory: {
         memory: __asterius_wasm_memory
+      },
+      env: {
+        __memory_base: __asterius_memory_base,
+        __table_base: __asterius_table_base
       },
       rts: {
         printI64: x => __asterius_fs.writeNonMemory(1, `${__asterius_show_I64(x)}\n`),
@@ -186,11 +194,23 @@ export async function newAsteriusInstance(req) {
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
 
-    for (const [f, p, a, r, i] of req.exportsStatic) {
+    for (const [f, off, a, r, i] of req.functionsExportsStatic) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
-        __asterius_stableptr_manager.newStablePtr(p),
+        __asterius_stableptr_manager.newStablePtr(__asterius_symbol_table.getTableBase() + off),
+        a,
+        r,
+        i,
+        () => {}
+      );
+    }
+
+    for (const [f, off, a, r, i] of req.staticsExportsStatic) {
+      __asterius_exports[
+        f
+      ] = __asterius_exports.newHaskellCallback(
+        __asterius_stableptr_manager.newStablePtr(__asterius_symbol_table.getMemoryBase() + off),
         a,
         r,
         i,
@@ -203,7 +223,7 @@ export async function newAsteriusInstance(req) {
 
     return Object.assign(__asterius_jsffi_instance, {
       exports: __asterius_exports,
-      symbolTable: req.symbolTable,
+      symbolTable: __asterius_symbol_table,
       persistentState: __asterius_persistent_state
     });
   });

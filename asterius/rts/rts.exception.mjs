@@ -32,7 +32,10 @@ export class ExceptionHelper {
     const raise_closure = this.heapAlloc.allocate(
       Math.ceil(rtsConstants.sizeof_StgThunk / 8) + 1
     );
-    this.memory.i64Store(raise_closure, this.symbolTable.stg_raise_info);
+    this.memory.i64Store(
+      raise_closure,
+      this.symbolTable.addressOf("stg_raise_info")
+    );
     this.memory.i64Store(
       raise_closure + rtsConstants.offset_StgThunk_payload,
       exception
@@ -61,7 +64,7 @@ export class ExceptionHelper {
             this.memory.i64Load(p + rtsConstants.offset_StgUpdateFrame_updatee)
           );
           this.exports.updateThunk(
-            this.symbolTable.MainCapability,
+            this.symbolTable.addressOf("MainCapability"),
             tso,
             p1,
             raise_closure

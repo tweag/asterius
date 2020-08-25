@@ -136,8 +136,8 @@ parseTask args = case err_msgs of
 getTask :: IO Task
 getTask = parseTask <$> getArgs
 
-genSymbolDict :: SM.SymbolMap Int64 -> Builder
-genSymbolDict sym_map =
+genSymbolOffsetDict :: SM.SymbolMap Int64 -> Builder
+genSymbolOffsetDict sym_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
@@ -161,10 +161,14 @@ genReq task LinkReport {..} =
       "export default {",
       "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
-      ", exportsStatic: ",
-      genExportStaticObj bundledFFIMarshalState raw_symbol_table,
-      ", symbolTable: ",
-      genSymbolDict symbol_table,
+      ", functionsExportsStatic: ",
+      genExportStaticObj bundledFFIMarshalState functionSymbolMap,
+      ", staticsExportsStatic: ",
+      genExportStaticObj bundledFFIMarshalState staticsSymbolMap,
+      ", functionsOffsetTable: ",
+      genSymbolOffsetDict func_symbol_table,
+      ", staticsOffsetTable: ",
+      genSymbolOffsetDict ss_symbol_table,
       if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,
@@ -184,11 +188,11 @@ genReq task LinkReport {..} =
       "};\n"
     ]
   where
-    raw_symbol_table = staticsSymbolMap <> functionSymbolMap
-    symbol_table =
-      SM.restrictKeys raw_symbol_table $
-        SS.fromList (extraRootSymbols task)
-          <> rtsUsedSymbols
+    all_roots =
+      SS.fromList (extraRootSymbols task)
+        <> rtsUsedSymbols
+    func_symbol_table = SM.restrictKeys functionSymbolMap all_roots
+    ss_symbol_table = SM.restrictKeys staticsSymbolMap all_roots
 
 genDefEntry :: Task -> Builder
 genDefEntry task =

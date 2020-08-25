@@ -23,6 +23,7 @@ module Asterius.Backends.WasmToolkit
   )
 where
 
+import Asterius.EDSL (addInt64, constI64, extendUInt32)
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
@@ -771,15 +772,20 @@ makeInstructions expr =
     Symbol {..} -> do
       ss_sym_map <- askStaticsSymbolMap
       func_sym_map <- askFunctionsSymbolMap
-
       if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
             pure $ unitBag Wasm.I64Const
               { i64ConstValue = x + fromIntegral symbolOffset
               }
           | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
-            pure $ unitBag Wasm.I64Const
-              { i64ConstValue = x + fromIntegral symbolOffset
-              }
+            let base =
+                  GetGlobal
+                    { globalSymbol = "__asterius_table_base",
+                      valueType = I32
+                    }
+             in makeInstructions $
+                  addInt64
+                    (extendUInt32 base)
+                    (constI64 $ fromIntegral x + symbolOffset)
           | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` func_sym_map ->
             makeInstructions $ barf unresolvedSymbol [I64]
           | otherwise ->

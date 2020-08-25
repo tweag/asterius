@@ -167,7 +167,7 @@ export class GC {
         // Whitehole
         this.memory.i64Store(
           untagged_c,
-          this.symbolTable.stg_WHITEHOLE_info
+          this.symbolTable.addressOf("stg_WHITEHOLE_info")
         );
         // Follow the indirectee
         const [res_c, _] = this.stingyEval(
@@ -176,7 +176,7 @@ export class GC {
               untagged_c + rtsConstants.offset_StgInd_indirectee
             )
           ));
-        this.memory.i64Store(untagged_c, this.symbolTable.stg_IND_info); // Undo whiteholing
+        this.memory.i64Store(untagged_c, this.symbolTable.addressOf("stg_IND_info")); // Undo whiteholing
         this.memory.i64Store(untagged_c + rtsConstants.offset_StgInd_indirectee, res_c);
         return [res_c, ClosureTypes.IND];
       }
@@ -184,7 +184,7 @@ export class GC {
         // Whitehole
         this.memory.i64Store(
           untagged_c,
-          this.symbolTable.stg_WHITEHOLE_info
+          this.symbolTable.addressOf("stg_WHITEHOLE_info")
         );
         // Follow the selectee
         const [res_c, res_type] = this.stingyEval(
@@ -997,7 +997,7 @@ export class GC {
     // Here, we read this field in the hp_alloc variable and
     // use it to determine the size of the newly allocated nursery.
     const base_reg =
-        this.symbolTable.MainCapability + rtsConstants.offset_Capability_r,
+        this.symbolTable.addressOf("MainCapability") + rtsConstants.offset_Capability_r,
       hp_alloc = Number(
         this.memory.i64Load(base_reg + rtsConstants.offset_StgRegTable_rHpAlloc)
       );

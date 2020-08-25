@@ -100,7 +100,7 @@ export class Scheduler {
     const tso = tso_info.addr;
     const reason = Number(
       this.memory.i64Load(
-        this.symbolTable.MainCapability +
+        this.symbolTable.addressOf("MainCapability") +
           rtsConstants.offset_Capability_r +
           rtsConstants.offset_StgRegTable_rRet
       )
@@ -267,14 +267,15 @@ export class Scheduler {
               this.memory.i64Load(stackobj + rtsConstants.offset_StgStack_sp)
             ) - 16,
           exception_closure = this.exports.rts_apply(
-            this.symbolTable
-              .base_AsteriusziTypesziJSException_mkJSException_closure,
+            this.symbolTable.addressOf(
+              "base_AsteriusziTypesziJSException_mkJSException_closure"
+            ),
             this.exports.rts_mkJSVal(
               this.stablePtrManager.newJSVal(tso_info.ffiRetErr)
             )
           );
         this.memory.i64Store(stackobj + rtsConstants.offset_StgStack_sp, sp);
-        this.memory.i64Store(sp, this.symbolTable.stg_raise_ret_info);
+        this.memory.i64Store(sp, this.symbolTable.addressOf("stg_raise_ret_info"));
         this.memory.i64Store(sp + 8, exception_closure);
       } else if (typeof tso_info.ffiRetType === "number") {
         switch (
@@ -289,7 +290,7 @@ export class Scheduler {
             const ptr = this.stablePtrManager.newJSVal(tso_info.ffiRet);
             //console.log(`Restore after FFI with value: ${tso_info.ffiRet} with type ${typeof tso_info.ffiRet} constructor ${tso_info.ffiRet.constructor} as ${ptr}`);
             this.memory.i64Store(
-              this.symbolTable.MainCapability +
+              this.symbolTable.addressOf("MainCapability") +
                 rtsConstants.offset_Capability_r +
                 rtsConstants.offset_StgRegTable_rR1,
               ptr
@@ -299,7 +300,7 @@ export class Scheduler {
           case 2: {
             // I64
             this.memory.i64Store(
-              this.symbolTable.MainCapability +
+              this.symbolTable.addressOf("MainCapability") +
                 rtsConstants.offset_Capability_r +
                 rtsConstants.offset_StgRegTable_rR1,
               tso_info.ffiRet
@@ -309,7 +310,7 @@ export class Scheduler {
           case 3: {
             // F32
             this.memory.f32Store(
-              this.symbolTable.MainCapability +
+              this.symbolTable.addressOf("MainCapability") +
                 rtsConstants.offset_Capability_r +
                 rtsConstants.offset_StgRegTable_rF1,
               tso_info.ffiRet
@@ -319,7 +320,7 @@ export class Scheduler {
           case 4: {
             // F64
             this.memory.f64Store(
-              this.symbolTable.MainCapability +
+              this.symbolTable.addressOf("MainCapability") +
                 rtsConstants.offset_Capability_r +
                 rtsConstants.offset_StgRegTable_rD1,
               tso_info.ffiRet

@@ -684,7 +684,26 @@ rtsFunctionExports debug =
   ]
 
 rtsGlobalImports :: [GlobalImport]
-rtsGlobalImports = mempty
+rtsGlobalImports =
+  [ GlobalImport
+      { internalName = "__asterius_memory_base",
+        externalModuleName = "env",
+        externalBaseName = "__memory_base",
+        globalType = GlobalType
+          { globalValueType = I32,
+            globalMutability = Immutable
+          }
+      },
+    GlobalImport
+      { internalName = "__asterius_table_base",
+        externalModuleName = "env",
+        externalBaseName = "__table_base",
+        globalType = GlobalType
+          { globalValueType = I32,
+            globalMutability = Immutable
+          }
+      }
+  ]
 
 rtsGlobalExports :: [GlobalExport]
 rtsGlobalExports = mempty
