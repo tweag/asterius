@@ -86,10 +86,9 @@ jobs:
       - name: setup-wasm-deps
         run: |
           . ./.envrc
-          . utils/pkgdb.sh
           ahc-cabal v1-update
           pushd ghc-toolkit/boot-libs
-          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j2 \
+          ahc-cabal v1-install --package-db=clear --package-db=global -j2 \
             wai-middleware-caching
           popd
 
@@ -212,9 +211,8 @@ jobs:
           .github/workflows/boot.sh
 
           . ./.envrc
-          . utils/pkgdb.sh
           cd ghc-toolkit/boot-libs
-          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j2 \
+          ahc-cabal v1-install --package-db=clear --package-db=global --ghc-option=-j2 \
             Cabal
 
       - name: profile
@@ -322,12 +320,11 @@ jobs:
       - name: test-cabal
         run: |
           . ./.envrc
-          . utils/pkgdb.sh
           ahc-cabal v1-update
           ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
-          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --ghc-option=-j2 \
+          ahc-cabal v1-install --package-db=clear --package-db=global --ghc-option=-j2 \
             Cabal
-          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j2 \
+          ahc-cabal v1-install --package-db=clear --package-db=global -j2 \
             diagrams \
             servant \
             singletons
