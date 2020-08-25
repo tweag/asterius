@@ -15,12 +15,14 @@ import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Data.ByteString as BS
-import Data.Foldable
+import Data.List
+import Data.Maybe
 import Data.Monoid
 import Data.Tuple
-import GHC.Int
+import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
 
+{-# INLINEABLE sizeofStatic #-}
 sizeofStatic :: AsteriusStatic -> Int
 sizeofStatic = \case
   SymbolStatic {} -> 8
@@ -45,6 +47,16 @@ makeDataSymbolTable AsteriusModule {..} l =
       l
       staticsMap
 
+{-# INLINEABLE makeSegment #-}
+makeSegment :: Int32 -> AsteriusStatic -> (Int32, Maybe DataSegment)
+makeSegment addr static =
+  ( addr + fromIntegral (sizeofStatic static),
+    case static of
+      SymbolStatic {} -> Just DataSegment {content = encodeStorable addr, offset = addr}
+      Uninitialized {} -> Nothing
+      Serialized buf -> Just DataSegment {content = buf, offset = addr}
+  )
+
 {-# INLINEABLE makeMemory #-}
 makeMemory ::
   AsteriusModule ->
@@ -57,31 +69,8 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
       fromIntegral $
         (fromIntegral (unTag last_addr) `roundup` mblock_size)
           `quot` wasmPageSize
-    fn statics_sym ss statics_segs =
-      fst $
-        foldr'
-          ( \static (static_segs, static_tail_addr) ->
-              case static of
-                SymbolStatic sym o ->
-                  let buf = encodeStorable $
-                        case SM.lookup sym sym_map of
-                          Just addr -> addr + fromIntegral o
-                          _ -> invalidAddress
-                      static_addr = static_tail_addr - fromIntegral (BS.length buf)
-                   in ( DataSegment {content = buf, offset = static_addr} : static_segs,
-                        static_addr
-                      )
-                Uninitialized l ->
-                  let static_addr = static_tail_addr - fromIntegral l
-                   in (static_segs, static_addr)
-                Serialized buf ->
-                  let static_addr = static_tail_addr - fromIntegral (BS.length buf)
-                   in ( DataSegment {content = buf, offset = static_addr} : static_segs,
-                        static_addr
-                      )
-          )
-          ( statics_segs,
-            fromIntegral $ unTag $ sym_map SM.! statics_sym + sizeofStatics ss
-          )
-          (asteriusStatics ss)
-    segments = SM.foldrWithKey' fn [] statics
+    computeStaticAddrs statics_sym ss =
+      catMaybes $ snd $ mapAccumL makeSegment initial_address (asteriusStatics ss)
+      where
+        initial_address = fromIntegral $ unTag $ sym_map SM.! statics_sym
+    segments = concat $ SM.elems $ SM.mapWithKey computeStaticAddrs statics
