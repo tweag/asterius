@@ -63,14 +63,7 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
               foldr'
                 ( \static (static_segs, static_tail_addr) ->
                     let flush_static_segs buf =
-                          ( case static_segs of
-                              DataSegment {..} : static_segs'
-                                | offset == static_tail_addr ->
-                                  DataSegment {content = buf <> content, offset = static_addr}
-                                    : static_segs'
-                              _ ->
-                                DataSegment {content = buf, offset = static_addr}
-                                  : static_segs,
+                          ( DataSegment {content = buf, offset = static_addr} : static_segs,
                             static_addr
                           )
                           where
