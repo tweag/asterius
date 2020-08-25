@@ -4,7 +4,7 @@ cp -r $ASTERIUS_BOOT_LIBS_DIR .
 cd boot-libs
 
 cd ghc-prim
-$ASTERIUS_SETUP_GHC_PRIM configure --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+$ASTERIUS_SETUP_GHC_PRIM configure --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
 $ASTERIUS_SETUP_GHC_PRIM build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim
 $ASTERIUS_SETUP_GHC_PRIM install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim
 cd ..
