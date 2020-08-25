@@ -24,6 +24,7 @@ import Asterius.Internals.ByteString
 import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
 import Asterius.JSFFI
+import qualified Asterius.JSGen.Bundle as Bundle
 import Asterius.JSGen.SPT
 import Asterius.JSGen.Wasm
 import Asterius.Ld (rtsUsedSymbols)
@@ -56,6 +57,7 @@ import System.Directory
 import System.Environment.Blank
 import System.FilePath
 import System.IO
+import System.IO.Unsafe
 import System.Process
 
 parseTask :: [String] -> Task
@@ -69,18 +71,22 @@ parseTask args = case err_msgs of
       getOpt
         Permute
         [ bool_opt "browser" $ \t -> t {target = Browser},
-          str_opt "input-hs" $ \s t ->
-            t
-              { inputHS = s,
-                outputDirectory = takeDirectory s,
-                outputBaseName = takeBaseName s
-              },
-          str_opt "input-exe" $ \s t ->
-            t
-              { inputHS = s,
-                outputDirectory = takeDirectory s,
-                outputBaseName = takeBaseName s
-              },
+          str_opt "input-hs" $ \s t -> unsafePerformIO $ do
+            dir <- makeAbsolute $ takeDirectory s
+            pure
+              t
+                { inputHS = s,
+                  outputDirectory = dir,
+                  outputBaseName = takeBaseName s
+                },
+          str_opt "input-exe" $ \s t -> unsafePerformIO $ do
+            dir <- makeAbsolute $ takeDirectory s
+            pure
+              t
+                { inputHS = s,
+                  outputDirectory = dir,
+                  outputBaseName = takeBaseName s
+                },
           str_opt "input-mjs" $ \s t -> t {inputEntryMJS = Just s},
           str_opt "output-directory" $ \s t -> t {outputDirectory = s},
           str_opt "output-prefix" $ \s t -> t {outputBaseName = s},
@@ -129,19 +135,6 @@ parseTask args = case err_msgs of
 
 getTask :: IO Task
 getTask = parseTask <$> getArgs
-
-genPackageJSON :: Task -> Builder
-genPackageJSON task =
-  mconcat
-    [ "{\"name\": \"",
-      base_name,
-      "\",\n",
-      "\"version\": \"0.0.1\",\n",
-      "\"browserslist\": [\"last 1 Chrome version\"]\n",
-      "}\n"
-    ]
-  where
-    base_name = string7 (outputBaseName task)
 
 genSymbolDict :: SM.SymbolMap Int64 -> Builder
 genSymbolDict sym_map =
@@ -283,8 +276,7 @@ ahcLink task = do
 ahcDistMain ::
   (String -> IO ()) -> Task -> (Asterius.Types.Module, LinkReport) -> IO ()
 ahcDistMain logger task (final_m, report) = do
-  let out_package_json = outputDirectory task </> "package.json"
-      out_wasm = outputDirectory task </> outputBaseName task <.> "wasm"
+  let out_wasm = outputDirectory task </> outputBaseName task <.> "wasm"
       out_wasm_lib = outputDirectory task </> outputBaseName task <.> "wasm.mjs"
       out_req = outputDirectory task </> outputBaseName task <.> "req.mjs"
       out_entry = outputDirectory task </> outputBaseName task <.> "mjs"
@@ -403,29 +395,15 @@ ahcDistMain logger task (final_m, report) = do
     Just in_entry -> copyFile in_entry out_entry
     _ -> builderWriteFile out_entry $ genDefEntry task
   when (bundle task) $ do
-    package_json_exist <- doesFileExist out_package_json
-    unless package_json_exist $ do
-      logger $ "[INFO] Writing a stub package.json to " <> show out_package_json
-      builderWriteFile out_package_json $ genPackageJSON task
     logger $ "[INFO] Writing JavaScript bundled script to " <> show out_js
-    withCurrentDirectory (outputDirectory task) $
-      callProcess
-        "parcel"
-        [ "build",
-          "--out-dir",
-          ".",
-          "--out-file",
-          takeFileName out_js,
-          "--no-cache",
-          "--no-source-maps",
-          "--no-autoinstall",
-          "--no-content-hash",
-          "--target",
-          case target task of
-            Node -> "node"
-            Browser -> "browser",
-          takeFileName out_entry
-        ]
+    withCurrentDirectory (outputDirectory task) $ do
+      Bundle.bundle
+        Bundle.BundleTask
+          { Bundle.entry = out_entry,
+            Bundle.outputPath = outputDirectory task,
+            Bundle.outputFileName = takeFileName out_js,
+            Bundle.outputLibrary = Nothing
+          }
   when (target task == Browser) $ do
     logger $ "[INFO] Writing HTML to " <> show out_html
     builderWriteFile out_html $ genHTML task

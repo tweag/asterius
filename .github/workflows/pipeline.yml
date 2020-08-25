@@ -83,6 +83,16 @@ jobs:
             ~/.stack
             **/.stack-work
 
+      - name: setup-wasm-deps
+        run: |
+          . ./.envrc
+          . utils/pkgdb.sh
+          ahc-cabal v1-update
+          pushd ghc-toolkit/boot-libs
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j2 \
+            wai-middleware-caching
+          popd
+
       - name: test
         run: |
           stack test asterius:fib --test-arguments="--backend=$ASTERIUS_BACKEND"
@@ -95,6 +105,7 @@ jobs:
           stack test asterius:bigint --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:todomvc --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:cloudflare --test-arguments="--backend=$ASTERIUS_BACKEND"
+          stack test asterius:cloudflare-new --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:exception --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:regression60 --test-arguments="--backend=$ASTERIUS_BACKEND"
           stack test asterius:sizeof_md5context --test-arguments="--backend=$ASTERIUS_BACKEND"

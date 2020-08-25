@@ -1,0 +1,7 @@
+{
+  "devDependencies": {
+    "@cloudflare/wrangler": "^1.11.0",
+    "webpack": "^5.0.0-beta.28",
+    "webpack-cli": "^3.3.12"
+  }
+}
