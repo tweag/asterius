@@ -50,11 +50,15 @@ makeDataSymbolTable AsteriusModule {..} l =
 -- do not generate data segments for uninitialized statics; we do not have to
 -- specify each segment and the linear memory is zero-initialized anyway.
 {-# INLINEABLE makeSegment #-}
-makeSegment :: Int32 -> AsteriusStatic -> (Int32, Maybe DataSegment)
-makeSegment off static =
+makeSegment :: SM.SymbolMap Int64 -> Int32 -> AsteriusStatic -> (Int32, Maybe DataSegment)
+makeSegment sym_map off static =
   ( off + fromIntegral (sizeofStatic static),
     case static of
-      SymbolStatic {} -> Just DataSegment {content = encodeStorable off, offset = off}
+      SymbolStatic sym o ->
+        let address = case SM.lookup sym sym_map of
+              Just addr -> addr + fromIntegral o
+              _ -> invalidAddress
+         in Just DataSegment {content = encodeStorable address, offset = off}
       Uninitialized {} -> Nothing
       Serialized buf -> Just DataSegment {content = buf, offset = off}
   )
@@ -64,4 +68,4 @@ makeMemory :: AsteriusModule -> SM.SymbolMap Int64 -> [DataSegment]
 makeMemory AsteriusModule {..} sym_map =
   concat $ SM.elems $ flip SM.mapWithKey staticsMap $ \statics_sym ss ->
     let initial_offset = fromIntegral $ unTag $ sym_map SM.! statics_sym
-     in catMaybes $ snd $ mapAccumL makeSegment initial_offset $ asteriusStatics ss
+     in catMaybes $ snd $ mapAccumL (makeSegment sym_map) initial_offset $ asteriusStatics ss
