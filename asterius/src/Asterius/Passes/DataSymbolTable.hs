@@ -72,7 +72,8 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
                         static_addr
                       )
                 Uninitialized l ->
-                  (static_segs, static_tail_addr - fromIntegral l)
+                  let static_addr = static_tail_addr - fromIntegral l
+                   in (static_segs, static_addr)
                 Serialized buf ->
                   let static_addr = static_tail_addr - fromIntegral (BS.length buf)
                    in ( DataSegment {content = buf, offset = static_addr} : static_segs,
