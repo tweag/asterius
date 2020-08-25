@@ -49,12 +49,12 @@ makeDataSymbolTable AsteriusModule {..} l =
 
 {-# INLINEABLE makeSegment #-}
 makeSegment :: Int32 -> AsteriusStatic -> (Int32, Maybe DataSegment)
-makeSegment addr static =
-  ( addr + fromIntegral (sizeofStatic static),
+makeSegment off static =
+  ( off + fromIntegral (sizeofStatic static),
     case static of
-      SymbolStatic {} -> Just DataSegment {content = encodeStorable addr, offset = addr}
+      SymbolStatic {} -> Just DataSegment {content = encodeStorable off, offset = off}
       Uninitialized {} -> Nothing
-      Serialized buf -> Just DataSegment {content = buf, offset = addr}
+      Serialized buf -> Just DataSegment {content = buf, offset = off}
   )
 
 {-# INLINEABLE makeMemory #-}
@@ -70,7 +70,7 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
         (fromIntegral (unTag last_addr) `roundup` mblock_size)
           `quot` wasmPageSize
     computeStaticAddrs statics_sym ss =
-      catMaybes $ snd $ mapAccumL makeSegment initial_address (asteriusStatics ss)
+      catMaybes $ snd $ mapAccumL makeSegment initial_offset (asteriusStatics ss)
       where
-        initial_address = fromIntegral $ unTag $ sym_map SM.! statics_sym
+        initial_offset = fromIntegral $ unTag $ sym_map SM.! statics_sym
     segments = concat $ SM.elems $ SM.mapWithKey computeStaticAddrs statics
