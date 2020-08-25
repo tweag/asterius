@@ -62,22 +62,23 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
             fst $
               foldr'
                 ( \static (static_segs, static_tail_addr) ->
-                    let flush_static_segs buf =
-                          ( DataSegment {content = buf, offset = static_addr} : static_segs,
-                            static_addr
-                          )
-                          where
-                            static_addr = static_tail_addr - fromIntegral (BS.length buf)
-                     in case static of
-                          SymbolStatic sym o ->
-                            flush_static_segs
-                              $ encodeStorable
-                              $ case SM.lookup sym sym_map of
+                    case static of
+                      SymbolStatic sym o ->
+                        let buf = encodeStorable $
+                              case SM.lookup sym sym_map of
                                 Just addr -> addr + fromIntegral o
                                 _ -> invalidAddress
-                          Uninitialized l ->
-                            (static_segs, static_tail_addr - fromIntegral l)
-                          Serialized buf -> flush_static_segs buf
+                            static_addr = static_tail_addr - fromIntegral (BS.length buf)
+                         in ( DataSegment {content = buf, offset = static_addr} : static_segs,
+                              static_addr
+                            )
+                      Uninitialized l ->
+                        (static_segs, static_tail_addr - fromIntegral l)
+                      Serialized buf ->
+                        let static_addr = static_tail_addr - fromIntegral (BS.length buf)
+                         in ( DataSegment {content = buf, offset = static_addr} : static_segs,
+                              static_addr
+                            )
                 )
                 ( statics_segs,
                   fromIntegral $ unTag $ sym_map SM.! statics_sym + sizeofStatics ss
