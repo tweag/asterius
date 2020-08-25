@@ -46,6 +46,10 @@ makeDataSymbolTable AsteriusModule {..} l =
       l
       staticsMap
 
+-- | Given the offset of a static and the static itself, compute the
+-- corresponding data segment and the offset of the subsequent static. NOTE: we
+-- do not generate data segments for uninitialized statics; we do not have to
+-- specify each segment and the linear memory is zero-initialized anyway.
 {-# INLINEABLE makeSegment #-}
 makeSegment :: Int32 -> AsteriusStatic -> (Int32, Maybe DataSegment)
 makeSegment off static =
