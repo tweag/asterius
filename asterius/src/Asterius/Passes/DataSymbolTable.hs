@@ -56,34 +56,30 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
       fromIntegral $
         (fromIntegral (unTag last_addr) `roundup` mblock_size)
           `quot` wasmPageSize
-    segments =
-      SM.foldrWithKey'
-        ( \statics_sym ss@AsteriusStatics {..} statics_segs ->
-            fst $
-              foldr'
-                ( \static (static_segs, static_tail_addr) ->
-                    case static of
-                      SymbolStatic sym o ->
-                        let buf = encodeStorable $
-                              case SM.lookup sym sym_map of
-                                Just addr -> addr + fromIntegral o
-                                _ -> invalidAddress
-                            static_addr = static_tail_addr - fromIntegral (BS.length buf)
-                         in ( DataSegment {content = buf, offset = static_addr} : static_segs,
-                              static_addr
-                            )
-                      Uninitialized l ->
-                        (static_segs, static_tail_addr - fromIntegral l)
-                      Serialized buf ->
-                        let static_addr = static_tail_addr - fromIntegral (BS.length buf)
-                         in ( DataSegment {content = buf, offset = static_addr} : static_segs,
-                              static_addr
-                            )
-                )
-                ( statics_segs,
-                  fromIntegral $ unTag $ sym_map SM.! statics_sym + sizeofStatics ss
-                )
-                asteriusStatics
-        )
-        []
-        statics
+    fn statics_sym ss@AsteriusStatics {..} statics_segs =
+      fst $
+        foldr'
+          ( \static (static_segs, static_tail_addr) ->
+              case static of
+                SymbolStatic sym o ->
+                  let buf = encodeStorable $
+                        case SM.lookup sym sym_map of
+                          Just addr -> addr + fromIntegral o
+                          _ -> invalidAddress
+                      static_addr = static_tail_addr - fromIntegral (BS.length buf)
+                   in ( DataSegment {content = buf, offset = static_addr} : static_segs,
+                        static_addr
+                      )
+                Uninitialized l ->
+                  (static_segs, static_tail_addr - fromIntegral l)
+                Serialized buf ->
+                  let static_addr = static_tail_addr - fromIntegral (BS.length buf)
+                   in ( DataSegment {content = buf, offset = static_addr} : static_segs,
+                        static_addr
+                      )
+          )
+          ( statics_segs,
+            fromIntegral $ unTag $ sym_map SM.! statics_sym + sizeofStatics ss
+          )
+          asteriusStatics
+    segments = SM.foldrWithKey' fn [] statics
