@@ -21,16 +21,17 @@ import Data.Tuple
 import GHC.Int
 import Language.Haskell.GHC.Toolkit.Constants
 
+sizeofStatic :: AsteriusStatic -> Int
+sizeofStatic = \case
+  SymbolStatic {} -> 8
+  Uninitialized x -> x
+  Serialized buf -> BS.length buf
+
 sizeofStatics :: AsteriusStatics -> Int64
 sizeofStatics =
   fromIntegral
     . getSum
-    . foldMap
-      ( Sum . \case
-          SymbolStatic {} -> 8
-          Uninitialized x -> x
-          Serialized buf -> BS.length buf
-      )
+    . foldMap (Sum . sizeofStatic)
     . asteriusStatics
 
 {-# INLINEABLE makeDataSymbolTable #-}
