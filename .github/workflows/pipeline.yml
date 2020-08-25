@@ -83,6 +83,16 @@ jobs:
             ~/.stack
             **/.stack-work
 
+      - name: setup-wasm-deps
+        run: |
+          . ./.envrc
+          . utils/pkgdb.sh
+          ahc-cabal v1-update
+          pushd ghc-toolkit/boot-libs
+          ahc-cabal v1-install --prefix=$ASTERIUS_LIB_DIR --package-db=clear --package-db=global -j2 \
+            wai-middleware-caching
+          popd
+
       - name: test
         run: |
           stack test asterius:fib --test-arguments="--backend=$ASTERIUS_BACKEND"
