@@ -56,7 +56,7 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
       fromIntegral $
         (fromIntegral (unTag last_addr) `roundup` mblock_size)
           `quot` wasmPageSize
-    fn statics_sym ss@AsteriusStatics {..} statics_segs =
+    fn statics_sym ss statics_segs =
       fst $
         foldr'
           ( \static (static_segs, static_tail_addr) ->
@@ -81,5 +81,5 @@ makeMemory (staticsMap -> statics) sym_map last_addr = (initial_page_addr, segme
           ( statics_segs,
             fromIntegral $ unTag $ sym_map SM.! statics_sym + sizeofStatics ss
           )
-          asteriusStatics
+          (asteriusStatics ss)
     segments = SM.foldrWithKey' fn [] statics
