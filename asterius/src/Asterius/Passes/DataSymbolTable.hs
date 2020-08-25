@@ -8,7 +8,6 @@ module Asterius.Passes.DataSymbolTable
   )
 where
 
-import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
@@ -61,17 +60,8 @@ makeSegment off static =
   )
 
 {-# INLINEABLE makeMemory #-}
-makeMemory ::
-  AsteriusModule ->
-  SM.SymbolMap Int64 ->
-  Int64 ->
-  (BinaryenIndex, [DataSegment])
-makeMemory AsteriusModule {..} sym_map last_addr = (initial_page_addr, segments)
-  where
-    initial_page_addr =
-      fromIntegral $
-        (fromIntegral (unTag last_addr) `roundup` mblock_size)
-          `quot` wasmPageSize
-    segments = concat $ SM.elems $ flip SM.mapWithKey staticsMap $ \statics_sym ss ->
-      let initial_offset = fromIntegral $ unTag $ sym_map SM.! statics_sym
-       in catMaybes $ snd $ mapAccumL makeSegment initial_offset $ asteriusStatics ss
+makeMemory :: AsteriusModule -> SM.SymbolMap Int64 -> [DataSegment]
+makeMemory AsteriusModule {..} sym_map =
+  concat $ SM.elems $ flip SM.mapWithKey staticsMap $ \statics_sym ss ->
+    let initial_offset = fromIntegral $ unTag $ sym_map SM.! statics_sym
+     in catMaybes $ snd $ mapAccumL makeSegment initial_offset $ asteriusStatics ss
