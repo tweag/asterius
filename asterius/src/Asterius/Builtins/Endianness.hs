@@ -51,15 +51,13 @@ ntohs = runEDSL "ntohs" $ do
   emit $ byteSwap16 netshort
 
 byteSwap16 :: Expression -> Expression
-byteSwap16 n = msb `orInt64` lsb
-  where
-    msb = (n `andInt64` constI64 0xFF) `shlInt64` constI64 8
-    lsb = (n `shrUInt64` constI64 8) `andInt64` constI64 0xFF
+byteSwap16 n =
+  ((n `andInt64` constI64 0xFF) `shlInt64` constI64 8)
+    `orInt64` ((n `shrUInt64` constI64 8) `andInt64` constI64 0xFF)
 
 byteSwap32 :: Expression -> Expression
-byteSwap32 n = byte1 `orInt64` byte2 `orInt64` byte3 `orInt64` byte4
-  where
-    byte1 = (n `andInt64` constI64 0xFF) `shlInt64` constI64 24
-    byte2 = (n `andInt64` constI64 0xFF00) `shlInt64` constI64 8
-    byte3 = (n `andInt64` constI64 0xFF0000) `shrUInt64` constI64 8
-    byte4 = (n `andInt64` constI64 0xFF000000) `shrUInt64` constI64 24
+byteSwap32 n =
+  ((n `andInt64` constI64 0xFF) `shlInt64` constI64 24)
+    `orInt64` ((n `andInt64` constI64 0xFF00) `shlInt64` constI64 8)
+    `orInt64` ((n `andInt64` constI64 0xFF0000) `shrUInt64` constI64 8)
+    `orInt64` ((n `andInt64` constI64 0xFF000000) `shrUInt64` constI64 24)
