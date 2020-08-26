@@ -18,6 +18,7 @@ module Asterius.CodeGen
 where
 
 import Asterius.Builtins
+import qualified Asterius.Builtins.Endianness as Endianness
 import Asterius.CodeGen.Droppable
 import Asterius.EDSL
 import Asterius.Internals
@@ -1242,7 +1243,34 @@ marshalCmmPrimCall (GHC.MO_Ctz GHC.W8) [r] [x] =
     I32
     x
     (extendSInt32 . ctzInt32 . orInt32 (constI32 0x100))
--- Unhandled: MO_BSwap Width
+-- Unhandled: MO_BSwap W8
+marshalCmmPrimCall (GHC.MO_BSwap GHC.W16) [r] [x] = do
+  dstr <- marshalTypedCmmLocalReg r I64
+  xe <- marshalAndCastCmmExpr x I64
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = dstr,
+          value = Endianness.byteSwap16 xe
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_BSwap GHC.W32) [r] [x] = do
+  dstr <- marshalTypedCmmLocalReg r I64
+  xe <- marshalAndCastCmmExpr x I64
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = dstr,
+          value = Endianness.byteSwap32 xe
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_BSwap GHC.W64) [r] [x] = do
+  dstr <- marshalTypedCmmLocalReg r I64
+  xe <- marshalAndCastCmmExpr x I64
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = dstr,
+          value = Endianness.byteSwap64 xe
+        }
+    ]
 -- Atomic operations
 marshalCmmPrimCall (GHC.MO_AtomicRMW GHC.W64 amop) [dst] [addr, n] =
   marshalCmmAtomicMachOpPrimCall amop dst addr n
