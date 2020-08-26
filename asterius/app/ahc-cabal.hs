@@ -16,7 +16,9 @@ main = do
     readFile
       =<< Paths_asterius.getDataFileName ("cabal" </> "config")
   writeFile ahc_cabal_config_path $
-    "program-locations\n  ar-location: "
+    "install-dirs global\n  prefix: "
+      <> (dataDir </> ".boot" </> "asterius_lib")
+      <> "\nprogram-locations\n  ar-location: "
       <> ahcAr
       <> "\n  ghc-location: "
       <> ahc
@@ -25,9 +27,9 @@ main = do
       <> "\n"
       <> ahc_cabal_config
   env <- getEnvironment
-  traverse_ unsetEnv
-    $ filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k)
-    $ map fst env
+  traverse_ unsetEnv $
+    filter (\k -> ("GHC_" `isPrefixOf` k) || "HASKELL_" `isPrefixOf` k) $
+      map fst env
   unsetEnv "CABAL_CONFIG"
   setEnv "CABAL_DIR" ahc_cabal_root True
   args <- getArgs

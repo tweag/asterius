@@ -24,6 +24,7 @@ split-sections: False
 split-objs: False
 executable-stripping: False
 library-stripping: False
+user-install: False
 tests: False
 coverage: False
 benchmarks: False
