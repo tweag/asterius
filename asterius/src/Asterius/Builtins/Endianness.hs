@@ -5,11 +5,8 @@
 -- Copyright   :  (c) 2018 EURL Tweag
 -- License     :  All rights reserved (see LICENCE file in the distribution).
 --
--- Wasm implementations of conversions between host and network byte order
--- (@htonl@, @htons@, @ntohl@, and @ntohs@). Network byte order is always Most
--- Significant Byte first (big endian). On i386 the host byte order is Least
--- Significant Byte first (little endian), which we assume always as the host
--- byte order.
+-- Wasm implementations of conversions between host (little-endian) and network
+-- (big-endian) byte order: @htonl@, @htons@, @ntohl@, and @ntohs@.
 module Asterius.Builtins.Endianness
   ( endiannessCBits,
   )
