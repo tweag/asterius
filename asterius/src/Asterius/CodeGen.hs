@@ -849,131 +849,111 @@ marshalCmmPrimCall (GHC.MO_U_QuotRem w) [qr, rr] [x, y] =
           x
           y
       )
-marshalCmmPrimCall GHC.MO_WriteBarrier _ _ = pure []
-marshalCmmPrimCall GHC.MO_Touch _ _ = pure []
-marshalCmmPrimCall (GHC.MO_Prefetch_Data _) _ _ = pure []
-marshalCmmPrimCall (GHC.MO_Memcpy _) [] [_dst, _src, _n] = do
-  dst <- marshalAndCastCmmExpr _dst F64
-  src <- marshalAndCastCmmExpr _src F64
-  n <- marshalAndCastCmmExpr _n F64
-  pure
-    [ CallImport
-        { target' = "__asterius_memcpy",
-          operands = [dst, src, n],
-          callImportReturnTypes = []
+-- See also: QuotRemWord2#
+marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
+  quotr <- marshalTypedCmmLocalReg q I64
+  remr <- marshalTypedCmmLocalReg r I64
+  (lhsHir, _) <- marshalCmmExpr lhsHi
+  (lhsLor, _) <- marshalCmmExpr lhsLo
+  (rhsr, _) <- marshalCmmExpr rhs
+  -- Smash the high and low 32 bits together to create a 64 bit
+  -- number.
+  let smash32IntTo64 hi32 lo32 =
+        Binary
+          OrInt64
+          (Binary ShlInt64 (Unary ExtendUInt32 hi32) (ConstI64 32))
+          (Unary ExtendUInt32 lo32)
+  -- mask the `n32`th block of v, counting blocks from the lowest bit.
+  let mask32 v n32 =
+        Unary WrapInt64 $
+          Binary
+            AndInt64
+            (Binary ShrUInt64 v (ConstI64 (n32 * 32)))
+            (ConstI64 0xFFFFFFFF)
+  let quotout = UnresolvedSetLocal
+        { unresolvedLocalReg = quotr,
+          value = smash32IntTo64
+            CallImport
+              { target' = "__asterius_quotrem2_quotient",
+                operands =
+                  [ mask32 lhsHir 1,
+                    mask32 lhsHir 0,
+                    mask32 lhsLor 1,
+                    mask32 lhsLor 0,
+                    mask32 rhsr 1,
+                    mask32 rhsr 0,
+                    ConstI32 1
+                  ],
+                callImportReturnTypes = [I32]
+              }
+            CallImport
+              { target' = "__asterius_quotrem2_quotient",
+                operands =
+                  [ mask32 lhsHir 1,
+                    mask32 lhsHir 0,
+                    mask32 lhsLor 1,
+                    mask32 lhsLor 0,
+                    mask32 rhsr 1,
+                    mask32 rhsr 0,
+                    ConstI32 0
+                  ],
+                callImportReturnTypes = [I32]
+              }
         }
-    ]
-marshalCmmPrimCall (GHC.MO_Memset _) [] [_dst, _c, _n] = do
-  dst <- marshalAndCastCmmExpr _dst F64
-  c <- marshalAndCastCmmExpr _c F64
-  n <- marshalAndCastCmmExpr _n F64
-  pure
-    [ CallImport
-        { target' = "__asterius_memset",
-          operands = [dst, c, n],
-          callImportReturnTypes = []
+  let remout = UnresolvedSetLocal
+        { unresolvedLocalReg = remr,
+          value = smash32IntTo64
+            CallImport
+              { target' = "__asterius_quotrem2_remainder",
+                operands =
+                  [ mask32 lhsHir 1,
+                    mask32 lhsHir 0,
+                    mask32 lhsLor 1,
+                    mask32 lhsLor 0,
+                    mask32 rhsr 1,
+                    mask32 rhsr 0,
+                    ConstI32 1
+                  ],
+                callImportReturnTypes = [I32]
+              }
+            CallImport
+              { target' = "__asterius_quotrem2_remainder",
+                operands =
+                  [ mask32 lhsHir 1,
+                    mask32 lhsHir 0,
+                    mask32 lhsLor 1,
+                    mask32 lhsLor 0,
+                    mask32 rhsr 1,
+                    mask32 rhsr 0,
+                    ConstI32 0
+                  ],
+                callImportReturnTypes = [I32]
+              }
         }
-    ]
-marshalCmmPrimCall (GHC.MO_Memmove _) [] [_dst, _src, _n] = do
-  dst <- marshalAndCastCmmExpr _dst F64
-  src <- marshalAndCastCmmExpr _src F64
-  n <- marshalAndCastCmmExpr _n F64
-  pure
-    [ CallImport
-        { target' = "__asterius_memmove",
-          operands = [dst, src, n],
-          callImportReturnTypes = []
-        }
-    ]
-marshalCmmPrimCall (GHC.MO_Memcmp _) [_cres] [_ptr1, _ptr2, _n] = do
-  cres <- marshalTypedCmmLocalReg _cres I32
-  ptr1 <- marshalAndCastCmmExpr _ptr1 F64
-  ptr2 <- marshalAndCastCmmExpr _ptr2 F64
-  n <- marshalAndCastCmmExpr _n F64
-  pure
-    [ UnresolvedSetLocal
-        { unresolvedLocalReg = cres,
-          value = CallImport
-            { target' = "__asterius_memcmp",
-              operands = [ptr1, ptr2, n],
-              callImportReturnTypes = [I32]
-            }
-        }
-    ]
-marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =
-  marshalCmmUnPrimCall I64 r I64 x popcntInt64
-marshalCmmPrimCall (GHC.MO_PopCnt GHC.W32) [r] [x] = do
-  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popcntInt32)
-marshalCmmPrimCall (GHC.MO_PopCnt GHC.W16) [r] [x] = do
-  marshalCmmUnPrimCall
-    I64
-    r
-    I32
-    x
-    (extendSInt32 . popcntInt32 . andInt32 (constI32 0xFFFF))
-marshalCmmPrimCall (GHC.MO_PopCnt GHC.W8) [r] [x] = do
-  marshalCmmUnPrimCall
-    I64
-    r
-    I32
-    x
-    (extendSInt32 . popcntInt32 . andInt32 (constI32 0xFF))
-marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
-  marshalCmmUnPrimCall I64 r I64 x clzInt64
-marshalCmmPrimCall (GHC.MO_Clz GHC.W32) [r] [x] =
-  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . clzInt32)
-marshalCmmPrimCall (GHC.MO_Clz GHC.W16) [r] [x] =
-  marshalCmmUnPrimCall
-    I64
-    r
-    I32
-    x
-    ( extendSInt32
-        . clzInt32
-        . orInt32 (constI32 0x8000)
-        . (`shlInt32` constI32 16)
-    )
-marshalCmmPrimCall (GHC.MO_Clz GHC.W8) [r] [x] =
-  marshalCmmUnPrimCall
-    I64
-    r
-    I32
-    x
-    ( extendSInt32
-        . clzInt32
-        . orInt32 (constI32 0x800000)
-        . (`shlInt32` constI32 24)
-    )
-marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
-  marshalCmmUnPrimCall I64 r I64 x ctzInt64
-marshalCmmPrimCall (GHC.MO_Ctz GHC.W32) [r] [x] =
-  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . ctzInt32)
-marshalCmmPrimCall (GHC.MO_Ctz GHC.W16) [r] [x] =
-  marshalCmmUnPrimCall
-    I64
-    r
-    I32
-    x
-    (extendSInt32 . ctzInt32 . orInt32 (constI32 0x10000))
-marshalCmmPrimCall (GHC.MO_Ctz GHC.W8) [r] [x] =
-  marshalCmmUnPrimCall
-    I64
-    r
-    I32
-    x
-    (extendSInt32 . ctzInt32 . orInt32 (constI32 0x100))
--- r = result, o = overflow
--- see also: GHC.Prim.subWordC#
-marshalCmmPrimCall (GHC.MO_SubWordC GHC.W64) [r, o] [x, y] = do
+  pure [quotout, remout]
+-- See also: GHC.Prim.plusWord2
+-- add unsigned: return (carry, result)
+marshalCmmPrimCall (GHC.MO_Add2 GHC.W64) [o, r] [x, y] = do
   (xr, _) <- marshalCmmExpr x
   (yr, _) <- marshalCmmExpr y
   lr <- marshalTypedCmmLocalReg r I64
+  -- y + x > maxbound
+  -- y > maxbound - x
   lo <- marshalTypedCmmLocalReg o I64
-  let x_minus_y = Binary {binaryOp = SubInt64, operand0 = xr, operand1 = yr}
-  let overflow = Binary {binaryOp = LtUInt64, operand0 = xr, operand1 = yr}
+  let x_plus_y = Binary {binaryOp = AddInt64, operand0 = xr, operand1 = yr}
+  let x_minus_maxbound = Binary
+        { binaryOp = SubInt64,
+          operand0 = ConstI64 0xFFFFFFFFFFFFFFFF,
+          operand1 = xr
+        }
+  let overflow = Binary
+        { binaryOp = GtUInt64,
+          operand0 = yr,
+          operand1 = x_minus_maxbound
+        }
   let overflow_sext = Unary {unaryOp = ExtendUInt32, operand0 = overflow}
   pure
-    [ UnresolvedSetLocal {unresolvedLocalReg = lr, value = x_minus_y},
+    [ UnresolvedSetLocal {unresolvedLocalReg = lr, value = x_plus_y},
       UnresolvedSetLocal {unresolvedLocalReg = lo, value = overflow_sext}
     ]
 -- r = result, o = overflow
@@ -1002,29 +982,18 @@ marshalCmmPrimCall (GHC.MO_AddWordC GHC.W64) [r, o] [x, y] = do
     [ UnresolvedSetLocal {unresolvedLocalReg = lr, value = x_plus_y},
       UnresolvedSetLocal {unresolvedLocalReg = lo, value = overflow_sext}
     ]
--- See also: GHC.Prim.plusWord2
--- add unsigned: return (carry, result)
-marshalCmmPrimCall (GHC.MO_Add2 GHC.W64) [o, r] [x, y] = do
+-- r = result, o = overflow
+-- see also: GHC.Prim.subWordC#
+marshalCmmPrimCall (GHC.MO_SubWordC GHC.W64) [r, o] [x, y] = do
   (xr, _) <- marshalCmmExpr x
   (yr, _) <- marshalCmmExpr y
   lr <- marshalTypedCmmLocalReg r I64
-  -- y + x > maxbound
-  -- y > maxbound - x
   lo <- marshalTypedCmmLocalReg o I64
-  let x_plus_y = Binary {binaryOp = AddInt64, operand0 = xr, operand1 = yr}
-  let x_minus_maxbound = Binary
-        { binaryOp = SubInt64,
-          operand0 = ConstI64 0xFFFFFFFFFFFFFFFF,
-          operand1 = xr
-        }
-  let overflow = Binary
-        { binaryOp = GtUInt64,
-          operand0 = yr,
-          operand1 = x_minus_maxbound
-        }
+  let x_minus_y = Binary {binaryOp = SubInt64, operand0 = xr, operand1 = yr}
+  let overflow = Binary {binaryOp = LtUInt64, operand0 = xr, operand1 = yr}
   let overflow_sext = Unary {unaryOp = ExtendUInt32, operand0 = overflow}
   pure
-    [ UnresolvedSetLocal {unresolvedLocalReg = lr, value = x_plus_y},
+    [ UnresolvedSetLocal {unresolvedLocalReg = lr, value = x_minus_y},
       UnresolvedSetLocal {unresolvedLocalReg = lo, value = overflow_sext}
     ]
 -- See also: GHC.Prim.addIntC#
@@ -1158,88 +1127,122 @@ marshalCmmPrimCall (GHC.MO_U_Mul2 GHC.W64) [hi, lo] [x, y] = do
               }
         }
   pure [hiout, loout]
--- See also: QuotRemWord2#
-marshalCmmPrimCall (GHC.MO_U_QuotRem2 GHC.W64) [q, r] [lhsHi, lhsLo, rhs] = do
-  quotr <- marshalTypedCmmLocalReg q I64
-  remr <- marshalTypedCmmLocalReg r I64
-  (lhsHir, _) <- marshalCmmExpr lhsHi
-  (lhsLor, _) <- marshalCmmExpr lhsLo
-  (rhsr, _) <- marshalCmmExpr rhs
-  -- Smash the high and low 32 bits together to create a 64 bit
-  -- number.
-  let smash32IntTo64 hi32 lo32 =
-        Binary
-          OrInt64
-          (Binary ShlInt64 (Unary ExtendUInt32 hi32) (ConstI64 32))
-          (Unary ExtendUInt32 lo32)
-  -- mask the `n32`th block of v, counting blocks from the lowest bit.
-  let mask32 v n32 =
-        Unary WrapInt64 $
-          Binary
-            AndInt64
-            (Binary ShrUInt64 v (ConstI64 (n32 * 32)))
-            (ConstI64 0xFFFFFFFF)
-  let quotout = UnresolvedSetLocal
-        { unresolvedLocalReg = quotr,
-          value = smash32IntTo64
-            CallImport
-              { target' = "__asterius_quotrem2_quotient",
-                operands =
-                  [ mask32 lhsHir 1,
-                    mask32 lhsHir 0,
-                    mask32 lhsLor 1,
-                    mask32 lhsLor 0,
-                    mask32 rhsr 1,
-                    mask32 rhsr 0,
-                    ConstI32 1
-                  ],
-                callImportReturnTypes = [I32]
-              }
-            CallImport
-              { target' = "__asterius_quotrem2_quotient",
-                operands =
-                  [ mask32 lhsHir 1,
-                    mask32 lhsHir 0,
-                    mask32 lhsLor 1,
-                    mask32 lhsLor 0,
-                    mask32 rhsr 1,
-                    mask32 rhsr 0,
-                    ConstI32 0
-                  ],
-                callImportReturnTypes = [I32]
-              }
+marshalCmmPrimCall GHC.MO_WriteBarrier _ _ = pure []
+marshalCmmPrimCall GHC.MO_Touch _ _ = pure []
+marshalCmmPrimCall (GHC.MO_Prefetch_Data _) _ _ = pure []
+marshalCmmPrimCall (GHC.MO_Memcpy _) [] [_dst, _src, _n] = do
+  dst <- marshalAndCastCmmExpr _dst F64
+  src <- marshalAndCastCmmExpr _src F64
+  n <- marshalAndCastCmmExpr _n F64
+  pure
+    [ CallImport
+        { target' = "__asterius_memcpy",
+          operands = [dst, src, n],
+          callImportReturnTypes = []
         }
-  let remout = UnresolvedSetLocal
-        { unresolvedLocalReg = remr,
-          value = smash32IntTo64
-            CallImport
-              { target' = "__asterius_quotrem2_remainder",
-                operands =
-                  [ mask32 lhsHir 1,
-                    mask32 lhsHir 0,
-                    mask32 lhsLor 1,
-                    mask32 lhsLor 0,
-                    mask32 rhsr 1,
-                    mask32 rhsr 0,
-                    ConstI32 1
-                  ],
-                callImportReturnTypes = [I32]
-              }
-            CallImport
-              { target' = "__asterius_quotrem2_remainder",
-                operands =
-                  [ mask32 lhsHir 1,
-                    mask32 lhsHir 0,
-                    mask32 lhsLor 1,
-                    mask32 lhsLor 0,
-                    mask32 rhsr 1,
-                    mask32 rhsr 0,
-                    ConstI32 0
-                  ],
-                callImportReturnTypes = [I32]
-              }
+    ]
+marshalCmmPrimCall (GHC.MO_Memset _) [] [_dst, _c, _n] = do
+  dst <- marshalAndCastCmmExpr _dst F64
+  c <- marshalAndCastCmmExpr _c F64
+  n <- marshalAndCastCmmExpr _n F64
+  pure
+    [ CallImport
+        { target' = "__asterius_memset",
+          operands = [dst, c, n],
+          callImportReturnTypes = []
         }
-  pure [quotout, remout]
+    ]
+marshalCmmPrimCall (GHC.MO_Memmove _) [] [_dst, _src, _n] = do
+  dst <- marshalAndCastCmmExpr _dst F64
+  src <- marshalAndCastCmmExpr _src F64
+  n <- marshalAndCastCmmExpr _n F64
+  pure
+    [ CallImport
+        { target' = "__asterius_memmove",
+          operands = [dst, src, n],
+          callImportReturnTypes = []
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_Memcmp _) [_cres] [_ptr1, _ptr2, _n] = do
+  cres <- marshalTypedCmmLocalReg _cres I32
+  ptr1 <- marshalAndCastCmmExpr _ptr1 F64
+  ptr2 <- marshalAndCastCmmExpr _ptr2 F64
+  n <- marshalAndCastCmmExpr _n F64
+  pure
+    [ UnresolvedSetLocal
+        { unresolvedLocalReg = cres,
+          value = CallImport
+            { target' = "__asterius_memcmp",
+              operands = [ptr1, ptr2, n],
+              callImportReturnTypes = [I32]
+            }
+        }
+    ]
+marshalCmmPrimCall (GHC.MO_PopCnt GHC.W64) [r] [x] =
+  marshalCmmUnPrimCall I64 r I64 x popcntInt64
+marshalCmmPrimCall (GHC.MO_PopCnt GHC.W32) [r] [x] = do
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . popcntInt32)
+marshalCmmPrimCall (GHC.MO_PopCnt GHC.W16) [r] [x] = do
+  marshalCmmUnPrimCall
+    I64
+    r
+    I32
+    x
+    (extendSInt32 . popcntInt32 . andInt32 (constI32 0xFFFF))
+marshalCmmPrimCall (GHC.MO_PopCnt GHC.W8) [r] [x] = do
+  marshalCmmUnPrimCall
+    I64
+    r
+    I32
+    x
+    (extendSInt32 . popcntInt32 . andInt32 (constI32 0xFF))
+-- Unhandled: MO_Pdep Width
+-- Unhandled: MO_Pext Width
+marshalCmmPrimCall (GHC.MO_Clz GHC.W64) [r] [x] =
+  marshalCmmUnPrimCall I64 r I64 x clzInt64
+marshalCmmPrimCall (GHC.MO_Clz GHC.W32) [r] [x] =
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . clzInt32)
+marshalCmmPrimCall (GHC.MO_Clz GHC.W16) [r] [x] =
+  marshalCmmUnPrimCall
+    I64
+    r
+    I32
+    x
+    ( extendSInt32
+        . clzInt32
+        . orInt32 (constI32 0x8000)
+        . (`shlInt32` constI32 16)
+    )
+marshalCmmPrimCall (GHC.MO_Clz GHC.W8) [r] [x] =
+  marshalCmmUnPrimCall
+    I64
+    r
+    I32
+    x
+    ( extendSInt32
+        . clzInt32
+        . orInt32 (constI32 0x800000)
+        . (`shlInt32` constI32 24)
+    )
+marshalCmmPrimCall (GHC.MO_Ctz GHC.W64) [r] [x] =
+  marshalCmmUnPrimCall I64 r I64 x ctzInt64
+marshalCmmPrimCall (GHC.MO_Ctz GHC.W32) [r] [x] =
+  marshalCmmUnPrimCall I64 r I32 x (extendSInt32 . ctzInt32)
+marshalCmmPrimCall (GHC.MO_Ctz GHC.W16) [r] [x] =
+  marshalCmmUnPrimCall
+    I64
+    r
+    I32
+    x
+    (extendSInt32 . ctzInt32 . orInt32 (constI32 0x10000))
+marshalCmmPrimCall (GHC.MO_Ctz GHC.W8) [r] [x] =
+  marshalCmmUnPrimCall
+    I64
+    r
+    I32
+    x
+    (extendSInt32 . ctzInt32 . orInt32 (constI32 0x100))
+-- Unhandled: MO_BSwap Width
 -- Atomic operations
 marshalCmmPrimCall (GHC.MO_AtomicRMW GHC.W64 amop) [dst] [addr, n] =
   marshalCmmAtomicMachOpPrimCall amop dst addr n
