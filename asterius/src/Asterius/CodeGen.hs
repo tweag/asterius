@@ -406,6 +406,7 @@ marshalCmmHeteroConvMachOp o33 o36 o63 o66 tx32 ty32 tx64 ty64 w0 w1 x = do
 
 marshalCmmMachOp ::
   GHC.MachOp -> [GHC.CmmExpr] -> CodeGen (Expression, ValueType)
+-- Integer operations (insensitive to signed/unsigned)
 marshalCmmMachOp (GHC.MO_Add w) [x, y] =
   marshalCmmBinMachOp AddInt32 I32 I32 I32 AddInt64 I64 I64 I64 w x y
 marshalCmmMachOp (GHC.MO_Sub w) [x, y] =
@@ -416,6 +417,7 @@ marshalCmmMachOp (GHC.MO_Ne w) [x, y] =
   marshalCmmBinMachOp NeInt32 I32 I32 I32 NeInt64 I64 I64 I32 w x y
 marshalCmmMachOp (GHC.MO_Mul w) [x, y] =
   marshalCmmBinMachOp MulInt32 I32 I32 I32 MulInt64 I64 I64 I64 w x y
+-- Signed multiply/divide
 marshalCmmMachOp (GHC.MO_S_Quot w) [x, y] =
   marshalCmmBinMachOp DivSInt32 I32 I32 I32 DivSInt64 I64 I64 I64 w x y
 marshalCmmMachOp (GHC.MO_S_Rem w) [x, y] =
@@ -438,10 +440,12 @@ marshalCmmMachOp (GHC.MO_S_Neg w) [x] =
               I64
             )
       )
+-- Unsigned multiply/divide
 marshalCmmMachOp (GHC.MO_U_Quot w) [x, y] =
   marshalCmmBinMachOp DivUInt32 I32 I32 I32 DivUInt64 I64 I64 I64 w x y
 marshalCmmMachOp (GHC.MO_U_Rem w) [x, y] =
   marshalCmmBinMachOp RemUInt32 I32 I32 I32 RemUInt64 I64 I64 I64 w x y
+-- Signed comparisons
 marshalCmmMachOp (GHC.MO_S_Ge w) [x, y] =
   marshalCmmBinMachOp GeSInt32 I32 I32 I32 GeSInt64 I64 I64 I32 w x y
 marshalCmmMachOp (GHC.MO_S_Le w) [x, y] =
@@ -450,6 +454,7 @@ marshalCmmMachOp (GHC.MO_S_Gt w) [x, y] =
   marshalCmmBinMachOp GtSInt32 I32 I32 I32 GtSInt64 I64 I64 I32 w x y
 marshalCmmMachOp (GHC.MO_S_Lt w) [x, y] =
   marshalCmmBinMachOp LtSInt32 I32 I32 I32 LtSInt64 I64 I64 I32 w x y
+-- Unsigned comparisons
 marshalCmmMachOp (GHC.MO_U_Ge w) [x, y] =
   marshalCmmBinMachOp GeUInt32 I32 I32 I32 GeUInt64 I64 I64 I32 w x y
 marshalCmmMachOp (GHC.MO_U_Le w) [x, y] =
@@ -458,6 +463,7 @@ marshalCmmMachOp (GHC.MO_U_Gt w) [x, y] =
   marshalCmmBinMachOp GtUInt32 I32 I32 I32 GtUInt64 I64 I64 I32 w x y
 marshalCmmMachOp (GHC.MO_U_Lt w) [x, y] =
   marshalCmmBinMachOp LtUInt32 I32 I32 I32 LtUInt64 I64 I64 I32 w x y
+-- Floating point arithmetic
 marshalCmmMachOp (GHC.MO_F_Add w) [x, y] =
   marshalCmmBinMachOp AddFloat32 F32 F32 F32 AddFloat64 F64 F64 F64 w x y
 marshalCmmMachOp (GHC.MO_F_Sub w) [x, y] =
@@ -478,6 +484,7 @@ marshalCmmMachOp (GHC.MO_F_Mul w) [x, y] =
   marshalCmmBinMachOp MulFloat32 F32 F32 F32 MulFloat64 F64 F64 F64 w x y
 marshalCmmMachOp (GHC.MO_F_Quot w) [x, y] =
   marshalCmmBinMachOp DivFloat32 F32 F32 F32 DivFloat64 F64 F64 F64 w x y
+  -- Floating point comparison
 marshalCmmMachOp (GHC.MO_F_Eq w) [x, y] =
   marshalCmmBinMachOp EqFloat32 F32 F32 I32 EqFloat64 F64 F64 I32 w x y
 marshalCmmMachOp (GHC.MO_F_Ne w) [x, y] =
@@ -490,6 +497,8 @@ marshalCmmMachOp (GHC.MO_F_Gt w) [x, y] =
   marshalCmmBinMachOp GtFloat32 F32 F32 I32 GtFloat64 F64 F64 I32 w x y
 marshalCmmMachOp (GHC.MO_F_Lt w) [x, y] =
   marshalCmmBinMachOp LtFloat32 F32 F32 I32 LtFloat64 F64 F64 I32 w x y
+-- Bitwise operations. Not all of these may be supported at all sizes,
+-- and only integral Widths are valid.
 marshalCmmMachOp (GHC.MO_And w) [x, y] =
   marshalCmmBinMachOp AndInt32 I32 I32 I32 AndInt64 I64 I64 I64 w x y
 marshalCmmMachOp (GHC.MO_Or w) [x, y] =
@@ -528,6 +537,8 @@ marshalCmmMachOp (GHC.MO_U_Shr w) [x, y] =
   marshalCmmBinMachOp ShrUInt32 I32 I32 I32 ShrUInt64 I64 I64 I64 w x y
 marshalCmmMachOp (GHC.MO_S_Shr w) [x, y] =
   marshalCmmBinMachOp ShrSInt32 I32 I32 I32 ShrSInt64 I64 I64 I64 w x y
+-- Conversions. Some of these will be NOPs.
+-- Floating-point conversions use the signed variant.
 marshalCmmMachOp (GHC.MO_SF_Conv w0 w1) [x] =
   marshalCmmHeteroConvMachOp
     ConvertSInt32ToFloat32
@@ -560,6 +571,36 @@ marshalCmmMachOp (GHC.MO_UU_Conv w0 w1) [x] =
   marshalCmmHomoConvMachOp ExtendUInt32 WrapInt64 I32 I64 w0 w1 NoSext x
 marshalCmmMachOp (GHC.MO_FF_Conv w0 w1) [x] =
   marshalCmmHomoConvMachOp PromoteFloat32 DemoteFloat64 F32 F64 w0 w1 Sext x
+-- Unhandled cases
+--   -- Signed multiply/divide
+--   MO_S_MulMayOflo Width       -- nonzero if signed multiply overflows
+--   -- Unsigned multiply/divide
+--   MO_U_MulMayOflo Width       -- nonzero if unsigned multiply overflows
+--   -- Vector element insertion and extraction operations
+--   MO_V_Insert  Length Width   -- Insert scalar into vector
+--   MO_V_Extract Length Width   -- Extract scalar from vector
+--   -- Integer vector operations
+--   MO_V_Add Length Width
+--   MO_V_Sub Length Width
+--   MO_V_Mul Length Width
+--   -- Signed vector multiply/divide
+--   MO_VS_Quot Length Width
+--   MO_VS_Rem  Length Width
+--   MO_VS_Neg  Length Width
+--   -- Unsigned vector multiply/divide
+--   MO_VU_Quot Length Width
+--   MO_VU_Rem  Length Width
+--   -- Floting point vector element insertion and extraction operations
+--   MO_VF_Insert  Length Width   -- Insert scalar into vector
+--   MO_VF_Extract Length Width   -- Extract scalar from vector
+--   -- Floating point vector operations
+--   MO_VF_Add  Length Width
+--   MO_VF_Sub  Length Width
+--   MO_VF_Neg  Length Width      -- unary negation
+--   MO_VF_Mul  Length Width
+--   MO_VF_Quot Length Width
+--   -- Alignment check (for -falignment-sanitisation)
+--   MO_AlignmentCheck Int Width
 marshalCmmMachOp op xs =
   liftIO $ throwIO $ UnsupportedCmmExpr $ showBS $ GHC.CmmMachOp op xs
 
