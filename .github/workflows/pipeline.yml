@@ -88,7 +88,7 @@ jobs:
           . ./.envrc
           ahc-cabal v1-update
           pushd ghc-toolkit/boot-libs
-          ahc-cabal v1-install --package-db=clear --package-db=global -j2 \
+          ahc-cabal v1-install -j2 \
             wai-middleware-caching
           popd
 
@@ -212,7 +212,7 @@ jobs:
 
           . ./.envrc
           cd ghc-toolkit/boot-libs
-          ahc-cabal v1-install --package-db=clear --package-db=global --ghc-option=-j2 \
+          ahc-cabal v1-install --ghc-option=-j2 \
             Cabal
 
       - name: profile
@@ -322,9 +322,9 @@ jobs:
           . ./.envrc
           ahc-cabal v1-update
           ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
-          ahc-cabal v1-install --package-db=clear --package-db=global --ghc-option=-j2 \
+          ahc-cabal v1-install --ghc-option=-j2 \
             Cabal
-          ahc-cabal v1-install --package-db=clear --package-db=global -j2 \
+          ahc-cabal v1-install -j2 \
             diagrams \
             servant \
             singletons

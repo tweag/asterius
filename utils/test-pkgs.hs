@@ -45,8 +45,6 @@ testPkg pkg = do
       [ "v1-install",
         "--dry-run",
         "--minimize-conflict-set",
-        "--package-db=clear",
-        "--package-db=global",
         pkg
       ]
       ""
