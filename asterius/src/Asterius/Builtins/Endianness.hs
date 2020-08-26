@@ -16,8 +16,7 @@ import Asterius.EDSL
 import Asterius.Types
 
 endiannessCBits :: AsteriusModule
-endiannessCBits = mempty
--- endiannessCBits = htonl <> htons <> ntohl <> ntohs
+endiannessCBits = htonl <> htons <> ntohl <> ntohs
 
 -- | @uint32_t htonl(uint32_t hostlong);@
 htonl :: AsteriusModule
