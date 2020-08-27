@@ -19,35 +19,62 @@ import Asterius.EDSL
 import Asterius.Types
 
 endiannessCBits :: AsteriusModule
-endiannessCBits = htonl <> htons <> ntohl <> ntohs
+endiannessCBits = hs_bswap16 <> hs_bswap32 <> hs_bswap64 <> htonl <> htons <> ntohl <> ntohs
+
+-- ----------------------------------------------------------------------------
 
 -- | @uint32_t htonl(uint32_t hostlong);@
 htonl :: AsteriusModule
 htonl = runEDSL "htonl" $ do
   setReturnTypes [I64]
   hostlong <- param I64
-  emit $ byteSwap32 hostlong
+  call' "hs_bswap32" [hostlong] I64 >>= emit
 
 -- | @uint16_t htons(uint16_t hostshort);@
 htons :: AsteriusModule
 htons = runEDSL "htons" $ do
   setReturnTypes [I64]
   hostshort <- param I64
-  emit $ byteSwap16 hostshort
+  call' "hs_bswap16" [hostshort] I64 >>= emit
 
 -- | @uint32_t ntohl(uint32_t netlong);@
 ntohl :: AsteriusModule
 ntohl = runEDSL "ntohl" $ do
   setReturnTypes [I64]
   netlong <- param I64
-  emit $ byteSwap32 netlong
+  call' "hs_bswap32" [netlong] I64 >>= emit
 
 -- | @uint16_t ntohs(uint16_t netshort);@
 ntohs :: AsteriusModule
 ntohs = runEDSL "ntohs" $ do
   setReturnTypes [I64]
   netshort <- param I64
-  emit $ byteSwap16 netshort
+  call' "hs_bswap16" [netshort] I64 >>= emit
+
+-- ----------------------------------------------------------------------------
+
+-- | @extern StgWord16 hs_bswap16(StgWord16 x);@
+hs_bswap16 :: AsteriusModule
+hs_bswap16 = runEDSL "hs_bswap16" $ do
+  setReturnTypes [I64]
+  x <- param I64
+  emit $ byteSwap16 x
+
+-- | @extern StgWord32 hs_bswap32(StgWord32 x);@
+hs_bswap32 :: AsteriusModule
+hs_bswap32 = runEDSL "hs_bswap32" $ do
+  setReturnTypes [I64]
+  x <- param I64
+  emit $ byteSwap32 x
+
+-- | @extern StgWord64 hs_bswap64(StgWord64 x);@
+hs_bswap64 :: AsteriusModule
+hs_bswap64 = runEDSL "hs_bswap64" $ do
+  setReturnTypes [I64]
+  x <- param I64
+  emit $ byteSwap64 x
+
+-- ----------------------------------------------------------------------------
 
 byteSwap16 :: Expression -> Expression
 byteSwap16 n = msb `orInt64` lsb
