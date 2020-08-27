@@ -68,10 +68,12 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
       rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
     new_function_map =
       LM.mapKeys entityName $ SM.toMap $ functionMap m_globals_resolved
-    (initial_pages, segs) =
-      makeMemory m_globals_resolved all_sym_map last_data_addr
+    segs = makeMemory m_globals_resolved all_sym_map
+    initial_pages =
+      (fromIntegral (unTag last_data_addr) `roundup` mblock_size)
+        `quot` wasmPageSize
     initial_mblocks =
-      fromIntegral initial_pages `quot` (mblock_size `quot` wasmPageSize)
+      initial_pages `quot` (mblock_size `quot` wasmPageSize)
     new_mod = Module
       { functionMap' = new_function_map,
         functionImports = func_imports,

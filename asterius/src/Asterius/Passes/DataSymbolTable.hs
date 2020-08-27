@@ -8,28 +8,30 @@ module Asterius.Passes.DataSymbolTable
   )
 where
 
-import Asterius.Builtins
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Data.ByteString as BS
-import Data.Foldable
+import Data.List
+import Data.Maybe
 import Data.Monoid
 import Data.Tuple
-import GHC.Int
+import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
+
+{-# INLINEABLE sizeofStatic #-}
+sizeofStatic :: AsteriusStatic -> Int
+sizeofStatic = \case
+  SymbolStatic {} -> 8
+  Uninitialized x -> x
+  Serialized buf -> BS.length buf
 
 sizeofStatics :: AsteriusStatics -> Int64
 sizeofStatics =
   fromIntegral
     . getSum
-    . foldMap
-      ( Sum . \case
-          SymbolStatic {} -> 8
-          Uninitialized x -> x
-          Serialized buf -> BS.length buf
-      )
+    . foldMap (Sum . sizeofStatic)
     . asteriusStatics
 
 {-# INLINEABLE makeDataSymbolTable #-}
@@ -43,50 +45,27 @@ makeDataSymbolTable AsteriusModule {..} l =
       l
       staticsMap
 
-{-# INLINEABLE makeMemory #-}
-makeMemory ::
-  AsteriusModule ->
-  SM.SymbolMap Int64 ->
-  Int64 ->
-  (BinaryenIndex, [DataSegment])
-makeMemory AsteriusModule {..} sym_map last_addr =
-  ( fromIntegral $
-      (fromIntegral (unTag last_addr) `roundup` mblock_size)
-        `quot` wasmPageSize,
-    SM.foldrWithKey'
-      ( \statics_sym ss@AsteriusStatics {..} statics_segs ->
-          fst $
-            foldr'
-              ( \static (static_segs, static_tail_addr) ->
-                  let flush_static_segs buf =
-                        ( case static_segs of
-                            DataSegment {..} : static_segs'
-                              | offset == static_tail_addr ->
-                                DataSegment {content = buf <> content, offset = static_addr}
-                                  : static_segs'
-                            _ ->
-                              DataSegment {content = buf, offset = static_addr}
-                                : static_segs,
-                          static_addr
-                        )
-                        where
-                          static_addr = static_tail_addr - fromIntegral (BS.length buf)
-                   in case static of
-                        SymbolStatic sym o ->
-                          flush_static_segs
-                            $ encodeStorable
-                            $ case SM.lookup sym sym_map of
-                              Just addr -> addr + fromIntegral o
-                              _ -> invalidAddress
-                        Uninitialized l ->
-                          (static_segs, static_tail_addr - fromIntegral l)
-                        Serialized buf -> flush_static_segs buf
-              )
-              ( statics_segs,
-                fromIntegral $ unTag $ sym_map SM.! statics_sym + sizeofStatics ss
-              )
-              asteriusStatics
-      )
-      []
-      staticsMap
+-- | Given the offset of a static and the static itself, compute the
+-- corresponding data segment and the offset of the subsequent static. NOTE: we
+-- do not generate data segments for uninitialized statics; we do not have to
+-- specify each segment and the linear memory is zero-initialized anyway.
+{-# INLINEABLE makeSegment #-}
+makeSegment :: SM.SymbolMap Int64 -> Int32 -> AsteriusStatic -> (Int32, Maybe DataSegment)
+makeSegment sym_map off static =
+  ( off + fromIntegral (sizeofStatic static),
+    case static of
+      SymbolStatic sym o ->
+        let address = case SM.lookup sym sym_map of
+              Just addr -> addr + fromIntegral o
+              _ -> invalidAddress
+         in Just DataSegment {content = encodeStorable address, offset = off}
+      Uninitialized {} -> Nothing
+      Serialized buf -> Just DataSegment {content = buf, offset = off}
   )
+
+{-# INLINEABLE makeMemory #-}
+makeMemory :: AsteriusModule -> SM.SymbolMap Int64 -> [DataSegment]
+makeMemory AsteriusModule {..} sym_map =
+  concat $ SM.elems $ flip SM.mapWithKey staticsMap $ \statics_sym ss ->
+    let initial_offset = fromIntegral $ unTag $ sym_map SM.! statics_sym
+     in catMaybes $ snd $ mapAccumL (makeSegment sym_map) initial_offset $ asteriusStatics ss
