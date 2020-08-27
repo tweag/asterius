@@ -136,7 +136,7 @@ jobs:
 
           stack test asterius:argv --test-arguments="--backend=$ASTERIUS_BACKEND"
 
-          stack test asterius:endianness
+          stack test asterius:endianness --test-arguments="--backend=$ASTERIUS_BACKEND"
 
   ghc-testsuite:
     name: ghc-testsuite
