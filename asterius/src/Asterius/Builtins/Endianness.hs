@@ -9,9 +9,6 @@
 -- (big-endian) byte order: @htonl@, @htons@, @ntohl@, and @ntohs@.
 module Asterius.Builtins.Endianness
   ( endiannessCBits,
-    byteSwap16,
-    byteSwap32,
-    byteSwap64,
   )
 where
 
@@ -19,7 +16,8 @@ import Asterius.EDSL
 import Asterius.Types
 
 endiannessCBits :: AsteriusModule
-endiannessCBits = hs_bswap16 <> hs_bswap32 <> hs_bswap64 <> htonl <> htons <> ntohl <> ntohs
+endiannessCBits =
+  hs_bswap16 <> hs_bswap32 <> hs_bswap64 <> htonl <> htons <> ntohl <> ntohs
 
 -- ----------------------------------------------------------------------------
 
