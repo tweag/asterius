@@ -21,6 +21,7 @@ where
 
 import Asterius.Builtins.Blackhole
 import Asterius.Builtins.CMath
+import Asterius.Builtins.Endianness
 import Asterius.Builtins.Env
 import Asterius.Builtins.Exports
 import Asterius.Builtins.Hashable
@@ -198,6 +199,7 @@ rtsAsteriusModule opts =
     <> timeCBits
     <> primitiveCBits
     <> mathCBits
+    <> endiannessCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
