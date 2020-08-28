@@ -5,8 +5,9 @@
 -- Copyright   :  (c) 2018 EURL Tweag
 -- License     :  All rights reserved (see LICENCE file in the distribution).
 --
--- Wasm implementations of conversions between host (little-endian) and network
--- (big-endian) byte order: @htonl@, @htons@, @ntohl@, and @ntohs@.
+-- Wasm implementations of byte-swapping functions (@hs_bswap16@, @hs_bswap32@,
+-- and @hs_bswap64@), and conversions between host (little-endian) and network
+-- (big-endian) byte order (@htonl@, @htons@, @ntohl@, and @ntohs@).
 module Asterius.Builtins.Endianness
   ( endiannessCBits,
   )

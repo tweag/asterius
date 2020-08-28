@@ -1,5 +1,4 @@
 
--- import Network.Socket -- Well, it's not booted, this one, so we cannot test it :(
 import Data.Word
 
 main :: IO ()
