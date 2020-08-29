@@ -20,9 +20,9 @@ main = do
       <> (dataDir </> ".boot" </> "asterius_lib")
       <> "\nprogram-locations\n  ar-location: "
       <> ahcAr
-      <> "\n  ghc-location: "
+      <> "\nwith-compiler: "
       <> ahc
-      <> "\n  ghc-pkg-location: "
+      <> "\nwith-hc-pkg:"
       <> ahcPkg
       <> "\n"
       <> ahc_cabal_config
