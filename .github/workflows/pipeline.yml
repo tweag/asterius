@@ -322,14 +322,23 @@ jobs:
       - name: test-cabal
         run: |
           . ./.envrc
-          ahc-cabal v1-update
-          ln -s ghc-toolkit/boot-libs/cabal.config cabal.config
+          pushd ghc-toolkit/boot-libs
+
+          ahc-cabal update
+
+          pushd $(mktemp -d)
+          ahc-cabal v2-install --installdir . hello
+          ahc-dist --input-exe hello --run
+          popd
+
           ahc-cabal v1-install --ghc-option=-j2 \
             Cabal
           ahc-cabal v1-install -j2 \
             diagrams \
-            servant \
+            miso \
             singletons
+
+          popd
 
   gen-pkgs:
     name: gen-pkgs
