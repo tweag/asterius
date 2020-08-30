@@ -1,6 +1,6 @@
 #!/usr/bin/env stack
 {-
-  stack --resolver lts-16.11 script
+  stack --resolver lts-16.12 script
     --package Cabal
     --package containers
     --package pantry
@@ -46,7 +46,7 @@ parseVersion pkg_name_ver = (pkg_name, pkg_ver)
 globalSnapshot :: IO Snapshot
 globalSnapshot = do
   pkgs <- map parseVersion . words <$> readProcess
-    "ghc-pkg-8.8.3"
+    "ghc-pkg-8.8.4"
     ["list", "--global", "--simple-output"]
     ""
   pure $ M.fromList
