@@ -6,7 +6,7 @@ build:
   library-profiling: true
   executable-profiling: true
 
-resolver: lts-16.11
+resolver: lts-16.12
 compiler: ghc-8.8.4
 extra-deps:
   - binaryen-0.0.3.0
