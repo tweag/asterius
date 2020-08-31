@@ -1,77 +1,92 @@
-#!/bin/sh -e
+#!/bin/bash
+
+set -euo pipefail
 
 cp -r $ASTERIUS_BOOT_LIBS_DIR .
-cd boot-libs
+pushd boot-libs
 
-cd ghc-prim
-$ASTERIUS_SETUP_GHC_PRIM configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+pushd ghc-prim
+$ASTERIUS_SETUP_GHC_PRIM configure --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim $ASTERIUS_CONFIGURE_OPTIONS
 $ASTERIUS_SETUP_GHC_PRIM build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim
 $ASTERIUS_SETUP_GHC_PRIM install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-prim
-cd ..
+popd
 
-cd integer-simple
-ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/integer-simple --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+pushd integer-simple
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/integer-simple $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/integer-simple
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/integer-simple
-cd ..
+popd
 
-cd base
+pushd base
 autoreconf -i
-ahc-cabal act-as-setup --build-type=Configure -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/base --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR -finteger-simple $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Configure -- configure --builddir=$ASTERIUS_TMP_DIR/dist/base -finteger-simple $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Configure -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/base
 ahc-cabal act-as-setup --build-type=Configure -- install --builddir=$ASTERIUS_TMP_DIR/dist/base
-cd ..
+popd
 
-cd ghc-heap
-ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+pushd ghc-heap
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-heap
-cd ..
+popd
 
-cd ghc-boot-th
-ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+pushd ghc-boot-th
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot-th
-cd ..
+popd
 
 ahc-cabal v1-update || true
+
+ahc-cabal v1-install --only-dependencies $ASTERIUS_CONFIGURE_OPTIONS \
+  unix
+
+pushd $(mktemp -d)
+ahc-cabal get unix-2.7.2.2
+cd unix-2.7.2.2
+ahc-cabal act-as-setup --build-type=Configure -- configure --builddir=$ASTERIUS_TMP_DIR/dist/unix --ghc-option=-this-unit-id=unix $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Configure -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/unix
+ahc-cabal act-as-setup --build-type=Configure -- install --builddir=$ASTERIUS_TMP_DIR/dist/unix
+popd
+
 ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
   binary \
   directory \
   mtl \
-  pretty \
-  unix
+  pretty
 
-cd ghc-boot
-ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+pushd ghc-boot
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot
-cd ..
+popd
 
-cd template-haskell
-ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/template-haskell --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+pushd template-haskell
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/template-haskell $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/template-haskell
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/template-haskell
-cd ..
+popd
 
-cd ghci
-ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/ghci --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR -fghci $ASTERIUS_CONFIGURE_OPTIONS
+pushd ghci
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/ghci -fghci --ghc-option=-this-unit-id=ghci $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghci
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/ghci
-cd ..
+popd
 
-cd text
-ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/text --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+pushd text
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/text $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/text
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/text
-cd ..
+popd
 
 ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
   aeson \
   parsec
 
-cd asterius-prelude
-ahc-cabal act-as-setup --build-type=Simple -- configure --prefix=$ASTERIUS_LIB_DIR --global --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude --with-ghc=$ASTERIUS_AHC --with-ghc-pkg=$ASTERIUS_AHCPKG --with-ar=$ASTERIUS_AR $ASTERIUS_CONFIGURE_OPTIONS
+pushd asterius-prelude
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude --ghc-option=-this-unit-id=asterius-prelude $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude
-cd ..
+popd
+
+popd

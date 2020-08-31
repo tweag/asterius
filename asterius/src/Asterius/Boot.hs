@@ -67,6 +67,12 @@ defaultBootArgs = BootArgs
        "--disable-library-stripping",
        "--enable-relocatable",
        "-O2",
+       "--prefix=" <> (bootDir defaultBootArgs </> "asterius_lib"),
+       "--global",
+       "--ipid=$pkg",
+       "--with-ghc=" <> ahc,
+       "--with-ghc-pkg=" <> ahcPkg,
+       "--with-ar=" <> ahcAr,
        "--ghc-option=-v1",
        "--ghc-option=-dsuppress-ticks"
       ],
@@ -80,7 +86,7 @@ bootCreateProcess :: BootArgs -> IO CreateProcess
 bootCreateProcess args@BootArgs {..} = do
   e <- getEnvironment
   pure
-    (proc "sh" ["-e", "boot.sh"])
+    (proc "bash" ["-e", "boot.sh"])
       { cwd = Just dataDir,
         env =
           Just $
@@ -89,9 +95,7 @@ bootCreateProcess args@BootArgs {..} = do
               ("ASTERIUS_SANDBOX_GHC_LIBDIR", sandboxGhcLibDir) :
               ("ASTERIUS_LIB_DIR", bootDir </> "asterius_lib") :
               ("ASTERIUS_TMP_DIR", bootTmpDir args) :
-              ("ASTERIUS_AHC", ahc) :
               ("ASTERIUS_AHCPKG", ahcPkg) :
-              ("ASTERIUS_AR", ahcAr) :
               ("ASTERIUS_SETUP_GHC_PRIM", setupGhcPrim) :
               ("ASTERIUS_CONFIGURE_OPTIONS", configureOptions) :
                 [(k, v) | (k, v) <- e, k /= "GHC_PACKAGE_PATH"],
