@@ -18,7 +18,6 @@ import Asterius.Ar
 import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.CodeGen
-import Asterius.Internals.Name
 import Asterius.Internals.Temp
 import Asterius.JSRun.NonMain
 import Asterius.Ld
@@ -56,8 +55,8 @@ import qualified ErrUtils as GHC
 import qualified FastString as GHC
 import Foreign.Ptr
 import GHC.IO.Handle.FD
-import qualified GHCi.Message as GHC
 import GHCi.Message
+import qualified GHCi.Message as GHC
 import qualified GHCi.RemoteTypes as GHC
 import qualified HscMain as GHC
 import qualified HscTypes as GHC
@@ -261,28 +260,16 @@ asteriusWriteIServ hsc_env i a
                     )
                 }
       modifyMVar_ globalGHCiState $ \s -> do
-        let run_q_exp_sym =
-              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunQExp"
-            run_q_pat_sym =
-              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunQPat"
-            run_q_type_sym =
-              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunQType"
-            run_q_dec_sym =
-              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunQDec"
+        let run_q_exp_sym = "ghci_AsteriusziGHCi_asteriusRunQExp_closure"
+            run_q_pat_sym = "ghci_AsteriusziGHCi_asteriusRunQPat_closure"
+            run_q_type_sym = "ghci_AsteriusziGHCi_asteriusRunQType_closure"
+            run_q_dec_sym = "ghci_AsteriusziGHCi_asteriusRunQDec_closure"
             run_q_annwrapper_sym =
-              closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunAnnWrapper"
+              "ghci_AsteriusziGHCi_asteriusRunAnnWrapper_closure"
             run_mod_fin_sym =
-              closureSymbol
-                hsc_env
-                "ghci"
-                "Asterius.GHCi"
-                "asteriusRunModFinalizers"
+              "ghci_AsteriusziGHCi_asteriusRunModFinalizers_closure"
             buf_conv_sym =
-              closureSymbol
-                hsc_env
-                "asterius-prelude"
-                "Asterius.ByteString"
-                "byteStringFromJSUint8Array"
+              "asteriuszmprelude_AsteriusziByteString_byteStringFromJSUint8Array_closure"
             this_id = remoteRefToInt q
             (sym, m) = ghciCompiledCoreExprs s IM.! this_id
             (js_s, p, _) = ghciSession s
@@ -313,7 +300,6 @@ asteriusWriteIServ hsc_env i a
               }
         v <-
           asteriusRunTH
-            hsc_env
             i
             st
             (fromIntegral (staticsSymbolMap link_report ! sym))
@@ -330,13 +316,12 @@ asteriusWriteIServ hsc_env i a
       GHC.debugTraceMsg (GHC.hsc_dflags hsc_env) 3 $ GHC.text $ show m
       withMVar globalGHCiState $ \s -> do
         let (js_s, _, v) = ghciSession s
-        asteriusRunModFinalizers hsc_env js_s v
+        asteriusRunModFinalizers js_s v
     GHC.Msg m -> fail $ "asteriusWriteIServ: unsupported message " <> show m
   | otherwise = withMVar globalGHCiState $
     \s -> let (_, p, _) = ghciSession s in writePipe p $ put a
 
 asteriusRunTH ::
-  GHC.HscEnv ->
   GHC.IServ ->
   GHC.RemoteRef (IORef GHC.QState) ->
   Word64 ->
@@ -345,8 +330,8 @@ asteriusRunTH ::
   Session ->
   (Asterius.Types.Module, LinkReport) ->
   IO JSVal
-asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
-  withTempDir "asdf" $ \tmp_dir -> do
+asteriusRunTH _ _ q ty loc s ahc_dist_input = withTempDir "asdf" $ \tmp_dir ->
+  do
     let p = tmp_dir </> "asdf"
     distNonMain p [runner_sym, run_mod_fin_sym, buf_conv_sym] ahc_dist_input
     rts_val <- importMJS s $ p `replaceFileName` "rts.mjs"
@@ -363,14 +348,14 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
           <> toJS mod_val
           <> "}))"
     let runner_closure =
-          toJS i <> ".symbolTable.addressOf(\""
-            <> fromString
-              (CBS.unpack (entityName runner_sym))
+          toJS i
+            <> ".symbolTable.addressOf(\""
+            <> fromString (CBS.unpack (entityName runner_sym))
             <> "\")"
         buf_conv_closure =
-          toJS i <> ".symbolTable.addressOf(\""
-            <> fromString
-              (CBS.unpack (entityName buf_conv_sym))
+          toJS i
+            <> ".symbolTable.addressOf(\""
+            <> fromString (CBS.unpack (entityName buf_conv_sym))
             <> "\")"
         uint8_arr = "new Uint8Array(" <> toJS (encode loc) <> ")"
         uint8_arr_sn =
@@ -402,40 +387,32 @@ asteriusRunTH hsc_env _ _ q ty loc s ahc_dist_input =
             <> ","
             <> hv_closure
             <> ")"
-        tid =
-          toJS i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
+        tid = toJS i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
     eval @() s tid
     evaluate i
   where
-    runner_sym = closureSymbol hsc_env "ghci" "Asterius.GHCi" $ case ty of
-      GHC.THExp -> "asteriusRunQExp"
-      GHC.THPat -> "asteriusRunQPat"
-      GHC.THType -> "asteriusRunQType"
-      GHC.THDec -> "asteriusRunQDec"
-      GHC.THAnnWrapper -> "asteriusRunAnnWrapper"
-    run_mod_fin_sym =
-      closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunModFinalizers"
+    runner_sym = case ty of
+      GHC.THExp -> "ghci_AsteriusziGHCi_asteriusRunQExp_closure"
+      GHC.THPat -> "ghci_AsteriusziGHCi_asteriusRunQPat_closure"
+      GHC.THType -> "ghci_AsteriusziGHCi_asteriusRunQType_closure"
+      GHC.THDec -> "ghci_AsteriusziGHCi_asteriusRunQDec_closure"
+      GHC.THAnnWrapper -> "ghci_AsteriusziGHCi_asteriusRunAnnWrapper_closure"
+    run_mod_fin_sym = "ghci_AsteriusziGHCi_asteriusRunModFinalizers_closure"
     buf_conv_sym =
-      closureSymbol
-        hsc_env
-        "asterius-prelude"
-        "Asterius.ByteString"
-        "byteStringFromJSUint8Array"
+      "asteriuszmprelude_AsteriusziByteString_byteStringFromJSUint8Array_closure"
 
-asteriusRunModFinalizers :: GHC.HscEnv -> Session -> JSVal -> IO ()
-asteriusRunModFinalizers hsc_env s i = do
+asteriusRunModFinalizers :: Session -> JSVal -> IO ()
+asteriusRunModFinalizers s i = do
   let run_mod_fin_closure =
-        toJS i <> ".symbolTable.addressOf(\""
-          <> fromString
-            (CBS.unpack (entityName run_mod_fin_sym))
+        toJS i
+          <> ".symbolTable.addressOf(\""
+          <> fromString (CBS.unpack (entityName run_mod_fin_sym))
           <> "\")"
-      tid =
-        toJS i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
+      tid = toJS i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
   eval @() s tid
   pure ()
   where
-    run_mod_fin_sym =
-      closureSymbol hsc_env "ghci" "Asterius.GHCi" "asteriusRunModFinalizers"
+    run_mod_fin_sym = "ghci_AsteriusziGHCi_asteriusRunModFinalizers_closure"
 
 -- | Compiles the 'GHC.CoreExpr' of a 'Q' splice to Cmm, then unlinked Wasm, and
 -- returns the associated id as a 'GHC.ForeignHValue'. This is invoked by GHC
@@ -543,9 +520,6 @@ linkPkg hsc_env pkg_name =
   where
     Just comp_id =
       GHC.lookupPackageName (GHC.hsc_dflags hsc_env) (GHC.PackageName pkg_name)
-
-closureSymbol :: GHC.HscEnv -> String -> String -> String -> EntitySymbol
-closureSymbol hsc_env = fakeClosureSymbol (GHC.hsc_dflags hsc_env)
 
 intToRemoteRef :: Int -> GHC.RemoteRef a
 intToRemoteRef = unsafeCoerce . GHC.toRemotePtr . intPtrToPtr . coerce
