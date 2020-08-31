@@ -22,7 +22,7 @@ main = do
       <> ahcAr
       <> "\nwith-compiler: "
       <> ahc
-      <> "\nwith-hc-pkg:"
+      <> "\nwith-hc-pkg: "
       <> ahcPkg
       <> "\n"
       <> ahc_cabal_config
