@@ -69,7 +69,7 @@ defaultBootArgs = BootArgs
        "-O2",
        "--prefix=" <> (bootDir defaultBootArgs </> "asterius_lib"),
        "--global",
-       "--ipid=$pkg-$version",
+       "--ipid=$pkg",
        "--with-ghc=" <> ahc,
        "--with-ghc-pkg=" <> ahcPkg,
        "--with-ar=" <> ahcAr,

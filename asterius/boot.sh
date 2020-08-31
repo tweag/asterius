@@ -44,7 +44,7 @@ ahc-cabal v1-install --only-dependencies $ASTERIUS_CONFIGURE_OPTIONS \
 pushd $(mktemp -d)
 ahc-cabal get unix-2.7.2.2
 cd unix-2.7.2.2
-ahc-cabal act-as-setup --build-type=Configure -- configure --builddir=$ASTERIUS_TMP_DIR/dist/unix --ghc-option=-this-unit-id=unix-2.7.2.2 $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Configure -- configure --builddir=$ASTERIUS_TMP_DIR/dist/unix --ghc-option=-this-unit-id=unix $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Configure -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/unix
 ahc-cabal act-as-setup --build-type=Configure -- install --builddir=$ASTERIUS_TMP_DIR/dist/unix
 popd
@@ -68,7 +68,7 @@ ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_D
 popd
 
 pushd ghci
-ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/ghci -fghci --ghc-option=-this-unit-id=ghci-8.8.4 $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/ghci -fghci --ghc-option=-this-unit-id=ghci $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/ghci
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/ghci
 popd
@@ -84,7 +84,7 @@ ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
   parsec
 
 pushd asterius-prelude
-ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude --ghc-option=-this-unit-id=asterius-prelude-0.0.1 $ASTERIUS_CONFIGURE_OPTIONS
+ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude --ghc-option=-this-unit-id=asterius-prelude $ASTERIUS_CONFIGURE_OPTIONS
 ahc-cabal act-as-setup --build-type=Simple -- build -j --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude
 ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_DIR/dist/asterius-prelude
 popd
