@@ -267,7 +267,7 @@ asteriusWriteIServ hsc_env i a
             run_q_annwrapper_sym =
               "ghci_AsteriusziGHCi_asteriusRunAnnWrapper_closure"
             run_mod_fin_sym =
-              "ghci_AsteriusziGHCi_asteriusRunModFinalizers_closure"
+              "ghci_AsteriusziGHCi_asteriusRunModFinalizzers_closure"
             buf_conv_sym =
               "asteriuszmprelude_AsteriusziByteString_byteStringFromJSUint8Array_closure"
             this_id = remoteRefToInt q
@@ -397,7 +397,7 @@ asteriusRunTH _ _ q ty loc s ahc_dist_input = withTempDir "asdf" $ \tmp_dir ->
       GHC.THType -> "ghci_AsteriusziGHCi_asteriusRunQType_closure"
       GHC.THDec -> "ghci_AsteriusziGHCi_asteriusRunQDec_closure"
       GHC.THAnnWrapper -> "ghci_AsteriusziGHCi_asteriusRunAnnWrapper_closure"
-    run_mod_fin_sym = "ghci_AsteriusziGHCi_asteriusRunModFinalizers_closure"
+    run_mod_fin_sym = "ghci_AsteriusziGHCi_asteriusRunModFinalizzers_closure"
     buf_conv_sym =
       "asteriuszmprelude_AsteriusziByteString_byteStringFromJSUint8Array_closure"
 
@@ -412,7 +412,7 @@ asteriusRunModFinalizers s i = do
   eval @() s tid
   pure ()
   where
-    run_mod_fin_sym = "ghci_AsteriusziGHCi_asteriusRunModFinalizers_closure"
+    run_mod_fin_sym = "ghci_AsteriusziGHCi_asteriusRunModFinalizzers_closure"
 
 -- | Compiles the 'GHC.CoreExpr' of a 'Q' splice to Cmm, then unlinked Wasm, and
 -- returns the associated id as a 'GHC.ForeignHValue'. This is invoked by GHC
