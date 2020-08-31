@@ -35,12 +35,18 @@ ahc-cabal act-as-setup --build-type=Simple -- install --builddir=$ASTERIUS_TMP_D
 cd ..
 
 ahc-cabal v1-update || true
+
+ahc-cabal v1-install --only-dependencies $ASTERIUS_CONFIGURE_OPTIONS \
+  unix
+
+ahc-cabal v1-install --ghc-option=-this-unit-id=unix $ASTERIUS_CONFIGURE_OPTIONS \
+  unix
+
 ahc-cabal v1-install $ASTERIUS_CONFIGURE_OPTIONS \
   binary \
   directory \
   mtl \
-  pretty \
-  unix
+  pretty
 
 cd ghc-boot
 ahc-cabal act-as-setup --build-type=Simple -- configure --builddir=$ASTERIUS_TMP_DIR/dist/ghc-boot $ASTERIUS_CONFIGURE_OPTIONS
