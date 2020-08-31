@@ -86,7 +86,7 @@ bootCreateProcess :: BootArgs -> IO CreateProcess
 bootCreateProcess args@BootArgs {..} = do
   e <- getEnvironment
   pure
-    (proc "sh" ["-e", "boot.sh"])
+    (proc "bash" ["-e", "boot.sh"])
       { cwd = Just dataDir,
         env =
           Just $
