@@ -67,6 +67,7 @@ defaultBootArgs = BootArgs
        "--disable-library-stripping",
        "--enable-relocatable",
        "-O2",
+       "--ipid=$pkg-$version",
        "--ghc-option=-v1",
        "--ghc-option=-dsuppress-ticks"
       ],
