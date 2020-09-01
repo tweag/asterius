@@ -1,4 +1,5 @@
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StrictData #-}
@@ -388,7 +389,10 @@ asteriusRunTH _ _ q ty loc s ahc_dist_input = withTempDir "asdf" $ \tmp_dir ->
             <> hv_closure
             <> ")"
         tid = toJS i <> ".exports.rts_evalLazyIO(" <> applied_closure <> ")"
-    eval @() s tid
+        on_error err = do
+          hPrint stderr err
+          killSession s
+    catchThunk on_error =<< eval @() s tid
     evaluate i
   where
     runner_sym = case ty of
@@ -409,8 +413,7 @@ asteriusRunModFinalizers s i = do
           <> fromString (CBS.unpack (entityName run_mod_fin_sym))
           <> "\")"
       tid = toJS i <> ".exports.rts_evalLazyIO(" <> run_mod_fin_closure <> ")"
-  eval @() s tid
-  pure ()
+  evaluate =<< eval s tid
   where
     run_mod_fin_sym = "ghci_AsteriusziGHCi_asteriusRunModFinalizzers_closure"
 
@@ -526,3 +529,9 @@ intToRemoteRef = unsafeCoerce . GHC.toRemotePtr . intPtrToPtr . coerce
 
 remoteRefToInt :: GHC.RemoteRef a -> Int
 remoteRefToInt = coerce . ptrToIntPtr . GHC.fromRemotePtr . unsafeCoerce
+
+catchThunk :: (SomeException -> IO ()) -> a -> IO ()
+catchThunk h a = void $
+  forkFinally (evaluate a) $ \case
+    Left err -> h err
+    _ -> pure ()

@@ -1,8 +1,13 @@
 export class SymbolTable {
-  constructor(func_offset_table, statics_offset_table, table_base, memory_base) {
+  constructor(
+    func_offset_table,
+    statics_offset_table,
+    table_base,
+    memory_base
+  ) {
     this.offsetTable = {
-       ...func_offset_table,
-       ...statics_offset_table
+      ...func_offset_table,
+      ...statics_offset_table,
     };
     this.tableBase = table_base;
     this.memoryBase = memory_base;
@@ -17,6 +22,9 @@ export class SymbolTable {
   }
 
   addressOf(sym) {
+    if (!this.symbolTable.has(sym)) {
+      throw new WebAssembly.RuntimeError(`${sym} not in symbol table`);
+    }
     return this.symbolTable.get(sym);
   }
 
