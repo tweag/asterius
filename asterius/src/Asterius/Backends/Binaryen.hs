@@ -318,6 +318,7 @@ marshalExpression e = case e of
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     func_sym_map <- askFunctionsSymbolMap
+    ss_sym_map <- askStaticsSymbolMap
     if
         | target `SM.member` func_sym_map -> do
           os <-
@@ -338,7 +339,7 @@ marshalExpression e = case e of
             (ops, osl) <- marshalV a os
             tp <- marshalBS a (entityName target)
             Binaryen.call m tp ops (fromIntegral osl) rts
-        | ("__asterius_barf_" <> target) `SM.member` func_sym_map ->
+        | ("__asterius_barf_" <> target) `SM.member` ss_sym_map ->
           marshalExpression $
             barf target callReturnTypes
         | otherwise -> do
@@ -523,7 +524,7 @@ marshalExpression e = case e of
                 addInt64
                   (extendUInt32 base)
                   (constI64 $ fromIntegral x + symbolOffset)
-        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` func_sym_map ->
+        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map ->
           marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
