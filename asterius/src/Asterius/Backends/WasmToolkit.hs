@@ -592,8 +592,8 @@ makeInstructions expr =
               makeInstructions
           pure $ unionManyBags xs `snocBag` Wasm.Call {callFunctionIndex = i}
         _ -> do
-          func_sym_map <- askFunctionsSymbolMap
-          if SM.member ("__asterius_barf_" <> target) func_sym_map
+          ss_sym_map <- askStaticsSymbolMap
+          if SM.member ("__asterius_barf_" <> target) ss_sym_map
             then makeInstructions $ barf target callReturnTypes
             else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
@@ -713,7 +713,7 @@ makeInstructions expr =
           Just i -> pure $
             unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` func_sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
@@ -731,7 +731,7 @@ makeInstructions expr =
                 valueType = I64
               }
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` func_sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
@@ -784,7 +784,7 @@ makeInstructions expr =
                   addInt64
                     (extendUInt32 base)
                     (constI64 $ fromIntegral x + symbolOffset)
-          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` func_sym_map ->
+          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map ->
             makeInstructions $ barf unresolvedSymbol [I64]
           | otherwise ->
             pure $ unitBag Wasm.I64Const
