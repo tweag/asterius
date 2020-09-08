@@ -152,4 +152,8 @@ export class ExceptionHelper {
       throw new WebAssembly.RuntimeError("barf");
     }
   }
+
+  barf_push(c) {
+    // TODO: Implement me.
+  }
 }
