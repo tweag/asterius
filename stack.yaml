@@ -17,14 +17,14 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-linux64-hadrian-tinfo6-200908.tar.xz
-        content-length: 68565952
-        sha256: 36dc78ba0358aec788608f00a3b390d21f3b963f1fa8cf12fbbaa01aecc7b525
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-linux64-tinfo6-200908.tar.xz
+        content-length: 157527840
+        sha256: f3c41a633afce6726b8b0a8fc80ac988b22fa014719d8fa3096982985fd6d329
     linux64-custom-asterius:
       8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-linux64-hadrian-standard-200908.tar.xz
-        content-length: 68559484
-        sha256: b2f1609912f58b44f43ecf8f4e50eb25bd9a8ab9345a1cf2d1438eeeda5bf50b
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-linux64-standard-200908.tar.xz
+        content-length: 159125920
+        sha256: 70eb52e0ee9bcb1ab85862deb2b41ea48abb9e6ccfc201d650a6ae0e48797784
     linux64-custom-asterius-musl:
       8.8.4:
         url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-linux64-musl-200908.tar.xz
@@ -32,9 +32,9 @@ setup-info:
         sha256: 432d4a65c33961ef74ee8bd63ab9121cdbb75b0d23e3a7b63d8933228ee111f1
     macosx-custom-asterius:
       8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-macosx-hadrian-200908.tar.xz
-        content-length: 93241708
-        sha256: a713f0b5a9f931a69219881c93a464b7199c59c5368a42c16fcf7347fe0f1b2b
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-macosx-200908.tar.xz
+        content-length: 170733916
+        sha256: 03e2e4dedfabc4b2c8eacb3ff6c1b29d658543c4f9af01c4715ad6b5161f2cf3
     windows64-custom-asterius:
       8.8.4:
         url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-windows64-200908.tar.xz
