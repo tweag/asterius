@@ -10,8 +10,9 @@ where
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Control.Monad.State.Strict
-import qualified Data.ByteString.Char8 as CBS
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as CBS
+import Data.Char
 import Data.Data
   ( Data,
     gmapM,
@@ -38,35 +39,33 @@ processBarf sym f =
         Barf {..} -> do
           (i, sm_acc) <- get
           let i_sym = fromString $ p <> GHC.toBase62 i
-              ss = AsteriusStatics
-                { staticsType = ConstBytes,
-                  asteriusStatics =
-                    [ Serialized
-                        $ fromString
-                        $ sym_str
-                          <> ": "
-                          <> unpack barfMessage
-                          <> "\0"
-                    ]
-                }
+              content =
+                fromString $
+                  sym_str
+                    <> ": "
+                    <> unpack barfMessage
+                    <> "\0"
+              -- TODO: no more statics from now on. Delete this (and a lot of other stuff..)
+              ss =
+                AsteriusStatics
+                  { staticsType = ConstBytes,
+                    asteriusStatics = [Serialized content]
+                  }
           put (succ i, SM.insert i_sym ss sm_acc)
-          pure Block
-            { name = BS.empty,
-              bodys =
-                [ Call
-                    { target = "barf",
-                      operands =
-                        [ Symbol
-                            { unresolvedSymbol = i_sym,
-                              symbolOffset = 0
-                            }
-                        ],
-                      callReturnTypes = []
-                    },
-                  Unreachable
-                ],
-              blockReturnTypes = barfReturnTypes
-            }
+          pure
+            Block
+              { name = BS.empty,
+                bodys =
+                  [ Call
+                      { target = "barf_push",
+                        operands = [ConstI64 $ fromIntegral $ ord c],
+                        callReturnTypes = []
+                      }
+                    | c <- CBS.unpack content
+                  ]
+                    ++ [Unreachable],
+                blockReturnTypes = barfReturnTypes
+              }
         _ -> go
       _ -> go
       where
