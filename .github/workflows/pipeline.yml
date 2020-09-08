@@ -182,63 +182,6 @@ jobs:
           name: test-report.csv
           path: asterius/test-report.csv
 
-  profile:
-    name: profile
-    runs-on: ubuntu-20.04
-    steps:
-
-      - name: setup-haskell
-        uses: actions/setup-haskell@v1
-        with:
-          cabal-version: 3.2.0.0
-          stack-version: 2.3.3
-          enable-stack: true
-
-      - name: setup-node-14
-        uses: actions/setup-node@v2.0.0
-        with:
-          node-version: 14.10.0
-
-      - name: checkout
-        uses: actions/checkout@v2
-
-      - name: setup-deps
-        run: |
-          .github/workflows/setup-deps.sh
-
-      - name: boot
-        run: |
-          mv stack-profile.yaml stack.yaml
-
-          .github/workflows/boot.sh
-
-          . ./.envrc
-          cd ghc-toolkit/boot-libs
-          ahc-cabal v1-install --ghc-option=-j2 \
-            Cabal
-
-      - name: profile
-        run: |
-          . ./.envrc
-
-          mkdir /tmp/asterius-profile
-          pushd /tmp/asterius-profile
-          printf "import Distribution.Simple\nmain = defaultMain\n" > Setup.hs
-          GHCRTS="-P -hy -l-au" ahc-link --input-hs Setup.hs
-          mkdir reports
-          mv \
-            *.eventlog \
-            *.hp \
-            *.prof \
-            reports
-          popd
-
-      - name: upload-artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: profile-reports
-          path: /tmp/asterius-profile/reports
-
   test-pkgs:
     name: test-pkgs
     needs: boot
