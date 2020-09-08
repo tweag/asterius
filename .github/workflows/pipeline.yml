@@ -1,0 +1,279 @@
+name: pipeline
+
+on:
+  - push
+
+jobs:
+
+  ghc-hadrian-tinfo6:
+    name: ghc-hadrian-tinfo6
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          podman run \
+            --pull always \
+            --volume $(pwd):/asterius \
+            --workdir /asterius \
+            debian:sid-20200803-slim \
+            .github/workflows/build-hadrian-tinfo6.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-hadrian-tinfo6-bindist
+          path: "*.tar.xz"
+
+  ghc-hadrian-standard:
+    name: ghc-hadrian-standard
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          podman run \
+            --pull always \
+            --volume $(pwd):/asterius \
+            --workdir /asterius \
+            debian:stretch-20200803-slim \
+            .github/workflows/build-hadrian-standard.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-hadrian-standard-bindist
+          path: "*.tar.xz"
+
+  ghc-hadrian-macos:
+    name: ghc-hadrian-macos
+    runs-on: macos-10.15
+    env:
+      BRANCH: asterius-8.8
+      JOBS: 2
+      XZ_OPT: -9eT2
+    steps:
+
+      - name: setup-deps
+        run: |
+          brew install \
+            automake \
+            coreutils
+          mkdir -p ~/.local/bin
+          curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stack-2.3.3-osx-x86_64-bin -o ~/.local/bin/stack
+          chmod +x ~/.local/bin/stack
+          ~/.local/bin/stack --resolver lts-16.13 install \
+            alex \
+            happy
+
+      - name: init-ghc-repo
+        run: |
+          cd /tmp
+          git clone --recurse-submodules --branch $BRANCH https://github.com/TerrorJack/ghc.git
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          export PATH=~/.local/bin:$(~/.local/bin/stack path --compiler-bin):$PATH
+          cp .github/workflows/UserSettings.hs /tmp/ghc/hadrian
+          pushd /tmp/ghc
+          ./boot --hadrian
+          ./configure
+          hadrian/build.stack.sh --verbose -j$JOBS binary-dist
+          popd
+          cp /tmp/ghc/_build/bindist/*.tar.xz .
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-hadrian-macos-bindist
+          path: "*.tar.xz"
+
+  ghc-tinfo6:
+    name: ghc-tinfo6
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          podman run \
+            --env BRANCH=asterius-8.8 \
+            --env DEBIAN_FRONTEND=noninteractive \
+            --env MAKEFLAGS=-j2 \
+            --env XZ_OPT=-9eT2 \
+            --pull always \
+            --volume $(pwd):/asterius \
+            --workdir /asterius \
+            debian:sid-20200803-slim \
+            .github/workflows/build-tinfo6.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-tinfo6-bindist
+          path: ghc-bindist
+
+  ghc-tinfo6-dwarf:
+    name: ghc-tinfo6-dwarf
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          podman run \
+            --env BRANCH=asterius-8.8 \
+            --env DEBIAN_FRONTEND=noninteractive \
+            --env MAKEFLAGS=-j2 \
+            --env XZ_OPT=-9eT2 \
+            --pull always \
+            --volume $(pwd):/asterius \
+            --workdir /asterius \
+            debian:sid-20200803-slim \
+            .github/workflows/build-tinfo6-dwarf.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-tinfo6-dwarf-bindist
+          path: ghc-bindist
+
+  ghc-standard:
+    name: ghc-standard
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          podman run \
+            --env BRANCH=asterius-8.8 \
+            --env DEBIAN_FRONTEND=noninteractive \
+            --env MAKEFLAGS=-j2 \
+            --env XZ_OPT=-9eT2 \
+            --pull always \
+            --volume $(pwd):/asterius \
+            --workdir /asterius \
+            debian:stretch-20200803-slim \
+            .github/workflows/build-standard.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-standard-bindist
+          path: ghc-bindist
+
+  ghc-musl:
+    name: ghc-musl
+    runs-on: ubuntu-20.04
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          podman run \
+            --env BRANCH=asterius-8.8 \
+            --env DEBIAN_FRONTEND=noninteractive \
+            --env MAKEFLAGS=-j2 \
+            --env XZ_OPT=-9eT2 \
+            --pull always \
+            --volume $(pwd):/asterius \
+            --workdir /asterius \
+            alpine:edge \
+            .github/workflows/build-musl.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-musl-bindist
+          path: ghc-bindist
+
+  ghc-macos:
+    name: ghc-macos
+    runs-on: macos-10.15
+    env:
+      BRANCH: asterius-8.8
+      JOBS: 2
+      XZ_OPT: -9eT2
+    steps:
+
+      - name: setup-deps
+        run: |
+          brew install \
+            automake \
+            coreutils \
+            sphinx-doc
+          mkdir -p ~/.local/bin
+          curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stack-2.3.3-osx-x86_64-bin -o ~/.local/bin/stack
+          chmod +x ~/.local/bin/stack
+          ~/.local/bin/stack --resolver lts-16.13 install \
+            alex \
+            happy \
+            hscolour
+
+      - name: init-ghc-repo
+        run: |
+          cd /tmp
+          git clone --recurse-submodules --branch $BRANCH https://github.com/TerrorJack/ghc.git
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        run: |
+          export PATH=~/.local/bin:$(~/.local/bin/stack path --compiler-bin):/usr/local/opt/sphinx-doc/bin:$PATH
+          mv .github/workflows/build-macos.mk /tmp/ghc/mk/build.mk
+          cd /tmp/ghc
+          ./boot
+          ./configure
+          make -j$JOBS
+          make binary-dist
+          mkdir /tmp/ghc-bindist
+          mv *.tar.* /tmp/ghc-bindist/
+          (ls -l /tmp/ghc-bindist && sha256sum -b /tmp/ghc-bindist/*) > /tmp/ghc-bindist/sha256.txt
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-macos-bindist
+          path: /tmp/ghc-bindist
+
+  ghc-windows:
+    name: ghc-windows
+    runs-on: windows-2019
+    env:
+      BRANCH: asterius-8.8
+      JOBS: 2
+      XZ_OPT: -9eT2
+    steps:
+
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: build
+        shell: cmd
+        run: |
+          C:\msys64\msys2_shell.cmd -mingw64 -defterm -here -no-start .github/workflows/build-windows.sh
+
+      - name: upload-artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ghc-windows-bindist
+          path: ghc-bindist
