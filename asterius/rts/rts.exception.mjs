@@ -13,7 +13,8 @@ export class ExceptionHelper {
     this.infoTables = info_tables;
     this.symbolTable = symbol_table;
     this.decoder = new TextDecoder("utf-8", { fatal: true });
-    Object.freeze(this);
+    this.errorBuffer = "";
+    // Object.freeze(this); // TODO: if we freeze, then we can't extend the buffer, I think.
   }
 
   /*
@@ -154,6 +155,14 @@ export class ExceptionHelper {
   }
 
   barf_push(c) {
-    // TODO: Implement me.
+    // TODO: Ensure correct usage?
+    if (c === 0) {
+      console.log(`barf_push: The end, current state of the buffer: ${this.errorBuffer}`); // TODO: remove
+      throw new WebAssembly.RuntimeError(`barf: ${this.errorBuffer}`);
+    } else {
+      console.log(`barf_push: Registering ${c} in the errorBuffer`);                       // TODO: remove
+      console.log(`barf_push: Current state of the buffer: ${this.errorBuffer}`);          // TODO: remove
+      this.errorBuffer += String.fromCharCode(c);
+    }
   }
 }
