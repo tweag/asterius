@@ -2,10 +2,12 @@
 
 module Asterius.Internals.Barf
   ( barf,
+    barfPush,
   )
 where
 
 import Asterius.Types
+import Data.Char
 
 barf :: EntitySymbol -> [ValueType] -> Expression
 barf sym [] = Call
@@ -23,3 +25,19 @@ barf sym vts = Block
     bodys = [barf sym [], Unreachable],
     blockReturnTypes = vts
   }
+
+barfPush :: EntitySymbol -> [ValueType] -> Expression
+barfPush sym vts =
+  Block
+    { name = "",
+      bodys =
+        [ Call
+            { target = "barf_push",
+              operands = [ConstI64 $ fromIntegral $ ord c],
+              callReturnTypes = []
+            }
+          | c <- ("Cannot find function " ++ show sym)
+        ]
+          ++ [Unreachable],
+      blockReturnTypes = vts
+    }
