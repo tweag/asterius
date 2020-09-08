@@ -36,7 +36,7 @@ barfPush sym vts =
               operands = [ConstI64 $ fromIntegral $ ord c],
               callReturnTypes = []
             }
-          | c <- ("Cannot find function " ++ show sym)
+          | c <- ("Cannot find function " ++ show sym ++ "\0")
         ]
           ++ [Unreachable],
       blockReturnTypes = vts
