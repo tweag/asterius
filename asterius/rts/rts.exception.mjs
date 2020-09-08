@@ -156,12 +156,9 @@ export class ExceptionHelper {
 
   barf_push(c) {
     // TODO: Ensure correct usage?
-    if (c === 0) {
-      console.log(`barf_push: The end, current state of the buffer: ${this.errorBuffer}`); // TODO: remove
-      throw new WebAssembly.RuntimeError(`barf: ${this.errorBuffer}`);
+    if (c === 0) { // String.fromCharCode(c) === '\x00'
+      throw new WebAssembly.RuntimeError(`barf_push: ${this.errorBuffer}`);
     } else {
-      console.log(`barf_push: Registering ${c} in the errorBuffer`);                       // TODO: remove
-      console.log(`barf_push: Current state of the buffer: ${this.errorBuffer}`);          // TODO: remove
       this.errorBuffer += String.fromCharCode(c);
     }
   }
