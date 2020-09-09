@@ -244,6 +244,8 @@ marshalFunctionType FunctionType {..} = do
 data MarshalEnv = MarshalEnv
   { -- | The 'A.Arena' for allocating temporary buffers.
     envArena :: A.Arena,
+    -- | Whether the @verbose_err@ extension is on.
+    envIsVerboseErrOn :: Bool,
     -- | Whether the tail call extension is on.
     envAreTailCallsOn :: Bool,
     -- | The symbol map for the current module (statics).
@@ -259,6 +261,10 @@ type CodeGen a = ReaderT MarshalEnv IO a
 -- | Retrieve the 'A.Arena'.
 askArena :: CodeGen A.Arena
 askArena = reader envArena
+
+-- | Check whether the @verbose_err@ extension is on.
+isVerboseErrOn :: CodeGen Bool
+isVerboseErrOn = reader envIsVerboseErrOn
 
 -- | Check whether the tail call extension is on.
 areTailCallsOn :: CodeGen Bool
@@ -339,7 +345,7 @@ marshalExpression e = case e of
             (ops, osl) <- marshalV a os
             tp <- marshalBS a (entityName target)
             Binaryen.call m tp ops (fromIntegral osl) rts
-        | ("__asterius_barf_" <> target) `SM.member` ss_sym_map ->
+        | ("__asterius_barf_" <> target) `SM.member` ss_sym_map -> -- TODO: Remove this one.
           marshalExpression $
             barf target callReturnTypes
         | otherwise -> do
@@ -524,14 +530,22 @@ marshalExpression e = case e of
                 addInt64
                   (extendUInt32 base)
                   (constI64 $ fromIntegral x + symbolOffset)
-        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map ->
+        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map -> -- TODO: Remove this one.
           marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
+  Barf {..} -> isVerboseErrOn >>= \case
+    -- Case 1: verbose_err is on
+    True ->
+      marshalExpression $
+        barf (mkEntitySymbol barfMessage) barfReturnTypes
+    -- Case 2: verbose_err is off
+    False -> do
+      m <- askModuleRef
+      lift $ Binaryen.Expression.unreachable m
   -- Unsupported expressions
   UnresolvedGetLocal {} -> lift $ throwIO $ UnsupportedExpression e
   UnresolvedSetLocal {} -> lift $ throwIO $ UnsupportedExpression e
-  Barf {} -> lift $ throwIO $ UnsupportedExpression e
 
 marshalMaybeExpression :: Maybe Expression -> CodeGen Binaryen.Expression
 marshalMaybeExpression x = case x of
@@ -668,11 +682,12 @@ marshalGlobal k Global {..} = do
 
 marshalModule ::
   Bool ->
+  Bool ->
   SM.SymbolMap Int64 ->
   SM.SymbolMap Int64 ->
   Module ->
   IO Binaryen.Module
-marshalModule tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
+marshalModule verbose_err tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
   m <- Binaryen.Module.create
   Binaryen.setFeatures m
     $ foldl1' (.|.)
@@ -682,6 +697,7 @@ marshalModule tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
     let env =
           MarshalEnv
             { envArena = a,
+              envIsVerboseErrOn = verbose_err,
               envAreTailCallsOn = tail_calls,
               envStaticsSymbolMap = ss_sym_map,
               envFunctionsSymbolMap = func_sym_map,

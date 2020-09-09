@@ -303,6 +303,7 @@ ahcDistMain logger task (final_m, report) = do
       Binaryen.setLowMemoryUnused 1
       m_ref <-
         Binaryen.marshalModule
+          (verboseErr task)
           (tailCalls task)
           (staticsSymbolMap report)
           (functionSymbolMap report)
@@ -341,6 +342,7 @@ ahcDistMain logger task (final_m, report) = do
       let conv_result =
             runExcept $
               WasmToolkit.makeModule
+                (verboseErr task)
                 (tailCalls task)
                 (staticsSymbolMap report)
                 (functionSymbolMap report)

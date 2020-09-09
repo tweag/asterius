@@ -204,14 +204,16 @@ makeFunctionSection Module {..} ModuleSymbolTable {..} = pure Wasm.FunctionSecti
 makeGlobalSection ::
   MonadError MarshalError f =>
   Bool ->
+  Bool ->
   SM.SymbolMap Int64 ->
   SM.SymbolMap Int64 ->
   Module ->
   ModuleSymbolTable ->
   f Wasm.Section
-makeGlobalSection tail_calls ss_sym_map func_sym_map Module {..} _module_symtable = do
+makeGlobalSection verbose_err tail_calls ss_sym_map func_sym_map Module {..} _module_symtable = do
   let env = MarshalEnv
-        { envAreTailCallsOn = tail_calls,
+        { envIsVerboseErrOn = verbose_err,
+          envAreTailCallsOn = tail_calls,
           envStaticsSymbolMap = ss_sym_map,
           envFunctionsSymbolMap = func_sym_map,
           envModuleSymbolTable = _module_symtable,
@@ -471,7 +473,9 @@ marshalBinaryOp op = case op of
 -- | Environment used during the elaboration of Asterius' types to WebAssembly.
 data MarshalEnv
   = MarshalEnv
-      { -- | Whether the tail call extension is on.
+      { -- | Whether the @verbose_err@ extension is on.
+        envIsVerboseErrOn :: Bool,
+        -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
         -- | The symbol map for the current module (statics).
         envStaticsSymbolMap :: SM.SymbolMap Int64,
@@ -484,6 +488,10 @@ data MarshalEnv
         -- | The local context. Used for local variable access.
         envLclContext :: LocalContext
       }
+
+-- | Check whether the @verbose_err@ extension is on.
+isVerboseErrOn :: MonadReader MarshalEnv m => m Bool
+isVerboseErrOn = reader envIsVerboseErrOn
 
 -- | Check whether the tail call extension is on.
 areTailCallsOn :: MonadReader MarshalEnv m => m Bool
@@ -593,7 +601,7 @@ makeInstructions expr =
           pure $ unionManyBags xs `snocBag` Wasm.Call {callFunctionIndex = i}
         _ -> do
           ss_sym_map <- askStaticsSymbolMap
-          if SM.member ("__asterius_barf_" <> target) ss_sym_map
+          if SM.member ("__asterius_barf_" <> target) ss_sym_map -- TODO: Change this one.
             then makeInstructions $ barf target callReturnTypes
             else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
@@ -713,7 +721,7 @@ makeInstructions expr =
           Just i -> pure $
             unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map -> -- TODO: Change this one.
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
@@ -731,7 +739,7 @@ makeInstructions expr =
                 valueType = I64
               }
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map ->
+            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map -> -- TODO: Change this one.
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
@@ -784,17 +792,22 @@ makeInstructions expr =
                   addInt64
                     (extendUInt32 base)
                     (constI64 $ fromIntegral x + symbolOffset)
-          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map ->
+          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map -> -- TODO: Change this one.
             makeInstructions $ barf unresolvedSymbol [I64]
           | otherwise ->
             pure $ unitBag Wasm.I64Const
               { i64ConstValue = invalidAddress
               }
+    Barf {..} -> isVerboseErrOn >>= \case
+      -- Case 1: verbose_err is on
+      True ->
+        makeInstructions $ barf (mkEntitySymbol barfMessage) barfReturnTypes
+      -- Case 2: verbose_err is off
+      False ->
+        pure $ unitBag Wasm.Unreachable
     -- Unsupported expressions:
     UnresolvedGetLocal {} -> throwError $ UnsupportedExpression expr
     UnresolvedSetLocal {} -> throwError $ UnsupportedExpression expr
-    Barf {} -> throwError $ UnsupportedExpression expr
-
 
 makeInstructionsMaybe ::
   (MonadError MarshalError m, MonadReader MarshalEnv m) =>
@@ -807,12 +820,13 @@ makeInstructionsMaybe m_expr = case m_expr of
 makeCodeSection ::
   MonadError MarshalError m =>
   Bool ->
+  Bool ->
   SM.SymbolMap Int64 ->
   SM.SymbolMap Int64 ->
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
-makeCodeSection tail_calls ss_sym_map func_sym_map _mod@Module {..} _module_symtable =
+makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map _mod@Module {..} _module_symtable =
   fmap Wasm.CodeSection
     $ for (Map.elems functionMap')
     $ \_func@Function {..} -> do
@@ -824,7 +838,8 @@ makeCodeSection tail_calls ss_sym_map func_sym_map _mod@Module {..} _module_symt
             (F64, c) -> (Wasm.F64, c)
       _body <- do
         let env = MarshalEnv
-              { envAreTailCallsOn = tail_calls,
+              { envIsVerboseErrOn = verbose_err,
+                envAreTailCallsOn = tail_calls,
                 envStaticsSymbolMap = ss_sym_map,
                 envFunctionsSymbolMap = func_sym_map,
                 envModuleSymbolTable = _module_symtable,
@@ -853,19 +868,20 @@ makeDataSection Module {..} _module_symtable = do
 makeModule ::
   MonadError MarshalError m =>
   Bool ->
+  Bool ->
   SM.SymbolMap Int64 ->
   SM.SymbolMap Int64 ->
   Module ->
   m Wasm.Module
-makeModule tail_calls ss_sym_map func_sym_map m = do
+makeModule verbose_err tail_calls ss_sym_map func_sym_map m = do
   _module_symtable <- makeModuleSymbolTable m
   _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
-  _gbl_sec <- makeGlobalSection tail_calls ss_sym_map func_sym_map m _module_symtable
+  _gbl_sec <- makeGlobalSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection m _module_symtable
-  _code_sec <- makeCodeSection tail_calls ss_sym_map func_sym_map m _module_symtable
+  _code_sec <- makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
   _data_sec <- makeDataSection m _module_symtable
   pure $
     Wasm.Module
