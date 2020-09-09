@@ -600,8 +600,8 @@ makeInstructions expr =
               makeInstructions
           pure $ unionManyBags xs `snocBag` Wasm.Call {callFunctionIndex = i}
         _ -> do
-          ss_sym_map <- askStaticsSymbolMap
-          if SM.member ("__asterius_barf_" <> target) ss_sym_map -- TODO: Change this one.
+          verbose_err <- isVerboseErrOn
+          if verbose_err
             then makeInstructions $ barf target callReturnTypes
             else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
@@ -714,6 +714,7 @@ makeInstructions expr =
       ss_sym_map <- askStaticsSymbolMap
       func_sym_map <- askFunctionsSymbolMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
+      verbose_err <- isVerboseErrOn
       tail_calls <- areTailCallsOn
       if tail_calls
         -- Case 1: Tail calls are on
@@ -721,7 +722,7 @@ makeInstructions expr =
           Just i -> pure $
             unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map -> -- TODO: Change this one.
+            | verbose_err ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
@@ -739,7 +740,7 @@ makeInstructions expr =
                 valueType = I64
               }
           _
-            | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map -> -- TODO: Change this one.
+            | verbose_err ->
               makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
@@ -776,6 +777,7 @@ makeInstructions expr =
     Unreachable -> pure $ unitBag Wasm.Unreachable
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
+      verbose_err <- isVerboseErrOn
       ss_sym_map <- askStaticsSymbolMap
       func_sym_map <- askFunctionsSymbolMap
       if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
@@ -792,19 +794,17 @@ makeInstructions expr =
                   addInt64
                     (extendUInt32 base)
                     (constI64 $ fromIntegral x + symbolOffset)
-          | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map -> -- TODO: Change this one.
+          | verbose_err ->
             makeInstructions $ barf unresolvedSymbol [I64]
           | otherwise ->
             pure $ unitBag Wasm.I64Const
               { i64ConstValue = invalidAddress
               }
-    Barf {..} -> isVerboseErrOn >>= \case
-      -- Case 1: verbose_err is on
-      True ->
-        makeInstructions $ barf (mkEntitySymbol barfMessage) barfReturnTypes
-      -- Case 2: verbose_err is off
-      False ->
-        pure $ unitBag Wasm.Unreachable
+    Barf {..} -> do
+      verbose_err <- isVerboseErrOn
+      if verbose_err
+        then makeInstructions $ barf (mkEntitySymbol barfMessage) barfReturnTypes
+        else pure $ unitBag Wasm.Unreachable
     -- Unsupported expressions:
     UnresolvedGetLocal {} -> throwError $ UnsupportedExpression expr
     UnresolvedSetLocal {} -> throwError $ UnsupportedExpression expr

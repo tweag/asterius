@@ -323,10 +323,9 @@ marshalExpression e = case e of
       dn <- marshalBS a defaultName
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
+    verbose_err <- isVerboseErrOn
     func_sym_map <- askFunctionsSymbolMap
-    ss_sym_map <- askStaticsSymbolMap
-    if
-        | target `SM.member` func_sym_map -> do
+    if  | target `SM.member` func_sym_map -> do
           os <-
             mapM
               marshalExpression
@@ -345,7 +344,7 @@ marshalExpression e = case e of
             (ops, osl) <- marshalV a os
             tp <- marshalBS a (entityName target)
             Binaryen.call m tp ops (fromIntegral osl) rts
-        | ("__asterius_barf_" <> target) `SM.member` ss_sym_map -> -- TODO: Remove this one.
+        | verbose_err ->
           marshalExpression $
             barf target callReturnTypes
         | otherwise -> do
@@ -515,6 +514,7 @@ marshalExpression e = case e of
     lift $ Binaryen.Expression.unreachable m
   CFG {..} -> relooperRun graph
   Symbol {..} -> do
+    verbose_err <- isVerboseErrOn
     ss_sym_map <- askStaticsSymbolMap
     func_sym_map <- askFunctionsSymbolMap
     m <- askModuleRef
@@ -530,19 +530,17 @@ marshalExpression e = case e of
                 addInt64
                   (extendUInt32 base)
                   (constI64 $ fromIntegral x + symbolOffset)
-        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map -> -- TODO: Remove this one.
+        | verbose_err ->
           marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
-  Barf {..} -> isVerboseErrOn >>= \case
-    -- Case 1: verbose_err is on
-    True ->
-      marshalExpression $
-        barf (mkEntitySymbol barfMessage) barfReturnTypes
-    -- Case 2: verbose_err is off
-    False -> do
-      m <- askModuleRef
-      lift $ Binaryen.Expression.unreachable m
+  Barf {..} -> do
+    verbose_err <- isVerboseErrOn
+    if verbose_err
+      then marshalExpression $ barf (mkEntitySymbol barfMessage) barfReturnTypes
+      else do
+        m <- askModuleRef
+        lift $ Binaryen.Expression.unreachable m
   -- Unsupported expressions
   UnresolvedGetLocal {} -> lift $ throwIO $ UnsupportedExpression e
   UnresolvedSetLocal {} -> lift $ throwIO $ UnsupportedExpression e
