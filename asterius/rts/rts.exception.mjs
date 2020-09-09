@@ -110,6 +110,8 @@ export class ExceptionHelper {
     }
   }
 
+// TODO: Fix the comment below to reflect the current situation instead.
+
   /*
     This implements `barf` in `rts/RtsMessages.c` of ghc rts. The function is
     used to signal a fatal runtime error.
@@ -126,16 +128,10 @@ export class ExceptionHelper {
       `__asterius_barf`, and make a `barf` function wrapper which handles the
       i64/f64 conversion workaround.
 
-    * In the linker (`Asterius.Resolve`), when we encounter an unresolved
-      symbol, we dynamically generate a small data segment which is the
-      NUL-terminated error message containing the symbol itself. The data
-      segment's own symbol is prefixed with `__asterius_barf_`.
-
     * In the backends (`Asterius.Backends.*`), when we encounter an unresolved
-      symbol `sym`, we try to find `__asterius_barf_sym`, and if found, we
-      insert a `barf` call there. So if an execution path leads to the
-      unresolved symbol, we're likely to get the symbol name from the js error
-      message.
+      symbol `sym`, if @verbose_err@ is on, we insert a `barf` call there. So
+      if an execution path leads to the unresolved symbol, we're likely to get
+      the symbol name from the js error message.
 
     * The rts cmm files call `barf` with either 0, 1, 2 arguments. In the
       backends we remove extra arguments, and if there isn't any, we use a

@@ -129,7 +129,7 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
   )
   where
     merged_m0
-      | gc_sections = gcSections verbose_err store root_syms export_funcs
+      | gc_sections = gcSections store root_syms export_funcs
       | otherwise = fromCachedModule store
     !merged_m0_evaluated = force merged_m0
     merged_m1
