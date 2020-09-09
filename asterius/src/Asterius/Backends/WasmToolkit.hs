@@ -594,7 +594,7 @@ makeInstructions expr =
         _ -> do
           ss_sym_map <- askStaticsSymbolMap
           if SM.member ("__asterius_barf_" <> target) ss_sym_map
-            then makeInstructions $ barfPush target callReturnTypes
+            then makeInstructions $ barf target callReturnTypes
             else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
       xs <- for operands makeInstructions
@@ -714,7 +714,7 @@ makeInstructions expr =
             unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
             | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map ->
-              makeInstructions $ barfPush returnCallTarget64 []
+              makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
@@ -732,7 +732,7 @@ makeInstructions expr =
               }
           _
             | ("__asterius_barf_" <> returnCallTarget64) `SM.member` ss_sym_map ->
-              makeInstructions $ barfPush returnCallTarget64 []
+              makeInstructions $ barf returnCallTarget64 []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
     ReturnCallIndirect {..} -> do
@@ -785,7 +785,7 @@ makeInstructions expr =
                     (extendUInt32 base)
                     (constI64 $ fromIntegral x + symbolOffset)
           | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map ->
-            makeInstructions $ barfPush unresolvedSymbol [I64]
+            makeInstructions $ barf unresolvedSymbol [I64]
           | otherwise ->
             pure $ unitBag Wasm.I64Const
               { i64ConstValue = invalidAddress

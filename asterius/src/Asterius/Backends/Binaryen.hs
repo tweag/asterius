@@ -341,7 +341,7 @@ marshalExpression e = case e of
             Binaryen.call m tp ops (fromIntegral osl) rts
         | ("__asterius_barf_" <> target) `SM.member` ss_sym_map ->
           marshalExpression $
-            barfPush target callReturnTypes
+            barf target callReturnTypes
         | otherwise -> do
           m <- askModuleRef
           lift $ Binaryen.Expression.unreachable m
@@ -461,7 +461,7 @@ marshalExpression e = case e of
             r <- Binaryen.return m (coerce nullPtr)
             (arr, _) <- marshalV a [s, r]
             Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
-        Nothing -> marshalExpression $ barfPush returnCallTarget64 []
+        Nothing -> marshalExpression $ barf returnCallTarget64 []
   ReturnCallIndirect {..} -> areTailCallsOn >>= \case
     -- Case 1: Tail calls are on
     True -> do
@@ -525,7 +525,7 @@ marshalExpression e = case e of
                   (extendUInt32 base)
                   (constI64 $ fromIntegral x + symbolOffset)
         | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map ->
-          marshalExpression $ barfPush unresolvedSymbol [I64]
+          marshalExpression $ barf unresolvedSymbol [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
   -- Unsupported expressions
