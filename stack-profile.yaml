@@ -6,7 +6,7 @@ build:
   library-profiling: true
   executable-profiling: true
 
-resolver: lts-16.12
+resolver: lts-16.13
 compiler: ghc-8.8.4
 extra-deps:
   - binaryen-0.0.3.0
@@ -25,26 +25,26 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.8.4:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.4-linux64-tinfo6-asterius-200721.tar.xz
-        content-length: 151517080
-        sha256: 45765d93ff3423f8d0881a029dd8607ea9c1f956515e296be3108bd13aa007fa
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-linux64-tinfo6-200908.tar.xz
+        content-length: 157527840
+        sha256: f3c41a633afce6726b8b0a8fc80ac988b22fa014719d8fa3096982985fd6d329
     linux64-custom-asterius:
       8.8.4:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.4-linux64-asterius-200721.tar.xz
-        content-length: 148684236
-        sha256: 0d8430fa8e5bb8fc48af9305c0ac38bc94b110de4df65a5aa202d352359ce46a
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-linux64-standard-200908.tar.xz
+        content-length: 159125920
+        sha256: 70eb52e0ee9bcb1ab85862deb2b41ea48abb9e6ccfc201d650a6ae0e48797784
     linux64-custom-asterius-musl:
       8.8.4:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.4-linux64-musl-asterius-200721.tar.xz
-        content-length: 165822904
-        sha256: df5b903a734890f2c390ffb7e0ddcbfcd04a7c160fb71c20601a2507a52e1be9
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-linux64-musl-200908.tar.xz
+        content-length: 169372216
+        sha256: 432d4a65c33961ef74ee8bd63ab9121cdbb75b0d23e3a7b63d8933228ee111f1
     macosx-custom-asterius:
       8.8.4:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.4-macosx-asterius-200721.tar.xz
-        content-length: 158461216
-        sha256: 374aeed334d1407388efc3205fd665c04277df8fdad94cd72d2c4eac31d5302a
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-macosx-200908.tar.xz
+        content-length: 170733916
+        sha256: 03e2e4dedfabc4b2c8eacb3ff6c1b29d658543c4f9af01c4715ad6b5161f2cf3
     windows64-custom-asterius:
       8.8.4:
-        url: https://asterius.s3-us-west-2.amazonaws.com/ghc-8.8.4-windows64-asterius-200721.tar.xz
-        content-length: 186363480
-        sha256: e2cfb20b9a9bcd8b581421f7b9bb7071fe000a9e0364175dadb1c4f3d8c0700a
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200908/ghc-8.8.4-windows64-200908.tar.xz
+        content-length: 186533012
+        sha256: 3c0fa1b2901b49ee12fddb911fd1ba8f78f567972cb3fe16b1a862ec72ac633e
