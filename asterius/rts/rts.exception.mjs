@@ -168,7 +168,7 @@ export class ExceptionHelper {
     the symbol name from the js error message.
   */
   barf_push(c) {
-      this.errorBuffer += String.fromCharCode(c);
+      this.errorBuffer += String.fromCodePoint(c);
   }
 
   barf_throw() {
