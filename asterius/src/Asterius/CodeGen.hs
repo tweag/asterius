@@ -23,7 +23,6 @@ import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.Name
 import Asterius.Passes.All
-import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
 import Asterius.Types
@@ -1707,7 +1706,7 @@ marshalCmmDecl decl = case decl of
                 }
             }
           Right f' -> f'
-    pure $ processBarf sym f
+    pure $ mempty {functionMap = SM.singleton sym f}
 
 marshalHaskellIR :: GHC.Module -> HaskellIR -> CodeGen AsteriusModule
 marshalHaskellIR this_mod HaskellIR {..} = do

@@ -86,7 +86,6 @@ import Asterius.EDSL.BinaryOp
 import Asterius.EDSL.UnaryOp
 import Asterius.Internals
 import Asterius.Passes.All
-import Asterius.Passes.Barf
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
@@ -159,8 +158,9 @@ runEDSL ::
   -- | Final module
   AsteriusModule
 runEDSL n (EDSL m) =
-  m1
-    { staticsMap = SM.fromList staticsBuf <> staticsMap m1
+  mempty
+    { functionMap = SM.singleton n f0,
+      staticsMap = SM.fromList staticsBuf
     }
   where
     EDSLState {..} = execState m initialEDSLState
@@ -172,7 +172,6 @@ runEDSL n (EDSL m) =
         varTypes = [],
         body = bundleExpressions retTypes $ bagToList exprBuf
       }
-    m1 = processBarf n f0
 
 -- | Any value that can be read from and written to is an LVal.
 data LVal

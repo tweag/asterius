@@ -19,6 +19,7 @@ module Asterius.Builtins
   )
 where
 
+import Asterius.Builtins.Barf
 import Asterius.Builtins.Blackhole
 import Asterius.Builtins.CMath
 import Asterius.Builtins.Endianness
@@ -162,7 +163,6 @@ rtsAsteriusModule opts =
     <> recordClosureMutatedFunction opts
     <> tryWakeupThreadFunction opts
     <> raiseExceptionHelperFunction opts
-    <> barfFunction opts
     <> suspendThreadFunction opts
     <> scheduleThreadFunction opts
     <> scheduleThreadOnFunction opts
@@ -200,6 +200,7 @@ rtsAsteriusModule opts =
     <> primitiveCBits
     <> mathCBits
     <> endiannessCBits
+    <> barfCBits
 
 -- Generate the module consisting of functions which need to be wrapped
 -- for communication with the external runtime.
@@ -486,12 +487,6 @@ rtsFunctionImports debug =
                }
            },
          FunctionImport
-           { internalName = "__asterius_barf",
-             externalModuleName = "ExceptionHelper",
-             externalBaseName = "barf",
-             functionType = FunctionType {paramTypes = [F64], returnTypes = []}
-           },
-         FunctionImport
            { internalName = "__asterius_enqueueTSO",
              externalModuleName = "Scheduler",
              externalBaseName = "enqueueTSO",
@@ -628,6 +623,7 @@ rtsFunctionImports debug =
     <> sptImports
     <> timeImports
     <> primitiveImports
+    <> barfImports
 
 rtsFunctionExports :: Bool -> [FunctionExport]
 rtsFunctionExports debug =
@@ -1402,11 +1398,6 @@ raiseExceptionHelperFunction _ = runEDSL "raiseExceptionHelper" $ do
         (map convertUInt64ToFloat64 args)
         F64
   emit frame_type
-
-barfFunction :: BuiltinsOptions -> AsteriusModule
-barfFunction _ = runEDSL "barf" $ do
-  s <- param I64
-  callImport "__asterius_barf" [convertUInt64ToFloat64 s]
 
 -- Note that generateRTSWrapper will treat all our numbers as signed, not
 -- unsigned.   This is OK for ASCII code, since the ints we have will not be

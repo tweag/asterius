@@ -244,6 +244,8 @@ marshalFunctionType FunctionType {..} = do
 data MarshalEnv = MarshalEnv
   { -- | The 'A.Arena' for allocating temporary buffers.
     envArena :: A.Arena,
+    -- | Whether the @verbose_err@ extension is on.
+    envIsVerboseErrOn :: Bool,
     -- | Whether the tail call extension is on.
     envAreTailCallsOn :: Bool,
     -- | The symbol map for the current module (statics).
@@ -259,6 +261,10 @@ type CodeGen a = ReaderT MarshalEnv IO a
 -- | Retrieve the 'A.Arena'.
 askArena :: CodeGen A.Arena
 askArena = reader envArena
+
+-- | Check whether the @verbose_err@ extension is on.
+isVerboseErrOn :: CodeGen Bool
+isVerboseErrOn = reader envIsVerboseErrOn
 
 -- | Check whether the tail call extension is on.
 areTailCallsOn :: CodeGen Bool
@@ -317,10 +323,9 @@ marshalExpression e = case e of
       dn <- marshalBS a defaultName
       Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
+    verbose_err <- isVerboseErrOn
     func_sym_map <- askFunctionsSymbolMap
-    ss_sym_map <- askStaticsSymbolMap
-    if
-        | target `SM.member` func_sym_map -> do
+    if  | target `SM.member` func_sym_map -> do
           os <-
             mapM
               marshalExpression
@@ -339,9 +344,9 @@ marshalExpression e = case e of
             (ops, osl) <- marshalV a os
             tp <- marshalBS a (entityName target)
             Binaryen.call m tp ops (fromIntegral osl) rts
-        | ("__asterius_barf_" <> target) `SM.member` ss_sym_map ->
+        | verbose_err ->
           marshalExpression $
-            barf target callReturnTypes
+            barf (entityName target) callReturnTypes
         | otherwise -> do
           m <- askModuleRef
           lift $ Binaryen.Expression.unreachable m
@@ -461,7 +466,7 @@ marshalExpression e = case e of
             r <- Binaryen.return m (coerce nullPtr)
             (arr, _) <- marshalV a [s, r]
             Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
-        Nothing -> marshalExpression $ barf returnCallTarget64 []
+        Nothing -> marshalExpression $ barf (entityName returnCallTarget64) []
   ReturnCallIndirect {..} -> areTailCallsOn >>= \case
     -- Case 1: Tail calls are on
     True -> do
@@ -509,6 +514,7 @@ marshalExpression e = case e of
     lift $ Binaryen.Expression.unreachable m
   CFG {..} -> relooperRun graph
   Symbol {..} -> do
+    verbose_err <- isVerboseErrOn
     ss_sym_map <- askStaticsSymbolMap
     func_sym_map <- askFunctionsSymbolMap
     m <- askModuleRef
@@ -524,14 +530,20 @@ marshalExpression e = case e of
                 addInt64
                   (extendUInt32 base)
                   (constI64 $ fromIntegral x + symbolOffset)
-        | ("__asterius_barf_" <> unresolvedSymbol) `SM.member` ss_sym_map ->
-          marshalExpression $ barf unresolvedSymbol [I64]
+        | verbose_err ->
+          marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
+  Barf {..} -> do
+    verbose_err <- isVerboseErrOn
+    if verbose_err
+      then marshalExpression $ barf barfMessage barfReturnTypes
+      else do
+        m <- askModuleRef
+        lift $ Binaryen.Expression.unreachable m
   -- Unsupported expressions
   UnresolvedGetLocal {} -> lift $ throwIO $ UnsupportedExpression e
   UnresolvedSetLocal {} -> lift $ throwIO $ UnsupportedExpression e
-  Barf {} -> lift $ throwIO $ UnsupportedExpression e
 
 marshalMaybeExpression :: Maybe Expression -> CodeGen Binaryen.Expression
 marshalMaybeExpression x = case x of
@@ -668,11 +680,12 @@ marshalGlobal k Global {..} = do
 
 marshalModule ::
   Bool ->
+  Bool ->
   SM.SymbolMap Int64 ->
   SM.SymbolMap Int64 ->
   Module ->
   IO Binaryen.Module
-marshalModule tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
+marshalModule verbose_err tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
   m <- Binaryen.Module.create
   Binaryen.setFeatures m
     $ foldl1' (.|.)
@@ -682,6 +695,7 @@ marshalModule tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
     let env =
           MarshalEnv
             { envArena = a,
+              envIsVerboseErrOn = verbose_err,
               envAreTailCallsOn = tail_calls,
               envStaticsSymbolMap = ss_sym_map,
               envFunctionsSymbolMap = func_sym_map,
