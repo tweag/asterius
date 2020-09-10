@@ -249,23 +249,40 @@ makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
   }
 
 makeElementSection ::
-  MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
-makeElementSection Module {..} ModuleSymbolTable {..} = pure Wasm.ElementSection
-  { elements = case functionTable of
-      FunctionTable {..} ->
-        [ Wasm.Element
-            { tableIndex = Wasm.TableIndex 0,
-              tableOffset = Wasm.Expression
-                { instructions =
-                    [Wasm.I32Const {i32ConstValue = fromIntegral tableOffset}]
-                },
-              tableInitialValues =
-                [ functionSymbols Map.! _func_sym
-                  | _func_sym <- tableFunctionNames
-                ]
+  MonadError MarshalError m =>
+  Bool ->
+  Bool ->
+  SM.SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
+  Module ->
+  ModuleSymbolTable ->
+  m Wasm.Section
+makeElementSection verbose_err tail_calls ss_sym_map fn_sym_map Module {..} _module_symtable = case functionTable of
+  FunctionTable {..} -> do
+    let env =
+          MarshalEnv
+            { envIsVerboseErrOn = verbose_err,
+              envAreTailCallsOn = tail_calls,
+              envStaticsSymbolMap = ss_sym_map,
+              envFunctionsSymbolMap = fn_sym_map,
+              envModuleSymbolTable = _module_symtable,
+              envDeBruijnContext = emptyDeBruijnContext,
+              envLclContext = emptyLocalContext
             }
-        ]
-  }
+    offset <- fmap bagToList $ flip runReaderT env $ makeInstructions tableOffset
+    pure
+      Wasm.ElementSection
+        { elements =
+            [ Wasm.Element
+                { tableIndex = Wasm.TableIndex 0, -- TODO: What is the purpose of this index here?
+                  tableOffset = Wasm.Expression offset,
+                  tableInitialValues =
+                    [ functionSymbols _module_symtable Map.! _func_sym
+                      | _func_sym <- tableFunctionNames
+                    ]
+                }
+            ]
+        }
 
 -- | The de Bruijn context captures the labels that are in scope, as introduced
 -- by control constructs (if, loop, etc.)
@@ -880,7 +897,7 @@ makeModule verbose_err tail_calls ss_sym_map func_sym_map m = do
   _func_sec <- makeFunctionSection m _module_symtable
   _gbl_sec <- makeGlobalSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
   _export_sec <- makeExportSection m _module_symtable
-  _elem_sec <- makeElementSection m _module_symtable
+  _elem_sec <- makeElementSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
   _code_sec <- makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
   _data_sec <- makeDataSection m _module_symtable
   pure $

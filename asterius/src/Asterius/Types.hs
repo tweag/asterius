@@ -526,7 +526,7 @@ data FunctionExport
 data FunctionTable
   = FunctionTable
       { tableFunctionNames :: [BS.ByteString],
-        tableOffset :: BinaryenIndex
+        tableOffset :: Expression
       }
   deriving (Show, Data)
 

@@ -589,10 +589,10 @@ marshalFunctionExport m FunctionExport {..} = do
 marshalFunctionTable :: Binaryen.Module -> Int -> FunctionTable -> CodeGen ()
 marshalFunctionTable m tbl_slots FunctionTable {..} = do
   a <- askArena
+  o <- marshalExpression tableOffset
   lift $ do
     func_name_ptrs <- for tableFunctionNames $ marshalBS a
     (fnp, fnl) <- marshalV a func_name_ptrs
-    o <- Binaryen.constInt32 m (fromIntegral tableOffset)
     Binaryen.setFunctionTable
       m
       (fromIntegral tbl_slots)

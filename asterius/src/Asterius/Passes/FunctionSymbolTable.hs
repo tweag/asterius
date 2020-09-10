@@ -22,5 +22,5 @@ makeFunctionSymbolTable AsteriusModule {..} func_start_addr =
 makeFunctionTable :: SM.SymbolMap Int64 -> Int64 -> FunctionTable
 makeFunctionTable func_sym_map func_start_addr = FunctionTable
   { tableFunctionNames = map entityName $ SM.keys func_sym_map,
-    tableOffset = fromIntegral $ unTag func_start_addr
+    tableOffset = ConstI32 $ fromIntegral $ unTag func_start_addr
   }
