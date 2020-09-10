@@ -24,7 +24,6 @@ import qualified Asterius.Types.SymbolMap as SM
 import qualified Asterius.Types.SymbolSet as SS
 import Asterius.Types.LinkReport
 import Control.DeepSeq
-import qualified Data.ByteString as BS
 import qualified Data.Map.Lazy as LM
 import Foreign
 import Language.Haskell.GHC.Toolkit.Constants
@@ -109,12 +108,11 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
 linkStart ::
   Bool ->
   Bool ->
-  Bool ->
   AsteriusCachedModule ->
   SS.SymbolSet ->
   [EntitySymbol] ->
   (AsteriusModule, Module, LinkReport)
-linkStart debug gc_sections verbose_err store root_syms export_funcs =
+linkStart debug gc_sections store root_syms export_funcs =
   ( merged_m,
     result_m,
     LinkReport
@@ -132,23 +130,9 @@ linkStart debug gc_sections verbose_err store root_syms export_funcs =
       | gc_sections = gcSections store root_syms export_funcs
       | otherwise = fromCachedModule store
     !merged_m0_evaluated = force merged_m0
-    merged_m1
+    !merged_m
       | debug = addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
-    !merged_m
-      | verbose_err = merged_m1
-      | otherwise =
-        merged_m1
-          { staticsMap =
-              SM.filterWithKey
-                ( \sym _ ->
-                    not
-                      ( "__asterius_barf_"
-                          `BS.isPrefixOf` entityName sym
-                      )
-                )
-                $ staticsMap merged_m1
-          }
     bundled_ffi_state = ffiMarshalState merged_m
     (!result_m, !ss_sym_map, !func_sym_map, !tbl_slots, !static_mbs) =
       resolveAsteriusModule

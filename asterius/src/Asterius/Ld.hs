@@ -55,7 +55,7 @@ rtsUsedSymbols :: SS.SymbolSet
 rtsUsedSymbols =
   SS.fromList
     [ "barf",
-      "barf_push", -- TODO: better safe than sorry
+      "barf_push",
       "base_AsteriusziTopHandler_runIO_closure",
       "base_AsteriusziTopHandler_runNonIO_closure",
       "base_AsteriusziTypesziJSException_mkJSException_closure",
@@ -95,7 +95,6 @@ linkModules LinkTask {..} m =
   linkStart
     debug
     gcSections
-    verboseErr
     ( toCachedModule
         ( (if hasMain then mainBuiltins else mempty)
             <> rtsAsteriusModule
