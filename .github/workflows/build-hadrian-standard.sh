@@ -10,9 +10,9 @@ export LC_ALL=$LANG
 export LC_CTYPE=$LANG
 export XZ_OPT=-9eT2
 
-echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200908T084219Z stretch main contrib non-free' > /etc/apt/sources.list
-echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20200908T084219Z stretch/updates main contrib non-free' >> /etc/apt/sources.list
-echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200908T084219Z stretch-updates main contrib non-free' >> /etc/apt/sources.list
+echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200910T083916Z stretch main contrib non-free' > /etc/apt/sources.list
+echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20200910T083916Z stretch/updates main contrib non-free' >> /etc/apt/sources.list
+echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200910T083916Z stretch-updates main contrib non-free' >> /etc/apt/sources.list
 apt update
 apt full-upgrade -y
 apt install -y \
@@ -39,7 +39,7 @@ git clone --recurse-submodules --branch $BRANCH https://github.com/TerrorJack/gh
 cp /asterius/.github/workflows/UserSettings.hs hadrian/UserSettings.hs
 ./boot --hadrian
 ./configure
-hadrian/build.stack.sh --verbose -j$JOBS binary-dist
+hadrian/build.stack.sh -j$JOBS binary-dist
 cp _build/bindist/*.tar.xz /asterius
 
 popd

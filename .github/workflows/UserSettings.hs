@@ -53,10 +53,9 @@ userFlavour =
                  ? arg
                    "-split-sections"
              ),
-      libraryWays = pure [vanilla],
+      libraryWays = pure [vanilla] <> (notStage0 ? pure [dynamic]),
       rtsWays = pure [vanilla, threaded],
       splitObjects = pure False,
-      dynamicGhcPrograms = pure False,
       ghcDocs = pure []
     } -- Modify other settings here.
 

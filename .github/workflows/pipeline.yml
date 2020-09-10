@@ -19,7 +19,7 @@ jobs:
             --pull always \
             --volume $(pwd):/asterius \
             --workdir /asterius \
-            debian:sid-20200803-slim \
+            debian:sid-20200908-slim \
             .github/workflows/build-hadrian-tinfo6.sh
 
       - name: upload-artifact
@@ -42,7 +42,7 @@ jobs:
             --pull always \
             --volume $(pwd):/asterius \
             --workdir /asterius \
-            debian:stretch-20200803-slim \
+            debian:stretch-20200908-slim \
             .github/workflows/build-hadrian-standard.sh
 
       - name: upload-artifact
@@ -87,7 +87,7 @@ jobs:
           pushd /tmp/ghc
           ./boot --hadrian
           ./configure
-          hadrian/build.stack.sh --verbose -j$JOBS binary-dist
+          hadrian/build.stack.sh -j$JOBS binary-dist
           popd
           cp /tmp/ghc/_build/bindist/*.tar.xz .
 
@@ -115,7 +115,7 @@ jobs:
             --pull always \
             --volume $(pwd):/asterius \
             --workdir /asterius \
-            debian:sid-20200803-slim \
+            debian:sid-20200908-slim \
             .github/workflows/build-tinfo6.sh
 
       - name: upload-artifact
@@ -142,7 +142,7 @@ jobs:
             --pull always \
             --volume $(pwd):/asterius \
             --workdir /asterius \
-            debian:sid-20200803-slim \
+            debian:sid-20200908-slim \
             .github/workflows/build-tinfo6-dwarf.sh
 
       - name: upload-artifact
@@ -169,7 +169,7 @@ jobs:
             --pull always \
             --volume $(pwd):/asterius \
             --workdir /asterius \
-            debian:stretch-20200803-slim \
+            debian:stretch-20200908-slim \
             .github/workflows/build-standard.sh
 
       - name: upload-artifact
