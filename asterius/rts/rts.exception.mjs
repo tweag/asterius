@@ -14,7 +14,10 @@ export class ExceptionHelper {
     this.symbolTable = symbol_table;
     this.decoder = new TextDecoder("utf-8", { fatal: true });
     this.errorBuffer = "";
-    // Object.freeze(this); // TODO: if we freeze, then we can't extend the buffer, I think.
+    // TODO: if we freeze, then we can't extend the buffer, I think. Is there a
+    // way to make the object non-extensible, but add characters to the
+    // errorBuffer?
+    // Object.freeze(this);
   }
 
   /*
@@ -151,7 +154,6 @@ export class ExceptionHelper {
   }
 
   barf_push(c) {
-    // TODO: Ensure correct usage?
     if (c === 0) { // String.fromCharCode(c) === '\x00'
       throw new WebAssembly.RuntimeError(`barf_push: ${this.errorBuffer}`);
     } else {

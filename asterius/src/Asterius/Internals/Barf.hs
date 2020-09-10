@@ -6,13 +6,12 @@ module Asterius.Internals.Barf
 where
 
 import Asterius.Types
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as CBS
 import Data.Char
 
--- TODO:
--- a) better message; it's not just about functions,
--- b) no need to be entitysymbol; BS is probably better
-barf :: EntitySymbol -> [ValueType] -> Expression
-barf sym vts =
+barf :: BS.ByteString -> [ValueType] -> Expression
+barf msg vts =
   Block
     { name = "",
       bodys =
@@ -21,7 +20,7 @@ barf sym vts =
               operands = [ConstI64 $ fromIntegral $ ord c],
               callReturnTypes = []
             }
-          | c <- ("Cannot find function " ++ show sym ++ "\0")
+          | c <- CBS.unpack msg ++ "\0"
         ]
           ++ [Unreachable],
       blockReturnTypes = vts

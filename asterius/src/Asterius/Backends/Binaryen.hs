@@ -346,7 +346,7 @@ marshalExpression e = case e of
             Binaryen.call m tp ops (fromIntegral osl) rts
         | verbose_err ->
           marshalExpression $
-            barf target callReturnTypes
+            barf (entityName target) callReturnTypes
         | otherwise -> do
           m <- askModuleRef
           lift $ Binaryen.Expression.unreachable m
@@ -466,7 +466,7 @@ marshalExpression e = case e of
             r <- Binaryen.return m (coerce nullPtr)
             (arr, _) <- marshalV a [s, r]
             Binaryen.block m (coerce nullPtr) arr 2 Binaryen.none
-        Nothing -> marshalExpression $ barf returnCallTarget64 []
+        Nothing -> marshalExpression $ barf (entityName returnCallTarget64) []
   ReturnCallIndirect {..} -> areTailCallsOn >>= \case
     -- Case 1: Tail calls are on
     True -> do
@@ -531,13 +531,13 @@ marshalExpression e = case e of
                   (extendUInt32 base)
                   (constI64 $ fromIntegral x + symbolOffset)
         | verbose_err ->
-          marshalExpression $ barf unresolvedSymbol [I64]
+          marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->
           lift $ Binaryen.constInt64 m invalidAddress
   Barf {..} -> do
     verbose_err <- isVerboseErrOn
     if verbose_err
-      then marshalExpression $ barf (mkEntitySymbol barfMessage) barfReturnTypes
+      then marshalExpression $ barf barfMessage barfReturnTypes
       else do
         m <- askModuleRef
         lift $ Binaryen.Expression.unreachable m

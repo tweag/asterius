@@ -602,7 +602,7 @@ makeInstructions expr =
         _ -> do
           verbose_err <- isVerboseErrOn
           if verbose_err
-            then makeInstructions $ barf target callReturnTypes
+            then makeInstructions $ barf (entityName target) callReturnTypes
             else pure $ unitBag Wasm.Unreachable
     CallImport {..} -> do
       xs <- for operands makeInstructions
@@ -723,7 +723,7 @@ makeInstructions expr =
             unitBag Wasm.ReturnCall {returnCallFunctionIndex = i}
           _
             | verbose_err ->
-              makeInstructions $ barf returnCallTarget64 []
+              makeInstructions $ barf (entityName returnCallTarget64) []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
         -- Case 2: Tail calls are off
@@ -741,7 +741,7 @@ makeInstructions expr =
               }
           _
             | verbose_err ->
-              makeInstructions $ barf returnCallTarget64 []
+              makeInstructions $ barf (entityName returnCallTarget64) []
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
     ReturnCallIndirect {..} -> do
@@ -795,7 +795,7 @@ makeInstructions expr =
                     (extendUInt32 base)
                     (constI64 $ fromIntegral x + symbolOffset)
           | verbose_err ->
-            makeInstructions $ barf unresolvedSymbol [I64]
+            makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->
             pure $ unitBag Wasm.I64Const
               { i64ConstValue = invalidAddress
@@ -803,7 +803,7 @@ makeInstructions expr =
     Barf {..} -> do
       verbose_err <- isVerboseErrOn
       if verbose_err
-        then makeInstructions $ barf (mkEntitySymbol barfMessage) barfReturnTypes
+        then makeInstructions $ barf barfMessage barfReturnTypes
         else pure $ unitBag Wasm.Unreachable
     -- Unsupported expressions:
     UnresolvedGetLocal {} -> throwError $ UnsupportedExpression expr
