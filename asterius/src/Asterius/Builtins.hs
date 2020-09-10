@@ -164,6 +164,7 @@ rtsAsteriusModule opts =
     <> raiseExceptionHelperFunction opts
     <> barfFunction opts
     <> barfPushFunction opts
+    <> barfThrowFunction opts
     <> suspendThreadFunction opts
     <> scheduleThreadFunction opts
     <> scheduleThreadOnFunction opts
@@ -497,6 +498,12 @@ rtsFunctionImports debug =
              externalModuleName = "ExceptionHelper",
              externalBaseName = "barf_push",
              functionType = FunctionType {paramTypes = [F64], returnTypes = []}
+           },
+         FunctionImport
+           { internalName = "__asterius_barf_throw",
+             externalModuleName = "ExceptionHelper",
+             externalBaseName = "barf_throw",
+             functionType = FunctionType {paramTypes = [], returnTypes = []}
            },
          FunctionImport
            { internalName = "__asterius_enqueueTSO",
@@ -1419,6 +1426,11 @@ barfPushFunction :: BuiltinsOptions -> AsteriusModule
 barfPushFunction _ = runEDSL "barf_push" $ do
   s <- param I64
   callImport "__asterius_barf_push" [convertUInt64ToFloat64 s]
+
+barfThrowFunction :: BuiltinsOptions -> AsteriusModule
+barfThrowFunction _ = runEDSL "barf_throw" $ do
+  _ <- params []
+  callImport "__asterius_barf_throw" []
 
 -- Note that generateRTSWrapper will treat all our numbers as signed, not
 -- unsigned.   This is OK for ASCII code, since the ints we have will not be

@@ -144,31 +144,34 @@ export class ExceptionHelper {
   }
 
   /*
-    This implements `barf_push` a, variant of `barf` that, instead of finding
-    the error message to print in a data segment, it accumulates it into an
-    internal buffer everytime it is called.
+    The following two functions implement a variant of `barf` that is used by
+    Asterius to report missing symbols. Instead of finding the error message to
+    print in a data segment (like `barf` does), this approach accumulates it
+    (character by character) into an internal buffer using `barf_push`. Then, a
+    call to `barf_throw` reads this buffer and throws the error.
 
-    There exists special `barf`-related logic in various parts of the asterius
-    compiler:
+    The related logic can be found in two places in the Asterius compiler:
 
     * In the rts builtins (`Asterius.Builtins`) module, we import `barf_push`
-      as `__asterius_barf_push`, and make a `barf_push` function wrapper which
-      handles the i64/f64 conversion workaround.
+      (and `barf_throw`) as `__asterius_barf_push` (and
+      `__asterius_barf_throw`), and make a `barf_push` (and `barf_throw`)
+      function wrapper which handles the i64/f64 conversion workaround.
 
     * In `Asterius.Internals.Barf` we implement `barf`, which converts a single
       `Barf` expression to a series of calls to `barf_push`, each taking (the
-      ascii code of) a single character of the NUL-terminated error message.
+      ascii code of) a single character of the error message, followed by a
+      call to `barf_throw`.
 
-    * In the backends (`Asterius.Backends.*`), when we encounter an unresolved
-      symbol `sym`, if @verbose_err@ is on, we insert a `barf` call there. So
-      if an execution path leads to the unresolved symbol, we're likely to get
-      the symbol name from the js error message.
+    In the backends (`Asterius.Backends.*`), when we encounter an unresolved
+    symbol `sym`, if @verbose_err@ is on, we insert a `barf` call there. So
+    if an execution path leads to the unresolved symbol, we're likely to get
+    the symbol name from the js error message.
   */
   barf_push(c) {
-    if (c === 0) { // String.fromCharCode(c) === '\x00'
-      throw new WebAssembly.RuntimeError(`barf_push: ${this.errorBuffer}`);
-    } else {
       this.errorBuffer += String.fromCharCode(c);
-    }
+  }
+
+  barf_throw() {
+    throw new WebAssembly.RuntimeError(`barf_throw: ${this.errorBuffer}`);
   }
 }
