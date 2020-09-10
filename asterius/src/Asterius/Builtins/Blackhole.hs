@@ -54,7 +54,7 @@ messageBlackHole = runEDSL "messageBlackHole" $ do
               loadI64 bq offset_StgBlockingQueue_queue
             storeI64 bq offset_StgBlockingQueue_queue msg
         )
-        (barf "messageBlackHole: weird blackhole")
+        (emitErrorMsg "messageBlackHole: weird blackhole")
     )
   emit $ constI64 1
 
@@ -69,7 +69,7 @@ updateThunk = runEDSL "updateThunk" $ do
         ["__stg_EAGER_BLACKHOLE_info", "stg_CAF_BLACKHOLE_info"]
     )
     (pure ())
-    (barf "updateThunk: weird thunk")
+    (emitErrorMsg "updateThunk: weird thunk")
   tso_or_bq <- i64Local $ unTagClosure $ loadI64 thunk offset_StgInd_indirectee
   tso_or_bq_info <- i64Local $ loadI64 tso_or_bq 0
   if'
@@ -88,12 +88,12 @@ updateThunk = runEDSL "updateThunk" $ do
               ["stg_BLOCKING_QUEUE_CLEAN_info", "stg_BLOCKING_QUEUE_DIRTY_info"]
           )
           (pure ())
-          (barf "updateThunk: weird thunk payload")
+          (emitErrorMsg "updateThunk: weird thunk payload")
         if'
           []
           (tso `eqInt64` loadI64 bq offset_StgBlockingQueue_owner)
           (pure ())
-          (barf "updateThunk: not my thunk")
+          (emitErrorMsg "updateThunk: not my thunk")
         storeI64 thunk 0 $ symbol "stg_BLACKHOLE_info"
         storeI64 thunk offset_StgInd_indirectee val
         msg_p <- i64MutLocal
@@ -105,7 +105,7 @@ updateThunk = runEDSL "updateThunk" $ do
             []
             (checkSymbol (loadI64 blocked_tso 0) ["stg_TSO_info"])
             (pure ())
-            (barf "updateThunk: weird queued TSO")
+            (emitErrorMsg "updateThunk: weird queued TSO")
           call "tryWakeupThread" [cap, blocked_tso]
           putLVal msg_p $ loadI64 msg offset_MessageBlackHole_link
     )
@@ -113,5 +113,5 @@ updateThunk = runEDSL "updateThunk" $ do
 checkSymbol :: Expression -> [EntitySymbol] -> Expression
 checkSymbol e syms = foldl1' orInt32 $ map ((e `eqInt64`) . symbol) syms
 
-barf :: BS.ByteString -> EDSL ()
-barf msg = emit Barf {barfMessage = msg, barfReturnTypes = []}
+emitErrorMsg :: BS.ByteString -> EDSL ()
+emitErrorMsg msg = emit Barf {barfMessage = msg, barfReturnTypes = []}
