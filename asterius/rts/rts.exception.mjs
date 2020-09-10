@@ -14,10 +14,7 @@ export class ExceptionHelper {
     this.symbolTable = symbol_table;
     this.decoder = new TextDecoder("utf-8", { fatal: true });
     this.errorBuffer = "";
-    // TODO: if we freeze, then we can't extend the buffer, I think. Is there a
-    // way to make the object non-extensible, but add characters to the
-    // errorBuffer?
-    // Object.freeze(this);
+    Object.seal(this);
   }
 
   /*
