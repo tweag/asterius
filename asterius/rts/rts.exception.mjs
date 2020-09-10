@@ -113,8 +113,6 @@ export class ExceptionHelper {
     }
   }
 
-// TODO: Fix the comment below to reflect the current situation instead.
-
   /*
     This implements `barf` in `rts/RtsMessages.c` of ghc rts. The function is
     used to signal a fatal runtime error.
@@ -124,17 +122,12 @@ export class ExceptionHelper {
     our `barf` to take exactly 1 argument: a pointer to a NUL-terminated string
     which is the error message itself.
 
-    There exist special `barf`-related logic in various parts of the asterius
+    There exists special `barf`-related logic in various parts of the asterius
     compiler:
 
     * In the rts builtins (`Asterius.Builtins`) module, we import `barf` as
       `__asterius_barf`, and make a `barf` function wrapper which handles the
       i64/f64 conversion workaround.
-
-    * In the backends (`Asterius.Backends.*`), when we encounter an unresolved
-      symbol `sym`, if @verbose_err@ is on, we insert a `barf` call there. So
-      if an execution path leads to the unresolved symbol, we're likely to get
-      the symbol name from the js error message.
 
     * The rts cmm files call `barf` with either 0, 1, 2 arguments. In the
       backends we remove extra arguments, and if there isn't any, we use a
@@ -153,6 +146,27 @@ export class ExceptionHelper {
     }
   }
 
+  /*
+    This implements `barf_push` a, variant of `barf` that, instead of finding
+    the error message to print in a data segment, it accumulates it into an
+    internal buffer everytime it is called.
+
+    There exists special `barf`-related logic in various parts of the asterius
+    compiler:
+
+    * In the rts builtins (`Asterius.Builtins`) module, we import `barf_push`
+      as `__asterius_barf_push`, and make a `barf_push` function wrapper which
+      handles the i64/f64 conversion workaround.
+
+    * In `Asterius.Internals.Barf` we implement `barf`, which converts a single
+      `Barf` expression to a series of calls to `barf_push`, each taking (the
+      ascii code of) a single character of the NUL-terminated error message.
+
+    * In the backends (`Asterius.Backends.*`), when we encounter an unresolved
+      symbol `sym`, if @verbose_err@ is on, we insert a `barf` call there. So
+      if an execution path leads to the unresolved symbol, we're likely to get
+      the symbol name from the js error message.
+  */
   barf_push(c) {
     if (c === 0) { // String.fromCharCode(c) === '\x00'
       throw new WebAssembly.RuntimeError(`barf_push: ${this.errorBuffer}`);
