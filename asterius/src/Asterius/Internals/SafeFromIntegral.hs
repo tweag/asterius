@@ -6,6 +6,7 @@ module Asterius.Internals.SafeFromIntegral where
 
 import Type.Reflection
 
+{-# INLINE safeFromIntegral #-}
 safeFromIntegral ::
   forall a b.
   (Integral a, Integral b, Bounded b, Typeable a, Typeable b) =>
