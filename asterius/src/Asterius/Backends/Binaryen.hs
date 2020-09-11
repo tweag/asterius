@@ -601,7 +601,7 @@ marshalMemorySegments mbs segs = do
         =<< for
           segs
           ( \DataSegment {..} ->
-              flip runReaderT env $ marshalExpression $ ConstI32 offset
+              flip runReaderT env $ marshalExpression offset
           )
     (seg_sizes, _) <- marshalV a $ map (fromIntegral . BS.length . content) segs
     Binaryen.setMemory
