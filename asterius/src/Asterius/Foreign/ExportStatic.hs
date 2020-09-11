@@ -8,6 +8,7 @@ module Asterius.Foreign.ExportStatic
 where
 
 import Asterius.Foreign.SupportedTypes
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Data.Bits
@@ -55,5 +56,5 @@ encodeTys = foldr' (\vt acc -> (acc `shiftL` 5) .|. encodeTy vt) 0
 encodeTy :: FFIValueType -> Int64
 encodeTy vt =
   case findIndex (\vt' -> hsTyCon vt == hsTyCon vt') ffiBoxedValueTypeList of
-    Just i -> fromIntegral i + 1
+    Just i -> safeFromIntegral i + 1
     _ -> error $ "Asterius.Foreign.ExportStatic: cannot encode " <> show vt

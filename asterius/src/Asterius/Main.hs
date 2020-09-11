@@ -20,6 +20,7 @@ import Asterius.BuildInfo
 import Asterius.Foreign.ExportStatic
 import Asterius.Internals
 import qualified Asterius.Internals.Arena as A
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Internals.ByteString
 import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
@@ -298,8 +299,8 @@ ahcDistMain logger task (final_m, report) = do
     Binaryen -> do
       logger "[INFO] Converting linked IR to binaryen IR"
       Binaryen.setDebugInfo $ if verboseErr task then 1 else 0
-      Binaryen.setOptimizeLevel $ fromIntegral $ optimizeLevel task
-      Binaryen.setShrinkLevel $ fromIntegral $ shrinkLevel task
+      Binaryen.setOptimizeLevel $ safeFromIntegral $ optimizeLevel task
+      Binaryen.setShrinkLevel $ safeFromIntegral $ shrinkLevel task
       Binaryen.setLowMemoryUnused 1
       m_ref <-
         Binaryen.marshalModule
@@ -361,7 +362,7 @@ ahcDistMain logger task (final_m, report) = do
             m_ref <-
               BS.unsafeUseAsCStringLen
                 (LBS.toStrict $ toLazyByteString $ execPut $ putModule r)
-                $ \(p, l) -> Binaryen.read p (fromIntegral l)
+                $ \(p, l) -> Binaryen.read p (safeFromIntegral l)
             logger "[INFO] Running binaryen optimization"
             Binaryen.optimize m_ref
             A.with $ \a -> do

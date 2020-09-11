@@ -5,6 +5,7 @@ module Asterius.Internals.Arena
   )
 where
 
+import Asterius.Internals.SafeFromIntegral
 import Control.Exception
 import Foreign.C
 import Foreign.Ptr
@@ -13,7 +14,7 @@ newtype Arena = Arena (Ptr Arena)
 
 alloc :: Arena -> Int -> IO (Ptr a)
 alloc a len
-  | len > 0 = c_arenaAlloc a (fromIntegral len)
+  | len > 0 = c_arenaAlloc a (safeFromIntegral len)
   | otherwise = fail $ "arenaAlloc: invalid length " <> show len
 
 with :: (Arena -> IO r) -> IO r

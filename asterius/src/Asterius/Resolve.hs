@@ -14,6 +14,7 @@ where
 import Asterius.Binary.Orphans ()
 import Asterius.Builtins
 import Asterius.Internals.MagicNumber
+import Asterius.Internals.SafeFromIntegral
 import Asterius.JSFFI
 import Asterius.MemoryTrap
 import Asterius.Passes.DataSymbolTable
@@ -58,7 +59,7 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
   where
     (func_sym_map, last_func_addr) =
       makeFunctionSymbolTable m_globals_resolved func_start_addr
-    table_slots = fromIntegral $ unTag last_func_addr
+    table_slots = safeFromIntegral $ unTag last_func_addr
     func_table = makeFunctionTable func_sym_map func_start_addr
     (ss_sym_map, last_data_addr) =
       makeDataSymbolTable m_globals_resolved data_start_addr
@@ -69,7 +70,7 @@ resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr
       LM.mapKeys entityName $ SM.toMap $ functionMap m_globals_resolved
     segs = makeMemory m_globals_resolved all_sym_map
     initial_pages =
-      (fromIntegral (unTag last_data_addr) `roundup` mblock_size)
+      (safeFromIntegral (unTag last_data_addr) `roundup` mblock_size)
         `quot` wasmPageSize
     initial_mblocks =
       initial_pages `quot` (mblock_size `quot` wasmPageSize)

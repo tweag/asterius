@@ -8,6 +8,7 @@ module Asterius.Passes.GlobalRegs
 where
 
 import Asterius.EDSL.UnaryOp
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import Language.Haskell.GHC.Toolkit.Constants
 
@@ -69,7 +70,7 @@ unresolvedGetGlobal gr = case gr of
   _ -> Load
     { signed = False,
       bytes = b,
-      offset = fromIntegral $ offset_Capability_r + o,
+      offset = safeFromIntegral $ offset_Capability_r + o,
       valueType = vt,
       ptr = mainCap32
     }
@@ -81,7 +82,7 @@ unresolvedSetGlobal gr v = case gr of
   BaseReg -> Nop
   _ -> Store
     { bytes = b,
-      offset = fromIntegral $ offset_Capability_r + o,
+      offset = safeFromIntegral $ offset_Capability_r + o,
       ptr = mainCap32,
       value = v,
       valueType = vt

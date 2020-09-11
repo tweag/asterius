@@ -8,6 +8,7 @@ module Asterius.MemoryTrap
   )
 where
 
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Data.Data
@@ -36,7 +37,7 @@ addMemoryTrapDeep sym = w
                   operands =
                     [ Symbol {unresolvedSymbol = sym, symbolOffset = 0},
                       new_i64_ptr,
-                      ConstI32 $ fromIntegral offset
+                      ConstI32 $ safeFromIntegral offset
                     ],
                   callImportReturnTypes = [valueType]
                 }
@@ -48,7 +49,7 @@ addMemoryTrapDeep sym = w
                   operands =
                     [ Symbol {unresolvedSymbol = sym, symbolOffset = 0},
                       new_i64_ptr,
-                      ConstI32 $ fromIntegral offset,
+                      ConstI32 $ safeFromIntegral offset,
                       new_value
                     ],
                   callImportReturnTypes = []

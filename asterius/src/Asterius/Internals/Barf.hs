@@ -5,6 +5,7 @@ module Asterius.Internals.Barf
   )
 where
 
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as CBS
@@ -22,7 +23,7 @@ barf msg vts =
       bodys =
         [ Call
             { target = "barf_push",
-              operands = [ConstI64 $ fromIntegral $ ord c],
+              operands = [ConstI64 $ safeFromIntegral $ ord c],
               callReturnTypes = []
             }
           | c <- CBS.unpack msg

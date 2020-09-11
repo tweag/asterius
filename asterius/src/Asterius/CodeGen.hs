@@ -22,6 +22,7 @@ import Asterius.CodeGen.Droppable
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.Name
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Passes.All
 import Asterius.Passes.GlobalRegs
 import Asterius.Resolve
@@ -124,20 +125,20 @@ marshalCmmStatic st = case st of
         <$> dispatchAllCmmWidth
           w
           ( if x < 0
-              then encodeStorable (fromIntegral x :: Int8)
-              else encodeStorable (fromIntegral x :: Word8)
+              then encodeStorable (safeFromIntegral x :: Int8)
+              else encodeStorable (safeFromIntegral x :: Word8)
           )
           ( if x < 0
-              then encodeStorable (fromIntegral x :: Int16)
-              else encodeStorable (fromIntegral x :: Word16)
+              then encodeStorable (safeFromIntegral x :: Int16)
+              else encodeStorable (safeFromIntegral x :: Word16)
           )
           ( if x < 0
-              then encodeStorable (fromIntegral x :: Int32)
-              else encodeStorable (fromIntegral x :: Word32)
+              then encodeStorable (safeFromIntegral x :: Int32)
+              else encodeStorable (safeFromIntegral x :: Word32)
           )
           ( if x < 0
-              then encodeStorable (fromIntegral x :: Int64)
-              else encodeStorable (fromIntegral x :: Word64)
+              then encodeStorable (safeFromIntegral x :: Int64)
+              else encodeStorable (safeFromIntegral x :: Word64)
           )
     GHC.CmmFloat x w ->
       Serialized
@@ -209,8 +210,8 @@ marshalCmmLit lit = case lit of
   GHC.CmmInt x w ->
     dispatchCmmWidth
       w
-      (ConstI32 $ fromIntegral x, I32)
-      (ConstI64 $ fromIntegral x, I64)
+      (ConstI32 $ safeFromIntegral x, I32)
+      (ConstI64 $ safeFromIntegral x, I64)
   GHC.CmmFloat x w ->
     dispatchCmmWidth
       w
@@ -297,7 +298,7 @@ marshalCmmRegOff r o = do
         ( Binary
             { binaryOp = AddInt32,
               operand0 = re,
-              operand1 = ConstI32 $ fromIntegral o
+              operand1 = ConstI32 $ safeFromIntegral o
             },
           vt
         )
@@ -306,7 +307,7 @@ marshalCmmRegOff r o = do
         ( Binary
             { binaryOp = AddInt64,
               operand0 = re,
-              operand1 = ConstI64 $ fromIntegral o
+              operand1 = ConstI64 $ safeFromIntegral o
             },
           vt
         )
@@ -1582,7 +1583,7 @@ marshalCmmBlockBranch instr = case instr of
     a <- marshalAndCastCmmExpr cml_arg I64
     brs <- for (GHC.switchTargetsCases st) $ \(idx, lbl) -> do
       dest <- marshalLabel lbl
-      pure (dest, [fromIntegral $ idx - fst (GHC.switchTargetsRange st)])
+      pure (dest, [safeFromIntegral $ idx - fst (GHC.switchTargetsRange st)])
     (needs_unreachable, dest_def) <- case GHC.switchTargetsDefault st of
       Just lbl -> do
         klbl <- marshalLabel lbl
@@ -1597,7 +1598,7 @@ marshalCmmBlockBranch instr = case instr of
               (l, _) -> Binary
                 { binaryOp = SubInt64,
                   operand0 = a,
-                  operand1 = ConstI64 $ fromIntegral l
+                  operand1 = ConstI64 $ safeFromIntegral l
                 }
           },
         [ AddBranchForSwitch {to = dest, indexes = tags}

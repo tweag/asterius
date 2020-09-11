@@ -11,6 +11,7 @@ module Asterius.Passes.LocalRegs
 where
 
 import Asterius.Internals.SYB
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Passes.Common
 import Asterius.Types
 import Control.Monad.State.Strict
@@ -46,9 +47,9 @@ resolveLocalRegs FunctionType {..} t =
     base_idx = 3 + length paramTypes
     idx :: UnresolvedLocalReg -> m BinaryenIndex
     idx reg = state $ \ps@PassesState {..} -> case Map.lookup reg localRegMap of
-      Just i -> (fromIntegral i, ps)
+      Just i -> (safeFromIntegral i, ps)
       _ ->
-        ( fromIntegral i,
+        ( safeFromIntegral i,
           ps
             { localRegMap = Map.insert reg i localRegMap,
               localRegStack = unresolvedLocalRegValueType reg : localRegStack

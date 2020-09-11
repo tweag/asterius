@@ -13,6 +13,7 @@ module Asterius.Builtins.Posix
 where
 
 import Asterius.EDSL
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Data.ByteString as BS
@@ -286,17 +287,17 @@ posixConstants =
                 }
             )
             | (k, v) <-
-                [ ("__hscore_sizeof_stat", fromIntegral sizeof_stat),
-                  ("__hscore_o_rdonly", fromIntegral o_RDONLY),
-                  ("__hscore_o_wronly", fromIntegral o_WRONLY),
-                  ("__hscore_o_rdwr", fromIntegral o_RDWR),
-                  ("__hscore_o_append", fromIntegral o_APPEND),
-                  ("__hscore_o_creat", fromIntegral o_CREAT),
-                  ("__hscore_o_excl", fromIntegral o_EXCL),
-                  ("__hscore_o_trunc", fromIntegral o_TRUNC),
-                  ("__hscore_o_noctty", fromIntegral o_NOCTTY),
-                  ("__hscore_o_nonblock", fromIntegral o_NONBLOCK),
-                  ("__hscore_o_binary", fromIntegral o_BINARY)
+                [ ("__hscore_sizeof_stat", safeFromIntegral sizeof_stat),
+                  ("__hscore_o_rdonly", safeFromIntegral o_RDONLY),
+                  ("__hscore_o_wronly", safeFromIntegral o_WRONLY),
+                  ("__hscore_o_rdwr", safeFromIntegral o_RDWR),
+                  ("__hscore_o_append", safeFromIntegral o_APPEND),
+                  ("__hscore_o_creat", safeFromIntegral o_CREAT),
+                  ("__hscore_o_excl", safeFromIntegral o_EXCL),
+                  ("__hscore_o_trunc", safeFromIntegral o_TRUNC),
+                  ("__hscore_o_noctty", safeFromIntegral o_NOCTTY),
+                  ("__hscore_o_nonblock", safeFromIntegral o_NONBLOCK),
+                  ("__hscore_o_binary", safeFromIntegral o_BINARY)
                 ]
           ]
     }
@@ -311,7 +312,7 @@ offset_stat_mtime,
   unsafePerformIO $
     allocaBytes sizeof_stat $ \p -> do
       forM_ [0 .. sizeof_stat - 1] $
-        \i -> pokeByteOff p i (fromIntegral i :: Word8)
+        \i -> pokeByteOff p i (safeFromIntegral i :: Word8)
       _mtime <- (.&. 0xFF) . fromEnum <$> st_mtime p
       _size <- (.&. 0xFF) . fromEnum <$> st_size p
       _mode <- (.&. 0xFF) . fromEnum <$> st_mode p

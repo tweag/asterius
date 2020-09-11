@@ -16,6 +16,7 @@ import Asterius.EDSL
 import Asterius.Foreign.Internals
 import Asterius.Foreign.SupportedTypes
 import Asterius.Foreign.TypesTag
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
@@ -192,7 +193,7 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                 Store
                   { bytes = 8,
                     offset =
-                      fromIntegral $
+                      safeFromIntegral $
                         offset_Capability_r
                           + offset_StgRegTable_rRet,
                     ptr = wrapInt64 mainCapability,
@@ -201,7 +202,7 @@ asyncImportWrapper dflags k FFIImportDecl {..} =
                   },
                 Store
                   { bytes = 2,
-                    offset = fromIntegral offset_StgTSO_why_blocked,
+                    offset = safeFromIntegral offset_StgTSO_why_blocked,
                     ptr = wrapInt64 $ unresolvedGetGlobal CurrentTSO,
                     value = constI32 blocked_BlockedOnCCall,
                     valueType = I32

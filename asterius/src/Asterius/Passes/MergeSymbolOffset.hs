@@ -8,6 +8,7 @@ where
 
 import Asterius.EDSL
 import Asterius.Internals.SYB
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import Data.Word
 import Type.Reflection
@@ -15,7 +16,7 @@ import Type.Reflection
 noNeg :: Expression -> Int -> Word32
 noNeg e n
   | n >= 0 =
-    fromIntegral n
+    safeFromIntegral n
   | otherwise =
     error $
       "Asterius.Passes.MergeSymbolOffset.noNeg: negative index "
@@ -32,14 +33,14 @@ mergeSymbolOffset t =
         Load
           { signed = signed,
             bytes = bytes,
-            offset = noNeg t $ symbolOffset + fromIntegral offset,
+            offset = noNeg t $ symbolOffset + safeFromIntegral offset,
             valueType = valueType,
             ptr = wrapInt64 $ sym {symbolOffset = 0}
           }
       Store {ptr = Unary {unaryOp = WrapInt64, operand0 = sym@Symbol {..}}, ..} ->
         Store
           { bytes = bytes,
-            offset = noNeg t $ symbolOffset + fromIntegral offset,
+            offset = noNeg t $ symbolOffset + safeFromIntegral offset,
             ptr = wrapInt64 $ sym {symbolOffset = 0},
             value = value,
             valueType = valueType
