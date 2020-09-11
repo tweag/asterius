@@ -859,13 +859,32 @@ makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map _mod@Module {..} 
         }
 
 makeDataSection ::
-  MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
-makeDataSection Module {..} _module_symtable = do
-  segs <- for memorySegments $ \DataSegment {..} -> pure Wasm.DataSegment
-    { memoryIndex = Wasm.MemoryIndex 0,
-      memoryOffset = Wasm.Expression {instructions = [Wasm.I32Const offset]},
-      memoryInitialBytes = SBS.toShort content
-    }
+  MonadError MarshalError m =>
+  Bool ->
+  Bool ->
+  SM.SymbolMap Int64 ->
+  SM.SymbolMap Int64 ->
+  Module ->
+  ModuleSymbolTable ->
+  m Wasm.Section
+makeDataSection verbose_err tail_calls ss_sym_map fn_sym_map Module {..} _module_symtable = do
+  segs <- for memorySegments $ \DataSegment {..} -> do
+    let env =
+          MarshalEnv
+            { envIsVerboseErrOn = verbose_err,
+              envAreTailCallsOn = tail_calls,
+              envStaticsSymbolMap = ss_sym_map,
+              envFunctionsSymbolMap = fn_sym_map,
+              envModuleSymbolTable = _module_symtable,
+              envDeBruijnContext = emptyDeBruijnContext,
+              envLclContext = emptyLocalContext
+            }
+    off <- fmap bagToList $ flip runReaderT env $ makeInstructions offset
+    pure Wasm.DataSegment
+      { memoryIndex = Wasm.MemoryIndex 0,
+        memoryOffset = Wasm.Expression off,
+        memoryInitialBytes = SBS.toShort content
+      }
   pure Wasm.DataSection {dataSegments = segs}
 
 makeModule ::
@@ -885,7 +904,7 @@ makeModule verbose_err tail_calls ss_sym_map func_sym_map m = do
   _export_sec <- makeExportSection m _module_symtable
   _elem_sec <- makeElementSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
   _code_sec <- makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
-  _data_sec <- makeDataSection m _module_symtable
+  _data_sec <- makeDataSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
   pure $
     Wasm.Module
       [ _type_sec,

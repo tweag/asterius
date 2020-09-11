@@ -533,7 +533,7 @@ data FunctionTable
 data DataSegment
   = DataSegment
       { content :: BS.ByteString,
-        offset :: Int32
+        offset :: Expression
       }
   deriving (Show, Data)
 

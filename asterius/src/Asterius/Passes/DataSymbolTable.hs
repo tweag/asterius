@@ -58,9 +58,9 @@ makeSegment sym_map off static =
         let address = case SM.lookup sym sym_map of
               Just addr -> addr + fromIntegral o
               _ -> invalidAddress
-         in Just DataSegment {content = encodeStorable address, offset = off}
+         in Just DataSegment {content = encodeStorable address, offset = ConstI32 off}
       Uninitialized {} -> Nothing
-      Serialized buf -> Just DataSegment {content = buf, offset = off}
+      Serialized buf -> Just DataSegment {content = buf, offset = ConstI32 off}
   )
 
 {-# INLINEABLE makeMemory #-}
