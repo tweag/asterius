@@ -29,7 +29,20 @@ export async function newAsteriusInstance(req) {
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
-    __asterius_symbol_table = new SymbolTable(req.functionsOffsetTable, req.staticsOffsetTable, 0, 0),
+    __asterius_table_base = new WebAssembly.Global(
+      { value: "i32", mutable: false },
+      0 // TODO: Should change to 1, eventually.
+    ),
+    __asterius_memory_base = new WebAssembly.Global(
+      { value: "i32", mutable: false },
+      0 // TODO: Should change to 1024, eventually.
+    ),
+    __asterius_symbol_table = new SymbolTable(
+      req.functionsOffsetTable,
+      req.staticsOffsetTable,
+      __asterius_table_base.value,
+      __asterius_memory_base.value
+    ),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
     __asterius_logger = new EventLogManager(),
@@ -39,8 +52,6 @@ export async function newAsteriusInstance(req) {
       element: "anyfunc",
       initial: req.tableSlots
     }),
-    __asterius_memory_base = new WebAssembly.Global({value:'i32', mutable:false}, 0),
-    __asterius_table_base = new WebAssembly.Global({value:'i32', mutable:false}, 0),
     __asterius_wasm_memory = new WebAssembly.Memory({
       initial: Math.max(req.staticMBlocks + 2, req.gcThreshold) * (rtsConstants.mblock_size / 65536)
     }),
@@ -198,7 +209,7 @@ export async function newAsteriusInstance(req) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
-        __asterius_stableptr_manager.newStablePtr(__asterius_symbol_table.getTableBase() + off),
+        __asterius_stableptr_manager.newStablePtr(__asterius_table_base.value + off),
         a,
         r,
         i,
@@ -210,7 +221,7 @@ export async function newAsteriusInstance(req) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
-        __asterius_stableptr_manager.newStablePtr(__asterius_symbol_table.getMemoryBase() + off),
+        __asterius_stableptr_manager.newStablePtr(__asterius_memory_base.value + off),
         a,
         r,
         i,
