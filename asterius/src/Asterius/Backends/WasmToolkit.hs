@@ -728,7 +728,6 @@ makeInstructions expr =
       x <- makeInstructions dropValue
       pure $ x `snocBag` Wasm.Drop
     ReturnCall {..} -> do
-      ss_sym_map <- askStaticsSymbolMap
       func_sym_map <- askFunctionsSymbolMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
       verbose_err <- isVerboseErrOn
@@ -746,15 +745,9 @@ makeInstructions expr =
         -- Case 2: Tail calls are off
         else case SM.lookup returnCallTarget64 func_sym_map of
           Just t -> makeInstructions
-            Store
-              { bytes = 8,
-                offset = 0,
-                ptr =
-                  ConstI32
-                    $ fromIntegral
-                    $ unTag (ss_sym_map SM.! "__asterius_pc"),
-                value = ConstI64 t,
-                valueType = I64
+            SetGlobal
+              { globalSymbol = "__asterius_pc",
+                value = ConstI64 t
               }
           _
             | verbose_err ->
@@ -762,7 +755,6 @@ makeInstructions expr =
             | otherwise ->
               pure $ unitBag Wasm.Unreachable
     ReturnCallIndirect {..} -> do
-      ss_sym_map <- askStaticsSymbolMap
       ModuleSymbolTable {..} <- askModuleSymbolTable
       tail_calls <- areTailCallsOn
       if tail_calls
@@ -780,15 +772,9 @@ makeInstructions expr =
               }
         -- Case 2: Tail calls are off
         else makeInstructions
-          Store
-            { bytes = 8,
-              offset = 0,
-              ptr =
-                ConstI32
-                  $ fromIntegral
-                  $ unTag (ss_sym_map SM.! "__asterius_pc"),
-              value = returnCallIndirectTarget64,
-              valueType = I64
+          SetGlobal
+            { globalSymbol = "__asterius_pc",
+              value = returnCallIndirectTarget64
             }
     Nop -> pure $ unitBag Wasm.Nop
     Unreachable -> pure $ unitBag Wasm.Unreachable

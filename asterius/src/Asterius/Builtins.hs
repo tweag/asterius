@@ -115,16 +115,22 @@ rtsAsteriusModule opts =
                   asteriusStatics = [Serialized "UTF-8\0"]
                 }
             ),
-            ( "__asterius_pc",
-              AsteriusStatics
-                { staticsType = Bytes,
-                  asteriusStatics = [Serialized $ encodeStorable invalidAddress]
-                }
-            ),
             ( "__asterius_i64_slot",
               AsteriusStatics
                 { staticsType = Bytes,
                   asteriusStatics = [Serialized $ BS.pack $ replicate 8 0]
+                }
+            )
+          ],
+      globalsMap =
+        SM.fromList $
+          [ ( "__asterius_pc",
+              Global
+                { globalType = GlobalType
+                    { globalValueType = I64,
+                      globalMutability = Mutable
+                    },
+                  globalInit = ConstI64 invalidAddress
                 }
             )
           ],
@@ -1084,6 +1090,15 @@ newCAFFunction _ = runEDSL "newCAF" $ do
   storeI64 caf 0 $ symbol "stg_IND_STATIC_info"
   emit bh
 
+asterius_pc_global :: LVal
+asterius_pc_global =
+  newGlobal
+    "__asterius_pc"
+    GlobalType
+      { globalValueType = I64,
+        globalMutability = Mutable
+      }
+
 -- Repeatedly calls the function pointed by ``__asterius_pc`` until this
 -- pointer is NULL.
 --
@@ -1093,7 +1108,7 @@ newCAFFunction _ = runEDSL "newCAF" $ do
 -- ``stgRun`` performs the call.
 stgRun :: Expression -> EDSL ()
 stgRun init_f = do
-  let pc = pointerI64 (symbol "__asterius_pc") 0
+  let pc = asterius_pc_global
   pc_reg <- i64MutLocal
   putLVal pc init_f
   loop' [] $ \loop_lbl -> do
@@ -1105,7 +1120,7 @@ stgRun init_f = do
 -- Return from a STG function
 stgReturnFunction :: BuiltinsOptions -> AsteriusModule
 stgReturnFunction _ =
-  runEDSL "StgReturn" $ storeI64 (symbol "__asterius_pc") 0 $ constI64 0 -- store NULL in the __asterius_pc register. This will break stgRun
+  runEDSL "StgReturn" $ putLVal asterius_pc_global $ constI64 0 -- store NULL in the __asterius_pc register. This will break stgRun
       -- trampolining loop.
 
 getStablePtrWrapperFunction :: BuiltinsOptions -> AsteriusModule

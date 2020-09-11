@@ -31,6 +31,7 @@ module Asterius.EDSL
     i32Local,
     i64MutLocal,
     global,
+    newGlobal,
     pointer,
     pointerI64,
     pointerI32,
@@ -232,6 +233,15 @@ global :: UnresolvedGlobalReg -> LVal
 global gr = LVal
   { getLVal = unresolvedGetGlobal gr,
     putLVal = emit . unresolvedSetGlobal gr
+  }
+
+newGlobal :: EntitySymbol -> GlobalType -> LVal
+newGlobal k GlobalType {..} = LVal
+  { getLVal = GetGlobal
+      { globalSymbol = k,
+        valueType = globalValueType
+      },
+    putLVal = emit . SetGlobal k
   }
 
 pointer :: ValueType -> BinaryenIndex -> Expression -> Int -> LVal
