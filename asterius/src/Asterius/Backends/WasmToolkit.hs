@@ -202,27 +202,12 @@ makeFunctionSection Module {..} ModuleSymbolTable {..} = pure Wasm.FunctionSecti
   }
 
 makeGlobalSection ::
-  MonadError MarshalError f =>
-  Bool ->
-  Bool ->
-  SM.SymbolMap Int64 ->
-  SM.SymbolMap Int64 ->
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Module ->
   ModuleSymbolTable ->
-  f Wasm.Section
-makeGlobalSection verbose_err tail_calls ss_sym_map func_sym_map Module {..} _module_symtable = do
-  let env = MarshalEnv
-        { envIsVerboseErrOn = verbose_err,
-          envAreTailCallsOn = tail_calls,
-          envStaticsSymbolMap = ss_sym_map,
-          envFunctionsSymbolMap = func_sym_map,
-          envModuleSymbolTable = _module_symtable,
-          envDeBruijnContext = emptyDeBruijnContext,
-          envLclContext = emptyLocalContext
-        }
-  fmap Wasm.GlobalSection $
-    flip runReaderT env $
-      mapM makeGlobal (SM.elems globalMap)
+  m Wasm.Section
+makeGlobalSection Module {..} _module_symtable =
+  Wasm.GlobalSection <$> mapM makeGlobal (SM.elems globalMap)
 
 makeExportSection ::
   MonadError MarshalError m => Module -> ModuleSymbolTable -> m Wasm.Section
@@ -249,27 +234,13 @@ makeExportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ExportSection
   }
 
 makeElementSection ::
-  MonadError MarshalError m =>
-  Bool ->
-  Bool ->
-  SM.SymbolMap Int64 ->
-  SM.SymbolMap Int64 ->
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
-makeElementSection verbose_err tail_calls ss_sym_map fn_sym_map Module {..} _module_symtable = case functionTable of
+makeElementSection Module {..} _module_symtable = case functionTable of
   FunctionTable {..} -> do
-    let env =
-          MarshalEnv
-            { envIsVerboseErrOn = verbose_err,
-              envAreTailCallsOn = tail_calls,
-              envStaticsSymbolMap = ss_sym_map,
-              envFunctionsSymbolMap = fn_sym_map,
-              envModuleSymbolTable = _module_symtable,
-              envDeBruijnContext = emptyDeBruijnContext,
-              envLclContext = emptyLocalContext
-            }
-    offset <- fmap bagToList $ flip runReaderT env $ makeInstructions tableOffset
+    offset <- bagToList <$> makeInstructions tableOffset
     pure
       Wasm.ElementSection
         { elements =
@@ -821,15 +792,11 @@ makeInstructionsMaybe m_expr = case m_expr of
   _ -> pure emptyBag
 
 makeCodeSection ::
-  MonadError MarshalError m =>
-  Bool ->
-  Bool ->
-  SM.SymbolMap Int64 ->
-  SM.SymbolMap Int64 ->
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
-makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map _mod@Module {..} _module_symtable =
+makeCodeSection _mod@Module {..} _module_symtable =
   fmap Wasm.CodeSection
     $ for (Map.elems functionMap')
     $ \_func@Function {..} -> do
@@ -839,17 +806,10 @@ makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map _mod@Module {..} 
             (I64, c) -> (Wasm.I64, c)
             (F32, c) -> (Wasm.F32, c)
             (F64, c) -> (Wasm.F64, c)
-      _body <- do
-        let env = MarshalEnv
-              { envIsVerboseErrOn = verbose_err,
-                envAreTailCallsOn = tail_calls,
-                envStaticsSymbolMap = ss_sym_map,
-                envFunctionsSymbolMap = func_sym_map,
-                envModuleSymbolTable = _module_symtable,
-                envDeBruijnContext = emptyDeBruijnContext,
-                envLclContext = _local_ctx
-              }
-        flip runReaderT env $ makeInstructions body
+      _body <-
+        local
+          (\env -> env {envLclContext = _local_ctx})
+          (makeInstructions body)
       pure Wasm.Function
         { functionLocals =
             [ Wasm.Locals {localsCount = c, localsType = vt}
@@ -859,27 +819,13 @@ makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map _mod@Module {..} 
         }
 
 makeDataSection ::
-  MonadError MarshalError m =>
-  Bool ->
-  Bool ->
-  SM.SymbolMap Int64 ->
-  SM.SymbolMap Int64 ->
+  (MonadError MarshalError m, MonadReader MarshalEnv m) =>
   Module ->
   ModuleSymbolTable ->
   m Wasm.Section
-makeDataSection verbose_err tail_calls ss_sym_map fn_sym_map Module {..} _module_symtable = do
+makeDataSection Module {..} _module_symtable = do
   segs <- for memorySegments $ \DataSegment {..} -> do
-    let env =
-          MarshalEnv
-            { envIsVerboseErrOn = verbose_err,
-              envAreTailCallsOn = tail_calls,
-              envStaticsSymbolMap = ss_sym_map,
-              envFunctionsSymbolMap = fn_sym_map,
-              envModuleSymbolTable = _module_symtable,
-              envDeBruijnContext = emptyDeBruijnContext,
-              envLclContext = emptyLocalContext
-            }
-    off <- fmap bagToList $ flip runReaderT env $ makeInstructions offset
+    off <- bagToList <$> makeInstructions offset
     pure Wasm.DataSegment
       { memoryIndex = Wasm.MemoryIndex 0,
         memoryOffset = Wasm.Expression off,
@@ -897,14 +843,24 @@ makeModule ::
   m Wasm.Module
 makeModule verbose_err tail_calls ss_sym_map func_sym_map m = do
   _module_symtable <- makeModuleSymbolTable m
+  let env =
+        MarshalEnv
+          { envIsVerboseErrOn = verbose_err,
+            envAreTailCallsOn = tail_calls,
+            envStaticsSymbolMap = ss_sym_map,
+            envFunctionsSymbolMap = func_sym_map,
+            envModuleSymbolTable = _module_symtable,
+            envDeBruijnContext = emptyDeBruijnContext,
+            envLclContext = emptyLocalContext
+          }
   _type_sec <- makeTypeSection m _module_symtable
   _import_sec <- makeImportSection m _module_symtable
   _func_sec <- makeFunctionSection m _module_symtable
-  _gbl_sec <- makeGlobalSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
+  _gbl_sec <- flip runReaderT env $ makeGlobalSection m _module_symtable
   _export_sec <- makeExportSection m _module_symtable
-  _elem_sec <- makeElementSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
-  _code_sec <- makeCodeSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
-  _data_sec <- makeDataSection verbose_err tail_calls ss_sym_map func_sym_map m _module_symtable
+  _elem_sec <- flip runReaderT env $ makeElementSection m _module_symtable
+  _code_sec <- flip runReaderT env $ makeCodeSection m _module_symtable
+  _data_sec <- flip runReaderT env $ makeDataSection m _module_symtable
   pure $
     Wasm.Module
       [ _type_sec,
