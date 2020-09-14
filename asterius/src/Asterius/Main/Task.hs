@@ -3,7 +3,7 @@
 module Asterius.Main.Task
   ( Target (..),
     Backend (..),
-    Task,
+    LinkTask,
     target,
     backend,
     optimizeLevel,
@@ -44,8 +44,8 @@ data Backend
   | Binaryen
   deriving (Eq)
 
-data Task
-  = Task
+data LinkTask
+  = LinkTask
       { target :: Target,
         backend :: Backend,
         optimizeLevel, shrinkLevel :: Int,
@@ -59,8 +59,8 @@ data Task
         gcThreshold :: Int
       }
 
-defTask :: Task
-defTask = Task
+defTask :: LinkTask
+defTask = LinkTask
   { target = Node,
     backend = Binaryen,
     optimizeLevel = 4,

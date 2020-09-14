@@ -4,7 +4,7 @@
 
 module Asterius.Main
   ( Target (..),
-    Task (..),
+    LinkTask (..),
     getTask,
     ahcDistMain,
     ahcLinkMain,
@@ -60,7 +60,7 @@ import System.IO
 import System.IO.Unsafe
 import System.Process
 
-parseTask :: [String] -> Task
+parseTask :: [String] -> LinkTask
 parseTask args = case err_msgs of
   [] -> task
   _ -> error $ show err_msgs
@@ -134,7 +134,7 @@ parseTask args = case err_msgs of
         args
     task = foldl' (flip ($)) defTask task_trans_list
 
-getTask :: IO Task
+getTask :: IO LinkTask
 getTask = parseTask <$> getArgs
 
 genSymbolOffsetDict :: SM.SymbolMap Int64 -> Builder
@@ -153,7 +153,7 @@ genInfoTables :: [Int64] -> Builder
 genInfoTables sym_set =
   "new Set([" <> mconcat (intersperse "," (map intHex sym_set)) <> "])"
 
-genReq :: Task -> LinkReport -> Builder
+genReq :: LinkTask -> LinkReport -> Builder
 genReq task LinkReport {..} =
   mconcat
     [ -- import target-specific module
@@ -195,7 +195,7 @@ genReq task LinkReport {..} =
     func_symbol_table = SM.restrictKeys functionSymbolMap all_roots
     ss_symbol_table = SM.restrictKeys staticsSymbolMap all_roots
 
-genDefEntry :: Task -> Builder
+genDefEntry :: LinkTask -> Builder
 genDefEntry task =
   mconcat
     [ "import * as rts from \"./rts.mjs\";\n",
@@ -216,7 +216,7 @@ genDefEntry task =
   where
     out_base = string7 (outputBaseName task)
 
-genHTML :: Task -> Builder
+genHTML :: LinkTask -> Builder
 genHTML task =
   mconcat
     [ "<!doctype html>\n",
@@ -242,7 +242,7 @@ genHTML task =
 builderWriteFile :: FilePath -> Builder -> IO ()
 builderWriteFile p b = withBinaryFile p WriteMode $ \h -> hPutBuilder h b
 
-ahcLink :: Task -> IO (Asterius.Types.Module, LinkReport)
+ahcLink :: LinkTask -> IO (Asterius.Types.Module, LinkReport)
 ahcLink task = do
   ld_output <- temp (takeBaseName (inputHS task))
   putStrLn $ "[INFO] Compiling " <> inputHS task <> " to WebAssembly"
@@ -280,7 +280,7 @@ ahcLink task = do
   pure r
 
 ahcDistMain ::
-  (String -> IO ()) -> Task -> (Asterius.Types.Module, LinkReport) -> IO ()
+  (String -> IO ()) -> LinkTask -> (Asterius.Types.Module, LinkReport) -> IO ()
 ahcDistMain logger task (final_m, report) = do
   let out_wasm = outputDirectory task </> outputBaseName task <.> "wasm"
       out_wasm_lib = outputDirectory task </> outputBaseName task <.> "wasm.mjs"
@@ -433,7 +433,7 @@ ahcDistMain logger task (final_m, report) = do
               <> ["--experimental-wasm-return-call" | tailCalls task]
               <> ["--experimental-modules", takeFileName out_entry]
 
-ahcLinkMain :: Task -> IO ()
+ahcLinkMain :: LinkTask -> IO ()
 ahcLinkMain task = do
   ld_result <- ahcLink task
   ahcDistMain putStrLn task ld_result
