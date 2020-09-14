@@ -2,9 +2,9 @@
 
 set -euo pipefail
 
-echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200910T083916Z stretch main contrib non-free' > /etc/apt/sources.list
-echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20200910T083916Z stretch/updates main contrib non-free' >> /etc/apt/sources.list
-echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200910T083916Z stretch-updates main contrib non-free' >> /etc/apt/sources.list
+echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200914T024052Z stretch main contrib non-free' > /etc/apt/sources.list
+echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian-security/20200914T024052Z stretch/updates main contrib non-free' >> /etc/apt/sources.list
+echo 'deb [check-valid-until=no] http://snapshot.debian.org/archive/debian/20200914T024052Z stretch-updates main contrib non-free' >> /etc/apt/sources.list
 apt update
 apt full-upgrade -y
 apt install -y \
@@ -19,7 +19,7 @@ apt install -y \
 mkdir -p ~/.local/bin
 curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stack-2.3.3-linux-x86_64-bin -o ~/.local/bin/stack
 chmod u+x ~/.local/bin/stack
-~/.local/bin/stack --resolver lts-16.13 install \
+~/.local/bin/stack --resolver lts-16.14 install \
   alex \
   happy \
   hscolour

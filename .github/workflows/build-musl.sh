@@ -26,7 +26,7 @@ curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stac
 chmod +x ~/.local/bin/stack
 mkdir ~/.stack
 printf "system-ghc: true\nghc-build: musl\n" > ~/.stack/config.yaml
-~/.local/bin/stack --resolver lts-16.13 install \
+~/.local/bin/stack --resolver lts-16.14 install \
   alex \
   happy \
   hscolour

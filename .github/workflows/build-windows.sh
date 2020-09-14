@@ -17,7 +17,7 @@ popd
 
 export PATH=/c/Users/runneradmin/AppData/Roaming/local/bin:$PATH
 stack update
-stack --resolver lts-16.13 install \
+stack --resolver lts-16.14 install \
   alex \
   happy \
   hscolour

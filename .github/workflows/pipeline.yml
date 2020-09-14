@@ -68,7 +68,7 @@ jobs:
           mkdir -p ~/.local/bin
           curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stack-2.3.3-osx-x86_64-bin -o ~/.local/bin/stack
           chmod +x ~/.local/bin/stack
-          ~/.local/bin/stack --resolver lts-16.13 install \
+          ~/.local/bin/stack --resolver lts-16.14 install \
             alex \
             happy
 
@@ -223,7 +223,7 @@ jobs:
           mkdir -p ~/.local/bin
           curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stack-2.3.3-osx-x86_64-bin -o ~/.local/bin/stack
           chmod +x ~/.local/bin/stack
-          ~/.local/bin/stack --resolver lts-16.13 install \
+          ~/.local/bin/stack --resolver lts-16.14 install \
             alex \
             happy \
             hscolour
