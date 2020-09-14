@@ -120,6 +120,7 @@ parseTask args = case err_msgs of
           bool_opt "output-ir" $ \t -> t {outputIR = True},
           bool_opt "run" $ \t -> t {run = True},
           bool_opt "verbose-err" $ \t -> t {backend = Binaryen, verboseErr = True},
+          bool_opt "pic" $ \t -> t {pic = True},
           bool_opt "yolo" $ \t -> t {yolo = True},
           bool_opt "console-history" $ \t -> t {consoleHistory = True},
           str_opt "ghc-option" $
@@ -264,6 +265,7 @@ ahcLink task = do
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
       <> ["-optl--verbose-err" | verboseErr task]
+      <> ["-optl--pic" | pic task]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
              <> outputDirectory task
