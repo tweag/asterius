@@ -23,9 +23,9 @@ setup-info:
   ghc:
     linux64-custom-asterius-tinfo6:
       8.8.4:
-        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200914/ghc-8.8.4-linux64-tinfo6-dwarf-200914.tar.xz
-        content-length: 376426560
-        sha256: 967ccfa0174d1d771338f11b1958aa8ad1194feebe1c46cf853c084b5c871028
+        url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200914/ghc-8.8.4-linux64-tinfo6-200914.tar.xz
+        content-length: 157680532
+        sha256: 2c0d347a584b738c27a700e7310b93238269c890d63a3dc7bfb0802f5ca4bd3d
     linux64-custom-asterius:
       8.8.4:
         url: https://github.com/TerrorJack/ghc/releases/download/ghc-8.8.4-200914/ghc-8.8.4-linux64-standard-200914.tar.xz
