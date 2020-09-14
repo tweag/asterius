@@ -8,7 +8,7 @@ module Asterius.JSRun.NonMain
 where
 
 import Asterius.Ld
-  ( LinkTask (..),
+  ( LoadTask (..),
     linkModules,
   )
 import Asterius.Main (ahcDistMain)
@@ -28,7 +28,7 @@ linkNonMain store_m extra_syms = (m, link_report)
   where
     (_, m, link_report) =
       linkModules
-        LinkTask
+        LoadTask
           { progName = "",
             linkOutput = "",
             linkObjs = [],

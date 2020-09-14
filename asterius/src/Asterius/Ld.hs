@@ -5,7 +5,7 @@
 {-# LANGUAGE StrictData #-}
 
 module Asterius.Ld
-  ( LinkTask (..),
+  ( LoadTask (..),
     linkModules,
     linkExeInMemory,
     linkExe,
@@ -25,8 +25,8 @@ import Control.Exception
 import Data.Either
 import Data.Traversable
 
-data LinkTask
-  = LinkTask
+data LoadTask
+  = LoadTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
@@ -36,14 +36,14 @@ data LinkTask
       }
   deriving (Show)
 
--- | Load all the library and object dependencies for a 'LinkTask' into a
+-- | Load all the library and object dependencies for a 'LoadTask' into a
 -- single module. NOTE: object files in Haskell package directories can also
 -- originate from gcc being called on cbits in packages. This in the past gave
 -- deserialization failures. Hence, when we deserialize objects to be linked in
 -- 'loadTheWorld', we choose to be overpermissive and silently ignore
 -- deserialization failures. This has worked well so far.
-loadTheWorld :: LinkTask -> IO AsteriusCachedModule
-loadTheWorld LinkTask {..} = do
+loadTheWorld :: LoadTask -> IO AsteriusCachedModule
+loadTheWorld LoadTask {..} = do
   ncu <- newNameCacheUpdater
   lib <- mconcat <$> for linkLibs (loadArchive ncu)
   objs <- rights <$> for linkObjs (tryGetFile ncu)
@@ -91,8 +91,8 @@ rtsPrivateSymbols =
     ]
 
 linkModules ::
-  LinkTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
-linkModules LinkTask {..} m =
+  LoadTask -> AsteriusCachedModule -> (AsteriusModule, Module, LinkReport)
+linkModules LoadTask {..} m =
   linkStart
     debug
     gcSections
@@ -118,13 +118,13 @@ linkModules LinkTask {..} m =
     )
     exportFunctions
 
-linkExeInMemory :: LinkTask -> IO (AsteriusModule, Module, LinkReport)
+linkExeInMemory :: LoadTask -> IO (AsteriusModule, Module, LinkReport)
 linkExeInMemory ld_task = do
   final_store <- loadTheWorld ld_task
   evaluate $ linkModules ld_task final_store
 
-linkExe :: LinkTask -> IO ()
-linkExe ld_task@LinkTask {..} = do
+linkExe :: LoadTask -> IO ()
+linkExe ld_task@LoadTask {..} = do
   (pre_m, m, link_report) <- linkExeInMemory ld_task
   putFile linkOutput (m, link_report)
   case outputIR of

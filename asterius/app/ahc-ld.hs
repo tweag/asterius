@@ -10,11 +10,11 @@ import System.Directory
 import System.Environment.Blank
 import System.Process
 
-parseLinkTask :: [String] -> IO LinkTask
-parseLinkTask args = do
+parseLoadTask :: [String] -> IO LoadTask
+parseLoadTask args = do
   link_libs <- fmap catMaybes $ for link_libnames $ findFile link_libdirs
   pure
-    LinkTask
+    LoadTask
       { progName = prog_name,
         linkOutput = link_output,
         linkObjs = link_objs,
@@ -62,6 +62,6 @@ main = do
       let Just ('@' : rsp_path) = find ((== '@') . head) args
       rsp <- readFile rsp_path
       let rsp_args = map read $ lines rsp
-      task <- parseLinkTask rsp_args
+      task <- parseLoadTask rsp_args
       ignore <- isJust <$> getEnv "ASTERIUS_AHC_LD_IGNORE"
       if ignore then callProcess "touch" [linkOutput task] else linkExe task

@@ -276,7 +276,7 @@ asteriusWriteIServ hsc_env i a
             (js_s, p, _) = ghciSession s
         (_, final_m, link_report) <-
           linkExeInMemory
-            LinkTask
+            LoadTask
               { progName = "",
                 linkOutput = "",
                 linkObjs = [],
