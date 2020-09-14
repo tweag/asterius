@@ -3,7 +3,6 @@ FROM debian:sid-slim
 ARG DEBIAN_FRONTEND=noninteractive
 ARG USERNAME=asterius
 ARG UID=1000
-ARG GID=1000
 
 ENV \
   LANG=C.UTF-8 \
@@ -37,7 +36,6 @@ RUN \
   rm -rf -v /var/lib/apt/lists/* && \
   useradd \
     --create-home \
-    --gid ${GID} \
     --shell /bin/bash \
     --uid ${UID} \
     asterius && \
@@ -64,7 +62,7 @@ RUN \
     recommonmark \
     sphinx
 
-COPY --chown=${UID}:${GID} . /tmp/asterius
+COPY --chown=${UID} . /tmp/asterius
 
 RUN \
   cd /tmp/asterius && \
