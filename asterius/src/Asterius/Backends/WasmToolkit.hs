@@ -461,7 +461,9 @@ marshalBinaryOp op = case op of
 -- | Environment used during the elaboration of Asterius' types to WebAssembly.
 data MarshalEnv
   = MarshalEnv
-      { -- | Whether the @verbose_err@ extension is on.
+      { -- | Whether the @pic@ extension is on.
+        envIsPicOn :: Bool,
+        -- | Whether the @verbose_err@ extension is on.
         envIsVerboseErrOn :: Bool,
         -- | Whether the tail call extension is on.
         envAreTailCallsOn :: Bool,
@@ -476,6 +478,10 @@ data MarshalEnv
         -- | The local context. Used for local variable access.
         envLclContext :: LocalContext
       }
+
+-- | Check whether the @pic@ extension is on.
+isPicOn :: MonadReader MarshalEnv m => m Bool
+isPicOn = reader envIsVerboseErrOn
 
 -- | Check whether the @verbose_err@ extension is on.
 isVerboseErrOn :: MonadReader MarshalEnv m => m Bool
@@ -837,15 +843,17 @@ makeModule ::
   MonadError MarshalError m =>
   Bool ->
   Bool ->
+  Bool ->
   SM.SymbolMap Int64 ->
   SM.SymbolMap Int64 ->
   Module ->
   m Wasm.Module
-makeModule verbose_err tail_calls ss_sym_map func_sym_map m = do
+makeModule pic_on verbose_err tail_calls ss_sym_map func_sym_map m = do
   _module_symtable <- makeModuleSymbolTable m
   let env =
         MarshalEnv
-          { envIsVerboseErrOn = verbose_err,
+          { envIsPicOn = pic_on,
+            envIsVerboseErrOn = verbose_err,
             envAreTailCallsOn = tail_calls,
             envStaticsSymbolMap = ss_sym_map,
             envFunctionsSymbolMap = func_sym_map,

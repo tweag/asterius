@@ -345,6 +345,7 @@ ahcDistMain logger task (final_m, report) = do
       let conv_result =
             runExcept $
               WasmToolkit.makeModule
+                (pic task)
                 (verboseErr task)
                 (tailCalls task)
                 (staticsSymbolMap report)
