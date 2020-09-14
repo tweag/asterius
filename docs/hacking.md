@@ -178,6 +178,12 @@ The command above will start `my_dev_container` from `my_dev_image`, mount the
 current project directory to `/asterius` and drop into the bash prompt, from
 where you can run build commands.
 
+After `exit`ing the current bash prompt of `my_dev_container`, it can be restarted later:
+
+```sh
+$ docker start -ai my_dev_container
+```
+
 If you're using VSCode remote SSH, the first attempt to set up will fail. A
 known to work workaround is available at
 https://github.com/microsoft/vscode-remote-release/issues/648#issuecomment-503148523.
