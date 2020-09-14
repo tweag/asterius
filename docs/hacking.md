@@ -147,3 +147,37 @@ Though not all parts of the codebase are currently formatted this way, it is
 recommended that when you submit a PR you run the respective formatters on the
 changed parts of the code, so that gradually the whole codebase is formatted
 uniformly.
+
+## Hacking on `build01`
+
+This section is for Tweagers only.
+
+First, set up your `build01` account according to the
+[handbook](https://github.com/tweag/meta/blob/master/handbook/eng/remote-builder.md).
+Don't forget to add the `groups = ["docker"]` line in your PR.
+
+Once the PR is merged, you can SSH into a NixOS non-privileged user. You can
+check out the `asterius` repo, set up your favorite text editor, make edits and
+push to the remote.
+
+To build/boot and run tests, a dev container needs to be built first. The
+`dev.rootless.Dockerfile` can be used to build an image which has the same UID
+with your user and doesn't mess up local file permissions:
+
+```sh
+$ docker build --build-arg UID=$(id -u) --file dev.rootless.Dockerfile --tag my_dev_image .
+```
+
+After `my_dev_image` is built, a dev container can be started:
+
+```sh
+$ docker run -it -v $(pwd):/asterius -w /asterius --name my_dev_container my_dev_image
+```
+
+The command above will start `my_dev_container` from `my_dev_image`, mount the
+current project directory to `/asterius` and drop into the bash prompt, from
+where you can run build commands.
+
+If you're using VSCode remote SSH, the first attempt to set up will fail. A
+known to work workaround is available at
+https://github.com/microsoft/vscode-remote-release/issues/648#issuecomment-503148523.
