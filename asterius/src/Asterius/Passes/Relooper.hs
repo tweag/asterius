@@ -7,6 +7,7 @@ module Asterius.Passes.Relooper
   )
 where
 
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import Data.Foldable
 import Data.List
@@ -75,7 +76,7 @@ relooper' RelooperRun {..} = result_expr
                                              { index = 1,
                                                valueType = I32
                                              },
-                                           operand1 = ConstI32 $ fromIntegral tag
+                                           operand1 = ConstI32 $ safeFromIntegral tag
                                          }
                                        | tag <- indexes
                                      ],

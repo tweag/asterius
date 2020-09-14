@@ -40,6 +40,7 @@ import Asterius.Builtins.Time
 import Asterius.EDSL
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Data.ByteString as BS
@@ -1557,7 +1558,7 @@ genWrap ti b x = Block
           },
         Load
           { signed = False,
-            bytes = fromIntegral b,
+            bytes = safeFromIntegral b,
             offset = 0,
             valueType = I32,
             ptr = wrapInt64 (symbol "__asterius_i64_slot")
@@ -1599,7 +1600,7 @@ genExtend b to sext x = Block
           },
         Load
           { signed = sext == Sext,
-            bytes = fromIntegral b,
+            bytes = safeFromIntegral b,
             offset = 0,
             valueType = to,
             ptr = wrapInt64 (symbol "__asterius_i64_slot")

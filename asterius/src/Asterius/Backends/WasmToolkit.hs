@@ -27,6 +27,7 @@ import Asterius.Builtins
 import Asterius.EDSL (addInt64, constI64, extendUInt32)
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Passes.Relooper
 import Asterius.TypeInfer
 import Asterius.Types
@@ -155,7 +156,7 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
               importName = coerce $ SBS.toShort externalBaseName,
               importDescription = Wasm.ImportMemory $ Wasm.MemoryType $ Wasm.Limits
                 { minLimit =
-                    fromIntegral $
+                    safeFromIntegral $
                       memoryMBlocks
                         * (mblock_size `quot` wasmPageSize),
                   maxLimit = Nothing
@@ -167,7 +168,7 @@ makeImportSection Module {..} ModuleSymbolTable {..} = pure Wasm.ImportSection
                 { moduleName = coerce $ SBS.toShort externalModuleName,
                   importName = coerce $ SBS.toShort externalBaseName,
                   importDescription = Wasm.ImportTable $ Wasm.TableType Wasm.AnyFunc $ Wasm.Limits
-                    { minLimit = fromIntegral tableSlots,
+                    { minLimit = safeFromIntegral tableSlots,
                       maxLimit = Nothing
                     }
                 }
@@ -318,7 +319,7 @@ makeLocalContext Module {} Function {..} =
     $ sort
     $ zip varTypes [arity ..]
   where
-    arity = fromIntegral $ length $ paramTypes functionType
+    arity = safeFromIntegral $ length $ paramTypes functionType
 
 lookupLocalContext :: LocalContext -> BinaryenIndex -> Wasm.LocalIndex
 lookupLocalContext LocalContext {..} i = coerce $ case Map.lookup i localMap of
@@ -756,7 +757,7 @@ makeInstructions expr =
       func_sym_map <- askFunctionsSymbolMap
       if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
             pure $ unitBag Wasm.I64Const
-              { i64ConstValue = x + fromIntegral symbolOffset
+              { i64ConstValue = x + safeFromIntegral symbolOffset
               }
           | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
             let base =
@@ -767,7 +768,7 @@ makeInstructions expr =
              in makeInstructions $
                   addInt64
                     (extendUInt32 base)
-                    (constI64 $ fromIntegral x + symbolOffset)
+                    (constI64 $ safeFromIntegral x + symbolOffset)
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->

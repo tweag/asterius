@@ -12,6 +12,7 @@ import Asterius.EDSL
   ( convertSInt64ToFloat64,
     convertUInt64ToFloat64,
   )
+import Asterius.Internals.SafeFromIntegral
 import Asterius.TypeInfer
 import Asterius.Types
 import Asterius.Types.SymbolMap
@@ -120,7 +121,7 @@ addTracingModule func_sym_map func_sym func@Function {functionType = func_type}
                       )
             pure CFG {graph = g {blockMap = new_block_map}}
             where
-              lbl_to_idx = ConstI32 . read . map (chr . fromIntegral) . BS.unpack
+              lbl_to_idx = ConstI32 . read . map (chr . safeFromIntegral) . BS.unpack
           SetLocal {..}
             | ((index_int < param_num) && (params !! index_int == I64))
                 || ( (index_int >= param_num)
@@ -136,7 +137,7 @@ addTracingModule func_sym_map func_sym func@Function {functionType = func_type}
                         { target' = "__asterius_traceCmmSetLocal",
                           operands =
                             [ func_idx,
-                              ConstI32 $ fromIntegral index,
+                              ConstI32 $ safeFromIntegral index,
                               convertSInt64ToFloat64 GetLocal
                                 { index = index,
                                   valueType = I64
@@ -150,7 +151,7 @@ addTracingModule func_sym_map func_sym func@Function {functionType = func_type}
             where
               params = paramTypes func_type
               param_num = length params
-              index_int = fromIntegral index
+              index_int = safeFromIntegral index
           _ -> go
         _ -> go
       where

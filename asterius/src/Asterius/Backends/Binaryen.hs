@@ -1,10 +1,13 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiWayIf #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE StrictData #-}
-{-# OPTIONS_GHC -Wno-overflowed-literals #-}
+{-# OPTIONS_GHC -Wno-orphans -Wno-overflowed-literals #-}
 
 -- |
 -- Module      :  Asterius.Backends.Binaryen
@@ -28,6 +31,7 @@ import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import Asterius.TypesConv
@@ -62,6 +66,12 @@ import Foreign.C
 import GHC.Exts
 import Language.Haskell.GHC.Toolkit.Constants
 
+deriving newtype instance Bounded Binaryen.Index
+deriving newtype instance Enum Binaryen.Index
+deriving newtype instance Integral Binaryen.Index
+deriving newtype instance Ord Binaryen.Index
+deriving newtype instance Real Binaryen.Index
+
 newtype MarshalError
   = UnsupportedExpression Expression
   deriving (Show)
@@ -85,7 +95,7 @@ marshalValueTypes vts = do
   a <- askArena
   lift $ do
     (vts', vtl) <- marshalV a $ map marshalValueType vts
-    Binaryen.Type.create vts' (fromIntegral vtl)
+    Binaryen.Type.create vts' (safeFromIntegral vtl)
 
 marshalReturnTypes :: [ValueType] -> CodeGen Binaryen.Type
 marshalReturnTypes vts = case vts of
@@ -292,7 +302,7 @@ marshalExpression e = case e of
     lift $ do
       (bsp, bl) <- marshalV a bs
       np <- marshalBS a name
-      Binaryen.block m np bsp (fromIntegral bl) rts
+      Binaryen.block m np bsp (safeFromIntegral bl) rts
   If {..} -> do
     c <- marshalExpression condition
     t <- marshalExpression ifTrue
@@ -321,7 +331,7 @@ marshalExpression e = case e of
       ns <- forM names $ marshalBS a
       (nsp, nl) <- marshalV a ns
       dn <- marshalBS a defaultName
-      Binaryen.switch m nsp (fromIntegral nl) dn c (coerce nullPtr)
+      Binaryen.switch m nsp (safeFromIntegral nl) dn c (coerce nullPtr)
   Call {..} -> do
     verbose_err <- isVerboseErrOn
     func_sym_map <- askFunctionsSymbolMap
@@ -343,7 +353,7 @@ marshalExpression e = case e of
           lift $ do
             (ops, osl) <- marshalV a os
             tp <- marshalBS a (entityName target)
-            Binaryen.call m tp ops (fromIntegral osl) rts
+            Binaryen.call m tp ops (safeFromIntegral osl) rts
         | verbose_err ->
           marshalExpression $
             barf (entityName target) callReturnTypes
@@ -358,7 +368,7 @@ marshalExpression e = case e of
     lift $ do
       (ops, osl) <- marshalV a os
       tp <- marshalBS a target'
-      Binaryen.call m tp ops (fromIntegral osl) rts
+      Binaryen.call m tp ops (safeFromIntegral osl) rts
   CallIndirect {..} -> do
     t <- marshalExpression indirectTarget
     os <- forM operands marshalExpression
@@ -367,7 +377,7 @@ marshalExpression e = case e of
     a <- askArena
     lift $ do
       (ops, osl) <- marshalV a os
-      Binaryen.callIndirect m t ops (fromIntegral osl) pt rt
+      Binaryen.callIndirect m t ops (safeFromIntegral osl) pt rt
   GetLocal {..} -> do
     m <- askModuleRef
     lift $ Binaryen.localGet m (coerce index) $ marshalValueType valueType
@@ -505,7 +515,7 @@ marshalExpression e = case e of
     func_sym_map <- askFunctionsSymbolMap
     m <- askModuleRef
     if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
-          lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
+          lift $ Binaryen.constInt64 m $ x + safeFromIntegral symbolOffset
         | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
           let base =
                 GetGlobal
@@ -515,7 +525,7 @@ marshalExpression e = case e of
            in marshalExpression $
                 addInt64
                   (extendUInt32 base)
-                  (constI64 $ fromIntegral x + symbolOffset)
+                  (constI64 $ safeFromIntegral x + symbolOffset)
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->
@@ -548,7 +558,7 @@ marshalFunction k (pt, rt) Function {..} = do
   lift $ do
     (vtp, vtl) <- marshalV a $ map marshalValueType varTypes
     np <- marshalBS a k
-    Binaryen.addFunction m np pt rt vtp (fromIntegral vtl) b
+    Binaryen.addFunction m np pt rt vtp (safeFromIntegral vtl) b
 
 marshalFunctionImport ::
   Binaryen.Module ->
@@ -581,10 +591,10 @@ marshalFunctionTable m tbl_slots FunctionTable {..} = do
     (fnp, fnl) <- marshalV a func_name_ptrs
     Binaryen.setFunctionTable
       m
-      (fromIntegral tbl_slots)
+      (safeFromIntegral tbl_slots)
       (-1)
       fnp
-      (fromIntegral fnl)
+      (safeFromIntegral fnl)
       o
 
 marshalMemorySegments :: Int -> [DataSegment] -> CodeGen ()
@@ -603,17 +613,17 @@ marshalMemorySegments mbs segs = do
           ( \DataSegment {..} ->
               flip runReaderT env $ marshalExpression offset
           )
-    (seg_sizes, _) <- marshalV a $ map (fromIntegral . BS.length . content) segs
+    (seg_sizes, _) <- marshalV a $ map (safeFromIntegral . BS.length . content) segs
     Binaryen.setMemory
       m
-      (fromIntegral $ mbs * (mblock_size `quot` wasmPageSize))
+      (safeFromIntegral $ mbs * (mblock_size `quot` wasmPageSize))
       (-1)
       nullPtr
       seg_bufs
       seg_passives
       seg_offsets
       seg_sizes
-      (fromIntegral segs_len)
+      (safeFromIntegral segs_len)
       0
 
 marshalTableImport :: Binaryen.Module -> TableImport -> CodeGen ()
@@ -642,7 +652,7 @@ marshalGlobalImport m GlobalImport {..} = do
     emp <- marshalBS a externalModuleName
     ebp <- marshalBS a externalBaseName
     let (ty, mut) = marshalGlobalType globalType
-    Binaryen.addGlobalImport m inp emp ebp ty (fromIntegral mut)
+    Binaryen.addGlobalImport m inp emp ebp ty (safeFromIntegral mut)
 
 marshalGlobalExport ::
   Binaryen.Module -> GlobalExport -> CodeGen Binaryen.Export
@@ -738,7 +748,7 @@ relooperAddBranch bm k ab = case ab of
         (bm M.! k)
         (bm M.! to)
         (coerce idp)
-        (fromIntegral idn)
+        (safeFromIntegral idn)
         (coerce nullPtr)
 
 relooperRun :: RelooperRun -> CodeGen Binaryen.Expression
@@ -760,7 +770,7 @@ serializeModule m = alloca $ \(buf_p :: Ptr (Ptr ())) ->
       Binaryen.allocateAndWriteMut m nullPtr buf_p len_p src_map_p
       buf <- peek buf_p
       len <- peek len_p
-      BS.unsafePackMallocCStringLen (castPtr buf, fromIntegral len)
+      BS.unsafePackMallocCStringLen (castPtr buf, safeFromIntegral len)
 
 serializeModuleSExpr :: Binaryen.Module -> IO BS.ByteString
 serializeModuleSExpr m =

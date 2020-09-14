@@ -11,6 +11,7 @@ where
 
 import Asterius.Foreign.ExportStatic
 import Asterius.Foreign.Internals
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import Control.Monad
 import CoreUnfold
@@ -119,8 +120,8 @@ asteriusDsFExportDynamic id co0 src = do
   stbl_value <- newSysLocalDs stable_ptr_ty
   let adj_args =
         [ Var stbl_value,
-          mkIntLitInt dflags (fromIntegral ffi_params_tag),
-          mkIntLitInt dflags (fromIntegral ffi_ret_tag),
+          mkIntLitInt dflags (safeFromIntegral ffi_params_tag),
+          mkIntLitInt dflags (safeFromIntegral ffi_ret_tag),
           mkIntLitInt dflags (if ffiInIO then 1 else 0),
           mkIntLitInt dflags (if oneshot then 1 else 0)
         ]

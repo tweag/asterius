@@ -10,6 +10,7 @@ where
 
 import Asterius.Internals
 import Asterius.Internals.MagicNumber
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
 import qualified Data.ByteString as BS
@@ -29,7 +30,7 @@ sizeofStatic = \case
 
 sizeofStatics :: AsteriusStatics -> Int64
 sizeofStatics =
-  fromIntegral
+  safeFromIntegral
     . getSum
     . foldMap (Sum . sizeofStatic)
     . asteriusStatics
@@ -40,7 +41,7 @@ makeDataSymbolTable ::
 makeDataSymbolTable AsteriusModule {..} l =
   swap $
     SM.mapAccum
-      ( \a ss -> (a + fromIntegral (fromIntegral (sizeofStatics ss) `roundup` 16), a)
+      ( \a ss -> (a + safeFromIntegral (safeFromIntegral (sizeofStatics ss) `roundup` 16), a)
       )
       l
       staticsMap
@@ -52,11 +53,11 @@ makeDataSymbolTable AsteriusModule {..} l =
 {-# INLINEABLE makeSegment #-}
 makeSegment :: SM.SymbolMap Int64 -> Int32 -> AsteriusStatic -> (Int32, Maybe DataSegment)
 makeSegment sym_map off static =
-  ( off + fromIntegral (sizeofStatic static),
+  ( off + safeFromIntegral (sizeofStatic static),
     case static of
       SymbolStatic sym o ->
         let address = case SM.lookup sym sym_map of
-              Just addr -> addr + fromIntegral o
+              Just addr -> addr + safeFromIntegral o
               _ -> invalidAddress
          in Just DataSegment {content = encodeStorable address, offset = ConstI32 off}
       Uninitialized {} -> Nothing
@@ -67,5 +68,5 @@ makeSegment sym_map off static =
 makeMemory :: AsteriusModule -> SM.SymbolMap Int64 -> [DataSegment]
 makeMemory AsteriusModule {..} sym_map =
   concat $ SM.elems $ flip SM.mapWithKey staticsMap $ \statics_sym ss ->
-    let initial_offset = fromIntegral $ unTag $ sym_map SM.! statics_sym
+    let initial_offset = safeFromIntegral $ unTag $ sym_map SM.! statics_sym
      in catMaybes $ snd $ mapAccumL (makeSegment sym_map) initial_offset $ asteriusStatics ss

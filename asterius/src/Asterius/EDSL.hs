@@ -86,6 +86,7 @@ where
 import Asterius.EDSL.BinaryOp
 import Asterius.EDSL.UnaryOp
 import Asterius.Internals
+import Asterius.Internals.SafeFromIntegral
 import Asterius.Passes.All
 import Asterius.Passes.GlobalRegs
 import Asterius.Types
@@ -190,7 +191,7 @@ setReturnTypes vts = EDSL $ modify' $ \s -> s {retTypes = vts}
 mutParam :: ValueType -> EDSL LVal
 mutParam vt = EDSL $ do
   i <- state $ \s@EDSLState {..} ->
-    ( fromIntegral paramNum,
+    ( safeFromIntegral paramNum,
       s {paramBuf = paramBuf `snocBag` vt, paramNum = succ paramNum}
     )
   pure LVal
@@ -249,13 +250,13 @@ pointer vt b bp o = LVal
   { getLVal = Load
       { signed = False,
         bytes = b,
-        offset = fromIntegral o,
+        offset = safeFromIntegral o,
         valueType = vt,
         ptr = wrapInt64 bp
       },
     putLVal = \v -> emit $ Store
       { bytes = b,
-        offset = fromIntegral o,
+        offset = safeFromIntegral o,
         ptr = wrapInt64 bp,
         value = v,
         valueType = vt
@@ -487,10 +488,10 @@ symbol' :: EntitySymbol -> Int -> Expression
 symbol' sym o = Symbol {unresolvedSymbol = sym, symbolOffset = o}
 
 constI32 :: Int -> Expression
-constI32 = ConstI32 . fromIntegral
+constI32 = ConstI32 . safeFromIntegral
 
 constI64 :: Int -> Expression
-constI64 = ConstI64 . fromIntegral
+constI64 = ConstI64 . safeFromIntegral
 
 constF64 :: Int -> Expression
 constF64 = ConstF64 . fromIntegral
