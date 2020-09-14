@@ -21,7 +21,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.10.0
+          node-version: 14.10.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -66,7 +66,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.10.0
+          node-version: 14.10.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -154,7 +154,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.10.0
+          node-version: 14.10.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -197,7 +197,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.10.0
+          node-version: 14.10.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -255,7 +255,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.10.0
+          node-version: 14.10.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -302,7 +302,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.10.0
+          node-version: 14.10.1
 
       - name: checkout
         uses: actions/checkout@v2
@@ -357,7 +357,7 @@ jobs:
 
       - name: gen-pkgs
         run: |
-          utils/gen-pkgs.hs lts-16.13
+          utils/gen-pkgs.hs lts-16.14
           mkdir gen-pkgs
           mv cabal.config pkgs.txt gen-pkgs
 
@@ -376,6 +376,7 @@ jobs:
         image:
           - base
           - dev
+          - dev.rootless
     env:
       ASTERIUS_IMAGE: ${{ matrix.image }}
     steps:
@@ -417,7 +418,7 @@ jobs:
       - name: setup-node-14
         uses: actions/setup-node@v2.0.0
         with:
-          node-version: 14.10.0
+          node-version: 14.10.1
 
       - name: setup-deps
         run: |
