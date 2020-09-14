@@ -376,6 +376,7 @@ jobs:
         image:
           - base
           - dev
+          - dev.rootless
     env:
       ASTERIUS_IMAGE: ${{ matrix.image }}
     steps:

@@ -41,13 +41,9 @@ RUN \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stack-2.3.3-linux-x86_64-bin -o ~/.local/bin/stack && \
   chmod +x ~/.local/bin/stack && \
-  curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal' && \
-  mkdir ~/.asterius
+  curl -L https://downloads.haskell.org/~cabal/cabal-install-3.2.0.0/cabal-install-3.2.0.0-x86_64-unknown-linux.tar.xz | tar xJ -C ~/.local/bin 'cabal'
 
-COPY asterius /root/.asterius/asterius
-COPY ghc-toolkit /root/.asterius/ghc-toolkit
-COPY wasm-toolkit /root/.asterius/wasm-toolkit
-COPY stack.yaml /root/.asterius/stack.yaml
+COPY . /root/.asterius
 
 RUN \
   cd ~/.asterius && \
