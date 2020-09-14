@@ -38,7 +38,6 @@ linkNonMain store_m extra_syms = (m, link_report)
             Asterius.Ld.debug = False,
             Asterius.Ld.gcSections = True,
             Asterius.Ld.verboseErr = True,
-            Asterius.Ld.pic = False, -- TODO: motivation for hardcoding either choice here?
             Asterius.Ld.outputIR = Nothing,
             rootSymbols = extra_syms,
             Asterius.Ld.exportFunctions = []
@@ -61,7 +60,6 @@ distNonMain p extra_syms =
         yolo = True,
         Asterius.Main.Task.hasMain = False,
         Asterius.Main.Task.verboseErr = True,
-        Asterius.Main.Task.pic = False, -- TODO: motivation for hardcoding either choice here?
         extraRootSymbols = extra_syms
       }
 

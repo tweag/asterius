@@ -24,7 +24,6 @@ parseLinkTask args = do
         debug = "--debug" `elem` args,
         gcSections = "--no-gc-sections" `notElem` args,
         verboseErr = "--verbose-err" `elem` args,
-        pic = "--pic" `elem` args,
         outputIR =
           find ("--output-ir=" `isPrefixOf`) args
             >>= stripPrefix "--output-ir=",

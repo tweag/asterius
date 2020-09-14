@@ -30,7 +30,7 @@ data LinkTask
       { progName, linkOutput :: FilePath,
         linkObjs, linkLibs :: [FilePath],
         linkModule :: AsteriusCachedModule,
-        hasMain, debug, gcSections, verboseErr, pic :: Bool,
+        hasMain, debug, gcSections, verboseErr :: Bool,
         outputIR :: Maybe FilePath,
         rootSymbols, exportFunctions :: [EntitySymbol]
       }

@@ -286,7 +286,6 @@ asteriusWriteIServ hsc_env i a
                 debug = False,
                 gcSections = True,
                 verboseErr = True,
-                pic = False, -- TODO: motivation for hardcoding either choice here?
                 outputIR = Nothing,
                 rootSymbols =
                   [ run_q_exp_sym,
