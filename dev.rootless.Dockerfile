@@ -48,7 +48,7 @@ WORKDIR /home/${USERNAME}
 
 RUN \
   (curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash) && \
-  bash -c ". ~/.nvm/nvm.sh && nvm install 14.10.0" && \
+  bash -c ". ~/.nvm/nvm.sh && nvm install 14.10.1" && \
   echo "eval \"\$(direnv hook bash)\"" >> ~/.bashrc && \
   mkdir -p ~/.local/bin && \
   curl -L https://github.com/commercialhaskell/stack/releases/download/v2.3.3/stack-2.3.3-linux-x86_64-bin -o ~/.local/bin/stack && \
