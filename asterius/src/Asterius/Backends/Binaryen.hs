@@ -506,6 +506,7 @@ marshalExpression e = case e of
     lift $ Binaryen.Expression.unreachable m
   CFG {..} -> relooperRun graph
   Symbol {..} -> do
+    pic_is_on <- isPicOn
     verbose_err <- isVerboseErrOn
     ss_sym_map <- askStaticsSymbolMap
     func_sym_map <- askFunctionsSymbolMap
@@ -513,15 +514,19 @@ marshalExpression e = case e of
     if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
           lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
         | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
-          let base =
-                GetGlobal
-                  { globalSymbol = "__asterius_table_base",
-                    valueType = I32
-                  }
-           in marshalExpression $
-                addInt64
-                  (extendUInt32 base)
-                  (constI64 $ fromIntegral x + symbolOffset)
+          marshalExpression $
+            if pic_is_on
+              then
+                let base =
+                      GetGlobal
+                        { globalSymbol = "__asterius_table_base",
+                          valueType = I32
+                        }
+                 in addInt64
+                      (extendUInt32 base)
+                      (constI64 $ fromIntegral x + symbolOffset)
+              else
+                constI64 $ fromIntegral x + symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->
