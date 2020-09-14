@@ -305,6 +305,7 @@ ahcDistMain logger task (final_m, report) = do
       Binaryen.setLowMemoryUnused 1
       m_ref <-
         Binaryen.marshalModule
+          (pic task)
           (verboseErr task)
           (tailCalls task)
           (staticsSymbolMap report)

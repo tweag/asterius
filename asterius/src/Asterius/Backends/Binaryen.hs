@@ -244,6 +244,8 @@ marshalFunctionType FunctionType {..} = do
 data MarshalEnv = MarshalEnv
   { -- | The 'A.Arena' for allocating temporary buffers.
     envArena :: A.Arena,
+    -- | Whether the @pic@ extension is on.
+    envIsPicOn :: Bool,
     -- | Whether the @verbose_err@ extension is on.
     envIsVerboseErrOn :: Bool,
     -- | Whether the tail call extension is on.
@@ -261,6 +263,10 @@ type CodeGen a = ReaderT MarshalEnv IO a
 -- | Retrieve the 'A.Arena'.
 askArena :: CodeGen A.Arena
 askArena = reader envArena
+
+-- | Check whether the @verbose_err@ extension is on.
+isPicOn :: CodeGen Bool
+isPicOn = reader envIsPicOn
 
 -- | Check whether the @verbose_err@ extension is on.
 isVerboseErrOn :: CodeGen Bool
@@ -667,11 +673,12 @@ marshalGlobal k Global {..} = do
 marshalModule ::
   Bool ->
   Bool ->
+  Bool ->
   SM.SymbolMap Int64 ->
   SM.SymbolMap Int64 ->
   Module ->
   IO Binaryen.Module
-marshalModule verbose_err tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
+marshalModule pic_on verbose_err tail_calls ss_sym_map func_sym_map hs_mod@Module {..} = do
   m <- Binaryen.Module.create
   Binaryen.setFeatures m
     $ foldl1' (.|.)
@@ -681,6 +688,7 @@ marshalModule verbose_err tail_calls ss_sym_map func_sym_map hs_mod@Module {..} 
     let env =
           MarshalEnv
             { envArena = a,
+              envIsPicOn = pic_on,
               envIsVerboseErrOn = verbose_err,
               envAreTailCallsOn = tail_calls,
               envStaticsSymbolMap = ss_sym_map,
