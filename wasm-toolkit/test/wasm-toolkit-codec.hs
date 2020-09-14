@@ -108,7 +108,7 @@ main = do
     $ testCodecModule
       >=> quickCheck
   r <-
-    quickCheckResult $ withMaxSuccess 576460752303423488 $
+    quickCheckResult $
       conjoin
         [ testLEB128Dynamic,
           testCodecGen genModule genericShrink getModule putModule
