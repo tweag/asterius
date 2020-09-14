@@ -757,6 +757,7 @@ makeInstructions expr =
     Unreachable -> pure $ unitBag Wasm.Unreachable
     CFG {..} -> makeInstructions $ relooper graph
     Symbol {..} -> do
+      pic_is_on <- isPicOn
       verbose_err <- isVerboseErrOn
       ss_sym_map <- askStaticsSymbolMap
       func_sym_map <- askFunctionsSymbolMap
@@ -765,15 +766,19 @@ makeInstructions expr =
               { i64ConstValue = x + fromIntegral symbolOffset
               }
           | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
-            let base =
-                  GetGlobal
-                    { globalSymbol = "__asterius_table_base",
-                      valueType = I32
-                    }
-             in makeInstructions $
-                  addInt64
-                    (extendUInt32 base)
-                    (constI64 $ fromIntegral x + symbolOffset)
+            makeInstructions $
+              if pic_is_on
+                then
+                  let base =
+                        GetGlobal
+                          { globalSymbol = "__asterius_table_base",
+                            valueType = I32
+                          }
+                   in addInt64
+                        (extendUInt32 base)
+                        (constI64 $ fromIntegral x + symbolOffset)
+                else
+                  constI64 $ fromIntegral x + symbolOffset
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->
