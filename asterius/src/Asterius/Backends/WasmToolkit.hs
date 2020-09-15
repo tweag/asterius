@@ -24,7 +24,6 @@ module Asterius.Backends.WasmToolkit
 where
 
 import Asterius.Builtins
-import Asterius.EDSL (addInt64, constI64, extendUInt32)
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
@@ -759,15 +758,9 @@ makeInstructions expr =
               { i64ConstValue = x + fromIntegral symbolOffset
               }
           | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
-            let base =
-                  GetGlobal
-                    { globalSymbol = "__asterius_table_base",
-                      valueType = I32
-                    }
-             in makeInstructions $
-                  addInt64
-                    (extendUInt32 base)
-                    (constI64 $ fromIntegral x + symbolOffset)
+            pure $ unitBag Wasm.I64Const
+              { i64ConstValue = x + fromIntegral symbolOffset
+              }
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->

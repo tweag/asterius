@@ -23,7 +23,6 @@ module Asterius.Backends.Binaryen
 where
 
 import Asterius.Builtins
-import Asterius.EDSL (addInt64, constI64, extendUInt32)
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
@@ -507,15 +506,7 @@ marshalExpression e = case e of
     if  | Just x <- SM.lookup unresolvedSymbol ss_sym_map ->
           lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
         | Just x <- SM.lookup unresolvedSymbol func_sym_map ->
-          let base =
-                GetGlobal
-                  { globalSymbol = "__asterius_table_base",
-                    valueType = I32
-                  }
-           in marshalExpression $
-                addInt64
-                  (extendUInt32 base)
-                  (constI64 $ fromIntegral x + symbolOffset)
+          lift $ Binaryen.constInt64 m $ x + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->

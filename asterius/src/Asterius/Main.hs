@@ -136,8 +136,8 @@ parseTask args = case err_msgs of
 getTask :: IO Task
 getTask = parseTask <$> getArgs
 
-genSymbolOffsetDict :: SM.SymbolMap Int64 -> Builder
-genSymbolOffsetDict sym_map =
+genSymbolTableDict :: SM.SymbolMap Int64 -> Builder
+genSymbolTableDict sym_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
@@ -165,10 +165,10 @@ genReq task LinkReport {..} =
       genExportStaticObj bundledFFIMarshalState functionSymbolMap,
       ", staticsExportsStatic: ",
       genExportStaticObj bundledFFIMarshalState staticsSymbolMap,
-      ", functionsOffsetTable: ",
-      genSymbolOffsetDict func_symbol_table,
-      ", staticsOffsetTable: ",
-      genSymbolOffsetDict ss_symbol_table,
+      ", functionsSymbolTable: ",
+      genSymbolTableDict func_symbol_table,
+      ", staticsSymbolTable: ",
+      genSymbolTableDict ss_symbol_table,
       if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,
