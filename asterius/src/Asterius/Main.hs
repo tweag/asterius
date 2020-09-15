@@ -265,7 +265,6 @@ ahcLink task = do
          ]
       <> ["-optl--no-gc-sections" | not (gcSections task)]
       <> ["-optl--verbose-err" | verboseErr task]
-      <> ["-optl--pic" | pic task]
       <> extraGHCFlags task
       <> [ "-optl--output-ir="
              <> outputDirectory task
