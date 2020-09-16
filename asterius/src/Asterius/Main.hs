@@ -145,7 +145,7 @@ genStaticsSymbolTableDict ss_off_map =
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkDataAddress sym_off)
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkStaticDataAddress sym_off)
             | (sym, sym_off) <- SM.toList ss_off_map
           ]
       )
@@ -157,7 +157,7 @@ genFunctionsSymbolTableDict fn_off_map =
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkFunctionAddress sym_off)
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkStaticFunctionAddress sym_off)
             | (sym, sym_off) <- SM.toList fn_off_map
           ]
       )

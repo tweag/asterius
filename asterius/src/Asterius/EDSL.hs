@@ -52,8 +52,8 @@ module Asterius.EDSL
     storeF64,
     storeF32,
     unTagClosure,
-    tagFunction,
-    tagData,
+    mkDynamicDataAddress,
+    mkDynamicFunctionAddress,
     call,
     call',
     callImport,
@@ -98,6 +98,7 @@ import Control.Monad.State.Strict
 import Data.Bits
 import qualified Data.ByteString as BS
 import Data.Traversable
+import Data.Word
 import Language.Haskell.GHC.Toolkit.Constants
 
 -- | State maintained by the EDSL builder.
@@ -331,21 +332,41 @@ nandInt64 e1 e2 = notInt64 $ andInt64 e1 e2
 unTagClosure :: Expression -> Expression
 unTagClosure p = p `andInt64` constI64 0xFFFFFFFFFFFFFFF8
 
+-- ----------------------------------------------------------------------------
+
+dynamicMemoryBase :: Expression
+dynamicMemoryBase =
+  GetGlobal
+    { globalSymbol = "__asterius_memory_base",
+      valueType = I32
+    }
+
+dynamicTableBase :: Expression
+dynamicTableBase =
+  GetGlobal
+    { globalSymbol = "__asterius_table_base",
+      valueType = I32
+    }
+
+mkDynamicDataAddress :: Word32 -> Expression
+mkDynamicDataAddress off =
+  tagData $ dynamicMemoryBase `addInt32` ConstI32 (fromIntegral off)
+
+mkDynamicFunctionAddress :: Word32 -> Expression
+mkDynamicFunctionAddress off =
+  tagFunction $ dynamicTableBase `addInt32` ConstI32 (fromIntegral off)
+
 -- | TODO: Document @(UInt32 -> UInt64)@.
 {-# INLINEABLE tagFunction #-}
 tagFunction :: Expression -> Expression
-tagFunction e =
-  andInt64
-    (extendUInt32 e)
-    (constI64 (fromIntegral $ functionTag `shiftL` 32))
+tagFunction e = extendUInt32 e `andInt64` ConstI64 (functionTag `shiftL` 32)
 
 -- | TODO: Document @(UInt32 -> UInt64)@.
 {-# INLINEABLE tagData #-}
 tagData :: Expression -> Expression
-tagData e =
-  andInt64
-    (extendUInt32 e)
-    (constI64 (fromIntegral $ dataTag `shiftL` 32))
+tagData e = extendUInt32 e `andInt64` ConstI64 (dataTag `shiftL` 32)
+
+-- ----------------------------------------------------------------------------
 
 call :: EntitySymbol -> [Expression] -> EDSL ()
 call f xs = emit Call {target = f, operands = xs, callReturnTypes = []}

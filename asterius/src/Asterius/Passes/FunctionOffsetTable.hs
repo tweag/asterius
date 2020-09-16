@@ -21,5 +21,5 @@ makeFunctionOffsetTable AsteriusModule {..} =
 makeFunctionTable :: SM.SymbolMap Word32 -> FunctionTable
 makeFunctionTable func_off_map = FunctionTable
   { tableFunctionNames = map entityName $ SM.keys func_off_map,
-    tableOffset = ConstI32 $ fromIntegral tableBase -- TODO: WRONG (need to (dynamically) become 1).
+    tableOffset = ConstI32 $ fromIntegral staticTableBase
   }

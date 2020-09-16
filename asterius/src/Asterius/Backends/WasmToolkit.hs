@@ -24,7 +24,7 @@ module Asterius.Backends.WasmToolkit
 where
 
 import Asterius.Builtins
-import Asterius.EDSL (tagFunction, tagData, addInt32, constI32)
+import Asterius.EDSL (mkDynamicDataAddress, mkDynamicFunctionAddress)
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
 import Asterius.Passes.Relooper
@@ -717,14 +717,7 @@ makeInstructions expr =
           Just off -> makeInstructions
             SetGlobal
               { globalSymbol = "__asterius_pc",
-                value =
-                  let table_base =
-                        GetGlobal
-                          { globalSymbol = "__asterius_table_base",
-                            valueType = I32
-                          }
-                   in tagFunction $
-                        table_base `addInt32` constI32 (fromIntegral off)
+                value = mkDynamicFunctionAddress off
               }
           _
             | verbose_err ->
@@ -761,23 +754,9 @@ makeInstructions expr =
       ss_off_map <- askStaticsOffsetMap
       fn_off_map <- askFunctionsOffsetMap
       if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
-            let memory_base =
-                  GetGlobal
-                    { globalSymbol = "__asterius_memory_base",
-                      valueType = I32
-                    }
-             in makeInstructions $
-                  tagData $
-                    memory_base `addInt32` constI32 (fromIntegral off + symbolOffset)
+            makeInstructions $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
           | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
-            let table_base =
-                  GetGlobal
-                    { globalSymbol = "__asterius_table_base",
-                      valueType = I32
-                    }
-             in makeInstructions $
-                  tagFunction $
-                    table_base `addInt32` constI32 (fromIntegral off + symbolOffset)
+            makeInstructions $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
           | verbose_err ->
             makeInstructions $ barf (entityName unresolvedSymbol) [I64]
           | otherwise ->

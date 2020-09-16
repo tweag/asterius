@@ -97,8 +97,8 @@ makeSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case 
        in ( (next_off, current_off `Set.insert` fn_meta, ss_meta),
             unitBag
               DataSegment
-                { content = encodeStorable off_to_store, -- TODO: this looks wrong (1. not 64 bit long, 2. not the right value).
-                  offset = ConstI32 $ fromIntegral $ memoryBase + current_off -- TODO: WRONG (need to (dynamically) become 1024).
+                { content = encodeStorable (fromIntegral off_to_store :: Int64), -- TODO: this looks wrong.
+                  offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
                 }
           )
     | Just off <- SM.lookup sym ss_off_map ->
@@ -106,8 +106,8 @@ makeSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case 
        in ( (next_off, fn_meta, current_off `Set.insert` ss_meta),
             unitBag
               DataSegment
-                { content = encodeStorable off_to_store, -- TODO: this looks wrong (1. not 64 bit long, 2. not the right value).
-                  offset = ConstI32 $ fromIntegral $ memoryBase + current_off -- TODO: WRONG (need to (dynamically) become 1024).
+                { content = encodeStorable (fromIntegral off_to_store :: Int64), -- TODO: this looks wrong.
+                  offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
                 }
           )
     | otherwise ->
@@ -115,8 +115,8 @@ makeSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case 
        in ( (next_off, fn_meta, ss_meta),
             unitBag
               DataSegment
-                { content = encodeStorable off_to_store, -- TODO: this looks wrong (1. not 64 bit long, 2. not the right value).
-                  offset = ConstI32 $ fromIntegral $ memoryBase + current_off -- TODO: WRONG (need to (dynamically) become 1024).
+                { content = encodeStorable off_to_store,
+                  offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
                 }
           )
   Uninitialized {} ->
@@ -128,20 +128,11 @@ makeSegment fn_off_map ss_off_map (current_off, fn_meta, ss_meta) static = case 
       unitBag
         DataSegment
           { content = buf,
-            offset = ConstI32 $ fromIntegral $ memoryBase + current_off -- TODO: WRONG (need to (dynamically) become 1024).
+            offset = ConstI32 $ fromIntegral $ staticMemoryBase + current_off
           }
     )
   where
     next_off = current_off + sizeofStatic static
-
--- memory_base =
---   GetGlobal
---     { globalSymbol = "__asterius_memory_base",
---       valueType = I32
---     }
---
--- TODO: Perhaps it'd be better to pass the @table_base@ to @makeSegment@ as a
--- local instead of replicating it.
 
 {-# INLINEABLE makeMemory #-}
 makeMemory :: AsteriusModule -> SM.SymbolMap Word32 -> SM.SymbolMap Word32 -> ([DataSegment], AsteriusModule) -- relocation function implementation

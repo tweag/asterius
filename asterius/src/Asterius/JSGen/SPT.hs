@@ -24,7 +24,7 @@ genSPT ss_off_map spt_entries =
               <> word64HexFixed w1
               <> word64HexFixed w0
               <> "n,0x"
-              <> int64HexFixed (mkDataAddress $ ss_off_map SM.! sym)
+              <> int64HexFixed (mkStaticDataAddress $ ss_off_map SM.! sym)
               <> "]"
             | (sym, (w0, w1)) <- SM.toList spt_entries
           ]

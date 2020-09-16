@@ -36,7 +36,7 @@ unresolvedGlobalRegType gr = case gr of
 
 makeInfoTableSet :: AsteriusModule -> SM.SymbolMap Word32 -> [Int64]
 makeInfoTableSet AsteriusModule {..} ss_off_map =
-  map mkDataAddress $ SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet $
+  map mkStaticDataAddress $ SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet $
     SM.filter
       ((== InfoTable) . staticsType)
       staticsMap
@@ -65,13 +65,13 @@ resolveAsteriusModule debug m_globals_resolved =
     final_m = reloc_function <> m_globals_resolved
     -- Continue with the rest using the "real" module.
     func_table = makeFunctionTable fn_off_map
-    table_slots = fromIntegral $ tableBase + last_func_offset -- TODO: WRONG (need to (dynamically) add 1).
+    table_slots = fromIntegral $ staticTableBase + last_func_offset
     func_imports =
       rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState final_m)
     new_function_map =
       LM.mapKeys entityName $ SM.toMap $ functionMap final_m
     initial_pages =
-      (fromIntegral (memoryBase + last_data_offset) `roundup` mblock_size) -- TODO: WRONG (need to (dynamically) add 1024).
+      (fromIntegral (staticMemoryBase + last_data_offset) `roundup` mblock_size)
         `quot` wasmPageSize
     initial_mblocks =
       initial_pages `quot` (mblock_size `quot` wasmPageSize)

@@ -23,7 +23,7 @@ module Asterius.Backends.Binaryen
 where
 
 import Asterius.Builtins
-import Asterius.EDSL (tagFunction, tagData, addInt32, constI32)
+import Asterius.EDSL (mkDynamicDataAddress, mkDynamicFunctionAddress)
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.Barf
 import Asterius.Internals.MagicNumber
@@ -451,14 +451,7 @@ marshalExpression e = case e of
             marshalExpression
               SetGlobal
                 { globalSymbol = "__asterius_pc",
-                  value =
-                    let table_base =
-                          GetGlobal
-                            { globalSymbol = "__asterius_table_base",
-                              valueType = I32
-                            }
-                     in tagFunction $
-                          table_base `addInt32` constI32 (fromIntegral off)
+                  value = mkDynamicFunctionAddress off
                 }
           m <- askModuleRef
           a <- askArena
@@ -512,23 +505,9 @@ marshalExpression e = case e of
     fn_off_map <- askFunctionsOffsetMap
     m <- askModuleRef
     if  | Just off <- SM.lookup unresolvedSymbol ss_off_map ->
-          let memory_base =
-                GetGlobal
-                  { globalSymbol = "__asterius_memory_base",
-                    valueType = I32
-                  }
-           in marshalExpression $
-                tagData $
-                  memory_base `addInt32` constI32 (fromIntegral off + symbolOffset)
+          marshalExpression $ mkDynamicDataAddress $ off + fromIntegral symbolOffset
         | Just off <- SM.lookup unresolvedSymbol fn_off_map ->
-          let table_base =
-                GetGlobal
-                  { globalSymbol = "__asterius_table_base",
-                    valueType = I32
-                  }
-           in marshalExpression $
-                tagFunction $
-                  table_base `addInt32` constI32 (fromIntegral off + symbolOffset)
+          marshalExpression $ mkDynamicFunctionAddress $ off + fromIntegral symbolOffset
         | verbose_err ->
           marshalExpression $ barf (entityName unresolvedSymbol) [I64]
         | otherwise ->

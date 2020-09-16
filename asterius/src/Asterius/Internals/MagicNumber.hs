@@ -2,10 +2,10 @@ module Asterius.Internals.MagicNumber
   ( dataTag,
     functionTag,
     invalidAddress,
-    tableBase,
-    memoryBase,
-    mkDataAddress,
-    mkFunctionAddress,
+    staticTableBase,
+    staticMemoryBase,
+    mkStaticDataAddress,
+    mkStaticFunctionAddress,
   )
 where
 
@@ -23,16 +23,16 @@ invalidAddress :: Int64
 invalidAddress = 0x001fffffffff0000
 
 -- | Base address for functions. NOTE: reserve 0 for the null function pointer.
-tableBase :: Word32
-tableBase = 1
+staticTableBase :: Word32
+staticTableBase = 1
 
 -- | Base address for data segments. NOTE: leave 1KB empty for the
 -- @--low-memory-unused@ optimization to work.
-memoryBase :: Word32
-memoryBase = 1024
+staticMemoryBase :: Word32
+staticMemoryBase = 1024
 
-mkDataAddress :: Word32 -> Int64
-mkDataAddress off = (dataTag `shiftL` 32) .|. fromIntegral (memoryBase + off)
+mkStaticDataAddress :: Word32 -> Int64
+mkStaticDataAddress off = (dataTag `shiftL` 32) .|. fromIntegral (staticMemoryBase + off)
 
-mkFunctionAddress :: Word32 -> Int64
-mkFunctionAddress off = (functionTag `shiftL` 32) .|. fromIntegral (tableBase + off)
+mkStaticFunctionAddress :: Word32 -> Int64
+mkStaticFunctionAddress off = (functionTag `shiftL` 32) .|. fromIntegral (staticTableBase + off)
