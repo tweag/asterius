@@ -16,8 +16,8 @@ import Asterius.Builtins
 import Asterius.Internals.MagicNumber
 import Asterius.JSFFI
 import Asterius.MemoryTrap
-import Asterius.Passes.DataSymbolTable
-import Asterius.Passes.FunctionSymbolTable
+import Asterius.Passes.DataOffsetTable
+import Asterius.Passes.FunctionOffsetTable
 import Asterius.Passes.GCSections
 import Asterius.Types
 import qualified Asterius.Types.SymbolMap as SM
@@ -34,42 +34,36 @@ unresolvedGlobalRegType gr = case gr of
   DoubleReg _ -> F64
   _ -> I64
 
-makeInfoTableSet :: AsteriusModule -> SM.SymbolMap Int64 -> [Int64]
-makeInfoTableSet AsteriusModule {..} sym_map =
-  SM.elems $ SM.restrictKeys sym_map $ SM.keysSet $
+makeInfoTableSet :: AsteriusModule -> SM.SymbolMap Word32 -> [Int64]
+makeInfoTableSet AsteriusModule {..} ss_off_map =
+  map mkDataAddress $ SM.elems $ SM.restrictKeys ss_off_map $ SM.keysSet $
     SM.filter
       ((== InfoTable) . staticsType)
       staticsMap
 
 resolveAsteriusModule ::
   Bool ->
-  FFIMarshalState ->
   AsteriusModule ->
-  Int64 ->
-  Int64 ->
   ( Module,
-    SM.SymbolMap Int64,
-    SM.SymbolMap Int64,
+    SM.SymbolMap Word32,
+    SM.SymbolMap Word32,
     Int,
     Int
   )
-resolveAsteriusModule debug bundled_ffi_state m_globals_resolved func_start_addr data_start_addr =
-  (new_mod, ss_sym_map, func_sym_map, table_slots, initial_mblocks)
+resolveAsteriusModule debug m_globals_resolved =
+  (new_mod, ss_off_map, fn_off_map, table_slots, initial_mblocks)
   where
-    (func_sym_map, last_func_addr) =
-      makeFunctionSymbolTable m_globals_resolved func_start_addr
-    table_slots = fromIntegral $ unTag last_func_addr
-    func_table = makeFunctionTable func_sym_map func_start_addr
-    (ss_sym_map, last_data_addr) =
-      makeDataSymbolTable m_globals_resolved data_start_addr
-    all_sym_map = func_sym_map <> ss_sym_map
+    (fn_off_map, last_func_offset) = makeFunctionOffsetTable m_globals_resolved
+    (ss_off_map, last_data_offset) = makeDataOffsetTable m_globals_resolved
+    segs = makeMemory m_globals_resolved fn_off_map ss_off_map
+    func_table = makeFunctionTable fn_off_map
+    table_slots = fromIntegral $ tableBase + last_func_offset
     func_imports =
-      rtsFunctionImports debug <> generateFFIFunctionImports bundled_ffi_state
+      rtsFunctionImports debug <> generateFFIFunctionImports (ffiMarshalState m_globals_resolved)
     new_function_map =
       LM.mapKeys entityName $ SM.toMap $ functionMap m_globals_resolved
-    segs = makeMemory m_globals_resolved all_sym_map
     initial_pages =
-      (fromIntegral (unTag last_data_addr) `roundup` mblock_size)
+      (fromIntegral (memoryBase + last_data_offset) `roundup` mblock_size)
         `quot` wasmPageSize
     initial_mblocks =
       initial_pages `quot` (mblock_size `quot` wasmPageSize)
@@ -116,13 +110,13 @@ linkStart debug gc_sections store root_syms export_funcs =
   ( merged_m,
     result_m,
     LinkReport
-      { staticsSymbolMap = ss_sym_map,
-        functionSymbolMap = func_sym_map,
-        infoTableSet = makeInfoTableSet merged_m ss_sym_map,
+      { staticsOffsetMap = ss_off_map,
+        functionOffsetMap = fn_off_map,
+        infoTableSet = makeInfoTableSet merged_m ss_off_map,
         Asterius.Types.LinkReport.tableSlots = tbl_slots,
         staticMBlocks = static_mbs,
         sptEntries = sptMap merged_m,
-        bundledFFIMarshalState = bundled_ffi_state
+        bundledFFIMarshalState = ffiMarshalState merged_m
       }
   )
   where
@@ -133,13 +127,5 @@ linkStart debug gc_sections store root_syms export_funcs =
     !merged_m
       | debug = addMemoryTrap merged_m0_evaluated
       | otherwise = merged_m0_evaluated
-    bundled_ffi_state = ffiMarshalState merged_m
-    (!result_m, !ss_sym_map, !func_sym_map, !tbl_slots, !static_mbs) =
-      resolveAsteriusModule
-        debug
-        bundled_ffi_state
-        merged_m
-        -- reserve 0 for the null function pointer
-        (1 .|. functionTag `shiftL` 32)
-        -- leave 1KB empty for the --low-memory-unused optimization to work
-        (0x00000400 .|. dataTag `shiftL` 32)
+    (!result_m, !ss_off_map, !fn_off_map, !tbl_slots, !static_mbs) =
+      resolveAsteriusModule debug merged_m

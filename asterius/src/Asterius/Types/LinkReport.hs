@@ -14,7 +14,7 @@ import Data.Word
 
 data LinkReport
   = LinkReport
-      { staticsSymbolMap, functionSymbolMap :: SymbolMap Int64,
+      { staticsOffsetMap, functionOffsetMap :: SymbolMap Word32,
         infoTableSet :: [Int64],
         tableSlots, staticMBlocks :: Int,
         sptEntries :: SymbolMap (Word64, Word64),

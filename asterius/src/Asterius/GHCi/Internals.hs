@@ -19,6 +19,7 @@ import Asterius.Ar
 import Asterius.Binary.File
 import Asterius.Binary.NameCache
 import Asterius.CodeGen
+import Asterius.Internals.MagicNumber
 import Asterius.Internals.Temp
 import Asterius.JSRun.NonMain
 import Asterius.Ld
@@ -303,7 +304,7 @@ asteriusWriteIServ hsc_env i a
           asteriusRunTH
             i
             st
-            (fromIntegral (staticsSymbolMap link_report ! sym))
+            (fromIntegral (mkDataAddress $ staticsOffsetMap link_report ! sym))
             ty
             loc
             js_s

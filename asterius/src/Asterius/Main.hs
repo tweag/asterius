@@ -21,6 +21,7 @@ import Asterius.Foreign.ExportStatic
 import Asterius.Internals
 import qualified Asterius.Internals.Arena as A
 import Asterius.Internals.ByteString
+import Asterius.Internals.MagicNumber
 import Asterius.Internals.Marshal
 import Asterius.Internals.Temp
 import Asterius.JSFFI
@@ -136,14 +137,26 @@ parseTask args = case err_msgs of
 getTask :: IO Task
 getTask = parseTask <$> getArgs
 
-genSymbolTableDict :: SM.SymbolMap Int64 -> Builder
-genSymbolTableDict sym_map =
+genStaticsSymbolTableDict :: SM.SymbolMap Word32 -> Builder
+genStaticsSymbolTableDict ss_off_map =
   "Object.freeze({"
     <> mconcat
       ( intersperse
           ","
-          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex sym_idx
-            | (sym, sym_idx) <- SM.toList sym_map
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkDataAddress sym_off)
+            | (sym, sym_off) <- SM.toList ss_off_map
+          ]
+      )
+    <> "})"
+
+genFunctionsSymbolTableDict :: SM.SymbolMap Word32 -> Builder
+genFunctionsSymbolTableDict fn_off_map =
+  "Object.freeze({"
+    <> mconcat
+      ( intersperse
+          ","
+          [ "\"" <> byteString (entityName sym) <> "\":" <> intHex (mkFunctionAddress sym_off)
+            | (sym, sym_off) <- SM.toList fn_off_map
           ]
       )
     <> "})"
@@ -161,19 +174,17 @@ genReq task LinkReport {..} =
       "export default {",
       "jsffiFactory: ",
       generateFFIImportObjectFactory bundledFFIMarshalState,
-      ", functionsExportsStatic: ",
-      genExportStaticObj bundledFFIMarshalState functionSymbolMap,
-      ", staticsExportsStatic: ",
-      genExportStaticObj bundledFFIMarshalState staticsSymbolMap,
+      ", exportsStatic: ",
+      genExportStaticObj bundledFFIMarshalState staticsOffsetMap,
       ", functionsSymbolTable: ",
-      genSymbolTableDict func_symbol_table,
+      genFunctionsSymbolTableDict fn_off_map,
       ", staticsSymbolTable: ",
-      genSymbolTableDict ss_symbol_table,
+      genStaticsSymbolTableDict ss_off_map,
       if debug task
         then mconcat [", infoTables: ", genInfoTables infoTableSet]
         else mempty,
       ", sptEntries: ",
-      genSPT staticsSymbolMap sptEntries,
+      genSPT staticsOffsetMap sptEntries,
       ", tableSlots: ",
       intDec tableSlots,
       ", staticMBlocks: ",
@@ -191,8 +202,8 @@ genReq task LinkReport {..} =
     all_roots =
       SS.fromList (extraRootSymbols task)
         <> rtsUsedSymbols
-    func_symbol_table = SM.restrictKeys functionSymbolMap all_roots
-    ss_symbol_table = SM.restrictKeys staticsSymbolMap all_roots
+    fn_off_map = SM.restrictKeys functionOffsetMap all_roots
+    ss_off_map = SM.restrictKeys staticsOffsetMap all_roots
 
 genDefEntry :: Task -> Builder
 genDefEntry task =
@@ -305,8 +316,8 @@ ahcDistMain logger task (final_m, report) = do
         Binaryen.marshalModule
           (verboseErr task)
           (tailCalls task)
-          (staticsSymbolMap report)
-          (functionSymbolMap report)
+          (staticsOffsetMap report)
+          (functionOffsetMap report)
           final_m
       when (optimizeLevel task > 0 || shrinkLevel task > 0) $ do
         logger "[INFO] Running binaryen optimization"
@@ -344,8 +355,8 @@ ahcDistMain logger task (final_m, report) = do
               WasmToolkit.makeModule
                 (verboseErr task)
                 (tailCalls task)
-                (staticsSymbolMap report)
-                (functionSymbolMap report)
+                (staticsOffsetMap report)
+                (functionOffsetMap report)
                 final_m
       r <- case conv_result of
         Left err -> fail $ "[ERROR] Conversion failed with " <> show err
