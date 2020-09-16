@@ -29,9 +29,19 @@ export async function newAsteriusInstance(req) {
   let __asterius_persistent_state = req.persistentState
       ? req.persistentState
       : {},
+    __asterius_table_base = new WebAssembly.Global(
+      { value: "i32", mutable: false },
+      0 // TODO: Should change to 1, eventually.
+    ),
+    __asterius_memory_base = new WebAssembly.Global(
+      { value: "i32", mutable: false },
+      0 // TODO: Should change to 1024, eventually.
+    ),
     __asterius_symbol_table = new SymbolTable(
       req.functionsSymbolTable,
       req.staticsSymbolTable,
+      __asterius_table_base.value,
+      __asterius_memory_base.value
     ),
     __asterius_reentrancy_guard = new ReentrancyGuard(["Scheduler", "GC"]),
     __asterius_fs = new FS(__asterius_components),
@@ -132,6 +142,10 @@ export async function newAsteriusInstance(req) {
       WasmMemory: {
         memory: __asterius_wasm_memory
       },
+      env: {
+        __memory_base: __asterius_memory_base,
+        __table_base: __asterius_table_base
+      },
       rts: {
         printI64: x => __asterius_fs.writeNonMemory(1, `${__asterius_show_I64(x)}\n`),
         assertEqI64: function(x, y) {
@@ -191,11 +205,11 @@ export async function newAsteriusInstance(req) {
     __asterius_bytestring_cbits.memory = __asterius_memory;
     __asterius_scheduler.setGC(__asterius_gc);
 
-    for (const [f, p, a, r, i] of req.exportsStatic) {
+    for (const [f, off, a, r, i] of req.exportsStatic) {
       __asterius_exports[
         f
       ] = __asterius_exports.newHaskellCallback(
-        __asterius_stableptr_manager.newStablePtr(p),
+        __asterius_stableptr_manager.newStablePtr(__asterius_memory_base.value + off), // TODO: TAGGING IS REQUIRED.
         a,
         r,
         i,
